@@ -1,0 +1,9 @@
+{
+  "id": "sf-lsp",
+  "name": "SF LSP",
+  "description": "Real-time Salesforce LSP diagnostics on write/edit — supports Apex, LWC, and Agent Script",
+  "category": "core",
+  "defaultEnabled": true,
+  "commands": ["/sf-lsp"],
+  "events": ["session_start", "session_shutdown", "tool_result"]
+}

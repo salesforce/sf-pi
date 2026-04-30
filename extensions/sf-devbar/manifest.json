@@ -1,0 +1,17 @@
+{
+  "id": "sf-devbar",
+  "name": "SF DevBar",
+  "description": "Bespoke Salesforce developer status bar with org context, model info, git, and context window progress",
+  "category": "ui",
+  "defaultEnabled": true,
+  "commands": ["/sf-devbar", "/sf-org"],
+  "events": [
+    "session_start",
+    "session_shutdown",
+    "model_select",
+    "turn_start",
+    "turn_end",
+    "agent_end",
+    "before_agent_start"
+  ]
+}

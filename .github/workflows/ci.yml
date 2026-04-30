@@ -1,0 +1,173 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  # Allow release-please to dispatch CI on the release PR branch
+  # (GITHUB_TOKEN-opened PRs don't fire pull_request events on their own).
+  workflow_dispatch:
+
+# Cancel in-progress runs on the same branch/PR when a new commit lands.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Default to least privilege. Escalate per-job only if needed.
+permissions:
+  contents: read
+
+jobs:
+  # Fast lane: one Node version, no coverage upload, no cross-SDK overlay.
+  # Broader matrix + latest-pi-compat moved to the nightly workflow.
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Check generated catalog
+        run: npm run generate-catalog:check
+
+      - name: Check SPDX headers
+        run: npm run spdx:check
+
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Lint
+        run: npm run eslint
+
+      - name: Type check
+        run: npm run check
+
+      - name: Run tests
+        run: npm test
+
+  audit:
+    name: npm audit (production)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Run npm audit (production only, fail on high)
+        run: npm audit --omit=dev --audit-level=high
+
+  # Solo-maintainer fast path. GitHub Free + private repos cannot use the
+  # built-in 'Allow auto-merge' (requires Pro + branch protection), and
+  # cross-workflow workflow_run triggers don't fire reliably for
+  # workflow_dispatch-originated CI runs on non-default branches. So we
+  # drive the merge inline from CI itself on release-please branches.
+  auto-merge-release-pr:
+    name: Auto-merge release PR
+    runs-on: ubuntu-latest
+    needs: [validate, audit]
+    if: >-
+      success() &&
+      startsWith(github.ref_name, 'release-please--')
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write # to re-dispatch release-please
+      checks: read # to poll gitleaks status on the same SHA
+    steps:
+      - name: Find release PR
+        id: pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          PR_JSON=$(gh pr list \
+            --repo "$GITHUB_REPOSITORY" \
+            --head "$GITHUB_REF_NAME" \
+            --state open \
+            --json number,title,author \
+            --limit 1)
+          PR_NUMBER=$(echo "$PR_JSON" | jq -r '.[0].number // empty')
+          PR_AUTHOR=$(echo "$PR_JSON" | jq -r '.[0].author.login // empty')
+          if [ -z "$PR_NUMBER" ]; then
+            echo "No open PR for $GITHUB_REF_NAME; nothing to merge."
+            exit 0
+          fi
+          case "$PR_AUTHOR" in
+            github-actions | github-actions"[bot]" | app/github-actions) ;;
+            *)
+              echo "PR #$PR_NUMBER author '$PR_AUTHOR' is not release-please; skipping."
+              exit 0
+              ;;
+          esac
+          echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+          echo "Found release PR #$PR_NUMBER"
+
+      - name: Wait for gitleaks to conclude
+        if: steps.pr.outputs.pr_number != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 30); do
+            STATE=$(gh api \
+              -H "Accept: application/vnd.github+json" \
+              "repos/$GITHUB_REPOSITORY/commits/$HEAD_SHA/check-runs?check_name=gitleaks" \
+              --jq '[.check_runs[] | {status, conclusion}] | .[0] // {status:"queued", conclusion:null}')
+            STATUS=$(echo "$STATE" | jq -r '.status')
+            CONCLUSION=$(echo "$STATE" | jq -r '.conclusion // ""')
+            echo "attempt $attempt: gitleaks status=$STATUS conclusion=$CONCLUSION"
+            if [ "$STATUS" = "completed" ]; then
+              case "$CONCLUSION" in
+                success|neutral|skipped) echo "gitleaks ok"; exit 0 ;;
+                *) echo "::error::gitleaks concluded with '$CONCLUSION'; aborting merge."; exit 1 ;;
+              esac
+            fi
+            sleep 10
+          done
+          echo "::error::gitleaks did not complete within the wait window; aborting merge."
+          exit 1
+
+      - name: Squash-merge release PR
+        if: steps.pr.outputs.pr_number != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ steps.pr.outputs.pr_number }}
+        run: |
+          set -euo pipefail
+          gh pr merge "$PR" \
+            --repo "$GITHUB_REPOSITORY" \
+            --squash \
+            --delete-branch
+
+      - name: Re-dispatch release-please to cut the tag
+        if: steps.pr.outputs.pr_number != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          # Merges driven by GITHUB_TOKEN don't fire push-triggered
+          # workflows, so release-please needs a manual kick to cut the
+          # tag and GitHub Release.
+          gh workflow run release-please.yml \
+            --repo "$GITHUB_REPOSITORY" \
+            --ref main

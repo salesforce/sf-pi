@@ -1,0 +1,9 @@
+{
+  "id": "sf-agentscript-assist",
+  "name": "SF Agent Script Assist",
+  "description": "In-process Agent Script authoring companion — parse, compile, and code-action feedback on every .agent write",
+  "category": "core",
+  "defaultEnabled": true,
+  "commands": ["/sf-agentscript-assist"],
+  "events": ["session_start", "session_shutdown", "tool_result"]
+}

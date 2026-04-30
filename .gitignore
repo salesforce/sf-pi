@@ -1,0 +1,38 @@
+node_modules/
+dist/
+.DS_Store
+**/.DS_Store
+*.js
+!*.config.js
+# Vendored @agentscript/agentforce ESM bundle — upstream build artifact that
+# MUST be committed so `npm install` works offline. Synced from
+# salesforce/agentscript by scripts/sync-agentforce-sdk.mjs.
+!extensions/sf-agentscript-assist/lib/vendor/agentforce/browser.js
+*.tsbuildinfo
+
+# catalog/registry.ts and catalog/index.json are generated but checked in
+# because pi packages have no build step. Regenerate: npm run generate-catalog
+
+# Local sf-quality / Code Analyzer runtime logs
+.pi/code-analyzer/logs/
+.pi/todos/
+.pi/plans/
+
+# Local SF gateway credentials
+.pi/sf-llm-gateway-internal.json
+
+# Local Salesforce CLI generated state
+.sfdx/
+
+# Editor + agent scratch dirs
+.cursor/
+
+# Private internal-only docs (plans, backlogs, drafts)
+docs/internal/
+
+# Coverage output
+coverage/
+*.log
+
+# Security scan reports
+gitleaks.json

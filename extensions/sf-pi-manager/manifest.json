@@ -1,0 +1,11 @@
+{
+  "id": "sf-pi-manager",
+  "name": "SF Pi Manager",
+  "description": "Core manager — provides /sf-pi commands",
+  "category": "core",
+  "defaultEnabled": true,
+  "alwaysActive": true,
+  "configurable": true,
+  "commands": ["/sf-pi", "/sf-pi recommended", "/sf-pi announcements"],
+  "events": ["session_start", "session_shutdown"]
+}

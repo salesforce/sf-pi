@@ -1,0 +1,132 @@
+name: Release Please
+
+on:
+  push:
+    branches:
+      - main
+  # Allow the auto-merge workflow to re-trigger us after it squashes the
+  # release PR, so the tag + GitHub Release get cut in the same pass.
+  workflow_dispatch:
+
+concurrency:
+  group: release-please-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    name: release-please
+    runs-on: ubuntu-latest
+    permissions:
+      # Needed to open the release PR and cut a tag.
+      contents: write
+      pull-requests: write
+      # Needed to workflow_dispatch CI + gitleaks on the release PR branch.
+      actions: write
+    steps:
+      - name: Run release-please
+        id: release
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        with:
+          # Config files are under .github/
+          config-file: .github/release-please-config.json
+          manifest-file: .github/.release-please-manifest.json
+
+      - name: Find open release PR branch
+        id: findpr
+        if: steps.release.outputs.release_created != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          BRANCH=$(gh pr list \
+            --repo "$GITHUB_REPOSITORY" \
+            --state open \
+            --json headRefName \
+            --jq '[.[] | select(.headRefName | startswith("release-please--"))][0].headRefName // empty')
+          if [ -z "$BRANCH" ]; then
+            echo "No open release-please PR; downstream steps will skip."
+          else
+            echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+            echo "Found release PR branch: $BRANCH"
+          fi
+
+      - name: Check out release PR branch
+        if: steps.findpr.outputs.branch != ''
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ steps.findpr.outputs.branch }}
+          # Need write permission on the checkout so later steps can push.
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        if: steps.findpr.outputs.branch != ''
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Sync main into release PR branch + regenerate catalog
+        # Two things happen here, both necessary on every release-please run:
+        #   1. Merge origin/main into the release branch. release-please
+        #      starts each release PR from the main commit that triggered
+        #      the version bump, so the PR branch is stuck in time and
+        #      misses any subsequent infra fixes (workflow edits,
+        #      .gitleaksignore, etc.). Always bringing main forward means
+        #      CI/gitleaks on the PR branch use the freshest workflow + ignore
+        #      files.
+        #   2. Run `npm run generate-catalog`. release-please bumps
+        #      CHANGELOG; catalog/announcements.json is derived from
+        #      CHANGELOG, so it drifts on every release PR and fails
+        #      `generate-catalog:check` in CI. Regenerate and commit.
+        # Any resulting diff (merge commit and/or catalog regen) is pushed
+        # back to the PR branch before dispatching CI.
+        if: steps.findpr.outputs.branch != ''
+        env:
+          BRANCH: ${{ steps.findpr.outputs.branch }}
+        run: |
+          set -euo pipefail
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # 1. Sync main into the release branch if it has diverged.
+          if ! git merge-base --is-ancestor origin/main HEAD; then
+            echo "Merging origin/main into release branch"
+            git merge --no-edit origin/main
+          else
+            echo "Release branch already contains origin/main; no merge needed."
+          fi
+
+          # 2. Regenerate catalog artifacts.
+          npm ci --legacy-peer-deps
+          npm run generate-catalog
+          if ! git diff --quiet; then
+            git add -A
+            git commit -m "chore(catalog): regenerate for release $BRANCH"
+          fi
+
+          # Push any new commits (merge + catalog regen).
+          if [ "$(git rev-parse origin/"$BRANCH")" != "$(git rev-parse HEAD)" ]; then
+            git push origin "HEAD:$BRANCH"
+          else
+            echo "Nothing new to push."
+          fi
+
+      - name: Dispatch checks on release PR branch
+        # Release-please opens/updates its PR with GITHUB_TOKEN, which
+        # does NOT fire push/pull_request triggers (GitHub's
+        # anti-recursion rule). Dispatch CI + gitleaks manually so checks
+        # exist on the PR and the auto-merge-release-pr workflow has a
+        # workflow_run to observe.
+        if: steps.findpr.outputs.branch != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: ${{ steps.findpr.outputs.branch }}
+        run: |
+          set -euo pipefail
+          echo "Dispatching CI + gitleaks on $BRANCH"
+          gh workflow run ci.yml --repo "$GITHUB_REPOSITORY" --ref "$BRANCH"
+          gh workflow run gitleaks.yml --repo "$GITHUB_REPOSITORY" --ref "$BRANCH"

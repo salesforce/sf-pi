@@ -1,0 +1,103 @@
+name: Bug report
+description: Report a defect in an extension, the manager, or shared tooling.
+title: "[bug] <short summary>"
+labels:
+  - bug
+  - triage
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filing a bug! Please provide enough detail for us to reproduce and diagnose.
+
+  - type: input
+    id: extension
+    attributes:
+      label: Affected extension or area
+      description: e.g. `sf-pi-manager`, `sf-slack`, `sf-llm-gateway-internal`, `lib/common`, CI
+      placeholder: sf-slack
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: sf-pi version
+      description: Run `npm ls sf-pi` or check `package.json`.
+      placeholder: 0.1.0
+    validations:
+      required: true
+
+  - type: input
+    id: pi_version
+    attributes:
+      label: pi coding agent version
+      placeholder: 0.68.x
+    validations:
+      required: false
+
+  - type: input
+    id: node_version
+    attributes:
+      label: Node.js version
+      description: Output of `node --version`.
+      placeholder: v20.x.x
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - macOS
+        - Linux
+        - Windows (WSL)
+        - Windows (native)
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Minimal, numbered steps. Include exact commands and inputs.
+      placeholder: |
+        1. Run `/sf-pi list`
+        2. Observe ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Paste log output, stack traces, or screenshots as applicable.
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: Anything else we should know — workarounds, related issues, etc.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-submission checklist
+      options:
+        - label: I searched existing issues for duplicates
+          required: true
+        - label: I am running a supported `sf-pi` version
+          required: true
+        - label: This is not a security vulnerability (those go through the Security tab)
+          required: true

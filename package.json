@@ -1,0 +1,94 @@
+{
+  "name": "sf-pi",
+  "version": "0.20.2",
+  "private": true,
+  "type": "module",
+  "description": "Opinionated Salesforce developer extensions for the pi coding agent — Apex/LWC LSP, Agent Script authoring, Slack research, and a TUI manager.",
+  "keywords": [
+    "pi-package",
+    "pi-coding-agent",
+    "salesforce",
+    "salesforce-dev",
+    "developer-tools"
+  ],
+  "license": "Apache-2.0",
+  "author": {
+    "name": "Salesforce, Inc.",
+    "url": "https://github.com/salesforce"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/salesforce/sf-pi.git"
+  },
+  "bugs": {
+    "url": "https://github.com/salesforce/sf-pi/issues"
+  },
+  "homepage": "https://github.com/salesforce/sf-pi#readme",
+  "engines": {
+    "node": ">=20"
+  },
+  "pi": {
+    "extensions": [
+      "./extensions"
+    ],
+    "themes": [
+      "./themes"
+    ]
+  },
+  "scripts": {
+    "generate-catalog": "node scripts/generate-catalog.mjs",
+    "generate-catalog:check": "node scripts/generate-catalog.mjs --check",
+    "spdx": "node scripts/add-spdx-headers.mjs",
+    "spdx:check": "node scripts/add-spdx-headers.mjs --check",
+    "check": "tsc --noEmit -p tsconfig.json",
+    "eslint": "eslint .",
+    "eslint:fix": "eslint . --fix",
+    "lint": "npm run format:check && npm run generate-catalog:check && npm run spdx:check && npm run eslint",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:sf-llm-gateway-internal:codex": "vitest run extensions/sf-llm-gateway-internal/tests/codex-regression.test.ts",
+    "validate": "./scripts/validate.sh",
+    "scaffold": "node scripts/scaffold.mjs",
+    "prepare": "husky || true"
+  },
+  "peerDependencies": {
+    "@mariozechner/pi-ai": ">=0.70.3",
+    "@mariozechner/pi-coding-agent": ">=0.70.3",
+    "@mariozechner/pi-tui": ">=0.70.3",
+    "typebox": "*"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^20.5.2",
+    "@commitlint/config-conventional": "^20.5.0",
+    "@eslint/js": "^10.0.1",
+    "@mariozechner/pi-ai": "^0.70.5",
+    "@mariozechner/pi-coding-agent": "^0.70.5",
+    "@mariozechner/pi-tui": "^0.70.5",
+    "@types/node": "^25.6.0",
+    "@vitest/coverage-v8": "^4.1.5",
+    "eslint": "^10.2.1",
+    "globals": "^17.5.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
+    "prettier": "^3.6.2",
+    "typebox": "^1.1.34",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.59.0",
+    "vitest": "^4.1.4"
+  },
+  "dependencies": {
+    "node-emoji": "^2.2.0",
+    "vscode-languageserver-protocol": "^3.17.5"
+  },
+  "overridesNotes": {
+    "fast-xml-parser": "Force >= 5.7.0 to clear GHSA-gh4j-gqv2-49f6 (XMLBuilder CDATA injection). Reaches us only via @mariozechner/pi-ai -> AWS SDK Bedrock client, which sf-pi never calls directly. Remove once upstream ships a release with a refreshed AWS SDK.",
+    "@anthropic-ai/sdk": "Force >= 0.91.1 to clear GHSA-p7fg-763f-g4gf (insecure default file permissions in the local-filesystem Memory Tool). sf-pi never instantiates the Memory Tool, but the advisory still flags the transitive dep via @mariozechner/pi-ai. Remove once pi-ai bumps its resolved version."
+  },
+  "overrides": {
+    "fast-xml-parser": "^5.7.0",
+    "@anthropic-ai/sdk": "^0.91.1"
+  }
+}

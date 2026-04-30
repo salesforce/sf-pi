@@ -1,0 +1,8 @@
+{
+  "id": "sf-ohana-spinner",
+  "name": "SF Ohana Spinner",
+  "description": "Salesforce-themed rainbow spinner during LLM thinking",
+  "category": "ui",
+  "defaultEnabled": true,
+  "events": ["session_start", "session_shutdown"]
+}

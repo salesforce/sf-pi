@@ -1,0 +1,50 @@
+name: CodeQL
+
+# CodeQL is slow and the findings are rarely push-blocking for this repo.
+# Run it weekly on a schedule + on-demand via workflow_dispatch. Gitleaks
+# still scans every push/PR for secrets, which is the higher-signal check.
+on:
+  schedule:
+    - cron: "23 4 * * 2"
+  workflow_dispatch:
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    # CodeQL on private repos requires GitHub Advanced Security. Skip if not
+    # available. Public repos get CodeQL for free.
+    if: github.repository_visibility == 'public' || github.event.repository.visibility == 'public'
+
+    permissions:
+      # required for all workflows
+      security-events: write
+      # required to fetch internal or private CodeQL packs
+      packages: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [javascript-typescript]
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@95e58e9a2cdfd71adc6e0353d5c52f41a045d225 # v4.35.2
+        with:
+          languages: ${{ matrix.language }}
+          queries: +security-and-quality
+
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@95e58e9a2cdfd71adc6e0353d5c52f41a045d225 # v4.35.2
+        with:
+          category: "/language:${{ matrix.language }}"

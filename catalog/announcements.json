@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "revision": "release-0.20.2-2026-04-30",
+  "latestVersion": "0.20.2",
+  "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
+  "announcements": [
+    {
+      "id": "release-0.20.2",
+      "kind": "update",
+      "title": "sf-pi v0.20.2 — catalog: refresh announcements.json for v0.20.1 release",
+      "publishedAt": "2026-04-30T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.20.2",
+      "severity": "info",
+      "body": "catalog: refresh announcements.json for v0.20.1 release — ci: dispatch release PR checks even when release-please made no changes"
+    }
+  ]
+}

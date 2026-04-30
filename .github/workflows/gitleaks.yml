@@ -1,0 +1,41 @@
+name: Secret scan (gitleaks)
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  # Dispatchable by release-please on the release PR branch.
+  workflow_dispatch:
+  schedule:
+    # Weekly full scan in case a leaked secret slipped in historically.
+    - cron: "17 7 * * 1"
+
+concurrency:
+  group: gitleaks-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  # Needed so gitleaks-action can list commits on PRs (octokit .../pulls/{n}/commits).
+  pull-requests: read
+
+jobs:
+  scan:
+    name: gitleaks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          # Need full history so scheduled scans can detect historical leaks.
+          fetch-depth: 0
+
+      - name: Run gitleaks
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
+        env:
+          # Required for PR scans per gitleaks-action v2.3 breaking change.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Set GITLEAKS_LICENSE as a repo secret if you want org-level reporting;
+          # the action runs fine without it on public + personal private repos.
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}

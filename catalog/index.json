@@ -1,0 +1,251 @@
+[
+  {
+    "id": "sf-agentscript-assist",
+    "name": "SF Agent Script Assist",
+    "description": "In-process Agent Script authoring companion — parse, compile, and code-action feedback on every .agent write",
+    "category": "core",
+    "defaultEnabled": true,
+    "alwaysActive": false,
+    "configurable": false,
+    "commands": [
+      "/sf-agentscript-assist"
+    ],
+    "providers": [],
+    "tools": [],
+    "events": [
+      "session_start",
+      "session_shutdown",
+      "tool_result"
+    ],
+    "entry": "extensions/sf-agentscript-assist/index.ts",
+    "hasReadme": true,
+    "hasTests": true,
+    "srcLoc": 1295
+  },
+  {
+    "id": "sf-brain",
+    "name": "SF Brain",
+    "description": "High-density Salesforce operator kernel injected once per session — describe-before-query rules, API picker, anonymous Apex verification loop, and CLI power moves",
+    "category": "core",
+    "defaultEnabled": true,
+    "alwaysActive": false,
+    "configurable": false,
+    "commands": [],
+    "providers": [],
+    "tools": [],
+    "events": [
+      "before_agent_start"
+    ],
+    "entry": "extensions/sf-brain/index.ts",
+    "hasReadme": true,
+    "hasTests": true,
+    "srcLoc": 141
+  },
+  {
+    "id": "sf-devbar",
+    "name": "SF DevBar",
+    "description": "Bespoke Salesforce developer status bar with org context, model info, git, and context window progress",
+    "category": "ui",
+    "defaultEnabled": true,
+    "alwaysActive": false,
+    "configurable": false,
+    "commands": [
+      "/sf-devbar",
+      "/sf-org"
+    ],
+    "providers": [],
+    "tools": [],
+    "events": [
+      "session_start",
+      "session_shutdown",
+      "model_select",
+      "turn_start",
+      "turn_end",
+      "agent_end",
+      "before_agent_start"
+    ],
+    "entry": "extensions/sf-devbar/index.ts",
+    "hasReadme": true,
+    "hasTests": true,
+    "srcLoc": 1238
+  },
+  {
+    "id": "sf-llm-gateway-internal",
+    "name": "SF LLM Gateway Internal",
+    "description": "Salesforce LLM Gateway provider with model discovery",
+    "category": "provider",
+    "defaultEnabled": true,
+    "alwaysActive": false,
+    "configurable": true,
+    "commands": [
+      "/sf-llm-gateway-internal"
+    ],
+    "providers": [
+      "sf-llm-gateway-internal",
+      "sf-llm-gateway-internal-anthropic"
+    ],
+    "tools": [],
+    "events": [
+      "session_start",
+      "turn_end",
+      "model_select",
+      "after_provider_response",
+      "session_shutdown"
+    ],
+    "entry": "extensions/sf-llm-gateway-internal/index.ts",
+    "hasReadme": true,
+    "hasTests": true,
+    "srcLoc": 5647
+  },
+  {
+    "id": "sf-lsp",
+    "name": "SF LSP",
+    "description": "Real-time Salesforce LSP diagnostics on write/edit — supports Apex, LWC, and Agent Script",
+    "category": "core",
+    "defaultEnabled": true,
+    "alwaysActive": false,
+    "configurable": false,
+    "commands": [
+      "/sf-lsp"
+    ],
+    "providers": [],
+    "tools": [],
+    "events": [
+      "session_start",
+      "session_shutdown",
+      "tool_result"
+    ],
+    "entry": "extensions/sf-lsp/index.ts",
+    "hasReadme": true,
+    "hasTests": true,
+    "srcLoc": 1401
+  },
+  {
+    "id": "sf-ohana-spinner",
+    "name": "SF Ohana Spinner",
+    "description": "Salesforce-themed rainbow spinner during LLM thinking",
+    "category": "ui",
+    "defaultEnabled": true,
+    "alwaysActive": false,
+    "configurable": false,
+    "commands": [],
+    "providers": [],
+    "tools": [],
+    "events": [
+      "session_start",
+      "session_shutdown"
+    ],
+    "entry": "extensions/sf-ohana-spinner/index.ts",
+    "hasReadme": true,
+    "hasTests": true,
+    "srcLoc": 413
+  },
+  {
+    "id": "sf-pi-manager",
+    "name": "SF Pi Manager",
+    "description": "Core manager — provides /sf-pi commands",
+    "category": "core",
+    "defaultEnabled": true,
+    "alwaysActive": true,
+    "configurable": true,
+    "commands": [
+      "/sf-pi",
+      "/sf-pi recommended",
+      "/sf-pi announcements"
+    ],
+    "providers": [],
+    "tools": [],
+    "events": [
+      "session_start",
+      "session_shutdown"
+    ],
+    "entry": "extensions/sf-pi-manager/index.ts",
+    "hasReadme": true,
+    "hasTests": true,
+    "srcLoc": 2629
+  },
+  {
+    "id": "sf-skills-hud",
+    "name": "SF Skills HUD",
+    "description": "Pinned top-right overlay that shows which skills are live in context versus earlier in the session",
+    "category": "ui",
+    "defaultEnabled": true,
+    "alwaysActive": false,
+    "configurable": false,
+    "commands": [
+      "/sf-skills"
+    ],
+    "providers": [],
+    "tools": [],
+    "events": [
+      "session_start",
+      "message_end",
+      "session_tree",
+      "session_compact",
+      "session_shutdown"
+    ],
+    "entry": "extensions/sf-skills-hud/index.ts",
+    "hasReadme": true,
+    "hasTests": true,
+    "srcLoc": 627
+  },
+  {
+    "id": "sf-slack",
+    "name": "SF Slack",
+    "description": "Slack integration — search messages, read threads, browse channel history",
+    "category": "core",
+    "defaultEnabled": true,
+    "alwaysActive": false,
+    "configurable": true,
+    "commands": [
+      "/sf-slack"
+    ],
+    "providers": [
+      "sf-slack"
+    ],
+    "tools": [
+      "slack",
+      "slack_time_range",
+      "slack_resolve",
+      "slack_research",
+      "slack_channel",
+      "slack_user",
+      "slack_file",
+      "slack_canvas",
+      "slack_send"
+    ],
+    "events": [
+      "session_start",
+      "session_shutdown",
+      "before_agent_start"
+    ],
+    "entry": "extensions/sf-slack/index.ts",
+    "hasReadme": true,
+    "hasTests": true,
+    "srcLoc": 9673
+  },
+  {
+    "id": "sf-welcome",
+    "name": "SF Welcome",
+    "description": "Salesforce-branded splash screen with environment status, extension health, and community info",
+    "category": "ui",
+    "defaultEnabled": true,
+    "alwaysActive": false,
+    "configurable": false,
+    "commands": [
+      "/sf-welcome",
+      "/sf-setup-fonts"
+    ],
+    "providers": [],
+    "tools": [],
+    "events": [
+      "session_start",
+      "agent_start",
+      "tool_call"
+    ],
+    "entry": "extensions/sf-welcome/index.ts",
+    "hasReadme": true,
+    "hasTests": true,
+    "srcLoc": 3772
+  }
+]

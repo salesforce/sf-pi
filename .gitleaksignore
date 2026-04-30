@@ -1,0 +1,21 @@
+# Gitleaks ignore file.
+#
+# Format: either
+#   <commit-sha>:<file>:<rule-id>:<line>   (git mode)
+# or
+#   <file>:<rule-id>:<line>                (--no-git / working-tree mode)
+#
+# Only add lines here for findings that are CONFIRMED-FAKE fixtures
+# (obvious placeholders used in tests), not real secrets. Real
+# secrets must be rotated and purged from history.
+
+# extensions/sf-slack/tests/auth-status.test.ts:
+# Placeholder Slack tokens (xoxp-test-12345678, xoxb-bot-token-123)
+# used only as test inputs for auth-status formatting. Gitleaks'
+# generic-api-key rule flags the high-entropy-looking string. These
+# are not real tokens and have no auth value.
+extensions/sf-slack/tests/auth-status.test.ts:generic-api-key:64
+extensions/sf-slack/tests/auth-status.test.ts:generic-api-key:69
+extensions/sf-slack/tests/auth-status.test.ts:generic-api-key:86
+extensions/sf-slack/tests/auth-status.test.ts:generic-api-key:89
+extensions/sf-slack/tests/auth-status.test.ts:generic-api-key:110

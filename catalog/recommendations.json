@@ -1,0 +1,93 @@
+{
+  "schemaVersion": 1,
+  "revision": "2026-04-29",
+  "bundles": [
+    {
+      "id": "default",
+      "name": "Minimal essentials",
+      "description": "The small set of open-source pi extensions and skills the sf-pi team runs day to day.",
+      "defaultOnFirstRun": true,
+      "items": [
+        "pi-skills",
+        "pi-web-access",
+        "pi-aliases",
+        "pi-interview",
+        "glimpseui",
+        "pi-tool-display",
+        "pi-updater"
+      ]
+    }
+  ],
+  "items": {
+    "pi-skills": {
+      "id": "pi-skills",
+      "name": "pi-skills",
+      "description": "Curated skill collection for pi (brave-search, gmcli, gdcli, youtube-transcript, browser-tools, vscode, transcribe, and more).",
+      "source": "git:github.com/badlogic/pi-skills",
+      "homepage": "https://github.com/badlogic/pi-skills",
+      "license": "MIT",
+      "rationale": "Baseline skill library that unlocks search, Google Workspace, and browser-adjacent tools the rest of the ecosystem leans on.",
+      "scope": "global"
+    },
+    "pi-web-access": {
+      "id": "pi-web-access",
+      "name": "pi-web-access",
+      "description": "Web search, URL fetching, GitHub repo cloning, PDF extraction, YouTube, and local video analysis.",
+      "source": "npm:pi-web-access",
+      "homepage": "https://github.com/nicobailon/pi-web-access",
+      "license": "MIT",
+      "rationale": "Everyday research surface for any pi session \u2014 sf-pi expects the web_search and fetch_content tools this package provides.",
+      "scope": "global"
+    },
+    "pi-aliases": {
+      "id": "pi-aliases",
+      "name": "pi-aliases",
+      "description": "Command aliases for pi: /clear \u2192 /new, /exit \u2192 /quit, and related muscle-memory helpers.",
+      "source": "npm:pi-aliases",
+      "homepage": "https://github.com/xRyul/pi-aliases",
+      "license": "MIT",
+      "rationale": "Tiny quality-of-life win that smooths the transition from Claude Code / Codex CLI to pi.",
+      "scope": "global"
+    },
+    "pi-interview": {
+      "id": "pi-interview",
+      "name": "pi-interview",
+      "description": "Interactive interview form extension for pi \u2014 provides the `interview` tool.",
+      "source": "npm:pi-interview",
+      "homepage": "https://github.com/nicobailon/pi-interview-tool",
+      "license": "MIT",
+      "rationale": "Structured multi-question prompts for requirement gathering and trade-off exploration. Pairs naturally with sf-pi scaffolding workflows.",
+      "scope": "global"
+    },
+    "glimpseui": {
+      "id": "glimpseui",
+      "name": "glimpseui",
+      "description": "Native micro-UI for scripts and agents \u2014 cross-platform WebView windows with bidirectional JSON.",
+      "source": "npm:glimpseui",
+      "homepage": "https://github.com/hazat/glimpse",
+      "license": "MIT",
+      "rationale": "Enables rich visual explainers, charts, and HTML previews without launching a full browser. Used by the visual-explainer skill.",
+      "scope": "global"
+    },
+    "pi-tool-display": {
+      "id": "pi-tool-display",
+      "name": "pi-tool-display",
+      "description": "Compact tool-call rendering, diff visualization, and output truncation for cleaner TUI sessions.",
+      "source": "npm:pi-tool-display",
+      "homepage": "https://github.com/MasuRii/pi-tool-display",
+      "license": "MIT",
+      "rationale": "Keeps long bash/grep/read outputs legible in the TUI \u2014 a significant quality-of-life boost for Salesforce workflows that inspect large metadata or log files.",
+      "scope": "global"
+    },
+    "pi-updater": {
+      "id": "pi-updater",
+      "name": "pi-updater",
+      "description": "Codex-style auto-updater for pi \u2014 checks for new versions on startup and prompts to install.",
+      "source": "npm:pi-updater",
+      "homepage": "https://github.com/tonze/pi-updater",
+      "license": "MIT",
+      "rationale": "Keeps pi itself current without manual `pi update --self` calls. Low-friction way to stay on the latest runtime sf-pi targets.",
+      "scope": "global"
+    }
+  }
+}

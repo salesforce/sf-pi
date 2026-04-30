@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/salesforce/sf-pi/security/advisories/new
+    about: Please report security issues privately via GitHub Security Advisories.
+  - name: Question or discussion
+    url: https://github.com/salesforce/sf-pi/discussions
+    about: For open-ended questions, start a Discussion instead of an Issue.

@@ -1,0 +1,22 @@
+{
+  "id": "sf-slack",
+  "name": "SF Slack",
+  "description": "Slack integration — search messages, read threads, browse channel history",
+  "category": "core",
+  "defaultEnabled": true,
+  "configurable": true,
+  "commands": ["/sf-slack"],
+  "providers": ["sf-slack"],
+  "tools": [
+    "slack",
+    "slack_time_range",
+    "slack_resolve",
+    "slack_research",
+    "slack_channel",
+    "slack_user",
+    "slack_file",
+    "slack_canvas",
+    "slack_send"
+  ],
+  "events": ["session_start", "session_shutdown", "before_agent_start"]
+}

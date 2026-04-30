@@ -1,0 +1,9 @@
+{
+  "id": "sf-skills-hud",
+  "name": "SF Skills HUD",
+  "description": "Pinned top-right overlay that shows which skills are live in context versus earlier in the session",
+  "category": "ui",
+  "defaultEnabled": true,
+  "commands": ["/sf-skills"],
+  "events": ["session_start", "message_end", "session_tree", "session_compact", "session_shutdown"]
+}

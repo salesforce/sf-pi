@@ -1,0 +1,59 @@
+name: Feature request
+description: Suggest an enhancement, new extension, or behavior change.
+title: "[feat] <short summary>"
+labels:
+  - enhancement
+  - triage
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea! The more concrete the proposal, the faster we can decide.
+
+  - type: input
+    id: area
+    attributes:
+      label: Affected area
+      description: e.g. a specific extension, the manager, docs, or CI
+      placeholder: sf-slack
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem statement
+      description: What user pain are you trying to solve? Who is affected?
+      placeholder: "As a <user>, I want <capability> so that <outcome>."
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: How you think this could work. Commands, config, UX, data flow.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other approaches you thought about and why this one is preferred.
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: Screenshots, mockups, links to relevant discussions, etc.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-submission checklist
+      options:
+        - label: I searched existing issues for duplicates
+          required: true
+        - label: This is not a bug report (use the bug template instead)
+          required: true

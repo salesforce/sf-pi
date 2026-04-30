@@ -1,0 +1,51 @@
+#!/usr/bin/env sh
+# SPDX-License-Identifier: Apache-2.0
+#
+# Minimal safety net for solo-maintainer, push-to-main workflow.
+#
+# What this hook guarantees locally (GitHub Free + private repo blocks
+# server-side branch protection, so this is our fallback):
+#
+#   1. Block force-push / non-fast-forward push to `main`.
+#   2. Block deletion of `main`.
+#
+# Intentionally dropped vs. the old version:
+#   - Interactive confirm on direct-to-main push (solo fast-path: just push).
+#   - Local `npm run lint` + `npm run check` (duplicate of CI; slows every
+#     push by 30-90s; lint-staged in pre-commit already covers formatting).
+#
+# Override (emergency): PUSH_BYPASS=1 git push ...
+
+set -eu
+
+PROTECTED_BRANCH="main"
+REMOTE="$1"
+ZERO_SHA="0000000000000000000000000000000000000000"
+
+# Each line from stdin: <local_ref> <local_sha> <remote_ref> <remote_sha>
+while IFS=' ' read -r local_ref local_sha remote_ref remote_sha; do
+  [ -z "${local_ref:-}" ] && continue
+  case "$remote_ref" in
+    refs/heads/"$PROTECTED_BRANCH")
+      # Deleting main is blocked.
+      if [ "$local_sha" = "$ZERO_SHA" ]; then
+        echo "❌ Blocked: attempt to delete $PROTECTED_BRANCH on $REMOTE"
+        echo "   If you really mean it: PUSH_BYPASS=1 git push ..."
+        [ "${PUSH_BYPASS:-0}" = "1" ] || exit 1
+      fi
+
+      # Non-fast-forward (force-push) detection: if remote_sha is not an
+      # ancestor of local_sha, this push rewrites history on main.
+      if [ "$remote_sha" != "$ZERO_SHA" ]; then
+        if ! git merge-base --is-ancestor "$remote_sha" "$local_sha" 2>/dev/null; then
+          echo "❌ Blocked: non-fast-forward push to $PROTECTED_BRANCH on $REMOTE"
+          echo "   You are about to rewrite history on $PROTECTED_BRANCH."
+          echo "   If this is intentional: PUSH_BYPASS=1 git push --force ..."
+          [ "${PUSH_BYPASS:-0}" = "1" ] || exit 1
+        fi
+      fi
+      ;;
+  esac
+done
+
+exit 0

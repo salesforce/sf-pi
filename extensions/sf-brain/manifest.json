@@ -1,0 +1,8 @@
+{
+  "id": "sf-brain",
+  "name": "SF Brain",
+  "description": "High-density Salesforce operator kernel injected once per session — describe-before-query rules, API picker, anonymous Apex verification loop, and CLI power moves",
+  "category": "core",
+  "defaultEnabled": true,
+  "events": ["before_agent_start"]
+}

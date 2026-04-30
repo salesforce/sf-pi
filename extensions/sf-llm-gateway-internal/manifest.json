@@ -1,0 +1,17 @@
+{
+  "id": "sf-llm-gateway-internal",
+  "name": "SF LLM Gateway Internal",
+  "description": "Salesforce LLM Gateway provider with model discovery",
+  "category": "provider",
+  "defaultEnabled": true,
+  "configurable": true,
+  "commands": ["/sf-llm-gateway-internal"],
+  "providers": ["sf-llm-gateway-internal", "sf-llm-gateway-internal-anthropic"],
+  "events": [
+    "session_start",
+    "turn_end",
+    "model_select",
+    "after_provider_response",
+    "session_shutdown"
+  ]
+}
