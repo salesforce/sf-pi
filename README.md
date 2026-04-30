@@ -11,27 +11,62 @@
 ## What is this?
 
 `sf-pi` is a bundle of opinionated extensions for the
-[pi coding agent](https://github.com/mariozechner/pi-coding-agent) aimed at
-developers who work on Salesforce and Salesforce-adjacent codebases. It
-ships Apex/LWC LSP diagnostics, an in-process Agent Script authoring
-companion, a Slack research tool, a Salesforce-aware status bar, a splash
-screen, and a central manager for enabling or disabling any of them per
-project or globally.
+[pi coding agent](https://pi.dev) aimed at developers who work on
+Salesforce and Salesforce-adjacent codebases. It ships Apex/LWC LSP
+diagnostics, an in-process Agent Script authoring companion, a Slack
+research tool, a Salesforce-aware status bar, a splash screen, and a
+central manager for enabling or disabling any of them per project or
+globally.
 
 ![sf-pi splash and TUI overlay](https://github.com/user-attachments/assets/3f5af05d-edfb-4c1f-854b-55fc227d5058)
 
-## Requirements
+## Who built it
 
-- **Node.js** `>=20` (tested on 20 and 22)
-- **[pi coding agent](https://github.com/mariozechner/pi-coding-agent)**
-  — the minimum compatible version matches the `peerDependencies` range in
-  [`package.json`](./package.json) (currently `>=0.70.3`). Older pi
-  runtimes may work for individual extensions but are not tested; shims in
-  [`lib/common/pi-compat.ts`](./lib/common/pi-compat.ts) soften some
-  missing-method failures.
-- macOS, Linux, or WSL. Native Windows is best-effort.
+sf-pi is maintained by
+[Jag Valaiyapathy (@jvalaiyapathy)](https://github.com/jvalaiyapathy) —
+a Senior Forward Deployed Engineer at Salesforce and Salesforce Certified
+Technical Architect. It builds on
+[Mario Zechner's](https://github.com/mariozechner) [pi coding agent](https://pi.dev)
+and draws inspiration from the growing ecosystem of community pi
+extensions — see [Credits](#credits) at the bottom of this README.
 
-## Quick Start
+## Getting started
+
+sf-pi runs inside pi. If you're brand new, install the runtime first,
+then add sf-pi.
+
+### Step 1 — Install Node.js
+
+pi needs **Node.js `>=20`** (tested on 20 and 22).
+
+- **macOS (recommended):** `brew install node`
+- **Linux / WSL:** use your distro's package manager, or
+  [`nvm`](https://github.com/nvm-sh/nvm) for version management
+- **Windows:** installer from [nodejs.org](https://nodejs.org/), then
+  use WSL for the best experience
+
+Verify:
+
+```bash
+node --version    # v20.x or v22.x
+npm --version
+```
+
+### Step 2 — Install the pi coding agent
+
+```bash
+npm install -g @mariozechner/pi-coding-agent
+```
+
+Then run `pi` in any folder to launch the TUI. Full docs, tutorials, and
+extension authoring guides live at **[pi.dev](https://pi.dev)**.
+
+> **New to pi?** Spend five minutes with the
+> [pi.dev overview](https://pi.dev) before adding sf-pi. The `pi install`,
+> `pi settings`, and `/reload` commands referenced below are all
+> pi-native.
+
+### Step 3 — Install sf-pi
 
 ```bash
 # Install globally (visible in every pi session on your machine)
@@ -41,18 +76,45 @@ pi install git:github.com/salesforce/sf-pi
 pi install -l git:github.com/salesforce/sf-pi
 ```
 
-Then restart pi or run `/reload`. All extensions are enabled on install
-by default. The **Default** column in the [Bundled Extensions](#bundled-extensions)
-table below makes this explicit for every extension.
+Restart pi or run `/reload`. Every extension ships enabled by default
+— see the **Default** column in the [Bundled Extensions](#bundled-extensions)
+table for exact per-extension defaults.
 
-If the splash shows `?` or plain-ASCII fallback glyphs, install the bundled
-Nerd Font once:
+### Step 4 — Set up the terminal font (one-time)
+
+The splash and status bars use
+[Nerd Font](https://www.nerdfonts.com/) glyphs. If you see `?` or
+plain-ASCII fallbacks, run:
 
 ```text
 /sf-setup-fonts
 ```
 
-Set your terminal font to **MesloLGM Nerd Font Mono** and reopen the terminal.
+Then set your terminal font to **MesloLGM Nerd Font Mono** and reopen
+the terminal.
+
+### Step 5 — (Recommended) install the community extension bundle
+
+sf-pi expects a handful of community pi extensions (web search, tool
+display, etc.) to be present for the best experience. Install the
+curated bundle once:
+
+```text
+/sf-pi recommended install bundle:default
+```
+
+See [Recommended Extensions](#recommended-extensions) for per-package
+details and why each one is worth it.
+
+### Supported platforms
+
+macOS, Linux, and WSL are the primary targets. Native Windows is
+best-effort; WSL is recommended. The minimum pi version tracks the
+`peerDependencies` range in [`package.json`](./package.json) (currently
+`>=0.70.3`). Older pi runtimes may work for individual extensions but
+are not tested; the shims in
+[`lib/common/pi-compat.ts`](./lib/common/pi-compat.ts) soften some
+missing-method failures.
 
 ## Announcements
 
@@ -150,10 +212,38 @@ curated list of **recommended** open-source pi extensions. sf-pi does not
 redistribute these packages — it points at their upstream sources, so
 updates and credit flow through the original authors.
 
-- Full list: [`catalog/recommendations.json`](./catalog/recommendations.json)
-- Open the checklist: `/sf-pi recommended`
-- Install one item: `/sf-pi recommended install <id>`
-- Install the default bundle: `/sf-pi recommended install bundle:default`
+Install them all in one shot:
+
+```text
+/sf-pi recommended install bundle:default
+```
+
+Or cherry-pick individual packages with `/sf-pi recommended install <id>`.
+
+### The default bundle
+
+All seven packages are **MIT**-licensed and install per-user (global
+scope) by default.
+
+| Extension                                                             | Why install it                                                                                                                                                                                        |
+| --------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **[`pi-skills`](https://github.com/badlogic/pi-skills)**              | Baseline skill library for pi. Unlocks search, Google Workspace, browser automation, YouTube transcripts, and more. Most other pi packages assume it's installed.                                     |
+| **[`pi-web-access`](https://github.com/nicobailon/pi-web-access)**    | Web search, URL fetching, GitHub repo cloning, PDF extraction, YouTube + local video analysis. sf-pi itself expects the `web_search` and `fetch_content` tools this package provides.                 |
+| **[`pi-aliases`](https://github.com/xRyul/pi-aliases)**               | Muscle-memory helpers like `/clear → /new` and `/exit → /quit`. Tiny, low-risk quality-of-life win — especially if you're coming from Claude Code or Codex CLI.                                       |
+| **[`pi-interview`](https://github.com/nicobailon/pi-interview-tool)** | Gives pi a structured `interview` tool for multi-question requirement gathering and trade-off exploration. Pairs naturally with `sf-agentscript-assist` and other sf-pi scaffolding workflows.        |
+| **[`glimpseui`](https://github.com/hazat/glimpse)**                   | Cross-platform micro-UI for scripts and agents — native WebView windows for rich visual explainers, charts, and HTML previews without launching a full browser. Used by the `visual-explainer` skill. |
+| **[`pi-tool-display`](https://github.com/MasuRii/pi-tool-display)**   | Compact tool-call rendering, diff visualization, and output truncation. Significant quality-of-life boost for Salesforce workflows that inspect large metadata or log files.                          |
+| **[`pi-updater`](https://github.com/tonze/pi-updater)**               | Keeps pi itself current without manual `pi update --self` calls. Low-friction way to stay on the latest runtime sf-pi targets.                                                                        |
+
+Full manifest with source URLs, license info, and per-item `rationale`
+strings: [`catalog/recommendations.json`](./catalog/recommendations.json).
+
+### How the checklist works
+
+- **Open it:** `/sf-pi recommended`
+- **One-liner install:** `/sf-pi recommended install <id>`
+- **Whole bundle:** `/sf-pi recommended install bundle:default`
+- **Decline + forget:** pick `Never` in the checklist or `/sf-pi recommended remove <id>`
 
 First-run behavior:
 
@@ -400,12 +490,21 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md). Please also read our
 
 ## Credits
 
-- **[Armin Ronacher (@mitsuhiko)](https://github.com/mitsuhiko)** — Early
-  inspiration from
-  [agent-stuff](https://github.com/mitsuhiko/agent-stuff).
 - **[Mario Zechner (@mariozechner)](https://github.com/mariozechner)** —
-  [pi coding agent](https://github.com/mariozechner/pi-coding-agent) runtime
-  that powers every extension in this repo.
+  [pi coding agent](https://pi.dev) runtime that powers every extension
+  in this repo.
+- **[Armin Ronacher (@mitsuhiko)](https://github.com/mitsuhiko)** —
+  Early inspiration from
+  [agent-stuff](https://github.com/mitsuhiko/agent-stuff).
+- **[Nico Bailon (@nicobailon)](https://github.com/nicobailon)** —
+  [`pi-powerline-footer`](https://github.com/nicobailon/pi-powerline-footer)
+  inspired the visual design of `sf-devbar` (separator glyphs, color
+  palette, pastel rainbow thinking badge). See
+  [`extensions/sf-devbar/CREDITS.md`](./extensions/sf-devbar/CREDITS.md)
+  for details.
+- **[pi community](https://pi.dev)** — recommended-extension authors
+  (see [Recommended Extensions](#recommended-extensions)) whose packages
+  sf-pi leans on day-to-day.
 
 ## License
 
