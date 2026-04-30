@@ -84,11 +84,13 @@ changelog.
 ## Licensing
 
 All contributions are accepted under the project's
-[Apache License 2.0](./LICENSE). By submitting a PR you agree your
+[Apache License 2.0](./LICENSE.txt). By submitting a PR you agree your
 contribution is licensed under Apache-2.0.
 
-There is no Contributor License Agreement (CLA). The Apache-2.0 license
-includes an implicit patent grant that covers the common case.
+Contributions also require signing the [Salesforce
+CLA](https://cla.salesforce.com/sign-cla) (one-time, covers all
+Salesforce open-source projects). See [CONTRIBUTING.md](./CONTRIBUTING.md)
+for details.
 
 ## Changing this document
 
