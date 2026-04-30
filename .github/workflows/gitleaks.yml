@@ -17,8 +17,16 @@ concurrency:
 
 permissions:
   contents: read
-  # Needed so gitleaks-action can list commits on PRs (octokit .../pulls/{n}/commits).
-  pull-requests: read
+
+# Why we run the gitleaks binary directly (no gitleaks-action wrapper):
+#   The gitleaks/gitleaks-action@v2 wrapper requires a paid license
+#   (GITLEAKS_LICENSE) for any repo owned by a GitHub organization,
+#   even public ones. The MIT-licensed gitleaks CLI itself is free.
+#   Running the binary gives us the same detection with no license
+#   dependency and slightly faster runs.
+
+env:
+  GITLEAKS_VERSION: "8.30.1"
 
 jobs:
   scan:
@@ -28,14 +36,51 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          # Need full history so scheduled scans can detect historical leaks.
+          # Full history so scheduled scans and PR scans can walk all commits.
           fetch-depth: 0
 
-      - name: Run gitleaks
-        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
-        env:
-          # Required for PR scans per gitleaks-action v2.3 breaking change.
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Set GITLEAKS_LICENSE as a repo secret if you want org-level reporting;
-          # the action runs fine without it on public + personal private repos.
-          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+      - name: Install gitleaks
+        run: |
+          set -euo pipefail
+          curl -sSLf \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+            -o /tmp/gitleaks.tgz
+          tar -xzf /tmp/gitleaks.tgz -C /tmp gitleaks
+          sudo mv /tmp/gitleaks /usr/local/bin/gitleaks
+          gitleaks version
+
+      - name: Scan (pull request — changed commits only)
+        if: github.event_name == 'pull_request'
+        run: |
+          set -euo pipefail
+          BASE="${{ github.event.pull_request.base.sha }}"
+          HEAD="${{ github.event.pull_request.head.sha }}"
+          echo "Scanning $BASE..$HEAD"
+          gitleaks detect \
+            --source . \
+            --log-opts="$BASE..$HEAD" \
+            --redact \
+            --verbose \
+            --exit-code 1 \
+            --report-format sarif \
+            --report-path gitleaks.sarif
+
+      - name: Scan (push / schedule / dispatch — full history)
+        if: github.event_name != 'pull_request'
+        run: |
+          set -euo pipefail
+          gitleaks detect \
+            --source . \
+            --redact \
+            --verbose \
+            --exit-code 1 \
+            --report-format sarif \
+            --report-path gitleaks.sarif
+
+      - name: Upload SARIF report
+        if: always() && hashFiles('gitleaks.sarif') != ''
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: gitleaks-sarif
+          path: gitleaks.sarif
+          retention-days: 30
