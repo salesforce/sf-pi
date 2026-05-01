@@ -12,6 +12,15 @@
       "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.20.2",
       "severity": "info",
       "body": "catalog: refresh announcements.json for v0.20.1 release — ci: dispatch release PR checks even when release-please made no changes"
+    },
+    {
+      "id": "pi-0.71-compat",
+      "kind": "note",
+      "severity": "info",
+      "title": "sf-pi is compatible with pi 0.71 (Gemini CLI / Antigravity removed)",
+      "publishedAt": "2026-05-01T00:00:00Z",
+      "minVersion": "0.20.2",
+      "body": "pi 0.71 removed built-in Gemini CLI and Antigravity providers. sf-pi does not use them, so upgrading pi is safe. Set PI_CODING_AGENT_SESSION_DIR to relocate session storage (pi ≥ 0.71)."
     }
   ]
 }
