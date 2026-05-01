@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.22.0-2026-05-01",
-  "latestVersion": "0.22.0",
+  "revision": "release-0.23.0-2026-05-01",
+  "latestVersion": "0.23.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.22.0",
+      "id": "release-0.23.0",
       "kind": "update",
-      "title": "sf-pi v0.22.0 — sf-welcome: replace Salesforce AI block with Recommended extensions",
+      "title": "sf-pi v0.23.0 — sf-welcome: drop Tips panel, show every recommended item",
       "publishedAt": "2026-05-01T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.22.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.23.0",
       "severity": "info",
-      "body": "sf-welcome: replace Salesforce AI block with Recommended extensions"
+      "body": "sf-welcome: drop Tips panel, show every recommended item"
     },
     {
       "id": "pi-0.71-compat",
