@@ -19,7 +19,6 @@ import {
   normalizeBaseUrl,
   getGatewayConfig,
   readGatewaySavedConfig,
-  writeGatewaySavedConfig,
   globalGatewayConfigPath,
   projectGatewayConfigPath,
 } from "./config.ts";
@@ -33,9 +32,6 @@ export type SetupOverlayAction = "save-enable" | "save" | "disable";
 
 export type SetupOverlayResult = {
   action: SetupOverlayAction;
-  savedBaseUrl?: string;
-  savedApiKey?: string;
-  savedExclusiveScope?: boolean | null;
 };
 
 export type SetupOverlayState = {
@@ -67,38 +63,6 @@ export function getSetupOverlayState(cwd: string, scope: "global" | "project"): 
     lowerSavedApiKey: scope === "project" ? globalSaved.apiKey?.trim() || undefined : undefined,
     lowerSavedExclusiveScope: scope === "project" ? globalSaved.exclusiveScope : undefined,
   };
-}
-
-export function saveSetupOverlayInputs(
-  cwd: string,
-  scope: "global" | "project",
-  result: SetupOverlayResult,
-): void {
-  const configPath =
-    scope === "project" ? projectGatewayConfigPath(cwd) : globalGatewayConfigPath();
-  const saved = readGatewaySavedConfig(configPath);
-
-  if (result.savedBaseUrl) {
-    saved.baseUrl = result.savedBaseUrl;
-  } else {
-    delete saved.baseUrl;
-  }
-
-  if (result.savedApiKey) {
-    saved.apiKey = result.savedApiKey;
-  } else {
-    delete saved.apiKey;
-  }
-
-  if ("savedExclusiveScope" in result) {
-    if (result.savedExclusiveScope == null) {
-      delete saved.exclusiveScope;
-    } else {
-      saved.exclusiveScope = result.savedExclusiveScope;
-    }
-  }
-
-  writeGatewaySavedConfig(configPath, saved);
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -176,28 +140,18 @@ export class GatewaySetupOverlayComponent implements Focusable {
           this.done(undefined);
           return;
         }
-        // The config panel now handles saving internally.
-        // Signal the extension entry point to re-run its enable/disable logic.
+        // The config panel already wrote the saved config to disk. We only
+        // need to tell the caller which high-level action to run next.
+        // needsReload means the panel changed the enabled bit (save+enable or
+        // disable); no reload means the user only edited fallback fields.
+        if (!panelResult.needsReload) {
+          this.done({ action: "save" });
+          return;
+        }
         const configPath =
           scope === "project" ? projectGatewayConfigPath(cwd) : globalGatewayConfigPath();
         const saved = readGatewaySavedConfig(configPath);
-
-        if (panelResult.needsReload) {
-          const action: SetupOverlayAction = saved.enabled === false ? "disable" : "save-enable";
-          this.done({
-            action,
-            savedBaseUrl: saved.baseUrl,
-            savedApiKey: saved.apiKey,
-            savedExclusiveScope: saved.exclusiveScope ?? null,
-          });
-        } else {
-          this.done({
-            action: "save",
-            savedBaseUrl: saved.baseUrl,
-            savedApiKey: saved.apiKey,
-            savedExclusiveScope: saved.exclusiveScope ?? null,
-          });
-        }
+        this.done({ action: saved.enabled === false ? "disable" : "save-enable" });
       },
     );
   }

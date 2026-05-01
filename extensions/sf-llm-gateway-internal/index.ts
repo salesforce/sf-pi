@@ -155,11 +155,7 @@ import {
   handleBetaCommand as handleBetaCommandImpl,
 } from "./lib/beta-controls.ts";
 
-import {
-  GatewaySetupOverlayComponent,
-  type SetupOverlayResult,
-  saveSetupOverlayInputs,
-} from "./lib/setup-overlay.ts";
+import { GatewaySetupOverlayComponent, type SetupOverlayResult } from "./lib/setup-overlay.ts";
 import { buildFooterStatus, buildStatusReport } from "./lib/status.ts";
 import {
   applyGatewayModelScope,
@@ -847,8 +843,8 @@ async function runSetupWizard(
     return;
   }
 
-  saveSetupOverlayInputs(ctx.cwd, scope, result);
-
+  // The config panel wrote the saved config to disk before returning; no
+  // second write is needed here. We only dispatch on the action.
   if (result.action === "save-enable") {
     await enableGateway(pi, ctx, scope, false);
     return;
