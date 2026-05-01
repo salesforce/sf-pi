@@ -314,6 +314,20 @@ Or configure directly inside pi with the built-in setup wizard:
 /sf-llm-gateway-internal beta context-1m off # Toggle a beta header
 ```
 
+### Session storage location
+
+pi stores session transcripts in a default location (`~/.pi/agent/sessions`).
+To relocate them — for example, onto a shared drive, an encrypted volume, or
+a per-project folder — set `PI_CODING_AGENT_SESSION_DIR` in your environment
+(pi ≥ 0.71.0). It is equivalent to passing `--session-dir` on every
+invocation and is picked up by all sf-pi commands without any sf-pi change.
+
+```bash
+export PI_CODING_AGENT_SESSION_DIR="$HOME/.pi-sessions"
+```
+
+Older pi releases ignore the env var; use `--session-dir` instead.
+
 ## Adding a New Extension
 
 The fastest way is with scaffolding:
