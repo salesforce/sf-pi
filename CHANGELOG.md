@@ -303,6 +303,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.23.0](https://github.com/salesforce/sf-pi/compare/v0.22.0...v0.23.0) (2026-05-01)
+
+
+### Features
+
+* **sf-welcome:** drop Tips panel, show every recommended item ([cbb0d97](https://github.com/salesforce/sf-pi/commit/cbb0d974559b1267f70a4dc70d79add267a6ed72))
+
 ## [0.22.0](https://github.com/salesforce/sf-pi/compare/v0.21.1...v0.22.0) (2026-05-01)
 
 
