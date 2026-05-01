@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.23.0-2026-05-01",
-  "latestVersion": "0.23.0",
+  "revision": "release-0.23.1-2026-05-01",
+  "latestVersion": "0.23.1",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.23.0",
+      "id": "release-0.23.1",
       "kind": "update",
-      "title": "sf-pi v0.23.0 — sf-welcome: drop Tips panel, show every recommended item",
+      "title": "sf-pi v0.23.1 — ci: correct CODEOWNERS handle to @Jaganpro",
       "publishedAt": "2026-05-01T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.23.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.23.1",
       "severity": "info",
-      "body": "sf-welcome: drop Tips panel, show every recommended item"
+      "body": "ci: correct CODEOWNERS handle to @Jaganpro"
     },
     {
       "id": "pi-0.71-compat",
