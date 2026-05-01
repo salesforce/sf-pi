@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.21.1-2026-05-01",
-  "latestVersion": "0.21.1",
+  "revision": "release-0.22.0-2026-05-01",
+  "latestVersion": "0.22.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.21.1",
+      "id": "release-0.22.0",
       "kind": "update",
-      "title": "sf-pi v0.21.1 — sf-llm-gateway-internal: route Claude through unified dispatcher",
+      "title": "sf-pi v0.22.0 — sf-welcome: replace Salesforce AI block with Recommended extensions",
       "publishedAt": "2026-05-01T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.21.1",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.22.0",
       "severity": "info",
-      "body": "sf-llm-gateway-internal: route Claude through unified dispatcher"
+      "body": "sf-welcome: replace Salesforce AI block with Recommended extensions"
     },
     {
       "id": "pi-0.71-compat",
