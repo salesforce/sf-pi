@@ -1,0 +1,83 @@
+# SPDX-License-Identifier: Apache-2.0
+# Catch broken / drifted GitHub Actions workflow YAML before it hits main.
+#
+# Two things happen here:
+#   1. actionlint — a static analyzer that catches the classes of mistakes
+#      that fail only at runtime (bad `if:` expressions, missing `needs:`,
+#      undeclared outputs, wrong shell syntax, invalid `uses:` refs, etc.).
+#   2. SHA-pin enforcement — Salesforce OSS convention is to pin every
+#      third-party action to a 40-char commit SHA with a `# vX.Y.Z` trailing
+#      comment (see salesforce/agentscript). A grep fails CI if any
+#      `uses:` line points at a mutable ref (branch or version tag).
+name: Workflow lint
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/**"
+      - ".github/actions/**"
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/**"
+      - ".github/actions/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  actionlint:
+    name: actionlint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install actionlint
+        env:
+          ACTIONLINT_VERSION: 1.7.12
+        run: |
+          set -euo pipefail
+          curl -sSLf \
+            "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" \
+            -o /tmp/actionlint.tgz
+          tar -xzf /tmp/actionlint.tgz -C /tmp actionlint
+          sudo mv /tmp/actionlint /usr/local/bin/actionlint
+          actionlint -version
+
+      - name: Run actionlint
+        run: actionlint -color
+
+  sha-pin-check:
+    name: Require SHA-pinned actions
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Enforce 40-char SHA on every `uses:` line
+        # A local action lives inside this repo, so `uses: ./path` is always
+        # allowed. Anything else must look like:
+        #     uses: owner/repo@<40-char-hex>  # vX.Y.Z
+        # Branches, tags, and version aliases are rejected.
+        #
+        # grep -rnE output format is `<file>:<lineno>:<matched line>` so
+        # the filters below anchor on the `uses:` token mid-string.
+        run: |
+          set -euo pipefail
+          bad=$(
+            grep -rnE '^[[:space:]]*uses:[[:space:]]*' \
+              .github/workflows .github/actions 2>/dev/null \
+              | grep -vE 'uses:[[:space:]]*\./' \
+              | grep -vE 'uses:[[:space:]]*[^@[:space:]]+@[a-f0-9]{40}([[:space:]]|$)' \
+              || true
+          )
+          if [ -n "$bad" ]; then
+            echo "::error::The following uses: lines are not pinned to a 40-char commit SHA."
+            echo "Pin them with: uses: owner/repo@<sha>  # vX.Y.Z"
+            echo "$bad"
+            exit 1
+          fi
+          echo "✅ All actions are SHA-pinned."
