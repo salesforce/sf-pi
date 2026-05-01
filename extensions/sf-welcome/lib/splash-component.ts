@@ -434,13 +434,31 @@ function buildRightColumn(data: SplashData, colWidth: number, mode: GlyphMode): 
   }
   lines.push(horizontalRule(colWidth));
 
-  // --- Salesforce AI ---
-  lines.push(` ${BOLD}${SF_BLUE(`${glyph("cloud", mode)} Salesforce AI`)}${RESET}`);
-  lines.push(
-    ` ${MUTED("✓")} Core AI principles  ${MUTED("→")} ${SF_CYAN("salesforce.com/ai-ethics")}`,
-  );
-  lines.push(` ${MUTED("✓")} Trusted AI ${MUTED("at system context")}`);
-  lines.push(horizontalRule(colWidth));
+  // --- Recommended extensions ---
+  // Replaces the legacy Salesforce AI block. Shows a compact counter plus
+  // up to 3 pending items so users can see at a glance which recommended
+  // external pi packages they haven't installed yet. Install status is
+  // authoritative from settings.json; the state file contributes only the
+  // 'declined' marker. See lib/recommendations-status.ts.
+  const recs = data.recommendations;
+  if (recs && recs.total > 0) {
+    lines.push(
+      ` ${BOLD}${SF_BLUE(`${glyph("extensions", mode)} Recommended`)}${RESET}  ${SF_GREEN(`${recs.installedCount}`)}${MUTED(`/${recs.total} installed`)}`,
+    );
+    const pending = recs.items.filter((i) => i.status === "pending").slice(0, 3);
+    for (const item of pending) {
+      const truncated = truncateToWidth(item.name, Math.max(8, colWidth - 4), "…");
+      lines.push(` ${MUTED("○")} ${MUTED(truncated)}`);
+    }
+    if (recs.pendingCount > 0) {
+      const more =
+        recs.pendingCount > pending.length ? ` (+${recs.pendingCount - pending.length} more)` : "";
+      lines.push(` ${MUTED("→")} ${SF_CYAN("/sf-pi recommended")}${MUTED(more)}`);
+    } else {
+      lines.push(` ${SF_GREEN("✓")} ${MUTED("All recommendations installed")}`);
+    }
+    lines.push(horizontalRule(colWidth));
+  }
 
   // --- Attribution ---
   lines.push(` ${ITALIC}${MUTED("Maintained by")}${RESET}`);

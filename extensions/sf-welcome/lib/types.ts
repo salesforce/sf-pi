@@ -45,6 +45,25 @@ export interface TipItem {
   description: string;
 }
 
+/** Install status shown in the splash's Recommendations block. */
+export type RecommendationDisplayStatus = "installed" | "pending" | "declined";
+
+/** Single recommended item shown in the splash's Recommendations block. */
+export interface RecommendationStatusItem {
+  id: string;
+  name: string;
+  status: RecommendationDisplayStatus;
+}
+
+/** Splash-facing payload for the Recommendations block. */
+export interface RecommendationsStatusSummary {
+  total: number;
+  installedCount: number;
+  pendingCount: number;
+  declinedCount: number;
+  items: RecommendationStatusItem[];
+}
+
 export interface SplashData {
   modelName: string;
   providerName: string;
@@ -70,6 +89,9 @@ export interface SplashData {
   lifetimeUsageSource?: "gateway" | "sessions";
   /** Tips shown in the right column. Derived from active sf-pi extensions. */
   tips?: TipItem[];
+  /** Install status for recommended external pi packages. Replaces the
+   * legacy Salesforce AI block when any recommendations are defined. */
+  recommendations?: RecommendationsStatusSummary;
   /** Populated asynchronously after initial render. */
   sfEnvironment?: SfEnvironmentInfo;
   /** Short summary of pi-coding-agent changes since the user's last splash.

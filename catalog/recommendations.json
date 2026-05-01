@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "revision": "2026-04-29",
+  "revision": "2026-05-01",
   "bundles": [
     {
       "id": "default",
@@ -14,7 +14,8 @@
         "pi-interview",
         "glimpseui",
         "pi-tool-display",
-        "pi-updater"
+        "pi-updater",
+        "pi-subagents"
       ]
     }
   ],
@@ -87,6 +88,16 @@
       "homepage": "https://github.com/tonze/pi-updater",
       "license": "MIT",
       "rationale": "Keeps pi itself current without manual `pi update --self` calls. Low-friction way to stay on the latest runtime sf-pi targets.",
+      "scope": "global"
+    },
+    "pi-subagents": {
+      "id": "pi-subagents",
+      "name": "pi-subagents",
+      "description": "Delegate work to builtin or custom subagents with single, chain, parallel, async, and forked-context execution.",
+      "source": "npm:pi-subagents",
+      "homepage": "https://github.com/nicobailon/pi-subagents",
+      "license": "MIT",
+      "rationale": "Unlocks multi-agent workflows — advisory review, implementation handoffs, and parallel fan-out — that pair naturally with the sf-pi planning and skill surface.",
       "scope": "global"
     }
   }

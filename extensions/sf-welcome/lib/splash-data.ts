@@ -24,6 +24,7 @@ import { detectTokenSource } from "../../sf-slack/lib/auth.ts";
 import { getMonthlyUsageState } from "../../../lib/common/monthly-usage/store.ts";
 import { buildWhatsNewPayload } from "./whats-new.ts";
 import { buildAnnouncementsSync, refreshAnnouncements } from "./announcements.ts";
+import { collectRecommendationsStatus } from "./recommendations-status.ts";
 // Only the types actually referenced in this module's function bodies are
 // imported here; the rest are re-exported for convenience via the
 // `export type` block below, which does not require a local import.
@@ -38,6 +39,9 @@ export type {
   RecentSession,
   ExtensionHealthItem,
   TipItem,
+  RecommendationsStatusSummary,
+  RecommendationStatusItem,
+  RecommendationDisplayStatus,
   WhatsNewSummary,
 } from "./types.ts";
 export { discoverExtensionHealth } from "./extension-health.ts";
@@ -320,6 +324,7 @@ export function collectSplashData(
     lifetimeCost: lifetime.lifetimeCost,
     lifetimeUsageSource: lifetime.lifetimeUsageSource,
     tips: buildTipsForActiveExtensions(extensionHealth),
+    recommendations: collectRecommendationsStatus(cwd),
     sfEnvironment: undefined,
     whatsNew,
     announcements,

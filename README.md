@@ -22,7 +22,8 @@ globally.
 
 ## Who built it
 
-sf-pi is maintained by
+sf-pi is hosted at [github.com/salesforce/sf-pi](https://github.com/salesforce/sf-pi)
+and maintained by
 [Jag Valaiyapathy (@jvalaiyapathy)](https://github.com/jvalaiyapathy) —
 a Senior Forward Deployed Engineer at Salesforce and Salesforce Certified
 Technical Architect. It builds on
