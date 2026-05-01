@@ -6,7 +6,8 @@
  *   - Two-column (default, termWidth ≥ SINGLE_COL_THRESHOLD):
  *       Left:  Gradient Pi logo, model info, monthly cost, extension health,
  *              Slack/Gateway status, SF environment
- *       Right: Tips, loaded counts, recent sessions, Salesforce AI, attribution
+ *       Right: Announcements, What's New, loaded counts, recent sessions,
+ *              recommended extensions, attribution
  *   - Single-column (narrow terminals): left block stacked above right block
  *     so no content gets squeezed or truncated with an ellipsis. See issue #17
  *     (macOS Terminal.app at ~92 cols was rendering the splash with a hard
@@ -382,26 +383,6 @@ function buildRightColumn(data: SplashData, colWidth: number, mode: GlyphMode): 
     lines.push(horizontalRule(colWidth));
   }
 
-  // --- Tips ---
-  // Tips are derived from active sf-pi extensions (see lib/tips.ts) so the
-  // panel stays relevant to what the user actually has loaded. Commands
-  // render in SF_CYAN so they pop against the muted description; this also
-  // matches the accent used elsewhere on the splash for recent sessions.
-  lines.push(` ${BOLD}${GOLD(`${glyph("tips", mode)} Tips`)}${RESET}`);
-  const tips = data.tips ?? [];
-  if (tips.length === 0) {
-    // Defensive fallback — only shown if tips.ts returned nothing (e.g. all
-    // extensions disabled). Keeps the panel non-empty.
-    lines.push(
-      ` ${BOLD}${SF_CYAN("/sf-pi")}${RESET} ${MUTED("browse and manage sf-pi extensions")}`,
-    );
-  } else {
-    for (const tip of tips) {
-      lines.push(` ${BOLD}${SF_CYAN(tip.command)}${RESET} ${MUTED(tip.description)}`);
-    }
-  }
-  lines.push(horizontalRule(colWidth));
-
   // --- Loaded counts ---
   lines.push(` ${BOLD}${GOLD(`${glyph("loaded", mode)} Loaded`)}${RESET}`);
   const { extensions, skills, promptTemplates } = data.loadedCounts;
@@ -435,25 +416,32 @@ function buildRightColumn(data: SplashData, colWidth: number, mode: GlyphMode): 
   lines.push(horizontalRule(colWidth));
 
   // --- Recommended extensions ---
-  // Replaces the legacy Salesforce AI block. Shows a compact counter plus
-  // up to 3 pending items so users can see at a glance which recommended
-  // external pi packages they haven't installed yet. Install status is
-  // authoritative from settings.json; the state file contributes only the
-  // 'declined' marker. See lib/recommendations-status.ts.
+  // Replaces the legacy Salesforce AI block. Shows a header counter and
+  // lists every recommended item with a status glyph so users can see at
+  // a glance which external pi packages they have, haven't, or declined.
+  //   ● green  = installed (reality — settings.json scan)
+  //   ○ muted  = pending / never acted on
+  //   · muted  = declined (past /sf-pi recommended overlay decision)
+  // Install status is authoritative from settings.json; the state file
+  // contributes only the 'declined' marker. See lib/recommendations-status.ts.
   const recs = data.recommendations;
   if (recs && recs.total > 0) {
     lines.push(
       ` ${BOLD}${SF_BLUE(`${glyph("extensions", mode)} Recommended`)}${RESET}  ${SF_GREEN(`${recs.installedCount}`)}${MUTED(`/${recs.total} installed`)}`,
     );
-    const pending = recs.items.filter((i) => i.status === "pending").slice(0, 3);
-    for (const item of pending) {
+    for (const item of recs.items) {
+      const marker =
+        item.status === "installed"
+          ? SF_GREEN("●")
+          : item.status === "declined"
+            ? MUTED("·")
+            : MUTED("○");
+      const nameColor = item.status === "installed" ? SF_CYAN : MUTED;
       const truncated = truncateToWidth(item.name, Math.max(8, colWidth - 4), "…");
-      lines.push(` ${MUTED("○")} ${MUTED(truncated)}`);
+      lines.push(` ${marker} ${nameColor(truncated)}`);
     }
     if (recs.pendingCount > 0) {
-      const more =
-        recs.pendingCount > pending.length ? ` (+${recs.pendingCount - pending.length} more)` : "";
-      lines.push(` ${MUTED("→")} ${SF_CYAN("/sf-pi recommended")}${MUTED(more)}`);
+      lines.push(` ${MUTED("→")} ${SF_CYAN("/sf-pi recommended")}`);
     } else {
       lines.push(` ${SF_GREEN("✓")} ${MUTED("All recommendations installed")}`);
     }

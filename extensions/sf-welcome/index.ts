@@ -4,7 +4,8 @@
  *
  * Displays a two-column overlay on startup with:
  *   Left column:  Gradient Pi logo, model info, monthly cost bar, extension health, Slack status
- *   Right column: Tips, loaded counts, recent sessions, Salesforce community info
+ *   Right column: Announcements, What's New, loaded counts, recent sessions,
+ *                  recommended extensions, attribution
  *
  * Supports two modes:
  *   - quietStartup: false (default) → Dismissable overlay with countdown

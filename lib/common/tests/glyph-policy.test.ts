@@ -138,13 +138,11 @@ describe("resolveGlyphMode", () => {
 
 describe("glyph", () => {
   it("returns the emoji form in emoji mode", () => {
-    expect(glyph("tips", "emoji")).toBe("⚡");
     expect(glyph("monthly", "emoji")).toBe("💰");
     expect(glyph("loaded", "emoji")).toBe("📦");
   });
 
   it("returns the ASCII form in ascii mode", () => {
-    expect(glyph("tips", "ascii")).toBe("»");
     expect(glyph("monthly", "ascii")).toBe("$");
     expect(glyph("loaded", "ascii")).toBe("[]");
   });

@@ -39,12 +39,6 @@ export interface SfEnvironmentInfo {
   loading: boolean;
 }
 
-/** Tip entry for the right-column quick-help list. */
-export interface TipItem {
-  command: string;
-  description: string;
-}
-
 /** Install status shown in the splash's Recommendations block. */
 export type RecommendationDisplayStatus = "installed" | "pending" | "declined";
 
@@ -87,8 +81,6 @@ export interface SplashData {
   /** Origin of the lifetime cost value. 'gateway' = live per-key counter,
    * 'sessions' = local best-effort estimate clearly labeled as such. */
   lifetimeUsageSource?: "gateway" | "sessions";
-  /** Tips shown in the right column. Derived from active sf-pi extensions. */
-  tips?: TipItem[];
   /** Install status for recommended external pi packages. Replaces the
    * legacy Salesforce AI block when any recommendations are defined. */
   recommendations?: RecommendationsStatusSummary;

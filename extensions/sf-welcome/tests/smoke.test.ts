@@ -214,7 +214,11 @@ describe("sf-welcome", () => {
     expect(plain).toContain("local estimate");
   });
 
-  it("renders tips with commands in a different color than descriptions", async () => {
+  it("does not render the legacy Tips panel or generic pi key hints", async () => {
+    // The Tips panel was removed in favor of a fuller Recommended block.
+    // Lock in the removal here so a future revert doesn't silently bring
+    // the panel back. Generic pi hints (`/`, `!`, Shift+Tab) were never
+    // part of the splash either — assert they stay out.
     const { SfWelcomeOverlay } = await import("../lib/splash-component.ts");
     const data = {
       modelName: "Claude Opus 4.7",
@@ -225,43 +229,17 @@ describe("sf-welcome", () => {
       slackConnected: true,
       monthlyCost: 0,
       monthlyBudget: null,
-
       lifetimeCost: 0,
       monthlyUsageSource: "gateway" as const,
-      tips: [
-        { command: "/sf-pi", description: "browse, enable, and configure sf-pi extensions" },
-        {
-          command: "/sf-org",
-          description: "show the current org, CLI version, and connection status",
-        },
-      ],
     };
 
     const overlay = new SfWelcomeOverlay(data);
-    const raw = overlay.render(140).join("\n");
-    const plain = stripAnsi(raw);
+    const plain = stripAnsi(overlay.render(140).join("\n"));
 
-    // The generic Pi tips (`/`, `!`, `Shift+Tab`) must not appear — they
-    // were intentionally dropped from the splash.
+    expect(plain).not.toMatch(/\bTips\b/);
     expect(plain).not.toMatch(/^\s*\/\s+for commands/m);
     expect(plain).not.toMatch(/^\s*!\s+to run bash/m);
     expect(plain).not.toContain("Shift+Tab");
-
-    // Both tips should be present with their action-oriented descriptions.
-    expect(plain).toContain("/sf-pi");
-    expect(plain).toContain("browse, enable, and configure sf-pi extensions");
-    expect(plain).toContain("/sf-org");
-    expect(plain).toContain("show the current org");
-
-    // Commands render in SF_CYAN (rgb 1;195;226); descriptions render muted
-    // (fg 256 color 245). Asserting both color codes are present in the
-    // same line protects against a future refactor that accidentally
-    // collapses them to a single color.
-    const tipLines = raw.split("\n").filter((line) => line.includes("/sf-pi"));
-    expect(tipLines.length).toBeGreaterThan(0);
-    const sfPiLine = tipLines[0];
-    expect(sfPiLine).toContain("\x1b[38;2;1;195;226m"); // SF_CYAN on command
-    expect(sfPiLine).toContain("\x1b[38;5;245m"); // MUTED on description
   });
 
   it("returns empty lines for narrow terminals", async () => {
@@ -301,12 +279,6 @@ describe("sf-welcome", () => {
 
       lifetimeCost: 0,
       monthlyUsageSource: "gateway" as const,
-      tips: [
-        {
-          command: "/sf-llm-gateway-internal",
-          description: "pick a model, view monthly usage, refresh discovery",
-        },
-      ],
     };
 
     const overlay = new SfWelcomeOverlay(data);
@@ -315,9 +287,10 @@ describe("sf-welcome", () => {
     // Left-column content must be present…
     expect(plain).toContain("Welcome back!");
     expect(plain).toContain("sf-pi Extensions");
-    // …and so must right-column content (in emoji mode "pick a model…"
-    // used to get ellipsised away at this width).
-    expect(plain).toContain("pick a model, view monthly usage, refresh discovery");
+    // …and the right-column 'Recent Sessions' heading confirms the stacked
+    // layout is actually rendering the right-column content below the
+    // left column instead of truncating it.
+    expect(plain).toContain("Recent Sessions");
     // Single-column stacks should have exactly one vertical border per
     // row, not two (two-column mode has `│ left │ right │`).
     const midLine = plain.split("\n").find((l) => l.includes("Welcome back!")) ?? "";
@@ -353,8 +326,8 @@ describe("sf-welcome", () => {
   it("swaps emoji glyphs for ASCII fallbacks when glyph policy forces ascii", async () => {
     // Simulates Terminal.app (or an explicit SF_PI_ASCII_ICONS=1 opt-in)
     // by setting the env var for the duration of the test. The splash
-    // should render `» Tips` / `$ Monthly Usage` / `[] Loaded` instead of
-    // the emoji variants.
+    // should render ASCII variants (`$ Monthly Usage`, `[] Loaded`, etc.)
+    // instead of the emoji ones.
     const { SfWelcomeOverlay } = await import("../lib/splash-component.ts");
     const prev = process.env.SF_PI_ASCII_ICONS;
     process.env.SF_PI_ASCII_ICONS = "1";
@@ -368,23 +341,17 @@ describe("sf-welcome", () => {
         slackConnected: true,
         monthlyCost: 123,
         monthlyBudget: null,
-
         lifetimeCost: 0,
         monthlyUsageSource: "gateway" as const,
-        tips: [
-          { command: "/sf-pi", description: "browse, enable, and configure sf-pi extensions" },
-        ],
       };
       const overlay = new SfWelcomeOverlay(data);
       const plain = stripAnsi(overlay.render(140).join("\n"));
 
       // ASCII variants present…
-      expect(plain).toMatch(/» Tips/);
       expect(plain).toMatch(/\$ Monthly Usage/);
       expect(plain).toMatch(/\[\] Loaded/);
       expect(plain).toContain("+ sf-pi Extensions");
       // …and the emoji variants are gone.
-      expect(plain).not.toContain("⚡ Tips");
       expect(plain).not.toContain("💰 Monthly Usage");
       expect(plain).not.toContain("📦 Loaded");
     } finally {

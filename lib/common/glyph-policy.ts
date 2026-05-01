@@ -152,7 +152,6 @@ export function resolveGlyphMode(options: ResolveGlyphModeOptions = {}): GlyphMo
  */
 export const GLYPH_TABLE = {
   // Section markers
-  tips: { emoji: "⚡", ascii: "»" },
   monthly: { emoji: "💰", ascii: "$" },
   lifetime: { emoji: "Σ", ascii: "Σ" }, // Greek capital sigma — BMP, renders on every terminal
   extensions: { emoji: "🧩", ascii: "+" },
@@ -180,7 +179,7 @@ export type GlyphKey = keyof typeof GLYPH_TABLE;
 /**
  * Return the concrete glyph for a semantic key + mode.
  *
- * Use at render sites like `glyph("tips", mode) + " Tips"` so the single
+ * Use at render sites like `glyph("monthly", mode) + " Monthly"` so the single
  * call site makes it obvious which icon is involved.
  */
 export function glyph(key: GlyphKey, mode: GlyphMode): string {

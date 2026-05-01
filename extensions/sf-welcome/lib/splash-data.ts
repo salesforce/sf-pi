@@ -19,7 +19,6 @@ import {
 } from "../../../lib/common/pi-paths.ts";
 import { discoverExtensionHealth } from "./extension-health.ts";
 import { estimateLifetimeCost, estimateMonthlyCost, getRecentSessions } from "./session-data.ts";
-import { buildTipsForActiveExtensions } from "./tips.ts";
 import { detectTokenSource } from "../../sf-slack/lib/auth.ts";
 import { getMonthlyUsageState } from "../../../lib/common/monthly-usage/store.ts";
 import { buildWhatsNewPayload } from "./whats-new.ts";
@@ -38,7 +37,6 @@ export type {
   SplashData,
   RecentSession,
   ExtensionHealthItem,
-  TipItem,
   RecommendationsStatusSummary,
   RecommendationStatusItem,
   RecommendationDisplayStatus,
@@ -47,7 +45,6 @@ export type {
 export { discoverExtensionHealth } from "./extension-health.ts";
 export { detectSfEnvironment, getCachedSfEnvironmentInfo } from "./sf-environment.ts";
 export { estimateLifetimeCost, estimateMonthlyCost, getRecentSessions } from "./session-data.ts";
-export { buildTipsForActiveExtensions } from "./tips.ts";
 export { buildWhatsNewPayload, readCurrentPiVersion } from "./whats-new.ts";
 export {
   buildAnnouncementsSync,
@@ -278,6 +275,8 @@ export function collectSplashData(
   monthlyBudgetFallback: number = 3000,
 ): SplashData {
   const extensionHealth = discoverExtensionHealth(cwd);
+  // extensionHealth is still surfaced in the splash header counter; no other
+  // consumer needs the derived list anymore now that Tips is gone.
   const usage = resolveMonthlyUsage(monthlyBudgetFallback);
   const lifetime = resolveLifetimeUsage();
 
@@ -323,7 +322,6 @@ export function collectSplashData(
     monthlyUsageSource: usage.monthlyUsageSource,
     lifetimeCost: lifetime.lifetimeCost,
     lifetimeUsageSource: lifetime.lifetimeUsageSource,
-    tips: buildTipsForActiveExtensions(extensionHealth),
     recommendations: collectRecommendationsStatus(cwd),
     sfEnvironment: undefined,
     whatsNew,
