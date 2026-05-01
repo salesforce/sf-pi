@@ -14,7 +14,7 @@ import {
   announcementsManifestPath,
   loadAnnouncementsManifest,
   isValidAnnouncement,
-} from "../lib/announcements-manifest.ts";
+} from "../../../lib/common/catalog-state/announcements-manifest.ts";
 
 const tempDirs: string[] = [];
 

@@ -16,7 +16,7 @@
 import { type Focusable, matchesKey, truncateToWidth, visibleWidth } from "@mariozechner/pi-tui";
 import type { Theme } from "@mariozechner/pi-coding-agent";
 import type { RecommendedItem } from "../../../catalog/types.ts";
-import type { RecommendationDecision } from "./recommendations-state.ts";
+import type { RecommendationDecision } from "../../../lib/common/catalog-state/recommendations-state.ts";
 
 export interface RecommendationRow {
   item: RecommendedItem;

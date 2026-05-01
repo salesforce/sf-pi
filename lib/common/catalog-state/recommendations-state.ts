@@ -19,7 +19,7 @@
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { globalAgentPath } from "../../../lib/common/pi-paths.ts";
+import { globalAgentPath } from "../pi-paths.ts";
 
 export type RecommendationDecision = "installed" | "declined";
 

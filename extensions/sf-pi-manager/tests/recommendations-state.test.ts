@@ -19,7 +19,7 @@ import {
   readRecommendationsState,
   recordDecision,
   writeRecommendationsState,
-} from "../lib/recommendations-state.ts";
+} from "../../../lib/common/catalog-state/recommendations-state.ts";
 
 let dir: string;
 let file: string;

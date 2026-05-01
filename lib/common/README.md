@@ -12,23 +12,27 @@ code lives in `extensions/<id>/lib/`.
 
 ## Module map
 
-| Module                                   | Owners (what uses it)                                                       | What it provides                                                                 |
-| ---------------------------------------- | --------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| `pi-compat.ts`                           | all extensions                                                              | Feature-detecting shims for pi APIs that may not exist on older pi runtimes      |
-| `pi-paths.ts`                            | all extensions that touch settings                                          | Global + project `settings.json` paths, pi home dir resolution                   |
-| `exec-adapter.ts`                        | `sf-environment` consumers                                                  | Adapter from `pi.exec()` to the `ExecFn` type used by `sf-environment/detect.ts` |
-| `glyph-policy.ts`                        | `sf-welcome`, `sf-devbar`                                                   | Decides emoji vs ASCII glyphs based on terminal + user prefs + env vars          |
-| `display/types.ts`                       | `sf-pi-manager`, `sf-lsp`, `sf-agentscript-…`                               | `SfPiDisplayProfile` union + shared display types                                |
-| `display/settings.ts`                    | `sf-pi-manager`                                                             | Read/write the shared `sfPi.display.profile` setting (project > global)          |
-| `display/diagnostics.ts`                 | `sf-lsp`, `sf-agentscript-assist`                                           | `details.sfPiDiagnostics` contract for LSP-style tool results                    |
-| `monthly-usage/store.ts`                 | `sf-llm-gateway-internal` (producer); `sf-welcome`, `sf-devbar` (consumers) | Decoupled monthly-usage state store with refresher registration                  |
-| `sf-environment/detect.ts`               | shared runtime                                                              | Pure detection logic — runs SF CLI, parses config, returns a snapshot            |
-| `sf-environment/shared-runtime.ts`       | `sf-welcome`, `sf-devbar`, others                                           | In-memory + persisted cache so startup runs SF CLI **once** per session          |
-| `sf-environment/persisted-cache.ts`      | shared runtime                                                              | Disk persistence for the last-known snapshot                                     |
-| `sf-environment/format-agent-context.ts` | `sf-slack`, `sf-devbar`                                                     | Shared `[Salesforce Environment]` context-block formatter                        |
-| `sf-environment/types.ts`                | all SF-aware extensions                                                     | `SfEnvironment` snapshot shape                                                   |
-| `test-fixtures.ts`                       | tests across extensions                                                     | Shared factories for Pi context stubs + common fixtures                          |
-| `tests/`                                 | —                                                                           | Tests for the shared modules themselves                                          |
+| Module                                      | Owners (what uses it)                                                       | What it provides                                                                 |
+| ------------------------------------------- | --------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `pi-compat.ts`                              | all extensions                                                              | Feature-detecting shims for pi APIs that may not exist on older pi runtimes      |
+| `pi-paths.ts`                               | all extensions that touch settings                                          | Global + project `settings.json` paths, pi home dir resolution                   |
+| `exec-adapter.ts`                           | `sf-environment` consumers                                                  | Adapter from `pi.exec()` to the `ExecFn` type used by `sf-environment/detect.ts` |
+| `glyph-policy.ts`                           | `sf-welcome`, `sf-devbar`                                                   | Decides emoji vs ASCII glyphs based on terminal + user prefs + env vars          |
+| `display/types.ts`                          | `sf-pi-manager`, `sf-lsp`, `sf-agentscript-…`                               | `SfPiDisplayProfile` union + shared display types                                |
+| `display/settings.ts`                       | `sf-pi-manager`                                                             | Read/write the shared `sfPi.display.profile` setting (project > global)          |
+| `display/diagnostics.ts`                    | `sf-lsp`, `sf-agentscript-assist`                                           | `details.sfPiDiagnostics` contract for LSP-style tool results                    |
+| `monthly-usage/store.ts`                    | `sf-llm-gateway-internal` (producer); `sf-welcome`, `sf-devbar` (consumers) | Decoupled monthly-usage state store with refresher registration                  |
+| `catalog-state/announcements-manifest.ts`   | `sf-welcome`, `sf-pi-manager`                                               | Load + validate `catalog/announcements.json`                                     |
+| `catalog-state/announcements-state.ts`      | `sf-welcome`, `sf-pi-manager`                                               | Per-user announcements dismissal/ack state file                                  |
+| `catalog-state/recommendations-manifest.ts` | `sf-welcome`, `sf-pi-manager`                                               | Load + validate `catalog/recommendations.json` and resolve bundles               |
+| `catalog-state/recommendations-state.ts`    | `sf-welcome`, `sf-pi-manager`                                               | Per-user recommendation decisions + ack state file                               |
+| `sf-environment/detect.ts`                  | shared runtime                                                              | Pure detection logic — runs SF CLI, parses config, returns a snapshot            |
+| `sf-environment/shared-runtime.ts`          | `sf-welcome`, `sf-devbar`, others                                           | In-memory + persisted cache so startup runs SF CLI **once** per session          |
+| `sf-environment/persisted-cache.ts`         | shared runtime                                                              | Disk persistence for the last-known snapshot                                     |
+| `sf-environment/format-agent-context.ts`    | `sf-slack`, `sf-devbar`                                                     | Shared `[Salesforce Environment]` context-block formatter                        |
+| `sf-environment/types.ts`                   | all SF-aware extensions                                                     | `SfEnvironment` snapshot shape                                                   |
+| `test-fixtures.ts`                          | tests across extensions                                                     | Shared factories for Pi context stubs + common fixtures                          |
+| `tests/`                                    | —                                                                           | Tests for the shared modules themselves                                          |
 
 ## When to add code here
 

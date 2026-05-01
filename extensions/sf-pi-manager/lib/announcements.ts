@@ -20,7 +20,7 @@
  */
 import type { ExtensionCommandContext } from "@mariozechner/pi-coding-agent";
 import type { AnnouncementItem, AnnouncementsManifest } from "../../../catalog/types.ts";
-import { loadAnnouncementsManifest } from "../../sf-welcome/lib/announcements-manifest.ts";
+import { loadAnnouncementsManifest } from "../../../lib/common/catalog-state/announcements-manifest.ts";
 import {
   buildAnnouncementsSync,
   refreshAnnouncements,
@@ -32,7 +32,7 @@ import {
   readAnnouncementsState,
   resetAnnouncementsState,
   type AnnouncementsState,
-} from "../../sf-welcome/lib/announcements-state.ts";
+} from "../../../lib/common/catalog-state/announcements-state.ts";
 
 export type AnnouncementsSubcommand = "list" | "dismiss" | "reset";
 

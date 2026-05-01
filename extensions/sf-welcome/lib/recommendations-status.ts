@@ -21,8 +21,8 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { globalSettingsPath, projectSettingsPath } from "../../../lib/common/pi-paths.ts";
-import { loadRecommendationsManifest } from "../../sf-pi-manager/lib/recommendations-manifest.ts";
-import { readRecommendationsState } from "../../sf-pi-manager/lib/recommendations-state.ts";
+import { loadRecommendationsManifest } from "../../../lib/common/catalog-state/recommendations-manifest.ts";
+import { readRecommendationsState } from "../../../lib/common/catalog-state/recommendations-state.ts";
 import type { RecommendedItem } from "../../../catalog/types.ts";
 
 const __filename = fileURLToPath(import.meta.url);

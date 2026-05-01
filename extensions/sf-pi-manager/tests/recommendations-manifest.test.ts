@@ -16,7 +16,7 @@ import {
   defaultFirstRunBundleIds,
   loadRecommendationsManifest,
   resolveBundleItems,
-} from "../lib/recommendations-manifest.ts";
+} from "../../../lib/common/catalog-state/recommendations-manifest.ts";
 
 let pkgRoot: string;
 

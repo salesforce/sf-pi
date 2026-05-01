@@ -76,16 +76,16 @@ import {
   handleRecommended,
   parseRecommendedArgs,
 } from "./lib/recommendations.ts";
-import { loadRecommendationsManifest } from "./lib/recommendations-manifest.ts";
-import { readRecommendationsState } from "./lib/recommendations-state.ts";
+import { loadRecommendationsManifest } from "../../lib/common/catalog-state/recommendations-manifest.ts";
+import { readRecommendationsState } from "../../lib/common/catalog-state/recommendations-state.ts";
 import {
   computeAnnouncementsNudge,
   handleAnnouncements,
   parseAnnouncementsArgs,
 } from "./lib/announcements.ts";
-import { loadAnnouncementsManifest } from "../sf-welcome/lib/announcements-manifest.ts";
+import { loadAnnouncementsManifest } from "../../lib/common/catalog-state/announcements-manifest.ts";
 import { buildAnnouncementsSync } from "../sf-welcome/lib/announcements.ts";
-import { readAnnouncementsState } from "../sf-welcome/lib/announcements-state.ts";
+import { readAnnouncementsState } from "../../lib/common/catalog-state/announcements-state.ts";
 
 export {
   applyExtensionState,

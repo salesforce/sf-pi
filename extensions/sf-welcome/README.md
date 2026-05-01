@@ -144,11 +144,10 @@ extensions/sf-welcome/
     splash-component.ts      ← TUI components (SfWelcomeOverlay, SfWelcomeHeader)
     whats-new.ts             ← CHANGELOG.md parser + version-aware summarizer
     announcements.ts         ← Orchestrator: bundled + remote + update-nudge
-    announcements-manifest.ts← Loader for catalog/announcements.json
     announcements-filter.ts  ← Pure merge/filter/sort rules (dismiss, expiry, version)
     announcements-remote.ts  ← Optional feed fetch (timeout, ETag, silent-fail)
     announcements-update.ts  ← Synthetic "update available" builder
-    announcements-state.ts   ← ~/.pi/agent/state/sf-pi/announcements.json
+    (manifest + state loaders live in lib/common/catalog-state/ — shared with sf-pi-manager)
     state-store.ts           ← ~/.pi/agent/sf-welcome-state.json persistence
     font-installer.ts        ← /sf-setup-fonts installer (copy, sha-verify, cache refresh)
   assets/

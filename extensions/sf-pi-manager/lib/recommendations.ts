@@ -21,7 +21,7 @@ import {
   defaultFirstRunBundleIds,
   loadRecommendationsManifest,
   resolveBundleItems,
-} from "./recommendations-manifest.ts";
+} from "../../../lib/common/catalog-state/recommendations-manifest.ts";
 import { installPackage, removePackage, type InstallScope } from "./recommendations-install.ts";
 import {
   RecommendationsOverlayComponent,
@@ -33,7 +33,7 @@ import {
   readRecommendationsState,
   recordDecision,
   type RecommendationsState,
-} from "./recommendations-state.ts";
+} from "../../../lib/common/catalog-state/recommendations-state.ts";
 
 export type RecommendedSubcommand = "overlay" | "list" | "install" | "remove" | "status";
 

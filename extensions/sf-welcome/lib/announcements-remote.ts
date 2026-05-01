@@ -23,8 +23,8 @@
  * persistence. Keeps it trivially unit-testable with a `fetchImpl` double.
  */
 import type { AnnouncementsManifest, AnnouncementItem } from "../../../catalog/types.ts";
-import { isValidAnnouncement } from "./announcements-manifest.ts";
-import type { AnnouncementsState } from "./announcements-state.ts";
+import { isValidAnnouncement } from "../../../lib/common/catalog-state/announcements-manifest.ts";
+import type { AnnouncementsState } from "../../../lib/common/catalog-state/announcements-state.ts";
 
 /** 1.5 seconds \u2014 generous enough for slow Wi-Fi, short enough for startup. */
 const FETCH_TIMEOUT_MS = 1500;

@@ -52,7 +52,7 @@ import {
   resolveLifetimeUsage,
   resolveMonthlyUsage,
 } from "./lib/splash-data.ts";
-import { acknowledgeAnnouncementsRevision } from "./lib/announcements-state.ts";
+import { acknowledgeAnnouncementsRevision } from "../../lib/common/catalog-state/announcements-state.ts";
 import { SfWelcomeOverlay, SfWelcomeHeader } from "./lib/splash-component.ts";
 import { isQuietStartupEnabled, isVerboseStartupRequested } from "./lib/startup-mode.ts";
 

@@ -16,7 +16,7 @@ import {
   resetAnnouncementsState,
   updateRemoteCache,
   writeAnnouncementsState,
-} from "../lib/announcements-state.ts";
+} from "../../../lib/common/catalog-state/announcements-state.ts";
 
 const tempDirs: string[] = [];
 

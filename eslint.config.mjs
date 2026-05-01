@@ -5,7 +5,9 @@
  * Rule posture: pragmatic, not strict.
  * - Runs alongside Prettier (no stylistic rules that fight formatter).
  * - Warns on `any`. Does not fail CI on `any` — yet.
- * - Errors on obvious correctness bugs (unused vars, unreachable code).
+ * - Errors on unused vars/imports/params (underscore-prefix to escape hatch).
+ * - CI also runs eslint with --max-warnings=0 so the remaining `warn`
+ *   categories cannot accumulate drift silently.
  */
 import js from "@eslint/js";
 import tseslint from "typescript-eslint";
@@ -42,9 +44,10 @@ export default tseslint.config(
     },
 
     rules: {
-      // Correctness — warn first, tighten later via dedicated PRs.
+      // Correctness — unused code is always a bug. Prefix with `_` to mark
+      // a parameter or catch binding as intentionally unused.
       "@typescript-eslint/no-unused-vars": [
-        "warn",
+        "error",
         { argsIgnorePattern: "^_", varsIgnorePattern: "^_", caughtErrorsIgnorePattern: "^_" },
       ],
       "no-unused-vars": "off", // handled by @typescript-eslint

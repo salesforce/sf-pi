@@ -11,7 +11,7 @@
 import { describe, it, expect } from "vitest";
 import type { RecommendationsManifest } from "../../../catalog/types.ts";
 import { computeRecommendationsNudge, parseRecommendedArgs } from "../lib/recommendations.ts";
-import type { RecommendationsState } from "../lib/recommendations-state.ts";
+import type { RecommendationsState } from "../../../lib/common/catalog-state/recommendations-state.ts";
 
 // -------------------------------------------------------------------------------------------------
 // parseRecommendedArgs
