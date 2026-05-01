@@ -15,9 +15,9 @@ development.
 
 ### Maintainer
 
-| Maintainer       | GitHub                                             | Areas     |
-| ---------------- | -------------------------------------------------- | --------- |
-| Jag Valaiyapathy | [@jvalaiyapathy](https://github.com/jvalaiyapathy) | All areas |
+| Maintainer       | GitHub                                   | Areas     |
+| ---------------- | ---------------------------------------- | --------- |
+| Jag Valaiyapathy | [@Jaganpro](https://github.com/Jaganpro) | All areas |
 
 Responsibilities:
 
