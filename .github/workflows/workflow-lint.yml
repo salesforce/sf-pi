@@ -11,17 +11,15 @@
 #      `uses:` line points at a mutable ref (branch or version tag).
 name: Workflow lint
 
+# Runs on every push/PR (no paths: filter) so the ruleset can treat both
+# jobs as required status checks. If we filtered by path, PRs that don't
+# touch workflows would never report a status and would be blocked from
+# merging indefinitely. The jobs are ~5–10s each, so the cost is trivial.
 on:
   push:
     branches: [main]
-    paths:
-      - ".github/workflows/**"
-      - ".github/actions/**"
   pull_request:
     branches: [main]
-    paths:
-      - ".github/workflows/**"
-      - ".github/actions/**"
   workflow_dispatch:
 
 permissions:
