@@ -56,6 +56,12 @@ jobs:
       - name: Run tests
         run: npm test
 
+      - name: LLM artifact check
+        # Fails on unresolved conflict markers, prompt-template tokens,
+        # and unresolved TODO(llm|agent|claude|gpt|pi) markers.
+        # See scripts/check-llm-artifacts.sh for the exact rules.
+        run: bash scripts/check-llm-artifacts.sh
+
   commitlint:
     name: commitlint
     # Only on PRs. Direct admin pushes to main bypass the ruleset and
