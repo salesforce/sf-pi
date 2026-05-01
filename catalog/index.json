@@ -59,6 +59,7 @@
       "session_start",
       "session_shutdown",
       "model_select",
+      "thinking_level_select",
       "turn_start",
       "turn_end",
       "agent_end",
@@ -67,7 +68,7 @@
     "entry": "extensions/sf-devbar/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 1238
+    "srcLoc": 1260
   },
   {
     "id": "sf-llm-gateway-internal",

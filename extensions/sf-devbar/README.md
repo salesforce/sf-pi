@@ -41,6 +41,7 @@ cached/partial data and fill in as results arrive.
 - `session_start` — activate bars, load data, start async checks
 - `session_shutdown` — restore default footer, clear widget
 - `model_select` — update model display, detect gateway
+- `thinking_level_select` — repaint thinking badge instantly on level change (pi ≥ 0.71; no-op on older)
 - `turn_start` — set thinking indicator
 - `turn_end` — context refresh + footer repaint
 - `agent_end` — final git refresh + footer repaint

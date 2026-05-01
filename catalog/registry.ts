@@ -34,7 +34,7 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
     category: "ui",
     defaultEnabled: true,
     commands: ["/sf-devbar","/sf-org"],
-    events: ["session_start","session_shutdown","model_select","turn_start","turn_end","agent_end","before_agent_start"],
+    events: ["session_start","session_shutdown","model_select","thinking_level_select","turn_start","turn_end","agent_end","before_agent_start"],
   },
   {
     id: "sf-llm-gateway-internal",

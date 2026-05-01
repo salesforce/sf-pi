@@ -9,6 +9,7 @@
     "session_start",
     "session_shutdown",
     "model_select",
+    "thinking_level_select",
     "turn_start",
     "turn_end",
     "agent_end",
