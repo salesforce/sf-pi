@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.21.0-2026-05-01",
-  "latestVersion": "0.21.0",
+  "revision": "release-0.21.1-2026-05-01",
+  "latestVersion": "0.21.1",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.21.0",
+      "id": "release-0.21.1",
       "kind": "update",
-      "title": "sf-pi v0.21.0 — sf-devbar: instant thinking-badge repaint on thinking_level_select (pi &gt;= 0.71)",
+      "title": "sf-pi v0.21.1 — sf-llm-gateway-internal: route Claude through unified dispatcher",
       "publishedAt": "2026-05-01T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.21.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.21.1",
       "severity": "info",
-      "body": "sf-devbar: instant thinking-badge repaint on thinking_level_select (pi &gt;= 0.71) — sf-llm-gateway-internal: unify to one /login row with paste-token flow"
+      "body": "sf-llm-gateway-internal: route Claude through unified dispatcher"
     },
     {
       "id": "pi-0.71-compat",
