@@ -1,0 +1,32 @@
+# SPDX-License-Identifier: Apache-2.0
+# Broader vulnerability coverage than `npm audit` alone. OSV aggregates
+# npm advisories, GitHub Advisory Database, and GHSA/MITRE sources.
+# Fails CI on medium-or-worse findings in tracked dependencies.
+name: OSV scanner
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Weekly full scan to catch advisories published against pinned deps.
+    - cron: "31 7 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  scan:
+    name: OSV scan
+    # Use the reusable workflow from google/osv-scanner-action. Pinned by
+    # SHA; bump via dependabot (it reads workflow files by default).
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@c51854704019a247608d928f370c98740469d4b5 # v2.3.5
+    with:
+      scan-args: |-
+        --recursive
+        --skip-git
+        ./
+      fail-on-vuln: true

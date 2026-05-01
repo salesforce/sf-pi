@@ -84,3 +84,17 @@ jobs:
           name: gitleaks-sarif
           path: gitleaks.sarif
           retention-days: 30
+
+      # Secondary secret scan. Trufflehog's detectors overlap with gitleaks
+      # but catch a different tail of credential patterns (e.g. AWS cross-
+      # account role ARNs, Slack legacy tokens, private-key fragments).
+      # We run it after gitleaks so a first-line fail still shows up clearly
+      # in the gitleaks step, but we gate CI on both.
+      - name: Trufflehog secret scan (diff on PRs, full history otherwise)
+        uses: trufflesecurity/trufflehog@17456f8c7d042d8c82c9a8ca9e937231f9f42e26 # v3.95.2
+        with:
+          # Only scan the PR diff on pull_request; full repo on push/schedule.
+          path: ./
+          base: ${{ github.event.pull_request.base.sha || '' }}
+          head: ${{ github.event.pull_request.head.sha || github.sha }}
+          extra_args: --only-verified
