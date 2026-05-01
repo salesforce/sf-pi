@@ -42,8 +42,6 @@ class SlackConfigPanelComponent implements Focusable {
 
   constructor(
     private readonly theme: Theme,
-    private readonly _scope: "global" | "project",
-    private readonly _cwd: string,
     private readonly done: (result: ConfigPanelResult | undefined) => void,
   ) {}
 
@@ -133,6 +131,6 @@ class SlackConfigPanelComponent implements Focusable {
 
 // ─── Factory ────────────────────────────────────────────────────────────────────
 
-export const createConfigPanel: ConfigPanelFactory = (theme, cwd, scope, done) => {
-  return new SlackConfigPanelComponent(theme, scope, cwd, done);
+export const createConfigPanel: ConfigPanelFactory = (theme, _cwd, _scope, done) => {
+  return new SlackConfigPanelComponent(theme, done);
 };

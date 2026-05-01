@@ -158,7 +158,6 @@ import {
 import {
   GatewaySetupOverlayComponent,
   type SetupOverlayResult,
-  getSetupOverlayState,
   saveSetupOverlayInputs,
 } from "./lib/setup-overlay.ts";
 import { buildFooterStatus, buildStatusReport } from "./lib/status.ts";
@@ -830,10 +829,9 @@ async function runSetupWizard(
     return;
   }
 
-  const setupState = getSetupOverlayState(ctx.cwd, scope);
   const result = await ctx.ui.custom<SetupOverlayResult | undefined>(
     (_tui, theme, _keybindings, done) =>
-      new GatewaySetupOverlayComponent(theme, scope, ctx.cwd, setupState, done),
+      new GatewaySetupOverlayComponent(theme, scope, ctx.cwd, done),
     {
       overlay: true,
       // Use function form for responsive sizing on terminal resize
@@ -1282,7 +1280,7 @@ async function updateFooterStatus(
   }
 
   await refreshMonthlyUsage(forceRefreshUsage, ctx.cwd);
-  ctx.ui.setStatus(STATUS_KEY, buildFooterStatus(ctx, getRuntimeStatusState()));
+  ctx.ui.setStatus(STATUS_KEY, buildFooterStatus(getRuntimeStatusState()));
 }
 
 // Exported for unit tests.

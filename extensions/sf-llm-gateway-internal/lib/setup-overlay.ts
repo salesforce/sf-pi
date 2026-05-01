@@ -160,9 +160,8 @@ export class GatewaySetupOverlayComponent implements Focusable {
 
   constructor(
     private readonly theme: Theme,
-    private readonly scope: "global" | "project",
-    private readonly cwd: string,
-    state: SetupOverlayState,
+    scope: "global" | "project",
+    cwd: string,
     private readonly done: (result: SetupOverlayResult | undefined) => void,
   ) {
     // Create the config panel, translating its result to the legacy SetupOverlayResult.

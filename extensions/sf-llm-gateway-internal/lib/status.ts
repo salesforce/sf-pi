@@ -48,7 +48,7 @@ export interface GatewayRuntimeStatusState {
   runtimeExtraBetas: Set<string>;
 }
 
-export function buildFooterStatus(ctx: ExtensionContext, state: GatewayRuntimeStatusState): string {
+export function buildFooterStatus(state: GatewayRuntimeStatusState): string {
   // Footer = monthly budget + (optional) live provider-health badge.
   // Model/context info is already in the devbar top bar, so we stay minimal.
   const parts = [formatMonthlyUsagePart(state.monthlyUsage, state.monthlyUsageError)];

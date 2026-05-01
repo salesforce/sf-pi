@@ -20,7 +20,7 @@
     "entry": "extensions/sf-agentscript-assist/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 1295
+    "srcLoc": 1286
   },
   {
     "id": "sf-brain",
@@ -95,7 +95,7 @@
     "entry": "extensions/sf-llm-gateway-internal/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 5948
+    "srcLoc": 5945
   },
   {
     "id": "sf-lsp",
@@ -162,7 +162,7 @@
     "entry": "extensions/sf-pi-manager/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 2629
+    "srcLoc": 2626
   },
   {
     "id": "sf-skills-hud",
@@ -222,7 +222,7 @@
     "entry": "extensions/sf-slack/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 9673
+    "srcLoc": 9663
   },
   {
     "id": "sf-welcome",
@@ -246,6 +246,6 @@
     "entry": "extensions/sf-welcome/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 3852
+    "srcLoc": 3847
   }
 ]

@@ -55,14 +55,7 @@ function withDefaults(partial: Record<string, unknown>) {
 
 describe("buildFooterStatus", () => {
   it("returns monthly usage with spend and infinity budget", () => {
-    const ctx = {
-      cwd: makeTempDir("gateway-status-"),
-      model: { provider: "sf-llm-gateway-internal", id: "claude-opus-4-6-v1" },
-      getContextUsage: () => ({ tokens: 120_000, contextWindow: 1_000_000 }),
-    } as any;
-
     const text = buildFooterStatus(
-      ctx,
       withDefaults({
         discovery: {
           modelIds: ["claude-opus-4-6-v1"],
@@ -91,14 +84,7 @@ describe("buildFooterStatus", () => {
   });
 
   it("returns loading state when monthly usage is not yet fetched", () => {
-    const ctx = {
-      cwd: makeTempDir("gateway-status-"),
-      model: { provider: "sf-llm-gateway-internal", id: "claude-opus-4-6-v1" },
-      getContextUsage: () => null,
-    } as any;
-
     const text = buildFooterStatus(
-      ctx,
       withDefaults({
         discovery: null,
         monthlyUsage: null,
@@ -112,14 +98,7 @@ describe("buildFooterStatus", () => {
   });
 
   it("returns unavailable state when monthly usage fetch failed", () => {
-    const ctx = {
-      cwd: makeTempDir("gateway-status-"),
-      model: { provider: "sf-llm-gateway-internal", id: "claude-opus-4-6-v1" },
-      getContextUsage: () => null,
-    } as any;
-
     const text = buildFooterStatus(
-      ctx,
       withDefaults({
         discovery: null,
         monthlyUsage: null,
@@ -141,7 +120,7 @@ describe("buildStatusReport", () => {
     const ctx = {
       cwd: makeTempDir("gateway-status-"),
       model: { provider: "sf-llm-gateway-internal", id: "claude-opus-4-6-v1" },
-      getContextUsage: () => ({ tokens: 50_000, contextWindow: 1_000_000 }),
+      getContextUsage: () => null,
     } as any;
 
     const report = buildStatusReport(
@@ -178,7 +157,7 @@ describe("buildStatusReport", () => {
     const ctx = {
       cwd: makeTempDir("gateway-status-"),
       model: { provider: "sf-llm-gateway-internal", id: "claude-opus-4-6-v1" },
-      getContextUsage: () => ({ tokens: 50_000, contextWindow: 1_000_000 }),
+      getContextUsage: () => null,
     } as any;
 
     const report = buildStatusReport(

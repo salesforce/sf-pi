@@ -119,7 +119,10 @@ describe("lib function signatures", () => {
 describe("setup overlay process.cwd() removal", () => {
   it("GatewaySetupOverlayComponent accepts cwd as a constructor parameter", () => {
     const source = readSource("lib/setup-overlay.ts");
-    expect(source).toContain("private readonly cwd: string");
+    // cwd is forwarded into the inner config panel rather than stored as a
+    // field; the contract is just that the overlay accepts a cwd from its
+    // caller instead of calling process.cwd() itself.
+    expect(source).toMatch(/GatewaySetupOverlayComponent[\s\S]*?constructor\([\s\S]*?cwd: string/);
   });
 
   it("setup overlay does not call process.cwd()", () => {

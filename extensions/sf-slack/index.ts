@@ -53,7 +53,6 @@ import {
 import { getSlackToken, loginSlack, oauthScopes, refreshSlackToken } from "./lib/auth.ts";
 import {
   slackApi,
-  getUserCache,
   prewarmUserCache,
   prewarmChannelCache,
   setDetectedTeamId,
@@ -90,7 +89,6 @@ const RESEARCH_WIDGET_KEY = "sf-slack-research";
 
 export default function sfSlack(pi: ExtensionAPI) {
   let identity: SlackIdentity | null = null;
-  let gatedToolCount = 0;
   // Count of scopes we asked for at OAuth time that Slack did NOT actually
   // grant this token. Populated by the header-driven scope probe. Surfaced in
   // the footer so users immediately see scope drift (the "auth.test reports
@@ -320,7 +318,6 @@ export default function sfSlack(pi: ExtensionAPI) {
   pi.on("session_start", async (_event, ctx) => {
     const generation = beginActiveSession(ctx);
     identity = null;
-    gatedToolCount = 0;
     missingGrantedScopeCount = 0;
     grantedScopeCount = 0;
     requestedScopeCount = 0;
@@ -372,7 +369,6 @@ export default function sfSlack(pi: ExtensionAPI) {
         prewarmChannelCache(token, ctx.signal),
       ]);
       if (!isActiveSession(ctx, generation)) return;
-      gatedToolCount = probeResult.gatedTools.length;
       missingGrantedScopeCount = probeResult.missingGrantedScopes.length;
       grantedScopeCount = getGrantedScopes()?.size ?? 0;
 
@@ -390,7 +386,6 @@ export default function sfSlack(pi: ExtensionAPI) {
 
     identity = null;
     setDetectedTeamId("");
-    gatedToolCount = 0;
     missingGrantedScopeCount = 0;
     grantedScopeCount = 0;
     requestedScopeCount = 0;
@@ -496,7 +491,6 @@ export default function sfSlack(pi: ExtensionAPI) {
               prewarmChannelCache(token, ctx.signal),
             ]);
             if (!isActiveSession(ctx, generation)) return;
-            gatedToolCount = probeResult.gatedTools.length;
             missingGrantedScopeCount = probeResult.missingGrantedScopes.length;
             grantedScopeCount = getGrantedScopes()?.size ?? 0;
             updateStatus(ctx, "connected", generation);

@@ -40,20 +40,15 @@ function fgRgb(r: number, g: number, b: number, text: string): string {
   return `\x1b[38;2;${r};${g};${b}m${text}${RESET}`;
 }
 
-// Salesforce brand colors. A few entries below are currently unused but kept
-// intentionally as a palette reference for future UI work — the underscore
-// prefix marks them as deliberately-unused per the eslint rule.
+// Salesforce brand colors used in this component.
 const SF_BLUE = (text: string) => fgRgb(0, 112, 210, text); // #0070D2
-const _SF_CLOUD_BLUE = (text: string) => fgRgb(22, 50, 92, text); // Deep navy
 const SF_GREEN = (text: string) => fgRgb(75, 202, 129, text); // Success green
 const SF_RED = (text: string) => fgRgb(234, 69, 80, text); // Error red
 const SF_ORANGE = (text: string) => fgRgb(255, 183, 93, text); // Warning
-const _SF_PURPLE = (text: string) => fgRgb(144, 97, 249, text); // Accent purple
 const SF_CYAN = (text: string) => fgRgb(1, 195, 226, text); // Astro cyan
 const MUTED = (text: string) => fg256(245, text); // Gray muted
 const ACCENT = (text: string) => fg256(75, text); // Blue accent
 const GOLD = (text: string) => fgRgb(255, 183, 77, text); // Gold/amber
-const _SF_WHITE = (text: string) => fgRgb(220, 230, 245, text); // Bright white-blue
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Pi Logo with Salesforce gradient

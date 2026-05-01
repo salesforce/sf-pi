@@ -172,10 +172,7 @@ function buildSuggestionFix(
   };
 }
 
-function buildUnknownDialectFixes(
-  source: string,
-  diagnostic: AgentScriptDiagnostic,
-): AgentScriptQuickFix[] {
+function buildUnknownDialectFixes(diagnostic: AgentScriptDiagnostic): AgentScriptQuickFix[] {
   const data = (diagnostic.data ?? {}) as AvailableNamesData;
   if (!Array.isArray(data.availableNames) || data.availableNames.length === 0) return [];
 
@@ -193,10 +190,7 @@ function buildUnknownDialectFixes(
   }));
 }
 
-function buildDeprecatedFieldFix(
-  source: string,
-  diagnostic: AgentScriptDiagnostic,
-): AgentScriptQuickFix | null {
+function buildDeprecatedFieldFix(diagnostic: AgentScriptDiagnostic): AgentScriptQuickFix | null {
   const data = (diagnostic.data ?? {}) as ReplacementData;
   if (!data.replacement || typeof data.replacement !== "string") return null;
 
@@ -250,10 +244,7 @@ function buildUnusedVariableFix(
   };
 }
 
-function buildInvalidVersionFixes(
-  source: string,
-  diagnostic: AgentScriptDiagnostic,
-): AgentScriptQuickFix[] {
+function buildInvalidVersionFixes(diagnostic: AgentScriptDiagnostic): AgentScriptQuickFix[] {
   const data = (diagnostic.data ?? {}) as SuggestedVersionsData;
   const suggestions = data.suggestedVersions;
   if (!Array.isArray(suggestions) || suggestions.length === 0) return [];
@@ -300,11 +291,11 @@ export function buildQuickFixes(
         break;
       }
       case "unknown-dialect": {
-        fixes.push(...buildUnknownDialectFixes(source, diagnostic));
+        fixes.push(...buildUnknownDialectFixes(diagnostic));
         break;
       }
       case "deprecated-field": {
-        const fix = buildDeprecatedFieldFix(source, diagnostic);
+        const fix = buildDeprecatedFieldFix(diagnostic);
         if (fix) fixes.push(fix);
         break;
       }
@@ -314,7 +305,7 @@ export function buildQuickFixes(
         break;
       }
       case "invalid-version": {
-        fixes.push(...buildInvalidVersionFixes(source, diagnostic));
+        fixes.push(...buildInvalidVersionFixes(diagnostic));
         break;
       }
       default:

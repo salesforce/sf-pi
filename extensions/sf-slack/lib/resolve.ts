@@ -9,7 +9,6 @@
  */
 import {
   DEFAULT_LIST_LIMIT,
-  type ApiErr,
   type AssistantSearchContextResponse,
   type ConversationsInfoResponse,
   type ConversationsListResponse,

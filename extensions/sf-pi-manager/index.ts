@@ -298,22 +298,22 @@ async function handleCommand(
 
   switch (args.subcommand) {
     case "overlay":
-      await handleOverlay(pi, ctx, args.scope);
+      await handleOverlay(ctx, args.scope);
       break;
     case "list":
       await handleList(ctx, args.scope);
       break;
     case "enable":
-      await handleToggle(pi, ctx, args.scope, args.target, true);
+      await handleToggle(ctx, args.scope, args.target, true);
       break;
     case "disable":
-      await handleToggle(pi, ctx, args.scope, args.target, false);
+      await handleToggle(ctx, args.scope, args.target, false);
       break;
     case "enable-all":
-      await handleToggleAll(pi, ctx, args.scope, true);
+      await handleToggleAll(ctx, args.scope, true);
       break;
     case "disable-all":
-      await handleToggleAll(pi, ctx, args.scope, false);
+      await handleToggleAll(ctx, args.scope, false);
       break;
     case "status":
       await handleStatus(ctx, args.scope);
@@ -348,7 +348,6 @@ async function handleCommand(
 // -------------------------------------------------------------------------------------------------
 
 async function handleOverlay(
-  pi: ExtensionAPI,
   ctx: ExtensionCommandContext,
   scope: "global" | "project",
 ): Promise<void> {
@@ -440,7 +439,6 @@ async function handleList(
 }
 
 async function handleToggle(
-  pi: ExtensionAPI,
   ctx: ExtensionCommandContext,
   scope: "global" | "project",
   target: string | undefined,
@@ -504,7 +502,6 @@ async function handleToggle(
 }
 
 async function handleToggleAll(
-  pi: ExtensionAPI,
   ctx: ExtensionCommandContext,
   scope: "global" | "project",
   enable: boolean,

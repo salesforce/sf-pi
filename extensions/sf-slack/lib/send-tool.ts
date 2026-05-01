@@ -29,7 +29,6 @@ import {
   ENV_ALLOW_HEADLESS_SEND,
   ENV_SEND_DRY_RUN,
   type ApiErr,
-  type ChatPostMessageResponse,
   type ChatGetPermalinkResponse,
   type ConversationsOpenResponse,
   type JsonCompatibleParams,
