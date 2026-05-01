@@ -29,7 +29,7 @@ afterEach(() => {
 
 const MODEL: Model<"anthropic-messages"> = {
   id: "claude-opus-4-7",
-  provider: "sf-llm-gateway-internal-anthropic",
+  provider: "sf-llm-gateway-internal",
   api: "anthropic-messages",
   name: "Opus 4.7 (test)",
   baseUrl: "https://gateway.test/v1",

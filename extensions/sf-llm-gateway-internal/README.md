@@ -13,26 +13,55 @@ provider extension. Read this before making changes.
 
 ## What It Does
 
-Registers the gateway as **two** Pi-native providers so each model family
-runs on the pi-ai transport it was designed for. It supports dynamic model
-discovery, monthly budget tracking, runtime beta header toggling, additive vs
-exclusive scoped-model behavior, and a TUI setup wizard.
+Registers the gateway as a single unified Pi-native provider and routes
+Claude vs non-Claude traffic to the transport each family was designed for.
+Supports dynamic model discovery, monthly budget tracking, runtime beta
+header toggling, additive vs exclusive scoped-model behavior, a TUI setup
+wizard, and an in-app "paste your token" flow under `/login` (pi ≥ 0.71).
 
-## Key Architecture: Two Providers, One Gateway
+## Key Architecture: One Provider, Two Transports
 
-| Provider name                       | pi-ai API            | Base URL                                        | Models                         |
-| ----------------------------------- | -------------------- | ----------------------------------------------- | ------------------------------ |
-| `sf-llm-gateway-internal`           | `openai-completions` | `<gateway>/v1`                                  | Gemini, GPT, Codex             |
-| `sf-llm-gateway-internal-anthropic` | `anthropic-messages` | `<gateway>` (root — SDK appends `/v1/messages`) | Claude (Opus / Sonnet / Haiku) |
+Since R1·Unify the extension registers a single Pi provider (`sf-llm-gateway-
+internal`) with a friendly display label `SF LLM Gateway`. Claude models
+carry an `api: "anthropic-messages"` tag on their `ProviderModelConfig`,
+which pi honors when choosing the transport for each request. A single
+`streamSimple` dispatcher inspects `model.api` and forwards to the matching
+shim:
 
-Claude is routed to the native Anthropic Messages path because LiteLLM's
-OpenAI-compat translator splits Claude thinking + text across multiple choices
-and intermittently drops the final text delta on `choices[0]`, producing an
-empty assistant turn that required users to type "continue" to unstick the
-agent loop. Native Anthropic streaming avoids that entire class of failure.
+| Model family             | per-model `api`      | Transport shim             | Base URL used                                      |
+| ------------------------ | -------------------- | -------------------------- | -------------------------------------------------- |
+| Gemini / GPT / Codex     | `openai-completions` | `streamSfGatewayOpenAI`    | `<gateway>/v1`                                     |
+| Claude (Opus/Sonnet/...) | `anthropic-messages` | `streamSfGatewayAnthropic` | `<gateway>` (Anthropic SDK appends `/v1/messages`) |
 
-Non-Claude families (Gemini, GPT, Codex) stay on OpenAI-compat because they
-behave correctly on that path.
+Claude runs on the native Anthropic Messages path because LiteLLM's
+OpenAI-compat translator splits Claude thinking + text across multiple
+choices and intermittently drops the final text delta on `choices[0]`,
+producing an empty assistant turn that required users to type "continue"
+to unstick the agent loop. Native Anthropic streaming avoids that entire
+class of failure. Non-Claude families behave correctly on OpenAI-compat
+and stay there.
+
+### Why one provider?
+
+The earlier layout registered two providers (`sf-llm-gateway-internal` and
+`sf-llm-gateway-internal-anthropic`) so they appeared as two separate rows
+in pi's `/login` menu. Both used the same gateway and the same token, which
+confused end users. Unifying collapses `/login` to one row and unlocks a
+clean `oauth.onPrompt` paste-token flow.
+
+### Legacy settings migration
+
+On the first session after upgrade, `lib/migrate-unify-provider.ts`
+rewrites any residual references to the retired
+`sf-llm-gateway-internal-anthropic` provider in the user's pi
+`settings.json` (global + project):
+
+- `defaultProvider`
+- `defaultModel` (prefix rewrite)
+- `enabledModels` (drops `sf-llm-gateway-internal-anthropic/*`)
+
+The migration is idempotent: a per-file sentinel under `sfPi.gatewayUnifyMigrated`
+short-circuits subsequent sessions. Users see no prompt and no manual step.
 
 ## Transport shims
 
@@ -268,11 +297,11 @@ payload LiteLLM would send.
 
 **Claude responses appear to truncate and the agent asks you to type "continue":**
 This is the pi-ai OpenAI-compat translator splitting Claude thinking + text
-across multiple choices. The fix is already in place — Claude models route
-through the native Anthropic provider (`sf-llm-gateway-internal-anthropic`)
-instead of the OpenAI-compat provider. If you still see truncation, verify
-the selected model is registered under the Anthropic provider in
-`/sf-llm-gateway-internal models`.
+across multiple choices. The fix is already in place — Claude models are
+tagged `api: "anthropic-messages"` at the per-model level so the unified
+`streamSimple` dispatcher forwards them to the native Anthropic transport
+instead of the OpenAI-compat one. If you still see truncation, confirm the
+selected model is a Claude id in `/sf-llm-gateway-internal models`.
 
 **Opus 4.7 returns `api_error: Internal server error` on heavy turns:**
 Handled by the transport shim: `max_tokens` now scales by pi reasoning

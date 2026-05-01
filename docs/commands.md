@@ -59,7 +59,7 @@ _Salesforce LLM Gateway provider with model discovery_
 
 - Default: **on**
 - Commands: `/sf-llm-gateway-internal`
-- Providers: `sf-llm-gateway-internal`, `sf-llm-gateway-internal-anthropic`
+- Providers: `sf-llm-gateway-internal`
 
 ## Ui
 

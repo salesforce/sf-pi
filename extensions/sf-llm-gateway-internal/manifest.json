@@ -6,7 +6,7 @@
   "defaultEnabled": true,
   "configurable": true,
   "commands": ["/sf-llm-gateway-internal"],
-  "providers": ["sf-llm-gateway-internal", "sf-llm-gateway-internal-anthropic"],
+  "providers": ["sf-llm-gateway-internal"],
   "events": [
     "session_start",
     "turn_end",

@@ -24,24 +24,21 @@ import {
 } from "../../../lib/common/pi-paths.ts";
 import {
   ENABLED_MODEL_PATTERN,
-  ENABLED_MODEL_PATTERN_ANTHROPIC,
+  LEGACY_ENABLED_MODEL_PATTERN_ANTHROPIC,
   asOptionalString,
 } from "./config.ts";
 
 const ENABLED_MODEL_PREFIX = ENABLED_MODEL_PATTERN.slice(0, -1);
-const ENABLED_MODEL_PREFIX_ANTHROPIC = ENABLED_MODEL_PATTERN_ANTHROPIC.slice(0, -1);
+const LEGACY_ENABLED_MODEL_PREFIX_ANTHROPIC = LEGACY_ENABLED_MODEL_PATTERN_ANTHROPIC.slice(0, -1);
 
-// The gateway registers two providers: one OpenAI-compat, one Anthropic-native.
-// Scoping must cover both so Claude models don't trigger Pi's
-// "No models match pattern" warning at startup while everything else keeps
-// matching the original provider wildcard.
-const GATEWAY_PATTERNS: readonly string[] = [
-  ENABLED_MODEL_PATTERN,
-  ENABLED_MODEL_PATTERN_ANTHROPIC,
-];
-
+/**
+ * Since R1·Unify the gateway registers a single provider. All models live
+ * under `sf-llm-gateway-internal/*`. The legacy `-anthropic/*` pattern is
+ * still recognized only for the one-shot migration in
+ * `normalizeLegacyGatewayEnabledModels()`.
+ */
 function isGatewayScopePattern(pattern: string): boolean {
-  return pattern === ENABLED_MODEL_PATTERN || pattern === ENABLED_MODEL_PATTERN_ANTHROPIC;
+  return pattern === ENABLED_MODEL_PATTERN;
 }
 
 export interface EffectiveDefaultModelSetting {
@@ -97,18 +94,22 @@ export function isExclusiveEnabledModelPattern(value: unknown): boolean {
 function isLegacyGatewayModelPattern(pattern: string): boolean {
   if (isGatewayScopePattern(pattern)) return false;
   return (
-    pattern.startsWith(ENABLED_MODEL_PREFIX) || pattern.startsWith(ENABLED_MODEL_PREFIX_ANTHROPIC)
+    pattern.startsWith(ENABLED_MODEL_PREFIX) ||
+    pattern.startsWith(LEGACY_ENABLED_MODEL_PREFIX_ANTHROPIC)
   );
 }
 
 /**
- * Collapse legacy gateway model-specific patterns to the provider wildcard.
+ * Collapse legacy gateway model-specific patterns and the retired
+ * `sf-llm-gateway-internal-anthropic/*` wildcard to the current provider
+ * wildcard.
  *
  * Older settings could persist exact entries like
- * `sf-llm-gateway-internal/gpt-5`. Those fight the extension's small startup
- * bootstrap catalog and cause noisy "No models match pattern" warnings until
- * async discovery finishes. The current extension owns gateway scoping at the
- * provider level, so we normalize those older entries to `sf-llm-gateway-internal/*`.
+ * `sf-llm-gateway-internal/gpt-5`, or the retired anthropic-only wildcard.
+ * Those fight the extension's small startup bootstrap catalog and cause
+ * noisy "No models match pattern" warnings until async discovery finishes.
+ * The current extension owns gateway scoping at the provider level, so we
+ * normalize all of those older entries to `sf-llm-gateway-internal/*`.
  */
 export function normalizeLegacyGatewayEnabledModels(value: unknown): string[] | undefined {
   if (!Array.isArray(value)) {
@@ -134,7 +135,7 @@ export function normalizeLegacyGatewayEnabledModels(value: unknown): string[] | 
     return patterns;
   }
 
-  return [...GATEWAY_PATTERNS, ...otherPatterns];
+  return [ENABLED_MODEL_PATTERN, ...otherPatterns];
 }
 
 export function snapshotEnabledModelsForExclusiveScope(value: unknown): string[] | null {
@@ -145,22 +146,19 @@ export function snapshotEnabledModelsForExclusiveScope(value: unknown): string[]
 }
 
 /**
- * Keep both gateway provider patterns present and at the front of
- * enabledModels. The OpenAI-compat pattern is listed first to preserve the
- * historical ordering when only one provider was registered; the
- * Anthropic-native pattern follows so Claude models are also in scope.
+ * Keep the gateway provider pattern present and at the front of enabledModels.
  */
 export function ensureEnabledModelPattern(value: unknown): string[] {
   const existing = toStringArray(value).filter((item) => !isGatewayScopePattern(item));
-  return [...GATEWAY_PATTERNS, ...existing];
+  return [ENABLED_MODEL_PATTERN, ...existing];
 }
 
-/** Replace enabledModels with gateway-only scope (both providers). */
+/** Replace enabledModels with gateway-only scope. */
 export function setExclusiveEnabledModelPattern(): string[] {
-  return [...GATEWAY_PATTERNS];
+  return [ENABLED_MODEL_PATTERN];
 }
 
-/** Remove both gateway provider patterns from enabledModels. */
+/** Remove the gateway provider pattern from enabledModels. */
 export function removeEnabledModelPattern(value: unknown): string[] {
   return toStringArray(value).filter((item) => !isGatewayScopePattern(item));
 }

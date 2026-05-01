@@ -15,14 +15,29 @@ import { globalAgentPath, projectConfigPath } from "../../../lib/common/pi-paths
 // -------------------------------------------------------------------------------------------------
 
 export const PROVIDER_NAME = "sf-llm-gateway-internal";
-// Claude models run through a second provider registration pinned to the
-// Anthropic Messages API (`/v1/messages`). The OpenAI-compatible path is kept
-// for every other family (Gemini, GPT, Codex).
-export const PROVIDER_NAME_ANTHROPIC = "sf-llm-gateway-internal-anthropic";
+// Friendly display name surfaced in pi's `/login` listing. pi >= 0.71 shows
+// this as the provider label; older pi releases ignore the field.
+//
+// The "Salesforce Internal" suffix matches the README's "Internal-only
+// extension" wording and makes it unambiguous for end users browsing
+// `/login`: this gateway requires a Salesforce-issued token. External users
+// should pick a different provider row.
+export const PROVIDER_DISPLAY_NAME = "SF LLM Gateway (Salesforce Internal)";
 export const COMMAND_NAME = "sf-llm-gateway-internal";
 export const STATUS_KEY = "sf-llm-gateway-internal";
 export const ENABLED_MODEL_PATTERN = `${PROVIDER_NAME}/*`;
-export const ENABLED_MODEL_PATTERN_ANTHROPIC = `${PROVIDER_NAME_ANTHROPIC}/*`;
+
+/**
+ * The sf-pi 0.20.x line registered a second provider for Claude models:
+ *   "sf-llm-gateway-internal-anthropic"
+ * That provider no longer exists — every model now runs under
+ * PROVIDER_NAME, and Claude models carry `api: "anthropic-messages"` on
+ * their `ProviderModelConfig` so pi dispatches them to the Anthropic-native
+ * transport. The legacy id is exported here only so the one-shot settings
+ * migrator can detect and rewrite it.
+ */
+export const LEGACY_PROVIDER_NAME_ANTHROPIC = "sf-llm-gateway-internal-anthropic";
+export const LEGACY_ENABLED_MODEL_PATTERN_ANTHROPIC = `${LEGACY_PROVIDER_NAME_ANTHROPIC}/*`;
 
 export const BASE_URL_ENV = "SF_LLM_GATEWAY_INTERNAL_BASE_URL";
 export const API_KEY_ENV = "SF_LLM_GATEWAY_INTERNAL_API_KEY";

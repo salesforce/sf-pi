@@ -2,13 +2,19 @@
 /**
  * sf-llm-gateway-internal behavior contract
  *
- * - Registers the Salesforce LLM Gateway as two Pi-native providers so each
- *   model family runs on the pi-ai transport it was designed for:
- *     * sf-llm-gateway-internal            → openai-completions  (Gemini, GPT, Codex)
- *     * sf-llm-gateway-internal-anthropic  → anthropic-messages  (Claude)
- *   Claude runs on the native Anthropic path because the OpenAI-compat proxy
- *   splits thinking+text across choices and intermittently drops the final
- *   text delta, producing empty assistant turns that force "continue".
+ * - Registers the Salesforce LLM Gateway as a SINGLE pi-native provider
+ *   (`sf-llm-gateway-internal`). One row in `/login`, one paste-token flow,
+ *   one saved credential. Claude models carry `api: "anthropic-messages"`
+ *   on their `ProviderModelConfig` so pi dispatches them to the Anthropic-
+ *   native transport inside our unified `streamSimple`. Claude still runs
+ *   on the native Anthropic path because the OpenAI-compat proxy splits
+ *   thinking+text across choices and intermittently drops the final text
+ *   delta, producing empty assistant turns that force "continue".
+ *
+ *   See `lib/discovery.ts` for the dispatcher and `lib/migrate-unify-
+ *   provider.ts` for the one-shot settings migration that rewrites the
+ *   retired `sf-llm-gateway-internal-anthropic` references in users'
+ *   settings.json files.
  * - Registers a static bootstrap catalog synchronously so Pi startup can resolve
  *   defaults/scoped models without warnings before async discovery finishes
  * - Dynamic model discovery via `/v1/models` for all valid gateway model IDs
@@ -87,7 +93,6 @@ import type {
 
 import {
   PROVIDER_NAME,
-  PROVIDER_NAME_ANTHROPIC,
   COMMAND_NAME,
   STATUS_KEY,
   ENABLED_MODEL_PATTERN,
@@ -113,20 +118,24 @@ import {
   asOptionalString,
 } from "./lib/config.ts";
 
-/** Returns true when the active model comes from either gateway provider. */
+/**
+ * Since R1·Unify only one gateway provider is registered; every gateway
+ * model (OpenAI-compat AND Claude) lives under PROVIDER_NAME. The helper
+ * stays as a named function so call sites keep reading naturally even
+ * though the check is now trivial.
+ */
 function isGatewayProvider(provider: string | undefined): boolean {
-  return provider === PROVIDER_NAME || provider === PROVIDER_NAME_ANTHROPIC;
+  return provider === PROVIDER_NAME;
 }
 
 /**
- * Decide which provider should host a given model id after discovery.
- * Claude → anthropic-messages provider; everything else → openai-completions.
- * Used by the `on` / `set-default` / `session_start` flows to resolve the
- * correct provider name when we already have the model id but need the model
- * record from `ctx.modelRegistry`.
+ * Every discovered model is hosted by the single unified provider. Claude
+ * models carry `api: "anthropic-messages"` at the per-model level so pi
+ * still dispatches them to the Anthropic-native transport inside our
+ * unified streamSimple dispatcher.
  */
-function providerForModelId(modelId: string): string {
-  return isAnthropicModelId(modelId) ? PROVIDER_NAME_ANTHROPIC : PROVIDER_NAME;
+function providerForModelId(_modelId: string): string {
+  return PROVIDER_NAME;
 }
 
 import {
@@ -171,6 +180,7 @@ import {
   getLastDiscovery,
   registerProviderIfConfigured,
 } from "./lib/discovery.ts";
+import { migrateGatewaySettings } from "./lib/migrate-unify-provider.ts";
 import { fetchTransformReport, formatTransformReport, type TransformProbe } from "./lib/debug.ts";
 import {
   getMonthlyUsageState,
@@ -266,8 +276,9 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
   // still reads env vars and the global saved config for credentials.
   registerProviderIfConfigured(pi, getBetaOverrides(), getBetaExtras());
 
-  // Same rendering for both gateway providers so status messages surfaced
-  // via sendMessage look identical regardless of transport.
+  // Rendering hook for any sendMessage traffic the extension emits on behalf
+  // of the gateway. Single registration now that the retired anthropic
+  // sub-provider is gone.
   const renderGatewayMessage: MessageRenderer<unknown> = (message, _options, theme) => {
     const content =
       typeof message.content === "string"
@@ -277,7 +288,6 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
     return new Text(`${header}\n${content}`, 0, 0);
   };
   pi.registerMessageRenderer(PROVIDER_NAME, renderGatewayMessage);
-  pi.registerMessageRenderer(PROVIDER_NAME_ANTHROPIC, renderGatewayMessage);
 
   pi.registerCommand(COMMAND_NAME, {
     description: "Minimal SF LLM Gateway provider status and defaults",
@@ -356,6 +366,13 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
       const level: "info" | "warning" = event.type === "retry_exhausted" ? "warning" : "info";
       ctx.ui.notify(formatRetryEventNotification(event), level);
     });
+
+    // One-shot migration: rewrite references to the retired
+    // `sf-llm-gateway-internal-anthropic` provider in pi's settings.json
+    // files. Idempotent via a per-file sentinel under `sfPi`. See
+    // lib/migrate-unify-provider.ts for details. Runs before the legacy
+    // settings repair below so downstream repair never sees ghost ids.
+    migrateGatewaySettings(ctx.cwd);
 
     // Repair legacy settings using the session's cwd (previously done at
     // factory time with process.cwd(), moved here for 0.68.0 compliance).

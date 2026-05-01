@@ -44,7 +44,7 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
     category: "provider",
     defaultEnabled: true,
     commands: ["/sf-llm-gateway-internal"],
-    providers: ["sf-llm-gateway-internal","sf-llm-gateway-internal-anthropic"],
+    providers: ["sf-llm-gateway-internal"],
     events: ["session_start","turn_end","model_select","after_provider_response","session_shutdown"],
     configurable: true,
     getConfigPanel: async () => {

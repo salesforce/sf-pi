@@ -9,6 +9,44 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ### Features
 
+- **sf-llm-gateway-internal: unified one-provider, one-`/login`-row design
+  with paste-token flow.** Previously the gateway registered two pi
+  providers (`sf-llm-gateway-internal` for GPT/Gemini/Codex and
+  `sf-llm-gateway-internal-anthropic` for Claude) so pi's `/login` menu
+  showed two rows for the same gateway and the same token, which was
+  confusing. Now there is a single provider `sf-llm-gateway-internal`
+  displayed as "SF LLM Gateway". Claude models are tagged
+  `api: "anthropic-messages"` at the per-model level so a unified
+  `streamSimple` dispatcher still forwards them to the native Anthropic
+  transport (same streamer as before, with a one-line `model.baseUrl`
+  rewrite to the gateway root). A new `oauth.onPrompt` block wires
+  `/login` to a one-shot paste-token flow that saves to the global saved
+  config, so new users can authenticate without leaving pi.
+
+  Backward compatibility: a one-shot settings migration rewrites any
+  residual references to the retired `sf-llm-gateway-internal-anthropic`
+  id in the user's global and project pi `settings.json`
+  (`defaultProvider`, `defaultModel`, `enabledModels`). Idempotent via a
+  `sfPi.gatewayUnifyMigrated` sentinel, so the migrator runs at most once
+  per settings file. Env-var users (`SF_LLM_GATEWAY_INTERNAL_API_KEY`) and
+  existing saved-config users are not affected. peerDependencies floor
+  stays at pi 0.70.3.
+
+- **sf-devbar: instant thinking-badge repaint on `thinking_level_select`
+  (pi ≥ 0.71).** pi 0.71 emits `thinking_level_select` whenever the user
+  flips thinking level via shortcut, settings, or model clamp. Previously
+  the devbar only refreshed the rainbow badge on the next turn boundary,
+  leaving it visibly stale while idle. Backward-compatible: pi 0.70.x
+  never emits the event, and pi's extension loader stores unknown-event
+  handlers as a no-op.
+
+### Notes
+
+- **pi 0.71 compatibility.** pi 0.71 removed built-in Google Gemini CLI
+  and Antigravity providers. sf-pi does not use either, so upgrading pi
+  is safe. Added a `PI_CODING_AGENT_SESSION_DIR` pointer in the README
+  for users who want to relocate session storage (pi ≥ 0.71 only).
+
 - **sf-welcome + sf-pi-manager: announcements panel and update nudge.**
   sf-pi now surfaces maintainer announcements and a non-intrusive
   "update available" nudge on the splash. Content comes from three

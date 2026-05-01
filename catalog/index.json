@@ -68,7 +68,7 @@
     "entry": "extensions/sf-devbar/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 1260
+    "srcLoc": 1258
   },
   {
     "id": "sf-llm-gateway-internal",
@@ -82,8 +82,7 @@
       "/sf-llm-gateway-internal"
     ],
     "providers": [
-      "sf-llm-gateway-internal",
-      "sf-llm-gateway-internal-anthropic"
+      "sf-llm-gateway-internal"
     ],
     "tools": [],
     "events": [
@@ -96,7 +95,7 @@
     "entry": "extensions/sf-llm-gateway-internal/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 5647
+    "srcLoc": 5932
   },
   {
     "id": "sf-lsp",

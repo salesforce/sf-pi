@@ -54,14 +54,12 @@ export type TopBarState = {
 // -------------------------------------------------------------------------------------------------
 
 /**
- * The sf-llm-gateway-internal provider names.
- *
- * Two providers are registered by the gateway extension:
- *   - `sf-llm-gateway-internal`            → OpenAI-compat (Gemini, GPT, Codex)
- *   - `sf-llm-gateway-internal-anthropic`  → Anthropic-native (Claude)
- *
- * Both get the rainbow [SF LLM Gateway] badge so the user sees a single,
- * consistent brand regardless of which backend transport the model uses.
+ * The unified sf-llm-gateway-internal provider. Since R1·Unify every model
+ * (OpenAI-compat + Claude) is registered under this single id and gets the
+ * same rainbow [SF LLM Gateway] badge. The retired
+ * `sf-llm-gateway-internal-anthropic` id is still recognized so any
+ * in-flight session that was opened against older sf-pi code keeps rendering
+ * correctly until the one-shot settings migration runs.
  */
 const SF_GATEWAY_PROVIDERS = new Set<string>([
   "sf-llm-gateway-internal",

@@ -45,10 +45,17 @@ Repo-level rules still apply; see root `AGENTS.md`.
 
 ## Conventions
 
-1. **Two providers, one gateway.** Claude goes through
-   `sf-llm-gateway-internal-anthropic` (native Anthropic Messages path).
-   Everything else uses `sf-llm-gateway-internal` (OpenAI-compat). New
-   model families follow the family-inference logic in `lib/models.ts`.
+1. **One provider, two transports.** Since R1·Unify the extension registers
+   a single provider (`sf-llm-gateway-internal`). Claude models carry
+   `api: "anthropic-messages"` on their `ProviderModelConfig` so the
+   unified `streamSimple` dispatcher in `lib/discovery.ts` forwards them
+   to the native Anthropic transport. Everything else inherits the
+   provider-level `api: "openai-completions"`. New model families follow
+   the family-inference logic in `lib/models.ts`.
+   The retired `sf-llm-gateway-internal-anthropic` id is only referenced
+   from `lib/migrate-unify-provider.ts` (one-shot settings migration) and
+   from `lib/pi-settings.ts` (legacy-pattern normalization).
+   Do not re-introduce it as a real registration.
 2. **Static catalog first, discovery second.** The factory registers a
    bootstrap catalog synchronously so Pi startup resolves defaults before
    async discovery completes. Don't move registration out of the factory.

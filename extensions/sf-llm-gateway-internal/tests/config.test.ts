@@ -93,29 +93,22 @@ describe("normalizeBaseUrl", () => {
 
 describe("ensureEnabledModelPattern", () => {
   const PATTERN = "sf-llm-gateway-internal/*";
-  const PATTERN_ANTHROPIC = "sf-llm-gateway-internal-anthropic/*";
 
-  it("adds both gateway patterns to empty array", () => {
-    const result = ensureEnabledModelPattern([]);
-    expect(result).toEqual([PATTERN, PATTERN_ANTHROPIC]);
+  it("adds the gateway pattern to empty array", () => {
+    expect(ensureEnabledModelPattern([])).toEqual([PATTERN]);
   });
 
-  it("adds both gateway patterns when value is undefined", () => {
-    const result = ensureEnabledModelPattern(undefined);
-    expect(result).toContain(PATTERN);
-    expect(result).toContain(PATTERN_ANTHROPIC);
+  it("adds the gateway pattern when value is undefined", () => {
+    expect(ensureEnabledModelPattern(undefined)).toContain(PATTERN);
   });
 
-  it("adds both gateway patterns when value is not an array", () => {
-    const result = ensureEnabledModelPattern("not-an-array");
-    expect(result).toContain(PATTERN);
-    expect(result).toContain(PATTERN_ANTHROPIC);
+  it("adds the gateway pattern when value is not an array", () => {
+    expect(ensureEnabledModelPattern("not-an-array")).toContain(PATTERN);
   });
 
-  it("does not duplicate when patterns are already present", () => {
-    const result = ensureEnabledModelPattern([PATTERN, PATTERN_ANTHROPIC, "openai/*"]);
+  it("does not duplicate when the pattern is already present", () => {
+    const result = ensureEnabledModelPattern([PATTERN, "openai/*"]);
     expect(result.filter((s) => s === PATTERN).length).toBe(1);
-    expect(result.filter((s) => s === PATTERN_ANTHROPIC).length).toBe(1);
   });
 
   it("preserves non-gateway patterns", () => {
@@ -123,13 +116,11 @@ describe("ensureEnabledModelPattern", () => {
     expect(result).toContain("anthropic/*");
     expect(result).toContain("openai/*");
     expect(result).toContain(PATTERN);
-    expect(result).toContain(PATTERN_ANTHROPIC);
   });
 
-  it("puts gateway patterns first, OpenAI-compat before Anthropic", () => {
+  it("puts the gateway pattern first", () => {
     const result = ensureEnabledModelPattern(["openai/*"]);
     expect(result[0]).toBe(PATTERN);
-    expect(result[1]).toBe(PATTERN_ANTHROPIC);
   });
 });
 
@@ -139,47 +130,57 @@ describe("ensureEnabledModelPattern", () => {
 
 describe("removeEnabledModelPattern", () => {
   const PATTERN = "sf-llm-gateway-internal/*";
-  const PATTERN_ANTHROPIC = "sf-llm-gateway-internal-anthropic/*";
 
-  it("removes both gateway patterns", () => {
-    const result = removeEnabledModelPattern([PATTERN, PATTERN_ANTHROPIC, "openai/*"]);
+  it("removes the gateway pattern", () => {
+    const result = removeEnabledModelPattern([PATTERN, "openai/*"]);
     expect(result).not.toContain(PATTERN);
-    expect(result).not.toContain(PATTERN_ANTHROPIC);
     expect(result).toContain("openai/*");
   });
 
-  it("returns empty array when only the gateway patterns were present", () => {
-    const result = removeEnabledModelPattern([PATTERN, PATTERN_ANTHROPIC]);
-    expect(result).toEqual([]);
+  it("leaves any retired anthropic-wildcard in place (migrator removes it separately)", () => {
+    // The retired sf-llm-gateway-internal-anthropic/* pattern is rewritten
+    // by `migrateGatewaySettings()` during session_start, not by this helper.
+    const result = removeEnabledModelPattern([
+      PATTERN,
+      "sf-llm-gateway-internal-anthropic/*",
+      "openai/*",
+    ]);
+    expect(result).toEqual(["sf-llm-gateway-internal-anthropic/*", "openai/*"]);
+  });
+
+  it("returns empty array when only the gateway pattern was present", () => {
+    expect(removeEnabledModelPattern([PATTERN])).toEqual([]);
   });
 
   it("handles undefined input", () => {
-    const result = removeEnabledModelPattern(undefined);
-    expect(result).toEqual([]);
+    expect(removeEnabledModelPattern(undefined)).toEqual([]);
   });
 
   it("handles empty array", () => {
-    const result = removeEnabledModelPattern([]);
-    expect(result).toEqual([]);
+    expect(removeEnabledModelPattern([])).toEqual([]);
   });
 
   it("is a no-op when no gateway pattern is present", () => {
-    const result = removeEnabledModelPattern(["openai/*"]);
-    expect(result).toEqual(["openai/*"]);
+    expect(removeEnabledModelPattern(["openai/*"])).toEqual(["openai/*"]);
   });
 });
 
 describe("normalizeLegacyGatewayEnabledModels", () => {
   const PATTERN = "sf-llm-gateway-internal/*";
-  const PATTERN_ANTHROPIC = "sf-llm-gateway-internal-anthropic/*";
 
-  it("collapses legacy gateway-only exact model entries to both provider wildcards", () => {
+  it("collapses legacy gateway-only exact model entries to the provider wildcard", () => {
     expect(
       normalizeLegacyGatewayEnabledModels([
         "sf-llm-gateway-internal/claude-opus-4-7",
         "sf-llm-gateway-internal/gpt-5",
       ]),
-    ).toEqual([PATTERN, PATTERN_ANTHROPIC]);
+    ).toEqual([PATTERN]);
+  });
+
+  it("collapses the retired anthropic sub-provider wildcard to the unified wildcard", () => {
+    expect(
+      normalizeLegacyGatewayEnabledModels(["sf-llm-gateway-internal-anthropic/*", "openai/*"]),
+    ).toEqual([PATTERN, "openai/*"]);
   });
 
   it("preserves non-gateway patterns while collapsing legacy gateway entries", () => {
@@ -189,13 +190,13 @@ describe("normalizeLegacyGatewayEnabledModels", () => {
         "openai/*",
         "anthropic/*",
       ]),
-    ).toEqual([PATTERN, PATTERN_ANTHROPIC, "openai/*", "anthropic/*"]);
+    ).toEqual([PATTERN, "openai/*", "anthropic/*"]);
   });
 
-  it("removes redundant exact gateway entries and adds the Anthropic wildcard when missing", () => {
+  it("removes redundant exact gateway entries next to the wildcard", () => {
     expect(
       normalizeLegacyGatewayEnabledModels([PATTERN, "sf-llm-gateway-internal/gpt-5", "openai/*"]),
-    ).toEqual([PATTERN, PATTERN_ANTHROPIC, "openai/*"]);
+    ).toEqual([PATTERN, "openai/*"]);
   });
 
   it("leaves non-gateway scopes unchanged", () => {
@@ -212,14 +213,8 @@ describe("normalizeLegacyGatewayEnabledModels", () => {
 // -------------------------------------------------------------------------------------------------
 
 describe("isExclusiveEnabledModelPattern", () => {
-  it("matches when only the gateway patterns are present", () => {
+  it("matches when only the gateway pattern is present", () => {
     expect(isExclusiveEnabledModelPattern(["sf-llm-gateway-internal/*"])).toBe(true);
-    expect(
-      isExclusiveEnabledModelPattern([
-        "sf-llm-gateway-internal/*",
-        "sf-llm-gateway-internal-anthropic/*",
-      ]),
-    ).toBe(true);
     expect(isExclusiveEnabledModelPattern(["sf-llm-gateway-internal/*", "openai/*"])).toBe(false);
     expect(isExclusiveEnabledModelPattern([])).toBe(false);
     expect(isExclusiveEnabledModelPattern(undefined)).toBe(false);
@@ -229,11 +224,7 @@ describe("isExclusiveEnabledModelPattern", () => {
 describe("snapshotEnabledModelsForExclusiveScope", () => {
   it("captures the non-gateway scope for later restore", () => {
     expect(
-      snapshotEnabledModelsForExclusiveScope([
-        "sf-llm-gateway-internal/*",
-        "sf-llm-gateway-internal-anthropic/*",
-        "openai/*",
-      ]),
+      snapshotEnabledModelsForExclusiveScope(["sf-llm-gateway-internal/*", "openai/*"]),
     ).toEqual(["openai/*"]);
   });
 
@@ -253,19 +244,15 @@ describe("restoreEnabledModelsSnapshot", () => {
 });
 
 describe("applyGatewayModelScope", () => {
-  it("prepends both gateway patterns in additive mode", () => {
+  it("prepends the gateway pattern in additive mode", () => {
     expect(applyGatewayModelScope(["openai/*"], false)).toEqual([
       "sf-llm-gateway-internal/*",
-      "sf-llm-gateway-internal-anthropic/*",
       "openai/*",
     ]);
   });
 
   it("replaces the scope entirely in exclusive mode", () => {
-    expect(applyGatewayModelScope(["openai/*"], true)).toEqual([
-      "sf-llm-gateway-internal/*",
-      "sf-llm-gateway-internal-anthropic/*",
-    ]);
+    expect(applyGatewayModelScope(["openai/*"], true)).toEqual(["sf-llm-gateway-internal/*"]);
   });
 });
 
@@ -275,12 +262,9 @@ describe("shouldCaptureExclusiveScopeSnapshot", () => {
   });
 
   it("does not overwrite an existing snapshot while already in exclusive scope", () => {
-    expect(
-      shouldCaptureExclusiveScopeSnapshot(
-        ["sf-llm-gateway-internal/*", "sf-llm-gateway-internal-anthropic/*"],
-        ["openai/*"],
-      ),
-    ).toBe(false);
+    expect(shouldCaptureExclusiveScopeSnapshot(["sf-llm-gateway-internal/*"], ["openai/*"])).toBe(
+      false,
+    );
   });
 });
 
