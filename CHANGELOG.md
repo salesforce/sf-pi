@@ -288,6 +288,14 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.21.0](https://github.com/salesforce/sf-pi/compare/v0.20.2...v0.21.0) (2026-05-01)
+
+
+### Features
+
+* **sf-devbar:** instant thinking-badge repaint on thinking_level_select (pi &gt;= 0.71) ([04a5f36](https://github.com/salesforce/sf-pi/commit/04a5f36b844d5d114eb788e76320159ec46d2b17))
+* **sf-llm-gateway-internal:** unify to one /login row with paste-token flow ([2c89661](https://github.com/salesforce/sf-pi/commit/2c896613d6bf2841739df3ae7746a7864480de5a))
+
 ## [0.20.2](https://github.com/salesforce/sf-pi/compare/v0.20.1...v0.20.2) (2026-04-30)
 
 
