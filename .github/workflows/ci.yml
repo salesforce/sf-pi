@@ -56,6 +56,40 @@ jobs:
       - name: Run tests
         run: npm test
 
+      - name: LLM artifact check
+        # Fails on unresolved conflict markers, prompt-template tokens,
+        # and unresolved TODO(llm|agent|claude|gpt|pi) markers.
+        # See scripts/check-llm-artifacts.sh for the exact rules.
+        run: bash scripts/check-llm-artifacts.sh
+
+  commitlint:
+    name: commitlint
+    # Only on PRs. Direct admin pushes to main bypass the ruleset and
+    # release-please generates its own conventional-commit messages, so
+    # this is really about catching mistakes in contributor PRs.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Lint PR commits against commitlint.config.mjs
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: npx --no -- commitlint --from "$BASE_SHA" --to "$HEAD_SHA" --verbose
+
   audit:
     name: npm audit (production)
     runs-on: ubuntu-latest

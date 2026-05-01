@@ -1,1 +1,33 @@
+#!/usr/bin/env sh
+# SPDX-License-Identifier: Apache-2.0
+#
+# Pre-commit pipeline. Stays fast so agents committing frequently don't
+# feel it. Heavy checks are in CI.
+#
+# 1. Gitleaks on the staged diff. Catches secrets before they land in
+#    history. Skipped (with a warning) if gitleaks isn't installed.
+# 2. lint-staged (prettier + eslint on changed files).
+# 3. Regenerate the catalog if any extension manifest is staged, and
+#    stage the regenerated outputs so the commit stays consistent.
+
+set -eu
+
+# --- 1. gitleaks on staged diff -----------------------------------------
+if command -v gitleaks >/dev/null 2>&1; then
+  gitleaks git --staged --no-banner
+else
+  printf '\033[33m[pre-commit] gitleaks not installed; skipping secret scan.\033[0m\n'
+  printf '\033[33m            brew install gitleaks  # or: apt install gitleaks\033[0m\n'
+fi
+
+# --- 2. lint-staged ------------------------------------------------------
 npx lint-staged
+
+# --- 3. catalog regen if a manifest changed -----------------------------
+# Only regenerate when an extension manifest was staged; avoids running
+# node on every single commit.
+if git diff --cached --name-only | grep -qE '^extensions/[^/]+/manifest\.json$'; then
+  echo "[pre-commit] extension manifest changed — regenerating catalog."
+  npm run generate-catalog --silent
+  git add catalog/index.json catalog/registry.ts README.md ARCHITECTURE.md docs/commands.md 2>/dev/null || true
+fi

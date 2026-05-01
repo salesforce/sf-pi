@@ -1,0 +1,52 @@
+# SPDX-License-Identifier: Apache-2.0
+# Broader vulnerability coverage than `npm audit` alone. OSV aggregates
+# npm advisories, GitHub Advisory Database, and GHSA/MITRE sources.
+#
+# Two reusable workflows are used:
+#   - osv-scanner-reusable-pr.yml  → PR-only diff scan (finds NEW vulns
+#     a PR introduces vs. the base branch).
+#   - osv-scanner-reusable.yml     → Full scan on push/schedule/dispatch.
+name: OSV scanner
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Weekly full scan to catch advisories published against pinned deps.
+    - cron: "31 7 * * 1"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  scan-pr:
+    name: OSV scan (PR diff)
+    if: github.event_name == 'pull_request'
+    permissions:
+      # Required by the reusable workflow to upload SARIF results.
+      actions: read
+      contents: read
+      security-events: write
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable-pr.yml@c51854704019a247608d928f370c98740469d4b5 # v2.3.5
+    with:
+      scan-args: |-
+        --recursive
+        --skip-git
+        ./
+
+  scan-full:
+    name: OSV scan (full)
+    if: github.event_name != 'pull_request'
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@c51854704019a247608d928f370c98740469d4b5 # v2.3.5
+    with:
+      scan-args: |-
+        --recursive
+        --skip-git
+        ./
+      fail-on-vuln: true
