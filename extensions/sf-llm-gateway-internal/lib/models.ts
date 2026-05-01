@@ -2,7 +2,8 @@
 /**
  * Model catalog, discovery, inference, and formatting for the SF LLM Gateway.
  *
- * Design note — why Claude carries `api: "anthropic-messages"`:
+ * Design note — why Claude carries an internal `api: "anthropic-messages"`
+ * tag:
  *
  * The gateway exposes Claude on both `/v1/chat/completions` (LiteLLM's
  * OpenAI-compat translator) and `/v1/messages` (native Anthropic Messages).
@@ -10,8 +11,16 @@
  * streaming, and prompt caching get mis-shaped and occasionally drop the final
  * text delta, producing empty assistant turns that force the user to type
  * "continue". Pi-ai has a first-class Anthropic transport that handles all of
- * that natively, so we register Claude models under a second provider that
- * points at `/v1/messages` and let pi-ai drive the protocol end to end.
+ * that natively.
+ *
+ * In the unified single-provider design, this file still tags Claude with the
+ * desired transport for internal routing, but `lib/discovery.ts` strips that
+ * tag before handing models to pi. If pi sees a per-model anthropic api, it
+ * bypasses our provider-level `streamSimple` dispatcher and appends
+ * `/v1/messages` to the provider's OpenAI baseUrl (`<gateway>/v1`), producing
+ * `<gateway>/v1/v1/messages`. The dispatcher instead detects Claude by id,
+ * clones the model to Anthropic internally, and rewrites baseUrl to the
+ * gateway root.
  *
  * Non-Claude families (Gemini, GPT, Codex) stay on OpenAI-compat.
  *
@@ -408,9 +417,9 @@ export const MODEL_PRESETS: Record<string, Omit<GatewayModelDefinition, "id">> =
 // -------------------------------------------------------------------------------------------------
 
 /**
- * A single `ProviderModelConfig` tagged with the pi-ai API surface it should
- * run against. The extension uses this tag to split models across the two
- * registered providers (openai-completions vs anthropic-messages).
+ * A gateway model tagged with the transport it should use. This tag is
+ * internal to the extension: `lib/discovery.ts` strips it before registering
+ * the model with pi, then `streamSimple` routes by model id at request time.
  */
 export type TaggedGatewayModel = ProviderModelConfig & {
   api: "openai-completions" | "anthropic-messages";

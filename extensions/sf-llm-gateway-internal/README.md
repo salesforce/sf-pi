@@ -22,16 +22,17 @@ wizard, and an in-app "paste your token" flow under `/login` (pi ≥ 0.71).
 ## Key Architecture: One Provider, Two Transports
 
 Since R1·Unify the extension registers a single Pi provider (`sf-llm-gateway-
-internal`) with a friendly display label `SF LLM Gateway`. Claude models
-carry an `api: "anthropic-messages"` tag on their `ProviderModelConfig`,
-which pi honors when choosing the transport for each request. A single
-`streamSimple` dispatcher inspects `model.api` and forwards to the matching
-shim:
+internal`) with a friendly display label `SF LLM Gateway (Salesforce Internal)`.
+Every model is registered under the provider-level `openai-completions` API so
+pi always invokes the provider's custom `streamSimple` dispatcher. That
+dispatcher detects Claude by model id, clones the request model to
+`api: "anthropic-messages"`, rewrites `baseUrl` to the gateway root, and
+forwards to the matching shim:
 
-| Model family             | per-model `api`      | Transport shim             | Base URL used                                      |
+| Model family             | Pi-registered API    | Runtime transport          | Base URL used                                      |
 | ------------------------ | -------------------- | -------------------------- | -------------------------------------------------- |
 | Gemini / GPT / Codex     | `openai-completions` | `streamSfGatewayOpenAI`    | `<gateway>/v1`                                     |
-| Claude (Opus/Sonnet/...) | `anthropic-messages` | `streamSfGatewayAnthropic` | `<gateway>` (Anthropic SDK appends `/v1/messages`) |
+| Claude (Opus/Sonnet/...) | `openai-completions` | `streamSfGatewayAnthropic` | `<gateway>` (Anthropic SDK appends `/v1/messages`) |
 
 Claude runs on the native Anthropic Messages path because LiteLLM's
 OpenAI-compat translator splits Claude thinking + text across multiple
@@ -297,11 +298,11 @@ payload LiteLLM would send.
 
 **Claude responses appear to truncate and the agent asks you to type "continue":**
 This is the pi-ai OpenAI-compat translator splitting Claude thinking + text
-across multiple choices. The fix is already in place — Claude models are
-tagged `api: "anthropic-messages"` at the per-model level so the unified
-`streamSimple` dispatcher forwards them to the native Anthropic transport
-instead of the OpenAI-compat one. If you still see truncation, confirm the
-selected model is a Claude id in `/sf-llm-gateway-internal models`.
+across multiple choices. The fix is already in place — the unified
+`streamSimple` dispatcher detects Claude ids and forwards them to the native
+Anthropic transport instead of the OpenAI-compat one. If you still see
+truncation, confirm the selected model is a Claude id in
+`/sf-llm-gateway-internal models`.
 
 **Opus 4.7 returns `api_error: Internal server error` on heavy turns:**
 Handled by the transport shim: `max_tokens` now scales by pi reasoning

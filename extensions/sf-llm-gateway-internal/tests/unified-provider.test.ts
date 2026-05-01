@@ -6,9 +6,9 @@
  *   - exactly one provider is registered
  *   - the provider declares a friendly `name` for pi >= 0.71 `/login`
  *   - the provider declares an `oauth` block for paste-token login
- *   - every registered model carries the correct per-model `api` tag so the
- *     unified streamSimple dispatcher can route Claude to anthropic-messages
- *     and everything else to openai-completions
+ *   - registered models do not carry per-model `api` overrides, because pi
+ *     would otherwise bypass the provider-level streamSimple dispatcher. The
+ *     dispatcher routes Claude to anthropic-messages by model id internally.
  */
 import { describe, expect, it } from "vitest";
 import type { ProviderModelConfig } from "@mariozechner/pi-coding-agent";
@@ -65,7 +65,7 @@ describe("unified gateway provider", () => {
     }
   });
 
-  it("tags Claude models with api: 'anthropic-messages' so the dispatcher can route them", () => {
+  it("keeps model api overrides out of Pi's registry so streamSimple handles every model", () => {
     const originalBaseUrl = process.env.SF_LLM_GATEWAY_INTERNAL_BASE_URL;
     const originalApiKey = process.env.SF_LLM_GATEWAY_INTERNAL_API_KEY;
     process.env.SF_LLM_GATEWAY_INTERNAL_BASE_URL = "https://gateway.test";
@@ -80,13 +80,9 @@ describe("unified gateway provider", () => {
       expect(models.length).toBeGreaterThan(0);
 
       const claude = models.find((m) => m.id.startsWith("claude-"));
-      expect(claude?.api).toBe("anthropic-messages");
-
-      const nonClaude = models.find((m) => !m.id.startsWith("claude-"));
-      if (nonClaude) {
-        // May be `undefined` when the model inherits the provider-level api.
-        expect(nonClaude.api === undefined || nonClaude.api === "openai-completions").toBe(true);
-      }
+      expect(claude).toBeDefined();
+      expect(claude?.api).toBeUndefined();
+      expect(models.every((model) => model.api === undefined)).toBe(true);
     } finally {
       restoreEnv("SF_LLM_GATEWAY_INTERNAL_BASE_URL", originalBaseUrl);
       restoreEnv("SF_LLM_GATEWAY_INTERNAL_API_KEY", originalApiKey);

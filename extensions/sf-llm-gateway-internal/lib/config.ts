@@ -31,9 +31,9 @@ export const ENABLED_MODEL_PATTERN = `${PROVIDER_NAME}/*`;
  * The sf-pi 0.20.x line registered a second provider for Claude models:
  *   "sf-llm-gateway-internal-anthropic"
  * That provider no longer exists — every model now runs under
- * PROVIDER_NAME, and Claude models carry `api: "anthropic-messages"` on
- * their `ProviderModelConfig` so pi dispatches them to the Anthropic-native
- * transport. The legacy id is exported here only so the one-shot settings
+ * PROVIDER_NAME. Claude is still routed to the Anthropic-native transport,
+ * but the unified provider's custom `streamSimple` does that internally by
+ * model id. The legacy id is exported here only so the one-shot settings
  * migrator can detect and rewrite it.
  */
 export const LEGACY_PROVIDER_NAME_ANTHROPIC = "sf-llm-gateway-internal-anthropic";

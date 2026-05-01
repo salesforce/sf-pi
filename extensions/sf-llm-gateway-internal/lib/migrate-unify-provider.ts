@@ -30,6 +30,7 @@
  *   - never overwrites a hand-crafted value that the user already changed
  *     to something non-legacy
  */
+import { existsSync } from "node:fs";
 import {
   LEGACY_ENABLED_MODEL_PATTERN_ANTHROPIC,
   LEGACY_PROVIDER_NAME_ANTHROPIC,
@@ -71,6 +72,7 @@ export interface MigrationResult {
  * that happened to already be clean (prevents re-scanning next session).
  */
 export function migrateSettingsFile(filePath: string): MigrationResult {
+  const fileExists = existsSync(filePath);
   const settings = readSettings(filePath);
   const sentinelBlock = toRecord(settings[MIGRATION_SENTINEL_KEY]);
   const alreadyMigrated = sentinelBlock[MIGRATION_SENTINEL_FIELD] === true;
@@ -129,20 +131,21 @@ export function migrateSettingsFile(filePath: string): MigrationResult {
     }
   }
 
-  // Always stamp the sentinel so future sessions skip this file entirely.
-  // Preserves unrelated keys under `sfPi` (e.g. announcements state).
+  // Do not create a brand-new project `.pi/settings.json` just to record a
+  // no-op migration. A missing file cannot contain legacy references, and
+  // creating one would leave untracked local files in every repo a user opens.
+  if (!dirty && !fileExists) {
+    return { changed: false, alreadyMigrated: false, changes };
+  }
+
+  // Stamp the sentinel on existing files so future sessions skip this file
+  // entirely. Preserves unrelated keys under `sfPi` (e.g. announcements state).
   settings[MIGRATION_SENTINEL_KEY] = {
     ...sentinelBlock,
     [MIGRATION_SENTINEL_FIELD]: true,
   };
 
-  // Write only when something actually changed OR when we needed to stamp
-  // the sentinel for the first time on a fresh file. The second case
-  // prevents us from re-scanning the same untouched file every session.
-  const hadSentinelBlockBefore = settings[MIGRATION_SENTINEL_KEY] !== sentinelBlock;
-  if (dirty || !hadSentinelBlockBefore || !alreadyMigrated) {
-    writeSettings(filePath, settings);
-  }
+  writeSettings(filePath, settings);
 
   return { changed: dirty, alreadyMigrated: false, changes };
 }

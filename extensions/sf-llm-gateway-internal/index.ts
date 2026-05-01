@@ -4,12 +4,13 @@
  *
  * - Registers the Salesforce LLM Gateway as a SINGLE pi-native provider
  *   (`sf-llm-gateway-internal`). One row in `/login`, one paste-token flow,
- *   one saved credential. Claude models carry `api: "anthropic-messages"`
- *   on their `ProviderModelConfig` so pi dispatches them to the Anthropic-
- *   native transport inside our unified `streamSimple`. Claude still runs
- *   on the native Anthropic path because the OpenAI-compat proxy splits
- *   thinking+text across choices and intermittently drops the final text
- *   delta, producing empty assistant turns that force "continue".
+ *   one saved credential. All registered models inherit the provider-level
+ *   `openai-completions` api so pi always invokes our unified `streamSimple`.
+ *   That dispatcher detects Claude model ids and delegates them to the native
+ *   Anthropic transport internally. Claude still runs on the native Anthropic
+ *   path because the OpenAI-compat proxy splits thinking+text across choices
+ *   and intermittently drops the final text delta, producing empty assistant
+ *   turns that force "continue".
  *
  *   See `lib/discovery.ts` for the dispatcher and `lib/migrate-unify-
  *   provider.ts` for the one-shot settings migration that rewrites the
@@ -129,10 +130,9 @@ function isGatewayProvider(provider: string | undefined): boolean {
 }
 
 /**
- * Every discovered model is hosted by the single unified provider. Claude
- * models carry `api: "anthropic-messages"` at the per-model level so pi
- * still dispatches them to the Anthropic-native transport inside our
- * unified streamSimple dispatcher.
+ * Every discovered model is hosted by the single unified provider. Pi sees
+ * each one under the provider-level API; the custom streamSimple dispatcher
+ * handles Claude-vs-OpenAI routing internally by model id.
  */
 function providerForModelId(_modelId: string): string {
   return PROVIDER_NAME;

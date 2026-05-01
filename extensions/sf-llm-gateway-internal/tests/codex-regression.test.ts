@@ -28,70 +28,78 @@ const hasLiveGatewayConfig = !!baseUrl && !!apiKey;
 const describeLive = hasLiveGatewayConfig ? describe : describe.skip;
 
 describeLive("sf-llm-gateway-internal Codex regression", () => {
-  it("succeeds after flattening Codex tool definitions", async () => {
-    const payload: Record<string, unknown> = {
-      model: codexModel,
-      messages: [
-        {
-          role: "user",
-          content: "Use the get_time tool to answer this request. Do not answer from memory.",
-        },
-      ],
-      tools: [
-        {
-          type: "function",
-          function: {
-            name: "get_time",
-            description: "Return the current time.",
-            parameters: {
-              type: "object",
-              properties: {},
-              additionalProperties: false,
+  it(
+    "succeeds after flattening Codex tool definitions",
+    async () => {
+      const payload: Record<string, unknown> = {
+        model: codexModel,
+        messages: [
+          {
+            role: "user",
+            content: "Use the get_time tool to answer this request. Do not answer from memory.",
+          },
+        ],
+        tools: [
+          {
+            type: "function",
+            function: {
+              name: "get_time",
+              description: "Return the current time.",
+              parameters: {
+                type: "object",
+                properties: {},
+                additionalProperties: false,
+              },
             },
           },
+        ],
+      };
+
+      flattenCodexTools(payload);
+      injectCodexGatewayParams(payload);
+
+      const response = await postGatewayChatCompletions(payload);
+      const choice = response.choices?.[0];
+      const toolCall = choice?.message?.tool_calls?.[0];
+
+      expect(choice?.finish_reason).toBe("tool_calls");
+      expect(toolCall?.function?.name).toBe("get_time");
+      expect(payload.tools).toEqual([
+        {
+          type: "function",
+          name: "get_time",
+          description: "Return the current time.",
+          parameters: {
+            type: "object",
+            properties: {},
+            additionalProperties: false,
+          },
         },
-      ],
-    };
+      ]);
+    },
+    timeoutMs + 5_000,
+  );
 
-    flattenCodexTools(payload);
-    injectCodexGatewayParams(payload);
+  it(
+    "clamps xhigh reasoning to a gateway-safe value before sending",
+    async () => {
+      const payload: Record<string, unknown> = {
+        model: codexModel,
+        messages: [{ role: "user", content: "Reply with the single word OK." }],
+        reasoning_effort: "xhigh",
+      };
 
-    const response = await postGatewayChatCompletions(payload);
-    const choice = response.choices?.[0];
-    const toolCall = choice?.message?.tool_calls?.[0];
+      injectCodexGatewayParams(payload);
 
-    expect(choice?.finish_reason).toBe("tool_calls");
-    expect(toolCall?.function?.name).toBe("get_time");
-    expect(payload.tools).toEqual([
-      {
-        type: "function",
-        name: "get_time",
-        description: "Return the current time.",
-        parameters: {
-          type: "object",
-          properties: {},
-          additionalProperties: false,
-        },
-      },
-    ]);
-  });
+      const response = await postGatewayChatCompletions(payload);
+      const content = response.choices?.[0]?.message?.content;
 
-  it("clamps xhigh reasoning to a gateway-safe value before sending", async () => {
-    const payload: Record<string, unknown> = {
-      model: codexModel,
-      messages: [{ role: "user", content: "Reply with the single word OK." }],
-      reasoning_effort: "xhigh",
-    };
-
-    injectCodexGatewayParams(payload);
-
-    const response = await postGatewayChatCompletions(payload);
-    const content = response.choices?.[0]?.message?.content;
-
-    expect(payload.reasoning_effort).toBe("high");
-    expect(typeof content).toBe("string");
-    expect(content.length).toBeGreaterThan(0);
-  });
+      expect(payload.reasoning_effort).toBe("high");
+      expect(typeof content).toBe("string");
+      expect(content.length).toBeGreaterThan(0);
+    },
+    timeoutMs + 5_000,
+  );
 });
 
 type GatewayChatCompletionsResponse = {

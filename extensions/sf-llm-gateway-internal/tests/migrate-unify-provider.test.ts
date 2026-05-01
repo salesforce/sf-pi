@@ -5,7 +5,7 @@
  * runs against a real temp settings file so writeSettings/readSettings
  * round-trips are exercised.
  */
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -153,13 +153,14 @@ describe("migrateSettingsFile", () => {
     expect(next.defaultProvider).toBe("openai");
   });
 
-  it("survives a missing settings file (writes a minimal sentinel)", () => {
-    // Point at a path that does not exist yet.
+  it("survives a missing settings file without creating a project-local sentinel", () => {
+    // Point at a path that does not exist yet. A missing settings file cannot
+    // contain legacy provider references, so the migrator should not create
+    // `.pi/settings.json` in every repo a user opens just to stamp a no-op.
     const missing = path.join(root, "new-settings.json");
     const result = migrateSettingsFile(missing);
 
     expect(result.changed).toBe(false);
-    const written = JSON.parse(readFileSync(missing, "utf8")) as Record<string, unknown>;
-    expect((written.sfPi as Record<string, unknown>)[MIGRATION_SENTINEL_FIELD]).toBe(true);
+    expect(existsSync(missing)).toBe(false);
   });
 });

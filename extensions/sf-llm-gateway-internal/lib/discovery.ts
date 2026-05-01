@@ -8,19 +8,21 @@
  *     top-level api:  "openai-completions"            (covers GPT / Gemini / Codex)
  *     baseUrl:        <gateway>/v1
  *     apiKey:         saved token | env var
- *     name:           "SF LLM Gateway"
+ *     name:           "SF LLM Gateway (Salesforce Internal)"
  *     oauth:          paste-token flow via `onPrompt`
  *
- *   Claude models register under the same provider but carry
- *   `api: "anthropic-messages"` at the per-model level, which overrides the
- *   provider-level api in pi's model registry. A single `streamSimple`
- *   dispatcher routes each request to the matching transport — the existing
- *   `streamSfGatewayOpenAI` / `streamSfGatewayAnthropic` shims are unchanged.
+ *   All models inherit the provider-level api so pi always invokes this
+ *   provider's custom `streamSimple` dispatcher. The dispatcher detects Claude
+ *   by model id, clones the model to `api: "anthropic-messages"`, rewrites its
+ *   baseUrl to the gateway root, and delegates to `streamSfGatewayAnthropic`.
+ *   Non-Claude models stay on `streamSfGatewayOpenAI`.
  *
- *   The anthropic transport needs the gateway root URL (`<gateway>`) because
- *   the Anthropic SDK appends `/v1/messages` itself, while OpenAI-compat needs
- *   `<gateway>/v1`. The dispatcher rewrites `model.baseUrl` on Claude routes
- *   before delegating.
+ *   Important: do not pass per-model `api: "anthropic-messages"` to pi for
+ *   Claude. pi uses per-model api to choose the stream implementation before
+ *   our provider-level `streamSimple` sees the request. That bypasses this
+ *   dispatcher and makes the built-in Anthropic transport append
+ *   `/v1/messages` to the provider baseUrl `<gateway>/v1`, producing the bad
+ *   URL `<gateway>/v1/v1/messages`.
  *
  * Why unify?
  *   The earlier two-provider layout showed `sf-llm-gateway-internal` and
@@ -73,6 +75,7 @@ import {
   buildDiscoveredModelList,
   fetchGatewayModelIds,
   fetchGatewayModelInfoMap,
+  isAnthropicModelId,
   type TaggedGatewayModel,
 } from "./models.ts";
 import { streamSfGatewayAnthropic, streamSfGatewayOpenAI } from "./transport.ts";
@@ -95,9 +98,9 @@ export function getLastDiscovery(): GatewayDiscoveryState | null {
  * Unified transport dispatcher.
  *
  * pi calls `streamSimple(model, ctx, opts)` for every request against our
- * provider. Because Claude models carry `api: "anthropic-messages"` at the
- * per-model level, we read `model.api` and delegate accordingly. Both
- * streamers are identical to the pre-unification behavior.
+ * provider. We intentionally keep every registered model on the provider-level
+ * api (`openai-completions`) so pi always calls this dispatcher. Claude is
+ * detected by model id, then delegated to the Anthropic-native shim.
  *
  * The baseUrl rewrite: the provider is registered with `<gateway>/v1` because
  * OpenAI-compat needs it, but Anthropic's SDK appends `/v1/messages` itself
@@ -109,9 +112,10 @@ function unifiedStream(
   context: Context,
   options?: SimpleStreamOptions,
 ): AssistantMessageEventStream {
-  if (model.api === "anthropic-messages") {
+  if (isAnthropicModelId(model.id)) {
     const anthropicModel = {
       ...model,
+      api: "anthropic-messages",
       baseUrl: toGatewayRootBaseUrl(model.baseUrl),
     } as Model<"anthropic-messages">;
     return streamSfGatewayAnthropic(anthropicModel, context, options);
@@ -201,12 +205,13 @@ function registerProviders(
     return false;
   }
 
-  // Strip the internal `api` tag into `ProviderModelConfig.api` — pi's model
-  // registry uses the per-model api to pick the API surface at request time.
-  const providerModels: ProviderModelConfig[] = models.map(({ api, ...rest }) => ({
-    ...rest,
-    api,
-  }));
+  // Keep the internal `api` tag out of Pi's model registry. If Claude is
+  // registered with per-model `api: "anthropic-messages"`, pi bypasses our
+  // provider-level `streamSimple` dispatcher and calls its built-in Anthropic
+  // transport directly with the provider baseUrl (`<gateway>/v1`), yielding
+  // the broken URL `<gateway>/v1/v1/messages`. Let every model inherit the
+  // provider-level API, then route Claude inside `unifiedStream` by model id.
+  const providerModels: ProviderModelConfig[] = models.map(({ api: _api, ...rest }) => rest);
 
   const providerConfig: ProviderConfigWithName = {
     name: PROVIDER_DISPLAY_NAME,

@@ -15,11 +15,12 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
   `sf-llm-gateway-internal-anthropic` for Claude) so pi's `/login` menu
   showed two rows for the same gateway and the same token, which was
   confusing. Now there is a single provider `sf-llm-gateway-internal`
-  displayed as "SF LLM Gateway". Claude models are tagged
-  `api: "anthropic-messages"` at the per-model level so a unified
-  `streamSimple` dispatcher still forwards them to the native Anthropic
-  transport (same streamer as before, with a one-line `model.baseUrl`
-  rewrite to the gateway root). A new `oauth.onPrompt` block wires
+  displayed as "SF LLM Gateway (Salesforce Internal)". All models inherit
+  the provider-level `openai-completions` API so pi always invokes the
+  provider's custom `streamSimple`; the dispatcher detects Claude model ids
+  and forwards them to the native Anthropic transport (same streamer as
+  before, with a one-line `model.baseUrl` rewrite to the gateway root). A
+  new `oauth.onPrompt` block wires
   `/login` to a one-shot paste-token flow that saves to the global saved
   config, so new users can authenticate without leaving pi.
 
@@ -39,6 +40,20 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
   leaving it visibly stale while idle. Backward-compatible: pi 0.70.x
   never emits the event, and pi's extension loader stores unknown-event
   handlers as a no-op.
+
+### Bug Fixes
+
+- **sf-llm-gateway-internal: keep Claude requests on the unified dispatcher.**
+  Claude models no longer pass `api: "anthropic-messages"` into pi's model
+  registry because that made pi bypass the provider-level `streamSimple`
+  dispatcher and call the built-in Anthropic transport with the provider's
+  OpenAI base URL, producing `<gateway>/v1/v1/messages`. Claude is now
+  detected by model id inside the dispatcher, which rewrites the base URL to
+  the gateway root before calling the Anthropic-native shim.
+- **sf-llm-gateway-internal: don't create project `.pi/settings.json` for a
+  no-op migration.** Missing project settings cannot contain legacy provider
+  references, so the migration now skips them instead of stamping a sentinel
+  file into every repo a user opens.
 
 ### Notes
 
