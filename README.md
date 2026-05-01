@@ -1,6 +1,7 @@
 # sf-pi
 
 [![CI](https://github.com/salesforce/sf-pi/actions/workflows/ci.yml/badge.svg)](https://github.com/salesforce/sf-pi/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/salesforce/sf-pi?sort=semver)](https://github.com/salesforce/sf-pi/releases)
 [![CodeQL](https://github.com/salesforce/sf-pi/actions/workflows/codeql.yml/badge.svg)](https://github.com/salesforce/sf-pi/actions/workflows/codeql.yml)
 [![Coverage](https://codecov.io/gh/salesforce/sf-pi/branch/main/graph/badge.svg)](https://codecov.io/gh/salesforce/sf-pi)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE.txt)
@@ -24,7 +25,7 @@ globally.
 
 sf-pi is hosted at [github.com/salesforce/sf-pi](https://github.com/salesforce/sf-pi)
 and maintained by
-[Jag Valaiyapathy (@jvalaiyapathy)](https://github.com/jvalaiyapathy) —
+[Jag Valaiyapathy (@Jaganpro)](https://github.com/Jaganpro) —
 a Senior Forward Deployed Engineer at Salesforce and Salesforce Certified
 Technical Architect. It builds on
 [Mario Zechner's](https://github.com/mariozechner) [pi coding agent](https://pi.dev)
