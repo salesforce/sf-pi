@@ -17,9 +17,16 @@
 #   - Require PR before merging, 1 approving review, CODEOWNERS review,
 #     squash-only merge method
 #   - Required status checks (strict=false so rebases aren't forced):
-#       Validate, npm audit (production), gitleaks
-#     CodeQL is NOT required here because its workflow is schedule-only
-#     (weekly) plus workflow_dispatch — requiring it would stall every PR.
+#       Validate, npm audit (production), gitleaks, actionlint,
+#       Require SHA-pinned actions, commitlint, Dependency review,
+#       License scan (production deps), OSV scan (PR diff) / osv-scan.
+#     Not required (intentional):
+#       - CodeQL: workflow is schedule-only (weekly) + workflow_dispatch;
+#         requiring it would stall every PR.
+#       - OSV scan (full): runs only on push/schedule (reports "skipping"
+#         on PRs). The PR-diff job covers pull_request events.
+#       - salesforce-cla: external check owned by the CLA bot; treat as
+#         advisory, not enforced via ruleset.
 #   - Bypass: repo Admins only (actor_id 5). The release-please auto-merge
 #     job can't bypass the PR rule, so release PRs now require a single
 #     manual merge click from an Admin. Same pattern salesforce/agentscript
@@ -75,7 +82,13 @@ payload=$(cat <<JSON
         "required_status_checks": [
           { "context": "Validate" },
           { "context": "npm audit (production)" },
-          { "context": "gitleaks" }
+          { "context": "gitleaks" },
+          { "context": "actionlint" },
+          { "context": "Require SHA-pinned actions" },
+          { "context": "commitlint" },
+          { "context": "Dependency review" },
+          { "context": "License scan (production deps)" },
+          { "context": "OSV scan (PR diff) / osv-scan" }
         ]
       }
     }
