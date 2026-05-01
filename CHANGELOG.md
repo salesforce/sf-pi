@@ -303,6 +303,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.22.0](https://github.com/salesforce/sf-pi/compare/v0.21.1...v0.22.0) (2026-05-01)
+
+
+### Features
+
+* **sf-welcome:** replace Salesforce AI block with Recommended extensions ([7159edd](https://github.com/salesforce/sf-pi/commit/7159edd5922567e426eaad3f37ae3918de62f64e))
+
 ## [0.21.1](https://github.com/salesforce/sf-pi/compare/v0.21.0...v0.21.1) (2026-05-01)
 
 
