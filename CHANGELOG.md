@@ -303,6 +303,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.21.1](https://github.com/salesforce/sf-pi/compare/v0.21.0...v0.21.1) (2026-05-01)
+
+
+### Bug Fixes
+
+* **sf-llm-gateway-internal:** route Claude through unified dispatcher ([3b00948](https://github.com/salesforce/sf-pi/commit/3b00948597a3c7a29020486746dad1727cb667de))
+
 ## [0.21.0](https://github.com/salesforce/sf-pi/compare/v0.20.2...v0.21.0) (2026-05-01)
 
 
