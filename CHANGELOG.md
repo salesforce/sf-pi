@@ -365,6 +365,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.27.5](https://github.com/salesforce/sf-pi/compare/v0.27.4...v0.27.5) (2026-05-02)
+
+
+### Performance
+
+* **sf-slack:** parallelize thread fetch, trim channel discovery, raise concurrency ([4d54823](https://github.com/salesforce/sf-pi/commit/4d54823429bb3417efe400faac28309c69fe5c0a))
+
 ## [0.27.4](https://github.com/salesforce/sf-pi/compare/v0.27.3...v0.27.4) (2026-05-02)
 
 
