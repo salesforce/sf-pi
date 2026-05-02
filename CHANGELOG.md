@@ -365,6 +365,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.27.2](https://github.com/salesforce/sf-pi/compare/v0.27.1...v0.27.2) (2026-05-02)
+
+
+### Bug Fixes
+
+* **sf-lsp-health:** pin registry on globalThis to cross extension module graphs ([3fc4105](https://github.com/salesforce/sf-pi/commit/3fc41053ff2e29aafcee0f590484d0e91ac3f32e))
+
 ## [0.27.1](https://github.com/salesforce/sf-pi/compare/v0.27.0...v0.27.1) (2026-05-02)
 
 
