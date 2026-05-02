@@ -77,6 +77,7 @@ import { SF_PI_DIAGNOSTICS_DETAILS_KEY } from "../../lib/common/display/diagnost
 import type { LspDiagnostic, SupportedLanguage } from "./lib/types.ts";
 import {
   resetSfLspHealth,
+  setSfLspActivity,
   setSfLspHealthFromDoctor,
 } from "../../lib/common/sf-lsp-health/index.ts";
 
@@ -188,6 +189,7 @@ export default function sfLspExtension(pi: ExtensionAPI) {
     const fileName = basename(filePath);
 
     markChecking(activity, language, filePath, fileName);
+    setSfLspActivity(language, "checking", { fileName });
     pushLspIndicator(ctx, workingIndicator, language);
 
     const startedAt = Date.now();
@@ -229,6 +231,8 @@ export default function sfLspExtension(pi: ExtensionAPI) {
       previousFileStatus,
       metadata,
     });
+
+    publishActivityFromEntry(language, entry, fileName);
 
     maybeEmitTranscriptRow(pi, entry, metadata, language, fileName);
 
@@ -279,9 +283,40 @@ export default function sfLspExtension(pi: ExtensionAPI) {
       metadata,
     });
 
+    publishActivityFromEntry(language, entry, fileName);
+
     maybeEmitTranscriptRow(pi, entry, metadata, language, fileName);
     if (entry.status === "unavailable") {
       unavailableSeenByLanguage.add(language);
+    }
+  }
+
+  function publishActivityFromEntry(
+    language: SupportedLanguage,
+    entry: LspActivityEntry,
+    fileName: string,
+  ): void {
+    switch (entry.status) {
+      case "error":
+        setSfLspActivity(language, "error", {
+          fileName,
+          errorCount: entry.diagnosticCount,
+        });
+        return;
+      case "clean":
+      case "transition-clean":
+        setSfLspActivity(language, "clean", { fileName });
+        return;
+      case "unavailable":
+        // Availability is updated via the doctor probe; don't stomp on it
+        // from a single failed check. Leave activity as-is.
+        return;
+      case "checking":
+        setSfLspActivity(language, "checking", { fileName });
+        return;
+      case "idle":
+      default:
+        return;
     }
   }
 

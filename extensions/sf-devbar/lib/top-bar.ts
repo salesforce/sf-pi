@@ -16,8 +16,10 @@
 import { truncateToWidth, visibleWidth } from "@mariozechner/pi-tui";
 import { formatGitChanges, type GitChanges } from "./git-changes.ts";
 import type {
+  SfLspActivity,
+  SfLspAvailability,
   SfLspHealthSnapshot,
-  SfLspLanguageHealth,
+  SfLspLanguageEntry,
   SupportedLspLanguage,
 } from "../../../lib/common/sf-lsp-health/index.ts";
 import { languageFullName } from "../../../lib/common/sf-lsp-health/types.ts";
@@ -184,12 +186,21 @@ export function renderTopBarParts(
 /**
  * Render the permanent LSP health segment:
  *
- *   Apex: ● | LWC: ● | AgentScript: ●
+ *   Apex: ● | LWC: ✓ | AgentScript: ◐
  *
- * Colors:
- *   green  — LSP available (installed and discoverable)
- *   red    — LSP unavailable (missing binary / jar / server)
- *   dim    — unknown (not probed yet)
+ * The glyph blends *availability* (can we run diagnostics for this
+ * language at all?) with the *most recent activity* (is a check running
+ * right now? did the last one pass?). This gives the user a single
+ * at-a-glance read:
+ *
+ *   ◌  dim        — unknown (not probed yet / session just started)
+ *   ○  warning    — unavailable (LSP jar / server / binary missing)
+ *   ●  success    — available, no activity yet (ready / healthy)
+ *   ◐  accent     — check in flight right now
+ *   ✓  success    — last check was clean
+ *   ✗  error      — last check reported errors
+ *
+ * On color fallback terminals the glyph shape alone still disambiguates.
  */
 export function formatLspHealthSegment(
   snapshot: SfLspHealthSnapshot | undefined,
@@ -201,24 +212,57 @@ export function formatLspHealthSegment(
   return languages
     .map((language) => {
       const entry = snapshot.byLanguage[language];
+      const { glyph, color, bold } = resolveLspStatus(entry);
       const label = theme.fg("muted", `${languageFullName(language)}:`);
-      const glyph = formatLspGlyph(entry.health, theme);
-      return `${label} ${glyph}`;
+      const coloredGlyph = bold ? theme.fg(color, theme.bold(glyph)) : theme.fg(color, glyph);
+      return `${label} ${coloredGlyph}`;
     })
     .join(bar);
 }
 
-function formatLspGlyph(health: SfLspLanguageHealth, theme: BarTheme): string {
-  switch (health) {
-    case "available":
-      return theme.fg("success", "●");
-    case "unavailable":
-      return theme.fg("error", "●");
+export type LspStatusRender = {
+  glyph: string;
+  color: "success" | "error" | "warning" | "accent" | "muted" | "dim";
+  bold: boolean;
+};
+
+/**
+ * Pure glyph/color resolver. Exported so tests can assert on the raw
+ * render without having to parse ANSI escape sequences.
+ *
+ * Activity dominates when the language is available: 'error' is stickiest
+ * because unresolved errors matter more than "last clean check". When
+ * availability is unknown or unavailable, activity is ignored.
+ */
+export function resolveLspStatus(entry: SfLspLanguageEntry): LspStatusRender {
+  switch (entry.availability) {
     case "unknown":
+      return { glyph: "◌", color: "dim", bold: false };
+    case "unavailable":
+      return { glyph: "○", color: "warning", bold: true };
+    case "available":
+      return renderActivityGlyph(entry.activity);
     default:
-      return theme.fg("dim", "●");
+      return { glyph: "◌", color: "dim", bold: false };
   }
 }
+
+function renderActivityGlyph(activity: SfLspActivity): LspStatusRender {
+  switch (activity) {
+    case "checking":
+      return { glyph: "◐", color: "accent", bold: true };
+    case "clean":
+      return { glyph: "✓", color: "success", bold: true };
+    case "error":
+      return { glyph: "✗", color: "error", bold: true };
+    case "idle":
+    default:
+      return { glyph: "●", color: "success", bold: false };
+  }
+}
+
+// Keep types importable for other callers.
+export type { SfLspAvailability, SfLspActivity };
 
 // -------------------------------------------------------------------------------------------------
 // Segment formatters

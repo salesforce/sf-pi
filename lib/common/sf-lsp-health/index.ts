@@ -2,38 +2,46 @@
 /**
  * Shared in-process LSP health registry.
  *
- * Why this exists:
- *   - sf-lsp knows per-language doctor availability ("is Apex jorje
- *     discoverable? Is the Agent Script SDK installed? Is
- *     lwc-language-server on PATH?").
- *   - sf-devbar wants to render that as a permanent top-bar segment on
- *     the right hand side.
+ * Two pieces of state per Salesforce LSP language:
  *
- * We keep a tiny process-scoped singleton, mirroring how
+ *   1. `availability` — can we even run diagnostics?
+ *        unknown      — not probed yet (session just started)
+ *        available    — jar / server / binary is discoverable
+ *        unavailable  — missing; `/sf-lsp doctor` can tell you why
+ *
+ *   2. `activity` — what did the most recent check do?
+ *        idle         — no check has run yet this session
+ *        checking     — a check is in flight right now
+ *        clean        — the last check found no errors
+ *        error        — the last check found errors
+ *
+ * The renderer in `sf-devbar` combines both signals into a single glyph +
+ * color so the top bar reflects availability AND recent work at a glance.
+ *
+ * The registry is a tiny process-scoped singleton, mirroring how
  * `lib/common/sf-environment/shared-runtime.ts` shares org data between
  * sf-devbar and sf-welcome. No Pi API, no persistence — extensions each
- * import this module and coordinate via its tiny mutate/subscribe API.
- *
- * Source-of-truth: sf-lsp's `session_start` probe writes here; sf-devbar
- * reads here and repaints on change. If sf-lsp is disabled, the registry
- * stays `"unknown"` and sf-devbar renders neutral grey dots.
+ * import this module and coordinate via its mutate/subscribe API.
  */
 import type { SupportedLspLanguage } from "./types.ts";
 
 export type { SupportedLspLanguage } from "./types.ts";
 
-/**
- * Availability status for one LSP language. Kept intentionally tiny — the
- * top-bar doesn't need error counts or last-file info (that stays inside
- * sf-lsp via the transcript row + `/sf-lsp` panel).
- */
-export type SfLspLanguageHealth = "available" | "unavailable" | "unknown";
+export type SfLspAvailability = "available" | "unavailable" | "unknown";
+export type SfLspActivity = "idle" | "checking" | "clean" | "error";
 
 export interface SfLspLanguageEntry {
   language: SupportedLspLanguage;
-  health: SfLspLanguageHealth;
+  availability: SfLspAvailability;
+  activity: SfLspActivity;
   /** Reason string when `unavailable` — used for tooltips/debugging. */
-  detail?: string;
+  unavailableDetail?: string;
+  /** Count of diagnostics from the last check (error status only). */
+  lastErrorCount?: number;
+  /** Last file checked, basename only. Used for tooltips/transcript. */
+  lastFileName?: string;
+  /** Monotonic timestamp (Date.now()) of the last update. */
+  lastUpdatedAt?: number;
 }
 
 export interface SfLspHealthSnapshot {
@@ -46,11 +54,15 @@ type Listener = (snapshot: SfLspHealthSnapshot) => void;
 
 const SUPPORTED: readonly SupportedLspLanguage[] = ["apex", "lwc", "agentscript"];
 
+function makeEntry(language: SupportedLspLanguage): SfLspLanguageEntry {
+  return { language, availability: "unknown", activity: "idle" };
+}
+
 const state: SfLspHealthSnapshot = {
   byLanguage: {
-    apex: { language: "apex", health: "unknown" },
-    lwc: { language: "lwc", health: "unknown" },
-    agentscript: { language: "agentscript", health: "unknown" },
+    apex: makeEntry("apex"),
+    lwc: makeEntry("lwc"),
+    agentscript: makeEntry("agentscript"),
   },
   revision: 0,
 };
@@ -68,25 +80,35 @@ function snapshot(): SfLspHealthSnapshot {
   };
 }
 
-/** Current snapshot (read-only). */
+/** Current snapshot (read-only copy). */
 export function getSfLspHealth(): SfLspHealthSnapshot {
   return snapshot();
 }
 
-/** Update one language's health. No-op if nothing changed. */
-export function setSfLspLanguageHealth(
+/**
+ * Update one language's availability. No-op if the value is unchanged.
+ * Does not touch the `activity` field — per-file check progress is owned
+ * by `setSfLspActivity`.
+ */
+export function setSfLspAvailability(
   language: SupportedLspLanguage,
-  health: SfLspLanguageHealth,
-  detail?: string,
+  availability: SfLspAvailability,
+  unavailableDetail?: string,
 ): void {
   const current = state.byLanguage[language];
-  if (current.health === health && current.detail === detail) return;
-  state.byLanguage[language] = { language, health, detail };
+  if (current.availability === availability && current.unavailableDetail === unavailableDetail) {
+    return;
+  }
+  state.byLanguage[language] = {
+    ...current,
+    availability,
+    unavailableDetail: availability === "unavailable" ? unavailableDetail : undefined,
+  };
   state.revision += 1;
   fire();
 }
 
-/** Bulk-update from a doctor probe. */
+/** Bulk-update availability from a doctor probe. */
 export function setSfLspHealthFromDoctor(
   statuses: ReadonlyArray<{
     language: SupportedLspLanguage;
@@ -97,13 +119,13 @@ export function setSfLspHealthFromDoctor(
   let changed = false;
   for (const status of statuses) {
     const current = state.byLanguage[status.language];
-    const nextHealth: SfLspLanguageHealth = status.available ? "available" : "unavailable";
+    const nextAvailability: SfLspAvailability = status.available ? "available" : "unavailable";
     const nextDetail = status.available ? undefined : status.detail;
-    if (current.health !== nextHealth || current.detail !== nextDetail) {
+    if (current.availability !== nextAvailability || current.unavailableDetail !== nextDetail) {
       state.byLanguage[status.language] = {
-        language: status.language,
-        health: nextHealth,
-        detail: nextDetail,
+        ...current,
+        availability: nextAvailability,
+        unavailableDetail: nextDetail,
       };
       changed = true;
     }
@@ -114,13 +136,45 @@ export function setSfLspHealthFromDoctor(
   }
 }
 
-/** Reset all languages to `unknown`. Used on session_shutdown. */
+/**
+ * Update one language's activity status. Used by sf-lsp around each
+ * diagnostic check:
+ *   - `checking` at the start of a check
+ *   - `clean` or `error` when the check finishes
+ *
+ * `lastErrorCount` and `lastFileName` round out the tooltip text.
+ */
+export function setSfLspActivity(
+  language: SupportedLspLanguage,
+  activity: SfLspActivity,
+  options: { fileName?: string; errorCount?: number } = {},
+): void {
+  const current = state.byLanguage[language];
+  state.byLanguage[language] = {
+    ...current,
+    activity,
+    lastFileName: options.fileName ?? current.lastFileName,
+    lastErrorCount: activity === "error" ? (options.errorCount ?? 0) : undefined,
+    lastUpdatedAt: Date.now(),
+  };
+  state.revision += 1;
+  fire();
+}
+
+/** Reset all languages to the zero state. Used on session_shutdown. */
 export function resetSfLspHealth(): void {
   let changed = false;
   for (const language of SUPPORTED) {
     const current = state.byLanguage[language];
-    if (current.health !== "unknown" || current.detail !== undefined) {
-      state.byLanguage[language] = { language, health: "unknown" };
+    if (
+      current.availability !== "unknown" ||
+      current.activity !== "idle" ||
+      current.unavailableDetail !== undefined ||
+      current.lastErrorCount !== undefined ||
+      current.lastFileName !== undefined ||
+      current.lastUpdatedAt !== undefined
+    ) {
+      state.byLanguage[language] = makeEntry(language);
       changed = true;
     }
   }

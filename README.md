@@ -428,7 +428,8 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 
 **[SF LSP](./extensions/sf-lsp/#troubleshooting)**
 
-- The sf-devbar top-bar LSP segment stays grey / never turns green
+- Top-bar LSP glyph legend
+- The sf-devbar top-bar LSP segment stays `◌` (dotted circle) after a while
 - Transcript rows feel too chatty / too quiet
 - Working indicator keeps saying `LSP Apex…` after the turn ends
 - `LSP setup note:` appears once per file type and then stays silent

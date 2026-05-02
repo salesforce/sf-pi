@@ -24,12 +24,12 @@ transcript row and the permanent sf-devbar top-bar LSP segment.
 
 ## TUI Surfaces
 
-| Surface                 | What it shows                                                                                      | Pi primitive                                                                      |
-| ----------------------- | -------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| Working indicator       | `⠋ LSP Apex…` spinner while diagnostics are being fetched (≤6s)                                    | `ctx.ui.setWorkingIndicator`                                                      |
-| **Top-bar LSP segment** | Permanent right-aligned `Apex: ● \| LWC: ● \| AgentScript: ●` (green / red / dim) inside sf-devbar | `lib/common/sf-lsp-health` shared registry → sf-devbar top-bar widget             |
-| Inline transcript row   | `[sf-lsp] Apex · Foo.cls · clean · 312ms` — user-only, **never** reaches the LLM                   | `pi.sendMessage({customType:"sf-lsp", display:true})` + `registerMessageRenderer` |
-| Rich `/sf-lsp` panel    | Doctor + recent activity ring + actions (refresh, verbose toggle, shut down servers)               | `ctx.ui.custom` overlay with `DynamicBorder` + `SelectList`                       |
+| Surface                 | What it shows                                                                                       | Pi primitive                                                                      |
+| ----------------------- | --------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Working indicator       | `⠋ LSP Apex…` spinner while diagnostics are being fetched (≤6s)                                     | `ctx.ui.setWorkingIndicator`                                                      |
+| **Top-bar LSP segment** | Permanent right-aligned `Apex: ✓ \| LWC: ◐ \| AgentScript: ●` inside sf-devbar. Glyph legend below. | `lib/common/sf-lsp-health` shared registry → sf-devbar top-bar widget             |
+| Inline transcript row   | `[sf-lsp] Apex · Foo.cls · clean · 312ms` — user-only, **never** reaches the LLM                    | `pi.sendMessage({customType:"sf-lsp", display:true})` + `registerMessageRenderer` |
+| Rich `/sf-lsp` panel    | Doctor + recent activity ring + actions (refresh, verbose toggle, shut down servers)                | `ctx.ui.custom` overlay with `DynamicBorder` + `SelectList`                       |
 
 **Agent Script note:** when the `sf-agentscript-assist` extension is loaded,
 sf-lsp yields `.agent` files to it. That extension handles the same diagnostic
@@ -202,12 +202,25 @@ Run: `npm test`
 
 ## Troubleshooting
 
-**The sf-devbar top-bar LSP segment stays grey / never turns green:**
-Run `/sf-lsp doctor` to kick a fresh probe. If a language stays grey,
-sf-devbar isn't subscribed (check `/sf-devbar` is enabled) — the
-segment is rendered by sf-devbar using the shared
+**Top-bar LSP glyph legend:**
+
+| Glyph | Color         | Meaning                                                  |
+| ----- | ------------- | -------------------------------------------------------- |
+| `◌`   | dim           | Not probed yet (first ~100ms after `session_start`)      |
+| `○`   | warning, bold | LSP jar / server / binary missing — see `/sf-lsp doctor` |
+| `●`   | success       | LSP is installed and ready; no check has run yet         |
+| `◐`   | accent, bold  | A diagnostic check is running right now                  |
+| `✓`   | success, bold | The most recent check came back clean                    |
+| `✗`   | error, bold   | The most recent check reported errors                    |
+
+Shape alone disambiguates on terminals with color fallback.
+
+**The sf-devbar top-bar LSP segment stays `◌` (dotted circle) after a while:**
+Run `/sf-lsp doctor` to kick a fresh probe. If a language stays dotted,
+sf-devbar isn't subscribed (check `/sf-devbar` is enabled and loaded)
+— the segment is rendered by sf-devbar using the shared
 `lib/common/sf-lsp-health` registry that sf-lsp writes into on
-`session_start`.
+`session_start` and on every check.
 
 **Transcript rows feel too chatty / too quiet:**
 Default mode is balanced: transcript row only on errors, red-to-green

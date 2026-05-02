@@ -5,25 +5,104 @@
  */
 import { describe, expect, it } from "vitest";
 import { visibleWidth } from "@mariozechner/pi-tui";
-import { formatLspHealthSegment, renderTopBarLine, type BarTheme } from "../lib/top-bar.ts";
-import type { SfLspHealthSnapshot } from "../../../lib/common/sf-lsp-health/index.ts";
+import {
+  formatLspHealthSegment,
+  renderTopBarLine,
+  resolveLspStatus,
+  type BarTheme,
+} from "../lib/top-bar.ts";
+import type {
+  SfLspHealthSnapshot,
+  SfLspLanguageEntry,
+  SupportedLspLanguage,
+} from "../../../lib/common/sf-lsp-health/index.ts";
 
 const stubTheme: BarTheme = {
   fg: (color, text) => `[${color}:${text}]`,
   bold: (text) => `<b>${text}</b>`,
 };
 
+function entry(
+  language: SupportedLspLanguage,
+  overrides: Partial<SfLspLanguageEntry> = {},
+): SfLspLanguageEntry {
+  return {
+    language,
+    availability: "unknown",
+    activity: "idle",
+    ...overrides,
+  };
+}
+
 function makeHealth(overrides: Partial<SfLspHealthSnapshot["byLanguage"]>): SfLspHealthSnapshot {
   return {
     revision: 1,
     byLanguage: {
-      apex: { language: "apex", health: "unknown" },
-      lwc: { language: "lwc", health: "unknown" },
-      agentscript: { language: "agentscript", health: "unknown" },
+      apex: entry("apex"),
+      lwc: entry("lwc"),
+      agentscript: entry("agentscript"),
       ...overrides,
     },
   };
 }
+
+describe("resolveLspStatus", () => {
+  it("unknown → dim dotted circle", () => {
+    expect(resolveLspStatus(entry("apex"))).toEqual({
+      glyph: "◌",
+      color: "dim",
+      bold: false,
+    });
+  });
+
+  it("unavailable → bold warning hollow circle", () => {
+    expect(resolveLspStatus(entry("apex", { availability: "unavailable" }))).toEqual({
+      glyph: "○",
+      color: "warning",
+      bold: true,
+    });
+  });
+
+  it("available + idle → success filled circle (not bold)", () => {
+    expect(
+      resolveLspStatus(entry("apex", { availability: "available", activity: "idle" })),
+    ).toEqual({
+      glyph: "●",
+      color: "success",
+      bold: false,
+    });
+  });
+
+  it("available + checking → bold accent half circle", () => {
+    expect(
+      resolveLspStatus(entry("apex", { availability: "available", activity: "checking" })),
+    ).toEqual({
+      glyph: "◐",
+      color: "accent",
+      bold: true,
+    });
+  });
+
+  it("available + clean → bold success check", () => {
+    expect(
+      resolveLspStatus(entry("apex", { availability: "available", activity: "clean" })),
+    ).toEqual({
+      glyph: "✓",
+      color: "success",
+      bold: true,
+    });
+  });
+
+  it("available + error → bold error cross", () => {
+    expect(
+      resolveLspStatus(entry("apex", { availability: "available", activity: "error" })),
+    ).toEqual({
+      glyph: "✗",
+      color: "error",
+      bold: true,
+    });
+  });
+});
 
 describe("formatLspHealthSegment", () => {
   it("returns null when no snapshot is present", () => {
@@ -35,30 +114,19 @@ describe("formatLspHealthSegment", () => {
     expect(out).toContain("Apex:");
     expect(out).toContain("LWC:");
     expect(out).toContain("AgentScript:");
-    expect(out).not.toContain("AS:");
+    expect(out).not.toContain(" AS:");
   });
 
-  it("green dots for available languages", () => {
+  it("renders distinct glyphs for each state", () => {
     const health = makeHealth({
-      apex: { language: "apex", health: "available" },
-      lwc: { language: "lwc", health: "available" },
-      agentscript: { language: "agentscript", health: "available" },
+      apex: entry("apex", { availability: "available", activity: "clean" }),
+      lwc: entry("lwc", { availability: "available", activity: "error" }),
+      agentscript: entry("agentscript", { availability: "unavailable", unavailableDetail: "x" }),
     });
-    const out = formatLspHealthSegment(health, stubTheme);
-    const greenDots = (out!.match(/\[success:●\]/g) ?? []).length;
-    expect(greenDots).toBe(3);
-  });
-
-  it("red dot for unavailable language", () => {
-    const health = makeHealth({
-      apex: { language: "apex", health: "available" },
-      lwc: { language: "lwc", health: "unavailable", detail: "missing" },
-      agentscript: { language: "agentscript", health: "unknown" },
-    });
-    const out = formatLspHealthSegment(health, stubTheme);
-    expect(out).toMatch(/\[success:●\]/);
-    expect(out).toMatch(/\[error:●\]/);
-    expect(out).toMatch(/\[dim:●\]/);
+    const out = formatLspHealthSegment(health, stubTheme)!;
+    expect(out).toContain("✓"); // clean
+    expect(out).toContain("✗"); // error
+    expect(out).toContain("○"); // unavailable
   });
 
   it("uses pipe separators between languages", () => {
@@ -83,27 +151,22 @@ describe("renderTopBarLine", () => {
     const lines = renderTopBarLine(
       {
         ...base,
-        lspHealth: {
-          revision: 1,
-          byLanguage: {
-            apex: { language: "apex", health: "available" },
-            lwc: { language: "lwc", health: "available" },
-            agentscript: { language: "agentscript", health: "available" },
-          },
-        },
+        lspHealth: makeHealth({
+          apex: entry("apex", { availability: "available", activity: "clean" }),
+          lwc: entry("lwc", { availability: "available", activity: "clean" }),
+          agentscript: entry("agentscript", {
+            availability: "available",
+            activity: "clean",
+          }),
+        }),
       },
       stubTheme,
       200,
     );
     expect(lines).toHaveLength(1);
     const line = lines[0]!;
-    // The stub theme emits `[color:...]` wrappers which pi-tui's
-    // visibleWidth counts as visible cells. That's fine: the renderer
-    // uses the same function to compute padding, so the rendered line's
-    // visible width should equal the target terminal width exactly.
     expect(visibleWidth(line)).toBe(200);
-    // Strip wrappers to assert the right-most meaningful glyph is `●`.
     const stripped = line.replace(/\[[^\]]+?:([^\]]*)\]/g, "$1").replace(/<b>(.*?)<\/b>/g, "$1");
-    expect(stripped.trimEnd().endsWith("●")).toBe(true);
+    expect(stripped.trimEnd().endsWith("✓")).toBe(true);
   });
 });
