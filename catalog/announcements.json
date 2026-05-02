@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.26.0-2026-05-02",
-  "latestVersion": "0.26.0",
+  "revision": "release-0.26.1-2026-05-02",
+  "latestVersion": "0.26.1",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.26.0",
+      "id": "release-0.26.1",
       "kind": "update",
-      "title": "sf-pi v0.26.0 — sf-lsp: reimagine LSP TUI with in-card panel, HUD, footer, transcript, and rich /sf-lsp panel",
+      "title": "sf-pi v0.26.1 — sf-lsp: drop in-card edit/write tool renderer to resolve Pi load conflict",
       "publishedAt": "2026-05-02T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.26.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.26.1",
       "severity": "info",
-      "body": "sf-lsp: reimagine LSP TUI with in-card panel, HUD, footer, transcript, and rich /sf-lsp panel"
+      "body": "sf-lsp: drop in-card edit/write tool renderer to resolve Pi load conflict"
     },
     {
       "id": "pi-0.71-compat",

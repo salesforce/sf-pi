@@ -365,6 +365,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.26.1](https://github.com/salesforce/sf-pi/compare/v0.26.0...v0.26.1) (2026-05-02)
+
+
+### Bug Fixes
+
+* **sf-lsp:** drop in-card edit/write tool renderer to resolve Pi load conflict ([468a51c](https://github.com/salesforce/sf-pi/commit/468a51c7844878b74d701f816eda3ad391728b9e))
+
 ## [0.26.0](https://github.com/salesforce/sf-pi/compare/v0.25.0...v0.26.0) (2026-05-02)
 
 
