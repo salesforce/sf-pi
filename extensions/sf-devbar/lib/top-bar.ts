@@ -333,26 +333,41 @@ function formatGitSegment(state: TopBarState, theme: BarTheme): string | null {
 /**
  * Render the context window progress bar.
  *
- * Visual: "Context Window [████░░░░░░░░] 32%"
+ * Visual: "Context Window [████▌░░░░░] 32.4%"
+ *
+ * Granularity: the bar uses 1/8-block partials (▏▎▍▌▋▊▉█) on top of a
+ * 10-cell track, giving 80 distinct fill positions (~1.25% per step). The
+ * percent label is shown with one decimal place so small shifts remain
+ * visible numerically even when the bar cell doesn't change.
+ *
  * Uses a light grey background for the empty portion to show available space.
  * Colors: teal <60%, amber 60-80%, red >80%.
  */
 function formatContextSegment(percent: number | null | undefined, theme: BarTheme): string | null {
   if (percent == null) return null;
 
-  const clamped = Math.max(0, Math.min(100, Math.round(percent)));
+  const clamped = Math.max(0, Math.min(100, percent));
   const barWidth = 10;
-  const filled = Math.round((clamped / 100) * barWidth);
-  const empty = barWidth - filled;
+  // 1/8 block characters, ordered from empty -> full. Index 0 is unused.
+  const partials = ["", "▏", "▎", "▍", "▌", "▋", "▊", "▉"];
+  const eighths = Math.round((clamped / 100) * barWidth * 8);
+  const fullCells = Math.floor(eighths / 8);
+  const remainder = eighths % 8;
+  const hasPartial = remainder > 0 && fullCells < barWidth;
+  const emptyCells = barWidth - fullCells - (hasPartial ? 1 : 0);
 
-  // Color based on usage level
+  // Color based on usage level — thresholds use the raw float so the
+  // color flip happens at the true boundary, not an integer-rounded one.
   const color = clamped > 80 ? "error" : clamped > 60 ? "warning" : "success";
 
-  const filledStr = theme.fg(color, "█".repeat(filled));
+  const filledStr = theme.fg(
+    color,
+    "█".repeat(fullCells) + (hasPartial ? partials[remainder] : ""),
+  );
   // Grey background on empty portion to show available space clearly
-  const emptyStr = hexFgBg("#3c3c4a", "#28282e", "░".repeat(empty));
-  const label =
-    clamped > 80 ? theme.bold(theme.fg(color, `${clamped}%`)) : theme.fg(color, `${clamped}%`);
+  const emptyStr = emptyCells > 0 ? hexFgBg("#3c3c4a", "#28282e", "░".repeat(emptyCells)) : "";
+  const labelText = `${clamped.toFixed(1)}%`;
+  const label = clamped > 80 ? theme.bold(theme.fg(color, labelText)) : theme.fg(color, labelText);
 
   return `${theme.fg("dim", "Context Window")} ${filledStr}${emptyStr} ${label}`;
 }

@@ -330,7 +330,8 @@ includes `fine-grained-tool-streaming-2025-05-14` first to guarantee it
 isn't silently dropped when you add another beta.
 
 **Monthly-usage footer is stale or missing:**
-Usage is cached for 5 minutes; run `/sf-llm-gateway-internal refresh` to
-force a `/user/info` fetch. If you're using sf-welcome or sf-devbar as
+Usage is cached for 60 seconds and refreshes automatically on every
+`turn_end`; run `/sf-llm-gateway-internal refresh` to force a `/user/info`
+fetch immediately. If you're using sf-welcome or sf-devbar as
 consumers, they read from the shared store in `lib/common/monthly-usage/`
 — the gateway must be registered and have succeeded at least once.

@@ -32,7 +32,11 @@ import { API_KEY_ENV, getGatewayConfig } from "./config.ts";
 import { toGatewayRootBaseUrl } from "./gateway-url.ts";
 import { fetchWithTimeout } from "./models.ts";
 
-const MONTHLY_USAGE_TTL_MS = 5 * 60 * 1000;
+// Short TTL so the `💰 $N/∞` pill refreshes roughly once a minute even
+// during back-to-back turns. The gateway endpoints are cheap GETs and this
+// is still bounded by how often a consumer (footer repaint on turn_end)
+// actually asks for a refresh, so the request rate stays reasonable.
+const MONTHLY_USAGE_TTL_MS = 60 * 1000;
 const FETCH_TIMEOUT_MS = 10_000;
 
 // Re-export types so existing imports (e.g. status.ts) keep working without

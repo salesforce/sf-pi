@@ -69,7 +69,7 @@
  *   /command off                | —                                  | Disable, remove pattern, switch to off-default
  *   /command refresh            | —                                  | Re-discover, refresh monthly usage
  *   /command beta <name> on     | —                                  | Toggle beta, re-register provider
- *   Monthly usage fetch         | cached < 5 min old                 | Use cache
+ *   Monthly usage fetch         | cached < 60 s old                  | Use cache
  *   Monthly usage fetch         | stale or forced                    | Fetch from gateway /user/info
  *
  * Reader guide:
@@ -382,6 +382,11 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
   });
 
   pi.on("turn_end", async (_event, ctx) => {
+    // Refresh the `💰 $N/∞` pill right after every assistant turn so the
+    // cost figure tracks the session closely. The refresh is throttled by
+    // MONTHLY_USAGE_TTL_MS inside refreshMonthlyUsage(), so back-to-back
+    // turns do not hammer the gateway — the network call only fires once
+    // per TTL window.
     await updateFooterStatus(ctx, false);
   });
 
@@ -406,7 +411,7 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
   });
 
   // Capture gateway-side throttle/upstream signals so the footer can render
-  // a live ⚠ badge without waiting for the 5-minute /user/info refresh.
+  // a live ⚠ badge without waiting for the 60-second /user/info refresh.
   // Only records when the active model is a gateway model so non-gateway
   // traffic never populates the badge. See lib/provider-telemetry.ts.
   pi.on("after_provider_response", async (event, ctx) => {

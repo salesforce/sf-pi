@@ -141,9 +141,12 @@ export default function sfDevBar(pi: ExtensionAPI) {
     const model = ctx.model;
     const thinkingLevel = pi.getThinkingLevel();
     const contextUsage = ctx.getContextUsage();
+    // Keep the raw float — the top bar renders 1/8-block partials for a
+    // ~1% granular fill and a one-decimal percent label (e.g. "1.2%").
+    // Rounding to an integer here would collapse both back to 1% steps.
     const contextPercent =
       contextUsage && contextUsage.contextWindow > 0
-        ? Math.round((contextUsage.tokens / contextUsage.contextWindow) * 100)
+        ? (contextUsage.tokens / contextUsage.contextWindow) * 100
         : null;
 
     return {

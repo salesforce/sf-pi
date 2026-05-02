@@ -131,10 +131,25 @@ describe("renderTopBar", () => {
     expect(line).not.toContain("\uf126");
   });
 
-  it("shows context progress bar", () => {
+  it("shows context progress bar with a one-decimal percent label", () => {
     const [line] = renderTopBar(makeState({ contextPercent: 45 }), stubTheme);
     expect(line).toContain("Context Window");
-    expect(line).toContain("45%");
+    expect(line).toContain("45.0%");
+  });
+
+  it("renders fractional percents with one decimal", () => {
+    const [line] = renderTopBar(makeState({ contextPercent: 1.234 }), stubTheme);
+    expect(line).toContain("1.2%");
+  });
+
+  it("renders a partial-block cell for sub-cell fill", () => {
+    // 1/8-block partials (▏▎▍▌▋▊▉) should appear when fill doesn't
+    // land on a full-cell boundary. Full cells are █; a partial cell is
+    // one of the 1/8-block characters.
+    const [line] = renderTopBar(makeState({ contextPercent: 13.75 }), stubTheme);
+    // Expect at least one sub-cell partial block in the rendered bar.
+    const partialBlocks = ["▏", "▎", "▍", "▌", "▋", "▊", "▉"];
+    expect(partialBlocks.some((ch) => line.includes(ch))).toBe(true);
   });
 
   it("hides context bar when null", () => {
