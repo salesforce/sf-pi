@@ -365,6 +365,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.27.3](https://github.com/salesforce/sf-pi/compare/v0.27.2...v0.27.3) (2026-05-02)
+
+
+### Bug Fixes
+
+* **sf-lsp-health:** drop non-null assertion in getRegistry ([208d98c](https://github.com/salesforce/sf-pi/commit/208d98c58b9905d86a1daf30d95fb5144b67d10d))
+
 ## [0.27.2](https://github.com/salesforce/sf-pi/compare/v0.27.1...v0.27.2) (2026-05-02)
 
 

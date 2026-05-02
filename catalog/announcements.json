@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.27.2-2026-05-02",
-  "latestVersion": "0.27.2",
+  "revision": "release-0.27.3-2026-05-02",
+  "latestVersion": "0.27.3",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.27.2",
+      "id": "release-0.27.3",
       "kind": "update",
-      "title": "sf-pi v0.27.2 — sf-lsp-health: pin registry on globalThis to cross extension module graphs",
+      "title": "sf-pi v0.27.3 — sf-lsp-health: drop non-null assertion in getRegistry",
       "publishedAt": "2026-05-02T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.27.2",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.27.3",
       "severity": "info",
-      "body": "sf-lsp-health: pin registry on globalThis to cross extension module graphs"
+      "body": "sf-lsp-health: drop non-null assertion in getRegistry"
     },
     {
       "id": "pi-0.71-compat",
