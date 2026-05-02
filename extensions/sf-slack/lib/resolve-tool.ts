@@ -32,6 +32,49 @@ interface ResolveToolRenderResult {
 
 const AUTO_SELECT_THRESHOLD = 0.85;
 
+/** Module-level guard: only one slack_resolve clarify dialog may be pending
+ *  at a time across concurrent tool calls in the same process.
+ *
+ *  Agent runtimes routinely fan out parallel tool calls (e.g. an onboarding
+ *  routine resolving four channel patterns at once). The TUI can only show
+ *  one modal, so without this gate the second+ calls block forever on
+ *  `await ctx.ui.select` / `ctx.ui.input` behind the first dialog, and
+ *  from the user's POV the whole session wedges — indistinguishable from
+ *  a network hang (see fix #17). This gate is a pure, in-process Promise
+ *  mutex: the first call that reaches the dialog takes the slot, any
+ *  concurrent call returns the non-interactive resolver result with a
+ *  warning so the agent can decide what to do with the low-confidence
+ *  candidates instead of hanging. A single isolated call still gets the
+ *  nice HITL UX. */
+let clarifyInFlight: Promise<void> | null = null;
+
+/** Test hook: reset the clarify mutex between tests. Not part of the
+ *  public API — do not call from extension code. */
+export function __resetClarifyGateForTests(): void {
+  clarifyInFlight = null;
+}
+
+/** Run `fn` under the clarify mutex. If another clarify is already
+ *  pending, returns `undefined` immediately so the caller falls back to
+ *  the non-interactive path. Exported for tests only. */
+export async function __withClarifyGateForTests<T>(fn: () => Promise<T>): Promise<T | undefined> {
+  return withClarifyGate(fn);
+}
+
+async function withClarifyGate<T>(fn: () => Promise<T>): Promise<T | undefined> {
+  if (clarifyInFlight) return undefined;
+  let release!: () => void;
+  clarifyInFlight = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  try {
+    return await fn();
+  } finally {
+    release();
+    clarifyInFlight = null;
+  }
+}
+
 function callLabel(label: string, summary: string, theme: Theme): Text {
   return new Text(
     theme.fg("toolTitle", theme.bold(label + " ")) + theme.fg("muted", summary),
@@ -96,20 +139,27 @@ export function registerResolveTool(pi: ExtensionAPI): void {
       }
 
       if (params.clarify !== false && ctx.hasUI) {
-        if (
-          result.ok &&
-          result.confidence < AUTO_SELECT_THRESHOLD &&
-          result.candidates.length > 0
-        ) {
-          const selected = await askUserToChoose(result, ctx.ui.select.bind(ctx.ui));
-          if (selected) result = withSelectedCandidate(result, selected);
-        } else if (!result.ok) {
-          const replacement = await ctx.ui.input(
-            `Could not resolve Slack ${params.type} "${params.text}"`,
-            "Enter exact name/ID, or leave blank to cancel",
-          );
-          if (replacement?.trim()) {
-            result =
+        const shouldClarify =
+          !result.ok || (result.confidence < AUTO_SELECT_THRESHOLD && result.candidates.length > 0);
+        if (shouldClarify) {
+          // Serialize across concurrent resolve calls so parallel fan-out
+          // doesn't stack modal dialogs on the TUI (see clarifyInFlight doc).
+          const gated = await withClarifyGate(async () => {
+            if (
+              result.ok &&
+              result.confidence < AUTO_SELECT_THRESHOLD &&
+              result.candidates.length > 0
+            ) {
+              const selected = await askUserToChoose(result, ctx.ui.select.bind(ctx.ui));
+              if (selected) return withSelectedCandidate(result, selected);
+              return result;
+            }
+            const replacement = await ctx.ui.input(
+              `Could not resolve Slack ${params.type} "${params.text}"`,
+              "Enter exact name/ID, or leave blank to cancel",
+            );
+            if (!replacement?.trim()) return result;
+            let retried: ResolveResult<ResolvedChannel | ResolvedUser> =
               params.type === "channel"
                 ? await resolveChannel(auth.token, replacement.trim(), signal, {
                     limit: params.limit,
@@ -118,13 +168,30 @@ export function registerResolveTool(pi: ExtensionAPI): void {
                     limit: params.limit,
                   });
             if (
-              result.ok &&
-              result.confidence < AUTO_SELECT_THRESHOLD &&
-              result.candidates.length > 0
+              retried.ok &&
+              retried.confidence < AUTO_SELECT_THRESHOLD &&
+              retried.candidates.length > 0
             ) {
-              const selected = await askUserToChoose(result, ctx.ui.select.bind(ctx.ui));
-              if (selected) result = withSelectedCandidate(result, selected);
+              const selected = await askUserToChoose(retried, ctx.ui.select.bind(ctx.ui));
+              if (selected) retried = withSelectedCandidate(retried, selected);
             }
+            return retried;
+          });
+          if (gated) {
+            result = gated;
+          } else {
+            // Another clarify dialog is already pending. Rather than block
+            // (which wedges the whole session), return the non-interactive
+            // resolver result with an explicit warning so the agent can
+            // decide: accept the low-confidence match, retry serially, or
+            // ask the user directly.
+            result = {
+              ...result,
+              warnings: [
+                ...result.warnings,
+                "Another slack_resolve clarify dialog was already pending; returned non-interactive result to avoid stacking modals. Re-invoke serially if you need interactive selection.",
+              ],
+            };
           }
         }
       }
