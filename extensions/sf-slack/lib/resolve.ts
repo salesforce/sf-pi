@@ -618,16 +618,16 @@ function bestConfidence<T extends { confidence: number }>(map: Map<string, T>): 
 export function buildChannelDiscoveryQueries(ref: string): string[] {
   const raw = ref.trim().replace(/^#/, "");
   if (!raw) return [];
-  const tokens = tokenize(raw);
-  const queries = [
-    `in:#${raw}`,
-    `in:${raw}`,
-    raw,
-    tokens.join(" "),
-    tokens.slice(0, 3).join(" "),
-    normalizeName(raw),
-  ];
-  return [...new Set(queries.map((query) => query.trim()).filter(Boolean))].slice(0, 8);
+  // Only the three highest-signal variants. Empirically `in:#raw` catches
+  // exact channel names, the bare `raw` catches message content mentioning
+  // the channel name, and `normalizeName(raw)` catches references typed
+  // without punctuation (e.g. "teamsharelab" for "team-share-lab"). The
+  // remaining variants from the old 8-query list (`in:raw`, joined tokens,
+  // first-three tokens) dedupe to one of the above often enough that paying
+  // the sequential assistant.search.context round-trips for them was never
+  // worth the latency. Capped at 3 so fuzzy channel resolution can't snowball.
+  const queries = [`in:#${raw}`, raw, normalizeName(raw)];
+  return [...new Set(queries.map((query) => query.trim()).filter(Boolean))].slice(0, 3);
 }
 
 /** Build free-text queries for mining author names out of message search.

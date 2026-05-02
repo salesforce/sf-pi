@@ -9,7 +9,7 @@
  *
  * Rate-limit behavior (P6 — added for VP-demo polish):
  * - All outgoing Slack calls flow through `withSlot()` — a tiny in-process
- *   semaphore (MAX_CONCURRENT=3) so parallel tool calls do not burst past
+ *   semaphore (MAX_CONCURRENT=6) so parallel tool calls do not burst past
  *   Slack's tier-2/3 budgets.
  * - On HTTP 429 we honor the `Retry-After` header and retry once. If the
  *   second attempt also fails we surface `error: "rate_limited"` so the
@@ -120,8 +120,16 @@ export function detectTokenType(token: string | undefined): SlackTokenType {
 // ─── Concurrency cap + Retry-After (P6) ────────────────────────────────────────
 
 /** Max in-flight Slack API calls at once. Keeps parallel tool calls from
- *  instantly tripping Slack's tier-2/3 rate limits. */
-const MAX_CONCURRENT = 3;
+ *  instantly tripping Slack's tier-2/3 rate limits.
+ *
+ *  Tuned up from 3 → 6 after profiling showed the 3-wide cap was the
+ *  dominant factor in perceived slack_research latency: a single research
+ *  call easily queues 20+ reads (channel resolve → search fallbacks →
+ *  thread replies → users.info warming), and at 3-wide every third hop
+ *  paid a full semaphore round-trip. Slack tier-3 budgets (50+/min) still
+ *  leave plenty of headroom; tier-2 endpoints (conversations.list,
+ *  users.list) we only issue one-at-a-time anyway. */
+const MAX_CONCURRENT = 6;
 /** Cap the honored Retry-After so we never hang a tool call indefinitely. */
 const MAX_RETRY_AFTER_SECONDS = 30;
 /** Per-request timeout (ms). Bounds a single Slack HTTP call so a half-open

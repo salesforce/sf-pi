@@ -330,24 +330,35 @@ async function fetchThreadsForMatches(
     .filter((item) => item.channel && item.ts)
     .slice(0, 5);
 
-  const bundles: ThreadBundle[] = [];
-  for (const item of threadable) {
-    const result = await slackApi<ConversationsRepliesResponse>(
-      "conversations.replies",
-      token,
-      {
+  // Fire all thread fetches concurrently. The global Slack semaphore in
+  // lib/api.ts (MAX_CONCURRENT) already caps actual in-flight requests, so
+  // this can't stampede Slack; it just stops us from paying the round-trip
+  // latency for each of up to 5 threads serially.
+  const results = await Promise.all(
+    threadable.map(async (item) => {
+      const result = await slackApi<ConversationsRepliesResponse>(
+        "conversations.replies",
+        token,
+        {
+          channel: item.channel,
+          ts: item.ts,
+          limit: DEFAULT_HISTORY_LIMIT,
+        },
+        signal,
+      );
+      if (!result.ok || !Array.isArray(result.data.messages) || result.data.messages.length === 0) {
+        return undefined;
+      }
+      await warmUsersForMessages(token, result.data.messages, signal);
+      return {
         channel: item.channel,
         ts: item.ts,
-        limit: DEFAULT_HISTORY_LIMIT,
-      },
-      signal,
-    );
-    if (result.ok && Array.isArray(result.data.messages) && result.data.messages.length > 0) {
-      await warmUsersForMessages(token, result.data.messages, signal);
-      bundles.push({ channel: item.channel, ts: item.ts, messages: result.data.messages });
-    }
-  }
-  return bundles;
+        messages: result.data.messages,
+      } satisfies ThreadBundle;
+    }),
+  );
+
+  return results.filter((bundle): bundle is ThreadBundle => bundle !== undefined);
 }
 
 function buildResearchText(args: {

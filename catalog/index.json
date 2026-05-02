@@ -222,7 +222,7 @@
     "entry": "extensions/sf-slack/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 9734
+    "srcLoc": 9752
   },
   {
     "id": "sf-welcome",
