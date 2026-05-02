@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.27.5-2026-05-02",
-  "latestVersion": "0.27.5",
+  "revision": "release-0.27.6-2026-05-02",
+  "latestVersion": "0.27.6",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.27.5",
+      "id": "release-0.27.6",
       "kind": "update",
-      "title": "sf-pi v0.27.5 — sf-slack: parallelize thread fetch, trim channel discovery, raise concurrency",
+      "title": "sf-pi v0.27.6 — sf-slack: serialize slack_resolve clarify dialogs across parallel calls",
       "publishedAt": "2026-05-02T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.27.5",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.27.6",
       "severity": "info",
-      "body": "sf-slack: parallelize thread fetch, trim channel discovery, raise concurrency"
+      "body": "sf-slack: serialize slack_resolve clarify dialogs across parallel calls"
     },
     {
       "id": "pi-0.71-compat",
