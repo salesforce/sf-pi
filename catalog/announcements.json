@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.25.0-2026-05-02",
-  "latestVersion": "0.25.0",
+  "revision": "release-0.26.0-2026-05-02",
+  "latestVersion": "0.26.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.25.0",
+      "id": "release-0.26.0",
       "kind": "update",
-      "title": "sf-pi v0.25.0 — devbar,gateway: 1% context bar, decimal % label, 60s cost refresh",
+      "title": "sf-pi v0.26.0 — sf-lsp: reimagine LSP TUI with in-card panel, HUD, footer, transcript, and rich /sf-lsp panel",
       "publishedAt": "2026-05-02T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.25.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.26.0",
       "severity": "info",
-      "body": "devbar,gateway: 1% context bar, decimal % label, 60s cost refresh"
+      "body": "sf-lsp: reimagine LSP TUI with in-card panel, HUD, footer, transcript, and rich /sf-lsp panel"
     },
     {
       "id": "pi-0.71-compat",
