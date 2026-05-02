@@ -365,6 +365,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.27.4](https://github.com/salesforce/sf-pi/compare/v0.27.3...v0.27.4) (2026-05-02)
+
+
+### Bug Fixes
+
+* **sf-slack:** bound Slack API calls with per-request + per-operation timeouts ([099e8b3](https://github.com/salesforce/sf-pi/commit/099e8b388cca53a001c805c0953e5f62bc8efd52)), closes [#17](https://github.com/salesforce/sf-pi/issues/17)
+
 ## [0.27.3](https://github.com/salesforce/sf-pi/compare/v0.27.2...v0.27.3) (2026-05-02)
 
 
