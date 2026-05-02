@@ -3,8 +3,7 @@
 ## What It Does
 
 Provides real-time Language Server Protocol diagnostics to the agent after every
-file write or edit, **and** a layered TUI so you can see exactly when the LSP
-fired, what it returned, and how long it took.
+file write or edit, plus three user-facing TUI surfaces.
 
 When the agent creates or modifies an Apex class, LWC component, or Agent
 Script file, sf-lsp sends it to the appropriate LSP server and appends
@@ -13,47 +12,34 @@ compile errors immediately — before moving on to the next task — and can
 self-correct in the same turn.
 
 The UI layer is pure presentation: **nothing extra is sent to the LLM** beyond
-the existing `LSP feedback: …` text block. Every new surface reads from the
-`details.sfPiDiagnostics` metadata that `lib/feedback.ts` already stamps onto
-tool results. See [`ROADMAP.md`](./ROADMAP.md) for shipped phases and future
-work.
+the existing `LSP feedback: …` text block. See [`ROADMAP.md`](./ROADMAP.md)
+for shipped phases and future work.
 
 **Why no in-card panel on the edit/write tool itself?** Pi refuses to load any
 extension that re-registers a tool name already claimed by another extension
 (see `detectExtensionConflicts` in `resource-loader`). Third-party extensions
 like `pi-tool-display` already own the `edit`/`write` names for rendering
 purposes, so sf-lsp stays out of that lane and communicates via the
-transcript row, HUD overlay, and footer instead.
+transcript row and the permanent sf-devbar top-bar LSP segment.
 
 ## TUI Surfaces
 
-| Surface                | What it shows                                                                                    | Pi primitive                                                                      |
-| ---------------------- | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------- |
-| Live working indicator | `⠋ LSP Apex…` spinner while diagnostics are being fetched (≤6s)                                  | `ctx.ui.setWorkingIndicator`                                                      |
-| Footer status segment  | `LSP:●●● Apex·LWC·AS` with per-language health dots (picked up by `sf-devbar`)                   | `ctx.ui.setStatus` + `footerData.getExtensionStatuses()`                          |
-| Compact HUD overlay    | Single line top-right: `🩻 SF LSP ◐ Apex ✓ LWC ◌ AS 1e`. Auto-hides ~8s after last check.        | `ctx.ui.custom` non-capturing overlay with `visible` predicate                    |
-| Inline transcript row  | `[sf-lsp] Apex · Foo.cls · clean · 312ms` — user-only, **never** reaches the LLM                 | `pi.sendMessage({customType:"sf-lsp", display:true})` + `registerMessageRenderer` |
-| Rich `/sf-lsp` panel   | Doctor + recent activity ring + actions (refresh, HUD toggle, verbose toggle, shut down servers) | `ctx.ui.custom` overlay with `DynamicBorder` + `SelectList`                       |
+| Surface                 | What it shows                                                                                      | Pi primitive                                                                      |
+| ----------------------- | -------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Working indicator       | `⠋ LSP Apex…` spinner while diagnostics are being fetched (≤6s)                                    | `ctx.ui.setWorkingIndicator`                                                      |
+| **Top-bar LSP segment** | Permanent right-aligned `Apex: ● \| LWC: ● \| AgentScript: ●` (green / red / dim) inside sf-devbar | `lib/common/sf-lsp-health` shared registry → sf-devbar top-bar widget             |
+| Inline transcript row   | `[sf-lsp] Apex · Foo.cls · clean · 312ms` — user-only, **never** reaches the LLM                   | `pi.sendMessage({customType:"sf-lsp", display:true})` + `registerMessageRenderer` |
+| Rich `/sf-lsp` panel    | Doctor + recent activity ring + actions (refresh, verbose toggle, shut down servers)               | `ctx.ui.custom` overlay with `DynamicBorder` + `SelectList`                       |
 
 **Agent Script note:** when the `sf-agentscript-assist` extension is loaded,
 sf-lsp yields `.agent` files to it. That extension handles the same diagnostic
 flow in-process via the vendored Agent Script SDK — faster, richer, and with
 deterministic quick fixes. sf-lsp still observes the metadata the assist
-extension stamps onto the tool result so the HUD, footer, and transcript
-stay accurate for `.agent` edits.
+extension stamps onto the tool result so the transcript stays accurate for
+`.agent` edits.
 
 If `sf-agentscript-assist` is disabled, sf-lsp's subprocess LSP path
 continues to handle `.agent` files exactly as before.
-
-## How It Differs from VS Code
-
-| VS Code                                   | sf-lsp (pi)                                           |
-| ----------------------------------------- | ----------------------------------------------------- |
-| Shows squiggly underlines in the editor   | Appends diagnostics to the agent's tool result        |
-| Developer reads and fixes errors manually | **Agent reads and fixes errors automatically**        |
-| Always shows all diagnostics              | Only shows errors (severity 1), ignores warnings      |
-| Shows diagnostics for every open file     | Only diagnoses files the agent just wrote/edited      |
-| No red/green transition tracking          | Tracks error → clean transitions per file per session |
 
 ## Supported Languages
 
@@ -66,6 +52,10 @@ continues to handle `.agent` files exactly as before.
 ## Runtime Flow
 
 ```
+session_start
+  └─ doctor probe (background) → write sf-lsp-health registry
+                                  → sf-devbar top bar repaints green/red dots
+
 write/edit tool completes
   │
   ├─ Is this a supported Salesforce file?
@@ -77,12 +67,13 @@ write/edit tool completes
   ├─ Discover LSP server
   │    env vars → .pi/lsp/ → ~/.pi/agent/lsp/ → VS Code extensions → PATH
   │
-  ├─ Send file to LSP, wait ≤6s for diagnostics
+  ├─ Send file to LSP, wait ≤6s for diagnostics (working indicator ticks)
   │
-  └─ Decide what to append:
-       Has errors? → "LSP feedback: MyClass.cls\n- L11: Expected ';'"
-       Was error, now clean? → "LSP now clean: MyClass.cls"
-       First time unavailable? → "LSP setup note: Apex LSP is unavailable..."
+  └─ Decide what to append / emit:
+       Has errors?           → "LSP feedback: MyClass.cls\n- L11: …" (to LLM)
+                              + transcript row (user-only)
+       Was error, now clean? → "LSP now clean: MyClass.cls" + transcript row
+       First time unavailable? → "LSP setup note: …" + transcript row
        Clean and was never broken? → nothing (silent)
 ```
 
@@ -104,9 +95,7 @@ Requires Java 11+ (`JAVA_HOME` or auto-discovered).
 1. `SF_LSP_AGENTSCRIPT_SERVER` or `AGENTSCRIPT_LSP_SERVER` env var
 2. `.pi/lsp/agentscript/server.mjs` or `server.js` (project-level)
 3. `~/.pi/agent/lsp/agentscript/server.mjs` or `server.js` (global)
-4. VS Code Agent Script extension (`agent-script-language-client-*`) —
-   auto-detects both the v2.x layout (`dist/server.mjs`) and the v1.x layout
-   (`server/server.js`)
+4. VS Code Agent Script extension (`agent-script-language-client-*`)
 
 Requires Node.js 18+.
 
@@ -117,27 +106,16 @@ Requires Node.js 18+.
 3. `~/.pi/agent/lsp/bin/lwc-language-server` (global)
 4. `lwc-language-server` on PATH
 
-## Memory Management
-
-Adopted from lsp-pi best practices:
-
-- **LRU file eviction**: Max 30 open files per LSP server. When exceeded, the
-  least-recently-accessed file is closed.
-- **Idle file cleanup**: Files not accessed for 60s are automatically closed.
-- **Idle server shutdown**: Servers with no activity for 2 minutes are shut down.
-  They restart lazily when the next file is diagnosed.
-- **Path normalization**: Uses `realpathSync` to handle macOS `/var` vs `/private/var`.
-
 ## Commands & Controls
 
-| Command / shortcut                | Description                                                                             |
-| --------------------------------- | --------------------------------------------------------------------------------------- |
-| `/sf-lsp`                         | Open the rich status & controls panel (doctor, recent activity, actions)                |
-| `/sf-lsp doctor`                  | Compact doctor report via `ui.notify`                                                   |
-| `/sf-lsp hud on\|off\|toggle`     | Show or hide the top-right HUD overlay (persisted to global settings)                   |
-| `/sf-lsp verbose on\|off\|toggle` | Flip transcript rows between balanced (errors + transitions) and verbose (every check)  |
-| `Ctrl+Shift+L`                    | Toggle the HUD overlay from anywhere                                                    |
-| `pi --no-sf-lsp-hud`              | Launch with the HUD overlay suppressed. Widget, footer, and in-card panel still render. |
+| Command                           | Description                                                                            |
+| --------------------------------- | -------------------------------------------------------------------------------------- |
+| `/sf-lsp`                         | Open the rich status & controls panel (doctor, recent activity, actions)               |
+| `/sf-lsp doctor`                  | Compact doctor report via `ui.notify`                                                  |
+| `/sf-lsp verbose on\|off\|toggle` | Flip transcript rows between balanced (errors + transitions) and verbose (every check) |
+
+No keyboard shortcut, no CLI flag, no overlay toggle — the LSP segment is
+always-on in the sf-devbar top bar and requires no configuration.
 
 ## Behavior Matrix
 
@@ -157,91 +135,79 @@ Adopted from lsp-pi best practices:
 
 ### TUI-facing (user-only)
 
-| Surface                   | Event/Trigger                                    | Result                                      |
-| ------------------------- | ------------------------------------------------ | ------------------------------------------- |
-| Working indicator         | check started / finished                         | Push `⠋ LSP <Lang>…` / restore default      |
-| Footer + widget + HUD     | any check                                        | Update activity store, re-render all three  |
-| Transcript row (balanced) | error, error→clean transition, first unavailable | Emit one `sf-lsp` custom message            |
-| Transcript row (verbose)  | every check                                      | Emit one `sf-lsp` custom message            |
-| `/sf-lsp`                 | no args                                          | Open rich panel (doctor + recent + actions) |
-| `/sf-lsp doctor`          | —                                                | `ui.notify` with availability report        |
-| `Ctrl+Shift+L`            | —                                                | Toggle HUD overlay                          |
-| `--no-sf-lsp-hud`         | startup                                          | HUD stays hidden for the session            |
+| Surface                   | Event/Trigger                                    | Result                                                                 |
+| ------------------------- | ------------------------------------------------ | ---------------------------------------------------------------------- |
+| Working indicator         | check started / finished                         | Push `⠋ LSP <Lang>…` / restore default                                 |
+| sf-devbar top-bar LSP     | session_start doctor probe / `/sf-lsp doctor`    | Green dot for available language, red for unavailable, dim for unknown |
+| Transcript row (balanced) | error, error→clean transition, first unavailable | Emit one `sf-lsp` custom message                                       |
+| Transcript row (verbose)  | every check                                      | Emit one `sf-lsp` custom message                                       |
+| `/sf-lsp`                 | no args                                          | Open rich panel (doctor + recent + actions)                            |
+| `/sf-lsp doctor`          | —                                                | `ui.notify` with availability report                                   |
 
 ## File Structure
 
 ```
 extensions/sf-lsp/
-  index.ts                ← entry point: events, commands, shortcuts, wiring
+  index.ts                ← entry point: events, commands, wiring
   manifest.json           ← metadata
   README.md               ← this file
   ROADMAP.md              ← shipped + planned phases
   lib/
     types.ts              ← LspDiagnostic, LspDoctorStatus, LspResult, SupportedLanguage
     file-classify.ts      ← file → language mapping, path resolution
-    lsp-client.ts         ← LSP engine (discovery, spawn, diagnose, shutdown) — unchanged
-    feedback.ts           ← red/green decision logic, rendering, LLM-facing contract — unchanged
-    activity.ts           ← pure activity store (per-language entries, ring buffer, formatters)
+    lsp-client.ts         ← LSP engine (discovery, spawn, diagnose, shutdown)
+    feedback.ts           ← red/green decision logic, rendering, LLM-facing contract
+    activity.ts           ← pure activity store (per-language entries, ring buffer)
     working-indicator.ts  ← ref-counted setWorkingIndicator helper
-    footer-status.ts      ← theme-aware footer segment renderer
-    hud-component.ts      ← compact top-right HUD overlay + isLspHudActive predicate
     transcript.ts         ← custom message renderer + emit policy
     panel.ts              ← /sf-lsp rich overlay (DynamicBorder + SelectList)
-    settings-io.ts        ← persistent sfPi.sfLsp { hud, verbose }
+    settings-io.ts        ← persistent sfPi.sfLsp.verbose
   tests/
     smoke.test.ts         ← module export check
     file-classify.test.ts ← file classification and path resolution
     feedback.test.ts      ← red/green logic and LLM text rendering
     activity.test.ts      ← pure activity store transitions
     transcript.test.ts    ← shouldEmitTranscriptRow policy
-    footer-status.test.ts ← footer segment formatter with stub theme
-    hud-component.test.ts ← isLspHudActive visibility predicate
 ```
+
+Shared with sf-devbar:
+
+```
+lib/common/sf-lsp-health/
+  index.ts                ← in-process health registry (available/unavailable/unknown)
+  types.ts                ← SupportedLspLanguage + languageFullName helper
+  tests/health.test.ts    ← mutation + subscription tests
+```
+
+## Memory Management
+
+Adopted from lsp-pi best practices:
+
+- **LRU file eviction**: Max 30 open files per LSP server. When exceeded, the
+  least-recently-accessed file is closed.
+- **Idle file cleanup**: Files not accessed for 60s are automatically closed.
+- **Idle server shutdown**: Servers with no activity for 2 minutes are shut down.
+  They restart lazily when the next file is diagnosed.
+- **Path normalization**: Uses `realpathSync` to handle macOS `/var` vs `/private/var`.
 
 ## Testing Strategy
 
-- **file-classify.ts**: Pure functions, fully tested with edge cases (backslashes,
-  `@` prefix, case insensitivity, non-LWC `.js` files)
+- **file-classify.ts**: Pure functions, fully tested with edge cases
 - **feedback.ts**: Pure decision logic and rendering, tested with factory helpers
-  for diagnostics and state objects. Covers error, clean, unavailable, and
-  transition scenarios.
 - **lsp-client.ts**: Requires real LSP servers — tested via manual QA with
-  `/sf-lsp doctor` and actual file edits against a connected org.
+  `/sf-lsp doctor` and actual file edits against a connected org
+- **activity.ts**: Pure state transitions, fully tested
 
 Run: `npm test`
 
 ## Troubleshooting
 
-**`Failed to load extension ...sf-lsp/index.ts: Tool "edit" conflicts with ...`:**
-Another extension (commonly `pi-tool-display`) already registers the
-`edit` or `write` tool name. Pi's conflict detector refuses to load any
-extension that re-registers those names. sf-lsp no longer tries to — if
-you see this message on a current build, run `/reload` or update sf-pi.
-The in-card panel is intentionally dropped; the transcript row + HUD +
-footer now carry the same signal.
-
-**HUD never appears even on wide terminals:**
-The HUD is **show-when-active** — it auto-hides ~8s after the last LSP
-check and re-appears on the next one. It's also gated on
-`termWidth >= 80` / `termHeight >= 10` and on the persisted
-`sfPi.sfLsp.hud` setting. Run `/sf-lsp hud on`, `Ctrl+Shift+L`, or edit
-a Salesforce file to trigger a check. The `--no-sf-lsp-hud` CLI flag
-suppresses it for the session.
-
-**Agent Script edits say "idle" in the HUD even after an edit:**
-When `sf-agentscript-assist` is loaded it handles `.agent` files
-entirely. sf-lsp now observes the metadata that assist extension stamps
-onto the tool result and records it into the same activity store used
-by the HUD, footer, and transcript — no configuration needed. If you
-still see "idle" after an `.agent` edit, confirm
-`sf-agentscript-assist` is enabled (`/sf-agentscript-assist doctor`)
-and `/reload` the session.
-
-**Footer pill is empty or shows only dim dots:**
-The activity store starts empty. The footer fills after the first real
-check fires or after the background doctor probe on `session_start`
-completes. If `sf-devbar` isn't loaded, the pill is still set — it's
-just rendered by Pi's default footer instead of the dev bar.
+**The sf-devbar top-bar LSP segment stays grey / never turns green:**
+Run `/sf-lsp doctor` to kick a fresh probe. If a language stays grey,
+sf-devbar isn't subscribed (check `/sf-devbar` is enabled) — the
+segment is rendered by sf-devbar using the shared
+`lib/common/sf-lsp-health` registry that sf-lsp writes into on
+`session_start`.
 
 **Transcript rows feel too chatty / too quiet:**
 Default mode is balanced: transcript row only on errors, red-to-green

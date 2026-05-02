@@ -13,7 +13,14 @@
  * Pure function: takes state, returns themed string array (one line).
  */
 
+import { truncateToWidth, visibleWidth } from "@mariozechner/pi-tui";
 import { formatGitChanges, type GitChanges } from "./git-changes.ts";
+import type {
+  SfLspHealthSnapshot,
+  SfLspLanguageHealth,
+  SupportedLspLanguage,
+} from "../../../lib/common/sf-lsp-health/index.ts";
+import { languageFullName } from "../../../lib/common/sf-lsp-health/types.ts";
 
 // -------------------------------------------------------------------------------------------------
 // Types
@@ -28,6 +35,8 @@ export type BarTheme = {
 export type TopBarState = {
   /** Model display name, e.g. "Claude Opus 4.7". */
   modelName?: string;
+  /** Per-language Salesforce LSP health snapshot. */
+  lspHealth?: SfLspHealthSnapshot;
   /** Model provider id, e.g. "sf-llm-gateway-internal" or "anthropic". */
   modelProvider?: string;
   /** Context window size in tokens, e.g. 1000000. */
@@ -80,47 +89,135 @@ const SEP_CHAR = "\ue0b1";
 /**
  * Render the top bar as a single themed line.
  *
- * Uses ANSI color sequences via theme.fg() for terminal rendering.
- * The rainbow thinking badge uses raw ANSI escapes because Pi's theme
- * API doesn't have a multi-color gradient helper.
+ * Back-compat thin wrapper over `renderTopBarParts`. The permanent LSP
+ * health segment lives on the right side; the widget factory in
+ * `index.ts` handles right-alignment at the current terminal width.
  */
 export function renderTopBar(state: TopBarState, theme: BarTheme): string[] {
+  const { left, right } = renderTopBarParts(state, theme);
+  return right ? [`${left}  ${right}`] : [left];
+}
+
+/**
+ * Terminal-width-aware single-line renderer. Left side is flush-left,
+ * right side (permanent LSP health segment) is flush-right at the
+ * current terminal width. If the combined content doesn't fit, the
+ * right side wins and the left side is truncated with an ellipsis —
+ * availability is the permanent signal users asked for.
+ */
+export function renderTopBarLine(state: TopBarState, theme: BarTheme, width: number): string[] {
+  const { left, right } = renderTopBarParts(state, theme);
+  if (!right) return [truncateToWidth(left, width)];
+  const leftW = visibleWidth(left);
+  const rightW = visibleWidth(right);
+  const minGap = 2;
+
+  if (leftW + minGap + rightW <= width) {
+    const pad = " ".repeat(width - leftW - rightW);
+    return [`${left}${pad}${right}`];
+  }
+
+  // Not enough room — truncate the left side to make room for the right.
+  const budget = Math.max(0, width - rightW - minGap);
+  const truncatedLeft = truncateToWidth(left, budget, "…");
+  const actual = visibleWidth(truncatedLeft);
+  const gap = Math.max(minGap, width - actual - rightW);
+  return [`${truncatedLeft}${" ".repeat(gap)}${right}`];
+}
+
+/**
+ * Render the top bar as left / right joined segments. Used by the widget
+ * factory in `extensions/sf-devbar/index.ts` to right-align the LSP
+ * health segment against the terminal's right edge.
+ */
+export function renderTopBarParts(
+  state: TopBarState,
+  theme: BarTheme,
+): { left: string; right: string } {
   const sep = ` ${theme.fg("dim", SEP_CHAR)} `;
-  const segments: string[] = [];
+  const leftSegments: string[] = [];
 
   // 1. SF Pi brand icon + powerline separator + model segment (no gap)
   const brandIcon = theme.bold(theme.fg("accent", "\ue22c"));
   const modelSeg = formatModelSegment(state, theme);
-  segments.push(brandIcon + sep + modelSeg);
+  leftSegments.push(brandIcon + sep + modelSeg);
 
   // 2. Thinking level (rainbow gradient, hidden when "off")
   const thinkSeg = formatThinkingSegment(state.thinkingLevel, theme);
-  if (thinkSeg) segments.push(thinkSeg);
+  if (thinkSeg) leftSegments.push(thinkSeg);
 
   // 3. Working folder — teal color matching pi-powerline-footer
-  segments.push(formatFolderSegment(state.folderName));
+  leftSegments.push(formatFolderSegment(state.folderName));
 
   // 4. Git branch + changes
   const gitSeg = formatGitSegment(state, theme);
-  if (gitSeg) segments.push(gitSeg);
+  if (gitSeg) leftSegments.push(gitSeg);
 
   // 5. Context window progress bar
   const ctxSeg = formatContextSegment(state.contextPercent, theme);
-  if (ctxSeg) segments.push(ctxSeg);
+  if (ctxSeg) leftSegments.push(ctxSeg);
 
   // 6. Optional inline-image-width pill — only when the user has nudged the
   //    setting away from Pi's default, so the bar stays uncluttered for
   //    everyone else.
   if (state.imageWidthPill) {
-    segments.push(theme.fg("muted", state.imageWidthPill));
+    leftSegments.push(theme.fg("muted", state.imageWidthPill));
   }
 
   // 7. Thinking indicator (subtle pulse when agent is working)
   if (state.isThinking) {
-    segments.push(theme.fg("accent", "⟳"));
+    leftSegments.push(theme.fg("accent", "⟳"));
   }
 
-  return [segments.join(sep)];
+  const rightSegments: string[] = [];
+
+  // LSP health segment — permanent, full names, colored by availability.
+  const lspSeg = formatLspHealthSegment(state.lspHealth, theme);
+  if (lspSeg) rightSegments.push(lspSeg);
+
+  return {
+    left: leftSegments.join(sep),
+    right: rightSegments.join(sep),
+  };
+}
+
+/**
+ * Render the permanent LSP health segment:
+ *
+ *   Apex: ● | LWC: ● | AgentScript: ●
+ *
+ * Colors:
+ *   green  — LSP available (installed and discoverable)
+ *   red    — LSP unavailable (missing binary / jar / server)
+ *   dim    — unknown (not probed yet)
+ */
+export function formatLspHealthSegment(
+  snapshot: SfLspHealthSnapshot | undefined,
+  theme: BarTheme,
+): string | null {
+  if (!snapshot) return null;
+  const languages: SupportedLspLanguage[] = ["apex", "lwc", "agentscript"];
+  const bar = theme.fg("dim", " | ");
+  return languages
+    .map((language) => {
+      const entry = snapshot.byLanguage[language];
+      const label = theme.fg("muted", `${languageFullName(language)}:`);
+      const glyph = formatLspGlyph(entry.health, theme);
+      return `${label} ${glyph}`;
+    })
+    .join(bar);
+}
+
+function formatLspGlyph(health: SfLspLanguageHealth, theme: BarTheme): string {
+  switch (health) {
+    case "available":
+      return theme.fg("success", "●");
+    case "unavailable":
+      return theme.fg("error", "●");
+    case "unknown":
+    default:
+      return theme.fg("dim", "●");
+  }
 }
 
 // -------------------------------------------------------------------------------------------------

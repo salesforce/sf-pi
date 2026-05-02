@@ -68,7 +68,7 @@
     "entry": "extensions/sf-devbar/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 1272
+    "srcLoc": 1412
   },
   {
     "id": "sf-llm-gateway-internal",
@@ -100,7 +100,7 @@
   {
     "id": "sf-lsp",
     "name": "SF LSP",
-    "description": "Real-time Salesforce LSP diagnostics on write/edit with a layered TUI (in-card panel, HUD overlay, footer, transcript rows)",
+    "description": "Real-time Salesforce LSP diagnostics on write/edit with a working-indicator spinner, transcript rows, and a permanent top-bar health segment in sf-devbar",
     "category": "core",
     "defaultEnabled": true,
     "alwaysActive": false,
@@ -118,7 +118,7 @@
     "entry": "extensions/sf-lsp/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 2881
+    "srcLoc": 2439
   },
   {
     "id": "sf-ohana-spinner",

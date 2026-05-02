@@ -2,34 +2,28 @@
 /**
  * sf-lsp behavior contract
  *
- * Advisory LSP diagnostics after `write`/`edit` tool results, plus a layered
- * TUI presence so the user always knows whether the LSP actually fired and
- * what it found. The LLM-facing text contract is unchanged — see
- * `lib/feedback.ts`.
+ * Advisory LSP diagnostics after `write`/`edit` tool results, plus a few
+ * user-facing TUI surfaces. The LLM-facing text contract is unchanged —
+ * see `lib/feedback.ts`.
  *
  * Surfaces (all optional, all feature-gated by `ctx.hasUI`):
  *
  *   Surface                | Pi API                                 | Lifetime
  *   -----------------------|----------------------------------------|--------------------
  *   Working indicator      | ctx.ui.setWorkingIndicator             | streaming window
- *   Footer status segment  | ctx.ui.setStatus                       | persistent
- *   Compact HUD overlay    | ctx.ui.custom overlay nonCapturing     | active-only (auto-hide)
+ *   Top-bar LSP segment    | sf-lsp-health registry -> sf-devbar    | permanent
  *   Transcript row         | pi.sendMessage + registerMessageRenderer| per event
  *   Rich /sf-lsp panel     | ctx.ui.custom overlay + SelectList     | on-demand
- *   Ctrl+Shift+L toggle    | pi.registerShortcut                    | startup
- *   --no-sf-lsp-hud flag   | pi.registerFlag                        | startup
  *
- * The LLM-facing output (`LSP feedback: ...`) and the `details.sfPiDiagnostics`
- * metadata schema are produced by `lib/feedback.ts` and are shared with
- * `sf-agentscript-assist`. Every new surface reads only from the activity
- * store or the already-stamped metadata — `feedback.ts` and `lsp-client.ts`
- * stay unchanged.
+ * Earlier revisions shipped a separate HUD overlay; it was removed in
+ * favor of rendering permanent per-language availability inside
+ * sf-devbar's top bar via the shared `lib/common/sf-lsp-health` registry.
+ * The transcript row, working indicator, and `/sf-lsp` panel all stay.
  *
  * NOTE: sf-lsp intentionally does NOT override the built-in `edit`/`write`
- * tools to add an in-card panel. Pi's cross-extension conflict detector
- * refuses to load any extension that re-registers a tool name already
- * claimed by another extension (commonly `pi-tool-display` owns those).
- * The transcript row + HUD + footer carry the same user-facing signal.
+ * tools. Pi's cross-extension conflict detector refuses to load any
+ * extension that re-registers a tool name already claimed by another
+ * extension (commonly `pi-tool-display`).
  */
 
 import type {
@@ -62,14 +56,6 @@ import {
   pushLspIndicator,
   resetLspIndicator,
 } from "./lib/working-indicator.ts";
-import { formatFooterStatus } from "./lib/footer-status.ts";
-import {
-  HUD_OVERLAY_WIDTH,
-  HUD_ICON_CATALOGUE,
-  SfLspHudComponent,
-  isLspHudActive,
-  resolveHudIcon,
-} from "./lib/hud-component.ts";
 import {
   createTranscriptRenderer,
   emitTranscriptRow,
@@ -89,17 +75,17 @@ import type {
 } from "../../lib/common/display/diagnostics.ts";
 import { SF_PI_DIAGNOSTICS_DETAILS_KEY } from "../../lib/common/display/diagnostics.ts";
 import type { LspDiagnostic, SupportedLanguage } from "./lib/types.ts";
+import {
+  resetSfLspHealth,
+  setSfLspHealthFromDoctor,
+} from "../../lib/common/sf-lsp-health/index.ts";
 
 // -------------------------------------------------------------------------------------------------
 // Constants
 // -------------------------------------------------------------------------------------------------
 
 const DIAGNOSTIC_TIMEOUT_MS = 6000;
-const STATUS_KEY = "sf-lsp";
-const FLAG_NAME = "no-sf-lsp-hud";
 const TRANSCRIPT_PREVIEW_LIMIT = 3;
-/** Re-check HUD visibility roughly every second while there's recent activity. */
-const HUD_IDLE_CHECK_INTERVAL_MS = 1_000;
 
 // -------------------------------------------------------------------------------------------------
 // Extension entry point
@@ -113,13 +99,8 @@ export default function sfLspExtension(pi: ExtensionAPI) {
   const activity = createActivityStore();
   const workingIndicator = createWorkingIndicatorState();
 
-  // Settings + per-session UI state
-  let uiSettings: SfLspUiSettings = { hud: true, verbose: false, icon: "bolt" };
-  let hudEnabledAtStartup = true;
-  let hudOverlayDismiss: (() => void) | null = null;
-  let hudComponent: SfLspHudComponent | null = null;
-  let hudIdleTimer: ReturnType<typeof setInterval> | null = null;
-  let hudCtxRef: ExtensionContext | null = null;
+  // Settings (user-tunable: just transcript verbosity now)
+  let uiSettings: SfLspUiSettings = { verbose: false };
   const unavailableSeenByLanguage = new Set<SupportedLanguage>();
 
   // --- Register transcript message renderer -------------------------------------------------
@@ -127,20 +108,6 @@ export default function sfLspExtension(pi: ExtensionAPI) {
     LSP_TRANSCRIPT_CUSTOM_TYPE,
     createTranscriptRenderer(),
   );
-
-  // --- CLI flag / shortcut --------------------------------------------------------------------
-  pi.registerFlag(FLAG_NAME, {
-    description: "Launch without the sf-lsp top-right HUD overlay",
-    type: "boolean",
-    default: false,
-  });
-
-  pi.registerShortcut("ctrl+shift+l", {
-    description: "Toggle the sf-lsp HUD overlay",
-    handler: async (ctx) => {
-      await toggleHud(ctx);
-    },
-  });
 
   // --- Core hooks -----------------------------------------------------------------------------
   registerMainCommand(pi);
@@ -156,43 +123,31 @@ export default function sfLspExtension(pi: ExtensionAPI) {
       resetState(state);
       resetActivityStore(activity);
       unavailableSeenByLanguage.clear();
+      resetSfLspHealth();
 
       const effective = readEffectiveSfLspSettings(ctx.cwd);
-      uiSettings = { hud: effective.hud, verbose: effective.verbose, icon: effective.icon };
-      hudEnabledAtStartup = pi.getFlag(FLAG_NAME) === true ? false : uiSettings.hud;
+      uiSettings = { verbose: effective.verbose };
 
       if (!ctx.hasUI) return;
-      hudCtxRef = ctx;
-      pushFooterStatus(ctx);
 
-      // Probe doctor in the background so the footer + panel reflect
-      // availability before any real check fires. Non-blocking.
+      // Probe doctor in the background so the top-bar LSP segment fills in
+      // with green/red availability before the first check fires.
       void doctorLsp(ctx.cwd)
         .then((statuses) => {
           seedFromDoctor(activity, statuses);
-          pushFooterStatus(ctx);
-          hudComponent?.setStore(activity);
+          setSfLspHealthFromDoctor(statuses);
         })
         .catch(() => {
-          // doctor runs on a best-effort basis; silently ignore failures
+          // doctor runs on a best-effort basis; leave health as "unknown"
         });
-
-      if (hudEnabledAtStartup) {
-        ensureHudMounted(ctx);
-      }
     });
 
     pi.on("session_shutdown", async (event, ctx) => {
-      stopHudIdleTimer();
-      dismissHud();
-      if (ctx) {
-        resetLspIndicator(ctx, workingIndicator);
-        if (ctx.hasUI) ctx.ui.setStatus(STATUS_KEY, undefined);
-      }
+      if (ctx) resetLspIndicator(ctx, workingIndicator);
       resetState(state);
       resetActivityStore(activity);
       unavailableSeenByLanguage.clear();
-      hudCtxRef = null;
+      resetSfLspHealth();
       if (event.reason !== "reload") {
         await shutdownLspClients();
       }
@@ -220,13 +175,12 @@ export default function sfLspExtension(pi: ExtensionAPI) {
     const language = getSfLspLanguageForFile(filePath);
     if (!language) return undefined;
 
-    // When sf-agentscript-assist is loaded it handles `.agent` files end-to-end
-    // and stamps `details.sfPiDiagnostics` onto the event. We don't duplicate
-    // that work, but we DO still want the HUD / footer / transcript row to
-    // reflect the check. Load order is alphabetical, so the assist extension
-    // runs before us and we can read its metadata off `event.details`.
+    // When sf-agentscript-assist is loaded it handles `.agent` files. We
+    // mirror the metadata it stamps onto `event.details` so the transcript
+    // stays accurate for `.agent` edits. Load order is alphabetical, so the
+    // assist extension always runs before us.
     if (language === "agentscript" && isAgentScriptAssistInstalled(pi)) {
-      observeExternalDiagnostics(pi, ctx, event, filePath, language);
+      observeExternalDiagnostics(pi, event, filePath, language);
       return undefined;
     }
 
@@ -234,9 +188,6 @@ export default function sfLspExtension(pi: ExtensionAPI) {
     const fileName = basename(filePath);
 
     markChecking(activity, language, filePath, fileName);
-    hudComponent?.setStore(activity);
-    pushFooterStatus(ctx);
-    ensureHudMounted(ctx);
     pushLspIndicator(ctx, workingIndicator, language);
 
     const startedAt = Date.now();
@@ -279,10 +230,6 @@ export default function sfLspExtension(pi: ExtensionAPI) {
       metadata,
     });
 
-    hudComponent?.setStore(activity);
-    pushFooterStatus(ctx);
-    startHudIdleTimer();
-
     maybeEmitTranscriptRow(pi, entry, metadata, language, fileName);
 
     if (entry.status === "unavailable") {
@@ -295,12 +242,10 @@ export default function sfLspExtension(pi: ExtensionAPI) {
   /**
    * Mirror a peer extension's diagnostic metadata into our activity store
    * without touching the tool result. Used when sf-agentscript-assist
-   * handles `.agent` files so our HUD/footer/transcript still reflect the
-   * check.
+   * handles `.agent` files.
    */
   function observeExternalDiagnostics(
     pi: ExtensionAPI,
-    ctx: ExtensionContext,
     event: ToolResultEvent,
     filePath: string,
     language: SupportedLanguage,
@@ -309,15 +254,10 @@ export default function sfLspExtension(pi: ExtensionAPI) {
     if (!metadata) return;
 
     const previousFileStatus = state.lastStatusByFile.get(filePath);
-    // Keep our own `lastStatusByFile` in sync so error→clean transitions
-    // work across the two extensions.
     state.lastStatusByFile.set(filePath, metadata.status === "error" ? "error" : "clean");
 
     const fileName = basename(filePath);
-
     const now = Date.now();
-    // Reconstruct minimal LspDiagnostic shapes so recordCheck's existing
-    // "error count" logic keeps working identically.
     const diagnostics: LspDiagnostic[] =
       metadata.status === "error" ? metadata.diagnostics.map(toLspDiagnostic) : [];
 
@@ -339,115 +279,9 @@ export default function sfLspExtension(pi: ExtensionAPI) {
       metadata,
     });
 
-    hudComponent?.setStore(activity);
-    pushFooterStatus(ctx);
-    ensureHudMounted(ctx);
-    startHudIdleTimer();
     maybeEmitTranscriptRow(pi, entry, metadata, language, fileName);
     if (entry.status === "unavailable") {
       unavailableSeenByLanguage.add(language);
-    }
-  }
-
-  // ==========================================================================================
-  // UI surface helpers
-  // ==========================================================================================
-
-  function pushFooterStatus(ctx: ExtensionContext): void {
-    if (!ctx.hasUI) return;
-    ctx.ui.setStatus(STATUS_KEY, formatFooterStatus(activity, ctx.ui.theme));
-  }
-
-  /**
-   * Mount the HUD overlay if it isn't up already. The overlay's own
-   * `visible` predicate decides whether it actually draws this frame —
-   * we mount it eagerly so subsequent activity bursts don't have to wait
-   * for a ctx.ui.custom round-trip.
-   */
-  function ensureHudMounted(ctx: ExtensionContext): void {
-    if (!ctx.hasUI || hudOverlayDismiss || !uiSettings.hud) return;
-    hudCtxRef = ctx;
-
-    void ctx.ui
-      .custom<void>(
-        (tui, theme, _kb, done) => {
-          const component = new SfLspHudComponent(
-            tui,
-            theme,
-            activity,
-            resolveHudIcon(uiSettings.icon),
-          );
-          hudComponent = component;
-          hudOverlayDismiss = () => {
-            hudOverlayDismiss = null;
-            hudComponent = null;
-            done(undefined);
-          };
-          return component;
-        },
-        {
-          overlay: true,
-          overlayOptions: () => ({
-            anchor: "top-right",
-            // Fixed tight width. Without this Pi defaults to
-            // min(80, available) which leaves a large empty gap
-            // between the content and the terminal right edge.
-            width: HUD_OVERLAY_WIDTH,
-            margin: { top: 1, right: 1 },
-            nonCapturing: true,
-            visible: (termWidth, termHeight) =>
-              uiSettings.hud && termWidth >= 80 && termHeight >= 10 && isLspHudActive(activity),
-          }),
-        },
-      )
-      .catch(() => {
-        hudComponent = null;
-        hudOverlayDismiss = null;
-      });
-  }
-
-  function dismissHud(): void {
-    hudOverlayDismiss?.();
-    hudOverlayDismiss = null;
-    hudComponent = null;
-  }
-
-  /**
-   * While there's recent activity, re-poke the component every second so
-   * the overlay's `visible` predicate reevaluates and the HUD hides itself
-   * shortly after the last update (`HUD_IDLE_HIDE_MS`).
-   */
-  function startHudIdleTimer(): void {
-    if (hudIdleTimer) return;
-    hudIdleTimer = setInterval(() => {
-      if (!hudCtxRef?.hasUI || !hudComponent) {
-        stopHudIdleTimer();
-        return;
-      }
-      hudComponent.setStore(activity);
-      if (!isLspHudActive(activity)) stopHudIdleTimer();
-    }, HUD_IDLE_CHECK_INTERVAL_MS);
-    hudIdleTimer.unref?.();
-  }
-
-  function stopHudIdleTimer(): void {
-    if (hudIdleTimer) {
-      clearInterval(hudIdleTimer);
-      hudIdleTimer = null;
-    }
-  }
-
-  async function toggleHud(ctx: ExtensionContext): Promise<void> {
-    uiSettings = { ...uiSettings, hud: !uiSettings.hud };
-    writeScopedSfLspSettings(ctx.cwd, "global", { hud: uiSettings.hud });
-    if (uiSettings.hud) {
-      ensureHudMounted(ctx);
-      hudComponent?.setStore(activity);
-      if (ctx.hasUI) ctx.ui.notify("sf-lsp HUD enabled", "info");
-    } else {
-      dismissHud();
-      stopHudIdleTimer();
-      if (ctx.hasUI) ctx.ui.notify("sf-lsp HUD disabled", "info");
     }
   }
 
@@ -506,13 +340,15 @@ export default function sfLspExtension(pi: ExtensionAPI) {
         if (subcommand === "" || subcommand === "panel") {
           const statuses = await doctorLsp(ctx.cwd);
           seedFromDoctor(activity, statuses);
-          pushFooterStatus(ctx);
-          hudComponent?.setStore(activity);
+          setSfLspHealthFromDoctor(statuses);
 
           const action = await openSfLspPanel(ctx, {
             store: activity,
             doctorStatuses: statuses,
-            hudEnabled: uiSettings.hud,
+            // Retained fields for panel surface API stability. The HUD was
+            // removed; pass false so the panel doesn't offer toggle actions
+            // that no longer mean anything.
+            hudEnabled: false,
             verboseEnabled: uiSettings.verbose,
           });
 
@@ -523,65 +359,10 @@ export default function sfLspExtension(pi: ExtensionAPI) {
         if (subcommand === "doctor") {
           const statuses = await doctorLsp(ctx.cwd);
           seedFromDoctor(activity, statuses);
-          pushFooterStatus(ctx);
-          hudComponent?.setStore(activity);
+          setSfLspHealthFromDoctor(statuses);
           const hasUnavailable = statuses.some((status) => !status.available);
           const severity = hasUnavailable ? "warning" : "info";
           if (ctx.hasUI) ctx.ui.notify(renderDoctorReport(statuses), severity);
-          return;
-        }
-
-        if (subcommand === "hud") {
-          const arg = (tokens[1] ?? "").toLowerCase();
-          if (arg === "on" || arg === "off" || arg === "toggle" || arg === "") {
-            const desired = arg === "on" ? true : arg === "off" ? false : !uiSettings.hud;
-            if (desired === uiSettings.hud && arg !== "toggle" && arg !== "") {
-              if (ctx.hasUI) {
-                ctx.ui.notify(`sf-lsp HUD already ${desired ? "on" : "off"}`, "info");
-              }
-              return;
-            }
-            uiSettings = { ...uiSettings, hud: desired };
-            writeScopedSfLspSettings(ctx.cwd, "global", { hud: desired });
-            if (desired) ensureHudMounted(ctx);
-            else {
-              dismissHud();
-              stopHudIdleTimer();
-            }
-            if (ctx.hasUI) ctx.ui.notify(`sf-lsp HUD ${desired ? "enabled" : "disabled"}`, "info");
-            return;
-          }
-          if (ctx.hasUI) ctx.ui.notify("Usage: /sf-lsp hud [on|off|toggle]", "warning");
-          return;
-        }
-
-        if (subcommand === "icon") {
-          const arg = (tokens[1] ?? "").trim();
-          if (arg === "" || arg === "list") {
-            const keys = Object.entries(HUD_ICON_CATALOGUE)
-              .map(([k, v]) => `  ${v.glyph}  ${k}`)
-              .join("\n");
-            if (ctx.hasUI) {
-              ctx.ui.notify(
-                [
-                  "sf-lsp icon — HUD brand icon",
-                  "",
-                  `Current: ${uiSettings.icon}`,
-                  "",
-                  "Builtin icons (pass the key):",
-                  keys,
-                  "",
-                  "Or any custom glyph: /sf-lsp icon 🧪",
-                ].join("\n"),
-                "info",
-              );
-            }
-            return;
-          }
-          uiSettings = { ...uiSettings, icon: arg };
-          writeScopedSfLspSettings(ctx.cwd, "global", { icon: arg });
-          hudComponent?.setIcon(resolveHudIcon(arg));
-          if (ctx.hasUI) ctx.ui.notify(`sf-lsp HUD icon set to "${arg}"`, "info");
           return;
         }
 
@@ -611,13 +392,9 @@ export default function sfLspExtension(pi: ExtensionAPI) {
               "Commands:",
               "  /sf-lsp                Open the rich status/controls panel",
               "  /sf-lsp doctor         Show a compact doctor report",
-              "  /sf-lsp hud on|off     Toggle the top-right HUD overlay",
               "  /sf-lsp verbose on|off Toggle transcript row for every check",
-              "  /sf-lsp icon [key]     Change HUD brand icon (list with no arg)",
-
               "",
-              "Shortcut: Ctrl+Shift+L (toggle HUD)",
-              "CLI flag: --no-sf-lsp-hud (start with HUD suppressed)",
+              "Top-bar LSP status is always visible in the sf-devbar top bar.",
             ].join("\n"),
             "warning",
           );
@@ -635,14 +412,17 @@ export default function sfLspExtension(pi: ExtensionAPI) {
     if (action === "refresh-doctor") {
       const statuses = await doctorLsp(ctx.cwd);
       seedFromDoctor(activity, statuses);
-      pushFooterStatus(ctx);
-      hudComponent?.setStore(activity);
+      setSfLspHealthFromDoctor(statuses);
       if (ctx.hasUI) ctx.ui.notify("sf-lsp: doctor refreshed", "info");
       return;
     }
 
     if (action === "toggle-hud") {
-      await toggleHud(ctx);
+      // HUD was retired — redirect to the doctor refresh so the action
+      // doesn't silently no-op.
+      if (ctx.hasUI) {
+        ctx.ui.notify("sf-lsp HUD was retired — use the sf-devbar top-bar LSP segment.", "info");
+      }
       return;
     }
 
@@ -670,11 +450,6 @@ export default function sfLspExtension(pi: ExtensionAPI) {
 // Helpers
 // -------------------------------------------------------------------------------------------------
 
-/**
- * True when sf-agentscript-assist is loaded and owns `.agent` feedback.
- * Probed per-call so enabling/disabling the peer extension mid-session
- * works without a reload.
- */
 function isAgentScriptAssistInstalled(pi: ExtensionAPI): boolean {
   try {
     return pi.getCommands().some((command) => command.name === "sf-agentscript-assist");
@@ -696,10 +471,6 @@ function extractDiagnosticsMetadata(details: unknown): SfPiDiagnosticsMetadata |
   return candidate as SfPiDiagnosticsMetadata;
 }
 
-/**
- * Reconstruct an LSP-shape diagnostic from a peer extension's metadata.
- * Only the fields that `recordCheck` inspects are material (severity, range).
- */
 function toLspDiagnostic(item: SfPiDiagnosticMetadataItem): LspDiagnostic {
   const severity: 1 | 2 | 3 | 4 =
     item.severity === "error"

@@ -274,7 +274,7 @@ For the canonical machine-readable bundle list, see [`catalog/index.json`](./cat
 | ---------------------------------------------------------------- | -------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | [SF Agent Script Assist](./extensions/sf-agentscript-assist/)    | core     | on        | In-process Agent Script authoring companion — parse, compile, and code-action feedback on every .agent write                                                       |
 | [SF Brain](./extensions/sf-brain/)                               | core     | on        | High-density Salesforce operator kernel injected once per session — describe-before-query rules, API picker, anonymous Apex verification loop, and CLI power moves |
-| [SF LSP](./extensions/sf-lsp/)                                   | core     | on        | Real-time Salesforce LSP diagnostics on write/edit with a layered TUI (in-card panel, HUD overlay, footer, transcript rows)                                        |
+| [SF LSP](./extensions/sf-lsp/)                                   | core     | on        | Real-time Salesforce LSP diagnostics on write/edit with a working-indicator spinner, transcript rows, and a permanent top-bar health segment in sf-devbar          |
 | [SF Pi Manager](./extensions/sf-pi-manager/)                     | core     | always-on | Core manager — provides /sf-pi commands (always active)                                                                                                            |
 | [SF Slack](./extensions/sf-slack/)                               | core     | on        | Slack integration — search messages, read threads, browse channel history                                                                                          |
 | [SF LLM Gateway Internal](./extensions/sf-llm-gateway-internal/) | provider | on        | Salesforce LLM Gateway provider with model discovery                                                                                                               |
@@ -428,10 +428,7 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 
 **[SF LSP](./extensions/sf-lsp/#troubleshooting)**
 
-- `Failed to load extension ...sf-lsp/index.ts: Tool "edit" conflicts with ...`
-- HUD never appears even on wide terminals
-- Agent Script edits say "idle" in the HUD even after an edit
-- Footer pill is empty or shows only dim dots
+- The sf-devbar top-bar LSP segment stays grey / never turns green
 - Transcript rows feel too chatty / too quiet
 - Working indicator keeps saying `LSP Apex…` after the turn ends
 - `LSP setup note:` appears once per file type and then stays silent

@@ -38,12 +38,7 @@ export type BarTheme = {
  *
  * Only curated extensions are surfaced so the bar stays focused. Keep this
  * list small — every added key costs horizontal space on narrow terminals. */
-const ALLOWED_STATUS_KEYS = new Set([
-  "sf-pi",
-  "sf-llm-gateway-internal",
-  "sf-slack-status",
-  "sf-lsp",
-]);
+const ALLOWED_STATUS_KEYS = new Set(["sf-pi", "sf-llm-gateway-internal", "sf-slack-status"]);
 
 export type BottomBarState = {
   /** Org alias or username. */

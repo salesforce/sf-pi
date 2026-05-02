@@ -6,7 +6,9 @@ A bespoke Salesforce developer status bar that renders two persistent UI surface
 
 - **Top bar** (widget above editor): SF Pi brand, model name with gateway detection,
   rainbow thinking level, working folder, git branch + changes, context window progress bar,
-  and (when non-default) an `img:Nc` pill reflecting `terminal.imageWidthCells`
+  a permanent right-aligned **Salesforce LSP segment** (`Apex: ● | LWC: ● | AgentScript: ●`)
+  fed by sf-lsp via the shared `lib/common/sf-lsp-health` registry, and (when non-default)
+  an `img:Nc` pill reflecting `terminal.imageWidthCells`
 - **Bottom bar** (custom footer): Salesforce org name + type, connection status,
   SF CLI version with freshness check, and selected sf-pi extension statuses
   (SF Pi packages, LLM gateway monthly budget, Slack connection pill)

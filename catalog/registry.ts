@@ -55,7 +55,7 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
   {
     id: "sf-lsp",
     name: "SF LSP",
-    description: "Real-time Salesforce LSP diagnostics on write/edit with a layered TUI (in-card panel, HUD overlay, footer, transcript rows)",
+    description: "Real-time Salesforce LSP diagnostics on write/edit with a working-indicator spinner, transcript rows, and a permanent top-bar health segment in sf-devbar",
     file: "extensions/sf-lsp/index.ts",
     category: "core",
     defaultEnabled: true,

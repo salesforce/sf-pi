@@ -19,30 +19,27 @@ growing `index.ts`.
 
 ## ✅ Phase 2 — continuous visibility (shipped)
 
-- [x] **Below-editor widget** — compact `LSP · file ok 312ms · Apex LWC AS`
-      summary line via `setWidget` with `placement: "belowEditor"`.
-- [x] **Top-right HUD overlay** — non-capturing overlay with per-language
-      rows (status glyph, file, duration, age), mirroring the
-      `sf-skills-hud` pattern.
 - [x] **Inline transcript row** — `pi.sendMessage({customType:"sf-lsp"})` +
       `registerMessageRenderer`. Balanced default (error + transition +
       first unavailable); verbose mode emits every check. User-only, never
       enters LLM context.
+- [~] ~~HUD overlay~~ / ~~below-editor widget~~ / ~~footer pill~~ replaced
+  by a permanent right-aligned LSP segment in sf-devbar's top bar
+  (`Apex: ● | LWC: ● | AgentScript: ●`) driven by the shared
+  `lib/common/sf-lsp-health` registry. User feedback was that the
+  floating HUD was visually noisy; permanent availability sitting next
+  to the context-window bar is where health belongs.
 
 ## ✅ Phase 3 — controls (shipped)
 
 - [x] **Rich `/sf-lsp` panel** — `ctx.ui.custom` overlay with doctor
       status, recent activity ring, and `SelectList` actions (refresh
-      doctor, toggle HUD, toggle verbose, shutdown servers).
-- [x] **Subcommands** — `/sf-lsp hud [on|off|toggle]`,
-      `/sf-lsp verbose [on|off|toggle]`, `/sf-lsp doctor`.
-- [x] **Keyboard shortcut** — `Ctrl+Shift+L` toggles the HUD (mirrors
-      `sf-devbar`'s `Ctrl+Shift+B`).
-- [x] **`--no-sf-lsp-hud` CLI flag** for launching with the overlay
-      suppressed (widget/footer/in-card still render).
-- [x] **Persistent settings** — `hud` and `verbose` persist to
-      `sfPi.sfLsp` in the global Pi settings file so choices survive
-      restarts.
+      doctor, toggle verbose, shutdown servers).
+- [x] **Subcommands** — `/sf-lsp verbose [on|off|toggle]`,
+      `/sf-lsp doctor`.
+- [x] **Persistent settings** — `verbose` persists to `sfPi.sfLsp` in
+      the global Pi settings file. (The former `hud` and `icon` keys
+      were retired when the HUD overlay was replaced.)
 
 ## 🔭 Phase 4 — deeper quick-fixes (planned)
 

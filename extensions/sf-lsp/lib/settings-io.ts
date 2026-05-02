@@ -5,20 +5,15 @@
  * Stored under `sfPi.sfLsp` in Pi settings (global or project):
  *
  * ```json
- * {
- *   "sfPi": {
- *     "sfLsp": {
- *       "hud": true,
- *       "verbose": false
- *     }
- *   }
- * }
+ * { "sfPi": { "sfLsp": { "verbose": false } } }
  * ```
  *
  * Project settings override global settings. Missing keys fall back to
- * defaults (`hud: true`, `verbose: false`). A single file is used per scope
- * so the shared `sfPi` namespace also carried by `display/settings.ts`
- * stays coherent.
+ * defaults (`verbose: false`).
+ *
+ * The former `hud` and `icon` keys were removed when the HUD overlay was
+ * replaced by sf-devbar's permanent top-bar LSP segment. Settings files
+ * written by older builds are still readable; unknown keys are ignored.
  */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -27,19 +22,9 @@ import { globalSettingsPath, projectSettingsPath } from "../../../lib/common/pi-
 
 export type SfLspSettingsScope = "global" | "project";
 
-/**
- * Icon key (from the HUD catalogue) or a literal glyph dropped in by the
- * user. Free-form strings pass through so users can pick any emoji.
- */
-export type SfLspHudIconName = string;
-
 export interface SfLspUiSettings {
-  /** Show the top-right HUD overlay. Default: true. */
-  hud: boolean;
   /** Emit a transcript row for every check (not just errors/transitions). Default: false. */
   verbose: boolean;
-  /** HUD brand icon key (see hud-component.HUD_ICON_CATALOGUE) or a custom glyph. */
-  icon: SfLspHudIconName;
 }
 
 export interface EffectiveSfLspUiSettings extends SfLspUiSettings {
@@ -48,9 +33,7 @@ export interface EffectiveSfLspUiSettings extends SfLspUiSettings {
 }
 
 export const DEFAULT_SF_LSP_UI_SETTINGS: SfLspUiSettings = {
-  hud: true,
   verbose: false,
-  icon: "bolt",
 };
 
 function settingsPathForScope(cwd: string, scope: SfLspSettingsScope): string {
@@ -77,17 +60,12 @@ function getNestedRecord(parent: Record<string, unknown>, key: string): Record<s
 }
 
 function normalize(raw: Record<string, unknown>): SfLspUiSettings {
-  const hud = typeof raw.hud === "boolean" ? raw.hud : DEFAULT_SF_LSP_UI_SETTINGS.hud;
   const verbose =
     typeof raw.verbose === "boolean" ? raw.verbose : DEFAULT_SF_LSP_UI_SETTINGS.verbose;
-  const icon =
-    typeof raw.icon === "string" && raw.icon.trim() !== ""
-      ? raw.icon
-      : DEFAULT_SF_LSP_UI_SETTINGS.icon;
-  return { hud, verbose, icon };
+  return { verbose };
 }
 
-function hasOwnKey(root: Record<string, unknown>, key: "hud" | "verbose" | "icon"): boolean {
+function hasOwnKey(root: Record<string, unknown>, key: "verbose"): boolean {
   const sfPi = getNestedRecord(root, "sfPi");
   const sfLsp = getNestedRecord(sfPi, "sfLsp");
   return Object.prototype.hasOwnProperty.call(sfLsp, key);
@@ -105,7 +83,7 @@ export function readScopedSfLspSettings(
     scope,
     path: filePath,
     settings: normalize(sfLsp),
-    exists: hasOwnKey(root, "hud") || hasOwnKey(root, "verbose") || hasOwnKey(root, "icon"),
+    exists: hasOwnKey(root, "verbose"),
   };
 }
 

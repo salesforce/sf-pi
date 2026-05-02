@@ -43,12 +43,17 @@ import {
   bindPiForSessionPersistence,
   restoreFromSessionEntries,
 } from "../../lib/common/sf-environment/shared-runtime.ts";
+import {
+  getSfLspHealth,
+  onSfLspHealthChange,
+  type SfLspHealthSnapshot,
+} from "../../lib/common/sf-lsp-health/index.ts";
 import type { SfEnvironment } from "../../lib/common/sf-environment/types.ts";
 import {
   formatAgentContext,
   formatDetailedStatus,
 } from "../../lib/common/sf-environment/format-agent-context.ts";
-import { renderTopBar, type TopBarState } from "./lib/top-bar.ts";
+import { renderTopBarLine, type TopBarState } from "./lib/top-bar.ts";
 import { renderBottomBarParts, type BottomBarState } from "./lib/bottom-bar.ts";
 import { getGitChanges, type GitChanges } from "./lib/git-changes.ts";
 import { checkCliFreshness, type CliFreshnessResult } from "./lib/cli-freshness.ts";
@@ -100,6 +105,19 @@ export default function sfDevBar(pi: ExtensionAPI) {
 
   // Track the latest git branch from footerData for use in async callbacks
   let latestGitBranch: string | null = null;
+
+  // Latest sf-lsp health snapshot (published via lib/common/sf-lsp-health).
+  // sf-lsp fills this after its session_start doctor probe; we subscribe
+  // below and repaint the top bar on change so the LSP segment always
+  // reflects current availability.
+  let lspHealth: SfLspHealthSnapshot = getSfLspHealth();
+  let unsubscribeLspHealth: (() => void) | null = null;
+
+  // Reference to the top-bar component's requestRender. Needed because the
+  // top bar is now driven by a Pi widget factory (not a static string
+  // array) so we can right-align the LSP segment against the terminal's
+  // current width.
+  let requestTopBarRender: (() => void) | null = null;
 
   // Use the shared exec adapter instead of a per-extension wrapper
   const exec = buildExecFn(pi);
@@ -160,6 +178,7 @@ export default function sfDevBar(pi: ExtensionAPI) {
       contextPercent,
       isThinking,
       imageWidthPill,
+      lspHealth,
     };
   }
 
@@ -187,17 +206,43 @@ export default function sfDevBar(pi: ExtensionAPI) {
     };
   }
 
+  // Latest gitBranch passed to the component (resolved on every render).
+  // Using the same model as the footer — the component pulls fresh state
+  // each render cycle so we only need to call tui.requestRender() on
+  // change.
+  let topBarBranchHint: string | null | undefined = undefined;
+
   // --- Helper: update the top-bar widget ---
   function updateTopBar(ctx: ExtensionContext, gitBranch?: string | null) {
     if (!enabled || !ctx.hasUI || !isActiveSession(ctx)) return;
+    if (gitBranch !== undefined) topBarBranchHint = gitBranch;
+    mountTopBarWidget(ctx);
+    requestTopBarRender?.();
+  }
 
-    const state = buildTopBarState(ctx);
-    // Merge git branch if provided (from footerData)
-    if (gitBranch !== undefined) state.gitBranch = gitBranch;
-
-    const theme = ctx.ui.theme;
-    const lines = renderTopBar(state, theme);
-    ctx.ui.setWidget(WIDGET_KEY, lines);
+  /**
+   * Mount the top-bar widget as a component factory so we have access to
+   * the current terminal width at render time. This is what lets us
+   * right-align the LSP health segment against the terminal's right edge
+   * even as the window resizes.
+   */
+  function mountTopBarWidget(ctx: ExtensionContext): void {
+    if (!ctx.hasUI) return;
+    ctx.ui.setWidget(WIDGET_KEY, (tui, theme) => {
+      requestTopBarRender = () => tui.requestRender();
+      return {
+        render: (width: number): string[] => {
+          if (!enabled || !isActiveSession(ctx)) return [];
+          const state = buildTopBarState(ctx);
+          if (topBarBranchHint !== undefined) state.gitBranch = topBarBranchHint;
+          return renderTopBarLine(state, theme, width);
+        },
+        invalidate() {},
+        dispose() {
+          requestTopBarRender = null;
+        },
+      };
+    });
   }
 
   // --- Helper: update terminal title ---
@@ -291,6 +336,18 @@ export default function sfDevBar(pi: ExtensionAPI) {
     // Render initial top bar (without git branch — footer callback provides it)
     updateTopBar(ctx);
 
+    // Subscribe to sf-lsp health so the top-bar LSP segment repaints when
+    // sf-lsp's doctor probe finishes (or a manual `/sf-lsp doctor` runs).
+    // We keep a single subscription per session and tear it down on
+    // shutdown.
+    unsubscribeLspHealth?.();
+    lspHealth = getSfLspHealth();
+    unsubscribeLspHealth = onSfLspHealthChange((snapshot) => {
+      if (!isActiveSession(ctx, generation)) return;
+      lspHealth = snapshot;
+      requestTopBarRender?.();
+    });
+
     // Activate the custom footer
     ctx.ui.setFooter((tui, theme, footerData) => {
       // Subscribe to reactive git branch changes
@@ -369,6 +426,8 @@ export default function sfDevBar(pi: ExtensionAPI) {
   // teardown since the new extension instance will re-set them immediately.
   pi.on("session_shutdown", async (event, ctx) => {
     endActiveSession(ctx);
+    unsubscribeLspHealth?.();
+    unsubscribeLspHealth = null;
     if (!ctx.hasUI) return;
     if (event.reason === "reload") return; // New instance handles re-init
     ctx.ui.setFooter(undefined);
