@@ -365,6 +365,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.25.0](https://github.com/salesforce/sf-pi/compare/v0.24.0...v0.25.0) (2026-05-02)
+
+
+### Features
+
+* **devbar,gateway:** 1% context bar, decimal % label, 60s cost refresh ([6cb23fe](https://github.com/salesforce/sf-pi/commit/6cb23fecfe20c175ca915eb1a27560efb9b1285f))
+
 ## [0.24.0](https://github.com/salesforce/sf-pi/compare/v0.23.1...v0.24.0) (2026-05-02)
 
 
