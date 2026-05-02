@@ -30,7 +30,7 @@ _High-density Salesforce operator kernel injected once per session — describe-
 
 ### [SF LSP](../extensions/sf-lsp/)
 
-_Real-time Salesforce LSP diagnostics on write/edit — supports Apex, LWC, and Agent Script_
+_Real-time Salesforce LSP diagnostics on write/edit with a layered TUI (in-card panel, HUD overlay, footer, transcript rows)_
 
 - Default: **on**
 - Commands: `/sf-lsp`
