@@ -100,10 +100,12 @@ function createRegistry(): SharedRegistry {
 
 function getRegistry(): SharedRegistry {
   const globals = globalThis as GlobalWithRegistry;
-  if (!globals[REGISTRY_KEY]) {
-    globals[REGISTRY_KEY] = createRegistry();
+  let registry = globals[REGISTRY_KEY];
+  if (!registry) {
+    registry = createRegistry();
+    globals[REGISTRY_KEY] = registry;
   }
-  return globals[REGISTRY_KEY]!;
+  return registry;
 }
 
 function snapshot(): SfLspHealthSnapshot {
