@@ -43,11 +43,7 @@ import {
   bindPiForSessionPersistence,
   restoreFromSessionEntries,
 } from "../../lib/common/sf-environment/shared-runtime.ts";
-import {
-  getSfLspHealth,
-  onSfLspHealthChange,
-  type SfLspHealthSnapshot,
-} from "../../lib/common/sf-lsp-health/index.ts";
+import { getSfLspHealth, onSfLspHealthChange } from "../../lib/common/sf-lsp-health/index.ts";
 import type { SfEnvironment } from "../../lib/common/sf-environment/types.ts";
 import {
   formatAgentContext,
@@ -106,12 +102,10 @@ export default function sfDevBar(pi: ExtensionAPI) {
   // Track the latest git branch from footerData for use in async callbacks
   let latestGitBranch: string | null = null;
 
-  // Latest sf-lsp health snapshot (published via lib/common/sf-lsp-health).
-  // sf-lsp fills this after its session_start doctor probe; we subscribe
-  // below and repaint the top bar on change so the LSP segment always
-  // reflects current availability.
-  let lspHealth: SfLspHealthSnapshot = getSfLspHealth();
-  let unsubscribeLspHealth: (() => void) | null = null;
+  // LSP health is read fresh from lib/common/sf-lsp-health at every
+  // top-bar render (see buildTopBarState). The widget factory subscribes
+  // to health changes and calls tui.requestRender() on each update so
+  // the bar stays in sync.
 
   // Reference to the top-bar component's requestRender. Needed because the
   // top bar is now driven by a Pi widget factory (not a static string
@@ -178,7 +172,10 @@ export default function sfDevBar(pi: ExtensionAPI) {
       contextPercent,
       isThinking,
       imageWidthPill,
-      lspHealth,
+      // Always read fresh — the widget factory re-renders on every health
+      // change, and buildTopBarState is only called from inside render(),
+      // so this stays consistent with the terminal output.
+      lspHealth: getSfLspHealth(),
     };
   }
 
@@ -230,6 +227,16 @@ export default function sfDevBar(pi: ExtensionAPI) {
     if (!ctx.hasUI) return;
     ctx.ui.setWidget(WIDGET_KEY, (tui, theme) => {
       requestTopBarRender = () => tui.requestRender();
+
+      // Subscribe to LSP health changes *inside* the widget factory so
+      // `tui.requestRender()` is always bound by the time any listener
+      // fires. Subscribing from session_start is racy: the first doctor
+      // probe can resolve before Pi has called our factory, leaving no
+      // way to trigger a repaint until some OTHER event forces one.
+      const unsub = onSfLspHealthChange(() => {
+        tui.requestRender();
+      });
+
       return {
         render: (width: number): string[] => {
           if (!enabled || !isActiveSession(ctx)) return [];
@@ -239,6 +246,7 @@ export default function sfDevBar(pi: ExtensionAPI) {
         },
         invalidate() {},
         dispose() {
+          unsub();
           requestTopBarRender = null;
         },
       };
@@ -336,17 +344,8 @@ export default function sfDevBar(pi: ExtensionAPI) {
     // Render initial top bar (without git branch — footer callback provides it)
     updateTopBar(ctx);
 
-    // Subscribe to sf-lsp health so the top-bar LSP segment repaints when
-    // sf-lsp's doctor probe finishes (or a manual `/sf-lsp doctor` runs).
-    // We keep a single subscription per session and tear it down on
-    // shutdown.
-    unsubscribeLspHealth?.();
-    lspHealth = getSfLspHealth();
-    unsubscribeLspHealth = onSfLspHealthChange((snapshot) => {
-      if (!isActiveSession(ctx, generation)) return;
-      lspHealth = snapshot;
-      requestTopBarRender?.();
-    });
+    // LSP health subscription lives inside the widget factory now (see
+    // `mountTopBarWidget`) so it can't race the first render cycle.
 
     // Activate the custom footer
     ctx.ui.setFooter((tui, theme, footerData) => {
@@ -426,8 +425,6 @@ export default function sfDevBar(pi: ExtensionAPI) {
   // teardown since the new extension instance will re-set them immediately.
   pi.on("session_shutdown", async (event, ctx) => {
     endActiveSession(ctx);
-    unsubscribeLspHealth?.();
-    unsubscribeLspHealth = null;
     if (!ctx.hasUI) return;
     if (event.reason === "reload") return; // New instance handles re-init
     ctx.ui.setFooter(undefined);
