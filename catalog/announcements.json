@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.23.1-2026-05-01",
-  "latestVersion": "0.23.1",
+  "revision": "release-0.24.0-2026-05-02",
+  "latestVersion": "0.24.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.23.1",
+      "id": "release-0.24.0",
       "kind": "update",
-      "title": "sf-pi v0.23.1 — ci: correct CODEOWNERS handle to @Jaganpro",
-      "publishedAt": "2026-05-01T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.23.1",
+      "title": "sf-pi v0.24.0 — peerDependencies `@mariozechner/pi-coding-agent` floor raised to `>=0.72.0`. Users on pi <…",
+      "publishedAt": "2026-05-02T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.24.0",
       "severity": "info",
-      "body": "ci: correct CODEOWNERS handle to @Jaganpro"
+      "body": "peerDependencies `@mariozechner/pi-coding-agent` floor raised to `>=0.72.0`. Users on pi < 0.72 will see extensions skip with a one-line warning pointing to `pi update`. — adopt pi 0.72 thinkingLevelMap + per-model baseUrl; expose Opus 4.7 xhigh"
     },
     {
       "id": "pi-0.71-compat",
