@@ -124,6 +124,10 @@ export function detectTokenType(token: string | undefined): SlackTokenType {
 const MAX_CONCURRENT = 3;
 /** Cap the honored Retry-After so we never hang a tool call indefinitely. */
 const MAX_RETRY_AFTER_SECONDS = 30;
+/** Per-request timeout (ms). Bounds a single Slack HTTP call so a half-open
+ *  TCP connection or middlebox stall can't hang a tool invocation forever.
+ *  Slack p99 for the endpoints we call is well under 10 s; 30 s is generous. */
+const REQUEST_TIMEOUT_MS = 30_000;
 
 let inFlight = 0;
 const waitQueue: Array<() => void> = [];
@@ -143,29 +147,48 @@ async function withSlot<T>(fn: () => Promise<T>): Promise<T> {
   }
 }
 
+/** Compose a per-request timeout signal with the caller's signal (if any)
+ *  using AbortSignal.any. Returns the composite signal plus a flag the
+ *  caller can check to tell a timeout-triggered abort from a user abort. */
+function withRequestTimeout(signal: AbortSignal | undefined): {
+  signal: AbortSignal;
+  timeoutSignal: AbortSignal;
+} {
+  const timeoutSignal = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
+  const combined = signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal;
+  return { signal: combined, timeoutSignal };
+}
+
 /** Fetch with a single automatic retry on HTTP 429, honoring Retry-After.
  *  The request builder callback is re-invoked on retry so body streams don't
- *  get consumed twice. */
+ *  get consumed twice.
+ *
+ *  Each attempt is bounded by REQUEST_TIMEOUT_MS via AbortSignal.timeout
+ *  composed with the caller's signal. This is the primary defense against
+ *  Slack API calls hanging on half-open TCP connections (issue #17). */
 async function fetchWithRetry(
   buildRequest: () => { url: string; init: RequestInit },
   signal?: AbortSignal,
 ): Promise<Response> {
   const first = buildRequest();
-  let response = await fetch(first.url, { ...first.init, signal });
+  const firstBudget = withRequestTimeout(signal);
+  let response = await fetch(first.url, { ...first.init, signal: firstBudget.signal });
 
   if (response.status !== 429) return response;
 
   const headerValue = response.headers.get("retry-after");
   const parsed = headerValue ? Number.parseFloat(headerValue) : NaN;
-  const waitSeconds = Number.isFinite(parsed)
-    ? Math.min(Math.max(parsed, 1), MAX_RETRY_AFTER_SECONDS)
-    : 2;
+  // Leave at least 5 s of budget for the retry request itself so a slow
+  // Retry-After + slow response don't consume the whole timeout envelope.
+  const maxWait = Math.max(1, MAX_RETRY_AFTER_SECONDS - 5);
+  const waitSeconds = Number.isFinite(parsed) ? Math.min(Math.max(parsed, 1), maxWait) : 2;
 
   await new Promise((resolve) => setTimeout(resolve, waitSeconds * 1000 + 100));
   if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
 
   const second = buildRequest();
-  response = await fetch(second.url, { ...second.init, signal });
+  const secondBudget = withRequestTimeout(signal);
+  response = await fetch(second.url, { ...second.init, signal: secondBudget.signal });
   return response;
 }
 
@@ -241,27 +264,31 @@ export async function slackApi<T>(
   const paramsWithTeam = teamId ? { ...params, team_id: params.team_id || teamId } : params;
 
   return withSlot(async () => {
-    const response = await fetchWithRetry(() => {
-      const body = new URLSearchParams();
-      for (const [key, value] of Object.entries(paramsWithTeam)) {
-        if (value !== undefined && value !== "") body.set(key, String(value));
-      }
-      return {
-        url: `${SLACK_API_BASE}/${endpoint}`,
-        init: {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/x-www-form-urlencoded",
+    try {
+      const response = await fetchWithRetry(() => {
+        const body = new URLSearchParams();
+        for (const [key, value] of Object.entries(paramsWithTeam)) {
+          if (value !== undefined && value !== "") body.set(key, String(value));
+        }
+        return {
+          url: `${SLACK_API_BASE}/${endpoint}`,
+          init: {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: body.toString(),
           },
-          body: body.toString(),
-        },
-      };
-    }, signal);
+        };
+      }, signal);
 
-    const json = await safeJson(response);
-    captureAuthHeaders(response);
-    return toApiResult<T>(response, json);
+      const json = await safeJson(response);
+      captureAuthHeaders(response);
+      return toApiResult<T>(response, json);
+    } catch (error) {
+      return classifyFetchError<T>(error, signal);
+    }
   });
 }
 
@@ -276,24 +303,44 @@ export async function slackApiJson<T>(
   const paramsWithTeam = teamId ? { ...params, team_id: params.team_id || teamId } : params;
 
   return withSlot(async () => {
-    const response = await fetchWithRetry(() => {
-      return {
-        url: `${SLACK_API_BASE}/${endpoint}`,
-        init: {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
+    try {
+      const response = await fetchWithRetry(() => {
+        return {
+          url: `${SLACK_API_BASE}/${endpoint}`,
+          init: {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(paramsWithTeam),
           },
-          body: JSON.stringify(paramsWithTeam),
-        },
-      };
-    }, signal);
+        };
+      }, signal);
 
-    const json = await safeJson(response);
-    captureAuthHeaders(response);
-    return toApiResult<T>(response, json);
+      const json = await safeJson(response);
+      captureAuthHeaders(response);
+      return toApiResult<T>(response, json);
+    } catch (error) {
+      return classifyFetchError<T>(error, signal);
+    }
   });
+}
+
+/** Turn a thrown fetch error into a typed ApiResult. Re-throws caller-triggered
+ *  aborts so user cancel semantics are preserved; maps timeout-triggered aborts
+ *  (no caller abort) to `request_timeout`, and any other fetch failure (DNS,
+ *  ECONNRESET, TLS, etc.) to `network_error`. The withSlot `finally` handles
+ *  releasing the concurrency slot regardless. */
+function classifyFetchError<T>(error: unknown, callerSignal?: AbortSignal): ApiResult<T> {
+  // Caller cancelled → propagate. Don't swallow user aborts into an ApiResult.
+  if (callerSignal?.aborted) throw error;
+
+  const name = (error as { name?: string } | null)?.name;
+  if (name === "AbortError" || name === "TimeoutError") {
+    return { ok: false, error: "request_timeout" };
+  }
+  return { ok: false, error: "network_error" };
 }
 
 /** Slack sometimes returns non-JSON bodies on 4xx/5xx. Parse defensively. */
@@ -693,6 +740,13 @@ export function summarizeSlackError(error: string, needed?: string, provided?: s
         "For user/channel lookups, slack_resolve now falls back to assistant.search.context automatically. " +
         "For direct reads, ask for a specific Slack ID or search messages first (slack action:'search' / slack_research) and pick the author/channel from a hit."
       );
+    case "request_timeout":
+      return (
+        "Slack API call timed out after 30s. This is usually a half-open TCP connection or a network hop stalling mid-response. " +
+        "Retry the command. If it keeps timing out, check VPN/proxy settings or try again in a minute."
+      );
+    case "network_error":
+      return "Slack API call failed due to a network error (DNS, connection reset, or TLS). Retry the command; check connectivity if it persists.";
     default:
       return `Slack API error: ${error}`;
   }

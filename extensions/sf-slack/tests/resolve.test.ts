@@ -78,6 +78,27 @@ describe("resolveChannel — raw ID verification (Bug #1 regression guard)", () 
     expect(result.warnings.some((w) => w.includes("could not be verified"))).toBe(true);
   });
 
+  it("returns cleanly when every Slack call times out (issue #17 regression guard)", async () => {
+    // Simulate the exact scenario from issue #17: a non-existent channel
+    // name falls through to searchChannelCandidates, and every Slack call
+    // stalls on a half-open connection. We shortcut the real 30s per-request
+    // timeout by throwing a TimeoutError directly — that's what Node's
+    // fetch surfaces when AbortSignal.timeout fires. Before the fix the
+    // whole resolve hung forever; now each strategy returns `ok: false`
+    // with error=request_timeout and the resolver surfaces "not resolved"
+    // instead of hanging the tool call.
+    globalThis.fetch = vi.fn(async () => {
+      throw new DOMException("The operation was aborted due to timeout", "TimeoutError");
+    }) as unknown as typeof fetch;
+
+    const result = await resolveChannel("xoxp-test", "se-salesforce-payments");
+
+    expect(result.ok).toBe(false);
+    expect(result.candidates).toEqual([]);
+    expect(result.best).toBeUndefined();
+    expect(result.warnings.length).toBeGreaterThan(0);
+  });
+
   it("still populates candidates when the ID is valid", async () => {
     // conversations.info returns a real channel; the resolver should keep
     // the 1.0-confidence candidate without any fabrication.

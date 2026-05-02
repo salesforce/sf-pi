@@ -175,6 +175,92 @@ describe("api", () => {
     it("summarizes unknown errors", () => {
       expect(summarizeSlackError("weird_error")).toContain("weird_error");
     });
+
+    it("summarizes request_timeout with a retry hint (issue #17)", () => {
+      const text = summarizeSlackError("request_timeout");
+      expect(text).toMatch(/timed out/i);
+      expect(text).toMatch(/retry/i);
+    });
+
+    it("summarizes network_error", () => {
+      const text = summarizeSlackError("network_error");
+      expect(text).toMatch(/network/i);
+      expect(text).toMatch(/retry/i);
+    });
+  });
+
+  describe("per-request timeout (issue #17 regression guard)", () => {
+    const originalFetch = globalThis.fetch;
+
+    afterEach(() => {
+      globalThis.fetch = originalFetch;
+    });
+
+    it("maps a TimeoutError from AbortSignal.timeout to request_timeout", async () => {
+      // The real behavior we care about: when the per-request budget fires,
+      // fetch rejects with a DOMException name="TimeoutError" (Node/undici
+      // semantics). classifyFetchError must turn that into a typed
+      // ApiResult error so callers can continue instead of hanging.
+      globalThis.fetch = vi.fn(async () => {
+        throw new DOMException("The operation was aborted due to timeout", "TimeoutError");
+      }) as unknown as typeof fetch;
+
+      const result = (await slackApi<unknown>("auth.test", "xoxp-test", {})) as {
+        ok: false;
+        error: string;
+      };
+      expect(result.ok).toBe(false);
+      expect(result.error).toBe("request_timeout");
+    });
+
+    it("maps a plain AbortError (no caller abort) to request_timeout", async () => {
+      // Some Node / undici versions surface timeout aborts as AbortError
+      // rather than TimeoutError. Both must map to request_timeout when
+      // the caller did not request the abort.
+      globalThis.fetch = vi.fn(async () => {
+        throw new DOMException("Aborted", "AbortError");
+      }) as unknown as typeof fetch;
+
+      const result = (await slackApi<unknown>("auth.test", "xoxp-test", {})) as {
+        ok: false;
+        error: string;
+      };
+      expect(result.ok).toBe(false);
+      expect(result.error).toBe("request_timeout");
+    });
+
+    it("propagates caller-triggered aborts instead of swallowing them", async () => {
+      // When the caller's own AbortController fires, the call must throw
+      // (so user cancel / pi tool-cancel semantics are preserved) rather
+      // than turn into a typed ApiResult error.
+      globalThis.fetch = vi.fn(
+        (_url: unknown, init: unknown) =>
+          new Promise<Response>((_resolve, reject) => {
+            const signal = (init as { signal?: AbortSignal } | undefined)?.signal;
+            signal?.addEventListener("abort", () => {
+              reject(signal.reason ?? new DOMException("Aborted", "AbortError"));
+            });
+          }),
+      ) as unknown as typeof fetch;
+
+      const controller = new AbortController();
+      const promise = slackApi("auth.test", "xoxp-test", {}, controller.signal);
+      controller.abort();
+      await expect(promise).rejects.toBeDefined();
+    });
+
+    it("maps a generic fetch rejection to network_error", async () => {
+      globalThis.fetch = vi.fn(async () => {
+        throw new TypeError("fetch failed");
+      }) as unknown as typeof fetch;
+
+      const result = (await slackApi<unknown>("auth.test", "xoxp-test", {})) as {
+        ok: false;
+        error: string;
+      };
+      expect(result.ok).toBe(false);
+      expect(result.error).toBe("network_error");
+    });
   });
 
   describe("detectTokenType", () => {

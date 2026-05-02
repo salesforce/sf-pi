@@ -38,6 +38,19 @@ const CHANNEL_ID_RE = /^[CGD][A-Z0-9]{8,}$/;
 const USER_ID_RE = /^[UW][A-Z0-9]{8,}$/;
 const LOW_CONFIDENCE_THRESHOLD = 0.6;
 const AUTO_SELECT_THRESHOLD = 0.85;
+/** Operation-level timeout budget for a single resolveChannel / resolveUser
+ *  call. Sits above the per-request timeout in lib/api.ts as defense in
+ *  depth: if something below us forgets to honor the request budget, the
+ *  resolve flow still gets bounded. 45s is enough for a worst-case strict
+ *  path (conversations.list → assistant.search.context loop) and short
+ *  enough that a user doesn't think the agent wedged. */
+const OPERATION_TIMEOUT_MS = 45_000;
+
+/** Compose an operation-level timeout signal with the caller's signal. */
+function withOperationTimeout(signal: AbortSignal | undefined): AbortSignal {
+  const timeoutSignal = AbortSignal.timeout(OPERATION_TIMEOUT_MS);
+  return signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal;
+}
 
 interface ResolveOptions {
   limit?: number;
@@ -54,7 +67,7 @@ export function isSlackUserId(value: string | undefined): boolean {
 export async function resolveChannel(
   token: string,
   ref: string,
-  signal?: AbortSignal,
+  callerSignal?: AbortSignal,
   options: ResolveOptions = {},
 ): Promise<ResolveResult<ResolvedChannel>> {
   const input = String(ref || "").trim();
@@ -66,6 +79,11 @@ export async function resolveChannel(
   if (!input) {
     return emptyResolve("channel", input, ["missing_input"], ["No channel reference provided."]);
   }
+
+  // Bound the whole resolve operation so a stalled Slack call can't hang
+  // the tool indefinitely (issue #17). The per-request timeout in
+  // lib/api.ts is the primary defense; this is the belt to the suspenders.
+  const signal = withOperationTimeout(callerSignal);
 
   if (isSlackChannelId(input)) {
     // Fast path: a prior slack_research / slack search already populated
@@ -125,7 +143,7 @@ export async function resolveChannel(
 export async function resolveUser(
   token: string,
   ref: string,
-  signal?: AbortSignal,
+  callerSignal?: AbortSignal,
   options: ResolveOptions = {},
 ): Promise<ResolveResult<ResolvedUser>> {
   const input = String(ref || "").trim();
@@ -137,6 +155,9 @@ export async function resolveUser(
   if (!input) {
     return emptyResolve("user", input, ["missing_input"], ["No user reference provided."]);
   }
+
+  // See resolveChannel note: operation-level timeout as defense in depth.
+  const signal = withOperationTimeout(callerSignal);
 
   if (input.toLowerCase() === "me") {
     strategy.push("self_alias");
