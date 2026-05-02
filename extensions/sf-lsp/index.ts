@@ -63,7 +63,13 @@ import {
   resetLspIndicator,
 } from "./lib/working-indicator.ts";
 import { formatFooterStatus } from "./lib/footer-status.ts";
-import { SfLspHudComponent, isLspHudActive } from "./lib/hud-component.ts";
+import {
+  HUD_OVERLAY_WIDTH,
+  HUD_ICON_CATALOGUE,
+  SfLspHudComponent,
+  isLspHudActive,
+  resolveHudIcon,
+} from "./lib/hud-component.ts";
 import {
   createTranscriptRenderer,
   emitTranscriptRow,
@@ -108,7 +114,7 @@ export default function sfLspExtension(pi: ExtensionAPI) {
   const workingIndicator = createWorkingIndicatorState();
 
   // Settings + per-session UI state
-  let uiSettings: SfLspUiSettings = { hud: true, verbose: false };
+  let uiSettings: SfLspUiSettings = { hud: true, verbose: false, icon: "bolt" };
   let hudEnabledAtStartup = true;
   let hudOverlayDismiss: (() => void) | null = null;
   let hudComponent: SfLspHudComponent | null = null;
@@ -152,7 +158,7 @@ export default function sfLspExtension(pi: ExtensionAPI) {
       unavailableSeenByLanguage.clear();
 
       const effective = readEffectiveSfLspSettings(ctx.cwd);
-      uiSettings = { hud: effective.hud, verbose: effective.verbose };
+      uiSettings = { hud: effective.hud, verbose: effective.verbose, icon: effective.icon };
       hudEnabledAtStartup = pi.getFlag(FLAG_NAME) === true ? false : uiSettings.hud;
 
       if (!ctx.hasUI) return;
@@ -365,7 +371,12 @@ export default function sfLspExtension(pi: ExtensionAPI) {
     void ctx.ui
       .custom<void>(
         (tui, theme, _kb, done) => {
-          const component = new SfLspHudComponent(tui, theme, activity);
+          const component = new SfLspHudComponent(
+            tui,
+            theme,
+            activity,
+            resolveHudIcon(uiSettings.icon),
+          );
           hudComponent = component;
           hudOverlayDismiss = () => {
             hudOverlayDismiss = null;
@@ -378,9 +389,11 @@ export default function sfLspExtension(pi: ExtensionAPI) {
           overlay: true,
           overlayOptions: () => ({
             anchor: "top-right",
-            // Compact: width grows with content, capped by terminal.
-            minWidth: 34,
-            margin: { top: 1, right: 2 },
+            // Fixed tight width. Without this Pi defaults to
+            // min(80, available) which leaves a large empty gap
+            // between the content and the terminal right edge.
+            width: HUD_OVERLAY_WIDTH,
+            margin: { top: 1, right: 1 },
             nonCapturing: true,
             visible: (termWidth, termHeight) =>
               uiSettings.hud && termWidth >= 80 && termHeight >= 10 && isLspHudActive(activity),
@@ -542,6 +555,36 @@ export default function sfLspExtension(pi: ExtensionAPI) {
           return;
         }
 
+        if (subcommand === "icon") {
+          const arg = (tokens[1] ?? "").trim();
+          if (arg === "" || arg === "list") {
+            const keys = Object.entries(HUD_ICON_CATALOGUE)
+              .map(([k, v]) => `  ${v.glyph}  ${k}`)
+              .join("\n");
+            if (ctx.hasUI) {
+              ctx.ui.notify(
+                [
+                  "sf-lsp icon — HUD brand icon",
+                  "",
+                  `Current: ${uiSettings.icon}`,
+                  "",
+                  "Builtin icons (pass the key):",
+                  keys,
+                  "",
+                  "Or any custom glyph: /sf-lsp icon 🧪",
+                ].join("\n"),
+                "info",
+              );
+            }
+            return;
+          }
+          uiSettings = { ...uiSettings, icon: arg };
+          writeScopedSfLspSettings(ctx.cwd, "global", { icon: arg });
+          hudComponent?.setIcon(resolveHudIcon(arg));
+          if (ctx.hasUI) ctx.ui.notify(`sf-lsp HUD icon set to "${arg}"`, "info");
+          return;
+        }
+
         if (subcommand === "verbose") {
           const arg = (tokens[1] ?? "").toLowerCase();
           if (arg === "on" || arg === "off" || arg === "toggle" || arg === "") {
@@ -570,6 +613,8 @@ export default function sfLspExtension(pi: ExtensionAPI) {
               "  /sf-lsp doctor         Show a compact doctor report",
               "  /sf-lsp hud on|off     Toggle the top-right HUD overlay",
               "  /sf-lsp verbose on|off Toggle transcript row for every check",
+              "  /sf-lsp icon [key]     Change HUD brand icon (list with no arg)",
+
               "",
               "Shortcut: Ctrl+Shift+L (toggle HUD)",
               "CLI flag: --no-sf-lsp-hud (start with HUD suppressed)",

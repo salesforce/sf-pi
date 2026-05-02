@@ -1,23 +1,20 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /**
- * Compact top-right HUD for sf-lsp.
+ * Ultra-compact top-right HUD for sf-lsp.
  *
- * One line, status-only, no filenames or durations:
+ * Renders a SINGLE line, no borders, flush right:
  *
- *   ╭─────────────────────────────────────╮
- *   │ 🩻 SF LSP  ◐ Apex  ✓ LWC  ◌ AS  1e │
- *   ╰─────────────────────────────────────╯
+ *   ⌁ LSP  ◐ Apex  ✓ LWC  ◌ AS  1e
  *
- * Visibility is driven by the caller (`isLspHudActive`) — the HUD only
- * appears when a check is in flight or recently finished. Once everything
- * has been idle for `HUD_IDLE_HIDE_MS`, the overlay's `visible` predicate
- * returns false and Pi composites it out.
+ * Visibility is driven by `isLspHudActive(store)` in the overlay's
+ * `visible` predicate — the HUD appears while a check is running or within
+ * `HUD_IDLE_HIDE_MS` of the last update, then auto-hides.
  *
- * Glyph legend (symbols the user asked for):
+ * Glyph legend:
  *   ◐  checking  (accent)
  *   ✓  clean / ok  (success)
  *   ✗  error  (error)
- *   ◌  unavailable / not probed  (warning / dim)
+ *   ◌  unavailable / not probed  (warning)
  *   ●  idle but probed  (muted)
  */
 import type { Theme } from "@mariozechner/pi-coding-agent";
@@ -32,31 +29,99 @@ import {
 } from "./activity.ts";
 import type { SupportedLanguage } from "./types.ts";
 
-/**
- * How long after the last update to keep the HUD on-screen before the
- * `visible` predicate hides it. Kept short so the HUD stays "active
- * signal" only, per user feedback.
- */
+/** How long after the last update to keep the HUD on-screen before hiding. */
 export const HUD_IDLE_HIDE_MS = 8_000;
 
+/**
+ * Fixed width for the overlay box. Content is tight; keeping the width
+ * constant + small ensures the top-right anchor sits flush against the
+ * terminal's right edge instead of floating at `min(80, available)` (Pi's
+ * default when `width` is unspecified).
+ */
+export const HUD_OVERLAY_WIDTH = 38;
+
+export type HudIcon = {
+  /** Rendered glyph or short text (e.g. "⌁", "◆", "[LSP]"). */
+  glyph: string;
+  /** Theme color key for the glyph. */
+  color: "accent" | "success" | "warning" | "error" | "muted";
+  /** Short label (e.g. "LSP", "SF LSP"). */
+  label: string;
+};
+
+/**
+ * Curated icon catalogue. Keys are stable so they can be saved in
+ * settings. Glyphs stay within widely-supported ranges so fallback
+ * terminals don't render them as tofu.
+ */
+export const HUD_ICON_CATALOGUE: Record<string, HudIcon> = {
+  bolt: { glyph: "⌁", color: "accent", label: "LSP" },
+  diamond: { glyph: "◆", color: "accent", label: "LSP" },
+  dot: { glyph: "●", color: "accent", label: "LSP" },
+  spark: { glyph: "✦", color: "accent", label: "LSP" },
+  brackets: { glyph: "[LSP]", color: "accent", label: "" },
+  gear: { glyph: "⚙", color: "accent", label: "LSP" },
+  ring: { glyph: "◎", color: "accent", label: "LSP" },
+  nib: { glyph: "✎", color: "accent", label: "LSP" },
+};
+
+export const DEFAULT_HUD_ICON: HudIcon = HUD_ICON_CATALOGUE.bolt!;
+
+/**
+ * Resolve a stored icon key (or literal glyph) to a HudIcon. Unknown
+ * keys fall through as a custom glyph so users can drop any emoji or
+ * short string.
+ */
+export function resolveHudIcon(key: string | undefined): HudIcon {
+  if (!key) return DEFAULT_HUD_ICON;
+  const catalogued = HUD_ICON_CATALOGUE[key];
+  if (catalogued) return catalogued;
+  return { glyph: key, color: "accent", label: DEFAULT_HUD_ICON.label };
+}
+
 export class SfLspHudComponent {
+  private icon: HudIcon;
+
   constructor(
     private readonly tui: TUI,
     private readonly theme: Theme,
     private store: LspActivityStore,
-  ) {}
+    icon: HudIcon = DEFAULT_HUD_ICON,
+  ) {
+    this.icon = icon;
+  }
 
   setStore(store: LspActivityStore): void {
     this.store = store;
     this.tui.requestRender();
   }
 
-  render(width: number): string[] {
-    const theme = this.theme;
-    // Compact single-line panel — target width is derived from content, not
-    // from the overlay cell because we want it tight.
-    const segments = [theme.fg("accent", theme.bold("🩻 SF LSP"))];
+  setIcon(icon: HudIcon): void {
+    this.icon = icon;
+    this.tui.requestRender();
+  }
 
+  render(width: number): string[] {
+    const content = this.buildContent();
+    // Right-align inside the overlay cell. Pi pads the overlay to exactly
+    // `width`; we manually left-pad so the content visually hugs the right
+    // edge, then truncate defensively.
+    const visible = visibleWidth(content);
+    const pad = Math.max(0, width - visible);
+    const line = `${" ".repeat(pad)}${content}`;
+    return [truncateToWidth(line, width, "", true)];
+  }
+
+  private buildContent(): string {
+    const theme = this.theme;
+    const segments: string[] = [];
+
+    // Brand prefix: one glyph + tight label
+    const iconGlyph = theme.fg(this.icon.color, this.icon.glyph);
+    const iconLabel = theme.fg("muted", this.icon.label);
+    segments.push(`${iconGlyph} ${iconLabel}`);
+
+    // Per-language status
     let errorTotal = 0;
     let checking = false;
     for (const language of LANGUAGE_ORDER) {
@@ -72,18 +137,7 @@ export class SfLspHudComponent {
       segments.push(theme.fg("accent", "…"));
     }
 
-    const separator = theme.fg("muted", "  ");
-    const content = segments.join(separator);
-    const innerWidth = Math.min(Math.max(visibleWidth(content), 32), Math.max(20, width - 2));
-
-    const top = theme.fg("border", `╭${"─".repeat(innerWidth)}╮`);
-    const bottom = theme.fg("border", `╰${"─".repeat(innerWidth)}╯`);
-
-    const truncated = truncateToWidth(` ${content} `, innerWidth, "", true);
-    const padding = " ".repeat(Math.max(0, innerWidth - visibleWidth(truncated)));
-    const body = `${theme.fg("border", "│")}${truncated}${padding}${theme.fg("border", "│")}`;
-
-    return [top, body, bottom];
+    return segments.join(theme.fg("muted", "  "));
   }
 
   invalidate(): void {}
@@ -91,9 +145,9 @@ export class SfLspHudComponent {
 }
 
 /**
- * Is the HUD worth showing right now? True while any language is
- * currently checking, or when the most recent update across all
- * languages is within `HUD_IDLE_HIDE_MS`.
+ * Is the HUD worth showing right now? True while any language is currently
+ * checking, or when the most recent update across all languages is within
+ * `HUD_IDLE_HIDE_MS`.
  */
 export function isLspHudActive(store: LspActivityStore, now: number = Date.now()): boolean {
   if (!store.hasActivity) return false;
