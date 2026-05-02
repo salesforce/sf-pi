@@ -68,7 +68,6 @@ import {
   LSP_TRANSCRIPT_CUSTOM_TYPE,
   type LspTranscriptDetails,
 } from "./lib/transcript.ts";
-import { registerLspToolRenderers } from "./lib/tool-renderer.ts";
 import { openSfLspPanel, type SfLspPanelAction } from "./lib/panel.ts";
 import {
   readEffectiveSfLspSettings,
@@ -108,11 +107,13 @@ export default function sfLspExtension(pi: ExtensionAPI) {
   let hudComponent: SfLspHudComponent | null = null;
   const unavailableSeenByLanguage = new Set<SupportedLanguage>();
 
-  // --- Register built-in overrides (tool renderers) ------------------------------------------
-  // Pi's registerTool is idempotent on name. We use process.cwd() for the
-  // delegated tools' base cwd — Pi still passes the runtime cwd to each
-  // execute() call via its normal resolution.
-  registerLspToolRenderers(pi, process.cwd());
+  // NOTE: we deliberately do NOT register `edit`/`write` tool overrides.
+  // Pi's cross-extension conflict detection in `resource-loader.detectExtensionConflicts`
+  // treats two extensions registering the same tool name as a hard load
+  // failure, even for renderer-only overrides. Popular extensions like
+  // `pi-tool-display` already claim those names; competing for them would
+  // prevent sf-lsp from loading at all. The transcript row + HUD + footer
+  // already carry every signal the in-card panel would have shown.
 
   // --- Register transcript message renderer -------------------------------------------------
   pi.registerMessageRenderer<LspTranscriptDetails>(

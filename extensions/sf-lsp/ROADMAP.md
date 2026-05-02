@@ -6,14 +6,16 @@ growing `index.ts`.
 
 ## ✅ Phase 1 — presence (shipped)
 
-- [x] **In-card LSP panel** inside `write` / `edit` tool cards via
-      `registerTool` + `renderResult` delegating to `createEditTool` /
-      `createWriteTool`. Reads `details.sfPiDiagnostics` — zero
-      duplication with `feedback.ts`.
 - [x] **Live working indicator** (`ctx.ui.setWorkingIndicator`) flips to a
       themed `⠋ LSP Apex…` spinner while diagnostics are being fetched.
 - [x] **Footer status segment** via `ctx.ui.setStatus("sf-lsp", …)`. Picked
       up automatically by `sf-devbar` through `footerData.getExtensionStatuses()`.
+- [~] ~~In-card LSP panel~~ intentionally dropped. Pi's cross-extension
+  tool-name conflict detection (`resource-loader.detectExtensionConflicts`)
+  refuses to load any extension that re-registers a tool name already
+  claimed by another extension. `pi-tool-display` already owns
+  `edit`/`write` in most setups. The transcript row + HUD + footer + widget cover the same user-facing signal without fighting over
+  the tool registry.
 
 ## ✅ Phase 2 — continuous visibility (shipped)
 

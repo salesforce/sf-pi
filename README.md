@@ -428,6 +428,7 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 
 **[SF LSP](./extensions/sf-lsp/#troubleshooting)**
 
+- `Failed to load extension ...sf-lsp/index.ts: Tool "edit" conflicts with ...`
 - HUD never appears even on wide terminals
 - Footer pill is empty or shows only dim dots
 - Transcript rows feel too chatty / too quiet

@@ -18,17 +18,23 @@ the existing `LSP feedback: …` text block. Every new surface reads from the
 tool results. See [`ROADMAP.md`](./ROADMAP.md) for shipped phases and future
 work.
 
+**Why no in-card panel on the edit/write tool itself?** Pi refuses to load any
+extension that re-registers a tool name already claimed by another extension
+(see `detectExtensionConflicts` in `resource-loader`). Third-party extensions
+like `pi-tool-display` already own the `edit`/`write` names for rendering
+purposes, so sf-lsp stays out of that lane and communicates via the
+transcript row, HUD, widget, and footer instead.
+
 ## TUI Surfaces
 
-| Surface                                                | What it shows                                                                                    | Pi primitive                                                                      |
-| ------------------------------------------------------ | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------- |
-| In-card LSP panel (inside every `write`/`edit` result) | Language · source · status glyph · error count · expandable diagnostic list                      | `registerTool` overriding `edit`/`write` with `renderShell: "self"`               |
-| Live working indicator                                 | `⠋ LSP Apex…` spinner while diagnostics are being fetched (≤6s)                                  | `ctx.ui.setWorkingIndicator`                                                      |
-| Footer status segment                                  | `LSP:●●● Apex·LWC·AS` with per-language health dots (picked up by `sf-devbar`)                   | `ctx.ui.setStatus` + `footerData.getExtensionStatuses()`                          |
-| Below-editor widget                                    | `LSP · Foo.cls ok 312ms · Apex LWC AS` summary line                                              | `ctx.ui.setWidget` placement `belowEditor`                                        |
-| Top-right HUD overlay                                  | Per-language rows: file, status, error count, duration, age                                      | `ctx.ui.custom` non-capturing overlay                                             |
-| Inline transcript row                                  | `[sf-lsp] Apex · Foo.cls · clean · 312ms` — user-only, **never** reaches the LLM                 | `pi.sendMessage({customType:"sf-lsp", display:true})` + `registerMessageRenderer` |
-| Rich `/sf-lsp` panel                                   | Doctor + recent activity ring + actions (refresh, HUD toggle, verbose toggle, shut down servers) | `ctx.ui.custom` overlay with `DynamicBorder` + `SelectList`                       |
+| Surface                | What it shows                                                                                    | Pi primitive                                                                      |
+| ---------------------- | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------- |
+| Live working indicator | `⠋ LSP Apex…` spinner while diagnostics are being fetched (≤6s)                                  | `ctx.ui.setWorkingIndicator`                                                      |
+| Footer status segment  | `LSP:●●● Apex·LWC·AS` with per-language health dots (picked up by `sf-devbar`)                   | `ctx.ui.setStatus` + `footerData.getExtensionStatuses()`                          |
+| Below-editor widget    | `LSP · Foo.cls ok 312ms · Apex LWC AS` summary line                                              | `ctx.ui.setWidget` placement `belowEditor`                                        |
+| Top-right HUD overlay  | Per-language rows: file, status, error count, duration, age                                      | `ctx.ui.custom` non-capturing overlay                                             |
+| Inline transcript row  | `[sf-lsp] Apex · Foo.cls · clean · 312ms` — user-only, **never** reaches the LLM                 | `pi.sendMessage({customType:"sf-lsp", display:true})` + `registerMessageRenderer` |
+| Rich `/sf-lsp` panel   | Doctor + recent activity ring + actions (refresh, HUD toggle, verbose toggle, shut down servers) | `ctx.ui.custom` overlay with `DynamicBorder` + `SelectList`                       |
 
 **Agent Script note:** when the `sf-agentscript-assist` extension is loaded,
 sf-lsp yields `.agent` files to it. That extension handles the same diagnostic
@@ -178,7 +184,6 @@ extensions/sf-lsp/
     below-editor.ts       ← theme-aware compact line renderer (placement:'belowEditor')
     hud-component.ts      ← top-right non-capturing HUD overlay component
     transcript.ts         ← custom message renderer + emit policy
-    tool-renderer.ts      ← edit/write overrides with in-card LSP panel
     panel.ts              ← /sf-lsp rich overlay (DynamicBorder + SelectList)
     settings-io.ts        ← persistent sfPi.sfLsp { hud, verbose }
   tests/
@@ -203,6 +208,14 @@ extensions/sf-lsp/
 Run: `npm test`
 
 ## Troubleshooting
+
+**`Failed to load extension ...sf-lsp/index.ts: Tool "edit" conflicts with ...`:**
+Another extension (commonly `pi-tool-display`) already registers the
+`edit` or `write` tool name. Pi's conflict detector refuses to load any
+extension that re-registers those names. sf-lsp no longer tries to — if
+you see this message on a current build, run `/reload` or update sf-pi.
+The in-card panel is intentionally dropped; the transcript row + HUD +
+footer now carry the same signal.
 
 **HUD never appears even on wide terminals:**
 The HUD is gated on `termWidth >= 100` and `termHeight >= 14` and on the
