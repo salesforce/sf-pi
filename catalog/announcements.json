@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.24.0-2026-05-02",
-  "latestVersion": "0.24.0",
+  "revision": "release-0.25.0-2026-05-02",
+  "latestVersion": "0.25.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.24.0",
+      "id": "release-0.25.0",
       "kind": "update",
-      "title": "sf-pi v0.24.0 — peerDependencies `@mariozechner/pi-coding-agent` floor raised to `>=0.72.0`. Users on pi <…",
+      "title": "sf-pi v0.25.0 — devbar,gateway: 1% context bar, decimal % label, 60s cost refresh",
       "publishedAt": "2026-05-02T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.24.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.25.0",
       "severity": "info",
-      "body": "peerDependencies `@mariozechner/pi-coding-agent` floor raised to `>=0.72.0`. Users on pi < 0.72 will see extensions skip with a one-line warning pointing to `pi update`. — adopt pi 0.72 thinkingLevelMap + per-model baseUrl; expose Opus 4.7 xhigh"
+      "body": "devbar,gateway: 1% context bar, decimal % label, 60s cost refresh"
     },
     {
       "id": "pi-0.71-compat",
