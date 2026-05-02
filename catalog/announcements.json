@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.26.1-2026-05-02",
-  "latestVersion": "0.26.1",
+  "revision": "release-0.27.0-2026-05-02",
+  "latestVersion": "0.27.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.26.1",
+      "id": "release-0.27.0",
       "kind": "update",
-      "title": "sf-pi v0.26.1 — sf-lsp: drop in-card edit/write tool renderer to resolve Pi load conflict",
+      "title": "sf-pi v0.27.0 — sf-lsp,sf-devbar: richer top-bar glyphs blending availability + activity",
       "publishedAt": "2026-05-02T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.26.1",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.27.0",
       "severity": "info",
-      "body": "sf-lsp: drop in-card edit/write tool renderer to resolve Pi load conflict"
+      "body": "sf-lsp,sf-devbar: richer top-bar glyphs blending availability + activity — sf-lsp: flush-right HUD, show devbar pill, configurable icon"
     },
     {
       "id": "pi-0.71-compat",
