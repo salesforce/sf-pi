@@ -18,10 +18,15 @@
  * The renderer in `sf-devbar` combines both signals into a single glyph +
  * color so the top bar reflects availability AND recent work at a glance.
  *
- * The registry is a tiny process-scoped singleton, mirroring how
- * `lib/common/sf-environment/shared-runtime.ts` shares org data between
- * sf-devbar and sf-welcome. No Pi API, no persistence — extensions each
- * import this module and coordinate via its mutate/subscribe API.
+ * Why this lives on `globalThis`:
+ *   Pi's extension loader (jiti) can give each extension its own module
+ *   graph. That means plain module-level state in this file would create
+ *   *two* separate registries — one in sf-lsp and one in sf-devbar — and
+ *   writes in one would never reach the other. We intentionally pin the
+ *   state on `globalThis.__sfLspHealthRegistry__` (a symbol in the
+ *   process global) so every caller, regardless of which module graph
+ *   loaded this file, sees the same object. This matches the pattern
+ *   used for Pi's own shared TUI singleton.
  */
 import type { SupportedLspLanguage } from "./types.ts";
 
@@ -54,22 +59,55 @@ type Listener = (snapshot: SfLspHealthSnapshot) => void;
 
 const SUPPORTED: readonly SupportedLspLanguage[] = ["apex", "lwc", "agentscript"];
 
+interface SharedRegistry {
+  state: SfLspHealthSnapshot;
+  listeners: Set<Listener>;
+}
+
+// -------------------------------------------------------------------------------------------------
+// Shared instance on globalThis
+// -------------------------------------------------------------------------------------------------
+
+/**
+ * Symbol-keyed slot on globalThis. Using a Symbol.for() name keeps us from
+ * colliding with any other library's global state, while still allowing
+ * repeated imports across isolated module graphs to resolve to the same
+ * object.
+ */
+const REGISTRY_KEY = Symbol.for("sf-pi.sf-lsp-health.registry.v2");
+
+type GlobalWithRegistry = typeof globalThis & {
+  [REGISTRY_KEY]?: SharedRegistry;
+};
+
 function makeEntry(language: SupportedLspLanguage): SfLspLanguageEntry {
   return { language, availability: "unknown", activity: "idle" };
 }
 
-const state: SfLspHealthSnapshot = {
-  byLanguage: {
-    apex: makeEntry("apex"),
-    lwc: makeEntry("lwc"),
-    agentscript: makeEntry("agentscript"),
-  },
-  revision: 0,
-};
+function createRegistry(): SharedRegistry {
+  return {
+    state: {
+      byLanguage: {
+        apex: makeEntry("apex"),
+        lwc: makeEntry("lwc"),
+        agentscript: makeEntry("agentscript"),
+      },
+      revision: 0,
+    },
+    listeners: new Set<Listener>(),
+  };
+}
 
-const listeners = new Set<Listener>();
+function getRegistry(): SharedRegistry {
+  const globals = globalThis as GlobalWithRegistry;
+  if (!globals[REGISTRY_KEY]) {
+    globals[REGISTRY_KEY] = createRegistry();
+  }
+  return globals[REGISTRY_KEY]!;
+}
 
 function snapshot(): SfLspHealthSnapshot {
+  const { state } = getRegistry();
   return {
     byLanguage: {
       apex: { ...state.byLanguage.apex },
@@ -79,6 +117,22 @@ function snapshot(): SfLspHealthSnapshot {
     revision: state.revision,
   };
 }
+
+function fire(): void {
+  const { listeners } = getRegistry();
+  const snap = snapshot();
+  for (const listener of listeners) {
+    try {
+      listener(snap);
+    } catch {
+      // Listener errors must not corrupt downstream listeners.
+    }
+  }
+}
+
+// -------------------------------------------------------------------------------------------------
+// Public API
+// -------------------------------------------------------------------------------------------------
 
 /** Current snapshot (read-only copy). */
 export function getSfLspHealth(): SfLspHealthSnapshot {
@@ -95,16 +149,17 @@ export function setSfLspAvailability(
   availability: SfLspAvailability,
   unavailableDetail?: string,
 ): void {
-  const current = state.byLanguage[language];
+  const registry = getRegistry();
+  const current = registry.state.byLanguage[language];
   if (current.availability === availability && current.unavailableDetail === unavailableDetail) {
     return;
   }
-  state.byLanguage[language] = {
+  registry.state.byLanguage[language] = {
     ...current,
     availability,
     unavailableDetail: availability === "unavailable" ? unavailableDetail : undefined,
   };
-  state.revision += 1;
+  registry.state.revision += 1;
   fire();
 }
 
@@ -116,13 +171,14 @@ export function setSfLspHealthFromDoctor(
     detail: string;
   }>,
 ): void {
+  const registry = getRegistry();
   let changed = false;
   for (const status of statuses) {
-    const current = state.byLanguage[status.language];
+    const current = registry.state.byLanguage[status.language];
     const nextAvailability: SfLspAvailability = status.available ? "available" : "unavailable";
     const nextDetail = status.available ? undefined : status.detail;
     if (current.availability !== nextAvailability || current.unavailableDetail !== nextDetail) {
-      state.byLanguage[status.language] = {
+      registry.state.byLanguage[status.language] = {
         ...current,
         availability: nextAvailability,
         unavailableDetail: nextDetail,
@@ -131,41 +187,39 @@ export function setSfLspHealthFromDoctor(
     }
   }
   if (changed) {
-    state.revision += 1;
+    registry.state.revision += 1;
     fire();
   }
 }
 
 /**
  * Update one language's activity status. Used by sf-lsp around each
- * diagnostic check:
- *   - `checking` at the start of a check
- *   - `clean` or `error` when the check finishes
- *
- * `lastErrorCount` and `lastFileName` round out the tooltip text.
+ * diagnostic check.
  */
 export function setSfLspActivity(
   language: SupportedLspLanguage,
   activity: SfLspActivity,
   options: { fileName?: string; errorCount?: number } = {},
 ): void {
-  const current = state.byLanguage[language];
-  state.byLanguage[language] = {
+  const registry = getRegistry();
+  const current = registry.state.byLanguage[language];
+  registry.state.byLanguage[language] = {
     ...current,
     activity,
     lastFileName: options.fileName ?? current.lastFileName,
     lastErrorCount: activity === "error" ? (options.errorCount ?? 0) : undefined,
     lastUpdatedAt: Date.now(),
   };
-  state.revision += 1;
+  registry.state.revision += 1;
   fire();
 }
 
 /** Reset all languages to the zero state. Used on session_shutdown. */
 export function resetSfLspHealth(): void {
+  const registry = getRegistry();
   let changed = false;
   for (const language of SUPPORTED) {
-    const current = state.byLanguage[language];
+    const current = registry.state.byLanguage[language];
     if (
       current.availability !== "unknown" ||
       current.activity !== "idle" ||
@@ -174,12 +228,12 @@ export function resetSfLspHealth(): void {
       current.lastFileName !== undefined ||
       current.lastUpdatedAt !== undefined
     ) {
-      state.byLanguage[language] = makeEntry(language);
+      registry.state.byLanguage[language] = makeEntry(language);
       changed = true;
     }
   }
   if (changed) {
-    state.revision += 1;
+    registry.state.revision += 1;
     fire();
   }
 }
@@ -189,17 +243,16 @@ export function resetSfLspHealth(): void {
  * mutation. Returns an unsubscribe function.
  */
 export function onSfLspHealthChange(listener: Listener): () => void {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
+  const registry = getRegistry();
+  registry.listeners.add(listener);
+  return () => registry.listeners.delete(listener);
 }
 
-function fire(): void {
-  const snap = snapshot();
-  for (const listener of listeners) {
-    try {
-      listener(snap);
-    } catch {
-      // Listener errors must not corrupt downstream listeners.
-    }
-  }
+/**
+ * Testing-only: drop the shared registry from globalThis so each test
+ * gets a fresh one. Never call from production code.
+ */
+export function __resetSfLspHealthRegistryForTests(): void {
+  const globals = globalThis as GlobalWithRegistry;
+  delete globals[REGISTRY_KEY];
 }

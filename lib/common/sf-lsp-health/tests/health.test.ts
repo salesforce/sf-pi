@@ -7,6 +7,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  __resetSfLspHealthRegistryForTests,
   getSfLspHealth,
   onSfLspHealthChange,
   resetSfLspHealth,
@@ -16,11 +17,11 @@ import {
 } from "../index.ts";
 
 beforeEach(() => {
-  resetSfLspHealth();
+  __resetSfLspHealthRegistryForTests();
 });
 
 afterEach(() => {
-  resetSfLspHealth();
+  __resetSfLspHealthRegistryForTests();
 });
 
 describe("sf-lsp-health registry", () => {
