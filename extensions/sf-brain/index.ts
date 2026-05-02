@@ -36,6 +36,7 @@ import {
   getSharedSfEnvironment,
 } from "../../lib/common/sf-environment/shared-runtime.ts";
 import { KERNEL_ENTRY_TYPE, loadKernel } from "./lib/kernel.ts";
+import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 
 /**
  * Type guard for our own persisted kernel entries. Prevents false matches
@@ -48,6 +49,8 @@ function isKernelEntry(entry: unknown): entry is CustomEntry<unknown> {
 }
 
 export default function (pi: ExtensionAPI) {
+  if (!requirePiVersion(pi, "sf-brain")) return;
+
   const exec = buildExecFn(pi);
 
   pi.on("before_agent_start", async (_event, ctx) => {

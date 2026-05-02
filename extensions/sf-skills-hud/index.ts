@@ -37,6 +37,7 @@ import {
   formatSkillsHudSummary,
   type SkillsHudState,
 } from "./lib/skill-state.ts";
+import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 
 // -------------------------------------------------------------------------------------------------
 // Constants
@@ -57,6 +58,8 @@ const EMPTY_STATE: SkillsHudState = {
 // -------------------------------------------------------------------------------------------------
 
 export default function sfSkillsHud(pi: ExtensionAPI) {
+  if (!requirePiVersion(pi, "sf-skills-hud")) return;
+
   let hudState: SkillsHudState = EMPTY_STATE;
   let hudComponent: SkillsHudComponent | null = null;
   let dismissHud: (() => void) | null = null;

@@ -82,12 +82,15 @@ import {
 } from "./lib/preferences.ts";
 import { openSettingsPanel } from "./lib/settings-panel.ts";
 import { renderStatsLines, resetStats, setStatsListener } from "./lib/stats.ts";
+import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 
 const RESEARCH_WIDGET_KEY = "sf-slack-research";
 
 // ─── Extension entry point ──────────────────────────────────────────────────────
 
 export default function sfSlack(pi: ExtensionAPI) {
+  if (!requirePiVersion(pi, "sf-slack")) return;
+
   let identity: SlackIdentity | null = null;
   // Count of scopes we asked for at OAuth time that Slack did NOT actually
   // grant this token. Populated by the header-driven scope probe. Surfaced in

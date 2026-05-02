@@ -39,6 +39,19 @@
  *    Effort mapping (pi thinking level → Anthropic effort):
  *      minimal/low → low, medium → medium, high → high, xhigh → xhigh
  *
+ *    GATEWAY CAVEAT — live-verified against /v1/messages:
+ *      Opus 4.7 routes through Bedrock Converse on this gateway, which
+ *      silently drops `output_config.effort`. Probes with `low` / `high` /
+ *      `xhigh` / `max` / `invalid_xyz` all returned HTTP 200 with
+ *      statistically indistinguishable thinking budgets. Turning thinking
+ *      on still works via `thinking: {type: "adaptive"}` (no-thinking
+ *      baseline ~2700 out-tokens vs adaptive ~3800–5200). The effort
+ *      mapping above is therefore cosmetic on this gateway today — the
+ *      real lever the user has is the `max_tokens` floor, which scales
+ *      with pi reasoning level in `OPUS_47_MAX_TOKENS_FLOOR_BY_LEVEL` below.
+ *      Keep the effort field so this extension is already correct once the
+ *      gateway starts forwarding it to Bedrock.
+ *
  *    Background on the defaults, live-verified against the gateway:
  *      - The model's hard output ceiling is 128000 (>128000 returns 400).
  *      - `max_tokens: 128000` + `effort: "max"` on heavier prompts

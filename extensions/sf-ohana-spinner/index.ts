@@ -24,6 +24,7 @@
 import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
 import { messages } from "./lib/messages.ts";
 import { buildRainbowFrames } from "./lib/rainbow.ts";
+import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 
 function pickRandom(): string {
   return messages[Math.floor(Math.random() * messages.length)];
@@ -36,6 +37,8 @@ const FRAME_INTERVAL_MS = 150;
 const MESSAGE_ROTATION_MS = 5000;
 
 export default function (pi: ExtensionAPI) {
+  if (!requirePiVersion(pi, "sf-ohana-spinner")) return;
+
   let rotationTimer: ReturnType<typeof setInterval> | undefined;
   let activeSessionGeneration = 0;
   let activeSessionKey: string | null = null;

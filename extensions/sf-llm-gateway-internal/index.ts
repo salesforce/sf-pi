@@ -190,6 +190,7 @@ import {
   type RetryEvent,
 } from "./lib/retry-telemetry.ts";
 import { installWireTrace, isWireTraceEnabled } from "./lib/wire-trace.ts";
+import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 
 // -------------------------------------------------------------------------------------------------
 // Extension-only types
@@ -251,6 +252,8 @@ function getRuntimeStatusState() {
 // -------------------------------------------------------------------------------------------------
 
 export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
+  if (!requirePiVersion(pi, "sf-llm-gateway-internal")) return;
+
   // Register the monthly-usage refresher into the shared store so UI
   // extensions (sf-welcome, sf-devbar) can trigger refreshes and read state
   // without importing from this extension. unregisterMonthlyUsage is called

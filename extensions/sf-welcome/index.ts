@@ -57,7 +57,7 @@ import { SfWelcomeOverlay, SfWelcomeHeader } from "./lib/splash-component.ts";
 import { isQuietStartupEnabled, isVerboseStartupRequested } from "./lib/startup-mode.ts";
 
 import { buildExecFn } from "../../lib/common/exec-adapter.ts";
-import { setWorkingVisible } from "../../lib/common/pi-compat.ts";
+import { requirePiVersion, setWorkingVisible } from "../../lib/common/pi-compat.ts";
 import {
   refreshMonthlyUsage,
   subscribeMonthlyUsageState,
@@ -82,6 +82,8 @@ const MONTHLY_BUDGET_FALLBACK = 3000;
 // -------------------------------------------------------------------------------------------------
 
 export default function sfWelcome(pi: ExtensionAPI) {
+  if (!requirePiVersion(pi, "sf-welcome")) return;
+
   let dismissOverlay: ((persistSeen?: boolean) => void) | null = null;
   let overlayRequestRender: (() => void) | null = null;
   let headerActive = false;

@@ -16,7 +16,7 @@
  *   session_start         | Activate both bars, load cached org, start async checks
  *   session_shutdown      | Restore default footer + clear widget
  *   model_select          | Update model name, detect SF LLM Gateway, refresh bars
- *   thinking_level_select | Repaint top bar immediately on thinking-level change (pi ≥ 0.71; no-op on older)
+ *   thinking_level_select | Repaint top bar immediately on thinking-level change
  *   turn_start            | Set thinking indicator on top bar
  *   turn_end              | Refresh git changes, update context bar, trigger footer repaint
  *   agent_end             | Final git refresh + footer repaint
@@ -55,6 +55,7 @@ import { checkCliFreshness, type CliFreshnessResult } from "./lib/cli-freshness.
 import { formatImageWidthPill, readTerminalDevbarSettings } from "./lib/settings-reader.ts";
 import { buildExecFn } from "../../lib/common/exec-adapter.ts";
 import { basename } from "node:path";
+import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 
 // -------------------------------------------------------------------------------------------------
 // Constants
@@ -69,6 +70,8 @@ const FLAG_NAME = "no-devbar";
 // -------------------------------------------------------------------------------------------------
 
 export default function sfDevBar(pi: ExtensionAPI) {
+  if (!requirePiVersion(pi, "sf-devbar")) return;
+
   // Bind the Pi API to the shared runtime so org detection results are
   // persisted into the session via appendEntry(). This lets the cache
   // participate in /tree branching and session resume.
@@ -378,22 +381,11 @@ export default function sfDevBar(pi: ExtensionAPI) {
 
   // --- Thinking level change: repaint the rainbow badge instantly ---
   //
-  // pi ≥ 0.71 emits `thinking_level_select` whenever the user flips thinking
+  // pi emits `thinking_level_select` whenever the user flips thinking
   // level (shortcut, settings, or model clamp). Without this, the devbar only
   // re-reads `pi.getThinkingLevel()` on the next turn boundary, leaving the
-  // badge stale while idle. On pi 0.70.x the event is never emitted and this
-  // handler stays dormant — registering an unknown event name is a no-op in
-  // pi's extension loader, so this is backward-safe.
-  //
-  // The cast is intentional: our peerDependencies floor is pi 0.70.3 whose
-  // type declarations do not yet know this event. When the peer floor moves
-  // to ≥ 0.71 the cast can be removed.
-  (
-    pi.on as unknown as (
-      event: string,
-      handler: (e: unknown, ctx: ExtensionContext) => Promise<void>,
-    ) => void
-  )("thinking_level_select", async (_event, ctx) => {
+  // badge stale while idle.
+  pi.on("thinking_level_select", async (_event, ctx) => {
     if (!enabled || !ctx.hasUI || !isActiveSession(ctx)) return;
     updateTopBar(ctx);
   });

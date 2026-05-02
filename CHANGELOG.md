@@ -7,6 +7,68 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+### Breaking Changes
+
+- **Raised pi-coding-agent peerDependency floor to `>=0.72.0`.** sf-pi now
+  depends on pi 0.72+ APIs (model-level `thinkingLevelMap` and per-model
+  `baseUrl` overrides on `pi.registerProvider()`), so running against
+  older pi builds will no longer work. To soften the blow for users who
+  update sf-pi before updating pi, every extension factory now calls a new
+  `requirePiVersion()` gate in `lib/common/pi-compat.ts` at the top of the
+  factory. On pi < 0.72 the gate logs a single actionable warning per
+  extension ("requires pi-coding-agent >= 0.72.0, found <x>. Run
+  `pi update`\...") and short-circuits, so the rest of pi keeps starting
+  instead of crashing with `schema validation failed` or
+  `ctx.ui.<method> is not a function`.
+
+### Features
+
+- **Adopt pi 0.72 model-level `thinkingLevelMap` in
+  sf-llm-gateway-internal.** Pi 0.72 replaced `compat.reasoningEffortMap`
+  with a top-level `thinkingLevelMap` on each model (pi-mono #3208). The
+  Codex gateway clamp (`minimal` → `low`, `xhigh` → `high`) that used to
+  live on `CODEX_OPENAI_COMPAT.reasoningEffortMap` is now emitted as
+  `thinkingLevelMap` in `buildProviderModel`. Without this migration,
+  Codex on pi ≥ 0.72 would silently drop the pi-level → provider-effort
+  mapping and hit LiteLLM 400s for `minimal`/`xhigh`.
+- **Expose `xhigh` thinking for Opus 4.7 on the SF LLM Gateway.** Pi 0.72
+  treats `xhigh` as opt-in via `thinkingLevelMap.xhigh`
+  (`getSupportedThinkingLevels` requires `mapped !== undefined`).
+  Opus 4.7's gateway presets had no `thinkingLevelMap`, so pi hid `xhigh`
+  from the `/thinking` selector and silently clamped
+  `DEFAULT_THINKING_LEVEL = "xhigh"` down to `high`. All four Opus 4.7
+  presets (`claude-opus-4-7`, `claude-opus-4-7-v1`,
+  `claude-opus-4-7-20250416`, `us.anthropic.claude-opus-4-7-v1`) now
+  declare `thinkingLevelMap: { xhigh: "xhigh" }`, routing straight through
+  to the Anthropic `xhigh` effort tier already handled by
+  `mapPiLevelToOpus47Effort` in `transport.ts`. Opus 4.6 is intentionally
+  unchanged: pi-ai's default mapping has no `xhigh` case for 4.6, and
+  surfacing `xhigh` there without a live probe would silently route heavy
+  4.6 traffic to an unmapped tier.
+- **Simplify sf-llm-gateway-internal dispatcher with per-model
+  `baseUrl`.** Pi 0.72 honors per-model `baseUrl` overrides on
+  `pi.registerProvider()` (pi-mono #4063). Anthropic-tagged models are now
+  registered with `baseUrl` pinned to the gateway root, so the
+  `unifiedStream` dispatcher no longer needs to clone each model and
+  rewrite its `baseUrl` at request time. The dispatcher keeps the
+  OpenAI-compat ↔ Anthropic-native routing (required to hit our Opus 4.7
+  max_tokens shim and the SSE early-error retry wrapper in
+  `transport.ts`), but the boilerplate explanation in `discovery.ts`
+  shrinks from ~20 lines to ~8.
+- **Drop pi 0.70-era compatibility casts.** Now that the floor is 0.72,
+  the `ProviderConfigWithName` structural cast in
+  `sf-llm-gateway-internal/lib/discovery.ts` and the `pi.on as unknown
+  as ...` cast around `thinking_level_select` in `sf-devbar/index.ts` are
+  gone; both use the real `ProviderConfig` / event typings from
+  `@mariozechner/pi-coding-agent`.
+
+### Notes
+
+- Pi 0.72 also introduces `shouldStopAfterTurn` (post-turn stop callback
+  inherited from `@mariozechner/pi-agent-core`). No sf-pi extension needs
+  it today; it is available to any future extension that wants to exit
+  the agent loop gracefully after a completed turn.
+
 ### Features
 
 - **sf-llm-gateway-internal: unified one-provider, one-`/login`-row design

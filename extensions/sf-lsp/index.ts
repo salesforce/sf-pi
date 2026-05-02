@@ -43,6 +43,7 @@ import {
   type SfLspState,
   type ToolResultContentPart,
 } from "./lib/feedback.ts";
+import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 
 // -------------------------------------------------------------------------------------------------
 // Constants
@@ -56,6 +57,8 @@ const DIAGNOSTIC_TIMEOUT_MS = 6000;
 // -------------------------------------------------------------------------------------------------
 
 export default function sfLspExtension(pi: ExtensionAPI) {
+  if (!requirePiVersion(pi, "sf-lsp")) return;
+
   const state = createState();
 
   registerDoctorCommand(pi);

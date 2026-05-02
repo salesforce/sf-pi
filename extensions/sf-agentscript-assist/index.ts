@@ -54,12 +54,15 @@ import {
   type ToolResultContentPart,
 } from "./lib/feedback.ts";
 import { probeDoctor, renderDoctorReport } from "./lib/doctor.ts";
+import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 
 // -------------------------------------------------------------------------------------------------
 // Entry point
 // -------------------------------------------------------------------------------------------------
 
 export default function sfAgentScriptAssistExtension(pi: ExtensionAPI) {
+  if (!requirePiVersion(pi, "sf-agentscript-assist")) return;
+
   const state = createState();
 
   registerCommand(pi, state);

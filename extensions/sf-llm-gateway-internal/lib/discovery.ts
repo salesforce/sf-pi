@@ -11,18 +11,19 @@
  *     name:           "SF LLM Gateway (Salesforce Internal)"
  *     oauth:          paste-token flow via `onPrompt`
  *
- *   All models inherit the provider-level api so pi always invokes this
- *   provider's custom `streamSimple` dispatcher. The dispatcher detects Claude
- *   by model id, clones the model to `api: "anthropic-messages"`, rewrites its
- *   baseUrl to the gateway root, and delegates to `streamSfGatewayAnthropic`.
- *   Non-Claude models stay on `streamSfGatewayOpenAI`.
+ *   All models are registered under the provider-level api so pi always
+ *   invokes this provider's custom `streamSimple` dispatcher. The dispatcher
+ *   detects Claude by model id and delegates to `streamSfGatewayAnthropic`
+ *   (our Opus 4.7 / robust-retry shim); non-Claude models stay on
+ *   `streamSfGatewayOpenAI`. The `api` tag on each model is kept internal —
+ *   only the gateway-root `baseUrl` is set on Anthropic models at
+ *   registration time, which is why the dispatcher no longer needs to
+ *   rewrite `baseUrl` at request time (honored since pi 0.72; pi-mono #4063).
  *
- *   Important: do not pass per-model `api: "anthropic-messages"` to pi for
- *   Claude. pi uses per-model api to choose the stream implementation before
- *   our provider-level `streamSimple` sees the request. That bypasses this
- *   dispatcher and makes the built-in Anthropic transport append
- *   `/v1/messages` to the provider baseUrl `<gateway>/v1`, producing the bad
- *   URL `<gateway>/v1/v1/messages`.
+ *   Do not register Anthropic models with per-model `api: "anthropic-messages"`.
+ *   That would route them to pi-ai's built-in Anthropic transport before our
+ *   `streamSimple` sees the request, skipping the Opus 4.7 max_tokens shim
+ *   and the SSE early-error retry wrapper in transport.ts.
  *
  * Why unify?
  *   The earlier two-provider layout showed `sf-llm-gateway-internal` and
@@ -51,13 +52,6 @@ import type {
   ProviderConfig,
   ProviderModelConfig,
 } from "@mariozechner/pi-coding-agent";
-
-// pi >= 0.71 added `name` to ProviderConfig (shown in `/login`). Our
-// peerDependencies floor is 0.70.3, whose types omit the field. Registering
-// with `name` works on both: pi 0.70 silently ignores the extra key, pi 0.71
-// uses it for the friendly display label. The cast narrows the structural
-// type assertion to one line so the rest of the config object stays typed.
-type ProviderConfigWithName = ProviderConfig & { name?: string };
 import {
   API_KEY_ENV,
   PROVIDER_DISPLAY_NAME,
@@ -98,14 +92,15 @@ export function getLastDiscovery(): GatewayDiscoveryState | null {
  * Unified transport dispatcher.
  *
  * pi calls `streamSimple(model, ctx, opts)` for every request against our
- * provider. We intentionally keep every registered model on the provider-level
- * api (`openai-completions`) so pi always calls this dispatcher. Claude is
- * detected by model id, then delegated to the Anthropic-native shim.
+ * provider. We keep every registered model on the provider-level api
+ * (`openai-completions`) so pi always calls this dispatcher. Claude is
+ * detected by model id and delegated to the Anthropic-native shim.
  *
- * The baseUrl rewrite: the provider is registered with `<gateway>/v1` because
- * OpenAI-compat needs it, but Anthropic's SDK appends `/v1/messages` itself
- * and expects the gateway root. We forward a shallow clone of the model with
- * `baseUrl` adjusted so both SDKs hit the correct URL.
+ * Anthropic-family models are registered with a per-model `baseUrl` pinned
+ * to the gateway root (see `registerProviders` below), so pi-ai's Anthropic
+ * SDK hits `<gateway>/v1/messages` correctly without any runtime rewrite.
+ * The dispatcher only needs to cast the api tag over to `"anthropic-messages"`
+ * before handing the model to `streamSfGatewayAnthropic`.
  */
 function unifiedStream(
   model: Model<"openai-completions"> | Model<"anthropic-messages">,
@@ -116,7 +111,6 @@ function unifiedStream(
     const anthropicModel = {
       ...model,
       api: "anthropic-messages",
-      baseUrl: toGatewayRootBaseUrl(model.baseUrl),
     } as Model<"anthropic-messages">;
     return streamSfGatewayAnthropic(anthropicModel, context, options);
   }
@@ -205,17 +199,25 @@ function registerProviders(
     return false;
   }
 
-  // Keep the internal `api` tag out of Pi's model registry. If Claude is
-  // registered with per-model `api: "anthropic-messages"`, pi bypasses our
-  // provider-level `streamSimple` dispatcher and calls its built-in Anthropic
-  // transport directly with the provider baseUrl (`<gateway>/v1`), yielding
-  // the broken URL `<gateway>/v1/v1/messages`. Let every model inherit the
-  // provider-level API, then route Claude inside `unifiedStream` by model id.
-  const providerModels: ProviderModelConfig[] = models.map(({ api: _api, ...rest }) => rest);
+  // Pin per-model `baseUrl` for Anthropic-id models to the gateway root so
+  // pi-ai's Anthropic SDK, which appends `/v1/messages` itself, lands on
+  // `<gateway>/v1/messages` instead of the broken `<gateway>/v1/v1/messages`.
+  // Honored by `pi.registerProvider()` since pi 0.72 (pi-mono #4063).
+  //
+  // Keep the internal `api` tag off the Pi-facing model config: if Claude
+  // were registered with per-model `api: "anthropic-messages"`, pi would
+  // route it to pi-ai's built-in Anthropic transport and skip our Opus 4.7
+  // / robust-retry shim in transport.ts.
+  const gatewayOpenAiBaseUrl = toGatewayOpenAiBaseUrl(config.baseUrl);
+  const gatewayRootBaseUrl = toGatewayRootBaseUrl(config.baseUrl);
+  const providerModels: ProviderModelConfig[] = models.map(({ api, ...rest }) => ({
+    ...rest,
+    ...(api === "anthropic-messages" ? { baseUrl: gatewayRootBaseUrl } : {}),
+  }));
 
-  const providerConfig: ProviderConfigWithName = {
+  const providerConfig: ProviderConfig = {
     name: PROVIDER_DISPLAY_NAME,
-    baseUrl: toGatewayOpenAiBaseUrl(config.baseUrl),
+    baseUrl: gatewayOpenAiBaseUrl,
     apiKey: config.apiKey ?? API_KEY_ENV,
     authHeader: true,
     api: "openai-completions",

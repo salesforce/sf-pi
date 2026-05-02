@@ -64,7 +64,7 @@ import {
   getDisabledExtensionsForCwd,
 } from "./lib/package-state.ts";
 import { glyph, resolveGlyphMode } from "../../lib/common/glyph-policy.ts";
-import { setWorkingVisible } from "../../lib/common/pi-compat.ts";
+import { requirePiVersion, setWorkingVisible } from "../../lib/common/pi-compat.ts";
 import {
   describeDisplaySettingsSource,
   readEffectiveSfPiDisplaySettings,
@@ -148,6 +148,8 @@ type CommandArgs = {
 // -------------------------------------------------------------------------------------------------
 
 export default function sfPiManagerExtension(pi: ExtensionAPI) {
+  if (!requirePiVersion(pi, "sf-pi-manager")) return;
+
   pi.registerCommand(COMMAND_NAME, {
     description: "Salesforce pi extension manager — browse, enable, and disable extensions",
     getArgumentCompletions: (prefix: string) => {

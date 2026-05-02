@@ -20,7 +20,7 @@
     "entry": "extensions/sf-agentscript-assist/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 1286
+    "srcLoc": 1288
   },
   {
     "id": "sf-brain",
@@ -39,7 +39,7 @@
     "entry": "extensions/sf-brain/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 141
+    "srcLoc": 143
   },
   {
     "id": "sf-devbar",
@@ -68,7 +68,7 @@
     "entry": "extensions/sf-devbar/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 1258
+    "srcLoc": 1249
   },
   {
     "id": "sf-llm-gateway-internal",
@@ -95,7 +95,7 @@
     "entry": "extensions/sf-llm-gateway-internal/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 5902
+    "srcLoc": 5998
   },
   {
     "id": "sf-lsp",
@@ -118,7 +118,7 @@
     "entry": "extensions/sf-lsp/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 1401
+    "srcLoc": 1403
   },
   {
     "id": "sf-ohana-spinner",
@@ -138,7 +138,7 @@
     "entry": "extensions/sf-ohana-spinner/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 413
+    "srcLoc": 415
   },
   {
     "id": "sf-pi-manager",
@@ -162,7 +162,7 @@
     "entry": "extensions/sf-pi-manager/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 2464
+    "srcLoc": 2465
   },
   {
     "id": "sf-skills-hud",
@@ -187,7 +187,7 @@
     "entry": "extensions/sf-skills-hud/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 627
+    "srcLoc": 629
   },
   {
     "id": "sf-slack",
@@ -222,7 +222,7 @@
     "entry": "extensions/sf-slack/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 9663
+    "srcLoc": 9665
   },
   {
     "id": "sf-welcome",
@@ -246,6 +246,6 @@
     "entry": "extensions/sf-welcome/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 3622
+    "srcLoc": 3623
   }
 ]

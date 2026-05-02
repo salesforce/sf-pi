@@ -126,14 +126,66 @@ const COMMON_OPENAI_COMPAT: ProviderModelConfig["compat"] = {
 const CODEX_OPENAI_COMPAT: ProviderModelConfig["compat"] = {
   ...BASE_OPENAI_COMPAT,
   supportsReasoningEffort: true,
-  // LiteLLM's Codex path currently accepts only low/medium/high.
-  reasoningEffortMap: {
-    minimal: "low",
-    low: "low",
-    medium: "medium",
-    high: "high",
-    xhigh: "high",
-  },
+};
+
+/**
+ * Codex thinking-level mapping.
+ *
+ * Moved from `compat.reasoningEffortMap` to model-level `thinkingLevelMap`
+ * for pi >= 0.72 (pi-mono #3208). LiteLLM's Codex path only accepts
+ * low/medium/high, so we collapse the two pi levels the gateway rejects
+ * (`minimal` and `xhigh`) onto the nearest supported value. Every level is a
+ * string (not null) because we still want all five pi levels to appear in
+ * the selector and cycle — they just all resolve to one of three gateway
+ * values.
+ */
+const CODEX_THINKING_LEVEL_MAP: ProviderModelConfig["thinkingLevelMap"] = {
+  minimal: "low",
+  low: "low",
+  medium: "medium",
+  high: "high",
+  xhigh: "high",
+};
+
+/**
+ * Opus 4.7 thinking-level map.
+ *
+ * Pi hides the `xhigh` level from the thinking selector unless the model's
+ * `thinkingLevelMap.xhigh` is explicitly set (opt-in since pi 0.72;
+ * see `getSupportedThinkingLevels` in pi-ai). Opus 4.7 in the native
+ * Anthropic API supports `low / medium / high / xhigh / max` effort tiers,
+ * and the extension's `mapPiLevelToOpus47Effort` in `transport.ts` routes
+ * pi's xhigh straight through as the Anthropic `xhigh` effort value.
+ * Without this map, users who set `DEFAULT_THINKING_LEVEL = "xhigh"` get
+ * silently clamped to `high` because xhigh never appears in the selector
+ * and pi-ai's `clampThinkingLevel` drops it to the nearest visible level.
+ *
+ * GATEWAY REALITY — live-verified against /v1/messages:
+ *   The gateway's `/v1/model/info` reports `litellm_provider: "bedrock_converse"`
+ *   for Opus 4.7. Bedrock Converse silently drops `output_config.effort`
+ *   (even invalid enum values like `"invalid_xyz"` return HTTP 200 with an
+ *   unchanged thinking budget). Probes comparing `low` / `high` / `xhigh`
+ *   / `max` / invalid values produced indistinguishable output-token
+ *   counts (3800–4700 range). Enabling `thinking: {type: "adaptive"}` still
+ *   turns thinking ON (baseline no-thinking ~2700 out-tokens vs adaptive
+ *   ~3800–5200), but Bedrock chooses the thinking budget internally.
+ *
+ *   Consequence: on this gateway the user-visible benefit of xhigh is the
+ *   max_tokens ceiling bump in `transport.ts` (`OPUS_47_MAX_TOKENS_FLOOR_BY_LEVEL`:
+ *   48K for high, 64K for xhigh), which gives Bedrock more room to work with.
+ *   The effort value itself is cosmetic until the gateway starts forwarding it.
+ *
+ *   We do NOT expose `max` here: Anthropic's native API honors it, but
+ *   Bedrock Converse drops it the same way as `xhigh`, so adding it would
+ *   only create a false sense of user control. Revisit if the gateway
+ *   moves Claude off Bedrock Converse.
+ *
+ * We only declare the `xhigh` entry; every other pi level falls through to
+ * the extension's own Anthropic effort mapping in `transport.ts` without
+ * needing a string override here (undefined means "use the provider default").
+ */
+const OPUS_47_THINKING_LEVEL_MAP: ProviderModelConfig["thinkingLevelMap"] = {
+  xhigh: "xhigh",
 };
 
 // -------------------------------------------------------------------------------------------------
@@ -157,6 +209,22 @@ export type GatewayModelDefinition = {
   contextWindow: number;
   maxTokens: number;
   betaHeaders?: string[];
+  /**
+   * Optional thinking-level map forwarded to the registered pi model.
+   *
+   * Use cases:
+   *  - Expose `xhigh` on a reasoning model that supports it (pi hides
+   *    `xhigh` unless an explicit mapping is present; see `getSupportedThinkingLevels`
+   *    in pi-ai which uses `mapped !== undefined` as the opt-in check).
+   *  - Collapse unsupported levels onto a gateway-accepted value with a
+   *    string mapping, or hide/skip them entirely with `null`.
+   *
+   * Keep this map minimal: unset keys fall back to the provider's default
+   * mapping in pi-ai's transport (`mapThinkingLevelToEffort` for
+   * anthropic-messages, `reasoning_effort` passthrough for
+   * openai-completions). Only list levels that need a non-default value.
+   */
+  thinkingLevelMap?: ProviderModelConfig["thinkingLevelMap"];
 };
 
 /**
@@ -225,6 +293,7 @@ export const MODEL_PRESETS: Record<string, Omit<GatewayModelDefinition, "id">> =
     contextWindow: 1_000_000,
     maxTokens: 64_000,
     betaHeaders: [ONE_M_CONTEXT_BETA],
+    thinkingLevelMap: OPUS_47_THINKING_LEVEL_MAP,
   },
   "claude-opus-4-7-v1": {
     family: "anthropic",
@@ -234,6 +303,7 @@ export const MODEL_PRESETS: Record<string, Omit<GatewayModelDefinition, "id">> =
     contextWindow: 1_000_000,
     maxTokens: 64_000,
     betaHeaders: [ONE_M_CONTEXT_BETA],
+    thinkingLevelMap: OPUS_47_THINKING_LEVEL_MAP,
   },
   "claude-opus-4-7-20250416": {
     family: "anthropic",
@@ -243,6 +313,7 @@ export const MODEL_PRESETS: Record<string, Omit<GatewayModelDefinition, "id">> =
     contextWindow: 1_000_000,
     maxTokens: 64_000,
     betaHeaders: [ONE_M_CONTEXT_BETA],
+    thinkingLevelMap: OPUS_47_THINKING_LEVEL_MAP,
   },
   "us.anthropic.claude-opus-4-7-v1": {
     family: "anthropic",
@@ -252,6 +323,7 @@ export const MODEL_PRESETS: Record<string, Omit<GatewayModelDefinition, "id">> =
     contextWindow: 1_000_000,
     maxTokens: 64_000,
     betaHeaders: [ONE_M_CONTEXT_BETA],
+    thinkingLevelMap: OPUS_47_THINKING_LEVEL_MAP,
   },
   // --- Opus 4.6 (previous default) ---
   [PREVIOUS_DEFAULT_MODEL_ID]: {
@@ -530,10 +602,15 @@ export function toProviderModelConfig(
       contextWindow: def.contextWindow,
       maxTokens: def.maxTokens,
       headers: { "anthropic-beta": mergedBetas.join(",") },
+      // Forward Opus 4.7's xhigh opt-in so pi's `/thinking` selector
+      // actually exposes the level that the DEFAULT_THINKING_LEVEL
+      // constant wants to ride on.
+      ...(def.thinkingLevelMap ? { thinkingLevelMap: def.thinkingLevelMap } : {}),
     };
   }
 
-  const compat = def.family === "codex" ? CODEX_OPENAI_COMPAT : COMMON_OPENAI_COMPAT;
+  const isCodex = def.family === "codex";
+  const compat = isCodex ? CODEX_OPENAI_COMPAT : COMMON_OPENAI_COMPAT;
 
   return {
     id: def.id,
@@ -545,6 +622,9 @@ export function toProviderModelConfig(
     contextWindow: def.contextWindow,
     maxTokens: def.maxTokens,
     compat,
+    // thinkingLevelMap is model-level in pi >= 0.72; it replaces the old
+    // compat.reasoningEffortMap that was silently dropped in 0.72.
+    ...(isCodex ? { thinkingLevelMap: CODEX_THINKING_LEVEL_MAP } : {}),
   };
 }
 

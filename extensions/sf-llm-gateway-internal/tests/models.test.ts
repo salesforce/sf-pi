@@ -363,8 +363,37 @@ describe("toProviderModelConfig", () => {
   it("enables Codex reasoning effort with gateway-safe clamping", () => {
     const config = toProviderModelConfig("gpt-5.3-codex", null, new Set());
     expect((config.compat as any)?.supportsReasoningEffort).toBe(true);
-    expect((config.compat as any)?.reasoningEffortMap?.minimal).toBe("low");
-    expect((config.compat as any)?.reasoningEffortMap?.xhigh).toBe("high");
+    // Migrated from compat.reasoningEffortMap to model-level
+    // thinkingLevelMap in pi >= 0.72 (pi-mono #3208).
+    expect((config as any).thinkingLevelMap?.minimal).toBe("low");
+    expect((config as any).thinkingLevelMap?.xhigh).toBe("high");
+    expect((config as any).thinkingLevelMap?.high).toBe("high");
+  });
+
+  it("opts Opus 4.7 into the pi xhigh thinking level via thinkingLevelMap", () => {
+    // pi 0.72 hides `xhigh` from the /thinking selector unless the model's
+    // thinkingLevelMap.xhigh is explicitly set. Opus 4.7 supports xhigh as a
+    // real Anthropic effort tier, and DEFAULT_THINKING_LEVEL = "xhigh"
+    // silently clamps down to `high` without this opt-in. Regression test
+    // pins the opt-in for every Opus 4.7 preset id.
+    for (const id of [
+      "claude-opus-4-7",
+      "claude-opus-4-7-v1",
+      "claude-opus-4-7-20250416",
+      "us.anthropic.claude-opus-4-7-v1",
+    ]) {
+      const config = toProviderModelConfig(id, null, new Set());
+      expect((config as any).thinkingLevelMap?.xhigh, `${id} should opt into xhigh`).toBe("xhigh");
+    }
+  });
+
+  it("does not leak the Opus 4.7 xhigh opt-in to Opus 4.6", () => {
+    // Opus 4.6 uses pi-ai's default effort mapping (high/medium/low). It has
+    // no `xhigh` effort tier in the extension's transport.ts, so we
+    // deliberately leave thinkingLevelMap unset — adding xhigh here without
+    // a live probe would silently route 4.6 traffic to an unmapped tier.
+    const config = toProviderModelConfig("claude-opus-4-6-v1", null, new Set());
+    expect((config as any).thinkingLevelMap).toBeUndefined();
   });
 
   it("does not enable reasoning effort for non-reasoning providers like Gemini or OpenAI", () => {
