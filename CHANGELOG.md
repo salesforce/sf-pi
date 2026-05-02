@@ -365,6 +365,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.27.1](https://github.com/salesforce/sf-pi/compare/v0.27.0...v0.27.1) (2026-05-02)
+
+
+### Bug Fixes
+
+* **sf-devbar:** LSP segment stuck on 'unknown' after session start ([2bf34e0](https://github.com/salesforce/sf-pi/commit/2bf34e0dad332a4385588197e088552572e805cf))
+
 ## [0.27.0](https://github.com/salesforce/sf-pi/compare/v0.26.1...v0.27.0) (2026-05-02)
 
 
