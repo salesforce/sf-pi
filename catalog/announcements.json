@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.27.0-2026-05-02",
-  "latestVersion": "0.27.0",
+  "revision": "release-0.27.1-2026-05-02",
+  "latestVersion": "0.27.1",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.27.0",
+      "id": "release-0.27.1",
       "kind": "update",
-      "title": "sf-pi v0.27.0 — sf-lsp,sf-devbar: richer top-bar glyphs blending availability + activity",
+      "title": "sf-pi v0.27.1 — sf-devbar: LSP segment stuck on 'unknown' after session start",
       "publishedAt": "2026-05-02T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.27.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.27.1",
       "severity": "info",
-      "body": "sf-lsp,sf-devbar: richer top-bar glyphs blending availability + activity — sf-lsp: flush-right HUD, show devbar pill, configurable icon"
+      "body": "sf-devbar: LSP segment stuck on 'unknown' after session start"
     },
     {
       "id": "pi-0.71-compat",
