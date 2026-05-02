@@ -365,6 +365,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.26.0](https://github.com/salesforce/sf-pi/compare/v0.25.0...v0.26.0) (2026-05-02)
+
+
+### Features
+
+* **sf-lsp:** reimagine LSP TUI with in-card panel, HUD, footer, transcript, and rich /sf-lsp panel ([44fde0d](https://github.com/salesforce/sf-pi/commit/44fde0dbc44ba4df48f7effe38032915354372d9))
+
 ## [0.25.0](https://github.com/salesforce/sf-pi/compare/v0.24.0...v0.25.0) (2026-05-02)
 
 
