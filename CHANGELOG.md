@@ -365,6 +365,17 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.24.0](https://github.com/salesforce/sf-pi/compare/v0.23.1...v0.24.0) (2026-05-02)
+
+
+### ⚠ BREAKING CHANGES
+
+* peerDependencies `@mariozechner/pi-coding-agent` floor raised to `>=0.72.0`. Users on pi < 0.72 will see extensions skip with a one-line warning pointing to `pi update`.
+
+### Features
+
+* adopt pi 0.72 thinkingLevelMap + per-model baseUrl; expose Opus 4.7 xhigh ([fce2827](https://github.com/salesforce/sf-pi/commit/fce2827deffc80cc20895eb489956faf38c0d387))
+
 ## [0.23.1](https://github.com/salesforce/sf-pi/compare/v0.23.0...v0.23.1) (2026-05-01)
 
 
