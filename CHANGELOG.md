@@ -365,6 +365,18 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.27.0](https://github.com/salesforce/sf-pi/compare/v0.26.1...v0.27.0) (2026-05-02)
+
+
+### Features
+
+* **sf-lsp,sf-devbar:** richer top-bar glyphs blending availability + activity ([6b49ac2](https://github.com/salesforce/sf-pi/commit/6b49ac2d7fb89cda1f812c993a002d8393a45b1e))
+
+
+### Bug Fixes
+
+* **sf-lsp:** flush-right HUD, show devbar pill, configurable icon ([839dfc0](https://github.com/salesforce/sf-pi/commit/839dfc0831c24cdd6b0706c9fd0954453e6b76fd))
+
 ## [0.26.1](https://github.com/salesforce/sf-pi/compare/v0.26.0...v0.26.1) (2026-05-02)
 
 
