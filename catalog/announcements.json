@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.27.4-2026-05-02",
-  "latestVersion": "0.27.4",
+  "revision": "release-0.27.5-2026-05-02",
+  "latestVersion": "0.27.5",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.27.4",
+      "id": "release-0.27.5",
       "kind": "update",
-      "title": "sf-pi v0.27.4 — sf-slack: bound Slack API calls with per-request + per-operation timeouts, closes #17",
+      "title": "sf-pi v0.27.5 — sf-slack: parallelize thread fetch, trim channel discovery, raise concurrency",
       "publishedAt": "2026-05-02T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.27.4",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.27.5",
       "severity": "info",
-      "body": "sf-slack: bound Slack API calls with per-request + per-operation timeouts, closes #17"
+      "body": "sf-slack: parallelize thread fetch, trim channel discovery, raise concurrency"
     },
     {
       "id": "pi-0.71-compat",
