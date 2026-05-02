@@ -23,7 +23,7 @@ extension that re-registers a tool name already claimed by another extension
 (see `detectExtensionConflicts` in `resource-loader`). Third-party extensions
 like `pi-tool-display` already own the `edit`/`write` names for rendering
 purposes, so sf-lsp stays out of that lane and communicates via the
-transcript row, HUD, widget, and footer instead.
+transcript row, HUD overlay, and footer instead.
 
 ## TUI Surfaces
 
@@ -31,16 +31,19 @@ transcript row, HUD, widget, and footer instead.
 | ---------------------- | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------- |
 | Live working indicator | `⠋ LSP Apex…` spinner while diagnostics are being fetched (≤6s)                                  | `ctx.ui.setWorkingIndicator`                                                      |
 | Footer status segment  | `LSP:●●● Apex·LWC·AS` with per-language health dots (picked up by `sf-devbar`)                   | `ctx.ui.setStatus` + `footerData.getExtensionStatuses()`                          |
-| Below-editor widget    | `LSP · Foo.cls ok 312ms · Apex LWC AS` summary line                                              | `ctx.ui.setWidget` placement `belowEditor`                                        |
-| Top-right HUD overlay  | Per-language rows: file, status, error count, duration, age                                      | `ctx.ui.custom` non-capturing overlay                                             |
+| Compact HUD overlay    | Single line top-right: `🩻 SF LSP ◐ Apex ✓ LWC ◌ AS 1e`. Auto-hides ~8s after last check.        | `ctx.ui.custom` non-capturing overlay with `visible` predicate                    |
 | Inline transcript row  | `[sf-lsp] Apex · Foo.cls · clean · 312ms` — user-only, **never** reaches the LLM                 | `pi.sendMessage({customType:"sf-lsp", display:true})` + `registerMessageRenderer` |
 | Rich `/sf-lsp` panel   | Doctor + recent activity ring + actions (refresh, HUD toggle, verbose toggle, shut down servers) | `ctx.ui.custom` overlay with `DynamicBorder` + `SelectList`                       |
 
 **Agent Script note:** when the `sf-agentscript-assist` extension is loaded,
 sf-lsp yields `.agent` files to it. That extension handles the same diagnostic
 flow in-process via the vendored Agent Script SDK — faster, richer, and with
-deterministic quick fixes. If `sf-agentscript-assist` is disabled, sf-lsp's
-subprocess LSP path continues to handle `.agent` files exactly as before.
+deterministic quick fixes. sf-lsp still observes the metadata the assist
+extension stamps onto the tool result so the HUD, footer, and transcript
+stay accurate for `.agent` edits.
+
+If `sf-agentscript-assist` is disabled, sf-lsp's subprocess LSP path
+continues to handle `.agent` files exactly as before.
 
 ## How It Differs from VS Code
 
@@ -181,8 +184,7 @@ extensions/sf-lsp/
     activity.ts           ← pure activity store (per-language entries, ring buffer, formatters)
     working-indicator.ts  ← ref-counted setWorkingIndicator helper
     footer-status.ts      ← theme-aware footer segment renderer
-    below-editor.ts       ← theme-aware compact line renderer (placement:'belowEditor')
-    hud-component.ts      ← top-right non-capturing HUD overlay component
+    hud-component.ts      ← compact top-right HUD overlay + isLspHudActive predicate
     transcript.ts         ← custom message renderer + emit policy
     panel.ts              ← /sf-lsp rich overlay (DynamicBorder + SelectList)
     settings-io.ts        ← persistent sfPi.sfLsp { hud, verbose }
@@ -193,6 +195,7 @@ extensions/sf-lsp/
     activity.test.ts      ← pure activity store transitions
     transcript.test.ts    ← shouldEmitTranscriptRow policy
     footer-status.test.ts ← footer segment formatter with stub theme
+    hud-component.test.ts ← isLspHudActive visibility predicate
 ```
 
 ## Testing Strategy
@@ -218,10 +221,21 @@ The in-card panel is intentionally dropped; the transcript row + HUD +
 footer now carry the same signal.
 
 **HUD never appears even on wide terminals:**
-The HUD is gated on `termWidth >= 100` and `termHeight >= 14` and on the
-persisted `sfPi.sfLsp.hud` setting. Run `/sf-lsp hud on` to force it, use
-`Ctrl+Shift+L` to toggle, or resize the terminal past the thresholds.
-The `--no-sf-lsp-hud` CLI flag suppresses it for the session.
+The HUD is **show-when-active** — it auto-hides ~8s after the last LSP
+check and re-appears on the next one. It's also gated on
+`termWidth >= 80` / `termHeight >= 10` and on the persisted
+`sfPi.sfLsp.hud` setting. Run `/sf-lsp hud on`, `Ctrl+Shift+L`, or edit
+a Salesforce file to trigger a check. The `--no-sf-lsp-hud` CLI flag
+suppresses it for the session.
+
+**Agent Script edits say "idle" in the HUD even after an edit:**
+When `sf-agentscript-assist` is loaded it handles `.agent` files
+entirely. sf-lsp now observes the metadata that assist extension stamps
+onto the tool result and records it into the same activity store used
+by the HUD, footer, and transcript — no configuration needed. If you
+still see "idle" after an `.agent` edit, confirm
+`sf-agentscript-assist` is enabled (`/sf-agentscript-assist doctor`)
+and `/reload` the session.
 
 **Footer pill is empty or shows only dim dots:**
 The activity store starts empty. The footer fills after the first real

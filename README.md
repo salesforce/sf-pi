@@ -430,6 +430,7 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 
 - `Failed to load extension ...sf-lsp/index.ts: Tool "edit" conflicts with ...`
 - HUD never appears even on wide terminals
+- Agent Script edits say "idle" in the HUD even after an edit
 - Footer pill is empty or shows only dim dots
 - Transcript rows feel too chatty / too quiet
 - Working indicator keeps saying `LSP Apex…` after the turn ends

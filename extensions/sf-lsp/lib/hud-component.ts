@@ -1,33 +1,43 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /**
- * Top-right passive overlay for the sf-lsp HUD.
+ * Compact top-right HUD for sf-lsp.
  *
- * Shape (per row):
+ * One line, status-only, no filenames or durations:
  *
- *   ╭──────────────────────────────────╮
- *   │ 🩻 SF LSP              ok · err · │
- *   │ ● Apex   Foo.cls   ok    312ms   │
- *   │ ✗ LWC    bar.js    2 err 480ms   │
- *   │ ○ AS     —         off           │
- *   ╰──────────────────────────────────╯
+ *   ╭─────────────────────────────────────╮
+ *   │ 🩻 SF LSP  ◐ Apex  ✓ LWC  ◌ AS  1e │
+ *   ╰─────────────────────────────────────╯
  *
- * Never captures input. Follows the exact pattern used by sf-skills-hud so
- * the HUD family stays consistent across sf-pi extensions.
+ * Visibility is driven by the caller (`isLspHudActive`) — the HUD only
+ * appears when a check is in flight or recently finished. Once everything
+ * has been idle for `HUD_IDLE_HIDE_MS`, the overlay's `visible` predicate
+ * returns false and Pi composites it out.
+ *
+ * Glyph legend (symbols the user asked for):
+ *   ◐  checking  (accent)
+ *   ✓  clean / ok  (success)
+ *   ✗  error  (error)
+ *   ◌  unavailable / not probed  (warning / dim)
+ *   ●  idle but probed  (muted)
  */
 import type { Theme } from "@mariozechner/pi-coding-agent";
 import type { TUI } from "@mariozechner/pi-tui";
 import { truncateToWidth, visibleWidth } from "@mariozechner/pi-tui";
 import {
   LANGUAGE_ORDER,
-  formatDuration,
-  formatRelativeAge,
-  languageLongLabel,
-  statusBadgeLabel,
-  statusColor,
-  statusGlyph,
+  languageLabel,
   type LspActivityEntry,
   type LspActivityStore,
+  type LspActivityStatus,
 } from "./activity.ts";
+import type { SupportedLanguage } from "./types.ts";
+
+/**
+ * How long after the last update to keep the HUD on-screen before the
+ * `visible` predicate hides it. Kept short so the HUD stays "active
+ * signal" only, per user feedback.
+ */
+export const HUD_IDLE_HIDE_MS = 8_000;
 
 export class SfLspHudComponent {
   constructor(
@@ -42,86 +52,88 @@ export class SfLspHudComponent {
   }
 
   render(width: number): string[] {
-    const innerWidth = Math.max(30, width - 2);
-    const lines: string[] = [];
     const theme = this.theme;
-    const row = (content = "") => makeRow(theme, content, innerWidth);
+    // Compact single-line panel — target width is derived from content, not
+    // from the overlay cell because we want it tight.
+    const segments = [theme.fg("accent", theme.bold("🩻 SF LSP"))];
 
-    lines.push(theme.fg("border", `╭${"─".repeat(innerWidth)}╮`));
-
-    const title = theme.fg("accent", theme.bold("🩻 SF LSP"));
-    const summary = theme.fg("dim", summarize(this.store));
-    const gap = Math.max(1, innerWidth - visibleWidth(title) - visibleWidth(summary));
-    lines.push(row(`${title}${" ".repeat(gap)}${summary}`));
-    lines.push(row(""));
-
-    const now = Date.now();
+    let errorTotal = 0;
+    let checking = false;
     for (const language of LANGUAGE_ORDER) {
       const entry = this.store.byLanguage.get(language);
-      lines.push(row(buildLanguageRow(language, entry, theme, now)));
+      segments.push(renderLanguageSegment(language, entry, theme));
+      if (entry?.status === "error") errorTotal += entry.diagnosticCount || 1;
+      if (entry?.status === "checking") checking = true;
     }
 
-    lines.push(theme.fg("border", `╰${"─".repeat(innerWidth)}╯`));
-    return lines;
+    if (errorTotal > 0) {
+      segments.push(theme.fg("error", theme.bold(`${errorTotal}e`)));
+    } else if (checking) {
+      segments.push(theme.fg("accent", "…"));
+    }
+
+    const separator = theme.fg("muted", "  ");
+    const content = segments.join(separator);
+    const innerWidth = Math.min(Math.max(visibleWidth(content), 32), Math.max(20, width - 2));
+
+    const top = theme.fg("border", `╭${"─".repeat(innerWidth)}╮`);
+    const bottom = theme.fg("border", `╰${"─".repeat(innerWidth)}╯`);
+
+    const truncated = truncateToWidth(` ${content} `, innerWidth, "", true);
+    const padding = " ".repeat(Math.max(0, innerWidth - visibleWidth(truncated)));
+    const body = `${theme.fg("border", "│")}${truncated}${padding}${theme.fg("border", "│")}`;
+
+    return [top, body, bottom];
   }
 
   invalidate(): void {}
   dispose(): void {}
 }
 
-function makeRow(theme: Theme, content: string, innerWidth: number): string {
-  const truncated = truncateToWidth(content, innerWidth, "", true);
-  const padding = " ".repeat(Math.max(0, innerWidth - visibleWidth(truncated)));
-  return `${theme.fg("border", "│")}${truncated}${padding}${theme.fg("border", "│")}`;
-}
-
-function summarize(store: LspActivityStore): string {
-  if (!store.hasActivity) return " idle · no runs yet ";
-
-  let errors = 0;
-  let clean = 0;
+/**
+ * Is the HUD worth showing right now? True while any language is
+ * currently checking, or when the most recent update across all
+ * languages is within `HUD_IDLE_HIDE_MS`.
+ */
+export function isLspHudActive(store: LspActivityStore, now: number = Date.now()): boolean {
+  if (!store.hasActivity) return false;
   for (const entry of store.byLanguage.values()) {
-    if (entry.status === "error") errors += entry.diagnosticCount || 1;
-    if (entry.status === "clean" || entry.status === "transition-clean") clean += 1;
+    if (entry.status === "checking") return true;
+    if (entry.updatedAt && now - entry.updatedAt <= HUD_IDLE_HIDE_MS) return true;
   }
-  return ` ${clean} ok · ${errors} err `;
+  return false;
 }
 
-function buildLanguageRow(
-  language: (typeof LANGUAGE_ORDER)[number],
+function renderLanguageSegment(
+  language: SupportedLanguage,
   entry: LspActivityEntry | undefined,
   theme: Theme,
-  now: number,
 ): string {
   const status = entry?.status ?? "idle";
-  const color = statusColor(status);
-  const glyph = theme.fg(color, statusGlyph(status));
-  const label = theme.fg("text", padRight(languageLongLabel(language), 12));
-  const file = theme.fg("accent", padRight(entry?.fileName ?? "—", 18));
-  const badge = theme.fg(color, padRight(statusBadgeLabel(status), 6));
-  const timing = theme.fg("dim", timingCell(entry, now, status));
-
-  return ` ${glyph} ${label}${file}${badge}${timing}`;
+  const { glyph, color } = compactGlyph(status);
+  const coloredGlyph = theme.fg(color, glyph);
+  const label = theme.fg(status === "idle" ? "dim" : "text", languageLabel(language));
+  return `${coloredGlyph} ${label}`;
 }
 
-function padRight(value: string, width: number): string {
-  const vis = visibleWidth(value);
-  if (vis >= width) return value;
-  return value + " ".repeat(width - vis);
-}
+type CompactGlyph = {
+  glyph: string;
+  color: "success" | "error" | "warning" | "accent" | "muted" | "dim";
+};
 
-function timingCell(entry: LspActivityEntry | undefined, now: number, status: string): string {
-  if (!entry || !entry.updatedAt) return "";
-  if (status === "error" && entry.diagnosticCount > 0) {
-    return `${entry.diagnosticCount} err · ${formatDuration(entry.durationMs)} · ${formatRelativeAge(entry.updatedAt, now)}`;
+function compactGlyph(status: LspActivityStatus): CompactGlyph {
+  switch (status) {
+    case "checking":
+      return { glyph: "◐", color: "accent" };
+    case "clean":
+    case "transition-clean":
+      return { glyph: "✓", color: "success" };
+    case "error":
+      return { glyph: "✗", color: "error" };
+    case "unavailable":
+      return { glyph: "◌", color: "warning" };
+    case "idle":
+    default:
+      return { glyph: "●", color: "muted" };
   }
-  if (status === "unavailable") {
-    return entry.unavailableReason ? truncateReason(entry.unavailableReason) : "unavailable";
-  }
-  return `${formatDuration(entry.durationMs)} · ${formatRelativeAge(entry.updatedAt, now)}`;
-}
-
-function truncateReason(reason: string): string {
-  const clean = reason.replace(/\s+/g, " ").trim();
-  return clean.length > 48 ? `${clean.slice(0, 45)}...` : clean;
 }
