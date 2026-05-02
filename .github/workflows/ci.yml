@@ -114,35 +114,72 @@ jobs:
   # cross-workflow workflow_run triggers don't fire reliably for
   # workflow_dispatch-originated CI runs on non-default branches. So we
   # drive the merge inline from CI itself on release-please branches.
+  #
+  # Event-context gotchas baked in below (learned the hard way on v0.24.0):
+  #   - `github.ref_name`  is `15/merge`    on pull_request events,
+  #                        the branch name on push/workflow_dispatch.
+  #   - `github.head_ref`  is the PR head branch on pull_request events,
+  #                        empty             on push/workflow_dispatch.
+  #   - `github.sha`       is the test-merge commit on pull_request events,
+  #                        the head commit   on push/workflow_dispatch.
+  # So we OR the branch names in the `if:` and prefer the PR head SHA when
+  # present. That way auto-merge reliably runs whether release-please's
+  # initial workflow_dispatch triggers CI or a close+reopen fires the
+  # pull_request path.
   auto-merge-release-pr:
     name: Auto-merge release PR
     runs-on: ubuntu-latest
     needs: [validate, audit]
     if: >-
       success() &&
-      startsWith(github.ref_name, 'release-please--')
+      (
+        startsWith(github.head_ref, 'release-please--') ||
+        startsWith(github.ref_name, 'release-please--')
+      )
     permissions:
       contents: write
       pull-requests: write
       actions: write # to re-dispatch release-please
       checks: read # to poll gitleaks status on the same SHA
     steps:
+      - name: Resolve PR head branch + SHA
+        id: ctx
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          REF_NAME: ${{ github.ref_name }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PUSH_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          # On pull_request the head branch lives in HEAD_REF; on push /
+          # workflow_dispatch it's in REF_NAME. Fall back to REF_NAME so
+          # the legacy workflow_dispatch path keeps working.
+          BRANCH="${HEAD_REF:-$REF_NAME}"
+          # On pull_request the PR head SHA is what checks are attached to;
+          # on push / workflow_dispatch github.sha already points at the
+          # head commit.
+          SHA="${PR_HEAD_SHA:-$PUSH_SHA}"
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "Resolved branch=$BRANCH sha=$SHA"
+
       - name: Find release PR
         id: pr
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: ${{ steps.ctx.outputs.branch }}
         run: |
           set -euo pipefail
           PR_JSON=$(gh pr list \
             --repo "$GITHUB_REPOSITORY" \
-            --head "$GITHUB_REF_NAME" \
+            --head "$BRANCH" \
             --state open \
             --json number,title,author \
             --limit 1)
           PR_NUMBER=$(echo "$PR_JSON" | jq -r '.[0].number // empty')
           PR_AUTHOR=$(echo "$PR_JSON" | jq -r '.[0].author.login // empty')
           if [ -z "$PR_NUMBER" ]; then
-            echo "No open PR for $GITHUB_REF_NAME; nothing to merge."
+            echo "No open PR for $BRANCH; nothing to merge."
             exit 0
           fi
           case "$PR_AUTHOR" in
@@ -159,7 +196,7 @@ jobs:
         if: steps.pr.outputs.pr_number != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          HEAD_SHA: ${{ github.sha }}
+          HEAD_SHA: ${{ steps.ctx.outputs.sha }}
         run: |
           set -euo pipefail
           for attempt in $(seq 1 30); do
