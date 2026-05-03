@@ -365,6 +365,18 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.30.0](https://github.com/salesforce/sf-pi/compare/v0.29.0...v0.30.0) (2026-05-03)
+
+
+### Features
+
+* **sf-pi-manager:** /sf-pi skills for Claude Code / Codex / Cursor interop ([044bdcd](https://github.com/salesforce/sf-pi/commit/044bdcd7aaa537831df68dcf08a06d0db22cec2a))
+
+
+### Bug Fixes
+
+* **sf-welcome:** detect pi-skills and other git: clones in skill roots ([044bdcd](https://github.com/salesforce/sf-pi/commit/044bdcd7aaa537831df68dcf08a06d0db22cec2a))
+
 ## [0.29.0](https://github.com/salesforce/sf-pi/compare/v0.28.2...v0.29.0) (2026-05-03)
 
 
