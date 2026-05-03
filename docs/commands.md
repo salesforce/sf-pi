@@ -47,7 +47,7 @@ _Real-time Salesforce LSP diagnostics on write/edit with a working-indicator spi
 _Core manager — provides /sf-pi commands_
 
 - Default: **always-on**
-- Commands: `/sf-pi`, `/sf-pi recommended`, `/sf-pi announcements`
+- Commands: `/sf-pi`, `/sf-pi recommended`, `/sf-pi announcements`, `/sf-pi skills`
 
 ### [SF Slack](../extensions/sf-slack/)
 

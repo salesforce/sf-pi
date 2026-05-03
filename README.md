@@ -167,6 +167,7 @@ Every slash command exposed by a bundled extension. See each extension README fo
 | `/sf-pi`                   | [SF Pi Manager](./extensions/sf-pi-manager/)                     | core     |
 | `/sf-pi recommended`       | [SF Pi Manager](./extensions/sf-pi-manager/)                     | core     |
 | `/sf-pi announcements`     | [SF Pi Manager](./extensions/sf-pi-manager/)                     | core     |
+| `/sf-pi skills`            | [SF Pi Manager](./extensions/sf-pi-manager/)                     | core     |
 | `/sf-slack`                | [SF Slack](./extensions/sf-slack/)                               | core     |
 | `/sf-llm-gateway-internal` | [SF LLM Gateway Internal](./extensions/sf-llm-gateway-internal/) | provider |
 | `/sf-devbar`               | [SF DevBar](./extensions/sf-devbar/)                             | ui       |
@@ -198,6 +199,10 @@ Use the `/sf-pi` command to manage extensions interactively or via subcommands:
 /sf-pi recommended install <id> # Install one recommended extension (or bundle:<name>)
 /sf-pi recommended remove  <id> # Remove a recommended extension
 /sf-pi recommended status       # Show revision + install/decline counts
+/sf-pi skills                   # Wire Claude Code / Codex / Cursor skill dirs
+/sf-pi skills list              # List detected external skill roots
+/sf-pi skills link <path|label> # Add a root to settings.skills[]
+/sf-pi skills unlink <path|label> # Remove a root from settings.skills[]
 /sf-pi help                     # Show available commands
 ```
 
@@ -262,6 +267,40 @@ First-run behavior:
 
 Proposing a new recommendation: see
 [CONTRIBUTING.md](./CONTRIBUTING.md#proposing-a-recommended-extension).
+
+## Using Skills from Claude Code, Codex, or Cursor
+
+Pi natively loads skills from `~/.pi/agent/skills/` and `~/.agents/skills/`.
+Skill libraries from other harnesses — Claude Code (`~/.claude/skills`),
+OpenAI Codex (`~/.codex/skills`), and Cursor (`~/.cursor/skills`) — require
+a one-line settings edit to load in pi:
+
+```json
+// ~/.pi/agent/settings.json
+{
+  "skills": ["~/.claude/skills", "~/.codex/skills"]
+}
+```
+
+`/sf-pi skills` does this for you. Run it and sf-pi:
+
+1. Scans those three directories on disk, counts the skills it sees in each,
+   and cross-references the list with your current `settings.skills[]`.
+2. Opens a checklist — Space toggles a root, Enter applies.
+3. Writes the delta back to `~/.pi/agent/settings.json` and reloads so the
+   newly wired skills load immediately.
+
+The splash also shows a single-line nudge under **Recommended** whenever it
+detects an external root on disk that isn't yet in your settings:
+
+```
+• Interop  2 external skill roots (41 skills detected)
+  → /sf-pi skills
+```
+
+Skills work side-by-side across harnesses — wiring a Claude Code directory
+here does not copy, move, or touch the files in any way. Pi reads them in
+place and Claude Code continues to use them unchanged.
 
 ## Bundled Extensions
 
@@ -459,6 +498,8 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 - Project-scoped changes aren't sticking
 - Display profile change doesn't affect any output
 - `/sf-pi recommended` shows no items or the opposite — too many
+- `/sf-pi skills` says "No external skill directories detected"
+- `/sf-pi skills` added a root but pi still doesn't load the skills
 
 **[SF Slack](./extensions/sf-slack/#troubleshooting)**
 

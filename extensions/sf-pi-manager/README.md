@@ -28,6 +28,7 @@ Extension loads
        ├─ status    → detailed summary
        ├─ display   → show/set compact|balanced|verbose display profile
        ├─ announcements → list / dismiss / reset maintainer notes + update nudge
+       ├─ skills    → detect & wire Claude Code / Codex / Cursor skill dirs
        └─ help      → command reference
 ```
 
@@ -170,3 +171,17 @@ reappear. The one-time nudge fires only when the manifest's `revision`
 differs from your acknowledged revision **and** at least one
 default-bundle item is still pending. Opt out entirely with
 `SF_PI_RECOMMENDATIONS=off`.
+
+**`/sf-pi skills` says "No external skill directories detected":**
+The command probes three fixed roots on disk — `~/.claude/skills`,
+`~/.codex/skills`, and `~/.cursor/skills`. If none of those exist, the
+command has nothing to offer. You can still reference arbitrary paths
+by editing `~/.pi/agent/settings.json → skills[]` directly; pi loads
+whatever you list there as long as each path resolves to a directory.
+
+**`/sf-pi skills` added a root but pi still doesn't load the skills:**
+The writer updates `~/.pi/agent/settings.json` and calls `ctx.reload()`.
+If a skill inside the linked root is malformed (missing `description`
+frontmatter, invalid `name`), pi drops that skill with a warning but
+keeps loading the rest. Check `pi` startup output for skill-validation
+messages, or run `/sf-welcome` to see the loaded-skills count.

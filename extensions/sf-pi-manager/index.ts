@@ -83,6 +83,7 @@ import {
   handleAnnouncements,
   parseAnnouncementsArgs,
 } from "./lib/announcements.ts";
+import { handleSkills, parseSkillsArgs } from "./lib/skill-sources-command.ts";
 import { loadAnnouncementsManifest } from "../../lib/common/catalog-state/announcements-manifest.ts";
 import { buildAnnouncementsSync } from "../sf-welcome/lib/announcements.ts";
 import { readAnnouncementsState } from "../../lib/common/catalog-state/announcements-state.ts";
@@ -136,6 +137,7 @@ type CommandArgs = {
     | "display"
     | "recommended"
     | "announcements"
+    | "skills"
     | "help";
   scope: "global" | "project";
   target?: string;
@@ -163,6 +165,7 @@ export default function sfPiManagerExtension(pi: ExtensionAPI) {
         "display",
         "recommended",
         "announcements",
+        "skills",
         "help",
       ];
       const tokens = prefix.trim().split(/\s+/);
@@ -258,6 +261,10 @@ export function parseCommandArgs(raw: string): CommandArgs {
     const rest = tokens.slice(1).join(" ");
     return { subcommand: "announcements", scope, rest };
   }
+  if (sub === "skills" || sub === "skill") {
+    const rest = tokens.slice(1).join(" ");
+    return { subcommand: "skills", scope, rest };
+  }
   if (sub === "display") {
     const target =
       tokens[1] && tokens[1].toLowerCase() !== "global" && tokens[1].toLowerCase() !== "project"
@@ -337,6 +344,11 @@ async function handleCommand(
       // Listing an announcement counts as acknowledging the revision so the
       // footer nudge clears even if the user never dismisses the splash.
       updateAnnouncementsNudge(ctx);
+      break;
+    }
+    case "skills": {
+      const skillsArgs = parseSkillsArgs(args.rest ?? "");
+      await handleSkills(ctx, PACKAGE_VERSION, skillsArgs);
       break;
     }
     case "help":
@@ -627,6 +639,7 @@ function handleHelp(ctx: ExtensionCommandContext): void {
     `  /${COMMAND_NAME} display [profile] [scope] Show or set display profile`,
     `  /${COMMAND_NAME} recommended [...]         Manage recommended external extensions`,
     `  /${COMMAND_NAME} announcements [...]       List/dismiss/reset sf-pi announcements`,
+    `  /${COMMAND_NAME} skills [...]              Wire Claude Code / Codex / Cursor skill dirs`,
     `  /${COMMAND_NAME} help                      Show this help`,
     "",
     "Available extensions:",

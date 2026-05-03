@@ -51,7 +51,19 @@ const ACCENT = (text: string) => fg256(75, text); // Blue accent
 const GOLD = (text: string) => fgRgb(255, 183, 77, text); // Gold/amber
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Pi Logo with Salesforce gradient
+// Pi + SF header with Salesforce gradient
+//
+// The splash header reads as a single Pi ╋ SF brand mark: both glyphs are
+// 5 rows tall, drawn from block chars (▀ █ ▄), and painted with the same
+// gradient as the existing Pi logo. A dim "+" sits between them on the
+// middle row to frame the pairing as additive — sf-pi = Pi (the agent
+// harness) + Salesforce (the platform it targets). The HEADER_CAPTION
+// below the mark names the platform surface sf-pi exposes: Salesforce's
+// Headless 360 API / MCP / CLI layer.
+//
+// Both arrays must stay the same row count; buildLeftColumn() zips them
+// by index. Widths are intentionally unequal (Pi=14, SF=17) so each
+// letterform reads cleanly.
 // ═══════════════════════════════════════════════════════════════════════════
 
 const PI_LOGO = [
@@ -61,6 +73,26 @@ const PI_LOGO = [
   "  ███    ███  ",
   " ▄███▄  ▄███▄ ",
 ];
+
+// SF monogram — 17 cols, 5 rows. The S uses diagonal half-block hooks
+// (▄…▄ top shoulder, ▀…▀ bottom shoulder) so the curves read smoothly at
+// this resolution without needing more rows.
+const SF_LOGO = [
+  " ▄█████▄  ███████",
+  "██        ██     ",
+  " ▀█████▄  █████▀ ",
+  "      ██  ██     ",
+  " █████▀   ██     ",
+];
+
+// Gradient caption under the logo block. Anchors the mark to sf-pi's
+// positioning: procode access to Salesforce Headless 360.
+const HEADER_CAPTION = "[ Salesforce Headless 360 ]";
+
+// 5-col gutter between Pi and SF. The middle row swaps the gutter for a
+// dim "+" marker so the pairing reads as additive.
+const HEADER_GUTTER = "     ";
+const HEADER_PLUS_ROW = 2;
 
 // Salesforce-inspired gradient: blue → cyan → purple
 const GRADIENT_COLORS = [
@@ -212,10 +244,24 @@ function buildLeftColumn(data: SplashData, colWidth: number, mode: GlyphMode): s
   lines.push(centerText(`${BOLD}Welcome back!${RESET}`, colWidth));
   lines.push("");
 
-  // Gradient Pi logo
-  for (const row of PI_LOGO) {
-    lines.push(centerText(gradientLine(row), colWidth));
+  // Gradient Pi + SF header with Headless 360 caption.
+  // Each row stitches [Pi-row][gutter|+][SF-row] so the pair renders as one
+  // visual block; centerText() can't help here because the gutter contains
+  // ANSI (the dim "+"), so we center by the un-styled visible width and
+  // then prepend that padding to the styled row.
+  for (let i = 0; i < PI_LOGO.length; i++) {
+    const piRow = PI_LOGO[i] ?? "";
+    const sfRow = SF_LOGO[i] ?? "";
+    const gutter = i === HEADER_PLUS_ROW ? `  ${DIM}+${RESET}  ` : HEADER_GUTTER;
+    const visibleRow = piRow + HEADER_GUTTER + sfRow;
+    const styledRow = gradientLine(piRow) + gutter + gradientLine(sfRow);
+    const leftPad = Math.max(0, Math.floor((colWidth - visibleWidth(visibleRow)) / 2));
+    lines.push(" ".repeat(leftPad) + styledRow);
   }
+  // One blank line between the logo block and the caption, then the
+  // gradient-painted subtitle centered on the column.
+  lines.push("");
+  lines.push(centerText(gradientLine(HEADER_CAPTION), colWidth));
   lines.push("");
 
   // Model info
@@ -440,6 +486,28 @@ function buildRightColumn(data: SplashData, colWidth: number, mode: GlyphMode): 
     } else {
       lines.push(` ${SF_GREEN("✓")} ${MUTED("All recommendations installed")}`);
     }
+    lines.push(horizontalRule(colWidth));
+  }
+
+  // --- External skill sources (Claude Code / Codex / Cursor interop) ---
+  //
+  // Surfaces a single-line nudge when pi's skill-discovery would pick up
+  // more skills with one settings edit. Keeps the block compact on
+  // purpose: users who want to manage the list open `/sf-pi skills`.
+  const skillSources = data.skillSources;
+  if (skillSources && skillSources.availableCount > 0) {
+    const rootLabel = `${skillSources.availableCount} external skill root${
+      skillSources.availableCount === 1 ? "" : "s"
+    }`;
+    const skillCount = skillSources.totalSkillCount;
+    const detail =
+      skillCount > 0
+        ? ` ${MUTED(`(${skillCount} skill${skillCount === 1 ? "" : "s"} detected)`)}`
+        : "";
+    lines.push(
+      ` ${BOLD}${SF_BLUE(`${glyph("extensions", mode)} Interop`)}${RESET}  ${SF_CYAN(rootLabel)}${detail}`,
+    );
+    lines.push(` ${MUTED("→")} ${SF_CYAN("/sf-pi skills")}`);
     lines.push(horizontalRule(colWidth));
   }
 

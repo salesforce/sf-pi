@@ -17,7 +17,8 @@
  * a malformed settings file or missing manifest degrades to "zero
  * recommendations" instead of breaking the splash.
  */
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { globalSettingsPath, projectSettingsPath } from "../../../lib/common/pi-paths.ts";
@@ -61,10 +62,11 @@ export function collectRecommendationsStatus(cwd: string): RecommendationsStatus
   }
 
   const installedSources = collectInstalledPackageSources(cwd);
+  const skillDirClones = collectSkillDirClones(cwd);
   const state = readRecommendationsState();
 
   const displayItems: RecommendationStatusItem[] = items.map((item) => {
-    if (isItemInstalled(item, installedSources)) {
+    if (isItemInstalled(item, installedSources, skillDirClones)) {
       return { id: item.id, name: item.name, status: "installed" };
     }
     if (state.decisions[item.id] === "declined") {
@@ -101,17 +103,33 @@ function statusOrder(status: RecommendationDisplayStatus): number {
 }
 
 /**
- * Decide whether a recommended item is already installed in pi's settings.
+ * Decide whether a recommended item is already installed.
  *
  * The manifest source strings look like "npm:pi-web-access" or
  * "git:github.com/user/repo". The settings file stores the *installed*
  * source verbatim, which for npm packages may be suffixed with a
  * version (e.g. "npm:pi-web-access@1.2.0"). Match on the normalized
  * name-part so "npm:pi-web-access" == "npm:pi-web-access@1.2.0".
+ *
+ * For `git:` sources we also honor a second convention: the item's id
+ * cloned into one of pi's skill-discovery roots (e.g.
+ * `~/.pi/agent/skills/pi-skills/`). The upstream README for `pi-skills`
+ * tells users to `git clone … ~/.pi/agent/skills/pi-skills`, which is a
+ * fully functional install even though it never touches
+ * `settings.json → packages[]`. Without this detection the splash would
+ * perpetually nag such users to re-install.
  */
-function isItemInstalled(item: RecommendedItem, installedSources: Set<string>): boolean {
+function isItemInstalled(
+  item: RecommendedItem,
+  installedSources: Set<string>,
+  skillDirClones: Set<string>,
+): boolean {
   const normalized = normalizeSource(item.source);
-  return installedSources.has(normalized);
+  if (installedSources.has(normalized)) return true;
+  if (item.source.trim().toLowerCase().startsWith("git:") && skillDirClones.has(item.id)) {
+    return true;
+  }
+  return false;
 }
 
 function normalizeSource(source: string): string {
@@ -162,4 +180,57 @@ function collectInstalledPackageSources(cwd: string): Set<string> {
   }
 
   return sources;
+}
+
+/**
+ * Return the set of recommended-item ids that look like git clones into
+ * one of pi's conventional skill-discovery roots.
+ *
+ * We consider these roots (see pi-coding-agent/docs/skills.md):
+ *   - `~/.pi/agent/skills/<id>/`
+ *   - `~/.agents/skills/<id>/`
+ *   - `<cwd>/.pi/skills/<id>/`
+ *   - `<cwd>/.agents/skills/<id>/`
+ *
+ * A root entry counts only when it is a directory — plain `.md` files at
+ * these roots are pi's loose-skill convention and don't correspond to
+ * any recommended item id. We intentionally don't verify a git remote
+ * here: the id is a stable sf-pi slug, and the only way a directory
+ * with that exact name ends up in a skills root is either the README's
+ * clone instructions or an intentional symlink. Either way, the skill
+ * is already loading, so reporting "installed" is the truthful answer.
+ */
+function collectSkillDirClones(cwd: string): Set<string> {
+  const ids = new Set<string>();
+  const home = os.homedir();
+  const roots = [
+    path.join(home, ".pi", "agent", "skills"),
+    path.join(home, ".agents", "skills"),
+    path.join(cwd, ".pi", "skills"),
+    path.join(cwd, ".agents", "skills"),
+  ];
+
+  for (const root of roots) {
+    if (!existsSync(root)) continue;
+    let entries: string[];
+    try {
+      // A direct stat on each candidate is fine and lets symlinked
+      // skill packs count as installed.
+      entries = readdirSync(root);
+    } catch {
+      continue;
+    }
+    for (const entry of entries) {
+      const entryPath = path.join(root, entry);
+      try {
+        if (statSync(entryPath).isDirectory()) {
+          ids.add(entry);
+        }
+      } catch {
+        // Skip unreadable entries — splash must never crash here.
+      }
+    }
+  }
+
+  return ids;
 }

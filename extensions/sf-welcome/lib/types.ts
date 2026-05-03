@@ -58,6 +58,14 @@ export interface RecommendationsStatusSummary {
   items: RecommendationStatusItem[];
 }
 
+/** Splash-facing payload for the external-skill-sources nudge line.
+ *  Populated only when at least one candidate root is detected but not
+ *  yet wired into `~/.pi/agent/settings.json → skills[]`. */
+export interface SkillSourcesNudge {
+  availableCount: number;
+  totalSkillCount: number;
+}
+
 export interface SplashData {
   modelName: string;
   providerName: string;
@@ -84,6 +92,10 @@ export interface SplashData {
   /** Install status for recommended external pi packages. Replaces the
    * legacy Salesforce AI block when any recommendations are defined. */
   recommendations?: RecommendationsStatusSummary;
+  /** External skill-source directories detected on disk but not yet wired
+   * into pi's global settings. Drives the `/sf-pi skills` nudge line
+   * shown under the Recommended block. Undefined means no nudge. */
+  skillSources?: SkillSourcesNudge;
   /** Populated asynchronously after initial render. */
   sfEnvironment?: SfEnvironmentInfo;
   /** Short summary of pi-coding-agent changes since the user's last splash.

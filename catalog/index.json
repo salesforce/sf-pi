@@ -175,7 +175,8 @@
     "commands": [
       "/sf-pi",
       "/sf-pi recommended",
-      "/sf-pi announcements"
+      "/sf-pi announcements",
+      "/sf-pi skills"
     ],
     "providers": [],
     "tools": [],
@@ -186,7 +187,7 @@
     "entry": "extensions/sf-pi-manager/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 2465
+    "srcLoc": 2950
   },
   {
     "id": "sf-skills-hud",
@@ -270,6 +271,6 @@
     "entry": "extensions/sf-welcome/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 3623
+    "srcLoc": 3768
   }
 ]

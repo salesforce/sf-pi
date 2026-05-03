@@ -93,7 +93,7 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
     file: "extensions/sf-pi-manager/index.ts",
     category: "core",
     defaultEnabled: true,
-    commands: ["/sf-pi","/sf-pi recommended","/sf-pi announcements"],
+    commands: ["/sf-pi","/sf-pi recommended","/sf-pi announcements","/sf-pi skills"],
     events: ["session_start","session_shutdown"],
     alwaysActive: true,
     configurable: true,

@@ -24,6 +24,7 @@ import { getMonthlyUsageState } from "../../../lib/common/monthly-usage/store.ts
 import { buildWhatsNewPayload } from "./whats-new.ts";
 import { buildAnnouncementsSync, refreshAnnouncements } from "./announcements.ts";
 import { collectRecommendationsStatus } from "./recommendations-status.ts";
+import { summarizeAvailableSkillSources } from "../../../lib/common/skill-sources/skill-sources.ts";
 // Only the types actually referenced in this module's function bodies are
 // imported here; the rest are re-exported for convenience via the
 // `export type` block below, which does not require a local import.
@@ -323,6 +324,7 @@ export function collectSplashData(
     lifetimeCost: lifetime.lifetimeCost,
     lifetimeUsageSource: lifetime.lifetimeUsageSource,
     recommendations: collectRecommendationsStatus(cwd),
+    skillSources: summarizeAvailableSkillSources() ?? undefined,
     sfEnvironment: undefined,
     whatsNew,
     announcements,
