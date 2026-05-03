@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.31.2-2026-05-03",
-  "latestVersion": "0.31.2",
+  "revision": "release-0.31.3-2026-05-03",
+  "latestVersion": "0.31.3",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.31.2",
+      "id": "release-0.31.3",
       "kind": "update",
-      "title": "sf-pi v0.31.2 — ci: catch missing SPDX headers at pre-commit",
+      "title": "sf-pi v0.31.3 — ci: dispatch every required-check workflow on release PR branch",
       "publishedAt": "2026-05-03T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.31.2",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.31.3",
       "severity": "info",
-      "body": "ci: catch missing SPDX headers at pre-commit — ci: use gh pr merge --auto to unblock release PR auto-merge"
+      "body": "ci: dispatch every required-check workflow on release PR branch"
     },
     {
       "id": "pi-0.71-compat",
