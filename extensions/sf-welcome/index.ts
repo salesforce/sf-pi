@@ -603,9 +603,9 @@ export default function sfWelcome(pi: ExtensionAPI) {
           let countdown = 30;
           let dismissed = false;
           const intervalRef: { current?: ReturnType<typeof setInterval> } = {};
-          // Separate interval for the Pi + SALESFORCE color shimmer. Ticks
-          // every 300 ms for a few seconds, then stops — so the animation
-          // is a one-time "boot-up moment," not an ongoing repaint cost.
+          // Separate interval for the Pi + SALESFORCE color shimmer.
+          // Ticks for ~8 seconds on boot, then stops — the animation is
+          // a one-time "boot-up moment," not an ongoing repaint cost.
           //
           // Opt-out: set SF_PI_REDUCED_MOTION=1 to skip the animation
           // entirely. Honors the motion-preference convention used by
@@ -613,8 +613,8 @@ export default function sfWelcome(pi: ExtensionAPI) {
           const headerIntervalRef: { current?: ReturnType<typeof setInterval> } = {};
           const reducedMotion =
             process.env.SF_PI_REDUCED_MOTION === "1" || process.env.SF_PI_REDUCED_MOTION === "true";
-          const HEADER_FRAME_MS = 300;
-          const HEADER_ANIMATION_FRAMES = 20; // 20 × 300 ms = 6 s
+          const HEADER_FRAME_MS = 400;
+          const HEADER_ANIMATION_FRAMES = 20; // 20 × 400 ms = 8 s
           let headerOffset = 0;
 
           const doDismiss = (persistSeen: boolean = true) => {
@@ -669,10 +669,15 @@ export default function sfWelcome(pi: ExtensionAPI) {
           }, 1000);
 
           // Kick off the color-cycle animation for the brand mark. Runs
-          // independently of the countdown interval so the 300 ms shimmer
-          // cadence can't be distorted by the 1 s tick. Stops itself once
-          // HEADER_ANIMATION_FRAMES frames have elapsed (final state
-          // freezes as the permanent look of the mark).
+          // independently of the countdown interval so the 400 ms
+          // shimmer cadence can't be distorted by the 1 s tick. Stops
+          // itself once HEADER_ANIMATION_FRAMES frames have elapsed;
+          // the final frame becomes the permanent look of the mark.
+          //
+          // `welcome.invalidate()` before requestRender is belt-and-
+          // braces: the TUI's diff engine skips the repaint if render()
+          // returns bytes identical to the previous frame. Invalidating
+          // first drops any cached output so the new offset always paints.
           if (!reducedMotion) {
             headerIntervalRef.current = setInterval(() => {
               if (dismissed) return;
@@ -682,7 +687,11 @@ export default function sfWelcome(pi: ExtensionAPI) {
               }
               headerOffset += 1;
               welcome.setHeaderOffset(headerOffset);
-              tui.requestRender();
+              welcome.invalidate();
+              // force:true bypasses pi-tui's diff cache so the new
+              // per-character color bytes definitely land on screen
+              // (sf-tui.d.ts requestRender(force?: boolean)).
+              tui.requestRender(true);
               if (headerOffset >= HEADER_ANIMATION_FRAMES) {
                 clearInterval(headerIntervalRef.current);
               }

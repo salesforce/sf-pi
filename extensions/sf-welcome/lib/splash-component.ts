@@ -105,7 +105,7 @@ const WORD_WIDTH = WORD.length * 5 + (WORD.length - 1);
 
 // Caption under the mark. Pastel-rainbow painted so it pairs visually
 // with Pi above.
-const HEADER_CAPTION = "[ Headless 360 · procode access ]";
+const HEADER_CAPTION = "[ Headless 360 · Pro-code Access ]";
 
 // Salesforce blue/purple family: SF Blue, mid blue, Astro cyan, light
 // blue, lavender, SF Purple. Every stop has blue ≥ 210 so the wordmark
