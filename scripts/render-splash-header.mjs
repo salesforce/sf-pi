@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: Apache-2.0 */
 // Run the real SfWelcomeHeader with stubbed splash data so we can visually
 // confirm the Pi + SF + caption rendering matches the picker. Preview only.
 import { SfWelcomeHeader } from "../extensions/sf-welcome/lib/splash-component.ts";
