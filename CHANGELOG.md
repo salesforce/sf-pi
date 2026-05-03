@@ -365,6 +365,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.33.1](https://github.com/salesforce/sf-pi/compare/v0.33.0...v0.33.1) (2026-05-03)
+
+
+### Bug Fixes
+
+* **sf-llm-gateway-internal:** make gpt-5.5 agentic-safe ([abf7dc0](https://github.com/salesforce/sf-pi/commit/abf7dc054307e74dce77d74d9e0c1662d186936b))
+
 ## [0.33.0](https://github.com/salesforce/sf-pi/compare/v0.32.0...v0.33.0) (2026-05-03)
 
 
