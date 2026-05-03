@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.28.1-2026-05-03",
-  "latestVersion": "0.28.1",
+  "revision": "release-0.28.2-2026-05-03",
+  "latestVersion": "0.28.2",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.28.1",
+      "id": "release-0.28.2",
       "kind": "update",
-      "title": "sf-pi v0.28.1 — sf-lsp: respect externally-provided LSP servers in install prompt",
+      "title": "sf-pi v0.28.2 — sf-devbar: wrap LSP health segment in LSP[…] label",
       "publishedAt": "2026-05-03T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.28.1",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.28.2",
       "severity": "info",
-      "body": "sf-lsp: respect externally-provided LSP servers in install prompt"
+      "body": "sf-devbar: wrap LSP health segment in LSP[…] label"
     },
     {
       "id": "pi-0.71-compat",
