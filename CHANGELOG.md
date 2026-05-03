@@ -365,6 +365,16 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.31.2](https://github.com/salesforce/sf-pi/compare/v0.31.1...v0.31.2) (2026-05-03)
+
+
+### Bug Fixes
+
+* **ci:** catch missing SPDX headers at pre-commit ([636f9ff](https://github.com/salesforce/sf-pi/commit/636f9ff5d72c290899264c8951061dc67e551125))
+* **ci:** use gh pr merge --auto to unblock release PR auto-merge ([a3400fb](https://github.com/salesforce/sf-pi/commit/a3400fb32963492d68d213d9528a193be66458ef))
+* **scripts:** make validate.sh agent-friendly ([390e026](https://github.com/salesforce/sf-pi/commit/390e02610dda66b4f0ef2c35ee964f4ad1fb34e9))
+* **security:** address zizmor workflow hardening findings ([01137b9](https://github.com/salesforce/sf-pi/commit/01137b9b812e393d8a4818487cb72dcd938e378a))
+
 ## [0.31.1](https://github.com/salesforce/sf-pi/compare/v0.31.0...v0.31.1) (2026-05-03)
 
 
