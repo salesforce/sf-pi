@@ -117,6 +117,12 @@ describe("formatLspHealthSegment", () => {
     expect(out).not.toContain(" AS:");
   });
 
+  it("wraps the segment in an LSP[…] label so new users can't mistake the dots", () => {
+    const out = formatLspHealthSegment(makeHealth({}), stubTheme)!;
+    expect(out).toContain("[muted:LSP[]");
+    expect(out).toContain("[muted:]]");
+  });
+
   it("renders distinct glyphs for each state", () => {
     const health = makeHealth({
       apex: entry("apex", { availability: "available", activity: "clean" }),
@@ -167,6 +173,8 @@ describe("renderTopBarLine", () => {
     const line = lines[0]!;
     expect(visibleWidth(line)).toBe(200);
     const stripped = line.replace(/\[[^\]]+?:([^\]]*)\]/g, "$1").replace(/<b>(.*?)<\/b>/g, "$1");
-    expect(stripped.trimEnd().endsWith("✓")).toBe(true);
+    // Segment ends with the `LSP[…]` close bracket after Option 2's wrapper.
+    expect(stripped.trimEnd().endsWith("]")).toBe(true);
+    expect(stripped).toContain("LSP[Apex:");
   });
 });

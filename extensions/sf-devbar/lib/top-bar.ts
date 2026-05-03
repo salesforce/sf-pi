@@ -186,7 +186,12 @@ export function renderTopBarParts(
 /**
  * Render the permanent LSP health segment:
  *
- *   Apex: ● | LWC: ✓ | AgentScript: ◐
+ *   LSP[Apex: ● | LWC: ✓ | AgentScript: ◐]
+ *
+ * The `LSP[…]` wrapper labels the segment so new users don't mistake the
+ * three colored dots for "feature enabled" indicators — they report the
+ * health of the Apex / LWC / Agent Script Language Server Protocol
+ * backends that power sf-lsp diagnostics.
  *
  * The glyph blends *availability* (can we run diagnostics for this
  * language at all?) with the *most recent activity* (is a check running
@@ -209,7 +214,7 @@ export function formatLspHealthSegment(
   if (!snapshot) return null;
   const languages: SupportedLspLanguage[] = ["apex", "lwc", "agentscript"];
   const bar = theme.fg("dim", " | ");
-  return languages
+  const body = languages
     .map((language) => {
       const entry = snapshot.byLanguage[language];
       const { glyph, color, bold } = resolveLspStatus(entry);
@@ -218,6 +223,9 @@ export function formatLspHealthSegment(
       return `${label} ${coloredGlyph}`;
     })
     .join(bar);
+  const open = theme.fg("muted", "LSP[");
+  const close = theme.fg("muted", "]");
+  return `${open}${body}${close}`;
 }
 
 export type LspStatusRender = {

@@ -68,7 +68,7 @@
     "entry": "extensions/sf-devbar/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 1448
+    "srcLoc": 1456
   },
   {
     "id": "sf-llm-gateway-internal",

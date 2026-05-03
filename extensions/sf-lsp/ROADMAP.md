@@ -25,7 +25,7 @@ growing `index.ts`.
       enters LLM context.
 - [~] ~~HUD overlay~~ / ~~below-editor widget~~ / ~~footer pill~~ replaced
   by a permanent right-aligned LSP segment in sf-devbar's top bar
-  (`Apex: ● | LWC: ● | AgentScript: ●`) driven by the shared
+  (`LSP[Apex: ● | LWC: ● | AgentScript: ●]`) driven by the shared
   `lib/common/sf-lsp-health` registry. User feedback was that the
   floating HUD was visually noisy; permanent availability sitting next
   to the context-window bar is where health belongs.
