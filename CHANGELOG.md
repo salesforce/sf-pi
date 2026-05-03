@@ -365,6 +365,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.31.0](https://github.com/salesforce/sf-pi/compare/v0.30.0...v0.31.0) (2026-05-03)
+
+
+### Features
+
+* **sf-welcome:** Pi + SF brand mark with Salesforce Headless 360 caption ([bea6e2f](https://github.com/salesforce/sf-pi/commit/bea6e2fccd212cdf97e5d090fa9b4f615a2a75fe))
+
 ## [0.30.0](https://github.com/salesforce/sf-pi/compare/v0.29.0...v0.30.0) (2026-05-03)
 
 

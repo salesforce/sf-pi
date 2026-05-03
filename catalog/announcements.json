@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.30.0-2026-05-03",
-  "latestVersion": "0.30.0",
+  "revision": "release-0.31.0-2026-05-03",
+  "latestVersion": "0.31.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.30.0",
+      "id": "release-0.31.0",
       "kind": "update",
-      "title": "sf-pi v0.30.0 — sf-pi-manager: /sf-pi skills for Claude Code / Codex / Cursor interop",
+      "title": "sf-pi v0.31.0 — sf-welcome: Pi + SF brand mark with Salesforce Headless 360 caption",
       "publishedAt": "2026-05-03T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.30.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.31.0",
       "severity": "info",
-      "body": "sf-pi-manager: /sf-pi skills for Claude Code / Codex / Cursor interop — sf-welcome: detect pi-skills and other git: clones in skill roots"
+      "body": "sf-welcome: Pi + SF brand mark with Salesforce Headless 360 caption"
     },
     {
       "id": "pi-0.71-compat",
