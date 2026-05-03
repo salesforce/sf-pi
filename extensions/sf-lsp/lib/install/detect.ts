@@ -15,6 +15,7 @@ import type { ExecFn } from "../../../../lib/common/sf-environment/detect.ts";
 import { compareSemver, fetchLatestApex, fetchLatestLwc } from "./versioning.ts";
 import { apexJarPath, apexVersionPath, lwcPackageJsonPath } from "./paths.ts";
 import type { ComponentReport, ComponentState, InstallReport } from "./types.ts";
+import type { LspDoctorStatus, SupportedLanguage } from "../types.ts";
 
 // -------------------------------------------------------------------------------------------------
 // Apex
@@ -108,6 +109,85 @@ export interface DetectOptions {
     readInstalledApexVersion?: () => string | undefined;
     readInstalledLwcVersion?: () => string | undefined;
   };
+  /**
+   * Doctor statuses from the full sf-lsp discovery chain (env / .pi /
+   * ~/.pi/agent/lsp / VS Code / PATH). If a component is `available`
+   * from a source other than our managed `pi-global` directory, we
+   * treat it as satisfied — the user already has a working server via
+   * VS Code, Homebrew, env override, etc. — and do not offer to install
+   * another copy underneath it.
+   *
+   * Omit to fall back to the legacy behavior of only comparing against
+   * the managed install.
+   */
+  doctor?: LspDoctorStatus[];
+}
+
+/**
+ * Sources that represent a server we manage under `~/.pi/agent/lsp/`.
+ * Anything else (VS Code, PATH, env override, project `.pi/lsp/`) is
+ * still a working LSP — we just don't own it and shouldn't try to
+ * install another copy.
+ */
+function isManagedSource(source: string | undefined): boolean {
+  return source === "pi-global";
+}
+
+function doctorFor(
+  doctor: LspDoctorStatus[] | undefined,
+  language: SupportedLanguage,
+): LspDoctorStatus | undefined {
+  return doctor?.find((status) => status.language === language);
+}
+
+/**
+ * Decide a component's state given upstream version + installed version +
+ * the doctor's view of the whole discovery chain.
+ *
+ * Precedence:
+ *   1. Windows → always `manual`.
+ *   2. Doctor says `available` from an external source (vscode / path /
+ *      env / cache / pi-project) → `current`, external note in detail.
+ *   3. Managed install present → compare VERSION vs. upstream.
+ *   4. Upstream lookup failed → `unknown`.
+ *   5. Otherwise → `missing`.
+ */
+function classify(
+  language: SupportedLanguage,
+  doctor: LspDoctorStatus[] | undefined,
+  installedVersion: string | undefined,
+  latestVersion: string | undefined,
+  windowsManual: boolean,
+): { state: ComponentState; detail?: string } {
+  if (windowsManual) {
+    const detail =
+      language === "apex"
+        ? "Windows: install the Salesforce Apex VS Code extension manually."
+        : "Windows: run `npm i -g @salesforce/lwc-language-server` manually.";
+    return { state: "manual", detail };
+  }
+
+  const status = doctorFor(doctor, language);
+  if (status?.available && !isManagedSource(status.source)) {
+    const origin =
+      status.source === "vscode"
+        ? "VS Code extension"
+        : status.source === "path"
+          ? "PATH"
+          : status.source === "env"
+            ? "environment override"
+            : status.source === "pi-project"
+              ? "project .pi/lsp/"
+              : status.source === "cache"
+                ? "local cache"
+                : (status.source ?? "external");
+    return {
+      state: "current",
+      detail: `Provided by ${origin}. Not managed by /sf-lsp install.`,
+    };
+  }
+
+  return { state: stateFromVersions(installedVersion, latestVersion) };
 }
 
 export async function detectInstallReport(
@@ -126,26 +206,36 @@ export async function detectInstallReport(
   const installedApex = (options.readers?.readInstalledApexVersion ?? readInstalledApexVersion)();
   const installedLwc = (options.readers?.readInstalledLwcVersion ?? readInstalledLwcVersion)();
 
+  const apexClassification = classify(
+    "apex",
+    options.doctor,
+    installedApex,
+    apexUpstream?.version,
+    windowsManual,
+  );
   const apexReport: ComponentReport = {
     id: "apex",
     label: "Apex Language Server",
-    state: windowsManual ? "manual" : stateFromVersions(installedApex, apexUpstream?.version),
+    state: apexClassification.state,
     installedVersion: installedApex,
     latestVersion: apexUpstream?.version,
-    detail: windowsManual
-      ? "Windows: install the Salesforce Apex VS Code extension manually."
-      : undefined,
+    detail: apexClassification.detail,
   };
 
+  const lwcClassification = classify(
+    "lwc",
+    options.doctor,
+    installedLwc,
+    lwcUpstream?.version,
+    windowsManual,
+  );
   const lwcReport: ComponentReport = {
     id: "lwc",
     label: "LWC Language Server",
-    state: windowsManual ? "manual" : stateFromVersions(installedLwc, lwcUpstream?.version),
+    state: lwcClassification.state,
     installedVersion: installedLwc,
     latestVersion: lwcUpstream?.version,
-    detail: windowsManual
-      ? "Windows: run `npm i -g @salesforce/lwc-language-server` manually."
-      : undefined,
+    detail: lwcClassification.detail,
   };
 
   const javaReport: ComponentReport = {

@@ -321,10 +321,22 @@ server also only runs against files inside an `lwc/` bundle; standalone
 
 **First-boot install prompt didn't appear:**
 The orchestrator skips when (a) everything is already current, (b) the
-user already declined the current upstream version, or (c) the
-marketplace / npm-registry lookup failed (offline, corporate proxy).
-Run `/sf-lsp install status` to see the current state, or `/sf-lsp
-install` to force the prompt.
+user already declined the current upstream version, (c) the marketplace
+/ npm-registry lookup failed (offline, corporate proxy), or (d) the
+full discovery chain already resolved a working LSP from an external
+source (VS Code Salesforce extensions, PATH, env override, or project
+`.pi/lsp/`). In case (d) `/sf-lsp install status` will show the
+component as `current` with a detail line like `Provided by VS Code
+extension. Not managed by /sf-lsp install.` Run `/sf-lsp install` to
+force the prompt anyway — it will still offer to install a managed
+copy under `~/.pi/agent/lsp/` if you want sf-pi to own the version.
+
+**Top-bar dots are green but the install prompt says "not installed":**
+This was a bug in sf-pi < 0.27.6 where the orchestrator only checked
+the managed `~/.pi/agent/lsp/` directory and ignored VS Code-provided
+servers. Fixed in 0.27.6 by feeding the full doctor chain into the
+detector. Upgrade and the prompt will respect externally-provided
+servers.
 
 **Install appears to hang:**
 The Apex install downloads ~40 MB and `npm install` for LWC can take

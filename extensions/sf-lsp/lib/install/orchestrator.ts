@@ -27,6 +27,7 @@ import { detectInstallReport } from "./detect.ts";
 import { fetchLatestApex } from "./versioning.ts";
 import { installApex, installLwc } from "./installer.ts";
 import { readLspInstallState, recordComponentDecision } from "./state.ts";
+import { doctorLsp } from "../lsp-client.ts";
 import type {
   ComponentDecision,
   ComponentInstallResult,
@@ -56,6 +57,8 @@ export interface OrchestratorOptions {
   platform?: NodeJS.Platform;
   /** Called after any doctor-relevant change so sf-devbar repaints. */
   onInstallCompleted?(results: ComponentInstallResult[]): void;
+  /** Working directory for doctor discovery (defaults to ctx.cwd). */
+  cwd?: string;
 }
 
 export async function maybePromptLspInstall(
@@ -66,9 +69,22 @@ export async function maybePromptLspInstall(
   if (!ctx.hasUI) return;
   if (promptedThisSession) return;
 
+  // Pull the full sf-lsp discovery chain (env / .pi / managed / VS Code
+  // / PATH) so we can honor externally-provided LSP servers. Without
+  // this, users who already have the Salesforce VS Code extensions see
+  // green dots in the top bar but still get an "install" prompt for
+  // servers they don't actually need.
+  const cwd = options.cwd ?? ctx.cwd;
+  let doctor;
+  try {
+    doctor = await doctorLsp(cwd);
+  } catch {
+    doctor = undefined;
+  }
+
   let report: InstallReport;
   try {
-    report = await detectInstallReport(exec, { platform: options.platform });
+    report = await detectInstallReport(exec, { platform: options.platform, doctor });
   } catch {
     // Detection is defensive; a failure means we can't prompt intelligently.
     return;

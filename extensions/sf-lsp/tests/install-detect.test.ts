@@ -168,6 +168,69 @@ describe("detectInstallReport", () => {
     expect(java?.installedVersion).toMatch(/^17\./);
   });
 
+  it("treats VS Code-provided LSP servers as current", async () => {
+    stubFetch((url) =>
+      url.includes("marketplace")
+        ? marketplaceOk("58.13.1")
+        : new Response(JSON.stringify({ version: "4.12.3" }), { status: 200 }),
+    );
+
+    const exec = vi.fn().mockResolvedValue({ stdout: "", stderr: "", code: 1 });
+    const report = await detectInstallReport(exec, {
+      platform: "darwin",
+      readers: {
+        readInstalledApexVersion: () => undefined,
+        readInstalledLwcVersion: () => undefined,
+      },
+      doctor: [
+        {
+          language: "apex",
+          available: true,
+          source: "vscode",
+          detail:
+            "/Users/x/.vscode/extensions/salesforce.salesforcedx-vscode-apex-58.13.1/dist/apex-jorje-lsp.jar",
+        },
+        {
+          language: "lwc",
+          available: true,
+          source: "path",
+          detail: "/usr/local/bin/lwc-language-server",
+        },
+      ],
+    });
+
+    expect(report.hasActionable).toBe(false);
+    expect(report.components.find((c) => c.id === "apex")?.state).toBe("current");
+    expect(report.components.find((c) => c.id === "apex")?.detail).toMatch(/VS Code extension/);
+    expect(report.components.find((c) => c.id === "lwc")?.state).toBe("current");
+    expect(report.components.find((c) => c.id === "lwc")?.detail).toMatch(/PATH/);
+  });
+
+  it("still prompts when only the managed install is outdated (pi-global source)", async () => {
+    stubFetch((url) =>
+      url.includes("marketplace")
+        ? marketplaceOk("58.13.1")
+        : new Response(JSON.stringify({ version: "4.12.3" }), { status: 200 }),
+    );
+
+    const exec = vi.fn().mockResolvedValue({ stdout: "", stderr: "", code: 1 });
+    const report = await detectInstallReport(exec, {
+      platform: "darwin",
+      readers: {
+        readInstalledApexVersion: () => "58.0.0",
+        readInstalledLwcVersion: () => "4.10.0",
+      },
+      doctor: [
+        { language: "apex", available: true, source: "pi-global", detail: "..." },
+        { language: "lwc", available: true, source: "pi-global", detail: "..." },
+      ],
+    });
+
+    expect(report.hasActionable).toBe(true);
+    expect(report.components.find((c) => c.id === "apex")?.state).toBe("outdated");
+    expect(report.components.find((c) => c.id === "lwc")?.state).toBe("outdated");
+  });
+
   it("marks Java as manual when missing even if Apex/LWC are current", async () => {
     stubFetch(() => new Response("{}", { status: 500 }));
 

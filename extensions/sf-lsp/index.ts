@@ -480,7 +480,8 @@ export default function sfLspExtension(pi: ExtensionAPI) {
     if (!ctx.hasUI) return;
 
     if (mode === "status") {
-      const report = await detectInstallReport(exec);
+      const doctor = await doctorLsp(ctx.cwd).catch(() => undefined);
+      const report = await detectInstallReport(exec, { doctor });
       const lines = ["sf-lsp install — component status", ""];
       for (const component of report.components) {
         const installed = component.installedVersion ?? "(not installed)";
@@ -502,7 +503,8 @@ export default function sfLspExtension(pi: ExtensionAPI) {
     // the install manually.
     resetOrchestratorSession();
 
-    const report = await detectInstallReport(exec);
+    const doctor = await doctorLsp(ctx.cwd).catch(() => undefined);
+    const report = await detectInstallReport(exec, { doctor });
     if (!report.hasActionable) {
       ctx.ui.notify(
         [

@@ -436,6 +436,7 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 - Apex diagnostics never appear, even on obviously broken code
 - LWC diagnostics never appear
 - First-boot install prompt didn't appear
+- Top-bar dots are green but the install prompt says "not installed"
 - Install appears to hang
 - Diagnostics take >6 seconds to arrive
 - `.agent` files show no feedback or unexpected subprocess output
