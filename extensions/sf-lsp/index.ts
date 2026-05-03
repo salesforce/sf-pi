@@ -69,6 +69,9 @@ import {
   writeScopedSfLspSettings,
   type SfLspUiSettings,
 } from "./lib/settings-io.ts";
+import { maybePromptLspInstall, resetOrchestratorSession } from "./lib/install/orchestrator.ts";
+import { detectInstallReport } from "./lib/install/detect.ts";
+import { buildExecFn } from "../../lib/common/exec-adapter.ts";
 import type {
   SfPiDiagnosticMetadataItem,
   SfPiDiagnosticsMetadata,
@@ -99,6 +102,7 @@ export default function sfLspExtension(pi: ExtensionAPI) {
   const state = createState();
   const activity = createActivityStore();
   const workingIndicator = createWorkingIndicatorState();
+  const exec = buildExecFn(pi);
 
   // Settings (user-tunable: just transcript verbosity now)
   let uiSettings: SfLspUiSettings = { verbose: false };
@@ -125,6 +129,7 @@ export default function sfLspExtension(pi: ExtensionAPI) {
       resetActivityStore(activity);
       unavailableSeenByLanguage.clear();
       resetSfLspHealth();
+      resetOrchestratorSession();
 
       const effective = readEffectiveSfLspSettings(ctx.cwd);
       uiSettings = { verbose: effective.verbose };
@@ -141,6 +146,28 @@ export default function sfLspExtension(pi: ExtensionAPI) {
         .catch(() => {
           // doctor runs on a best-effort basis; leave health as "unknown"
         });
+
+      // First-boot / update prompt for the bundled LSP servers. Runs
+      // non-awaited so session_start never blocks on marketplace /
+      // npm-registry lookups or a download. The orchestrator is
+      // self-guarding: it exits silently when nothing is missing or
+      // outdated, when the user already declined the current version,
+      // or when we've already prompted this session. On completion it
+      // re-probes the doctor so the top-bar LSP segment repaints.
+      void maybePromptLspInstall(ctx, exec, {
+        onInstallCompleted: () => {
+          void doctorLsp(ctx.cwd)
+            .then((statuses) => {
+              seedFromDoctor(activity, statuses);
+              setSfLspHealthFromDoctor(statuses);
+            })
+            .catch(() => {
+              // same best-effort contract as the initial probe
+            });
+        },
+      }).catch(() => {
+        // orchestrator swallows its own errors; this catch is belt-and-suspenders.
+      });
     });
 
     pi.on("session_shutdown", async (event, ctx) => {
@@ -401,6 +428,11 @@ export default function sfLspExtension(pi: ExtensionAPI) {
           return;
         }
 
+        if (subcommand === "install") {
+          await runInstallSubcommand(ctx, tokens[1]);
+          return;
+        }
+
         if (subcommand === "verbose") {
           const arg = (tokens[1] ?? "").toLowerCase();
           if (arg === "on" || arg === "off" || arg === "toggle" || arg === "") {
@@ -427,6 +459,8 @@ export default function sfLspExtension(pi: ExtensionAPI) {
               "Commands:",
               "  /sf-lsp                Open the rich status/controls panel",
               "  /sf-lsp doctor         Show a compact doctor report",
+              "  /sf-lsp install        Install or update bundled LSP servers",
+              "  /sf-lsp install status Show per-component install state",
               "  /sf-lsp verbose on|off Toggle transcript row for every check",
               "",
               "Top-bar LSP status is always visible in the sf-devbar top bar.",
@@ -434,6 +468,65 @@ export default function sfLspExtension(pi: ExtensionAPI) {
             "warning",
           );
         }
+      },
+    });
+  }
+
+  // ==========================================================================================
+  // /sf-lsp install subcommand
+  // ==========================================================================================
+
+  async function runInstallSubcommand(ctx: ExtensionContext, mode?: string): Promise<void> {
+    if (!ctx.hasUI) return;
+
+    if (mode === "status") {
+      const report = await detectInstallReport(exec);
+      const lines = ["sf-lsp install — component status", ""];
+      for (const component of report.components) {
+        const installed = component.installedVersion ?? "(not installed)";
+        const latest = component.latestVersion ?? "(unknown)";
+        lines.push(`  • ${component.label}: ${installed} → ${latest}  [${component.state}]`);
+        if (component.detail) lines.push(`      ${component.detail}`);
+      }
+      if (!report.hasActionable) {
+        lines.push("", "Everything is current.");
+      } else {
+        lines.push("", "Run /sf-lsp install to update.");
+      }
+      ctx.ui.notify(lines.join("\n"), "info");
+      return;
+    }
+
+    // Default: re-run the orchestrator, bypassing the per-session guard so
+    // users who already saw and answered the splash prompt can still drive
+    // the install manually.
+    resetOrchestratorSession();
+
+    const report = await detectInstallReport(exec);
+    if (!report.hasActionable) {
+      ctx.ui.notify(
+        [
+          "sf-lsp: nothing to install or update.",
+          "",
+          ...report.components.map((c) => {
+            const installed = c.installedVersion ?? "(not installed)";
+            const latest = c.latestVersion ?? "(unknown)";
+            return `  • ${c.label}: ${installed} / ${latest} [${c.state}]`;
+          }),
+        ].join("\n"),
+        "info",
+      );
+      return;
+    }
+
+    await maybePromptLspInstall(ctx, exec, {
+      onInstallCompleted: () => {
+        void doctorLsp(ctx.cwd)
+          .then((statuses) => {
+            seedFromDoctor(activity, statuses);
+            setSfLspHealthFromDoctor(statuses);
+          })
+          .catch(() => {});
       },
     });
   }

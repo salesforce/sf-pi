@@ -22,6 +22,9 @@ design proposal and — ideally — a PR.
       internal LLM gateway
 - [x] Auto-generated catalog, command reference, and folder layout
       (drift-proof docs via `npm run generate-catalog`)
+- [x] First-boot auto-install for Apex + LWC language servers
+      (`/sf-lsp install`, async prompt on `session_start`, always-latest
+      upstream tracking, Windows prints manual steps)
 
 ## Now (0.x — pre-1.0)
 

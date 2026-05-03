@@ -118,7 +118,7 @@
     "entry": "extensions/sf-lsp/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 2471
+    "srcLoc": 3630
   },
   {
     "id": "sf-ohana-spinner",

@@ -435,6 +435,8 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 - `LSP setup note:` appears once per file type and then stays silent
 - Apex diagnostics never appear, even on obviously broken code
 - LWC diagnostics never appear
+- First-boot install prompt didn't appear
+- Install appears to hang
 - Diagnostics take >6 seconds to arrive
 - `.agent` files show no feedback or unexpected subprocess output
 - Diagnostics keep firing against files I've closed

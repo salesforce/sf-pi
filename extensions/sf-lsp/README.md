@@ -112,6 +112,8 @@ Requires Node.js 18+.
 | --------------------------------- | -------------------------------------------------------------------------------------- |
 | `/sf-lsp`                         | Open the rich status & controls panel (doctor, recent activity, actions)               |
 | `/sf-lsp doctor`                  | Compact doctor report via `ui.notify`                                                  |
+| `/sf-lsp install`                 | Re-run the first-boot installer — detects + installs/updates bundled LSP servers       |
+| `/sf-lsp install status`          | Show current install state per component (installed version vs. upstream latest)       |
 | `/sf-lsp verbose on\|off\|toggle` | Flip transcript rows between balanced (errors + transitions) and verbose (every check) |
 
 No keyboard shortcut, no CLI flag, no overlay toggle — the LSP segment is
@@ -178,6 +180,71 @@ lib/common/sf-lsp-health/
   types.ts                ← SupportedLspLanguage + languageFullName helper
   tests/health.test.ts    ← mutation + subscription tests
 ```
+
+## First-Boot Auto-Install
+
+On `session_start`, sf-lsp runs a non-blocking check that compares the
+Apex and LWC language servers on disk against the latest upstream
+versions. If anything is missing or outdated and the user hasn't
+already declined the current version, a single confirm dialog lists
+everything that would be installed:
+
+```
+Install Salesforce LSP servers?
+
+sf-pi wants to keep these Salesforce LSP servers current so Apex and
+LWC diagnostics work out of the box. Downloads land under
+  ~/.pi/agent/lsp/
+(no sudo, no global npm, no PATH changes).
+
+  • Apex Language Server — not installed, upstream 58.13.1 (~40 MB)
+  • LWC Language Server — 4.10.0 → 4.12.3 (update available)
+
+The install runs in the background. You can revisit this anytime with
+  /sf-lsp install
+```
+
+### How it works
+
+| Step      | Detail                                                                                                                                                                                          |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Detect    | `fetchLatestApex()` queries the VS Marketplace Gallery API; `fetchLatestLwc()` queries the npm registry. Both are 5s abort-timed.                                                               |
+| Compare   | Local versions come from `~/.pi/agent/lsp/apex/VERSION` and `~/.pi/agent/lsp/lwc/node_modules/@salesforce/lwc-language-server/package.json`.                                                    |
+| Prompt    | One bundled `ctx.ui.confirm(...)` dialog. Skipped when everything is current or the user already declined the latest version.                                                                   |
+| Install   | Apex → download vsix, unzip `extension/dist/apex-jorje-lsp.jar` → move into place + write `VERSION`. LWC → `npm install --prefix ~/.pi/agent/lsp/lwc @salesforce/lwc-language-server@<latest>`. |
+| Indicate  | `ctx.ui.setWorkingIndicator('⠋ Installing Apex Language Server…')` while each component installs.                                                                                               |
+| Summarize | Single `ctx.ui.notify(...)` with per-component ✓/✗ rows + any Java warning.                                                                                                                     |
+| Re-probe  | `doctorLsp(...)` fires after completion so the sf-devbar top-bar LSP segment repaints green.                                                                                                    |
+
+### Re-prompt behavior
+
+Decline decisions persist to `~/.pi/agent/sf-lsp-install-state.json` as
+`{ action: "decline", declinedVersion: "4.12.3" }`. On the next
+`session_start`, if upstream publishes `4.12.4`, the orchestrator sees
+that the declined version is now stale and re-prompts. This matches the
+directive: tracking latest by default, never pinning, always offering
+updates.
+
+### Platform support
+
+- **macOS / Linux / WSL**: full auto-install. Requires `unzip` and `npm`
+  on PATH (both standard on developer machines).
+- **Windows (native)**: the prompt is replaced with a notification that
+  lists the exact manual steps for each missing component, and the
+  decline is persisted so the user isn't nagged.
+- **Java 11+**: detect-only. We never auto-install a JDK; when
+  unavailable, the summary appends a `⚠ Java 11+: ...` line so the
+  Apex diagnostics failure mode is obvious.
+
+### Escape hatches
+
+- `/sf-lsp install` — re-opens the confirm, resetting the per-session
+  guard. Useful when the user dismissed the startup prompt.
+- `/sf-lsp install status` — prints the per-component state without
+  prompting or writing anything.
+- Env vars (`SF_LSP_APEX_JAR`, `SF_LSP_LWC_COMMAND`, etc.) still win
+  over the managed install — the orchestrator never touches user-owned
+  LSP locations outside `~/.pi/agent/lsp/`.
 
 ## Memory Management
 
@@ -247,8 +314,25 @@ Salesforce Apex extension.
 
 **LWC diagnostics never appear:**
 `lwc-language-server` must be discoverable (see the LWC chain). The
+easiest fix is `/sf-lsp install` — that drops the npm package into
+`~/.pi/agent/lsp/lwc/` and sf-lsp picks it up on the next check. The
 server also only runs against files inside an `lwc/` bundle; standalone
 `.js` files are intentionally skipped.
+
+**First-boot install prompt didn't appear:**
+The orchestrator skips when (a) everything is already current, (b) the
+user already declined the current upstream version, or (c) the
+marketplace / npm-registry lookup failed (offline, corporate proxy).
+Run `/sf-lsp install status` to see the current state, or `/sf-lsp
+install` to force the prompt.
+
+**Install appears to hang:**
+The Apex install downloads ~40 MB and `npm install` for LWC can take
+30–60 s on first boot. The working indicator shows `Installing Apex
+Language Server…` during this window. If it exceeds ~2 min, check
+your proxy settings — both marketplace and registry respect standard
+`HTTPS_PROXY` / `NO_PROXY` environment variables via Node's global
+agent.
 
 **Diagnostics take >6 seconds to arrive:**
 The request times out at 6s. Large first-time workspace scans can exceed

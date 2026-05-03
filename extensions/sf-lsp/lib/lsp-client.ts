@@ -405,6 +405,47 @@ async function discoverAgentScriptLaunch(cwd: string): Promise<LaunchSpec | LspD
 
 async function discoverLwcLaunch(cwd: string): Promise<LaunchSpec | LspDoctorStatus> {
   const pLspDir = projectLspDir(cwd);
+
+  // sf-lsp's first-boot installer drops the npm package under
+  //   ~/.pi/agent/lsp/lwc/node_modules/@salesforce/lwc-language-server/
+  // whose entry point is a plain Node script. Launch it with `node`
+  // instead of requiring a shell-executable binary.
+  const managedLwcServerJs = [
+    pLspDir
+      ? path.join(
+          pLspDir,
+          "lwc",
+          "node_modules",
+          "@salesforce",
+          "lwc-language-server",
+          "bin",
+          "lwc-language-server.js",
+        )
+      : undefined,
+    path.join(
+      globalLspDir(),
+      "lwc",
+      "node_modules",
+      "@salesforce",
+      "lwc-language-server",
+      "bin",
+      "lwc-language-server.js",
+    ),
+  ].filter((value): value is string => typeof value === "string" && value.length > 0);
+
+  for (const jsCandidate of managedLwcServerJs) {
+    if (!existsSync(jsCandidate)) continue;
+    const node = findNodeBinary();
+    if (!node || !existsSync(node)) continue;
+    return {
+      language: "lwc",
+      source: jsCandidate.includes(".pi/agent/lsp") ? "pi-global" : "pi-project",
+      detail: jsCandidate,
+      command: node,
+      args: [jsCandidate, "--stdio"],
+    };
+  }
+
   const explicitCandidates = [
     process.env.SF_LSP_LWC_COMMAND,
     pLspDir ? path.join(pLspDir, "bin", "lwc-language-server") : undefined,
@@ -445,7 +486,7 @@ async function discoverLwcLaunch(cwd: string): Promise<LaunchSpec | LspDoctorSta
     language: "lwc",
     available: false,
     detail:
-      "lwc-language-server not found. Place binary in .pi/lsp/bin/, ~/.pi/agent/lsp/bin/, install @salesforce/lwc-language-server globally, or set SF_LSP_LWC_COMMAND.",
+      "lwc-language-server not found. Run /sf-lsp install to auto-install, drop the binary into .pi/lsp/bin/ or ~/.pi/agent/lsp/bin/, or set SF_LSP_LWC_COMMAND.",
   };
 }
 
