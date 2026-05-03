@@ -5,8 +5,15 @@
  * Apache-2.0 header.
  *
  * Usage:
- *   node scripts/add-spdx-headers.mjs           # write missing headers
- *   node scripts/add-spdx-headers.mjs --check   # exit 1 if any are missing
+ *   node scripts/add-spdx-headers.mjs                 # scan whole repo, write missing
+ *   node scripts/add-spdx-headers.mjs --check         # scan whole repo, exit 1 if missing
+ *   node scripts/add-spdx-headers.mjs path/a.ts path/b.mjs   # scope to given files
+ *   node scripts/add-spdx-headers.mjs --check path/a.ts      # --check on given files
+ *
+ * Positional-args mode is how lint-staged wires us into the pre-commit
+ * hook: we get only the staged files and quietly add the header when it's
+ * missing so the developer doesn't discover the omission in CI. Whole-repo
+ * mode (`--check`) is what CI's Validate job runs.
  *
  * This script is idempotent. Files that already have the header are skipped.
  * Generated files in catalog/registry.ts and catalog/index.json are excluded
@@ -24,8 +31,23 @@ const EXCLUDE_FILES = new Set([
 ]);
 
 const checkMode = process.argv.includes("--check");
+// Any non-flag argument is treated as an explicit file path. When at least
+// one is present we run in "scoped" mode and skip the whole-repo scan.
+// Paths may be absolute (what lint-staged passes) or repo-relative; we
+// normalize to repo-relative below so EXCLUDE_FILES matches still work.
+const positional = process.argv.slice(2).filter((a) => !a.startsWith("--"));
 
 function listFiles() {
+  if (positional.length > 0) {
+    const cwd = process.cwd();
+    return positional.map((p) => {
+      const abs = path.isAbsolute(p) ? p : path.resolve(cwd, p);
+      const rel = path.relative(cwd, abs);
+      // Fall back to the raw path if relative() would step outside cwd
+      // (shouldn't happen in practice but keeps the script robust).
+      return rel.startsWith("..") ? abs : rel;
+    });
+  }
   // Prefer `git ls-files` to honor .gitignore; fall back to find.
   try {
     const out = execSync("git ls-files", { encoding: "utf8" });

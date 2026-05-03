@@ -57,7 +57,8 @@ function toDisplayName(id) {
 // -------------------------------------------------------------------------------------------------
 
 function indexTs(id, _name) {
-  return `/**
+  return `/* SPDX-License-Identifier: Apache-2.0 */
+/**
  * ${id} behavior contract
  *
  * - TODO: Describe when this extension activates
@@ -143,7 +144,8 @@ Run: \`npm test\`
 }
 
 function smokeTestTs(id) {
-  return `/**
+  return `/* SPDX-License-Identifier: Apache-2.0 */
+/**
  * Smoke test for ${id}.
  *
  * Verifies the extension module can be imported and exports a default function.

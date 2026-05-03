@@ -2,8 +2,19 @@
 /**
  * lint-staged configuration.
  *
- * For `*.{ts,mjs,js}` we run prettier + eslint on the staged files, then
- * regenerate the catalog and re-stage any generated outputs that changed.
+ * For `*.{ts,mjs,js}` we run, in order:
+ *   1. add-spdx-headers on the staged files (auto-add missing headers)
+ *   2. prettier --write
+ *   3. eslint --fix
+ *   4. npm run generate-catalog (catalog stays in sync with source edits)
+ *   5. git add the generated catalog/doc outputs
+ *
+ * Why SPDX runs first: CI's Validate job runs `spdx:check` which fails
+ * the whole pipeline on any missing header. Catching it at pre-commit is
+ * much cheaper than a red CI run + fix commit + release PR rebase.
+ * Running the auto-add variant (not --check) means the developer doesn't
+ * have to fix it by hand — lint-staged re-stages modified files
+ * automatically, so the header lands in the same commit.
  *
  * Why the regeneration step is here: `eslint --fix` can add or remove
  * lines (trailing commas, blank lines, import reordering) and our catalog
@@ -36,6 +47,11 @@ const GENERATED_PATHS = [
 
 export default {
   "*.{ts,mjs,js}": (files) => [
+    // Auto-add SPDX headers to any staged .ts/.mjs that lacks one. The
+    // script is idempotent and scoped to the given paths, so files that
+    // already have the header are no-ops. .js is skipped by the script's
+    // internal EXTS set, which matches our repo convention.
+    `node scripts/add-spdx-headers.mjs ${files.join(" ")}`,
     `prettier --write ${files.join(" ")}`,
     `eslint --fix ${files.join(" ")}`,
     "npm run generate-catalog --silent",
