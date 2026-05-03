@@ -603,11 +603,25 @@ export default function sfWelcome(pi: ExtensionAPI) {
           let countdown = 30;
           let dismissed = false;
           const intervalRef: { current?: ReturnType<typeof setInterval> } = {};
+          // Separate interval for the Pi + SALESFORCE color shimmer. Ticks
+          // every 300 ms for a few seconds, then stops — so the animation
+          // is a one-time "boot-up moment," not an ongoing repaint cost.
+          //
+          // Opt-out: set SF_PI_REDUCED_MOTION=1 to skip the animation
+          // entirely. Honors the motion-preference convention used by
+          // prefers-reduced-motion in modern OSes.
+          const headerIntervalRef: { current?: ReturnType<typeof setInterval> } = {};
+          const reducedMotion =
+            process.env.SF_PI_REDUCED_MOTION === "1" || process.env.SF_PI_REDUCED_MOTION === "true";
+          const HEADER_FRAME_MS = 300;
+          const HEADER_ANIMATION_FRAMES = 20; // 20 × 300 ms = 6 s
+          let headerOffset = 0;
 
           const doDismiss = (persistSeen: boolean = true) => {
             if (dismissed) return;
             dismissed = true;
             clearInterval(intervalRef.current);
+            clearInterval(headerIntervalRef.current);
             if (dismissOverlay === doDismiss) {
               dismissOverlay = null;
             }
@@ -654,6 +668,27 @@ export default function sfWelcome(pi: ExtensionAPI) {
             if (countdown <= 0) doDismiss();
           }, 1000);
 
+          // Kick off the color-cycle animation for the brand mark. Runs
+          // independently of the countdown interval so the 300 ms shimmer
+          // cadence can't be distorted by the 1 s tick. Stops itself once
+          // HEADER_ANIMATION_FRAMES frames have elapsed (final state
+          // freezes as the permanent look of the mark).
+          if (!reducedMotion) {
+            headerIntervalRef.current = setInterval(() => {
+              if (dismissed) return;
+              if (!isActiveSession(ctx, generation)) {
+                clearInterval(headerIntervalRef.current);
+                return;
+              }
+              headerOffset += 1;
+              welcome.setHeaderOffset(headerOffset);
+              tui.requestRender();
+              if (headerOffset >= HEADER_ANIMATION_FRAMES) {
+                clearInterval(headerIntervalRef.current);
+              }
+            }, HEADER_FRAME_MS);
+          }
+
           return {
             focused: false,
             invalidate: () => {
@@ -671,6 +706,7 @@ export default function sfWelcome(pi: ExtensionAPI) {
                 overlayRequestRender = null;
               }
               clearInterval(intervalRef.current);
+              clearInterval(headerIntervalRef.current);
               // Restore the built-in working loader row we hid before opening
               // the overlay. Runs on every close path (countdown, keypress,
               // external dismiss, session shutdown).

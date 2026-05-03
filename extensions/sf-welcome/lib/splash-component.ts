@@ -51,19 +51,30 @@ const ACCENT = (text: string) => fg256(75, text); // Blue accent
 const GOLD = (text: string) => fgRgb(255, 183, 77, text); // Gold/amber
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Pi + SF header with Salesforce gradient
+// Pi + Salesforce brand mark (omarchy-style stacked wordmark)
 //
-// The splash header reads as a single Pi ╋ SF brand mark: both glyphs are
-// 5 rows tall, drawn from block chars (▀ █ ▄), and painted with the same
-// gradient as the existing Pi logo. A dim "+" sits between them on the
-// middle row to frame the pairing as additive — sf-pi = Pi (the agent
-// harness) + Salesforce (the platform it targets). The HEADER_CAPTION
-// below the mark names the platform surface sf-pi exposes: Salesforce's
-// Headless 360 API / MCP / CLI layer.
+// The header renders as a vertical stack:
+//   1. Pi glyph           (centered; pastel-rainbow palette)
+//   2. SALESFORCE         (big 5-row block letters; Salesforce blue palette)
+//   3. Caption            (pastel-rainbow palette)
 //
-// Both arrays must stay the same row count; buildLeftColumn() zips them
-// by index. Widths are intentionally unequal (Pi=14, SF=17) so each
-// letterform reads cleanly.
+// Two palettes, two roles:
+//   - BLUE_PALETTE: locks SALESFORCE in the Salesforce blue/purple family
+//     even as the per-character color cycle animates.
+//   - RAINBOW_PALETTE: byte-for-byte copy of sf-ohana-spinner's
+//     RAINBOW_COLORS (7 soft pastels). Applied to Pi and the caption so
+//     they shimmer like the [SF LLM Gateway] spinner.
+//
+// Animation: buildLeftColumn() takes a headerOffset integer that the
+// owner (SfWelcomeOverlay via setHeaderOffset) ticks up every 300 ms
+// for the first few seconds of the splash. Each tick advances the
+// per-character color index by 1, so colors travel left→right through
+// every section. After the animation window ends, the offset stays
+// pinned on the final frame — no ongoing repaint cost.
+//
+// If either palette changes upstream, mirror the update here:
+//   - this file's BLUE_PALETTE matches the previous GRADIENT_COLORS
+//   - sf-ohana-spinner/lib/rainbow.ts RAINBOW_COLORS ↔ RAINBOW_PALETTE
 // ═══════════════════════════════════════════════════════════════════════════
 
 const PI_LOGO = [
@@ -74,50 +85,97 @@ const PI_LOGO = [
   " ▄███▄  ▄███▄ ",
 ];
 
-// SF monogram — 17 cols, 5 rows. The S uses diagonal half-block hooks
-// (▄…▄ top shoulder, ▀…▀ bottom shoulder) so the curves read smoothly at
-// this resolution without needing more rows.
-const SF_LOGO = [
-  " ▄█████▄  ███████",
-  "██        ██     ",
-  " ▀█████▄  █████▀ ",
-  "      ██  ██     ",
-  " █████▀   ██     ",
+// 5-row block letters used to build the big SALESFORCE wordmark. Each
+// glyph is 5 cols wide; letters are separated by a 1-col gap, so
+// SALESFORCE renders at 10 * 5 + 9 = 59 cols.
+const LETTERS: Record<string, string[]> = {
+  S: ["▄████", "█    ", "▀███▄", "    █", "████▀"],
+  A: ["▄███▄", "█   █", "█████", "█   █", "█   █"],
+  L: ["█    ", "█    ", "█    ", "█    ", "█████"],
+  E: ["█████", "█    ", "████ ", "█    ", "█████"],
+  F: ["█████", "█    ", "████ ", "█    ", "█    "],
+  O: ["▄███▄", "█   █", "█   █", "█   █", "▀███▀"],
+  R: ["████▄", "█   █", "████▀", "█  █ ", "█   █"],
+  C: ["▄████", "█    ", "█    ", "█    ", "▀████"],
+};
+
+const WORD = "SALESFORCE";
+// 10 letters × 5 cols + 9 gaps = 59.
+const WORD_WIDTH = WORD.length * 5 + (WORD.length - 1);
+
+// Caption under the mark. Pastel-rainbow painted so it pairs visually
+// with Pi above.
+const HEADER_CAPTION = "[ Headless 360 · procode access ]";
+
+// Salesforce blue/purple family: SF Blue, mid blue, Astro cyan, light
+// blue, lavender, SF Purple. Every stop has blue ≥ 210 so the wordmark
+// stays firmly in the brand family even mid-animation.
+const BLUE_PALETTE: ReadonlyArray<readonly [number, number, number]> = [
+  [0, 112, 210],
+  [1, 160, 230],
+  [1, 195, 226],
+  [80, 160, 240],
+  [120, 120, 250],
+  [144, 97, 249],
 ];
 
-// Gradient caption under the logo block. Anchors the mark to sf-pi's
-// positioning: procode access to Salesforce Headless 360.
-const HEADER_CAPTION = "[ Salesforce Headless 360 ]";
-
-// 5-col gutter between Pi and SF. The middle row swaps the gutter for a
-// dim "+" marker so the pairing reads as additive.
-const HEADER_GUTTER = "     ";
-const HEADER_PLUS_ROW = 2;
-
-// Salesforce-inspired gradient: blue → cyan → purple
-const GRADIENT_COLORS = [
-  "\x1b[38;2;0;112;210m", // SF Blue
-  "\x1b[38;2;1;160;230m", // Mid blue
-  "\x1b[38;2;1;195;226m", // Astro cyan
-  "\x1b[38;2;80;160;240m", // Light blue
-  "\x1b[38;2;120;120;250m", // Lavender
-  "\x1b[38;2;144;97;249m", // SF Purple
+// Ohana-spinner pastel rainbow: dusty rose, soft peach, muted gold, sage
+// green, soft sky blue, lavender, soft mauve. Used for Pi and the caption
+// so they match the [SF LLM Gateway] spinner shimmer.
+const RAINBOW_PALETTE: ReadonlyArray<readonly [number, number, number]> = [
+  [200, 120, 130],
+  [210, 150, 120],
+  [200, 185, 120],
+  [130, 190, 140],
+  [120, 170, 200],
+  [150, 130, 190],
+  [185, 130, 180],
 ];
 
-function gradientLine(line: string): string {
+/**
+ * Paint a single row with a palette, advancing color per visible
+ * (non-space) character. `state.charIndex` is mutated so the color
+ * cycle is continuous across the rows of a single section (Pi, word,
+ * caption). Callers pass a fresh state per section so each section
+ * starts from color 0.
+ *
+ * `offset` shifts the starting color so the animation loop can cycle
+ * all colors to the right in lock-step across every section. Uses the
+ * file-local fgRgb(r, g, b, text) defined above.
+ */
+function paintRow(
+  row: string,
+  state: { charIndex: number },
+  offset: number,
+  palette: ReadonlyArray<readonly [number, number, number]>,
+): string {
   let result = "";
-  let colorIdx = 0;
-  const step = Math.max(1, Math.floor(line.length / GRADIENT_COLORS.length));
-
-  for (let i = 0; i < line.length; i++) {
-    if (i > 0 && i % step === 0 && colorIdx < GRADIENT_COLORS.length - 1) colorIdx++;
-    if (line[i] !== " ") {
-      result += GRADIENT_COLORS[colorIdx] + line[i] + RESET;
-    } else {
-      result += " ";
+  for (const ch of row) {
+    if (ch === " ") {
+      result += ch;
+      continue;
     }
+    const [r, g, b] = palette[(state.charIndex + offset) % palette.length];
+    result += fgRgb(r, g, b, ch);
+    state.charIndex++;
   }
   return result;
+}
+
+/**
+ * Build the 5-row SALESFORCE block. Returned rows are un-styled ASCII
+ * so the caller can paint them with whichever palette + offset.
+ */
+function buildWordmarkRows(): string[] {
+  const rows: string[] = ["", "", "", "", ""];
+  for (let li = 0; li < WORD.length; li++) {
+    const glyph = LETTERS[WORD[li]];
+    for (let r = 0; r < 5; r++) {
+      rows[r] += glyph[r];
+      if (li < WORD.length - 1) rows[r] += " ";
+    }
+  }
+  return rows;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -236,7 +294,12 @@ function announcementMarker(kind: "note" | "update" | "breaking" | "deprecation"
   }
 }
 
-function buildLeftColumn(data: SplashData, colWidth: number, mode: GlyphMode): string[] {
+function buildLeftColumn(
+  data: SplashData,
+  colWidth: number,
+  mode: GlyphMode,
+  headerOffset: number = 0,
+): string[] {
   const lines: string[] = [];
 
   // Welcome message
@@ -244,24 +307,31 @@ function buildLeftColumn(data: SplashData, colWidth: number, mode: GlyphMode): s
   lines.push(centerText(`${BOLD}Welcome back!${RESET}`, colWidth));
   lines.push("");
 
-  // Gradient Pi + SF header with Headless 360 caption.
-  // Each row stitches [Pi-row][gutter|+][SF-row] so the pair renders as one
-  // visual block; centerText() can't help here because the gutter contains
-  // ANSI (the dim "+"), so we center by the un-styled visible width and
-  // then prepend that padding to the styled row.
-  for (let i = 0; i < PI_LOGO.length; i++) {
-    const piRow = PI_LOGO[i] ?? "";
-    const sfRow = SF_LOGO[i] ?? "";
-    const gutter = i === HEADER_PLUS_ROW ? `  ${DIM}+${RESET}  ` : HEADER_GUTTER;
-    const visibleRow = piRow + HEADER_GUTTER + sfRow;
-    const styledRow = gradientLine(piRow) + gutter + gradientLine(sfRow);
-    const leftPad = Math.max(0, Math.floor((colWidth - visibleWidth(visibleRow)) / 2));
-    lines.push(" ".repeat(leftPad) + styledRow);
+  // Pi + SALESFORCE stacked mark. Three sections, painted per-character
+  // with an advancing color index. Each section has its own charIndex
+  // state so the cycle restarts from color 0 at the top of each section,
+  // but the shared `headerOffset` means all sections animate in
+  // lock-step when the overlay ticks the offset forward.
+  const piPad = Math.max(0, Math.floor((colWidth - PI_LOGO[0].length) / 2));
+  const piState = { charIndex: 0 };
+  for (const row of PI_LOGO) {
+    lines.push(" ".repeat(piPad) + paintRow(row, piState, headerOffset, RAINBOW_PALETTE));
   }
-  // One blank line between the logo block and the caption, then the
-  // gradient-painted subtitle centered on the column.
   lines.push("");
-  lines.push(centerText(gradientLine(HEADER_CAPTION), colWidth));
+
+  const wordRows = buildWordmarkRows();
+  const wordPad = Math.max(0, Math.floor((colWidth - WORD_WIDTH) / 2));
+  const wordState = { charIndex: 0 };
+  for (const row of wordRows) {
+    lines.push(" ".repeat(wordPad) + paintRow(row, wordState, headerOffset, BLUE_PALETTE));
+  }
+  lines.push("");
+
+  const captionState = { charIndex: 0 };
+  const captionPad = Math.max(0, Math.floor((colWidth - HEADER_CAPTION.length) / 2));
+  lines.push(
+    " ".repeat(captionPad) + paintRow(HEADER_CAPTION, captionState, headerOffset, RAINBOW_PALETTE),
+  );
   lines.push("");
 
   // Model info
@@ -552,8 +622,13 @@ const ABSOLUTE_MIN_TERM_WIDTH = 60;
 const MIN_BOX_WIDTH = 80;
 const MAX_BOX_WIDTH = 220;
 const SINGLE_COL_THRESHOLD = 100;
-const MIN_LEFT_COL = 48;
-const MAX_LEFT_COL = 60;
+// The SALESFORCE wordmark is 59 cols wide. Cap the left column at 72
+// and raise the floor a bit so the mark always has 2-3 cols of breathing
+// room on each side. Below 59 cols of available left column, the caller
+// naturally drops to single-column layout (SINGLE_COL_THRESHOLD) where
+// the full inner width is used instead.
+const MIN_LEFT_COL = 56;
+const MAX_LEFT_COL = 72;
 
 function getBoxWidth(termWidth: number): number {
   // Reserve two columns so the rounded corners do not sit against the
@@ -563,7 +638,9 @@ function getBoxWidth(termWidth: number): number {
 }
 
 function getColumnWidths(boxWidth: number): { leftCol: number; rightCol: number } {
-  const leftCol = Math.min(MAX_LEFT_COL, Math.max(MIN_LEFT_COL, Math.floor(boxWidth * 0.32)));
+  // Aim for ~40 % of the box for the left column so the 59-col wordmark
+  // fits with a small margin on either side.
+  const leftCol = Math.min(MAX_LEFT_COL, Math.max(MIN_LEFT_COL, Math.floor(boxWidth * 0.4)));
   return {
     leftCol,
     rightCol: Math.max(1, boxWidth - leftCol - 3),
@@ -575,7 +652,12 @@ function shouldUseSingleColumn(termWidth: number): boolean {
   return termWidth < SINGLE_COL_THRESHOLD;
 }
 
-function renderSplashBox(data: SplashData, termWidth: number, bottomLine: string): string[] {
+function renderSplashBox(
+  data: SplashData,
+  termWidth: number,
+  bottomLine: string,
+  headerOffset: number = 0,
+): string[] {
   if (termWidth < ABSOLUTE_MIN_TERM_WIDTH) return [];
 
   const mode = resolveGlyphMode();
@@ -608,7 +690,7 @@ function renderSplashBox(data: SplashData, termWidth: number, bottomLine: string
     // separator rule between them so the split is still visually clear.
     const innerWidth = boxWidth - 2;
     const stackedLines = [
-      ...buildLeftColumn(data, innerWidth, mode),
+      ...buildLeftColumn(data, innerWidth, mode, headerOffset),
       horizontalRule(innerWidth),
       ...buildRightColumn(data, innerWidth, mode),
     ];
@@ -618,7 +700,7 @@ function renderSplashBox(data: SplashData, termWidth: number, bottomLine: string
   } else {
     // Two-column layout.
     const { leftCol, rightCol } = getColumnWidths(boxWidth);
-    const leftLines = buildLeftColumn(data, leftCol, mode);
+    const leftLines = buildLeftColumn(data, leftCol, mode, headerOffset);
     const rightLines = buildRightColumn(data, rightCol, mode);
     const maxRows = Math.max(leftLines.length, rightLines.length);
     for (let i = 0; i < maxRows; i++) {
@@ -641,6 +723,9 @@ function renderSplashBox(data: SplashData, termWidth: number, bottomLine: string
 export class SfWelcomeOverlay implements Component {
   private data: SplashData;
   private countdown: number = 30;
+  // Per-character color offset driven by the extension's animation
+  // interval. Incremented each tick for a few seconds, then frozen.
+  private headerOffset: number = 0;
 
   constructor(data: SplashData) {
     this.data = data;
@@ -648,6 +733,10 @@ export class SfWelcomeOverlay implements Component {
 
   setCountdown(seconds: number): void {
     this.countdown = seconds;
+  }
+
+  setHeaderOffset(offset: number): void {
+    this.headerOffset = offset;
   }
 
   invalidate(): void {}
@@ -670,7 +759,7 @@ export class SfWelcomeOverlay implements Component {
       countdownStyled +
       MUTED(hChar.repeat(Math.max(0, rightPad)));
 
-    return renderSplashBox(this.data, termWidth, bottomLine);
+    return renderSplashBox(this.data, termWidth, bottomLine, this.headerOffset);
   }
 }
 
@@ -680,9 +769,17 @@ export class SfWelcomeOverlay implements Component {
 
 export class SfWelcomeHeader implements Component {
   private data: SplashData;
+  // Mirrors SfWelcomeOverlay.headerOffset so non-overlay renders (e.g.
+  // the persistent header shown in session lists) can show the same
+  // animated frame if the caller chooses to drive it.
+  private headerOffset: number = 0;
 
   constructor(data: SplashData) {
     this.data = data;
+  }
+
+  setHeaderOffset(offset: number): void {
+    this.headerOffset = offset;
   }
 
   invalidate(): void {}
@@ -701,7 +798,7 @@ export class SfWelcomeHeader implements Component {
       bottomLine = MUTED(hChar.repeat(leftCol)) + MUTED("┴") + MUTED(hChar.repeat(rightCol));
     }
 
-    const lines = renderSplashBox(this.data, termWidth, bottomLine);
+    const lines = renderSplashBox(this.data, termWidth, bottomLine, this.headerOffset);
     if (lines.length > 0) {
       lines.push(""); // spacing below header
     }

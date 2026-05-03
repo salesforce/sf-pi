@@ -160,9 +160,12 @@ describe("sf-welcome", () => {
     // "salesforce.com/ai-ethics" on the right is fine — it's the instance
     // URL in the left env block that should be gone.
     expect(plain).not.toContain("https://");
-    // Trademark must appear in the left column (under the provider name),
-    // not below the Salesforce AI / feedback block on the right.
-    expect(plain).toContain("trademarks of Salesforce, Inc.");
+    // Trademark must appear in the left column (under the provider
+    // name), not below the Salesforce AI / feedback block on the right.
+    // On narrow left columns the trademark wraps across multiple lines,
+    // so assert on the constituent words instead of the full phrase.
+    expect(plain).toContain("trademarks of");
+    expect(plain).toContain("Salesforce, Inc.");
     expect(plain).not.toContain("Independent community project");
     expect(plain).not.toContain("Not affiliated with Salesforce");
     // Legacy "coming soon" tease should no longer appear.
