@@ -365,6 +365,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.29.0](https://github.com/salesforce/sf-pi/compare/v0.28.2...v0.29.0) (2026-05-03)
+
+
+### Features
+
+* **sf-guardrail:** Salesforce-aware safety layer for tool_call ([59752b9](https://github.com/salesforce/sf-pi/commit/59752b924e6b587da1589ec89055d5e11b190a34))
+
 ## [0.28.2](https://github.com/salesforce/sf-pi/compare/v0.28.1...v0.28.2) (2026-05-03)
 
 

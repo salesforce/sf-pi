@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.28.2-2026-05-03",
-  "latestVersion": "0.28.2",
+  "revision": "release-0.29.0-2026-05-03",
+  "latestVersion": "0.29.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.28.2",
+      "id": "release-0.29.0",
       "kind": "update",
-      "title": "sf-pi v0.28.2 — sf-devbar: wrap LSP health segment in LSP[…] label",
+      "title": "sf-pi v0.29.0 — sf-guardrail: Salesforce-aware safety layer for tool_call",
       "publishedAt": "2026-05-03T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.28.2",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.29.0",
       "severity": "info",
-      "body": "sf-devbar: wrap LSP health segment in LSP[…] label"
+      "body": "sf-guardrail: Salesforce-aware safety layer for tool_call"
     },
     {
       "id": "pi-0.71-compat",
