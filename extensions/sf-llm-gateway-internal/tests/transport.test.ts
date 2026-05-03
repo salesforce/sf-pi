@@ -30,12 +30,15 @@ import {
   flattenCodexTools,
   formatAnthropicStreamError,
   injectCodexGatewayParams,
+  injectOpenAiReasoningEffort,
   injectOpenAiServiceTier,
   isCodexModelId,
   isOpenAiModelId,
+  isOpenAiReasoningModelId,
   isOpus47ModelId,
   mapPiLevelToOpus47Effort,
   normalizeCodexReasoningEffort,
+  resolveOpenAiReasoningEffort,
   resolveOpus47MaxTokensFloor,
 } from "../lib/transport.ts";
 
@@ -245,6 +248,46 @@ describe("isOpenAiModelId", () => {
   it("does not match Claude or Gemini", () => {
     expect(isOpenAiModelId("claude-opus-4-7")).toBe(false);
     expect(isOpenAiModelId("gemini-2.5-pro")).toBe(false);
+  });
+});
+
+describe("OpenAI reasoning effort defaults", () => {
+  it("only treats GPT-5-family OpenAI models as reasoning models", () => {
+    expect(isOpenAiReasoningModelId("gpt-5")).toBe(true);
+    expect(isOpenAiReasoningModelId("gpt-5.5")).toBe(true);
+    expect(isOpenAiReasoningModelId("gpt-5.3-codex")).toBe(true);
+    expect(isOpenAiReasoningModelId("gpt-4o")).toBe(false);
+    expect(isOpenAiReasoningModelId("chatgpt-4o-latest")).toBe(false);
+  });
+
+  it("uses xhigh only on GPT-5.2+ / GPT-5.5 models and high elsewhere", () => {
+    expect(resolveOpenAiReasoningEffort("gpt-5")).toBe("high");
+    expect(resolveOpenAiReasoningEffort("gpt-5-mini")).toBe("high");
+    expect(resolveOpenAiReasoningEffort("gpt-5.2")).toBe("xhigh");
+    expect(resolveOpenAiReasoningEffort("gpt-5.5")).toBe("xhigh");
+    expect(resolveOpenAiReasoningEffort("gpt-5.3-codex")).toBe("high");
+    expect(resolveOpenAiReasoningEffort("gpt-4o")).toBeUndefined();
+  });
+
+  it("injects max safe reasoning effort and allow-lists it for GPT-5.5", () => {
+    const payload: Record<string, unknown> = {};
+    injectOpenAiReasoningEffort(payload, "gpt-5.5");
+    expect(payload.reasoning_effort).toBe("xhigh");
+    expect(payload.allowed_openai_params).toEqual(["reasoning_effort"]);
+  });
+
+  it("does not inject reasoning effort for non-reasoning OpenAI chat models", () => {
+    const payload: Record<string, unknown> = {};
+    injectOpenAiReasoningEffort(payload, "gpt-4o");
+    expect(payload.reasoning_effort).toBeUndefined();
+    expect(payload.allowed_openai_params).toBeUndefined();
+  });
+
+  it("respects caller-provided reasoning effort while still allow-listing it", () => {
+    const payload: Record<string, unknown> = { reasoning_effort: "low" };
+    injectOpenAiReasoningEffort(payload, "gpt-5.5");
+    expect(payload.reasoning_effort).toBe("low");
+    expect(payload.allowed_openai_params).toEqual(["reasoning_effort"]);
   });
 });
 

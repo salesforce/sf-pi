@@ -83,6 +83,8 @@ import {
 import { emitRetryEvent, formatRetryGuidanceFooter } from "./retry-telemetry.ts";
 
 const DEFAULT_CODEX_REASONING_EFFORT = "high";
+const DEFAULT_OPENAI_REASONING_EFFORT = "high";
+const MAX_OPENAI_REASONING_EFFORT = "xhigh";
 
 /**
  * How many additional attempts to make after the initial upstream request when
@@ -142,12 +144,13 @@ export const ANTHROPIC_FINE_GRAINED_TOOL_STREAMING_BETA = "fine-grained-tool-str
  * Default OpenAI-compat `service_tier` value for gateway traffic.
  *
  * Live-verified against the gateway:
- *   gpt-5, gpt-5-mini, gpt-4o, gpt-4o-mini all echo `"service_tier": "priority"`
- *   when the request body sets `service_tier: "priority"`. Accepted values on
- *   this gateway's OpenAI path are `auto|default|flex|priority` (`scale` is
- *   rejected with 400). Codex accepts the parameter without error but the
- *   Responses-shaped response does not echo `service_tier`, so we cannot
- *   confirm honoring — still safe to send because LiteLLM does not 400 on it.
+ *   gpt-5, gpt-5-mini, gpt-5.5, gpt-4o, gpt-4o-mini all echo
+ *   `"service_tier": "priority"` when the request body sets
+ *   `service_tier: "priority"`. Accepted values on this gateway's OpenAI path
+ *   are `auto|default|flex|priority` (`scale` is rejected with 400). Codex
+ *   accepts the parameter without error but the Responses-shaped response does
+ *   not echo `service_tier`, so we cannot confirm honoring — still safe to send
+ *   because LiteLLM does not 400 on it.
  *
  * Claude models on this gateway route through Bedrock Converse, which
  * silently drops `service_tier` (live probes always come back with
@@ -213,6 +216,42 @@ export function isOpenAiModelId(modelId: string): boolean {
     lower.startsWith("openai/") ||
     lower.includes("chatgpt")
   );
+}
+
+/**
+ * True for OpenAI-family models that accept `reasoning_effort` through
+ * LiteLLM. Do not set it on GPT-4o / ChatGPT aliases — LiteLLM advertises
+ * those as non-reasoning chat models and they either ignore or reject the
+ * knob depending on gateway version.
+ */
+export function isOpenAiReasoningModelId(modelId: string): boolean {
+  const lower = modelId.toLowerCase();
+  return isOpenAiModelId(modelId) && lower.includes("gpt-5");
+}
+
+/**
+ * Return the strongest reasoning effort this gateway should request for an
+ * OpenAI-family model.
+ *
+ * LiteLLM's OpenAI provider docs list `xhigh` for newer GPT-5.2+ / GPT-5.5
+ * chat models, while older GPT-5 / GPT-5-mini top out at `high`. Codex is
+ * handled separately because the gateway's Codex path rejects `xhigh` today.
+ */
+export function resolveOpenAiReasoningEffort(modelId: string): string | undefined {
+  if (!isOpenAiReasoningModelId(modelId)) {
+    return undefined;
+  }
+
+  const lower = modelId.toLowerCase();
+  if (lower.includes("codex")) {
+    return DEFAULT_CODEX_REASONING_EFFORT;
+  }
+
+  if (/gpt-5\.(?:[2-9]|\d{2,})/.test(lower)) {
+    return MAX_OPENAI_REASONING_EFFORT;
+  }
+
+  return DEFAULT_OPENAI_REASONING_EFFORT;
 }
 
 /**
@@ -351,6 +390,27 @@ export function allowReasoningEffortParam(payload: Record<string, unknown>): voi
 export function injectCodexGatewayParams(payload: Record<string, unknown>): void {
   payload.reasoning_effort = normalizeCodexReasoningEffort(payload.reasoning_effort);
   allowReasoningEffortParam(payload);
+}
+
+/**
+ * Default OpenAI reasoning models to the strongest safe effort for their
+ * family. Caller-provided values still win, but are allow-listed so LiteLLM
+ * passes them through instead of raising UnsupportedParamsError.
+ */
+export function injectOpenAiReasoningEffort(
+  payload: Record<string, unknown>,
+  modelId: string,
+): void {
+  if (typeof payload.reasoning_effort !== "string" || !payload.reasoning_effort.trim()) {
+    const effort = resolveOpenAiReasoningEffort(modelId);
+    if (effort) {
+      payload.reasoning_effort = effort;
+    }
+  }
+
+  if (typeof payload.reasoning_effort === "string" && payload.reasoning_effort.trim()) {
+    allowReasoningEffortParam(payload);
+  }
 }
 
 /**
@@ -770,14 +830,13 @@ export function streamSfGatewayOpenAI(
           // response shape does not echo `service_tier` back.
           injectOpenAiServiceTier(objectPayload);
         } else if (isOpenAiModelId(model.id)) {
-          if (typeof objectPayload.reasoning_effort === "string") {
-            // GPT-5 family (and anything else LiteLLM proxies through OpenAI)
-            // requires explicit allow-listing of reasoning_effort.
-            allowReasoningEffortParam(objectPayload);
-          }
+          // GPT-5 reasoning models get the strongest safe effort by default
+          // (`xhigh` on GPT-5.2+ / GPT-5.5, `high` on older GPT-5 variants),
+          // and LiteLLM needs the param allow-listed when it is present.
+          injectOpenAiReasoningEffort(objectPayload, model.id);
           // Default every OpenAI-family request to the gateway's priority
-          // service tier. Verified live: gpt-5 / gpt-5-mini / gpt-4o /
-          // gpt-4o-mini all echo `"service_tier": "priority"` when sent.
+          // service tier. Verified live: gpt-5 / gpt-5-mini / gpt-5.5 /
+          // gpt-4o / gpt-4o-mini all echo `"service_tier": "priority"` when sent.
           injectOpenAiServiceTier(objectPayload);
         }
 
