@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.28.0-2026-05-03",
-  "latestVersion": "0.28.0",
+  "revision": "release-0.28.1-2026-05-03",
+  "latestVersion": "0.28.1",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.28.0",
+      "id": "release-0.28.1",
       "kind": "update",
-      "title": "sf-pi v0.28.0 — sf-lsp: first-boot auto-install for Apex + LWC language servers",
+      "title": "sf-pi v0.28.1 — sf-lsp: respect externally-provided LSP servers in install prompt",
       "publishedAt": "2026-05-03T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.28.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.28.1",
       "severity": "info",
-      "body": "sf-lsp: first-boot auto-install for Apex + LWC language servers"
+      "body": "sf-lsp: respect externally-provided LSP servers in install prompt"
     },
     {
       "id": "pi-0.71-compat",
