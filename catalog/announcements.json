@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.32.0-2026-05-03",
-  "latestVersion": "0.32.0",
+  "revision": "release-0.33.0-2026-05-03",
+  "latestVersion": "0.33.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.32.0",
+      "id": "release-0.33.0",
       "kind": "update",
-      "title": "sf-pi v0.32.0 — sf-welcome: animated Pi + SALESFORCE brand mark with dual palette",
+      "title": "sf-pi v0.33.0 — gateway: maximize OpenAI reasoning defaults",
       "publishedAt": "2026-05-03T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.32.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.33.0",
       "severity": "info",
-      "body": "sf-welcome: animated Pi + SALESFORCE brand mark with dual palette"
+      "body": "gateway: maximize OpenAI reasoning defaults — sf-welcome: caption copy + force animation repaints"
     },
     {
       "id": "pi-0.71-compat",
