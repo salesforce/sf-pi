@@ -365,6 +365,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.28.0](https://github.com/salesforce/sf-pi/compare/v0.27.6...v0.28.0) (2026-05-03)
+
+
+### Features
+
+* **sf-lsp:** first-boot auto-install for Apex + LWC language servers ([8d916d1](https://github.com/salesforce/sf-pi/commit/8d916d1e9ce3e679fc50a48f6bc5052aceb37981))
+
 ## [0.27.6](https://github.com/salesforce/sf-pi/compare/v0.27.5...v0.27.6) (2026-05-02)
 
 
