@@ -17,17 +17,17 @@ Registers the gateway as a single unified Pi-native provider and routes
 Claude vs non-Claude traffic to the transport each family was designed for.
 Supports dynamic model discovery, monthly budget tracking, runtime beta
 header toggling, additive vs exclusive scoped-model behavior, a TUI setup
-wizard, and an in-app "paste your token" flow under `/login` (pi ≥ 0.71).
+wizard, and an in-app "paste your token" flow under `/login` (pi ≥ 0.72).
 
 ## Key Architecture: One Provider, Two Transports
 
 Since R1·Unify the extension registers a single Pi provider (`sf-llm-gateway-
 internal`) with a friendly display label `SF LLM Gateway (Salesforce Internal)`.
 Every model is registered under the provider-level `openai-completions` API so
-pi always invokes the provider's custom `streamSimple` dispatcher. That
-dispatcher detects Claude by model id, clones the request model to
-`api: "anthropic-messages"`, rewrites `baseUrl` to the gateway root, and
-forwards to the matching shim:
+pi always invokes the provider's custom `streamSimple` dispatcher. Claude models
+also carry a per-model `baseUrl` pinned to the gateway root (pi ≥ 0.72), so the
+dispatcher only has to switch the request model to `api: "anthropic-messages"`
+and forward to the matching shim:
 
 | Model family             | Pi-registered API    | Runtime transport          | Base URL used                                      |
 | ------------------------ | -------------------- | -------------------------- | -------------------------------------------------- |
@@ -96,13 +96,13 @@ in /v1/chat/completions. Please use /v1/responses instead."` when an
      `minimal`/`low` → `low`, `medium` → `medium`, `high` → `high`,
      `xhigh` → `xhigh` (new 4.7 tier between `high` and `max`). Unset
      falls back to `high`, which is Anthropic's documented default.
-   - Defaults `max_tokens` to **64K** (`OPUS_47_DEFAULT_MAX_TOKENS`).
-     Live probes showed that `max_tokens: 128000` + `effort: "max"` on
-     heavier generations intermittently surfaces
-     `api_error: Internal server error` from Anthropic upstream (~5% of
-     trials). 64K matches what the gateway advertises via
-     `/v1/model/info` and eliminated the failure window in the same
-     harness. Model hard ceiling is 128K (`OPUS_47_MODEL_MAX_TOKENS`);
+   - Scales `max_tokens` by pi reasoning level (`minimal`/`low` → 16K,
+     `medium` → 32K, `high`/`xhigh` → 64K). Live probes showed that
+     `max_tokens: 128000` + `effort: "max"` on heavier generations
+     intermittently surfaces `api_error: Internal server error` from
+     Anthropic upstream. 64K matches what the gateway advertises via
+     `/v1/model/info` and keeps `xhigh` heavy-workload turns away from that
+     failure window. Model hard ceiling is 128K (`OPUS_47_MODEL_MAX_TOKENS`);
      callers who need the extra headroom can override per request.
    - Strips `temperature`. Anthropic returns 400 (
      _"`temperature` may only be set to 1 when thinking is enabled or in
@@ -116,14 +116,14 @@ in /v1/chat/completions. Please use /v1/responses instead."` when an
 ```
 Extension loads
   ├─ installWireTrace()                 ← opt-in raw gateway trace
-  ├─ registerProviderIfConfigured()     ← both providers, static catalog, synchronous
+  ├─ registerProviderIfConfigured()     ← unified provider, static catalog, synchronous
   ├─ discoverAndRegister()              ← async, fire-and-forget
-  ├─ registerMessageRenderer() × 2      ← both provider names
+  ├─ registerMessageRenderer()          ← gateway provider renderer
   ├─ registerCommand("sf-llm-gateway-internal")
   ├─ on("session_start")               → re-discover, sync defaults
   ├─ on("turn_end")                    → update footer status
-  ├─ on("model_select")                → set thinking to xhigh (either provider)
-  ├─ on("after_provider_response")     → record throttle/upstream signal (either provider)
+  ├─ on("model_select")                → set thinking to xhigh (gateway provider)
+  ├─ on("after_provider_response")     → record throttle/upstream signal (gateway provider)
   └─ on("session_shutdown")            → clear footer status + provider signal
 ```
 
@@ -157,26 +157,26 @@ separately via the monthly usage endpoint (`/user/info`).
 
 ## Behavior Matrix
 
-| Event/Trigger             | Condition                                    | Result                                                                                           |
-| ------------------------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| Extension load            | enabled + has credentials                    | Register both providers (static catalog), fire-and-forget discovery                              |
-| Extension load            | disabled                                     | Unregister both providers                                                                        |
-| session_start             | —                                            | Re-discover models, sync session defaults                                                        |
-| turn_end                  | model is on either gateway provider          | Update footer (context + monthly usage)                                                          |
-| turn_end                  | model is not on either gateway provider      | Clear footer status                                                                              |
-| model_select              | selected model is on either gateway provider | Set thinking to xhigh                                                                            |
-| after_provider_response   | gateway model + 2xx/3xx                      | Clear any live throttle/upstream badge                                                           |
-| after_provider_response   | gateway model + 429                          | Record throttle signal, footer shows ⚠ badge for 60s                                             |
-| after_provider_response   | gateway model + >=500                        | Record upstream signal, footer shows ⚠ badge for 60s                                             |
-| session_shutdown          | —                                            | Clear footer status + provider signal                                                            |
-| /command on               | missing credentials                          | Prompt for credentials first                                                                     |
-| /command on               | credentials present                          | Save config, set default (Claude→anthropic provider; others→openai provider), register, discover |
-| /command off              | additive scope                               | Disable, remove gateway pattern, switch to off-default                                           |
-| /command off              | exclusive scope                              | Disable, restore previous scoped models, switch to off-default                                   |
-| /command refresh          | —                                            | Re-discover, refresh monthly usage                                                               |
-| /command beta \<name\> on | —                                            | Toggle beta, re-register providers                                                               |
-| Monthly usage fetch       | cached < 5 min old                           | Use cache                                                                                        |
-| Monthly usage fetch       | stale or forced                              | Fetch from gateway /user/info                                                                    |
+| Event/Trigger             | Condition                             | Result                                                                |
+| ------------------------- | ------------------------------------- | --------------------------------------------------------------------- |
+| Extension load            | enabled + has credentials             | Register unified provider (static catalog), fire-and-forget discovery |
+| Extension load            | disabled                              | Unregister provider                                                   |
+| session_start             | —                                     | Re-discover models, sync session defaults                             |
+| turn_end                  | model is on gateway provider          | Update footer (context + monthly usage)                               |
+| turn_end                  | model is not on gateway provider      | Clear footer status                                                   |
+| model_select              | selected model is on gateway provider | Set thinking to xhigh                                                 |
+| after_provider_response   | gateway model + 2xx/3xx               | Clear any live throttle/upstream badge                                |
+| after_provider_response   | gateway model + 429                   | Record throttle signal, footer shows ⚠ badge for 60s                  |
+| after_provider_response   | gateway model + >=500                 | Record upstream signal, footer shows ⚠ badge for 60s                  |
+| session_shutdown          | —                                     | Clear footer status + provider signal                                 |
+| /command on               | missing credentials                   | Prompt for credentials first                                          |
+| /command on               | credentials present                   | Save config, set default gateway model, register, discover            |
+| /command off              | additive scope                        | Disable, remove gateway pattern, switch to off-default                |
+| /command off              | exclusive scope                       | Disable, restore previous scoped models, switch to off-default        |
+| /command refresh          | —                                     | Re-discover, refresh monthly usage                                    |
+| /command beta \<name\> on | —                                     | Toggle beta, re-register provider                                     |
+| Monthly usage fetch       | cached < 60 s old                     | Use cache                                                             |
+| Monthly usage fetch       | stale or forced                       | Fetch from gateway /user/info                                         |
 
 ## File Structure
 
@@ -189,13 +189,15 @@ extensions/sf-llm-gateway-internal/
     config.ts           ← gateway saved-config layer (constants, types, I/O)
     gateway-url.ts      ← root vs /v1 endpoint normalization helpers
     pi-settings.ts      ← Pi settings.json path + mutation helpers
-    discovery.ts        ← dual-provider registration + model discovery state
+    discovery.ts        ← unified provider registration, model discovery, dispatch
     monthly-usage.ts    ← /user/info + /key/info + /health/readiness cache
     provider-telemetry.ts ← after_provider_response signal store + header parsers
+    retry-telemetry.ts  ← transparent inner-stream retry status
     status.ts           ← footer/status report formatting helpers
     wire-trace.ts       ← opt-in raw fetch tracer (SF_LLM_GATEWAY_INTERNAL_TRACE=1)
     models.ts           ← model catalog, discovery, inference, formatting
-    transport.ts        ← Codex request shaping + Opus 4.7 max-thinking shim +
+    beta-controls.ts    ← beta alias resolution + runtime toggle command
+    transport.ts        ← Codex request shaping + Opus 4.7 adaptive-thinking shim +
                           GPT-5 reasoning_effort allow-listing
     debug.ts            ← /utils/transform_request probe + report formatter
     config-panel.ts     ← TUI config panel for Extension Manager drill-down
@@ -203,14 +205,24 @@ extensions/sf-llm-gateway-internal/
   tests/
     config.test.ts              ← saved-config normalization, enabled model patterns
     gateway-url.test.ts         ← root vs /v1 endpoint normalization
-    models.test.ts              ← model ID detection, inference, dual-api tagging, /v1/model/info enrichment
-    transport.test.ts           ← Codex payload shaping + Opus 4.7 max-thinking shim
+    models.test.ts              ← model ID detection, inference, provider tagging, /v1/model/info enrichment
+    transport.test.ts           ← Codex payload shaping + Opus 4.7 adaptive-thinking shim
     debug.test.ts               ← /utils/transform_request probe body shape + report rendering
     codex-regression.test.ts    ← optional live gateway Codex regression checks
     betas.test.ts               ← beta alias resolution, effective betas
     formatting.test.ts          ← formatTokens, formatUsd, maskApiKey, labels
     status.test.ts              ← footer/status report formatting (monthly + key + health)
     command-parsing.test.ts     ← command argument parsing
+    unified-provider.test.ts    ← one-provider registration invariants
+    migrate-unify-provider.test.ts ← retired-provider settings migration
+    provider-telemetry.test.ts  ← 429/5xx footer signal parsing
+    retry-telemetry.test.ts     ← transparent retry status store
+    robust-retry.test.ts        ← transport-level retry behavior
+    thinking-level.test.ts      ← user thinking override contract
+    wire-trace.test.ts          ← opt-in fetch trace wrapper
+    global-config.test.ts       ← global/project saved-config precedence
+    cwd-migration.test.ts       ← migration avoids no-op project writes
+    setup-overlay-single-write.test.ts ← setup form persistence contract
 ```
 
 ## Testing Strategy

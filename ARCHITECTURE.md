@@ -53,6 +53,26 @@ sf-pi/
 
 <!-- GENERATED:folder-layout:end -->
 
+## Important scripts
+
+The generated tree above intentionally stays compact. These scripts are the
+ones agents and maintainers most often need:
+
+| Script                              | Purpose                                                                                         |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `scripts/generate-catalog.mjs`      | Regenerates `catalog/*`, `docs/commands.md`, and generated README / ARCHITECTURE marker blocks. |
+| `scripts/add-spdx-headers.mjs`      | Adds or checks SPDX headers for source scripts. CI and pre-commit use the check path.           |
+| `scripts/check-llm-artifacts.sh`    | CI guard for unresolved conflict markers, prompt-template tokens, and LLM TODO markers.         |
+| `scripts/scaffold.mjs`              | Creates a new extension folder and refreshes generated catalog/docs.                            |
+| `scripts/sync-agentforce-sdk.mjs`   | Refreshes the vendored Agentforce SDK snapshot used by `sf-agentscript-assist`.                 |
+| `scripts/validate.sh`               | Agent-friendly local validation: generate catalog, SPDX check, format check, type check, tests. |
+| `scripts/preview-pi-salesforce.mjs` | Local visual preview for the animated `sf-welcome` Pi + SALESFORCE header.                      |
+| `scripts/preview-sf-logo.mjs`       | Local visual preview for the compact Salesforce wordmark.                                       |
+| `scripts/render-splash-header.mjs`  | Renders splash-header frames for review / screenshots.                                          |
+
+CI additionally runs ESLint and `scripts/check-llm-artifacts.sh`; use
+`npm run lint` plus the artifact guard when you want to mirror CI locally.
+
 ## Where does X live? (agent quick-reference)
 
 When an agent (or human) needs to change something, start here:
@@ -115,7 +135,7 @@ rules or multi-phase plans.
 Current examples:
 
 - `extensions/sf-slack/AGENTS.md` — HITL rules, file map for 9 tools
-- `extensions/sf-llm-gateway-internal/AGENTS.md` — dual-provider rules
+- `extensions/sf-llm-gateway-internal/AGENTS.md` — unified-provider + two-transport rules
 - `extensions/sf-skills-hud/ROADMAP.md` — Phase 2 work
 
 When editing an extension that has one, read it **before** `index.ts`.

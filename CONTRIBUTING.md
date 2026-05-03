@@ -158,24 +158,27 @@ pi install .
 
 The most common entry points, grouped by purpose:
 
-| Purpose                  | Command                                            | Check-only variant               |
-| ------------------------ | -------------------------------------------------- | -------------------------------- |
-| Regenerate catalog       | `npm run generate-catalog`                         | `npm run generate-catalog:check` |
-| Format                   | `npm run format`                                   | `npm run format:check`           |
-| SPDX headers             | `npm run spdx`                                     | `npm run spdx:check`             |
-| ESLint                   | `npm run eslint:fix`                               | `npm run eslint`                 |
-| Type check               | —                                                  | `npm run check`                  |
-| Run tests                | `npm test`                                         | —                                |
-| Tests + coverage         | `npm run test:coverage`                            | —                                |
-| Watch tests              | `npm run test:watch`                               | —                                |
-| Lint bundle              | —                                                  | `npm run lint`                   |
-| Full local validation    | —                                                  | `npm run validate`               |
-| Scaffold a new extension | `npm run scaffold -- --id sf-my-ext --category ui` | —                                |
+| Purpose                  | Command                                            | Check-only variant                    |
+| ------------------------ | -------------------------------------------------- | ------------------------------------- |
+| Regenerate catalog       | `npm run generate-catalog`                         | `npm run generate-catalog:check`      |
+| Format                   | `npm run format`                                   | `npm run format:check`                |
+| SPDX headers             | `npm run spdx`                                     | `npm run spdx:check`                  |
+| ESLint                   | `npm run eslint:fix`                               | `npm run eslint`                      |
+| Type check               | —                                                  | `npm run check`                       |
+| Run tests                | `npm test`                                         | —                                     |
+| Tests + coverage         | `npm run test:coverage`                            | —                                     |
+| Watch tests              | `npm run test:watch`                               | —                                     |
+| Lint bundle              | —                                                  | `npm run lint`                        |
+| Full local validation    | —                                                  | `npm run validate`                    |
+| CI artifact guard        | —                                                  | `bash scripts/check-llm-artifacts.sh` |
+| Scaffold a new extension | `npm run scaffold -- --id sf-my-ext --category ui` | —                                     |
 
 `npm run lint` is a convenience bundle that runs `format:check`,
 `generate-catalog:check`, `spdx:check`, and `eslint` in order. Prefer
 `npm run validate` before opening a PR — it adds the type check and the
-full test suite on top.
+full test suite on top. CI also runs `scripts/check-llm-artifacts.sh`, so
+run that guard locally when a change touches prompts, generated text, or
+LLM-facing docs.
 
 ## Source of truth
 
@@ -192,7 +195,12 @@ Do not edit these manually:
 
 - `catalog/registry.ts`
 - `catalog/index.json`
-- the generated bundled-extension section in `README.md`
+- `docs/commands.md`
+- generated sections in `README.md`: bundled extensions, command reference,
+  troubleshooting index
+- generated folder layout in `ARCHITECTURE.md`
+- normalized `catalog/announcements.json`
+- validated / normalized `catalog/recommendations.json`
 
 Regenerate them with:
 
@@ -317,6 +325,14 @@ Allowed types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`,
 
 Breaking changes include `!` after the type/scope, or a `BREAKING CHANGE:`
 footer. Both trigger a major version bump under `release-please`.
+
+## Maintainer fast path
+
+The PR workflow above is the default for external contributors. Maintainers
+may use the solo fast path documented in [`AGENTS.md`](./AGENTS.md): for
+low-risk changes, commit directly to `main` and let CI / release-please do the
+verification and release work. Use a PR instead for risky changes, public API
+breaks, destructive migrations, or when a named reviewer is required.
 
 ## Releases
 

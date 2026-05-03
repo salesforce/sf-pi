@@ -164,12 +164,22 @@ extensions/sf-lsp/
     transcript.ts         ← custom message renderer + emit policy
     panel.ts              ← /sf-lsp rich overlay (DynamicBorder + SelectList)
     settings-io.ts        ← persistent sfPi.sfLsp.verbose
+    install/
+      paths.ts            ← install root and component paths
+      detect.ts           ← local/upstream version discovery
+      versioning.ts       ← compare installed vs upstream versions
+      installer.ts        ← Apex/LWC download + install routines
+      state.ts            ← decline/installed prompt state persistence
+      orchestrator.ts     ← session_start prompt + background install flow
   tests/
     smoke.test.ts         ← module export check
     file-classify.test.ts ← file classification and path resolution
     feedback.test.ts      ← red/green logic and LLM text rendering
     activity.test.ts      ← pure activity store transitions
     transcript.test.ts    ← shouldEmitTranscriptRow policy
+    install-detect.test.ts ← local/upstream version detection
+    install-state.test.ts  ← prompt decision persistence
+    install-versioning.test.ts ← latest-vs-installed comparison
 ```
 
 Shared with sf-devbar:

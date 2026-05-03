@@ -92,17 +92,27 @@ extensions/sf-pi-manager/
   manifest.json             ← metadata (source of truth for catalog)
   README.md                 ← this file
   lib/
-    overlay.ts              ← TUI overlay component with list + detail/config drill-down
-    config-panel.ts         ← display-profile settings panel hosted by the manager
-    extension-details.ts    ← status labels + repo path metadata for the detail page
-    settings.ts             ← settings.json path + JSON helpers
-    package-state.ts        ← package discovery + exclusion pattern read/write
+    overlay.ts                  ← TUI overlay component with list + detail/config drill-down
+    config-panel.ts             ← display-profile settings panel hosted by the manager
+    extension-details.ts        ← status labels + repo path metadata for the detail page
+    settings.ts                 ← settings.json path + JSON helpers
+    package-state.ts            ← package discovery + exclusion pattern read/write
+    recommendations.ts          ← recommendation manifest/state helpers
+    recommendations-overlay.ts  ← checklist UI for recommended extensions
+    recommendations-install.ts  ← pi install/remove command helpers
+    announcements.ts            ← /sf-pi announcements list/dismiss/reset
+    skill-sources-command.ts    ← /sf-pi skills command routing
+    skill-sources-overlay.ts    ← external skill-root checklist UI
+    render.ts                   ← shared text/table rendering helpers
   tests/
-    package-detection.test.ts   ← matchesPackageSource, findSfPiPackageEntry
-    extension-state.test.ts     ← buildExtensionStates, getDisabledExtensions
-    extension-details.test.ts   ← detail page status labels + bundle metadata
-    package-state.test.ts       ← project/global precedence for package filters
-    command-parsing.test.ts     ← parseCommandArgs edge cases
+    package-detection.test.ts      ← matchesPackageSource, findSfPiPackageEntry
+    extension-state.test.ts        ← buildExtensionStates, getDisabledExtensions
+    extension-details.test.ts      ← detail page status labels + bundle metadata
+    package-state.test.ts          ← project/global precedence for package filters
+    command-parsing.test.ts        ← parseCommandArgs edge cases
+    recommendations-*.test.ts      ← manifest/state/install command contracts
+    announcements-command.test.ts  ← announcement command behavior
+    skill-sources.test.ts          ← external skill-root detection + settings writes
 ```
 
 ## Section Guide
@@ -114,19 +124,23 @@ extensions/sf-pi-manager/
 5. **Types** — command args, overlay result, extension state
 6. **Entry point** — command registration + session_start hook
 7. **Command routing** — `parseCommandArgs`, `handleCommand`
-8. **Command handlers** — overlay, list, toggle, status, help
-9. **Footer status** — active extension count display
+8. **Command handlers** — overlay, list, toggle, display, recommendations, announcements, skills, status, help
+9. **Footer status** — active extension count display plus recommendation / announcement nudges
 10. **Extension state helpers** — `buildExtensionStates`, footer summary
 11. **Settings I/O** — `lib/settings.ts`
 12. **Package entry discovery** — `lib/package-state.ts`
 13. **Extension state read/write** — `lib/package-state.ts`
 14. **TUI Overlay** — `SfPiOverlayComponent` with list/detail navigation
+15. **Recommended extensions** — manifest/state in `recommendations*.ts`
+16. **External skill roots** — `/sf-pi skills` in `skill-sources*.ts`
 
 ## Testing Strategy
 
 Tests cover exported pure helpers (package detection, extension state,
-project/global precedence, command parsing, detail metadata helpers). The TUI
-overlay and full command handlers are tested via manual QA.
+project/global precedence, command parsing, detail metadata helpers,
+recommendation state/install helpers, announcement commands, and external
+skill-root settings writes). The TUI overlays and full command handlers are
+tested via manual QA.
 
 To run: `npm test`
 

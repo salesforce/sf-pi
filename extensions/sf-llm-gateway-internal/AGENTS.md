@@ -9,7 +9,7 @@ Repo-level rules still apply; see root `AGENTS.md`.
 
 ## Read first
 
-1. `extensions/sf-llm-gateway-internal/README.md` — architecture + dual-provider design
+1. `extensions/sf-llm-gateway-internal/README.md` — unified-provider architecture + two-transport routing
 2. `extensions/sf-llm-gateway-internal/index.ts` header comment — configuration + behavior matrix
 3. `extensions/sf-llm-gateway-internal/lib/config.ts` — env vars, constants, saved-config schema
 4. `extensions/sf-llm-gateway-internal/lib/models.ts` — model presets, family inference, beta definitions
@@ -48,9 +48,10 @@ Repo-level rules still apply; see root `AGENTS.md`.
 1. **One provider, two transports.** Since R1·Unify the extension registers
    a single provider (`sf-llm-gateway-internal`). All models inherit the
    provider-level `api: "openai-completions"` so pi always calls the
-   provider's custom `streamSimple`. That dispatcher in `lib/discovery.ts`
-   detects Claude by model id, clones the model to `api: "anthropic-messages"`,
-   rewrites baseUrl to the gateway root, and forwards to the native Anthropic
+   provider's custom `streamSimple`. Claude models also get a per-model
+   `baseUrl` pinned to the gateway root; the dispatcher in `lib/discovery.ts`
+   detects Claude by model id, switches the request model to
+   `api: "anthropic-messages"`, and forwards to the native Anthropic
    transport. New model families follow the family-inference logic in
    `lib/models.ts`.
    The retired `sf-llm-gateway-internal-anthropic` id is only referenced

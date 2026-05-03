@@ -113,10 +113,10 @@ details and why each one is worth it.
 macOS, Linux, and WSL are the primary targets. Native Windows is
 best-effort; WSL is recommended. The minimum pi version tracks the
 `peerDependencies` range in [`package.json`](./package.json) (currently
-`>=0.70.3`). Older pi runtimes may work for individual extensions but
-are not tested; the shims in
-[`lib/common/pi-compat.ts`](./lib/common/pi-compat.ts) soften some
-missing-method failures.
+`>=0.72.0`). Older pi runtimes are not supported; the shims in
+[`lib/common/pi-compat.ts`](./lib/common/pi-compat.ts) fail gracefully with
+a one-line "run `pi update`" warning instead of letting extensions crash on
+missing runtime APIs.
 
 ## Announcements
 
@@ -230,7 +230,7 @@ Or cherry-pick individual packages with `/sf-pi recommended install <id>`.
 
 ### The default bundle
 
-All seven packages are **MIT**-licensed and install per-user (global
+All eight packages are **MIT**-licensed and install per-user (global
 scope) by default.
 
 | Extension                                                             | Why install it                                                                                                                                                                                        |
@@ -242,6 +242,7 @@ scope) by default.
 | **[`glimpseui`](https://github.com/hazat/glimpse)**                   | Cross-platform micro-UI for scripts and agents — native WebView windows for rich visual explainers, charts, and HTML previews without launching a full browser. Used by the `visual-explainer` skill. |
 | **[`pi-tool-display`](https://github.com/MasuRii/pi-tool-display)**   | Compact tool-call rendering, diff visualization, and output truncation. Significant quality-of-life boost for Salesforce workflows that inspect large metadata or log files.                          |
 | **[`pi-updater`](https://github.com/tonze/pi-updater)**               | Keeps pi itself current without manual `pi update --self` calls. Low-friction way to stay on the latest runtime sf-pi targets.                                                                        |
+| **[`pi-subagents`](https://github.com/nicobailon/pi-subagents)**      | Delegates work to single, chained, parallel, async, and forked-context subagents. Useful for advisory review, implementation handoffs, and larger planning flows.                                     |
 
 Full manifest with source URLs, license info, and per-item `rationale`
 strings: [`catalog/recommendations.json`](./catalog/recommendations.json).
@@ -353,6 +354,7 @@ Or configure directly inside pi with the built-in setup wizard:
 /sf-llm-gateway-internal refresh            # Re-discover models + refresh budget
 /sf-llm-gateway-internal set-default        # Set the scoped default model
 /sf-llm-gateway-internal models             # List discovered gateway models
+/sf-llm-gateway-internal debug <model>       # Inspect transformed upstream payload
 /sf-llm-gateway-internal beta               # Show beta header state
 /sf-llm-gateway-internal beta context-1m off # Toggle a beta header
 ```
@@ -369,7 +371,8 @@ invocation and is picked up by all sf-pi commands without any sf-pi change.
 export PI_CODING_AGENT_SESSION_DIR="$HOME/.pi-sessions"
 ```
 
-Older pi releases ignore the env var; use `--session-dir` instead.
+sf-pi requires pi `>=0.72.0`, so supported installations honor the env
+var; older pi releases should be updated before running current sf-pi.
 
 ## Adding a New Extension
 
@@ -416,8 +419,12 @@ npm run check
 # Run tests
 npm test
 
-# Full validation (generate + SPDX + format + check + test)
+# Full local validation (generate + SPDX + format + check + test)
 npm run validate
+
+# CI also runs ESLint and the LLM-artifact guard
+npm run lint
+bash scripts/check-llm-artifacts.sh
 ```
 
 ## How Enable/Disable Works

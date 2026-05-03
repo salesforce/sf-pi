@@ -2,11 +2,11 @@
 
 ## What It Does
 
-Salesforce-branded splash screen that displays on startup with a two-column layout:
+Salesforce-branded splash screen that displays on startup with an animated Pi + SALESFORCE wordmark and a two-column layout:
 
 **Left column:**
 
-- Gradient Pi logo (blue → cyan → purple, Salesforce brand palette)
+- Animated Pi + SALESFORCE wordmark with Salesforce-blue and pastel-rainbow palettes
 - Active model name and provider
 - Monthly cost usage line with color-coded progress (green → orange → red)
 - Lifetime usage line — per-key spend from the gateway, or a local session-file estimate for bring-your-own-keys users
@@ -138,6 +138,7 @@ extensions/sf-welcome/
     splash-data.ts           ← Aggregate splash payload + loaded counts + Slack check
     types.ts                 ← Shared splash data contracts
     session-data.ts          ← Recent sessions + monthly/lifetime cost estimation
+    recommendations-status.ts ← Pending recommended-extension summary for splash
     extension-health.ts      ← Registry-driven extension health discovery
     startup-mode.ts          ← quietStartup + --verbose precedence helper
     sf-environment.ts        ← Welcome adapter for shared SF environment detection
@@ -150,6 +151,7 @@ extensions/sf-welcome/
     (manifest + state loaders live in lib/common/catalog-state/ — shared with sf-pi-manager)
     state-store.ts           ← ~/.pi/agent/sf-welcome-state.json persistence
     font-installer.ts        ← /sf-setup-fonts installer (copy, sha-verify, cache refresh)
+  CREDITS.md                 ← Runtime + font attribution
   assets/
     fonts/                   ← Bundled MesloLGM Nerd Font Mono TTFs + OFL license
   tests/
@@ -160,7 +162,25 @@ extensions/sf-welcome/
     whats-new.test.ts          ← CHANGELOG parse, version compare, summarization
     state-store.test.ts        ← Persistent state roundtrip + corruption handling
     font-installer.test.ts     ← Install idempotency, sha verification, platform dispatch
+    lifetime-usage.test.ts     ← Session-file spend estimation
+    recommendations-status.test.ts ← Pending recommendation summary
+    announcements-*.test.ts    ← Manifest, merge/filter, update, state, orchestrator rules
+    sdk-migration.test.ts      ← Pi SDK compatibility guard coverage
 ```
+
+## Preview Tooling
+
+The splash header has small script-level previews so visual tweaks can be
+reviewed without launching a full pi session:
+
+```bash
+node scripts/preview-pi-salesforce.mjs
+node scripts/preview-sf-logo.mjs
+node scripts/render-splash-header.mjs
+```
+
+Use these only for local visual QA; runtime behavior still lives in
+`splash-component.ts` and is covered by the tests above.
 
 ## Persistent State
 
@@ -177,7 +197,8 @@ Run: `npm test`
 - **Smoke tests**: Module exports, component instantiation, render output shape
 - **Registry alignment tests**: Verifies extension health stays aligned with the generated registry
 - **Narrow terminal handling**: Verifies graceful empty output below minimum width
-- **Manual QA**: Full visual testing in terminal with `pi` (overlay rendering, countdown, dismissal)
+- **Announcements / recommendations**: Verifies bundled manifest loading, merge/filter rules, and splash summaries
+- **Manual QA**: Full visual testing in terminal with `pi` or the preview scripts above (overlay rendering, countdown, dismissal, animation)
 
 ## Troubleshooting
 

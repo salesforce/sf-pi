@@ -14,13 +14,13 @@
       "body": "sf-llm-gateway-internal: make gpt-5.5 agentic-safe"
     },
     {
-      "id": "pi-0.71-compat",
+      "id": "pi-0.72-required",
       "kind": "note",
       "severity": "info",
-      "title": "sf-pi is compatible with pi 0.71 (Gemini CLI / Antigravity removed)",
-      "publishedAt": "2026-05-01T00:00:00Z",
-      "minVersion": "0.20.2",
-      "body": "pi 0.71 removed built-in Gemini CLI and Antigravity providers. sf-pi does not use them, so upgrading pi is safe. Set PI_CODING_AGENT_SESSION_DIR to relocate session storage (pi ≥ 0.71)."
+      "title": "sf-pi requires pi 0.72 or newer",
+      "publishedAt": "2026-05-03T00:00:00Z",
+      "minVersion": "0.33.0",
+      "body": "Current sf-pi builds use pi 0.72 APIs for model thinking maps and per-model gateway routing. Run `pi update` before upgrading sf-pi; PI_CODING_AGENT_SESSION_DIR remains supported for relocating session storage."
     }
   ]
 }

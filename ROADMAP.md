@@ -13,22 +13,30 @@ design proposal and — ideally — a PR.
 - [x] Public CI (lint, typecheck, tests, coverage, SPDX, gitleaks, CodeQL)
 - [x] Dependabot for npm + GitHub Actions
 - [x] Governance, security, and contribution docs
-- [x] release-please automation
+- [x] release-please automation, including release-PR auto-merge hardening
+- [x] Agent-friendly validation output in `scripts/validate.sh`
+- [x] SPDX pre-commit / CI enforcement and LLM-artifact CI guard
 - [x] In-process Agent Script authoring companion (`sf-agentscript-assist`)
       with vendored SDK, deterministic quick fixes, and weekly upstream sync
 - [x] `slack_send` with human-in-the-loop confirm + audit trail
 - [x] Scope probing + dynamic tool gating for `sf-slack`
-- [x] Dual-provider routing (OpenAI-compat + native Anthropic) in the
-      internal LLM gateway
-- [x] Auto-generated catalog, command reference, and folder layout
-      (drift-proof docs via `npm run generate-catalog`)
+- [x] Unified one-provider gateway design with OpenAI-compat + native
+      Anthropic transport routing in `sf-llm-gateway-internal`
+- [x] pi `>=0.72.0` runtime floor with per-model thinking/baseUrl support
+- [x] Auto-generated catalog, command reference, troubleshooting index, and
+      folder layout (drift-proof docs via `npm run generate-catalog`)
 - [x] First-boot auto-install for Apex + LWC language servers
       (`/sf-lsp install`, async prompt on `session_start`, always-latest
       upstream tracking, Windows prints manual steps)
+- [x] Announcements panel and update nudge in `sf-welcome` / `sf-pi-manager`
+- [x] `/sf-pi skills` external skill-root wiring for Claude Code, Codex, and Cursor
+- [x] Recommended external-extension bundle, including `pi-subagents`
+- [x] Static public splash screenshot in the root README
+- [x] Animated Pi + SALESFORCE splash wordmark with local preview scripts
 
 ## Now (0.x — pre-1.0)
 
-- [ ] Public screenshots / animated GIF of the TUI + splash
+- [ ] Animated GIF / short terminal capture of the TUI + splash
 - [ ] Ratchet coverage floor toward 60%
 - [ ] Clean up remaining ESLint warnings (unused vars, no-explicit-any)
 - [ ] `NO_COLOR=1` support across splash, spinner, devbar

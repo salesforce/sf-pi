@@ -62,15 +62,11 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
   gone; both use the real `ProviderConfig` / event typings from
   `@mariozechner/pi-coding-agent`.
 
-### Notes
-
-- Pi 0.72 also introduces `shouldStopAfterTurn` (post-turn stop callback
-  inherited from `@mariozechner/pi-agent-core`). No sf-pi extension needs
-  it today; it is available to any future extension that wants to exit
-  the agent loop gracefully after a completed turn.
-
-### Features
-
+- **Pi 0.72 stop-after-turn availability.** Pi 0.72 also introduces
+  `shouldStopAfterTurn` (post-turn stop callback inherited from
+  `@mariozechner/pi-agent-core`). No sf-pi extension needs it today; it is
+  available to any future extension that wants to exit the agent loop
+  gracefully after a completed turn.
 - **sf-llm-gateway-internal: unified one-provider, one-`/login`-row design
   with paste-token flow.** Previously the gateway registered two pi
   providers (`sf-llm-gateway-internal` for GPT/Gemini/Codex and
@@ -92,16 +88,15 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
   (`defaultProvider`, `defaultModel`, `enabledModels`). Idempotent via a
   `sfPi.gatewayUnifyMigrated` sentinel, so the migrator runs at most once
   per settings file. Env-var users (`SF_LLM_GATEWAY_INTERNAL_API_KEY`) and
-  existing saved-config users are not affected. peerDependencies floor
-  stays at pi 0.70.3.
+  existing saved-config users are not affected. Current sf-pi builds require
+  pi `>=0.72.0`; see the breaking-change note above.
 
 - **sf-devbar: instant thinking-badge repaint on `thinking_level_select`
-  (pi ≥ 0.71).** pi 0.71 emits `thinking_level_select` whenever the user
-  flips thinking level via shortcut, settings, or model clamp. Previously
-  the devbar only refreshed the rainbow badge on the next turn boundary,
-  leaving it visibly stale while idle. Backward-compatible: pi 0.70.x
-  never emits the event, and pi's extension loader stores unknown-event
-  handlers as a no-op.
+  (pi ≥ 0.71).** pi emits `thinking_level_select` whenever the user flips
+  thinking level via shortcut, settings, or model clamp. Previously the
+  devbar only refreshed the rainbow badge on the next turn boundary,
+  leaving it visibly stale while idle. Current sf-pi builds require pi
+  `>=0.72.0`; see the breaking-change note above.
 
 ### Bug Fixes
 
@@ -119,10 +114,11 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ### Notes
 
-- **pi 0.71 compatibility.** pi 0.71 removed built-in Google Gemini CLI
-  and Antigravity providers. sf-pi does not use either, so upgrading pi
-  is safe. Added a `PI_CODING_AGENT_SESSION_DIR` pointer in the README
-  for users who want to relocate session storage (pi ≥ 0.71 only).
+- **pi 0.71+ session storage note.** pi 0.71 removed built-in Google Gemini
+  CLI and Antigravity providers; sf-pi does not use either. The README also
+  documents `PI_CODING_AGENT_SESSION_DIR` for users who want to relocate
+  session storage. Current sf-pi builds require pi `>=0.72.0`; see the
+  breaking-change note above.
 
 - **sf-welcome + sf-pi-manager: announcements panel and update nudge.**
   sf-pi now surfaces maintainer announcements and a non-intrusive
