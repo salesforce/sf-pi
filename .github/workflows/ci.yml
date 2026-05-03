@@ -245,6 +245,47 @@ jobs:
           echo "::error::gitleaks did not complete within the wait window; aborting merge."
           exit 1
 
+      - name: Mirror required check-runs to commit statuses
+        if: steps.pr.outputs.pr_number != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEAD_SHA: ${{ steps.ctx.outputs.sha }}
+        # Release-please PR checks are workflow_dispatch runs on the release
+        # branch. GitHub branch rules sometimes do not attach those check-runs
+        # to the PR's required-status evaluation, even though they are present
+        # on the head SHA. Mirror each required check-run as a commit status
+        # with the exact same context so the ruleset can evaluate it reliably.
+        run: |
+          set -euo pipefail
+          CHECKS_JSON=$(gh api \
+            -H "Accept: application/vnd.github+json" \
+            "repos/$GITHUB_REPOSITORY/commits/$HEAD_SHA/check-runs?per_page=100")
+
+          post_status() {
+            local context="$1"
+            local url
+            url=$(echo "$CHECKS_JSON" | jq -r --arg name "$context" \
+              '.check_runs[] | select(.name == $name and .conclusion == "success") | .details_url' | head -1)
+            if [ -z "$url" ]; then
+              echo "::error::Missing successful check-run for required context '$context' on $HEAD_SHA"
+              exit 1
+            fi
+            gh api -X POST "repos/$GITHUB_REPOSITORY/statuses/$HEAD_SHA" \
+              -f state=success \
+              -f context="$context" \
+              -f description="Satisfied by release-please dispatched checks" \
+              -f target_url="$url" >/dev/null
+            echo "mirrored $context -> $url"
+          }
+
+          post_status "Validate"
+          post_status "npm audit (production)"
+          post_status "commitlint"
+          post_status "gitleaks"
+          post_status "actionlint"
+          post_status "Require SHA-pinned actions"
+          post_status "License scan (production deps)"
+
       - name: Enable auto-merge on release PR
         if: steps.pr.outputs.pr_number != ''
         env:
