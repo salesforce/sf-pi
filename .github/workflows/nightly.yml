@@ -52,6 +52,7 @@ jobs:
           files: ./coverage/lcov.info
           flags: unittests
           fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
 
   latest-pi-compat:
     name: Latest Pi SDK compatibility
