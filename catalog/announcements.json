@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.27.6-2026-05-02",
-  "latestVersion": "0.27.6",
+  "revision": "release-0.28.0-2026-05-03",
+  "latestVersion": "0.28.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.27.6",
+      "id": "release-0.28.0",
       "kind": "update",
-      "title": "sf-pi v0.27.6 — sf-slack: serialize slack_resolve clarify dialogs across parallel calls",
-      "publishedAt": "2026-05-02T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.27.6",
+      "title": "sf-pi v0.28.0 — sf-lsp: first-boot auto-install for Apex + LWC language servers",
+      "publishedAt": "2026-05-03T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.28.0",
       "severity": "info",
-      "body": "sf-slack: serialize slack_resolve clarify dialogs across parallel calls"
+      "body": "sf-lsp: first-boot auto-install for Apex + LWC language servers"
     },
     {
       "id": "pi-0.71-compat",
