@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.33.1-2026-05-03",
-  "latestVersion": "0.33.1",
+  "revision": "release-0.34.0-2026-05-03",
+  "latestVersion": "0.34.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.33.1",
+      "id": "release-0.34.0",
       "kind": "update",
-      "title": "sf-pi v0.33.1 — sf-llm-gateway-internal: make gpt-5.5 agentic-safe",
+      "title": "sf-pi v0.34.0 — docs: automate documentation health checks",
       "publishedAt": "2026-05-03T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.33.1",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.34.0",
       "severity": "info",
-      "body": "sf-llm-gateway-internal: make gpt-5.5 agentic-safe"
+      "body": "docs: automate documentation health checks"
     },
     {
       "id": "pi-0.72-required",
