@@ -365,6 +365,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.31.1](https://github.com/salesforce/sf-pi/compare/v0.31.0...v0.31.1) (2026-05-03)
+
+
+### Bug Fixes
+
+* **ci:** add SPDX header to render-splash-header.mjs ([96b64ea](https://github.com/salesforce/sf-pi/commit/96b64ea73938942db9070b36996ccf7935daa2d3))
+
 ## [0.31.0](https://github.com/salesforce/sf-pi/compare/v0.30.0...v0.31.0) (2026-05-03)
 
 

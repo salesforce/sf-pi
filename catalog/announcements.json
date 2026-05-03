@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.31.0-2026-05-03",
-  "latestVersion": "0.31.0",
+  "revision": "release-0.31.1-2026-05-03",
+  "latestVersion": "0.31.1",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.31.0",
+      "id": "release-0.31.1",
       "kind": "update",
-      "title": "sf-pi v0.31.0 — sf-welcome: Pi + SF brand mark with Salesforce Headless 360 caption",
+      "title": "sf-pi v0.31.1 — ci: add SPDX header to render-splash-header.mjs",
       "publishedAt": "2026-05-03T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.31.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.31.1",
       "severity": "info",
-      "body": "sf-welcome: Pi + SF brand mark with Salesforce Headless 360 caption"
+      "body": "ci: add SPDX header to render-splash-header.mjs"
     },
     {
       "id": "pi-0.71-compat",
