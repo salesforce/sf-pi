@@ -49,16 +49,22 @@ read the jokes; too slow and it gets stale.
 
 ## File Structure
 
+<!-- GENERATED:file-structure:start -->
+
 ```
 extensions/sf-ohana-spinner/
-  index.ts              ← entry point (event handlers + rainbow renderer)
-  manifest.json         ← metadata
-  README.md             ← this file
   lib/
-    messages.ts         ← message catalog (pure data)
+    messages.ts             ← implementation module
+    rainbow.ts              ← implementation module
   tests/
-    smoke.test.ts       ← module export + message catalog tests
+    smoke.test.ts           ← unit / smoke test
+  CREDITS.md                ← extension attribution
+  index.ts                  ← Pi extension entry point
+  manifest.json             ← source-of-truth extension metadata
+  README.md                 ← human + agent walkthrough
 ```
+
+<!-- GENERATED:file-structure:end -->
 
 ## Testing Strategy
 

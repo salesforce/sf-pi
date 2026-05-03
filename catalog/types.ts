@@ -69,6 +69,19 @@ export interface SfPiExtension {
 // Manifest schema (matches extensions/*/manifest.json)
 // -------------------------------------------------------------------------------------------------
 
+export interface ExtensionManifestDocs {
+  /** Longer human-facing summary for generated orientation docs. */
+  summary?: string;
+  /** Files agents should usually read first for this extension. */
+  primaryFiles?: string[];
+  /** User/global/project state files this extension reads or writes. */
+  stateFiles?: string[];
+  /** Environment variables this extension recognizes. */
+  env?: string[];
+  /** Safety invariants worth surfacing in generated docs. */
+  safety?: string[];
+}
+
 export interface ExtensionManifest {
   id: string;
   name: string;
@@ -81,6 +94,7 @@ export interface ExtensionManifest {
   providers?: string[];
   tools?: string[];
   events?: string[];
+  docs?: ExtensionManifestDocs;
 }
 
 // -------------------------------------------------------------------------------------------------

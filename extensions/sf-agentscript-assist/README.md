@@ -117,34 +117,43 @@ The precedence check is a single lookup against `pi.getCommands()` in
 sf-lsp — no hardcoded extension IDs, no shared state, no ordering
 assumptions.
 
+## Behavior Matrix
+
+| Event/Trigger                         | Condition                     | Result                                   |
+| ------------------------------------- | ----------------------------- | ---------------------------------------- |
+| tool_result                           | `.agent` write/edit completed | Compile source, append diagnostics/fixes |
+| tool_result                           | file is not `.agent`          | Stay silent                              |
+| tool_result                           | SDK unavailable               | Emit one setup note, then stay quiet     |
+| `/sf-agentscript-assist`              | no args or `doctor`           | Show SDK load status and vendored path   |
+| `/sf-agentscript-assist check <file>` | `.agent` file exists          | Run one manual diagnostic pass           |
+
 ## File Structure
+
+<!-- GENERATED:file-structure:start -->
 
 ```
 extensions/sf-agentscript-assist/
-  index.ts                ← entry: tool_result hook + /sf-agentscript-assist
-  manifest.json           ← metadata (catalog source of truth)
-  README.md               ← this file
   lib/
-    types.ts              ← local types we surface (AgentScriptDiagnostic, …)
-    sdk.ts                ← lazy import + cache of vendored SDK
-    file-classify.ts      ← .agent detection and tool path resolution
-    diagnostics.ts        ← parse + compile + actionability filter
-    code-actions.ts       ← deterministic quick fix builders
-    feedback.ts           ← red/green rendering + session state
-    doctor.ts             ← /sf-agentscript-assist doctor probe + render
-    vendor/
-      agentforce/         ← vendored @agentscript/agentforce dist
-        browser.js          single-file ESM bundle (no runtime deps)
-        browser.js.map      source map
-        index.d.ts          bundled TypeScript declarations
-        UPSTREAM.md         commit SHA, version, Apache-2.0 attribution
+    code-actions.ts         ← implementation module
+    diagnostics.ts          ← implementation module
+    doctor.ts               ← implementation module
+    feedback.ts             ← implementation module
+    file-classify.ts        ← implementation module
+    sdk.ts                  ← implementation module
+    types.ts                ← implementation module
   tests/
-    smoke.test.ts
-    file-classify.test.ts
-    code-actions.test.ts
-    feedback.test.ts
-    diagnostics.test.ts
+    code-actions.test.ts    ← unit / smoke test
+    diagnostics.test.ts     ← unit / smoke test
+    feedback.test.ts        ← unit / smoke test
+    file-classify.test.ts   ← unit / smoke test
+    smoke.test.ts           ← unit / smoke test
+  CREDITS.md                ← extension attribution
+  index.ts                  ← Pi extension entry point
+  manifest.json             ← source-of-truth extension metadata
+  README.md                 ← human + agent walkthrough
 ```
+
+<!-- GENERATED:file-structure:end -->
 
 ## Vendoring
 

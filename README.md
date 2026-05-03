@@ -419,12 +419,15 @@ npm run check
 # Run tests
 npm test
 
-# Full local validation (generate + SPDX + format + check + test)
+# Full local validation (generate + docs health + SPDX + format + check + test)
 npm run validate
 
-# CI also runs ESLint and the LLM-artifact guard
-npm run lint
-bash scripts/check-llm-artifacts.sh
+# CI-like local validation, including ESLint and the LLM-artifact guard
+npm run validate:ci
+
+# Documentation drift helpers
+npm run docs:health:check
+npm run docs:changed
 ```
 
 ## How Enable/Disable Works
@@ -450,8 +453,8 @@ Delete `node_modules` and reinstall with `npm ci`.
 
 **Generated docs say they're out of date (`npm run generate-catalog:check` fails):**
 Run `npm run generate-catalog` and commit the refreshed `catalog/*`,
-`docs/commands.md`, and the generated marker blocks inside
-`README.md` / `ARCHITECTURE.md`.
+`docs/commands.md`, `docs/agent-orientation.md`, and the generated marker
+blocks inside `README.md` / `ARCHITECTURE.md` / `extensions/*/README.md`.
 
 ### Per-extension index
 

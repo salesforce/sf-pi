@@ -93,6 +93,10 @@ function manifestJson(id, name, category) {
         description: `TODO: Describe ${name}`,
         category,
         defaultEnabled: true,
+        docs: {
+          summary: `TODO: Describe ${name} for generated orientation docs`,
+          primaryFiles: ["index.ts"],
+        },
       },
       null,
       2,
@@ -127,19 +131,28 @@ TODO: Explain why things are built the way they are.
 
 ## File Structure
 
+<!-- GENERATED:file-structure:start -->
+
 \`\`\`
 extensions/${id}/
-  index.ts              ← entry point
-  manifest.json         ← metadata
-  README.md             ← this file
-  lib/                  ← implementation modules
+  index.ts              ← Pi extension entry point
+  manifest.json         ← source-of-truth extension metadata
+  README.md             ← human + agent walkthrough
+  lib/
   tests/
-    smoke.test.ts       ← basic smoke test
+    smoke.test.ts       ← unit / smoke test
 \`\`\`
+
+<!-- GENERATED:file-structure:end -->
 
 ## Testing Strategy
 
 Run: \`npm test\`
+
+## Troubleshooting
+
+**TODO symptom:**
+TODO fix.
 `;
 }
 

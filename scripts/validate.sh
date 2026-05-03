@@ -32,6 +32,9 @@ node scripts/generate-catalog.mjs
 banner "SPDX header check"
 node scripts/add-spdx-headers.mjs --check
 
+banner "Docs health check"
+node scripts/docs-health.mjs --check
+
 banner "Format check"
 npx prettier --check --log-level=warn .
 

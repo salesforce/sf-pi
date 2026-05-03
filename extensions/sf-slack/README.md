@@ -431,72 +431,72 @@ returns full bodies regardless of the shared display profile.
 
 ## File Structure
 
+<!-- GENERATED:file-structure:start -->
+
 ```
 extensions/sf-slack/
-  index.ts              ← entry point: events, commands, provider, all tool registration
-  manifest.json         ← metadata (configurable: true)
-  README.md             ← this file
   lib/
-    types.ts            ← constants, env vars, all 9 parameter schemas, result types
-    auth.ts             ← token resolution chain, Pi auth / Keychain / env helpers, OAuth login/refresh
-    api.ts              ← slackApi(), slackApiJson(), user cache, timestamp/error helpers
-    format.ts           ← text formatters for all tools + auth status (honors fields mode)
-    render.ts           ← TUI renderCall/renderResult for slack tool + mrkdwn→ANSI (collapsed/expanded + OSC 8)
-    emoji.ts            ← Slack emoji shortcode ↔ unicode helpers used by render/format
-    tools.ts            ← registerSlackTool() — search/thread/history/permalink/auth
-    time-range.ts       ← deterministic timezone/date math for Slack boundaries
-    time-range-tool.ts  ← registerTimeRangeTool() — slack_time_range
-    resolve.ts          ← fuzzy channel/user resolver with confidence scoring
-    search-plan.ts      ← Slack search operator planner and fallback query builder
-    resolve-tool.ts     ← registerResolveTool() — channel/user resolution
-    research-tool.ts    ← registerResearchTool() — operator-aware Slack research
-    channel-tool.ts     ← registerChannelTool() — info/list/members with scope fallbacks
-    user-tool.ts        ← registerUserTool() — info/email/presence/list
-    file-tool.ts        ← registerFileTool() — info/list
-    canvas-tool.ts      ← registerCanvasTool() — read/create/edit
-    send-tool.ts        ← registerSendTool() — slack_send (HITL confirm + audit)
-    recipient-confirm.ts← shared HITL helper: requireConfirmedChannel / requireConfirmedUser
-    truncation.ts       ← Pi truncation helpers + temp-file persistence for long outputs
-    scope-probe.ts      ← probeAndGateTools() — runtime scope detection + tool gating
-    config-panel.ts     ← config panel component for Extension Manager drill-down
-    preferences.ts      ← in-memory + pi.appendEntry-backed user prefs (fields, widget, permalinks)
-    settings-panel.ts   ← `/sf-slack settings` SettingsList overlay
-    stats.ts            ← per-session research-activity counters and widget rendering
+    api.ts                  ← implementation module
+    auth.ts                 ← implementation module
+    canvas-tool.ts          ← implementation module
+    channel-tool.ts         ← implementation module
+    config-panel.ts         ← implementation module
+    emoji.ts                ← implementation module
+    file-tool.ts            ← implementation module
+    format.ts               ← implementation module
+    preferences.ts          ← implementation module
+    recipient-confirm.ts    ← implementation module
+    render.ts               ← implementation module
+    research-tool.ts        ← implementation module
+    resolve-tool.ts         ← implementation module
+    resolve.ts              ← implementation module
+    scope-probe.ts          ← implementation module
+    search-plan.ts          ← implementation module
+    send-tool.ts            ← implementation module
+    settings-panel.ts       ← implementation module
+    stats.ts                ← implementation module
+    time-range-tool.ts      ← implementation module
+    time-range.ts           ← implementation module
+    tools.ts                ← implementation module
+    truncation.ts           ← implementation module
+    types.ts                ← implementation module
+    user-tool.ts            ← implementation module
   tests/
-    smoke.test.ts                    ← module export check
-    auth.test.ts                     ← token parsing, precedence helpers, masking, expiry formatting
-    auth-status.test.ts              ← buildAuthStatus rendering across auth sources
-    format.test.ts                   ← search results, messages, structured extractors
-    field-modes.test.ts              ← summary/preview/full body trimming contract
-    extra-format.test.ts             ← channel, user, file formatters
-    api.test.ts                      ← clampLimit, tsToLabel, relativeTime, error summarization
-    tools.test.ts                    ← tool module export checks (channel, user, file, canvas)
-    send-tool.test.ts                ← slack_send HITL + safety rail coverage
-    recipient-confirm.test.ts        ← shared HITL helper thresholds + retry loop
-    canvas-preflight.test.ts         ← canvas read/create/edit fallback paths
-    render-helpers.test.ts           ← collapsed preview clipping + OSC 8 permalinks
-    render-snapshot.test.ts          ← stable render output snapshots
-    preferences-stats.test.ts        ← preferences sanitize + stats counters
-    scope-probe.test.ts              ← scope probe module export check
-    resolve.test.ts                  ← resolver helper tests
-    search-plan.test.ts              ← search operator planner tests
-    time-range.test.ts               ← deterministic Slack time-range normalization
-    channel-cache-from-search.test.ts← channel cache population via search fallback
-    channel-types-default.test.ts    ← default types filter for conversations.list
-    user-cache-from-search.test.ts   ← user cache population via search fallback
-    registration-gate.test.ts        ← tool registration only after token resolves
-    emoji.test.ts                    ← shortcode ↔ unicode round-trip
-    prompt-surface.test.ts           ← system-prompt injection contract
-    system-prompt-options.test.ts    ← before_agent_start skip conditions
-    truncation.test.ts               ← long-output temp-file persistence
-  roadmap/
-    01-channel-tool.md  ← ✅ Implemented
-    02-user-tool.md     ← ✅ Implemented
-    03-file-tool.md     ← ✅ Implemented
-    04-canvas-tool.md   ← ✅ Implemented
-    05-scope-probing.md ← ✅ Implemented
-    06-agent-context.md ← ✅ Implemented
+    api.test.ts             ← unit / smoke test
+    auth-status.test.ts     ← unit / smoke test
+    auth.test.ts            ← unit / smoke test
+    canvas-preflight.test.ts← unit / smoke test
+    channel-cache-from-search.test.ts← unit / smoke test
+    channel-types-default.test.ts← unit / smoke test
+    emoji.test.ts           ← unit / smoke test
+    extra-format.test.ts    ← unit / smoke test
+    field-modes.test.ts     ← unit / smoke test
+    format.test.ts          ← unit / smoke test
+    preferences-stats.test.ts← unit / smoke test
+    prompt-surface.test.ts  ← unit / smoke test
+    recipient-confirm.test.ts← unit / smoke test
+    registration-gate.test.ts← unit / smoke test
+    render-helpers.test.ts  ← unit / smoke test
+    render-snapshot.test.ts ← unit / smoke test
+    resolve-tool-clarify-gate.test.ts← unit / smoke test
+    resolve.test.ts         ← unit / smoke test
+    scope-probe.test.ts     ← unit / smoke test
+    search-plan.test.ts     ← unit / smoke test
+    send-tool.test.ts       ← unit / smoke test
+    smoke.test.ts           ← unit / smoke test
+    system-prompt-options.test.ts← unit / smoke test
+    time-range.test.ts      ← unit / smoke test
+    tools.test.ts           ← unit / smoke test
+    truncation.test.ts      ← unit / smoke test
+    user-cache-from-search.test.ts← unit / smoke test
+  AGENTS.md                 ← extension-specific agent editing rules
+  CREDITS.md                ← extension attribution
+  index.ts                  ← Pi extension entry point
+  manifest.json             ← source-of-truth extension metadata
+  README.md                 ← human + agent walkthrough
 ```
+
+<!-- GENERATED:file-structure:end -->
 
 ## Testing Strategy
 

@@ -16,14 +16,16 @@ If you have just landed in this repo, read in this order:
 1. [`catalog/index.json`](./catalog/index.json) — canonical list of every
    bundled extension with its id, category, commands, tools, events, and
    `srcLoc`. Tells you what exists and roughly how big each extension is.
-2. [`docs/commands.md`](./docs/commands.md) — every slash command grouped
+2. [`docs/agent-orientation.md`](./docs/agent-orientation.md) — generated
+   agent map of extensions, commands, tools, providers, and runtime surfaces.
+3. [`docs/commands.md`](./docs/commands.md) — every slash command grouped
    by extension, with default-enabled state. Generated from manifests.
-3. The specific extension's `README.md` — behavior, commands, runtime
-   flow, file structure.
-4. The extension's `AGENTS.md` if it exists — editing rules specific to
+4. The specific extension's `README.md` — behavior, commands, runtime
+   flow, generated file structure.
+5. The extension's `AGENTS.md` if it exists — editing rules specific to
    that extension.
-5. The extension's `index.ts` header comment — behavior matrix.
-6. The `lib/` module you're changing, then the matching test file.
+6. The extension's `index.ts` header comment — behavior matrix.
+7. The `lib/` module you're changing, then the matching test file.
 
 For shared code (used by multiple extensions), start at
 [`lib/common/README.md`](./lib/common/README.md).
@@ -36,6 +38,10 @@ For shared code (used by multiple extensions), start at
 - `README.md` — user-facing install and usage guide
 - `ROADMAP.md` — shipped / in-flight / non-goals
 - `docs/commands.md` — GENERATED per-extension command reference
+- `docs/agent-orientation.md` — GENERATED agent navigation map
+- `docs/human-orientation.md` — contributor-facing repo walkthrough
+- `docs/doc-ownership.json` — machine-readable doc source/check map
+- `docs/adr/` — architecture decision records for stable rationale
 - `catalog/index.json` — canonical machine-readable list of bundled extensions
 - `catalog/registry.ts` — generated TypeScript registry from manifests
 - `extensions/<id>/` — one self-contained extension per folder
@@ -43,6 +49,8 @@ For shared code (used by multiple extensions), start at
 - `extensions/<id>/ROADMAP.md` — optional per-extension phased roadmap
 - `lib/common/` — shared helpers (see its own `README.md`)
 - `scripts/generate-catalog.mjs` — regenerates the catalog + generated doc sections
+- `scripts/docs-health.mjs` — checks doc drift contracts and public-safe examples
+- `scripts/docs-changed.mjs` — summarizes docs impacted by a diff
 - `scripts/scaffold.mjs` — scaffolds a new extension
 
 ## Source of truth
@@ -151,13 +159,15 @@ Several doc sections are **generated** from `extensions/*/manifest.json`
 to prevent drift. Never edit inside these marker pairs; edit the
 manifest instead and rerun `npm run generate-catalog`.
 
-| File                  | Generated section                                                  |
-| --------------------- | ------------------------------------------------------------------ |
-| `catalog/registry.ts` | entire file                                                        |
-| `catalog/index.json`  | entire file                                                        |
-| `README.md`           | bundled-extensions table, command reference, troubleshooting index |
-| `ARCHITECTURE.md`     | folder layout                                                      |
-| `docs/commands.md`    | entire file                                                        |
+| File                        | Generated section                                                  |
+| --------------------------- | ------------------------------------------------------------------ |
+| `catalog/registry.ts`       | entire file                                                        |
+| `catalog/index.json`        | entire file                                                        |
+| `README.md`                 | bundled-extensions table, command reference, troubleshooting index |
+| `ARCHITECTURE.md`           | folder layout                                                      |
+| `docs/commands.md`          | entire file                                                        |
+| `docs/agent-orientation.md` | entire file                                                        |
+| `extensions/*/README.md`    | file-structure marker block                                        |
 
 The root README troubleshooting index is auto-built from each extension's
 `## Troubleshooting` section by scanning for bolded question entries

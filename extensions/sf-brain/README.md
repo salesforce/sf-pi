@@ -85,19 +85,23 @@ to the bundled kernel silently.
 
 ## File Structure
 
+<!-- GENERATED:file-structure:start -->
+
 ```
 extensions/sf-brain/
-  index.ts              ← before_agent_start handler, one-shot injection
   lib/
-    kernel.ts           ← loadKernel() + override resolution + install stub
-  SF_KERNEL.md          ← canonical kernel body (single source of truth)
-  manifest.json         ← metadata
-  README.md             ← this file
+    kernel.ts               ← implementation module
   tests/
-    smoke.test.ts       ← default export shape
-    kernel.test.ts      ← loadKernel() snapshot across CLI states + override
-    injection.test.ts   ← "inject once per session" guard
+    injection.test.ts       ← unit / smoke test
+    kernel.test.ts          ← unit / smoke test
+    smoke.test.ts           ← unit / smoke test
+  index.ts                  ← Pi extension entry point
+  manifest.json             ← source-of-truth extension metadata
+  README.md                 ← human + agent walkthrough
+  SF_KERNEL.md              ← supporting file
 ```
+
+<!-- GENERATED:file-structure:end -->
 
 ## Testing Strategy
 

@@ -17,6 +17,7 @@
       "session_shutdown",
       "tool_result"
     ],
+    "docs": {},
     "entry": "extensions/sf-agentscript-assist/index.ts",
     "hasReadme": true,
     "hasTests": true,
@@ -36,6 +37,7 @@
     "events": [
       "before_agent_start"
     ],
+    "docs": {},
     "entry": "extensions/sf-brain/index.ts",
     "hasReadme": true,
     "hasTests": true,
@@ -65,6 +67,7 @@
       "agent_end",
       "before_agent_start"
     ],
+    "docs": {},
     "entry": "extensions/sf-devbar/index.ts",
     "hasReadme": true,
     "hasTests": true,
@@ -89,6 +92,7 @@
       "before_agent_start",
       "tool_call"
     ],
+    "docs": {},
     "entry": "extensions/sf-guardrail/index.ts",
     "hasReadme": true,
     "hasTests": true,
@@ -116,6 +120,7 @@
       "after_provider_response",
       "session_shutdown"
     ],
+    "docs": {},
     "entry": "extensions/sf-llm-gateway-internal/index.ts",
     "hasReadme": true,
     "hasTests": true,
@@ -139,6 +144,7 @@
       "session_shutdown",
       "tool_result"
     ],
+    "docs": {},
     "entry": "extensions/sf-lsp/index.ts",
     "hasReadme": true,
     "hasTests": true,
@@ -159,6 +165,7 @@
       "session_start",
       "session_shutdown"
     ],
+    "docs": {},
     "entry": "extensions/sf-ohana-spinner/index.ts",
     "hasReadme": true,
     "hasTests": true,
@@ -184,6 +191,7 @@
       "session_start",
       "session_shutdown"
     ],
+    "docs": {},
     "entry": "extensions/sf-pi-manager/index.ts",
     "hasReadme": true,
     "hasTests": true,
@@ -209,6 +217,7 @@
       "session_compact",
       "session_shutdown"
     ],
+    "docs": {},
     "entry": "extensions/sf-skills-hud/index.ts",
     "hasReadme": true,
     "hasTests": true,
@@ -244,6 +253,7 @@
       "session_shutdown",
       "before_agent_start"
     ],
+    "docs": {},
     "entry": "extensions/sf-slack/index.ts",
     "hasReadme": true,
     "hasTests": true,
@@ -268,6 +278,7 @@
       "agent_start",
       "tool_call"
     ],
+    "docs": {},
     "entry": "extensions/sf-welcome/index.ts",
     "hasReadme": true,
     "hasTests": true,

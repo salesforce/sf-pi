@@ -83,19 +83,24 @@ its usage is still present in the active context. Older skill usage moves to the
 
 ## File Structure
 
-```text
-extensions/sf-skills-hud/
-  index.ts                 ← entry point, overlay lifecycle, /sf-skills command
-  manifest.json            ← metadata
-  README.md                ← this file
-  ROADMAP.md               ← future work for Phase 2+
-  lib/
-    hud-component.ts       ← passive top-right HUD renderer
-    skill-state.ts         ← branch/context reconstruction for live vs earlier
-  tests/
-    smoke.test.ts          ← import smoke test
-    skill-state.test.ts    ← compaction + detection unit tests
+<!-- GENERATED:file-structure:start -->
+
 ```
+extensions/sf-skills-hud/
+  lib/
+    hud-component.ts        ← implementation module
+    skill-state.ts          ← implementation module
+  tests/
+    skill-state.test.ts     ← unit / smoke test
+    smoke.test.ts           ← unit / smoke test
+  CREDITS.md                ← extension attribution
+  index.ts                  ← Pi extension entry point
+  manifest.json             ← source-of-truth extension metadata
+  README.md                 ← human + agent walkthrough
+  ROADMAP.md                ← extension-specific phased roadmap
+```
+
+<!-- GENERATED:file-structure:end -->
 
 ## Testing Strategy
 

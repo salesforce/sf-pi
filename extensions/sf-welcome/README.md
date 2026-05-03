@@ -129,44 +129,53 @@ Dismissal triggers:
 
 ## File Structure
 
+<!-- GENERATED:file-structure:start -->
+
 ```
 extensions/sf-welcome/
-  index.ts                   ← Entry point, event handlers, overlay/header setup
-  manifest.json              ← Metadata
-  README.md                  ← This file
-  lib/
-    splash-data.ts           ← Aggregate splash payload + loaded counts + Slack check
-    types.ts                 ← Shared splash data contracts
-    session-data.ts          ← Recent sessions + monthly/lifetime cost estimation
-    recommendations-status.ts ← Pending recommended-extension summary for splash
-    extension-health.ts      ← Registry-driven extension health discovery
-    startup-mode.ts          ← quietStartup + --verbose precedence helper
-    sf-environment.ts        ← Welcome adapter for shared SF environment detection
-    splash-component.ts      ← TUI components (SfWelcomeOverlay, SfWelcomeHeader)
-    whats-new.ts             ← CHANGELOG.md parser + version-aware summarizer
-    announcements.ts         ← Orchestrator: bundled + remote + update-nudge
-    announcements-filter.ts  ← Pure merge/filter/sort rules (dismiss, expiry, version)
-    announcements-remote.ts  ← Optional feed fetch (timeout, ETag, silent-fail)
-    announcements-update.ts  ← Synthetic "update available" builder
-    (manifest + state loaders live in lib/common/catalog-state/ — shared with sf-pi-manager)
-    state-store.ts           ← ~/.pi/agent/sf-welcome-state.json persistence
-    font-installer.ts        ← /sf-setup-fonts installer (copy, sha-verify, cache refresh)
-  CREDITS.md                 ← Runtime + font attribution
   assets/
-    fonts/                   ← Bundled MesloLGM Nerd Font Mono TTFs + OFL license
+    fonts/
+      LICENSE               ← bundled asset metadata
+      SOURCE.md             ← bundled asset metadata
+  lib/
+    announcements-filter.ts ← implementation module
+    announcements-remote.ts ← implementation module
+    announcements-update.ts ← implementation module
+    announcements.ts        ← implementation module
+    extension-health.ts     ← implementation module
+    font-installer.ts       ← implementation module
+    recommendations-status.ts← implementation module
+    session-data.ts         ← implementation module
+    sf-environment.ts       ← implementation module
+    splash-component.ts     ← implementation module
+    splash-data.ts          ← implementation module
+    startup-mode.ts         ← implementation module
+    state-store.ts          ← implementation module
+    types.ts                ← implementation module
+    whats-new.ts            ← implementation module
   tests/
-    smoke.test.ts              ← Module export + render smoke tests
-    startup-mode.test.ts       ← quietStartup + --verbose precedence checks
-    extension-health.test.ts   ← Registry + settings precedence checks
-    sf-environment.test.ts     ← Shared-cache adapter + persisted snapshot behavior
-    whats-new.test.ts          ← CHANGELOG parse, version compare, summarization
-    state-store.test.ts        ← Persistent state roundtrip + corruption handling
-    font-installer.test.ts     ← Install idempotency, sha verification, platform dispatch
-    lifetime-usage.test.ts     ← Session-file spend estimation
-    recommendations-status.test.ts ← Pending recommendation summary
-    announcements-*.test.ts    ← Manifest, merge/filter, update, state, orchestrator rules
-    sdk-migration.test.ts      ← Pi SDK compatibility guard coverage
+    announcements-filter.test.ts← unit / smoke test
+    announcements-manifest.test.ts← unit / smoke test
+    announcements-orchestrator.test.ts← unit / smoke test
+    announcements-state.test.ts← unit / smoke test
+    announcements-update.test.ts← unit / smoke test
+    extension-health.test.ts← unit / smoke test
+    font-installer.test.ts  ← unit / smoke test
+    lifetime-usage.test.ts  ← unit / smoke test
+    recommendations-status.test.ts← unit / smoke test
+    sdk-migration.test.ts   ← unit / smoke test
+    sf-environment.test.ts  ← unit / smoke test
+    smoke.test.ts           ← unit / smoke test
+    startup-mode.test.ts    ← unit / smoke test
+    state-store.test.ts     ← unit / smoke test
+    whats-new.test.ts       ← unit / smoke test
+  CREDITS.md                ← extension attribution
+  index.ts                  ← Pi extension entry point
+  manifest.json             ← source-of-truth extension metadata
+  README.md                 ← human + agent walkthrough
 ```
+
+<!-- GENERATED:file-structure:end -->
 
 ## Preview Tooling
 

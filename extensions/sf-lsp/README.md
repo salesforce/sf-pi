@@ -148,39 +148,45 @@ always-on in the sf-devbar top bar and requires no configuration.
 
 ## File Structure
 
+<!-- GENERATED:file-structure:start -->
+
 ```
 extensions/sf-lsp/
-  index.ts                ← entry point: events, commands, wiring
-  manifest.json           ← metadata
-  README.md               ← this file
-  ROADMAP.md              ← shipped + planned phases
   lib/
-    types.ts              ← LspDiagnostic, LspDoctorStatus, LspResult, SupportedLanguage
-    file-classify.ts      ← file → language mapping, path resolution
-    lsp-client.ts         ← LSP engine (discovery, spawn, diagnose, shutdown)
-    feedback.ts           ← red/green decision logic, rendering, LLM-facing contract
-    activity.ts           ← pure activity store (per-language entries, ring buffer)
-    working-indicator.ts  ← ref-counted setWorkingIndicator helper
-    transcript.ts         ← custom message renderer + emit policy
-    panel.ts              ← /sf-lsp rich overlay (DynamicBorder + SelectList)
-    settings-io.ts        ← persistent sfPi.sfLsp.verbose
     install/
-      paths.ts            ← install root and component paths
-      detect.ts           ← local/upstream version discovery
-      versioning.ts       ← compare installed vs upstream versions
-      installer.ts        ← Apex/LWC download + install routines
-      state.ts            ← decline/installed prompt state persistence
-      orchestrator.ts     ← session_start prompt + background install flow
+      detect.ts             ← implementation module
+      installer.ts          ← implementation module
+      orchestrator.ts       ← implementation module
+      paths.ts              ← implementation module
+      state.ts              ← implementation module
+      types.ts              ← implementation module
+      versioning.ts         ← implementation module
+    activity.ts             ← implementation module
+    feedback.ts             ← implementation module
+    file-classify.ts        ← implementation module
+    lsp-client.ts           ← implementation module
+    panel.ts                ← implementation module
+    settings-io.ts          ← implementation module
+    transcript.ts           ← implementation module
+    types.ts                ← implementation module
+    working-indicator.ts    ← implementation module
   tests/
-    smoke.test.ts         ← module export check
-    file-classify.test.ts ← file classification and path resolution
-    feedback.test.ts      ← red/green logic and LLM text rendering
-    activity.test.ts      ← pure activity store transitions
-    transcript.test.ts    ← shouldEmitTranscriptRow policy
-    install-detect.test.ts ← local/upstream version detection
-    install-state.test.ts  ← prompt decision persistence
-    install-versioning.test.ts ← latest-vs-installed comparison
+    activity.test.ts        ← unit / smoke test
+    feedback.test.ts        ← unit / smoke test
+    file-classify.test.ts   ← unit / smoke test
+    install-detect.test.ts  ← unit / smoke test
+    install-state.test.ts   ← unit / smoke test
+    install-versioning.test.ts← unit / smoke test
+    smoke.test.ts           ← unit / smoke test
+    transcript.test.ts      ← unit / smoke test
+  CREDITS.md                ← extension attribution
+  index.ts                  ← Pi extension entry point
+  manifest.json             ← source-of-truth extension metadata
+  README.md                 ← human + agent walkthrough
+  ROADMAP.md                ← extension-specific phased roadmap
 ```
+
+<!-- GENERATED:file-structure:end -->
 
 Shared with sf-devbar:
 

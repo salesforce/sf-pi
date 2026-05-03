@@ -224,7 +224,7 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
   helper.
 - **sf-slack: `slack_send` raw channel ID now resolves to `#name`.**
   When the user passed a channel ID directly (e.g. `slack_send
-  action=channel to=C09MFCX4A2H ...`) the synchronous channel-name
+  action=channel to=C01ABC123 ...`) the synchronous channel-name
   cache was sometimes cold, so both the confirm-dialog preview and the
   result header displayed the bare ID instead of `#channel-name`. The
   raw-ID branch in `routeRecipient()` now falls back to the async
@@ -954,7 +954,7 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ### Changed
 
-- **sf-slack TUI rendering overhaul.** Channel IDs like `C0958CRG806` now
+- **sf-slack TUI rendering overhaul.** Channel IDs like `C01ABC123` now
   resolve to `#agentscript-dev` (channel cache pre-warmed on `session_start`).
   Raw `ts:1776790851.230879` strings in call headers are replaced with
   friendly `Tue · 5:00 PM (1d ago)` labels. Each author gets a stable

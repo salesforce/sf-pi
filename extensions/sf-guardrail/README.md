@@ -146,40 +146,44 @@ current turn so hostile agent loops can't bypass a prior confirmation.
 
 ## File Structure
 
+<!-- GENERATED:file-structure:start -->
+
 ```
 extensions/sf-guardrail/
-  index.ts                        ← event wiring, /sf-guardrail command
-  manifest.json                   ← metadata (source of truth for catalog)
-  README.md                       ← this file
-  AGENTS.md                       ← per-extension editing rules
-  ROADMAP.md                      ← phased plan (Tier 3, project overrides, etc.)
-  SF_GUARDRAIL_DEFAULTS.json      ← bundled rule set
-  SF_GUARDRAIL_PROMPT.md          ← kernel injected into the system prompt
   lib/
-    types.ts                      ← config schema + decision model
-    config.ts                     ← bundled + override loader, merge by id
-    bash-ast.ts                   ← tokenizer + ShellAstMatch evaluator
-    policies.ts                   ← file-path matcher, glob+regex
-    command-gate.ts               ← dangerous-command matcher
-    org-context.ts                ← resolve target-org type from env cache
-    org-aware-gate.ts             ← production-only bash rules
-    classify.ts                   ← orchestrator: event → decision
-    hitl.ts                       ← ctx.ui.select wrapper with headless
-    allowlist.ts                  ← session allow-memory (pi.appendEntry)
-    audit.ts                      ← decision log persistence
-    install-preset.ts             ← /sf-guardrail install-preset
-    prompt-injection.ts           ← kernel body loader + override
-    status.ts                     ← pure formatters for /sf-guardrail output
-    config-panel.ts               ← sf-pi manager read-only status panel
+    allowlist.ts            ← implementation module
+    audit.ts                ← implementation module
+    bash-ast.ts             ← implementation module
+    classify.ts             ← implementation module
+    command-gate.ts         ← implementation module
+    config-panel.ts         ← implementation module
+    config.ts               ← implementation module
+    hitl.ts                 ← implementation module
+    install-preset.ts       ← implementation module
+    org-aware-gate.ts       ← implementation module
+    org-context.ts          ← implementation module
+    policies.ts             ← implementation module
+    prompt-injection.ts     ← implementation module
+    status.ts               ← implementation module
+    types.ts                ← implementation module
   tests/
-    smoke.test.ts
-    bash-ast.test.ts
-    policies.test.ts
-    command-gate.test.ts
-    config.test.ts
-    org-context.test.ts
-    classify.test.ts
+    bash-ast.test.ts        ← unit / smoke test
+    classify.test.ts        ← unit / smoke test
+    command-gate.test.ts    ← unit / smoke test
+    config.test.ts          ← unit / smoke test
+    org-context.test.ts     ← unit / smoke test
+    policies.test.ts        ← unit / smoke test
+    smoke.test.ts           ← unit / smoke test
+  AGENTS.md                 ← extension-specific agent editing rules
+  index.ts                  ← Pi extension entry point
+  manifest.json             ← source-of-truth extension metadata
+  README.md                 ← human + agent walkthrough
+  ROADMAP.md                ← extension-specific phased roadmap
+  SF_GUARDRAIL_DEFAULTS.json← supporting file
+  SF_GUARDRAIL_PROMPT.md    ← supporting file
 ```
+
+<!-- GENERATED:file-structure:end -->
 
 ## Testing Strategy
 

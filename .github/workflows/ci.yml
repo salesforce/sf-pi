@@ -46,6 +46,9 @@ jobs:
       - name: Check generated catalog
         run: npm run generate-catalog:check
 
+      - name: Check docs health
+        run: npm run docs:health:check
+
       - name: Check SPDX headers
         run: npm run spdx:check
 

@@ -180,50 +180,56 @@ separately via the monthly usage endpoint (`/user/info`).
 
 ## File Structure
 
+<!-- GENERATED:file-structure:start -->
+
 ```
 extensions/sf-llm-gateway-internal/
-  index.ts              ← entry point (runtime logic + command handlers)
-  manifest.json         ← metadata (source of truth for catalog)
-  README.md             ← this file
   lib/
-    config.ts           ← gateway saved-config layer (constants, types, I/O)
-    gateway-url.ts      ← root vs /v1 endpoint normalization helpers
-    pi-settings.ts      ← Pi settings.json path + mutation helpers
-    discovery.ts        ← unified provider registration, model discovery, dispatch
-    monthly-usage.ts    ← /user/info + /key/info + /health/readiness cache
-    provider-telemetry.ts ← after_provider_response signal store + header parsers
-    retry-telemetry.ts  ← transparent inner-stream retry status
-    status.ts           ← footer/status report formatting helpers
-    wire-trace.ts       ← opt-in raw fetch tracer (SF_LLM_GATEWAY_INTERNAL_TRACE=1)
-    models.ts           ← model catalog, discovery, inference, formatting
-    beta-controls.ts    ← beta alias resolution + runtime toggle command
-    transport.ts        ← Codex request shaping + Opus 4.7 adaptive-thinking shim +
-                          GPT-5 reasoning_effort allow-listing
-    debug.ts            ← /utils/transform_request probe + report formatter
-    config-panel.ts     ← TUI config panel for Extension Manager drill-down
-    setup-overlay.ts    ← standalone TUI setup overlay wrapper
+    beta-controls.ts        ← implementation module
+    config-panel.ts         ← implementation module
+    config.ts               ← implementation module
+    debug.ts                ← implementation module
+    discovery.ts            ← implementation module
+    gateway-url.ts          ← implementation module
+    migrate-unify-provider.ts← implementation module
+    models.ts               ← implementation module
+    monthly-usage.ts        ← implementation module
+    pi-settings.ts          ← implementation module
+    provider-telemetry.ts   ← implementation module
+    retry-telemetry.ts      ← implementation module
+    setup-overlay.ts        ← implementation module
+    status.ts               ← implementation module
+    transport.ts            ← implementation module
+    wire-trace.ts           ← implementation module
   tests/
-    config.test.ts              ← saved-config normalization, enabled model patterns
-    gateway-url.test.ts         ← root vs /v1 endpoint normalization
-    models.test.ts              ← model ID detection, inference, provider tagging, /v1/model/info enrichment
-    transport.test.ts           ← Codex payload shaping + Opus 4.7 adaptive-thinking shim
-    debug.test.ts               ← /utils/transform_request probe body shape + report rendering
-    codex-regression.test.ts    ← optional live gateway Codex regression checks
-    betas.test.ts               ← beta alias resolution, effective betas
-    formatting.test.ts          ← formatTokens, formatUsd, maskApiKey, labels
-    status.test.ts              ← footer/status report formatting (monthly + key + health)
-    command-parsing.test.ts     ← command argument parsing
-    unified-provider.test.ts    ← one-provider registration invariants
-    migrate-unify-provider.test.ts ← retired-provider settings migration
-    provider-telemetry.test.ts  ← 429/5xx footer signal parsing
-    retry-telemetry.test.ts     ← transparent retry status store
-    robust-retry.test.ts        ← transport-level retry behavior
-    thinking-level.test.ts      ← user thinking override contract
-    wire-trace.test.ts          ← opt-in fetch trace wrapper
-    global-config.test.ts       ← global/project saved-config precedence
-    cwd-migration.test.ts       ← migration avoids no-op project writes
-    setup-overlay-single-write.test.ts ← setup form persistence contract
+    betas.test.ts           ← unit / smoke test
+    codex-regression.test.ts← unit / smoke test
+    command-parsing.test.ts ← unit / smoke test
+    config.test.ts          ← unit / smoke test
+    cwd-migration.test.ts   ← unit / smoke test
+    debug.test.ts           ← unit / smoke test
+    formatting.test.ts      ← unit / smoke test
+    gateway-url.test.ts     ← unit / smoke test
+    global-config.test.ts   ← unit / smoke test
+    migrate-unify-provider.test.ts← unit / smoke test
+    models.test.ts          ← unit / smoke test
+    provider-telemetry.test.ts← unit / smoke test
+    retry-telemetry.test.ts ← unit / smoke test
+    robust-retry.test.ts    ← unit / smoke test
+    setup-overlay-single-write.test.ts← unit / smoke test
+    status.test.ts          ← unit / smoke test
+    thinking-level.test.ts  ← unit / smoke test
+    transport.test.ts       ← unit / smoke test
+    unified-provider.test.ts← unit / smoke test
+    wire-trace.test.ts      ← unit / smoke test
+  AGENTS.md                 ← extension-specific agent editing rules
+  CREDITS.md                ← extension attribution
+  index.ts                  ← Pi extension entry point
+  manifest.json             ← source-of-truth extension metadata
+  README.md                 ← human + agent walkthrough
 ```
+
+<!-- GENERATED:file-structure:end -->
 
 ## Testing Strategy
 

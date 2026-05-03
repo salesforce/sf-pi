@@ -1,0 +1,54 @@
+{
+  "README.md": {
+    "source": [
+      "package.json",
+      "catalog/index.json",
+      "catalog/recommendations.json",
+      "catalog/announcements.json",
+      "extensions/*/manifest.json"
+    ],
+    "checks": ["npm run generate-catalog:check", "npm run docs:health:check"]
+  },
+  "ARCHITECTURE.md": {
+    "source": ["repo layout", "extensions/*/manifest.json", "scripts/*"],
+    "checks": ["npm run generate-catalog:check", "npm run docs:health:check"]
+  },
+  "CONTRIBUTING.md": {
+    "source": ["package.json scripts", ".github/workflows/*", "repo workflow"],
+    "checks": ["npm run docs:health:check"]
+  },
+  "docs/commands.md": {
+    "source": ["extensions/*/manifest.json"],
+    "generated": true,
+    "checks": ["npm run generate-catalog:check"]
+  },
+  "docs/agent-orientation.md": {
+    "source": ["extensions/*/manifest.json", "catalog/index.json"],
+    "generated": true,
+    "checks": ["npm run generate-catalog:check"]
+  },
+  "extensions/*/README.md": {
+    "source": ["extension behavior", "extension file tree", "extensions/*/manifest.json"],
+    "partiallyGenerated": ["GENERATED:file-structure"],
+    "checks": ["npm run generate-catalog:check", "npm run docs:health:check"]
+  },
+  "catalog/index.json": {
+    "source": ["extensions/*/manifest.json"],
+    "generated": true,
+    "checks": ["npm run generate-catalog:check"]
+  },
+  "catalog/registry.ts": {
+    "source": ["extensions/*/manifest.json"],
+    "generated": true,
+    "checks": ["npm run generate-catalog:check"]
+  },
+  "catalog/announcements.json": {
+    "source": ["CHANGELOG.md", "hand-authored non-release announcements"],
+    "partiallyGenerated": ["release-* announcement", "latestVersion", "revision"],
+    "checks": ["npm run generate-catalog:check"]
+  },
+  "catalog/recommendations.json": {
+    "source": ["hand-authored recommendation manifest"],
+    "checks": ["npm run generate-catalog:check", "npm run docs:health:check"]
+  }
+}

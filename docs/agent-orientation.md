@@ -1,0 +1,61 @@
+# sf-pi Agent Orientation
+
+> **Auto-generated from manifests and repo layout.**
+> Run `npm run generate-catalog` to refresh; do not edit by hand.
+
+## Start here
+
+1. [`catalog/index.json`](../catalog/index.json) — canonical machine-readable extension inventory.
+2. [`docs/commands.md`](./commands.md) — generated slash-command reference.
+3. [`ARCHITECTURE.md`](../ARCHITECTURE.md) — repo structure and editing conventions.
+4. `extensions/<id>/README.md` — behavior and runtime flow for a specific extension.
+5. `extensions/<id>/AGENTS.md` — extension-specific editing rules when present.
+
+## Extension map
+
+| Extension                                                         | Category | Default   | Summary                                                                                                                                                              | Commands                                                                | Tools                                                                                                                                     | Providers                 | Events                                                                                                                                    | Key path                                      |
+| ----------------------------------------------------------------- | -------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| [SF Agent Script Assist](../extensions/sf-agentscript-assist/)    | core     | on        | In-process Agent Script authoring companion — parse, compile, and code-action feedback on every .agent write                                                         | `/sf-agentscript-assist`                                                | _none_                                                                                                                                    | _none_                    | `session_start`, `session_shutdown`, `tool_result`                                                                                        | `extensions/sf-agentscript-assist/index.ts`   |
+| [SF Brain](../extensions/sf-brain/)                               | core     | on        | High-density Salesforce operator kernel injected once per session — describe-before-query rules, API picker, anonymous Apex verification loop, and CLI power moves   | _none_                                                                  | _none_                                                                                                                                    | _none_                    | `before_agent_start`                                                                                                                      | `extensions/sf-brain/index.ts`                |
+| [SF Guardrail](../extensions/sf-guardrail/)                       | core     | on        | Salesforce-aware safety hooks — file protection policies, dangerous-command gating, and org-aware confirmation for production deploys, apex runs, and data mutations | `/sf-guardrail`                                                         | _none_                                                                                                                                    | _none_                    | `session_start`, `session_shutdown`, `before_agent_start`, `tool_call`                                                                    | `extensions/sf-guardrail/index.ts`            |
+| [SF LSP](../extensions/sf-lsp/)                                   | core     | on        | Real-time Salesforce LSP diagnostics on write/edit with a working-indicator spinner, transcript rows, and a permanent top-bar health segment in sf-devbar            | `/sf-lsp`                                                               | _none_                                                                                                                                    | _none_                    | `session_start`, `session_shutdown`, `tool_result`                                                                                        | `extensions/sf-lsp/index.ts`                  |
+| [SF Pi Manager](../extensions/sf-pi-manager/)                     | core     | always-on | Core manager — provides /sf-pi commands                                                                                                                              | `/sf-pi`, `/sf-pi recommended`, `/sf-pi announcements`, `/sf-pi skills` | _none_                                                                                                                                    | _none_                    | `session_start`, `session_shutdown`                                                                                                       | `extensions/sf-pi-manager/index.ts`           |
+| [SF Slack](../extensions/sf-slack/)                               | core     | on        | Slack integration — search messages, read threads, browse channel history                                                                                            | `/sf-slack`                                                             | `slack`, `slack_time_range`, `slack_resolve`, `slack_research`, `slack_channel`, `slack_user`, `slack_file`, `slack_canvas`, `slack_send` | `sf-slack`                | `session_start`, `session_shutdown`, `before_agent_start`                                                                                 | `extensions/sf-slack/index.ts`                |
+| [SF LLM Gateway Internal](../extensions/sf-llm-gateway-internal/) | provider | on        | Salesforce LLM Gateway provider with model discovery                                                                                                                 | `/sf-llm-gateway-internal`                                              | _none_                                                                                                                                    | `sf-llm-gateway-internal` | `session_start`, `turn_end`, `model_select`, `after_provider_response`, `session_shutdown`                                                | `extensions/sf-llm-gateway-internal/index.ts` |
+| [SF DevBar](../extensions/sf-devbar/)                             | ui       | on        | Bespoke Salesforce developer status bar with org context, model info, git, and context window progress                                                               | `/sf-devbar`, `/sf-org`                                                 | _none_                                                                                                                                    | _none_                    | `session_start`, `session_shutdown`, `model_select`, `thinking_level_select`, `turn_start`, `turn_end`, `agent_end`, `before_agent_start` | `extensions/sf-devbar/index.ts`               |
+| [SF Ohana Spinner](../extensions/sf-ohana-spinner/)               | ui       | on        | Salesforce-themed rainbow spinner during LLM thinking                                                                                                                | _none_                                                                  | _none_                                                                                                                                    | _none_                    | `session_start`, `session_shutdown`                                                                                                       | `extensions/sf-ohana-spinner/index.ts`        |
+| [SF Skills HUD](../extensions/sf-skills-hud/)                     | ui       | on        | Pinned top-right overlay that shows which skills are live in context versus earlier in the session                                                                   | `/sf-skills`                                                            | _none_                                                                                                                                    | _none_                    | `session_start`, `message_end`, `session_tree`, `session_compact`, `session_shutdown`                                                     | `extensions/sf-skills-hud/index.ts`           |
+| [SF Welcome](../extensions/sf-welcome/)                           | ui       | on        | Salesforce-branded splash screen with environment status, extension health, and community info                                                                       | `/sf-welcome`, `/sf-setup-fonts`                                        | _none_                                                                                                                                    | _none_                    | `session_start`, `agent_start`, `tool_call`                                                                                               | `extensions/sf-welcome/index.ts`              |
+
+## Manifest doc metadata
+
+Extensions may optionally add `docs.summary`, `docs.primaryFiles`, `docs.stateFiles`, `docs.env`, and `docs.safety` to their manifest. When present, those fields flow into generated inventories without adding another source of truth.
+
+## Runtime surfaces
+
+| Surface                | Owners                                                                                                                                                                     |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Slash commands         | `SF Agent Script Assist`, `SF Guardrail`, `SF LSP`, `SF Pi Manager`, `SF Slack`, `SF LLM Gateway Internal`, `SF DevBar`, `SF Skills HUD`, `SF Welcome`                     |
+| LLM tools              | `SF Slack`                                                                                                                                                                 |
+| Provider registration  | `SF Slack`, `SF LLM Gateway Internal`                                                                                                                                      |
+| Startup/session hooks  | `SF Agent Script Assist`, `SF Guardrail`, `SF LSP`, `SF Pi Manager`, `SF Slack`, `SF LLM Gateway Internal`, `SF DevBar`, `SF Ohana Spinner`, `SF Skills HUD`, `SF Welcome` |
+| Tool-call hooks        | `SF Guardrail`, `SF Welcome`                                                                                                                                               |
+| Generated docs/catalog | `scripts/generate-catalog.mjs`, `catalog/index.json`, `catalog/registry.ts`                                                                                                |
+
+## Generated files
+
+Do not edit these by hand; edit the source manifest/docs and run `npm run generate-catalog`.
+
+- `catalog/index.json`
+- `catalog/registry.ts`
+- `docs/commands.md`
+- `docs/agent-orientation.md`
+- generated marker blocks in `README.md` and `ARCHITECTURE.md`
+- generated file-structure marker blocks in `extensions/*/README.md`
+- normalized `catalog/announcements.json` release entry
+
+## Automation shortcuts
+
+- `npm run docs:health:check` — documentation drift and public-safety lint.
+- `npm run docs:changed` — changed-file impact summary for docs review.
+- `npm run validate:ci` — local approximation of CI's validation lane.

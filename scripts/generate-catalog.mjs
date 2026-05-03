@@ -26,6 +26,7 @@ const DOCS_DIR = path.join(ROOT, "docs");
 const README_PATH = path.join(ROOT, "README.md");
 const ARCHITECTURE_PATH = path.join(ROOT, "ARCHITECTURE.md");
 const COMMANDS_DOC_PATH = path.join(DOCS_DIR, "commands.md");
+const AGENT_ORIENTATION_DOC_PATH = path.join(DOCS_DIR, "agent-orientation.md");
 const CHECK_ONLY = process.argv.includes("--check");
 
 // Keep in sync with AnnouncementKind / AnnouncementSeverity in catalog/types.ts.
@@ -50,7 +51,20 @@ const ARCH_FOLDER_START_MARKER = "<!-- GENERATED:folder-layout:start -->";
 const ARCH_FOLDER_END_MARKER = "<!-- GENERATED:folder-layout:end -->";
 const README_TROUBLESHOOTING_START_MARKER = "<!-- GENERATED:troubleshooting-index:start -->";
 const README_TROUBLESHOOTING_END_MARKER = "<!-- GENERATED:troubleshooting-index:end -->";
+const EXT_FILE_STRUCTURE_START_MARKER = "<!-- GENERATED:file-structure:start -->";
+const EXT_FILE_STRUCTURE_END_MARKER = "<!-- GENERATED:file-structure:end -->";
 const README_CATEGORY_ORDER = ["core", "provider", "ui"];
+const EXTENSION_FILE_MAP_INCLUDE = new Set([
+  "AGENTS.md",
+  "CREDITS.md",
+  "ROADMAP.md",
+  "SF_GUARDRAIL_DEFAULTS.json",
+  "SF_GUARDRAIL_PROMPT.md",
+  "SF_KERNEL.md",
+  "index.ts",
+  "manifest.json",
+  "README.md",
+]);
 
 let hasDiff = false;
 
@@ -197,6 +211,7 @@ function generateIndexJson(manifests) {
     providers: Array.isArray(manifest.providers) ? manifest.providers : [],
     tools: Array.isArray(manifest.tools) ? manifest.tools : [],
     events: Array.isArray(manifest.events) ? manifest.events : [],
+    docs: manifest.docs && typeof manifest.docs === "object" ? manifest.docs : {},
     entry: `extensions/${dir}/index.ts`,
     hasReadme: existsSync(path.join(EXTENSIONS_DIR, dir, "README.md")),
     hasTests: existsSync(path.join(EXTENSIONS_DIR, dir, "tests")),
@@ -462,6 +477,232 @@ function generateFolderLayout(manifests) {
 }
 
 // -------------------------------------------------------------------------------------------------
+// Extension README file maps + agent orientation docs
+// -------------------------------------------------------------------------------------------------
+
+function listExtensionFiles(dir) {
+  const extDir = path.join(EXTENSIONS_DIR, dir);
+  const files = [];
+
+  function walk(current, relativeDir = "") {
+    const entries = readdirSync(current, { withFileTypes: true }).sort((left, right) => {
+      if (left.isDirectory() !== right.isDirectory()) return left.isDirectory() ? -1 : 1;
+      return left.name.localeCompare(right.name);
+    });
+
+    for (const entry of entries) {
+      const rel = path.posix.join(relativeDir, entry.name);
+      const full = path.join(current, entry.name);
+      if (entry.isDirectory()) {
+        if (entry.name === "node_modules" || entry.name === "vendor") continue;
+        walk(full, rel);
+        continue;
+      }
+      if (!entry.isFile()) continue;
+      if (shouldIncludeExtensionFile(rel)) files.push(rel);
+    }
+  }
+
+  walk(extDir);
+  return files;
+}
+
+function shouldIncludeExtensionFile(rel) {
+  if (EXTENSION_FILE_MAP_INCLUDE.has(rel)) return true;
+  if (rel.startsWith("lib/") && rel.endsWith(".ts")) return true;
+  if (rel.startsWith("tests/") && rel.endsWith(".test.ts")) return true;
+  if (rel.startsWith("assets/fonts/") && (rel.endsWith("LICENSE") || rel.endsWith("SOURCE.md"))) {
+    return true;
+  }
+  return false;
+}
+
+function fileDescription(rel) {
+  if (rel === "index.ts") return "Pi extension entry point";
+  if (rel === "manifest.json") return "source-of-truth extension metadata";
+  if (rel === "README.md") return "human + agent walkthrough";
+  if (rel === "AGENTS.md") return "extension-specific agent editing rules";
+  if (rel === "ROADMAP.md") return "extension-specific phased roadmap";
+  if (rel === "CREDITS.md") return "extension attribution";
+  if (rel.endsWith(".test.ts")) return "unit / smoke test";
+  if (rel.startsWith("lib/") && rel.endsWith(".ts")) return "implementation module";
+  if (rel.startsWith("assets/")) return "bundled asset metadata";
+  return "supporting file";
+}
+
+function buildTree(files, dir) {
+  const root = { children: new Map() };
+
+  for (const rel of files) {
+    let node = root;
+    const parts = rel.split("/");
+    for (const part of parts) {
+      if (!node.children.has(part)) node.children.set(part, { children: new Map() });
+      node = node.children.get(part);
+    }
+    node.file = true;
+    node.rel = rel;
+  }
+
+  const lines = [`extensions/${dir}/`];
+  function emit(node, depth) {
+    const entries = [...node.children.entries()].sort(([leftName, left], [rightName, right]) => {
+      if (!!left.file !== !!right.file) return left.file ? 1 : -1;
+      return leftName.localeCompare(rightName);
+    });
+    for (const [name, child] of entries) {
+      const indent = "  ".repeat(depth);
+      if (child.file) {
+        const padded = name.padEnd(Math.max(1, 28 - indent.length));
+        lines.push(`${indent}${padded}← ${fileDescription(child.rel)}`);
+      } else {
+        lines.push(`${indent}${name}/`);
+        emit(child, depth + 1);
+      }
+    }
+  }
+  emit(root, 1);
+  return lines.join("\n");
+}
+
+function generateExtensionFileStructure(dir) {
+  const files = listExtensionFiles(dir);
+  return [
+    EXT_FILE_STRUCTURE_START_MARKER,
+    "```",
+    buildTree(files, dir),
+    "```",
+    EXT_FILE_STRUCTURE_END_MARKER,
+  ].join("\n");
+}
+
+async function writeOrCheckExtensionReadmes(manifests) {
+  for (const { dir } of manifests) {
+    const readmePath = path.join(EXTENSIONS_DIR, dir, "README.md");
+    if (!existsSync(readmePath)) continue;
+    await replaceMarkedBlock(
+      readmePath,
+      `extensions/${dir}/README.md file structure`,
+      EXT_FILE_STRUCTURE_START_MARKER,
+      EXT_FILE_STRUCTURE_END_MARKER,
+      generateExtensionFileStructure(dir),
+    );
+  }
+}
+
+function generatedList(items) {
+  return items.length > 0 ? items.map((item) => `\`${item}\``).join(", ") : "_none_";
+}
+
+function generateAgentOrientationDoc(manifests) {
+  const sorted = sortByCategoryThenName(manifests);
+  const lines = [
+    "# sf-pi Agent Orientation",
+    "",
+    "> **Auto-generated from manifests and repo layout.**",
+    "> Run `npm run generate-catalog` to refresh; do not edit by hand.",
+    "",
+    "## Start here",
+    "",
+    "1. [`catalog/index.json`](../catalog/index.json) — canonical machine-readable extension inventory.",
+    "2. [`docs/commands.md`](./commands.md) — generated slash-command reference.",
+    "3. [`ARCHITECTURE.md`](../ARCHITECTURE.md) — repo structure and editing conventions.",
+    "4. `extensions/<id>/README.md` — behavior and runtime flow for a specific extension.",
+    "5. `extensions/<id>/AGENTS.md` — extension-specific editing rules when present.",
+    "",
+    "## Extension map",
+    "",
+    "| Extension | Category | Default | Summary | Commands | Tools | Providers | Events | Key path |",
+    "| --------- | -------- | ------- | ------- | -------- | ----- | --------- | ------ | -------- |",
+  ];
+
+  for (const { dir, manifest } of sorted) {
+    lines.push(
+      `| [${manifest.name}](../extensions/${dir}/) | ${manifest.category} | ${defaultLabel(manifest)} | ${manifest.docs?.summary ?? manifest.description} | ${generatedList(manifest.commands ?? [])} | ${generatedList(manifest.tools ?? [])} | ${generatedList(manifest.providers ?? [])} | ${generatedList(manifest.events ?? [])} | \`extensions/${dir}/index.ts\` |`,
+    );
+  }
+
+  lines.push(
+    "",
+    "## Manifest doc metadata",
+    "",
+    "Extensions may optionally add `docs.summary`, `docs.primaryFiles`, `docs.stateFiles`, `docs.env`, and `docs.safety` to their manifest. When present, those fields flow into generated inventories without adding another source of truth.",
+    "",
+    "## Runtime surfaces",
+    "",
+    "| Surface | Owners |",
+    "| ------- | ------ |",
+  );
+
+  const surfaceRows = [
+    [
+      "Slash commands",
+      sorted
+        .filter(({ manifest }) => manifest.commands?.length)
+        .map(({ manifest }) => manifest.name),
+    ],
+    [
+      "LLM tools",
+      sorted.filter(({ manifest }) => manifest.tools?.length).map(({ manifest }) => manifest.name),
+    ],
+    [
+      "Provider registration",
+      sorted
+        .filter(({ manifest }) => manifest.providers?.length)
+        .map(({ manifest }) => manifest.name),
+    ],
+    [
+      "Startup/session hooks",
+      sorted
+        .filter(({ manifest }) => manifest.events?.includes("session_start"))
+        .map(({ manifest }) => manifest.name),
+    ],
+    [
+      "Tool-call hooks",
+      sorted
+        .filter(({ manifest }) => manifest.events?.includes("tool_call"))
+        .map(({ manifest }) => manifest.name),
+    ],
+    [
+      "Generated docs/catalog",
+      ["scripts/generate-catalog.mjs", "catalog/index.json", "catalog/registry.ts"],
+    ],
+  ];
+  for (const [surface, owners] of surfaceRows) {
+    lines.push(`| ${surface} | ${generatedList(owners)} |`);
+  }
+
+  lines.push(
+    "",
+    "## Generated files",
+    "",
+    "Do not edit these by hand; edit the source manifest/docs and run `npm run generate-catalog`.",
+    "",
+    "- `catalog/index.json`",
+    "- `catalog/registry.ts`",
+    "- `docs/commands.md`",
+    "- `docs/agent-orientation.md`",
+    "- generated marker blocks in `README.md` and `ARCHITECTURE.md`",
+    "- generated file-structure marker blocks in `extensions/*/README.md`",
+    "- normalized `catalog/announcements.json` release entry",
+    "",
+    "## Automation shortcuts",
+    "",
+    "- `npm run docs:health:check` — documentation drift and public-safety lint.",
+    "- `npm run docs:changed` — changed-file impact summary for docs review.",
+    "- `npm run validate:ci` — local approximation of CI's validation lane.",
+  );
+
+  return lines.join("\n");
+}
+
+async function writeOrCheckAgentOrientationDoc(manifests) {
+  const raw = generateAgentOrientationDoc(manifests);
+  const formatted = await prettier.format(raw, { parser: "markdown" });
+  writeOrCheck(AGENT_ORIENTATION_DOC_PATH, formatted, "docs/agent-orientation.md");
+}
+
+// -------------------------------------------------------------------------------------------------
 // Write/check helpers
 // -------------------------------------------------------------------------------------------------
 
@@ -575,6 +816,10 @@ await writeOrCheckReadme(manifests);
 await writeOrCheckArchitecture(manifests);
 
 await writeOrCheckCommandsDoc(manifests);
+
+await writeOrCheckAgentOrientationDoc(manifests);
+
+await writeOrCheckExtensionReadmes(manifests);
 
 refreshAnnouncementsFromChangelog(path.join(CATALOG_DIR, "announcements.json"));
 validateRecommendations(path.join(CATALOG_DIR, "recommendations.json"));

@@ -27,7 +27,7 @@ Extension loads
        ├─ enable-all / disable-all
        ├─ status    → detailed summary
        ├─ display   → show/set compact|balanced|verbose display profile
-       ├─ announcements → list / dismiss / reset maintainer notes + update nudge
+       ├─ /sf-pi announcements → list / dismiss / reset maintainer notes + update nudge
        ├─ skills    → detect & wire Claude Code / Codex / Cursor skill dirs
        └─ help      → command reference
 ```
@@ -86,34 +86,42 @@ triggering the reload.
 
 ## File Structure
 
+<!-- GENERATED:file-structure:start -->
+
 ```
 extensions/sf-pi-manager/
-  index.ts                  ← entry point (runtime logic + command handlers)
-  manifest.json             ← metadata (source of truth for catalog)
-  README.md                 ← this file
   lib/
-    overlay.ts                  ← TUI overlay component with list + detail/config drill-down
-    config-panel.ts             ← display-profile settings panel hosted by the manager
-    extension-details.ts        ← status labels + repo path metadata for the detail page
-    settings.ts                 ← settings.json path + JSON helpers
-    package-state.ts            ← package discovery + exclusion pattern read/write
-    recommendations.ts          ← recommendation manifest/state helpers
-    recommendations-overlay.ts  ← checklist UI for recommended extensions
-    recommendations-install.ts  ← pi install/remove command helpers
-    announcements.ts            ← /sf-pi announcements list/dismiss/reset
-    skill-sources-command.ts    ← /sf-pi skills command routing
-    skill-sources-overlay.ts    ← external skill-root checklist UI
-    render.ts                   ← shared text/table rendering helpers
+    announcements.ts        ← implementation module
+    config-panel.ts         ← implementation module
+    extension-details.ts    ← implementation module
+    overlay.ts              ← implementation module
+    package-state.ts        ← implementation module
+    recommendations-install.ts← implementation module
+    recommendations-overlay.ts← implementation module
+    recommendations.ts      ← implementation module
+    render.ts               ← implementation module
+    settings.ts             ← implementation module
+    skill-sources-command.ts← implementation module
+    skill-sources-overlay.ts← implementation module
   tests/
-    package-detection.test.ts      ← matchesPackageSource, findSfPiPackageEntry
-    extension-state.test.ts        ← buildExtensionStates, getDisabledExtensions
-    extension-details.test.ts      ← detail page status labels + bundle metadata
-    package-state.test.ts          ← project/global precedence for package filters
-    command-parsing.test.ts        ← parseCommandArgs edge cases
-    recommendations-*.test.ts      ← manifest/state/install command contracts
-    announcements-command.test.ts  ← announcement command behavior
-    skill-sources.test.ts          ← external skill-root detection + settings writes
+    announcements-command.test.ts← unit / smoke test
+    command-parsing.test.ts ← unit / smoke test
+    extension-details.test.ts← unit / smoke test
+    extension-state.test.ts ← unit / smoke test
+    package-detection.test.ts← unit / smoke test
+    package-state.test.ts   ← unit / smoke test
+    recommendations-command.test.ts← unit / smoke test
+    recommendations-install.test.ts← unit / smoke test
+    recommendations-manifest.test.ts← unit / smoke test
+    recommendations-state.test.ts← unit / smoke test
+    skill-sources.test.ts   ← unit / smoke test
+  CREDITS.md                ← extension attribution
+  index.ts                  ← Pi extension entry point
+  manifest.json             ← source-of-truth extension metadata
+  README.md                 ← human + agent walkthrough
 ```
+
+<!-- GENERATED:file-structure:end -->
 
 ## Section Guide
 

@@ -163,6 +163,8 @@ The most common entry points, grouped by purpose:
 | Regenerate catalog       | `npm run generate-catalog`                         | `npm run generate-catalog:check`      |
 | Format                   | `npm run format`                                   | `npm run format:check`                |
 | SPDX headers             | `npm run spdx`                                     | `npm run spdx:check`                  |
+| Docs health              | `npm run docs:health`                              | `npm run docs:health:check`           |
+| Docs impact summary      | —                                                  | `npm run docs:changed`                |
 | ESLint                   | `npm run eslint:fix`                               | `npm run eslint`                      |
 | Type check               | —                                                  | `npm run check`                       |
 | Run tests                | `npm test`                                         | —                                     |
@@ -170,15 +172,14 @@ The most common entry points, grouped by purpose:
 | Watch tests              | `npm run test:watch`                               | —                                     |
 | Lint bundle              | —                                                  | `npm run lint`                        |
 | Full local validation    | —                                                  | `npm run validate`                    |
+| CI-like local validation | —                                                  | `npm run validate:ci`                 |
 | CI artifact guard        | —                                                  | `bash scripts/check-llm-artifacts.sh` |
 | Scaffold a new extension | `npm run scaffold -- --id sf-my-ext --category ui` | —                                     |
 
 `npm run lint` is a convenience bundle that runs `format:check`,
-`generate-catalog:check`, `spdx:check`, and `eslint` in order. Prefer
-`npm run validate` before opening a PR — it adds the type check and the
-full test suite on top. CI also runs `scripts/check-llm-artifacts.sh`, so
-run that guard locally when a change touches prompts, generated text, or
-LLM-facing docs.
+`generate-catalog:check`, `docs:health:check`, `spdx:check`, and `eslint`
+in order. Prefer `npm run validate:ci` before opening a PR — it runs the
+full validation path, ESLint, docs-health, and the LLM-artifact guard.
 
 ## Source of truth
 
@@ -196,9 +197,11 @@ Do not edit these manually:
 - `catalog/registry.ts`
 - `catalog/index.json`
 - `docs/commands.md`
+- `docs/agent-orientation.md`
 - generated sections in `README.md`: bundled extensions, command reference,
   troubleshooting index
 - generated folder layout in `ARCHITECTURE.md`
+- generated file-structure blocks in `extensions/*/README.md`
 - normalized `catalog/announcements.json`
 - validated / normalized `catalog/recommendations.json`
 

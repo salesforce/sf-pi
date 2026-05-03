@@ -60,7 +60,9 @@ ones agents and maintainers most often need:
 
 | Script                              | Purpose                                                                                         |
 | ----------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `scripts/generate-catalog.mjs`      | Regenerates `catalog/*`, `docs/commands.md`, and generated README / ARCHITECTURE marker blocks. |
+| `scripts/generate-catalog.mjs`      | Regenerates catalog files, generated docs, and generated README marker blocks.                  |
+| `scripts/docs-health.mjs`           | Checks factual doc drift contracts and public-safe examples.                                    |
+| `scripts/docs-changed.mjs`          | Summarizes which docs are implicated by a diff.                                                 |
 | `scripts/add-spdx-headers.mjs`      | Adds or checks SPDX headers for source scripts. CI and pre-commit use the check path.           |
 | `scripts/check-llm-artifacts.sh`    | CI guard for unresolved conflict markers, prompt-template tokens, and LLM TODO markers.         |
 | `scripts/scaffold.mjs`              | Creates a new extension folder and refreshes generated catalog/docs.                            |
@@ -70,42 +72,46 @@ ones agents and maintainers most often need:
 | `scripts/preview-sf-logo.mjs`       | Local visual preview for the compact Salesforce wordmark.                                       |
 | `scripts/render-splash-header.mjs`  | Renders splash-header frames for review / screenshots.                                          |
 
-CI additionally runs ESLint and `scripts/check-llm-artifacts.sh`; use
-`npm run lint` plus the artifact guard when you want to mirror CI locally.
+CI additionally runs ESLint, docs-health, and `scripts/check-llm-artifacts.sh`;
+use `npm run validate:ci` when you want to mirror CI locally.
 
 ## Where does X live? (agent quick-reference)
 
 When an agent (or human) needs to change something, start here:
 
-| I want to change...                             | Look in                                                                  |
-| ----------------------------------------------- | ------------------------------------------------------------------------ |
-| Extension metadata (name/category/commands)     | `extensions/<id>/manifest.json` — then `npm run generate-catalog`        |
-| Extension entry point / lifecycle hooks         | `extensions/<id>/index.ts`                                               |
-| Extension implementation modules                | `extensions/<id>/lib/*.ts`                                               |
-| Extension config panel (when `configurable`)    | `extensions/<id>/lib/config-panel.ts` — must export `createConfigPanel`  |
-| Extension tests                                 | `extensions/<id>/tests/*.test.ts` (vitest)                               |
-| Extension human-facing docs                     | `extensions/<id>/README.md`                                              |
-| Extension-specific agent rules                  | `extensions/<id>/AGENTS.md` (optional, see below)                        |
-| Extension-specific roadmap                      | `extensions/<id>/ROADMAP.md` (optional, see below)                       |
-| Slash command handlers                          | `extensions/<id>/index.ts` — most handle their own commands              |
-| Shared Pi-runtime shims                         | `lib/common/pi-compat.ts`, `lib/common/pi-paths.ts`                      |
-| Shared SF environment detection                 | `lib/common/sf-environment/`                                             |
-| Shared glyph/ASCII policy                       | `lib/common/glyph-policy.ts`                                             |
-| Shared display profile + diagnostics contract   | `lib/common/display/`                                                    |
-| Generated registry (for runtime extension load) | `catalog/registry.ts` — **generated, do not edit**                       |
-| Generated machine-readable index                | `catalog/index.json` — **generated, do not edit**                        |
-| Generated command reference                     | `docs/commands.md` — **generated, do not edit**                          |
-| Generated bundled-extension table               | Inside `README.md` between `GENERATED:bundled-extensions` markers        |
-| Generated command-reference block               | Inside `README.md` between `GENERATED:command-reference` markers         |
-| Generated folder layout                         | Inside `ARCHITECTURE.md` between `GENERATED:folder-layout` markers       |
-| Generated troubleshooting index                 | Inside `README.md` between `GENERATED:troubleshooting-index` markers     |
-| Hand-maintained registry types                  | `catalog/types.ts`                                                       |
-| Recommended external extensions (curated list)  | `catalog/recommendations.json` — hand-maintained, validated by generator |
-| Recommended-extension runtime code              | `extensions/sf-pi-manager/lib/recommendations*.ts`                       |
-| Recommended-extension user state                | `<globalAgentDir>/state/sf-pi/recommendations.json` — machine-written    |
-| CI / release automation                         | `.github/workflows/`                                                     |
-| Repo rules for contributors / agents            | `AGENTS.md`, `CONTRIBUTING.md`                                           |
-| Repo conventions and structure                  | this file                                                                |
+| I want to change...                             | Look in                                                                    |
+| ----------------------------------------------- | -------------------------------------------------------------------------- |
+| Extension metadata (name/category/commands)     | `extensions/<id>/manifest.json` — then `npm run generate-catalog`          |
+| Extension entry point / lifecycle hooks         | `extensions/<id>/index.ts`                                                 |
+| Extension implementation modules                | `extensions/<id>/lib/*.ts`                                                 |
+| Extension config panel (when `configurable`)    | `extensions/<id>/lib/config-panel.ts` — must export `createConfigPanel`    |
+| Extension tests                                 | `extensions/<id>/tests/*.test.ts` (vitest)                                 |
+| Extension human-facing docs                     | `extensions/<id>/README.md`                                                |
+| Extension-specific agent rules                  | `extensions/<id>/AGENTS.md` (optional, see below)                          |
+| Extension-specific roadmap                      | `extensions/<id>/ROADMAP.md` (optional, see below)                         |
+| Slash command handlers                          | `extensions/<id>/index.ts` — most handle their own commands                |
+| Shared Pi-runtime shims                         | `lib/common/pi-compat.ts`, `lib/common/pi-paths.ts`                        |
+| Shared SF environment detection                 | `lib/common/sf-environment/`                                               |
+| Shared glyph/ASCII policy                       | `lib/common/glyph-policy.ts`                                               |
+| Shared display profile + diagnostics contract   | `lib/common/display/`                                                      |
+| Generated registry (for runtime extension load) | `catalog/registry.ts` — **generated, do not edit**                         |
+| Generated machine-readable index                | `catalog/index.json` — **generated, do not edit**                          |
+| Generated command reference                     | `docs/commands.md` — **generated, do not edit**                            |
+| Generated agent orientation                     | `docs/agent-orientation.md` — **generated, do not edit**                   |
+| Human contributor orientation                   | `docs/human-orientation.md`                                                |
+| Documentation source/check map                  | `docs/doc-ownership.json`                                                  |
+| Generated bundled-extension table               | Inside `README.md` between `GENERATED:bundled-extensions` markers          |
+| Generated command-reference block               | Inside `README.md` between `GENERATED:command-reference` markers           |
+| Generated folder layout                         | Inside `ARCHITECTURE.md` between `GENERATED:folder-layout` markers         |
+| Generated troubleshooting index                 | Inside `README.md` between `GENERATED:troubleshooting-index` markers       |
+| Generated extension file maps                   | Inside `extensions/*/README.md` between `GENERATED:file-structure` markers |
+| Hand-maintained registry types                  | `catalog/types.ts`                                                         |
+| Recommended external extensions (curated list)  | `catalog/recommendations.json` — hand-maintained, validated by generator   |
+| Recommended-extension runtime code              | `extensions/sf-pi-manager/lib/recommendations*.ts`                         |
+| Recommended-extension user state                | `<globalAgentDir>/state/sf-pi/recommendations.json` — machine-written      |
+| CI / release automation                         | `.github/workflows/`                                                       |
+| Repo rules for contributors / agents            | `AGENTS.md`, `CONTRIBUTING.md`                                             |
+| Repo conventions and structure                  | this file                                                                  |
 
 `catalog/index.json` also carries a `srcLoc` field per extension — use it
 to gauge the size of an extension before diving in.
