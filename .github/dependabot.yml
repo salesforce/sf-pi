@@ -12,6 +12,15 @@ updates:
     labels:
       - dependencies
       - npm
+    # Supply-chain defense: delay PRs for freshly-published versions so
+    # a compromised release (e.g. xz-utils-style attack) has time to be
+    # discovered and yanked upstream before Dependabot proposes it here.
+    # Patches ship faster than majors because they're lower-risk overall.
+    cooldown:
+      default-days: 7
+      semver-major-days: 14
+      semver-minor-days: 7
+      semver-patch-days: 3
     groups:
       dev-minor-and-patch:
         dependency-type: development
@@ -40,6 +49,12 @@ updates:
     labels:
       - dependencies
       - github-actions
+    # Same supply-chain cooldown rationale as the npm ecosystem above.
+    cooldown:
+      default-days: 7
+      semver-major-days: 14
+      semver-minor-days: 7
+      semver-patch-days: 3
     groups:
       actions-minor-and-patch:
         update-types:

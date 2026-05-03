@@ -38,6 +38,9 @@ jobs:
         with:
           # Full history so scheduled scans and PR scans can walk all commits.
           fetch-depth: 0
+          # Scan only; no push access needed. Don't persist GITHUB_TOKEN
+          # in .git/config (artipacked).
+          persist-credentials: false
 
       - name: Install gitleaks
         run: |

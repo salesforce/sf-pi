@@ -32,6 +32,9 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          # Lint job; no git pushes (artipacked).
+          persist-credentials: false
 
       - name: Install actionlint
         env:
@@ -54,6 +57,9 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          # grep-only check; no git pushes (artipacked).
+          persist-credentials: false
 
       - name: Enforce 40-char SHA on every `uses:` line
         # A local action lives inside this repo, so `uses: ./path` is always
