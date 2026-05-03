@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.33.0-2026-05-03",
-  "latestVersion": "0.33.0",
+  "revision": "release-0.33.1-2026-05-03",
+  "latestVersion": "0.33.1",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.33.0",
+      "id": "release-0.33.1",
       "kind": "update",
-      "title": "sf-pi v0.33.0 — gateway: maximize OpenAI reasoning defaults",
+      "title": "sf-pi v0.33.1 — sf-llm-gateway-internal: make gpt-5.5 agentic-safe",
       "publishedAt": "2026-05-03T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.33.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.33.1",
       "severity": "info",
-      "body": "gateway: maximize OpenAI reasoning defaults — sf-welcome: caption copy + force animation repaints"
+      "body": "sf-llm-gateway-internal: make gpt-5.5 agentic-safe"
     },
     {
       "id": "pi-0.71-compat",
