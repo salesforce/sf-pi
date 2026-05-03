@@ -137,8 +137,23 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BRANCH: ${{ steps.findpr.outputs.branch }}
+        # We dispatch every workflow that owns a required status check
+        # on main (see the ruleset's required_status_checks list). Without
+        # these, the PR stays BLOCKED forever because the checks never
+        # appear on the release branch. Two workflows are intentionally
+        # not dispatched:
+        #   - dependency-review.yml: pull_request-only by design;
+        #     release-please PRs only bump CHANGELOG so there are no
+        #     new deps to review. Removed from required_status_checks.
+        #   - osv-scanner.yml's "OSV scan (PR diff)" job: same reason,
+        #     only fires on pull_request. Removed from required_status_checks.
+        # The remaining dispatched workflows produce check-run names
+        # that match the ruleset exactly (Validate, gitleaks, actionlint,
+        # Require SHA-pinned actions, License scan (production deps)).
         run: |
           set -euo pipefail
-          echo "Dispatching CI + gitleaks on $BRANCH"
+          echo "Dispatching required-check workflows on $BRANCH"
           gh workflow run ci.yml --repo "$GITHUB_REPOSITORY" --ref "$BRANCH"
           gh workflow run gitleaks.yml --repo "$GITHUB_REPOSITORY" --ref "$BRANCH"
+          gh workflow run workflow-lint.yml --repo "$GITHUB_REPOSITORY" --ref "$BRANCH"
+          gh workflow run license-scan.yml --repo "$GITHUB_REPOSITORY" --ref "$BRANCH"
