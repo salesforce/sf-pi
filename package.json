@@ -1,6 +1,6 @@
 {
   "name": "sf-pi",
-  "version": "0.31.3",
+  "version": "0.32.0",
   "private": true,
   "type": "module",
   "description": "Opinionated Salesforce developer extensions for the pi coding agent — Apex/LWC LSP, Agent Script authoring, Slack research, and a TUI manager.",

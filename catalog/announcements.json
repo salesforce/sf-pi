@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.31.3-2026-05-03",
-  "latestVersion": "0.31.3",
+  "revision": "release-0.32.0-2026-05-03",
+  "latestVersion": "0.32.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.31.3",
+      "id": "release-0.32.0",
       "kind": "update",
-      "title": "sf-pi v0.31.3 — ci: dispatch every required-check workflow on release PR branch",
+      "title": "sf-pi v0.32.0 — sf-welcome: animated Pi + SALESFORCE brand mark with dual palette",
       "publishedAt": "2026-05-03T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.31.3",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.32.0",
       "severity": "info",
-      "body": "ci: dispatch every required-check workflow on release PR branch"
+      "body": "sf-welcome: animated Pi + SALESFORCE brand mark with dual palette"
     },
     {
       "id": "pi-0.71-compat",
