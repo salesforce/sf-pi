@@ -75,6 +75,15 @@ describe("buildProbeBody", () => {
     expect(body.reasoning_effort).toBeUndefined();
     expect(body.allowed_openai_params).toBeUndefined();
   });
+
+  it("omits reasoning_effort on gpt-5.5 probes so they mirror the transport shim (gateway rejects tools+effort)", () => {
+    const probe: TransformProbe = { model: "gpt-5.5", reasoning: "xhigh", withTool: true };
+    const body = buildProbeBody(probe);
+    expect(body.reasoning_effort).toBeUndefined();
+    expect(body.allowed_openai_params).toBeUndefined();
+    // Tool still included so users can see the payload the extension would ship.
+    expect(Array.isArray(body.tools)).toBe(true);
+  });
 });
 
 describe("sanitizeUpstreamHeaders", () => {

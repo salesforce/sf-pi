@@ -20,6 +20,15 @@
  *       Codex `reasoning_effort` must be in `low|medium|high` — the gateway
  *       rejects `minimal`/`xhigh`. Both quirks only apply to Codex.
  *
+ *    c. gpt-5.5 rejects ANY request that combines `reasoning_effort` with
+ *       function tools on `/v1/chat/completions` ("Function tools with
+ *       reasoning_effort are not supported for gpt-5.5 in
+ *       /v1/chat/completions. Please use /v1/responses instead."). Pi is an
+ *       agentic harness and always carries tools, and this gateway does NOT
+ *       expose `/v1/responses` (the route 302s to an SSO login page). So the
+ *       shim force-strips `reasoning_effort` for gpt-5.5. The model still
+ *       performs implicit reasoning.
+ *
  *    Non-reasoning OpenAI models (gpt-4o, gpt-4o-mini) and non-OpenAI
  *    families pass through untouched.
  *
@@ -230,15 +239,44 @@ export function isOpenAiReasoningModelId(modelId: string): boolean {
 }
 
 /**
+ * True for gpt-5.5 variants.
+ *
+ * gpt-5.5 is a special case on this gateway: LiteLLM rejects ANY request that
+ * combines `reasoning_effort` with function tools on `/v1/chat/completions`
+ * with a 400 "Function tools with reasoning_effort are not supported for
+ * gpt-5.5 in /v1/chat/completions. Please use /v1/responses instead." Pi is
+ * an agentic harness and always sends function tools, so sending any
+ * reasoning_effort at all against this model on this gateway is guaranteed
+ * to fail. The gateway does not expose `/v1/responses` — that route 302s to
+ * an SSO login page — so we cannot pivot transports either. The only safe
+ * path is to omit `reasoning_effort` entirely for gpt-5.5; the model still
+ * performs implicit reasoning (live probes show ~30-100 reasoning_tokens on
+ * non-trivial prompts even without an explicit effort).
+ */
+export function isGpt55ModelId(modelId: string): boolean {
+  const lower = modelId.toLowerCase();
+  return /(^|\/)gpt-5\.5(?!\d)/.test(lower);
+}
+
+/**
  * Return the strongest reasoning effort this gateway should request for an
  * OpenAI-family model.
  *
- * LiteLLM's OpenAI provider docs list `xhigh` for newer GPT-5.2+ / GPT-5.5
- * chat models, while older GPT-5 / GPT-5-mini top out at `high`. Codex is
- * handled separately because the gateway's Codex path rejects `xhigh` today.
+ * Rules:
+ *  - gpt-5.5: never send reasoning_effort — gateway rejects the
+ *    reasoning_effort + tools combo on `/v1/chat/completions` and the
+ *    suggested `/v1/responses` route is not exposed here.
+ *    See `isGpt55ModelId` above for the full context.
+ *  - Codex: capped at `high` (gateway rejects `xhigh`/`minimal`).
+ *  - Older GPT-5 / GPT-5-mini: `high`.
+ *  - GPT-5.2+ non-5.5 variants: `xhigh` (LiteLLM's documented max).
  */
 export function resolveOpenAiReasoningEffort(modelId: string): string | undefined {
   if (!isOpenAiReasoningModelId(modelId)) {
+    return undefined;
+  }
+
+  if (isGpt55ModelId(modelId)) {
     return undefined;
   }
 
@@ -393,14 +431,46 @@ export function injectCodexGatewayParams(payload: Record<string, unknown>): void
 }
 
 /**
+ * Drop `reasoning_effort` (and its allow-list entry) from the payload.
+ *
+ * Used for gpt-5.5 because the gateway rejects `reasoning_effort` + function
+ * tools on `/v1/chat/completions` with a hard 400 — see `isGpt55ModelId`.
+ * pi-ai may have set the field via thinking-level mapping before this shim
+ * saw the payload, so we have to actively strip it, not just skip injection.
+ */
+export function stripReasoningEffortForGpt55(payload: Record<string, unknown>): void {
+  delete payload.reasoning_effort;
+  const allowed = payload.allowed_openai_params;
+  if (Array.isArray(allowed)) {
+    const filtered = allowed.filter(
+      (value): value is string => typeof value === "string" && value !== "reasoning_effort",
+    );
+    if (filtered.length > 0) {
+      payload.allowed_openai_params = filtered;
+    } else {
+      delete payload.allowed_openai_params;
+    }
+  }
+}
+
+/**
  * Default OpenAI reasoning models to the strongest safe effort for their
  * family. Caller-provided values still win, but are allow-listed so LiteLLM
  * passes them through instead of raising UnsupportedParamsError.
+ *
+ * gpt-5.5 is a hard exception: the gateway rejects `reasoning_effort` on
+ * any request that carries function tools (pi always does). Force-strip any
+ * value pi-ai may have injected via the thinking-level selector.
  */
 export function injectOpenAiReasoningEffort(
   payload: Record<string, unknown>,
   modelId: string,
 ): void {
+  if (isGpt55ModelId(modelId)) {
+    stripReasoningEffortForGpt55(payload);
+    return;
+  }
+
   if (typeof payload.reasoning_effort !== "string" || !payload.reasoning_effort.trim()) {
     const effort = resolveOpenAiReasoningEffort(modelId);
     if (effort) {

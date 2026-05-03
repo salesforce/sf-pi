@@ -71,7 +71,16 @@ export function buildProbeBody(probe: TransformProbe): Record<string, unknown> {
   } else if (isCodex || isOpenAi) {
     // OpenAI-family reasoning models (gpt-5, codex) need this combo to
     // satisfy LiteLLM; gpt-4o ignores reasoning_effort entirely.
-    if (probe.reasoning) {
+    //
+    // gpt-5.5 is a hard exception: the gateway rejects reasoning_effort +
+    // function tools on /v1/chat/completions for this model, and the
+    // extension transport strips the field for every gpt-5.5 request. The
+    // probe mirrors that behavior so `/sf-llm-gateway-internal debug
+    // gpt-5.5 reasoning=xhigh tool` shows the payload the extension would
+    // actually send (without reasoning_effort) instead of a shape the
+    // gateway would reject.
+    const isGpt55 = /(^|\/)gpt-5\.5(?!\d)/.test(probe.model.toLowerCase());
+    if (probe.reasoning && !isGpt55) {
       body.reasoning_effort =
         probe.reasoning === "xhigh" || probe.reasoning === "high"
           ? "high"

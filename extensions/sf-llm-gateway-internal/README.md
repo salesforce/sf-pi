@@ -73,6 +73,14 @@ short-circuits subsequent sessions. Users see no prompt and no manual step.
    `reasoning_effort` to the `low|medium|high` values the gateway currently
    accepts. Non-Codex payloads pass straight through.
 
+   Also: **gpt-5.5 force-strips `reasoning_effort`**. The gateway returns
+   400 `"Function tools with reasoning_effort are not supported for gpt-5.5
+in /v1/chat/completions. Please use /v1/responses instead."` when an
+   agentic turn (which always carries tools) includes the field. `/v1/responses`
+   is not exposed on this gateway — the route 302s to SSO login — so the
+   only safe path is to omit the field entirely. gpt-5.5 still performs
+   implicit reasoning on every turn.
+
 2. **Anthropic stream errors** (`streamSfGatewayAnthropic`). Retries once when
    Anthropic reports a retryable SSE error before any user-visible content is
    emitted, then normalizes raw error envelopes into a concise message that
@@ -311,6 +319,18 @@ level (minimal=16K … xhigh=64K) instead of unconditionally flooring at
 exponential backoff before bubbling. If the retry exhausts, the final
 error includes an inline `Tip:` footer with next steps. For deeper
 inspection, enable wire tracing (`SF_LLM_GATEWAY_INTERNAL_TRACE=1`).
+
+**gpt-5.5 fails with `Function tools with reasoning_effort are not supported for gpt-5.5 in /v1/chat/completions. Please use /v1/responses instead.`:**
+Handled by the transport shim as of this extension version: gpt-5.5
+requests no longer carry `reasoning_effort` regardless of what pi's
+thinking selector is set to. The model still performs implicit reasoning
+(`usage.completion_tokens_details.reasoning_tokens > 0` on non-trivial
+prompts). This gateway does not expose `/v1/responses` — probing the route
+returns a 302 to an SSO login page — so we cannot pivot transports; the
+only viable fix is to omit the field. If you need explicit control over
+reasoning depth on a gpt-5 family model, use `gpt-5`, `gpt-5-mini`, or
+`gpt-5.2`-series variants, all of which accept `reasoning_effort` + tools
+on `/v1/chat/completions`.
 
 **Footer shows `⚠` badge after a 429 or 5xx:**
 `provider-telemetry.ts` parses retry-after headers and surfaces a 60s

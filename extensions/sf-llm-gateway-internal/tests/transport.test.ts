@@ -33,6 +33,7 @@ import {
   injectOpenAiReasoningEffort,
   injectOpenAiServiceTier,
   isCodexModelId,
+  isGpt55ModelId,
   isOpenAiModelId,
   isOpenAiReasoningModelId,
   isOpus47ModelId,
@@ -40,6 +41,7 @@ import {
   normalizeCodexReasoningEffort,
   resolveOpenAiReasoningEffort,
   resolveOpus47MaxTokensFloor,
+  stripReasoningEffortForGpt55,
 } from "../lib/transport.ts";
 
 describe("formatAnthropicStreamError", () => {
@@ -260,18 +262,48 @@ describe("OpenAI reasoning effort defaults", () => {
     expect(isOpenAiReasoningModelId("chatgpt-4o-latest")).toBe(false);
   });
 
-  it("uses xhigh only on GPT-5.2+ / GPT-5.5 models and high elsewhere", () => {
+  it("uses xhigh only on GPT-5.2+ non-5.5 models, high elsewhere, and undefined for 5.5 (gateway forbids tools+effort)", () => {
     expect(resolveOpenAiReasoningEffort("gpt-5")).toBe("high");
     expect(resolveOpenAiReasoningEffort("gpt-5-mini")).toBe("high");
     expect(resolveOpenAiReasoningEffort("gpt-5.2")).toBe("xhigh");
-    expect(resolveOpenAiReasoningEffort("gpt-5.5")).toBe("xhigh");
+    // gpt-5.5 is intentionally undefined — the gateway rejects
+    // reasoning_effort + function tools on /v1/chat/completions for this
+    // model, and /v1/responses is not exposed on this gateway.
+    expect(resolveOpenAiReasoningEffort("gpt-5.5")).toBeUndefined();
     expect(resolveOpenAiReasoningEffort("gpt-5.3-codex")).toBe("high");
     expect(resolveOpenAiReasoningEffort("gpt-4o")).toBeUndefined();
   });
 
-  it("injects max safe reasoning effort and allow-lists it for GPT-5.5", () => {
+  it("does not inject reasoning_effort for gpt-5.5 (gateway rejects the tools+effort combo)", () => {
     const payload: Record<string, unknown> = {};
     injectOpenAiReasoningEffort(payload, "gpt-5.5");
+    expect(payload.reasoning_effort).toBeUndefined();
+    expect(payload.allowed_openai_params).toBeUndefined();
+  });
+
+  it("strips a caller-provided reasoning_effort on gpt-5.5 (pi thinking selector can pre-populate it)", () => {
+    const payload: Record<string, unknown> = {
+      reasoning_effort: "high",
+      allowed_openai_params: ["reasoning_effort"],
+    };
+    injectOpenAiReasoningEffort(payload, "gpt-5.5");
+    expect(payload.reasoning_effort).toBeUndefined();
+    expect(payload.allowed_openai_params).toBeUndefined();
+  });
+
+  it("preserves unrelated allow-list entries when stripping reasoning_effort on gpt-5.5", () => {
+    const payload: Record<string, unknown> = {
+      reasoning_effort: "high",
+      allowed_openai_params: ["reasoning_effort", "service_tier"],
+    };
+    injectOpenAiReasoningEffort(payload, "gpt-5.5");
+    expect(payload.reasoning_effort).toBeUndefined();
+    expect(payload.allowed_openai_params).toEqual(["service_tier"]);
+  });
+
+  it("injects xhigh on GPT-5.2+ non-5.5 variants and allow-lists it", () => {
+    const payload: Record<string, unknown> = {};
+    injectOpenAiReasoningEffort(payload, "gpt-5.2");
     expect(payload.reasoning_effort).toBe("xhigh");
     expect(payload.allowed_openai_params).toEqual(["reasoning_effort"]);
   });
@@ -285,9 +317,45 @@ describe("OpenAI reasoning effort defaults", () => {
 
   it("respects caller-provided reasoning effort while still allow-listing it", () => {
     const payload: Record<string, unknown> = { reasoning_effort: "low" };
-    injectOpenAiReasoningEffort(payload, "gpt-5.5");
+    injectOpenAiReasoningEffort(payload, "gpt-5");
     expect(payload.reasoning_effort).toBe("low");
     expect(payload.allowed_openai_params).toEqual(["reasoning_effort"]);
+  });
+});
+
+describe("isGpt55ModelId", () => {
+  it("matches canonical gpt-5.5 ids", () => {
+    expect(isGpt55ModelId("gpt-5.5")).toBe(true);
+    expect(isGpt55ModelId("openai/gpt-5.5")).toBe(true);
+    expect(isGpt55ModelId("GPT-5.5")).toBe(true);
+  });
+
+  it("does not match sibling GPT-5 variants", () => {
+    expect(isGpt55ModelId("gpt-5")).toBe(false);
+    expect(isGpt55ModelId("gpt-5.2")).toBe(false);
+    expect(isGpt55ModelId("gpt-5.3-codex")).toBe(false);
+    expect(isGpt55ModelId("gpt-5-mini")).toBe(false);
+    // Guard against accidental prefix collisions with hypothetical future ids.
+    expect(isGpt55ModelId("gpt-5.55")).toBe(false);
+    expect(isGpt55ModelId("gpt-5.50")).toBe(false);
+  });
+});
+
+describe("stripReasoningEffortForGpt55", () => {
+  it("removes reasoning_effort and scrubs allowed_openai_params", () => {
+    const payload: Record<string, unknown> = {
+      reasoning_effort: "high",
+      allowed_openai_params: ["reasoning_effort"],
+    };
+    stripReasoningEffortForGpt55(payload);
+    expect(payload.reasoning_effort).toBeUndefined();
+    expect(payload.allowed_openai_params).toBeUndefined();
+  });
+
+  it("is a no-op when neither field is present", () => {
+    const payload: Record<string, unknown> = { model: "gpt-5.5" };
+    stripReasoningEffortForGpt55(payload);
+    expect(payload).toEqual({ model: "gpt-5.5" });
   });
 });
 

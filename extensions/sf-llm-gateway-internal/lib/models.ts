@@ -449,6 +449,30 @@ export const MODEL_PRESETS: Record<string, Omit<GatewayModelDefinition, "id">> =
     contextWindow: 272_000,
     maxTokens: 128_000,
   },
+  // --- GPT-5.5 ---
+  //
+  // Gateway /v1/model/info reports 1,050,000 input / 128,000 output for this
+  // model — verified live. We advertise 1M context in the selector; the
+  // gateway will accept up to ~1.05M but rounding down keeps pi's context
+  // window math honest.
+  //
+  // Reasoning note: the sf-llm-gateway /v1/chat/completions route rejects
+  // `reasoning_effort` + function tools with 400 for this model, and the
+  // `/v1/responses` route the error points at is not exposed on this
+  // gateway (it 302s to SSO login). The extension's transport shim strips
+  // any `reasoning_effort` that pi-ai would otherwise inject based on the
+  // thinking selector. gpt-5.5 still performs implicit reasoning on every
+  // turn. `thinkingLevelMap` is intentionally omitted — there is no wire
+  // value we can attach to the selected level, so exposing the picker would
+  // be misleading. (Pi still falls back to its default level behavior.)
+  "gpt-5.5": {
+    family: "openai",
+    name: "[SF LLM Gateway] GPT-5.5 [1M]",
+    reasoning: true,
+    input: ["text", "image"],
+    contextWindow: 1_000_000,
+    maxTokens: 128_000,
+  },
   "gpt-4o": {
     family: "openai",
     name: "[SF LLM Gateway] GPT-4o",

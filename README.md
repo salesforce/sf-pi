@@ -518,6 +518,7 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 - Gateway fails on startup or tool calls error out immediately
 - Claude responses appear to truncate and the agent asks you to type "continue"
 - Opus 4.7 returns `api_error: Internal server error` on heavy turns
+- gpt-5.5 fails with `Function tools with reasoning_effort are not supported for gpt-5.5 in /v1/chat/completions. Please use /v1/responses instead.`
 - Footer shows `⚠` badge after a 429 or 5xx
 - I set `/thinking` to a different level but subsequent model switches reset it to `xhigh`
 - Beta headers aren't taking effect

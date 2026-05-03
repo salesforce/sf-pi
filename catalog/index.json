@@ -119,7 +119,7 @@
     "entry": "extensions/sf-llm-gateway-internal/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 6059
+    "srcLoc": 6158
   },
   {
     "id": "sf-lsp",
