@@ -229,15 +229,31 @@ jobs:
           echo "::error::gitleaks did not complete within the wait window; aborting merge."
           exit 1
 
-      - name: Squash-merge release PR
+      - name: Enable auto-merge on release PR
         if: steps.pr.outputs.pr_number != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR: ${{ steps.pr.outputs.pr_number }}
+        # Why --auto instead of an immediate merge:
+        #   The main branch ruleset requires 9 status checks + PR before
+        #   merge. The job we're in right now is itself one of those
+        #   required checks, so an immediate `gh pr merge` deadlocks:
+        #   "required check 'CI' has not completed" (it can't complete
+        #   until this step returns). --admin would bypass, but
+        #   github-actions[bot] is not on the ruleset's bypass_actors
+        #   list — only the admin RepositoryRole is — so --admin errors
+        #   out with "base branch policy prohibits the merge."
+        #
+        #   --auto has GitHub queue the merge and execute it as soon as
+        #   every required check reports success, with no bypass
+        #   required. For the release PR that typically means: CI + OSV
+        #   + License + Workflow lint + gitleaks + npm audit all
+        #   conclude, then GitHub merges the PR and deletes the branch.
         run: |
           set -euo pipefail
           gh pr merge "$PR" \
             --repo "$GITHUB_REPOSITORY" \
+            --auto \
             --squash \
             --delete-branch
 
