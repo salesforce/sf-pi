@@ -1,0 +1,12 @@
+{
+  "id": "sf-guardrail",
+  "name": "SF Guardrail",
+  "description": "Salesforce-aware safety hooks — file protection policies, dangerous-command gating, and org-aware confirmation for production deploys, apex runs, and data mutations",
+  "category": "core",
+  "defaultEnabled": true,
+  "configurable": true,
+  "commands": ["/sf-guardrail"],
+  "providers": [],
+  "tools": [],
+  "events": ["session_start", "session_shutdown", "before_agent_start", "tool_call"]
+}

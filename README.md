@@ -162,6 +162,7 @@ Every slash command exposed by a bundled extension. See each extension README fo
 | Command                    | Extension                                                        | Category |
 | -------------------------- | ---------------------------------------------------------------- | -------- |
 | `/sf-agentscript-assist`   | [SF Agent Script Assist](./extensions/sf-agentscript-assist/)    | core     |
+| `/sf-guardrail`            | [SF Guardrail](./extensions/sf-guardrail/)                       | core     |
 | `/sf-lsp`                  | [SF LSP](./extensions/sf-lsp/)                                   | core     |
 | `/sf-pi`                   | [SF Pi Manager](./extensions/sf-pi-manager/)                     | core     |
 | `/sf-pi recommended`       | [SF Pi Manager](./extensions/sf-pi-manager/)                     | core     |
@@ -270,18 +271,19 @@ For the canonical machine-readable bundle list, see [`catalog/index.json`](./cat
 
 **Default** column: `on` = enabled on install, `opt-in` = disabled on install (enable with `/sf-pi enable <id>`), `always-on` = cannot be disabled.
 
-| Extension                                                        | Category | Default   | Description                                                                                                                                                        |
-| ---------------------------------------------------------------- | -------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| [SF Agent Script Assist](./extensions/sf-agentscript-assist/)    | core     | on        | In-process Agent Script authoring companion — parse, compile, and code-action feedback on every .agent write                                                       |
-| [SF Brain](./extensions/sf-brain/)                               | core     | on        | High-density Salesforce operator kernel injected once per session — describe-before-query rules, API picker, anonymous Apex verification loop, and CLI power moves |
-| [SF LSP](./extensions/sf-lsp/)                                   | core     | on        | Real-time Salesforce LSP diagnostics on write/edit with a working-indicator spinner, transcript rows, and a permanent top-bar health segment in sf-devbar          |
-| [SF Pi Manager](./extensions/sf-pi-manager/)                     | core     | always-on | Core manager — provides /sf-pi commands (always active)                                                                                                            |
-| [SF Slack](./extensions/sf-slack/)                               | core     | on        | Slack integration — search messages, read threads, browse channel history                                                                                          |
-| [SF LLM Gateway Internal](./extensions/sf-llm-gateway-internal/) | provider | on        | Salesforce LLM Gateway provider with model discovery                                                                                                               |
-| [SF DevBar](./extensions/sf-devbar/)                             | ui       | on        | Bespoke Salesforce developer status bar with org context, model info, git, and context window progress                                                             |
-| [SF Ohana Spinner](./extensions/sf-ohana-spinner/)               | ui       | on        | Salesforce-themed rainbow spinner during LLM thinking                                                                                                              |
-| [SF Skills HUD](./extensions/sf-skills-hud/)                     | ui       | on        | Pinned top-right overlay that shows which skills are live in context versus earlier in the session                                                                 |
-| [SF Welcome](./extensions/sf-welcome/)                           | ui       | on        | Salesforce-branded splash screen with environment status, extension health, and community info                                                                     |
+| Extension                                                        | Category | Default   | Description                                                                                                                                                          |
+| ---------------------------------------------------------------- | -------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [SF Agent Script Assist](./extensions/sf-agentscript-assist/)    | core     | on        | In-process Agent Script authoring companion — parse, compile, and code-action feedback on every .agent write                                                         |
+| [SF Brain](./extensions/sf-brain/)                               | core     | on        | High-density Salesforce operator kernel injected once per session — describe-before-query rules, API picker, anonymous Apex verification loop, and CLI power moves   |
+| [SF Guardrail](./extensions/sf-guardrail/)                       | core     | on        | Salesforce-aware safety hooks — file protection policies, dangerous-command gating, and org-aware confirmation for production deploys, apex runs, and data mutations |
+| [SF LSP](./extensions/sf-lsp/)                                   | core     | on        | Real-time Salesforce LSP diagnostics on write/edit with a working-indicator spinner, transcript rows, and a permanent top-bar health segment in sf-devbar            |
+| [SF Pi Manager](./extensions/sf-pi-manager/)                     | core     | always-on | Core manager — provides /sf-pi commands (always active)                                                                                                              |
+| [SF Slack](./extensions/sf-slack/)                               | core     | on        | Slack integration — search messages, read threads, browse channel history                                                                                            |
+| [SF LLM Gateway Internal](./extensions/sf-llm-gateway-internal/) | provider | on        | Salesforce LLM Gateway provider with model discovery                                                                                                                 |
+| [SF DevBar](./extensions/sf-devbar/)                             | ui       | on        | Bespoke Salesforce developer status bar with org context, model info, git, and context window progress                                                               |
+| [SF Ohana Spinner](./extensions/sf-ohana-spinner/)               | ui       | on        | Salesforce-themed rainbow spinner during LLM thinking                                                                                                                |
+| [SF Skills HUD](./extensions/sf-skills-hud/)                     | ui       | on        | Pinned top-right overlay that shows which skills are live in context versus earlier in the session                                                                   |
+| [SF Welcome](./extensions/sf-welcome/)                           | ui       | on        | Salesforce-branded splash screen with environment status, extension health, and community info                                                                       |
 
 <!-- GENERATED:bundled-extensions:end -->
 
@@ -425,6 +427,13 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 - Kernel never appears in the prompt
 - User override does not take effect
 - I want to see the kernel content in a session
+
+**[SF Guardrail](./extensions/sf-guardrail/#troubleshooting)**
+
+- All production confirms are firing on my sandbox
+- I cannot write to `destructiveChanges.xml` even though my rule is supposed to be off
+- Headless CI fails with "Blocked by sf-guardrail in headless mode"
+- `/sf-guardrail audit` is empty after /resume
 
 **[SF LSP](./extensions/sf-lsp/#troubleshooting)**
 

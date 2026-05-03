@@ -71,6 +71,30 @@
     "srcLoc": 1456
   },
   {
+    "id": "sf-guardrail",
+    "name": "SF Guardrail",
+    "description": "Salesforce-aware safety hooks — file protection policies, dangerous-command gating, and org-aware confirmation for production deploys, apex runs, and data mutations",
+    "category": "core",
+    "defaultEnabled": true,
+    "alwaysActive": false,
+    "configurable": true,
+    "commands": [
+      "/sf-guardrail"
+    ],
+    "providers": [],
+    "tools": [],
+    "events": [
+      "session_start",
+      "session_shutdown",
+      "before_agent_start",
+      "tool_call"
+    ],
+    "entry": "extensions/sf-guardrail/index.ts",
+    "hasReadme": true,
+    "hasTests": true,
+    "srcLoc": 1865
+  },
+  {
     "id": "sf-llm-gateway-internal",
     "name": "SF LLM Gateway Internal",
     "description": "Salesforce LLM Gateway provider with model discovery",

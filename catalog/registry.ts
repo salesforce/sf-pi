@@ -37,6 +37,21 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
     events: ["session_start","session_shutdown","model_select","thinking_level_select","turn_start","turn_end","agent_end","before_agent_start"],
   },
   {
+    id: "sf-guardrail",
+    name: "SF Guardrail",
+    description: "Salesforce-aware safety hooks — file protection policies, dangerous-command gating, and org-aware confirmation for production deploys, apex runs, and data mutations",
+    file: "extensions/sf-guardrail/index.ts",
+    category: "core",
+    defaultEnabled: true,
+    commands: ["/sf-guardrail"],
+    events: ["session_start","session_shutdown","before_agent_start","tool_call"],
+    configurable: true,
+    getConfigPanel: async () => {
+      const mod = await import("../extensions/sf-guardrail/lib/config-panel.ts");
+      return mod.createConfigPanel;
+    },
+  },
+  {
     id: "sf-llm-gateway-internal",
     name: "SF LLM Gateway Internal",
     description: "Salesforce LLM Gateway provider with model discovery",

@@ -1,0 +1,136 @@
+{
+  "version": 1,
+  "enabled": true,
+  "features": {
+    "policies": true,
+    "commandGate": true,
+    "orgAwareGate": true,
+    "promptInjection": true
+  },
+  "productionAliases": [],
+  "headlessEscapeHatchEnv": "SF_GUARDRAIL_ALLOW_HEADLESS",
+  "confirmTimeoutMs": 30000,
+  "policies": {
+    "rules": [
+      {
+        "id": "sf-destructive-changes-xml",
+        "description": "Destructive-deploy manifest — block direct edits",
+        "patterns": [{ "pattern": "**/destructiveChanges*.xml" }],
+        "protection": "noAccess",
+        "blockMessage": "Writes to {file} are blocked by sf-guardrail. Stage deletes via a reviewed metadata change, not by hand-editing destructiveChanges.xml.",
+        "enabled": true,
+        "onlyIfExists": false
+      },
+      {
+        "id": "sf-forceignore",
+        "description": ".forceignore — changes ship/retrieve behavior silently",
+        "patterns": [{ "pattern": "**/.forceignore" }],
+        "protection": "readOnly",
+        "blockMessage": "{file} is read-only under sf-guardrail. Edits alter retrieve/deploy behavior — change it from a terminal with review.",
+        "enabled": true,
+        "onlyIfExists": false
+      },
+      {
+        "id": "sf-cli-state",
+        "description": "SF CLI / sfdx state directories — never edit by hand",
+        "patterns": [{ "pattern": ".sf/**" }, { "pattern": ".sfdx/**" }],
+        "protection": "noAccess",
+        "blockMessage": "{file} is internal sf CLI state. sf-guardrail blocks direct access; use sf commands instead.",
+        "enabled": true,
+        "onlyIfExists": false
+      },
+      {
+        "id": "secret-files",
+        "description": "Dotenv-style secret files",
+        "patterns": [
+          { "pattern": ".env" },
+          { "pattern": ".env.local" },
+          { "pattern": ".env.production" },
+          { "pattern": ".env.prod" },
+          { "pattern": ".dev.vars" }
+        ],
+        "allowedPatterns": [
+          { "pattern": ".env.example" },
+          { "pattern": ".env.sample" },
+          { "pattern": ".env.test" },
+          { "pattern": "*.example.env" },
+          { "pattern": "*.sample.env" },
+          { "pattern": "*.test.env" }
+        ],
+        "protection": "noAccess",
+        "blockMessage": "{file} may contain secrets; sf-guardrail blocks access. Use an *.example.env template or an environment-backed secret store.",
+        "enabled": true,
+        "onlyIfExists": true
+      }
+    ]
+  },
+  "commandGate": {
+    "patterns": [
+      { "id": "rm-rf", "pattern": "rm -rf", "description": "recursive force delete" },
+      { "id": "sudo", "pattern": "sudo", "description": "superuser command" },
+      {
+        "id": "sf-org-delete",
+        "pattern": "sf org delete",
+        "description": "delete scratch/sandbox org"
+      },
+      { "id": "git-force-push", "pattern": "git push --force", "description": "git force push" },
+      {
+        "id": "git-force-push-short",
+        "pattern": "git push -f",
+        "description": "git force push (short flag)"
+      }
+    ],
+    "allowedPatterns": [],
+    "autoDenyPatterns": []
+  },
+  "orgAwareGate": {
+    "rules": [
+      {
+        "id": "sf-deploy-prod",
+        "description": "Metadata deploy targeting production",
+        "match": { "tool": "bash", "ast": { "cmd": "sf", "subCmd": ["project", "deploy"] } },
+        "whenOrgType": ["production"],
+        "action": "confirm",
+        "confirmMessage": "Deploy to PRODUCTION org {orgAlias} ({orgType})?\n\n  {command}\n\nPrefer `sf project deploy validate` as a rehearsal first.",
+        "enabled": true
+      },
+      {
+        "id": "sf-apex-run-prod",
+        "description": "Anonymous Apex targeting production",
+        "match": { "tool": "bash", "ast": { "cmd": "sf", "subCmd": ["apex", "run"] } },
+        "whenOrgType": ["production"],
+        "action": "confirm",
+        "confirmMessage": "Run anonymous Apex on PRODUCTION org {orgAlias}?\n\n  {command}\n\nWrap DML in Savepoint + Database.rollback() when rehearsing.",
+        "enabled": true
+      },
+      {
+        "id": "sf-data-mutate-prod",
+        "description": "sf data delete/update/upsert/import targeting production",
+        "match": {
+          "tool": "bash",
+          "ast": { "cmd": "sf", "subCmd": ["data", ["delete", "update", "upsert", "import"]] }
+        },
+        "whenOrgType": ["production"],
+        "action": "confirm",
+        "confirmMessage": "Mutate data on PRODUCTION org {orgAlias}?\n\n  {command}",
+        "enabled": true
+      },
+      {
+        "id": "sf-org-api-destructive-prod",
+        "description": "sf org api with destructive HTTP method on production",
+        "match": {
+          "tool": "bash",
+          "ast": {
+            "cmd": "sf",
+            "subCmd": ["org", "api"],
+            "flagIn": { "--method": ["DELETE", "PATCH", "PUT"] }
+          }
+        },
+        "whenOrgType": ["production"],
+        "action": "confirm",
+        "confirmMessage": "Call PRODUCTION org {orgAlias} REST API with destructive HTTP method?\n\n  {command}",
+        "enabled": true
+      }
+    ]
+  }
+}
