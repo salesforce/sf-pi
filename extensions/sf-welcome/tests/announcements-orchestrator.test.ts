@@ -230,6 +230,42 @@ describe("refreshAnnouncements", () => {
     expect(ids).toContain("r");
   });
 
+  it("does not send cached ETags when fetching the remote feed", async () => {
+    const root = makeRoot({
+      manifest: {
+        schemaVersion: 1,
+        revision: "r",
+        feedUrl: "https://example.com/feed.json",
+        announcements: [],
+      },
+    });
+
+    let headers: HeadersInit | undefined;
+    const fetchImpl: typeof fetch = async (_input, init) => {
+      headers = init?.headers;
+      return new Response(JSON.stringify({ schemaVersion: 1, revision: "r", announcements: [] }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    };
+
+    await refreshAnnouncements({
+      packageRoot: root,
+      env: {} as NodeJS.ProcessEnv,
+      now: new Date("2026-05-04T00:00:00Z"),
+      state: {
+        acknowledgedRevision: "",
+        dismissed: {},
+        lastFetchAt: "2026-05-03T00:00:00Z",
+        lastFetchEtag: 'safe"\r\nInjected: bad',
+      },
+      remote: fetchImpl,
+    });
+
+    expect(headers).toMatchObject({ Accept: "application/json" });
+    expect((headers as Record<string, string>)["If-None-Match"]).toBeUndefined();
+  });
+
   it("falls back to bundled-only when remote fetch fails", async () => {
     const root = makeRoot({
       manifest: {

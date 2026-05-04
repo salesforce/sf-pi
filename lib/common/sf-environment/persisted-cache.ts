@@ -5,7 +5,7 @@
  * This lets startup show a recent snapshot immediately on the next launch,
  * then refresh it in the background without waiting on SF CLI commands.
  */
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { globalAgentPath } from "../pi-paths.ts";
 import { detectProject } from "./detect.ts";
@@ -56,9 +56,6 @@ export function writePersistedSfEnvironment(cwd: string, env: SfEnvironment): vo
 
 export function clearPersistedSfEnvironment(cwd?: string): void {
   const filePath = getCacheFilePath();
-  if (!existsSync(filePath)) {
-    return;
-  }
 
   if (cwd === undefined) {
     rmSync(filePath, { force: true });
@@ -94,9 +91,6 @@ export function getEnvironmentCacheKey(cwd: string): string {
 
 function readCacheFile(): PersistedCacheFile | null {
   const filePath = getCacheFilePath();
-  if (!existsSync(filePath)) {
-    return null;
-  }
 
   try {
     const raw = readFileSync(filePath, "utf8");

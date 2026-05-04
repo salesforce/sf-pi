@@ -675,7 +675,7 @@ async function handleHelpCommand(pi: ExtensionAPI, ctx: ExtensionCommandContext)
     "Beta aliases:",
     ...KNOWN_BETAS.map((b) => `- ${b.aliases[0]} → ${b.value}`),
     "",
-    `Built-in default base URL: ${DEFAULT_BASE_URL || "(none — set via setup wizard or env)"}`,
+    "Built-in default base URL: (none — set via setup wizard or env)",
     `Env vars (optional overrides / credentials): ${BASE_URL_ENV}, ${API_KEY_ENV}`,
     `Optional env: ${BETAS_ENV} (comma-separated Anthropic betas; unset = model defaults)`,
     `Setup also supports additive vs exclusive scoped model behavior.`,
@@ -1106,9 +1106,7 @@ async function promptAndSaveBaseUrl(
   const hint =
     resolved.baseUrlSource === "env"
       ? `\nCurrent value comes from ${BASE_URL_ENV}; a saved value is used only when the env var is absent.`
-      : DEFAULT_BASE_URL
-        ? `\nLeave this blank to remove the saved value for this scope and fall back to other saved scopes or the built-in default (${DEFAULT_BASE_URL}).`
-        : `\nLeave this blank to clear the saved value for this scope. This extension has no built-in default URL — you must provide one via env var or setup.`;
+      : "\nLeave this blank to clear the saved value for this scope. This extension has no built-in default URL — you must provide one via env var or setup.";
 
   const value = await ctx.ui.input(
     `SF LLM Gateway base URL (${scope})${hint}`,

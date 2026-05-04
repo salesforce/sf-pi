@@ -30,7 +30,7 @@
  * upstream changes break us, bump the pin to a working SHA instead of patching.
  */
 
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -88,12 +88,26 @@ function parseArgs() {
 // Helpers
 // -------------------------------------------------------------------------------------------------
 
-function run(command, cwd) {
-  execSync(command, { cwd, stdio: "inherit" });
+function run(command, args, cwd) {
+  execFileSync(command, args, { cwd, stdio: "inherit" });
 }
 
 function readBytes(filePath) {
-  return existsSync(filePath) ? readFileSync(filePath) : null;
+  try {
+    return readFileSync(filePath);
+  } catch (error) {
+    if (error && error.code === "ENOENT") return null;
+    throw error;
+  }
+}
+
+function readTextIfPresent(filePath) {
+  try {
+    return readFileSync(filePath, "utf8");
+  } catch (error) {
+    if (error && error.code === "ENOENT") return "";
+    throw error;
+  }
 }
 
 function bytesEqual(a, b) {
@@ -107,15 +121,18 @@ function ensureDir(dir) {
 
 function buildUpstream(workdir, ref) {
   console.log(`→ Cloning ${UPSTREAM_REPO} at ${ref}...`);
-  run(`git init -q`, workdir);
-  run(`git remote add origin ${UPSTREAM_REPO}`, workdir);
-  run(`git fetch --depth=1 origin ${ref}`, workdir);
-  run(`git checkout -q FETCH_HEAD`, workdir);
+  run("git", ["init", "-q"], workdir);
+  run("git", ["remote", "add", "origin", UPSTREAM_REPO], workdir);
+  run("git", ["fetch", "--depth=1", "origin", ref], workdir);
+  run("git", ["checkout", "-q", "FETCH_HEAD"], workdir);
 
   const upstreamVersion = JSON.parse(
     readFileSync(path.join(workdir, "packages/agentforce/package.json"), "utf8"),
   ).version;
-  const resolvedSha = execSync("git rev-parse HEAD", { cwd: workdir, encoding: "utf8" }).trim();
+  const resolvedSha = execFileSync("git", ["rev-parse", "HEAD"], {
+    cwd: workdir,
+    encoding: "utf8",
+  }).trim();
 
   console.log(
     `→ Upstream @agentscript/agentforce@${upstreamVersion} (${resolvedSha.slice(0, 10)})`,
@@ -125,7 +142,7 @@ function buildUpstream(workdir, ref) {
   // --ignore-scripts avoids the native tree-sitter build which isn't needed for
   // the parser-javascript variant we vendor.
   console.log(`→ pnpm install --ignore-scripts ...`);
-  run(`npx -y pnpm@10.33.1 install --ignore-scripts --frozen-lockfile`, workdir);
+  run("npx", ["-y", "pnpm@10.33.1", "install", "--ignore-scripts", "--frozen-lockfile"], workdir);
 
   // Build only the packages the agentforce SDK needs, skipping the native
   // tree-sitter variant (which requires a `tree-sitter` CLI binary that is
@@ -141,10 +158,10 @@ function buildUpstream(workdir, ref) {
     "@agentscript/agentfabric-dialect",
     "@agentscript/agentforce",
   ];
-  const filterArgs = buildFilters.map((name) => `--filter ${name}`).join(" ");
+  const filterArgs = buildFilters.flatMap((name) => ["--filter", name]);
 
-  console.log(`→ pnpm ${filterArgs} build ...`);
-  run(`npx -y pnpm@10.33.1 ${filterArgs} build`, workdir);
+  console.log(`→ pnpm ${filterArgs.join(" ")} build ...`);
+  run("npx", ["-y", "pnpm@10.33.1", ...filterArgs, "build"], workdir);
 
   return { resolvedSha, upstreamVersion };
 }
@@ -260,7 +277,7 @@ function main() {
     const syncDate = new Date().toISOString().slice(0, 10);
     const upstreamMd = writeUpstreamMd(resolvedSha, upstreamVersion, syncDate);
     const upstreamMdPath = path.join(VENDOR_DIR, "UPSTREAM.md");
-    const currentMd = existsSync(upstreamMdPath) ? readFileSync(upstreamMdPath, "utf8") : "";
+    const currentMd = readTextIfPresent(upstreamMdPath);
 
     // Ignore the `Synced:` line when comparing — it changes every run.
     const normalize = (s) => s.replace(/^- Synced: .*$/m, "");

@@ -706,8 +706,17 @@ async function writeOrCheckAgentOrientationDoc(manifests) {
 // Write/check helpers
 // -------------------------------------------------------------------------------------------------
 
+function readTextIfPresent(filePath) {
+  try {
+    return readFileSync(filePath, "utf8");
+  } catch (error) {
+    if (error && error.code === "ENOENT") return null;
+    throw error;
+  }
+}
+
 function writeOrCheck(filePath, content, label) {
-  const current = existsSync(filePath) ? readFileSync(filePath, "utf8") : null;
+  const current = readTextIfPresent(filePath);
 
   if (CHECK_ONLY) {
     if (current !== content) {

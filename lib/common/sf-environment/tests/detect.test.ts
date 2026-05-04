@@ -299,6 +299,12 @@ describe("inferOrgType", () => {
     );
   });
 
+  it("does not detect developer edition from URL path text", () => {
+    expect(inferOrgType({ instanceUrl: "https://example.com/develop.my.salesforce.com" })).toBe(
+      "unknown",
+    );
+  });
+
   it("detects trial from trailExpirationDate", () => {
     expect(inferOrgType({ trailExpirationDate: "2026-04-22T16:08:39.000+0000" })).toBe("trial");
   });

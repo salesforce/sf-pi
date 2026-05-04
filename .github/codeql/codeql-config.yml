@@ -1,0 +1,22 @@
+name: sf-pi CodeQL config
+
+paths-ignore:
+  # Generated third-party bundle. The extension consumes this file as an
+  # immutable vendored artifact; fixes should land upstream and be pulled in by
+  # scripts/sync-agentforce-sdk.mjs rather than patched by hand here.
+  - extensions/sf-agentscript-assist/lib/vendor/agentforce/browser.js
+
+query-filters:
+  # sf-pi intentionally writes bounded local artifacts in two places:
+  # Slack tool truncation spillover into a fresh temp directory, and LSP
+  # installer downloads into an installer temp directory before verification,
+  # extraction, and cleanup. The generic backdoor-oriented query produces
+  # persistent false positives for those expected local-tooling flows.
+  - exclude:
+      id: js/http-to-file-access
+
+  # The announcements feature intentionally reads a maintainer-owned bundled
+  # manifest to discover an optional hosted feed URL. Fetching that configured
+  # URL is the feature boundary, not unintended file exfiltration.
+  - exclude:
+      id: js/file-access-to-http

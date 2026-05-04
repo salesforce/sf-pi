@@ -124,7 +124,7 @@
     "entry": "extensions/sf-llm-gateway-internal/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 6161
+    "srcLoc": 6159
   },
   {
     "id": "sf-lsp",
@@ -148,7 +148,7 @@
     "entry": "extensions/sf-lsp/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 3732
+    "srcLoc": 3745
   },
   {
     "id": "sf-ohana-spinner",
@@ -257,7 +257,7 @@
     "entry": "extensions/sf-slack/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 9815
+    "srcLoc": 9818
   },
   {
     "id": "sf-welcome",
@@ -282,6 +282,6 @@
     "entry": "extensions/sf-welcome/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 3913
+    "srcLoc": 3908
   }
 ]

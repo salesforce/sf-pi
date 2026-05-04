@@ -5,7 +5,7 @@
  * Agents use this after a code diff to avoid guessing which docs need review.
  * It does not modify files; it prints deterministic guidance from path rules.
  */
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -16,12 +16,18 @@ const ROOT = path.resolve(__dirname, "..");
 function changedFiles() {
   const base = process.env.DOCS_CHANGED_BASE || "origin/main...HEAD";
   try {
-    const out = execSync(`git diff --name-only ${base}`, { cwd: ROOT, encoding: "utf8" }).trim();
+    const out = execFileSync("git", ["diff", "--name-only", base], {
+      cwd: ROOT,
+      encoding: "utf8",
+    }).trim();
     if (out) return out.split("\n").filter(Boolean);
   } catch {
     // Fall through to local working tree diff.
   }
-  const out = execSync("git diff --name-only HEAD", { cwd: ROOT, encoding: "utf8" }).trim();
+  const out = execFileSync("git", ["diff", "--name-only", "HEAD"], {
+    cwd: ROOT,
+    encoding: "utf8",
+  }).trim();
   return out ? out.split("\n").filter(Boolean) : [];
 }
 
