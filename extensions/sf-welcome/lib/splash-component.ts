@@ -66,7 +66,7 @@ const GOLD = (text: string) => fgRgb(255, 183, 77, text); // Gold/amber
 //     they shimmer like the [SF LLM Gateway] spinner.
 //
 // Animation: buildLeftColumn() takes a headerOffset integer that the
-// owner (SfWelcomeOverlay via setHeaderOffset) ticks up every 300 ms
+// owner (SfWelcomeOverlay/SfWelcomeHeader via setHeaderOffset) ticks up every 400 ms
 // for the first few seconds of the splash. Each tick advances the
 // per-character color index by 1, so colors travel left→right through
 // every section. After the animation window ends, the offset stays
@@ -776,7 +776,7 @@ export class SfWelcomeOverlay implements Component {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Splash header component (persistent, no countdown)
+// Splash header component (persistent, optional countdown)
 // ═══════════════════════════════════════════════════════════════════════════
 
 export class SfWelcomeHeader implements Component {
@@ -785,6 +785,7 @@ export class SfWelcomeHeader implements Component {
   // the persistent header shown in session lists) can show the same
   // animated frame if the caller chooses to drive it.
   private headerOffset: number = 0;
+  private countdown: number | undefined;
 
   constructor(data: SplashData) {
     this.data = data;
@@ -792,6 +793,10 @@ export class SfWelcomeHeader implements Component {
 
   setHeaderOffset(offset: number): void {
     this.headerOffset = offset;
+  }
+
+  setCountdown(seconds: number | undefined): void {
+    this.countdown = seconds;
   }
 
   invalidate(): void {}
@@ -802,7 +807,18 @@ export class SfWelcomeHeader implements Component {
     const boxWidth = getBoxWidth(termWidth);
     const hChar = "─";
     let bottomLine: string;
-    if (shouldUseSingleColumn(termWidth)) {
+    if (this.countdown !== undefined) {
+      const countdownText = ` Press Esc to dismiss · auto-dismiss in ${this.countdown}s `;
+      const countdownStyled = MUTED(countdownText);
+      const bottomContentWidth = boxWidth - 2;
+      const countdownVisLen = visibleWidth(countdownText);
+      const leftPad = Math.floor((bottomContentWidth - countdownVisLen) / 2);
+      const rightPad = bottomContentWidth - countdownVisLen - leftPad;
+      bottomLine =
+        MUTED(hChar.repeat(Math.max(0, leftPad))) +
+        countdownStyled +
+        MUTED(hChar.repeat(Math.max(0, rightPad)));
+    } else if (shouldUseSingleColumn(termWidth)) {
       // No column split to hint at in single-column mode.
       bottomLine = MUTED(hChar.repeat(Math.max(0, boxWidth - 2)));
     } else {

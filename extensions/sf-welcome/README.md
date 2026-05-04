@@ -35,7 +35,7 @@ Salesforce-branded splash screen that displays on startup with an animated Pi + 
 Extension loads
   └─ session_start (reason="startup")
        ├─ quietStartup=false → show overlay (30s countdown, any-key dismiss)
-       └─ quietStartup=true  → show persistent header (cleared on first input)
+       └─ quietStartup=true  → show persistent header (Esc dismiss, 30s auto-dismiss)
 
 Dismissal triggers:
   ├─ Any keypress
@@ -112,13 +112,14 @@ Dismissal triggers:
 | Event/Trigger   | Condition                     | Result                                      |
 | --------------- | ----------------------------- | ------------------------------------------- |
 | session_start   | reason="startup", quiet=false | Show overlay with countdown                 |
-| session_start   | reason="startup", quiet=true  | Show persistent header                      |
+| session_start   | reason="startup", quiet=true  | Show persistent header with countdown       |
 | session_start   | reason≠"startup"              | Skip (resume, reload, fork)                 |
 | session_start   | first-ever launch             | Persist current pi version, omit What's New |
 | agent_start     | overlay/header visible        | Dismiss + persist seen pi version           |
 | tool_call       | overlay/header visible        | Dismiss + persist seen pi version           |
 | any keypress    | overlay visible               | Dismiss + persist seen pi version           |
-| countdown=0     | overlay visible               | Auto-dismiss + persist seen pi version      |
+| Escape          | header visible                | Dismiss + persist seen pi version           |
+| countdown=0     | overlay/header visible        | Auto-dismiss + persist seen pi version      |
 | /sf-welcome     | always                        | Show text summary                           |
 | /sf-setup-fonts | always                        | Install bundled Nerd Font + refresh cache   |
 | session_start   | ascii + no font + never asked | Ask once, persist answer, never re-ask      |
@@ -223,9 +224,9 @@ Terminal.app and some Powerlevel10k setups. Fixes:
 
 **Splash feels too busy or you want it out of the way:**
 Enable the compact header mode: `"quietStartup": true` in the same
-`settings.json`. The dismissable splash is replaced by a single persistent
-header above the prompt. `--verbose` on the pi CLI overrides and forces
-the overlay.
+`settings.json`. The dismissable splash is replaced by a compact header
+above the prompt. Press Esc to dismiss it early, or let it auto-dismiss
+after 30 seconds. `--verbose` on the pi CLI overrides and forces the overlay.
 
 **Splash content gets truncated in a narrow terminal:**
 Fixed — below ~100 columns the splash now stacks to a single column instead

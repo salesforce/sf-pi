@@ -42,7 +42,13 @@ import type {
   KeybindingsManager,
   Theme,
 } from "@mariozechner/pi-coding-agent";
-import type { Component, Focusable, OverlayHandle, TUI } from "@mariozechner/pi-tui";
+import {
+  matchesKey,
+  type Component,
+  type Focusable,
+  type OverlayHandle,
+  type TUI,
+} from "@mariozechner/pi-tui";
 import {
   collectSplashData,
   detectSfCliStatus,
@@ -75,6 +81,13 @@ const FONTS_COMMAND_NAME = "sf-setup-fonts";
  * monthly usage snapshot yet. Once the gateway reports real numbers,
  * they replace this value (and may be ∞ if there's no fixed cap). */
 const MONTHLY_BUDGET_FALLBACK = 3000;
+const HEADER_FRAME_MS = 400;
+const HEADER_ANIMATION_FRAMES = 13; // 13 × 400 ms ≈ 5 s
+const HEADER_DISMISS_SECONDS = 30;
+
+function isReducedMotionRequested(): boolean {
+  return process.env.SF_PI_REDUCED_MOTION === "1" || process.env.SF_PI_REDUCED_MOTION === "true";
+}
 
 // -------------------------------------------------------------------------------------------------
 // Extension entry point
@@ -86,6 +99,13 @@ export default function sfWelcome(pi: ExtensionAPI) {
   let dismissOverlay: ((persistSeen?: boolean) => void) | null = null;
   let overlayRequestRender: (() => void) | null = null;
   let headerActive = false;
+  let activeHeader: SfWelcomeHeader | null = null;
+  let headerRequestRender: ((force?: boolean) => void) | null = null;
+  let headerAnimationTimer: ReturnType<typeof setInterval> | null = null;
+  let headerCountdownTimer: ReturnType<typeof setInterval> | null = null;
+  let headerInputUnsubscribe: (() => void) | null = null;
+  let headerOffset = 0;
+  let headerCountdown = HEADER_DISMISS_SECONDS;
   /** Unsubscribe from the gateway usage store. Set during session_start and
    * cleared on dismiss / session_shutdown so we don't leak listeners across
    * reloads. */
@@ -156,6 +176,86 @@ export default function sfWelcome(pi: ExtensionAPI) {
     acknowledgeAnnouncementsRevision(toPersist);
   }
 
+  function stopHeaderAnimation(): void {
+    if (headerAnimationTimer) {
+      clearInterval(headerAnimationTimer);
+      headerAnimationTimer = null;
+    }
+  }
+
+  function stopHeaderCountdown(): void {
+    if (headerCountdownTimer) {
+      clearInterval(headerCountdownTimer);
+      headerCountdownTimer = null;
+    }
+    headerInputUnsubscribe?.();
+    headerInputUnsubscribe = null;
+  }
+
+  function resetHeaderAnimation(): void {
+    stopHeaderAnimation();
+    stopHeaderCountdown();
+    activeHeader = null;
+    headerRequestRender = null;
+    headerOffset = 0;
+    headerCountdown = HEADER_DISMISS_SECONDS;
+  }
+
+  function startHeaderAnimation(ctx: ExtensionContext, generation: number): void {
+    if (
+      headerAnimationTimer ||
+      isReducedMotionRequested() ||
+      headerOffset >= HEADER_ANIMATION_FRAMES
+    ) {
+      return;
+    }
+
+    headerAnimationTimer = setInterval(() => {
+      if (!headerActive || !isActiveSession(ctx, generation)) {
+        stopHeaderAnimation();
+        return;
+      }
+
+      headerOffset += 1;
+      activeHeader?.setHeaderOffset(headerOffset);
+      activeHeader?.invalidate();
+      headerRequestRender?.(true);
+
+      if (headerOffset >= HEADER_ANIMATION_FRAMES) {
+        stopHeaderAnimation();
+      }
+    }, HEADER_FRAME_MS);
+  }
+
+  function startHeaderCountdown(ctx: ExtensionContext, generation: number): void {
+    if (headerCountdownTimer) return;
+
+    headerCountdownTimer = setInterval(() => {
+      if (!headerActive || !isActiveSession(ctx, generation)) {
+        stopHeaderCountdown();
+        return;
+      }
+
+      headerCountdown -= 1;
+      activeHeader?.setCountdown(headerCountdown);
+      activeHeader?.invalidate();
+      headerRequestRender?.();
+
+      if (headerCountdown <= 0) {
+        dismiss(ctx);
+      }
+    }, 1000);
+
+    headerInputUnsubscribe ??= ctx.ui.onTerminalInput((data) => {
+      if (!headerActive || !isActiveSession(ctx, generation)) return;
+      if (matchesKey(data, "escape") || matchesKey(data, "esc")) {
+        dismiss(ctx);
+        return { consume: true };
+      }
+      return;
+    });
+  }
+
   // Helper: dismiss welcome screen (overlay or header)
   function dismiss(ctx: ExtensionContext) {
     if (!isActiveSession(ctx)) return;
@@ -169,6 +269,7 @@ export default function sfWelcome(pi: ExtensionAPI) {
     }
     if (headerActive) {
       headerActive = false;
+      resetHeaderAnimation();
       ctx.ui.setHeader(undefined);
     }
     markWhatsNewSeen();
@@ -188,6 +289,7 @@ export default function sfWelcome(pi: ExtensionAPI) {
     dismissOverlay = null;
     overlayRequestRender = null;
     headerActive = false;
+    resetHeaderAnimation();
     shouldDismissEarly = false;
     isStreaming = false;
 
@@ -359,6 +461,7 @@ export default function sfWelcome(pi: ExtensionAPI) {
       ctx.ui.setHeader(undefined);
     }
     headerActive = false;
+    resetHeaderAnimation();
     unsubscribeUsageStore?.();
     unsubscribeUsageStore = null;
     endActiveSession(ctx);
@@ -516,17 +619,32 @@ export default function sfWelcome(pi: ExtensionAPI) {
   ) {
     if (!ctx.hasUI || !isActiveSession(ctx, generation)) return;
     const header = new SfWelcomeHeader(data);
+    header.setHeaderOffset(headerOffset);
+    header.setCountdown(headerCountdown);
     headerActive = true;
 
-    ctx.ui.setHeader(() => ({
-      render(width: number): string[] {
-        if (!isActiveSession(ctx, generation)) return [];
-        return header.render(width);
-      },
-      invalidate() {
-        if (isActiveSession(ctx, generation)) header.invalidate();
-      },
-    }));
+    ctx.ui.setHeader((tui) => {
+      activeHeader = header;
+      headerRequestRender = (force = false) => tui.requestRender(force);
+      startHeaderAnimation(ctx, generation);
+      startHeaderCountdown(ctx, generation);
+
+      return {
+        render(width: number): string[] {
+          if (!isActiveSession(ctx, generation)) return [];
+          return header.render(width);
+        },
+        invalidate() {
+          if (isActiveSession(ctx, generation)) header.invalidate();
+        },
+        dispose() {
+          if (activeHeader === header) {
+            activeHeader = null;
+            headerRequestRender = null;
+          }
+        },
+      };
+    });
   }
 
   function setupOverlay(
@@ -592,18 +710,15 @@ export default function sfWelcome(pi: ExtensionAPI) {
           let dismissed = false;
           const intervalRef: { current?: ReturnType<typeof setInterval> } = {};
           // Separate interval for the Pi + SALESFORCE color shimmer.
-          // Ticks for ~8 seconds on boot, then stops — the animation is
+          // Ticks for ~5 seconds on boot, then stops — the animation is
           // a one-time "boot-up moment," not an ongoing repaint cost.
           //
           // Opt-out: set SF_PI_REDUCED_MOTION=1 to skip the animation
           // entirely. Honors the motion-preference convention used by
           // prefers-reduced-motion in modern OSes.
           const headerIntervalRef: { current?: ReturnType<typeof setInterval> } = {};
-          const reducedMotion =
-            process.env.SF_PI_REDUCED_MOTION === "1" || process.env.SF_PI_REDUCED_MOTION === "true";
-          const HEADER_FRAME_MS = 400;
-          const HEADER_ANIMATION_FRAMES = 20; // 20 × 400 ms = 8 s
-          let headerOffset = 0;
+          const reducedMotion = isReducedMotionRequested();
+          let overlayHeaderOffset = 0;
 
           const doDismiss = (persistSeen: boolean = true) => {
             if (dismissed) return;
@@ -673,14 +788,14 @@ export default function sfWelcome(pi: ExtensionAPI) {
                 clearInterval(headerIntervalRef.current);
                 return;
               }
-              headerOffset += 1;
-              welcome.setHeaderOffset(headerOffset);
+              overlayHeaderOffset += 1;
+              welcome.setHeaderOffset(overlayHeaderOffset);
               welcome.invalidate();
               // force:true bypasses pi-tui's diff cache so the new
               // per-character color bytes definitely land on screen
               // (sf-tui.d.ts requestRender(force?: boolean)).
               tui.requestRender(true);
-              if (headerOffset >= HEADER_ANIMATION_FRAMES) {
+              if (overlayHeaderOffset >= HEADER_ANIMATION_FRAMES) {
                 clearInterval(headerIntervalRef.current);
               }
             }, HEADER_FRAME_MS);

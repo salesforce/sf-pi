@@ -119,6 +119,29 @@ describe("sf-welcome", () => {
     expect(lines.length).toBeGreaterThan(5);
   });
 
+  it("SfWelcomeHeader renders optional countdown dismissal text", async () => {
+    const { SfWelcomeHeader } = await import("../lib/splash-component.ts");
+    const data = {
+      modelName: "Claude Sonnet 4",
+      providerName: "anthropic",
+      loadedCounts: { extensions: 3, skills: 1, promptTemplates: 0 },
+      recentSessions: [],
+      extensionHealth: [],
+      slackConnected: false,
+      monthlyCost: 0,
+      monthlyBudget: 3000,
+      lifetimeCost: 0,
+    };
+
+    const header = new SfWelcomeHeader(data);
+    header.setCountdown(30);
+    expect(stripAnsi(header.render(100).join("\n"))).toContain("Press Esc to dismiss");
+    expect(stripAnsi(header.render(100).join("\n"))).toContain("auto-dismiss in 30s");
+
+    header.setCountdown(12);
+    expect(stripAnsi(header.render(100).join("\n"))).toContain("auto-dismiss in 12s");
+  });
+
   it("renders compact SF CLI status without org environment details", async () => {
     const { SfWelcomeOverlay } = await import("../lib/splash-component.ts");
     const data = {
