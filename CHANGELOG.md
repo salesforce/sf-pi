@@ -361,6 +361,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.38.0](https://github.com/salesforce/sf-pi/compare/v0.37.4...v0.38.0) (2026-05-04)
+
+
+### Features
+
+* add sf-pi doctor self-healing ([6fa1b42](https://github.com/salesforce/sf-pi/commit/6fa1b42c1f47a8572056d71f67ef46192d3a7173))
+
 ## [0.37.4](https://github.com/salesforce/sf-pi/compare/v0.37.3...v0.37.4) (2026-05-04)
 
 
