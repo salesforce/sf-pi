@@ -361,6 +361,14 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.37.1](https://github.com/salesforce/sf-pi/compare/v0.37.0...v0.37.1) (2026-05-04)
+
+
+### Bug Fixes
+
+* **sf-welcome:** align splash status rows ([133d8c0](https://github.com/salesforce/sf-pi/commit/133d8c089c6eb0aafe941f07d1bc2f2a4a4d965d))
+* **ui:** improve ascii glyph fallbacks ([dbb1de6](https://github.com/salesforce/sf-pi/commit/dbb1de63ef08bee68677a84d3035528c1d1e4afb))
+
 ## [0.37.0](https://github.com/salesforce/sf-pi/compare/v0.36.0...v0.37.0) (2026-05-04)
 
 
