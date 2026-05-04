@@ -42,6 +42,7 @@ import type {
   KeybindingsManager,
   Theme,
 } from "@mariozechner/pi-coding-agent";
+import type { SplashData } from "./lib/types.ts";
 import {
   matchesKey,
   type Component,
@@ -50,6 +51,7 @@ import {
   type TUI,
 } from "@mariozechner/pi-tui";
 import {
+  collectInitialSplashData,
   collectSplashData,
   detectSfCliStatus,
   readCurrentPiVersion,
@@ -256,6 +258,20 @@ export default function sfWelcome(pi: ExtensionAPI) {
     });
   }
 
+  function refreshMountedSplash(
+    ctx: ExtensionContext,
+    generation: number,
+    force: boolean = false,
+  ): void {
+    if (!isActiveSession(ctx, generation)) return;
+    if (headerActive) {
+      activeHeader?.invalidate();
+      headerRequestRender?.(force);
+      return;
+    }
+    overlayRequestRender?.();
+  }
+
   // Helper: dismiss welcome screen (overlay or header)
   function dismiss(ctx: ExtensionContext) {
     if (!isActiveSession(ctx)) return;
@@ -298,7 +314,6 @@ export default function sfWelcome(pi: ExtensionAPI) {
     // Only show the splash on initial startup — not on resume, reload, fork, etc.
     if (event.reason !== "startup") return;
 
-    // Gather splash data
     const modelName = ctx.model?.name || ctx.model?.id || "No model";
     const providerName = ctx.model?.provider || "Unknown provider";
     // Capture the current pi version so we can persist it once the splash
@@ -317,29 +332,7 @@ export default function sfWelcome(pi: ExtensionAPI) {
     // subscribe to the store below and repaint on every publish.
     void refreshMonthlyUsage(false, ctx.cwd).catch(() => undefined);
 
-    const data = collectSplashData(modelName, providerName, ctx.cwd, MONTHLY_BUDGET_FALLBACK);
-
-    // First-ever launch: the state file has no lastSeenPiVersion and
-    // buildWhatsNewPayload returns nothing. Seed the state eagerly so the
-    // next pi update actually produces a What's New panel on dismiss.
-    if (!data.whatsNew && pendingSeenVersion) {
-      writeWelcomeState({ lastSeenPiVersion: pendingSeenVersion });
-      pendingSeenVersion = undefined;
-    }
-
-    // Capture the active announcements revision so the dismissal path can
-    // persist it. Only arm the pending ack when there is something visible
-    // — otherwise we'd claim the revision was "seen" when no panel
-    // actually rendered it.
-    if (data.announcements && data.announcements.visible.length > 0) {
-      pendingAckedRevision = data.announcements.revision || undefined;
-    } else {
-      pendingAckedRevision = undefined;
-    }
-
-    // Keep the welcome splash lightweight: it shows only SF CLI install/latest
-    // status. Full org/API/config context remains owned by sf-devbar.
-    data.sfCli = { installed: false, freshness: "checking", loading: true };
+    const data = collectInitialSplashData(modelName, providerName, MONTHLY_BUDGET_FALLBACK);
 
     // Pi resolves startup display from project/global settings, with
     // --verbose overriding quietStartup. Built-in Pi flags are not extension
@@ -351,6 +344,44 @@ export default function sfWelcome(pi: ExtensionAPI) {
       setupOverlay(ctx, data, generation);
     }
 
+    setImmediate(() => {
+      try {
+        if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
+        const currentSfCli = data.sfCli;
+        const fullData = collectSplashData(
+          modelName,
+          providerName,
+          ctx.cwd,
+          MONTHLY_BUDGET_FALLBACK,
+        );
+        Object.assign(data, fullData);
+        data.sfCli = currentSfCli ?? { installed: false, freshness: "checking", loading: true };
+
+        // First-ever launch: the state file has no lastSeenPiVersion and
+        // buildWhatsNewPayload returns nothing. Seed the state eagerly so the
+        // next pi update actually produces a What's New panel on dismiss.
+        if (!data.whatsNew && pendingSeenVersion) {
+          writeWelcomeState({ lastSeenPiVersion: pendingSeenVersion });
+          pendingSeenVersion = undefined;
+        }
+
+        // Capture the active announcements revision so the dismissal path can
+        // persist it. Only arm the pending ack when there is something visible
+        // — otherwise we'd claim the revision was "seen" when no panel
+        // actually rendered it.
+        if (data.announcements && data.announcements.visible.length > 0) {
+          pendingAckedRevision = data.announcements.revision || undefined;
+        } else {
+          pendingAckedRevision = undefined;
+        }
+
+        refreshMountedSplash(ctx, generation);
+      } catch {
+        // Best-effort hydration: keep the initial splash visible even if a
+        // local settings/session scan fails unexpectedly.
+      }
+    });
+
     // Background CLI status: keep startup responsive while `sf --version` and
     // the optional npm latest-version lookup run. No org/config commands are
     // issued from sf-welcome.
@@ -359,23 +390,12 @@ export default function sfWelcome(pi: ExtensionAPI) {
         if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
         data.sfCli = cli;
 
-        if (headerActive) {
-          setupHeader(ctx, data, generation);
-          return;
-        }
-
-        overlayRequestRender?.();
+        refreshMountedSplash(ctx, generation);
       })
       .catch(() => {
         if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
         data.sfCli = { installed: false, freshness: "unknown", loading: false };
-
-        if (headerActive) {
-          setupHeader(ctx, data, generation);
-          return;
-        }
-
-        overlayRequestRender?.();
+        refreshMountedSplash(ctx, generation);
       });
 
     // Subscribe to the gateway usage store so any time the provider publishes
@@ -397,11 +417,7 @@ export default function sfWelcome(pi: ExtensionAPI) {
       data.lifetimeCost = lifetime.lifetimeCost;
       data.lifetimeUsageSource = lifetime.lifetimeUsageSource;
 
-      if (headerActive) {
-        setupHeader(ctx, data, generation);
-        return;
-      }
-      overlayRequestRender?.();
+      refreshMountedSplash(ctx, generation);
     });
 
     // Refresh announcements from the remote feed (when configured) in the
@@ -417,11 +433,7 @@ export default function sfWelcome(pi: ExtensionAPI) {
         if (summary.visible.length > 0) {
           pendingAckedRevision = summary.revision || undefined;
         }
-        if (headerActive) {
-          setupHeader(ctx, data, generation);
-          return;
-        }
-        overlayRequestRender?.();
+        refreshMountedSplash(ctx, generation);
       })
       .catch(() => {
         // Silent — refreshAnnouncementsSummary already swallows errors, but
@@ -612,11 +624,7 @@ export default function sfWelcome(pi: ExtensionAPI) {
   // Setup helpers
   // -------------------------------------------------------------------------------------------------
 
-  function setupHeader(
-    ctx: ExtensionContext,
-    data: ReturnType<typeof collectSplashData>,
-    generation: number,
-  ) {
+  function setupHeader(ctx: ExtensionContext, data: SplashData, generation: number) {
     if (!ctx.hasUI || !isActiveSession(ctx, generation)) return;
     const header = new SfWelcomeHeader(data);
     header.setHeaderOffset(headerOffset);
@@ -645,13 +653,14 @@ export default function sfWelcome(pi: ExtensionAPI) {
         },
       };
     });
+
+    // Pi paints one default frame before extensions bind. Force a full repaint
+    // immediately after installing the header so the default editor frame is
+    // replaced as quickly as sf-pi can manage without Pi core changes.
+    headerRequestRender?.(true);
   }
 
-  function setupOverlay(
-    ctx: ExtensionContext,
-    data: ReturnType<typeof collectSplashData>,
-    generation: number,
-  ) {
+  function setupOverlay(ctx: ExtensionContext, data: SplashData, generation: number) {
     // Pi guarantees the TUI is ready by session_start — no setTimeout needed.
     if (!ctx.hasUI || !isActiveSession(ctx, generation)) return;
     if (shouldDismissEarly || isStreaming) {
@@ -706,6 +715,10 @@ export default function sfWelcome(pi: ExtensionAPI) {
 
           const welcome = new SfWelcomeOverlay(data);
 
+          // Same startup smoothing as quiet-header mode: once the overlay has
+          // a TUI handle, force a full repaint to replace Pi's default frame.
+          tui.requestRender(true);
+
           let countdown = 30;
           let dismissed = false;
           const intervalRef: { current?: ReturnType<typeof setInterval> } = {};
@@ -750,7 +763,7 @@ export default function sfWelcome(pi: ExtensionAPI) {
           // countdown tick. OverlayHandle doesn't expose a repaint API, so
           // this is the authoritative path.
           overlayRequestRender = () => {
-            if (!dismissed && isActiveSession(ctx, generation)) tui.requestRender();
+            if (!dismissed && isActiveSession(ctx, generation)) tui.requestRender(true);
           };
 
           // Check if early dismissal was requested between the outer check and this point

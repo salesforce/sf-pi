@@ -268,6 +268,40 @@ export function resolveLifetimeUsage(): {
   return { lifetimeCost: estimateLifetimeCost(), lifetimeUsageSource: "sessions" };
 }
 
+export function collectInitialSplashData(
+  modelName: string,
+  providerName: string,
+  monthlyBudgetFallback: number = 3000,
+): SplashData {
+  const gatewayState = getMonthlyUsageState();
+  const gatewayUsage = gatewayState.monthlyUsage;
+  const gatewayBudget = gatewayUsage?.maxBudget;
+
+  return {
+    modelName,
+    providerName,
+    loadedCounts: { extensions: 0, skills: 0, promptTemplates: 0 },
+    recentSessions: [],
+    extensionHealth: [],
+    slackConnected: false,
+    monthlyCost: gatewayUsage?.spend ?? 0,
+    monthlyBudget: gatewayUsage
+      ? typeof gatewayBudget === "number" && gatewayBudget > 0
+        ? gatewayBudget
+        : null
+      : monthlyBudgetFallback,
+    monthlyUsageSource: gatewayUsage ? "gateway" : "sessions",
+    lifetimeCost: typeof gatewayState.keyInfo?.spend === "number" ? gatewayState.keyInfo.spend : 0,
+    lifetimeUsageSource: gatewayState.keyInfo ? "gateway" : "sessions",
+    loading: true,
+    slackLoading: true,
+    extensionHealthLoading: true,
+    loadedCountsLoading: true,
+    recentSessionsLoading: true,
+    sfCli: { installed: false, freshness: "checking", loading: true },
+  };
+}
+
 export function collectSplashData(
   modelName: string,
   providerName: string,
@@ -327,6 +361,11 @@ export function collectSplashData(
     sfCli: undefined,
     whatsNew,
     announcements,
+    loading: false,
+    slackLoading: false,
+    extensionHealthLoading: false,
+    loadedCountsLoading: false,
+    recentSessionsLoading: false,
   };
 }
 

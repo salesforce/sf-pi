@@ -411,20 +411,18 @@ function buildLeftColumn(
     (e) => e.status === "active" || e.status === "locked",
   ).length;
   const extTotal = data.extensionHealth.length;
-  lines.push(
-    formatGlyphInfoRow(
-      "extensions",
-      mode,
-      "sf-pi Extensions",
-      `${SF_GREEN(`${extCount}`)}${MUTED(`/${extTotal} active`)}`,
-    ),
-  );
+  const extensionValue = data.extensionHealthLoading
+    ? MUTED(`${glyph("hourglass", mode)} Loading`)
+    : `${SF_GREEN(`${extCount}`)}${MUTED(`/${extTotal} active`)}`;
+  lines.push(formatGlyphInfoRow("extensions", mode, "sf-pi Extensions", extensionValue));
 
   // Slack status
-  const slackIcon = data.slackConnected ? SF_GREEN("✓") : SF_RED("✗");
-  const slackLabel = data.slackConnected ? "Connected" : "Not connected";
-  const slackStatus = data.slackConnected ? SF_GREEN(slackLabel) : SF_RED(slackLabel);
-  lines.push(formatGlyphInfoRow("slack", mode, "Slack", `${slackIcon} ${slackStatus}`));
+  const slackValue = data.slackLoading
+    ? MUTED(`${glyph("hourglass", mode)} Checking`)
+    : data.slackConnected
+      ? `${SF_GREEN("✓")} ${SF_GREEN("Connected")}`
+      : `${SF_RED("✗")} ${SF_RED("Not connected")}`;
+  lines.push(formatGlyphInfoRow("slack", mode, "Slack", slackValue));
 
   // LLM Gateway status (detect from provider name)
   const isGateway =
@@ -503,27 +501,33 @@ function buildRightColumn(data: SplashData, colWidth: number, mode: GlyphMode): 
   // --- Loaded counts ---
   lines.push(` ${BOLD}${GOLD(`${glyph("loaded", mode)} Loaded`)}${RESET}`);
   const { extensions, skills, promptTemplates } = data.loadedCounts;
-  if (extensions > 0) {
-    lines.push(
-      ` ${MUTED("─")} ${SF_GREEN(`${extensions}`)} extension${extensions !== 1 ? "s" : ""}`,
-    );
-  }
-  if (skills > 0) {
-    lines.push(` ${MUTED("─")} ${SF_GREEN(`${skills}`)} skill${skills !== 1 ? "s" : ""}`);
-  }
-  if (promptTemplates > 0) {
-    lines.push(
-      ` ${MUTED("─")} ${SF_GREEN(`${promptTemplates}`)} prompt template${promptTemplates !== 1 ? "s" : ""}`,
-    );
-  }
-  if (extensions === 0 && skills === 0 && promptTemplates === 0) {
-    lines.push(` ${MUTED("No extensions loaded")}`);
+  if (data.loadedCountsLoading) {
+    lines.push(` ${MUTED("─")} ${MUTED(`${glyph("hourglass", mode)} Loading`)}`);
+  } else {
+    if (extensions > 0) {
+      lines.push(
+        ` ${MUTED("─")} ${SF_GREEN(`${extensions}`)} extension${extensions !== 1 ? "s" : ""}`,
+      );
+    }
+    if (skills > 0) {
+      lines.push(` ${MUTED("─")} ${SF_GREEN(`${skills}`)} skill${skills !== 1 ? "s" : ""}`);
+    }
+    if (promptTemplates > 0) {
+      lines.push(
+        ` ${MUTED("─")} ${SF_GREEN(`${promptTemplates}`)} prompt template${promptTemplates !== 1 ? "s" : ""}`,
+      );
+    }
+    if (extensions === 0 && skills === 0 && promptTemplates === 0) {
+      lines.push(` ${MUTED("No extensions loaded")}`);
+    }
   }
   lines.push(horizontalRule(colWidth));
 
   // --- Recent sessions ---
   lines.push(` ${BOLD}${GOLD(`${glyph("recent", mode)} Recent Sessions`)}${RESET}`);
-  if (data.recentSessions.length === 0) {
+  if (data.recentSessionsLoading) {
+    lines.push(` ${MUTED("─")} ${MUTED(`${glyph("hourglass", mode)} Loading`)}`);
+  } else if (data.recentSessions.length === 0) {
     lines.push(` ${MUTED("No recent sessions")}`);
   } else {
     for (const session of data.recentSessions) {

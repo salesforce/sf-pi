@@ -25,12 +25,45 @@ describe("sf-welcome", () => {
 
   it("splash-data exports collectSplashData", async () => {
     const mod = await import("../lib/splash-data.ts");
+    expect(typeof mod.collectInitialSplashData).toBe("function");
     expect(typeof mod.collectSplashData).toBe("function");
     expect(typeof mod.discoverLoadedCounts).toBe("function");
     expect(typeof mod.getRecentSessions).toBe("function");
     expect(typeof mod.discoverExtensionHealth).toBe("function");
     expect(typeof mod.checkSlackConnection).toBe("function");
     expect(typeof mod.estimateMonthlyCost).toBe("function");
+  });
+
+  it("collectInitialSplashData returns a lightweight renderable payload", async () => {
+    const { collectInitialSplashData } = await import("../lib/splash-data.ts");
+    const data = collectInitialSplashData("Fast Model", "fast-provider", 123);
+
+    expect(data.modelName).toBe("Fast Model");
+    expect(data.providerName).toBe("fast-provider");
+    expect(data.monthlyBudget).toBe(123);
+    expect(data.sfCli?.loading).toBe(true);
+    expect(data.loading).toBe(true);
+    expect(data.slackLoading).toBe(true);
+    expect(data.extensionHealthLoading).toBe(true);
+    expect(data.loadedCountsLoading).toBe(true);
+    expect(data.recentSessionsLoading).toBe(true);
+    expect(data.loadedCounts).toEqual({ extensions: 0, skills: 0, promptTemplates: 0 });
+  });
+
+  it("SfWelcomeOverlay renders startup loading states for hydrated data", async () => {
+    const { collectInitialSplashData } = await import("../lib/splash-data.ts");
+    const { SfWelcomeOverlay } = await import("../lib/splash-component.ts");
+    const data = collectInitialSplashData("Fast Model", "fast-provider", 123);
+
+    const plain = stripAnsi(new SfWelcomeOverlay(data).render(140).join("\n"));
+
+    expect(plain).toContain("Slack");
+    expect(plain).toContain("Checking");
+    expect(plain).toContain("sf-pi Extensions");
+    expect(plain).toContain("Loading");
+    expect(plain).not.toContain("Not connected");
+    expect(plain).not.toContain("No extensions loaded");
+    expect(plain).not.toContain("No recent sessions");
   });
 
   it("extension health stays aligned with the generated registry", async () => {

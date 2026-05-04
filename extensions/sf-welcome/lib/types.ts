@@ -91,6 +91,16 @@ export interface SplashData {
    * into pi's global settings. Drives the `/sf-pi skills` nudge line
    * shown under the Recommended block. Undefined means no nudge. */
   skillSources?: SkillSourcesNudge;
+  /** True while the first full filesystem/settings hydration pass is pending. */
+  loading?: boolean;
+  /** True while Slack auth status is still being checked. */
+  slackLoading?: boolean;
+  /** True while extension health has not been hydrated yet. */
+  extensionHealthLoading?: boolean;
+  /** True while loaded extension/skill/prompt counts have not been hydrated yet. */
+  loadedCountsLoading?: boolean;
+  /** True while recent sessions have not been hydrated yet. */
+  recentSessionsLoading?: boolean;
   /** Lightweight SF CLI install/latest status populated asynchronously after initial render. */
   sfCli?: SfCliStatusInfo;
   /** Short summary of pi-coding-agent changes since the user's last splash.
