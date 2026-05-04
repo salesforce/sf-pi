@@ -4,7 +4,7 @@
  *
  * Bespoke Salesforce developer status bar with two rendering surfaces:
  *   - Top bar (widget above editor): model, thinking, folder, git, context window
- *   - Bottom bar (custom footer): org, CLI, connection, monthly budget, extensions
+ *   - Bottom bar (custom footer): project-scoped org, monthly budget, extensions
  *
  * All data sources are async and non-blocking. Bars render immediately with
  * cached/partial data and fill in as results arrive.
@@ -52,7 +52,6 @@ import {
 import { renderTopBarLine, type TopBarState } from "./lib/top-bar.ts";
 import { renderBottomBarParts, type BottomBarState } from "./lib/bottom-bar.ts";
 import { getGitChanges, type GitChanges } from "./lib/git-changes.ts";
-import { checkCliFreshness, type CliFreshnessResult } from "./lib/cli-freshness.ts";
 import { formatImageWidthPill, readTerminalDevbarSettings } from "./lib/settings-reader.ts";
 import { buildExecFn } from "../../lib/common/exec-adapter.ts";
 import { basename } from "node:path";
@@ -82,7 +81,6 @@ export default function sfDevBar(pi: ExtensionAPI) {
   let enabled = true;
   let env: SfEnvironment | null = null;
   let gitChanges: GitChanges | null = null;
-  let cliFreshness: CliFreshnessResult = { status: "checking" };
   let isThinking = false;
   /** Pre-formatted inline-image-width pill (e.g. "img:120c"). Empty string
    * when the user keeps the default so the top bar stays unchanged. */
@@ -196,10 +194,8 @@ export default function sfDevBar(pi: ExtensionAPI) {
     return {
       orgName: env?.org?.alias ?? env?.org?.username ?? env?.config?.targetOrg,
       orgType: env?.org?.orgType,
-      connectedStatus: env?.org?.connectedStatus,
+      projectDetected: env?.project?.detected,
       orgDetected: env?.org?.detected,
-      cliVersion: env?.cli?.version,
-      cliFreshness: cliFreshness.status,
     };
   }
 
@@ -258,8 +254,10 @@ export default function sfDevBar(pi: ExtensionAPI) {
     if (!ctx.hasUI || !isActiveSession(ctx)) return;
 
     const folder = basename(ctx.cwd);
-    const orgLabel = env?.org?.alias ?? env?.config?.targetOrg;
-    const orgType = env?.org?.orgType;
+    const orgLabel = env?.project?.detected
+      ? (env?.org?.alias ?? env?.config?.targetOrg)
+      : undefined;
+    const orgType = env?.project?.detected ? env?.org?.orgType : undefined;
     const typeSuffix = orgType && orgType !== "unknown" ? ` (${orgType})` : "";
 
     const titleParts = ["pi"];
@@ -287,10 +285,6 @@ export default function sfDevBar(pi: ExtensionAPI) {
         // Silently ignore — git may not be available
       });
   }
-
-  // --- Helper: refresh session stats ---
-  // (Stats were previously tracked here for bottom-bar token/cost display.
-  //  Removed — top bar context window and monthly budget are sufficient.)
 
   // ===========================================================================================
   // Event handlers
@@ -334,7 +328,6 @@ export default function sfDevBar(pi: ExtensionAPI) {
 
     // Reset per-session state
     gitChanges = null;
-    cliFreshness = { status: "checking" };
     isThinking = false;
     refreshImageWidthPill(ctx.cwd);
 
@@ -403,21 +396,6 @@ export default function sfDevBar(pi: ExtensionAPI) {
 
     // Fire-and-forget: async git changes
     refreshGitChanges(ctx, null, generation);
-
-    // Fire-and-forget: CLI freshness check
-    if (env?.cli?.version) {
-      checkCliFreshness(exec, env.cli.version)
-        .then((result) => {
-          if (!isActiveSession(ctx, generation)) return;
-          cliFreshness = result;
-          requestFooterRender?.();
-        })
-        .catch(() => {
-          cliFreshness = { status: "unknown" };
-        });
-    } else {
-      cliFreshness = { status: "unknown" };
-    }
   });
 
   // --- Session shutdown: clean exit ---

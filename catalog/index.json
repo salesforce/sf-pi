@@ -71,7 +71,7 @@
     "entry": "extensions/sf-devbar/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 1456
+    "srcLoc": 1337
   },
   {
     "id": "sf-guardrail",

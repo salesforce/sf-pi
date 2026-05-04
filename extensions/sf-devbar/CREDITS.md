@@ -21,8 +21,7 @@
 
 **Built from scratch for sf-pi:**
 
-- Salesforce org context (org name, type, connection status)
-- SF CLI version and freshness check
+- Salesforce org context (project-scoped org name and type)
 - Context-window progress bar
 - Git branch + added/modified/deleted change counts
 - SF LLM Gateway gold badge

@@ -13,7 +13,6 @@ const stubTheme: BarTheme = {
 
 function makeState(overrides?: Partial<BottomBarState>): BottomBarState {
   return {
-    cliFreshness: "unknown",
     ...overrides,
   };
 }
@@ -29,22 +28,36 @@ describe("renderBottomBarParts", () => {
     expect(typeof right).toBe("string");
   });
 
-  it("shows org name and sandbox badge in bracketed format", () => {
+  it("shows org name and sandbox badge in bracketed format inside a Salesforce project", () => {
     const { left } = renderBottomBarParts(
       makeState({
         orgName: "Example-Dev",
         orgType: "sandbox",
         orgDetected: true,
-        connectedStatus: "Connected",
+        projectDetected: true,
       }),
       stubTheme,
     );
+    expect(left).toContain("SFDX Project →");
     expect(left).toContain("Example-Dev");
     expect(left).toContain("sandbox");
     // Bracketed format: "OrgName [⬡ sandbox]"
     expect(left).toContain("[");
     expect(left).toContain("]");
-    expect(left).toContain("Connected");
+  });
+
+  it("hides org info outside a Salesforce project", () => {
+    const { left } = renderBottomBarParts(
+      makeState({
+        orgName: "GlobalDefault",
+        orgType: "sandbox",
+        orgDetected: true,
+        projectDetected: false,
+      }),
+      stubTheme,
+    );
+    expect(left).not.toContain("GlobalDefault");
+    expect(left).not.toContain("sandbox");
   });
 
   it("shows production warning with error color", () => {
@@ -53,7 +66,7 @@ describe("renderBottomBarParts", () => {
         orgName: "Example-Prod",
         orgType: "production",
         orgDetected: true,
-        connectedStatus: "Connected",
+        projectDetected: true,
       }),
       stubTheme,
     );
@@ -61,41 +74,29 @@ describe("renderBottomBarParts", () => {
     expect(left).toContain("error");
   });
 
-  it("shows no-org warning", () => {
-    const { left } = renderBottomBarParts(makeState(), stubTheme);
+  it("shows no-org warning inside a Salesforce project", () => {
+    const { left } = renderBottomBarParts(makeState({ projectDetected: true }), stubTheme);
     expect(left).toContain("No org configured");
   });
 
-  it("shows disconnected org warning", () => {
+  it("does not show SF CLI version or freshness badges", () => {
     const { left } = renderBottomBarParts(
       makeState({
-        orgName: "BadOrg",
-        orgDetected: false,
+        orgName: "Example-Dev",
+        orgType: "sandbox",
+        orgDetected: true,
+        projectDetected: true,
       }),
       stubTheme,
     );
-    expect(left).toContain("disconnected");
-  });
-
-  it("shows CLI version with 'SF CLI Version:' label and freshness badge", () => {
-    const { left: latestLeft } = renderBottomBarParts(
-      makeState({ cliVersion: "2.130.9", cliFreshness: "latest" }),
-      stubTheme,
-    );
-    expect(latestLeft).toContain("SF CLI Version: 2.130.9");
-    expect(latestLeft).toContain("latest");
-
-    const { left: updateLeft } = renderBottomBarParts(
-      makeState({ cliVersion: "2.128.0", cliFreshness: "update-available" }),
-      stubTheme,
-    );
-    expect(updateLeft).toContain("SF CLI Version: 2.128.0");
-    expect(updateLeft).toContain("update");
+    expect(left).not.toContain("SF CLI Version");
+    expect(left).not.toContain("latest");
+    expect(left).not.toContain("update");
   });
 
   it("shows token stats on the right", () => {
     // Token stats were removed from the bottom bar — right side now only shows
-    // extension statuses from allowed keys (sf-pi, sf-llm-gateway-internal).
+    // curated extension statuses such as Slack.
     const { right } = renderBottomBarParts(makeState(), stubTheme);
     expect(right).not.toContain("↑");
     expect(right).not.toContain("↓");
@@ -107,25 +108,47 @@ describe("renderBottomBarParts", () => {
     expect(right).toBe("");
   });
 
-  it("includes allowed extension statuses (sf-pi)", () => {
+  it("includes SF Pi package status on the left", () => {
     const extStatuses = new Map([["sf-pi", "📦 SF Pi Packages: 7/7 extensions"]]);
-    const { right } = renderBottomBarParts(
+    const { left, right } = renderBottomBarParts(
       makeState({ extensionStatuses: extStatuses }),
       stubTheme,
     );
-    expect(right).toContain("SF Pi Packages");
+    expect(left).toContain("SF Pi Packages");
+    expect(right).not.toContain("SF Pi Packages");
   });
 
-  it("includes allowed extension statuses (sf-llm-gateway-internal)", () => {
+  it("includes LLM gateway cost status on the left", () => {
     const extStatuses = new Map([["sf-llm-gateway-internal", "💰 $665.52/∞"]]);
-    const { right } = renderBottomBarParts(
+    const { left, right } = renderBottomBarParts(
       makeState({ extensionStatuses: extStatuses }),
       stubTheme,
     );
-    expect(right).toContain("💰 $665.52/∞");
+    expect(left).toContain("💰 $665.52/∞");
+    expect(right).not.toContain("💰 $665.52/∞");
   });
 
-  it("includes allowed extension statuses (sf-slack-status)", () => {
+  it("orders bottom-left segments as cost, packages, then SFDX org", () => {
+    const extStatuses = new Map([
+      ["sf-pi", "📦 SF Pi Packages: 11/11 extensions"],
+      ["sf-llm-gateway-internal", "💰 $12.34/∞"],
+    ]);
+    const { left } = renderBottomBarParts(
+      makeState({
+        extensionStatuses: extStatuses,
+        orgName: "Example-Dev",
+        orgType: "sandbox",
+        orgDetected: true,
+        projectDetected: true,
+      }),
+      stubTheme,
+    );
+    expect(left.indexOf("💰 $12.34/∞")).toBeLessThan(left.indexOf("SF Pi Packages"));
+    expect(left.indexOf("SF Pi Packages")).toBeLessThan(left.indexOf("SFDX Project →"));
+    expect(left.indexOf("SFDX Project →")).toBeLessThan(left.indexOf("Example-Dev"));
+  });
+
+  it("includes Slack status on the right", () => {
     // sf-slack emits a pre-themed pill (icon + Slack + ✓ Connected + handle
     // + bracketed tokenType + scopes). The bottom bar is a passthrough for
     // allowed statuses, so the test verifies the string made it through.
@@ -146,17 +169,23 @@ describe("renderBottomBarParts", () => {
       ["pi-packages", "13 pkgs • ↻ daily • 1 update"],
       ["sf-pi", "📦 SF Pi Packages: 7/7 extensions"],
     ]);
-    const { right } = renderBottomBarParts(
+    const { left, right } = renderBottomBarParts(
       makeState({ extensionStatuses: extStatuses }),
       stubTheme,
     );
+    expect(left).not.toContain("13 pkgs");
     expect(right).not.toContain("13 pkgs");
-    expect(right).toContain("SF Pi Packages");
+    expect(left).toContain("SF Pi Packages");
   });
 
   it("shows scratch org badge", () => {
     const { left } = renderBottomBarParts(
-      makeState({ orgType: "scratch", orgDetected: true, orgName: "MyScratch" }),
+      makeState({
+        orgType: "scratch",
+        orgDetected: true,
+        projectDetected: true,
+        orgName: "MyScratch",
+      }),
       stubTheme,
     );
     expect(left).toContain("scratch");
@@ -171,8 +200,8 @@ describe("renderBottomBarParts", () => {
       makeState({
         orgType: "sandbox",
         orgDetected: true,
+        projectDetected: true,
         orgName: "DevInt",
-        connectedStatus: "Connected",
         glyphMode: "ascii",
       }),
       stubTheme,
@@ -187,8 +216,8 @@ describe("renderBottomBarParts", () => {
       makeState({
         orgType: "developer",
         orgDetected: true,
+        projectDetected: true,
         orgName: "GT-Dev",
-        connectedStatus: "Connected",
         glyphMode: "emoji",
       }),
       stubTheme,

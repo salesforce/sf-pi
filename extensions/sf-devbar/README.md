@@ -9,9 +9,9 @@ A bespoke Salesforce developer status bar that renders two persistent UI surface
   a permanent right-aligned **Salesforce LSP segment** (`LSP[Apex: ● | LWC: ● | AgentScript: ●]`)
   fed by sf-lsp via the shared `lib/common/sf-lsp-health` registry, and (when non-default)
   an `img:Nc` pill reflecting `terminal.imageWidthCells`
-- **Bottom bar** (custom footer): Salesforce org name + type, connection status,
-  SF CLI version with freshness check, and selected sf-pi extension statuses
-  (SF Pi packages, LLM gateway monthly budget, Slack connection pill)
+- **Bottom bar** (custom footer): deterministic left order of LLM gateway
+  monthly budget, SF Pi package count, then `SFDX Project → <authenticated org> [type]`
+  only inside a Salesforce DX project; Slack remains right-aligned.
 
 Every data source is async and non-blocking. The bars render immediately with
 cached/partial data and fill in as results arrive.
@@ -34,16 +34,16 @@ Extension loads
 
 ## How It Differs from the Default Pi Footer
 
-| Default Pi footer           | sf-devbar                                              |
-| --------------------------- | ------------------------------------------------------ |
-| Model name + git branch     | SF-first: org context, gateway badge, thinking level   |
-| No org awareness            | Shows org name, type (sandbox/prod), connection status |
-| No context window indicator | Visual progress bar with color-coded usage             |
-| No CLI version info         | CLI version + async freshness check (latest vs update) |
-| No git change counts        | Branch + added/modified/deleted counts                 |
-| No SF LLM Gateway detection | Gold badge when using the internal gateway             |
-| No thinking level display   | Rainbow gradient thinking badge                        |
-| No keyboard toggle          | Ctrl+Shift+B to toggle bars on/off                     |
+| Default Pi footer           | sf-devbar                                                                      |
+| --------------------------- | ------------------------------------------------------------------------------ |
+| Model name + git branch     | SF-first: org context, gateway badge, thinking level                           |
+| No org awareness            | Shows `SFDX Project →` authenticated org and type when inside an SF DX project |
+| No context window indicator | Visual progress bar with color-coded usage                                     |
+| No package/cost grouping    | LLM gateway budget, then SF Pi package count, then org on the left             |
+| No git change counts        | Branch + added/modified/deleted counts                                         |
+| No SF LLM Gateway detection | Gold badge when using the internal gateway                                     |
+| No thinking level display   | Rainbow gradient thinking badge                                                |
+| No keyboard toggle          | Ctrl+Shift+B to toggle bars on/off                                             |
 
 ## Pi SDK Features Used (25)
 
@@ -70,7 +70,7 @@ Extension loads
 - `ctx.getContextUsage()` — context window progress bar
 - `ctx.model` — model name, provider detection
 - `ctx.cwd` — working folder name
-- `pi.exec()` — git status, npm view (CLI freshness)
+- `pi.exec()` — git status
 - `footerData.getGitBranch()` — reactive git branch
 - `footerData.onBranchChange()` — reactive re-render
 - `footerData.getExtensionStatuses()` — other extension statuses
@@ -94,7 +94,6 @@ as results arrive:
 | Git branch       | Reactive via `footerData.onBranchChange()`       | Immediate from Pi's tracking    |
 | Git changes      | Async `git status` — refreshed on agent_end      | Shows "…" until first result    |
 | Context usage    | Recalculated on turn_end                         | Bar starts empty, fills on turn |
-| CLI freshness    | Async `npm view` — once per session              | Shows version until check done  |
 
 ## Commands
 
@@ -127,13 +126,11 @@ as results arrive:
 extensions/sf-devbar/
   lib/
     bottom-bar.ts           ← implementation module
-    cli-freshness.ts        ← implementation module
     git-changes.ts          ← implementation module
     settings-reader.ts      ← implementation module
     top-bar.ts              ← implementation module
   tests/
     bottom-bar.test.ts      ← unit / smoke test
-    cli-freshness.test.ts   ← unit / smoke test
     git-changes.test.ts     ← unit / smoke test
     settings-reader.test.ts ← unit / smoke test
     shutdown-reason.test.ts ← unit / smoke test
@@ -162,7 +159,6 @@ All renderers and helpers are pure and testable:
 
 - `top-bar.ts` / `bottom-bar.ts` — tested with a stub theme that returns marker strings
 - `git-changes.ts` — tested with real porcelain output
-- `cli-freshness.ts` — tested with version comparison edge cases
 - No real CLI/git calls in tests — everything is mocked
 
 ## Troubleshooting
@@ -184,11 +180,6 @@ confirm the CLI can see the org.
 Context usage is recalculated on `turn_end`. The bar fills after the
 first assistant turn. If you expect it to fill immediately, you're
 looking for `ctx.getContextUsage()` — that's the data source.
-
-**CLI freshness check never updates:**
-`cli-freshness.ts` runs a single `npm view` once per session. Network
-failure or proxy issues leave the version unannotated. Skip by ignoring
-the badge; it never blocks other data.
 
 **Gateway badge color is wrong when using sf-llm-gateway-internal:**
 The gold badge triggers on `ctx.model.provider === "sf-llm-gateway-internal"`

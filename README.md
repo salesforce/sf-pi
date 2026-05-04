@@ -539,7 +539,6 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 - Bars don't appear at all
 - Org segment shows `…` or takes a long time
 - Context bar starts empty and doesn't fill
-- CLI freshness check never updates
 - Gateway badge color is wrong when using sf-llm-gateway-internal
 - `img:Nc` pill appears unexpectedly
 
