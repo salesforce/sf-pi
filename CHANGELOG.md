@@ -361,6 +361,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.35.0](https://github.com/salesforce/sf-pi/compare/v0.34.0...v0.35.0) (2026-05-04)
+
+
+### Features
+
+* **sf-welcome:** simplify CLI status ([893159f](https://github.com/salesforce/sf-pi/commit/893159fd8ca2dbb70c8a6cf3d02bf475bf418f5c))
+
 ## [0.34.0](https://github.com/salesforce/sf-pi/compare/v0.33.1...v0.34.0) (2026-05-03)
 
 
