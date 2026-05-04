@@ -139,11 +139,15 @@ describe("resolveGlyphMode", () => {
 describe("glyph", () => {
   it("returns the emoji form in emoji mode", () => {
     expect(glyph("monthly", "emoji")).toBe("💰");
+    expect(glyph("lifetime", "emoji")).toBe("🌐");
+    expect(glyph("cli", "emoji")).toBe("🧰");
     expect(glyph("loaded", "emoji")).toBe("📦");
   });
 
   it("returns the ASCII form in ascii mode", () => {
     expect(glyph("monthly", "ascii")).toBe("$");
+    expect(glyph("lifetime", "ascii")).toBe("@");
+    expect(glyph("cli", "ascii")).toBe(">");
     expect(glyph("loaded", "ascii")).toBe("[]");
   });
 

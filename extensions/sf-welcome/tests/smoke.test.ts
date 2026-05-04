@@ -397,9 +397,9 @@ describe("sf-welcome", () => {
       const plain = stripAnsi(overlay.render(140).join("\n"));
 
       // ASCII variants present…
-      expect(plain).toMatch(/\$ Monthly Usage/);
+      expect(plain).toMatch(/\$\s+Monthly Usage/);
       expect(plain).toMatch(/\[\] Loaded/);
-      expect(plain).toContain("+ sf-pi Extensions");
+      expect(plain).toMatch(/\+\s+sf-pi Extensions/);
       // …and the emoji variants are gone.
       expect(plain).not.toContain("💰 Monthly Usage");
       expect(plain).not.toContain("📦 Loaded");

@@ -223,6 +223,10 @@ function fitToWidth(str: string, width: number): string {
   return str + " ".repeat(width - visLen);
 }
 
+function padVisible(str: string, width: number): string {
+  return str + " ".repeat(Math.max(0, width - visibleWidth(str)));
+}
+
 function horizontalRule(width: number): string {
   return ` ${MUTED("─".repeat(Math.max(0, width - 2)))}`;
 }
@@ -241,32 +245,57 @@ function formatBudget(budget: number | null): string {
   return formatCost(budget);
 }
 
-function formatSfCliStatus(data: SplashData, mode: GlyphMode): string {
+const ICON_COL_WIDTH = 2;
+const LABEL_COL_WIDTH = "sf-pi Extensions".length;
+
+type SplashGlyphKey = Parameters<typeof glyph>[0];
+
+function formatInfoRow(
+  icon: string,
+  label: string,
+  value: string,
+  iconColor: (text: string) => string = ACCENT,
+): string {
+  const iconCell = padVisible(iconColor(icon), ICON_COL_WIDTH);
+  const labelCell = padVisible(`${BOLD}${ACCENT(label)}${RESET}`, LABEL_COL_WIDTH);
+  return ` ${iconCell} ${labelCell}  ${value}`;
+}
+
+function formatGlyphInfoRow(
+  iconKey: SplashGlyphKey,
+  mode: GlyphMode,
+  label: string,
+  value: string,
+  iconColor?: (text: string) => string,
+): string {
+  return formatInfoRow(glyph(iconKey, mode), label, value, iconColor);
+}
+
+function formatSfCliStatusValue(data: SplashData, mode: GlyphMode): string {
   const cli = data.sfCli;
-  const label = `${BOLD}${ACCENT(`${glyph("cloud", mode)} SF CLI`)}${RESET}`;
 
   if (!cli || cli.loading || cli.freshness === "checking") {
-    return ` ${label}  ${MUTED(`${glyph("hourglass", mode)} Checking`)}`;
+    return MUTED(`${glyph("hourglass", mode)} Checking`);
   }
 
   if (!cli.installed) {
-    return ` ${label}  ${SF_RED("✗")} ${SF_RED("Not installed")}`;
+    return `${SF_RED("✗")} ${SF_RED("Not installed")}`;
   }
 
   const version = cli.installedVersion ? `v${cli.installedVersion}` : undefined;
   if (cli.freshness === "latest") {
     const suffix = version ? ` ${MUTED(`(${version})`)}` : "";
-    return ` ${label}  ${SF_GREEN("✓")} ${SF_GREEN("Installed")} ${MUTED("· latest")}${suffix}`;
+    return `${SF_GREEN("✓")} ${SF_GREEN("Installed")} ${MUTED("· latest")}${suffix}`;
   }
 
   if (cli.freshness === "update-available") {
     const fromVersion = version ?? "installed";
     const toVersion = cli.latestVersion ? `v${cli.latestVersion}` : "latest";
-    return ` ${label}  ${SF_ORANGE("!")} ${SF_ORANGE("Update available")} ${MUTED(`${fromVersion} → ${toVersion}`)}`;
+    return `${SF_ORANGE("!")} ${SF_ORANGE("Update available")} ${MUTED(`${fromVersion} → ${toVersion}`)}`;
   }
 
   const suffix = version ? ` ${MUTED(`(${version})`)}` : "";
-  return ` ${label}  ${SF_GREEN("✓")} ${SF_GREEN("Installed")}${suffix}`;
+  return `${SF_GREEN("✓")} ${SF_GREEN("Installed")}${suffix}`;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -353,7 +382,12 @@ function buildLeftColumn(
     budget === null ? SF_CYAN : ratio < 0.5 ? SF_GREEN : ratio < 0.8 ? SF_ORANGE : SF_RED;
   const sourceHint = data.monthlyUsageSource === "sessions" ? ` ${MUTED("(local estimate)")}` : "";
   lines.push(
-    ` ${BOLD}${ACCENT(`${glyph("monthly", mode)} Monthly Usage`)}${RESET}  ${costColor(formatCost(data.monthlyCost))} ${MUTED("/")} ${MUTED(formatBudget(budget))}${sourceHint}`,
+    formatGlyphInfoRow(
+      "monthly",
+      mode,
+      "Monthly Usage",
+      `${costColor(formatCost(data.monthlyCost))} ${MUTED("/")} ${MUTED(formatBudget(budget))}${sourceHint}`,
+    ),
   );
   // Lifetime usage — prefers the gateway's per-key counter, falls back to a
   // local session-file estimate for bring-your-own-keys users. Always
@@ -361,7 +395,13 @@ function buildLeftColumn(
   const lifetimeHint =
     data.lifetimeUsageSource === "sessions" ? ` ${MUTED("(local estimate)")}` : "";
   lines.push(
-    ` ${BOLD}${ACCENT(`${glyph("lifetime", mode)} Lifetime Usage`)}${RESET} ${SF_CYAN(formatCost(data.lifetimeCost))}${lifetimeHint}`,
+    formatGlyphInfoRow(
+      "lifetime",
+      mode,
+      "Lifetime Usage",
+      `${SF_CYAN(formatCost(data.lifetimeCost))}${lifetimeHint}`,
+      SF_CYAN,
+    ),
   );
   lines.push("");
 
@@ -372,16 +412,19 @@ function buildLeftColumn(
   ).length;
   const extTotal = data.extensionHealth.length;
   lines.push(
-    ` ${BOLD}${ACCENT(`${glyph("extensions", mode)} sf-pi Extensions`)}${RESET}  ${SF_GREEN(`${extCount}`)}${MUTED(`/${extTotal} active`)}`,
+    formatGlyphInfoRow(
+      "extensions",
+      mode,
+      "sf-pi Extensions",
+      `${SF_GREEN(`${extCount}`)}${MUTED(`/${extTotal} active`)}`,
+    ),
   );
 
   // Slack status
   const slackIcon = data.slackConnected ? SF_GREEN("✓") : SF_RED("✗");
   const slackLabel = data.slackConnected ? "Connected" : "Not connected";
   const slackStatus = data.slackConnected ? SF_GREEN(slackLabel) : SF_RED(slackLabel);
-  lines.push(
-    ` ${BOLD}${ACCENT(`${glyph("slack", mode)} Slack`)}${RESET}  ${slackIcon} ${slackStatus}`,
-  );
+  lines.push(formatGlyphInfoRow("slack", mode, "Slack", `${slackIcon} ${slackStatus}`));
 
   // LLM Gateway status (detect from provider name)
   const isGateway =
@@ -389,14 +432,19 @@ function buildLeftColumn(
     data.modelName.toLowerCase().includes("gateway");
   if (isGateway) {
     lines.push(
-      ` ${BOLD}${ACCENT(`${glyph("gateway", mode)} LLM Gateway`)}${RESET}  ${SF_GREEN("✓")} ${SF_GREEN("Connected")}`,
+      formatGlyphInfoRow(
+        "gateway",
+        mode,
+        "LLM Gateway",
+        `${SF_GREEN("✓")} ${SF_GREEN("Connected")}`,
+      ),
     );
   }
 
   // SF CLI status only. Org/API/config context belongs in sf-devbar, not in
   // the welcome splash. Keep this directly under the gateway row so both
   // environment statuses read as one aligned block.
-  lines.push(formatSfCliStatus(data, mode));
+  lines.push(formatGlyphInfoRow("cli", mode, "SF CLI", formatSfCliStatusValue(data, mode)));
   lines.push("");
 
   return lines;

@@ -153,10 +153,11 @@ export function resolveGlyphMode(options: ResolveGlyphModeOptions = {}): GlyphMo
 export const GLYPH_TABLE = {
   // Section markers
   monthly: { emoji: "💰", ascii: "$" },
-  lifetime: { emoji: "Σ", ascii: "Σ" }, // Greek capital sigma — BMP, renders on every terminal
+  lifetime: { emoji: "🌐", ascii: "@" },
   extensions: { emoji: "🧩", ascii: "+" },
   slack: { emoji: "💬", ascii: ">" },
   gateway: { emoji: "🔗", ascii: "~" },
+  cli: { emoji: "🧰", ascii: ">" },
   cloud: { emoji: "☁", ascii: "*" }, // Salesforce Environment / Salesforce AI
   loaded: { emoji: "📦", ascii: "[]" },
   recent: { emoji: "🕐", ascii: "o" },
