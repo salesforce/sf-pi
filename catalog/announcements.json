@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.37.3-2026-05-04",
-  "latestVersion": "0.37.3",
+  "revision": "release-0.37.4-2026-05-04",
+  "latestVersion": "0.37.4",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.37.3",
+      "id": "release-0.37.4",
       "kind": "update",
-      "title": "sf-pi v0.37.3 — sf-welcome: animate and auto-dismiss quiet header",
+      "title": "sf-pi v0.37.4 — sf-welcome: smooth startup hydration",
       "publishedAt": "2026-05-04T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.37.3",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.37.4",
       "severity": "info",
-      "body": "sf-welcome: animate and auto-dismiss quiet header"
+      "body": "sf-welcome: smooth startup hydration"
     },
     {
       "id": "pi-0.72-required",
