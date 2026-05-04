@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.37.4-2026-05-04",
-  "latestVersion": "0.37.4",
+  "revision": "release-0.38.0-2026-05-04",
+  "latestVersion": "0.38.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.37.4",
+      "id": "release-0.38.0",
       "kind": "update",
-      "title": "sf-pi v0.37.4 — sf-welcome: smooth startup hydration",
+      "title": "sf-pi v0.38.0 — add sf-pi doctor self-healing",
       "publishedAt": "2026-05-04T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.37.4",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.38.0",
       "severity": "info",
-      "body": "sf-welcome: smooth startup hydration"
+      "body": "add sf-pi doctor self-healing"
     },
     {
       "id": "pi-0.72-required",
