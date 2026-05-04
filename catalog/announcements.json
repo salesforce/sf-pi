@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.34.0-2026-05-03",
-  "latestVersion": "0.34.0",
+  "revision": "release-0.35.0-2026-05-04",
+  "latestVersion": "0.35.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.34.0",
+      "id": "release-0.35.0",
       "kind": "update",
-      "title": "sf-pi v0.34.0 — docs: automate documentation health checks",
-      "publishedAt": "2026-05-03T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.34.0",
+      "title": "sf-pi v0.35.0 — sf-welcome: simplify CLI status",
+      "publishedAt": "2026-05-04T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.35.0",
       "severity": "info",
-      "body": "docs: automate documentation health checks"
+      "body": "sf-welcome: simplify CLI status"
     },
     {
       "id": "pi-0.72-required",
