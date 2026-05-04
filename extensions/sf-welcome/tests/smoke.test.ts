@@ -122,8 +122,8 @@ describe("sf-welcome", () => {
   it("renders compact SF CLI status without org environment details", async () => {
     const { SfWelcomeOverlay } = await import("../lib/splash-component.ts");
     const data = {
-      modelName: "Claude Sonnet 4",
-      providerName: "anthropic",
+      modelName: "Claude Sonnet 4 Gateway",
+      providerName: "sf-llm-gateway-internal",
       loadedCounts: { extensions: 3, skills: 1, promptTemplates: 0 },
       recentSessions: [],
       extensionHealth: [],
@@ -146,6 +146,7 @@ describe("sf-welcome", () => {
     const plain = stripAnsi(raw);
 
     expect(plain).toContain("SF CLI");
+    expect(plain).toContain("LLM Gateway");
     expect(plain).toContain("Installed");
     expect(plain).toContain("latest");
     expect(plain).toContain("v2.130.9");
@@ -165,6 +166,12 @@ describe("sf-welcome", () => {
     expect(plain).not.toContain("Not affiliated with Salesforce");
     // Legacy "coming soon" tease should no longer appear.
     expect(plain).not.toContain("coming soon");
+
+    const plainLines = plain.split("\n");
+    const gatewayIndex = plainLines.findIndex((line) => line.includes("LLM Gateway"));
+    const cliIndex = plainLines.findIndex((line) => line.includes("SF CLI"));
+    expect(gatewayIndex).toBeGreaterThanOrEqual(0);
+    expect(cliIndex).toBe(gatewayIndex + 1);
   });
 
   it("renders an infinite monthly budget when the gateway reports no ceiling", async () => {
@@ -212,11 +219,51 @@ describe("sf-welcome", () => {
     expect(plain).toContain("local estimate");
   });
 
-  it("does not render the legacy Tips panel or generic pi key hints", async () => {
-    // The Tips panel was removed in favor of a fuller Recommended block.
-    // Lock in the removal here so a future revert doesn't silently bring
-    // the panel back. Generic pi hints (`/`, `!`, Shift+Tab) were never
-    // part of the splash either — assert they stay out.
+  it("renders only the top four pending recommendations with the install shortcut", async () => {
+    const { SfWelcomeOverlay } = await import("../lib/splash-component.ts");
+    const data = {
+      modelName: "Claude Opus 4.7",
+      providerName: "sf-llm-gateway-internal",
+      loadedCounts: { extensions: 8, skills: 38, promptTemplates: 1 },
+      recentSessions: [],
+      extensionHealth: [],
+      slackConnected: true,
+      monthlyCost: 0,
+      monthlyBudget: null,
+      lifetimeCost: 0,
+      monthlyUsageSource: "gateway" as const,
+      recommendations: {
+        total: 8,
+        installedCount: 0,
+        pendingCount: 8,
+        declinedCount: 0,
+        items: [
+          { id: "rec-1", name: "Recommendation 1", status: "pending" as const },
+          { id: "rec-2", name: "Recommendation 2", status: "pending" as const },
+          { id: "rec-3", name: "Recommendation 3", status: "pending" as const },
+          { id: "rec-4", name: "Recommendation 4", status: "pending" as const },
+          { id: "rec-5", name: "Recommendation 5", status: "pending" as const },
+          { id: "rec-6", name: "Recommendation 6", status: "pending" as const },
+          { id: "rec-7", name: "Recommendation 7", status: "pending" as const },
+          { id: "rec-8", name: "Recommendation 8", status: "pending" as const },
+        ],
+      },
+    };
+
+    const overlay = new SfWelcomeOverlay(data);
+    const plain = stripAnsi(overlay.render(170).join("\n"));
+
+    expect(plain).toContain("Recommended");
+    expect(plain).toContain("0/8 installed");
+    expect(plain).toContain("Recommendation 1");
+    expect(plain).toContain("Recommendation 4");
+    expect(plain).not.toContain("Recommendation 5");
+    expect(plain).toContain("Top 4 not installed");
+    expect(plain).toContain("/sf-pi recommended");
+    expect(plain).toContain("(+4 more)");
+  });
+
+  it("renders sf-pi shortcut tips without generic pi key hints", async () => {
     const { SfWelcomeOverlay } = await import("../lib/splash-component.ts");
     const data = {
       modelName: "Claude Opus 4.7",
@@ -234,7 +281,11 @@ describe("sf-welcome", () => {
     const overlay = new SfWelcomeOverlay(data);
     const plain = stripAnsi(overlay.render(140).join("\n"));
 
-    expect(plain).not.toMatch(/\bTips\b/);
+    expect(plain).toMatch(/\bTips\b/);
+    expect(plain).toContain("/sf-pi");
+    expect(plain).toContain("/sf-pi recommended");
+    expect(plain).toContain("/sf-pi announcements");
+    expect(plain).toContain("/sf-pi help");
     expect(plain).not.toMatch(/^\s*\/\s+for commands/m);
     expect(plain).not.toMatch(/^\s*!\s+to run bash/m);
     expect(plain).not.toContain("Shift+Tab");

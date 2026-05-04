@@ -392,10 +392,10 @@ function buildLeftColumn(
       ` ${BOLD}${ACCENT(`${glyph("gateway", mode)} LLM Gateway`)}${RESET}  ${SF_GREEN("✓")} ${SF_GREEN("Connected")}`,
     );
   }
-  lines.push("");
 
   // SF CLI status only. Org/API/config context belongs in sf-devbar, not in
-  // the welcome splash.
+  // the welcome splash. Keep this directly under the gateway row so both
+  // environment statuses read as one aligned block.
   lines.push(formatSfCliStatus(data, mode));
   lines.push("");
 
@@ -485,37 +485,43 @@ function buildRightColumn(data: SplashData, colWidth: number, mode: GlyphMode): 
   lines.push(horizontalRule(colWidth));
 
   // --- Recommended extensions ---
-  // Replaces the legacy Salesforce AI block. Shows a header counter and
-  // lists every recommended item with a status glyph so users can see at
-  // a glance which external pi packages they have, haven't, or declined.
-  //   ● green  = installed (reality — settings.json scan)
-  //   ○ muted  = pending / never acted on
-  //   · muted  = declined (past /sf-pi recommended overlay decision)
-  // Install status is authoritative from settings.json; the state file
-  // contributes only the 'declined' marker. See lib/recommendations-status.ts.
+  // Replaces the legacy Salesforce AI block. Shows the install counter plus
+  // only the top four pending items so the splash stays scannable. Full
+  // detail, installed items, and declined decisions live in
+  // `/sf-pi recommended`.
   const recs = data.recommendations;
   if (recs && recs.total > 0) {
     lines.push(
       ` ${BOLD}${SF_BLUE(`${glyph("extensions", mode)} Recommended`)}${RESET}  ${SF_GREEN(`${recs.installedCount}`)}${MUTED(`/${recs.total} installed`)}`,
     );
-    for (const item of recs.items) {
-      const marker =
-        item.status === "installed"
-          ? SF_GREEN("●")
-          : item.status === "declined"
-            ? MUTED("·")
-            : MUTED("○");
-      const nameColor = item.status === "installed" ? SF_CYAN : MUTED;
+    const pending = recs.items.filter((i) => i.status === "pending").slice(0, 4);
+    for (const item of pending) {
       const truncated = truncateToWidth(item.name, Math.max(8, colWidth - 4), "…");
-      lines.push(` ${marker} ${nameColor(truncated)}`);
+      lines.push(` ${MUTED("○")} ${MUTED(truncated)}`);
     }
     if (recs.pendingCount > 0) {
-      lines.push(` ${MUTED("→")} ${SF_CYAN("/sf-pi recommended")}`);
-    } else {
+      const more =
+        recs.pendingCount > pending.length
+          ? ` ${MUTED(`(+${recs.pendingCount - pending.length} more)`)}`
+          : "";
+      lines.push(
+        ` ${MUTED("→")} ${MUTED(`Top ${pending.length} not installed`)} ${SF_CYAN("/sf-pi recommended")}${more}`,
+      );
+    } else if (recs.installedCount === recs.total) {
       lines.push(` ${SF_GREEN("✓")} ${MUTED("All recommendations installed")}`);
+    } else {
+      lines.push(` ${SF_GREEN("✓")} ${MUTED("No pending recommendations")}`);
     }
     lines.push(horizontalRule(colWidth));
   }
+
+  // --- Tips ---
+  lines.push(` ${BOLD}${SF_BLUE(`${glyph("whatsNew", mode)} Tips`)}${RESET}`);
+  lines.push(` ${MUTED("•")} ${SF_CYAN("/sf-pi")} ${MUTED("manage extensions")}`);
+  lines.push(` ${MUTED("•")} ${SF_CYAN("/sf-pi recommended")} ${MUTED("install extras")}`);
+  lines.push(` ${MUTED("•")} ${SF_CYAN("/sf-pi announcements")} ${MUTED("read updates")}`);
+  lines.push(` ${MUTED("•")} ${SF_CYAN("/sf-pi help")} ${MUTED("show all commands")}`);
+  lines.push(horizontalRule(colWidth));
 
   // --- External skill sources (Claude Code / Codex / Cursor interop) ---
   //

@@ -18,13 +18,15 @@ Salesforce-branded splash screen that displays on startup with an animated Pi + 
 - **Announcements panel** (top of the column): maintainer notes from
   the bundled `catalog/announcements.json`, plus any entries from the
   optional remote feed and a synthetic update nudge when the installed
-  sf-pi version is behind `latestVersion`. Max 3 items, one line each.
-  Dismissed via `/sf-pi announcements dismiss <id>`, disabled entirely
-  via `SF_PI_ANNOUNCEMENTS=off` or `{ "sfPi": { "announcements": false } }`.
+  sf-pi version is behind `latestVersion`. The splash renders the top 3
+  active items after severity/date sorting; use `/sf-pi announcements`
+  for full bodies and the complete list. Dismissed via
+  `/sf-pi announcements dismiss <id>`, disabled entirely via
+  `SF_PI_ANNOUNCEMENTS=off` or `{ "sfPi": { "announcements": false } }`.
 - **What's New panel** (only after a pi-coding-agent version bump) with feature + fix bullets distilled from the bundled CHANGELOG.md
 - Loaded counts (extensions, skills, prompt templates)
 - Recent sessions with relative timestamps
-- Recommended external pi packages and skill-source nudges
+- Recommended external pi packages (top 4 pending items), sf-pi shortcut tips, and skill-source nudges
 - Community attribution
 
 ## Runtime Flow
