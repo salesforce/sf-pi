@@ -361,6 +361,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.37.0](https://github.com/salesforce/sf-pi/compare/v0.36.0...v0.37.0) (2026-05-04)
+
+
+### Features
+
+* **sf-welcome:** refine splash recommendations ([e2ce484](https://github.com/salesforce/sf-pi/commit/e2ce484050792ec6429529c9da895d200ade03aa))
+
 ## [0.36.0](https://github.com/salesforce/sf-pi/compare/v0.35.0...v0.36.0) (2026-05-04)
 
 
