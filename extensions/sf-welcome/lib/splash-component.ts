@@ -455,6 +455,17 @@ function buildLeftColumn(
 function buildRightColumn(data: SplashData, colWidth: number, mode: GlyphMode): string[] {
   const lines: string[] = [];
 
+  // --- Doctor nudge (startup/setup self-heal) ---
+  // Render first so setup issues get a clear, actionable next step instead
+  // of being buried behind general announcements or recommendations.
+  if (data.doctor && data.doctor.issueCount > 0) {
+    lines.push(` ${BOLD}${SF_ORANGE(`${glyph("warn", mode)} Setup check`)}${RESET}`);
+    const detail = truncateToWidth(data.doctor.message, Math.max(10, colWidth - 4), "…");
+    lines.push(` ${SF_ORANGE("!")} ${MUTED(detail)}`);
+    lines.push(` ${MUTED("→")} ${SF_CYAN(data.doctor.command)} ${MUTED("to repair")}`);
+    lines.push(horizontalRule(colWidth));
+  }
+
   // --- Announcements (maintainer notes + sf-pi update nudge) ---
   // Rendered at the very top of the right column so maintainer messaging
   // and update nudges get first-glance real estate. Panel caps at 3 items

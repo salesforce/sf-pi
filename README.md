@@ -203,6 +203,9 @@ Use the `/sf-pi` command to manage extensions interactively or via subcommands:
 /sf-pi skills list              # List detected external skill roots
 /sf-pi skills link <path|label> # Add a root to settings.skills[]
 /sf-pi skills unlink <path|label> # Remove a root from settings.skills[]
+/sf-pi doctor                   # Diagnose startup, skill, and package setup
+/sf-pi doctor fix startup       # Switch to quiet/header startup
+/sf-pi doctor fix skills        # Quarantine duplicate sf-* skills and repair skill paths
 /sf-pi help                     # Show available commands
 ```
 
@@ -444,6 +447,13 @@ cost — they are not loaded at all.
 Repo-wide tips first, then a per-extension index auto-generated from every
 extension's `## Troubleshooting` section.
 
+**Startup splash feels stuck or skill collisions keep appearing:**
+Launch once with `SF_PI_SAFE_START=1 pi`, then run `/sf-pi doctor`. For the
+common duplicate-skill case, `/sf-pi doctor fix skills` keeps the preferred
+skill root active and moves duplicate `sf-*` skills from pi-owned roots into a
+timestamped quarantine folder instead of deleting them. `/sf-pi doctor fix
+startup` sets quiet/header startup so the full overlay no longer blocks input.
+
 **`/sf-pi` commands say "package not found in settings":**
 Run `pi install .` from the repo root, or `pi install git:github.com/salesforce/sf-pi`
 to register the package in your pi settings.
@@ -557,7 +567,7 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 **[SF Welcome](./extensions/sf-welcome/#troubleshooting)**
 
 - Splash shows `?` boxes (tofu) where glyphs should be
-- Splash feels too busy or you want it out of the way
+- Splash feels too busy, stuck, or setup warnings are noisy
 - Splash content gets truncated in a narrow terminal
 - What's New panel shows on first run or won't go away
 - `/sf-setup-fonts` says everything is already installed but the splash still shows ASCII

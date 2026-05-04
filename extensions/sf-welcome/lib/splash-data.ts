@@ -24,6 +24,10 @@ import { buildWhatsNewPayload } from "./whats-new.ts";
 import { buildAnnouncementsSync, refreshAnnouncements } from "./announcements.ts";
 import { collectRecommendationsStatus } from "./recommendations-status.ts";
 import { summarizeAvailableSkillSources } from "../../../lib/common/skill-sources/skill-sources.ts";
+import {
+  runDoctorDiagnostics,
+  summarizeStartupDoctorNudge,
+} from "../../../lib/common/doctor/diagnostics.ts";
 // Only the types actually referenced in this module's function bodies are
 // imported here; the rest are re-exported for convenience via the
 // `export type` block below, which does not require a local import.
@@ -299,6 +303,7 @@ export function collectInitialSplashData(
     loadedCountsLoading: true,
     recentSessionsLoading: true,
     sfCli: { installed: false, freshness: "checking", loading: true },
+    doctor: summarizeStartupDoctorNudge(runDoctorDiagnostics()) ?? undefined,
   };
 }
 
@@ -344,6 +349,8 @@ export function collectSplashData(
         }
       : undefined;
 
+  const doctor = summarizeStartupDoctorNudge(runDoctorDiagnostics({ cwd })) ?? undefined;
+
   return {
     modelName,
     providerName,
@@ -358,6 +365,7 @@ export function collectSplashData(
     lifetimeUsageSource: lifetime.lifetimeUsageSource,
     recommendations: collectRecommendationsStatus(cwd),
     skillSources: summarizeAvailableSkillSources() ?? undefined,
+    doctor,
     sfCli: undefined,
     whatsNew,
     announcements,

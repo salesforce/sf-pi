@@ -29,6 +29,7 @@ Extension loads
        ├─ display   → show/set compact|balanced|verbose display profile
        ├─ /sf-pi announcements → list / dismiss / reset maintainer notes + update nudge
        ├─ skills    → detect & wire Claude Code / Codex / Cursor skill dirs
+       ├─ doctor    → diagnose and repair startup / skill-source issues
        └─ help      → command reference
 ```
 
@@ -62,6 +63,16 @@ Extension enable/disable requires a full reload (`ctx.reload()`) because Pi
 reads the package filter at startup time. The manager notifies the user before
 triggering the reload.
 
+### 5. Doctor repairs are non-destructive
+
+`/sf-pi doctor` scans local settings and skill roots for startup issues such
+as duplicate skill names, stale `settings.skills[]` entries, unwired external
+skill folders, and duplicate sf-pi package entries. `doctor fix` only applies
+safe repairs after confirmation: startup mode is switched to quiet/header,
+stale skill paths are pruned, available external roots are linked, and duplicate
+`sf-*` skills in pi-owned roots are moved to `~/.pi/agent/skills-quarantine/`
+instead of being deleted.
+
 ## Behavior Matrix
 
 | Trigger               | Condition                 | Result                               |
@@ -78,6 +89,8 @@ triggering the reload.
 | /sf-pi enable-all     | —                         | Remove all exclusions, reload        |
 | /sf-pi display        | no profile                | Show effective display profile       |
 | /sf-pi display <name> | compact/balanced/verbose  | Save shared display profile          |
+| /sf-pi doctor         | —                         | Show setup diagnostics               |
+| /sf-pi doctor fix     | user confirms             | Apply safe repairs and reload        |
 | TUI list → Enter      | —                         | Open extension detail/config view    |
 | TUI list → Esc        | changes pending           | Apply exclusions, reload if needed   |
 | TUI detail → Esc      | —                         | Return to extension list             |
@@ -93,6 +106,7 @@ extensions/sf-pi-manager/
   lib/
     announcements.ts        ← implementation module
     config-panel.ts         ← implementation module
+    doctor-command.ts       ← implementation module
     extension-details.ts    ← implementation module
     overlay.ts              ← implementation module
     package-state.ts        ← implementation module

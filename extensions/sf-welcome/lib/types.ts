@@ -61,6 +61,12 @@ export interface SkillSourcesNudge {
   totalSkillCount: number;
 }
 
+export interface DoctorNudgeSummary {
+  issueCount: number;
+  message: string;
+  command: string;
+}
+
 export interface SplashData {
   modelName: string;
   providerName: string;
@@ -91,6 +97,10 @@ export interface SplashData {
    * into pi's global settings. Drives the `/sf-pi skills` nudge line
    * shown under the Recommended block. Undefined means no nudge. */
   skillSources?: SkillSourcesNudge;
+  /** Startup/setup issues detected by sf-pi doctor. When present, the
+   * welcome screen nudges the user toward `/sf-pi doctor` and safe-start
+   * mode avoids the blocking overlay. */
+  doctor?: DoctorNudgeSummary;
   /** True while the first full filesystem/settings hydration pass is pending. */
   loading?: boolean;
   /** True while Slack auth status is still being checked. */

@@ -10,6 +10,7 @@
  */
 import { describe, it, expect } from "vitest";
 import { parseCommandArgs } from "../index.ts";
+import { parseDoctorArgs } from "../lib/doctor-command.ts";
 
 // -------------------------------------------------------------------------------------------------
 // parseCommandArgs
@@ -127,5 +128,23 @@ describe("parseCommandArgs", () => {
     const result = parseCommandArgs("rec");
     expect(result.subcommand).toBe("recommended");
     expect(result.rest).toBe("");
+  });
+
+  it("routes 'doctor' to the doctor subcommand and forwards tail", () => {
+    const result = parseCommandArgs("doctor fix skills");
+    expect(result.subcommand).toBe("doctor");
+    expect(result.rest).toBe("fix skills");
+  });
+});
+
+describe("parseDoctorArgs", () => {
+  it("defaults to status", () => {
+    expect(parseDoctorArgs("")).toEqual({ subcommand: "status" });
+  });
+
+  it("parses fix targets", () => {
+    expect(parseDoctorArgs("fix")).toEqual({ subcommand: "fix", target: "all" });
+    expect(parseDoctorArgs("fix startup")).toEqual({ subcommand: "fix", target: "startup" });
+    expect(parseDoctorArgs("repair skills")).toEqual({ subcommand: "fix", target: "skills" });
   });
 });

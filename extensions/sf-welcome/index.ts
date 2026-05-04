@@ -62,6 +62,12 @@ import {
 import { acknowledgeAnnouncementsRevision } from "../../lib/common/catalog-state/announcements-state.ts";
 import { SfWelcomeOverlay, SfWelcomeHeader } from "./lib/splash-component.ts";
 import { isQuietStartupEnabled, isVerboseStartupRequested } from "./lib/startup-mode.ts";
+import {
+  resolveConfiguredWelcomeMode,
+  runDoctorDiagnostics,
+  shouldForceSafeWelcome,
+  summarizeStartupDoctorNudge,
+} from "../../lib/common/doctor/diagnostics.ts";
 
 import { buildExecFn } from "../../lib/common/exec-adapter.ts";
 import { requirePiVersion, setWorkingVisible } from "../../lib/common/pi-compat.ts";
@@ -333,12 +339,23 @@ export default function sfWelcome(pi: ExtensionAPI) {
     void refreshMonthlyUsage(false, ctx.cwd).catch(() => undefined);
 
     const data = collectInitialSplashData(modelName, providerName, MONTHLY_BUDGET_FALLBACK);
+    const doctorReport = runDoctorDiagnostics({ cwd: ctx.cwd });
+    data.doctor = summarizeStartupDoctorNudge(doctorReport) ?? undefined;
 
-    // Pi resolves startup display from project/global settings, with
-    // --verbose overriding quietStartup. Built-in Pi flags are not extension
-    // flags, so use argv detection instead of pi.getFlag().
-    const isQuiet = isQuietStartupEnabled(ctx.cwd, isVerboseStartupRequested());
-    if (isQuiet) {
+    // Safe-start policy: setup warnings, SF_PI_SAFE_START, or explicit
+    // sfPi.welcome.mode=header keep startup non-blocking. Users can still
+    // force the full overlay with sfPi.welcome.mode=overlay or --verbose.
+    const welcomeMode = resolveConfiguredWelcomeMode(ctx.cwd);
+    if (welcomeMode === "off") return;
+    const verboseRequested = isVerboseStartupRequested();
+    const isQuiet = isQuietStartupEnabled(ctx.cwd, verboseRequested);
+    const forceHeader = shouldForceSafeWelcome(doctorReport);
+    const safeStart = doctorReport.safeStartRequested;
+    if (
+      welcomeMode === "header" ||
+      safeStart ||
+      (!verboseRequested && welcomeMode !== "overlay" && (forceHeader || isQuiet))
+    ) {
       setupHeader(ctx, data, generation);
     } else {
       setupOverlay(ctx, data, generation);
@@ -356,6 +373,8 @@ export default function sfWelcome(pi: ExtensionAPI) {
         );
         Object.assign(data, fullData);
         data.sfCli = currentSfCli ?? { installed: false, freshness: "checking", loading: true };
+        data.doctor =
+          summarizeStartupDoctorNudge(runDoctorDiagnostics({ cwd: ctx.cwd })) ?? undefined;
 
         // First-ever launch: the state file has no lastSeenPiVersion and
         // buildWhatsNewPayload returns nothing. Seed the state eagerly so the
@@ -444,7 +463,9 @@ export default function sfWelcome(pi: ExtensionAPI) {
     // side task. Running it unawaited keeps session_start non-blocking,
     // and Pi will render the confirm dialog after the splash dismisses
     // (so the user sees the splash first, then a single prompt).
-    void maybePromptFontInstall(ctx, generation);
+    if (!doctorReport.safeStartRequested) {
+      void maybePromptFontInstall(ctx, generation);
+    }
   });
 
   // --- Dismiss on agent activity ---

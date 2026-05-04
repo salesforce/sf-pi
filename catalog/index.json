@@ -195,7 +195,7 @@
     "entry": "extensions/sf-pi-manager/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 2952
+    "srcLoc": 3140
   },
   {
     "id": "sf-skills-hud",
@@ -282,6 +282,6 @@
     "entry": "extensions/sf-welcome/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 4087
+    "srcLoc": 4134
   }
 ]

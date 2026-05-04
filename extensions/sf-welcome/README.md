@@ -34,6 +34,7 @@ Salesforce-branded splash screen that displays on startup with an animated Pi + 
 ```
 Extension loads
   └─ session_start (reason="startup")
+       ├─ setup issues / SF_PI_SAFE_START=1 → show non-blocking header + doctor nudge
        ├─ quietStartup=false → show overlay (30s countdown, any-key dismiss)
        └─ quietStartup=true  → show persistent header (Esc dismiss, 30s auto-dismiss)
 
@@ -56,9 +57,11 @@ Dismissal triggers:
    for bundled extension metadata and combines it with settings.json filter state.
    This keeps the welcome screen aligned with the actual bundle list.
 
-4. **Overlay vs header modes** — Matches Pi's startup precedence rules.
-   `quietStartup: true` in settings.json switches to a non-blocking header,
-   while `--verbose` overrides quiet startup and forces the overlay.
+4. **Overlay vs header modes** — Matches Pi's startup precedence rules while
+   adding sf-pi safe start. `quietStartup: true` in settings.json switches to a
+   non-blocking header, `sfPi.welcome.mode` can force `auto`/`overlay`/`header`/`off`,
+   and `SF_PI_SAFE_START=1` keeps startup non-blocking so users can run
+   `/sf-pi doctor`. `--verbose` still forces the overlay unless safe-start is active.
 
 5. **Lightweight SF CLI status** — The welcome screen checks only
    `sf --version` plus an optional `npm view @salesforce/cli version` lookup
@@ -222,11 +225,16 @@ Terminal.app and some Powerlevel10k setups. Fixes:
 - iTerm2 / Ghostty / WezTerm / VS Code terminals don't need any of the
   above — they fall back to the color emoji font on their own.
 
-**Splash feels too busy or you want it out of the way:**
+**Splash feels too busy, stuck, or setup warnings are noisy:**
 Enable the compact header mode: `"quietStartup": true` in the same
-`settings.json`. The dismissable splash is replaced by a compact header
-above the prompt. Press Esc to dismiss it early, or let it auto-dismiss
-after 30 seconds. `--verbose` on the pi CLI overrides and forces the overlay.
+`settings.json`, or run `/sf-pi doctor fix startup`. The dismissable splash is
+replaced by a compact header above the prompt. Press Esc to dismiss it early,
+or let it auto-dismiss after 30 seconds. For recovery when the overlay is in
+the way, launch `SF_PI_SAFE_START=1 pi` and run `/sf-pi doctor`.
+
+You can also set `sfPi.welcome.mode` to `auto`, `overlay`, `header`, or `off`
+in settings. Safe-start and detected setup issues prefer the non-blocking
+header so users can repair the harness from inside pi.
 
 **Splash content gets truncated in a narrow terminal:**
 Fixed — below ~100 columns the splash now stacks to a single column instead

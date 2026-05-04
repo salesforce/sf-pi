@@ -84,6 +84,11 @@ import {
   parseAnnouncementsArgs,
 } from "./lib/announcements.ts";
 import { handleSkills, parseSkillsArgs } from "./lib/skill-sources-command.ts";
+import { handleDoctor, parseDoctorArgs } from "./lib/doctor-command.ts";
+import {
+  runDoctorDiagnostics,
+  summarizeStartupDoctorNudge,
+} from "../../lib/common/doctor/diagnostics.ts";
 import { loadAnnouncementsManifest } from "../../lib/common/catalog-state/announcements-manifest.ts";
 import { buildAnnouncementsSync } from "../sf-welcome/lib/announcements.ts";
 import { readAnnouncementsState } from "../../lib/common/catalog-state/announcements-state.ts";
@@ -103,6 +108,7 @@ const COMMAND_NAME = "sf-pi";
 const STATUS_KEY = "sf-pi";
 const RECOMMENDATIONS_STATUS_KEY = "sf-pi-recommend";
 const ANNOUNCEMENTS_STATUS_KEY = "sf-pi-announce";
+const DOCTOR_STATUS_KEY = "sf-pi-doctor";
 
 // -------------------------------------------------------------------------------------------------
 // Package root detection
@@ -138,6 +144,7 @@ type CommandArgs = {
     | "recommended"
     | "announcements"
     | "skills"
+    | "doctor"
     | "help";
   scope: "global" | "project";
   target?: string;
@@ -166,6 +173,7 @@ export default function sfPiManagerExtension(pi: ExtensionAPI) {
         "recommended",
         "announcements",
         "skills",
+        "doctor",
         "help",
       ];
       const tokens = prefix.trim().split(/\s+/);
@@ -226,12 +234,14 @@ export default function sfPiManagerExtension(pi: ExtensionAPI) {
     updateFooterStatus(ctx);
     updateRecommendationsNudge(ctx);
     updateAnnouncementsNudge(ctx);
+    updateDoctorNudge(ctx);
   });
 
   pi.on("session_shutdown", async (_event, ctx) => {
     ctx.ui.setStatus(STATUS_KEY, undefined);
     ctx.ui.setStatus(RECOMMENDATIONS_STATUS_KEY, undefined);
     ctx.ui.setStatus(ANNOUNCEMENTS_STATUS_KEY, undefined);
+    ctx.ui.setStatus(DOCTOR_STATUS_KEY, undefined);
   });
 }
 
@@ -264,6 +274,10 @@ export function parseCommandArgs(raw: string): CommandArgs {
   if (sub === "skills" || sub === "skill") {
     const rest = tokens.slice(1).join(" ");
     return { subcommand: "skills", scope, rest };
+  }
+  if (sub === "doctor" || sub === "dr") {
+    const rest = tokens.slice(1).join(" ");
+    return { subcommand: "doctor", scope, rest };
   }
   if (sub === "display") {
     const target =
@@ -349,6 +363,12 @@ async function handleCommand(
     case "skills": {
       const skillsArgs = parseSkillsArgs(args.rest ?? "");
       await handleSkills(ctx, PACKAGE_VERSION, skillsArgs);
+      break;
+    }
+    case "doctor": {
+      const doctorArgs = parseDoctorArgs(args.rest ?? "");
+      await handleDoctor(ctx, doctorArgs);
+      updateDoctorNudge(ctx);
       break;
     }
     case "help":
@@ -640,6 +660,7 @@ function handleHelp(ctx: ExtensionCommandContext): void {
     `  /${COMMAND_NAME} recommended [...]         Manage recommended external extensions`,
     `  /${COMMAND_NAME} announcements [...]       List/dismiss/reset sf-pi announcements`,
     `  /${COMMAND_NAME} skills [...]              Wire Claude Code / Codex / Cursor skill dirs`,
+    `  /${COMMAND_NAME} doctor [fix ...]          Diagnose and repair startup/skill setup`,
     `  /${COMMAND_NAME} help                      Show this help`,
     "",
     "Available extensions:",
@@ -714,6 +735,24 @@ function updateAnnouncementsNudge(ctx: ExtensionContext): void {
     );
   } catch {
     ctx.ui.setStatus(ANNOUNCEMENTS_STATUS_KEY, undefined);
+  }
+}
+
+// Footer nudge for actionable setup issues. Doctor scans only local files and
+// settings, so running it at session_start is cheap and does not touch the
+// network or the Salesforce org.
+function updateDoctorNudge(ctx: ExtensionContext): void {
+  try {
+    const report = runDoctorDiagnostics({ cwd: ctx.cwd });
+    const nudge = summarizeStartupDoctorNudge(report);
+    if (!nudge || nudge.issueCount === 0) {
+      ctx.ui.setStatus(DOCTOR_STATUS_KEY, undefined);
+      return;
+    }
+    const icon = glyph("warn", resolveGlyphMode({ cwd: ctx.cwd }));
+    ctx.ui.setStatus(DOCTOR_STATUS_KEY, `${icon} sf-pi doctor: ${nudge.message} — /sf-pi doctor`);
+  } catch {
+    ctx.ui.setStatus(DOCTOR_STATUS_KEY, undefined);
   }
 }
 
