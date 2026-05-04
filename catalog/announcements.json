@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.38.0-2026-05-04",
-  "latestVersion": "0.38.0",
+  "revision": "release-0.38.1-2026-05-04",
+  "latestVersion": "0.38.1",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.38.0",
+      "id": "release-0.38.1",
       "kind": "update",
-      "title": "sf-pi v0.38.0 — add sf-pi doctor self-healing",
+      "title": "sf-pi v0.38.1 — release pi 0.73 compatibility update",
       "publishedAt": "2026-05-04T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.38.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.38.1",
       "severity": "info",
-      "body": "add sf-pi doctor self-healing"
+      "body": "release pi 0.73 compatibility update"
     },
     {
       "id": "pi-0.72-required",
