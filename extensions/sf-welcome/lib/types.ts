@@ -24,18 +24,13 @@ export interface ExtensionHealthItem {
   icon: string;
 }
 
-export interface SfEnvironmentInfo {
-  cliInstalled: boolean;
-  cliVersion?: string;
-  defaultOrg?: string;
-  orgType?: string;
-  connected?: boolean;
-  instanceUrl?: string;
-  apiVersion?: string;
-  configScope?: string;
-  detectedAt?: number;
-  source?: "cached" | "live";
-  refreshing?: boolean;
+export type SfCliFreshness = "checking" | "latest" | "update-available" | "unknown";
+
+export interface SfCliStatusInfo {
+  installed: boolean;
+  installedVersion?: string;
+  latestVersion?: string;
+  freshness: SfCliFreshness;
   loading: boolean;
 }
 
@@ -96,8 +91,8 @@ export interface SplashData {
    * into pi's global settings. Drives the `/sf-pi skills` nudge line
    * shown under the Recommended block. Undefined means no nudge. */
   skillSources?: SkillSourcesNudge;
-  /** Populated asynchronously after initial render. */
-  sfEnvironment?: SfEnvironmentInfo;
+  /** Lightweight SF CLI install/latest status populated asynchronously after initial render. */
+  sfCli?: SfCliStatusInfo;
   /** Short summary of pi-coding-agent changes since the user's last splash.
    * Present only when there is something new to announce. */
   whatsNew?: WhatsNewSummary;

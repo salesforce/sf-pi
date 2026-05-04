@@ -282,6 +282,6 @@
     "entry": "extensions/sf-welcome/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 3904
+    "srcLoc": 3865
   }
 ]

@@ -119,7 +119,7 @@ describe("sf-welcome", () => {
     expect(lines.length).toBeGreaterThan(5);
   });
 
-  it("renders freshness hints for cached Salesforce environment data", async () => {
+  it("renders compact SF CLI status without org environment details", async () => {
     const { SfWelcomeOverlay } = await import("../lib/splash-component.ts");
     const data = {
       modelName: "Claude Sonnet 4",
@@ -132,17 +132,11 @@ describe("sf-welcome", () => {
       monthlyBudget: 3000,
 
       lifetimeCost: 0,
-      sfEnvironment: {
-        cliInstalled: true,
-        cliVersion: "2.130.9",
-        defaultOrg: "CachedOrg",
-        orgType: "sandbox",
-        connected: true,
-        apiVersion: "66.0",
-        configScope: "Global",
-        detectedAt: Date.now() - 12 * 60 * 1000 - 5 * 1000,
-        source: "cached" as const,
-        refreshing: true,
+      sfCli: {
+        installed: true,
+        installedVersion: "2.130.9",
+        latestVersion: "2.130.9",
+        freshness: "latest" as const,
         loading: false,
       },
     };
@@ -150,15 +144,16 @@ describe("sf-welcome", () => {
     const overlay = new SfWelcomeOverlay(data);
     const raw = overlay.render(100).join("\n");
     const plain = stripAnsi(raw);
-    expect(plain).toContain("updated 12m ago");
-    expect(plain).toContain("cached");
-    expect(plain).toContain("refreshing");
-    // The environment block collapses org + connection status onto one line
-    // and no longer prints the instance URL. Those expectations are locked
-    // in here so a future render tweak doesn't silently bring them back.
-    expect(plain).toMatch(/Org:.*CachedOrg.*sandbox.*Connected/);
-    // "salesforce.com/ai-ethics" on the right is fine — it's the instance
-    // URL in the left env block that should be gone.
+
+    expect(plain).toContain("SF CLI");
+    expect(plain).toContain("Installed");
+    expect(plain).toContain("latest");
+    expect(plain).toContain("v2.130.9");
+    expect(plain).not.toContain("Salesforce Environment");
+    expect(plain).not.toContain("Org:");
+    expect(plain).not.toContain("API 66.0");
+    expect(plain).not.toContain("Global");
+    expect(plain).not.toContain("updated");
     expect(plain).not.toContain("https://");
     // Trademark must appear in the left column (under the provider
     // name), not below the Salesforce AI / feedback block on the right.

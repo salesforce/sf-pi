@@ -45,8 +45,7 @@ import type {
 import type { Component, Focusable, OverlayHandle, TUI } from "@mariozechner/pi-tui";
 import {
   collectSplashData,
-  detectSfEnvironment,
-  getCachedSfEnvironmentInfo,
+  detectSfCliStatus,
   readCurrentPiVersion,
   refreshAnnouncementsSummary,
   resolveLifetimeUsage,
@@ -236,15 +235,9 @@ export default function sfWelcome(pi: ExtensionAPI) {
       pendingAckedRevision = undefined;
     }
 
-    // Prefer the last persisted snapshot so the splash can show useful org
-    // context immediately, then refresh in place in the background.
-    const cachedSfEnvironment = getCachedSfEnvironmentInfo(ctx.cwd);
-    data.sfEnvironment = cachedSfEnvironment
-      ? { ...cachedSfEnvironment, refreshing: true }
-      : {
-          cliInstalled: false,
-          loading: true,
-        };
+    // Keep the welcome splash lightweight: it shows only SF CLI install/latest
+    // status. Full org/API/config context remains owned by sf-devbar.
+    data.sfCli = { installed: false, freshness: "checking", loading: true };
 
     // Pi resolves startup display from project/global settings, with
     // --verbose overriding quietStartup. Built-in Pi flags are not extension
@@ -256,14 +249,13 @@ export default function sfWelcome(pi: ExtensionAPI) {
       setupOverlay(ctx, data, generation);
     }
 
-    // Background detection: keep startup responsive while SF CLI commands run.
-    // Force a refresh on startup, but reuse the shared sf-environment runtime
-    // so welcome and sf-devbar do not duplicate CLI work.
-
-    void detectSfEnvironment(exec, ctx.cwd, { force: true })
-      .then((env) => {
+    // Background CLI status: keep startup responsive while `sf --version` and
+    // the optional npm latest-version lookup run. No org/config commands are
+    // issued from sf-welcome.
+    void detectSfCliStatus(exec)
+      .then((cli) => {
         if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
-        data.sfEnvironment = env;
+        data.sfCli = cli;
 
         if (headerActive) {
           setupHeader(ctx, data, generation);
@@ -274,11 +266,7 @@ export default function sfWelcome(pi: ExtensionAPI) {
       })
       .catch(() => {
         if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
-        if (!data.sfEnvironment || data.sfEnvironment.loading) {
-          data.sfEnvironment = { cliInstalled: false, loading: false };
-        } else {
-          data.sfEnvironment = { ...data.sfEnvironment, refreshing: false };
-        }
+        data.sfCli = { installed: false, freshness: "unknown", loading: false };
 
         if (headerActive) {
           setupHeader(ctx, data, generation);

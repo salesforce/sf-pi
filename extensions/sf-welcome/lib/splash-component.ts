@@ -5,7 +5,7 @@
  * Layout modes (driven by terminal width):
  *   - Two-column (default, termWidth ≥ SINGLE_COL_THRESHOLD):
  *       Left:  Gradient Pi logo, model info, monthly cost, extension health,
- *              Slack/Gateway status, SF environment
+ *              Slack/Gateway/SF CLI status
  *       Right: Announcements, What's New, loaded counts, recent sessions,
  *              recommended extensions, attribution
  *   - Single-column (narrow terminals): left block stacked above right block
@@ -241,37 +241,32 @@ function formatBudget(budget: number | null): string {
   return formatCost(budget);
 }
 
-function formatRelativeAge(timestamp: number, now: number = Date.now()): string {
-  const diffMs = Math.max(0, now - timestamp);
-  const diffSeconds = Math.floor(diffMs / 1000);
-  if (diffSeconds < 10) return "updated just now";
-  if (diffSeconds < 60) return `updated ${diffSeconds}s ago`;
+function formatSfCliStatus(data: SplashData, mode: GlyphMode): string {
+  const cli = data.sfCli;
+  const label = `${BOLD}${ACCENT(`${glyph("cloud", mode)} SF CLI`)}${RESET}`;
 
-  const diffMinutes = Math.floor(diffSeconds / 60);
-  if (diffMinutes < 60) return `updated ${diffMinutes}m ago`;
-
-  const diffHours = Math.floor(diffMinutes / 60);
-  if (diffHours < 24) return `updated ${diffHours}h ago`;
-
-  const diffDays = Math.floor(diffHours / 24);
-  return `updated ${diffDays}d ago`;
-}
-
-function formatEnvironmentFreshness(env: SplashData["sfEnvironment"]): string | null {
-  if (!env) return null;
-
-  const parts: string[] = [];
-  if (typeof env.detectedAt === "number") {
-    parts.push(formatRelativeAge(env.detectedAt));
-  }
-  if (env.source === "cached") {
-    parts.push("cached");
-  }
-  if (env.refreshing) {
-    parts.push("refreshing…");
+  if (!cli || cli.loading || cli.freshness === "checking") {
+    return ` ${label}  ${MUTED(`${glyph("hourglass", mode)} Checking`)}`;
   }
 
-  return parts.length > 0 ? parts.join(" • ") : null;
+  if (!cli.installed) {
+    return ` ${label}  ${SF_RED("✗")} ${SF_RED("Not installed")}`;
+  }
+
+  const version = cli.installedVersion ? `v${cli.installedVersion}` : undefined;
+  if (cli.freshness === "latest") {
+    const suffix = version ? ` ${MUTED(`(${version})`)}` : "";
+    return ` ${label}  ${SF_GREEN("✓")} ${SF_GREEN("Installed")} ${MUTED("· latest")}${suffix}`;
+  }
+
+  if (cli.freshness === "update-available") {
+    const fromVersion = version ?? "installed";
+    const toVersion = cli.latestVersion ? `v${cli.latestVersion}` : "latest";
+    return ` ${label}  ${SF_ORANGE("!")} ${SF_ORANGE("Update available")} ${MUTED(`${fromVersion} → ${toVersion}`)}`;
+  }
+
+  const suffix = version ? ` ${MUTED(`(${version})`)}` : "";
+  return ` ${label}  ${SF_GREEN("✓")} ${SF_GREEN("Installed")}${suffix}`;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -399,47 +394,10 @@ function buildLeftColumn(
   }
   lines.push("");
 
-  // Salesforce Environment (async — may still be loading)
-  lines.push(horizontalRule(colWidth));
-  lines.push(` ${BOLD}${ACCENT(`${glyph("cloud", mode)} Salesforce Environment`)}${RESET}`);
-  const env = data.sfEnvironment;
-  if (!env || env.loading) {
-    lines.push(` ${MUTED(`${glyph("hourglass", mode)} Detecting...`)}`);
-  } else if (!env.cliInstalled) {
-    lines.push(` ${MUTED("SF CLI:")} ${SF_RED("Not installed")}`);
-  } else {
-    lines.push(` ${MUTED("SF CLI:")} ${SF_GREEN(`v${env.cliVersion ?? "?"}`)} ${SF_GREEN("✓")}`);
-    if (env.defaultOrg) {
-      // Keep org label, type badge, and connection status on a single line
-      // so the environment block reads at a glance. The instance URL is
-      // intentionally omitted — the org name + type is enough on the splash
-      // and the bottom bar already exposes the URL on demand.
-      const connIcon = env.connected ? SF_GREEN("✓ Connected") : SF_RED("✗ Disconnected");
-      const orgTypeBadge = env.orgType ? ` ${MUTED(`(${env.orgType})`)}` : "";
-      // Reserve trailing space for the connection suffix so long org names
-      // don't push past the column. 14 covers "✓ Connected" + padding.
-      const reservedForConn = 14;
-      const orgLabel = truncateToWidth(
-        env.defaultOrg,
-        Math.max(10, colWidth - 16 - reservedForConn),
-        "…",
-      );
-      lines.push(` ${MUTED("Org:")} ${orgLabel}${orgTypeBadge} — ${connIcon}`);
-      const parts: string[] = [];
-      if (env.apiVersion) parts.push(`API ${env.apiVersion}`);
-      if (env.configScope) parts.push(`${env.configScope}`);
-      if (parts.length) {
-        lines.push(` ${MUTED(parts.join(" • "))}`);
-      }
-
-      const freshness = formatEnvironmentFreshness(env);
-      if (freshness) {
-        lines.push(` ${MUTED(freshness)}`);
-      }
-    } else {
-      lines.push(` ${MUTED("No default org configured")}`);
-    }
-  }
+  // SF CLI status only. Org/API/config context belongs in sf-devbar, not in
+  // the welcome splash.
+  lines.push(formatSfCliStatus(data, mode));
+  lines.push("");
 
   return lines;
 }

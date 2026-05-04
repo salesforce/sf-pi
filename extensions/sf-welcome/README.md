@@ -11,7 +11,7 @@ Salesforce-branded splash screen that displays on startup with an animated Pi + 
 - Monthly cost usage line with color-coded progress (green → orange → red)
 - Lifetime usage line — per-key spend from the gateway, or a local session-file estimate for bring-your-own-keys users
 - sf-pi extension health grid (active/disabled/locked indicators)
-- Slack connection status
+- Slack, LLM Gateway, and lightweight SF CLI install/latest status
 
 **Right column:**
 
@@ -22,10 +22,9 @@ Salesforce-branded splash screen that displays on startup with an animated Pi + 
   Dismissed via `/sf-pi announcements dismiss <id>`, disabled entirely
   via `SF_PI_ANNOUNCEMENTS=off` or `{ "sfPi": { "announcements": false } }`.
 - **What's New panel** (only after a pi-coding-agent version bump) with feature + fix bullets distilled from the bundled CHANGELOG.md
-- Quick tips (commands, bash, thinking toggle, sf-pi manager)
 - Loaded counts (extensions, skills, prompt templates)
 - Recent sessions with relative timestamps
-- Salesforce AI compliance indicators (OSS-safe, Core AI principles, Trusted AI)
+- Recommended external pi packages and skill-source nudges
 - Community attribution
 
 ## Runtime Flow
@@ -59,51 +58,46 @@ Dismissal triggers:
    `quietStartup: true` in settings.json switches to a non-blocking header,
    while `--verbose` overrides quiet startup and forces the overlay.
 
-5. **Shared Salesforce detection** — SF environment lookup is delegated to the
-   shared Salesforce environment runtime cache, so startup only runs one set of
-   SF CLI commands even when both extensions need org details.
+5. **Lightweight SF CLI status** — The welcome screen checks only
+   `sf --version` plus an optional `npm view @salesforce/cli version` lookup
+   so it can show `SF CLI installed · latest` without running org/config
+   detection. Full org/API context belongs to sf-devbar.
 
-6. **Last-known snapshot first** — The welcome screen reads the persisted shared
-   cache synchronously and shows recent org info immediately when available.
+6. **Background loading** — CLI status, monthly usage, and remote announcements
+   refresh asynchronously after the splash appears, so startup remains responsive
+   while the visible rows update in place.
 
-7. **Background loading** — A forced refresh still runs asynchronously after the
-   splash appears, so the snapshot can update in place without blocking input.
-
-8. **Freshness hints** — Cached snapshots show subtle `updated … ago`, `cached`,
-   and `refreshing…` hints so you can tell whether the splash is showing a warm
-   cache or freshly detected data.
-
-9. **Salesforce brand gradient** — Uses actual Salesforce brand colors (#0070D2 blue,
+7. **Salesforce brand gradient** — Uses actual Salesforce brand colors (#0070D2 blue,
    #01C3E2 Astro cyan, #9061F9 purple) for the Pi logo gradient.
 
-10. **Terminal-aware glyph policy** — Every emoji/box icon on the splash
-    (and in the sf-devbar bottom bar) routes through
-    `lib/common/glyph-policy.ts`. On terminals known to lack emoji font
-    fallback (notably macOS Terminal.app, detected via
-    `TERM_PROGRAM=Apple_Terminal`), the policy swaps in ASCII equivalents
-    (`⚡` → `»`, `💰` → `$`, `📦` → `[]`, …) so users see readable
-    status instead of `?` tofu. Users can override via
-    `SF_PI_ASCII_ICONS=1`/`0` or `sfPi.asciiIcons: true|false` in
-    `settings.json`.
+8. **Terminal-aware glyph policy** — Every emoji/box icon on the splash
+   (and in the sf-devbar bottom bar) routes through
+   `lib/common/glyph-policy.ts`. On terminals known to lack emoji font
+   fallback (notably macOS Terminal.app, detected via
+   `TERM_PROGRAM=Apple_Terminal`), the policy swaps in ASCII equivalents
+   (`⚡` → `»`, `💰` → `$`, `📦` → `[]`, …) so users see readable
+   status instead of `?` tofu. Users can override via
+   `SF_PI_ASCII_ICONS=1`/`0` or `sfPi.asciiIcons: true|false` in
+   `settings.json`.
 
-11. **Narrow-terminal single-column fallback** — Below ~100 columns the
-    splash stacks its two columns vertically so no content is truncated.
-    Above that threshold the two-column layout grows up to 220 columns
-    wide, filling wide terminals instead of leaving an ellipsised island.
+9. **Narrow-terminal single-column fallback** — Below ~100 columns the
+   splash stacks its two columns vertically so no content is truncated.
+   Above that threshold the two-column layout grows up to 220 columns
+   wide, filling wide terminals instead of leaving an ellipsised island.
 
-12. **Top-left anchored overlay** — The splash hugs the top-left corner
+10. **Top-left anchored overlay** — The splash hugs the top-left corner
     of the terminal with a 1-col left margin so it sits flush with pi's
     own prompt and bottom bar instead of floating center-screen on
     wide terminals.
 
-13. **Bundled Nerd Font installer** — Four MesloLGM Nerd Font Mono TTFs
+11. **Bundled Nerd Font installer** — Four MesloLGM Nerd Font Mono TTFs
     ship under `assets/fonts/`. `/sf-setup-fonts` copies them into
     `~/Library/Fonts` (macOS) or `~/.local/share/fonts` (Linux) with
     SHA-256 verification, idempotent on repeat runs, and best-effort
     cache refresh via `atsutil` / `fc-cache`. Windows users get manual
     install instructions.
 
-14. **One-time install prompt** — When the splash detects ASCII-fallback
+12. **One-time install prompt** — When the splash detects ASCII-fallback
     glyphs _and_ the font isn't installed _and_ the user hasn't been
     asked before, `sf-welcome` shows a single `ctx.ui.confirm()` dialog:
     "Install bundled Nerd Font?" The decision (yes or no) is persisted
@@ -146,7 +140,7 @@ extensions/sf-welcome/
     font-installer.ts       ← implementation module
     recommendations-status.ts← implementation module
     session-data.ts         ← implementation module
-    sf-environment.ts       ← implementation module
+    sf-cli-status.ts        ← implementation module
     splash-component.ts     ← implementation module
     splash-data.ts          ← implementation module
     startup-mode.ts         ← implementation module
@@ -164,7 +158,7 @@ extensions/sf-welcome/
     lifetime-usage.test.ts  ← unit / smoke test
     recommendations-status.test.ts← unit / smoke test
     sdk-migration.test.ts   ← unit / smoke test
-    sf-environment.test.ts  ← unit / smoke test
+    sf-cli-status.test.ts   ← unit / smoke test
     smoke.test.ts           ← unit / smoke test
     startup-mode.test.ts    ← unit / smoke test
     state-store.test.ts     ← unit / smoke test

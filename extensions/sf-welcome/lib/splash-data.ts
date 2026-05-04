@@ -6,7 +6,6 @@
  * - this file orchestrates the splash payload
  * - session-data.ts owns session scanning and cost estimation
  * - extension-health.ts owns sf-pi registry + settings state
- * - sf-environment.ts adapts the shared lib/common/sf-environment runtime
  */
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, join } from "node:path";
@@ -34,7 +33,7 @@ export type {
   AnnouncementLine,
   AnnouncementsSummary,
   LoadedCounts,
-  SfEnvironmentInfo,
+  SfCliStatusInfo,
   SplashData,
   RecentSession,
   ExtensionHealthItem,
@@ -44,7 +43,7 @@ export type {
   WhatsNewSummary,
 } from "./types.ts";
 export { discoverExtensionHealth } from "./extension-health.ts";
-export { detectSfEnvironment, getCachedSfEnvironmentInfo } from "./sf-environment.ts";
+export { detectSfCliStatus, isVersionCurrent, parseSfCliVersion } from "./sf-cli-status.ts";
 export { estimateLifetimeCost, estimateMonthlyCost, getRecentSessions } from "./session-data.ts";
 export { buildWhatsNewPayload, readCurrentPiVersion } from "./whats-new.ts";
 export {
@@ -325,7 +324,7 @@ export function collectSplashData(
     lifetimeUsageSource: lifetime.lifetimeUsageSource,
     recommendations: collectRecommendationsStatus(cwd),
     skillSources: summarizeAvailableSkillSources() ?? undefined,
-    sfEnvironment: undefined,
+    sfCli: undefined,
     whatsNew,
     announcements,
   };
