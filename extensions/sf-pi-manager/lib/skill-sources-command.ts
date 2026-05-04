@@ -13,7 +13,6 @@
  * settings file can never crash a pi session.
  */
 import type { ExtensionCommandContext } from "@mariozechner/pi-coding-agent";
-import { setWorkingVisible } from "../../../lib/common/pi-compat.ts";
 import {
   detectSkillSources,
   updateSkillSources,
@@ -133,7 +132,7 @@ async function handleOverlay(ctx: ExtensionCommandContext, packageVersion: strin
     return;
   }
 
-  setWorkingVisible(ctx, false);
+  ctx.ui.setWorkingVisible(false);
   let result: SkillSourcesOverlayResult | undefined;
   try {
     result = await ctx.ui.custom<SkillSourcesOverlayResult | undefined>(
@@ -156,7 +155,7 @@ async function handleOverlay(ctx: ExtensionCommandContext, packageVersion: strin
       },
     );
   } finally {
-    setWorkingVisible(ctx, true);
+    ctx.ui.setWorkingVisible(true);
   }
 
   if (!result || result.kind === "cancel") return;

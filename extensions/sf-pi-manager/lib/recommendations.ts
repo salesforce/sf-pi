@@ -16,7 +16,6 @@
  */
 import type { ExtensionAPI, ExtensionCommandContext } from "@mariozechner/pi-coding-agent";
 import type { RecommendationsManifest, RecommendedItem } from "../../../catalog/types.ts";
-import { setWorkingVisible } from "../../../lib/common/pi-compat.ts";
 import {
   defaultFirstRunBundleIds,
   loadRecommendationsManifest,
@@ -147,7 +146,7 @@ async function handleOverlay(
     previousDecision: state.decisions[item.id],
   }));
 
-  setWorkingVisible(ctx, false);
+  ctx.ui.setWorkingVisible(false);
   let result: RecommendationsOverlayResult | undefined;
   try {
     result = await ctx.ui.custom<RecommendationsOverlayResult | undefined>(
@@ -163,7 +162,7 @@ async function handleOverlay(
       },
     );
   } finally {
-    setWorkingVisible(ctx, true);
+    ctx.ui.setWorkingVisible(true);
   }
 
   // Always mark the revision as seen once the overlay opened, even on cancel.

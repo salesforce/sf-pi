@@ -559,7 +559,7 @@ async function handleDebugCommand(
         `Usage: /${COMMAND_NAME} debug <modelId> [reasoning=<level>] [tool] [adaptive]`,
         "",
         "Examples:",
-        `  /${COMMAND_NAME} debug claude-opus-4-7 adaptive reasoning=max`,
+        `  /${COMMAND_NAME} debug claude-opus-4-7 adaptive reasoning=xhigh`,
         `  /${COMMAND_NAME} debug gpt-5 reasoning=high`,
         `  /${COMMAND_NAME} debug gpt-5.3-codex reasoning=medium tool`,
       ].join("\n"),

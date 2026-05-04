@@ -5,6 +5,8 @@
  * Verifies the extension module can be imported and exports a default function,
  * and that splash data collection and component rendering work correctly.
  */
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, it, expect } from "vitest";
 import { visibleWidth } from "@mariozechner/pi-tui";
 
@@ -18,6 +20,12 @@ function stripAnsi(s: string): string {
 }
 
 describe("sf-welcome", () => {
+  it("dismisses on tool_call, not tool_result, so incremental bash streaming cannot render behind the splash", () => {
+    const source = readFileSync(path.resolve("extensions/sf-welcome/index.ts"), "utf8");
+    expect(source).toContain('pi.on("tool_call"');
+    expect(source).toContain("dismiss(ctx)");
+  });
+
   it("exports a default function", async () => {
     const mod = await import("../index.ts");
     expect(typeof mod.default).toBe("function");

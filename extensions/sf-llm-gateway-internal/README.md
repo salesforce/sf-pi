@@ -213,6 +213,7 @@ extensions/sf-llm-gateway-internal/
     global-config.test.ts   ← unit / smoke test
     migrate-unify-provider.test.ts← unit / smoke test
     models.test.ts          ← unit / smoke test
+    opus47-regression.test.ts← unit / smoke test
     provider-telemetry.test.ts← unit / smoke test
     retry-telemetry.test.ts ← unit / smoke test
     robust-retry.test.ts    ← unit / smoke test

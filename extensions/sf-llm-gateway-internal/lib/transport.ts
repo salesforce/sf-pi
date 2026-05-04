@@ -33,15 +33,15 @@
  *    families pass through untouched.
  *
  * 2. streamSfGatewayAnthropic — wraps pi-ai's native Anthropic Messages
- *    transport so Opus 4.7 gets the settings pi-ai does *not* apply
- *    automatically. pi-ai's adaptive-thinking allow-list currently only
- *    matches Opus 4.6 / Sonnet 4.6, so on 4.7 pi-ai would otherwise fall
- *    back to budget-based thinking (which 4.7 no longer supports) with a
- *    32K-clamped max_tokens (way below the 128K ceiling).
+ *    transport for Gateway-specific Opus 4.7 policy. Pi 0.73+ owns the
+ *    native adaptive-thinking / xhigh effort mapping; this extension only
+ *    fills missing thinking controls for safety, raises the max_tokens floor
+ *    before pi-ai's conservative default can clamp it, and strips incompatible
+ *    temperature values.
  *
- *    For 4.7 we set:
- *      - thinking: { type: "adaptive" }                  (only mode 4.7 supports)
- *      - output_config: { effort: <mapped from pi reasoning level> }
+ *    For 4.7 we ensure:
+ *      - thinking defaults to { type: "adaptive" } only when Pi did not set it
+ *      - output_config defaults to { effort: <pi level> } only when Pi did not set it
  *      - max_tokens: <defaulted to 64K, user can raise>
  *      - temperature stripped (Anthropic rejects any value != 1 with adaptive)
  *
@@ -293,8 +293,9 @@ export function resolveOpenAiReasoningEffort(modelId: string): string | undefine
 }
 
 /**
- * True for Claude Opus 4.7 variants. pi-ai does not treat 4.7 as an
- * adaptive-thinking model yet (only 4.6), so we upgrade it here.
+ * True for Claude Opus 4.7 variants. Pi 0.73+ treats these as native
+ * adaptive-thinking models; this check scopes the Gateway-specific token
+ * floor and retry policy.
  */
 export function isOpus47ModelId(modelId: string): boolean {
   const lower = modelId.toLowerCase();
@@ -509,9 +510,16 @@ export function applyOpus47MaxThinking(
     payload.max_tokens = resolveOpus47MaxTokensFloor(level);
   }
 
-  // Adaptive thinking is the only thinking mode Opus 4.7 supports.
-  payload.thinking = { type: "adaptive" };
-  payload.output_config = { effort: mapPiLevelToOpus47Effort(level) };
+  // Pi 0.73+ owns the native Opus 4.7 adaptive/xhigh mapping. Preserve
+  // thinking/output_config if Pi already supplied them; fill only when absent
+  // so older serialized sessions and direct tests still get a safe payload.
+  const thinking = payload.thinking as { type?: unknown } | undefined;
+  if (!thinking || thinking.type !== "adaptive") {
+    payload.thinking = { type: "adaptive" };
+  }
+  if (!payload.output_config) {
+    payload.output_config = { effort: mapPiLevelToOpus47Effort(level) };
+  }
 
   // Anthropic rejects any `temperature` != 1 with extended thinking
   // ("`temperature` may only be set to 1 when thinking is enabled or in

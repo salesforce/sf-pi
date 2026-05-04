@@ -37,7 +37,6 @@ import {
   isOpenAiModelId,
   isOpenAiReasoningModelId,
   isOpus47ModelId,
-  mapPiLevelToOpus47Effort,
   normalizeCodexReasoningEffort,
   resolveOpenAiReasoningEffort,
   resolveOpus47MaxTokensFloor,
@@ -390,30 +389,33 @@ describe("isOpus47ModelId", () => {
   });
 });
 
-describe("mapPiLevelToOpus47Effort", () => {
-  it("maps minimal and low to low", () => {
-    expect(mapPiLevelToOpus47Effort("minimal")).toBe("low");
-    expect(mapPiLevelToOpus47Effort("low")).toBe("low");
+describe("applyOpus47GatewayPolicy", () => {
+  it("does not overwrite Pi-native adaptive effort mapping when Pi already supplied output_config", () => {
+    const payload: Record<string, unknown> = {
+      max_tokens: 32_000,
+      thinking: { type: "adaptive" },
+      output_config: { effort: "xhigh" },
+      temperature: 0.7,
+    };
+
+    applyOpus47MaxThinking(payload, "medium");
+
+    expect(payload.max_tokens).toBe(32_000);
+    expect(payload.thinking).toEqual({ type: "adaptive" });
+    expect(payload.output_config).toEqual({ effort: "xhigh" });
+    expect(payload.temperature).toBeUndefined();
   });
 
-  it("maps medium to medium", () => {
-    expect(mapPiLevelToOpus47Effort("medium")).toBe("medium");
+  it("only fills adaptive thinking when Pi did not already supply thinking controls", () => {
+    const payload: Record<string, unknown> = {};
+
+    applyOpus47MaxThinking(payload, "xhigh");
+
+    expect(payload.thinking).toEqual({ type: "adaptive" });
+    expect(payload.output_config).toEqual({ effort: "xhigh" });
+    expect(payload.max_tokens).toBe(64_000);
   });
 
-  it("maps high to high", () => {
-    expect(mapPiLevelToOpus47Effort("high")).toBe("high");
-  });
-
-  it("maps xhigh to xhigh (Opus 4.7 introduced an xhigh tier between high and max)", () => {
-    expect(mapPiLevelToOpus47Effort("xhigh")).toBe("xhigh");
-  });
-
-  it('falls back to Anthropic\'s documented default ("high") on undefined', () => {
-    expect(mapPiLevelToOpus47Effort(undefined)).toBe("high");
-  });
-});
-
-describe("applyOpus47MaxThinking", () => {
   it("maps pi reasoning level to effort and sets adaptive thinking", () => {
     const payload: Record<string, unknown> = {
       max_tokens: 32_000,

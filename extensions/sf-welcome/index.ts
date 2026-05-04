@@ -70,7 +70,7 @@ import {
 } from "../../lib/common/doctor/diagnostics.ts";
 
 import { buildExecFn } from "../../lib/common/exec-adapter.ts";
-import { requirePiVersion, setWorkingVisible } from "../../lib/common/pi-compat.ts";
+import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 import {
   refreshMonthlyUsage,
   subscribeMonthlyUsageState,
@@ -708,7 +708,7 @@ export default function sfWelcome(pi: ExtensionAPI) {
     // so an early streaming start doesn't paint a loader behind the welcome
     // panel. Restored in the component's dispose handler (every dismiss
     // path goes through dispose). No-op on pi < 0.70.3.
-    setWorkingVisible(ctx, false);
+    ctx.ui.setWorkingVisible(false);
 
     // The overlay component we return also exposes `focused` (Focusable) so the
     // TUI can manage cursor visibility, and a `dispose()` method that pi calls
@@ -856,7 +856,7 @@ export default function sfWelcome(pi: ExtensionAPI) {
               // Restore the built-in working loader row we hid before opening
               // the overlay. Runs on every close path (countdown, keypress,
               // external dismiss, session shutdown).
-              setWorkingVisible(ctx, true);
+              ctx.ui.setWorkingVisible(true);
             },
           };
         },
@@ -882,7 +882,7 @@ export default function sfWelcome(pi: ExtensionAPI) {
       .catch((error) => {
         // If custom() itself rejects we never got a dispose call, so restore
         // the loader row here as a belt-and-suspenders fallback.
-        setWorkingVisible(ctx, true);
+        ctx.ui.setWorkingVisible(true);
         // Debug-ish log, but `no-console` only allows warn/error/info. Overlay
         // failures are rare and worth surfacing, so route through console.warn.
         if (isActiveSession(ctx, generation)) console.warn("[sf-welcome] Overlay failed:", error);

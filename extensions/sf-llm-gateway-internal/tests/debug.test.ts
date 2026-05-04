@@ -29,11 +29,16 @@ describe("buildProbeBody", () => {
     const probe: TransformProbe = {
       model: "claude-opus-4-7",
       adaptive: true,
-      reasoning: "max" as unknown as TransformProbe["reasoning"],
+      reasoning: "xhigh",
     };
     const body = buildProbeBody(probe);
     expect(body.thinking).toEqual({ type: "adaptive" });
-    expect(body.output_config).toEqual({ effort: "max" });
+    expect(body.output_config).toEqual({ effort: "xhigh" });
+  });
+
+  it("defaults Claude adaptive probes to high instead of the retired max effort", () => {
+    const body = buildProbeBody({ model: "claude-opus-4-7", adaptive: true });
+    expect(body.output_config).toEqual({ effort: "high" });
   });
 
   it("produces a GPT-5 probe with reasoning_effort + allow-list (the gateway requires both)", () => {

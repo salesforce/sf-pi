@@ -171,6 +171,7 @@ extensions/sf-guardrail/
     classify.test.ts        ← unit / smoke test
     command-gate.test.ts    ← unit / smoke test
     config.test.ts          ← unit / smoke test
+    hook-order.test.ts      ← unit / smoke test
     org-context.test.ts     ← unit / smoke test
     policies.test.ts        ← unit / smoke test
     smoke.test.ts           ← unit / smoke test

@@ -9,6 +9,9 @@
  * extension name.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { SF_PI_REGISTRY } from "../../../catalog/registry.ts";
 import { compareVersions, MIN_PI_VERSION, requirePiVersion } from "../pi-compat.ts";
 
 describe("compareVersions", () => {
@@ -34,6 +37,26 @@ describe("compareVersions", () => {
 
   it("pads short inputs with zeroes so '0.72' == '0.72.0'", () => {
     expect(compareVersions("0.72", "0.72.0")).toBe(0);
+  });
+});
+
+describe("pi version floor", () => {
+  it("every bundled extension gates startup through requirePiVersion", () => {
+    for (const extension of SF_PI_REGISTRY) {
+      const source = readFileSync(path.resolve(extension.file), "utf8");
+      expect(source).toContain(`requirePiVersion(pi, "${extension.id}")`);
+    }
+  });
+
+  it("tracks the package peer dependency floor for every Pi package", () => {
+    const pkg = JSON.parse(readFileSync(path.resolve("package.json"), "utf8")) as {
+      peerDependencies?: Record<string, string>;
+    };
+
+    expect(MIN_PI_VERSION).toBe("0.73.0");
+    expect(pkg.peerDependencies?.["@mariozechner/pi-coding-agent"]).toBe(">=0.73.0");
+    expect(pkg.peerDependencies?.["@mariozechner/pi-ai"]).toBe(">=0.73.0");
+    expect(pkg.peerDependencies?.["@mariozechner/pi-tui"]).toBe(">=0.73.0");
   });
 });
 
@@ -66,5 +89,15 @@ describe("requirePiVersion", () => {
     expect(warn.mock.calls[0][0]).toMatch(/sf-pi-compat-once/);
     expect(warn.mock.calls[0][0]).toMatch(/9999\.0\.0/);
     expect(warn.mock.calls[0][0]).toMatch(/pi update/);
+  });
+
+  it("older Pi degrades by skipping the extension instead of throwing", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const ok = requirePiVersion({ any: "shape" }, "sf-old-pi-skip", "9999.0.0");
+
+    expect(ok).toBe(false);
+    expect(warn.mock.calls[0][0]).toContain('Skipping "sf-old-pi-skip"');
+    expect(warn.mock.calls[0][0]).toContain("Run `pi update` to upgrade pi");
   });
 });

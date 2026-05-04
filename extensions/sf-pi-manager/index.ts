@@ -64,7 +64,7 @@ import {
   getDisabledExtensionsForCwd,
 } from "./lib/package-state.ts";
 import { glyph, resolveGlyphMode } from "../../lib/common/glyph-policy.ts";
-import { requirePiVersion, setWorkingVisible } from "../../lib/common/pi-compat.ts";
+import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 import {
   describeDisplaySettingsSource,
   readEffectiveSfPiDisplaySettings,
@@ -406,7 +406,7 @@ async function handleOverlay(
   // Hide pi's built-in working loader row while the overlay is modal so the
   // row doesn't reserve space behind our centered dialog. Restored in the
   // finally block regardless of how the overlay closes. No-op on pi < 0.70.3.
-  setWorkingVisible(ctx, false);
+  ctx.ui.setWorkingVisible(false);
   let result: OverlayResult | undefined;
   try {
     result = await ctx.ui.custom<OverlayResult | undefined>(
@@ -432,7 +432,7 @@ async function handleOverlay(
       },
     );
   } finally {
-    setWorkingVisible(ctx, true);
+    ctx.ui.setWorkingVisible(true);
   }
 
   if (!result || !result.changed) {

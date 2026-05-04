@@ -40,3 +40,70 @@ describe("tool modules", () => {
     expect(typeof mod.registerCanvasTool).toBe("function");
   });
 });
+
+describe("tool argument compatibility", () => {
+  it("slack_send prepares legacy recipient/message arguments into to/text", async () => {
+    const captured: Array<{ name: string; prepareArguments?: (args: unknown) => unknown }> = [];
+    const { registerSendTool } = await import("../lib/send-tool.ts");
+
+    registerSendTool({
+      registerTool(definition: { name: string; prepareArguments?: (args: unknown) => unknown }) {
+        captured.push(definition);
+      },
+    } as never);
+
+    const tool = captured.find((entry) => entry.name === "slack_send");
+    expect(tool?.prepareArguments).toBeTypeOf("function");
+    expect(tool?.prepareArguments?.({ action: "dm", recipient: "Jane", message: "hello" })).toEqual(
+      {
+        action: "dm",
+        recipient: "Jane",
+        message: "hello",
+        to: "Jane",
+        text: "hello",
+      },
+    );
+  });
+
+  it("slack_time_range prepares legacy text/range fields into expression", async () => {
+    const captured: Array<{
+      name: string;
+      prepareArguments?: (args: unknown) => unknown;
+      execute?: (...args: never[]) => Promise<unknown>;
+    }> = [];
+    const { registerTimeRangeTool } = await import("../lib/time-range-tool.ts");
+
+    registerTimeRangeTool({
+      registerTool(definition: { name: string; prepareArguments?: (args: unknown) => unknown }) {
+        captured.push(definition);
+      },
+    } as never);
+
+    const tool = captured.find((entry) => entry.name === "slack_time_range");
+    expect(tool?.prepareArguments).toBeTypeOf("function");
+    expect(tool?.prepareArguments?.({ range: "last week" })).toEqual({
+      range: "last week",
+      expression: "last week",
+    });
+    expect(tool?.prepareArguments?.({ text: "yesterday" })).toEqual({
+      text: "yesterday",
+      expression: "yesterday",
+    });
+  });
+
+  it("slack_time_range throws on invalid expressions so Pi marks the tool result as an error", async () => {
+    const captured: Array<{ name: string; execute?: (...args: never[]) => Promise<unknown> }> = [];
+    const { registerTimeRangeTool } = await import("../lib/time-range-tool.ts");
+
+    registerTimeRangeTool({
+      registerTool(definition: { name: string; execute?: (...args: never[]) => Promise<unknown> }) {
+        captured.push(definition);
+      },
+    } as never);
+
+    const tool = captured.find((entry) => entry.name === "slack_time_range");
+    await expect(
+      tool?.execute?.("id" as never, { expression: "" } as never, undefined as never),
+    ).rejects.toThrow(/Could not resolve Slack time range: expression is required/);
+  });
+});

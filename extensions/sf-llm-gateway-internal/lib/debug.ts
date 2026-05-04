@@ -66,7 +66,7 @@ export function buildProbeBody(probe: TransformProbe): Record<string, unknown> {
     body.max_tokens = 4096;
     if (probe.adaptive) {
       body.thinking = { type: "adaptive" };
-      body.output_config = { effort: probe.reasoning ?? "max" };
+      body.output_config = { effort: probe.reasoning ?? "high" };
     }
   } else if (isCodex || isOpenAi) {
     // OpenAI-family reasoning models (gpt-5, codex) need this combo to

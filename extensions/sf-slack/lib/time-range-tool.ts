@@ -54,6 +54,21 @@ export function registerTimeRangeTool(pi: ExtensionAPI): void {
       "slack_time_range returns oldest/latest for slack action:'history', query_suffix for raw slack search, and since/before for slack_research. Pass those values through unchanged — do not recompute Unix timestamps with bash/python.",
     ],
     parameters: SlackTimeRangeParams,
+    prepareArguments(args): {
+      expression: string;
+      anchor?: string;
+      timezone?: string;
+      week_starts_on?: "monday" | "sunday";
+      calendar_mode?: "calendar" | "rolling";
+      explicit_end?: "exclusive" | "inclusive";
+    } {
+      if (!args || typeof args !== "object" || Array.isArray(args)) return args as never;
+      const input = args as { expression?: unknown; range?: unknown; text?: unknown };
+      if (input.expression !== undefined) return args as never;
+      if (typeof input.range === "string") return { ...input, expression: input.range } as never;
+      if (typeof input.text === "string") return { ...input, expression: input.text } as never;
+      return args as never;
+    },
 
     renderCall(args: TimeRangeToolCallArgs, theme: Theme) {
       const bits = [args.expression ? `"${args.expression}"` : "?"];
@@ -85,10 +100,9 @@ export function registerTimeRangeTool(pi: ExtensionAPI): void {
         };
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        return {
-          content: [{ type: "text", text: `Could not resolve Slack time range: ${message}` }],
-          details: { ok: false, action: "time_range", reason: "invalid_range", error: message },
-        };
+        throw new Error(`Could not resolve Slack time range: ${message}`, {
+          cause: error,
+        });
       }
     },
   });

@@ -69,18 +69,18 @@
     "prepare": "husky || true"
   },
   "peerDependencies": {
-    "@mariozechner/pi-ai": ">=0.72.0",
-    "@mariozechner/pi-coding-agent": ">=0.72.0",
-    "@mariozechner/pi-tui": ">=0.72.0",
+    "@mariozechner/pi-ai": ">=0.73.0",
+    "@mariozechner/pi-coding-agent": ">=0.73.0",
+    "@mariozechner/pi-tui": ">=0.73.0",
     "typebox": "*"
   },
   "devDependencies": {
     "@commitlint/cli": "^20.5.3",
     "@commitlint/config-conventional": "^20.5.3",
     "@eslint/js": "^10.0.1",
-    "@mariozechner/pi-ai": "^0.72.1",
-    "@mariozechner/pi-coding-agent": "^0.72.1",
-    "@mariozechner/pi-tui": "^0.72.1",
+    "@mariozechner/pi-ai": "^0.73.0",
+    "@mariozechner/pi-coding-agent": "^0.73.0",
+    "@mariozechner/pi-tui": "^0.73.0",
     "@types/node": "^25.6.0",
     "@vitest/coverage-v8": "^4.1.5",
     "eslint": "^10.3.0",
@@ -98,11 +98,9 @@
     "vscode-languageserver-protocol": "^3.17.5"
   },
   "overridesNotes": {
-    "fast-xml-parser": "Force >= 5.7.0 to clear GHSA-gh4j-gqv2-49f6 (XMLBuilder CDATA injection). Reaches us only via @mariozechner/pi-ai -> AWS SDK Bedrock client, which sf-pi never calls directly. Remove once upstream ships a release with a refreshed AWS SDK.",
-    "@anthropic-ai/sdk": "Force >= 0.91.1 to clear GHSA-p7fg-763f-g4gf (insecure default file permissions in the local-filesystem Memory Tool). sf-pi never instantiates the Memory Tool, but the advisory still flags the transitive dep via @mariozechner/pi-ai. Remove once pi-ai bumps its resolved version."
+    "fast-xml-parser": "Force >= 5.7.0 to clear GHSA-gh4j-gqv2-49f6 (XMLBuilder CDATA injection). Reaches sf-pi through pi-ai -> AWS SDK Bedrock client; remove once upstream AWS SDK resolves the advisory."
   },
   "overrides": {
-    "fast-xml-parser": "^5.7.0",
-    "@anthropic-ai/sdk": "^0.91.1"
+    "fast-xml-parser": "^5.7.0"
   }
 }

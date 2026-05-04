@@ -139,6 +139,30 @@ export function registerSendTool(pi: ExtensionAPI): void {
       "For thread replies, pass action=thread with the parent channel reference in `to` and the parent message ts in `thread_ts`.",
     ],
     parameters: SlackSendParams,
+    prepareArguments(args): {
+      action: "channel" | "dm" | "thread";
+      to: string;
+      text: string;
+      thread_ts?: string;
+      broadcast?: boolean;
+    } {
+      if (!args || typeof args !== "object" || Array.isArray(args)) return args as never;
+      const input = args as {
+        to?: unknown;
+        text?: unknown;
+        recipient?: unknown;
+        message?: unknown;
+      };
+      return {
+        ...input,
+        ...(input.to === undefined && typeof input.recipient === "string"
+          ? { to: input.recipient }
+          : {}),
+        ...(input.text === undefined && typeof input.message === "string"
+          ? { text: input.message }
+          : {}),
+      } as never;
+    },
 
     renderCall(args: SendToolCallArgs, theme: Theme) {
       const action = args.action || "send";

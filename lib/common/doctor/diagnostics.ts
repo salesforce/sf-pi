@@ -8,6 +8,7 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { MIN_PI_VERSION } from "../pi-compat.ts";
 import { globalAgentPath, globalSettingsPath, projectSettingsPath } from "../pi-paths.ts";
 import type {
   AvailableSkillRoot,
@@ -21,7 +22,6 @@ import type {
   StartupDoctorNudge,
 } from "./types.ts";
 
-const MIN_PI_VERSION = "0.72.0";
 const MIN_NODE_MAJOR = 20;
 
 interface SkillRootCandidate {
