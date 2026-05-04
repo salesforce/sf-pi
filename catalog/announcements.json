@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.37.2-2026-05-04",
-  "latestVersion": "0.37.2",
+  "revision": "release-0.37.3-2026-05-04",
+  "latestVersion": "0.37.3",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.37.2",
+      "id": "release-0.37.3",
       "kind": "update",
-      "title": "sf-pi v0.37.2 — security: address CodeQL scanning alerts",
+      "title": "sf-pi v0.37.3 — sf-welcome: animate and auto-dismiss quiet header",
       "publishedAt": "2026-05-04T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.37.2",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.37.3",
       "severity": "info",
-      "body": "security: address CodeQL scanning alerts"
+      "body": "sf-welcome: animate and auto-dismiss quiet header"
     },
     {
       "id": "pi-0.72-required",
