@@ -15,6 +15,7 @@
 
 import { truncateToWidth, visibleWidth } from "@mariozechner/pi-tui";
 import { formatGitChanges, type GitChanges } from "./git-changes.ts";
+import { resolveGlyphMode, type GlyphMode } from "../../../lib/common/glyph-policy.ts";
 import type {
   SfLspActivity,
   SfLspAvailability,
@@ -58,6 +59,8 @@ export type TopBarState = {
   /** Inline image width pill text, e.g. "img:120c". Empty when the user
    * left Pi's default (`terminal.imageWidthCells = 60`). */
   imageWidthPill?: string;
+  /** Optional glyph mode override (test hook). Production auto-detects. */
+  glyphMode?: GlyphMode;
 };
 
 // -------------------------------------------------------------------------------------------------
@@ -137,11 +140,12 @@ export function renderTopBarParts(
   theme: BarTheme,
 ): { left: string; right: string } {
   const sep = ` ${theme.fg("dim", SEP_CHAR)} `;
+  const mode = state.glyphMode ?? resolveGlyphMode();
   const leftSegments: string[] = [];
 
   // 1. SF Pi brand icon + powerline separator + model segment (no gap)
-  const brandIcon = theme.bold(theme.fg("accent", "\ue22c"));
-  const modelSeg = formatModelSegment(state, theme);
+  const brandIcon = theme.bold(theme.fg("accent", mode === "ascii" ? "sf-pi" : "\ue22c"));
+  const modelSeg = formatModelSegment(state, theme, mode);
   leftSegments.push(brandIcon + sep + modelSeg);
 
   // 2. Thinking level (rainbow gradient, hidden when "off")
@@ -149,10 +153,10 @@ export function renderTopBarParts(
   if (thinkSeg) leftSegments.push(thinkSeg);
 
   // 3. Working folder — teal color matching pi-powerline-footer
-  leftSegments.push(formatFolderSegment(state.folderName));
+  leftSegments.push(formatFolderSegment(state.folderName, mode));
 
   // 4. Git branch + changes
-  const gitSeg = formatGitSegment(state, theme);
+  const gitSeg = formatGitSegment(state, theme, mode);
   if (gitSeg) leftSegments.push(gitSeg);
 
   // 5. Context window progress bar
@@ -366,11 +370,12 @@ function cleanModelName(raw: string): string {
     .trim();
 }
 
-function formatModelSegment(state: TopBarState, theme: BarTheme): string {
+function formatModelSegment(state: TopBarState, theme: BarTheme, mode: GlyphMode): string {
   const parts: string[] = [];
 
-  // Robot/chip icon
-  parts.push(theme.fg("accent", "\uec19"));
+  // Robot/chip icon. Nerd Font glyphs look great in Ghostty/iTerm but
+  // render as tofu in Terminal.app; ASCII mode keeps the top bar readable.
+  parts.push(theme.fg("accent", mode === "ascii" ? "AI" : "\uec19"));
 
   // SF LLM Gateway badge (rainbow gradient) — shown once for either
   // provider registration (OpenAI-compat or Anthropic-native).
@@ -460,14 +465,16 @@ function formatThinkingSegment(level: string | undefined, theme: BarTheme): stri
 /**
  * Render the working folder in teal, matching pi-powerline-footer's "path" color.
  */
-function formatFolderSegment(folderName: string): string {
-  return hexFg(TEAL_HEX, `📂 ${folderName}`);
+function formatFolderSegment(folderName: string, mode: GlyphMode): string {
+  const icon = mode === "ascii" ? "dir" : "📂";
+  return hexFg(TEAL_HEX, `${icon} ${folderName}`);
 }
 
-function formatGitSegment(state: TopBarState, theme: BarTheme): string | null {
+function formatGitSegment(state: TopBarState, theme: BarTheme, mode: GlyphMode): string | null {
   if (!state.gitBranch) return null;
 
-  let seg = theme.fg("success", `\uf126 ${state.gitBranch}`);
+  const icon = mode === "ascii" ? "git" : "\uf126";
+  let seg = theme.fg("success", `${icon} ${state.gitBranch}`);
 
   if (state.gitChanges) {
     const changes = formatGitChanges(state.gitChanges);

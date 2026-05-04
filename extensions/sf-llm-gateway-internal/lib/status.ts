@@ -158,18 +158,21 @@ function formatMonthlyUsagePart(
   // Resolve glyph mode per call so a runtime settings flip is reflected on
   // the next status refresh without a restart. This value bubbles up into
   // the bottom bar via `ctx.ui.setStatus` so terminals without emoji
-  // fallback (notably Terminal.app) show `$ $X/∞` instead of tofu.
-  const g = glyph("monthly", resolveGlyphMode());
+  // fallback (notably Terminal.app) show a clean `$X/∞` pill instead of
+  // tofu or a duplicated dollar sign.
+  const mode = resolveGlyphMode();
+  const g = glyph("monthly", mode);
+  const prefix = mode === "ascii" ? "" : `${g} `;
   if (monthlyUsage) {
     // Show infinity for the budget ceiling — there is no fixed cap.
-    return `${g} ${formatUsd(monthlyUsage.spend)}/∞`;
+    return `${prefix}${formatUsd(monthlyUsage.spend)}/∞`;
   }
 
   if (monthlyUsageError) {
-    return `${g} unavailable`;
+    return `${prefix}unavailable`;
   }
 
-  return `${g} loading…`;
+  return `${prefix}loading…`;
 }
 
 function formatMonthlyUsageReportLine(

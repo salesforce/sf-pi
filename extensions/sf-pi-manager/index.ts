@@ -683,9 +683,10 @@ function updateRecommendationsNudge(ctx: ExtensionContext): void {
       ctx.ui.setStatus(RECOMMENDATIONS_STATUS_KEY, undefined);
       return;
     }
+    const icon = glyph("whatsNew", resolveGlyphMode({ cwd: ctx.cwd }));
     ctx.ui.setStatus(
       RECOMMENDATIONS_STATUS_KEY,
-      `✨ sf-pi: ${nudge.pendingCount} new recommended extension(s) — /sf-pi recommended`,
+      `${icon} sf-pi: ${nudge.pendingCount} new recommended extension(s) — /sf-pi recommended`,
     );
   } catch {
     // Nudge is best-effort; never break session_start.
@@ -706,9 +707,10 @@ function updateAnnouncementsNudge(ctx: ExtensionContext): void {
       ctx.ui.setStatus(ANNOUNCEMENTS_STATUS_KEY, undefined);
       return;
     }
+    const icon = glyph("announce", resolveGlyphMode({ cwd: ctx.cwd }));
     ctx.ui.setStatus(
       ANNOUNCEMENTS_STATUS_KEY,
-      `🔔 sf-pi: ${nudge.visibleCount} announcement(s) — /sf-pi announcements`,
+      `${icon} sf-pi: ${nudge.visibleCount} announcement(s) — /sf-pi announcements`,
     );
   } catch {
     ctx.ui.setStatus(ANNOUNCEMENTS_STATUS_KEY, undefined);

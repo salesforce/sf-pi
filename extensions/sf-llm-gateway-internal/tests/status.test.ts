@@ -9,6 +9,7 @@ import path from "node:path";
 import { BETAS_ENV } from "../lib/config.ts";
 
 const originalHomeEnv = process.env.HOME;
+const originalAsciiIconsEnv = process.env.SF_PI_ASCII_ICONS;
 import { buildFooterStatus, buildStatusReport } from "../lib/status.ts";
 import { KNOWN_BETAS } from "../lib/models.ts";
 
@@ -32,6 +33,12 @@ afterEach(() => {
     delete process.env.HOME;
   } else {
     process.env.HOME = originalHomeEnv;
+  }
+
+  if (originalAsciiIconsEnv === undefined) {
+    delete process.env.SF_PI_ASCII_ICONS;
+  } else {
+    process.env.SF_PI_ASCII_ICONS = originalAsciiIconsEnv;
   }
 
   for (const dir of tempDirs.splice(0)) {
@@ -81,6 +88,29 @@ describe("buildFooterStatus", () => {
     expect(text).not.toContain("Opus");
     expect(text).not.toContain("ctx");
     expect(text).not.toContain("SF LLM Gateway");
+  });
+
+  it("omits the monthly icon in ascii glyph mode to avoid duplicate dollars", () => {
+    process.env.SF_PI_ASCII_ICONS = "1";
+
+    const text = buildFooterStatus(
+      withDefaults({
+        discovery: null,
+        monthlyUsage: {
+          maxBudget: 100,
+          spend: 12.5,
+          remaining: 87.5,
+          budgetResetAt: "2026-05-01",
+          budgetDuration: "month",
+          fetchedAt: new Date().toISOString(),
+        },
+        monthlyUsageError: null,
+        runtimeBetaOverrides: null,
+        runtimeExtraBetas: new Set(),
+      }),
+    );
+
+    expect(text).toBe("$12.50/∞");
   });
 
   it("returns loading state when monthly usage is not yet fetched", () => {

@@ -71,7 +71,7 @@
     "entry": "extensions/sf-devbar/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 1337
+    "srcLoc": 1344
   },
   {
     "id": "sf-guardrail",
@@ -124,7 +124,7 @@
     "entry": "extensions/sf-llm-gateway-internal/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 6158
+    "srcLoc": 6161
   },
   {
     "id": "sf-lsp",
@@ -195,7 +195,7 @@
     "entry": "extensions/sf-pi-manager/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 2950
+    "srcLoc": 2952
   },
   {
     "id": "sf-skills-hud",

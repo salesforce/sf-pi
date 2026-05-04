@@ -35,6 +35,27 @@ describe("renderTopBar", () => {
     expect(line).toContain("\ue0b1");
   });
 
+  it("uses ASCII-safe top-bar icons in ascii glyph mode", () => {
+    const [line] = renderTopBar(
+      makeState({
+        glyphMode: "ascii",
+        modelName: "GPT-5.5",
+        modelProvider: "sf-llm-gateway-internal",
+        gitBranch: "main",
+      }),
+      stubTheme,
+    );
+
+    expect(line).toContain("sf-pi");
+    expect(line).toContain("AI");
+    expect(line).toContain("dir my-project");
+    expect(line).toContain("git main");
+    expect(line).not.toContain("\ue22c");
+    expect(line).not.toContain("\uec19");
+    expect(line).not.toContain("📂");
+    expect(line).not.toContain("\uf126");
+  });
+
   it("includes the folder name", () => {
     const [line] = renderTopBar(makeState({ folderName: "agent-scripts" }), stubTheme);
     expect(line).toContain("agent-scripts");
