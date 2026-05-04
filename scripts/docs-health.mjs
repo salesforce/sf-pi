@@ -119,7 +119,7 @@ function listFiles(dir, predicate) {
         walk(full);
       } else if (entry.isFile()) {
         const relative = rel(full);
-        if (!predicate || predicate(relative)) files.push(relative);
+        if (predicate(relative)) files.push(relative);
       }
     }
   }

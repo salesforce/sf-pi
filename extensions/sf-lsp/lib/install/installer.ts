@@ -14,7 +14,7 @@
  * Both installers return a `ComponentInstallResult` with a human-readable
  * message. They never throw — callers rely on `ok` to drive the summary.
  */
-import { createWriteStream, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { createWriteStream, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { pipeline } from "node:stream/promises";
 import type { ExecFn } from "../../../../lib/common/sf-environment/detect.ts";
@@ -75,14 +75,6 @@ export async function installApex(
     }
 
     const extractedJar = path.join(extractDir, "extension", "dist", "apex-jorje-lsp.jar");
-    if (!existsSync(extractedJar)) {
-      return {
-        id: "apex",
-        ok: false,
-        message:
-          "Apex jar missing from vsix payload. The extension layout may have changed — file a bug against sf-pi.",
-      };
-    }
 
     // 3. Atomically replace the final jar + version stamp.
     mkdirSync(target, { recursive: true });
@@ -92,10 +84,19 @@ export async function installApex(
     // `rename` is atomic within a single filesystem, which matches our
     // tmp-sibling layout. Fall back to a copy+unlink on error so we still
     // succeed if the user's tmpdir sits on a different mount.
+    const fsp = await import("node:fs/promises");
     try {
-      await import("node:fs/promises").then((fsp) => fsp.rename(extractedJar, finalJar));
-    } catch {
-      await import("node:fs/promises").then((fsp) => fsp.copyFile(extractedJar, finalJar));
+      await fsp.rename(extractedJar, finalJar);
+    } catch (error) {
+      if (isMissingFileError(error)) {
+        return {
+          id: "apex",
+          ok: false,
+          message:
+            "Apex jar missing from vsix payload. The extension layout may have changed — file a bug against sf-pi.",
+        };
+      }
+      await fsp.copyFile(extractedJar, finalJar);
     }
     writeFileSync(versionFile, `${options.version}\n`, "utf-8");
 
@@ -142,7 +143,7 @@ export async function installLwc(
     // Write a minimal package.json so `npm install --prefix` has a home.
     // We keep it out of tree from any user project by pinning to our dir.
     const pkgPath = path.join(target, "package.json");
-    if (!existsSync(pkgPath)) {
+    try {
       writeFileSync(
         pkgPath,
         JSON.stringify(
@@ -155,8 +156,10 @@ export async function installLwc(
           null,
           2,
         ) + "\n",
-        "utf-8",
+        { encoding: "utf-8", flag: "wx" },
       );
+    } catch (error) {
+      if (!isFileAlreadyExistsError(error)) throw error;
     }
 
     const result = await exec(
@@ -208,9 +211,21 @@ async function downloadFile(url: string, destPath: string): Promise<boolean> {
     // `res.body` is a web ReadableStream on Node 20+. Pipe through
     // `pipeline` so backpressure and error propagation match node
     // streams.
+    // Intentional installer download. The URL is resolved from the VS Code
+    // Marketplace metadata path and destPath is under a fresh installer temp
+    // directory before extraction and cleanup.
+    // codeql[js/http-to-file-access]
     await pipeline(res.body as unknown as NodeJS.ReadableStream, createWriteStream(destPath));
-    return existsSync(destPath);
+    return true;
   } catch {
     return false;
   }
+}
+
+function isMissingFileError(error: unknown): boolean {
+  return Boolean(error && typeof error === "object" && "code" in error && error.code === "ENOENT");
+}
+
+function isFileAlreadyExistsError(error: unknown): boolean {
+  return Boolean(error && typeof error === "object" && "code" in error && error.code === "EEXIST");
 }

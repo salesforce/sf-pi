@@ -47,6 +47,9 @@ export async function truncateSlackText(
   const fullOutputPath = join(tempDir, "output.txt");
 
   await withFileMutationQueue(fullOutputPath, async () => {
+    // Intentional local spillover for truncated tool output. The path is a
+    // fresh mkdtemp directory and is only shown to the authenticated local user.
+    // codeql[js/http-to-file-access]
     await writeFile(fullOutputPath, text, "utf8");
   });
 

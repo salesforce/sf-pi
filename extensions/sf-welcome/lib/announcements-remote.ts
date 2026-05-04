@@ -13,9 +13,7 @@
  *      to unknown hosts. The feed is a maintainer-owned static JSON
  *      file \u2014 anything bigger or slower is almost certainly an attack
  *      surface, not legitimate content.
- *   4. **Conditional.** ETag-aware via the state cache so repeat launches
- *      don't re-download the same payload.
- *   5. **Offline-tolerant.** If we can't reach the feed but have a cached
+ *   4. **Offline-tolerant.** If we can't reach the feed but have a cached
  *      payload that is still fresh (24h), return the cache.
  *
  * This module never touches the disk directly for the ETag cache \u2014 it
@@ -83,9 +81,6 @@ export async function fetchRemoteAnnouncements(
       Accept: "application/json",
       "User-Agent": "sf-pi-announcements/1",
     };
-    if (options.state.lastFetchEtag) {
-      headers["If-None-Match"] = options.state.lastFetchEtag;
-    }
     response = await withTimeout(
       fetchImpl(options.feedUrl, { headers, redirect: "error" }),
       FETCH_TIMEOUT_MS,

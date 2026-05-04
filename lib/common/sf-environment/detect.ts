@@ -298,11 +298,20 @@ export function inferOrgType(info: {
   if (info.isScratch) return "scratch";
   if (info.isSandbox) return "sandbox";
 
-  // URL patterns
-  const url = (info.instanceUrl ?? "").toLowerCase();
-  if (url.includes(".sandbox.")) return "sandbox";
-  if (url.includes(".scratch.")) return "scratch";
-  if (url.includes("develop.my.salesforce.com")) return "developer";
+  // URL patterns. Parse the host before matching so arbitrary text in the
+  // scheme/path/query cannot influence org-type detection.
+  const hostname = getInstanceHostname(info.instanceUrl);
+  if (hostname) {
+    const labels = hostname.split(".");
+    if (labels.includes("sandbox")) return "sandbox";
+    if (labels.includes("scratch")) return "scratch";
+    if (
+      hostname === "develop.my.salesforce.com" ||
+      hostname.endsWith(".develop.my.salesforce.com")
+    ) {
+      return "developer";
+    }
+  }
 
   // Trial detection
   if (info.trailExpirationDate) return "trial";
@@ -311,6 +320,15 @@ export function inferOrgType(info: {
   if (info.isDevHub) return "production";
 
   return "unknown";
+}
+
+function getInstanceHostname(instanceUrl: string | undefined): string | null {
+  if (!instanceUrl) return null;
+  try {
+    return new URL(instanceUrl).hostname.toLowerCase();
+  } catch {
+    return null;
+  }
 }
 
 // -------------------------------------------------------------------------------------------------
