@@ -25,6 +25,7 @@ sf-pi/
 │   ├── sf-agentscript-assist/
 │   ├── sf-brain/
 │   ├── sf-devbar/
+│   ├── sf-feedback/
 │   ├── sf-guardrail/
 │   ├── sf-llm-gateway-internal/
 │   ├── sf-lsp/

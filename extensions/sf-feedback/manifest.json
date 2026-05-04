@@ -1,0 +1,24 @@
+{
+  "id": "sf-feedback",
+  "name": "SF Feedback",
+  "description": "Guided feedback and bug-report flow that collects sanitized SF Pi diagnostics and opens a GitHub issue",
+  "category": "core",
+  "defaultEnabled": true,
+  "commands": ["/sf-feedback"],
+  "events": [],
+  "docs": {
+    "summary": "Guided GitHub feedback flow with sanitized diagnostics for SF Pi issues.",
+    "primaryFiles": [
+      "index.ts",
+      "lib/diagnostics.ts",
+      "lib/github.ts",
+      "lib/sanitize.ts",
+      "lib/issue-template.ts"
+    ],
+    "safety": [
+      "Never submits a GitHub issue without user confirmation.",
+      "Diagnostics are sanitized before preview or submission.",
+      "Headless mode emits a draft and fallback URL only."
+    ]
+  }
+}

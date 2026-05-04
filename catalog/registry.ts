@@ -37,6 +37,15 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
     events: ["session_start","session_shutdown","model_select","thinking_level_select","turn_start","turn_end","agent_end","before_agent_start"],
   },
   {
+    id: "sf-feedback",
+    name: "SF Feedback",
+    description: "Guided feedback and bug-report flow that collects sanitized SF Pi diagnostics and opens a GitHub issue",
+    file: "extensions/sf-feedback/index.ts",
+    category: "core",
+    defaultEnabled: true,
+    commands: ["/sf-feedback"],
+  },
+  {
     id: "sf-guardrail",
     name: "SF Guardrail",
     description: "Salesforce-aware safety hooks — file protection policies, dangerous-command gating, and org-aware confirmation for production deploys, apex runs, and data mutations",

@@ -28,6 +28,13 @@ _High-density Salesforce operator kernel injected once per session — describe-
 - Default: **on**
 - Commands: _none_
 
+### [SF Feedback](../extensions/sf-feedback/)
+
+_Guided feedback and bug-report flow that collects sanitized SF Pi diagnostics and opens a GitHub issue_
+
+- Default: **on**
+- Commands: `/sf-feedback`
+
 ### [SF Guardrail](../extensions/sf-guardrail/)
 
 _Salesforce-aware safety hooks — file protection policies, dangerous-command gating, and org-aware confirmation for production deploys, apex runs, and data mutations_

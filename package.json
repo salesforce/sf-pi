@@ -39,7 +39,8 @@
       "./extensions/sf-slack/index.ts",
       "./extensions/sf-lsp/index.ts",
       "./extensions/sf-agentscript-assist/index.ts",
-      "./extensions/sf-skills-hud/index.ts"
+      "./extensions/sf-skills-hud/index.ts",
+      "./extensions/sf-feedback/index.ts"
     ],
     "themes": [
       "./themes"
