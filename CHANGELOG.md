@@ -361,6 +361,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.39.0](https://github.com/salesforce/sf-pi/compare/v0.38.1...v0.39.0) (2026-05-04)
+
+
+### Features
+
+* add sf feedback extension ([330c1a3](https://github.com/salesforce/sf-pi/commit/330c1a3725087bd7e21dbe68c1d1f367aabc4cdb))
+
 ## [0.38.1](https://github.com/salesforce/sf-pi/compare/v0.38.0...v0.38.1) (2026-05-04)
 
 
