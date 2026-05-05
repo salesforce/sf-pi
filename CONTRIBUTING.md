@@ -347,13 +347,3 @@ Releases are automated via
    CHANGELOG entry.
 3. Once CI is green on the release PR it gets squash-merged (automation
    or maintainer) and the tag + GitHub Release are cut automatically.
-4. The published GitHub Release triggers
-   [publish-npm](./.github/workflows/publish-npm.yml), which publishes the
-   `sf-pi` package to npm with provenance. Maintainers must configure an
-   `NPM_TOKEN` repository secret before the first npm release.
-
-Before publishing changes that affect package contents, run:
-
-```bash
-npm pack --dry-run
-```

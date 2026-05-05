@@ -80,14 +80,6 @@ pi install git:github.com/salesforce/sf-pi
 pi install -l git:github.com/salesforce/sf-pi
 ```
 
-npm publishing is configured, but `sf-pi` is not available from npm until the
-first npm-backed GitHub Release completes. After that release, npm installs will
-also work:
-
-```bash
-pi install npm:sf-pi
-```
-
 Restart pi or run `/reload`. Every extension ships enabled by default
 — see the **Default** column in the [Bundled Extensions](#bundled-extensions)
 table for exact per-extension defaults.
@@ -134,10 +126,10 @@ sf-pi does **not** collect active runtime telemetry. No bundled extension sends
 prompts, responses, tool calls, file paths, Salesforce org identifiers, Slack
 identifiers, environment variables, or command usage from your machine.
 
-Maintainers archive aggregate GitHub/npm metrics, such as repository views,
-repository clones, release download counts, and npm download counts, through a
-scheduled GitHub Actions workflow. These platform metrics help measure discovery
-and distribution without adding client-side telemetry.
+Maintainers archive aggregate GitHub metrics, such as repository views,
+repository clones, and release download counts, through a scheduled GitHub
+Actions workflow. These platform metrics help measure discovery and distribution
+without adding client-side telemetry.
 
 See [`docs/telemetry.md`](./docs/telemetry.md) for the full privacy policy and
 future telemetry requirements.

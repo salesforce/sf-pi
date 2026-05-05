@@ -1,8 +1,8 @@
 name: Metrics archive
 
-# Archives aggregate repository/package metrics collected by GitHub and npm.
-# This workflow does not run on user machines and does not collect active
-# runtime telemetry from sf-pi installations.
+# Archives aggregate repository metrics collected by GitHub. This workflow does
+# not run on user machines and does not collect active runtime telemetry from
+# sf-pi installations.
 on:
   schedule:
     - cron: "43 7 * * *" # 07:43 UTC daily
@@ -30,7 +30,6 @@ jobs:
       - name: Collect aggregate metrics
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PACKAGE_NAME: sf-pi
         run: |
           set -euo pipefail
 
@@ -45,33 +44,23 @@ jobs:
               "$endpoint" 2>/dev/null || echo 'null'
           }
 
-          npm_json() {
-            local url="$1"
-            curl --fail --silent --show-error --location "$url" 2>/dev/null || echo 'null'
-          }
-
           jq -n \
             --arg generatedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             --arg repository "$GITHUB_REPOSITORY" \
-            --arg packageName "$PACKAGE_NAME" \
             --argjson githubViews "$(gh_json "/repos/${GITHUB_REPOSITORY}/traffic/views?per=day")" \
             --argjson githubClones "$(gh_json "/repos/${GITHUB_REPOSITORY}/traffic/clones?per=day")" \
             --argjson githubReferrers "$(gh_json "/repos/${GITHUB_REPOSITORY}/traffic/popular/referrers")" \
             --argjson githubPaths "$(gh_json "/repos/${GITHUB_REPOSITORY}/traffic/popular/paths")" \
             --argjson githubReleases "$(gh_json "/repos/${GITHUB_REPOSITORY}/releases?per_page=100")" \
-            --argjson npmLastDay "$(npm_json "https://api.npmjs.org/downloads/point/last-day/${PACKAGE_NAME}")" \
-            --argjson npmLastWeek "$(npm_json "https://api.npmjs.org/downloads/point/last-week/${PACKAGE_NAME}")" \
-            --argjson npmLastMonth "$(npm_json "https://api.npmjs.org/downloads/point/last-month/${PACKAGE_NAME}")" \
             '{
               schemaVersion: 1,
               generatedAt: $generatedAt,
               source: "github-actions",
               privacy: {
                 activeRuntimeTelemetry: false,
-                note: "Aggregate GitHub/npm metrics only. No sf-pi client or user machine sends this data."
+                note: "Aggregate GitHub repository metrics only. No sf-pi client or user machine sends this data."
               },
               repository: $repository,
-              packageName: $packageName,
               github: {
                 views: $githubViews,
                 clones: $githubClones,
@@ -85,11 +74,6 @@ jobs:
                   html_url,
                   assets: (.assets // [] | map({name, download_count, size, browser_download_url}))
                 }) else null end)
-              },
-              npm: {
-                lastDay: $npmLastDay,
-                lastWeek: $npmLastWeek,
-                lastMonth: $npmLastMonth
               }
             }' > "$out"
 
@@ -120,7 +104,7 @@ jobs:
           cat > README.md <<'EOF'
           # sf-pi metrics archive
 
-          This branch stores aggregate GitHub and npm metrics snapshots for
+          This branch stores aggregate GitHub repository metrics snapshots for
           sf-pi maintainers. It is updated by `.github/workflows/metrics-archive.yml`.
 
           These snapshots are not active/runtime telemetry. No sf-pi client,

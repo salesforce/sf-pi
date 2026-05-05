@@ -4,7 +4,7 @@ sf-pi does **not** collect active runtime telemetry.
 
 No bundled sf-pi extension sends usage events from a user's machine, and sf-pi
 has no telemetry endpoint. The project only uses aggregate metrics that GitHub
-and npm already provide to repository/package maintainers.
+provides to repository maintainers.
 
 ## What sf-pi does not collect
 
@@ -32,16 +32,9 @@ platform APIs:
 - GitHub repository clones and unique cloners
 - GitHub popular referrers and paths
 - GitHub release asset download counts
-- npm download counts for the published `sf-pi` package
 
 These metrics help maintainers understand discovery and distribution trends
 without adding client-side telemetry.
-
-## npm package metrics
-
-sf-pi is publishable as the public npm package `sf-pi`. npm download counts are
-aggregate package-distribution metrics. They do not tell maintainers who used
-sf-pi, what project it was used in, or what happened during a pi session.
 
 ## Active telemetry policy
 

@@ -33,8 +33,7 @@ design proposal and — ideally — a PR.
 - [x] Recommended external-extension bundle, including `pi-subagents`
 - [x] Static public splash screenshot in the root README
 - [x] Animated Pi + SALESFORCE splash wordmark with local preview scripts
-- [x] GitHub/npm aggregate metrics archival with no active runtime telemetry
-- [x] npm package publishing setup for `sf-pi`
+- [x] GitHub aggregate metrics archival with no active runtime telemetry
 
 ## Now (0.x — pre-1.0)
 
@@ -81,7 +80,7 @@ Just as important as the "what we'll do":
 - `sf-pi` does **not** want to be an IDE. Pi is an agent runtime.
 - `sf-pi` does **not** ship official Salesforce features. Anything
   Salesforce-specific must be documented as community-built.
-- `sf-pi` does **not** collect active runtime telemetry. Aggregate GitHub/npm
+- `sf-pi` does **not** collect active runtime telemetry. Aggregate GitHub
   metrics may be archived by GitHub Actions, but installed copies of sf-pi do
   not send usage events.
 - `sf-pi` does **not** take PRs that introduce Salesforce-internal
