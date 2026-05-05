@@ -1,7 +1,6 @@
 {
   "name": "sf-pi",
   "version": "0.39.0",
-  "private": true,
   "type": "module",
   "description": "Opinionated Salesforce developer extensions for the pi coding agent — Apex/LWC LSP, Agent Script authoring, Slack research, and a TUI manager.",
   "keywords": [
@@ -24,6 +23,27 @@
     "url": "https://github.com/salesforce/sf-pi/issues"
   },
   "homepage": "https://github.com/salesforce/sf-pi#readme",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "files": [
+    "ARCHITECTURE.md",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
+    "LICENSE.txt",
+    "README.md",
+    "ROADMAP.md",
+    "catalog",
+    "docs",
+    "extensions",
+    "lib",
+    "themes",
+    "!**/tests/**",
+    "!**/*.test.ts",
+    "!extensions/*/ROADMAP.md",
+    "!extensions/sf-agentscript-assist/lib/vendor/agentforce/browser.js.map"
+  ],
   "engines": {
     "node": ">=20"
   },

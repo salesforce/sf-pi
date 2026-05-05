@@ -1,0 +1,137 @@
+name: Metrics archive
+
+# Archives aggregate repository/package metrics collected by GitHub and npm.
+# This workflow does not run on user machines and does not collect active
+# runtime telemetry from sf-pi installations.
+on:
+  schedule:
+    - cron: "43 7 * * *" # 07:43 UTC daily
+  workflow_dispatch:
+
+concurrency:
+  group: metrics-archive
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  archive:
+    name: Archive aggregate metrics
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          # We push explicitly with GITHUB_TOKEN below so the token is not
+          # persisted in .git/config for unrelated steps.
+          persist-credentials: false
+
+      - name: Collect aggregate metrics
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PACKAGE_NAME: sf-pi
+        run: |
+          set -euo pipefail
+
+          day="$(date -u +%F)"
+          out="/tmp/sf-pi-metrics-${day}.json"
+
+          gh_json() {
+            local endpoint="$1"
+            gh api \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "$endpoint" 2>/dev/null || echo 'null'
+          }
+
+          npm_json() {
+            local url="$1"
+            curl --fail --silent --show-error --location "$url" 2>/dev/null || echo 'null'
+          }
+
+          jq -n \
+            --arg generatedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg repository "$GITHUB_REPOSITORY" \
+            --arg packageName "$PACKAGE_NAME" \
+            --argjson githubViews "$(gh_json "/repos/${GITHUB_REPOSITORY}/traffic/views?per=day")" \
+            --argjson githubClones "$(gh_json "/repos/${GITHUB_REPOSITORY}/traffic/clones?per=day")" \
+            --argjson githubReferrers "$(gh_json "/repos/${GITHUB_REPOSITORY}/traffic/popular/referrers")" \
+            --argjson githubPaths "$(gh_json "/repos/${GITHUB_REPOSITORY}/traffic/popular/paths")" \
+            --argjson githubReleases "$(gh_json "/repos/${GITHUB_REPOSITORY}/releases?per_page=100")" \
+            --argjson npmLastDay "$(npm_json "https://api.npmjs.org/downloads/point/last-day/${PACKAGE_NAME}")" \
+            --argjson npmLastWeek "$(npm_json "https://api.npmjs.org/downloads/point/last-week/${PACKAGE_NAME}")" \
+            --argjson npmLastMonth "$(npm_json "https://api.npmjs.org/downloads/point/last-month/${PACKAGE_NAME}")" \
+            '{
+              schemaVersion: 1,
+              generatedAt: $generatedAt,
+              source: "github-actions",
+              privacy: {
+                activeRuntimeTelemetry: false,
+                note: "Aggregate GitHub/npm metrics only. No sf-pi client or user machine sends this data."
+              },
+              repository: $repository,
+              packageName: $packageName,
+              github: {
+                views: $githubViews,
+                clones: $githubClones,
+                popularReferrers: $githubReferrers,
+                popularPaths: $githubPaths,
+                releases: ($githubReleases | if type == "array" then map({
+                  id,
+                  tag_name,
+                  name,
+                  published_at,
+                  html_url,
+                  assets: (.assets // [] | map({name, download_count, size, browser_download_url}))
+                }) else null end)
+              },
+              npm: {
+                lastDay: $npmLastDay,
+                lastWeek: $npmLastWeek,
+                lastMonth: $npmLastMonth
+              }
+            }' > "$out"
+
+          echo "metrics_file=$out" >> "$GITHUB_ENV"
+          echo "metrics_day=$day" >> "$GITHUB_ENV"
+
+      - name: Commit metrics snapshot to metrics branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if git ls-remote --exit-code --heads origin metrics >/dev/null 2>&1; then
+            git fetch origin metrics:metrics
+            git switch metrics
+          else
+            git switch --orphan metrics
+            git rm -r --ignore-unmatch . >/dev/null 2>&1 || true
+          fi
+
+          mkdir -p "snapshots/${metrics_day:0:4}/${metrics_day:5:2}"
+          cp "$metrics_file" "snapshots/${metrics_day:0:4}/${metrics_day:5:2}/${metrics_day}.json"
+          cp "$metrics_file" latest.json
+
+          cat > README.md <<'EOF'
+          # sf-pi metrics archive
+
+          This branch stores aggregate GitHub and npm metrics snapshots for
+          sf-pi maintainers. It is updated by `.github/workflows/metrics-archive.yml`.
+
+          These snapshots are not active/runtime telemetry. No sf-pi client,
+          extension, or user machine sends events to this archive.
+          EOF
+
+          if git diff --quiet --exit-code; then
+            echo "No metrics changes to commit."
+            exit 0
+          fi
+
+          git add README.md latest.json snapshots/
+          git commit -m "chore(metrics): archive ${metrics_day} aggregate metrics"
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" metrics

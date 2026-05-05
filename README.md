@@ -74,10 +74,16 @@ extension authoring guides live at **[pi.dev](https://pi.dev)**.
 
 ```bash
 # Install globally (visible in every pi session on your machine)
-pi install git:github.com/salesforce/sf-pi
+pi install npm:sf-pi
 
 # Or install for a specific project (only active in that folder)
-pi install -l git:github.com/salesforce/sf-pi
+pi install -l npm:sf-pi
+```
+
+You can also install directly from GitHub when testing unreleased changes:
+
+```bash
+pi install git:github.com/salesforce/sf-pi
 ```
 
 Restart pi or run `/reload`. Every extension ships enabled by default
@@ -119,6 +125,20 @@ best-effort; WSL is recommended. The minimum pi version tracks the
 [`lib/common/pi-compat.ts`](./lib/common/pi-compat.ts) fail gracefully with
 a one-line "run `pi update`" warning instead of letting extensions crash on
 missing runtime APIs.
+
+## Telemetry and aggregate metrics
+
+sf-pi does **not** collect active runtime telemetry. No bundled extension sends
+prompts, responses, tool calls, file paths, Salesforce org identifiers, Slack
+identifiers, environment variables, or command usage from your machine.
+
+Maintainers archive aggregate GitHub/npm metrics, such as repository views,
+repository clones, release download counts, and npm download counts, through a
+scheduled GitHub Actions workflow. These platform metrics help measure discovery
+and distribution without adding client-side telemetry.
+
+See [`docs/telemetry.md`](./docs/telemetry.md) for the full privacy policy and
+future telemetry requirements.
 
 ## Announcements
 
