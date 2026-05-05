@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.39.0-2026-05-04",
-  "latestVersion": "0.39.0",
+  "revision": "release-0.40.0-2026-05-05",
+  "latestVersion": "0.40.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.39.0",
+      "id": "release-0.40.0",
       "kind": "update",
-      "title": "sf-pi v0.39.0 — add sf feedback extension",
-      "publishedAt": "2026-05-04T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.39.0",
+      "title": "sf-pi v0.40.0 — add aggregate metrics and npm publishing",
+      "publishedAt": "2026-05-05T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.40.0",
       "severity": "info",
-      "body": "add sf feedback extension"
+      "body": "add aggregate metrics and npm publishing"
     },
     {
       "id": "pi-0.72-required",
