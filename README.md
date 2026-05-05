@@ -19,7 +19,9 @@ research tool, a Salesforce-aware status bar, a splash screen, and a
 central manager for enabling or disabling any of them per project or
 globally.
 
-![sf-pi splash and TUI overlay](https://github.com/user-attachments/assets/3f5af05d-edfb-4c1f-854b-55fc227d5058)
+![sf-pi updated screenshot 1](https://github.com/user-attachments/assets/cbf2db6b-939c-4c66-8dab-fc505749fc77)
+
+![sf-pi updated screenshot 2](https://github.com/user-attachments/assets/8ee81b93-e336-4726-ba57-013ccbb5b0bf)
 
 ## Who built it
 
