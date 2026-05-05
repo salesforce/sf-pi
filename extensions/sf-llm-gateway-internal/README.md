@@ -202,11 +202,13 @@ extensions/sf-llm-gateway-internal/
     migrate-unify-provider.ts← implementation module
     models.ts               ← implementation module
     monthly-usage.ts        ← implementation module
+    onboarding.ts           ← implementation module
     pi-settings.ts          ← implementation module
     provider-telemetry.ts   ← implementation module
     retry-telemetry.ts      ← implementation module
     setup-overlay.ts        ← implementation module
     status.ts               ← implementation module
+    token-counter.ts        ← implementation module
     transport.ts            ← implementation module
     wire-trace.ts           ← implementation module
   tests/
@@ -222,8 +224,10 @@ extensions/sf-llm-gateway-internal/
     gateway-url.test.ts     ← unit / smoke test
     global-config.test.ts   ← unit / smoke test
     migrate-unify-provider.test.ts← unit / smoke test
+    model-group-drift.test.ts← unit / smoke test
     models.test.ts          ← unit / smoke test
     monthly-usage.test.ts   ← unit / smoke test
+    onboarding.test.ts      ← unit / smoke test
     opus47-regression.test.ts← unit / smoke test
     provider-telemetry.test.ts← unit / smoke test
     retry-telemetry.test.ts ← unit / smoke test
@@ -231,6 +235,7 @@ extensions/sf-llm-gateway-internal/
     setup-overlay-single-write.test.ts← unit / smoke test
     status.test.ts          ← unit / smoke test
     thinking-level.test.ts  ← unit / smoke test
+    token-counter.test.ts   ← unit / smoke test
     transport.test.ts       ← unit / smoke test
     unified-provider.test.ts← unit / smoke test
     wire-trace.test.ts      ← unit / smoke test
