@@ -14,6 +14,7 @@ code lives in `extensions/<id>/lib/`.
 
 | Module                                      | Owners (what uses it)                                                       | What it provides                                                                 |
 | ------------------------------------------- | --------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `command-panel.ts`                          | command-bearing extensions                                                  | Shared grouped status/actions panel built on Pi's native `ctx.ui.custom()`       |
 | `pi-compat.ts`                              | all extensions                                                              | Feature-detecting shims for pi APIs that may not exist on older pi runtimes      |
 | `pi-paths.ts`                               | all extensions that touch settings                                          | Global + project `settings.json` paths, pi home dir resolution                   |
 | `exec-adapter.ts`                           | `sf-environment` consumers                                                  | Adapter from `pi.exec()` to the `ExecFn` type used by `sf-environment/detect.ts` |

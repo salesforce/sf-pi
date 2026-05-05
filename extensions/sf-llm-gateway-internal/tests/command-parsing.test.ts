@@ -21,6 +21,11 @@ describe("parseCommandArgs", () => {
     expect(result.scope).toBe("global");
   });
 
+  it("parses 'status'", () => {
+    const result = parseCommandArgs("status");
+    expect(result.subcommand).toBe("status");
+  });
+
   it("parses 'refresh'", () => {
     const result = parseCommandArgs("refresh");
     expect(result.subcommand).toBe("refresh");
@@ -103,6 +108,23 @@ describe("parseCommandArgs", () => {
   it("parses 'usage' as usage-probe alias", () => {
     const result = parseCommandArgs("usage");
     expect(result.subcommand).toBe("usage-probe");
+  });
+
+  it("parses 'tokens <modelId>' with positional args", () => {
+    const result = parseCommandArgs("tokens gpt-5 hello world");
+    expect(result.subcommand).toBe("tokens");
+    expect(result.positional).toEqual(["gpt-5", "hello", "world"]);
+  });
+
+  it("parses 'count' as tokens alias", () => {
+    const result = parseCommandArgs("count gpt-5");
+    expect(result.subcommand).toBe("tokens");
+    expect(result.positional).toEqual(["gpt-5"]);
+  });
+
+  it("parses 'onboard'", () => {
+    const result = parseCommandArgs("onboard");
+    expect(result.subcommand).toBe("onboard");
   });
 
   it("parses 'dr' as doctor alias", () => {

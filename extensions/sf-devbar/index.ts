@@ -35,7 +35,11 @@
  *   footerData (getGitBranch, onBranchChange, getExtensionStatuses)
  *   theme.fg, theme.bold
  */
-import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
+import type {
+  ExtensionAPI,
+  ExtensionCommandContext,
+  ExtensionContext,
+} from "@mariozechner/pi-coding-agent";
 import { truncateToWidth, visibleWidth } from "@mariozechner/pi-tui";
 import {
   getCachedSfEnvironment,
@@ -57,6 +61,7 @@ import { buildExecFn } from "../../lib/common/exec-adapter.ts";
 import { basename } from "node:path";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 import { filterEnabledExtensionStatuses } from "../../lib/common/sf-pi-extension-state.ts";
+import { type CommandPanelAction, openCommandPanel } from "../../lib/common/command-panel.ts";
 
 // -------------------------------------------------------------------------------------------------
 // Constants
@@ -474,53 +479,175 @@ export default function sfDevBar(pi: ExtensionAPI) {
     };
   });
 
+  type DevbarAction = "status" | "toggle" | "refresh" | "help" | "close";
+
+  const DEVBAR_ACTIONS: CommandPanelAction<DevbarAction>[] = [
+    {
+      value: "status",
+      label: "Show current status",
+      description: "Print the detected Salesforce org/environment details used by the bottom bar.",
+      group: "Status",
+    },
+    {
+      value: "toggle",
+      label: "Toggle bars on/off",
+      description: "Enable or disable the top-bar widget and custom footer for this session.",
+      group: "Controls",
+    },
+    {
+      value: "refresh",
+      label: "Refresh org environment",
+      description:
+        "Force re-detection of the Salesforce CLI org/project environment and repaint bars.",
+      group: "Troubleshooting",
+    },
+    {
+      value: "help",
+      label: "Show help",
+      description: "Print commands, keyboard shortcut, and launch flag reference.",
+      group: "Reference",
+    },
+    {
+      value: "close",
+      label: "Close",
+      description: "Dismiss this panel.",
+      group: "Reference",
+    },
+  ];
+
+  async function handleDevbarPanel(ctx: ExtensionCommandContext): Promise<void> {
+    for (;;) {
+      const action = await openCommandPanel(ctx, {
+        title: "📊 SF DevBar — status & controls",
+        statusLines: buildDevbarPanelStatus(ctx),
+        actions: DEVBAR_ACTIONS,
+        closeValue: "close",
+      });
+      if (!action || action === "close") return;
+      await handleDevbarCommand(ctx, action);
+    }
+  }
+
+  async function handleDevbarCommand(ctx: ExtensionCommandContext, sub: string): Promise<void> {
+    if (sub === "help") {
+      ctx.ui.notify(renderDevbarHelp(), "info");
+      return;
+    }
+
+    if (sub === "status") {
+      await showDevbarOrgStatus(ctx, false);
+      return;
+    }
+
+    if (sub === "refresh") {
+      await showDevbarOrgStatus(ctx, true);
+      return;
+    }
+
+    if (sub === "toggle") {
+      toggleDevbar(ctx);
+      return;
+    }
+
+    ctx.ui.notify(
+      `Unknown /${COMMAND_NAME} subcommand: ${sub}. Use status, toggle, refresh, help.`,
+      "warning",
+    );
+  }
+
+  function toggleDevbar(ctx: ExtensionCommandContext): void {
+    enabled = !enabled;
+
+    if (enabled) {
+      env = getCachedSfEnvironment(ctx.cwd);
+      refreshImageWidthPill(ctx.cwd);
+      updateTitle(ctx);
+      updateTopBar(ctx);
+      requestFooterRender?.();
+      ctx.ui.notify("SF DevBar enabled", "info");
+    } else {
+      ctx.ui.setWidget(WIDGET_KEY, undefined);
+      requestFooterRender?.();
+      ctx.ui.notify("SF DevBar disabled", "info");
+    }
+  }
+
+  async function showDevbarOrgStatus(ctx: ExtensionCommandContext, force: boolean): Promise<void> {
+    if (force || !env) {
+      ctx.ui.notify("Detecting Salesforce environment…", "info");
+      try {
+        env = await getSharedSfEnvironment(exec, ctx.cwd, force ? { force: true } : undefined);
+        updateTitle(ctx);
+        updateTopBar(ctx);
+        requestFooterRender?.();
+      } catch (err) {
+        ctx.ui.notify(`Detection failed: ${err}`, "error");
+        return;
+      }
+    }
+
+    ctx.ui.notify(formatDetailedStatus(env), "info");
+  }
+
+  function buildDevbarPanelStatus(ctx: ExtensionCommandContext): string[] {
+    return [
+      `${enabled ? "✓" : "○"} Bars          ${enabled ? "enabled" : "disabled"}`,
+      `${env ? "✓" : "◐"} SF environment ${env ? formatEnvSummary(env) : "not detected yet"}`,
+      `• Model         ${ctx.model ? `${ctx.model.provider}/${ctx.model.id}` : "unknown"}`,
+      `• Image pill    ${imageWidthPill || "default"}`,
+      `• Shortcut      Ctrl+Shift+B`,
+    ];
+  }
+
+  function formatEnvSummary(value: SfEnvironment): string {
+    if (!value.project.detected) return "not an SFDX project";
+    const org = value.org.alias ?? value.config.targetOrg ?? value.org.username ?? "no default org";
+    return `${org} (${value.org.orgType})`;
+  }
+
+  function renderDevbarHelp(): string {
+    return [
+      "sf-devbar — Salesforce Developer Status Bar",
+      "",
+      "Commands:",
+      `  /${COMMAND_NAME}          Open status & controls panel`,
+      `  /${COMMAND_NAME} status   Show current org/environment details`,
+      `  /${COMMAND_NAME} toggle   Toggle bars on/off`,
+      `  /${COMMAND_NAME} refresh  Force re-detection`,
+      `  /${COMMAND_NAME} help     Show this help`,
+      "",
+      "Keyboard shortcut:",
+      "  Ctrl+Shift+B    Toggle bars on/off",
+      "",
+      "CLI flag:",
+      "  pi --no-devbar  Launch without status bars",
+    ].join("\n");
+  }
+
   // ===========================================================================================
   // Command: /sf-devbar
   // ===========================================================================================
 
   pi.registerCommand(COMMAND_NAME, {
-    description: "Toggle the SF DevBar status bars on/off",
+    description: "Show and control the SF DevBar status bars",
+    getArgumentCompletions: (prefix) => {
+      const lower = prefix.toLowerCase();
+      const items = DEVBAR_ACTIONS.filter((action) => action.value !== "close")
+        .filter((action) => action.value.startsWith(lower))
+        .map((action) => ({
+          value: action.value,
+          label: action.value,
+          description: action.description,
+        }));
+      return items.length > 0 ? items : null;
+    },
     handler: async (args, ctx) => {
       const sub = (args ?? "").trim().toLowerCase();
-
-      if (sub === "help") {
-        ctx.ui.notify(
-          [
-            "sf-devbar — Salesforce Developer Status Bar",
-            "",
-            "Commands:",
-            `  /${COMMAND_NAME}          Toggle bars on/off`,
-            `  /${COMMAND_NAME} help     Show this help`,
-            "",
-            "Keyboard shortcut:",
-            "  Ctrl+Shift+B    Toggle bars on/off",
-            "",
-            "CLI flag:",
-            "  pi --no-devbar  Launch without status bars",
-          ].join("\n"),
-          "info",
-        );
+      if (sub === "" && ctx.hasUI) {
+        await handleDevbarPanel(ctx);
         return;
       }
-
-      // Default: toggle
-      enabled = !enabled;
-
-      if (enabled) {
-        // Re-read cached env in case it changed while disabled
-        env = getCachedSfEnvironment(ctx.cwd);
-        // Also re-read terminal settings so the image-width pill reflects
-        // edits the user made while the bars were off.
-        refreshImageWidthPill(ctx.cwd);
-        updateTitle(ctx);
-        updateTopBar(ctx);
-        requestFooterRender?.();
-        ctx.ui.notify("SF DevBar enabled", "info");
-      } else {
-        ctx.ui.setWidget(WIDGET_KEY, undefined);
-        requestFooterRender?.();
-        ctx.ui.notify("SF DevBar disabled", "info");
-      }
+      await handleDevbarCommand(ctx, sub === "" ? "toggle" : sub);
     },
   });
 

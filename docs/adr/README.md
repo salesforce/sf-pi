@@ -7,3 +7,4 @@ or accidentally contradicted in extension READMEs.
 - [0002: Generated Catalog and Drift-Resistant Docs](./0002-generated-catalog-and-docs.md)
 - [0003: Slack Send Requires Human Confirmation](./0003-slack-send-hitl.md)
 - [0004: Guardrail Fails Closed](./0004-guardrail-fail-closed.md)
+- [0005: Standard Pi-Native Command Panels](./0005-standard-command-panels.md)

@@ -28,6 +28,8 @@ Repo-level rules still apply; see root `AGENTS.md`.
 | Monthly usage / key info / health fetcher      | `lib/monthly-usage.ts`      |
 | Pi settings mutation (defaults, enabledModels) | `lib/pi-settings.ts`        |
 | Footer + status report formatting              | `lib/status.ts`             |
+| Standard command metadata + completions        | `lib/command-surface.ts`    |
+| No-args grouped status & controls panel        | `lib/panel.ts`              |
 | TUI setup wizard component                     | `lib/setup-overlay.ts`      |
 | Config panel (advanced form)                   | `lib/config-panel.ts`       |
 | Transform debug probe                          | `lib/debug.ts`              |
@@ -90,8 +92,10 @@ When adding a subcommand:
 3. Add a `handle<Name>Command` function (prefer extracting to `lib/` if
    it's more than ~30 lines of non-wiring logic)
 4. Wire it in the `switch` in `handleCommand`
-5. Add the completion to `getArgumentCompletions`
-6. Update help in `handleHelpCommand`
+5. Add command metadata to `lib/command-surface.ts` so completions, help,
+   and the no-args panel stay aligned
+6. If the command should be runnable from the panel, wire it in
+   `handlePanelAction`
 
 ## Testing
 

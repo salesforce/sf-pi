@@ -161,6 +161,30 @@ route, Anthropic Messages uses the gateway root because the SDK appends
 All models report `cost: 0` because the gateway is pre-paid. Billing is tracked
 separately via the monthly usage endpoint (`/user/info`).
 
+## Command Surface
+
+`/sf-llm-gateway-internal` with no args opens a Pi-native status & controls
+panel in interactive mode. It extends the same Pi-native `ctx.ui.custom()` +
+`DynamicBorder` pattern used by `/sf-lsp`: compact status at the top, grouped
+actions in the middle, and a full-width description for the selected action so
+long help text is not clipped by a two-column list. Actions launched from the
+panel return to the panel after they complete, so users can run doctor, models,
+refresh, and follow-up setup without retyping the command. In headless/print/RPC
+mode, the no-args command falls back to the text status report.
+
+Primary actions are grouped as:
+
+| Group                   | Actions                                               | Purpose                                                                               |
+| ----------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Setup                   | `setup`, `on`, `off`, `set-default`                   | Edit credentials/config and control gateway defaults for global or project scope.     |
+| Discovery & diagnostics | `refresh`, `models`, `doctor`, `usage-probe`, `debug` | Re-probe model discovery, health, usage scope, and transformed upstream payloads.     |
+| Utilities               | `tokens`, `onboard`, `beta`                           | Count prompt tokens/cost, get the gateway root link, and manage runtime beta headers. |
+| Reference               | `status`, `help`                                      | Print complete text reports for copying or headless use.                              |
+
+Slash completions use the same command metadata as the panel, so subcommands
+such as `tokens`, `onboard`, `doctor`, `debug`, and `usage-probe` show short
+self-explanatory descriptions while typing.
+
 ## Behavior Matrix
 
 | Event/Trigger             | Condition                             | Result                                                                |
@@ -175,6 +199,8 @@ separately via the monthly usage endpoint (`/user/info`).
 | after_provider_response   | gateway model + 429                   | Record throttle signal, footer shows ⚠ badge for 60s                  |
 | after_provider_response   | gateway model + >=500                 | Record upstream signal, footer shows ⚠ badge for 60s                  |
 | session_shutdown          | —                                     | Clear footer status + provider signal                                 |
+| /command (no args)        | interactive UI                        | Open status & controls panel                                          |
+| /command (no args)        | no UI                                 | Print text status report                                              |
 | /command on               | missing credentials                   | Prompt for credentials first                                          |
 | /command on               | credentials present                   | Save config, set default gateway model, register, discover            |
 | /command off              | additive scope                        | Disable, remove gateway pattern, switch to off-default                |
@@ -193,6 +219,7 @@ separately via the monthly usage endpoint (`/user/info`).
 extensions/sf-llm-gateway-internal/
   lib/
     beta-controls.ts        ← implementation module
+    command-surface.ts      ← implementation module
     config-panel.ts         ← implementation module
     config.ts               ← implementation module
     debug.ts                ← implementation module
@@ -203,6 +230,7 @@ extensions/sf-llm-gateway-internal/
     models.ts               ← implementation module
     monthly-usage.ts        ← implementation module
     onboarding.ts           ← implementation module
+    panel.ts                ← implementation module
     pi-settings.ts          ← implementation module
     provider-telemetry.ts   ← implementation module
     retry-telemetry.ts      ← implementation module
@@ -215,6 +243,7 @@ extensions/sf-llm-gateway-internal/
     betas.test.ts           ← unit / smoke test
     codex-regression.test.ts← unit / smoke test
     command-parsing.test.ts ← unit / smoke test
+    command-surface.test.ts ← unit / smoke test
     config-panel-paste.test.ts← unit / smoke test
     config.test.ts          ← unit / smoke test
     cwd-migration.test.ts   ← unit / smoke test
@@ -230,6 +259,7 @@ extensions/sf-llm-gateway-internal/
     monthly-usage.test.ts   ← unit / smoke test
     onboarding.test.ts      ← unit / smoke test
     opus47-regression.test.ts← unit / smoke test
+    panel.test.ts           ← unit / smoke test
     provider-telemetry.test.ts← unit / smoke test
     retry-telemetry.test.ts ← unit / smoke test
     robust-retry.test.ts    ← unit / smoke test

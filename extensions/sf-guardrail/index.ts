@@ -53,8 +53,13 @@
  *   /sf-guardrail forget | —                               | clear session allow-memory
  *   /sf-guardrail install-preset | —                       | write/merge override file with bundled
  */
-import type { CustomEntry, ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import type {
+  CustomEntry,
+  ExtensionAPI,
+  ExtensionCommandContext,
+} from "@mariozechner/pi-coding-agent";
 
+import { type CommandPanelAction, openCommandPanel } from "../../lib/common/command-panel.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 import { record, readRecent } from "./lib/audit.ts";
 import { forgetSession, grant, isAllowed, restore } from "./lib/allowlist.ts";
@@ -173,57 +178,166 @@ export default function sfGuardrail(pi: ExtensionAPI) {
   pi.registerCommand(COMMAND_NAME, {
     description: "Inspect and manage sf-guardrail — status, rules, audit, install-preset",
     getArgumentCompletions: (prefix) => {
-      const subs = ["list", "audit", "forget", "install-preset", "help"];
       const lower = prefix.toLowerCase();
-      const items = subs
-        .filter((sub) => sub.startsWith(lower))
-        .map((sub) => ({ value: sub, label: sub }));
+      const items = GUARDRAIL_ACTIONS.filter((action) => action.value !== "close")
+        .filter((action) => action.value.startsWith(lower))
+        .map((action) => ({
+          value: action.value,
+          label: action.value,
+          description: action.description,
+        }));
       return items.length > 0 ? items : null;
     },
     handler: async (args, ctx) => {
       const sub = (args ?? "").trim().toLowerCase();
-      const { config, source } = getConfig();
-
-      if (sub === "" || sub === "status" || sub === "help") {
-        const text = renderStatus({
-          config,
-          configSource: source,
-          recent: readRecent(ctx, 5),
-          hasUI: ctx.hasUI,
-          headlessEnabled: !!process.env[config.headlessEscapeHatchEnv],
-        });
-        ctx.ui.notify(text, "info");
+      if (sub === "" && ctx.hasUI) {
+        await handleGuardrailPanel(ctx);
         return;
       }
-
-      if (sub === "list") {
-        ctx.ui.notify(renderRules(config), "info");
-        return;
-      }
-
-      if (sub === "audit") {
-        ctx.ui.notify(renderAudit(readRecent(ctx, 50)), "info");
-        return;
-      }
-
-      if (sub === "forget") {
-        forgetSession();
-        ctx.ui.notify(
-          "sf-guardrail: cleared in-memory allow list for this turn. Session entries remain; /reload restores them.",
-          "info",
-        );
-        return;
-      }
-
-      if (sub === "install-preset") {
-        await installPreset(ctx);
-        return;
-      }
-
-      ctx.ui.notify(
-        `Unknown /sf-guardrail subcommand: ${sub}. Use list, audit, forget, install-preset.`,
-        "warning",
-      );
+      await handleGuardrailCommand(ctx, sub === "" ? "status" : sub);
     },
   });
+}
+
+type GuardrailAction = "status" | "list" | "audit" | "forget" | "install-preset" | "help" | "close";
+
+const GUARDRAIL_ACTIONS: CommandPanelAction<GuardrailAction>[] = [
+  {
+    value: "status",
+    label: "Show status",
+    description: "Show active features, config source, headless behavior, and recent decisions.",
+    group: "Status",
+  },
+  {
+    value: "list",
+    label: "List active rules",
+    description: "Print the full file-protection, dangerous-command, and org-aware rule set.",
+    group: "Rules",
+  },
+  {
+    value: "audit",
+    label: "Show audit trail",
+    description: "List recent allow/block decisions recorded in the current session branch.",
+    group: "Troubleshooting",
+  },
+  {
+    value: "forget",
+    label: "Forget session allows",
+    description:
+      "Clear in-memory allow-for-session decisions for this turn; persisted entries remain.",
+    group: "Controls",
+  },
+  {
+    value: "install-preset",
+    label: "Install bundled preset",
+    description: "Write or reconcile the bundled guardrail defaults into the user override file.",
+    group: "Controls",
+  },
+  {
+    value: "help",
+    label: "Show help",
+    description: "Print command usage and explain which troubleshooting command to run.",
+    group: "Reference",
+  },
+  {
+    value: "close",
+    label: "Close",
+    description: "Dismiss this panel.",
+    group: "Reference",
+  },
+];
+
+async function handleGuardrailPanel(ctx: ExtensionCommandContext): Promise<void> {
+  for (;;) {
+    const { config, source } = loadConfig();
+    const action = await openCommandPanel(ctx, {
+      title: "🛡 SF Guardrail — status & controls",
+      statusLines: buildGuardrailPanelStatus(ctx, config, source),
+      actions: GUARDRAIL_ACTIONS,
+      closeValue: "close",
+    });
+
+    if (!action || action === "close") return;
+    await handleGuardrailCommand(ctx, action);
+  }
+}
+
+async function handleGuardrailCommand(ctx: ExtensionCommandContext, sub: string): Promise<void> {
+  const { config, source } = loadConfig();
+
+  if (sub === "status" || sub === "help") {
+    const text =
+      sub === "help"
+        ? renderGuardrailHelp()
+        : renderStatus({
+            config,
+            configSource: source,
+            recent: readRecent(ctx, 5),
+            hasUI: ctx.hasUI,
+            headlessEnabled: !!process.env[config.headlessEscapeHatchEnv],
+          });
+    ctx.ui.notify(text, "info");
+    return;
+  }
+
+  if (sub === "list") {
+    ctx.ui.notify(renderRules(config), "info");
+    return;
+  }
+
+  if (sub === "audit") {
+    ctx.ui.notify(renderAudit(readRecent(ctx, 50)), "info");
+    return;
+  }
+
+  if (sub === "forget") {
+    forgetSession();
+    ctx.ui.notify(
+      "sf-guardrail: cleared in-memory allow list for this turn. Session entries remain; /reload restores them.",
+      "info",
+    );
+    return;
+  }
+
+  if (sub === "install-preset") {
+    await installPreset(ctx);
+    return;
+  }
+
+  ctx.ui.notify(
+    `Unknown /sf-guardrail subcommand: ${sub}. Use status, list, audit, forget, install-preset, help.`,
+    "warning",
+  );
+}
+
+function buildGuardrailPanelStatus(
+  ctx: ExtensionCommandContext,
+  config: GuardrailConfig,
+  source: string,
+): string[] {
+  const recent = readRecent(ctx, 5);
+  return [
+    `✓ Config        ${source}`,
+    `${config.enabled ? "✓" : "○"} Guardrail     ${config.enabled ? "enabled" : "disabled"}`,
+    `${config.features.policies ? "✓" : "○"} Policies      ${config.policies.rules.length} rule(s)`,
+    `${config.features.commandGate ? "✓" : "○"} Commands      ${config.commandGate.patterns.length} dangerous pattern(s)`,
+    `${config.features.orgAwareGate ? "✓" : "○"} Org-aware     ${config.orgAwareGate.rules.length} production-aware rule(s)`,
+    `${process.env[config.headlessEscapeHatchEnv] ? "◐" : "✓"} Headless      ${process.env[config.headlessEscapeHatchEnv] ? "escape hatch enabled" : "fail-closed"}`,
+    `• Recent audit  ${recent.length} decision(s) in this branch`,
+  ];
+}
+
+function renderGuardrailHelp(): string {
+  return [
+    "sf-guardrail — Salesforce-aware safety layer",
+    "",
+    "Commands:",
+    `  /${COMMAND_NAME}                 Open status & controls panel`,
+    `  /${COMMAND_NAME} status          Show active features and recent decisions`,
+    `  /${COMMAND_NAME} list            List active file/command/org-aware rules`,
+    `  /${COMMAND_NAME} audit           Show recent decisions in this session branch`,
+    `  /${COMMAND_NAME} forget          Clear in-memory allow-for-session decisions`,
+    `  /${COMMAND_NAME} install-preset  Write/reconcile bundled defaults to user config`,
+    `  /${COMMAND_NAME} help            Show this help`,
+  ].join("\n");
 }

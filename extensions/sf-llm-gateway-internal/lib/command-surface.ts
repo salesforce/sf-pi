@@ -1,0 +1,271 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/**
+ * Single source of truth for the gateway command surface.
+ *
+ * The same metadata feeds:
+ *   - slash-command completions
+ *   - the no-args status/actions panel
+ *   - help output
+ *
+ * Keeping labels and descriptions here prevents drift as the command surface
+ * grows (notably diagnostic commands such as doctor, debug, usage-probe, and
+ * token counting).
+ */
+import type { AutocompleteItem } from "@mariozechner/pi-tui";
+import { KNOWN_BETAS } from "./models.ts";
+
+export type GatewayCommandId =
+  | "status"
+  | "setup"
+  | "on"
+  | "off"
+  | "refresh"
+  | "set-default"
+  | "models"
+  | "doctor"
+  | "usage-probe"
+  | "tokens"
+  | "onboard"
+  | "debug"
+  | "beta"
+  | "help";
+
+export type GatewayPanelAction = GatewayCommandId | "switch-scope" | "close";
+
+export type GatewayCommandSection = "Setup" | "Discovery & diagnostics" | "Utilities" | "Reference";
+
+export interface GatewayCommandSurfaceItem {
+  id: GatewayCommandId;
+  label: string;
+  usage: string;
+  description: string;
+  section: GatewayCommandSection;
+  aliases?: string[];
+  acceptsScope?: boolean;
+}
+
+export const GATEWAY_COMMAND_SURFACE: readonly GatewayCommandSurfaceItem[] = [
+  {
+    id: "status",
+    label: "Show text status",
+    usage: "status",
+    description: "Print the complete provider, config, usage, health, and beta status report.",
+    section: "Reference",
+  },
+  {
+    id: "setup",
+    label: "Open setup / settings",
+    usage: "setup [global|project]",
+    description: "Edit saved base URL, API key, scoped model mode, and enable/disable state.",
+    section: "Setup",
+    aliases: ["configure"],
+    acceptsScope: true,
+  },
+  {
+    id: "on",
+    label: "Enable gateway defaults",
+    usage: "on [global|project]",
+    description:
+      "Enable the provider, set the gateway default model, and apply scoped model routing.",
+    section: "Setup",
+    aliases: ["enable"],
+    acceptsScope: true,
+  },
+  {
+    id: "off",
+    label: "Disable gateway defaults",
+    usage: "off [global|project]",
+    description: "Disable gateway model routing and restore the configured non-gateway default.",
+    section: "Setup",
+    aliases: ["disable"],
+    acceptsScope: true,
+  },
+  {
+    id: "set-default",
+    label: "Set current default",
+    usage: "set-default [global|project]",
+    description:
+      "Set the gateway provider/model/thinking defaults without changing saved credentials.",
+    section: "Setup",
+    acceptsScope: true,
+  },
+  {
+    id: "refresh",
+    label: "Refresh models + usage",
+    usage: "refresh",
+    description: "Re-run model discovery and force-refresh monthly usage and health telemetry.",
+    section: "Discovery & diagnostics",
+  },
+  {
+    id: "models",
+    label: "List discovered models",
+    usage: "models",
+    description:
+      "Show discovered model IDs, context windows, max output, and routing classification.",
+    section: "Discovery & diagnostics",
+  },
+  {
+    id: "doctor",
+    label: "Run doctor",
+    usage: "doctor",
+    description: "Diagnose URL, auth, model discovery, and gateway health with repair guidance.",
+    section: "Discovery & diagnostics",
+    aliases: ["dr"],
+  },
+  {
+    id: "usage-probe",
+    label: "Probe usage scope",
+    usage: "usage-probe",
+    description:
+      "Classify whether live usage is user-level, key-level, budget-windowed, or unavailable.",
+    section: "Discovery & diagnostics",
+    aliases: ["usage"],
+  },
+  {
+    id: "debug",
+    label: "Transform debug probe",
+    usage: "debug <modelId> [reasoning=<level>] [tool] [adaptive]",
+    description:
+      "Inspect the upstream payload the gateway would send for a model without a completion.",
+    section: "Discovery & diagnostics",
+  },
+  {
+    id: "tokens",
+    label: "Count tokens",
+    usage: "tokens <modelId> [prompt]",
+    description:
+      "Ask the gateway tokenizer and pricing endpoints for a prompt token/cost estimate.",
+    section: "Utilities",
+    aliases: ["count"],
+  },
+  {
+    id: "onboard",
+    label: "Gateway root link",
+    usage: "onboard",
+    description: "Print the stable gateway root URL for browser sign-in and key creation.",
+    section: "Utilities",
+  },
+  {
+    id: "beta",
+    label: "Beta headers",
+    usage: "beta [name on|off|reset]",
+    description: "View or toggle runtime Anthropic beta header overrides.",
+    section: "Utilities",
+  },
+  {
+    id: "help",
+    label: "Show help",
+    usage: "help",
+    description: "Print all commands, aliases, scopes, and recognized environment variables.",
+    section: "Reference",
+  },
+];
+
+const COMMAND_BY_ID = new Map(GATEWAY_COMMAND_SURFACE.map((item) => [item.id, item]));
+
+export function getGatewayCommandSurfaceItem(
+  id: GatewayCommandId,
+): GatewayCommandSurfaceItem | undefined {
+  return COMMAND_BY_ID.get(id);
+}
+
+export function getGatewayArgumentCompletions(prefix: string): AutocompleteItem[] | null {
+  const { tokens, tokenIndex, current } = tokenizeCompletionPrefix(prefix);
+
+  if (tokenIndex === 0) {
+    return matches(
+      GATEWAY_COMMAND_SURFACE.map((item) => ({
+        value: item.id,
+        label: item.id,
+        description: item.description,
+      })),
+      current,
+    );
+  }
+
+  const sub = tokens[0]?.toLowerCase();
+
+  if (sub === "beta" && tokenIndex === 1) {
+    const betaItems: AutocompleteItem[] = [
+      ...KNOWN_BETAS.map((beta) => ({
+        value: beta.aliases[0] ?? beta.value,
+        label: beta.aliases[0] ?? beta.value,
+        description: beta.value,
+      })),
+      { value: "reset", label: "reset", description: "Clear runtime beta overrides" },
+    ];
+    return matches(betaItems, current);
+  }
+
+  if (sub === "beta" && tokenIndex === 2) {
+    return matches(
+      [
+        { value: "on", label: "on", description: "Enable the beta header override" },
+        { value: "off", label: "off", description: "Disable the beta header override" },
+      ],
+      current,
+    );
+  }
+
+  const surface = GATEWAY_COMMAND_SURFACE.find((item) => item.id === sub);
+  if (surface?.acceptsScope && tokenIndex === 1) {
+    return matches(
+      [
+        { value: "global", label: "global", description: "Save in the global Pi settings/config" },
+        {
+          value: "project",
+          label: "project",
+          description: "Save in this project's .pi settings/config",
+        },
+      ],
+      current,
+    );
+  }
+
+  return null;
+}
+
+export function formatGatewayCommandReference(commandName: string): string[] {
+  const lines = ["Commands:"];
+  for (const item of GATEWAY_COMMAND_SURFACE) {
+    lines.push(`- /${commandName} ${item.usage}`.trimEnd() + `    # ${item.description}`);
+  }
+  return lines;
+}
+
+export function formatGatewayAliasReference(): string[] {
+  const aliasLines = GATEWAY_COMMAND_SURFACE.flatMap((item) =>
+    (item.aliases ?? []).map((alias) => `- ${alias} → ${item.id}`),
+  );
+  return aliasLines.length > 0 ? ["Aliases:", ...aliasLines] : [];
+}
+
+function matches(items: AutocompleteItem[], current: string): AutocompleteItem[] | null {
+  const lower = current.toLowerCase();
+  const filtered = items.filter((item) => item.value.toLowerCase().startsWith(lower));
+  return filtered.length > 0 ? filtered : null;
+}
+
+function tokenizeCompletionPrefix(prefix: string): {
+  tokens: string[];
+  tokenIndex: number;
+  current: string;
+} {
+  const hasTrailingSpace = /\s$/.test(prefix);
+  const trimmed = prefix.trim();
+  const tokens = trimmed ? trimmed.split(/\s+/) : [];
+
+  if (hasTrailingSpace) {
+    return { tokens, tokenIndex: tokens.length, current: "" };
+  }
+
+  if (tokens.length === 0) {
+    return { tokens, tokenIndex: 0, current: "" };
+  }
+
+  return {
+    tokens,
+    tokenIndex: tokens.length - 1,
+    current: tokens[tokens.length - 1] ?? "",
+  };
+}

@@ -41,16 +41,20 @@
  *                                       active. When unset, model defaults apply.
  *
  * Commands:
- * - /sf-llm-gateway-internal                     show status
+ * - /sf-llm-gateway-internal                     open status & controls panel (UI) or text status (headless)
+ * - /sf-llm-gateway-internal status              show text status
  * - /sf-llm-gateway-internal setup [global|project]
- * - /sf-llm-gateway-internal on [global|project]   enable provider + set Opus 4.7 default
- * - /sf-llm-gateway-internal off [global|project]  disable provider + set GPT 5.5 default
+ * - /sf-llm-gateway-internal on [global|project]   enable provider + set gateway default
+ * - /sf-llm-gateway-internal off [global|project]  disable provider + set off-default
  * - /sf-llm-gateway-internal refresh               refresh models + monthly usage
  * - /sf-llm-gateway-internal set-default [global|project]
  * - /sf-llm-gateway-internal beta                  show beta header state
  * - /sf-llm-gateway-internal beta <name> on|off    toggle a beta header at runtime
  * - /sf-llm-gateway-internal models                list discovered models
  * - /sf-llm-gateway-internal usage-probe           classify user/key usage scope
+ * - /sf-llm-gateway-internal tokens <modelId> [prompt]
+ * - /sf-llm-gateway-internal onboard
+ * - /sf-llm-gateway-internal debug <modelId> [reasoning=<level>] [tool] [adaptive]
  *
  * Behavior matrix:
  *
@@ -66,6 +70,8 @@
  *   after_provider_response     | model is gateway model + 429       | Record throttle signal, footer shows ⚠ badge for 60s
  *   after_provider_response     | model is gateway model + 5xx       | Record upstream signal, footer shows ⚠ badge for 60s
  *   session_shutdown            | —                                  | Clear footer status + provider signal
+ *   /command (no args)          | interactive UI                     | Open status & controls panel
+ *   /command (no args)          | no UI                              | Print text status report
  *   /command on                 | missing credentials                | Prompt for credentials first
  *   /command on                 | credentials present                | Save config, set default, register, discover
  *   /command off                | —                                  | Disable, remove pattern, switch to off-default
@@ -183,6 +189,13 @@ import { fetchTransformReport, formatTransformReport, type TransformProbe } from
 import { fetchGatewayDoctorReport, formatGatewayDoctorReport } from "./lib/doctor.ts";
 import { countTokens, estimateSpend, formatTokenReport } from "./lib/token-counter.ts";
 import { buildOnboardingUrl } from "./lib/onboarding.ts";
+import {
+  getGatewayArgumentCompletions,
+  formatGatewayAliasReference,
+  formatGatewayCommandReference,
+  type GatewayCommandId,
+} from "./lib/command-surface.ts";
+import { openGatewayPanel } from "./lib/panel.ts";
 import {
   getMonthlyUsageState,
   refreshMonthlyUsage,
@@ -314,65 +327,8 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
   pi.registerMessageRenderer(PROVIDER_NAME, renderGatewayMessage);
 
   pi.registerCommand(COMMAND_NAME, {
-    description: "Minimal SF LLM Gateway provider status and defaults",
-    getArgumentCompletions: (prefix: string) => {
-      const subcommands = [
-        "setup",
-        "on",
-        "off",
-        "refresh",
-        "set-default",
-        "models",
-        "beta",
-        "debug",
-        "doctor",
-        "usage-probe",
-        "help",
-      ];
-      const tokens = prefix.trim().split(/\s+/);
-      const current = tokens[tokens.length - 1] ?? "";
-
-      // First token: subcommand completion
-      if (tokens.length <= 1) {
-        const matches = subcommands
-          .filter((s) => s.startsWith(current.toLowerCase()))
-          .map((s) => ({ value: s, label: s }));
-        return matches.length > 0 ? matches : null;
-      }
-
-      const sub = tokens[0]?.toLowerCase();
-
-      // Beta subcommand: complete beta aliases
-      if (sub === "beta" && tokens.length <= 2) {
-        const aliases = KNOWN_BETAS.map((b) => b.aliases[0])
-          .filter((a) => a.startsWith(current.toLowerCase()))
-          .map((a) => ({ value: a, label: a }));
-        // Also offer "reset"
-        if ("reset".startsWith(current.toLowerCase())) {
-          aliases.push({ value: "reset", label: "reset" });
-        }
-        return aliases.length > 0 ? aliases : null;
-      }
-
-      // Beta on/off toggle
-      if (sub === "beta" && tokens.length <= 3) {
-        const toggles = ["on", "off"]
-          .filter((s) => s.startsWith(current.toLowerCase()))
-          .map((s) => ({ value: s, label: s }));
-        return toggles.length > 0 ? toggles : null;
-      }
-
-      // Scope completion for subcommands that accept it
-      const scopedSubs = ["setup", "on", "off", "set-default"];
-      if (scopedSubs.includes(sub ?? "") && tokens.length <= 2) {
-        const scopes = ["global", "project"]
-          .filter((s) => s.startsWith(current.toLowerCase()))
-          .map((s) => ({ value: s, label: s }));
-        return scopes.length > 0 ? scopes : null;
-      }
-
-      return null;
-    },
+    description: "SF LLM Gateway provider status, setup, diagnostics, and utilities",
+    getArgumentCompletions: getGatewayArgumentCompletions,
     handler: async (args, ctx) => {
       await handleCommand(pi, args, ctx);
     },
@@ -503,6 +459,10 @@ async function handleCommand(
   args: string,
   ctx: ExtensionCommandContext,
 ): Promise<void> {
+  if (args.trim().length === 0 && ctx.hasUI) {
+    return handlePanelCommand(pi, ctx);
+  }
+
   const parsed = parseCommandArgs(args);
 
   switch (parsed.subcommand) {
@@ -537,6 +497,77 @@ async function handleCommand(
     default:
       return handleStatusCommand(pi, ctx);
   }
+}
+
+async function handlePanelCommand(pi: ExtensionAPI, ctx: ExtensionCommandContext): Promise<void> {
+  let scope: "global" | "project" = "global";
+
+  for (;;) {
+    const action = await openGatewayPanel(ctx, {
+      providerRegistered: getLastDiscovery()?.source !== "disabled",
+      runtimeState: getRuntimeStatusState(),
+      scope,
+    });
+
+    if (!action || action === "close") {
+      return;
+    }
+
+    if (action === "switch-scope") {
+      scope = scope === "global" ? "project" : "global";
+      continue;
+    }
+
+    await handlePanelAction(pi, ctx, action, scope);
+  }
+}
+
+async function handlePanelAction(
+  pi: ExtensionAPI,
+  ctx: ExtensionCommandContext,
+  action: GatewayCommandId,
+  scope: "global" | "project",
+): Promise<void> {
+  switch (action) {
+    case "setup":
+      return runSetupWizard(pi, ctx, scope);
+    case "on":
+      return enableGateway(pi, ctx, scope, true);
+    case "off":
+      return disableGateway(pi, ctx, scope);
+    case "set-default":
+      return handleSetDefaultCommand(pi, ctx, scope);
+    case "refresh":
+      return handleRefreshCommand(pi, ctx);
+    case "models":
+      return handleModelsCommand(pi, ctx);
+    case "debug":
+      return handleDebugCommand(pi, ctx, [getPanelDefaultModelId(ctx)]);
+    case "doctor":
+      return handleDoctorCommand(pi, ctx);
+    case "usage-probe":
+      return handleUsageProbeCommand(pi, ctx);
+    case "tokens":
+      return handleTokensCommand(pi, ctx, [getPanelDefaultModelId(ctx)]);
+    case "onboard":
+      return handleOnboardCommand(pi, ctx);
+    case "beta":
+      return handleBetaCommandImpl(pi, ctx, [], (summary, details, level) =>
+        emitCommandOutput(pi, ctx, summary, details, level),
+      );
+    case "help":
+      return handleHelpCommand(pi, ctx);
+    case "status":
+    default:
+      return handleStatusCommand(pi, ctx);
+  }
+}
+
+function getPanelDefaultModelId(ctx: ExtensionCommandContext): string {
+  if (isGatewayProvider(ctx.model?.provider) && ctx.model?.id) {
+    return ctx.model.id;
+  }
+  return DEFAULT_MODEL_ID;
 }
 
 async function handleRefreshCommand(pi: ExtensionAPI, ctx: ExtensionCommandContext): Promise<void> {
@@ -650,10 +681,9 @@ async function handleUsageProbeCommand(
  * sanity check by typing just `/sf-llm-gateway-internal tokens gpt-5`.
  */
 /**
- * `/sf-llm-gateway-internal onboard` — print a one-click SSO URL that lands
- * the user on the Virtual Keys tab of the admin UI. Falls back to a
- * friendly warning when no base URL is configured yet, since the onboarding
- * link is derived from the gateway root.
+ * `/sf-llm-gateway-internal onboard` — print the stable gateway root URL for
+ * browser sign-in and key creation. Falls back to a friendly warning when no
+ * base URL is configured.
  */
 async function handleOnboardCommand(pi: ExtensionAPI, ctx: ExtensionCommandContext): Promise<void> {
   const config = getGatewayConfig(ctx.cwd);
@@ -673,15 +703,17 @@ async function handleOnboardCommand(pi: ExtensionAPI, ctx: ExtensionCommandConte
   }
 
   const report = [
-    "Open this link to create a new gateway API key:",
+    "Open this gateway root URL in your browser:",
     "",
     url,
     "",
     "Flow:",
-    "1. Your browser opens the gateway SSO login.",
-    "2. After sign-in you land on the admin UI's Virtual Keys tab.",
-    "3. Click `+ Create New Key`, copy the value.",
+    "1. Sign in through the gateway UI.",
+    "2. Open the key-management / API-key area from the gateway UI.",
+    "3. Create or rotate a key, then copy the value.",
     `4. Paste into pi's /login (or \`/${COMMAND_NAME} setup\`) to save it.`,
+    "",
+    "Note: this command intentionally avoids deployment-specific OAuth/UI deep links because those routes can reject direct browser navigation.",
   ].join("\n");
 
   await emitCommandOutput(pi, ctx, "SF LLM Gateway Internal onboarding link.", report, "info");
@@ -862,21 +894,11 @@ async function handleSetDefaultCommand(
 
 async function handleHelpCommand(pi: ExtensionAPI, ctx: ExtensionCommandContext): Promise<void> {
   const help = [
-    "Commands:",
-    `- /${COMMAND_NAME}`,
-    `- /${COMMAND_NAME} setup [global|project]    # guided TUI setup`,
-    `- /${COMMAND_NAME} on [global|project]       # enable provider + set Opus 4.7 default`,
-    `- /${COMMAND_NAME} off [global|project]      # disable provider + set ${OFF_DEFAULT_PROVIDER}/${OFF_DEFAULT_MODEL_ID}`,
-    `- /${COMMAND_NAME} refresh`,
-    `- /${COMMAND_NAME} set-default [global|project]`,
-    `- /${COMMAND_NAME} models`,
-    `- /${COMMAND_NAME} doctor`,
-    `- /${COMMAND_NAME} usage-probe`,
-    `- /${COMMAND_NAME} tokens <modelId> [prompt]`,
-    `- /${COMMAND_NAME} onboard    # SSO deep-link to create a new gateway key`,
-    `- /${COMMAND_NAME} debug <modelId> [reasoning=<level>] [tool] [adaptive]`,
-    `- /${COMMAND_NAME} beta`,
-    `- /${COMMAND_NAME} beta <name> on|off`,
+    `/${COMMAND_NAME} with no args opens the interactive status & controls panel.`,
+    "",
+    ...formatGatewayCommandReference(COMMAND_NAME),
+    "",
+    ...formatGatewayAliasReference(),
     "",
     "Beta aliases:",
     ...KNOWN_BETAS.map((b) => `- ${b.aliases[0]} → ${b.value}`),
@@ -887,6 +909,7 @@ async function handleHelpCommand(pi: ExtensionAPI, ctx: ExtensionCommandContext)
     `Setup also supports additive vs exclusive scoped model behavior.`,
     `Beta command accepts either a known alias or a raw Anthropic beta value.`,
     `Saved config file: ${globalGatewayConfigPath()} or ${projectGatewayConfigPath(process.cwd())}`,
+    `Disable fallback default: ${OFF_DEFAULT_PROVIDER}/${OFF_DEFAULT_MODEL_ID}`,
   ].join("\n");
 
   await emitCommandOutput(pi, ctx, "SF LLM Gateway Internal help", help, "info");
@@ -912,6 +935,9 @@ export function parseCommandArgs(args: string): CommandArgs {
   const scopeToken = (tokens[1] ?? "global").toLowerCase();
   const scope = scopeToken === "project" ? "project" : "global";
 
+  if (sub === "status") {
+    return { subcommand: "status", scope };
+  }
   if (sub === "refresh") {
     return { subcommand: "refresh", scope };
   }

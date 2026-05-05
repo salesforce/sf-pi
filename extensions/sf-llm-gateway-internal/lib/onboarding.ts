@@ -1,17 +1,16 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /**
- * Onboarding deep-link builder for the gateway extension.
+ * Onboarding URL builder for the gateway extension.
  *
- * The gateway sits behind SSO. Hitting `/oauth2/start` kicks off the SSO
- * dance and lands the user back on a post-login destination. Live-verified
- * against this gateway deployment, the only query param that overrides the
- * default post-login target is `rd=` (`next=` and `redirect=` are ignored).
+ * The gateway sits behind SSO, and deployment-specific auth routes can drift
+ * or reject direct browser GETs. The only stable browser entry point is the
+ * configured gateway root. This helper therefore canonicalizes any configured
+ * route suffix (`/v1`, `/bedrock`, `/bedrock/v1`) back to the root and returns
+ * that URL.
  *
- * `<baseUrl>/oauth2/start?rd=/ui/?page=api-keys` → SSO → `/oauth2/callback`
- *   → LiteLLM session cookie → `/ui/?page=api-keys` (Virtual Keys tab).
- *
- * Users click `+ Create New Key`, copy the value, paste into pi's `/login`.
- * Single round trip, zero context switching between docs and the UI.
+ * Users sign in at the gateway root, open the key-management area in the UI,
+ * create or rotate a key, then paste the value into pi's `/login` or setup
+ * panel.
  *
  * Pure functions only: callers pass in the base URL, we return strings.
  * This module has no side effects so it is safe to exercise from unit tests
@@ -20,11 +19,9 @@
 import { toGatewayRootBaseUrl } from "./gateway-url.ts";
 
 /**
- * Named targets inside the LiteLLM admin UI. The SPA interprets these as
- * `?page=<key>` client-side, so they work even though the server returns
- * the same shell HTML regardless of the query. Add new targets here
- * sparingly \u2014 any drift from the upstream LiteLLM UI would send users to
- * an error page.
+ * Historical target names retained for source compatibility. The current
+ * onboarding URL intentionally ignores tab targets and returns only the stable
+ * gateway root.
  */
 export const OnboardingTarget = {
   ApiKeys: "api-keys",
@@ -33,21 +30,19 @@ export const OnboardingTarget = {
 export type OnboardingTarget = (typeof OnboardingTarget)[keyof typeof OnboardingTarget];
 
 /**
- * Build a one-click URL that takes the user through the gateway's SSO and
- * lands them on the requested LiteLLM admin UI tab. Returns an empty string
+ * Build the stable browser URL for gateway onboarding. Returns an empty string
  * when `baseUrl` is missing so callers can treat "no configured base URL" as
  * "nothing to open" without throwing.
+ *
+ * `_target` is retained for source compatibility with earlier callers that
+ * requested a UI tab-specific deep link. It is intentionally ignored because
+ * root-only navigation is the stable behavior.
  */
 export function buildOnboardingUrl(
   baseUrl: string | undefined,
-  target: OnboardingTarget = OnboardingTarget.ApiKeys,
+  _target: OnboardingTarget = OnboardingTarget.ApiKeys,
 ): string {
   if (!baseUrl) return "";
   const root = toGatewayRootBaseUrl(baseUrl);
-  if (!root) return "";
-  // `rd` is the only param honored by this LiteLLM build; the value is URL-
-  // encoded inside the IdP's OAuth `state` so any path is fine here. Embed
-  // `?page=<target>` directly so callers don't have to think about SPA
-  // routing.
-  return `${root}/oauth2/start?rd=/ui/?page=${encodeURIComponent(target)}`;
+  return root ?? "";
 }

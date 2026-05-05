@@ -29,6 +29,7 @@
 import {
   buildSessionContext,
   type ExtensionAPI,
+  type ExtensionCommandContext,
   type ExtensionContext,
 } from "@mariozechner/pi-coding-agent";
 import { SkillsHudComponent } from "./lib/hud-component.ts";
@@ -38,6 +39,7 @@ import {
   type SkillsHudState,
 } from "./lib/skill-state.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
+import { type CommandPanelAction, openCommandPanel } from "../../lib/common/command-panel.ts";
 
 // -------------------------------------------------------------------------------------------------
 // Constants
@@ -52,6 +54,48 @@ const EMPTY_STATE: SkillsHudState = {
   discoveredCount: 0,
   usedCount: 0,
 };
+
+type SkillsAction = "summary" | "help" | "close";
+
+const SKILLS_ACTIONS: CommandPanelAction<SkillsAction>[] = [
+  {
+    value: "summary",
+    label: "Show skill summary",
+    description: "Print live and earlier skill usage detected in the current session branch.",
+    group: "Status",
+  },
+  {
+    value: "help",
+    label: "Show help",
+    description: "Explain what Live and Earlier mean and how the passive HUD behaves.",
+    group: "Reference",
+  },
+  {
+    value: "close",
+    label: "Close",
+    description: "Dismiss this panel.",
+    group: "Reference",
+  },
+];
+
+function renderSkillsHelp(): string {
+  return [
+    "sf-skills — Skills HUD summary",
+    "",
+    "What it shows:",
+    "  • Live now — skills still present in active context",
+    "  • Earlier — skills used on this branch but no longer live after compaction/growth",
+    "",
+    "Behavior:",
+    "  • Pinned as a passive top-right overlay",
+    "  • Hidden until at least one skill is used",
+    "",
+    "Commands:",
+    "  /sf-skills          Open status & controls panel",
+    "  /sf-skills summary  Show current summary",
+    "  /sf-skills help     Show this help",
+  ].join("\n");
+}
 
 // -------------------------------------------------------------------------------------------------
 // Extension entry point
@@ -157,33 +201,61 @@ export default function sfSkillsHud(pi: ExtensionAPI) {
 
   pi.registerCommand(COMMAND_NAME, {
     description: "Show the current SF Skills HUD summary",
+    getArgumentCompletions: (prefix) => {
+      const lower = prefix.toLowerCase();
+      const items = SKILLS_ACTIONS.filter((action) => action.value !== "close")
+        .filter((action) => action.value.startsWith(lower))
+        .map((action) => ({
+          value: action.value,
+          label: action.value,
+          description: action.description,
+        }));
+      return items.length > 0 ? items : null;
+    },
     handler: async (args, ctx) => {
       const subcommand = args.trim().toLowerCase();
-
-      if (subcommand === "help") {
-        ctx.ui.notify(
-          [
-            "sf-skills — Skills HUD summary",
-            "",
-            "What it shows:",
-            "  • Live now — skills still present in active context",
-            "  • Earlier — skills used on this branch but no longer live after compaction/growth",
-            "",
-            "Behavior:",
-            "  • Pinned as a passive top-right overlay",
-            "  • Hidden until at least one skill is used",
-            "",
-            "Commands:",
-            "  /sf-skills       Show current summary",
-            "  /sf-skills help  Show this help",
-          ].join("\n"),
-          "info",
-        );
+      if (subcommand === "" && ctx.hasUI) {
+        await handleSkillsPanel(ctx);
         return;
       }
-
-      refreshHud(ctx);
-      ctx.ui.notify(formatSkillsHudSummary(hudState).join("\n"), "info");
+      handleSkillsCommand(ctx, subcommand === "" ? "summary" : subcommand);
     },
   });
+
+  async function handleSkillsPanel(ctx: ExtensionCommandContext): Promise<void> {
+    for (;;) {
+      refreshHud(ctx);
+      const action = await openCommandPanel(ctx, {
+        title: "🎯 SF Skills HUD — status & controls",
+        statusLines: [
+          `${hudState.hasAny ? "✓" : "○"} Usage detected ${hudState.hasAny ? "yes" : "no"}`,
+          `• Live skills    ${hudState.live.length}`,
+          `• Earlier skills ${hudState.earlier.length}`,
+          `• Discovered     ${hudState.discoveredCount}`,
+        ],
+        actions: SKILLS_ACTIONS,
+        closeValue: "close",
+      });
+      if (!action || action === "close") return;
+      handleSkillsCommand(ctx, action);
+    }
+  }
+
+  function handleSkillsCommand(ctx: ExtensionCommandContext, subcommand: string): void {
+    if (subcommand === "help") {
+      ctx.ui.notify(renderSkillsHelp(), "info");
+      return;
+    }
+
+    if (subcommand === "summary") {
+      refreshHud(ctx);
+      ctx.ui.notify(formatSkillsHudSummary(hudState).join("\n"), "info");
+      return;
+    }
+
+    ctx.ui.notify(
+      `Unknown /${COMMAND_NAME} subcommand: ${subcommand}. Use summary or help.`,
+      "warning",
+    );
+  }
 }

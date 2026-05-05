@@ -33,6 +33,7 @@ import {
   normalizeIssueTitle,
 } from "./lib/issue-template.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
+import { type CommandPanelAction, openCommandPanel } from "../../lib/common/command-panel.ts";
 import { sanitizeText } from "./lib/sanitize.ts";
 import type { FeedbackDraft, IssueKind } from "./lib/types.ts";
 
@@ -54,9 +55,82 @@ export default function sfFeedback(pi: ExtensionAPI) {
     },
     handler: async (args, ctx) => {
       const exec = buildExecFn(pi, ctx.cwd);
+      if (!(args || "").trim() && ctx.hasUI) {
+        await handleFeedbackPanel(pi, ctx, exec);
+        return;
+      }
       await handleCommand(pi, ctx, exec, args || "");
     },
   });
+}
+
+type FeedbackAction = "bug" | "feature" | "setup" | "feedback" | "diagnostics" | "help" | "close";
+
+const FEEDBACK_ACTIONS: CommandPanelAction<FeedbackAction>[] = [
+  {
+    value: "bug",
+    label: "Report a bug",
+    description: "Start a guided bug report with sanitized local diagnostics and final preview.",
+    group: "Create issue",
+  },
+  {
+    value: "feature",
+    label: "Request a feature",
+    description: "Start a guided feature request with sanitized diagnostics and final preview.",
+    group: "Create issue",
+  },
+  {
+    value: "setup",
+    label: "Report setup issue",
+    description: "Start a guided setup/install issue report with local runtime diagnostics.",
+    group: "Create issue",
+  },
+  {
+    value: "feedback",
+    label: "General feedback",
+    description: "Start a general feedback issue with diagnostics and a public-safe preview.",
+    group: "Create issue",
+  },
+  {
+    value: "diagnostics",
+    label: "Copy diagnostics only",
+    description:
+      "Print the sanitized diagnostics block without opening or creating a GitHub issue.",
+    group: "Diagnostics",
+  },
+  {
+    value: "help",
+    label: "Show help",
+    description: "Print command usage and safety behavior.",
+    group: "Reference",
+  },
+  {
+    value: "close",
+    label: "Close",
+    description: "Dismiss this panel.",
+    group: "Reference",
+  },
+];
+
+async function handleFeedbackPanel(
+  pi: ExtensionAPI,
+  ctx: ExtensionCommandContext,
+  exec: ExecFn,
+): Promise<void> {
+  for (;;) {
+    const action = await openCommandPanel(ctx, {
+      title: "💬 SF Feedback — status & controls",
+      statusLines: [
+        "✓ Privacy       diagnostics are sanitized before preview/submission",
+        "✓ Confirmation  GitHub issue creation requires final approval",
+        "• Headless      emits draft + URL only; never submits",
+      ],
+      actions: FEEDBACK_ACTIONS,
+      closeValue: "close",
+    });
+    if (!action || action === "close") return;
+    await handleCommand(pi, ctx, exec, action);
+  }
 }
 
 async function handleCommand(

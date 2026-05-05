@@ -38,7 +38,11 @@
  *   - Read-only except slack_canvas create/edit
  *   - Supports Pi auth storage by default, with optional Keychain / env fallbacks
  */
-import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
+import type {
+  ExtensionAPI,
+  ExtensionCommandContext,
+  ExtensionContext,
+} from "@mariozechner/pi-coding-agent";
 import {
   PROVIDER_NAME,
   COMMAND_NAME,
@@ -84,9 +88,53 @@ import { openSettingsPanel } from "./lib/settings-panel.ts";
 import { renderStatsLines, resetStats, setStatsListener } from "./lib/stats.ts";
 import { classifySlackStatus, slackStatusLabel } from "./lib/status.ts";
 import { clearSlackStatus, setSlackStatus } from "../../lib/common/slack-status/store.ts";
+import { type CommandPanelAction, openCommandPanel } from "../../lib/common/command-panel.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 
 const RESEARCH_WIDGET_KEY = "sf-slack-research";
+
+type SlackCommandAction = "status" | "refresh" | "settings" | "sent" | "help" | "close";
+
+const SLACK_COMMAND_ACTIONS: CommandPanelAction<SlackCommandAction>[] = [
+  {
+    value: "status",
+    label: "Show auth status",
+    description: "Print token source, identity, granted/requested scopes, and setup guidance.",
+    group: "Status",
+  },
+  {
+    value: "refresh",
+    label: "Refresh identity + scopes",
+    description:
+      "Re-detect identity, re-probe scopes, refresh caches, and register tools if newly authenticated.",
+    group: "Diagnostics",
+  },
+  {
+    value: "settings",
+    label: "Open preferences",
+    description:
+      "Edit search detail level, research widget visibility, and permalink rendering preferences.",
+    group: "Settings",
+  },
+  {
+    value: "sent",
+    label: "Show send audit",
+    description: "List recent slack_send activity recorded in the current session branch.",
+    group: "Audit",
+  },
+  {
+    value: "help",
+    label: "Show help",
+    description: "Print command usage and authentication setup options.",
+    group: "Reference",
+  },
+  {
+    value: "close",
+    label: "Close",
+    description: "Dismiss this panel.",
+    group: "Reference",
+  },
+];
 
 // ─── Extension entry point ──────────────────────────────────────────────────────
 
@@ -454,144 +502,188 @@ export default function sfSlack(pi: ExtensionAPI) {
     };
   });
 
+  async function handleSlackPanel(ctx: ExtensionCommandContext): Promise<void> {
+    for (;;) {
+      const action = await openCommandPanel(ctx, {
+        title: "💬 SF Slack — status & controls",
+        statusLines: buildSlackPanelStatus(),
+        actions: SLACK_COMMAND_ACTIONS,
+        closeValue: "close",
+      });
+      if (!action || action === "close") return;
+      await handleSlackCommand(action, ctx);
+    }
+  }
+
+  async function handleSlackCommand(sub: string, ctx: ExtensionCommandContext): Promise<void> {
+    if (sub === "status") {
+      ctx.ui.notify(await buildAuthStatus(ctx), "info");
+      return;
+    }
+
+    if (sub === "refresh") {
+      const generation = activeSessionGeneration;
+      ctx.ui.notify("Re-detecting Slack identity…", "info");
+      updateStatus(ctx, "loading", generation);
+
+      const auth = await getSlackToken(ctx);
+      if (!isActiveSession(ctx, generation)) return;
+
+      if (!auth.ok) {
+        updateStatus(ctx, "disconnected", generation);
+        ctx.ui.notify(
+          "No Slack token found. Run /login sf-slack, use macOS Keychain, or set SLACK_USER_TOKEN.",
+          "warning",
+        );
+        return;
+      }
+
+      ensureSlackToolsRegistered();
+      const token = auth.token;
+      tokenType = detectTokenType(token);
+
+      try {
+        const authResult = await slackApi<AuthTestResponse>("auth.test", token, {}, ctx.signal);
+        if (!isActiveSession(ctx, generation)) return;
+        if (authResult.ok) {
+          identity = {
+            userId: authResult.data?.user_id || "",
+            userName: authResult.data?.user || "",
+            teamId: authResult.data?.team_id || authResult.data?.enterprise_id || "",
+          };
+          setDetectedTeamId(authResult.data?.team_id);
+          const requestedScopes = oauthScopes()
+            .split(",")
+            .map((scope) => scope.trim())
+            .filter(Boolean);
+          requestedScopeCount = requestedScopes.length;
+          const [probeResult] = await Promise.all([
+            probeAndGateTools(pi, token, ctx.signal, requestedScopes),
+            prewarmUserCache(token, ctx.signal),
+            prewarmChannelCache(token, ctx.signal),
+          ]);
+          if (!isActiveSession(ctx, generation)) return;
+          missingGrantedScopeCount = probeResult.missingGrantedScopes.length;
+          grantedScopeCount = getGrantedScopes()?.size ?? 0;
+          updateStatus(ctx, "connected", generation);
+          if (probeResult.missingGrantedScopes.length > 0) {
+            ctx.ui.notify(
+              `⚠ Slack granted ${probeResult.missingGrantedScopes.length} fewer scope(s) than requested. ` +
+                `Missing: ${probeResult.missingGrantedScopes.slice(0, 6).join(", ")}` +
+                (probeResult.missingGrantedScopes.length > 6 ? ", …" : "") +
+                ". Run /sf-slack to see the full diff.",
+              "warning",
+            );
+          }
+          const status = await buildAuthStatus(ctx);
+          if (!isActiveSession(ctx, generation)) return;
+          ctx.ui.notify(status, "info");
+        } else {
+          updateStatus(ctx, "error", generation);
+          ctx.ui.notify(`Slack auth.test failed: ${(authResult as ApiErr).error}`, "error");
+        }
+      } catch (err) {
+        if (isAbortError(err)) return;
+        updateStatus(ctx, "error", generation);
+        ctx.ui.notify(`Slack detection failed: ${err}`, "error");
+      }
+      return;
+    }
+
+    if (sub === "settings") {
+      if (!ctx.hasUI) {
+        ctx.ui.notify("/sf-slack settings requires interactive mode.", "warning");
+        return;
+      }
+      await openSettingsPanel(
+        ctx,
+        { ...getPreferences() },
+        {
+          onChange: (next) => persistPreferences(next),
+        },
+      );
+      return;
+    }
+
+    if (sub === "sent") {
+      const entries = collectSendHistory(ctx);
+      if (entries.length === 0) {
+        ctx.ui.notify("No slack_send activity in this session branch yet.", "info");
+        return;
+      }
+      const lines = [
+        `sf-slack — recent sends (${entries.length} in this branch):`,
+        "",
+        ...entries.slice(-10).map(formatSendHistoryLine),
+      ];
+      ctx.ui.notify(lines.join("\n"), "info");
+      return;
+    }
+
+    if (sub === "help") {
+      ctx.ui.notify(renderSlackHelp(), "info");
+      return;
+    }
+
+    ctx.ui.notify(
+      `Unknown /sf-slack subcommand: ${sub}. Use status, refresh, settings, sent, help.`,
+      "warning",
+    );
+  }
+
+  function buildSlackPanelStatus(): string[] {
+    const kind = classifySlackStatus({
+      state: identity ? "connected" : "disconnected",
+      grantedScopeCount,
+      requestedScopeCount,
+      missingGrantedScopeCount,
+    });
+    const prefs = getPreferences();
+    return [
+      `${identity ? "✓" : "○"} Identity      ${identity ? `@${identity.userName} (${identity.teamId})` : "not detected"}`,
+      `${slackToolsRegistered ? "✓" : "○"} Tools         ${slackToolsRegistered ? "registered" : "not registered"}`,
+      `${kind === "ready" ? "✓" : kind === "scope-drift" ? "◐" : "○"} Status        ${slackStatusLabel(kind)}`,
+      `• Scopes        ${grantedScopeCount}/${requestedScopeCount || "?"} granted${missingGrantedScopeCount ? ` (${missingGrantedScopeCount} missing)` : ""}`,
+      `• Token         ${tokenType}`,
+      `• Preferences   fields=${prefs.defaultFields}, widget=${prefs.showWidget}`,
+    ];
+  }
+
+  function renderSlackHelp(): string {
+    return [
+      "sf-slack — Slack integration status",
+      "",
+      "Commands:",
+      `  /${COMMAND_NAME}            Open status & controls panel`,
+      `  /${COMMAND_NAME} status     Show current auth status`,
+      `  /${COMMAND_NAME} refresh    Re-detect identity, re-probe scopes, refresh cache`,
+      `  /${COMMAND_NAME} settings   Open preferences (search detail, widget, permalinks)`,
+      `  /${COMMAND_NAME} sent       List slack_send activity in this session branch`,
+      `  /${COMMAND_NAME} help       Show this help`,
+    ].join("\n");
+  }
+
   // ─── /sf-slack command ──────────────────────────────────────────────────────
   pi.registerCommand(COMMAND_NAME, {
     description: "Show Slack integration status and auth info",
     getArgumentCompletions: (prefix) => {
-      const subs = ["refresh", "settings", "sent", "help"];
       const lower = prefix.toLowerCase();
-      const items = subs
-        .filter((sub) => sub.startsWith(lower))
-        .map((sub) => ({ value: sub, label: sub }));
+      const items = SLACK_COMMAND_ACTIONS.filter((action) => action.value !== "close")
+        .filter((action) => action.value.startsWith(lower))
+        .map((action) => ({
+          value: action.value,
+          label: action.value,
+          description: action.description,
+        }));
       return items.length > 0 ? items : null;
     },
     handler: async (args, ctx) => {
       const sub = (args ?? "").trim().toLowerCase();
-
-      if (sub === "refresh") {
-        const generation = activeSessionGeneration;
-        ctx.ui.notify("Re-detecting Slack identity…", "info");
-        updateStatus(ctx, "loading", generation);
-
-        const auth = await getSlackToken(ctx);
-        if (!isActiveSession(ctx, generation)) return;
-
-        if (!auth.ok) {
-          updateStatus(ctx, "disconnected", generation);
-          ctx.ui.notify(
-            "No Slack token found. Run /login sf-slack, use macOS Keychain, or set SLACK_USER_TOKEN.",
-            "warning",
-          );
-          return;
-        }
-
-        // If the user logged in after session_start (no token at start → token now),
-        // register the Slack tools on the fly. pi.registerTool() triggers a prompt
-        // refresh, so the next turn will include slack* tools + guidelines.
-        ensureSlackToolsRegistered();
-        const token = auth.token;
-        tokenType = detectTokenType(token);
-
-        try {
-          const authResult = await slackApi<AuthTestResponse>("auth.test", token, {}, ctx.signal);
-          if (!isActiveSession(ctx, generation)) return;
-          if (authResult.ok) {
-            identity = {
-              userId: authResult.data?.user_id || "",
-              userName: authResult.data?.user || "",
-              teamId: authResult.data?.team_id || authResult.data?.enterprise_id || "",
-            };
-            setDetectedTeamId(authResult.data?.team_id);
-            const requestedScopes = oauthScopes()
-              .split(",")
-              .map((scope) => scope.trim())
-              .filter(Boolean);
-            requestedScopeCount = requestedScopes.length;
-            const [probeResult] = await Promise.all([
-              probeAndGateTools(pi, token, ctx.signal, requestedScopes),
-              prewarmUserCache(token, ctx.signal),
-              prewarmChannelCache(token, ctx.signal),
-            ]);
-            if (!isActiveSession(ctx, generation)) return;
-            missingGrantedScopeCount = probeResult.missingGrantedScopes.length;
-            grantedScopeCount = getGrantedScopes()?.size ?? 0;
-            updateStatus(ctx, "connected", generation);
-            if (probeResult.missingGrantedScopes.length > 0) {
-              // One-line warning on /sf-slack refresh directly answers the
-              // "am I reading the auth output wrong?" question the moment we
-              // detect drift. The full list is in `/sf-slack` (default action).
-              ctx.ui.notify(
-                `⚠ Slack granted ${probeResult.missingGrantedScopes.length} fewer scope(s) than requested. ` +
-                  `Missing: ${probeResult.missingGrantedScopes.slice(0, 6).join(", ")}` +
-                  (probeResult.missingGrantedScopes.length > 6 ? ", …" : "") +
-                  ". Run /sf-slack to see the full diff.",
-                "warning",
-              );
-            }
-            const status = await buildAuthStatus(ctx);
-            if (!isActiveSession(ctx, generation)) return;
-            ctx.ui.notify(status, "info");
-          } else {
-            updateStatus(ctx, "error", generation);
-            ctx.ui.notify(`Slack auth.test failed: ${(authResult as ApiErr).error}`, "error");
-          }
-        } catch (err) {
-          if (isAbortError(err)) return;
-          updateStatus(ctx, "error", generation);
-          ctx.ui.notify(`Slack detection failed: ${err}`, "error");
-        }
+      if (sub === "" && ctx.hasUI) {
+        await handleSlackPanel(ctx);
         return;
       }
-
-      if (sub === "settings") {
-        if (!ctx.hasUI) {
-          ctx.ui.notify("/sf-slack settings requires interactive mode.", "warning");
-          return;
-        }
-        await openSettingsPanel(
-          ctx,
-          { ...getPreferences() },
-          {
-            onChange: (next) => persistPreferences(next),
-          },
-        );
-        return;
-      }
-
-      if (sub === "sent") {
-        const entries = collectSendHistory(ctx);
-        if (entries.length === 0) {
-          ctx.ui.notify("No slack_send activity in this session branch yet.", "info");
-          return;
-        }
-        const lines = [
-          `sf-slack — recent sends (${entries.length} in this branch):`,
-          "",
-          ...entries.slice(-10).map(formatSendHistoryLine),
-        ];
-        ctx.ui.notify(lines.join("\n"), "info");
-        return;
-      }
-
-      if (sub === "help") {
-        ctx.ui.notify(
-          [
-            "sf-slack — Slack integration status",
-            "",
-            "Commands:",
-            `  /${COMMAND_NAME}            Show current auth status`,
-            `  /${COMMAND_NAME} refresh    Re-detect identity, re-probe scopes, refresh cache`,
-            `  /${COMMAND_NAME} settings   Open preferences (search detail, widget, permalinks)`,
-            `  /${COMMAND_NAME} sent       List slack_send activity in this session branch`,
-            `  /${COMMAND_NAME} help       Show this help`,
-          ].join("\n"),
-          "info",
-        );
-        return;
-      }
-
-      // Default: show auth status
-      ctx.ui.notify(await buildAuthStatus(ctx), "info");
+      await handleSlackCommand(sub === "" ? "status" : sub, ctx);
     },
   });
   // Slack tools are NOT registered at extension load. Registration is gated on

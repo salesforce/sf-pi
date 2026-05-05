@@ -39,6 +39,7 @@
 
 import type {
   ExtensionAPI,
+  ExtensionCommandContext,
   ExtensionContext,
   ToolResultEvent,
 } from "@mariozechner/pi-coding-agent";
@@ -54,6 +55,7 @@ import {
   type ToolResultContentPart,
 } from "./lib/feedback.ts";
 import { probeDoctor, renderDoctorReport } from "./lib/doctor.ts";
+import { type CommandPanelAction, openCommandPanel } from "../../lib/common/command-panel.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 
 // -------------------------------------------------------------------------------------------------
@@ -77,28 +79,131 @@ export default function sfAgentScriptAssistExtension(pi: ExtensionAPI) {
 function registerCommand(pi: ExtensionAPI, state: AgentScriptAssistState): void {
   pi.registerCommand("sf-agentscript-assist", {
     description: "Agent Script in-process diagnostics and quick fixes",
+    getArgumentCompletions: (prefix) => {
+      const lower = prefix.toLowerCase();
+      const items = AGENTSCRIPT_ACTIONS.filter((action) => action.value !== "close")
+        .filter((action) => action.value.startsWith(lower))
+        .map((action) => ({
+          value: action.value,
+          label: action.value,
+          description: action.description,
+        }));
+      return items.length > 0 ? items : null;
+    },
     handler: async (args, ctx) => {
       const tokens = args.trim().split(/\s+/).filter(Boolean);
       const subcommand = tokens[0] ?? "";
 
-      if (subcommand === "" || subcommand === "doctor") {
-        const status = await probeDoctor(ctx.cwd);
-        if (ctx.hasUI) {
-          ctx.ui.notify(renderDoctorReport(status), status.sdkLoaded ? "info" : "warning");
-        }
+      if (subcommand === "" && ctx.hasUI) {
+        await handleAgentScriptPanel(ctx, state);
         return;
       }
 
-      if (subcommand === "check") {
-        await handleCheckSubcommand(tokens.slice(1).join(" "), ctx, state);
-        return;
-      }
-
-      if (ctx.hasUI) {
-        ctx.ui.notify("Usage: /sf-agentscript-assist [doctor | check <file>]", "warning");
-      }
+      await handleAgentScriptCommand(
+        ctx,
+        state,
+        subcommand === "" ? "doctor" : subcommand,
+        tokens.slice(1),
+      );
     },
   });
+}
+
+type AgentScriptAction = "doctor" | "check" | "help" | "close";
+
+const AGENTSCRIPT_ACTIONS: CommandPanelAction<AgentScriptAction>[] = [
+  {
+    value: "doctor",
+    label: "Run doctor",
+    description: "Show SDK load status, vendored bundle path, and current Agent Script readiness.",
+    group: "Diagnostics",
+  },
+  {
+    value: "check",
+    label: "Check a file",
+    description: "Prompt for a .agent file path and run one manual parse/compile diagnostic pass.",
+    group: "Diagnostics",
+  },
+  {
+    value: "help",
+    label: "Show help",
+    description: "Print command usage and explain when to use doctor versus check.",
+    group: "Reference",
+  },
+  {
+    value: "close",
+    label: "Close",
+    description: "Dismiss this panel.",
+    group: "Reference",
+  },
+];
+
+async function handleAgentScriptPanel(
+  ctx: ExtensionCommandContext,
+  state: AgentScriptAssistState,
+): Promise<void> {
+  for (;;) {
+    const doctor = await probeDoctor(ctx.cwd);
+    const action = await openCommandPanel(ctx, {
+      title: "🧭 SF Agent Script Assist — status & controls",
+      statusLines: [
+        `${doctor.sdkLoaded ? "✓" : "✗"} SDK           ${doctor.sdkLoaded ? "loaded" : "unavailable"}`,
+        `• Vendored path ${doctor.vendoredSdkPath}`,
+        `• Session files ${state.lastStatusByFile.size} tracked file(s)`,
+      ],
+      actions: AGENTSCRIPT_ACTIONS,
+      closeValue: "close",
+    });
+
+    if (!action || action === "close") return;
+    await handleAgentScriptCommand(ctx, state, action, []);
+  }
+}
+
+async function handleAgentScriptCommand(
+  ctx: ExtensionCommandContext,
+  state: AgentScriptAssistState,
+  subcommand: string,
+  args: string[],
+): Promise<void> {
+  if (subcommand === "doctor") {
+    const status = await probeDoctor(ctx.cwd);
+    if (ctx.hasUI) {
+      ctx.ui.notify(renderDoctorReport(status), status.sdkLoaded ? "info" : "warning");
+    }
+    return;
+  }
+
+  if (subcommand === "check") {
+    let inputPath = args.join(" ").trim();
+    if (!inputPath && ctx.hasUI) {
+      inputPath =
+        (await ctx.ui.input("Agent Script file to check", "path/to/file.agent"))?.trim() ?? "";
+    }
+    await handleCheckSubcommand(inputPath, ctx, state);
+    return;
+  }
+
+  if (subcommand === "help") {
+    ctx.ui.notify(renderAgentScriptHelp(), "info");
+    return;
+  }
+
+  if (ctx.hasUI) {
+    ctx.ui.notify("Usage: /sf-agentscript-assist [doctor | check <file> | help]", "warning");
+  }
+}
+
+function renderAgentScriptHelp(): string {
+  return [
+    "sf-agentscript-assist — in-process .agent diagnostics",
+    "",
+    "Commands:",
+    "  /sf-agentscript-assist              Open status & controls panel",
+    "  /sf-agentscript-assist doctor       Show SDK load status and vendored path",
+    "  /sf-agentscript-assist check <file> Run one manual diagnostic pass",
+    "  /sf-agentscript-assist help         Show this help",
+  ].join("\n");
 }
 
 /**
