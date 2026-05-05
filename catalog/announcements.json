@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.41.0-2026-05-05",
-  "latestVersion": "0.41.0",
+  "revision": "release-0.41.1-2026-05-05",
+  "latestVersion": "0.41.1",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.41.0",
+      "id": "release-0.41.1",
       "kind": "update",
-      "title": "sf-pi v0.41.0 — sf-pi: add runtime and gateway doctor preflights",
+      "title": "sf-pi v0.41.1 — sf-pi: include npm release-age bypass in runtime doctor",
       "publishedAt": "2026-05-05T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.41.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.41.1",
       "severity": "info",
-      "body": "sf-pi: add runtime and gateway doctor preflights — sf-llm-gateway-internal: handle bedrock gateway root routing"
+      "body": "sf-pi: include npm release-age bypass in runtime doctor"
     },
     {
       "id": "pi-0.72-required",
