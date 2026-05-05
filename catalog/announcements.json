@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.40.0-2026-05-05",
-  "latestVersion": "0.40.0",
+  "revision": "release-0.41.0-2026-05-05",
+  "latestVersion": "0.41.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.40.0",
+      "id": "release-0.41.0",
       "kind": "update",
-      "title": "sf-pi v0.40.0 — add aggregate metrics and npm publishing",
+      "title": "sf-pi v0.41.0 — sf-pi: add runtime and gateway doctor preflights",
       "publishedAt": "2026-05-05T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.40.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.41.0",
       "severity": "info",
-      "body": "add aggregate metrics and npm publishing"
+      "body": "sf-pi: add runtime and gateway doctor preflights — sf-llm-gateway-internal: handle bedrock gateway root routing"
     },
     {
       "id": "pi-0.72-required",
