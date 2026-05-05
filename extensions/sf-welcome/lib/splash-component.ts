@@ -271,6 +271,32 @@ function formatGlyphInfoRow(
   return formatInfoRow(glyph(iconKey, mode), label, value, iconColor);
 }
 
+function formatSlackStatusValue(data: SplashData, mode: GlyphMode): string {
+  const status = data.slackStatus;
+  if (data.slackLoading || !status || status.kind === "loading") {
+    return MUTED(`${glyph("hourglass", mode)} Checking`);
+  }
+
+  switch (status.kind) {
+    case "ready":
+      return `${SF_GREEN("✓")} ${SF_GREEN("Ready")}`;
+    case "scope-drift":
+      return `${SF_ORANGE("!")} ${SF_ORANGE("Limited")}`;
+    case "scopes-unknown":
+      return `${SF_ORANGE("?")} ${SF_ORANGE("Scopes unknown")}`;
+    case "auth-error":
+      return `${SF_RED("✗")} ${SF_RED("Auth error")}`;
+    case "not-configured":
+      return `${SF_ORANGE("○")} ${SF_ORANGE("Not configured")}`;
+    case "hidden":
+      return data.slackConnected
+        ? `${SF_ORANGE("?")} ${SF_ORANGE("Scopes unknown")}`
+        : `${SF_ORANGE("○")} ${SF_ORANGE("Not configured")}`;
+    default:
+      return `${SF_ORANGE("?")} ${SF_ORANGE("Unknown")}`;
+  }
+}
+
 function formatGatewayStatusValue(data: SplashData, mode: GlyphMode): string {
   const status = data.gatewayStatus;
   if (data.gatewayLoading || !status || status.kind === "checking") {
@@ -427,20 +453,15 @@ function buildLeftColumn(
     : `${SF_GREEN(`${extCount}`)}${MUTED(`/${extTotal} active`)}`;
   lines.push(formatGlyphInfoRow("extensions", mode, "sf-pi Extensions", extensionValue));
 
-  // Slack status
-  const slackValue = data.slackLoading
-    ? MUTED(`${glyph("hourglass", mode)} Checking`)
-    : data.slackConnected
-      ? `${SF_GREEN("✓")} ${SF_GREEN("Connected")}`
-      : `${SF_RED("✗")} ${SF_RED("Not connected")}`;
-  lines.push(formatGlyphInfoRow("slack", mode, "Slack", slackValue));
+  // Slack status is optional: hide it unless sf-slack is enabled and configured
+  // or has published a live status. This keeps public/external installs quiet.
+  if (data.slackVisible) {
+    lines.push(formatGlyphInfoRow("slack", mode, "Slack", formatSlackStatusValue(data, mode)));
+  }
 
-  // LLM Gateway status. Presence is still keyed off the active provider/model,
-  // but the value comes from the shared auth-gated probe state, not that name.
-  const isGateway =
-    data.providerName.toLowerCase().includes("gateway") ||
-    data.modelName.toLowerCase().includes("gateway");
-  if (isGateway) {
+  // LLM Gateway status is optional and only appears when the bundled gateway
+  // extension is enabled. The value comes from the shared auth-gated probe state.
+  if (data.gatewayVisible) {
     lines.push(
       formatGlyphInfoRow("gateway", mode, "LLM Gateway", formatGatewayStatusValue(data, mode)),
     );

@@ -546,8 +546,8 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 
 **[SF Slack](./extensions/sf-slack/#troubleshooting)**
 
-- Footer shows `Slack: not configured` and no tools are available
-- Footer shows `⚠ N requested scopes not granted`
+- No Slack footer pill appears and no tools are available
+- Footer shows `⚠ Limited` or missing granted scopes
 - `slack_send` returns a `missing_scope` error mentioning four write scopes
 - A Slack user or channel reference resolves to the wrong target
 - `slack_canvas read` says "canvas not found"

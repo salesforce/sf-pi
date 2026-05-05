@@ -22,6 +22,8 @@ code lives in `extensions/<id>/lib/`.
 | `display/settings.ts`                       | `sf-pi-manager`                                                             | Read/write the shared `sfPi.display.profile` setting (project > global)          |
 | `display/diagnostics.ts`                    | `sf-lsp`, `sf-agentscript-assist`                                           | `details.sfPiDiagnostics` contract for LSP-style tool results                    |
 | `monthly-usage/store.ts`                    | `sf-llm-gateway-internal` (producer); `sf-welcome`, `sf-devbar` (consumers) | Decoupled monthly-usage state store with refresher registration                  |
+| `slack-status/store.ts`                     | `sf-slack` (producer); `sf-welcome`, `sf-devbar` (consumers)                | Decoupled Slack auth/readiness status store                                      |
+| `sf-pi-extension-state.ts`                  | `sf-welcome`, `sf-devbar`, diagnostics                                      | Shared bundled-extension enablement checks from Pi package filters               |
 | `catalog-state/announcements-manifest.ts`   | `sf-welcome`, `sf-pi-manager`                                               | Load + validate `catalog/announcements.json`                                     |
 | `catalog-state/announcements-state.ts`      | `sf-welcome`, `sf-pi-manager`                                               | Per-user announcements dismissal/ack state file                                  |
 | `catalog-state/recommendations-manifest.ts` | `sf-welcome`, `sf-pi-manager`                                               | Load + validate `catalog/recommendations.json` and resolve bundles               |

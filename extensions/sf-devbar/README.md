@@ -9,9 +9,10 @@ A bespoke Salesforce developer status bar that renders two persistent UI surface
   a permanent right-aligned **Salesforce LSP segment** (`LSP[Apex: ● | LWC: ● | AgentScript: ●]`)
   fed by sf-lsp via the shared `lib/common/sf-lsp-health` registry, and (when non-default)
   an `img:Nc` pill reflecting `terminal.imageWidthCells`
-- **Bottom bar** (custom footer): deterministic left order of LLM gateway
+- **Bottom bar** (custom footer): deterministic left order of active LLM gateway
   monthly budget, SF Pi package count, then `SFDX Project → <authenticated org> [type]`
-  only inside a Salesforce DX project; Slack remains right-aligned.
+  only inside a Salesforce DX project; Slack remains right-aligned when `sf-slack`
+  is enabled and ready/warning-worthy.
 
 Every data source is async and non-blocking. The bars render immediately with
 cached/partial data and fill in as results arrive.
@@ -39,7 +40,7 @@ Extension loads
 | Model name + git branch     | SF-first: org context, gateway badge, thinking level                           |
 | No org awareness            | Shows `SFDX Project →` authenticated org and type when inside an SF DX project |
 | No context window indicator | Visual progress bar with color-coded usage                                     |
-| No package/cost grouping    | LLM gateway budget, then SF Pi package count, then org on the left             |
+| No package/cost grouping    | Active LLM gateway budget, then SF Pi package count, then org on the left      |
 | No git change counts        | Branch + added/modified/deleted counts                                         |
 | No SF LLM Gateway detection | Gold badge when using the internal gateway                                     |
 | No thinking level display   | Rainbow gradient thinking badge                                                |

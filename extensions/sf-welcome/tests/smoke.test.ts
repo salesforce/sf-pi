@@ -65,8 +65,8 @@ describe("sf-welcome", () => {
 
     const plain = stripAnsi(new SfWelcomeOverlay(data).render(140).join("\n"));
 
-    expect(plain).toContain("Slack");
-    expect(plain).toContain("Checking");
+    expect(plain).not.toContain("Slack");
+    expect(plain).not.toContain("LLM Gateway");
     expect(plain).toContain("sf-pi Extensions");
     expect(plain).toContain("Loading");
     expect(plain).not.toContain("Not connected");
@@ -176,6 +176,36 @@ describe("sf-welcome", () => {
     expect(stripAnsi(header.render(100).join("\n"))).toContain("auto-dismiss in 12s");
   });
 
+  it("renders Slack only when optional status is visible", async () => {
+    const { SfWelcomeOverlay } = await import("../lib/splash-component.ts");
+    const baseData = {
+      modelName: "Claude Sonnet 4",
+      providerName: "anthropic",
+      loadedCounts: { extensions: 3, skills: 1, promptTemplates: 0 },
+      recentSessions: [],
+      extensionHealth: [],
+      slackConnected: false,
+      monthlyCost: 0,
+      monthlyBudget: 3000,
+    };
+
+    const hidden = stripAnsi(new SfWelcomeOverlay(baseData).render(100).join("\n"));
+    expect(hidden).not.toContain("Slack");
+
+    const drift = stripAnsi(
+      new SfWelcomeOverlay({
+        ...baseData,
+        slackVisible: true,
+        slackStatus: { kind: "scope-drift", grantedScopes: 0, requestedScopes: 26 },
+      })
+        .render(100)
+        .join("\n"),
+    );
+    expect(drift).toContain("Slack");
+    expect(drift).toContain("Limited");
+    expect(drift).not.toContain("✓ Connected");
+  });
+
   it("renders gateway status from probe state instead of provider name", async () => {
     const { SfWelcomeOverlay } = await import("../lib/splash-component.ts");
     const baseData = {
@@ -185,6 +215,7 @@ describe("sf-welcome", () => {
       recentSessions: [],
       extensionHealth: [],
       slackConnected: false,
+      gatewayVisible: true,
       monthlyCost: 0,
       monthlyBudget: 3000,
     };
@@ -226,6 +257,7 @@ describe("sf-welcome", () => {
       recentSessions: [],
       extensionHealth: [],
       slackConnected: false,
+      gatewayVisible: true,
       monthlyCost: 0,
       monthlyBudget: 3000,
       sfCli: {

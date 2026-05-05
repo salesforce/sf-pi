@@ -18,8 +18,9 @@ import {
 } from "../../../lib/common/pi-paths.ts";
 import { discoverExtensionHealth } from "./extension-health.ts";
 import { estimateMonthlyCost, getRecentSessions } from "./session-data.ts";
-import { detectTokenSource } from "../../sf-slack/lib/auth.ts";
 import { getMonthlyUsageState } from "../../../lib/common/monthly-usage/store.ts";
+import { getSlackStatus } from "../../../lib/common/slack-status/store.ts";
+import { isSfPiExtensionEnabled } from "../../../lib/common/sf-pi-extension-state.ts";
 import { buildWhatsNewPayload } from "./whats-new.ts";
 import { buildAnnouncementsSync, refreshAnnouncements } from "./announcements.ts";
 import { collectRecommendationsStatus } from "./recommendations-status.ts";
@@ -205,13 +206,29 @@ export function discoverLoadedCounts(cwd: string): LoadedCounts {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Slack connection status
+// Optional integration visibility/status
 // ═══════════════════════════════════════════════════════════════════════════
 
-export function checkSlackConnection(): boolean {
-  // Mirror sf-slack's real token resolution so the welcome screen matches the
-  // extension's actual auth behavior instead of a partial best-effort guess.
-  return detectTokenSource() !== "none";
+export function checkSlackConnection(cwd?: string): boolean {
+  if (cwd && !isSfPiExtensionEnabled(cwd, "sf-slack")) return false;
+  return getSlackStatus().kind === "ready";
+}
+
+function shouldShowSlackStatus(cwd: string): boolean {
+  if (!isSfPiExtensionEnabled(cwd, "sf-slack")) return false;
+  const status = getSlackStatus();
+  return status.kind !== "hidden" && status.kind !== "not-configured";
+}
+
+function shouldShowGatewayStatus(cwd: string, modelName: string, providerName: string): boolean {
+  if (!isSfPiExtensionEnabled(cwd, "sf-llm-gateway-internal")) return false;
+  const activeGateway =
+    providerName.toLowerCase().includes("gateway") || modelName.toLowerCase().includes("gateway");
+  const gatewayState = getMonthlyUsageState();
+  const status = gatewayState.connectionStatus;
+  if (activeGateway) return true;
+  if (gatewayState.monthlyUsage) return true;
+  return !!status && status.kind !== "checking" && status.kind !== "not-configured";
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -259,6 +276,7 @@ export function collectInitialSplashData(
   const gatewayState = getMonthlyUsageState();
   const gatewayUsage = gatewayState.monthlyUsage;
   const gatewayBudget = gatewayUsage?.maxBudget;
+  const slackStatus = getSlackStatus();
 
   return {
     modelName,
@@ -267,6 +285,8 @@ export function collectInitialSplashData(
     recentSessions: [],
     extensionHealth: [],
     slackConnected: false,
+    slackVisible: false,
+    slackStatus,
     monthlyCost: gatewayUsage?.spend ?? 0,
     monthlyBudget: gatewayUsage
       ? typeof gatewayBudget === "number" && gatewayBudget > 0
@@ -274,6 +294,7 @@ export function collectInitialSplashData(
         : null
       : monthlyBudgetFallback,
     monthlyUsageSource: gatewayUsage ? "gateway" : "sessions",
+    gatewayVisible: false,
     gatewayStatus: gatewayState.connectionStatus ?? null,
     gatewayLoading: gatewayState.connectionStatus?.kind === "checking",
     loading: true,
@@ -297,6 +318,9 @@ export function collectSplashData(
   // consumer needs the derived list anymore now that Tips is gone.
   const usage = resolveMonthlyUsage(monthlyBudgetFallback);
   const gatewayState = getMonthlyUsageState();
+  const slackStatus = getSlackStatus();
+  const slackVisible = shouldShowSlackStatus(cwd);
+  const gatewayVisible = shouldShowGatewayStatus(cwd, modelName, providerName);
 
   // Resolve the What's New panel eagerly so the splash can include it on
   // the very first render. Returns undefined on first-ever launch or when
@@ -336,12 +360,15 @@ export function collectSplashData(
     loadedCounts: discoverLoadedCounts(cwd),
     recentSessions: getRecentSessions(3),
     extensionHealth,
-    slackConnected: checkSlackConnection(),
+    slackConnected: checkSlackConnection(cwd),
+    slackVisible,
+    slackStatus,
     monthlyCost: usage.monthlyCost,
     monthlyBudget: usage.monthlyBudget,
     monthlyUsageSource: usage.monthlyUsageSource,
-    gatewayStatus: gatewayState.connectionStatus ?? null,
-    gatewayLoading: gatewayState.connectionStatus?.kind === "checking",
+    gatewayVisible,
+    gatewayStatus: gatewayVisible ? (gatewayState.connectionStatus ?? null) : null,
+    gatewayLoading: gatewayVisible && gatewayState.connectionStatus?.kind === "checking",
     recommendations: collectRecommendationsStatus(cwd),
     skillSources: summarizeAvailableSkillSources() ?? undefined,
     doctor,

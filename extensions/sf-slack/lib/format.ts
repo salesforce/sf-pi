@@ -288,7 +288,7 @@ export async function buildAuthStatus(ctx: ExtensionContext): Promise<string> {
 
   lines.push(`Auth method: ${sourceLabel[effectiveSource]}`);
   lines.push(`Token: ${maskToken(auth.token)}  [${tokenTypeLabel}]`);
-  lines.push("Status: ✅ Active — all Slack tools are ready.");
+  lines.push("Status: ✅ Authenticated — scope readiness is shown below.");
 
   // Granted vs requested scope diff (P4). This is the big robustness win:
   // previously we rendered `oauthScopes()` — i.e. what we asked for at
@@ -314,7 +314,8 @@ export async function buildAuthStatus(ctx: ExtensionContext): Promise<string> {
       lines.push(`⚠ Requested but not granted (${missingGranted.length}):`);
       lines.push(`  ${missingGranted.join(", ")}`);
       lines.push(
-        "  → Some tools or actions may be gated. Re-run /login sf-slack to re-consent with these scopes.",
+        "  → Slack access is limited to the scopes your OAuth app/workspace granted. " +
+          "Some tools or actions may be gated; re-auth only helps if those scopes are approved for your app.",
       );
     }
   } else {

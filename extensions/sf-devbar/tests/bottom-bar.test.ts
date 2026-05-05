@@ -149,16 +149,16 @@ describe("renderBottomBarParts", () => {
   });
 
   it("includes Slack status on the right", () => {
-    // sf-slack emits a pre-themed pill (icon + Slack + ✓ Connected + handle
+    // sf-slack emits a pre-themed pill (icon + Slack + readiness label + handle
     // + bracketed tokenType + scopes). The bottom bar is a passthrough for
     // allowed statuses, so the test verifies the string made it through.
-    const pill = "💬 Slack ✓ Connected @handle [user] 14/14 scopes";
+    const pill = "💬 Slack ✓ Ready @handle [user] 14/14 scopes";
     const extStatuses = new Map([["sf-slack-status", pill]]);
     const { right } = renderBottomBarParts(
       makeState({ extensionStatuses: extStatuses }),
       stubTheme,
     );
-    expect(right).toContain("✓ Connected");
+    expect(right).toContain("✓ Ready");
     expect(right).toContain("@handle");
     expect(right).toContain("[user]");
     expect(right).toContain("14/14 scopes");

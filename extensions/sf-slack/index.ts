@@ -25,7 +25,7 @@
  *   Event/Trigger          | Condition            | Result
  *   -----------------------|----------------------|--------------------------------------------
  *   session_start          | token available      | Register tools, detect identity, probe scopes, cache users, set footer
- *   session_start          | no token             | Skip tool registration entirely, set footer "Slack: not configured"
+ *   session_start          | no token             | Skip tool registration entirely, keep footer hidden
  *   session_shutdown       | —                    | Clear footer status
  *   before_agent_start     | identity + slack tools active | Inject workspace context into system prompt
  *   before_agent_start     | no identity or no slack tools | Skip injection
@@ -82,6 +82,8 @@ import {
 } from "./lib/preferences.ts";
 import { openSettingsPanel } from "./lib/settings-panel.ts";
 import { renderStatsLines, resetStats, setStatsListener } from "./lib/stats.ts";
+import { classifySlackStatus, slackStatusLabel } from "./lib/status.ts";
+import { clearSlackStatus, setSlackStatus } from "../../lib/common/slack-status/store.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 
 const RESEARCH_WIDGET_KEY = "sf-slack-research";
@@ -251,13 +253,28 @@ export default function sfSlack(pi: ExtensionAPI) {
     // Resolve glyph mode per render so a settings/terminal switch takes
     // effect without a restart — mirrors sf-llm-gateway-internal's status line.
     const icon = glyph("slack", resolveGlyphMode({ cwd: ctx.cwd }));
+    const kind = classifySlackStatus({
+      state,
+      grantedScopeCount,
+      requestedScopeCount,
+      missingGrantedScopeCount,
+    });
+    setSlackStatus({
+      kind,
+      userName: identity?.userName,
+      tokenType,
+      grantedScopes: requestedScopeCount > 0 ? grantedScopeCount : undefined,
+      requestedScopes: requestedScopeCount > 0 ? requestedScopeCount : undefined,
+      missingScopes: missingGrantedScopeCount > 0 ? missingGrantedScopeCount : undefined,
+    });
+
     switch (state) {
       case "loading":
         ctx.ui.setStatus(WIDGET_KEY, t.fg("dim", `${icon} Slack: connecting…`));
         break;
       case "connected": {
         // Pill format (surfaced on sf-devbar's right side):
-        //   💬 Slack ✓ Connected @handle [user] 16/23 scopes
+        //   💬 Slack ✓ Ready @handle [user] 16/23 scopes
         //       └dim    └─success      └accent └─token-type    └─scope-count
         //                                    color depends on             color depends on
         //                                    token risk:                  granted-vs-requested:
@@ -265,7 +282,7 @@ export default function sfSlack(pi: ExtensionAPI) {
         //                                      warning → xoxb- bot          warning  → drift (missing scopes)
         //                                      error   → xoxa-/xapp-/?     dim      → count unknown yet
         //
-        // The explicit green `✓ Connected` label exists because the chat
+        // The explicit green `✓ Ready` label exists because the chat
         // icon alone isn't obvious — users asked for an unambiguous status
         // word, and in ASCII-fallback mode the icon degrades to `>` which
         // is even less clear on its own.
@@ -287,17 +304,18 @@ export default function sfSlack(pi: ExtensionAPI) {
               : "";
         const scopeSegment = scopeText ? ` ${t.fg(scopeColor, scopeText)}` : "";
         const handleSegment = handle ? ` ${t.fg("accent", handle)}` : "";
+        const labelColor: "success" | "warning" | "dim" =
+          kind === "ready" ? "success" : kind === "scope-drift" ? "warning" : "dim";
         const pill =
-          `${icon} ${t.fg("dim", "Slack")} ${t.fg("success", "✓ Connected")}` +
+          `${icon} ${t.fg("dim", "Slack")} ${t.fg(labelColor, slackStatusLabel(kind))}` +
           `${handleSegment} ${tokenBracket}${scopeSegment}`;
         ctx.ui.setStatus(WIDGET_KEY, pill);
         break;
       }
       case "disconnected":
-        ctx.ui.setStatus(
-          WIDGET_KEY,
-          `${icon} ${t.fg("dim", "Slack")} ${t.fg("warning", "○ Not configured")}`,
-        );
+        // Optional integration: keep the devbar quiet until Slack is configured.
+        // /sf-slack remains the explicit place to see setup guidance.
+        ctx.ui.setStatus(WIDGET_KEY, undefined);
         break;
       case "error":
         ctx.ui.setStatus(
@@ -388,6 +406,7 @@ export default function sfSlack(pi: ExtensionAPI) {
     if (!wasActive) return;
 
     identity = null;
+    clearSlackStatus();
     setDetectedTeamId("");
     missingGrantedScopeCount = 0;
     grantedScopeCount = 0;

@@ -5,7 +5,7 @@ import { release, arch, platform } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { SF_PI_REGISTRY } from "../../../catalog/registry.ts";
-import { getDisabledExtensionsForCwd } from "../../sf-pi-manager/lib/package-state.ts";
+import { getDisabledExtensionFilesForCwd } from "../../../lib/common/sf-pi-extension-state.ts";
 import { sanitizeLines, sanitizeRemoteUrl, sanitizeText } from "./sanitize.ts";
 import type { CommandResult, Diagnostics, GithubStatus, ToolAvailability } from "./types.ts";
 
@@ -20,7 +20,7 @@ const __dirname = path.dirname(__filename);
 const PACKAGE_ROOT = path.resolve(__dirname, "../../..");
 
 export async function collectDiagnostics(exec: ExecFn, cwd: string): Promise<Diagnostics> {
-  const disabledFiles = getDisabledExtensionsForCwd(cwd);
+  const disabledFiles = getDisabledExtensionFilesForCwd(cwd);
   const enabledExtensions = SF_PI_REGISTRY.filter((ext) => !disabledFiles.has(ext.file)).map(
     (ext) => ext.id,
   );

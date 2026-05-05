@@ -76,6 +76,8 @@ import {
   refreshMonthlyUsage,
   subscribeMonthlyUsageState,
 } from "../../lib/common/monthly-usage/store.ts";
+import { subscribeSlackStatus } from "../../lib/common/slack-status/store.ts";
+import { isSfPiExtensionEnabled } from "../../lib/common/sf-pi-extension-state.ts";
 import { FONT_FAMILY_NAME, isFontFamilyInstalled, runFontInstall } from "./lib/font-installer.ts";
 import { readWelcomeState, writeWelcomeState } from "./lib/state-store.ts";
 import { resolveGlyphMode } from "../../lib/common/glyph-policy.ts";
@@ -119,6 +121,7 @@ export default function sfWelcome(pi: ExtensionAPI) {
    * cleared on dismiss / session_shutdown so we don't leak listeners across
    * reloads. */
   let unsubscribeUsageStore: (() => void) | null = null;
+  let unsubscribeSlackStore: (() => void) | null = null;
   let shouldDismissEarly = false;
   let isStreaming = false;
   let startupRunId = 0;
@@ -301,6 +304,8 @@ export default function sfWelcome(pi: ExtensionAPI) {
     // is dismissed there is no component to repaint, so drop the listener.
     unsubscribeUsageStore?.();
     unsubscribeUsageStore = null;
+    unsubscribeSlackStore?.();
+    unsubscribeSlackStore = null;
   }
 
   // --- Session start: show splash screen ---
@@ -434,9 +439,34 @@ export default function sfWelcome(pi: ExtensionAPI) {
       data.monthlyCost = usage.monthlyCost;
       data.monthlyBudget = usage.monthlyBudget;
       data.monthlyUsageSource = usage.monthlyUsageSource;
-      data.gatewayStatus = gatewayState.connectionStatus ?? null;
-      data.gatewayLoading = gatewayState.connectionStatus?.kind === "checking";
+      const activeGateway =
+        data.providerName.toLowerCase().includes("gateway") ||
+        data.modelName.toLowerCase().includes("gateway");
+      const gatewayStatus = gatewayState.connectionStatus;
+      data.gatewayVisible =
+        isSfPiExtensionEnabled(ctx.cwd, "sf-llm-gateway-internal") &&
+        (activeGateway ||
+          !!gatewayState.monthlyUsage ||
+          (!!gatewayStatus &&
+            gatewayStatus.kind !== "checking" &&
+            gatewayStatus.kind !== "not-configured"));
+      data.gatewayStatus = data.gatewayVisible ? (gatewayStatus ?? null) : null;
+      data.gatewayLoading =
+        data.gatewayVisible && gatewayState.connectionStatus?.kind === "checking";
 
+      refreshMountedSplash(ctx, generation);
+    });
+
+    unsubscribeSlackStore?.();
+    unsubscribeSlackStore = subscribeSlackStatus((status) => {
+      if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
+      data.slackVisible =
+        isSfPiExtensionEnabled(ctx.cwd, "sf-slack") &&
+        status.kind !== "hidden" &&
+        status.kind !== "not-configured";
+      data.slackStatus = status;
+      data.slackConnected = status.kind === "ready";
+      data.slackLoading = status.kind === "loading";
       refreshMountedSplash(ctx, generation);
     });
 
@@ -498,6 +528,8 @@ export default function sfWelcome(pi: ExtensionAPI) {
     resetHeaderAnimation();
     unsubscribeUsageStore?.();
     unsubscribeUsageStore = null;
+    unsubscribeSlackStore?.();
+    unsubscribeSlackStore = null;
     endActiveSession(ctx);
   });
 
@@ -533,7 +565,10 @@ export default function sfWelcome(pi: ExtensionAPI) {
           ? ` (${((data.monthlyCost / data.monthlyBudget) * 100).toFixed(1)}%)`
           : "";
       const sourceSuffix = data.monthlyUsageSource === "sessions" ? " (local estimate)" : "";
-      const gatewayStatus = data.gatewayStatus?.kind ?? "not checked";
+      const gatewayStatus = data.gatewayVisible
+        ? (data.gatewayStatus?.kind ?? "not checked")
+        : "hidden";
+      const slackStatus = data.slackVisible ? (data.slackStatus?.kind ?? "not checked") : "hidden";
 
       const lines = [
         "sf-pi Welcome Summary",
@@ -543,7 +578,7 @@ export default function sfWelcome(pi: ExtensionAPI) {
         "",
         `Monthly cost: $${data.monthlyCost.toFixed(2)} / ${budgetLabel}${costPercent}${sourceSuffix}`,
         `Gateway: ${gatewayStatus}`,
-        `Slack: ${data.slackConnected ? "✓ Connected" : "✗ Not connected"}`,
+        `Slack: ${slackStatus}`,
         "",
         "sf-pi Extensions:",
         ...healthLines,

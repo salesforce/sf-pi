@@ -56,6 +56,7 @@ import { formatImageWidthPill, readTerminalDevbarSettings } from "./lib/settings
 import { buildExecFn } from "../../lib/common/exec-adapter.ts";
 import { basename } from "node:path";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
+import { filterEnabledExtensionStatuses } from "../../lib/common/sf-pi-extension-state.ts";
 
 // -------------------------------------------------------------------------------------------------
 // Constants
@@ -380,7 +381,7 @@ export default function sfDevBar(pi: ExtensionAPI) {
 
           const state = buildBottomBarState();
           const statuses = footerData.getExtensionStatuses();
-          state.extensionStatuses = statuses;
+          state.extensionStatuses = filterEnabledExtensionStatuses(ctx.cwd, statuses);
 
           const { left, right } = renderBottomBarParts(state, theme);
 

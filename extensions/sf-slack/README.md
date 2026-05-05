@@ -38,7 +38,7 @@ Extension loads
   │
   └─ on("session_start")
        ├─ Resolve token (Pi auth → Keychain → env)
-       ├─ If no token → set footer "Slack: not configured", DO NOT register tools
+       ├─ If no token → keep footer hidden, DO NOT register tools
        └─ If token found:
             ├─ ensureSlackToolsRegistered()  ← registers 9 slack* tools
             ├─ auth.test → detect identity
@@ -50,9 +50,8 @@ Extension loads
             │ All three awaited in parallel so turn-1 already ships the final
             │ (probed, gated) tool set — keeps the prompt prompt-cache-friendly.
             │
-            └─ Set footer "Slack: @username · N cached · M gated · ⚠ K requested scopes not granted"
-                (the ⚠ segment only appears when the granted scope set
-                 differs from what we requested at OAuth time)
+            └─ Set footer "Slack: ✓ Ready" or "Slack: ⚠ Limited"
+                (`0/N scopes` is never rendered as green/ready)
   on("session_shutdown")
        └─ Clear footer status
   on("before_agent_start")
@@ -409,7 +408,7 @@ returns full bodies regardless of the shared display profile.
 | Event/Trigger        | Condition                       | Result                                                                         |
 | -------------------- | ------------------------------- | ------------------------------------------------------------------------------ |
 | `session_start`      | token available                 | Register slack\* tools, detect identity, probe scopes, cache users, set footer |
-| `session_start`      | no token                        | Skip tool registration entirely, set footer "Slack: not configured"            |
+| `session_start`      | no token                        | Skip tool registration entirely, keep footer hidden                            |
 | `session_shutdown`   | —                               | Clear footer status                                                            |
 | `before_agent_start` | identity + at least one slack\* | Inject minimal workspace context (User + Team only)                            |
 | `before_agent_start` | no identity / no slack tools    | Skip injection                                                                 |
@@ -455,6 +454,7 @@ extensions/sf-slack/
     send-tool.ts            ← implementation module
     settings-panel.ts       ← implementation module
     stats.ts                ← implementation module
+    status.ts               ← implementation module
     time-range-tool.ts      ← implementation module
     time-range.ts           ← implementation module
     tools.ts                ← implementation module
@@ -484,6 +484,7 @@ extensions/sf-slack/
     search-plan.test.ts     ← unit / smoke test
     send-tool.test.ts       ← unit / smoke test
     smoke.test.ts           ← unit / smoke test
+    status.test.ts          ← unit / smoke test
     system-prompt-options.test.ts← unit / smoke test
     time-range.test.ts      ← unit / smoke test
     tools.test.ts           ← unit / smoke test
@@ -520,16 +521,17 @@ Run: `npm test`
 
 ## Troubleshooting
 
-**Footer shows `Slack: not configured` and no tools are available:**
-No token was resolved at `session_start`. Set one via `/login sf-slack`,
-macOS Keychain (`sf-slack-token` / `pi-sf-slack`), or `SLACK_USER_TOKEN`,
-then run `/sf-slack refresh` to register tools without restarting.
+**No Slack footer pill appears and no tools are available:**
+No token was resolved at `session_start`, or the extension is disabled. Set one
+via `/login sf-slack`, macOS Keychain (`sf-slack-token` / `pi-sf-slack`), or
+`SLACK_USER_TOKEN`, then run `/sf-slack refresh` to register tools without
+restarting.
 
-**Footer shows `⚠ N requested scopes not granted`:**
-Your token was issued with a narrower scope set than `DEFAULT_SCOPES`
-requests. `/sf-slack` shows exactly which scopes are missing. Slack scopes
-are additive — re-run OAuth and accept the extra scopes, or revoke and
-re-authorize to trim them down.
+**Footer shows `⚠ Limited` or missing granted scopes:**
+Your token has fewer scopes than `DEFAULT_SCOPES` requests. This may be normal
+when your OAuth app or workspace is approved for only a subset of scopes.
+`/sf-slack` shows exactly which scopes are missing; re-auth only helps if those
+scopes are actually approved for your app/workspace.
 
 **`slack_send` returns a `missing_scope` error mentioning four write scopes:**
 The preflight now gates `action=dm` against `im:write` specifically before

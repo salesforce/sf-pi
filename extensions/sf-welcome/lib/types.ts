@@ -7,6 +7,7 @@
  * without opening every discovery module.
  */
 import type { GatewayConnectionStatus } from "../../../lib/common/monthly-usage/store.ts";
+import type { SlackStatusSnapshot } from "../../../lib/common/slack-status/store.ts";
 
 export interface RecentSession {
   name: string;
@@ -75,6 +76,8 @@ export interface SplashData {
   recentSessions: RecentSession[];
   extensionHealth: ExtensionHealthItem[];
   slackConnected: boolean;
+  slackVisible?: boolean;
+  slackStatus?: SlackStatusSnapshot | null;
   /** Current monthly spend in USD. Prefers the gateway's live value, falls back
    * to a best-effort estimate from local session files when the gateway is
    * unreachable or not the active provider. */
@@ -84,6 +87,8 @@ export interface SplashData {
   monthlyBudget: number | null;
   /** Origin of the monthly cost value — used for subtle display hints. */
   monthlyUsageSource?: "gateway" | "sessions";
+  /** True when the optional gateway integration should be surfaced. */
+  gatewayVisible?: boolean;
   /** Live gateway connection status from an auth-gated read-only probe. */
   gatewayStatus?: GatewayConnectionStatus | null;
   /** True while gateway status is being checked. */

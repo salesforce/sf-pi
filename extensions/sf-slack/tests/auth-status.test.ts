@@ -71,7 +71,7 @@ describe("buildAuthStatus", () => {
 
     const status = await buildAuthStatus(fakeCtx("xoxp-test-12345678"));
 
-    expect(status).toMatch(/Status: \u2705 Active/);
+    expect(status).toMatch(/Status: \u2705 Authenticated/);
     expect(status).toMatch(/user token \(xoxp-\)/);
     expect(status).toMatch(/Granted scopes \(from Slack, 2\)/);
     expect(status).toMatch(/canvases:read/);
@@ -79,7 +79,8 @@ describe("buildAuthStatus", () => {
     expect(status).toMatch(/Requested but not granted \(2\)/);
     expect(status).toMatch(/files:read/);
     expect(status).toMatch(/channels:read/);
-    expect(status).toMatch(/Re-run \/login sf-slack/);
+    expect(status).toMatch(/Slack access is limited/);
+    expect(status).toMatch(/re-auth only helps/);
   });
 
   it("omits the drift warning when every requested scope was granted", async () => {

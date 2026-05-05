@@ -10,7 +10,8 @@ Salesforce-branded splash screen that displays on startup with an animated Pi + 
 - Active model name and provider
 - Monthly cost usage line with color-coded progress (green → orange → red)
 - sf-pi extension health grid (active/disabled/locked indicators)
-- Slack, auth-gated LLM Gateway, and lightweight SF CLI install/latest status
+- Optional Slack and auth-gated LLM Gateway status only when enabled/configured,
+  plus lightweight SF CLI install/latest status
 
 **Right column:**
 
@@ -67,14 +68,19 @@ Dismissal triggers:
    so it can show `SF CLI installed · latest` without running org/config
    detection. Full org/API context belongs to sf-devbar.
 
-6. **Background loading** — CLI status, monthly usage, and remote announcements
+6. **Optional integration rows stay quiet** — Slack and LLM Gateway rows are
+   hidden unless their bundled extensions are enabled and have meaningful live
+   status. This keeps public/external installs from seeing Salesforce-internal or
+   unconfigured integrations as startup noise.
+
+7. **Background loading** — CLI status, monthly usage, and remote announcements
    refresh asynchronously after the splash appears, so startup remains responsive
    while the visible rows update in place.
 
-7. **Salesforce brand gradient** — Uses actual Salesforce brand colors (#0070D2 blue,
+8. **Salesforce brand gradient** — Uses actual Salesforce brand colors (#0070D2 blue,
    #01C3E2 Astro cyan, #9061F9 purple) for the Pi logo gradient.
 
-8. **Terminal-aware glyph policy** — Every emoji/box icon on the splash
+9. **Terminal-aware glyph policy** — Every emoji/box icon on the splash
    (and in the sf-devbar bottom bar) routes through
    `lib/common/glyph-policy.ts`. On terminals known to lack emoji font
    fallback (notably macOS Terminal.app, detected via
@@ -84,24 +90,24 @@ Dismissal triggers:
    `SF_PI_ASCII_ICONS=1`/`0` or `sfPi.asciiIcons: true|false` in
    `settings.json`.
 
-9. **Narrow-terminal single-column fallback** — Below ~100 columns the
-   splash stacks its two columns vertically so no content is truncated.
-   Above that threshold the two-column layout grows up to 220 columns
-   wide, filling wide terminals instead of leaving an ellipsised island.
+10. **Narrow-terminal single-column fallback** — Below ~100 columns the
+    splash stacks its two columns vertically so no content is truncated.
+    Above that threshold the two-column layout grows up to 220 columns
+    wide, filling wide terminals instead of leaving an ellipsised island.
 
-10. **Top-left anchored overlay** — The splash hugs the top-left corner
+11. **Top-left anchored overlay** — The splash hugs the top-left corner
     of the terminal with a 1-col left margin so it sits flush with pi's
     own prompt and bottom bar instead of floating center-screen on
     wide terminals.
 
-11. **Bundled Nerd Font installer** — Four MesloLGM Nerd Font Mono TTFs
+12. **Bundled Nerd Font installer** — Four MesloLGM Nerd Font Mono TTFs
     ship under `assets/fonts/`. `/sf-setup-fonts` copies them into
     `~/Library/Fonts` (macOS) or `~/.local/share/fonts` (Linux) with
     SHA-256 verification, idempotent on repeat runs, and best-effort
     cache refresh via `atsutil` / `fc-cache`. Windows users get manual
     install instructions.
 
-12. **One-time install prompt** — When the splash detects ASCII-fallback
+13. **One-time install prompt** — When the splash detects ASCII-fallback
     glyphs _and_ the font isn't installed _and_ the user hasn't been
     asked before, `sf-welcome` shows a single `ctx.ui.confirm()` dialog:
     "Install bundled Nerd Font?" The decision (yes or no) is persisted
