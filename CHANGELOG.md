@@ -361,6 +361,14 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.41.3](https://github.com/salesforce/sf-pi/compare/v0.41.2...v0.41.3) (2026-05-05)
+
+
+### Bug Fixes
+
+* hide optional integration status until active ([2542176](https://github.com/salesforce/sf-pi/commit/2542176c01319bd32a51a72b5a53c449b7e91844))
+* make gateway preflight status truthful ([3a04d8c](https://github.com/salesforce/sf-pi/commit/3a04d8c6814f9ec8a6c445562e1c7c48cdd9c99b))
+
 ## [0.41.2](https://github.com/salesforce/sf-pi/compare/v0.41.1...v0.41.2) (2026-05-05)
 
 
