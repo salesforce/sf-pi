@@ -361,6 +361,18 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.41.0](https://github.com/salesforce/sf-pi/compare/v0.40.0...v0.41.0) (2026-05-05)
+
+
+### Features
+
+* **sf-pi:** add runtime and gateway doctor preflights ([9de6b78](https://github.com/salesforce/sf-pi/commit/9de6b7881c14fcce0c84c8a5ffc66cd50e37d756))
+
+
+### Bug Fixes
+
+* **sf-llm-gateway-internal:** handle bedrock gateway root routing ([0559c95](https://github.com/salesforce/sf-pi/commit/0559c956d842726d0a354e0a1d49068c5ae22260))
+
 ## [0.40.0](https://github.com/salesforce/sf-pi/compare/v0.39.0...v0.40.0) (2026-05-05)
 
 
