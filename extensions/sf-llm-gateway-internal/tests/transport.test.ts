@@ -59,6 +59,16 @@ describe("formatAnthropicStreamError", () => {
   it("leaves non-Anthropic error strings unchanged", () => {
     expect(formatAnthropicStreamError("fetch failed")).toBe("fetch failed");
   });
+
+  it("adds actionable guidance for model=v1 gateway routing errors", () => {
+    const formatted = formatAnthropicStreamError(
+      '400 {"error":{"message":"allm_passthrough_route: Invalid model name passed in model=v1. Call `/v1/models` to view available models for your key."}}',
+    );
+
+    expect(formatted).toContain("Invalid model name passed in model=v1");
+    expect(formatted).toContain("base URL includes an OpenAI deployment path");
+    expect(formatted).toContain("/sf-llm-gateway-internal setup");
+  });
 });
 
 describe("flattenCodexTools", () => {

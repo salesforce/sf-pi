@@ -562,6 +562,12 @@ function parseAnthropicErrorEnvelope(message: string): AnthropicErrorEnvelope | 
 export function formatAnthropicStreamError(message: string): string {
   const envelope = parseAnthropicErrorEnvelope(message);
   if (!envelope?.error) {
+    if (/Invalid model name passed in model=v1/i.test(message)) {
+      return [
+        message,
+        "This usually means the gateway base URL includes an OpenAI deployment path (for example /bedrock) while Claude is using the native Anthropic /v1/messages route. Re-run /sf-llm-gateway-internal setup and use the gateway root URL, then /sf-llm-gateway-internal refresh.",
+      ].join("\n");
+    }
     return message;
   }
 
