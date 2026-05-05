@@ -30,7 +30,11 @@
 import type { ProviderModelConfig } from "@mariozechner/pi-coding-agent";
 import { DEFAULT_MODEL_ID, FALLBACK_MODEL_ID, PREVIOUS_DEFAULT_MODEL_ID } from "./config.ts";
 import { toGatewayOpenAiBaseUrl, toGatewayRootBaseUrl } from "./gateway-url.ts";
-import { ANTHROPIC_FINE_GRAINED_TOOL_STREAMING_BETA, isGpt55ModelId } from "./transport.ts";
+import {
+  ANTHROPIC_FINE_GRAINED_TOOL_STREAMING_BETA,
+  isGpt5FamilyResponsesModelId,
+  isGpt55ModelId,
+} from "./transport.ts";
 
 // -------------------------------------------------------------------------------------------------
 // Anthropic beta headers
@@ -543,6 +547,21 @@ export const GPT55_RESPONSES_THINKING_LEVEL_MAP: ProviderModelConfig["thinkingLe
 };
 
 /**
+ * Clamp pi's 5-level thinking scale for gpt-5 / gpt-5-mini on the Responses
+ * API. Upstream OpenAI supports `minimal | low | medium | high` here but
+ * rejects `xhigh` (verified live) — so pi's `xhigh` must clamp to `high`.
+ * `minimal` passes straight through, unlike gpt-5.5 which requires clamping
+ * up because its LiteLLM / upstream windows do not overlap on `minimal`.
+ */
+export const GPT5_RESPONSES_THINKING_LEVEL_MAP: ProviderModelConfig["thinkingLevelMap"] = {
+  minimal: "minimal",
+  low: "low",
+  medium: "medium",
+  high: "high",
+  xhigh: "high",
+};
+
+/**
  * Build the startup bootstrap catalog only.
  *
  * These IDs are local fallback presets so Pi can resolve gateway defaults
@@ -656,14 +675,19 @@ export function toProviderModelConfig(
 
   const isCodex = def.family === "codex";
   const isGpt55 = isGpt55ModelId(def.id);
+  const isGpt5Family = isGpt5FamilyResponsesModelId(def.id);
   const compat = isCodex ? CODEX_OPENAI_COMPAT : COMMON_OPENAI_COMPAT;
 
-  // gpt-5.5 routes through the OpenAI Responses API (`POST /responses` on
-  // this gateway; `/v1/responses` is SSO-only). We tag the model internally
-  // so `lib/discovery.ts`'s unified dispatcher can detect it and delegate
-  // to `streamSfGatewayResponses`. The tag is stripped before pi registers
-  // the model so pi still calls the provider-level `streamSimple` hook.
-  if (isGpt55) {
+  // gpt-5, gpt-5-mini, gpt-5.5 all route through the OpenAI Responses API
+  // (`POST /responses` on this gateway; `/v1/responses` is SSO-only). The
+  // working reasoning.effort window is model-specific:
+  //   - gpt-5 / gpt-5-mini: minimal | low | medium | high  (xhigh → high)
+  //   - gpt-5.5:            low | medium | high            (minimal → low,
+  //                                                        xhigh  → high)
+  // The internal api tag is stripped before pi registers the model so pi
+  // still calls the provider-level `streamSimple` hook; the dispatcher
+  // reads the id to pick the right shim.
+  if (isGpt5Family) {
     return {
       id: def.id,
       name: def.name,
@@ -674,7 +698,9 @@ export function toProviderModelConfig(
       contextWindow: def.contextWindow,
       maxTokens: def.maxTokens,
       compat,
-      thinkingLevelMap: GPT55_RESPONSES_THINKING_LEVEL_MAP,
+      thinkingLevelMap: isGpt55
+        ? GPT55_RESPONSES_THINKING_LEVEL_MAP
+        : GPT5_RESPONSES_THINKING_LEVEL_MAP,
     };
   }
 

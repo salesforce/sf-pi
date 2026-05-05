@@ -19,20 +19,32 @@ import {
   type Context,
   type Model,
 } from "@mariozechner/pi-ai";
-import { toProviderModelConfig, GPT55_RESPONSES_THINKING_LEVEL_MAP } from "../lib/models.ts";
 import {
+  toProviderModelConfig,
+  GPT55_RESPONSES_THINKING_LEVEL_MAP,
+  GPT5_RESPONSES_THINKING_LEVEL_MAP,
+} from "../lib/models.ts";
+import {
+  GPT5_FORCE_CHAT_ENV,
   GPT55_FORCE_CHAT_ENV,
+  isGpt5FamilyResponsesModelId,
   streamSfGatewayResponses,
   type Gpt55ResponsesTestHooks,
 } from "../lib/transport.ts";
 
-const ORIGINAL_ENV = process.env[GPT55_FORCE_CHAT_ENV];
+const ORIGINAL_ENV_55 = process.env[GPT55_FORCE_CHAT_ENV];
+const ORIGINAL_ENV_5 = process.env[GPT5_FORCE_CHAT_ENV];
 
 afterEach(() => {
-  if (ORIGINAL_ENV === undefined) {
-    delete process.env[GPT55_FORCE_CHAT_ENV];
-  } else {
-    process.env[GPT55_FORCE_CHAT_ENV] = ORIGINAL_ENV;
+  for (const [name, original] of [
+    [GPT55_FORCE_CHAT_ENV, ORIGINAL_ENV_55] as const,
+    [GPT5_FORCE_CHAT_ENV, ORIGINAL_ENV_5] as const,
+  ]) {
+    if (original === undefined) {
+      delete process.env[name];
+    } else {
+      process.env[name] = original;
+    }
   }
 });
 
@@ -55,9 +67,47 @@ describe("gpt-5.5 model registration", () => {
     expect(map.xhigh).toBe("high");
   });
 
-  it("does not tag gpt-5 or gpt-5-mini as openai-responses", () => {
-    expect(toProviderModelConfig("gpt-5", null, new Set()).api).toBe("openai-completions");
-    expect(toProviderModelConfig("gpt-5-mini", null, new Set()).api).toBe("openai-completions");
+  it("also tags gpt-5 and gpt-5-mini as openai-responses with the native clamp", () => {
+    for (const id of ["gpt-5", "gpt-5-mini"]) {
+      const cfg = toProviderModelConfig(id, null, new Set());
+      expect(cfg.api).toBe("openai-responses");
+      expect(cfg.thinkingLevelMap).toEqual(GPT5_RESPONSES_THINKING_LEVEL_MAP);
+    }
+  });
+
+  it("keeps codex, gpt-4o, and non-gpt-5 models on openai-completions", () => {
+    for (const id of ["gpt-5.2-codex", "gpt-5.3-codex", "gpt-4o", "gpt-4o-mini"]) {
+      expect(toProviderModelConfig(id, null, new Set()).api).toBe("openai-completions");
+    }
+  });
+});
+
+describe("isGpt5FamilyResponsesModelId", () => {
+  it("matches gpt-5, gpt-5-mini, gpt-5.5 plus the openai/ prefix form", () => {
+    for (const id of [
+      "gpt-5",
+      "gpt-5-mini",
+      "gpt-5.5",
+      "openai/gpt-5",
+      "openai/gpt-5-mini",
+      "openai/gpt-5.5",
+      "GPT-5",
+    ]) {
+      expect(isGpt5FamilyResponsesModelId(id)).toBe(true);
+    }
+  });
+
+  it("does not match codex, gpt-4o, or unrelated ids", () => {
+    for (const id of [
+      "gpt-5.2-codex",
+      "gpt-5.3-codex",
+      "gpt-4o",
+      "gpt-4o-mini",
+      "claude-opus-4-7",
+      "gemini-3.1-pro-preview",
+    ]) {
+      expect(isGpt5FamilyResponsesModelId(id)).toBe(false);
+    }
   });
 });
 
@@ -189,8 +239,8 @@ describe("streamSfGatewayResponses", () => {
     expect(fallbackReason).toMatch(/falling back to chat/i);
   });
 
-  it("respects SF_LLM_GATEWAY_INTERNAL_GPT55_FORCE_CHAT=1 before the first attempt", async () => {
-    process.env[GPT55_FORCE_CHAT_ENV] = "1";
+  it("respects SF_LLM_GATEWAY_INTERNAL_GPT5_FORCE_CHAT=1 before the first attempt", async () => {
+    process.env[GPT5_FORCE_CHAT_ENV] = "1";
     let fallbackReason: string | undefined;
     const hooks: Gpt55ResponsesTestHooks = {
       responsesStreamer: happyResponsesStreamer,
@@ -215,12 +265,39 @@ describe("streamSfGatewayResponses", () => {
     expect(fallbackReason).toMatch(/FORCE_CHAT/i);
   });
 
-  it("ignores unset or falsy values of the force-chat env var", async () => {
+  it("also honors the legacy SF_LLM_GATEWAY_INTERNAL_GPT55_FORCE_CHAT alias", async () => {
+    process.env[GPT55_FORCE_CHAT_ENV] = "1";
+    let fallbackReason: string | undefined;
+    const hooks: Gpt55ResponsesTestHooks = {
+      responsesStreamer: happyResponsesStreamer,
+      chatStreamer: emptyChatStreamer,
+    };
+    await collect(
+      streamSfGatewayResponses(
+        responsesModel,
+        context,
+        undefined,
+        {
+          chatModel,
+          onFallback: (reason) => {
+            fallbackReason = reason;
+          },
+        },
+        hooks,
+      ),
+    );
+    expect(responsesCalls).toBe(0);
+    expect(chatCalls).toBe(1);
+    expect(fallbackReason).toMatch(/GPT55_FORCE_CHAT/i);
+  });
+
+  it("ignores unset or falsy values of the force-chat env vars", async () => {
     const hooks: Gpt55ResponsesTestHooks = {
       responsesStreamer: happyResponsesStreamer,
       chatStreamer: emptyChatStreamer,
     };
 
+    delete process.env[GPT5_FORCE_CHAT_ENV];
     delete process.env[GPT55_FORCE_CHAT_ENV];
     await collect(
       streamSfGatewayResponses(responsesModel, context, undefined, { chatModel }, hooks),
@@ -230,7 +307,8 @@ describe("streamSfGatewayResponses", () => {
 
     responsesCalls = 0;
     chatCalls = 0;
-    process.env[GPT55_FORCE_CHAT_ENV] = "0";
+    process.env[GPT5_FORCE_CHAT_ENV] = "0";
+    process.env[GPT55_FORCE_CHAT_ENV] = "false";
     await collect(
       streamSfGatewayResponses(responsesModel, context, undefined, { chatModel }, hooks),
     );

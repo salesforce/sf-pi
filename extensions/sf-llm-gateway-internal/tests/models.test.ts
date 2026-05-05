@@ -311,10 +311,27 @@ describe("toProviderModelConfig", () => {
     expect(config.compat).toBeUndefined();
   });
 
-  it("tags non-Claude models with openai-completions", () => {
+  it("tags non-Claude, non-gpt-5-family models with openai-completions", () => {
     expect(toProviderModelConfig("gemini-2.5-pro", null, new Set()).api).toBe("openai-completions");
-    expect(toProviderModelConfig("gpt-5", null, new Set()).api).toBe("openai-completions");
+    expect(toProviderModelConfig("gpt-4o", null, new Set()).api).toBe("openai-completions");
     expect(toProviderModelConfig("gpt-5.3-codex", null, new Set()).api).toBe("openai-completions");
+  });
+
+  it("routes gpt-5 and gpt-5-mini through openai-responses with the native clamp", () => {
+    // gpt-5 / gpt-5-mini support `minimal | low | medium | high` on the
+    // Responses path but reject `xhigh` upstream. Map passes `minimal`
+    // through (unlike gpt-5.5, which rejects it) and clamps `xhigh → high`.
+    for (const id of ["gpt-5", "gpt-5-mini"]) {
+      const cfg = toProviderModelConfig(id, null, new Set());
+      expect(cfg.api).toBe("openai-responses");
+      expect(cfg.thinkingLevelMap).toEqual({
+        minimal: "minimal",
+        low: "low",
+        medium: "medium",
+        high: "high",
+        xhigh: "high",
+      });
+    }
   });
 
   it("uses the updated GPT-5 272K/128K preset", () => {

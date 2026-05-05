@@ -254,6 +254,25 @@ export function isOpenAiReasoningModelId(modelId: string): boolean {
  * performs implicit reasoning (live probes show ~30-100 reasoning_tokens on
  * non-trivial prompts even without an explicit effort).
  */
+/**
+ * True for any gpt-5 family model the extension routes through
+ * `POST /responses` (gpt-5, gpt-5-mini, gpt-5.5 and future minor bumps).
+ * Used by the dispatcher in `lib/discovery.ts` to pick the Responses shim.
+ *
+ * Codex (gpt-5.2-codex, gpt-5.3-codex) is deliberately excluded: it has
+ * its own tools/params quirks handled by the chat-path shim, and LiteLLM
+ * maps it to the Responses API upstream anyway, so switching at the proxy
+ * level would double-wrap it.
+ */
+export function isGpt5FamilyResponsesModelId(modelId: string): boolean {
+  if (modelId.toLowerCase().includes("codex")) return false;
+  // Exact allow-list: gpt-5, gpt-5-mini, gpt-5.5 (and openai/... prefixed
+  // variants from LiteLLM's upstream form). Anything else — including
+  // gpt-4o family, future gpt-5.3, and LiteLLM-internal id variants —
+  // stays on the chat-completions path until we have parity evidence.
+  return /^(?:openai\/)?gpt-5(?:-mini|\.5)?$/i.test(modelId.trim());
+}
+
 export function isGpt55ModelId(modelId: string): boolean {
   const lower = modelId.toLowerCase();
   return /(^|\/)gpt-5\.5(?!\d)/.test(lower);
@@ -936,18 +955,28 @@ export function streamSfGatewayOpenAI(
 }
 
 /**
- * Environment variable that forces gpt-5.5 back onto the chat/completions
- * path with `reasoning_effort` stripped — the pre-Phase-3 behavior. Useful
- * as a kill-switch if the Responses-API path starts misbehaving in the wild
- * without requiring a redeploy.
+ * Environment variable that forces the entire gpt-5 family
+ * (gpt-5 / gpt-5-mini / gpt-5.5) back onto the chat/completions path with
+ * `reasoning_effort` stripped or clamped. Kill-switch for the Responses
+ * pivot — flip this if the `/responses` route starts misbehaving in the
+ * wild and you need to recover without a redeploy.
+ *
+ * `GPT55_FORCE_CHAT_ENV` is kept as a backward-compat alias for users who
+ * adopted the narrower name shipped in the first Responses PR.
  */
+export const GPT5_FORCE_CHAT_ENV = "SF_LLM_GATEWAY_INTERNAL_GPT5_FORCE_CHAT";
 export const GPT55_FORCE_CHAT_ENV = "SF_LLM_GATEWAY_INTERNAL_GPT55_FORCE_CHAT";
 
-function shouldForceGpt55Chat(): boolean {
-  const raw = process.env[GPT55_FORCE_CHAT_ENV];
-  if (!raw) return false;
-  const lower = raw.trim().toLowerCase();
+function isTruthyEnv(value: string | undefined): boolean {
+  if (!value) return false;
+  const lower = value.trim().toLowerCase();
   return lower === "1" || lower === "true" || lower === "yes" || lower === "on";
+}
+
+function shouldForceGpt5Chat(): boolean {
+  return (
+    isTruthyEnv(process.env[GPT5_FORCE_CHAT_ENV]) || isTruthyEnv(process.env[GPT55_FORCE_CHAT_ENV])
+  );
 }
 
 /**
@@ -1010,9 +1039,12 @@ export function streamSfGatewayResponses(
   const responsesStreamer = hooks?.responsesStreamer ?? streamSimpleOpenAIResponses;
   const chatStreamer = hooks?.chatStreamer ?? ((m, c, o) => streamSfGatewayOpenAI(m, c, o));
 
-  if (shouldForceGpt55Chat()) {
+  if (shouldForceGpt5Chat()) {
     if (fallback) {
-      fallback.onFallback?.(`${GPT55_FORCE_CHAT_ENV}=1 — using chat completions path`);
+      const envName = isTruthyEnv(process.env[GPT5_FORCE_CHAT_ENV])
+        ? GPT5_FORCE_CHAT_ENV
+        : GPT55_FORCE_CHAT_ENV;
+      fallback.onFallback?.(`${envName}=1 — using chat completions path`);
       return chatStreamer(fallback.chatModel, context, options);
     }
     // No fallback wiring provided (shouldn't happen from the dispatcher,

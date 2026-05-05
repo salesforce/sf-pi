@@ -76,7 +76,7 @@ import {
   type ModelGroupDrift,
   type TaggedGatewayModel,
 } from "./models.ts";
-import { isGpt55ModelId } from "./transport.ts";
+import { isGpt5FamilyResponsesModelId } from "./transport.ts";
 import {
   streamSfGatewayAnthropic,
   streamSfGatewayOpenAI,
@@ -142,12 +142,13 @@ function unifiedStream(
     } as Model<"anthropic-messages">;
     return streamSfGatewayAnthropic(anthropicModel, context, options);
   }
-  if (isGpt55ModelId(model.id)) {
-    // gpt-5.5 routes through `POST /responses`. Build a `openai-responses`
-    // model clone for pi-ai and a chat-completions fallback clone for our
-    // Responses shim's error-recovery path. Both share the gateway root
-    // baseUrl so the OpenAI SDK hits `<root>/responses` (not
-    // `<root>/v1/responses`, which 302s to SSO on this gateway).
+  if (isGpt5FamilyResponsesModelId(model.id)) {
+    // gpt-5, gpt-5-mini, gpt-5.5 route through `POST /responses`. Build a
+    // `openai-responses` model clone for pi-ai and a chat-completions
+    // fallback clone for our Responses shim's error-recovery path. Both
+    // share the gateway root baseUrl so the OpenAI SDK hits
+    // `<root>/responses` (not `<root>/v1/responses`, which 302s to SSO on
+    // this gateway).
     const responsesModel = {
       ...model,
       api: "openai-responses",
