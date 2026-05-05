@@ -5,7 +5,7 @@ import { applyDoctorFixes } from "../../../lib/common/doctor/fixes.ts";
 import { runDoctorDiagnostics } from "../../../lib/common/doctor/diagnostics.ts";
 import type { DoctorIssue, DoctorReport } from "../../../lib/common/doctor/types.ts";
 
-export type DoctorSubcommand = "status" | "fix";
+export type DoctorSubcommand = "status" | "fix" | "runtime";
 export type DoctorFixTarget = "all" | "startup" | "skills";
 
 export interface DoctorArgs {
@@ -20,6 +20,10 @@ export function parseDoctorArgs(raw: string): DoctorArgs {
   const sub = (tokens[0] ?? "").toLowerCase();
   const target = (tokens[1] ?? "").toLowerCase();
 
+  if (sub === "runtime" || sub === "rt") {
+    return { subcommand: "runtime" };
+  }
+
   if (sub === "fix" || sub === "repair") {
     if (target === "startup" || target === "start") return { subcommand: "fix", target: "startup" };
     if (target === "skills" || target === "skill") return { subcommand: "fix", target: "skills" };
@@ -33,7 +37,16 @@ export async function handleDoctor(ctx: ExtensionCommandContext, args: DoctorArg
     await handleFix(ctx, args.target ?? "all");
     return;
   }
+  if (args.subcommand === "runtime") {
+    handleRuntime(ctx);
+    return;
+  }
   handleStatus(ctx);
+}
+
+function handleRuntime(ctx: ExtensionCommandContext): void {
+  const report = runDoctorDiagnostics({ cwd: ctx.cwd });
+  ctx.ui.notify(renderRuntimeReport(report), "info");
 }
 
 function handleStatus(ctx: ExtensionCommandContext): void {
@@ -111,6 +124,32 @@ async function handleFix(ctx: ExtensionCommandContext, target: DoctorFixTarget):
   if (result.changed) await ctx.reload();
 }
 
+function renderRuntimeReport(report: DoctorReport): string {
+  const runtime = report.runtime;
+  const lines = [
+    "sf-pi Runtime Doctor",
+    "",
+    `Pi runtime:       ${runtime.piVersion ?? "unknown"}`,
+    `Required pi:      >=${runtime.requiredPiVersion}`,
+    `Node.js:          ${runtime.nodeVersion}`,
+    `Node executable:  ${runtime.nodePath ?? "unknown"}`,
+    `npm executable:   ${runtime.npmPath ?? "unknown"}`,
+    `pi executable:    ${runtime.piPath ?? "unknown"}`,
+    `npm global root:  ${runtime.npmGlobalRoot ?? "unknown"}`,
+    `Installed package: ${runtime.installedPiPackageVersion ? `@mariozechner/pi-coding-agent@${runtime.installedPiPackageVersion}` : "unknown"}`,
+    `Latest package:    ${runtime.latestPiPackageVersion ? `@mariozechner/pi-coding-agent@${runtime.latestPiPackageVersion}` : "unknown"}`,
+    "",
+    "All pi executables:",
+    ...(runtime.allPiPaths.length > 0
+      ? runtime.allPiPaths.map((item) => `  ${item}`)
+      : ["  none found"]),
+    "",
+    "Suggested repair:",
+    ...runtime.updateAdvice.map((item) => `  ${item}`),
+  ];
+  return lines.join("\n");
+}
+
 function renderDoctorReport(report: DoctorReport): string {
   const lines = [
     "sf-pi Doctor",
@@ -156,7 +195,8 @@ function renderDoctorReport(report: DoctorReport): string {
     }
   }
 
-  lines.push("", `Fix startup only: ${PREFIX} fix startup`);
+  lines.push("", `Runtime diagnostics: ${PREFIX} runtime`);
+  lines.push(`Fix startup only: ${PREFIX} fix startup`);
   lines.push(`Fix skill wiring/collisions: ${PREFIX} fix skills`);
   lines.push(`Fix all safe issues: ${PREFIX} fix`);
   lines.push("Recovery launch: SF_PI_SAFE_START=1 pi");

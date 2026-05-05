@@ -67,11 +67,12 @@ triggering the reload.
 
 `/sf-pi doctor` scans local settings and skill roots for startup issues such
 as duplicate skill names, stale `settings.skills[]` entries, unwired external
-skill folders, and duplicate sf-pi package entries. `doctor fix` only applies
-safe repairs after confirmation: startup mode is switched to quiet/header,
-stale skill paths are pruned, available external roots are linked, and duplicate
-`sf-*` skills in pi-owned roots are moved to `~/.pi/agent/skills-quarantine/`
-instead of being deleted.
+skill folders, and duplicate sf-pi package entries. `/sf-pi doctor runtime`
+adds read-only runtime preflight details for Pi/Node/npm path and version
+mismatches. `doctor fix` only applies safe repairs after confirmation: startup
+mode is switched to quiet/header, stale skill paths are pruned, available
+external roots are linked, and duplicate `sf-*` skills in pi-owned roots are
+moved to `~/.pi/agent/skills-quarantine/` instead of being deleted.
 
 ## Behavior Matrix
 
@@ -90,6 +91,7 @@ instead of being deleted.
 | /sf-pi display        | no profile                | Show effective display profile       |
 | /sf-pi display <name> | compact/balanced/verbose  | Save shared display profile          |
 | /sf-pi doctor         | —                         | Show setup diagnostics               |
+| /sf-pi doctor runtime | —                         | Show Pi/Node/npm runtime preflight   |
 | /sf-pi doctor fix     | user confirms             | Apply safe repairs and reload        |
 | TUI list → Enter      | —                         | Open extension detail/config view    |
 | TUI list → Esc        | changes pending           | Apply exclusions, reload if needed   |
@@ -175,6 +177,11 @@ Run `pi install .` from the repo root, or `pi install git:github.com/salesforce/
 so pi registers the package in `settings.json`. The manager finds itself
 via name-based (`sf-pi` / `jag-pi-extensions`) or path-based detection
 — a symlink from `pi install .` resolves to the repo root.
+
+**`pi update` completes but `pi --version` is still old:**
+Run `/sf-pi doctor runtime`. It reports the active `pi`, `node`, and `npm`
+executables, the global npm root, installed/latest `@mariozechner/pi-coding-agent`
+versions, and a copy-paste repair sequence for NVM/PATH shim mismatches.
 
 **Disabling an extension through the manager doesn't take effect:**
 Pi reads the package filter at startup. After a disable, the manager

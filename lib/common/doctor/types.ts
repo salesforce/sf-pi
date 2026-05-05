@@ -54,9 +54,24 @@ export interface SfPiPackageDuplicate {
   entries: string[];
 }
 
+export interface RuntimeDiagnostics {
+  piVersion?: string;
+  requiredPiVersion: string;
+  nodeVersion: string;
+  nodePath?: string;
+  npmPath?: string;
+  piPath?: string;
+  allPiPaths: string[];
+  npmGlobalRoot?: string;
+  installedPiPackageVersion?: string;
+  latestPiPackageVersion?: string;
+  updateAdvice: string[];
+}
+
 export interface DoctorReport {
   piVersion?: string;
   nodeVersion: string;
+  runtime: RuntimeDiagnostics;
   quietStartup?: boolean;
   welcomeMode?: string;
   safeStartRequested: boolean;

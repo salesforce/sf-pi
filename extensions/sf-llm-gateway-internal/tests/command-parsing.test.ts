@@ -90,6 +90,16 @@ describe("parseCommandArgs", () => {
     expect(result.subcommand).toBe("models");
   });
 
+  it("parses 'doctor'", () => {
+    const result = parseCommandArgs("doctor");
+    expect(result.subcommand).toBe("doctor");
+  });
+
+  it("parses 'dr' as doctor alias", () => {
+    const result = parseCommandArgs("dr");
+    expect(result.subcommand).toBe("doctor");
+  });
+
   it("parses 'debug <modelId>' with positional args", () => {
     const result = parseCommandArgs("debug claude-opus-4-7 adaptive reasoning=max");
     expect(result.subcommand).toBe("debug");

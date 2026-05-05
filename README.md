@@ -537,6 +537,7 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 **[SF Pi Manager](./extensions/sf-pi-manager/#troubleshooting)**
 
 - `/sf-pi` says "package not found in settings"
+- `pi update` completes but `pi --version` is still old
 - Disabling an extension through the manager doesn't take effect
 - `/sf-pi enable-all` still leaves some extensions disabled
 - Project-scoped changes aren't sticking

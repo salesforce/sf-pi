@@ -142,6 +142,11 @@ describe("parseDoctorArgs", () => {
     expect(parseDoctorArgs("")).toEqual({ subcommand: "status" });
   });
 
+  it("parses runtime diagnostics", () => {
+    expect(parseDoctorArgs("runtime")).toEqual({ subcommand: "runtime" });
+    expect(parseDoctorArgs("rt")).toEqual({ subcommand: "runtime" });
+  });
+
   it("parses fix targets", () => {
     expect(parseDoctorArgs("fix")).toEqual({ subcommand: "fix", target: "all" });
     expect(parseDoctorArgs("fix startup")).toEqual({ subcommand: "fix", target: "startup" });

@@ -190,6 +190,7 @@ extensions/sf-llm-gateway-internal/
     config.ts               ← implementation module
     debug.ts                ← implementation module
     discovery.ts            ← implementation module
+    doctor.ts               ← implementation module
     gateway-url.ts          ← implementation module
     migrate-unify-provider.ts← implementation module
     models.ts               ← implementation module
@@ -208,6 +209,7 @@ extensions/sf-llm-gateway-internal/
     config.test.ts          ← unit / smoke test
     cwd-migration.test.ts   ← unit / smoke test
     debug.test.ts           ← unit / smoke test
+    doctor.test.ts          ← unit / smoke test
     formatting.test.ts      ← unit / smoke test
     gateway-url.test.ts     ← unit / smoke test
     global-config.test.ts   ← unit / smoke test
@@ -256,6 +258,14 @@ Optional env vars:
 - `SF_LLM_GATEWAY_INTERNAL_CODEX_TEST_TIMEOUT_MS` — request timeout override
 
 Exported helpers are marked with `// Exported for unit tests.` in the source.
+
+## Doctor: `/sf-llm-gateway-internal doctor`
+
+Run `/sf-llm-gateway-internal doctor` when the gateway appears connected but
+requests fail. It is read-only and checks the configured URL, the normalized
+OpenAI-compatible route, the Claude/admin root route, API key presence, model
+discovery, and gateway health. It interprets common failures such as 401 auth
+errors, SSO/browser redirects, and `model=v1` routing mistakes.
 
 ## Debugging: `/sf-llm-gateway-internal debug`
 
@@ -319,7 +329,8 @@ gateway. If it persists, run `/sf-llm-gateway-internal refresh`.
 **Gateway fails on startup or tool calls error out immediately:**
 Confirm `SF_LLM_GATEWAY_INTERNAL_BASE_URL` and `SF_LLM_GATEWAY_INTERNAL_API_KEY`
 are set (env vars win over saved config). Run
-`/sf-llm-gateway-internal setup` for an interactive wizard, or
+`/sf-llm-gateway-internal setup` for an interactive wizard,
+`/sf-llm-gateway-internal doctor` for endpoint/key preflight checks, or
 `/sf-llm-gateway-internal debug <model>` to inspect the exact upstream
 payload LiteLLM would send.
 

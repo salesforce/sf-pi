@@ -6,14 +6,16 @@
  * to decide what to display; repair code lives in fixes.ts.
  */
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
-import { MIN_PI_VERSION } from "../pi-compat.ts";
+import { getInstalledPiVersion, MIN_PI_VERSION } from "../pi-compat.ts";
 import { globalAgentPath, globalSettingsPath, projectSettingsPath } from "../pi-paths.ts";
 import type {
   AvailableSkillRoot,
   DoctorIssue,
   DoctorReport,
+  RuntimeDiagnostics,
   SfPiPackageDuplicate,
   SkillCollision,
   SkillLocation,
@@ -46,8 +48,9 @@ export function runDoctorDiagnostics(options: { cwd?: string; home?: string } = 
   const staleSkillPaths = findStaleSkillPaths(effectiveSettings, home);
   const availableSkillRoots = findAvailableSkillRoots(effectiveSettings, home);
   const sfPiPackageDuplicates = findSfPiPackageDuplicates(cwd);
-  const piVersion = readPiVersion();
-  const nodeVersion = process.version;
+  const runtime = collectRuntimeDiagnostics();
+  const piVersion = runtime.piVersion;
+  const nodeVersion = runtime.nodeVersion;
   const safeStartRequested = isTruthyEnv(process.env.SF_PI_SAFE_START);
   const welcomeDisabled = isWelcomeDisabled(effectiveSettings);
 
@@ -142,6 +145,7 @@ export function runDoctorDiagnostics(options: { cwd?: string; home?: string } = 
   return {
     piVersion,
     nodeVersion,
+    runtime,
     quietStartup: effectiveSettings.quietStartup === true,
     welcomeMode,
     safeStartRequested,
@@ -449,35 +453,95 @@ function looksLikeSfPiPackage(source: string): boolean {
   return lower.includes("salesforce/sf-pi") || lower.endsWith("/sf-pi") || lower === "sf-pi";
 }
 
-function readPiVersion(): string | undefined {
+export function collectRuntimeDiagnostics(): RuntimeDiagnostics {
+  const piPath = runCapture("which", ["pi"]);
+  const npmPath = runCapture("which", ["npm"]);
+  const allPiPaths = runCapture("which", ["-a", "pi"])
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const npmGlobalRoot = runCapture("npm", ["root", "-g"]);
+  const installedPiPackageVersion = npmGlobalRoot
+    ? readPackageVersion(
+        path.join(npmGlobalRoot, "@mariozechner", "pi-coding-agent", "package.json"),
+      )
+    : undefined;
+  const piVersion = runCapture("pi", ["--version"]) || getInstalledPiVersion();
+  const latestPiPackageVersion = runCapture("npm", [
+    "view",
+    "@mariozechner/pi-coding-agent",
+    "version",
+  ]);
+
+  return {
+    piVersion,
+    requiredPiVersion: MIN_PI_VERSION,
+    nodeVersion: process.version,
+    nodePath: process.execPath,
+    npmPath,
+    piPath,
+    allPiPaths,
+    npmGlobalRoot,
+    installedPiPackageVersion,
+    latestPiPackageVersion,
+    updateAdvice: buildRuntimeUpdateAdvice({
+      piVersion,
+      installedPiPackageVersion,
+      allPiPaths,
+    }),
+  };
+}
+
+function readPackageVersion(packageJsonPath: string): string | undefined {
   try {
-    const pkg = JSON.parse(
-      readFileSync(
-        path.join(
-          process.cwd(),
-          "node_modules",
-          "@mariozechner",
-          "pi-coding-agent",
-          "package.json",
-        ),
-        "utf8",
-      ),
-    ) as { version?: string };
-    if (typeof pkg.version === "string") return pkg.version;
-  } catch {
-    // Fall through to global install path best effort.
-  }
-  try {
-    const pkg = JSON.parse(
-      readFileSync(
-        "/opt/homebrew/lib/node_modules/@mariozechner/pi-coding-agent/package.json",
-        "utf8",
-      ),
-    ) as { version?: string };
+    const pkg = JSON.parse(readFileSync(packageJsonPath, "utf8")) as { version?: unknown };
     return typeof pkg.version === "string" ? pkg.version : undefined;
   } catch {
     return undefined;
   }
+}
+
+function runCapture(command: string, args: string[]): string | undefined {
+  try {
+    return execFileSync(command, args, {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+      timeout: 5_000,
+    }).trim();
+  } catch {
+    return undefined;
+  }
+}
+
+function buildRuntimeUpdateAdvice(input: {
+  piVersion?: string;
+  installedPiPackageVersion?: string;
+  allPiPaths: string[];
+}): string[] {
+  const lines = [
+    "nvm use <node-version-if-applicable>",
+    "npm uninstall -g @mariozechner/pi-coding-agent",
+    "npm install -g @mariozechner/pi-coding-agent@latest --force",
+    "hash -r",
+    "pi --version",
+  ];
+
+  if (input.allPiPaths.length > 1) {
+    lines.unshift("which -a pi  # multiple pi executables found; ensure PATH uses the updated one");
+  }
+  if (input.piVersion && compareVersions(input.piVersion, MIN_PI_VERSION) < 0) {
+    lines.unshift(`Detected pi ${input.piVersion}; sf-pi requires ${MIN_PI_VERSION} or newer.`);
+  }
+  if (
+    input.installedPiPackageVersion &&
+    input.piVersion &&
+    input.installedPiPackageVersion !== input.piVersion
+  ) {
+    lines.unshift(
+      `npm global package is ${input.installedPiPackageVersion}, but pi --version reports ${input.piVersion}; check shell PATH/shims.`,
+    );
+  }
+  return lines;
 }
 
 export function compareVersions(a: string, b: string): number {

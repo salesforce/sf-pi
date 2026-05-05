@@ -158,7 +158,7 @@
     "entry": "extensions/sf-llm-gateway-internal/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 6172
+    "srcLoc": 6351
   },
   {
     "id": "sf-lsp",
@@ -229,7 +229,7 @@
     "entry": "extensions/sf-pi-manager/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 3138
+    "srcLoc": 3175
   },
   {
     "id": "sf-skills-hud",

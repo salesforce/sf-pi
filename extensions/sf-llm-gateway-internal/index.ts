@@ -177,6 +177,7 @@ import {
 } from "./lib/discovery.ts";
 import { migrateGatewaySettings } from "./lib/migrate-unify-provider.ts";
 import { fetchTransformReport, formatTransformReport, type TransformProbe } from "./lib/debug.ts";
+import { fetchGatewayDoctorReport, formatGatewayDoctorReport } from "./lib/doctor.ts";
 import {
   getMonthlyUsageState,
   refreshMonthlyUsage,
@@ -205,6 +206,7 @@ type CommandArgs = {
     | "beta"
     | "models"
     | "debug"
+    | "doctor"
     | "on"
     | "off"
     | "setup";
@@ -299,6 +301,7 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
         "models",
         "beta",
         "debug",
+        "doctor",
         "help",
       ];
       const tokens = prefix.trim().split(/\s+/);
@@ -490,6 +493,8 @@ async function handleCommand(
       return handleModelsCommand(pi, ctx);
     case "debug":
       return handleDebugCommand(pi, ctx, parsed.positional ?? []);
+    case "doctor":
+      return handleDoctorCommand(pi, ctx);
     case "beta":
       return handleBetaCommandImpl(pi, ctx, parsed.betaArgs ?? [], (summary, details, level) =>
         emitCommandOutput(pi, ctx, summary, details, level),
@@ -533,6 +538,17 @@ async function handleModelsCommand(pi: ExtensionAPI, ctx: ExtensionCommandContex
     }),
   ];
   await emitCommandOutput(pi, ctx, "SF LLM Gateway Internal models.", lines.join("\n"), "info");
+}
+
+async function handleDoctorCommand(pi: ExtensionAPI, ctx: ExtensionCommandContext): Promise<void> {
+  const report = await fetchGatewayDoctorReport(ctx.cwd);
+  await emitCommandOutput(
+    pi,
+    ctx,
+    "SF LLM Gateway Internal doctor.",
+    formatGatewayDoctorReport(report),
+    report.checks.some((check) => !check.ok) ? "warning" : "info",
+  );
 }
 
 /**
@@ -668,6 +684,7 @@ async function handleHelpCommand(pi: ExtensionAPI, ctx: ExtensionCommandContext)
     `- /${COMMAND_NAME} refresh`,
     `- /${COMMAND_NAME} set-default [global|project]`,
     `- /${COMMAND_NAME} models`,
+    `- /${COMMAND_NAME} doctor`,
     `- /${COMMAND_NAME} debug <modelId> [reasoning=<level>] [tool] [adaptive]`,
     `- /${COMMAND_NAME} beta`,
     `- /${COMMAND_NAME} beta <name> on|off`,
@@ -729,6 +746,9 @@ export function parseCommandArgs(args: string): CommandArgs {
   }
   if (sub === "models") {
     return { subcommand: "models", scope };
+  }
+  if (sub === "doctor" || sub === "dr") {
+    return { subcommand: "doctor", scope };
   }
   if (sub === "debug") {
     return { subcommand: "debug", scope, positional: tokens.slice(1) };
