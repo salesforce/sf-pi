@@ -29,7 +29,7 @@
 
 import type { ProviderModelConfig } from "@mariozechner/pi-coding-agent";
 import { DEFAULT_MODEL_ID, FALLBACK_MODEL_ID, PREVIOUS_DEFAULT_MODEL_ID } from "./config.ts";
-import { toGatewayOpenAiBaseUrl } from "./gateway-url.ts";
+import { toGatewayOpenAiBaseUrl, toGatewayRootBaseUrl } from "./gateway-url.ts";
 import { ANTHROPIC_FINE_GRAINED_TOOL_STREAMING_BETA } from "./transport.ts";
 
 // -------------------------------------------------------------------------------------------------
@@ -255,6 +255,21 @@ export interface GatewayModelInfo {
  * override inference defaults when a preset does not already cover the model.
  */
 export type GatewayModelInfoMap = Record<string, GatewayModelInfo>;
+
+/**
+ * Per-model-group metadata from `/model_group/info`. Complements
+ * `/v1/model/info` with the upstream `providers` array — the list of cloud
+ * providers the gateway admin has registered behind a given model group.
+ * The extension snapshots this at session_start and watches for drift so a
+ * silent admin reroute (e.g. adding an `anthropic` backing to a group that
+ * was `bedrock`-only) can be surfaced in the status report.
+ */
+export interface GatewayModelGroupInfo {
+  modelGroup: string;
+  providers: string[];
+}
+
+export type GatewayModelGroupInfoMap = Record<string, GatewayModelGroupInfo>;
 
 // -------------------------------------------------------------------------------------------------
 // Static model catalog (presets for known models)
@@ -1003,6 +1018,85 @@ export async function fetchGatewayModelInfoMap(
   } catch {
     return {};
   }
+}
+
+/**
+ * Fetch the `/model_group/info` snapshot, collapsed to `{group -> providers[]}`.
+ * Failures are swallowed so this enrichment is strictly optional — the
+ * extension must keep working when the gateway admin disables the
+ * endpoint or the request times out.
+ *
+ * The upstream shape is an array of records with `model_group` and
+ * `providers: string[]`. The map is ready for provider-drift diffing by
+ * the discovery layer.
+ */
+export async function fetchGatewayModelGroupInfo(
+  baseUrl: string,
+  apiKey: string,
+): Promise<GatewayModelGroupInfoMap> {
+  try {
+    const response = await fetchWithTimeout(
+      `${toGatewayRootBaseUrl(baseUrl)}/model_group/info`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+      },
+      MODEL_FETCH_TIMEOUT_MS,
+    );
+
+    if (!response.ok) return {};
+
+    const json = (await response.json()) as {
+      data?: Array<{
+        model_group?: string;
+        providers?: unknown;
+      }>;
+    };
+
+    const map: GatewayModelGroupInfoMap = {};
+    for (const entry of json.data || []) {
+      const group = typeof entry.model_group === "string" ? entry.model_group.trim() : "";
+      if (!group) continue;
+      const providers = Array.isArray(entry.providers)
+        ? entry.providers.filter((p): p is string => typeof p === "string").sort()
+        : [];
+      map[group] = { modelGroup: group, providers };
+    }
+    return map;
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Compare two model-group snapshots and return the set of groups whose
+ * providers changed. Each entry carries the old and new arrays so the
+ * caller can format a readable drift message. Pure function, exported for
+ * unit tests.
+ */
+export interface ModelGroupDrift {
+  modelGroup: string;
+  previousProviders: string[];
+  currentProviders: string[];
+}
+
+export function diffModelGroupProviders(
+  previous: GatewayModelGroupInfoMap,
+  current: GatewayModelGroupInfoMap,
+): ModelGroupDrift[] {
+  const groups = new Set<string>([...Object.keys(previous), ...Object.keys(current)]);
+  const drift: ModelGroupDrift[] = [];
+  for (const group of groups) {
+    const prev = previous[group]?.providers ?? [];
+    const curr = current[group]?.providers ?? [];
+    if (prev.length !== curr.length || prev.some((p, i) => p !== curr[i])) {
+      drift.push({ modelGroup: group, previousProviders: prev, currentProviders: curr });
+    }
+  }
+  return drift.sort((a, b) => a.modelGroup.localeCompare(b.modelGroup));
 }
 
 // -------------------------------------------------------------------------------------------------

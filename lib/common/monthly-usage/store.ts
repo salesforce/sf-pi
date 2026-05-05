@@ -39,6 +39,17 @@ export interface GatewayKeyInfo {
   fetchedAt: string;
 }
 
+/**
+ * Lightweight result of `/key/list` — only the number of keys the user has
+ * on this gateway account. The gateway returns hashed key ids; we never
+ * store them. Non-null `count > 1` is the trigger the extension uses to
+ * warn about using a stale shell-exported key.
+ */
+export interface GatewayKeyList {
+  count: number;
+  fetchedAt: string;
+}
+
 export interface GatewayHealth {
   /** `/health/readiness.status`, e.g. `"connected"`. */
   status: string;
@@ -46,6 +57,34 @@ export interface GatewayHealth {
   litellmVersion?: string;
   /** Gateway-reported last-updated timestamp. */
   lastUpdated?: string;
+  fetchedAt: string;
+}
+
+/**
+ * One day of per-user activity metrics from `/user/daily/activity`.
+ *
+ * Unlike `/user/info` (which gives a single monthly rollup), this endpoint
+ * returns per-day granularity, including `failed_requests` which is the
+ * cleanest early-warning signal for gateway degradation.
+ */
+export interface GatewayDailyActivityEntry {
+  /** ISO date, e.g. "2026-05-05". */
+  date: string;
+  spend: number;
+  promptTokens: number;
+  completionTokens: number;
+  cacheReadInputTokens: number;
+  cacheCreationInputTokens: number;
+  totalTokens: number;
+  successfulRequests: number;
+  failedRequests: number;
+  apiRequests: number;
+}
+
+export interface GatewayDailyActivity {
+  entries: GatewayDailyActivityEntry[];
+  startDate: string;
+  endDate: string;
   fetchedAt: string;
 }
 
@@ -63,7 +102,14 @@ export interface GatewayConnectionStatus {
   kind: GatewayConnectionKind;
   detail?: string;
   checkedAt?: string;
-  source?: "user-info" | "key-info" | "models" | "health" | "config";
+  source?:
+    | "user-info"
+    | "key-info"
+    | "models"
+    | "health"
+    | "config"
+    | "daily-activity"
+    | "key-list";
 }
 
 export interface MonthlyUsageSnapshot {
@@ -74,6 +120,15 @@ export interface MonthlyUsageSnapshot {
   health: GatewayHealth | null;
   healthError: string | null;
   connectionStatus?: GatewayConnectionStatus | null;
+  /**
+   * Per-day activity for the current user. Optional so pre-Phase-1 consumers
+   * keep compiling; when absent, treat it the same as an empty snapshot.
+   */
+  dailyActivity?: GatewayDailyActivity | null;
+  dailyActivityError?: string | null;
+  /** Number of keys this user has on the gateway, from `/key/list`. */
+  keyList?: GatewayKeyList | null;
+  keyListError?: string | null;
 }
 
 export type MonthlyUsageRefresher = (force: boolean, cwd: string) => Promise<void>;
@@ -90,6 +145,10 @@ const EMPTY_SNAPSHOT: MonthlyUsageSnapshot = {
   health: null,
   healthError: null,
   connectionStatus: null,
+  dailyActivity: null,
+  dailyActivityError: null,
+  keyList: null,
+  keyListError: null,
 };
 
 // -----------------------------------------------------------------------------

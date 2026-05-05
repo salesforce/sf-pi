@@ -34,7 +34,12 @@ export type GatewayDoctorReport = {
 };
 
 export function interpretGatewayHttpResult(status: number, bodyPreview: string): string {
-  if (status >= 200 && status < 300) return "OK";
+  if (status >= 200 && status < 300) {
+    if (/server_root_path|proxy_base_url/.test(bodyPreview)) {
+      return "OK (LiteLLM proxy signature)";
+    }
+    return "OK";
+  }
   if (status === 401 && /key is blocked/i.test(bodyPreview)) {
     return "Authentication failed because the active gateway key is blocked. Run /login and paste a new gateway API key; saved pi config now takes precedence over stale env or Keychain exports.";
   }
@@ -66,6 +71,18 @@ export async function fetchGatewayDoctorReport(cwd: string): Promise<GatewayDoct
   const anthropicRootUrl = config.baseUrl ? toGatewayRootBaseUrl(config.baseUrl) : undefined;
   const checks: GatewayDoctorCheck[] = [];
 
+  if (anthropicRootUrl) {
+    // Un-authenticated signature check. Runs before the authenticated probes
+    // so misconfigured base URLs (e.g. SSO portal pasted instead of the API
+    // gateway) are called out before the first 401.
+    checks.push(
+      await runGatewayCheck(
+        "Gateway signature",
+        `${anthropicRootUrl}/.well-known/litellm-ui-config`,
+        undefined,
+      ),
+    );
+  }
   if (openAiBaseUrl) {
     checks.push(await runGatewayCheck("Model discovery", `${openAiBaseUrl}/models`, config.apiKey));
   }
@@ -106,6 +123,39 @@ export async function fetchGatewayDoctorReport(cwd: string): Promise<GatewayDoct
     checks,
     recommendations,
   };
+}
+
+/**
+ * Minimal liveness probe used by the footer refresher to confirm the
+ * gateway is reachable without the 450-byte readiness payload. Returns
+ * true when `GET /test` responds `{route: "/test"}` and the endpoint is
+ * open to API-token auth.
+ *
+ * Exported so non-doctor code paths (e.g. monthly-usage refresh) can reuse
+ * the same interpretation without duplicating the fetch boilerplate.
+ */
+export async function pingGateway(
+  baseUrlRoot: string,
+  apiKey: string | undefined,
+  timeoutMs: number = DOCTOR_TIMEOUT_MS,
+): Promise<{ ok: boolean; status?: number; error?: string }> {
+  try {
+    const response = await fetchWithTimeout(
+      `${baseUrlRoot}/test`,
+      {
+        method: "GET",
+        headers: {
+          ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+          "Content-Type": "application/json",
+        },
+        redirect: "manual",
+      },
+      timeoutMs,
+    );
+    return { ok: response.ok, status: response.status };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : String(error) };
+  }
 }
 
 async function runGatewayCheck(

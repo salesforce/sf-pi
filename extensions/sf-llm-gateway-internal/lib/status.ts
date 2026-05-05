@@ -25,11 +25,14 @@ import {
   getActiveModelDefinition,
   isDefaultAnthropicBeta,
 } from "./models.ts";
-import type { GatewayDiscoveryState } from "./discovery.ts";
+import { getLastModelGroupDrift, type GatewayDiscoveryState } from "./discovery.ts";
+import type { ModelGroupDrift } from "./models.ts";
 import type {
   GatewayConnectionStatus,
+  GatewayDailyActivity,
   GatewayHealth,
   GatewayKeyInfo,
+  GatewayKeyList,
   GatewayMonthlyUsage,
 } from "./monthly-usage.ts";
 import { formatProviderSignalBadge, getActiveProviderSignal } from "./provider-telemetry.ts";
@@ -50,6 +53,10 @@ export interface GatewayRuntimeStatusState {
   health: GatewayHealth | null;
   healthError: string | null;
   connectionStatus?: GatewayConnectionStatus | null;
+  dailyActivity?: GatewayDailyActivity | null;
+  dailyActivityError?: string | null;
+  keyList?: GatewayKeyList | null;
+  keyListError?: string | null;
   runtimeBetaOverrides: Set<string> | null;
   runtimeExtraBetas: Set<string>;
 }
@@ -97,9 +104,12 @@ export function buildStatusReport(
     `Key spend: ${formatKeyInfoReportLine(state.keyInfo, state.keyInfoError)}`,
     `Gateway connection: ${formatConnectionReportLine(state.connectionStatus)}`,
     `Gateway health: ${formatHealthReportLine(state.health, state.healthError)}`,
+    `Last 7d: ${formatDailyActivityReportLine(state.dailyActivity, state.dailyActivityError)}`,
+    `Keys on account: ${formatKeyListReportLine(state.keyList, state.keyListError, state.keyInfo?.keyName)}`,
     "",
     `Model discovery: ${discovery?.source ?? "not run"}${discovery?.error ? ` ⚠ ${discovery.error}` : ""}`,
     `Discovered models: ${discovery?.modelIds.length ?? 0}`,
+    ...formatModelGroupDriftLines(getLastModelGroupDrift()),
     "",
     "Anthropic beta headers:",
     ...KNOWN_BETAS.map((beta) => {
@@ -229,6 +239,92 @@ function formatHealthReportLine(health: GatewayHealth | null, healthError: strin
     return parts.join(", ");
   }
   return healthError ?? "not loaded yet";
+}
+
+/**
+ * One-line rollup of daily activity for the status report. Combines total
+ * spend, request totals, failure count, and a per-day sparkline so users
+ * can see a bad day next to healthy baseline at a glance.
+ *
+ * Exported for unit tests and the usage-probe renderer.
+ */
+export function formatDailyActivityReportLine(
+  dailyActivity: GatewayDailyActivity | null | undefined,
+  dailyActivityError: string | null | undefined,
+): string {
+  if (!dailyActivity) return dailyActivityError ?? "not loaded yet";
+  const entries = dailyActivity.entries;
+  if (entries.length === 0) return "no activity in window";
+
+  let totalSpend = 0;
+  let totalRequests = 0;
+  let totalFailed = 0;
+  for (const e of entries) {
+    totalSpend += e.spend;
+    totalRequests += e.apiRequests;
+    totalFailed += e.failedRequests;
+  }
+
+  const warn = totalFailed > 0 ? " \u26A0" : "";
+  return (
+    `${formatUsd(totalSpend)} across ${totalRequests} requests (${totalFailed} failed${warn}) ` +
+    `| spend: ${formatSparkline(entries.map((e) => e.spend))}`
+  );
+}
+
+/**
+ * Render the `/key/list` count line for the status report. Mentions the
+ * currently-active key's masked name when `keyInfo.keyName` is available
+ * so users can cross-check against what the gateway admin UI shows.
+ *
+ * Exported for unit tests.
+ */
+export function formatKeyListReportLine(
+  keyList: GatewayKeyList | null | undefined,
+  keyListError: string | null | undefined,
+  activeKeyName?: string,
+): string {
+  if (!keyList) return keyListError ?? "not loaded yet";
+  const activeHint = activeKeyName ? `, active: ${activeKeyName}` : "";
+  if (keyList.count <= 1) return `${keyList.count}${activeHint}`;
+  return `${keyList.count} (consider pruning unused ones in /ui/${activeHint})`;
+}
+
+/**
+ * Render provider-drift warnings from the last discovery diff. Returns an
+ * empty array when the model-group providers array is unchanged so callers
+ * can spread into the report without any conditional glue.
+ *
+ * Exported for unit tests.
+ */
+export function formatModelGroupDriftLines(drift: ModelGroupDrift[]): string[] {
+  if (drift.length === 0) return [];
+  const out: string[] = ["Model-group provider drift:"];
+  for (const d of drift) {
+    const prev = d.previousProviders.length ? d.previousProviders.join(", ") : "(none)";
+    const curr = d.currentProviders.length ? d.currentProviders.join(", ") : "(none)";
+    out.push(`  ⚠ ${d.modelGroup}: [${prev}] → [${curr}]`);
+  }
+  return out;
+}
+
+/**
+ * Render a Unicode block sparkline for a numeric series. Empty arrays and
+ * all-zero arrays are represented with a single empty block so the status
+ * line stays aligned across days. Tested via snapshot in status.test.ts.
+ */
+export function formatSparkline(values: number[]): string {
+  if (values.length === 0) return "";
+  const max = Math.max(...values);
+  if (max <= 0) return values.map(() => "\u2581").join("");
+  const bars = ["\u2581", "\u2582", "\u2583", "\u2584", "\u2585", "\u2586", "\u2587", "\u2588"];
+  return values
+    .map((v) => {
+      if (v <= 0) return bars[0];
+      const idx = Math.min(bars.length - 1, Math.floor((v / max) * (bars.length - 1)));
+      return bars[idx];
+    })
+    .join("");
 }
 
 function isKnownBetaActive(value: string, state: GatewayRuntimeStatusState): boolean {

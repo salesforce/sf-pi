@@ -181,6 +181,8 @@ import {
 import { migrateGatewaySettings } from "./lib/migrate-unify-provider.ts";
 import { fetchTransformReport, formatTransformReport, type TransformProbe } from "./lib/debug.ts";
 import { fetchGatewayDoctorReport, formatGatewayDoctorReport } from "./lib/doctor.ts";
+import { countTokens, estimateSpend, formatTokenReport } from "./lib/token-counter.ts";
+import { buildOnboardingUrl } from "./lib/onboarding.ts";
 import {
   getMonthlyUsageState,
   refreshMonthlyUsage,
@@ -211,6 +213,8 @@ type CommandArgs = {
     | "debug"
     | "doctor"
     | "usage-probe"
+    | "tokens"
+    | "onboard"
     | "on"
     | "off"
     | "setup";
@@ -246,6 +250,10 @@ function getRuntimeStatusState() {
     health,
     healthError,
     connectionStatus,
+    dailyActivity,
+    dailyActivityError,
+    keyList,
+    keyListError,
   } = getMonthlyUsageState();
   return {
     discovery: getLastDiscovery(),
@@ -256,6 +264,10 @@ function getRuntimeStatusState() {
     health,
     healthError,
     connectionStatus: connectionStatus ?? null,
+    dailyActivity: dailyActivity ?? null,
+    dailyActivityError: dailyActivityError ?? null,
+    keyList: keyList ?? null,
+    keyListError: keyListError ?? null,
     runtimeBetaOverrides: getBetaOverrides(),
     runtimeExtraBetas: getBetaExtras(),
   };
@@ -510,6 +522,10 @@ async function handleCommand(
       return handleDoctorCommand(pi, ctx);
     case "usage-probe":
       return handleUsageProbeCommand(pi, ctx);
+    case "tokens":
+      return handleTokensCommand(pi, ctx, parsed.positional ?? []);
+    case "onboard":
+      return handleOnboardCommand(pi, ctx);
     case "beta":
       return handleBetaCommandImpl(pi, ctx, parsed.betaArgs ?? [], (summary, details, level) =>
         emitCommandOutput(pi, ctx, summary, details, level),
@@ -571,22 +587,49 @@ async function handleUsageProbeCommand(
   ctx: ExtensionCommandContext,
 ): Promise<void> {
   await refreshMonthlyUsage(true, ctx.cwd);
-  const { monthlyUsage, monthlyUsageError, keyInfo, keyInfoError, connectionStatus } =
-    getMonthlyUsageState();
-  const lines = [
+  const {
+    monthlyUsage,
+    monthlyUsageError,
+    keyInfo,
+    keyInfoError,
+    connectionStatus,
+    dailyActivity,
+    dailyActivityError,
+  } = getMonthlyUsageState();
+
+  const lines: string[] = [
     "Gateway usage probe",
     "",
     `Connection: ${connectionStatus?.kind ?? "not checked"}${connectionStatus?.source ? ` via ${connectionStatus.source}` : ""}`,
     `Monthly/user usage: ${monthlyUsage ? `$${monthlyUsage.spend.toFixed(2)} spent${monthlyUsage.budgetResetAt ? `, resets ${monthlyUsage.budgetResetAt}` : ""}` : (monthlyUsageError ?? "not loaded")}`,
     `Current key spend: ${keyInfo ? `$${keyInfo.spend.toFixed(2)}${keyInfo.keyName ? ` on ${keyInfo.keyName}` : ""}` : (keyInfoError ?? "not loaded")}`,
+  ];
+
+  if (dailyActivity) {
+    lines.push(
+      "",
+      `Last ${dailyActivity.entries.length}d activity (${dailyActivity.startDate} → ${dailyActivity.endDate}):`,
+    );
+    for (const e of dailyActivity.entries) {
+      const marker = e.failedRequests > 0 ? " \u26A0" : "";
+      lines.push(
+        `  ${e.date}: $${e.spend.toFixed(4)} across ${e.apiRequests} requests (${e.failedRequests} failed${marker})`,
+      );
+    }
+  } else if (dailyActivityError) {
+    lines.push("", `Daily activity: ${dailyActivityError}`);
+  }
+
+  lines.push(
     "",
     "Conclusion:",
     "- /key/info is key-scoped and can reset when keys rotate.",
     monthlyUsage?.budgetResetAt || monthlyUsage?.budgetDuration
       ? "- /user/info appears user-scoped but budget-windowed, so it is not a lifetime counter."
       : "- /user/info did not prove a true lifetime user counter.",
+    "- /user/daily/activity adds per-day granularity including failed_requests (early-warning signal).",
     "- The welcome splash does not show Lifetime Usage unless a true user-lifetime endpoint exists.",
-  ];
+  );
 
   await emitCommandOutput(
     pi,
@@ -594,6 +637,103 @@ async function handleUsageProbeCommand(
     "SF LLM Gateway Internal usage probe.",
     lines.join("\n"),
     connectionStatus?.kind === "connected" ? "info" : "warning",
+  );
+}
+
+/**
+ * `/sf-llm-gateway-internal tokens <modelId> [prompt]` — count tokens for a
+ * prompt on a specific model and show the gateway’s USD cost estimate. The
+ * gateway tokenizer + pricing are used server-side so callers avoid shipping
+ * a local tokenizer that drifts from upstream.
+ *
+ * When no prompt is provided we use a short canned probe so users get a sane
+ * sanity check by typing just `/sf-llm-gateway-internal tokens gpt-5`.
+ */
+/**
+ * `/sf-llm-gateway-internal onboard` — print a one-click SSO URL that lands
+ * the user on the Virtual Keys tab of the admin UI. Falls back to a
+ * friendly warning when no base URL is configured yet, since the onboarding
+ * link is derived from the gateway root.
+ */
+async function handleOnboardCommand(pi: ExtensionAPI, ctx: ExtensionCommandContext): Promise<void> {
+  const config = getGatewayConfig(ctx.cwd);
+  const url = buildOnboardingUrl(config.baseUrl);
+  if (!url) {
+    await emitCommandOutput(
+      pi,
+      ctx,
+      "SF LLM Gateway Internal onboard — base URL is not configured.",
+      [
+        `Run /${COMMAND_NAME} setup to enter the gateway base URL first, then rerun this command.`,
+        `Env-var fallback for automation: ${BASE_URL_ENV}.`,
+      ].join("\n"),
+      "warning",
+    );
+    return;
+  }
+
+  const report = [
+    "Open this link to create a new gateway API key:",
+    "",
+    url,
+    "",
+    "Flow:",
+    "1. Your browser opens the gateway SSO login.",
+    "2. After sign-in you land on the admin UI's Virtual Keys tab.",
+    "3. Click `+ Create New Key`, copy the value.",
+    `4. Paste into pi's /login (or \`/${COMMAND_NAME} setup\`) to save it.`,
+  ].join("\n");
+
+  await emitCommandOutput(pi, ctx, "SF LLM Gateway Internal onboarding link.", report, "info");
+}
+
+async function handleTokensCommand(
+  pi: ExtensionAPI,
+  ctx: ExtensionCommandContext,
+  args: string[],
+): Promise<void> {
+  if (args.length === 0) {
+    await emitCommandOutput(
+      pi,
+      ctx,
+      "SF LLM Gateway Internal tokens — missing model id.",
+      [
+        `Usage: /${COMMAND_NAME} tokens <modelId> [prompt words here]`,
+        "",
+        "Examples:",
+        `  /${COMMAND_NAME} tokens gpt-5 Hello world how are you today`,
+        `  /${COMMAND_NAME} tokens claude-opus-4-7`,
+      ].join("\n"),
+      "warning",
+    );
+    return;
+  }
+
+  const [modelId, ...promptTokens] = args;
+  if (!modelId) {
+    ctx.ui.notify(`Usage: /${COMMAND_NAME} tokens <modelId> [prompt]`, "warning");
+    return;
+  }
+  const prompt =
+    promptTokens.length > 0
+      ? promptTokens.join(" ")
+      : "Hello world — sanity probe from /sf-llm-gateway-internal tokens.";
+
+  const [tokensResult, spendResult] = await Promise.all([
+    countTokens(ctx.cwd, { model: modelId, prompt }),
+    estimateSpend(ctx.cwd, { model: modelId, prompt }),
+  ]);
+
+  const report = [formatTokenReport(tokensResult, spendResult), "", `Prompt: ${prompt}`].join("\n");
+
+  await emitCommandOutput(
+    pi,
+    ctx,
+    tokensResult.ok
+      ? `Token count for ${modelId}.`
+      : `Token count failed: ${tokensResult.error ?? "unknown error"}`,
+    report,
+    tokensResult.ok ? "info" : "warning",
   );
 }
 
@@ -732,6 +872,8 @@ async function handleHelpCommand(pi: ExtensionAPI, ctx: ExtensionCommandContext)
     `- /${COMMAND_NAME} models`,
     `- /${COMMAND_NAME} doctor`,
     `- /${COMMAND_NAME} usage-probe`,
+    `- /${COMMAND_NAME} tokens <modelId> [prompt]`,
+    `- /${COMMAND_NAME} onboard    # SSO deep-link to create a new gateway key`,
     `- /${COMMAND_NAME} debug <modelId> [reasoning=<level>] [tool] [adaptive]`,
     `- /${COMMAND_NAME} beta`,
     `- /${COMMAND_NAME} beta <name> on|off`,
@@ -802,6 +944,12 @@ export function parseCommandArgs(args: string): CommandArgs {
   }
   if (sub === "debug") {
     return { subcommand: "debug", scope, positional: tokens.slice(1) };
+  }
+  if (sub === "tokens" || sub === "count") {
+    return { subcommand: "tokens", scope, positional: tokens.slice(1) };
+  }
+  if (sub === "onboard") {
+    return { subcommand: "onboard", scope };
   }
   return { subcommand: "status", scope };
 }

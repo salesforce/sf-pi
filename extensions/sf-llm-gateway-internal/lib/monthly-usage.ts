@@ -18,8 +18,11 @@
  */
 import type {
   GatewayConnectionStatus,
+  GatewayDailyActivity,
+  GatewayDailyActivityEntry,
   GatewayHealth,
   GatewayKeyInfo,
+  GatewayKeyList,
   GatewayMonthlyUsage,
   MonthlyUsageSnapshot,
 } from "../../../lib/common/monthly-usage/store.ts";
@@ -44,10 +47,20 @@ const FETCH_TIMEOUT_MS = 10_000;
 // reaching into lib/common directly.
 export type {
   GatewayConnectionStatus,
+  GatewayDailyActivity,
+  GatewayDailyActivityEntry,
   GatewayHealth,
   GatewayKeyInfo,
+  GatewayKeyList,
   GatewayMonthlyUsage,
 } from "../../../lib/common/monthly-usage/store.ts";
+
+/**
+ * Default daily-activity window. Seven days is enough to spot a bad day
+ * next to a healthy baseline but small enough that `/user/daily/activity`
+ * responds in ~150ms on this gateway.
+ */
+const DAILY_ACTIVITY_DEFAULT_DAYS = 7;
 
 export { getMonthlyUsageState };
 
@@ -116,14 +129,19 @@ export async function refreshMonthlyUsage(force: boolean, cwd: string): Promise<
       return;
     }
 
-    // Fire all three in parallel. Each branch resolves to either the parsed
+    // Fire all four in parallel. Each branch resolves to either the parsed
     // payload or a recorded error — a single slow endpoint must not stall
-    // the others.
-    const [usageResult, keyResult, healthResult] = await Promise.allSettled([
-      fetchMonthlyUsage(config.baseUrl, config.apiKey),
-      fetchKeyInfo(config.baseUrl, config.apiKey),
-      fetchHealth(config.baseUrl, config.apiKey),
-    ]);
+    // the others. Daily activity is additive: a failure here does not
+    // downgrade the connection-status classification, which is gated on
+    // the three primary probes (user-info, key-info, health).
+    const [usageResult, keyResult, healthResult, dailyResult, keyListResult] =
+      await Promise.allSettled([
+        fetchMonthlyUsage(config.baseUrl, config.apiKey),
+        fetchKeyInfo(config.baseUrl, config.apiKey),
+        fetchHealth(config.baseUrl, config.apiKey),
+        fetchDailyActivity(config.baseUrl, config.apiKey, DAILY_ACTIVITY_DEFAULT_DAYS),
+        fetchKeyList(config.baseUrl, config.apiKey),
+      ]);
 
     const snapshot: MonthlyUsageSnapshot = {
       monthlyUsage: null,
@@ -133,6 +151,10 @@ export async function refreshMonthlyUsage(force: boolean, cwd: string): Promise<
       health: null,
       healthError: null,
       connectionStatus: null,
+      dailyActivity: null,
+      dailyActivityError: null,
+      keyList: null,
+      keyListError: null,
     };
 
     if (usageResult.status === "fulfilled") {
@@ -158,6 +180,24 @@ export async function refreshMonthlyUsage(force: boolean, cwd: string): Promise<
         healthResult.reason instanceof Error
           ? healthResult.reason.message
           : String(healthResult.reason);
+    }
+
+    if (dailyResult.status === "fulfilled") {
+      snapshot.dailyActivity = dailyResult.value;
+    } else {
+      snapshot.dailyActivityError =
+        dailyResult.reason instanceof Error
+          ? dailyResult.reason.message
+          : String(dailyResult.reason);
+    }
+
+    if (keyListResult.status === "fulfilled") {
+      snapshot.keyList = keyListResult.value;
+    } else {
+      snapshot.keyListError =
+        keyListResult.reason instanceof Error
+          ? keyListResult.reason.message
+          : String(keyListResult.reason);
     }
 
     snapshot.connectionStatus = resolveConnectionStatus(usageResult, keyResult, healthResult);
@@ -407,4 +447,129 @@ async function fetchHealth(baseUrl: string, apiKey: string): Promise<GatewayHeal
     lastUpdated: typeof json.last_updated === "string" ? json.last_updated : undefined,
     fetchedAt: new Date().toISOString(),
   };
+}
+
+/**
+ * Fetch per-day activity metrics for the authenticated user from
+ * `/user/daily/activity`. Covers `[today - days + 1, today]` (inclusive of
+ * both boundaries) so a 7-day range returns up to seven entries including
+ * the current day-in-progress.
+ *
+ * The gateway accepts the request from a non-admin `internal_user_viewer`
+ * key and scopes results to the current user, so no extra role is required.
+ * Returns a normalized `GatewayDailyActivity` sorted ascending by date.
+ *
+ * Exported for unit tests and the `usage-probe` command; production code
+ * reaches it through the parallel refresh above.
+ */
+export async function fetchDailyActivity(
+  baseUrl: string,
+  apiKey: string,
+  days: number,
+): Promise<GatewayDailyActivity> {
+  const clampedDays = Math.max(1, Math.min(30, Math.floor(days)));
+  const end = new Date();
+  const start = new Date(end);
+  start.setUTCDate(end.getUTCDate() - (clampedDays - 1));
+  const startDate = toIsoDate(start);
+  const endDate = toIsoDate(end);
+
+  const url =
+    `${toGatewayRootBaseUrl(baseUrl)}/user/daily/activity` +
+    `?start_date=${startDate}&end_date=${endDate}`;
+
+  const response = await fetchWithTimeout(
+    url,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+    },
+    FETCH_TIMEOUT_MS,
+  );
+
+  if (!response.ok) {
+    throw await gatewayRequestError("Daily activity", "daily-activity", response);
+  }
+
+  const json = (await response.json()) as {
+    results?: Array<{
+      date?: string;
+      metrics?: Record<string, unknown>;
+    }>;
+  };
+
+  const entries: GatewayDailyActivityEntry[] = [];
+  for (const row of json.results ?? []) {
+    if (typeof row.date !== "string") continue;
+    const m = row.metrics ?? {};
+    entries.push({
+      date: row.date,
+      spend: numberOr(m.spend, 0),
+      promptTokens: numberOr(m.prompt_tokens, 0),
+      completionTokens: numberOr(m.completion_tokens, 0),
+      cacheReadInputTokens: numberOr(m.cache_read_input_tokens, 0),
+      cacheCreationInputTokens: numberOr(m.cache_creation_input_tokens, 0),
+      totalTokens: numberOr(m.total_tokens, 0),
+      successfulRequests: numberOr(m.successful_requests, 0),
+      failedRequests: numberOr(m.failed_requests, 0),
+      apiRequests: numberOr(m.api_requests, 0),
+    });
+  }
+  entries.sort((a, b) => a.date.localeCompare(b.date));
+
+  return {
+    entries,
+    startDate,
+    endDate,
+    fetchedAt: new Date().toISOString(),
+  };
+}
+
+/**
+ * Fetch the number of keys this user owns on the gateway via `/key/list`.
+ * Accepts `internal_user_viewer` role. The endpoint returns an array of
+ * hashed key ids; this function only surfaces the count so no sensitive
+ * material is stored or logged.
+ *
+ * Exported for unit tests.
+ */
+export async function fetchKeyList(baseUrl: string, apiKey: string): Promise<GatewayKeyList> {
+  const response = await fetchWithTimeout(
+    `${toGatewayRootBaseUrl(baseUrl)}/key/list`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+    },
+    FETCH_TIMEOUT_MS,
+  );
+
+  if (!response.ok) {
+    throw await gatewayRequestError("Key list", "key-list", response);
+  }
+
+  const json = (await response.json()) as {
+    keys?: unknown[];
+    total_count?: number;
+  };
+  const count =
+    typeof json.total_count === "number"
+      ? json.total_count
+      : Array.isArray(json.keys)
+        ? json.keys.length
+        : 0;
+  return { count, fetchedAt: new Date().toISOString() };
+}
+
+function toIsoDate(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+function numberOr(value: unknown, fallback: number): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
 }

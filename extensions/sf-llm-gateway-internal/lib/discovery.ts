@@ -67,9 +67,13 @@ import {
   ALWAYS_INCLUDE_MODEL_IDS,
   buildBootstrapModelList,
   buildDiscoveredModelList,
+  diffModelGroupProviders,
+  fetchGatewayModelGroupInfo,
   fetchGatewayModelIds,
   fetchGatewayModelInfoMap,
   isAnthropicModelId,
+  type GatewayModelGroupInfoMap,
+  type ModelGroupDrift,
   type TaggedGatewayModel,
 } from "./models.ts";
 import { streamSfGatewayAnthropic, streamSfGatewayOpenAI } from "./transport.ts";
@@ -84,8 +88,27 @@ export interface GatewayDiscoveryState {
 let lastDiscovery: GatewayDiscoveryState | null = null;
 let discoveryInFlight: Promise<GatewayDiscoveryState> | null = null;
 
+/**
+ * Most-recent `/model_group/info` snapshot. Captured at discovery time so
+ * subsequent discoveries can diff against it without re-fetching. The
+ * first snapshot seeds `lastModelGroupDrift = []` (no drift — baseline).
+ */
+let lastModelGroupInfo: GatewayModelGroupInfoMap | null = null;
+let lastModelGroupDrift: ModelGroupDrift[] = [];
+
 export function getLastDiscovery(): GatewayDiscoveryState | null {
   return lastDiscovery;
+}
+
+/** Current provider-drift snapshot. Empty on the first discovery. */
+export function getLastModelGroupDrift(): ModelGroupDrift[] {
+  return lastModelGroupDrift;
+}
+
+/** Test-only: reset drift state between cases. */
+export function __resetModelGroupDriftForTests(): void {
+  lastModelGroupInfo = null;
+  lastModelGroupDrift = [];
 }
 
 /**
@@ -288,13 +311,25 @@ export async function discoverAndRegister(
     }
 
     try {
-      // Pull /v1/models and /v1/model/info in parallel. The info endpoint is
-      // optional enrichment — failures resolve to an empty map and the
-      // catalog keeps working with inference defaults.
-      const [allIds, modelInfoMap] = await Promise.all([
+      // Pull /v1/models, /v1/model/info and /model_group/info in parallel.
+      // The info endpoints are optional enrichment — failures resolve to an
+      // empty map and the catalog keeps working with inference defaults.
+      // `/model_group/info` powers provider-drift detection in status.ts;
+      // its result is compared to the previous session's snapshot so a
+      // silent admin reroute surfaces as a warning line.
+      const [allIds, modelInfoMap, modelGroupInfo] = await Promise.all([
         fetchGatewayModelIds(config.baseUrl, config.apiKey),
         fetchGatewayModelInfoMap(config.baseUrl, config.apiKey),
+        fetchGatewayModelGroupInfo(config.baseUrl, config.apiKey),
       ]);
+
+      // Diff against the previous snapshot (same-session or restored from
+      // the previous `discoverAndRegister`). First run seeds the baseline
+      // with an empty drift array.
+      lastModelGroupDrift = lastModelGroupInfo
+        ? diffModelGroupProviders(lastModelGroupInfo, modelGroupInfo)
+        : [];
+      lastModelGroupInfo = modelGroupInfo;
 
       if (allIds.length === 0) {
         registerProviderIfConfigured(pi, runtimeBetaOverrides, runtimeExtraBetas, cwd);

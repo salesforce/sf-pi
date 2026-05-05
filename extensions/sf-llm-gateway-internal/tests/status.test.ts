@@ -10,7 +10,13 @@ import { BETAS_ENV } from "../lib/config.ts";
 
 const originalHomeEnv = process.env.HOME;
 const originalAsciiIconsEnv = process.env.SF_PI_ASCII_ICONS;
-import { buildFooterStatus, buildStatusReport } from "../lib/status.ts";
+import {
+  buildFooterStatus,
+  buildStatusReport,
+  formatDailyActivityReportLine,
+  formatKeyListReportLine,
+  formatSparkline,
+} from "../lib/status.ts";
 import { KNOWN_BETAS } from "../lib/models.ts";
 
 const originalBetasEnv = process.env[BETAS_ENV];
@@ -205,5 +211,99 @@ describe("buildStatusReport", () => {
     expect(report).toContain("Custom injected betas:");
     expect(report).toContain("my-custom-beta-2099-01-01");
     expect(report).toContain("Beta source: command override");
+  });
+});
+
+describe("formatSparkline", () => {
+  it("returns an empty string for an empty series", () => {
+    expect(formatSparkline([])).toBe("");
+  });
+
+  it("renders an all-zero series as the minimum block for every day", () => {
+    expect(formatSparkline([0, 0, 0])).toBe("\u2581\u2581\u2581");
+  });
+
+  it("scales values into eight bar heights", () => {
+    const out = formatSparkline([1, 2, 4, 8]);
+    expect(out).toHaveLength(4);
+    // First entry is the smallest, last entry is the largest block.
+    expect(out[0]).toBe("\u2581");
+    expect(out[3]).toBe("\u2588");
+  });
+});
+
+describe("formatKeyListReportLine", () => {
+  const fetchedAt = new Date().toISOString();
+
+  it("falls back to the error when both args are missing", () => {
+    expect(formatKeyListReportLine(null, null)).toBe("not loaded yet");
+    expect(formatKeyListReportLine(null, "boom")).toBe("boom");
+  });
+
+  it("renders the count plus the active key name when ≤ 1 key", () => {
+    expect(formatKeyListReportLine({ count: 1, fetchedAt }, null, "sk-...abc")).toBe(
+      "1, active: sk-...abc",
+    );
+    expect(formatKeyListReportLine({ count: 0, fetchedAt }, null)).toBe("0");
+  });
+
+  it("warns when multiple keys are on file", () => {
+    const line = formatKeyListReportLine({ count: 4, fetchedAt }, null, "sk-...def");
+    expect(line).toContain("4");
+    expect(line).toContain("consider pruning");
+    expect(line).toContain("sk-...def");
+  });
+});
+
+describe("formatDailyActivityReportLine", () => {
+  it("shows not-loaded-yet when both args are null", () => {
+    expect(formatDailyActivityReportLine(null, null)).toBe("not loaded yet");
+  });
+
+  it("returns the error message when only the error is present", () => {
+    expect(formatDailyActivityReportLine(null, "boom")).toBe("boom");
+  });
+
+  it("renders totals plus a sparkline when entries are present", () => {
+    const line = formatDailyActivityReportLine(
+      {
+        entries: [
+          {
+            date: "2026-05-04",
+            spend: 1.25,
+            promptTokens: 0,
+            completionTokens: 0,
+            cacheReadInputTokens: 0,
+            cacheCreationInputTokens: 0,
+            totalTokens: 0,
+            successfulRequests: 100,
+            failedRequests: 0,
+            apiRequests: 100,
+          },
+          {
+            date: "2026-05-05",
+            spend: 2.5,
+            promptTokens: 0,
+            completionTokens: 0,
+            cacheReadInputTokens: 0,
+            cacheCreationInputTokens: 0,
+            totalTokens: 0,
+            successfulRequests: 195,
+            failedRequests: 5,
+            apiRequests: 200,
+          },
+        ],
+        startDate: "2026-05-04",
+        endDate: "2026-05-05",
+        fetchedAt: new Date().toISOString(),
+      },
+      null,
+    );
+
+    expect(line).toContain("$3.75");
+    expect(line).toContain("300 requests");
+    expect(line).toContain("(5 failed");
+    expect(line).toContain("\u26A0"); // warning glyph when failures > 0
+    expect(line).toContain("spend:");
   });
 });
