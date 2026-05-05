@@ -145,10 +145,13 @@ env var  →  saved config  →  built-in default
 
 Project-scoped saved config overrides global. Env vars override everything.
 
-The base URL can be configured as either the gateway root or the
-OpenAI-compatible `/v1` root. Runtime endpoint helpers route chat/model
-discovery through `/v1`, route Anthropic Messages through the gateway root,
-and route admin calls such as `/user/info` through the gateway root.
+Configure the base URL as your organization's gateway **root URL**, for
+example `https://your-internal-gateway.example.com`. Do not include deployment
+or API path suffixes such as `/bedrock` or `/v1` in the saved value. Runtime
+endpoint helpers derive the correct routes: OpenAI-compatible chat/model
+discovery uses the gateway's `/v1` route, Anthropic Messages uses the gateway
+root because the SDK appends `/v1/messages`, and admin calls such as
+`/user/info` use the gateway root.
 
 ## Zero-cost gateway billing
 
@@ -328,11 +331,12 @@ gateway. If it persists, run `/sf-llm-gateway-internal refresh`.
 
 **Gateway fails on startup or tool calls error out immediately:**
 Confirm `SF_LLM_GATEWAY_INTERNAL_BASE_URL` and `SF_LLM_GATEWAY_INTERNAL_API_KEY`
-are set (env vars win over saved config). Run
-`/sf-llm-gateway-internal setup` for an interactive wizard,
-`/sf-llm-gateway-internal doctor` for endpoint/key preflight checks, or
-`/sf-llm-gateway-internal debug <model>` to inspect the exact upstream
-payload LiteLLM would send.
+are set (env vars win over saved config). The base URL should be the gateway
+root, for example `https://your-internal-gateway.example.com`, not a deployment
+or API path such as `/bedrock` or `/v1`. Run `/sf-llm-gateway-internal setup`
+for an interactive wizard, `/sf-llm-gateway-internal doctor` for endpoint/key
+preflight checks, or `/sf-llm-gateway-internal debug <model>` to inspect the
+exact upstream payload LiteLLM would send.
 
 **Claude responses appear to truncate and the agent asks you to type "continue":**
 This is the pi-ai OpenAI-compat translator splitting Claude thinking + text

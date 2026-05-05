@@ -359,12 +359,19 @@ For the canonical machine-readable bundle list, see [`catalog/index.json`](./cat
 
 The gateway extension requires you to set a base URL and API key. There is
 no built-in default URL because the target endpoint is not publicly
-reachable:
+reachable. Use your organization's gateway **root URL** only:
 
 ```bash
-export SF_LLM_GATEWAY_INTERNAL_BASE_URL="https://your-gateway.example.com"
+export SF_LLM_GATEWAY_INTERNAL_BASE_URL="https://your-internal-gateway.example.com"
 export SF_LLM_GATEWAY_INTERNAL_API_KEY="your-gateway-key"
 ```
+
+Do not include deployment or API path suffixes in the configured base URL.
+For example, configure `https://your-internal-gateway.example.com`, not
+`https://your-internal-gateway.example.com/bedrock` or
+`https://your-internal-gateway.example.com/v1`. sf-pi derives the correct
+routes internally: OpenAI-compatible models use the gateway's `/v1` route, and
+Claude models use the native Anthropic `/v1/messages` route.
 
 Or configure directly inside pi with the built-in setup wizard:
 
