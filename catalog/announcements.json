@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.41.3-2026-05-05",
-  "latestVersion": "0.41.3",
+  "revision": "release-0.41.4-2026-05-05",
+  "latestVersion": "0.41.4",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.41.3",
+      "id": "release-0.41.4",
       "kind": "update",
-      "title": "sf-pi v0.41.3 — hide optional integration status until active",
+      "title": "sf-pi v0.41.4 — ignore arrow escape sequences in gateway setup",
       "publishedAt": "2026-05-05T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.41.3",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.41.4",
       "severity": "info",
-      "body": "hide optional integration status until active — make gateway preflight status truthful"
+      "body": "ignore arrow escape sequences in gateway setup"
     },
     {
       "id": "pi-0.72-required",
