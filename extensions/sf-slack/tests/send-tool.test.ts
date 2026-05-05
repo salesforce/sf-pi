@@ -249,7 +249,7 @@ describe("slack_send source-level safety invariants", () => {
 
 describe("/sf-slack sent command", () => {
   it("is wired into the command's argument completions and handler", () => {
-    expect(indexSource).toMatch(/subs\s*=\s*\[[^\]]*"sent"/);
+    expect(indexSource).toMatch(/value:\s*"sent"/);
     expect(indexSource).toContain('if (sub === "sent")');
     expect(indexSource).toContain("collectSendHistory");
     expect(indexSource).toContain("SEND_ENTRY_TYPE");
