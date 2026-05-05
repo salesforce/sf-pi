@@ -15,4 +15,13 @@ describe("normalizePastedTextFieldInput", () => {
   it("strips newlines from pasted keys", () => {
     expect(normalizePastedTextFieldInput("sk-line-1\nsk-line-2\r\n")).toBe("sk-line-1sk-line-2");
   });
+
+  it("does not turn arrow-key escape sequences into literal text", () => {
+    expect(normalizePastedTextFieldInput("\x1b[1;1B")).toBe("");
+    expect(normalizePastedTextFieldInput("\x1b[A")).toBe("");
+    expect(normalizePastedTextFieldInput("\x1bOB")).toBe("");
+    // Some terminals / handlers can deliver the CSI payload after the ESC byte
+    // was stripped. That still must not become `[1;1B` in the input field.
+    expect(normalizePastedTextFieldInput("[1;1B")).toBe("");
+  });
 });

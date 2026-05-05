@@ -63,11 +63,34 @@ function maskApiKeyForDisplay(value: string): string {
 }
 
 export function normalizePastedTextFieldInput(data: string): string {
+  if (isBareCsiSequence(data)) return "";
   return data
     .replace(/\x1b\[200~/g, "")
     .replace(/\x1b\[201~/g, "")
+    .replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, "")
+    .replace(/\x1bO[A-D]/g, "")
     .replace(/[\r\n\t]/g, "")
     .replace(/[\x00-\x1f\x7f]/g, "");
+}
+
+function isBareCsiSequence(data: string): boolean {
+  return /^\[(?:\d+(?:;\d+)*)?[A-Za-z~]$/.test(data);
+}
+
+function isUpKey(data: string): boolean {
+  return matchesKey(data, "up") || data === "\x1bOA" || /^\x1b\[(?:1;\d+)?A$/.test(data);
+}
+
+function isDownKey(data: string): boolean {
+  return matchesKey(data, "down") || data === "\x1bOB" || /^\x1b\[(?:1;\d+)?B$/.test(data);
+}
+
+function isLeftKey(data: string): boolean {
+  return matchesKey(data, "left") || data === "\x1bOD" || /^\x1b\[(?:1;\d+)?D$/.test(data);
+}
+
+function isRightKey(data: string): boolean {
+  return matchesKey(data, "right") || data === "\x1bOC" || /^\x1b\[(?:1;\d+)?C$/.test(data);
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -136,19 +159,19 @@ export class GatewayConfigPanelComponent implements Focusable {
       }
     }
 
-    if (matchesKey(data, "tab") || matchesKey(data, "down")) {
+    if (matchesKey(data, "tab") || isDownKey(data)) {
       this.errorMessage = null;
       this.focusIndex = (this.focusIndex + 1) % this.focusOrder.length;
       return;
     }
 
-    if (matchesKey(data, "shift+tab") || matchesKey(data, "up")) {
+    if (matchesKey(data, "shift+tab") || isUpKey(data)) {
       this.errorMessage = null;
       this.focusIndex = (this.focusIndex - 1 + this.focusOrder.length) % this.focusOrder.length;
       return;
     }
 
-    if (matchesKey(data, "left")) {
+    if (isLeftKey(data)) {
       if (focus !== "baseUrl" && focus !== "apiKey") {
         this.errorMessage = null;
         this.focusIndex = (this.focusIndex - 1 + this.focusOrder.length) % this.focusOrder.length;
@@ -156,7 +179,7 @@ export class GatewayConfigPanelComponent implements Focusable {
       return;
     }
 
-    if (matchesKey(data, "right")) {
+    if (isRightKey(data)) {
       if (focus !== "baseUrl" && focus !== "apiKey") {
         this.errorMessage = null;
         this.focusIndex = (this.focusIndex + 1) % this.focusOrder.length;
@@ -443,12 +466,12 @@ export class GatewayConfigPanelComponent implements Focusable {
   }
 
   private handleExclusiveScopeInput(data: string): boolean {
-    if (matchesKey(data, "left")) {
+    if (isLeftKey(data)) {
       this.cycleExclusiveScopeMode(-1);
       this.errorMessage = null;
       return true;
     }
-    if (matchesKey(data, "right") || matchesKey(data, "space")) {
+    if (isRightKey(data) || matchesKey(data, "space")) {
       this.cycleExclusiveScopeMode(1);
       this.errorMessage = null;
       return true;
@@ -489,12 +512,12 @@ export class GatewayConfigPanelComponent implements Focusable {
 
     let { value, cursor } = getter();
 
-    if (matchesKey(data, "left")) {
+    if (isLeftKey(data)) {
       setter(value, Math.max(0, cursor - 1));
       this.errorMessage = null;
       return true;
     }
-    if (matchesKey(data, "right")) {
+    if (isRightKey(data)) {
       setter(value, Math.min(value.length, cursor + 1));
       this.errorMessage = null;
       return true;
