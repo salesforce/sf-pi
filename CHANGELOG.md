@@ -361,6 +361,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.42.0](https://github.com/salesforce/sf-pi/compare/v0.41.4...v0.42.0) (2026-05-05)
+
+
+### Features
+
+* **sf-llm-gateway-internal:** daily activity, token counter, SSO onboarding, drift detection ([#63](https://github.com/salesforce/sf-pi/issues/63)) ([9577031](https://github.com/salesforce/sf-pi/commit/9577031c83f4ad472dc40a06b5b141c27e2137f5))
+
 ## [0.41.4](https://github.com/salesforce/sf-pi/compare/v0.41.3...v0.41.4) (2026-05-05)
 
 
