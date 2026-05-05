@@ -83,6 +83,7 @@ import {
   createAssistantMessageEventStream,
   streamSimpleAnthropic,
   streamSimpleOpenAICompletions,
+  streamSimpleOpenAIResponses,
   type AssistantMessageEvent,
   type AssistantMessageEventStream,
   type Context,
@@ -932,6 +933,188 @@ export function streamSfGatewayOpenAI(
   };
 
   return streamSimpleOpenAICompletions(model, context, wrappedOptions);
+}
+
+/**
+ * Environment variable that forces gpt-5.5 back onto the chat/completions
+ * path with `reasoning_effort` stripped — the pre-Phase-3 behavior. Useful
+ * as a kill-switch if the Responses-API path starts misbehaving in the wild
+ * without requiring a redeploy.
+ */
+export const GPT55_FORCE_CHAT_ENV = "SF_LLM_GATEWAY_INTERNAL_GPT55_FORCE_CHAT";
+
+function shouldForceGpt55Chat(): boolean {
+  const raw = process.env[GPT55_FORCE_CHAT_ENV];
+  if (!raw) return false;
+  const lower = raw.trim().toLowerCase();
+  return lower === "1" || lower === "true" || lower === "yes" || lower === "on";
+}
+
+/**
+ * Route gpt-5.5 through `POST /responses` instead of `/v1/chat/completions`.
+ *
+ * Why this exists: gpt-5.5 rejects `reasoning_effort + function tools` on
+ * the chat path (and pi is an agentic harness so tools are always present).
+ * `/v1/responses` 302s to SSO on this gateway, but `POST /responses` at the
+ * root is exposed and returns a clean Responses-shaped body. Live-verified
+ * with transform probe + a real completion + a 3-level parity matrix across
+ * reasoning effort values — see the Phase 3 PLAN for evidence.
+ *
+ * pi-ai already ships `streamSimpleOpenAIResponses` (full SSE streamer that
+ * understands reasoning blocks + tool-call output) so this shim stays thin:
+ *
+ *   1. Reshape the model to `api: "openai-responses"` for pi-ai.
+ *   2. The model's `thinkingLevelMap` (declared in models.ts) clamps pi's
+ *      5-level scale into the {low, medium, high} window that both LiteLLM
+ *      and upstream OpenAI agree on. Out-of-window values are pre-mapped
+ *      before pi-ai sees them.
+ *   3. On hard failure, fall back to the legacy chat path with reasoning
+ *      stripped so users are never stranded when the Responses route has a
+ *      bad minute. `SF_LLM_GATEWAY_INTERNAL_GPT55_FORCE_CHAT=1` short-
+ *      circuits to the legacy path before the first attempt.
+ *
+ * The openai SDK that pi-ai wraps uses the model's `baseUrl` verbatim as
+ * the OpenAI client prefix (see `createClient` in openai-responses.js), so
+ * the caller is responsible for pinning gpt-5.5's per-model `baseUrl` to
+ * the gateway root — see `lib/discovery.ts` for the registration.
+ */
+/**
+ * Test hook. Production code never passes this; tests use it to stand in
+ * fake streamers without touching ESM imports. Matches the test-hook shape
+ * used by `streamAnthropicWithRobustRetry` above so the pattern stays
+ * consistent across the module.
+ */
+export interface Gpt55ResponsesTestHooks {
+  responsesStreamer?: (
+    model: Model<"openai-responses">,
+    context: Context,
+    options?: SimpleStreamOptions,
+  ) => AssistantMessageEventStream;
+  chatStreamer?: (
+    model: Model<"openai-completions">,
+    context: Context,
+    options?: SimpleStreamOptions,
+  ) => AssistantMessageEventStream;
+}
+
+export function streamSfGatewayResponses(
+  model: Model<"openai-responses">,
+  context: Context,
+  options?: SimpleStreamOptions,
+  fallback?: {
+    chatModel: Model<"openai-completions">;
+    onFallback?: (reason: string) => void;
+  },
+  hooks?: Gpt55ResponsesTestHooks,
+): AssistantMessageEventStream {
+  const responsesStreamer = hooks?.responsesStreamer ?? streamSimpleOpenAIResponses;
+  const chatStreamer = hooks?.chatStreamer ?? ((m, c, o) => streamSfGatewayOpenAI(m, c, o));
+
+  if (shouldForceGpt55Chat()) {
+    if (fallback) {
+      fallback.onFallback?.(`${GPT55_FORCE_CHAT_ENV}=1 — using chat completions path`);
+      return chatStreamer(fallback.chatModel, context, options);
+    }
+    // No fallback wiring provided (shouldn't happen from the dispatcher,
+    // but guard anyway). Fall through to Responses so the env var becomes
+    // a soft hint rather than a hard failure.
+  }
+
+  const upstream = responsesStreamer(model, context, options);
+
+  if (!fallback) return upstream;
+
+  // Wrap the upstream event stream so that an `error` event before any
+  // visible content can trigger a one-shot fallback to chat. Once any
+  // output event has fired the request is owned by the Responses path
+  // and we must not switch transports mid-stream.
+  return wrapWithChatFallback(upstream, context, options, fallback, chatStreamer);
+}
+
+function wrapWithChatFallback(
+  upstream: AssistantMessageEventStream,
+  context: Context,
+  options: SimpleStreamOptions | undefined,
+  fallback: {
+    chatModel: Model<"openai-completions">;
+    onFallback?: (reason: string) => void;
+  },
+  chatStreamer: (
+    model: Model<"openai-completions">,
+    context: Context,
+    options?: SimpleStreamOptions,
+  ) => AssistantMessageEventStream,
+): AssistantMessageEventStream {
+  const wrapped = createAssistantMessageEventStream();
+  let sawContent = false;
+  let fallbackTriggered = false;
+
+  (async () => {
+    try {
+      for await (const event of upstream) {
+        // Any user-visible event locks us into the Responses stream.
+        if (event.type !== "start" && event.type !== "error") {
+          sawContent = true;
+        }
+        if (event.type === "error" && !sawContent && !fallbackTriggered) {
+          fallbackTriggered = true;
+          const reason =
+            event.error?.errorMessage ?? "Responses request failed before streaming content";
+          fallback.onFallback?.(`falling back to chat: ${reason}`);
+          // Hand the stream off to the chat path with a fresh model cast.
+          const chatStream = chatStreamer(fallback.chatModel, context, options);
+          for await (const fb of chatStream) {
+            wrapped.push(fb);
+          }
+          wrapped.end();
+          return;
+        }
+        wrapped.push(event);
+      }
+      wrapped.end();
+    } catch (error) {
+      if (!sawContent && !fallbackTriggered) {
+        fallbackTriggered = true;
+        const reason = error instanceof Error ? error.message : String(error);
+        fallback.onFallback?.(`falling back to chat: ${reason}`);
+        const chatStream = chatStreamer(fallback.chatModel, context, options);
+        try {
+          for await (const fb of chatStream) {
+            wrapped.push(fb);
+          }
+        } catch {
+          // If chat also fails, surface the original Responses error below.
+        }
+        wrapped.end();
+        return;
+      }
+      wrapped.push({
+        type: "error",
+        reason: "error",
+        error: {
+          role: "assistant",
+          content: [],
+          api: "openai-responses" as const,
+          provider: "sf-llm-gateway-internal",
+          model: "gpt-5.5",
+          usage: {
+            input: 0,
+            output: 0,
+            cacheRead: 0,
+            cacheWrite: 0,
+            totalTokens: 0,
+            cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+          },
+          stopReason: "error",
+          errorMessage: error instanceof Error ? error.message : String(error),
+          timestamp: Date.now(),
+        },
+      });
+      wrapped.end();
+    }
+  })();
+
+  return wrapped;
 }
 
 /**

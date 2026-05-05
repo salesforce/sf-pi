@@ -30,7 +30,7 @@
 import type { ProviderModelConfig } from "@mariozechner/pi-coding-agent";
 import { DEFAULT_MODEL_ID, FALLBACK_MODEL_ID, PREVIOUS_DEFAULT_MODEL_ID } from "./config.ts";
 import { toGatewayOpenAiBaseUrl, toGatewayRootBaseUrl } from "./gateway-url.ts";
-import { ANTHROPIC_FINE_GRAINED_TOOL_STREAMING_BETA } from "./transport.ts";
+import { ANTHROPIC_FINE_GRAINED_TOOL_STREAMING_BETA, isGpt55ModelId } from "./transport.ts";
 
 // -------------------------------------------------------------------------------------------------
 // Anthropic beta headers
@@ -524,7 +524,22 @@ export const MODEL_PRESETS: Record<string, Omit<GatewayModelDefinition, "id">> =
  * the model with pi, then `streamSimple` routes by model id at request time.
  */
 export type TaggedGatewayModel = ProviderModelConfig & {
-  api: "openai-completions" | "anthropic-messages";
+  api: "openai-completions" | "anthropic-messages" | "openai-responses";
+};
+
+/**
+ * Clamp pi's 5-level thinking scale to the 3-level window that works on
+ * `POST /responses` for gpt-5.5. The boundary values (`minimal`, `xhigh`)
+ * are rejected by either LiteLLM's Pydantic validator (`xhigh`) or the
+ * upstream OpenAI Responses API (`minimal`), so neither end of pi's scale
+ * is reachable on this path. Evidence is recorded in the local PLAN doc.
+ */
+export const GPT55_RESPONSES_THINKING_LEVEL_MAP: ProviderModelConfig["thinkingLevelMap"] = {
+  minimal: "low",
+  low: "low",
+  medium: "medium",
+  high: "high",
+  xhigh: "high",
 };
 
 /**
@@ -640,7 +655,28 @@ export function toProviderModelConfig(
   }
 
   const isCodex = def.family === "codex";
+  const isGpt55 = isGpt55ModelId(def.id);
   const compat = isCodex ? CODEX_OPENAI_COMPAT : COMMON_OPENAI_COMPAT;
+
+  // gpt-5.5 routes through the OpenAI Responses API (`POST /responses` on
+  // this gateway; `/v1/responses` is SSO-only). We tag the model internally
+  // so `lib/discovery.ts`'s unified dispatcher can detect it and delegate
+  // to `streamSfGatewayResponses`. The tag is stripped before pi registers
+  // the model so pi still calls the provider-level `streamSimple` hook.
+  if (isGpt55) {
+    return {
+      id: def.id,
+      name: def.name,
+      api: "openai-responses",
+      reasoning: def.reasoning,
+      input: def.input,
+      cost: { ...ZERO_COST },
+      contextWindow: def.contextWindow,
+      maxTokens: def.maxTokens,
+      compat,
+      thinkingLevelMap: GPT55_RESPONSES_THINKING_LEVEL_MAP,
+    };
+  }
 
   return {
     id: def.id,

@@ -76,7 +76,12 @@ import {
   type ModelGroupDrift,
   type TaggedGatewayModel,
 } from "./models.ts";
-import { streamSfGatewayAnthropic, streamSfGatewayOpenAI } from "./transport.ts";
+import { isGpt55ModelId } from "./transport.ts";
+import {
+  streamSfGatewayAnthropic,
+  streamSfGatewayOpenAI,
+  streamSfGatewayResponses,
+} from "./transport.ts";
 
 export interface GatewayDiscoveryState {
   modelIds: string[];
@@ -126,7 +131,7 @@ export function __resetModelGroupDriftForTests(): void {
  * before handing the model to `streamSfGatewayAnthropic`.
  */
 function unifiedStream(
-  model: Model<"openai-completions"> | Model<"anthropic-messages">,
+  model: Model<"openai-completions"> | Model<"anthropic-messages"> | Model<"openai-responses">,
   context: Context,
   options?: SimpleStreamOptions,
 ): AssistantMessageEventStream {
@@ -136,6 +141,24 @@ function unifiedStream(
       api: "anthropic-messages",
     } as Model<"anthropic-messages">;
     return streamSfGatewayAnthropic(anthropicModel, context, options);
+  }
+  if (isGpt55ModelId(model.id)) {
+    // gpt-5.5 routes through `POST /responses`. Build a `openai-responses`
+    // model clone for pi-ai and a chat-completions fallback clone for our
+    // Responses shim's error-recovery path. Both share the gateway root
+    // baseUrl so the OpenAI SDK hits `<root>/responses` (not
+    // `<root>/v1/responses`, which 302s to SSO on this gateway).
+    const responsesModel = {
+      ...model,
+      api: "openai-responses",
+    } as Model<"openai-responses">;
+    const chatFallbackModel = {
+      ...model,
+      api: "openai-completions",
+    } as Model<"openai-completions">;
+    return streamSfGatewayResponses(responsesModel, context, options, {
+      chatModel: chatFallbackModel,
+    });
   }
   return streamSfGatewayOpenAI(model as Model<"openai-completions">, context, options);
 }
@@ -230,9 +253,25 @@ function registerProviders(
   // / robust-retry shim in transport.ts.
   const gatewayOpenAiBaseUrl = toGatewayOpenAiBaseUrl(config.baseUrl);
   const gatewayRootBaseUrl = toGatewayRootBaseUrl(config.baseUrl);
+  //
+  // Per-model baseUrl overrides
+  //   - Anthropic models: pin to gateway root because pi-ai's SDK appends
+  //     `/v1/messages` itself. Without this override the call lands on
+  //     `<gateway>/v1/v1/messages` which 404s.
+  //   - gpt-5.5 (openai-responses): pin to gateway root because the usable
+  //     Responses endpoint on this gateway is `POST /responses` (not
+  //     `/v1/responses`, which 302s to SSO). pi-ai's OpenAI SDK calls
+  //     `POST <baseUrl>/responses` so rooting at `<gateway>` produces the
+  //     right URL.
+  // In both cases we strip the internal `api` tag before handing the model
+  // to pi. Without that, pi bypasses our `streamSimple` dispatcher and
+  // calls pi-ai's built-in transport directly — skipping the Opus 4.7
+  // robust-retry, the Codex fixups, and the Responses fallback-to-chat.
   const providerModels: ProviderModelConfig[] = models.map(({ api, ...rest }) => ({
     ...rest,
-    ...(api === "anthropic-messages" ? { baseUrl: gatewayRootBaseUrl } : {}),
+    ...(api === "anthropic-messages" || api === "openai-responses"
+      ? { baseUrl: gatewayRootBaseUrl }
+      : {}),
   }));
 
   const providerConfig: ProviderConfig = {

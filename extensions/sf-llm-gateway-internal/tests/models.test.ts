@@ -326,19 +326,26 @@ describe("toProviderModelConfig", () => {
     expect(gpt5Mini.maxTokens).toBe(128_000);
   });
 
-  it("exposes gpt-5.5 at the gateway-advertised 1M context with 128K output", () => {
-    // Gateway /v1/model/info reports 1,050,000 / 128,000 for gpt-5.5; the
+  it("routes gpt-5.5 through the OpenAI Responses API with the clamped thinking map", () => {
+    // Gateway /v1/model/info reports 1,050,000 / 128,000 for gpt-5.5. The
     // preset rounds the context window to 1M so the selector math is clean.
-    // The preset intentionally omits thinkingLevelMap because this gateway
-    // rejects reasoning_effort + function tools on gpt-5.5 and the
-    // extension transport strips reasoning_effort on the wire anyway —
-    // exposing xhigh on the selector would be misleading.
+    // Phase 3: the model is tagged `openai-responses` internally so the
+    // dispatcher in lib/discovery.ts routes it through `POST /responses`.
+    // `thinkingLevelMap` clamps pi's 5-level scale to the {low, medium,
+    // high} window — the only values that both LiteLLM's Pydantic validator
+    // and upstream OpenAI accept on the Responses path for this model.
     const cfg = toProviderModelConfig("gpt-5.5", null, new Set());
     expect(cfg.contextWindow).toBe(1_000_000);
     expect(cfg.maxTokens).toBe(128_000);
     expect(cfg.reasoning).toBe(true);
-    expect(cfg.api).toBe("openai-completions");
-    expect(cfg.thinkingLevelMap).toBeUndefined();
+    expect(cfg.api).toBe("openai-responses");
+    expect(cfg.thinkingLevelMap).toEqual({
+      minimal: "low",
+      low: "low",
+      medium: "medium",
+      high: "high",
+      xhigh: "high",
+    });
   });
 
   it("uses the updated Codex 272K/128K preset", () => {

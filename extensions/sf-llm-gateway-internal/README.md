@@ -223,6 +223,7 @@ extensions/sf-llm-gateway-internal/
     formatting.test.ts      ← unit / smoke test
     gateway-url.test.ts     ← unit / smoke test
     global-config.test.ts   ← unit / smoke test
+    gpt55-responses.test.ts ← unit / smoke test
     migrate-unify-provider.test.ts← unit / smoke test
     model-group-drift.test.ts← unit / smoke test
     models.test.ts          ← unit / smoke test
