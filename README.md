@@ -74,16 +74,18 @@ extension authoring guides live at **[pi.dev](https://pi.dev)**.
 
 ```bash
 # Install globally (visible in every pi session on your machine)
-pi install npm:sf-pi
+pi install git:github.com/salesforce/sf-pi
 
 # Or install for a specific project (only active in that folder)
-pi install -l npm:sf-pi
+pi install -l git:github.com/salesforce/sf-pi
 ```
 
-You can also install directly from GitHub when testing unreleased changes:
+npm publishing is configured, but `sf-pi` is not available from npm until the
+first npm-backed GitHub Release completes. After that release, npm installs will
+also work:
 
 ```bash
-pi install git:github.com/salesforce/sf-pi
+pi install npm:sf-pi
 ```
 
 Restart pi or run `/reload`. Every extension ships enabled by default
