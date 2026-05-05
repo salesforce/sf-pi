@@ -361,6 +361,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.41.1](https://github.com/salesforce/sf-pi/compare/v0.41.0...v0.41.1) (2026-05-05)
+
+
+### Bug Fixes
+
+* **sf-pi:** include npm release-age bypass in runtime doctor ([f094227](https://github.com/salesforce/sf-pi/commit/f094227cb277bce724570fc78fd9109207742139))
+
 ## [0.41.0](https://github.com/salesforce/sf-pi/compare/v0.40.0...v0.41.0) (2026-05-05)
 
 
