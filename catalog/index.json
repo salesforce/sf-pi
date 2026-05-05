@@ -229,7 +229,7 @@
     "entry": "extensions/sf-pi-manager/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 3175
+    "srcLoc": 3176
   },
   {
     "id": "sf-skills-hud",

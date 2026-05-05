@@ -141,7 +141,7 @@ export function requirePiVersion(
     console.warn(
       [
         `[sf-pi] Skipping "${extensionName}": requires pi-coding-agent >= ${minVersion}, found ${installed}.`,
-        "Run `pi update` to upgrade pi. If `pi --version` still reports the old version, run `npm install -g @mariozechner/pi-coding-agent@latest --force`, then `hash -r` and `pi --version`.",
+        "Run `pi update` to upgrade pi. If `pi --version` still reports the old version, run `npm install -g @mariozechner/pi-coding-agent@latest --force --min-release-age=0`, then `hash -r` and `pi --version`.",
       ].join(" "),
     );
   }

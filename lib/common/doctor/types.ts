@@ -63,6 +63,7 @@ export interface RuntimeDiagnostics {
   piPath?: string;
   allPiPaths: string[];
   npmGlobalRoot?: string;
+  npmMinReleaseAge?: string;
   installedPiPackageVersion?: string;
   latestPiPackageVersion?: string;
   updateAdvice: string[];

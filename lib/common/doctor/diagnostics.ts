@@ -461,6 +461,9 @@ export function collectRuntimeDiagnostics(): RuntimeDiagnostics {
     .map((line) => line.trim())
     .filter(Boolean);
   const npmGlobalRoot = runCapture("npm", ["root", "-g"]);
+  const npmMinReleaseAge = normalizeNpmConfigValue(
+    runCapture("npm", ["config", "get", "min-release-age"]),
+  );
   const installedPiPackageVersion = npmGlobalRoot
     ? readPackageVersion(
         path.join(npmGlobalRoot, "@mariozechner", "pi-coding-agent", "package.json"),
@@ -482,14 +485,22 @@ export function collectRuntimeDiagnostics(): RuntimeDiagnostics {
     piPath,
     allPiPaths,
     npmGlobalRoot,
+    npmMinReleaseAge,
     installedPiPackageVersion,
     latestPiPackageVersion,
     updateAdvice: buildRuntimeUpdateAdvice({
       piVersion,
       installedPiPackageVersion,
       allPiPaths,
+      npmMinReleaseAge,
     }),
   };
+}
+
+function normalizeNpmConfigValue(value: string | undefined): string | undefined {
+  const trimmed = value?.trim();
+  if (!trimmed || trimmed === "null" || trimmed === "undefined") return undefined;
+  return trimmed;
 }
 
 function readPackageVersion(packageJsonPath: string): string | undefined {
@@ -513,19 +524,28 @@ function runCapture(command: string, args: string[]): string | undefined {
   }
 }
 
-function buildRuntimeUpdateAdvice(input: {
+export function buildRuntimeUpdateAdvice(input: {
   piVersion?: string;
   installedPiPackageVersion?: string;
   allPiPaths: string[];
+  npmMinReleaseAge?: string;
 }): string[] {
+  const installCommand = input.npmMinReleaseAge
+    ? "npm install -g @mariozechner/pi-coding-agent@latest --force --min-release-age=0"
+    : "npm install -g @mariozechner/pi-coding-agent@latest --force";
   const lines = [
     "nvm use <node-version-if-applicable>",
     "npm uninstall -g @mariozechner/pi-coding-agent",
-    "npm install -g @mariozechner/pi-coding-agent@latest --force",
+    installCommand,
     "hash -r",
     "pi --version",
   ];
 
+  if (input.npmMinReleaseAge) {
+    lines.unshift(
+      `npm min-release-age is ${input.npmMinReleaseAge}; use --min-release-age=0 to bypass delayed visibility of newly published pi releases.`,
+    );
+  }
   if (input.allPiPaths.length > 1) {
     lines.unshift("which -a pi  # multiple pi executables found; ensure PATH uses the updated one");
   }

@@ -136,6 +136,7 @@ function renderRuntimeReport(report: DoctorReport): string {
     `npm executable:   ${runtime.npmPath ?? "unknown"}`,
     `pi executable:    ${runtime.piPath ?? "unknown"}`,
     `npm global root:  ${runtime.npmGlobalRoot ?? "unknown"}`,
+    `npm min-release-age: ${runtime.npmMinReleaseAge ?? "not set"}`,
     `Installed package: ${runtime.installedPiPackageVersion ? `@mariozechner/pi-coding-agent@${runtime.installedPiPackageVersion}` : "unknown"}`,
     `Latest package:    ${runtime.latestPiPackageVersion ? `@mariozechner/pi-coding-agent@${runtime.latestPiPackageVersion}` : "unknown"}`,
     "",
