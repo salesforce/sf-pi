@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.41.4-2026-05-05",
-  "latestVersion": "0.41.4",
+  "revision": "release-0.42.0-2026-05-05",
+  "latestVersion": "0.42.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.41.4",
+      "id": "release-0.42.0",
       "kind": "update",
-      "title": "sf-pi v0.41.4 — ignore arrow escape sequences in gateway setup",
+      "title": "sf-pi v0.42.0 — sf-llm-gateway-internal: daily activity, token counter, SSO onboarding, drift detection",
       "publishedAt": "2026-05-05T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.41.4",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.42.0",
       "severity": "info",
-      "body": "ignore arrow escape sequences in gateway setup"
+      "body": "sf-llm-gateway-internal: daily activity, token counter, SSO onboarding, drift detection"
     },
     {
       "id": "pi-0.72-required",
