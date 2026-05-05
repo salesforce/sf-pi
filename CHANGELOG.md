@@ -361,6 +361,14 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.43.0](https://github.com/salesforce/sf-pi/compare/v0.42.0...v0.43.0) (2026-05-05)
+
+
+### Features
+
+* **sf-llm-gateway-internal:** route gpt-5 and gpt-5-mini through /responses ([#68](https://github.com/salesforce/sf-pi/issues/68)) ([a1b56f8](https://github.com/salesforce/sf-pi/commit/a1b56f857059a38c4d875765413efad9a9588814))
+* **sf-llm-gateway-internal:** route gpt-5.5 through OpenAI Responses API ([#66](https://github.com/salesforce/sf-pi/issues/66)) ([28714dd](https://github.com/salesforce/sf-pi/commit/28714dd7bff2fe22491e3b8937e61d7c2b0bcbaa))
+
 ## [0.42.0](https://github.com/salesforce/sf-pi/compare/v0.41.4...v0.42.0) (2026-05-05)
 
 

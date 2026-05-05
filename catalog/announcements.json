@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.42.0-2026-05-05",
-  "latestVersion": "0.42.0",
+  "revision": "release-0.43.0-2026-05-05",
+  "latestVersion": "0.43.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.42.0",
+      "id": "release-0.43.0",
       "kind": "update",
-      "title": "sf-pi v0.42.0 — sf-llm-gateway-internal: daily activity, token counter, SSO onboarding, drift detection",
+      "title": "sf-pi v0.43.0 — sf-llm-gateway-internal: route gpt-5 and gpt-5-mini through /responses",
       "publishedAt": "2026-05-05T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.42.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.43.0",
       "severity": "info",
-      "body": "sf-llm-gateway-internal: daily activity, token counter, SSO onboarding, drift detection"
+      "body": "sf-llm-gateway-internal: route gpt-5 and gpt-5-mini through /responses — sf-llm-gateway-internal: route gpt-5.5 through OpenAI Responses API"
     },
     {
       "id": "pi-0.72-required",
