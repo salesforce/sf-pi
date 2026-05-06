@@ -361,6 +361,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.44.1](https://github.com/salesforce/sf-pi/compare/v0.44.0...v0.44.1) (2026-05-06)
+
+
+### Bug Fixes
+
+* **sf-slack:** strengthen canvas scope degradation ([9e36a6b](https://github.com/salesforce/sf-pi/commit/9e36a6bff98af91e1dd8b6ed303792e819fb7e27))
+
 ## [0.44.0](https://github.com/salesforce/sf-pi/compare/v0.43.0...v0.44.0) (2026-05-05)
 
 
