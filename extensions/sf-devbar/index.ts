@@ -61,7 +61,12 @@ import { buildExecFn } from "../../lib/common/exec-adapter.ts";
 import { basename } from "node:path";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 import { filterEnabledExtensionStatuses } from "../../lib/common/sf-pi-extension-state.ts";
-import { type CommandPanelAction, openCommandPanel } from "../../lib/common/command-panel.ts";
+import {
+  type CommandPanelAction,
+  type CommandPanelState,
+  openCommandPanel,
+} from "../../lib/common/command-panel.ts";
+import { openInfoPanel } from "../../lib/common/info-panel.ts";
 
 // -------------------------------------------------------------------------------------------------
 // Constants
@@ -516,46 +521,56 @@ export default function sfDevBar(pi: ExtensionAPI) {
   ];
 
   async function handleDevbarPanel(ctx: ExtensionCommandContext): Promise<void> {
+    const panelState: CommandPanelState<DevbarAction> = {};
     for (;;) {
       const action = await openCommandPanel(ctx, {
         title: "📊 SF DevBar — status & controls",
+        subtitle: "Manage the top status bar and Salesforce environment context.",
         statusLines: buildDevbarPanelStatus(ctx),
         actions: DEVBAR_ACTIONS,
         closeValue: "close",
+        state: panelState,
       });
       if (!action || action === "close") return;
-      await handleDevbarCommand(ctx, action);
+      await handleDevbarCommand(ctx, action, true);
     }
   }
 
-  async function handleDevbarCommand(ctx: ExtensionCommandContext, sub: string): Promise<void> {
+  async function handleDevbarCommand(
+    ctx: ExtensionCommandContext,
+    sub: string,
+    fromPanel = false,
+  ): Promise<void> {
     if (sub === "help") {
-      ctx.ui.notify(renderDevbarHelp(), "info");
+      await emitDevbarOutput(ctx, "SF DevBar help", renderDevbarHelp(), "info", fromPanel);
       return;
     }
 
     if (sub === "status") {
-      await showDevbarOrgStatus(ctx, false);
+      await showDevbarOrgStatus(ctx, false, fromPanel);
       return;
     }
 
     if (sub === "refresh") {
-      await showDevbarOrgStatus(ctx, true);
+      await showDevbarOrgStatus(ctx, true, fromPanel);
       return;
     }
 
     if (sub === "toggle") {
-      toggleDevbar(ctx);
+      await toggleDevbar(ctx, fromPanel);
       return;
     }
 
-    ctx.ui.notify(
+    await emitDevbarOutput(
+      ctx,
+      "Unknown command",
       `Unknown /${COMMAND_NAME} subcommand: ${sub}. Use status, toggle, refresh, help.`,
       "warning",
+      fromPanel,
     );
   }
 
-  function toggleDevbar(ctx: ExtensionCommandContext): void {
+  async function toggleDevbar(ctx: ExtensionCommandContext, fromPanel = false): Promise<void> {
     enabled = !enabled;
 
     if (enabled) {
@@ -564,29 +579,67 @@ export default function sfDevBar(pi: ExtensionAPI) {
       updateTitle(ctx);
       updateTopBar(ctx);
       requestFooterRender?.();
-      ctx.ui.notify("SF DevBar enabled", "info");
+      await emitDevbarOutput(
+        ctx,
+        "SF DevBar enabled",
+        "Top bar and footer are active for this session.",
+        "success",
+        fromPanel,
+      );
     } else {
       ctx.ui.setWidget(WIDGET_KEY, undefined);
       requestFooterRender?.();
-      ctx.ui.notify("SF DevBar disabled", "info");
+      await emitDevbarOutput(
+        ctx,
+        "SF DevBar disabled",
+        "Top bar and footer are hidden for this session.",
+        "info",
+        fromPanel,
+      );
     }
   }
 
-  async function showDevbarOrgStatus(ctx: ExtensionCommandContext, force: boolean): Promise<void> {
+  async function showDevbarOrgStatus(
+    ctx: ExtensionCommandContext,
+    force: boolean,
+    fromPanel = false,
+  ): Promise<void> {
     if (force || !env) {
-      ctx.ui.notify("Detecting Salesforce environment…", "info");
+      ctx.ui.setStatus(`${COMMAND_NAME}-command`, "SF DevBar: detecting Salesforce environment…");
       try {
         env = await getSharedSfEnvironment(exec, ctx.cwd, force ? { force: true } : undefined);
         updateTitle(ctx);
         updateTopBar(ctx);
         requestFooterRender?.();
       } catch (err) {
-        ctx.ui.notify(`Detection failed: ${err}`, "error");
+        await emitDevbarOutput(ctx, "Detection failed", String(err), "error", fromPanel);
         return;
+      } finally {
+        ctx.ui.setStatus(`${COMMAND_NAME}-command`, undefined);
       }
     }
 
-    ctx.ui.notify(formatDetailedStatus(env), "info");
+    await emitDevbarOutput(
+      ctx,
+      force ? "SF DevBar environment refreshed" : "SF DevBar status",
+      formatDetailedStatus(env),
+      "info",
+      fromPanel,
+    );
+  }
+
+  async function emitDevbarOutput(
+    ctx: ExtensionCommandContext,
+    title: string,
+    body: string,
+    level: "info" | "warning" | "error" | "success",
+    fromPanel: boolean,
+  ): Promise<void> {
+    if (fromPanel && ctx.hasUI) {
+      await openInfoPanel(ctx, { title, body, severity: level });
+      return;
+    }
+    ctx.ui.notify(body ? `${title}\n\n${body}` : title, level === "success" ? "info" : level);
   }
 
   function buildDevbarPanelStatus(ctx: ExtensionCommandContext): string[] {

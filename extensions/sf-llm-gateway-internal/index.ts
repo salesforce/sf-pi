@@ -194,7 +194,10 @@ import {
   formatGatewayAliasReference,
   formatGatewayCommandReference,
   type GatewayCommandId,
+  type GatewayPanelAction,
 } from "./lib/command-surface.ts";
+import { type CommandPanelState } from "../../lib/common/command-panel.ts";
+import { openInfoPanel } from "../../lib/common/info-panel.ts";
 import { openGatewayPanel } from "./lib/panel.ts";
 import {
   getMonthlyUsageState,
@@ -501,12 +504,14 @@ async function handleCommand(
 
 async function handlePanelCommand(pi: ExtensionAPI, ctx: ExtensionCommandContext): Promise<void> {
   let scope: "global" | "project" = "global";
+  const panelState: CommandPanelState<GatewayPanelAction> = {};
 
   for (;;) {
     const action = await openGatewayPanel(ctx, {
       providerRegistered: getLastDiscovery()?.source !== "disabled",
       runtimeState: getRuntimeStatusState(),
       scope,
+      state: panelState,
     });
 
     if (!action || action === "close") {
@@ -1459,10 +1464,8 @@ async function emitCommandOutput(
   details: string,
   level: "info" | "warning" | "error",
 ): Promise<void> {
-  const body = details ? `${summary}\n\n${details}` : summary;
-
   if (ctx.hasUI) {
-    ctx.ui.notify(body, level);
+    await openInfoPanel(ctx, { title: summary, body: details || summary, severity: level });
     return;
   }
 

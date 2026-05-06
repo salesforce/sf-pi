@@ -59,7 +59,12 @@ import type {
   ExtensionCommandContext,
 } from "@mariozechner/pi-coding-agent";
 
-import { type CommandPanelAction, openCommandPanel } from "../../lib/common/command-panel.ts";
+import {
+  type CommandPanelAction,
+  type CommandPanelState,
+  openCommandPanel,
+} from "../../lib/common/command-panel.ts";
+import { openInfoPanel } from "../../lib/common/info-panel.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 import { record, readRecent } from "./lib/audit.ts";
 import { forgetSession, grant, isAllowed, restore } from "./lib/allowlist.ts";
@@ -248,21 +253,28 @@ const GUARDRAIL_ACTIONS: CommandPanelAction<GuardrailAction>[] = [
 ];
 
 async function handleGuardrailPanel(ctx: ExtensionCommandContext): Promise<void> {
+  const panelState: CommandPanelState<GuardrailAction> = {};
   for (;;) {
     const { config, source } = loadConfig();
     const action = await openCommandPanel(ctx, {
       title: "🛡 SF Guardrail — status & controls",
+      subtitle: "Inspect safety rules, audit decisions, and session overrides.",
       statusLines: buildGuardrailPanelStatus(ctx, config, source),
       actions: GUARDRAIL_ACTIONS,
       closeValue: "close",
+      state: panelState,
     });
 
     if (!action || action === "close") return;
-    await handleGuardrailCommand(ctx, action);
+    await handleGuardrailCommand(ctx, action, true);
   }
 }
 
-async function handleGuardrailCommand(ctx: ExtensionCommandContext, sub: string): Promise<void> {
+async function handleGuardrailCommand(
+  ctx: ExtensionCommandContext,
+  sub: string,
+  fromPanel = false,
+): Promise<void> {
   const { config, source } = loadConfig();
 
   if (sub === "status" || sub === "help") {
@@ -276,25 +288,40 @@ async function handleGuardrailCommand(ctx: ExtensionCommandContext, sub: string)
             hasUI: ctx.hasUI,
             headlessEnabled: !!process.env[config.headlessEscapeHatchEnv],
           });
-    ctx.ui.notify(text, "info");
+    await emitGuardrailOutput(
+      ctx,
+      sub === "help" ? "SF Guardrail help" : "SF Guardrail status",
+      text,
+      "info",
+      fromPanel,
+    );
     return;
   }
 
   if (sub === "list") {
-    ctx.ui.notify(renderRules(config), "info");
+    await emitGuardrailOutput(ctx, "SF Guardrail rules", renderRules(config), "info", fromPanel);
     return;
   }
 
   if (sub === "audit") {
-    ctx.ui.notify(renderAudit(readRecent(ctx, 50)), "info");
+    await emitGuardrailOutput(
+      ctx,
+      "SF Guardrail audit",
+      renderAudit(readRecent(ctx, 50)),
+      "info",
+      fromPanel,
+    );
     return;
   }
 
   if (sub === "forget") {
     forgetSession();
-    ctx.ui.notify(
-      "sf-guardrail: cleared in-memory allow list for this turn. Session entries remain; /reload restores them.",
+    await emitGuardrailOutput(
+      ctx,
+      "SF Guardrail session allow-list cleared",
+      "In-memory allows are cleared for this turn. Session entries remain; /reload restores them.",
       "info",
+      fromPanel,
     );
     return;
   }
@@ -304,10 +331,27 @@ async function handleGuardrailCommand(ctx: ExtensionCommandContext, sub: string)
     return;
   }
 
-  ctx.ui.notify(
+  await emitGuardrailOutput(
+    ctx,
+    "Unknown command",
     `Unknown /sf-guardrail subcommand: ${sub}. Use status, list, audit, forget, install-preset, help.`,
     "warning",
+    fromPanel,
   );
+}
+
+async function emitGuardrailOutput(
+  ctx: ExtensionCommandContext,
+  title: string,
+  body: string,
+  level: "info" | "warning" | "error" | "success",
+  fromPanel: boolean,
+): Promise<void> {
+  if (fromPanel && ctx.hasUI) {
+    await openInfoPanel(ctx, { title, body, severity: level });
+    return;
+  }
+  ctx.ui.notify(body ? `${title}\n\n${body}` : title, level === "success" ? "info" : level);
 }
 
 function buildGuardrailPanelStatus(

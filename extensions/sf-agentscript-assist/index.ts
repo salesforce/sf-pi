@@ -55,7 +55,12 @@ import {
   type ToolResultContentPart,
 } from "./lib/feedback.ts";
 import { probeDoctor, renderDoctorReport } from "./lib/doctor.ts";
-import { type CommandPanelAction, openCommandPanel } from "../../lib/common/command-panel.ts";
+import {
+  type CommandPanelAction,
+  type CommandPanelState,
+  openCommandPanel,
+} from "../../lib/common/command-panel.ts";
+import { openInfoPanel } from "../../lib/common/info-panel.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 
 // -------------------------------------------------------------------------------------------------
@@ -142,10 +147,12 @@ async function handleAgentScriptPanel(
   ctx: ExtensionCommandContext,
   state: AgentScriptAssistState,
 ): Promise<void> {
+  const panelState: CommandPanelState<AgentScriptAction> = {};
   for (;;) {
     const doctor = await probeDoctor(ctx.cwd);
     const action = await openCommandPanel(ctx, {
       title: "🧭 SF Agent Script Assist — status & controls",
+      subtitle: "Inspect the Agent Script SDK bridge and run targeted checks.",
       statusLines: [
         `${doctor.sdkLoaded ? "✓" : "✗"} SDK           ${doctor.sdkLoaded ? "loaded" : "unavailable"}`,
         `• Vendored path ${doctor.vendoredSdkPath}`,
@@ -153,10 +160,11 @@ async function handleAgentScriptPanel(
       ],
       actions: AGENTSCRIPT_ACTIONS,
       closeValue: "close",
+      state: panelState,
     });
 
     if (!action || action === "close") return;
-    await handleAgentScriptCommand(ctx, state, action, []);
+    await handleAgentScriptCommand(ctx, state, action, [], true);
   }
 }
 
@@ -165,12 +173,17 @@ async function handleAgentScriptCommand(
   state: AgentScriptAssistState,
   subcommand: string,
   args: string[],
+  fromPanel = false,
 ): Promise<void> {
   if (subcommand === "doctor") {
     const status = await probeDoctor(ctx.cwd);
-    if (ctx.hasUI) {
-      ctx.ui.notify(renderDoctorReport(status), status.sdkLoaded ? "info" : "warning");
-    }
+    await emitAgentScriptOutput(
+      ctx,
+      "Agent Script doctor",
+      renderDoctorReport(status),
+      status.sdkLoaded ? "info" : "warning",
+      fromPanel,
+    );
     return;
   }
 
@@ -185,12 +198,38 @@ async function handleAgentScriptCommand(
   }
 
   if (subcommand === "help") {
-    ctx.ui.notify(renderAgentScriptHelp(), "info");
+    await emitAgentScriptOutput(
+      ctx,
+      "Agent Script Assist help",
+      renderAgentScriptHelp(),
+      "info",
+      fromPanel,
+    );
     return;
   }
 
+  await emitAgentScriptOutput(
+    ctx,
+    "Agent Script Assist usage",
+    "Usage: /sf-agentscript-assist [doctor | check <file> | help]",
+    "warning",
+    fromPanel,
+  );
+}
+
+async function emitAgentScriptOutput(
+  ctx: ExtensionCommandContext,
+  title: string,
+  body: string,
+  level: "info" | "warning" | "error" | "success",
+  fromPanel: boolean,
+): Promise<void> {
+  if (fromPanel && ctx.hasUI) {
+    await openInfoPanel(ctx, { title, body, severity: level });
+    return;
+  }
   if (ctx.hasUI) {
-    ctx.ui.notify("Usage: /sf-agentscript-assist [doctor | check <file> | help]", "warning");
+    ctx.ui.notify(body ? `${title}\n\n${body}` : title, level === "success" ? "info" : level);
   }
 }
 

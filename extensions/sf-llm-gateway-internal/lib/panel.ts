@@ -6,7 +6,11 @@
  * and actions are scanable by section.
  */
 import type { ExtensionCommandContext, Theme } from "@mariozechner/pi-coding-agent";
-import { type CommandPanelAction, openCommandPanel } from "../../../lib/common/command-panel.ts";
+import {
+  type CommandPanelAction,
+  type CommandPanelState,
+  openCommandPanel,
+} from "../../../lib/common/command-panel.ts";
 import {
   describeApiKey,
   describeConfigValue,
@@ -22,6 +26,7 @@ export interface GatewayPanelOptions {
   providerRegistered: boolean;
   runtimeState: GatewayRuntimeStatusState;
   scope: "global" | "project";
+  state?: CommandPanelState<GatewayPanelAction>;
 }
 
 export async function openGatewayPanel(
@@ -30,9 +35,11 @@ export async function openGatewayPanel(
 ): Promise<GatewayPanelAction | null> {
   return openCommandPanel(ctx, {
     title: "⚡ SF LLM Gateway Internal — status & controls",
+    subtitle: "Configure provider scope, discover models, and inspect gateway health.",
     statusLines: buildGatewayPanelStatusLines(ctx, options, ctx.ui.theme),
     actions: buildGatewayGroupedActionItems(options.scope),
     closeValue: "close",
+    state: options.state,
   });
 }
 

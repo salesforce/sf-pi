@@ -39,7 +39,12 @@ import {
   type SkillsHudState,
 } from "./lib/skill-state.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
-import { type CommandPanelAction, openCommandPanel } from "../../lib/common/command-panel.ts";
+import {
+  type CommandPanelAction,
+  type CommandPanelState,
+  openCommandPanel,
+} from "../../lib/common/command-panel.ts";
+import { openInfoPanel } from "../../lib/common/info-panel.ts";
 
 // -------------------------------------------------------------------------------------------------
 // Constants
@@ -218,15 +223,17 @@ export default function sfSkillsHud(pi: ExtensionAPI) {
         await handleSkillsPanel(ctx);
         return;
       }
-      handleSkillsCommand(ctx, subcommand === "" ? "summary" : subcommand);
+      await handleSkillsCommand(ctx, subcommand === "" ? "summary" : subcommand);
     },
   });
 
   async function handleSkillsPanel(ctx: ExtensionCommandContext): Promise<void> {
+    const panelState: CommandPanelState<SkillsAction> = {};
     for (;;) {
       refreshHud(ctx);
       const action = await openCommandPanel(ctx, {
         title: "🎯 SF Skills HUD — status & controls",
+        subtitle: "Review skill activity surfaced in the floating HUD.",
         statusLines: [
           `${hudState.hasAny ? "✓" : "○"} Usage detected ${hudState.hasAny ? "yes" : "no"}`,
           `• Live skills    ${hudState.live.length}`,
@@ -235,27 +242,55 @@ export default function sfSkillsHud(pi: ExtensionAPI) {
         ],
         actions: SKILLS_ACTIONS,
         closeValue: "close",
+        state: panelState,
       });
       if (!action || action === "close") return;
-      handleSkillsCommand(ctx, action);
+      await handleSkillsCommand(ctx, action, true);
     }
   }
 
-  function handleSkillsCommand(ctx: ExtensionCommandContext, subcommand: string): void {
+  async function handleSkillsCommand(
+    ctx: ExtensionCommandContext,
+    subcommand: string,
+    fromPanel = false,
+  ): Promise<void> {
     if (subcommand === "help") {
-      ctx.ui.notify(renderSkillsHelp(), "info");
+      await emitSkillsOutput(ctx, "SF Skills HUD help", renderSkillsHelp(), "info", fromPanel);
       return;
     }
 
     if (subcommand === "summary") {
       refreshHud(ctx);
-      ctx.ui.notify(formatSkillsHudSummary(hudState).join("\n"), "info");
+      await emitSkillsOutput(
+        ctx,
+        "SF Skills HUD summary",
+        formatSkillsHudSummary(hudState).join("\n"),
+        "info",
+        fromPanel,
+      );
       return;
     }
 
-    ctx.ui.notify(
+    await emitSkillsOutput(
+      ctx,
+      "Unknown command",
       `Unknown /${COMMAND_NAME} subcommand: ${subcommand}. Use summary or help.`,
       "warning",
+      fromPanel,
     );
+  }
+
+  async function emitSkillsOutput(
+    ctx: ExtensionCommandContext,
+    title: string,
+    body: string,
+    level: "info" | "warning" | "error" | "success",
+    fromPanel: boolean,
+  ): Promise<void> {
+    if (fromPanel && ctx.hasUI) {
+      await openInfoPanel(ctx, { title, body, severity: level });
+      return;
+    }
+    ctx.ui.notify(body ? `${title}\n\n${body}` : title, level === "success" ? "info" : level);
   }
 }

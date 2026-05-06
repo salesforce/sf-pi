@@ -88,7 +88,12 @@ import { openSettingsPanel } from "./lib/settings-panel.ts";
 import { renderStatsLines, resetStats, setStatsListener } from "./lib/stats.ts";
 import { classifySlackStatus, slackStatusLabel } from "./lib/status.ts";
 import { clearSlackStatus, setSlackStatus } from "../../lib/common/slack-status/store.ts";
-import { type CommandPanelAction, openCommandPanel } from "../../lib/common/command-panel.ts";
+import {
+  type CommandPanelAction,
+  type CommandPanelState,
+  openCommandPanel,
+} from "../../lib/common/command-panel.ts";
+import { openInfoPanel } from "../../lib/common/info-panel.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 
 const RESEARCH_WIDGET_KEY = "sf-slack-research";
@@ -503,27 +508,40 @@ export default function sfSlack(pi: ExtensionAPI) {
   });
 
   async function handleSlackPanel(ctx: ExtensionCommandContext): Promise<void> {
+    const panelState: CommandPanelState<SlackCommandAction> = {};
     for (;;) {
       const action = await openCommandPanel(ctx, {
         title: "💬 SF Slack — status & controls",
+        subtitle: "Inspect auth, refresh granted scopes, and tune Slack result rendering.",
         statusLines: buildSlackPanelStatus(),
         actions: SLACK_COMMAND_ACTIONS,
         closeValue: "close",
+        state: panelState,
       });
       if (!action || action === "close") return;
-      await handleSlackCommand(action, ctx);
+      await handleSlackCommand(action, ctx, true);
     }
   }
 
-  async function handleSlackCommand(sub: string, ctx: ExtensionCommandContext): Promise<void> {
+  async function handleSlackCommand(
+    sub: string,
+    ctx: ExtensionCommandContext,
+    fromPanel = false,
+  ): Promise<void> {
     if (sub === "status") {
-      ctx.ui.notify(await buildAuthStatus(ctx), "info");
+      await emitSlackOutput(
+        ctx,
+        "SF Slack auth status",
+        await buildAuthStatus(ctx),
+        "info",
+        fromPanel,
+      );
       return;
     }
 
     if (sub === "refresh") {
       const generation = activeSessionGeneration;
-      ctx.ui.notify("Re-detecting Slack identity…", "info");
+      ctx.ui.setStatus(`-command`, "Slack: re-detecting identity and scopes…");
       updateStatus(ctx, "loading", generation);
 
       const auth = await getSlackToken(ctx);
@@ -531,9 +549,13 @@ export default function sfSlack(pi: ExtensionAPI) {
 
       if (!auth.ok) {
         updateStatus(ctx, "disconnected", generation);
-        ctx.ui.notify(
+        ctx.ui.setStatus(`-command`, undefined);
+        await emitSlackOutput(
+          ctx,
+          "Slack token not found",
           "No Slack token found. Run /login sf-slack, use macOS Keychain, or set SLACK_USER_TOKEN.",
           "warning",
+          fromPanel,
         );
         return;
       }
@@ -566,26 +588,36 @@ export default function sfSlack(pi: ExtensionAPI) {
           missingGrantedScopeCount = probeResult.missingGrantedScopes.length;
           grantedScopeCount = getGrantedScopes()?.size ?? 0;
           updateStatus(ctx, "connected", generation);
-          if (probeResult.missingGrantedScopes.length > 0) {
-            ctx.ui.notify(
-              `⚠ Slack granted ${probeResult.missingGrantedScopes.length} fewer scope(s) than requested. ` +
-                `Missing: ${probeResult.missingGrantedScopes.slice(0, 6).join(", ")}` +
-                (probeResult.missingGrantedScopes.length > 6 ? ", …" : "") +
-                ". Run /sf-slack to see the full diff.",
-              "warning",
-            );
-          }
           const status = await buildAuthStatus(ctx);
           if (!isActiveSession(ctx, generation)) return;
-          ctx.ui.notify(status, "info");
+          ctx.ui.setStatus(`-command`, undefined);
+          const scopeNote =
+            probeResult.missingGrantedScopes.length > 0
+              ? `\n\nSlack granted ${probeResult.missingGrantedScopes.length} fewer scope(s) than requested. Missing: ${probeResult.missingGrantedScopes.slice(0, 6).join(", ")}${probeResult.missingGrantedScopes.length > 6 ? ", …" : ""}.`
+              : "";
+          await emitSlackOutput(
+            ctx,
+            "SF Slack refreshed",
+            `${status}${scopeNote}`,
+            probeResult.missingGrantedScopes.length > 0 ? "warning" : "success",
+            fromPanel,
+          );
         } else {
           updateStatus(ctx, "error", generation);
-          ctx.ui.notify(`Slack auth.test failed: ${(authResult as ApiErr).error}`, "error");
+          ctx.ui.setStatus(`-command`, undefined);
+          await emitSlackOutput(
+            ctx,
+            "Slack auth.test failed",
+            (authResult as ApiErr).error,
+            "error",
+            fromPanel,
+          );
         }
       } catch (err) {
         if (isAbortError(err)) return;
         updateStatus(ctx, "error", generation);
-        ctx.ui.notify(`Slack detection failed: ${err}`, "error");
+        ctx.ui.setStatus(`-command`, undefined);
+        await emitSlackOutput(ctx, "Slack detection failed", String(err), "error", fromPanel);
       }
       return;
     }
@@ -608,7 +640,13 @@ export default function sfSlack(pi: ExtensionAPI) {
     if (sub === "sent") {
       const entries = collectSendHistory(ctx);
       if (entries.length === 0) {
-        ctx.ui.notify("No slack_send activity in this session branch yet.", "info");
+        await emitSlackOutput(
+          ctx,
+          "SF Slack send history",
+          "No slack_send activity in this session branch yet.",
+          "info",
+          fromPanel,
+        );
         return;
       }
       const lines = [
@@ -616,19 +654,36 @@ export default function sfSlack(pi: ExtensionAPI) {
         "",
         ...entries.slice(-10).map(formatSendHistoryLine),
       ];
-      ctx.ui.notify(lines.join("\n"), "info");
+      await emitSlackOutput(ctx, "SF Slack send history", lines.join("\n"), "info", fromPanel);
       return;
     }
 
     if (sub === "help") {
-      ctx.ui.notify(renderSlackHelp(), "info");
+      await emitSlackOutput(ctx, "SF Slack help", renderSlackHelp(), "info", fromPanel);
       return;
     }
 
-    ctx.ui.notify(
+    await emitSlackOutput(
+      ctx,
+      "Unknown command",
       `Unknown /sf-slack subcommand: ${sub}. Use status, refresh, settings, sent, help.`,
       "warning",
+      fromPanel,
     );
+  }
+
+  async function emitSlackOutput(
+    ctx: ExtensionCommandContext,
+    title: string,
+    body: string,
+    level: "info" | "warning" | "error" | "success",
+    fromPanel: boolean,
+  ): Promise<void> {
+    if (fromPanel && ctx.hasUI) {
+      await openInfoPanel(ctx, { title, body, severity: level });
+      return;
+    }
+    ctx.ui.notify(body ? `${title}\n\n${body}` : title, level === "success" ? "info" : level);
   }
 
   function buildSlackPanelStatus(): string[] {

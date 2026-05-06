@@ -33,7 +33,12 @@ import {
   normalizeIssueTitle,
 } from "./lib/issue-template.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
-import { type CommandPanelAction, openCommandPanel } from "../../lib/common/command-panel.ts";
+import {
+  type CommandPanelAction,
+  type CommandPanelState,
+  openCommandPanel,
+} from "../../lib/common/command-panel.ts";
+import { openInfoPanel } from "../../lib/common/info-panel.ts";
 import { sanitizeText } from "./lib/sanitize.ts";
 import type { FeedbackDraft, IssueKind } from "./lib/types.ts";
 
@@ -117,9 +122,11 @@ async function handleFeedbackPanel(
   ctx: ExtensionCommandContext,
   exec: ExecFn,
 ): Promise<void> {
+  const panelState: CommandPanelState<FeedbackAction> = {};
   for (;;) {
     const action = await openCommandPanel(ctx, {
       title: "💬 SF Feedback — status & controls",
+      subtitle: "Create public-safe feedback issues with sanitized diagnostics.",
       statusLines: [
         "✓ Privacy       diagnostics are sanitized before preview/submission",
         "✓ Confirmation  GitHub issue creation requires final approval",
@@ -127,6 +134,7 @@ async function handleFeedbackPanel(
       ],
       actions: FEEDBACK_ACTIONS,
       closeValue: "close",
+      state: panelState,
     });
     if (!action || action === "close") return;
     await handleCommand(pi, ctx, exec, action);
@@ -355,10 +363,8 @@ async function emitCommandOutput(
   details: string,
   level: "info" | "warning" | "error",
 ): Promise<void> {
-  const body = details ? `${summary}\n\n${details}` : summary;
-
   if (ctx.hasUI) {
-    ctx.ui.notify(body, level);
+    await openInfoPanel(ctx, { title: summary, body: details || summary, severity: level });
     return;
   }
 
