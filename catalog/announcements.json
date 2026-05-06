@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.44.1-2026-05-06",
-  "latestVersion": "0.44.1",
+  "revision": "release-0.45.0-2026-05-06",
+  "latestVersion": "0.45.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.44.1",
+      "id": "release-0.45.0",
       "kind": "update",
-      "title": "sf-pi v0.44.1 — sf-slack: strengthen canvas scope degradation",
+      "title": "sf-pi v0.45.0 — ui: improve command panel interactions",
       "publishedAt": "2026-05-06T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.44.1",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.45.0",
       "severity": "info",
-      "body": "sf-slack: strengthen canvas scope degradation"
+      "body": "ui: improve command panel interactions — ui: refine panels and popup contrast"
     },
     {
       "id": "pi-0.72-required",
