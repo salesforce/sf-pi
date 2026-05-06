@@ -322,7 +322,7 @@ export function registerSendTool(pi: ExtensionAPI): void {
       const result = await chatPostMessage(auth.token, body, signal);
       if (!result.ok) {
         const error = result as ApiErr;
-        return errorResult(error.error, error.needed, error.provided);
+        return errorResult(error.error, error.needed, error.provided, error.messages);
       }
 
       const messageTs = result.data.ts;
@@ -526,7 +526,7 @@ async function routeDm(
   if (!opened.ok) {
     const error = opened as ApiErr;
     return {
-      result: errorResult(error.error, error.needed, error.provided),
+      result: errorResult(error.error, error.needed, error.provided, error.messages),
     };
   }
   const im = (opened.data as ConversationsOpenResponse).channel?.id;

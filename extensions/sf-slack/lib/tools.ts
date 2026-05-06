@@ -183,7 +183,7 @@ export function registerSlackTool(pi: ExtensionAPI): void {
 
         if (!result.ok) {
           const error = result as ApiErr;
-          return errorResult(error.error, error.needed, error.provided);
+          return errorResult(error.error, error.needed, error.provided, error.messages);
         }
 
         const matches = Array.isArray(result.data.messages?.matches)
@@ -228,7 +228,7 @@ export function registerSlackTool(pi: ExtensionAPI): void {
         );
         if (!result.ok) {
           const error = result as ApiErr;
-          return errorResult(error.error, error.needed, error.provided);
+          return errorResult(error.error, error.needed, error.provided, error.messages);
         }
 
         const messages = Array.isArray(result.data.messages) ? result.data.messages : [];
@@ -300,7 +300,7 @@ export function registerSlackTool(pi: ExtensionAPI): void {
         );
         if (!result.ok) {
           const error = result as ApiErr;
-          return errorResult(error.error, error.needed, error.provided);
+          return errorResult(error.error, error.needed, error.provided, error.messages);
         }
 
         const messages = Array.isArray(result.data.messages) ? result.data.messages : [];
@@ -365,7 +365,7 @@ export function registerSlackTool(pi: ExtensionAPI): void {
         );
         if (!result.ok) {
           const error = result as ApiErr;
-          return errorResult(error.error, error.needed, error.provided);
+          return errorResult(error.error, error.needed, error.provided, error.messages);
         }
 
         const permalink = result.data.permalink || "No permalink returned.";

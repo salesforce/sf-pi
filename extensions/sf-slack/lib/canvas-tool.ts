@@ -24,6 +24,7 @@ import {
   errorResult,
   hasScope,
   hasScopeKnown,
+  hasAnyScope,
   detectTokenType,
   type SlackTokenType,
 } from "./api.ts";
@@ -38,6 +39,8 @@ interface CanvasToolCallArgs {
   operation?: string;
   criteria?: {
     contains?: string;
+    contains_text?: string;
+    section_types?: string[];
   };
 }
 
@@ -47,12 +50,32 @@ interface CanvasToolRenderResult {
     ok?: boolean;
     action?: string;
     mode?: "metadata" | "sections";
+    count?: number;
     canvas_id?: string;
     operation?: string;
     fileData?: StructuredFile;
     sections?: StructuredCanvasSection[];
   };
 }
+
+type CanvasSectionType = "h1" | "h2" | "h3" | "any_header";
+
+interface CanvasLookupInputCriteria {
+  contains?: string;
+  contains_text?: string;
+  section_types?: string[];
+}
+
+interface CanvasLookupCriteria {
+  contains_text?: string;
+  section_types?: CanvasSectionType[];
+}
+
+type CanvasCriteriaValidation =
+  | { ok: true; criteria: CanvasLookupCriteria }
+  | { ok: false; message: string; reason: string };
+
+const VALID_CANVAS_SECTION_TYPES = new Set<string>(["h1", "h2", "h3", "any_header"]);
 
 function callLabel(label: string, summary: string, theme: Theme): Text {
   return new Text(
@@ -79,7 +102,8 @@ export function registerCanvasTool(pi: ExtensionAPI): void {
       switch (action) {
         case "read": {
           let summary = args.canvas_id || "?";
-          if (args.criteria?.contains) summary += ` contains:"${args.criteria.contains}"`;
+          const contains = args.criteria?.contains || args.criteria?.contains_text;
+          if (contains) summary += ` contains:"${contains}"`;
           return callLabel("Slack Canvas", summary, theme);
         }
         case "create": {
@@ -187,6 +211,9 @@ export function registerCanvasTool(pi: ExtensionAPI): void {
           };
         }
 
+        const readGate = preflightCanvasRead(!!params.criteria);
+        if (readGate) return canvasGateResult(action, readGate);
+
         if (!params.criteria) {
           const result = await slackApi<FilesInfoResponse>(
             "files.info",
@@ -209,34 +236,25 @@ export function registerCanvasTool(pi: ExtensionAPI): void {
                 const sections = Array.isArray(fallback.data.sections)
                   ? fallback.data.sections
                   : [];
-                // Tell the user *why* metadata is missing so they're not left
-                // guessing (this is the "metadata unavailable" case John hit).
+                // Tell the user *why* metadata is missing and still return
+                // section IDs that can be used for targeted canvas edits.
                 const reason = hasScopeKnown("files:read")
                   ? "files.info call was denied by Slack"
                   : "token lacks files:read";
+                const structured = sections.map(toStructuredCanvasSection);
                 return buildSlackTextResult(
-                  `Canvas ${params.canvas_id} — metadata unavailable (${reason}). ` +
-                    `Returning ${sections.length} header sections via canvases.sections.lookup instead. ` +
-                    `To get full metadata, re-run /login sf-slack with files:read granted.`,
+                  formatDegradedCanvasSections(params.canvas_id, reason, sections),
                   {
                     ok: true,
                     action,
+                    count: sections.length,
                     canvas_id: params.canvas_id,
-                    mode: "metadata",
-                    fileData: {
-                      id: params.canvas_id,
-                      name: `Canvas ${params.canvas_id}`,
-                      type: "canvas",
-                      size: "unknown",
-                      created: "",
-                      sharedBy: "unknown",
-                      permalink: "",
-                      channels: "",
-                    },
+                    mode: "sections",
+                    sections: structured,
                     fallback: true,
                     fallback_reason: reason,
                   },
-                  { prefix: "pi-slack-canvas-read" },
+                  { prefix: "pi-slack-canvas-sections" },
                 );
               }
               // Fallback call failed too. Distinguish "resource missing"
@@ -267,8 +285,7 @@ export function registerCanvasTool(pi: ExtensionAPI): void {
                       text:
                         "Cannot read canvas — token lacks both files:read and canvases:read, " +
                         "so neither files.info nor canvases.sections.lookup will succeed. " +
-                        "Re-run /login sf-slack with files:read or canvases:read granted, " +
-                        "or pass `criteria` to scope the read to specific sections.",
+                        "Re-run /login sf-slack with files:read or canvases:read granted.",
                     },
                   ],
                   details: { ok: false, action, reason: "missing_scope" },
@@ -280,9 +297,10 @@ export function registerCanvasTool(pi: ExtensionAPI): void {
                 fallbackErr,
                 (fallback as ApiErr).needed,
                 (fallback as ApiErr).provided,
+                (fallback as ApiErr).messages,
               );
             }
-            return errorResult(error.error, error.needed, error.provided);
+            return errorResult(error.error, error.needed, error.provided, error.messages);
           }
 
           const file = result.data.file;
@@ -306,18 +324,23 @@ export function registerCanvasTool(pi: ExtensionAPI): void {
           );
         }
 
+        const validated = buildCanvasLookupCriteria(params.criteria);
+        if (validated.ok === false) {
+          return {
+            content: [{ type: "text", text: validated.message || "Invalid canvas criteria." }],
+            details: { ok: false, action, reason: validated.reason || "invalid_criteria" },
+          };
+        }
+
         const result = await lookupCanvasSections(
           auth.token,
           params.canvas_id,
-          {
-            contains: params.criteria.contains,
-            section_types: params.criteria.section_types,
-          },
+          validated.criteria,
           signal,
         );
         if (!result.ok) {
           const error = result as ApiErr;
-          return errorResult(error.error, error.needed, error.provided);
+          return errorResult(error.error, error.needed, error.provided, error.messages);
         }
 
         const sections = Array.isArray(result.data.sections) ? result.data.sections : [];
@@ -374,7 +397,7 @@ export function registerCanvasTool(pi: ExtensionAPI): void {
         );
         if (!result.ok) {
           const error = result as ApiErr;
-          return errorResult(error.error, error.needed, error.provided);
+          return errorResult(error.error, error.needed, error.provided, error.messages);
         }
 
         const canvasId = result.data.canvas_id;
@@ -427,7 +450,9 @@ export function registerCanvasTool(pi: ExtensionAPI): void {
             content: [
               {
                 type: "text",
-                text: `"${params.operation}" requires "section_id". Use read with criteria to find IDs.`,
+                text:
+                  `"${params.operation}" requires "section_id". ` +
+                  "Use read with criteria to find IDs; that lookup requires canvases:read.",
               },
             ],
             details: { ok: false, action, reason: "missing_section_id" },
@@ -446,7 +471,7 @@ export function registerCanvasTool(pi: ExtensionAPI): void {
         );
         if (!result.ok) {
           const error = result as ApiErr;
-          return errorResult(error.error, error.needed, error.provided);
+          return errorResult(error.error, error.needed, error.provided, error.messages);
         }
 
         return buildSlackTextResult(
@@ -482,19 +507,105 @@ function buildCanvasEditChange(
 function lookupCanvasSections(
   token: string,
   canvasId: string,
-  criteria: { contains?: string; section_types?: string[] },
+  criteria: CanvasLookupCriteria,
   signal?: AbortSignal,
 ) {
-  const body: JsonCompatibleParams = { canvas_id: canvasId, criteria: {} };
-  const bodyCriteria = body.criteria as JsonCompatibleParams;
-  if (criteria.contains) bodyCriteria.contains = criteria.contains;
+  const bodyCriteria: JsonCompatibleParams = {};
+  if (criteria.contains_text) bodyCriteria.contains_text = criteria.contains_text;
   if (criteria.section_types) bodyCriteria.section_types = criteria.section_types;
+  const body: JsonCompatibleParams = { canvas_id: canvasId, criteria: bodyCriteria };
   return slackApiJson<CanvasSectionsLookupResponse>(
     "canvases.sections.lookup",
     token,
     body,
     signal,
   );
+}
+
+/**
+ * Normalize the friendly tool schema to Slack's wire shape. End users can say
+ * `contains`; Slack's API requires `contains_text`.
+ */
+export function buildCanvasLookupCriteria(
+  criteria: CanvasLookupInputCriteria | undefined,
+): CanvasCriteriaValidation {
+  if (!criteria) {
+    return {
+      ok: false,
+      reason: "missing_criteria",
+      message:
+        "Canvas section lookup requires criteria.contains and/or section_types. " +
+        "Valid section_types: h1, h2, h3, any_header.",
+    };
+  }
+
+  const containsText = (criteria.contains_text || criteria.contains || "").trim();
+  const rawSectionTypes = Array.isArray(criteria.section_types)
+    ? criteria.section_types.map((type) => String(type || "").trim()).filter(Boolean)
+    : [];
+
+  if (!containsText && rawSectionTypes.length === 0) {
+    return {
+      ok: false,
+      reason: "empty_criteria",
+      message:
+        "Canvas section lookup criteria cannot be empty. Provide criteria.contains " +
+        "or section_types (h1, h2, h3, any_header).",
+    };
+  }
+
+  if (rawSectionTypes.length > 3) {
+    return {
+      ok: false,
+      reason: "too_many_section_types",
+      message: "Canvas section lookup accepts at most 3 section_types.",
+    };
+  }
+
+  const invalidType = rawSectionTypes.find((type) => !VALID_CANVAS_SECTION_TYPES.has(type));
+  if (invalidType) {
+    return {
+      ok: false,
+      reason: "invalid_section_type",
+      message:
+        `Invalid canvas section type "${invalidType}". ` + "Valid values: h1, h2, h3, any_header.",
+    };
+  }
+
+  const normalized: CanvasLookupCriteria = {};
+  if (containsText) normalized.contains_text = containsText;
+  if (rawSectionTypes.length > 0) normalized.section_types = rawSectionTypes as CanvasSectionType[];
+
+  return { ok: true, criteria: normalized };
+}
+
+function formatDegradedCanvasSections(
+  canvasId: string,
+  reason: string,
+  sections: SlackCanvasSection[],
+): string {
+  const count = sections.length;
+  const lines = [
+    `Canvas ${canvasId} — metadata unavailable (${reason}).`,
+    `Found ${count} header section${count !== 1 ? "s" : ""} via canvases.sections.lookup.`,
+  ];
+
+  if (count > 0) {
+    lines.push(
+      "",
+      sections.map((section, index) => toCanvasSectionText(section, index)).join("\n\n"),
+      "",
+      "Use these section IDs with slack_canvas edit operations such as replace, delete, insert_before, or insert_after.",
+    );
+  } else {
+    lines.push(
+      "",
+      "No header sections were found. Use read with criteria.contains for targeted section lookup.",
+    );
+  }
+
+  lines.push("To get full canvas file metadata, re-run /login sf-slack with files:read granted.");
+  return lines.join("\n");
 }
 
 function toStructuredCanvasSection(section: SlackCanvasSection): StructuredCanvasSection {
@@ -506,12 +617,10 @@ function toStructuredCanvasSection(section: SlackCanvasSection): StructuredCanva
 }
 
 function toCanvasSectionText(section: SlackCanvasSection, index: number): string {
-  return [
-    `Section ${index + 1}:`,
-    `  ID: ${section.id || "?"}`,
-    `  Type: ${section.type || "?"}`,
-    `  Content: ${section.content || "(empty)"}`,
-  ].join("\n");
+  const lines = [`Section ${index + 1}:`, `  ID: ${section.id || "?"}`];
+  if (section.type) lines.push(`  Type: ${section.type}`);
+  if (section.content) lines.push(`  Content: ${section.content}`);
+  return lines.join("\n");
 }
 
 function getFirstText(content: unknown[] | undefined): string {
@@ -524,8 +633,31 @@ function getFirstText(content: unknown[] | undefined): string {
   return typeof text === "string" ? text : "";
 }
 
-// ─── Per-action write preflight (P3) ──────────────────────────────────────────────────
-//
+// ─── Per-action capability preflight (P3) ─────────────────────────────────────────────
+
+function preflightCanvasRead(hasCriteria: boolean): CanvasWriteGate | null {
+  if (hasCriteria && !hasScope("canvases:read")) {
+    return {
+      reason: "missing_scope",
+      message:
+        "Criteria-based canvas lookup needs canvases:read because it uses canvases.sections.lookup. " +
+        "This token may still read basic canvas file metadata if files:read is granted. " +
+        "Re-run /login sf-slack only if canvases:read is approved for your app/workspace.",
+    };
+  }
+
+  if (!hasCriteria && !hasAnyScope(["files:read", "canvases:read"])) {
+    return {
+      reason: "missing_scope",
+      message:
+        "Canvas read needs files:read for metadata or canvases:read for section lookup. " +
+        "This token has neither capability.",
+    };
+  }
+
+  return null;
+}
+
 // Canvas create/edit requires:
 //   - canvases:write scope on the token, AND
 //   - a user (xoxp-) token — bot tokens reject canvases.* with

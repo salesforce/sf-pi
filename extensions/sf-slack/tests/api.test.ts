@@ -172,6 +172,14 @@ describe("api", () => {
       expect(text).toContain("files:read");
     });
 
+    it("summarizes invalid_arguments with Slack metadata messages", () => {
+      const text = summarizeSlackError("invalid_arguments", undefined, undefined, [
+        "[ERROR] must be a valid enum value",
+      ]);
+      expect(text).toMatch(/invalid arguments/i);
+      expect(text).toContain("must be a valid enum value");
+    });
+
     it("summarizes unknown errors", () => {
       expect(summarizeSlackError("weird_error")).toContain("weird_error");
     });
@@ -323,6 +331,26 @@ describe("api", () => {
       expect(hasScope("files:read")).toBe(false);
       expect(hasAnyScope(["files:read", "channels:history"])).toBe(true);
       expect(hasAnyScope(["files:read", "canvases:write"])).toBe(false);
+    });
+
+    it("preserves response_metadata.messages on Slack API errors", async () => {
+      globalThis.fetch = vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              ok: false,
+              error: "invalid_arguments",
+              response_metadata: { messages: ["[ERROR] criteria.contains_text is required"] },
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          ),
+      ) as unknown as typeof fetch;
+
+      const result = await slackApi<unknown>("canvases.sections.lookup", "xoxp-test", {});
+      expect(result.ok).toBe(false);
+      const error = result as { ok: false; error: string; messages?: string[] };
+      expect(error.error).toBe("invalid_arguments");
+      expect(error.messages).toEqual(["[ERROR] criteria.contains_text is required"]);
     });
 
     it("does not wipe the cache when a later response has no header", async () => {

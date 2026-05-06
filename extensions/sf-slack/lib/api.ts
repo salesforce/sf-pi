@@ -34,6 +34,9 @@ interface SlackApiEnvelope {
   error?: string;
   needed?: string;
   provided?: string;
+  response_metadata?: {
+    messages?: string[];
+  };
 }
 
 type FormParams = Record<string, string | number | boolean | undefined>;
@@ -379,6 +382,7 @@ function toApiResult<T>(response: Response, json: unknown): ApiResult<T> {
       error: envelope.error || "unknown_error",
       needed: envelope.needed,
       provided: envelope.provided,
+      messages: sanitizeSlackMetadataMessages(envelope.response_metadata?.messages),
     };
   }
 
@@ -387,6 +391,19 @@ function toApiResult<T>(response: Response, json: unknown): ApiResult<T> {
 
 function isSlackApiEnvelope(value: unknown): value is SlackApiEnvelope {
   return typeof value === "object" && value !== null;
+}
+
+function sanitizeSlackMetadataMessages(messages: string[] | undefined): string[] | undefined {
+  if (!Array.isArray(messages)) return undefined;
+  const sanitized = messages
+    .map((message) =>
+      String(message || "")
+        .replace(/\s+/g, " ")
+        .trim(),
+    )
+    .filter(Boolean)
+    .slice(0, 3);
+  return sanitized.length ? sanitized : undefined;
 }
 
 // ─── User resolution cache ──────────────────────────────────────────────────────
@@ -703,7 +720,13 @@ export async function conversationsOpenDM(
   );
 }
 
-export function summarizeSlackError(error: string, needed?: string, provided?: string): string {
+export function summarizeSlackError(
+  error: string,
+  needed?: string,
+  provided?: string,
+  messages?: string[],
+): string {
+  const detailSuffix = formatSlackErrorDetails(messages);
   switch (error) {
     case "missing_scope":
       return (
@@ -755,14 +778,28 @@ export function summarizeSlackError(error: string, needed?: string, provided?: s
       );
     case "network_error":
       return "Slack API call failed due to a network error (DNS, connection reset, or TLS). Retry the command; check connectivity if it persists.";
+    case "invalid_arguments":
+      return `Slack API reported invalid arguments.${detailSuffix}`;
     default:
-      return `Slack API error: ${error}`;
+      return `Slack API error: ${error}${detailSuffix}`;
   }
 }
 
-export function errorResult(error: string, needed?: string, provided?: string) {
+function formatSlackErrorDetails(messages: string[] | undefined): string {
+  if (!messages?.length) return "";
+  return ` Details: ${messages.join("; ")}`;
+}
+
+export function errorResult(
+  error: string,
+  needed?: string,
+  provided?: string,
+  messages?: string[],
+) {
   return {
-    content: [{ type: "text" as const, text: summarizeSlackError(error, needed, provided) }],
-    details: { ok: false, reason: error, needed, provided },
+    content: [
+      { type: "text" as const, text: summarizeSlackError(error, needed, provided, messages) },
+    ],
+    details: { ok: false, reason: error, needed, provided, messages },
   };
 }

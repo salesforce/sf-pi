@@ -235,7 +235,7 @@ export function registerUserTool(pi: ExtensionAPI): void {
         );
         if (!result.ok) {
           const error = result as ApiErr;
-          return errorResult(error.error, error.needed, error.provided);
+          return errorResult(error.error, error.needed, error.provided, error.messages);
         }
 
         const user = result.data.user;
@@ -278,7 +278,7 @@ export function registerUserTool(pi: ExtensionAPI): void {
               details: { ok: false, action, reason: "not_found", email: params.email },
             };
           }
-          return errorResult(error.error, error.needed, error.provided);
+          return errorResult(error.error, error.needed, error.provided, error.messages);
         }
 
         const user = result.data.user;
@@ -322,7 +322,7 @@ export function registerUserTool(pi: ExtensionAPI): void {
         );
         if (!result.ok) {
           const error = result as ApiErr;
-          return errorResult(error.error, error.needed, error.provided);
+          return errorResult(error.error, error.needed, error.provided, error.messages);
         }
 
         const presence = result.data;
@@ -408,7 +408,7 @@ export function registerUserTool(pi: ExtensionAPI): void {
               );
             }
           }
-          return errorResult(error.error, error.needed, error.provided);
+          return errorResult(error.error, error.needed, error.provided, error.messages);
         }
 
         let members = Array.isArray(result.data.members) ? result.data.members : [];

@@ -219,7 +219,7 @@ export function registerChannelTool(pi: ExtensionAPI): void {
               { prefix: "pi-slack-channel-info" },
             );
           }
-          return errorResult(error.error, error.needed, error.provided);
+          return errorResult(error.error, error.needed, error.provided, error.messages);
         }
 
         const channel = result.data.channel;
@@ -265,7 +265,7 @@ export function registerChannelTool(pi: ExtensionAPI): void {
             );
             if (fallback) return fallback;
           }
-          return errorResult(error.error, error.needed, error.provided);
+          return errorResult(error.error, error.needed, error.provided, error.messages);
         }
 
         let channels = Array.isArray(result.data.channels) ? result.data.channels : [];
@@ -379,7 +379,7 @@ export function registerChannelTool(pi: ExtensionAPI): void {
               }
             }
           }
-          return errorResult(error.error, error.needed, error.provided);
+          return errorResult(error.error, error.needed, error.provided, error.messages);
         }
 
         const memberIds = Array.isArray(result.data.members) ? result.data.members : [];

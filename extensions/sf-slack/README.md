@@ -176,21 +176,36 @@ for core features and mark invasive scopes as optional when possible.
 
 ### Recommended scope bundles
 
-| Goal                             | Scopes                                                             | Notes                                                        |
-| -------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------ |
-| Public search                    | `search:read.public`, `search:read.files`, `search:read.users`     | Search public channels, files, and users                     |
-| Private and DM search            | `search:read.private`, `search:read.im`, `search:read.mpim`        | User-token-only scopes; users can revoke these later         |
-| Read full channel/thread context | `channels:history`, `groups:history`, `im:history`, `mpim:history` | Needed for `conversations.history` / `conversations.replies` |
-| Channel discovery and metadata   | `channels:read`, `groups:read`, `im:read`, `mpim:read`             | Needed for channel info, list, and members flows             |
-| User lookup and email            | `users:read`, `users:read.email`                                   | Email lookup requires `users:read.email`                     |
-| File metadata / downloads        | `files:read`                                                       | Separate from `search:read.files`                            |
-| Canvases                         | `canvases:read`, `canvases:write`                                  | Read, create, and edit canvases                              |
-| Posting messages                 | `chat:write`                                                       | Only needed if you want write actions                        |
+`sf-slack` is designed to work with partial grants. A token with fewer scopes is
+not automatically broken; `/sf-slack` renders a capability summary so users can
+see what is available and what is degraded.
+
+| Profile               | Scopes                                                             | Notes                                                          |
+| --------------------- | ------------------------------------------------------------------ | -------------------------------------------------------------- |
+| Public search         | `search:read.public`, `search:read.files`, `search:read.users`     | Search public channels, files, and users                       |
+| Private and DM search | `search:read.private`, `search:read.im`, `search:read.mpim`        | User-token-only scopes; admins may choose not to grant them    |
+| Message context       | `channels:history`, `groups:history`, `im:history`, `mpim:history` | Needed for `conversations.history` / `conversations.replies`   |
+| Directory metadata    | `channels:read`, `groups:read`, `im:read`, `mpim:read`             | Enables channel info/list/member APIs; search fallbacks exist  |
+| User lookup           | `users:read`, `users:read.email`                                   | Email lookup requires `users:read.email`                       |
+| File metadata         | `files:read`                                                       | Separate from `search:read.files`; needed for `files.info`     |
+| Canvas sections       | `canvases:read`                                                    | Enables `canvases.sections.lookup` and section ID discovery    |
+| Canvas create/edit    | `canvases:write`                                                   | Needs a user token (`xoxp-`)                                   |
+| Posting messages      | `chat:write`, `im:write`, `mpim:write`                             | Only needed for `slack_send`; DMs specifically need `im:write` |
+
+### Capability-oriented profiles
+
+| Profile          | Suggested scopes                                                                                                           | Best for                                   |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| Minimal read     | `search:read.public`, `search:read.users`, `channels:history`, `users:read`                                                | Public search and basic message context    |
+| Private research | Minimal read + `search:read.private`, `search:read.im`, `search:read.mpim`, `groups:history`, `im:history`, `mpim:history` | Searching private channels, DMs, and MPDMs |
+| Canvas work      | Private research + `canvases:read`, `canvases:write`; add `files:read` for metadata                                        | Canvas section lookup, creation, and edits |
+| Posting          | Canvas work + `chat:write`; add `im:write` / `mpim:write` for DM and MPDM posting                                          | Human-confirmed `slack_send` workflows     |
+| Maximum coverage | Everything in `DEFAULT_SCOPES`                                                                                             | Broadest local development and diagnostics |
 
 ### Maximum coverage for this extension
 
 If your goal is broad `sf-slack` coverage, including private channels, DMs,
-MPDMs, file lookups, user email lookup, and canvases, request at least:
+MPDMs, file lookups, user email lookup, canvases, and optional posting, request:
 
 ```text
 search:read.public,search:read.files,search:read.users,
@@ -198,15 +213,22 @@ search:read.private,search:read.im,search:read.mpim,
 channels:history,groups:history,im:history,mpim:history,
 channels:read,groups:read,im:read,mpim:read,
 users:read,users:read.email,files:read,
-canvases:read,canvases:write
+canvases:read,canvases:write,
+chat:write,chat:write.public,im:write,mpim:write
 ```
 
-Add `chat:write` only if you also want message posting or MCP message actions.
+Omit the `chat:*` / `im:write` / `mpim:write` scopes if you do not want message
+posting. `slack_send` remains gated and confirmed even when those scopes exist.
 
 ### Scope caveats
 
 - `search:read.files` lets you search for files, but `files:read` is still
-  needed if you want file metadata or content retrieval.
+  needed if you want file metadata, file listing, or downloads.
+- `canvases:read` lets `slack_canvas read` find section IDs with
+  `canvases.sections.lookup`; it does not provide full file metadata.
+- `canvases:write` lets `slack_canvas create/edit` write canvases, but targeted
+  operations such as `replace` or `insert_before` still need a section ID. Use
+  `canvases:read` to discover section IDs when you do not already have them.
 - Private, DM, and MPDM search scopes require user consent and are more
   sensitive than public search scopes.
 - Slack's Real-time Search and MCP features are limited to internal apps or
@@ -307,11 +329,22 @@ Key parameters:
 
 ### 8. `slack_canvas` — Canvases (read + write)
 
-| Action   | Parameters                                         | API                                       | Description                   |
-| -------- | -------------------------------------------------- | ----------------------------------------- | ----------------------------- |
-| `read`   | `canvas_id`, `criteria`                            | `files.info` / `canvases.sections.lookup` | Canvas content or section IDs |
-| `create` | `title`, `markdown`, `channel_id`                  | `canvases.create`                         | Create a new canvas           |
-| `edit`   | `canvas_id`, `operation`, `markdown`, `section_id` | `canvases.edit`                           | Modify an existing canvas     |
+| Action   | Parameters                                         | API                                       | Description                    |
+| -------- | -------------------------------------------------- | ----------------------------------------- | ------------------------------ |
+| `read`   | `canvas_id`, `criteria`                            | `files.info` / `canvases.sections.lookup` | Canvas metadata or section IDs |
+| `create` | `title`, `markdown`, `channel_id`                  | `canvases.create`                         | Create a new canvas            |
+| `edit`   | `canvas_id`, `operation`, `markdown`, `section_id` | `canvases.edit`                           | Modify an existing canvas      |
+
+Canvas reads degrade by scope:
+
+- With `files:read`, `read` without `criteria` returns canvas file metadata.
+- With `canvases:read`, `read` with `criteria` returns matching section IDs.
+- Without `files:read` but with `canvases:read`, metadata reads fall back to
+  header section lookup and return section IDs for follow-up edits.
+- `criteria.contains` is the friendly tool field; the wrapper sends Slack's
+  required `criteria.contains_text` wire field.
+- Valid `criteria.section_types` values are `h1`, `h2`, `h3`, and
+  `any_header`. Invalid values are rejected locally before calling Slack.
 
 ### 9. `slack_send` — Post messages (human-in-the-loop write)
 
@@ -348,17 +381,26 @@ Never returns raw tokens or credentials in its output.
 
 ## Scope Probing & Tool Gating
 
-On `session_start`, the extension probes the token's actual scopes by making
-lightweight API calls. Tools whose required scopes are missing are dynamically
+On `session_start`, the extension makes a lightweight `auth.test` call and reads
+Slack's `X-OAuth-Scopes` response header. That header is the source of truth for
+what the workspace actually granted, which may be less than what `DEFAULT_SCOPES`
+requested. Tools whose required capability groups are missing are dynamically
 removed from the active tool set, keeping the LLM system prompt clean.
 
-| Scope           | Probe Endpoint       | Gated Tools     |
-| --------------- | -------------------- | --------------- |
-| `channels:read` | `conversations.info` | `slack_channel` |
-| `files:read`    | `files.list`         | `slack_file`    |
+| Tool / capability      | Enabled when the token has any of...                                             | Degraded behavior when partial                                             |
+| ---------------------- | -------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `slack` search/history | `search:read`, granular `search:read.*`, `channels:history`, or `groups:history` | Search and history actions fail per-action with scope-specific guidance    |
+| `slack_research`       | `search:read` or granular message search scopes                                  | Thread expansion may still require history scopes                          |
+| `slack_channel`        | `channels:read`, `groups:read`, `im:read`, or `mpim:read`                        | Channel info/list/member calls use search/history fallbacks where possible |
+| `slack_user`           | `users:read`                                                                     | Some resolver paths can still mine users from search results               |
+| `slack_file`           | `files:read`                                                                     | File search may still work through `slack` when `search:read.files` exists |
+| `slack_canvas`         | `canvases:read` or `files:read`                                                  | Metadata and section lookup degrade independently by action                |
+| `slack_send`           | `chat:write` or `chat:write.public`                                              | DM sends additionally preflight `im:write`; all sends still require HITL   |
 
-Tools with missing scopes have graceful fallbacks where possible (e.g.,
-discovering channels via search, finding members from history).
+`/sf-slack` renders both the raw granted/requested scope diff and a capability
+summary such as Search, History, Files, Canvases, and Posting. This keeps a
+16-of-23 scope grant understandable instead of making it look like a broken
+login.
 
 ## Agent Context Injection
 
@@ -547,9 +589,20 @@ pass fully-qualified IDs (`C01...`, `U01...`) or email addresses via
 `slack_user action=email`.
 
 **`slack_canvas read` says "canvas not found":**
-The canvas ID is invalid or you lack `files:read` / `canvases:read`. The
-fallback probes both; the error names which one actually failed. Verify
-the ID with `slack_resolve` or re-consent with `canvases:read` added.
+The canvas ID is invalid or the token cannot access that canvas. If `files:read`
+is missing, the tool falls back to `canvases.sections.lookup`; if that fallback
+also returns not found, verify the `F...` canvas ID and workspace access.
+
+**`slack_canvas read` criteria returns invalid arguments:**
+The wrapper validates criteria before calling Slack. Use `criteria.contains` for
+text matching and optional `criteria.section_types` values of `h1`, `h2`, `h3`,
+or `any_header`. The tool sends Slack's required `contains_text` field on the
+wire, so users and agents can keep using the simpler `contains` name.
+
+**`slack_canvas read` returns section IDs but no metadata:**
+This is expected when the token has `canvases:read` but lacks `files:read`.
+Section IDs are enough for targeted `edit` operations; add `files:read` only if
+you need canvas file metadata or file listing.
 
 **Search returns nothing from DMs or multi-party IMs:**
 Fixed: all `assistant.search.context` calls default to

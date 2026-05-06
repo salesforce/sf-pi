@@ -108,6 +108,7 @@ export interface SlackToolResult {
 
 export interface SlackResponseMetadata {
   next_cursor?: string;
+  messages?: string[];
 }
 
 export interface SlackPaging {
@@ -305,7 +306,13 @@ export interface CanvasEditResponse {
 // ─── Result types ───────────────────────────────────────────────────────────────
 
 export type ApiOk<T> = { ok: true; data: T };
-export type ApiErr = { ok: false; error: string; needed?: string; provided?: string };
+export type ApiErr = {
+  ok: false;
+  error: string;
+  needed?: string;
+  provided?: string;
+  messages?: string[];
+};
 export type ApiResult<T> = ApiOk<T> | ApiErr;
 
 export interface SlackIdentity {
@@ -798,9 +805,18 @@ export const SlackCanvasParams = Type.Object({
   criteria: Type.Optional(
     Type.Object(
       {
-        contains: Type.Optional(Type.String({ description: "Text the section must contain" })),
+        contains: Type.Optional(
+          Type.String({
+            description: "Text the section must contain (sent to Slack as contains_text)",
+          }),
+        ),
+        contains_text: Type.Optional(
+          Type.String({ description: "Slack-native alias for contains. Prefer contains." }),
+        ),
         section_types: Type.Optional(
-          Type.Array(Type.String(), { description: "Section types to match, e.g. ['any_header']" }),
+          Type.Array(Type.String(), {
+            description: "Section types to match: h1, h2, h3, or any_header.",
+          }),
         ),
       },
       { description: "Criteria to find specific sections (for read)" },

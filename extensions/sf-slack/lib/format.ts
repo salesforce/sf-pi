@@ -35,6 +35,7 @@ import {
   resolveUserMentionsInText,
   getGrantedScopes,
   detectTokenType,
+  type SlackTokenType,
 } from "./api.ts";
 
 // ─── Search results (text for LLM consumption) ─────────────────────────────────
@@ -246,6 +247,97 @@ export function extractStructuredFile(file: SlackFile): StructuredFile {
 
 // ─── Auth status ────────────────────────────────────────────────────────────────
 
+export function formatSlackCapabilitySummary(
+  granted: Set<string> | null,
+  tokenType: SlackTokenType = "unknown",
+): string[] {
+  const lines = ["Capabilities:"];
+  if (!granted) {
+    lines.push("  ? Unknown — run /sf-slack refresh to capture granted scopes from Slack.");
+    return lines;
+  }
+
+  const has = (scope: string) => granted.has(scope);
+  const hasAny = (scopes: string[]) => scopes.some((scope) => granted.has(scope));
+  const mark = (ready: boolean) => (ready ? "✓" : "⚠");
+
+  const searchScopes = [
+    "search:read",
+    "search:read.public",
+    "search:read.private",
+    "search:read.im",
+    "search:read.mpim",
+    "search:read.files",
+    "search:read.users",
+  ];
+  lines.push(
+    `  ${mark(hasAny(searchScopes))} Search: ${hasAny(searchScopes) ? "available" : "unavailable — missing search:read.*"}`,
+  );
+
+  const historyParts = [
+    has("channels:history") ? "public channels" : "",
+    has("groups:history") ? "private channels" : "",
+    has("im:history") ? "DMs" : "",
+    has("mpim:history") ? "MPDMs" : "",
+  ].filter(Boolean);
+  lines.push(
+    `  ${mark(historyParts.length > 0)} History: ${historyParts.length ? historyParts.join(", ") : "unavailable — missing *:history scopes"}`,
+  );
+
+  const directoryReady = hasAny(["channels:read", "groups:read", "im:read", "mpim:read"]);
+  lines.push(
+    `  ${mark(directoryReady)} Channel directory: ${directoryReady ? "available" : "limited — search/history fallbacks only"}`,
+  );
+
+  const usersReady = has("users:read");
+  lines.push(
+    `  ${mark(usersReady)} Users: ${usersReady ? (has("users:read.email") ? "lookup + email" : "lookup only") : "unavailable — missing users:read"}`,
+  );
+
+  lines.push(
+    has("files:read")
+      ? "  ✓ Files: metadata/list/download available"
+      : has("search:read.files")
+        ? "  ⚠ Files: search available; metadata/list unavailable without files:read"
+        : "  ⚠ Files: unavailable — missing files:read/search:read.files",
+  );
+
+  const canvasRead = has("canvases:read");
+  const canvasWrite = has("canvases:write") && tokenType === "user";
+  lines.push(
+    `  ${mark(canvasRead || canvasWrite)} Canvases: ${formatCanvasCapability(canvasRead, canvasWrite, has("files:read"), tokenType)}`,
+  );
+
+  const postReady = has("chat:write") || has("chat:write.public");
+  const dmReady = postReady && has("im:write");
+  lines.push(
+    `  ${mark(postReady)} Posting: ${postReady ? (dmReady ? "channels + DMs" : "channels only; DMs need im:write") : "unavailable — missing chat:write"}`,
+  );
+
+  return lines;
+}
+
+function formatCanvasCapability(
+  canRead: boolean,
+  canWrite: boolean,
+  hasFileMetadata: boolean,
+  tokenType: SlackTokenType,
+): string {
+  if (!canRead && !canWrite) {
+    return hasFileMetadata
+      ? "file metadata only; section lookup needs canvases:read; create/edit needs canvases:write"
+      : "unavailable — needs canvases:read or canvases:write";
+  }
+
+  const parts: string[] = [];
+  if (canRead) parts.push("section lookup");
+  if (canWrite) parts.push("create/edit");
+  if (!canWrite && tokenType !== "user") parts.push("create/edit needs user token");
+  if (hasFileMetadata) parts.push("file metadata");
+  else parts.push("metadata degraded without files:read");
+  return parts.join("; ");
+}
+
 export async function buildAuthStatus(ctx: ExtensionContext): Promise<string> {
   const configuredToken = resolveTokenFromConfiguredSources();
   const auth = await getSlackToken(ctx);
@@ -324,6 +416,9 @@ export async function buildAuthStatus(ctx: ExtensionContext): Promise<string> {
     );
     lines.push("  → Run /sf-slack refresh to probe, or invoke any Slack tool once.");
   }
+
+  lines.push("");
+  lines.push(...formatSlackCapabilitySummary(granted, tokenType));
 
   lines.push("");
   lines.push(

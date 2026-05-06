@@ -551,6 +551,8 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 - `slack_send` returns a `missing_scope` error mentioning four write scopes
 - A Slack user or channel reference resolves to the wrong target
 - `slack_canvas read` says "canvas not found"
+- `slack_canvas read` criteria returns invalid arguments
+- `slack_canvas read` returns section IDs but no metadata
 - Search returns nothing from DMs or multi-party IMs
 - `slack_send` refuses to run in `pi -p` / CI mode
 - I need to see what `slack_send` posted (or attempted to post)

@@ -75,6 +75,9 @@ describe("buildAuthStatus", () => {
     expect(status).toMatch(/user token \(xoxp-\)/);
     expect(status).toMatch(/Granted scopes \(from Slack, 2\)/);
     expect(status).toMatch(/canvases:read/);
+    expect(status).toMatch(/Capabilities:/);
+    expect(status).toMatch(/Canvases: section lookup; metadata degraded without files:read/);
+    expect(status).toMatch(/Files: unavailable|Files: search available/);
     // Drift warning on requested-but-not-granted:
     expect(status).toMatch(/Requested but not granted \(2\)/);
     expect(status).toMatch(/files:read/);
@@ -92,6 +95,7 @@ describe("buildAuthStatus", () => {
     const status = await buildAuthStatus(fakeCtx("xoxp-test-12345678"));
 
     expect(status).toMatch(/Granted scopes/);
+    expect(status).toMatch(/Capabilities:/);
     expect(status).not.toMatch(/Requested but not granted/);
   });
 
@@ -114,6 +118,7 @@ describe("buildAuthStatus", () => {
     const status = await buildAuthStatus(fakeCtx("xoxp-test-12345678"));
 
     expect(status).toMatch(/Granted scopes: \(unknown/);
+    expect(status).toMatch(/Capabilities:/);
     expect(status).toMatch(/\/sf-slack refresh/);
     // Requested scopes must still be listed so the user sees what we asked for.
     expect(status).toMatch(/Requested scopes/);

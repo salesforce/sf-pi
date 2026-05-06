@@ -8,7 +8,7 @@
  * missing_scope.
  */
 import { afterEach, beforeAll, beforeEach, describe, it, expect } from "vitest";
-import { preflightCanvasWrite } from "../lib/canvas-tool.ts";
+import { buildCanvasLookupCriteria, preflightCanvasWrite } from "../lib/canvas-tool.ts";
 import { _resetGrantedScopes, slackApi } from "../lib/api.ts";
 
 const originalFetch = globalThis.fetch;
@@ -23,6 +23,47 @@ function mockFetchWithScopes(scopesHeader: string): void {
       },
     })) as unknown as typeof fetch;
 }
+
+describe("buildCanvasLookupCriteria", () => {
+  it("maps friendly criteria.contains to Slack's contains_text wire field", () => {
+    const result = buildCanvasLookupCriteria({ contains: "Edit scope check" });
+    if (result.ok !== true) throw new Error("expected valid criteria");
+    expect(result.criteria).toEqual({ contains_text: "Edit scope check" });
+  });
+
+  it("keeps section_types with contains_text in the Slack wire payload", () => {
+    const result = buildCanvasLookupCriteria({
+      contains: "Edit scope check",
+      section_types: ["any_header"],
+    });
+    if (result.ok !== true) throw new Error("expected valid criteria");
+    expect(result.criteria).toEqual({
+      contains_text: "Edit scope check",
+      section_types: ["any_header"],
+    });
+  });
+
+  it("rejects empty criteria before Slack can return invalid_arguments", () => {
+    const result = buildCanvasLookupCriteria({});
+    if (result.ok !== false) throw new Error("expected invalid criteria");
+    expect(result.reason).toBe("empty_criteria");
+    expect(result.message).toMatch(/cannot be empty/i);
+  });
+
+  it("rejects unsupported section_types before Slack can return invalid_arguments", () => {
+    const result = buildCanvasLookupCriteria({ section_types: ["paragraph"] });
+    if (result.ok !== false) throw new Error("expected invalid criteria");
+    expect(result.reason).toBe("invalid_section_type");
+    expect(result.message).toMatch(/paragraph/);
+    expect(result.message).toMatch(/h1, h2, h3, any_header/);
+  });
+
+  it("rejects more than 3 section_types", () => {
+    const result = buildCanvasLookupCriteria({ section_types: ["h1", "h2", "h3", "any_header"] });
+    if (result.ok !== false) throw new Error("expected invalid criteria");
+    expect(result.reason).toBe("too_many_section_types");
+  });
+});
 
 describe("preflightCanvasWrite", () => {
   beforeEach(() => {

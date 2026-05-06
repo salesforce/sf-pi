@@ -163,7 +163,7 @@ export function registerFileTool(pi: ExtensionAPI): void {
               details: { ok: false, action, reason: "missing_scope" },
             };
           }
-          return errorResult(error.error, error.needed, error.provided);
+          return errorResult(error.error, error.needed, error.provided, error.messages);
         }
 
         const file = result.data.file;
@@ -222,7 +222,7 @@ export function registerFileTool(pi: ExtensionAPI): void {
               details: { ok: false, action, reason: "missing_scope" },
             };
           }
-          return errorResult(error.error, error.needed, error.provided);
+          return errorResult(error.error, error.needed, error.provided, error.messages);
         }
 
         const files = Array.isArray(result.data.files) ? result.data.files : [];
