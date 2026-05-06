@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.45.1-2026-05-06",
-  "latestVersion": "0.45.1",
+  "revision": "release-0.45.2-2026-05-06",
+  "latestVersion": "0.45.2",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.45.1",
+      "id": "release-0.45.2",
       "kind": "update",
-      "title": "sf-pi v0.45.1 — sf-slack: reuse existing dm channels without im write",
+      "title": "sf-pi v0.45.2 — sf-slack: consolidate send confirmation",
       "publishedAt": "2026-05-06T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.45.1",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.45.2",
       "severity": "info",
-      "body": "sf-slack: reuse existing dm channels without im write"
+      "body": "sf-slack: consolidate send confirmation"
     },
     {
       "id": "pi-0.73-required",
