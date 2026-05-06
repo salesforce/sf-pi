@@ -360,6 +360,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.45.2](https://github.com/salesforce/sf-pi/compare/v0.45.1...v0.45.2) (2026-05-06)
+
+
+### Bug Fixes
+
+* **sf-slack:** consolidate send confirmation ([d388670](https://github.com/salesforce/sf-pi/commit/d388670effe0d2ac1890bb3b9c7c0cfa3dff9b80))
+
 ## [0.45.1](https://github.com/salesforce/sf-pi/compare/v0.45.0...v0.45.1) (2026-05-06)
 
 
