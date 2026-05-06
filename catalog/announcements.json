@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.45.0-2026-05-06",
-  "latestVersion": "0.45.0",
+  "revision": "release-0.45.1-2026-05-06",
+  "latestVersion": "0.45.1",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.45.0",
+      "id": "release-0.45.1",
       "kind": "update",
-      "title": "sf-pi v0.45.0 — ui: improve command panel interactions",
+      "title": "sf-pi v0.45.1 — sf-slack: reuse existing dm channels without im write",
       "publishedAt": "2026-05-06T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.45.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.45.1",
       "severity": "info",
-      "body": "ui: improve command panel interactions — ui: refine panels and popup contrast"
+      "body": "sf-slack: reuse existing dm channels without im write"
     },
     {
       "id": "pi-0.73-required",
