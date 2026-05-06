@@ -700,11 +700,11 @@ export const SlackResearchParams = Type.Object({
 export const SlackSendParams = Type.Object({
   action: StringEnum(["channel", "dm", "thread"] as const, {
     description:
-      "channel: post to a public/private channel or MPIM. dm: post to a 1:1 DM. thread: reply to an existing thread.",
+      "channel: post to a public/private channel, MPIM, or known D... DM ID. dm: post to a 1:1 DM by user reference. thread: reply to an existing thread.",
   }),
   to: Type.String({
     description:
-      "Destination reference. For action=channel: channel ID, #name, or fuzzy channel name. " +
+      "Destination reference. For action=channel: channel ID, #name, fuzzy channel name, or existing D... DM channel ID. " +
       "For action=dm: user ID, @handle, display name, or email. " +
       "For action=thread: channel ID, #name, or fuzzy channel name (the same channel the thread lives in).",
   }),

@@ -29,14 +29,17 @@ import {
   ENV_ALLOW_HEADLESS_SEND,
   ENV_SEND_DRY_RUN,
   type ApiErr,
+  type AssistantSearchContextResponse,
   type ChatGetPermalinkResponse,
   type ConversationsOpenResponse,
   type JsonCompatibleParams,
+  type SlackSearchMatch,
   type SlackSendAuditEntry,
 } from "./types.ts";
 import { requireAuth } from "./auth.ts";
 import {
   slackApi,
+  slackApiJson,
   chatPostMessage,
   conversationsOpenDM,
   errorResult,
@@ -124,7 +127,7 @@ export function registerSendTool(pi: ExtensionAPI): void {
     label: "Slack Send",
     description:
       "Post a message to Slack as the authenticated user. " +
-      "Actions: channel — post to a channel/MPIM. dm — post to a 1:1 DM. thread — reply in a thread. " +
+      "Actions: channel — post to a channel/MPIM/known D... DM ID. dm — post to a 1:1 DM by user reference. thread — reply in a thread. " +
       "Every send requires explicit user confirmation via a dialog; non-interactive sessions refuse unless SLACK_ALLOW_HEADLESS_SEND=1 is set. " +
       "Use this ONLY when the user has explicitly asked you to send a message in the current turn. Draft the text with the user first; the confirm dialog is a safety net, not a replacement for drafting together." +
       SLACK_OUTPUT_DESCRIPTION_SUFFIX,
@@ -135,7 +138,7 @@ export function registerSendTool(pi: ExtensionAPI): void {
       "Draft the message with the user in chat first. Do NOT surprise the user with a dialog; they should already know what you are about to send.",
       'Never add your own signatures, footers, or "via pi"-style markers to the message text. Send the text verbatim.',
       "Pass the text in Slack mrkdwn (*bold*, _italic_, <url|label>) if formatting is requested. Otherwise plain text is fine.",
-      "For dms use action=dm with a user reference (email, @handle, or display name). Do NOT try to post to an IM channel ID via action=channel.",
+      "For DMs to people, use action=dm with a user reference (email, @handle, or display name). If the token lacks im:write, the tool can reuse an existing DM found by Slack search; use action=channel with a D... ID only when the user explicitly provides that existing DM channel ID.",
       "For thread replies, pass action=thread with the parent channel reference in `to` and the parent message ts in `thread_ts`.",
     ],
     parameters: SlackSendParams,
@@ -225,13 +228,11 @@ export function registerSendTool(pi: ExtensionAPI): void {
       const action = params.action;
 
       // ─── Preflight: token type + action-aware scope gate ────────────
-      // We check up front so the user doesn't sit through recipient
-      // resolution + a confirm dialog only to learn at chat.postMessage
-      // time that a needed scope (im:write for dm, mpim:write for mpim,
-      // chat:write.public for public-channel-without-membership) is
-      // missing. The Slack-returned `needed` list in that case also
-      // tends to be noisy (all four *:write scopes); our explicit
-      // preflight produces a single, actionable line.
+      // We check the non-recoverable cases up front so the user doesn't sit
+      // through recipient resolution + a confirm dialog only to learn at
+      // chat.postMessage time that the base posting scope is missing. DM
+      // routing intentionally happens later: when im:write is absent we can
+      // still reuse an existing DM channel discovered via Slack search.
       const preflight = preflightSend(auth.token, action);
       if (preflight) return preflight;
       const text = (params.text || "").trim();
@@ -369,11 +370,12 @@ interface PreflightFailure {
   details: { ok: false; action: string; reason: string };
 }
 
-/** Action-aware scope gate. Action-less callers (legacy tests) can omit
- *  `action` and get only the base token-type + chat:write check; callers
- *  inside the tool pass their action so we can additionally require the
- *  narrower write scope Slack needs for DMs (im:write) and multi-party IMs
- *  (mpim:write).
+/** Base send scope gate. Action-less callers (legacy tests) can omit
+ *  `action`; callers inside the tool pass their action so the returned
+ *  failure can name the attempted route. We intentionally do not reject
+ *  action=dm here when im:write is absent: routeDm can still reuse an
+ *  already-open DM channel found via Slack search and then post with
+ *  chat:write.
  *
  *  Why not require chat:write.public for action=channel? Because we don't
  *  yet know whether the resolved channel is one the user is a member of.
@@ -414,25 +416,6 @@ export function preflightSend(
         },
       ],
       details: { ok: false, action: action || "send", reason: "missing_scope" },
-    };
-  }
-  if (action === "dm" && !hasScope("im:write")) {
-    // action=dm uses conversations.open which itself requires im:write — if
-    // we don't surface this now, the resolve step runs, the confirm dialog
-    // pops, and *then* the conversations.open call fails with a
-    // multi-scope-sounding `missing_scope` error (needed lists all four
-    // *:write scopes). Pre-empt that.
-    return {
-      content: [
-        {
-          type: "text",
-          text:
-            "slack_send action=dm needs the im:write scope to open a 1:1 DM, which this token does not have. " +
-            "Re-run /login sf-slack to re-consent with im:write granted. " +
-            "Alternatively, use action=channel with an existing DM channel ID (D...) that is already open.",
-        },
-      ],
-      details: { ok: false, action, reason: "missing_scope" },
     };
   }
   return null;
@@ -494,12 +477,14 @@ async function routeDm(
   ctx: ExtensionContext,
 ): Promise<RoutedRecipient | RouteFailure> {
   let userId: string | undefined;
+  let handle: string | undefined;
   let displayName: string | undefined;
+  let realName: string | undefined;
 
   if (isSlackUserId(ref)) {
     // Raw user IDs pass through — the DM-open step verifies the ID exists.
-    // Display name stays undefined here; a cache hit in downstream rendering
-    // will pick it up if available.
+    // Display name stays undefined here; search fallback will still try the
+    // raw ID if im:write is missing.
     userId = ref;
   } else {
     const confirmed = await requireConfirmedUser(ctx, token, ref, signal);
@@ -519,12 +504,27 @@ async function routeDm(
       };
     }
     userId = user.id;
+    handle = user.handle;
     displayName = user.displayName;
+    realName = user.realName;
+  }
+
+  const fallbackContext = { ref, userId, handle, displayName, realName };
+
+  if (!hasScope("im:write")) {
+    const existing = await findExistingDmChannel(token, fallbackContext, signal);
+    if (existing) return existing;
+    return missingDmOpenScopeFailure(ref, fallbackContext);
   }
 
   const opened = await conversationsOpenDM(token, [userId], signal);
   if (!opened.ok) {
     const error = opened as ApiErr;
+    if (error.error === "missing_scope") {
+      const existing = await findExistingDmChannel(token, fallbackContext, signal);
+      if (existing) return existing;
+      return missingDmOpenScopeFailure(ref, fallbackContext, error.needed, error.provided);
+    }
     return {
       result: errorResult(error.error, error.needed, error.provided, error.messages),
     };
@@ -543,7 +543,123 @@ async function routeDm(
       },
     };
   }
-  return { channelId: im, channelLabel: displayName ? `@${displayName}` : undefined };
+  return { channelId: im, channelLabel: dmLabel(fallbackContext) };
+}
+
+interface DmFallbackContext {
+  ref: string;
+  userId?: string;
+  handle?: string;
+  displayName?: string;
+  realName?: string;
+}
+
+async function findExistingDmChannel(
+  token: string,
+  ctx: DmFallbackContext,
+  signal?: AbortSignal,
+): Promise<RoutedRecipient | null> {
+  if (!canSearchExistingDms()) return null;
+  const queries = buildExistingDmSearchQueries(ctx);
+  for (const query of queries) {
+    const result = await slackApiJson<AssistantSearchContextResponse>(
+      "assistant.search.context",
+      token,
+      {
+        query,
+        count: 20,
+        // Restrict discovery to 1:1 DMs. We only use this as an im:write
+        // fallback; MPDMs and channels should still route through action=channel.
+        channel_types: "im",
+      },
+      signal,
+    );
+    if (!result.ok) continue;
+    const channelId = firstDmChannelId(result.data.results?.messages);
+    if (channelId) return { channelId, channelLabel: dmLabel(ctx) };
+  }
+  return null;
+}
+
+export function buildExistingDmSearchQueries(ctx: DmFallbackContext): string[] {
+  const queries: string[] = [];
+  const add = (query: string | undefined) => {
+    const trimmed = query?.trim();
+    if (trimmed && !queries.includes(trimmed)) queries.push(trimmed);
+  };
+
+  const display = cleanSearchValue(ctx.displayName || ctx.realName || "");
+  const handle = cleanHandle(ctx.handle);
+  const ref = cleanSearchValue(ctx.ref.replace(/^@/, ""));
+
+  // The with:/from: operators are the precise path when the workspace's
+  // search backend can map names to users. Bare quoted fallbacks are less
+  // precise but still constrained to channel_types=im above.
+  if (display) add(`with:@${display}`);
+  if (handle) add(`from:${handle}`);
+  if (display) add(quoteSearchPhrase(display));
+  if (ref && ref !== display && ref !== handle) add(quoteSearchPhrase(ref));
+  if (ctx.userId) add(ctx.userId);
+
+  return queries.slice(0, 5);
+}
+
+function firstDmChannelId(matches: SlackSearchMatch[] | undefined): string | undefined {
+  if (!matches) return undefined;
+  for (const match of matches) {
+    const channelId = match.channel_id || match.channel?.id;
+    if (channelId?.startsWith("D")) return channelId;
+  }
+  return undefined;
+}
+
+function missingDmOpenScopeFailure(
+  ref: string,
+  ctx: DmFallbackContext,
+  needed?: string,
+  provided?: string,
+): RouteFailure {
+  const searchHint = canSearchExistingDms()
+    ? `I also could not find an existing DM channel for "${dmLabel(ctx) || ref}" via Slack search.`
+    : "This token also lacks search:read.im, so I cannot discover an already-open DM as a fallback.";
+  const text =
+    "slack_send action=dm needs im:write to open a new 1:1 DM, which this token does not have. " +
+    `${searchHint} Ask a workspace admin to grant im:write, or provide an existing DM channel ID (D...) and send with action=channel.`;
+
+  return {
+    result: {
+      content: [{ type: "text", text }],
+      details: {
+        ok: false,
+        action: "dm",
+        reason: "missing_scope",
+        needed: needed || "im:write",
+        provided,
+        ref,
+      },
+    },
+  };
+}
+
+function canSearchExistingDms(): boolean {
+  return hasScope("search:read") || hasScope("search:read.im");
+}
+
+function dmLabel(ctx: DmFallbackContext): string | undefined {
+  const label = ctx.displayName || ctx.realName || ctx.handle;
+  return label ? `@${label.replace(/^@/, "")}` : undefined;
+}
+
+function cleanHandle(value: string | undefined): string {
+  return cleanSearchValue(value || "").replace(/^@/, "");
+}
+
+function cleanSearchValue(value: string): string {
+  return value.trim().replace(/\s+/g, " ");
+}
+
+function quoteSearchPhrase(value: string): string {
+  return `"${value.replace(/"/g, "").trim()}"`;
 }
 
 // Translate the HITL helper's ConfirmResult into a RouteFailure shaped like

@@ -309,10 +309,16 @@ export function formatSlackCapabilitySummary(
   );
 
   const postReady = has("chat:write") || has("chat:write.public");
-  const dmReady = postReady && has("im:write");
-  lines.push(
-    `  ${mark(postReady)} Posting: ${postReady ? (dmReady ? "channels + DMs" : "channels only; DMs need im:write") : "unavailable — missing chat:write"}`,
-  );
+  const dmOpenReady = postReady && has("im:write");
+  const existingDmReady = postReady && (has("search:read") || has("search:read.im"));
+  const postingLabel = !postReady
+    ? "unavailable — missing chat:write"
+    : dmOpenReady
+      ? "channels + DMs"
+      : existingDmReady
+        ? "channels + existing DMs; new DMs need im:write"
+        : "channels only; DMs need im:write or search:read.im fallback";
+  lines.push(`  ${mark(postReady)} Posting: ${postingLabel}`);
 
   return lines;
 }

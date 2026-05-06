@@ -19,7 +19,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { _resetGrantedScopes, slackApi } from "../lib/api.ts";
-import { preflightSend } from "../lib/send-tool.ts";
+import { buildExistingDmSearchQueries, preflightSend } from "../lib/send-tool.ts";
 import { computeGatedTools } from "../lib/scope-probe.ts";
 
 const originalFetch = globalThis.fetch;
@@ -91,19 +91,13 @@ describe("preflightSend", () => {
   });
 
   describe("action-aware gating", () => {
-    it("blocks action=dm when im:write is missing, with a targeted message", async () => {
-      // Matches the live session repro: chat:write granted, im:write not.
-      mockFetchWithScopes("chat:write, users:read, canvases:read");
+    it("allows action=dm without im:write so routeDm can try the existing-DM fallback", async () => {
+      // chat:write is enough to post to an already-open D... channel. The
+      // route layer handles im:write absence by searching for an existing DM
+      // before it asks the user to grant more scopes.
+      mockFetchWithScopes("chat:write, search:read.im, users:read, canvases:read");
       await slackApi("auth.test", "xoxp-test", {});
-      const failure = preflightSend("xoxp-test", "dm");
-      expect(failure).not.toBeNull();
-      expect(failure!.details.action).toBe("dm");
-      expect(failure!.details.reason).toBe("missing_scope");
-      // Error must name im:write specifically — the point of this gate is
-      // to stop Slack's noisy `needed: channels:write,groups:write,...`
-      // response from leaking through.
-      expect(failure!.content[0].text).toMatch(/im:write/);
-      expect(failure!.content[0].text).not.toMatch(/channels:write/);
+      expect(preflightSend("xoxp-test", "dm")).toBeNull();
     });
 
     it("allows action=dm when im:write is granted", async () => {
@@ -128,6 +122,25 @@ describe("preflightSend", () => {
       // the root cause instead of a misleading missing_scope.
       expect(failure!.details.reason).toBe("wrong_token_type");
     });
+  });
+});
+
+describe("existing-DM fallback query planning", () => {
+  it("prefers with:/from: searches and constrains fallback to a small query set", () => {
+    const queries = buildExistingDmSearchQueries({
+      ref: "Alex Morgan",
+      userId: "U012ABCDEF",
+      handle: "amorgan",
+      displayName: "Alex Morgan",
+      realName: "Alex Morgan",
+    });
+
+    expect(queries).toEqual(["with:@Alex Morgan", "from:amorgan", '"Alex Morgan"', "U012ABCDEF"]);
+  });
+
+  it("deduplicates @handle refs", () => {
+    const queries = buildExistingDmSearchQueries({ ref: "@amorgan", handle: "amorgan" });
+    expect(queries).toEqual(["from:amorgan"]);
   });
 });
 
@@ -166,6 +179,13 @@ describe("slack_send source-level safety invariants", () => {
     expect(sendSource).toContain("SLACK_ALLOW_HEADLESS_SEND");
     expect(sendSource).toMatch(/ENV_ALLOW_HEADLESS_SEND/);
     expect(sendSource).toMatch(/headless_refused/);
+  });
+
+  it("tries an existing-DM search fallback before telling users to grant im:write", () => {
+    expect(sendSource).toMatch(/findExistingDmChannel/);
+    expect(sendSource).toMatch(/assistant\.search\.context/);
+    expect(sendSource).toMatch(/channel_types:\s*"im"/);
+    expect(sendSource).toMatch(/missingDmOpenScopeFailure/);
   });
 
   it("detects every broadcast-scoped mention token in the text and re-confirms", () => {
