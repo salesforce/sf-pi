@@ -360,6 +360,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.45.1](https://github.com/salesforce/sf-pi/compare/v0.45.0...v0.45.1) (2026-05-06)
+
+
+### Bug Fixes
+
+* **sf-slack:** reuse existing dm channels without im write ([6218abc](https://github.com/salesforce/sf-pi/commit/6218abcdd198f9b96806ca73d4a1255d0405d5e0))
+
 ## [0.45.0](https://github.com/salesforce/sf-pi/compare/v0.44.1...v0.45.0) (2026-05-06)
 
 
