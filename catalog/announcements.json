@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.45.2-2026-05-06",
-  "latestVersion": "0.45.2",
+  "revision": "release-0.45.3-2026-05-07",
+  "latestVersion": "0.45.3",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.45.2",
+      "id": "release-0.45.3",
       "kind": "update",
-      "title": "sf-pi v0.45.2 — sf-slack: consolidate send confirmation",
-      "publishedAt": "2026-05-06T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.45.2",
+      "title": "sf-pi v0.45.3 — sf-llm-gateway-internal: strengthen gateway status diagnostics",
+      "publishedAt": "2026-05-07T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.45.3",
       "severity": "info",
-      "body": "sf-slack: consolidate send confirmation"
+      "body": "sf-llm-gateway-internal: strengthen gateway status diagnostics"
     },
     {
       "id": "pi-0.73-required",
