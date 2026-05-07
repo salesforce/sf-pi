@@ -360,6 +360,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.45.3](https://github.com/salesforce/sf-pi/compare/v0.45.2...v0.45.3) (2026-05-07)
+
+
+### Bug Fixes
+
+* **sf-llm-gateway-internal:** strengthen gateway status diagnostics ([a84055f](https://github.com/salesforce/sf-pi/commit/a84055f8751dda826c8a234b8edef178eb11f93f))
+
 ## [0.45.2](https://github.com/salesforce/sf-pi/compare/v0.45.1...v0.45.2) (2026-05-06)
 
 
