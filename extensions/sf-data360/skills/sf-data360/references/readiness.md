@@ -18,6 +18,14 @@ user. Use `d360_probe` before multi-step work when readiness is uncertain.
 - Query/search-index failures do not necessarily mean DMO, DLO, calculated insight, or data-space APIs are unavailable.
 - A missing table or index should be treated as a bad probe target until the catalog has been inspected.
 
+## Probe count semantics
+
+`d360_probe` is a readiness classifier, not a complete inventory tool.
+
+Some probes intentionally use `limit=1`. For endpoints that do not return an explicit `totalSize`, `total`, or `count`, the reported count may be only the number of returned items.
+
+Use probe counts to determine whether a surface is reachable, populated, empty, gated, or blocked. Do not report them as authoritative object totals unless the result has `countKind: "total"` or `countKind: "nested_total"`.
+
 ## Good first probes
 
 `d360_probe` samples a curated set of read-only surfaces including:

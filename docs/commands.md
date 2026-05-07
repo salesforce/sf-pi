@@ -30,11 +30,11 @@ _High-density Salesforce operator kernel injected once per session — describe-
 
 ### [SF Data 360](../extensions/sf-data360/)
 
-_Data Cloud/Data 360 direct REST helper — one d360_api tool plus extension-owned progressive-disclosure skill references_
+_Data Cloud/Data 360 direct REST helper — d360_api, compact d360_metadata discovery, d360_probe, and extension-owned progressive-disclosure skill references_
 
-- Default: **opt-in**
+- Default: **on**
 - Commands: `/sf-data360`
-- Tools: `d360_api`, `d360_probe`
+- Tools: `d360_api`, `d360_metadata`, `d360_probe`
 
 ### [SF Feedback](../extensions/sf-feedback/)
 

@@ -337,7 +337,7 @@ For the canonical machine-readable bundle list, see [`catalog/index.json`](./cat
 | ---------------------------------------------------------------- | -------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [SF Agent Script Assist](./extensions/sf-agentscript-assist/)    | core     | on        | In-process Agent Script authoring companion — parse, compile, and code-action feedback on every .agent write                                                         |
 | [SF Brain](./extensions/sf-brain/)                               | core     | on        | High-density Salesforce operator kernel injected once per session — describe-before-query rules, API picker, anonymous Apex verification loop, and CLI power moves   |
-| [SF Data 360](./extensions/sf-data360/)                          | core     | opt-in    | Data Cloud/Data 360 direct REST helper — one d360_api tool plus extension-owned progressive-disclosure skill references                                              |
+| [SF Data 360](./extensions/sf-data360/)                          | core     | on        | Data Cloud/Data 360 direct REST helper — d360_api, compact d360_metadata discovery, d360_probe, and extension-owned progressive-disclosure skill references          |
 | [SF Feedback](./extensions/sf-feedback/)                         | core     | on        | Guided feedback and bug-report flow that collects sanitized SF Pi diagnostics and opens a GitHub issue                                                               |
 | [SF Guardrail](./extensions/sf-guardrail/)                       | core     | on        | Salesforce-aware safety hooks — file protection policies, dangerous-command gating, and org-aware confirmation for production deploys, apex runs, and data mutations |
 | [SF LSP](./extensions/sf-lsp/)                                   | core     | on        | Real-time Salesforce LSP diagnostics on write/edit with a working-indicator spinner, transcript rows, and a permanent top-bar health segment in sf-devbar            |
@@ -527,6 +527,7 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 
 **[SF Data 360](./extensions/sf-data360/#troubleshooting)**
 
+- A simple DMO list returns too much data
 - `/skill:sf-data360` is missing
 - A mutating call is blocked in headless mode
 - The wrong API version appears in my path

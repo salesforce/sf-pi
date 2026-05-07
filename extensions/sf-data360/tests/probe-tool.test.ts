@@ -13,7 +13,7 @@ describe("sf-data360 readiness probe", () => {
         JSON.stringify({ dataSpaces: [{ name: "default" }], totalSize: 1 }),
         "",
       ),
-    ).toMatchObject({ state: "enabled_populated", count: 1 });
+    ).toMatchObject({ state: "enabled_populated", count: 1, countKind: "total" });
 
     expect(
       classifyProbeResult(
@@ -23,7 +23,7 @@ describe("sf-data360 readiness probe", () => {
         JSON.stringify({ dataModelObject: [] }),
         "",
       ),
-    ).toMatchObject({ state: "enabled_empty", count: 0 });
+    ).toMatchObject({ state: "enabled_empty", count: 0, countKind: "returned_rows" });
   });
 
   it("classifies feature gates and missing resources", () => {

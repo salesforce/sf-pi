@@ -29,12 +29,12 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
   {
     id: "sf-data360",
     name: "SF Data 360",
-    description: "Data Cloud/Data 360 direct REST helper — one d360_api tool plus extension-owned progressive-disclosure skill references",
+    description: "Data Cloud/Data 360 direct REST helper — d360_api, compact d360_metadata discovery, d360_probe, and extension-owned progressive-disclosure skill references",
     file: "extensions/sf-data360/index.ts",
     category: "core",
-    defaultEnabled: false,
+    defaultEnabled: true,
     commands: ["/sf-data360"],
-    tools: ["d360_api","d360_probe"],
+    tools: ["d360_api","d360_metadata","d360_probe"],
     events: ["session_start","resources_discover"],
     configurable: true,
     getConfigPanel: async () => {

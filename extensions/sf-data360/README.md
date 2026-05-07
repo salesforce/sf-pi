@@ -6,22 +6,22 @@
 Data Cloud / Data 360 REST APIs without adding MCP support and without exposing
 hundreds of endpoint-specific tools.
 
-It registers two native tools:
+It registers three native tools:
 
 - `d360_api` — calls Data 360 REST endpoints through `sf api request rest` using the
   active Salesforce CLI auth context.
+- `d360_metadata` — compact list/describe helpers for common DMO and DLO
+  discovery tasks, avoiding broad nested catalog payloads by default.
 - `d360_probe` — runs read-only probes across core Data 360 surfaces and
   classifies org readiness as ready, ready-empty, partial, or blocked.
 
-It also contributes an extension-owned `sf-data360` skill. The skill is only
-visible while this extension is enabled, so disabling the extension removes both
-the tool and the skill on `/reload` or new sessions.
+It is enabled by default and contributes an extension-owned `sf-data360` skill. The skill is only visible while this extension is enabled, so explicitly disabling the extension removes both the tools and the skill on `/reload` or new sessions.
 
 ## Design Rationale
 
 The intended balance is:
 
-- **Context-efficient:** two small tools plus a small skill description.
+- **Context-efficient:** three small tools plus a small skill description.
 - **Composable:** the agent can still script REST workflows, pagination, and
   JSON transforms on the fly.
 - **Deterministic:** the tool pins the API version, resolves the target org,
@@ -34,7 +34,7 @@ The intended balance is:
 
 ```
 Extension loads
-  ├─ register d360_api and d360_probe
+  ├─ register d360_api, d360_metadata, and d360_probe
   ├─ register /sf-data360
   └─ resources_discover
        └─ contribute ./skills so /skill:sf-data360 exists only while enabled
@@ -49,6 +49,19 @@ Agent calls d360_api
        └─ truncate large output and save full result to temp file
 ```
 
+## Metadata Helper Shape
+
+```json
+{ "action": "list_dmos" }
+```
+
+```json
+{ "action": "describe_dmo", "api_name": "ssot__Account__dlm", "max_fields": 25 }
+```
+
+Use `d360_metadata` for simple DMO/DLO lists and one-object descriptions. Use
+`d360_api` for lower-level endpoints or advanced workflows.
+
 ## Tool Shape
 
 ```json
@@ -57,7 +70,8 @@ Agent calls d360_api
   "path": "/ssot/data-model-objects",
   "query": { "category": "Profile" },
   "target_org": "optional-alias",
-  "dry_run": true
+  "dry_run": true,
+  "output_mode": "summary"
 }
 ```
 
@@ -67,16 +81,29 @@ version.
 
 ## Behavior Matrix
 
-| Event / trigger                               | Condition                                 | Result                                                                  |
-| --------------------------------------------- | ----------------------------------------- | ----------------------------------------------------------------------- |
-| Extension load                                | Extension enabled                         | Register `d360_api` and `/sf-data360`.                                  |
-| `resources_discover`                          | Extension enabled                         | Contribute `./skills` so `/skill:sf-data360` is visible.                |
-| Extension disabled + `/reload` or new session | —                                         | No `d360_api`, no `d360_probe`, no `sf-data360` skill.                  |
-| `d360_probe`                                  | Org readiness is uncertain                | Run read-only surface probes and classify readiness.                    |
-| `d360_api`                                    | `dry_run: true`                           | Return resolved request and safety decision without calling Salesforce. |
-| `d360_api`                                    | Read/query/validate/test request          | Execute via `sf api request rest`.                                      |
-| `d360_api`                                    | Confirmation required and UI is available | Prompt the user to allow once or block.                                 |
-| `d360_api`                                    | Confirmation required and headless        | Fail closed unless `SF_D360_ALLOW_HEADLESS_WRITE=1`.                    |
+| Event / trigger                                          | Condition                                 | Result                                                                     |
+| -------------------------------------------------------- | ----------------------------------------- | -------------------------------------------------------------------------- |
+| Extension load                                           | Extension enabled                         | Register `d360_api`, `d360_metadata`, `d360_probe`, and `/sf-data360`.     |
+| `resources_discover`                                     | Extension enabled                         | Contribute `./skills` so `/skill:sf-data360` is visible.                   |
+| Extension explicitly disabled + `/reload` or new session | —                                         | No `d360_api`, no `d360_metadata`, no `d360_probe`, no `sf-data360` skill. |
+| `d360_probe`                                             | Org readiness is uncertain                | Run read-only surface probes and classify readiness.                       |
+| `d360_metadata`                                          | list/describe DMO/DLO request             | Return compact metadata and save raw JSON to a temp file.                  |
+| `d360_api`                                               | `dry_run: true`                           | Return resolved request and safety decision without calling Salesforce.    |
+| `d360_api`                                               | Read/query/validate/test request          | Execute via `sf api request rest`.                                         |
+| `d360_api`                                               | `output_mode: "summary"` or `"file_only"` | Save full output to a temp file and avoid large inline payloads.           |
+| `d360_api`                                               | Confirmation required and UI is available | Prompt the user to allow once or block.                                    |
+| `d360_api`                                               | Confirmation required and headless        | Fail closed unless `SF_D360_ALLOW_HEADLESS_WRITE=1`.                       |
+
+## DMO/DLO Discovery Defaults
+
+For a simple "list DMOs" request, use `d360_metadata` with `action:
+"list_dmos"` or the compact metadata endpoint
+`/ssot/metadata-entities?entityType=DataModelObject`. Do not use
+`/ssot/data-model-objects` broadly unless the user explicitly needs full DMO
+field definitions or the standard catalog.
+
+For record queries, describe one selected DMO first, run `COUNT(*)`, then sample
+a small number of verified non-sensitive fields.
 
 ## Safety Model
 
@@ -103,10 +130,7 @@ behind file references so the agent loads it only when needed.
 
 ## Settings Panel
 
-`sf-data360` is marked configurable so it appears with a standardized drill-down
-panel in the `/sf-pi` extension manager. The v1 panel is read-only by design: it
-shows enablement, runtime backend, tools, safety behavior, and reference paths.
-There are no persistent preferences yet.
+`sf-data360` is enabled by default and marked configurable so it appears with a standardized drill-down panel in the `/sf-pi` extension manager. The v1 panel is read-only by design: it shows enablement, runtime backend, tools, safety behavior, and reference paths. There are no persistent preferences yet.
 
 ## Commands
 
@@ -122,16 +146,19 @@ extensions/sf-data360/
   lib/
     api-tool.ts             ← implementation module
     config-panel.ts         ← implementation module
+    metadata-tool.ts        ← implementation module
     path.ts                 ← implementation module
     probe-tool.ts           ← implementation module
     safety.ts               ← implementation module
     truncation.ts           ← implementation module
   tests/
     api-tool.test.ts        ← unit / smoke test
+    metadata-tool.test.ts   ← unit / smoke test
     path.test.ts            ← unit / smoke test
     probe-tool.test.ts      ← unit / smoke test
     safety.test.ts          ← unit / smoke test
     smoke.test.ts           ← unit / smoke test
+    truncation.test.ts      ← unit / smoke test
   AGENTS.md                 ← extension-specific agent editing rules
   index.ts                  ← Pi extension entry point
   manifest.json             ← source-of-truth extension metadata
@@ -150,6 +177,7 @@ npm test -- extensions/sf-data360/tests
 
 Covered by unit tests:
 
+- Compact metadata helper builds safe list/describe paths and summarizes DMO/DLO list and field payloads.
 - Path normalization strips caller-supplied `/services/data/vNN.N` prefixes so the active API version wins.
 - Query-string construction handles repeated values and skips nullish values.
 - Safety classification allows reads/search/query/validation calls, confirms deletes and action paths, and treats unknown target orgs conservatively.
@@ -157,9 +185,9 @@ Covered by unit tests:
 
 ## Troubleshooting
 
-**`/skill:sf-data360` is missing:** Confirm the `sf-data360` extension is
-enabled, then run `/reload`. The skill is contributed by the extension, not
-registered as a standalone package skill.
+**A simple DMO list returns too much data:** Use `d360_metadata` with `action: "list_dmos"` instead of broad `/ssot/data-model-objects` calls.
+
+**`/skill:sf-data360` is missing:** `sf-data360` is enabled by default, so first check whether it was explicitly disabled in `/sf-pi`, then run `/reload`. The skill is contributed by the extension, not registered as a standalone package skill.
 
 **A mutating call is blocked in headless mode:** Re-run with `dry_run: true` and
 review the resolved request. If automation should be allowed, set

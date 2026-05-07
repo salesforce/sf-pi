@@ -10,10 +10,10 @@ describe("sf-data360 extension smoke", () => {
     events?: string[];
   };
 
-  it("is opt-in and exposes the expected runtime surfaces", () => {
-    expect(manifest.defaultEnabled).toBe(false);
+  it("is enabled by default and exposes the expected runtime surfaces", () => {
+    expect(manifest.defaultEnabled).toBe(true);
     expect(manifest.configurable).toBe(true);
-    expect(manifest.tools).toEqual(["d360_api", "d360_probe"]);
+    expect(manifest.tools).toEqual(["d360_api", "d360_metadata", "d360_probe"]);
     expect(manifest.events).toEqual(["session_start", "resources_discover"]);
   });
 

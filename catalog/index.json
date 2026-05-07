@@ -46,9 +46,9 @@
   {
     "id": "sf-data360",
     "name": "SF Data 360",
-    "description": "Data Cloud/Data 360 direct REST helper — one d360_api tool plus extension-owned progressive-disclosure skill references",
+    "description": "Data Cloud/Data 360 direct REST helper — d360_api, compact d360_metadata discovery, d360_probe, and extension-owned progressive-disclosure skill references",
     "category": "core",
-    "defaultEnabled": false,
+    "defaultEnabled": true,
     "alwaysActive": false,
     "configurable": true,
     "commands": [
@@ -57,6 +57,7 @@
     "providers": [],
     "tools": [
       "d360_api",
+      "d360_metadata",
       "d360_probe"
     ],
     "events": [
@@ -64,12 +65,13 @@
       "resources_discover"
     ],
     "docs": {
-      "summary": "Direct Data 360 REST access through sf api request rest with API-version pinning, target-org resolution, dry-run, safety confirmation, and progressive skill references.",
+      "summary": "Direct Data 360 REST access through sf api request rest with API-version pinning, target-org resolution, dry-run, safety confirmation, compact metadata helpers, and progressive skill references.",
       "primaryFiles": [
         "index.ts",
         "lib/api-tool.ts",
         "lib/path.ts",
         "lib/safety.ts",
+        "lib/metadata-tool.ts",
         "lib/probe-tool.ts",
         "lib/config-panel.ts",
         "skills/sf-data360/SKILL.md"
@@ -83,7 +85,7 @@
     "entry": "extensions/sf-data360/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 919
+    "srcLoc": 1397
   },
   {
     "id": "sf-devbar",

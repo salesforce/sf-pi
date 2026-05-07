@@ -8,7 +8,8 @@
  * - No MCP server/client support.
  * - No 180 always-on generated operation tools.
  * - One deterministic `d360_api` tool for direct Salesforce REST calls via
- *   `sf api request rest`, plus an extension-owned skill for progressive disclosure.
+ *   `sf api request rest`, one compact `d360_metadata` helper for common DMO/DLO
+ *   discovery, plus an extension-owned skill for progressive disclosure.
  * - The skill is contributed only while this extension is enabled. Disabling
  *   sf-data360 removes both the tool and skill on reload/new sessions.
  *
@@ -16,7 +17,7 @@
  *
  *   Event/Trigger       | Result
  *   --------------------|--------------------------------------------------
- *   extension load      | Register d360_api and /sf-data360
+ *   extension load      | Register d360_api, d360_metadata, d360_probe, and /sf-data360
  *   resources_discover  | Contribute ./skills so sf-data360 skill is visible
  *   /sf-data360         | Show status/help
  *   d360_api dry_run    | Resolve path/org/safety without calling Salesforce
@@ -35,6 +36,7 @@ import {
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 import { isSfPiExtensionEnabled } from "../../lib/common/sf-pi-extension-state.ts";
 import { D360_TOOL_NAME, registerD360ApiTool } from "./lib/api-tool.ts";
+import { D360_METADATA_TOOL_NAME, registerD360MetadataTool } from "./lib/metadata-tool.ts";
 import { D360_PROBE_TOOL_NAME, registerD360ProbeTool } from "./lib/probe-tool.ts";
 
 const COMMAND_NAME = "sf-data360";
@@ -49,6 +51,7 @@ export default function sfData360(pi: ExtensionAPI) {
   function ensureToolsRegistered(): void {
     if (toolsRegistered) return;
     registerD360ApiTool(pi);
+    registerD360MetadataTool(pi);
     registerD360ProbeTool(pi);
     toolsRegistered = true;
   }
@@ -103,8 +106,8 @@ async function handleCommand(
     [
       "SF Data 360 — status",
       "",
-      `Enabled: ${enabled ? "yes" : "no (enable with /sf-pi enable sf-data360)"}`,
-      `Tools: ${enabled ? `${D360_TOOL_NAME}, ${D360_PROBE_TOOL_NAME}` : "not registered"}`,
+      `Enabled: ${enabled ? "yes (default)" : "no (re-enable with /sf-pi enable sf-data360)"}`,
+      `Tools: ${enabled ? `${D360_TOOL_NAME}, ${D360_METADATA_TOOL_NAME}, ${D360_PROBE_TOOL_NAME}` : "not registered"}`,
       `Skill: ${enabled ? "sf-data360" : "not registered"} (extension-owned)`,
       `SF CLI: ${env.cli.installed ? (env.cli.version ?? "installed") : "not installed"}`,
       `Target org: ${env.config.targetOrg ?? "not configured"}`,
@@ -135,12 +138,14 @@ function buildHelpText(enabled: boolean): string {
     `  /${COMMAND_NAME} help     Show this help`,
     "",
     "Enablement:",
-    `  Current state: ${enabled ? "enabled" : "disabled"}`,
-    `  Enable: /sf-pi enable sf-data360`,
+    `  Default state: enabled`,
+    `  Current state: ${enabled ? "enabled" : "disabled by user settings"}`,
+    `  Re-enable: /sf-pi enable sf-data360`,
     `  Disable: /sf-pi disable sf-data360`,
     "",
     "Tools when enabled:",
     `  ${D360_TOOL_NAME}          Call /services/data/vXX.X Data 360 REST endpoints via sf api request rest`,
+    `  ${D360_METADATA_TOOL_NAME}     Compact list/describe helpers for DMOs and DLOs`,
     `  ${D360_PROBE_TOOL_NAME}        Classify Data 360 readiness with read-only probes`,
     "",
     "Recommended workflow:",

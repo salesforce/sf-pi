@@ -37,6 +37,38 @@ query returns a query id or requires pagination.
 - Quote table names if needed, but verify both quoted and unquoted forms if the query plane rejects a discovered catalog name.
 - A catalog object can exist while the query plane rejects it because the table is not queryable or external lake access is blocked.
 
+## DMO record query loop
+
+When querying records from a DMO:
+
+1. Select the DMO from metadata.
+   - Prefer `d360_metadata` with `action: "list_dmos"`, or `/ssot/metadata-entities?entityType=DataModelObject`, for discovery.
+   - Use the user-provided DMO name only after verifying it exists.
+
+2. Inspect the selected DMO.
+   - Prefer `d360_metadata` with `action: "describe_dmo"`, or `GET /ssot/data-model-objects/{dmoApiName}`.
+   - Choose verified fields only.
+   - Prefer non-sensitive fields such as IDs, status/type fields, and timestamps.
+
+3. Count first.
+
+```sql
+SELECT COUNT(*) AS record_count
+FROM SomeObject__dlm
+```
+
+4. Sample second.
+
+```sql
+SELECT IdField__c, StatusField__c, CreatedDateField__c
+FROM SomeObject__dlm
+LIMIT 5
+```
+
+5. Keep both SQL `LIMIT` and request `rowLimit` small.
+
+Do not use SOQL assumptions for Data Cloud SQL. Relationship names, field names, and queryability must be verified from Data 360 metadata.
+
 ## Safe first query
 
 ```sql

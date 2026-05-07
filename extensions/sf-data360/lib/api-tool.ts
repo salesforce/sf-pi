@@ -10,7 +10,7 @@ import {
 } from "../../../lib/common/sf-environment/shared-runtime.ts";
 import type { OrgType, SfEnvironment } from "../../../lib/common/sf-environment/types.ts";
 import { buildApiPath, type QueryParams } from "./path.ts";
-import { D360_OUTPUT_SUFFIX, truncateD360Output } from "./truncation.ts";
+import { D360_OUTPUT_SUFFIX, formatD360Output, type D360OutputMode } from "./truncation.ts";
 import {
   classifyD360Request,
   normalizeMethod,
@@ -56,6 +56,12 @@ export const D360ApiParams = Type.Object({
       description: "Optional command timeout in milliseconds. Defaults to 120000.",
     }),
   ),
+  output_mode: Type.Optional(
+    StringEnum(["inline", "summary", "file_only"] as const, {
+      description:
+        "How to return the response. inline truncates large output, summary saves full JSON and returns a shape summary, file_only saves full JSON and returns only the file path.",
+    }),
+  ),
 });
 
 export interface D360ApiInput {
@@ -66,6 +72,7 @@ export interface D360ApiInput {
   target_org?: string;
   dry_run?: boolean;
   timeout_ms?: number;
+  output_mode?: D360OutputMode;
 }
 
 interface ResolvedRequest {
@@ -90,6 +97,9 @@ export function registerD360ApiTool(pi: ExtensionAPI): void {
     promptGuidelines: [
       "Use d360_api for Data Cloud/Data 360 REST endpoints instead of hand-rolled curl.",
       "Use d360_api dry_run:true before mutating Data 360 create, update, run, publish, deploy, undeploy, or delete calls.",
+      "Use /ssot/metadata-entities?entityType=DataModelObject for concise DMO lists; do not call /ssot/data-model-objects broadly unless full DMO definitions or fields are explicitly needed.",
+      "Before querying DMO records, inspect the selected DMO with GET /ssot/data-model-objects/{dmoApiName}, then run COUNT(*) before sampling rows.",
+      "Keep Data 360 result sets small; for broad/list responses use output_mode:'summary' or output_mode:'file_only' instead of pasting full nested payloads.",
       "Before complex Data 360 create/update calls, read the sf-data360 skill references for payload examples.",
     ],
     parameters: D360ApiParams,
@@ -114,6 +124,7 @@ export function registerD360ApiTool(pi: ExtensionAPI): void {
             null,
             2,
           ),
+          "inline",
           { ok: true, action: "dry_run", resolved },
         );
       }
@@ -128,7 +139,7 @@ export function registerD360ApiTool(pi: ExtensionAPI): void {
 
       const output = result.stdout.trim() || result.stderr.trim() || "{}";
       const ok = result.code === 0 && !responseLooksLikeError(output);
-      return buildResult(output, {
+      return buildResult(output, input.output_mode ?? "inline", {
         ok,
         action: "call",
         exitCode: result.code,
@@ -246,14 +257,19 @@ export function responseLooksLikeError(text: string): boolean {
   return false;
 }
 
-async function buildResult(text: string, details: Record<string, unknown>) {
-  const truncated = await truncateD360Output(text);
+async function buildResult(
+  text: string,
+  outputMode: D360OutputMode | undefined,
+  details: Record<string, unknown>,
+) {
+  const formatted = await formatD360Output(text, outputMode ?? "inline");
   return {
-    content: [{ type: "text" as const, text: truncated.text }],
+    content: [{ type: "text" as const, text: formatted.text }],
     details: {
       ...details,
-      ...(truncated.truncation ? { truncation: truncated.truncation } : {}),
-      ...(truncated.fullOutputPath ? { fullOutputPath: truncated.fullOutputPath } : {}),
+      outputMode: formatted.outputMode ?? outputMode ?? "inline",
+      ...(formatted.truncation ? { truncation: formatted.truncation } : {}),
+      ...(formatted.fullOutputPath ? { fullOutputPath: formatted.fullOutputPath } : {}),
     },
   };
 }

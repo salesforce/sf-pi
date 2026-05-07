@@ -13,11 +13,25 @@ Then retry the `d360_api` call or pass `target_org` explicitly.
 ## Endpoint returned too much data
 
 Use filters, `limit`, `rowLimit`, `offset`, or endpoint-specific pagination.
-`d360_api` truncates oversized output and saves the full response to a temp file.
+Prefer `output_mode: "summary"` or `output_mode: "file_only"` for broad responses. `d360_api` truncates oversized inline output and saves the full response to a temp file.
 
 ## Metadata request is too broad
 
-Prefer metadata search first:
+For simple DMO/DLO lists, prefer `d360_metadata` first:
+
+```json
+{ "action": "list_dmos" }
+```
+
+For one object's fields, describe that single object:
+
+```json
+{ "action": "describe_dmo", "api_name": "SomeObject__dlm" }
+```
+
+Do not call `/ssot/data-model-objects` broadly unless the user explicitly needs the full standard catalog or field inventory.
+
+For other metadata, prefer metadata search first:
 
 ```json
 {
@@ -35,6 +49,10 @@ Then fetch one entity with `/ssot/metadata` and an `entityName` query parameter.
 2. Re-read `examples.md` for a similar payload shape.
 3. Remove read-only fields copied from a GET response.
 4. Retry with the smallest possible body.
+
+## Raw `sf api request rest` rejected `--json`
+
+Prefer `d360_api`. If you must call raw `sf api request rest`, do not add `--json`; pipe stdout to `jq` and redirect beta warnings from stderr when needed.
 
 ## Mutating call was blocked
 

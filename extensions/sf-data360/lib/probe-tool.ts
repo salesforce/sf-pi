@@ -47,11 +47,14 @@ export type ProbeState =
   | "cli_error"
   | "unknown_error";
 
+export type ProbeCountKind = "total" | "returned_rows" | "nested_total";
+
 export interface ProbeResult {
   name: string;
   path: string;
   state: ProbeState;
   count?: number;
+  countKind?: ProbeCountKind;
   keys?: string[];
   message?: string;
   featureCode?: string;
@@ -88,6 +91,7 @@ export function registerD360ProbeTool(pi: ExtensionAPI): void {
     promptGuidelines: [
       "Use d360_probe before Data 360 workflows when org readiness is uncertain.",
       "Treat d360_probe partial results as phase-specific guidance, not as a single global on/off flag.",
+      "Treat d360_probe counts as readiness/sample indicators unless countKind is total or nested_total.",
     ],
     parameters: D360ProbeParams,
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
@@ -180,13 +184,14 @@ export function classifyProbeResult(
   }
 
   const keys = Object.keys(parsed as Record<string, unknown>);
-  const count = inferCount(parsed);
-  if (typeof count === "number") {
+  const countInfo = inferCount(parsed);
+  if (countInfo) {
     return {
       name,
       path,
-      state: count > 0 ? "enabled_populated" : "enabled_empty",
-      count,
+      state: countInfo.count > 0 ? "enabled_populated" : "enabled_empty",
+      count: countInfo.count,
+      countKind: countInfo.kind,
       keys,
       exitCode,
     };
@@ -255,17 +260,19 @@ function extractMessage(parsed: unknown): string | undefined {
   return undefined;
 }
 
-function inferCount(parsed: unknown): number | undefined {
+function inferCount(parsed: unknown): { count: number; kind: ProbeCountKind } | undefined {
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return undefined;
   const obj = parsed as Record<string, unknown>;
-  if (typeof obj.totalSize === "number") return obj.totalSize;
+  if (typeof obj.totalSize === "number") return { count: obj.totalSize, kind: "total" };
+  if (typeof obj.total === "number") return { count: obj.total, kind: "total" };
+  if (typeof obj.count === "number") return { count: obj.count, kind: "total" };
   for (const value of Object.values(obj)) {
-    if (Array.isArray(value)) return value.length;
+    if (Array.isArray(value)) return { count: value.length, kind: "returned_rows" };
     if (value && typeof value === "object" && !Array.isArray(value)) {
       const nested = value as Record<string, unknown>;
-      if (typeof nested.total === "number") return nested.total;
-      if (typeof nested.count === "number") return nested.count;
-      if (Array.isArray(nested.items)) return nested.items.length;
+      if (typeof nested.total === "number") return { count: nested.total, kind: "nested_total" };
+      if (typeof nested.count === "number") return { count: nested.count, kind: "nested_total" };
+      if (Array.isArray(nested.items)) return { count: nested.items.length, kind: "returned_rows" };
     }
   }
   return undefined;

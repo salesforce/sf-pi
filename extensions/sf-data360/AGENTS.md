@@ -7,7 +7,8 @@ Agent rules for editing this extension. Repo-level rules still apply.
 1. `extensions/sf-data360/README.md` — behavior and safety model
 2. `extensions/sf-data360/index.ts` — extension wiring
 3. `extensions/sf-data360/lib/api-tool.ts` — `d360_api` execution flow
-4. `extensions/sf-data360/skills/sf-data360/SKILL.md` — user-facing workflow
+4. `extensions/sf-data360/lib/metadata-tool.ts` — compact DMO/DLO discovery flow
+5. `extensions/sf-data360/skills/sf-data360/SKILL.md` — user-facing workflow
 
 ## File map
 
@@ -15,6 +16,7 @@ Agent rules for editing this extension. Repo-level rules still apply.
 | ----------------------------------------------------- | ----------------------------------- |
 | Extension entry, command, skill contribution          | `index.ts`                          |
 | Tool registration and `sf api request rest` execution | `lib/api-tool.ts`                   |
+| Compact DMO/DLO metadata list and describe helper     | `lib/metadata-tool.ts`              |
 | Read-only Data 360 readiness probe                    | `lib/probe-tool.ts`                 |
 | Read-only sf-pi manager settings panel                | `lib/config-panel.ts`               |
 | REST path and query-string normalization              | `lib/path.ts`                       |

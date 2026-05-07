@@ -12,6 +12,7 @@ import type { Theme } from "@mariozechner/pi-coding-agent";
 import type { ConfigPanelFactory, ConfigPanelResult } from "../../../catalog/registry.ts";
 import { isSfPiExtensionEnabled } from "../../../lib/common/sf-pi-extension-state.ts";
 import { D360_TOOL_NAME, HEADLESS_WRITE_ENV } from "./api-tool.ts";
+import { D360_METADATA_TOOL_NAME } from "./metadata-tool.ts";
 import { D360_PROBE_TOOL_NAME } from "./probe-tool.ts";
 
 function padAnsi(text: string, width: number): string {
@@ -46,7 +47,7 @@ class SfData360ConfigPanel implements Focusable {
     const dot = enabled ? t.fg("success", "●") : t.fg("error", "○");
     lines.push(
       pad(
-        ` ${dot} ${t.fg("text", enabled ? "Enabled" : "Disabled by default")}   ${t.fg(
+        ` ${dot} ${t.fg("text", enabled ? "Enabled by default" : "Disabled by user settings")}   ${t.fg(
           "dim",
           `(scope: ${this.scope})`,
         )}`,
@@ -66,6 +67,11 @@ class SfData360ConfigPanel implements Focusable {
     lines.push(
       pad(
         `   ${toolDot(t, enabled)} ${D360_TOOL_NAME}    ${t.fg("dim", "direct Data 360 REST calls")}`,
+      ),
+    );
+    lines.push(
+      pad(
+        `   ${toolDot(t, enabled)} ${D360_METADATA_TOOL_NAME} ${t.fg("dim", "compact DMO/DLO discovery")}`,
       ),
     );
     lines.push(
@@ -97,7 +103,7 @@ class SfData360ConfigPanel implements Focusable {
           "dim",
           enabled
             ? "Use /sf-data360 for status, /skill:sf-data360 for guidance. Esc to go back."
-            : "Enable with /sf-pi enable sf-data360, then /reload. Esc to go back.",
+            : "Re-enable with /sf-pi enable sf-data360, then /reload. Esc to go back.",
         )}`,
       ),
     );
