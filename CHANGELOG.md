@@ -360,6 +360,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.46.0](https://github.com/salesforce/sf-pi/compare/v0.45.3...v0.46.0) (2026-05-07)
+
+
+### Features
+
+* add opt-in Data 360 REST helper ([3556c9a](https://github.com/salesforce/sf-pi/commit/3556c9a70832408cf0dcf4dcf8605ebb3bce5b28))
+
 ## [0.45.3](https://github.com/salesforce/sf-pi/compare/v0.45.2...v0.45.3) (2026-05-07)
 
 
