@@ -360,6 +360,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.46.2](https://github.com/salesforce/sf-pi/compare/v0.46.1...v0.46.2) (2026-05-07)
+
+
+### Bug Fixes
+
+* **sf-slack:** improve scope gating and partial-grant UX ([df59889](https://github.com/salesforce/sf-pi/commit/df59889bdb2355b87114a72ecc33e730ab81c075))
+
 ## [0.46.1](https://github.com/salesforce/sf-pi/compare/v0.46.0...v0.46.1) (2026-05-07)
 
 
