@@ -30,7 +30,7 @@ describe("slack status store", () => {
     const listener = vi.fn();
     subscribeSlackStatus(listener);
 
-    setSlackStatus({ kind: "scope-drift", missingScopes: 2 });
+    setSlackStatus({ kind: "partial-grant", missingScopes: 2 });
     clearSlackStatus();
 
     expect(listener).toHaveBeenCalledTimes(2);

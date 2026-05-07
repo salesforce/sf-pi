@@ -386,14 +386,11 @@ export async function buildAuthStatus(ctx: ExtensionContext): Promise<string> {
 
   lines.push(`Auth method: ${sourceLabel[effectiveSource]}`);
   lines.push(`Token: ${maskToken(auth.token)}  [${tokenTypeLabel}]`);
-  lines.push("Status: ✅ Authenticated — scope readiness is shown below.");
+  lines.push("Status: ✅ Connected");
 
-  // Granted vs requested scope diff (P4). This is the big robustness win:
-  // previously we rendered `oauthScopes()` — i.e. what we asked for at
-  // OAuth time — which can silently drift from what Slack actually granted.
-  // We now read the X-OAuth-Scopes header Slack returned on its last
-  // response (populated during session_start's auth.test probe) and render
-  // both lists plus the diff.
+  // Granted vs requested scope comparison. Slack admins may intentionally
+  // approve only a subset of the requested scope set, so this is presented as
+  // neutral grant coverage instead of an auth/connectivity warning.
   const granted = getGrantedScopes();
   const requested = oauthScopes()
     .split(",")
@@ -403,17 +400,21 @@ export async function buildAuthStatus(ctx: ExtensionContext): Promise<string> {
   lines.push("");
   if (granted) {
     const sortedGranted = [...granted].sort();
-    lines.push(`Granted scopes (from Slack, ${sortedGranted.length}):`);
+    lines.push(
+      `Scope grant: ${sortedGranted.length} of ${requested.length} requested scopes granted by Slack.`,
+    );
+    lines.push("Granted scopes (from Slack):");
     lines.push(`  ${sortedGranted.join(", ")}`);
 
     const missingGranted = requested.filter((scope) => !granted.has(scope));
     if (missingGranted.length > 0) {
       lines.push("");
-      lines.push(`⚠ Requested but not granted (${missingGranted.length}):`);
+      lines.push(`Not included in the current workspace/app grant (${missingGranted.length}):`);
       lines.push(`  ${missingGranted.join(", ")}`);
       lines.push(
-        "  → Slack access is limited to the scopes your OAuth app/workspace granted. " +
-          "Some tools or actions may be gated; re-auth only helps if those scopes are approved for your app.",
+        "  → This can be expected when a Slack admin approves only a subset of scopes. " +
+          "No action is needed unless you need one of the unavailable capabilities below. " +
+          "Re-auth will only add scopes if the Slack app/workspace approval changes.",
       );
     }
   } else {

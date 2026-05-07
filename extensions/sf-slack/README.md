@@ -50,8 +50,8 @@ Extension loads
             │ All three awaited in parallel so turn-1 already ships the final
             │ (probed, gated) tool set — keeps the prompt prompt-cache-friendly.
             │
-            └─ Set footer "Slack: ✓ Ready" or "Slack: ⚠ Limited"
-                (`0/N scopes` is never rendered as green/ready)
+            └─ Set footer "Slack: ✓ Connected" with scope-grant coverage
+                (scope coverage is separate from auth/connectivity)
   on("session_shutdown")
        └─ Clear footer status
   on("before_agent_start")
@@ -180,8 +180,8 @@ for core features and mark invasive scopes as optional when possible.
 ### Recommended scope bundles
 
 `sf-slack` is designed to work with partial grants. A token with fewer scopes is
-not automatically broken; `/sf-slack` renders a capability summary so users can
-see what is available and what is degraded.
+not automatically broken; `/sf-slack` renders the Slack-approved scope grant plus
+a capability summary so users can see what is available and what is degraded.
 
 | Profile               | Scopes                                                             | Notes                                                                     |
 | --------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------- |
@@ -577,11 +577,12 @@ via `/login sf-slack`, macOS Keychain (`sf-slack-token` / `pi-sf-slack`), or
 `SLACK_USER_TOKEN`, then run `/sf-slack refresh` to register tools without
 restarting.
 
-**Footer shows `⚠ Limited` or missing granted scopes:**
+**Footer shows `✓ Connected` with fewer approved scopes than requested:**
 Your token has fewer scopes than `DEFAULT_SCOPES` requests. This may be normal
 when your OAuth app or workspace is approved for only a subset of scopes.
-`/sf-slack` shows exactly which scopes are missing; re-auth only helps if those
-scopes are actually approved for your app/workspace.
+`/sf-slack` shows which capabilities are available and which requested scopes
+are not included in the current grant; re-auth only adds scopes if those scopes
+are approved for your app/workspace.
 
 **`slack_send action=dm` says `im:write` is missing:**
 `im:write` is only needed to open a new 1:1 DM. If the token has DM search

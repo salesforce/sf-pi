@@ -148,9 +148,9 @@ export default function sfSlack(pi: ExtensionAPI) {
 
   let identity: SlackIdentity | null = null;
   // Count of scopes we asked for at OAuth time that Slack did NOT actually
-  // grant this token. Populated by the header-driven scope probe. Surfaced in
-  // the footer so users immediately see scope drift (the "auth.test reports
-  // scopes the token doesn't actually have" problem we designed P1+P4 to solve).
+  // grant this token. Populated by the header-driven scope probe. This is
+  // surfaced as a neutral partial-grant signal because many workspaces
+  // intentionally approve only a subset of the app's requested scopes.
   let missingGrantedScopeCount = 0;
   // Scope counts + token type fuel the sf-devbar Slack pill. Token type
   // (user/bot/app/unknown) is decoded from the xox*- prefix so the pill
@@ -327,38 +327,33 @@ export default function sfSlack(pi: ExtensionAPI) {
         break;
       case "connected": {
         // Pill format (surfaced on sf-devbar's right side):
-        //   💬 Slack ✓ Ready @handle [user] 16/23 scopes
-        //       └dim    └─success      └accent └─token-type    └─scope-count
-        //                                    color depends on             color depends on
-        //                                    token risk:                  granted-vs-requested:
-        //                                      success → xoxp- user         success  → full grant
-        //                                      warning → xoxb- bot          warning  → drift (missing scopes)
-        //                                      error   → xoxa-/xapp-/?     dim      → count unknown yet
+        //   💬 Slack ✓ Connected @handle [user] 16/23 approved scopes
+        //       └dim    └─success          └accent └─token-type    └─neutral scope grant
+        //                                    color depends on
+        //                                    token risk:
+        //                                      success → xoxp- user
+        //                                      warning → xoxb- bot
+        //                                      error   → xoxa-/xapp-/?
         //
-        // The explicit green `✓ Ready` label exists because the chat
-        // icon alone isn't obvious — users asked for an unambiguous status
-        // word, and in ASCII-fallback mode the icon degrades to `>` which
-        // is even less clear on its own.
+        // The explicit green `✓ Connected` label keeps auth/connectivity
+        // separate from scope coverage. A partial grant is often the normal
+        // workspace/app approval, not something re-auth can fix.
         const handle = identity?.userName ? `@${identity.userName}` : "";
         const tokenColor: "success" | "warning" | "error" =
           tokenType === "user" ? "success" : tokenType === "bot" ? "warning" : "error";
         const tokenBracket = t.fg(tokenColor, `[${tokenType}]`);
-        const scopeColor: "success" | "warning" | "dim" =
-          missingGrantedScopeCount > 0
-            ? "warning"
-            : requestedScopeCount > 0 && grantedScopeCount >= requestedScopeCount
-              ? "success"
-              : "dim";
+        const scopeColor: "success" | "dim" =
+          requestedScopeCount > 0 && grantedScopeCount >= requestedScopeCount ? "success" : "dim";
         const scopeText =
           requestedScopeCount > 0
-            ? `${grantedScopeCount}/${requestedScopeCount} scopes`
+            ? `${grantedScopeCount}/${requestedScopeCount} approved scopes`
             : grantedScopeCount > 0
-              ? `${grantedScopeCount} scopes`
+              ? `${grantedScopeCount} approved scopes`
               : "";
         const scopeSegment = scopeText ? ` ${t.fg(scopeColor, scopeText)}` : "";
         const handleSegment = handle ? ` ${t.fg("accent", handle)}` : "";
-        const labelColor: "success" | "warning" | "dim" =
-          kind === "ready" ? "success" : kind === "scope-drift" ? "warning" : "dim";
+        const labelColor: "success" | "dim" =
+          kind === "ready" || kind === "partial-grant" ? "success" : "dim";
         const pill =
           `${icon} ${t.fg("dim", "Slack")} ${t.fg(labelColor, slackStatusLabel(kind))}` +
           `${handleSegment} ${tokenBracket}${scopeSegment}`;
@@ -511,7 +506,7 @@ export default function sfSlack(pi: ExtensionAPI) {
     const panelState: CommandPanelState<SlackCommandAction> = {};
     await openCommandPanel(ctx, {
       title: "💬 SF Slack — status & controls",
-      subtitle: "Inspect auth, refresh granted scopes, and tune Slack result rendering.",
+      subtitle: "Inspect auth, refresh Slack's scope grant, and tune Slack result rendering.",
       statusLines: () => buildSlackPanelStatus(),
       actions: SLACK_COMMAND_ACTIONS,
       closeValue: "close",
@@ -588,17 +583,7 @@ export default function sfSlack(pi: ExtensionAPI) {
           const status = await buildAuthStatus(ctx);
           if (!isActiveSession(ctx, generation)) return;
           ctx.ui.setStatus(`-command`, undefined);
-          const scopeNote =
-            probeResult.missingGrantedScopes.length > 0
-              ? `\n\nSlack granted ${probeResult.missingGrantedScopes.length} fewer scope(s) than requested. Missing: ${probeResult.missingGrantedScopes.slice(0, 6).join(", ")}${probeResult.missingGrantedScopes.length > 6 ? ", …" : ""}.`
-              : "";
-          await emitSlackOutput(
-            ctx,
-            "SF Slack refreshed",
-            `${status}${scopeNote}`,
-            probeResult.missingGrantedScopes.length > 0 ? "warning" : "success",
-            fromPanel,
-          );
+          await emitSlackOutput(ctx, "SF Slack refreshed", status, "success", fromPanel);
         } else {
           updateStatus(ctx, "error", generation);
           ctx.ui.setStatus(`-command`, undefined);
@@ -694,8 +679,8 @@ export default function sfSlack(pi: ExtensionAPI) {
     return [
       `${identity ? "✓" : "○"} Identity      ${identity ? `@${identity.userName} (${identity.teamId})` : "not detected"}`,
       `${slackToolsRegistered ? "✓" : "○"} Tools         ${slackToolsRegistered ? "registered" : "not registered"}`,
-      `${kind === "ready" ? "✓" : kind === "scope-drift" ? "◐" : "○"} Status        ${slackStatusLabel(kind)}`,
-      `• Scopes        ${grantedScopeCount}/${requestedScopeCount || "?"} granted${missingGrantedScopeCount ? ` (${missingGrantedScopeCount} missing)` : ""}`,
+      `${kind === "ready" || kind === "partial-grant" ? "✓" : "○"} Status        ${slackStatusLabel(kind)}`,
+      `• Scope grant   ${grantedScopeCount}/${requestedScopeCount || "?"} granted by Slack${missingGrantedScopeCount ? ` (${missingGrantedScopeCount} not included)` : ""}`,
       `• Token         ${tokenType}`,
       `• Preferences   fields=${prefs.defaultFields}, widget=${prefs.showWidget}`,
     ];

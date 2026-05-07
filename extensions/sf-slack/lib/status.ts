@@ -16,7 +16,7 @@ export function classifySlackStatus(input: {
     case "error":
       return "auth-error";
     case "connected":
-      if (input.missingGrantedScopeCount > 0) return "scope-drift";
+      if (input.missingGrantedScopeCount > 0) return "partial-grant";
       if (input.requestedScopeCount > 0 && input.grantedScopeCount >= input.requestedScopeCount) {
         return "ready";
       }
@@ -27,9 +27,8 @@ export function classifySlackStatus(input: {
 export function slackStatusLabel(kind: SlackStatusKind): string {
   switch (kind) {
     case "ready":
-      return "✓ Ready";
-    case "scope-drift":
-      return "⚠ Limited";
+    case "partial-grant":
+      return "✓ Connected";
     case "scopes-unknown":
       return "? Scopes unknown";
     case "loading":

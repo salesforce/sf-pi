@@ -152,16 +152,16 @@ describe("renderBottomBarParts", () => {
     // sf-slack emits a pre-themed pill (icon + Slack + readiness label + handle
     // + bracketed tokenType + scopes). The bottom bar is a passthrough for
     // allowed statuses, so the test verifies the string made it through.
-    const pill = "💬 Slack ✓ Ready @handle [user] 14/14 scopes";
+    const pill = "💬 Slack ✓ Connected @handle [user] 14/14 approved scopes";
     const extStatuses = new Map([["sf-slack-status", pill]]);
     const { right } = renderBottomBarParts(
       makeState({ extensionStatuses: extStatuses }),
       stubTheme,
     );
-    expect(right).toContain("✓ Ready");
+    expect(right).toContain("✓ Connected");
     expect(right).toContain("@handle");
     expect(right).toContain("[user]");
-    expect(right).toContain("14/14 scopes");
+    expect(right).toContain("14/14 approved scopes");
   });
 
   it("filters out non-allowed extension statuses (Pi core)", () => {

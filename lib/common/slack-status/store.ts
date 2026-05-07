@@ -15,7 +15,7 @@ export type SlackStatusKind =
   | "ready"
   | "not-configured"
   | "auth-error"
-  | "scope-drift"
+  | "partial-grant"
   | "scopes-unknown";
 
 export interface SlackStatusSnapshot {

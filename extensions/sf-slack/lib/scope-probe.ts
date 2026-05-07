@@ -92,8 +92,8 @@ const TOOL_SCOPE_REQUIREMENTS: ToolScopeRequirement[] = [
 export interface ProbeResult {
   gatedTools: string[];
   /** Scopes requested by DEFAULT_SCOPES (or SLACK_SCOPES) that Slack did not
-   *  grant to this token. Surfaced by `/sf-slack refresh` as a one-line
-   *  warning so users immediately see scope drift. */
+   *  grant to this token. Surfaced as neutral partial-grant context because
+   *  workspaces may intentionally approve only a subset of requested scopes. */
   missingGrantedScopes: string[];
   /** Whether the X-OAuth-Scopes header was captured at all. When false we
    *  didn't gate anything because we cannot tell what's missing. */

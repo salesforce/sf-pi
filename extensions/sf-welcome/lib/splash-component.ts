@@ -279,9 +279,8 @@ function formatSlackStatusValue(data: SplashData, mode: GlyphMode): string {
 
   switch (status.kind) {
     case "ready":
-      return `${SF_GREEN("✓")} ${SF_GREEN("Ready")}`;
-    case "scope-drift":
-      return `${SF_ORANGE("!")} ${SF_ORANGE("Limited")}`;
+    case "partial-grant":
+      return `${SF_GREEN("✓")} ${SF_GREEN("Connected")}`;
     case "scopes-unknown":
       return `${SF_ORANGE("?")} ${SF_ORANGE("Scopes unknown")}`;
     case "auth-error":

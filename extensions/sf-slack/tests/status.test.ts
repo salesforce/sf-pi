@@ -13,10 +13,10 @@ describe("Slack status classification", () => {
     });
 
     expect(kind).toBe("ready");
-    expect(slackStatusLabel(kind)).toBe("✓ Ready");
+    expect(slackStatusLabel(kind)).toBe("✓ Connected");
   });
 
-  it("marks missing scopes as limited instead of connected", () => {
+  it("marks missing scopes as a partial grant while staying connected", () => {
     const kind = classifySlackStatus({
       state: "connected",
       grantedScopeCount: 0,
@@ -24,8 +24,8 @@ describe("Slack status classification", () => {
       missingGrantedScopeCount: 26,
     });
 
-    expect(kind).toBe("scope-drift");
-    expect(slackStatusLabel(kind)).toBe("⚠ Limited");
+    expect(kind).toBe("partial-grant");
+    expect(slackStatusLabel(kind)).toBe("✓ Connected");
   });
 
   it("marks zero granted scopes with no diff as scopes unknown", () => {

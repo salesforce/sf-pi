@@ -192,18 +192,18 @@ describe("sf-welcome", () => {
     const hidden = stripAnsi(new SfWelcomeOverlay(baseData).render(100).join("\n"));
     expect(hidden).not.toContain("Slack");
 
-    const drift = stripAnsi(
+    const partialGrant = stripAnsi(
       new SfWelcomeOverlay({
         ...baseData,
         slackVisible: true,
-        slackStatus: { kind: "scope-drift", grantedScopes: 0, requestedScopes: 26 },
+        slackStatus: { kind: "partial-grant", grantedScopes: 16, requestedScopes: 23 },
       })
         .render(100)
         .join("\n"),
     );
-    expect(drift).toContain("Slack");
-    expect(drift).toContain("Limited");
-    expect(drift).not.toContain("✓ Connected");
+    expect(partialGrant).toContain("Slack");
+    expect(partialGrant).toContain("Connected");
+    expect(partialGrant).not.toContain("Limited");
   });
 
   it("renders gateway status from probe state instead of provider name", async () => {

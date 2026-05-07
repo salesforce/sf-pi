@@ -63,7 +63,7 @@ describe("sf-pi extension state", () => {
   it("filters footer statuses by owning extension enablement", () => {
     const cwd = makeCwd(["extensions/sf-slack/index.ts"]);
     const statuses = new Map([
-      ["sf-slack-status", "Slack ✓ Ready"],
+      ["sf-slack-status", "Slack ✓ Connected"],
       ["sf-llm-gateway-internal", "$1/∞"],
       ["sf-pi", "SF Pi Packages: 10/12 extensions"],
       ["unknown", "should not render"],

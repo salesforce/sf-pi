@@ -4,7 +4,7 @@
  *
  * Covers:
  *   - Granted scopes block shows what Slack returned, not what we asked for
- *   - "Requested but not granted" warning fires on drift
+ *   - Partial grants are explained without implying auth is limited
  *   - Token-type tag is rendered
  *   - Unknown-granted path renders the "no capture yet" hint
  */
@@ -60,7 +60,7 @@ describe("buildAuthStatus", () => {
     }
   });
 
-  it("renders token type and granted-vs-requested diff when scopes drift", async () => {
+  it("renders token type and granted-vs-requested coverage for partial grants", async () => {
     process.env.SLACK_USER_TOKEN = "xoxp-test-12345678";
     // Narrow the requested-scope list so the test diff is predictable.
     process.env.SLACK_SCOPES = "users:read,files:read,channels:read";
@@ -71,22 +71,23 @@ describe("buildAuthStatus", () => {
 
     const status = await buildAuthStatus(fakeCtx("xoxp-test-12345678"));
 
-    expect(status).toMatch(/Status: \u2705 Authenticated/);
+    expect(status).toMatch(/Status: \u2705 Connected/);
     expect(status).toMatch(/user token \(xoxp-\)/);
-    expect(status).toMatch(/Granted scopes \(from Slack, 2\)/);
+    expect(status).toMatch(/Scope grant: 2 of 3 requested scopes granted by Slack/);
+    expect(status).toMatch(/Granted scopes \(from Slack\)/);
     expect(status).toMatch(/canvases:read/);
     expect(status).toMatch(/Capabilities:/);
     expect(status).toMatch(/Canvases: section lookup; metadata degraded without files:read/);
     expect(status).toMatch(/Files: unavailable|Files: search available/);
-    // Drift warning on requested-but-not-granted:
-    expect(status).toMatch(/Requested but not granted \(2\)/);
+    // Partial grants are shown as neutral workspace/app coverage, not auth failure.
+    expect(status).toMatch(/Not included in the current workspace\/app grant \(2\)/);
     expect(status).toMatch(/files:read/);
     expect(status).toMatch(/channels:read/);
-    expect(status).toMatch(/Slack access is limited/);
-    expect(status).toMatch(/re-auth only helps/);
+    expect(status).toMatch(/No action is needed unless/);
+    expect(status).toMatch(/Re-auth will only add scopes/);
   });
 
-  it("omits the drift warning when every requested scope was granted", async () => {
+  it("omits the partial-grant note when every requested scope was granted", async () => {
     process.env.SLACK_USER_TOKEN = "xoxp-test-12345678";
     process.env.SLACK_SCOPES = "users:read,canvases:read";
     mockFetchWithScopes("users:read, canvases:read, identity");
@@ -96,7 +97,7 @@ describe("buildAuthStatus", () => {
 
     expect(status).toMatch(/Granted scopes/);
     expect(status).toMatch(/Capabilities:/);
-    expect(status).not.toMatch(/Requested but not granted/);
+    expect(status).not.toMatch(/Not included in the current workspace\/app grant/);
   });
 
   it("warns about a bot token type", async () => {
