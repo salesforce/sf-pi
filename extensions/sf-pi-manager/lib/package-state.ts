@@ -184,15 +184,18 @@ export function applyExtensionState(match: PackageEntryMatch, disabledFiles: Set
 
   const enabledDefaultOff = getDefaultDisabledFiles().filter((file) => !disabledFiles.has(file));
 
-  if (disabledFiles.size === 0 && enabledDefaultOff.length === 0) {
-    packages[match.index] = match.source;
-  } else {
-    const existingObject =
-      typeof packages[match.index] === "object" && packages[match.index] !== null
-        ? { ...(packages[match.index] as Record<string, unknown>) }
-        : {};
-    delete existingObject.enabledExtensions;
+  const existingObject =
+    typeof packages[match.index] === "object" && packages[match.index] !== null
+      ? { ...(packages[match.index] as Record<string, unknown>) }
+      : {};
+  delete existingObject.extensions;
+  delete existingObject.enabledExtensions;
 
+  if (disabledFiles.size === 0 && enabledDefaultOff.length === 0) {
+    packages[match.index] = hasPackageConfigBeyondSource(existingObject)
+      ? { ...existingObject, source: match.source }
+      : match.source;
+  } else {
     packages[match.index] = {
       ...existingObject,
       source: match.source,
@@ -208,6 +211,10 @@ export function applyExtensionState(match: PackageEntryMatch, disabledFiles: Set
 
   settings.packages = packages;
   writeJsonFile(match.settingsPath, settings);
+}
+
+function hasPackageConfigBeyondSource(pkg: Record<string, unknown>): boolean {
+  return Object.keys(pkg).some((key) => key !== "source");
 }
 
 function getExplicitlyEnabledExtensions(pkg: Record<string, unknown>): Set<string> {

@@ -93,7 +93,7 @@ describe("getDisabledExtensionsForCwd", () => {
     });
 
     expect(getDisabledExtensionsForCwd(projectDir)).toEqual(
-      new Set(["extensions/sf-data360/index.ts", "extensions/sf-slack/index.ts"]),
+      new Set(["extensions/sf-slack/index.ts"]),
     );
   });
 
@@ -116,7 +116,7 @@ describe("getDisabledExtensionsForCwd", () => {
     });
 
     expect(getDisabledExtensionsForCwd(projectDir)).toEqual(
-      new Set(["extensions/sf-data360/index.ts", "extensions/sf-ohana-spinner/index.ts"]),
+      new Set(["extensions/sf-ohana-spinner/index.ts"]),
     );
   });
 });

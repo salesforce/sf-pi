@@ -32,15 +32,13 @@ describe("sf-pi extension state", () => {
   it("reads disabled extension filters from project settings", () => {
     const cwd = makeCwd(["extensions/sf-slack/index.ts"]);
 
-    expect(getDisabledExtensionFilesForCwd(cwd)).toEqual(
-      new Set(["extensions/sf-data360/index.ts", "extensions/sf-slack/index.ts"]),
-    );
+    expect(getDisabledExtensionFilesForCwd(cwd)).toEqual(new Set(["extensions/sf-slack/index.ts"]));
     expect(isSfPiExtensionEnabled(cwd, "sf-slack")).toBe(false);
-    expect(isSfPiExtensionEnabled(cwd, "sf-data360")).toBe(false);
+    expect(isSfPiExtensionEnabled(cwd, "sf-data360")).toBe(true);
     expect(isSfPiExtensionEnabled(cwd, "sf-welcome")).toBe(true);
   });
 
-  it("detects explicitly enabled default-off extensions", () => {
+  it("keeps default-enabled extensions enabled when listed as explicitly enabled", () => {
     const cwd = mkdtempSync(join(tmpdir(), "sf-pi-extension-state-"));
     const configDir = join(cwd, ".pi");
     mkdirSync(configDir, { recursive: true });

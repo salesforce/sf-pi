@@ -85,17 +85,17 @@ describe("buildExtensionStates", () => {
 // -------------------------------------------------------------------------------------------------
 
 describe("getDisabledExtensions", () => {
-  it("returns default-disabled extensions for non-existent settings file", () => {
+  it("returns no disabled extensions for non-existent settings file when all defaults are enabled", () => {
     const result = getDisabledExtensions("/tmp/does-not-exist-sf-pi-test.json");
-    expect(result).toContain("extensions/sf-data360/index.ts");
+    expect(result).toEqual(new Set());
   });
 
-  it("returns default-disabled extensions for string-form package entry", () => {
+  it("returns no disabled extensions for string-form package entry when all defaults are enabled", () => {
     const settingsPath = createTempSettingsFile({
       packages: [TEST_PACKAGE_SOURCE],
     });
 
-    expect(getDisabledExtensions(settingsPath)).toContain("extensions/sf-data360/index.ts");
+    expect(getDisabledExtensions(settingsPath)).toEqual(new Set());
   });
 
   it("reads exclusion patterns from object-form package entry", () => {
@@ -114,7 +114,6 @@ describe("getDisabledExtensions", () => {
 
     expect(getDisabledExtensions(settingsPath)).toEqual(
       new Set([
-        "extensions/sf-data360/index.ts",
         "extensions/sf-ohana-spinner/index.ts",
         "extensions/sf-llm-gateway-internal/index.ts",
       ]),
@@ -136,11 +135,11 @@ describe("getDisabledExtensions", () => {
     });
 
     expect(getDisabledExtensions(settingsPath)).toEqual(
-      new Set(["extensions/sf-data360/index.ts", "extensions/sf-ohana-spinner/index.ts"]),
+      new Set(["extensions/sf-ohana-spinner/index.ts"]),
     );
   });
 
-  it("does not mark default-disabled extensions disabled when explicitly enabled", () => {
+  it("does not mark default-enabled extensions disabled when listed as explicitly enabled", () => {
     const settingsPath = createTempSettingsFile({
       packages: [
         {
@@ -197,7 +196,7 @@ describe("applyExtensionState", () => {
     });
   });
 
-  it("keeps object form when default-disabled extensions are explicitly enabled", () => {
+  it("preserves object form when non-extension package config remains", () => {
     const settingsPath = createTempSettingsFile({
       packages: [
         {
@@ -224,8 +223,6 @@ describe("applyExtensionState", () => {
 
     expect(updated.packages[0]).toEqual({
       source: TEST_PACKAGE_SOURCE,
-      extensions: ["extensions/*/index.ts"],
-      enabledExtensions: ["extensions/sf-data360/index.ts"],
       skills: ["skills/*.md"],
     });
   });
