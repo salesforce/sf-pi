@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.46.1-2026-05-07",
-  "latestVersion": "0.46.1",
+  "revision": "release-0.46.2-2026-05-07",
+  "latestVersion": "0.46.2",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.46.1",
+      "id": "release-0.46.2",
       "kind": "update",
-      "title": "sf-pi v0.46.1 — sf-slack: show partial scope grants as connected",
+      "title": "sf-pi v0.46.2 — sf-slack: improve scope gating and partial-grant UX",
       "publishedAt": "2026-05-07T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.46.1",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.46.2",
       "severity": "info",
-      "body": "sf-slack: show partial scope grants as connected"
+      "body": "sf-slack: improve scope gating and partial-grant UX"
     },
     {
       "id": "pi-0.73-required",
