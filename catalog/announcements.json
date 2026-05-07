@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.46.2-2026-05-07",
-  "latestVersion": "0.46.2",
+  "revision": "release-0.47.0-2026-05-07",
+  "latestVersion": "0.47.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.46.2",
+      "id": "release-0.47.0",
       "kind": "update",
-      "title": "sf-pi v0.46.2 — sf-slack: improve scope gating and partial-grant UX",
+      "title": "sf-pi v0.47.0 — sf-data360: add compact metadata helper",
       "publishedAt": "2026-05-07T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.46.2",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.47.0",
       "severity": "info",
-      "body": "sf-slack: improve scope gating and partial-grant UX"
+      "body": "sf-data360: add compact metadata helper"
     },
     {
       "id": "pi-0.73-required",
