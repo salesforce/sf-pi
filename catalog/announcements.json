@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.46.0-2026-05-07",
-  "latestVersion": "0.46.0",
+  "revision": "release-0.46.1-2026-05-07",
+  "latestVersion": "0.46.1",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.46.0",
+      "id": "release-0.46.1",
       "kind": "update",
-      "title": "sf-pi v0.46.0 — add opt-in Data 360 REST helper",
+      "title": "sf-pi v0.46.1 — sf-slack: show partial scope grants as connected",
       "publishedAt": "2026-05-07T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.46.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.46.1",
       "severity": "info",
-      "body": "add opt-in Data 360 REST helper"
+      "body": "sf-slack: show partial scope grants as connected"
     },
     {
       "id": "pi-0.73-required",
