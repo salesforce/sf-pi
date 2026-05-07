@@ -21,6 +21,22 @@ describe("sf-data360 output formatting", () => {
     expect(text).toContain("Account (ssot__Account__dlm)");
   });
 
+  it("summarizes error array rows readably", () => {
+    const text = buildSummaryText(
+      JSON.stringify([
+        {
+          errorCode: "BAD_REQUEST",
+          message:
+            'INVALID_ARGUMENT: table "Definitely_Not_A_DMO__dlm" does not exist in the query plane',
+        },
+      ]),
+      "/tmp/output.json",
+    );
+
+    expect(text).toContain("Shape: JSON array (1 items).");
+    expect(text).toContain('BAD_REQUEST: INVALID_ARGUMENT: table "Definitely_Not_A_DMO__dlm"');
+  });
+
   it("supports file_only output mode", async () => {
     const formatted = await formatD360Output('{"ok":true}', "file_only");
 

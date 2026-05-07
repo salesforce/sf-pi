@@ -39,7 +39,7 @@ Do not use `GET /ssot/data-model-objects` for a simple list. That endpoint retur
 
 Use `d360_metadata` with `action: "describe_dmo"`, or `GET /ssot/data-model-objects/{dmoApiName}`, only after selecting one DMO and needing its fields, mappings, enabled status, or segmentability.
 
-For DLOs, follow the same pattern: use compact metadata list/describe helpers first, then inspect detailed DLO schema only when required.
+For DLOs, follow the same pattern: use compact metadata list/describe helpers first, then inspect detailed DLO schema only when required. Treat `category` filters on `list_dlos` as compact metadata categories; detailed DLO schema categories can differ.
 
 If the user explicitly asks for the full standard DMO catalog or field inventory:
 

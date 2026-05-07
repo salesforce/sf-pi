@@ -78,6 +78,7 @@ interface DataField {
   name?: string;
   label?: string;
   type?: string;
+  dataType?: string;
   isPrimaryKey?: boolean;
   isMapped?: boolean;
   usageTag?: string;
@@ -255,13 +256,20 @@ function summarizeMetadataList(
   );
 
   const label = input.action === "list_dmos" ? "DMOs" : "DLOs";
+  const availableCategories = uniqueSorted(
+    allEntities.map((entity) => entity.category).filter((value): value is string => Boolean(value)),
+  );
   const lines = [
     `Found ${entities.length} ${label}${category ? ` in category ${input.category}` : ""}.`,
     `Raw output: ${rawOutputPath}`,
-    "",
-    "| Category | Display Name | API Name |",
-    "|---|---|---|",
   ];
+  if (category && entities.length === 0 && availableCategories.length > 0) {
+    lines.push(
+      `No compact metadata category matched. Available categories: ${availableCategories.join(", ")}.`,
+      "Note: compact metadata categories can differ from detailed DLO/DMO schema categories.",
+    );
+  }
+  lines.push("", "| Category | Display Name | API Name |", "|---|---|---|");
   for (const entity of entities) {
     lines.push(
       `| ${escapeTable(entity.category ?? "")} | ${escapeTable(
@@ -276,6 +284,7 @@ function summarizeMetadataList(
       count: entities.length,
       unfilteredCount: allEntities.length,
       category: input.category,
+      availableCategories,
       rawOutputPath,
     },
   };
@@ -310,7 +319,7 @@ function summarizeMetadataDescription(
     for (const field of shownFields) {
       lines.push(
         `| \`${escapeTable(field.name ?? "")}\` | ${escapeTable(field.label ?? "")} | ${escapeTable(
-          field.type ?? "",
+          field.type ?? field.dataType ?? "",
         )} | ${field.isPrimaryKey ? "yes" : ""} | ${field.isMapped ? "yes" : ""} | ${escapeTable(
           field.usageTag ?? "",
         )} |`,
@@ -341,6 +350,10 @@ function extractFields(parsed: Record<string, unknown>): DataField[] {
   if (Array.isArray(parsed.fields)) return parsed.fields as DataField[];
   if (Array.isArray(parsed.dataFields)) return parsed.dataFields as DataField[];
   return [];
+}
+
+function uniqueSorted(values: string[]): string[] {
+  return Array.from(new Set(values)).sort((a, b) => a.localeCompare(b));
 }
 
 function requiredApiName(input: D360MetadataInput): string {

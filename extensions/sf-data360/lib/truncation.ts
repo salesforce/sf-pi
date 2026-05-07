@@ -136,10 +136,19 @@ function appendSampleRows(lines: string[], rows: unknown[], indent = ""): void {
 function describeSampleRow(row: unknown): string {
   if (!row || typeof row !== "object") return String(row);
   const obj = row as Record<string, unknown>;
+  const errorCode = firstString(obj, ["errorCode", "code"]);
+  const message = firstString(obj, ["message", "errorMessage"]);
+  if (errorCode && message) return `${errorCode}: ${truncateOneLine(message, 180)}`;
+
   const label = firstString(obj, ["displayName", "label", "name", "id"]);
   const apiName = firstString(obj, ["name"]);
   if (label && apiName && label !== apiName) return `${label} (${apiName})`;
-  return label ?? JSON.stringify(obj).slice(0, 120);
+  return label ?? truncateOneLine(JSON.stringify(obj), 180);
+}
+
+function truncateOneLine(value: string, maxChars: number): string {
+  const oneLine = value.replace(/\s+/g, " ").trim();
+  return oneLine.length > maxChars ? `${oneLine.slice(0, maxChars - 1)}…` : oneLine;
 }
 
 function firstString(obj: Record<string, unknown>, keys: string[]): string | undefined {

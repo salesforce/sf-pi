@@ -43,6 +43,10 @@ For other metadata, prefer metadata search first:
 
 Then fetch one entity with `/ssot/metadata` and an `entityName` query parameter.
 
+## DLO category filter returned no rows
+
+`d360_metadata list_dlos` filters on compact metadata categories from `/ssot/metadata-entities`. A detailed DLO description can report a different category. If a category filter returns zero rows, retry without the category filter and inspect the available categories in the helper output.
+
 ## Create/update failed with schema errors
 
 1. Fetch the current resource state with a `GET` call.

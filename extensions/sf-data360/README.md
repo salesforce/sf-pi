@@ -60,7 +60,9 @@ Agent calls d360_api
 ```
 
 Use `d360_metadata` for simple DMO/DLO lists and one-object descriptions. Use
-`d360_api` for lower-level endpoints or advanced workflows.
+`d360_api` for lower-level endpoints or advanced workflows. DLO `category`
+filters apply to compact metadata categories, which can differ from detailed DLO
+schema categories.
 
 ## Tool Shape
 

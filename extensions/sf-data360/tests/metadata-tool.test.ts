@@ -54,6 +54,26 @@ describe("sf-data360 metadata helper", () => {
     expect(summary.text).not.toContain("ssot__AiAgentInteraction__dlm");
   });
 
+  it("explains empty category filters with available compact categories", () => {
+    const input: D360MetadataInput = { action: "list_dlos", category: "Other" };
+    const raw = JSON.stringify({
+      metadata: [
+        { category: "Related", displayName: "Example", name: "Example__dll" },
+        { category: "Content", displayName: "Chunk", name: "Chunk__dll" },
+      ],
+    });
+
+    const summary = summarizeMetadataOutput(input, raw, "/tmp/raw.json");
+
+    expect(summary.details).toMatchObject({
+      count: 0,
+      unfilteredCount: 2,
+      availableCategories: ["Content", "Related"],
+    });
+    expect(summary.text).toContain("No compact metadata category matched");
+    expect(summary.text).toContain("compact metadata categories can differ");
+  });
+
   it("summarizes one DMO description and caps fields", () => {
     const input: D360MetadataInput = {
       action: "describe_dmo",
@@ -94,7 +114,7 @@ describe("sf-data360 metadata helper", () => {
           label: "Example Lake Object",
           name: "Example__dll",
           category: "Other",
-          fields: [{ name: "Id__c", label: "Id", type: "Text" }],
+          fields: [{ name: "Id__c", label: "Id", dataType: "Text" }],
         },
       ],
     });
@@ -104,5 +124,6 @@ describe("sf-data360 metadata helper", () => {
     expect(summary.details).toMatchObject({ apiName: "Example__dll", fieldCount: 1 });
     expect(summary.text).toContain("Example Lake Object");
     expect(summary.text).toContain("`Id__c`");
+    expect(summary.text).toContain("Text");
   });
 });
