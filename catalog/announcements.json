@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.45.3-2026-05-07",
-  "latestVersion": "0.45.3",
+  "revision": "release-0.46.0-2026-05-07",
+  "latestVersion": "0.46.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.45.3",
+      "id": "release-0.46.0",
       "kind": "update",
-      "title": "sf-pi v0.45.3 — sf-llm-gateway-internal: strengthen gateway status diagnostics",
+      "title": "sf-pi v0.46.0 — add opt-in Data 360 REST helper",
       "publishedAt": "2026-05-07T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.45.3",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.46.0",
       "severity": "info",
-      "body": "sf-llm-gateway-internal: strengthen gateway status diagnostics"
+      "body": "add opt-in Data 360 REST helper"
     },
     {
       "id": "pi-0.73-required",
