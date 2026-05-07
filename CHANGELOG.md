@@ -360,6 +360,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.47.1](https://github.com/salesforce/sf-pi/compare/v0.47.0...v0.47.1) (2026-05-07)
+
+
+### Bug Fixes
+
+* **sf-data360:** improve DLO metadata summaries ([680bd0b](https://github.com/salesforce/sf-pi/commit/680bd0bb1bbbdcdfa9afdb091249c0c8ea6f3e8c))
+
 ## [0.47.0](https://github.com/salesforce/sf-pi/compare/v0.46.2...v0.47.0) (2026-05-07)
 
 
