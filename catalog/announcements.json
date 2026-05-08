@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.48.0-2026-05-08",
-  "latestVersion": "0.48.0",
+  "revision": "release-0.48.1-2026-05-08",
+  "latestVersion": "0.48.1",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.48.0",
+      "id": "release-0.48.1",
       "kind": "update",
-      "title": "sf-pi v0.48.0 — gateway: streamline sf llm gateway setup",
+      "title": "sf-pi v0.48.1 — sf-data360: harden mutating Data 360 workflows",
       "publishedAt": "2026-05-08T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.48.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.48.1",
       "severity": "info",
-      "body": "gateway: streamline sf llm gateway setup — data360: clean cli output and cap metadata lists"
+      "body": "sf-data360: harden mutating Data 360 workflows"
     },
     {
       "id": "pi-0.73-required",
