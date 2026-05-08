@@ -360,6 +360,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.48.1](https://github.com/salesforce/sf-pi/compare/v0.48.0...v0.48.1) (2026-05-08)
+
+
+### Bug Fixes
+
+* **sf-data360:** harden mutating Data 360 workflows ([b977a5f](https://github.com/salesforce/sf-pi/commit/b977a5f8f3615806b5850f97a0fc3948e87f165b))
+
 ## [0.48.0](https://github.com/salesforce/sf-pi/compare/v0.47.1...v0.48.0) (2026-05-08)
 
 
