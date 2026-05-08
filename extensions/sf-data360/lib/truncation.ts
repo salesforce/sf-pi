@@ -34,6 +34,15 @@ export async function formatD360Output(
   return truncateD360Output(text);
 }
 
+export function cleanD360CliOutput(stdout: string, stderr = ""): string {
+  const candidates = [stdout, stderr]
+    .map(stripD360CliNoise)
+    .map((text) => text.trim())
+    .filter(Boolean);
+  const jsonCandidate = candidates.find((candidate) => parseJson(candidate) !== null);
+  return jsonCandidate ?? candidates[0] ?? "{}";
+}
+
 export async function truncateD360Output(text: string): Promise<D360TruncatedOutput> {
   const truncation = truncateHead(text);
   if (!truncation.truncated) return { text: truncation.content, outputMode: "inline" };
@@ -164,6 +173,44 @@ function parseJson(text: string): unknown {
   } catch {
     return null;
   }
+}
+
+function stripD360CliNoise(text: string): string {
+  const withoutAnsi = text.replace(/\u001b\[[0-9;]*m/g, "");
+  const withoutWarningLines = withoutAnsi
+    .split(/\r?\n/)
+    .filter((line) => !isCliNoiseLine(line))
+    .join("\n")
+    .trim();
+  const extractedJson = extractJsonDocument(withoutWarningLines);
+  return extractedJson ?? withoutWarningLines;
+}
+
+function isCliNoiseLine(line: string): boolean {
+  const value = line.trim();
+  return (
+    /^Warning:\s*$/i.test(value) ||
+    /^Warning:\s*This command is currently in beta\./i.test(value) ||
+    /^This command is currently in beta\./i.test(value) ||
+    /^Any aspect of this command can change/i.test(value) ||
+    /^Don't use beta commands/i.test(value)
+  );
+}
+
+function extractJsonDocument(text: string): string | undefined {
+  for (const start of candidateJsonStarts(text)) {
+    const candidate = text.slice(start).trim();
+    if (parseJson(candidate) !== null) return candidate;
+  }
+  return undefined;
+}
+
+function candidateJsonStarts(text: string): number[] {
+  const starts: number[] = [];
+  for (let i = 0; i < text.length; i += 1) {
+    if (text[i] === "{" || text[i] === "[") starts.push(i);
+  }
+  return starts;
 }
 
 function buildTruncationNote(truncation: TruncationResult, fullOutputPath: string): string {

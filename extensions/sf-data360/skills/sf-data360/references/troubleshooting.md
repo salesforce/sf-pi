@@ -17,10 +17,10 @@ Prefer `output_mode: "summary"` or `output_mode: "file_only"` for broad response
 
 ## Metadata request is too broad
 
-For simple DMO/DLO lists, prefer `d360_metadata` first:
+For simple DMO/DLO lists, prefer `d360_metadata` first. List actions show a capped inline table and save the full response to a temp file:
 
 ```json
-{ "action": "list_dmos" }
+{ "action": "list_dmos", "max_results": 25 }
 ```
 
 For one object's fields, describe that single object:
@@ -31,7 +31,7 @@ For one object's fields, describe that single object:
 
 Do not call `/ssot/data-model-objects` broadly unless the user explicitly needs the full standard catalog or field inventory.
 
-For other metadata, prefer metadata search first:
+For other metadata, prefer metadata search first when the search plane is available:
 
 ```json
 {
@@ -41,7 +41,15 @@ For other metadata, prefer metadata search first:
 }
 ```
 
-Then fetch one entity with `/ssot/metadata` and an `entityName` query parameter.
+Then fetch one entity with `/ssot/metadata` and an `entityName` query parameter. If metadata search returns a backend index error, fall back to `/ssot/metadata-entities` or `d360_metadata`; catalog APIs can still be healthy.
+
+## Optional surface returned `NOT_FOUND`
+
+Search indexes, retrievers, and some DataKit manifest paths can return `NOT_FOUND` in an otherwise healthy Data 360 org. Treat these as feature/path availability issues unless core catalog, stream, query, or metadata probes also fail.
+
+## Connector detail returned `NOT_FOUND`
+
+Use the connector catalog `name` from `GET /ssot/connectors` for `/ssot/connectors/{name}`. Do not assume the connection list's `connectorType` is accepted by the connector metadata endpoint.
 
 ## DLO category filter returned no rows
 

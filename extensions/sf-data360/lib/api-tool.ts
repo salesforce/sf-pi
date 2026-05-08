@@ -10,7 +10,12 @@ import {
 } from "../../../lib/common/sf-environment/shared-runtime.ts";
 import type { OrgType, SfEnvironment } from "../../../lib/common/sf-environment/types.ts";
 import { buildApiPath, type QueryParams } from "./path.ts";
-import { D360_OUTPUT_SUFFIX, formatD360Output, type D360OutputMode } from "./truncation.ts";
+import {
+  cleanD360CliOutput,
+  D360_OUTPUT_SUFFIX,
+  formatD360Output,
+  type D360OutputMode,
+} from "./truncation.ts";
 import {
   classifyD360Request,
   normalizeMethod,
@@ -137,7 +142,7 @@ export function registerD360ApiTool(pi: ExtensionAPI): void {
         timeout: typeof input.timeout_ms === "number" ? input.timeout_ms : 120_000,
       });
 
-      const output = result.stdout.trim() || result.stderr.trim() || "{}";
+      const output = cleanD360CliOutput(result.stdout, result.stderr);
       const ok = result.code === 0 && !responseLooksLikeError(output);
       return buildResult(output, input.output_mode ?? "inline", {
         ok,
@@ -246,15 +251,21 @@ async function enforceSafety(ctx: ExtensionContext, resolved: ResolvedRequest): 
 
 export function responseLooksLikeError(text: string): boolean {
   try {
-    const parsed = JSON.parse(text) as { error?: unknown; errors?: unknown };
-    if (parsed && typeof parsed === "object") {
-      if (parsed.error) return true;
-      if (Array.isArray(parsed.errors) && parsed.errors.length > 0) return true;
-    }
+    return parsedValueLooksLikeError(JSON.parse(text));
   } catch {
     return false;
   }
-  return false;
+}
+
+function parsedValueLooksLikeError(parsed: unknown): boolean {
+  if (Array.isArray(parsed)) return parsed.some(parsedValueLooksLikeError);
+  if (!parsed || typeof parsed !== "object") return false;
+
+  const obj = parsed as Record<string, unknown>;
+  if (obj.error) return true;
+  if (Array.isArray(obj.errors) && obj.errors.length > 0) return true;
+  if (typeof obj.errorCode === "string" && obj.errorCode) return true;
+  return typeof obj.message === "string" && typeof obj.code === "string";
 }
 
 async function buildResult(

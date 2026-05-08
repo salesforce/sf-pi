@@ -52,7 +52,7 @@ Agent calls d360_api
 ## Metadata Helper Shape
 
 ```json
-{ "action": "list_dmos" }
+{ "action": "list_dmos", "max_results": 25 }
 ```
 
 ```json
@@ -103,6 +103,8 @@ For a simple "list DMOs" request, use `d360_metadata` with `action:
 `/ssot/metadata-entities?entityType=DataModelObject`. Do not use
 `/ssot/data-model-objects` broadly unless the user explicitly needs full DMO
 field definitions or the standard catalog.
+
+List actions cap inline output by default and save the full raw response to a temp file. Use `category` and `max_results` to narrow the inline table.
 
 For record queries, describe one selected DMO first, run `COUNT(*)`, then sample
 a small number of verified non-sensitive fields.
@@ -184,10 +186,16 @@ Covered by unit tests:
 - Query-string construction handles repeated values and skips nullish values.
 - Safety classification allows reads/search/query/validation calls, confirms deletes and action paths, and treats unknown target orgs conservatively.
 - Request resolution chooses the active org API version and fails closed for non-default target orgs.
+- Known `sf api request rest` beta warning noise is stripped before output parsing.
+- Salesforce REST error arrays are classified as failed calls even when the CLI exits zero.
 
 ## Troubleshooting
 
-**A simple DMO list returns too much data:** Use `d360_metadata` with `action: "list_dmos"` instead of broad `/ssot/data-model-objects` calls.
+**A simple DMO list returns too much data:** Use `d360_metadata` with `action: "list_dmos"`, `category`, and `max_results` instead of broad `/ssot/data-model-objects` calls.
+
+**Metadata search fails but DMO/DLO lists work:** Treat this as search-plane readiness. Fall back to `d360_metadata` or `/ssot/metadata-entities`, then fetch one entity with `/ssot/metadata` or the DMO/DLO describe endpoint.
+
+**Connector detail returns `NOT_FOUND`:** Use the connector catalog `name` from `GET /ssot/connectors`, not necessarily the `connectorType` shown on a connection.
 
 **`/skill:sf-data360` is missing:** `sf-data360` is enabled by default, so first check whether it was explicitly disabled in `/sf-pi`, then run `/reload`. The skill is contributed by the extension, not registered as a standalone package skill.
 

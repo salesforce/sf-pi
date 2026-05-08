@@ -1,5 +1,32 @@
 # SF Data 360 Workflows
 
+## Read-only smoke test matrix
+
+Use this when validating whether Data 360 surfaces are reachable without creating, editing, deleting, publishing, deploying, or running ingestion.
+
+1. Run `d360_probe` and classify each sampled surface as populated, empty, gated, not found, or failed.
+2. For populated list endpoints, select one returned identifier and run the matching single-resource `GET`.
+3. For DMOs/DLOs, use `d360_metadata` list/describe first, then run `COUNT(*)` before any row sampling.
+4. For semantic models, follow the URLs returned by the model detail response for read-only subresources such as data objects, relationships, calculated measurements, and parameters.
+5. Record empty endpoints as reachable-empty, not failed. Record `NOT_FOUND` on optional surfaces such as search indexes or retrievers as feature/path unavailable unless a core dependency also fails.
+
+Suggested read-only coverage:
+
+| Family                       | List/read probe                                                      | Optional detail probe                                                   |
+| ---------------------------- | -------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| Data spaces                  | `GET /ssot/data-spaces`                                              | `GET /ssot/data-spaces/{name}`                                          |
+| DMO/DLO catalog              | `d360_metadata list_dmos/list_dlos`                                  | `d360_metadata describe_dmo/describe_dlo`                               |
+| Query plane                  | `POST /ssot/query-sql` with `COUNT(*)`                               | `GET /ssot/query-sql/{queryId}` and `/rows` only when async             |
+| Mappings                     | `GET /ssot/data-model-object-mappings?dmoDeveloperName={dmo}`        | `GET /ssot/data-model-object-mappings/{mappingName}` when returned      |
+| Streams                      | `GET /ssot/data-streams?limit=1`                                     | `GET /ssot/data-streams/{name}`                                         |
+| Connectors/connections       | `GET /ssot/connectors`, `GET /ssot/connections?connectorType={type}` | `GET /ssot/connectors/{catalogName}`, `GET /ssot/connections/{id}`      |
+| Calculated insights          | `GET /ssot/calculated-insights`                                      | `GET /ssot/calculated-insights/{apiName}`                               |
+| Segments/activations/actions | List endpoints with small limits                                     | Detail reads only when list returns IDs                                 |
+| Transforms                   | `GET /ssot/data-transforms?limit=1`                                  | `GET /ssot/data-transforms/{id}`                                        |
+| Semantic models              | `GET /ssot/semantic/models?limit=1`                                  | `GET /ssot/semantic/models/{idOrApiName}` and returned subresource URLs |
+| DataKits                     | `GET /ssot/data-kits`                                                | Manifest reads only after verifying the accepted identifier/path        |
+| Search indexes/retrievers    | List endpoints                                                       | Treat `NOT_FOUND` as optional-surface unavailable                       |
+
 ## Explore before querying
 
 1. Search metadata with `/connect/search/metadata/results`.

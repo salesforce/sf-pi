@@ -52,6 +52,7 @@ describe("sf-data360 request resolution", () => {
 
   it("detects application-level REST errors even when the CLI exits zero", () => {
     expect(responseLooksLikeError('{"content":[],"error":{"message":"Nope"},"size":0}')).toBe(true);
+    expect(responseLooksLikeError('[{"errorCode":"NOT_FOUND","message":"Missing"}]')).toBe(true);
     expect(responseLooksLikeError('{"dataModelObject":[]}')).toBe(false);
     expect(responseLooksLikeError("not json")).toBe(false);
   });

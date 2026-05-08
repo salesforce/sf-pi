@@ -48,8 +48,14 @@ describe("sf-data360 metadata helper", () => {
 
     const summary = summarizeMetadataOutput(input, raw, "/tmp/raw.json");
 
-    expect(summary.details).toMatchObject({ count: 1, unfilteredCount: 2, category: "Profile" });
+    expect(summary.details).toMatchObject({
+      count: 1,
+      shownCount: 1,
+      unfilteredCount: 2,
+      category: "Profile",
+    });
     expect(summary.text).toContain("Found 1 DMOs in category Profile.");
+    expect(summary.text).toContain("Category counts: Engagement=1, Profile=1.");
     expect(summary.text).toContain("`ssot__Account__dlm`");
     expect(summary.text).not.toContain("ssot__AiAgentInteraction__dlm");
   });
@@ -72,6 +78,24 @@ describe("sf-data360 metadata helper", () => {
     });
     expect(summary.text).toContain("No compact metadata category matched");
     expect(summary.text).toContain("compact metadata categories can differ");
+  });
+
+  it("caps broad list output by default", () => {
+    const input: D360MetadataInput = { action: "list_dmos" };
+    const raw = JSON.stringify({
+      metadata: Array.from({ length: 30 }, (_, index) => ({
+        category: "Profile",
+        displayName: `Object ${String(index).padStart(2, "0")}`,
+        name: `Object_${String(index).padStart(2, "0")}__dlm`,
+      })),
+    });
+
+    const summary = summarizeMetadataOutput(input, raw, "/tmp/raw.json");
+
+    expect(summary.details).toMatchObject({ count: 30, shownCount: 25 });
+    expect(summary.text).toContain("Showing 25 of 30.");
+    expect(summary.text).toContain("`Object_00__dlm`");
+    expect(summary.text).not.toContain("Object_29__dlm");
   });
 
   it("summarizes one DMO description and caps fields", () => {

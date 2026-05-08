@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 import { describe, expect, it } from "vitest";
 
-import { buildSummaryText, formatD360Output } from "../lib/truncation.ts";
+import { buildSummaryText, cleanD360CliOutput, formatD360Output } from "../lib/truncation.ts";
 
 describe("sf-data360 output formatting", () => {
   it("summarizes top-level JSON shapes", () => {
@@ -35,6 +35,18 @@ describe("sf-data360 output formatting", () => {
 
     expect(text).toContain("Shape: JSON array (1 items).");
     expect(text).toContain('BAD_REQUEST: INVALID_ARGUMENT: table "Definitely_Not_A_DMO__dlm"');
+  });
+
+  it("strips sf cli beta warning noise and keeps JSON", () => {
+    const warning =
+      "\u001b[1m\u001b[33mWarning:\u001b[39m\u001b[22m This command is currently in beta.\n" +
+      "Any aspect of this command can change without advanced notice.\n" +
+      "Don't use beta commands in your scripts.";
+
+    expect(cleanD360CliOutput('{"ok":true}', warning)).toBe('{"ok":true}');
+    expect(cleanD360CliOutput("", `${warning}\n[{"errorCode":"NOT_FOUND"}]`)).toBe(
+      '[{"errorCode":"NOT_FOUND"}]',
+    );
   });
 
   it("supports file_only output mode", async () => {

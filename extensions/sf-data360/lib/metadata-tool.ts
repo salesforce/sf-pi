@@ -18,7 +18,7 @@ import {
 import type { SfEnvironment } from "../../../lib/common/sf-environment/types.ts";
 import { buildApiPath } from "./path.ts";
 import { responseLooksLikeError } from "./api-tool.ts";
-import { truncateD360Output, writeFullD360Output } from "./truncation.ts";
+import { cleanD360CliOutput, truncateD360Output, writeFullD360Output } from "./truncation.ts";
 
 export const D360_METADATA_TOOL_NAME = "d360_metadata";
 
@@ -40,6 +40,9 @@ export const D360MetadataParams = Type.Object({
   max_fields: Type.Optional(
     Type.Number({ description: "Maximum fields to include for describe actions. Defaults to 50." }),
   ),
+  max_results: Type.Optional(
+    Type.Number({ description: "Maximum rows to show for list actions. Defaults to 25." }),
+  ),
   target_org: Type.Optional(
     Type.String({
       description:
@@ -56,6 +59,7 @@ export interface D360MetadataInput {
   api_name?: string;
   category?: string;
   max_fields?: number;
+  max_results?: number;
   target_org?: string;
   timeout_ms?: number;
 }
@@ -96,6 +100,7 @@ export function registerD360MetadataTool(pi: ExtensionAPI): void {
     promptSnippet: "List or describe Data 360 DMOs/DLOs with compact, context-safe output",
     promptGuidelines: [
       "Use d360_metadata list_dmos for simple DMO lists instead of broad /ssot/data-model-objects catalog calls.",
+      "List actions cap inline rows by default; use category, max_results, or the saved raw JSON for wider inventory.",
       "Use d360_metadata describe_dmo before querying DMO records to verify fields and query shape.",
       "Use d360_metadata list_dlos or describe_dlo for compact Data Lake Object discovery before mapping or stream work.",
     ],
@@ -128,7 +133,7 @@ export function registerD360MetadataTool(pi: ExtensionAPI): void {
         { signal, timeout: typeof input.timeout_ms === "number" ? input.timeout_ms : 120_000 },
       );
 
-      const output = result.stdout.trim() || result.stderr.trim() || "{}";
+      const output = cleanD360CliOutput(result.stdout, result.stderr);
       const ok = result.code === 0 && !responseLooksLikeError(output);
       if (!ok) {
         const formatted = await truncateD360Output(output);
@@ -259,32 +264,49 @@ function summarizeMetadataList(
   const availableCategories = uniqueSorted(
     allEntities.map((entity) => entity.category).filter((value): value is string => Boolean(value)),
   );
+  const categoryCounts = countByCategory(allEntities);
+  const maxResults = normalizeMaxResults(input.max_results);
+  const shownEntities = entities.slice(0, maxResults);
   const lines = [
     `Found ${entities.length} ${label}${category ? ` in category ${input.category}` : ""}.`,
-    `Raw output: ${rawOutputPath}`,
+    `Showing ${shownEntities.length} of ${entities.length}. Raw output: ${rawOutputPath}`,
   ];
+  if (categoryCounts.length > 0) {
+    lines.push(
+      `Category counts: ${categoryCounts.map(([name, count]) => `${name}=${count}`).join(", ")}.`,
+    );
+  }
   if (category && entities.length === 0 && availableCategories.length > 0) {
     lines.push(
       `No compact metadata category matched. Available categories: ${availableCategories.join(", ")}.`,
       "Note: compact metadata categories can differ from detailed DLO/DMO schema categories.",
     );
   }
-  lines.push("", "| Category | Display Name | API Name |", "|---|---|---|");
-  for (const entity of entities) {
+  if (entities.length > shownEntities.length) {
     lines.push(
-      `| ${escapeTable(entity.category ?? "")} | ${escapeTable(
-        entity.displayName ?? entity.label ?? "",
-      )} | \`${escapeTable(entity.name ?? "")}\` |`,
+      `Use category or max_results to narrow the inline table; the full response is saved above.`,
     );
+  }
+  if (shownEntities.length > 0) {
+    lines.push("", "| Category | Display Name | API Name |", "|---|---|---|");
+    for (const entity of shownEntities) {
+      lines.push(
+        `| ${escapeTable(entity.category ?? "")} | ${escapeTable(
+          entity.displayName ?? entity.label ?? "",
+        )} | \`${escapeTable(entity.name ?? "")}\` |`,
+      );
+    }
   }
 
   return {
     text: lines.join("\n"),
     details: {
       count: entities.length,
+      shownCount: shownEntities.length,
       unfilteredCount: allEntities.length,
       category: input.category,
       availableCategories,
+      categoryCounts: Object.fromEntries(categoryCounts),
       rawOutputPath,
     },
   };
@@ -356,6 +378,15 @@ function uniqueSorted(values: string[]): string[] {
   return Array.from(new Set(values)).sort((a, b) => a.localeCompare(b));
 }
 
+function countByCategory(entities: MetadataEntity[]): Array<[string, number]> {
+  const counts = new Map<string, number>();
+  for (const entity of entities) {
+    const category = entity.category || "(none)";
+    counts.set(category, (counts.get(category) ?? 0) + 1);
+  }
+  return Array.from(counts).sort(([a], [b]) => a.localeCompare(b));
+}
+
 function requiredApiName(input: D360MetadataInput): string {
   const apiName = input.api_name?.trim();
   if (!apiName) throw new Error(`${input.action} requires api_name.`);
@@ -365,6 +396,11 @@ function requiredApiName(input: D360MetadataInput): string {
 function normalizeMaxFields(maxFields: number | undefined): number {
   if (typeof maxFields !== "number" || !Number.isFinite(maxFields)) return 50;
   return Math.max(0, Math.floor(maxFields));
+}
+
+function normalizeMaxResults(maxResults: number | undefined): number {
+  if (typeof maxResults !== "number" || !Number.isFinite(maxResults)) return 25;
+  return Math.max(0, Math.floor(maxResults));
 }
 
 function formatUnknownBoolean(value: unknown): string {

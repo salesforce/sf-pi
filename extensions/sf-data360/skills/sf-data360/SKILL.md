@@ -80,7 +80,7 @@ If raw `sf api request rest` is necessary:
 Read these files only when needed:
 
 - `references/quickstart.md` — common `d360_api` examples.
-- `references/workflows.md` — end-to-end operation sequences.
+- `references/workflows.md` — end-to-end operation sequences, including read-only smoke test matrices.
 - `references/endpoint-families.md` — endpoint families and representative paths.
 - `references/examples.md` — public-safe payload examples.
 - `references/data-shapes.md` — request-body shapes distilled from public examples and DTOs.
@@ -91,11 +91,13 @@ Read these files only when needed:
 
 ## Rules of thumb
 
+- `d360_metadata` list actions show a capped inline table by default; use `category`, `max_results`, or the saved raw JSON path for broader inventory.
 - Prefer `d360_metadata` or metadata search over broad metadata listing.
 - Prefer Data 360 query SQL endpoints over legacy query endpoints for new work.
 - Read `references/query-patterns.md` before inventing Data Cloud SQL, calculated insight SQL, or semantic queries.
 - For mappings, inspect both source DLO and target DMO fields first.
 - For calculated insights, validate before create/update and check status before using in segments.
+- For connectors, use the connector catalog `name` from `GET /ssot/connectors` when fetching connector detail; connection `connectorType` values can differ.
 - For data streams, inspect connector metadata and test connections first.
 - For semantic models, create the model shell first, then add data objects, relationships, calculations, and metrics.
 - Read `references/data-shapes.md` before complex create/update calls.
