@@ -193,7 +193,7 @@ function resolveOrgType(targetOrg: string | undefined, env: SfEnvironment): OrgT
   return "unknown";
 }
 
-function buildSfApiRequestArgs(resolved: ResolvedRequest, body: unknown): string[] {
+export function buildSfApiRequestArgs(resolved: ResolvedRequest, body: unknown): string[] {
   if (!resolved.targetOrg) {
     throw new Error(
       "No Salesforce target org is configured. Pass target_org or set sf config target-org.",
@@ -212,8 +212,11 @@ function buildSfApiRequestArgs(resolved: ResolvedRequest, body: unknown): string
     "--header",
     "Accept: application/json",
   ];
-  if (body !== undefined && resolved.method !== "GET" && resolved.method !== "DELETE") {
-    args.push("--header", "Content-Type: application/json", "--body", JSON.stringify(body));
+  if (resolved.method !== "GET" && (body !== undefined || resolved.method === "DELETE")) {
+    // Some sf CLI versions error on DELETE without an explicit body
+    // ("No 'mode' found in 'body' entry"). An empty JSON object avoids that
+    // client-side failure while keeping the REST request semantically empty.
+    args.push("--header", "Content-Type: application/json", "--body", JSON.stringify(body ?? {}));
   }
   return args;
 }

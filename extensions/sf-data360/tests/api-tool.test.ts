@@ -1,7 +1,12 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 import { describe, expect, it } from "vitest";
 
-import { responseLooksLikeError, resolveRequest, type D360ApiInput } from "../lib/api-tool.ts";
+import {
+  buildSfApiRequestArgs,
+  responseLooksLikeError,
+  resolveRequest,
+  type D360ApiInput,
+} from "../lib/api-tool.ts";
 import type { SfEnvironment } from "../../../lib/common/sf-environment/types.ts";
 
 const env: SfEnvironment = {
@@ -48,6 +53,16 @@ describe("sf-data360 request resolution", () => {
       orgType: "unknown",
       safety: { level: "create", requiresConfirmation: true },
     });
+  });
+
+  it("adds an explicit empty JSON body for DELETE requests", () => {
+    const resolved = resolveRequest(
+      { method: "DELETE", path: "/ssot/data-model-objects/Test__dlm" },
+      env,
+    );
+
+    expect(buildSfApiRequestArgs(resolved, undefined)).toContain("--body");
+    expect(buildSfApiRequestArgs(resolved, undefined).at(-1)).toBe("{}");
   });
 
   it("detects application-level REST errors even when the CLI exits zero", () => {

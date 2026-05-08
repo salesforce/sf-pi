@@ -49,7 +49,7 @@ Search indexes, retrievers, and some DataKit manifest paths can return `NOT_FOUN
 
 ## Connector detail returned `NOT_FOUND`
 
-Use the connector catalog `name` from `GET /ssot/connectors` for `/ssot/connectors/{name}`. Do not assume the connection list's `connectorType` is accepted by the connector metadata endpoint.
+Use the connector catalog `name` from `GET /ssot/connectors` for `/ssot/connectors/{name}`. Do not assume the connection list's `connectorType` is accepted by the connector metadata endpoint. For example, a Salesforce CRM connection can list as `connectorType=SalesforceDotCom`, while connector metadata can be exposed under catalog name `SalesforceCRM`.
 
 ## DLO category filter returned no rows
 
@@ -65,6 +65,24 @@ Use the connector catalog `name` from `GET /ssot/connectors` for `/ssot/connecto
 ## Raw `sf api request rest` rejected `--json`
 
 Prefer `d360_api`. If you must call raw `sf api request rest`, do not add `--json`; pipe stdout to `jq` and redirect beta warnings from stderr when needed.
+
+## DELETE failed with `No 'mode' found in 'body' entry`
+
+Some sf CLI versions require an explicit request body for `sf api request rest --method DELETE`. `d360_api` sends an empty JSON body for DELETE calls to avoid this CLI-side failure. If you must use raw CLI fallback, pass a small body such as `--body '{}'` or use a request file with `body.mode: "raw"`.
+
+## Endpoint returned `METHOD_NOT_ALLOWED`
+
+Treat this as live API evidence for that org/API version. Some cataloged mutating paths can be read-only or can require a different identifier shape. Re-check the resource returned by `GET`; for example, if deleting by an ID is rejected, the same endpoint family can require a developer/API name instead.
+
+## Create failed after copying a list response
+
+Data 360 create/update DTOs can use different field names than list/get responses. Do not copy response payloads wholesale into create/update calls. Common examples:
+
+- DLO create can accept `dataLakeFieldInputRepresentations[]`, while GET returns `dataLakeFieldInfoRepresentation[]` and `fields[]`.
+- Mapping create/add can require `fieldMapping[]` with `sourceFieldDeveloperName` and `targetFieldDeveloperName`.
+- Data action create can reject response-only fields from `dataActionSources`. Use create fields such as `sourceName`, `sourceType`, and `sourceCdcSubscriptions`; the response returns them as `objectDevName`, `objectType`, and `subscriptionModes`.
+- Connection test requires `connectorType` in the request body, not only as a query parameter. It also requires `method` with values such as `Ingress` or `Egress`, and parameter entries use `paramName` plus `value`.
+- Activation target create is polymorphic by `platformType`; a missing or wrong `connector` object can fail at JSON parsing before business validation. For `DataCloud` targets, `connector: {}` is valid, but activation target DELETE may not be exposed.
 
 ## Mutating call was blocked
 

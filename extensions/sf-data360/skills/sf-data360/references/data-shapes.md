@@ -31,6 +31,35 @@ Example skeleton:
 }
 ```
 
+## DLO create shape
+
+Endpoint: `POST /ssot/data-lake-objects`
+
+Common fields:
+
+- `name` — DLO API name, usually ending in `__dll`.
+- `label`
+- `category` — for example `Other`, `Engagement`, or `Profile`.
+- `dataspaceInfo[]` — include `{ "name": "default" }` or another data space when the DLO must be usable from data-space-scoped workflows such as mappings.
+- `dataLakeFieldInputRepresentations[]` — each field should include `name`, `label`, `dataType`, and `isPrimaryKey`.
+
+Avoid sending `description` or `dataSpaceName` in DLO create payloads unless the live API version accepts them; some orgs reject those fields for this endpoint. Prefer `dataspaceInfo` for data-space membership.
+
+Example skeleton:
+
+```json
+{
+  "name": "ProductReview__dll",
+  "label": "Product Review",
+  "category": "Other",
+  "dataspaceInfo": [{ "name": "default" }],
+  "dataLakeFieldInputRepresentations": [
+    { "name": "review_id__c", "label": "Review ID", "dataType": "Text", "isPrimaryKey": true },
+    { "name": "rating__c", "label": "Rating", "dataType": "Number", "isPrimaryKey": false }
+  ]
+}
+```
+
 ## Data stream create shape
 
 Endpoint: `POST /ssot/data-streams`
@@ -38,6 +67,7 @@ Endpoint: `POST /ssot/data-streams`
 Common fields:
 
 - `name`, `label`
+- `datastreamType` — for Salesforce CRM streams, `SFDC`.
 - `connectorInfo.connectorType`
 - `connectorInfo.connectorDetails` for connector-specific values such as source object or connection name.
 - `dataLakeObjectInfo` for DLO label/name/category/dataspace/fields.
@@ -47,12 +77,35 @@ Common fields:
 - `dataAccessMode`, often an ingest/direct-access value depending on connector.
 - `advancedAttributes` for connector-specific values such as file/parser/directory settings.
 
+For Salesforce CRM streams, first list connections with `connectorType=SalesforceDotCom`. A minimal CRM stream can let the API populate source fields from the CRM object:
+
+```json
+{
+  "name": "ProductStream",
+  "label": "Product Stream",
+  "datastreamType": "SFDC",
+  "connectorInfo": {
+    "connectorType": "SalesforceDotCom",
+    "connectorDetails": {
+      "name": "SalesforceDotCom_Home",
+      "sourceObject": "Product2"
+    }
+  },
+  "dataLakeObjectInfo": {
+    "name": "ProductStreamDlo",
+    "category": "Other",
+    "dataspaceInfo": [{ "name": "default" }]
+  }
+}
+```
+
 Guidance:
 
-1. Inspect connector metadata first.
+1. Inspect connector metadata first. Connector metadata uses connector catalog names such as `SalesforceCRM`; connection lists can use connector types such as `SalesforceDotCom`.
 2. Inspect or test the connection before stream creation.
 3. For Engagement streams, choose an immutable event time field.
 4. Do not assume every connector supports full stream creation through the API.
+5. Delete disposable streams with `shouldDeleteDataLakeObject=true` when the test DLO should also be removed.
 
 ## DMO mapping shape
 
@@ -64,12 +117,22 @@ Common API shape:
 {
   "sourceEntityDeveloperName": "SourceObject__dll",
   "targetEntityDeveloperName": "TargetObject__dlm",
-  "fieldMapping": [{ "sourceFieldName": "source_id__c", "targetFieldName": "TargetId__c" }]
+  "fieldMapping": [
+    {
+      "sourceFieldDeveloperName": "source_id__c",
+      "targetFieldDeveloperName": "TargetId__c"
+    }
+  ]
 }
 ```
 
 Live-listing note: mapping list usually needs a filter such as `dmoDeveloperName`
 or `sourceObjectName`. Do not use an unfiltered list as a readiness probe.
+
+For `PATCH /ssot/data-model-object-mappings/{mappingName}/field-mappings`, use
+the same `sourceEntityDeveloperName`, `targetEntityDeveloperName`, and
+`fieldMapping[]` shape. Some API versions reject a wrapper named
+`fieldMappings` on that subresource.
 
 ## Calculated insight create shape
 
@@ -87,6 +150,79 @@ Common fields:
 Do not include explicit dimensions/measures arrays unless the current API
 documentation requires them; the platform can derive them from the expression.
 
+## Data action shape
+
+Endpoint: `POST /ssot/data-actions`
+
+Data action request shapes are strict and differ from list response property names. Do not blindly copy `GET /ssot/data-actions` output into a create request; response fields such as `objectDevName`, `objectId`, `objectType`, and `subscriptionModes` are output fields. For create, use source input fields such as `sourceName`, `sourceType`, and `sourceCdcSubscriptions`.
+
+Example skeleton:
+
+```json
+{
+  "dataActionTargetNames": ["example_webhook_target"],
+  "dataspace": "default",
+  "dataActionName": "example_data_action",
+  "developerName": "example_data_action",
+  "description": "Example event-triggered data action.",
+  "masterLabel": "Example Data Action",
+  "dataActionSources": [
+    {
+      "sourceName": "SomeObject__dlm",
+      "sourceType": "DataModelEntity",
+      "sourceCdcSubscriptions": ["CREATE", "UPDATE"]
+    }
+  ],
+  "actionConditionExpression": "",
+  "actionConditions": [],
+  "dataActionEnrichmentProperties": [],
+  "dataActionProjectedFields": []
+}
+```
+
+Although the public operation list may omit it, `DELETE /ssot/data-actions/{developerName}` can be available for cleanup in some orgs/API versions. Verify with a follow-up list.
+
+## Data action target shape
+
+Endpoint: `POST /ssot/data-action-targets`
+
+A minimal webhook-style target can use:
+
+```json
+{
+  "apiName": "example_webhook_target",
+  "label": "Example Webhook Target",
+  "type": "WebHook",
+  "subType": "Rest",
+  "externalRecordIdentifier": "example-webhook-target",
+  "config": {
+    "targetEndpoint": "https://example.invalid/data-action",
+    "apiContract": "{}"
+  }
+}
+```
+
+Delete with `DELETE /ssot/data-action-targets/{apiName}` after ensuring no data actions reference it. PATCH support can be org/API-version-specific; verify by re-reading or list-filtering after update attempts.
+
+## Activation target shape
+
+Endpoint: `POST /ssot/activation-targets`
+
+Activation target payloads are polymorphic by `platformType`. The live API requires a `connector` object and can reject connector fields that are accepted by other endpoint families. For a Data 360 activation target, the connector object can be empty:
+
+```json
+{
+  "name": "example_data_cloud_target",
+  "description": "Example Data 360 activation target.",
+  "platformType": "DataCloud",
+  "dataSpaceName": "default",
+  "isCappingEnabled": false,
+  "connector": {}
+}
+```
+
+Use the returned activation target ID for PATCH updates; updating by name can fail even when `GET` accepts ID or developer name. The Connect API spec for activation targets does not expose DELETE, so only create disposable activation targets in throwaway orgs or when a manual cleanup path is acceptable.
+
 ## Segment create shape
 
 Endpoint: `POST /ssot/segments`
@@ -102,6 +238,12 @@ Common fields:
 
 Segment SQL is Data Cloud SQL, not CRM SOQL. Verify referenced calculated
 insights are active before segment creation.
+
+For SQL/dbt-style segments, a common API pattern is `segmentType: "Ui"`,
+`segmentCreationFlow: "Datakit"`, `publishSchedule: "NoRefresh"`, and nested
+`includeDbt.models.models[].sql`. When deleting a segment, prefer the segment
+API/developer name if deleting by the returned `marketSegmentId` reports that
+only `GET`/`HEAD` are allowed.
 
 ## Identity resolution shape
 

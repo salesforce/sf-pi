@@ -72,6 +72,7 @@ relative to `/services/data/vXX.X`.
 - `POST /ssot/activation-targets` — create activation target.
 - `GET /ssot/data-actions` — list data actions.
 - `POST /ssot/data-actions` — create data action.
+- `DELETE /ssot/data-actions/{developerName}` — delete data action when the org exposes cleanup support; this path can be absent from some published operation summaries, so verify after calling.
 - `GET /ssot/data-kits` — list DataKits. Responses can be broad; prefer `output_mode: "summary"` or `"file_only"`.
 - `GET /ssot/data-kits/{id}/manifest` — get DataKit manifest when the org exposes a manifest identifier/path. A DataKit `developerName` from the list response is not always accepted here.
 - `POST /ssot/data-kits/update-components` — deploy/update DataKit components.
