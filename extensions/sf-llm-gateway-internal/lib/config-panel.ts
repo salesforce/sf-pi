@@ -40,12 +40,23 @@ type PanelField =
   | "baseUrl"
   | "apiKey"
   | "exclusiveScope"
+  | "open-token"
+  | "import-claude"
   | "save-enable"
   | "save"
   | "disable"
   | "cancel";
 
+type GatewayConfigPanelResult = ConfigPanelResult & {
+  gatewayAction?: "open-token" | "import-claude" | "save-enable" | "save" | "disable";
+  baseUrl?: string;
+};
+
 type ExclusiveScopeMode = "inherit" | "exclusive" | "additive";
+
+type ConfigPanelOptions = {
+  externalActions?: boolean;
+};
 
 // -------------------------------------------------------------------------------------------------
 // Helpers
@@ -100,15 +111,7 @@ function isRightKey(data: string): boolean {
 export class GatewayConfigPanelComponent implements Focusable {
   focused = false;
 
-  private readonly focusOrder: readonly PanelField[] = [
-    "baseUrl",
-    "apiKey",
-    "exclusiveScope",
-    "save-enable",
-    "save",
-    "disable",
-    "cancel",
-  ];
+  private readonly focusOrder: readonly PanelField[];
   private focusIndex = 0;
   private savedBaseUrl: string;
   private savedApiKey: string;
@@ -124,8 +127,22 @@ export class GatewayConfigPanelComponent implements Focusable {
     private readonly scope: "global" | "project",
     cwd: string,
     private readonly done: (result: ConfigPanelResult | undefined) => void,
+    private readonly options: ConfigPanelOptions = {},
   ) {
     this.cwd = cwd;
+    this.focusOrder = options.externalActions
+      ? [
+          "baseUrl",
+          "apiKey",
+          "exclusiveScope",
+          "open-token",
+          "import-claude",
+          "save-enable",
+          "save",
+          "disable",
+          "cancel",
+        ]
+      : ["baseUrl", "apiKey", "exclusiveScope", "save-enable", "save", "disable", "cancel"];
     this.state = getSetupOverlayState(cwd, scope);
     this.savedBaseUrl = this.state.scopeSaved.baseUrl ?? "";
     this.savedApiKey = this.state.scopeSaved.apiKey ?? "";
@@ -200,7 +217,9 @@ export class GatewayConfigPanelComponent implements Focusable {
     const lines: string[] = [];
     const theme = this.theme;
     const effective = this.resolveEffectivePreview();
-    const helpText = "Tab/↑↓ move · type to edit · Enter next/apply · Esc back";
+    const helpText = this.options.externalActions
+      ? "Tab/↑↓ move · type/paste to edit · Enter action · token/import buttons return here"
+      : "Tab/↑↓ move · type to edit · Enter next/apply · Esc back";
     const saveTarget =
       this.scope === "project" ? projectGatewayConfigPath(this.cwd) : globalGatewayConfigPath();
 
@@ -329,6 +348,13 @@ export class GatewayConfigPanelComponent implements Focusable {
 
     // Action buttons
     lines.push(pad(` ${theme.fg("muted", "Actions")}`));
+    if (this.options.externalActions) {
+      lines.push(
+        pad(
+          `   ${this.renderButton("open-token", "Open token page")}  ${this.renderButton("import-claude", "Import from Claude Code")}`,
+        ),
+      );
+    }
     lines.push(
       pad(
         `   ${this.renderButton("save-enable", "Save + enable Opus 4.7")}  ${this.renderButton("save", "Save only")}`,
@@ -446,7 +472,7 @@ export class GatewayConfigPanelComponent implements Focusable {
   }
 
   private renderButton(
-    field: "save-enable" | "save" | "disable" | "cancel",
+    field: "open-token" | "import-claude" | "save-enable" | "save" | "disable" | "cancel",
     label: string,
   ): string {
     const focused = this.currentFocus() === field;
@@ -580,6 +606,26 @@ export class GatewayConfigPanelComponent implements Focusable {
     }
 
     const normalizedSavedBaseUrl = this.normalizeSavedBaseUrl();
+
+    if (focus === "open-token") {
+      if (this.savedBaseUrl.trim() && !normalizedSavedBaseUrl) {
+        this.errorMessage = "Saved base URL must be blank or a valid http:// or https:// URL.";
+        this.focusIndex = 0;
+        return;
+      }
+      const effective = this.resolveEffectivePreview(normalizedSavedBaseUrl);
+      this.done({
+        gatewayAction: "open-token",
+        baseUrl: effective.baseUrl,
+      } as GatewayConfigPanelResult);
+      return;
+    }
+
+    if (focus === "import-claude") {
+      this.done({ gatewayAction: "import-claude" } as GatewayConfigPanelResult);
+      return;
+    }
+
     if (this.savedBaseUrl.trim() && !normalizedSavedBaseUrl) {
       this.errorMessage = "Saved base URL must be blank or a valid http:// or https:// URL.";
       this.focusIndex = 0;
@@ -635,7 +681,7 @@ export class GatewayConfigPanelComponent implements Focusable {
 
     // Signal reload needed for enable/disable actions
     const needsReload = focus === "save-enable" || focus === "disable";
-    this.done({ needsReload });
+    this.done({ needsReload, gatewayAction: focus } as GatewayConfigPanelResult);
   }
 
   private normalizeSavedBaseUrl(): string | undefined {

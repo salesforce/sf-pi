@@ -25,6 +25,7 @@ export const PROVIDER_NAME = "sf-llm-gateway-internal";
 // should pick a different provider row.
 export const PROVIDER_DISPLAY_NAME = "SF LLM Gateway (Salesforce Internal)";
 export const COMMAND_NAME = "sf-llm-gateway-internal";
+export const FRIENDLY_COMMAND_NAME = "sf-llm-gateway";
 export const STATUS_KEY = "sf-llm-gateway-internal";
 export const ENABLED_MODEL_PATTERN = `${PROVIDER_NAME}/*`;
 

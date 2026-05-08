@@ -127,6 +127,19 @@ describe("parseCommandArgs", () => {
     expect(result.subcommand).toBe("onboard");
   });
 
+  it("parses open-token aliases", () => {
+    expect(parseCommandArgs("open-token").subcommand).toBe("open-token");
+    expect(parseCommandArgs("open").subcommand).toBe("open-token");
+    expect(parseCommandArgs("browser").subcommand).toBe("open-token");
+  });
+
+  it("parses import-claude aliases with scope", () => {
+    const result = parseCommandArgs("import-claude project");
+    expect(result.subcommand).toBe("import-claude");
+    expect(result.scope).toBe("project");
+    expect(parseCommandArgs("import-claude-code").subcommand).toBe("import-claude");
+  });
+
   it("parses 'dr' as doctor alias", () => {
     const result = parseCommandArgs("dr");
     expect(result.subcommand).toBe("doctor");

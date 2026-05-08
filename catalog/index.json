@@ -85,7 +85,7 @@
     "entry": "extensions/sf-data360/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 1416
+    "srcLoc": 1501
   },
   {
     "id": "sf-devbar",
@@ -185,6 +185,7 @@
     "alwaysActive": false,
     "configurable": true,
     "commands": [
+      "/sf-llm-gateway",
       "/sf-llm-gateway-internal"
     ],
     "providers": [
@@ -202,7 +203,7 @@
     "entry": "extensions/sf-llm-gateway-internal/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 8251
+    "srcLoc": 8731
   },
   {
     "id": "sf-lsp",

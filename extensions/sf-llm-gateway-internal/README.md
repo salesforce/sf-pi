@@ -5,7 +5,7 @@
 > External users cannot use this extension. It is included in the public
 > repo because the sf-pi manager expects a known set of bundled extensions,
 > but you must either (a) provide your own compatible gateway via
-> `/sf-llm-gateway-internal setup` (or env vars for automation), or (b) disable
+> `/sf-llm-gateway` (or env vars for automation), or (b) disable
 > this extension via `/sf-pi disable sf-llm-gateway-internal`.
 
 This document explains the design and runtime flow of the Salesforce LLM Gateway
@@ -17,8 +17,8 @@ Registers the gateway as a single unified Pi-native provider and routes
 Claude vs non-Claude traffic to the transport each family was designed for.
 Supports dynamic model discovery, monthly budget tracking, runtime beta
 header toggling, additive vs exclusive scoped-model behavior, a TUI setup
-wizard, a read-only usage probe, and an in-app "paste your token" flow under
-`/login`.
+wizard with browser token-generation and Claude Code import actions, a read-only
+usage probe, and a backward-compatible in-app token paste flow under `/login`.
 
 ## Key Architecture: One Provider, Two Transports
 
@@ -163,27 +163,32 @@ separately via the monthly usage endpoint (`/user/info`).
 
 ## Command Surface
 
-`/sf-llm-gateway-internal` with no args opens a Pi-native status & controls
-panel in interactive mode. It extends the same Pi-native `ctx.ui.custom()` +
-`DynamicBorder` pattern used by `/sf-lsp`: compact status at the top, grouped
-actions in the middle, and a full-width description for the selected action so
-long help text is not clipped by a two-column list. Actions launched from the
-panel return to the panel after they complete, so users can run doctor, models,
-refresh, and follow-up setup without retyping the command. In headless/print/RPC
-mode, the no-args command falls back to the text status report.
+`/sf-llm-gateway` with no args opens the setup/settings overlay: users enter the
+cleansed gateway root URL and API token in one place, can open the gateway root
+in their browser to create a token, or import a cleansed URL/token from local
+Claude Code settings. `/sf-llm-gateway-internal` remains as a backward-compatible
+status & controls alias with the grouped Pi-native panel.
+
+The grouped panel extends the same Pi-native `ctx.ui.custom()` + `DynamicBorder`
+pattern used by `/sf-lsp`: compact status at the top, grouped actions in the
+middle, and a full-width description for the selected action so long help text is
+not clipped by a two-column list. Actions launched from the panel return to the
+panel after they complete, so users can run doctor, models, refresh, and
+follow-up setup without retyping the command. In headless/print/RPC mode, the
+no-args command falls back to the text status report.
 
 Primary actions are grouped as:
 
-| Group                   | Actions                                               | Purpose                                                                               |
-| ----------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| Setup                   | `setup`, `on`, `off`, `set-default`                   | Edit credentials/config and control gateway defaults for global or project scope.     |
-| Discovery & diagnostics | `refresh`, `models`, `doctor`, `usage-probe`, `debug` | Re-probe model discovery, health, usage scope, and transformed upstream payloads.     |
-| Utilities               | `tokens`, `onboard`, `beta`                           | Count prompt tokens/cost, get the gateway root link, and manage runtime beta headers. |
-| Reference               | `status`, `help`                                      | Print complete text reports for copying or headless use.                              |
+| Group                   | Actions                                                            | Purpose                                                                                                  |
+| ----------------------- | ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
+| Setup                   | `setup`, `open-token`, `import-claude`, `on`, `off`, `set-default` | Edit credentials/config, open token creation, import Claude Code settings, and control gateway defaults. |
+| Discovery & diagnostics | `refresh`, `models`, `doctor`, `usage-probe`, `debug`              | Re-probe model discovery, health, usage scope, and transformed upstream payloads.                        |
+| Utilities               | `tokens`, `onboard`, `beta`                                        | Count prompt tokens/cost, print the gateway root link, and manage runtime beta headers.                  |
+| Reference               | `status`, `help`                                                   | Print complete text reports for copying or headless use.                                                 |
 
 Slash completions use the same command metadata as the panel, so subcommands
-such as `tokens`, `onboard`, `doctor`, `debug`, and `usage-probe` show short
-self-explanatory descriptions while typing.
+such as `tokens`, `onboard`, `open-token`, `import-claude`, `doctor`, `debug`,
+and `usage-probe` show short self-explanatory descriptions while typing.
 
 ## Behavior Matrix
 
@@ -219,6 +224,7 @@ self-explanatory descriptions while typing.
 extensions/sf-llm-gateway-internal/
   lib/
     beta-controls.ts        ← implementation module
+    claude-code-import.ts   ← implementation module
     command-surface.ts      ← implementation module
     config-panel.ts         ← implementation module
     config.ts               ← implementation module
@@ -230,6 +236,7 @@ extensions/sf-llm-gateway-internal/
     models.ts               ← implementation module
     monthly-usage.ts        ← implementation module
     onboarding.ts           ← implementation module
+    open-url.ts             ← implementation module
     panel.ts                ← implementation module
     pi-settings.ts          ← implementation module
     provider-telemetry.ts   ← implementation module
@@ -241,6 +248,7 @@ extensions/sf-llm-gateway-internal/
     wire-trace.ts           ← implementation module
   tests/
     betas.test.ts           ← unit / smoke test
+    claude-code-import.test.ts← unit / smoke test
     codex-regression.test.ts← unit / smoke test
     command-parsing.test.ts ← unit / smoke test
     command-surface.test.ts ← unit / smoke test
@@ -258,6 +266,7 @@ extensions/sf-llm-gateway-internal/
     models.test.ts          ← unit / smoke test
     monthly-usage.test.ts   ← unit / smoke test
     onboarding.test.ts      ← unit / smoke test
+    open-url.test.ts        ← unit / smoke test
     opus47-regression.test.ts← unit / smoke test
     panel.test.ts           ← unit / smoke test
     provider-telemetry.test.ts← unit / smoke test
@@ -379,19 +388,19 @@ wouldn't show it. The raw body is ground truth from the gateway.
 Your credentials aren't configured yet, or the async model discovery hasn't
 finished on this first run. The bootstrap catalog now seeds both Claude and
 `gpt-5` synchronously, so this warning should not appear on a configured
-gateway. If it persists, run `/sf-llm-gateway-internal refresh`.
+gateway. If it persists, run `/sf-llm-gateway refresh`.
 
 **Gateway fails on startup or tool calls error out immediately:**
-Run `/sf-llm-gateway-internal setup` for first-time onboarding, or `/login` to
-rotate only the key. Env vars are only a fallback when saved config is blank.
-The base URL should be the gateway root, for example
-`https://your-internal-gateway.example.com`. If a user pastes
-a route with a known suffix such as `/bedrock`, `/v1`, or `/bedrock/v1`, the
-extension canonicalizes it back to the gateway root before building OpenAI,
-Claude, and admin endpoints. Run `/sf-llm-gateway-internal setup` for an
-interactive wizard, `/sf-llm-gateway-internal doctor` for endpoint/key preflight
-checks, or `/sf-llm-gateway-internal debug <model>` to inspect the exact upstream
-payload LiteLLM would send.
+Run `/sf-llm-gateway` for first-time onboarding. The setup page lets users paste
+the gateway root URL and token, open the browser token-generation page, or import
+a cleansed URL/token from local Claude Code settings. Env vars are only a
+fallback when saved config is blank. The base URL should be the gateway root, for
+example `https://your-internal-gateway.example.com`. If a user pastes a route
+with a known suffix such as `/bedrock`, `/v1`, or `/bedrock/v1`, the extension
+canonicalizes it back to the gateway root before building OpenAI, Claude, and
+admin endpoints. Run `/sf-llm-gateway doctor` for endpoint/key preflight checks,
+or `/sf-llm-gateway debug <model>` to inspect the exact upstream payload LiteLLM
+would send.
 
 **Claude responses appear to truncate and the agent asks you to type "continue":**
 This is the pi-ai OpenAI-compat translator splitting Claude thinking + text
@@ -399,7 +408,7 @@ across multiple choices. The fix is already in place — the unified
 `streamSimple` dispatcher detects Claude ids and forwards them to the native
 Anthropic transport instead of the OpenAI-compat one. If you still see
 truncation, confirm the selected model is a Claude id in
-`/sf-llm-gateway-internal models`.
+`/sf-llm-gateway models`.
 
 **Opus 4.7 returns `api_error: Internal server error` on heavy turns:**
 Handled by the transport shim: `max_tokens` now scales by pi reasoning
@@ -424,7 +433,7 @@ on `/v1/chat/completions`.
 **Footer shows `⚠` badge after a 429 or 5xx:**
 `provider-telemetry.ts` parses retry-after headers and surfaces a 60s
 badge. The next successful 2xx/3xx clears it. If the badge sticks, check
-`/sf-llm-gateway-internal` status for the live throttle/upstream signal.
+`/sf-llm-gateway status` for the live throttle/upstream signal.
 
 **I set `/thinking` to a different level but subsequent model switches reset it to `xhigh`:**
 Fixed: `model_select` no longer silently forces `thinkingLevel: xhigh` on
@@ -433,23 +442,23 @@ overrides stick. If you still see a reset, check your settings for an
 explicit default that could be winning.
 
 **Beta headers aren't taking effect:**
-Check the active betas with `/sf-llm-gateway-internal beta`. pi-ai merges
+Check the active betas with `/sf-llm-gateway beta`. pi-ai merges
 the `anthropic-beta` header via `Object.assign`, so the shim always
 includes `fine-grained-tool-streaming-2025-05-14` first to guarantee it
 isn't silently dropped when you add another beta.
 
 **Monthly-usage footer is stale or missing:**
 Usage is cached for 60 seconds and refreshes automatically on every
-`turn_end`; run `/sf-llm-gateway-internal refresh` to force a `/user/info`
+`turn_end`; run `/sf-llm-gateway refresh` to force a `/user/info`
 fetch immediately. If you're using sf-welcome or sf-devbar as
 consumers, they read from the shared store in `lib/common/monthly-usage/`
 — the gateway must be registered and have succeeded at least once.
 
 **Old and new gateway keys are confusing status or tests:**
 Saved pi config wins over `SF_LLM_GATEWAY_INTERNAL_API_KEY`. If both are set
-and differ, `/sf-llm-gateway-internal status` and `doctor` warn that the env
-var is ignored. If the env key is newer, run `/login` or
-`/sf-llm-gateway-internal setup` to save it; otherwise remove the stale env var
-from your shell or Keychain setup. If the gateway reports multiple keys on the
+and differ, `/sf-llm-gateway status` and `doctor` warn that the env var is
+ignored. If the env key is newer, run `/sf-llm-gateway` to save it; otherwise
+remove the stale env var from your shell or Keychain setup. If the gateway
+reports multiple keys on the
 account, confirm the active masked key in status, verify pi works with the
 current key, then prune older unused keys in the gateway UI.

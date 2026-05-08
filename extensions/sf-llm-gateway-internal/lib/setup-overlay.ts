@@ -28,10 +28,16 @@ import { GatewayConfigPanelComponent } from "./config-panel.ts";
 // Types (preserved for backward compatibility with the extension entry point)
 // -------------------------------------------------------------------------------------------------
 
-export type SetupOverlayAction = "save-enable" | "save" | "disable";
+export type SetupOverlayAction =
+  | "open-token"
+  | "import-claude"
+  | "save-enable"
+  | "save"
+  | "disable";
 
 export type SetupOverlayResult = {
   action: SetupOverlayAction;
+  baseUrl?: string;
 };
 
 export type SetupOverlayState = {
@@ -140,6 +146,19 @@ export class GatewaySetupOverlayComponent implements Focusable {
           this.done(undefined);
           return;
         }
+        const gatewayResult = panelResult as ConfigPanelResult & {
+          gatewayAction?: SetupOverlayAction;
+          baseUrl?: string;
+        };
+        if (gatewayResult.gatewayAction === "open-token") {
+          this.done({ action: "open-token", baseUrl: gatewayResult.baseUrl });
+          return;
+        }
+        if (gatewayResult.gatewayAction === "import-claude") {
+          this.done({ action: "import-claude" });
+          return;
+        }
+
         // The config panel already wrote the saved config to disk. We only
         // need to tell the caller which high-level action to run next.
         // needsReload means the panel changed the enabled bit (save+enable or
@@ -153,6 +172,7 @@ export class GatewaySetupOverlayComponent implements Focusable {
         const saved = readGatewaySavedConfig(configPath);
         this.done({ action: saved.enabled === false ? "disable" : "save-enable" });
       },
+      { externalActions: true },
     );
   }
 
@@ -176,7 +196,7 @@ export class GatewaySetupOverlayComponent implements Focusable {
     lines.push(theme.fg("border", `╭${"─".repeat(innerWidth)}╮`));
 
     // Title
-    lines.push(row(` ${theme.fg("accent", theme.bold("SF LLM Gateway Internal Setup"))}`));
+    lines.push(row(` ${theme.fg("accent", theme.bold("SF LLM Gateway Setup"))}`));
 
     // Delegate content to panel
     this.panel.focused = this.focused;

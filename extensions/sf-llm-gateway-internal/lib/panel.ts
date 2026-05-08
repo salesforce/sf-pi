@@ -35,8 +35,9 @@ export async function openGatewayPanel(
   options: GatewayPanelOptions,
 ): Promise<GatewayPanelAction | null> {
   return openCommandPanel(ctx, {
-    title: "⚡ SF LLM Gateway Internal — status & controls",
-    subtitle: "Configure provider scope, discover models, and inspect gateway health.",
+    title: "⚡ SF LLM Gateway — status & controls",
+    subtitle:
+      "Configure provider scope, import tokens, discover models, and inspect gateway health.",
     statusLines: () =>
       buildGatewayPanelStatusLines(
         ctx,

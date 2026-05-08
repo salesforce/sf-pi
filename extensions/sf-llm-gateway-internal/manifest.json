@@ -5,7 +5,7 @@
   "category": "provider",
   "defaultEnabled": true,
   "configurable": true,
-  "commands": ["/sf-llm-gateway-internal"],
+  "commands": ["/sf-llm-gateway", "/sf-llm-gateway-internal"],
   "providers": ["sf-llm-gateway-internal"],
   "events": [
     "session_start",

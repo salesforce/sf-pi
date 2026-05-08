@@ -188,6 +188,7 @@ Every slash command exposed by a bundled extension. See each extension README fo
 | `/sf-lsp`                  | [SF LSP](./extensions/sf-lsp/)                                   | core     |
 | `/sf-pi`                   | [SF Pi Manager](./extensions/sf-pi-manager/)                     | core     |
 | `/sf-slack`                | [SF Slack](./extensions/sf-slack/)                               | core     |
+| `/sf-llm-gateway`          | [SF LLM Gateway Internal](./extensions/sf-llm-gateway-internal/) | provider |
 | `/sf-llm-gateway-internal` | [SF LLM Gateway Internal](./extensions/sf-llm-gateway-internal/) | provider |
 | `/sf-devbar`               | [SF DevBar](./extensions/sf-devbar/)                             | ui       |
 | `/sf-org`                  | [SF DevBar](./extensions/sf-devbar/)                             | ui       |
@@ -355,40 +356,46 @@ For the canonical machine-readable bundle list, see [`catalog/index.json`](./cat
 > Salesforce-internal gateway endpoint and is not usable by external
 > developers. If you are not on the Salesforce corporate network, disable
 > it with `/sf-pi disable sf-llm-gateway-internal` or supply your own
-> OpenAI-compatible gateway with `/sf-llm-gateway-internal setup`.
+> OpenAI-compatible gateway with `/sf-llm-gateway`.
 
 ## SF LLM Gateway Internal Quick Start
 
 The normal setup path is inside pi. Run the built-in setup wizard and paste your
 organization's gateway root URL plus API key:
 
-Run `/sf-llm-gateway-internal` with no args for the grouped Pi-native panel.
+Run `/sf-llm-gateway` with no args to open the setup/settings page. From there
+you can enter the gateway root URL, paste a token, open the gateway in your
+browser to create a token, or import a cleansed URL/token from local Claude Code
+settings. `/sf-llm-gateway-internal` remains as a backward-compatible status and
+controls alias.
+
 For headless or copy-paste use, the canonical subcommands are:
 
 ```text
 # Setup
-/sf-llm-gateway-internal setup               # Single overlay setup form
-/login                                       # Rotate only the saved API key
-/sf-llm-gateway-internal on                  # Enable provider + set default model
-/sf-llm-gateway-internal off                 # Disable provider + restore previous default
-/sf-llm-gateway-internal set-default         # Set the scoped default model
+/sf-llm-gateway setup                        # Single overlay setup form
+/sf-llm-gateway open-token                   # Open gateway root in browser for token creation
+/sf-llm-gateway import-claude                # Import cleansed URL + token from Claude Code settings
+/sf-llm-gateway on                           # Enable provider + set default model
+/sf-llm-gateway off                          # Disable provider + restore previous default
+/sf-llm-gateway set-default                  # Set the scoped default model
 
 # Discovery & diagnostics
-/sf-llm-gateway-internal refresh             # Re-discover models + refresh budget
-/sf-llm-gateway-internal models              # List discovered gateway models
-/sf-llm-gateway-internal doctor              # Diagnose gateway connectivity + scope drift
-/sf-llm-gateway-internal usage-probe         # Force a read-only key/user spend probe
-/sf-llm-gateway-internal debug <model>       # Inspect transformed upstream payload
+/sf-llm-gateway refresh                      # Re-discover models + refresh budget
+/sf-llm-gateway models                       # List discovered gateway models
+/sf-llm-gateway doctor                       # Diagnose gateway connectivity + scope drift
+/sf-llm-gateway usage-probe                  # Force a read-only key/user spend probe
+/sf-llm-gateway debug <model>                # Inspect transformed upstream payload
 
 # Utilities
-/sf-llm-gateway-internal tokens              # Count prompt tokens + zero-cost note for current model
-/sf-llm-gateway-internal onboard             # Print SSO onboarding link / paste-token instructions
-/sf-llm-gateway-internal beta                # Show beta header state
-/sf-llm-gateway-internal beta context-1m off # Toggle a beta header
+/sf-llm-gateway tokens                       # Count prompt tokens + zero-cost note for current model
+/sf-llm-gateway onboard                      # Print SSO onboarding link / paste-token instructions
+/sf-llm-gateway beta                         # Show beta header state
+/sf-llm-gateway beta context-1m off          # Toggle a beta header
 
 # Reference
-/sf-llm-gateway-internal status              # Full text status report
-/sf-llm-gateway-internal help                # Command reference
+/sf-llm-gateway status                       # Full text status report
+/sf-llm-gateway help                         # Command reference
 ```
 
 See the extension's [Command Surface](./extensions/sf-llm-gateway-internal/#command-surface)
@@ -528,6 +535,8 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 **[SF Data 360](./extensions/sf-data360/#troubleshooting)**
 
 - A simple DMO list returns too much data
+- Metadata search fails but DMO/DLO lists work
+- Connector detail returns `NOT_FOUND`
 - `/skill:sf-data360` is missing
 - A mutating call is blocked in headless mode
 - The wrong API version appears in my path

@@ -26,6 +26,8 @@ export type GatewayCommandId =
   | "usage-probe"
   | "tokens"
   | "onboard"
+  | "open-token"
+  | "import-claude"
   | "debug"
   | "beta"
   | "help";
@@ -144,6 +146,25 @@ export const GATEWAY_COMMAND_SURFACE: readonly GatewayCommandSurfaceItem[] = [
     usage: "onboard",
     description: "Print the stable gateway root URL for browser sign-in and key creation.",
     section: "Utilities",
+  },
+  {
+    id: "open-token",
+    label: "Open token page",
+    usage: "open-token",
+    description:
+      "Open the configured gateway root in a browser so you can sign in and create a token.",
+    section: "Setup",
+    aliases: ["open", "browser"],
+  },
+  {
+    id: "import-claude",
+    label: "Import from Claude Code",
+    usage: "import-claude [global|project]",
+    description:
+      "Import a cleansed gateway base URL and API token from local Claude Code settings.",
+    section: "Setup",
+    aliases: ["import-claude-code"],
+    acceptsScope: true,
   },
   {
     id: "beta",

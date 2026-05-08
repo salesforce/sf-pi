@@ -29,6 +29,12 @@ describe("gateway command surface", () => {
   it("completes commands that previously drifted out of the autocomplete list", () => {
     expect(getGatewayArgumentCompletions("tok")?.map((item) => item.value)).toContain("tokens");
     expect(getGatewayArgumentCompletions("onb")?.map((item) => item.value)).toContain("onboard");
+    expect(getGatewayArgumentCompletions("open")?.map((item) => item.value)).toContain(
+      "open-token",
+    );
+    expect(getGatewayArgumentCompletions("imp")?.map((item) => item.value)).toContain(
+      "import-claude",
+    );
   });
 
   it("completes beta aliases after a trailing space", () => {

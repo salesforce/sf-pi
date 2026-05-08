@@ -80,7 +80,7 @@ _Slack integration — search messages, read threads, browse channel history_
 _Salesforce LLM Gateway provider with model discovery_
 
 - Default: **on**
-- Commands: `/sf-llm-gateway-internal`
+- Commands: `/sf-llm-gateway`, `/sf-llm-gateway-internal`
 - Providers: `sf-llm-gateway-internal`
 
 ## Ui

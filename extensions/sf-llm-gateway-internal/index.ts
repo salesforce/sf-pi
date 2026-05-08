@@ -104,6 +104,7 @@ import type {
 import {
   PROVIDER_NAME,
   COMMAND_NAME,
+  FRIENDLY_COMMAND_NAME,
   STATUS_KEY,
   ENABLED_MODEL_PATTERN,
   BASE_URL_ENV,
@@ -189,6 +190,11 @@ import { fetchTransformReport, formatTransformReport, type TransformProbe } from
 import { fetchGatewayDoctorReport, formatGatewayDoctorReport } from "./lib/doctor.ts";
 import { countTokens, estimateSpend, formatTokenReport } from "./lib/token-counter.ts";
 import { buildOnboardingUrl } from "./lib/onboarding.ts";
+import { openUrlInBrowser } from "./lib/open-url.ts";
+import {
+  readClaudeCodeGatewayConfig,
+  getClaudeCodeSettingsPath,
+} from "./lib/claude-code-import.ts";
 import {
   getGatewayArgumentCompletions,
   formatGatewayAliasReference,
@@ -231,6 +237,8 @@ type CommandArgs = {
     | "usage-probe"
     | "tokens"
     | "onboard"
+    | "open-token"
+    | "import-claude"
     | "on"
     | "off"
     | "setup";
@@ -329,8 +337,16 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
   };
   pi.registerMessageRenderer(PROVIDER_NAME, renderGatewayMessage);
 
+  pi.registerCommand(FRIENDLY_COMMAND_NAME, {
+    description: "SF LLM Gateway setup, token import, diagnostics, and utilities",
+    getArgumentCompletions: getGatewayArgumentCompletions,
+    handler: async (args, ctx) => {
+      await handleCommand(pi, args.trim() ? args : "setup", ctx);
+    },
+  });
+
   pi.registerCommand(COMMAND_NAME, {
-    description: "SF LLM Gateway provider status, setup, diagnostics, and utilities",
+    description: `Backward-compatible alias for /${FRIENDLY_COMMAND_NAME}`,
     getArgumentCompletions: getGatewayArgumentCompletions,
     handler: async (args, ctx) => {
       await handleCommand(pi, args, ctx);
@@ -489,6 +505,10 @@ async function handleCommand(
       return handleTokensCommand(pi, ctx, parsed.positional ?? []);
     case "onboard":
       return handleOnboardCommand(pi, ctx);
+    case "open-token":
+      return handleOpenTokenCommand(pi, ctx);
+    case "import-claude":
+      return handleImportClaudeCommand(pi, ctx, parsed.scope);
     case "beta":
       return handleBetaCommandImpl(pi, ctx, parsed.betaArgs ?? [], (summary, details, level) =>
         emitCommandOutput(pi, ctx, summary, details, level),
@@ -551,6 +571,10 @@ async function handlePanelAction(
       return handleTokensCommand(pi, ctx, [getPanelDefaultModelId(ctx)]);
     case "onboard":
       return handleOnboardCommand(pi, ctx);
+    case "open-token":
+      return handleOpenTokenCommand(pi, ctx);
+    case "import-claude":
+      return handleImportClaudeCommand(pi, ctx, scope);
     case "beta":
       return handleBetaCommandImpl(pi, ctx, [], (summary, details, level) =>
         emitCommandOutput(pi, ctx, summary, details, level),
@@ -623,7 +647,7 @@ async function handleDoctorCommand(pi: ExtensionAPI, ctx: ExtensionCommandContex
         "",
         detail,
         "",
-        "Try /sf-llm-gateway-internal status. If authentication is failing, run /login and paste a new gateway API key.",
+        `Try /${FRIENDLY_COMMAND_NAME} status. If authentication is failing, open /${FRIENDLY_COMMAND_NAME} and paste a new gateway API key.`,
       ].join("\n"),
       "error",
     );
@@ -711,7 +735,7 @@ async function handleOnboardCommand(pi: ExtensionAPI, ctx: ExtensionCommandConte
       ctx,
       "SF LLM Gateway Internal onboard — base URL is not configured.",
       [
-        `Run /${COMMAND_NAME} setup to enter the gateway base URL first, then rerun this command.`,
+        `Run /${FRIENDLY_COMMAND_NAME} setup to enter the gateway base URL first, then rerun this command.`,
         `Env-var fallback for automation: ${BASE_URL_ENV}.`,
       ].join("\n"),
       "warning",
@@ -728,12 +752,137 @@ async function handleOnboardCommand(pi: ExtensionAPI, ctx: ExtensionCommandConte
     "1. Sign in through the gateway UI.",
     "2. Open the key-management / API-key area from the gateway UI.",
     "3. Create or rotate a key, then copy the value.",
-    `4. Paste into pi's /login (or \`/${COMMAND_NAME} setup\`) to save it.`,
+    `4. Paste into pi's settings page (\`/${FRIENDLY_COMMAND_NAME}\`) to save it.`,
     "",
     "Note: this command intentionally avoids deployment-specific OAuth/UI deep links because those routes can reject direct browser navigation.",
   ].join("\n");
 
   await emitCommandOutput(pi, ctx, "SF LLM Gateway Internal onboarding link.", report, "info");
+}
+
+async function handleOpenTokenCommand(
+  pi: ExtensionAPI,
+  ctx: ExtensionCommandContext,
+): Promise<void> {
+  await openGatewayTokenPage(pi, ctx);
+}
+
+async function openGatewayTokenPage(
+  pi: ExtensionAPI,
+  ctx: ExtensionCommandContext,
+  baseUrlOverride?: string,
+): Promise<void> {
+  const config = getGatewayConfig(ctx.cwd);
+  const url = buildOnboardingUrl(baseUrlOverride ?? config.baseUrl);
+  if (!url) {
+    await emitCommandOutput(
+      pi,
+      ctx,
+      "SF LLM Gateway token page — base URL is not configured.",
+      [
+        `Enter the gateway base URL in /${FRIENDLY_COMMAND_NAME} first, then choose Open token page.`,
+        `Env-var fallback for automation: ${BASE_URL_ENV}.`,
+      ].join("\n"),
+      "warning",
+    );
+    return;
+  }
+
+  const result = openUrlInBrowser(url);
+  const browserErrorLines = result.ok ? [] : ["", `Browser opener error: ${result.error}`];
+  const report = [
+    result.ok
+      ? "Opened the gateway root in your browser."
+      : "Could not open a browser automatically.",
+    "",
+    url,
+    "",
+    "After sign-in, create or rotate an API token, copy it, then paste it into the setup page.",
+    ...browserErrorLines,
+  ].join("\n");
+
+  await emitCommandOutput(
+    pi,
+    ctx,
+    result.ok ? "SF LLM Gateway token page opened." : "SF LLM Gateway token page URL.",
+    report,
+    result.ok ? "info" : "warning",
+  );
+}
+
+async function handleImportClaudeCommand(
+  pi: ExtensionAPI,
+  ctx: ExtensionCommandContext,
+  scope: "global" | "project",
+): Promise<void> {
+  await importClaudeCodeGatewayConfig(pi, ctx, scope);
+}
+
+async function importClaudeCodeGatewayConfig(
+  pi: ExtensionAPI,
+  ctx: ExtensionCommandContext,
+  scope: "global" | "project",
+): Promise<void> {
+  const settingsPath = getClaudeCodeSettingsPath();
+  const imported = readClaudeCodeGatewayConfig(settingsPath);
+  if (!imported.ok) {
+    await emitCommandOutput(
+      pi,
+      ctx,
+      "Claude Code gateway import did not find reusable settings.",
+      [
+        `Claude Code settings: ${settingsPath}`,
+        imported.reason,
+        ...imported.warnings.map((warning) => `Warning: ${warning}`),
+      ].join("\n"),
+      "warning",
+    );
+    return;
+  }
+
+  const configPath =
+    scope === "project" ? projectGatewayConfigPath(ctx.cwd) : globalGatewayConfigPath();
+  const saved = readGatewaySavedConfig(configPath);
+  const changed: string[] = [];
+
+  if (imported.baseUrl) {
+    saved.baseUrl = imported.baseUrl;
+    changed.push(`Base URL from ${imported.baseUrlPath ?? "Claude Code settings"}`);
+  }
+  if (imported.apiKey) {
+    saved.apiKey = imported.apiKey;
+    changed.push(`API key from ${imported.apiKeyPath ?? "Claude Code settings"}`);
+  }
+
+  if (changed.length === 0) {
+    await emitCommandOutput(
+      pi,
+      ctx,
+      "Claude Code gateway import found nothing to save.",
+      `Claude Code settings: ${settingsPath}`,
+      "warning",
+    );
+    return;
+  }
+
+  writeGatewaySavedConfig(configPath, saved);
+  await discoverAndRegister(pi, getBetaOverrides(), getBetaExtras(), ctx.cwd);
+  await updateFooterStatus(ctx, false);
+  const config = getGatewayConfig(ctx.cwd);
+
+  const report = [
+    `Imported Claude Code gateway settings into ${scope} scope.`,
+    `- Claude Code settings: ${settingsPath}`,
+    `- Save file: ${configPath}`,
+    `- Imported: ${changed.join(", ")}`,
+    `- Base URL: ${describeConfigValue(config.baseUrl, config.baseUrlSource)}`,
+    `- API key: ${describeApiKey(config.apiKey, config.apiKeySource)}`,
+    "",
+    `Next: run /${FRIENDLY_COMMAND_NAME} and choose Save + enable, or run /${FRIENDLY_COMMAND_NAME} on ${scope}.`,
+    ...imported.warnings.map((warning) => `Warning: ${warning}`),
+  ].join("\n");
+
+  await emitCommandOutput(pi, ctx, "Claude Code gateway settings imported.", report, "info");
 }
 
 async function handleTokensCommand(
@@ -747,11 +896,11 @@ async function handleTokensCommand(
       ctx,
       "SF LLM Gateway Internal tokens — missing model id.",
       [
-        `Usage: /${COMMAND_NAME} tokens <modelId> [prompt words here]`,
+        `Usage: /${FRIENDLY_COMMAND_NAME} tokens <modelId> [prompt words here]`,
         "",
         "Examples:",
-        `  /${COMMAND_NAME} tokens gpt-5 Hello world how are you today`,
-        `  /${COMMAND_NAME} tokens claude-opus-4-7`,
+        `  /${FRIENDLY_COMMAND_NAME} tokens gpt-5 Hello world how are you today`,
+        `  /${FRIENDLY_COMMAND_NAME} tokens claude-opus-4-7`,
       ].join("\n"),
       "warning",
     );
@@ -760,13 +909,13 @@ async function handleTokensCommand(
 
   const [modelId, ...promptTokens] = args;
   if (!modelId) {
-    ctx.ui.notify(`Usage: /${COMMAND_NAME} tokens <modelId> [prompt]`, "warning");
+    ctx.ui.notify(`Usage: /${FRIENDLY_COMMAND_NAME} tokens <modelId> [prompt]`, "warning");
     return;
   }
   const prompt =
     promptTokens.length > 0
       ? promptTokens.join(" ")
-      : "Hello world — sanity probe from /sf-llm-gateway-internal tokens.";
+      : `Hello world — sanity probe from /${FRIENDLY_COMMAND_NAME} tokens.`;
 
   const [tokensResult, spendResult] = await Promise.all([
     countTokens(ctx.cwd, { model: modelId, prompt }),
@@ -807,12 +956,12 @@ async function handleDebugCommand(
       ctx,
       "SF LLM Gateway Internal debug — missing model id.",
       [
-        `Usage: /${COMMAND_NAME} debug <modelId> [reasoning=<level>] [tool] [adaptive]`,
+        `Usage: /${FRIENDLY_COMMAND_NAME} debug <modelId> [reasoning=<level>] [tool] [adaptive]`,
         "",
         "Examples:",
-        `  /${COMMAND_NAME} debug claude-opus-4-7 adaptive reasoning=xhigh`,
-        `  /${COMMAND_NAME} debug gpt-5 reasoning=high`,
-        `  /${COMMAND_NAME} debug gpt-5.3-codex reasoning=medium tool`,
+        `  /${FRIENDLY_COMMAND_NAME} debug claude-opus-4-7 adaptive reasoning=xhigh`,
+        `  /${FRIENDLY_COMMAND_NAME} debug gpt-5 reasoning=high`,
+        `  /${FRIENDLY_COMMAND_NAME} debug gpt-5.3-codex reasoning=medium tool`,
       ].join("\n"),
       "warning",
     );
@@ -825,7 +974,7 @@ async function handleDebugCommand(
     // narrows the destructured `modelId` from `string | undefined` to `string`
     // without needing a non-null assertion.
     ctx.ui.notify(
-      `Usage: /${COMMAND_NAME} debug <modelId> [reasoning=<level>] [tool] [adaptive]`,
+      `Usage: /${FRIENDLY_COMMAND_NAME} debug <modelId> [reasoning=<level>] [tool] [adaptive]`,
       "warning",
     );
     return;
@@ -911,9 +1060,10 @@ async function handleSetDefaultCommand(
 
 async function handleHelpCommand(pi: ExtensionAPI, ctx: ExtensionCommandContext): Promise<void> {
   const help = [
-    `/${COMMAND_NAME} with no args opens the interactive status & controls panel.`,
+    `/${FRIENDLY_COMMAND_NAME} with no args opens the setup/settings page.`,
+    `/${COMMAND_NAME} remains as a backward-compatible status/controls alias.`,
     "",
-    ...formatGatewayCommandReference(COMMAND_NAME),
+    ...formatGatewayCommandReference(FRIENDLY_COMMAND_NAME),
     "",
     ...formatGatewayAliasReference(),
     "",
@@ -923,7 +1073,7 @@ async function handleHelpCommand(pi: ExtensionAPI, ctx: ExtensionCommandContext)
     "Built-in default base URL: (none — set via setup wizard)",
     `Automation fallback env vars (used only when saved config is blank): ${BASE_URL_ENV}, ${API_KEY_ENV}`,
     `Optional env: ${BETAS_ENV} (comma-separated Anthropic betas; unset = model defaults)`,
-    `Setup also supports additive vs exclusive scoped model behavior.`,
+    `Setup also supports browser token generation, Claude Code import, and additive vs exclusive scoped model behavior.`,
     `Beta command accepts either a known alias or a raw Anthropic beta value.`,
     `Saved config file: ${globalGatewayConfigPath()} or ${projectGatewayConfigPath(process.cwd())}`,
     `Disable fallback default: ${OFF_DEFAULT_PROVIDER}/${OFF_DEFAULT_MODEL_ID}`,
@@ -993,6 +1143,12 @@ export function parseCommandArgs(args: string): CommandArgs {
   }
   if (sub === "onboard") {
     return { subcommand: "onboard", scope };
+  }
+  if (sub === "open-token" || sub === "open" || sub === "browser") {
+    return { subcommand: "open-token", scope };
+  }
+  if (sub === "import-claude" || sub === "import-claude-code") {
+    return { subcommand: "import-claude", scope };
   }
   return { subcommand: "status", scope };
 }
@@ -1088,56 +1244,69 @@ async function runSetupWizard(
       pi,
       ctx,
       "Interactive setup needs Pi UI.",
-      `Run /${COMMAND_NAME} on ${scope} to enable with prompts, or edit ${globalGatewayConfigPath()} manually.`,
+      `Run /${FRIENDLY_COMMAND_NAME} on ${scope} to enable with prompts, or edit ${globalGatewayConfigPath()} manually.`,
       "warning",
     );
     return;
   }
 
-  const result = await ctx.ui.custom<SetupOverlayResult | undefined>(
-    (_tui, theme, _keybindings, done) =>
-      new GatewaySetupOverlayComponent(theme, scope, ctx.cwd, done),
-    {
-      overlay: true,
-      // Use function form for responsive sizing on terminal resize
-      overlayOptions: () => ({
-        anchor: "center" as const,
-        width: "78%",
-        minWidth: 78,
-      }),
-    },
-  );
+  while (true) {
+    const result = await ctx.ui.custom<SetupOverlayResult | undefined>(
+      (_tui, theme, _keybindings, done) =>
+        new GatewaySetupOverlayComponent(theme, scope, ctx.cwd, done),
+      {
+        overlay: true,
+        // Use function form for responsive sizing on terminal resize
+        overlayOptions: () => ({
+          anchor: "center" as const,
+          width: "82%",
+          minWidth: 84,
+        }),
+      },
+    );
 
-  if (!result) {
+    if (!result) {
+      return;
+    }
+
+    if (result.action === "open-token") {
+      await openGatewayTokenPage(pi, ctx, result.baseUrl);
+      continue;
+    }
+
+    if (result.action === "import-claude") {
+      await importClaudeCodeGatewayConfig(pi, ctx, scope);
+      continue;
+    }
+
+    // The config panel wrote the saved config to disk before returning; no
+    // second write is needed here. We only dispatch on the action.
+    if (result.action === "save-enable") {
+      await enableGateway(pi, ctx, scope, false);
+      return;
+    }
+
+    if (result.action === "disable") {
+      await disableGateway(pi, ctx, scope);
+      return;
+    }
+
+    const config = getGatewayConfig(ctx.cwd);
+    await discoverAndRegister(pi, getBetaOverrides(), getBetaExtras(), ctx.cwd);
+    await updateFooterStatus(ctx, false);
+
+    const report = [
+      `Saved ${scope} gateway fallback settings.`,
+      `- Base URL: ${describeConfigValue(config.baseUrl, config.baseUrlSource)}`,
+      `- API key: ${describeApiKey(config.apiKey, config.apiKeySource)}`,
+      `- Scoped model mode: ${config.exclusiveScope ? "exclusive" : "additive"}`,
+      `- Effective enabled: ${config.enabled ? "yes" : "no"}`,
+      `- Save file: ${scope === "project" ? projectGatewayConfigPath(ctx.cwd) : globalGatewayConfigPath()}`,
+    ].join("\n");
+
+    await emitCommandOutput(pi, ctx, "SF LLM Gateway Internal setup saved.", report, "info");
     return;
   }
-
-  // The config panel wrote the saved config to disk before returning; no
-  // second write is needed here. We only dispatch on the action.
-  if (result.action === "save-enable") {
-    await enableGateway(pi, ctx, scope, false);
-    return;
-  }
-
-  if (result.action === "disable") {
-    await disableGateway(pi, ctx, scope);
-    return;
-  }
-
-  const config = getGatewayConfig(ctx.cwd);
-  await discoverAndRegister(pi, getBetaOverrides(), getBetaExtras(), ctx.cwd);
-  await updateFooterStatus(ctx, false);
-
-  const report = [
-    `Saved ${scope} gateway fallback settings.`,
-    `- Base URL: ${describeConfigValue(config.baseUrl, config.baseUrlSource)}`,
-    `- API key: ${describeApiKey(config.apiKey, config.apiKeySource)}`,
-    `- Scoped model mode: ${config.exclusiveScope ? "exclusive" : "additive"}`,
-    `- Effective enabled: ${config.enabled ? "yes" : "no"}`,
-    `- Save file: ${scope === "project" ? projectGatewayConfigPath(ctx.cwd) : globalGatewayConfigPath()}`,
-  ].join("\n");
-
-  await emitCommandOutput(pi, ctx, "SF LLM Gateway Internal setup saved.", report, "info");
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -1192,7 +1361,7 @@ async function enableGateway(
       [
         `Base URL: ${describeConfigValue(config.baseUrl, config.baseUrlSource)}`,
         `API key: ${describeApiKey(config.apiKey, config.apiKeySource)}`,
-        `Use /${COMMAND_NAME} setup ${scope} or set ${BASE_URL_ENV} / ${API_KEY_ENV}.`,
+        `Use /${FRIENDLY_COMMAND_NAME} setup ${scope} or set ${BASE_URL_ENV} / ${API_KEY_ENV}.`,
       ].join("\n"),
       "warning",
     );
@@ -1314,7 +1483,7 @@ async function ensureGatewayCredentialsConfigured(
       pi,
       ctx,
       "SF LLM Gateway Internal needs configuration.",
-      `Set ${API_KEY_ENV}, or run /${COMMAND_NAME} setup ${scope} in interactive Pi. Use ${BASE_URL_ENV} only if you need to override the built-in default.`,
+      `Set ${API_KEY_ENV}, or run /${FRIENDLY_COMMAND_NAME} setup ${scope} in interactive Pi. Use ${BASE_URL_ENV} only if you need to override the built-in default.`,
       "warning",
     );
     return false;

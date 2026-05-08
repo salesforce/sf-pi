@@ -83,7 +83,7 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
     file: "extensions/sf-llm-gateway-internal/index.ts",
     category: "provider",
     defaultEnabled: true,
-    commands: ["/sf-llm-gateway-internal"],
+    commands: ["/sf-llm-gateway","/sf-llm-gateway-internal"],
     providers: ["sf-llm-gateway-internal"],
     events: ["session_start","turn_end","model_select","after_provider_response","session_shutdown"],
     configurable: true,
