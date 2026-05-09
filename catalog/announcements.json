@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.55.7-2026-05-09",
-  "latestVersion": "0.55.7",
+  "revision": "release-0.55.8-2026-05-09",
+  "latestVersion": "0.55.8",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.55.7",
+      "id": "release-0.55.8",
       "kind": "update",
-      "title": "sf-pi v0.55.7 — panel: close-row dismisses panel; toggle.lifecycle closes before reload",
+      "title": "sf-pi v0.55.8 — panel: consistency for /sf-org and /sf-fonts; harden panel against silent hangs",
       "publishedAt": "2026-05-09T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.55.7",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.55.8",
       "severity": "info",
-      "body": "panel: close-row dismisses panel; toggle.lifecycle closes before reload"
+      "body": "panel: consistency for /sf-org and /sf-fonts; harden panel against silent hangs"
     },
     {
       "id": "pi-0.73-required",
