@@ -15,24 +15,32 @@
  *
  * Behavior matrix:
  *
- *   Event/Trigger       | Result
- *   --------------------|--------------------------------------------------
- *   extension load      | Register d360_api, d360_metadata, d360_probe, and /sf-data360
- *   resources_discover  | Contribute ./skills so sf-data360 skill is visible
- *   /sf-data360         | Show status/help
- *   d360_api dry_run    | Resolve path/org/safety without calling Salesforce
- *   d360_api read       | Call Data 360 REST endpoint via sf api request rest
- *   d360_api mutating   | Confirm dangerous calls according to safety policy
+ *   Event/Trigger          | Result
+ *   -----------------------|-----------------------------------------------------------
+ *   extension load         | Register d360_api, d360_metadata, d360_probe, and /sf-data360
+ *   resources_discover     | Contribute ./skills so sf-data360 skill is visible
+ *   /sf-data360 (no args)  | Open standardized command panel (status/help/close)
+ *   /sf-data360 status     | Print enablement, tools, target org, and API version
+ *   /sf-data360 help       | Print command usage
+ *   d360_api dry_run       | Resolve path/org/safety without calling Salesforce
+ *   d360_api read          | Call Data 360 REST endpoint via sf api request rest
+ *   d360_api mutating      | Confirm dangerous calls according to safety policy
  */
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import type { ExtensionAPI, ExtensionCommandContext } from "@mariozechner/pi-coding-agent";
 
+import {
+  type CommandPanelAction,
+  type CommandPanelState,
+  openCommandPanel,
+} from "../../lib/common/command-panel.ts";
 import { buildExecFn } from "../../lib/common/exec-adapter.ts";
 import {
   getCachedSfEnvironment,
   getSharedSfEnvironment,
 } from "../../lib/common/sf-environment/shared-runtime.ts";
+import type { SfEnvironment } from "../../lib/common/sf-environment/types.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 import { isSfPiExtensionEnabled } from "../../lib/common/sf-pi-extension-state.ts";
 import { D360_TOOL_NAME, registerD360ApiTool } from "./lib/api-tool.ts";
@@ -79,53 +87,143 @@ export default function sfData360(pi: ExtensionAPI) {
   });
 }
 
+// Action ids for the /sf-data360 settings panel. Mirrors the pattern used by
+// sf-slack, sf-agentscript-assist, sf-guardrail, sf-llm-gateway-internal,
+// etc. so users get the same standardized command-panel UX everywhere.
+type SfData360Action = "status" | "help" | "close";
+
+const SF_DATA360_ACTIONS: CommandPanelAction<SfData360Action>[] = [
+  {
+    value: "status",
+    label: "Show status",
+    description:
+      "Print enablement, registered tools, target org, and API version for the current cwd.",
+    group: "Diagnostics",
+  },
+  {
+    value: "help",
+    label: "Show help",
+    description: "Print command usage and the recommended Data 360 workflow.",
+    group: "Reference",
+  },
+  {
+    value: "close",
+    label: "Close",
+    description: "Dismiss this panel.",
+    group: "Reference",
+  },
+];
+
 async function handleCommand(
   pi: ExtensionAPI,
   ctx: ExtensionCommandContext,
   args: string,
 ): Promise<void> {
-  const enabled = isSfPiExtensionEnabled(ctx.cwd, "sf-data360");
-  const subcommand = args.trim().split(/\s+/)[0] || "status";
-  if (subcommand === "help") {
-    showInfo(ctx, buildHelpText(enabled));
+  const subcommand = args.trim().split(/\s+/)[0] ?? "";
+
+  // Empty command + interactive UI → open the standardized settings panel.
+  // Other subcommands stay as text-only output for headless callers and for
+  // users who already know the action they want.
+  if (subcommand === "" && ctx.hasUI) {
+    await handleSfData360Panel(pi, ctx);
     return;
   }
 
-  if (subcommand !== "status") {
-    showInfo(
-      ctx,
-      `Unknown /${COMMAND_NAME} subcommand: ${subcommand}\n\n${buildHelpText(enabled)}`,
-    );
-    return;
-  }
-
-  const exec = buildExecFn(pi);
-  const env = getCachedSfEnvironment(ctx.cwd) ?? (await getSharedSfEnvironment(exec, ctx.cwd));
-  showInfo(
+  await handleSfData360Action(
+    pi,
     ctx,
-    [
-      "SF Data 360 — status",
-      "",
-      `Enabled: ${enabled ? "yes (default)" : "no (re-enable with /sf-pi enable sf-data360)"}`,
-      `Tools: ${enabled ? `${D360_TOOL_NAME}, ${D360_METADATA_TOOL_NAME}, ${D360_PROBE_TOOL_NAME}` : "not registered"}`,
-      `Skill: ${enabled ? "sf-data360" : "not registered"} (extension-owned)`,
-      `SF CLI: ${env.cli.installed ? (env.cli.version ?? "installed") : "not installed"}`,
-      `Target org: ${env.config.targetOrg ?? "not configured"}`,
-      `Org type: ${env.org.orgType}`,
-      `API version: ${env.org.apiVersion ?? env.project.sourceApiVersion ?? "66.0"}`,
-      "",
-      "Use /skill:sf-data360 for workflow guidance, or call d360_api directly.",
-    ].join("\n"),
+    subcommand === "" ? "status" : (subcommand as SfData360Action | string),
+    false,
   );
 }
 
-function showInfo(ctx: ExtensionCommandContext, text: string): void {
+async function handleSfData360Panel(pi: ExtensionAPI, ctx: ExtensionCommandContext): Promise<void> {
+  const panelState: CommandPanelState<SfData360Action> = {};
+  await openCommandPanel(ctx, {
+    title: "☁️  SF Data 360 — status & controls",
+    subtitle: "Inspect the Data 360 REST helper and review the recommended workflow.",
+    statusLines: () => buildPanelStatusLines(ctx),
+    actions: SF_DATA360_ACTIONS,
+    closeValue: "close",
+    state: panelState,
+    onAction: (action) => handleSfData360Action(pi, ctx, action, true),
+  });
+}
+
+async function handleSfData360Action(
+  pi: ExtensionAPI,
+  ctx: ExtensionCommandContext,
+  action: SfData360Action | string,
+  fromPanel: boolean,
+): Promise<void> {
+  const enabled = isSfPiExtensionEnabled(ctx.cwd, "sf-data360");
+
+  if (action === "close") return;
+
+  if (action === "help") {
+    showInfo(ctx, buildHelpText(enabled), fromPanel);
+    return;
+  }
+
+  if (action === "status") {
+    const exec = buildExecFn(pi);
+    const env = getCachedSfEnvironment(ctx.cwd) ?? (await getSharedSfEnvironment(exec, ctx.cwd));
+    showInfo(ctx, buildStatusText(enabled, env), fromPanel);
+    return;
+  }
+
+  // Unknown subcommand from a headless invocation. From the panel this is
+  // unreachable because action is constrained to SfData360Action.
+  showInfo(
+    ctx,
+    `Unknown /${COMMAND_NAME} subcommand: ${action}\n\n${buildHelpText(enabled)}`,
+    fromPanel,
+  );
+}
+
+// Build the compact status block shown at the top of the settings panel.
+// We deliberately use the cached environment (no fresh sf calls) here so
+// opening the panel never blocks on the network. The full "status" action
+// re-resolves the environment when the user explicitly asks for it.
+function buildPanelStatusLines(ctx: ExtensionCommandContext): string[] {
+  const enabled = isSfPiExtensionEnabled(ctx.cwd, "sf-data360");
+  const env = getCachedSfEnvironment(ctx.cwd);
+  return [
+    `${enabled ? "✓" : "✗"} Extension     ${enabled ? "enabled" : "disabled (use /sf-pi enable sf-data360)"}`,
+    `• Tools         ${enabled ? `${D360_TOOL_NAME}, ${D360_METADATA_TOOL_NAME}, ${D360_PROBE_TOOL_NAME}` : "not registered"}`,
+    `• Skill         ${enabled ? "sf-data360 (extension-owned)" : "not registered"}`,
+    `• Target org    ${env?.config.targetOrg ?? "not resolved (run Show status)"}`,
+    `• API version   ${env?.org.apiVersion ?? env?.project.sourceApiVersion ?? "66.0"}`,
+  ];
+}
+
+function buildStatusText(enabled: boolean, env: SfEnvironment): string {
+  return [
+    "SF Data 360 — status",
+    "",
+    `Enabled: ${enabled ? "yes (default)" : "no (re-enable with /sf-pi enable sf-data360)"}`,
+    `Tools: ${enabled ? `${D360_TOOL_NAME}, ${D360_METADATA_TOOL_NAME}, ${D360_PROBE_TOOL_NAME}` : "not registered"}`,
+    `Skill: ${enabled ? "sf-data360" : "not registered"} (extension-owned)`,
+    `SF CLI: ${env.cli.installed ? (env.cli.version ?? "installed") : "not installed"}`,
+    `Target org: ${env.config.targetOrg ?? "not configured"}`,
+    `Org type: ${env.org.orgType}`,
+    `API version: ${env.org.apiVersion ?? env.project.sourceApiVersion ?? "66.0"}`,
+    "",
+    "Use /skill:sf-data360 for workflow guidance, or call d360_api directly.",
+  ].join("\n");
+}
+
+// `fromPanel` is accepted for parity with the panel-aware extensions in this
+// repo (sf-slack, sf-agentscript-assist, etc.). For sf-data360 the rendering
+// is identical in both flows today — pi's notify overlay sits on top of the
+// command panel just as cleanly as it does at the prompt — so we don't
+// branch on it. Headless mode still falls through to stdout so
+// `pi -p /sf-data360 status` keeps printing something useful.
+function showInfo(ctx: ExtensionCommandContext, text: string, _fromPanel = false): void {
   if (ctx.hasUI) {
     ctx.ui.notify(text, "info");
     return;
   }
-  // In non-interactive modes, a notification is a no-op. Keep the command
-  // useful by printing to stdout.
   console.info(text);
 }
 

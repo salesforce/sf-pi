@@ -9,7 +9,11 @@ import { afterEach, describe, expect, it } from "vitest";
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { findPackageInSettings, getDisabledExtensionsForCwd } from "../lib/package-state.ts";
+import {
+  findPackageInSettings,
+  getDisabledExtensionsForCwd,
+  resolveEffectiveScope,
+} from "../lib/package-state.ts";
 import { TEST_PACKAGE_SOURCE } from "../../../lib/common/test-fixtures.ts";
 
 const tempDirs: string[] = [];
@@ -118,5 +122,59 @@ describe("getDisabledExtensionsForCwd", () => {
     expect(getDisabledExtensionsForCwd(projectDir)).toEqual(
       new Set(["extensions/sf-ohana-spinner/index.ts"]),
     );
+  });
+});
+
+// Auto-detect scope mirrors Pi's own settings precedence so the manager
+// works regardless of whether the user installed sf-pi globally, in a
+// project, or both. Issue #88.
+describe("resolveEffectiveScope", () => {
+  it("returns 'project' when sf-pi is installed in project settings", () => {
+    const homeDir = makeTempDir("sf-pi-home-");
+    const projectDir = makeTempDir("sf-pi-project-");
+    process.env.HOME = homeDir;
+
+    writeSettings(path.join(projectDir, ".pi", "settings.json"), {
+      packages: [TEST_PACKAGE_SOURCE],
+    });
+
+    expect(resolveEffectiveScope(projectDir)).toBe("project");
+  });
+
+  it("returns 'global' when sf-pi is only in global settings", () => {
+    const homeDir = makeTempDir("sf-pi-home-");
+    const projectDir = makeTempDir("sf-pi-project-");
+    process.env.HOME = homeDir;
+
+    writeSettings(path.join(homeDir, ".pi", "agent", "settings.json"), {
+      packages: [TEST_PACKAGE_SOURCE],
+    });
+
+    expect(resolveEffectiveScope(projectDir)).toBe("global");
+  });
+
+  it("prefers project over global when the package is in both scopes", () => {
+    const homeDir = makeTempDir("sf-pi-home-");
+    const projectDir = makeTempDir("sf-pi-project-");
+    process.env.HOME = homeDir;
+
+    writeSettings(path.join(homeDir, ".pi", "agent", "settings.json"), {
+      packages: [TEST_PACKAGE_SOURCE],
+    });
+    writeSettings(path.join(projectDir, ".pi", "settings.json"), {
+      packages: [TEST_PACKAGE_SOURCE],
+    });
+
+    expect(resolveEffectiveScope(projectDir)).toBe("project");
+  });
+
+  it("falls back to 'global' when sf-pi is installed nowhere", () => {
+    // The fallback keeps the downstream "package not found" message
+    // pointing at a real settings file rather than nothing.
+    const homeDir = makeTempDir("sf-pi-home-");
+    const projectDir = makeTempDir("sf-pi-project-");
+    process.env.HOME = homeDir;
+
+    expect(resolveEffectiveScope(projectDir)).toBe("global");
   });
 });

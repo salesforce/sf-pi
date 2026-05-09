@@ -97,8 +97,34 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
   leaving it visibly stale while idle. Current sf-pi builds require pi
   `>=0.73.0`; see the breaking-change note above.
 
+### Features
+
+- **sf-data360: standardized `/sf-data360` settings panel.** `/sf-data360`
+  with no args used to dump a status notification, while every other
+  bundled extension (`/sf-slack`, `/sf-devbar`, `/sf-guardrail`,
+  `/sf-llm-gateway-internal`, `/sf-skills-hud`, `/sf-agentscript-assist`)
+  opened a grouped command panel via `lib/common/command-panel.ts`. The
+  Data 360 command now opens the same standardized panel — status
+  block plus Show status / Show help / Close actions — so the suite has
+  one consistent settings UX. Headless callers and explicit subcommands
+  (`/sf-data360 status`, `/sf-data360 help`) continue to print plain
+  text. The existing in-overlay drill-down panel
+  (`lib/config-panel.ts`) is unchanged.
+
 ### Bug Fixes
 
+- **sf-pi-manager: auto-detect scope for `/sf-pi` commands so a project-only
+  install of sf-pi works without typing `project` on every command
+  (#88).** `parseCommandArgs` previously hardcoded the default scope to
+  `global`, so `/sf-pi`, `/sf-pi disable <id>`, and friends would
+  short-circuit with "sf-pi package not found in global settings" when
+  the package was installed only in `.pi/settings.json`. The dispatcher
+  now resolves the scope at runtime via `resolveEffectiveScope(cwd)`
+  (project beats global, mirroring Pi's own settings precedence) when the
+  user does not pass an explicit `global`/`project` token. Explicit
+  scope tokens still win, and the overlay's `S`-key toggle is unchanged.
+  When the package is in the *other* scope, the warning now points the
+  user at the right scope instead of asking them to reinstall.
 - **sf-llm-gateway-internal: keep Claude requests on the unified dispatcher.**
   Claude models no longer pass `api: "anthropic-messages"` into pi's model
   registry because that made pi bypass the provider-level `streamSimple`

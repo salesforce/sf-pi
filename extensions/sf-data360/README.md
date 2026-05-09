@@ -145,7 +145,8 @@ behind file references so the agent loads it only when needed.
 
 ## Commands
 
-- `/sf-data360` — show status.
+- `/sf-data360` — open the standardized command panel (status, help, close).
+- `/sf-data360 status` — print enablement, registered tools, target org, and API version.
 - `/sf-data360 help` — show usage guidance.
 
 ## File Structure

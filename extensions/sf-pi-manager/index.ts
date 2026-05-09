@@ -66,6 +66,7 @@ import {
   findPackageInSettings,
   getDisabledExtensions,
   getDisabledExtensionsForCwd,
+  resolveEffectiveScope,
 } from "./lib/package-state.ts";
 import { glyph, resolveGlyphMode } from "../../lib/common/glyph-policy.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
@@ -150,7 +151,13 @@ type CommandArgs = {
     | "skills"
     | "doctor"
     | "help";
-  scope: "global" | "project";
+  /**
+   * Explicit scope from the command tokens, or `undefined` to mean
+   * "auto-detect at dispatch time". Auto-detect prefers project over
+   * global, mirroring Pi's settings precedence so a project-scoped
+   * install of sf-pi works without typing `project` on every command.
+   */
+  scope: "global" | "project" | undefined;
   target?: string;
   /** Raw tail after the subcommand token, used by multi-arg subcommands. */
   rest?: string;
@@ -258,8 +265,10 @@ export function parseCommandArgs(raw: string): CommandArgs {
   const tokens = raw.trim().split(/\s+/).filter(Boolean);
   const sub = (tokens[0] ?? "").toLowerCase();
 
-  // Scope detection: last token can be "global" or "project"
-  let scope: "global" | "project" = "global";
+  // Scope detection: last token can be "global" or "project". When
+  // omitted we leave it undefined so the dispatcher can auto-detect from
+  // where sf-pi is actually installed for this cwd.
+  let scope: "global" | "project" | undefined;
   const lastToken = tokens[tokens.length - 1]?.toLowerCase();
   if (lastToken === "project" || lastToken === "global") {
     scope = lastToken as "global" | "project";
@@ -322,36 +331,39 @@ async function handleCommand(
   ctx: ExtensionCommandContext,
 ): Promise<void> {
   const args = parseCommandArgs(raw);
+  // Resolve scope here so handlers always receive a concrete value but
+  // parseCommandArgs stays pure (no fs access — keeps unit tests fast).
+  const scope = args.scope ?? resolveEffectiveScope(ctx.cwd);
 
   switch (args.subcommand) {
     case "overlay":
-      await handleOverlay(ctx, args.scope);
+      await handleOverlay(ctx, scope);
       break;
     case "list":
-      await handleList(ctx, args.scope);
+      await handleList(ctx, scope);
       break;
     case "enable":
-      await handleToggle(ctx, args.scope, args.target, true);
+      await handleToggle(ctx, scope, args.target, true);
       break;
     case "disable":
-      await handleToggle(ctx, args.scope, args.target, false);
+      await handleToggle(ctx, scope, args.target, false);
       break;
     case "enable-all":
-      await handleToggleAll(ctx, args.scope, true);
+      await handleToggleAll(ctx, scope, true);
       break;
     case "disable-all":
-      await handleToggleAll(ctx, args.scope, false);
+      await handleToggleAll(ctx, scope, false);
       break;
     case "status":
-      await handleStatus(ctx, args.scope);
+      await handleStatus(ctx, scope);
       break;
     case "display":
-      handleDisplay(ctx, args.scope, args.target);
+      handleDisplay(ctx, scope, args.target);
       break;
     case "recommended": {
       const recArgs = parseRecommendedArgs(args.rest ?? "");
       if (!args.rest || !/\b(global|project)\b/i.test(args.rest)) {
-        recArgs.scope = args.scope;
+        recArgs.scope = scope;
       }
       await handleRecommended(pi, ctx, PACKAGE_VERSION, PACKAGE_ROOT, recArgs);
       break;
@@ -397,10 +409,7 @@ async function handleOverlay(
 
   const match = findPackageInSettings(ctx.cwd, scope);
   if (!match) {
-    ctx.ui.notify(
-      `sf-pi package not found in ${scope} settings. Is it installed? Run: pi install .`,
-      "warning",
-    );
+    ctx.ui.notify(notInstalledMessage(ctx.cwd, scope), "warning");
     return;
   }
 
@@ -510,7 +519,7 @@ async function handleToggle(
 
   const match = findPackageInSettings(ctx.cwd, scope);
   if (!match) {
-    ctx.ui.notify(`sf-pi package not found in ${scope} settings. Is it installed?`, "warning");
+    ctx.ui.notify(notInstalledMessage(ctx.cwd, scope), "warning");
     return;
   }
 
@@ -546,7 +555,7 @@ async function handleToggleAll(
 ): Promise<void> {
   const match = findPackageInSettings(ctx.cwd, scope);
   if (!match) {
-    ctx.ui.notify(`sf-pi package not found in ${scope} settings. Is it installed?`, "warning");
+    ctx.ui.notify(notInstalledMessage(ctx.cwd, scope), "warning");
     return;
   }
 
@@ -673,7 +682,8 @@ function handleHelp(ctx: ExtensionCommandContext): void {
         `  ${ext.id} [${ext.category}]${ext.alwaysActive ? " (always active)" : ""} — ${ext.description}`,
     ),
     "",
-    "Scope defaults to global. Use 'project' to target .pi/settings.json.",
+    "Scope defaults to wherever sf-pi is installed (project takes precedence over global).",
+    "Pass 'global' or 'project' as the last token to override.",
   ];
 
   ctx.ui.notify(lines.join("\n"), "info");
@@ -770,4 +780,17 @@ export function buildExtensionStates(disabledFiles: Set<string>): ExtensionState
     ...ext,
     enabled: ext.alwaysActive || !disabledFiles.has(ext.file),
   }));
+}
+
+// Build a friendly "package not installed in this scope" warning. When the
+// package exists in the *other* scope we point the user at it instead of
+// asking them to reinstall, which is the common case after the scope
+// auto-detect change in #88.
+function notInstalledMessage(cwd: string, scope: "global" | "project"): string {
+  const otherScope = scope === "global" ? "project" : "global";
+  const otherMatch = findPackageInSettings(cwd, otherScope);
+  if (otherMatch) {
+    return `sf-pi package is installed in ${otherScope} settings, not ${scope}. Re-run with \`${otherScope}\` as the last token, or remove the explicit scope to auto-detect.`;
+  }
+  return `sf-pi package not found in project or global settings. Install with: pi install . (project) or pi install -g <source> (global).`;
 }

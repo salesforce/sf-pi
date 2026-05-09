@@ -17,10 +17,18 @@ import { parseDoctorArgs } from "../lib/doctor-command.ts";
 // -------------------------------------------------------------------------------------------------
 
 describe("parseCommandArgs", () => {
-  it("defaults to overlay with global scope when no args", () => {
+  it("defaults to overlay with auto-detect scope when no args", () => {
+    // scope=undefined signals "resolve at dispatch time" (project > global).
+    // See lib/package-state.ts > resolveEffectiveScope.
     const result = parseCommandArgs("");
     expect(result.subcommand).toBe("overlay");
-    expect(result.scope).toBe("global");
+    expect(result.scope).toBeUndefined();
+  });
+
+  it("leaves scope undefined when no global/project token is given", () => {
+    expect(parseCommandArgs("list").scope).toBeUndefined();
+    expect(parseCommandArgs("status").scope).toBeUndefined();
+    expect(parseCommandArgs("enable sf-ohana-spinner").scope).toBeUndefined();
   });
 
   it("parses 'list'", () => {

@@ -85,7 +85,7 @@
     "entry": "extensions/sf-data360/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 1559
+    "srcLoc": 1647
   },
   {
     "id": "sf-devbar",
@@ -271,7 +271,7 @@
     "entry": "extensions/sf-pi-manager/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 3203
+    "srcLoc": 3240
   },
   {
     "id": "sf-skills-hud",

@@ -32,6 +32,22 @@ export interface PackageEntryMatch {
 }
 
 /**
+ * Resolve the effective scope for sf-pi commands when the user has not
+ * explicitly passed `global` or `project`.
+ *
+ * Mirrors Pi's natural settings precedence (project overrides global) so
+ * the manager defaults to the same scope the rest of the runtime is
+ * already reading from for this cwd. Falls back to `global` only when no
+ * installation is found anywhere — that way the "package not found"
+ * warning still points at a real settings file.
+ */
+export function resolveEffectiveScope(cwd: string): "global" | "project" {
+  if (findPackageInSettings(cwd, "project")) return "project";
+  if (findPackageInSettings(cwd, "global")) return "global";
+  return "global";
+}
+
+/**
  * Find the sf-pi package in the chosen settings scope.
  * Returns null when the package is not installed in that scope.
  */
