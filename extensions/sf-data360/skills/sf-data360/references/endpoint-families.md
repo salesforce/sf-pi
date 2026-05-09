@@ -78,6 +78,31 @@ relative to `/services/data/vXX.X`.
 - `POST /ssot/data-kits/update-components` — deploy/update DataKit components.
 - `POST /ssot/data-kits/{id}/undeploy` — undeploy DataKit components.
 
+## Profile, insight, and data graph reads
+
+- `GET /ssot/profile/metadata` — profile-enabled DMOs with relationships.
+- `GET /ssot/profile/metadata/{dataModelName}` — relationships and fields for one profile DMO; `dataModelName` is the full DMO API name with the `__dlm` suffix.
+- `GET /ssot/profile/{dataModelName}` — record reads; require profile filter parameters.
+- `GET /ssot/profile/{dataModelName}/{id}` and child/CI variants — require `orderby` when `offset` is supplied.
+- `GET /ssot/insight/metadata` and `/ssot/insight/metadata/{ciName}` — calculated insight metadata; need an existing CI.
+- `GET /ssot/insight/calculated-insights/{ciName}` — calculated insight rows; need an existing CI.
+- `GET /ssot/data-graphs` — list data graphs.
+- `GET /ssot/data-graphs/data/{dataGraphEntityName}` and `/{id}` — record reads on a data graph entity; require additional query parameters such as field IDs.
+
+## Document AI and machine learning
+
+- `GET /ssot/document-processing/configurations` and detail/manifest reads.
+- `POST /ssot/document-processing/actions/extract-data` and `actions/generate-schema` — operational and require structured inputs.
+- `GET /ssot/machine-learning/alerts`, `model-setups`, `model-artifacts`, and `configured-models` — list endpoints; do not pass an unknown `connectorType` query value.
+- `POST /ssot/machine-learning/predict` — inference endpoint with a polymorphic body; the JSON requires a `type` discriminator and prediction-specific fields.
+
+## Data clean room and private network routes
+
+- `GET /ssot/data-clean-room/collaborations`, `providers`, `specifications`, `templates` — list endpoints; details require an existing collaboration/provider/specification.
+- `PUT /ssot/data-clean-room/collaborations/{id}/actions/accept-invitation` and `reject-invitation` — operational; treat as mutating.
+- `POST /ssot/data-clean-room/collaborations/{id}/actions/run` — runs a clean room query; mutating.
+- `GET /ssot/private-network-routes` and detail — feature gated; can return internal errors when the org has no routes.
+
 ## Semantic data models, search indexes, and retrievers
 
 - `GET /ssot/data-transforms` — list data transforms.

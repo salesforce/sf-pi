@@ -11,6 +11,23 @@ semantic queries. Data Cloud SQL is not CRM SOQL.
 4. Start with `COUNT(*)` or a very small `rowLimit`.
 5. Paginate through query status/rows endpoints only after the first query shape works.
 
+## Query endpoint shapes
+
+All three Data 360 query endpoints accept the same body shape: a single `sql`
+field. Do not use a `query` field; the parser rejects it.
+
+```json
+{ "sql": "SELECT COUNT(*) row_count FROM SomeObject__dlm" }
+```
+
+- `POST /ssot/query-sql` is the preferred endpoint and accepts an optional
+  `rowLimit`. Use `GET /ssot/query-sql/{queryId}` and
+  `GET /ssot/query-sql/{queryId}/rows` to pull async results.
+- `POST /ssot/queryv2` returns rows synchronously and may return a
+  `nextBatchId` for pagination via `GET /ssot/queryv2/{nextBatchId}`.
+- `POST /ssot/query` is the V1 legacy endpoint and accepts the same `sql`
+  body; prefer `query-sql` or `queryv2` for new work.
+
 ## Preferred SQL endpoint
 
 Use:
@@ -80,6 +97,27 @@ Then sample rows:
 ```sql
 SELECT FieldA__c, FieldB__c FROM MyObject__dll LIMIT 10
 ```
+
+## Profile API requirements
+
+The `/ssot/profile/{dataModelName}` family enforces additional input
+requirements that are easy to miss:
+
+- `dataModelName` must be the full DMO API name, including the `__dlm`
+  suffix (for example `ssot__Individual__dlm`).
+- `GET /ssot/profile/{dataModelName}` requires profile filters; an unfiltered
+  call returns `Profile Filters shouldn't be null or empty`.
+- `GET /ssot/profile/{dataModelName}/{id}` and the related child/CI variants
+  require an `orderby` query parameter when `offset` is supplied.
+
+## Calculated insight name and Connect REST rules
+
+- The Connect REST endpoints under `/ssot/calculated-insights/{apiName}`
+  require `apiName` to end in `__cio`. Calls with any other suffix return
+  `ILLEGAL_QUERY_PARAMETER_VALUE`.
+- The `/ssot/insight/calculated-insights/{ciName}` and
+  `/ssot/insight/metadata/{ciName}` family also require an existing CI; use
+  `GET /ssot/calculated-insights` to discover real names first.
 
 ## Calculated insight SQL rules
 

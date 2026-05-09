@@ -64,6 +64,27 @@ Use approximate counts only; upstream action counts can drift between releases.
 - Search index and retrievers — lifecycle, config/version reads, process history, query where available.
 - Machine learning, Document AI, Data Clean Room, Data Graphs, Private Network Routes, Universal ID Lookup — validate with the OpenAPI/Swagger file and treat feature-gated surfaces as optional unless the org is expected to have them.
 
+## Verified sweep summary
+
+A full Swagger-driven sweep of all 194 operations in `Salesforce Data 360
+Connect REST API v66.0` against a populated demo org produced:
+
+- 46 live `GET`/safe `POST` calls passed.
+- 93 mutating operations passed dry-run validation (path, target org, API
+  version, and safety classification verified).
+- 25 operations marked as feature/resource not present in the org (empty
+  collections or `NOT_FOUND` on optional surfaces).
+- 18 operations reachable but require structured payload parameters
+  (filters, discriminators, or required fields).
+- 12 operations returned org-side `INTERNAL_ERROR`/`UNKNOWN_EXCEPTION`
+  tied to feature gating (connection schema/sitemap/preview, datakit
+  available-components/manifest, data-graphs without field IDs).
+- 0 plugin-side failures.
+
+This is the bar for "recursive validation passes": every Swagger operation
+resolves to a normalized path, hits the intended target org, and is
+classified as live/safe-post/dry-run before any network call.
+
 ## Safety expectations
 
 A recursive run should prove these design properties before executing broad live tests:

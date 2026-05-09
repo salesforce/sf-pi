@@ -84,6 +84,43 @@ Data 360 create/update DTOs can use different field names than list/get response
 - Connection test requires `connectorType` in the request body, not only as a query parameter. It also requires `method` with values such as `Ingress` or `Egress`, and parameter entries use `paramName` plus `value`.
 - Activation target create is polymorphic by `platformType`; a missing or wrong `connector` object can fail at JSON parsing before business validation. For `DataCloud` targets, `connector: {}` is valid, but activation target DELETE may not be exposed.
 
+## Connection action and connector metadata calls
+
+- `POST /ssot/connections/actions/test` and
+  `POST /ssot/connections/actions/{command}` require `connectorType` in the
+  body, not only as a query parameter. Without it, the response is
+  `INVALID_INPUT: connectorType is required`.
+- `POST /ssot/connections/{connectionId}/database-schemas`,
+  `/databases`, `/objects/{resourceName}/preview`, and
+  `/connections/{connectionId}/actions/test` only work for connector kinds
+  that expose those surfaces (for example JDBC-shaped connectors). For
+  Salesforce CRM and similar connections they can return
+  `INTERNAL_ERROR: Unable to query database schemas` or
+  `UNKNOWN_EXCEPTION`. This is feature gating, not a plugin failure.
+- `GET /ssot/connections/{connectionId}/schema` and `/sitemap` are
+  Web/website-connector specific. With other connector types the API
+  returns enum/parameter errors.
+- `GET /ssot/connections/{connectionId}/endpoints` requires the connector
+  to expose an OpenAPI definition and may return `INTERNAL_SERVER_ERROR`
+  when none is available.
+
+## DataKit and machine-learning gotchas
+
+- `GET /ssot/datakit/{dataKitDevName}/manifest` is namespace-gated and
+  refuses spidering with
+  `DataKitSpidering is not allowed for this DataKit as orgnamespace is not
+same as datakit namespace`. Work with manifests for DataKits installed in
+  the same namespace as the org or use the listed component endpoints.
+- `GET /ssot/data-kits/{dataKitName}/components/{componentName}/dependencies`
+  requires the `componentType` query parameter; without it the response is
+  `Component Type property is missing`.
+- `GET /ssot/machine-learning/configured-models` rejects the generic
+  `connectorType` query value. Call it without query parameters to list
+  models, then filter client-side.
+- `POST /ssot/machine-learning/predict` requires a polymorphic body with a
+  discriminator (`type`) field. Without it the API returns
+  `JSON_PARSER_ERROR ... missing property 'type'`.
+
 ## Mutating call was blocked
 
 Re-run with `dry_run: true` and inspect the safety decision. If the operation is
