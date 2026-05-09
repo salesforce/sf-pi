@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.55.0-2026-05-09",
-  "latestVersion": "0.55.0",
+  "revision": "release-0.55.1-2026-05-09",
+  "latestVersion": "0.55.1",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.55.0",
+      "id": "release-0.55.1",
       "kind": "update",
-      "title": "sf-pi v0.55.0 — ADR 0006 closing follow-ups",
+      "title": "sf-pi v0.55.1 — release: cut patch release for Wave 3 refactors",
       "publishedAt": "2026-05-09T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.55.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.55.1",
       "severity": "info",
-      "body": "ADR 0006 closing follow-ups"
+      "body": "release: cut patch release for Wave 3 refactors"
     },
     {
       "id": "pi-0.73-required",
