@@ -456,6 +456,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.51.1](https://github.com/salesforce/sf-pi/compare/v0.51.0...v0.51.1) (2026-05-09)
+
+
+### Bug Fixes
+
+* **sf-feedback:** anchor github.com host check in sanitizeRemoteUrl ([c39267d](https://github.com/salesforce/sf-pi/commit/c39267d91544b60d0e5eb2d8100ac07f275ed6e3))
+
 ## [0.51.0](https://github.com/salesforce/sf-pi/compare/v0.50.0...v0.51.0) (2026-05-09)
 
 

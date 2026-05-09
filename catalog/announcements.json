@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.51.0-2026-05-09",
-  "latestVersion": "0.51.0",
+  "revision": "release-0.51.1-2026-05-09",
+  "latestVersion": "0.51.1",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.51.0",
+      "id": "release-0.51.1",
       "kind": "update",
-      "title": "sf-pi v0.51.0 — panels: drift migrations \\u2014 sf-lsp, sf-llm-gateway-internal, sf-welcome",
+      "title": "sf-pi v0.51.1 — sf-feedback: anchor github.com host check in sanitizeRemoteUrl",
       "publishedAt": "2026-05-09T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.51.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.51.1",
       "severity": "info",
-      "body": "panels: drift migrations \\u2014 sf-lsp, sf-llm-gateway-internal, sf-welcome — panels: lint script + scaffold template + AGENTS.md contract"
+      "body": "sf-feedback: anchor github.com host check in sanitizeRemoteUrl"
     },
     {
       "id": "pi-0.73-required",
