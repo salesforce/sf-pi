@@ -158,6 +158,7 @@ extensions/sf-data360/
   lib/
     api-tool.ts             ← implementation module
     config-panel.ts         ← implementation module
+    extension-doctor.ts     ← implementation module
     metadata-tool.ts        ← implementation module
     path.ts                 ← implementation module
     probe-tool.ts           ← implementation module

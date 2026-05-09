@@ -7,6 +7,7 @@
  */
 
 import path from "node:path";
+import type { ExtensionDoctorReport } from "../../../lib/common/doctor/registry.ts";
 import { loadAgentforceSDK, VENDORED_SDK_PATH } from "./sdk.ts";
 
 // -------------------------------------------------------------------------------------------------
@@ -75,6 +76,49 @@ export async function probeDoctor(_cwd: string): Promise<DoctorStatus> {
 // -------------------------------------------------------------------------------------------------
 // Rendering
 // -------------------------------------------------------------------------------------------------
+
+/**
+ * Adapter for the shared `/sf-pi doctor` aggregator. Returns the same
+ * underlying probe as the standalone `/sf-agentscript-assist doctor` view,
+ * shaped into per-check rows so the manager can render them next to other
+ * extensions' diagnostics.
+ */
+export async function runExtensionDoctor(cwd: string): Promise<ExtensionDoctorReport> {
+  const status = await probeDoctor(cwd);
+  const checks: ExtensionDoctorReport["checks"] = [];
+
+  if (status.sdkLoaded) {
+    checks.push({
+      id: "agentscript.sdk-loaded",
+      severity: "ok",
+      title: `Vendored Agent Script SDK loaded (${status.upstreamNote})`,
+      detail: `source: ${status.vendoredSdkPath}`,
+    });
+    if (status.dialectsProbed.length > 0) {
+      checks.push({
+        id: "agentscript.dialects-probed",
+        severity: "ok",
+        title: "Dialect probe succeeded",
+        detail: status.dialectsProbed.join(", "),
+      });
+    }
+  } else {
+    checks.push({
+      id: "agentscript.sdk-load-failed",
+      severity: "error",
+      title: "Vendored Agent Script SDK failed to load",
+      detail: status.loadError ?? "Unknown SDK load failure",
+      fix: "Re-run scripts/sync-agentforce-sdk.mjs or reinstall sf-pi.",
+    });
+  }
+
+  return {
+    extensionId: "sf-agentscript-assist",
+    title: "SF Agent Script Assist",
+    checks,
+    summary: status.sdkLoaded ? "\u2713 SDK loaded" : "\u2717 SDK failed to load",
+  };
+}
 
 export function renderDoctorReport(status: DoctorStatus): string {
   const lines = ["Agent Script Assist — doctor", ""];

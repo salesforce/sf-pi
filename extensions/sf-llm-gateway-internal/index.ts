@@ -205,6 +205,8 @@ import {
 import { type CommandPanelState } from "../../lib/common/command-panel.ts";
 import { openInfoPanel } from "../../lib/common/info-panel.ts";
 import { performToggleExtension } from "../../lib/common/extension-toggle.ts";
+import { registerExtensionDoctor } from "../../lib/common/doctor/registry.ts";
+import { runExtensionDoctor as runGatewayExtensionDoctor } from "./lib/doctor.ts";
 import { openGatewayPanel } from "./lib/command-panel.ts";
 import {
   getMonthlyUsageState,
@@ -324,6 +326,11 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
   // Uses a minimal registration that does not need cwd — the config layer
   // reads global saved config first, then env vars as automation fallback.
   registerProviderIfConfigured(pi, getBetaOverrides(), getBetaExtras());
+
+  // Contribute to the aggregated `/sf-pi doctor` view. The standalone
+  // `/sf-llm-gateway-internal doctor` command keeps using
+  // fetchGatewayDoctorReport directly for backwards-compat rendering.
+  registerExtensionDoctor("sf-llm-gateway-internal", (cwd) => runGatewayExtensionDoctor(cwd));
 
   // Rendering hook for any sendMessage traffic the extension emits on behalf
   // of the gateway. Single registration now that the retired anthropic

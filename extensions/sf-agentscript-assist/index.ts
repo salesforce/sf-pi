@@ -54,7 +54,8 @@ import {
   type AgentScriptAssistState,
   type ToolResultContentPart,
 } from "./lib/feedback.ts";
-import { probeDoctor, renderDoctorReport } from "./lib/doctor.ts";
+import { probeDoctor, renderDoctorReport, runExtensionDoctor } from "./lib/doctor.ts";
+import { registerExtensionDoctor } from "../../lib/common/doctor/registry.ts";
 import {
   buildToggleExtensionAction,
   LIFECYCLE_GROUP,
@@ -81,6 +82,10 @@ export default function sfAgentScriptAssistExtension(pi: ExtensionAPI) {
   registerCommand(pi, state);
   registerSessionHooks(pi, state);
   registerToolResultHook(pi, state);
+  // Contribute to the aggregated `/sf-pi doctor` report. The standalone
+  // `/sf-agentscript-assist doctor` command keeps using probeDoctor()
+  // directly for backwards-compat rendering.
+  registerExtensionDoctor("sf-agentscript-assist", (cwd) => runExtensionDoctor(cwd));
 }
 
 // -------------------------------------------------------------------------------------------------

@@ -5,13 +5,40 @@
  * Tracks cross-session preferences like "last pi version the user has seen"
  * so the What's New panel only appears when something has actually changed.
  *
- * The state file is small, best-effort, and lives alongside other sf-pi
- * artifacts in the user's agent home. Read/write failures are swallowed —
- * we treat persistence as a nice-to-have, not a correctness boundary.
+ * Backed by the shared `lib/common/state-store.ts` helper (atomic write,
+ * schema versioning, safe defaults). The on-disk path is preserved at
+ * `<globalAgentDir>/sf-welcome-state.json` so existing users' dismissals
+ * survive the upgrade — new state for new extensions should use the
+ * canonical `<globalAgentDir>/sf-pi/<namespace>/<filename>` layout instead.
+ *
+ * Read/write failures are swallowed — we treat persistence as a
+ * nice-to-have, not a correctness boundary, so the splash never crashes
+ * because of disk noise.
  */
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { canonicalStatePath, createStateStore } from "../../../lib/common/state-store.ts";
 import { globalAgentPath } from "../../../lib/common/pi-paths.ts";
+
+const NAMESPACE = "sf-welcome";
+const SCHEMA_VERSION = 1;
+// Legacy on-disk path predates the canonical sf-pi/<ns>/<file> layout. We
+// keep it via pathOverride so existing dismissals and font-install decisions
+// survive without a migration step in this release.
+const LEGACY_FILE_NAME = "sf-welcome-state.json";
+
+/**
+ * Re-exported so callers (and tests) can ask where the file lives without
+ * hard-coding the path. The default points at the legacy location; passing
+ * `agentDir` lets unit tests redirect to a tmp dir.
+ */
+export function defaultStatePath(agentDir: string = globalAgentPath()): string {
+  // Legacy path lives directly under the agent dir, not under sf-pi/<ns>/.
+  return `${agentDir}/${LEGACY_FILE_NAME}`;
+}
+
+/** Public canonical path for any future migration. */
+export function canonicalSfWelcomeStatePath(): string {
+  return canonicalStatePath(NAMESPACE, "state.json");
+}
 
 export interface SfWelcomeState {
   /** Latest pi-coding-agent version acknowledged via a dismissed splash. */
@@ -26,26 +53,33 @@ export interface SfWelcomeState {
   fontInstallPromptedAt?: string;
 }
 
-const STATE_FILE_NAME = "sf-welcome-state.json";
-
-export function defaultStatePath(agentDir: string = globalAgentPath()): string {
-  return globalAgentPathFromBase(agentDir, STATE_FILE_NAME);
-}
-
-function globalAgentPathFromBase(agentDir: string, ...segments: string[]): string {
-  // Keep the optional argument as an agent-dir override for unit tests while
-  // production callers use Pi's rebrand-aware globalAgentPath() helper.
-  return join(agentDir, ...segments);
-}
+const EMPTY_STATE: SfWelcomeState = {};
 
 /**
- * Read the persisted welcome state.
- *
- * Returns an empty object when the file is missing or unreadable — the
- * caller can treat a missing `lastSeenPiVersion` as "first-ever launch".
+ * The shared store holds a raw `Record<string, unknown>` (not the typed
+ * `SfWelcomeState`) so forward-compatible keys written by a future sf-pi
+ * survive a partial write here. Reads project to the typed slice via
+ * `parseLooseState`; writes merge into the raw record.
  */
-export function readWelcomeState(path: string = defaultStatePath()): SfWelcomeState {
-  const parsed = readRawState(path);
+function buildStore(filePath: string) {
+  return createStateStore<Record<string, unknown>>({
+    namespace: NAMESPACE,
+    filename: LEGACY_FILE_NAME,
+    schemaVersion: SCHEMA_VERSION,
+    defaults: {},
+    pathOverride: filePath,
+    // Pre-envelope shape (fromVersion === 0) is the bare object the file
+    // shipped with for the v0.1.x series. Keep every key so future-compat
+    // fields survive; the read projector strips them down to the typed slice.
+    migrate(raw, fromVersion) {
+      if (fromVersion !== 0) return null;
+      if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+      return raw as Record<string, unknown>;
+    },
+  });
+}
+
+function parseLooseState(parsed: Record<string, unknown>): SfWelcomeState {
   const state: SfWelcomeState = {};
   if (typeof parsed.lastSeenPiVersion === "string" && parsed.lastSeenPiVersion.trim()) {
     state.lastSeenPiVersion = parsed.lastSeenPiVersion.trim();
@@ -60,37 +94,40 @@ export function readWelcomeState(path: string = defaultStatePath()): SfWelcomeSt
 }
 
 /**
+ * Read the persisted welcome state.
+ *
+ * Returns an empty object when the file is missing or unreadable — the
+ * caller can treat a missing `lastSeenPiVersion` as "first-ever launch".
+ * The file may carry forward-compat fields written by a newer sf-pi; the
+ * typed slice strips them so callers see only what they understand.
+ */
+export function readWelcomeState(path: string = defaultStatePath()): SfWelcomeState {
+  try {
+    return parseLooseState(buildStore(path).read());
+  } catch {
+    return {};
+  }
+}
+
+/**
  * Merge-write the welcome state. Preserves unknown keys so forward-compatible
  * additions do not get dropped by older code reading the file.
+ *
+ * Writes are atomic (tmp-file + rename) so an interrupted write never leaves
+ * a half-written file behind.
  */
 export function writeWelcomeState(
   updates: Partial<SfWelcomeState>,
   path: string = defaultStatePath(),
 ): void {
   try {
-    // Start from the raw record (not the typed read) so forward-compatible
-    // keys survive a partial update.
-    const existing = readRawState(path);
-    const merged = { ...existing, ...updates };
-    mkdirSync(dirname(path), { recursive: true });
-    writeFileSync(path, JSON.stringify(merged, null, 2) + "\n", "utf-8");
+    buildStore(path).update((current) => ({ ...current, ...updates }));
   } catch {
     // Best-effort — never crash the splash because persistence failed.
   }
 }
 
-/**
- * Low-level read that preserves every key on disk. Internal to the module;
- * public callers get the typed slice via readWelcomeState().
- */
-function readRawState(path: string): Record<string, unknown> {
-  if (!existsSync(path)) return {};
-  try {
-    const raw = readFileSync(path, "utf-8");
-    const parsed = JSON.parse(raw) as unknown;
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
-    return parsed as Record<string, unknown>;
-  } catch {
-    return {};
-  }
-}
+// Reference EMPTY_STATE so it stays in scope for callers that expect the
+// default to come from this module (kept for symmetry with the previous
+// pre-helper implementation).
+void EMPTY_STATE;

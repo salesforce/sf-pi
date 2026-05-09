@@ -163,6 +163,7 @@ extensions/sf-lsp/
       versioning.ts         ← implementation module
     activity.ts             ← implementation module
     command-panel.ts        ← implementation module
+    extension-doctor.ts     ← implementation module
     feedback.ts             ← implementation module
     file-classify.ts        ← implementation module
     lsp-client.ts           ← implementation module

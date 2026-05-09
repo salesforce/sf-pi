@@ -133,13 +133,62 @@ tools registered with the wrong name.
   backfill in a follow-up ADR after two more extensions have used it in
   anger.
 
+## Follow-ups landed after the original ADR
+
+### State-persistence decision tree (was Wave 2 #10)
+
+`lib/common/state-store.ts` is the shared helper for the Q4 case in the
+decision tree (per-user persisted JSON state). It provides atomic writes
+(tmp file + rename), schema versioning with an optional `migrate` hook,
+tolerant reads with safe defaults, and an optional `mode` for files that
+hold tokens. Documented in [`AGENTS.md`](../../AGENTS.md) and
+[`lib/common/README.md`](../../lib/common/README.md). The lint in
+`docs-health.mjs` refuses any `state-store.ts` outside `lib/common/`
+that does not delegate to the shared helper.
+
+Migrations included:
+
+- `extensions/sf-welcome/lib/state-store.ts` (delegates to the helper;
+  legacy file path preserved via `pathOverride`)
+- `lib/common/catalog-state/announcements-state.ts`
+- `lib/common/catalog-state/recommendations-state.ts`
+
+Not migrated (intentional):
+
+- `extensions/sf-llm-gateway-internal/lib/config.ts` saved-config writer
+  has bespoke `chmod 0o600`, project-or-global path discovery, and
+  per-field validation. The migration risk outweighs the atomic-write
+  win until the file needs other surgery.
+
+### `/sf-pi doctor` aggregation
+
+`lib/common/doctor/registry.ts` defines a small registry that lets every
+extension contribute an `ExtensionDoctorReport`. `/sf-pi doctor` runs the
+built-in runtime diagnostics (pi/node/skills/packages) and then aggregates
+every registered provider with a 5-second timeout each. Slow or failed
+providers are flagged inline as `timeout` / `error` instead of blocking
+the rest of the report.
+
+Providers registered:
+
+- `sf-llm-gateway-internal` — reuses the existing
+  `fetchGatewayDoctorReport` (URL signature, `/v1/models`, `/health/readiness`).
+- `sf-agentscript-assist` — reuses `probeDoctor` (vendored SDK + dialect probe).
+- `sf-lsp` — reuses `doctorLsp` per language (Apex/LWC/Agent Script).
+- `sf-data360` — small org-connectivity check + a single `/ssot/data-spaces`
+  probe (full `d360_probe` stays available to the agent for deep diagnostics).
+- `sf-slack` — token presence + identity + scope readiness from cached state.
+- `sf-guardrail` — config source + active feature tiers + headless-allow
+  env state.
+
+Each extension's standalone `/sf-X doctor` command keeps working
+unchanged — the adapter file (`lib/extension-doctor.ts` or
+`lib/doctor.ts > runExtensionDoctor`) is a parallel entry point only.
+
 ## Out of scope (Wave 3 in the original plan)
 
-These were considered and intentionally deferred:
+These remain explicitly deferred:
 
 - Splitting the two large extensions (`sf-slack`, `sf-llm-gateway-internal`)
   by file size.
-- Aggregating per-extension doctors into `/sf-pi doctor`.
 - Adopting `lib/common/display/` for every LLM tool result.
-- Pinning a single state-persistence convention (Wave 2 #10 in the
-  recommendation list).

@@ -93,6 +93,39 @@ sf-brain, sf-ohana-spinner, sf-lsp). New extensions scaffolded via
 `npm run scaffold` start from this template and pass the lint on
 first commit.
 
+### State persistence decision tree
+
+ADR 0006 pins one rule for "where do I put state X?". Walk top-down,
+stop at the first match. The `npm run docs:health:check` lint enforces
+the Q4 case (no `state-store.ts` outside `lib/common/`).
+
+```
+Q1. Is the state tied to the current conversation/session?
+    YES → use pi.appendEntry<T>(customType, data)
+          (auto-replays on resume/fork/reload; no disk plumbing required)
+          Examples: send audit, allow-for-this-session, kernel injection
+
+Q2. Is the state read by 2+ extensions in the same process?
+    YES → register a shared store under lib/common/<topic>/store.ts
+          Producer pushes via setState; consumers subscribe via onChange.
+          Examples: sf-environment, monthly-usage, slack-status, sf-lsp-health
+
+Q3. Is the state a user-facing pi setting they'd hand-edit?
+    YES → mutate pi settings.json via lib/common/sf-pi-settings.ts helpers
+          Project > global precedence; never write opaque blobs there.
+          Examples: package filter list, provider/model config, thinking level
+
+Q4. Otherwise (per-user persisted state, sf-pi only) →
+    use the shared lib/common/state-store.ts helper.
+    File path: <globalAgentDir>/sf-pi/<namespace>/<filename>.json
+    Always: schemaVersion, atomic write, safe defaults on parse error.
+    Pass `mode: 0o600` for files that hold a token or other secret.
+```
+
+Reference implementations: `extensions/sf-welcome/lib/state-store.ts`,
+`lib/common/catalog-state/announcements-state.ts`,
+`lib/common/catalog-state/recommendations-state.ts`.
+
 ### Tool registration convention
 
 When an extension contributes LLM tools (anything in `manifest.tools`):

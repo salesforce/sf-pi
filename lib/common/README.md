@@ -23,6 +23,7 @@ code lives in `extensions/<id>/lib/`.
 | `ui-glyphs.ts`                              | command-bearing extensions                                                  | Semantic UI glyphs for panels/popups with ASCII fallback (rides `glyph-policy`)  |
 | `pi-compat.ts`                              | all extensions                                                              | Feature-detecting shims for pi APIs that may not exist on older pi runtimes      |
 | `pi-paths.ts`                               | all extensions that touch settings                                          | Global + project `settings.json` paths, pi home dir resolution                   |
+| `state-store.ts`                            | extensions that persist per-user state                                      | Shared `createStateStore<T>()`: atomic write, schema versioning, safe defaults   |
 | `exec-adapter.ts`                           | `sf-environment` consumers                                                  | Adapter from `pi.exec()` to the `ExecFn` type used by `sf-environment/detect.ts` |
 | `glyph-policy.ts`                           | `sf-welcome`, `sf-devbar`                                                   | Decides emoji vs ASCII glyphs based on terminal + user prefs + env vars          |
 | `display/types.ts`                          | `sf-pi-manager`, `sf-lsp`, `sf-agentscript-…`                               | `SfPiDisplayProfile` union + shared display types                                |
@@ -48,6 +49,40 @@ code lives in `extensions/<id>/lib/`.
 | `sf-environment/types.ts`                   | all SF-aware extensions                                                     | `SfEnvironment` snapshot shape                                                   |
 | `test-fixtures.ts`                          | tests across extensions                                                     | Shared factories for Pi context stubs + common fixtures                          |
 | `tests/`                                    | —                                                                           | Tests for the shared modules themselves                                          |
+
+## State-persistence decision tree
+
+ADR 0006 pins one rule for "where do I put state X?". Walk top-down, stop at first match:
+
+```
+Q1. Is the state tied to the current conversation/session?
+    YES → use pi.appendEntry<T>(customType, data)
+          (auto-replays on resume/fork/reload; no disk plumbing required)
+          Examples: send audit, allow-for-this-session, kernel injection, prefs
+
+Q2. Is the state read by 2+ extensions in the same process?
+    YES → register a shared store under lib/common/<topic>/store.ts
+          Producer pushes via setState; consumers subscribe via onChange.
+          Examples: sf-environment, monthly-usage, slack-status, sf-lsp-health
+
+Q3. Is the state a user-facing pi setting they'd hand-edit?
+    YES → mutate pi settings.json via lib/common/sf-pi-settings.ts helpers
+          Project > global precedence; never write opaque blobs there.
+          Examples: package filter list, provider/model config, default thinking level
+
+Q4. Otherwise (per-user persisted state, sf-pi only) →
+    use the shared lib/common/state-store.ts helper.
+    File path: <globalAgentDir>/sf-pi/<namespace>/<filename>.json
+    Always: schemaVersion, atomic write (tmp + rename), safe defaults on parse error.
+    Pass `mode: 0o600` for files that hold a token or other secret.
+```
+
+The `npm run docs:health:check` lint refuses any `state-store.ts` inside an
+extension that does not delegate to `lib/common/state-store.ts`. Existing
+Q4 callers (`extensions/sf-welcome/lib/state-store.ts`,
+`lib/common/catalog-state/announcements-state.ts`,
+`lib/common/catalog-state/recommendations-state.ts`) keep their on-disk
+locations via `pathOverride` so existing dismissals and decisions survive.
 
 ## When to add code here
 

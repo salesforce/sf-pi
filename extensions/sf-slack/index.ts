@@ -98,6 +98,8 @@ import {
   performToggleExtension,
   type LifecycleActionId,
 } from "../../lib/common/extension-toggle.ts";
+import { registerExtensionDoctor } from "../../lib/common/doctor/registry.ts";
+import { buildSlackDoctor } from "./lib/extension-doctor.ts";
 import {
   type CommandPanelAction,
   type CommandPanelState,
@@ -197,6 +199,14 @@ export default function sfSlack(pi: ExtensionAPI) {
   // overwrites the previous definition — but tracking the flag keeps the
   // control flow readable and prevents unnecessary refreshTools() churn.
   let slackToolsRegistered = false;
+
+  // Contribute auth + scope readiness to the aggregated `/sf-pi doctor`
+  // view. Reads the latest in-memory identity captured by session_start /
+  // /sf-slack refresh; never hits the network on its own.
+  registerExtensionDoctor(
+    "sf-slack",
+    buildSlackDoctor({ getIdentity: () => identity ?? undefined }),
+  );
 
   // Guard async Slack callbacks against /reload, session switches, and shutdown.
   // Pi 0.70+ surfaces stale context usage more clearly, so every delayed UI

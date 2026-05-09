@@ -41,7 +41,9 @@ describe("state-store", () => {
     const dir = makeTempDir("welcome-state-");
     const path = join(dir, "state.json");
     // Pre-populate with a forward-compatible field that the store doesn't
-    // know about. A partial write should preserve it rather than dropping it.
+    // know about, written in the legacy pre-envelope shape. A partial write
+    // should preserve the unknown key rather than dropping it, even after
+    // the store rewrites the file as a schema-versioned envelope.
     writeFileSync(
       path,
       JSON.stringify({ lastSeenPiVersion: "0.67.5", futureKey: "still here" }),
@@ -49,9 +51,13 @@ describe("state-store", () => {
     );
 
     writeWelcomeState({ lastSeenPiVersion: "0.68.1" }, path);
-    const raw = JSON.parse(readFileSync(path, "utf-8")) as Record<string, unknown>;
-    expect(raw.lastSeenPiVersion).toBe("0.68.1");
-    expect(raw.futureKey).toBe("still here");
+    const raw = JSON.parse(readFileSync(path, "utf-8")) as {
+      schemaVersion?: number;
+      state?: Record<string, unknown>;
+    };
+    expect(raw.schemaVersion).toBe(1);
+    expect(raw.state?.lastSeenPiVersion).toBe("0.68.1");
+    expect(raw.state?.futureKey).toBe("still here");
     // The typed read should still return only the known slice.
     expect(readWelcomeState(path)).toEqual({ lastSeenPiVersion: "0.68.1" });
   });

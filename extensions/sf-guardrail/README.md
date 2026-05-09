@@ -160,6 +160,7 @@ extensions/sf-guardrail/
     command-gate.ts         ← implementation module
     config-panel.ts         ← implementation module
     config.ts               ← implementation module
+    extension-doctor.ts     ← implementation module
     hitl.ts                 ← implementation module
     install-preset.ts       ← implementation module
     org-aware-gate.ts       ← implementation module

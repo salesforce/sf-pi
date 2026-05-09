@@ -68,6 +68,8 @@ import { openSfLspPanel, type SfLspPanelAction } from "./lib/command-panel.ts";
 import { openInfoPanel, type InfoPanelSeverity } from "../../lib/common/info-panel.ts";
 import { isSfPiExtensionEnabled } from "../../lib/common/sf-pi-extension-state.ts";
 import { performToggleExtension } from "../../lib/common/extension-toggle.ts";
+import { registerExtensionDoctor } from "../../lib/common/doctor/registry.ts";
+import { runExtensionDoctor as runLspExtensionDoctor } from "./lib/extension-doctor.ts";
 import {
   readEffectiveSfLspSettings,
   writeScopedSfLspSettings,
@@ -122,6 +124,11 @@ export default function sfLspExtension(pi: ExtensionAPI) {
   registerMainCommand(pi);
   registerSessionHooks(pi);
   registerToolResultHook(pi);
+
+  // Contribute to the aggregated `/sf-pi doctor` view. The standalone
+  // `/sf-lsp doctor` command keeps using doctorLsp() directly so its UI
+  // (rich Doctor + Recent activity sections) stays unchanged.
+  registerExtensionDoctor("sf-lsp", (cwd) => runLspExtensionDoctor(cwd));
 
   // ==========================================================================================
   // Session lifecycle

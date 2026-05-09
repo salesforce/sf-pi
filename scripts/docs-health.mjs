@@ -270,6 +270,27 @@ function checkManifestToolsMatchCode() {
   }
 }
 
+function checkStateStoreLocation() {
+  // Q4 of the AGENTS.md state-persistence decision tree (per-user JSON state)
+  // must use the shared lib/common/state-store.ts helper. We enforce that by
+  // forbidding `state-store.ts` from existing inside any extension's lib/.
+  // Documented in docs/adr/0006-extension-consistency-baseline.md.
+  for (const dir of extensionDirs()) {
+    const candidate = path.join(ROOT, "extensions", dir, "lib", "state-store.ts");
+    if (!existsSync(candidate)) continue;
+    const text = readText(`extensions/${dir}/lib/state-store.ts`);
+    // Allowed when the file is a thin delegator that imports the shared
+    // helper from lib/common/state-store.ts. Other shapes — bespoke fs I/O,
+    // hand-rolled JSON read/write — fail the lint.
+    if (!/from\s+"\.\.\/\.\.\/\.\.\/lib\/common\/state-store\.ts"/.test(text)) {
+      fail(
+        `extensions/${dir}/lib/state-store.ts`,
+        "Per-user JSON state must delegate to lib/common/state-store.ts. See AGENTS.md \u2192 'state-persistence decision tree'.",
+      );
+    }
+  }
+}
+
 function checkManifestEventsMatchCode() {
   for (const dir of extensionDirs()) {
     const base = `extensions/${dir}`;
@@ -351,6 +372,7 @@ function run() {
   checkRecommendationTable();
   checkGeneratedFilesExist();
   checkExtensionReadmes();
+  checkStateStoreLocation();
   checkManifestEventsMatchCode();
   checkManifestToolsMatchCode();
   checkChangelog();

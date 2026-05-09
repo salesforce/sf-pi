@@ -5,23 +5,30 @@
  * Stored at:
  *   <globalAgentDir>/state/sf-pi/announcements.json
  *
+ * Backed by the shared `lib/common/state-store.ts` helper (atomic write,
+ * schema versioning, safe defaults). The on-disk path is preserved at the
+ * legacy `state/sf-pi/` location so existing dismissals and remote-feed
+ * caches survive the migration.
+ *
  * Design mirrors recommendations-state.ts intentionally:
  *   - Separate state file (don't pollute settings.json diffs)
- *   - Best-effort read/write \u2014 never throws
+ *   - Best-effort read/write — never throws
  *   - Sticky dismissals across manifest revisions; bumping `revision`
  *     re-arms the nudge but already-dismissed ids stay hidden
  *
  * Stored fields:
- *   - acknowledgedRevision  \u2014 manifest revision the user last saw in the splash
- *   - dismissed[id]         \u2014 ISO timestamp when the user dismissed an item
- *   - lastFetchAt           \u2014 ISO timestamp of last successful remote fetch
- *   - lastFetchEtag         \u2014 ETag from the remote feed (for conditional GET)
- *   - cachedRemote          \u2014 last successful remote payload (opaque string,
+ *   - acknowledgedRevision  — manifest revision the user last saw in the splash
+ *   - dismissed[id]         — ISO timestamp when the user dismissed an item
+ *   - lastFetchAt           — ISO timestamp of last successful remote fetch
+ *   - lastFetchEtag         — ETag from the remote feed (for conditional GET)
+ *   - cachedRemote          — last successful remote payload (opaque string,
  *                              trusted only after schema re-validation)
  */
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import path from "node:path";
+import { createStateStore, type StateStore } from "../state-store.ts";
 import { globalAgentPath } from "../pi-paths.ts";
+
+const NAMESPACE = "sf-pi-announcements";
+const SCHEMA_VERSION = 1;
 
 export interface AnnouncementsState {
   acknowledgedRevision: string;
@@ -41,43 +48,61 @@ export function announcementsStatePath(): string {
   return globalAgentPath("state", "sf-pi", "announcements.json");
 }
 
-/** Read state. Returns a fresh empty state on any error \u2014 never throws. */
-export function readAnnouncementsState(filePath = announcementsStatePath()): AnnouncementsState {
-  if (!existsSync(filePath)) return cloneEmptyState();
-  try {
-    const parsed = JSON.parse(readFileSync(filePath, "utf8")) as Partial<AnnouncementsState>;
-    if (!parsed || typeof parsed !== "object") return cloneEmptyState();
+function buildStore(filePath: string): StateStore<AnnouncementsState> {
+  return createStateStore<AnnouncementsState>({
+    namespace: NAMESPACE,
+    filename: "announcements.json",
+    schemaVersion: SCHEMA_VERSION,
+    defaults: cloneEmptyState(),
+    pathOverride: filePath,
+    // Pre-envelope (fromVersion === 0) is the bare object the file
+    // shipped with before this module adopted state-store.ts. Migrate by
+    // re-validating each known field; unknown fields are dropped because
+    // every supported field is enumerated below.
+    migrate(raw, fromVersion) {
+      if (fromVersion !== 0) return null;
+      if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+      return parseLooseState(raw as Partial<AnnouncementsState>);
+    },
+  });
+}
 
-    const state = cloneEmptyState();
-    if (typeof parsed.acknowledgedRevision === "string") {
-      state.acknowledgedRevision = parsed.acknowledgedRevision;
-    }
-    if (parsed.dismissed && typeof parsed.dismissed === "object") {
-      for (const [itemId, value] of Object.entries(parsed.dismissed)) {
-        if (typeof value === "string" && value.trim()) {
-          state.dismissed[itemId] = value;
-        }
+function parseLooseState(parsed: Partial<AnnouncementsState>): AnnouncementsState {
+  const state = cloneEmptyState();
+  if (typeof parsed.acknowledgedRevision === "string") {
+    state.acknowledgedRevision = parsed.acknowledgedRevision;
+  }
+  if (parsed.dismissed && typeof parsed.dismissed === "object") {
+    for (const [itemId, value] of Object.entries(parsed.dismissed)) {
+      if (typeof value === "string" && value.trim()) {
+        state.dismissed[itemId] = value;
       }
     }
-    if (typeof parsed.lastFetchAt === "string") state.lastFetchAt = parsed.lastFetchAt;
-    if (typeof parsed.lastFetchEtag === "string") state.lastFetchEtag = parsed.lastFetchEtag;
-    if (typeof parsed.cachedRemote === "string") state.cachedRemote = parsed.cachedRemote;
-    return state;
+  }
+  if (typeof parsed.lastFetchAt === "string") state.lastFetchAt = parsed.lastFetchAt;
+  if (typeof parsed.lastFetchEtag === "string") state.lastFetchEtag = parsed.lastFetchEtag;
+  if (typeof parsed.cachedRemote === "string") state.cachedRemote = parsed.cachedRemote;
+  return state;
+}
+
+/** Read state. Returns a fresh empty state on any error — never throws. */
+export function readAnnouncementsState(filePath = announcementsStatePath()): AnnouncementsState {
+  try {
+    return parseLooseState(buildStore(filePath).read());
   } catch {
     return cloneEmptyState();
   }
 }
 
-/** Write state atomically, creating parent dirs as needed. */
+/** Write state atomically (tmp-file + rename), creating parent dirs as needed. */
 export function writeAnnouncementsState(
   state: AnnouncementsState,
   filePath = announcementsStatePath(),
 ): void {
   try {
-    mkdirSync(path.dirname(filePath), { recursive: true });
-    writeFileSync(filePath, `${JSON.stringify(state, null, 2)}\n`, "utf8");
+    buildStore(filePath).write(state);
   } catch {
-    // Persistence is best-effort \u2014 never crash the splash.
+    // Persistence is best-effort — never crash the splash.
   }
 }
 

@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Read-only gateway preflight diagnostics for `/sf-llm-gateway-internal doctor`. */
+import type { ExtensionDoctorReport } from "../../../lib/common/doctor/registry.ts";
 import {
   API_KEY_ENV,
   describeApiKey,
@@ -246,4 +247,62 @@ export function formatGatewayDoctorReport(report: GatewayDoctorReport): string {
   lines.push("", "Recommendations:");
   for (const item of report.recommendations) lines.push(`- ${item}`);
   return lines.join("\n");
+}
+
+/**
+ * Adapter for the shared `/sf-pi doctor` aggregator. Returns the same
+ * underlying probe as the standalone `/sf-llm-gateway-internal doctor`
+ * view, shaped into per-check rows so the manager can render them next
+ * to other extensions' diagnostics.
+ */
+export async function runExtensionDoctor(cwd: string): Promise<ExtensionDoctorReport> {
+  const report = await fetchGatewayDoctorReport(cwd);
+  const checks: ExtensionDoctorReport["checks"] = [];
+
+  if (!report.enabled) {
+    checks.push({
+      id: "gateway.disabled",
+      severity: "info",
+      title: "Gateway is disabled",
+      detail: "Saved config has enabled=false; run /sf-llm-gateway-internal setup to turn it on.",
+    });
+  }
+
+  checks.push({
+    id: "gateway.base-url",
+    severity: report.baseUrl ? "ok" : "warn",
+    title: report.baseUrl ? `Base URL configured (${report.baseUrl})` : "Base URL not configured",
+    detail: `source: ${report.baseUrlSource}`,
+    fix: report.baseUrl
+      ? undefined
+      : "Run /sf-llm-gateway-internal setup and enter the gateway base URL.",
+  });
+
+  checks.push({
+    id: "gateway.api-key",
+    severity: report.apiKeyPresent ? "ok" : "warn",
+    title: report.apiKeyPresent ? "API key present" : "API key not present",
+    detail: report.apiKeyDescription,
+    fix: report.apiKeyPresent ? undefined : "Run /login and paste the gateway API key.",
+  });
+
+  for (const check of report.checks) {
+    checks.push({
+      id: `gateway.${check.name.toLowerCase().replace(/\s+/g, "-")}`,
+      severity: check.ok ? "ok" : "warn",
+      title: `${check.name} ${check.status ? `(${check.status})` : ""}`.trim(),
+      detail: `${check.url} — ${check.interpretation}`,
+    });
+  }
+
+  const summary = checks.some((c) => c.severity === "warn" || c.severity === "error")
+    ? "! issues detected"
+    : "✓ ready";
+
+  return {
+    extensionId: "sf-llm-gateway-internal",
+    title: "SF LLM Gateway Internal",
+    checks,
+    summary,
+  };
 }

@@ -495,6 +495,7 @@ extensions/sf-slack/
     channel-tool.ts         ← implementation module
     config-panel.ts         ← implementation module
     emoji.ts                ← implementation module
+    extension-doctor.ts     ← implementation module
     file-tool.ts            ← implementation module
     format.ts               ← implementation module
     preferences-panel.ts    ← implementation module

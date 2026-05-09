@@ -5,6 +5,11 @@
  * Stored at:
  *   <globalAgentDir>/state/sf-pi/recommendations.json
  *
+ * Backed by the shared `lib/common/state-store.ts` helper (atomic write,
+ * schema versioning, safe defaults). The on-disk path is preserved at the
+ * legacy `state/sf-pi/` location so existing dismissals and decisions
+ * survive the migration.
+ *
  * Why a separate state file (not settings.json):
  * - Settings live under the user's control and should stay human-editable.
  * - State is machine-written bookkeeping ("has the user seen revision X?",
@@ -17,9 +22,11 @@
  *   item the user declined, and we never re-prompt for an item they already
  *   installed (unless the manifest drops and re-adds it under a new id).
  */
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import path from "node:path";
+import { createStateStore, type StateStore } from "../state-store.ts";
 import { globalAgentPath } from "../pi-paths.ts";
+
+const NAMESPACE = "sf-pi-recommendations";
+const SCHEMA_VERSION = 1;
 
 export type RecommendationDecision = "installed" | "declined";
 
@@ -38,41 +45,60 @@ export function recommendationsStatePath(): string {
   return globalAgentPath("state", "sf-pi", "recommendations.json");
 }
 
-/** Read state. Returns a fresh empty state on any error \u2014 never throws. */
+function buildStore(filePath: string): StateStore<RecommendationsState> {
+  return createStateStore<RecommendationsState>({
+    namespace: NAMESPACE,
+    filename: "recommendations.json",
+    schemaVersion: SCHEMA_VERSION,
+    defaults: cloneEmptyState(),
+    pathOverride: filePath,
+    // Pre-envelope (fromVersion === 0) — the legacy bare-object format.
+    // Re-validate each known field; unknown fields are intentionally dropped
+    // because the shape is small and exhaustively enumerated.
+    migrate(raw, fromVersion) {
+      if (fromVersion !== 0) return null;
+      if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+      return parseLooseState(raw as Record<string, unknown>);
+    },
+  });
+}
+
+function parseLooseState(parsed: Record<string, unknown>): RecommendationsState {
+  const state = cloneEmptyState();
+  if (typeof parsed.acknowledgedRevision === "string") {
+    state.acknowledgedRevision = parsed.acknowledgedRevision;
+  }
+  if (parsed.decisions && typeof parsed.decisions === "object") {
+    for (const [itemId, value] of Object.entries(parsed.decisions as Record<string, unknown>)) {
+      if (value === "installed" || value === "declined") {
+        state.decisions[itemId] = value;
+      }
+    }
+  }
+  return state;
+}
+
+/** Read state. Returns a fresh empty state on any error — never throws. */
 export function readRecommendationsState(
   filePath = recommendationsStatePath(),
 ): RecommendationsState {
-  if (!existsSync(filePath)) {
-    return cloneEmptyState();
-  }
   try {
-    const parsed = JSON.parse(readFileSync(filePath, "utf8"));
-    if (!parsed || typeof parsed !== "object") return cloneEmptyState();
-
-    const state: RecommendationsState = cloneEmptyState();
-    if (typeof parsed.acknowledgedRevision === "string") {
-      state.acknowledgedRevision = parsed.acknowledgedRevision;
-    }
-    if (parsed.decisions && typeof parsed.decisions === "object") {
-      for (const [itemId, value] of Object.entries(parsed.decisions)) {
-        if (value === "installed" || value === "declined") {
-          state.decisions[itemId] = value;
-        }
-      }
-    }
-    return state;
+    return parseLooseState(buildStore(filePath).read() as unknown as Record<string, unknown>);
   } catch {
     return cloneEmptyState();
   }
 }
 
-/** Write state atomically, creating parent dirs as needed. */
+/** Write state atomically (tmp-file + rename), creating parent dirs as needed. */
 export function writeRecommendationsState(
   state: RecommendationsState,
   filePath = recommendationsStatePath(),
 ): void {
-  mkdirSync(path.dirname(filePath), { recursive: true });
-  writeFileSync(filePath, `${JSON.stringify(state, null, 2)}\n`, "utf8");
+  try {
+    buildStore(filePath).write(state);
+  } catch {
+    // Persistence is best-effort — never crash the manager flow.
+  }
 }
 
 /** Merge a decision into the state and persist. */

@@ -70,6 +70,8 @@ import {
   performToggleExtension,
   type LifecycleActionId,
 } from "../../lib/common/extension-toggle.ts";
+import { registerExtensionDoctor } from "../../lib/common/doctor/registry.ts";
+import { runExtensionDoctor as runGuardrailExtensionDoctor } from "./lib/extension-doctor.ts";
 import { openInfoPanel } from "../../lib/common/info-panel.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 import { record, readRecent } from "./lib/audit.ts";
@@ -99,6 +101,11 @@ export default function sfGuardrail(pi: ExtensionAPI) {
   function getConfig(): { config: GuardrailConfig; source: "bundled" | "override" } {
     return loadConfig();
   }
+
+  // Contribute Guardrail config readiness to the aggregated `/sf-pi doctor`
+  // view. Recent decisions stay in /sf-guardrail audit (which has access to
+  // the ExtensionContext); this provider is cwd-only by design.
+  registerExtensionDoctor("sf-guardrail", (cwd) => runGuardrailExtensionDoctor(cwd));
 
   // ─── session_start: hydrate allow-memory ──────────────────────────────────
   pi.on("session_start", async (_event, ctx) => {

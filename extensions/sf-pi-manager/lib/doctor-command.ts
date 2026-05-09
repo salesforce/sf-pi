@@ -3,6 +3,10 @@
 import type { ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import { applyDoctorFixes } from "../../../lib/common/doctor/fixes.ts";
 import { runDoctorDiagnostics } from "../../../lib/common/doctor/diagnostics.ts";
+import {
+  runRegisteredDoctors,
+  type RegisteredDoctorOutcome,
+} from "../../../lib/common/doctor/registry.ts";
 import type { DoctorIssue, DoctorReport } from "../../../lib/common/doctor/types.ts";
 
 export type DoctorSubcommand = "status" | "fix" | "runtime";
@@ -41,7 +45,7 @@ export async function handleDoctor(ctx: ExtensionCommandContext, args: DoctorArg
     handleRuntime(ctx);
     return;
   }
-  handleStatus(ctx);
+  await handleStatus(ctx);
 }
 
 function handleRuntime(ctx: ExtensionCommandContext): void {
@@ -49,12 +53,25 @@ function handleRuntime(ctx: ExtensionCommandContext): void {
   ctx.ui.notify(renderRuntimeReport(report), "info");
 }
 
-function handleStatus(ctx: ExtensionCommandContext): void {
+async function handleStatus(ctx: ExtensionCommandContext): Promise<void> {
   const report = runDoctorDiagnostics({ cwd: ctx.cwd });
-  ctx.ui.notify(
-    renderDoctorReport(report),
-    report.issues.some((i) => i.severity === "error") ? "warning" : "info",
-  );
+  // Aggregate every registered per-extension doctor with a small budget so
+  // a slow network probe never blocks the report. Slow / failed providers
+  // are surfaced inline as "timeout" / "error" rows.
+  const extensionOutcomes = await runRegisteredDoctors({ cwd: ctx.cwd });
+
+  const lines = [renderDoctorReport(report)];
+  if (extensionOutcomes.length > 0) {
+    lines.push("", renderExtensionOutcomes(extensionOutcomes));
+  }
+
+  const hasErrors =
+    report.issues.some((i) => i.severity === "error") ||
+    extensionOutcomes.some(
+      (o) => o.status === "error" || o.report?.checks.some((c) => c.severity === "error"),
+    );
+
+  ctx.ui.notify(lines.join("\n"), hasErrors ? "warning" : "info");
 }
 
 async function handleFix(ctx: ExtensionCommandContext, target: DoctorFixTarget): Promise<void> {
@@ -210,4 +227,40 @@ function renderIssue(issue: DoctorIssue): string[] {
   const lines = [`  ${icon} ${issue.title}`, `    ${issue.detail}`];
   if (issue.fix) lines.push(`    Fix: ${issue.fix}`);
   return lines;
+}
+
+/**
+ * Exported for unit tests so the manager's aggregated render shape is
+ * pinned. Production callers go through `handleDoctor` which already wires
+ * this into the registered providers.
+ */
+export function renderExtensionOutcomes(outcomes: RegisteredDoctorOutcome[]): string {
+  const lines: string[] = ["Extension diagnostics:"];
+  for (const outcome of outcomes) {
+    if (outcome.status === "timeout") {
+      lines.push("", `  ${outcome.extensionId} \u2014 timed out after ${outcome.durationMs}ms`);
+      continue;
+    }
+    if (outcome.status === "error") {
+      lines.push("", `  ${outcome.extensionId} \u2014 errored: ${outcome.error ?? "unknown"}`);
+      continue;
+    }
+    const report = outcome.report;
+    if (!report) continue;
+    lines.push("", `  ${report.title}${report.summary ? `  ${report.summary}` : ""}`);
+    for (const check of report.checks) {
+      const icon =
+        check.severity === "error"
+          ? "\u2717"
+          : check.severity === "warn"
+            ? "!"
+            : check.severity === "ok"
+              ? "\u2713"
+              : "\u2022";
+      lines.push(`    ${icon} ${check.title}`);
+      if (check.detail) lines.push(`      ${check.detail}`);
+      if (check.fix) lines.push(`      Fix: ${check.fix}`);
+    }
+  }
+  return lines.join("\n");
 }

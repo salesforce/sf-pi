@@ -53,6 +53,8 @@ import { isSfPiExtensionEnabled } from "../../lib/common/sf-pi-extension-state.t
 import { D360_TOOL_NAME, registerD360ApiTool } from "./lib/api-tool.ts";
 import { D360_METADATA_TOOL_NAME, registerD360MetadataTool } from "./lib/metadata-tool.ts";
 import { D360_PROBE_TOOL_NAME, registerD360ProbeTool } from "./lib/probe-tool.ts";
+import { registerExtensionDoctor } from "../../lib/common/doctor/registry.ts";
+import { buildSfData360Doctor } from "./lib/extension-doctor.ts";
 
 const COMMAND_NAME = "sf-data360";
 const __filename = fileURLToPath(import.meta.url);
@@ -74,6 +76,11 @@ export default function sfData360(pi: ExtensionAPI) {
   pi.on("session_start", (_event, ctx) => {
     if (isSfPiExtensionEnabled(ctx.cwd, "sf-data360")) ensureToolsRegistered();
   });
+
+  // Contribute a small org-connectivity + readiness probe to the
+  // aggregated `/sf-pi doctor` view. The full d360_probe tool stays
+  // available to the agent for deep diagnostics.
+  registerExtensionDoctor("sf-data360", buildSfData360Doctor(pi));
 
   pi.on("resources_discover", (event) => {
     if (!isSfPiExtensionEnabled(event.cwd, "sf-data360")) return;
