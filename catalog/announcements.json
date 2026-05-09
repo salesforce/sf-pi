@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.54.0-2026-05-09",
-  "latestVersion": "0.54.0",
+  "revision": "release-0.55.0-2026-05-09",
+  "latestVersion": "0.55.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.54.0",
+      "id": "release-0.55.0",
       "kind": "update",
-      "title": "sf-pi v0.54.0 — state-store + /sf-pi doctor aggregation",
+      "title": "sf-pi v0.55.0 — ADR 0006 closing follow-ups",
       "publishedAt": "2026-05-09T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.54.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.55.0",
       "severity": "info",
-      "body": "state-store + /sf-pi doctor aggregation"
+      "body": "ADR 0006 closing follow-ups"
     },
     {
       "id": "pi-0.73-required",
