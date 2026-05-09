@@ -360,6 +360,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.49.0](https://github.com/salesforce/sf-pi/compare/v0.48.1...v0.49.0) (2026-05-09)
+
+
+### Features
+
+* **sf-data360:** improve recursive validation guidance ([c938f74](https://github.com/salesforce/sf-pi/commit/c938f747e226536c51c1cfd4e520372f68915e8c))
+
 ## [0.48.1](https://github.com/salesforce/sf-pi/compare/v0.48.0...v0.48.1) (2026-05-08)
 
 
