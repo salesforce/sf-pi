@@ -5,106 +5,86 @@ description: Data Cloud/Data 360 REST API workflows using d360_api or sf api req
 
 # SF Data 360
 
-Use this skill when working with Salesforce Data Cloud / Data 360 REST APIs.
+Use this skill for Salesforce Data Cloud / Data 360 REST work.
 
-## Execution preference
+## Tool order
 
-1. Use `d360_probe` first when Data Cloud/Data 360 readiness is uncertain.
-2. Prefer `d360_metadata` for compact DMO/DLO list and describe tasks.
-3. Prefer the native `d360_api` tool for other Data 360 REST endpoints.
-4. If `d360_api` is unavailable, use `sf api request rest` directly.
-5. Always use the active org API version from the Salesforce environment.
-6. Always name the target org explicitly for mutating calls.
+1. `d360_probe` first when readiness is uncertain.
+2. `d360_metadata` for compact DMO/DLO list and describe.
+3. `d360_api` for everything else; `sf api request rest` only as a fallback.
+
+Always pass `target_org` explicitly when the intended Data 360 org is not
+the active sf-pi default. Always use the active org API version — do not
+hardcode a path like `/services/data/v60.0/...`.
 
 ## Default workflow
 
-1. Probe readiness before assuming Data Cloud is on or off.
-2. Discover metadata before querying or mutating.
-3. Read examples before complex create/update calls.
-4. Use `dry_run: true` before create, update, run, publish, deploy, undeploy, or delete.
-5. Keep result sets small with limits, row limits, and pagination.
-6. Prefer validation, preview, and test endpoints before saving configuration.
+1. Probe → metadata-discover → read examples → dry-run mutating calls.
+2. Keep result sets small (`limit`, `rowLimit`, `output_mode: "summary"|"file_only"`).
+3. Prefer validation/preview/test endpoints before saving configuration.
+4. For a non-default explicit `target_org`, `d360_api` will resolve that
+   org via `sf org display` and use its API version and org type.
 
 ## DMO/DLO discovery discipline
 
-When the user asks to list DMOs, first decide which list they mean.
+- "List DMOs" means active / metadata-visible Data Model Objects. Use
+  `d360_metadata list_dmos` or `GET /ssot/metadata-entities?entityType=DataModelObject`.
+- Do not call `GET /ssot/data-model-objects` broadly — it returns full
+  DMO definitions (including disabled standard catalog entries).
+- Use `d360_metadata describe_dmo` (or `GET /ssot/data-model-objects/{name}__dlm`)
+  only after selecting one DMO that needs field-level detail.
+- Same pattern for DLOs. `list_dlos` `category` filters are compact
+  metadata categories and can differ from detailed DLO categories.
 
-Default interpretation:
+## Output budget
 
-- "List DMOs" means active / metadata-visible Data Model Objects.
-- Use `d360_metadata` with `action: "list_dmos"`, or `GET /ssot/metadata-entities?entityType=DataModelObject`.
-- Return only category, display name, and API name unless more detail is requested.
+- Prefer compact list/metadata/search endpoints over broad catalog calls.
+- Return names, labels, categories, status, and counts by default.
+- Use `output_mode: "summary"` or `"file_only"` for broad responses;
+  treat truncation as a last-resort safety net.
 
-Do not use `GET /ssot/data-model-objects` for a simple list. That endpoint returns full DMO definitions, including fields, disabled/unassigned standard catalog entries, and can produce very large responses.
+## Raw `sf api request rest` fallback
 
-Use `d360_metadata` with `action: "describe_dmo"`, or `GET /ssot/data-model-objects/{dmoApiName}`, only after selecting one DMO and needing its fields, mappings, enabled status, or segmentability.
-
-For DLOs, follow the same pattern: use compact metadata list/describe helpers first, then inspect detailed DLO schema only when required. Treat `category` filters on `list_dlos` as compact metadata categories; detailed DLO schema categories can differ.
-
-If the user explicitly asks for the full standard DMO catalog or field inventory:
-
-1. Keep limits small.
-2. Paginate deliberately.
-3. Prefer `output_mode: "summary"` or `output_mode: "file_only"` for broad `d360_api` calls.
-4. Summarize in chat instead of pasting full nested field payloads.
-
-## Output budget rules
-
-Avoid broad Data 360 calls that return nested field arrays unless field-level detail is required.
-
-For list requests:
-
-- Prefer `d360_metadata` or metadata/search endpoints that return compact records.
-- Return names, labels, categories, status, and counts.
-- Do not paste full field definitions by default.
-
-For large responses:
-
-- Prefer saving raw JSON to a file and returning a concise summary.
-- Treat `d360_api` truncation as a last-resort safety net, not a normal workflow.
-- A 50 KB truncated result still consumes meaningful context.
-
-## Raw sf api request fallback
-
-Prefer `d360_api` over raw `sf api request rest`.
-
-If raw `sf api request rest` is necessary:
-
-- Do not pass `--json`; some CLI versions do not support it for this command.
-- Pipe stdout to `jq` for formatting.
-- Redirect or ignore beta warnings from stderr when needed.
+- Do not pass `--json` to that subcommand.
+- Pipe stdout to `jq`; ignore beta warnings on stderr.
 - Always pass `--target-org` explicitly when not using `d360_api`.
-
-## References
-
-Read these files only when needed:
-
-- `references/quickstart.md` — common `d360_api` examples.
-- `references/workflows.md` — end-to-end operation sequences, including read-only smoke test matrices.
-- `references/action-coverage.md` — recursive validation guidance for the roughly 180+ operation surface.
-- `references/endpoint-families.md` — endpoint families and representative paths.
-- `references/examples.md` — public-safe payload examples.
-- `references/data-shapes.md` — request-body shapes distilled from public examples and DTOs.
-- `references/query-patterns.md` — Data Cloud SQL, CI SQL, and semantic query guidance.
-- `references/safety.md` — mutating-operation safety policy.
-- `references/readiness.md` — how to interpret Data 360 readiness probes.
-- `references/troubleshooting.md` — common failures and recovery steps.
-
-When local references are not enough, inspect the public upstream repo before broad web
-search: <https://github.com/forcedotcom/d360-mcp-server>. Use it for action-family
-design, facade workflow, and public payload source material; do not run or embed
-its Java MCP server from this extension.
 
 ## Rules of thumb
 
-- `d360_metadata` list actions show a capped inline table by default; use `category`, `max_results`, or the saved raw JSON path for broader inventory.
-- Prefer `d360_metadata` or metadata search over broad metadata listing.
-- Prefer Data 360 query SQL endpoints over legacy query endpoints for new work.
-- Read `references/query-patterns.md` before inventing Data Cloud SQL, calculated insight SQL, or semantic queries.
+- Prefer `/ssot/query-sql` for new query work; `/ssot/query` and
+  `/ssot/queryv2` are legacy. All three accept `{ "sql": "..." }` —
+  there is no `query` field.
 - For mappings, inspect both source DLO and target DMO fields first.
-- For calculated insights, validate before create/update and check status before using in segments.
-- For connectors, use the connector catalog `name` from `GET /ssot/connectors` when fetching connector detail; connection `connectorType` values can differ.
-- For data streams, inspect connector metadata and test connections first.
-- For semantic models, create the model shell first, then add data objects, relationships, calculations, and metrics.
-- Read `references/data-shapes.md` before complex create/update calls.
-- Confirm destructive operations even in sandboxes unless the user explicitly asked for them.
+- For calculated insights, validate before create when an
+  `actions/validate` endpoint exists; check status before referencing in
+  segments. Connect REST `apiName` must end `__cio`.
+- For connector detail, use the connector catalog `name` from
+  `GET /ssot/connectors`, not the connection `connectorType`.
+- For data streams, inspect connector metadata and test the connection
+  first. `DELETE` requires `?shouldDeleteDataLakeObject=true|false`.
+- For semantic models, create the shell first; subresources are added
+  via the URLs returned in the create response. Validate is GET, not POST.
+- Confirm destructive operations even in sandboxes unless the user
+  explicitly asked for them.
+
+## References
+
+Read these only when needed:
+
+- `references/quickstart.md` — minimum-viable d360 cheatsheet.
+- `references/data-shapes.md` — verified create/update payload shapes for
+  every common entity, with lifecycle gotchas.
+- `references/examples.md` — small workflow snippets that pair with `d360_api`.
+- `references/query-patterns.md` — Data Cloud SQL, CI SQL, profile filters, semantic queries.
+- `references/endpoint-families.md` — endpoint family map.
+- `references/workflows.md` — read-only smoke matrix and recursive validation recipe.
+- `references/action-coverage.md` — verified live-mutation lifecycle proofs.
+- `references/safety.md` — mutating-operation safety policy.
+- `references/readiness.md` — how to interpret `d360_probe` output.
+- `references/troubleshooting.md` — symptom → cause → fix index.
+
+When local references are not enough, inspect the public upstream repo
+before broad web search:
+<https://github.com/forcedotcom/d360-mcp-server>. Use it for action-family
+design and public payload source material; do not run or embed its Java
+MCP server from this extension.

@@ -1,7 +1,9 @@
-# SF Data 360 Payload Examples
+# SF Data 360 Examples
 
-These examples are generic and public-safe. Verify required fields against the
-current org metadata before executing.
+Curated public-safe examples that pair with `d360_api`. For full create/update
+shapes use `references/data-shapes.md`; for query patterns use
+`references/query-patterns.md`. The examples here are the smaller, more
+common workflow snippets that do not warrant a full data-shape entry.
 
 ## Metadata search
 
@@ -17,102 +19,56 @@ current org metadata before executing.
 }
 ```
 
-## Calculated insight validation
+## Profile read with filters
+
+`GET /ssot/profile/{dataModelName}` requires the bracketed `filters` syntax
+and the unsuffixed-only path segment for `dataModelName`:
 
 ```json
 {
-  "method": "POST",
-  "path": "/ssot/calculated-insights/actions/validate",
-  "body": {
-    "apiName": "Customer_Order_Summary__cio",
-    "displayName": "Customer Order Summary",
-    "definitionType": "CALCULATED_METRIC",
-    "publishScheduleInterval": "SYSTEM_MANAGED",
-    "expression": "SELECT Customer__dlm.ssot__Id__c customer_id, SUM(Order__dlm.TotalAmount__c) total_amount FROM Order__dlm GROUP BY Customer__dlm.ssot__Id__c"
+  "method": "GET",
+  "path": "/ssot/profile/ssot__Individual__dlm",
+  "query": {
+    "filters": "[ssot__Id__c=00DKa0000000000]",
+    "fields": "ssot__Id__c,ssot__Status__c",
+    "batchSize": 5
   }
 }
 ```
 
-## DMO create dry run
+For `GET /ssot/profile/{dataModelName}/{id}`, supply `orderby` whenever
+you also pass `offset`.
+
+## CI run + status check
 
 ```json
-{
-  "method": "POST",
-  "path": "/ssot/data-model-objects",
-  "dry_run": true,
-  "body": {
-    "name": "ProductReview",
-    "label": "Product Review",
-    "category": "Other",
-    "fields": [
-      {
-        "name": "ReviewId",
-        "label": "Review ID",
-        "dataType": "Text",
-        "isPrimaryKey": true
-      },
-      {
-        "name": "Rating",
-        "label": "Rating",
-        "dataType": "Number"
-      }
-    ]
-  }
-}
+{ "method": "POST", "path": "/ssot/calculated-insights/Customer_Order_Summary__cio/actions/run" }
 ```
 
-## Mapping create dry run
-
-Before using this pattern, fetch both the DLO and DMO schemas and verify exact
-field API names.
-
 ```json
-{
-  "method": "POST",
-  "path": "/ssot/data-model-object-mappings",
-  "dry_run": true,
-  "body": {
-    "name": "ProductReviewToDmo",
-    "sourceObjectName": "ProductReview__dll",
-    "targetObjectName": "ProductReview__dlm",
-    "fieldMappings": [
-      {
-        "sourceFieldName": "review_id__c",
-        "targetFieldName": "ReviewId__c"
-      },
-      {
-        "sourceFieldName": "rating__c",
-        "targetFieldName": "Rating__c"
-      }
-    ]
-  }
-}
+{ "method": "GET", "path": "/ssot/calculated-insights/Customer_Order_Summary__cio" }
 ```
 
-## Segment publish dry run
+## Segment delete (bypass deactivate when stuck)
+
+If `actions/deactivate` returns `INTERNAL_ERROR: We couldn't publish your
+segment` while the segment is still in `PROCESSING`, deleting still works:
+
+```json
+{ "method": "DELETE", "path": "/ssot/segments/Example_Segment", "dry_run": true }
+```
+
+Then drop `dry_run` to execute.
+
+## Data stream cleanup with DLO
 
 ```json
 {
-  "method": "POST",
-  "path": "/ssot/segments/SEGMENT_ID/actions/publish",
+  "method": "DELETE",
+  "path": "/ssot/data-streams/ProductStream",
+  "query": { "shouldDeleteDataLakeObject": true },
   "dry_run": true
 }
 ```
 
-## Semantic model query
-
-```json
-{
-  "method": "POST",
-  "path": "/semantic-engine/gateway",
-  "body": {
-    "semanticModelId": "SEMANTIC_MODEL_ID",
-    "structuredSemanticQuery": {
-      "fields": [
-        { "expression": { "semanticField": { "name": "CustomerCount" } }, "alias": "customers" }
-      ],
-      "options": { "limitOptions": { "limit": 10 } }
-    }
-  }
-}
-```
+`shouldDeleteDataLakeObject` is required even when set to `false`.

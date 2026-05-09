@@ -1,166 +1,63 @@
 # SF Data 360 Troubleshooting
 
-## `sf` authentication failed
+Each entry: symptom → cause → fix. Lifecycle-shape gotchas live in
+`references/data-shapes.md`; this file covers cross-cutting failures.
 
-Run:
+## Auth and CLI
 
-```bash
-sf org login web --set-default --alias my-sandbox
-```
+- **`sf` returns auth error.** Run `sf org login web --set-default --alias my-sandbox`. Then retry the `d360_api` call or pass `target_org` explicitly.
+- **Raw `sf api request rest` rejected `--json`.** Don't pass `--json` for that subcommand; pipe stdout to `jq` and ignore beta warnings on stderr.
+- **Raw DELETE failed with `No 'mode' found in 'body' entry`.** Some sf CLI versions need a body for DELETE. `d360_api` already sends `{}`. Raw fallback: `--body '{}'`.
 
-Then retry the `d360_api` call or pass `target_org` explicitly.
+## Output size and discovery
 
-## Endpoint returned too much data
+- **Endpoint returned too much data.** Use `output_mode: "summary"` or `"file_only"`. Add `limit`/`rowLimit`/`offset`/`batchSize` query parameters.
+- **Metadata request is too broad.** Prefer `d360_metadata` `list_dmos`/`list_dlos` and `describe_dmo`/`describe_dlo`. Do not call `/ssot/data-model-objects` broadly. For other entities, use `POST /connect/search/metadata/results` or `GET /ssot/metadata-entities`.
+- **Optional surface returns `NOT_FOUND`.** Search index, retrievers, some DataKit manifest paths can be absent in healthy orgs. Treat as feature gating unless core probes also fail.
+- **DLO category filter returns no rows.** `list_dlos` filters on compact metadata categories from `/ssot/metadata-entities`, which can differ from detailed DLO categories. Retry without the category filter and inspect the helper output.
 
-Use filters, `limit`, `rowLimit`, `offset`, or endpoint-specific pagination.
-Prefer `output_mode: "summary"` or `output_mode: "file_only"` for broad responses. `d360_api` truncates oversized inline output and saves the full response to a temp file.
+## Mapping list and connector lookup
 
-## Metadata request is too broad
+- **Mapping list fails unfiltered.** Pass `dmoDeveloperName=<name>__dlm` or `sourceObjectName=<name>__dll`.
+- **Connector detail returns `NOT_FOUND`.** Use the catalog `name` from `GET /ssot/connectors`, not a connection's `connectorType`. For example a Salesforce CRM connection lists `connectorType=SalesforceDotCom` while connector metadata is under `SalesforceCRM`.
 
-For simple DMO/DLO lists, prefer `d360_metadata` first. List actions show a capped inline table and save the full response to a temp file:
+## Connection action endpoints
 
-```json
-{ "action": "list_dmos", "max_results": 25 }
-```
+- **`POST /ssot/connections/actions/test` returns `connectorType is required`.** Pass `connectorType` in the body, not only as a query parameter. Connection test also requires `method: "Ingress"|"Egress"` and per-parameter `paramName`+`value` pairs.
+- **`/database-schemas`, `/databases`, `/objects/.../preview`, `/actions/test` return `INTERNAL_ERROR: Unable to query…`.** These surfaces are JDBC-shaped-connector only. Salesforce CRM and similar non-JDBC connections fail through these paths by design.
+- **`/connections/{id}/schema` or `/sitemap` returns enum/parameter errors.** These are Web/website-connector specific. Do not retry on other connector kinds.
+- **`/connections/{id}/endpoints` returns `INTERNAL_SERVER_ERROR`.** The connector lacks an OpenAPI definition; not a plugin issue.
 
-For one object's fields, describe that single object:
+## Query plane
 
-```json
-{ "action": "describe_dmo", "api_name": "SomeObject__dlm" }
-```
+- **`/ssot/query` or `/ssot/queryv2` returns `Unrecognized field "query"`.** Both endpoints accept `{ "sql": "..." }`. There is no `query` field on Connect REST query bodies.
+- **`/ssot/profile/{name}` rejects `filter=...`.** The plural `filters` query parameter and bracketed equality syntax are required: `filters=[Field__c=Value]`. Combine with `fields=` to limit columns.
+- **`/ssot/profile/{name}/{id}` returns `orderby is required with offset`.** Always pair `offset` with `orderby`.
+- **`/ssot/calculated-insights/{name}` returns `apiName must end in __cio`.** Provide a CI apiName ending `__cio`.
 
-Do not call `/ssot/data-model-objects` broadly unless the user explicitly needs the full standard catalog or field inventory.
+## Lifecycle quirks
 
-For other metadata, prefer metadata search first when the search plane is available:
+- **`DELETE /ssot/data-streams/{name}` returns `MALFORMED_QUERY: shouldDeleteDataLakeObject`.** Add the query parameter explicitly: `?shouldDeleteDataLakeObject=true|false`.
+- **`POST /ssot/data-streams/{name}/actions/run` rejects `SalesforceDotCom`.** CRM streams cannot be run from the API in non-interactive mode; trigger from the UI.
+- **`POST /ssot/semantic/models/{name}/validate` returns `METHOD_NOT_ALLOWED: GET,HEAD`.** Validate is GET for semantic models, not POST.
+- **`POST /ssot/segments/{name}/actions/count|deactivate` returns `INTERNAL_ERROR: We couldn't trigger…`.** The segment is still `PROCESSING`. Poll status before action calls.
+- **CI GET returns `DELETING` after a DELETE.** Async delete; both `DELETING` (transient) and `ITEM_NOT_FOUND` count as successful cleanup.
+- **Data action target GET returns `Id can not be null or empty` after delete.** The path expects an internal id, not apiName, on that code path. Confirm cleanup with the filtered list call.
+- **Second DataKit DELETE returns `INTERNAL_SERVER_ERROR: PackageKitDefinition does not exist`.** Idempotent error; the kit is gone.
+- **DataKit list does not show a freshly-created kit.** List visibility is delayed; verify with the create response or DELETE for cleanup.
+- **`PATCH /ssot/data-kits/{name}` rejects `dataKitDevName` or `label`.** PATCH only accepts `components[]`. Recreate the kit to change the label/type.
+- **Identity resolution create fails with `Objects can only be used in identity resolution after required fields are mapped`.** Feature gating, not a payload issue. Map source DLOs to the target profile DMOs first.
+- **Search index create fails with `INVALID_INPUT: required fields [...] vectorEmbeddingConfiguration.embeddingModel.id`.** The org needs an embedding model artifact. Verify with `GET /ssot/machine-learning/model-artifacts`. Chat-completion-only orgs cannot create search indexes.
 
-```json
-{
-  "method": "POST",
-  "path": "/connect/search/metadata/results",
-  "body": { "query": "the entity you need", "pagination": { "limit": 10 } }
-}
-```
+## Schema-shape gotchas
 
-Then fetch one entity with `/ssot/metadata` and an `entityName` query parameter. If metadata search returns a backend index error, fall back to `/ssot/metadata-entities` or `d360_metadata`; catalog APIs can still be healthy.
+- **`POST /ssot/data-model-objects` rejects `objectType` or `Profile` (titlecase).** Connect REST takes uppercase enum (`PROFILE|ENGAGEMENT|OTHER`) and uses `dataType` per field. Drop `objectType`/`objectCategory` from upstream MCP examples.
+- **DMO PATCH does not remove omitted fields.** PATCH is additive. Recreate the DMO to drop a field.
+- **Segment `segmentType: "Ui"` rejected.** Use the current enum: `Dbt|Dynamic|EinsteinGptSegmentsUI|Lookalike|Realtimez|Waterfall`.
+- **Segment `includeDbt.models[]` flat array rejected with `unexpected array`.** Wrap in `includeDbt.models.models[]`.
+- **DBT model SQL aliases rejected.** Use unaliased fully-qualified identifiers in the primary projection and project the primary key plus key qualifier.
+- **`POST /ssot/machine-learning/predict` returns `JSON_PARSER_ERROR ... missing property 'type'`.** Polymorphic body needs a `type` discriminator.
 
-## Optional surface returned `NOT_FOUND`
+## Mutation safety
 
-Search indexes, retrievers, and some DataKit manifest paths can return `NOT_FOUND` in an otherwise healthy Data 360 org. Treat these as feature/path availability issues unless core catalog, stream, query, or metadata probes also fail.
-
-## Connector detail returned `NOT_FOUND`
-
-Use the connector catalog `name` from `GET /ssot/connectors` for `/ssot/connectors/{name}`. Do not assume the connection list's `connectorType` is accepted by the connector metadata endpoint. For example, a Salesforce CRM connection can list as `connectorType=SalesforceDotCom`, while connector metadata can be exposed under catalog name `SalesforceCRM`.
-
-## DLO category filter returned no rows
-
-`d360_metadata list_dlos` filters on compact metadata categories from `/ssot/metadata-entities`. A detailed DLO description can report a different category. If a category filter returns zero rows, retry without the category filter and inspect the available categories in the helper output.
-
-## Create/update failed with schema errors
-
-1. Fetch the current resource state with a `GET` call.
-2. Re-read `examples.md` for a similar payload shape.
-3. Remove read-only fields copied from a GET response.
-4. Retry with the smallest possible body.
-
-## Raw `sf api request rest` rejected `--json`
-
-Prefer `d360_api`. If you must call raw `sf api request rest`, do not add `--json`; pipe stdout to `jq` and redirect beta warnings from stderr when needed.
-
-## DELETE failed with `No 'mode' found in 'body' entry`
-
-Some sf CLI versions require an explicit request body for `sf api request rest --method DELETE`. `d360_api` sends an empty JSON body for DELETE calls to avoid this CLI-side failure. If you must use raw CLI fallback, pass a small body such as `--body '{}'` or use a request file with `body.mode: "raw"`.
-
-## Endpoint returned `METHOD_NOT_ALLOWED`
-
-Treat this as live API evidence for that org/API version. Some cataloged mutating paths can be read-only or can require a different identifier shape. Re-check the resource returned by `GET`; for example, if deleting by an ID is rejected, the same endpoint family can require a developer/API name instead.
-
-## Create failed after copying a list response
-
-Data 360 create/update DTOs can use different field names than list/get responses. Do not copy response payloads wholesale into create/update calls. Common examples:
-
-- DLO create can accept `dataLakeFieldInputRepresentations[]`, while GET returns `dataLakeFieldInfoRepresentation[]` and `fields[]`.
-- Mapping create/add can require `fieldMapping[]` with `sourceFieldDeveloperName` and `targetFieldDeveloperName`.
-- Data action create can reject response-only fields from `dataActionSources`. Use create fields such as `sourceName`, `sourceType`, and `sourceCdcSubscriptions`; the response returns them as `objectDevName`, `objectType`, and `subscriptionModes`.
-- Connection test requires `connectorType` in the request body, not only as a query parameter. It also requires `method` with values such as `Ingress` or `Egress`, and parameter entries use `paramName` plus `value`.
-- Activation target create is polymorphic by `platformType`; a missing or wrong `connector` object can fail at JSON parsing before business validation. For `DataCloud` targets, `connector: {}` is valid, but activation target DELETE may not be exposed.
-
-## Connection action and connector metadata calls
-
-- `POST /ssot/connections/actions/test` and
-  `POST /ssot/connections/actions/{command}` require `connectorType` in the
-  body, not only as a query parameter. Without it, the response is
-  `INVALID_INPUT: connectorType is required`.
-- `POST /ssot/connections/{connectionId}/database-schemas`,
-  `/databases`, `/objects/{resourceName}/preview`, and
-  `/connections/{connectionId}/actions/test` only work for connector kinds
-  that expose those surfaces (for example JDBC-shaped connectors). For
-  Salesforce CRM and similar connections they can return
-  `INTERNAL_ERROR: Unable to query database schemas` or
-  `UNKNOWN_EXCEPTION`. This is feature gating, not a plugin failure.
-- `GET /ssot/connections/{connectionId}/schema` and `/sitemap` are
-  Web/website-connector specific. With other connector types the API
-  returns enum/parameter errors.
-- `GET /ssot/connections/{connectionId}/endpoints` requires the connector
-  to expose an OpenAPI definition and may return `INTERNAL_SERVER_ERROR`
-  when none is available.
-
-## DataKit and machine-learning gotchas
-
-- `GET /ssot/datakit/{dataKitDevName}/manifest` is namespace-gated and
-  refuses spidering with
-  `DataKitSpidering is not allowed for this DataKit as orgnamespace is not
-same as datakit namespace`. Work with manifests for DataKits installed in
-  the same namespace as the org or use the listed component endpoints.
-- `GET /ssot/data-kits/{dataKitName}/components/{componentName}/dependencies`
-  requires the `componentType` query parameter; without it the response is
-  `Component Type property is missing`.
-- `GET /ssot/machine-learning/configured-models` rejects the generic
-  `connectorType` query value. Call it without query parameters to list
-  models, then filter client-side.
-- `POST /ssot/machine-learning/predict` requires a polymorphic body with a
-  discriminator (`type`) field. Without it the API returns
-  `JSON_PARSER_ERROR ... missing property 'type'`.
-
-## Segment create rejected by the platform
-
-Verified shapes for SQL-defined (`Dbt`) segments on current API versions:
-
-- `developerName` is required; without it the platform reports a vague
-  validation error.
-- `segmentType` must come from
-  `Dbt|Dynamic|EinsteinGptSegmentsUI|Lookalike|Realtimez|Waterfall`. The
-  legacy upstream value `Ui` is rejected.
-- `includeDbt.models.models[]` is double-nested; a flat `models[]` is
-  rejected with `Can not deserialize: unexpected array`.
-- DBT model SQL must use unaliased fully-qualified identifiers in the
-  primary projection (`SELECT DISTINCT dmo.field`, not `field AS x`).
-- DBT model SQL must project both the primary key and the key qualifier
-  of the segmentOn entity (for example, both `ssot__Id__c` and
-  `KQ_Id__c`).
-
-If `actions/count` or `actions/deactivate` returns `INTERNAL_ERROR: We
-couldn't trigger async count on your segment` or `We couldn't publish
-your segment`, the segment is still in `PROCESSING` status. Poll the
-status before retrying.
-
-## CI status reads `DELETING` after delete
-
-`DELETE /ssot/calculated-insights/{apiName}` returns 204 with an empty
-body. A follow-up GET briefly returns the record with
-`calculatedInsightStatus: "DELETING"` before the resource is fully gone
-(`ITEM_NOT_FOUND`). Treat both transient `DELETING` and `ITEM_NOT_FOUND`
-as successful cleanup.
-
-## Data action target GET says `Id can not be null or empty`
-
-After deleting a data-action target, a GET on the target apiName can
-return `ILLEGAL_QUERY_PARAMETER_VALUE: DataActionTarget Id can not be
-null or empty` instead of `ITEM_NOT_FOUND`. The path appears to expect
-an internal id, not the apiName, on this code path. Confirm cleanup with
-`GET /ssot/data-action-targets` and a filter, or by checking that no row
-in the list response has a matching `apiName`.
-
-## Mutating call was blocked
-
-Re-run with `dry_run: true` and inspect the safety decision. If the operation is
-intended, run interactively so the confirmation dialog can appear.
+- **Mutating call blocked.** Re-run with `dry_run: true` and review the safety decision. Run interactively so the confirmation dialog can appear, or set `SF_D360_ALLOW_HEADLESS_WRITE=1` only for vetted automation.

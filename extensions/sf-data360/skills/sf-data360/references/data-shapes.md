@@ -1,114 +1,59 @@
 # SF Data 360 Data Shapes
 
-These notes condense public Data 360 API examples and request DTO shapes into
-API-first guidance for `d360_api`. Treat them as starting points; verify against
-live org metadata before mutating.
+Verified Connect REST request shapes for `d360_api`. Each entity lists
+endpoint, required input fields, one canonical example, and lifecycle gotchas.
+Verify against live org metadata before mutating; live errors are the
+authority, not the Swagger description.
 
-## DMO create shape
+Conventions used in this file:
 
-Endpoint: `POST /ssot/data-model-objects`
+- "API name" segments shown in URLs are the post-create suffixed form
+  (for example `MyDmo__dlm`).
+- Bodies use the Connect REST DTO names. Upstream MCP examples sometimes
+  use older or service-layer DTO names; prefer Swagger names when they
+  conflict.
 
-Use the Connect REST schema, not the upstream MCP DTO names. The Swagger
-`DataModelObjectInputRepresentation` field names that the org accepts are:
+## DMO — `/ssot/data-model-objects`
 
-- `name` — custom DMO API name root. Do not include `__dlm`; the API
-  appends the suffix. Do not start custom names with `ssot`.
-- `label` — display label.
-- `description` — optional.
-- `dataSpaceName` — optional; default is `default`.
-- `category` — uppercase enum, for example `PROFILE`, `ENGAGEMENT`, or
-  `OTHER`. Connect REST rejects the upstream MCP value `objectCategory`
-  and the value casing `Profile`/`Other` for create payloads.
-- `fields[]` — each field uses `name`, `label`, `dataType`,
-  `isPrimaryKey`, optional `isDynamicLookup`, and `description`. Do not
-  send `objectType` or `precision`/`scale` unless the live API version
-  documents them.
+Schema: `DataModelObjectInputRepresentation`.
 
-Example skeleton:
+- Required: `name` (without `__dlm` suffix), `label`, `category`,
+  `fields[]`.
+- `category` is uppercase enum: `PROFILE` | `ENGAGEMENT` | `OTHER`. Any
+  other casing is rejected. Do not send `objectType`.
+- Each field: `name`, `label`, `dataType`, `isPrimaryKey`,
+  optional `isDynamicLookup`, `description`.
+- The platform appends `__dlm` and adds system fields (`DataSource__c`,
+  `DataSourceObject__c`, `InternalOrganization__c`, `KQ_Id__c`).
 
 ```json
 {
   "name": "ProductReview",
   "label": "Product Review",
-  "description": "Custom DMO for product reviews.",
   "dataSpaceName": "default",
   "category": "PROFILE",
   "fields": [
-    {
-      "name": "Id__c",
-      "label": "ID",
-      "isPrimaryKey": true,
-      "isDynamicLookup": false,
-      "dataType": "Text"
-    },
-    {
-      "name": "Rating__c",
-      "label": "Rating",
-      "isPrimaryKey": false,
-      "isDynamicLookup": false,
-      "dataType": "Number"
-    }
+    { "name": "Id__c", "label": "ID", "isPrimaryKey": true, "dataType": "Text" },
+    { "name": "Rating__c", "label": "Rating", "dataType": "Number" }
   ]
 }
 ```
 
-The response includes the auto-generated `__dlm` suffix on `name`, plus
-system-managed fields such as `DataSource__c`, `DataSourceObject__c`,
-`InternalOrganization__c`, and `KQ_Id__c`. Do not echo these back into a
-later PATCH unless you intend to keep them.
+Update: `PATCH /ssot/data-model-objects/{name}__dlm` with the same schema.
+PATCH is **additive** for `fields[]` — listed fields not yet present are
+appended; omitting a field does not remove it. Recreate the DMO to drop a
+field.
 
-## DMO update shape
+Delete: `DELETE /ssot/data-model-objects/{name}__dlm`. A subsequent GET
+returns `ITEM_NOT_FOUND`.
 
-Endpoint: `PATCH /ssot/data-model-objects/{dataModelObjectName}`
+## DLO — `/ssot/data-lake-objects`
 
-- The `{dataModelObjectName}` path segment uses the suffixed DMO API name
-  (for example `Pi_D360_Sweep__dlm`).
-- The body uses the same `DataModelObjectInputRepresentation` schema as
-  create. `label`, `description`, and `category` updates take effect.
-- `fields[]` is additive: any field listed that does not already exist is
-  appended. Existing fields are not removed by omitting them, and a
-  PATCH that lists an existing field name with different metadata can be
-  rejected.
-- To remove a field, treat the DMO as immutable for that field and
-  recreate the object, or use a dedicated mapping/relationship cleanup
-  flow when supported.
-
-Example additive PATCH:
-
-```json
-{
-  "name": "ProductReview__dlm",
-  "label": "Product Review",
-  "description": "Updated description.",
-  "dataSpaceName": "default",
-  "category": "PROFILE",
-  "fields": [
-    {
-      "name": "NewField__c",
-      "label": "New Field",
-      "isPrimaryKey": false,
-      "isDynamicLookup": false,
-      "dataType": "Text"
-    }
-  ]
-}
-```
-
-## DLO create shape
-
-Endpoint: `POST /ssot/data-lake-objects`
-
-Common fields:
-
-- `name` — DLO API name, usually ending in `__dll`.
-- `label`
-- `category` — for example `Other`, `Engagement`, or `Profile`.
-- `dataspaceInfo[]` — include `{ "name": "default" }` or another data space when the DLO must be usable from data-space-scoped workflows such as mappings.
-- `dataLakeFieldInputRepresentations[]` — each field should include `name`, `label`, `dataType`, and `isPrimaryKey`.
-
-Avoid sending `description` or `dataSpaceName` in DLO create payloads unless the live API version accepts them; some orgs reject those fields for this endpoint. Prefer `dataspaceInfo` for data-space membership.
-
-Example skeleton:
+- Required: `name` (usually `__dll`), `label`, `category`,
+  `dataLakeFieldInputRepresentations[]`.
+- `dataspaceInfo: [{ "name": "default" }]` for data-space membership;
+  prefer this over `dataSpaceName` on this endpoint.
+- Avoid sending `description` unless the live API version accepts it.
 
 ```json
 {
@@ -118,29 +63,19 @@ Example skeleton:
   "dataspaceInfo": [{ "name": "default" }],
   "dataLakeFieldInputRepresentations": [
     { "name": "review_id__c", "label": "Review ID", "dataType": "Text", "isPrimaryKey": true },
-    { "name": "rating__c", "label": "Rating", "dataType": "Number", "isPrimaryKey": false }
+    { "name": "rating__c", "label": "Rating", "dataType": "Number" }
   ]
 }
 ```
 
-## Data stream create shape
+## Data stream — `/ssot/data-streams`
 
-Endpoint: `POST /ssot/data-streams`
-
-Common fields:
-
-- `name`, `label`
-- `datastreamType` — for Salesforce CRM streams, `SFDC`.
-- `connectorInfo.connectorType`
-- `connectorInfo.connectorDetails` for connector-specific values such as source object or connection name.
-- `dataLakeObjectInfo` for DLO label/name/category/dataspace/fields.
-- `sourceFields[]` for source-side field names/types.
-- `mappings[]` for source-to-DLO mappings when required.
-- `refreshConfig` for refresh behavior.
-- `dataAccessMode`, often an ingest/direct-access value depending on connector.
-- `advancedAttributes` for connector-specific values such as file/parser/directory settings.
-
-For Salesforce CRM streams, first list connections with `connectorType=SalesforceDotCom`. A minimal CRM stream can let the API populate source fields from the CRM object:
+- Required: `name`, `label`, `datastreamType`, `connectorInfo`,
+  `dataLakeObjectInfo`.
+- `datastreamType: "SFDC"` for Salesforce CRM streams; other types per
+  connector catalog.
+- For CRM streams, a minimal `dataLakeObjectInfo` lets the API
+  auto-populate source fields from the source object.
 
 ```json
 {
@@ -155,96 +90,96 @@ For Salesforce CRM streams, first list connections with `connectorType=Salesforc
     }
   },
   "dataLakeObjectInfo": {
-    "name": "ProductStreamDlo",
+    "name": "ProductStream",
+    "label": "Product Stream",
     "category": "Other",
     "dataspaceInfo": [{ "name": "default" }]
   }
 }
 ```
 
-Guidance:
+Lifecycle:
 
-1. Inspect connector metadata first. Connector metadata uses connector catalog names such as `SalesforceCRM`; connection lists can use connector types such as `SalesforceDotCom`.
-2. Inspect or test the connection before stream creation.
-3. For Engagement streams, choose an immutable event time field.
-4. Do not assume every connector supports full stream creation through the API.
-5. Delete disposable streams with `shouldDeleteDataLakeObject=true` when the test DLO should also be removed.
+- Create returns the stream and an auto-built DLO named after `name`
+  (suffix `__dll`).
+- `POST /ssot/data-streams/{name}/actions/run` rejects `SalesforceDotCom`
+  with `Connector type SalesforceDotCom is not allowed to run in
+non-interactive mode`. CRM ingestion runs from the UI.
+- `DELETE /ssot/data-streams/{name}?shouldDeleteDataLakeObject=true|false`
+  is **required**; missing the query parameter returns
+  `MALFORMED_QUERY: Required request parameter missing:
+shouldDeleteDataLakeObject`.
+- DELETE is eventually consistent. Immediate GET can still return the
+  record before settling on `INTERNAL_ERROR: DataStream found null`.
 
-## DMO mapping shape
+## DMO mapping — `/ssot/data-model-object-mappings`
 
-Endpoint: `POST /ssot/data-model-object-mappings`
-
-Common API shape:
+Schema uses `Entity`/`Field` developer-name properties, not `Object`/`Field`
+names from list responses.
 
 ```json
 {
   "sourceEntityDeveloperName": "SourceObject__dll",
   "targetEntityDeveloperName": "TargetObject__dlm",
   "fieldMapping": [
-    {
-      "sourceFieldDeveloperName": "source_id__c",
-      "targetFieldDeveloperName": "TargetId__c"
-    }
+    { "sourceFieldDeveloperName": "source_id__c", "targetFieldDeveloperName": "TargetId__c" }
   ]
 }
 ```
 
-Live-listing note: mapping list usually needs a filter such as `dmoDeveloperName`
-or `sourceObjectName`. Do not use an unfiltered list as a readiness probe.
+- List requires a filter; an unfiltered list can fail. Pass
+  `dmoDeveloperName=<name>__dlm` or `sourceObjectName=<name>__dll`.
+- For `PATCH .../{mappingName}/field-mappings` use the same shape; some
+  API versions reject a wrapper named `fieldMappings` on that
+  subresource.
 
-For `PATCH /ssot/data-model-object-mappings/{mappingName}/field-mappings`, use
-the same `sourceEntityDeveloperName`, `targetEntityDeveloperName`, and
-`fieldMapping[]` shape. Some API versions reject a wrapper named
-`fieldMappings` on that subresource.
+## Calculated insight — `/ssot/calculated-insights`
 
-## Calculated insight create shape
-
-Endpoint: `POST /ssot/calculated-insights`
-
-Common fields:
-
-- `apiName` — must end with `__cio`. The Connect REST GET, PATCH, and
-  DELETE endpoints under `/ssot/calculated-insights/{apiName}` reject any
-  other suffix.
-- `displayName`
-- `definitionType` — usually `CALCULATED_METRIC` for calculated metrics.
-- `publishScheduleInterval` — use `SYSTEM_MANAGED` for create-only flows;
-  `Six`, `Twelve`, or `TwentyFour` for scheduled refresh.
-- `expression` — CI SQL.
-- optional `dataSpaceName`, `description`, schedule start/end, draft flags.
-
-Do not include explicit dimensions/measures arrays unless the current API
-documentation requires them; the platform derives them from the expression
-(verified: a `SELECT dim, COUNT(*) FROM dmo GROUP BY dim` expression
-produced one dimension and one measure automatically).
-
-Lifecycle behavior:
-
-1. Create returns immediately with `calculatedInsightStatus: "PROCESSING"`
-   and quickly transitions to `ACTIVE`.
-2. `POST /ssot/calculated-insights/{apiName}/actions/run` returns
-   `{ "success": true, "errors": [] }` synchronously.
-3. `DELETE /ssot/calculated-insights/{apiName}` returns 204 with an empty
-   body. A follow-up GET briefly returns the record with
-   `calculatedInsightStatus: "DELETING"` before the resource fully
-   disappears (`ITEM_NOT_FOUND`).
-
-## Data action shape
-
-Endpoint: `POST /ssot/data-actions`
-
-Data action request shapes are strict and differ from list response property names. Do not blindly copy `GET /ssot/data-actions` output into a create request; response fields such as `objectDevName`, `objectId`, `objectType`, and `subscriptionModes` are output fields. For create, use source input fields such as `sourceName`, `sourceType`, and `sourceCdcSubscriptions`.
-
-Example skeleton:
+- Required: `apiName` (must end `__cio`), `displayName`, `definitionType`,
+  `expression`.
+- `publishScheduleInterval`: `SYSTEM_MANAGED` for create-only flows or
+  `Six` | `Twelve` | `TwentyFour` for scheduled refresh.
+- Do not send dimensions/measures arrays; the platform derives them from
+  the expression (verified: `SELECT dim, COUNT(*) FROM dmo GROUP BY dim`
+  yields one dimension and one measure automatically).
 
 ```json
 {
-  "dataActionTargetNames": ["example_webhook_target"],
-  "dataspace": "default",
-  "dataActionName": "example_data_action",
+  "apiName": "Customer_Order_Summary__cio",
+  "displayName": "Customer Order Summary",
+  "definitionType": "CALCULATED_METRIC",
+  "dataSpaceName": "default",
+  "publishScheduleInterval": "SYSTEM_MANAGED",
+  "expression": "SELECT Order__dlm.CustomerId__c AS customer_id__c, SUM(Order__dlm.Total__c) AS total__c FROM Order__dlm GROUP BY Order__dlm.CustomerId__c"
+}
+```
+
+Lifecycle:
+
+- Create returns `calculatedInsightStatus: "PROCESSING"`; quickly transitions to `ACTIVE`.
+- `POST .../{apiName}/actions/run` returns `{ "success": true, "errors": [] }` synchronously.
+- `DELETE .../{apiName}` returns 204. A follow-up GET briefly returns the
+  record with `calculatedInsightStatus: "DELETING"` before final
+  `ITEM_NOT_FOUND`. Treat both transient `DELETING` and `ITEM_NOT_FOUND`
+  as successful cleanup.
+
+## Data action — `/ssot/data-actions`
+
+- Required: `developerName`, `dataActionName`, `masterLabel`,
+  `dataspace`, `dataActionTargetNames[]`, `dataActionSources[]`.
+- Source input field names differ from list response field names. For
+  create use `sourceName` / `sourceType` / `sourceCdcSubscriptions`; the
+  response renames them to `objectDevName` / `objectType` /
+  `subscriptionModes`.
+
+```json
+{
   "developerName": "example_data_action",
-  "description": "Example event-triggered data action.",
+  "dataActionName": "example_data_action",
   "masterLabel": "Example Data Action",
+  "description": "Example event-triggered data action.",
+  "dataspace": "default",
+  "dataActionTargetNames": ["example_webhook_target"],
   "dataActionSources": [
     {
       "sourceName": "SomeObject__dlm",
@@ -259,107 +194,72 @@ Example skeleton:
 }
 ```
 
-Although the public operation list may omit it, `DELETE /ssot/data-actions/{developerName}` can be available for cleanup in some orgs/API versions. Verify with a follow-up list.
+Cleanup ordering: delete the data action before the data action target it
+references.
 
-## Data action target shape
+## Data action target — `/ssot/data-action-targets`
 
-Endpoint: `POST /ssot/data-action-targets`
-
-A minimal webhook-style target can use:
+- Required: `apiName`, `label`, `type`, `config`.
+- Webhook targets accept a minimal `config: { "targetEndpoint": "..." }`.
+  Do not include `subType`, `externalRecordIdentifier`, or `apiContract`
+  unless the live target type documents them.
+- Response normalizes `type` to uppercase (`WebHook` becomes `WEBHOOK`).
 
 ```json
 {
   "apiName": "example_webhook_target",
   "label": "Example Webhook Target",
   "type": "WebHook",
-  "subType": "Rest",
-  "externalRecordIdentifier": "example-webhook-target",
-  "config": {
-    "targetEndpoint": "https://example.invalid/data-action",
-    "apiContract": "{}"
-  }
+  "config": { "targetEndpoint": "https://example.invalid/data-action" }
 }
 ```
 
-Delete with `DELETE /ssot/data-action-targets/{apiName}` after ensuring no
-data actions reference it. After deletion, `GET
-/ssot/data-action-targets/{apiName}` may return
-`ILLEGAL_QUERY_PARAMETER_VALUE: DataActionTarget Id can not be null or
-empty` rather than a clean `ITEM_NOT_FOUND`; confirm the cleanup with a
-filtered list call.
+Lifecycle:
 
-Lifecycle behavior:
+- Create returns `status: "PROCESSING"`; transitions to `ACTIVE` shortly after.
+- `DELETE .../{apiName}` returns 204. A follow-up `GET .../{apiName}` may
+  return `ILLEGAL_QUERY_PARAMETER_VALUE: DataActionTarget Id can not be
+null or empty` instead of a clean `ITEM_NOT_FOUND`. Confirm cleanup with
+  a list call.
 
-- Create returns the target with `status: "PROCESSING"`; a follow-up GET
-  shortly after typically reports `status: "ACTIVE"`.
-- The response normalizes `type` to uppercase (for example, `WebHook` in
-  the request becomes `WEBHOOK` in the response).
-- The Connect REST DTO accepts only the documented `config` shape for
-  the chosen target type. For webhook targets, only `targetEndpoint` is
-  required at minimum; do not include `subType`,
-  `externalRecordIdentifier`, or `apiContract` unless the live target
-  type documents them.
+## Activation target — `/ssot/activation-targets`
 
-PATCH support can be org/API-version-specific; verify by re-reading or
-list-filtering after update attempts.
-
-## Activation target shape
-
-Endpoint: `POST /ssot/activation-targets`
-
-Activation target payloads are polymorphic by `platformType`. The live API requires a `connector` object and can reject connector fields that are accepted by other endpoint families. For a Data 360 activation target, the connector object can be empty:
+Polymorphic by `platformType`. For Data Cloud targets, `connector` is
+required but can be empty.
 
 ```json
 {
   "name": "example_data_cloud_target",
-  "description": "Example Data 360 activation target.",
   "platformType": "DataCloud",
   "dataSpaceName": "default",
-  "isCappingEnabled": false,
   "connector": {}
 }
 ```
 
-Use the returned activation target ID for PATCH updates; updating by name can fail even when `GET` accepts ID or developer name. The Connect API spec for activation targets does not expose DELETE, so only create disposable activation targets in throwaway orgs or when a manual cleanup path is acceptable.
+- Update by ID; updating by name can fail.
+- The Connect API spec for activation targets does not expose DELETE.
+  Only create disposable targets in throwaway orgs.
 
-## Segment create shape
+## Segment — `/ssot/segments`
 
-Endpoint: `POST /ssot/segments`
-
-The Swagger `CdpSegmentInputRepresentation` requires `description`,
-`displayName`, `segmentOnApiName`, and `segmentType`; for create the
-platform also requires `developerName`.
-
-- `developerName` — unique segment API name; required for POST.
-- `displayName`, `description`
-- `segmentOnApiName` — the DMO API name being segmented; the DMO must
-  have `isSegmentable: true`. Verify with `d360_metadata describe_dmo` or
-  `GET /ssot/data-model-objects?limit=200` and filter on
-  `isSegmentable=true`.
-- `segmentType` — enum: `Dbt`, `Dynamic`, `EinsteinGptSegmentsUI`,
-  `Lookalike`, `Realtimez`, `Waterfall`. The legacy upstream value `Ui`
-  is rejected on current API versions; use `Dbt` for SQL-defined
-  segments.
-- `segmentCreationFlow` — enum: `Datakit`, `EinsteinGpt`, `Visual`. Use
-  `Visual` for SQL-only segments without a datakit dependency.
-- `publishSchedule` — enum: `NoRefresh`, `One`, `Two`, `Four`, `Six`,
-  `Twelve`, `TwentyFour`.
-- `includeDbt` — nested object that wraps a `models` object that wraps a
-  `models` array. The double-nesting matches the platform deserializer
-  even though the Swagger property type description is flatter.
-
-DBT model SQL constraints (verified live):
-
-- Use unaliased fully-qualified identifiers in the primary projection.
-  `SELECT DISTINCT dmo.field` works; `SELECT dmo.field AS alias` is
-  rejected with `Primary select should only contain unaliased fully
-qualified identifiers`.
-- Project both the primary key and the key qualifier of the segmentOn
-  entity (for example, `ssot__Id__c` and `KQ_Id__c`). Missing the key
-  qualifier returns `You must project a key qualifier along with the
-primary key`.
-
-Minimal create example:
+- Required for create: `developerName`, `displayName`, `description`,
+  `segmentOnApiName`, `segmentType`.
+- `segmentType` enum: `Dbt` | `Dynamic` | `EinsteinGptSegmentsUI` |
+  `Lookalike` | `Realtimez` | `Waterfall`. The legacy upstream value
+  `Ui` is rejected on current API versions.
+- `segmentCreationFlow` enum: `Datakit` | `EinsteinGpt` | `Visual`. Use
+  `Visual` for SQL-only segments without datakit dependency.
+- `segmentOnApiName` must be a DMO with `isSegmentable: true`.
+- `publishSchedule` enum: `NoRefresh` | `One` | `Two` | `Four` | `Six` |
+  `Twelve` | `TwentyFour`.
+- `includeDbt.models.models[]` is **double-nested**; a flat `models[]`
+  is rejected with `Can not deserialize: unexpected array` even though
+  the Swagger description suggests flat.
+- DBT model SQL must:
+  - Use unaliased fully-qualified identifiers in the primary projection
+    (`SELECT DISTINCT dmo.field`, not `field AS x`).
+  - Project both the primary key and the key qualifier of the segmentOn
+    entity (for example `ssot__Id__c` and `KQ_Id__c`).
 
 ```json
 {
@@ -383,60 +283,200 @@ Minimal create example:
 }
 ```
 
-Lifecycle notes:
+Lifecycle:
 
-- Create returns `segmentStatus: "PROCESSING"`. Operational endpoints
-  such as `POST /ssot/segments/{name}/actions/count` and
-  `actions/deactivate` require the segment to leave PROCESSING; calling
-  them too early returns `INTERNAL_ERROR: We couldn't trigger async
-count` or `We couldn't publish your segment`. Poll `segmentStatus` or
-  the platform's pipeline status before action calls.
-- `GET /ssot/segments/{apiName}` returns the record wrapped in a
-  `segments[]` array, not at the top level. Read with
-  `jq '.segments[0]'`.
-- `DELETE /ssot/segments/{apiName}` succeeds with 204 even while a
-  segment is in `PROCESSING`. A subsequent GET returns
-  `ITEM_NOT_FOUND`.
+- Create returns `segmentStatus: "PROCESSING"`. `actions/count` and
+  `actions/deactivate` reject early calls with
+  `INTERNAL_ERROR: We couldn't trigger async count` or `We couldn't publish your segment`. Poll status before action calls.
+- `GET .../{apiName}` returns the record wrapped in a `segments[]` array.
+- `DELETE .../{apiName}` returns 204 even while the segment is still
+  PROCESSING.
 
-## Identity resolution shape
+## Identity resolution — `/ssot/identity-resolutions`
 
-Endpoint: `POST /ssot/identity-resolutions`
+- Required: `label`, `description`, `configurationType`, `rulesetId`,
+  `matchRules[]`, `reconciliationRules[]`, `doesRunAutomatically`.
+- `configurationType` is enum-like: `individual` | `account`.
+- Each `reconciliationRule` must carry a `ruleType`
+  (`lastupdated` | `mostfrequent` | `sourcesequence`); omitting it can
+  produce a server 500.
+- `matchMethodType` values include `exact`, `exactnormalized`, `fuzzy`,
+  `fuzzyhigh`, `fuzzylow`. Some API versions accept the upper-snake
+  variants (`EXACT_NORMALIZED`); prefer lowercase when uncertain.
 
-Common fields:
+Prerequisite: the `entityName` DMOs must be **mapped** to source DLOs.
+An unmapped target DMO returns
+`INVALID_INPUT: Objects can only be used in identity resolution after required fields are mapped`,
+which is feature gating, not a payload issue.
 
-- `label`, `description`
-- `configurationType` — for example individual/account style configurations.
-- `rulesetId`
-- `doesRunAutomatically`
-- `matchRules[].criteria[]` with `entityName`, `fieldName`, `matchMethodType`, and blank/case behavior.
-- `reconciliationRules[]` with `entityName`, `ruleType`, source precedence, and optional field-level rules.
+```json
+{
+  "label": "Email and Name Matching",
+  "description": "Match individuals by email and name.",
+  "configurationType": "individual",
+  "rulesetId": "pid",
+  "doesRunAutomatically": false,
+  "matchRules": [
+    {
+      "label": "Normalized Email",
+      "criteria": [
+        {
+          "entityName": "ssot__ContactPointEmail__dlm",
+          "fieldName": "ssot__EmailAddress__c",
+          "matchMethodType": "exactnormalized",
+          "shouldMatchOnBlank": false
+        }
+      ]
+    }
+  ],
+  "reconciliationRules": [
+    {
+      "entityName": "ssot__Individual__dlm",
+      "ruleType": "mostfrequent",
+      "shouldIgnoreEmptyValue": true
+    }
+  ]
+}
+```
 
-Rule of thumb: include an explicit `ruleType` for each reconciliation rule and
-choose a rule compatible with fields that are actually mapped.
+## Semantic data model — `/ssot/semantic/models`
 
-## Semantic model shape
+Multi-step. The Swagger Connect REST file does not include semantic-model
+paths; treat them as a separate Data 360 surface.
 
-Semantic model workflows are multi-step:
+1. Create the shell with `apiName`, `label`, `description`, `dataspace`.
+2. The response includes subresource URLs
+   (`semanticDataObjectsUrl`, `semanticCalculatedDimensionsUrl`,
+   `semanticCalculatedMeasurementsUrl`,
+   `semanticMetricsUrl`, `semanticGroupingsUrl`).
+3. Add data objects with
+   `POST /ssot/semantic/models/{apiName}/data-objects` using
+   `{ "apiName", "label", "dataObjectType": "Dmo|Dlo|Cio",
+"dataObjectName": "<dmo>__dlm" }`. The platform auto-discovers semantic
+   dimensions from DMO fields.
+4. Validate with `GET /ssot/semantic/models/{apiName}/validate`.
+   `POST` to validate returns `METHOD_NOT_ALLOWED: GET,HEAD`.
+5. `DELETE /ssot/semantic/models/{apiName}` returns 204; a subsequent GET
+   returns `SemanticAuthoringError: Semantic object not found` with
+   `errorName: "SEMANTIC_ENTITY_NOT_EXIST"`.
 
-1. `POST /ssot/semantic/models` — create model shell with `apiName`, `label`, `dataspace`.
-2. `POST /ssot/semantic/models/{id}/data-objects` — add DMO/DLO/CI objects. Use `dataObjectType` values like `Dmo`, `Dlo`, or `Cio`.
-3. List data objects/dimensions/measurements to discover semantic field names.
-4. Create relationships using semantic field API names, not raw DMO field names.
-5. Add calculated dimensions/measures/metrics.
-6. Validate before query.
+Shell create body:
 
-Semantic formula syntax uses bracketed semantic references such as
-`[DataObject].[Field]`.
+```json
+{
+  "apiName": "AccountRevenue",
+  "label": "Account Revenue Model",
+  "description": "Semantic model for account and revenue analysis.",
+  "dataspace": "default"
+}
+```
 
-## Search index shape
+Add data object body:
 
-Search index creation is configuration-heavy. Before create/update:
+```json
+{
+  "apiName": "Account_DO",
+  "label": "Account",
+  "dataObjectType": "Dmo",
+  "dataObjectName": "ssot__Account__dlm"
+}
+```
 
-1. Fetch search-index configuration options for the org when that surface exists.
-2. Retrieve an existing index if updating.
-3. Populate only values supported by the org, such as chunking strategy,
-   embedding model, search type, similarity metric, transformation settings,
-   and per-file or field-level settings.
+## Search index — `/ssot/search-index`
 
-Do not use search-index availability as the only Data Cloud readiness signal;
-it can be absent in otherwise healthy orgs.
+- Required: `label`, `developerName`, `sourceDmoDeveloperName`,
+  `chunkDmoName`, `chunkDmoDeveloperName`, `vectorDmoName`,
+  `vectorDmoDeveloperName`, `chunkingConfiguration`,
+  `vectorEmbeddingConfiguration.embeddingModel.id`.
+- The org must have an embedding model artifact provisioned. Verify with
+  `GET /ssot/machine-learning/model-artifacts`. Orgs that only have chat
+  completion models cannot create search indexes.
+- A missing required field returns a precise
+  `INVALID_INPUT: Search index have following required fields [...]`
+  which lists every missing field.
+
+```json
+{
+  "label": "Case search index",
+  "developerName": "Case_search_index",
+  "sourceDmoDeveloperName": "ssot__Case__dlm",
+  "chunkDmoName": "Case search index chunk",
+  "chunkDmoDeveloperName": "Case_search_index_chunk",
+  "vectorDmoName": "Case search index index",
+  "vectorDmoDeveloperName": "Case_search_index_index",
+  "vectorEmbeddingConfiguration": {
+    "embeddingModel": { "id": "OpenAITextEmbeddingAda_002" }
+  },
+  "chunkingConfiguration": {
+    "fieldLevelConfigurations": [
+      {
+        "sourceDmoDeveloperName": "ssot__Case__dlm",
+        "sourceDmoFieldDeveloperName": "ssot__Subject__c",
+        "decorators": [],
+        "config": {
+          "id": "passage_extraction",
+          "userValues": [
+            { "id": "strip_html", "value": "true" },
+            { "id": "max_tokens", "value": "512" }
+          ]
+        }
+      }
+    ]
+  }
+}
+```
+
+## DataKit — `/ssot/data-kits`
+
+- Required for create: `dataKitDevName`, `label`, `dataKitType`,
+  `components[]`. `components` may be empty for an initial create.
+- Response uses `devName`, not `dataKitDevName`.
+- PATCH schema is `DataKitPatchInputRepresentation` and accepts only
+  `components[]`. `label` and `dataKitType` are not patchable.
+- DELETE 204; a subsequent DELETE on the same name returns
+  `INTERNAL_SERVER_ERROR: PackageKitDefinition does not exist`.
+- The list endpoint may not show recently-created datakits immediately.
+
+Create:
+
+```json
+{
+  "dataKitDevName": "ExampleKit",
+  "label": "Example DataKit",
+  "dataKitType": "None",
+  "components": []
+}
+```
+
+Patch (add components):
+
+```json
+{
+  "components": [{ "name": "Revenue_By_Region__cio", "type": "CI", "action": "CREATE" }]
+}
+```
+
+## Semantic engine query — `/semantic-engine/gateway`
+
+Use `tableField` for fields on a semantic data object; use `semanticField`
+for model-level calculated fields, dimensions, or metrics.
+
+```json
+{
+  "semanticModelId": "MODEL_ID_OR_API_NAME",
+  "structuredSemanticQuery": {
+    "fields": [
+      {
+        "expression": { "tableField": { "tableName": "Account_DO", "name": "AccountName" } },
+        "alias": "account_name"
+      },
+      {
+        "expression": { "semanticField": { "name": "TotalRevenue" } },
+        "alias": "total_revenue",
+        "semanticAggregationMethod": "SEMANTIC_AGGREGATION_METHOD_SUM"
+      }
+    ],
+    "options": { "limitOptions": { "limit": 10 } }
+  }
+}
+```

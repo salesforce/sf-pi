@@ -103,17 +103,34 @@ relative to `/services/data/vXX.X`.
 - `POST /ssot/data-clean-room/collaborations/{id}/actions/run` — runs a clean room query; mutating.
 - `GET /ssot/private-network-routes` and detail — feature gated; can return internal errors when the org has no routes.
 
-## Semantic data models, search indexes, and retrievers
+## Data transforms
 
 - `GET /ssot/data-transforms` — list data transforms.
 - `GET /ssot/data-transforms/{id}` — inspect one data transform.
+- `POST /ssot/data-transforms-validation` — validate.
+- `POST /ssot/data-transforms/{id}/actions/run|cancel|retry|refresh-status` — operational.
+
+## Semantic data models
+
 - `GET /ssot/semantic/models` — list semantic models.
-- `POST /ssot/semantic/models` — create semantic model shell.
-- `POST /ssot/semantic/models/{id}/data-objects` — add data object.
-- `POST /ssot/semantic/models/{id}/relationships` — create relationship.
-- `POST /ssot/semantic/models/{id}/validate` — validate semantic model.
-- `POST /semantic-engine/gateway` — run semantic query.
-- `GET /ssot/search-indexes` — list search indexes. This can return not found in otherwise healthy orgs; do not use as a core readiness gate.
-- `POST /ssot/search-indexes` — create search index.
-- `GET /machine-learning/retrievers` — list retrievers. This can return not found when retriever APIs are not provisioned or use a different path.
-- `POST /machine-learning/retrievers` — create retriever.
+- `POST /ssot/semantic/models` — create model shell.
+- The shell response returns subresource URLs; use them rather than
+  guessing paths. Common ones: `semanticDataObjectsUrl`,
+  `semanticCalculatedDimensionsUrl`, `semanticCalculatedMeasurementsUrl`,
+  `semanticMetricsUrl`, `semanticGroupingsUrl`.
+- `POST /ssot/semantic/models/{name}/data-objects` — add data object;
+  platform auto-discovers semantic dimensions from the source DMO.
+- `GET  /ssot/semantic/models/{name}/validate` — validate (GET, **not** POST).
+- `DELETE /ssot/semantic/models/{name}` — cleanup; subsequent GET returns
+  `SemanticAuthoringError: SEMANTIC_ENTITY_NOT_EXIST`.
+- `POST /semantic-engine/gateway` — run a semantic query.
+
+## Search index and retrievers
+
+- `GET /ssot/search-index` (singular) and `POST /ssot/search-index` — list and create.
+- Create requires `vectorEmbeddingConfiguration.embeddingModel.id`; the
+  org must have an embedding model artifact. Verify with
+  `GET /ssot/machine-learning/model-artifacts`.
+- `GET /machine-learning/retrievers` — list retrievers; can return
+  not-found when retriever APIs are not provisioned. Do not use as a
+  core readiness gate.
