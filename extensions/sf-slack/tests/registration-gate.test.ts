@@ -93,6 +93,29 @@ describe("sf-slack conditional tool registration (Option B)", () => {
   });
 });
 
+describe("sf-slack session_start error handling", () => {
+  it("only swallows AbortError when ctx.signal is actually aborted", () => {
+    // Regression for the symptom "Slack stuck at Checking forever":
+    // the per-request 30s timeout in lib/api.ts throws AbortError on slow
+    // upstream calls. Without checking ctx.signal.aborted, the catch block
+    // treated every AbortError as a user-cancellation and returned silently,
+    // leaving the slack-status store at "loading" indefinitely.
+    //
+    // The contract is: only return silently when the user actually cancelled
+    // (session_shutdown or /reload race). Timeout aborts must surface as
+    // "auth-error" via updateStatus(ctx, "error", generation).
+    const startBody = indexSource.match(
+      /pi\.on\("session_start"[\s\S]*?(?=pi\.on\("session_shutdown")/,
+    );
+    expect(startBody).not.toBeNull();
+    expect(startBody![0]).toMatch(/if \(isAbortError\(error\) && ctx\.signal\?\.aborted\) return;/);
+  });
+
+  it("applies the same abort-vs-timeout split inside /sf-slack refresh", () => {
+    expect(indexSource).toMatch(/if \(isAbortError\(err\) && ctx\.signal\?\.aborted\) return;/);
+  });
+});
+
 describe("sf-slack workspace context injection (token-efficient shape)", () => {
   it("injects only identity anchors (User + Team), not cache metrics", () => {
     const inject = indexSource.match(/pi\.on\("before_agent_start"[\s\S]*?(?=pi\.registerCommand)/);

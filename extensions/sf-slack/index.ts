@@ -482,7 +482,14 @@ export default function sfSlack(pi: ExtensionAPI) {
 
       updateStatus(ctx, "connected", generation);
     } catch (error) {
-      if (isAbortError(error)) return;
+      // Distinguish user-cancelled (ctx.signal aborted, e.g. session_shutdown
+      // or /reload races) from a per-request timeout fired by
+      // AbortSignal.timeout(REQUEST_TIMEOUT_MS) inside lib/api.ts. Both throw
+      // an AbortError, but only user-cancellations should silently return.
+      // Timeout aborts must surface as "auth-error" so the splash and devbar
+      // do not stay stuck at "loading" forever when the network or Slack
+      // upstream is unreachable.
+      if (isAbortError(error) && ctx.signal?.aborted) return;
       deactivateSlackTools(pi);
       updateStatus(ctx, "error", generation);
     }
@@ -644,7 +651,9 @@ export default function sfSlack(pi: ExtensionAPI) {
           );
         }
       } catch (err) {
-        if (isAbortError(err)) return;
+        // See session_start handler for why we look at ctx.signal.aborted
+        // instead of treating every AbortError as a user cancellation.
+        if (isAbortError(err) && ctx.signal?.aborted) return;
         deactivateSlackTools(pi);
         updateStatus(ctx, "error", generation);
         ctx.ui.setStatus(`-command`, undefined);
