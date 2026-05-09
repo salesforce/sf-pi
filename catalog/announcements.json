@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.55.2-2026-05-09",
-  "latestVersion": "0.55.2",
+  "revision": "release-0.55.3-2026-05-09",
+  "latestVersion": "0.55.3",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.55.2",
+      "id": "release-0.55.3",
       "kind": "update",
-      "title": "sf-pi v0.55.2 — sf-slack: surface auth.test timeout instead of staying stuck on loading",
+      "title": "sf-pi v0.55.3 — sf-slack: surface the actual error when auth/scope-probe fails",
       "publishedAt": "2026-05-09T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.55.2",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.55.3",
       "severity": "info",
-      "body": "sf-slack: surface auth.test timeout instead of staying stuck on loading"
+      "body": "sf-slack: surface the actual error when auth/scope-probe fails"
     },
     {
       "id": "pi-0.73-required",

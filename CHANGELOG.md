@@ -481,6 +481,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.55.3](https://github.com/salesforce/sf-pi/compare/v0.55.2...v0.55.3) (2026-05-09)
+
+
+### Bug Fixes
+
+* **sf-slack:** surface the actual error when auth/scope-probe fails ([69688a0](https://github.com/salesforce/sf-pi/commit/69688a0cc648064b88d64ec06fb7fcfeb6829e05))
+
 ## [0.55.2](https://github.com/salesforce/sf-pi/compare/v0.55.1...v0.55.2) (2026-05-09)
 
 
