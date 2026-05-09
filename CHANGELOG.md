@@ -481,6 +481,22 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.52.0](https://github.com/salesforce/sf-pi/compare/v0.51.1...v0.52.0) (2026-05-09)
+
+
+### ⚠ BREAKING CHANGES
+
+* migrate pi peer-dep scope from @mariozechner to @earendil-works (pi 0.74) ([#94](https://github.com/salesforce/sf-pi/issues/94))
+
+### Features
+
+* migrate pi peer-dep scope from [@mariozechner](https://github.com/mariozechner) to [@earendil-works](https://github.com/earendil-works) (pi 0.74) ([#94](https://github.com/salesforce/sf-pi/issues/94)) ([5082638](https://github.com/salesforce/sf-pi/commit/5082638935b7f0afeb892e7ed86a8909040778a0))
+
+
+### Bug Fixes
+
+* **ci:** grant statuses:write to auto-merge-release-pr job ([#96](https://github.com/salesforce/sf-pi/issues/96)) ([36979d0](https://github.com/salesforce/sf-pi/commit/36979d060a1dc022e5b07346370bbeb8bbcd73ff))
+
 ## [0.51.1](https://github.com/salesforce/sf-pi/compare/v0.51.0...v0.51.1) (2026-05-09)
 
 
