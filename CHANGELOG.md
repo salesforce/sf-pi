@@ -481,6 +481,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.55.6](https://github.com/salesforce/sf-pi/compare/v0.55.5...v0.55.6) (2026-05-09)
+
+
+### Bug Fixes
+
+* **sf-slack:** use node:https instead of undici fetch (Node 26 H2 hang) ([3e8ebd1](https://github.com/salesforce/sf-pi/commit/3e8ebd1b84d0980e77c2cade5c900118e528c333))
+
 ## [0.55.5](https://github.com/salesforce/sf-pi/compare/v0.55.4...v0.55.5) (2026-05-09)
 
 
