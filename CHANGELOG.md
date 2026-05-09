@@ -481,6 +481,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.53.0](https://github.com/salesforce/sf-pi/compare/v0.52.0...v0.53.0) (2026-05-09)
+
+
+### Features
+
+* extension consistency baseline (ADR 0006) ([bce5d53](https://github.com/salesforce/sf-pi/commit/bce5d536d9db6768ed620a24dbbef13a37879523))
+
 ## [0.52.0](https://github.com/salesforce/sf-pi/compare/v0.51.1...v0.52.0) (2026-05-09)
 
 
