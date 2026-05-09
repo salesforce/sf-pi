@@ -168,6 +168,7 @@ jobs:
       pull-requests: write
       actions: write # to re-dispatch release-please
       checks: read # to poll gitleaks status on the same SHA
+      statuses: write # to mirror successful check-runs as commit statuses (POST /repos/.../statuses/{sha})
     steps:
       - name: Resolve PR head branch + SHA
         id: ctx
