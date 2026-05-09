@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.49.0-2026-05-09",
-  "latestVersion": "0.49.0",
+  "revision": "release-0.50.0-2026-05-09",
+  "latestVersion": "0.50.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.49.0",
+      "id": "release-0.50.0",
       "kind": "update",
-      "title": "sf-pi v0.49.0 — sf-data360: improve recursive validation guidance",
+      "title": "sf-pi v0.50.0 — sf-data360: release verified payload shapes for 13 entity lifecycles",
       "publishedAt": "2026-05-09T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.49.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.50.0",
       "severity": "info",
-      "body": "sf-data360: improve recursive validation guidance"
+      "body": "sf-data360: release verified payload shapes for 13 entity lifecycles"
     },
     {
       "id": "pi-0.73-required",
