@@ -481,6 +481,14 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.55.9](https://github.com/salesforce/sf-pi/compare/v0.55.8...v0.55.9) (2026-05-09)
+
+
+### Bug Fixes
+
+* **panel:** prettier format safe-command-handler.test.ts ([02a88a7](https://github.com/salesforce/sf-pi/commit/02a88a7398a04a187080db3fbd9d355277a40715))
+* **panel:** wrap every /sf-* slash-command handler so failures surface visibly ([ddb6ffb](https://github.com/salesforce/sf-pi/commit/ddb6ffb9b716c0ca290718edb545996727defbc7))
+
 ## [0.55.8](https://github.com/salesforce/sf-pi/compare/v0.55.7...v0.55.8) (2026-05-09)
 
 
