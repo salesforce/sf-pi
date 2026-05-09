@@ -40,6 +40,13 @@ Each entry: symptom → cause → fix. Lifecycle-shape gotchas live in
 - **`DELETE /ssot/data-streams/{name}` returns `MALFORMED_QUERY: shouldDeleteDataLakeObject`.** Add the query parameter explicitly: `?shouldDeleteDataLakeObject=true|false`.
 - **`POST /ssot/data-streams/{name}/actions/run` rejects `SalesforceDotCom`.** CRM streams cannot be run from the API in non-interactive mode; trigger from the UI.
 - **`POST /ssot/semantic/models/{name}/validate` returns `METHOD_NOT_ALLOWED: GET,HEAD`.** Validate is GET for semantic models, not POST.
+- **`POST /ssot/data-transforms-validation` returns `TARGET_DLO_NOT_FOUND` or `DLO_NAME_DOES_NOT_EXIST: ... neither exists nor can be created`.** Pre-create the output DLO that the STL `outputD360` node references, then re-validate.
+- **`PUT /ssot/data-transforms/{name}/schedule` rejects `timezone` field.** Use camelCase `timeZone`. The Swagger lists only `frequency`+`time` as required; the platform also requires `interval` (1–31). Use `frequency: "None"` to clear the schedule.
+- **`POST /ssot/data-model-object-mappings` returns auto-inflated `fieldMappings[]`.** Expected: the platform adds system field mappings (DataSource, DataSourceObject, InternalOrganization, KQ\_\*) on top of explicit ones. Do not echo system mappings back.
+- **`PATCH /ssot/data-model-object-mappings/{name}/field-mappings/{field}` does not insert.** That endpoint updates an existing field mapping by developer name. To add a new mapping, recreate the parent mapping with the full set.
+- **`DELETE /ssot/data-model-object-mappings/{name}/field-mappings` returns `Field Source Target Name is missing`.** No zero-argument bulk wipe; identify a specific field mapping.
+- **`DELETE /ssot/data-model-object-mappings/{name}` returns `DMO is mapped to only one DLO ... cannot be removed`.** Orphan-protection. Cleanup workaround: `DELETE` the target DMO instead; the platform cascades and removes the mapping.
+- **`POST /ssot/data-lake-objects` returns `Data Lake fields cannot start with KQ_`.** The `KQ_` prefix is reserved for key qualifiers. Drop it; the platform auto-generates `KQ_<name>__c` for fields you mark `isPrimaryKey: true`.
 - **`POST /ssot/segments/{name}/actions/count|deactivate` returns `INTERNAL_ERROR: We couldn't trigger…`.** The segment is still `PROCESSING`. Poll status before action calls.
 - **CI GET returns `DELETING` after a DELETE.** Async delete; both `DELETING` (transient) and `ITEM_NOT_FOUND` count as successful cleanup.
 - **Data action target GET returns `Id can not be null or empty` after delete.** The path expects an internal id, not apiName, on that code path. Confirm cleanup with the filtered list call.

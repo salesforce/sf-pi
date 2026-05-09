@@ -54,6 +54,10 @@ returns `ITEM_NOT_FOUND`.
 - `dataspaceInfo: [{ "name": "default" }]` for data-space membership;
   prefer this over `dataSpaceName` on this endpoint.
 - Avoid sending `description` unless the live API version accepts it.
+- Custom field names **cannot start with `KQ_`** — the platform reserves
+  that prefix for key qualifiers and rejects user-supplied names.
+  Marking a field `isPrimaryKey: true` causes the platform to
+  auto-generate a paired `KQ_<name>__c` key qualifier in the response.
 
 ```json
 {
@@ -127,11 +131,32 @@ names from list responses.
 }
 ```
 
-- List requires a filter; an unfiltered list can fail. Pass
-  `dmoDeveloperName=<name>__dlm` or `sourceObjectName=<name>__dll`.
-- For `PATCH .../{mappingName}/field-mappings` use the same shape; some
-  API versions reject a wrapper named `fieldMappings` on that
-  subresource.
+Lifecycle:
+
+- Create response auto-inflates `fieldMappings[]` with the user-supplied
+  pairs **plus** system fields (`DataSource__c`, `DataSourceObject__c`,
+  `InternalOrganization__c`, `KQ_<pk>__c`). Do not feed those system
+  mappings back into a future request.
+- Mapping `developerName` is auto-generated as
+  `{source}_map_{target}_{timestamp}`. Capture it from the create
+  response.
+- List filter: `dmoDeveloperName=<name>__dlm` or
+  `sourceObjectName=<name>__dll` returns `{ objectSourceTargetMaps[] }`.
+  An unfiltered list call can fail.
+- `PATCH .../{mappingName}/field-mappings/{fieldDevName}` updates an
+  **existing** field mapping by its developer name. It does **not**
+  insert a new one; the response mirrors the parent mapping unchanged
+  if the named field mapping does not exist. To add a new field
+  mapping, recreate the parent mapping with the full set.
+- `DELETE .../{mappingName}/field-mappings` requires identifying which
+  field; calling it without a target returns
+  `INVALID_INPUT: Field Source Target Name is missing`. There is no
+  zero-argument bulk wipe.
+- `DELETE .../{mappingName}` is gated by orphan protection: when a DMO
+  is mapped to a single DLO, deleting the mapping returns
+  `INTERNAL_ERROR: DMO is mapped to only one DLO ... cannot be removed`.
+  Workaround for cleanup: `DELETE` the target DMO instead; the platform
+  cascades and removes the orphan mapping.
 
 ## Calculated insight — `/ssot/calculated-insights`
 
@@ -381,6 +406,88 @@ Add data object body:
   "dataObjectName": "ssot__Account__dlm"
 }
 ```
+
+## Data transform — `/ssot/data-transforms`
+
+- Required: `definition`, `label`, `name`, `type` (`BATCH` | `STREAMING`).
+- The Connect REST request takes an STL graph in `definition.nodes`,
+  not the upstream MCP `targetDmo` + `sql` shape. Each node has
+  `action`, `parameters`, and `sources[]`.
+- Output target DLOs must exist (or be auto-creatable). Validate first:
+  `POST /ssot/data-transforms-validation` returns precise issues such
+  as `TARGET_DLO_NOT_FOUND` and
+  `DLO_NAME_DOES_NOT_EXIST: ... neither exists nor can be created`.
+  Pre-create the target DLO when validation reports it missing.
+
+Minimal STL graph (load source DLO → outputD360 to a target DLO):
+
+```json
+{
+  "label": "Example Tx",
+  "name": "Example_Tx",
+  "type": "BATCH",
+  "definition": {
+    "type": "STL",
+    "version": "56.0",
+    "nodes": {
+      "LOAD_DATASET0": {
+        "action": "load",
+        "parameters": {
+          "dataset": { "name": "Source__dll", "type": "dataLakeObject" },
+          "fields": ["source_id__c", "queryText__c"],
+          "sampleDetails": { "sortBy": [], "type": "TopN" }
+        },
+        "sources": []
+      },
+      "OUTPUT0": {
+        "action": "outputD360",
+        "parameters": {
+          "name": "Target__dll",
+          "type": "dataLakeObject",
+          "fieldsMappings": [
+            { "sourceField": "source_id__c", "targetField": "target_id__c" },
+            { "sourceField": "queryText__c", "targetField": "queryText__c" }
+          ]
+        },
+        "sources": ["LOAD_DATASET0"]
+      }
+    }
+  }
+}
+```
+
+Lifecycle:
+
+- Create returns `status: "PROCESSING"`; transitions to `ACTIVE`.
+- `POST /ssot/data-transforms/{name}/actions/run` returns
+  `{ "success": true, "errors": [], "shouldForceFullRun": false }`.
+- `actions/refresh-status` and `actions/cancel` return
+  `{ "success": true, "errors": [] }`.
+- `GET /ssot/data-transforms/{name}/run-history` returns
+  `{ histories[], totalSize }`; expect empty until ingestion completes.
+
+Schedule via `PUT /ssot/data-transforms/{name}/schedule`:
+
+- Body needs `frequency`, `time`, **and** `interval`. Swagger lists only
+  `frequency` and `time` as required; the platform also requires
+  `interval` (1–31).
+- `time.timeZone` is camelCase. Lowercase `timezone` is rejected with
+  `JSON_PARSER_ERROR: Unrecognized field "timezone"`. The response
+  echoes a denormalized `time.timezone` (lowercase, with `gmtOffset`
+  and `name`); do not send that shape back as a request body.
+- `frequency: "None"` clears the schedule.
+
+```json
+{
+  "frequency": "Daily",
+  "interval": 1,
+  "time": { "hour": 3, "minute": 0, "timeZone": "America/Los_Angeles" }
+}
+```
+
+Delete: `DELETE /ssot/data-transforms/{name}` returns 204; subsequent
+GET returns
+`ITEM_NOT_FOUND: Transform <name> not found. If the transform is present in a non-default dataspace, search the transform in this way - [dataspace's prefix]_[transform's API name].`
 
 ## Search index — `/ssot/search-index`
 

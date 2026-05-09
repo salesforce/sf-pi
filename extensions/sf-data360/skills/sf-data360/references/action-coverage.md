@@ -101,6 +101,22 @@ the skill.
   `components[]` → response uses `devName` → `PATCH` accepts only
   `components[]` → `DELETE` → idempotent
   `PackageKitDefinition does not exist` on second `DELETE`.
+- **Data transform** — `validate` (`POST /ssot/data-transforms-validation`)
+  surfaces precise STL graph issues → pre-create any output DLO → `POST`
+  with `definition.nodes` (load → outputD360) returns
+  `status: "PROCESSING"` → `actions/run|refresh-status|cancel` return
+  `{success:true}` → `PUT /schedule` requires
+  `frequency` + `time` (camelCase `timeZone`) + `interval` →
+  `frequency: "None"` clears the schedule → `DELETE` 204 →
+  `ITEM_NOT_FOUND`.
+- **DLO ↔ DMO mapping** — explicit field pairs are auto-inflated with
+  system mappings (`DataSource__c`, `DataSourceObject__c`,
+  `InternalOrganization__c`, `KQ_<pk>__c`) → `PATCH` on
+  `/field-mappings/{field}` updates by developer name only (not insert)
+  → `DELETE /field-mappings` requires a specific target field; no
+  bulk wipe → `DELETE` of the parent mapping is blocked when its DMO
+  has only one mapped DLO; cleanup by deleting the target DMO instead
+  (cascades the mapping).
 - **Identity resolution** — feature gated: an unmapped target DMO returns
   `INVALID_INPUT: Objects can only be used in identity resolution after
 required fields are mapped`. Validate IR payload in dry-run + readiness
