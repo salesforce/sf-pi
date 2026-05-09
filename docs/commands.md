@@ -28,7 +28,7 @@ _Core manager — provides /sf-pi commands_
 _Salesforce LLM Gateway provider with model discovery_
 
 - Default: **on**
-- Commands: `/sf-llm-gateway`, `/sf-llm-gateway-internal`
+- Commands: `/sf-llm-gateway`
 - Providers: `sf-llm-gateway-internal`
 
 ## Agent-tool

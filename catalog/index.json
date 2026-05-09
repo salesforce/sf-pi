@@ -252,8 +252,7 @@
     "alwaysActive": false,
     "configurable": true,
     "commands": [
-      "/sf-llm-gateway",
-      "/sf-llm-gateway-internal"
+      "/sf-llm-gateway"
     ],
     "providers": [
       "sf-llm-gateway-internal"
@@ -291,7 +290,7 @@
     "entry": "extensions/sf-llm-gateway-internal/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 8687
+    "srcLoc": 8701
   },
   {
     "id": "sf-lsp",
@@ -505,7 +504,7 @@
     "entry": "extensions/sf-slack/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 11040
+    "srcLoc": 11271
   },
   {
     "id": "sf-welcome",

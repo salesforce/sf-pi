@@ -128,6 +128,27 @@ Extension loads
   └─ on("session_shutdown")            → clear footer status + provider signal
 ```
 
+## Connecting
+
+The `/sf-llm-gateway` panel is the single primary entry point for credential
+entry (see [ADR 0007](../../docs/adr/0007-single-place-credentials.md)). Run
+it, pick **Connect / configure credentials**, and enter the gateway base URL
+and API key. The panel writes the saved config to disk and registers the
+provider — no separate `/login` step required.
+
+```text
+/sf-llm-gateway   →   Connect / configure credentials   →   enter URL + key   →   register provider
+```
+
+Adjacent **Connect** group rows make the rest of the onboarding self-service:
+
+- **Open token page in browser** — launches the configured gateway root in
+  your browser so you can sign in and copy a token without leaving pi.
+- **Import from Claude Code** — pulls a cleansed URL+token from your local
+  Claude Code settings into the gateway saved config.
+- **Show gateway root link** — prints the stable gateway root URL, useful
+  when copy-pasting into a different machine.
+
 ## Configuration
 
 Configuration follows a three-tier cascade:
@@ -145,8 +166,22 @@ saved config  →  env var fallback  →  built-in default/missing
   (replace scoped models with only gateway models and restore the prior scope on disable)
 
 Project-scoped saved config overrides global. Env vars are intentionally only a
-fallback for CI/automation when no saved config exists, so stale shell exports or
-macOS Keychain-backed env commands cannot shadow a freshly pasted key.
+fallback for CI/automation when no saved config exists, so stale shell exports
+cannot shadow a freshly pasted key.
+
+### Advanced / automation
+
+The panel writes the same files that env vars and direct edits would touch,
+so these alternative paths still work for power users and CI:
+
+- **Env vars**: `SF_LLM_GATEWAY_INTERNAL_BASE_URL` + `SF_LLM_GATEWAY_INTERNAL_API_KEY`
+  for shell-driven automation.
+- **Direct edit**: `~/.pi/agent/sf-llm-gateway-internal.json` (global) or
+  `<project>/.pi/sf-llm-gateway-internal.json` (project).
+
+The `/login sf-llm-gateway-internal` flow was retired as a recommended onboarding
+path in v0.56.0 — use the panel instead. The provider id stays the same so
+pi's auth resolution and model routing continue to work.
 
 Configure the base URL as your organization's gateway **root URL**, for
 example `https://your-internal-gateway.example.com`. If a user pastes a known
@@ -163,11 +198,16 @@ separately via the monthly usage endpoint (`/user/info`).
 
 ## Command Surface
 
-`/sf-llm-gateway` with no args opens the setup/settings overlay: users enter the
-cleansed gateway root URL and API token in one place, can open the gateway root
-in their browser to create a token, or import a cleansed URL/token from local
-Claude Code settings. `/sf-llm-gateway-internal` remains as a backward-compatible
-status & controls alias with the grouped Pi-native panel.
+`/sf-llm-gateway` with no args opens the status & controls panel. The first
+group, **Connect**, exposes the full onboarding flow — enter URL+key, open
+the token page in a browser, or import from Claude Code. Subsequent groups
+cover post-connect tweaks (`on`, `off`, `set-default`), discovery and
+diagnostics, utilities, and reference output.
+
+The legacy `/sf-llm-gateway-internal` slash command was retired in v0.56.0
+(see ADR 0007). Users land on `/sf-llm-gateway` as the single entry point.
+The provider id is unchanged so pi-native model routing and `/login`
+resolution still work.
 
 The grouped panel extends the same Pi-native `ctx.ui.custom()` + `DynamicBorder`
 pattern used by `/sf-lsp`: compact status at the top, grouped actions in the
@@ -179,12 +219,13 @@ no-args command falls back to the text status report.
 
 Primary actions are grouped as:
 
-| Group                   | Actions                                                            | Purpose                                                                                                  |
-| ----------------------- | ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
-| Setup                   | `setup`, `open-token`, `import-claude`, `on`, `off`, `set-default` | Edit credentials/config, open token creation, import Claude Code settings, and control gateway defaults. |
-| Discovery & diagnostics | `refresh`, `models`, `doctor`, `usage-probe`, `debug`              | Re-probe model discovery, health, usage scope, and transformed upstream payloads.                        |
-| Utilities               | `tokens`, `onboard`, `beta`                                        | Count prompt tokens/cost, print the gateway root link, and manage runtime beta headers.                  |
-| Reference               | `status`, `help`                                                   | Print complete text reports for copying or headless use.                                                 |
+| Group                   | Actions                                               | Purpose                                                                                                         |
+| ----------------------- | ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Connect                 | `setup`, `import-claude`, `open-token`, `onboard`     | Single onboarding surface: enter credentials, import from Claude Code, open the token page, copy the root link. |
+| Setup                   | `on`, `off`, `set-default`                            | Post-connect tweaks: enable/disable gateway routing, control gateway defaults.                                  |
+| Discovery & diagnostics | `refresh`, `models`, `doctor`, `usage-probe`, `debug` | Re-probe model discovery, health, usage scope, and transformed upstream payloads.                               |
+| Utilities               | `tokens`, `beta`                                      | Count prompt tokens/cost and manage runtime beta headers.                                                       |
+| Reference               | `status`, `help`                                      | Print complete text reports for copying or headless use.                                                        |
 
 Slash completions use the same command metadata as the panel, so subcommands
 such as `tokens`, `onboard`, `open-token`, `import-claude`, `doctor`, `debug`,

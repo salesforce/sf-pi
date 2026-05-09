@@ -54,7 +54,14 @@ import {
   type ApiErr,
   type SlackSendAuditEntry,
 } from "./lib/types.ts";
-import { getSlackToken, loginSlack, oauthScopes, refreshSlackToken } from "./lib/auth.ts";
+import {
+  detectTokenSource,
+  getSlackToken,
+  loginSlack,
+  migrateLegacyKeychainToken,
+  oauthScopes,
+  refreshSlackToken,
+} from "./lib/auth.ts";
 import {
   slackApi,
   prewarmUserCache,
@@ -113,6 +120,8 @@ import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 const RESEARCH_WIDGET_KEY = "sf-slack-research";
 
 type SlackCommandAction =
+  | "connect"
+  | "disconnect"
   | "status"
   | "refresh"
   | "settings"
@@ -122,6 +131,23 @@ type SlackCommandAction =
   | LifecycleActionId;
 
 const SLACK_COMMAND_ACTIONS: CommandPanelAction<SlackCommandAction>[] = [
+  // Connect group at the top of every panel render so users have a single,
+  // obvious entry point for auth. ADR 0007 retires /login sf-slack and
+  // macOS Keychain as recommended onboarding paths in favor of this row.
+  {
+    value: "connect",
+    label: "Connect to Slack",
+    description:
+      "Paste an xoxp-/xapp- token here (or run an OAuth callback) and Pi stores it in the central pi auth store.",
+    group: "Connect",
+  },
+  {
+    value: "disconnect",
+    label: "Disconnect (clear stored token)",
+    description:
+      "Forget the saved Slack credential in pi's auth store. Env var SLACK_USER_TOKEN is left untouched (you own that).",
+    group: "Connect",
+  },
   {
     value: "status",
     label: "Show auth status",
@@ -443,6 +469,19 @@ export default function sfSlack(pi: ExtensionAPI) {
     restorePreferences(ctx);
     renderResearchWidget();
 
+    // ADR 0007: one-shot migration of any pre-v0.56 Keychain token into
+    // pi's central auth store. Best-effort — if it fails (Keychain locked,
+    // user denied access, etc.) we keep going and the user can reconnect
+    // via the panel's Connect action.
+    try {
+      const migration = migrateLegacyKeychainToken(ctx.modelRegistry.authStorage);
+      if (migration.migrated && migration.hint) {
+        ctx.ui.notify(`SF Slack credential migrated\n\n${migration.hint}`, "info");
+      }
+    } catch {
+      // Best-effort — migration failures must not block session start.
+    }
+
     const auth = await getSlackToken(ctx);
     if (!isActiveSession(ctx, generation)) return;
     if (!auth.ok) {
@@ -626,6 +665,16 @@ export default function sfSlack(pi: ExtensionAPI) {
       return;
     }
 
+    if (sub === "connect") {
+      await runSlackConnect(ctx, fromPanel);
+      return;
+    }
+
+    if (sub === "disconnect") {
+      await runSlackDisconnect(ctx, fromPanel);
+      return;
+    }
+
     if (sub === "refresh") {
       const generation = activeSessionGeneration;
       ctx.ui.setStatus(`-command`, "Slack: re-detecting identity and scopes…");
@@ -751,8 +800,127 @@ export default function sfSlack(pi: ExtensionAPI) {
     await emitSlackOutput(
       ctx,
       "Unknown command",
-      `Unknown /sf-slack subcommand: ${sub}. Use status, refresh, settings, sent, help.`,
+      `Unknown /sf-slack subcommand: ${sub}. Use connect, disconnect, status, refresh, settings, sent, help.`,
       "warning",
+      fromPanel,
+    );
+  }
+
+  async function runSlackConnect(ctx: ExtensionCommandContext, fromPanel: boolean): Promise<void> {
+    if (!ctx.hasUI) {
+      ctx.ui.notify(
+        "/sf-slack connect requires interactive mode. Run /sf-slack connect from a TUI session, or set SLACK_USER_TOKEN for automation.",
+        "warning",
+      );
+      return;
+    }
+
+    // Drive pi's central auth store via authStorage.login(). The same
+    // mechanism /login sf-slack uses, but the panel owns the UI now.
+    // Bare-bones callbacks: notify for the auth URL, ctx.ui.editor for the
+    // paste step. Keeps the call site simple and avoids re-implementing
+    // pi's full OAuth dialog.
+    try {
+      await ctx.modelRegistry.authStorage.login("sf-slack", {
+        onAuth: (info) => {
+          ctx.ui.notify(
+            `${info.instructions}\n\nOpen this URL in your browser:\n${info.url}`,
+            "info",
+          );
+        },
+        onPrompt: async (prompt) => {
+          // ctx.ui.editor returns undefined when the user cancels; fail
+          // closed so authStorage.login surfaces a clean error.
+          const value = await ctx.ui.editor(prompt.message, "");
+          if (value == null || !value.trim()) {
+            throw new Error("Slack connect cancelled.");
+          }
+          return value.trim();
+        },
+        onProgress: (message) => {
+          ctx.ui.notify(message, "info");
+        },
+        onSelect: async (prompt) => {
+          // pi's full OAuth dialog can render an interactive selector; the
+          // panel doesn't yet. Surface the options as text so the user can
+          // see what's expected, then bail — they can rerun Connect after
+          // the choice resolves itself (most slack flows don't hit this).
+          const lines = prompt.options.map((option) => `- ${option.label}`).join("\n");
+          throw new Error(
+            `Slack connect needs a multi-choice prompt that the panel doesn't render yet. Options:\n${lines}`,
+          );
+        },
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (message === "Slack connect cancelled.") {
+        await emitSlackOutput(
+          ctx,
+          "Slack connect cancelled",
+          "No changes were made. Run Connect again when you're ready.",
+          "info",
+          fromPanel,
+        );
+        return;
+      }
+      await emitSlackOutput(ctx, "Slack connect failed", message, "error", fromPanel);
+      return;
+    }
+
+    // Successful login persisted via pi's auth store. Trigger the existing
+    // refresh path so identity, scopes, and tools update without requiring
+    // the user to manually click Refresh.
+    await handleSlackCommand("refresh", ctx, fromPanel);
+  }
+
+  async function runSlackDisconnect(
+    ctx: ExtensionCommandContext,
+    fromPanel: boolean,
+  ): Promise<void> {
+    const before = detectTokenSource();
+    if (before === "none") {
+      await emitSlackOutput(
+        ctx,
+        "Nothing to disconnect",
+        "No saved Slack credential was found. SLACK_USER_TOKEN env var (if set) is left untouched.",
+        "info",
+        fromPanel,
+      );
+      return;
+    }
+
+    if (ctx.hasUI) {
+      const confirmed = await ctx.ui.confirm(
+        "Disconnect Slack?",
+        "This clears the saved Slack credential in pi's central auth store. Env var SLACK_USER_TOKEN (if set) is left untouched. You can reconnect anytime via the panel's Connect action.",
+      );
+      if (!confirmed) {
+        await emitSlackOutput(
+          ctx,
+          "Disconnect cancelled",
+          "Slack credential left in place.",
+          "info",
+          fromPanel,
+        );
+        return;
+      }
+    }
+
+    ctx.modelRegistry.authStorage.logout("sf-slack");
+    deactivateSlackTools(pi);
+    identity = null;
+    grantedScopeCount = 0;
+    requestedScopeCount = 0;
+    missingGrantedScopeCount = 0;
+    tokenType = "unknown";
+    lastError = null;
+    updateStatus(ctx, "disconnected");
+
+    await emitSlackOutput(
+      ctx,
+      "Slack disconnected",
+      `Cleared the saved Slack credential (was using \`${before}\`). Reconnect via the panel's Connect action.`,
+      "success",
       fromPanel,
     );
   }

@@ -2,10 +2,21 @@
 /**
  * Token resolution and auth provider registration for sf-slack.
  *
- * Token resolution priority:
- *   1. Pi auth store (~/.pi/agent/auth.json via /login sf-slack) — recommended default
- *   2. macOS Keychain (hardware-backed) — optional local secret storage on macOS
- *   3. Environment variable (SLACK_USER_TOKEN) — best for automation / CI
+ * ADR 0007 made the `/sf-slack` panel the single primary entry point for
+ * authentication. Resolution precedence is now:
+ *
+ *   1. Pi auth store (~/.pi/agent/auth.json) — written by the panel's
+ *      Connect action via `ctx.modelRegistry.authStorage.login(...)`. This
+ *      is also where pi's own `/login` flow writes, so existing users see
+ *      no change.
+ *   2. Environment variable (SLACK_USER_TOKEN) — best for automation / CI.
+ *
+ * macOS Keychain was retired as a runtime resolution path in v0.56.0. If a
+ * user previously stored their token via `security add-generic-password`,
+ * `migrateLegacyKeychainToken()` runs once on session_start, copies the
+ * token into pi's auth store, and surfaces a one-time migration
+ * notification. The Keychain entry itself is left intact — we don't reach
+ * into a system credential store and delete things silently.
  */
 import type { OAuthCredentials, OAuthLoginCallbacks } from "@earendil-works/pi-ai";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
@@ -53,7 +64,12 @@ export function oauthScopes(): string {
 
 // ─── Local token sources ────────────────────────────────────────────────────────
 
-/** Read token from macOS Keychain (optional local secret storage on macOS). */
+/**
+ * Read token from macOS Keychain.
+ *
+ * Used only by `migrateLegacyKeychainToken()` for one-shot migration into
+ * pi's central auth store. Not read at runtime anymore (see file docstring).
+ */
 function getTokenFromKeychain(): string | null {
   if (process.platform !== "darwin") return null;
   try {
@@ -69,6 +85,11 @@ function getTokenFromKeychain(): string | null {
 
 // ─── Token source detection (for runtime + status display) ─────────────────────
 
+// Note: "keychain" stays in the union to preserve compatibility with
+// callers (and serialized state) that still narrow on it. The runtime
+// resolution path no longer returns it; only `migrateLegacyKeychainToken()`
+// observes a Keychain token, and only long enough to copy it into pi's
+// auth store before the next resolution pass.
 export type TokenSource = "keychain" | "env" | "pi-auth" | "none";
 
 export interface TokenResolution {
@@ -108,11 +129,12 @@ export function resolveTokenCandidates(candidates: {
   keychainToken?: string | null;
   envToken?: string | null;
 }): TokenResolution | null {
-  // Keep `/login sf-slack` as the default path. If users configure multiple
-  // sources, Pi-managed auth wins so status and runtime behavior stay simple.
+  // ADR 0007: pi auth store is the canonical primary source; env var is
+  // the explicit automation/CI fallback. Keychain is retained in the
+  // candidate shape for compatibility with `migrateLegacyKeychainToken`
+  // but no longer participates in runtime resolution.
   const orderedSources: TokenResolution[] = [
     { source: "pi-auth", token: candidates.piAuthToken || "" },
-    { source: "keychain", token: candidates.keychainToken || "" },
     { source: "env", token: candidates.envToken || "" },
   ];
 
@@ -129,9 +151,66 @@ export function resolveTokenCandidates(candidates: {
 export function resolveConfiguredToken(): TokenResolution | null {
   return resolveTokenCandidates({
     piAuthToken: getTokenFromPiAuthStore(),
-    keychainToken: getTokenFromKeychain(),
     envToken: getEnv(ENV_TOKEN),
   });
+}
+
+/**
+ * One-shot migration of a legacy macOS Keychain token into pi's central
+ * auth store. Runs from session_start so existing users keep working
+ * without manual reconfiguration.
+ *
+ * Behavior:
+ *   - macOS only, fast no-op on Linux/Windows.
+ *   - Skips if pi auth already has a sf-slack credential (we never
+ *     overwrite a current credential with an older Keychain copy).
+ *   - On a successful copy, returns `{ migrated: true, hint }` so the
+ *     extension can surface a one-time notification. The Keychain entry
+ *     is left in place — deletion is the user's choice via
+ *     `security delete-generic-password ...`.
+ */
+export interface KeychainMigrationResult {
+  migrated: boolean;
+  hint?: string;
+}
+
+/**
+ * Minimal subset of pi's `AuthStorage` we need for migration. Keeping it
+ * structural makes the helper unit-testable without spinning up pi's full
+ * file-locked storage backend, and survives signature changes in pi as long
+ * as `has` and `set` keep their shapes.
+ */
+export interface AuthStorageLike {
+  has(provider: string): boolean;
+  // The real `AuthStorage.set` accepts a discriminated union; we forward an
+  // OAuth-shaped credential and rely on structural typing.
+  set(provider: string, credential: { type: "oauth" } & OAuthCredentials): void;
+}
+
+export function migrateLegacyKeychainToken(authStorage: AuthStorageLike): KeychainMigrationResult {
+  if (process.platform !== "darwin") return { migrated: false };
+  if (authStorage.has(PROVIDER_NAME)) return { migrated: false };
+
+  const token = getTokenFromKeychain();
+  if (!token) return { migrated: false };
+
+  // Store as a long-lived OAuth-style credential so the existing token
+  // resolution path picks it up. Keeps storage shape consistent with
+  // tokens written by `loginSlack`.
+  authStorage.set(PROVIDER_NAME, {
+    type: "oauth",
+    access: token,
+    refresh: MANUAL_REFRESH_SENTINEL,
+    expires: Date.now() + LONG_LIVED_EXPIRY_MS,
+  });
+
+  return {
+    migrated: true,
+    hint:
+      `Found a Slack token in macOS Keychain (service "${KEYCHAIN_SERVICE}") and copied it into pi's central auth store. ` +
+      `Future sessions will read from pi's store. The Keychain entry was left in place — you can remove it manually with: ` +
+      `security delete-generic-password -a "${KEYCHAIN_ACCOUNT}" -s "${KEYCHAIN_SERVICE}".`,
+  };
 }
 
 export function detectTokenSource(): TokenSource {

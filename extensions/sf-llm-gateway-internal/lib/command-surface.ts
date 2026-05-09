@@ -34,7 +34,12 @@ export type GatewayCommandId =
 
 export type GatewayPanelAction = GatewayCommandId | "switch-scope" | "close" | "lifecycle.toggle";
 
-export type GatewayCommandSection = "Setup" | "Discovery & diagnostics" | "Utilities" | "Reference";
+export type GatewayCommandSection =
+  | "Connect"
+  | "Setup"
+  | "Discovery & diagnostics"
+  | "Utilities"
+  | "Reference";
 
 export interface GatewayCommandSurfaceItem {
   id: GatewayCommandId;
@@ -46,23 +51,49 @@ export interface GatewayCommandSurfaceItem {
   acceptsScope?: boolean;
 }
 
+// Order matters: the panel renders in this sequence and groups by section
+// label. Connect must come first so the primary entry point is at the
+// top of every panel render. Items inside the same section stay
+// contiguous so we don't get duplicate group headings.
 export const GATEWAY_COMMAND_SURFACE: readonly GatewayCommandSurfaceItem[] = [
-  {
-    id: "status",
-    label: "Show text status",
-    usage: "status",
-    description: "Print the complete provider, config, usage, health, and beta status report.",
-    section: "Reference",
-  },
+  // ─── Connect (always first) ──────────────────────────────────────────────────────────────────────────
   {
     id: "setup",
-    label: "Open setup / settings",
+    label: "Connect / configure credentials",
     usage: "setup [global|project]",
-    description: "Edit saved base URL, API key, scoped model mode, and enable/disable state.",
-    section: "Setup",
-    aliases: ["configure"],
+    description:
+      "Single place to enter the gateway base URL and API key. Edits the saved config and refreshes the provider — no separate /login required.",
+    section: "Connect",
+    aliases: ["configure", "connect"],
     acceptsScope: true,
   },
+  {
+    id: "import-claude",
+    label: "Import from Claude Code",
+    usage: "import-claude [global|project]",
+    description:
+      "One-click import of a cleansed gateway base URL and API token from local Claude Code settings.",
+    section: "Connect",
+    aliases: ["import-claude-code"],
+    acceptsScope: true,
+  },
+  {
+    id: "open-token",
+    label: "Open token page in browser",
+    usage: "open-token",
+    description:
+      "Open the configured gateway root in a browser so you can sign in and copy a token.",
+    section: "Connect",
+    aliases: ["open", "browser"],
+  },
+  {
+    id: "onboard",
+    label: "Show gateway root link",
+    usage: "onboard",
+    description: "Print the stable gateway root URL for browser sign-in and key creation.",
+    section: "Connect",
+  },
+  // ─── Setup (post-connect tweaks) ─────────────────────────────────────────────────────────────────
   {
     id: "on",
     label: "Enable gateway defaults",
@@ -91,6 +122,7 @@ export const GATEWAY_COMMAND_SURFACE: readonly GatewayCommandSurfaceItem[] = [
     section: "Setup",
     acceptsScope: true,
   },
+  // ─── Discovery & diagnostics ─────────────────────────────────────────────────────────────────────
   {
     id: "refresh",
     label: "Refresh models + usage",
@@ -131,6 +163,7 @@ export const GATEWAY_COMMAND_SURFACE: readonly GatewayCommandSurfaceItem[] = [
       "Inspect the upstream payload the gateway would send for a model without a completion.",
     section: "Discovery & diagnostics",
   },
+  // ─── Utilities ──────────────────────────────────────────────────────────────────────────────────────────────────
   {
     id: "tokens",
     label: "Count tokens",
@@ -141,37 +174,19 @@ export const GATEWAY_COMMAND_SURFACE: readonly GatewayCommandSurfaceItem[] = [
     aliases: ["count"],
   },
   {
-    id: "onboard",
-    label: "Gateway root link",
-    usage: "onboard",
-    description: "Print the stable gateway root URL for browser sign-in and key creation.",
-    section: "Utilities",
-  },
-  {
-    id: "open-token",
-    label: "Open token page",
-    usage: "open-token",
-    description:
-      "Open the configured gateway root in a browser so you can sign in and create a token.",
-    section: "Setup",
-    aliases: ["open", "browser"],
-  },
-  {
-    id: "import-claude",
-    label: "Import from Claude Code",
-    usage: "import-claude [global|project]",
-    description:
-      "Import a cleansed gateway base URL and API token from local Claude Code settings.",
-    section: "Setup",
-    aliases: ["import-claude-code"],
-    acceptsScope: true,
-  },
-  {
     id: "beta",
     label: "Beta headers",
     usage: "beta [name on|off|reset]",
     description: "View or toggle runtime Anthropic beta header overrides.",
     section: "Utilities",
+  },
+  // ─── Reference ──────────────────────────────────────────────────────────────────────────────────────────────────
+  {
+    id: "status",
+    label: "Show text status",
+    usage: "status",
+    description: "Print the complete provider, config, usage, health, and beta status report.",
+    section: "Reference",
   },
   {
     id: "help",

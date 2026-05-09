@@ -347,22 +347,21 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
   pi.registerMessageRenderer(PROVIDER_NAME, renderGatewayMessage);
 
   pi.registerCommand(FRIENDLY_COMMAND_NAME, {
-    description: "SF LLM Gateway setup, token import, diagnostics, and utilities",
+    description: "SF LLM Gateway — status, controls, and credential setup",
     getArgumentCompletions: getGatewayArgumentCompletions,
     handler: async (args, ctx) => {
       await withSafeCommandHandler(ctx, FRIENDLY_COMMAND_NAME, () =>
-        handleCommand(pi, args.trim() ? args : "setup", ctx),
+        handleCommand(pi, args.trim() ? args : "", ctx),
       );
     },
   });
 
-  pi.registerCommand(COMMAND_NAME, {
-    description: `Backward-compatible alias for /${FRIENDLY_COMMAND_NAME}`,
-    getArgumentCompletions: getGatewayArgumentCompletions,
-    handler: async (args, ctx) => {
-      await withSafeCommandHandler(ctx, COMMAND_NAME, () => handleCommand(pi, args, ctx));
-    },
-  });
+  // The legacy `/sf-llm-gateway-internal` slash command was retired in
+  // v0.56.0 — see ADR 0007. The provider id is still PROVIDER_NAME (=
+  // sf-llm-gateway-internal) for model routing and pi-native auth
+  // resolution; only the user-facing slash command went away. Users land
+  // on /sf-llm-gateway as the single entry point. If any caller still
+  // types the old name, pi's "unknown command" guidance covers it.
 
   pi.on("session_start", async (_event, ctx) => {
     // Fresh session — forget any thinking-level we set in a previous session.
@@ -1135,7 +1134,7 @@ export function parseCommandArgs(args: string): CommandArgs {
   if (sub === "help") {
     return { subcommand: "help", scope };
   }
-  if (sub === "setup" || sub === "configure") {
+  if (sub === "setup" || sub === "configure" || sub === "connect") {
     return { subcommand: "setup", scope };
   }
   if (sub === "on" || sub === "enable") {

@@ -179,22 +179,21 @@ per-extension view.
 
 Every slash command exposed by a bundled extension. See each extension README for subcommands and flags.
 
-| Command                    | Extension                                                        | Category   |
-| -------------------------- | ---------------------------------------------------------------- | ---------- |
-| `/sf-pi`                   | [SF Pi Manager](./extensions/sf-pi-manager/)                     | manager    |
-| `/sf-llm-gateway`          | [SF LLM Gateway Internal](./extensions/sf-llm-gateway-internal/) | provider   |
-| `/sf-llm-gateway-internal` | [SF LLM Gateway Internal](./extensions/sf-llm-gateway-internal/) | provider   |
-| `/sf-data360`              | [SF Data 360](./extensions/sf-data360/)                          | agent-tool |
-| `/sf-slack`                | [SF Slack](./extensions/sf-slack/)                               | agent-tool |
-| `/sf-guardrail`            | [SF Guardrail](./extensions/sf-guardrail/)                       | safety     |
-| `/sf-agentscript-assist`   | [SF Agent Script Assist](./extensions/sf-agentscript-assist/)    | assistive  |
-| `/sf-feedback`             | [SF Feedback](./extensions/sf-feedback/)                         | assistive  |
-| `/sf-lsp`                  | [SF LSP](./extensions/sf-lsp/)                                   | assistive  |
-| `/sf-devbar`               | [SF DevBar](./extensions/sf-devbar/)                             | ui         |
-| `/sf-org`                  | [SF DevBar](./extensions/sf-devbar/)                             | ui         |
-| `/sf-skills`               | [SF Skills HUD](./extensions/sf-skills-hud/)                     | ui         |
-| `/sf-welcome`              | [SF Welcome](./extensions/sf-welcome/)                           | ui         |
-| `/sf-setup-fonts`          | [SF Welcome](./extensions/sf-welcome/)                           | ui         |
+| Command                  | Extension                                                        | Category   |
+| ------------------------ | ---------------------------------------------------------------- | ---------- |
+| `/sf-pi`                 | [SF Pi Manager](./extensions/sf-pi-manager/)                     | manager    |
+| `/sf-llm-gateway`        | [SF LLM Gateway Internal](./extensions/sf-llm-gateway-internal/) | provider   |
+| `/sf-data360`            | [SF Data 360](./extensions/sf-data360/)                          | agent-tool |
+| `/sf-slack`              | [SF Slack](./extensions/sf-slack/)                               | agent-tool |
+| `/sf-guardrail`          | [SF Guardrail](./extensions/sf-guardrail/)                       | safety     |
+| `/sf-agentscript-assist` | [SF Agent Script Assist](./extensions/sf-agentscript-assist/)    | assistive  |
+| `/sf-feedback`           | [SF Feedback](./extensions/sf-feedback/)                         | assistive  |
+| `/sf-lsp`                | [SF LSP](./extensions/sf-lsp/)                                   | assistive  |
+| `/sf-devbar`             | [SF DevBar](./extensions/sf-devbar/)                             | ui         |
+| `/sf-org`                | [SF DevBar](./extensions/sf-devbar/)                             | ui         |
+| `/sf-skills`             | [SF Skills HUD](./extensions/sf-skills-hud/)                     | ui         |
+| `/sf-welcome`            | [SF Welcome](./extensions/sf-welcome/)                           | ui         |
+| `/sf-setup-fonts`        | [SF Welcome](./extensions/sf-welcome/)                           | ui         |
 
 <!-- GENERATED:command-reference:end -->
 

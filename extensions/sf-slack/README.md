@@ -37,7 +37,8 @@ Extension loads
   │  system prompt Slack-free when sf-slack is not configured.
   │
   └─ on("session_start")
-       ├─ Resolve token (Pi auth → Keychain → env)
+       ├─ Migrate any pre-v0.56 macOS Keychain token into pi auth store (one-shot)
+       ├─ Resolve token (pi auth → SLACK_USER_TOKEN env)
        ├─ If no token → keep footer hidden, DO NOT register tools
        └─ If token found:
             ├─ ensureSlackToolsRegistered()  ← registers 9 slack* tools
@@ -68,52 +69,45 @@ Extension loads
        └─ Re-probe scopes, re-warm caches
 ```
 
-## Auth Setup
+## Connecting
 
-Recommended setup order:
+The `/sf-slack` panel is the single primary entry point for authentication
+(see [ADR 0007](../../docs/adr/0007-single-place-credentials.md)). Run it,
+pick **Connect to Slack**, and paste the user token (or callback URL) when
+prompted. The panel writes to pi's central auth store at
+`~/.pi/agent/auth.json`, the same place pi-native auth resolution reads from.
 
-| Priority | Source               | When to Use                    | How to Set Up                                                                         |
-| -------- | -------------------- | ------------------------------ | ------------------------------------------------------------------------------------- |
-| 1        | Pi auth store        | Default interactive setup      | `/login sf-slack`                                                                     |
-| 2        | macOS Keychain       | Local macOS secret storage     | `security add-generic-password -a "sf-slack-token" -s "pi-sf-slack" -w "xoxp-..." -U` |
-| 3        | Environment variable | Automation / CI / shell-driven | `export SLACK_USER_TOKEN=xoxp-...`                                                    |
-
-`sf-slack` checks these sources in that order. If more than one is configured,
-Pi auth wins so the built-in `/login sf-slack` path stays the default behavior.
-
-## macOS Keychain Quick Reference
-
-Use the built-in `security` CLI on macOS.
-
-### Add or update the token
-
-```bash
-security add-generic-password \
-  -a "sf-slack-token" \
-  -s "pi-sf-slack" \
-  -w "xoxp-your-token" \
-  -U
+```text
+/sf-slack    →   Connect to Slack    →   paste xoxp-/xapp- token   →   refresh
 ```
 
-### Verify the token is present
+Use **Disconnect (clear stored token)** in the same panel to forget the
+stored credential. Reconnect anytime via the panel.
+
+### Advanced / automation
+
+These fallback paths still resolve at runtime when no panel-stored credential
+exists. They are not advertised to first-time users.
+
+| Source               | When to use                    | How to set                           |
+| -------------------- | ------------------------------ | ------------------------------------ |
+| pi auth store        | Default — written by Connect   | `/sf-slack` panel → Connect to Slack |
+| Environment variable | Automation / CI / shell-driven | `export SLACK_USER_TOKEN=xoxp-...`   |
+
+If both are present, the pi auth store wins so the panel stays the source of
+truth.
+
+### macOS Keychain (retired in v0.56.0)
+
+Keychain is no longer in the runtime resolution chain. If you previously
+stored a token via `security add-generic-password`, the extension migrates it
+into pi's auth store automatically on the next session start and surfaces a
+one-time notification. The Keychain entry is left intact — remove it manually
+when you no longer need it:
 
 ```bash
-security find-generic-password \
-  -a "sf-slack-token" \
-  -s "pi-sf-slack" \
-  -w
+security delete-generic-password -a "sf-slack-token" -s "pi-sf-slack"
 ```
-
-### Delete the token
-
-```bash
-security delete-generic-password \
-  -a "sf-slack-token" \
-  -s "pi-sf-slack"
-```
-
-If you want the simplest path, prefer `/login sf-slack`. Use Keychain when you
-specifically want macOS-managed local secret storage.
 
 ## Obtaining an `xoxp-` User Token
 
@@ -123,9 +117,9 @@ specifically want macOS-managed local secret storage.
 > account that is allowed to install or authorize that app. Some workspaces
 > restrict app installs or specific scopes.
 
-If your organization already provides an approved OAuth helper page, you can use
-that flow and then store the returned token with `/login sf-slack`, macOS
-Keychain, or `SLACK_USER_TOKEN`.
+If your organization already provides an approved OAuth helper page, you can
+use that flow and then paste the returned token into the `/sf-slack`
+panel's Connect action. Set `SLACK_USER_TOKEN` instead for automation.
 
 If you need to build or verify the flow yourself, use Slack OAuth v2 with the
 requested user-token scopes in the `user_scope` parameter:
@@ -580,7 +574,7 @@ Run: `npm test`
 
 **No Slack footer pill appears and no tools are available:**
 No token was resolved at `session_start`, or the extension is disabled. Set one
-via `/login sf-slack`, macOS Keychain (`sf-slack-token` / `pi-sf-slack`), or
+via the `/sf-slack` panel's **Connect to Slack** action or by setting
 `SLACK_USER_TOKEN`, then run `/sf-slack refresh` to register tools without
 restarting.
 
@@ -640,8 +634,9 @@ appends a typed audit entry to the session branch.
 ## Security
 
 - NEVER exposes full tokens — always masked in display
-- Recommended auth path is Pi's built-in `/login sf-slack` storage
-- Optional local secret storage is available via macOS Keychain
+- Recommended auth path is the `/sf-slack` panel's **Connect to Slack** action
+  (writes to pi's central auth store — same destination /login used to write to)
+- macOS Keychain support was retired in v0.56.0; existing tokens auto-migrate
 - All tools are read-only except `slack_canvas` create/edit and `slack_send`
 - `slack_send` always requires an explicit user confirmation in interactive
   mode; headless mode refuses unless `SLACK_ALLOW_HEADLESS_SEND=1`
