@@ -14,7 +14,7 @@
  * manager extension \u2014 errors are surfaced via ctx.ui.notify so a bad
  * recommendations entry can never crash a pi session.
  */
-import type { ExtensionAPI, ExtensionCommandContext } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import type { RecommendationsManifest, RecommendedItem } from "../../../catalog/types.ts";
 import {
   defaultFirstRunBundleIds,

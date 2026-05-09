@@ -14,7 +14,7 @@
  * zero do we restore the default indicator.
  */
 
-import type { ExtensionContext, WorkingIndicatorOptions } from "@mariozechner/pi-coding-agent";
+import type { ExtensionContext, WorkingIndicatorOptions } from "@earendil-works/pi-coding-agent";
 import type { SupportedLanguage } from "./types.ts";
 import { languageLabel } from "./activity.ts";
 

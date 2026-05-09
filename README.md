@@ -59,7 +59,7 @@ npm --version
 ### Step 2 — Install the pi coding agent
 
 ```bash
-npm install -g @mariozechner/pi-coding-agent
+npm install -g @earendil-works/pi-coding-agent
 ```
 
 Then run `pi` in any folder to launch the TUI. Full docs, tutorials, and
@@ -119,7 +119,7 @@ details and why each one is worth it.
 macOS, Linux, and WSL are the primary targets. Native Windows is
 best-effort; WSL is recommended. The minimum pi version tracks the
 `peerDependencies` range in [`package.json`](./package.json) (currently
-`>=0.73.0`). Older pi runtimes are not supported; the shims in
+`>=0.74.0`). Older pi runtimes are not supported; the shims in
 [`lib/common/pi-compat.ts`](./lib/common/pi-compat.ts) fail gracefully with
 a one-line "run `pi update`" warning instead of letting extensions crash on
 missing runtime APIs.
@@ -419,7 +419,7 @@ invocation and is picked up by all sf-pi commands without any sf-pi change.
 export PI_CODING_AGENT_SESSION_DIR="$HOME/.pi-sessions"
 ```
 
-sf-pi requires pi `>=0.73.0`, so supported installations honor the env
+sf-pi requires pi `>=0.74.0`, so supported installations honor the env
 var; older pi releases should be updated before running current sf-pi.
 
 ## Adding a New Extension
@@ -481,7 +481,7 @@ npm run docs:changed
 ## How Enable/Disable Works
 
 `sf-pi` uses pi's native
-[package filtering](https://github.com/mariozechner/pi-coding-agent/blob/main/docs/packages.md#package-filtering)
+[package filtering](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/packages.md#package-filtering)
 in `settings.json`. When you disable an extension, the manager writes an
 exclusion pattern (e.g., `!extensions/sf-ohana-spinner/index.ts`) to the
 package entry and triggers a reload. Disabled extensions have zero runtime

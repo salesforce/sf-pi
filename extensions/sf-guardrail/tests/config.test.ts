@@ -11,7 +11,7 @@ import { loadConfig, readBundledConfig } from "../lib/config.ts";
 
 let tempAgentDir: string;
 
-vi.mock("@mariozechner/pi-coding-agent", () => ({
+vi.mock("@earendil-works/pi-coding-agent", () => ({
   getAgentDir: () => tempAgentDir,
 }));
 

@@ -11,8 +11,8 @@
  *   1. Decide whether to emit a row for a given sample (balanced vs verbose)
  *   2. Render the row when Pi calls our message renderer back
  */
-import type { ExtensionAPI, MessageRenderer, Theme } from "@mariozechner/pi-coding-agent";
-import { Box, Text } from "@mariozechner/pi-tui";
+import type { ExtensionAPI, MessageRenderer, Theme } from "@earendil-works/pi-coding-agent";
+import { Box, Text } from "@earendil-works/pi-tui";
 import { languageLongLabel, statusColor, type LspActivityStatus } from "./activity.ts";
 import type { SupportedLanguage } from "./types.ts";
 

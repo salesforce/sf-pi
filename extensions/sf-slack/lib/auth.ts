@@ -7,8 +7,8 @@
  *   2. macOS Keychain (hardware-backed) — optional local secret storage on macOS
  *   3. Environment variable (SLACK_USER_TOKEN) — best for automation / CI
  */
-import type { OAuthCredentials, OAuthLoginCallbacks } from "@mariozechner/pi-ai";
-import type { ExtensionContext } from "@mariozechner/pi-coding-agent";
+import type { OAuthCredentials, OAuthLoginCallbacks } from "@earendil-works/pi-ai";
+import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { existsSync, readFileSync } from "node:fs";
 import { execSync } from "node:child_process";
 import { globalAgentPath } from "../../../lib/common/pi-paths.ts";

@@ -58,7 +58,7 @@ import type {
   ExtensionAPI,
   ExtensionCommandContext,
   ExtensionContext,
-} from "@mariozechner/pi-coding-agent";
+} from "@earendil-works/pi-coding-agent";
 import { SF_PI_REGISTRY } from "../../catalog/registry.ts";
 import { SfPiOverlayComponent, type ExtensionState, type OverlayResult } from "./lib/overlay.ts";
 import {

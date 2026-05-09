@@ -91,13 +91,13 @@
  * - The TUI setup overlay is in lib/setup-overlay.ts
  */
 
-import { Text } from "@mariozechner/pi-tui";
+import { Text } from "@earendil-works/pi-tui";
 import type {
   ExtensionAPI,
   ExtensionCommandContext,
   ExtensionContext,
   MessageRenderer,
-} from "@mariozechner/pi-coding-agent";
+} from "@earendil-works/pi-coding-agent";
 
 // --- Lib imports ---
 

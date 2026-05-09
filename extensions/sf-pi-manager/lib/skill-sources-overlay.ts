@@ -10,8 +10,8 @@
  * users only learn one keybinding map. See that file for the reference
  * implementation of the same pattern.
  */
-import { type Focusable, matchesKey, truncateToWidth, visibleWidth } from "@mariozechner/pi-tui";
-import type { Theme } from "@mariozechner/pi-coding-agent";
+import { type Focusable, matchesKey, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
+import type { Theme } from "@earendil-works/pi-coding-agent";
 import type { SkillSourceCandidate } from "../../../lib/common/skill-sources/skill-sources.ts";
 
 export interface SkillSourceRow {

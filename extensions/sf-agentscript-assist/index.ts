@@ -42,8 +42,8 @@ import type {
   ExtensionCommandContext,
   ExtensionContext,
   ToolResultEvent,
-} from "@mariozechner/pi-coding-agent";
-import { isEditToolResult, isWriteToolResult } from "@mariozechner/pi-coding-agent";
+} from "@earendil-works/pi-coding-agent";
+import { isEditToolResult, isWriteToolResult } from "@earendil-works/pi-coding-agent";
 import { checkAgentScriptFile } from "./lib/diagnostics.ts";
 import { isAgentScriptFile, resolveToolPath } from "./lib/file-classify.ts";
 import {

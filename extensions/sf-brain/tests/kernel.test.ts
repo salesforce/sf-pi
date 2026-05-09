@@ -22,7 +22,7 @@ import {
 
 let tempAgentDir: string;
 
-vi.mock("@mariozechner/pi-coding-agent", () => ({
+vi.mock("@earendil-works/pi-coding-agent", () => ({
   // getAgentDir is called by lib/common/pi-paths.ts. Return a per-test temp dir
   // so we can drop override files into a controlled location.
   getAgentDir: () => tempAgentDir,

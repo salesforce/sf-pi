@@ -14,7 +14,7 @@ describe("buildRuntimeUpdateAdvice", () => {
 
     expect(advice.join("\n")).toContain("npm min-release-age is 1440");
     expect(advice).toContain(
-      "npm install -g @mariozechner/pi-coding-agent@latest --force --min-release-age=0",
+      "npm install -g @earendil-works/pi-coding-agent@latest --force --min-release-age=0",
     );
   });
 
@@ -25,7 +25,7 @@ describe("buildRuntimeUpdateAdvice", () => {
       allPiPaths: ["/tmp/bin/pi"],
     });
 
-    expect(advice).toContain("npm install -g @mariozechner/pi-coding-agent@latest --force");
+    expect(advice).toContain("npm install -g @earendil-works/pi-coding-agent@latest --force");
     expect(advice.join("\n")).not.toContain("--min-release-age=0");
   });
 });

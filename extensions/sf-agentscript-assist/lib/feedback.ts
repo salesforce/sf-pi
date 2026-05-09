@@ -18,7 +18,7 @@
  */
 
 import path from "node:path";
-import type { ToolResultEvent } from "@mariozechner/pi-coding-agent";
+import type { ToolResultEvent } from "@earendil-works/pi-coding-agent";
 import {
   buildDiagnosticsSummary,
   diagnosticFileName,

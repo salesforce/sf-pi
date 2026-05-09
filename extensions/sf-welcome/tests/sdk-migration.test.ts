@@ -143,7 +143,7 @@ describe("SessionStartEvent.reason type safety", () => {
   it("SessionStartEvent has a typed reason field", async () => {
     // This is a compile-time check: the import should succeed and the type
     // should expose reason as a union, not as unknown/any.
-    const types = await import("@mariozechner/pi-coding-agent");
+    const types = await import("@earendil-works/pi-coding-agent");
     // If the import succeeds, the types are available.
     expect(types).toBeDefined();
   });

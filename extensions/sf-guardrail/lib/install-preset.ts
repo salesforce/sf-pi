@@ -16,7 +16,7 @@
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import type { ExtensionContext } from "@mariozechner/pi-coding-agent";
+import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 
 import { readBundledConfig, userConfigPath } from "./config.ts";
 import type { GuardrailConfig } from "./types.ts";

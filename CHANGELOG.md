@@ -9,14 +9,39 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ### Breaking Changes
 
-- **Raised pi-coding-agent peerDependency floor to `>=0.73.0`.** sf-pi now
-  requires pi 0.73+ while retaining the 0.72-era model thinking maps and
-  per-model `baseUrl` routing integrations, so running against older pi builds
-  will no longer work. To soften the blow for users who update sf-pi before
-  updating pi, every extension factory calls the `requirePiVersion()` gate in
-  `lib/common/pi-compat.ts` at the top of the factory. On pi < 0.73 the gate
-  logs a single actionable warning per extension ("requires pi-coding-agent >=
-  0.73.0, found <x>. Run `pi update`...") and short-circuits, so the rest of
+- **Migrated pi peer-dependency scope from `@mariozechner/*` to
+  `@earendil-works/*` (pi 0.74).** Pi 0.74.0 (2026-05-07) renamed every
+  package — `pi-coding-agent`, `pi-ai`, `pi-tui` — to the new
+  `@earendil-works` npm scope and moved its source repo to
+  [`earendil-works/pi`](https://github.com/earendil-works/pi). sf-pi follows
+  the rename in lockstep:
+  - `peerDependencies` and `devDependencies` updated to
+    `@earendil-works/pi-{coding-agent,ai,tui}@>=0.74.0`.
+  - All ~100 source files now `import` from the new scope.
+  - Theme `$schema` URL repointed at `earendil-works/pi`.
+  - GitHub workflow + dependabot + doctor install commands updated.
+
+  **Action required for users:** run `pi update --self` from any pi 0.73.1+
+  install — pi self-updates uninstalls `@mariozechner/pi-coding-agent` and
+  installs `@earendil-works/pi-coding-agent` automatically. Users on pi
+  0.73.0 (the bridge release without self-update support) need to run
+  `npm uninstall -g @mariozechner/pi-coding-agent && npm install -g
+  @earendil-works/pi-coding-agent@latest` once. After the migration,
+  `pi --version` should report `0.74.0` or newer and sf-pi will load
+  cleanly.
+
+  The `requirePiVersion()` gate in `lib/common/pi-compat.ts` and the
+  doctor's npm-root probe both fall back to the legacy `@mariozechner`
+  scope, so a half-migrated install still reports a real version number
+  and a useful upgrade hint instead of "unknown".
+
+- **Raised pi-coding-agent peerDependency floor to `>=0.74.0`.** sf-pi now
+  requires pi 0.74+ — the first version published under the
+  `@earendil-works` scope. Running sf-pi against pi 0.73.x or older will
+  trip `requirePiVersion()`, which logs a single actionable warning per
+  extension ("requires pi-coding-agent >= 0.74.0, found <x>. Run
+  `pi update --self` to migrate from `@mariozechner/pi-coding-agent` to
+  `@earendil-works/pi-coding-agent`...") and short-circuits so the rest of
   pi keeps starting instead of crashing with `schema validation failed` or
   `ctx.ui.<method> is not a function`.
 

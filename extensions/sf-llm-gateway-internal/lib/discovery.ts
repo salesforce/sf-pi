@@ -46,12 +46,12 @@ import type {
   OAuthCredentials,
   OAuthLoginCallbacks,
   SimpleStreamOptions,
-} from "@mariozechner/pi-ai";
+} from "@earendil-works/pi-ai";
 import type {
   ExtensionAPI,
   ProviderConfig,
   ProviderModelConfig,
-} from "@mariozechner/pi-coding-agent";
+} from "@earendil-works/pi-coding-agent";
 import {
   API_KEY_ENV,
   PROVIDER_DISPLAY_NAME,

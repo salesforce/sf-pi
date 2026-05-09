@@ -10,8 +10,8 @@
  * The same config panel is also hosted inside the sf-pi Extension Manager overlay.
  */
 
-import { type Focusable, truncateToWidth, visibleWidth } from "@mariozechner/pi-tui";
-import type { Theme } from "@mariozechner/pi-coding-agent";
+import { type Focusable, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
+import type { Theme } from "@earendil-works/pi-coding-agent";
 import type { ConfigPanelResult } from "../../../catalog/registry.ts";
 import {
   type GatewayConfig,

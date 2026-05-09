@@ -10,5 +10,5 @@ inspired `sf-agentscript-assist`, and describe what was adapted vs. built from s
 ## Acknowledgements
 
 - [Mario Zechner (@mariozechner)](https://github.com/mariozechner) \u2014
-  [pi coding agent](https://github.com/mariozechner/pi-coding-agent)
+  [pi coding agent](https://github.com/earendil-works/pi)
   runtime this extension builds on.

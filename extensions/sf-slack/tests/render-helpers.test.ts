@@ -24,7 +24,7 @@ const {
 // Minimal theme stub compatible with theme.fg(name, text)
 const stubTheme = {
   fg: (_name: string, text: string) => text,
-} as unknown as import("@mariozechner/pi-coding-agent").Theme;
+} as unknown as import("@earendil-works/pi-coding-agent").Theme;
 
 describe("render helpers", () => {
   beforeEach(() => resetPreferences());

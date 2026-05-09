@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Config panel for core sf-pi display settings. */
-import { type Focusable, matchesKey } from "@mariozechner/pi-tui";
-import type { Theme } from "@mariozechner/pi-coding-agent";
+import { type Focusable, matchesKey } from "@earendil-works/pi-tui";
+import type { Theme } from "@earendil-works/pi-coding-agent";
 import type { ConfigPanelFactory, ConfigPanelResult } from "../../../catalog/registry.ts";
 import {
   describeDisplaySettingsSource,

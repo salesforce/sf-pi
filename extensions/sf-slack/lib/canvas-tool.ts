@@ -4,8 +4,8 @@
  *
  * The only write surface in sf-slack.
  */
-import type { ExtensionAPI, Theme } from "@mariozechner/pi-coding-agent";
-import { Text } from "@mariozechner/pi-tui";
+import type { ExtensionAPI, Theme } from "@earendil-works/pi-coding-agent";
+import { Text } from "@earendil-works/pi-tui";
 import {
   SlackCanvasParams,
   type ApiErr,

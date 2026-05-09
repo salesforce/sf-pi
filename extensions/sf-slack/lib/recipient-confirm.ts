@@ -26,7 +26,7 @@
  * its own; it composes `resolveChannel()` / `resolveUser()` with the
  * interactive dialog helpers.
  */
-import type { ExtensionContext } from "@mariozechner/pi-coding-agent";
+import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import type { ResolveResult, ResolvedChannel, ResolvedUser } from "./types.ts";
 import { isSlackChannelId, isSlackUserId, resolveChannel, resolveUser } from "./resolve.ts";
 

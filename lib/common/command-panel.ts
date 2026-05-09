@@ -8,9 +8,9 @@
  * preserved selection/filter state, in-place action execution, and a full-width
  * selected-action detail pane so long help text does not clip.
  */
-import type { Component } from "@mariozechner/pi-tui";
-import type { ExtensionCommandContext, Theme } from "@mariozechner/pi-coding-agent";
-import { DynamicBorder } from "@mariozechner/pi-coding-agent";
+import type { Component } from "@earendil-works/pi-tui";
+import type { ExtensionCommandContext, Theme } from "@earendil-works/pi-coding-agent";
+import { DynamicBorder } from "@earendil-works/pi-coding-agent";
 import {
   Container,
   type KeybindingsManager,
@@ -20,7 +20,7 @@ import {
   truncateToWidth,
   visibleWidth,
   wrapTextWithAnsi,
-} from "@mariozechner/pi-tui";
+} from "@earendil-works/pi-tui";
 import { iconForCommandGroup, resolveUiGlyphs, type UiGlyphs } from "./ui-glyphs.ts";
 
 export interface CommandPanelAction<T extends string = string> {

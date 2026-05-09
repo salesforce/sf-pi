@@ -18,7 +18,7 @@ import {
   type AssistantMessageEventStream,
   type Context,
   type Model,
-} from "@mariozechner/pi-ai";
+} from "@earendil-works/pi-ai";
 import {
   toProviderModelConfig,
   GPT55_RESPONSES_THINKING_LEVEL_MAP,

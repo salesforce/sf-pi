@@ -28,7 +28,7 @@
  *   before_agent_start  | CLI installed, no kernel entry yet    | Inject full kernel as hidden message
  *   before_agent_start  | CLI not installed, no kernel entry    | Inject install stub as hidden message
  */
-import type { CustomEntry, ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import type { CustomEntry, ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 import { buildExecFn } from "../../lib/common/exec-adapter.ts";
 import {

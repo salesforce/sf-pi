@@ -196,7 +196,7 @@ The catalog generator reads these files and produces:
 
 ### Enable/disable mechanism
 
-sf-pi uses Pi's native [package filtering](https://github.com/mariozechner/pi-coding-agent/blob/main/docs/packages.md#package-filtering).
+sf-pi uses Pi's native [package filtering](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/packages.md#package-filtering).
 When you disable an extension, the manager writes an exclusion pattern to
 `settings.json`:
 

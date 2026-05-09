@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Command handlers for `/sf-pi doctor`. */
-import type { ExtensionCommandContext } from "@mariozechner/pi-coding-agent";
+import type { ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import { applyDoctorFixes } from "../../../lib/common/doctor/fixes.ts";
 import { runDoctorDiagnostics } from "../../../lib/common/doctor/diagnostics.ts";
 import type { DoctorIssue, DoctorReport } from "../../../lib/common/doctor/types.ts";
@@ -137,8 +137,8 @@ function renderRuntimeReport(report: DoctorReport): string {
     `pi executable:    ${runtime.piPath ?? "unknown"}`,
     `npm global root:  ${runtime.npmGlobalRoot ?? "unknown"}`,
     `npm min-release-age: ${runtime.npmMinReleaseAge ?? "not set"}`,
-    `Installed package: ${runtime.installedPiPackageVersion ? `@mariozechner/pi-coding-agent@${runtime.installedPiPackageVersion}` : "unknown"}`,
-    `Latest package:    ${runtime.latestPiPackageVersion ? `@mariozechner/pi-coding-agent@${runtime.latestPiPackageVersion}` : "unknown"}`,
+    `Installed package: ${runtime.installedPiPackageVersion ? `@earendil-works/pi-coding-agent@${runtime.installedPiPackageVersion}` : "unknown"}`,
+    `Latest package:    ${runtime.latestPiPackageVersion ? `@earendil-works/pi-coding-agent@${runtime.latestPiPackageVersion}` : "unknown"}`,
     "",
     "All pi executables:",
     ...(runtime.allPiPaths.length > 0

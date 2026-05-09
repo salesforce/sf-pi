@@ -6,8 +6,13 @@
  * flow. It keeps output close to the panel instead of appending long blocks to
  * the transcript. Headless/non-UI callers still fall back to ctx.ui.notify().
  */
-import type { ExtensionCommandContext, Theme } from "@mariozechner/pi-coding-agent";
-import { matchesKey, truncateToWidth, visibleWidth, wrapTextWithAnsi } from "@mariozechner/pi-tui";
+import type { ExtensionCommandContext, Theme } from "@earendil-works/pi-coding-agent";
+import {
+  matchesKey,
+  truncateToWidth,
+  visibleWidth,
+  wrapTextWithAnsi,
+} from "@earendil-works/pi-tui";
 import { iconForSeverity, resolveUiGlyphs, type UiGlyphs } from "./ui-glyphs.ts";
 
 export type InfoPanelSeverity = "info" | "warning" | "error" | "success";

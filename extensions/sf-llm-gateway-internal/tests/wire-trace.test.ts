@@ -9,7 +9,7 @@
  * unset) and leave the wrapper behavior to manual debugging sessions.
  */
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { getAgentDir } from "@mariozechner/pi-coding-agent";
+import { getAgentDir } from "@earendil-works/pi-coding-agent";
 import path from "node:path";
 import { getWireTraceFile, installWireTrace, isWireTraceEnabled } from "../lib/wire-trace.ts";
 

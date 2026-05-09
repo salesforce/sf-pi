@@ -21,7 +21,7 @@
  *     if it has already prompted this session).
  *   - Safe on ctx.hasUI = false (exits silent, e.g. `pi -p`).
  */
-import type { ExtensionContext } from "@mariozechner/pi-coding-agent";
+import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import type { ExecFn } from "../../../../lib/common/sf-environment/detect.ts";
 import { detectInstallReport } from "./detect.ts";
 import { fetchLatestApex } from "./versioning.ts";

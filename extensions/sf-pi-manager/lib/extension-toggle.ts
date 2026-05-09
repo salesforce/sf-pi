@@ -23,7 +23,7 @@
  *   {@link resolveEffectiveScope}), notifies the user, and triggers a
  *   reload so the change takes effect.
  */
-import type { ExtensionCommandContext } from "@mariozechner/pi-coding-agent";
+import type { ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import { SF_PI_REGISTRY } from "../../../catalog/registry.ts";
 import { isSfPiExtensionEnabled } from "../../../lib/common/sf-pi-extension-state.ts";
 import type { CommandPanelAction } from "../../../lib/common/command-panel.ts";

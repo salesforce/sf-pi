@@ -27,7 +27,7 @@
  * This file is pure data + pure functions — no mutable runtime state.
  */
 
-import type { ProviderModelConfig } from "@mariozechner/pi-coding-agent";
+import type { ProviderModelConfig } from "@earendil-works/pi-coding-agent";
 import { DEFAULT_MODEL_ID, FALLBACK_MODEL_ID, PREVIOUS_DEFAULT_MODEL_ID } from "./config.ts";
 import { toGatewayOpenAiBaseUrl, toGatewayRootBaseUrl } from "./gateway-url.ts";
 import {

@@ -18,8 +18,8 @@
  *   terminals that lack emoji font fallback (notably Terminal.app without
  *   an emoji-capable Nerd Font) get ASCII equivalents instead of tofu.
  */
-import type { Component } from "@mariozechner/pi-tui";
-import { truncateToWidth, visibleWidth } from "@mariozechner/pi-tui";
+import type { Component } from "@earendil-works/pi-tui";
+import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import { glyph, resolveGlyphMode, type GlyphMode } from "../../../lib/common/glyph-policy.ts";
 import type { SplashData } from "./types.ts";
 

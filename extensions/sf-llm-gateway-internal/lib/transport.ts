@@ -89,7 +89,7 @@ import {
   type Context,
   type Model,
   type SimpleStreamOptions,
-} from "@mariozechner/pi-ai";
+} from "@earendil-works/pi-ai";
 import { emitRetryEvent, formatRetryGuidanceFooter } from "./retry-telemetry.ts";
 
 const DEFAULT_CODEX_REASONING_EFFORT = "high";

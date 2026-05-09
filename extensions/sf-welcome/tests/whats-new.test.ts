@@ -210,7 +210,7 @@ function createFakePiPackage(version: string, changelog: string): string {
   const dir = makeTempDir("whats-new-pi-");
   writeFileSync(
     join(dir, "package.json"),
-    JSON.stringify({ name: "@mariozechner/pi-coding-agent", version }, null, 2),
+    JSON.stringify({ name: "@earendil-works/pi-coding-agent", version }, null, 2),
     "utf-8",
   );
   writeFileSync(join(dir, "CHANGELOG.md"), changelog, "utf-8");
@@ -271,7 +271,7 @@ describe("buildWhatsNewPayload", () => {
     const dir = makeTempDir("whats-new-pi-");
     writeFileSync(
       join(dir, "package.json"),
-      JSON.stringify({ name: "@mariozechner/pi-coding-agent", version: "0.68.1" }),
+      JSON.stringify({ name: "@earendil-works/pi-coding-agent", version: "0.68.1" }),
       "utf-8",
     );
     const stateDir = makeTempDir("whats-new-state-");

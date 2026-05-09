@@ -4,7 +4,7 @@ import {
   buildSessionContext,
   type SessionEntry,
   type SlashCommandInfo,
-} from "@mariozechner/pi-coding-agent";
+} from "@earendil-works/pi-coding-agent";
 import { buildSkillsHudState } from "../lib/skill-state.ts";
 
 const CWD = "/workspace/project";

@@ -7,8 +7,8 @@
  * experience as other bundled extensions: current enablement, tools, runtime,
  * safety behavior, and where to find progressive-disclosure references.
  */
-import { type Focusable, matchesKey, visibleWidth } from "@mariozechner/pi-tui";
-import type { Theme } from "@mariozechner/pi-coding-agent";
+import { type Focusable, matchesKey, visibleWidth } from "@earendil-works/pi-tui";
+import type { Theme } from "@earendil-works/pi-coding-agent";
 import type { ConfigPanelFactory, ConfigPanelResult } from "../../../catalog/registry.ts";
 import { isSfPiExtensionEnabled } from "../../../lib/common/sf-pi-extension-state.ts";
 import { D360_TOOL_NAME, HEADLESS_WRITE_ENV } from "./api-tool.ts";

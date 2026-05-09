@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Register slack_time_range, a deterministic date normalizer for Slack tools. */
-import type { ExtensionAPI, Theme } from "@mariozechner/pi-coding-agent";
-import { Text } from "@mariozechner/pi-tui";
+import type { ExtensionAPI, Theme } from "@earendil-works/pi-coding-agent";
+import { Text } from "@earendil-works/pi-tui";
 import { SlackTimeRangeParams } from "./types.ts";
 import { resolveSlackTimeRange, type SlackTimeRangeInput } from "./time-range.ts";
 

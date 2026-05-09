@@ -31,8 +31,8 @@ import type {
   ExtensionCommandContext,
   ExtensionContext,
   ToolResultEvent,
-} from "@mariozechner/pi-coding-agent";
-import { isEditToolResult, isWriteToolResult } from "@mariozechner/pi-coding-agent";
+} from "@earendil-works/pi-coding-agent";
+import { isEditToolResult, isWriteToolResult } from "@earendil-works/pi-coding-agent";
 import { getLspDiagnosticsForFile, doctorLsp, shutdownLspClients } from "./lib/lsp-client.ts";
 import { getSfLspLanguageForFile, resolveToolPath } from "./lib/file-classify.ts";
 import {

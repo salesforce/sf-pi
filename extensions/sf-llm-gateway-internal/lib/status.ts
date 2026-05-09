@@ -5,7 +5,7 @@
  * These functions are pure string formatters. Keeping them separate from the
  * runtime event handlers makes the main index easier to scan and easier to test.
  */
-import type { ExtensionContext } from "@mariozechner/pi-coding-agent";
+import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import {
   API_KEY_ENV,
   BETAS_ENV,

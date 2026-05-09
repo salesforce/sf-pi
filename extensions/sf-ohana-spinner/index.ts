@@ -21,7 +21,7 @@
  *   ctx.ui.setWorkingIndicator() — configurable animated frames + interval
  *   session_start, session_shutdown — lifecycle management
  */
-import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { messages } from "./lib/messages.ts";
 import { buildRainbowFrames } from "./lib/rainbow.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";

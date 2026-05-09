@@ -12,7 +12,7 @@
  * manager extension — errors are surfaced via ctx.ui.notify so a bad
  * settings file can never crash a pi session.
  */
-import type { ExtensionCommandContext } from "@mariozechner/pi-coding-agent";
+import type { ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import {
   detectSkillSources,
   updateSkillSources,

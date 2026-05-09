@@ -5,8 +5,8 @@
  * When `channels:read` is missing, this tool falls back to search and history
  * so the agent can still do useful discovery work.
  */
-import type { ExtensionAPI, ExtensionContext, Theme } from "@mariozechner/pi-coding-agent";
-import { Text } from "@mariozechner/pi-tui";
+import type { ExtensionAPI, ExtensionContext, Theme } from "@earendil-works/pi-coding-agent";
+import { Text } from "@earendil-works/pi-tui";
 import {
   SlackChannelParams,
   DEFAULT_LIST_LIMIT,

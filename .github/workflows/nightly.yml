@@ -77,9 +77,9 @@ jobs:
       - name: Overlay latest Pi packages
         run: >-
           npm install --legacy-peer-deps --no-save --package-lock=false
-          @mariozechner/pi-coding-agent@latest
-          @mariozechner/pi-ai@latest
-          @mariozechner/pi-tui@latest
+          @earendil-works/pi-coding-agent@latest
+          @earendil-works/pi-ai@latest
+          @earendil-works/pi-tui@latest
 
       - name: Type check against latest Pi packages
         run: npm run check

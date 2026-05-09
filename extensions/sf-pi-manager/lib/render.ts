@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Width-safe rendering helpers for sf-pi-manager's TUI overlay and config panel. */
-import { truncateToWidth, visibleWidth, wrapTextWithAnsi } from "@mariozechner/pi-tui";
+import { truncateToWidth, visibleWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
 
 export function padAnsi(text: string, width: number): string {
   return `${text}${" ".repeat(Math.max(0, width - visibleWidth(text)))}`;

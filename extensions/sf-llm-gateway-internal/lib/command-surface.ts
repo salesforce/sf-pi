@@ -11,7 +11,7 @@
  * grows (notably diagnostic commands such as doctor, debug, usage-probe, and
  * token counting).
  */
-import type { AutocompleteItem } from "@mariozechner/pi-tui";
+import type { AutocompleteItem } from "@earendil-works/pi-tui";
 import { KNOWN_BETAS } from "./models.ts";
 
 export type GatewayCommandId =

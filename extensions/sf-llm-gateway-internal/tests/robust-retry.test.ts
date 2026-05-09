@@ -15,7 +15,7 @@ import {
   type AssistantMessageEventStream,
   type Model,
   createAssistantMessageEventStream,
-} from "@mariozechner/pi-ai";
+} from "@earendil-works/pi-ai";
 import { streamAnthropicWithRobustRetry } from "../lib/transport.ts";
 import {
   clearRetryEventListener,

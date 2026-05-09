@@ -5,7 +5,7 @@
  * Uses the shared SF Pi grouped command panel so long descriptions do not clip
  * and actions are scanable by section.
  */
-import type { ExtensionCommandContext, Theme } from "@mariozechner/pi-coding-agent";
+import type { ExtensionCommandContext, Theme } from "@earendil-works/pi-coding-agent";
 import {
   type CommandPanelAction,
   type CommandPanelState,

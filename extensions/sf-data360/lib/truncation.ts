@@ -9,7 +9,7 @@ import {
   truncateHead,
   withFileMutationQueue,
   type TruncationResult,
-} from "@mariozechner/pi-coding-agent";
+} from "@earendil-works/pi-coding-agent";
 
 export type D360OutputMode = "inline" | "summary" | "file_only";
 

@@ -20,7 +20,7 @@
  *   - If the header is not captured for any reason (e.g. `auth.test` itself
  *     fails), we conservatively gate nothing rather than gate everything.
  */
-import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import type { AuthTestResponse } from "./types.ts";
 import { slackApi, getGrantedScopes, type SlackTokenType } from "./api.ts";
 import {

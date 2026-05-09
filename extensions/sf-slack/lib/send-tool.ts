@@ -21,8 +21,8 @@
  *   - Dry-run via SLACK_SEND_DRY_RUN=1 — confirm UX runs but no API call
  *   - Audit trail via pi.appendEntry(SEND_ENTRY_TYPE, ...)
  */
-import type { ExtensionAPI, ExtensionContext, Theme } from "@mariozechner/pi-coding-agent";
-import { Text } from "@mariozechner/pi-tui";
+import type { ExtensionAPI, ExtensionContext, Theme } from "@earendil-works/pi-coding-agent";
+import { Text } from "@earendil-works/pi-tui";
 import {
   SlackSendParams,
   SEND_ENTRY_TYPE,

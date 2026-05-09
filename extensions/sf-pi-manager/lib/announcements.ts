@@ -18,7 +18,7 @@
  *   - No interactive overlay. Announcements are read-mostly and the panel
  *     already shows them.
  */
-import type { ExtensionCommandContext } from "@mariozechner/pi-coding-agent";
+import type { ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import type { AnnouncementItem, AnnouncementsManifest } from "../../../catalog/types.ts";
 import { loadAnnouncementsManifest } from "../../../lib/common/catalog-state/announcements-manifest.ts";
 import {

@@ -23,7 +23,7 @@
  *   /sf-feedback             | headless                  | Emit body + fallback URL only
  *   /sf-feedback diagnostics | any                       | Emit sanitized diagnostics
  */
-import type { ExtensionAPI, ExtensionCommandContext } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import { collectDiagnostics, type ExecFn } from "./lib/diagnostics.ts";
 import { buildIssueUrl, createIssueWithGh, openUrl } from "./lib/github.ts";
 import {

@@ -4,7 +4,7 @@
  *
  * Pure functions: typed data → string. No Pi or TUI dependencies.
  */
-import type { ExtensionContext } from "@mariozechner/pi-coding-agent";
+import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import {
   PROVIDER_NAME,
   KEYCHAIN_SERVICE,

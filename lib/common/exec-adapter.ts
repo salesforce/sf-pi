@@ -7,7 +7,7 @@
  * layer expects `{ stdout, stderr, code }`. This adapter bridges the gap
  * so each extension doesn't need its own wrapper.
  */
-import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import type { ExecFn } from "./sf-environment/detect.ts";
 
 /**

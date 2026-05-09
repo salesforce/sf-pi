@@ -7,7 +7,7 @@
  * for global files and centralize the project-local `.pi` convention in one
  * place instead of scattering path literals through implementation code.
  */
-import { getAgentDir } from "@mariozechner/pi-coding-agent";
+import { getAgentDir } from "@earendil-works/pi-coding-agent";
 import path from "node:path";
 
 /** Project-local Pi config folder for the current public Pi package. */

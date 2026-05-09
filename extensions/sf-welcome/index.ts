@@ -43,7 +43,7 @@ import type {
   ExtensionContext,
   KeybindingsManager,
   Theme,
-} from "@mariozechner/pi-coding-agent";
+} from "@earendil-works/pi-coding-agent";
 import {
   type CommandPanelAction,
   type CommandPanelState,
@@ -63,7 +63,7 @@ import {
   type Focusable,
   type OverlayHandle,
   type TUI,
-} from "@mariozechner/pi-tui";
+} from "@earendil-works/pi-tui";
 import {
   collectInitialSplashData,
   collectSplashData,

@@ -32,8 +32,8 @@
  * eyeball the diff before committing.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import type { Theme } from "@mariozechner/pi-coding-agent";
-import type { Text } from "@mariozechner/pi-tui";
+import type { Theme } from "@earendil-works/pi-coding-agent";
+import type { Text } from "@earendil-works/pi-tui";
 import { renderCall, renderResult } from "../lib/render.ts";
 import { resetPreferences, setPreferences } from "../lib/preferences.ts";
 import { getUserCache, getChannelCache } from "../lib/api.ts";

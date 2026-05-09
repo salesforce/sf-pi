@@ -15,7 +15,7 @@
  * or which audit entry to emit. index.ts handles those side effects based
  * on the returned ConfirmResult.
  */
-import type { ExtensionContext } from "@mariozechner/pi-coding-agent";
+import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 
 export type ConfirmResult =
   | { outcome: "allow_once" }

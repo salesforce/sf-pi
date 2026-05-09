@@ -7,7 +7,7 @@
  * session navigation (/tree, /fork, /resume) and are read back by
  * `/sf-guardrail audit`.
  */
-import type { ExtensionAPI, ExtensionContext, CustomEntry } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI, ExtensionContext, CustomEntry } from "@earendil-works/pi-coding-agent";
 import {
   DECISION_ENTRY_TYPE,
   type ClassifiedDecision,

@@ -20,7 +20,7 @@ import {
   writePersistedSfEnvironment,
 } from "./persisted-cache.ts";
 import type { SfEnvironment } from "./types.ts";
-import type { CustomEntry, ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
+import type { CustomEntry, ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 
 /** Shape of the `data` payload we persist per-session org state into. */
 interface SfEnvironmentEntryData {

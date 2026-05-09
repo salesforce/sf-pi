@@ -37,8 +37,8 @@
  *     backtick code, `<#CID>` channel refs, `<@UID>` user refs, and links.
  *   - All hex colors come from the active theme via `theme.fg(token, ...)`.
  */
-import { Text } from "@mariozechner/pi-tui";
-import type { Theme, ThemeColor } from "@mariozechner/pi-coding-agent";
+import { Text } from "@earendil-works/pi-tui";
+import type { Theme, ThemeColor } from "@earendil-works/pi-coding-agent";
 import type { SlackReaction, StructuredMatch, StructuredMessage } from "./types.ts";
 import { getPreferences } from "./preferences.ts";
 import { resolveChannelNameFromCache, resolveUserNameFromCache } from "./api.ts";

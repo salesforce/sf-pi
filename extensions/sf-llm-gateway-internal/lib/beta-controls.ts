@@ -15,7 +15,7 @@
  * runtime-wide state, and callers already share module scope across
  * `index.ts` and `lib/status.ts`.
  */
-import type { ExtensionAPI, ExtensionCommandContext } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import { BETAS_ENV, COMMAND_NAME } from "./config.ts";
 import { discoverAndRegister } from "./discovery.ts";
 import {

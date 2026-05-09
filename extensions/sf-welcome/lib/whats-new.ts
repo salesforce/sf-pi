@@ -127,12 +127,22 @@ export function readCurrentPiVersion(piPackagePath?: string): string | undefined
 }
 
 function resolvePackageJsonFromRequire(): string | undefined {
-  try {
-    const require = createRequire(import.meta.url);
-    return require.resolve("@mariozechner/pi-coding-agent/package.json");
-  } catch {
-    return undefined;
+  // Try the post-0.74 `@earendil-works` scope first; fall back to the
+  // legacy `@mariozechner` scope for users mid-migration. Returns the
+  // first scope that resolves; `undefined` if neither is installed.
+  const candidates = [
+    "@earendil-works/pi-coding-agent/package.json",
+    "@mariozechner/pi-coding-agent/package.json",
+  ];
+  const require = createRequire(import.meta.url);
+  for (const id of candidates) {
+    try {
+      return require.resolve(id);
+    } catch {
+      // try next scope
+    }
   }
+  return undefined;
 }
 
 /** Locate the CHANGELOG.md that ships with the installed pi package. */

@@ -13,8 +13,8 @@
  * so the user can revisit and flip their mind without losing context. An item
  * the user installed previously is pre-checked on re-open.
  */
-import { type Focusable, matchesKey, truncateToWidth, visibleWidth } from "@mariozechner/pi-tui";
-import type { Theme } from "@mariozechner/pi-coding-agent";
+import { type Focusable, matchesKey, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
+import type { Theme } from "@earendil-works/pi-coding-agent";
 import type { RecommendedItem } from "../../../catalog/types.ts";
 import type { RecommendationDecision } from "../../../lib/common/catalog-state/recommendations-state.ts";
 

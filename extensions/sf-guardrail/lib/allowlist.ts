@@ -18,7 +18,7 @@
  * The in-memory cache is rebuilt from session entries on session_start and
  * session_tree so allowances survive /reload, /fork, and tree navigation.
  */
-import type { ExtensionAPI, ExtensionContext, CustomEntry } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI, ExtensionContext, CustomEntry } from "@earendil-works/pi-coding-agent";
 import { ALLOW_ENTRY_TYPE, type AllowEntryData } from "./types.ts";
 
 // ─── In-memory store ────────────────────────────────────────────────────────────

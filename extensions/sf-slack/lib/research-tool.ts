@@ -5,8 +5,8 @@
  * Builds an operator-aware query plan, executes strict→relaxed searches, and
  * optionally fetches thread context for high-signal matches.
  */
-import type { ExtensionAPI, ExtensionContext, Theme } from "@mariozechner/pi-coding-agent";
-import { Text } from "@mariozechner/pi-tui";
+import type { ExtensionAPI, ExtensionContext, Theme } from "@earendil-works/pi-coding-agent";
+import { Text } from "@earendil-works/pi-tui";
 import {
   SlackResearchParams,
   DEFAULT_SEARCH_LIMIT,

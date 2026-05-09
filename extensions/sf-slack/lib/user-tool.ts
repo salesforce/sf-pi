@@ -2,8 +2,8 @@
 /**
  * slack_user tool — info, email, presence, list.
  */
-import type { ExtensionAPI, ExtensionContext, Theme } from "@mariozechner/pi-coding-agent";
-import { Text } from "@mariozechner/pi-tui";
+import type { ExtensionAPI, ExtensionContext, Theme } from "@earendil-works/pi-coding-agent";
+import { Text } from "@earendil-works/pi-tui";
 import {
   SlackUserParams,
   type ApiErr,

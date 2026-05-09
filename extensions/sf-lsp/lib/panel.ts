@@ -11,8 +11,8 @@
  * under ctx.ui.custom. Keeps input handling scoped to the list so users can
  * escape/enter/navigate without surprises.
  */
-import type { ExtensionCommandContext, Theme } from "@mariozechner/pi-coding-agent";
-import { DynamicBorder } from "@mariozechner/pi-coding-agent";
+import type { ExtensionCommandContext, Theme } from "@earendil-works/pi-coding-agent";
+import { DynamicBorder } from "@earendil-works/pi-coding-agent";
 import {
   Container,
   type SelectItem,
@@ -20,7 +20,7 @@ import {
   Spacer,
   Text,
   visibleWidth,
-} from "@mariozechner/pi-tui";
+} from "@earendil-works/pi-tui";
 import {
   LANGUAGE_ORDER,
   formatDuration,

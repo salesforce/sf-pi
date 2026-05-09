@@ -72,18 +72,18 @@
     "prepare": "husky || true"
   },
   "peerDependencies": {
-    "@mariozechner/pi-ai": ">=0.73.0",
-    "@mariozechner/pi-coding-agent": ">=0.73.0",
-    "@mariozechner/pi-tui": ">=0.73.0",
+    "@earendil-works/pi-ai": ">=0.74.0",
+    "@earendil-works/pi-coding-agent": ">=0.74.0",
+    "@earendil-works/pi-tui": ">=0.74.0",
     "typebox": "*"
   },
   "devDependencies": {
     "@commitlint/cli": "^20.5.3",
     "@commitlint/config-conventional": "^20.5.3",
     "@eslint/js": "^10.0.1",
-    "@mariozechner/pi-ai": "^0.73.0",
-    "@mariozechner/pi-coding-agent": "^0.73.0",
-    "@mariozechner/pi-tui": "^0.73.0",
+    "@earendil-works/pi-ai": "^0.74.0",
+    "@earendil-works/pi-coding-agent": "^0.74.0",
+    "@earendil-works/pi-tui": "^0.74.0",
     "@types/node": "^25.6.0",
     "@vitest/coverage-v8": "^4.1.5",
     "eslint": "^10.3.0",

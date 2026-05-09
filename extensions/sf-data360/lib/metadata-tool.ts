@@ -6,8 +6,8 @@
  * endpoints. It deliberately returns compact lists/descriptions and leaves raw
  * endpoint access to d360_api for advanced workflows.
  */
-import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
-import { StringEnum } from "@mariozechner/pi-ai";
+import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { StringEnum } from "@earendil-works/pi-ai";
 import { Type } from "typebox";
 
 import { buildExecFn } from "../../../lib/common/exec-adapter.ts";

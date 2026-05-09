@@ -8,8 +8,8 @@
  * is loaded so the manager overlay can answer "is this active? with which
  * rules?".
  */
-import { type Focusable, matchesKey, visibleWidth } from "@mariozechner/pi-tui";
-import type { Theme } from "@mariozechner/pi-coding-agent";
+import { type Focusable, matchesKey, visibleWidth } from "@earendil-works/pi-tui";
+import type { Theme } from "@earendil-works/pi-coding-agent";
 import type { ConfigPanelFactory, ConfigPanelResult } from "../../../catalog/registry.ts";
 import { loadConfig, userConfigPath } from "./config.ts";
 

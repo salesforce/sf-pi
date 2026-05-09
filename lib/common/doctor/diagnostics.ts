@@ -61,7 +61,7 @@ export function runDoctorDiagnostics(options: { cwd?: string; home?: string } = 
       severity: "error",
       title: `Pi runtime is older than ${MIN_PI_VERSION}`,
       detail: `Detected pi ${piVersion}. sf-pi targets pi ${MIN_PI_VERSION} or newer.`,
-      fix: "Update pi with `npm install -g @mariozechner/pi-coding-agent@latest` or `pi update --self`.",
+      fix: "Update pi with `npm install -g @earendil-works/pi-coding-agent@latest` or `pi update --self`.",
     });
   }
 
@@ -464,15 +464,21 @@ export function collectRuntimeDiagnostics(): RuntimeDiagnostics {
   const npmMinReleaseAge = normalizeNpmConfigValue(
     runCapture("npm", ["config", "get", "min-release-age"]),
   );
+  // Pi 0.74 renamed the npm scope. Probe the new scope first; fall back to
+  // the legacy `@mariozechner` install for users mid-migration so doctor can
+  // still report a version + actionable advice instead of "unknown".
   const installedPiPackageVersion = npmGlobalRoot
-    ? readPackageVersion(
+    ? (readPackageVersion(
+        path.join(npmGlobalRoot, "@earendil-works", "pi-coding-agent", "package.json"),
+      ) ??
+      readPackageVersion(
         path.join(npmGlobalRoot, "@mariozechner", "pi-coding-agent", "package.json"),
-      )
+      ))
     : undefined;
   const piVersion = runCapture("pi", ["--version"]) || getInstalledPiVersion();
   const latestPiPackageVersion = runCapture("npm", [
     "view",
-    "@mariozechner/pi-coding-agent",
+    "@earendil-works/pi-coding-agent",
     "version",
   ]);
 
@@ -531,11 +537,11 @@ export function buildRuntimeUpdateAdvice(input: {
   npmMinReleaseAge?: string;
 }): string[] {
   const installCommand = input.npmMinReleaseAge
-    ? "npm install -g @mariozechner/pi-coding-agent@latest --force --min-release-age=0"
-    : "npm install -g @mariozechner/pi-coding-agent@latest --force";
+    ? "npm install -g @earendil-works/pi-coding-agent@latest --force --min-release-age=0"
+    : "npm install -g @earendil-works/pi-coding-agent@latest --force";
   const lines = [
     "nvm use <node-version-if-applicable>",
-    "npm uninstall -g @mariozechner/pi-coding-agent",
+    "npm uninstall -g @earendil-works/pi-coding-agent",
     installCommand,
     "hash -r",
     "pi --version",

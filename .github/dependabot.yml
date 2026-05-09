@@ -34,7 +34,7 @@ updates:
           - patch
     # Ignore peer-dependency major bumps; those need manual review.
     ignore:
-      - dependency-name: "@mariozechner/*"
+      - dependency-name: "@earendil-works/*"
         update-types:
           - version-update:semver-major
 

@@ -42,7 +42,7 @@ import type {
   ExtensionAPI,
   ExtensionCommandContext,
   ExtensionContext,
-} from "@mariozechner/pi-coding-agent";
+} from "@earendil-works/pi-coding-agent";
 import {
   PROVIDER_NAME,
   COMMAND_NAME,

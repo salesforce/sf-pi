@@ -11,7 +11,7 @@
  *     dispatcher routes Claude to anthropic-messages by model id internally.
  */
 import { describe, expect, it } from "vitest";
-import type { ProviderModelConfig } from "@mariozechner/pi-coding-agent";
+import type { ProviderModelConfig } from "@earendil-works/pi-coding-agent";
 import { registerProviderIfConfigured } from "../lib/discovery.ts";
 import { PROVIDER_NAME } from "../lib/config.ts";
 

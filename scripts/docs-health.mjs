@@ -129,8 +129,9 @@ function listFiles(dir, predicate) {
 
 function checkReadmePiVersion() {
   const pkg = readJson("package.json");
-  const floor = pkg.peerDependencies?.["@mariozechner/pi-coding-agent"];
-  if (!floor) return fail("package.json", "Missing @mariozechner/pi-coding-agent peerDependency.");
+  const floor = pkg.peerDependencies?.["@earendil-works/pi-coding-agent"];
+  if (!floor)
+    return fail("package.json", "Missing @earendil-works/pi-coding-agent peerDependency.");
   const readme = readText("README.md");
   if (!readme.includes(`currently\n\`${floor}\``) && !readme.includes(`currently ${floor}`)) {
     fail("README.md", `Supported-platforms pi floor must match package.json (${floor}).`);

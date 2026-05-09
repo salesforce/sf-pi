@@ -13,9 +13,9 @@
  * extension can stay the single source of truth for `pi.appendEntry`.
  */
 
-import { DynamicBorder, getSettingsListTheme } from "@mariozechner/pi-coding-agent";
-import type { ExtensionContext } from "@mariozechner/pi-coding-agent";
-import { Container, type SettingItem, SettingsList, Text } from "@mariozechner/pi-tui";
+import { DynamicBorder, getSettingsListTheme } from "@earendil-works/pi-coding-agent";
+import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { Container, type SettingItem, SettingsList, Text } from "@earendil-works/pi-tui";
 import { resolveUiGlyphs } from "../../../lib/common/ui-glyphs.ts";
 import type { DefaultFieldsMode, OnOff, SlackPreferences, ThreadBodyMode } from "./preferences.ts";
 
