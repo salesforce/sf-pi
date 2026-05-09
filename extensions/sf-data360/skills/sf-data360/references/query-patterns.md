@@ -104,11 +104,17 @@ The `/ssot/profile/{dataModelName}` family enforces additional input
 requirements that are easy to miss:
 
 - `dataModelName` must be the full DMO API name, including the `__dlm`
-  suffix (for example `ssot__Individual__dlm`).
-- `GET /ssot/profile/{dataModelName}` requires profile filters; an unfiltered
-  call returns `Profile Filters shouldn't be null or empty`.
-- `GET /ssot/profile/{dataModelName}/{id}` and the related child/CI variants
-  require an `orderby` query parameter when `offset` is supplied.
+  suffix (for example `ssot__AiAgentSession__dlm`).
+- `GET /ssot/profile/{dataModelName}` requires the plural `filters` query
+  parameter using the bracketed equality syntax
+  `filters=[Field__c=Value]`. The singular `filter` query parameter and
+  RSQL-style operators are rejected.
+- Combine `filters` with `fields` to limit the columns:
+  `filters=[ssot__Id__c=019cddc3-...]&fields=ssot__Id__c,ssot__Status__c`.
+- `GET /ssot/profile/{dataModelName}/{id}` and the related child/CI
+  variants require an `orderby` query parameter when `offset` is
+  supplied. The path segment is the unified profile id, not a `__c`
+  field value.
 
 ## Calculated insight name and Connect REST rules
 

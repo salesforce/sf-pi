@@ -8,14 +8,21 @@ live org metadata before mutating.
 
 Endpoint: `POST /ssot/data-model-objects`
 
-Important fields:
+Use the Connect REST schema, not the upstream MCP DTO names. The Swagger
+`DataModelObjectInputRepresentation` field names that the org accepts are:
 
-- `name` — custom DMO API name root. For create calls, do not include `__dlm`; the API can append the suffix. Do not start custom names with `ssot`.
+- `name` — custom DMO API name root. Do not include `__dlm`; the API
+  appends the suffix. Do not start custom names with `ssot`.
 - `label` — display label.
-- `category` — usually `Profile`, `Engagement`, or `Other`.
-- `fields[]` — each field should include `name`, `label`, `dataType`, and `isPrimaryKey`.
-- `eventDateTimeFieldName` — required for Engagement-style objects.
-- `dataSpaceName` — optional, but include it when working outside the default data space.
+- `description` — optional.
+- `dataSpaceName` — optional; default is `default`.
+- `category` — uppercase enum, for example `PROFILE`, `ENGAGEMENT`, or
+  `OTHER`. Connect REST rejects the upstream MCP value `objectCategory`
+  and the value casing `Profile`/`Other` for create payloads.
+- `fields[]` — each field uses `name`, `label`, `dataType`,
+  `isPrimaryKey`, optional `isDynamicLookup`, and `description`. Do not
+  send `objectType` or `precision`/`scale` unless the live API version
+  documents them.
 
 Example skeleton:
 
@@ -23,10 +30,66 @@ Example skeleton:
 {
   "name": "ProductReview",
   "label": "Product Review",
-  "category": "Other",
+  "description": "Custom DMO for product reviews.",
+  "dataSpaceName": "default",
+  "category": "PROFILE",
   "fields": [
-    { "name": "ReviewId", "label": "Review ID", "dataType": "Text", "isPrimaryKey": true },
-    { "name": "Rating", "label": "Rating", "dataType": "Number", "isPrimaryKey": false }
+    {
+      "name": "Id__c",
+      "label": "ID",
+      "isPrimaryKey": true,
+      "isDynamicLookup": false,
+      "dataType": "Text"
+    },
+    {
+      "name": "Rating__c",
+      "label": "Rating",
+      "isPrimaryKey": false,
+      "isDynamicLookup": false,
+      "dataType": "Number"
+    }
+  ]
+}
+```
+
+The response includes the auto-generated `__dlm` suffix on `name`, plus
+system-managed fields such as `DataSource__c`, `DataSourceObject__c`,
+`InternalOrganization__c`, and `KQ_Id__c`. Do not echo these back into a
+later PATCH unless you intend to keep them.
+
+## DMO update shape
+
+Endpoint: `PATCH /ssot/data-model-objects/{dataModelObjectName}`
+
+- The `{dataModelObjectName}` path segment uses the suffixed DMO API name
+  (for example `Pi_D360_Sweep__dlm`).
+- The body uses the same `DataModelObjectInputRepresentation` schema as
+  create. `label`, `description`, and `category` updates take effect.
+- `fields[]` is additive: any field listed that does not already exist is
+  appended. Existing fields are not removed by omitting them, and a
+  PATCH that lists an existing field name with different metadata can be
+  rejected.
+- To remove a field, treat the DMO as immutable for that field and
+  recreate the object, or use a dedicated mapping/relationship cleanup
+  flow when supported.
+
+Example additive PATCH:
+
+```json
+{
+  "name": "ProductReview__dlm",
+  "label": "Product Review",
+  "description": "Updated description.",
+  "dataSpaceName": "default",
+  "category": "PROFILE",
+  "fields": [
+    {
+      "name": "NewField__c",
+      "label": "New Field",
+      "isPrimaryKey": false,
+      "isDynamicLookup": false,
+      "dataType": "Text"
+    }
   ]
 }
 ```

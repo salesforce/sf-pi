@@ -85,6 +85,26 @@ This is the bar for "recursive validation passes": every Swagger operation
 resolves to a normalized path, hits the intended target org, and is
 classified as live/safe-post/dry-run before any network call.
 
+## Live mutation lifecycle proof
+
+For end-to-end mutation coverage in a disposable demo org, run a single
+DMO lifecycle and confirm cleanup:
+
+1. `POST /ssot/data-model-objects` with the Swagger
+   `DataModelObjectInputRepresentation` shape (`category` uppercase,
+   `dataType` per field, no `objectType`).
+2. `GET /ssot/data-model-objects/{name}__dlm` to verify the
+   auto-suffixed identifier and the system-managed fields.
+3. `PATCH /ssot/data-model-objects/{name}__dlm` to update label,
+   description, and append a new field. PATCH is additive: existing
+   fields are not removed by omitting them.
+4. `DELETE /ssot/data-model-objects/{name}__dlm` to clean up. A
+   subsequent GET returns `ITEM_NOT_FOUND`.
+
+Use a unique, sandbox-only prefix (for example `Pi_D360_Sweep`) and run
+this pattern only against orgs the user has marked disposable. Verify
+before and after via `GET` or `d360_metadata describe_dmo`.
+
 ## Safety expectations
 
 A recursive run should prove these design properties before executing broad live tests:
