@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.55.4-2026-05-09",
-  "latestVersion": "0.55.4",
+  "revision": "release-0.55.5-2026-05-09",
+  "latestVersion": "0.55.5",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.55.4",
+      "id": "release-0.55.5",
       "kind": "update",
-      "title": "sf-pi v0.55.4 — sf-slack: bail session_start when auth.test returns ok:false",
+      "title": "sf-pi v0.55.5 — sf-slack: force HTTP/1.1 to avoid undici H2 hang on Node 26",
       "publishedAt": "2026-05-09T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.55.4",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.55.5",
       "severity": "info",
-      "body": "sf-slack: bail session_start when auth.test returns ok:false"
+      "body": "sf-slack: force HTTP/1.1 to avoid undici H2 hang on Node 26"
     },
     {
       "id": "pi-0.73-required",
