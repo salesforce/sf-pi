@@ -68,6 +68,7 @@ import {
   type CommandPanelState,
   openCommandPanel,
 } from "../../lib/common/command-panel.ts";
+import { withSafeCommandHandler } from "../../lib/common/safe-command-handler.ts";
 import { openInfoPanel } from "../../lib/common/info-panel.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 
@@ -108,20 +109,22 @@ function registerCommand(pi: ExtensionAPI, state: AgentScriptAssistState): void 
       return items.length > 0 ? items : null;
     },
     handler: async (args, ctx) => {
-      const tokens = args.trim().split(/\s+/).filter(Boolean);
-      const subcommand = tokens[0] ?? "";
+      await withSafeCommandHandler(ctx, "sf-agentscript-assist", async () => {
+        const tokens = args.trim().split(/\s+/).filter(Boolean);
+        const subcommand = tokens[0] ?? "";
 
-      if (subcommand === "" && ctx.hasUI) {
-        await handleAgentScriptPanel(ctx, state);
-        return;
-      }
+        if (subcommand === "" && ctx.hasUI) {
+          await handleAgentScriptPanel(ctx, state);
+          return;
+        }
 
-      await handleAgentScriptCommand(
-        ctx,
-        state,
-        subcommand === "" ? "doctor" : subcommand,
-        tokens.slice(1),
-      );
+        await handleAgentScriptCommand(
+          ctx,
+          state,
+          subcommand === "" ? "doctor" : subcommand,
+          tokens.slice(1),
+        );
+      });
     },
   });
 }

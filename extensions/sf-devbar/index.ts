@@ -66,6 +66,7 @@ import {
   type CommandPanelState,
   openCommandPanel,
 } from "../../lib/common/command-panel.ts";
+import { withSafeCommandHandler } from "../../lib/common/safe-command-handler.ts";
 import { openInfoPanel } from "../../lib/common/info-panel.ts";
 import {
   buildToggleExtensionAction,
@@ -713,12 +714,14 @@ export default function sfDevBar(pi: ExtensionAPI) {
       return items.length > 0 ? items : null;
     },
     handler: async (args, ctx) => {
-      const sub = (args ?? "").trim().toLowerCase();
-      if (sub === "" && ctx.hasUI) {
-        await handleDevbarPanel(ctx);
-        return;
-      }
-      await handleDevbarCommand(ctx, sub === "" ? "toggle" : sub);
+      await withSafeCommandHandler(ctx, COMMAND_NAME, async () => {
+        const sub = (args ?? "").trim().toLowerCase();
+        if (sub === "" && ctx.hasUI) {
+          await handleDevbarPanel(ctx);
+          return;
+        }
+        await handleDevbarCommand(ctx, sub === "" ? "toggle" : sub);
+      });
     },
   });
 
@@ -949,15 +952,17 @@ export default function sfDevBar(pi: ExtensionAPI) {
       return items.length > 0 ? items : null;
     },
     handler: async (args, ctx) => {
-      const sub = (args ?? "").trim().toLowerCase();
-      if (sub === "" && ctx.hasUI) {
-        await handleSfOrgPanel(ctx);
-        return;
-      }
-      // Map legacy `open` shorthand to the panel action id so headless
-      // invocations stay one-to-one with the menu rows.
-      const action = sub === "open" ? "open-setup" : sub || "status";
-      await handleSfOrgAction(ctx, action, false);
+      await withSafeCommandHandler(ctx, "sf-org", async () => {
+        const sub = (args ?? "").trim().toLowerCase();
+        if (sub === "" && ctx.hasUI) {
+          await handleSfOrgPanel(ctx);
+          return;
+        }
+        // Map legacy `open` shorthand to the panel action id so headless
+        // invocations stay one-to-one with the menu rows.
+        const action = sub === "open" ? "open-setup" : sub || "status";
+        await handleSfOrgAction(ctx, action, false);
+      });
     },
   });
 }

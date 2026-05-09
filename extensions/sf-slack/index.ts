@@ -106,6 +106,7 @@ import {
   type CommandPanelState,
   openCommandPanel,
 } from "../../lib/common/command-panel.ts";
+import { withSafeCommandHandler } from "../../lib/common/safe-command-handler.ts";
 import { openInfoPanel } from "../../lib/common/info-panel.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 
@@ -821,12 +822,14 @@ export default function sfSlack(pi: ExtensionAPI) {
       return items.length > 0 ? items : null;
     },
     handler: async (args, ctx) => {
-      const sub = (args ?? "").trim().toLowerCase();
-      if (sub === "" && ctx.hasUI) {
-        await handleSlackPanel(ctx);
-        return;
-      }
-      await handleSlackCommand(sub === "" ? "status" : sub, ctx);
+      await withSafeCommandHandler(ctx, COMMAND_NAME, async () => {
+        const sub = (args ?? "").trim().toLowerCase();
+        if (sub === "" && ctx.hasUI) {
+          await handleSlackPanel(ctx);
+          return;
+        }
+        await handleSlackCommand(sub === "" ? "status" : sub, ctx);
+      });
     },
   });
   // Slack tools are NOT registered at extension load. Registration is gated on

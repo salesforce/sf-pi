@@ -70,6 +70,7 @@ import {
 } from "../../lib/common/sf-pi-package-state.ts";
 import { glyph, resolveGlyphMode } from "../../lib/common/glyph-policy.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
+import { withSafeCommandHandler } from "../../lib/common/safe-command-handler.ts";
 import {
   describeDisplaySettingsSource,
   readEffectiveSfPiDisplaySettings,
@@ -237,7 +238,7 @@ export default function sfPiManagerExtension(pi: ExtensionAPI) {
       return null;
     },
     handler: async (args, ctx) => {
-      await handleCommand(pi, args, ctx);
+      await withSafeCommandHandler(ctx, COMMAND_NAME, () => handleCommand(pi, args, ctx));
     },
   });
 

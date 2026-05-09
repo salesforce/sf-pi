@@ -36,7 +36,7 @@
     "entry": "extensions/sf-agentscript-assist/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 1486
+    "srcLoc": 1489
   },
   {
     "id": "sf-brain",
@@ -116,7 +116,7 @@
     "entry": "extensions/sf-data360/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 1890
+    "srcLoc": 1893
   },
   {
     "id": "sf-devbar",
@@ -156,7 +156,7 @@
     "entry": "extensions/sf-devbar/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 1683
+    "srcLoc": 1688
   },
   {
     "id": "sf-feedback",
@@ -191,7 +191,7 @@
     "entry": "extensions/sf-feedback/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 940
+    "srcLoc": 943
   },
   {
     "id": "sf-guardrail",
@@ -240,7 +240,7 @@
     "entry": "extensions/sf-guardrail/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 2113
+    "srcLoc": 2116
   },
   {
     "id": "sf-llm-gateway-internal",
@@ -291,7 +291,7 @@
     "entry": "extensions/sf-llm-gateway-internal/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 8684
+    "srcLoc": 8687
   },
   {
     "id": "sf-lsp",
@@ -331,7 +331,7 @@
     "entry": "extensions/sf-lsp/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 3856
+    "srcLoc": 3857
   },
   {
     "id": "sf-ohana-spinner",
@@ -406,7 +406,7 @@
     "entry": "extensions/sf-pi-manager/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 3029
+    "srcLoc": 3030
   },
   {
     "id": "sf-skills-hud",
@@ -440,7 +440,7 @@
     "entry": "extensions/sf-skills-hud/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 749
+    "srcLoc": 752
   },
   {
     "id": "sf-slack",
@@ -505,7 +505,7 @@
     "entry": "extensions/sf-slack/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 11037
+    "srcLoc": 11040
   },
   {
     "id": "sf-welcome",
@@ -548,6 +548,6 @@
     "entry": "extensions/sf-welcome/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 3484
+    "srcLoc": 3489
   }
 ]

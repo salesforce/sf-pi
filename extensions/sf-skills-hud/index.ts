@@ -52,6 +52,7 @@ import {
   openCommandPanel,
 } from "../../lib/common/command-panel.ts";
 import { openInfoPanel } from "../../lib/common/info-panel.ts";
+import { withSafeCommandHandler } from "../../lib/common/safe-command-handler.ts";
 
 // -------------------------------------------------------------------------------------------------
 // Constants
@@ -232,12 +233,14 @@ export default function sfSkillsHud(pi: ExtensionAPI) {
       return items.length > 0 ? items : null;
     },
     handler: async (args, ctx) => {
-      const subcommand = args.trim().toLowerCase();
-      if (subcommand === "" && ctx.hasUI) {
-        await handleSkillsPanel(ctx);
-        return;
-      }
-      await handleSkillsCommand(ctx, subcommand === "" ? "summary" : subcommand);
+      await withSafeCommandHandler(ctx, COMMAND_NAME, async () => {
+        const subcommand = args.trim().toLowerCase();
+        if (subcommand === "" && ctx.hasUI) {
+          await handleSkillsPanel(ctx);
+          return;
+        }
+        await handleSkillsCommand(ctx, subcommand === "" ? "summary" : subcommand);
+      });
     },
   });
 

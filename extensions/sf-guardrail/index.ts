@@ -64,6 +64,7 @@ import {
   type CommandPanelState,
   openCommandPanel,
 } from "../../lib/common/command-panel.ts";
+import { withSafeCommandHandler } from "../../lib/common/safe-command-handler.ts";
 import {
   buildToggleExtensionAction,
   isLifecycleToggleAction,
@@ -208,12 +209,14 @@ export default function sfGuardrail(pi: ExtensionAPI) {
       return items.length > 0 ? items : null;
     },
     handler: async (args, ctx) => {
-      const sub = (args ?? "").trim().toLowerCase();
-      if (sub === "" && ctx.hasUI) {
-        await handleGuardrailPanel(ctx);
-        return;
-      }
-      await handleGuardrailCommand(ctx, sub === "" ? "status" : sub);
+      await withSafeCommandHandler(ctx, COMMAND_NAME, async () => {
+        const sub = (args ?? "").trim().toLowerCase();
+        if (sub === "" && ctx.hasUI) {
+          await handleGuardrailPanel(ctx);
+          return;
+        }
+        await handleGuardrailCommand(ctx, sub === "" ? "status" : sub);
+      });
     },
   });
 }

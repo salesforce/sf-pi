@@ -77,6 +77,29 @@ const CLOSE_BEFORE_ACTION_RULE = {
     "actions that call ctx.reload() must close the panel first, otherwise the ctx.ui.custom() promise dangles and the slash-command handler hangs",
 };
 
+// Every pi.registerCommand handler MUST wrap its body in
+// withSafeCommandHandler so a throw inside the handler surfaces as a visible
+// info popup or notify, not a missable red chat line. Without this, handler
+// throws (panel-render bugs, CLI failures, stale ctx after reload) look like
+// the command did nothing.
+//
+// The lint is satisfied when:
+//   - imports the helper from lib/common/safe-command-handler.ts AND
+//   - every `handler: async (...)` block contains the wrapper call.
+//
+// Note: regex parsing of TS source is best-effort. The intent is to catch
+// new commands added without the wrapper, not to be a perfect AST checker.
+const SAFE_HANDLER_RULE = {
+  label: "safe-command-handler wraps pi.registerCommand handler",
+  triggers: [/pi\.registerCommand\s*\(/],
+  // Look for an actual call site, not just an import statement. A bare
+  // import without a call site at the handler boundary still fails to
+  // protect throws.
+  required: [/withSafeCommandHandler\s*\(/],
+  rationale:
+    "every slash-command handler must wrap its body in withSafeCommandHandler so throws surface as a visible info popup instead of a missable red chat line",
+};
+
 function loadCatalog() {
   const raw = readFileSync(CATALOG_PATH, "utf8");
   const parsed = JSON.parse(raw);
@@ -131,10 +154,11 @@ function checkForbiddenFilenames(ext) {
 
 function checkExtension(ext) {
   if (!Array.isArray(ext.commands) || ext.commands.length === 0) return null;
-  if (EXEMPT_EXTENSIONS.has(ext.id)) return null;
-  // (We still apply the openInfoPanel + lifecycle-toggle checks below to
-  // every non-exempt extension. The exempt list is just for the panel
-  // entry point.)
+  // EXEMPT_EXTENSIONS skips the standard panel-pattern checks (those
+  // extensions own a bespoke overlay or have no command surface) but the
+  // safe-command-handler rule still applies to every extension that
+  // registers a slash command — a throwing handler must always be visible.
+  const isPanelExempt = EXEMPT_EXTENSIONS.has(ext.id);
 
   const entryPath = join(REPO_ROOT, ext.entry);
   let entrySource;
@@ -158,16 +182,19 @@ function checkExtension(ext) {
     .join("\n");
   const allSources = [entrySource, libSource].join("\n");
 
-  const missing = REQUIRED_IMPORTS.filter((req) => !req.pattern.test(allSources)).map(
-    (req) => `${req.label} — ${req.rationale}`,
-  );
+  const missing = isPanelExempt
+    ? []
+    : REQUIRED_IMPORTS.filter((req) => !req.pattern.test(allSources)).map(
+        (req) => `${req.label} — ${req.rationale}`,
+      );
 
   // closeBeforeAction wiring lint. Only applies when the extension uses
   // openCommandPanel AND routes lifecycle.toggle through performToggleExtension.
   // (sf-lsp uses its own ctx.ui.custom layout that already closes the panel
   // before invoking the action, which is why it is on the EXEMPT_EXTENSIONS
   // list at the top.)
-  const triggers = CLOSE_BEFORE_ACTION_RULE.triggers.every((re) => re.test(allSources));
+  const triggers =
+    !isPanelExempt && CLOSE_BEFORE_ACTION_RULE.triggers.every((re) => re.test(allSources));
   const closeBeforeViolations = [];
   if (triggers) {
     for (const re of CLOSE_BEFORE_ACTION_RULE.required) {
@@ -180,8 +207,25 @@ function checkExtension(ext) {
     }
   }
 
+  // safe-command-handler lint. Applies to any extension that registers a
+  // slash command. The helper is short-circuited for sf-pi-manager,
+  // sf-brain, sf-ohana-spinner, sf-lsp via EXEMPT_EXTENSIONS at the top of
+  // the file — but for sf-pi-manager and sf-lsp we still want the wrapper
+  // (they are exempt from the openCommandPanel rule, not this one), so
+  // re-check independently.
+  const safeHandlerTriggers = SAFE_HANDLER_RULE.triggers.every((re) => re.test(allSources));
+  const safeHandlerViolations = [];
+  if (safeHandlerTriggers) {
+    for (const re of SAFE_HANDLER_RULE.required) {
+      if (!re.test(allSources)) {
+        safeHandlerViolations.push(`${SAFE_HANDLER_RULE.label} — ${SAFE_HANDLER_RULE.rationale}`);
+        break;
+      }
+    }
+  }
+
   const forbidden = checkForbiddenFilenames(ext).map((entry) => `forbidden filename ${entry}`);
-  const issues = [...missing, ...closeBeforeViolations, ...forbidden];
+  const issues = [...missing, ...closeBeforeViolations, ...safeHandlerViolations, ...forbidden];
 
   return { id: ext.id, ok: issues.length === 0, missing: issues };
 }

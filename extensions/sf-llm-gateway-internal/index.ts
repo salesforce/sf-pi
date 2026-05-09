@@ -205,6 +205,7 @@ import {
 import { type CommandPanelState } from "../../lib/common/command-panel.ts";
 import { openInfoPanel } from "../../lib/common/info-panel.ts";
 import { performToggleExtension } from "../../lib/common/extension-toggle.ts";
+import { withSafeCommandHandler } from "../../lib/common/safe-command-handler.ts";
 import { registerExtensionDoctor } from "../../lib/common/doctor/registry.ts";
 import { runExtensionDoctor as runGatewayExtensionDoctor } from "./lib/doctor.ts";
 import { openGatewayPanel } from "./lib/command-panel.ts";
@@ -349,7 +350,9 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
     description: "SF LLM Gateway setup, token import, diagnostics, and utilities",
     getArgumentCompletions: getGatewayArgumentCompletions,
     handler: async (args, ctx) => {
-      await handleCommand(pi, args.trim() ? args : "setup", ctx);
+      await withSafeCommandHandler(ctx, FRIENDLY_COMMAND_NAME, () =>
+        handleCommand(pi, args.trim() ? args : "setup", ctx),
+      );
     },
   });
 
@@ -357,7 +360,7 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
     description: `Backward-compatible alias for /${FRIENDLY_COMMAND_NAME}`,
     getArgumentCompletions: getGatewayArgumentCompletions,
     handler: async (args, ctx) => {
-      await handleCommand(pi, args, ctx);
+      await withSafeCommandHandler(ctx, COMMAND_NAME, () => handleCommand(pi, args, ctx));
     },
   });
 

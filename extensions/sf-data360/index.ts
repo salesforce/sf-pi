@@ -31,6 +31,7 @@ import path from "node:path";
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 
 import { type CommandPanelState, openCommandPanel } from "../../lib/common/command-panel.ts";
+import { withSafeCommandHandler } from "../../lib/common/safe-command-handler.ts";
 import {
   type SfPiCommandAction,
   formatHelpFromActions,
@@ -98,7 +99,9 @@ export default function sfData360(pi: ExtensionAPI) {
       getCompletionsFromActions(SF_DATA360_ACTIONS, prefix.trim().split(/\s+/).at(-1) ?? "", {
         excludeValues: ["close", "lifecycle.toggle"],
       }),
-    handler: async (args, ctx) => handleCommand(pi, ctx, args || ""),
+    handler: async (args, ctx) => {
+      await withSafeCommandHandler(ctx, COMMAND_NAME, () => handleCommand(pi, ctx, args || ""));
+    },
   });
 }
 

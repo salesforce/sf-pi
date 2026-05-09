@@ -50,6 +50,7 @@ import {
   openCommandPanel,
 } from "../../lib/common/command-panel.ts";
 import { openInfoPanel, type InfoPanelSeverity } from "../../lib/common/info-panel.ts";
+import { withSafeCommandHandler } from "../../lib/common/safe-command-handler.ts";
 import {
   buildToggleExtensionAction,
   isLifecycleToggleAction,
@@ -551,19 +552,21 @@ export default function sfWelcome(pi: ExtensionAPI) {
   pi.registerCommand(COMMAND_NAME, {
     description: "Show the sf-pi welcome splash summary, status, and controls",
     handler: async (args, ctx) => {
-      const sub = (args ?? "").trim().toLowerCase();
-      if (sub === "" && ctx.hasUI) {
-        await handleWelcomePanel(ctx);
-        return;
-      }
-      // Direct subcommand or headless invocation — emit the summary as plain
-      // text so `pi -p /sf-welcome` keeps printing something useful.
-      const summary = await buildWelcomeSummary(ctx);
-      if (ctx.hasUI) {
-        ctx.ui.notify(summary, "info");
-        return;
-      }
-      console.info(summary);
+      await withSafeCommandHandler(ctx, COMMAND_NAME, async () => {
+        const sub = (args ?? "").trim().toLowerCase();
+        if (sub === "" && ctx.hasUI) {
+          await handleWelcomePanel(ctx);
+          return;
+        }
+        // Direct subcommand or headless invocation — emit the summary as plain
+        // text so `pi -p /sf-welcome` keeps printing something useful.
+        const summary = await buildWelcomeSummary(ctx);
+        if (ctx.hasUI) {
+          ctx.ui.notify(summary, "info");
+          return;
+        }
+        console.info(summary);
+      });
     },
   });
 
@@ -928,15 +931,17 @@ export default function sfWelcome(pi: ExtensionAPI) {
       return items.length > 0 ? items : null;
     },
     handler: async (args, ctx) => {
-      const sub = (args ?? "").trim().toLowerCase();
-      if (sub === "" && ctx.hasUI) {
-        await handleSfSetupFontsPanel(ctx);
-        return;
-      }
-      // Map empty/no-UI to install for backwards compatibility (the original
-      // handler always ran the installer when invoked).
-      const action = sub === "" ? "install" : sub;
-      await handleSfSetupFontsAction(ctx, action, false);
+      await withSafeCommandHandler(ctx, FONTS_COMMAND_NAME, async () => {
+        const sub = (args ?? "").trim().toLowerCase();
+        if (sub === "" && ctx.hasUI) {
+          await handleSfSetupFontsPanel(ctx);
+          return;
+        }
+        // Map empty/no-UI to install for backwards compatibility (the original
+        // handler always ran the installer when invoked).
+        const action = sub === "" ? "install" : sub;
+        await handleSfSetupFontsAction(ctx, action, false);
+      });
     },
   });
 

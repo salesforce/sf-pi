@@ -68,6 +68,7 @@ import { openSfLspPanel, type SfLspPanelAction } from "./lib/command-panel.ts";
 import { openInfoPanel, type InfoPanelSeverity } from "../../lib/common/info-panel.ts";
 import { isSfPiExtensionEnabled } from "../../lib/common/sf-pi-extension-state.ts";
 import { performToggleExtension } from "../../lib/common/extension-toggle.ts";
+import { withSafeCommandHandler } from "../../lib/common/safe-command-handler.ts";
 import { registerExtensionDoctor } from "../../lib/common/doctor/registry.ts";
 import { runExtensionDoctor as runLspExtensionDoctor } from "./lib/extension-doctor.ts";
 import {
@@ -407,84 +408,85 @@ export default function sfLspExtension(pi: ExtensionAPI) {
     pi.registerCommand("sf-lsp", {
       description: "Show Salesforce LSP status and controls",
       handler: async (args, ctx) => {
-        const tokens = args.trim().split(/\s+/).filter(Boolean);
-        const subcommand = (tokens[0] ?? "").toLowerCase();
-
-        if (subcommand === "" || subcommand === "panel") {
-          const statuses = await doctorLsp(ctx.cwd);
-          seedFromDoctor(activity, statuses);
-          setSfLspHealthFromDoctor(statuses);
-
-          const action = await openSfLspPanel(ctx, {
-            store: activity,
-            doctorStatuses: statuses,
-            // Retained fields for panel surface API stability. The HUD was
-            // removed; pass false so the panel doesn't offer toggle actions
-            // that no longer mean anything.
-            hudEnabled: false,
-            verboseEnabled: uiSettings.verbose,
-            lifecycle: {
-              show: true,
-              enabled: isSfPiExtensionEnabled(ctx.cwd, "sf-lsp"),
-            },
-          });
-
-          await handlePanelAction(action, ctx);
-          return;
-        }
-
-        if (subcommand === "doctor") {
-          const statuses = await doctorLsp(ctx.cwd);
-          seedFromDoctor(activity, statuses);
-          setSfLspHealthFromDoctor(statuses);
-          const hasUnavailable = statuses.some((status) => !status.available);
-          const severity = hasUnavailable ? "warning" : "info";
-          if (ctx.hasUI) ctx.ui.notify(renderDoctorReport(statuses), severity);
-          return;
-        }
-
-        if (subcommand === "install") {
-          await runInstallSubcommand(ctx, tokens[1]);
-          return;
-        }
-
-        if (subcommand === "verbose") {
-          const arg = (tokens[1] ?? "").toLowerCase();
-          if (arg === "on" || arg === "off" || arg === "toggle" || arg === "") {
-            const desired = arg === "on" ? true : arg === "off" ? false : !uiSettings.verbose;
-            uiSettings = { ...uiSettings, verbose: desired };
-            writeScopedSfLspSettings(ctx.cwd, "global", { verbose: desired });
-            if (ctx.hasUI) {
-              ctx.ui.notify(
-                `sf-lsp verbose transcript ${desired ? "enabled" : "disabled"}`,
-                "info",
-              );
-            }
-            return;
-          }
-          if (ctx.hasUI) ctx.ui.notify("Usage: /sf-lsp verbose [on|off|toggle]", "warning");
-          return;
-        }
-
-        if (ctx.hasUI) {
-          ctx.ui.notify(
-            [
-              "sf-lsp — Salesforce LSP diagnostics",
-              "",
-              "Commands:",
-              "  /sf-lsp                Open the rich status/controls panel",
-              "  /sf-lsp doctor         Show a compact doctor report",
-              "  /sf-lsp install        Install or update bundled LSP servers",
-              "  /sf-lsp install status Show per-component install state",
-              "  /sf-lsp verbose on|off Toggle transcript row for every check",
-              "",
-              "Top-bar LSP status is always visible in the sf-devbar top bar.",
-            ].join("\n"),
-            "warning",
-          );
-        }
+        await withSafeCommandHandler(ctx, "sf-lsp", () => runSfLspHandler(args, ctx));
       },
     });
+  }
+
+  async function runSfLspHandler(args: string, ctx: ExtensionCommandContext): Promise<void> {
+    const tokens = args.trim().split(/\s+/).filter(Boolean);
+    const subcommand = (tokens[0] ?? "").toLowerCase();
+
+    if (subcommand === "" || subcommand === "panel") {
+      const statuses = await doctorLsp(ctx.cwd);
+      seedFromDoctor(activity, statuses);
+      setSfLspHealthFromDoctor(statuses);
+
+      const action = await openSfLspPanel(ctx, {
+        store: activity,
+        doctorStatuses: statuses,
+        // Retained fields for panel surface API stability. The HUD was
+        // removed; pass false so the panel doesn't offer toggle actions
+        // that no longer mean anything.
+        hudEnabled: false,
+        verboseEnabled: uiSettings.verbose,
+        lifecycle: {
+          show: true,
+          enabled: isSfPiExtensionEnabled(ctx.cwd, "sf-lsp"),
+        },
+      });
+
+      await handlePanelAction(action, ctx);
+      return;
+    }
+
+    if (subcommand === "doctor") {
+      const statuses = await doctorLsp(ctx.cwd);
+      seedFromDoctor(activity, statuses);
+      setSfLspHealthFromDoctor(statuses);
+      const hasUnavailable = statuses.some((status) => !status.available);
+      const severity = hasUnavailable ? "warning" : "info";
+      if (ctx.hasUI) ctx.ui.notify(renderDoctorReport(statuses), severity);
+      return;
+    }
+
+    if (subcommand === "install") {
+      await runInstallSubcommand(ctx, tokens[1]);
+      return;
+    }
+
+    if (subcommand === "verbose") {
+      const arg = (tokens[1] ?? "").toLowerCase();
+      if (arg === "on" || arg === "off" || arg === "toggle" || arg === "") {
+        const desired = arg === "on" ? true : arg === "off" ? false : !uiSettings.verbose;
+        uiSettings = { ...uiSettings, verbose: desired };
+        writeScopedSfLspSettings(ctx.cwd, "global", { verbose: desired });
+        if (ctx.hasUI) {
+          ctx.ui.notify(`sf-lsp verbose transcript ${desired ? "enabled" : "disabled"}`, "info");
+        }
+        return;
+      }
+      if (ctx.hasUI) ctx.ui.notify("Usage: /sf-lsp verbose [on|off|toggle]", "warning");
+      return;
+    }
+
+    if (ctx.hasUI) {
+      ctx.ui.notify(
+        [
+          "sf-lsp — Salesforce LSP diagnostics",
+          "",
+          "Commands:",
+          "  /sf-lsp                Open the rich status/controls panel",
+          "  /sf-lsp doctor         Show a compact doctor report",
+          "  /sf-lsp install        Install or update bundled LSP servers",
+          "  /sf-lsp install status Show per-component install state",
+          "  /sf-lsp verbose on|off Toggle transcript row for every check",
+          "",
+          "Top-bar LSP status is always visible in the sf-devbar top bar.",
+        ].join("\n"),
+        "warning",
+      );
+    }
   }
 
   // ==========================================================================================

@@ -43,6 +43,7 @@ import {
   type LifecycleActionId,
 } from "../../lib/common/extension-toggle.ts";
 import { type CommandPanelState, openCommandPanel } from "../../lib/common/command-panel.ts";
+import { withSafeCommandHandler } from "../../lib/common/safe-command-handler.ts";
 import {
   type SfPiCommandAction,
   formatHelpFromActions,
@@ -68,12 +69,14 @@ export default function sfFeedback(pi: ExtensionAPI) {
         excludeValues: ["close", "lifecycle.toggle"],
       }),
     handler: async (args, ctx) => {
-      const exec = buildExecFn(pi, ctx.cwd);
-      if (!(args || "").trim() && ctx.hasUI) {
-        await handleFeedbackPanel(pi, ctx, exec);
-        return;
-      }
-      await handleCommand(pi, ctx, exec, args || "");
+      await withSafeCommandHandler(ctx, COMMAND_NAME, async () => {
+        const exec = buildExecFn(pi, ctx.cwd);
+        if (!(args || "").trim() && ctx.hasUI) {
+          await handleFeedbackPanel(pi, ctx, exec);
+          return;
+        }
+        await handleCommand(pi, ctx, exec, args || "");
+      });
     },
   });
 }
