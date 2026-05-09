@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.55.6-2026-05-09",
-  "latestVersion": "0.55.6",
+  "revision": "release-0.55.7-2026-05-09",
+  "latestVersion": "0.55.7",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.55.6",
+      "id": "release-0.55.7",
       "kind": "update",
-      "title": "sf-pi v0.55.6 — sf-slack: use node:https instead of undici fetch (Node 26 H2 hang)",
+      "title": "sf-pi v0.55.7 — panel: close-row dismisses panel; toggle.lifecycle closes before reload",
       "publishedAt": "2026-05-09T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.55.6",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.55.7",
       "severity": "info",
-      "body": "sf-slack: use node:https instead of undici fetch (Node 26 H2 hang)"
+      "body": "panel: close-row dismisses panel; toggle.lifecycle closes before reload"
     },
     {
       "id": "pi-0.73-required",
