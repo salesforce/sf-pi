@@ -114,6 +114,29 @@ describe("sf-slack session_start error handling", () => {
   it("applies the same abort-vs-timeout split inside /sf-slack refresh", () => {
     expect(indexSource).toMatch(/if \(isAbortError\(err\) && ctx\.signal\?\.aborted\) return;/);
   });
+
+  it("bails out of session_start when slackApi auth.test returns ok:false", () => {
+    // Regression for the symptom 'Slack ? Scopes unknown 0/22 approved scopes':
+    // slackApi maps timeouts / network failures / HTTP errors into a non-throwing
+    // {ok:false, error: "request_timeout" | "network_error" | ...} envelope.
+    // Older code only conditionally set `identity` on ok:true and then continued
+    // to call the parallel probe/prewarm helpers (which also returned ok:false)
+    // and finally updateStatus(ctx, "connected"), producing the
+    // "? Scopes unknown 0/22" mislead.
+    //
+    // Contract: a failed auth.test must short-circuit session_start with
+    // updateStatus(ctx, "error", generation) so the user sees the real
+    // failure inline.
+    const startBody = indexSource.match(
+      /pi\.on\("session_start"[\s\S]*?(?=pi\.on\("session_shutdown")/,
+    );
+    expect(startBody).not.toBeNull();
+    const block = startBody![0];
+    expect(block).toMatch(/if \(!authResult\.ok\) \{[\s\S]*?lastError = \{ step: "auth\.test"/);
+    expect(block).toMatch(
+      /if \(!authResult\.ok\) \{[\s\S]*?updateStatus\(ctx, "error", generation\);[\s\S]*?return;/,
+    );
+  });
 });
 
 describe("sf-slack workspace context injection (token-efficient shape)", () => {

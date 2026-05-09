@@ -462,14 +462,29 @@ export default function sfSlack(pi: ExtensionAPI) {
     try {
       const authResult = await slackApi<AuthTestResponse>("auth.test", token, {}, ctx.signal);
       if (!isActiveSession(ctx, generation)) return;
-      if (authResult.ok) {
-        identity = {
-          userId: authResult.data?.user_id || "",
-          userName: authResult.data?.user || "",
-          teamId: authResult.data?.team_id || authResult.data?.enterprise_id || "",
-        };
-        setDetectedTeamId(authResult.data?.team_id);
+      if (!authResult.ok) {
+        // slackApi maps timeouts / network errors / HTTP 4xx-5xx into a non-throwing
+        // ok:false envelope (see classifyFetchError + toApiResult in lib/api.ts).
+        // Without this branch the failure was silently absorbed: identity stayed
+        // null, the parallel probe/prewarm calls also returned ok:false, and the
+        // final updateStatus(ctx, "connected") flipped the splash to
+        // "? Scopes unknown 0/22" — misleading because the token was never
+        // actually validated. Surface the real reason instead.
+        const errMessage = (authResult as ApiErr).error;
+        lastError = { step: "auth.test", message: errMessage };
+        if (ctx.hasUI) {
+          ctx.ui.notify(`Slack auth.test failed: ${errMessage}`, "warning");
+        }
+        deactivateSlackTools(pi);
+        updateStatus(ctx, "error", generation);
+        return;
       }
+      identity = {
+        userId: authResult.data?.user_id || "",
+        userName: authResult.data?.user || "",
+        teamId: authResult.data?.team_id || authResult.data?.enterprise_id || "",
+      };
+      setDetectedTeamId(authResult.data?.team_id);
 
       const requestedScopes = oauthScopes()
         .split(",")
