@@ -350,10 +350,25 @@ class GroupedActionList<T extends string> implements Component {
   private runAction(action: T): void {
     this.actionInFlight = true;
     this.requestRender();
-    void Promise.resolve(this.onAction?.(action)).finally(() => {
-      this.actionInFlight = false;
-      this.requestRender();
-    });
+    // Synchronous throws inside onAction would otherwise escape
+    // `Promise.resolve()` (the throw happens before resolve runs) and
+    // leave actionInFlight=true forever — every subsequent keystroke
+    // would be silently dropped, presenting as a panel hang.
+    let promise: Promise<unknown>;
+    try {
+      promise = Promise.resolve(this.onAction?.(action));
+    } catch (err) {
+      promise = Promise.reject(err);
+    }
+    void promise
+      .finally(() => {
+        this.actionInFlight = false;
+        this.requestRender();
+      })
+      // Don't propagate async rejections — pi's runner already surfaces them
+      // via the extension error listener. We only care that the panel's
+      // input gate (actionInFlight) is released.
+      .catch(() => {});
   }
 
   private renderGroupHeading(group: string, width: number): string {
@@ -413,7 +428,31 @@ class GroupedActionList<T extends string> implements Component {
   }
 
   private items(): CommandPanelAction<T>[] {
-    return typeof this.actionSource === "function" ? this.actionSource() : this.actionSource;
+    if (typeof this.actionSource !== "function") return this.actionSource;
+    try {
+      return this.actionSource();
+    } catch (err) {
+      // A throwing actions() lambda used to leave the panel completely
+      // empty (which looked like "the panel doesn't open" to users).
+      // Surface a minimal action list with just the close row so the user
+      // can always escape, and a synthetic warning row that surfaces the
+      // error message instead of silently dropping the panel.
+      const message = err instanceof Error ? err.message : String(err);
+      return [
+        {
+          value: "__panel_actions_error__" as T,
+          label: "⚠ Actions failed to load",
+          description: message,
+          group: "Diagnostics",
+        },
+        {
+          value: this.closeValue,
+          label: "Close",
+          description: "Dismiss this panel.",
+          group: "Lifecycle",
+        },
+      ];
+    }
   }
 
   private indexForSelectedValue(value: T | undefined): number {
@@ -442,8 +481,17 @@ class StatusBlock implements Component {
     const lines = [
       new SectionHeading(this.theme, this.glyphs.status, this.label).render(width)[0] ?? "",
     ];
-    const statusLines =
-      typeof this.statusLines === "function" ? this.statusLines() : this.statusLines;
+    let statusLines: string[];
+    try {
+      statusLines = typeof this.statusLines === "function" ? this.statusLines() : this.statusLines;
+    } catch (err) {
+      // A throwing statusLines() lambda used to abort the entire panel
+      // render and present as "the panel never opened". Surface the error
+      // inline instead so the panel still mounts, the user can scroll the
+      // action list, and the underlying bug is visible.
+      const message = err instanceof Error ? err.message : String(err);
+      statusLines = [`⚠ status failed to load: ${message}`];
+    }
     for (const line of statusLines) {
       lines.push(truncateToWidth(`  ${line}`, width, ""));
     }

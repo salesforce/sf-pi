@@ -749,56 +749,215 @@ export default function sfDevBar(pi: ExtensionAPI) {
   // ===========================================================================================
   // Command: /sf-org — shared Salesforce environment status
   // ===========================================================================================
+  //
+  // /sf-org follows the same panel pattern as /sf-devbar so users get the
+  // same status-and-controls surface across every /sf-* command. Direct
+  // text subcommands (/sf-org refresh, /sf-org help) still work for muscle
+  // memory and headless invocation.
 
-  pi.registerCommand("sf-org", {
-    description: "Show Salesforce org status and environment info",
-    handler: async (args, ctx) => {
-      const sub = (args ?? "").trim().toLowerCase();
+  type SfOrgAction = "status" | "refresh" | "open-setup" | "help" | "close";
 
-      if (sub === "refresh") {
-        ctx.ui.notify("Detecting Salesforce environment…", "info");
-        try {
-          env = await getSharedSfEnvironment(exec, ctx.cwd, { force: true });
-          updateTitle(ctx);
-          updateTopBar(ctx);
-          requestFooterRender?.();
-          ctx.ui.notify(formatDetailedStatus(env), "info");
-        } catch (err) {
-          ctx.ui.notify(`Detection failed: ${err}`, "error");
-        }
-        return;
-      }
+  const SF_ORG_ACTIONS: CommandPanelAction<SfOrgAction>[] = [
+    {
+      value: "status",
+      label: "Show current status",
+      description: "Print the detected Salesforce CLI / project / org details.",
+      group: "Status",
+    },
+    {
+      value: "refresh",
+      label: "Refresh org environment",
+      description: "Force re-detection of CLI / project / org and repaint the bars.",
+      group: "Troubleshooting",
+    },
+    {
+      value: "open-setup",
+      label: "Open org Setup in browser",
+      description: "Run sf org open --path /lightning/setup/SetupOneHome/home for the active org.",
+      group: "Actions",
+    },
+    {
+      value: "help",
+      label: "Show help",
+      description: "Print commands and direct subcommand reference.",
+      group: "Reference",
+    },
+    {
+      value: "close",
+      label: "Close",
+      description: "Dismiss this panel.",
+      group: "Lifecycle",
+    },
+  ];
 
-      if (sub === "help") {
-        ctx.ui.notify(
-          [
-            "sf-org — Salesforce environment status",
-            "",
-            "Commands:",
-            "  /sf-org            Show current environment status",
-            "  /sf-org refresh    Re-detect environment",
-            "  /sf-org help       Show this help",
-          ].join("\n"),
+  function buildSfOrgStatusLines(): string[] {
+    if (!env) {
+      return ["◐ Environment    detecting…"];
+    }
+    const cli = env.cli.installed
+      ? `✓ SF CLI         v${env.cli.version ?? "unknown"}`
+      : "✗ SF CLI         not installed";
+    const project = env.project.detected
+      ? `✓ Project        ${env.project.name ?? "detected"}`
+      : "⚠ Project        not an SFDX project";
+    const orgLabel = env.org.alias ?? env.config.targetOrg ?? env.org.username ?? "—";
+    const orgType = env.org.orgType && env.org.orgType !== "unknown" ? ` (${env.org.orgType})` : "";
+    const org = env.org.detected
+      ? `✓ Org            ${orgLabel}${orgType}`
+      : `⚠ Org            no default${orgLabel !== "—" ? ` — ${orgLabel}` : ""}`;
+    const apiVersion = env.project.sourceApiVersion
+      ? `• API version    ${env.project.sourceApiVersion}`
+      : "• API version    —";
+    return [cli, project, org, apiVersion];
+  }
+
+  async function handleSfOrgPanel(ctx: ExtensionCommandContext): Promise<void> {
+    const panelState: CommandPanelState<SfOrgAction> = {};
+    await openCommandPanel(ctx, {
+      title: "🌐 SF Org — Salesforce environment",
+      subtitle: "Inspect the active Salesforce CLI / project / org and refresh detection.",
+      statusLines: () => buildSfOrgStatusLines(),
+      actions: () => SF_ORG_ACTIONS,
+      closeValue: "close",
+      state: panelState,
+      onAction: (action) => handleSfOrgAction(ctx, action, true),
+      // /sf-org doesn't currently route lifecycle.toggle (sf-devbar's panel
+      // owns that toggle for the underlying extension), so closeBeforeAction
+      // is intentionally omitted.
+    });
+  }
+
+  async function handleSfOrgAction(
+    ctx: ExtensionCommandContext,
+    action: SfOrgAction | string,
+    fromPanel: boolean,
+  ): Promise<void> {
+    if (action === "help") {
+      const help = [
+        "sf-org — Salesforce environment status",
+        "",
+        "Commands:",
+        "  /sf-org            Open status & controls panel",
+        "  /sf-org status     Show current environment status",
+        "  /sf-org refresh    Re-detect environment",
+        "  /sf-org open       Open org Setup in browser",
+        "  /sf-org help       Show this help",
+      ].join("\n");
+      await emitSfOrgOutput(ctx, "sf-org help", help, "info", fromPanel);
+      return;
+    }
+
+    if (action === "refresh") {
+      ctx.ui.setStatus("sf-org-command", "Detecting Salesforce environment…");
+      try {
+        env = await getSharedSfEnvironment(exec, ctx.cwd, { force: true });
+        updateTitle(ctx);
+        updateTopBar(ctx);
+        requestFooterRender?.();
+        await emitSfOrgOutput(
+          ctx,
+          "sf-org environment refreshed",
+          formatDetailedStatus(env),
           "info",
+          fromPanel,
+        );
+      } catch (err) {
+        await emitSfOrgOutput(ctx, "Detection failed", String(err), "error", fromPanel);
+      } finally {
+        ctx.ui.setStatus("sf-org-command", undefined);
+      }
+      return;
+    }
+
+    if (action === "open-setup") {
+      const alias = env?.org?.alias ?? env?.config?.targetOrg;
+      if (!alias) {
+        await emitSfOrgOutput(
+          ctx,
+          "No default org",
+          "There is no default org configured for this directory. Run /sf-org refresh after `sf config set target-org=<alias>`.",
+          "warning",
+          fromPanel,
         );
         return;
       }
-
-      // Default: show status
-      if (!env) {
-        ctx.ui.notify("Detecting Salesforce environment…", "info");
-        try {
-          env = await getSharedSfEnvironment(exec, ctx.cwd);
-          updateTitle(ctx);
-          updateTopBar(ctx);
-          requestFooterRender?.();
-        } catch (err) {
-          ctx.ui.notify(`Detection failed: ${err}`, "error");
-          return;
-        }
+      ctx.ui.setStatus("sf-org-command", `Opening Setup for ${alias}…`);
+      try {
+        await exec(
+          "sf",
+          ["org", "open", "--path", "/lightning/setup/SetupOneHome/home", "--target-org", alias],
+          { cwd: ctx.cwd },
+        );
+        await emitSfOrgOutput(
+          ctx,
+          "Opened in browser",
+          `Opened Setup for ${alias} via sf org open.`,
+          "info",
+          fromPanel,
+        );
+      } catch (err) {
+        await emitSfOrgOutput(ctx, "Open failed", String(err), "error", fromPanel);
+      } finally {
+        ctx.ui.setStatus("sf-org-command", undefined);
       }
+      return;
+    }
 
-      ctx.ui.notify(formatDetailedStatus(env), "info");
+    // Default: status (also handles unknown subcommands as a safety fallback)
+    if (!env) {
+      ctx.ui.setStatus("sf-org-command", "Detecting Salesforce environment…");
+      try {
+        env = await getSharedSfEnvironment(exec, ctx.cwd);
+        updateTitle(ctx);
+        updateTopBar(ctx);
+        requestFooterRender?.();
+      } catch (err) {
+        await emitSfOrgOutput(ctx, "Detection failed", String(err), "error", fromPanel);
+        return;
+      } finally {
+        ctx.ui.setStatus("sf-org-command", undefined);
+      }
+    }
+    await emitSfOrgOutput(ctx, "sf-org status", formatDetailedStatus(env), "info", fromPanel);
+  }
+
+  async function emitSfOrgOutput(
+    ctx: ExtensionCommandContext,
+    title: string,
+    body: string,
+    level: "info" | "warning" | "error" | "success",
+    fromPanel: boolean,
+  ): Promise<void> {
+    if (fromPanel && ctx.hasUI) {
+      await openInfoPanel(ctx, { title, body, severity: level });
+      return;
+    }
+    ctx.ui.notify(body ? `${title}\n\n${body}` : title, level === "success" ? "info" : level);
+  }
+
+  pi.registerCommand("sf-org", {
+    description: "Show Salesforce org status and environment info",
+    getArgumentCompletions: (prefix) => {
+      const lower = prefix.toLowerCase();
+      const items = SF_ORG_ACTIONS.filter((action) => action.value !== "close")
+        .filter((action) => action.value.startsWith(lower))
+        .map((action) => ({
+          value: action.value,
+          label: action.value,
+          description: action.description,
+        }));
+      return items.length > 0 ? items : null;
+    },
+    handler: async (args, ctx) => {
+      const sub = (args ?? "").trim().toLowerCase();
+      if (sub === "" && ctx.hasUI) {
+        await handleSfOrgPanel(ctx);
+        return;
+      }
+      // Map legacy `open` shorthand to the panel action id so headless
+      // invocations stay one-to-one with the menu rows.
+      const action = sub === "open" ? "open-setup" : sub || "status";
+      await handleSfOrgAction(ctx, action, false);
     },
   });
 }

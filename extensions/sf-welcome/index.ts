@@ -764,20 +764,179 @@ export default function sfWelcome(pi: ExtensionAPI) {
   // --- /sf-setup-fonts command ---
   //
   // Manual entry point for installing the bundled MesloLGM Nerd Font
-  // Mono TTFs. Delegates to the shared runFontInstall() helper so the
-  // one-time splash prompt and this command emit the exact same output.
+  // Mono TTFs. Wrapped in the standard /sf-* status & controls panel so
+  // the surface stays consistent with /sf-devbar, /sf-data360, etc.
+  // Delegates to runFontInstall() for the actual install — the splash
+  // prompt and this panel emit the exact same install output.
+
+  type SfSetupFontsAction = "status" | "install" | "reset" | "help" | "close";
+
+  const SF_SETUP_FONTS_ACTIONS: CommandPanelAction<SfSetupFontsAction>[] = [
+    {
+      value: "status",
+      label: "Show font installation status",
+      description:
+        "Print whether the bundled Nerd Font is installed and the recorded user decision.",
+      group: "Status",
+    },
+    {
+      value: "install",
+      label: "Install bundled Nerd Font",
+      description: `Copy ${FONT_FAMILY_NAME} TTFs into your user fonts folder. Records the decision so the splash won't re-ask.`,
+      group: "Actions",
+    },
+    {
+      value: "reset",
+      label: "Reset prompt decision",
+      description: "Clear the recorded yes/no answer so the splash asks again on the next session.",
+      group: "Troubleshooting",
+    },
+    {
+      value: "help",
+      label: "Show help",
+      description: "Print commands and platform support reference.",
+      group: "Reference",
+    },
+    {
+      value: "close",
+      label: "Close",
+      description: "Dismiss this panel.",
+      group: "Lifecycle",
+    },
+  ];
+
+  function buildSfSetupFontsStatusLines(): string[] {
+    const installed = isFontFamilyInstalled();
+    const decision = readWelcomeState().fontInstallDecision ?? "never asked";
+    const platform = process.platform;
+    const supported = platform === "darwin" || platform === "linux";
+    return [
+      `${installed ? "✓" : "○"} Bundled font   ${installed ? "installed" : "not installed"} (${FONT_FAMILY_NAME})`,
+      `• Decision       ${decision}`,
+      `${supported ? "✓" : "⚠"} Platform       ${platform} ${supported ? "" : "(manual install only)"}`.trim(),
+    ];
+  }
+
+  async function handleSfSetupFontsPanel(ctx: ExtensionCommandContext): Promise<void> {
+    const panelState: CommandPanelState<SfSetupFontsAction> = {};
+    await openCommandPanel(ctx, {
+      title: "🔤 SF Fonts — bundled Nerd Font installer",
+      subtitle: "Install the Nerd Font used by the sf-pi splash, or review the install state.",
+      statusLines: () => buildSfSetupFontsStatusLines(),
+      actions: () => SF_SETUP_FONTS_ACTIONS,
+      closeValue: "close",
+      state: panelState,
+      onAction: (action) => handleSfSetupFontsAction(ctx, action, true),
+    });
+  }
+
+  async function handleSfSetupFontsAction(
+    ctx: ExtensionCommandContext,
+    action: SfSetupFontsAction | string,
+    fromPanel: boolean,
+  ): Promise<void> {
+    if (action === "help") {
+      const help = [
+        "sf-setup-fonts — install the bundled Nerd Font",
+        "",
+        "Commands:",
+        "  /sf-setup-fonts          Open status & controls panel",
+        "  /sf-setup-fonts install  Install (records decision = yes)",
+        "  /sf-setup-fonts status   Show install state",
+        "  /sf-setup-fonts reset    Clear recorded yes/no answer",
+        "  /sf-setup-fonts help     Show this help",
+        "",
+        `Bundled font: ${FONT_FAMILY_NAME}`,
+        "Supported platforms: macOS, Linux. Windows: install manually.",
+      ].join("\n");
+      await emitSfSetupFontsOutput(ctx, "sf-setup-fonts help", help, "info", fromPanel);
+      return;
+    }
+
+    if (action === "install") {
+      ctx.ui.setStatus("sf-setup-fonts", "Installing bundled Nerd Font…");
+      try {
+        const result = await runFontInstall(exec);
+        // Record decision so the splash won't re-ask.
+        writeWelcomeState({
+          fontInstallDecision: "yes",
+          fontInstallPromptedAt: new Date().toISOString(),
+        });
+        // runFontInstall returns severity: "info" | "warning". Map straight
+        // through; the panel surface widens to "info" | "warning" | "error"
+        // | "success" but we never see error/success from this code path.
+        await emitSfSetupFontsOutput(
+          ctx,
+          "sf-setup-fonts install",
+          result.summary,
+          result.severity,
+          fromPanel,
+        );
+      } catch (err) {
+        await emitSfSetupFontsOutput(ctx, "Install failed", String(err), "error", fromPanel);
+      } finally {
+        ctx.ui.setStatus("sf-setup-fonts", undefined);
+      }
+      return;
+    }
+
+    if (action === "reset") {
+      writeWelcomeState({
+        fontInstallDecision: undefined,
+        fontInstallPromptedAt: undefined,
+      });
+      await emitSfSetupFontsOutput(
+        ctx,
+        "sf-setup-fonts reset",
+        "Cleared recorded font-install decision. The splash will ask again on the next session.",
+        "info",
+        fromPanel,
+      );
+      return;
+    }
+
+    // Default: status (also handles unknown subcommands)
+    const lines = ["sf-setup-fonts status", "", ...buildSfSetupFontsStatusLines()];
+    await emitSfSetupFontsOutput(ctx, "sf-setup-fonts status", lines.join("\n"), "info", fromPanel);
+  }
+
+  async function emitSfSetupFontsOutput(
+    ctx: ExtensionCommandContext,
+    title: string,
+    body: string,
+    level: "info" | "warning" | "error" | "success",
+    fromPanel: boolean,
+  ): Promise<void> {
+    if (fromPanel && ctx.hasUI) {
+      await openInfoPanel(ctx, { title, body, severity: level });
+      return;
+    }
+    ctx.ui.notify(body ? `${title}\n\n${body}` : title, level === "success" ? "info" : level);
+  }
+
   pi.registerCommand(FONTS_COMMAND_NAME, {
     description: "Install the bundled Nerd Font used by the sf-pi splash",
-    handler: async (_args, ctx) => {
-      const result = await runFontInstall(exec);
-      ctx.ui.notify(result.summary, result.severity);
-      // Record that the user has made a decision so the one-time splash
-      // prompt doesn't also ask. Users running this explicitly are
-      // clearly opting in.
-      writeWelcomeState({
-        fontInstallDecision: "yes",
-        fontInstallPromptedAt: new Date().toISOString(),
-      });
+    getArgumentCompletions: (prefix) => {
+      const lower = prefix.toLowerCase();
+      const items = SF_SETUP_FONTS_ACTIONS.filter((action) => action.value !== "close")
+        .filter((action) => action.value.startsWith(lower))
+        .map((action) => ({
+          value: action.value,
+          label: action.value,
+          description: action.description,
+        }));
+      return items.length > 0 ? items : null;
+    },
+    handler: async (args, ctx) => {
+      const sub = (args ?? "").trim().toLowerCase();
+      if (sub === "" && ctx.hasUI) {
+        await handleSfSetupFontsPanel(ctx);
+        return;
+      }
+      // Map empty/no-UI to install for backwards compatibility (the original
+      // handler always ran the installer when invoked).
+      const action = sub === "" ? "install" : sub;
+      await handleSfSetupFontsAction(ctx, action, false);
     },
   });
 
