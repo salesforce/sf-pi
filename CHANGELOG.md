@@ -481,6 +481,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.55.4](https://github.com/salesforce/sf-pi/compare/v0.55.3...v0.55.4) (2026-05-09)
+
+
+### Bug Fixes
+
+* **sf-slack:** bail session_start when auth.test returns ok:false ([8bb629e](https://github.com/salesforce/sf-pi/commit/8bb629e2edc4bb6f308647e67d64fbf73b20142f))
+
 ## [0.55.3](https://github.com/salesforce/sf-pi/compare/v0.55.2...v0.55.3) (2026-05-09)
 
 
