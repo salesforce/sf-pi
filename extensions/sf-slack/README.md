@@ -507,6 +507,7 @@ extensions/sf-slack/
     resolve.ts              ← implementation module
     scope-probe.ts          ← implementation module
     search-plan.ts          ← implementation module
+    send-tool-recipient.ts  ← implementation module
     send-tool.ts            ← implementation module
     stats.ts                ← implementation module
     status.ts               ← implementation module

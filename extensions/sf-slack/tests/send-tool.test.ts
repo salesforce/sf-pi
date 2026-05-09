@@ -35,10 +35,17 @@ function mockFetchWithScopes(scopesHeader: string): void {
     })) as unknown as typeof fetch;
 }
 
-const sendSource = readFileSync(
-  path.resolve(fileURLToPath(import.meta.url), "../../lib/send-tool.ts"),
-  "utf-8",
-);
+// send-tool.ts was split into a registration/audit/confirmation module
+// (`send-tool.ts`) and a recipient-routing sibling (`send-tool-recipient.ts`).
+// We concatenate both sources so the substring-based safety invariants below
+// keep covering the whole slack_send surface area.
+const sendSource = [
+  readFileSync(path.resolve(fileURLToPath(import.meta.url), "../../lib/send-tool.ts"), "utf-8"),
+  readFileSync(
+    path.resolve(fileURLToPath(import.meta.url), "../../lib/send-tool-recipient.ts"),
+    "utf-8",
+  ),
+].join("\n");
 const indexSource = readFileSync(
   path.resolve(fileURLToPath(import.meta.url), "../../index.ts"),
   "utf-8",
