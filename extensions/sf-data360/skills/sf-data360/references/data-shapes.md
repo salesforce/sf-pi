@@ -203,15 +203,31 @@ Endpoint: `POST /ssot/calculated-insights`
 
 Common fields:
 
-- `apiName` — must end with `__cio`.
+- `apiName` — must end with `__cio`. The Connect REST GET, PATCH, and
+  DELETE endpoints under `/ssot/calculated-insights/{apiName}` reject any
+  other suffix.
 - `displayName`
 - `definitionType` — usually `CALCULATED_METRIC` for calculated metrics.
-- `publishScheduleInterval`
+- `publishScheduleInterval` — use `SYSTEM_MANAGED` for create-only flows;
+  `Six`, `Twelve`, or `TwentyFour` for scheduled refresh.
 - `expression` — CI SQL.
 - optional `dataSpaceName`, `description`, schedule start/end, draft flags.
 
 Do not include explicit dimensions/measures arrays unless the current API
-documentation requires them; the platform can derive them from the expression.
+documentation requires them; the platform derives them from the expression
+(verified: a `SELECT dim, COUNT(*) FROM dmo GROUP BY dim` expression
+produced one dimension and one measure automatically).
+
+Lifecycle behavior:
+
+1. Create returns immediately with `calculatedInsightStatus: "PROCESSING"`
+   and quickly transitions to `ACTIVE`.
+2. `POST /ssot/calculated-insights/{apiName}/actions/run` returns
+   `{ "success": true, "errors": [] }` synchronously.
+3. `DELETE /ssot/calculated-insights/{apiName}` returns 204 with an empty
+   body. A follow-up GET briefly returns the record with
+   `calculatedInsightStatus: "DELETING"` before the resource fully
+   disappears (`ITEM_NOT_FOUND`).
 
 ## Data action shape
 
@@ -265,7 +281,27 @@ A minimal webhook-style target can use:
 }
 ```
 
-Delete with `DELETE /ssot/data-action-targets/{apiName}` after ensuring no data actions reference it. PATCH support can be org/API-version-specific; verify by re-reading or list-filtering after update attempts.
+Delete with `DELETE /ssot/data-action-targets/{apiName}` after ensuring no
+data actions reference it. After deletion, `GET
+/ssot/data-action-targets/{apiName}` may return
+`ILLEGAL_QUERY_PARAMETER_VALUE: DataActionTarget Id can not be null or
+empty` rather than a clean `ITEM_NOT_FOUND`; confirm the cleanup with a
+filtered list call.
+
+Lifecycle behavior:
+
+- Create returns the target with `status: "PROCESSING"`; a follow-up GET
+  shortly after typically reports `status: "ACTIVE"`.
+- The response normalizes `type` to uppercase (for example, `WebHook` in
+  the request becomes `WEBHOOK` in the response).
+- The Connect REST DTO accepts only the documented `config` shape for
+  the chosen target type. For webhook targets, only `targetEndpoint` is
+  required at minimum; do not include `subType`,
+  `externalRecordIdentifier`, or `apiContract` unless the live target
+  type documents them.
+
+PATCH support can be org/API-version-specific; verify by re-reading or
+list-filtering after update attempts.
 
 ## Activation target shape
 
@@ -290,23 +326,77 @@ Use the returned activation target ID for PATCH updates; updating by name can fa
 
 Endpoint: `POST /ssot/segments`
 
-Common fields:
+The Swagger `CdpSegmentInputRepresentation` requires `description`,
+`displayName`, `segmentOnApiName`, and `segmentType`; for create the
+platform also requires `developerName`.
 
-- `displayName`
-- `segmentOnApiName` — entity being segmented, often a unified DMO.
-- `segmentType`
-- `segmentCreationFlow`
-- `publishSchedule*` fields when scheduled publishing is needed.
-- `includeDbt.models.models[].sql` for SQL/dbt-style segment definitions.
+- `developerName` — unique segment API name; required for POST.
+- `displayName`, `description`
+- `segmentOnApiName` — the DMO API name being segmented; the DMO must
+  have `isSegmentable: true`. Verify with `d360_metadata describe_dmo` or
+  `GET /ssot/data-model-objects?limit=200` and filter on
+  `isSegmentable=true`.
+- `segmentType` — enum: `Dbt`, `Dynamic`, `EinsteinGptSegmentsUI`,
+  `Lookalike`, `Realtimez`, `Waterfall`. The legacy upstream value `Ui`
+  is rejected on current API versions; use `Dbt` for SQL-defined
+  segments.
+- `segmentCreationFlow` — enum: `Datakit`, `EinsteinGpt`, `Visual`. Use
+  `Visual` for SQL-only segments without a datakit dependency.
+- `publishSchedule` — enum: `NoRefresh`, `One`, `Two`, `Four`, `Six`,
+  `Twelve`, `TwentyFour`.
+- `includeDbt` — nested object that wraps a `models` object that wraps a
+  `models` array. The double-nesting matches the platform deserializer
+  even though the Swagger property type description is flatter.
 
-Segment SQL is Data Cloud SQL, not CRM SOQL. Verify referenced calculated
-insights are active before segment creation.
+DBT model SQL constraints (verified live):
 
-For SQL/dbt-style segments, a common API pattern is `segmentType: "Ui"`,
-`segmentCreationFlow: "Datakit"`, `publishSchedule: "NoRefresh"`, and nested
-`includeDbt.models.models[].sql`. When deleting a segment, prefer the segment
-API/developer name if deleting by the returned `marketSegmentId` reports that
-only `GET`/`HEAD` are allowed.
+- Use unaliased fully-qualified identifiers in the primary projection.
+  `SELECT DISTINCT dmo.field` works; `SELECT dmo.field AS alias` is
+  rejected with `Primary select should only contain unaliased fully
+qualified identifiers`.
+- Project both the primary key and the key qualifier of the segmentOn
+  entity (for example, `ssot__Id__c` and `KQ_Id__c`). Missing the key
+  qualifier returns `You must project a key qualifier along with the
+primary key`.
+
+Minimal create example:
+
+```json
+{
+  "developerName": "Example_Segment",
+  "displayName": "Example Segment",
+  "description": "Example segment.",
+  "segmentOnApiName": "ssot__SomeProfile__dlm",
+  "segmentType": "Dbt",
+  "publishSchedule": "NoRefresh",
+  "segmentCreationFlow": "Visual",
+  "includeDbt": {
+    "models": {
+      "models": [
+        {
+          "name": "example_segment",
+          "sql": "SELECT DISTINCT ssot__SomeProfile__dlm.ssot__Id__c, ssot__SomeProfile__dlm.KQ_Id__c FROM ssot__SomeProfile__dlm"
+        }
+      ]
+    }
+  }
+}
+```
+
+Lifecycle notes:
+
+- Create returns `segmentStatus: "PROCESSING"`. Operational endpoints
+  such as `POST /ssot/segments/{name}/actions/count` and
+  `actions/deactivate` require the segment to leave PROCESSING; calling
+  them too early returns `INTERNAL_ERROR: We couldn't trigger async
+count` or `We couldn't publish your segment`. Poll `segmentStatus` or
+  the platform's pipeline status before action calls.
+- `GET /ssot/segments/{apiName}` returns the record wrapped in a
+  `segments[]` array, not at the top level. Read with
+  `jq '.segments[0]'`.
+- `DELETE /ssot/segments/{apiName}` succeeds with 204 even while a
+  segment is in `PROCESSING`. A subsequent GET returns
+  `ITEM_NOT_FOUND`.
 
 ## Identity resolution shape
 

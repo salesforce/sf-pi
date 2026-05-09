@@ -105,6 +105,29 @@ Use a unique, sandbox-only prefix (for example `Pi_D360_Sweep`) and run
 this pattern only against orgs the user has marked disposable. Verify
 before and after via `GET` or `d360_metadata describe_dmo`.
 
+Three additional lifecycles have been verified end-to-end through the
+`d360_api` execution path:
+
+- **Calculated insight** — `POST /ssot/calculated-insights` (apiName ends
+  in `__cio`) → `GET` confirms `ACTIVE` →
+  `POST /ssot/calculated-insights/{apiName}/actions/run` returns
+  `{ "success": true }` → `DELETE` 204 → follow-up GET briefly returns
+  `calculatedInsightStatus: "DELETING"` then `ITEM_NOT_FOUND`.
+- **Data action + target** — `POST /ssot/data-action-targets`
+  (`type: "WebHook"`, minimal `config.targetEndpoint`) →
+  `POST /ssot/data-actions` referencing that target via
+  `dataActionTargetNames[]` → cleanup runs the data action DELETE first,
+  then the target DELETE. After deletion, GET on the target apiName may
+  return `DataActionTarget Id can not be null or empty`; confirm with a
+  filtered list.
+- **Segment** — `POST /ssot/segments` with `segmentType: "Dbt"`,
+  `segmentCreationFlow: "Visual"`, double-nested
+  `includeDbt.models.models[]`, and SQL that projects unaliased
+  fully-qualified primary key and key qualifier of the segmentOn entity
+  → read via `GET .../segments/{name}` (response wraps in `segments[0]`)
+  → `actions/count` and `actions/deactivate` only work after the
+  segment leaves `PROCESSING` → `DELETE` 204 → `ITEM_NOT_FOUND`.
+
 ## Safety expectations
 
 A recursive run should prove these design properties before executing broad live tests:

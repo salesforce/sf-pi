@@ -121,6 +121,45 @@ same as datakit namespace`. Work with manifests for DataKits installed in
   discriminator (`type`) field. Without it the API returns
   `JSON_PARSER_ERROR ... missing property 'type'`.
 
+## Segment create rejected by the platform
+
+Verified shapes for SQL-defined (`Dbt`) segments on current API versions:
+
+- `developerName` is required; without it the platform reports a vague
+  validation error.
+- `segmentType` must come from
+  `Dbt|Dynamic|EinsteinGptSegmentsUI|Lookalike|Realtimez|Waterfall`. The
+  legacy upstream value `Ui` is rejected.
+- `includeDbt.models.models[]` is double-nested; a flat `models[]` is
+  rejected with `Can not deserialize: unexpected array`.
+- DBT model SQL must use unaliased fully-qualified identifiers in the
+  primary projection (`SELECT DISTINCT dmo.field`, not `field AS x`).
+- DBT model SQL must project both the primary key and the key qualifier
+  of the segmentOn entity (for example, both `ssot__Id__c` and
+  `KQ_Id__c`).
+
+If `actions/count` or `actions/deactivate` returns `INTERNAL_ERROR: We
+couldn't trigger async count on your segment` or `We couldn't publish
+your segment`, the segment is still in `PROCESSING` status. Poll the
+status before retrying.
+
+## CI status reads `DELETING` after delete
+
+`DELETE /ssot/calculated-insights/{apiName}` returns 204 with an empty
+body. A follow-up GET briefly returns the record with
+`calculatedInsightStatus: "DELETING"` before the resource is fully gone
+(`ITEM_NOT_FOUND`). Treat both transient `DELETING` and `ITEM_NOT_FOUND`
+as successful cleanup.
+
+## Data action target GET says `Id can not be null or empty`
+
+After deleting a data-action target, a GET on the target apiName can
+return `ILLEGAL_QUERY_PARAMETER_VALUE: DataActionTarget Id can not be
+null or empty` instead of `ITEM_NOT_FOUND`. The path appears to expect
+an internal id, not the apiName, on this code path. Confirm cleanup with
+`GET /ssot/data-action-targets` and a filter, or by checking that no row
+in the list response has a matching `apiName`.
+
 ## Mutating call was blocked
 
 Re-run with `dry_run: true` and inspect the safety decision. If the operation is
