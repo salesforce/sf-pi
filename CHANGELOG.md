@@ -481,6 +481,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.55.7](https://github.com/salesforce/sf-pi/compare/v0.55.6...v0.55.7) (2026-05-09)
+
+
+### Bug Fixes
+
+* **panel:** close-row dismisses panel; toggle.lifecycle closes before reload ([45c1025](https://github.com/salesforce/sf-pi/commit/45c10251c3e82040481baca7afc8f94d6cf1f9ae))
+
 ## [0.55.6](https://github.com/salesforce/sf-pi/compare/v0.55.5...v0.55.6) (2026-05-09)
 
 
