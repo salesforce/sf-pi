@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.55.8-2026-05-09",
-  "latestVersion": "0.55.8",
+  "revision": "release-0.55.9-2026-05-09",
+  "latestVersion": "0.55.9",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.55.8",
+      "id": "release-0.55.9",
       "kind": "update",
-      "title": "sf-pi v0.55.8 — panel: consistency for /sf-org and /sf-fonts; harden panel against silent hangs",
+      "title": "sf-pi v0.55.9 — panel: prettier format safe-command-handler.test.ts",
       "publishedAt": "2026-05-09T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.55.8",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.55.9",
       "severity": "info",
-      "body": "panel: consistency for /sf-org and /sf-fonts; harden panel against silent hangs"
+      "body": "panel: prettier format safe-command-handler.test.ts — panel: wrap every /sf-* slash-command handler so failures surface visibly"
     },
     {
       "id": "pi-0.73-required",
