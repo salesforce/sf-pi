@@ -48,7 +48,7 @@ describe("withSafeCommandHandler", () => {
 
   it("returns the wrapped function's value on success", async () => {
     const ctx = makeStubCtx(true);
-     
+
     const result = await withSafeCommandHandler(ctx as any, "sf-thing", async () => 42);
     expect(result).toBe(42);
     expect(ctx.ui.notify).not.toHaveBeenCalled();
@@ -57,14 +57,9 @@ describe("withSafeCommandHandler", () => {
 
   it("surfaces a throw via openInfoPanel (ctx.ui.custom) when ctx.hasUI", async () => {
     const ctx = makeStubCtx(true);
-    const result = await withSafeCommandHandler(
-       
-      ctx as any,
-      "sf-thing",
-      async () => {
-        throw new Error("boom");
-      },
-    );
+    const result = await withSafeCommandHandler(ctx as any, "sf-thing", async () => {
+      throw new Error("boom");
+    });
     expect(result).toBeUndefined();
     // openInfoPanel routes through ctx.ui.custom — that's the visible
     // popup the user can't miss.
@@ -74,14 +69,9 @@ describe("withSafeCommandHandler", () => {
 
   it("falls back to ctx.ui.notify when ctx.hasUI is false", async () => {
     const ctx = makeStubCtx(false);
-    const result = await withSafeCommandHandler(
-       
-      ctx as any,
-      "sf-thing",
-      async () => {
-        throw new Error("boom");
-      },
-    );
+    const result = await withSafeCommandHandler(ctx as any, "sf-thing", async () => {
+      throw new Error("boom");
+    });
     expect(result).toBeUndefined();
     expect(ctx.ui.custom).not.toHaveBeenCalled();
     expect(ctx.ui.notify).toHaveBeenCalledTimes(1);
@@ -92,15 +82,9 @@ describe("withSafeCommandHandler", () => {
 
   it("surfaces non-Error throws (string, plain object) without crashing", async () => {
     const ctx = makeStubCtx(false);
-    const result = await withSafeCommandHandler(
-       
-      ctx as any,
-      "sf-thing",
-      async () => {
-         
-        throw "oh no";
-      },
-    );
+    const result = await withSafeCommandHandler(ctx as any, "sf-thing", async () => {
+      throw "oh no";
+    });
     expect(result).toBeUndefined();
     expect(ctx.ui.notify).toHaveBeenCalledTimes(1);
     expect(ctx.ui.notify.mock.calls[0]?.[0]).toContain("oh no");
@@ -108,7 +92,7 @@ describe("withSafeCommandHandler", () => {
 
   it("does not show the running pill for fast paths (<300ms)", async () => {
     const ctx = makeStubCtx(true);
-     
+
     const promise = withSafeCommandHandler(ctx as any, "sf-thing", async () => "fast");
     await vi.advanceTimersByTimeAsync(0);
     await promise;
@@ -120,7 +104,6 @@ describe("withSafeCommandHandler", () => {
     const ctx = makeStubCtx(true);
     let resolveBody: () => void = () => {};
     const promise = withSafeCommandHandler(
-       
       ctx as any,
       "sf-thing",
       () =>
@@ -146,7 +129,6 @@ describe("withSafeCommandHandler", () => {
     const ctx = makeStubCtx(true);
     let rejectBody: (err: Error) => void = () => {};
     const promise = withSafeCommandHandler(
-       
       ctx as any,
       "sf-thing",
       () =>
@@ -168,14 +150,9 @@ describe("withSafeCommandHandler", () => {
   it("falls back to notify when the error popup itself fails to mount", async () => {
     const ctx = makeStubCtx(true);
     ctx.ui.custom.mockRejectedValueOnce(new Error("ctx is stale"));
-    await withSafeCommandHandler(
-       
-      ctx as any,
-      "sf-thing",
-      async () => {
-        throw new Error("primary failure");
-      },
-    );
+    await withSafeCommandHandler(ctx as any, "sf-thing", async () => {
+      throw new Error("primary failure");
+    });
     expect(ctx.ui.custom).toHaveBeenCalledTimes(1);
     // Fallback notify always carries the original error message.
     expect(ctx.ui.notify).toHaveBeenCalledTimes(1);
@@ -186,7 +163,7 @@ describe("withSafeCommandHandler", () => {
 describe("setSafeStatus", () => {
   it("clears the status indicator after success", async () => {
     const ctx = makeStubCtx(true);
-     
+
     const result = await setSafeStatus(ctx as any, "k", "loading…", async () => "ok");
     expect(result).toBe("ok");
     expect(ctx.ui.setStatus).toHaveBeenNthCalledWith(1, "k", "loading…");
@@ -196,7 +173,6 @@ describe("setSafeStatus", () => {
   it("clears the status indicator even when the body throws", async () => {
     const ctx = makeStubCtx(true);
     await expect(
-       
       setSafeStatus(ctx as any, "k", "loading…", async () => {
         throw new Error("boom");
       }),
@@ -207,7 +183,7 @@ describe("setSafeStatus", () => {
 
   it("is a no-op for status calls when ctx.hasUI is false", async () => {
     const ctx = makeStubCtx(false);
-     
+
     await setSafeStatus(ctx as any, "k", "loading…", async () => "ok");
     expect(ctx.ui.setStatus).not.toHaveBeenCalled();
   });
