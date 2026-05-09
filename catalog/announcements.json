@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.55.5-2026-05-09",
-  "latestVersion": "0.55.5",
+  "revision": "release-0.55.6-2026-05-09",
+  "latestVersion": "0.55.6",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.55.5",
+      "id": "release-0.55.6",
       "kind": "update",
-      "title": "sf-pi v0.55.5 — sf-slack: force HTTP/1.1 to avoid undici H2 hang on Node 26",
+      "title": "sf-pi v0.55.6 — sf-slack: use node:https instead of undici fetch (Node 26 H2 hang)",
       "publishedAt": "2026-05-09T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.55.5",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.55.6",
       "severity": "info",
-      "body": "sf-slack: force HTTP/1.1 to avoid undici H2 hang on Node 26"
+      "body": "sf-slack: use node:https instead of undici fetch (Node 26 H2 hang)"
     },
     {
       "id": "pi-0.73-required",
