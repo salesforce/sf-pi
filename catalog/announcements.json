@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.55.1-2026-05-09",
-  "latestVersion": "0.55.1",
+  "revision": "release-0.55.2-2026-05-09",
+  "latestVersion": "0.55.2",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.55.1",
+      "id": "release-0.55.2",
       "kind": "update",
-      "title": "sf-pi v0.55.1 — release: cut patch release for Wave 3 refactors",
+      "title": "sf-pi v0.55.2 — sf-slack: surface auth.test timeout instead of staying stuck on loading",
       "publishedAt": "2026-05-09T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.55.1",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.55.2",
       "severity": "info",
-      "body": "release: cut patch release for Wave 3 refactors"
+      "body": "sf-slack: surface auth.test timeout instead of staying stuck on loading"
     },
     {
       "id": "pi-0.73-required",
