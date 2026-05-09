@@ -95,7 +95,7 @@ import {
   summarizeStartupDoctorNudge,
 } from "../../lib/common/doctor/diagnostics.ts";
 import { loadAnnouncementsManifest } from "../../lib/common/catalog-state/announcements-manifest.ts";
-import { buildAnnouncementsSync } from "../sf-welcome/lib/announcements.ts";
+import { buildAnnouncementsSync } from "../../lib/common/catalog-state/announcements-orchestrator.ts";
 import { readAnnouncementsState } from "../../lib/common/catalog-state/announcements-state.ts";
 
 export {

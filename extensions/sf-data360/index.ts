@@ -30,11 +30,13 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 
+import { type CommandPanelState, openCommandPanel } from "../../lib/common/command-panel.ts";
 import {
-  type CommandPanelAction,
-  type CommandPanelState,
-  openCommandPanel,
-} from "../../lib/common/command-panel.ts";
+  type SfPiCommandAction,
+  formatHelpFromActions,
+  getCompletionsFromActions,
+  resolveAction,
+} from "../../lib/common/command-actions.ts";
 import { openInfoPanel, type InfoPanelSeverity } from "../../lib/common/info-panel.ts";
 import {
   buildToggleExtensionAction,
@@ -89,14 +91,12 @@ export default function sfData360(pi: ExtensionAPI) {
 
   pi.registerCommand(COMMAND_NAME, {
     description: "Show Data 360 direct REST helper status and usage",
-    getArgumentCompletions: (prefix: string) => {
-      const current = prefix.trim().split(/\s+/).at(-1)?.toLowerCase() ?? "";
-      const options = ["status", "help"];
-      const matches = options
-        .filter((option) => option.startsWith(current))
-        .map((option) => ({ value: option, label: option }));
-      return matches.length > 0 ? matches : null;
-    },
+    // Single source of truth for completions — SF_DATA360_ACTIONS drives
+    // the panel rows, the completions, and the auto-generated help block.
+    getArgumentCompletions: (prefix: string) =>
+      getCompletionsFromActions(SF_DATA360_ACTIONS, prefix.trim().split(/\s+/).at(-1) ?? "", {
+        excludeValues: ["close", "lifecycle.toggle"],
+      }),
     handler: async (args, ctx) => handleCommand(pi, ctx, args || ""),
   });
 }
@@ -106,7 +106,7 @@ export default function sfData360(pi: ExtensionAPI) {
 // etc. so users get the same standardized command-panel UX everywhere.
 type SfData360Action = "status" | "help" | "close" | LifecycleActionId;
 
-const SF_DATA360_ACTIONS: CommandPanelAction<SfData360Action>[] = [
+const SF_DATA360_ACTIONS: SfPiCommandAction<SfData360Action>[] = [
   {
     value: "status",
     label: "Show status",
@@ -129,8 +129,9 @@ const SF_DATA360_ACTIONS: CommandPanelAction<SfData360Action>[] = [
 ];
 
 // Compose the live action list so the lifecycle toggle row reflects the
-// current enablement state on every panel open.
-function buildSfData360Actions(cwd: string): CommandPanelAction<SfData360Action>[] {
+// current enablement state on every panel open. SfPiCommandAction is a
+// structural superset of CommandPanelAction so the panel accepts both.
+function buildSfData360Actions(cwd: string): SfPiCommandAction<SfData360Action>[] {
   const toggle = buildToggleExtensionAction({ extensionId: "sf-data360", cwd });
   return toggle ? [...SF_DATA360_ACTIONS, toggle] : SF_DATA360_ACTIONS;
 }
@@ -150,12 +151,9 @@ async function handleCommand(
     return;
   }
 
-  await handleSfData360Action(
-    pi,
-    ctx,
-    subcommand === "" ? "status" : (subcommand as SfData360Action | string),
-    false,
-  );
+  const resolved =
+    subcommand === "" ? "status" : (resolveAction(SF_DATA360_ACTIONS, subcommand) ?? subcommand);
+  await handleSfData360Action(pi, ctx, resolved, false);
 }
 
 async function handleSfData360Panel(pi: ExtensionAPI, ctx: ExtensionCommandContext): Promise<void> {
@@ -269,9 +267,10 @@ function buildHelpText(enabled: boolean): string {
   return [
     "SF Data 360 — direct REST helper",
     "",
-    "Commands:",
-    `  /${COMMAND_NAME}          Show status`,
-    `  /${COMMAND_NAME} help     Show this help`,
+    formatHelpFromActions(
+      SF_DATA360_ACTIONS.filter((a) => a.value !== "close" && a.value !== "lifecycle.toggle"),
+      COMMAND_NAME,
+    ),
     "",
     "Enablement:",
     `  Default state: enabled`,

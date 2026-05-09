@@ -21,9 +21,13 @@ import { estimateMonthlyCost, getRecentSessions } from "./session-data.ts";
 import { getMonthlyUsageState } from "../../../lib/common/monthly-usage/store.ts";
 import { getSlackStatus } from "../../../lib/common/slack-status/store.ts";
 import { isSfPiExtensionEnabled } from "../../../lib/common/sf-pi-extension-state.ts";
-import { buildWhatsNewPayload } from "./whats-new.ts";
-import { buildAnnouncementsSync, refreshAnnouncements } from "./announcements.ts";
+import { buildWhatsNewPayload } from "../../../lib/common/catalog-state/whats-new.ts";
+import {
+  buildAnnouncementsSync,
+  refreshAnnouncements,
+} from "../../../lib/common/catalog-state/announcements-orchestrator.ts";
 import { collectRecommendationsStatus } from "./recommendations-status.ts";
+import { readWelcomeState } from "./state-store.ts";
 import { summarizeAvailableSkillSources } from "../../../lib/common/skill-sources/skill-sources.ts";
 import {
   runDoctorDiagnostics,
@@ -50,12 +54,15 @@ export type {
 export { discoverExtensionHealth } from "./extension-health.ts";
 export { detectSfCliStatus, isVersionCurrent, parseSfCliVersion } from "./sf-cli-status.ts";
 export { estimateMonthlyCost, getRecentSessions } from "./session-data.ts";
-export { buildWhatsNewPayload, readCurrentPiVersion } from "./whats-new.ts";
+export {
+  buildWhatsNewPayload,
+  readCurrentPiVersion,
+} from "../../../lib/common/catalog-state/whats-new.ts";
 export {
   buildAnnouncementsSync,
   refreshAnnouncements,
   MAX_VISIBLE_ANNOUNCEMENTS,
-} from "./announcements.ts";
+} from "../../../lib/common/catalog-state/announcements-orchestrator.ts";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Loaded counts discovery
@@ -324,8 +331,13 @@ export function collectSplashData(
 
   // Resolve the What's New panel eagerly so the splash can include it on
   // the very first render. Returns undefined on first-ever launch or when
-  // the user has already acknowledged the current version.
-  const whatsNewPayload = buildWhatsNewPayload();
+  // the user has already acknowledged the current version. We feed the
+  // last-seen-version explicitly because whats-new.ts moved to lib/common
+  // and no longer reaches into sf-welcome's state-store.
+  const whatsNewState = readWelcomeState();
+  const whatsNewPayload = buildWhatsNewPayload({
+    lastSeenPiVersion: whatsNewState.lastSeenPiVersion,
+  });
   const whatsNew: WhatsNewSummary | undefined = whatsNewPayload
     ? {
         fromVersion: whatsNewPayload.fromVersion,

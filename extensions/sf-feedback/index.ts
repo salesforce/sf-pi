@@ -41,11 +41,13 @@ import {
   performToggleExtension,
   type LifecycleActionId,
 } from "../../lib/common/extension-toggle.ts";
+import { type CommandPanelState, openCommandPanel } from "../../lib/common/command-panel.ts";
 import {
-  type CommandPanelAction,
-  type CommandPanelState,
-  openCommandPanel,
-} from "../../lib/common/command-panel.ts";
+  type SfPiCommandAction,
+  formatHelpFromActions,
+  getCompletionsFromActions,
+  resolveAction,
+} from "../../lib/common/command-actions.ts";
 import { openInfoPanel } from "../../lib/common/info-panel.ts";
 import { sanitizeText } from "./lib/sanitize.ts";
 import type { FeedbackDraft, IssueKind } from "./lib/types.ts";
@@ -58,14 +60,12 @@ export default function sfFeedback(pi: ExtensionAPI) {
 
   pi.registerCommand(COMMAND_NAME, {
     description: "Create sanitized SF Pi feedback or bug reports on GitHub",
-    getArgumentCompletions: (prefix: string) => {
-      const current = prefix.trim().split(/\s+/).at(-1)?.toLowerCase() ?? "";
-      const options = ["bug", "feature", "setup", "feedback", "diagnostics", "help"];
-      const matches = options
-        .filter((option) => option.startsWith(current))
-        .map((option) => ({ value: option, label: option }));
-      return matches.length > 0 ? matches : null;
-    },
+    // Single source of truth: FEEDBACK_ACTIONS drives the panel rows, the
+    // completions, and the auto-generated help text below.
+    getArgumentCompletions: (prefix: string) =>
+      getCompletionsFromActions(FEEDBACK_ACTIONS, prefix.trim().split(/\s+/).at(-1) ?? "", {
+        excludeValues: ["close", "lifecycle.toggle"],
+      }),
     handler: async (args, ctx) => {
       const exec = buildExecFn(pi, ctx.cwd);
       if (!(args || "").trim() && ctx.hasUI) {
@@ -87,7 +87,7 @@ type FeedbackAction =
   | "close"
   | LifecycleActionId;
 
-const FEEDBACK_ACTIONS: CommandPanelAction<FeedbackAction>[] = [
+const FEEDBACK_ACTIONS: SfPiCommandAction<FeedbackAction>[] = [
   {
     value: "bug",
     label: "Report a bug",
@@ -135,7 +135,7 @@ const FEEDBACK_ACTIONS: CommandPanelAction<FeedbackAction>[] = [
 
 // Compose the live action list so the lifecycle toggle row reflects the
 // current enablement state on every panel open.
-function buildFeedbackActions(cwd: string): CommandPanelAction<FeedbackAction>[] {
+function buildFeedbackActions(cwd: string): SfPiCommandAction<FeedbackAction>[] {
   const toggle = buildToggleExtensionAction({ extensionId: "sf-feedback", cwd });
   return toggle ? [...FEEDBACK_ACTIONS, toggle] : FEEDBACK_ACTIONS;
 }
@@ -168,7 +168,11 @@ async function handleCommand(
   rawArgs: string,
 ): Promise<void> {
   const args = rawArgs.trim().split(/\s+/).filter(Boolean);
-  const subcommand = args[0]?.toLowerCase();
+  // Resolve canonical names + aliases through the catalog so future aliases
+  // (e.g. "dr" → "diagnostics") flow through one place.
+  const subcommand = args[0]
+    ? (resolveAction(FEEDBACK_ACTIONS, args[0]) ?? args[0]?.toLowerCase())
+    : undefined;
 
   if (subcommand === "lifecycle.toggle") {
     await performToggleExtension(ctx, "sf-feedback");
@@ -360,12 +364,10 @@ function renderPreview(title: string, labels: string[], body: string): string {
 
 function renderHelp(): string {
   return [
-    "Usage:",
-    "  /sf-feedback              Guided feedback flow",
-    "  /sf-feedback bug          Start as a bug report",
-    "  /sf-feedback feature      Start as a feature request",
-    "  /sf-feedback setup        Start as a setup issue",
-    "  /sf-feedback diagnostics  Show sanitized diagnostics only",
+    formatHelpFromActions(
+      FEEDBACK_ACTIONS.filter((a) => a.value !== "close" && a.value !== "lifecycle.toggle"),
+      COMMAND_NAME,
+    ),
     "",
     "SF Feedback redacts org URLs, aliases, emails, tokens, home paths, and private remotes before previewing or submitting.",
   ].join("\n");

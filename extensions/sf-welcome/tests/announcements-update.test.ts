@@ -11,7 +11,10 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { buildUpdateAnnouncement, UPDATE_NUDGE_ID } from "../lib/announcements-update.ts";
+import {
+  buildUpdateAnnouncement,
+  UPDATE_NUDGE_ID,
+} from "../../../lib/common/catalog-state/announcements-update.ts";
 
 const tempDirs: string[] = [];
 

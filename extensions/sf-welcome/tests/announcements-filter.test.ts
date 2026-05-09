@@ -15,7 +15,7 @@ import {
   matchesVersionRange,
   mergeAnnouncements,
   MAX_VISIBLE_ANNOUNCEMENTS,
-} from "../lib/announcements-filter.ts";
+} from "../../../lib/common/catalog-state/announcements-filter.ts";
 
 function note(id: string, overrides: Partial<AnnouncementItem> = {}): AnnouncementItem {
   return {

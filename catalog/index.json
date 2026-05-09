@@ -116,7 +116,7 @@
     "entry": "extensions/sf-data360/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 1798
+    "srcLoc": 1797
   },
   {
     "id": "sf-devbar",
@@ -191,7 +191,7 @@
     "entry": "extensions/sf-feedback/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 934
+    "srcLoc": 936
   },
   {
     "id": "sf-guardrail",
@@ -548,6 +548,6 @@
     "entry": "extensions/sf-welcome/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 4345
+    "srcLoc": 3330
   }
 ]

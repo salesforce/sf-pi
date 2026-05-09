@@ -16,7 +16,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
-import { readWelcomeState } from "./state-store.ts";
 
 /** Upper bound on bullets rendered on the splash. */
 export const WHATSNEW_MAX_BULLETS = 8;
@@ -55,21 +54,25 @@ export interface ChangelogSection {
 // -------------------------------------------------------------------------------------------------
 
 /**
- * Resolve the current pi version and the last-seen version, then build the
- * splash payload. Returns `null` when there is nothing new to show (same
- * version, downgrade, missing changelog, or first-ever launch).
+ * Resolve the current pi version and the caller-supplied last-seen version,
+ * then build the splash payload. Returns `null` when there is nothing new
+ * to show (same version, downgrade, missing changelog, or first-ever launch).
+ *
+ * Callers (currently sf-welcome) supply `lastSeenPiVersion` from their own
+ * state store. Keeping that parameter explicit lets this module live in
+ * `lib/common/` without depending on any extension's internal state file.
  */
 export function buildWhatsNewPayload(
   options: {
-    statePath?: string;
+    /** Caller's last-acknowledged pi version (e.g. from sf-welcome state). */
+    lastSeenPiVersion?: string;
     piPackagePath?: string;
   } = {},
 ): WhatsNewPayload | null {
   const current = readCurrentPiVersion(options.piPackagePath);
   if (!current) return null;
 
-  const state = readWelcomeState(options.statePath);
-  const lastSeen = state.lastSeenPiVersion;
+  const lastSeen = options.lastSeenPiVersion;
 
   // First-ever launch — no previous version to compare against.
   // Returning null lets the caller persist the current version without

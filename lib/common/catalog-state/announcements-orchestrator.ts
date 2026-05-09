@@ -18,17 +18,14 @@
  */
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { globalSettingsPath, projectSettingsPath } from "../../../lib/common/pi-paths.ts";
+import { globalSettingsPath, projectSettingsPath } from "../pi-paths.ts";
 import type {
   AnnouncementItem,
   AnnouncementKind,
   AnnouncementSeverity,
   AnnouncementsManifest,
 } from "../../../catalog/types.ts";
-import {
-  loadAnnouncementsManifest,
-  resolveDefaultPackageRoot,
-} from "../../../lib/common/catalog-state/announcements-manifest.ts";
+import { loadAnnouncementsManifest, resolveDefaultPackageRoot } from "./announcements-manifest.ts";
 import { fetchRemoteAnnouncements, type RemoteFetchOptions } from "./announcements-remote.ts";
 import { buildUpdateAnnouncement } from "./announcements-update.ts";
 import { filterAnnouncements, mergeAnnouncements } from "./announcements-filter.ts";
@@ -36,7 +33,7 @@ import {
   readAnnouncementsState,
   updateRemoteCache,
   type AnnouncementsState,
-} from "../../../lib/common/catalog-state/announcements-state.ts";
+} from "./announcements-state.ts";
 
 export { MAX_VISIBLE_ANNOUNCEMENTS } from "./announcements-filter.ts";
 

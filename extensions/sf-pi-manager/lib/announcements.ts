@@ -25,7 +25,7 @@ import {
   buildAnnouncementsSync,
   refreshAnnouncements,
   type AnnouncementsPayload,
-} from "../../sf-welcome/lib/announcements.ts";
+} from "../../../lib/common/catalog-state/announcements-orchestrator.ts";
 import {
   acknowledgeAnnouncementsRevision,
   dismissAnnouncement,

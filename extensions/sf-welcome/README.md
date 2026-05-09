@@ -147,10 +147,6 @@ extensions/sf-welcome/
       LICENSE               ← bundled asset metadata
       SOURCE.md             ← bundled asset metadata
   lib/
-    announcements-filter.ts ← implementation module
-    announcements-remote.ts ← implementation module
-    announcements-update.ts ← implementation module
-    announcements.ts        ← implementation module
     extension-health.ts     ← implementation module
     font-installer.ts       ← implementation module
     recommendations-status.ts← implementation module
@@ -161,7 +157,6 @@ extensions/sf-welcome/
     startup-mode.ts         ← implementation module
     state-store.ts          ← implementation module
     types.ts                ← implementation module
-    whats-new.ts            ← implementation module
   tests/
     announcements-filter.test.ts← unit / smoke test
     announcements-manifest.test.ts← unit / smoke test

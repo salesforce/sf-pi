@@ -10,7 +10,7 @@ import { describe, it, expect } from "vitest";
 import type { AnnouncementsManifest, AnnouncementItem } from "../../../catalog/types.ts";
 import { computeAnnouncementsNudge, parseAnnouncementsArgs } from "../lib/announcements.ts";
 import type { AnnouncementsState } from "../../../lib/common/catalog-state/announcements-state.ts";
-import type { AnnouncementsPayload } from "../../sf-welcome/lib/announcements.ts";
+import type { AnnouncementsPayload } from "../../../lib/common/catalog-state/announcements-orchestrator.ts";
 
 // -------------------------------------------------------------------------------------------------
 // parseAnnouncementsArgs

@@ -25,7 +25,7 @@ import {
   resolveChangelogPath,
   sliceChangelog,
   summarizeChangelog,
-} from "../lib/whats-new.ts";
+} from "../../../lib/common/catalog-state/whats-new.ts";
 
 const tempDirs: string[] = [];
 
@@ -217,48 +217,28 @@ function createFakePiPackage(version: string, changelog: string): string {
   return dir;
 }
 
-function createStateFile(dir: string, lastSeen: string | undefined): string {
-  const statePath = join(dir, "welcome-state.json");
-  if (lastSeen !== undefined) {
-    writeFileSync(statePath, JSON.stringify({ lastSeenPiVersion: lastSeen }), "utf-8");
-  }
-  return statePath;
-}
-
 describe("buildWhatsNewPayload", () => {
   it("returns null when the user has never seen any version", () => {
     const pkg = createFakePiPackage("0.68.1", TINY_CHANGELOG);
-    const stateDir = makeTempDir("whats-new-state-");
-    const statePath = createStateFile(stateDir, undefined);
-
-    const payload = buildWhatsNewPayload({ piPackagePath: pkg, statePath });
+    const payload = buildWhatsNewPayload({ piPackagePath: pkg, lastSeenPiVersion: undefined });
     expect(payload).toBeNull();
   });
 
   it("returns null when current === lastSeen", () => {
     const pkg = createFakePiPackage("0.68.1", TINY_CHANGELOG);
-    const stateDir = makeTempDir("whats-new-state-");
-    const statePath = createStateFile(stateDir, "0.68.1");
-
-    const payload = buildWhatsNewPayload({ piPackagePath: pkg, statePath });
+    const payload = buildWhatsNewPayload({ piPackagePath: pkg, lastSeenPiVersion: "0.68.1" });
     expect(payload).toBeNull();
   });
 
   it("returns null on downgrade (no panel for past versions)", () => {
     const pkg = createFakePiPackage("0.67.68", TINY_CHANGELOG);
-    const stateDir = makeTempDir("whats-new-state-");
-    const statePath = createStateFile(stateDir, "0.68.1");
-
-    const payload = buildWhatsNewPayload({ piPackagePath: pkg, statePath });
+    const payload = buildWhatsNewPayload({ piPackagePath: pkg, lastSeenPiVersion: "0.68.1" });
     expect(payload).toBeNull();
   });
 
   it("builds a payload spanning last-seen to current", () => {
     const pkg = createFakePiPackage("0.68.1", TINY_CHANGELOG);
-    const stateDir = makeTempDir("whats-new-state-");
-    const statePath = createStateFile(stateDir, "0.67.68");
-
-    const payload = buildWhatsNewPayload({ piPackagePath: pkg, statePath });
+    const payload = buildWhatsNewPayload({ piPackagePath: pkg, lastSeenPiVersion: "0.67.68" });
     expect(payload).not.toBeNull();
     expect(payload!.fromVersion).toBe("0.67.68");
     expect(payload!.toVersion).toBe("0.68.1");
@@ -274,10 +254,7 @@ describe("buildWhatsNewPayload", () => {
       JSON.stringify({ name: "@earendil-works/pi-coding-agent", version: "0.68.1" }),
       "utf-8",
     );
-    const stateDir = makeTempDir("whats-new-state-");
-    const statePath = createStateFile(stateDir, "0.67.68");
-
-    const payload = buildWhatsNewPayload({ piPackagePath: dir, statePath });
+    const payload = buildWhatsNewPayload({ piPackagePath: dir, lastSeenPiVersion: "0.67.68" });
     expect(payload).toBeNull();
   });
 });

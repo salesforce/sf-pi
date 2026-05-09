@@ -270,6 +270,54 @@ function checkManifestToolsMatchCode() {
   }
 }
 
+// Per-file LOC advisory thresholds. AGENTS.md §3 calls out "if 200 lines
+// could be 50, rewrite it." In practice we use a softer informational
+// threshold so growth is visible during PR review without forcing today's
+// refactor. Output is `warn`-level only — it never fails CI.
+const FILE_LOC_ADVISORY = 800;
+const FILE_LOC_HARD_ADVISORY = 1500;
+
+function checkExtensionFileSize() {
+  for (const dir of extensionDirs()) {
+    const baseAbs = path.join(ROOT, "extensions", dir);
+    if (!existsSync(baseAbs)) continue;
+    const candidates = [];
+    const indexAbs = path.join(baseAbs, "index.ts");
+    if (existsSync(indexAbs)) candidates.push(indexAbs);
+    const libAbs = path.join(baseAbs, "lib");
+    if (existsSync(libAbs)) {
+      try {
+        for (const entry of readdirSync(libAbs, { withFileTypes: true })) {
+          if (!entry.isFile()) continue;
+          if (!entry.name.endsWith(".ts")) continue;
+          candidates.push(path.join(libAbs, entry.name));
+        }
+      } catch {
+        // ignore unreadable lib/ directories
+      }
+    }
+
+    for (const file of candidates) {
+      const text = readFileSync(file, "utf8");
+      const loc = text.split("\n").length;
+      const rel = path.relative(ROOT, file).replaceAll(path.sep, "/");
+      if (loc >= FILE_LOC_HARD_ADVISORY) {
+        warn(
+          rel,
+          `File is ${loc} LOC (≥ ${FILE_LOC_HARD_ADVISORY}). Strongly consider splitting on next touch.`,
+          "AGENTS.md \u00a73: split by responsibility. Advisory only \u2014 does not fail CI.",
+        );
+      } else if (loc >= FILE_LOC_ADVISORY) {
+        warn(
+          rel,
+          `File is ${loc} LOC (≥ ${FILE_LOC_ADVISORY}). Consider splitting if you're already touching this file.`,
+          "Advisory only \u2014 does not fail CI.",
+        );
+      }
+    }
+  }
+}
+
 function checkStateStoreLocation() {
   // Q4 of the AGENTS.md state-persistence decision tree (per-user JSON state)
   // must use the shared lib/common/state-store.ts helper. We enforce that by
@@ -372,6 +420,7 @@ function run() {
   checkRecommendationTable();
   checkGeneratedFilesExist();
   checkExtensionReadmes();
+  checkExtensionFileSize();
   checkStateStoreLocation();
   checkManifestEventsMatchCode();
   checkManifestToolsMatchCode();

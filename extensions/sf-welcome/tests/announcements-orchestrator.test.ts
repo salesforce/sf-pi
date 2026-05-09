@@ -10,7 +10,10 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { buildAnnouncementsSync, refreshAnnouncements } from "../lib/announcements.ts";
+import {
+  buildAnnouncementsSync,
+  refreshAnnouncements,
+} from "../../../lib/common/catalog-state/announcements-orchestrator.ts";
 
 const tempDirs: string[] = [];
 

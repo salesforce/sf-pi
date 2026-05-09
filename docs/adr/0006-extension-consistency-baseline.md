@@ -185,6 +185,44 @@ Each extension's standalone `/sf-X doctor` command keeps working
 unchanged — the adapter file (`lib/extension-doctor.ts` or
 `lib/doctor.ts > runExtensionDoctor`) is a parallel entry point only.
 
+## Closing follow-ups
+
+### Cross-extension imports eliminated
+
+The last remaining cross-extension import (sf-pi-manager pulling
+`buildAnnouncementsSync` from sf-welcome) was closed by moving the
+announcements pipeline to `lib/common/catalog-state/`:
+
+- `extensions/sf-welcome/lib/announcements.ts` →
+  `lib/common/catalog-state/announcements-orchestrator.ts`
+- `extensions/sf-welcome/lib/announcements-{filter,update,remote}.ts` →
+  `lib/common/catalog-state/announcements-{filter,update,remote}.ts`
+- `extensions/sf-welcome/lib/whats-new.ts` →
+  `lib/common/catalog-state/whats-new.ts` (refactored to take
+  `lastSeenPiVersion` as an explicit parameter so it no longer reaches
+  into sf-welcome's state-store)
+
+`grep -rn "from \"\.\./sf-" extensions/ --include="*.ts"` now returns no
+production matches.
+
+### `lib/common/command-actions.ts` adopted
+
+The shared action-catalog helper is now used by `sf-data360` and
+`sf-feedback`. Both pull `getCompletionsFromActions`, `resolveAction`,
+and `formatHelpFromActions` from `lib/common`, so a single
+`SF_*_ACTIONS` array drives the panel rows, the slash-command
+completions, and the auto-generated `/help` text. Future extensions can
+adopt the same shape; existing extensions migrate when they're next
+touched for a real change.
+
+### File-size growth advisory lint
+
+`scripts/docs-health.mjs` now emits informational warnings for
+extension `.ts` files at or above 800 LOC and stronger warnings at or
+above 1500 LOC. The lint never fails CI — it exists purely so growth
+is visible during PR review without forcing today's refactor. Pairs
+with AGENTS.md §3 ("split by responsibility").
+
 ## Out of scope (Wave 3 in the original plan)
 
 These remain explicitly deferred:
