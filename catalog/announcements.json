@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.55.3-2026-05-09",
-  "latestVersion": "0.55.3",
+  "revision": "release-0.55.4-2026-05-09",
+  "latestVersion": "0.55.4",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.55.3",
+      "id": "release-0.55.4",
       "kind": "update",
-      "title": "sf-pi v0.55.3 — sf-slack: surface the actual error when auth/scope-probe fails",
+      "title": "sf-pi v0.55.4 — sf-slack: bail session_start when auth.test returns ok:false",
       "publishedAt": "2026-05-09T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.55.3",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.55.4",
       "severity": "info",
-      "body": "sf-slack: surface the actual error when auth/scope-probe fails"
+      "body": "sf-slack: bail session_start when auth.test returns ok:false"
     },
     {
       "id": "pi-0.73-required",
