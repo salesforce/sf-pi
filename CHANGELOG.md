@@ -456,6 +456,21 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.51.0](https://github.com/salesforce/sf-pi/compare/v0.50.0...v0.51.0) (2026-05-09)
+
+
+### Features
+
+* **panels:** drift migrations \u2014 sf-lsp, sf-llm-gateway-internal, sf-welcome ([e2bd0e4](https://github.com/salesforce/sf-pi/commit/e2bd0e467d3e8da7cfa3bb2383aa31d4e2ab92dc))
+* **panels:** lint script + scaffold template + AGENTS.md contract ([9ac3e57](https://github.com/salesforce/sf-pi/commit/9ac3e57aa686ed64b152dbf8c154d57f8e8c98bd))
+* **panels:** shared lifecycle toggle action + sf-data360 popup output ([bdc313d](https://github.com/salesforce/sf-pi/commit/bdc313d1dce27c6b770ba5893c729f04f612eb22))
+* **ui:** four-color hierarchy + exit/quit keys for shared command panel ([6dbdeda](https://github.com/salesforce/sf-pi/commit/6dbdedab4716efbbdc5f28537708403aba9f7956))
+
+
+### Bug Fixes
+
+* **sf-pi-manager,sf-data360:** consistent scope auto-detect + standardized /sf-data360 panel ([7620539](https://github.com/salesforce/sf-pi/commit/7620539bb503ae4ffdbab57ad4d26e12ce813646))
+
 ## [0.50.0](https://github.com/salesforce/sf-pi/compare/v0.49.0...v0.50.0) (2026-05-09)
 
 
