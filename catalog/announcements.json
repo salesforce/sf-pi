@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.52.0-2026-05-09",
-  "latestVersion": "0.52.0",
+  "revision": "release-0.53.0-2026-05-09",
+  "latestVersion": "0.53.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.52.0",
+      "id": "release-0.53.0",
       "kind": "update",
-      "title": "sf-pi v0.52.0 — migrate pi peer-dep scope from @mariozechner to @earendil-works (pi 0.74)",
+      "title": "sf-pi v0.53.0 — extension consistency baseline (ADR 0006)",
       "publishedAt": "2026-05-09T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.52.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.53.0",
       "severity": "info",
-      "body": "migrate pi peer-dep scope from @mariozechner to @earendil-works (pi 0.74) — migrate pi peer-dep scope from @mariozechner to @earendil-works (pi 0.74)"
+      "body": "extension consistency baseline (ADR 0006)"
     },
     {
       "id": "pi-0.73-required",
