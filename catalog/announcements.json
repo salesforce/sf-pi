@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.51.1-2026-05-09",
-  "latestVersion": "0.51.1",
+  "revision": "release-0.52.0-2026-05-09",
+  "latestVersion": "0.52.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.51.1",
+      "id": "release-0.52.0",
       "kind": "update",
-      "title": "sf-pi v0.51.1 — sf-feedback: anchor github.com host check in sanitizeRemoteUrl",
+      "title": "sf-pi v0.52.0 — migrate pi peer-dep scope from @mariozechner to @earendil-works (pi 0.74)",
       "publishedAt": "2026-05-09T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.51.1",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.52.0",
       "severity": "info",
-      "body": "sf-feedback: anchor github.com host check in sanitizeRemoteUrl"
+      "body": "migrate pi peer-dep scope from @mariozechner to @earendil-works (pi 0.74) — migrate pi peer-dep scope from @mariozechner to @earendil-works (pi 0.74)"
     },
     {
       "id": "pi-0.73-required",
