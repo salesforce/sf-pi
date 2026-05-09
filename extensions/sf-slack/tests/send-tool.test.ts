@@ -19,20 +19,21 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { _resetGrantedScopes, slackApi } from "../lib/api.ts";
+import { setSlackFetchForTests } from "../lib/http-dispatcher.ts";
 import { buildExistingDmSearchQueries, preflightSend } from "../lib/send-tool.ts";
 import { computeGatedTools } from "../lib/scope-probe.ts";
 
-const originalFetch = globalThis.fetch;
+// fetch override now goes through setSlackFetchForTests
 
 function mockFetchWithScopes(scopesHeader: string): void {
-  globalThis.fetch = (async () =>
-    new Response(JSON.stringify({ ok: true }), {
-      status: 200,
-      headers: {
-        "Content-Type": "application/json",
-        "x-oauth-scopes": scopesHeader,
-      },
-    })) as unknown as typeof fetch;
+  setSlackFetchForTests(async () => ({
+    status: 200,
+    ok: true,
+    headers: { get: (n: string) => (n.toLowerCase() === "x-oauth-scopes" ? scopesHeader : null) },
+    json: async () => ({ ok: true }),
+    text: async () => JSON.stringify({ ok: true }),
+    arrayBuffer: async () => new ArrayBuffer(0),
+  }));
 }
 
 // send-tool.ts was split into a registration/audit/confirmation module
@@ -56,7 +57,7 @@ describe("preflightSend", () => {
     _resetGrantedScopes();
   });
   afterEach(() => {
-    globalThis.fetch = originalFetch;
+    setSlackFetchForTests(null);
     _resetGrantedScopes();
   });
 

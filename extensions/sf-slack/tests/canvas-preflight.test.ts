@@ -9,18 +9,19 @@
 import { afterEach, beforeAll, beforeEach, describe, it, expect } from "vitest";
 import { buildCanvasLookupCriteria, preflightCanvasWrite } from "../lib/canvas-tool.ts";
 import { _resetGrantedScopes, slackApi } from "../lib/api.ts";
+import { setSlackFetchForTests } from "../lib/http-dispatcher.ts";
 
-const originalFetch = globalThis.fetch;
+// fetch override now goes through setSlackFetchForTests
 
 function mockFetchWithScopes(scopesHeader: string): void {
-  globalThis.fetch = (async () =>
-    new Response(JSON.stringify({ ok: true }), {
-      status: 200,
-      headers: {
-        "Content-Type": "application/json",
-        "x-oauth-scopes": scopesHeader,
-      },
-    })) as unknown as typeof fetch;
+  setSlackFetchForTests(async () => ({
+    status: 200,
+    ok: true,
+    headers: { get: (n: string) => (n.toLowerCase() === "x-oauth-scopes" ? scopesHeader : null) },
+    json: async () => ({ ok: true }),
+    text: async () => JSON.stringify({ ok: true }),
+    arrayBuffer: async () => new ArrayBuffer(0),
+  }));
 }
 
 describe("buildCanvasLookupCriteria", () => {
@@ -70,7 +71,7 @@ describe("preflightCanvasWrite", () => {
   });
 
   afterEach(() => {
-    globalThis.fetch = originalFetch;
+    setSlackFetchForTests(null);
     _resetGrantedScopes();
   });
 

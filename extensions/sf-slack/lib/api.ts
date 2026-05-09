@@ -28,7 +28,7 @@ import {
   type UsersInfoResponse,
   type UsersListResponse,
 } from "./types.ts";
-import { getSlackHttpDispatcher } from "./http-dispatcher.ts";
+import { slackFetch, type SlackFetchResponse } from "./http-dispatcher.ts";
 
 interface SlackApiEnvelope {
   ok?: boolean;
@@ -91,7 +91,7 @@ export function _resetGrantedScopes(): void {
   grantedScopes = null;
 }
 
-function captureAuthHeaders(response: Response): void {
+function captureAuthHeaders(response: SlackFetchResponse): void {
   // Slack sends this header on every OK response and on many error responses
   // as well. Only overwrite the cache when the header is present so a 5xx
   // without the header doesn't wipe a previously-known good value.
@@ -181,14 +181,16 @@ function withRequestTimeout(signal: AbortSignal | undefined): {
 async function fetchWithRetry(
   buildRequest: () => { url: string; init: RequestInit },
   signal?: AbortSignal,
-): Promise<Response> {
+): Promise<SlackFetchResponse> {
   const first = buildRequest();
   const firstBudget = withRequestTimeout(signal);
-  let response = await fetch(first.url, {
-    ...first.init,
+  // We use a node:https-backed fetch (slackFetch) instead of undici's
+  // global fetch — see ./http-dispatcher.ts for the H2 hang on Node 26.
+  let response: SlackFetchResponse = await slackFetch(first.url, {
+    method: first.init.method,
+    headers: first.init.headers as Record<string, string>,
+    body: first.init.body as string | undefined,
     signal: firstBudget.signal,
-    // Pin slack.com requests to HTTP/1.1. See ./http-dispatcher.ts for why.
-    ...({ dispatcher: getSlackHttpDispatcher() } as object),
   });
 
   if (response.status !== 429) return response;
@@ -205,10 +207,11 @@ async function fetchWithRetry(
 
   const second = buildRequest();
   const secondBudget = withRequestTimeout(signal);
-  response = await fetch(second.url, {
-    ...second.init,
+  response = await slackFetch(second.url, {
+    method: second.init.method,
+    headers: second.init.headers as Record<string, string>,
+    body: second.init.body as string | undefined,
     signal: secondBudget.signal,
-    ...({ dispatcher: getSlackHttpDispatcher() } as object),
   });
   return response;
 }
@@ -365,7 +368,7 @@ function classifyFetchError<T>(error: unknown, callerSignal?: AbortSignal): ApiR
 }
 
 /** Slack sometimes returns non-JSON bodies on 4xx/5xx. Parse defensively. */
-async function safeJson(response: Response): Promise<unknown> {
+async function safeJson(response: SlackFetchResponse): Promise<unknown> {
   try {
     return await response.json();
   } catch {
@@ -373,7 +376,7 @@ async function safeJson(response: Response): Promise<unknown> {
   }
 }
 
-function toApiResult<T>(response: Response, json: unknown): ApiResult<T> {
+function toApiResult<T>(response: SlackFetchResponse, json: unknown): ApiResult<T> {
   const envelope = isSlackApiEnvelope(json) ? json : {};
 
   // Slack sometimes surfaces rate limits as HTTP 429 (with no JSON body) and

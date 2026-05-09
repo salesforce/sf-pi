@@ -14,6 +14,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { buildAuthStatus } from "../lib/format.ts";
 import { _resetGrantedScopes, slackApi, getGrantedScopes } from "../lib/api.ts";
+import { setSlackFetchForTests } from "../lib/http-dispatcher.ts";
 
 // Minimal ExtensionContext shape needed by buildAuthStatus (it only calls
 // ctx.modelRegistry.getApiKeyForProvider as a last-resort fallback).
@@ -27,15 +28,21 @@ function fakeCtx(token?: string): AnyCtx {
 }
 
 const ORIGINAL_ENV = { ...process.env };
-const originalFetch = globalThis.fetch;
+// fetch override now goes through setSlackFetchForTests
 const tempDirs: string[] = [];
 
 function mockFetchWithScopes(scopesHeader: string | null): void {
-  globalThis.fetch = (async () => {
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
-    if (scopesHeader !== null) headers["x-oauth-scopes"] = scopesHeader;
-    return new Response(JSON.stringify({ ok: true }), { status: 200, headers });
-  }) as unknown as typeof fetch;
+  setSlackFetchForTests(async () => ({
+    status: 200,
+    ok: true,
+    headers: {
+      get: (name: string) =>
+        name.toLowerCase() === "x-oauth-scopes" ? (scopesHeader ?? null) : null,
+    },
+    json: async () => ({ ok: true }),
+    text: async () => JSON.stringify({ ok: true }),
+    arrayBuffer: async () => new ArrayBuffer(0),
+  }));
 }
 
 describe("buildAuthStatus", () => {
@@ -53,7 +60,7 @@ describe("buildAuthStatus", () => {
 
   afterEach(() => {
     process.env = { ...ORIGINAL_ENV };
-    globalThis.fetch = originalFetch;
+    setSlackFetchForTests(null);
     _resetGrantedScopes();
     for (const dir of tempDirs.splice(0)) {
       rmSync(dir, { recursive: true, force: true });

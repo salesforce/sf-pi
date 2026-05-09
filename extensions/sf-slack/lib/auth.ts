@@ -12,7 +12,7 @@ import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { existsSync, readFileSync } from "node:fs";
 import { execSync } from "node:child_process";
 import { globalAgentPath } from "../../../lib/common/pi-paths.ts";
-import { getSlackHttpDispatcher } from "./http-dispatcher.ts";
+import { slackFetch } from "./http-dispatcher.ts";
 import {
   PROVIDER_NAME,
   SLACK_API_BASE,
@@ -240,7 +240,7 @@ export async function loginSlack(callbacks: OAuthLoginCallbacks): Promise<OAuthC
     const code = new URL(callbackUrl).searchParams.get("code");
     if (!code) throw new Error("No OAuth code found in callback URL.");
 
-    const tokenResponse = await fetch(`${SLACK_API_BASE}/oauth.v2.access`, {
+    const tokenResponse = await slackFetch(`${SLACK_API_BASE}/oauth.v2.access`, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
@@ -248,9 +248,7 @@ export async function loginSlack(callbacks: OAuthLoginCallbacks): Promise<OAuthC
         client_secret: clientSecret,
         code,
         redirect_uri: redirectUri,
-      }).toString(),
-      // Same H1.1 pin as Slack API calls in lib/api.ts.
-      ...({ dispatcher: getSlackHttpDispatcher() } as object),
+      }),
     });
 
     const data = (await tokenResponse.json()) as SlackOAuthResponse;
@@ -300,7 +298,7 @@ export async function refreshSlackToken(credentials: OAuthCredentials): Promise<
     clientId &&
     clientSecret
   ) {
-    const response = await fetch(`${SLACK_API_BASE}/oauth.v2.access`, {
+    const response = await slackFetch(`${SLACK_API_BASE}/oauth.v2.access`, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
@@ -308,9 +306,7 @@ export async function refreshSlackToken(credentials: OAuthCredentials): Promise<
         refresh_token: credentials.refresh,
         client_id: clientId,
         client_secret: clientSecret,
-      }).toString(),
-      // Same H1.1 pin as Slack API calls in lib/api.ts.
-      ...({ dispatcher: getSlackHttpDispatcher() } as object),
+      }),
     });
 
     const data = (await response.json()) as SlackOAuthResponse;

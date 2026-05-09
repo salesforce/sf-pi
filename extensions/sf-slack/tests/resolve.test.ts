@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Tests for sf-slack resolver helpers. */
 import { describe, expect, it } from "vitest";
+import { setSlackFetchForTests } from "../lib/http-dispatcher.ts";
 import {
   buildChannelDiscoveryQueries,
   isSlackChannelId,
@@ -52,22 +53,24 @@ import { afterEach, vi } from "vitest";
 import { resolveChannel } from "../lib/resolve.ts";
 
 describe("resolveChannel — raw ID verification (Bug #1 regression guard)", () => {
-  const originalFetch = globalThis.fetch;
+  // fetch override now goes through setSlackFetchForTests
 
   afterEach(() => {
-    globalThis.fetch = originalFetch;
+    setSlackFetchForTests(null);
   });
 
   it("does not fabricate a candidate when conversations.info fails", async () => {
     // Every Slack API call in this test returns an error envelope so all
     // resolution strategies (conversations.info, conversations.list,
     // assistant.search.context) fail cleanly.
-    globalThis.fetch = vi.fn(async () => {
-      return new Response(JSON.stringify({ ok: false, error: "team_access_not_granted" }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
-    }) as unknown as typeof fetch;
+    setSlackFetchForTests(
+      vi.fn(async () => {
+        return new Response(JSON.stringify({ ok: false, error: "team_access_not_granted" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }),
+    );
 
     const result = await resolveChannel("xoxp-test", "C09ZZZZZZZZ");
 
@@ -87,9 +90,11 @@ describe("resolveChannel — raw ID verification (Bug #1 regression guard)", () 
     // whole resolve hung forever; now each strategy returns `ok: false`
     // with error=request_timeout and the resolver surfaces "not resolved"
     // instead of hanging the tool call.
-    globalThis.fetch = vi.fn(async () => {
-      throw new DOMException("The operation was aborted due to timeout", "TimeoutError");
-    }) as unknown as typeof fetch;
+    setSlackFetchForTests(
+      vi.fn(async () => {
+        throw new DOMException("The operation was aborted due to timeout", "TimeoutError");
+      }),
+    );
 
     const result = await resolveChannel("xoxp-test", "se-salesforce-payments");
 
@@ -102,22 +107,24 @@ describe("resolveChannel — raw ID verification (Bug #1 regression guard)", () 
   it("still populates candidates when the ID is valid", async () => {
     // conversations.info returns a real channel; the resolver should keep
     // the 1.0-confidence candidate without any fabrication.
-    globalThis.fetch = vi.fn(async (_url: unknown, init: unknown) => {
-      const body = String((init as { body?: unknown } | undefined)?.body ?? "");
-      if (body.includes("channel=")) {
-        return new Response(
-          JSON.stringify({
-            ok: true,
-            channel: { id: "C0123456789", name: "project-support" },
-          }),
-          { status: 200, headers: { "Content-Type": "application/json" } },
-        );
-      }
-      return new Response(JSON.stringify({ ok: false, error: "not_implemented" }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
-    }) as unknown as typeof fetch;
+    setSlackFetchForTests(
+      vi.fn(async (_url: unknown, init: unknown) => {
+        const body = String((init as { body?: unknown } | undefined)?.body ?? "");
+        if (body.includes("channel=")) {
+          return new Response(
+            JSON.stringify({
+              ok: true,
+              channel: { id: "C0123456789", name: "project-support" },
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        }
+        return new Response(JSON.stringify({ ok: false, error: "not_implemented" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }),
+    );
 
     const result = await resolveChannel("xoxp-test", "C0123456789");
 

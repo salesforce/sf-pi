@@ -30,6 +30,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getUserCache, warmUserCacheFromMatches } from "../lib/api.ts";
+import { setSlackFetchForTests } from "../lib/http-dispatcher.ts";
 import { resolveUser } from "../lib/resolve.ts";
 
 describe("warmUserCacheFromMatches", () => {
@@ -82,51 +83,53 @@ describe("warmUserCacheFromMatches", () => {
 });
 
 describe("resolveUser — grid-safe search fallback", () => {
-  const originalFetch = globalThis.fetch;
+  // fetch override now goes through setSlackFetchForTests
 
   beforeEach(() => {
     getUserCache().clear();
   });
 
   afterEach(() => {
-    globalThis.fetch = originalFetch;
+    setSlackFetchForTests(null);
   });
 
   it("returns search-based candidates when users.list is blocked by team_access_not_granted", async () => {
     // Simulate enterprise grid: directory is gated, but search works and
     // surfaces the real author from a message hit.
-    globalThis.fetch = vi.fn(async (url: unknown) => {
-      const urlStr = String(url);
-      if (urlStr.includes("users.list")) {
-        return new Response(JSON.stringify({ ok: false, error: "team_access_not_granted" }), {
+    setSlackFetchForTests(
+      vi.fn(async (url: unknown) => {
+        const urlStr = String(url);
+        if (urlStr.includes("users.list")) {
+          return new Response(JSON.stringify({ ok: false, error: "team_access_not_granted" }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+        if (urlStr.includes("assistant.search.context")) {
+          return new Response(
+            JSON.stringify({
+              ok: true,
+              results: {
+                messages: [
+                  {
+                    author_user_id: "U0MIKULA01",
+                    author_name: "Mike Mikula",
+                    channel_id: "C0AAA00001",
+                    channel_name: "alpha-dev",
+                    text: "Fuzzy match content",
+                  },
+                ],
+              },
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        }
+        return new Response(JSON.stringify({ ok: false, error: "not_implemented" }), {
           status: 200,
           headers: { "Content-Type": "application/json" },
         });
-      }
-      if (urlStr.includes("assistant.search.context")) {
-        return new Response(
-          JSON.stringify({
-            ok: true,
-            results: {
-              messages: [
-                {
-                  author_user_id: "U0MIKULA01",
-                  author_name: "Mike Mikula",
-                  channel_id: "C0AAA00001",
-                  channel_name: "alpha-dev",
-                  text: "Fuzzy match content",
-                },
-              ],
-            },
-          }),
-          { status: 200, headers: { "Content-Type": "application/json" } },
-        );
-      }
-      return new Response(JSON.stringify({ ok: false, error: "not_implemented" }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
-    }) as unknown as typeof fetch;
+      }),
+    );
 
     // "Mike McCula" is a realistic misspelling. The search hit is
     // "Mike Mikula" — should be close enough to surface as a candidate.
@@ -142,33 +145,35 @@ describe("resolveUser — grid-safe search fallback", () => {
   });
 
   it("populates the user cache from search so future resolves short-circuit", async () => {
-    globalThis.fetch = vi.fn(async (url: unknown) => {
-      const urlStr = String(url);
-      if (urlStr.includes("users.list")) {
-        return new Response(JSON.stringify({ ok: false, error: "team_access_not_granted" }), {
+    setSlackFetchForTests(
+      vi.fn(async (url: unknown) => {
+        const urlStr = String(url);
+        if (urlStr.includes("users.list")) {
+          return new Response(JSON.stringify({ ok: false, error: "team_access_not_granted" }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+        if (urlStr.includes("assistant.search.context")) {
+          return new Response(
+            JSON.stringify({
+              ok: true,
+              results: {
+                messages: [
+                  { author_user_id: "U0FFF00006", author_name: "Frank Example", text: "hi" },
+                  { author_user_id: "U0GGG00007", author_name: "Grace Example", text: "hi" },
+                ],
+              },
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        }
+        return new Response(JSON.stringify({ ok: false, error: "not_implemented" }), {
           status: 200,
           headers: { "Content-Type": "application/json" },
         });
-      }
-      if (urlStr.includes("assistant.search.context")) {
-        return new Response(
-          JSON.stringify({
-            ok: true,
-            results: {
-              messages: [
-                { author_user_id: "U0FFF00006", author_name: "Frank Example", text: "hi" },
-                { author_user_id: "U0GGG00007", author_name: "Grace Example", text: "hi" },
-              ],
-            },
-          }),
-          { status: 200, headers: { "Content-Type": "application/json" } },
-        );
-      }
-      return new Response(JSON.stringify({ ok: false, error: "not_implemented" }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
-    }) as unknown as typeof fetch;
+      }),
+    );
 
     await resolveUser("xoxp-test", "Frank");
 
@@ -178,12 +183,14 @@ describe("resolveUser — grid-safe search fallback", () => {
   });
 
   it("still returns zero candidates and a helpful warning when search also fails", async () => {
-    globalThis.fetch = vi.fn(async () => {
-      return new Response(JSON.stringify({ ok: false, error: "team_access_not_granted" }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
-    }) as unknown as typeof fetch;
+    setSlackFetchForTests(
+      vi.fn(async () => {
+        return new Response(JSON.stringify({ ok: false, error: "team_access_not_granted" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }),
+    );
 
     const result = await resolveUser("xoxp-test", "Nobody Example");
 

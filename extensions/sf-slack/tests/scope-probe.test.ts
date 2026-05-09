@@ -15,8 +15,9 @@ import {
   probeAndGateTools,
 } from "../lib/scope-probe.ts";
 import { _resetGrantedScopes } from "../lib/api.ts";
+import { setSlackFetchForTests } from "../lib/http-dispatcher.ts";
 
-const originalFetch = globalThis.fetch;
+// fetch override now goes through setSlackFetchForTests
 
 class FakePi {
   private active: string[];
@@ -38,19 +39,19 @@ class FakePi {
 }
 
 function mockAuthTestScopes(scopesHeader: string): void {
-  globalThis.fetch = (async () =>
-    new Response(JSON.stringify({ ok: true }), {
-      status: 200,
-      headers: {
-        "Content-Type": "application/json",
-        "x-oauth-scopes": scopesHeader,
-      },
-    })) as unknown as typeof fetch;
+  setSlackFetchForTests(async () => ({
+    status: 200,
+    ok: true,
+    headers: { get: (n: string) => (n.toLowerCase() === "x-oauth-scopes" ? scopesHeader : null) },
+    json: async () => ({ ok: true }),
+    text: async () => JSON.stringify({ ok: true }),
+    arrayBuffer: async () => new ArrayBuffer(0),
+  }));
 }
 
 describe("scope-probe", () => {
   afterEach(() => {
-    globalThis.fetch = originalFetch;
+    setSlackFetchForTests(null);
     _resetGrantedScopes();
   });
   it("module exports probeAndGateTools function", async () => {

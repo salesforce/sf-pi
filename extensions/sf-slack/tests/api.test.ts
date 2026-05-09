@@ -28,6 +28,7 @@ import {
   _resetGrantedScopes,
   DEFAULT_ASSISTANT_CHANNEL_TYPES,
 } from "../lib/api.ts";
+import { setSlackFetchForTests } from "../lib/http-dispatcher.ts";
 
 describe("api", () => {
   describe("clampLimit", () => {
@@ -199,10 +200,10 @@ describe("api", () => {
   });
 
   describe("per-request timeout (issue #17 regression guard)", () => {
-    const originalFetch = globalThis.fetch;
+    // fetch override now goes through setSlackFetchForTests
 
     afterEach(() => {
-      globalThis.fetch = originalFetch;
+      setSlackFetchForTests(null);
     });
 
     it("maps a TimeoutError from AbortSignal.timeout to request_timeout", async () => {
@@ -210,9 +211,11 @@ describe("api", () => {
       // fetch rejects with a DOMException name="TimeoutError" (Node/undici
       // semantics). classifyFetchError must turn that into a typed
       // ApiResult error so callers can continue instead of hanging.
-      globalThis.fetch = vi.fn(async () => {
-        throw new DOMException("The operation was aborted due to timeout", "TimeoutError");
-      }) as unknown as typeof fetch;
+      setSlackFetchForTests(
+        vi.fn(async () => {
+          throw new DOMException("The operation was aborted due to timeout", "TimeoutError");
+        }),
+      );
 
       const result = (await slackApi<unknown>("auth.test", "xoxp-test", {})) as {
         ok: false;
@@ -226,9 +229,11 @@ describe("api", () => {
       // Some Node / undici versions surface timeout aborts as AbortError
       // rather than TimeoutError. Both must map to request_timeout when
       // the caller did not request the abort.
-      globalThis.fetch = vi.fn(async () => {
-        throw new DOMException("Aborted", "AbortError");
-      }) as unknown as typeof fetch;
+      setSlackFetchForTests(
+        vi.fn(async () => {
+          throw new DOMException("Aborted", "AbortError");
+        }),
+      );
 
       const result = (await slackApi<unknown>("auth.test", "xoxp-test", {})) as {
         ok: false;
@@ -242,15 +247,17 @@ describe("api", () => {
       // When the caller's own AbortController fires, the call must throw
       // (so user cancel / pi tool-cancel semantics are preserved) rather
       // than turn into a typed ApiResult error.
-      globalThis.fetch = vi.fn(
-        (_url: unknown, init: unknown) =>
-          new Promise<Response>((_resolve, reject) => {
-            const signal = (init as { signal?: AbortSignal } | undefined)?.signal;
-            signal?.addEventListener("abort", () => {
-              reject(signal.reason ?? new DOMException("Aborted", "AbortError"));
-            });
-          }),
-      ) as unknown as typeof fetch;
+      setSlackFetchForTests(
+        vi.fn(
+          (_url: unknown, init: unknown) =>
+            new Promise<Response>((_resolve, reject) => {
+              const signal = (init as { signal?: AbortSignal } | undefined)?.signal;
+              signal?.addEventListener("abort", () => {
+                reject(signal.reason ?? new DOMException("Aborted", "AbortError"));
+              });
+            }),
+        ),
+      );
 
       const controller = new AbortController();
       const promise = slackApi("auth.test", "xoxp-test", {}, controller.signal);
@@ -259,9 +266,11 @@ describe("api", () => {
     });
 
     it("maps a generic fetch rejection to network_error", async () => {
-      globalThis.fetch = vi.fn(async () => {
-        throw new TypeError("fetch failed");
-      }) as unknown as typeof fetch;
+      setSlackFetchForTests(
+        vi.fn(async () => {
+          throw new TypeError("fetch failed");
+        }),
+      );
 
       const result = (await slackApi<unknown>("auth.test", "xoxp-test", {})) as {
         ok: false;
@@ -291,25 +300,27 @@ describe("api", () => {
   });
 
   describe("granted-scope cache (X-OAuth-Scopes header capture)", () => {
-    const originalFetch = globalThis.fetch;
+    // fetch override now goes through setSlackFetchForTests
 
     afterEach(() => {
-      globalThis.fetch = originalFetch;
+      setSlackFetchForTests(null);
       _resetGrantedScopes();
     });
 
     it("populates the granted-scope cache from the response header", async () => {
       _resetGrantedScopes();
-      globalThis.fetch = vi.fn(
-        async () =>
-          new Response(JSON.stringify({ ok: true, user: "u" }), {
-            status: 200,
-            headers: {
-              "Content-Type": "application/json",
-              "x-oauth-scopes": "channels:history, users:read, search:read.public",
-            },
-          }),
-      ) as unknown as typeof fetch;
+      setSlackFetchForTests(
+        vi.fn(
+          async () =>
+            new Response(JSON.stringify({ ok: true, user: "u" }), {
+              status: 200,
+              headers: {
+                "Content-Type": "application/json",
+                "x-oauth-scopes": "channels:history, users:read, search:read.public",
+              },
+            }),
+        ),
+      );
 
       // Before the call: unknown.
       expect(getGrantedScopes()).toBe(null);
@@ -335,17 +346,19 @@ describe("api", () => {
     });
 
     it("preserves response_metadata.messages on Slack API errors", async () => {
-      globalThis.fetch = vi.fn(
-        async () =>
-          new Response(
-            JSON.stringify({
-              ok: false,
-              error: "invalid_arguments",
-              response_metadata: { messages: ["[ERROR] criteria.contains_text is required"] },
-            }),
-            { status: 200, headers: { "Content-Type": "application/json" } },
-          ),
-      ) as unknown as typeof fetch;
+      setSlackFetchForTests(
+        vi.fn(
+          async () =>
+            new Response(
+              JSON.stringify({
+                ok: false,
+                error: "invalid_arguments",
+                response_metadata: { messages: ["[ERROR] criteria.contains_text is required"] },
+              }),
+              { status: 200, headers: { "Content-Type": "application/json" } },
+            ),
+        ),
+      );
 
       const result = await slackApi<unknown>("canvases.sections.lookup", "xoxp-test", {});
       expect(result.ok).toBe(false);
@@ -357,23 +370,25 @@ describe("api", () => {
     it("does not wipe the cache when a later response has no header", async () => {
       _resetGrantedScopes();
       let call = 0;
-      globalThis.fetch = vi.fn(async () => {
-        call += 1;
-        if (call === 1) {
+      setSlackFetchForTests(
+        vi.fn(async () => {
+          call += 1;
+          if (call === 1) {
+            return new Response(JSON.stringify({ ok: true }), {
+              status: 200,
+              headers: {
+                "Content-Type": "application/json",
+                "x-oauth-scopes": "users:read",
+              },
+            });
+          }
+          // Second call: no header (simulates a 5xx without Slack envelope).
           return new Response(JSON.stringify({ ok: true }), {
             status: 200,
-            headers: {
-              "Content-Type": "application/json",
-              "x-oauth-scopes": "users:read",
-            },
+            headers: { "Content-Type": "application/json" },
           });
-        }
-        // Second call: no header (simulates a 5xx without Slack envelope).
-        return new Response(JSON.stringify({ ok: true }), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        });
-      }) as unknown as typeof fetch;
+        }),
+      );
 
       await slackApi("auth.test", "xoxp-test", {});
       expect(getGrantedScopes()?.has("users:read")).toBe(true);
@@ -455,30 +470,32 @@ describe("api", () => {
     // These tests stub global fetch so we can assert on which user IDs hit the
     // network. The point is to prove the "always resolve missing IDs" contract
     // and that already-cached IDs do NOT trigger additional fetches.
-    const originalFetch = globalThis.fetch;
+    // fetch override now goes through setSlackFetchForTests
     const calls: string[] = [];
 
     beforeEach(() => {
       calls.length = 0;
       getUserCache().clear();
-      globalThis.fetch = vi.fn(async (_url: unknown, init: unknown) => {
-        const body = String((init as { body?: unknown } | undefined)?.body ?? "");
-        const userMatch = body.match(/user=([^&]+)/);
-        const requestedUser = userMatch ? decodeURIComponent(userMatch[1]) : "";
-        calls.push(requestedUser);
-        const displayName = requestedUser ? `display-${requestedUser}` : "unknown";
-        return new Response(
-          JSON.stringify({
-            ok: true,
-            user: { id: requestedUser, profile: { display_name: displayName } },
-          }),
-          { status: 200, headers: { "Content-Type": "application/json" } },
-        );
-      }) as unknown as typeof fetch;
+      setSlackFetchForTests(
+        vi.fn(async (_url: unknown, init: unknown) => {
+          const body = String((init as { body?: unknown } | undefined)?.body ?? "");
+          const userMatch = body.match(/user=([^&]+)/);
+          const requestedUser = userMatch ? decodeURIComponent(userMatch[1]) : "";
+          calls.push(requestedUser);
+          const displayName = requestedUser ? `display-${requestedUser}` : "unknown";
+          return new Response(
+            JSON.stringify({
+              ok: true,
+              user: { id: requestedUser, profile: { display_name: displayName } },
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        }),
+      );
     });
 
     afterEach(() => {
-      globalThis.fetch = originalFetch;
+      setSlackFetchForTests(null);
     });
 
     it("fetches only the IDs that are not already cached", async () => {
