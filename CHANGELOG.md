@@ -360,6 +360,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.50.0](https://github.com/salesforce/sf-pi/compare/v0.49.0...v0.50.0) (2026-05-09)
+
+
+### Features
+
+* **sf-data360:** release verified payload shapes for 13 entity lifecycles ([5045317](https://github.com/salesforce/sf-pi/commit/5045317e1343e5c9db9068ff4c3a20ff80e0ea55))
+
 ## [0.49.0](https://github.com/salesforce/sf-pi/compare/v0.48.1...v0.49.0) (2026-05-09)
 
 
