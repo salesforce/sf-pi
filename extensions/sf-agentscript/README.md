@@ -123,6 +123,7 @@ extensions/sf-agentscript/
     diagnostics.test.ts     ← unit / smoke test
     eval-normalize.test.ts  ← unit / smoke test
     eval-sfap.test.ts       ← unit / smoke test
+    eval-state-pairing.test.ts← unit / smoke test
     eval-utterance-index.test.ts← unit / smoke test
     feedback.test.ts        ← unit / smoke test
     file-classify.test.ts   ← unit / smoke test
