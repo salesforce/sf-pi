@@ -17,7 +17,10 @@
  * pre-validate before burning a server call (matches preview's pattern).
  */
 
+import { readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
 import type { Connection } from "@salesforce/core";
+import { ComponentSet } from "@salesforce/source-deploy-retrieve";
 import { isSfapRoutingFailure, sfapRequest } from "./eval/sfap.ts";
 import { loadAgentforceSDK } from "./sdk.ts";
 
@@ -158,12 +161,58 @@ export interface PublishOptions {
   /** Named-user JWT connection for `/einstein/ai-agent/*` SFAP routes. Defaults to conn for tests/back-compat. */
   agentApiConn?: Connection;
   agentSource: string;
+  /**
+   * Path to the on-disk bundle directory that contains both the
+   * `<agentApiName>.agent` file and the `<agentApiName>.bundle-meta.xml`
+   * file. Required for the AiAuthoringBundle metadata deploy step. When
+   * omitted, the publish still creates the BotDefinition + BotVersion via
+   * SFAP but the resulting agent will fall back to the legacy builder in
+   * Agent Script Studio because no bundle metadata gets deployed.
+   */
+  bundleDir?: string;
   /** AAB / agent DeveloperName. Used for the SOQL existence check + return value. */
   agentApiName: string;
   /** When true, immediately activate the new version. Default false. */
   activate?: boolean;
   /** Optional progress callback. */
   log?: (msg: string) => void;
+}
+
+// Match the CLI's bundle-meta.xml shape — needs both <bundleType>AGENT</bundleType>
+// and <target>{developerName}.{versionDeveloperName}</target>.
+const BUNDLE_META_TARGET_REGEX = /<target>[^<]*<\/target>\s*/;
+const BUNDLE_META_BUNDLE_TYPE_REGEX = /<bundleType>[^<]*<\/bundleType>/;
+
+/**
+ * Read the on-disk `<name>.bundle-meta.xml` and write back the same content
+ * with a `<target>{agentApiName}.{versionDeveloperName}</target>` element.
+ * If the element already exists, replace it. Returns the original content
+ * so the caller can restore it after deploy.
+ */
+async function injectBundleTarget(
+  bundleMetaPath: string,
+  target: string,
+): Promise<{ original: string; updated: string }> {
+  const original = await readFile(bundleMetaPath, "utf8");
+  let updated: string;
+  if (BUNDLE_META_TARGET_REGEX.test(original)) {
+    updated = original.replace(BUNDLE_META_TARGET_REGEX, `<target>${target}</target>\n    `);
+  } else if (BUNDLE_META_BUNDLE_TYPE_REGEX.test(original)) {
+    updated = original.replace(
+      BUNDLE_META_BUNDLE_TYPE_REGEX,
+      (m) => `${m}\n    <target>${target}</target>`,
+    );
+  } else {
+    // Fallback: insert before </AiAuthoringBundle>
+    updated = original.replace(
+      /<\/AiAuthoringBundle>/,
+      `    <target>${target}</target>\n</AiAuthoringBundle>`,
+    );
+  }
+  if (updated !== original) {
+    await writeFile(bundleMetaPath, updated, "utf8");
+  }
+  return { original, updated };
 }
 
 /**
@@ -249,45 +298,75 @@ export async function publishAgent(opts: PublishOptions): Promise<PublishResult>
 
   // Critical for Agent Script Studio: deploy the AiAuthoringBundle metadata
   // record. Without this record, the org's UI falls back to the legacy
-  // builder for our published agent. The CLI does the same step via
-  // ComponentSet.fromSource(...).deploy(); we get the same effect via
-  // jsforce metadata.upsert without pulling in source-deploy-retrieve.
+  // builder for our published agent. We mirror the CLI's flow exactly:
+  // ComponentSet.fromSource(bundleDir).deploy() over @salesforce/source-
+  // deploy-retrieve. The bundle directory must contain both the
+  // <agentApiName>.bundle-meta.xml (with <target> injected) and the
+  // <agentApiName>.agent source file. Without bundleDir we skip the deploy
+  // and report it on PublishResult.authoring_bundle.error so the LLM (or
+  // human) sees why Agent Script Studio will fall back to legacy builder.
   let authoringBundleResult: PublishResult["authoring_bundle"] = undefined;
   if (versionDeveloperName && typeof versionNumber === "number") {
     const bundleFullName = `${opts.agentApiName}_${versionNumber}`;
     const target = `${opts.agentApiName}.${versionDeveloperName}`;
-    log(`Deploying AiAuthoringBundle ${bundleFullName} (target=${target})…`);
-    try {
-      const upserts = await (
-        opts.conn.metadata as unknown as {
-          upsert: (
-            type: string,
-            metadata: Array<Record<string, unknown>>,
-          ) => Promise<Array<{ created?: boolean; success?: boolean; errors?: unknown[] }>>;
-        }
-      ).upsert("AiAuthoringBundle", [{ fullName: bundleFullName, bundleType: "AGENT", target }]);
-      const r = upserts[0] ?? {};
-      if (r.success) {
-        authoringBundleResult = {
-          full_name: bundleFullName,
-          target,
-          created: Boolean(r.created),
-        };
-      } else {
-        authoringBundleResult = {
-          full_name: bundleFullName,
-          target,
-          created: false,
-          error: `metadata.upsert returned success=false: ${JSON.stringify(r.errors ?? []).slice(0, 240)}`,
-        };
-      }
-    } catch (err) {
+    if (!opts.bundleDir) {
       authoringBundleResult = {
         full_name: bundleFullName,
         target,
         created: false,
-        error: err instanceof Error ? err.message : String(err),
+        error:
+          "bundleDir not provided; skipped AiAuthoringBundle deploy. Agent Script Studio will fall back to the legacy builder.",
       };
+    } else {
+      log(`Deploying AiAuthoringBundle ${bundleFullName} (target=${target})…`);
+      const bundleMetaPath = path.join(opts.bundleDir, `${opts.agentApiName}.bundle-meta.xml`);
+      let original: string | null = null;
+      try {
+        // 1. Inject <target> into the local bundle-meta.xml (CLI does this exact step).
+        original = (await injectBundleTarget(bundleMetaPath, target)).original;
+
+        // 2. Deploy via SDR ComponentSet.fromSource(bundleDir). This zips the
+        //    bundle directory + a generated package.xml manifest and calls
+        //    conn.metadata.deploy under the hood — same SOAP endpoint the
+        //    CLI uses, just without us hand-rolling the zip format.
+        const componentSet = ComponentSet.fromSource(opts.bundleDir);
+        const deployJob = await componentSet.deploy({ usernameOrConnection: opts.conn });
+        const deployResult = await deployJob.pollStatus();
+        const success = deployResult.response?.success === true;
+        if (success) {
+          authoringBundleResult = { full_name: bundleFullName, target, created: true };
+        } else {
+          const failures = (deployResult.response?.details?.componentFailures ?? []) as
+            | unknown
+            | unknown[];
+          const failArr = Array.isArray(failures) ? failures : [failures];
+          const firstProblem =
+            (failArr[0] as { problem?: string } | undefined)?.problem ?? "unknown";
+          authoringBundleResult = {
+            full_name: bundleFullName,
+            target,
+            created: false,
+            error: `Bundle deploy failed: ${firstProblem}`,
+          };
+        }
+      } catch (err) {
+        authoringBundleResult = {
+          full_name: bundleFullName,
+          target,
+          created: false,
+          error: err instanceof Error ? err.message : String(err),
+        };
+      } finally {
+        // 3. Always restore the local bundle-meta.xml so the <target> doesn't
+        //    leak into source control. CLI does this in a finally block too.
+        if (original !== null) {
+          try {
+            await writeFile(bundleMetaPath, original, "utf8");
+          } catch {
+            /* best-effort restore; if it fails the user can revert via git */
+          }
+        }
+      }
     }
   }
 

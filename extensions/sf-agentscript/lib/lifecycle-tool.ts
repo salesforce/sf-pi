@@ -165,6 +165,10 @@ async function actionPublish(
   }
 
   const agentApiName = input.agent_api_name ?? path.basename(filePath, ".agent");
+  // The bundle directory contains both the `.agent` file and the
+  // `.bundle-meta.xml` file. SDR's ComponentSet.fromSource(bundleDir)
+  // walks both and zips them up for the deploy().
+  const bundleDir = path.dirname(filePath);
 
   try {
     const conn = await connFromAlias(input.target_org);
@@ -173,6 +177,7 @@ async function actionPublish(
       conn,
       agentApiConn,
       agentSource: source,
+      bundleDir,
       agentApiName,
       activate: input.activate ?? false,
       log: stream,
