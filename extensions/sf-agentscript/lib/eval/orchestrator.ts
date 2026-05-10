@@ -186,6 +186,18 @@ export async function runEval(opts: RunEvalOptions): Promise<RunEvalResult> {
   }
 
   // 6. Build summary + failure records
+  // Cross-reference user utterances from the spec, so transcript +
+  // FailureRecord both carry the actual user input (the eval API doesn't
+  // echo it back in EvalOutput.utterance).
+  const utteranceIndex = new Map<string, string>();
+  for (const test of spec.tests ?? []) {
+    const tid = String(test.id ?? "?");
+    for (const step of test.steps ?? []) {
+      if (step.type === "agent.send_message" && typeof step.utterance === "string") {
+        utteranceIndex.set(`${tid}::${step.id}`, step.utterance);
+      }
+    }
+  }
   const buildOpts: BuildOptions = {
     promptChars: opts.promptChars,
     interestingStateKeys: opts.interestingStateKeys,
@@ -193,6 +205,7 @@ export async function runEval(opts: RunEvalOptions): Promise<RunEvalResult> {
       !opts.noPersist && tracesMode !== "off" && traces.size > 0
         ? path.join(resolveRunDir(opts.cwd, runId, opts.runBase), "traces")
         : undefined,
+    utteranceIndex,
   };
   const { totals, failures } = summarize(merged, buildOpts);
   const lat = latencySummary(totals.latencies);
@@ -230,7 +243,7 @@ export async function runEval(opts: RunEvalOptions): Promise<RunEvalResult> {
   let runDir: string | undefined;
   if (!opts.noPersist) {
     runDir = resolveRunDir(opts.cwd, runId, opts.runBase);
-    await writeRun({ runDir, merged, traces, metadata, failures });
+    await writeRun({ runDir, merged, traces, metadata, failures, spec });
     log(`Artifacts: ${runDir}/`);
   }
 

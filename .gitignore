@@ -17,6 +17,7 @@ dist/
 .pi/code-analyzer/logs/
 .pi/todos/
 .pi/plans/
+.pi/state/
 
 # Local SF gateway credentials
 .pi/sf-llm-gateway-internal.json

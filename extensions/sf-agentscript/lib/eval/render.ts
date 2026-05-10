@@ -52,6 +52,12 @@ export interface BuildOptions {
   interestingStateKeys?: readonly string[];
   /** Pointer base directory where trace files live. Used to fill `trace_files`. */
   tracesDir?: string;
+  /**
+   * Optional `${test_id}::${turn_id}` → utterance map sourced from the spec.
+   * The eval API doesn't echo the user's input back in EvalOutput.utterance,
+   * so without this the failure record's `utterance` field is empty.
+   */
+  utteranceIndex?: Map<string, string>;
 }
 
 function truncate(s: string | undefined | null, n: number): string {
@@ -115,6 +121,7 @@ export function buildTurnSummary(
   sendOut: EvalOutput,
   stateOut: EvalOutput | undefined,
   opts: BuildOptions = {},
+  utteranceFromSpec?: string,
 ): TurnSummary {
   const promptChars = opts.promptChars ?? 600;
   const stateKeys = opts.interestingStateKeys ?? DEFAULT_INTERESTING_STATE_KEYS;
@@ -146,7 +153,10 @@ export function buildTurnSummary(
 
   return {
     turn_id: turnId,
-    utterance: sendOut.utterance,
+    utterance:
+      typeof sendOut.utterance === "string" && sendOut.utterance.length > 0
+        ? sendOut.utterance
+        : utteranceFromSpec,
     agent_response: agentResponse,
     topic: le.topic,
     invoked_actions: le.invokedActions,
@@ -169,13 +179,15 @@ export function buildFailureRecord(
   const byId = new Map<string, EvalOutput>();
   for (const o of outputs) if (o.id) byId.set(o.id, o);
 
+  const tid = String(test.id ?? "?");
   const turns: TurnSummary[] = [];
   for (const o of outputs) {
     if (o.type !== "agent.send_message") continue;
     const turnId = o.id ?? "";
     const stateId = turnId.startsWith("turn") ? turnId.replace("turn", "state") : undefined;
     const stateOut = stateId ? byId.get(stateId) : undefined;
-    turns.push(buildTurnSummary(turnId, o, stateOut, opts));
+    const utteranceFromSpec = opts.utteranceIndex?.get(`${tid}::${turnId}`);
+    turns.push(buildTurnSummary(turnId, o, stateOut, opts, utteranceFromSpec));
   }
 
   const failed_evaluators = groupedEvals

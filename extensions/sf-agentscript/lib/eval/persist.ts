@@ -24,6 +24,7 @@ import path from "node:path";
 import type {
   EvalApiResponse,
   EvalOutput,
+  EvalSpec,
   FailureRecord,
   LastExecution,
   PlannerResponse,
@@ -47,10 +48,37 @@ export interface PersistInput {
   traces: Map<string, unknown | null>;
   metadata: RunMetadata;
   failures: FailureRecord[];
+  /**
+   * Optional: the post-normalize spec, used to cross-reference user
+   * utterances onto each turn in transcript.jsonl. The eval API doesn't
+   * echo back the original utterance in its response, so without this we
+   * write `utterance: null` for every turn — actively misleading when
+   * a developer reads the transcript later.
+   */
+  spec?: EvalSpec;
+}
+
+/**
+ * Build a map of `${test_id}::${step_id}` → utterance from the spec, so the
+ * transcript writer can fill in the user input when the API response omits
+ * it.
+ */
+function buildUtteranceIndex(spec?: EvalSpec): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const test of spec?.tests ?? []) {
+    const tid = String(test.id ?? "?");
+    for (const step of test.steps ?? []) {
+      if (step.type === "agent.send_message" && typeof step.utterance === "string") {
+        out.set(`${tid}::${step.id}`, step.utterance);
+      }
+    }
+  }
+  return out;
 }
 
 export async function writeRun(input: PersistInput): Promise<void> {
   const { runDir, merged, traces, metadata, failures } = input;
+  const utteranceIndex = buildUtteranceIndex(input.spec);
   await mkdir(runDir, { recursive: true });
 
   // metadata.json
@@ -87,11 +115,13 @@ export async function writeRun(input: PersistInput): Promise<void> {
         reply = replyResp == null ? "" : JSON.stringify(replyResp);
       }
 
+      const utteranceFromResponse = typeof o.utterance === "string" ? o.utterance : undefined;
+      const utteranceFromSpec = utteranceIndex.get(`${tid}::${turnId}`);
       transcriptLines.push(
         JSON.stringify({
           test_id: tid,
           turn_id: turnId,
-          utterance: o.utterance,
+          utterance: utteranceFromResponse ?? utteranceFromSpec ?? null,
           agent_response: reply,
           topic: le.topic,
           invoked_actions: le.invokedActions,
