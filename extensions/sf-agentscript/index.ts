@@ -66,10 +66,7 @@ import { openInfoPanel } from "../../lib/common/info-panel.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 
 import { registerCompileTool } from "./lib/tools/compile.ts";
-import { registerEvalRunTool } from "./lib/tools/eval-run.ts";
-import { registerEvalGetFailureTool } from "./lib/tools/eval-get-failure.ts";
-import { registerEvalTraceTool } from "./lib/tools/eval-trace.ts";
-import { registerEvalResolveTool } from "./lib/tools/eval-resolve.ts";
+import { registerEvalTool } from "./lib/tools/eval.ts";
 import { registerInspectTool } from "./lib/tools/inspect.ts";
 import { registerMutateTool } from "./lib/tools/mutate.ts";
 import { handleEvalAction } from "./lib/command/eval-action.ts";
@@ -95,10 +92,7 @@ export default function sfAgentScriptExtension(pi: ExtensionAPI): void {
   registerCompileTool(pi);
   registerInspectTool(pi);
   registerMutateTool(pi);
-  registerEvalRunTool(pi);
-  registerEvalGetFailureTool(pi);
-  registerEvalTraceTool(pi);
-  registerEvalResolveTool(pi);
+  registerEvalTool(pi);
 
   registerExtensionDoctor(EXTENSION_ID, (cwd) => runExtensionDoctor(cwd));
 }

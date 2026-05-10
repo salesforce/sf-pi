@@ -7,15 +7,7 @@
   "defaultEnabled": true,
   "configurable": false,
   "commands": ["/sf-agentscript"],
-  "tools": [
-    "agentscript_compile",
-    "agentscript_inspect",
-    "agentscript_mutate",
-    "agentscript_eval_run",
-    "agentscript_eval_get_failure",
-    "agentscript_eval_trace",
-    "agentscript_eval_resolve"
-  ],
+  "tools": ["agentscript_compile", "agentscript_inspect", "agentscript_mutate", "agentscript_eval"],
   "events": ["session_start", "session_shutdown", "tool_result"],
   "docs": {
     "summary": "Owns the entire Agent Script lifecycle: authoring assist (compile-on-save), first-class compile tool, multi-turn eval against /einstein/evaluation/v1/tests with planner-trace fetching, and progressive-disclosure skill for the LLM.",

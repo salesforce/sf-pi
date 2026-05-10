@@ -102,9 +102,9 @@ extensions/sf-agentscript/
     command/
       eval-action.ts        ← implementation module
     eval/
+      active-ids.ts         ← implementation module
       decode.ts             ← implementation module
       eval-client.ts        ← implementation module
-      http.ts               ← implementation module
       normalize.ts          ← implementation module
       orchestrator.ts       ← implementation module
       persist.ts            ← implementation module
@@ -115,10 +115,7 @@ extensions/sf-agentscript/
       types.ts              ← implementation module
     tools/
       compile.ts            ← implementation module
-      eval-get-failure.ts   ← implementation module
-      eval-resolve.ts       ← implementation module
-      eval-run.ts           ← implementation module
-      eval-trace.ts         ← implementation module
+      eval.ts               ← implementation module
       inspect.ts            ← implementation module
       mutate.ts             ← implementation module
     code-actions.ts         ← implementation module

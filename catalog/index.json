@@ -16,10 +16,7 @@
       "agentscript_compile",
       "agentscript_inspect",
       "agentscript_mutate",
-      "agentscript_eval_run",
-      "agentscript_eval_get_failure",
-      "agentscript_eval_trace",
-      "agentscript_eval_resolve"
+      "agentscript_eval"
     ],
     "events": [
       "session_start",
@@ -55,7 +52,7 @@
     "entry": "extensions/sf-agentscript/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 5206
+    "srcLoc": 5081
   },
   {
     "id": "sf-brain",
