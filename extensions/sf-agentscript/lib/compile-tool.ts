@@ -32,11 +32,13 @@ export const COMPILE_TOOL_NAME = "agentscript_compile";
 // root anyOf (which Type.Union of objects produces). Per-action required
 // fields are enforced in execute() instead of at the schema layer.
 const Params = Type.Object({
-  action: Type.Union([Type.Literal("check"), Type.Literal("format")], {
-    default: "check",
-    description:
-      "check (default): parse + lint + compile via the vendored SDK. format: rewrite the file with canonical whitespace.",
-  }),
+  action: Type.Optional(
+    Type.Union([Type.Literal("check"), Type.Literal("format")], {
+      default: "check",
+      description:
+        "check (default): parse + lint + compile via the vendored SDK. format: rewrite the file with canonical whitespace.",
+    }),
+  ),
   path: Type.String({
     description: "Absolute or workspace-relative path to a `.agent` file.",
   }),

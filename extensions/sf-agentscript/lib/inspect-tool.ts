@@ -23,13 +23,15 @@ export const INSPECT_TOOL_NAME = "agentscript_inspect";
 // Type.Union shape produced). Per-action required-field checks are enforced
 // inside execute().
 const Params = Type.Object({
-  action: Type.Union(
-    [Type.Literal("structure"), Type.Literal("find_references"), Type.Literal("definition")],
-    {
-      default: "structure",
-      description:
-        "structure (default): navigable component graph + line numbers. find_references: every usage of an `@<ns>.<prop>` symbol including the declaration. definition: where a symbol is declared.",
-    },
+  action: Type.Optional(
+    Type.Union(
+      [Type.Literal("structure"), Type.Literal("find_references"), Type.Literal("definition")],
+      {
+        default: "structure",
+        description:
+          "structure (default): navigable component graph + line numbers. find_references: every usage of an `@<ns>.<prop>` symbol including the declaration. definition: where a symbol is declared.",
+      },
+    ),
   ),
   path: Type.String({
     description: "Absolute or workspace-relative path to a `.agent` file.",

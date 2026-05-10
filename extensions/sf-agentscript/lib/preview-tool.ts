@@ -221,7 +221,7 @@ async function actionStart(
           agent_name: agentName,
           via: "api_name" as const,
         },
-        `🎬 Preview started against published ${input.agent_api_name} · session ${result.sessionId.slice(0, 8)}…\n${result.agentResponse}`,
+        `🎬 Preview started against published ${input.agent_api_name}\nsession_id: ${result.sessionId}\n${result.agentResponse}`,
       );
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -269,7 +269,7 @@ async function actionStart(
         agent_name: agentName,
         via: "agent_file" as const,
       },
-      `🎬 Preview started · session ${result.sessionId.slice(0, 8)}…\n${result.agentResponse}`,
+      `🎬 Preview started\nsession_id: ${result.sessionId}\n${result.agentResponse}`,
     );
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
