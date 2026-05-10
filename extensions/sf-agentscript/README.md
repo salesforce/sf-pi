@@ -119,12 +119,16 @@ extensions/sf-agentscript/
       eval-resolve.ts       ← implementation module
       eval-run.ts           ← implementation module
       eval-trace.ts         ← implementation module
+      inspect.ts            ← implementation module
+      mutate.ts             ← implementation module
     code-actions.ts         ← implementation module
     connection.ts           ← implementation module
     diagnostics.ts          ← implementation module
     doctor.ts               ← implementation module
     feedback.ts             ← implementation module
     file-classify.ts        ← implementation module
+    inspect.ts              ← implementation module
+    mutate.ts               ← implementation module
     sdk.ts                  ← implementation module
     tool-types.ts           ← implementation module
     types.ts                ← implementation module
@@ -132,9 +136,12 @@ extensions/sf-agentscript/
     code-actions.test.ts    ← unit / smoke test
     connection.test.ts      ← unit / smoke test
     diagnostics.test.ts     ← unit / smoke test
+    eval-normalize.test.ts  ← unit / smoke test
     eval-sfap.test.ts       ← unit / smoke test
     feedback.test.ts        ← unit / smoke test
     file-classify.test.ts   ← unit / smoke test
+    inspect.test.ts         ← unit / smoke test
+    mutate.test.ts          ← unit / smoke test
     smoke.test.ts           ← unit / smoke test
     tool-types.test.ts      ← unit / smoke test
   CREDITS.md                ← extension attribution

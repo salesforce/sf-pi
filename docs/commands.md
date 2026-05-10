@@ -39,7 +39,7 @@ _Single-plugin lifecycle for `.agent` files: in-process compile-on-save diagnost
 
 - Default: **on**
 - Commands: `/sf-agentscript`
-- Tools: `agentscript_compile`, `agentscript_eval_run`, `agentscript_eval_get_failure`, `agentscript_eval_trace`, `agentscript_eval_resolve`
+- Tools: `agentscript_compile`, `agentscript_inspect`, `agentscript_mutate`, `agentscript_eval_run`, `agentscript_eval_get_failure`, `agentscript_eval_trace`, `agentscript_eval_resolve`
 
 ### [SF Data 360](../extensions/sf-data360/)
 

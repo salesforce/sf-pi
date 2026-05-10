@@ -70,6 +70,8 @@ import { registerEvalRunTool } from "./lib/tools/eval-run.ts";
 import { registerEvalGetFailureTool } from "./lib/tools/eval-get-failure.ts";
 import { registerEvalTraceTool } from "./lib/tools/eval-trace.ts";
 import { registerEvalResolveTool } from "./lib/tools/eval-resolve.ts";
+import { registerInspectTool } from "./lib/tools/inspect.ts";
+import { registerMutateTool } from "./lib/tools/mutate.ts";
 import { handleEvalAction } from "./lib/command/eval-action.ts";
 
 const EXTENSION_ID = "sf-agentscript";
@@ -90,6 +92,8 @@ export default function sfAgentScriptExtension(pi: ExtensionAPI): void {
 
   // LLM-callable tools — full Agent Script lifecycle surface
   registerCompileTool(pi);
+  registerInspectTool(pi);
+  registerMutateTool(pi);
   registerEvalRunTool(pi);
   registerEvalGetFailureTool(pi);
   registerEvalTraceTool(pi);
