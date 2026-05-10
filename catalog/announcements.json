@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.58.6-2026-05-10",
-  "latestVersion": "0.58.6",
+  "revision": "release-0.59.0-2026-05-10",
+  "latestVersion": "0.59.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.58.6",
+      "id": "release-0.59.0",
       "kind": "update",
-      "title": "sf-pi v0.58.6 — sf-agentscript: two hardening bugs found by official agentscript fixtures",
+      "title": "sf-pi v0.59.0 — sf-agentscript: hardening items 1, 2, 4",
       "publishedAt": "2026-05-10T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.58.6",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.59.0",
       "severity": "info",
-      "body": "sf-agentscript: two hardening bugs found by official agentscript fixtures"
+      "body": "sf-agentscript: hardening items 1, 2, 4"
     },
     {
       "id": "pi-0.73-required",
