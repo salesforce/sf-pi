@@ -116,14 +116,19 @@ extensions/sf-agentscript/
     preview/
       client.ts             ← implementation module
       session-store.ts      ← implementation module
+    templates/
+      agentforce-default.ts ← implementation module
+      minimal.ts            ← implementation module
     tools/
       compile.ts            ← implementation module
+      create.ts             ← implementation module
       eval.ts               ← implementation module
       inspect.ts            ← implementation module
       mutate.ts             ← implementation module
       preview.ts            ← implementation module
     code-actions.ts         ← implementation module
     connection.ts           ← implementation module
+    create.ts               ← implementation module
     diagnostics.ts          ← implementation module
     doctor.ts               ← implementation module
     feedback.ts             ← implementation module
@@ -136,6 +141,7 @@ extensions/sf-agentscript/
   tests/
     code-actions.test.ts    ← unit / smoke test
     connection.test.ts      ← unit / smoke test
+    create.test.ts          ← unit / smoke test
     diagnostics.test.ts     ← unit / smoke test
     eval-normalize.test.ts  ← unit / smoke test
     eval-sfap.test.ts       ← unit / smoke test

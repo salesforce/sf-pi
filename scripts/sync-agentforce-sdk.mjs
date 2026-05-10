@@ -16,7 +16,7 @@
  *      parser-javascript build variant).
  *   3. pnpm --filter '@agentscript/agentforce...' build (builds dependency graph
  *      up to and including agentforce).
- *   4. Copy dist/browser.js, dist/browser.js.map, dist/index.d.ts to
+ *   4. Copy dist/browser.js, dist/browser.js.map to
  *      extensions/sf-agentscript-assist/lib/vendor/agentforce/.
  *      We pick browser.js because it is a single self-contained ESM bundle with
  *      no external peer imports — compile() and parse() work in Node out of the
@@ -64,7 +64,8 @@ const VENDOR_DIR = path.join(
 const VENDORED_FILES = [
   { src: "packages/agentforce/dist/browser.js", dest: "browser.js" },
   { src: "packages/agentforce/dist/browser.js.map", dest: "browser.js.map" },
-  { src: "packages/agentforce/dist/index.d.ts", dest: "index.d.ts" },
+  // Skipped: dist/index.d.ts (~9000 lines). Our extension types only what we
+  // actually use via lib/sdk.ts AgentforceSDK; bundled .d.ts is dead weight.
 ];
 
 // -------------------------------------------------------------------------------------------------
@@ -193,7 +194,7 @@ bundle.
 | --- | --- |
 | \`browser.js\` | Self-contained ESM bundle of the SDK. Works in Node. |
 | \`browser.js.map\` | Source map for the bundle. |
-| \`index.d.ts\` | Bundled TypeScript declarations for the SDK. |
+
 
 We vendor the \`browser.js\` bundle (not \`index.js\`) because it is a single
 file with all dependencies inlined. \`index.js\` declares its workspace peers

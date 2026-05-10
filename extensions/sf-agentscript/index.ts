@@ -66,6 +66,7 @@ import { openInfoPanel } from "../../lib/common/info-panel.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 
 import { registerCompileTool } from "./lib/tools/compile.ts";
+import { registerCreateTool } from "./lib/tools/create.ts";
 import { registerEvalTool } from "./lib/tools/eval.ts";
 import { registerInspectTool } from "./lib/tools/inspect.ts";
 import { registerMutateTool } from "./lib/tools/mutate.ts";
@@ -91,6 +92,7 @@ export default function sfAgentScriptExtension(pi: ExtensionAPI): void {
 
   // LLM-callable tools — full Agent Script lifecycle surface
   registerCompileTool(pi);
+  registerCreateTool(pi);
   registerInspectTool(pi);
   registerMutateTool(pi);
   registerPreviewTool(pi);

@@ -14,6 +14,7 @@
     "providers": [],
     "tools": [
       "agentscript_compile",
+      "agentscript_create",
       "agentscript_inspect",
       "agentscript_mutate",
       "agentscript_preview",
@@ -64,7 +65,7 @@
     "entry": "extensions/sf-agentscript/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 5901
+    "srcLoc": 6310
   },
   {
     "id": "sf-brain",

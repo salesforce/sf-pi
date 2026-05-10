@@ -9,6 +9,7 @@
   "commands": ["/sf-agentscript"],
   "tools": [
     "agentscript_compile",
+    "agentscript_create",
     "agentscript_inspect",
     "agentscript_mutate",
     "agentscript_preview",
