@@ -23,9 +23,9 @@ import { Type } from "typebox";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { connForAgentApi } from "./agent-api-auth.ts";
 import { connFromAlias } from "./connection.ts";
-import { isAgentScriptFile, resolveToolPath } from "./file-classify.ts";
+import { isAgentScriptFile } from "./file-classify.ts";
 import { activateVersion, deactivateVersion, listVersions, publishAgent } from "./lifecycle.ts";
-import { toolError, toolOk, type ToolError } from "./tool-types.ts";
+import { safeResolveToolPath, toolError, toolOk, type ToolError } from "./tool-types.ts";
 
 export const LIFECYCLE_TOOL_NAME = "agentscript_lifecycle";
 
@@ -148,7 +148,9 @@ async function actionPublish(
   content: { type: "text"; text: string }[];
   details: Record<string, unknown> | ToolError;
 }> {
-  const filePath = resolveToolPath(input.agent_file as string, ctx.cwd);
+  const resolved = safeResolveToolPath(input.agent_file, ctx.cwd);
+  if ("absPath" in resolved === false) return resolved;
+  const filePath = resolved.absPath;
   if (!isAgentScriptFile(filePath)) {
     return toolError(`Not an Agent Script file: ${filePath}`, "Pass a path ending in `.agent`.");
   }

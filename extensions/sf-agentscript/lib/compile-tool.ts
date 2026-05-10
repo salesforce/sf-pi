@@ -19,10 +19,10 @@ import { Type } from "typebox";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { connForAgentApi } from "./agent-api-auth.ts";
 import { checkAgentScriptFile } from "./diagnostics.ts";
-import { isAgentScriptFile, resolveToolPath } from "./file-classify.ts";
+import { isAgentScriptFile } from "./file-classify.ts";
 import { loadAgentforceSDK } from "./sdk.ts";
 import { serverCompile } from "./lifecycle.ts";
-import { toolError, toolOk, type ToolError } from "./tool-types.ts";
+import { safeResolveToolPath, toolError, toolOk, type ToolError } from "./tool-types.ts";
 import type { AgentScriptQuickFix } from "./types.ts";
 
 export const COMPILE_TOOL_NAME = "agentscript_compile";
@@ -92,8 +92,9 @@ export function registerCompileTool(pi: ExtensionAPI): void {
     parameters: Params,
     async execute(_id, params, _signal, _onUpdate, ctx) {
       const p = params as ParamsAny;
-      if (!p.path) return toolError("INVALID_PARAMS", "`path` is required.");
-      const filePath = resolveToolPath(p.path, ctx.cwd);
+      const resolved = safeResolveToolPath(p.path, ctx.cwd);
+      if ("absPath" in resolved === false) return resolved;
+      const filePath = resolved.absPath;
       if (!isAgentScriptFile(filePath)) {
         return toolError(
           `Not an Agent Script file: ${filePath}`,

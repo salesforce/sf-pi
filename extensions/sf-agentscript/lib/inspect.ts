@@ -140,13 +140,23 @@ function namedMapEntries(value: unknown): Array<[string, unknown]> {
  * — same pattern the upstream code-actions provider uses. We don't import
  * the SDK's walker; we walk plain objects and arrays defensively.
  */
+/**
+ * Cycle-safe AST walker. Without `seen`, files whose AST nodes carry parent
+ * back-references (or any object reused in multiple positions) trigger a
+ * stack overflow on `inspect structure`. Empirically observed on the
+ * deep-dive `agentscript.agent` example and the `090_shipping_logistics`
+ * fixture from `salesforce/agentscript`.
+ */
 function collectAtRefs(
   node: unknown,
   refs: { actions: Set<string>; subagents: Set<string>; variables: Set<string> },
+  seen: WeakSet<object> = new WeakSet(),
 ): void {
   if (!node || typeof node !== "object") return;
+  if (seen.has(node as object)) return;
+  seen.add(node as object);
   if (Array.isArray(node)) {
-    for (const child of node) collectAtRefs(child, refs);
+    for (const child of node) collectAtRefs(child, refs, seen);
     return;
   }
   const obj = node as Record<string, unknown>;
@@ -162,10 +172,10 @@ function collectAtRefs(
       }
     }
   }
-  // Recurse defensively. Skip __cst (huge backref tree).
+  // Recurse defensively. Skip __cst (huge backref tree) and parent links.
   for (const [key, child] of Object.entries(obj)) {
-    if (key === "__cst" || key === "__diagnostics") continue;
-    collectAtRefs(child, refs);
+    if (key === "__cst" || key === "__diagnostics" || key === "parent") continue;
+    collectAtRefs(child, refs, seen);
   }
 }
 

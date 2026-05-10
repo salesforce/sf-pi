@@ -1,5 +1,11 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /**
+ * Shared tool-result helpers.
+ *
+ * `safeResolveToolPath` wraps `resolveToolPath` so every tool surface gets
+ * the same clean INVALID_PATH error when the LLM passes a `..`-escape or a
+ * relative path that resolves outside the workspace.
+ *
  * Shared tool result + error contracts for sf-agentscript.
  *
  * Every LLM-callable tool returns a `ToolEnvelope<T>`. On success `details`
@@ -10,6 +16,8 @@
  * This file is the canonical source for tool result shapes — every tool in
  * `lib/tools/` constructs its result through `toolOk()` / `toolError()`.
  */
+
+import { PathEscapeError, resolveToolPath } from "./file-classify.ts";
 
 // -------------------------------------------------------------------------------------------------
 // Public types
@@ -96,6 +104,34 @@ export function toolError(
     content: [{ type: "text", text: lines.join("\n") }],
     details,
   };
+}
+
+/**
+ * Resolve a tool-supplied path with workspace containment.
+ *
+ * Returns either a tool error envelope (when the path escapes the workspace
+ * or contains literal `..` traversal) or the absolute resolved path. Tools
+ * should `return` the envelope on failure and use the resolved path on
+ * success.
+ */
+export function safeResolveToolPath(
+  inputPath: string | undefined,
+  cwd: string,
+): { ok: true; absPath: string } | ToolEnvelope<ToolError> {
+  if (!inputPath) {
+    return toolError("INVALID_PARAMS", "`path` is required.");
+  }
+  try {
+    return { ok: true, absPath: resolveToolPath(inputPath, cwd) };
+  } catch (err) {
+    if (err instanceof PathEscapeError) {
+      return toolError(
+        `INVALID_PATH: ${err.message}`,
+        "Pass an absolute path or a relative path that stays inside the workspace.",
+      );
+    }
+    throw err;
+  }
 }
 
 /** Type guard for the failure branch of an envelope. */

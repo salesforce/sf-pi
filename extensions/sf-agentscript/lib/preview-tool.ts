@@ -21,8 +21,8 @@ import {
   startPreviewByApiName,
 } from "./preview/client.ts";
 import { fetchTrace } from "./eval/trace-client.ts";
-import { isAgentScriptFile, resolveToolPath } from "./file-classify.ts";
-import { toolError, toolOk, type ToolError } from "./tool-types.ts";
+import { isAgentScriptFile } from "./file-classify.ts";
+import { safeResolveToolPath, toolError, toolOk, type ToolError } from "./tool-types.ts";
 
 export const PREVIEW_TOOL_NAME = "agentscript_preview";
 
@@ -236,7 +236,9 @@ async function actionStart(
   }
 
   // Path B — local .agent file.
-  const filePath = resolveToolPath(input.agent_file ?? "", ctx.cwd);
+  const resolved = safeResolveToolPath(input.agent_file, ctx.cwd);
+  if ("absPath" in resolved === false) return resolved;
+  const filePath = resolved.absPath;
   if (!isAgentScriptFile(filePath)) {
     return toolError(`Not an Agent Script file: ${filePath}`, "Pass a path ending in `.agent`.");
   }

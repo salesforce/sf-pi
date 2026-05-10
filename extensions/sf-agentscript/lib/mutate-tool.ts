@@ -13,8 +13,8 @@
 import { Type } from "typebox";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { applyMutation, type MutateOp } from "./mutate.ts";
-import { isAgentScriptFile, resolveToolPath } from "./file-classify.ts";
-import { toolError, toolOk } from "./tool-types.ts";
+import { isAgentScriptFile } from "./file-classify.ts";
+import { safeResolveToolPath, toolError, toolOk } from "./tool-types.ts";
 
 export const MUTATE_TOOL_NAME = "agentscript_mutate";
 
@@ -198,8 +198,9 @@ export function registerMutateTool(pi: ExtensionAPI): void {
     async execute(_id, params, _signal, _onUpdate, ctx) {
       const p = params as ParamsAny;
       if (!p.op) return toolError("INVALID_PARAMS", "`op` is required.");
-      if (!p.path) return toolError("INVALID_PARAMS", "`path` is required.");
-      const absPath = resolveToolPath(p.path, ctx.cwd);
+      const resolved = safeResolveToolPath(p.path, ctx.cwd);
+      if ("absPath" in resolved === false) return resolved;
+      const absPath = resolved.absPath;
       if (!isAgentScriptFile(absPath)) {
         return toolError(`Not an Agent Script file: ${absPath}`, "Pass a path ending in `.agent`.");
       }
