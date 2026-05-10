@@ -481,6 +481,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.61.1](https://github.com/salesforce/sf-pi/compare/v0.61.0...v0.61.1) (2026-05-10)
+
+
+### Bug Fixes
+
+* **sf-agentscript:** deploy AiAuthoringBundle so published agents open in Agent Script Studio ([d121e9f](https://github.com/salesforce/sf-pi/commit/d121e9f10d96d86a5b339b60112053ad93e9d4e3))
+
 ## [0.61.0](https://github.com/salesforce/sf-pi/compare/v0.60.0...v0.61.0) (2026-05-10)
 
 
