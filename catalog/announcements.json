@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.58.0-2026-05-10",
-  "latestVersion": "0.58.0",
+  "revision": "release-0.58.1-2026-05-10",
+  "latestVersion": "0.58.1",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.58.0",
+      "id": "release-0.58.1",
       "kind": "update",
-      "title": "sf-pi v0.58.0 — sf-agentscript: P8 — lifecycle + tier-2 IQ unlocks (7 tools)",
+      "title": "sf-pi v0.58.1 — sf-agentscript: bugs found during AgentforceTesting smoke pass",
       "publishedAt": "2026-05-10T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.58.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.58.1",
       "severity": "info",
-      "body": "sf-agentscript: P8 — lifecycle + tier-2 IQ unlocks (7 tools)"
+      "body": "sf-agentscript: bugs found during AgentforceTesting smoke pass"
     },
     {
       "id": "pi-0.73-required",
