@@ -2,7 +2,7 @@
 
 This directory contains a build of the `@agentscript/agentforce` SDK from
 [salesforce/agentscript](https://github.com/salesforce/agentscript), vendored so
-that `sf-agentscript-assist` works offline, on plain `npm install`, without
+that `sf-agentscript` works offline, on plain `npm install`, without
 requiring pnpm or a network round-trip.
 
 **Do not edit the bundled files.** If upstream behavior needs to change, bump
@@ -19,11 +19,11 @@ bundle.
 
 ## Files
 
-| File | Purpose |
-| --- | --- |
-| `browser.js` | Self-contained ESM bundle of the SDK. Works in Node. |
-| `browser.js.map` | Source map for the bundle. |
-| `index.d.ts` | Bundled TypeScript declarations for the SDK. |
+| File             | Purpose                                              |
+| ---------------- | ---------------------------------------------------- |
+| `browser.js`     | Self-contained ESM bundle of the SDK. Works in Node. |
+| `browser.js.map` | Source map for the bundle.                           |
+| `index.d.ts`     | Bundled TypeScript declarations for the SDK.         |
 
 We vendor the `browser.js` bundle (not `index.js`) because it is a single
 file with all dependencies inlined. `index.js` declares its workspace peers

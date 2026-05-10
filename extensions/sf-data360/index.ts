@@ -106,7 +106,7 @@ export default function sfData360(pi: ExtensionAPI) {
 }
 
 // Action ids for the /sf-data360 settings panel. Mirrors the pattern used by
-// sf-slack, sf-agentscript-assist, sf-guardrail, sf-llm-gateway-internal,
+// sf-slack, sf-agentscript, sf-guardrail, sf-llm-gateway-internal,
 // etc. so users get the same standardized command-panel UX everywhere.
 type SfData360Action = "status" | "help" | "close" | LifecycleActionId;
 

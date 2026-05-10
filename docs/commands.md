@@ -33,6 +33,14 @@ _Salesforce LLM Gateway provider with model discovery_
 
 ## Agent-tool
 
+### [SF Agent Script](../extensions/sf-agentscript/)
+
+_Single-plugin lifecycle for `.agent` files: in-process compile-on-save diagnostics, an LLM-callable compile tool, multi-turn eval/regression testing against the Salesforce Evaluation API, and a placeholder for the future Agent Script LSP._
+
+- Default: **on**
+- Commands: `/sf-agentscript`
+- Tools: `agentscript_compile`, `agentscript_eval_run`, `agentscript_eval_get_failure`, `agentscript_eval_trace`, `agentscript_eval_resolve`
+
 ### [SF Data 360](../extensions/sf-data360/)
 
 _Data Cloud/Data 360 direct REST helper — d360_api, compact d360_metadata discovery, d360_probe, and extension-owned progressive-disclosure skill references_
@@ -60,13 +68,6 @@ _Salesforce-aware safety hooks — file protection policies, dangerous-command g
 - Commands: `/sf-guardrail`
 
 ## Assistive
-
-### [SF Agent Script Assist](../extensions/sf-agentscript-assist/)
-
-_In-process Agent Script authoring companion — parse, compile, and code-action feedback on every .agent write_
-
-- Default: **on**
-- Commands: `/sf-agentscript-assist`
 
 ### [SF Brain](../extensions/sf-brain/)
 

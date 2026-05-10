@@ -20,7 +20,7 @@
     ],
     "safety": [
       "Never overrides the built-in write/edit tools (pi cross-extension conflict guard).",
-      "Defers .agent file diagnostics to sf-agentscript-assist when that extension is loaded."
+      "Defers .agent file diagnostics to sf-agentscript when that extension is loaded."
     ]
   }
 }

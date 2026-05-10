@@ -28,7 +28,7 @@ code lives in `extensions/<id>/lib/`.
 | `glyph-policy.ts`                             | `sf-welcome`, `sf-devbar`                                                   | Decides emoji vs ASCII glyphs based on terminal + user prefs + env vars          |
 | `display/types.ts`                            | `sf-pi-manager`, `sf-lsp`, `sf-agentscript-…`                               | `SfPiDisplayProfile` union + shared display types                                |
 | `display/settings.ts`                         | `sf-pi-manager`                                                             | Read/write the shared `sfPi.display.profile` setting (project > global)          |
-| `display/diagnostics.ts`                      | `sf-lsp`, `sf-agentscript-assist`                                           | `details.sfPiDiagnostics` contract for LSP-style tool results                    |
+| `display/diagnostics.ts`                      | `sf-lsp`, `sf-agentscript`                                                  | `details.sfPiDiagnostics` contract for LSP-style tool results                    |
 | `doctor/diagnostics.ts`                       | `sf-pi-manager`, `sf-welcome`                                               | Read-only diagnostics powering `/sf-pi doctor` (side-effect free)                |
 | `doctor/fixes.ts`                             | `sf-pi-manager`                                                             | Safe-repair operations for `/sf-pi doctor fix startup`/`skills` (gated by HITL)  |
 | `doctor/types.ts`                             | `sf-pi-manager`, `sf-welcome`                                               | Shared diagnostic + fix-target shapes                                            |

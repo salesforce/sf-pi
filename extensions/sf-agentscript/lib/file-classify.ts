@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /**
- * File classification helpers for sf-agentscript-assist.
+ * File classification helpers for sf-agentscript.
  *
  * Only `.agent` files are handled by this extension. Everything else is
  * deliberately ignored.

@@ -22,7 +22,7 @@ sf-pi/
 ├── ROADMAP.md                  ← What's next, milestones, non-goals
 ├── CHANGELOG.md                ← Release history (managed by release-please)
 ├── extensions/                 ← All extensions live here (self-contained)
-│   ├── sf-agentscript-assist/
+│   ├── sf-agentscript/
 │   ├── sf-brain/
 │   ├── sf-data360/
 │   ├── sf-devbar/

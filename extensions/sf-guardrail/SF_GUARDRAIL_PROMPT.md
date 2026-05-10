@@ -6,6 +6,7 @@ categories below. When it does, wait for the human's response.
 Hard-blocked (no prompt, return an error to you):
 
 - Writes/edits to destructiveChanges\*.xml, .forceignore, .sf/**, .sfdx/**
+  (carve-out: .sfdx/agents/\*\* is allowed for sf-agentscript preview sessions)
 - Reads/writes to secret files (.env, .env.local, .env.production, .dev.vars)
 
 Dangerous-command confirmation (shell-AST matched, not regex):

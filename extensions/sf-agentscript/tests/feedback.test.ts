@@ -60,7 +60,7 @@ describe("renderUnavailableFeedback", () => {
     const rendered = renderUnavailableFeedback("Module not found");
     expect(rendered).toContain("LSP setup note:");
     expect(rendered).toContain("Module not found");
-    expect(rendered).toContain("/sf-agentscript-assist doctor");
+    expect(rendered).toContain("/sf-agentscript doctor");
   });
 });
 
@@ -164,7 +164,7 @@ describe("buildToolResultUpdate", () => {
       | { fileName?: string; source?: string; status?: string }
       | undefined;
     expect(metadata?.fileName).toBe("billing.agent");
-    expect(metadata?.source).toBe("sf-agentscript-assist");
+    expect(metadata?.source).toBe("sf-agentscript");
     expect(metadata?.status).toBe("error");
     expect(state.lastStatusByFile.get("/billing.agent")).toBe("error");
   });

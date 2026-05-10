@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /**
- * Red/green decision logic and tool-result rendering for sf-agentscript-assist.
+ * Red/green decision logic and tool-result rendering for sf-agentscript.
  *
  * The agent-facing surface is:
  *
@@ -13,7 +13,7 @@
  * because (a) it matches what agents already pattern-match on from `sf-lsp`,
  * and (b) the framing — "your write triggered a check, here's what came back"
  * — is exactly the same. If you need to tell sf-lsp from
- * sf-agentscript-assist in debug, read the first line: we prefix dialect info
+ * sf-agentscript in debug, read the first line: we prefix dialect info
  * in the feedback header for `.agent` files, which sf-lsp never does.
  */
 
@@ -228,7 +228,7 @@ export function renderSuccessFeedback(filePath: string): string {
 
 export function renderUnavailableFeedback(reason: string): string {
   const cleanReason = truncateByBytes(normalizeWhitespace(reason), MAX_UNAVAILABLE_REASON_BYTES);
-  return `LSP setup note: Agent Script SDK is unavailable. Reason: ${cleanReason} Run /sf-agentscript-assist doctor for diagnostics.`;
+  return `LSP setup note: Agent Script SDK is unavailable. Reason: ${cleanReason} Run /sf-agentscript doctor for diagnostics.`;
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -392,7 +392,7 @@ function buildAgentScriptMetadata(options: {
     toDiagnosticItem(diagnostic, options.quickFixes),
   );
   return {
-    source: "sf-agentscript-assist",
+    source: "sf-agentscript",
     status: options.status,
     filePath: options.filePath,
     fileName,

@@ -14,7 +14,7 @@ import { describe, expect, it } from "vitest";
 import { checkAgentScriptFile } from "../lib/diagnostics.ts";
 
 function writeTempAgent(contents: string): string {
-  const dir = mkdtempSync(path.join(os.tmpdir(), "sf-agentscript-assist-"));
+  const dir = mkdtempSync(path.join(os.tmpdir(), "sf-agentscript-"));
   const file = path.join(dir, "sample.agent");
   writeFileSync(file, contents, "utf8");
   return file;

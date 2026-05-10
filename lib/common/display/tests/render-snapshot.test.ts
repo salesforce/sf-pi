@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { renderDiagnosticsForProfile, type SfPiDiagnosticsMetadata } from "../diagnostics.ts";
 
 const diagnostics: SfPiDiagnosticsMetadata = {
-  source: "sf-agentscript-assist",
+  source: "sf-agentscript",
   status: "error",
   filePath: "/project/agent/billing.agent",
   fileName: "billing.agent",
@@ -54,7 +54,7 @@ const diagnostics: SfPiDiagnosticsMetadata = {
 describe("shared diagnostics renderer snapshots", () => {
   it("renders compact profile", () => {
     expect(renderDiagnosticsForProfile(diagnostics, "compact")).toMatchInlineSnapshot(`
-      "[sf-agentscript-assist] billing.agent: 4 diagnostics
+      "[sf-agentscript] billing.agent: 4 diagnostics
       - L7 [missing-instruction]: Topic is missing an instruction block.
       - L12 [deprecated-field]: Field 'topic' is deprecated. Use 'subagent'.
       - L18 [unknown-variable]: Unknown variable 'case_id'.
@@ -64,7 +64,7 @@ describe("shared diagnostics renderer snapshots", () => {
 
   it("renders balanced profile with fixes", () => {
     expect(renderDiagnosticsForProfile(diagnostics, "balanced")).toMatchInlineSnapshot(`
-      "[sf-agentscript-assist] billing.agent: 4 diagnostics
+      "[sf-agentscript] billing.agent: 4 diagnostics
       - L7 [missing-instruction]: Topic is missing an instruction block.
       - L12 [deprecated-field]: Field 'topic' is deprecated. Use 'subagent'.
           fix: Replace with 'subagent'

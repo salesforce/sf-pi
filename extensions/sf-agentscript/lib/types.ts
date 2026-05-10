@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /**
- * Local types for sf-agentscript-assist.
+ * Local types for sf-agentscript.
  *
  * These shadow the pieces of the vendored SDK we actually use, so the
  * extension's internal types stay decoupled from the raw SDK surface.

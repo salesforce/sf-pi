@@ -70,5 +70,5 @@ growing `index.ts`.
 - Replacing VS Code's full LSP experience. sf-lsp stays advisory.
 - Changing the LLM-facing text appended by `feedback.ts`. That contract
   belongs to the write/edit self-correction loop and stays untouched.
-- Owning `.agent` diagnostics when `sf-agentscript-assist` is loaded —
+- Owning `.agent` diagnostics when `sf-agentscript` is loaded —
   the precedence rule from Phase 0 still applies.

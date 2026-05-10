@@ -31,14 +31,14 @@ transcript row and the permanent sf-devbar top-bar LSP segment.
 | Inline transcript row   | `[sf-lsp] Apex · Foo.cls · clean · 312ms` — user-only, **never** reaches the LLM                                                                                                        | `pi.sendMessage({customType:"sf-lsp", display:true})` + `registerMessageRenderer` |
 | Rich `/sf-lsp` panel    | Doctor + recent activity ring + actions (refresh, verbose toggle, shut down servers)                                                                                                    | `ctx.ui.custom` overlay with `DynamicBorder` + `SelectList`                       |
 
-**Agent Script note:** when the `sf-agentscript-assist` extension is loaded,
+**Agent Script note:** when the `sf-agentscript` extension is loaded,
 sf-lsp yields `.agent` files to it. That extension handles the same diagnostic
 flow in-process via the vendored Agent Script SDK — faster, richer, and with
 deterministic quick fixes. sf-lsp still observes the metadata the assist
 extension stamps onto the tool result so the transcript stays accurate for
 `.agent` edits.
 
-If `sf-agentscript-assist` is disabled, sf-lsp's subprocess LSP path
+If `sf-agentscript` is disabled, sf-lsp's subprocess LSP path
 continues to handle `.agent` files exactly as before.
 
 ## Supported Languages
@@ -127,7 +127,7 @@ always-on in the sf-devbar top bar and requires no configuration.
 | ------------------------ | ----------------------------------------------- | ------------------------------------------ |
 | session_start            | always                                          | Reset LSP session state                    |
 | session_shutdown         | always                                          | Reset state, shut down LSP child processes |
-| tool_result (write/edit) | `.agent` + `sf-agentscript-assist` installed    | Silent (assist extension handles it)       |
+| tool_result (write/edit) | `.agent` + `sf-agentscript` installed           | Silent (assist extension handles it)       |
 | tool_result (write/edit) | Supported SF file, has errors                   | Append `LSP feedback:` with diagnostics    |
 | tool_result (write/edit) | Supported SF file, was error → now clean        | Append `LSP now clean:`                    |
 | tool_result (write/edit) | Supported SF file, LSP unavailable (first time) | Append `LSP setup note:`                   |
@@ -369,9 +369,9 @@ that on slow machines. Re-save the file to trigger a new request once
 the server is warm.
 
 **`.agent` files show no feedback or unexpected subprocess output:**
-When `sf-agentscript-assist` is loaded, sf-lsp yields `.agent` files to
+When `sf-agentscript` is loaded, sf-lsp yields `.agent` files to
 it entirely (faster, in-process). Check that extension's status with
-`/sf-agentscript-assist doctor`. If `sf-agentscript-assist` is disabled,
+`/sf-agentscript doctor`. If `sf-agentscript` is disabled,
 sf-lsp falls back to the old subprocess path — set
 `SF_LSP_AGENTSCRIPT_SERVER` or install the VS Code Agent Script extension
 for discovery.

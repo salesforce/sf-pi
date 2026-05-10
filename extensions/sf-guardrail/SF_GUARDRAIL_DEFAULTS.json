@@ -34,8 +34,9 @@
         "id": "sf-cli-state",
         "description": "SF CLI / sfdx state directories — never edit by hand",
         "patterns": [{ "pattern": ".sf/**" }, { "pattern": ".sfdx/**" }],
+        "allowedPatterns": [{ "pattern": ".sfdx/agents/**" }],
         "protection": "noAccess",
-        "blockMessage": "{file} is internal sf CLI state. sf-guardrail blocks direct access; use sf commands instead.",
+        "blockMessage": "{file} is internal sf CLI state. sf-guardrail blocks direct access; use sf commands instead. (Carve-out: .sfdx/agents/** is allowed for sf-agentscript preview sessions — the Salesforce-standard agent session layout.)",
         "enabled": true,
         "onlyIfExists": false
       },

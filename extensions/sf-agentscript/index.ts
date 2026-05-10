@@ -1,40 +1,33 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /**
- * sf-agentscript-assist behavior contract
+ * sf-agentscript behavior contract — the single plugin that owns the entire
+ * Agent Script lifecycle: authoring assist (compile-on-save), first-class
+ * compile tool, multi-turn eval/regression testing against the Salesforce
+ * Evaluation API, and a placeholder for the future Agent Script LSP.
  *
- * - Runs after successful `write` and `edit` tool results on `.agent` files.
- * - Uses the vendored `@agentscript/agentforce` SDK to parse + compile the
- *   file in-process. No subprocess, no LSP, no VS Code dependency.
- * - Appends:
- *     `LSP feedback: <file>` when parse/compile produces actionable findings,
- *     `LSP now clean: <file>` only when a previously broken file goes green,
- *     `LSP setup note: ...` once per session when the SDK can't load.
- * - Stays silent when a file has no findings and has never been broken.
- * - On the first feedback per file per session, the feedback includes a
- *   one-line dialect banner (`agentforce 2.5`) so the agent knows what it's
- *   working with.
+ * Behavior matrix (preserves all existing sf-agentscript-assist behavior):
  *
- * Behavior matrix:
+ *   Event/Trigger             | Result
+ *   --------------------------|------------------------------------------------------------
+ *   session_start             | Reset assist state
+ *   session_shutdown          | Reset assist state
+ *   tool_result (write/edit)  | Compile `.agent` files in-process; append LSP feedback
+ *   /sf-agentscript           | Open status & controls panel (or run subcommand)
+ *   /sf-agentscript doctor    | Show vendored SDK status + readiness
+ *   /sf-agentscript check     | Manually compile a `.agent` file
+ *   /sf-agentscript eval      | Run a multi-turn regression spec
+ *   /sf-agentscript help      | Print command usage
  *
- *   Event/Trigger         | Condition                            | Result
- *   ----------------------|--------------------------------------|-----------------------------------------
- *   session_start         | always                               | Reset state
- *   session_shutdown      | always                               | Reset state
- *   tool_result (write)   | .agent file + SDK ok + findings      | Append LSP feedback block (with fixes)
- *   tool_result (edit)    | .agent file + SDK ok + findings      | Append LSP feedback block (with fixes)
- *   tool_result (*)       | .agent file + was broken, now clean  | Append LSP now clean note
- *   tool_result (*)       | .agent file + SDK fails (first time) | Append LSP setup note
- *   tool_result (*)       | unsupported file                     | Silent
- *   tool_result (error)   | any                                  | Silent (don't diagnose failed writes)
- *   /sf-agentscript-assist| no args or "doctor"                  | Show SDK doctor report
- *   /sf-agentscript-assist| "check" or "check <path>"            | Manually diagnose a file
- *   /sf-agentscript-assist| unknown subcommand                   | Show usage hint
+ * Tools registered:
+ *   - agentscript_compile           — in-process .agent compile (LLM-callable)
+ *   - agentscript_eval_run          — multi-turn regression run
+ *   - agentscript_eval_get_failure  — drill into one failure from a previous run
+ *   - agentscript_eval_trace        — fetch full planner trace by (sid, pid)
+ *   - agentscript_eval_resolve      — resolve $active_* placeholders
  *
- * Precedence with sf-lsp: this extension handles `.agent` files entirely.
- * The sf-lsp extension reads `pi.getCommands()` to check whether
- * `/sf-agentscript-assist` is registered and, when it is, skips its own
- * `.agent` LSP subprocess path. If a user disables this extension, sf-lsp
- * falls back to the old subprocess behavior with no configuration required.
+ * Precedence with sf-lsp: this extension owns `.agent` diagnostics. sf-lsp
+ * checks `pi.getCommands()` for `sf-agentscript` and yields when present.
+ * Disabling sf-agentscript falls sf-lsp back to its subprocess `.agent` LSP path.
  */
 
 import type {
@@ -72,64 +65,44 @@ import { withSafeCommandHandler } from "../../lib/common/safe-command-handler.ts
 import { openInfoPanel } from "../../lib/common/info-panel.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 
+import { registerCompileTool } from "./lib/tools/compile.ts";
+import { registerEvalRunTool } from "./lib/tools/eval-run.ts";
+import { registerEvalGetFailureTool } from "./lib/tools/eval-get-failure.ts";
+import { registerEvalTraceTool } from "./lib/tools/eval-trace.ts";
+import { registerEvalResolveTool } from "./lib/tools/eval-resolve.ts";
+import { handleEvalAction } from "./lib/command/eval-action.ts";
+
+const EXTENSION_ID = "sf-agentscript";
+const COMMAND_NAME = "sf-agentscript";
+
 // -------------------------------------------------------------------------------------------------
 // Entry point
 // -------------------------------------------------------------------------------------------------
 
-export default function sfAgentScriptAssistExtension(pi: ExtensionAPI) {
-  if (!requirePiVersion(pi, "sf-agentscript-assist")) return;
+export default function sfAgentScriptExtension(pi: ExtensionAPI): void {
+  if (!requirePiVersion(pi, "sf-agentscript")) return;
 
   const state = createState();
 
   registerCommand(pi, state);
   registerSessionHooks(pi, state);
   registerToolResultHook(pi, state);
-  // Contribute to the aggregated `/sf-pi doctor` report. The standalone
-  // `/sf-agentscript-assist doctor` command keeps using probeDoctor()
-  // directly for backwards-compat rendering.
-  registerExtensionDoctor("sf-agentscript-assist", (cwd) => runExtensionDoctor(cwd));
+
+  // LLM-callable tools — full Agent Script lifecycle surface
+  registerCompileTool(pi);
+  registerEvalRunTool(pi);
+  registerEvalGetFailureTool(pi);
+  registerEvalTraceTool(pi);
+  registerEvalResolveTool(pi);
+
+  registerExtensionDoctor(EXTENSION_ID, (cwd) => runExtensionDoctor(cwd));
 }
 
 // -------------------------------------------------------------------------------------------------
-// /sf-agentscript-assist
+// /sf-agentscript
 // -------------------------------------------------------------------------------------------------
 
-function registerCommand(pi: ExtensionAPI, state: AgentScriptAssistState): void {
-  pi.registerCommand("sf-agentscript-assist", {
-    description: "Agent Script in-process diagnostics and quick fixes",
-    getArgumentCompletions: (prefix) => {
-      const lower = prefix.toLowerCase();
-      const items = AGENTSCRIPT_ACTIONS.filter((action) => action.value !== "close")
-        .filter((action) => action.value.startsWith(lower))
-        .map((action) => ({
-          value: action.value,
-          label: action.value,
-          description: action.description,
-        }));
-      return items.length > 0 ? items : null;
-    },
-    handler: async (args, ctx) => {
-      await withSafeCommandHandler(ctx, "sf-agentscript-assist", async () => {
-        const tokens = args.trim().split(/\s+/).filter(Boolean);
-        const subcommand = tokens[0] ?? "";
-
-        if (subcommand === "" && ctx.hasUI) {
-          await handleAgentScriptPanel(ctx, state);
-          return;
-        }
-
-        await handleAgentScriptCommand(
-          ctx,
-          state,
-          subcommand === "" ? "doctor" : subcommand,
-          tokens.slice(1),
-        );
-      });
-    },
-  });
-}
-
-type AgentScriptAction = "doctor" | "check" | "help" | "close" | LifecycleActionId;
+type AgentScriptAction = "doctor" | "check" | "eval" | "help" | "close" | LifecycleActionId;
 
 const AGENTSCRIPT_ACTIONS: CommandPanelAction<AgentScriptAction>[] = [
   {
@@ -141,13 +114,21 @@ const AGENTSCRIPT_ACTIONS: CommandPanelAction<AgentScriptAction>[] = [
   {
     value: "check",
     label: "Check a file",
-    description: "Prompt for a .agent file path and run one manual parse/compile diagnostic pass.",
+    description:
+      "Prompt for a `.agent` file path and run one manual parse/compile diagnostic pass.",
     group: "Diagnostics",
+  },
+  {
+    value: "eval",
+    label: "Run an eval suite",
+    description:
+      "Run a multi-turn regression spec against the Salesforce Evaluation API. Usage: /sf-agentscript eval <spec.json>",
+    group: "Testing",
   },
   {
     value: "help",
     label: "Show help",
-    description: "Print command usage and explain when to use doctor versus check.",
+    description: "Print command usage and explain when to use each subcommand.",
     group: "Reference",
   },
   {
@@ -158,22 +139,52 @@ const AGENTSCRIPT_ACTIONS: CommandPanelAction<AgentScriptAction>[] = [
   },
 ];
 
-// Compose the live action list so the lifecycle toggle row reflects the
-// current enablement state on every panel open.
 function buildAgentScriptActions(cwd: string): CommandPanelAction<AgentScriptAction>[] {
-  const toggle = buildToggleExtensionAction({ extensionId: "sf-agentscript-assist", cwd });
+  const toggle = buildToggleExtensionAction({ extensionId: EXTENSION_ID, cwd });
   return toggle ? [...AGENTSCRIPT_ACTIONS, toggle] : AGENTSCRIPT_ACTIONS;
 }
 
+function registerCommand(pi: ExtensionAPI, state: AgentScriptAssistState): void {
+  pi.registerCommand(COMMAND_NAME, {
+    description: "Agent Script lifecycle — compile-on-save diagnostics, eval, and tools",
+    getArgumentCompletions: (prefix) => {
+      const lower = prefix.toLowerCase();
+      const items = AGENTSCRIPT_ACTIONS.filter((a) => a.value !== "close")
+        .filter((a) => a.value.startsWith(lower))
+        .map((a) => ({ value: a.value, label: a.value, description: a.description }));
+      return items.length > 0 ? items : null;
+    },
+    handler: async (args, ctx) => {
+      await withSafeCommandHandler(ctx, COMMAND_NAME, async () => {
+        const tokens = args.trim().split(/\s+/).filter(Boolean);
+        const subcommand = tokens[0] ?? "";
+
+        if (subcommand === "" && ctx.hasUI) {
+          await handleAgentScriptPanel(pi, ctx, state);
+          return;
+        }
+        await handleAgentScriptCommand(
+          pi,
+          ctx,
+          state,
+          subcommand === "" ? "doctor" : subcommand,
+          tokens.slice(1),
+        );
+      });
+    },
+  });
+}
+
 async function handleAgentScriptPanel(
+  pi: ExtensionAPI,
   ctx: ExtensionCommandContext,
   state: AgentScriptAssistState,
 ): Promise<void> {
   const panelState: CommandPanelState<AgentScriptAction> = {};
   const doctor = await probeDoctor(ctx.cwd);
   await openCommandPanel(ctx, {
-    title: "🧭 SF Agent Script Assist — status & controls",
-    subtitle: "Inspect the Agent Script SDK bridge and run targeted checks.",
+    title: "🛠️ SF Agent Script — lifecycle controls",
+    subtitle: "Authoring assist, compile, and eval against the Salesforce Evaluation API.",
     statusLines: () => [
       `${doctor.sdkLoaded ? "✓" : "✗"} SDK           ${doctor.sdkLoaded ? "loaded" : "unavailable"}`,
       `• Vendored path ${doctor.vendoredSdkPath}`,
@@ -182,14 +193,13 @@ async function handleAgentScriptPanel(
     actions: () => buildAgentScriptActions(ctx.cwd),
     closeValue: "close",
     state: panelState,
-    onAction: (action) => handleAgentScriptCommand(ctx, state, action, [], true),
-    // Lifecycle toggle calls ctx.reload() — must close panel first so the
-    // ctx.ui.custom() promise resolves before the runtime is invalidated.
+    onAction: (action) => handleAgentScriptCommand(pi, ctx, state, action, [], true),
     closeBeforeAction: isLifecycleToggleAction,
   });
 }
 
 async function handleAgentScriptCommand(
+  pi: ExtensionAPI,
   ctx: ExtensionCommandContext,
   state: AgentScriptAssistState,
   subcommand: string,
@@ -197,12 +207,12 @@ async function handleAgentScriptCommand(
   fromPanel = false,
 ): Promise<void> {
   if (subcommand === "lifecycle.toggle") {
-    await performToggleExtension(ctx, "sf-agentscript-assist");
+    await performToggleExtension(ctx, EXTENSION_ID);
     return;
   }
   if (subcommand === "doctor") {
     const status = await probeDoctor(ctx.cwd);
-    await emitAgentScriptOutput(
+    await emitOutput(
       ctx,
       "Agent Script doctor",
       renderDoctorReport(status),
@@ -211,7 +221,6 @@ async function handleAgentScriptCommand(
     );
     return;
   }
-
   if (subcommand === "check") {
     let inputPath = args.join(" ").trim();
     if (!inputPath && ctx.hasUI) {
@@ -221,28 +230,30 @@ async function handleAgentScriptCommand(
     await handleCheckSubcommand(inputPath, ctx, state);
     return;
   }
-
-  if (subcommand === "help") {
-    await emitAgentScriptOutput(
-      ctx,
-      "Agent Script Assist help",
-      renderAgentScriptHelp(),
-      "info",
-      fromPanel,
-    );
+  if (subcommand === "eval") {
+    if (args.length === 0 && ctx.hasUI && fromPanel) {
+      const path =
+        (await ctx.ui.input("Path to eval spec JSON", "scripts/eval/...spec.json"))?.trim() ?? "";
+      if (!path) return;
+      args = [path];
+    }
+    await handleEvalAction(pi, ctx, args);
     return;
   }
-
-  await emitAgentScriptOutput(
+  if (subcommand === "help") {
+    await emitOutput(ctx, "SF Agent Script help", renderHelp(), "info", fromPanel);
+    return;
+  }
+  await emitOutput(
     ctx,
-    "Agent Script Assist usage",
-    "Usage: /sf-agentscript-assist [doctor | check <file> | help]",
+    "SF Agent Script usage",
+    "Usage: /sf-agentscript [doctor | check <file> | eval <spec.json> | help]",
     "warning",
     fromPanel,
   );
 }
 
-async function emitAgentScriptOutput(
+async function emitOutput(
   ctx: ExtensionCommandContext,
   title: string,
   body: string,
@@ -258,42 +269,40 @@ async function emitAgentScriptOutput(
   }
 }
 
-function renderAgentScriptHelp(): string {
+function renderHelp(): string {
   return [
-    "sf-agentscript-assist — in-process .agent diagnostics",
+    "sf-agentscript — Agent Script lifecycle (authoring + compile + eval)",
     "",
     "Commands:",
-    "  /sf-agentscript-assist              Open status & controls panel",
-    "  /sf-agentscript-assist doctor       Show SDK load status and vendored path",
-    "  /sf-agentscript-assist check <file> Run one manual diagnostic pass",
-    "  /sf-agentscript-assist help         Show this help",
+    "  /sf-agentscript                  Open status & controls panel",
+    "  /sf-agentscript doctor           Show SDK status + vendored bundle path",
+    "  /sf-agentscript check <file>     Run one manual compile diagnostic pass",
+    "  /sf-agentscript eval <spec.json> [--org A] [--agent N] [--traces failed|all|off]",
+    "                                   [--concurrency N] [--prompt-chars N] [--verbose]",
+    "  /sf-agentscript help             Show this help",
+    "",
+    "Tools (LLM-callable):",
+    "  agentscript_compile              In-process .agent compile + diagnostics",
+    "  agentscript_eval_run             Multi-turn regression run",
+    "  agentscript_eval_get_failure     Drill into one failure from a previous run",
+    "  agentscript_eval_trace           Fetch full planner trace by (sid, pid)",
+    "  agentscript_eval_resolve         Resolve $active_* placeholders",
   ].join("\n");
 }
 
-/**
- * Implement `/sf-agentscript-assist check [file]`.
- *
- * When no file is passed, we explain the usage. We intentionally do not
- * default to a glob or whole-workspace scan in this first version — this
- * command is for point-in-time verification, not full linting.
- */
 async function handleCheckSubcommand(
   inputPath: string,
   ctx: ExtensionContext,
   state: AgentScriptAssistState,
 ): Promise<void> {
   if (!inputPath) {
-    if (ctx.hasUI) {
-      ctx.ui.notify("Usage: /sf-agentscript-assist check <path/to/file.agent>", "warning");
-    }
+    if (ctx.hasUI) ctx.ui.notify("Usage: /sf-agentscript check <path/to/file.agent>", "warning");
     return;
   }
 
   const filePath = resolveToolPath(inputPath, ctx.cwd);
   if (!isAgentScriptFile(filePath)) {
-    if (ctx.hasUI) {
-      ctx.ui.notify(`Not an Agent Script file: ${filePath}`, "warning");
-    }
+    if (ctx.hasUI) ctx.ui.notify(`Not an Agent Script file: ${filePath}`, "warning");
     return;
   }
 
@@ -307,24 +316,15 @@ async function handleCheckSubcommand(
     }
     return;
   }
-
-  // Update session state so future writes get accurate "now clean" feedback.
-  if (result.diagnostics.length > 0) {
-    state.lastStatusByFile.set(filePath, "error");
-  } else {
-    state.lastStatusByFile.set(filePath, "clean");
-  }
+  if (result.diagnostics.length > 0) state.lastStatusByFile.set(filePath, "error");
+  else state.lastStatusByFile.set(filePath, "clean");
   state.dialectReportedByFile.add(filePath);
 
   if (!ctx.hasUI) return;
-
   if (result.diagnostics.length === 0) {
     ctx.ui.notify(`Agent Script check: ${filePath} is clean.`, "info");
     return;
   }
-
-  // Build the same feedback block we would have appended to a tool_result,
-  // minus the state mutation.
   const rendered = renderErrorFeedback(filePath, null, result.diagnostics, result.quickFixes);
   ctx.ui.notify(rendered, "warning");
 }
@@ -334,23 +334,16 @@ async function handleCheckSubcommand(
 // -------------------------------------------------------------------------------------------------
 
 function registerSessionHooks(pi: ExtensionAPI, state: AgentScriptAssistState): void {
-  pi.on("session_start", async () => {
-    resetState(state);
-  });
-
-  pi.on("session_shutdown", async () => {
-    resetState(state);
-  });
+  pi.on("session_start", async () => resetState(state));
+  pi.on("session_shutdown", async () => resetState(state));
 }
 
 // -------------------------------------------------------------------------------------------------
-// tool_result hook
+// tool_result hook — compile-on-save
 // -------------------------------------------------------------------------------------------------
 
 function registerToolResultHook(pi: ExtensionAPI, state: AgentScriptAssistState): void {
-  pi.on("tool_result", async (event, ctx) => {
-    return await handleToolResult(event, ctx, state);
-  });
+  pi.on("tool_result", async (event, ctx) => handleToolResult(event, ctx, state));
 }
 
 async function handleToolResult(

@@ -42,7 +42,7 @@ export interface SfPiDiagnosticMetadataItem {
 }
 
 export interface SfPiDiagnosticsMetadata {
-  source: "sf-lsp" | "sf-agentscript-assist";
+  source: "sf-lsp" | "sf-agentscript";
   status: SfPiDiagnosticStatus;
   filePath: string;
   fileName: string;

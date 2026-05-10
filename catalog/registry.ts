@@ -8,14 +8,15 @@ import type { SfPiExtension } from "./types.ts";
 
 export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
   {
-    id: "sf-agentscript-assist",
-    name: "SF Agent Script Assist",
-    description: "In-process Agent Script authoring companion — parse, compile, and code-action feedback on every .agent write",
-    file: "extensions/sf-agentscript-assist/index.ts",
-    category: "assistive",
+    id: "sf-agentscript",
+    name: "SF Agent Script",
+    description: "Single-plugin lifecycle for `.agent` files: in-process compile-on-save diagnostics, an LLM-callable compile tool, multi-turn eval/regression testing against the Salesforce Evaluation API, and a placeholder for the future Agent Script LSP.",
+    file: "extensions/sf-agentscript/index.ts",
+    category: "agent-tool",
     maturity: "stable",
     defaultEnabled: true,
-    commands: ["/sf-agentscript-assist"],
+    commands: ["/sf-agentscript"],
+    tools: ["agentscript_compile","agentscript_eval_run","agentscript_eval_get_failure","agentscript_eval_trace","agentscript_eval_resolve"],
     events: ["session_start","session_shutdown","tool_result"],
   },
   {

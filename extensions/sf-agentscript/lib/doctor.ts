@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /**
- * `/sf-agentscript-assist` command renderer.
+ * `/sf-agentscript` command renderer.
  *
  * Produces the doctor report (SDK load status, vendored bundle path, dialect
  * probe) and a usage hint when the user passes an unknown subcommand.
@@ -79,7 +79,7 @@ export async function probeDoctor(_cwd: string): Promise<DoctorStatus> {
 
 /**
  * Adapter for the shared `/sf-pi doctor` aggregator. Returns the same
- * underlying probe as the standalone `/sf-agentscript-assist doctor` view,
+ * underlying probe as the standalone `/sf-agentscript doctor` view,
  * shaped into per-check rows so the manager can render them next to other
  * extensions' diagnostics.
  */
@@ -113,15 +113,15 @@ export async function runExtensionDoctor(cwd: string): Promise<ExtensionDoctorRe
   }
 
   return {
-    extensionId: "sf-agentscript-assist",
-    title: "SF Agent Script Assist",
+    extensionId: "sf-agentscript",
+    title: "SF Agent Script",
     checks,
     summary: status.sdkLoaded ? "\u2713 SDK loaded" : "\u2717 SDK failed to load",
   };
 }
 
 export function renderDoctorReport(status: DoctorStatus): string {
-  const lines = ["Agent Script Assist — doctor", ""];
+  const lines = ["SF Agent Script — doctor", ""];
 
   if (status.sdkLoaded) {
     lines.push(`✅ SDK: loaded (${status.upstreamNote})`);

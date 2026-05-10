@@ -12,7 +12,9 @@ feature tiers, all toggleable via the config:
      without removing it — override the `id` with `protection: "none"`)
 
    Ships with bundled rules for `destructiveChanges*.xml`, `.forceignore`,
-   `.sf/**`, `.sfdx/**`, and dotenv-style secret files.
+   `.sf/**`, `.sfdx/**` (with a `.sfdx/agents/**` carve-out for sf-agentscript
+   preview sessions — the Salesforce-standard agent session layout), and
+   dotenv-style secret files.
 
 2. **commandGate** — dangerous-command patterns matched structurally
    against the tokenized bash command. Ships with `rm -rf`, `sudo`,

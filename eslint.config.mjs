@@ -24,7 +24,7 @@ export default tseslint.config(
       "**/*.d.ts",
       // Vendored upstream bundle — synced from salesforce/agentscript,
       // never edited by hand.
-      "extensions/sf-agentscript-assist/lib/vendor/**",
+      "extensions/sf-agentscript/lib/vendor/**",
     ],
   },
 

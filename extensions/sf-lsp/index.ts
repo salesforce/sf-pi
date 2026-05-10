@@ -215,11 +215,11 @@ export default function sfLspExtension(pi: ExtensionAPI) {
     const language = getSfLspLanguageForFile(filePath);
     if (!language) return undefined;
 
-    // When sf-agentscript-assist is loaded it handles `.agent` files. We
-    // mirror the metadata it stamps onto `event.details` so the transcript
-    // stays accurate for `.agent` edits. Load order is alphabetical, so the
-    // assist extension always runs before us.
-    if (language === "agentscript" && isAgentScriptAssistInstalled(pi)) {
+    // When sf-agentscript is loaded it handles `.agent` files. We mirror the
+    // metadata it stamps onto `event.details` so the transcript stays
+    // accurate for `.agent` edits. Load order is alphabetical, so the
+    // sf-agentscript extension always runs before us.
+    if (language === "agentscript" && isAgentScriptHandlerInstalled(pi)) {
       observeExternalDiagnostics(pi, event, filePath, language);
       return undefined;
     }
@@ -284,7 +284,7 @@ export default function sfLspExtension(pi: ExtensionAPI) {
 
   /**
    * Mirror a peer extension's diagnostic metadata into our activity store
-   * without touching the tool result. Used when sf-agentscript-assist
+   * without touching the tool result. Used when sf-agentscript
    * handles `.agent` files.
    */
   function observeExternalDiagnostics(
@@ -636,9 +636,13 @@ export default function sfLspExtension(pi: ExtensionAPI) {
 // Helpers
 // -------------------------------------------------------------------------------------------------
 
-function isAgentScriptAssistInstalled(pi: ExtensionAPI): boolean {
+function isAgentScriptHandlerInstalled(pi: ExtensionAPI): boolean {
   try {
-    return pi.getCommands().some((command) => command.name === "sf-agentscript-assist");
+    return pi
+      .getCommands()
+      .some(
+        (command) => command.name === "sf-agentscript" || command.name === "sf-agentscript-assist",
+      );
   } catch {
     return false;
   }

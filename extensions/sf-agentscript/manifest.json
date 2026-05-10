@@ -1,0 +1,44 @@
+{
+  "id": "sf-agentscript",
+  "name": "SF Agent Script",
+  "description": "Single-plugin lifecycle for `.agent` files: in-process compile-on-save diagnostics, an LLM-callable compile tool, multi-turn eval/regression testing against the Salesforce Evaluation API, and a placeholder for the future Agent Script LSP.",
+  "category": "agent-tool",
+  "maturity": "stable",
+  "defaultEnabled": true,
+  "configurable": false,
+  "commands": ["/sf-agentscript"],
+  "tools": [
+    "agentscript_compile",
+    "agentscript_eval_run",
+    "agentscript_eval_get_failure",
+    "agentscript_eval_trace",
+    "agentscript_eval_resolve"
+  ],
+  "events": ["session_start", "session_shutdown", "tool_result"],
+  "docs": {
+    "summary": "Owns the entire Agent Script lifecycle: authoring assist (compile-on-save), first-class compile tool, multi-turn eval against /einstein/evaluation/v1/tests with planner-trace fetching, and progressive-disclosure skill for the LLM.",
+    "primaryFiles": [
+      "index.ts",
+      "lib/diagnostics.ts",
+      "lib/feedback.ts",
+      "lib/sdk.ts",
+      "lib/code-actions.ts",
+      "lib/file-classify.ts",
+      "lib/eval/orchestrator.ts",
+      "lib/eval/eval-client.ts",
+      "lib/eval/trace-client.ts",
+      "lib/eval/http.ts",
+      "lib/eval/render.ts",
+      "lib/eval/persist.ts",
+      "lib/tools/eval-run.ts",
+      "lib/tools/compile.ts",
+      "skills/sf-agentscript/SKILL.md"
+    ],
+    "safety": [
+      "Compile-on-save stays silent on unsupported files and on failed write/edit results.",
+      "Eval API calls go through `sf api request rest` so the active org's auth context is reused without exposing access tokens to extension code.",
+      "Trace fetches are idempotent GETs; failures are logged and never fail an eval run.",
+      "5xx-only retry on POST avoids amplifying server-side overload (no Retry-After contract on the Eval API)."
+    ]
+  }
+}

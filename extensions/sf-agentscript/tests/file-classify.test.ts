@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /**
- * Tests for file classification and path resolution in sf-agentscript-assist.
+ * Tests for file classification and path resolution in sf-agentscript.
  */
 import { describe, expect, it } from "vitest";
 import { isAgentScriptFile, resolveToolPath } from "../lib/file-classify.ts";
