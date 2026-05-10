@@ -64,6 +64,7 @@ export function registerInspectTool(pi: ExtensionAPI): void {
       "Use action='definition' to jump from a usage to its declaration. Returns line + character + file. Cheaper than find_references when you only need the source of truth.",
       "When 'structure' returns has_parse_errors=true, run agentscript_compile first — the structural surface may be incomplete on broken files.",
       "Symbol format is always `@<namespace>.<property>` (e.g. '@actions.lookup'). Supported namespaces: topic, subagent, actions, variables.",
+      "`variable_refs` / `subagent_refs` / `action_refs` reflect real expression references (`transition to @topic.X`, `{!@variables.X}` interpolations). Plain text mentions inside `|`-templates are literal text, not refs, and won't appear here.",
     ],
     parameters: Params,
     async execute(_id, params, _signal, _onUpdate, ctx) {

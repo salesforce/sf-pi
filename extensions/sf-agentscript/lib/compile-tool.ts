@@ -226,10 +226,12 @@ async function actionCheck(
     dialect: result.dialect ?? null,
     compiled_via: "local" as const,
   };
-  const summaryText =
-    result.diagnostics.length === 0
-      ? `✓ ${filePath} compiles clean (${result.dialect?.name ?? "unknown dialect"})`
-      : `❌ ${filePath} — ${result.diagnostics.length} issue(s), ${quickFixesView.length} fix(es) ready`;
+  const summaryText = renderCheckSummary(
+    filePath,
+    result.diagnostics,
+    quickFixesView.length,
+    result.dialect?.name,
+  );
 
   return toolOk(
     {
@@ -304,4 +306,49 @@ async function actionFormat(filePath: string): Promise<{
     },
     `✨ ${filePath} formatted (Δ ${formatted.length - source.length} bytes)`,
   );
+}
+
+// -------------------------------------------------------------------------------------------------
+// Summary rendering
+// -------------------------------------------------------------------------------------------------
+
+/**
+ * Render the `check` action summary line.
+ *
+ * Clean files emit a one-line confirmation. Files with diagnostics emit the
+ * counts plus up to MAX_SAMPLE_LINES sample bullets (errors first, then
+ * warnings) so the LLM sees what category of issue without reading the full
+ * `diagnostics` array. Each sample carries the diagnostic code, severity,
+ * and 1-based line number — enough to drive the next mutate / edit call.
+ */
+const MAX_SAMPLE_LINES = 5;
+
+export function renderCheckSummary /* exported for tests */(
+  filePath: string,
+  diagnostics: ReadonlyArray<{
+    severity: number;
+    code?: string;
+    range: { start: { line: number } };
+    message: string;
+  }>,
+  quickFixCount: number,
+  dialectName?: string,
+): string {
+  if (diagnostics.length === 0) {
+    return `✓ ${filePath} compiles clean (${dialectName ?? "unknown dialect"})`;
+  }
+  const sev1 = diagnostics.filter((d) => d.severity === 1).length;
+  const sev2 = diagnostics.filter((d) => d.severity === 2).length;
+  const ordered = [...diagnostics].sort((a, b) => a.severity - b.severity);
+  const sampleLines = ordered.slice(0, MAX_SAMPLE_LINES).map((d) => {
+    const tag = d.severity === 1 ? "E" : d.severity === 2 ? "W" : "I";
+    const code = d.code ?? "(no-code)";
+    const line = (d.range?.start?.line ?? 0) + 1;
+    return `  • [${tag}] ${code} @ L${line}`;
+  });
+  const overflow = diagnostics.length - sampleLines.length;
+  const head = `❌ ${filePath} — ${diagnostics.length} issue(s) (${sev1}E·${sev2}W), ${quickFixCount} fix(es) ready`;
+  const lines = [head, ...sampleLines];
+  if (overflow > 0) lines.push(`  …and ${overflow} more in details.diagnostics`);
+  return lines.join("\n");
 }

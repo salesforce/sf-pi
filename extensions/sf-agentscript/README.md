@@ -54,6 +54,37 @@ auth context as the `sf` CLI, automatic token refresh, no subprocess fork.
 SFAP host fallback (`api → test.api → dev.api` on 404) keeps sandbox
 routing safe. 5xx-only retry with jittered exponential backoff.
 
+## Diagnostics
+
+`agentscript_compile action='check'` runs `parseAndLint()` + `compile()`
+together through the SDK's `compileSource()` entry point. The returned
+`diagnostics` array therefore includes:
+
+- **parse / lint diagnostics** (e.g. unbalanced parens, misspelled
+  modifiers, unterminated strings)
+- **compile diagnostics** (e.g. `invalid-action-target`,
+  `action-missing-input`, `linked-variable-missing-source`,
+  `unused-variable`)
+
+This is intentional: we surface every issue either pass detects so the
+LLM (or human) sees the full picture even when the underlying compiler
+is willing to tolerate some of them. The summary line emits a short
+sample of diagnostic codes and line numbers —
+
+```
+❌ X.agent — 4 issue(s) (2E·2W), 4 fix(es) ready
+  • [E] action-missing-input @ L42
+  • [E] invalid-action-target @ L67
+  • [W] unused-variable @ L11
+  • [W] unused-variable @ L13
+  …and 0 more in details.diagnostics
+```
+
+— enough for the LLM to decide whether to apply a quick fix, edit
+manually, or keep digging without re-reading the full `diagnostics`
+array. Errors are listed first, then warnings; severity-1 issues are
+tagged `E`, severity-2 issues `W`.
+
 ## Behavior Matrix
 
 | Trigger                                | Result                                                                                                                                                      |
@@ -121,6 +152,7 @@ extensions/sf-agentscript/
   tests/
     agent-api-auth.test.ts  ← unit / smoke test
     code-actions.test.ts    ← unit / smoke test
+    compile-summary.test.ts ← unit / smoke test
     connection.test.ts      ← unit / smoke test
     create.test.ts          ← unit / smoke test
     diagnostics.test.ts     ← unit / smoke test
@@ -140,6 +172,7 @@ extensions/sf-agentscript/
     preview-session-store.test.ts← unit / smoke test
     self-recovery.test.ts   ← unit / smoke test
     smoke.test.ts           ← unit / smoke test
+    template-scaffold-vars.test.ts← unit / smoke test
     tool-schema-openai-strict.test.ts← unit / smoke test
     tool-types.test.ts      ← unit / smoke test
   CREDITS.md                ← extension attribution
