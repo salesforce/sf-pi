@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.59.0-2026-05-10",
-  "latestVersion": "0.59.0",
+  "revision": "release-0.60.0-2026-05-10",
+  "latestVersion": "0.60.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.59.0",
+      "id": "release-0.60.0",
       "kind": "update",
-      "title": "sf-pi v0.59.0 — sf-agentscript: hardening items 1, 2, 4",
+      "title": "sf-pi v0.60.0 — sf-agentscript: rich planner-trace digest for LLM self-recovery",
       "publishedAt": "2026-05-10T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.59.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.60.0",
       "severity": "info",
-      "body": "sf-agentscript: hardening items 1, 2, 4"
+      "body": "sf-agentscript: rich planner-trace digest for LLM self-recovery"
     },
     {
       "id": "pi-0.73-required",
