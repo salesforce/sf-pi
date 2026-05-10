@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.57.0-2026-05-10",
-  "latestVersion": "0.57.0",
+  "revision": "release-0.57.1-2026-05-10",
+  "latestVersion": "0.57.1",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.57.0",
+      "id": "release-0.57.1",
       "kind": "update",
-      "title": "sf-pi v0.57.0 — sf-agentscript: P1 — six-pass eval normalizer",
+      "title": "sf-pi v0.57.1 — sf-agentscript: set_field value-wrapping + sharper failure kinds + skill polish",
       "publishedAt": "2026-05-10T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.57.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.57.1",
       "severity": "info",
-      "body": "sf-agentscript: P1 — six-pass eval normalizer — sf-agentscript: P2 — inspect + mutate tools"
+      "body": "sf-agentscript: set_field value-wrapping + sharper failure kinds + skill polish"
     },
     {
       "id": "pi-0.73-required",
