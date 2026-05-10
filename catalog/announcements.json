@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.56.1-2026-05-10",
-  "latestVersion": "0.56.1",
+  "revision": "release-0.57.0-2026-05-10",
+  "latestVersion": "0.57.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.56.1",
+      "id": "release-0.57.0",
       "kind": "update",
-      "title": "sf-pi v0.56.1 — sf-environment: list all active tools verbatim in agent context",
+      "title": "sf-pi v0.57.0 — sf-agentscript: P1 — six-pass eval normalizer",
       "publishedAt": "2026-05-10T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.56.1",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.57.0",
       "severity": "info",
-      "body": "sf-environment: list all active tools verbatim in agent context"
+      "body": "sf-agentscript: P1 — six-pass eval normalizer — sf-agentscript: P2 — inspect + mutate tools"
     },
     {
       "id": "pi-0.73-required",
