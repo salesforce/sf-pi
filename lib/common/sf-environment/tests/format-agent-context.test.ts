@@ -147,7 +147,7 @@ describe("formatAgentContext", () => {
     expect(ctx).not.toContain("Active SF skills:");
   });
 
-  it("includes active SF-related tools when provided", () => {
+  it("includes all active tools verbatim when provided", () => {
     const env = makeEnv({ projectDetected: true, projectName: "x" });
     const ctx = formatAgentContext(env, {
       activeTools: ["bash", "read", "sf-deploy", "slack"],
@@ -156,8 +156,8 @@ describe("formatAgentContext", () => {
     expect(ctx).toContain("bash");
     expect(ctx).toContain("read");
     expect(ctx).toContain("sf-deploy");
-    // "slack" doesn't start with "sf" and isn't bash/read/edit/write, so filtered out
-    expect(ctx).not.toMatch(/Active tools:.*slack/);
+    // No name-prefix filter: extension-contributed tools are listed too.
+    expect(ctx).toMatch(/Active tools:.*slack/);
   });
 
   it("includes active SF skills when provided", () => {
@@ -182,12 +182,15 @@ describe("formatAgentContext", () => {
     expect(ctx).toContain("Active SF skills:");
   });
 
-  it("omits tools line when no tools pass the SF filter", () => {
+  it("includes non-sf tools verbatim (no prefix filter)", () => {
     const env = makeEnv({ projectDetected: true, projectName: "x" });
     const ctx = formatAgentContext(env, {
       activeTools: ["slack", "slack_channel", "my-custom-tool"],
     })!;
-    expect(ctx).not.toContain("Active tools:");
+    expect(ctx).toContain("Active tools:");
+    expect(ctx).toContain("slack");
+    expect(ctx).toContain("slack_channel");
+    expect(ctx).toContain("my-custom-tool");
   });
 
   it("omits skills line when no skills pass the sf- prefix filter", () => {

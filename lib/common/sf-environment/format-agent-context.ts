@@ -103,15 +103,12 @@ export function formatAgentContext(
     lines.push("Run: sf org login web --set-default --alias MyOrg");
   }
 
-  // Append active SF-related tools/skills when known, so the agent can
-  // tailor its approach to the tools actually available in this session.
+  // Append active tools/skills when known, so the agent can tailor its
+  // approach to what is actually available in this session. Tools are
+  // listed verbatim (no name-prefix filter) so extension-contributed tools
+  // are visible alongside the core editing tools.
   if (options?.activeTools?.length) {
-    const sfTools = options.activeTools.filter(
-      (t) => t.startsWith("sf") || t === "bash" || t === "read" || t === "edit" || t === "write",
-    );
-    if (sfTools.length > 0) {
-      lines.push(`Active tools: ${sfTools.join(", ")}`);
-    }
+    lines.push(`Active tools: ${options.activeTools.join(", ")}`);
   }
   if (options?.activeSkills?.length) {
     const sfSkills = options.activeSkills.filter((s) => s.startsWith("sf-"));
