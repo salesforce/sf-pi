@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.57.1-2026-05-10",
-  "latestVersion": "0.57.1",
+  "revision": "release-0.58.0-2026-05-10",
+  "latestVersion": "0.58.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.57.1",
+      "id": "release-0.58.0",
       "kind": "update",
-      "title": "sf-pi v0.57.1 — sf-agentscript: set_field value-wrapping + sharper failure kinds + skill polish",
+      "title": "sf-pi v0.58.0 — sf-agentscript: P8 — lifecycle + tier-2 IQ unlocks (7 tools)",
       "publishedAt": "2026-05-10T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.57.1",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.58.0",
       "severity": "info",
-      "body": "sf-agentscript: set_field value-wrapping + sharper failure kinds + skill polish"
+      "body": "sf-agentscript: P8 — lifecycle + tier-2 IQ unlocks (7 tools)"
     },
     {
       "id": "pi-0.73-required",
