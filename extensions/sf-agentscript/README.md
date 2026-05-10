@@ -171,6 +171,7 @@ extensions/sf-agentscript/
     path-containment.test.ts← unit / smoke test
     preview-agent-api.test.ts← unit / smoke test
     preview-session-store.test.ts← unit / smoke test
+    publish-authoring-bundle.test.ts← unit / smoke test
     self-recovery.test.ts   ← unit / smoke test
     smoke.test.ts           ← unit / smoke test
     template-scaffold-vars.test.ts← unit / smoke test
