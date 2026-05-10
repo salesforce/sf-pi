@@ -481,6 +481,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.58.0](https://github.com/salesforce/sf-pi/compare/v0.57.1...v0.58.0) (2026-05-10)
+
+
+### Features
+
+* **sf-agentscript:** P8 — lifecycle + tier-2 IQ unlocks (7 tools) ([37dff3d](https://github.com/salesforce/sf-pi/commit/37dff3dadb02785513dd5e78c6d867909a08f6fa))
+
 ## [0.57.1](https://github.com/salesforce/sf-pi/compare/v0.57.0...v0.57.1) (2026-05-10)
 
 
