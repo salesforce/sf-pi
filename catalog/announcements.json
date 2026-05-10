@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.58.3-2026-05-10",
-  "latestVersion": "0.58.3",
+  "revision": "release-0.58.4-2026-05-10",
+  "latestVersion": "0.58.4",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.58.3",
+      "id": "release-0.58.4",
       "kind": "update",
-      "title": "sf-pi v0.58.3 — sf-agentscript: pair send_message↔get_state by execution order",
+      "title": "sf-pi v0.58.4 — sf-agentscript: use named-user JWT for Agent API routes",
       "publishedAt": "2026-05-10T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.58.3",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.58.4",
       "severity": "info",
-      "body": "sf-agentscript: pair send_message↔get_state by execution order"
+      "body": "sf-agentscript: use named-user JWT for Agent API routes"
     },
     {
       "id": "pi-0.73-required",
