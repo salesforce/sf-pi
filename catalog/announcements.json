@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.58.2-2026-05-10",
-  "latestVersion": "0.58.2",
+  "revision": "release-0.58.3-2026-05-10",
+  "latestVersion": "0.58.3",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.58.2",
+      "id": "release-0.58.3",
       "kind": "update",
-      "title": "sf-pi v0.58.2 — sf-agentscript: transcript + FailureRecord utterance cross-reference",
+      "title": "sf-pi v0.58.3 — sf-agentscript: pair send_message↔get_state by execution order",
       "publishedAt": "2026-05-10T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.58.2",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.58.3",
       "severity": "info",
-      "body": "sf-agentscript: transcript + FailureRecord utterance cross-reference"
+      "body": "sf-agentscript: pair send_message↔get_state by execution order"
     },
     {
       "id": "pi-0.73-required",
