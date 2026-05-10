@@ -481,6 +481,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.56.1](https://github.com/salesforce/sf-pi/compare/v0.56.0...v0.56.1) (2026-05-10)
+
+
+### Bug Fixes
+
+* **sf-environment:** list all active tools verbatim in agent context ([28bdfb1](https://github.com/salesforce/sf-pi/commit/28bdfb1ebea15e723b68ffcda0c89102b9406eea))
+
 ## [0.56.0](https://github.com/salesforce/sf-pi/compare/v0.55.9...v0.56.0) (2026-05-09)
 
 
