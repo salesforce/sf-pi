@@ -481,6 +481,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.58.4](https://github.com/salesforce/sf-pi/compare/v0.58.3...v0.58.4) (2026-05-10)
+
+
+### Bug Fixes
+
+* **sf-agentscript:** use named-user JWT for Agent API routes ([f737725](https://github.com/salesforce/sf-pi/commit/f7377256d887b5b4ff0572b9384086d993de0a13))
+
 ## [0.58.3](https://github.com/salesforce/sf-pi/compare/v0.58.2...v0.58.3) (2026-05-10)
 
 
