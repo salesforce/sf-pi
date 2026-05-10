@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.61.1-2026-05-10",
-  "latestVersion": "0.61.1",
+  "revision": "release-0.61.2-2026-05-10",
+  "latestVersion": "0.61.2",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.61.1",
+      "id": "release-0.61.2",
       "kind": "update",
-      "title": "sf-pi v0.61.1 — sf-agentscript: deploy AiAuthoringBundle so published agents open in Agent Script Studio",
+      "title": "sf-pi v0.61.2 — sf-agentscript: use SDR ComponentSet to deploy AiAuthoringBundle (both files, like the CLI)",
       "publishedAt": "2026-05-10T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.61.1",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.61.2",
       "severity": "info",
-      "body": "sf-agentscript: deploy AiAuthoringBundle so published agents open in Agent Script Studio"
+      "body": "sf-agentscript: use SDR ComponentSet to deploy AiAuthoringBundle (both files, like the CLI)"
     },
     {
       "id": "pi-0.73-required",
