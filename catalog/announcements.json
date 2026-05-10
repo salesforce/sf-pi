@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.60.0-2026-05-10",
-  "latestVersion": "0.60.0",
+  "revision": "release-0.61.0-2026-05-10",
+  "latestVersion": "0.61.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.60.0",
+      "id": "release-0.61.0",
       "kind": "update",
-      "title": "sf-pi v0.60.0 — sf-agentscript: rich planner-trace digest for LLM self-recovery",
+      "title": "sf-pi v0.61.0 — sf-agentscript: production-agent v1 surface digest",
       "publishedAt": "2026-05-10T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.60.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.61.0",
       "severity": "info",
-      "body": "sf-agentscript: rich planner-trace digest for LLM self-recovery"
+      "body": "sf-agentscript: production-agent v1 surface digest"
     },
     {
       "id": "pi-0.73-required",
