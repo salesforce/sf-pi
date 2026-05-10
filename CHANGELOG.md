@@ -481,6 +481,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.58.3](https://github.com/salesforce/sf-pi/compare/v0.58.2...v0.58.3) (2026-05-10)
+
+
+### Bug Fixes
+
+* **sf-agentscript:** pair send_message↔get_state by execution order ([8456175](https://github.com/salesforce/sf-pi/commit/8456175ba9f49102048f1e4fe6b722d12d508d41))
+
 ## [0.58.2](https://github.com/salesforce/sf-pi/compare/v0.58.1...v0.58.2) (2026-05-10)
 
 
