@@ -481,6 +481,25 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.57.0](https://github.com/salesforce/sf-pi/compare/v0.56.1...v0.57.0) (2026-05-10)
+
+
+### Features
+
+* **sf-agentscript:** P1 — six-pass eval normalizer ([b796a49](https://github.com/salesforce/sf-pi/commit/b796a496e542f577b510b685693976f59a90ca09))
+* **sf-agentscript:** P2 — inspect + mutate tools ([c08faca](https://github.com/salesforce/sf-pi/commit/c08faca5d1da641850ac195680893b796b0645d6))
+* **sf-agentscript:** P3 — cut eval orchestrator over to @salesforce/core Connection ([94a9df8](https://github.com/salesforce/sf-pi/commit/94a9df8f409fa195703fff17d038e7b7b8741f63))
+* **sf-agentscript:** P4 — collapse 4 eval tools into agentscript_eval ([4314079](https://github.com/salesforce/sf-pi/commit/4314079c33ab4c6e70f72edd4552611bb688f2fd))
+* **sf-agentscript:** P5 — preview client + agentscript_preview tool ([ee5ae5a](https://github.com/salesforce/sf-pi/commit/ee5ae5a765136cd72672e0d1eb062d4c94e1af3c))
+* **sf-agentscript:** P6 — agentscript_create + delete vendored .d.ts ([ea630fa](https://github.com/salesforce/sf-pi/commit/ea630fa582cb96511dfe166de96f7856d6a72fe2))
+* **sf-agentscript:** P7 — local-first wiring + doctor + e2e self-recovery test ([653f2f4](https://github.com/salesforce/sf-pi/commit/653f2f4ad6f5816e4567db0cd686b232f244f63b))
+* **sf-agentscript:** rename + Phase 0 foundation ([73a1114](https://github.com/salesforce/sf-pi/commit/73a111447d5c02e1b8324fce038ac9c3dab6c4c7))
+
+
+### Bug Fixes
+
+* **sf-agentscript:** commit vendored browser.js (gitignore allowlist had stale path) ([ca36f63](https://github.com/salesforce/sf-pi/commit/ca36f6355896f87a29538242e67c3f969d38b759))
+
 ## [0.56.1](https://github.com/salesforce/sf-pi/compare/v0.56.0...v0.56.1) (2026-05-10)
 
 
