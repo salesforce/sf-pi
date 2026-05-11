@@ -122,6 +122,22 @@ extensions/sf-agentscript/
       threshold.ts          ← implementation module
       trace-client.ts       ← implementation module
       types.ts              ← implementation module
+    preflight/
+      resolvers/
+        agentforce.ts       ← implementation module
+        always-available.ts ← implementation module
+        apex.ts             ← implementation module
+        external-service.ts ← implementation module
+        flow.ts             ← implementation module
+        placeholder.ts      ← implementation module
+        prompt-template.ts  ← implementation module
+        quick-action.ts     ← implementation module
+      bundle-type.ts        ← implementation module
+      index.ts              ← implementation module
+      parse.ts              ← implementation module
+      registry.ts           ← implementation module
+      soql.ts               ← implementation module
+      types.ts              ← implementation module
     preview/
       client.ts             ← implementation module
       session-store.ts      ← implementation module
@@ -161,6 +177,10 @@ extensions/sf-agentscript/
     tool-types.ts           ← implementation module
     types.ts                ← implementation module
   tests/
+    preflight/
+      dispatch.test.ts      ← unit / smoke test
+      registry.test.ts      ← unit / smoke test
+      resolvers.test.ts     ← unit / smoke test
     agent-api-auth.test.ts  ← unit / smoke test
     code-actions.test.ts    ← unit / smoke test
     compile-summary.test.ts ← unit / smoke test

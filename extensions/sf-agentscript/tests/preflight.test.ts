@@ -152,15 +152,16 @@ describe("checkActionTargets", () => {
     expect(missingNames.sort()).toEqual(["miss_apex", "miss_flow"]);
   });
 
-  it("reports unverifiable schemes (e.g. generatePromptResponse)", async () => {
+  it("reports unverifiable schemes that have no resolver registered", async () => {
     const conn = fakeConn([]);
     const result = await checkActionTargets(conn, [
-      { name: "draft", target: "generatePromptResponse://Foo" },
+      // 'somenovelcheme' isn't in the registry
+      { name: "x", target: "somenovelcheme://Foo" },
     ] as ComponentSummary[]);
     expect(result.ok).toBe(true);
     expect(result.unverifiable).toBe(1);
     expect(result.targets[0].status).toBe("unverifiable");
-    expect(result.targets[0].detail).toMatch(/not pre-flighted/);
+    expect(result.targets[0].detail).toMatch(/no resolver registered/);
   });
 
   it("returns empty result when no action declarations have targets", async () => {

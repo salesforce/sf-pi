@@ -99,6 +99,8 @@ export interface PublishResult {
       scheme: string;
       ref_name: string;
       detail: string;
+      /** Human-readable metadata type label (e.g. "Flow", "ApexClass"). */
+      metadata_label?: string;
     }>;
     /** Total declared actions inspected. */
     actions_inspected?: number;
@@ -369,6 +371,7 @@ export async function publishAgent(opts: PublishOptions): Promise<PublishResult>
                     scheme: m.scheme,
                     ref_name: m.ref_name,
                     detail: m.detail ?? "",
+                    metadata_label: m.metadata_label,
                   })),
                 }
               : {}),

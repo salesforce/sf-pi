@@ -96,7 +96,11 @@ const LIVE_LIFECYCLE_RECIPES = [
   { name: "LanguageSettings", utterance: "Hello!" },
   { name: "SystemInstructionOverrides", utterance: "Hi there." },
   { name: "VariableManagement", utterance: "Hello." },
-  { name: "PromptTemplateActions", utterance: "Hi." },
+  // PromptTemplateActions used to pass when generatePromptResponse:// was
+  // unverifiable. After Phase 2 of the resolver rollout we actually query
+  // Prompt.DeveloperName via Tooling, and the recipe references a template
+  // that isn't deployed in a clean STDM org. Pre-flight correctly blocks
+  // it; deploy the GenAiPromptTemplate first to add it back here.
 ];
 
 // -----------------------------------------------------------------------------

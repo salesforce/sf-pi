@@ -277,3 +277,61 @@ publish failures hit there). Phases 3 & 4 are polish.
 Ship **Phase 1 + Phase 2 together** as a single PR. The registry alone
 is invisible to users; the value lands when 95% of real-world recipes
 get pre-flighted. ~1 day of work, ~700 lines, mostly tests.
+
+---
+
+## Status: Phase 1 + 2 shipped
+
+_Resolved as of 2026-05-11._
+
+### Resolvers shipped
+
+| Resolver                  | Schemes                                                                       | Endpoint | sObject + name field                                |
+| ------------------------- | ----------------------------------------------------------------------------- | -------- | --------------------------------------------------- |
+| `flowResolver`            | `flow`                                                                        | data API | `FlowDefinitionView.ApiName`                        |
+| `apexResolver`            | `apex`, `apexRest`                                                            | tooling  | `ApexClass.Name`                                    |
+| `agentforceResolver`      | `agentforce`                                                                  | data API | `BotDefinition.DeveloperName`                       |
+| `externalServiceResolver` | `externalService`                                                             | tooling  | `ExternalServiceRegistration.DeveloperName`         |
+| `promptTemplateResolver`  | `generatePromptResponse`                                                      | tooling  | `Prompt.DeveloperName`                              |
+| `quickActionResolver`     | `quickAction`                                                                 | tooling  | `QuickActionDefinition.DeveloperName`               |
+| `alwaysAvailableResolver` | `standardInvocableAction`, `http`, `https`, `mcp`, `mcpTool`, `slack`, `byon` | n/a      | always returns `Set(allNames)`                      |
+| `placeholderResolver`     | `placeholder`                                                                 | n/a      | always returns empty Set (matches compiler warning) |
+
+Unknown schemes → `unverifiable` (no resolver registered, publish proceeds).
+
+### Live verification
+
+Against `AgentforceSTDM` on `CustomerServiceAgent` (14 inline action
+declarations across 5 subagents): pre-flight correctly identified 1
+resolved Apex class (`IssueClassifier`), 1 resolved Flow (`CreateCase`),
+and 12 missing Flows — each tagged with the `[Flow]` / `[ApexClass]`
+badge in the render output.
+
+Against the recipe harness curated subset (4 recipes with no
+flow/apex/prompt deps): 4/4 publish + activate + preview + deactivate
+clean. Pre-flight blocked `PromptTemplateActions` until `Generate_
+Personalized_Schedule` is deployed (was previously a false-positive
+pass because `generatePromptResponse://` was unverifiable).
+
+### Test surface
+
+- `tests/preflight/registry.test.ts` — every corpus scheme either has a
+  resolver registered OR is in `KNOWN_UNVERIFIABLE`; high-traffic schemes
+  must be registered.
+- `tests/preflight/resolvers.test.ts` — one block per resolver, each
+  asserting the right SOQL endpoint, sObject, and name field.
+- `tests/preflight/dispatch.test.ts` — integration coverage on the full
+  bucketing + dispatch flow (flow + apex + agentforce + externalService,
+  partial fail, always-available, placeholder, unknown scheme, dedup).
+
+### Phases not yet shipped
+
+Phase 3 (Industry / Data Cloud schemes — retriever, cdpMlPrediction,
+integrationProcedureAction, expressionSet, namedQuery, serviceCatalog,
+createCatalogItemRequest, externalConnector, executeIntegrationProcedure)
+remains backlog. They're rare in real-world agents and require feature
+licenses; user demand will dictate priority.
+
+Phase 4 (transitive walk for `agentforce://` connected agents) also
+remains backlog — the immediate-resolution check ships today; resolving
+targets two hops deep needs a recursive planner.

@@ -38,6 +38,8 @@ export interface PublishDetails {
       scheme: string;
       ref_name: string;
       detail: string;
+      /** Human-readable metadata type label (e.g. "Flow", "ApexClass"). */
+      metadata_label?: string;
     }>;
     skipped?: string;
   };
@@ -201,7 +203,10 @@ function formatPublishBody(
       `  ${err("⚠")}  ${bold(`${missing.length} action target(s) missing in org`)} ${dim("(preview will fail until deployed)")}`,
     );
     for (const m of missing.slice(0, 6)) {
-      lines.push(`     ${err("•")} ${code(m.name)}  ${dim(`→ ${m.scheme}://${m.ref_name}`)}`);
+      const badge = m.metadata_label ? dim(` [${m.metadata_label}]`) : "";
+      lines.push(
+        `     ${err("•")} ${code(m.name)}${badge}  ${dim(`→ ${m.scheme}://${m.ref_name}`)}`,
+      );
     }
     if (missing.length > 6) {
       lines.push(
