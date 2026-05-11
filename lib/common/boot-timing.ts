@@ -251,7 +251,7 @@ export function flushBootTiming(): void {
     lines.push(`  ${step.name.padEnd(45).slice(0, 45)} ${dur}  ${status}`);
   }
   const text = lines.join("\n");
-   
+
   console.warn(text);
 
   // Persist to disk so post-mortem analysis works even when stderr scrolls
