@@ -118,8 +118,17 @@ function inferStatus(err: unknown): number {
   const message = typeof e.message === "string" ? e.message : "";
   const errorCode = typeof e.errorCode === "string" ? e.errorCode : "";
   const name = typeof e.name === "string" ? e.name : "";
-  const blob = `${message} ${errorCode} ${name}`;
 
+  // jsforce often surfaces Salesforce REST errors with an `errorCode`/`name`
+  // string and no numeric status (e.g. `errorCode: "NOT_FOUND"`,
+  // `name: "NOT_FOUND"`, message: "The requested resource does not exist").
+  // Map the common ones so callers see the right status without parsing the
+  // error body separately.
+  const codeStatus =
+    SALESFORCE_ERROR_CODE_TO_STATUS[errorCode] ?? SALESFORCE_ERROR_CODE_TO_STATUS[name];
+  if (codeStatus) return codeStatus;
+
+  const blob = `${message} ${errorCode} ${name}`;
   const match = /\b(\d{3})\b/.exec(blob);
   if (match) {
     const n = parseInt(match[1], 10);
@@ -131,6 +140,25 @@ function inferStatus(err: unknown): number {
 
   return 500;
 }
+
+/**
+ * Subset of Salesforce REST/SFDC error codes worth mapping to an HTTP status.
+ * Kept narrow on purpose — only codes where the mapping is unambiguous and
+ * useful for callers that branch on `status`.
+ */
+const SALESFORCE_ERROR_CODE_TO_STATUS: Record<string, number> = {
+  NOT_FOUND: 404,
+  ENTITY_IS_DELETED: 404,
+  INVALID_SESSION_ID: 401,
+  INVALID_LOGIN: 401,
+  INVALID_GRANT: 401,
+  REQUEST_LIMIT_EXCEEDED: 429,
+  RATE_LIMIT_EXCEEDED: 429,
+  SERVER_UNAVAILABLE: 503,
+  FUNCTIONALITY_NOT_ENABLED: 403,
+  INSUFFICIENT_ACCESS: 403,
+  INSUFFICIENT_ACCESS_OR_READONLY: 403,
+};
 
 function errorAsBody(err: unknown): unknown {
   const e = err as Record<string, unknown> | null;

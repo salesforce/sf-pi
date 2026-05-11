@@ -18,6 +18,14 @@ import { describe, expect, test, vi } from "vitest";
 
 import { connRequest, serializeBody } from "../sf-conn/request.ts";
 
+function throwingConn(err: unknown) {
+  return {
+    request: vi.fn(async () => {
+      throw err;
+    }),
+  } as unknown as Parameters<typeof connRequest>[0];
+}
+
 describe("serializeBody", () => {
   test("returns undefined for undefined", () => {
     expect(serializeBody(undefined)).toBeUndefined();
@@ -89,5 +97,44 @@ describe("connRequest body handling", () => {
     });
 
     expect(captured).toEqual([undefined]);
+  });
+});
+
+describe("connRequest error → status mapping", () => {
+  test("prefers a numeric statusCode when present", async () => {
+    const conn = throwingConn({ statusCode: 503, message: "oops" });
+    const r = await connRequest(conn, { method: "GET", url: "/x" });
+    expect(r.status).toBe(503);
+  });
+
+  test("maps Salesforce errorCode strings (NOT_FOUND → 404, no statusCode)", async () => {
+    // jsforce throws with `errorCode: 'NOT_FOUND'` and no statusCode for /ssot
+    // misses; without this mapping connRequest used to report 500 and
+    // downstream tools couldn't tell a 404 from a real server error.
+    const conn = throwingConn({
+      errorCode: "NOT_FOUND",
+      name: "NOT_FOUND",
+      message: "The requested resource does not exist",
+    });
+    const r = await connRequest(conn, { method: "GET", url: "/x" });
+    expect(r.status).toBe(404);
+  });
+
+  test("maps INVALID_SESSION_ID → 401", async () => {
+    const conn = throwingConn({ errorCode: "INVALID_SESSION_ID", message: "..." });
+    const r = await connRequest(conn, { method: "GET", url: "/x" });
+    expect(r.status).toBe(401);
+  });
+
+  test("maps REQUEST_LIMIT_EXCEEDED → 429", async () => {
+    const conn = throwingConn({ errorCode: "REQUEST_LIMIT_EXCEEDED", message: "..." });
+    const r = await connRequest(conn, { method: "GET", url: "/x" });
+    expect(r.status).toBe(429);
+  });
+
+  test("falls back to 500 for unknown error shapes", async () => {
+    const conn = throwingConn({ message: "random failure" });
+    const r = await connRequest(conn, { method: "GET", url: "/x" });
+    expect(r.status).toBe(500);
   });
 });
