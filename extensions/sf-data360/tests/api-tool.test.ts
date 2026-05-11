@@ -1,5 +1,12 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const orgCreateMock = vi.fn();
+
+vi.mock("@salesforce/core", () => ({
+  ConfigAggregator: { create: () => Promise.resolve({ getInfo: () => ({ value: undefined }) }) },
+  Org: { create: (opts: unknown) => orgCreateMock(opts) },
+}));
 
 import {
   buildSfApiRequestArgs,
@@ -9,6 +16,21 @@ import {
   type D360ApiInput,
 } from "../lib/api-tool.ts";
 import type { SfEnvironment } from "../../../lib/common/sf-environment/types.ts";
+
+beforeEach(async () => {
+  orgCreateMock.mockReset();
+  const conn = await import("../../../lib/common/sf-conn/connection.ts");
+  conn.clearConnectionCache();
+});
+
+function fakeOrg(opts: { authFields: Record<string, unknown>; apiVersion?: string }) {
+  const conn = {
+    getAuthInfoFields: () => opts.authFields,
+    instanceUrl: (opts.authFields as { instanceUrl?: string }).instanceUrl ?? "",
+    getApiVersion: () => opts.apiVersion ?? "66.0",
+  };
+  return { getConnection: () => conn };
+}
 
 const env: SfEnvironment = {
   cli: { installed: true, version: "2.132.14" },
@@ -62,22 +84,18 @@ describe("sf-data360 request resolution", () => {
       path: "/ssot/data-model-objects",
       target_org: "other-org",
     };
-    const resolved = await resolveRequestForExecution(input, env, async (command, args) => {
-      expect(command).toBe("sf");
-      expect(args).toEqual(["org", "display", "--target-org", "other-org", "--json"]);
-      return {
-        code: 0,
-        stderr: "",
-        stdout: JSON.stringify({
-          status: 0,
-          result: {
-            alias: "other-org",
-            username: "other@example.invalid",
-            instanceUrl: "https://other-dev-ed.develop.my.salesforce.com",
-            apiVersion: "66.0",
-          },
-        }),
-      };
+    orgCreateMock.mockResolvedValueOnce(
+      fakeOrg({
+        authFields: {
+          alias: "other-org",
+          username: "other@example.invalid",
+          instanceUrl: "https://other-dev-ed.develop.my.salesforce.com",
+        },
+        apiVersion: "66.0",
+      }),
+    );
+    const resolved = await resolveRequestForExecution(input, env, async () => {
+      throw new Error("detectOrg should not shell out anymore");
     });
 
     expect(resolved).toMatchObject({
@@ -86,19 +104,19 @@ describe("sf-data360 request resolution", () => {
       apiVersion: "66.0",
       safety: { level: "create", requiresConfirmation: false },
     });
+    expect(orgCreateMock).toHaveBeenCalledWith({ aliasOrUsername: "other-org" });
   });
 
-  it("keeps explicit target orgs fail-closed when org display fails", async () => {
+  it("keeps explicit target orgs fail-closed when Org.create rejects", async () => {
     const input: D360ApiInput = {
       method: "POST",
       path: "/ssot/data-model-objects",
       target_org: "missing-org",
     };
-    const resolved = await resolveRequestForExecution(input, env, async () => ({
-      code: 1,
-      stderr: "",
-      stdout: JSON.stringify({ status: 1, message: "auth failed" }),
-    }));
+    orgCreateMock.mockRejectedValueOnce(new Error("auth failed"));
+    const resolved = await resolveRequestForExecution(input, env, async () => {
+      throw new Error("detectOrg should not shell out anymore");
+    });
 
     expect(resolved).toMatchObject({
       targetOrg: "missing-org",

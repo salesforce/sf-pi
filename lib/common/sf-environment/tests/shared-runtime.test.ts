@@ -1,11 +1,25 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /**
  * Tests for the shared Salesforce environment runtime cache.
+ *
+ * Post-Phase-2 contract: the only subprocess detection makes is
+ * `sf --version`. ConfigAggregator + Org go through `@salesforce/core`
+ * and are mocked here.
  */
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+
+const configGetInfoMock = vi.fn<(key: string) => unknown>();
+const configCreateMock = vi.fn();
+const orgCreateMock = vi.fn();
+
+vi.mock("@salesforce/core", () => ({
+  ConfigAggregator: { create: () => configCreateMock() },
+  Org: { create: (opts: unknown) => orgCreateMock(opts) },
+}));
+
 import {
   clearSharedSfEnvironment,
   getCachedSfEnvironment,
@@ -14,6 +28,18 @@ import {
   type SharedExecFn,
 } from "../shared-runtime.ts";
 import { clearPersistedSfEnvironment } from "../persisted-cache.ts";
+
+beforeEach(async () => {
+  configGetInfoMock.mockReset();
+  configCreateMock.mockReset();
+  configCreateMock.mockResolvedValue({ getInfo: configGetInfoMock });
+  orgCreateMock.mockReset();
+  // Default: no target-org configured.
+  configGetInfoMock.mockReturnValue({ value: undefined });
+
+  const conn = await import("../../sf-conn/connection.ts");
+  conn.clearConnectionCache();
+});
 
 const tempDirs: string[] = [];
 const originalHome = process.env.HOME;
@@ -72,7 +98,6 @@ describe("getSharedSfEnvironment", () => {
     const exec = mockExec(
       {
         "sf --version": { stdout: "@salesforce/cli/2.130.9\n" },
-        "sf config list --json": { stdout: JSON.stringify({ result: [] }) },
       },
       calls,
       5,
@@ -84,7 +109,7 @@ describe("getSharedSfEnvironment", () => {
     ]);
 
     expect(first).toEqual(second);
-    expect(calls).toEqual(["sf --version", "sf config list --json"]);
+    expect(calls).toEqual(["sf --version"]);
   });
 
   it("returns the cached value when force is not requested", async () => {
@@ -94,7 +119,6 @@ describe("getSharedSfEnvironment", () => {
     const exec = mockExec(
       {
         "sf --version": { stdout: "@salesforce/cli/2.130.9\n" },
-        "sf config list --json": { stdout: JSON.stringify({ result: [] }) },
       },
       calls,
     );
@@ -103,7 +127,7 @@ describe("getSharedSfEnvironment", () => {
     const second = await getSharedSfEnvironment(exec, cwd);
 
     expect(second).toBe(first);
-    expect(calls).toEqual(["sf --version", "sf config list --json"]);
+    expect(calls).toEqual(["sf --version"]);
     expect(peekSharedSfEnvironment(cwd)).toEqual(first);
   });
 
@@ -118,9 +142,6 @@ describe("getSharedSfEnvironment", () => {
       if (key === "sf --version") {
         return { stdout: `@salesforce/cli/${version}\n`, stderr: "", code: 0 };
       }
-      if (key === "sf config list --json") {
-        return { stdout: JSON.stringify({ result: [] }), stderr: "", code: 0 };
-      }
       return { stdout: "", stderr: "command not found", code: 127 };
     };
 
@@ -130,12 +151,7 @@ describe("getSharedSfEnvironment", () => {
 
     expect(first.cli.version).toBe("2.130.9");
     expect(refreshed.cli.version).toBe("2.131.0");
-    expect(calls).toEqual([
-      "sf --version",
-      "sf config list --json",
-      "sf --version",
-      "sf config list --json",
-    ]);
+    expect(calls).toEqual(["sf --version", "sf --version"]);
   });
 
   it("reuses an in-flight detection even when force is requested twice", async () => {
@@ -145,7 +161,6 @@ describe("getSharedSfEnvironment", () => {
     const exec = mockExec(
       {
         "sf --version": { stdout: "@salesforce/cli/2.130.9\n" },
-        "sf config list --json": { stdout: JSON.stringify({ result: [] }) },
       },
       calls,
       5,
@@ -155,7 +170,7 @@ describe("getSharedSfEnvironment", () => {
     const second = getSharedSfEnvironment(exec, cwd, { force: true });
 
     await Promise.all([first, second]);
-    expect(calls).toEqual(["sf --version", "sf config list --json"]);
+    expect(calls).toEqual(["sf --version"]);
   });
 
   it("hydrates from the persisted cache after in-memory state is cleared", async () => {
@@ -165,7 +180,6 @@ describe("getSharedSfEnvironment", () => {
     const exec = mockExec(
       {
         "sf --version": { stdout: "@salesforce/cli/2.130.9\n" },
-        "sf config list --json": { stdout: JSON.stringify({ result: [] }) },
       },
       calls,
     );
@@ -176,6 +190,6 @@ describe("getSharedSfEnvironment", () => {
     const cached = getCachedSfEnvironment(cwd);
     expect(cached).toEqual(first);
     expect(peekSharedSfEnvironment(cwd)).toEqual(first);
-    expect(calls).toEqual(["sf --version", "sf config list --json"]);
+    expect(calls).toEqual(["sf --version"]);
   });
 });

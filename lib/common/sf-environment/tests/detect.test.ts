@@ -3,28 +3,57 @@
  * Tests for the Salesforce environment detection chain.
  *
  * Covers: detectCli, detectProject, detectConfig, detectOrg, inferOrgType,
- *         parseConfigListResult, parseOrgDisplayResult, detectEnvironment
+ *         detectEnvironment.
  *
- * Uses a mock exec function to avoid real CLI calls.
+ * - detectCli still shells `sf --version`, so it uses a mock `ExecFn`.
+ * - detectConfig and detectOrg now go through `@salesforce/core`, so we
+ *   mock the `ConfigAggregator` / `Org` classes rather than spawning a
+ *   subprocess.
+ * - detectProject is filesystem-only — uses real temp dirs.
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+
+// Mock state for @salesforce/core. Tests reset these in `beforeEach`.
+const configGetInfoMock = vi.fn<(key: string) => unknown>();
+const configCreateMock = vi.fn();
+const orgCreateMock = vi.fn();
+
+vi.mock("@salesforce/core", () => ({
+  ConfigAggregator: {
+    create: () => configCreateMock(),
+  },
+  Org: {
+    create: (opts: unknown) => orgCreateMock(opts),
+  },
+}));
+
+// orgFromAlias caches Org promises — clear between tests.
+beforeEach(async () => {
+  configGetInfoMock.mockReset();
+  configCreateMock.mockReset();
+  configCreateMock.mockResolvedValue({ getInfo: configGetInfoMock });
+  orgCreateMock.mockReset();
+
+  const conn = await import("../../sf-conn/connection.ts");
+  conn.clearConnectionCache();
+});
+
 import {
   detectCli,
   detectProject,
+  detectConfig,
   detectOrg,
   detectEnvironment,
   findProjectFile,
   inferOrgType,
-  parseConfigListResult,
-  parseOrgDisplayResult,
   type ExecFn,
 } from "../detect.ts";
 
 // -------------------------------------------------------------------------------------------------
-// Mock exec helper
+// Mock exec helper (for detectCli only)
 // -------------------------------------------------------------------------------------------------
 
 function mockExec(
@@ -32,7 +61,6 @@ function mockExec(
 ): ExecFn {
   return async (command, args) => {
     const key = `${command} ${args.join(" ")}`;
-    // Find a matching key (prefix match for flexibility)
     const match = Object.entries(overrides).find(([k]) => key.startsWith(k));
     if (match) {
       return {
@@ -71,6 +99,23 @@ afterEach(() => {
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+/**
+ * Build a fake Org-like object that exposes the surface readOrgInfo touches.
+ * `authFields` becomes the AuthInfoFields jsforce returns.
+ */
+function fakeOrg(opts: {
+  authFields: Record<string, unknown>;
+  instanceUrl?: string;
+  apiVersion?: string;
+}) {
+  const conn = {
+    getAuthInfoFields: () => opts.authFields,
+    instanceUrl: opts.instanceUrl ?? "",
+    getApiVersion: () => opts.apiVersion ?? "66.0",
+  };
+  return { getConnection: () => conn };
+}
 
 // -------------------------------------------------------------------------------------------------
 // detectCli
@@ -208,68 +253,40 @@ describe("findProjectFile", () => {
 });
 
 // -------------------------------------------------------------------------------------------------
-// parseConfigListResult
+// detectConfig (ConfigAggregator-backed)
 // -------------------------------------------------------------------------------------------------
 
-describe("parseConfigListResult", () => {
-  it("returns hasTargetOrg false for empty entries", () => {
-    const result = parseConfigListResult([]);
+describe("detectConfig", () => {
+  it("returns hasTargetOrg=false when no value is set", async () => {
+    configGetInfoMock.mockReturnValue({ value: undefined });
+    const result = await detectConfig();
     expect(result.hasTargetOrg).toBe(false);
   });
 
-  it("extracts global target-org", () => {
-    const result = parseConfigListResult([
-      { name: "target-org", key: "target-org", value: "MyOrg", location: "Global", success: true },
-    ]);
+  it("extracts a Global target-org", async () => {
+    configGetInfoMock.mockReturnValue({ value: "MyOrg", location: "Global" });
+    const result = await detectConfig();
     expect(result.hasTargetOrg).toBe(true);
     expect(result.targetOrg).toBe("MyOrg");
     expect(result.location).toBe("Global");
   });
 
-  it("prefers Local over Global config", () => {
-    const result = parseConfigListResult([
-      {
-        name: "target-org",
-        key: "target-org",
-        value: "GlobalOrg",
-        location: "Global",
-        success: true,
-      },
-      {
-        name: "target-org",
-        key: "target-org",
-        value: "LocalOrg",
-        location: "Local",
-        success: true,
-      },
-    ]);
+  it("extracts a Local target-org", async () => {
+    configGetInfoMock.mockReturnValue({ value: "LocalOrg", location: "Local" });
+    const result = await detectConfig();
     expect(result.targetOrg).toBe("LocalOrg");
     expect(result.location).toBe("Local");
   });
 
-  it("ignores failed entries", () => {
-    const result = parseConfigListResult([
-      {
-        name: "target-org",
-        key: "target-org",
-        value: "BadOrg",
-        location: "Global",
-        success: false,
-      },
-    ]);
-    expect(result.hasTargetOrg).toBe(false);
+  it("collapses Environment location to Global for the public shape", async () => {
+    configGetInfoMock.mockReturnValue({ value: "EnvOrg", location: "Environment" });
+    const result = await detectConfig();
+    expect(result.location).toBe("Global");
   });
 
-  it("ignores non-target-org config entries", () => {
-    const result = parseConfigListResult([
-      {
-        name: "target-dev-hub",
-        key: "target-dev-hub",
-        value: "DevHub",
-        location: "Global",
-        success: true,
-      },
-    ]);
+  it("returns hasTargetOrg=false when ConfigAggregator throws", async () => {
+    configCreateMock.mockRejectedValueOnce(new Error("config broken"));
+    const result = await detectConfig();
     expect(result.hasTargetOrg).toBe(false);
   });
 });
@@ -325,86 +342,56 @@ describe("inferOrgType", () => {
 });
 
 // -------------------------------------------------------------------------------------------------
-// parseOrgDisplayResult
-// -------------------------------------------------------------------------------------------------
-
-describe("parseOrgDisplayResult", () => {
-  it("parses a sandbox org display result", () => {
-    const result = parseOrgDisplayResult({
-      id: "00Dbb000003lx7lEAA",
-      apiVersion: "66.0",
-      instanceUrl: "https://company--devint.sandbox.my.salesforce.com",
-      username: "user@company.com.devint",
-      connectedStatus: "Connected",
-      alias: "MyOrg-DevInt",
-    });
-
-    expect(result.detected).toBe(true);
-    expect(result.alias).toBe("MyOrg-DevInt");
-    expect(result.orgType).toBe("sandbox");
-    expect(result.apiVersion).toBe("66.0");
-    expect(result.connectedStatus).toBe("Connected");
-  });
-
-  it("parses a dev edition org", () => {
-    const result = parseOrgDisplayResult({
-      instanceUrl: "https://abc-dev-ed.develop.my.salesforce.com",
-      alias: "agentforce",
-    });
-
-    expect(result.detected).toBe(true);
-    expect(result.orgType).toBe("developer");
-  });
-});
-
-// -------------------------------------------------------------------------------------------------
-// detectOrg
+// detectOrg (Org-backed)
 // -------------------------------------------------------------------------------------------------
 
 describe("detectOrg", () => {
-  it("parses successful org display", async () => {
-    const exec = mockExec({
-      "sf org display": {
-        stdout: JSON.stringify({
-          status: 0,
-          result: {
-            id: "00D000000000001",
-            apiVersion: "66.0",
-            instanceUrl: "https://test.sandbox.my.salesforce.com",
-            username: "user@test.com",
-            connectedStatus: "Connected",
-            alias: "TestOrg",
-          },
-        }),
-      },
-    });
+  it("reads a sandbox org via Org.getConnection().getAuthInfoFields()", async () => {
+    orgCreateMock.mockResolvedValueOnce(
+      fakeOrg({
+        authFields: {
+          orgId: "00D000000000001",
+          username: "user@test.com",
+          alias: "TestOrg",
+          instanceUrl: "https://test.sandbox.my.salesforce.com",
+          isSandbox: true,
+        },
+        instanceUrl: "https://test.sandbox.my.salesforce.com",
+        apiVersion: "66.0",
+      }),
+    );
 
-    const result = await detectOrg(exec, "TestOrg");
+    const result = await detectOrg(undefined, "TestOrg");
     expect(result.detected).toBe(true);
     expect(result.alias).toBe("TestOrg");
     expect(result.orgType).toBe("sandbox");
+    expect(result.apiVersion).toBe("66.0");
+    expect(result.connectedStatus).toBe("Connected");
+    expect(result.orgId).toBe("00D000000000001");
   });
 
-  it("handles failed org display gracefully", async () => {
-    const exec = mockExec({
-      "sf org display": {
-        stdout: JSON.stringify({ status: 1, message: "No auth found" }),
-        code: 1,
-      },
-    });
+  it("falls back to the requested alias when AuthInfoFields has none", async () => {
+    orgCreateMock.mockResolvedValueOnce(
+      fakeOrg({
+        authFields: {
+          username: "user@example.com",
+          isScratch: true,
+        },
+        apiVersion: "67.0",
+      }),
+    );
 
-    const result = await detectOrg(exec, "BadOrg");
-    expect(result.detected).toBe(false);
-    expect(result.error).toBeDefined();
+    const result = await detectOrg(undefined, "MyScratch");
+    expect(result.alias).toBe("MyScratch");
+    expect(result.orgType).toBe("scratch");
   });
 
-  it("handles exec throwing", async () => {
-    const exec: ExecFn = async () => {
-      throw new Error("timeout");
-    };
-    const result = await detectOrg(exec, "TimeoutOrg");
+  it("captures Org.create errors as { detected: false, error }", async () => {
+    orgCreateMock.mockRejectedValueOnce(new Error("auth expired"));
+    const result = await detectOrg(undefined, "BadOrg");
     expect(result.detected).toBe(false);
-    expect(result.error).toContain("timeout");
+    expect(result.error).toContain("auth expired");
+    expect(result.orgType).toBe("unknown");
   });
 });
 
@@ -431,32 +418,19 @@ describe("detectEnvironment", () => {
   it("runs full chain when CLI is installed", async () => {
     const exec = mockExec({
       "sf --version": { stdout: "@salesforce/cli/2.130.9 darwin-arm64\n" },
-      "sf config list": {
-        stdout: JSON.stringify({
-          status: 0,
-          result: [
-            {
-              name: "target-org",
-              key: "target-org",
-              value: "TestOrg",
-              location: "Global",
-              success: true,
-            },
-          ],
-        }),
-      },
-      "sf org display": {
-        stdout: JSON.stringify({
-          status: 0,
-          result: {
-            alias: "TestOrg",
-            instanceUrl: "https://test.sandbox.my.salesforce.com",
-            connectedStatus: "Connected",
-            apiVersion: "66.0",
-          },
-        }),
-      },
     });
+    configGetInfoMock.mockReturnValue({ value: "TestOrg", location: "Global" });
+    orgCreateMock.mockResolvedValueOnce(
+      fakeOrg({
+        authFields: {
+          alias: "TestOrg",
+          instanceUrl: "https://test.sandbox.my.salesforce.com",
+          isSandbox: true,
+        },
+        instanceUrl: "https://test.sandbox.my.salesforce.com",
+        apiVersion: "66.0",
+      }),
+    );
 
     const dir = createTempDir();
     createSfdxProject(dir);
@@ -474,15 +448,14 @@ describe("detectEnvironment", () => {
   it("skips org display when no target-org configured", async () => {
     const exec = mockExec({
       "sf --version": { stdout: "@salesforce/cli/2.130.9\n" },
-      "sf config list": {
-        stdout: JSON.stringify({ status: 0, result: [] }),
-      },
     });
+    configGetInfoMock.mockReturnValue({ value: undefined });
 
     const dir = createTempDir();
     const env = await detectEnvironment(exec, dir);
     expect(env.cli.installed).toBe(true);
     expect(env.config.hasTargetOrg).toBe(false);
     expect(env.org.detected).toBe(false);
+    expect(orgCreateMock).not.toHaveBeenCalled();
   });
 });
