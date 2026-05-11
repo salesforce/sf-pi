@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.61.3-2026-05-11",
-  "latestVersion": "0.61.3",
+  "revision": "release-0.62.0-2026-05-11",
+  "latestVersion": "0.62.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.61.3",
+      "id": "release-0.62.0",
       "kind": "update",
-      "title": "sf-pi v0.61.3 — sf-agentscript: defensive write that rolls back AST emit regressions",
+      "title": "sf-pi v0.62.0 — sf-agentscript: rich timeline waterfall renderer for preview send",
       "publishedAt": "2026-05-11T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.61.3",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.62.0",
       "severity": "info",
-      "body": "sf-agentscript: defensive write that rolls back AST emit regressions"
+      "body": "sf-agentscript: rich timeline waterfall renderer for preview send"
     },
     {
       "id": "pi-0.73-required",
