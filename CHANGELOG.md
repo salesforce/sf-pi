@@ -481,6 +481,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.65.2](https://github.com/salesforce/sf-pi/compare/v0.65.1...v0.65.2) (2026-05-11)
+
+
+### Performance
+
+* **sf-data360:** replace 'sf api request rest' subprocess with @salesforce/core Connection ([8c6d210](https://github.com/salesforce/sf-pi/commit/8c6d210745048521061c4d93a4991850b2b35587))
+
 ## [0.65.1](https://github.com/salesforce/sf-pi/compare/v0.65.0...v0.65.1) (2026-05-11)
 
 
