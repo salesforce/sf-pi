@@ -23,6 +23,7 @@ import {
 import { fetchTrace } from "./eval/trace-client.ts";
 import { isAgentScriptFile } from "./file-classify.ts";
 import { safeResolveToolPath, toolError, toolOk, type ToolError } from "./tool-types.ts";
+import { renderPreviewCall, renderPreviewSendResult } from "./render/timeline.ts";
 
 export const PREVIEW_TOOL_NAME = "agentscript_preview";
 
@@ -118,6 +119,11 @@ export function registerPreviewTool(pi: ExtensionAPI): void {
     label: "Agent Script preview",
     description:
       "Multi-action live-org preview: start a session for a `.agent` file, send messages, end, or fetch a trace. Sessions stored under .sfdx/agents/<id>/sessions/<sid>/. cleanup removes stale sessions.",
+    // Rich rendering for the human-watching surface. The LLM still receives
+    // the compact summary in `content[0].text` (unchanged); these renderers
+    // only paint the TUI tool row.
+    renderCall: renderPreviewCall,
+    renderResult: renderPreviewSendResult,
     promptSnippet:
       "Run a single .agent conversation against the live org with full trace capture per turn.",
     promptGuidelines: [

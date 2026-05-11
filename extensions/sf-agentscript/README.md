@@ -125,6 +125,9 @@ extensions/sf-agentscript/
       client.ts             ← implementation module
       session-store.ts      ← implementation module
       trace-digest.ts       ← implementation module
+    render/
+      shared.ts             ← implementation module
+      timeline.ts           ← implementation module
     templates/
       agentforce-default.ts ← implementation module
       minimal.ts            ← implementation module
@@ -173,6 +176,7 @@ extensions/sf-agentscript/
     preview-agent-api.test.ts← unit / smoke test
     preview-session-store.test.ts← unit / smoke test
     publish-authoring-bundle.test.ts← unit / smoke test
+    render-timeline.test.ts ← unit / smoke test
     self-recovery.test.ts   ← unit / smoke test
     smoke.test.ts           ← unit / smoke test
     template-scaffold-vars.test.ts← unit / smoke test
