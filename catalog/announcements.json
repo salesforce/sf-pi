@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.62.0-2026-05-11",
-  "latestVersion": "0.62.0",
+  "revision": "release-0.63.0-2026-05-11",
+  "latestVersion": "0.63.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.62.0",
+      "id": "release-0.63.0",
       "kind": "update",
-      "title": "sf-pi v0.62.0 — sf-agentscript: rich timeline waterfall renderer for preview send",
+      "title": "sf-pi v0.63.0 — sf-agentscript: rich rendering for compile, inspect, mutate (Phase 2)",
       "publishedAt": "2026-05-11T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.62.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.63.0",
       "severity": "info",
-      "body": "sf-agentscript: rich timeline waterfall renderer for preview send"
+      "body": "sf-agentscript: rich rendering for compile, inspect, mutate (Phase 2)"
     },
     {
       "id": "pi-0.73-required",
