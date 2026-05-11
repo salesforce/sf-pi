@@ -481,6 +481,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.62.0](https://github.com/salesforce/sf-pi/compare/v0.61.3...v0.62.0) (2026-05-11)
+
+
+### Features
+
+* **sf-agentscript:** rich timeline waterfall renderer for preview send ([0742cee](https://github.com/salesforce/sf-pi/commit/0742ceed6f5ea91376446d9faf0733495a3a3e15))
+
 ## [0.61.3](https://github.com/salesforce/sf-pi/compare/v0.61.2...v0.61.3) (2026-05-11)
 
 
