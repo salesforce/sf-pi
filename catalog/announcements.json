@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.66.0-2026-05-11",
-  "latestVersion": "0.66.0",
+  "revision": "release-0.66.1-2026-05-11",
+  "latestVersion": "0.66.1",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.66.0",
+      "id": "release-0.66.1",
       "kind": "update",
-      "title": "sf-pi v0.66.0 — sf-conn: wire connection-cache lifecycle into sf-data360 + shared runtime",
+      "title": "sf-pi v0.66.1 — sf-data360, sf-conn: harden d360 tools against cross-org API version + body double-encoding",
       "publishedAt": "2026-05-11T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.66.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.66.1",
       "severity": "info",
-      "body": "sf-conn: wire connection-cache lifecycle into sf-data360 + shared runtime — sf-data360: parallelize d360_probe with Promise.all"
+      "body": "sf-data360, sf-conn: harden d360 tools against cross-org API version + body double-encoding"
     },
     {
       "id": "pi-0.73-required",
