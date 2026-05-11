@@ -110,17 +110,21 @@ export function registerD360ProbeTool(pi: ExtensionAPI): void {
 
       const conn = await connFromAlias(targetOrg);
       const timeoutMs = typeof input.timeout_ms === "number" ? input.timeout_ms : 45_000;
-      const probes: ProbeResult[] = [];
-      for (const probe of PROBES) {
-        if (signal?.aborted) throw new Error("Data 360 readiness probe cancelled.");
-        const apiPath = buildApiPath(probe.path, apiVersion);
-        const resp = await connRequest<unknown>(conn, {
-          method: "GET",
-          url: apiPath,
-          timeoutMs,
-        });
-        probes.push(classifyConnectionProbeResult(probe.name, probe.path, resp.status, resp.body));
-      }
+      // Fan out all 15 probes in parallel. Each is a read-only GET; the org's
+      // /ssot/* surfaces are happy with concurrent requests. Order is
+      // preserved by index so the JSON output stays stable across runs.
+      const probes: ProbeResult[] = await Promise.all(
+        PROBES.map(async (probe) => {
+          if (signal?.aborted) throw new Error("Data 360 readiness probe cancelled.");
+          const apiPath = buildApiPath(probe.path, apiVersion);
+          const resp = await connRequest<unknown>(conn, {
+            method: "GET",
+            url: apiPath,
+            timeoutMs,
+          });
+          return classifyConnectionProbeResult(probe.name, probe.path, resp.status, resp.body);
+        }),
+      );
 
       const summary = summarizeReadiness(probes);
       const text = JSON.stringify({ targetOrg, apiVersion, ...summary, probes }, null, 2);
