@@ -109,6 +109,7 @@ extensions/sf-agentscript/
   lib/
     command/
       eval-action.ts        ← implementation module
+      report-action.ts      ← implementation module
     eval/
       active-ids.ts         ← implementation module
       decode.ts             ← implementation module
@@ -131,6 +132,7 @@ extensions/sf-agentscript/
       inspect.ts            ← implementation module
       lifecycle.ts          ← implementation module
       mutate.ts             ← implementation module
+      report-writer.ts      ← implementation module
       shared.ts             ← implementation module
       timeline.ts           ← implementation module
     templates/
@@ -186,6 +188,7 @@ extensions/sf-agentscript/
     render-inspect.test.ts  ← unit / smoke test
     render-lifecycle.test.ts← unit / smoke test
     render-mutate.test.ts   ← unit / smoke test
+    render-report-writer.test.ts← unit / smoke test
     render-timeline.test.ts ← unit / smoke test
     self-recovery.test.ts   ← unit / smoke test
     smoke.test.ts           ← unit / smoke test

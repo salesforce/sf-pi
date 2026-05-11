@@ -73,6 +73,7 @@ import { registerLifecycleTool } from "./lib/lifecycle-tool.ts";
 import { registerMutateTool } from "./lib/mutate-tool.ts";
 import { registerPreviewTool } from "./lib/preview-tool.ts";
 import { handleEvalAction } from "./lib/command/eval-action.ts";
+import { handleReportAction } from "./lib/command/report-action.ts";
 import { clearConnectionCache } from "./lib/connection.ts";
 
 const EXTENSION_ID = "sf-agentscript";
@@ -107,7 +108,14 @@ export default function sfAgentScriptExtension(pi: ExtensionAPI): void {
 // /sf-agentscript
 // -------------------------------------------------------------------------------------------------
 
-type AgentScriptAction = "doctor" | "check" | "eval" | "help" | "close" | LifecycleActionId;
+type AgentScriptAction =
+  | "doctor"
+  | "check"
+  | "eval"
+  | "report"
+  | "help"
+  | "close"
+  | LifecycleActionId;
 
 const AGENTSCRIPT_ACTIONS: CommandPanelAction<AgentScriptAction>[] = [
   {
@@ -128,6 +136,13 @@ const AGENTSCRIPT_ACTIONS: CommandPanelAction<AgentScriptAction>[] = [
     label: "Run an eval suite",
     description:
       "Run a multi-turn regression spec against the Salesforce Evaluation API. Usage: /sf-agentscript eval <spec.json>",
+    group: "Testing",
+  },
+  {
+    value: "report",
+    label: "Render saved report",
+    description:
+      "Render a Markdown report from a past eval run. Usage: /sf-agentscript report eval <run_id> [--save] [--test-id <id>]",
     group: "Testing",
   },
   {
@@ -246,6 +261,15 @@ async function handleAgentScriptCommand(
     await handleEvalAction(pi, ctx, args);
     return;
   }
+  if (subcommand === "report") {
+    if (args.length === 0 && ctx.hasUI && fromPanel) {
+      const runId = (await ctx.ui.input("Run id (eval)", "<run_id>"))?.trim() ?? "";
+      if (!runId) return;
+      args = ["eval", runId];
+    }
+    await handleReportAction(ctx, args);
+    return;
+  }
   if (subcommand === "help") {
     await emitOutput(ctx, "SF Agent Script help", renderHelp(), "info", fromPanel);
     return;
@@ -297,6 +321,8 @@ function renderHelp(): string {
     "  /sf-agentscript check <file>     Run one manual compile diagnostic pass",
     "  /sf-agentscript eval <spec.json> [--org A] [--agent N] [--traces failed|all|off]",
     "                                   [--concurrency N] [--prompt-chars N] [--verbose]",
+    "  /sf-agentscript report eval <run_id> [--save] [--test-id <id>]",
+    "                                   Render Markdown report from a past eval run",
     "  /sf-agentscript help             Show this help",
     "",
     "Tools (LLM-callable):",

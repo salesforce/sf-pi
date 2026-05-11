@@ -15,6 +15,8 @@ import { runEval, recordRunInIndex } from "../eval/orchestrator.ts";
 import { renderReport } from "../eval/render.ts";
 import type { EvalSpec, TracesMode } from "../eval/types.ts";
 import { openInfoPanel } from "../../../../lib/common/info-panel.ts";
+import { evalRunMarkdown } from "../render/eval.ts";
+import { evalReportPath, reportHeader, writeMarkdownReport } from "../render/report-writer.ts";
 
 interface Args {
   spec_path?: string;
@@ -106,17 +108,66 @@ export async function handleEvalAction(
       result.run_dir && args.traces_mode !== "off"
         ? path.join(result.run_dir, "traces")
         : undefined;
-    const { report } = renderReport(result.merged, {
+    // Keep the legacy text-style report for the JSONL artifacts (existing
+    // failure-record renderer). The new beautiful renderer runs alongside
+    // and is what we show in the panel + save to disk.
+    const { report: legacyReport } = renderReport(result.merged, {
       promptChars: args.prompt_chars,
       verbose: args.verbose,
       tracesDir,
     });
+    void legacyReport;
 
     const passed = result.totals.test_fail === 0 && result.totals.errors === 0;
+    const niceMarkdown = evalRunMarkdown(
+      {
+        ok: passed,
+        run_id: result.run_id,
+        run_dir: result.run_dir,
+        totals: result.metadata.totals as never,
+        latency: result.latency,
+        failed_test_ids: result.failures.map((f) => f.test_id),
+      },
+      result.failures,
+    );
+
+    // Save the rendered markdown alongside the run's JSONL artifacts so it
+    // can be re-opened later, copy/pasted into a doc, or attached to a PR.
+    let savedReportPath: string | undefined;
+    try {
+      const reportPath = evalReportPath(result.run_dir);
+      const md =
+        reportHeader({
+          kind: "eval",
+          title: `Eval run ${result.run_id}`,
+          meta: {
+            run_dir: result.run_dir,
+            org: args.target_org,
+            spec_path: args.spec_path,
+            agent_api_name: args.agent_api_name,
+            tests: result.metadata.totals.tests,
+            test_pass: result.metadata.totals.test_pass,
+            test_fail: result.metadata.totals.test_fail,
+          },
+        }) + niceMarkdown;
+      const written = await writeMarkdownReport(reportPath, md);
+      savedReportPath = written.path;
+    } catch {
+      // Report-writing is best-effort; never fail the eval over it.
+    }
+
     if (ctx.hasUI) {
+      const body = [
+        niceMarkdown,
+        "",
+        `Artifacts: ${result.run_dir}`,
+        savedReportPath ? `Saved report: ${savedReportPath}` : null,
+      ]
+        .filter(Boolean)
+        .join("\n");
       await openInfoPanel(ctx, {
         title: `🧪 Eval run ${result.run_id} — ${passed ? "✅ green" : "❌ red"}`,
-        body: `${headline(result, passed)}\n\nArtifacts: ${result.run_dir}\n\n${report}`,
+        body,
         severity: passed ? "info" : "warning",
       });
     }
@@ -124,21 +175,4 @@ export async function handleEvalAction(
     const msg = err instanceof Error ? err.message : String(err);
     if (ctx.hasUI) ctx.ui.notify(`Eval failed: ${msg}`, "error");
   }
-}
-
-function headline(
-  result: {
-    totals: { tests: number; test_pass: number; ev_pass: number; evals: number; errors: number };
-    latency: { count: number; p50_ms?: number; p95_ms?: number };
-    failed_batches: number;
-  },
-  _passed: boolean,
-): string {
-  const t = result.totals;
-  const lat = result.latency;
-  const latPart = lat.count > 0 ? `  |  latency p50=${lat.p50_ms}ms p95=${lat.p95_ms}ms` : "";
-  const head = `Tests: ${t.test_pass}/${t.tests} passed  |  Evaluators: ${t.ev_pass}/${t.evals} passed  |  Step errors: ${t.errors}${latPart}`;
-  return result.failed_batches > 0
-    ? `${head}\n⚠ ${result.failed_batches} batch(es) returned non-200 (some tests may be missing)`
-    : head;
 }

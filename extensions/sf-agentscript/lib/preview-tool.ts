@@ -23,7 +23,12 @@ import {
 import { fetchTrace } from "./eval/trace-client.ts";
 import { isAgentScriptFile } from "./file-classify.ts";
 import { safeResolveToolPath, toolError, toolOk, type ToolError } from "./tool-types.ts";
-import { renderPreviewCall, renderPreviewSendResult } from "./render/timeline.ts";
+import {
+  previewSendMarkdown,
+  renderPreviewCall,
+  renderPreviewSendResult,
+} from "./render/timeline.ts";
+import { previewReportPath, reportHeader, writeMarkdownReport } from "./render/report-writer.ts";
 
 export const PREVIEW_TOOL_NAME = "agentscript_preview";
 
@@ -334,6 +339,41 @@ async function actionSend(
       apexDebug: input.apex_debug,
     });
     stream("Trace captured");
+
+    // Best-effort: write a Markdown report alongside the trace JSON so the
+    // user can re-open the rendered timeline later. Failure here never
+    // breaks the tool result.
+    let reportFile: string | undefined;
+    try {
+      if (result.digest && result.traceFile) {
+        const sessionDir = path.dirname(path.dirname(result.traceFile));
+        // <session>/traces/<plan_id>.json -> session dir is parent.parent
+        const md =
+          reportHeader({
+            kind: "preview",
+            title: `Preview turn ${result.planId.slice(0, 8)}…`,
+            meta: {
+              agent_name: input.agent_name,
+              session_id: input.session_id,
+              plan_id: result.planId,
+              latency_ms: result.latencyMs,
+            },
+          }) +
+          previewSendMarkdown(result.digest, {
+            ok: true,
+            agent_response: result.agentResponse,
+            topic: result.topic,
+            latency_ms: result.latencyMs,
+            plan_id: result.planId,
+            trace_file: result.traceFile,
+          });
+        const written = await writeMarkdownReport(previewReportPath(sessionDir, result.planId), md);
+        reportFile = written.path;
+      }
+    } catch {
+      // Best-effort — swallow and continue.
+    }
+
     return toolOk(
       {
         ok: true as const,
@@ -343,6 +383,7 @@ async function actionSend(
         latency_ms: result.latencyMs,
         plan_id: result.planId,
         trace_file: result.traceFile,
+        report_file: reportFile,
         digest: result.digest,
         ...(result.apexDebugLog ? { apex_debug_log: result.apexDebugLog } : {}),
       },
@@ -353,6 +394,7 @@ async function actionSend(
           ? `⚠️ errors: ${result.digest.errors.length}`
           : null,
         `plan=${result.planId.slice(0, 8)}… trace_file=${result.traceFile ?? "<none>"}`,
+        reportFile ? `report_file=${reportFile}` : null,
       ]
         .filter(Boolean)
         .join("\n"),
