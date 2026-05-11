@@ -19,7 +19,7 @@
  *   - missing bundleDir → bundle deploy is skipped with a clear error
  */
 
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
@@ -141,11 +141,14 @@ function fakeConnection(opts: {
 }
 
 async function setupBundleDir(): Promise<{ bundleDir: string; metaPath: string }> {
-  const bundleDir = path.join(workDir, "My_Agent");
+  // Place the bundle under `aiAuthoringBundles/<name>` so SDR's path-based
+  // metadata resolver classifies it natively. Tests for the
+  // `ensureSdrFriendlyLayout` synth path live in lifecycle-sdr-layout.test.ts.
+  const parent = path.join(workDir, "aiAuthoringBundles");
+  await mkdir(parent, { recursive: true });
+  const bundleDir = path.join(parent, "My_Agent");
   await rm(bundleDir, { recursive: true, force: true });
-  await writeFile(path.join(workDir, "_create_bundle_dir"), "x");
-  const fs = await import("node:fs/promises");
-  await fs.mkdir(bundleDir, { recursive: true });
+  await mkdir(bundleDir, { recursive: true });
   const metaPath = path.join(bundleDir, "My_Agent.bundle-meta.xml");
   await writeFile(metaPath, INITIAL_META, "utf8");
   await writeFile(path.join(bundleDir, "My_Agent.agent"), CLEAN_SOURCE, "utf8");

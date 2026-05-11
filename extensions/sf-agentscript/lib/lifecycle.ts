@@ -17,7 +17,8 @@
  * pre-validate before burning a server call (matches preview's pattern).
  */
 
-import { readFile, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import type { Connection } from "@salesforce/core";
 import { ComponentSet } from "@salesforce/source-deploy-retrieve";
@@ -189,6 +190,56 @@ const BUNDLE_META_BUNDLE_TYPE_REGEX = /<bundleType>[^<]*<\/bundleType>/;
  * If the element already exists, replace it. Returns the original content
  * so the caller can restore it after deploy.
  */
+/**
+ * Ensure the bundle directory is laid out so SDR's path-based metadata
+ * resolver can identify it as an `AiAuthoringBundle`. The registry maps
+ * directoryName=`aiAuthoringBundles` to type=`AiAuthoringBundle`, so the
+ * required layout is `<root>/aiAuthoringBundles/<name>/<files>`.
+ *
+ * If `bundleDir`'s parent is already named `aiAuthoringBundles` we deploy
+ * from there directly. Otherwise we synthesize a minimal mirror under
+ * `os.tmpdir()/sf-agentscript-bundle-XXXX/aiAuthoringBundles/<name>/` and
+ * point the deploy at that. The caller is responsible for cleanup
+ * (we return `tmpRoot` when one was created).
+ */
+// Test-only re-export. The helper is intentionally not part of the public
+// API surface; tests import it via this name to verify behavior without
+// us shipping the synthesizer as a callable from outside lifecycle.ts.
+export const ensureSdrFriendlyLayoutForTests = (
+  bundleDir: string,
+  agentApiName: string,
+): Promise<{ bundleDir: string; tmpRoot?: string }> =>
+  ensureSdrFriendlyLayout(bundleDir, agentApiName);
+
+async function ensureSdrFriendlyLayout(
+  bundleDir: string,
+  agentApiName: string,
+): Promise<{ bundleDir: string; tmpRoot?: string }> {
+  const parent = path.basename(path.dirname(bundleDir));
+  if (parent === "aiAuthoringBundles") {
+    return { bundleDir };
+  }
+  // Synthesize: <tmp>/aiAuthoringBundles/<agentApiName>/<files copied>
+  const tmpRoot = await mkdtemp(path.join(tmpdir(), "sf-agentscript-bundle-"));
+  const synthDir = path.join(tmpRoot, "aiAuthoringBundles", agentApiName);
+  await mkdir(synthDir, { recursive: true });
+  // Copy the .agent file and the .bundle-meta.xml to the synth dir. The
+  // bundle is intentionally minimal, so we don't need a recursive copy.
+  const agentPath = path.join(bundleDir, `${agentApiName}.agent`);
+  const metaPath = path.join(bundleDir, `${agentApiName}.bundle-meta.xml`);
+  await writeFile(
+    path.join(synthDir, `${agentApiName}.agent`),
+    await readFile(agentPath, "utf8"),
+    "utf8",
+  );
+  await writeFile(
+    path.join(synthDir, `${agentApiName}.bundle-meta.xml`),
+    await readFile(metaPath, "utf8"),
+    "utf8",
+  );
+  return { bundleDir: synthDir, tmpRoot };
+}
+
 async function injectBundleTarget(
   bundleMetaPath: string,
   target: string,
@@ -321,6 +372,15 @@ export async function publishAgent(opts: PublishOptions): Promise<PublishResult>
       log(`Deploying AiAuthoringBundle ${bundleFullName} (target=${target})…`);
       const bundleMetaPath = path.join(opts.bundleDir, `${opts.agentApiName}.bundle-meta.xml`);
       let original: string | null = null;
+      // Stage 2 may need to deploy from a temp directory when the caller's
+      // bundle path isn't laid out as `<root>/aiAuthoringBundles/<name>/`.
+      // SDR's path-based metadata resolver requires that exact directory
+      // shape (the registry maps directoryName=aiAuthoringBundles to type=
+      // AiAuthoringBundle). When that's missing the deploy fails with
+      // "Could not infer a metadata type" before any network call. We
+      // detect the layout and synthesize a minimal mirror under os.tmpdir()
+      // so the deploy works regardless of where the caller stored the bundle.
+      let tmpRoot: string | undefined;
       try {
         // 1. Inject <target> into the local bundle-meta.xml (CLI does this exact step).
         original = (await injectBundleTarget(bundleMetaPath, target)).original;
@@ -329,7 +389,9 @@ export async function publishAgent(opts: PublishOptions): Promise<PublishResult>
         //    bundle directory + a generated package.xml manifest and calls
         //    conn.metadata.deploy under the hood — same SOAP endpoint the
         //    CLI uses, just without us hand-rolling the zip format.
-        const componentSet = ComponentSet.fromSource(opts.bundleDir);
+        const deploySource = await ensureSdrFriendlyLayout(opts.bundleDir, opts.agentApiName);
+        if (deploySource.tmpRoot) tmpRoot = deploySource.tmpRoot;
+        const componentSet = ComponentSet.fromSource(deploySource.bundleDir);
         const deployJob = await componentSet.deploy({ usernameOrConnection: opts.conn });
         const deployResult = await deployJob.pollStatus();
         const success = deployResult.response?.success === true;
@@ -364,6 +426,14 @@ export async function publishAgent(opts: PublishOptions): Promise<PublishResult>
             await writeFile(bundleMetaPath, original, "utf8");
           } catch {
             /* best-effort restore; if it fails the user can revert via git */
+          }
+        }
+        // 4. Clean up the synthesized temp layout, if we had one.
+        if (tmpRoot) {
+          try {
+            await rm(tmpRoot, { recursive: true, force: true });
+          } catch {
+            /* best-effort */
           }
         }
       }
