@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.65.1-2026-05-11",
-  "latestVersion": "0.65.1",
+  "revision": "release-0.65.2-2026-05-11",
+  "latestVersion": "0.65.2",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.65.1",
+      "id": "release-0.65.2",
       "kind": "update",
-      "title": "sf-pi v0.65.1 — sf-environment: drop subprocess from detectConfig + detectOrg",
+      "title": "sf-pi v0.65.2 — sf-data360: replace 'sf api request rest' subprocess with @salesforce/core Connection",
       "publishedAt": "2026-05-11T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.65.1",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.65.2",
       "severity": "info",
-      "body": "sf-environment: drop subprocess from detectConfig + detectOrg"
+      "body": "sf-data360: replace 'sf api request rest' subprocess with @salesforce/core Connection"
     },
     {
       "id": "pi-0.73-required",
