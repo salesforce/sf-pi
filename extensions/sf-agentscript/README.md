@@ -167,6 +167,7 @@ extensions/sf-agentscript/
     inspect-cycle-safety.test.ts← unit / smoke test
     inspect.test.ts         ← unit / smoke test
     mutate-dry-run.test.ts  ← unit / smoke test
+    mutate-emit-regression.test.ts← unit / smoke test
     mutate.test.ts          ← unit / smoke test
     path-containment.test.ts← unit / smoke test
     preview-agent-api.test.ts← unit / smoke test

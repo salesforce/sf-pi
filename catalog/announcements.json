@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.61.2-2026-05-10",
-  "latestVersion": "0.61.2",
+  "revision": "release-0.61.3-2026-05-11",
+  "latestVersion": "0.61.3",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.61.2",
+      "id": "release-0.61.3",
       "kind": "update",
-      "title": "sf-pi v0.61.2 — sf-agentscript: use SDR ComponentSet to deploy AiAuthoringBundle (both files, like the CLI)",
-      "publishedAt": "2026-05-10T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.61.2",
+      "title": "sf-pi v0.61.3 — sf-agentscript: defensive write that rolls back AST emit regressions",
+      "publishedAt": "2026-05-11T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.61.3",
       "severity": "info",
-      "body": "sf-agentscript: use SDR ComponentSet to deploy AiAuthoringBundle (both files, like the CLI)"
+      "body": "sf-agentscript: defensive write that rolls back AST emit regressions"
     },
     {
       "id": "pi-0.73-required",
