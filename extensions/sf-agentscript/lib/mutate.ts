@@ -246,9 +246,7 @@ async function commitOrPreview(
  * `before` source, so we can refuse to write any AST emit that introduces
  * a severity-1 regression. Exported for tests.
  */
-export async function checkAgentScriptFileFromSource(
-  source: string,
-): Promise<{
+export async function checkAgentScriptFileFromSource(source: string): Promise<{
   ok: boolean;
   diagnostics: Array<{ severity?: number; code?: string; range: { start: { line?: number } } }>;
 } | null> {
