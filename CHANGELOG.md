@@ -481,6 +481,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.66.2](https://github.com/salesforce/sf-pi/compare/v0.66.1...v0.66.2) (2026-05-11)
+
+
+### Bug Fixes
+
+* **sf-conn:** map Salesforce errorCode strings to HTTP status in connRequest ([9d98012](https://github.com/salesforce/sf-pi/commit/9d98012d5c0c5f1a63eaf1cdf5384f7fedc1771f))
+
 ## [0.66.1](https://github.com/salesforce/sf-pi/compare/v0.66.0...v0.66.1) (2026-05-11)
 
 
