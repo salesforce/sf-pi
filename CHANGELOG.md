@@ -487,6 +487,7 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 ### Performance
 
 * **sf-data360:** replace 'sf api request rest' subprocess with @salesforce/core Connection ([8c6d210](https://github.com/salesforce/sf-pi/commit/8c6d210745048521061c4d93a4991850b2b35587))
+* **sf-welcome:** swap 'npm view' subprocess for direct registry fetch ([b56c8cb](https://github.com/salesforce/sf-pi/commit/b56c8cb08177ba5a7ce584875328ded8d45bc6f9))
 
 ## [0.65.1](https://github.com/salesforce/sf-pi/compare/v0.65.0...v0.65.1) (2026-05-11)
 
