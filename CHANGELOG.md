@@ -481,6 +481,18 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.66.0](https://github.com/salesforce/sf-pi/compare/v0.65.2...v0.66.0) (2026-05-11)
+
+
+### Features
+
+* **sf-conn:** wire connection-cache lifecycle into sf-data360 + shared runtime ([a13cec1](https://github.com/salesforce/sf-pi/commit/a13cec1e53759e12cb7ab37d7416fc103a073edc))
+
+
+### Performance
+
+* **sf-data360:** parallelize d360_probe with Promise.all ([1947cc1](https://github.com/salesforce/sf-pi/commit/1947cc19741329cdcc6773e0484df85a905eff0f))
+
 ## [0.65.2](https://github.com/salesforce/sf-pi/compare/v0.65.1...v0.65.2) (2026-05-11)
 
 
