@@ -481,6 +481,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.61.3](https://github.com/salesforce/sf-pi/compare/v0.61.2...v0.61.3) (2026-05-11)
+
+
+### Bug Fixes
+
+* **sf-agentscript:** defensive write that rolls back AST emit regressions ([68846c4](https://github.com/salesforce/sf-pi/commit/68846c44e371fba9cee7a262ea27212c0794acee))
+
 ## [0.61.2](https://github.com/salesforce/sf-pi/compare/v0.61.1...v0.61.2) (2026-05-10)
 
 
