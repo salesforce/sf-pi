@@ -481,6 +481,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.65.0](https://github.com/salesforce/sf-pi/compare/v0.64.0...v0.65.0) (2026-05-11)
+
+
+### Features
+
+* **sf-agentscript:** recipe lifecycle harness + SDR layout hardening ([c5d2d41](https://github.com/salesforce/sf-pi/commit/c5d2d41e0fd8e13af1139a9a42f22968fb19bd98))
+
 ## [0.64.0](https://github.com/salesforce/sf-pi/compare/v0.63.0...v0.64.0) (2026-05-11)
 
 
