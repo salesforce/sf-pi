@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.66.1-2026-05-11",
-  "latestVersion": "0.66.1",
+  "revision": "release-0.66.2-2026-05-11",
+  "latestVersion": "0.66.2",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.66.1",
+      "id": "release-0.66.2",
       "kind": "update",
-      "title": "sf-pi v0.66.1 — sf-data360, sf-conn: harden d360 tools against cross-org API version + body double-encoding",
+      "title": "sf-pi v0.66.2 — sf-conn: map Salesforce errorCode strings to HTTP status in connRequest",
       "publishedAt": "2026-05-11T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.66.1",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.66.2",
       "severity": "info",
-      "body": "sf-data360, sf-conn: harden d360 tools against cross-org API version + body double-encoding"
+      "body": "sf-conn: map Salesforce errorCode strings to HTTP status in connRequest"
     },
     {
       "id": "pi-0.73-required",
