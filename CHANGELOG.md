@@ -481,6 +481,18 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.68.8](https://github.com/salesforce/sf-pi/compare/v0.68.7...v0.68.8) (2026-05-12)
+
+
+### Bug Fixes
+
+* **deps:** repair package-lock.json drift after dependabot batch merge ([d3edaf4](https://github.com/salesforce/sf-pi/commit/d3edaf457ede2914e1521fe9d779c6387704d438))
+
+
+### Security
+
+* hard-pin @mistralai/mistralai to 2.2.1 (GHSA-3q49-cfcf-g5fm) ([72942f0](https://github.com/salesforce/sf-pi/commit/72942f02001a586c4e9296be5db3f99798766b1e))
+
 ## [0.68.7](https://github.com/salesforce/sf-pi/compare/v0.68.6...v0.68.7) (2026-05-12)
 
 
