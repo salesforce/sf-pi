@@ -481,6 +481,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.68.3](https://github.com/salesforce/sf-pi/compare/v0.68.2...v0.68.3) (2026-05-12)
+
+
+### Performance
+
+* **sf-llm-gateway:** do not await footer usage refresh during startup ([342051d](https://github.com/salesforce/sf-pi/commit/342051d2e9a0fb1c1f0e6b99d902e90140ab8b4d))
+
 ## [0.68.2](https://github.com/salesforce/sf-pi/compare/v0.68.1...v0.68.2) (2026-05-12)
 
 
