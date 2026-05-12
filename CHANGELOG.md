@@ -481,6 +481,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.68.7](https://github.com/salesforce/sf-pi/compare/v0.68.6...v0.68.7) (2026-05-12)
+
+
+### Bug Fixes
+
+* **sf-llm-gateway:** keep key-conflict warning inside splash ([38fd111](https://github.com/salesforce/sf-pi/commit/38fd1119a9833c1ea6ee1de6a9b93b30c4a99927))
+
 ## [0.68.6](https://github.com/salesforce/sf-pi/compare/v0.68.5...v0.68.6) (2026-05-12)
 
 
