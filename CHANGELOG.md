@@ -481,6 +481,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.68.5](https://github.com/salesforce/sf-pi/compare/v0.68.4...v0.68.5) (2026-05-12)
+
+
+### Performance
+
+* **sf-llm-gateway:** use cached model discovery during startup ([6a1c452](https://github.com/salesforce/sf-pi/commit/6a1c452b6801e775aaed5f59a11f3d38b72e970b))
+
 ## [0.68.4](https://github.com/salesforce/sf-pi/compare/v0.68.3...v0.68.4) (2026-05-12)
 
 
