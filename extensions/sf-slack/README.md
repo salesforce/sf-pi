@@ -42,17 +42,20 @@ Extension loads
        ├─ If no token → keep footer hidden, DO NOT register tools
        └─ If token found:
             ├─ ensureSlackToolsRegistered()  ← registers 9 slack* tools
-            ├─ auth.test → detect identity
-            ├─ probeAndGateTools() → disable tools whose scopes Slack did
-            │                         not grant (header-driven via the
-            │                         X-OAuth-Scopes response header)
-            ├─ users.list → pre-warm user cache
-            │
-            │ All three awaited in parallel so turn-1 already ships the final
-            │ (probed, gated) tool set — keeps the prompt prompt-cache-friendly.
-            │
-            └─ Set footer "Slack: ✓ Connected" with scope-grant coverage
-                (scope coverage is separate from auth/connectivity)
+            ├─ auth.test → validate token, detect identity, capture
+            │              X-OAuth-Scopes
+            ├─ gateToolsFromGrantedScopes() → disable tools whose scopes Slack
+            │                                did not grant, using the header
+            │                                captured from auth.test
+            ├─ Set footer "Slack: ✓ Connected" with scope-grant coverage
+            │  (scope coverage is separate from auth/connectivity)
+            └─ fire-and-forget cache prewarm:
+               ├─ users.list → pre-warm user cache
+               └─ conversations.list → pre-warm channel cache
+
+            Only auth.test + local scope gating are awaited so turn-1 already
+            ships the final gated tool set. Cache prewarm is display-quality
+            only; raw IDs remain valid fallbacks until it finishes.
   on("session_shutdown")
        └─ Clear footer status
   on("before_agent_start")

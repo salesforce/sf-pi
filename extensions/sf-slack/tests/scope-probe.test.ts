@@ -12,9 +12,10 @@ import {
   computeGrantedRequestedScopeCount,
   computeMissingGrantedScopes,
   deactivateSlackTools,
+  gateToolsFromGrantedScopes,
   probeAndGateTools,
 } from "../lib/scope-probe.ts";
-import { _resetGrantedScopes } from "../lib/api.ts";
+import { _resetGrantedScopes, slackApi } from "../lib/api.ts";
 import { setSlackFetchForTests } from "../lib/http-dispatcher.ts";
 
 // fetch override now goes through setSlackFetchForTests
@@ -163,6 +164,36 @@ describe("scope-probe", () => {
   });
 
   describe("active tool application", () => {
+    it("gates tools from scopes already captured by auth.test without a second probe", async () => {
+      let calls = 0;
+      setSlackFetchForTests(async () => {
+        calls += 1;
+        return {
+          status: 200,
+          ok: true,
+          headers: {
+            get: (n: string) =>
+              n.toLowerCase() === "x-oauth-scopes" ? "search:read.public" : null,
+          },
+          json: async () => ({ ok: true }),
+          text: async () => JSON.stringify({ ok: true }),
+          arrayBuffer: async () => new ArrayBuffer(0),
+        };
+      });
+      const pi = new FakePi(["bash", "slack", "slack_file", "slack_send"]);
+
+      await slackApi("auth.test", "xoxp-test", {});
+      const result = gateToolsFromGrantedScopes(
+        pi as never,
+        ["search:read.public", "files:read", "chat:write"],
+        "user",
+      );
+
+      expect(calls).toBe(1);
+      expect(result.gatedTools.sort()).toEqual(["slack_file", "slack_send"]);
+      expect(pi.getActiveTools()).toEqual(["bash", "slack"]);
+    });
+
     it("hides and restores Slack-owned tools as scopes change", async () => {
       const pi = new FakePi(["bash", "slack", "slack_file", "slack_send"]);
 

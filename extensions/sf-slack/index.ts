@@ -85,6 +85,7 @@ import { registerTimeRangeTool } from "./lib/time-range-tool.ts";
 import {
   computeGrantedRequestedScopeCount,
   deactivateSlackTools,
+  gateToolsFromGrantedScopes,
   probeAndGateTools,
 } from "./lib/scope-probe.ts";
 import {
@@ -452,10 +453,12 @@ export default function sfSlack(pi: ExtensionAPI) {
   //   1. Resolve token. No token → do NOT register Slack tools; nothing about
   //      Slack appears in the system prompt for this session.
   //   2. Register Slack tools (adds them to the active set).
-  //   3. Await identity detection + scope probing + cache warming in parallel.
-  //      Probing must complete before session_start resolves so turn-1 ships
-  //      the same gated tool set as turn-N. Otherwise turn-1 uses an all-tools
-  //      prompt and turn-2 uses a gated prompt — guaranteed prompt-cache miss.
+  //   3. Await one auth.test. This validates the token, detects identity, and
+  //      captures X-OAuth-Scopes for first-turn tool gating.
+  //   4. Apply scope gating from the captured header synchronously.
+  //   5. Fire-and-forget user/channel cache prewarm. Cache warmth improves
+  //      display names, but it is not first-turn correctness; raw IDs remain
+  //      valid fallbacks.
   pi.on("session_start", async (_event, ctx) => {
     const generation = beginActiveSession(ctx);
     identity = null;
@@ -538,20 +541,25 @@ export default function sfSlack(pi: ExtensionAPI) {
         .map((scope) => scope.trim())
         .filter(Boolean);
       requestedScopeCount = requestedScopes.length;
-      const [probeResult] = await markBootStep("sf-slack.scope-probe+prewarm", () =>
-        Promise.all([
-          probeAndGateTools(pi, token, ctx.signal, requestedScopes, tokenType),
-          prewarmUserCache(token, ctx.signal),
-          prewarmChannelCache(token, ctx.signal),
-        ]),
-      );
-      if (!isActiveSession(ctx, generation)) return;
+
+      // auth.test above already populated the granted-scope cache via the
+      // X-OAuth-Scopes response header. Gate from that captured state instead
+      // of making a second auth.test call. This preserves first-turn tool-set
+      // stability without paying an extra Slack round-trip.
+      const probeResult = gateToolsFromGrantedScopes(pi, requestedScopes, tokenType);
       const grantedScopes = getGrantedScopes();
       missingGrantedScopeCount = probeResult.missingGrantedScopes.length;
       grantedScopeCount = computeGrantedRequestedScopeCount(grantedScopes, requestedScopes);
 
       lastError = null;
       updateStatus(ctx, "connected", generation);
+
+      // Cache prewarm is a display-quality optimization, not first-turn
+      // correctness. Run it after status is connected so session_start is not
+      // held hostage by users.list / conversations.list latency.
+      void markBootStep("sf-slack.cache-prewarm (deferred)", () =>
+        Promise.all([prewarmUserCache(token, ctx.signal), prewarmChannelCache(token, ctx.signal)]),
+      ).catch(() => undefined);
     } catch (error) {
       // Distinguish user-cancelled (ctx.signal aborted, e.g. session_shutdown
       // or /reload races) from a per-request timeout fired by

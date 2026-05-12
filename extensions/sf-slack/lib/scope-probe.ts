@@ -124,6 +124,35 @@ export function computeGrantedRequestedScopeCount(
   return requested.filter((scope) => scope && granted.has(scope)).length;
 }
 
+/**
+ * Apply tool gating from the scopes already captured by a prior Slack API
+ * response (usually the session_start `auth.test`).
+ *
+ * This is the boot-friendly path: session_start already calls `auth.test` to
+ * validate the token and detect identity, and slackApi captures
+ * `X-OAuth-Scopes` from that response. Reusing the captured header avoids a
+ * second redundant `auth.test` while preserving first-turn tool gating.
+ */
+export function gateToolsFromGrantedScopes(
+  pi: ExtensionAPI,
+  requestedScopes: string[] = [],
+  tokenType: SlackTokenType = "user",
+): ProbeResult {
+  const granted = getGrantedScopes();
+  const registeredTools = pi.getAllTools().map((tool) => tool.name);
+
+  const gatedTools = computeGatedTools(granted, registeredTools, tokenType);
+  const missingGrantedScopes = computeMissingGrantedScopes(granted, requestedScopes);
+
+  if (granted) applyScopeGate(pi, gatedTools);
+
+  return {
+    gatedTools,
+    missingGrantedScopes,
+    scopesKnown: granted !== null,
+  };
+}
+
 /** Hide every Slack-owned tool while preserving non-Slack active tools. */
 export function deactivateSlackTools(pi: ExtensionAPI): void {
   const activeTools = pi
@@ -160,19 +189,5 @@ export async function probeAndGateTools(
   // via the X-OAuth-Scopes response header (captured inside slackApi).
   await slackApi<AuthTestResponse>("auth.test", token, {}, signal);
 
-  const granted = getGrantedScopes();
-  const registeredTools = pi.getAllTools().map((tool) => tool.name);
-
-  const gatedTools = computeGatedTools(granted, registeredTools, tokenType);
-  const missingGrantedScopes = computeMissingGrantedScopes(granted, requestedScopes);
-
-  // Recompute the Slack-owned active subset every time. The old one-way filter
-  // hid tools on a limited grant but did not restore them after re-consent.
-  if (granted) applyScopeGate(pi, gatedTools);
-
-  return {
-    gatedTools,
-    missingGrantedScopes,
-    scopesKnown: granted !== null,
-  };
+  return gateToolsFromGrantedScopes(pi, requestedScopes, tokenType);
 }
