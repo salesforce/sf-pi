@@ -52,7 +52,13 @@ export type {
   WhatsNewSummary,
 } from "./types.ts";
 export { discoverExtensionHealth } from "./extension-health.ts";
-export { detectSfCliStatus, isVersionCurrent, parseSfCliVersion } from "./sf-cli-status.ts";
+export {
+  detectSfCliStatus,
+  isVersionCurrent,
+  parseSfCliVersion,
+  readCachedSfCliStatus,
+  writeCachedSfCliStatus,
+} from "./sf-cli-status.ts";
 export { estimateMonthlyCost, getRecentSessions } from "./session-data.ts";
 export {
   buildWhatsNewPayload,

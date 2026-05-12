@@ -11,6 +11,7 @@
  * fetch to the npm registry. `sf --version` stays — it's the only honest
  * answer to "is sf on PATH?" and it's already fast.
  */
+import { createStateStore } from "../../../lib/common/state-store.ts";
 import type { SfCliStatusInfo } from "./types.ts";
 
 export type SfCliExecFn = (
@@ -24,6 +25,67 @@ export type SfCliFetchLatestFn = (signal?: AbortSignal) => Promise<string | unde
 
 const NPM_REGISTRY_LATEST_URL = "https://registry.npmjs.org/@salesforce/cli/latest";
 const NPM_REGISTRY_TIMEOUT_MS = 5_000;
+const CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
+interface SfCliStatusCacheFile {
+  status?: SfCliStatusInfo;
+  savedAt?: number;
+}
+
+const cacheStore = createStateStore<SfCliStatusCacheFile>({
+  namespace: "sf-welcome",
+  filename: "sf-cli-status.json",
+  schemaVersion: 1,
+  defaults: {},
+  migrate(raw, fromVersion) {
+    if (fromVersion !== 0) return null;
+    return raw && typeof raw === "object" && !Array.isArray(raw)
+      ? (raw as SfCliStatusCacheFile)
+      : null;
+  },
+});
+
+function parseCachedStatus(value: unknown): SfCliStatusInfo | null {
+  if (!value || typeof value !== "object") return null;
+  const record = value as Partial<SfCliStatusInfo>;
+  if (typeof record.installed !== "boolean") return null;
+  if (
+    record.freshness !== "checking" &&
+    record.freshness !== "latest" &&
+    record.freshness !== "update-available" &&
+    record.freshness !== "unknown"
+  ) {
+    return null;
+  }
+  return {
+    installed: record.installed,
+    installedVersion:
+      typeof record.installedVersion === "string" ? record.installedVersion : undefined,
+    latestVersion: typeof record.latestVersion === "string" ? record.latestVersion : undefined,
+    freshness: record.freshness,
+    // Cached values are display-ready; a background refresh may update them.
+    loading: false,
+  };
+}
+
+export function readCachedSfCliStatus(maxAgeMs: number = CACHE_MAX_AGE_MS): SfCliStatusInfo | null {
+  try {
+    const cache = cacheStore.read();
+    if (typeof cache.savedAt !== "number") return null;
+    if (Date.now() - cache.savedAt > maxAgeMs) return null;
+    return parseCachedStatus(cache.status);
+  } catch {
+    return null;
+  }
+}
+
+export function writeCachedSfCliStatus(status: SfCliStatusInfo): void {
+  try {
+    cacheStore.write({ status: { ...status, loading: false }, savedAt: Date.now() });
+  } catch {
+    // Cache is best-effort. Never let splash rendering depend on disk writes.
+  }
+}
 
 export function parseSfCliVersion(output: string): string | undefined {
   const firstToken = output.trim().split(/\s+/)[0];

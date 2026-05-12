@@ -70,9 +70,11 @@ import {
   collectInitialSplashData,
   collectSplashData,
   detectSfCliStatus,
+  readCachedSfCliStatus,
   readCurrentPiVersion,
   refreshAnnouncementsSummary,
   resolveMonthlyUsage,
+  writeCachedSfCliStatus,
 } from "./lib/splash-data.ts";
 import { acknowledgeAnnouncementsRevision } from "../../lib/common/catalog-state/announcements-state.ts";
 import { SfWelcomeOverlay, SfWelcomeHeader } from "./lib/splash-component.ts";
@@ -385,6 +387,10 @@ export default function sfWelcome(pi: ExtensionAPI) {
     // splash render never races with the current process's version.
     pendingSeenVersion = readCurrentPiVersion();
     const data = collectInitialSplashData(modelName, providerName, MONTHLY_BUDGET_FALLBACK);
+    const cachedSfCli = readCachedSfCliStatus();
+    if (cachedSfCli) {
+      data.sfCli = cachedSfCli;
+    }
     const doctorReport = runDoctorDiagnostics({ cwd: ctx.cwd });
     data.doctor = summarizeStartupDoctorNudge(doctorReport) ?? undefined;
 
@@ -486,21 +492,27 @@ export default function sfWelcome(pi: ExtensionAPI) {
       }
     });
 
-    // Background CLI status: keep startup responsive while `sf --version` and
-    // the optional npm latest-version lookup run. No org/config commands are
-    // issued from sf-welcome.
-    void markBootStep("sf-welcome.sf-cli-detect", () => detectSfCliStatus(exec))
-      .then((cli) => {
-        if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
-        data.sfCli = cli;
+    // Background CLI status: cache-first for first paint, live refresh later.
+    // SF CLI freshness is informational, so we defer the subprocess + npm
+    // registry check by 2s. The row renders cached status immediately when
+    // available, otherwise "Checking..." until the refresh lands.
+    const sfCliTimer = setTimeout(() => {
+      if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
+      void markBootStep("sf-welcome.sf-cli-detect", () => detectSfCliStatus(exec))
+        .then((cli) => {
+          writeCachedSfCliStatus(cli);
+          if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
+          data.sfCli = cli;
 
-        scheduleSplashRepaint(ctx, generation);
-      })
-      .catch(() => {
-        if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
-        data.sfCli = { installed: false, freshness: "unknown", loading: false };
-        scheduleSplashRepaint(ctx, generation);
-      });
+          scheduleSplashRepaint(ctx, generation);
+        })
+        .catch(() => {
+          if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
+          data.sfCli = { installed: false, freshness: "unknown", loading: false };
+          scheduleSplashRepaint(ctx, generation);
+        });
+    }, 2_000);
+    sfCliTimer.unref?.();
 
     // Subscribe to the gateway usage store so any time the provider publishes
     // a new snapshot (first populate, periodic refresh, /sf-llm-gateway-internal
