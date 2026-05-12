@@ -93,6 +93,38 @@ sf-brain, sf-ohana-spinner, sf-lsp). New extensions scaffolded via
 `npm run scaffold` start from this template and pass the lint on
 first commit.
 
+### Boot-path contract
+
+Pi's extension docs make startup explicit: extension modules are loaded
+through jiti, factories run before `session_start`, then `session_start`
+runs before `resources_discover`. In sf-pi, 13 extensions share
+`lib/common/**`, so boot-path work multiplies quickly. Treat startup as a
+constrained API.
+
+During module load, extension factory execution, and `session_start`, code
+may:
+
+- register commands, tools, providers, renderers, flags, and event handlers
+- read small local config/state files needed for first paint
+- render cached state from `lib/common` stores or persisted state
+- schedule bounded background refreshes without awaiting them
+
+During that same boot path, code should not:
+
+- perform live Salesforce org checks or Metadata/Tooling/Data API calls
+- spawn `sf`, `npm`, `git`, or other subprocesses unless deferred and bounded
+- import Salesforce SDKs (`@salesforce/core`, SDR, jsforce) just to expose
+  small startup helpers; prefer type-only imports or lazy dynamic imports
+- scan large directory trees or parse session/history files synchronously
+- await network probes in `session_start` unless first-turn correctness
+  depends on the result
+
+Design rule: first paint should be **cache-first**. Live verification belongs
+in explicit commands (`/sf-org refresh`, `/sf-llm-gateway usage-probe
+--trace`), tool execution, first-turn hooks, or deferred background work.
+If a startup task must be awaited, document the first-turn correctness reason
+in the nearby comment and add/update boot-timing coverage.
+
 ### State persistence decision tree
 
 ADR 0006 pins one rule for "where do I put state X?". Walk top-down,
