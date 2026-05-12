@@ -52,6 +52,7 @@ import type {
   ProviderConfig,
   ProviderModelConfig,
 } from "@earendil-works/pi-coding-agent";
+import { createStateStore } from "../../../lib/common/state-store.ts";
 import {
   API_KEY_ENV,
   PROVIDER_DISPLAY_NAME,
@@ -90,6 +91,61 @@ export interface GatewayDiscoveryState {
   discoveredAt: string;
 }
 
+interface CachedDiscoveryState {
+  modelIds?: string[];
+  modelInfoMap?: import("./models.ts").GatewayModelInfoMap;
+  modelGroupInfo?: GatewayModelGroupInfoMap;
+  discoveredAt?: string;
+  savedAt?: number;
+}
+
+const DISCOVERY_CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+const discoveryCacheStore = createStateStore<CachedDiscoveryState>({
+  namespace: "sf-llm-gateway-internal",
+  filename: "model-discovery-cache.json",
+  schemaVersion: 1,
+  defaults: {},
+  migrate(raw, fromVersion) {
+    if (fromVersion !== 0) return null;
+    return raw && typeof raw === "object" && !Array.isArray(raw)
+      ? (raw as CachedDiscoveryState)
+      : null;
+  },
+});
+
+function readDiscoveryCache(
+  maxAgeMs: number = DISCOVERY_CACHE_MAX_AGE_MS,
+): CachedDiscoveryState | null {
+  try {
+    const cache = discoveryCacheStore.read();
+    if (!Array.isArray(cache.modelIds) || cache.modelIds.length === 0) return null;
+    if (typeof cache.savedAt !== "number") return null;
+    if (Date.now() - cache.savedAt > maxAgeMs) return null;
+    return cache;
+  } catch {
+    return null;
+  }
+}
+
+function writeDiscoveryCache(
+  modelIds: string[],
+  modelInfoMap: import("./models.ts").GatewayModelInfoMap,
+  modelGroupInfo: GatewayModelGroupInfoMap,
+  discoveredAt: string,
+): void {
+  try {
+    discoveryCacheStore.write({
+      modelIds,
+      modelInfoMap,
+      modelGroupInfo,
+      discoveredAt,
+      savedAt: Date.now(),
+    });
+  } catch {
+    // Best-effort. The static bootstrap catalog remains the fallback.
+  }
+}
+
 let lastDiscovery: GatewayDiscoveryState | null = null;
 let discoveryInFlight: Promise<GatewayDiscoveryState> | null = null;
 
@@ -103,6 +159,48 @@ let lastModelGroupDrift: ModelGroupDrift[] = [];
 
 export function getLastDiscovery(): GatewayDiscoveryState | null {
   return lastDiscovery;
+}
+
+/**
+ * Register the last successful gateway-discovered catalog from disk.
+ *
+ * Startup already has a static bootstrap catalog, but a cached discovered
+ * catalog is better: it preserves any new gateway model IDs from the previous
+ * run without doing live network discovery on the boot path. A later
+ * fire-and-forget `discoverAndRegister` refreshes this cache and corrects any
+ * drift. Explicit `/sf-llm-gateway refresh` remains live/awaited.
+ */
+export function registerCachedDiscoveryIfAvailable(
+  pi: ExtensionAPI,
+  runtimeBetaOverrides: Set<string> | null,
+  runtimeExtraBetas: Set<string>,
+  cwd: string,
+): boolean {
+  const config = getGatewayConfig(cwd);
+  if (!config.enabled || !config.baseUrl) return false;
+
+  const cache = readDiscoveryCache();
+  if (!cache?.modelIds?.length) return false;
+
+  const models = buildDiscoveredModelList(
+    cache.modelIds,
+    runtimeBetaOverrides,
+    runtimeExtraBetas,
+    cache.modelInfoMap,
+  );
+  registerProviders(pi, models, runtimeBetaOverrides, runtimeExtraBetas, cwd);
+
+  if (cache.modelGroupInfo) {
+    lastModelGroupInfo = cache.modelGroupInfo;
+    lastModelGroupDrift = [];
+  }
+
+  lastDiscovery = {
+    modelIds: models.map((model) => model.id),
+    source: "gateway",
+    discoveredAt: cache.discoveredAt ?? new Date(cache.savedAt ?? Date.now()).toISOString(),
+  };
+  return true;
 }
 
 /** Current provider-drift snapshot. Empty on the first discovery. */
@@ -390,10 +488,13 @@ export async function discoverAndRegister(
         modelInfoMap,
       );
       registerProviders(pi, models, runtimeBetaOverrides, runtimeExtraBetas, cwd);
+      const discoveredAt = new Date().toISOString();
+      const discoveredModelIds = models.map((model) => model.id);
+      writeDiscoveryCache(discoveredModelIds, modelInfoMap, modelGroupInfo, discoveredAt);
       const state: GatewayDiscoveryState = {
-        modelIds: models.map((model) => model.id),
+        modelIds: discoveredModelIds,
         source: "gateway",
-        discoveredAt: new Date().toISOString(),
+        discoveredAt,
       };
       lastDiscovery = state;
       return state;

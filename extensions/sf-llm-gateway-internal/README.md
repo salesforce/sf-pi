@@ -310,6 +310,7 @@ extensions/sf-llm-gateway-internal/
     config.test.ts          ← unit / smoke test
     cwd-migration.test.ts   ← unit / smoke test
     debug.test.ts           ← unit / smoke test
+    discovery-cache.test.ts ← unit / smoke test
     doctor.test.ts          ← unit / smoke test
     formatting.test.ts      ← unit / smoke test
     gateway-url.test.ts     ← unit / smoke test

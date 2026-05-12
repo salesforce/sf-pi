@@ -183,6 +183,7 @@ import {
 import {
   discoverAndRegister,
   getLastDiscovery,
+  registerCachedDiscoveryIfAvailable,
   registerProviderIfConfigured,
 } from "./lib/discovery.ts";
 import { migrateGatewaySettings } from "./lib/migrate-unify-provider.ts";
@@ -404,12 +405,22 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
     // thinking setup in the awaited path. Footer usage refresh is display
     // state, not first-turn correctness, so it runs in the background during
     // session_start.
+    registerCachedDiscoveryIfAvailable(pi, getBetaOverrides(), getBetaExtras(), ctx.cwd);
+
     await markBootStep("sf-llm-gateway.sync-defaults", () =>
       syncGatewaySessionDefaults(pi, ctx, false, { awaitFooterRefresh: false }),
     );
-    void markBootStep("sf-llm-gateway.discover", () =>
-      discoverAndRegister(pi, getBetaOverrides(), getBetaExtras(), ctx.cwd),
-    ).catch(() => undefined);
+
+    // Chunk 7: cached discovery is good enough for startup. Refresh the live
+    // gateway catalog after first paint so model-list drift self-corrects
+    // without adding network pressure to the boot path. Explicit
+    // /sf-llm-gateway refresh still awaits discoverAndRegister immediately.
+    const discoveryTimer = setTimeout(() => {
+      void markBootStep("sf-llm-gateway.discover (deferred)", () =>
+        discoverAndRegister(pi, getBetaOverrides(), getBetaExtras(), ctx.cwd),
+      ).catch(() => undefined);
+    }, 2_500);
+    discoveryTimer.unref?.();
 
     // Phase 1.6: surface a key-conflict warning once per session. Computed
     // outside the async refresher so it fires even when the gateway is
