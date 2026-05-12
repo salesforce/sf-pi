@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.68.5-2026-05-12",
-  "latestVersion": "0.68.5",
+  "revision": "release-0.68.6-2026-05-12",
+  "latestVersion": "0.68.6",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.68.5",
+      "id": "release-0.68.6",
       "kind": "update",
-      "title": "sf-pi v0.68.5 — sf-llm-gateway: use cached model discovery during startup",
+      "title": "sf-pi v0.68.6 — sf-llm-gateway: avoid startup model switching",
       "publishedAt": "2026-05-12T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.68.5",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.68.6",
       "severity": "info",
-      "body": "sf-llm-gateway: use cached model discovery during startup"
+      "body": "sf-llm-gateway: avoid startup model switching — sf-llm-gateway: delay startup footer refresh"
     },
     {
       "id": "pi-0.73-required",
