@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.68.1-2026-05-11",
-  "latestVersion": "0.68.1",
+  "revision": "release-0.68.2-2026-05-12",
+  "latestVersion": "0.68.2",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.68.1",
+      "id": "release-0.68.2",
       "kind": "update",
-      "title": "sf-pi v0.68.1 — sf-llm-gateway,sf-welcome,sf-devbar: truthful gateway status + smoother boot + observability",
-      "publishedAt": "2026-05-11T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.68.1",
+      "title": "sf-pi v0.68.2 — sf-slack: avoid duplicate startup auth probe and defer cache prewarm",
+      "publishedAt": "2026-05-12T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.68.2",
       "severity": "info",
-      "body": "sf-llm-gateway,sf-welcome,sf-devbar: truthful gateway status + smoother boot + observability"
+      "body": "sf-slack: avoid duplicate startup auth probe and defer cache prewarm"
     },
     {
       "id": "pi-0.73-required",
