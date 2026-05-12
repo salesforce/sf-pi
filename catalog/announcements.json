@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.68.2-2026-05-12",
-  "latestVersion": "0.68.2",
+  "revision": "release-0.68.3-2026-05-12",
+  "latestVersion": "0.68.3",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.68.2",
+      "id": "release-0.68.3",
       "kind": "update",
-      "title": "sf-pi v0.68.2 — sf-slack: avoid duplicate startup auth probe and defer cache prewarm",
+      "title": "sf-pi v0.68.3 — sf-llm-gateway: do not await footer usage refresh during startup",
       "publishedAt": "2026-05-12T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.68.2",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.68.3",
       "severity": "info",
-      "body": "sf-slack: avoid duplicate startup auth probe and defer cache prewarm"
+      "body": "sf-llm-gateway: do not await footer usage refresh during startup"
     },
     {
       "id": "pi-0.73-required",
