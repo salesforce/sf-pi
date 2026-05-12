@@ -481,6 +481,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.68.4](https://github.com/salesforce/sf-pi/compare/v0.68.3...v0.68.4) (2026-05-12)
+
+
+### Performance
+
+* **sf-welcome:** cache SF CLI status and defer live check ([7e4642c](https://github.com/salesforce/sf-pi/commit/7e4642ce7ae1cb37f190579fc50764c5b5547a16))
+
 ## [0.68.3](https://github.com/salesforce/sf-pi/compare/v0.68.2...v0.68.3) (2026-05-12)
 
 
