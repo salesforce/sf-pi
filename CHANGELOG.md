@@ -481,6 +481,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.68.2](https://github.com/salesforce/sf-pi/compare/v0.68.1...v0.68.2) (2026-05-12)
+
+
+### Performance
+
+* **sf-slack:** avoid duplicate startup auth probe and defer cache prewarm ([e5f7c99](https://github.com/salesforce/sf-pi/commit/e5f7c99187153531cd7d463b834fe540c4fdebe7))
+
 ## [0.68.1](https://github.com/salesforce/sf-pi/compare/v0.68.0...v0.68.1) (2026-05-11)
 
 
