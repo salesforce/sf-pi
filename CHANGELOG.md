@@ -481,6 +481,15 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.68.6](https://github.com/salesforce/sf-pi/compare/v0.68.5...v0.68.6) (2026-05-12)
+
+
+### Performance
+
+* **sf-llm-gateway:** avoid startup model switching ([7773560](https://github.com/salesforce/sf-pi/commit/77735605995efcdb6e3f535c3bde0d2d6aff5c00))
+* **sf-llm-gateway:** delay startup footer refresh ([1e8b100](https://github.com/salesforce/sf-pi/commit/1e8b100f12f9104ced7bd18d3a5302f0dc4f7ff3))
+* **sf-slack:** use cached identity and scopes during startup ([643214a](https://github.com/salesforce/sf-pi/commit/643214a05dd3cf628ef4afaf71f12a5dae3f2752))
+
 ## [0.68.5](https://github.com/salesforce/sf-pi/compare/v0.68.4...v0.68.5) (2026-05-12)
 
 
