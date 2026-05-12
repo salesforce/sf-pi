@@ -399,10 +399,13 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
     // is registered synchronously in the factory, so models work immediately
     // even before live discovery completes. Awaiting here was the single
     // biggest contributor to slow `session_start` (~2-4s on cold network).
-    // syncGatewaySessionDefaults is local-only — keep it awaited so settings
-    // are correct when the splash paints.
+    //
+    // Chunk 4: syncGatewaySessionDefaults now keeps only model/default/
+    // thinking setup in the awaited path. Footer usage refresh is display
+    // state, not first-turn correctness, so it runs in the background during
+    // session_start.
     await markBootStep("sf-llm-gateway.sync-defaults", () =>
-      syncGatewaySessionDefaults(pi, ctx, false),
+      syncGatewaySessionDefaults(pi, ctx, false, { awaitFooterRefresh: false }),
     );
     void markBootStep("sf-llm-gateway.discover", () =>
       discoverAndRegister(pi, getBetaOverrides(), getBetaExtras(), ctx.cwd),
@@ -1830,6 +1833,7 @@ async function syncGatewaySessionDefaults(
   pi: ExtensionAPI,
   ctx: ExtensionContext,
   forceRefreshUsage: boolean,
+  options: { awaitFooterRefresh?: boolean } = {},
 ): Promise<void> {
   const startupDefault = getEffectiveDefaultModelSetting(ctx.cwd);
   if (isGatewayProvider(startupDefault.provider)) {
@@ -1855,6 +1859,11 @@ async function syncGatewaySessionDefaults(
     // user-respecting helper so users who edited settings to a different
     // default do not get overridden by the extension.
     applyGatewayDefaultThinkingLevel(pi);
+  }
+
+  if (options.awaitFooterRefresh === false) {
+    void updateFooterStatus(ctx, forceRefreshUsage).catch(() => undefined);
+    return;
   }
 
   await updateFooterStatus(ctx, forceRefreshUsage);
