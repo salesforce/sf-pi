@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.68.7-2026-05-12",
-  "latestVersion": "0.68.7",
+  "revision": "release-0.68.8-2026-05-12",
+  "latestVersion": "0.68.8",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.68.7",
+      "id": "release-0.68.8",
       "kind": "update",
-      "title": "sf-pi v0.68.7 — sf-llm-gateway: keep key-conflict warning inside splash",
+      "title": "sf-pi v0.68.8 — deps: repair package-lock.json drift after dependabot batch merge",
       "publishedAt": "2026-05-12T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.68.7",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.68.8",
       "severity": "info",
-      "body": "sf-llm-gateway: keep key-conflict warning inside splash"
+      "body": "deps: repair package-lock.json drift after dependabot batch merge — hard-pin @mistralai/mistralai to 2.2.1 (GHSA-3q49-cfcf-g5fm)"
     },
     {
       "id": "pi-0.73-required",
