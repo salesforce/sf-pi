@@ -401,14 +401,17 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
     // even before live discovery completes. Awaiting here was the single
     // biggest contributor to slow `session_start` (~2-4s on cold network).
     //
-    // Chunk 4: syncGatewaySessionDefaults now keeps only model/default/
-    // thinking setup in the awaited path. Footer usage refresh is display
-    // state, not first-turn correctness, so it runs in the background during
-    // session_start.
+    // Chunk 4/10: syncGatewaySessionDefaults now keeps only cheap local
+    // setup in the awaited startup path. Footer usage refresh is display
+    // state, and active-model correction is not startup's job — pi's own
+    // settings resolver is the source of truth for the initial model.
     registerCachedDiscoveryIfAvailable(pi, getBetaOverrides(), getBetaExtras(), ctx.cwd);
 
     await markBootStep("sf-llm-gateway.sync-defaults", () =>
-      syncGatewaySessionDefaults(pi, ctx, false, { awaitFooterRefresh: false }),
+      syncGatewaySessionDefaults(pi, ctx, false, {
+        awaitFooterRefresh: false,
+        allowModelSwitch: false,
+      }),
     );
 
     // Chunk 7: cached discovery is good enough for startup. Refresh the live
@@ -1844,10 +1847,11 @@ async function syncGatewaySessionDefaults(
   pi: ExtensionAPI,
   ctx: ExtensionContext,
   forceRefreshUsage: boolean,
-  options: { awaitFooterRefresh?: boolean } = {},
+  options: { awaitFooterRefresh?: boolean; allowModelSwitch?: boolean } = {},
 ): Promise<void> {
   const startupDefault = getEffectiveDefaultModelSetting(ctx.cwd);
-  if (isGatewayProvider(startupDefault.provider)) {
+  const startupDefaultIsGateway = isGatewayProvider(startupDefault.provider);
+  if (startupDefaultIsGateway) {
     const desiredModelId = resolveGatewayDefaultModelId([
       startupDefault.modelId,
       DEFAULT_MODEL_ID,
@@ -1855,29 +1859,39 @@ async function syncGatewaySessionDefaults(
       FALLBACK_MODEL_ID,
     ]);
     repairGatewayDefaultModelSettings(ctx.cwd, desiredModelId);
-    const desiredProvider = providerForModelId(desiredModelId);
-    if (ctx.model?.provider !== desiredProvider || ctx.model.id !== desiredModelId) {
-      const desiredModel = ctx.modelRegistry.find(desiredProvider, desiredModelId);
-      if (desiredModel) {
-        await pi.setModel(desiredModel);
+
+    if (options.allowModelSwitch !== false) {
+      const desiredProvider = providerForModelId(desiredModelId);
+      if (ctx.model?.provider !== desiredProvider || ctx.model.id !== desiredModelId) {
+        const desiredModel = ctx.modelRegistry.find(desiredProvider, desiredModelId);
+        if (desiredModel) {
+          await pi.setModel(desiredModel);
+        }
       }
     }
   }
 
-  if (isGatewayProvider(ctx.model?.provider) || isGatewayProvider(startupDefault.provider)) {
+  const currentModelIsGateway = isGatewayProvider(ctx.model?.provider);
+  const mayHaveSwitchedToGateway = options.allowModelSwitch !== false && startupDefaultIsGateway;
+  if (currentModelIsGateway || mayHaveSwitchedToGateway) {
     // At session startup the current thinking level is pi's resolved default
     // (settings or xhigh from our `on` command). Apply through the
     // user-respecting helper so users who edited settings to a different
-    // default do not get overridden by the extension.
+    // default do not get overridden by the extension. When startup model
+    // switching is disabled, don't mutate thinking for a non-gateway model.
     applyGatewayDefaultThinkingLevel(pi);
   }
 
   if (options.awaitFooterRefresh === false) {
-    void updateFooterStatus(ctx, forceRefreshUsage).catch(() => undefined);
+    void markBootStep("sf-llm-gateway.sync.footer-refresh (deferred)", () =>
+      updateFooterStatus(ctx, forceRefreshUsage),
+    ).catch(() => undefined);
     return;
   }
 
-  await updateFooterStatus(ctx, forceRefreshUsage);
+  await markBootStep("sf-llm-gateway.sync.footer-refresh", () =>
+    updateFooterStatus(ctx, forceRefreshUsage),
+  );
 }
 
 async function updateFooterStatus(
