@@ -11,7 +11,7 @@
  *   1. There is no unconditional `register*Tool(pi)` at module scope.
  *   2. All nine Slack tools are registered behind the gate helper.
  *   3. The gate helper is invoked from session_start AND /sf-slack refresh.
- *   4. session_start awaits probeAndGateTools() (not fire-and-forget).
+ *   4. session_start gates tools from captured/cached scopes before first turn.
  *   5. The workspace context injection no longer includes cache-size or
  *      gated-tool lines (they drift turn-to-turn and break prompt cache).
  */
@@ -83,13 +83,17 @@ describe("sf-slack conditional tool registration (Option B)", () => {
     expect(refresh![0]).toContain("ensureSlackToolsRegistered();");
   });
 
-  it("awaits probeAndGateTools in session_start (not fire-and-forget)", () => {
-    // The old code wrapped identity+probe in (async () => { ... })();
-    // Option B must await directly so turn-1 ships the final tool set.
-    expect(indexSource).not.toMatch(/\(async \(\) => \{[\s\S]*?probeAndGateTools/);
-    expect(indexSource).toMatch(
-      /session_start[\s\S]*?try \{[\s\S]*?await Promise\.all\(\[[\s\S]*?probeAndGateTools/,
+  it("gates tools in session_start from captured or cached scopes", () => {
+    const sessionStart = indexSource.match(
+      /pi\.on\("session_start"[\s\S]*?(?=pi\.on\("session_shutdown")/,
     );
+    expect(sessionStart).not.toBeNull();
+    const body = sessionStart![0];
+    expect(body).toContain("readSlackRuntimeCache(token)");
+    expect(body).toContain("seedGrantedScopesForStartup(cached.grantedScopes)");
+    expect(body).toContain("gateToolsFromGrantedScopes(pi, requestedScopes, tokenType)");
+    // Startup must not await probeAndGateTools anymore; /sf-slack refresh remains live.
+    expect(body).not.toContain("probeAndGateTools(");
   });
 });
 
@@ -115,23 +119,17 @@ describe("sf-slack session_start error handling", () => {
     expect(indexSource).toMatch(/if \(isAbortError\(err\) && ctx\.signal\?\.aborted\) return;/);
   });
 
-  it("bails out of session_start when slackApi auth.test returns ok:false", () => {
+  it("bails out when live auth.test returns ok:false", () => {
     // Regression for the symptom 'Slack ? Scopes unknown 0/22 approved scopes':
     // slackApi maps timeouts / network failures / HTTP errors into a non-throwing
     // {ok:false, error: "request_timeout" | "network_error" | ...} envelope.
-    // Older code only conditionally set `identity` on ok:true and then continued
-    // to call the parallel probe/prewarm helpers (which also returned ok:false)
-    // and finally updateStatus(ctx, "connected"), producing the
-    // "? Scopes unknown 0/22" mislead.
-    //
-    // Contract: a failed auth.test must short-circuit session_start with
-    // updateStatus(ctx, "error", generation) so the user sees the real
-    // failure inline.
-    const startBody = indexSource.match(
-      /pi\.on\("session_start"[\s\S]*?(?=pi\.on\("session_shutdown")/,
+    // Contract: a failed live auth.test must set auth-error status instead of
+    // continuing to a connected/unknown-scopes state.
+    const helper = indexSource.match(
+      /async function refreshSlackIdentityAndScopes[\s\S]*?(?=\n\s{2}\/\/ ─── Slack tool registration gate)/,
     );
-    expect(startBody).not.toBeNull();
-    const block = startBody![0];
+    expect(helper).not.toBeNull();
+    const block = helper![0];
     expect(block).toMatch(/if \(!authResult\.ok\) \{[\s\S]*?lastError = \{ step: "auth\.test"/);
     expect(block).toMatch(
       /if \(!authResult\.ok\) \{[\s\S]*?updateStatus\(ctx, "error", generation\);[\s\S]*?return;/,
