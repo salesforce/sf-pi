@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.68.4-2026-05-12",
-  "latestVersion": "0.68.4",
+  "revision": "release-0.68.5-2026-05-12",
+  "latestVersion": "0.68.5",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.68.4",
+      "id": "release-0.68.5",
       "kind": "update",
-      "title": "sf-pi v0.68.4 — sf-welcome: cache SF CLI status and defer live check",
+      "title": "sf-pi v0.68.5 — sf-llm-gateway: use cached model discovery during startup",
       "publishedAt": "2026-05-12T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.68.4",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.68.5",
       "severity": "info",
-      "body": "sf-welcome: cache SF CLI status and defer live check"
+      "body": "sf-llm-gateway: use cached model discovery during startup"
     },
     {
       "id": "pi-0.73-required",
