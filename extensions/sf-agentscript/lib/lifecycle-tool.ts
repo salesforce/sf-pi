@@ -36,6 +36,7 @@ import {
 import { inspectFile } from "./inspect.ts";
 import { mapAgentApiError } from "./errors/agent-api-error-map.ts";
 import { sfap404Message } from "./errors/sfap-404.ts";
+import { checkBundleVsBotDivergence } from "./lifecycle-divergence.ts";
 import { isAgentScriptFile } from "./file-classify.ts";
 import { activateVersion, deactivateVersion, listVersions, publishAgent } from "./lifecycle.ts";
 import { safeResolveToolPath, toolError, toolOk, type ToolError } from "./tool-types.ts";
@@ -64,7 +65,8 @@ const Params = Type.Object({
   target_org: Type.Optional(Type.String({ description: "sf CLI alias / username." })),
   agent_file: Type.Optional(
     Type.String({
-      description: "Required for action='publish'. Path to the `.agent` file.",
+      description:
+        "Required for action='publish'. Optional for action='activate' — when provided, runs a divergence check (warns when local .agent is newer than the BotVersion you're activating; flags the 'sf project deploy doesn't propagate config' footgun). Required for agent_user_status / diagnose_agent_user / provision_agent_user.",
     }),
   ),
   agent_api_name: Type.Optional(
@@ -182,7 +184,7 @@ export function registerLifecycleTool(pi: ExtensionAPI): void {
         case "publish":
           return await actionPublish(ctx, p, stream);
         case "activate":
-          return await actionActivate(p);
+          return await actionActivate(ctx, p);
         case "deactivate":
           return await actionDeactivate(p);
         case "list_versions":
@@ -362,7 +364,10 @@ async function actionPublish(
 // action = activate / deactivate
 // -------------------------------------------------------------------------------------------------
 
-async function actionActivate(input: ParamsAny): Promise<{
+async function actionActivate(
+  ctx: ExtensionContext,
+  input: ParamsAny,
+): Promise<{
   content: { type: "text"; text: string }[];
   details: Record<string, unknown> | ToolError;
 }> {
@@ -370,6 +375,24 @@ async function actionActivate(input: ParamsAny): Promise<{
   const agentApiName = input.agent_api_name as string;
   try {
     const conn = await connFromAlias(input.target_org);
+
+    // Issue 6 — optional divergence preflight when caller passed agent_file.
+    // Soft warning only: we surface it on the response but proceed with
+    // the activation. The user may have intentionally activated an older
+    // version (e.g. rollback); blocking would be too strict.
+    let divergenceWarning: string | undefined;
+    let divergenceDetails: Record<string, unknown> | undefined;
+    if (input.agent_file) {
+      const resolvedFile = safeResolveToolPath(input.agent_file, ctx.cwd);
+      if ("absPath" in resolvedFile) {
+        const div = await checkBundleVsBotDivergence(conn, agentApiName, resolvedFile.absPath);
+        divergenceDetails = { ...div };
+        if (div.ok && div.diverged) {
+          divergenceWarning = `⚠️  ${div.detail}`;
+        }
+      }
+    }
+
     const row = await activateVersion({
       conn,
       agentApiName,
@@ -383,6 +406,8 @@ async function actionActivate(input: ParamsAny): Promise<{
       `\n\n→ Lock the regression baseline: ` +
       `agentscript_eval action='run' agent_api_name='${agentApiName}'${orgFlag} ` +
       `spec_path=<path-to-spec.json>`;
+    const headerLines: string[] = [`🟢 ${agentApiName} v${row.VersionNumber} activated`];
+    if (divergenceWarning) headerLines.push("", divergenceWarning);
     return toolOk(
       {
         ok: true as const,
@@ -390,8 +415,9 @@ async function actionActivate(input: ParamsAny): Promise<{
         bot_version_id: row.Id,
         version_number: row.VersionNumber,
         status: row.Status,
+        ...(divergenceDetails ? { divergence: divergenceDetails } : {}),
       },
-      `🟢 ${agentApiName} v${row.VersionNumber} activated` + evalHint,
+      headerLines.join("\n") + evalHint,
     );
   } catch (err) {
     return classifyLifecycleError(err, agentApiName, "activate");

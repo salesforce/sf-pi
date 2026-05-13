@@ -123,6 +123,7 @@ extensions/sf-agentscript/
       report-action.ts      ← implementation module
     errors/
       agent-api-error-map.ts← implementation module
+      sfap-404.ts           ← implementation module
     eval/
       active-ids.ts         ← implementation module
       decode.ts             ← implementation module
@@ -182,6 +183,7 @@ extensions/sf-agentscript/
     file-classify.ts        ← implementation module
     inspect-tool.ts         ← implementation module
     inspect.ts              ← implementation module
+    lifecycle-divergence.ts ← implementation module
     lifecycle-tool.ts       ← implementation module
     lifecycle.ts            ← implementation module
     mutate-tool.ts          ← implementation module
@@ -216,6 +218,7 @@ extensions/sf-agentscript/
     inspect-cycle-safety.test.ts← unit / smoke test
     inspect-inline-actions.test.ts← unit / smoke test
     inspect.test.ts         ← unit / smoke test
+    lifecycle-divergence.test.ts← unit / smoke test
     lifecycle-sdr-layout.test.ts← unit / smoke test
     mutate-dry-run.test.ts  ← unit / smoke test
     mutate-emit-regression.test.ts← unit / smoke test
@@ -302,3 +305,4 @@ each verb of the loop.
 - **All SFAP endpoints failed.** The user lacks `AIPlatformEvaluation` entitlement, or the BotVersion doesn't exist in the target org.
 - **Trace fetch returning null.** The session has been garbage-collected by the planner. Non-fatal; the failure record still has `llmEvents` inline.
 - **Mutate refuses to touch the file.** Run `agentscript_compile` first — mutate refuses to emit when the source has severity-1 parse errors.
+- **Edited `.agent`, deployed via `sf project deploy`, activation still fails.** Plain Metadata-API deploy of an `AiAuthoringBundle` does NOT propagate `config.agent_type` / `default_agent_user` to the BotDefinition record. Always iterate with `agentscript_lifecycle action='publish'` (set `activate=true` to chain). Pass `agent_file=<path>` to `agentscript_lifecycle action='activate'` to get a divergence warning when the local source is newer than the BotVersion in the org. Full explanation: [skills/sf-agentscript/references/agent-user-setup.md](skills/sf-agentscript/references/agent-user-setup.md).

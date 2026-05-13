@@ -161,7 +161,58 @@ when there's anything to fix.
   `default_agent_user` into the BotDefinition record**. You must
   re-publish via `agentscript_lifecycle action='publish'` — the
   publish path is what threads the config through SFAP and back into
-  the BotDefinition.
+  the BotDefinition. See "Why didn't `sf project deploy` apply my
+  changes?" below.
+
+## Why didn't `sf project deploy` apply my changes?
+
+This is the single biggest gotcha in the iteration loop. Symptom:
+you edited the `.agent`'s `config:` block (e.g. added or changed
+`agent_type` / `default_agent_user`), shipped it with
+`sf project deploy start -m AiAuthoringBundle:<Name>`, and the
+deploy succeeded — but the running agent in the org is still using
+the old config. Activation may still fail with the same cryptic
+error you were trying to fix.
+
+Why this happens:
+
+- `agentscript_lifecycle action='publish'` does **three** steps:
+  (1) server-compile the `.agent` source into an `agentDefinition`
+  JSON the SFAP publish endpoint understands; (2) inject a
+  `<target>{agentApiName}.{versionDeveloperName}</target>` element
+  into the `.bundle-meta.xml` so the bundle is linked to a specific
+  BotVersion; (3) deploy the bundle via SDR. The publish path is
+  the only one that threads `config.agent_type` / `default_agent_user`
+  through into the BotDefinition record.
+- `sf project deploy start` does **only** step 3. The bundle XML
+  - `.agent` source land in the org as draft authoring source. No
+    `<target>` link, no propagation to BotDefinition.
+
+Fix:
+
+- Always iterate with `agentscript_lifecycle action='publish'` (and
+  `activate=true` to chain in one call). It's idempotent for new
+  versions of an existing agent.
+- If you've already shipped via `sf project deploy` and activation
+  is misbehaving, re-publish via `agentscript_lifecycle` to
+  reconcile. The verb's preflight (`agent_user_status`) catches the
+  most common cause cleanly.
+
+Detection:
+
+- `agentscript_lifecycle action='activate'` with the optional
+  `agent_file` parameter runs a divergence check. If the local
+  `.agent` file is newer than the latest BotVersion's `CreatedDate`,
+  the activate response includes a warning surfacing this exact
+  gotcha. The activation itself proceeds (in case the divergence is
+  intentional, e.g. activating an older rolled-back version).
+
+```
+agentscript_lifecycle action='activate'
+  agent_api_name='Demo_Greeter'
+  agent_file='/path/to/Demo_Greeter.agent'
+  target_org='AgentforceSTDM'
+```
 
 ## Validated against
 
