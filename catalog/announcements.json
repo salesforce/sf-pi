@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.72.1-2026-05-13",
-  "latestVersion": "0.72.1",
+  "revision": "release-0.72.2-2026-05-13",
+  "latestVersion": "0.72.2",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.72.1",
+      "id": "release-0.72.2",
       "kind": "update",
-      "title": "sf-pi v0.72.1 — sf-llm-gateway-internal: track gateway effort/tools validator changes",
+      "title": "sf-pi v0.72.2 — sf-welcome: align Privacy row with checkmark glyph",
       "publishedAt": "2026-05-13T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.72.1",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.72.2",
       "severity": "info",
-      "body": "sf-llm-gateway-internal: track gateway effort/tools validator changes"
+      "body": "sf-welcome: align Privacy row with checkmark glyph"
     },
     {
       "id": "pi-0.73-required",
