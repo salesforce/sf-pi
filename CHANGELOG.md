@@ -481,6 +481,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.72.0](https://github.com/salesforce/sf-pi/compare/v0.71.1...v0.72.0) (2026-05-13)
+
+
+### Features
+
+* **sf-pi-manager:** default-disable pi anonymous install telemetry ([c4ead22](https://github.com/salesforce/sf-pi/commit/c4ead22bb65f0b8a278acb3586b03c5eda479a2f))
+
 ## [0.71.1](https://github.com/salesforce/sf-pi/compare/v0.71.0...v0.71.1) (2026-05-13)
 
 
