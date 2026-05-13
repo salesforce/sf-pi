@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.71.0-2026-05-13",
-  "latestVersion": "0.71.0",
+  "revision": "release-0.71.1-2026-05-13",
+  "latestVersion": "0.71.1",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.71.0",
+      "id": "release-0.71.1",
       "kind": "update",
-      "title": "sf-pi v0.71.0 — sf-agentscript: activate gains divergence preflight + 'sf project deploy' gotcha doc",
+      "title": "sf-pi v0.71.1 — sf-agentscript: listPermissionSetAssignments drops namespaced PS rows",
       "publishedAt": "2026-05-13T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.71.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.71.1",
       "severity": "info",
-      "body": "sf-agentscript: activate gains divergence preflight + 'sf project deploy' gotcha doc — sf-agentscript: quick-fix for the 'transition ... when \"...\"' footgun"
+      "body": "sf-agentscript: listPermissionSetAssignments drops namespaced PS rows"
     },
     {
       "id": "pi-0.73-required",
