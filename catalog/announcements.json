@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.72.3-2026-05-13",
-  "latestVersion": "0.72.3",
+  "revision": "release-0.72.4-2026-05-13",
+  "latestVersion": "0.72.4",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.72.3",
+      "id": "release-0.72.4",
       "kind": "update",
-      "title": "sf-pi v0.72.3 — resolve CodeQL alerts (15 vendored false-fires + 7 real)",
+      "title": "sf-pi v0.72.4 — remaining 5 CodeQL alerts (4 escape sites + 1 redundant null check)",
       "publishedAt": "2026-05-13T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.72.3",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.72.4",
       "severity": "info",
-      "body": "resolve CodeQL alerts (15 vendored false-fires + 7 real)"
+      "body": "remaining 5 CodeQL alerts (4 escape sites + 1 redundant null check)"
     },
     {
       "id": "pi-0.73-required",
