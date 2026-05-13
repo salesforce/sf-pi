@@ -481,6 +481,18 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.70.0](https://github.com/salesforce/sf-pi/compare/v0.69.0...v0.70.0) (2026-05-13)
+
+
+### Features
+
+* **sf-agentscript:** provision_agent_user verb — idempotent agent-user setup ([632dd31](https://github.com/salesforce/sf-pi/commit/632dd31be411c698f278a5e25743e54e95749b11))
+
+
+### Bug Fixes
+
+* **sf-agentscript:** inspect surfaces agent_type on config, not system ([f2e33bb](https://github.com/salesforce/sf-pi/commit/f2e33bbc0513386bc3bc1e60c51a0a926a90d61b))
+
 ## [0.69.0](https://github.com/salesforce/sf-pi/compare/v0.68.9...v0.69.0) (2026-05-13)
 
 
