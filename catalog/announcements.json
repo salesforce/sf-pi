@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.72.2-2026-05-13",
-  "latestVersion": "0.72.2",
+  "revision": "release-0.72.3-2026-05-13",
+  "latestVersion": "0.72.3",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.72.2",
+      "id": "release-0.72.3",
       "kind": "update",
-      "title": "sf-pi v0.72.2 — sf-welcome: align Privacy row with checkmark glyph",
+      "title": "sf-pi v0.72.3 — resolve CodeQL alerts (15 vendored false-fires + 7 real)",
       "publishedAt": "2026-05-13T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.72.2",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.72.3",
       "severity": "info",
-      "body": "sf-welcome: align Privacy row with checkmark glyph"
+      "body": "resolve CodeQL alerts (15 vendored false-fires + 7 real)"
     },
     {
       "id": "pi-0.73-required",
