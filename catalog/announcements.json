@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.71.1-2026-05-13",
-  "latestVersion": "0.71.1",
+  "revision": "release-0.72.0-2026-05-13",
+  "latestVersion": "0.72.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.71.1",
+      "id": "release-0.72.0",
       "kind": "update",
-      "title": "sf-pi v0.71.1 — sf-agentscript: listPermissionSetAssignments drops namespaced PS rows",
+      "title": "sf-pi v0.72.0 — sf-pi-manager: default-disable pi anonymous install telemetry",
       "publishedAt": "2026-05-13T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.71.1",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.72.0",
       "severity": "info",
-      "body": "sf-agentscript: listPermissionSetAssignments drops namespaced PS rows"
+      "body": "sf-pi-manager: default-disable pi anonymous install telemetry"
     },
     {
       "id": "pi-0.73-required",
