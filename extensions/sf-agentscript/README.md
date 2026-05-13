@@ -109,10 +109,13 @@ extensions/sf-agentscript/
   lib/
     agent-user/
       agent-config.ts       ← implementation module
+      custom-ps.ts          ← implementation module
+      deploy.ts             ← implementation module
       diagnose.ts           ← implementation module
       index.ts              ← implementation module
       license.ts            ← implementation module
       permset.ts            ← implementation module
+      provision.ts          ← implementation module
       status.ts             ← implementation module
       users.ts              ← implementation module
     command/
@@ -200,6 +203,7 @@ extensions/sf-agentscript/
     code-actions.test.ts    ← unit / smoke test
     compile-summary.test.ts ← unit / smoke test
     create.test.ts          ← unit / smoke test
+    custom-ps.test.ts       ← unit / smoke test
     diagnose-agent-user.test.ts← unit / smoke test
     diagnostics.test.ts     ← unit / smoke test
     eval-normalize.test.ts  ← unit / smoke test
@@ -223,6 +227,7 @@ extensions/sf-agentscript/
     preview-api-name-preflight.test.ts← unit / smoke test
     preview-host-pinning.test.ts← unit / smoke test
     preview-session-store.test.ts← unit / smoke test
+    provision-agent-user.test.ts← unit / smoke test
     publish-authoring-bundle.test.ts← unit / smoke test
     render-compile.test.ts  ← unit / smoke test
     render-eval.test.ts     ← unit / smoke test

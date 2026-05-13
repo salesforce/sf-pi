@@ -88,3 +88,81 @@ export async function getEinsteinAgentUserProfileId(conn: Connection): Promise<s
 function escapeSoql(s: string): string {
   return s.replace(/'/g, "\\'");
 }
+
+// -------------------------------------------------------------------------------------------------
+// Write primitives (PR3 — provision_agent_user)
+// -------------------------------------------------------------------------------------------------
+
+export interface CreateAgentUserInput {
+  /** Username — typically `{agent}_agent@{orgId}.ext`. Verbatim, no expansion. */
+  username: string;
+  /** ProfileId — must point at the Einstein Agent User profile. */
+  profile_id: string;
+  /** Required surface fields with safe defaults baked into the implementation. */
+  email?: string;
+  alias?: string;
+  last_name?: string;
+  time_zone?: string;
+  locale?: string;
+  language?: string;
+  email_encoding?: string;
+}
+
+export interface CreateAgentUserResult {
+  ok: boolean;
+  user_id?: string;
+  error?: string;
+}
+
+/**
+ * Insert a new User row tagged with the Einstein Agent User profile.
+ *
+ * One REST call. The doc's split between scratch (`sf org create user
+ * --definition-file`) vs sandbox/prod (`sf data create record User`) is an
+ * sf CLI artifact — platform-side, both end up doing this exact insert,
+ * so a single Connection-based path covers every org type.
+ */
+export async function createAgentUser(
+  conn: Connection,
+  input: CreateAgentUserInput,
+): Promise<CreateAgentUserResult> {
+  // Defaults come from the agent-user-setup doc's reference user definition.
+  const last = input.last_name ?? "Agent";
+  const alias = (input.alias ?? deriveAlias(input.username)).slice(0, 8);
+  const email = input.email ?? "placeholder@example.com";
+  const body: Record<string, unknown> = {
+    Username: input.username,
+    LastName: last,
+    Email: email,
+    Alias: alias,
+    ProfileId: input.profile_id,
+    TimeZoneSidKey: input.time_zone ?? "America/Los_Angeles",
+    LocaleSidKey: input.locale ?? "en_US",
+    EmailEncodingKey: input.email_encoding ?? "UTF-8",
+    LanguageLocaleKey: input.language ?? "en_US",
+  };
+  try {
+    const result = (await conn.sobject("User").create(body)) as {
+      success?: boolean;
+      id?: string;
+      errors?: Array<{ message?: string }>;
+    };
+    if (!result.success || !result.id) {
+      const detail = result.errors?.[0]?.message ?? "unknown error";
+      return { ok: false, error: detail };
+    }
+    return { ok: true, user_id: result.id };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : String(err),
+    };
+  }
+}
+
+/** Derive an 8-character alias from the username's local part. */
+function deriveAlias(username: string): string {
+  const local = username.split("@")[0] ?? username;
+  const sanitized = local.replace(/[^A-Za-z0-9]/g, "");
+  return sanitized.length > 0 ? sanitized : "agnt";
+}

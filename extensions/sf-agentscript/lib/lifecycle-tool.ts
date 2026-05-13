@@ -27,8 +27,11 @@ import {
   checkAgentUserStatus,
   readAgentConfigSlice,
   runDiagnose,
+  runProvision,
   type AgentUserStatus,
   type DiagnoseReport,
+  type ProvisionReport,
+  type ProvisionStep,
 } from "./agent-user/index.ts";
 import { inspectFile } from "./inspect.ts";
 import { mapAgentApiError } from "./errors/agent-api-error-map.ts";
@@ -50,10 +53,11 @@ const Params = Type.Object({
       Type.Literal("list_versions"),
       Type.Literal("agent_user_status"),
       Type.Literal("diagnose_agent_user"),
+      Type.Literal("provision_agent_user"),
     ],
     {
       description:
-        "publish: ship a .agent file as a new agent or new version. activate / deactivate: toggle a BotVersion's Status (idempotent). list_versions: return every BotVersion on the agent. agent_user_status: cheap ready/not_ready/n/a preflight on the agent's user wiring. diagnose_agent_user: full read-only checklist (license, user, system PS, per-apex-class access) returning a structured report.",
+        "publish: ship a .agent file as a new agent or new version. activate / deactivate: toggle a BotVersion's Status (idempotent). list_versions: return every BotVersion on the agent. agent_user_status: cheap ready/not_ready/n/a preflight on the agent's user wiring. diagnose_agent_user: full read-only checklist (license, user, system PS, per-apex-class access). provision_agent_user: idempotently bring the org up to spec (creates user, assigns system PS, deploys + assigns custom PS for apex actions). Defaults to dry_run=true; pass dry_run=false to mutate.",
     },
   ),
   target_org: Type.Optional(Type.String({ description: "sf CLI alias / username." })),
@@ -81,6 +85,18 @@ const Params = Type.Object({
         "Optional for activate/deactivate. Defaults to the latest BotVersion on the agent.",
     }),
   ),
+  dry_run: Type.Optional(
+    Type.Boolean({
+      description:
+        "For action='provision_agent_user'. Default true (preview the plan, no mutations). Pass false to actually create the user / assign PSs / deploy custom PS.",
+    }),
+  ),
+  username_override: Type.Optional(
+    Type.String({
+      description:
+        "Optional for action='provision_agent_user'. Provision a specific username instead of the .agent's default_agent_user. Useful when the bundle was authored against a different name than what the org provides.",
+    }),
+  ),
 });
 
 interface ParamsAny {
@@ -90,12 +106,15 @@ interface ParamsAny {
     | "deactivate"
     | "list_versions"
     | "agent_user_status"
-    | "diagnose_agent_user";
+    | "diagnose_agent_user"
+    | "provision_agent_user";
   target_org?: string;
   agent_file?: string;
   agent_api_name?: string;
   activate?: boolean;
   version?: number;
+  dry_run?: boolean;
+  username_override?: string;
 }
 
 function checkRequired(p: ParamsAny): { ok: true } | { ok: false; error: string } {
@@ -117,6 +136,10 @@ function checkRequired(p: ParamsAny): { ok: true } | { ok: false; error: string 
       if (!p.agent_file)
         return { ok: false, error: "action='diagnose_agent_user' requires agent_file." };
       return { ok: true };
+    case "provision_agent_user":
+      if (!p.agent_file)
+        return { ok: false, error: "action='provision_agent_user' requires agent_file." };
+      return { ok: true };
   }
 }
 
@@ -135,7 +158,9 @@ export function registerLifecycleTool(pi: ExtensionAPI): void {
       "action='list_versions' — returns every BotVersion (id, number, status, dates). Use to discover which version is Active before previewing or running eval.",
       "action='agent_user_status' — cheap read-only check (~2 SOQL hits) that a Service Agent's user wiring is ready before publish. Returns status: ready/not_ready/n/a; not_ready surfaces a stable 'reason' code so the LLM can chain the right fix verb.",
       "action='diagnose_agent_user' — full read-only checklist (license, user existence + active state, system PS, per-apex-class access). Returns a structured report with per-check status + fix_hint. Use when agent_user_status returns not_ready and you want the full picture before fixing.",
+      "action='provision_agent_user' — idempotent provisioner that brings the org into the 'ready' state. Defaults to dry_run=true (returns the plan + the rendered custom PS XML, no mutations). Pass dry_run=false to execute. Steps: create User if missing, assign AgentforceServiceAgentUser system PS, synthesize + deploy custom PS covering every apex:// target, assign custom PS. Skip-if-already-done at every step. License-missing aborts cleanly (admin-only fix).",
       "Errors carry recover_via where applicable (e.g. agent not found → list_versions hint, Service Agent missing user → diagnose_agent_user / provision_agent_user).",
+      "No sf CLI subprocess: every primitive runs through @salesforce/core Connection + @salesforce/source-deploy-retrieve. Safe in CI / programmatic contexts.",
     ],
     parameters: Params,
     async execute(_id, params, _signal, onUpdate, ctx) {
@@ -165,6 +190,8 @@ export function registerLifecycleTool(pi: ExtensionAPI): void {
           return await actionAgentUserStatus(ctx, p);
         case "diagnose_agent_user":
           return await actionDiagnoseAgentUser(ctx, p);
+        case "provision_agent_user":
+          return await actionProvisionAgentUser(ctx, p, stream);
       }
     },
   });
@@ -665,5 +692,132 @@ function checkIcon(status: DiagnoseReport["checks"][number]["status"]): string {
       return "\u23ED\uFE0F";
     case "n/a":
       return "\u26AA";
+  }
+}
+
+// -------------------------------------------------------------------------------------------------
+// action = provision_agent_user
+// -------------------------------------------------------------------------------------------------
+
+async function actionProvisionAgentUser(
+  ctx: ExtensionContext,
+  input: ParamsAny,
+  stream: (msg: string) => void,
+): Promise<{
+  content: { type: "text"; text: string }[];
+  details: Record<string, unknown> | ToolError;
+}> {
+  const resolved = safeResolveToolPath(input.agent_file, ctx.cwd);
+  if ("absPath" in resolved === false) return resolved;
+  const filePath = resolved.absPath;
+  if (!isAgentScriptFile(filePath)) {
+    return toolError(`Not an Agent Script file: ${filePath}`, "Pass a path ending in `.agent`.");
+  }
+  const cfg = await readAgentConfigSlice(filePath);
+  if (cfg.ok === false) {
+    return toolError(
+      `Cannot read .agent config from ${filePath}: ${cfg.reason_detail}`,
+      cfg.reason === "parse_failed"
+        ? "Run agentscript_compile and fix severity-1 errors first."
+        : undefined,
+      cfg.reason === "parse_failed"
+        ? { tool: "agentscript_compile", params: { path: filePath } }
+        : undefined,
+    );
+  }
+  if (!cfg.agent_type) {
+    return toolError(
+      `'${filePath}' has no 'config.agent_type'.`,
+      "Add 'agent_type: \"AgentforceServiceAgent\"' (or Employee).",
+    );
+  }
+  if (cfg.agent_type !== "AgentforceServiceAgent") {
+    return toolOk(
+      {
+        ok: true as const,
+        agent_type: cfg.agent_type,
+        was_dry_run: input.dry_run !== false,
+        steps: [],
+      },
+      `\u26AA provision_agent_user: n/a (${cfg.agent_type})\n  Only Service Agents need user provisioning. Employee Agents run as the logged-in user.`,
+    );
+  }
+
+  const agentApiName = cfg.agent_name ?? path.basename(filePath, ".agent");
+  const inspect = await inspectFile(filePath);
+  const actions = inspect.ok ? (inspect.components?.actions ?? []) : [];
+
+  const dryRun = input.dry_run !== false;
+  stream(
+    dryRun
+      ? "Provisioning (dry-run): gathering plan; no org mutations\u2026"
+      : "Provisioning (live): executing org mutations idempotently\u2026",
+  );
+
+  try {
+    const conn = await connFromAlias(input.target_org);
+    const report = await runProvision(conn, {
+      agent_type: cfg.agent_type,
+      default_agent_user: cfg.default_agent_user,
+      actions,
+      agent_file: filePath,
+      agent_api_name: agentApiName,
+      dry_run: dryRun,
+      ...(input.username_override ? { username_override: input.username_override } : {}),
+    });
+    return toolOk(
+      { ok: true as const, ...report },
+      formatProvisionReportText(report, filePath, input.target_org),
+    );
+  } catch (err) {
+    return classifyLifecycleError(err, agentApiName, "list_versions", filePath);
+  }
+}
+
+function formatProvisionReportText(
+  r: ProvisionReport,
+  agentFile: string,
+  targetOrg: string | undefined,
+): string {
+  const headerIcon = r.was_dry_run ? "\u2139\uFE0F" : r.ok ? "\u2705" : "\u274C";
+  const mode = r.was_dry_run ? "dry-run" : r.ok ? "executed" : "failed";
+  const lines: string[] = [];
+  lines.push(`${headerIcon} provision_agent_user: ${mode} (${r.agent_type} Agent)`);
+  lines.push("");
+  lines.push("Steps:");
+  for (const step of r.steps) {
+    lines.push(`  ${stepIcon(step)} ${step.id}: ${step.action}`);
+    lines.push(`     ${step.detail}`);
+    if (step.error) lines.push(`     error: ${step.error}`);
+  }
+  if (r.preview_custom_ps_xml) {
+    lines.push("");
+    lines.push(
+      r.was_dry_run ? "Custom PS that would be deployed (preview):" : "Custom PS deployed:",
+    );
+    for (const xmlLine of r.preview_custom_ps_xml.split("\n")) {
+      lines.push(`    ${xmlLine}`);
+    }
+  }
+  if (r.was_dry_run && r.steps.some((s) => s.action === "would_execute")) {
+    const orgFlag = targetOrg ? ` target_org='${targetOrg}'` : "";
+    lines.push("");
+    lines.push(
+      `\u2192 To execute: agentscript_lifecycle action='provision_agent_user' agent_file='${agentFile}'${orgFlag} dry_run=false`,
+    );
+  }
+  return lines.join("\n");
+}
+
+function stepIcon(step: ProvisionStep): string {
+  switch (step.action) {
+    case "executed":
+      return "\u2705";
+    case "skipped":
+      return "\u23ED\uFE0F";
+    case "would_execute":
+      return "\u2139\uFE0F";
+    case "failed":
+      return "\u274C";
   }
 }

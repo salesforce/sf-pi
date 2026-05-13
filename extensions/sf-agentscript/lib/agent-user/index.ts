@@ -40,3 +40,23 @@ export {
   type DiagnoseStatus,
   type RunDiagnoseInput,
 } from "./diagnose.ts";
+export {
+  runProvision,
+  type ProvisionReport,
+  type ProvisionStep,
+  type ProvisionStepId,
+  type ProvisionStepAction,
+  type RunProvisionInput,
+} from "./provision.ts";
+export { synthesizeCustomPS, type SynthesizeCustomPSResult } from "./custom-ps.ts";
+export { createAgentUser, type CreateAgentUserInput, type CreateAgentUserResult } from "./users.ts";
+export {
+  assignPermissionSet,
+  type AssignPermissionSetInput,
+  type AssignPermissionSetResult,
+} from "./permset.ts";
+export {
+  deployPermissionSet,
+  type DeployPermissionSetInput,
+  type DeployPermissionSetResult,
+} from "./deploy.ts";

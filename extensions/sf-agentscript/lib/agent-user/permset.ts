@@ -135,3 +135,82 @@ export async function listClassAccessForUser(
 function escapeSoql(s: string): string {
   return s.replace(/'/g, "\\'");
 }
+
+// -------------------------------------------------------------------------------------------------
+// Write primitives (PR3 — provision_agent_user)
+// -------------------------------------------------------------------------------------------------
+
+export interface AssignPermissionSetInput {
+  user_id: string;
+  /** Either the PS Id or DeveloperName — we resolve name → id when needed. */
+  permission_set_id?: string;
+  permission_set_name?: string;
+}
+
+export interface AssignPermissionSetResult {
+  ok: boolean;
+  /** Set when an assignment was created. */
+  assignment_id?: string;
+  /** True when the assignment already existed; we don't create a duplicate. */
+  already_assigned?: boolean;
+  error?: string;
+}
+
+/**
+ * Idempotently assign a Permission Set to a user. If the assignment
+ * already exists, returns ok=true with already_assigned=true and no
+ * insert. The verb's caller relies on this to make repeated provision
+ * runs safe.
+ */
+export async function assignPermissionSet(
+  conn: Connection,
+  input: AssignPermissionSetInput,
+): Promise<AssignPermissionSetResult> {
+  let psId = input.permission_set_id;
+  const psName = input.permission_set_name;
+  if (!psId) {
+    if (!psName) {
+      return { ok: false, error: "need permission_set_id or permission_set_name" };
+    }
+    const found = await findPermissionSetByName(conn, psName);
+    if (!found) {
+      return {
+        ok: false,
+        error: `Permission Set '${psName}' not found in this org. Deploy it first or pass a different name.`,
+      };
+    }
+    psId = found.Id;
+  }
+
+  // Idempotency check.
+  const existing = await conn.query<{ Id: string }>(
+    `SELECT Id FROM PermissionSetAssignment ` +
+      `WHERE AssigneeId='${escapeSoql(input.user_id)}' ` +
+      `AND PermissionSetId='${escapeSoql(psId)}' LIMIT 1`,
+  );
+  if (existing.records.length > 0) {
+    return {
+      ok: true,
+      assignment_id: existing.records[0].Id,
+      already_assigned: true,
+    };
+  }
+
+  try {
+    const result = (await conn.sobject("PermissionSetAssignment").create({
+      AssigneeId: input.user_id,
+      PermissionSetId: psId,
+    })) as {
+      success?: boolean;
+      id?: string;
+      errors?: Array<{ message?: string }>;
+    };
+    if (!result.success || !result.id) {
+      const detail = result.errors?.[0]?.message ?? "unknown error";
+      return { ok: false, error: detail };
+    }
+    return { ok: true, assignment_id: result.id, already_assigned: false };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}

@@ -29,6 +29,35 @@ Always call `agent_user_status` before `publish` (the verb does this
 automatically — but if you're wiring multiple agents into the same
 org, batching the checks first is faster).
 
+## What `provision_agent_user` does, in order
+
+1. **`create_user`** — if the username in `default_agent_user` (or the
+   `username_override` param) doesn't resolve to an active User, insert
+   one against the `Einstein Agent User` profile. Skips if the user
+   exists; fails fast if it exists but is inactive (manual fix).
+2. **`assign_system_ps`** — idempotent `PermissionSetAssignment` for
+   `AgentforceServiceAgentUser`. Required before publish; without it
+   publish returns the cryptic "Internal Error".
+3. **`deploy_custom_ps`** — synthesize a `<AgentName>_Access`
+   `PermissionSet` whose `<classAccesses>` cover every `apex://X` target
+   in the bundle, deploy via `@salesforce/source-deploy-retrieve`. Skips
+   if every required class is already reachable from the user's existing
+   PS bundle.
+4. **`assign_custom_ps`** — PSA insert for the freshly-deployed custom
+   PS (or the existing one if step 3 was a skip).
+
+All four steps are skip-if-already-done. Run provision twice and the
+second run is a no-op.
+
+### dry_run defaults to true
+
+`provision_agent_user dry_run=true` (the default) walks the diagnose
+snapshot and emits a `would_execute` plan plus the fully-rendered
+custom PS XML. **No org mutations.** The LLM (and human) review, then
+re-call with `dry_run=false` to execute. Re-running with `dry_run=false`
+is safe regardless of state — every step's idempotency guard short-
+circuits when the work is already done.
+
 ## What each check covers
 
 ### License
