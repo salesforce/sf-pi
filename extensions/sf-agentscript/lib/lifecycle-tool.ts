@@ -23,6 +23,15 @@ import { Type } from "typebox";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { connForAgentApi } from "./agent-api-auth.ts";
 import { connFromAlias } from "../../../lib/common/sf-conn/connection.ts";
+import {
+  checkAgentUserStatus,
+  readAgentConfigSlice,
+  runDiagnose,
+  type AgentUserStatus,
+  type DiagnoseReport,
+} from "./agent-user/index.ts";
+import { inspectFile } from "./inspect.ts";
+import { mapAgentApiError } from "./errors/agent-api-error-map.ts";
 import { isAgentScriptFile } from "./file-classify.ts";
 import { activateVersion, deactivateVersion, listVersions, publishAgent } from "./lifecycle.ts";
 import { safeResolveToolPath, toolError, toolOk, type ToolError } from "./tool-types.ts";
@@ -39,10 +48,12 @@ const Params = Type.Object({
       Type.Literal("activate"),
       Type.Literal("deactivate"),
       Type.Literal("list_versions"),
+      Type.Literal("agent_user_status"),
+      Type.Literal("diagnose_agent_user"),
     ],
     {
       description:
-        "publish: ship a .agent file as a new agent or new version. activate / deactivate: toggle a BotVersion's Status (idempotent). list_versions: return every BotVersion on the agent.",
+        "publish: ship a .agent file as a new agent or new version. activate / deactivate: toggle a BotVersion's Status (idempotent). list_versions: return every BotVersion on the agent. agent_user_status: cheap ready/not_ready/n/a preflight on the agent's user wiring. diagnose_agent_user: full read-only checklist (license, user, system PS, per-apex-class access) returning a structured report.",
     },
   ),
   target_org: Type.Optional(Type.String({ description: "sf CLI alias / username." })),
@@ -73,7 +84,13 @@ const Params = Type.Object({
 });
 
 interface ParamsAny {
-  action: "publish" | "activate" | "deactivate" | "list_versions";
+  action:
+    | "publish"
+    | "activate"
+    | "deactivate"
+    | "list_versions"
+    | "agent_user_status"
+    | "diagnose_agent_user";
   target_org?: string;
   agent_file?: string;
   agent_api_name?: string;
@@ -92,6 +109,14 @@ function checkRequired(p: ParamsAny): { ok: true } | { ok: false; error: string 
       if (!p.agent_api_name)
         return { ok: false, error: `action='${p.action}' requires agent_api_name.` };
       return { ok: true };
+    case "agent_user_status":
+      if (!p.agent_file)
+        return { ok: false, error: "action='agent_user_status' requires agent_file." };
+      return { ok: true };
+    case "diagnose_agent_user":
+      if (!p.agent_file)
+        return { ok: false, error: "action='diagnose_agent_user' requires agent_file." };
+      return { ok: true };
   }
 }
 
@@ -105,10 +130,12 @@ export function registerLifecycleTool(pi: ExtensionAPI): void {
     renderResult: renderLifecycleResult,
     promptSnippet: "Ship a .agent file to the org and toggle version activation.",
     promptGuidelines: [
-      "action='publish' — pass agent_file (the .agent path). Auto-detects new-agent vs new-version. Set activate=true to chain publish+activate in one call.",
+      "action='publish' — pass agent_file (the .agent path). Auto-detects new-agent vs new-version. Set activate=true to chain publish+activate in one call. Service Agents get a free agent_user_status preflight — a missing user / PS aborts with a clean recover_via, no SFAP round-trip.",
       "action='activate' / 'deactivate' — pass agent_api_name; omit version for the latest. Idempotent: a no-op when already in the requested state.",
       "action='list_versions' — returns every BotVersion (id, number, status, dates). Use to discover which version is Active before previewing or running eval.",
-      "Errors carry recover_via where applicable (e.g. agent not found → list_versions hint).",
+      "action='agent_user_status' — cheap read-only check (~2 SOQL hits) that a Service Agent's user wiring is ready before publish. Returns status: ready/not_ready/n/a; not_ready surfaces a stable 'reason' code so the LLM can chain the right fix verb.",
+      "action='diagnose_agent_user' — full read-only checklist (license, user existence + active state, system PS, per-apex-class access). Returns a structured report with per-check status + fix_hint. Use when agent_user_status returns not_ready and you want the full picture before fixing.",
+      "Errors carry recover_via where applicable (e.g. agent not found → list_versions hint, Service Agent missing user → diagnose_agent_user / provision_agent_user).",
     ],
     parameters: Params,
     async execute(_id, params, _signal, onUpdate, ctx) {
@@ -134,6 +161,10 @@ export function registerLifecycleTool(pi: ExtensionAPI): void {
           return await actionDeactivate(p);
         case "list_versions":
           return await actionListVersions(p);
+        case "agent_user_status":
+          return await actionAgentUserStatus(ctx, p);
+        case "diagnose_agent_user":
+          return await actionDiagnoseAgentUser(ctx, p);
       }
     },
   });
@@ -175,6 +206,34 @@ async function actionPublish(
 
   try {
     const conn = await connFromAlias(input.target_org);
+
+    // Service-Agent preflight: a missing/inactive user or unassigned
+    // system PS is the #1 reason publish fails with a cryptic message.
+    // Doing the cheap check here lets us return a clean recover_via
+    // before the SFAP round-trip. Employee Agents return status='n/a'
+    // and we proceed without disruption. See agent-user-setup.md skill.
+    const cfg = await readAgentConfigSlice(filePath);
+    if (cfg.ok && cfg.agent_type === "AgentforceServiceAgent") {
+      const status = await checkAgentUserStatus(conn, {
+        agent_type: cfg.agent_type,
+        default_agent_user: cfg.default_agent_user,
+      });
+      if (!status.ok) {
+        stream(`Pre-flight — Service Agent user wiring: ${status.short_message}`);
+        return toolError(
+          `Service Agent preflight failed: ${status.short_message}`,
+          "Run agentscript_lifecycle action='diagnose_agent_user' to see the full checklist, then 'provision_agent_user' (defaults to dry_run=true) to fix.",
+          {
+            tool: LIFECYCLE_TOOL_NAME,
+            params: {
+              action: "agent_user_status",
+              agent_file: filePath,
+              ...(input.target_org ? { target_org: input.target_org } : {}),
+            },
+          },
+        );
+      }
+    }
     const { conn: agentApiConn } = await connForAgentApi(input.target_org);
     const result = await publishAgent({
       conn,
@@ -371,10 +430,41 @@ function classifyLifecycleError(
   err: unknown,
   agentApiName: string,
   callingAction: "publish" | "activate" | "deactivate" | "list_versions",
+  agentFile?: string,
 ): { content: { type: "text"; text: string }[]; details: ToolError } {
   const msg = err instanceof Error ? err.message : String(err);
 
-  // SFAP routing failure on dev / non-Agentforce orgs — give a friendlier hint.
+  // 1. Consult the shared agent-API error map first. Same SFAP envelope as
+  //    preview, so we get the typed cases (should-have-user-assigned,
+  //    activation-rejected, sfap-404, etc.) for free.
+  const phase: "publish" | "activate" | "deactivate" | undefined =
+    callingAction === "publish" || callingAction === "activate" || callingAction === "deactivate"
+      ? callingAction
+      : undefined;
+  if (phase) {
+    const mapped = mapAgentApiError(
+      // Pseudo-status: the lifecycle layer doesn't surface raw HTTP status
+      // up to here, so we use 0 to skip status-only patterns. Patterns that
+      // also match on body text (the ones we actually care about for
+      // lifecycle) still fire.
+      0,
+      msg,
+      {
+        phase,
+        surface: "lifecycle",
+        agentApiName,
+        agentFile,
+      },
+    );
+    if (mapped.matched) {
+      return toolError(mapped.message, undefined, mapped.recover_via);
+    }
+  }
+
+  // 2. SFAP routing failure on dev / non-Agentforce orgs — give a friendlier hint.
+  //    (Status-aware patterns in the shared map don't fire from this code path
+  //    since we don't have the real HTTP status here — mirror the legacy
+  //    behaviour for now.)
   if (/ERROR_HTTP_404|HTTP 404|URL No Longer Exists/i.test(msg)) {
     return toolError(
       `${msg.split("\n")[0]} — the org's Einstein AI Agent SFAP routes are not reachable.`,
@@ -382,9 +472,9 @@ function classifyLifecycleError(
     );
   }
 
-  // Agent-not-found path — only suggest list_versions if the LLM was already
-  // calling something else (activate/deactivate). For list_versions itself,
-  // a recover_via pointing back at list_versions is circular and useless.
+  // 3. Agent-not-found path — only suggest list_versions if the LLM was already
+  //    calling something else (activate/deactivate). For list_versions itself,
+  //    a recover_via pointing back at list_versions is circular and useless.
   if (/not found/i.test(msg)) {
     if (callingAction === "list_versions") {
       return toolError(
@@ -398,4 +488,182 @@ function classifyLifecycleError(
     });
   }
   return toolError(msg);
+}
+
+// -------------------------------------------------------------------------------------------------
+// action = agent_user_status
+// -------------------------------------------------------------------------------------------------
+
+async function actionAgentUserStatus(
+  ctx: ExtensionContext,
+  input: ParamsAny,
+): Promise<{
+  content: { type: "text"; text: string }[];
+  details: Record<string, unknown> | ToolError;
+}> {
+  const resolved = safeResolveToolPath(input.agent_file, ctx.cwd);
+  if ("absPath" in resolved === false) return resolved;
+  const filePath = resolved.absPath;
+  if (!isAgentScriptFile(filePath)) {
+    return toolError(`Not an Agent Script file: ${filePath}`, "Pass a path ending in `.agent`.");
+  }
+  const cfg = await readAgentConfigSlice(filePath);
+  if (cfg.ok === false) {
+    return toolError(
+      `Cannot read .agent config from ${filePath}: ${cfg.reason_detail}`,
+      cfg.reason === "parse_failed"
+        ? "Run agentscript_compile and fix severity-1 errors first."
+        : undefined,
+      cfg.reason === "parse_failed"
+        ? { tool: "agentscript_compile", params: { path: filePath } }
+        : undefined,
+    );
+  }
+  if (!cfg.agent_type) {
+    return toolError(
+      `'${filePath}' has no 'config.agent_type' — cannot determine wiring requirements.`,
+      "Add 'agent_type: \"AgentforceEmployeeAgent\"' or 'AgentforceServiceAgent' to the config block.",
+    );
+  }
+  try {
+    const conn = await connFromAlias(input.target_org);
+    const status = await checkAgentUserStatus(conn, {
+      agent_type: cfg.agent_type,
+      default_agent_user: cfg.default_agent_user,
+    });
+    return toolOk({ ok: true as const, ...status }, formatAgentUserStatusText(status));
+  } catch (err) {
+    return classifyLifecycleError(
+      err,
+      cfg.agent_name ?? path.basename(filePath, ".agent"),
+      "list_versions", // closest existing classifier action; keeps recover_via shape sane
+      filePath,
+    );
+  }
+}
+
+function formatAgentUserStatusText(s: AgentUserStatus): string {
+  const icon = s.status === "ready" ? "\u2705" : s.status === "n/a" ? "\u26AA" : "\u26A0\uFE0F";
+  const userLine = s.user
+    ? `\n  user: ${s.user.Username} (Id ${s.user.Id}, ${s.user.IsActive ? "active" : "inactive"})`
+    : "";
+  const psLine = s.assigned_permission_sets?.length
+    ? `\n  permission sets: ${s.assigned_permission_sets.join(", ")}`
+    : "";
+  return `${icon} agent_user_status: ${s.status} (${s.agent_type})\n  ${s.short_message}${userLine}${psLine}`;
+}
+
+// -------------------------------------------------------------------------------------------------
+// action = diagnose_agent_user
+// -------------------------------------------------------------------------------------------------
+
+async function actionDiagnoseAgentUser(
+  ctx: ExtensionContext,
+  input: ParamsAny,
+): Promise<{
+  content: { type: "text"; text: string }[];
+  details: Record<string, unknown> | ToolError;
+}> {
+  const resolved = safeResolveToolPath(input.agent_file, ctx.cwd);
+  if ("absPath" in resolved === false) return resolved;
+  const filePath = resolved.absPath;
+  if (!isAgentScriptFile(filePath)) {
+    return toolError(`Not an Agent Script file: ${filePath}`, "Pass a path ending in `.agent`.");
+  }
+  const cfg = await readAgentConfigSlice(filePath);
+  if (cfg.ok === false) {
+    return toolError(
+      `Cannot read .agent config from ${filePath}: ${cfg.reason_detail}`,
+      cfg.reason === "parse_failed"
+        ? "Run agentscript_compile and fix severity-1 errors first."
+        : undefined,
+      cfg.reason === "parse_failed"
+        ? { tool: "agentscript_compile", params: { path: filePath } }
+        : undefined,
+    );
+  }
+  if (!cfg.agent_type) {
+    return toolError(
+      `'${filePath}' has no 'config.agent_type'.`,
+      "Add 'agent_type: \"AgentforceEmployeeAgent\"' or 'AgentforceServiceAgent'.",
+    );
+  }
+
+  // Pull every action with a target so the apex_class_access check has
+  // the .agent's full apex:// surface to verify against the user's PSs.
+  const inspect = await inspectFile(filePath);
+  const actions = inspect.ok ? (inspect.components?.actions ?? []) : [];
+
+  try {
+    const conn = await connFromAlias(input.target_org);
+    const report = await runDiagnose(conn, {
+      agent_type: cfg.agent_type,
+      default_agent_user: cfg.default_agent_user,
+      actions,
+      agent_file: filePath,
+      agent_api_name: cfg.agent_name,
+    });
+    return toolOk({ ok: true as const, ...report }, formatDiagnoseReportText(report));
+  } catch (err) {
+    return classifyLifecycleError(
+      err,
+      cfg.agent_name ?? path.basename(filePath, ".agent"),
+      "list_versions",
+      filePath,
+    );
+  }
+}
+
+function formatDiagnoseReportText(r: DiagnoseReport): string {
+  const headerIcon = r.ok ? "\u2705" : "\u26A0\uFE0F";
+  const lines: string[] = [];
+  lines.push(
+    `${headerIcon} diagnose_agent_user: ${r.ok ? "ready" : "not_ready"} (${r.agent_type} Agent)`,
+  );
+  if (r.default_agent_user) {
+    lines.push(`  default_agent_user: ${r.default_agent_user}`);
+  }
+  if (r.found_licenses?.length) {
+    lines.push(`  licenses: ${r.found_licenses.join(", ")}`);
+  }
+  lines.push("");
+  lines.push("Checks:");
+  for (const c of r.checks) {
+    const icon = checkIcon(c.status);
+    lines.push(`  ${icon} ${c.id}: ${c.status}`);
+    lines.push(`     ${c.detail}`);
+    if (c.fix_hint) lines.push(`     \u2192 ${c.fix_hint}`);
+  }
+  if (r.apex_actions && r.apex_actions.length > 0) {
+    lines.push("");
+    lines.push("Apex action targets:");
+    for (const a of r.apex_actions) {
+      const icon = a.status === "ok" ? "\u2705" : "\u274C";
+      const granted = a.granted_via ? ` (via ${a.granted_via})` : "";
+      lines.push(`  ${icon} ${a.name} \u2192 ${a.apex_class}${granted}`);
+    }
+  }
+  if (r.candidate_einstein_agent_users?.length) {
+    lines.push("");
+    lines.push("Candidate Einstein Agent Users in this org:");
+    for (const u of r.candidate_einstein_agent_users) {
+      lines.push(`  \u2022 ${u.Username} (${u.IsActive ? "active" : "inactive"}, Id ${u.Id})`);
+    }
+  }
+  return lines.join("\n");
+}
+
+function checkIcon(status: DiagnoseReport["checks"][number]["status"]): string {
+  switch (status) {
+    case "ok":
+      return "\u2705";
+    case "missing":
+      return "\u274C";
+    case "unknown":
+      return "\u2754";
+    case "skipped":
+      return "\u23ED\uFE0F";
+    case "n/a":
+      return "\u26AA";
+  }
 }

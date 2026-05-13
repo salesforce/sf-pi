@@ -1,0 +1,137 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/**
+ * Permission Set read primitives for the agent user setup flow.
+ *
+ * - listPermissionSetAssignments  — every PS row for a user
+ * - findPermissionSetByName        — resolve PS DeveloperName to its Id
+ * - listClassAccessForUser         — capability lookup: which Apex classes
+ *                                    can a user execute, via any PS they're
+ *                                    assigned to. Used for the
+ *                                    "is the custom PS wired up correctly"
+ *                                    check; we look at access, not naming.
+ *
+ * No subprocess — `@salesforce/core` Connection only.
+ *
+ * Doc: skills/sf-ai-agentscript/references/agent-user-setup.md.
+ */
+
+import type { Connection } from "@salesforce/core";
+
+/** The PS that grants Service Agents permission to act in the org. */
+export const SYSTEM_AGENT_PS_NAME = "AgentforceServiceAgentUser";
+
+export interface PermissionSetAssignmentRow {
+  AssignmentId: string;
+  PermissionSetId: string;
+  PermissionSetName: string;
+  PermissionSetLabel?: string;
+}
+
+export interface ClassAccessRow {
+  /** ApexClass.Name (the developer name). */
+  apex_class: string;
+  /** PS that grants this access — multiple are possible; we surface the first. */
+  granted_via_permission_set: string;
+}
+
+/**
+ * Every PS currently assigned to a user. Used for both diagnose
+ * ("is the system PS assigned?") and provision (skip-if-already-assigned).
+ */
+export async function listPermissionSetAssignments(
+  conn: Connection,
+  userId: string,
+): Promise<PermissionSetAssignmentRow[]> {
+  const r = await conn.query<{
+    Id: string;
+    PermissionSetId: string;
+    PermissionSet: { Name: string; Label?: string } | null;
+  }>(
+    `SELECT Id, PermissionSetId, PermissionSet.Name, PermissionSet.Label ` +
+      `FROM PermissionSetAssignment WHERE AssigneeId='${escapeSoql(userId)}' ` +
+      `ORDER BY PermissionSet.Name`,
+  );
+  return r.records.map((row) => ({
+    AssignmentId: row.Id,
+    PermissionSetId: row.PermissionSetId,
+    PermissionSetName: row.PermissionSet?.Name ?? "",
+    PermissionSetLabel: row.PermissionSet?.Label,
+  }));
+}
+
+/**
+ * Resolve a PermissionSet DeveloperName to its Id. Returns undefined when
+ * the PS doesn't exist (yet) — provision uses this to decide whether to
+ * deploy the custom PS first.
+ */
+export async function findPermissionSetByName(
+  conn: Connection,
+  developerName: string,
+): Promise<{ Id: string; Label?: string } | undefined> {
+  const r = await conn.query<{ Id: string; Label?: string }>(
+    `SELECT Id, Label FROM PermissionSet WHERE Name='${escapeSoql(developerName)}' LIMIT 1`,
+  );
+  const row = r.records[0];
+  if (!row) return undefined;
+  return { Id: row.Id, Label: row.Label };
+}
+
+/**
+ * Capability check — for every Apex class the user can execute (via any
+ * assigned PS), return the class name + the granting PS name.
+ *
+ * We deliberately do not filter on a specific PS DeveloperName ("does
+ * AgentName_Access exist") because the doc warns auto-generated PS names
+ * are unreliable and customers rename. Checking by capability gets the
+ * right answer regardless of naming.
+ *
+ * Joins: PermissionSetAssignment → SetupEntityAccess (with
+ * SetupEntityType='ApexClass') → ApexClass.
+ */
+export async function listClassAccessForUser(
+  conn: Connection,
+  userId: string,
+): Promise<ClassAccessRow[]> {
+  // SetupEntityAccess.SetupEntityId is a polymorphic FK; we filter by
+  // SetupEntityType so the PS join only emits Apex-class rows.
+  const psRows = await listPermissionSetAssignments(conn, userId);
+  if (psRows.length === 0) return [];
+  const psIds = psRows.map((p) => `'${escapeSoql(p.PermissionSetId)}'`).join(",");
+  const psNameById = new Map(psRows.map((p) => [p.PermissionSetId, p.PermissionSetName]));
+
+  const access = await conn.query<{
+    ParentId: string;
+    SetupEntityId: string;
+  }>(
+    `SELECT ParentId, SetupEntityId FROM SetupEntityAccess ` +
+      `WHERE SetupEntityType='ApexClass' AND ParentId IN (${psIds})`,
+  );
+  if (access.records.length === 0) return [];
+
+  // Resolve SetupEntityId → ApexClass.Name via a single ApexClass query.
+  const classIds = Array.from(new Set(access.records.map((a) => a.SetupEntityId)));
+  const classIdLiteral = classIds.map((id) => `'${escapeSoql(id)}'`).join(",");
+  const classes = await conn.query<{ Id: string; Name: string }>(
+    `SELECT Id, Name FROM ApexClass WHERE Id IN (${classIdLiteral})`,
+  );
+  const nameById = new Map(classes.records.map((c) => [c.Id, c.Name]));
+
+  const out: ClassAccessRow[] = [];
+  // De-duplicate per (apex_class) pair, preferring the first PS we encountered.
+  const seen = new Set<string>();
+  for (const a of access.records) {
+    const className = nameById.get(a.SetupEntityId);
+    if (!className) continue;
+    if (seen.has(className)) continue;
+    seen.add(className);
+    out.push({
+      apex_class: className,
+      granted_via_permission_set: psNameById.get(a.ParentId) ?? "<unknown>",
+    });
+  }
+  return out;
+}
+
+function escapeSoql(s: string): string {
+  return s.replace(/'/g, "\\'");
+}

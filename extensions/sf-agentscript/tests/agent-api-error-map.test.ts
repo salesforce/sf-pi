@@ -2,12 +2,18 @@
 /**
  * Server-error → actionable diagnostic mapping. Locks in the patterns that
  * most often confuse the LLM, with chain-able recover_via where possible.
+ *
+ * Originally tested mapPreviewError; promoted to mapAgentApiError when the
+ * map moved to lib/errors/ for shared use across preview + lifecycle. The
+ * compatibility shim re-exports the old name; we exercise both here so a
+ * future shim removal can't silently break in-repo imports.
  */
 
 import { describe, expect, test } from "vitest";
+import { mapAgentApiError } from "../lib/errors/agent-api-error-map.ts";
 import { mapPreviewError } from "../lib/preview/error-map.ts";
 
-describe("mapPreviewError", () => {
+describe("mapAgentApiError (preview surface)", () => {
   test("version-cache-miss → bundle-meta / publish hint", () => {
     const m = mapPreviewError(
       500,
@@ -50,7 +56,10 @@ describe("mapPreviewError", () => {
       { phase: "start", surface: "api_name", agentApiName: "Bot" },
     );
     expect(svc.matched).toBe("invalid-user-id");
-    expect(svc.message).toMatch(/sf org create agent-user/i);
+    // Now points at our own verb instead of the sf CLI command — we ship
+    // provision_agent_user as the canonical fix.
+    expect(svc.message).toMatch(/provision_agent_user/);
+    expect(svc.message).toMatch(/Einstein Agent User/);
 
     const emp = mapPreviewError(
       400,
@@ -130,5 +139,109 @@ describe("mapPreviewError", () => {
     const m = mapPreviewError(500, null, { phase: "start", surface: "agent_file" });
     expect(m.matched).toBeNull();
     expect(m.message).toBeTruthy();
+  });
+});
+
+describe("mapAgentApiError (lifecycle surface, Issue 4 patterns)", () => {
+  test("should-have-user-assigned → provision_agent_user recover_via", () => {
+    const m = mapAgentApiError(
+      0,
+      "Activation request did not succeed: This Agent Type should have a user assigned.",
+      {
+        phase: "activate",
+        surface: "lifecycle",
+        agentApiName: "Demo_Greeter",
+        agentFile: "/tmp/Demo_Greeter.agent",
+      },
+    );
+    expect(m.matched).toBe("should-have-user-assigned");
+    expect(m.message).toMatch(/Service Agents need an Einstein Agent User/);
+    expect(m.message).toMatch(/sf project deploy/i);
+    expect(m.recover_via).toEqual({
+      tool: "agentscript_lifecycle",
+      params: {
+        action: "provision_agent_user",
+        agent_file: "/tmp/Demo_Greeter.agent",
+        dry_run: true,
+      },
+    });
+  });
+
+  test("should-have-user-assigned without agentFile — still rewrites message, omits recover_via", () => {
+    const m = mapAgentApiError(0, "This Agent Type should have a user assigned", {
+      phase: "activate",
+      surface: "lifecycle",
+      agentApiName: "X",
+    });
+    expect(m.matched).toBe("should-have-user-assigned");
+    expect(m.recover_via).toBeUndefined();
+  });
+
+  test("internal-error-publish (HTTP 500 on publish) → diagnose hint", () => {
+    const m = mapAgentApiError(
+      500,
+      { errorCode: "Error", message: "Internal Error, try again later" },
+      {
+        phase: "publish",
+        surface: "lifecycle",
+        agentApiName: "X",
+        agentFile: "/tmp/X.agent",
+      },
+    );
+    expect(m.matched).toBe("internal-error-publish");
+    expect(m.message).toMatch(/AgentforceServiceAgentUser/);
+    expect(m.recover_via).toEqual({
+      tool: "agentscript_lifecycle",
+      params: { action: "diagnose_agent_user", agent_file: "/tmp/X.agent" },
+    });
+  });
+
+  test("internal-error-publish only fires on lifecycle.publish (not on preview)", () => {
+    const m = mapAgentApiError(
+      500,
+      { message: "Internal Error, try again later" },
+      { phase: "start", surface: "agent_file" },
+    );
+    // 500-on-preview falls through to default; should NOT match
+    // internal-error-publish.
+    expect(m.matched).not.toBe("internal-error-publish");
+  });
+
+  test("activation-rejected catch-all → inspect hint", () => {
+    const m = mapAgentApiError(
+      0,
+      "Activation request did not succeed: Some new validation we haven't seen.",
+      {
+        phase: "activate",
+        surface: "lifecycle",
+        agentApiName: "X",
+        agentFile: "/tmp/X.agent",
+      },
+    );
+    expect(m.matched).toBe("activation-rejected");
+    expect(m.message).toMatch(/Some new validation/);
+    expect(m.recover_via).toEqual({
+      tool: "agentscript_inspect",
+      params: { path: "/tmp/X.agent" },
+    });
+  });
+
+  test("more-specific should-have-user-assigned wins over the activation-rejected catch-all", () => {
+    const m = mapAgentApiError(
+      0,
+      "Activation request did not succeed: This Agent Type should have a user assigned.",
+      { phase: "activate", surface: "lifecycle", agentApiName: "X" },
+    );
+    expect(m.matched).toBe("should-have-user-assigned");
+  });
+});
+
+describe("mapPreviewError compatibility shim", () => {
+  // The old name re-exports the new function so existing call sites in
+  // lib/preview/client.ts keep working until they migrate. Removing the
+  // shim is intentional API change; this test makes that decision
+  // explicit.
+  test("mapPreviewError === mapAgentApiError (same function under two names)", () => {
+    expect(mapPreviewError).toBe(mapAgentApiError);
   });
 });

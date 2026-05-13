@@ -107,9 +107,19 @@ tagged `E`, severity-2 issues `W`.
 ```
 extensions/sf-agentscript/
   lib/
+    agent-user/
+      agent-config.ts       ← implementation module
+      diagnose.ts           ← implementation module
+      index.ts              ← implementation module
+      license.ts            ← implementation module
+      permset.ts            ← implementation module
+      status.ts             ← implementation module
+      users.ts              ← implementation module
     command/
       eval-action.ts        ← implementation module
       report-action.ts      ← implementation module
+    errors/
+      agent-api-error-map.ts← implementation module
     eval/
       active-ids.ts         ← implementation module
       decode.ts             ← implementation module
@@ -154,6 +164,7 @@ extensions/sf-agentscript/
       shared.ts             ← implementation module
       timeline.ts           ← implementation module
     templates/
+      agent-type.ts         ← implementation module
       agentforce-default.ts ← implementation module
       minimal.ts            ← implementation module
     agent-api-auth.ts       ← implementation module
@@ -184,9 +195,12 @@ extensions/sf-agentscript/
       registry.test.ts      ← unit / smoke test
       resolvers.test.ts     ← unit / smoke test
     agent-api-auth.test.ts  ← unit / smoke test
+    agent-api-error-map.test.ts← unit / smoke test
+    agent-user-status.test.ts← unit / smoke test
     code-actions.test.ts    ← unit / smoke test
     compile-summary.test.ts ← unit / smoke test
     create.test.ts          ← unit / smoke test
+    diagnose-agent-user.test.ts← unit / smoke test
     diagnostics.test.ts     ← unit / smoke test
     eval-normalize.test.ts  ← unit / smoke test
     eval-sfap.test.ts       ← unit / smoke test
@@ -207,7 +221,6 @@ extensions/sf-agentscript/
     preview-agent-api.test.ts← unit / smoke test
     preview-agent-version-resolver.test.ts← unit / smoke test
     preview-api-name-preflight.test.ts← unit / smoke test
-    preview-error-map.test.ts← unit / smoke test
     preview-host-pinning.test.ts← unit / smoke test
     preview-session-store.test.ts← unit / smoke test
     publish-authoring-bundle.test.ts← unit / smoke test
