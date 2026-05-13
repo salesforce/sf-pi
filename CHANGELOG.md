@@ -481,6 +481,19 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.69.0](https://github.com/salesforce/sf-pi/compare/v0.68.9...v0.69.0) (2026-05-13)
+
+
+### Features
+
+* **sf-agentscript:** agent-user lifecycle — status + diagnose verbs ([2a22220](https://github.com/salesforce/sf-pi/commit/2a2222017a6e01ce200676dc19b543592d736f63))
+* **sf-agentscript:** scaffold default agent_type — Employee unless agent_user provided ([2366ce0](https://github.com/salesforce/sf-pi/commit/2366ce00587bdf025fa85082e2d8009a07bbdf96))
+
+
+### Bug Fixes
+
+* **sf-agentscript:** set_field silently no-ops when adding new fields ([d0ea2d0](https://github.com/salesforce/sf-pi/commit/d0ea2d06da3e17ceba085135d392b2156afcf66c))
+
 ## [0.68.9](https://github.com/salesforce/sf-pi/compare/v0.68.8...v0.68.9) (2026-05-12)
 
 
