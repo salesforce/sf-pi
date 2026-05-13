@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.69.0-2026-05-13",
-  "latestVersion": "0.69.0",
+  "revision": "release-0.70.0-2026-05-13",
+  "latestVersion": "0.70.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.69.0",
+      "id": "release-0.70.0",
       "kind": "update",
-      "title": "sf-pi v0.69.0 — sf-agentscript: agent-user lifecycle — status + diagnose verbs",
+      "title": "sf-pi v0.70.0 — sf-agentscript: provision_agent_user verb — idempotent agent-user setup",
       "publishedAt": "2026-05-13T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.69.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.70.0",
       "severity": "info",
-      "body": "sf-agentscript: agent-user lifecycle — status + diagnose verbs — sf-agentscript: scaffold default agent_type — Employee unless agent_user provided"
+      "body": "sf-agentscript: provision_agent_user verb — idempotent agent-user setup — sf-agentscript: inspect surfaces agent_type on config, not system"
     },
     {
       "id": "pi-0.73-required",
