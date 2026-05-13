@@ -17,6 +17,7 @@
 import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { chooseAgentTypeFromSpec, type ScaffoldAgentType } from "./templates/agent-type.ts";
 import { generateAgentforceDefault } from "./templates/agentforce-default.ts";
 import { generateMinimal } from "./templates/minimal.ts";
 import { loadAgentforceSDK } from "./sdk.ts";
@@ -58,6 +59,17 @@ export interface CreateBundleSuccess {
    * Tool call hints the LLM can chain next. Always non-empty on success.
    */
   next_steps: Array<{ tool: string; params: Record<string, unknown> }>;
+  /**
+   * The agent_type the scaffold chose. Surfaced so the caller can decide
+   * whether the scaffold is shippable as-is (Employee) or needs an
+   * `agent_user` configured before activation (Service).
+   */
+  agent_type: ScaffoldAgentType;
+  /**
+   * Set when the scaffold emitted `default_agent_user`. Echoes the value
+   * back to the caller so the next-step hint can reference the same user.
+   */
+  default_agent_user?: string;
 }
 
 export interface CreateBundleFailure {
@@ -101,6 +113,10 @@ export async function createBundle(opts: CreateBundleOptions): Promise<CreateBun
     template === "minimal"
       ? generateMinimal(opts.bundle_name, opts.job_spec)
       : generateAgentforceDefault(opts.bundle_name, opts.job_spec);
+  // Resolve once, in the same way the templates do, so the result mirrors
+  // what landed on disk. (Both templates call chooseAgentTypeFromSpec with
+  // the same input, so this is a pure echo — not a re-computation.)
+  const typeChoice = chooseAgentTypeFromSpec(opts.job_spec);
 
   // Local-first validation. If the SDK isn't loadable we still write —
   // the user's local copy may be repaired later via /sf-agentscript doctor.
@@ -144,6 +160,10 @@ export async function createBundle(opts: CreateBundleOptions): Promise<CreateBun
       agent_path: agentPath,
       meta_path: metaPath,
       diagnostics_count: diagnosticsCount,
+      agent_type: typeChoice.agent_type,
+      ...(typeChoice.default_agent_user
+        ? { default_agent_user: typeChoice.default_agent_user }
+        : {}),
       next_steps: [
         { tool: "agentscript_inspect", params: { path: agentPath } },
         {

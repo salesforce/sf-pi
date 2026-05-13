@@ -123,6 +123,10 @@ export function registerCreateTool(pi: ExtensionAPI): void {
         );
       }
 
+      const typeLine =
+        result.agent_type === "AgentforceServiceAgent"
+          ? `agent_type: AgentforceServiceAgent (default_agent_user=${result.default_agent_user})`
+          : `agent_type: AgentforceEmployeeAgent (no default_agent_user needed for activation)`;
       return toolOk(
         {
           ok: true as const,
@@ -130,9 +134,11 @@ export function registerCreateTool(pi: ExtensionAPI): void {
           agent_path: result.agent_path,
           meta_path: result.meta_path,
           diagnostics_count: result.diagnostics_count,
+          agent_type: result.agent_type,
+          ...(result.default_agent_user ? { default_agent_user: result.default_agent_user } : {}),
           next_steps: result.next_steps,
         },
-        `📦 Created ${input.bundle_name}\n${result.agent_path}\n${result.meta_path}`,
+        `📦 Created ${input.bundle_name}\n${result.agent_path}\n${result.meta_path}\n${typeLine}`,
       );
     },
   });

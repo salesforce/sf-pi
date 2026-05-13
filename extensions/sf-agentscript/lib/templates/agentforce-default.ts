@@ -9,21 +9,35 @@
  *
  * Output is always parse-clean against the vendored SDK (we validate after
  * generation; if validation fails, that's a template bug).
+ *
+ * agent_type policy (Issue 1 — see docs/POSTMORTEM_E2E_DEMO.md):
+ *   - When the caller supplies `job_spec.agent_user`, scaffold a Service
+ *     Agent (the user is required for activation; the SDK lints will
+ *     enforce that going forward).
+ *   - Otherwise, scaffold an Employee Agent (no user required — a fresh
+ *     dev/sandbox org can publish + activate with zero extra config).
+ *   - Always emit `agent_type` explicitly, never rely on the server-side
+ *     default. An implicit type also disables the SDK's
+ *     `config-missing-default-agent-user` lint, which silently lets
+ *     un-activatable bundles ship.
  */
 
+import { chooseAgentTypeFromSpec } from "./agent-type.ts";
 import type { AgentJobSpec } from "../create.ts";
 
 export function generateAgentforceDefault(bundleName: string, jobSpec?: AgentJobSpec): string {
   const lines: string[] = [];
+  const { agent_type, default_agent_user } = chooseAgentTypeFromSpec(jobSpec);
 
   // config block
   lines.push("config:");
   lines.push(`    agent_name: "${escapeString(bundleName)}"`);
+  lines.push(`    agent_type: "${agent_type}"`);
   lines.push(
     `    description: "${escapeString(jobSpec?.description ?? `${bundleName} agent (scaffolded by sf-agentscript).`)}"`,
   );
-  if (jobSpec?.agent_user) {
-    lines.push(`    default_agent_user: "${escapeString(jobSpec.agent_user)}"`);
+  if (default_agent_user) {
+    lines.push(`    default_agent_user: "${escapeString(default_agent_user)}"`);
   }
   lines.push("");
 
