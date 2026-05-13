@@ -22,6 +22,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import type { Connection } from "@salesforce/core";
 import type { ComponentSet as ComponentSetType } from "@salesforce/source-deploy-retrieve";
+import { sfap404Message } from "./errors/sfap-404.ts";
 import { isSfapRoutingFailure, sfapRequest } from "./eval/sfap.ts";
 import { inspectFile } from "./inspect.ts";
 import { checkActionTargets, checkBundleType } from "./preflight.ts";
@@ -422,10 +423,7 @@ export async function publishAgent(opts: PublishOptions): Promise<PublishResult>
     if (
       isSfapRoutingFailure({ status: compileResult.status, body: compileResult.body, endpoint: "" })
     ) {
-      throw new Error(
-        "Server compile is unavailable in this org — the Einstein AI Agent SFAP routes returned 404 across api / test.api / dev.api hosts. " +
-          "This typically means the org isn't Agentforce-enabled (e.g. a basic dev edition). Use a sandbox or production org with Agentforce enabled.",
-      );
+      throw new Error(sfap404Message({ phase: "compile" }));
     }
     throw new Error(
       `Server compile failed (HTTP ${compileResult.status}): ${JSON.stringify(compileResult.body).slice(0, 600)}`,
@@ -453,10 +451,7 @@ export async function publishAgent(opts: PublishOptions): Promise<PublishResult>
   });
   if (publishResp.status < 200 || publishResp.status >= 300) {
     if (isSfapRoutingFailure(publishResp)) {
-      throw new Error(
-        "Publish is unavailable in this org — the SFAP authoring endpoint returned 404 across api / test.api / dev.api hosts. " +
-          "Use an Agentforce-enabled org.",
-      );
+      throw new Error(sfap404Message({ phase: "publish", agentApiName: opts.agentApiName }));
     }
     throw new Error(
       `Publish failed (HTTP ${publishResp.status}): ${JSON.stringify(publishResp.body).slice(0, 600)}`,

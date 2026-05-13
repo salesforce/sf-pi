@@ -35,6 +35,7 @@ import {
 } from "./agent-user/index.ts";
 import { inspectFile } from "./inspect.ts";
 import { mapAgentApiError } from "./errors/agent-api-error-map.ts";
+import { sfap404Message } from "./errors/sfap-404.ts";
 import { isAgentScriptFile } from "./file-classify.ts";
 import { activateVersion, deactivateVersion, listVersions, publishAgent } from "./lifecycle.ts";
 import { safeResolveToolPath, toolError, toolOk, type ToolError } from "./tool-types.ts";
@@ -488,14 +489,23 @@ function classifyLifecycleError(
     }
   }
 
-  // 2. SFAP routing failure on dev / non-Agentforce orgs — give a friendlier hint.
-  //    (Status-aware patterns in the shared map don't fire from this code path
-  //    since we don't have the real HTTP status here — mirror the legacy
-  //    behaviour for now.)
+  // 2. SFAP routing failure on dev / non-Agentforce orgs — the upstream
+  //    layer (lifecycle.ts / preview/client.ts) already throws sfap404Message
+  //    when it detects the host fallback exhausted, so we typically don't
+  //    re-enter this branch with a fresh 404. We keep it as a safety net for
+  //    code paths that bubble a raw 404 string up here, and we delegate to
+  //    the same shared message so the wording stays consistent.
   if (/ERROR_HTTP_404|HTTP 404|URL No Longer Exists/i.test(msg)) {
     return toolError(
-      `${msg.split("\n")[0]} — the org's Einstein AI Agent SFAP routes are not reachable.`,
-      "This typically means the org isn't Agentforce-enabled (e.g. a basic dev edition). Try a sandbox or production org with Agentforce enabled.",
+      sfap404Message({
+        phase:
+          callingAction === "publish" || callingAction === "activate"
+            ? callingAction
+            : callingAction === "deactivate"
+              ? "activate"
+              : "publish",
+        agentApiName,
+      }),
     );
   }
 

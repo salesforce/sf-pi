@@ -95,14 +95,35 @@ describe("mapAgentApiError (preview surface)", () => {
     expect(m.matched).toBe("inactive-agent");
   });
 
-  test("sfap-404 → org not Agentforce-enabled hint", () => {
+  test("sfap-404 → transient-first wording, no false claim that the org isn't Agentforce-enabled", () => {
+    // Issue 5: previous wording asserted the org wasn't Agentforce-enabled,
+    // which fired immediately after a successful publish in the same
+    // session. The rewritten message states what happened, calls out
+    // 404s as usually transient, and lists possible permanent causes
+    // without claiming any of them are true.
     const m = mapPreviewError(
       404,
       { errorCode: "ERROR_HTTP_404", message: "" },
       { phase: "start", surface: "agent_file" },
     );
     expect(m.matched).toBe("sfap-404");
-    expect(m.message).toMatch(/Agentforce-enabled/);
+    expect(m.message).toMatch(/usually transient/i);
+    expect(m.message).toMatch(/host fallback/i);
+    expect(m.message).toMatch(/may not be Agentforce-enabled/);
+    expect(m.message).toMatch(/may lack the right permission/);
+    // No retry-30s claim baked into the literal text? Yes — we expect it.
+    expect(m.message).toMatch(/retry in 30s/i);
+  });
+
+  test("sfap-404 includes a list_versions hint when agentApiName is known", () => {
+    const m = mapPreviewError(
+      404,
+      { errorCode: "ERROR_HTTP_404", message: "" },
+      { phase: "start", surface: "api_name", agentApiName: "My_Bot" },
+    );
+    expect(m.matched).toBe("sfap-404");
+    expect(m.message).toMatch(/list_versions/);
+    expect(m.message).toMatch(/My_Bot/);
   });
 
   test("bootstrap-failed → JWT scopes hint", () => {

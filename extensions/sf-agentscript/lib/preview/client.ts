@@ -18,6 +18,7 @@
 
 import { randomUUID } from "node:crypto";
 import type { Connection } from "@salesforce/core";
+import { sfap404Message } from "../errors/sfap-404.ts";
 import { isSfapRoutingFailure, sfapRequest } from "../eval/sfap.ts";
 import { fetchTrace } from "../eval/trace-client.ts";
 import { summarizeProductionResponse, summarizeTrace, type TraceDigest } from "./trace-digest.ts";
@@ -213,10 +214,7 @@ export async function startPreview(opts: PreviewStartOptions): Promise<PreviewSt
     compileResp.body.status !== "success"
   ) {
     if (isSfapRoutingFailure(compileResp)) {
-      throw new Error(
-        "Server compile is unavailable in this org — the Einstein AI Agent SFAP routes returned 404 across api / test.api / dev.api hosts. " +
-          "This typically means the org isn't Agentforce-enabled (e.g. a basic dev edition). Use a sandbox or production org with Agentforce enabled.",
-      );
+      throw new Error(sfap404Message({ phase: "compile" }));
     }
     throw new Error(
       `Server compile failed (HTTP ${compileResp.status}): ${JSON.stringify(compileResp.body).slice(0, 600)}`,

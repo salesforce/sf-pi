@@ -15,6 +15,8 @@
  * docs/POSTMORTEM_E2E_DEMO.md.
  */
 
+import { sfap404Message } from "./sfap-404.ts";
+
 export interface AgentApiErrorContext {
   /**
    * Which call surfaced the error.
@@ -132,11 +134,17 @@ export function mapAgentApiError(
   // -- 5. SFAP route unavailable in this org ----------------------------------
   if (status === 404 && /ERROR_HTTP_404|URL No Longer Exists|api\.salesforce\.com/i.test(text)) {
     return {
-      message:
-        `The Einstein AI Agent SFAP routes returned 404 across api / test.api / ` +
-        `dev.api hosts. The org isn't Agentforce-enabled (e.g. a basic dev ` +
-        `edition) or the user lacks permission. Use a sandbox or production ` +
-        `org with Agentforce enabled, or assign the right permission set.`,
+      message: sfap404Message({
+        phase:
+          context.phase === "publish" ||
+          context.phase === "activate" ||
+          context.phase === "deactivate"
+            ? context.phase === "deactivate"
+              ? "activate"
+              : context.phase
+            : "preview",
+        agentApiName: context.agentApiName,
+      }),
       matched: "sfap-404",
     };
   }
