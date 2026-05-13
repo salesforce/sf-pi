@@ -481,6 +481,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.72.2](https://github.com/salesforce/sf-pi/compare/v0.72.1...v0.72.2) (2026-05-13)
+
+
+### Bug Fixes
+
+* **sf-welcome:** align Privacy row with checkmark glyph ([5594ac1](https://github.com/salesforce/sf-pi/commit/5594ac1c90ff01c3522b9332e13a45cc9f8cc043))
+
 ## [0.72.1](https://github.com/salesforce/sf-pi/compare/v0.72.0...v0.72.1) (2026-05-13)
 
 
