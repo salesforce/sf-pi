@@ -481,6 +481,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.71.1](https://github.com/salesforce/sf-pi/compare/v0.71.0...v0.71.1) (2026-05-13)
+
+
+### Bug Fixes
+
+* **sf-agentscript:** listPermissionSetAssignments drops namespaced PS rows ([3a8104c](https://github.com/salesforce/sf-pi/commit/3a8104c5595129af9f489dd36f3e1ceaffb6e69f))
+
 ## [0.71.0](https://github.com/salesforce/sf-pi/compare/v0.70.0...v0.71.0) (2026-05-13)
 
 
