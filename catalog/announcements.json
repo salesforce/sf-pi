@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.68.9-2026-05-12",
-  "latestVersion": "0.68.9",
+  "revision": "release-0.69.0-2026-05-13",
+  "latestVersion": "0.69.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.68.9",
+      "id": "release-0.69.0",
       "kind": "update",
-      "title": "sf-pi v0.68.9 — sf-agentscript: harden preview lifecycle — 4 bugs + diagnostics",
-      "publishedAt": "2026-05-12T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.68.9",
+      "title": "sf-pi v0.69.0 — sf-agentscript: agent-user lifecycle — status + diagnose verbs",
+      "publishedAt": "2026-05-13T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.69.0",
       "severity": "info",
-      "body": "sf-agentscript: harden preview lifecycle — 4 bugs + diagnostics"
+      "body": "sf-agentscript: agent-user lifecycle — status + diagnose verbs — sf-agentscript: scaffold default agent_type — Employee unless agent_user provided"
     },
     {
       "id": "pi-0.73-required",
