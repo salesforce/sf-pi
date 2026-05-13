@@ -481,6 +481,19 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.71.0](https://github.com/salesforce/sf-pi/compare/v0.70.0...v0.71.0) (2026-05-13)
+
+
+### Features
+
+* **sf-agentscript:** activate gains divergence preflight + 'sf project deploy' gotcha doc ([707d3b7](https://github.com/salesforce/sf-pi/commit/707d3b722cc33fb08e40a930e678d52326e17aed))
+* **sf-agentscript:** quick-fix for the 'transition ... when "..."' footgun ([b71f5da](https://github.com/salesforce/sf-pi/commit/b71f5dac0ce711f9f2a76f7dacd9a6752ae38353))
+
+
+### Bug Fixes
+
+* **sf-agentscript:** SFAP-404 wording — transient-first, no false 'org not Agentforce-enabled' claim ([da610ac](https://github.com/salesforce/sf-pi/commit/da610ac56547dabc4a6d6860d61f0e11e4abf513))
+
 ## [0.70.0](https://github.com/salesforce/sf-pi/compare/v0.69.0...v0.70.0) (2026-05-13)
 
 
