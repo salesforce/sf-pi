@@ -208,6 +208,16 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ### Bug Fixes
 
+- **sf-llm-gateway-internal: preserve explicit gateway model allow-lists and
+  resolve scoped models from the cached discovery catalog at startup
+  (#163).** The gateway extension now upgrades its 4-entry bootstrap model
+  catalog with the previous discovered catalog before Pi resolves
+  `enabledModels`, so scoped model selection can see models such as
+  `gpt-5.5`, Gemini, and Codex immediately on restart. The settings repair
+  pass also no longer collapses user-authored
+  `sf-llm-gateway-internal/<model-id>` entries to the wildcard; only the
+  retired `sf-llm-gateway-internal-anthropic/*` provider pattern is treated
+  as legacy.
 - **sf-pi-manager: auto-detect scope for `/sf-pi` commands so a project-only
   install of sf-pi works without typing `project` on every command
   (#88).** `parseCommandArgs` previously hardcoded the default scope to
