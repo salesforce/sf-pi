@@ -220,13 +220,16 @@ describe("removeEnabledModelPattern", () => {
 describe("normalizeLegacyGatewayEnabledModels", () => {
   const PATTERN = "sf-llm-gateway-internal/*";
 
-  it("collapses legacy gateway-only exact model entries to the provider wildcard", () => {
+  it("preserves user-authored exact gateway model allow-lists as-is", () => {
+    // Specific gateway models like sf-llm-gateway-internal/<id> are valid
+    // current-provider allow-list entries; collapsing them to the wildcard
+    // would erase the user's intentional scope choice.
     expect(
       normalizeLegacyGatewayEnabledModels([
         "sf-llm-gateway-internal/claude-opus-4-7",
         "sf-llm-gateway-internal/gpt-5",
       ]),
-    ).toEqual([PATTERN]);
+    ).toEqual(["sf-llm-gateway-internal/claude-opus-4-7", "sf-llm-gateway-internal/gpt-5"]);
   });
 
   it("collapses the retired anthropic sub-provider wildcard to the unified wildcard", () => {
@@ -235,20 +238,23 @@ describe("normalizeLegacyGatewayEnabledModels", () => {
     ).toEqual([PATTERN, "openai/*"]);
   });
 
-  it("preserves non-gateway patterns while collapsing legacy gateway entries", () => {
+  it("preserves user-authored gateway entries alongside non-gateway patterns", () => {
     expect(
       normalizeLegacyGatewayEnabledModels([
         "sf-llm-gateway-internal/gpt-5",
         "openai/*",
         "anthropic/*",
       ]),
-    ).toEqual([PATTERN, "openai/*", "anthropic/*"]);
+    ).toEqual(["sf-llm-gateway-internal/gpt-5", "openai/*", "anthropic/*"]);
   });
 
-  it("removes redundant exact gateway entries next to the wildcard", () => {
+  it("keeps explicit gateway entries even when the wildcard is also present", () => {
+    // A mixed list (wildcard + specific ids) is unusual but valid — the
+    // specific ids resolve first under glob semantics and any extras under
+    // the wildcard. We must not silently drop the explicit entries.
     expect(
       normalizeLegacyGatewayEnabledModels([PATTERN, "sf-llm-gateway-internal/gpt-5", "openai/*"]),
-    ).toEqual([PATTERN, "openai/*"]);
+    ).toEqual([PATTERN, "sf-llm-gateway-internal/gpt-5", "openai/*"]);
   });
 
   it("leaves non-gateway scopes unchanged", () => {

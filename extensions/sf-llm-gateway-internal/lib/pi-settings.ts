@@ -28,7 +28,6 @@ import {
   asOptionalString,
 } from "./config.ts";
 
-const ENABLED_MODEL_PREFIX = ENABLED_MODEL_PATTERN.slice(0, -1);
 const LEGACY_ENABLED_MODEL_PREFIX_ANTHROPIC = LEGACY_ENABLED_MODEL_PATTERN_ANTHROPIC.slice(0, -1);
 
 /**
@@ -93,10 +92,11 @@ export function isExclusiveEnabledModelPattern(value: unknown): boolean {
 
 function isLegacyGatewayModelPattern(pattern: string): boolean {
   if (isGatewayScopePattern(pattern)) return false;
-  return (
-    pattern.startsWith(ENABLED_MODEL_PREFIX) ||
-    pattern.startsWith(LEGACY_ENABLED_MODEL_PREFIX_ANTHROPIC)
-  );
+  // Only the retired `-anthropic` sub-provider wildcard is truly legacy.
+  // Specific current-provider entries like `sf-llm-gateway-internal/gpt-5.5`
+  // are valid user-authored allow-list patterns and must be preserved as-is
+  // — collapsing them to the wildcard erases the user's intentional scope.
+  return pattern.startsWith(LEGACY_ENABLED_MODEL_PREFIX_ANTHROPIC);
 }
 
 /**

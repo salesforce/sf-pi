@@ -331,6 +331,15 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
   // reads global saved config first, then env vars as automation fallback.
   registerProviderIfConfigured(pi, getBetaOverrides(), getBetaExtras());
 
+  // Upgrade the bootstrap catalog with the previous run's discovered
+  // catalog (when available) BEFORE Pi resolves `enabledModels` patterns.
+  // Without this, `sf-llm-gateway-internal/*` and explicit allow-list
+  // entries like `sf-llm-gateway-internal/gpt-5.5` resolve against just
+  // the 4-model bootstrap list and miss every other discovered model for
+  // the rest of the session. The session_start handler re-runs this with
+  // project-aware cwd; the deferred network discovery refreshes both.
+  registerCachedDiscoveryIfAvailable(pi, getBetaOverrides(), getBetaExtras());
+
   // Contribute to the aggregated `/sf-pi doctor` view. The standalone
   // `/sf-llm-gateway-internal doctor` command keeps using
   // fetchGatewayDoctorReport directly for backwards-compat rendering.

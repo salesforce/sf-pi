@@ -174,9 +174,13 @@ export function registerCachedDiscoveryIfAvailable(
   pi: ExtensionAPI,
   runtimeBetaOverrides: Set<string> | null,
   runtimeExtraBetas: Set<string>,
-  cwd: string,
+  cwd?: string,
 ): boolean {
-  const config = getGatewayConfig(cwd);
+  // Mirror `registerProviderIfConfigured`'s factory-fallback pattern: when no
+  // cwd is supplied (extension factory time, before session_start), read the
+  // global-only saved config / env vars. session_start re-runs this with the
+  // session's project-aware cwd to pick up any project overrides.
+  const config = cwd ? getGatewayConfig(cwd) : getGlobalOnlyGatewayConfig();
   if (!config.enabled || !config.baseUrl) return false;
 
   const cache = readDiscoveryCache();
