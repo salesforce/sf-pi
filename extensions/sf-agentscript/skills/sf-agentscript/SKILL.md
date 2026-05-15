@@ -247,13 +247,116 @@ traces/<planId>.json # full PlannerResponse per turn (auto-fetched on send)
 `agentscript_preview cleanup older_than_days=N` removes session dirs older
 than N days. Use `dry_run=true` to preview the deletion.
 
-## Mutable seeds and the 2026-04 workaround
+## Trace files
 
-Pass mutable seeds via `context_variables` on `agent.send_message`
-**not** at session creation. The platform regression that landed
-2026-04 silently drops session-level state seeds; per-message seeding is
-the live workaround. Our normalizer preserves this field (no
-`stripUnrecognizedFields`).
+Every `agentscript_eval action='run'` produces per-turn trace docs at
+`<run_dir>/traces/<planId>.json` (when `traces_mode != 'off'`). Two
+sources contribute, and they're merged under the same
+`${sessionId}::${planId}` key:
+
+| Source                                                                                | Shape                                                                                                                                                                                                                                         | Coverage                                                                                                                                               | When it works                                                                                                                                                                                                             |
+| ------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Synthesized from inline eval data** (default)                                       | `{source: 'synthesized-from-eval-api', plan: [UserInputStep, LLMExecutionStep[], FunctionStep[], VariableUpdateStep[], ErrorStep[], PlannerResponseStep], topic, agentResponse, latency, executionHistory, stateVariables, message, notes[]}` | LLM prompt+response, action invocations, variable diffs (across turns), errors, final agent message + topic. ~80–90% of what the live trace gives you. | Always. Built deterministically from `lastExecution` + `sessionContext` + `sessionProperties` in the eval response.                                                                                                       |
+| **Live-fetched** via `GET /einstein/ai-agent/v1.1/preview/sessions/{sid}/plans/{pid}` | Full `PlannerResponse` with explicit step timeline including `UpdateTopicStep`, `NodeEntryStateStep`, `ReasoningStep`, etc.                                                                                                                   | Everything above plus the explicit step ordering.                                                                                                      | Rare for eval-spawned sessions — the eval API closes its sessions immediately, so the trace endpoint typically 404s with `Session not found`. Reachable for `agentscript_preview action='start' agent_file=...` sessions. |
+
+The orchestrator runs synthesis unconditionally and overlays the live
+fetch when it succeeds. `metadata.json` records both counts:
+`traces_synthesized` and `traces_live_fetched`. Reading the synthesized
+trace shape is identical to reading a live trace for the fields above
+— walk `plan[]`, switch on `type`. The `notes[]` field surfaces caveats
+in natural language so an LLM consumer knows what's reconstructed vs.
+live without re-parsing the source.
+
+**Why field paths matter**: `planId` lives at
+`planner_response.sessionProperties.planId` for the current eval API
+response shape — NOT at `lastExecution.message.planId`. Earlier code
+(and the upstream Python harness) read the wrong path and silently
+fetched zero traces per run. `lib/eval/trace-client.ts` reads the
+correct path with a fallback for the older shape.
+
+## Injecting deterministic state (`context_variables`)
+
+Both the eval API path and the live preview path accept the same
+`context_variables` shape — use it to bypass auth gates, pre-seed identity,
+or reproduce a known-good session state. The `sf agent test` / `sf agent
+preview` CLI surfaces don't expose this field; this plugin does.
+
+**Wire shape (identical for both surfaces):**
+
+```json
+[
+  { "name": "verified_check", "type": "Text", "value": "true" },
+  { "name": "RoutableId", "type": "Text", "value": "0Mwbb00000ABCDEF" }
+]
+```
+
+`type` defaults to `"Text"` when omitted. Numbers and booleans are
+stringified internally.
+
+**Eval spec — attach to every `agent.send_message` step:**
+
+```json
+{
+  "type": "agent.send_message",
+  "id": "turn1",
+  "session_id": "$.outputs[0].session_id",
+  "utterance": "I need a payment link",
+  "context_variables": [{ "name": "verified_check", "type": "Text", "value": "true" }]
+}
+```
+
+**Preview — pass on `agentscript_preview action='send'`:**
+
+```
+agentscript_preview {
+  action: "send",
+  agent_name: "Billing_Bot",
+  session_id: "...",
+  message: "I need a payment link",
+  context_variables: [{ name: "verified_check", value: "true" }]
+}
+```
+
+**Why per-message and not on session start:** the platform regression that
+landed 2026-04 silently drops session-level state seeds. Per-message
+seeding is the live workaround. Our eval normalizer preserves
+`context_variables` on `agent.send_message` (no `stripUnrecognizedFields`)
+and the preview client wires it through to the SFAP `/messages` body.
+
+## Generating a starter regression spec from a `.agent` file
+
+`agentscript_eval action='generate_spec'` reads a `.agent` file and emits
+a runnable JSON spec that exercises:
+
+- one routing test per non-start subagent (utterance synthesized from
+  the description; assertion on `lastExecution.topic`)
+- one invocation probe per top-level action with a `target:` (assertion
+  on `lastExecution.invokedActions`)
+- one curated off-topic guardrail probe
+- a curated safety / adversarial block (prompt injection, system-prompt
+  leak, unsolicited PII, regulated advice)
+
+All generated steps use `$active_*` placeholders so the runner resolves
+the live BotVersion at run time. Pass `context_variables` to attach a
+default auth-bypass / identity seed to every generated `send_message`.
+
+```
+agentscript_eval {
+  action: "generate_spec",
+  agent_file: "force-app/.../Billing_Bot.agent",
+  output_path: "specs/billing-smoke.json",
+  context_variables: [
+    { name: "verified_check", value: "true" },
+    { name: "RoutableId",     value: "0Mwbb00000ABCDEF" }
+  ]
+}
+```
+
+IDs are stable across re-generations (`subagent_<slug>`, `action_<slug>`,
+`safety_<probe>`) so re-running the generator after editing the agent
+produces a small, reviewable diff. Multi-turn scenarios are deliberately
+not generated — grow those by hand from the failure records of the first
+few runs.
 
 ## Compile-on-save
 

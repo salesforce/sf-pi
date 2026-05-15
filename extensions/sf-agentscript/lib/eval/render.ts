@@ -131,6 +131,11 @@ export function buildTurnSummary(
   const pr = stateResp.planner_response ?? {};
   const le = (pr.lastExecution ?? {}) as LastExecution;
   const sc = (pr.sessionContext ?? {}) as SessionContext;
+  // planId lives on planner_response.sessionProperties for the current
+  // eval-API shape; fall back to lastExecution.message.planId for the
+  // older shape. See trace-client.ts:collectPlanKeys for the same lookup.
+  const planIdForTurn =
+    (pr.sessionProperties as { planId?: string } | undefined)?.planId ?? le.message?.planId;
 
   const reply = sendOut.response;
   let agentResponse: string;
@@ -162,7 +167,7 @@ export function buildTurnSummary(
   // lastExecution.llmEvents + invokedActions + agentResponse.
   const digest = summarizeLastExecution(le, {
     userInput: digestUtterance,
-    planId: le.message?.planId,
+    planId: planIdForTurn,
   });
 
   return {
@@ -172,7 +177,7 @@ export function buildTurnSummary(
     topic: le.topic,
     invoked_actions: le.invokedActions,
     latency_ms: le.latency,
-    plan_id: le.message?.planId,
+    plan_id: planIdForTurn,
     turn_errors: Array.isArray(le.errors) ? le.errors : [],
     state_variables: pickStateVariables(sc, stateKeys),
     execution_history_last5: executionHistoryLast5(sc),

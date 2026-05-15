@@ -86,6 +86,19 @@ const Params = Type.Object({
         "Optional for action='send'. When true, capture the latest ApexLog produced during this turn.",
     }),
   ),
+  context_variables: Type.Optional(
+    Type.Array(
+      Type.Object({
+        name: Type.String(),
+        type: Type.Optional(Type.String()),
+        value: Type.Union([Type.String(), Type.Number(), Type.Boolean()]),
+      }),
+      {
+        description:
+          "Optional for action='send'. Deterministic state seeds for this turn (eval-spec context_variables shape). Use to bypass auth gates, pre-fill identity, or reproduce a known-good state. Per-message seeding is the live workaround for the 2026-04 regression that drops session-level state seeds.",
+      },
+    ),
+  ),
   plan_id: Type.Optional(
     Type.String({ description: "Required for action='trace'. Plan id to fetch." }),
   ),
@@ -112,6 +125,11 @@ interface ParamsAny {
   session_id?: string;
   message?: string;
   apex_debug?: boolean;
+  context_variables?: Array<{
+    name: string;
+    type?: string;
+    value: string | number | boolean;
+  }>;
   plan_id?: string;
   older_than_days?: number;
   dry_run?: boolean;
@@ -136,6 +154,7 @@ export function registerPreviewTool(pi: ExtensionAPI): void {
     promptGuidelines: [
       "action='start' — local-compiles the .agent file first; only hits /authoring/scripts on success. Returns session_id and the initial agent message.",
       "action='send' — POSTs one user utterance, fetches the planner trace per turn, returns a compact `digest` of every planner step (topic transitions, LLM calls, variable updates, tool invocations, errors), and writes everything to the session store. Full trace JSON lives at `trace_file` for deep dives.",
+      "action='send' context_variables — pass deterministic state seeds [{name, type?, value}] to bypass auth gates, pre-fill identity, or reproduce a known-good session state. Use the same shape as eval-spec context_variables; default type is 'Text'. Per-message seeding is the live workaround for the 2026-04 regression that drops session-level seeds.",
       "action='end' — finalizes metadata (sets endTime).",
       "action='trace' — ad-hoc trace fetch by (session_id, plan_id) when you need to revisit a specific turn.",
       "action='cleanup' — removes session dirs older than older_than_days (default 30). Use dry_run=true to see what would be deleted.",
@@ -372,6 +391,7 @@ async function actionSend(
       sessionId: input.session_id,
       message: input.message,
       apexDebug: input.apex_debug,
+      contextVariables: input.context_variables,
     });
     stream("Trace captured");
 

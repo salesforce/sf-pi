@@ -19,7 +19,8 @@
  * Auth: @salesforce/core Connection (no subprocess).
  */
 
-import { readFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
 import { Type } from "typebox";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { connForAgentApi } from "./agent-api-auth.ts";
@@ -33,7 +34,10 @@ import {
 } from "./eval/orchestrator.ts";
 import { resolveActiveIds } from "./eval/active-ids.ts";
 import { fetchTrace } from "./eval/trace-client.ts";
-import { toolError, toolOk, type ToolError } from "./tool-types.ts";
+import { generateSpec } from "./eval/spec-generator.ts";
+import { inspectFile } from "./inspect.ts";
+import { isAgentScriptFile } from "./file-classify.ts";
+import { safeResolveToolPath, toolError, toolOk, type ToolError } from "./tool-types.ts";
 import type { EvalSpec, FailureRecord, RunMetadata } from "./eval/types.ts";
 
 import { renderEvalCall, renderEvalRunResult, renderEvalGetFailureResult } from "./render/eval.ts";
@@ -54,10 +58,11 @@ const Params = Type.Object({
       Type.Literal("get_failure"),
       Type.Literal("trace"),
       Type.Literal("resolve_active"),
+      Type.Literal("generate_spec"),
     ],
     {
       description:
-        "run: full multi-turn regression. get_failure: drill into a previous run's failure. trace: fetch a planner trace by (session_id, plan_id). resolve_active: look up Active BotVersion ids for $active_* placeholders.",
+        "run: full multi-turn regression. get_failure: drill into a previous run's failure. trace: fetch a planner trace by (session_id, plan_id). resolve_active: look up Active BotVersion ids for $active_* placeholders. generate_spec: synthesize a starter eval spec from a `.agent` file (subagent routing + action probes + safety/guardrail block).",
     },
   ),
   target_org: Type.Optional(Type.String({ description: "sf CLI alias / username." })),
@@ -123,10 +128,68 @@ const Params = Type.Object({
   timeout_ms: Type.Optional(
     Type.Number({ minimum: 1000, description: "Optional for action='trace'. Default 60000." }),
   ),
+  // generate_spec
+  agent_file: Type.Optional(
+    Type.String({
+      description:
+        "Required for action='generate_spec'. Path to the `.agent` file to derive tests from.",
+    }),
+  ),
+  output_path: Type.Optional(
+    Type.String({
+      description:
+        "Optional for action='generate_spec'. When set, write the generated spec to this path (relative paths resolve against cwd). Default: return inline.",
+    }),
+  ),
+  context_variables: Type.Optional(
+    Type.Array(
+      Type.Object({
+        name: Type.String(),
+        type: Type.Optional(Type.String()),
+        value: Type.Union([Type.String(), Type.Number(), Type.Boolean()]),
+      }),
+      {
+        description:
+          "Optional for action='generate_spec'. Default context_variables attached to every generated send_message step (eval-spec shape: [{name, type?, value}]). Use for auth-bypass seeds (verified_check, RoutableId, etc.) so generated tests reach the post-auth flows.",
+      },
+    ),
+  ),
+  include_subagent_tests: Type.Optional(
+    Type.Boolean({
+      description:
+        "Optional for action='generate_spec'. Include one routing test per non-start subagent. Default true.",
+    }),
+  ),
+  include_action_tests: Type.Optional(
+    Type.Boolean({
+      description:
+        "Optional for action='generate_spec'. Include one invocation probe per top-level action with a target. Default true.",
+    }),
+  ),
+  include_guardrail: Type.Optional(
+    Type.Boolean({
+      description:
+        "Optional for action='generate_spec'. Include the curated off-topic guardrail probe. Default true.",
+    }),
+  ),
+  include_safety_probes: Type.Optional(
+    Type.Boolean({
+      description:
+        "Optional for action='generate_spec'. Include the curated safety / adversarial probe block. Default true.",
+    }),
+  ),
+  max_functional_tests: Type.Optional(
+    Type.Number({
+      minimum: 1,
+      maximum: 200,
+      description:
+        "Optional for action='generate_spec'. Cap the subagent + action test count. Default 25.",
+    }),
+  ),
 });
 
 interface ParamsAny {
-  action: "run" | "get_failure" | "trace" | "resolve_active";
+  action: "run" | "get_failure" | "trace" | "resolve_active" | "generate_spec";
   target_org?: string;
   spec_path?: string;
   spec?: unknown;
@@ -140,6 +203,18 @@ interface ParamsAny {
   session_id?: string;
   plan_id?: string;
   timeout_ms?: number;
+  agent_file?: string;
+  output_path?: string;
+  context_variables?: Array<{
+    name: string;
+    type?: string;
+    value: string | number | boolean;
+  }>;
+  include_subagent_tests?: boolean;
+  include_action_tests?: boolean;
+  include_guardrail?: boolean;
+  include_safety_probes?: boolean;
+  max_functional_tests?: number;
 }
 
 function checkRequired(p: ParamsAny): { ok: true } | { ok: false; error: string } {
@@ -162,6 +237,9 @@ function checkRequired(p: ParamsAny): { ok: true } | { ok: false; error: string 
     case "resolve_active":
       if (!p.agent_api_name)
         return { ok: false, error: "action='resolve_active' requires agent_api_name." };
+      return { ok: true };
+    case "generate_spec":
+      if (!p.agent_file) return { ok: false, error: "action='generate_spec' requires agent_file." };
       return { ok: true };
   }
 }
@@ -204,6 +282,7 @@ export function registerEvalTool(pi: ExtensionAPI): void {
       "action='get_failure' — after a run returned a summary (large run with failures_truncated=true), drill into one test_id or all failures by run_id.",
       "action='trace' — fetch a planner trace for one (session_id, plan_id). Use when inline llmEvents isn't enough.",
       "action='resolve_active' — look up the Active BotVersion + planner ids by agent_api_name. Bake into a spec or verify which version a run hits.",
+      "action='generate_spec' — synthesize a starter spec from a `.agent` file. Pass context_variables for auth-bypass seeds. Pass output_path to write the spec; otherwise it is returned inline. Chain into action='run' once you've reviewed it.",
       "Errors carry recover_via when applicable — chain the next tool call directly without parsing prose.",
     ],
     parameters: Params,
@@ -220,6 +299,8 @@ export function registerEvalTool(pi: ExtensionAPI): void {
           return await actionTrace(p);
         case "resolve_active":
           return await actionResolveActive(p);
+        case "generate_spec":
+          return await actionGenerateSpec(ctx, p);
       }
     },
   });
@@ -499,4 +580,105 @@ async function actionResolveActive(input: ParamsAny): Promise<{
   } catch (err) {
     return toolError(err instanceof Error ? err.message : String(err));
   }
+}
+
+// -------------------------------------------------------------------------------------------------
+// action = generate_spec
+//
+// Read a `.agent` file via the existing inspect machinery, derive a starter
+// regression spec covering subagent routing + action probes + safety/guardrail
+// rows, optionally write it to disk. The output spec uses `$active_*`
+// placeholders so it runs against whichever BotVersion is Active at run time.
+// -------------------------------------------------------------------------------------------------
+
+async function actionGenerateSpec(
+  ctx: ExtensionContext,
+  input: ParamsAny,
+): Promise<{
+  content: { type: "text"; text: string }[];
+  details: Record<string, unknown> | ToolError;
+}> {
+  // Resolve + validate the .agent path before doing any work.
+  const resolved = safeResolveToolPath(input.agent_file, ctx.cwd);
+  if ("absPath" in resolved === false) return resolved;
+  const agentFile = resolved.absPath;
+  if (!isAgentScriptFile(agentFile)) {
+    return toolError(`Not an Agent Script file: ${agentFile}`, "Pass a path ending in `.agent`.");
+  }
+
+  // Inspect locally; refuse if the file has parse errors (the structural
+  // surface is incomplete and would emit nonsense).
+  const inspect = await inspectFile(agentFile);
+  if (!inspect.ok) {
+    return toolError(
+      `inspect failed: ${inspect.reason ?? "unknown"}${inspect.reason_detail ? ` — ${inspect.reason_detail}` : ""}`,
+      "Run agentscript_compile to see and fix the underlying issue.",
+      { tool: "agentscript_compile", params: { path: agentFile } },
+    );
+  }
+  if (inspect.has_parse_errors) {
+    return toolError(
+      `Agent has ${inspect.parse_error_count} severity-1 parse error(s). The structural surface is incomplete; refusing to generate a spec from it.`,
+      "Fix the parse errors first via agentscript_compile / agentscript_mutate.",
+      { tool: "agentscript_compile", params: { path: agentFile } },
+    );
+  }
+
+  let result;
+  try {
+    result = generateSpec({
+      inspect,
+      contextVariables: input.context_variables,
+      includeSubagentTests: input.include_subagent_tests,
+      includeActionTests: input.include_action_tests,
+      includeGuardrail: input.include_guardrail,
+      includeSafetyProbes: input.include_safety_probes,
+      maxFunctionalTests: input.max_functional_tests,
+    });
+  } catch (err) {
+    return toolError(err instanceof Error ? err.message : String(err));
+  }
+
+  // Persist when output_path is set. Resolve relative to cwd; create parents.
+  let writtenPath: string | undefined;
+  if (input.output_path) {
+    const abs = path.isAbsolute(input.output_path)
+      ? input.output_path
+      : path.resolve(ctx.cwd, input.output_path);
+    try {
+      await mkdir(path.dirname(abs), { recursive: true });
+      await writeFile(abs, JSON.stringify(result.spec, null, 2) + "\n", "utf-8");
+      writtenPath = abs;
+    } catch (err) {
+      return toolError(
+        `Failed to write generated spec to ${abs}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  }
+
+  const summary = result.summary;
+  const totals = `${summary.total_tests} test(s): ${summary.subagent_tests} subagent, ${summary.action_tests} action, ${summary.guardrail_tests} guardrail, ${summary.safety_tests} safety`;
+  const head = `✨ spec generated for ${path.basename(agentFile)}\n${totals}${writtenPath ? `\nWritten: ${writtenPath}` : ""}`;
+
+  // Hand back the next-step hint so the LLM chains directly into a run.
+  // We don't execute it here so the user can edit the spec first if they
+  // want to refine wording or add multi-turn scenarios.
+  const nextStep = writtenPath
+    ? `\n\n→ Next: agentscript_eval action='run' spec_path='${writtenPath}'`
+    : "";
+
+  return {
+    content: [
+      {
+        type: "text",
+        text: head + nextStep + "\n\n" + JSON.stringify({ summary, spec: result.spec }, null, 2),
+      },
+    ],
+    details: {
+      ok: true,
+      agent_file: agentFile,
+      output_path: writtenPath,
+      summary,
+    },
+  };
 }

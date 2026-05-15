@@ -143,7 +143,10 @@ extensions/sf-agentscript/
       orchestrator.ts       ← implementation module
       persist.ts            ← implementation module
       render.ts             ← implementation module
+      safety-probes.ts      ← implementation module
       sfap.ts               ← implementation module
+      spec-generator.ts     ← implementation module
+      synthesize-trace.ts   ← implementation module
       threshold.ts          ← implementation module
       trace-client.ts       ← implementation module
       types.ts              ← implementation module
@@ -221,8 +224,11 @@ extensions/sf-agentscript/
     diagnose-agent-user.test.ts← unit / smoke test
     diagnostics.test.ts     ← unit / smoke test
     eval-normalize.test.ts  ← unit / smoke test
+    eval-plan-id-path.test.ts← unit / smoke test
     eval-sfap.test.ts       ← unit / smoke test
+    eval-spec-generator.test.ts← unit / smoke test
     eval-state-pairing.test.ts← unit / smoke test
+    eval-synthesize-trace.test.ts← unit / smoke test
     eval-utterance-index.test.ts← unit / smoke test
     feedback.test.ts        ← unit / smoke test
     file-classify.test.ts   ← unit / smoke test
@@ -240,6 +246,7 @@ extensions/sf-agentscript/
     preview-agent-api.test.ts← unit / smoke test
     preview-agent-version-resolver.test.ts← unit / smoke test
     preview-api-name-preflight.test.ts← unit / smoke test
+    preview-context-variables.test.ts← unit / smoke test
     preview-host-pinning.test.ts← unit / smoke test
     preview-session-store.test.ts← unit / smoke test
     provision-agent-user.test.ts← unit / smoke test

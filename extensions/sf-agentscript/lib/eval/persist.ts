@@ -136,6 +136,11 @@ export async function writeRun(input: PersistInput): Promise<void> {
 
       const utteranceFromResponse = typeof o.utterance === "string" ? o.utterance : undefined;
       const utteranceFromSpec = utteranceIndex.get(`${tid}::${turnId}`);
+      // planId lives on sessionProperties for the current eval-API shape;
+      // fall back to lastExecution.message.planId for the older shape.
+      // See trace-client.ts:collectPlanKeys for the same fallback.
+      const planIdForTurn =
+        (pr?.sessionProperties as { planId?: string } | undefined)?.planId ?? le.message?.planId;
       transcriptLines.push(
         JSON.stringify({
           test_id: tid,
@@ -145,7 +150,7 @@ export async function writeRun(input: PersistInput): Promise<void> {
           topic: le.topic,
           invoked_actions: le.invokedActions,
           latency_ms: le.latency,
-          plan_id: le.message?.planId,
+          plan_id: planIdForTurn,
           errors: le.errors ?? [],
           state_variables: sc.stateVariables ?? {},
         }),

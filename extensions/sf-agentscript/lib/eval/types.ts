@@ -221,7 +221,22 @@ export interface RunMetadata {
   batches: number;
   concurrency: number;
   traces_mode: TracesMode;
+  /** Total trace docs persisted (synthesized ∪ live, after dedupe). */
   traces_fetched: number;
+  /**
+   * Trace docs synthesized from inline eval-API data (llmEvents +
+   * invokedActions + sessionContext + sessionProperties). Always populated
+   * for eval-spawned sessions because the live trace endpoint 404s after
+   * the eval API closes the session. See `lib/eval/synthesize-trace.ts`.
+   */
+  traces_synthesized?: number;
+  /**
+   * Trace docs fetched live from the `/v1.1/preview/sessions/{sid}/plans/{pid}`
+   * endpoint. Almost always 0 for eval-spawned runs (sessions are
+   * ephemeral); kept for forward compatibility and for runs that
+   * preserve sessions long enough to be reachable.
+   */
+  traces_live_fetched?: number;
   totals: Omit<RunTotals, "latencies">;
   latency_summary: LatencySummary;
 }

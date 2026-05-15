@@ -142,9 +142,20 @@ export function collectPlanKeys(
     for (const o of outputs) {
       if (o.type !== "agent.get_state") continue;
       const resp = (o.response ?? {}) as {
-        planner_response?: { lastExecution?: { message?: { planId?: string } } };
+        planner_response?: {
+          sessionProperties?: { planId?: string };
+          lastExecution?: { message?: { planId?: string } };
+        };
       };
-      const pid = resp.planner_response?.lastExecution?.message?.planId;
+      // The planId lives on `sessionProperties.planId` for the eval API's
+      // current response shape (verified against a live fixture against the
+      // platform's 2026-05 build). The `lastExecution.message.planId` path
+      // is empty for `InformResponseMessage` types (the common case) —
+      // earlier versions of this code (and the upstream Python harness) read
+      // there first and silently produced 0 trace fetches per run.
+      const pid =
+        resp.planner_response?.sessionProperties?.planId ??
+        resp.planner_response?.lastExecution?.message?.planId;
       if (typeof pid === "string" && pid) {
         out.push({ testId: String(test.id ?? "?"), sessionId: sid, planId: pid });
       }

@@ -131,6 +131,31 @@ export interface PreviewSendOptions {
   message: string;
   /** When true, fetch + return Apex debug log captured during this turn. */
   apexDebug?: boolean;
+  /**
+   * Per-turn deterministic state seeds. Same shape as the eval API's
+   * `context_variables` on `agent.send_message` steps so users can
+   * copy-paste between eval specs and live preview.
+   *
+   * Translated to the SFAP wire field `variables` on the way out.
+   * Per-message seeding (rather than session-level) is the live
+   * workaround for the 2026-04 platform regression that drops
+   * session-level state seeds. The eval-API path preserves the same
+   * field via `lib/eval/normalize.ts` (no `stripUnrecognizedFields`).
+   */
+  contextVariables?: ContextVariable[];
+}
+
+/**
+ * Deterministic state seed sent with a single user turn. The SFAP
+ * /messages endpoint accepts `value` as a string (other shapes are
+ * coerced server-side); we keep the type permissive so callers can
+ * also pass numbers or booleans without manual stringification.
+ */
+export interface ContextVariable {
+  name: string;
+  /** SFAP variable type. Default 'Text'. */
+  type?: string;
+  value: string | number | boolean;
 }
 
 export interface PreviewSendResult {
@@ -349,7 +374,7 @@ export async function sendMessage(opts: PreviewSendOptions): Promise<PreviewSend
     headers: { "x-client-name": "sf-pi", "content-type": "application/json" },
     body: {
       message: { sequenceId: Date.now(), type: "Text", text: opts.message },
-      variables: [],
+      variables: normalizeContextVariables(opts.contextVariables),
       ...(opts.apexDebug ? { apexDebugging: true } : {}),
     },
     // Pin to the SFAP host that served `start` (sessions are shard-local).
@@ -526,6 +551,28 @@ export async function endPreview(opts: PreviewEndOptions): Promise<PreviewEndRes
 
 function soqlEscape(s: string): string {
   return s.replace(/'/g, "''");
+}
+
+/**
+ * Normalize the LLM-friendly `context_variables` shape to the SFAP wire
+ * shape expected by the /v1.1/preview/sessions/{sid}/messages endpoint.
+ *
+ * - default `type` to 'Text' when omitted (matches eval-spec convention)
+ * - stringify primitive values; the SFAP variables array is string-typed
+ *   on the wire, mirroring how the eval API serializes context_variables
+ *
+ * Returns [] when `vars` is empty/undefined so the body shape is unchanged
+ * for callers that don't pass any seeds.
+ */
+export function normalizeContextVariables(
+  vars: ContextVariable[] | undefined,
+): Array<{ name: string; type: string; value: string }> {
+  if (!vars || vars.length === 0) return [];
+  return vars.map((v) => ({
+    name: v.name,
+    type: v.type ?? "Text",
+    value: typeof v.value === "string" ? v.value : String(v.value),
+  }));
 }
 
 export function computePublishedBypassUser(bot?: {

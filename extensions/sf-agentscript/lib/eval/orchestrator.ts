@@ -24,6 +24,7 @@ import path from "node:path";
 import type { Connection } from "@salesforce/core";
 import { callEval, type EvalApiHeaders, splitIntoBatches } from "./eval-client.ts";
 import { collectPlanKeys, fetchTracesConcurrent, type PlanKey } from "./trace-client.ts";
+import { synthesizeTracesFromMerged } from "./synthesize-trace.ts";
 import { deepDecode } from "./decode.ts";
 import { latencySummary, summarize, type BuildOptions } from "./render.ts";
 import { newRunId, resolveRunDir, writeRun } from "./persist.ts";
@@ -170,22 +171,80 @@ export async function runEval(opts: RunEvalOptions): Promise<RunEvalResult> {
   const mergedRaw: EvalApiResponse = { results: results.flatMap((r) => r ?? []) };
   const merged = deepDecode(mergedRaw);
 
-  // 5. Trace fetch
-  let traces = new Map<string, unknown | null>();
+  // 5. Trace surface — synthesize-then-merge.
+  //
+  // The eval API closes its sessions immediately, so the live
+  // `/v1.1/preview/sessions/{sid}/plans/{pid}` endpoint 404s with
+  // `Session not found` for every (sid, pid) the eval API spawns.
+  // BUT: the eval response already contains the trace data inline
+  // (llmEvents + invokedActions + errors + sessionContext +
+  // sessionProperties). We synthesize per-turn trace docs from that
+  // inline data unconditionally, then attempt the live fetch on top —
+  // when a live trace is reachable (rare in practice, but valuable
+  // when sessions happen to outlive the request), it overwrites the
+  // synthesized entry.
+  const traces = new Map<string, unknown | null>();
+  let liveFetchedCount = 0;
+  let synthesizedCount = 0;
   if (tracesMode !== "off") {
+    // Build the spec utterance index up-front so synthesized UserInputSteps
+    // carry the user's actual input. The persistence step builds the same
+    // index later for transcript.jsonl; we duplicate the cheap walk here
+    // rather than restructure ordering.
+    const utteranceIndex = new Map<string, string>();
+    for (const test of spec.tests ?? []) {
+      const tid = String(test.id ?? "?");
+      for (const step of test.steps ?? []) {
+        if (step.type === "agent.send_message" && typeof step.utterance === "string") {
+          utteranceIndex.set(`${tid}::${step.id}`, step.utterance);
+        }
+      }
+    }
+
+    // Synthesize for every test in scope, applying the same
+    // failed-only filter as the live fetch when traces_mode='failed'.
+    const inScopeIds = new Set<string>();
+    for (const test of merged.results ?? []) {
+      if (tracesMode === "failed") {
+        const evals = test.evaluation_results ?? [];
+        const errs = test.errors ?? [];
+        const anyFail = evals.some((e) => e.is_pass === false) || errs.length > 0;
+        if (!anyFail) continue;
+      }
+      if (test.id !== undefined) inScopeIds.add(String(test.id));
+    }
+    if (inScopeIds.size > 0) {
+      const filtered = {
+        results: (merged.results ?? []).filter((t) => inScopeIds.has(String(t.id ?? ""))),
+      };
+      const synthesized = synthesizeTracesFromMerged(filtered, { utteranceIndex });
+      synthesizedCount = synthesized.size;
+      for (const [k, v] of synthesized.entries()) traces.set(k, v);
+      log(`Synthesized ${synthesizedCount} trace(s) from inline eval data (mode=${tracesMode}).`);
+    }
+
+    // Best-effort live fetch — overwrites synthesized when the planner
+    // actually returns data. Almost always 404s for eval-spawned sessions,
+    // but harmless and cheap; preserves the original code path for users
+    // running against orgs where sessions outlive the request.
     const planKeys: PlanKey[] = collectPlanKeys(merged, { onlyFailed: tracesMode === "failed" });
     const unique = new Set(planKeys.map((k) => `${k.sessionId}::${k.planId}`)).size;
     if (planKeys.length > 0) {
       log(
-        `Fetching ${unique} planner trace(s) (mode=${tracesMode}, concurrency=${Math.min(unique, concurrency)})…`,
+        `Attempting ${unique} live trace fetch(es) (best-effort — eval sessions are typically GC'd by the time we get here)…`,
       );
-      traces = await fetchTracesConcurrent(opts.traceConn ?? opts.conn, planKeys, {
+      const live = await fetchTracesConcurrent(opts.traceConn ?? opts.conn, planKeys, {
         concurrency,
         log,
       });
-      const ok = Array.from(traces.values()).filter((v) => v != null).length;
-      if (ok !== unique) {
-        log(`  trace fetch: ${ok}/${unique} succeeded (missing planner data is non-fatal)`);
+      for (const [k, body] of live.entries()) {
+        if (body != null) {
+          traces.set(k, body);
+          liveFetchedCount++;
+        }
+      }
+      if (liveFetchedCount > 0) {
+        log(`  live fetch: ${liveFetchedCount}/${unique} succeeded; merged with synthesized data.`);
       }
     }
   }
@@ -232,6 +291,8 @@ export async function runEval(opts: RunEvalOptions): Promise<RunEvalResult> {
     concurrency,
     traces_mode: tracesMode,
     traces_fetched: Array.from(traces.values()).filter((v) => v != null).length,
+    traces_synthesized: synthesizedCount,
+    traces_live_fetched: liveFetchedCount,
     totals: {
       tests: totals.tests,
       test_pass: totals.test_pass,
