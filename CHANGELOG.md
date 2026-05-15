@@ -481,6 +481,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.75.2](https://github.com/salesforce/sf-pi/compare/v0.75.1...v0.75.2) (2026-05-15)
+
+
+### Bug Fixes
+
+* **sf-agentscript:** generate_spec emits the correct bot_response_rating wire shape ([d5f27d5](https://github.com/salesforce/sf-pi/commit/d5f27d5b2196d266fbbadfa8b8f95dd92921f2b8))
+
 ## [0.75.1](https://github.com/salesforce/sf-pi/compare/v0.75.0...v0.75.1) (2026-05-15)
 
 
