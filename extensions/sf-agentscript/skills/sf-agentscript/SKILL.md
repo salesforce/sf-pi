@@ -437,7 +437,7 @@ actions:` use `@utils.transition to @subagent.X`. Inside
     `transition to @subagent.X`. Mix them up and the planner ignores the
     transition silently.
 
-### Common WRONG/RIGHT pairs
+### The four mistakes that bite hardest
 
 ```yaml
 # WRONG — bare transition inside a reasoning action
@@ -487,12 +487,116 @@ Run the compile when the answer to any of the above is unclear, when
 you're about to publish. The compiler is ~10ms; it's cheaper than
 guessing.
 
-For the architecture-level review (FSM shape, instruction resolution,
-safety) the upstream `developing-agentforce` skill carries a 100-pt
-rubric across seven categories: Structure & Syntax, Safety &
-Responsible AI, Deterministic Logic, Instruction Resolution, FSM
-Architecture, Action Configuration, Deployment Readiness. Treat it as
-a review checklist to run before activate.
+## Review pass before publish
+
+The pre-flight checklist above catches mechanical mistakes. The review
+below catches **architectural** mistakes — the kind that compile clean
+and pass eval but blow up in front of real users. Read each block of
+the `.agent` and ask the relevant questions; treat any `❌` as a fix
+location before activate.
+
+Seven things to look at — not a score, just questions.
+
+### Shape and structure
+
+- Are all required blocks present and ordered correctly?
+- Does `config:` carry the right values for the agent type (employee vs
+  service)?
+- Does `system:` have all three of `messages.welcome`,
+  `messages.error`, and `instructions:`?
+- Does every named identifier match its file/folder name?
+- Is the file emit-clean (run `agentscript_compile action='format'`)?
+
+### Safety and responsibility
+
+- Does the agent disclose what it is to users? No impersonation of a
+  human or a different brand.
+- Are there clear escalation paths for sensitive topics (medical,
+  financial, legal, harm)?
+- Is data handling appropriate for the channel — no unsolicited PII
+  capture, no echoing back card numbers / SSNs?
+- Are scope boundaries explicit? An off-topic utterance should redirect,
+  not improvise.
+- Does the system prompt resist obvious prompt-injection attempts? The
+  spec generator's safety probes (prompt-injection / system-prompt-leak
+  / off-topic / regulated advice) are a fast smoke test.
+
+### Deterministic flow
+
+- Does every subagent have at least one transition out? An orphan with
+  no exit traps the conversation.
+- Are security-gated actions guarded by `available when:` rather than
+  by hoping the LLM reads instructions correctly?
+- Are post-action checks at the **top** of `instructions: ->` (so they
+  fire on the loop-back), not buried at the bottom?
+- Does `start_agent` route somewhere on every utterance? A start_agent
+  that answers user questions itself is a dead-hub anti-pattern.
+
+### Instruction quality
+
+- Are instructions actionable ("invoke action.X when Y") rather than
+  vague ("help the customer")?
+- Procedural mode (`->`) where conditional logic is needed; literal
+  mode (`|`) for static text.
+- Variable interpolation (`{!@variables.X}`) where the response
+  depends on captured state.
+- No nested `if` blocks — use compound conditions or sequential flat
+  ifs (the parser tolerates nesting but the LLM frequently misreads it).
+
+### Subagent map
+
+- Is every subagent reachable from `start_agent` via at least one
+  transition path?
+- Does every subagent have a way back to the hub or to a terminal
+  state?
+- Are subagent `description:` fields specific enough that the router
+  LLM picks the right one? Vague descriptions are the #1 cause of
+  routing failures we see in eval runs.
+
+### Action wiring
+
+- Each top-level action declaration has a real `target:` (`flow://`,
+  `apex://`, `prompt://`) that resolves in the org — run
+  `agentscript_inspect action='check_targets'` before publish.
+- I/O schemas for non-trivial types use `object` +
+  `complex_data_type_name`. Bare `number` in action I/O fails at
+  publish (we covered this in the pre-flight); same applies to
+  `record`, `list`, etc.
+- Slot-filling (`...`) is used for inputs the user supplies
+  conversationally. Hard-coded inputs go in `with`.
+- Every action that captures data sets a variable in the immediately-
+  following `set:` so the value survives the turn.
+
+### Deployment readiness
+
+- For service agents: `default_agent_user` set, the user exists in the
+  org, and has the right system + custom permission sets. Run
+  `agentscript_lifecycle action='diagnose_agent_user'` to confirm.
+- `bundle-meta.xml` is present and well-formed.
+- The agent has been run end-to-end in `agentscript_preview` with
+  `mock_mode: 'Live Test'` so the actual flows / Apex classes /
+  prompt templates have been exercised, not just the planner.
+- An eval spec exists for the headline flows. New `.agent` files should
+  start with `agentscript_eval action='generate_spec'` to bootstrap one.
+
+### When this review fires
+
+The review is the layer between "compiles" and "production-ready". A
+good time to run it:
+
+- Before the first `agentscript_lifecycle action='publish'` on a new
+  agent.
+- After landing a behavioral change (new subagent, new action, new
+  instruction block).
+- When `agentscript_eval` keeps surfacing failures from the same root
+  cause (e.g. always-wrong topic) — the rubric question "are subagent
+  descriptions specific enough?" usually answers it.
+
+Nothing here is enforced today. The LLM applies the questions when
+reviewing a `.agent`. If we ever build a tool action for it (`inspect
+action='review'`), the deterministic categories above (shape,
+deployment, action-wiring) become structural checks; the rest stays
+LLM-judged.
 
 ## Compile-on-save
 

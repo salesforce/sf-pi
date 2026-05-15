@@ -113,12 +113,14 @@ Five non-obvious behaviors. Knowing them up front saves an hour of
 4. **15-char vs 18-char IDs.** `AiAgentSessionParticipant.ssot__ParticipantId__c`
    stores both formats inconsistently for the same record. When filtering
    by planner id, query both forms or use `LIKE 'ABC%'` on the prefix.
-5. **`findSessions` excludes preview/test runs.** Sessions created by
-   `agentscript_preview` and `agentscript_eval` write `AiAgentSession`
-   rows but no `AiAgentInteraction` rows; the canonical STDM workflow
-   filters them out by joining on Interaction. Empty result ≠ "agent
-   isn't being used"; it usually means "filter is too tight" or "you're
-   looking at preview-only sessions".
+5. **Preview / eval runs leak into Session but not Interaction.**
+   Sessions started by `agentscript_preview` or `agentscript_eval`
+   write a row to `AiAgentSession__dlm` but never produce a child
+   `AiAgentInteraction__dlm` row. If you want production traffic only,
+   `INNER JOIN` Interaction in your filter — it silently drops the
+   dev/test runs. If your query returns zero rows but the agent IS
+   being used, the cause is usually too-tight time window or
+   participant-id format mismatch (see quirk #4), not missing data.
 
 Plus the propagation lag: STDM is eventually consistent. Sessions land
 ~30 min – 2 h after they end (verified empirically). Don't query for
