@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.74.0-2026-05-15",
-  "latestVersion": "0.74.0",
+  "revision": "release-0.75.0-2026-05-15",
+  "latestVersion": "0.75.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.74.0",
+      "id": "release-0.75.0",
       "kind": "update",
-      "title": "sf-pi v0.74.0 — sf-agentscript: trace capture + spec generator + preview vars",
+      "title": "sf-pi v0.75.0 — sf-agentscript: $latest_* placeholders + version pin + inactive-version preflight",
       "publishedAt": "2026-05-15T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.74.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.75.0",
       "severity": "info",
-      "body": "sf-agentscript: trace capture + spec generator + preview vars"
+      "body": "sf-agentscript: $latest_* placeholders + version pin + inactive-version preflight"
     },
     {
       "id": "pi-0.73-required",
