@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.73.0-2026-05-14",
-  "latestVersion": "0.73.0",
+  "revision": "release-0.74.0-2026-05-15",
+  "latestVersion": "0.74.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.73.0",
+      "id": "release-0.74.0",
       "kind": "update",
-      "title": "sf-pi v0.73.0 — agentscript: harden local diagnostics and target preflight",
-      "publishedAt": "2026-05-14T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.73.0",
+      "title": "sf-pi v0.74.0 — sf-agentscript: trace capture + spec generator + preview vars",
+      "publishedAt": "2026-05-15T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.74.0",
       "severity": "info",
-      "body": "agentscript: harden local diagnostics and target preflight"
+      "body": "sf-agentscript: trace capture + spec generator + preview vars"
     },
     {
       "id": "pi-0.73-required",
