@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.75.2-2026-05-15",
-  "latestVersion": "0.75.2",
+  "revision": "release-0.75.3-2026-05-15",
+  "latestVersion": "0.75.3",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.75.2",
+      "id": "release-0.75.3",
       "kind": "update",
-      "title": "sf-pi v0.75.2 — sf-agentscript: generate_spec emits the correct bot_response_rating wire shape",
+      "title": "sf-pi v0.75.3 — sf-agentscript: preview preflight should accept Active version under newer Inactive ones",
       "publishedAt": "2026-05-15T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.75.2",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.75.3",
       "severity": "info",
-      "body": "sf-agentscript: generate_spec emits the correct bot_response_rating wire shape"
+      "body": "sf-agentscript: preview preflight should accept Active version under newer Inactive ones"
     },
     {
       "id": "pi-0.73-required",
