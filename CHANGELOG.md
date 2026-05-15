@@ -481,6 +481,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.75.1](https://github.com/salesforce/sf-pi/compare/v0.75.0...v0.75.1) (2026-05-15)
+
+
+### Bug Fixes
+
+* **sf-agentscript:** $active_bot_id alone shouldn't trigger active resolver ([fb80a15](https://github.com/salesforce/sf-pi/commit/fb80a1529160147725af9fbedc7e6ca9d6e9b665))
+
 ## [0.75.0](https://github.com/salesforce/sf-pi/compare/v0.74.0...v0.75.0) (2026-05-15)
 
 
