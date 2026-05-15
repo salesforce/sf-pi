@@ -214,6 +214,15 @@ export interface RunMetadata {
   agent_api_name?: string;
   bot_version_id?: string;
   planner_id?: string | null;
+  /** VersionNumber of the BotVersion the run actually exercised. */
+  bot_version_number?: number;
+  /**
+   * BotVersion.Status of the resolved version. 'Active' for the standard
+   * regression loop; non-Active when the run was triggered via
+   * `$latest_*` placeholders + `acknowledge_inactive_version=true` for
+   * the ship-then-test-then-activate flow.
+   */
+  bot_version_status?: string;
   started: string;
   completed: string;
   duration_ms: number;

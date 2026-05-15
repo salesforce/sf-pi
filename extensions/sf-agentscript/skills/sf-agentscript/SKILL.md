@@ -142,15 +142,43 @@ back to the generic `edit` tool.
 
 ### `agentscript_eval action=run` — placeholder ergonomics
 
-When the spec contains `$active_*`:
+Two placeholder families. Pick the one that matches your workflow:
+
+| Placeholder                                                      | Resolves to                              | When to use                                                                                                                                                                                                               |
+| ---------------------------------------------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `$active_bot_id`, `$active_bot_version_id`, `$active_planner_id` | Latest BotVersion with `Status='Active'` | The standard regression loop — you're testing what end users see.                                                                                                                                                         |
+| `$latest_bot_version_id`, `$latest_planner_id`                   | Latest BotVersion regardless of state    | The ship→eval→activate loop — you've published v12 but haven't activated it; regression-test it before flipping the switch. `$active_bot_id` works for both families because BotDefinition is per-agent, not per-version. |
+
+Rules that apply to both:
 
 - Pass `agent_api_name` on every call. Without it the run errors out
   with a `recover_via` pointing at `resolve_active`.
-- The Active version is what runs, not the latest — if you just
-  deployed a new version and didn't activate it, runs target the
-  previous Active version.
 - Run `action=resolve_active` first when in doubt; it returns the
-  `bot_version_id` and `version_number` so you can confirm.
+  `bot_version_id`, `version_number`, and `bot_version_status` so you
+  can confirm which version a run will actually hit.
+
+Inactive-version safety net:
+
+- When `$latest_*` resolves to a non-Active version, the run **refuses
+  to start** and returns a structured error pointing at
+  `acknowledge_inactive_version=true`. Pass that flag only when you've
+  deliberately chosen to test the non-production version (the ship loop
+  above). Catches the "I thought v12 was Active but it's still v11"
+  foot-gun.
+- `metadata.json` records the resolved `bot_version_number` and
+  `bot_version_status` so the run is auditable against the actual
+  BotVersion exercised.
+
+Specific-version pinning (when `$latest_*` won't do):
+
+- `action=resolve_active version=12` returns ids for VersionNumber=12
+  regardless of state. Bake the returned `bot_version_id` and
+  `planner_id` into the spec as plain strings — there's deliberately
+  no `$version_<N>_*` placeholder so re-running the spec after a
+  republish doesn't silently pick up a different version.
+- `action=resolve_active status='any'` returns the latest version
+  regardless of state — same lookup as `$latest_*`, exposed as a
+  diagnostic.
 
 ### Connection caching
 

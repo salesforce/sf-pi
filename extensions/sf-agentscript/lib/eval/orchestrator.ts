@@ -30,8 +30,8 @@ import { latencySummary, summarize, type BuildOptions } from "./render.ts";
 import { newRunId, resolveRunDir, writeRun } from "./persist.ts";
 import { normalizeSpec } from "./normalize.ts";
 import {
-  resolveActiveIds,
-  specHasActivePlaceholders,
+  detectPlaceholderUsage,
+  resolveAgentIds,
   substitutePlaceholders,
   type ResolvedAgentIds,
 } from "./active-ids.ts";
@@ -62,6 +62,16 @@ export interface RunEvalOptions {
   agentApiName?: string;
   /** Trace-fetch policy. Default `failed` (fetch traces for failing tests only). */
   tracesMode?: TracesMode;
+  /**
+   * Suppress the inactive-version preflight when `$latest_*` placeholders
+   * resolve to a non-Active BotVersion. Set to `true` only when you've
+   * deliberately chosen to regression-test an Inactive / InDevelopment
+   * version (the "ship → eval → activate" loop). Default `false` — the
+   * orchestrator throws a structured error when an inactive version is
+   * resolved unintentionally so a typo can't silently produce green
+   * results against the wrong version.
+   */
+  acknowledgeInactiveVersion?: boolean;
   /** Max parallel batch POSTs and trace GETs. Default 8. */
   concurrency?: number;
   /** Max chars of llmEvents.prompt_content shown per turn. Default 600. */
@@ -105,22 +115,52 @@ export async function runEval(opts: RunEvalOptions): Promise<RunEvalResult> {
   const tracesMode: TracesMode = opts.tracesMode ?? "failed";
   const runId = opts.runId ?? newRunId(startedAt);
 
-  // 1. Resolve $active_* placeholders + apply spec normalization
+  // 1. Resolve $active_* / $latest_* placeholders + apply spec normalization
   let spec = opts.spec;
   let resolvedIds: ResolvedAgentIds | null = null;
-  if (specHasActivePlaceholders(spec)) {
+  let latestIds: ResolvedAgentIds | null = null;
+  const usage = detectPlaceholderUsage(spec);
+  if (usage.active || usage.latest) {
     if (!opts.agentApiName) {
       throw new Error(
-        `Spec uses $active_* placeholders but no agentApiName was provided. ` +
+        `Spec uses $active_* / $latest_* placeholders but no agentApiName was provided. ` +
           `Suggested fix: pass agentApiName, or substitute the placeholders in the spec.`,
       );
     }
-    resolvedIds = await resolveActiveIds(opts.conn, opts.agentApiName);
-    log(
-      `Active: ${opts.agentApiName}  ` +
-        `botVersionId=${resolvedIds.bot_version_id}  plannerId=${resolvedIds.planner_id}`,
-    );
-    spec = substitutePlaceholders(spec, resolvedIds);
+    if (usage.active) {
+      resolvedIds = await resolveAgentIds(opts.conn, opts.agentApiName, { status: "Active" });
+      log(
+        `Active: ${opts.agentApiName} v${resolvedIds.version_number} ` +
+          `(${resolvedIds.status})  botVersionId=${resolvedIds.bot_version_id}  ` +
+          `plannerId=${resolvedIds.planner_id}`,
+      );
+    }
+    if (usage.latest) {
+      latestIds = await resolveAgentIds(opts.conn, opts.agentApiName, { status: "any" });
+      log(
+        `Latest: ${opts.agentApiName} v${latestIds.version_number} ` +
+          `(${latestIds.status})  botVersionId=${latestIds.bot_version_id}  ` +
+          `plannerId=${latestIds.planner_id}`,
+      );
+      // Preflight: refuse the run when $latest_* resolves to a non-Active
+      // version unless the caller explicitly acknowledges. Catches the
+      // accidental "I thought v12 was active but it's still v11" foot-gun.
+      if (latestIds.status !== "Active" && !opts.acknowledgeInactiveVersion) {
+        throw new Error(
+          `Spec uses $latest_* placeholders, but the latest BotVersion for ` +
+            `'${opts.agentApiName}' is v${latestIds.version_number} with ` +
+            `Status='${latestIds.status}' — not Active. Pass ` +
+            `acknowledge_inactive_version=true to confirm you want to regression-test ` +
+            `a non-production version, or activate the version first via ` +
+            `\`agentscript_lifecycle action='activate' agent_api_name='${opts.agentApiName}' ` +
+            `version=${latestIds.version_number}\`.`,
+        );
+      }
+    }
+    spec = substitutePlaceholders(spec, {
+      active: resolvedIds ?? undefined,
+      latest: latestIds ?? undefined,
+    });
   }
   spec = normalizeSpec(spec);
 
@@ -281,8 +321,15 @@ export async function runEval(opts: RunEvalOptions): Promise<RunEvalResult> {
     spec_path: opts.specPath,
     org: opts.targetOrg,
     agent_api_name: opts.agentApiName,
-    bot_version_id: resolvedIds?.bot_version_id,
-    planner_id: resolvedIds?.planner_id ?? null,
+    // When both $active_* and $latest_* resolve to the same version, the
+    // active record is the canonical source. When only $latest_* is in use
+    // (e.g. testing a freshly-published-but-Inactive version), we record
+    // the latest record so the run is auditable against the actual
+    // BotVersion that was exercised.
+    bot_version_id: resolvedIds?.bot_version_id ?? latestIds?.bot_version_id,
+    planner_id: resolvedIds?.planner_id ?? latestIds?.planner_id ?? null,
+    bot_version_number: resolvedIds?.version_number ?? latestIds?.version_number,
+    bot_version_status: resolvedIds?.status ?? latestIds?.status,
     started: startedAt.toISOString(),
     completed: completedAt.toISOString(),
     duration_ms: completedAt.getTime() - startedAt.getTime(),
@@ -407,6 +454,6 @@ export async function recordRunInIndex(
   await writeFile(idxPath, JSON.stringify(entries, null, 2), "utf-8");
 }
 
-// Re-export ResolvedAgentIds + resolveActiveIds for the eval-resolve tool.
-export { resolveActiveIds } from "./active-ids.ts";
-export type { ResolvedAgentIds } from "./active-ids.ts";
+// Re-export resolver primitives for the eval-resolve tool.
+export { resolveActiveIds, resolveAgentIds } from "./active-ids.ts";
+export type { ResolvedAgentIds, ResolveAgentIdsOptions, StatusFilter } from "./active-ids.ts";

@@ -32,7 +32,7 @@ import {
   readMetadata,
   type RunEvalResult,
 } from "./eval/orchestrator.ts";
-import { resolveActiveIds } from "./eval/active-ids.ts";
+import { resolveActiveIds, resolveAgentIds, type StatusFilter } from "./eval/active-ids.ts";
 import { fetchTrace } from "./eval/trace-client.ts";
 import { generateSpec } from "./eval/spec-generator.ts";
 import { inspectFile } from "./inspect.ts";
@@ -108,6 +108,26 @@ const Params = Type.Object({
       maximum: 100,
       description:
         "Optional for action='run'. Inline failure records when total <= threshold; otherwise summarize. Default 5.",
+    }),
+  ),
+  acknowledge_inactive_version: Type.Optional(
+    Type.Boolean({
+      description:
+        "Optional for action='run'. Confirms you intend to regression-test a non-Active BotVersion. Required when $latest_* placeholders resolve to an Inactive / InDevelopment version. Catches the 'I thought v12 was active but it's still v11' foot-gun.",
+    }),
+  ),
+  // resolve_active extras
+  version: Type.Optional(
+    Type.Number({
+      minimum: 0,
+      description:
+        "Optional for action='resolve_active'. Pin to a specific BotVersion.VersionNumber (any Status). Use to look up ids for an old or non-Active version, then bake into the spec.",
+    }),
+  ),
+  status: Type.Optional(
+    Type.Union([Type.Literal("Active"), Type.Literal("any")], {
+      description:
+        "Optional for action='resolve_active'. 'Active' (default) returns the latest Active BotVersion; 'any' returns the latest version regardless of state. Ignored when `version` is set.",
     }),
   ),
   // get_failure
@@ -198,6 +218,9 @@ interface ParamsAny {
   concurrency?: number;
   prompt_chars?: number;
   inline_threshold?: number;
+  acknowledge_inactive_version?: boolean;
+  version?: number;
+  status?: "Active" | "any";
   run_id?: string;
   test_id?: string;
   session_id?: string;
@@ -278,10 +301,10 @@ export function registerEvalTool(pi: ExtensionAPI): void {
     promptSnippet:
       "Run / debug / introspect Agent Script regression specs against the Salesforce Evaluation API.",
     promptGuidelines: [
-      "action='run' — full multi-turn regression. Pass agent_api_name when the spec uses $active_* placeholders. Default traces_mode='failed'.",
+      "action='run' — full multi-turn regression. Pass agent_api_name when the spec uses $active_* OR $latest_* placeholders. Default traces_mode='failed'. Pass acknowledge_inactive_version=true when $latest_* should resolve a non-Active version (the ship→eval→activate loop).",
       "action='get_failure' — after a run returned a summary (large run with failures_truncated=true), drill into one test_id or all failures by run_id.",
       "action='trace' — fetch a planner trace for one (session_id, plan_id). Use when inline llmEvents isn't enough.",
-      "action='resolve_active' — look up the Active BotVersion + planner ids by agent_api_name. Bake into a spec or verify which version a run hits.",
+      "action='resolve_active' — look up BotVersion + planner ids by agent_api_name. Default returns the Active version; pass status='any' for the latest regardless of state, or version=N for a specific historical version.",
       "action='generate_spec' — synthesize a starter spec from a `.agent` file. Pass context_variables for auth-bypass seeds. Pass output_path to write the spec; otherwise it is returned inline. Chain into action='run' once you've reviewed it.",
       "Errors carry recover_via when applicable — chain the next tool call directly without parsing prose.",
     ],
@@ -360,6 +383,7 @@ async function actionRun(
       tracesMode: input.traces_mode ?? "failed",
       concurrency: input.concurrency ?? 8,
       promptChars: input.prompt_chars ?? 600,
+      acknowledgeInactiveVersion: input.acknowledge_inactive_version,
       cwd: ctx.cwd,
       specPath: input.spec_path,
       log,
@@ -424,12 +448,25 @@ function classifyRunError(
   input: ParamsAny,
 ): { content: { type: "text"; text: string }[]; details: ToolError } {
   const msg = err instanceof Error ? err.message : String(err);
-  // If the error is "spec uses $active_* but no agent_api_name", point the
-  // LLM at resolve_active so it can bake values directly.
-  if (msg.includes("$active_") && !input.agent_api_name) {
+  // If the error is "spec uses $active_* / $latest_* but no agent_api_name",
+  // point the LLM at resolve_active so it can bake values directly.
+  if ((msg.includes("$active_") || msg.includes("$latest_")) && !input.agent_api_name) {
     return toolError(msg, "Pass agent_api_name to resolve placeholders.", {
       tool: EVAL_TOOL_NAME,
       params: { action: "resolve_active", agent_api_name: "<name>" },
+    });
+  }
+  // If $latest_* resolved to a non-Active version and the user didn't
+  // acknowledge, surface the explicit recover_via with the flag set.
+  if (msg.includes("acknowledge_inactive_version")) {
+    return toolError(msg, "Pass acknowledge_inactive_version=true to confirm.", {
+      tool: EVAL_TOOL_NAME,
+      params: {
+        action: "run",
+        spec_path: input.spec_path ?? "<path>",
+        agent_api_name: input.agent_api_name ?? "<name>",
+        acknowledge_inactive_version: true,
+      },
     });
   }
   // If the error mentions an Agent not found, suggest resolve_active to discover it.
@@ -564,18 +601,43 @@ async function actionResolveActive(input: ParamsAny): Promise<{
 }> {
   try {
     const conn = await connFromAlias(input.target_org);
-    const ids = await resolveActiveIds(conn, input.agent_api_name);
+    // Pin a specific version (any state) when `version` is provided.
+    // Otherwise honor the `status` filter (default Active).
+    const status: StatusFilter = input.status ?? "Active";
+    const ids =
+      typeof input.version === "number"
+        ? await resolveAgentIds(conn, input.agent_api_name, { version: input.version })
+        : status === "Active"
+          ? await resolveActiveIds(conn, input.agent_api_name)
+          : await resolveAgentIds(conn, input.agent_api_name, { status: "any" });
+
+    // The placeholder-shaped fields ($active_* / $latest_*) reflect the
+    // resolution mode so an LLM consumer can copy-paste the right token
+    // into a spec without remembering which family applies. When `version`
+    // is pinned, neither placeholder family applies cleanly — we surface
+    // both shapes so the LLM picks the right one for its workflow.
+    const placeholderShapes: Record<string, string | null> = {};
+    if (typeof input.version === "number" || status === "any") {
+      placeholderShapes.$latest_bot_version_id = ids.bot_version_id;
+      placeholderShapes.$latest_planner_id = ids.planner_id;
+    }
+    if (typeof input.version !== "number" && status === "Active") {
+      placeholderShapes.$active_bot_version_id = ids.bot_version_id;
+      placeholderShapes.$active_planner_id = ids.planner_id;
+    }
+    placeholderShapes.$active_bot_id = ids.bot_id;
+
     return toolOk({
       ok: true as const,
       agent_api_name: input.agent_api_name,
       target_org: input.target_org ?? conn.getUsername() ?? "<default>",
+      resolution_mode: typeof input.version === "number" ? `version=${input.version}` : status,
       bot_id: ids.bot_id,
       bot_version_id: ids.bot_version_id,
       version_number: ids.version_number,
+      bot_version_status: ids.status,
       planner_id: ids.planner_id,
-      $active_bot_id: ids.bot_id,
-      $active_bot_version_id: ids.bot_version_id,
-      $active_planner_id: ids.planner_id,
+      ...placeholderShapes,
     });
   } catch (err) {
     return toolError(err instanceof Error ? err.message : String(err));
