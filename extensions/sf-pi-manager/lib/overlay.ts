@@ -47,6 +47,11 @@ type ConfigPanel = Component &
     renderContent?: (width: number) => string[];
   };
 
+const LIST_MAX_TERMINAL_FRACTION = 0.85;
+const LIST_NON_VIEWPORT_ROWS = 7;
+const EXTENSION_ROW_HEIGHT = 3;
+const MIN_VISIBLE_EXTENSIONS = 2;
+
 // -------------------------------------------------------------------------------------------------
 // Types
 // -------------------------------------------------------------------------------------------------
@@ -111,6 +116,7 @@ export class SfPiOverlayComponent implements Focusable {
   focused = false;
 
   private selectedIndex = 0;
+  private listScrollOffset = 0;
   private extensions: ExtensionState[];
   private changed = false;
   private view: OverlayView = { kind: "list" };
@@ -132,6 +138,7 @@ export class SfPiOverlayComponent implements Focusable {
     initialStates: ExtensionState[],
     private readonly registryEntries: readonly SfPiExtension[],
     initialScope: "global" | "project",
+    private readonly getTerminalRows: () => number,
     private readonly done: (result: OverlayResult | undefined) => void,
   ) {
     this.extensions = initialStates.map((e) => ({ ...e }));
@@ -238,9 +245,11 @@ export class SfPiOverlayComponent implements Focusable {
     const innerWidth = Math.max(50, width - 2);
     const theme = this.theme;
 
-    const row = (content: string = "") => {
-      const padded = padAnsi(truncateToWidth(content, innerWidth, ""), innerWidth);
-      return `${theme.fg("border", "│")}${padded}${theme.fg("border", "│")}`;
+    const row = (content: string = "", scrollBar: string = "") => {
+      const scrollBarWidth = scrollBar ? 1 : 0;
+      const contentWidth = Math.max(1, innerWidth - scrollBarWidth);
+      const padded = padAnsi(truncateToWidth(content, contentWidth, ""), contentWidth);
+      return `${theme.fg("border", "│")}${padded}${scrollBar}${theme.fg("border", "│")}`;
     };
 
     if (this.view.kind === "detail") {
@@ -258,12 +267,33 @@ export class SfPiOverlayComponent implements Focusable {
   // List view rendering
   // -------------------------------------------------------------------------------------------------
 
-  private renderListView(innerWidth: number, row: (content?: string) => string): string[] {
+  private renderListView(
+    innerWidth: number,
+    row: (content?: string, scrollBar?: string) => string,
+  ): string[] {
     const lines: string[] = [];
     const theme = this.theme;
     const enabledCount = this.extensions.filter((e) => e.enabled).length;
     const totalCount = this.extensions.length;
+    const visibleCount = this.getVisibleExtensionCount();
+    this.ensureSelectionVisible(visibleCount);
+
     const selected = this.extensions[this.selectedIndex];
+    const visibleExtensions = this.extensions.slice(
+      this.listScrollOffset,
+      this.listScrollOffset + visibleCount,
+    );
+    const needsScrollbar = totalCount > visibleCount;
+    const listContentWidth = needsScrollbar ? innerWidth - 1 : innerWidth;
+    const listViewportRows = Math.max(1, visibleExtensions.length * EXTENSION_ROW_HEIGHT - 1);
+    let listViewportRowIndex = 0;
+    const listRow = (content: string = "") =>
+      row(
+        content,
+        needsScrollbar
+          ? this.renderListScrollbar(listViewportRowIndex++, listViewportRows, visibleCount)
+          : "",
+      );
 
     lines.push(theme.fg("border", `╭${"─".repeat(innerWidth)}╮`));
 
@@ -282,8 +312,10 @@ export class SfPiOverlayComponent implements Focusable {
     );
     lines.push(row(""));
 
-    for (let i = 0; i < this.extensions.length; i++) {
-      const ext = this.extensions[i];
+    for (let localIndex = 0; localIndex < visibleExtensions.length; localIndex++) {
+      const ext = visibleExtensions[localIndex];
+      if (!ext) continue;
+      const i = this.listScrollOffset + localIndex;
       const isSelected = i === this.selectedIndex;
 
       const indicator = this.renderStatusIndicator(getExtensionStatus(ext));
@@ -298,15 +330,20 @@ export class SfPiOverlayComponent implements Focusable {
       const configBadge = ext.configurable ? theme.fg("accent", "⚙") : "";
       const rightParts = [configBadge, stateBadge, categoryTag].filter(Boolean).join(" ");
       const leftPart = ` ${cursor} ${indicator} ${name}`;
-      const gap = Math.max(2, innerWidth - visibleWidth(leftPart) - visibleWidth(rightParts) - 1);
-
-      lines.push(row(`${leftPart}${" ".repeat(gap)}${rightParts}`));
-      lines.push(
-        row(`     ${theme.fg(ext.enabled || ext.alwaysActive ? "dim" : "muted", ext.description)}`),
+      const gap = Math.max(
+        2,
+        listContentWidth - visibleWidth(leftPart) - visibleWidth(rightParts) - 1,
       );
 
-      if (i < this.extensions.length - 1) {
-        lines.push(row(""));
+      lines.push(listRow(`${leftPart}${" ".repeat(gap)}${rightParts}`));
+      lines.push(
+        listRow(
+          `     ${theme.fg(ext.enabled || ext.alwaysActive ? "dim" : "muted", ext.description)}`,
+        ),
+      );
+
+      if (localIndex < visibleExtensions.length - 1) {
+        lines.push(listRow(""));
       }
     }
 
@@ -322,7 +359,12 @@ export class SfPiOverlayComponent implements Focusable {
       );
     }
 
-    const countText = theme.fg("muted", `Enabled: ${enabledCount}/${totalCount} extensions`);
+    const visibleStart = totalCount === 0 ? 0 : this.listScrollOffset + 1;
+    const visibleEnd = Math.min(totalCount, this.listScrollOffset + visibleCount);
+    const countText = theme.fg(
+      "muted",
+      `Enabled: ${enabledCount}/${totalCount} extensions · Showing ${visibleStart}-${visibleEnd}`,
+    );
     const changedText = this.changed ? theme.fg("warning", " (unsaved changes)") : "";
     const reloadText = this.configPanelReloadNeeded ? theme.fg("warning", " (reload pending)") : "";
     lines.push(row(` ${countText}${changedText}${reloadText}`));
@@ -505,6 +547,60 @@ export class SfPiOverlayComponent implements Focusable {
     return this.extensions.find((ext) => ext.id === detailView.extensionId);
   }
 
+  private getVisibleExtensionCount(): number {
+    const terminalRows = Math.max(1, this.getTerminalRows());
+    const overlayRows = Math.max(1, Math.floor(terminalRows * LIST_MAX_TERMINAL_FRACTION));
+    const availableListRows = Math.max(
+      EXTENSION_ROW_HEIGHT * MIN_VISIBLE_EXTENSIONS,
+      overlayRows - LIST_NON_VIEWPORT_ROWS,
+    );
+    const visibleCount = Math.max(
+      MIN_VISIBLE_EXTENSIONS,
+      Math.floor((availableListRows + 1) / EXTENSION_ROW_HEIGHT),
+    );
+
+    return Math.min(this.extensions.length, visibleCount);
+  }
+
+  private ensureSelectionVisible(visibleCount = this.getVisibleExtensionCount()): void {
+    if (this.extensions.length === 0) {
+      this.selectedIndex = 0;
+      this.listScrollOffset = 0;
+      return;
+    }
+
+    this.selectedIndex = Math.max(0, Math.min(this.selectedIndex, this.extensions.length - 1));
+
+    const maxOffset = Math.max(0, this.extensions.length - visibleCount);
+    if (this.selectedIndex < this.listScrollOffset) {
+      this.listScrollOffset = this.selectedIndex;
+    } else if (this.selectedIndex >= this.listScrollOffset + visibleCount) {
+      this.listScrollOffset = this.selectedIndex - visibleCount + 1;
+    }
+
+    this.listScrollOffset = Math.max(0, Math.min(this.listScrollOffset, maxOffset));
+  }
+
+  private renderListScrollbar(
+    viewportRowIndex: number,
+    viewportRows: number,
+    visibleCount: number,
+  ): string {
+    if (this.extensions.length <= visibleCount || viewportRows <= 0) {
+      return "";
+    }
+
+    const maxOffset = Math.max(1, this.extensions.length - visibleCount);
+    const thumbRows = Math.max(
+      1,
+      Math.round((visibleCount / this.extensions.length) * viewportRows),
+    );
+    const thumbStart = Math.round((this.listScrollOffset / maxOffset) * (viewportRows - thumbRows));
+    const isThumb = viewportRowIndex >= thumbStart && viewportRowIndex < thumbStart + thumbRows;
+
+    return this.theme.fg(isThumb ? "accent" : "dim", isThumb ? "█" : "│");
+  }
+
   private renderStatusIndicator(status: ReturnType<typeof getExtensionStatus>): string {
     if (status === "locked") {
       return this.theme.fg("accent", "◆");
@@ -552,6 +648,7 @@ export class SfPiOverlayComponent implements Focusable {
     if (next >= len) next = 0;
 
     this.selectedIndex = next;
+    this.ensureSelectionVisible();
   }
 
   private toggleSelected(): void {

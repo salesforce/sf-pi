@@ -477,7 +477,7 @@ async function handleOverlay(
   let result: OverlayResult | undefined;
   try {
     result = await ctx.ui.custom<OverlayResult | undefined>(
-      (_tui, theme, _keybindings, done) =>
+      (tui, theme, _keybindings, done) =>
         new SfPiOverlayComponent(
           theme,
           PACKAGE_VERSION,
@@ -486,6 +486,7 @@ async function handleOverlay(
           extensions,
           SF_PI_REGISTRY,
           scope,
+          () => tui.terminal.rows,
           done,
         ),
       {
