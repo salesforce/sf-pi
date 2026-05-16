@@ -60,7 +60,7 @@ import { buildActiveRows, buildDiscoverRows } from "./lib/table-data.ts";
 import { loadUsageMap, recordSkillInvocation } from "./lib/usage-store.ts";
 import { applyPrunePlan, buildPrunePlan } from "./lib/prune.ts";
 import { planDisable, planEnable } from "./lib/settings-coverage.ts";
-import { SkillsTableOverlayComponent, type TableResult } from "./lib/table-overlay.ts";
+import { SkillsTableOverlayComponent, type TableResult } from "./lib/table-overlay/index.ts";
 
 // -------------------------------------------------------------------------------------------------
 // Constants

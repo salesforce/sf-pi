@@ -138,6 +138,8 @@ the previous sf-skills-hud implementation.
 extensions/sf-skills/
   lib/
     table-overlay/
+      index.ts              ← implementation module
+      types.ts              ← implementation module
       viewport.ts           ← implementation module
     classify.ts             ← implementation module
     defaults.ts             ← implementation module
@@ -148,7 +150,6 @@ extensions/sf-skills/
     skills-command.ts       ← implementation module
     source-labels.ts        ← implementation module
     table-data.ts           ← implementation module
-    table-overlay.ts        ← implementation module
     usage-store.ts          ← implementation module
   tests/
     defaults.test.ts        ← unit / smoke test

@@ -466,7 +466,8 @@
         "lib/hud-component.ts",
         "lib/skill-state.ts",
         "lib/table-data.ts",
-        "lib/table-overlay.ts",
+        "lib/table-overlay/index.ts",
+        "lib/source-labels.ts",
         "lib/classify.ts",
         "lib/defaults.ts",
         "lib/skills-command.ts",
@@ -478,7 +479,7 @@
     "entry": "extensions/sf-skills/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 2859
+    "srcLoc": 3174
   },
   {
     "id": "sf-slack",
