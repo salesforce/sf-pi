@@ -66,7 +66,8 @@ export function parseDefaultsArgs(raw: string): DefaultsArgs {
     (t) => t.toLowerCase() === "project" || t.toLowerCase() === "global",
   );
   if (scopeIndex >= 0) {
-    scope = positional.splice(scopeIndex, 1)[0]!.toLowerCase() as SkillSourceScope;
+    const removed = positional.splice(scopeIndex, 1)[0];
+    if (removed) scope = removed.toLowerCase() as SkillSourceScope;
   }
 
   const target = positional[0];

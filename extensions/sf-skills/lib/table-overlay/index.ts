@@ -328,7 +328,8 @@ export class SkillsTableOverlayComponent implements Focusable {
   private renderTabStrip(theme: Theme): string {
     const parts: string[] = [];
     for (let i = 0; i < TABS.length; i++) {
-      const t = TABS[i]!;
+      const t = TABS[i];
+      if (!t) continue;
       const count = this.tabCount(t.id);
       const label = `${i + 1} ${t.label}${count !== null ? ` (${count})` : ""}`;
       parts.push(
@@ -429,7 +430,8 @@ export class SkillsTableOverlayComponent implements Focusable {
     }
     const out: string[] = [];
     for (let i = view.offset; i < view.end; i++) {
-      const r = rows[i]!;
+      const r = rows[i];
+      if (!r) continue;
       const isCursor = i === view.cursor;
       out.push(row(this.renderActiveRow(theme, innerWidth, r, isCursor, view, i)));
     }
@@ -503,7 +505,8 @@ export class SkillsTableOverlayComponent implements Focusable {
     }
     const out: string[] = [];
     for (let i = view.offset; i < view.end; i++) {
-      const r = rows[i]!;
+      const r = rows[i];
+      if (!r) continue;
       const isCursor = i === view.cursor;
       out.push(row(this.renderDiscoverRow(theme, innerWidth, r, isCursor, view, i)));
     }
@@ -766,7 +769,7 @@ interface ViewportInfo extends SliceResult {
 function nextTab(current: TabId, delta: number): TabId {
   const idx = TABS.findIndex((t) => t.id === current);
   const next = (idx + delta + TABS.length) % TABS.length;
-  return TABS[next]!.id;
+  return TABS[next]?.id ?? current;
 }
 
 function wiredAt(wired: WiredScope, scope: "global" | "project"): boolean {
