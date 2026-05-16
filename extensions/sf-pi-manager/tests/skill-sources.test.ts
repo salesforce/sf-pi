@@ -112,6 +112,58 @@ describe("detectSkillSources", () => {
     expect(result.staleWired).toContain("~/.claude/skills");
     expect(result.staleWired).toContain("~/some/missing/dir");
   });
+
+  it("detects project-scope candidates when cwd is supplied", () => {
+    const home = makeHome();
+    process.env.HOME = home;
+    const cwd = mkdtempSync(path.join(tmpdir(), "sf-skill-sources-cwd-"));
+    tempDirs.push(cwd);
+    mkdirSync(path.join(cwd, ".claude", "skills", "my-skill"), { recursive: true });
+    writeFileSync(
+      path.join(cwd, ".claude", "skills", "my-skill", "SKILL.md"),
+      "---\nname: my-skill\n---\n",
+    );
+
+    const result = detectSkillSources({ home, cwd });
+    const labels = result.candidates.map((c) => c.label);
+    expect(labels).toContain("Claude Code (project)");
+    const project = result.candidates.find((c) => c.scope === "project");
+    expect(project?.skillCount).toBe(1);
+    expect(project?.wired).toBe(false);
+  });
+
+  it("distinguishes wiring per scope", () => {
+    const home = makeHome();
+    process.env.HOME = home;
+    const cwd = mkdtempSync(path.join(tmpdir(), "sf-skill-sources-cwd-"));
+    tempDirs.push(cwd);
+    // Both global ~/.claude/skills and project ./.claude/skills exist.
+    mkdirSync(path.join(home, ".claude", "skills", "global-skill"), { recursive: true });
+    writeFileSync(
+      path.join(home, ".claude", "skills", "global-skill", "SKILL.md"),
+      "---\nname: global-skill\n---\n",
+    );
+    mkdirSync(path.join(cwd, ".claude", "skills", "project-skill"), { recursive: true });
+    writeFileSync(
+      path.join(cwd, ".claude", "skills", "project-skill", "SKILL.md"),
+      "---\nname: project-skill\n---\n",
+    );
+
+    // Wire the project candidate in project settings only.
+    const projectSettingsPath = path.join(cwd, ".pi", "settings.json");
+    mkdirSync(path.dirname(projectSettingsPath), { recursive: true });
+    writeFileSync(
+      projectSettingsPath,
+      `${JSON.stringify({ skills: ["./.claude/skills"] }, null, 2)}\n`,
+      "utf8",
+    );
+
+    const result = detectSkillSources({ home, cwd });
+    const global = result.candidates.find((c) => c.scope === "global");
+    const project = result.candidates.find((c) => c.scope === "project");
+    expect(global?.wired).toBe(false);
+    expect(project?.wired).toBe(true);
+  });
 });
 
 describe("updateSkillSources", () => {
@@ -174,6 +226,38 @@ describe("updateSkillSources", () => {
 
     const disk = readSettings(home);
     expect(disk.skills).toEqual([]);
+  });
+
+  it("writes to the project settings file when scope is 'project'", () => {
+    const home = makeHome();
+    process.env.HOME = home;
+    const cwd = mkdtempSync(path.join(tmpdir(), "sf-skill-sources-cwd-"));
+    tempDirs.push(cwd);
+
+    const updated = updateSkillSources({
+      add: ["./.claude/skills"],
+      remove: [],
+      scope: "project",
+      cwd,
+      home,
+    });
+    expect(updated.settingsPath).toBe(path.join(cwd, ".pi", "settings.json"));
+    expect(updated.skills).toEqual(["./.claude/skills"]);
+
+    const disk = JSON.parse(readFileSync(updated.settingsPath, "utf8"));
+    expect(disk.skills).toEqual(["./.claude/skills"]);
+
+    // Global settings should remain untouched.
+    const globalPath = path.join(home, ".pi", "agent", "settings.json");
+    expect(() => readFileSync(globalPath, "utf8")).toThrow();
+  });
+
+  it("throws when scope='project' is used without cwd", () => {
+    const home = makeHome();
+    process.env.HOME = home;
+    expect(() =>
+      updateSkillSources({ add: ["./.claude/skills"], remove: [], scope: "project", home }),
+    ).toThrow(/requires `cwd`/);
   });
 });
 

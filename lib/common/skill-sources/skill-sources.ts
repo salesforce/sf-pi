@@ -23,7 +23,10 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { globalSettingsPath } from "../pi-paths.ts";
+import { globalSettingsPath, projectSettingsPath } from "../pi-paths.ts";
+
+/** Where a candidate writes when the user opts it in. */
+export type SkillSourceScope = "global" | "project";
 
 /**
  * A directory on disk that looks like a usable skill root.
@@ -48,8 +51,10 @@ export interface SkillSourceCandidate {
   /** How many immediate skill entries we detected (skills + root `.md` files). */
   skillCount: number;
   /** True when this path already appears (verbatim or resolved) in the
-   *  user's `settings.skills[]`. */
+   *  candidate's target settings file. */
   wired: boolean;
+  /** Which settings file this candidate writes to when wired in. */
+  scope: SkillSourceScope;
 }
 
 interface KnownRoot {
@@ -59,127 +64,205 @@ interface KnownRoot {
   settingsValue: string;
   /** Short label shown in the overlay. */
   label: string;
+  /** Which settings file the value belongs in. */
+  scope: SkillSourceScope;
 }
 
 /**
- * Build the fixed list of external skill roots we probe for.
- *
- * Pi already auto-discovers `~/.pi/agent/skills` and `~/.agents/skills`,
- * so listing those in `skills[]` would be a no-op. We stick to roots
- * that genuinely require opt-in.
+ * Build the fixed list of external skill roots we probe for at *global*
+ * scope. Pi already auto-discovers `~/.pi/agent/skills` and
+ * `~/.agents/skills`, so listing those in `skills[]` would be a no-op.
+ * We stick to roots that genuinely require opt-in.
  */
-function knownExternalRoots(home: string): KnownRoot[] {
+function knownGlobalRoots(home: string): KnownRoot[] {
   return [
     {
       absolute: path.join(home, ".claude", "skills"),
       settingsValue: "~/.claude/skills",
       label: "Claude Code",
+      scope: "global",
     },
     {
       absolute: path.join(home, ".codex", "skills"),
       settingsValue: "~/.codex/skills",
       label: "OpenAI Codex",
+      scope: "global",
     },
     {
       absolute: path.join(home, ".cursor", "skills"),
       settingsValue: "~/.cursor/skills",
       label: "Cursor",
+      scope: "global",
+    },
+  ];
+}
+
+/**
+ * Build the fixed list of external skill roots we probe for at *project*
+ * scope. These mirror the global roots but live inside the current
+ * working tree (e.g. a repo that ships its own `.claude/skills`). They
+ * write to `<cwd>/.pi/settings.json` so the wiring is per-project.
+ *
+ * `.pi/skills` and `.agents/skills` are intentionally excluded — pi
+ * auto-discovers those, so wiring them up is a no-op.
+ */
+function knownProjectRoots(cwd: string): KnownRoot[] {
+  return [
+    {
+      absolute: path.join(cwd, ".claude", "skills"),
+      settingsValue: "./.claude/skills",
+      label: "Claude Code (project)",
+      scope: "project",
+    },
+    {
+      absolute: path.join(cwd, ".codex", "skills"),
+      settingsValue: "./.codex/skills",
+      label: "OpenAI Codex (project)",
+      scope: "project",
+    },
+    {
+      absolute: path.join(cwd, ".cursor", "skills"),
+      settingsValue: "./.cursor/skills",
+      label: "Cursor (project)",
+      scope: "project",
     },
   ];
 }
 
 export interface SkillSourcesResult {
-  /** Global settings file path used for wiring. */
+  /** Global settings file path — always returned for backwards compatibility. */
   settingsPath: string;
+  /** Project settings file path when `cwd` was supplied, else undefined. */
+  projectSettingsPath?: string;
   /** Every candidate root we detected on disk, wired or not. */
   candidates: SkillSourceCandidate[];
-  /** Entries in `settings.skills[]` that point at a non-existent path.
+  /** Entries in either settings.skills[] that point at a non-existent path.
    *  Surfaced so users can prune stale references. */
   staleWired: string[];
 }
 
 /**
  * Discover external skill roots on disk and cross-reference them with
- * the user's current `~/.pi/agent/settings.json → skills[]`.
+ * the user's current settings.json `skills[]` arrays.
  *
- * The result is safe to render even when the settings file is missing
- * or malformed — in that case every detected root reports `wired: false`
- * and `staleWired` is empty.
+ * Pass `cwd` to also probe project-scope candidates and read the
+ * matching `<cwd>/.pi/settings.json`. Without `cwd`, only global roots
+ * are detected.
+ *
+ * The result is safe to render even when settings are missing or malformed.
  */
-export function detectSkillSources(home: string = os.homedir()): SkillSourcesResult {
-  const settingsPath = globalSettingsPath();
-  const wired = readWiredSkillPaths(settingsPath, home);
+export function detectSkillSources(
+  opts: { home?: string; cwd?: string } | string = {},
+): SkillSourcesResult {
+  // Backwards-compat: legacy callers passed `home` positionally.
+  const args = typeof opts === "string" ? { home: opts } : opts;
+  const home = args.home ?? os.homedir();
+  const cwd = args.cwd;
+
+  const globalPath = globalSettingsPath();
+  const projectPath = cwd ? projectSettingsPath(cwd) : undefined;
+  const globalWired = readWiredSkillPaths(globalPath, home, cwd);
+  const projectWired = projectPath ? readWiredSkillPaths(projectPath, home, cwd) : null;
 
   const candidates: SkillSourceCandidate[] = [];
-  for (const root of knownExternalRoots(home)) {
+  const roots: KnownRoot[] = [...knownGlobalRoots(home)];
+  if (cwd) roots.push(...knownProjectRoots(cwd));
+
+  for (const root of roots) {
     if (!isDirectory(root.absolute)) continue;
+    const wiredSet = root.scope === "project" ? projectWired : globalWired;
+    const wired = !!(
+      wiredSet &&
+      (wiredSet.absolute.has(root.absolute) || wiredSet.raw.has(root.settingsValue))
+    );
     candidates.push({
       displayPath: toDisplayPath(root.absolute, home),
       absolutePath: root.absolute,
       settingsPath: root.settingsValue,
       label: root.label,
       skillCount: countSkillEntries(root.absolute),
-      wired: wired.absolute.has(root.absolute) || wired.raw.has(root.settingsValue),
+      wired,
+      scope: root.scope,
     });
   }
 
   const staleWired: string[] = [];
-  for (const raw of wired.raw) {
-    const resolved = resolvePath(raw, home);
-    if (!resolved) continue;
-    if (!isDirectory(resolved)) staleWired.push(raw);
+  const seenStale = new Set<string>();
+  for (const wired of [globalWired, projectWired]) {
+    if (!wired) continue;
+    for (const raw of wired.raw) {
+      const resolved = resolvePath(raw, home, cwd);
+      if (!resolved) continue;
+      if (isDirectory(resolved)) continue;
+      if (seenStale.has(raw)) continue;
+      seenStale.add(raw);
+      staleWired.push(raw);
+    }
   }
 
-  return { settingsPath, candidates, staleWired };
+  return {
+    settingsPath: globalPath,
+    projectSettingsPath: projectPath,
+    candidates,
+    staleWired,
+  };
 }
 
 /**
- * Update the global `~/.pi/agent/settings.json → skills[]` array.
+ * Update a settings.json `skills[]` array.
  *
  * - `add`: values to insert (deduped against whatever's already there).
  * - `remove`: values to drop (matched verbatim *or* by resolved absolute path).
+ * - `scope`: which settings file to write to. Defaults to "global".
+ *           When "project", `cwd` is required so we can resolve
+ *           `<cwd>/.pi/settings.json`.
  *
  * Returns the updated array so the caller can show a summary. This is
- * the only write path used by `/sf-pi skills` — the overlay always
- * funnels through here so we have a single place that owns the JSON
- * shape and newline convention.
+ * the only write path used by `/sf-pi skills` and `/sf-skills sources` —
+ * the overlay always funnels through here so we have a single place
+ * that owns the JSON shape and newline convention.
  */
 export function updateSkillSources(args: {
   add: string[];
   remove: string[];
+  scope?: SkillSourceScope;
+  cwd?: string;
   home?: string;
   settingsFile?: string;
 }): { settingsPath: string; skills: string[] } {
   const home = args.home ?? os.homedir();
-  const settingsPath = args.settingsFile ?? globalSettingsPath();
+  const scope: SkillSourceScope = args.scope ?? "global";
+  const settingsPath =
+    args.settingsFile ??
+    (scope === "project" ? requireProjectSettingsPath(args.cwd) : globalSettingsPath());
   const root = readJsonObject(settingsPath);
   const current = Array.isArray(root.skills) ? (root.skills as unknown[]) : [];
 
   const existing: string[] = current.filter((v): v is string => typeof v === "string");
   const removeAbsolute = new Set(
     args.remove
-      .map((value) => resolvePath(value, home))
+      .map((value) => resolvePath(value, home, args.cwd))
       .filter((p): p is string => typeof p === "string"),
   );
   const removeRaw = new Set(args.remove);
 
   const retained = existing.filter((value) => {
     if (removeRaw.has(value)) return false;
-    const resolved = resolvePath(value, home);
+    const resolved = resolvePath(value, home, args.cwd);
     if (resolved && removeAbsolute.has(resolved)) return false;
     return true;
   });
 
   const existingAbsolute = new Set(
     retained
-      .map((value) => resolvePath(value, home))
+      .map((value) => resolvePath(value, home, args.cwd))
       .filter((p): p is string => typeof p === "string"),
   );
   const existingRaw = new Set(retained);
 
   for (const value of args.add) {
     if (existingRaw.has(value)) continue;
-    const resolved = resolvePath(value, home);
+    const resolved = resolvePath(value, home, args.cwd);
     if (resolved && existingAbsolute.has(resolved)) continue;
     retained.push(value);
     existingRaw.add(value);
@@ -211,17 +294,26 @@ interface WiredPaths {
   absolute: Set<string>;
 }
 
-function readWiredSkillPaths(settingsPath: string, home: string): WiredPaths {
+function readWiredSkillPaths(settingsPath: string, home: string, cwd?: string): WiredPaths {
   const result: WiredPaths = { raw: new Set(), absolute: new Set() };
   const root = readJsonObject(settingsPath);
   const skills = Array.isArray(root.skills) ? (root.skills as unknown[]) : [];
   for (const value of skills) {
     if (typeof value !== "string") continue;
     result.raw.add(value);
-    const resolved = resolvePath(value, home);
+    const resolved = resolvePath(value, home, cwd);
     if (resolved) result.absolute.add(resolved);
   }
   return result;
+}
+
+function requireProjectSettingsPath(cwd: string | undefined): string {
+  if (!cwd) {
+    throw new Error(
+      "updateSkillSources({ scope: 'project' }) requires `cwd` so the project settings file can be resolved.",
+    );
+  }
+  return projectSettingsPath(cwd);
 }
 
 function readJsonObject(filePath: string): Record<string, unknown> {
@@ -236,14 +328,15 @@ function readJsonObject(filePath: string): Record<string, unknown> {
   }
 }
 
-function resolvePath(value: string, home: string): string | null {
+function resolvePath(value: string, home: string, cwd?: string): string | null {
   if (!value) return null;
   if (value.startsWith("~/")) return path.join(home, value.slice(2));
   if (value === "~") return home;
   if (path.isAbsolute(value)) return value;
-  // Relative paths are resolved against the user's home — settings are
-  // global, so CWD is not a meaningful base here.
-  return path.resolve(home, value);
+  // Relative paths in project settings resolve against `cwd`; in global
+  // settings they resolve against `$HOME`. Pi follows the same rule when
+  // loading `skills[]`.
+  return path.resolve(cwd ?? home, value);
 }
 
 function toDisplayPath(absolute: string, home: string): string {

@@ -104,7 +104,7 @@ async function handleOverlay(ctx: ExtensionCommandContext, packageVersion: strin
     return;
   }
 
-  const detection = detectSkillSources();
+  const detection = detectSkillSources({ cwd: ctx.cwd });
   const rows: SkillSourceRow[] = detection.candidates.map((candidate) => ({
     candidate,
     // Pre-check any currently-wired root so Enter is a no-op by default.
@@ -119,10 +119,13 @@ async function handleOverlay(ctx: ExtensionCommandContext, packageVersion: strin
       [
         "No external skill directories detected.",
         "",
-        "sf-pi looks for:",
+        "sf-pi looks for (global):",
         "  ~/.claude/skills   (Claude Code)",
         "  ~/.codex/skills    (OpenAI Codex)",
         "  ~/.cursor/skills   (Cursor)",
+        "",
+        "And these inside your current project:",
+        "  ./.claude/skills   ./.codex/skills   ./.cursor/skills",
         "",
         "Create one of these directories (or add your own path via settings.json → skills[])",
         "and re-run /sf-pi skills.",
@@ -166,24 +169,53 @@ async function applyOverlayResult(
   ctx: ExtensionCommandContext,
   result: Extract<SkillSourcesOverlayResult, { kind: "apply" }>,
 ): Promise<void> {
-  const toAdd: string[] = [];
-  const toRemove: string[] = [];
+  // Group adds/removes per scope so each settings file is written exactly
+  // once with only the entries it should own.
+  const globalAdd: string[] = [];
+  const globalRemove: string[] = [];
+  const projectAdd: string[] = [];
+  const projectRemove: string[] = [];
 
   for (const row of result.rows) {
-    if (row.selected && !row.previouslyWired) toAdd.push(row.candidate.settingsPath);
-    if (!row.selected && row.previouslyWired) toRemove.push(row.candidate.settingsPath);
+    const bucketAdd = row.candidate.scope === "project" ? projectAdd : globalAdd;
+    const bucketRemove = row.candidate.scope === "project" ? projectRemove : globalRemove;
+    if (row.selected && !row.previouslyWired) bucketAdd.push(row.candidate.settingsPath);
+    if (!row.selected && row.previouslyWired) bucketRemove.push(row.candidate.settingsPath);
   }
-  if (result.pruneStale) toRemove.push(...result.staleWired);
+  // Stale wired pruning is global-only — the existing overlay only
+  // surfaces stale entries from the global file, so this preserves
+  // its current contract.
+  if (result.pruneStale) globalRemove.push(...result.staleWired);
 
-  if (toAdd.length === 0 && toRemove.length === 0) {
+  const hasChanges =
+    globalAdd.length > 0 ||
+    globalRemove.length > 0 ||
+    projectAdd.length > 0 ||
+    projectRemove.length > 0;
+  if (!hasChanges) {
     ctx.ui.notify("No changes — skill sources already match your selection.", "info");
     return;
   }
 
-  let skillsCount: number;
+  const summary: string[] = [];
   try {
-    const updated = updateSkillSources({ add: toAdd, remove: toRemove });
-    skillsCount = updated.skills.length;
+    if (globalAdd.length > 0 || globalRemove.length > 0) {
+      const updated = updateSkillSources({
+        add: globalAdd,
+        remove: globalRemove,
+        scope: "global",
+      });
+      summary.push(`global skills[] (${updated.skills.length})`);
+    }
+    if (projectAdd.length > 0 || projectRemove.length > 0) {
+      const updated = updateSkillSources({
+        add: projectAdd,
+        remove: projectRemove,
+        scope: "project",
+        cwd: ctx.cwd,
+      });
+      summary.push(`project skills[] (${updated.skills.length})`);
+    }
   } catch (error) {
     ctx.ui.notify(
       `Failed to update skill sources: ${error instanceof Error ? error.message : String(error)}`,
@@ -192,13 +224,12 @@ async function applyOverlayResult(
     return;
   }
 
+  const totalAdd = globalAdd.length + projectAdd.length;
+  const totalRemove = globalRemove.length + projectRemove.length;
   const parts: string[] = [];
-  if (toAdd.length > 0) parts.push(`+${toAdd.length} added`);
-  if (toRemove.length > 0) parts.push(`-${toRemove.length} removed`);
-  ctx.ui.notify(
-    `${parts.join(", ")}. skills[] now lists ${skillsCount} entr${skillsCount === 1 ? "y" : "ies"}. Reloading…`,
-    "info",
-  );
+  if (totalAdd > 0) parts.push(`+${totalAdd} added`);
+  if (totalRemove > 0) parts.push(`-${totalRemove} removed`);
+  ctx.ui.notify(`${parts.join(", ")}. ${summary.join(", ")}. Reloading…`, "info");
   await ctx.reload();
 }
 
@@ -207,17 +238,21 @@ async function applyOverlayResult(
 // -------------------------------------------------------------------------------------------------
 
 function handleList(ctx: ExtensionCommandContext): void {
-  const detection = detectSkillSources();
+  const detection = detectSkillSources({ cwd: ctx.cwd });
   if (detection.candidates.length === 0 && detection.staleWired.length === 0) {
     ctx.ui.notify(
-      "No external skill directories detected under ~/.claude, ~/.codex, or ~/.cursor.",
+      "No external skill directories detected under ~/.claude, ~/.codex, ~/.cursor, or this project.",
       "info",
     );
     return;
   }
 
   const lines = [
-    `sf-pi external skill sources (settings: ${detection.settingsPath}):`,
+    `sf-pi external skill sources:`,
+    `  global settings:  ${detection.settingsPath}`,
+    detection.projectSettingsPath
+      ? `  project settings: ${detection.projectSettingsPath}`
+      : `  project settings: (not in a project root)`,
     "",
     ...detection.candidates.map(renderCandidateLine),
   ];
@@ -233,16 +268,24 @@ function handleList(ctx: ExtensionCommandContext): void {
 }
 
 function handleStatus(ctx: ExtensionCommandContext): void {
-  const detection = detectSkillSources();
-  const wired = detection.candidates.filter((c) => c.wired).length;
-  const available = detection.candidates.length - wired;
+  const detection = detectSkillSources({ cwd: ctx.cwd });
+  const globalRoots = detection.candidates.filter((c) => c.scope === "global");
+  const projectRoots = detection.candidates.filter((c) => c.scope === "project");
+  const globalWired = globalRoots.filter((c) => c.wired).length;
+  const projectWired = projectRoots.filter((c) => c.wired).length;
   const lines = [
     "sf-pi external skill sources status",
     "",
-    `Settings file:        ${detection.settingsPath}`,
-    `Detected roots:       ${detection.candidates.length}`,
-    `  wired:              ${wired}`,
-    `  available (opt in): ${available}`,
+    `Global settings:      ${detection.settingsPath}`,
+    `  detected:           ${globalRoots.length}`,
+    `  wired:              ${globalWired}`,
+    `  available (opt in): ${globalRoots.length - globalWired}`,
+    "",
+    `Project settings:     ${detection.projectSettingsPath ?? "(not in a project root)"}`,
+    `  detected:           ${projectRoots.length}`,
+    `  wired:              ${projectWired}`,
+    `  available (opt in): ${projectRoots.length - projectWired}`,
+    "",
     `Stale wired entries:  ${detection.staleWired.length}`,
     "",
     `Open the checklist: ${PREFIX}`,
@@ -258,7 +301,7 @@ async function handleLink(ctx: ExtensionCommandContext, target: string | undefin
     );
     return;
   }
-  const detection = detectSkillSources();
+  const detection = detectSkillSources({ cwd: ctx.cwd });
   const resolved = resolveTarget(detection.candidates, target);
   if (!resolved) {
     ctx.ui.notify(
@@ -272,7 +315,12 @@ async function handleLink(ctx: ExtensionCommandContext, target: string | undefin
     return;
   }
   try {
-    updateSkillSources({ add: [resolved.settingsPath], remove: [] });
+    updateSkillSources({
+      add: [resolved.settingsPath],
+      remove: [],
+      scope: resolved.scope,
+      cwd: ctx.cwd,
+    });
   } catch (error) {
     ctx.ui.notify(
       `Failed to link ${resolved.label}: ${error instanceof Error ? error.message : String(error)}`,
@@ -292,13 +340,20 @@ async function handleUnlink(
     ctx.ui.notify(`Usage: ${PREFIX} unlink <path|label>`, "warning");
     return;
   }
-  const detection = detectSkillSources();
+  const detection = detectSkillSources({ cwd: ctx.cwd });
   const resolved = resolveTarget(detection.candidates, target);
   // Fall back to removing the raw user input — lets users unlink entries
   // we don't recognize (e.g. arbitrary paths they added manually).
   const removeValue = resolved ? resolved.settingsPath : target;
   try {
-    updateSkillSources({ add: [], remove: [removeValue] });
+    updateSkillSources({
+      add: [],
+      remove: [removeValue],
+      // Default to global when we can't infer scope (raw input case);
+      // for resolved candidates honor their scope.
+      scope: resolved?.scope ?? "global",
+      cwd: ctx.cwd,
+    });
   } catch (error) {
     ctx.ui.notify(
       `Failed to unlink ${removeValue}: ${error instanceof Error ? error.message : String(error)}`,
