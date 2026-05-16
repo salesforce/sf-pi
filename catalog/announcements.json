@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.75.4-2026-05-16",
-  "latestVersion": "0.75.4",
+  "revision": "release-0.76.0-2026-05-16",
+  "latestVersion": "0.76.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.75.4",
+      "id": "release-0.76.0",
       "kind": "update",
-      "title": "sf-pi v0.75.4 — repair agentscript SDK sync path",
+      "title": "sf-pi v0.76.0 — sf-skills: forcedotcom/afv-library install + update + link/unlink",
       "publishedAt": "2026-05-16T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.75.4",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.76.0",
       "severity": "info",
-      "body": "repair agentscript SDK sync path"
+      "body": "sf-skills: forcedotcom/afv-library install + update + link/unlink — sf-skills: friendly source labels for the datatable"
     },
     {
       "id": "pi-0.73-required",
