@@ -218,7 +218,7 @@ Every slash command exposed by a bundled extension. See each extension README fo
 | `/sf-lsp`         | [SF LSP](./extensions/sf-lsp/)                                   | assistive  |
 | `/sf-devbar`      | [SF DevBar](./extensions/sf-devbar/)                             | ui         |
 | `/sf-org`         | [SF DevBar](./extensions/sf-devbar/)                             | ui         |
-| `/sf-skills`      | [SF Skills HUD](./extensions/sf-skills-hud/)                     | ui         |
+| `/sf-skills`      | [SF Skills](./extensions/sf-skills/)                             | ui         |
 | `/sf-welcome`     | [SF Welcome](./extensions/sf-welcome/)                           | ui         |
 | `/sf-setup-fonts` | [SF Welcome](./extensions/sf-welcome/)                           | ui         |
 
@@ -373,7 +373,7 @@ For the canonical machine-readable bundle list, see [`catalog/index.json`](./cat
 | [SF LSP](./extensions/sf-lsp/)                                   | assistive  | on        | Real-time Salesforce LSP diagnostics on write/edit with a working-indicator spinner, transcript rows, and a permanent top-bar health segment in sf-devbar                                                                                      |
 | [SF DevBar](./extensions/sf-devbar/)                             | ui         | on        | Bespoke Salesforce developer status bar with org context, model info, git, and context window progress                                                                                                                                         |
 | [SF Ohana Spinner](./extensions/sf-ohana-spinner/)               | ui         | on        | Salesforce-themed rainbow spinner during LLM thinking                                                                                                                                                                                          |
-| [SF Skills HUD](./extensions/sf-skills-hud/)                     | ui         | on        | Pinned top-right overlay that shows which skills are live in context versus earlier in the session                                                                                                                                             |
+| [SF Skills](./extensions/sf-skills/)                             | ui         | on        | Pinned top-right overlay that shows which skills are live in context versus earlier in the session                                                                                                                                             |
 | [SF Welcome](./extensions/sf-welcome/)                           | ui         | on        | Salesforce-branded splash screen with environment status, extension health, and community info                                                                                                                                                 |
 
 <!-- GENERATED:bundled-extensions:end -->
@@ -638,7 +638,7 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 - Spinner colors look dim, washed-out, or garbled
 - No spinner appears during LLM thinking
 
-**[SF Skills HUD](./extensions/sf-skills-hud/#troubleshooting)**
+**[SF Skills](./extensions/sf-skills/#troubleshooting)**
 
 - HUD never appears even though I know a skill was used
 - A skill moved from Live to Earlier mid-session

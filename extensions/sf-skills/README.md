@@ -90,7 +90,7 @@ its usage is still present in the active context. Older skill usage moves to the
 <!-- GENERATED:file-structure:start -->
 
 ```
-extensions/sf-skills-hud/
+extensions/sf-skills/
   lib/
     hud-component.ts        ← implementation module
     skill-state.ts          ← implementation module

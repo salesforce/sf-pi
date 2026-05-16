@@ -32,7 +32,7 @@ sf-pi/
 │   ├── sf-lsp/
 │   ├── sf-ohana-spinner/
 │   ├── sf-pi-manager/
-│   ├── sf-skills-hud/
+│   ├── sf-skills/
 │   ├── sf-slack/
 │   ├── sf-welcome/
 ├── lib/
@@ -145,7 +145,7 @@ Current examples:
 
 - `extensions/sf-slack/AGENTS.md` — HITL rules, file map for 9 tools
 - `extensions/sf-llm-gateway-internal/AGENTS.md` — unified-provider + two-transport rules
-- `extensions/sf-skills-hud/ROADMAP.md` — Phase 2 work
+- `extensions/sf-skills/ROADMAP.md` — Phase 2 work
 
 When editing an extension that has one, read it **before** `index.ts`.
 

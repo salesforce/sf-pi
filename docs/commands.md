@@ -106,7 +106,7 @@ _Salesforce-themed rainbow spinner during LLM thinking_
 - Default: **on**
 - Commands: _none_
 
-### [SF Skills HUD](../extensions/sf-skills-hud/)
+### [SF Skills](../extensions/sf-skills/)
 
 _Pinned top-right overlay that shows which skills are live in context versus earlier in the session_
 

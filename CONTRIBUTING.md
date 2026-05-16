@@ -248,7 +248,7 @@ with a short file map and any editing rules. See
 [`extensions/sf-slack/AGENTS.md`](./extensions/sf-slack/AGENTS.md) and
 [`extensions/sf-llm-gateway-internal/AGENTS.md`](./extensions/sf-llm-gateway-internal/AGENTS.md)
 for examples. Phased roadmaps live in the extension's own `ROADMAP.md`
-(see [`extensions/sf-skills-hud/ROADMAP.md`](./extensions/sf-skills-hud/ROADMAP.md)).
+(see [`extensions/sf-skills/ROADMAP.md`](./extensions/sf-skills/ROADMAP.md)).
 
 Scaffold a new extension with:
 

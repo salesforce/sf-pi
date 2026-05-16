@@ -136,6 +136,7 @@ extensions/sf-pi-manager/
     announcements.ts        ← implementation module
     config-panel.ts         ← implementation module
     doctor-command.ts       ← implementation module
+    extension-aliases.ts    ← implementation module
     extension-details.ts    ← implementation module
     overlay.ts              ← implementation module
     recommendations-install.ts← implementation module
@@ -149,6 +150,7 @@ extensions/sf-pi-manager/
     announcements-command.test.ts← unit / smoke test
     command-parsing.test.ts ← unit / smoke test
     doctor-command.test.ts  ← unit / smoke test
+    extension-aliases.test.ts← unit / smoke test
     extension-details.test.ts← unit / smoke test
     extension-state.test.ts ← unit / smoke test
     package-detection.test.ts← unit / smoke test

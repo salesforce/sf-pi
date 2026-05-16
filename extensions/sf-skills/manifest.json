@@ -1,6 +1,6 @@
 {
-  "id": "sf-skills-hud",
-  "name": "SF Skills HUD",
+  "id": "sf-skills",
+  "name": "SF Skills",
   "description": "Pinned top-right overlay that shows which skills are live in context versus earlier in the session",
   "category": "ui",
   "maturity": "stable",

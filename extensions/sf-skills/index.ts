@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /**
- * sf-skills-hud behavior contract
+ * sf-skills behavior contract (HUD slice)
  *
  * Shows a persistent, pinned HUD in the top-right corner once the session has
  * actually used at least one skill. The HUD stays out of the way by using a
@@ -94,7 +94,7 @@ const SKILLS_ACTIONS: CommandPanelAction<SkillsAction>[] = [
 // Compose the live action list so the lifecycle toggle row reflects the
 // current enablement state on every panel open.
 function buildSkillsActions(cwd: string): CommandPanelAction<SkillsAction>[] {
-  const toggle = buildToggleExtensionAction({ extensionId: "sf-skills-hud", cwd });
+  const toggle = buildToggleExtensionAction({ extensionId: "sf-skills", cwd });
   return toggle ? [...SKILLS_ACTIONS, toggle] : SKILLS_ACTIONS;
 }
 
@@ -121,8 +121,8 @@ function renderSkillsHelp(): string {
 // Extension entry point
 // -------------------------------------------------------------------------------------------------
 
-export default function sfSkillsHud(pi: ExtensionAPI) {
-  if (!requirePiVersion(pi, "sf-skills-hud")) return;
+export default function sfSkills(pi: ExtensionAPI) {
+  if (!requirePiVersion(pi, "sf-skills")) return;
 
   let hudState: SkillsHudState = EMPTY_STATE;
   let hudComponent: SkillsHudComponent | null = null;
@@ -274,7 +274,7 @@ export default function sfSkillsHud(pi: ExtensionAPI) {
     fromPanel = false,
   ): Promise<void> {
     if (subcommand === "lifecycle.toggle") {
-      await performToggleExtension(ctx, "sf-skills-hud");
+      await performToggleExtension(ctx, "sf-skills");
       return;
     }
     if (subcommand === "help") {

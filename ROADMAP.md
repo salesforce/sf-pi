@@ -43,8 +43,8 @@ design proposal and — ideally — a PR.
 - [ ] `NO_COLOR=1` support across splash, spinner, devbar
 - [ ] Standardize SF Pi slash-command panels and subcommand descriptions
       (see [`docs/adr/0005-standard-command-panels.md`](./docs/adr/0005-standard-command-panels.md))
-- [ ] `sf-skills-hud` Phase 2 (see
-      [`extensions/sf-skills-hud/ROADMAP.md`](./extensions/sf-skills-hud/ROADMAP.md))
+- [ ] `sf-skills` Phase 2 (see
+      [`extensions/sf-skills/ROADMAP.md`](./extensions/sf-skills/ROADMAP.md))
 
 ## Next
 

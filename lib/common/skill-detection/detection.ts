@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /**
- * Skill state reconstruction for the SF Skills HUD.
+ * Skill state reconstruction shared between the sf-skills HUD overlay and
+ * the upcoming sf-skills datatable surfaces.
  *
  * Source of truth:
  * - discovered skill commands from pi.getCommands()
@@ -12,6 +13,10 @@
  * - compaction-safe
  * - branch-switch-safe
  * - no hidden extension state to reconcile
+ *
+ * This module was extracted from the prior sf-skills-hud extension so that
+ * every sf-skills surface consumes the same detection logic without
+ * duplicating it. Behavior is unchanged from that prior version.
  */
 import path from "node:path";
 import {

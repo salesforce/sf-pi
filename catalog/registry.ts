@@ -139,10 +139,10 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
     },
   },
   {
-    id: "sf-skills-hud",
-    name: "SF Skills HUD",
+    id: "sf-skills",
+    name: "SF Skills",
     description: "Pinned top-right overlay that shows which skills are live in context versus earlier in the session",
-    file: "extensions/sf-skills-hud/index.ts",
+    file: "extensions/sf-skills/index.ts",
     category: "ui",
     maturity: "stable",
     defaultEnabled: true,

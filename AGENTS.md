@@ -278,7 +278,7 @@ See `extensions/sf-slack/AGENTS.md` and
 
 Add `extensions/<id>/ROADMAP.md` when the extension has phased work that
 doesn't belong in the top-level `ROADMAP.md`. See
-`extensions/sf-skills-hud/ROADMAP.md` as a reference.
+`extensions/sf-skills/ROADMAP.md` as a reference.
 
 ## Drift-proof docs
 

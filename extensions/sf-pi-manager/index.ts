@@ -101,6 +101,7 @@ import {
 import { loadAnnouncementsManifest } from "../../lib/common/catalog-state/announcements-manifest.ts";
 import { buildAnnouncementsSync } from "../../lib/common/catalog-state/announcements-orchestrator.ts";
 import { readAnnouncementsState } from "../../lib/common/catalog-state/announcements-state.ts";
+import { migrateExtensionAliases } from "./lib/extension-aliases.ts";
 
 export {
   applyExtensionState,
@@ -277,6 +278,14 @@ export default function sfPiManagerExtension(pi: ExtensionAPI) {
       }
     } catch {
       // Privacy default is best-effort — must never break session_start.
+    }
+    try {
+      // Best-effort: rewrite stale `!extensions/<old>/index.ts` filter
+      // entries so users who explicitly disabled a renamed extension keep
+      // that preference under the new name. Idempotent and silent.
+      migrateExtensionAliases(ctx.cwd);
+    } catch {
+      // Alias migration is best-effort — must never break session_start.
     }
     updateFooterStatus(ctx);
     updateRecommendationsNudge(ctx);

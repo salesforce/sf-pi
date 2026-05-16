@@ -5,7 +5,7 @@
  * Covers:
  * - sf-devbar: skips teardown on reload
  * - sf-lsp: skips LSP shutdown on reload
- * - sf-skills-hud: preserves state on reload
+ * - sf-skills: preserves state on reload
  *
  * These are source-level contract tests that verify the extensions read the
  * `event.reason` field from SessionShutdownEvent (added in 0.68.0) and use
@@ -67,11 +67,11 @@ describe("sf-lsp session_shutdown reason", () => {
 });
 
 // -------------------------------------------------------------------------------------------------
-// sf-skills-hud session_shutdown reason
+// sf-skills session_shutdown reason
 // -------------------------------------------------------------------------------------------------
 
-describe("sf-skills-hud session_shutdown reason", () => {
-  const source = readExtensionSource("sf-skills-hud");
+describe("sf-skills session_shutdown reason", () => {
+  const source = readExtensionSource("sf-skills");
 
   it("reads event.reason in session_shutdown handler", () => {
     expect(source).toMatch(/pi\.on\("session_shutdown",\s*async\s*\(event/);

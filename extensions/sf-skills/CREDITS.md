@@ -1,7 +1,7 @@
 # Credits
 
 _TODO: fill in the upstream `pi` extension(s) or other projects that
-inspired `sf-skills-hud`, and describe what was adapted vs. built from scratch._
+inspired `sf-skills` (originally shipped as `sf-skills-hud`), and describe what was adapted vs. built from scratch._
 
 ## Inspiration
 

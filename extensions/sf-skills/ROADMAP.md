@@ -1,6 +1,6 @@
 # SF Skills HUD — Roadmap
 
-This document captures follow-up work for the `sf-skills-hud` extension after
+This document captures follow-up work for the `sf-skills` extension (originally `sf-skills-hud`) after
 Phase 1.
 
 Phase 1 is intentionally conservative:
@@ -175,7 +175,7 @@ These can be revisited in a later phase.
 If Phase 2 is implemented, likely new files:
 
 ```text
-extensions/sf-skills-hud/
+extensions/sf-skills/
   ROADMAP.md                 ← this file
   lib/
     detail-panel.ts          ← right-side focusable detail panel

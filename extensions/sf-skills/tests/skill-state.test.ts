@@ -84,7 +84,7 @@ function assistantToolCall(path: string): Record<string, unknown> {
   };
 }
 
-describe("sf-skills-hud skill state", () => {
+describe("sf-skills skill state", () => {
   it("marks explicit skill blocks as live", () => {
     const commands = [skillCommand("sf-apex", "/skills/sf-apex/SKILL.md")];
     const entries: SessionEntry[] = [
