@@ -481,6 +481,28 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.76.0](https://github.com/salesforce/sf-pi/compare/v0.75.4...v0.76.0) (2026-05-16)
+
+
+### Features
+
+* **sf-skills:** forcedotcom/afv-library install + update + link/unlink ([b558d69](https://github.com/salesforce/sf-pi/commit/b558d692291bd71561408f8645626435e9ab6765))
+* **sf-skills:** friendly source labels for the datatable ([85eda2b](https://github.com/salesforce/sf-pi/commit/85eda2b8894a5e1f744c4ef8fc2dc9dd8dc30dcf))
+* **sf-skills:** persisted usage counters + Stats tab + /sf-skills metrics ([48e7ea4](https://github.com/salesforce/sf-pi/commit/48e7ea447548224beba0aee3100661111b1a21f5))
+* **sf-skills:** project-scope skill sources ([5d4925c](https://github.com/salesforce/sf-pi/commit/5d4925c20eae03ef09bbbe9a9a0ab54768835adf))
+* **sf-skills:** prune (stale settings + orphan managed clones) ([d2a767d](https://github.com/salesforce/sf-pi/commit/d2a767deb44900b6cb37452d5e5d51c089b52af8))
+* **sf-skills:** redesigned datatable overlay with fixed height + scroll + filter ([36cfc0c](https://github.com/salesforce/sf-pi/commit/36cfc0cb8863deff5de5e76e8b6f977da50f7da2))
+* **sf-skills:** tabbed datatable overlay (Active / Discover / Stats) ([7193a36](https://github.com/salesforce/sf-pi/commit/7193a36151ba24fe912b0c41b251bf1a7db4a9fa))
+* **sf-skills:** viewport scroll math (slice 2 of 3 for the redesign) ([920563e](https://github.com/salesforce/sf-pi/commit/920563eedf223ea3f5aa4e58aee40da4977ae196))
+
+
+### Bug Fixes
+
+* **sf-skills:** cross-scope coverage check on planEnable ([0fa8251](https://github.com/salesforce/sf-pi/commit/0fa8251b2d96547fe21e0549fe8153425c520d6f))
+* **sf-skills:** drop forbidden non-null assertions for CI eslint ([f57f3cc](https://github.com/salesforce/sf-pi/commit/f57f3cc8ae40a325aaf3f8b4648f0050ffc164e8))
+* **sf-skills:** native auto-expand / no-op for parent-dir-covered toggles ([8d7e8c2](https://github.com/salesforce/sf-pi/commit/8d7e8c273fbad66c42faa0cdb4fc0a963e3230bf))
+* **sf-skills:** scroll indicator anchored to right edge + flexible source column ([571ef92](https://github.com/salesforce/sf-pi/commit/571ef92d063cde075d54d934966336d989be8016))
+
 ## [0.75.4](https://github.com/salesforce/sf-pi/compare/v0.75.3...v0.75.4) (2026-05-16)
 
 
