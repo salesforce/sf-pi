@@ -54,6 +54,9 @@ import {
 import { openInfoPanel } from "../../lib/common/info-panel.ts";
 import { withSafeCommandHandler } from "../../lib/common/safe-command-handler.ts";
 import { handleDefaults, parseDefaultsArgs } from "./lib/skills-command.ts";
+import { updateSkillSources } from "../../lib/common/skill-sources/skill-sources.ts";
+import { buildActiveRows, buildDiscoverRows } from "./lib/table-data.ts";
+import { SkillsTableOverlayComponent, type TableResult } from "./lib/table-overlay.ts";
 
 // -------------------------------------------------------------------------------------------------
 // Constants
@@ -69,13 +72,20 @@ const EMPTY_STATE: SkillsHudState = {
   usedCount: 0,
 };
 
-type SkillsAction = "summary" | "help" | "close" | LifecycleActionId;
+type SkillsAction = "summary" | "table" | "help" | "close" | LifecycleActionId;
 
 const SKILLS_ACTIONS: CommandPanelAction<SkillsAction>[] = [
   {
     value: "summary",
     label: "Show skill summary",
     description: "Print live and earlier skill usage detected in the current session branch.",
+    group: "Status",
+  },
+  {
+    value: "table",
+    label: "Open skills table",
+    description:
+      "Tabbed datatable: Active, Discover, Stats. Toggle global / project wiring per row.",
     group: "Status",
   },
   {
@@ -101,20 +111,32 @@ function buildSkillsActions(cwd: string): CommandPanelAction<SkillsAction>[] {
 
 function renderSkillsHelp(): string {
   return [
-    "sf-skills — Skills HUD summary",
+    "sf-skills — skills manager + HUD",
     "",
-    "What it shows:",
+    "HUD (passive top-right overlay):",
     "  • Live now — skills still present in active context",
     "  • Earlier — skills used on this branch but no longer live after compaction/growth",
-    "",
-    "Behavior:",
-    "  • Pinned as a passive top-right overlay",
     "  • Hidden until at least one skill is used",
     "",
+    "Datatable (/sf-skills table):",
+    "  • Tabs: Active / Discover / Stats",
+    "  • Active — every skill pi.getCommands() reports right now, with Wired column",
+    "  • Discover — active set + on-disk candidates not yet in settings.skills[]",
+    "  • Stats — per-skill usage counters (populated as you invoke /skill:<name>)",
+    "  • g toggles global wiring, p toggles project, enter applies, esc cancels",
+    "",
+    "Defaults (forcedotcom/afv-library):",
+    "  • /sf-skills defaults install  [project|global]",
+    "  • /sf-skills defaults update   [project|global]",
+    "  • /sf-skills defaults link <path> [project|global]",
+    "  • /sf-skills defaults unlink <path> [project|global] [--delete]",
+    "",
     "Commands:",
-    "  /sf-skills          Open status & controls panel",
-    "  /sf-skills summary  Show current summary",
-    "  /sf-skills help     Show this help",
+    "  /sf-skills           Open status & controls panel",
+    "  /sf-skills summary   HUD summary text",
+    "  /sf-skills table     Open the tabbed datatable",
+    "  /sf-skills defaults  Manage afv-library installs (see above)",
+    "  /sf-skills help      Show this help",
   ].join("\n");
 }
 
@@ -309,6 +331,11 @@ export default function sfSkills(pi: ExtensionAPI) {
       return;
     }
 
+    if (subcommand === "table") {
+      await openSkillsTable(ctx);
+      return;
+    }
+
     await emitSkillsOutput(
       ctx,
       "Unknown command",
@@ -330,5 +357,86 @@ export default function sfSkills(pi: ExtensionAPI) {
       return;
     }
     ctx.ui.notify(body ? `${title}\n\n${body}` : title, level === "success" ? "info" : level);
+  }
+
+  async function openSkillsTable(ctx: ExtensionCommandContext): Promise<void> {
+    if (!ctx.hasUI) {
+      ctx.ui.notify(
+        "The skills table needs an interactive terminal. Use /sf-skills summary or /sf-skills defaults status instead.",
+        "info",
+      );
+      return;
+    }
+    const commands = pi.getCommands();
+    const active = buildActiveRows({ commands, cwd: ctx.cwd });
+    const discover = buildDiscoverRows({ commands, cwd: ctx.cwd });
+
+    ctx.ui.setWorkingVisible(false);
+    let result: TableResult | undefined;
+    try {
+      result = await ctx.ui.custom<TableResult | undefined>(
+        (_tui, theme, _keybindings, done) =>
+          new SkillsTableOverlayComponent(theme, { active, discover, cwd: ctx.cwd }, done),
+        {
+          overlay: true,
+          overlayOptions: () => ({
+            anchor: "center" as const,
+            width: "82%",
+            minWidth: 80,
+          }),
+        },
+      );
+    } finally {
+      ctx.ui.setWorkingVisible(true);
+    }
+
+    if (!result || result.kind === "cancel") return;
+    await applyTableResult(ctx, result);
+  }
+
+  async function applyTableResult(
+    ctx: ExtensionCommandContext,
+    result: Extract<TableResult, { kind: "apply" }>,
+  ): Promise<void> {
+    const buckets: Record<"global" | "project", { add: string[]; remove: string[] }> = {
+      global: { add: [], remove: [] },
+      project: { add: [], remove: [] },
+    };
+    for (const t of result.toggles) {
+      const bucket = buckets[t.scope];
+      if (t.enable) bucket.add.push(t.skillPath);
+      else bucket.remove.push(t.skillPath);
+    }
+    for (const c of result.addCandidates) {
+      buckets[c.scope].add.push(c.settingsValue);
+    }
+
+    const summary: string[] = [];
+    try {
+      for (const scope of ["global", "project"] as const) {
+        const b = buckets[scope];
+        if (b.add.length === 0 && b.remove.length === 0) continue;
+        const updated = updateSkillSources({
+          add: b.add,
+          remove: b.remove,
+          scope,
+          cwd: ctx.cwd,
+        });
+        summary.push(`${scope} skills[] (${updated.skills.length})`);
+      }
+    } catch (error) {
+      ctx.ui.notify(
+        `Failed to apply skill toggles: ${error instanceof Error ? error.message : String(error)}`,
+        "warning",
+      );
+      return;
+    }
+
+    if (summary.length === 0) {
+      ctx.ui.notify("No changes — nothing to apply.", "info");
+      return;
+    }
+    ctx.ui.notify(`Applied: ${summary.join(", ")}. Reloading…`, "info");
+    await ctx.reload();
   }
 }
