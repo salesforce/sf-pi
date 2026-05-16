@@ -638,11 +638,7 @@ export default function sfLspExtension(pi: ExtensionAPI) {
 
 function isAgentScriptHandlerInstalled(pi: ExtensionAPI): boolean {
   try {
-    return pi
-      .getCommands()
-      .some(
-        (command) => command.name === "sf-agentscript" || command.name === "sf-agentscript-assist",
-      );
+    return pi.getCommands().some((command) => command.name === "sf-agentscript");
   } catch {
     return false;
   }

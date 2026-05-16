@@ -69,7 +69,7 @@ ones agents and maintainers most often need:
 | `scripts/add-spdx-headers.mjs`      | Adds or checks SPDX headers for source scripts. Pre-commit auto-adds missing headers; CI uses the check path.      |
 | `scripts/check-llm-artifacts.sh`    | CI guard for unresolved conflict markers, prompt-template tokens, and LLM TODO markers.                            |
 | `scripts/scaffold.mjs`              | Creates a new extension folder and refreshes generated catalog/docs.                                               |
-| `scripts/sync-agentforce-sdk.mjs`   | Refreshes the vendored Agentforce SDK snapshot used by `sf-agentscript-assist`.                                    |
+| `scripts/sync-agentforce-sdk.mjs`   | Refreshes the vendored Agentforce SDK snapshot used by `sf-agentscript`.                                           |
 | `scripts/validate.sh`               | Agent-friendly local validation: generate catalog, SPDX check, docs health check, format check, type check, tests. |
 | `scripts/preview-pi-salesforce.mjs` | Local visual preview for the animated `sf-welcome` Pi + SALESFORCE header.                                         |
 | `scripts/preview-sf-logo.mjs`       | Local visual preview for the compact Salesforce wordmark.                                                          |

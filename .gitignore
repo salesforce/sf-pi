@@ -28,6 +28,14 @@ dist/
 # Editor + agent scratch dirs
 .cursor/
 
+# Agent / local verification scratch files
+context.md
+progress.md
+research.md
+generated-cat.jpg
+scripts/apex/*
+!scripts/apex/README.md
+
 # Private internal-only docs (plans, backlogs, drafts)
 docs/internal/
 

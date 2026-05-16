@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /* SPDX-License-Identifier: Apache-2.0 */
 /**
- * Sync the @agentscript/agentforce SDK dist into sf-agentscript-assist.
+ * Sync the @agentscript/agentforce SDK dist into sf-agentscript.
  *
  * Intended for CI and maintainers only. Not run on end-user npm install.
  *
@@ -17,7 +17,7 @@
  *   3. pnpm --filter '@agentscript/agentforce...' build (builds dependency graph
  *      up to and including agentforce).
  *   4. Copy dist/browser.js, dist/browser.js.map to
- *      extensions/sf-agentscript-assist/lib/vendor/agentforce/.
+ *      extensions/sf-agentscript/lib/vendor/agentforce/.
  *      We pick browser.js because it is a single self-contained ESM bundle with
  *      no external peer imports — compile() and parse() work in Node out of the
  *      box.
@@ -52,14 +52,7 @@ const UPSTREAM_SHA = "b98c087bd09d91de7f4cc1bfe829a98be573aaa6";
 // Paths
 // -------------------------------------------------------------------------------------------------
 
-const VENDOR_DIR = path.join(
-  ROOT,
-  "extensions",
-  "sf-agentscript-assist",
-  "lib",
-  "vendor",
-  "agentforce",
-);
+const VENDOR_DIR = path.join(ROOT, "extensions", "sf-agentscript", "lib", "vendor", "agentforce");
 
 const VENDORED_FILES = [
   { src: "packages/agentforce/dist/browser.js", dest: "browser.js" },
@@ -173,7 +166,7 @@ function writeUpstreamMd(resolvedSha, upstreamVersion, syncDate) {
 
 This directory contains a build of the \`@agentscript/agentforce\` SDK from
 [salesforce/agentscript](https://github.com/salesforce/agentscript), vendored so
-that \`sf-agentscript-assist\` works offline, on plain \`npm install\`, without
+that \`sf-agentscript\` works offline, on plain \`npm install\`, without
 requiring pnpm or a network round-trip.
 
 **Do not edit the bundled files.** If upstream behavior needs to change, bump

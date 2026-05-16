@@ -5,7 +5,7 @@
  * compile tool, multi-turn eval/regression testing against the Salesforce
  * Evaluation API, and a placeholder for the future Agent Script LSP.
  *
- * Behavior matrix (preserves all existing sf-agentscript-assist behavior):
+ * Behavior matrix:
  *
  *   Event/Trigger             | Result
  *   --------------------------|------------------------------------------------------------

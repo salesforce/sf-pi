@@ -23,7 +23,7 @@ The current baseline is mixed:
 | `sf-llm-gateway-internal`      | Text status/help plus a custom setup/config flow                              | Too many subcommands; completions are incomplete and mostly lack descriptions.             |
 | `sf-guardrail`                 | Text status/list/audit commands plus a config panel in the manager            | Needs a no-args action panel that groups status, rules, audit, forget, and preset install. |
 | `sf-slack`                     | Text status/help plus settings panel and many agent tools                     | Needs a no-args action panel for auth, refresh, settings, sent audit, and help.            |
-| `sf-agentscript-assist`        | Minimal doctor/check text commands                                            | Needs a small status/actions panel.                                                        |
+| `sf-agentscript`               | Minimal doctor/check text commands                                            | Needs a small status/actions panel.                                                        |
 | `sf-devbar`                    | Toggle command and `/sf-org` text summary                                     | Needs a small status/actions panel for toggle, org status, and help.                       |
 | `sf-feedback`                  | Guided feedback wizard                                                        | Wizard can stay, but diagnostics/help should be discoverable as actions.                   |
 | `sf-skills-hud`, `sf-welcome`  | Mostly passive UI with simple commands                                        | Lightweight action panels are optional but should follow the same shape when added.        |
@@ -153,7 +153,7 @@ type SfPiCommandAction = {
      vocabulary instead of a separate custom UI language.
 
 5. **Small command extensions**
-   - Add lightweight panels only where useful (`sf-agentscript-assist`,
+   - Add lightweight panels only where useful (`sf-agentscript`,
      `sf-devbar`, `sf-feedback`).
    - Leave passive extensions alone unless users ask for controls.
 

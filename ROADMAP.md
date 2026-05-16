@@ -16,7 +16,7 @@ design proposal and — ideally — a PR.
 - [x] release-please automation, including release-PR auto-merge hardening
 - [x] Agent-friendly validation output in `scripts/validate.sh`
 - [x] SPDX pre-commit / CI enforcement and LLM-artifact CI guard
-- [x] In-process Agent Script authoring companion (`sf-agentscript-assist`)
+- [x] In-process Agent Script authoring companion (`sf-agentscript`)
       with vendored SDK, deterministic quick fixes, and weekly upstream sync
 - [x] `slack_send` with human-in-the-loop confirm + audit trail
 - [x] Scope probing + dynamic tool gating for `sf-slack`

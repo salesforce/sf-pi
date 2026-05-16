@@ -1,7 +1,7 @@
 # Credits
 
 _TODO: fill in the upstream `pi` extension(s) or other projects that
-inspired `sf-agentscript-assist`, and describe what was adapted vs. built from scratch._
+inspired `sf-agentscript`, and describe what was adapted vs. built from scratch._
 
 ## Inspiration
 
