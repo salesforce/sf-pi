@@ -509,6 +509,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.87.1](https://github.com/salesforce/sf-pi/compare/v0.87.0...v0.87.1) (2026-05-17)
+
+
+### Bug Fixes
+
+* **data360:** keep card titles before artifacts ([4e6ed13](https://github.com/salesforce/sf-pi/commit/4e6ed13ebcccd3b446942a99c066b7b5134df44e))
+
 ## [0.87.0](https://github.com/salesforce/sf-pi/compare/v0.86.0...v0.87.0) (2026-05-17)
 
 
