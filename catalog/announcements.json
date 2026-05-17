@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.80.1-2026-05-17",
-  "latestVersion": "0.80.1",
+  "revision": "release-0.81.0-2026-05-17",
+  "latestVersion": "0.81.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.80.1",
+      "id": "release-0.81.0",
       "kind": "update",
-      "title": "sf-pi v0.80.1 — data360: handle missing tracing table in runbooks",
+      "title": "sf-pi v0.81.0 — add ohana spinner calm mode",
       "publishedAt": "2026-05-17T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.80.1",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.81.0",
       "severity": "info",
-      "body": "data360: handle missing tracing table in runbooks"
+      "body": "add ohana spinner calm mode"
     },
     {
       "id": "pi-0.73-required",
