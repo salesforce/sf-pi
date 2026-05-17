@@ -162,6 +162,8 @@ extensions/sf-data360/
   lib/
     agent-observability/
       platform-tracing.ts   ← implementation module
+    display/
+      card.ts               ← implementation module
     facade/
       agent-observability.ts← implementation module
       registry.ts           ← implementation module
@@ -179,6 +181,7 @@ extensions/sf-data360/
   tests/
     agent-observability-runbooks.test.ts← unit / smoke test
     api-tool.test.ts        ← unit / smoke test
+    display-card.test.ts    ← unit / smoke test
     facade-registry.test.ts ← unit / smoke test
     metadata-tool.test.ts   ← unit / smoke test
     path.test.ts            ← unit / smoke test
