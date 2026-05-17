@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.87.1-2026-05-17",
-  "latestVersion": "0.87.1",
+  "revision": "release-0.88.0-2026-05-17",
+  "latestVersion": "0.88.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.87.1",
+      "id": "release-0.88.0",
       "kind": "update",
-      "title": "sf-pi v0.87.1 — data360: keep card titles before artifacts",
+      "title": "sf-pi v0.88.0 — data360: expand read-only facade registry",
       "publishedAt": "2026-05-17T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.87.1",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.88.0",
       "severity": "info",
-      "body": "data360: keep card titles before artifacts"
+      "body": "data360: expand read-only facade registry"
     },
     {
       "id": "pi-0.73-required",
