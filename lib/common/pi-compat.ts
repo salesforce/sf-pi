@@ -28,7 +28,7 @@ import { fileURLToPath } from "node:url";
  * package.json. Bump this whenever sf-pi starts depending on an API added
  * in a newer pi release.
  */
-export const MIN_PI_VERSION = "0.74.0";
+export const MIN_PI_VERSION = "0.74.1";
 
 /**
  * npm scopes pi-coding-agent has shipped under, in preference order. Pi
