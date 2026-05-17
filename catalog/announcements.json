@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.76.0-2026-05-16",
-  "latestVersion": "0.76.0",
+  "revision": "release-0.76.1-2026-05-17",
+  "latestVersion": "0.76.1",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.76.0",
+      "id": "release-0.76.1",
       "kind": "update",
-      "title": "sf-pi v0.76.0 — sf-skills: forcedotcom/afv-library install + update + link/unlink",
-      "publishedAt": "2026-05-16T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.76.0",
+      "title": "sf-pi v0.76.1 — pi-compat: align MIN_PI_VERSION + peer-floor test with pi 0.74.1",
+      "publishedAt": "2026-05-17T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.76.1",
       "severity": "info",
-      "body": "sf-skills: forcedotcom/afv-library install + update + link/unlink — sf-skills: friendly source labels for the datatable"
+      "body": "pi-compat: align MIN_PI_VERSION + peer-floor test with pi 0.74.1 — sf-pi-manager: scroll extension list on small terminals, closes #174"
     },
     {
       "id": "pi-0.73-required",
