@@ -17,6 +17,13 @@ interface D360ProbeRenderArgs {
   target_org?: string;
 }
 
+interface D360MetadataRenderArgs {
+  action?: string;
+  api_name?: string;
+  category?: string;
+  target_org?: string;
+}
+
 interface D360RenderResult {
   content?: unknown[];
   details?: {
@@ -70,6 +77,25 @@ export function renderD360ProbeResult(
   theme: Theme,
 ): Text {
   return renderD360CardResult(result, opts, theme, "🩺 d360_probe · running…");
+}
+
+export function renderD360MetadataCall(args: D360MetadataRenderArgs, theme: Theme): Text {
+  const bits = [args.action, args.api_name, args.category, args.target_org].filter(
+    (bit): bit is string => typeof bit === "string" && bit.length > 0,
+  );
+  return new Text(
+    theme.fg("toolTitle", theme.bold("🧭 d360 metadata ")) + theme.fg("muted", bits.join(" · ")),
+    0,
+    0,
+  );
+}
+
+export function renderD360MetadataResult(
+  result: D360RenderResult,
+  opts: { isPartial?: boolean; expanded?: boolean },
+  theme: Theme,
+): Text {
+  return renderD360CardResult(result, opts, theme, "🧭 d360_metadata · running…");
 }
 
 export function renderD360CardResult(

@@ -20,6 +20,9 @@ import { connFromAlias } from "../../../lib/common/sf-conn/connection.ts";
 import { connRequest } from "../../../lib/common/sf-conn/request.ts";
 import { buildApiPath } from "./path.ts";
 import { responseLooksLikeError } from "./api-tool.ts";
+import { renderCardForLlm } from "./display/card.ts";
+import { metadataResultToCard } from "./display/metadata-card.ts";
+import { renderD360MetadataCall, renderD360MetadataResult } from "./display/render.ts";
 import { resolveTargetOrgContext } from "./target-org.ts";
 import { buildD360Envelope, truncateD360Output, writeFullD360Output } from "./truncation.ts";
 
@@ -108,6 +111,8 @@ export function registerD360MetadataTool(pi: ExtensionAPI): void {
       "Use d360_metadata list_dlos or describe_dlo for compact Data Lake Object discovery before mapping or stream work.",
     ],
     parameters: D360MetadataParams,
+    renderCall: renderD360MetadataCall,
+    renderResult: renderD360MetadataResult,
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
       const input = params as D360MetadataInput;
       const env = await resolveEnvironment(exec, ctx);
@@ -160,22 +165,31 @@ export function registerD360MetadataTool(pi: ExtensionAPI): void {
 
       const rawOutputPath = await writeFullD360Output(output);
       const summary = summarizeMetadataOutput(input, output, rawOutputPath);
+      const card = metadataResultToCard(input, summary.text, summary.details, {
+        targetOrg,
+        rawOutputPath,
+      });
+      const compactText = renderCardForLlm(card);
       const successDetails: Record<string, unknown> = {
         ok: true,
         action: input.action,
         path: apiPath,
         targetOrg,
         rawOutputPath,
+        card,
         ...summary.details,
       };
+      const sfPi = buildD360Envelope(D360_METADATA_TOOL_NAME, true, compactText, successDetails, {
+        text: compactText,
+        fullOutputPath: rawOutputPath,
+      });
+      sfPi.data = { card };
+      sfPi.renderHints = { profile: "balanced", collapsedLines: 8, expandedMaxLines: 40 };
       return {
-        content: [{ type: "text" as const, text: summary.text }],
+        content: [{ type: "text" as const, text: compactText }],
         details: {
           ...successDetails,
-          sfPi: buildD360Envelope(D360_METADATA_TOOL_NAME, true, summary.text, successDetails, {
-            text: summary.text,
-            fullOutputPath: rawOutputPath,
-          }),
+          sfPi,
         },
       };
     },

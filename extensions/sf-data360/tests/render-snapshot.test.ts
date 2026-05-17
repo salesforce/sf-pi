@@ -5,6 +5,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   renderD360Call,
+  renderD360MetadataCall,
+  renderD360MetadataResult,
   renderD360ProbeCall,
   renderD360ProbeResult,
   renderD360Result,
@@ -68,6 +70,36 @@ describe("d360 facade renderers", () => {
     expect(rendered).toContain("Facts");
     expect(rendered).toContain("Messages");
     expect(rendered).toContain("→ Run join_interaction_trace next");
+  });
+
+  it("renderMetadataCall summarizes action and object", () => {
+    const rendered = renderToString(
+      renderD360MetadataCall(
+        {
+          action: "describe_dmo",
+          api_name: "ssot__AiAgentInteraction__dlm",
+          target_org: "AgentforceSTDM",
+        },
+        passthroughTheme,
+      ),
+    );
+
+    expect(rendered).toBe(
+      "🧭 d360 metadata describe_dmo · ssot__AiAgentInteraction__dlm · AgentforceSTDM",
+    );
+  });
+
+  it("renderMetadataResult uses cards", () => {
+    const rendered = renderToString(
+      renderD360MetadataResult(
+        { details: { ok: true, card: { ...stdmCard(), icon: "🧭", title: "Data 360 metadata" } } },
+        {},
+        passthroughTheme,
+      ),
+    );
+
+    expect(rendered).toContain("🧭 Data 360 metadata ✅");
+    expect(rendered).toContain("📄 Full JSON: /tmp/pi-d360/output.json");
   });
 
   it("renderProbeCall summarizes target org", () => {
