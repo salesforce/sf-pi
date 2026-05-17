@@ -49,6 +49,8 @@ export interface D360CardRenderOptions {
   expandedMaxLines?: number;
   /** Default 160. */
   lineMaxChars?: number;
+  /** Add two-space indentation for body lines. Default false for LLM content. */
+  indentBody?: boolean;
 }
 
 const STATUS_ICON: Record<D360CardStatus, string> = {
@@ -71,7 +73,7 @@ export function renderCardCollapsed(
 ): string {
   const maxLines = opts.collapsedMaxLines ?? 8;
   const lines = buildCardLines(card, opts, "collapsed");
-  return clampLines(preserveArtifactLines(lines, card, opts), maxLines, opts).join("\n");
+  return clampLines(lines, maxLines, opts).join("\n");
 }
 
 export function renderCardExpanded(card: D360ResultCard, opts: D360CardRenderOptions = {}): string {
@@ -81,7 +83,7 @@ export function renderCardExpanded(card: D360ResultCard, opts: D360CardRenderOpt
 function renderExpandedLines(card: D360ResultCard, opts: D360CardRenderOptions): string[] {
   const maxLines = opts.expandedMaxLines ?? 40;
   const lines = buildCardLines(card, opts, "expanded");
-  return clampLines(preserveArtifactLines(lines, card, opts), maxLines, opts);
+  return clampLines(lines, maxLines, opts);
 }
 
 function buildCardLines(
@@ -90,70 +92,66 @@ function buildCardLines(
   mode: "collapsed" | "expanded",
 ): string[] {
   const maxChars = opts.lineMaxChars ?? 160;
+  const bodyPrefix = opts.indentBody ? "  " : "";
+  const sectionPrefix = opts.indentBody ? "  " : "";
   const title = `${card.icon} ${card.title} ${STATUS_ICON[card.status]}`.trim();
   const lines = [clipLine(title, maxChars)];
   if (card.subtitle) lines.push(clipLine(card.subtitle, maxChars));
-  if (card.summary) lines.push(clipLine(card.summary, maxChars));
+  if (card.summary) {
+    if (mode === "expanded") lines.push("");
+    lines.push(clipLine(prefixLine(card.summary, bodyPrefix), maxChars));
+  }
 
   const showCollapsedFacts = mode === "collapsed" && !card.sections?.length;
   if (card.facts?.length && (mode === "expanded" || showCollapsedFacts)) {
     if (mode === "expanded") lines.push("", "Facts");
-    const facts = mode === "collapsed" ? card.facts.slice(0, 4) : card.facts;
-    for (const fact of facts) lines.push(clipLine(`• ${fact.label}: ${fact.value}`, maxChars));
+    const facts = mode === "collapsed" ? card.facts.slice(0, 3) : card.facts;
+    for (const fact of facts) {
+      lines.push(clipLine(`${sectionPrefix}• ${fact.label}: ${fact.value}`, maxChars));
+    }
   }
 
   for (const section of card.sections ?? []) {
     if (mode === "expanded") lines.push("", `${section.icon ?? "•"} ${section.title}`);
-    const sectionLimit = mode === "collapsed" ? 4 : section.lines.length;
+    const sectionLimit = mode === "collapsed" ? 3 : section.lines.length;
     for (const line of section.lines.slice(0, sectionLimit)) {
-      lines.push(clipLine(line, maxChars));
+      lines.push(clipLine(prefixLine(line, sectionPrefix), maxChars));
     }
     const omitted = section.lines.length - sectionLimit;
-    if (omitted > 0) lines.push(`… +${omitted} more ${section.title.toLowerCase()} line(s)`);
+    if (omitted > 0) lines.push(clipLine(`${sectionPrefix}… +${omitted} more`, maxChars));
   }
 
   if (card.artifacts?.length) {
     if (mode === "expanded") lines.push("", "Artifacts");
     for (const artifact of card.artifacts) {
       lines.push(
-        clipLine(`${artifactIcon(artifact.kind)} ${artifact.label}: ${artifact.path}`, maxChars),
+        clipLine(
+          `${sectionPrefix}${artifactIcon(artifact.kind)} ${artifact.label}: ${artifact.path}`,
+          maxChars,
+        ),
       );
     }
   }
 
   if (card.nextSteps?.length) {
     if (mode === "expanded") lines.push("", "Next");
-    const next = mode === "collapsed" ? card.nextSteps.slice(0, 2) : card.nextSteps;
-    for (const step of next) lines.push(clipLine(`→ ${step}`, maxChars));
+    const next = mode === "collapsed" ? card.nextSteps.slice(0, 1) : card.nextSteps;
+    for (const step of next) lines.push(clipLine(`${sectionPrefix}→ ${step}`, maxChars));
   }
 
   return lines;
 }
 
-function preserveArtifactLines(
-  lines: string[],
-  card: D360ResultCard,
-  opts: D360CardRenderOptions,
-): string[] {
-  const artifacts = card.artifacts ?? [];
-  if (artifacts.length === 0) return lines;
-  const maxChars = opts.lineMaxChars ?? 160;
-  const artifactLines = artifacts.map((artifact) =>
-    clipLine(`${artifactIcon(artifact.kind)} ${artifact.label}: ${artifact.path}`, maxChars),
-  );
-  const withoutDuplicateArtifacts = lines.filter((line) => !artifactLines.includes(line));
-  return [...withoutDuplicateArtifacts, ...artifactLines];
-}
-
 function clampLines(lines: string[], maxLines: number, opts: D360CardRenderOptions): string[] {
   if (maxLines <= 0 || lines.length <= maxLines) return lines;
   const maxChars = opts.lineMaxChars ?? 160;
-  const artifactLines = lines.filter((line) => /^📄|^🧾|^📝|^📊/.test(line));
+  const artifactLines = lines.filter((line) => /^\s*[📄🧾📝📊]/u.test(line));
   const artifactSet = new Set(artifactLines);
   const bodyBudget = Math.max(1, maxLines - artifactLines.length - 1);
   const body = lines.filter((line) => !artifactSet.has(line)).slice(0, bodyBudget);
   const omitted = lines.length - body.length - artifactLines.length;
-  const omittedLine = omitted > 0 ? [clipLine(`… +${omitted} more line(s)`, maxChars)] : [];
+  const prefix = opts.indentBody ? "  " : "";
+  const omittedLine = omitted > 0 ? [clipLine(`${prefix}… +${omitted} more`, maxChars)] : [];
   return [...body, ...omittedLine, ...artifactLines].slice(0, maxLines);
 }
 
@@ -171,8 +169,14 @@ function artifactIcon(kind: D360ArtifactKind): string {
   }
 }
 
+function prefixLine(value: string, prefix: string): string {
+  return prefix && value.trim() ? `${prefix}${value}` : value;
+}
+
 function clipLine(value: string, maxChars: number): string {
-  const oneLine = value.replace(/\s+/g, " ").trim();
+  const leading = value.match(/^\s*/)?.[0] ?? "";
+  const rest = value.slice(leading.length).replace(/\s+/g, " ").trim();
+  const oneLine = `${leading}${rest}`;
   if (oneLine.length <= maxChars) return oneLine;
   return `${oneLine.slice(0, Math.max(1, maxChars - 1))}…`;
 }

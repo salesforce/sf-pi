@@ -138,9 +138,9 @@ export function renderD360CardResult(
   const card = result.details?.card ?? result.details?.sfPi?.data?.card;
   if (card) {
     const rendered = opts.expanded
-      ? renderCardExpanded(card, { expandedMaxLines: 40 })
-      : renderCardCollapsed(card, { collapsedMaxLines: 8 });
-    return new Text(colorizeStatus(rendered, card.status, theme), 0, 0);
+      ? renderCardExpanded(card, { expandedMaxLines: 40, indentBody: true })
+      : renderCardCollapsed(card, { collapsedMaxLines: 8, indentBody: true });
+    return new Text(styleCardText(rendered, card.status, theme), 0, 0);
   }
 
   const ok = result.details?.ok !== false;
@@ -148,10 +148,11 @@ export function renderD360CardResult(
   return new Text(theme.fg(ok ? "success" : "error", `${ok ? "✓" : "✗"} ${summary}`), 0, 0);
 }
 
-function colorizeStatus(text: string, status: D360ResultCard["status"], theme: Theme): string {
-  if (status === "error") return theme.fg("error", text);
-  if (status === "warning") return theme.fg("warning", text);
-  return theme.fg("success", text);
+function styleCardText(text: string, status: D360ResultCard["status"], theme: Theme): string {
+  const lines = text.split("\n");
+  const title = lines[0] ?? "";
+  const titleToken = status === "error" ? "error" : status === "warning" ? "warning" : "toolTitle";
+  return [theme.fg(titleToken, title), ...lines.slice(1)].join("\n");
 }
 
 function firstText(result: D360RenderResult): string {
