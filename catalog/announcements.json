@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.76.1-2026-05-17",
-  "latestVersion": "0.76.1",
+  "revision": "release-0.77.0-2026-05-17",
+  "latestVersion": "0.77.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.76.1",
+      "id": "release-0.77.0",
       "kind": "update",
-      "title": "sf-pi v0.76.1 — pi-compat: align MIN_PI_VERSION + peer-floor test with pi 0.74.1",
+      "title": "sf-pi v0.77.0 — sf-welcome: add SF Skills row tracking forcedotcom/afv-library",
       "publishedAt": "2026-05-17T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.76.1",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.77.0",
       "severity": "info",
-      "body": "pi-compat: align MIN_PI_VERSION + peer-floor test with pi 0.74.1 — sf-pi-manager: scroll extension list on small terminals, closes #174"
+      "body": "sf-welcome: add SF Skills row tracking forcedotcom/afv-library"
     },
     {
       "id": "pi-0.73-required",
