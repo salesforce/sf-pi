@@ -603,5 +603,55 @@
     "requiredParams": ["dataGraphEntityName"],
     "optionalParams": ["id", "limit", "offset", "live"],
     "safety": "read"
+  },
+  {
+    "name": "d360_metadata_search",
+    "family": "Metadata",
+    "description": "Search Data 360 metadata using natural language.",
+    "method": "POST",
+    "path": "/connect/search/metadata/results",
+    "requiredParams": ["body"],
+    "tips": "Use for discovery when compact catalogs are not enough. Search-plane indexes can be unavailable even when DMO/DLO catalogs work.",
+    "safety": "safe_post"
+  },
+  {
+    "name": "d360_ci_validate",
+    "family": "Calculated Insights",
+    "description": "Validate calculated insight SQL before create/update.",
+    "method": "POST",
+    "path": "/ssot/calculated-insights/actions/validate",
+    "requiredParams": ["body"],
+    "tips": "Validate before creating or updating calculated insights.",
+    "safety": "safe_post"
+  },
+  {
+    "name": "d360_transform_validate",
+    "family": "DataTransform",
+    "description": "Validate Data Transform configuration before create/update.",
+    "method": "POST",
+    "path": "/ssot/data-transforms-validation",
+    "requiredParams": ["body"],
+    "tips": "Validation can return precise STL graph issues such as missing target DLOs.",
+    "safety": "safe_post"
+  },
+  {
+    "name": "d360_connection_test",
+    "family": "Connection",
+    "description": "Test connection configuration without saving it.",
+    "method": "POST",
+    "path": "/ssot/connections/actions/test",
+    "requiredParams": ["body"],
+    "tips": "Pass connectorType/method and connector parameters in the body; this does not create a connection.",
+    "safety": "safe_post"
+  },
+  {
+    "name": "d360_semantic_query",
+    "family": "Semantic Retrieval",
+    "description": "Execute a semantic data model query.",
+    "method": "POST",
+    "path": "/semantic-engine/gateway",
+    "requiredParams": ["body"],
+    "safety": "safe_post",
+    "tips": "Semantic queries use /semantic-engine/gateway, not /ssot/query-sql."
   }
 ]

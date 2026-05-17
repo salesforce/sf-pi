@@ -268,5 +268,26 @@
     "requiredParams": ["dataGraphEntityName"],
     "optionalParams": ["id", "limit", "offset", "live"],
     "safety": "read"
+  },
+  "d360_metadata_search": {
+    "requiredParams": ["body"],
+    "tips": "Use for discovery when compact catalogs are not enough. Search-plane indexes can be unavailable even when DMO/DLO catalogs work."
+  },
+  "d360_ci_validate": {
+    "requiredParams": ["body"],
+    "tips": "Validate before creating or updating calculated insights."
+  },
+  "d360_transform_validate": {
+    "requiredParams": ["body"],
+    "tips": "Validation can return precise STL graph issues such as missing target DLOs."
+  },
+  "d360_connection_test": {
+    "requiredParams": ["body"],
+    "tips": "Pass connectorType/method and connector parameters in the body; this does not create a connection."
+  },
+  "d360_semantic_query": {
+    "requiredParams": ["body"],
+    "safety": "safe_post",
+    "tips": "Semantic queries use /semantic-engine/gateway, not /ssot/query-sql."
   }
 }

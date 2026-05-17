@@ -35,5 +35,26 @@
     "params": {
       "interaction_id": "64a3c2001eb45a35aebc575b743506c1"
     }
+  },
+  "d360_metadata_search": {
+    "operation": "d360_metadata_search",
+    "params": {
+      "body": {
+        "query": "AI Agent Interaction",
+        "pagination": {
+          "limit": 5
+        }
+      }
+    }
+  },
+  "d360_semantic_query": {
+    "operation": "d360_semantic_query",
+    "params": {
+      "body": {
+        "semanticQuery": {
+          "fields": []
+        }
+      }
+    }
   }
 }

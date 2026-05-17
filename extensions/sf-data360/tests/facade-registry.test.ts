@@ -46,6 +46,25 @@ describe("d360 facade registry", () => {
     });
   });
 
+  it("finds safe POST operation families by intent", () => {
+    expect(searchRegistry("metadata search natural language")[0]).toMatchObject({
+      family: "Metadata",
+      operations: expect.arrayContaining(["d360_metadata_search"]),
+    });
+    expect(searchRegistry("validate calculated insight sql")[0]).toMatchObject({
+      family: "Calculated Insights",
+      operations: expect.arrayContaining(["d360_ci_validate"]),
+    });
+    expect(searchRegistry("semantic query gateway")[0]).toMatchObject({
+      family: "Semantic Retrieval",
+      operations: expect.arrayContaining(["d360_semantic_query"]),
+    });
+    expect(searchRegistry("connection test connector")[0]).toMatchObject({
+      family: "Connection",
+      operations: expect.arrayContaining(["d360_connection_test"]),
+    });
+  });
+
   it("returns operation and runbook examples that point at registered names", () => {
     for (const example of Object.values(getD360Examples()) as Array<Record<string, unknown>>) {
       const operation = typeof example.operation === "string" ? example.operation : undefined;

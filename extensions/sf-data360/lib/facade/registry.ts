@@ -92,18 +92,24 @@ export function searchRegistry(query: string): Array<{
     .split(/[^a-z0-9_]+/)
     .filter(Boolean);
   const scored = registry.families.map((family) => {
-    const haystack = [family.name, family.summary, ...family.keywords].join(" ").toLowerCase();
+    const operations = registry.operations.filter((op) => op.family === family.name);
+    const runbooks = registry.runbooks.filter((runbook) => runbook.family === family.name);
+    const haystack = [
+      family.name,
+      family.summary,
+      ...family.keywords,
+      ...operations.flatMap((op) => [op.name, op.description, op.tips ?? ""]),
+      ...runbooks.flatMap((runbook) => [runbook.name, runbook.description, runbook.tips ?? ""]),
+    ]
+      .join(" ")
+      .toLowerCase();
     const score = terms.reduce((sum, term) => sum + (haystack.includes(term) ? 1 : 0), 0);
     return {
       family: family.name,
       score,
       summary: family.summary,
-      operations: registry.operations
-        .filter((op) => op.family === family.name)
-        .map((op) => op.name),
-      runbooks: registry.runbooks
-        .filter((runbook) => runbook.family === family.name)
-        .map((runbook) => runbook.name),
+      operations: operations.map((op) => op.name),
+      runbooks: runbooks.map((runbook) => runbook.name),
     };
   });
   return scored
