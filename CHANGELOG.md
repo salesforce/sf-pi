@@ -509,6 +509,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.79.0](https://github.com/salesforce/sf-pi/compare/v0.78.1...v0.79.0) (2026-05-17)
+
+
+### Features
+
+* **sf-llm-gateway:** TLS-aware doctor + one-shot onboard + macOS CA bundle fixer ([78fac0c](https://github.com/salesforce/sf-pi/commit/78fac0c817e382741a7ef7f882d62dc4bd978e0f))
+
 ## [0.78.1](https://github.com/salesforce/sf-pi/compare/v0.78.0...v0.78.1) (2026-05-17)
 
 
