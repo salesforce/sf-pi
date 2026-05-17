@@ -151,5 +151,457 @@
     "path": "/ssot/data-kits",
     "safety": "read",
     "optionalParams": ["limit", "offset"]
+  },
+  {
+    "name": "d360_query_sql_status",
+    "family": "Query",
+    "description": "Poll a Data 360 SQL query status.",
+    "method": "GET",
+    "path": "/ssot/query-sql/{queryId}",
+    "requiredParams": ["queryId"],
+    "safety": "read"
+  },
+  {
+    "name": "d360_query_sql_rows",
+    "family": "Query",
+    "description": "Fetch rows for a completed Data 360 SQL query.",
+    "method": "GET",
+    "path": "/ssot/query-sql/{queryId}/rows",
+    "requiredParams": ["queryId"],
+    "optionalParams": ["limit", "offset"],
+    "safety": "read"
+  },
+  {
+    "name": "d360_metadata_entities",
+    "family": "Metadata",
+    "description": "List metadata entities by entity type.",
+    "method": "GET",
+    "path": "/ssot/metadata-entities",
+    "requiredParams": ["entityType"],
+    "optionalParams": ["limit", "offset"],
+    "safety": "read"
+  },
+  {
+    "name": "d360_metadata_get",
+    "family": "Metadata",
+    "description": "Fetch metadata for a specific entity name.",
+    "method": "GET",
+    "path": "/ssot/metadata",
+    "requiredParams": ["entityName"],
+    "safety": "read"
+  },
+  {
+    "name": "d360_dmo_list",
+    "family": "DMO",
+    "description": "List Data Model Objects.",
+    "method": "GET",
+    "path": "/ssot/data-model-objects",
+    "optionalParams": ["limit", "offset", "category"],
+    "safety": "read"
+  },
+  {
+    "name": "d360_dmo_get",
+    "family": "DMO",
+    "description": "Get one Data Model Object schema.",
+    "method": "GET",
+    "path": "/ssot/data-model-objects/{dmoName}",
+    "requiredParams": ["dmoName"],
+    "safety": "read"
+  },
+  {
+    "name": "d360_dlo_list",
+    "family": "DLO",
+    "description": "List Data Lake Objects.",
+    "method": "GET",
+    "path": "/ssot/data-lake-objects",
+    "optionalParams": ["limit", "offset", "category"],
+    "safety": "read"
+  },
+  {
+    "name": "d360_dlo_get",
+    "family": "DLO",
+    "description": "Get one Data Lake Object schema.",
+    "method": "GET",
+    "path": "/ssot/data-lake-objects/{dloName}",
+    "requiredParams": ["dloName"],
+    "safety": "read"
+  },
+  {
+    "name": "d360_dmo_mapping_list",
+    "family": "Mappings",
+    "description": "List DLO-to-DMO mappings. Prefer filtering by DMO or source object.",
+    "method": "GET",
+    "path": "/ssot/data-model-object-mappings",
+    "optionalParams": ["dmoDeveloperName", "sourceObjectName"],
+    "safety": "read"
+  },
+  {
+    "name": "d360_dmo_mapping_get",
+    "family": "Mappings",
+    "description": "Get one DLO-to-DMO mapping configuration.",
+    "method": "GET",
+    "path": "/ssot/data-model-object-mappings/{mappingName}",
+    "requiredParams": ["mappingName"],
+    "safety": "read"
+  },
+  {
+    "name": "d360_datastream_list",
+    "family": "DataStreams",
+    "description": "List data streams.",
+    "method": "GET",
+    "path": "/ssot/data-streams",
+    "optionalParams": ["limit", "offset", "category"],
+    "safety": "read"
+  },
+  {
+    "name": "d360_datastream_get",
+    "family": "DataStreams",
+    "description": "Get one data stream configuration.",
+    "method": "GET",
+    "path": "/ssot/data-streams/{dataStreamId}",
+    "requiredParams": ["dataStreamId"],
+    "safety": "read"
+  },
+  {
+    "name": "d360_connection_list",
+    "family": "Connection",
+    "description": "List connections for a connector type.",
+    "method": "GET",
+    "path": "/ssot/connections",
+    "requiredParams": ["connectorType"],
+    "optionalParams": ["limit", "offset"],
+    "safety": "read"
+  },
+  {
+    "name": "d360_connection_get",
+    "family": "Connection",
+    "description": "Get one connection by id.",
+    "method": "GET",
+    "path": "/ssot/connections/{connectionId}",
+    "requiredParams": ["connectionId"],
+    "optionalParams": ["connectorType"],
+    "safety": "read"
+  },
+  {
+    "name": "d360_connector_list",
+    "family": "Connection",
+    "description": "List supported connector types.",
+    "method": "GET",
+    "path": "/ssot/connectors",
+    "safety": "read"
+  },
+  {
+    "name": "d360_connector_metadata",
+    "family": "Connection",
+    "description": "Get connector metadata by connector catalog name.",
+    "method": "GET",
+    "path": "/ssot/connectors/{connectorName}",
+    "requiredParams": ["connectorName"],
+    "safety": "read"
+  },
+  {
+    "name": "d360_connection_endpoints",
+    "family": "Connection",
+    "description": "List pre-configured connection endpoints.",
+    "method": "GET",
+    "path": "/ssot/connection-endpoints",
+    "safety": "read"
+  },
+  {
+    "name": "d360_segment_get",
+    "family": "Segment",
+    "description": "Get one segment by id.",
+    "method": "GET",
+    "path": "/ssot/segments/{segmentId}",
+    "requiredParams": ["segmentId"],
+    "safety": "read"
+  },
+  {
+    "name": "d360_activation_get",
+    "family": "Activation",
+    "description": "Get one activation by id.",
+    "method": "GET",
+    "path": "/ssot/activations/{activationId}",
+    "requiredParams": ["activationId"],
+    "safety": "read"
+  },
+  {
+    "name": "d360_activation_target_list",
+    "family": "Activation",
+    "description": "List activation targets.",
+    "method": "GET",
+    "path": "/ssot/activation-targets",
+    "optionalParams": ["limit", "offset"],
+    "safety": "read"
+  },
+  {
+    "name": "d360_activation_target_get",
+    "family": "Activation",
+    "description": "Get one activation target by id.",
+    "method": "GET",
+    "path": "/ssot/activation-targets/{activationTargetId}",
+    "requiredParams": ["activationTargetId"],
+    "safety": "read"
+  },
+  {
+    "name": "d360_ci_get",
+    "family": "Calculated Insights",
+    "description": "Get one calculated insight by API name.",
+    "method": "GET",
+    "path": "/ssot/calculated-insights/{ciName}",
+    "requiredParams": ["ciName"],
+    "safety": "read"
+  },
+  {
+    "name": "d360_ci_run_status",
+    "family": "Calculated Insights",
+    "description": "Get calculated insight run status.",
+    "method": "GET",
+    "path": "/ssot/calculated-insights/{ciName}/actions/run",
+    "requiredParams": ["ciName"],
+    "safety": "read"
+  },
+  {
+    "name": "d360_ir_get",
+    "family": "Identity Resolution",
+    "description": "Get one identity resolution ruleset by id.",
+    "method": "GET",
+    "path": "/ssot/identity-resolutions/{identityResolutionId}",
+    "requiredParams": ["identityResolutionId"],
+    "safety": "read"
+  },
+  {
+    "name": "d360_transform_list",
+    "family": "DataTransform",
+    "description": "List data transforms.",
+    "method": "GET",
+    "path": "/ssot/data-transforms",
+    "optionalParams": ["limit", "offset"],
+    "safety": "read"
+  },
+  {
+    "name": "d360_transform_get",
+    "family": "DataTransform",
+    "description": "Get one data transform.",
+    "method": "GET",
+    "path": "/ssot/data-transforms/{transformId}",
+    "requiredParams": ["transformId"],
+    "safety": "read"
+  },
+  {
+    "name": "d360_transform_schedule_get",
+    "family": "DataTransform",
+    "description": "Get one data transform schedule.",
+    "method": "GET",
+    "path": "/ssot/data-transforms/{transformId}/schedule",
+    "requiredParams": ["transformId"],
+    "safety": "read"
+  },
+  {
+    "name": "d360_dataaction_list",
+    "family": "DataAction",
+    "description": "List data actions.",
+    "method": "GET",
+    "path": "/ssot/data-actions",
+    "optionalParams": ["limit", "offset"],
+    "safety": "read"
+  },
+  {
+    "name": "d360_dataaction_get",
+    "family": "DataAction",
+    "description": "Get one data action.",
+    "method": "GET",
+    "path": "/ssot/data-actions/{dataActionId}",
+    "requiredParams": ["dataActionId"],
+    "safety": "read"
+  },
+  {
+    "name": "d360_dataaction_target_list",
+    "family": "DataAction",
+    "description": "List data action targets.",
+    "method": "GET",
+    "path": "/ssot/data-action-targets",
+    "optionalParams": ["limit", "offset"],
+    "safety": "read"
+  },
+  {
+    "name": "d360_dataaction_target_get",
+    "family": "DataAction",
+    "description": "Get one data action target.",
+    "method": "GET",
+    "path": "/ssot/data-action-targets/{dataActionTargetId}",
+    "requiredParams": ["dataActionTargetId"],
+    "safety": "read"
+  },
+  {
+    "name": "d360_semantic_model_get",
+    "family": "Semantic Retrieval",
+    "description": "Get one semantic data model.",
+    "method": "GET",
+    "path": "/ssot/semantic/models/{semanticModelName}",
+    "requiredParams": ["semanticModelName"],
+    "safety": "read"
+  },
+  {
+    "name": "d360_semantic_model_validate",
+    "family": "Semantic Retrieval",
+    "description": "Validate one semantic data model.",
+    "method": "GET",
+    "path": "/ssot/semantic/models/{semanticModelName}/validate",
+    "requiredParams": ["semanticModelName"],
+    "safety": "read"
+  },
+  {
+    "name": "d360_search_index_list",
+    "family": "Semantic Retrieval",
+    "description": "List search indexes.",
+    "method": "GET",
+    "path": "/ssot/search-index",
+    "optionalParams": ["limit", "offset"],
+    "safety": "read"
+  },
+  {
+    "name": "d360_search_index_get",
+    "family": "Semantic Retrieval",
+    "description": "Get one search index by API name or id.",
+    "method": "GET",
+    "path": "/ssot/search-index/{searchIndexApiNameOrId}",
+    "requiredParams": ["searchIndexApiNameOrId"],
+    "safety": "read"
+  },
+  {
+    "name": "d360_retriever_get",
+    "family": "Semantic Retrieval",
+    "description": "Get one machine-learning retriever by id or name.",
+    "method": "GET",
+    "path": "/machine-learning/retrievers/{retrieverId}",
+    "requiredParams": ["retrieverId"],
+    "safety": "read"
+  },
+  {
+    "name": "d360_datakit_get",
+    "family": "DataKit",
+    "description": "Get one DataKit by id.",
+    "method": "GET",
+    "path": "/ssot/data-kits/{dataKitId}",
+    "requiredParams": ["dataKitId"],
+    "safety": "read"
+  },
+  {
+    "name": "d360_datakit_manifest",
+    "family": "DataKit",
+    "description": "Get DataKit manifest by id.",
+    "method": "GET",
+    "path": "/ssot/data-kits/{dataKitId}/manifest",
+    "requiredParams": ["dataKitId"],
+    "safety": "read"
+  },
+  {
+    "name": "d360_datakit_deploy_status",
+    "family": "DataKit",
+    "description": "Get DataKit deployment job status.",
+    "method": "GET",
+    "path": "/ssot/data-kits/deployment-jobs/{jobId}",
+    "requiredParams": ["jobId"],
+    "safety": "read"
+  },
+  {
+    "name": "d360_datakit_components",
+    "family": "DataKit",
+    "description": "List components for one DataKit.",
+    "method": "GET",
+    "path": "/ssot/data-kits/{dataKitId}/components",
+    "requiredParams": ["dataKitId"],
+    "safety": "read"
+  },
+  {
+    "name": "d360_datakit_component_status",
+    "family": "DataKit",
+    "description": "Get component deployment status for one DataKit component.",
+    "method": "GET",
+    "path": "/ssot/data-kits/{dataKitId}/components/{componentId}/deployment-status",
+    "requiredParams": ["dataKitId", "componentId"],
+    "safety": "read"
+  },
+  {
+    "name": "d360_datakit_component_deps",
+    "family": "DataKit",
+    "description": "Get dependencies for one DataKit component.",
+    "method": "GET",
+    "path": "/ssot/data-kits/{dataKitId}/components/{componentId}/dependencies",
+    "requiredParams": ["dataKitId", "componentId"],
+    "safety": "read"
+  },
+  {
+    "name": "d360_profile_metadata",
+    "family": "Profile and Data Graph",
+    "description": "Discover profile schema.",
+    "method": "GET",
+    "path": "/ssot/profile/metadata",
+    "safety": "read"
+  },
+  {
+    "name": "d360_profile_metadata_model",
+    "family": "Profile and Data Graph",
+    "description": "Discover one profile DMO schema and relationships.",
+    "method": "GET",
+    "path": "/ssot/profile/metadata/{dataModelName}",
+    "requiredParams": ["dataModelName"],
+    "safety": "read"
+  },
+  {
+    "name": "d360_profile_query",
+    "family": "Profile and Data Graph",
+    "description": "Query profile records for a data model. Requires profile filter params.",
+    "method": "GET",
+    "path": "/ssot/profile/{dataModelName}",
+    "requiredParams": ["dataModelName"],
+    "optionalParams": ["id", "limit", "offset", "orderby"],
+    "safety": "read"
+  },
+  {
+    "name": "d360_insights_metadata",
+    "family": "Profile and Data Graph",
+    "description": "Discover calculated insight metadata.",
+    "method": "GET",
+    "path": "/ssot/insight/metadata",
+    "safety": "read"
+  },
+  {
+    "name": "d360_insights_metadata_get",
+    "family": "Profile and Data Graph",
+    "description": "Discover one calculated insight metadata definition.",
+    "method": "GET",
+    "path": "/ssot/insight/metadata/{ciName}",
+    "requiredParams": ["ciName"],
+    "safety": "read"
+  },
+  {
+    "name": "d360_insights_query",
+    "family": "Profile and Data Graph",
+    "description": "Query calculated insight rows.",
+    "method": "GET",
+    "path": "/ssot/insight/calculated-insights/{ciName}",
+    "requiredParams": ["ciName"],
+    "optionalParams": ["limit", "offset"],
+    "safety": "read"
+  },
+  {
+    "name": "d360_datagraph_metadata",
+    "family": "Profile and Data Graph",
+    "description": "List data graph metadata.",
+    "method": "GET",
+    "path": "/ssot/data-graphs/metadata",
+    "safety": "read"
+  },
+  {
+    "name": "d360_datagraph_query",
+    "family": "Profile and Data Graph",
+    "description": "Query data graph records for an entity.",
+    "method": "GET",
+    "path": "/ssot/data-graphs/data/{dataGraphEntityName}",
+    "requiredParams": ["dataGraphEntityName"],
+    "optionalParams": ["id", "limit", "offset", "live"],
+    "safety": "read"
   }
 ]

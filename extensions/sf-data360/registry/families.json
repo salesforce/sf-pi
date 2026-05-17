@@ -53,5 +53,50 @@
     "name": "DataKit",
     "summary": "Inspect packaged Data 360 data kits and deployment bundles.",
     "keywords": ["datakit", "data kit", "package", "bundle", "deploy"]
+  },
+  {
+    "name": "DMO",
+    "summary": "Read Data Model Object catalog and schemas.",
+    "keywords": ["dmo", "data model object", "model", "schema", "dlm"]
+  },
+  {
+    "name": "DLO",
+    "summary": "Read Data Lake Object catalog and raw lake schemas.",
+    "keywords": ["dlo", "data lake object", "lake", "raw", "dll"]
+  },
+  {
+    "name": "Mappings",
+    "summary": "Inspect DLO-to-DMO mappings and field mappings.",
+    "keywords": ["mapping", "field mapping", "dlo dmo", "source target"]
+  },
+  {
+    "name": "DataStreams",
+    "summary": "Inspect Data 360 ingestion streams.",
+    "keywords": ["data stream", "datastream", "ingestion", "stream", "refresh"]
+  },
+  {
+    "name": "Connection",
+    "summary": "Inspect connectors, connections, endpoints, and source metadata.",
+    "keywords": ["connection", "connector", "endpoint", "source", "snowflake", "sfdc"]
+  },
+  {
+    "name": "Dataspace",
+    "summary": "Inspect data spaces and data-space membership.",
+    "keywords": ["dataspace", "data space", "member", "workspace"]
+  },
+  {
+    "name": "DataTransform",
+    "summary": "Inspect SQL-based data transforms and schedules.",
+    "keywords": ["transform", "data transform", "sql transform", "schedule"]
+  },
+  {
+    "name": "DataAction",
+    "summary": "Inspect data actions and action targets.",
+    "keywords": ["data action", "action target", "event", "trigger", "activation"]
+  },
+  {
+    "name": "Profile and Data Graph",
+    "summary": "Read profile, insight, and data graph metadata and records.",
+    "keywords": ["profile", "insight", "data graph", "graph", "record", "metadata"]
   }
 ]

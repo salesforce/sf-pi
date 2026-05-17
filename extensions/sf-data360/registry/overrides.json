@@ -66,5 +66,207 @@
   "d360_datakits_list": {
     "safety": "read",
     "optionalParams": ["limit", "offset"]
+  },
+  "d360_query_sql_status": {
+    "requiredParams": ["queryId"],
+    "safety": "read"
+  },
+  "d360_query_sql_rows": {
+    "requiredParams": ["queryId"],
+    "optionalParams": ["limit", "offset"],
+    "safety": "read"
+  },
+  "d360_metadata_entities": {
+    "requiredParams": ["entityType"],
+    "optionalParams": ["limit", "offset"],
+    "safety": "read"
+  },
+  "d360_metadata_get": {
+    "requiredParams": ["entityName"],
+    "safety": "read"
+  },
+  "d360_dmo_list": {
+    "optionalParams": ["limit", "offset", "category"],
+    "safety": "read"
+  },
+  "d360_dmo_get": {
+    "requiredParams": ["dmoName"],
+    "safety": "read"
+  },
+  "d360_dlo_list": {
+    "optionalParams": ["limit", "offset", "category"],
+    "safety": "read"
+  },
+  "d360_dlo_get": {
+    "requiredParams": ["dloName"],
+    "safety": "read"
+  },
+  "d360_dmo_mapping_list": {
+    "optionalParams": ["dmoDeveloperName", "sourceObjectName"],
+    "safety": "read"
+  },
+  "d360_dmo_mapping_get": {
+    "requiredParams": ["mappingName"],
+    "safety": "read"
+  },
+  "d360_datastream_list": {
+    "optionalParams": ["limit", "offset", "category"],
+    "safety": "read"
+  },
+  "d360_datastream_get": {
+    "requiredParams": ["dataStreamId"],
+    "safety": "read"
+  },
+  "d360_connection_list": {
+    "requiredParams": ["connectorType"],
+    "optionalParams": ["limit", "offset"],
+    "safety": "read"
+  },
+  "d360_connection_get": {
+    "requiredParams": ["connectionId"],
+    "optionalParams": ["connectorType"],
+    "safety": "read"
+  },
+  "d360_connector_list": {
+    "safety": "read"
+  },
+  "d360_connector_metadata": {
+    "requiredParams": ["connectorName"],
+    "safety": "read"
+  },
+  "d360_connection_endpoints": {
+    "safety": "read"
+  },
+  "d360_segment_get": {
+    "requiredParams": ["segmentId"],
+    "safety": "read"
+  },
+  "d360_activation_get": {
+    "requiredParams": ["activationId"],
+    "safety": "read"
+  },
+  "d360_activation_target_list": {
+    "optionalParams": ["limit", "offset"],
+    "safety": "read"
+  },
+  "d360_activation_target_get": {
+    "requiredParams": ["activationTargetId"],
+    "safety": "read"
+  },
+  "d360_ci_get": {
+    "requiredParams": ["ciName"],
+    "safety": "read"
+  },
+  "d360_ci_run_status": {
+    "requiredParams": ["ciName"],
+    "safety": "read"
+  },
+  "d360_ir_get": {
+    "requiredParams": ["identityResolutionId"],
+    "safety": "read"
+  },
+  "d360_transform_list": {
+    "optionalParams": ["limit", "offset"],
+    "safety": "read"
+  },
+  "d360_transform_get": {
+    "requiredParams": ["transformId"],
+    "safety": "read"
+  },
+  "d360_transform_schedule_get": {
+    "requiredParams": ["transformId"],
+    "safety": "read"
+  },
+  "d360_dataaction_list": {
+    "optionalParams": ["limit", "offset"],
+    "safety": "read"
+  },
+  "d360_dataaction_get": {
+    "requiredParams": ["dataActionId"],
+    "safety": "read"
+  },
+  "d360_dataaction_target_list": {
+    "optionalParams": ["limit", "offset"],
+    "safety": "read"
+  },
+  "d360_dataaction_target_get": {
+    "requiredParams": ["dataActionTargetId"],
+    "safety": "read"
+  },
+  "d360_semantic_model_get": {
+    "requiredParams": ["semanticModelName"],
+    "safety": "read"
+  },
+  "d360_semantic_model_validate": {
+    "requiredParams": ["semanticModelName"],
+    "safety": "read"
+  },
+  "d360_search_index_list": {
+    "optionalParams": ["limit", "offset"],
+    "safety": "read"
+  },
+  "d360_search_index_get": {
+    "requiredParams": ["searchIndexApiNameOrId"],
+    "safety": "read"
+  },
+  "d360_retriever_get": {
+    "requiredParams": ["retrieverId"],
+    "safety": "read"
+  },
+  "d360_datakit_get": {
+    "requiredParams": ["dataKitId"],
+    "safety": "read"
+  },
+  "d360_datakit_manifest": {
+    "requiredParams": ["dataKitId"],
+    "safety": "read"
+  },
+  "d360_datakit_deploy_status": {
+    "requiredParams": ["jobId"],
+    "safety": "read"
+  },
+  "d360_datakit_components": {
+    "requiredParams": ["dataKitId"],
+    "safety": "read"
+  },
+  "d360_datakit_component_status": {
+    "requiredParams": ["dataKitId", "componentId"],
+    "safety": "read"
+  },
+  "d360_datakit_component_deps": {
+    "requiredParams": ["dataKitId", "componentId"],
+    "safety": "read"
+  },
+  "d360_profile_metadata": {
+    "safety": "read"
+  },
+  "d360_profile_metadata_model": {
+    "requiredParams": ["dataModelName"],
+    "safety": "read"
+  },
+  "d360_profile_query": {
+    "requiredParams": ["dataModelName"],
+    "optionalParams": ["id", "limit", "offset", "orderby"],
+    "safety": "read"
+  },
+  "d360_insights_metadata": {
+    "safety": "read"
+  },
+  "d360_insights_metadata_get": {
+    "requiredParams": ["ciName"],
+    "safety": "read"
+  },
+  "d360_insights_query": {
+    "requiredParams": ["ciName"],
+    "optionalParams": ["limit", "offset"],
+    "safety": "read"
+  },
+  "d360_datagraph_metadata": {
+    "safety": "read"
+  },
+  "d360_datagraph_query": {
+    "requiredParams": ["dataGraphEntityName"],
+    "optionalParams": ["id", "limit", "offset", "live"],
+    "safety": "read"
   }
 }

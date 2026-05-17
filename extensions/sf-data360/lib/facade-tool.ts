@@ -304,8 +304,15 @@ function resolveOperationRequest(
     path = path.replace(`{${key}}`, encodeURIComponent(value.trim()));
   }
 
+  const pathParamNames = new Set(
+    [...operation.path.matchAll(/\{([^}]+)\}/g)].map((match) => match[1]),
+  );
   const query: QueryParams = {};
-  for (const key of ["dataspaceName", "limit", "offset"]) {
+  const queryParamNames = [
+    ...(operation.requiredParams ?? []),
+    ...(operation.optionalParams ?? []),
+  ].filter((key) => !pathParamNames.has(key) && key !== "sql" && key !== "body");
+  for (const key of queryParamNames) {
     const value = params[key];
     if (
       typeof value === "string" ||
