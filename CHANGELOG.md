@@ -509,6 +509,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.77.1](https://github.com/salesforce/sf-pi/compare/v0.77.0...v0.77.1) (2026-05-17)
+
+
+### Bug Fixes
+
+* **sf-llm-gateway-internal:** disable per-tool eager_input_streaming for Haiku 4.5 ([62f0f04](https://github.com/salesforce/sf-pi/commit/62f0f04aef3f79e88c57e9b403907603e9a0db7d)), closes [#166](https://github.com/salesforce/sf-pi/issues/166)
+
 ## [0.77.0](https://github.com/salesforce/sf-pi/compare/v0.76.1...v0.77.0) (2026-05-17)
 
 
