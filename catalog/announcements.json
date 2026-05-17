@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.84.0-2026-05-17",
-  "latestVersion": "0.84.0",
+  "revision": "release-0.85.0-2026-05-17",
+  "latestVersion": "0.85.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.84.0",
+      "id": "release-0.85.0",
       "kind": "update",
-      "title": "sf-pi v0.84.0 — data360: render facade result cards",
+      "title": "sf-pi v0.85.0 — data360: compact probe output",
       "publishedAt": "2026-05-17T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.84.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.85.0",
       "severity": "info",
-      "body": "data360: render facade result cards"
+      "body": "data360: compact probe output"
     },
     {
       "id": "pi-0.73-required",
