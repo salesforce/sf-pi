@@ -29,7 +29,7 @@ describe("d360_metadata result card", () => {
     const rendered = renderCardCollapsed(card);
 
     expect(card.title).toBe("Data 360 DMOs");
-    expect(rendered).toContain("🧭 Data 360 DMOs ✅");
+    expect(rendered).toContain("🗂️ Data 360 DMOs ✅");
     expect(rendered).toContain("AI Agent Interaction — ssot__AiAgentInteraction__dlm");
     expect(rendered).toContain("📄 Full JSON: /tmp/pi-d360-meta/output.json");
   });
@@ -77,7 +77,7 @@ describe("d360_metadata result card", () => {
     );
     const rendered = renderCardForLlm(card);
 
-    expect(rendered).toContain("🧭 Data 360 DLOs ✅");
+    expect(rendered).toContain("🗂️ Data 360 DLOs ✅");
     expect(rendered).toContain("Category filter: Other");
     expect(rendered).toContain("Use d360_metadata describe_dlo");
   });

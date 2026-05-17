@@ -26,7 +26,7 @@ export function probeResultToCard(input: ProbeCardInput, fullOutputPath?: string
 
   return {
     status,
-    icon: "🩺",
+    icon: "📊",
     title: "Data 360 readiness",
     subtitle: `${input.targetOrg} · API v${input.apiVersion} · ${input.state}`,
     summary: input.guidance,

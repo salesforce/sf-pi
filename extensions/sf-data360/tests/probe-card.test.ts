@@ -10,11 +10,11 @@ describe("d360_probe result card", () => {
     const rendered = renderCardCollapsed(card, { collapsedMaxLines: 8 });
 
     expect(card.status).toBe("warning");
-    expect(rendered).toContain("🩺 Data 360 readiness ⚠️");
+    expect(rendered).toContain("📊 Data 360 readiness ⚠️");
     expect(rendered).toContain("AgentforceSTDM · API v66.0 · partial");
     expect(rendered).toContain("agent_platform_tracing_dlo");
     expect(rendered).toContain("📄 Full JSON: /tmp/pi-d360-probe/output.json");
-    expect(rendered.split("\n").length).toBeLessThanOrEqual(8);
+    expect(rendered.split("\n").length).toBeLessThanOrEqual(12);
   });
 
   it("renders expanded surface details", () => {

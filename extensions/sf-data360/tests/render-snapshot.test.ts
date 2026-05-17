@@ -36,19 +36,19 @@ describe("d360 renderers", () => {
       ),
     );
 
-    expect(rendered).toBe("☁️ d360_api POST · /ssot/query-sql · ExampleOrg");
+    expect(rendered).toBe("🔗 d360_api POST · /ssot/query-sql · ExampleOrg");
   });
 
   it("renderApiResult uses cards", () => {
     const rendered = renderToString(
       renderD360ApiResult(
-        { details: { ok: true, card: { ...stdmCard(), icon: "☁️", title: "Data 360 API" } } },
+        { details: { ok: true, card: { ...stdmCard(), icon: "🔗", title: "Data 360 API" } } },
         {},
         passthroughTheme,
       ),
     );
 
-    expect(rendered).toContain("☁️ Data 360 API ✅");
+    expect(rendered).toContain("🔗 Data 360 API ✅");
     expect(rendered).toContain("📄 Full JSON: /tmp/pi-d360/output.json");
   });
 
@@ -65,7 +65,7 @@ describe("d360 renderers", () => {
     );
 
     expect(rendered).toBe(
-      "☁️ d360 runbook · agent_observability.stdm_session_timeline · AgentforceSTDM",
+      "💠 d360 runbook · agent_observability.stdm_session_timeline · AgentforceSTDM",
     );
   });
 
@@ -81,7 +81,7 @@ describe("d360 renderers", () => {
     expect(rendered).toContain("💬 STDM session timeline ✅");
     expect(rendered).toContain("AgentforceSTDM · default · 8 rows");
     expect(rendered).toContain("📄 Full JSON: /tmp/pi-d360/output.json");
-    expect(rendered.split("\n").length).toBeLessThanOrEqual(8);
+    expect(rendered.split("\n").length).toBeLessThanOrEqual(12);
   });
 
   it("renderResult supports expanded card output", () => {
@@ -111,20 +111,20 @@ describe("d360 renderers", () => {
     );
 
     expect(rendered).toBe(
-      "🧭 d360 metadata describe_dmo · ssot__AiAgentInteraction__dlm · AgentforceSTDM",
+      "🗂️ d360 metadata describe_dmo · ssot__AiAgentInteraction__dlm · AgentforceSTDM",
     );
   });
 
   it("renderMetadataResult uses cards", () => {
     const rendered = renderToString(
       renderD360MetadataResult(
-        { details: { ok: true, card: { ...stdmCard(), icon: "🧭", title: "Data 360 metadata" } } },
+        { details: { ok: true, card: { ...stdmCard(), icon: "🗂️", title: "Data 360 metadata" } } },
         {},
         passthroughTheme,
       ),
     );
 
-    expect(rendered).toContain("🧭 Data 360 metadata ✅");
+    expect(rendered).toContain("🗂️ Data 360 metadata ✅");
     expect(rendered).toContain("📄 Full JSON: /tmp/pi-d360/output.json");
   });
 
@@ -133,19 +133,19 @@ describe("d360 renderers", () => {
       renderD360ProbeCall({ target_org: "AgentforceSTDM" }, passthroughTheme),
     );
 
-    expect(rendered).toBe("🩺 d360 probe AgentforceSTDM");
+    expect(rendered).toBe("📊 d360 probe AgentforceSTDM");
   });
 
   it("renderProbeResult uses cards", () => {
     const rendered = renderToString(
       renderD360ProbeResult(
-        { details: { ok: true, card: { ...stdmCard(), icon: "🩺", title: "Data 360 readiness" } } },
+        { details: { ok: true, card: { ...stdmCard(), icon: "📊", title: "Data 360 readiness" } } },
         {},
         passthroughTheme,
       ),
     );
 
-    expect(rendered).toContain("🩺 Data 360 readiness ✅");
+    expect(rendered).toContain("📊 Data 360 readiness ✅");
     expect(rendered).toContain("📄 Full JSON: /tmp/pi-d360/output.json");
   });
 

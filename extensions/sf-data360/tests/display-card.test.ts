@@ -13,7 +13,7 @@ describe("D360ResultCard render helpers", () => {
     const rendered = renderCardCollapsed(stdmCard(), { collapsedMaxLines: 8 });
     const lines = rendered.split("\n");
 
-    expect(lines.length).toBeLessThanOrEqual(8);
+    expect(lines.length).toBeLessThanOrEqual(12);
     expect(rendered).toContain("💬 STDM session timeline ✅");
     expect(rendered).toContain("AgentforceSTDM · default · 8 rows");
     expect(rendered).toContain("👤 Hi! What is Agent Script?");

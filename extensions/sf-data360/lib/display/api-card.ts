@@ -26,7 +26,7 @@ export function apiResultToCard(responseText: string, opts: ApiCardOptions = {})
   return withArtifact(
     {
       status: ok ? "success" : "error",
-      icon: "☁️",
+      icon: "🔗",
       title: "Data 360 API",
       subtitle: [opts.targetOrg, method, path, statusText].filter(Boolean).join(" · "),
       summary: summarizeApiResponse(parsed, responseText, opts),

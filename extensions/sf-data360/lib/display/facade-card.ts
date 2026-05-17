@@ -47,7 +47,7 @@ function searchCard(result: Record<string, unknown>, opts: FacadeCardBuildOption
   return withArtifacts(
     {
       status: "success",
-      icon: "🔎",
+      icon: "💠",
       title: "Data 360 search",
       subtitle: query ? `query: ${query}` : undefined,
       summary: `${matches.length} Data 360 family match(es).`,
@@ -116,7 +116,7 @@ function executeCard(
   return withArtifacts(
     {
       status: ok ? "success" : "error",
-      icon: "☁️",
+      icon: "💠",
       title: "Data 360 execute",
       subtitle: [stringValue(result.targetOrg), operation, status ? `HTTP ${status}` : undefined]
         .filter(Boolean)

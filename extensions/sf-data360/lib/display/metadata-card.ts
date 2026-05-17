@@ -43,7 +43,7 @@ function metadataListCard(
   return withArtifact(
     {
       status: "success",
-      icon: "🧭",
+      icon: "🗂️",
       title: `Data 360 ${label}`,
       subtitle: [
         opts.targetOrg,
@@ -83,7 +83,7 @@ function metadataDescribeCard(
   return withArtifact(
     {
       status: "success",
-      icon: "🧭",
+      icon: "🗂️",
       title: "Data 360 metadata",
       subtitle: [
         opts.targetOrg,

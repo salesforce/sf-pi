@@ -43,7 +43,7 @@ export interface D360ResultCard {
 }
 
 export interface D360CardRenderOptions {
-  /** Default 8. Includes header/facts/sections/artifacts/next-step lines. */
+  /** Default 12. Includes header/facts/sections/artifacts/next-step lines. */
   collapsedMaxLines?: number;
   /** Default 40. Applies only to expanded rendering. */
   expandedMaxLines?: number;
@@ -71,7 +71,7 @@ export function renderCardCollapsed(
   card: D360ResultCard,
   opts: D360CardRenderOptions = {},
 ): string {
-  const maxLines = opts.collapsedMaxLines ?? 8;
+  const maxLines = opts.collapsedMaxLines ?? 12;
   const lines = buildCardLines(card, opts, "collapsed");
   return clampLines(lines, maxLines, opts).join("\n");
 }
@@ -101,6 +101,7 @@ function buildCardLines(
     if (mode === "expanded") lines.push("");
     lines.push(clipLine(prefixLine(card.summary, bodyPrefix), maxChars));
   }
+  if (mode === "collapsed" && card.sections?.length) lines.push("");
 
   const showCollapsedFacts = mode === "collapsed" && !card.sections?.length;
   if (card.facts?.length && (mode === "expanded" || showCollapsedFacts)) {
@@ -123,6 +124,7 @@ function buildCardLines(
 
   if (card.artifacts?.length) {
     if (mode === "expanded") lines.push("", "Artifacts");
+    else lines.push("");
     for (const artifact of card.artifacts) {
       lines.push(
         clipLine(
@@ -145,7 +147,9 @@ function buildCardLines(
 function clampLines(lines: string[], maxLines: number, opts: D360CardRenderOptions): string[] {
   if (maxLines <= 0 || lines.length <= maxLines) return lines;
   const maxChars = opts.lineMaxChars ?? 160;
-  const artifactLines = lines.filter((line) => /^\s*[📄🧾📝📊]/u.test(line));
+  const artifactLines = lines.filter(
+    (line) => line === "Artifacts" || /^\s*[📄🧾📝📊]/u.test(line),
+  );
   const artifactSet = new Set(artifactLines);
   const bodyBudget = Math.max(1, maxLines - artifactLines.length - 1);
   const body = lines.filter((line) => !artifactSet.has(line)).slice(0, bodyBudget);

@@ -25,7 +25,7 @@ describe("d360_api result card", () => {
     const rendered = renderCardCollapsed(card);
 
     expect(card.status).toBe("success");
-    expect(rendered).toContain("☁️ Data 360 API ✅");
+    expect(rendered).toContain("🔗 Data 360 API ✅");
     expect(rendered).toContain("span_count = 9550");
     expect(rendered).toContain("📄 Full JSON: /tmp/pi-d360-api/output.json");
   });

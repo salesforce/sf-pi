@@ -10,7 +10,7 @@ describe("d360 facade result cards", () => {
     });
 
     expect(card.title).toBe("Data 360 search");
-    expect(text).toContain("🔎 Data 360 search ✅");
+    expect(text).toContain("💠 Data 360 search ✅");
     expect(text).toContain("Agent Observability");
     expect(text).toContain("📄 Full JSON: /tmp/pi-d360-search/output.json");
     expect(text).not.toContain('"results"');
@@ -47,7 +47,7 @@ describe("d360 facade result cards", () => {
       },
     });
 
-    expect(text).toContain("☁️ Data 360 execute ✅");
+    expect(text).toContain("💠 Data 360 execute ✅");
     expect(text).toContain("n = 119");
   });
 

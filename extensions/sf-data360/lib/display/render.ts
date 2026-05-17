@@ -54,7 +54,7 @@ export function renderD360ApiCall(args: D360ApiRenderArgs, theme: Theme): Text {
     args.dry_run ? "dry-run" : undefined,
   ].filter((bit): bit is string => typeof bit === "string" && bit.length > 0);
   return new Text(
-    theme.fg("toolTitle", theme.bold("☁️ d360_api ")) + theme.fg("muted", bits.join(" · ")),
+    theme.fg("toolTitle", theme.bold("🔗 d360_api ")) + theme.fg("muted", bits.join(" · ")),
     0,
     0,
   );
@@ -75,7 +75,7 @@ export function renderD360Call(args: D360RenderArgs, theme: Theme): Text {
     (bit): bit is string => typeof bit === "string" && bit.length > 0,
   );
   return new Text(
-    theme.fg("toolTitle", theme.bold("☁️ d360 ")) + theme.fg("muted", bits.join(" · ")),
+    theme.fg("toolTitle", theme.bold("💠 d360 ")) + theme.fg("muted", bits.join(" · ")),
     0,
     0,
   );
@@ -86,7 +86,7 @@ export function renderD360Result(
   opts: { isPartial?: boolean; expanded?: boolean },
   theme: Theme,
 ): Text {
-  return renderD360CardResult(result, opts, theme, "☁️ d360 · running…");
+  return renderD360CardResult(result, opts, theme, "💠 d360 · running…");
 }
 
 export function renderD360ProbeCall(args: D360ProbeRenderArgs, theme: Theme): Text {
@@ -94,7 +94,7 @@ export function renderD360ProbeCall(args: D360ProbeRenderArgs, theme: Theme): Te
     (bit): bit is string => typeof bit === "string" && bit.length > 0,
   );
   return new Text(
-    theme.fg("toolTitle", theme.bold("🩺 d360 probe ")) + theme.fg("muted", bits.join(" · ")),
+    theme.fg("toolTitle", theme.bold("📊 d360 probe ")) + theme.fg("muted", bits.join(" · ")),
     0,
     0,
   );
@@ -105,7 +105,7 @@ export function renderD360ProbeResult(
   opts: { isPartial?: boolean; expanded?: boolean },
   theme: Theme,
 ): Text {
-  return renderD360CardResult(result, opts, theme, "🩺 d360_probe · running…");
+  return renderD360CardResult(result, opts, theme, "📊 d360_probe · running…");
 }
 
 export function renderD360MetadataCall(args: D360MetadataRenderArgs, theme: Theme): Text {
@@ -113,7 +113,7 @@ export function renderD360MetadataCall(args: D360MetadataRenderArgs, theme: Them
     (bit): bit is string => typeof bit === "string" && bit.length > 0,
   );
   return new Text(
-    theme.fg("toolTitle", theme.bold("🧭 d360 metadata ")) + theme.fg("muted", bits.join(" · ")),
+    theme.fg("toolTitle", theme.bold("🗂️ d360 metadata ")) + theme.fg("muted", bits.join(" · ")),
     0,
     0,
   );
@@ -124,7 +124,7 @@ export function renderD360MetadataResult(
   opts: { isPartial?: boolean; expanded?: boolean },
   theme: Theme,
 ): Text {
-  return renderD360CardResult(result, opts, theme, "🧭 d360_metadata · running…");
+  return renderD360CardResult(result, opts, theme, "🗂️ d360_metadata · running…");
 }
 
 export function renderD360CardResult(
@@ -139,7 +139,7 @@ export function renderD360CardResult(
   if (card) {
     const rendered = opts.expanded
       ? renderCardExpanded(card, { expandedMaxLines: 40, indentBody: true })
-      : renderCardCollapsed(card, { collapsedMaxLines: 8, indentBody: true });
+      : renderCardCollapsed(card, { collapsedMaxLines: 12, indentBody: true });
     return new Text(styleCardText(rendered, card.status, theme), 0, 0);
   }
 
