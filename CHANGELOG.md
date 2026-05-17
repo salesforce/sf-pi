@@ -509,6 +509,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.91.1](https://github.com/salesforce/sf-pi/compare/v0.91.0...v0.91.1) (2026-05-17)
+
+
+### Bug Fixes
+
+* **data360:** clarify metadata search errors ([68bd04f](https://github.com/salesforce/sf-pi/commit/68bd04fe7517ece96b39467c4453e04e41e342fe))
+
 ## [0.91.0](https://github.com/salesforce/sf-pi/compare/v0.90.1...v0.91.0) (2026-05-17)
 
 
