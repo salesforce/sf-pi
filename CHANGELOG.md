@@ -509,6 +509,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.83.0](https://github.com/salesforce/sf-pi/compare/v0.82.0...v0.83.0) (2026-05-17)
+
+
+### Features
+
+* **data360:** compact facade output ([271b6bf](https://github.com/salesforce/sf-pi/commit/271b6bfaf9ca99e199b4eb11ab61381f970f5480))
+
 ## [0.82.0](https://github.com/salesforce/sf-pi/compare/v0.81.0...v0.82.0) (2026-05-17)
 
 
