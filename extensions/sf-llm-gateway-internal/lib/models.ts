@@ -389,6 +389,14 @@ export function toProviderModelConfig(
       // actually exposes the level that the DEFAULT_THINKING_LEVEL
       // constant wants to ride on.
       ...(def.thinkingLevelMap ? { thinkingLevelMap: def.thinkingLevelMap } : {}),
+      // Haiku 4.5 rejects per-tool `eager_input_streaming`. Setting this
+      // AnthropicMessagesCompat flag to false makes pi-ai (1) drop the
+      // per-tool field entirely and (2) auto-attach the legacy
+      // `fine-grained-tool-streaming-2025-05-14` beta header on tool-enabled
+      // requests, which is the streaming path Haiku 4.5 accepts. Opus and
+      // Sonnet still accept eager streaming, so we leave compat undefined
+      // there to keep pi-ai on its default fast path.
+      ...(isHaiku45ModelId(def.id) ? { compat: { supportsEagerToolInputStreaming: false } } : {}),
     };
   }
 
@@ -545,6 +553,24 @@ export function isAnthropicModelId(id: string): boolean {
   return (
     lower.includes("claude") || lower.startsWith("us.anthropic.") || lower.startsWith("anthropic.")
   );
+}
+
+/**
+ * True for Claude Haiku 4.5 variants. Haiku 4.5 rejects the per-tool
+ * `eager_input_streaming` field that pi-ai's Anthropic transport emits
+ * by default; matching this id pattern lets us flip the AnthropicMessagesCompat
+ * override that switches pi-ai onto the legacy `fine-grained-tool-streaming-2025-05-14`
+ * beta path. Opus / Sonnet still accept eager streaming, so the override
+ * stays scoped to Haiku 4.5.
+ *
+ * Matches both dash and dot spellings, dated suffixes, and Bedrock-prefixed
+ * ids (e.g. `claude-haiku-4-5`, `claude-haiku-4.5`,
+ * `claude-haiku-4-5-20251001`, `anthropic.claude-haiku-4.5`,
+ * `us.anthropic.claude-haiku-4-5-v1`).
+ */
+export function isHaiku45ModelId(id: string): boolean {
+  const lower = id.toLowerCase();
+  return lower.includes("haiku-4-5") || lower.includes("haiku-4.5");
 }
 
 /** Infer reasonable defaults for a gateway model ID that has no preset. */

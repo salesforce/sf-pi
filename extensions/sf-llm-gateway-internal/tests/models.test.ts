@@ -13,6 +13,7 @@ import {
   getModelFamily,
   inferModelDefinition,
   isAnthropicModelId,
+  isHaiku45ModelId,
   resolvePreferredModelId,
   toProviderModelConfig,
 } from "../lib/models.ts";
@@ -303,12 +304,65 @@ describe("toProviderModelConfig", () => {
   });
 
   it("tags Claude models with the native anthropic-messages API", () => {
-    const config = toProviderModelConfig("claude-opus-4-6-v1", null, new Set());
-    expect(config.api).toBe("anthropic-messages");
-    // Claude runs on pi-ai's native Anthropic transport, which does not take
-    // an OpenAI `compat` block. Leaving compat undefined also prevents a stale
-    // shim from ever reshaping Claude payloads into OpenAI-compat form.
-    expect(config.compat).toBeUndefined();
+    // Claude runs on pi-ai's native Anthropic transport. Most Claude ids
+    // leave `compat` undefined so pi-ai keeps its default fast path; Haiku
+    // 4.5 is the one variant that needs an AnthropicMessagesCompat override
+    // and is covered separately below.
+    for (const id of ["claude-opus-4-6-v1", "claude-opus-4-7-v1", "claude-sonnet-4-6"]) {
+      const config = toProviderModelConfig(id, null, new Set());
+      expect(config.api).toBe("anthropic-messages");
+      expect(config.compat).toBeUndefined();
+    }
+  });
+
+  it("disables per-tool eager_input_streaming for Haiku 4.5 (gateway issue #166)", () => {
+    // Haiku 4.5 rejects per-tool `eager_input_streaming`. Setting
+    // `supportsEagerToolInputStreaming: false` makes pi-ai's Anthropic
+    // transport drop the field and auto-attach the legacy
+    // `fine-grained-tool-streaming-2025-05-14` beta header for tool-enabled
+    // requests. Opus / Sonnet keep the default fast path.
+    for (const id of [
+      "claude-haiku-4-5-20251001",
+      "claude-haiku-4-5",
+      "claude-haiku-4.5",
+      "anthropic.claude-haiku-4.5",
+      "us.anthropic.claude-haiku-4-5-v1",
+    ]) {
+      const config = toProviderModelConfig(id, null, new Set());
+      expect(config.api).toBe("anthropic-messages");
+      expect(
+        (config.compat as { supportsEagerToolInputStreaming?: boolean } | undefined)
+          ?.supportsEagerToolInputStreaming,
+      ).toBe(false);
+    }
+  });
+
+  it("does not set the eager-streaming override on Opus/Sonnet", () => {
+    for (const id of ["claude-opus-4-7-20250416", "claude-sonnet-4-6", "claude-opus-4-6-v1"]) {
+      const config = toProviderModelConfig(id, null, new Set());
+      expect(
+        (config.compat as { supportsEagerToolInputStreaming?: boolean } | undefined)
+          ?.supportsEagerToolInputStreaming,
+      ).toBeUndefined();
+    }
+  });
+
+  describe("isHaiku45ModelId", () => {
+    it("matches dash and dot spellings, dated and bedrock-prefixed ids", () => {
+      expect(isHaiku45ModelId("claude-haiku-4-5")).toBe(true);
+      expect(isHaiku45ModelId("claude-haiku-4.5")).toBe(true);
+      expect(isHaiku45ModelId("claude-haiku-4-5-20251001")).toBe(true);
+      expect(isHaiku45ModelId("anthropic.claude-haiku-4.5")).toBe(true);
+      expect(isHaiku45ModelId("us.anthropic.claude-haiku-4-5-v1")).toBe(true);
+    });
+
+    it("does not match Opus / Sonnet / older Haiku", () => {
+      expect(isHaiku45ModelId("claude-opus-4-7")).toBe(false);
+      expect(isHaiku45ModelId("claude-opus-4-6-v1")).toBe(false);
+      expect(isHaiku45ModelId("claude-sonnet-4-6")).toBe(false);
+      expect(isHaiku45ModelId("claude-3-5-haiku-20241022")).toBe(false);
+      expect(isHaiku45ModelId("gpt-5")).toBe(false);
+    });
   });
 
   it("tags non-Claude, non-gpt-5-family models with openai-completions", () => {
