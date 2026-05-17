@@ -1,0 +1,155 @@
+[
+  {
+    "name": "d360_query_sql",
+    "family": "Query",
+    "description": "Execute a Data 360 SQL query through /ssot/query-sql.",
+    "method": "POST",
+    "path": "/ssot/query-sql",
+    "safety": "safe_post",
+    "requiredParams": ["sql"],
+    "optionalParams": ["dataspaceName"],
+    "tips": "Always bound broad queries with LIMIT or a trace/session/id predicate."
+  },
+  {
+    "name": "d360_data_spaces_list",
+    "family": "Metadata",
+    "description": "List Data 360 data spaces.",
+    "method": "GET",
+    "path": "/ssot/data-spaces",
+    "safety": "read"
+  },
+  {
+    "name": "d360_dmo_describe",
+    "family": "Metadata",
+    "description": "Describe one Data Model Object by API name.",
+    "method": "GET",
+    "path": "/ssot/data-model-objects/{dmoName}",
+    "safety": "read",
+    "requiredParams": ["dmoName"]
+  },
+  {
+    "name": "d360_dlo_describe",
+    "family": "Metadata",
+    "description": "Describe one Data Lake Object by API name.",
+    "method": "GET",
+    "path": "/ssot/data-lake-objects/{dloName}",
+    "safety": "read",
+    "requiredParams": ["dloName"]
+  },
+  {
+    "name": "d360_segments_list",
+    "family": "Segment",
+    "description": "List segments with optional pagination.",
+    "method": "GET",
+    "path": "/ssot/segments",
+    "safety": "read",
+    "optionalParams": ["limit", "offset"]
+  },
+  {
+    "name": "d360_activations_list",
+    "family": "Activation",
+    "description": "List activations with optional pagination.",
+    "method": "GET",
+    "path": "/ssot/activations",
+    "safety": "read",
+    "optionalParams": ["limit", "offset"]
+  },
+  {
+    "name": "d360_calculated_insights_list",
+    "family": "Calculated Insights",
+    "description": "List calculated insights.",
+    "method": "GET",
+    "path": "/ssot/calculated-insights",
+    "safety": "read",
+    "optionalParams": ["limit", "offset"]
+  },
+  {
+    "name": "d360_connectors_list",
+    "family": "Ingestion",
+    "description": "List connector catalog entries supported by the org.",
+    "method": "GET",
+    "path": "/ssot/connectors",
+    "safety": "read"
+  },
+  {
+    "name": "d360_connections_sfdc_list",
+    "family": "Ingestion",
+    "description": "List Salesforce CRM connections.",
+    "method": "GET",
+    "path": "/ssot/connections?connectorType=SalesforceDotCom",
+    "safety": "read"
+  },
+  {
+    "name": "d360_data_streams_list",
+    "family": "Ingestion",
+    "description": "List data streams with optional pagination.",
+    "method": "GET",
+    "path": "/ssot/data-streams",
+    "safety": "read",
+    "optionalParams": ["limit", "offset"]
+  },
+  {
+    "name": "d360_data_transforms_list",
+    "family": "Transforms and Actions",
+    "description": "List Data 360 SQL/data transforms.",
+    "method": "GET",
+    "path": "/ssot/data-transforms",
+    "safety": "read",
+    "optionalParams": ["limit", "offset"]
+  },
+  {
+    "name": "d360_data_actions_list",
+    "family": "Transforms and Actions",
+    "description": "List Data 360 data actions.",
+    "method": "GET",
+    "path": "/ssot/data-actions",
+    "safety": "read",
+    "optionalParams": ["limit", "offset"]
+  },
+  {
+    "name": "d360_identity_resolutions_list",
+    "family": "Identity Resolution",
+    "description": "List identity resolution rulesets.",
+    "method": "GET",
+    "path": "/ssot/identity-resolutions",
+    "safety": "read",
+    "optionalParams": ["limit", "offset"]
+  },
+  {
+    "name": "d360_semantic_models_list",
+    "family": "Semantic Retrieval",
+    "description": "List semantic data models.",
+    "method": "GET",
+    "path": "/ssot/semantic/models",
+    "safety": "read",
+    "optionalParams": ["limit", "offset"]
+  },
+  {
+    "name": "d360_search_indexes_list",
+    "family": "Semantic Retrieval",
+    "description": "List search indexes when the org exposes the search-index surface.",
+    "method": "GET",
+    "path": "/ssot/search-index",
+    "safety": "read",
+    "optionalParams": ["limit", "offset"],
+    "tips": "Some orgs expose this surface only after search indexes are provisioned."
+  },
+  {
+    "name": "d360_retrievers_list",
+    "family": "Semantic Retrieval",
+    "description": "List machine-learning retrievers when retriever APIs are provisioned.",
+    "method": "GET",
+    "path": "/machine-learning/retrievers",
+    "safety": "read",
+    "tips": "Can return not-found when retriever APIs are not provisioned; do not use as a core readiness gate."
+  },
+  {
+    "name": "d360_datakits_list",
+    "family": "DataKit",
+    "description": "List available DataKits.",
+    "method": "GET",
+    "path": "/ssot/data-kits",
+    "safety": "read",
+    "optionalParams": ["limit", "offset"]
+  }
+]

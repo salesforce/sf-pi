@@ -1,0 +1,32 @@
+[
+  {
+    "name": "agent_observability.platform_error_traces",
+    "family": "Agent Observability",
+    "description": "Find recent Agent Platform Tracing ERROR spans.",
+    "optionalParams": ["since", "limit"]
+  },
+  {
+    "name": "agent_observability.platform_trace_tree",
+    "family": "Agent Observability",
+    "description": "Fetch and reconstruct a Platform Tracing span tree by trace id.",
+    "requiredParams": ["trace_id"]
+  },
+  {
+    "name": "agent_observability.join_interaction_trace",
+    "family": "Agent Observability",
+    "description": "Join one STDM interaction to messages, steps, and Platform Tracing spans.",
+    "requiredParams": ["interaction_id"]
+  },
+  {
+    "name": "agent_observability.stdm_session_timeline",
+    "family": "Agent Observability",
+    "description": "Fetch an STDM conversation timeline for a session id.",
+    "requiredParams": ["session_id"]
+  },
+  {
+    "name": "agent_observability.operation_latency_summary",
+    "family": "Agent Observability",
+    "description": "Aggregate Platform Tracing duration by operation name.",
+    "optionalParams": ["since", "limit"]
+  }
+]

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   D360_EXAMPLES,
+  D360_FAMILIES,
   D360_OPERATIONS,
   D360_RUNBOOKS,
   findOperation,
@@ -55,10 +56,23 @@ describe("d360 facade registry", () => {
     }
   });
 
-  it("marks mutability safety explicitly for every operation", () => {
+  it("validates registry integrity", () => {
+    const families = new Set(D360_FAMILIES.map((family) => family.name));
+
     for (const operation of D360_OPERATIONS) {
+      expect(families.has(operation.family), `${operation.name} has unknown family`).toBe(true);
       expect(["read", "safe_post", "confirmed", "destructive"]).toContain(operation.safety);
       expect(operation.path).toMatch(/^\//);
+      for (const pathParam of operation.path.matchAll(/\{([^}]+)\}/g)) {
+        expect(
+          operation.requiredParams ?? [],
+          `${operation.name} missing path param declaration`,
+        ).toContain(pathParam[1]);
+      }
+    }
+
+    for (const runbook of D360_RUNBOOKS) {
+      expect(families.has(runbook.family), `${runbook.name} has unknown family`).toBe(true);
     }
   });
 });

@@ -1,0 +1,57 @@
+[
+  {
+    "name": "Query",
+    "summary": "Run bounded Data 360 SQL and inspect data shape.",
+    "keywords": ["sql", "query", "count", "sample", "rows", "schema"]
+  },
+  {
+    "name": "Metadata",
+    "summary": "Discover data spaces, DMO schemas, DLO schemas, and compact catalogs.",
+    "keywords": ["metadata", "dmo", "dlo", "data space", "schema", "catalog"]
+  },
+  {
+    "name": "Agent Observability",
+    "summary": "Analyze Agentforce STDM sessions and Agent Platform Tracing spans.",
+    "keywords": ["agent", "stdm", "session", "trace", "span", "observability", "error"]
+  },
+  {
+    "name": "Segment",
+    "summary": "Create, inspect, and publish Data Cloud audience segments.",
+    "keywords": ["segment", "audience", "marketing", "publish", "membership"]
+  },
+  {
+    "name": "Activation",
+    "summary": "Send audiences downstream through activation targets.",
+    "keywords": ["activation", "target", "marketing cloud", "delivery", "campaign"]
+  },
+  {
+    "name": "Calculated Insights",
+    "summary": "Validate, run, and inspect calculated metrics and insights.",
+    "keywords": ["calculated insight", "ci", "metric", "score", "aggregate"]
+  },
+  {
+    "name": "Ingestion",
+    "summary": "Discover connectors, connections, data streams, and ingestion health surfaces.",
+    "keywords": ["ingestion", "connector", "connection", "data stream", "stream", "source"]
+  },
+  {
+    "name": "Transforms and Actions",
+    "summary": "Inspect SQL transforms and real-time data actions.",
+    "keywords": ["transform", "data transform", "data action", "action", "event", "trigger"]
+  },
+  {
+    "name": "Identity Resolution",
+    "summary": "Inspect identity resolution rulesets and profile unification setup.",
+    "keywords": ["identity", "identity resolution", "ruleset", "unified", "match", "reconcile"]
+  },
+  {
+    "name": "Semantic Retrieval",
+    "summary": "Inspect retrievers, search indexes, and semantic data models for RAG and BI.",
+    "keywords": ["retriever", "search index", "semantic", "sdm", "rag", "vector", "hybrid"]
+  },
+  {
+    "name": "DataKit",
+    "summary": "Inspect packaged Data 360 data kits and deployment bundles.",
+    "keywords": ["datakit", "data kit", "package", "bundle", "deploy"]
+  }
+]

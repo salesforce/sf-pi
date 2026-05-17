@@ -1,0 +1,39 @@
+{
+  "d360_query_sql": {
+    "operation": "d360_query_sql",
+    "params": {
+      "dataspaceName": "default",
+      "sql": "SELECT COUNT(*) AS n FROM \"ssot__TelemetryTraceSpan__dlm\""
+    }
+  },
+  "d360_dlo_describe": {
+    "operation": "d360_dlo_describe",
+    "params": {
+      "dloName": "ObservabilitySpans__dll"
+    }
+  },
+  "d360_data_streams_list": {
+    "operation": "d360_data_streams_list",
+    "params": {
+      "limit": 10
+    }
+  },
+  "d360_semantic_models_list": {
+    "operation": "d360_semantic_models_list",
+    "params": {
+      "limit": 10
+    }
+  },
+  "agent_observability.platform_trace_tree": {
+    "runbook": "agent_observability.platform_trace_tree",
+    "params": {
+      "trace_id": "d18ba385fe932069deeb078f48d158d1"
+    }
+  },
+  "agent_observability.join_interaction_trace": {
+    "runbook": "agent_observability.join_interaction_trace",
+    "params": {
+      "interaction_id": "64a3c2001eb45a35aebc575b743506c1"
+    }
+  }
+}
