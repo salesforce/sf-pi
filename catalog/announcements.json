@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.79.0-2026-05-17",
-  "latestVersion": "0.79.0",
+  "revision": "release-0.80.0-2026-05-17",
+  "latestVersion": "0.80.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.79.0",
+      "id": "release-0.80.0",
       "kind": "update",
-      "title": "sf-pi v0.79.0 — sf-llm-gateway: TLS-aware doctor + one-shot onboard + macOS CA bundle fixer",
+      "title": "sf-pi v0.80.0 — data360: add facade runbook tool",
       "publishedAt": "2026-05-17T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.79.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.80.0",
       "severity": "info",
-      "body": "sf-llm-gateway: TLS-aware doctor + one-shot onboard + macOS CA bundle fixer"
+      "body": "data360: add facade runbook tool"
     },
     {
       "id": "pi-0.73-required",
