@@ -509,6 +509,14 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.90.1](https://github.com/salesforce/sf-pi/compare/v0.90.0...v0.90.1) (2026-05-17)
+
+
+### Bug Fixes
+
+* **data360:** refresh tools on reload ([4ab0810](https://github.com/salesforce/sf-pi/commit/4ab0810278eaafa2b5e86f931e110aacc94111ec))
+* **data360:** reload registry json dynamically ([0da8364](https://github.com/salesforce/sf-pi/commit/0da8364843496bd99949a6ffacf7aa7de4181fdd))
+
 ## [0.90.0](https://github.com/salesforce/sf-pi/compare/v0.89.0...v0.90.0) (2026-05-17)
 
 
