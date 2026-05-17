@@ -509,6 +509,18 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.89.0](https://github.com/salesforce/sf-pi/compare/v0.88.0...v0.89.0) (2026-05-17)
+
+
+### Features
+
+* **data360:** add registry generator ([55dacf9](https://github.com/salesforce/sf-pi/commit/55dacf9930dc448dd2e1655ecaabdb8272451d98))
+
+
+### Bug Fixes
+
+* **sf-brain:** inject kernel as live custom_message, re-inject after compaction ([6f25fe3](https://github.com/salesforce/sf-pi/commit/6f25fe373fe8ba48c9625de0200165611a2157aa))
+
 ## [0.88.0](https://github.com/salesforce/sf-pi/compare/v0.87.1...v0.88.0) (2026-05-17)
 
 
