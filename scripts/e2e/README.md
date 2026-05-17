@@ -33,10 +33,10 @@ Data 360 org on a different API release than the active sf-pi default.
 
 Read-only Agent Platform Tracing smoke. It avoids the `sf` CLI subprocess
 path and uses the same `@salesforce/core` Connection transport as the
-`d360_*` tools. The script verifies that
-`ssot__TelemetryTraceSpan__dlm` metadata is visible, runs small bounded
-`/ssot/query-sql` SELECTs, and reconstructs one trace tree locally when
-sample spans exist.
+`d360_*` tools. The script verifies that `ObservabilitySpans__dll`
+metadata is visible, runs small bounded `/ssot/query-sql` SELECTs against
+`ssot__TelemetryTraceSpan__dlm`, and reconstructs one trace tree locally
+when sample spans exist.
 
 ```bash
 node --experimental-strip-types scripts/e2e/d360-agent-platform-tracing-e2e.ts <orgAlias>

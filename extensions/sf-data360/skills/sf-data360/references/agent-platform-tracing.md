@@ -23,13 +23,15 @@ ssot__AiAgentInteraction__dlm.ssot__TelemetryTraceId__c
 ## Pre-flight
 
 1. **Probe Data 360 first.** Run `d360_probe`. The optional
-   `agent_platform_tracing_dmo` probe checks whether the span DMO metadata is
-   visible at `/ssot/data-model-objects/ssot__TelemetryTraceSpan__dlm`.
-2. **Describe before querying.** Run
-   `d360_metadata action="describe_dmo" api_name="ssot__TelemetryTraceSpan__dlm"`
-   before writing SQL in a new org. Schemas can drift. If the describe
-   endpoint returns a transient server error but the DMO is expected to exist,
-   fall back to a bounded `COUNT(*)` smoke before sampling rows.
+   `agent_platform_tracing_dlo` probe checks whether the raw span DLO is
+   visible at `/ssot/data-lake-objects/ObservabilitySpans__dll`.
+2. **Describe the raw DLO before querying.** Run
+   `d360_metadata action="describe_dlo" api_name="ObservabilitySpans__dll"`
+   in a new org. The harmonized DMO `ssot__TelemetryTraceSpan__dlm` is the
+   normal SQL surface, but it may not appear in the compact DMO catalog and
+   some orgs can return a server error from the normal DMO describe endpoint.
+   If DLO describe works, use a bounded DMO `COUNT(*)` smoke before sampling
+   rows.
 3. **Resolve the data space.** `d360_api GET /ssot/data-spaces` and pick the
    active data space name, commonly `default`. Pass it as the
    `dataspaceName` query parameter on `/ssot/query-sql` when the org
@@ -59,8 +61,8 @@ analysis.
 
 ### DLO: `ObservabilitySpans__dll`
 
-Use the raw Data Lake Object only when debugging ingestion or mappings. Normal
-analysis should use `ssot__TelemetryTraceSpan__dlm`.
+Use the raw Data Lake Object for readiness checks, ingestion checks, or mapping
+debugging. Normal analysis should use `ssot__TelemetryTraceSpan__dlm`.
 
 Common raw fields include `spanId__c`, `traceId__c`, `parentSpanId__c`,
 `operationName__c`, `serviceName__c`, `startDateTime__c`, `endDateTime__c`,

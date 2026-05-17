@@ -152,8 +152,8 @@ async function main() {
     { name: "profile_metadata", path: "/ssot/profile/metadata" },
     { name: "metadata_entities_dmo", path: "/ssot/metadata-entities?entityType=DataModelObject" },
     {
-      name: "agent_platform_tracing_dmo",
-      path: "/ssot/data-model-objects/ssot__TelemetryTraceSpan__dlm",
+      name: "agent_platform_tracing_dlo",
+      path: "/ssot/data-lake-objects/ObservabilitySpans__dll",
     },
   ];
   const probeResults = await Promise.all(

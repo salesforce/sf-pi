@@ -32,8 +32,8 @@ describe("sf-data360 readiness probe", () => {
 
     expect(
       classifyConnectionProbeResult(
-        "agent_platform_tracing_dmo",
-        "/ssot/data-model-objects/ssot__TelemetryTraceSpan__dlm",
+        "agent_platform_tracing_dlo",
+        "/ssot/data-lake-objects/ObservabilitySpans__dll",
         403,
         [
           {
@@ -53,24 +53,30 @@ describe("sf-data360 readiness probe", () => {
 
     expect(
       classifyConnectionProbeResult(
-        "agent_platform_tracing_dmo",
-        "/ssot/data-model-objects/ssot__TelemetryTraceSpan__dlm",
+        "agent_platform_tracing_dlo",
+        "/ssot/data-lake-objects/ObservabilitySpans__dll",
         404,
         [{ errorCode: "NOT_FOUND", message: "The requested resource does not exist" }],
       ),
     ).toMatchObject({ state: "not_found" });
   });
 
-  it("classifies the Agent Platform Tracing DMO as populated when metadata is visible", () => {
+  it("classifies the Agent Platform Tracing DLO as populated when metadata is visible", () => {
     expect(
       classifyConnectionProbeResult(
-        "agent_platform_tracing_dmo",
-        "/ssot/data-model-objects/ssot__TelemetryTraceSpan__dlm",
+        "agent_platform_tracing_dlo",
+        "/ssot/data-lake-objects/ObservabilitySpans__dll",
         200,
         {
-          name: "ssot__TelemetryTraceSpan__dlm",
-          label: "Telemetry Trace Span",
-          fields: [{ name: "ssot__Id__c" }],
+          dataLakeObjects: [
+            {
+              name: "ObservabilitySpans__dll",
+              label: "ObservabilitySpans",
+              status: "ACTIVE",
+              totalRecords: 9550,
+              fields: [{ name: "spanId__c" }],
+            },
+          ],
         },
       ),
     ).toMatchObject({ state: "enabled_populated", count: 1, countKind: "returned_rows" });

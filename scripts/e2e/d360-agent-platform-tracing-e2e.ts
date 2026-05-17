@@ -17,6 +17,7 @@ import { connFromAlias } from "../../lib/common/sf-conn/connection.ts";
 import { connRequest } from "../../lib/common/sf-conn/request.ts";
 import { buildApiPath } from "../../extensions/sf-data360/lib/path.ts";
 import {
+  APT_SPAN_DLO,
   APT_SPAN_DMO,
   APT_SPAN_FIELDS,
   buildFindErrorSpansSql,
@@ -46,9 +47,6 @@ function fail(name: string, detail: string) {
   console.log(`  ✗ ${name} — ${detail}`);
   failures++;
 }
-function warn(name: string, detail: string) {
-  console.log(`  ⚠ ${name} — ${detail}`);
-}
 function section(title: string) {
   console.log(`\n=== ${title} ===`);
 }
@@ -66,19 +64,16 @@ async function main() {
   console.log(`  apiVersion=${apiVersion}`);
   ok("connection resolved without sf subprocess");
 
-  section("2. Verify Agent Platform Tracing DMO metadata");
-  const describePath = buildApiPath(`/ssot/data-model-objects/${APT_SPAN_DMO}`, apiVersion);
+  section("2. Verify Agent Platform Tracing DLO metadata");
+  const describePath = buildApiPath(`/ssot/data-lake-objects/${APT_SPAN_DLO}`, apiVersion);
   const describe = await connRequest<unknown>(conn, { method: "GET", url: describePath });
   if (describe.status === 403 || describe.status === 404) {
-    skip(`${APT_SPAN_DMO} is not visible in this org (HTTP ${describe.status}).`);
+    skip(`${APT_SPAN_DLO} is not visible in this org (HTTP ${describe.status}).`);
   }
   if (describe.status !== 200) {
-    warn(
-      "describe tracing DMO",
-      `HTTP ${describe.status}; continuing with bounded query-sql smoke because some orgs expose the DMO to SQL before the describe endpoint is stable.`,
-    );
+    fail("describe tracing DLO", `HTTP ${describe.status}: ${JSON.stringify(describe.body)}`);
   } else {
-    ok("tracing DMO metadata is visible", describePath);
+    ok("tracing DLO metadata is visible", describePath);
   }
 
   section("3. Resolve data space when available");
