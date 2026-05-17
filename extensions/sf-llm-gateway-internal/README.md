@@ -365,6 +365,7 @@ extensions/sf-llm-gateway-internal/
     command-panel.test.ts   ← unit / smoke test
     command-parsing.test.ts ← unit / smoke test
     command-surface.test.ts ← unit / smoke test
+    compaction-routes-through-gateway.test.ts← unit / smoke test
     config-panel-paste.test.ts← unit / smoke test
     config.test.ts          ← unit / smoke test
     cwd-migration.test.ts   ← unit / smoke test
