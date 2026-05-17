@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.90.1-2026-05-17",
-  "latestVersion": "0.90.1",
+  "revision": "release-0.91.0-2026-05-17",
+  "latestVersion": "0.91.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.90.1",
+      "id": "release-0.91.0",
       "kind": "update",
-      "title": "sf-pi v0.90.1 — data360: refresh tools on reload",
+      "title": "sf-pi v0.91.0 — data360: add safe post facade operations",
       "publishedAt": "2026-05-17T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.90.1",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.91.0",
       "severity": "info",
-      "body": "data360: refresh tools on reload — data360: reload registry json dynamically"
+      "body": "data360: add safe post facade operations"
     },
     {
       "id": "pi-0.73-required",
