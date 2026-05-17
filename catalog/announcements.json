@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.77.1-2026-05-17",
-  "latestVersion": "0.77.1",
+  "revision": "release-0.78.0-2026-05-17",
+  "latestVersion": "0.78.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.77.1",
+      "id": "release-0.78.0",
       "kind": "update",
-      "title": "sf-pi v0.77.1 — sf-llm-gateway-internal: disable per-tool eager_input_streaming for Haiku 4.5, closes #166",
+      "title": "sf-pi v0.78.0 — data360: add agent platform tracing workflow",
       "publishedAt": "2026-05-17T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.77.1",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.78.0",
       "severity": "info",
-      "body": "sf-llm-gateway-internal: disable per-tool eager_input_streaming for Haiku 4.5, closes #166"
+      "body": "data360: add agent platform tracing workflow"
     },
     {
       "id": "pi-0.73-required",
