@@ -509,6 +509,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.78.1](https://github.com/salesforce/sf-pi/compare/v0.78.0...v0.78.1) (2026-05-17)
+
+
+### Bug Fixes
+
+* **data360:** probe platform tracing via DLO ([5c8ae56](https://github.com/salesforce/sf-pi/commit/5c8ae5680136fbd56590e805d1aee5cf466c884c))
+
 ## [0.78.0](https://github.com/salesforce/sf-pi/compare/v0.77.1...v0.78.0) (2026-05-17)
 
 
