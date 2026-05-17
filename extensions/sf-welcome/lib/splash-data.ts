@@ -50,6 +50,9 @@ export type {
   AnnouncementsSummary,
   LoadedCounts,
   SfCliStatusInfo,
+  SfSkillsStatusInfo,
+  SfSkillsInstallKind,
+  SfSkillsFreshness,
   SplashData,
   RecentSession,
   ExtensionHealthItem,
@@ -66,6 +69,13 @@ export {
   readCachedSfCliStatus,
   writeCachedSfCliStatus,
 } from "./sf-cli-status.ts";
+export {
+  detectSfSkillsStatus,
+  detectInstallStateLocal,
+  fetchUpstreamCompare,
+  readCachedSfSkillsStatus,
+  writeCachedSfSkillsStatus,
+} from "./sf-skills-status.ts";
 export { estimateMonthlyCost, getRecentSessions } from "./session-data.ts";
 export {
   buildWhatsNewPayload,

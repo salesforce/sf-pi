@@ -70,11 +70,14 @@ import {
   collectInitialSplashData,
   collectSplashData,
   detectSfCliStatus,
+  detectSfSkillsStatus,
   readCachedSfCliStatus,
+  readCachedSfSkillsStatus,
   readCurrentPiVersion,
   refreshAnnouncementsSummary,
   resolveMonthlyUsage,
   writeCachedSfCliStatus,
+  writeCachedSfSkillsStatus,
 } from "./lib/splash-data.ts";
 import { acknowledgeAnnouncementsRevision } from "../../lib/common/catalog-state/announcements-state.ts";
 import { SfWelcomeOverlay, SfWelcomeHeader } from "./lib/splash-component.ts";
@@ -391,6 +394,12 @@ export default function sfWelcome(pi: ExtensionAPI) {
     if (cachedSfCli) {
       data.sfCli = cachedSfCli;
     }
+    // sf-skills status is also cache-first — the deferred refresh below
+    // populates the live value and writes back to disk for the next launch.
+    const cachedSfSkills = readCachedSfSkillsStatus();
+    if (cachedSfSkills) {
+      data.sfSkills = cachedSfSkills;
+    }
     const doctorReport = runDoctorDiagnostics({ cwd: ctx.cwd });
     data.doctor = summarizeStartupDoctorNudge(doctorReport) ?? undefined;
 
@@ -513,6 +522,32 @@ export default function sfWelcome(pi: ExtensionAPI) {
         });
     }, 2_000);
     sfCliTimer.unref?.();
+
+    // Background sf-skills status: same cache-first pattern as the CLI row
+    // but staggered 500 ms after it so the two network probes (npm registry
+    // + GitHub compare API) don't pile up on the same event-loop tick. The
+    // local FS detection is sync and cheap (~1 ms); the network call is the
+    // only thing that's deferred.
+    const sfSkillsTimer = setTimeout(() => {
+      if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
+      void markBootStep("sf-welcome.sf-skills-detect", () => detectSfSkillsStatus(ctx.cwd))
+        .then((skills) => {
+          writeCachedSfSkillsStatus(skills);
+          if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
+          data.sfSkills = skills;
+          scheduleSplashRepaint(ctx, generation);
+        })
+        .catch(() => {
+          if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
+          // Detection itself never throws — this catch is defensive only.
+          // Keep whatever cache the splash already painted with.
+          if (!data.sfSkills) {
+            data.sfSkills = { installKind: "not-installed", freshness: "unknown", loading: false };
+            scheduleSplashRepaint(ctx, generation);
+          }
+        });
+    }, 2_500);
+    sfSkillsTimer.unref?.();
 
     // Subscribe to the gateway usage store so any time the provider publishes
     // a new snapshot (first populate, periodic refresh, /sf-llm-gateway-internal

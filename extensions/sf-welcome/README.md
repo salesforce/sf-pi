@@ -157,6 +157,7 @@ extensions/sf-welcome/
     recommendations-status.ts← implementation module
     session-data.ts         ← implementation module
     sf-cli-status.ts        ← implementation module
+    sf-skills-status.ts     ← implementation module
     splash-component.ts     ← implementation module
     splash-data.ts          ← implementation module
     startup-mode.ts         ← implementation module
@@ -173,8 +174,10 @@ extensions/sf-welcome/
     recommendations-status.test.ts← unit / smoke test
     sdk-migration.test.ts   ← unit / smoke test
     sf-cli-status.test.ts   ← unit / smoke test
+    sf-skills-status.test.ts← unit / smoke test
     smoke.test.ts           ← unit / smoke test
     splash-privacy.test.ts  ← unit / smoke test
+    splash-sf-skills.test.ts← unit / smoke test
     startup-mode.test.ts    ← unit / smoke test
     state-store.test.ts     ← unit / smoke test
     whats-new.test.ts       ← unit / smoke test

@@ -39,6 +39,40 @@ export interface SfCliStatusInfo {
   loading: boolean;
 }
 
+/**
+ * How the official forcedotcom/afv-library skills repo is wired into the
+ * current pi install.
+ *
+ *   managed       — cloned + sentinel-marked by `/sf-skills defaults install`
+ *   linked        — user-owned checkout wired via `/sf-skills defaults link`
+ *   not-installed — no afv-library entry found in either scope
+ */
+export type SfSkillsInstallKind = "managed" | "linked" | "not-installed";
+
+/** Same vocabulary as SfCliFreshness so the splash row reads symmetrically. */
+export type SfSkillsFreshness = "checking" | "latest" | "update-available" | "unknown";
+
+export interface SfSkillsStatusInfo {
+  installKind: SfSkillsInstallKind;
+  /** Scope of the install — "global" or "project". Undefined when not installed. */
+  scope?: "global" | "project";
+  /** Absolute path to the wired skills/ dir. Undefined when not installed. */
+  skillsPath?: string;
+  /** Absolute path to the repo root. Undefined when not installed. */
+  rootPath?: string;
+  /** Local commit SHA (full or abbreviated) read from .git/HEAD. */
+  localSha?: string;
+  /** Latest upstream main commit SHA from GitHub. */
+  remoteSha?: string;
+  /** Number of commits the local clone is behind upstream main, when we
+   *  could compute it via the GitHub compare endpoint. */
+  commitsBehind?: number;
+  /** Number of skill subdirs under <skillsPath>/ (each with a SKILL.md). */
+  skillCount?: number;
+  freshness: SfSkillsFreshness;
+  loading: boolean;
+}
+
 /** Install status shown in the splash's Recommendations block. */
 export type RecommendationDisplayStatus = "installed" | "pending" | "declined";
 
@@ -135,6 +169,10 @@ export interface SplashData {
   recentSessionsLoading?: boolean;
   /** Lightweight SF CLI install/latest status populated asynchronously after initial render. */
   sfCli?: SfCliStatusInfo;
+  /** Lightweight forcedotcom/afv-library install + freshness status
+   *  populated asynchronously after initial render. Mirrors the sfCli
+   *  cache-first → deferred-refresh pattern; never blocks startup. */
+  sfSkills?: SfSkillsStatusInfo;
   /** Short summary of pi-coding-agent changes since the user's last splash.
    * Present only when there is something new to announce. */
   whatsNew?: WhatsNewSummary;

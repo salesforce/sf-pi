@@ -167,6 +167,11 @@ export const GLYPH_TABLE = {
   bug: { emoji: "🐛", ascii: "!" },
   pr: { emoji: "🔀", ascii: "><" },
   privacy: { emoji: "🔒", ascii: "#" },
+  // sf-skills row → official Salesforce afv-library install status. The 📚
+  // emoji literally matches the repo name ("afv-library"); ASCII fallback is
+  // a single ampersand to stay one-cell wide ("&" reads as "and / library"
+  // and is not used by any other glyph in this table).
+  sfSkills: { emoji: "📚", ascii: "&" },
   warn: { emoji: "⚠️", ascii: "!" }, // note: VS16 variation selector
   // Inline bullets that already render fine in Terminal.app but we want a
   // single switchable source of truth for custom renderers.

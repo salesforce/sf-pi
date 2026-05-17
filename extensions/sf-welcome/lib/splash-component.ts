@@ -329,6 +329,68 @@ function formatGatewayStatusValue(data: SplashData, mode: GlyphMode): string {
   }
 }
 
+function formatSfSkillsStatusValue(data: SplashData, mode: GlyphMode): string {
+  const skills = data.sfSkills;
+
+  if (!skills || skills.loading || skills.freshness === "checking") {
+    return MUTED(`${glyph("hourglass", mode)} Checking`);
+  }
+
+  // Strong opinionated nudge when the official library isn't installed:
+  // bright orange ↑ + bold action verb. The matching "/sf-skills defaults
+  // install" command is rendered on a muted sub-line below the row (see
+  // buildLeftColumn) so the row text itself stays inside the 72-col
+  // left-column cap that the SALESFORCE wordmark drives.
+  if (skills.installKind === "not-installed") {
+    return `${SF_ORANGE("↑")} ${SF_ORANGE("Install official skills")} ${MUTED("· afv-library")}`;
+  }
+
+  const skillCountSuffix =
+    typeof skills.skillCount === "number" && skills.skillCount > 0
+      ? ` ${MUTED(`(${skills.skillCount} skill${skills.skillCount === 1 ? "" : "s"})`)}`
+      : "";
+
+  if (skills.installKind === "linked") {
+    // User-owned checkout: green ✓, never nag for updates.
+    return `${SF_GREEN("✓")} ${SF_GREEN("afv-library linked")}${skillCountSuffix}`;
+  }
+
+  // installKind === "managed"
+  if (skills.freshness === "update-available") {
+    const behind =
+      typeof skills.commitsBehind === "number" && skills.commitsBehind > 0
+        ? `${skills.commitsBehind} commit${skills.commitsBehind === 1 ? "" : "s"} behind`
+        : "update available";
+    return `${SF_ORANGE("↑")} ${SF_ORANGE("afv-library")} ${MUTED(`· ${behind}`)}`;
+  }
+
+  if (skills.freshness === "latest") {
+    return `${SF_GREEN("✓")} ${SF_GREEN("afv-library installed")} ${MUTED("· latest")}${skillCountSuffix}`;
+  }
+
+  // freshness === "unknown" — we know it's installed; the network probe
+  // either hasn't run yet or failed. Render green to avoid a false alarm.
+  return `${SF_GREEN("✓")} ${SF_GREEN("afv-library installed")}${skillCountSuffix}`;
+}
+
+/** Suggested follow-up command for the current sf-skills state, or null when
+ *  the row is informational only. Rendered as a muted sub-line so it never
+ *  pushes the main row past the column cap.
+ *
+ *  Gated on `loading` so the hint never appears under the "⏳ Checking"
+ *  state — we don't actually know the install state yet, and showing
+ *  "/sf-skills defaults install" before detection completes would be a
+ *  false claim. */
+function sfSkillsActionHint(skills: SplashData["sfSkills"]): string | null {
+  if (!skills) return null;
+  if (skills.loading || skills.freshness === "checking") return null;
+  if (skills.installKind === "not-installed") return "/sf-skills defaults install";
+  if (skills.installKind === "managed" && skills.freshness === "update-available") {
+    return "/sf-skills defaults update";
+  }
+  return null;
+}
+
 function formatSfCliStatusValue(data: SplashData, mode: GlyphMode): string {
   const cli = data.sfCli;
 
@@ -496,6 +558,22 @@ function buildLeftColumn(
     lines.push(
       formatGlyphInfoRow("privacy", mode, "Privacy", formatPrivacyStatusValue(data.privacy)),
     );
+  }
+
+  // SF Skills (forcedotcom/afv-library) install + freshness. Always
+  // rendered — the not-installed state is the loud orange nudge that
+  // pushes users toward the official skills library. Cache-first paint
+  // (see sf-skills-status.ts) keeps this row free at startup.
+  lines.push(
+    formatGlyphInfoRow("sfSkills", mode, "SF Skills", formatSfSkillsStatusValue(data, mode)),
+  );
+  // Action hint as a muted sub-line, same convention the gateway row uses
+  // for its key-conflict warning. Only fires when there's something the
+  // user can actionably run from the row's current state.
+  const sfSkillsHint = sfSkillsActionHint(data.sfSkills);
+  if (sfSkillsHint) {
+    const truncated = truncateToWidth(sfSkillsHint, Math.max(10, colWidth - 4), "…");
+    lines.push(`   ${MUTED(`→ ${truncated}`)}`);
   }
   lines.push("");
 
