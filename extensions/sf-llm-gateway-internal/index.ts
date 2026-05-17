@@ -197,6 +197,28 @@ import {
   getClaudeCodeSettingsPath,
 } from "./lib/claude-code-import.ts";
 import {
+  formatOnboardChainReport,
+  runOnboardChain,
+  shouldNotifyClaudeCodeFirstRun,
+  type OnboardChainDeps,
+  type OnboardChainResult,
+} from "./lib/onboard-action.ts";
+import { markClaudeCodeNotifyShown } from "./lib/onboarding-state.ts";
+import {
+  applyZshenvBlock,
+  buildLaunchAgentPlist,
+  buildZshenvBlock,
+  defaultLaunchAgentPath,
+  defaultZshenvPath,
+  downloadBundle,
+  loadLaunchAgent,
+  probeBundleCandidates,
+  writeLaunchAgentPlist,
+  type BundleProbeResult,
+} from "./lib/ca-bundle-fixer.ts";
+import { writeCaBundleFixerState } from "./lib/ca-bundle-fixer-state.ts";
+import { writeCaProbeState } from "./lib/ca-probe-state.ts";
+import {
   getGatewayArgumentCompletions,
   formatGatewayAliasReference,
   formatGatewayCommandReference,
@@ -226,6 +248,8 @@ import {
 import { installWireTrace, isWireTraceEnabled } from "./lib/wire-trace.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 import { markBootStep } from "../../lib/common/boot-timing.ts";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { globalAgentPath } from "../../lib/common/pi-paths.ts";
 
 // -------------------------------------------------------------------------------------------------
 // Extension-only types
@@ -246,6 +270,7 @@ type CommandArgs = {
     | "onboard"
     | "open-token"
     | "import-claude"
+    | "fix-ca-bundle"
     | "on"
     | "off"
     | "setup";
@@ -428,6 +453,26 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
     // gateway row and /sf-llm-gateway doctor / usage-probe --trace. Do not
     // toast during startup: notifications render over the splash and make
     // first paint noisy.
+
+    // First-run Claude Code nudge. Cache-first, deferred past first paint:
+    //  1. State-store read (cheap; "have we shown this?")
+    //  2. Saved config read (cheap; "do they already have a key?")
+    //  3. existsSync ~/.claude/settings.json (cheap)
+    //  4. Only on hit — parse + score the Claude Code settings file once.
+    // Sentinel-marked once shown so this never nags twice.
+    const claudeNotifyTimer = setTimeout(() => {
+      void markBootStep("sf-llm-gateway.claude-code-nudge (deferred)", () => {
+        const decision = shouldNotifyClaudeCodeFirstRun({ cwd: ctx.cwd });
+        if (!decision.shouldNotify) return Promise.resolve();
+        const summary = decision.importedBaseUrl
+          ? `Found gateway credentials in Claude Code (${decision.importedBaseUrl}). Run /${FRIENDLY_COMMAND_NAME} onboard to import them.`
+          : `Found gateway credentials in Claude Code. Run /${FRIENDLY_COMMAND_NAME} onboard to import them.`;
+        ctx.ui.notify(summary, "info");
+        markClaudeCodeNotifyShown();
+        return Promise.resolve();
+      }).catch(() => undefined);
+    }, 4_000);
+    claudeNotifyTimer.unref?.();
   });
 
   // Track whether we've already kicked off the cold-start details fetch
@@ -563,11 +608,13 @@ async function handleCommand(
     case "tokens":
       return handleTokensCommand(pi, ctx, parsed.positional ?? []);
     case "onboard":
-      return handleOnboardCommand(pi, ctx);
+      return handleOnboardCommand(pi, ctx, parsed.scope);
     case "open-token":
       return handleOpenTokenCommand(pi, ctx);
     case "import-claude":
       return handleImportClaudeCommand(pi, ctx, parsed.scope);
+    case "fix-ca-bundle":
+      return handleFixCaBundleCommand(pi, ctx);
     case "beta":
       return handleBetaCommandImpl(pi, ctx, parsed.betaArgs ?? [], (summary, details, level) =>
         emitCommandOutput(pi, ctx, summary, details, level),
@@ -639,11 +686,13 @@ async function handlePanelAction(
     case "tokens":
       return handleTokensCommand(pi, ctx, [getPanelDefaultModelId(ctx)]);
     case "onboard":
-      return handleOnboardCommand(pi, ctx);
+      return handleOnboardCommand(pi, ctx, scope);
     case "open-token":
       return handleOpenTokenCommand(pi, ctx);
     case "import-claude":
       return handleImportClaudeCommand(pi, ctx, scope);
+    case "fix-ca-bundle":
+      return handleFixCaBundleCommand(pi, ctx);
     case "beta":
       return handleBetaCommandImpl(pi, ctx, [], (summary, details, level) =>
         emitCommandOutput(pi, ctx, summary, details, level),
@@ -876,42 +925,346 @@ function pad(value: string, width: number): string {
  * sanity check by typing just `/sf-llm-gateway-internal tokens gpt-5`.
  */
 /**
- * `/sf-llm-gateway-internal onboard` — print the stable gateway root URL for
- * browser sign-in and key creation. Falls back to a friendly warning when no
- * base URL is configured.
+ * `/sf-llm-gateway-internal onboard` — one-shot onboarding chain.
+ *
+ * Chains: Claude Code import → register provider → gateway doctor → set
+ * default model. Stops short on errors and surfaces the next action
+ * (e.g. fix-ca-bundle for a TLS failure) inline. The previous prose-only
+ * "print gateway root URL" behavior is now covered by the `open-token`
+ * action, which also actually opens a browser.
  */
-async function handleOnboardCommand(pi: ExtensionAPI, ctx: ExtensionCommandContext): Promise<void> {
-  const config = getGatewayConfig(ctx.cwd);
-  const url = buildOnboardingUrl(config.baseUrl);
-  if (!url) {
+async function handleOnboardCommand(
+  pi: ExtensionAPI,
+  ctx: ExtensionCommandContext,
+  scope: "global" | "project",
+): Promise<void> {
+  const result = await executeOnboardChain(pi, ctx, scope);
+  await emitCommandOutput(
+    pi,
+    ctx,
+    `SF LLM Gateway onboard — ${result.summary}`,
+    formatOnboardChainReport(result),
+    result.level,
+  );
+}
+
+/**
+ * Build the OnboardChainDeps closure over the live pi/ctx and run the
+ * chain. Kept as a small helper so other call sites (panel action,
+ * tests) can invoke the chain without re-deriving the deps.
+ */
+async function executeOnboardChain(
+  pi: ExtensionAPI,
+  ctx: ExtensionCommandContext,
+  scope: "global" | "project",
+): Promise<OnboardChainResult> {
+  const deps: OnboardChainDeps = {
+    importClaudeCode: async (importScope) => {
+      const settingsPath = getClaudeCodeSettingsPath();
+      const imported = readClaudeCodeGatewayConfig(settingsPath);
+      if (!imported.ok) {
+        return { ok: false, importedAny: false, detail: imported.reason };
+      }
+      const configPath =
+        importScope === "project" ? projectGatewayConfigPath(ctx.cwd) : globalGatewayConfigPath();
+      const saved = readGatewaySavedConfig(configPath);
+      const changed: string[] = [];
+      if (imported.baseUrl) {
+        saved.baseUrl = imported.baseUrl;
+        changed.push("base URL");
+      }
+      if (imported.apiKey) {
+        saved.apiKey = imported.apiKey;
+        changed.push("API key");
+      }
+      if (changed.length === 0) {
+        return {
+          ok: true,
+          importedAny: false,
+          detail: "Claude Code settings present, but no gateway URL/token detected.",
+        };
+      }
+      writeGatewaySavedConfig(configPath, saved);
+      return {
+        ok: true,
+        importedAny: true,
+        detail: `Imported ${changed.join(" + ")} into ${importScope} scope.`,
+      };
+    },
+    registerProvider: async () => {
+      await discoverAndRegister(pi, getBetaOverrides(), getBetaExtras(), ctx.cwd);
+    },
+    runDoctor: async () => {
+      const report = await fetchGatewayDoctorReport(ctx.cwd);
+      const allOk = report.checks.length > 0 && report.checks.every((check) => check.ok);
+      const summary = allOk
+        ? "Gateway preflight passed."
+        : `Gateway preflight reported ${report.checks.filter((check) => !check.ok).length} failing check(s).`;
+      return { allOk, failureClass: report.failureClass, summary };
+    },
+    setDefault: async (setScope) => {
+      await handleSetDefaultCommand(pi, ctx, setScope);
+    },
+    hasUsableSavedConfig: () => {
+      const config = getGatewayConfig(ctx.cwd);
+      return Boolean(config.baseUrl) && Boolean(config.apiKey);
+    },
+  };
+  return runOnboardChain(scope, deps);
+}
+
+/**
+ * `/sf-llm-gateway fix-ca-bundle` — corporate CA bundle fixer.
+ *
+ * Walks the user through:
+ *   1. Probe well-known + saved-config-extras candidate paths.
+ *   2. Adopt the first valid bundle, OR offer to download from a
+ *      configured `caBundleSource` URL when nothing was found.
+ *   3. Confirm + write the LaunchAgent plist.
+ *   4. Confirm + apply the sentinel-guarded ~/.zshenv block.
+ *   5. Set NODE_EXTRA_CA_CERTS in-process and re-run the doctor so the
+ *      user sees green checks before relaunching pi.
+ *
+ * Every disk-mutating step is HITL-gated. macOS-only — returns a clean
+ * "not applicable" report on Linux/Windows so callers don't have to
+ * platform-gate the action.
+ */
+async function handleFixCaBundleCommand(
+  pi: ExtensionAPI,
+  ctx: ExtensionCommandContext,
+): Promise<void> {
+  if (process.platform !== "darwin") {
     await emitCommandOutput(
       pi,
       ctx,
-      "SF LLM Gateway Internal onboard — base URL is not configured.",
+      "fix-ca-bundle is macOS-only.",
       [
-        `Run /${FRIENDLY_COMMAND_NAME} setup to enter the gateway base URL first, then rerun this command.`,
-        `Env-var fallback for automation: ${BASE_URL_ENV}.`,
+        "This action targets the macOS Node TLS-keychain gap. On Linux/Windows, Node already",
+        "trusts the system CA store via OpenSSL \u2014 set NODE_EXTRA_CA_CERTS in your shell if your",
+        "corporate setup needs it, no LaunchAgent required.",
       ].join("\n"),
-      "warning",
+      "info",
     );
     return;
   }
 
-  const report = [
-    "Open this gateway root URL in your browser:",
-    "",
-    url,
-    "",
-    "Flow:",
-    "1. Sign in through the gateway UI.",
-    "2. Open the key-management / API-key area from the gateway UI.",
-    "3. Create or rotate a key, then copy the value.",
-    `4. Paste into pi's settings page (\`/${FRIENDLY_COMMAND_NAME}\`) to save it.`,
-    "",
-    "Note: this command intentionally avoids deployment-specific OAuth/UI deep links because those routes can reject direct browser navigation.",
-  ].join("\n");
+  const config = getGatewayConfig(ctx.cwd);
 
-  await emitCommandOutput(pi, ctx, "SF LLM Gateway Internal onboarding link.", report, "info");
+  // Step 1 — probe candidates.
+  const candidates = probeBundleCandidates(config.caBundleCandidates);
+  const adopted = candidates.find((entry) => entry.valid);
+  let bundlePath: string | undefined = adopted?.path;
+  let source: "adopt" | "bootstrap" = "adopt";
+  const summaryLines: string[] = [
+    "fix-ca-bundle plan",
+    "",
+    `Probed candidates (${candidates.length}):`,
+    ...candidates.map((entry) => formatProbeRow(entry)),
+    "",
+  ];
+
+  if (!bundlePath) {
+    // Step 2 — bootstrap path. Only proceed when a download URL is
+    // configured — we never bake an internal hostname into the public
+    // repo.
+    if (!config.caBundleSource) {
+      await emitCommandOutput(
+        pi,
+        ctx,
+        "fix-ca-bundle: no bundle found and no download URL configured.",
+        [
+          ...summaryLines,
+          "No valid PEM bundle was found at the well-known paths and no caBundleSource",
+          "is configured. Either:",
+          "  - save your bundle's absolute path into sfPi.gateway.caBundleCandidates and rerun, or",
+          "  - set sfPi.gateway.caBundleSource (or SF_LLM_GATEWAY_INTERNAL_CA_BUNDLE_SOURCE) to a",
+          "    download URL the agent can fetch the PEM from, then rerun.",
+          "",
+          "Public sf-pi ships no default download URL on purpose: the bundle source is",
+          "organization-specific.",
+        ].join("\n"),
+        "warning",
+      );
+      return;
+    }
+    if (ctx.hasUI) {
+      const proceed = await ctx.ui.confirm(
+        `Download CA bundle from ${config.caBundleSource}?`,
+        "This will save the PEM to ~/.pi/agent/sf-llm-gateway-internal/ca-bundle.pem.",
+      );
+      if (!proceed) {
+        await emitCommandOutput(
+          pi,
+          ctx,
+          "fix-ca-bundle cancelled.",
+          "User declined to download the CA bundle.",
+          "info",
+        );
+        return;
+      }
+    }
+    const destPath = globalAgentPath("sf-llm-gateway-internal", "ca-bundle.pem");
+    const downloaded = await downloadBundle(config.caBundleSource, destPath);
+    if (!downloaded.ok || !downloaded.path) {
+      await emitCommandOutput(
+        pi,
+        ctx,
+        "fix-ca-bundle: download failed.",
+        [
+          ...summaryLines,
+          `Download from ${config.caBundleSource} failed: ${downloaded.reason}`,
+        ].join("\n"),
+        "error",
+      );
+      return;
+    }
+    bundlePath = downloaded.path;
+    source = "bootstrap";
+    summaryLines.push(`Downloaded ${downloaded.bytesWritten ?? 0} bytes \u2192 ${bundlePath}`, "");
+  } else {
+    summaryLines.push(`Adopted ${bundlePath} (${adopted?.sizeBytes ?? "?"} bytes)`, "");
+  }
+
+  // Step 3 — LaunchAgent plist.
+  const plistPath = defaultLaunchAgentPath();
+  const plistXml = buildLaunchAgentPlist(bundlePath);
+  if (ctx.hasUI) {
+    const proceedPlist = await ctx.ui.confirm(
+      `Write LaunchAgent to ${plistPath}?`,
+      "This makes NODE_EXTRA_CA_CERTS available to apps launched from Dock/Spotlight.",
+    );
+    if (!proceedPlist) {
+      await emitCommandOutput(
+        pi,
+        ctx,
+        "fix-ca-bundle cancelled at LaunchAgent step.",
+        [...summaryLines, "User declined to write the LaunchAgent."].join("\n"),
+        "info",
+      );
+      return;
+    }
+  }
+  try {
+    await writeLaunchAgentPlist(plistPath, plistXml);
+    summaryLines.push(`Wrote ${plistPath}`);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    await emitCommandOutput(
+      pi,
+      ctx,
+      "fix-ca-bundle: could not write LaunchAgent.",
+      [...summaryLines, `Failed to write ${plistPath}: ${message}`].join("\n"),
+      "error",
+    );
+    return;
+  }
+  const loadResult = loadLaunchAgent(plistPath);
+  summaryLines.push(
+    loadResult.ok
+      ? `LaunchAgent loaded: ${loadResult.output || "(no output)"}`
+      : `LaunchAgent load failed (will still load on next login): ${loadResult.output}`,
+  );
+  summaryLines.push("");
+
+  // Step 4 — ~/.zshenv block.
+  const zshenvPath = defaultZshenvPath();
+  const zshenvBlock = buildZshenvBlock(bundlePath);
+  if (ctx.hasUI) {
+    const proceedZsh = await ctx.ui.confirm(
+      `Add sentinel-guarded export to ${zshenvPath}?`,
+      `Block:\n${zshenvBlock}\n\nIdempotent: re-runs replace the same block, never duplicate.`,
+    );
+    if (!proceedZsh) {
+      await emitCommandOutput(
+        pi,
+        ctx,
+        "fix-ca-bundle cancelled at ~/.zshenv step.",
+        [...summaryLines, "User declined to update ~/.zshenv. LaunchAgent is still active."].join(
+          "\n",
+        ),
+        "info",
+      );
+      return;
+    }
+  }
+  let zshenvCurrent = "";
+  try {
+    if (existsSync(zshenvPath)) {
+      zshenvCurrent = readFileSync(zshenvPath, "utf8");
+    }
+  } catch (error) {
+    summaryLines.push(
+      `Could not read existing ~/.zshenv: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+  }
+  const zshenvNext = applyZshenvBlock(zshenvCurrent, bundlePath);
+  if (zshenvNext.changed) {
+    try {
+      writeFileSync(zshenvPath, zshenvNext.contents, { encoding: "utf8" });
+      summaryLines.push(`Updated ${zshenvPath}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      summaryLines.push(`Failed to update ${zshenvPath}: ${message}`);
+    }
+  } else {
+    summaryLines.push(`${zshenvPath} already had the current block (no change).`);
+  }
+  summaryLines.push("");
+
+  // Step 5 — in-process env + doctor re-probe.
+  process.env.NODE_EXTRA_CA_CERTS = bundlePath;
+  let doctorAfter: Awaited<ReturnType<typeof fetchGatewayDoctorReport>> | undefined;
+  try {
+    doctorAfter = await fetchGatewayDoctorReport(ctx.cwd);
+    summaryLines.push(
+      doctorAfter.failureClass === null
+        ? "Doctor re-probe: every check passed."
+        : `Doctor re-probe: failureClass=${doctorAfter.failureClass}.`,
+    );
+  } catch (error) {
+    summaryLines.push(
+      `Doctor re-probe error: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+
+  // Step 6 — record state and clear stale TLS verdict so the splash
+  // nudge stops surfacing.
+  writeCaBundleFixerState({
+    appliedAt: new Date().toISOString(),
+    bundlePath,
+    plistPath,
+    source,
+  });
+  if (doctorAfter && doctorAfter.failureClass === null) {
+    writeCaProbeState({
+      at: new Date().toISOString(),
+      lastFailureClass: null,
+      hasNodeExtraCaCerts: true,
+      platform: process.platform,
+    });
+  }
+
+  summaryLines.push(
+    "",
+    "Relaunch pi from Dock/Spotlight to inherit NODE_EXTRA_CA_CERTS in future GUI sessions.",
+  );
+
+  await emitCommandOutput(
+    pi,
+    ctx,
+    "fix-ca-bundle applied.",
+    summaryLines.join("\n"),
+    doctorAfter && doctorAfter.failureClass !== null ? "warning" : "info",
+  );
+}
+
+function formatProbeRow(probe: BundleProbeResult): string {
+  if (probe.valid) {
+    return `  \u2713 ${probe.path} (${probe.sizeBytes ?? "?"} bytes)`;
+  }
+  return `  \u00b7 ${probe.path} \u2014 ${probe.reason ?? "invalid"}`;
 }
 
 async function handleOpenTokenCommand(
@@ -1303,6 +1656,9 @@ export function parseCommandArgs(args: string): CommandArgs {
   }
   if (sub === "import-claude" || sub === "import-claude-code") {
     return { subcommand: "import-claude", scope };
+  }
+  if (sub === "fix-ca-bundle" || sub === "fix-ca" || sub === "ca-bundle") {
+    return { subcommand: "fix-ca-bundle", scope };
   }
   return { subcommand: "status", scope };
 }

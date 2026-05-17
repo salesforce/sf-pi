@@ -28,6 +28,7 @@ import {
 } from "../../../lib/common/catalog-state/announcements-orchestrator.ts";
 import { collectRecommendationsStatus } from "./recommendations-status.ts";
 import { readWelcomeState } from "./state-store.ts";
+import { collectCaBundleNudge } from "./ca-bundle-nudge.ts";
 import { summarizeAvailableSkillSources } from "../../../lib/common/skill-sources/skill-sources.ts";
 import { getTelemetryState } from "../../../lib/common/privacy/state.ts";
 import {
@@ -391,6 +392,12 @@ export function collectSplashData(
 
   const doctor = summarizeStartupDoctorNudge(runDoctorDiagnostics({ cwd })) ?? undefined;
   const privacy = collectPrivacyStatus();
+  // Cache-first read: collectCaBundleNudge only inspects pre-persisted
+  // state files written by the gateway extension's deferred doctor /
+  // fix-ca-bundle apply paths. No filesystem walk, no subprocess, no
+  // network. Returns undefined whenever the gateway extension is off,
+  // the doctor passed, or a fix is already applied.
+  const caBundleNudge = collectCaBundleNudge({ cwd });
 
   return {
     modelName,
@@ -411,6 +418,7 @@ export function collectSplashData(
     recommendations: collectRecommendationsStatus(cwd),
     skillSources: summarizeAvailableSkillSources() ?? undefined,
     doctor,
+    caBundleNudge,
     privacy,
     sfCli: undefined,
     whatsNew,

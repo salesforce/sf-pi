@@ -106,6 +106,25 @@ export interface DoctorNudgeSummary {
   command: string;
 }
 
+/**
+ * Splash-facing payload for the corporate-CA-bundle nudge.
+ *
+ * Populated only when the gateway extension is enabled, the most recent
+ * doctor run flagged a TLS-class failure on macOS, and no fix has been
+ * applied yet. Drives a single muted row under the gateway status line
+ * pointing at `/sf-llm-gateway fix-ca-bundle`.
+ *
+ * Public-safe: this UI surface lives in sf-welcome (shared) but is
+ * gated by `isSfPiExtensionEnabled("sf-llm-gateway-internal")` so it
+ * never renders for users who have the internal-only extension off.
+ */
+export interface CaBundleNudgeSummary {
+  /** Slash command the user should run. Always `/sf-llm-gateway fix-ca-bundle`. */
+  command: string;
+  /** Short prose surfaced in the splash row. */
+  message: string;
+}
+
 /** Compact splash payload for the Privacy row.
  *  Computed from lib/common/privacy/state.ts at every collect call. */
 export interface PrivacyStatusSummary {
@@ -154,6 +173,13 @@ export interface SplashData {
    * welcome screen nudges the user toward `/sf-pi doctor` and safe-start
    * mode avoids the blocking overlay. */
   doctor?: DoctorNudgeSummary;
+  /** Corporate CA bundle nudge for macOS users hitting NODE_EXTRA_CA_CERTS
+   *  failures. Computed synchronously from cached gateway probe state +
+   *  fixer-applied state. Undefined when the extension is disabled, the
+   *  doctor passed, the fix is already applied, or the user is on a
+   *  non-darwin platform. Only renders one row — no live probing on the
+   *  splash hot path. */
+  caBundleNudge?: CaBundleNudgeSummary;
   /** Telemetry posture (sf-pi default opts users out of pi's anonymous
    *  install/update ping). Always present after the first collect. */
   privacy?: PrivacyStatusSummary;

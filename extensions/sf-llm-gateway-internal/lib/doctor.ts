@@ -3,14 +3,17 @@
 import type { ExtensionDoctorReport } from "../../../lib/common/doctor/registry.ts";
 import {
   API_KEY_ENV,
+  CA_BUNDLE_SOURCE_ENV,
   describeApiKey,
   describeConfigValue,
+  FRIENDLY_COMMAND_NAME,
   getGatewayConfig,
   getMergedSavedGatewayConfig,
   type ConfigSource,
 } from "./config.ts";
 import { toGatewayOpenAiBaseUrl, toGatewayRootBaseUrl } from "./gateway-url.ts";
 import { fetchWithTimeout } from "./models.ts";
+import { type GatewayCaProbeFailureClass, writeCaProbeState } from "./ca-probe-state.ts";
 
 const DOCTOR_TIMEOUT_MS = 8_000;
 const BODY_PREVIEW_LIMIT = 240;
@@ -22,6 +25,12 @@ export type GatewayDoctorCheck = {
   ok: boolean;
   interpretation: string;
   bodyPreview?: string;
+  /**
+   * Machine-readable failure class for this check. null when the check
+   * passed. Aggregated across checks into the report-wide `failureClass`
+   * field that the splash gate keys on.
+   */
+  failureClass: GatewayCaProbeFailureClass;
 };
 
 export type GatewayDoctorReport = {
@@ -34,7 +43,88 @@ export type GatewayDoctorReport = {
   anthropicRootUrl?: string;
   checks: GatewayDoctorCheck[];
   recommendations: string[];
+  /**
+   * Aggregate failure class for the splash nudge gate. Computed from the
+   * individual check classes (TLS wins over auth wins over redirect wins
+   * over other). null when every check passed.
+   */
+  failureClass: GatewayCaProbeFailureClass;
 };
+
+/**
+ * Substrings produced by Node / undici / OpenSSL when TLS chain validation
+ * fails. The corporate CA bundle fix (`/sf-llm-gateway fix-ca-bundle`)
+ * targets exactly this class — every other failure mode (auth, redirect,
+ * 5xx) needs a different remedy.
+ *
+ * Exported so tests can drive the same matcher used at runtime, and so the
+ * fixer module can re-classify results from its own re-probe.
+ */
+export const TLS_ERROR_FRAGMENTS = [
+  "unable to verify the first certificate",
+  "self-signed certificate in certificate chain",
+  "unable_to_get_issuer_cert_locally",
+  "cert_has_expired",
+  "depth zero self-signed cert",
+  "unable_to_get_issuer_cert",
+  "err_tls_cert_altname_invalid",
+  // Node / undici surface the generic message when the underlying TLS
+  // error reaches them. We treat "fetch failed" as TLS-class only when
+  // there's no HTTP status (i.e. the request never produced one).
+  "fetch failed",
+] as const;
+
+/**
+ * Classify a thrown error message into the failure class enum. Returns
+ * "tls" when the message matches a TLS chain-validation fragment, "other"
+ * for anything else (DNS, abort, timeout). Auth / redirect classification
+ * happens at the HTTP-status layer in `interpretGatewayHttpResult`.
+ */
+export function classifyThrownError(message: string): GatewayCaProbeFailureClass {
+  const lower = message.toLowerCase();
+  if (TLS_ERROR_FRAGMENTS.some((fragment) => lower.includes(fragment))) {
+    return "tls";
+  }
+  return "other";
+}
+
+/**
+ * Classify a non-2xx HTTP response into the failure class enum. Mirrors
+ * the prose `interpretGatewayHttpResult` returns so tests can assert on a
+ * stable, machine-readable signal without string-matching prose.
+ */
+export function classifyHttpResult(
+  status: number,
+  bodyPreview: string,
+): GatewayCaProbeFailureClass {
+  if (status >= 200 && status < 300) return null;
+  if (status === 401) return "auth";
+  if (
+    status === 302 ||
+    status === 307 ||
+    /openid-connect|oauth|Found<\/a>|<html/i.test(bodyPreview)
+  ) {
+    return "redirect";
+  }
+  return "other";
+}
+
+/**
+ * Aggregate per-check classes into the report-wide class. The splash gate
+ * keys on this single value, so the priority order matters: TLS wins
+ * (drives the corporate-CA fix), then auth, then redirect. "other" is the
+ * lowest priority so a transient 5xx never hides a real TLS failure that
+ * also showed up in the same probe.
+ */
+export function aggregateFailureClass(
+  classes: ReadonlyArray<GatewayCaProbeFailureClass>,
+): GatewayCaProbeFailureClass {
+  if (classes.includes("tls")) return "tls";
+  if (classes.includes("auth")) return "auth";
+  if (classes.includes("redirect")) return "redirect";
+  if (classes.includes("other")) return "other";
+  return null;
+}
 
 export function interpretGatewayHttpResult(status: number, bodyPreview: string): string {
   if (status >= 200 && status < 300) {
@@ -99,6 +189,8 @@ export async function fetchGatewayDoctorReport(cwd: string): Promise<GatewayDoct
     );
   }
 
+  const failureClass = aggregateFailureClass(checks.map((check) => check.failureClass));
+
   const recommendations: string[] = [];
   if (!config.baseUrl) {
     recommendations.push(`Run /sf-llm-gateway-internal setup and enter the gateway base URL.`);
@@ -112,9 +204,23 @@ export async function fetchGatewayDoctorReport(cwd: string): Promise<GatewayDoct
     if (!check.ok) recommendations.push(`${check.name}: ${check.interpretation}`);
   }
   recommendations.push(...buildDoctorKeySourceRecommendations(cwd));
+  recommendations.push(...buildTlsHintRecommendations(failureClass));
+  if (config.helpUrl) {
+    recommendations.push(`More info: ${config.helpUrl}`);
+  }
   if (recommendations.length === 0) {
     recommendations.push("Gateway preflight passed.");
   }
+
+  // Persist the snapshot the splash will read on next boot. Captures
+  // platform + NODE_EXTRA_CA_CERTS state at probe time so the splash gate
+  // doesn't have to re-derive them.
+  writeCaProbeState({
+    at: new Date().toISOString(),
+    lastFailureClass: failureClass,
+    hasNodeExtraCaCerts: Boolean(process.env.NODE_EXTRA_CA_CERTS),
+    platform: process.platform,
+  });
 
   return {
     enabled: config.enabled,
@@ -126,7 +232,24 @@ export async function fetchGatewayDoctorReport(cwd: string): Promise<GatewayDoct
     anthropicRootUrl,
     checks,
     recommendations,
+    failureClass,
   };
+}
+
+/**
+ * Build the macOS-specific TLS recommendation when the failure class is
+ * "tls" AND we're on macOS AND NODE_EXTRA_CA_CERTS isn't already set.
+ * Other platforms inherit OpenSSL's keychain integration so the hint
+ * would be a red herring there. Static prose; no live work.
+ */
+function buildTlsHintRecommendations(failureClass: GatewayCaProbeFailureClass): string[] {
+  if (failureClass !== "tls") return [];
+  if (process.platform !== "darwin") return [];
+  if (process.env.NODE_EXTRA_CA_CERTS) return [];
+  return [
+    `TLS verification failed and NODE_EXTRA_CA_CERTS is not set. macOS Node does not trust the system keychain. If your org issues a private CA bundle, point NODE_EXTRA_CA_CERTS at it (one-shot fix: /${FRIENDLY_COMMAND_NAME} fix-ca-bundle).`,
+    `Heads up: NODE_EXTRA_CA_CERTS must be set in two places to cover every launch path \u2014 a LaunchAgent for Dock/Spotlight launches and an export in ~/.zshenv for Terminal launches. The fix-ca-bundle action handles both. Override the bundle source via ${CA_BUNDLE_SOURCE_ENV} if you maintain your own.`,
+  ];
 }
 
 function buildDoctorKeySourceRecommendations(cwd: string): string[] {
@@ -208,15 +331,34 @@ async function runGatewayCheck(
       ok: response.ok,
       interpretation: interpretGatewayHttpResult(response.status, bodyPreview),
       bodyPreview: bodyPreview || undefined,
+      failureClass: response.ok ? null : classifyHttpResult(response.status, bodyPreview),
     };
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const failureClass = classifyThrownError(message);
     return {
       name,
       url,
       ok: false,
-      interpretation: error instanceof Error ? error.message : String(error),
+      interpretation: enrichThrownInterpretation(message, failureClass),
+      failureClass,
     };
   }
+}
+
+/**
+ * Wrap a raw thrown-error message with a TLS-aware hint when applicable.
+ * Keeps the underlying message visible so debugging still works, but
+ * makes the recommendation actionable in the common macOS-no-bundle case.
+ */
+function enrichThrownInterpretation(
+  message: string,
+  failureClass: GatewayCaProbeFailureClass,
+): string {
+  if (failureClass === "tls" && process.platform === "darwin" && !process.env.NODE_EXTRA_CA_CERTS) {
+    return `${message} \u2014 looks like a TLS chain-validation failure. macOS Node ignores the system keychain; run /${FRIENDLY_COMMAND_NAME} fix-ca-bundle to wire NODE_EXTRA_CA_CERTS into both LaunchAgent (Dock/Spotlight launches) and ~/.zshenv (Terminal launches).`;
+  }
+  return message;
 }
 
 export function formatGatewayDoctorReport(report: GatewayDoctorReport): string {

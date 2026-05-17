@@ -28,6 +28,7 @@ export type GatewayCommandId =
   | "onboard"
   | "open-token"
   | "import-claude"
+  | "fix-ca-bundle"
   | "debug"
   | "beta"
   | "help";
@@ -87,11 +88,22 @@ export const GATEWAY_COMMAND_SURFACE: readonly GatewayCommandSurfaceItem[] = [
     aliases: ["open", "browser"],
   },
   {
-    id: "onboard",
-    label: "Show gateway root link",
-    usage: "onboard",
-    description: "Print the stable gateway root URL for browser sign-in and key creation.",
+    id: "fix-ca-bundle",
+    label: "Fix corporate CA (macOS)",
+    usage: "fix-ca-bundle",
+    description:
+      "Wire NODE_EXTRA_CA_CERTS into both the LaunchAgent (Dock/Spotlight launches) and ~/.zshenv (Terminal launches) for the configured CA bundle. Adopts an existing PEM if found at a well-known path; otherwise downloads from sfPi.gateway.caBundleSource (or the matching env var) when set. Each disk-mutating step requires explicit confirmation.",
     section: "Connect",
+    aliases: ["fix-ca", "ca-bundle"],
+  },
+  {
+    id: "onboard",
+    label: "One-shot onboard",
+    usage: "onboard [global|project]",
+    description:
+      "Chain Claude Code import \u2192 register provider \u2192 doctor preflight \u2192 set default in one keystroke. Falls back to clear next-step hints when any step needs attention (TLS \u2192 fix-ca-bundle, auth \u2192 rotate key, redirect \u2192 fix base URL).",
+    section: "Connect",
+    acceptsScope: true,
   },
   // ─── Setup (post-connect tweaks) ─────────────────────────────────────────────────────────────────
   {

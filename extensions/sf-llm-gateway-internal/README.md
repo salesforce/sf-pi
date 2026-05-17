@@ -171,8 +171,26 @@ Adjacent **Connect** group rows make the rest of the onboarding self-service:
   your browser so you can sign in and copy a token without leaving pi.
 - **Import from Claude Code** — pulls a cleansed URL+token from your local
   Claude Code settings into the gateway saved config.
-- **Show gateway root link** — prints the stable gateway root URL, useful
-  when copy-pasting into a different machine.
+- **One-shot onboard** — chains Claude Code import → register provider →
+  doctor preflight → set default in a single keystroke. When the doctor
+  surfaces a TLS-class failure on macOS, the chain hands off to
+  **Fix corporate CA**.
+- **Fix corporate CA (macOS)** — wires `NODE_EXTRA_CA_CERTS` into both the
+  LaunchAgent (Dock/Spotlight launches) and `~/.zshenv` (Terminal launches)
+  in one shot. Adopts an existing PEM at `~/.aisuite/conf/*.pem` (or any
+  path saved under `sfPi.gateway.caBundleCandidates`); falls back to
+  downloading from `sfPi.gateway.caBundleSource` (or
+  `SF_LLM_GATEWAY_INTERNAL_CA_BUNDLE_SOURCE`) when the bundle source is
+  configured. Public sf-pi ships no default download URL on purpose — the
+  source is organization-specific.
+
+Splash-side, when the most recent doctor run flagged a TLS failure on
+macOS and no fix has been applied, sf-welcome adds a single muted nudge
+row under the gateway status: "`/sf-llm-gateway fix-ca-bundle` — Wire your
+corporate CA into Node — LaunchAgent + ~/.zshenv in one shot." The row is
+gated by `isSfPiExtensionEnabled("sf-llm-gateway-internal")` so external
+users never see it, and the gate reads pre-persisted state — no live
+probing on the splash hot path.
 
 ## Configuration
 
@@ -184,6 +202,17 @@ saved config  →  env var fallback  →  built-in default/missing
 
 - **Base URL**: saved > `SF_LLM_GATEWAY_INTERNAL_BASE_URL` > built-in default
 - **API key**: saved > `SF_LLM_GATEWAY_INTERNAL_API_KEY` > missing
+- **Help URL**: saved.helpUrl > `SF_LLM_GATEWAY_INTERNAL_HELP_URL` > unset.
+  Optional. When set, the doctor appends a trailing `More info: <url>`
+  recommendation. Empty in the public repo so no internal help-canvas link
+  is committed; internal distributions can wire it via env or saved config.
+- **CA bundle download URL**: saved.caBundleSource >
+  `SF_LLM_GATEWAY_INTERNAL_CA_BUNDLE_SOURCE` > unset. Used by `fix-ca-bundle`
+  when no local PEM is found. Empty default — set this to opt into the
+  bootstrap path.
+- **CA bundle candidate paths**: saved.caBundleCandidates (string[]).
+  Extra absolute paths the `fix-ca-bundle` probe scans before the
+  built-in well-known list (`~/.aisuite/conf/*.pem`).
 - **Saved config**: `~/.pi/agent/sf-llm-gateway-internal.json` (global),
   `.pi/sf-llm-gateway-internal.json` (project)
 - **Scoped model mode**: saved config can keep gateway scope **additive**
@@ -300,6 +329,9 @@ extensions/sf-llm-gateway-internal/
       payloads.ts           ← implementation module
       shared.ts             ← implementation module
     beta-controls.ts        ← implementation module
+    ca-bundle-fixer-state.ts← implementation module
+    ca-bundle-fixer.ts      ← implementation module
+    ca-probe-state.ts       ← implementation module
     claude-code-import.ts   ← implementation module
     command-panel.ts        ← implementation module
     command-surface.ts      ← implementation module
@@ -312,6 +344,8 @@ extensions/sf-llm-gateway-internal/
     migrate-unify-provider.ts← implementation module
     models.ts               ← implementation module
     monthly-usage.ts        ← implementation module
+    onboard-action.ts       ← implementation module
+    onboarding-state.ts     ← implementation module
     onboarding.ts           ← implementation module
     open-url.ts             ← implementation module
     pi-settings.ts          ← implementation module
@@ -324,6 +358,8 @@ extensions/sf-llm-gateway-internal/
     wire-trace.ts           ← implementation module
   tests/
     betas.test.ts           ← unit / smoke test
+    ca-bundle-fixer.test.ts ← unit / smoke test
+    ca-probe-state.test.ts  ← unit / smoke test
     claude-code-import.test.ts← unit / smoke test
     codex-regression.test.ts← unit / smoke test
     command-panel.test.ts   ← unit / smoke test
@@ -334,6 +370,7 @@ extensions/sf-llm-gateway-internal/
     cwd-migration.test.ts   ← unit / smoke test
     debug.test.ts           ← unit / smoke test
     discovery-cache.test.ts ← unit / smoke test
+    doctor-tls-state.test.ts← unit / smoke test
     doctor.test.ts          ← unit / smoke test
     formatting.test.ts      ← unit / smoke test
     gateway-url.test.ts     ← unit / smoke test
@@ -343,6 +380,7 @@ extensions/sf-llm-gateway-internal/
     model-group-drift.test.ts← unit / smoke test
     models.test.ts          ← unit / smoke test
     monthly-usage.test.ts   ← unit / smoke test
+    onboard-action.test.ts  ← unit / smoke test
     onboarding.test.ts      ← unit / smoke test
     open-url.test.ts        ← unit / smoke test
     opus47-regression.test.ts← unit / smoke test
@@ -540,3 +578,36 @@ remove the stale env var from your shell or Keychain setup. If the gateway
 reports multiple keys on the
 account, confirm the active masked key in status, verify pi works with the
 current key, then prune older unused keys in the gateway UI.
+
+**Doctor reports `WARN: fetch failed` on macOS even though `curl` works:**
+Node on macOS ignores the system keychain. When the gateway sits behind a
+corporate CA, every Node fetch fails with a generic `fetch failed` while
+`curl` (which uses the keychain) succeeds. The doctor recognizes this
+fingerprint and points at `/sf-llm-gateway fix-ca-bundle`, which wires
+`NODE_EXTRA_CA_CERTS` into both the LaunchAgent (Dock/Spotlight launches)
+and `~/.zshenv` (Terminal launches) in one shot. The fix probes
+well-known paths (`~/.aisuite/conf/*.pem`) and any extras saved under
+`sfPi.gateway.caBundleCandidates`. When no candidate is found and
+`sfPi.gateway.caBundleSource` (or `SF_LLM_GATEWAY_INTERNAL_CA_BUNDLE_SOURCE`)
+is set, the action downloads the bundle into
+`~/.pi/agent/sf-llm-gateway-internal/ca-bundle.pem` after explicit
+confirmation. Each disk-mutating step is HITL-gated; a sentinel-guarded
+block in `~/.zshenv` makes re-applies idempotent.
+
+**`/sf-llm-gateway onboard` says `not configured`:**
+The one-shot chain stops short when no saved gateway URL+key exists post‑
+import. Either run `/sf-llm-gateway setup` to enter them manually, or
+run `/sf-llm-gateway open-token` to grab a token from the gateway UI.
+The chain also halts before `set-default` when the doctor preflight fails
+— follow the next-action hint embedded in the report (TLS → fix-ca-bundle,
+auth → setup, redirect → fix the base URL).
+
+**Splash keeps showing the `/sf-llm-gateway fix-ca-bundle` nudge after I
+ran the fix:**
+The nudge gates on `~/.pi/agent/sf-pi/sf-llm-gateway-internal/ca-bundle-fixer.json`
+being populated. The fix-ca-bundle action writes that file on a successful
+apply. If the file is missing (e.g. the apply was interrupted or you
+rolled it back manually), re-run the action so the splash sees the
+applied state. The same row also clears once the next doctor run
+persists `failureClass: null` to `ca-probe.json`, which happens
+automatically on the deferred `turn_end` refresh.

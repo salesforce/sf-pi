@@ -152,6 +152,7 @@ extensions/sf-welcome/
       LICENSE               ← bundled asset metadata
       SOURCE.md             ← bundled asset metadata
   lib/
+    ca-bundle-nudge.ts      ← implementation module
     extension-health.ts     ← implementation module
     font-installer.ts       ← implementation module
     recommendations-status.ts← implementation module
@@ -169,6 +170,7 @@ extensions/sf-welcome/
     announcements-orchestrator.test.ts← unit / smoke test
     announcements-state.test.ts← unit / smoke test
     announcements-update.test.ts← unit / smoke test
+    ca-bundle-nudge.test.ts ← unit / smoke test
     extension-health.test.ts← unit / smoke test
     font-installer.test.ts  ← unit / smoke test
     recommendations-status.test.ts← unit / smoke test

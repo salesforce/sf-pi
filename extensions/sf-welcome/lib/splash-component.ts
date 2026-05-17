@@ -543,6 +543,16 @@ function buildLeftColumn(
       const truncated = truncateToWidth(hint, Math.max(10, colWidth - 4), "…");
       lines.push(`   ${SF_ORANGE("⚠")} ${MUTED(truncated)}`);
     }
+    // Corporate CA nudge sub-line. Only renders when the most recent
+    // doctor run flagged a TLS-class failure on macOS, the gateway
+    // extension is enabled, and no fix has been applied. All three
+    // gates evaluated synchronously in collectCaBundleNudge so this
+    // row never adds boot-time work.
+    if (data.caBundleNudge) {
+      const hint = `${data.caBundleNudge.command} \u2014 ${data.caBundleNudge.message}`;
+      const truncated = truncateToWidth(hint, Math.max(10, colWidth - 4), "…");
+      lines.push(`   ${SF_ORANGE("⚠")} ${MUTED(truncated)}`);
+    }
   }
 
   // SF CLI status only. Org/API/config context belongs in sf-devbar, not in

@@ -43,6 +43,21 @@ export const LEGACY_ENABLED_MODEL_PATTERN_ANTHROPIC = `${LEGACY_PROVIDER_NAME_AN
 
 export const BASE_URL_ENV = "SF_LLM_GATEWAY_INTERNAL_BASE_URL";
 export const API_KEY_ENV = "SF_LLM_GATEWAY_INTERNAL_API_KEY";
+/**
+ * Optional internal-only env var. When set, the doctor surfaces a
+ * trailing "More info: <url>" recommendation. The public repo ships no
+ * default so no Salesforce-internal channel/canvas link is committed.
+ * Internal distributions can wire this via shell config or saved config.
+ */
+export const HELP_URL_ENV = "SF_LLM_GATEWAY_INTERNAL_HELP_URL";
+/**
+ * Optional env var pointing at a corporate CA bundle URL the
+ * `/sf-llm-gateway fix-ca-bundle` action can download when no local
+ * bundle is detected. Empty default in the public repo — internal users
+ * opt in via env or saved config so no Salesforce-PKI hostname is baked
+ * into the public source.
+ */
+export const CA_BUNDLE_SOURCE_ENV = "SF_LLM_GATEWAY_INTERNAL_CA_BUNDLE_SOURCE";
 // The gateway endpoint is a Salesforce-internal URL and is intentionally not
 // hardcoded here. Users should configure it via `/sf-llm-gateway-internal setup`.
 // Env vars are still accepted as an automation fallback when no saved config exists.
@@ -90,6 +105,24 @@ export type SavedGatewayConfig = {
   previousDefaultProvider?: string;
   previousDefaultModel?: string;
   previousThinkingLevel?: string;
+  /**
+   * Optional URL surfaced by the doctor as a trailing "More info" link.
+   * Empty / undefined in the public repo; internal users may set this so
+   * doctor output points at their own help canvas.
+   */
+  helpUrl?: string;
+  /**
+   * Optional URL the `/sf-llm-gateway fix-ca-bundle` action downloads
+   * from when no local CA bundle candidate is found. Saved-config wins
+   * over the matching env var. Empty default — internal users opt in.
+   */
+  caBundleSource?: string;
+  /**
+   * Optional extra absolute paths the CA-bundle probe scans before the
+   * built-in well-known list. Lets internal admins point pi at
+   * non-standard install paths without code changes.
+   */
+  caBundleCandidates?: string[] | null;
 };
 
 export type GatewayConfig = {
@@ -103,6 +136,14 @@ export type GatewayConfig = {
   previousDefaultProvider?: string;
   previousDefaultModel?: string;
   previousThinkingLevel?: string;
+  /** Optional doctor "More info" URL. Resolved saved > env > undefined. */
+  helpUrl?: string;
+  helpUrlSource: ConfigSource;
+  /** Optional CA-bundle download URL for `fix-ca-bundle`. Resolved saved > env > undefined. */
+  caBundleSource?: string;
+  caBundleSourceSource: ConfigSource;
+  /** Extra absolute paths the CA-bundle probe should scan first. Saved-config only. */
+  caBundleCandidates: string[];
 };
 
 export type SavedExclusiveScopeMode = "inherit" | "exclusive" | "additive";
@@ -127,6 +168,7 @@ export function getGatewayConfig(cwd: string): GatewayConfig {
   const savedApiKey = saved.apiKey?.trim() || undefined;
   const savedExclusiveScope = asOptionalBoolean(saved.exclusiveScope);
   const baseUrl = savedBaseUrl ?? envBaseUrl ?? DEFAULT_BASE_URL;
+  const optional = resolveOptionalEnvBackedValues(saved);
 
   return {
     enabled: saved.enabled !== false,
@@ -139,6 +181,42 @@ export function getGatewayConfig(cwd: string): GatewayConfig {
     previousDefaultProvider: saved.previousDefaultProvider,
     previousDefaultModel: saved.previousDefaultModel,
     previousThinkingLevel: saved.previousThinkingLevel,
+    helpUrl: optional.helpUrl,
+    helpUrlSource: optional.helpUrlSource,
+    caBundleSource: optional.caBundleSource,
+    caBundleSourceSource: optional.caBundleSourceSource,
+    caBundleCandidates: optional.caBundleCandidates,
+  };
+}
+
+/**
+ * Resolve the optional env-backed fields shared by getGatewayConfig and
+ * getGlobalOnlyGatewayConfig: helpUrl + caBundleSource + caBundleCandidates.
+ * Saved config wins over env so a stale shell export can't shadow a
+ * deliberately-saved value.
+ */
+function resolveOptionalEnvBackedValues(saved: SavedGatewayConfig): {
+  helpUrl?: string;
+  helpUrlSource: ConfigSource;
+  caBundleSource?: string;
+  caBundleSourceSource: ConfigSource;
+  caBundleCandidates: string[];
+} {
+  const savedHelpUrl = asOptionalString(saved.helpUrl);
+  const envHelpUrl = process.env[HELP_URL_ENV]?.trim() || undefined;
+  const savedCaSource = asOptionalString(saved.caBundleSource);
+  const envCaSource = process.env[CA_BUNDLE_SOURCE_ENV]?.trim() || undefined;
+  const candidates = Array.isArray(saved.caBundleCandidates)
+    ? saved.caBundleCandidates.filter(
+        (entry): entry is string => typeof entry === "string" && entry.trim().length > 0,
+      )
+    : [];
+  return {
+    helpUrl: savedHelpUrl ?? envHelpUrl,
+    helpUrlSource: savedHelpUrl ? "saved" : envHelpUrl ? "env" : "missing",
+    caBundleSource: savedCaSource ?? envCaSource,
+    caBundleSourceSource: savedCaSource ? "saved" : envCaSource ? "env" : "missing",
+    caBundleCandidates: candidates,
   };
 }
 
@@ -156,6 +234,7 @@ export function getGlobalOnlyGatewayConfig(): GatewayConfig {
   const savedApiKey = saved.apiKey?.trim() || undefined;
   const savedExclusiveScope = asOptionalBoolean(saved.exclusiveScope);
   const baseUrl = savedBaseUrl ?? envBaseUrl ?? DEFAULT_BASE_URL;
+  const optional = resolveOptionalEnvBackedValues(saved);
 
   return {
     enabled: saved.enabled !== false,
@@ -168,6 +247,11 @@ export function getGlobalOnlyGatewayConfig(): GatewayConfig {
     previousDefaultProvider: saved.previousDefaultProvider,
     previousDefaultModel: saved.previousDefaultModel,
     previousThinkingLevel: saved.previousThinkingLevel,
+    helpUrl: optional.helpUrl,
+    helpUrlSource: optional.helpUrlSource,
+    caBundleSource: optional.caBundleSource,
+    caBundleSourceSource: optional.caBundleSourceSource,
+    caBundleCandidates: optional.caBundleCandidates,
   };
 }
 
@@ -256,6 +340,9 @@ export function readGatewaySavedConfig(filePath: string): SavedGatewayConfig {
       previousDefaultProvider: asOptionalString(record.previousDefaultProvider),
       previousDefaultModel: asOptionalString(record.previousDefaultModel),
       previousThinkingLevel: asOptionalString(record.previousThinkingLevel),
+      helpUrl: asOptionalString(record.helpUrl),
+      caBundleSource: asOptionalString(record.caBundleSource),
+      caBundleCandidates: asOptionalStringArrayOrNull(record.caBundleCandidates),
     };
   } catch {
     return {};

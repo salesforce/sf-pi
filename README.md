@@ -568,6 +568,8 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 - Beta headers aren't taking effect
 - Monthly-usage footer is stale or missing
 - Old and new gateway keys are confusing status or tests
+- Doctor reports `WARN: fetch failed` on macOS even though `curl` works
+- `/sf-llm-gateway onboard` says `not configured`
 
 **[SF Data 360](./extensions/sf-data360/#troubleshooting)**
 
