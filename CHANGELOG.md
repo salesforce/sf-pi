@@ -509,6 +509,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.80.1](https://github.com/salesforce/sf-pi/compare/v0.80.0...v0.80.1) (2026-05-17)
+
+
+### Bug Fixes
+
+* **data360:** handle missing tracing table in runbooks ([074fccc](https://github.com/salesforce/sf-pi/commit/074fccc20ec0cfafb7f94d1a2434ce486d87af5a))
+
 ## [0.80.0](https://github.com/salesforce/sf-pi/compare/v0.79.0...v0.80.0) (2026-05-17)
 
 
