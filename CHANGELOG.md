@@ -517,6 +517,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.106.0](https://github.com/salesforce/sf-pi/compare/v0.105.0...v0.106.0) (2026-05-18)
+
+
+### Features
+
+* **data360:** add destructive facade guardrails ([7277064](https://github.com/salesforce/sf-pi/commit/7277064cdf618940f9f47080fd3002d8f26995fb))
+
 ## [0.105.0](https://github.com/salesforce/sf-pi/compare/v0.104.0...v0.105.0) (2026-05-18)
 
 
