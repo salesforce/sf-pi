@@ -280,7 +280,7 @@ function readShellNodeExtraCaCerts(home: string): NodeExtraCaCertsFinding[] {
   for (const filename of SHELL_STARTUP_FILES) {
     const filePath = path.join(home, filename);
     if (!existsSync(filePath)) continue;
-    let contents = "";
+    let contents: string;
     try {
       contents = readFileSync(filePath, "utf8");
     } catch {
@@ -299,7 +299,7 @@ function readShellNodeExtraCaCerts(home: string): NodeExtraCaCertsFinding[] {
 function readLaunchAgentNodeExtraCaCerts(home: string): NodeExtraCaCertsFinding | undefined {
   const plistPath = defaultLaunchAgentPath(home);
   if (!existsSync(plistPath)) return undefined;
-  let contents = "";
+  let contents: string;
   try {
     contents = readFileSync(plistPath, "utf8");
   } catch {
@@ -326,7 +326,7 @@ function buildNodeExtraCaCertsFinding(
       reason: "not present",
     };
   }
-  let isFile = false;
+  let isFile: boolean;
   try {
     isFile = statSync(pathValue).isFile();
   } catch {
