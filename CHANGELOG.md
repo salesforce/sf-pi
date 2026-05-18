@@ -517,6 +517,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.104.0](https://github.com/salesforce/sf-pi/compare/v0.103.0...v0.104.0) (2026-05-18)
+
+
+### Features
+
+* **data360:** add datakit deploy lifecycle ops ([0aeb329](https://github.com/salesforce/sf-pi/commit/0aeb32981b2c2eabb6a465657b1235d9485c497e))
+
 ## [0.103.0](https://github.com/salesforce/sf-pi/compare/v0.102.0...v0.103.0) (2026-05-18)
 
 
