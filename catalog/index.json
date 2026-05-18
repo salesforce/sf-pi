@@ -188,7 +188,7 @@
     "entry": "extensions/sf-devbar/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 1718
+    "srcLoc": 1743
   },
   {
     "id": "sf-feedback",

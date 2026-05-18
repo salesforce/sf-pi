@@ -42,6 +42,7 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import { markBootStep } from "../../lib/common/boot-timing.ts";
+import { shouldInjectOnce } from "../../lib/common/session/inject-once.ts";
 import {
   getCachedSfEnvironment,
   getSharedSfEnvironment,
@@ -84,6 +85,13 @@ import {
 const WIDGET_KEY = "sf-devbar";
 const COMMAND_NAME = "sf-devbar";
 const FLAG_NAME = "no-devbar";
+
+/**
+ * customType used for the inject-once-on-change <sf_environment> block.
+ * Exported as a const so the production injection, the dedup predicate,
+ * and the source-level test all reference the same value.
+ */
+export const SF_ORG_CONTEXT_ENTRY_TYPE = "sf-org-context";
 
 // -------------------------------------------------------------------------------------------------
 // Extension entry point
@@ -503,7 +511,21 @@ export default function sfDevBar(pi: ExtensionAPI) {
   // --- Before agent start: inject Salesforce environment context into system prompt ---
   // Uses systemPromptOptions to inspect what tools/skills are active, so the
   // injected context is tool-aware (e.g. richer metadata when SF tools are loaded).
-  pi.on("before_agent_start", async (event, _ctx) => {
+  //
+  // Inject-once-on-change semantics:
+  //   - Inject when no live <sf_environment> entry exists (first turn / post-compaction).
+  //   - Skip when an existing live entry's content matches what we'd inject now
+  //     (env unchanged — the common case for every subsequent turn).
+  //   - Re-inject when env content has changed (e.g. user ran `/sf-org refresh`
+  //     and the org alias / API version / project shifted). The fresh entry
+  //     supersedes the stale one in the live window so the model sees current
+  //     environment values.
+  //
+  // formatAgentContext is byte-stable across turns when env doesn't change
+  // (the human-friendly "Detected Xs ago" line lives in formatDetailedStatus,
+  // a separate function used by the /sf-org panel) so the equality check is
+  // a sound "did anything material change?" signal.
+  pi.on("before_agent_start", async (event, ctx) => {
     if (!env) return;
 
     const { systemPromptOptions } = event;
@@ -513,9 +535,14 @@ export default function sfDevBar(pi: ExtensionAPI) {
     });
     if (!context) return;
 
+    const stillFresh = (entry: { content: string | unknown[] }) =>
+      typeof entry.content === "string" && entry.content === context;
+    if (!shouldInjectOnce(ctx.sessionManager.getEntries(), SF_ORG_CONTEXT_ENTRY_TYPE, stillFresh))
+      return;
+
     return {
       message: {
-        customType: "sf-org-context",
+        customType: SF_ORG_CONTEXT_ENTRY_TYPE,
         content: context,
         display: false,
       },

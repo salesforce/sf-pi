@@ -41,4 +41,17 @@ describe("sf-devbar systemPromptOptions wiring", () => {
     // Verify the handler destructures event, not _event (which would mean unused)
     expect(devbarSource).toMatch(/pi\.on\("before_agent_start",\s*async\s*\(event,/);
   });
+
+  it("dedupes the env injection so context is written once + on real change", () => {
+    // Without shouldInjectOnce dedup, sf-devbar persisted a fresh
+    // custom_message entry on every before_agent_start. Env content is
+    // byte-stable across turns when nothing changes (formatAgentContext
+    // does not include detectedAt), so a content-equality predicate is
+    // a safe "is anything materially different?" signal.
+    expect(devbarSource).toContain("shouldInjectOnce");
+    expect(devbarSource).toContain("SF_ORG_CONTEXT_ENTRY_TYPE");
+    // Content-equality predicate — the seam that lets `/sf-org refresh`
+    // re-inject when env actually changes.
+    expect(devbarSource).toMatch(/entry\.content === context/);
+  });
 });
