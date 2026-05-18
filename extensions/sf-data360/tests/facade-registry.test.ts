@@ -97,6 +97,19 @@ describe("d360 facade registry", () => {
         "d360_dataaction_target_update",
       ]),
     });
+    expect(
+      searchRegistry("create update retriever configuration search index rag vector")[0],
+    ).toMatchObject({
+      family: "Semantic Retrieval",
+      operations: expect.arrayContaining([
+        "d360_search_index_create",
+        "d360_search_index_update",
+        "d360_retriever_create",
+        "d360_retriever_update",
+        "d360_retriever_config_create",
+        "d360_retriever_config_update",
+      ]),
+    });
     expect(searchRegistry("connection test connector")[0]).toMatchObject({
       family: "Connection",
       operations: expect.arrayContaining(["d360_connection_test"]),

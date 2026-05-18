@@ -61,7 +61,18 @@
   },
   "d360_retrievers_list": {
     "safety": "read",
-    "tips": "Can return not-found when retriever APIs are not provisioned; do not use as a core readiness gate."
+    "tips": "Can return not-found when retriever APIs are not provisioned; do not use as a core readiness gate.",
+    "optionalParams": [
+      "limit",
+      "offset",
+      "search",
+      "sortBy",
+      "sortOrder",
+      "sourceDmo",
+      "isActive",
+      "isDefault",
+      "queryType"
+    ]
   },
   "d360_datakits_list": {
     "safety": "read",
@@ -393,5 +404,69 @@
     "optionalParams": ["dataspace"],
     "safety": "confirmed",
     "tips": "Use dry_run first; endpoint, credential, or payload changes can affect event delivery."
+  },
+  "d360_retriever_list": {
+    "optionalParams": [
+      "limit",
+      "offset",
+      "search",
+      "sortBy",
+      "sortOrder",
+      "sourceDmo",
+      "isActive",
+      "isDefault",
+      "queryType"
+    ],
+    "safety": "read",
+    "tips": "Use this to find retriever API names before create/update/configuration work."
+  },
+  "d360_retriever_create": {
+    "requiredParams": ["body"],
+    "safety": "confirmed",
+    "tips": "Call d360_search_index_list first to find source search indexes. Use dry_run before execution."
+  },
+  "d360_retriever_update": {
+    "requiredParams": ["retrieverIdOrName", "body"],
+    "safety": "confirmed",
+    "tips": "Use dry_run first; updates change retriever metadata used by downstream RAG flows."
+  },
+  "d360_retriever_config_list": {
+    "requiredParams": ["retrieverIdOrName"],
+    "optionalParams": ["limit", "offset"],
+    "safety": "read"
+  },
+  "d360_retriever_config_get": {
+    "requiredParams": ["retrieverIdOrName", "configurationIdOrName"],
+    "safety": "read"
+  },
+  "d360_retriever_config_create": {
+    "requiredParams": ["retrieverIdOrName", "body"],
+    "safety": "confirmed",
+    "tips": "For NoCode configurations, provide input, outputFields, numberOfResults, and isActive. Use dry_run first."
+  },
+  "d360_retriever_config_update": {
+    "requiredParams": ["retrieverIdOrName", "configurationIdOrName", "body"],
+    "safety": "confirmed",
+    "tips": "At most one configuration can be active within a retriever. Use dry_run first."
+  },
+  "d360_search_index_config": {
+    "safety": "read",
+    "tips": "Call this before creating or updating a search index to discover valid config ids."
+  },
+  "d360_search_index_process_history": {
+    "requiredParams": ["searchIndexApiNameOrId"],
+    "optionalParams": ["limit", "offset"],
+    "safety": "read",
+    "tips": "The upstream MCP notes offset is 1-based and pagination may be unreliable."
+  },
+  "d360_search_index_create": {
+    "requiredParams": ["body"],
+    "safety": "confirmed",
+    "tips": "Call d360_search_index_config first and use its supported config ids. Use dry_run before execution."
+  },
+  "d360_search_index_update": {
+    "requiredParams": ["searchIndexApiNameOrId", "body"],
+    "safety": "confirmed",
+    "tips": "Call d360_search_index_config and d360_search_index_get first. Use dry_run before execution."
   }
 }

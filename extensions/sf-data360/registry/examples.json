@@ -204,5 +204,100 @@
         "dataActionEnrichmentProperties": []
       }
     }
+  },
+  "d360_search_index_create": {
+    "operation": "d360_search_index_create",
+    "params": {
+      "body": {
+        "label": "Example Search Index",
+        "developerName": "Example_Search_Index",
+        "description": "Example search index payload placeholder. Replace DMO and configuration ids with values from d360_search_index_config.",
+        "sourceDmoDeveloperName": "ExampleSource__dlm",
+        "chunkDmoName": "Example Chunk DMO",
+        "chunkDmoDeveloperName": "Example_Chunk",
+        "vectorDmoName": "Example Vector DMO",
+        "vectorDmoDeveloperName": "Example_Vector",
+        "searchType": "HYBRID",
+        "chunkingConfiguration": {
+          "fieldLevelConfigurations": [
+            {
+              "sourceDmoDeveloperName": "ExampleSource__dlm",
+              "sourceDmoFieldDeveloperName": "ExampleText__c",
+              "decorators": [],
+              "config": {
+                "id": "passage_extraction",
+                "userValues": []
+              }
+            }
+          ]
+        },
+        "vectorEmbedding": {
+          "vectorEmbeddingRelatedFields": []
+        },
+        "vectorEmbeddingConfiguration": {
+          "embeddingModel": {
+            "id": "example_embedding_model",
+            "userValues": []
+          },
+          "index": {
+            "id": "HNSW",
+            "userValues": []
+          },
+          "similarityMetric": "COSINE"
+        },
+        "transformConfigurations": []
+      }
+    }
+  },
+  "d360_retriever_create": {
+    "operation": "d360_retriever_create",
+    "params": {
+      "body": {
+        "label": "Example Retriever",
+        "description": "Example retriever payload placeholder. Replace the search index and output field references before execution.",
+        "dataSourceType": "SearchIndex",
+        "dataSpaces": ["default"],
+        "configuration": {
+          "queryType": "NoCode",
+          "input": {
+            "id": "ExampleSearchIndexId"
+          },
+          "numberOfResults": 5,
+          "isActive": true,
+          "isCitationEnabled": false,
+          "outputFields": [
+            {
+              "relatedDmoName": "ExampleSource__dlm",
+              "relatedDmoFieldName": "ExampleText__c",
+              "label": "Example Text",
+              "relationships": []
+            }
+          ]
+        }
+      }
+    }
+  },
+  "d360_retriever_config_create": {
+    "operation": "d360_retriever_config_create",
+    "params": {
+      "retrieverIdOrName": "ExampleRetriever",
+      "body": {
+        "queryType": "NoCode",
+        "input": {
+          "id": "ExampleSearchIndexId"
+        },
+        "numberOfResults": 5,
+        "isActive": true,
+        "isCitationEnabled": false,
+        "outputFields": [
+          {
+            "relatedDmoName": "ExampleSource__dlm",
+            "relatedDmoFieldName": "ExampleText__c",
+            "label": "Example Text",
+            "relationships": []
+          }
+        ]
+      }
+    }
   }
 }

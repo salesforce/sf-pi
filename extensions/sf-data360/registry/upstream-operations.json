@@ -109,7 +109,7 @@
     "family": "Semantic Retrieval",
     "description": "List machine-learning retrievers when retriever APIs are provisioned.",
     "method": "GET",
-    "path": "/machine-learning/retrievers"
+    "path": "/ssot/machine-learning/retrievers"
   },
   {
     "name": "d360_datakits_list",
@@ -368,7 +368,7 @@
     "family": "Semantic Retrieval",
     "description": "Get one machine-learning retriever by id or name.",
     "method": "GET",
-    "path": "/machine-learning/retrievers/{retrieverId}"
+    "path": "/ssot/machine-learning/retrievers/{retrieverId}"
   },
   {
     "name": "d360_datakit_get",
@@ -642,5 +642,82 @@
     "description": "Update a data action target by id.",
     "method": "PATCH",
     "path": "/ssot/data-action-targets/{dataActionTargetId}"
+  },
+  {
+    "name": "d360_retriever_list",
+    "family": "Semantic Retrieval",
+    "description": "List RAG retrievers with optional filters.",
+    "method": "GET",
+    "path": "/ssot/machine-learning/retrievers"
+  },
+  {
+    "name": "d360_retriever_create",
+    "family": "Semantic Retrieval",
+    "description": "Create a RAG retriever.",
+    "method": "POST",
+    "path": "/ssot/machine-learning/retrievers"
+  },
+  {
+    "name": "d360_retriever_update",
+    "family": "Semantic Retrieval",
+    "description": "Update a RAG retriever label or description.",
+    "method": "PATCH",
+    "path": "/ssot/machine-learning/retrievers/{retrieverIdOrName}"
+  },
+  {
+    "name": "d360_retriever_config_list",
+    "family": "Semantic Retrieval",
+    "description": "List configurations for a retriever.",
+    "method": "GET",
+    "path": "/ssot/machine-learning/retrievers/{retrieverIdOrName}/configurations"
+  },
+  {
+    "name": "d360_retriever_config_get",
+    "family": "Semantic Retrieval",
+    "description": "Get a retriever configuration by id or name.",
+    "method": "GET",
+    "path": "/ssot/machine-learning/retrievers/{retrieverIdOrName}/configurations/{configurationIdOrName}"
+  },
+  {
+    "name": "d360_retriever_config_create",
+    "family": "Semantic Retrieval",
+    "description": "Create a new retriever configuration version.",
+    "method": "POST",
+    "path": "/ssot/machine-learning/retrievers/{retrieverIdOrName}/configurations"
+  },
+  {
+    "name": "d360_retriever_config_update",
+    "family": "Semantic Retrieval",
+    "description": "Update a retriever configuration, such as active status.",
+    "method": "PATCH",
+    "path": "/ssot/machine-learning/retrievers/{retrieverIdOrName}/configurations/{configurationIdOrName}"
+  },
+  {
+    "name": "d360_search_index_config",
+    "family": "Semantic Retrieval",
+    "description": "Get valid search index configuration options.",
+    "method": "GET",
+    "path": "/ssot/search-index/config"
+  },
+  {
+    "name": "d360_search_index_process_history",
+    "family": "Semantic Retrieval",
+    "description": "Get process run history for a search index.",
+    "method": "GET",
+    "path": "/ssot/search-index/{searchIndexApiNameOrId}/process-history"
+  },
+  {
+    "name": "d360_search_index_create",
+    "family": "Semantic Retrieval",
+    "description": "Create a semantic search index for RAG/vector search.",
+    "method": "POST",
+    "path": "/ssot/search-index"
+  },
+  {
+    "name": "d360_search_index_update",
+    "family": "Semantic Retrieval",
+    "description": "Update a semantic search index by API name or id.",
+    "method": "PATCH",
+    "path": "/ssot/search-index/{searchIndexApiNameOrId}"
   }
 ]
