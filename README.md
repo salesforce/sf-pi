@@ -5,7 +5,7 @@
 [![CodeQL](https://github.com/salesforce/sf-pi/actions/workflows/codeql.yml/badge.svg)](https://github.com/salesforce/sf-pi/actions/workflows/codeql.yml)
 [![Coverage](https://codecov.io/gh/salesforce/sf-pi/branch/main/graph/badge.svg)](https://codecov.io/gh/salesforce/sf-pi)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE.txt)
-[![Node](https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg)](https://nodejs.org/)
+[![Node](https://img.shields.io/badge/node-%3E%3D22.19-brightgreen.svg)](https://nodejs.org/)
 [![Last commit](https://img.shields.io/github/last-commit/salesforce/sf-pi)](https://github.com/salesforce/sf-pi/commits/main)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](./CONTRIBUTING.md)
 
@@ -41,7 +41,7 @@ then add sf-pi.
 
 ### Step 1 — Install Node.js
 
-pi needs **Node.js `>=20`** (tested on 20 and 22).
+pi and sf-pi need **Node.js `>=22.19`**.
 
 - **macOS (recommended):** `brew install node`
 - **Linux / WSL:** use your distro's package manager, or
@@ -49,10 +49,18 @@ pi needs **Node.js `>=20`** (tested on 20 and 22).
 - **Windows:** installer from [nodejs.org](https://nodejs.org/), then
   use WSL for the best experience
 
+If you use `nvm`, switch before installing pi:
+
+```bash
+nvm install 22
+nvm use 22
+nvm alias default 22
+```
+
 Verify:
 
 ```bash
-node --version    # v20.x or v22.x
+node --version    # v22.19.0 or newer
 npm --version
 ```
 
@@ -529,6 +537,19 @@ startup` sets quiet/header startup so the full overlay no longer blocks input.
 **`/sf-pi` commands say "package not found in settings":**
 Run `pi install .` from the repo root, or `pi install git:github.com/salesforce/sf-pi`
 to register the package in your pi settings.
+
+**Install warns about Node 20, `EBADENGINE`, or `husky: command not found`:**
+Use Node.js `>=22.19`, then reinstall pi and sf-pi from the same shell:
+
+```bash
+nvm install 22
+nvm use 22
+npm install -g @earendil-works/pi-coding-agent
+pi install git:github.com/salesforce/sf-pi
+```
+
+sf-pi's install scripts skip development-only Husky setup during pi package
+installs, so end users should not need Husky installed globally.
 
 **Tests fail locally but pass in CI:**
 Delete `node_modules` and reinstall with `npm ci`.
