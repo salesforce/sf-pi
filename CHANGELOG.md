@@ -517,6 +517,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.110.0](https://github.com/salesforce/sf-pi/compare/v0.109.0...v0.110.0) (2026-05-18)
+
+
+### Features
+
+* **gateway:** add latency probe and simplify Opus betas ([8b31b31](https://github.com/salesforce/sf-pi/commit/8b31b313fe7525d11c8a330b9fea407f46115d46))
+
 ## [0.109.0](https://github.com/salesforce/sf-pi/compare/v0.108.0...v0.109.0) (2026-05-18)
 
 
