@@ -116,7 +116,9 @@ describe("sf-slack session_start error handling", () => {
   });
 
   it("applies the same abort-vs-timeout split inside /sf-slack refresh", () => {
-    expect(indexSource).toMatch(/if \(isAbortError\(err\) && ctx\.signal\?\.aborted\) return;/);
+    expect(indexSource).toMatch(
+      /if \(isAbortError\(err\) && ctx\.signal\?\.aborted\) \{[\s\S]*?restorePreviousFooter\(\);[\s\S]*?return;[\s\S]*?\}/,
+    );
   });
 
   it("bails out when live auth.test returns ok:false", () => {
