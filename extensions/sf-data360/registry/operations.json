@@ -284,7 +284,7 @@
     "method": "GET",
     "path": "/ssot/connections",
     "requiredParams": ["connectorType"],
-    "optionalParams": ["limit", "offset"],
+    "optionalParams": ["dataspace", "limit", "offset"],
     "safety": "read"
   },
   {
@@ -293,8 +293,8 @@
     "description": "Get one connection by id.",
     "method": "GET",
     "path": "/ssot/connections/{connectionId}",
-    "requiredParams": ["connectionId"],
-    "optionalParams": ["connectorType"],
+    "requiredParams": ["connectionId", "connectorType"],
+    "optionalParams": ["dataspace"],
     "safety": "read"
   },
   {
@@ -655,8 +655,9 @@
     "description": "Test connection configuration without saving it.",
     "method": "POST",
     "path": "/ssot/connections/actions/test",
-    "requiredParams": ["body"],
-    "tips": "Pass connectorType/method and connector parameters in the body; this does not create a connection.",
+    "requiredParams": ["connectorType", "body"],
+    "tips": "Pass connectorType as a query param and connector parameters/credentials in the body; this does not create a connection.",
+    "optionalParams": ["dataspace"],
     "safety": "safe_post"
   },
   {
@@ -1134,5 +1135,48 @@
     "optionalParams": ["dataspace"],
     "safety": "confirmed",
     "tips": "Call d360_dmo_mapping_get first, then add only verified source/target field names. Use dry_run first."
+  },
+  {
+    "name": "d360_connection_create",
+    "family": "Connection",
+    "description": "Create a data connection. Test the connection configuration before saving.",
+    "method": "POST",
+    "path": "/ssot/connections",
+    "requiredParams": ["connectorType", "body"],
+    "optionalParams": ["dataspace"],
+    "safety": "confirmed",
+    "tips": "Run d360_connection_test first with the same connectorType/body. Use dry_run before execution."
+  },
+  {
+    "name": "d360_connection_update",
+    "family": "Connection",
+    "description": "Update a data connection by id.",
+    "method": "PATCH",
+    "path": "/ssot/connections/{connectionId}",
+    "requiredParams": ["connectionId", "connectorType", "body"],
+    "optionalParams": ["dataspace"],
+    "safety": "confirmed",
+    "tips": "Use dry_run first; connection changes can break dependent data streams, activation targets, and data actions."
+  },
+  {
+    "name": "d360_snowflake_connection_list",
+    "family": "Connection",
+    "description": "List Data 360 connections for a connector type, commonly SNOWFLAKE.",
+    "method": "GET",
+    "path": "/ssot/connections",
+    "requiredParams": ["connectorType"],
+    "optionalParams": ["devName", "label", "limit", "offset", "orderBy", "organizationId"],
+    "safety": "read",
+    "tips": "Use connectorType=SNOWFLAKE to list Snowflake connections."
+  },
+  {
+    "name": "d360_connection_create_snowflake",
+    "family": "Connection",
+    "description": "Create a Snowflake connection with key-pair authentication.",
+    "method": "POST",
+    "path": "/ssot/connections",
+    "requiredParams": ["body"],
+    "safety": "confirmed",
+    "tips": "Provide private key content only at execution time. Test first when possible, then dry_run before execution."
   }
 ]

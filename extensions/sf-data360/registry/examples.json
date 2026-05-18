@@ -678,5 +678,95 @@
         ]
       }
     }
+  },
+  "d360_connection_create": {
+    "operation": "d360_connection_create",
+    "params": {
+      "connectorType": "ExampleConnector",
+      "body": {
+        "connectorType": "ExampleConnector",
+        "label": "Example Connection",
+        "name": "Example_Connection",
+        "method": "Ingress",
+        "parameters": [
+          {
+            "paramName": "exampleHost",
+            "value": "example.invalid"
+          }
+        ],
+        "credentials": [
+          {
+            "paramName": "exampleUser",
+            "value": "example-user"
+          }
+        ]
+      }
+    }
+  },
+  "d360_connection_update": {
+    "operation": "d360_connection_update",
+    "params": {
+      "connectionId": "ExampleConnectionId",
+      "connectorType": "ExampleConnector",
+      "body": {
+        "label": "Example Connection Updated",
+        "parameters": [
+          {
+            "paramName": "exampleHost",
+            "value": "example.invalid"
+          }
+        ]
+      }
+    }
+  },
+  "d360_connection_create_snowflake": {
+    "operation": "d360_connection_create_snowflake",
+    "params": {
+      "body": {
+        "connectorType": "SNOWFLAKE",
+        "label": "Example Snowflake Connection",
+        "name": "example_snowflake_connection",
+        "method": "Ingress",
+        "credentials": [
+          {
+            "paramName": "authenticationOption",
+            "value": "KeyPair"
+          },
+          {
+            "paramName": "user",
+            "value": "EXAMPLE_USER"
+          },
+          {
+            "paramName": "privateKey",
+            "value": "PLACEHOLDER_PRIVATE_KEY_CONTENT"
+          }
+        ],
+        "parameters": [
+          {
+            "paramName": "hasPrivateNetworkRoute",
+            "value": "false"
+          },
+          {
+            "paramName": "accountUrl",
+            "value": "https://example.snowflakecomputing.com"
+          },
+          {
+            "paramName": "region",
+            "value": "us-west-2"
+          },
+          {
+            "paramName": "warehouse",
+            "value": "EXAMPLE_WAREHOUSE"
+          }
+        ]
+      }
+    }
+  },
+  "d360_snowflake_connection_list": {
+    "operation": "d360_snowflake_connection_list",
+    "params": {
+      "connectorType": "SNOWFLAKE",
+      "limit": 10
+    }
   }
 }

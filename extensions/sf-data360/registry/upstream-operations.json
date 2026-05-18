@@ -810,5 +810,33 @@
     "description": "Add field mappings to an existing DLO-to-DMO object mapping.",
     "method": "PATCH",
     "path": "/ssot/data-model-object-mappings/{mappingName}/field-mappings"
+  },
+  {
+    "name": "d360_connection_create",
+    "family": "Connection",
+    "description": "Create a data connection. Test the connection configuration before saving.",
+    "method": "POST",
+    "path": "/ssot/connections"
+  },
+  {
+    "name": "d360_connection_update",
+    "family": "Connection",
+    "description": "Update a data connection by id.",
+    "method": "PATCH",
+    "path": "/ssot/connections/{connectionId}"
+  },
+  {
+    "name": "d360_snowflake_connection_list",
+    "family": "Connection",
+    "description": "List Data 360 connections for a connector type, commonly SNOWFLAKE.",
+    "method": "GET",
+    "path": "/ssot/connections"
+  },
+  {
+    "name": "d360_connection_create_snowflake",
+    "family": "Connection",
+    "description": "Create a Snowflake connection with key-pair authentication.",
+    "method": "POST",
+    "path": "/ssot/connections"
   }
 ]

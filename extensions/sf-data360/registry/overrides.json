@@ -134,12 +134,12 @@
   },
   "d360_connection_list": {
     "requiredParams": ["connectorType"],
-    "optionalParams": ["limit", "offset"],
+    "optionalParams": ["dataspace", "limit", "offset"],
     "safety": "read"
   },
   "d360_connection_get": {
-    "requiredParams": ["connectionId"],
-    "optionalParams": ["connectorType"],
+    "requiredParams": ["connectionId", "connectorType"],
+    "optionalParams": ["dataspace"],
     "safety": "read"
   },
   "d360_connector_list": {
@@ -297,8 +297,10 @@
     "tips": "Validation can return precise STL graph issues such as missing target DLOs."
   },
   "d360_connection_test": {
-    "requiredParams": ["body"],
-    "tips": "Pass connectorType/method and connector parameters in the body; this does not create a connection."
+    "requiredParams": ["connectorType", "body"],
+    "tips": "Pass connectorType as a query param and connector parameters/credentials in the body; this does not create a connection.",
+    "optionalParams": ["dataspace"],
+    "safety": "safe_post"
   },
   "d360_semantic_query": {
     "requiredParams": ["body"],
@@ -550,5 +552,28 @@
     "optionalParams": ["dataspace"],
     "safety": "confirmed",
     "tips": "Call d360_dmo_mapping_get first, then add only verified source/target field names. Use dry_run first."
+  },
+  "d360_connection_create": {
+    "requiredParams": ["connectorType", "body"],
+    "optionalParams": ["dataspace"],
+    "safety": "confirmed",
+    "tips": "Run d360_connection_test first with the same connectorType/body. Use dry_run before execution."
+  },
+  "d360_connection_update": {
+    "requiredParams": ["connectionId", "connectorType", "body"],
+    "optionalParams": ["dataspace"],
+    "safety": "confirmed",
+    "tips": "Use dry_run first; connection changes can break dependent data streams, activation targets, and data actions."
+  },
+  "d360_snowflake_connection_list": {
+    "requiredParams": ["connectorType"],
+    "optionalParams": ["devName", "label", "limit", "offset", "orderBy", "organizationId"],
+    "safety": "read",
+    "tips": "Use connectorType=SNOWFLAKE to list Snowflake connections."
+  },
+  "d360_connection_create_snowflake": {
+    "requiredParams": ["body"],
+    "safety": "confirmed",
+    "tips": "Provide private key content only at execution time. Test first when possible, then dry_run before execution."
   }
 }

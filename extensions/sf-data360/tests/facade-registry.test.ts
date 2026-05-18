@@ -150,6 +150,14 @@ describe("d360 facade registry", () => {
       family: "Connection",
       operations: expect.arrayContaining(["d360_connection_test"]),
     });
+    expect(searchRegistry("create update snowflake connection connector")[0]).toMatchObject({
+      family: "Connection",
+      operations: expect.arrayContaining([
+        "d360_connection_create",
+        "d360_connection_update",
+        "d360_connection_create_snowflake",
+      ]),
+    });
   });
 
   it("returns operation and runbook examples that point at registered names", () => {
