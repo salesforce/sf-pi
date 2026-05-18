@@ -509,6 +509,18 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.94.0](https://github.com/salesforce/sf-pi/compare/v0.93.0...v0.94.0) (2026-05-18)
+
+
+### Features
+
+* **sf-devbar:** inject env context once + on org change, not every turn ([e0ae1b1](https://github.com/salesforce/sf-pi/commit/e0ae1b1251d8b1e1ba649fc53ed629a565cd4e38))
+
+
+### Bug Fixes
+
+* **data360:** require explicit confirmed execution ([a9b2bd9](https://github.com/salesforce/sf-pi/commit/a9b2bd9ea570cf1b319ae1546e275efc68b90e2e))
+
 ## [0.93.0](https://github.com/salesforce/sf-pi/compare/v0.92.0...v0.93.0) (2026-05-18)
 
 
