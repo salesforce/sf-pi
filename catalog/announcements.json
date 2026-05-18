@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.102.0-2026-05-18",
-  "latestVersion": "0.102.0",
+  "revision": "release-0.103.0-2026-05-18",
+  "latestVersion": "0.103.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.102.0",
+      "id": "release-0.103.0",
       "kind": "update",
-      "title": "sf-pi v0.102.0 — data360: add identity dataspace lifecycle ops",
+      "title": "sf-pi v0.103.0 — data360: add semantic model lifecycle ops",
       "publishedAt": "2026-05-18T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.102.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.103.0",
       "severity": "info",
-      "body": "data360: add identity dataspace lifecycle ops"
+      "body": "data360: add semantic model lifecycle ops"
     },
     {
       "id": "pi-0.73-required",
