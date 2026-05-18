@@ -126,6 +126,26 @@ describe("d360 facade registry", () => {
         "d360_datastream_create_snowflake",
       ]),
     });
+    expect(searchRegistry("create update data model object dmo schema")[0]).toMatchObject({
+      family: "DMO",
+      operations: expect.arrayContaining(["d360_dmo_create", "d360_dmo_update"]),
+    });
+    expect(searchRegistry("create update data lake object dlo schema")).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          family: "DLO",
+          operations: expect.arrayContaining(["d360_dlo_create", "d360_dlo_update"]),
+        }),
+      ]),
+    );
+    expect(searchRegistry("create update add field mapping dlo dmo")[0]).toMatchObject({
+      family: "Mappings",
+      operations: expect.arrayContaining([
+        "d360_dmo_mapping_create",
+        "d360_dmo_mapping_update",
+        "d360_dmo_field_mapping_add",
+      ]),
+    });
     expect(searchRegistry("connection test connector")[0]).toMatchObject({
       family: "Connection",
       operations: expect.arrayContaining(["d360_connection_test"]),

@@ -207,7 +207,7 @@
     "description": "List Data Model Objects.",
     "method": "GET",
     "path": "/ssot/data-model-objects",
-    "optionalParams": ["limit", "offset", "category"],
+    "optionalParams": ["limit", "offset", "category", "dataspace", "orderBy"],
     "safety": "read"
   },
   {
@@ -217,7 +217,8 @@
     "method": "GET",
     "path": "/ssot/data-model-objects/{dmoName}",
     "requiredParams": ["dmoName"],
-    "safety": "read"
+    "safety": "read",
+    "optionalParams": ["dataspace"]
   },
   {
     "name": "d360_dlo_list",
@@ -225,7 +226,7 @@
     "description": "List Data Lake Objects.",
     "method": "GET",
     "path": "/ssot/data-lake-objects",
-    "optionalParams": ["limit", "offset", "category"],
+    "optionalParams": ["limit", "offset", "category", "dataspace"],
     "safety": "read"
   },
   {
@@ -235,7 +236,8 @@
     "method": "GET",
     "path": "/ssot/data-lake-objects/{dloName}",
     "requiredParams": ["dloName"],
-    "safety": "read"
+    "safety": "read",
+    "optionalParams": ["dataspace"]
   },
   {
     "name": "d360_dmo_mapping_list",
@@ -243,7 +245,7 @@
     "description": "List DLO-to-DMO mappings. Prefer filtering by DMO or source object.",
     "method": "GET",
     "path": "/ssot/data-model-object-mappings",
-    "optionalParams": ["dmoDeveloperName", "sourceObjectName"],
+    "optionalParams": ["dmoDeveloperName", "dloDeveloperName", "sourceObjectName", "dataspace"],
     "safety": "read"
   },
   {
@@ -253,7 +255,8 @@
     "method": "GET",
     "path": "/ssot/data-model-object-mappings/{mappingName}",
     "requiredParams": ["mappingName"],
-    "safety": "read"
+    "safety": "read",
+    "optionalParams": ["dataspace"]
   },
   {
     "name": "d360_datastream_list",
@@ -1054,5 +1057,82 @@
     "optionalParams": ["dataspace"],
     "safety": "confirmed",
     "tips": "Use an existing Snowflake connection. Verify database, schema, object, DLO fields, primary key, mappings, and refresh mode before execution."
+  },
+  {
+    "name": "d360_dmo_create",
+    "family": "DMO",
+    "description": "Create a Data Model Object. Do not include the __dlm suffix in the name.",
+    "method": "POST",
+    "path": "/ssot/data-model-objects",
+    "requiredParams": ["body"],
+    "optionalParams": ["dataspace"],
+    "safety": "confirmed",
+    "tips": "Do not include the __dlm suffix in body.name. Include at least one primary key field; Engagement DMOs require eventDateTimeFieldName. Use dry_run first."
+  },
+  {
+    "name": "d360_dmo_update",
+    "family": "DMO",
+    "description": "Update a Data Model Object by API name.",
+    "method": "PATCH",
+    "path": "/ssot/data-model-objects/{dmoName}",
+    "requiredParams": ["dmoName", "body"],
+    "optionalParams": ["dataspace"],
+    "safety": "confirmed",
+    "tips": "Use dry_run first; DMO changes can affect mappings, calculated insights, segments, and downstream activations."
+  },
+  {
+    "name": "d360_dlo_create",
+    "family": "DLO",
+    "description": "Create a Data Lake Object.",
+    "method": "POST",
+    "path": "/ssot/data-lake-objects",
+    "requiredParams": ["body"],
+    "optionalParams": ["dataspace"],
+    "safety": "confirmed",
+    "tips": "Data streams usually create DLOs automatically. Verify fields, category, dataspace, and primary key before execution; use dry_run first."
+  },
+  {
+    "name": "d360_dlo_update",
+    "family": "DLO",
+    "description": "Update a Data Lake Object by API name.",
+    "method": "PATCH",
+    "path": "/ssot/data-lake-objects/{dloName}",
+    "requiredParams": ["dloName", "body"],
+    "optionalParams": ["dataspace"],
+    "safety": "confirmed",
+    "tips": "Use dry_run first; DLO schema changes can affect data streams, mappings, and search indexes."
+  },
+  {
+    "name": "d360_dmo_mapping_create",
+    "family": "Mappings",
+    "description": "Create a DLO-to-DMO mapping.",
+    "method": "POST",
+    "path": "/ssot/data-model-object-mappings",
+    "requiredParams": ["body"],
+    "optionalParams": ["dataspace"],
+    "safety": "confirmed",
+    "tips": "Call d360_dlo_get and d360_dmo_get first to verify exact source/target field API names and types. Use dry_run first."
+  },
+  {
+    "name": "d360_dmo_mapping_update",
+    "family": "Mappings",
+    "description": "Update a DLO-to-DMO mapping by developer name.",
+    "method": "PATCH",
+    "path": "/ssot/data-model-object-mappings/{mappingName}",
+    "requiredParams": ["mappingName", "body"],
+    "optionalParams": ["dataspace"],
+    "safety": "confirmed",
+    "tips": "Use dry_run first; mapping changes affect future ingestion into the target DMO."
+  },
+  {
+    "name": "d360_dmo_field_mapping_add",
+    "family": "Mappings",
+    "description": "Add field mappings to an existing DLO-to-DMO object mapping.",
+    "method": "PATCH",
+    "path": "/ssot/data-model-object-mappings/{mappingName}/field-mappings",
+    "requiredParams": ["mappingName", "body"],
+    "optionalParams": ["dataspace"],
+    "safety": "confirmed",
+    "tips": "Call d360_dmo_mapping_get first, then add only verified source/target field names. Use dry_run first."
   }
 ]

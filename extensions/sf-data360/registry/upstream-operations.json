@@ -761,5 +761,54 @@
     "description": "Create a Snowflake-backed data stream payload against /ssot/data-streams.",
     "method": "POST",
     "path": "/ssot/data-streams"
+  },
+  {
+    "name": "d360_dmo_create",
+    "family": "DMO",
+    "description": "Create a Data Model Object. Do not include the __dlm suffix in the name.",
+    "method": "POST",
+    "path": "/ssot/data-model-objects"
+  },
+  {
+    "name": "d360_dmo_update",
+    "family": "DMO",
+    "description": "Update a Data Model Object by API name.",
+    "method": "PATCH",
+    "path": "/ssot/data-model-objects/{dmoName}"
+  },
+  {
+    "name": "d360_dlo_create",
+    "family": "DLO",
+    "description": "Create a Data Lake Object.",
+    "method": "POST",
+    "path": "/ssot/data-lake-objects"
+  },
+  {
+    "name": "d360_dlo_update",
+    "family": "DLO",
+    "description": "Update a Data Lake Object by API name.",
+    "method": "PATCH",
+    "path": "/ssot/data-lake-objects/{dloName}"
+  },
+  {
+    "name": "d360_dmo_mapping_create",
+    "family": "Mappings",
+    "description": "Create a DLO-to-DMO mapping.",
+    "method": "POST",
+    "path": "/ssot/data-model-object-mappings"
+  },
+  {
+    "name": "d360_dmo_mapping_update",
+    "family": "Mappings",
+    "description": "Update a DLO-to-DMO mapping by developer name.",
+    "method": "PATCH",
+    "path": "/ssot/data-model-object-mappings/{mappingName}"
+  },
+  {
+    "name": "d360_dmo_field_mapping_add",
+    "family": "Mappings",
+    "description": "Add field mappings to an existing DLO-to-DMO object mapping.",
+    "method": "PATCH",
+    "path": "/ssot/data-model-object-mappings/{mappingName}/field-mappings"
   }
 ]

@@ -534,5 +534,149 @@
         }
       }
     }
+  },
+  "d360_dmo_create": {
+    "operation": "d360_dmo_create",
+    "params": {
+      "body": {
+        "name": "Example_Profile",
+        "label": "Example Profile",
+        "category": "Profile",
+        "dataSpaceName": "default",
+        "description": "Example DMO payload placeholder. Do not include __dlm in the name; verify field names and types before execution.",
+        "fields": [
+          {
+            "name": "Id__c",
+            "label": "Id",
+            "dataType": "Text",
+            "isPrimaryKey": true,
+            "creationType": "Custom"
+          },
+          {
+            "name": "Name__c",
+            "label": "Name",
+            "dataType": "Text",
+            "isPrimaryKey": false,
+            "creationType": "Custom"
+          }
+        ]
+      }
+    }
+  },
+  "d360_dmo_update": {
+    "operation": "d360_dmo_update",
+    "params": {
+      "dmoName": "Example_Profile__dlm",
+      "body": {
+        "label": "Example Profile Updated",
+        "description": "Dry-run placeholder only"
+      }
+    }
+  },
+  "d360_dlo_create": {
+    "operation": "d360_dlo_create",
+    "params": {
+      "body": {
+        "name": "Example_Profile__dll",
+        "label": "Example Profile",
+        "category": "Profile",
+        "dataSpaceName": "default",
+        "description": "Example DLO payload placeholder. Verify fields, category, and dataspace before execution.",
+        "dataspaceInfo": [
+          {
+            "name": "default"
+          }
+        ],
+        "dataLakeFieldInputRepresentations": [
+          {
+            "name": "Id__c",
+            "label": "Id",
+            "dataType": "Text",
+            "isPrimaryKey": true
+          },
+          {
+            "name": "Name__c",
+            "label": "Name",
+            "dataType": "Text",
+            "isPrimaryKey": false
+          }
+        ]
+      }
+    }
+  },
+  "d360_dlo_update": {
+    "operation": "d360_dlo_update",
+    "params": {
+      "dloName": "Example_Profile__dll",
+      "body": {
+        "label": "Example Profile Updated",
+        "dataLakeFieldInputRepresentations": [
+          {
+            "name": "Id__c",
+            "label": "Id",
+            "dataType": "Text",
+            "isPrimaryKey": true
+          },
+          {
+            "name": "Name__c",
+            "label": "Name",
+            "dataType": "Text",
+            "isPrimaryKey": false
+          }
+        ]
+      }
+    }
+  },
+  "d360_dmo_mapping_create": {
+    "operation": "d360_dmo_mapping_create",
+    "params": {
+      "body": {
+        "sourceEntityDeveloperName": "Example_Profile__dll",
+        "targetEntityDeveloperName": "Example_Profile__dlm",
+        "fieldMapping": [
+          {
+            "sourceFieldDeveloperName": "Id__c",
+            "targetFieldDeveloperName": "Id__c"
+          },
+          {
+            "sourceFieldDeveloperName": "Name__c",
+            "targetFieldDeveloperName": "Name__c"
+          }
+        ]
+      }
+    }
+  },
+  "d360_dmo_mapping_update": {
+    "operation": "d360_dmo_mapping_update",
+    "params": {
+      "mappingName": "Example_Profile_mapping",
+      "body": {
+        "label": "Example Profile Mapping Updated",
+        "fieldMapping": [
+          {
+            "sourceFieldDeveloperName": "Id__c",
+            "targetFieldDeveloperName": "Id__c"
+          },
+          {
+            "sourceFieldDeveloperName": "Name__c",
+            "targetFieldDeveloperName": "Name__c"
+          }
+        ]
+      }
+    }
+  },
+  "d360_dmo_field_mapping_add": {
+    "operation": "d360_dmo_field_mapping_add",
+    "params": {
+      "mappingName": "Example_Profile_mapping",
+      "body": {
+        "fieldMappings": [
+          {
+            "sourceFieldDeveloperName": "Name__c",
+            "targetFieldDeveloperName": "Name__c"
+          }
+        ]
+      }
+    }
   }
 }
