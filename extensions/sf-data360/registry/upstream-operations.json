@@ -719,5 +719,47 @@
     "description": "Update a semantic search index by API name or id.",
     "method": "PATCH",
     "path": "/ssot/search-index/{searchIndexApiNameOrId}"
+  },
+  {
+    "name": "d360_datastream_create",
+    "family": "DataStreams",
+    "description": "Create a generic data stream. Connector-specific create operations provide safer payload templates.",
+    "method": "POST",
+    "path": "/ssot/data-streams"
+  },
+  {
+    "name": "d360_datastream_update",
+    "family": "DataStreams",
+    "description": "Update a data stream by id or name.",
+    "method": "PATCH",
+    "path": "/ssot/data-streams/{dataStreamId}"
+  },
+  {
+    "name": "d360_datastream_run",
+    "family": "DataStreams",
+    "description": "Trigger a manual ingestion run for a data stream.",
+    "method": "POST",
+    "path": "/ssot/data-streams/{dataStreamId}/actions/run"
+  },
+  {
+    "name": "d360_datastream_create_sfdc",
+    "family": "DataStreams",
+    "description": "Create a Salesforce CRM data stream payload against /ssot/data-streams.",
+    "method": "POST",
+    "path": "/ssot/data-streams"
+  },
+  {
+    "name": "d360_datastream_create_aws_s3",
+    "family": "DataStreams",
+    "description": "Create an AWS S3 data stream payload against /ssot/data-streams.",
+    "method": "POST",
+    "path": "/ssot/data-streams"
+  },
+  {
+    "name": "d360_datastream_create_snowflake",
+    "family": "DataStreams",
+    "description": "Create a Snowflake-backed data stream payload against /ssot/data-streams.",
+    "method": "POST",
+    "path": "/ssot/data-streams"
   }
 ]

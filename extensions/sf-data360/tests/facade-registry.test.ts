@@ -28,10 +28,14 @@ describe("d360 facade registry", () => {
   });
 
   it("finds expanded read-only domain families by intent", () => {
-    expect(searchRegistry("data stream connector ingestion")[0]).toMatchObject({
-      family: "Ingestion",
-      operations: expect.arrayContaining(["d360_data_streams_list", "d360_connectors_list"]),
-    });
+    expect(searchRegistry("connector ingestion connection")).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          family: "Ingestion",
+          operations: expect.arrayContaining(["d360_connectors_list"]),
+        }),
+      ]),
+    );
     expect(searchRegistry("identity resolution rulesets")[0]).toMatchObject({
       family: "Identity Resolution",
       operations: expect.arrayContaining(["d360_identity_resolutions_list"]),
@@ -108,6 +112,18 @@ describe("d360 facade registry", () => {
         "d360_retriever_update",
         "d360_retriever_config_create",
         "d360_retriever_config_update",
+      ]),
+    });
+    expect(
+      searchRegistry("create update run data stream salesforce snowflake ingestion")[0],
+    ).toMatchObject({
+      family: "DataStreams",
+      operations: expect.arrayContaining([
+        "d360_datastream_create",
+        "d360_datastream_update",
+        "d360_datastream_run",
+        "d360_datastream_create_sfdc",
+        "d360_datastream_create_snowflake",
       ]),
     });
     expect(searchRegistry("connection test connector")[0]).toMatchObject({

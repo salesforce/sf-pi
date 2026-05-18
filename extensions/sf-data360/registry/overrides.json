@@ -121,12 +121,13 @@
     "safety": "read"
   },
   "d360_datastream_list": {
-    "optionalParams": ["limit", "offset", "category"],
+    "optionalParams": ["limit", "offset", "category", "dataspace"],
     "safety": "read"
   },
   "d360_datastream_get": {
     "requiredParams": ["dataStreamId"],
-    "safety": "read"
+    "safety": "read",
+    "optionalParams": ["dataspace"]
   },
   "d360_connection_list": {
     "requiredParams": ["connectorType"],
@@ -468,5 +469,41 @@
     "requiredParams": ["searchIndexApiNameOrId", "body"],
     "safety": "confirmed",
     "tips": "Call d360_search_index_config and d360_search_index_get first. Use dry_run before execution."
+  },
+  "d360_datastream_create": {
+    "requiredParams": ["body"],
+    "optionalParams": ["dataspace"],
+    "safety": "confirmed",
+    "tips": "Prefer connector-specific create operations when possible. Verify the connection, source fields, DLO shape, and mappings first; then dry_run before execution."
+  },
+  "d360_datastream_update": {
+    "requiredParams": ["dataStreamId", "body"],
+    "optionalParams": ["dataspace"],
+    "safety": "confirmed",
+    "tips": "Use dry_run first; updates affect future ingestion runs. Avoid sending read-only fields returned by get."
+  },
+  "d360_datastream_run": {
+    "requiredParams": ["dataStreamId"],
+    "optionalParams": ["dataspace"],
+    "safety": "confirmed",
+    "tips": "Salesforce CRM data streams cannot be manually triggered; use for S3, Snowflake, file upload, and other non-CRM streams. Dry-run first."
+  },
+  "d360_datastream_create_sfdc": {
+    "requiredParams": ["body"],
+    "optionalParams": ["dataspace"],
+    "safety": "confirmed",
+    "tips": "Call d360_connection_list with connectorType=SalesforceDotCom first and use the selected connection alias. Engagement streams require eventDateTimeFieldName."
+  },
+  "d360_datastream_create_aws_s3": {
+    "requiredParams": ["body"],
+    "optionalParams": ["dataspace"],
+    "safety": "confirmed",
+    "tips": "Call d360_connection_list with connectorType=AwsS3 first. Verify file parser attributes, source fields, DLO fields, mappings, and refresh config before execution."
+  },
+  "d360_datastream_create_snowflake": {
+    "requiredParams": ["body"],
+    "optionalParams": ["dataspace"],
+    "safety": "confirmed",
+    "tips": "Use an existing Snowflake connection. Verify database, schema, object, DLO fields, primary key, mappings, and refresh mode before execution."
   }
 }

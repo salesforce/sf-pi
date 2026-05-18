@@ -261,7 +261,7 @@
     "description": "List data streams.",
     "method": "GET",
     "path": "/ssot/data-streams",
-    "optionalParams": ["limit", "offset", "category"],
+    "optionalParams": ["limit", "offset", "category", "dataspace"],
     "safety": "read"
   },
   {
@@ -271,7 +271,8 @@
     "method": "GET",
     "path": "/ssot/data-streams/{dataStreamId}",
     "requiredParams": ["dataStreamId"],
-    "safety": "read"
+    "safety": "read",
+    "optionalParams": ["dataspace"]
   },
   {
     "name": "d360_connection_list",
@@ -987,5 +988,71 @@
     "requiredParams": ["searchIndexApiNameOrId", "body"],
     "safety": "confirmed",
     "tips": "Call d360_search_index_config and d360_search_index_get first. Use dry_run before execution."
+  },
+  {
+    "name": "d360_datastream_create",
+    "family": "DataStreams",
+    "description": "Create a generic data stream. Connector-specific create operations provide safer payload templates.",
+    "method": "POST",
+    "path": "/ssot/data-streams",
+    "requiredParams": ["body"],
+    "optionalParams": ["dataspace"],
+    "safety": "confirmed",
+    "tips": "Prefer connector-specific create operations when possible. Verify the connection, source fields, DLO shape, and mappings first; then dry_run before execution."
+  },
+  {
+    "name": "d360_datastream_update",
+    "family": "DataStreams",
+    "description": "Update a data stream by id or name.",
+    "method": "PATCH",
+    "path": "/ssot/data-streams/{dataStreamId}",
+    "requiredParams": ["dataStreamId", "body"],
+    "optionalParams": ["dataspace"],
+    "safety": "confirmed",
+    "tips": "Use dry_run first; updates affect future ingestion runs. Avoid sending read-only fields returned by get."
+  },
+  {
+    "name": "d360_datastream_run",
+    "family": "DataStreams",
+    "description": "Trigger a manual ingestion run for a data stream.",
+    "method": "POST",
+    "path": "/ssot/data-streams/{dataStreamId}/actions/run",
+    "requiredParams": ["dataStreamId"],
+    "optionalParams": ["dataspace"],
+    "safety": "confirmed",
+    "tips": "Salesforce CRM data streams cannot be manually triggered; use for S3, Snowflake, file upload, and other non-CRM streams. Dry-run first."
+  },
+  {
+    "name": "d360_datastream_create_sfdc",
+    "family": "DataStreams",
+    "description": "Create a Salesforce CRM data stream payload against /ssot/data-streams.",
+    "method": "POST",
+    "path": "/ssot/data-streams",
+    "requiredParams": ["body"],
+    "optionalParams": ["dataspace"],
+    "safety": "confirmed",
+    "tips": "Call d360_connection_list with connectorType=SalesforceDotCom first and use the selected connection alias. Engagement streams require eventDateTimeFieldName."
+  },
+  {
+    "name": "d360_datastream_create_aws_s3",
+    "family": "DataStreams",
+    "description": "Create an AWS S3 data stream payload against /ssot/data-streams.",
+    "method": "POST",
+    "path": "/ssot/data-streams",
+    "requiredParams": ["body"],
+    "optionalParams": ["dataspace"],
+    "safety": "confirmed",
+    "tips": "Call d360_connection_list with connectorType=AwsS3 first. Verify file parser attributes, source fields, DLO fields, mappings, and refresh config before execution."
+  },
+  {
+    "name": "d360_datastream_create_snowflake",
+    "family": "DataStreams",
+    "description": "Create a Snowflake-backed data stream payload against /ssot/data-streams.",
+    "method": "POST",
+    "path": "/ssot/data-streams",
+    "requiredParams": ["body"],
+    "optionalParams": ["dataspace"],
+    "safety": "confirmed",
+    "tips": "Use an existing Snowflake connection. Verify database, schema, object, DLO fields, primary key, mappings, and refresh mode before execution."
   }
 ]

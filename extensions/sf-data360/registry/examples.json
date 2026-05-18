@@ -299,5 +299,240 @@
         ]
       }
     }
+  },
+  "d360_datastream_create": {
+    "operation": "d360_datastream_create",
+    "params": {
+      "body": {
+        "name": "Example_Data_Stream",
+        "label": "Example Data Stream",
+        "datastreamType": "EXTERNAL",
+        "connectorInfo": {
+          "connectorType": "DataConnector",
+          "connectorDetails": {
+            "name": "ExampleConnection"
+          }
+        },
+        "dataLakeObjectInfo": {
+          "name": "Example_Data_Stream__dll",
+          "label": "Example Data Stream",
+          "category": "Profile",
+          "dataspaceInfo": [
+            {
+              "name": "default"
+            }
+          ],
+          "dataLakeFieldInputRepresentations": [
+            {
+              "name": "Id__c",
+              "label": "Id",
+              "dataType": "Text",
+              "isPrimaryKey": true
+            },
+            {
+              "name": "Name__c",
+              "label": "Name",
+              "dataType": "Text",
+              "isPrimaryKey": false
+            }
+          ]
+        },
+        "sourceFields": [
+          {
+            "name": "Id",
+            "dataType": "Text"
+          },
+          {
+            "name": "Name",
+            "dataType": "Text"
+          }
+        ],
+        "mappings": [
+          {
+            "sourceFieldLabel": "Id",
+            "targetFieldName": "Id__c"
+          },
+          {
+            "sourceFieldLabel": "Name",
+            "targetFieldName": "Name__c"
+          }
+        ],
+        "refreshConfig": {
+          "refreshMode": "TOTAL_REPLACE"
+        }
+      }
+    }
+  },
+  "d360_datastream_create_sfdc": {
+    "operation": "d360_datastream_create_sfdc",
+    "params": {
+      "body": {
+        "name": "Account_Home",
+        "label": "Account Home",
+        "datastreamType": "SFDC",
+        "connectorInfo": {
+          "connectorType": "SalesforceDotCom",
+          "connectorDetails": {
+            "name": "SalesforceDotCom_Home",
+            "sourceObject": "Account"
+          }
+        },
+        "dataLakeObjectInfo": {
+          "name": "Account_Home",
+          "label": "Account Home",
+          "category": "Profile",
+          "dataspaceInfo": [
+            {
+              "name": "default"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "d360_datastream_create_snowflake": {
+    "operation": "d360_datastream_create_snowflake",
+    "params": {
+      "body": {
+        "name": "Example_Snowflake_Stream",
+        "label": "Example Snowflake Stream",
+        "datastreamType": "EXTERNAL",
+        "connectorInfo": {
+          "connectorType": "DataConnector",
+          "connectorDetails": {
+            "name": "ExampleSnowflakeConnection"
+          }
+        },
+        "dataLakeObjectInfo": {
+          "name": "Example_Snowflake_Stream__dll",
+          "label": "Example Snowflake Stream",
+          "category": "Profile",
+          "dataspaceInfo": [
+            {
+              "name": "default"
+            }
+          ],
+          "dataLakeFieldInputRepresentations": [
+            {
+              "name": "Id__c",
+              "label": "Id",
+              "dataType": "Text",
+              "isPrimaryKey": true
+            },
+            {
+              "name": "Name__c",
+              "label": "Name",
+              "dataType": "Text",
+              "isPrimaryKey": false
+            }
+          ]
+        },
+        "mappings": [
+          {
+            "sourceFieldLabel": "ID",
+            "targetFieldName": "Id__c"
+          },
+          {
+            "sourceFieldLabel": "NAME",
+            "targetFieldName": "Name__c"
+          }
+        ],
+        "sourceFields": [
+          {
+            "name": "ID",
+            "dataType": "Text"
+          },
+          {
+            "name": "NAME",
+            "dataType": "Text"
+          }
+        ],
+        "refreshConfig": {
+          "refreshMode": "TOTAL_REPLACE"
+        },
+        "advancedAttributes": {
+          "database": "EXAMPLE_DB",
+          "schema": "PUBLIC",
+          "object": "EXAMPLE_TABLE"
+        },
+        "dataAccessMode": "Direct_Access"
+      }
+    }
+  },
+  "d360_datastream_run": {
+    "operation": "d360_datastream_run",
+    "params": {
+      "dataStreamId": "ExampleDataStreamId"
+    }
+  },
+  "d360_datastream_create_aws_s3": {
+    "operation": "d360_datastream_create_aws_s3",
+    "params": {
+      "body": {
+        "name": "Example_Aws_S3_Stream",
+        "label": "Example AWS S3 Stream",
+        "datastreamType": "CONNECTORSFRAMEWORK",
+        "connectorInfo": {
+          "connectorType": "DataConnector",
+          "connectorDetails": {
+            "name": "ExampleAwsS3Connection"
+          }
+        },
+        "dataLakeObjectInfo": {
+          "name": "Example_Aws_S3_Stream__dll",
+          "label": "Example AWS S3 Stream",
+          "category": "Profile",
+          "dataspaceInfo": [
+            {
+              "name": "default"
+            }
+          ],
+          "dataLakeFieldInputRepresentations": [
+            {
+              "name": "Id__c",
+              "label": "Id",
+              "dataType": "Text",
+              "isPrimaryKey": true
+            },
+            {
+              "name": "Name__c",
+              "label": "Name",
+              "dataType": "Text",
+              "isPrimaryKey": false
+            }
+          ]
+        },
+        "sourceFields": [
+          {
+            "name": "Id",
+            "dataType": "Text"
+          },
+          {
+            "name": "Name",
+            "dataType": "Text"
+          }
+        ],
+        "mappings": [
+          {
+            "sourceFieldLabel": "Id",
+            "targetFieldName": "Id__c"
+          },
+          {
+            "sourceFieldLabel": "Name",
+            "targetFieldName": "Name__c"
+          }
+        ],
+        "refreshConfig": {
+          "refreshMode": "TOTAL_REPLACE"
+        },
+        "advancedAttributes": {
+          "fileType": "CSV",
+          "importDirectory": "/example/",
+          "fileName": "example.csv",
+          "delimiter": ",",
+          "headerlessRetrievalEnabled": false
+        }
+      }
+    }
   }
 }
