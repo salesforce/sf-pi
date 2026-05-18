@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.108.0-2026-05-18",
-  "latestVersion": "0.108.0",
+  "revision": "release-0.109.0-2026-05-18",
+  "latestVersion": "0.109.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.108.0",
+      "id": "release-0.109.0",
       "kind": "update",
-      "title": "sf-pi v0.108.0 — data360: improve helper cards and destructive preflight",
+      "title": "sf-pi v0.109.0 — gateway: discover existing onboarding assets",
       "publishedAt": "2026-05-18T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.108.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.109.0",
       "severity": "info",
-      "body": "data360: improve helper cards and destructive preflight"
+      "body": "gateway: discover existing onboarding assets — gateway: satisfy onboarding source lint"
     },
     {
       "id": "pi-0.73-required",
