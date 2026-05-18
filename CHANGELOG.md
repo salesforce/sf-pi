@@ -509,6 +509,19 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.93.0](https://github.com/salesforce/sf-pi/compare/v0.92.0...v0.93.0) (2026-05-18)
+
+
+### Features
+
+* **data360:** add segment lifecycle ops ([6f2aa8a](https://github.com/salesforce/sf-pi/commit/6f2aa8ad13f13c426ceb93af22e0cc81b9bd94e8))
+
+
+### Bug Fixes
+
+* **sf-guardrail:** inject prompt as live custom_message, not stale custom marker ([79f61ab](https://github.com/salesforce/sf-pi/commit/79f61ab3901e4765e222832984288febb5ab7ffa))
+* **sf-slack:** inject workspace identity once per live session, not every turn ([bef964b](https://github.com/salesforce/sf-pi/commit/bef964b97e3918eb63b9bd6fabd3a8870c44b692))
+
 ## [0.92.0](https://github.com/salesforce/sf-pi/compare/v0.91.1...v0.92.0) (2026-05-17)
 
 
