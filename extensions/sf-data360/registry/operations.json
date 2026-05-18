@@ -113,7 +113,7 @@
     "method": "GET",
     "path": "/ssot/identity-resolutions",
     "safety": "read",
-    "optionalParams": ["limit", "offset"]
+    "optionalParams": ["dataspace", "limit", "offset"]
   },
   {
     "name": "d360_semantic_models_list",
@@ -383,7 +383,8 @@
     "method": "GET",
     "path": "/ssot/identity-resolutions/{identityResolutionId}",
     "requiredParams": ["identityResolutionId"],
-    "safety": "read"
+    "safety": "read",
+    "optionalParams": ["dataspace"]
   },
   {
     "name": "d360_transform_list",
@@ -1181,5 +1182,126 @@
     "requiredParams": ["body"],
     "safety": "confirmed",
     "tips": "Provide private key content only at execution time. Test first when possible, then dry_run before execution."
+  },
+  {
+    "name": "d360_ir_list",
+    "family": "Identity Resolution",
+    "description": "List identity resolution rulesets.",
+    "method": "GET",
+    "path": "/ssot/identity-resolutions",
+    "optionalParams": ["dataspace", "limit", "offset"],
+    "safety": "read",
+    "tips": "Use this to discover ruleset ids before update, publish, or run operations."
+  },
+  {
+    "name": "d360_ir_create",
+    "family": "Identity Resolution",
+    "description": "Create an identity resolution ruleset.",
+    "method": "POST",
+    "path": "/ssot/identity-resolutions",
+    "requiredParams": ["body"],
+    "optionalParams": ["dataspace"],
+    "safety": "confirmed",
+    "tips": "Verify source DMOs, matching fields, match methods, and reconciliation rules first. Use dry_run before execution."
+  },
+  {
+    "name": "d360_ir_update",
+    "family": "Identity Resolution",
+    "description": "Patch an identity resolution ruleset.",
+    "method": "PATCH",
+    "path": "/ssot/identity-resolutions/{identityResolutionId}",
+    "requiredParams": ["identityResolutionId", "body"],
+    "optionalParams": ["dataspace"],
+    "safety": "confirmed",
+    "tips": "Use dry_run first; changes apply after publish and can affect unified profiles."
+  },
+  {
+    "name": "d360_ir_full_update",
+    "family": "Identity Resolution",
+    "description": "Fully replace an identity resolution ruleset.",
+    "method": "PUT",
+    "path": "/ssot/identity-resolutions/{identityResolutionId}",
+    "requiredParams": ["identityResolutionId", "body"],
+    "optionalParams": ["dataspace"],
+    "safety": "confirmed",
+    "tips": "Full replacement is higher blast radius than PATCH. Compare against d360_ir_get output and dry_run before execution."
+  },
+  {
+    "name": "d360_ir_publish",
+    "family": "Identity Resolution",
+    "description": "Publish an identity resolution ruleset.",
+    "method": "POST",
+    "path": "/ssot/identity-resolutions/{identityResolutionId}/actions/publish",
+    "requiredParams": ["identityResolutionId"],
+    "optionalParams": ["dataspace"],
+    "safety": "confirmed",
+    "tips": "Publish activates the ruleset configuration. Review matching/reconciliation rules and dry_run first."
+  },
+  {
+    "name": "d360_ir_run",
+    "family": "Identity Resolution",
+    "description": "Run identity resolution now.",
+    "method": "POST",
+    "path": "/ssot/identity-resolutions/{identityResolutionId}/actions/run-now",
+    "requiredParams": ["identityResolutionId", "body"],
+    "optionalParams": ["dataspace"],
+    "safety": "confirmed",
+    "tips": "Manual runs can consume compute and update unified profiles. Use dry_run before execution."
+  },
+  {
+    "name": "d360_dataspace_list",
+    "family": "Dataspace",
+    "description": "List data spaces.",
+    "method": "GET",
+    "path": "/ssot/data-spaces",
+    "safety": "read"
+  },
+  {
+    "name": "d360_dataspace_get",
+    "family": "Dataspace",
+    "description": "Get a data space by name.",
+    "method": "GET",
+    "path": "/ssot/data-spaces/{dataSpaceName}",
+    "requiredParams": ["dataSpaceName"],
+    "safety": "read"
+  },
+  {
+    "name": "d360_dataspace_create",
+    "family": "Dataspace",
+    "description": "Create a data space.",
+    "method": "POST",
+    "path": "/ssot/data-spaces",
+    "requiredParams": ["body"],
+    "safety": "confirmed",
+    "tips": "Data spaces are admin/global workspaces. Confirm naming, membership plan, and downstream references; dry_run before execution."
+  },
+  {
+    "name": "d360_dataspace_update",
+    "family": "Dataspace",
+    "description": "Update a data space by name.",
+    "method": "PATCH",
+    "path": "/ssot/data-spaces/{dataSpaceName}",
+    "requiredParams": ["dataSpaceName", "body"],
+    "safety": "confirmed",
+    "tips": "Use dry_run first; data space metadata is shared by downstream Data 360 assets."
+  },
+  {
+    "name": "d360_dataspace_member_list",
+    "family": "Dataspace",
+    "description": "List data space members.",
+    "method": "GET",
+    "path": "/ssot/data-spaces/{dataSpaceName}/members",
+    "requiredParams": ["dataSpaceName"],
+    "safety": "read"
+  },
+  {
+    "name": "d360_dataspace_member_add",
+    "family": "Dataspace",
+    "description": "Add members to a data space.",
+    "method": "PUT",
+    "path": "/ssot/data-spaces/{dataSpaceName}/members",
+    "requiredParams": ["dataSpaceName", "body"],
+    "safety": "confirmed",
+    "tips": "Verify member names and filter configuration before changing data-space access. Use dry_run before execution."
   }
 ]

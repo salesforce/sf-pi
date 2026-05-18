@@ -923,5 +923,153 @@
         }
       }
     }
+  },
+  "d360_ir_create": {
+    "operation": "d360_ir_create",
+    "params": {
+      "body": {
+        "label": "Example Identity Resolution",
+        "configurationType": "Individual",
+        "description": "Example identity resolution payload placeholder. Verify entity and field names before execution.",
+        "doesRunAutomatically": false,
+        "matchRules": [
+          {
+            "label": "Example Email Match",
+            "criteria": [
+              {
+                "entityName": "ExampleIndividual__dlm",
+                "fieldName": "Email__c",
+                "matchMethodType": "Exact",
+                "shouldMatchOnBlank": false
+              }
+            ]
+          }
+        ],
+        "reconciliationRules": [
+          {
+            "entityName": "ExampleIndividual__dlm",
+            "ruleType": "MostRecent",
+            "shouldIgnoreEmptyValue": true,
+            "fields": [
+              {
+                "fieldName": "Email__c",
+                "ruleType": "MostRecent",
+                "shouldIgnoreEmptyValue": true,
+                "sources": [
+                  {
+                    "name": "ExampleSource"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "d360_ir_update": {
+    "operation": "d360_ir_update",
+    "params": {
+      "identityResolutionId": "ExampleIdentityResolutionId",
+      "body": {
+        "label": "Example Identity Resolution Updated",
+        "description": "Dry-run placeholder only.",
+        "doesRunAutomatically": false
+      }
+    }
+  },
+  "d360_ir_full_update": {
+    "operation": "d360_ir_full_update",
+    "params": {
+      "identityResolutionId": "ExampleIdentityResolutionId",
+      "body": {
+        "label": "Example Identity Resolution",
+        "configurationType": "Individual",
+        "description": "Example identity resolution payload placeholder. Verify entity and field names before execution.",
+        "doesRunAutomatically": false,
+        "matchRules": [
+          {
+            "label": "Example Email Match",
+            "criteria": [
+              {
+                "entityName": "ExampleIndividual__dlm",
+                "fieldName": "Email__c",
+                "matchMethodType": "Exact",
+                "shouldMatchOnBlank": false
+              }
+            ]
+          }
+        ],
+        "reconciliationRules": [
+          {
+            "entityName": "ExampleIndividual__dlm",
+            "ruleType": "MostRecent",
+            "shouldIgnoreEmptyValue": true,
+            "fields": [
+              {
+                "fieldName": "Email__c",
+                "ruleType": "MostRecent",
+                "shouldIgnoreEmptyValue": true,
+                "sources": [
+                  {
+                    "name": "ExampleSource"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "d360_ir_publish": {
+    "operation": "d360_ir_publish",
+    "params": {
+      "identityResolutionId": "ExampleIdentityResolutionId"
+    }
+  },
+  "d360_ir_run": {
+    "operation": "d360_ir_run",
+    "params": {
+      "identityResolutionId": "ExampleIdentityResolutionId",
+      "body": {
+        "callingApp": "sf-pi",
+        "callingAppInfo": "Dry-run placeholder only."
+      }
+    }
+  },
+  "d360_dataspace_create": {
+    "operation": "d360_dataspace_create",
+    "params": {
+      "body": {
+        "name": "Example_Data_Space",
+        "label": "Example Data Space",
+        "description": "Example data space payload placeholder. Verify naming and membership plan before execution."
+      }
+    }
+  },
+  "d360_dataspace_update": {
+    "operation": "d360_dataspace_update",
+    "params": {
+      "dataSpaceName": "Example_Data_Space",
+      "body": {
+        "label": "Example Data Space Updated",
+        "description": "Dry-run placeholder only."
+      }
+    }
+  },
+  "d360_dataspace_member_add": {
+    "operation": "d360_dataspace_member_add",
+    "params": {
+      "dataSpaceName": "Example_Data_Space",
+      "body": {
+        "members": [
+          {
+            "memberName": "ExampleMember",
+            "filter": []
+          }
+        ]
+      }
+    }
   }
 }

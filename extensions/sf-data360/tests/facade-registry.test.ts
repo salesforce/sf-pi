@@ -38,7 +38,7 @@ describe("d360 facade registry", () => {
     );
     expect(searchRegistry("identity resolution rulesets")[0]).toMatchObject({
       family: "Identity Resolution",
-      operations: expect.arrayContaining(["d360_identity_resolutions_list"]),
+      operations: expect.arrayContaining(["d360_identity_resolutions_list", "d360_ir_list"]),
     });
     expect(searchRegistry("semantic retriever search index")[0]).toMatchObject({
       family: "Semantic Retrieval",
@@ -156,6 +156,26 @@ describe("d360 facade registry", () => {
         "d360_connection_create",
         "d360_connection_update",
         "d360_connection_create_snowflake",
+      ]),
+    });
+    expect(
+      searchRegistry("create update publish run identity resolution ruleset")[0],
+    ).toMatchObject({
+      family: "Identity Resolution",
+      operations: expect.arrayContaining([
+        "d360_ir_create",
+        "d360_ir_update",
+        "d360_ir_full_update",
+        "d360_ir_publish",
+        "d360_ir_run",
+      ]),
+    });
+    expect(searchRegistry("create update add member data space dataspace")[0]).toMatchObject({
+      family: "Dataspace",
+      operations: expect.arrayContaining([
+        "d360_dataspace_create",
+        "d360_dataspace_update",
+        "d360_dataspace_member_add",
       ]),
     });
   });

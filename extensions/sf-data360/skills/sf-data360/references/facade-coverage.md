@@ -8,7 +8,7 @@ should be added to the JSON registry, not as new Pi tools.
 
 ## Operation coverage matrix
 
-Current generated registry size: **120 operations**.
+Current generated registry size: **132 operations**.
 
 | Family                 | Read | Safe POST | Confirmed | Destructive |
 | ---------------------- | ---: | --------: | --------: | ----------: |
@@ -20,7 +20,7 @@ Current generated registry size: **120 operations**.
 | Calculated Insights    |    3 |         1 |         5 |           0 |
 | Ingestion              |    3 |         0 |         0 |           0 |
 | Transforms and Actions |    2 |         0 |         0 |           0 |
-| Identity Resolution    |    2 |         0 |         0 |           0 |
+| Identity Resolution    |    3 |         0 |         5 |           0 |
 | Semantic Retrieval     |   13 |         1 |         6 |           0 |
 | DataKit                |    7 |         0 |         0 |           0 |
 | DMO                    |    2 |         0 |         2 |           0 |
@@ -28,6 +28,7 @@ Current generated registry size: **120 operations**.
 | Mappings               |    2 |         0 |         3 |           0 |
 | DataStreams            |    2 |         0 |         6 |           0 |
 | Connection             |    6 |         1 |         3 |           0 |
+| Dataspace              |    3 |         0 |         3 |           0 |
 | DataTransform          |    3 |         1 |         4 |           0 |
 | DataAction             |    4 |         0 |         3 |           0 |
 | Profile and Data Graph |    8 |         0 |         0 |           0 |
@@ -114,6 +115,15 @@ Never add `allow_confirmed: true` to a placeholder payload.
 3. Verify source objects, conditions, projected fields, and target names.
 4. Dry-run data action and target create/update.
 
+### Identity Resolution
+
+1. List/get existing rulesets before changing them.
+2. Verify source DMOs, matching fields, match methods, and reconciliation rules.
+3. Prefer PATCH update over full replacement unless you have compared the full
+   current ruleset definition.
+4. Dry-run create/update/full-update/publish/run. Publish and run operations can
+   update unified profile behavior and consume compute.
+
 ### Search Indexes and Retrievers
 
 1. Call `d360_search_index_config` before search index create/update.
@@ -122,6 +132,16 @@ Never add `allow_confirmed: true` to a placeholder payload.
 3. List/search indexes before retriever create.
 4. For retriever configurations, verify `queryType`, input search index,
    output fields, and `isActive` behavior.
+
+### Dataspaces
+
+1. List/get the existing data spaces first.
+2. Confirm naming, ownership, and whether downstream assets need explicit
+   dataspace references.
+3. For member changes, verify member names and filter configuration before
+   granting access.
+4. Dry-run create/update/member-add. Dataspace delete and member remove remain
+   omitted until destructive review UX exists.
 
 ### Data Streams
 

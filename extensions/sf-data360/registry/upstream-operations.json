@@ -838,5 +838,89 @@
     "description": "Create a Snowflake connection with key-pair authentication.",
     "method": "POST",
     "path": "/ssot/connections"
+  },
+  {
+    "name": "d360_ir_list",
+    "family": "Identity Resolution",
+    "description": "List identity resolution rulesets.",
+    "method": "GET",
+    "path": "/ssot/identity-resolutions"
+  },
+  {
+    "name": "d360_ir_create",
+    "family": "Identity Resolution",
+    "description": "Create an identity resolution ruleset.",
+    "method": "POST",
+    "path": "/ssot/identity-resolutions"
+  },
+  {
+    "name": "d360_ir_update",
+    "family": "Identity Resolution",
+    "description": "Patch an identity resolution ruleset.",
+    "method": "PATCH",
+    "path": "/ssot/identity-resolutions/{identityResolutionId}"
+  },
+  {
+    "name": "d360_ir_full_update",
+    "family": "Identity Resolution",
+    "description": "Fully replace an identity resolution ruleset.",
+    "method": "PUT",
+    "path": "/ssot/identity-resolutions/{identityResolutionId}"
+  },
+  {
+    "name": "d360_ir_publish",
+    "family": "Identity Resolution",
+    "description": "Publish an identity resolution ruleset.",
+    "method": "POST",
+    "path": "/ssot/identity-resolutions/{identityResolutionId}/actions/publish"
+  },
+  {
+    "name": "d360_ir_run",
+    "family": "Identity Resolution",
+    "description": "Run identity resolution now.",
+    "method": "POST",
+    "path": "/ssot/identity-resolutions/{identityResolutionId}/actions/run-now"
+  },
+  {
+    "name": "d360_dataspace_list",
+    "family": "Dataspace",
+    "description": "List data spaces.",
+    "method": "GET",
+    "path": "/ssot/data-spaces"
+  },
+  {
+    "name": "d360_dataspace_get",
+    "family": "Dataspace",
+    "description": "Get a data space by name.",
+    "method": "GET",
+    "path": "/ssot/data-spaces/{dataSpaceName}"
+  },
+  {
+    "name": "d360_dataspace_create",
+    "family": "Dataspace",
+    "description": "Create a data space.",
+    "method": "POST",
+    "path": "/ssot/data-spaces"
+  },
+  {
+    "name": "d360_dataspace_update",
+    "family": "Dataspace",
+    "description": "Update a data space by name.",
+    "method": "PATCH",
+    "path": "/ssot/data-spaces/{dataSpaceName}"
+  },
+  {
+    "name": "d360_dataspace_member_list",
+    "family": "Dataspace",
+    "description": "List data space members.",
+    "method": "GET",
+    "path": "/ssot/data-spaces/{dataSpaceName}/members"
+  },
+  {
+    "name": "d360_dataspace_member_add",
+    "family": "Dataspace",
+    "description": "Add members to a data space.",
+    "method": "PUT",
+    "path": "/ssot/data-spaces/{dataSpaceName}/members"
   }
 ]
