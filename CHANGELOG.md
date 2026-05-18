@@ -517,6 +517,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.111.0](https://github.com/salesforce/sf-pi/compare/v0.110.0...v0.111.0) (2026-05-18)
+
+
+### Features
+
+* **sf-welcome:** add Node CA status ([4326001](https://github.com/salesforce/sf-pi/commit/43260014a53c21b7507abd44ff35f6a4b09d0c34))
+
 ## [0.110.0](https://github.com/salesforce/sf-pi/compare/v0.109.0...v0.110.0) (2026-05-18)
 
 
