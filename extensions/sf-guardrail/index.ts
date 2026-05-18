@@ -53,11 +53,7 @@
  *   /sf-guardrail forget | —                               | clear session allow-memory
  *   /sf-guardrail install-preset | —                       | write/merge override file with bundled
  */
-import type {
-  CustomEntry,
-  ExtensionAPI,
-  ExtensionCommandContext,
-} from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 
 import {
   type CommandPanelAction,
@@ -76,6 +72,7 @@ import { registerExtensionDoctor } from "../../lib/common/doctor/registry.ts";
 import { runExtensionDoctor as runGuardrailExtensionDoctor } from "./lib/extension-doctor.ts";
 import { openInfoPanel } from "../../lib/common/info-panel.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
+import { shouldInjectOnce } from "../../lib/common/session/inject-once.ts";
 import { record, readRecent } from "./lib/audit.ts";
 import { forgetSession, grant, isAllowed, restore } from "./lib/allowlist.ts";
 import { classify } from "./lib/classify.ts";
@@ -85,12 +82,6 @@ import { installPreset } from "./lib/install-preset.ts";
 import { loadPrompt } from "./lib/prompt-injection.ts";
 import { renderAudit, renderRules, renderStatus } from "./lib/status.ts";
 import { COMMAND_NAME, INJECTION_ENTRY_TYPE, type GuardrailConfig } from "./lib/types.ts";
-
-function isInjectionEntry(entry: unknown): entry is CustomEntry<unknown> {
-  if (!entry || typeof entry !== "object") return false;
-  const c = entry as { type?: string; customType?: string };
-  return c.type === "custom" && c.customType === INJECTION_ENTRY_TYPE;
-}
 
 export default function sfGuardrail(pi: ExtensionAPI) {
   if (!requirePiVersion(pi, "sf-guardrail")) return;
@@ -120,13 +111,17 @@ export default function sfGuardrail(pi: ExtensionAPI) {
     restore(ctx);
   });
 
-  // ─── before_agent_start: inject kernel once ───────────────────────────────
+  // ─── before_agent_start: inject guardrail prompt once per live session ──
+  // Uses the shared inject-once helper. The pre-fix predicate matched on
+  // `type === "custom"` (state-only marker shape) instead of the
+  // `"custom_message"` shape pi actually persists for
+  // BeforeAgentStartEventResult.message, so dedup never matched a real
+  // injection and the guardrail prompt was re-injected on every turn.
   pi.on("before_agent_start", async (_event, ctx) => {
     const { config } = getConfig();
     if (!config.enabled) return;
     if (!config.features.promptInjection) return;
-    const alreadyInjected = ctx.sessionManager.getEntries().some(isInjectionEntry);
-    if (alreadyInjected) return;
+    if (!shouldInjectOnce(ctx.sessionManager.getEntries(), INJECTION_ENTRY_TYPE)) return;
 
     const prompt = loadPrompt();
     return {

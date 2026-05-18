@@ -272,7 +272,7 @@
     "entry": "extensions/sf-guardrail/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 2116
+    "srcLoc": 2112
   },
   {
     "id": "sf-llm-gateway-internal",
