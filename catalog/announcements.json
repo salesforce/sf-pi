@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.107.1-2026-05-18",
-  "latestVersion": "0.107.1",
+  "revision": "release-0.108.0-2026-05-18",
+  "latestVersion": "0.108.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.107.1",
+      "id": "release-0.108.0",
       "kind": "update",
-      "title": "sf-pi v0.107.1 — improve pi working-state rescue UX",
+      "title": "sf-pi v0.108.0 — data360: improve helper cards and destructive preflight",
       "publishedAt": "2026-05-18T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.107.1",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.108.0",
       "severity": "info",
-      "body": "improve pi working-state rescue UX — simplify calm spinner text"
+      "body": "data360: improve helper cards and destructive preflight"
     },
     {
       "id": "pi-0.73-required",
