@@ -6,7 +6,7 @@
  * - rainbow() produces valid 24-bit ANSI color sequences
  * - buildRainbowFrames() generates one frame per animation step with a
  *   rotating spinner glyph prepended to the rainbow-colored message
- * - buildCalmFrames() keeps the state + message stable while only the spinner glyph changes
+ * - buildCalmFrames() keeps the state stable while only the spinner glyph changes
  * - Each frame is unique (animation shifts both spinner and colors)
  * - Spaces are preserved without color codes
  * - Module export still works after the migration
@@ -16,7 +16,6 @@ import {
   rainbow,
   buildCalmFrames,
   buildRainbowFrames,
-  CALM_WORKING_TEXT,
   WORKING_STATE_TEXT,
   RAINBOW_COLORS,
   SPINNER_FRAMES,
@@ -93,15 +92,19 @@ describe("buildCalmFrames", () => {
     expect(frames).toHaveLength(SPINNER_FRAMES.length);
   });
 
-  it("keeps the visible state and message stable while the spinner changes", () => {
+  it("keeps the visible state stable while the spinner changes", () => {
     const frames = buildCalmFrames();
     const visibleTexts = frames.map((frame) => frame.slice(2));
-    expect(new Set(visibleTexts)).toEqual(
-      new Set([`${WORKING_STATE_TEXT} · ${CALM_WORKING_TEXT}`]),
-    );
+    expect(new Set(visibleTexts)).toEqual(new Set([WORKING_STATE_TEXT]));
 
     const spinnerGlyphs = frames.map((frame) => [...frame][0]);
     expect(spinnerGlyphs).toEqual([...SPINNER_FRAMES]);
+  });
+
+  it("adds custom calm text only when provided", () => {
+    const frames = buildCalmFrames("Waiting for tool...");
+    const visibleTexts = frames.map((frame) => frame.slice(2));
+    expect(new Set(visibleTexts)).toEqual(new Set([`${WORKING_STATE_TEXT} · Waiting for tool...`]));
   });
 
   it("does not add rainbow color escapes", () => {

@@ -10,7 +10,7 @@ personality text.
 Modes:
 
 - **Ohana** — `Thinking…` plus Salesforce-themed rotating ecosystem messages.
-- **Calm** — `Thinking… · Processing...` with only the leading spinner glyph animated.
+- **Calm** — `Thinking…` with only the leading spinner glyph animated.
 
 Ohana remains the default for existing users. Users can switch to Calm from the
 `/sf-pi` extension manager settings panel.
@@ -21,7 +21,7 @@ Ohana remains the default for existing users. Users can switch to Calm from the
 session_start
   ├─ Read sfPi.ohanaSpinner.mode from Pi settings
   ├─ Ohana: install `Thinking… · <message>` rainbow frames and start message rotation timer (5s)
-  └─ Calm: install stable `Thinking… · Processing...` frames with no rotation timer
+  └─ Calm: install stable `Thinking…` frames with no rotation timer
 
 session_shutdown
   ├─ Clear rotation timer if present

@@ -46,7 +46,7 @@ export function rainbow(text: string, offset: number): string {
 }
 
 export const WORKING_STATE_TEXT = "Thinking…";
-export const CALM_WORKING_TEXT = "Processing...";
+export const CALM_WORKING_TEXT = "";
 
 /**
  * Pre-compute one animation cycle of frames for a given message. Each frame
@@ -67,7 +67,8 @@ export function buildRainbowFrames(text: string): string[] {
   });
 }
 
-/** Build the calm mode frames: animated spinner glyph, explicit state, stable text. */
+/** Build the calm mode frames: animated spinner glyph with an explicit state. */
 export function buildCalmFrames(text = CALM_WORKING_TEXT): string[] {
-  return SPINNER_FRAMES.map((spinnerChar) => `${spinnerChar} ${WORKING_STATE_TEXT} · ${text}`);
+  const suffix = text.trim() ? ` · ${text}` : "";
+  return SPINNER_FRAMES.map((spinnerChar) => `${spinnerChar} ${WORKING_STATE_TEXT}${suffix}`);
 }

@@ -78,7 +78,7 @@ class OhanaSpinnerConfigPanel implements Focusable {
       `  ${modeLine}`,
       "",
       `  ${t.fg("muted", "Ohana")} ${t.fg("dim", "Thinking… + rotating Salesforce messages")}`,
-      `  ${t.fg("muted", "Calm")}  ${t.fg("dim", 'Thinking… + stable "Processing..." text')}`,
+      `  ${t.fg("muted", "Calm")}  ${t.fg("dim", "stable Thinking… text")}`,
       "",
       `  ${t.fg("muted", "Scope:")} ${t.fg("text", this.scope)}`,
       `  ${t.fg("muted", "Current source:")} ${t.fg("dim", this.savedSource)}`,
