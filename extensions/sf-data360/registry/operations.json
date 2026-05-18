@@ -780,5 +780,49 @@
     "requiredParams": ["activationTargetId", "body"],
     "safety": "confirmed",
     "tips": "Use dry_run first; activation target changes can affect downstream delivery."
+  },
+  {
+    "name": "d360_transform_create",
+    "family": "DataTransform",
+    "description": "Create a data transform. Schedule runs separately.",
+    "method": "POST",
+    "path": "/ssot/data-transforms",
+    "requiredParams": ["body"],
+    "optionalParams": ["dataspace"],
+    "safety": "confirmed",
+    "tips": "Validate first with d360_transform_validate, then dry_run the create request before execution."
+  },
+  {
+    "name": "d360_transform_update",
+    "family": "DataTransform",
+    "description": "Update a data transform by id.",
+    "method": "PATCH",
+    "path": "/ssot/data-transforms/{transformId}",
+    "requiredParams": ["transformId", "body"],
+    "optionalParams": ["dataspace"],
+    "safety": "confirmed",
+    "tips": "Use dry_run first; changing a transform can affect generated DLO/DMO data."
+  },
+  {
+    "name": "d360_transform_run",
+    "family": "DataTransform",
+    "description": "Run a data transform manually.",
+    "method": "POST",
+    "path": "/ssot/data-transforms/{transformId}/actions/run",
+    "requiredParams": ["transformId"],
+    "optionalParams": ["dataspace"],
+    "safety": "confirmed",
+    "tips": "Manual runs can consume org resources and update transform outputs. Use dry_run first."
+  },
+  {
+    "name": "d360_transform_schedule_set",
+    "family": "DataTransform",
+    "description": "Set or update the schedule for a data transform.",
+    "method": "PUT",
+    "path": "/ssot/data-transforms/{transformId}/schedule",
+    "requiredParams": ["transformId", "body"],
+    "optionalParams": ["dataspace"],
+    "safety": "confirmed",
+    "tips": "Use dry_run first; schedule changes can trigger recurring downstream processing."
   }
 ]

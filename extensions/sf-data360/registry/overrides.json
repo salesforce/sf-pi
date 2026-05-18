@@ -351,5 +351,29 @@
     "requiredParams": ["activationTargetId", "body"],
     "safety": "confirmed",
     "tips": "Use dry_run first; activation target changes can affect downstream delivery."
+  },
+  "d360_transform_create": {
+    "requiredParams": ["body"],
+    "optionalParams": ["dataspace"],
+    "safety": "confirmed",
+    "tips": "Validate first with d360_transform_validate, then dry_run the create request before execution."
+  },
+  "d360_transform_update": {
+    "requiredParams": ["transformId", "body"],
+    "optionalParams": ["dataspace"],
+    "safety": "confirmed",
+    "tips": "Use dry_run first; changing a transform can affect generated DLO/DMO data."
+  },
+  "d360_transform_run": {
+    "requiredParams": ["transformId"],
+    "optionalParams": ["dataspace"],
+    "safety": "confirmed",
+    "tips": "Manual runs can consume org resources and update transform outputs. Use dry_run first."
+  },
+  "d360_transform_schedule_set": {
+    "requiredParams": ["transformId", "body"],
+    "optionalParams": ["dataspace"],
+    "safety": "confirmed",
+    "tips": "Use dry_run first; schedule changes can trigger recurring downstream processing."
   }
 }

@@ -126,5 +126,39 @@
         "description": "Example activation target payload placeholder. Replace destination fields with values from the selected connector."
       }
     }
+  },
+  "d360_transform_create": {
+    "operation": "d360_transform_create",
+    "params": {
+      "body": {
+        "label": "Example Transform",
+        "name": "Example_Transform",
+        "type": "BATCH",
+        "creationType": "Custom",
+        "dataSpaceName": "default",
+        "description": "Example transform payload placeholder. Validate source and target object names before execution.",
+        "primarySource": "ExampleSource__dll",
+        "definition": {
+          "type": "SQL",
+          "version": "1.0",
+          "expression": "SELECT Id__c FROM ExampleSource__dll",
+          "targetDlo": "ExampleTarget__dll"
+        }
+      }
+    }
+  },
+  "d360_transform_schedule_set": {
+    "operation": "d360_transform_schedule_set",
+    "params": {
+      "transformId": "ExampleTransformId",
+      "body": {
+        "frequency": "Daily",
+        "time": {
+          "hour": 2,
+          "minute": 0,
+          "timeZone": "America/Los_Angeles"
+        }
+      }
+    }
   }
 }
