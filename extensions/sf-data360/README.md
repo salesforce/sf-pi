@@ -190,6 +190,7 @@ extensions/sf-data360/
     display-card.test.ts    ← unit / smoke test
     facade-card.test.ts     ← unit / smoke test
     facade-registry.test.ts ← unit / smoke test
+    facade-safety.test.ts   ← unit / smoke test
     metadata-card.test.ts   ← unit / smoke test
     metadata-tool.test.ts   ← unit / smoke test
     path.test.ts            ← unit / smoke test

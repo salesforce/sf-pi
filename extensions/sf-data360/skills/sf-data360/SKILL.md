@@ -24,7 +24,8 @@ hardcode a path like `/services/data/v60.0/...`.
 1. Probe → `d360 search` → `d360 examples` → `d360 runbook`/`execute` or raw `d360_api`.
 2. Keep result sets small (`limit`, `rowLimit`, `output_mode: "summary"|"file_only"`).
 3. Prefer validation/preview/test endpoints before saving configuration.
-4. For a non-default explicit `target_org`, d360 tools resolve that org
+4. For `d360 execute` operations with `safety: "confirmed"` or `"destructive"`, run `dry_run: true` first. Only pass `allow_confirmed: true` after the resolved request has been reviewed and the user clearly intends execution.
+5. For a non-default explicit `target_org`, d360 tools resolve that org
    through `@salesforce/core` and use its API version and org type.
 
 ## DMO/DLO discovery discipline

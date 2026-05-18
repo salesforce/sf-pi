@@ -65,6 +65,12 @@ export const D360FacadeParams = Type.Object({
       description: "Return resolved operation/runbook request without network calls.",
     }),
   ),
+  allow_confirmed: Type.Optional(
+    Type.Boolean({
+      description:
+        "Explicitly allow a confirmed/destructive registry operation to execute after reviewing dry_run output.",
+    }),
+  ),
   timeout_ms: Type.Optional(Type.Number({ description: "Optional request timeout in ms." })),
   output_mode: Type.Optional(
     StringEnum(["inline", "summary", "file_only"] as const, {
@@ -83,6 +89,7 @@ export interface D360FacadeInput {
   params?: Record<string, unknown>;
   target_org?: string;
   dry_run?: boolean;
+  allow_confirmed?: boolean;
   timeout_ms?: number;
   output_mode?: D360OutputMode;
 }
@@ -204,6 +211,20 @@ async function runExecute(
       operation,
       request: { method: operation.method, path: apiPath, body: body ?? null },
       summary: `Resolved ${operation.name}`,
+    };
+  }
+
+  if (shouldBlockConfirmedOperation(input, operation)) {
+    return {
+      ok: false,
+      action: "execute",
+      targetOrg,
+      apiVersion,
+      operation: operation.name,
+      safety: operation.safety,
+      summary: `${operation.name} requires dry_run or allow_confirmed`,
+      error:
+        "Confirmed/destructive operation blocked before network call. Run with dry_run=true first, then pass allow_confirmed=true only if you intentionally want to execute it.",
     };
   }
 
@@ -335,13 +356,23 @@ function buildOperationBody(operation: D360Operation, params: Record<string, unk
   return params.body ?? {};
 }
 
+export function shouldBlockConfirmedOperation(
+  input: Pick<D360FacadeInput, "dry_run" | "allow_confirmed">,
+  operation: Pick<D360Operation, "safety">,
+): boolean {
+  if (operation.safety === "read" || operation.safety === "safe_post") return false;
+  if (input.dry_run) return false;
+  return input.allow_confirmed !== true;
+}
+
 async function enforceOperationSafety(
   ctx: ExtensionContext,
   operation: D360Operation,
 ): Promise<void> {
   if (operation.safety === "read" || operation.safety === "safe_post") return;
-  if (!ctx.hasUI)
-    throw new Error(`Blocked ${operation.safety} operation ${operation.name} in headless mode.`);
+  // The explicit allow_confirmed gate above protects headless / tool-only
+  // execution. If a UI is present, ask for an additional human confirmation.
+  if (!ctx.hasUI) return;
   const choice = await ctx.ui.select(
     `Confirm Data 360 ${operation.safety} operation\n\n${operation.name}`,
     ["Allow once", "Block"],
