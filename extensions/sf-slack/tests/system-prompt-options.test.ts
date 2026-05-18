@@ -40,8 +40,19 @@ describe("sf-slack systemPromptOptions wiring", () => {
 
   it("still injects context when Slack tools are active", () => {
     // The injection path should still exist after the guard
-    expect(slackSource).toContain("sf-slack-context");
+    expect(slackSource).toContain("SLACK_CONTEXT_ENTRY_TYPE");
     expect(slackSource).toContain("<slack_workspace>");
     expect(slackSource).toContain("</slack_workspace>");
+  });
+
+  it("dedupes the workspace injection so identity is written once per live session", () => {
+    // Workspace identity (user + team) is static for the session. Without
+    // shouldInjectOnce dedup, sf-slack persists a fresh custom_message
+    // entry on every before_agent_start, bloating the prompt by N copies
+    // after N turns.
+    expect(slackSource).toContain("shouldInjectOnce");
+    expect(slackSource).toMatch(
+      /if \(!shouldInjectOnce\([\s\S]*?SLACK_CONTEXT_ENTRY_TYPE[\s\S]*?\)\) return;/,
+    );
   });
 });

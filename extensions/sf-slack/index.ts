@@ -111,6 +111,7 @@ import {
 } from "../../lib/common/extension-toggle.ts";
 import { registerExtensionDoctor } from "../../lib/common/doctor/registry.ts";
 import { markBootStep } from "../../lib/common/boot-timing.ts";
+import { shouldInjectOnce } from "../../lib/common/session/inject-once.ts";
 import { buildSlackDoctor } from "./lib/extension-doctor.ts";
 import {
   type CommandPanelAction,
@@ -122,6 +123,14 @@ import { openInfoPanel } from "../../lib/common/info-panel.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 
 const RESEARCH_WIDGET_KEY = "sf-slack-research";
+
+/**
+ * customType used for the once-per-session workspace identity injection.
+ * Exported as a const (not inlined as a string) so the once-per-session
+ * dedup predicate, the production injection, and the source-level tests
+ * all reference the same value.
+ */
+export const SLACK_CONTEXT_ENTRY_TYPE = "sf-slack-context";
 
 type SlackCommandAction =
   | "connect"
@@ -671,13 +680,19 @@ export default function sfSlack(pi: ExtensionAPI) {
   // and gated-tool counts are deliberately NOT injected — they drift turn-to-turn
   // and would invalidate prompt cache on every call. Those metrics live in the
   // footer/widget where drift is cheap.
-  pi.on("before_agent_start", async (event, _ctx) => {
+  pi.on("before_agent_start", async (event, ctx) => {
     if (!identity) return;
 
     // Only inject Slack context if at least one Slack tool is active in this session
     const { systemPromptOptions } = event;
     const hasSlackTool = systemPromptOptions.selectedTools?.some((t) => t.startsWith("slack"));
     if (!hasSlackTool) return;
+
+    // Workspace identity (user + team) is static for the life of a session,
+    // so inject once per live session and re-inject after compaction has
+    // swept the entry into a summary. Without this dedup the workspace
+    // block ends up persisted N times after N turns, bloating the prompt.
+    if (!shouldInjectOnce(ctx.sessionManager.getEntries(), SLACK_CONTEXT_ENTRY_TYPE)) return;
 
     // Boundary convention: lowercase snake_case XML tags, matching pi 0.75's
     // own context boundaries. See ADR 0008.
@@ -690,7 +705,7 @@ export default function sfSlack(pi: ExtensionAPI) {
 
     return {
       message: {
-        customType: "sf-slack-context",
+        customType: SLACK_CONTEXT_ENTRY_TYPE,
         content: lines.join("\n"),
         display: false,
       },
