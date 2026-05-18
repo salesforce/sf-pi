@@ -640,5 +640,175 @@
     "requiredParams": ["dataSpaceName", "body"],
     "safety": "confirmed",
     "tips": "Verify member names and filter configuration before changing data-space access. Use dry_run before execution."
+  },
+  "d360_sdm_list": {
+    "optionalParams": ["dataspace", "limit", "offset"],
+    "safety": "read"
+  },
+  "d360_sdm_get": {
+    "requiredParams": ["modelApiNameOrId"],
+    "optionalParams": ["dataspace"],
+    "safety": "read"
+  },
+  "d360_sdm_dependencies": {
+    "requiredParams": ["modelApiNameOrId"],
+    "optionalParams": ["dataspace"],
+    "safety": "read"
+  },
+  "d360_sdm_data_objects_list": {
+    "requiredParams": ["modelApiNameOrId"],
+    "optionalParams": ["dataspace"],
+    "safety": "read"
+  },
+  "d360_sdm_data_object_get": {
+    "requiredParams": ["modelApiNameOrId", "dataObjectNameOrId"],
+    "optionalParams": ["dataspace"],
+    "safety": "read"
+  },
+  "d360_sdm_dimensions_list": {
+    "requiredParams": ["modelApiNameOrId", "dataObjectNameOrId"],
+    "optionalParams": ["dataspace"],
+    "safety": "read"
+  },
+  "d360_sdm_measurements_list": {
+    "requiredParams": ["modelApiNameOrId", "dataObjectNameOrId"],
+    "optionalParams": ["dataspace"],
+    "safety": "read"
+  },
+  "d360_sdm_calc_dims_list": {
+    "requiredParams": ["modelApiNameOrId"],
+    "optionalParams": ["dataspace"],
+    "safety": "read"
+  },
+  "d360_sdm_calc_dim_get": {
+    "requiredParams": ["modelApiNameOrId", "calculatedDimensionId"],
+    "optionalParams": ["dataspace"],
+    "safety": "read"
+  },
+  "d360_sdm_calc_measures_list": {
+    "requiredParams": ["modelApiNameOrId"],
+    "optionalParams": ["dataspace"],
+    "safety": "read"
+  },
+  "d360_sdm_calc_measure_get": {
+    "requiredParams": ["modelApiNameOrId", "calculatedMeasureId"],
+    "optionalParams": ["dataspace"],
+    "safety": "read"
+  },
+  "d360_sdm_metrics_list": {
+    "requiredParams": ["modelApiNameOrId"],
+    "optionalParams": ["dataspace"],
+    "safety": "read"
+  },
+  "d360_sdm_metric_get": {
+    "requiredParams": ["modelApiNameOrId", "metricNameOrId"],
+    "optionalParams": ["dataspace"],
+    "safety": "read"
+  },
+  "d360_sdm_relationships_list": {
+    "requiredParams": ["modelApiNameOrId"],
+    "optionalParams": ["dataspace"],
+    "safety": "read"
+  },
+  "d360_sdm_relationship_get": {
+    "requiredParams": ["modelApiNameOrId", "relationshipId"],
+    "optionalParams": ["dataspace"],
+    "safety": "read"
+  },
+  "d360_sdm_formula_metadata": {
+    "optionalParams": ["modelApiNameOrId"],
+    "safety": "read"
+  },
+  "d360_sdm_permissions": {
+    "safety": "read"
+  },
+  "d360_sdm_validate": {
+    "requiredParams": ["modelApiNameOrId"],
+    "optionalParams": ["dataspace"],
+    "safety": "safe_post",
+    "tips": "Use validation before semantic query or downstream BI/RAG usage."
+  },
+  "d360_sdm_query": {
+    "requiredParams": ["body"],
+    "safety": "safe_post",
+    "tips": "Keep query limits small and verify semantic model ids and field expressions first."
+  },
+  "d360_sdm_create": {
+    "requiredParams": ["body"],
+    "optionalParams": ["dataspace"],
+    "safety": "confirmed",
+    "tips": "Create the shell first, then add data objects, relationships, calculated fields, and metrics. Use dry_run before execution."
+  },
+  "d360_sdm_update": {
+    "requiredParams": ["modelApiNameOrId", "body"],
+    "optionalParams": ["dataspace"],
+    "safety": "confirmed",
+    "tips": "Use dry_run first; model metadata changes can affect semantic queries, dashboards, and RAG retrievers."
+  },
+  "d360_sdm_clone": {
+    "requiredParams": ["modelApiNameOrId", "body"],
+    "optionalParams": ["dataspace"],
+    "safety": "confirmed",
+    "tips": "Dry-run first and verify the target apiName does not collide with an existing semantic model."
+  },
+  "d360_sdm_data_object_create": {
+    "requiredParams": ["modelApiNameOrId", "body"],
+    "optionalParams": ["dataspace"],
+    "safety": "confirmed",
+    "tips": "Verify the DMO, DLO, or CIO exists first. Use dataObjectType Dmo, Dlo, or Cio. Dry-run before execution."
+  },
+  "d360_sdm_data_object_update": {
+    "requiredParams": ["modelApiNameOrId", "dataObjectNameOrId", "body"],
+    "optionalParams": ["dataspace"],
+    "safety": "confirmed",
+    "tips": "Use dry_run first; changing a semantic data object can affect dimensions, measurements, relationships, and queries."
+  },
+  "d360_sdm_calc_dim_create": {
+    "requiredParams": ["modelApiNameOrId", "body"],
+    "optionalParams": ["dataspace"],
+    "safety": "confirmed",
+    "tips": "Use [DataObject].[Field] formula syntax and dry-run before execution."
+  },
+  "d360_sdm_calc_dim_update": {
+    "requiredParams": ["modelApiNameOrId", "calculatedDimensionId", "body"],
+    "optionalParams": ["dataspace"],
+    "safety": "confirmed",
+    "tips": "Dry-run first and validate formula syntax with supported formula metadata."
+  },
+  "d360_sdm_calc_measure_create": {
+    "requiredParams": ["modelApiNameOrId", "body"],
+    "optionalParams": ["dataspace"],
+    "safety": "confirmed",
+    "tips": "Use aggregationType UserAgg for aggregate formulas and dry-run before execution."
+  },
+  "d360_sdm_calc_measure_update": {
+    "requiredParams": ["modelApiNameOrId", "calculatedMeasureId", "body"],
+    "optionalParams": ["dataspace"],
+    "safety": "confirmed",
+    "tips": "Dry-run first and verify downstream metrics or semantic queries that reference the measure."
+  },
+  "d360_sdm_metric_create": {
+    "requiredParams": ["modelApiNameOrId", "body"],
+    "optionalParams": ["dataspace"],
+    "safety": "confirmed",
+    "tips": "Verify the metric definition JSON and dry-run before execution."
+  },
+  "d360_sdm_metric_update": {
+    "requiredParams": ["modelApiNameOrId", "metricNameOrId", "body"],
+    "optionalParams": ["dataspace"],
+    "safety": "confirmed",
+    "tips": "Dry-run first; metric changes can affect BI and semantic query consumers."
+  },
+  "d360_sdm_relationship_create": {
+    "requiredParams": ["modelApiNameOrId", "body"],
+    "optionalParams": ["dataspace"],
+    "safety": "confirmed",
+    "tips": "Use semantic field API names from data object list output, not raw DMO field names. Dry-run before execution."
+  },
+  "d360_sdm_relationship_update": {
+    "requiredParams": ["modelApiNameOrId", "relationshipId", "body"],
+    "optionalParams": ["dataspace"],
+    "safety": "confirmed",
+    "tips": "Dry-run first; relationship changes affect joins and semantic query results."
   }
 }

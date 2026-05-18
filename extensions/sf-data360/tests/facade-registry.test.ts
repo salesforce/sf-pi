@@ -178,6 +178,19 @@ describe("d360 facade registry", () => {
         "d360_dataspace_member_add",
       ]),
     });
+    expect(
+      searchRegistry("create update clone semantic model data object metric relationship")[0],
+    ).toMatchObject({
+      family: "Semantic Retrieval",
+      operations: expect.arrayContaining([
+        "d360_sdm_create",
+        "d360_sdm_update",
+        "d360_sdm_clone",
+        "d360_sdm_data_object_create",
+        "d360_sdm_metric_create",
+        "d360_sdm_relationship_create",
+      ]),
+    });
   });
 
   it("returns operation and runbook examples that point at registered names", () => {

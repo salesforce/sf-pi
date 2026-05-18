@@ -8,7 +8,7 @@ should be added to the JSON registry, not as new Pi tools.
 
 ## Operation coverage matrix
 
-Current generated registry size: **132 operations**.
+Current generated registry size: **164 operations**.
 
 | Family                 | Read | Safe POST | Confirmed | Destructive |
 | ---------------------- | ---: | --------: | --------: | ----------: |
@@ -21,7 +21,7 @@ Current generated registry size: **132 operations**.
 | Ingestion              |    3 |         0 |         0 |           0 |
 | Transforms and Actions |    2 |         0 |         0 |           0 |
 | Identity Resolution    |    3 |         0 |         5 |           0 |
-| Semantic Retrieval     |   13 |         1 |         6 |           0 |
+| Semantic Retrieval     |   30 |         3 |        19 |           0 |
 | DataKit                |    7 |         0 |         0 |           0 |
 | DMO                    |    2 |         0 |         2 |           0 |
 | DLO                    |    2 |         0 |         2 |           0 |
@@ -132,6 +132,18 @@ Never add `allow_confirmed: true` to a placeholder payload.
 3. List/search indexes before retriever create.
 4. For retriever configurations, verify `queryType`, input search index,
    output fields, and `isActive` behavior.
+
+### Semantic Data Models
+
+1. Create the semantic model shell first, then add data objects and relationships.
+2. Verify every referenced DMO, DLO, CIO, data object, field, metric, and
+   relationship id before mutation.
+3. Use `d360_sdm_formula_metadata` before calculated dimensions or calculated
+   measurements.
+4. Use `d360_sdm_validate` before semantic queries or downstream BI/RAG use.
+5. Dry-run create/update/clone/data-object/calculated-field/metric/relationship
+   operations. Delete operations remain omitted until destructive review UX
+   exists.
 
 ### Dataspaces
 

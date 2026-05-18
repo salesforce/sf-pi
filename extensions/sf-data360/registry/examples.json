@@ -1071,5 +1071,212 @@
         ]
       }
     }
+  },
+  "d360_sdm_create": {
+    "operation": "d360_sdm_create",
+    "params": {
+      "body": {
+        "apiName": "ExampleSemanticModel",
+        "label": "Example Semantic Model",
+        "description": "Example SDM shell placeholder. Add data objects and relationships after creation.",
+        "dataspace": "default"
+      }
+    }
+  },
+  "d360_sdm_update": {
+    "operation": "d360_sdm_update",
+    "params": {
+      "modelApiNameOrId": "ExampleSemanticModel",
+      "body": {
+        "label": "Example Semantic Model Updated",
+        "description": "Dry-run placeholder only."
+      }
+    }
+  },
+  "d360_sdm_clone": {
+    "operation": "d360_sdm_clone",
+    "params": {
+      "modelApiNameOrId": "ExampleSemanticModel",
+      "body": {
+        "apiName": "ExampleSemanticModelClone"
+      }
+    }
+  },
+  "d360_sdm_data_object_create": {
+    "operation": "d360_sdm_data_object_create",
+    "params": {
+      "modelApiNameOrId": "ExampleSemanticModel",
+      "body": {
+        "dataObjectName": "ExampleIndividual__dlm",
+        "label": "Example Individual",
+        "dataObjectType": "Dmo",
+        "shouldIncludeAllFields": true
+      }
+    }
+  },
+  "d360_sdm_data_object_update": {
+    "operation": "d360_sdm_data_object_update",
+    "params": {
+      "modelApiNameOrId": "ExampleSemanticModel",
+      "dataObjectNameOrId": "ExampleIndividual",
+      "body": {
+        "label": "Example Individual Updated",
+        "shouldIncludeAllFields": true
+      }
+    }
+  },
+  "d360_sdm_calc_dim_create": {
+    "operation": "d360_sdm_calc_dim_create",
+    "params": {
+      "modelApiNameOrId": "ExampleSemanticModel",
+      "body": {
+        "label": "Example Tier",
+        "expression": "IF [ExampleIndividual].[Score] > 10 THEN 'High' ELSE 'Low' END",
+        "dataType": "Text"
+      }
+    }
+  },
+  "d360_sdm_calc_dim_update": {
+    "operation": "d360_sdm_calc_dim_update",
+    "params": {
+      "modelApiNameOrId": "ExampleSemanticModel",
+      "calculatedDimensionId": "ExampleCalculatedDimensionId",
+      "body": {
+        "label": "Example Tier Updated",
+        "expression": "IF [ExampleIndividual].[Score] > 20 THEN 'High' ELSE 'Low' END",
+        "dataType": "Text"
+      }
+    }
+  },
+  "d360_sdm_calc_measure_create": {
+    "operation": "d360_sdm_calc_measure_create",
+    "params": {
+      "modelApiNameOrId": "ExampleSemanticModel",
+      "body": {
+        "label": "Example Total Amount",
+        "expression": "SUM([ExampleIndividual].[Amount])",
+        "dataType": "Number",
+        "aggregationType": "UserAgg"
+      }
+    }
+  },
+  "d360_sdm_calc_measure_update": {
+    "operation": "d360_sdm_calc_measure_update",
+    "params": {
+      "modelApiNameOrId": "ExampleSemanticModel",
+      "calculatedMeasureId": "ExampleCalculatedMeasureId",
+      "body": {
+        "label": "Example Total Amount Updated",
+        "expression": "SUM([ExampleIndividual].[Amount])",
+        "dataType": "Number",
+        "aggregationType": "UserAgg"
+      }
+    }
+  },
+  "d360_sdm_metric_create": {
+    "operation": "d360_sdm_metric_create",
+    "params": {
+      "modelApiNameOrId": "ExampleSemanticModel",
+      "body": {
+        "name": "ExampleMetric",
+        "label": "Example Metric",
+        "definition": {
+          "expression": {
+            "semanticField": {
+              "name": "Example_Total_Amount"
+            }
+          }
+        }
+      }
+    }
+  },
+  "d360_sdm_metric_update": {
+    "operation": "d360_sdm_metric_update",
+    "params": {
+      "modelApiNameOrId": "ExampleSemanticModel",
+      "metricNameOrId": "ExampleMetric",
+      "body": {
+        "label": "Example Metric Updated",
+        "definition": {
+          "expression": {
+            "semanticField": {
+              "name": "Example_Total_Amount"
+            }
+          }
+        }
+      }
+    }
+  },
+  "d360_sdm_relationship_create": {
+    "operation": "d360_sdm_relationship_create",
+    "params": {
+      "modelApiNameOrId": "ExampleSemanticModel",
+      "body": {
+        "label": "Example Relationship",
+        "leftSemanticDefinitionApiName": "ExampleIndividual",
+        "rightSemanticDefinitionApiName": "ExampleAccount",
+        "cardinality": "ManyToOne",
+        "joinType": "Auto",
+        "criteria": {
+          "criteria": [
+            {
+              "joinOperator": "Equals",
+              "leftFieldType": "TableField",
+              "leftSemanticFieldApiName": "ExampleIndividual_Id",
+              "rightFieldType": "TableField",
+              "rightSemanticFieldApiName": "ExampleAccount_Id"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "d360_sdm_relationship_update": {
+    "operation": "d360_sdm_relationship_update",
+    "params": {
+      "modelApiNameOrId": "ExampleSemanticModel",
+      "relationshipId": "ExampleRelationshipId",
+      "body": {
+        "label": "Example Relationship Updated",
+        "cardinality": "ManyToOne",
+        "joinType": "Auto",
+        "criteria": {
+          "criteria": [
+            {
+              "joinOperator": "Equals",
+              "leftFieldType": "TableField",
+              "leftSemanticFieldApiName": "ExampleIndividual_Id",
+              "rightFieldType": "TableField",
+              "rightSemanticFieldApiName": "ExampleAccount_Id"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "d360_sdm_query": {
+    "operation": "d360_sdm_query",
+    "params": {
+      "body": {
+        "semanticModelId": "ExampleSemanticModel",
+        "structuredSemanticQuery": {
+          "fields": [
+            {
+              "expression": {
+                "semanticField": {
+                  "name": "ExampleMetric"
+                }
+              },
+              "alias": "exampleMetric"
+            }
+          ],
+          "options": {
+            "limitOptions": {
+              "limit": 10
+            }
+          }
+        }
+      }
+    }
   }
 }

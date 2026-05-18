@@ -922,5 +922,229 @@
     "description": "Add members to a data space.",
     "method": "PUT",
     "path": "/ssot/data-spaces/{dataSpaceName}/members"
+  },
+  {
+    "name": "d360_sdm_list",
+    "family": "Semantic Retrieval",
+    "description": "List semantic data models.",
+    "method": "GET",
+    "path": "/ssot/semantic/models"
+  },
+  {
+    "name": "d360_sdm_get",
+    "family": "Semantic Retrieval",
+    "description": "Get a semantic data model by API name or id.",
+    "method": "GET",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}"
+  },
+  {
+    "name": "d360_sdm_dependencies",
+    "family": "Semantic Retrieval",
+    "description": "Get dependencies of a semantic data model.",
+    "method": "GET",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}/dependencies"
+  },
+  {
+    "name": "d360_sdm_data_objects_list",
+    "family": "Semantic Retrieval",
+    "description": "List data objects in a semantic data model.",
+    "method": "GET",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}/data-objects"
+  },
+  {
+    "name": "d360_sdm_data_object_get",
+    "family": "Semantic Retrieval",
+    "description": "Get a data object from a semantic data model.",
+    "method": "GET",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}/data-objects/{dataObjectNameOrId}"
+  },
+  {
+    "name": "d360_sdm_dimensions_list",
+    "family": "Semantic Retrieval",
+    "description": "List dimensions for a semantic data object.",
+    "method": "GET",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}/data-objects/{dataObjectNameOrId}/dimensions"
+  },
+  {
+    "name": "d360_sdm_measurements_list",
+    "family": "Semantic Retrieval",
+    "description": "List measurements for a semantic data object.",
+    "method": "GET",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}/data-objects/{dataObjectNameOrId}/measurements"
+  },
+  {
+    "name": "d360_sdm_calc_dims_list",
+    "family": "Semantic Retrieval",
+    "description": "List calculated dimensions in a semantic data model.",
+    "method": "GET",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}/calculated-dimensions"
+  },
+  {
+    "name": "d360_sdm_calc_dim_get",
+    "family": "Semantic Retrieval",
+    "description": "Get a calculated dimension from a semantic data model.",
+    "method": "GET",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}/calculated-dimensions/{calculatedDimensionId}"
+  },
+  {
+    "name": "d360_sdm_calc_measures_list",
+    "family": "Semantic Retrieval",
+    "description": "List calculated measurements in a semantic data model.",
+    "method": "GET",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}/calculated-measurements"
+  },
+  {
+    "name": "d360_sdm_calc_measure_get",
+    "family": "Semantic Retrieval",
+    "description": "Get a calculated measurement from a semantic data model.",
+    "method": "GET",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}/calculated-measurements/{calculatedMeasureId}"
+  },
+  {
+    "name": "d360_sdm_metrics_list",
+    "family": "Semantic Retrieval",
+    "description": "List metrics in a semantic data model.",
+    "method": "GET",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}/metrics"
+  },
+  {
+    "name": "d360_sdm_metric_get",
+    "family": "Semantic Retrieval",
+    "description": "Get a metric from a semantic data model.",
+    "method": "GET",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}/metrics/{metricNameOrId}"
+  },
+  {
+    "name": "d360_sdm_relationships_list",
+    "family": "Semantic Retrieval",
+    "description": "List relationships in a semantic data model.",
+    "method": "GET",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}/relationships"
+  },
+  {
+    "name": "d360_sdm_relationship_get",
+    "family": "Semantic Retrieval",
+    "description": "Get a relationship from a semantic data model.",
+    "method": "GET",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}/relationships/{relationshipId}"
+  },
+  {
+    "name": "d360_sdm_formula_metadata",
+    "family": "Semantic Retrieval",
+    "description": "Get supported formula metadata for semantic data models.",
+    "method": "GET",
+    "path": "/ssot/semantic/models/formula-metadata"
+  },
+  {
+    "name": "d360_sdm_permissions",
+    "family": "Semantic Retrieval",
+    "description": "Get semantic data model permissions.",
+    "method": "GET",
+    "path": "/ssot/semantic/permissions"
+  },
+  {
+    "name": "d360_sdm_validate",
+    "family": "Semantic Retrieval",
+    "description": "Validate a semantic data model.",
+    "method": "POST",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}/validate"
+  },
+  {
+    "name": "d360_sdm_query",
+    "family": "Semantic Retrieval",
+    "description": "Execute a semantic query through the semantic engine gateway.",
+    "method": "POST",
+    "path": "/semantic-engine/gateway"
+  },
+  {
+    "name": "d360_sdm_create",
+    "family": "Semantic Retrieval",
+    "description": "Create a semantic data model shell.",
+    "method": "POST",
+    "path": "/ssot/semantic/models"
+  },
+  {
+    "name": "d360_sdm_update",
+    "family": "Semantic Retrieval",
+    "description": "Update a semantic data model.",
+    "method": "PATCH",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}"
+  },
+  {
+    "name": "d360_sdm_clone",
+    "family": "Semantic Retrieval",
+    "description": "Clone a semantic data model.",
+    "method": "POST",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}/clone"
+  },
+  {
+    "name": "d360_sdm_data_object_create",
+    "family": "Semantic Retrieval",
+    "description": "Add a data object to a semantic data model.",
+    "method": "POST",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}/data-objects"
+  },
+  {
+    "name": "d360_sdm_data_object_update",
+    "family": "Semantic Retrieval",
+    "description": "Update a data object in a semantic data model.",
+    "method": "PATCH",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}/data-objects/{dataObjectNameOrId}"
+  },
+  {
+    "name": "d360_sdm_calc_dim_create",
+    "family": "Semantic Retrieval",
+    "description": "Create a calculated dimension in a semantic data model.",
+    "method": "POST",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}/calculated-dimensions"
+  },
+  {
+    "name": "d360_sdm_calc_dim_update",
+    "family": "Semantic Retrieval",
+    "description": "Update a calculated dimension in a semantic data model.",
+    "method": "PATCH",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}/calculated-dimensions/{calculatedDimensionId}"
+  },
+  {
+    "name": "d360_sdm_calc_measure_create",
+    "family": "Semantic Retrieval",
+    "description": "Create a calculated measurement in a semantic data model.",
+    "method": "POST",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}/calculated-measurements"
+  },
+  {
+    "name": "d360_sdm_calc_measure_update",
+    "family": "Semantic Retrieval",
+    "description": "Update a calculated measurement in a semantic data model.",
+    "method": "PATCH",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}/calculated-measurements/{calculatedMeasureId}"
+  },
+  {
+    "name": "d360_sdm_metric_create",
+    "family": "Semantic Retrieval",
+    "description": "Create a metric in a semantic data model.",
+    "method": "POST",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}/metrics"
+  },
+  {
+    "name": "d360_sdm_metric_update",
+    "family": "Semantic Retrieval",
+    "description": "Update a metric in a semantic data model.",
+    "method": "PATCH",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}/metrics/{metricNameOrId}"
+  },
+  {
+    "name": "d360_sdm_relationship_create",
+    "family": "Semantic Retrieval",
+    "description": "Create a relationship between semantic data objects.",
+    "method": "POST",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}/relationships"
+  },
+  {
+    "name": "d360_sdm_relationship_update",
+    "family": "Semantic Retrieval",
+    "description": "Update a relationship in a semantic data model.",
+    "method": "PATCH",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}/relationships/{relationshipId}"
   }
 ]
