@@ -81,5 +81,26 @@
     "params": {
       "ciName": "Example_Score__cio"
     }
+  },
+  "d360_segment_create": {
+    "operation": "d360_segment_create",
+    "params": {
+      "body": {
+        "displayName": "Example Segment",
+        "segmentOnApiName": "ssot__Individual__dlm",
+        "dataSpaceName": "default",
+        "description": "Example segment payload placeholder. Replace criteria with verified DMO/CI fields before execution.",
+        "criteria": {
+          "type": "DirectAttributes",
+          "expression": "/* replace with verified segment criteria */"
+        }
+      }
+    }
+  },
+  "d360_segment_publish": {
+    "operation": "d360_segment_publish",
+    "params": {
+      "segmentId": "ExampleSegmentId"
+    }
   }
 }

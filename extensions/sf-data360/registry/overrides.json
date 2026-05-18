@@ -311,5 +311,25 @@
   "d360_ci_disable": {
     "requiredParams": ["ciName"],
     "safety": "confirmed"
+  },
+  "d360_segment_create": {
+    "requiredParams": ["body"],
+    "safety": "confirmed",
+    "tips": "Verify DMO/CI fields first. Prefer dry_run before create. Segment payload shapes can vary by definition type."
+  },
+  "d360_segment_update": {
+    "requiredParams": ["segmentId", "body"],
+    "safety": "confirmed",
+    "tips": "Use dry_run first; changing a segment can affect downstream activations."
+  },
+  "d360_segment_publish": {
+    "requiredParams": ["segmentId"],
+    "safety": "confirmed",
+    "tips": "Publishing can start asynchronous membership calculation. Inspect segment status before and after."
+  },
+  "d360_segment_deactivate": {
+    "requiredParams": ["segmentApiName"],
+    "safety": "confirmed",
+    "tips": "Deactivate uses segment API/developer name, not always the internal id."
   }
 }

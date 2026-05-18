@@ -63,6 +63,14 @@ describe("d360 facade registry", () => {
       family: "Calculated Insights",
       operations: expect.arrayContaining(["d360_ci_create", "d360_ci_run", "d360_ci_enable"]),
     });
+    expect(searchRegistry("create publish deactivate audience segment")[0]).toMatchObject({
+      family: "Segment",
+      operations: expect.arrayContaining([
+        "d360_segment_create",
+        "d360_segment_publish",
+        "d360_segment_deactivate",
+      ]),
+    });
     expect(searchRegistry("connection test connector")[0]).toMatchObject({
       family: "Connection",
       operations: expect.arrayContaining(["d360_connection_test"]),

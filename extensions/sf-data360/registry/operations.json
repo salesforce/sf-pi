@@ -700,5 +700,45 @@
     "path": "/ssot/calculated-insights/{ciName}/actions/disable",
     "requiredParams": ["ciName"],
     "safety": "confirmed"
+  },
+  {
+    "name": "d360_segment_create",
+    "family": "Segment",
+    "description": "Create a segment. Validate DMO/CI fields and payload shape before create.",
+    "method": "POST",
+    "path": "/ssot/segments",
+    "requiredParams": ["body"],
+    "safety": "confirmed",
+    "tips": "Verify DMO/CI fields first. Prefer dry_run before create. Segment payload shapes can vary by definition type."
+  },
+  {
+    "name": "d360_segment_update",
+    "family": "Segment",
+    "description": "Update a segment by id.",
+    "method": "PATCH",
+    "path": "/ssot/segments/{segmentId}",
+    "requiredParams": ["segmentId", "body"],
+    "safety": "confirmed",
+    "tips": "Use dry_run first; changing a segment can affect downstream activations."
+  },
+  {
+    "name": "d360_segment_publish",
+    "family": "Segment",
+    "description": "Publish/calculate segment membership by id.",
+    "method": "POST",
+    "path": "/ssot/segments/{segmentId}/actions/publish",
+    "requiredParams": ["segmentId"],
+    "safety": "confirmed",
+    "tips": "Publishing can start asynchronous membership calculation. Inspect segment status before and after."
+  },
+  {
+    "name": "d360_segment_deactivate",
+    "family": "Segment",
+    "description": "Deactivate a segment by API name.",
+    "method": "POST",
+    "path": "/ssot/segments/{segmentApiName}/actions/deactivate",
+    "requiredParams": ["segmentApiName"],
+    "safety": "confirmed",
+    "tips": "Deactivate uses segment API/developer name, not always the internal id."
   }
 ]
