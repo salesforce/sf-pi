@@ -274,9 +274,43 @@ async function runExecute(
     };
   }
 
+  const conn = await connFromAlias(targetOrg);
+  const preflight = resolveDestructivePreflightRequest(operation.name, params);
+  if (preflight) {
+    if (signal?.aborted) throw new Error("d360 execute cancelled before destructive preflight.");
+    const preflightResp = await connRequest<unknown>(conn, {
+      method: "GET",
+      url: buildApiPath(preflight.path, apiVersion, preflight.query),
+      timeoutMs: input.timeout_ms ?? 120_000,
+    });
+    const preflightText = stringify(preflightResp.body);
+    if (
+      preflightResp.status < 200 ||
+      preflightResp.status >= 300 ||
+      responseLooksLikeError(preflightText)
+    ) {
+      return {
+        ok: false,
+        action: "execute",
+        targetOrg,
+        apiVersion,
+        operation: operation.name,
+        safety: operation.safety,
+        status: preflightResp.status,
+        response: preflightResp.body,
+        preflight: {
+          method: "GET",
+          path: buildApiPath(preflight.path, apiVersion, preflight.query),
+        },
+        summary: `${operation.name} preflight failed HTTP ${preflightResp.status}`,
+        error:
+          "Destructive operation blocked because its read preflight failed. Inspect the resource identifier and target org before retrying.",
+      };
+    }
+  }
+
   await enforceOperationSafety(ctx, operation);
   if (signal?.aborted) throw new Error("d360 execute cancelled before request.");
-  const conn = await connFromAlias(targetOrg);
   const resp = await connRequest<unknown>(conn, {
     method: operation.method,
     url: apiPath,
@@ -401,6 +435,146 @@ function buildOperationBody(operation: D360Operation, params: Record<string, unk
     return { sql: params.sql };
   }
   return params.body ?? {};
+}
+
+export function resolveDestructivePreflightRequest(
+  operationName: string,
+  params: Record<string, unknown>,
+): { path: string; query?: QueryParams } | undefined {
+  switch (operationName) {
+    case "d360_query_sql_cancel":
+      return { path: `/ssot/query-sql/${encodePathParam(params.queryId, "queryId")}` };
+    case "d360_dmo_delete":
+      return { path: `/ssot/data-model-objects/${encodePathParam(params.dmoName, "dmoName")}` };
+    case "d360_dlo_delete":
+      return { path: `/ssot/data-lake-objects/${encodePathParam(params.dloName, "dloName")}` };
+    case "d360_dmo_mapping_delete":
+      return {
+        path: `/ssot/data-model-object-mappings/${encodePathParam(params.mappingName, "mappingName")}`,
+        query: optionalQuery(params, ["dataspace"]),
+      };
+    case "d360_dmo_field_mapping_delete":
+      return {
+        path: `/ssot/data-model-object-mappings/${encodePathParam(params.mappingName, "mappingName")}`,
+        query: optionalQuery(params, ["dataspace"]),
+      };
+    case "d360_datastream_delete":
+      return {
+        path: `/ssot/data-streams/${encodePathParam(params.dataStreamId, "dataStreamId")}`,
+        query: optionalQuery(params, ["dataspace"]),
+      };
+    case "d360_connection_delete":
+      return {
+        path: `/ssot/connections/${encodePathParam(params.connectionId, "connectionId")}`,
+        query: optionalQuery(params, ["connectorType", "dataspace"]),
+      };
+    case "d360_segment_delete":
+      return { path: `/ssot/segments/${encodePathParam(params.segmentApiName, "segmentApiName")}` };
+    case "d360_ci_delete":
+      return {
+        path: `/ssot/calculated-insights/${encodePathParam(params.ciName, "ciName")}`,
+        query: optionalQuery(params, ["dataspace"]),
+      };
+    case "d360_ir_delete":
+      return {
+        path: `/ssot/identity-resolutions/${encodePathParam(params.identityResolutionId, "identityResolutionId")}`,
+        query: optionalQuery(params, ["dataspace"]),
+      };
+    case "d360_activation_delete":
+      return { path: `/ssot/activations/${encodePathParam(params.activationId, "activationId")}` };
+    case "d360_activation_target_delete":
+      return {
+        path: `/ssot/activation-targets/${encodePathParam(params.activationTargetId, "activationTargetId")}`,
+      };
+    case "d360_dataspace_delete":
+      return {
+        path: `/ssot/data-spaces/${encodePathParam(params.dataSpaceName, "dataSpaceName")}`,
+      };
+    case "d360_dataspace_member_remove":
+      return {
+        path: `/ssot/data-spaces/${encodePathParam(params.dataSpaceName, "dataSpaceName")}/members`,
+      };
+    case "d360_transform_delete":
+      return {
+        path: `/ssot/data-transforms/${encodePathParam(params.transformId, "transformId")}`,
+        query: optionalQuery(params, ["dataspace"]),
+      };
+    case "d360_datakit_undeploy":
+      return {
+        path: `/ssot/data-kits/${encodePathParam(params.dataKitId, "dataKitId")}`,
+        query: optionalQuery(params, ["dataspace"]),
+      };
+    case "d360_dataaction_target_delete":
+      return {
+        path: `/ssot/data-action-targets/${encodePathParam(params.dataActionTargetId, "dataActionTargetId")}`,
+        query: optionalQuery(params, ["dataspace"]),
+      };
+    case "d360_sdm_delete":
+      return {
+        path: `/ssot/semantic/models/${encodePathParam(params.modelApiNameOrId, "modelApiNameOrId")}`,
+        query: optionalQuery(params, ["dataspace"]),
+      };
+    case "d360_sdm_data_object_delete":
+      return {
+        path: `/ssot/semantic/models/${encodePathParam(params.modelApiNameOrId, "modelApiNameOrId")}/data-objects/${encodePathParam(params.dataObjectNameOrId, "dataObjectNameOrId")}`,
+        query: optionalQuery(params, ["dataspace"]),
+      };
+    case "d360_sdm_calc_dim_delete":
+      return {
+        path: `/ssot/semantic/models/${encodePathParam(params.modelApiNameOrId, "modelApiNameOrId")}/calculated-dimensions/${encodePathParam(params.calculatedDimensionId, "calculatedDimensionId")}`,
+        query: optionalQuery(params, ["dataspace"]),
+      };
+    case "d360_sdm_calc_measure_delete":
+      return {
+        path: `/ssot/semantic/models/${encodePathParam(params.modelApiNameOrId, "modelApiNameOrId")}/calculated-measurements/${encodePathParam(params.calculatedMeasureId, "calculatedMeasureId")}`,
+        query: optionalQuery(params, ["dataspace"]),
+      };
+    case "d360_sdm_metric_delete":
+      return {
+        path: `/ssot/semantic/models/${encodePathParam(params.modelApiNameOrId, "modelApiNameOrId")}/metrics/${encodePathParam(params.metricNameOrId, "metricNameOrId")}`,
+        query: optionalQuery(params, ["dataspace"]),
+      };
+    case "d360_sdm_relationship_delete":
+      return {
+        path: `/ssot/semantic/models/${encodePathParam(params.modelApiNameOrId, "modelApiNameOrId")}/relationships/${encodePathParam(params.relationshipId, "relationshipId")}`,
+        query: optionalQuery(params, ["dataspace"]),
+      };
+    case "d360_search_index_delete":
+      return {
+        path: `/ssot/search-index/${encodePathParam(params.searchIndexApiNameOrId, "searchIndexApiNameOrId")}`,
+      };
+    case "d360_retriever_delete":
+      return {
+        path: `/ssot/machine-learning/retrievers/${encodePathParam(params.retrieverIdOrName, "retrieverIdOrName")}`,
+      };
+    case "d360_retriever_config_delete":
+      return {
+        path: `/ssot/machine-learning/retrievers/${encodePathParam(params.retrieverIdOrName, "retrieverIdOrName")}/configurations/${encodePathParam(params.configurationIdOrName, "configurationIdOrName")}`,
+      };
+    default:
+      return undefined;
+  }
+}
+
+function encodePathParam(value: unknown, label: string): string {
+  if (typeof value !== "string" || !value.trim()) throw new Error(`${label} is required.`);
+  return encodeURIComponent(value.trim());
+}
+
+function optionalQuery(params: Record<string, unknown>, keys: string[]): QueryParams | undefined {
+  const query: QueryParams = {};
+  for (const key of keys) {
+    const value = params[key];
+    if (
+      typeof value === "string" ||
+      typeof value === "number" ||
+      typeof value === "boolean" ||
+      value === null
+    ) {
+      query[key] = value as QueryParams[string];
+    }
+  }
+  return Object.keys(query).length ? query : undefined;
 }
 
 export function shouldBlockConfirmedOperation(

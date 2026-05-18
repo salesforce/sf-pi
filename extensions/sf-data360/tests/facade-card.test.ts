@@ -95,6 +95,56 @@ describe("d360 facade result cards", () => {
     expect(text).not.toContain("Keys: content, error, size");
   });
 
+  it("summarizes local helper output and next steps", () => {
+    const { card, text } = facadeResultToLlmText({
+      ok: true,
+      action: "execute",
+      targetOrg: "AgentforceSTDM",
+      operation: "d360_smart_mapping_suggest",
+      helper: "d360_smart_mapping_suggest",
+      summary: "Suggested 2 DLO-to-DMO field mapping(s)",
+      matchCount: 2,
+      matches: [
+        { sourceField: "Id__c", targetField: "Id__c", confidence: 1 },
+        { sourceField: "Name__c", targetField: "Name__c", confidence: 1 },
+      ],
+      next: {
+        operation: "d360_dmo_mapping_create",
+        dry_run: true,
+        hint: "Review mappingPayload, then dry-run d360_dmo_mapping_create.",
+      },
+    });
+
+    expect(card.sections?.[0]?.title).toBe("Suggested mappings");
+    expect(text).toContain("Matches: 2");
+    expect(text).toContain("High confidence: 2");
+    expect(text).toContain("Next: d360_dmo_mapping_create dry_run");
+  });
+
+  it("summarizes destructive preflight failures", () => {
+    const { text } = facadeResultToLlmText({
+      ok: false,
+      action: "execute",
+      targetOrg: "AgentforceSTDM",
+      operation: "d360_dmo_delete",
+      status: 404,
+      summary: "d360_dmo_delete preflight failed HTTP 404",
+      error: "Destructive operation blocked because its read preflight failed.",
+      preflight: {
+        method: "GET",
+        path: "/services/data/v66.0/ssot/data-model-objects/Missing__dlm",
+      },
+      response: {
+        errorCode: "NOT_FOUND",
+        message: "not found",
+      },
+    });
+
+    expect(text).toContain("🛡️ Preflight");
+    expect(text).toContain("GET /services/data/v66.0/ssot/data-model-objects/Missing__dlm");
+    expect(text).toContain("NOT_FOUND");
+  });
+
   it("summarizes STDM timeline runbooks", () => {
     const { text } = facadeResultToLlmText(
       {

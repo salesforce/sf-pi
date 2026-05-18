@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   evaluateDestructiveExecutionGuard,
   isAgentforceStdmTarget,
+  resolveDestructivePreflightRequest,
   shouldBlockConfirmedOperation,
 } from "../lib/facade-tool.ts";
 import type { SfEnvironment } from "../../../lib/common/sf-environment/types.ts";
@@ -96,5 +97,20 @@ describe("d360 facade confirmed-operation guard", () => {
         hasUI: true,
       }),
     ).toEqual({ blocked: false });
+  });
+
+  it("resolves read preflights for destructive operations with clear GET counterparts", () => {
+    expect(
+      resolveDestructivePreflightRequest("d360_dmo_delete", { dmoName: "Example__dlm" }),
+    ).toEqual({ path: "/ssot/data-model-objects/Example__dlm" });
+    expect(
+      resolveDestructivePreflightRequest("d360_connection_delete", {
+        connectionId: "abc 123",
+        connectorType: "SNOWFLAKE",
+      }),
+    ).toEqual({
+      path: "/ssot/connections/abc%20123",
+      query: { connectorType: "SNOWFLAKE" },
+    });
   });
 });

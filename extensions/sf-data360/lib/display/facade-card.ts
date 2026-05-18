@@ -99,9 +99,22 @@ function executeCard(
   const ok = result.ok !== false;
   const response = objectValue(result.response);
   const sections: D360ResultSection[] = [];
+  const helperSections = summarizeHelperResult(result);
+  if (helperSections.length) sections.push(...helperSections);
   const responseLines = summarizeResponse(response);
   if (responseLines.length)
     sections.push({ title: "Result", icon: ok ? "✅" : "❌", lines: responseLines });
+  const preflight = objectValue(result.preflight);
+  if (Object.keys(preflight).length) {
+    sections.push({
+      title: "Preflight",
+      icon: "🛡️",
+      lines: [
+        `${stringValue(preflight.method) ?? "GET"} ${stringValue(preflight.path) ?? "?"}`,
+        stringValue(result.error) ?? "Read preflight blocked destructive execution.",
+      ],
+    });
+  }
   if (result.dryRun === true) {
     const request = objectValue(result.request);
     sections.push({
@@ -123,7 +136,7 @@ function executeCard(
         .join(" · "),
       summary: stringValue(result.summary) ?? `${operation}${status ? ` HTTP ${status}` : ""}`,
       sections,
-      nextSteps: ok ? undefined : ["Inspect the full JSON for raw error details."],
+      nextSteps: ok ? helperNextSteps(result) : ["Inspect the full JSON for raw error details."],
     },
     opts,
   );
@@ -193,6 +206,93 @@ function withArtifacts(card: D360ResultCard, opts: FacadeCardBuildOptions): D360
       { label: "Full JSON", path: opts.fullOutputPath, kind: "json" },
     ],
   };
+}
+
+function summarizeHelperResult(result: Record<string, unknown>): D360ResultSection[] {
+  const helper = stringValue(result.helper);
+  if (!helper) return [];
+
+  switch (helper) {
+    case "d360_standard_mapping_preview": {
+      const mappings = arrayValue(result.dmoMappings).map(objectValue);
+      return [
+        {
+          title: "Preview",
+          icon: "🧩",
+          lines: [
+            `Source: ${stringValue(result.sourceObjectName) ?? "unknown"}`,
+            `Target DMOs: ${numberValue(result.targetDmoCount) ?? mappings.length}`,
+            ...mappings.slice(0, 3).map((mapping) => {
+              const fields = arrayValue(mapping.fieldMappings).length;
+              return `${stringValue(mapping.targetDmoName) ?? "target"}: ${fields} field mapping(s)`;
+            }),
+          ],
+        },
+      ];
+    }
+    case "d360_preview_field_matches":
+    case "d360_smart_mapping_suggest": {
+      const matches = arrayValue(result.matches).map(objectValue);
+      const highConfidence = matches.filter((match) => (numberValue(match.confidence) ?? 0) >= 0.9);
+      return [
+        {
+          title: helper === "d360_smart_mapping_suggest" ? "Suggested mappings" : "Field matches",
+          icon: "🔗",
+          lines: [
+            `Matches: ${numberValue(result.matchCount) ?? matches.length}`,
+            `High confidence: ${highConfidence.length}`,
+            ...matches.slice(0, 5).map((match) => {
+              const confidence = numberValue(match.confidence);
+              return `${stringValue(match.sourceField) ?? "source"} → ${stringValue(match.targetField) ?? "target"}${confidence === undefined ? "" : ` (${confidence})`}`;
+            }),
+          ],
+        },
+      ];
+    }
+    case "d360_event_date_recommend": {
+      const recommendation = objectValue(result.recommendation);
+      return [
+        {
+          title: "Recommendation",
+          icon: "🗓️",
+          lines: [
+            `Field: ${stringValue(recommendation.fieldName) ?? "none"}`,
+            `Score: ${numberValue(recommendation.score) ?? "n/a"}`,
+            ...arrayValue(recommendation.reasons).map(String).slice(0, 3),
+          ],
+        },
+      ];
+    }
+    case "d360_smart_datastream_create": {
+      const recommendation = objectValue(result.recommendation);
+      return [
+        {
+          title: "Enhanced body",
+          icon: "🧠",
+          lines: [
+            `Changed: ${String(result.changed === true)}`,
+            `Event date: ${stringValue(recommendation.fieldName) ?? "none"}`,
+            `Category: ${stringValue(result.category) ?? "unknown"}`,
+          ],
+        },
+      ];
+    }
+    default:
+      return [];
+  }
+}
+
+function helperNextSteps(result: Record<string, unknown>): string[] | undefined {
+  const next = objectValue(result.next);
+  const operation = stringValue(next.operation);
+  const hint = stringValue(next.hint);
+  if (!operation && !hint) return undefined;
+  return [
+    operation
+      ? `Next: ${operation}${next.dry_run === true ? " dry_run" : ""}`
+      : (hint ?? "Review helper output."),
+    ...(hint && operation ? [hint] : []),
+  ];
 }
 
 function summarizeResponse(response: Record<string, unknown>): string[] {
