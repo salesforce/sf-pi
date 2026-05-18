@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.94.1-2026-05-18",
-  "latestVersion": "0.94.1",
+  "revision": "release-0.95.0-2026-05-18",
+  "latestVersion": "0.95.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.94.1",
+      "id": "release-0.95.0",
       "kind": "update",
-      "title": "sf-pi v0.94.1 — improve sf-pi install preflight",
+      "title": "sf-pi v0.95.0 — data360: add activation lifecycle ops",
       "publishedAt": "2026-05-18T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.94.1",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.95.0",
       "severity": "info",
-      "body": "improve sf-pi install preflight"
+      "body": "data360: add activation lifecycle ops"
     },
     {
       "id": "pi-0.73-required",
