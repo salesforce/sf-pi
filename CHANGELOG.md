@@ -517,6 +517,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.102.0](https://github.com/salesforce/sf-pi/compare/v0.101.1...v0.102.0) (2026-05-18)
+
+
+### Features
+
+* **data360:** add identity dataspace lifecycle ops ([ccdcbe6](https://github.com/salesforce/sf-pi/commit/ccdcbe6744ca3c08fe26ec497ecef4da586b1315))
+
 ## [0.101.1](https://github.com/salesforce/sf-pi/compare/v0.101.0...v0.101.1) (2026-05-18)
 
 
