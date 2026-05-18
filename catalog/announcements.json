@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.109.0-2026-05-18",
-  "latestVersion": "0.109.0",
+  "revision": "release-0.110.0-2026-05-18",
+  "latestVersion": "0.110.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.109.0",
+      "id": "release-0.110.0",
       "kind": "update",
-      "title": "sf-pi v0.109.0 — gateway: discover existing onboarding assets",
+      "title": "sf-pi v0.110.0 — gateway: add latency probe and simplify Opus betas",
       "publishedAt": "2026-05-18T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.109.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.110.0",
       "severity": "info",
-      "body": "gateway: discover existing onboarding assets — gateway: satisfy onboarding source lint"
+      "body": "gateway: add latency probe and simplify Opus betas"
     },
     {
       "id": "pi-0.73-required",
