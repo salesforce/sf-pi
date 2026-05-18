@@ -45,12 +45,13 @@ export function rainbow(text: string, offset: number): string {
   return result;
 }
 
+export const WORKING_STATE_TEXT = "Thinking…";
 export const CALM_WORKING_TEXT = "Processing...";
 
 /**
  * Pre-compute one animation cycle of frames for a given message. Each frame
- * is `<braille-spinner> <rainbow-text>`, both colored with the current
- * lead color so the indicator feels unified.
+ * is `<braille-spinner> Thinking… · <rainbow-text>` so the status stays
+ * explicit while the Ohana message keeps its color and personality.
  *
  * Frame count = max(RAINBOW_COLORS.length, SPINNER_FRAMES.length). Pi's
  * loader advances one frame per `intervalMs` tick; the spinner and rainbow
@@ -62,11 +63,11 @@ export function buildRainbowFrames(text: string): string[] {
     const spinnerChar = SPINNER_FRAMES[offset % SPINNER_FRAMES.length];
     const [r, g, b] = RAINBOW_COLORS[offset % RAINBOW_COLORS.length];
     const spinner = `\x1b[38;2;${r};${g};${b}m${spinnerChar}\x1b[0m`;
-    return `${spinner} ${rainbow(text, offset)}`;
+    return `${spinner} ${WORKING_STATE_TEXT} · ${rainbow(text, offset)}`;
   });
 }
 
-/** Build the calm mode frames: animated spinner glyph, stable text. */
+/** Build the calm mode frames: animated spinner glyph, explicit state, stable text. */
 export function buildCalmFrames(text = CALM_WORKING_TEXT): string[] {
-  return SPINNER_FRAMES.map((spinnerChar) => `${spinnerChar} ${text}`);
+  return SPINNER_FRAMES.map((spinnerChar) => `${spinnerChar} ${WORKING_STATE_TEXT} · ${text}`);
 }

@@ -3,12 +3,14 @@
 ## What It Does
 
 Displays a configurable working indicator while the LLM is thinking. Uses Pi's
-built-in `ctx.ui.setWorkingIndicator()` API.
+built-in `ctx.ui.setWorkingIndicator()` API. Every mode starts with an explicit
+`Thinking…` state so users can tell pi is still working before reading the
+personality text.
 
 Modes:
 
-- **Ohana** — Salesforce-themed rainbow spinner with rotating ecosystem messages.
-- **Calm** — stable `Processing...` text with only the leading spinner glyph animated.
+- **Ohana** — `Thinking…` plus Salesforce-themed rotating ecosystem messages.
+- **Calm** — `Thinking… · Processing...` with only the leading spinner glyph animated.
 
 Ohana remains the default for existing users. Users can switch to Calm from the
 `/sf-pi` extension manager settings panel.
@@ -18,8 +20,8 @@ Ohana remains the default for existing users. Users can switch to Calm from the
 ```
 session_start
   ├─ Read sfPi.ohanaSpinner.mode from Pi settings
-  ├─ Ohana: install rainbow frames and start message rotation timer (5s)
-  └─ Calm: install stable Processing... frames with no rotation timer
+  ├─ Ohana: install `Thinking… · <message>` rainbow frames and start message rotation timer (5s)
+  └─ Calm: install stable `Thinking… · Processing...` frames with no rotation timer
 
 session_shutdown
   ├─ Clear rotation timer if present

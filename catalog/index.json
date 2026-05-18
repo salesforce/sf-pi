@@ -396,7 +396,7 @@
     "entry": "extensions/sf-ohana-spinner/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 640
+    "srcLoc": 642
   },
   {
     "id": "sf-pi-manager",
@@ -486,7 +486,7 @@
     "entry": "extensions/sf-skills/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 3237
+    "srcLoc": 3238
   },
   {
     "id": "sf-slack",
@@ -551,7 +551,7 @@
     "entry": "extensions/sf-slack/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 11470
+    "srcLoc": 11479
   },
   {
     "id": "sf-welcome",

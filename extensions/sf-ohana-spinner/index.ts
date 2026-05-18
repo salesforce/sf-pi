@@ -2,8 +2,9 @@
 /**
  * sf-ohana-spinner behavior contract
  *
- * - Shows either Ohana mode (rainbow rotating messages) or Calm mode
- *   (stable "Processing..." text) via Pi's native setWorkingIndicator() API
+ * - Shows either Ohana mode (explicit Thinking state + rainbow rotating
+ *   messages) or Calm mode (explicit Thinking state + stable text) via Pi's
+ *   native setWorkingIndicator() API
  * - Rotates messages every 5 seconds only in Ohana mode
  * - Pi manages the animation lifecycle (auto-starts on streaming, auto-stops on idle)
  * - One persisted mode preference; no runtime state between sessions

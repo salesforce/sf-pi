@@ -11,8 +11,8 @@ Phase 1 is intentionally conservative:
   - explicit `/skill:name` invocation
   - assistant `read` of `SKILL.md`
 - two states only
-  - **Live**
-  - **Earlier**
+  - **In context**
+  - **Earlier in session**
 
 Phase 2 should improve control and depth without making the always-visible HUD
 noisy.
@@ -61,7 +61,7 @@ Recommended behavior:
 
 Add a focusable overlay or side panel that shows grouped sections:
 
-- **Live now**
+- **In context**
 - **Earlier in session**
 - **Available**
 
@@ -72,7 +72,7 @@ For each skill row, show:
   - `explicit`
   - `read`
 - last-seen ordering or turn-relative ordering if practical
-- whether the skill is currently live or only historical
+- whether the skill is currently in context or only historical
 
 The detail panel should be:
 
@@ -131,7 +131,7 @@ implemented yet.
 
 - [ ] Add `lib/detail-panel.ts`
 - [ ] Choose final panel shape: right-side panel vs top-right expansion
-- [ ] Add grouped panel sections for `Live now`, `Earlier in session`, and `Available`
+- [ ] Add grouped panel sections for `In context`, `Earlier in session`, and `Available`
 - [ ] Add safe rendering rules for narrow terminals
 - [ ] Add scrolling behavior for long skill lists
 - [ ] Make panel dismiss without affecting passive HUD state
@@ -193,8 +193,8 @@ Phase 2 is done when all of the following are true:
 - user can hide/show the HUD explicitly
 - user can open a richer detail panel on demand
 - detail panel clearly separates:
-  - live skills
-  - earlier skills
+  - in-context skills
+  - earlier-in-session skills
   - available skills
 - skill rows expose detection evidence
 - passive HUD remains compact and non-disruptive

@@ -665,7 +665,7 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 **[SF Skills](./extensions/sf-skills/#troubleshooting)**
 
 - HUD never appears even though I know a skill was used
-- A skill moved from Live to Earlier mid-session
+- A skill moved from In context to Earlier in session mid-session
 - Can I disable a globally-installed skill for one project only
 - `/sf-skills defaults update` refuses to run
 - Prune wants to delete a clone I edited

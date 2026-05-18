@@ -44,7 +44,7 @@ export class SkillsHudComponent {
         ...renderSection(
           this.theme,
           row,
-          "Live",
+          "In context",
           this.state.live.map((skill) => skill.name),
           "accent",
           innerWidth,
@@ -60,7 +60,7 @@ export class SkillsHudComponent {
         ...renderSection(
           this.theme,
           row,
-          "Earlier",
+          "Earlier in session",
           this.state.earlier.map((skill) => skill.name),
           "warning",
           innerWidth,
@@ -81,7 +81,7 @@ function buildSummaryText(state: SkillsHudState): string {
   const parts: string[] = [];
 
   if (state.live.length > 0) {
-    parts.push(`${state.live.length} live`);
+    parts.push(`${state.live.length} in context`);
   }
 
   if (state.earlier.length > 0) {

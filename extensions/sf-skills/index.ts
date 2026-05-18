@@ -7,9 +7,9 @@
  * non-capturing overlay, so scrolling chat content and tool output do not move it.
  *
  * Skill state model:
- * - Live: skill usage still present in the current LLM context
- * - Earlier: skill usage seen on the current branch, but no longer present in
- *   the active context after compaction or later conversation growth
+ * - In context: skill usage still present in the current LLM context
+ * - Earlier in session: skill usage seen on the current branch, but no longer
+ *   present in the active context after compaction or later conversation growth
  *
  * Detection signals:
  * - explicit `/skill:name` invocations (parsed from skill blocks in user messages)
@@ -24,7 +24,7 @@
  *   session_tree      | Re-scan after branch navigation
  *   session_compact   | Re-scan after compaction changes the active context
  *   session_shutdown  | Dismiss overlay and clear in-memory references
- *   /sf-skills        | Show a textual summary of live and earlier skills
+ *   /sf-skills        | Show a textual summary of in-context and earlier skills
  */
 import {
   buildSessionContext,
@@ -89,7 +89,7 @@ const SKILLS_ACTIONS: CommandPanelAction<SkillsAction>[] = [
   {
     value: "summary",
     label: "Show skill summary",
-    description: "Print live and earlier skill usage detected in the current session branch.",
+    description: "Print in-context and earlier skill usage detected in the current session branch.",
     group: "Status",
   },
   {
@@ -115,7 +115,8 @@ const SKILLS_ACTIONS: CommandPanelAction<SkillsAction>[] = [
   {
     value: "help",
     label: "Show help",
-    description: "Explain what Live and Earlier mean and how the passive HUD behaves.",
+    description:
+      "Explain what In context and Earlier in session mean and how the passive HUD behaves.",
     group: "Reference",
   },
   {
@@ -166,8 +167,8 @@ function renderSkillsHelp(): string {
     "sf-skills — skills manager + HUD",
     "",
     "HUD (passive top-right overlay):",
-    "  • Live now — skills still present in active context",
-    "  • Earlier — skills used on this branch but no longer live after compaction/growth",
+    "  • In context — skills still present in active context",
+    "  • Earlier in session — skills used on this branch but no longer in context after compaction/growth",
     "  • Hidden until at least one skill is used",
     "",
     "Datatable (/sf-skills table):",
@@ -361,8 +362,8 @@ export default function sfSkills(pi: ExtensionAPI) {
         refreshHud(ctx);
         return [
           `${hudState.hasAny ? "✓" : "○"} Usage detected ${hudState.hasAny ? "yes" : "no"}`,
-          `• Live skills    ${hudState.live.length}`,
-          `• Earlier skills ${hudState.earlier.length}`,
+          `• In context         ${hudState.live.length}`,
+          `• Earlier in session ${hudState.earlier.length}`,
           `• Discovered     ${hudState.discoveredCount}`,
         ];
       },

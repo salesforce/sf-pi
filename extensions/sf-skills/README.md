@@ -4,9 +4,9 @@
 
 `sf-skills` is the single sf-pi extension for everything skills-related:
 
-1. **Pinned HUD** in the top-right that shows which skills are _live_ in
-   active context vs. _earlier_ on the current branch (used but
-   compacted out). Hidden until at least one skill has been used.
+1. **Pinned HUD** in the top-right that shows which skills are _in context_
+   (still visible to the LLM) vs. _earlier in session_ on the current branch
+   (used but compacted out). Hidden until at least one skill has been used.
 2. **Tabbed datatable** — `/sf-skills` panel → "Open skills table".
    Three tabs:
    - **Active** — every skill `pi.getCommands()` reports right now,
@@ -49,7 +49,7 @@ with a hint.
 Extension loads
   ├─ session_start
   │   ├─ mount hidden HUD overlay
-  │   └─ rebuild live/earlier state from branch + active context
+  │   └─ rebuild in-context / earlier-in-session state from branch + active context
   ├─ message_end / session_tree / session_compact
   │   └─ re-scan and refresh HUD
   ├─ before_agent_start
@@ -114,8 +114,8 @@ the previous sf-skills-hud implementation.
 | `session_start`               | UI available                                  | Mount passive HUD overlay and rebuild state                    |
 | `session_start`               | no UI                                         | Stay silent (commands still register)                          |
 | `message_end`                 | skill block or `read(SKILL.md)` now visible   | Refresh HUD contents                                           |
-| `session_tree`                | branch changed                                | Recompute live vs earlier skills                               |
-| `session_compact`             | compaction completed                          | Recompute live vs earlier skills                               |
+| `session_tree`                | branch changed                                | Recompute in-context vs earlier-in-session skills              |
+| `session_compact`             | compaction completed                          | Recompute in-context vs earlier-in-session skills              |
 | `before_agent_start`          | `event.prompt` contains `/skill:<name>` block | Bump global + project usage counters for `<name>`              |
 | `/sf-skills`                  | UI available, no args                         | Open status & controls panel                                   |
 | `/sf-skills`                  | no UI, no args                                | Print HUD summary (text)                                       |
@@ -176,7 +176,7 @@ Run: `npm test`
 
 The test suite covers:
 
-- HUD state reconstruction (live vs. earlier, compaction-aware)
+- HUD state reconstruction (in-context vs. earlier-in-session, compaction-aware)
 - Settings detection across global + project scope
 - Defaults install/update/link/unlink with an injected fake spawn
 - Datatable row builders + classification
@@ -191,7 +191,7 @@ The HUD only treats two signals as "used": an explicit
 opens a discovered `SKILL.md`. Indirect mentions intentionally
 don't trigger it.
 
-**A skill moved from Live to Earlier mid-session:**
+**A skill moved from In context to Earlier in session mid-session:**
 Expected after compaction or significant context growth. Use
 `/sf-skills` → "Show summary" or run `/sf-skills summary`.
 

@@ -271,7 +271,15 @@ class GroupedActionList<T extends string> implements Component {
   invalidate(): void {}
 
   handleInput(data: string): void {
-    if (this.actionInFlight) return;
+    if (this.actionInFlight) {
+      // A slow command should never trap the user in the panel. Let Escape,
+      // Ctrl+C, or typed close keywords dismiss the UI while the already-started
+      // action finishes on its existing promise.
+      if (this.keybindings.matches(data, "tui.select.cancel") || this.consumeCloseKeyword(data)) {
+        this.done(this.closeValue);
+      }
+      return;
+    }
 
     if (this.keybindings.matches(data, "tui.select.up")) {
       this.closeKeywordBuffer = "";
@@ -331,20 +339,25 @@ class GroupedActionList<T extends string> implements Component {
       // progress, so users can still filter actions whose names start with
       // "e", "ex", etc. Only the final keystroke that completes the keyword
       // closes the panel.
-      if (data.length === 1 && /^[a-z]$/i.test(data)) {
-        const next = (this.closeKeywordBuffer + data.toLowerCase()).slice(-MAX_CLOSE_KEYWORD_LEN);
-        this.closeKeywordBuffer = next;
-        if (matchesCloseKeyword(next)) {
-          this.done(this.closeValue);
-          return;
-        }
-      } else {
-        this.closeKeywordBuffer = "";
+      if (this.consumeCloseKeyword(data)) {
+        this.done(this.closeValue);
+        return;
       }
       this.filter += data;
       this.selectedIndex = 0;
       this.persistSelection();
     }
+  }
+
+  private consumeCloseKeyword(data: string): boolean {
+    if (data.length !== 1 || !/^[a-z]$/i.test(data)) {
+      this.closeKeywordBuffer = "";
+      return false;
+    }
+
+    const next = (this.closeKeywordBuffer + data.toLowerCase()).slice(-MAX_CLOSE_KEYWORD_LEN);
+    this.closeKeywordBuffer = next;
+    return matchesCloseKeyword(next);
   }
 
   private runAction(action: T): void {

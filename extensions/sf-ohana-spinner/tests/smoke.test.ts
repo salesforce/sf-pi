@@ -6,7 +6,7 @@
  * - rainbow() produces valid 24-bit ANSI color sequences
  * - buildRainbowFrames() generates one frame per animation step with a
  *   rotating spinner glyph prepended to the rainbow-colored message
- * - buildCalmFrames() keeps the text stable while only the spinner glyph changes
+ * - buildCalmFrames() keeps the state + message stable while only the spinner glyph changes
  * - Each frame is unique (animation shifts both spinner and colors)
  * - Spaces are preserved without color codes
  * - Module export still works after the migration
@@ -17,6 +17,7 @@ import {
   buildCalmFrames,
   buildRainbowFrames,
   CALM_WORKING_TEXT,
+  WORKING_STATE_TEXT,
   RAINBOW_COLORS,
   SPINNER_FRAMES,
 } from "../lib/rainbow.ts";
@@ -92,10 +93,12 @@ describe("buildCalmFrames", () => {
     expect(frames).toHaveLength(SPINNER_FRAMES.length);
   });
 
-  it("keeps the visible text stable while the spinner changes", () => {
+  it("keeps the visible state and message stable while the spinner changes", () => {
     const frames = buildCalmFrames();
     const visibleTexts = frames.map((frame) => frame.slice(2));
-    expect(new Set(visibleTexts)).toEqual(new Set([CALM_WORKING_TEXT]));
+    expect(new Set(visibleTexts)).toEqual(
+      new Set([`${WORKING_STATE_TEXT} · ${CALM_WORKING_TEXT}`]),
+    );
 
     const spinnerGlyphs = frames.map((frame) => [...frame][0]);
     expect(spinnerGlyphs).toEqual([...SPINNER_FRAMES]);
@@ -161,10 +164,11 @@ describe("buildRainbowFrames", () => {
     expect(unique.size).toBe(frames.length);
   });
 
-  it("every frame embeds the rainbow-colored text alongside the spinner", () => {
+  it("every frame embeds explicit state plus rainbow-colored text alongside the spinner", () => {
     const text = "Testing rainbow...";
     const frames = buildRainbowFrames(text);
     for (let i = 0; i < frames.length; i++) {
+      expect(frames[i]).toContain(WORKING_STATE_TEXT);
       expect(frames[i]).toContain(rainbow(text, i % RAINBOW_COLORS.length));
     }
   });

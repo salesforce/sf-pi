@@ -123,6 +123,7 @@ import { openInfoPanel } from "../../lib/common/info-panel.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 
 const RESEARCH_WIDGET_KEY = "sf-slack-research";
+const COMMAND_STATUS_KEY = `${COMMAND_NAME}-command`;
 
 /**
  * customType used for the once-per-session workspace identity injection.
@@ -760,82 +761,91 @@ export default function sfSlack(pi: ExtensionAPI) {
 
     if (sub === "refresh") {
       const generation = activeSessionGeneration;
-      ctx.ui.setStatus(`-command`, "Slack: re-detecting identity and scopes…");
+      const restorePreviousFooter = () => {
+        if (!isActiveSession(ctx, generation)) return;
+        updateStatus(ctx, identity ? "connected" : "disconnected", generation);
+      };
+
+      ctx.ui.setStatus(COMMAND_STATUS_KEY, "Slack: re-detecting identity and scopes…");
       updateStatus(ctx, "loading", generation);
 
-      const auth = await getSlackToken(ctx);
-      if (!isActiveSession(ctx, generation)) return;
-
-      if (!auth.ok) {
-        deactivateSlackTools(pi);
-        updateStatus(ctx, "disconnected", generation);
-        ctx.ui.setStatus(`-command`, undefined);
-        await emitSlackOutput(
-          ctx,
-          "Slack token not found",
-          "No Slack token found. Run /login sf-slack, use macOS Keychain, or set SLACK_USER_TOKEN.",
-          "warning",
-          fromPanel,
-        );
-        return;
-      }
-
-      ensureSlackToolsRegistered();
-      const token = auth.token;
-      tokenType = detectTokenType(token);
-
       try {
-        const authResult = await slackApi<AuthTestResponse>("auth.test", token, {}, ctx.signal);
+        const auth = await getSlackToken(ctx);
         if (!isActiveSession(ctx, generation)) return;
-        if (authResult.ok) {
-          identity = {
-            userId: authResult.data?.user_id || "",
-            userName: authResult.data?.user || "",
-            teamId: authResult.data?.team_id || authResult.data?.enterprise_id || "",
+
+        if (!auth.ok) {
+          deactivateSlackTools(pi);
+          updateStatus(ctx, "disconnected", generation);
+          await emitSlackOutput(
+            ctx,
+            "Slack token not found",
+            "No Slack token found. Run /login sf-slack, use macOS Keychain, or set SLACK_USER_TOKEN.",
+            "warning",
+            fromPanel,
+          );
+          return;
+        }
+
+        ensureSlackToolsRegistered();
+        const token = auth.token;
+        tokenType = detectTokenType(token);
+
+        try {
+          const authResult = await slackApi<AuthTestResponse>("auth.test", token, {}, ctx.signal);
+          if (!isActiveSession(ctx, generation)) return;
+          if (authResult.ok) {
+            identity = {
+              userId: authResult.data?.user_id || "",
+              userName: authResult.data?.user || "",
+              teamId: authResult.data?.team_id || authResult.data?.enterprise_id || "",
+            };
+            setDetectedTeamId(authResult.data?.team_id);
+            const requestedScopes = oauthScopes()
+              .split(",")
+              .map((scope) => scope.trim())
+              .filter(Boolean);
+            requestedScopeCount = requestedScopes.length;
+            const [probeResult] = await Promise.all([
+              probeAndGateTools(pi, token, ctx.signal, requestedScopes, tokenType),
+              prewarmUserCache(token, ctx.signal),
+              prewarmChannelCache(token, ctx.signal),
+            ]);
+            if (!isActiveSession(ctx, generation)) return;
+            const grantedScopes = getGrantedScopes();
+            missingGrantedScopeCount = probeResult.missingGrantedScopes.length;
+            grantedScopeCount = computeGrantedRequestedScopeCount(grantedScopes, requestedScopes);
+            writeSlackRuntimeCache({ token, tokenType, identity, grantedScopes });
+            lastError = null;
+            updateStatus(ctx, "connected", generation);
+            const status = await buildAuthStatus(ctx);
+            if (!isActiveSession(ctx, generation)) return;
+            await emitSlackOutput(ctx, "SF Slack refreshed", status, "success", fromPanel);
+          } else {
+            const errMessage = (authResult as ApiErr).error;
+            lastError = { step: "auth.test", message: errMessage };
+            deactivateSlackTools(pi);
+            updateStatus(ctx, "error", generation);
+            await emitSlackOutput(ctx, "Slack auth.test failed", errMessage, "error", fromPanel);
+          }
+        } catch (err) {
+          // See session_start handler for why we look at ctx.signal.aborted
+          // instead of treating every AbortError as a user cancellation.
+          if (isAbortError(err) && ctx.signal?.aborted) {
+            restorePreviousFooter();
+            return;
+          }
+          const message = err instanceof Error ? err.message : String(err);
+          lastError = {
+            step: identity ? "probe-or-prewarm" : "auth.test",
+            message,
           };
-          setDetectedTeamId(authResult.data?.team_id);
-          const requestedScopes = oauthScopes()
-            .split(",")
-            .map((scope) => scope.trim())
-            .filter(Boolean);
-          requestedScopeCount = requestedScopes.length;
-          const [probeResult] = await Promise.all([
-            probeAndGateTools(pi, token, ctx.signal, requestedScopes, tokenType),
-            prewarmUserCache(token, ctx.signal),
-            prewarmChannelCache(token, ctx.signal),
-          ]);
-          if (!isActiveSession(ctx, generation)) return;
-          const grantedScopes = getGrantedScopes();
-          missingGrantedScopeCount = probeResult.missingGrantedScopes.length;
-          grantedScopeCount = computeGrantedRequestedScopeCount(grantedScopes, requestedScopes);
-          writeSlackRuntimeCache({ token, tokenType, identity, grantedScopes });
-          lastError = null;
-          updateStatus(ctx, "connected", generation);
-          const status = await buildAuthStatus(ctx);
-          if (!isActiveSession(ctx, generation)) return;
-          ctx.ui.setStatus(`-command`, undefined);
-          await emitSlackOutput(ctx, "SF Slack refreshed", status, "success", fromPanel);
-        } else {
-          const errMessage = (authResult as ApiErr).error;
-          lastError = { step: "auth.test", message: errMessage };
           deactivateSlackTools(pi);
           updateStatus(ctx, "error", generation);
-          ctx.ui.setStatus(`-command`, undefined);
-          await emitSlackOutput(ctx, "Slack auth.test failed", errMessage, "error", fromPanel);
+          await emitSlackOutput(ctx, "Slack detection failed", message, "error", fromPanel);
         }
-      } catch (err) {
-        // See session_start handler for why we look at ctx.signal.aborted
-        // instead of treating every AbortError as a user cancellation.
-        if (isAbortError(err) && ctx.signal?.aborted) return;
-        const message = err instanceof Error ? err.message : String(err);
-        lastError = {
-          step: identity ? "probe-or-prewarm" : "auth.test",
-          message,
-        };
-        deactivateSlackTools(pi);
-        updateStatus(ctx, "error", generation);
-        ctx.ui.setStatus(`-command`, undefined);
-        await emitSlackOutput(ctx, "Slack detection failed", message, "error", fromPanel);
+      } finally {
+        if (ctx.signal?.aborted) restorePreviousFooter();
+        ctx.ui.setStatus(COMMAND_STATUS_KEY, undefined);
       }
       return;
     }
