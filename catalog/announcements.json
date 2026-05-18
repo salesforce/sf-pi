@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.91.1-2026-05-17",
-  "latestVersion": "0.91.1",
+  "revision": "release-0.92.0-2026-05-17",
+  "latestVersion": "0.92.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.91.1",
+      "id": "release-0.92.0",
       "kind": "update",
-      "title": "sf-pi v0.91.1 — data360: clarify metadata search errors",
+      "title": "sf-pi v0.92.0 — data360: add calculated insight lifecycle ops",
       "publishedAt": "2026-05-17T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.91.1",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.92.0",
       "severity": "info",
-      "body": "data360: clarify metadata search errors"
+      "body": "data360: add calculated insight lifecycle ops"
     },
     {
       "id": "pi-0.73-required",
