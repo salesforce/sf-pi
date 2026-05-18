@@ -517,6 +517,19 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.109.0](https://github.com/salesforce/sf-pi/compare/v0.108.0...v0.109.0) (2026-05-18)
+
+
+### Features
+
+* **gateway:** discover existing onboarding assets ([ba1658a](https://github.com/salesforce/sf-pi/commit/ba1658a4a419b514892075c3f664fe050bbbe30b))
+
+
+### Bug Fixes
+
+* **gateway:** satisfy onboarding source lint ([c893f32](https://github.com/salesforce/sf-pi/commit/c893f32ce39bdeeaf2453d3c736c3deea65db269))
+* **welcome:** ignore nested subagent sessions ([7c8f8b8](https://github.com/salesforce/sf-pi/commit/7c8f8b8c2ed0841a089f96c31ffde57b483fa0d4))
+
 ## [0.108.0](https://github.com/salesforce/sf-pi/compare/v0.107.1...v0.108.0) (2026-05-18)
 
 
