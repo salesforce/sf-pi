@@ -29,6 +29,7 @@ import {
 import { collectRecommendationsStatus } from "./recommendations-status.ts";
 import { readWelcomeState } from "./state-store.ts";
 import { collectCaBundleNudge } from "./ca-bundle-nudge.ts";
+import { readCachedNodeCertStatus } from "./node-cert-status.ts";
 import { summarizeAvailableSkillSources } from "../../../lib/common/skill-sources/skill-sources.ts";
 import { getTelemetryState } from "../../../lib/common/privacy/state.ts";
 import {
@@ -54,6 +55,9 @@ export type {
   SfSkillsStatusInfo,
   SfSkillsInstallKind,
   SfSkillsFreshness,
+  NodeCertStatusInfo,
+  NodeCertStatusKind,
+  NodeCertStatusSource,
   SplashData,
   RecentSession,
   ExtensionHealthItem,
@@ -77,6 +81,12 @@ export {
   readCachedSfSkillsStatus,
   writeCachedSfSkillsStatus,
 } from "./sf-skills-status.ts";
+export {
+  detectNodeCertStatus,
+  extractNodeExtraCaCertsValues,
+  readCachedNodeCertStatus,
+  writeCachedNodeCertStatus,
+} from "./node-cert-status.ts";
 export { estimateMonthlyCost, getRecentSessions } from "./session-data.ts";
 export {
   buildWhatsNewPayload,
@@ -335,6 +345,7 @@ export function collectInitialSplashData(
     loadedCountsLoading: true,
     recentSessionsLoading: true,
     sfCli: { installed: false, freshness: "checking", loading: true },
+    nodeCert: { kind: "checking", loading: true },
     doctor: summarizeStartupDoctorNudge(runDoctorDiagnostics()) ?? undefined,
     privacy: collectPrivacyStatus(),
   };
@@ -392,6 +403,7 @@ export function collectSplashData(
 
   const doctor = summarizeStartupDoctorNudge(runDoctorDiagnostics({ cwd })) ?? undefined;
   const privacy = collectPrivacyStatus();
+  const nodeCert = readCachedNodeCertStatus() ?? { kind: "checking" as const, loading: true };
   // Cache-first read: collectCaBundleNudge only inspects pre-persisted
   // state files written by the gateway extension's deferred doctor /
   // fix-ca-bundle apply paths. No filesystem walk, no subprocess, no
@@ -421,6 +433,7 @@ export function collectSplashData(
     caBundleNudge,
     privacy,
     sfCli: undefined,
+    nodeCert,
     whatsNew,
     announcements,
     loading: false,

@@ -11,7 +11,7 @@ Salesforce-branded splash screen that displays on startup with an animated Pi + 
 - Monthly cost usage line with color-coded progress (green → orange → red)
 - sf-pi extension health grid (active/disabled/locked indicators)
 - Optional Slack and auth-gated LLM Gateway status only when enabled/configured,
-  plus lightweight SF CLI install/latest status
+  plus lightweight SF CLI install/latest and Node CA certificate status
 - **Privacy row** showing pi's anonymous-telemetry posture
   (`telemetry off (sf-pi default)` / `(user override)` / `telemetry on (user
 override)`). Driven by `lib/common/privacy/state.ts` — see
@@ -40,14 +40,14 @@ override)`). Driven by `lib/common/privacy/state.ts` — see
 Extension loads
   └─ session_start (reason="startup")
        ├─ setup issues / SF_PI_SAFE_START=1 → show non-blocking header + doctor nudge
-       ├─ quietStartup=false → show overlay (30s countdown, any-key dismiss)
-       └─ quietStartup=true  → show persistent header (Esc dismiss, 30s auto-dismiss)
+       ├─ quietStartup=false → show overlay (any-key dismiss)
+       └─ quietStartup=true  → show persistent header (Esc dismiss)
 
 Dismissal triggers:
-  ├─ Any keypress
+  ├─ Any keypress (overlay)
+  ├─ Escape (header)
   ├─ agent_start (LLM responds)
-  ├─ tool_call (agent working)
-  └─ Countdown reaches 0
+  └─ tool_call (agent working)
 
 session_shutdown
   └─ clear overlay/header state, reset animation flags, and unsubscribe usage-store listeners
@@ -72,18 +72,23 @@ session_shutdown
    `/sf-pi doctor`. `--verbose` still forces the overlay unless safe-start is active.
 
 5. **Lightweight SF CLI status** — The welcome screen checks only
-   `sf --version` plus an optional `npm view @salesforce/cli version` lookup
-   so it can show `SF CLI installed · latest` without running org/config
-   detection. Full org/API context belongs to sf-devbar.
+   `sf --version` plus an optional npm-registry lookup so it can show
+   `SF CLI installed · latest` without running org/config detection. Full
+   org/API context belongs to sf-devbar.
 
 6. **Optional integration rows stay quiet** — Slack and LLM Gateway rows are
    hidden unless their bundled extensions are enabled and have meaningful live
    status. This keeps public/external installs from seeing Salesforce-internal or
    unconfigured integrations as startup noise.
 
-7. **Background loading** — CLI status, monthly usage, and remote announcements
-   refresh asynchronously after the splash appears, so startup remains responsive
-   while the visible rows update in place.
+7. **Background loading** — CLI status, Node CA certificate status, monthly usage,
+   and remote announcements refresh asynchronously after the splash appears, so
+   startup remains responsive while the visible rows update in place. Node CA
+   detection is local-only and cache-first: first paint reads
+   `sf-welcome/node-cert-status.json`, then a deferred detector checks
+   `NODE_EXTRA_CA_CERTS`, the sf-pi CA fixer state, LaunchAgent/shell exports,
+   and bounded known PEM candidates without network calls, subprocesses, or
+   recursive filesystem scans.
 
 8. **Salesforce brand gradient** — Uses actual Salesforce brand colors (#0070D2 blue,
    #01C3E2 Astro cyan, #9061F9 purple) for the Pi logo gradient.
@@ -127,15 +132,14 @@ session_shutdown
 
 | Event/Trigger    | Condition                     | Result                                      |
 | ---------------- | ----------------------------- | ------------------------------------------- |
-| session_start    | reason="startup", quiet=false | Show overlay with countdown                 |
-| session_start    | reason="startup", quiet=true  | Show persistent header with countdown       |
+| session_start    | reason="startup", quiet=false | Show overlay                                |
+| session_start    | reason="startup", quiet=true  | Show persistent header                      |
 | session_start    | reason≠"startup"              | Skip (resume, reload, fork)                 |
 | session_start    | first-ever launch             | Persist current pi version, omit What's New |
 | agent_start      | overlay/header visible        | Dismiss + persist seen pi version           |
 | tool_call        | overlay/header visible        | Dismiss + persist seen pi version           |
 | any keypress     | overlay visible               | Dismiss + persist seen pi version           |
 | Escape           | header visible                | Dismiss + persist seen pi version           |
-| countdown=0      | overlay/header visible        | Auto-dismiss + persist seen pi version      |
 | session_shutdown | —                             | Clear overlay/header state and listeners    |
 | /sf-welcome      | always                        | Show text summary                           |
 | /sf-setup-fonts  | always                        | Install bundled Nerd Font + refresh cache   |
@@ -155,6 +159,7 @@ extensions/sf-welcome/
     ca-bundle-nudge.ts      ← implementation module
     extension-health.ts     ← implementation module
     font-installer.ts       ← implementation module
+    node-cert-status.ts     ← implementation module
     recommendations-status.ts← implementation module
     session-data.ts         ← implementation module
     sf-cli-status.ts        ← implementation module
@@ -173,6 +178,7 @@ extensions/sf-welcome/
     ca-bundle-nudge.test.ts ← unit / smoke test
     extension-health.test.ts← unit / smoke test
     font-installer.test.ts  ← unit / smoke test
+    node-cert-status.test.ts← unit / smoke test
     recommendations-status.test.ts← unit / smoke test
     sdk-migration.test.ts   ← unit / smoke test
     session-data.test.ts    ← unit / smoke test
@@ -222,7 +228,7 @@ Run: `npm test`
 - **Registry alignment tests**: Verifies extension health stays aligned with the generated registry
 - **Narrow terminal handling**: Verifies graceful empty output below minimum width
 - **Announcements / recommendations**: Verifies bundled manifest loading, merge/filter rules, and splash summaries
-- **Manual QA**: Full visual testing in terminal with `pi` or the preview scripts above (overlay rendering, countdown, dismissal, animation)
+- **Manual QA**: Full visual testing in terminal with `pi` or the preview scripts above (overlay rendering, dismissal, animation)
 
 ## Troubleshooting
 
@@ -243,9 +249,9 @@ Terminal.app and some Powerlevel10k setups. Fixes:
 **Splash feels too busy, stuck, or setup warnings are noisy:**
 Enable the compact header mode: `"quietStartup": true` in the same
 `settings.json`, or run `/sf-pi doctor fix startup`. The dismissable splash is
-replaced by a compact header above the prompt. Press Esc to dismiss it early,
-or let it auto-dismiss after 30 seconds. For recovery when the overlay is in
-the way, launch `SF_PI_SAFE_START=1 pi` and run `/sf-pi doctor`.
+replaced by a compact header above the prompt. Press Esc to dismiss it. For
+recovery when the overlay is in the way, launch `SF_PI_SAFE_START=1 pi` and run
+`/sf-pi doctor`.
 
 You can also set `sfPi.welcome.mode` to `auto`, `overlay`, `header`, or `off`
 in settings. Safe-start and detected setup issues prefer the non-blocking

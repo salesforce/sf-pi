@@ -4,12 +4,12 @@
  *
  * Displays a two-column overlay on startup with:
  *   Left column:  Gradient Pi logo, model info, monthly cost bar, extension health,
- *                 Slack, Gateway, and SF CLI status
+ *                 Slack, Gateway, SF CLI, and Node CA status
  *   Right column: Announcements, What's New, loaded counts, recent sessions,
  *                  recommended extensions, attribution
  *
  * Supports two modes:
- *   - quietStartup: false (default) → Dismissable overlay with countdown
+ *   - quietStartup: false (default) → Dismissable overlay
  *   - quietStartup: true            → Persistent header above input
  *   (--verbose overrides quietStartup and forces the overlay)
  *
@@ -17,7 +17,6 @@
  *   - Any keypress
  *   - Agent starts responding (agent_start event)
  *   - Tool call execution
- *   - Countdown reaches zero (30s)
  *
  * Persistence:
  *   - On dismiss the extension writes the current pi-coding-agent version to
@@ -28,13 +27,12 @@
  *
  *   Event/Trigger         | Condition                    | Result
  *   ----------------------|------------------------------|-------------------------------------------
- *   session_start         | reason="startup", no quiet   | Show overlay splash with countdown
+ *   session_start         | reason="startup", no quiet   | Show overlay splash
  *   session_start         | reason="startup", quiet=true | Show persistent header
  *   session_start         | reason!="startup"            | Skip (resume, reload, fork, etc.)
  *   agent_start           | overlay visible              | Dismiss overlay + persist seen version
  *   tool_call             | overlay visible              | Dismiss overlay + persist seen version
  *   any keypress          | overlay visible              | Dismiss overlay + persist seen version
- *   countdown=0           | overlay visible              | Dismiss overlay + persist seen version
  *   /sf-welcome           | always                       | Show splash info summary
  */
 import type {
@@ -70,12 +68,15 @@ import {
   collectInitialSplashData,
   collectSplashData,
   detectSfCliStatus,
+  detectNodeCertStatus,
   detectSfSkillsStatus,
+  readCachedNodeCertStatus,
   readCachedSfCliStatus,
   readCachedSfSkillsStatus,
   readCurrentPiVersion,
   refreshAnnouncementsSummary,
   resolveMonthlyUsage,
+  writeCachedNodeCertStatus,
   writeCachedSfCliStatus,
   writeCachedSfSkillsStatus,
 } from "./lib/splash-data.ts";
@@ -121,7 +122,6 @@ const FONTS_COMMAND_NAME = "sf-setup-fonts";
 const MONTHLY_BUDGET_FALLBACK = 3000;
 const HEADER_FRAME_MS = 400;
 const HEADER_ANIMATION_FRAMES = 13; // 13 × 400 ms ≈ 5 s
-const HEADER_DISMISS_SECONDS = 30;
 
 function isReducedMotionRequested(): boolean {
   return process.env.SF_PI_REDUCED_MOTION === "1" || process.env.SF_PI_REDUCED_MOTION === "true";
@@ -140,10 +140,8 @@ export default function sfWelcome(pi: ExtensionAPI) {
   let activeHeader: SfWelcomeHeader | null = null;
   let headerRequestRender: ((force?: boolean) => void) | null = null;
   let headerAnimationTimer: ReturnType<typeof setInterval> | null = null;
-  let headerCountdownTimer: ReturnType<typeof setInterval> | null = null;
   let headerInputUnsubscribe: (() => void) | null = null;
   let headerOffset = 0;
-  let headerCountdown = HEADER_DISMISS_SECONDS;
   /** Unsubscribe from the gateway usage store. Set during session_start and
    * cleared on dismiss / session_shutdown so we don't leak listeners across
    * reloads. */
@@ -192,7 +190,7 @@ export default function sfWelcome(pi: ExtensionAPI) {
    * Persist the current pi version exactly once per startup.
    *
    * We only write on dismiss (not on session_start) so a user who reloads
-   * 30 times without dismissing never over-writes their "last seen"
+   * repeatedly without dismissing never over-writes their "last seen"
    * pointer. Downgrades still write the lower version so the panel
    * doesn't replay an older changelog on next launch.
    */
@@ -222,22 +220,17 @@ export default function sfWelcome(pi: ExtensionAPI) {
     }
   }
 
-  function stopHeaderCountdown(): void {
-    if (headerCountdownTimer) {
-      clearInterval(headerCountdownTimer);
-      headerCountdownTimer = null;
-    }
+  function stopHeaderDismissListener(): void {
     headerInputUnsubscribe?.();
     headerInputUnsubscribe = null;
   }
 
   function resetHeaderAnimation(): void {
     stopHeaderAnimation();
-    stopHeaderCountdown();
+    stopHeaderDismissListener();
     activeHeader = null;
     headerRequestRender = null;
     headerOffset = 0;
-    headerCountdown = HEADER_DISMISS_SECONDS;
   }
 
   function startHeaderAnimation(ctx: ExtensionContext, generation: number): void {
@@ -266,25 +259,7 @@ export default function sfWelcome(pi: ExtensionAPI) {
     }, HEADER_FRAME_MS);
   }
 
-  function startHeaderCountdown(ctx: ExtensionContext, generation: number): void {
-    if (headerCountdownTimer) return;
-
-    headerCountdownTimer = setInterval(() => {
-      if (!headerActive || !isActiveSession(ctx, generation)) {
-        stopHeaderCountdown();
-        return;
-      }
-
-      headerCountdown -= 1;
-      activeHeader?.setCountdown(headerCountdown);
-      activeHeader?.invalidate();
-      headerRequestRender?.();
-
-      if (headerCountdown <= 0) {
-        dismiss(ctx);
-      }
-    }, 1000);
-
+  function startHeaderDismissListener(ctx: ExtensionContext, generation: number): void {
     headerInputUnsubscribe ??= ctx.ui.onTerminalInput((data) => {
       if (!headerActive || !isActiveSession(ctx, generation)) return;
       if (matchesKey(data, "escape") || matchesKey(data, "esc")) {
@@ -400,6 +375,10 @@ export default function sfWelcome(pi: ExtensionAPI) {
     if (cachedSfSkills) {
       data.sfSkills = cachedSfSkills;
     }
+    const cachedNodeCert = readCachedNodeCertStatus();
+    if (cachedNodeCert) {
+      data.nodeCert = cachedNodeCert;
+    }
     const doctorReport = runDoctorDiagnostics({ cwd: ctx.cwd });
     data.doctor = summarizeStartupDoctorNudge(doctorReport) ?? undefined;
 
@@ -442,6 +421,7 @@ export default function sfWelcome(pi: ExtensionAPI) {
       try {
         if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
         const currentSfCli = data.sfCli;
+        const currentNodeCert = data.nodeCert;
         // Phase 2.3: split heavy FS work across two ticks. The first tick
         // runs collectSplashData EXCEPT loadedCounts (skipped via the
         // optional second-arg flag) so the splash paints model + gateway +
@@ -458,6 +438,7 @@ export default function sfWelcome(pi: ExtensionAPI) {
           if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
           Object.assign(data, settled);
           data.sfCli = currentSfCli ?? { installed: false, freshness: "checking", loading: true };
+          data.nodeCert = currentNodeCert ?? { kind: "checking", loading: true };
           data.doctor =
             summarizeStartupDoctorNudge(runDoctorDiagnostics({ cwd: ctx.cwd })) ?? undefined;
 
@@ -548,6 +529,35 @@ export default function sfWelcome(pi: ExtensionAPI) {
         });
     }, 2_500);
     sfSkillsTimer.unref?.();
+
+    // Background Node CA status: cache-first and strictly local. This runs
+    // after the SF CLI / SF Skills probes so it cannot affect first paint,
+    // and it performs no network, subprocess, or recursive filesystem work.
+    const nodeCertTimer = setTimeout(() => {
+      if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
+      try {
+        const cert = markBootStep("sf-welcome.node-cert-detect", () =>
+          detectNodeCertStatus(ctx.cwd),
+        );
+        void cert
+          .then((status) => {
+            writeCachedNodeCertStatus(status);
+            if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
+            data.nodeCert = status;
+            scheduleSplashRepaint(ctx, generation);
+          })
+          .catch(() => {
+            if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
+            data.nodeCert = { kind: "unknown", loading: false };
+            scheduleSplashRepaint(ctx, generation);
+          });
+      } catch {
+        if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
+        data.nodeCert = { kind: "unknown", loading: false };
+        scheduleSplashRepaint(ctx, generation);
+      }
+    }, 3_000);
+    nodeCertTimer.unref?.();
 
     // Subscribe to the gateway usage store so any time the provider publishes
     // a new snapshot (first populate, periodic refresh, /sf-llm-gateway-internal
@@ -731,7 +741,7 @@ export default function sfWelcome(pi: ExtensionAPI) {
       value: "summary",
       label: "Show splash summary",
       description:
-        "Print the same model, monthly-cost, gateway/slack, extension health, and recent-session lines the splash shows on startup.",
+        "Print the same model, monthly-cost, gateway/slack, Node CA, extension health, and recent-session lines the splash shows on startup.",
       group: "Diagnostics",
     },
     {
@@ -866,6 +876,13 @@ export default function sfWelcome(pi: ExtensionAPI) {
     }
 
     const data = collectSplashData(modelName, providerName, ctx.cwd, MONTHLY_BUDGET_FALLBACK);
+    try {
+      const nodeCert = detectNodeCertStatus(ctx.cwd);
+      writeCachedNodeCertStatus(nodeCert);
+      data.nodeCert = nodeCert;
+    } catch {
+      data.nodeCert ??= { kind: "unknown", loading: false };
+    }
     const healthLines = data.extensionHealth.map((ext) => {
       const statusIcon = ext.status === "active" ? "●" : ext.status === "locked" ? "◆" : "○";
       return `  ${statusIcon} ${ext.name} — ${ext.status}`;
@@ -880,6 +897,7 @@ export default function sfWelcome(pi: ExtensionAPI) {
       ? (data.gatewayStatus?.kind ?? "not checked")
       : "hidden";
     const slackStatus = data.slackVisible ? (data.slackStatus?.kind ?? "not checked") : "hidden";
+    const nodeCertStatus = data.nodeCert?.kind ?? "not checked";
 
     return [
       "sf-pi Welcome Summary",
@@ -890,6 +908,7 @@ export default function sfWelcome(pi: ExtensionAPI) {
       `Monthly cost: $${data.monthlyCost.toFixed(2)} / ${budgetLabel}${costPercent}${sourceSuffix}`,
       `Gateway: ${gatewayStatus}`,
       `Slack: ${slackStatus}`,
+      `Node CA Certs: ${nodeCertStatus}`,
       "",
       "sf-pi Extensions:",
       ...healthLines,
@@ -1167,14 +1186,13 @@ export default function sfWelcome(pi: ExtensionAPI) {
     if (!ctx.hasUI || !isActiveSession(ctx, generation)) return;
     const header = new SfWelcomeHeader(data);
     header.setHeaderOffset(headerOffset);
-    header.setCountdown(headerCountdown);
     headerActive = true;
 
     ctx.ui.setHeader((tui) => {
       activeHeader = header;
       headerRequestRender = (force = false) => tui.requestRender(force);
       startHeaderAnimation(ctx, generation);
-      startHeaderCountdown(ctx, generation);
+      startHeaderDismissListener(ctx, generation);
 
       return {
         render(width: number): string[] {
@@ -1258,9 +1276,7 @@ export default function sfWelcome(pi: ExtensionAPI) {
           // a TUI handle, force a full repaint to replace Pi's default frame.
           tui.requestRender(true);
 
-          let countdown = 30;
           let dismissed = false;
-          const intervalRef: { current?: ReturnType<typeof setInterval> } = {};
           // Separate interval for the Pi + SALESFORCE color shimmer.
           // Ticks for ~5 seconds on boot, then stops — the animation is
           // a one-time "boot-up moment," not an ongoing repaint cost.
@@ -1275,7 +1291,6 @@ export default function sfWelcome(pi: ExtensionAPI) {
           const doDismiss = (persistSeen: boolean = true) => {
             if (dismissed) return;
             dismissed = true;
-            clearInterval(intervalRef.current);
             clearInterval(headerIntervalRef.current);
             if (dismissOverlay === doDismiss) {
               dismissOverlay = null;
@@ -1284,8 +1299,8 @@ export default function sfWelcome(pi: ExtensionAPI) {
               overlayRequestRender = null;
             }
             // Persist the seen version on every user-visible dismiss path,
-            // including countdown expiry and direct keypress dismissals that
-            // bypass the outer dismiss() helper. Shutdown passes false.
+            // including direct keypress dismissals that bypass the outer
+            // dismiss() helper. Shutdown passes false.
             if (persistSeen) {
               markWhatsNewSeen();
               markAnnouncementsSeen();
@@ -1298,9 +1313,8 @@ export default function sfWelcome(pi: ExtensionAPI) {
 
           // Wire the external render hook through the captured `tui` so
           // async refreshes (SF env detection, monthly usage) can repaint
-          // the overlay immediately instead of waiting for the next 1s
-          // countdown tick. OverlayHandle doesn't expose a repaint API, so
-          // this is the authoritative path.
+          // the overlay immediately. OverlayHandle doesn't expose a repaint
+          // API, so this is the authoritative path.
           overlayRequestRender = () => {
             if (!dismissed && isActiveSession(ctx, generation)) tui.requestRender(true);
           };
@@ -1311,21 +1325,8 @@ export default function sfWelcome(pi: ExtensionAPI) {
             doDismiss();
           }
 
-          intervalRef.current = setInterval(() => {
-            if (dismissed) return;
-            if (!isActiveSession(ctx, generation)) {
-              doDismiss(false);
-              return;
-            }
-            countdown--;
-            welcome.setCountdown(countdown);
-            tui.requestRender();
-            if (countdown <= 0) doDismiss();
-          }, 1000);
-
           // Kick off the color-cycle animation for the brand mark. Runs
-          // independently of the countdown interval so the 400 ms
-          // shimmer cadence can't be distorted by the 1 s tick. Stops
+          // at a 400 ms shimmer cadence and stops
           // itself once HEADER_ANIMATION_FRAMES frames have elapsed;
           // the final frame becomes the permanent look of the mark.
           //
@@ -1369,11 +1370,10 @@ export default function sfWelcome(pi: ExtensionAPI) {
               if (isActiveSession(ctx, generation)) {
                 overlayRequestRender = null;
               }
-              clearInterval(intervalRef.current);
               clearInterval(headerIntervalRef.current);
               // Restore the built-in working loader row we hid before opening
-              // the overlay. Runs on every close path (countdown, keypress,
-              // external dismiss, session shutdown).
+              // the overlay. Runs on every close path (keypress, external
+              // dismiss, session shutdown).
               ctx.ui.setWorkingVisible(true);
             },
           };

@@ -73,6 +73,35 @@ export interface SfSkillsStatusInfo {
   loading: boolean;
 }
 
+/** Startup-safe status for Node's custom CA bundle wiring. */
+export type NodeCertStatusKind =
+  | "checking"
+  | "verified"
+  | "installed"
+  | "found"
+  | "not-configured"
+  | "invalid"
+  | "unknown";
+
+export type NodeCertStatusSource =
+  | "env"
+  | "launch-agent"
+  | "shell"
+  | "fixer"
+  | "candidate"
+  | "probe";
+
+export interface NodeCertStatusInfo {
+  kind: NodeCertStatusKind;
+  source?: NodeCertStatusSource;
+  /** Absolute local path when one is known. Renderers intentionally avoid
+   *  showing this on the splash; it is kept for diagnostics and cache reuse. */
+  path?: string;
+  /** Short reason for invalid / unknown states. */
+  reason?: string;
+  loading: boolean;
+}
+
 /** Install status shown in the splash's Recommendations block. */
 export type RecommendationDisplayStatus = "installed" | "pending" | "declined";
 
@@ -199,6 +228,9 @@ export interface SplashData {
    *  populated asynchronously after initial render. Mirrors the sfCli
    *  cache-first → deferred-refresh pattern; never blocks startup. */
   sfSkills?: SfSkillsStatusInfo;
+  /** Node custom-CA status populated cache-first, then refreshed on a
+   *  deferred timer. Never performs a live TLS probe during startup. */
+  nodeCert?: NodeCertStatusInfo;
   /** Short summary of pi-coding-agent changes since the user's last splash.
    * Present only when there is something new to announce. */
   whatsNew?: WhatsNewSummary;

@@ -418,6 +418,63 @@ function formatSfCliStatusValue(data: SplashData, mode: GlyphMode): string {
   return `${SF_GREEN("✓")} ${SF_GREEN("Installed")}${suffix}`;
 }
 
+function nodeCertSourceLabel(source: NonNullable<SplashData["nodeCert"]>["source"]): string {
+  switch (source) {
+    case "env":
+    case "probe":
+      return "NODE_EXTRA_CA_CERTS";
+    case "launch-agent":
+      return "LaunchAgent";
+    case "shell":
+      return "shell";
+    case "fixer":
+      return "saved fix";
+    case "candidate":
+      return "candidate";
+    default:
+      return "custom CA";
+  }
+}
+
+function formatNodeCertStatusValue(data: SplashData, mode: GlyphMode): string {
+  const cert = data.nodeCert;
+
+  if (!cert || cert.loading || cert.kind === "checking") {
+    return MUTED(`${glyph("hourglass", mode)} Checking`);
+  }
+
+  switch (cert.kind) {
+    case "verified":
+      return `${SF_GREEN("✓")} ${SF_GREEN("Verified")} ${MUTED("· NODE_EXTRA_CA_CERTS")}`;
+    case "installed":
+      return `${SF_GREEN("✓")} ${SF_GREEN("Installed")} ${MUTED(`· ${nodeCertSourceLabel(cert.source)}`)}`;
+    case "found":
+      return `${SF_ORANGE("!")} ${SF_ORANGE("Found candidate")}`;
+    case "not-configured":
+      return `${MUTED("○")} ${MUTED("Not configured")}`;
+    case "invalid":
+      return `${SF_RED("✗")} ${SF_RED("Invalid path")}`;
+    case "unknown":
+    default:
+      return `${SF_ORANGE("?")} ${SF_ORANGE("Unknown")}`;
+  }
+}
+
+function nodeCertActionHint(cert: SplashData["nodeCert"]): string | null {
+  if (!cert || cert.loading || cert.kind === "checking") return null;
+  if (cert.kind === "found") return "/sf-llm-gateway fix-ca-bundle";
+  if (
+    cert.kind === "installed" &&
+    cert.source &&
+    cert.source !== "env" &&
+    cert.source !== "probe"
+  ) {
+    return "relaunch pi to inherit NODE_EXTRA_CA_CERTS";
+  }
+  if (cert.kind === "invalid") return "check NODE_EXTRA_CA_CERTS path";
+  return null;
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Left column builder
 // ═══════════════════════════════════════════════════════════════════════════
@@ -559,6 +616,18 @@ function buildLeftColumn(
   // the welcome splash. Keep this directly under the gateway row so both
   // environment statuses read as one aligned block.
   lines.push(formatGlyphInfoRow("cli", mode, "SF CLI", formatSfCliStatusValue(data, mode)));
+
+  // Node custom-CA posture. Cache-first like SF CLI / SF Skills: the row can
+  // say "Checking" on first paint, then update once the deferred local-only
+  // detector classifies NODE_EXTRA_CA_CERTS / LaunchAgent / shell state.
+  lines.push(
+    formatGlyphInfoRow("nodeCert", mode, "Node CA Certs", formatNodeCertStatusValue(data, mode)),
+  );
+  const nodeCertHint = nodeCertActionHint(data.nodeCert);
+  if (nodeCertHint) {
+    const truncated = truncateToWidth(nodeCertHint, Math.max(10, colWidth - 4), "…");
+    lines.push(`   ${MUTED(`→ ${truncated}`)}`);
+  }
 
   // Privacy / telemetry posture. sf-pi opts users out of pi's anonymous
   // install/update ping by default. The row is always rendered so the
@@ -903,12 +972,11 @@ function renderSplashBox(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Splash overlay component (with countdown)
+// Splash overlay component
 // ═══════════════════════════════════════════════════════════════════════════
 
 export class SfWelcomeOverlay implements Component {
   private data: SplashData;
-  private countdown: number = 30;
   // Per-character color offset driven by the extension's animation
   // interval. Incremented each tick for a few seconds, then frozen.
   private headerOffset: number = 0;
@@ -917,10 +985,6 @@ export class SfWelcomeOverlay implements Component {
     this.data = data;
   }
 
-  setCountdown(seconds: number): void {
-    this.countdown = seconds;
-  }
-
   setHeaderOffset(offset: number): void {
     this.headerOffset = offset;
   }
@@ -932,17 +996,16 @@ export class SfWelcomeOverlay implements Component {
 
     const boxWidth = getBoxWidth(termWidth);
 
-    // Bottom line with countdown
-    const countdownText = ` Press any key to continue (${this.countdown}s) `;
-    const countdownStyled = MUTED(countdownText);
+    const footerText = " Press any key to continue ";
+    const footerStyled = MUTED(footerText);
     const bottomContentWidth = boxWidth - 2;
-    const countdownVisLen = visibleWidth(countdownText);
-    const leftPad = Math.floor((bottomContentWidth - countdownVisLen) / 2);
-    const rightPad = bottomContentWidth - countdownVisLen - leftPad;
+    const footerVisLen = visibleWidth(footerText);
+    const leftPad = Math.floor((bottomContentWidth - footerVisLen) / 2);
+    const rightPad = bottomContentWidth - footerVisLen - leftPad;
     const hChar = "─";
     const bottomLine =
       MUTED(hChar.repeat(Math.max(0, leftPad))) +
-      countdownStyled +
+      footerStyled +
       MUTED(hChar.repeat(Math.max(0, rightPad)));
 
     return renderSplashBox(this.data, termWidth, bottomLine, this.headerOffset);
@@ -950,7 +1013,7 @@ export class SfWelcomeOverlay implements Component {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Splash header component (persistent, optional countdown)
+// Splash header component (persistent)
 // ═══════════════════════════════════════════════════════════════════════════
 
 export class SfWelcomeHeader implements Component {
@@ -959,7 +1022,6 @@ export class SfWelcomeHeader implements Component {
   // the persistent header shown in session lists) can show the same
   // animated frame if the caller chooses to drive it.
   private headerOffset: number = 0;
-  private countdown: number | undefined;
 
   constructor(data: SplashData) {
     this.data = data;
@@ -969,10 +1031,6 @@ export class SfWelcomeHeader implements Component {
     this.headerOffset = offset;
   }
 
-  setCountdown(seconds: number | undefined): void {
-    this.countdown = seconds;
-  }
-
   invalidate(): void {}
 
   render(termWidth: number): string[] {
@@ -980,25 +1038,16 @@ export class SfWelcomeHeader implements Component {
 
     const boxWidth = getBoxWidth(termWidth);
     const hChar = "─";
-    let bottomLine: string;
-    if (this.countdown !== undefined) {
-      const countdownText = ` Press Esc to dismiss · auto-dismiss in ${this.countdown}s `;
-      const countdownStyled = MUTED(countdownText);
-      const bottomContentWidth = boxWidth - 2;
-      const countdownVisLen = visibleWidth(countdownText);
-      const leftPad = Math.floor((bottomContentWidth - countdownVisLen) / 2);
-      const rightPad = bottomContentWidth - countdownVisLen - leftPad;
-      bottomLine =
-        MUTED(hChar.repeat(Math.max(0, leftPad))) +
-        countdownStyled +
-        MUTED(hChar.repeat(Math.max(0, rightPad)));
-    } else if (shouldUseSingleColumn(termWidth)) {
-      // No column split to hint at in single-column mode.
-      bottomLine = MUTED(hChar.repeat(Math.max(0, boxWidth - 2)));
-    } else {
-      const { leftCol, rightCol } = getColumnWidths(boxWidth);
-      bottomLine = MUTED(hChar.repeat(leftCol)) + MUTED("┴") + MUTED(hChar.repeat(rightCol));
-    }
+    const footerText = " Press Esc to dismiss ";
+    const footerStyled = MUTED(footerText);
+    const bottomContentWidth = boxWidth - 2;
+    const footerVisLen = visibleWidth(footerText);
+    const leftPad = Math.floor((bottomContentWidth - footerVisLen) / 2);
+    const rightPad = bottomContentWidth - footerVisLen - leftPad;
+    const bottomLine =
+      MUTED(hChar.repeat(Math.max(0, leftPad))) +
+      footerStyled +
+      MUTED(hChar.repeat(Math.max(0, rightPad)));
 
     const lines = renderSplashBox(this.data, termWidth, bottomLine, this.headerOffset);
     if (lines.length > 0) {

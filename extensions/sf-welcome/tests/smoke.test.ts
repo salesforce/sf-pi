@@ -50,6 +50,7 @@ describe("sf-welcome", () => {
     expect(data.providerName).toBe("fast-provider");
     expect(data.monthlyBudget).toBe(123);
     expect(data.sfCli?.loading).toBe(true);
+    expect(data.nodeCert?.loading).toBe(true);
     expect(data.loading).toBe(true);
     expect(data.slackLoading).toBe(true);
     expect(data.extensionHealthLoading).toBe(true);
@@ -68,6 +69,7 @@ describe("sf-welcome", () => {
     expect(plain).not.toContain("Slack");
     expect(plain).not.toContain("LLM Gateway");
     expect(plain).toContain("sf-pi Extensions");
+    expect(plain).toContain("Node CA Certs");
     expect(plain).toContain("Loading");
     expect(plain).not.toContain("Not connected");
     expect(plain).not.toContain("No extensions loaded");
@@ -154,8 +156,8 @@ describe("sf-welcome", () => {
     expect(lines.length).toBeGreaterThan(5);
   });
 
-  it("SfWelcomeHeader renders optional countdown dismissal text", async () => {
-    const { SfWelcomeHeader } = await import("../lib/splash-component.ts");
+  it("renders manual dismissal text without auto-dismiss countdowns", async () => {
+    const { SfWelcomeHeader, SfWelcomeOverlay } = await import("../lib/splash-component.ts");
     const data = {
       modelName: "Claude Sonnet 4",
       providerName: "anthropic",
@@ -167,13 +169,13 @@ describe("sf-welcome", () => {
       monthlyBudget: 3000,
     };
 
-    const header = new SfWelcomeHeader(data);
-    header.setCountdown(30);
-    expect(stripAnsi(header.render(100).join("\n"))).toContain("Press Esc to dismiss");
-    expect(stripAnsi(header.render(100).join("\n"))).toContain("auto-dismiss in 30s");
+    const headerText = stripAnsi(new SfWelcomeHeader(data).render(100).join("\n"));
+    expect(headerText).toContain("Press Esc to dismiss");
+    expect(headerText).not.toContain("auto-dismiss");
 
-    header.setCountdown(12);
-    expect(stripAnsi(header.render(100).join("\n"))).toContain("auto-dismiss in 12s");
+    const overlayText = stripAnsi(new SfWelcomeOverlay(data).render(100).join("\n"));
+    expect(overlayText).toContain("Press any key to continue");
+    expect(overlayText).not.toMatch(/\(\d+s\)/);
   });
 
   it("renders Slack only when optional status is visible", async () => {
