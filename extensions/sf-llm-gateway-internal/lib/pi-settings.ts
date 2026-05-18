@@ -28,7 +28,6 @@ import {
   asOptionalString,
 } from "./config.ts";
 
-const ENABLED_MODEL_PREFIX = ENABLED_MODEL_PATTERN.slice(0, -1);
 const LEGACY_ENABLED_MODEL_PREFIX_ANTHROPIC = LEGACY_ENABLED_MODEL_PATTERN_ANTHROPIC.slice(0, -1);
 
 /**
@@ -93,23 +92,16 @@ export function isExclusiveEnabledModelPattern(value: unknown): boolean {
 
 function isLegacyGatewayModelPattern(pattern: string): boolean {
   if (isGatewayScopePattern(pattern)) return false;
-  return (
-    pattern.startsWith(ENABLED_MODEL_PREFIX) ||
-    pattern.startsWith(LEGACY_ENABLED_MODEL_PREFIX_ANTHROPIC)
-  );
+  return pattern.startsWith(LEGACY_ENABLED_MODEL_PREFIX_ANTHROPIC);
 }
 
 /**
- * Collapse legacy gateway model-specific patterns and the retired
- * `sf-llm-gateway-internal-anthropic/*` wildcard to the current provider
- * wildcard.
+ * Collapse entries from the retired Anthropic-only sub-provider to the current
+ * provider wildcard.
  *
- * Older settings could persist exact entries like
- * `sf-llm-gateway-internal/gpt-5`, or the retired anthropic-only wildcard.
- * Those fight the extension's small startup bootstrap catalog and cause
- * noisy "No models match pattern" warnings until async discovery finishes.
- * The current extension owns gateway scoping at the provider level, so we
- * normalize all of those older entries to `sf-llm-gateway-internal/*`.
+ * Current-provider model ids such as `sf-llm-gateway-internal/gpt-5.5` are
+ * valid explicit allow-list entries. Preserve them so users who intentionally
+ * scope Pi to a fixed set of gateway models keep that scope across restarts.
  */
 export function normalizeLegacyGatewayEnabledModels(value: unknown): string[] | undefined {
   if (!Array.isArray(value)) {

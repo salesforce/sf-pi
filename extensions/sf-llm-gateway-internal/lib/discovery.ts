@@ -174,9 +174,9 @@ export function registerCachedDiscoveryIfAvailable(
   pi: ExtensionAPI,
   runtimeBetaOverrides: Set<string> | null,
   runtimeExtraBetas: Set<string>,
-  cwd: string,
+  cwd?: string,
 ): boolean {
-  const config = getGatewayConfig(cwd);
+  const config = cwd ? getGatewayConfig(cwd) : getGlobalOnlyGatewayConfig();
   if (!config.enabled || !config.baseUrl) return false;
 
   const cache = readDiscoveryCache();

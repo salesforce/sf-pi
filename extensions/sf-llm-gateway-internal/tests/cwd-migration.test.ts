@@ -5,8 +5,8 @@
  * Covers:
  * - Extension factory body does NOT call process.cwd()
  * - session_start handler uses ctx.cwd for repair + discovery
- * - Lib function signatures require explicit cwd (no defaults)
- * - registerProviderIfConfigured allows optional cwd for factory bootstrap
+ * - Live discovery/config helpers require explicit cwd (no process.cwd defaults)
+ * - Factory-safe registration helpers allow optional cwd
  * - discoverAndRegister requires explicit cwd
  *
  * This is the most critical 0.68.0 migration: process.cwd() in the factory
@@ -55,6 +55,16 @@ describe("extension factory body", () => {
       "registerProviderIfConfigured(pi, getBetaOverrides(), getBetaExtras())",
     );
   });
+
+  it("uses cached discovery without cwd in the factory", () => {
+    const factoryStart = source.indexOf("export default function");
+    const firstEventHandler = source.indexOf('pi.on("session_start"');
+    const factoryBody = source.slice(factoryStart, firstEventHandler);
+
+    expect(factoryBody).toContain(
+      "registerCachedDiscoveryIfAvailable(pi, getBetaOverrides(), getBetaExtras())",
+    );
+  });
 });
 
 // -------------------------------------------------------------------------------------------------
@@ -75,6 +85,12 @@ describe("session_start handler", () => {
   it("calls discoverAndRegister with ctx.cwd", () => {
     // session_start handler should pass ctx.cwd to discovery
     expect(source).toMatch(/discoverAndRegister\(pi,.*ctx\.cwd\)/);
+  });
+
+  it("re-registers cached discovery with ctx.cwd", () => {
+    expect(source).toContain(
+      "registerCachedDiscoveryIfAvailable(pi, getBetaOverrides(), getBetaExtras(), ctx.cwd)",
+    );
   });
 });
 
@@ -109,6 +125,11 @@ describe("lib function signatures", () => {
     const source = readSource("lib/discovery.ts");
     // Should have `cwd?: string` — optional for factory bootstrap
     expect(source).toMatch(/registerProviderIfConfigured[\s\S]*?cwd\?: string/);
+  });
+
+  it("registerCachedDiscoveryIfAvailable accepts optional cwd", () => {
+    const source = readSource("lib/discovery.ts");
+    expect(source).toMatch(/registerCachedDiscoveryIfAvailable[\s\S]*?cwd\?: string/);
   });
 });
 

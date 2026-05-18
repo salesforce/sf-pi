@@ -220,13 +220,13 @@ describe("removeEnabledModelPattern", () => {
 describe("normalizeLegacyGatewayEnabledModels", () => {
   const PATTERN = "sf-llm-gateway-internal/*";
 
-  it("collapses legacy gateway-only exact model entries to the provider wildcard", () => {
+  it("keeps explicit current-provider model entries", () => {
     expect(
       normalizeLegacyGatewayEnabledModels([
         "sf-llm-gateway-internal/claude-opus-4-7",
         "sf-llm-gateway-internal/gpt-5",
       ]),
-    ).toEqual([PATTERN]);
+    ).toEqual(["sf-llm-gateway-internal/claude-opus-4-7", "sf-llm-gateway-internal/gpt-5"]);
   });
 
   it("collapses the retired anthropic sub-provider wildcard to the unified wildcard", () => {
@@ -235,20 +235,20 @@ describe("normalizeLegacyGatewayEnabledModels", () => {
     ).toEqual([PATTERN, "openai/*"]);
   });
 
-  it("preserves non-gateway patterns while collapsing legacy gateway entries", () => {
+  it("preserves current-provider entries alongside other providers", () => {
     expect(
       normalizeLegacyGatewayEnabledModels([
         "sf-llm-gateway-internal/gpt-5",
         "openai/*",
         "anthropic/*",
       ]),
-    ).toEqual([PATTERN, "openai/*", "anthropic/*"]);
+    ).toEqual(["sf-llm-gateway-internal/gpt-5", "openai/*", "anthropic/*"]);
   });
 
-  it("removes redundant exact gateway entries next to the wildcard", () => {
+  it("does not prune explicit model entries when the wildcard is present", () => {
     expect(
       normalizeLegacyGatewayEnabledModels([PATTERN, "sf-llm-gateway-internal/gpt-5", "openai/*"]),
-    ).toEqual([PATTERN, "openai/*"]);
+    ).toEqual([PATTERN, "sf-llm-gateway-internal/gpt-5", "openai/*"]);
   });
 
   it("leaves non-gateway scopes unchanged", () => {

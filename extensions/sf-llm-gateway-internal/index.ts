@@ -16,15 +16,16 @@
  *   provider.ts` for the one-shot settings migration that rewrites the
  *   retired `sf-llm-gateway-internal-anthropic` references in users'
  *   settings.json files.
- * - Registers a static bootstrap catalog synchronously so Pi startup can resolve
- *   defaults/scoped models without warnings before async discovery finishes
+ * - Registers a static bootstrap catalog synchronously, then layers in the
+ *   previous cached discovery catalog so Pi startup can resolve default and
+ *   scoped models before async discovery finishes
  * - Dynamic model discovery via `/v1/models` for all valid gateway model IDs
  * - Static presets for common models, generic family-aware inference for newly discovered ones
  * - Uses Pi's built-in custom-provider support instead of models.json hacks
  * - Shows an explicit SF LLM Gateway footer status when one of these models is active
  * - Footer status includes chosen model, current context usage, and monthly gateway usage
  * - Defaults gateway sessions to Pi thinking level xhigh
- * - Repairs legacy exact gateway enabledModels entries before startup validation
+ * - Repairs retired gateway enabledModels entries before startup validation
  * - Runtime beta header toggles with env var initial defaults
  * - Keeps the runtime spine in this file while pushing settings/status helpers to lib/
  *
@@ -355,6 +356,12 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
   // Uses a minimal registration that does not need cwd — the config layer
   // reads global saved config first, then env vars as automation fallback.
   registerProviderIfConfigured(pi, getBetaOverrides(), getBetaExtras());
+
+  // If a prior session discovered additional gateway models, register that
+  // local cache now too. Pi resolves scoped model patterns before
+  // session_start, so waiting until session_start would leave explicit model
+  // allow-lists stuck on the smaller bootstrap catalog for this session.
+  registerCachedDiscoveryIfAvailable(pi, getBetaOverrides(), getBetaExtras());
 
   // Contribute to the aggregated `/sf-pi doctor` view. The standalone
   // `/sf-llm-gateway-internal doctor` command keeps using
