@@ -24,6 +24,50 @@ _Avoid_: integration point, hook thing
 The Bundled Extension that gives agents compact Salesforce operator guidance and a reference map to the deeper SF Pi and Salesforce resources they should load only when needed.
 _Avoid_: Salesforce encyclopedia, all-purpose memory dump
 
+**SF Data 360**:
+The Bundled Extension that gives agents a compact, safe Data Cloud / Data 360 workflow surface with discovery, direct REST access, metadata helpers, and readiness checks.
+_Avoid_: plugin, MCP wrapper, endpoint dump
+
+**Upstream Reference Fallback**:
+A public-source fallback posture where agents consult an upstream project for missing reference context, while SF Pi remains responsible for its own runtime surface and user experience.
+_Avoid_: runtime fallback, embedded server, hidden dependency
+
+**First-Class Data 360 Parity**:
+The product goal that major Data 360 operation families should be represented with clear SF Pi workflows, examples, tests, documentation, and skill guidance rather than only a generic REST escape hatch.
+_Avoid_: endpoint dump, hand-written clone of upstream internals, hidden MCP dependency
+
+**Data 360 Skill Pack**:
+Extension-owned, phase-first skills that guide agents through Data 360 work while preserving generated family and operation mappings behind the workflow language.
+_Avoid_: endpoint-centric skill sprawl, custom skill router, forced prompt injection, disabling unrelated skills
+
+**Data 360 Phase**:
+One of the canonical workflow slices for the **Data 360 Skill Pack**: Connect, Prepare, Harmonize, Segment, Act, Retrieve, Observe, or Orchestrate.
+_Avoid_: treating endpoint families as the primary user-facing workflow language
+
+**Generated Data 360 Parity**:
+A delivery style for **First-Class Data 360 Parity** where repeated family coverage is produced from reviewed source data, while hand-written code stays focused on shared behavior and genuinely distinct workflows.
+_Avoid_: hand-written endpoint sprawl, unreviewed mirror, ad hoc family drift
+
+**Runtime Code Budget**:
+A maintainability constraint applied to hand-written runtime TypeScript, not to generated or reference artifacts that are reviewed, reproducible, and safe to publish.
+_Avoid_: counting generated registry data as feature complexity, LOC reduction by deleting source-of-truth data
+
+**D360 Execution Explanation**:
+A human-visible explanation of a Data 360 operation that shows the endpoint, parameters, sanitized body, orchestration steps, safety decision, result summary, and raw-output pointer while keeping the LLM-visible result bounded.
+_Avoid_: raw response dump, hidden API path, context-heavy transcript
+
+**D360 TDD Contract**:
+The expectation that Data 360 behavior changes, generator changes, and refactors start from a failing or protective test/check before production code changes are made.
+_Avoid_: implementation-first parity expansion, refactor without characterization, untested generator drift
+
+**D360 Domain Boundary**:
+The boundary that keeps Data 360-specific language, registry behavior, safety interpretation, and workflow explanations inside **SF Data 360**, while shared SF Pi primitives remain generic.
+_Avoid_: generic utility sprawl, cross-extension Data 360 coupling, shared modules with extension-specific knowledge
+
+**D360 Performance Budget**:
+The expectation that **SF Data 360** pays expensive costs only after user intent is clear: startup and prompt footprint stay strict, while rich Data 360 UX appears through commands, skills, or tool results.
+_Avoid_: live startup probes, always-loaded catalogs, verbose always-on skill descriptions, broad inline result dumps
+
 **Salesforce Operator Kernel**:
 The dense, always-available operating rules for safe Salesforce work, including how to choose APIs, verify org state, and avoid guessing live-org details.
 _Avoid_: documentation index, Salesforce knowledge base
@@ -38,6 +82,18 @@ _Avoid_: duplicated docs, hardcoded personal skill paths, Salesforce encyclopedi
 - A **Bundled Extension** exposes zero or more **Runtime Surfaces**.
 - The **Manager Surface** controls the enabled state and configuration entry points for **Bundled Extensions**.
 - **SF Brain** is a **Bundled Extension** that provides the **Salesforce Operator Kernel**.
+- **SF Brain** routes Data 360 work to **SF Data 360** without embedding Data 360 operation details.
+- **SF Data 360** is a **Bundled Extension** with Data Cloud / Data 360 **Runtime Surfaces**.
+- **First-Class Data 360 Parity** guides how **SF Data 360** expands its workflow coverage.
+- **Generated Data 360 Parity** is the preferred delivery style for broad **First-Class Data 360 Parity**.
+- A **Runtime Code Budget** constrains hand-written **Runtime Surfaces**, not generated parity data.
+- A **D360 Execution Explanation** makes **SF Data 360** transparent to humans without expanding the LLM transcript unnecessarily.
+- The **D360 TDD Contract** governs changes to **SF Data 360**.
+- The **D360 Domain Boundary** protects **SF Data 360** from leaking domain-specific behavior into generic shared code.
+- The **D360 Performance Budget** keeps **SF Data 360** strict at startup and rich after intent.
+- A **Data 360 Skill Pack** supports **First-Class Data 360 Parity** through progressive disclosure.
+- A **Data 360 Skill Pack** is organized by **Data 360 Phase**.
+- An **Upstream Reference Fallback** can inform a **Bundled Extension** without becoming one of its **Runtime Surfaces**.
 - The **Salesforce Operator Kernel** points to the **SF Pi Reference Map** when deeper routing context is needed.
 
 ## Example dialogue

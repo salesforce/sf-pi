@@ -11,3 +11,4 @@ or accidentally contradicted in extension READMEs.
 - [0006: Extension Consistency Baseline](./0006-extension-consistency-baseline.md)
 - [0007: Single-Place Credential Entry per Integration](./0007-single-place-credentials.md)
 - [0008: Context-Injection Boundary Tags](./0008-context-injection-boundaries.md)
+- [0009: Data 360 Parity Stays Pi-Native, Generated, and Phase-Guided](./0009-data-360-parity-pi-native-generated-phase-guided.md)

@@ -147,6 +147,14 @@ reference files under `skills/sf-data360/references/` for endpoint families,
 workflow recipes, action coverage, facade coverage, request-body shapes, query patterns, examples,
 safety rules, Agentforce Session Tracing (STDM), and Agent Platform Tracing.
 
+The phase skill pack (`sf-data360-connect`, `sf-data360-prepare`,
+`sf-data360-harmonize`, `sf-data360-segment`, `sf-data360-act`,
+`sf-data360-retrieve`, `sf-data360-observe`, and `sf-data360-orchestrate`) is
+generated from `registry/phases.json` and the facade registry. These generated
+`SKILL.md` files are committed so pi discovers them through the normal
+extension-owned `resources_discover` skill path; run `npm run
+generate-d360-skills` after changing phase mappings or operation coverage.
+
 When local references are not enough, use the public upstream Data 360 MCP server
 repo before broad web search: <https://github.com/forcedotcom/d360-mcp-server>.
 It is reference material for the roughly 180+ operation surface, facade workflow,
@@ -209,6 +217,7 @@ extensions/sf-data360/
     metadata-card.test.ts   ← unit / smoke test
     metadata-tool.test.ts   ← unit / smoke test
     path.test.ts            ← unit / smoke test
+    phase-skills.test.ts    ← unit / smoke test
     platform-tracing.test.ts← unit / smoke test
     probe-card.test.ts      ← unit / smoke test
     probe-tool.test.ts      ← unit / smoke test
@@ -242,6 +251,7 @@ Covered by unit tests:
 - Request resolution chooses the target org API version, resolves explicit non-default target orgs before execution, and fails closed if that resolution fails.
 - HTTP errors from `Connection.request` surface as `{ status, body }` and are classified by `responseLooksLikeError`; the tool emits an error envelope instead of throwing.
 - Salesforce REST error arrays embedded in 2xx responses are still classified as failed calls.
+- Generated phase skills are committed, reproducible from `registry/phases.json`, and checked in the normal lint path.
 
 ## Troubleshooting
 

@@ -1,0 +1,94 @@
+[
+  {
+    "id": "connect",
+    "label": "Connect",
+    "skillName": "sf-data360-connect",
+    "summary": "Set up and inspect Data 360 source connectivity.",
+    "description": "Data 360 Connect phase. Use when managing connections, connectors, source systems, source metadata, connection tests, or source endpoints with sf-data360 tools.",
+    "familyDefaults": ["Connection"],
+    "operationOverrides": ["d360_connectors_list", "d360_connections_sfdc_list"]
+  },
+  {
+    "id": "prepare",
+    "label": "Prepare",
+    "skillName": "sf-data360-prepare",
+    "summary": "Prepare raw data structures and ingestion pipelines.",
+    "description": "Data 360 Prepare phase. Use when managing DLOs, data streams, data transforms, data kits, data spaces, ingestion readiness, or raw data preparation with sf-data360 tools.",
+    "familyDefaults": ["DLO", "DataStreams", "DataTransform", "DataKit", "Dataspace"],
+    "operationOverrides": ["d360_data_streams_list", "d360_data_transforms_list"]
+  },
+  {
+    "id": "harmonize",
+    "label": "Harmonize",
+    "skillName": "sf-data360-harmonize",
+    "summary": "Model, map, and unify data into harmonized entities.",
+    "description": "Data 360 Harmonize phase. Use when managing DMOs, mappings, standard mappings, identity resolution, smart mapping helpers, or semantic model definitions with sf-data360 tools.",
+    "familyDefaults": ["DMO", "Mappings", "StandardMappings", "Smart", "Identity Resolution"],
+    "operationOverrides": [
+      "d360_sdm_create",
+      "d360_sdm_update",
+      "d360_sdm_clone",
+      "d360_sdm_data_object_create",
+      "d360_sdm_data_object_update",
+      "d360_sdm_calc_dim_create",
+      "d360_sdm_calc_dim_update",
+      "d360_sdm_calc_measure_create",
+      "d360_sdm_calc_measure_update",
+      "d360_sdm_metric_create",
+      "d360_sdm_metric_update",
+      "d360_sdm_relationship_create",
+      "d360_sdm_relationship_update",
+      "d360_sdm_delete",
+      "d360_sdm_data_object_delete",
+      "d360_sdm_calc_dim_delete",
+      "d360_sdm_calc_measure_delete",
+      "d360_sdm_metric_delete",
+      "d360_sdm_relationship_delete"
+    ]
+  },
+  {
+    "id": "segment",
+    "label": "Segment",
+    "skillName": "sf-data360-segment",
+    "summary": "Build and inspect audience segments and calculated insights.",
+    "description": "Data 360 Segment phase. Use when managing audience segments, segment publish flows, calculated insights, metrics, or segment membership logic with sf-data360 tools.",
+    "familyDefaults": ["Segment", "Calculated Insights"],
+    "operationOverrides": []
+  },
+  {
+    "id": "act",
+    "label": "Act",
+    "skillName": "sf-data360-act",
+    "summary": "Deliver audiences and data-triggered actions downstream.",
+    "description": "Data 360 Act phase. Use when managing activations, activation targets, downstream delivery, data actions, or action targets with sf-data360 tools.",
+    "familyDefaults": ["Activation", "DataAction"],
+    "operationOverrides": ["d360_data_actions_list"]
+  },
+  {
+    "id": "retrieve",
+    "label": "Retrieve",
+    "skillName": "sf-data360-retrieve",
+    "summary": "Query, search, and inspect Data 360 data and metadata.",
+    "description": "Data 360 Retrieve phase. Use when running Data 360 SQL, metadata search, profile or data graph queries, semantic queries, retriever inspection, or search-index work with sf-data360 tools.",
+    "familyDefaults": ["Query", "Metadata", "Profile and Data Graph", "Semantic Retrieval"],
+    "operationOverrides": []
+  },
+  {
+    "id": "observe",
+    "label": "Observe",
+    "skillName": "sf-data360-observe",
+    "summary": "Analyze Agentforce sessions and platform traces in Data 360.",
+    "description": "Data 360 Observe phase. Use when analyzing Agentforce STDM sessions, conversation traces, platform tracing spans, trace trees, action failures, or production agent behavior with sf-data360 tools.",
+    "familyDefaults": ["Agent Observability"],
+    "operationOverrides": []
+  },
+  {
+    "id": "orchestrate",
+    "label": "Orchestrate",
+    "skillName": "sf-data360-orchestrate",
+    "summary": "Plan and troubleshoot cross-phase Data 360 workflows.",
+    "description": "Data 360 Orchestrate phase. Use for cross-phase Data 360 planning, pipeline setup, readiness triage, or troubleshooting that spans multiple sf-data360 phases.",
+    "familyDefaults": [],
+    "operationOverrides": []
+  }
+]
