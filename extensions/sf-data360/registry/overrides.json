@@ -837,6 +837,11 @@
     "safety": "read",
     "tips": "Use entityName or entityType to avoid broad metadata payloads. For compact DMO/DLO discovery, prefer the d360_metadata Pi tool."
   },
+  "d360_model_artifact_list": {
+    "optionalParams": ["limit", "offset"],
+    "safety": "read",
+    "tips": "Search index creation requires an embedding-capable model artifact; chat-completion-only orgs should report readiness as feature gated."
+  },
   "d360_datagraph_lookup": {
     "requiredParams": ["entity"],
     "optionalParams": ["dataspace", "lookupKeys", "live", "limit"],

@@ -1439,6 +1439,10 @@
     "params": { "entityName": "ssot__Individual__dlm", "entityType": "DataModelObject" },
     "capability": "d360_metadata"
   },
+  "d360_model_artifact_list": {
+    "params": { "limit": 20 },
+    "capability": "d360_model_artifact_list"
+  },
   "d360_datagraph_lookup": {
     "params": { "entity": "ExampleDataGraph", "lookupKeys": "ExampleLookupKey", "limit": 10 },
     "capability": "d360_datagraph_lookup"

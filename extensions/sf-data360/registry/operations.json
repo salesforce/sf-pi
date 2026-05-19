@@ -202,6 +202,16 @@
     "safety": "read"
   },
   {
+    "name": "d360_model_artifact_list",
+    "family": "Semantic Retrieval",
+    "description": "List machine-learning model artifacts, including embedding models required by search indexes.",
+    "method": "GET",
+    "path": "/ssot/machine-learning/model-artifacts",
+    "optionalParams": ["limit", "offset"],
+    "safety": "read",
+    "tips": "Search index creation requires an embedding-capable model artifact; chat-completion-only orgs should report readiness as feature gated."
+  },
+  {
     "name": "d360_dmo_list",
     "family": "DMO",
     "description": "List Data Model Objects.",

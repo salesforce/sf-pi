@@ -9,12 +9,12 @@
     "upstreamTools": 181,
     "supportedUpstreamTools": 181,
     "missingUpstreamTools": 0,
-    "facadeOperations": 204,
-    "facadeExtras": 23,
+    "facadeOperations": 205,
+    "facadeExtras": 24,
     "byStatus": { "supported": 181 },
     "byKind": { "rest": 70, "destructive_rest": 26, "rest_adjusted": 80, "local_helper": 5 },
     "bySafety": { "safe_post": 11, "read": 79, "destructive": 26, "confirmed": 65 },
-    "extrasByKind": { "alias": 15, "facade_extension": 7, "destructive_rest": 1 },
+    "extrasByKind": { "alias": 15, "facade_extension": 8, "destructive_rest": 1 },
     "payloadExamples": {
       "upstreamPayloadExamples": 31,
       "exactPayloadExamples": 20,
@@ -3032,6 +3032,16 @@
       "safety": "read",
       "kind": "facade_extension",
       "hasExample": false,
+      "notes": ["Facade-specific compatibility or observability operation."]
+    },
+    {
+      "facadeOperation": "d360_model_artifact_list",
+      "facadeFamily": "Semantic Retrieval",
+      "facadeMethod": "GET",
+      "facadePath": "/ssot/machine-learning/model-artifacts",
+      "safety": "read",
+      "kind": "facade_extension",
+      "hasExample": true,
       "notes": ["Facade-specific compatibility or observability operation."]
     },
     {

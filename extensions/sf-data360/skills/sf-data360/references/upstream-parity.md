@@ -10,8 +10,8 @@ Snapshot date: 2026-05-18
 - Upstream tools: 181
 - Supported upstream tools: 181
 - Missing upstream tools: 0
-- Facade registry operations: 204
-- Facade extras / aliases: 23
+- Facade registry operations: 205
+- Facade extras / aliases: 24
 - Upstream payload examples: 31
 - Payload examples covered exactly: 20
 - Payload examples covered as variants: 11
@@ -40,7 +40,7 @@ Snapshot date: 2026-05-18
 | Kind             | Count |
 | ---------------- | ----: |
 | alias            |    15 |
-| facade_extension |     7 |
+| facade_extension |     8 |
 | destructive_rest |     1 |
 
 ## Missing upstream tools

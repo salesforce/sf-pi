@@ -49,6 +49,8 @@ export type MutationLifecycleName =
   | "dmo"
   | "dlo"
   | "mapping"
+  | "retriever"
+  | "search-index"
   | "segment"
   | "sdm"
   | "sdm-data-object"
@@ -306,6 +308,54 @@ export function buildSemanticModelLifecyclePlan(runId: string): DmoLifecyclePlan
         safety: "read",
         params: { modelApiNameOrId: resourceName },
         sourceCapability: "sdm_delete_verify",
+      },
+    ],
+  };
+}
+
+export function buildSearchIndexReadinessPlan(_runId = "readiness"): DmoLifecyclePlan {
+  return {
+    resourceName: "PiSweepSearchIndexReadiness",
+    steps: [
+      {
+        stage: "live",
+        capability: "d360_model_artifact_list",
+        family: "Semantic Retrieval",
+        safety: "read",
+        params: { limit: 200 },
+        sourceCapability: "search_index_model_artifact_readiness",
+      },
+      {
+        stage: "live",
+        capability: "d360_search_index_config",
+        family: "Semantic Retrieval",
+        safety: "read",
+        params: {},
+        sourceCapability: "search_index_config_readiness",
+      },
+      {
+        stage: "live",
+        capability: "d360_search_index_list",
+        family: "Semantic Retrieval",
+        safety: "read",
+        params: { limit: 10 },
+        sourceCapability: "search_index_list_readiness",
+      },
+    ],
+  };
+}
+
+export function buildRetrieverReadinessPlan(_runId = "readiness"): DmoLifecyclePlan {
+  return {
+    resourceName: "PiSweepRetrieverReadiness",
+    steps: [
+      {
+        stage: "live",
+        capability: "d360_retriever_list",
+        family: "Semantic Retrieval",
+        safety: "read",
+        params: { limit: 10 },
+        sourceCapability: "retriever_list_readiness",
       },
     ],
   };
@@ -1516,6 +1566,8 @@ const lifecycleBuilders: Record<MutationLifecycleName, (runId: string) => DmoLif
   dmo: buildDmoLifecyclePlan,
   dlo: buildDloLifecyclePlan,
   mapping: buildMappingLifecyclePlan,
+  retriever: buildRetrieverReadinessPlan,
+  "search-index": buildSearchIndexReadinessPlan,
   segment: buildSegmentLifecyclePlan,
   sdm: buildSemanticModelLifecyclePlan,
   "sdm-data-object": buildSemanticDataObjectLifecyclePlan,
@@ -1830,6 +1882,20 @@ export function classifySweepResult(
   const summary = stringValue(result.summary) ?? `${check.capability} ${ok ? "ok" : "failed"}`;
   const error = stringValue(result.error) ?? extractError(result);
 
+  if (
+    ok &&
+    check.capability === "d360_model_artifact_list" &&
+    !hasEmbeddingModelArtifact(result.response)
+  ) {
+    return {
+      outcome: "feature_gated",
+      fail: false,
+      summary: "No embedding-capable model artifact found for search index creation",
+      status,
+      error,
+    };
+  }
+
   if (ok && check.stage === "dry_run") {
     return { outcome: "dry_run_ok", fail: false, summary, status, error };
   }
@@ -1935,6 +2001,18 @@ async function main(): Promise<void> {
         });
   const seenChecks = new Set(plan.map(checkKey));
   const ctx = createHeadlessContext();
+  if (options.onlyLifecycle && !options.mutate && options.lifecycles?.length) {
+    for (const lifecycle of buildMutationLifecyclePlans(runId, options.lifecycles)) {
+      for (const check of lifecycle.steps) {
+        const key = checkKey(check);
+        if (!seenChecks.has(key)) {
+          seenChecks.add(key);
+          plan.push(check);
+        }
+      }
+    }
+  }
+
   if (options.mutate || options.cleanupRunId || options.cleanupStale) {
     const gate = canRunMutationLifecycle({
       mutate: true,
@@ -2941,6 +3019,14 @@ function findValueByCandidateKey(
 function isScalarIdentifier(value: unknown): value is string | number | boolean {
   if (typeof value === "string") return Boolean(value.trim());
   return typeof value === "number" || typeof value === "boolean";
+}
+
+function hasEmbeddingModelArtifact(response: unknown): boolean {
+  const rows = findFirstArray(response) ?? [];
+  return rows.filter(isRecord).some((row) => {
+    const text = [row.capability, row.name, row.label, row.id].filter(Boolean).join(" ");
+    return /embedding|embed|e5|ada|vector/i.test(text);
+  });
 }
 
 function extractError(result: Record<string, unknown>): string | undefined {

@@ -19,6 +19,8 @@ import {
   buildSemanticCalculatedFieldsLifecyclePlan,
   buildSemanticDataObjectLifecyclePlan,
   buildSegmentLifecyclePlan,
+  buildSearchIndexReadinessPlan,
+  buildRetrieverReadinessPlan,
   buildSemanticMetricLifecyclePlan,
   buildSemanticModelLifecyclePlan,
   buildSemanticRelationshipLifecyclePlan,
@@ -754,6 +756,17 @@ describe("d360 capability sweep planning", () => {
     });
   });
 
+  it("builds search index and retriever readiness plans", () => {
+    expect(buildSearchIndexReadinessPlan().steps.map((step) => step.capability)).toEqual([
+      "d360_model_artifact_list",
+      "d360_search_index_config",
+      "d360_search_index_list",
+    ]);
+    expect(buildRetrieverReadinessPlan().steps.map((step) => step.capability)).toEqual([
+      "d360_retriever_list",
+    ]);
+  });
+
   it("builds a sweep-owned activation lifecycle plan", () => {
     const lifecycle = buildActivationLifecyclePlan("20260519010101");
 
@@ -974,6 +987,16 @@ describe("d360 capability sweep planning", () => {
         { ok: false, status: 281, error: "Can not deserialize: unexpected array" },
       ),
     ).toMatchObject({ outcome: "skipped_needs_payload", fail: false });
+
+    expect(
+      classifySweepResult(
+        { stage: "live", capability: "d360_model_artifact_list" },
+        {
+          ok: true,
+          response: { modelArtifacts: [{ name: "GPT41", capability: "ChatCompletion" }] },
+        },
+      ),
+    ).toMatchObject({ outcome: "feature_gated", fail: false });
 
     expect(
       classifySweepResult(
