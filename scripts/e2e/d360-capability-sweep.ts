@@ -43,6 +43,7 @@ export type SweepOutcome =
   | "failed";
 
 export type MutationLifecycleName =
+  | "activation"
   | "activation-target"
   | "calculated-insight"
   | "dmo"
@@ -305,6 +306,72 @@ export function buildSemanticModelLifecyclePlan(runId: string): DmoLifecyclePlan
         safety: "read",
         params: { modelApiNameOrId: resourceName },
         sourceCapability: "sdm_delete_verify",
+      },
+    ],
+  };
+}
+
+export function buildActivationLifecyclePlan(runId: string): DmoLifecyclePlan {
+  const activationName = `PiSweepActivation_${runId}`;
+  const activationTargetName = `PiSweepActTarget_${runId}`;
+  const segmentApiName = `PiSweepActSegment_${runId}`;
+  return {
+    resourceName: activationName,
+    steps: [
+      {
+        stage: "mutate",
+        capability: "d360_activation_target_create",
+        family: "Activation",
+        safety: "confirmed",
+        params: { body: buildActivationTargetCreateBody(activationTargetName) },
+      },
+      {
+        stage: "live",
+        capability: "d360_activation_target_list",
+        family: "Activation",
+        safety: "read",
+        params: { limit: 10 },
+        sourceCapability: "activation_target_for_activation_verify",
+      },
+      {
+        stage: "mutate",
+        capability: "d360_segment_create",
+        family: "Segment",
+        safety: "confirmed",
+        params: { body: buildSegmentCreateBody(segmentApiName, runId) },
+      },
+      {
+        stage: "live",
+        capability: "d360_segment_get",
+        family: "Segment",
+        safety: "read",
+        params: { segmentId: segmentApiName },
+        sourceCapability: "activation_segment_create_verify",
+      },
+      {
+        stage: "mutate",
+        capability: "d360_activation_create",
+        family: "Activation",
+        safety: "confirmed",
+        params: {
+          body: buildActivationCreateBody(activationName, activationTargetName, segmentApiName),
+        },
+      },
+      {
+        stage: "mutate",
+        capability: "d360_segment_delete",
+        family: "Segment",
+        safety: "destructive",
+        params: { segmentApiName },
+        sourceCapability: "activation_cleanup_segment",
+      },
+      {
+        stage: "live",
+        capability: "d360_segment_get",
+        family: "Segment",
+        safety: "read",
+        params: { segmentId: segmentApiName },
+        sourceCapability: "activation_segment_delete_verify",
       },
     ],
   };
@@ -1342,11 +1409,22 @@ export function buildCleanupLifecyclePlan(runId: string): DmoLifecyclePlan {
   const transformNames = [`PiSwTx_${runId}`];
   const dataActionNames = [`PiSweepAction_${runId}`];
   const calculatedInsightNames = [`PiSweepCi_${runId}__cio`];
-  const segmentNames = [`PiSweepSegment_${runId}`];
+  const segmentNames = [`PiSweepSegment_${runId}`, `PiSweepActSegment_${runId}`];
+  const activationNames = [`PiSweepActivation_${runId}`];
   const dataActionTargetNames = [`PiSweepTarget_${runId}`];
   return {
     resourceName: `PiSweepCleanup_${runId}`,
     steps: [
+      ...activationNames.map(
+        (activationId): SweepCheck => ({
+          stage: "mutate",
+          capability: "d360_activation_delete",
+          family: "Activation",
+          safety: "destructive",
+          params: { activationId },
+          sourceCapability: "cleanup_activation",
+        }),
+      ),
       ...segmentNames.map(
         (segmentApiName): SweepCheck => ({
           stage: "mutate",
@@ -1432,6 +1510,7 @@ export function buildCleanupLifecyclePlan(runId: string): DmoLifecyclePlan {
 }
 
 const lifecycleBuilders: Record<MutationLifecycleName, (runId: string) => DmoLifecyclePlan> = {
+  activation: buildActivationLifecyclePlan,
   "activation-target": buildActivationTargetLifecyclePlan,
   "calculated-insight": buildCalculatedInsightLifecyclePlan,
   dmo: buildDmoLifecyclePlan,
@@ -1541,6 +1620,9 @@ export function buildDynamicFollowUpChecks(
   result: Record<string, unknown>,
   capabilities: D360Capability[] = getD360Capabilities(),
 ): SweepCheck[] {
+  if (result.ok === true && sourceCheck.capability === "d360_activation_create") {
+    return buildActivationCreateFollowUps(sourceCheck, result);
+  }
   if (result.ok === true && sourceCheck.capability === "d360_activation_target_create") {
     return buildActivationTargetCreateFollowUps(sourceCheck, result);
   }
@@ -1576,6 +1658,41 @@ export function buildDynamicFollowUpChecks(
       },
     ];
   });
+}
+
+function buildActivationCreateFollowUps(
+  sourceCheck: SweepCheck,
+  result: Record<string, unknown>,
+): SweepCheck[] {
+  const row = firstObjectRow(result.response);
+  const activationId = row ? firstString(row, ["id", "developerName", "name"]) : undefined;
+  if (!activationId) return [];
+  return [
+    {
+      stage: "live",
+      capability: "d360_activation_get",
+      family: "Activation",
+      safety: "read",
+      params: { activationId },
+      sourceCapability: `${sourceCheck.capability}_get`,
+    },
+    {
+      stage: "mutate",
+      capability: "d360_activation_delete",
+      family: "Activation",
+      safety: "destructive",
+      params: { activationId },
+      sourceCapability: `${sourceCheck.capability}_delete`,
+    },
+    {
+      stage: "live",
+      capability: "d360_activation_get",
+      family: "Activation",
+      safety: "read",
+      params: { activationId },
+      sourceCapability: "activation_delete_verify",
+    },
+  ];
 }
 
 function buildActivationTargetCreateFollowUps(
@@ -1741,6 +1858,7 @@ export function classifySweepResult(
     message.includes("no stdm interaction found") ||
     message.includes("no stdm session found") ||
     message.includes("id can not be null or empty") ||
+    message.includes("activation not found") ||
     message.includes("semantic object not found") ||
     (message.includes("semantic definition") &&
       message.includes("doesn") &&
@@ -2292,6 +2410,35 @@ function buildDloFields(): Array<Record<string, unknown>> {
     { name: "Id__c", label: "Id", dataType: "Text", isPrimaryKey: true },
     { name: "Name__c", label: "Name", dataType: "Text", isPrimaryKey: false },
   ];
+}
+
+function buildActivationCreateBody(
+  activationName: string,
+  activationTargetName: string,
+  segmentApiName: string,
+): Record<string, unknown> {
+  return {
+    name: activationName,
+    activationTargetName,
+    dataSpaceName: "default",
+    refreshType: "INCREMENTAL",
+    activationType: "Segment",
+    segmentApiName,
+    activationTargetSubjectConfig: { developerName: "ssot__AiAgentSession__dlm" },
+    attributesConfig: {
+      attributes: [
+        {
+          dataSourceType: "Text",
+          entityName: "ssot__AiAgentSession__dlm",
+          label: "AI Agent Session Id",
+          name: "ssot__Id__c",
+          referenceAttributeName: "Id",
+          source: "DIRECT",
+          type: "MODEL",
+        },
+      ],
+    },
+  };
 }
 
 function buildActivationTargetCreateBody(activationTargetName: string): Record<string, unknown> {

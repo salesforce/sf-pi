@@ -268,7 +268,7 @@ npm run e2e:d360-sweep -- --target-org AgentforceSTDM --dry-run-only
 npm run e2e:d360-sweep -- --target-org AgentforceSTDM --max-live 20
 ```
 
-Run the sweep-owned DMO, DLO, DLO-to-DMO mapping, semantic model shell, semantic data-object, semantic calculated-field, semantic metric, semantic relationship, data transform, data action, calculated insight, segment, and activation-target mutation lifecycles only against the disposable sweep org:
+Run the sweep-owned DMO, DLO, DLO-to-DMO mapping, semantic model shell, semantic data-object, semantic calculated-field, semantic metric, semantic relationship, data transform, data action, calculated insight, segment, activation target, and activation mutation lifecycles only against the disposable sweep org:
 
 ```bash
 D360_SWEEP_ALLOW_DESTRUCTIVE=AgentforceSTDM npm run e2e:d360-sweep -- \
@@ -290,7 +290,8 @@ D360_SWEEP_ALLOW_DESTRUCTIVE=AgentforceSTDM npm run e2e:d360-sweep -- \
   --lifecycle data-action \
   --lifecycle calculated-insight \
   --lifecycle segment \
-  --lifecycle activation-target
+  --lifecycle activation-target \
+  --lifecycle activation
 
 # Enforce coverage expectations directly or through a preset.
 npm run e2e:d360-sweep -- \

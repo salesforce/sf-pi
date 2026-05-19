@@ -2,6 +2,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildActivationLifecyclePlan,
   buildActivationTargetLifecyclePlan,
   buildCapabilitySweepPlan,
   applySweepPreset,
@@ -751,6 +752,44 @@ describe("d360 capability sweep planning", () => {
       segmentType: "Dbt",
       segmentCreationFlow: "Visual",
     });
+  });
+
+  it("builds a sweep-owned activation lifecycle plan", () => {
+    const lifecycle = buildActivationLifecyclePlan("20260519010101");
+
+    expect(lifecycle.resourceName).toBe("PiSweepActivation_20260519010101");
+    expect(lifecycle.steps.map((step) => step.capability)).toEqual([
+      "d360_activation_target_create",
+      "d360_activation_target_list",
+      "d360_segment_create",
+      "d360_segment_get",
+      "d360_activation_create",
+      "d360_segment_delete",
+      "d360_segment_get",
+    ]);
+    expect(lifecycle.steps[4].params?.body).toMatchObject({
+      name: "PiSweepActivation_20260519010101",
+      activationTargetName: "PiSweepActTarget_20260519010101",
+      dataSpaceName: "default",
+      refreshType: "INCREMENTAL",
+      segmentApiName: "PiSweepActSegment_20260519010101",
+      activationTargetSubjectConfig: { developerName: "ssot__AiAgentSession__dlm" },
+    });
+  });
+
+  it("builds activation delete follow-ups from create response", () => {
+    const followUps = buildDynamicFollowUpChecks(
+      { stage: "mutate", capability: "d360_activation_create", family: "Activation" },
+      { ok: true, response: { id: "activation-1", name: "Activation" } },
+      [],
+    );
+
+    expect(followUps.map((step) => step.capability)).toEqual([
+      "d360_activation_get",
+      "d360_activation_delete",
+      "d360_activation_get",
+    ]);
+    expect(followUps[1].params).toEqual({ activationId: "activation-1" });
   });
 
   it("builds a sweep-owned activation target lifecycle plan", () => {
