@@ -517,6 +517,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.128.0](https://github.com/salesforce/sf-pi/compare/v0.127.0...v0.128.0) (2026-05-19)
+
+
+### Features
+
+* make d360 relationship lifecycle green ([252bb3e](https://github.com/salesforce/sf-pi/commit/252bb3e3d9c128f7c2a5b86d4d5a58ad23348339))
+
 ## [0.127.0](https://github.com/salesforce/sf-pi/compare/v0.126.0...v0.127.0) (2026-05-19)
 
 
