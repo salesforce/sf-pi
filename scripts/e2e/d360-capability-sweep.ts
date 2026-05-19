@@ -264,6 +264,84 @@ export function buildSemanticModelLifecyclePlan(runId: string): DmoLifecyclePlan
   };
 }
 
+export function buildSemanticCalculatedFieldsLifecyclePlan(runId: string): DmoLifecyclePlan {
+  const resourceName = `PiSweepSdmCalc_${runId}`;
+  return {
+    resourceName,
+    modelApiNameOrId: resourceName,
+    steps: [
+      {
+        stage: "mutate",
+        capability: "d360_sdm_create",
+        family: "Semantic Retrieval",
+        safety: "confirmed",
+        params: { body: buildSemanticModelCreateBody(resourceName, runId) },
+      },
+      {
+        stage: "live",
+        capability: "d360_sdm_get",
+        family: "Semantic Retrieval",
+        safety: "read",
+        params: { modelApiNameOrId: resourceName },
+        sourceCapability: "sdm_calculated_fields_model_create_verify",
+      },
+      {
+        stage: "mutate",
+        capability: "d360_sdm_calc_measure_create",
+        family: "Semantic Retrieval",
+        safety: "confirmed",
+        params: { modelApiNameOrId: resourceName, body: buildCalcMeasurementCreateBody(runId) },
+      },
+      {
+        stage: "live",
+        capability: "d360_sdm_calc_measures_list",
+        family: "Semantic Retrieval",
+        safety: "read",
+        params: { modelApiNameOrId: resourceName },
+        sourceCapability: "sdm_calc_measure_create_verify",
+      },
+      {
+        stage: "mutate",
+        capability: "d360_sdm_calc_dim_create",
+        family: "Semantic Retrieval",
+        safety: "confirmed",
+        params: { modelApiNameOrId: resourceName, body: buildCalcDimensionCreateBody(runId) },
+      },
+      {
+        stage: "live",
+        capability: "d360_sdm_calc_dims_list",
+        family: "Semantic Retrieval",
+        safety: "read",
+        params: { modelApiNameOrId: resourceName },
+        sourceCapability: "sdm_calc_dim_create_verify",
+      },
+      {
+        stage: "live",
+        capability: "d360_sdm_validate",
+        family: "Semantic Retrieval",
+        safety: "read",
+        params: { modelApiNameOrId: resourceName },
+        sourceCapability: "sdm_calculated_fields_validate",
+      },
+      {
+        stage: "mutate",
+        capability: "d360_sdm_delete",
+        family: "Semantic Retrieval",
+        safety: "destructive",
+        params: { modelApiNameOrId: resourceName },
+      },
+      {
+        stage: "live",
+        capability: "d360_sdm_get",
+        family: "Semantic Retrieval",
+        safety: "read",
+        params: { modelApiNameOrId: resourceName },
+        sourceCapability: "sdm_calculated_fields_delete_verify",
+      },
+    ],
+  };
+}
+
 export function buildSemanticDataObjectLifecyclePlan(runId: string): DmoLifecyclePlan {
   const resourceName = `PiSweepSdmDo_${runId}`;
   const dmoResourceName = `PiSweepSdmDmo_${runId}`;
@@ -751,6 +829,7 @@ async function main(): Promise<void> {
       buildMappingLifecyclePlan(runId),
       buildSemanticModelLifecyclePlan(runId),
       buildSemanticDataObjectLifecyclePlan(runId),
+      buildSemanticCalculatedFieldsLifecyclePlan(runId),
     ]) {
       for (const check of lifecycle.steps) {
         const key = checkKey(check);
@@ -848,12 +927,12 @@ async function runFacadeWithRetry(
   check: SweepCheck,
 ): Promise<Record<string, unknown>> {
   const maxAttempts =
-    input.allow_confirmed || check.sourceCapability?.endsWith("_delete_verify") ? 6 : 1;
+    input.allow_confirmed || check.sourceCapability?.endsWith("_delete_verify") ? 20 : 1;
   let result: Record<string, unknown> = {};
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     result = await runFacade(input, env, ctx, ctx.signal);
     if (!shouldRetrySweepResult(result, check) || attempt === maxAttempts) return result;
-    await sleep(10_000);
+    await sleep(15_000);
   }
   return result;
 }
@@ -1171,6 +1250,23 @@ function buildMappingCreateBody(dloName: string, dmoName: string): Record<string
       { sourceFieldDeveloperName: "Id__c", targetFieldDeveloperName: "Id__c" },
       { sourceFieldDeveloperName: "Name__c", targetFieldDeveloperName: "Name__c" },
     ],
+  };
+}
+
+function buildCalcMeasurementCreateBody(runId: string): Record<string, unknown> {
+  return {
+    label: `Pi Sweep Calc Measurement ${runId}`,
+    expression: "COUNT('x')",
+    dataType: "Number",
+    aggregationType: "UserAgg",
+  };
+}
+
+function buildCalcDimensionCreateBody(runId: string): Record<string, unknown> {
+  return {
+    label: `Pi Sweep Calc Dimension ${runId}`,
+    expression: "IF 'x' = 'x' THEN 'High' ELSE 'Low' END",
+    dataType: "Text",
   };
 }
 

@@ -7,6 +7,7 @@ import {
   buildDmoLifecyclePlan,
   buildDynamicFollowUpChecks,
   buildMappingLifecyclePlan,
+  buildSemanticCalculatedFieldsLifecyclePlan,
   buildSemanticDataObjectLifecyclePlan,
   buildSemanticModelLifecyclePlan,
   canRunMutationLifecycle,
@@ -435,6 +436,41 @@ describe("d360 capability sweep planning", () => {
         dataObjectType: "Dmo",
         dataObjectName: "PiSweepSdmDmo_20260519010101__dlm",
         shouldIncludeAllFields: true,
+      },
+    });
+  });
+
+  it("builds a sweep-owned semantic calculated field lifecycle plan", () => {
+    const lifecycle = buildSemanticCalculatedFieldsLifecyclePlan("20260519010101");
+
+    expect(lifecycle.resourceName).toBe("PiSweepSdmCalc_20260519010101");
+    expect(lifecycle.modelApiNameOrId).toBe("PiSweepSdmCalc_20260519010101");
+    expect(lifecycle.steps.map((step) => step.capability)).toEqual([
+      "d360_sdm_create",
+      "d360_sdm_get",
+      "d360_sdm_calc_measure_create",
+      "d360_sdm_calc_measures_list",
+      "d360_sdm_calc_dim_create",
+      "d360_sdm_calc_dims_list",
+      "d360_sdm_validate",
+      "d360_sdm_delete",
+      "d360_sdm_get",
+    ]);
+    expect(lifecycle.steps[2].params).toEqual({
+      modelApiNameOrId: "PiSweepSdmCalc_20260519010101",
+      body: {
+        label: "Pi Sweep Calc Measurement 20260519010101",
+        expression: "COUNT('x')",
+        dataType: "Number",
+        aggregationType: "UserAgg",
+      },
+    });
+    expect(lifecycle.steps[4].params).toEqual({
+      modelApiNameOrId: "PiSweepSdmCalc_20260519010101",
+      body: {
+        label: "Pi Sweep Calc Dimension 20260519010101",
+        expression: "IF 'x' = 'x' THEN 'High' ELSE 'Low' END",
+        dataType: "Text",
       },
     });
   });
