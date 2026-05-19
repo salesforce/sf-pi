@@ -20,6 +20,10 @@ _Avoid_: admin screen, settings page
 A way an extension participates in pi during a session, such as a command, tool, provider, event hook, or UI element.
 _Avoid_: integration point, hook thing
 
+**Welcome Splash**:
+The SF Pi startup visual surface that introduces the session and summarizes relevant SF Pi runtime status without replacing the normal command or manager surfaces.
+_Avoid_: boot logo, decorative header, startup dashboard
+
 **SF Brain**:
 The Bundled Extension that gives agents compact Salesforce operator guidance and a reference map to the deeper SF Pi and Salesforce resources they should load only when needed.
 _Avoid_: Salesforce encyclopedia, all-purpose memory dump
@@ -120,6 +124,7 @@ _Avoid_: duplicated docs, hardcoded personal skill paths, Salesforce encyclopedi
 
 - **SF Pi** contains one or more **Bundled Extensions**.
 - A **Bundled Extension** exposes zero or more **Runtime Surfaces**.
+- The **Welcome Splash** is a **Runtime Surface** owned by a **Bundled Extension**.
 - The **Manager Surface** controls the enabled state and configuration entry points for **Bundled Extensions**.
 - **SF Brain** is a **Bundled Extension** that provides the **Salesforce Operator Kernel**.
 - **SF Brain** routes Data 360 work to **SF Data 360** without embedding Data 360 operation details.

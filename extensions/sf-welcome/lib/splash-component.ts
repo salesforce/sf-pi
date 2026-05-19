@@ -49,6 +49,7 @@ const SF_CYAN = (text: string) => fgRgb(1, 195, 226, text); // Astro cyan
 const MUTED = (text: string) => fg256(245, text); // Gray muted
 const ACCENT = (text: string) => fg256(75, text); // Blue accent
 const GOLD = (text: string) => fgRgb(255, 183, 77, text); // Gold/amber
+const WORDMARK_SHADOW = (text: string) => fg256(238, text); // Subtle depth on dark terminals
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Pi + Salesforce brand mark (omarchy-style stacked wordmark)
@@ -86,8 +87,8 @@ const PI_LOGO = [
 ];
 
 // 5-row block letters used to build the big SALESFORCE wordmark. Each
-// glyph is 5 cols wide; letters are separated by a 1-col gap, so
-// SALESFORCE renders at 10 * 5 + 9 = 59 cols.
+// glyph is 5 cols wide. The 2-col inter-letter gap gives the one-cell
+// drop shadow room to breathe instead of crowding the next letter.
 const LETTERS: Record<string, string[]> = {
   S: ["▄████", "█    ", "▀███▄", "    █", "████▀"],
   A: ["▄███▄", "█   █", "█████", "█   █", "█   █"],
@@ -100,8 +101,11 @@ const LETTERS: Record<string, string[]> = {
 };
 
 const WORD = "SALESFORCE";
-// 10 letters × 5 cols + 9 gaps = 59.
-const WORD_WIDTH = WORD.length * 5 + (WORD.length - 1);
+const WORD_LETTER_GAP = 2;
+const WORD_SHADOW_OFFSET = 1;
+// 10 letters × 5 cols + 9 two-col gaps = 68.
+const WORD_WIDTH = WORD.length * 5 + (WORD.length - 1) * WORD_LETTER_GAP;
+const WORD_WIDTH_WITH_SHADOW = WORD_WIDTH + WORD_SHADOW_OFFSET;
 
 // Caption under the mark. Pastel-rainbow painted so it pairs visually
 // with Pi above.
@@ -172,10 +176,43 @@ function buildWordmarkRows(): string[] {
     const glyph = LETTERS[WORD[li]];
     for (let r = 0; r < 5; r++) {
       rows[r] += glyph[r];
-      if (li < WORD.length - 1) rows[r] += " ";
+      if (li < WORD.length - 1) rows[r] += " ".repeat(WORD_LETTER_GAP);
     }
   }
   return rows;
+}
+
+/**
+ * Paint the SALESFORCE block with a one-cell down/right shadow. The shadow
+ * is intentionally static while the foreground keeps the existing shimmer;
+ * the sixth returned row reuses the old spacer below the wordmark so the
+ * splash height does not change.
+ */
+function paintWordmarkRowsWithShadow(rows: string[], offset: number): string[] {
+  const paintedRows: string[] = [];
+  const foregroundState = { charIndex: 0 };
+  for (let rowIndex = 0; rowIndex <= rows.length; rowIndex++) {
+    let painted = "";
+    const foregroundRow = rows[rowIndex] ?? "";
+    const shadowSourceRow = rowIndex > 0 ? (rows[rowIndex - 1] ?? "") : "";
+
+    for (let col = 0; col < WORD_WIDTH_WITH_SHADOW; col++) {
+      const foregroundChar = foregroundRow[col] ?? " ";
+      if (foregroundChar !== " ") {
+        const [r, g, b] = BLUE_PALETTE[(foregroundState.charIndex + offset) % BLUE_PALETTE.length];
+        painted += fgRgb(r, g, b, foregroundChar);
+        foregroundState.charIndex++;
+        continue;
+      }
+
+      const shadowChar = shadowSourceRow[col - 1] ?? " ";
+      painted += shadowChar !== " " ? WORDMARK_SHADOW(shadowChar) : " ";
+    }
+
+    paintedRows.push(painted.trimEnd());
+  }
+
+  return paintedRows;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -521,12 +558,10 @@ function buildLeftColumn(
   lines.push("");
 
   const wordRows = buildWordmarkRows();
-  const wordPad = Math.max(0, Math.floor((colWidth - WORD_WIDTH) / 2));
-  const wordState = { charIndex: 0 };
-  for (const row of wordRows) {
-    lines.push(" ".repeat(wordPad) + paintRow(row, wordState, headerOffset, BLUE_PALETTE));
+  const wordPad = Math.max(0, Math.floor((colWidth - WORD_WIDTH_WITH_SHADOW) / 2));
+  for (const row of paintWordmarkRowsWithShadow(wordRows, headerOffset)) {
+    lines.push(" ".repeat(wordPad) + row);
   }
-  lines.push("");
 
   const captionState = { charIndex: 0 };
   const captionPad = Math.max(0, Math.floor((colWidth - HEADER_CAPTION.length) / 2));
@@ -869,21 +904,18 @@ function buildRightColumn(data: SplashData, colWidth: number, mode: GlyphMode): 
  *     leaving a truncated-looking island with background text showing
  *     around it.
  *   - Below SINGLE_COL_THRESHOLD we switch to a single-column stacked
- *     layout so no content gets ellipsised. Two columns need ~100 cols
- *     of usable space to render the right column's tips + session list
- *     without truncation.
+ *     layout so no content gets ellipsised. The wider shadowed wordmark
+ *     needs more left-column space before two columns are comfortable.
  */
 const ABSOLUTE_MIN_TERM_WIDTH = 60;
 const MIN_BOX_WIDTH = 80;
 const MAX_BOX_WIDTH = 220;
-const SINGLE_COL_THRESHOLD = 100;
-// The SALESFORCE wordmark is 59 cols wide. Cap the left column at 72
-// and raise the floor a bit so the mark always has 2-3 cols of breathing
-// room on each side. Below 59 cols of available left column, the caller
-// naturally drops to single-column layout (SINGLE_COL_THRESHOLD) where
-// the full inner width is used instead.
-const MIN_LEFT_COL = 56;
-const MAX_LEFT_COL = 72;
+const SINGLE_COL_THRESHOLD = 120;
+// The shadowed SALESFORCE wordmark is 69 cols wide. Keep the left column
+// wide enough to preserve the extra inter-letter breathing room in two-column
+// mode; narrower terminals drop to single-column layout instead.
+const MIN_LEFT_COL = WORD_WIDTH_WITH_SHADOW + 2;
+const MAX_LEFT_COL = 76;
 
 function getBoxWidth(termWidth: number): number {
   // Reserve two columns so the rounded corners do not sit against the
@@ -893,8 +925,7 @@ function getBoxWidth(termWidth: number): number {
 }
 
 function getColumnWidths(boxWidth: number): { leftCol: number; rightCol: number } {
-  // Aim for ~40 % of the box for the left column so the 59-col wordmark
-  // fits with a small margin on either side.
+  // Aim for ~40 % of the box, but never squeeze the shadowed wordmark.
   const leftCol = Math.min(MAX_LEFT_COL, Math.max(MIN_LEFT_COL, Math.floor(boxWidth * 0.4)));
   return {
     leftCol,

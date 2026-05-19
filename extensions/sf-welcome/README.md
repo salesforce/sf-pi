@@ -187,6 +187,7 @@ extensions/sf-welcome/
     smoke.test.ts           ← unit / smoke test
     splash-privacy.test.ts  ← unit / smoke test
     splash-sf-skills.test.ts← unit / smoke test
+    splash-wordmark-shadow.test.ts← unit / smoke test
     startup-mode.test.ts    ← unit / smoke test
     state-store.test.ts     ← unit / smoke test
     whats-new.test.ts       ← unit / smoke test
