@@ -27,6 +27,16 @@ describe("d360 phase skill pack", () => {
     }
   });
 
+  it("keeps generated phase skills small and capability-oriented", () => {
+    for (const skillName of PHASE_SKILLS) {
+      const content = readFileSync(path.join(SKILLS_DIR, skillName, "SKILL.md"), "utf8");
+      expect(content).toContain("D360 capabilities");
+      expect(content).not.toContain("## Operation map");
+      expect(content).not.toContain("action=`runbook`");
+      expect(content.split("\n").length).toBeLessThanOrEqual(70);
+    }
+  });
+
   it("keeps generated phase skills behind a check script in the normal lint path", () => {
     const packageJson = JSON.parse(readFileSync("package.json", "utf8")) as {
       scripts?: Record<string, string>;

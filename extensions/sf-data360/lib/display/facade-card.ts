@@ -41,15 +41,14 @@ function searchCard(result: Record<string, unknown>, opts: FacadeCardBuildOption
     const row = objectValue(entry);
     return {
       family: stringValue(row.family) ?? "Unknown",
-      runbooks: arrayValue(row.runbooks).length,
-      operations: arrayValue(row.operations).length,
+      capabilities: arrayValue(row.capabilities).length,
     };
   });
   const familyWidth = Math.min(28, Math.max(...rows.map((row) => row.family.length), 6));
   const lines = rows.map((row, index) => {
     const family =
       row.family.length > familyWidth ? `${row.family.slice(0, familyWidth - 1)}…` : row.family;
-    return `${index + 1}. ${family.padEnd(familyWidth)}  operations ${String(row.operations).padStart(2)}   runbooks ${String(row.runbooks).padStart(2)}`;
+    return `${index + 1}. ${family.padEnd(familyWidth)}  capabilities ${String(row.capabilities).padStart(2)}`;
   });
   return withArtifacts(
     {
@@ -68,7 +67,7 @@ function searchCard(result: Record<string, unknown>, opts: FacadeCardBuildOption
         lines: [
           "Tool call",
           "  ↳ d360 search",
-          "     ↳ Local Data 360 operation registry",
+          "     ↳ Local Data 360 capability registry",
           ...matches.slice(0, 4).map((entry) => {
             const row = objectValue(entry);
             return `        ↳ Family: ${stringValue(row.family) ?? "Unknown"}`;
@@ -76,7 +75,7 @@ function searchCard(result: Record<string, unknown>, opts: FacadeCardBuildOption
         ],
       },
       sections: [{ title: "Matches", icon: "🔎", lines }],
-      nextSteps: ["Use d360 examples with an operation or runbook name."],
+      nextSteps: ["Use d360 examples with a capability name."],
     },
     opts,
   );
@@ -86,11 +85,20 @@ function examplesCard(
   result: Record<string, unknown>,
   opts: FacadeCardBuildOptions,
 ): D360ResultCard {
+  const capability = objectValue(result.capability);
   const operation = objectValue(result.operation);
   const runbook = objectValue(result.runbook);
-  const name = stringValue(operation.name) ?? stringValue(runbook.name) ?? "examples";
-  const required = arrayValue(operation.requiredParams ?? runbook.requiredParams).map(String);
-  const optional = arrayValue(operation.optionalParams ?? runbook.optionalParams).map(String);
+  const name =
+    stringValue(capability.name) ??
+    stringValue(operation.name) ??
+    stringValue(runbook.name) ??
+    "examples";
+  const required = arrayValue(
+    capability.requiredParams ?? operation.requiredParams ?? runbook.requiredParams,
+  ).map(String);
+  const optional = arrayValue(
+    capability.optionalParams ?? operation.optionalParams ?? runbook.optionalParams,
+  ).map(String);
   const lines = [
     ...(required.length ? [`Required: ${required.join(", ")}`] : ["Required: none"]),
     ...(optional.length ? [`Optional: ${optional.join(", ")}`] : []),
@@ -112,15 +120,15 @@ function examplesCard(
         lines: [
           "Tool call",
           "  ↳ d360 examples",
-          operation.name ? `     ↳ Operation: ${name}` : `     ↳ Runbook: ${name}`,
+          capability.name
+            ? `     ↳ Capability: ${name}`
+            : operation.name
+              ? `     ↳ Operation: ${name}`
+              : `     ↳ Runbook: ${name}`,
         ],
       },
       sections: [{ title: "Shape", icon: "📘", lines }],
-      nextSteps: [
-        runbook.name
-          ? "Use d360 runbook with these params."
-          : "Use d360 execute with these params.",
-      ],
+      nextSteps: ["Use d360 execute with this capability and params."],
     },
     opts,
   );
@@ -130,6 +138,8 @@ function executeCard(
   result: Record<string, unknown>,
   opts: FacadeCardBuildOptions,
 ): D360ResultCard {
+  if (stringValue(result.capabilityKind) === "runbook") return runbookCard(result, opts);
+
   const operation =
     stringValue(result.operation) ?? stringValue(objectValue(result.operation).name) ?? "execute";
   const status = numberValue(result.status);

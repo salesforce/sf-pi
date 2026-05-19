@@ -6,7 +6,7 @@ Agent rules for editing this extension. Repo-level rules still apply.
 
 1. `extensions/sf-data360/README.md` — behavior and safety model
 2. `extensions/sf-data360/index.ts` — extension wiring
-3. `extensions/sf-data360/lib/facade-tool.ts` — `d360` search/examples/execute/runbook facade
+3. `extensions/sf-data360/lib/facade-tool.ts` — `d360` search/examples/execute capability facade
 4. `extensions/sf-data360/lib/api-tool.ts` — `d360_api` execution flow
 5. `extensions/sf-data360/lib/metadata-tool.ts` — compact DMO/DLO discovery flow
 6. `extensions/sf-data360/skills/sf-data360/SKILL.md` — user-facing workflow
@@ -31,7 +31,7 @@ Agent rules for editing this extension. Repo-level rules still apply.
 
 - Do not add MCP support here.
 - Do not add hundreds of always-on endpoint-specific tools. Prefer extending
-  the `d360` registry facade with verified operations/runbooks.
+  the `d360` registry facade with verified D360 capabilities.
 - Keep `SKILL.md` short; put large endpoint catalogs and examples in
   `references/` files.
 - Use the public upstream repo, <https://github.com/forcedotcom/d360-mcp-server>,

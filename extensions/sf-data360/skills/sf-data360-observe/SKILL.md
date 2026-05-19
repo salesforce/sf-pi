@@ -17,34 +17,27 @@ Data 360 Observe phase. Use when analyzing Agentforce STDM sessions, conversatio
 ## Tool discipline
 
 1. Use `d360_probe` first when org readiness is uncertain.
-2. Use `d360` action=`search` to find matching operations or runbooks.
-3. Use `d360` action=`examples` before complex or mutating operations.
-4. Use `d360` action=`execute` for registry-backed operations.
-5. Use `d360_api` only as the raw REST escape hatch when the registry is insufficient.
+2. Use `d360` action=`search` to find matching D360 capabilities.
+3. Use `d360` action=`examples` with a capability before complex or mutating calls.
+4. Use `d360` action=`execute` with that capability and reviewed params.
+5. Use `d360_api` only as the raw REST escape hatch when no capability fits.
 6. Keep broad results bounded with `output_mode: "summary"` or `"file_only"`.
-7. Run dry-run review before confirmed or destructive operations.
+7. Promote repeated fallback paths into tested D360 capabilities.
 
 ## Phase coverage
 
 - Cross-phase orchestration skill. Use the phase map below to route work.
 
-- Operations: 0
-- Runbooks: 5
+- Capabilities: 5 (5 runbook-backed)
 - Safety mix: read=0, safe_post=0, confirmed=0, destructive=0
 
-## Operation map
+## D360 capabilities
 
-This orchestration skill does not own direct operation coverage. Route to the phase-specific skill first, then use `d360` or `d360_api`.
-
-## Runbooks
-
-| Runbook                                         | Family              | Summary                                                                   |
-| ----------------------------------------------- | ------------------- | ------------------------------------------------------------------------- |
-| `agent_observability.join_interaction_trace`    | Agent Observability | Join one STDM interaction to messages, steps, and Platform Tracing spans. |
-| `agent_observability.operation_latency_summary` | Agent Observability | Aggregate Platform Tracing duration by operation name.                    |
-| `agent_observability.platform_error_traces`     | Agent Observability | Find recent Agent Platform Tracing ERROR spans.                           |
-| `agent_observability.platform_trace_tree`       | Agent Observability | Fetch and reconstruct a Platform Tracing span tree by trace id.           |
-| `agent_observability.stdm_session_timeline`     | Agent Observability | Fetch an STDM conversation timeline for a session id.                     |
+- `agent_observability.join_interaction_trace` (runbook, read) — Join one STDM interaction to messages, steps, and Platform Tracing spans.
+- `agent_observability.operation_latency_summary` (runbook, read) — Aggregate Platform Tracing duration by operation name.
+- `agent_observability.platform_error_traces` (runbook, read) — Find recent Agent Platform Tracing ERROR spans.
+- `agent_observability.platform_trace_tree` (runbook, read) — Fetch and reconstruct a Platform Tracing span tree by trace id.
+- `agent_observability.stdm_session_timeline` (runbook, read) — Fetch an STDM conversation timeline for a session id.
 
 ## Cross-phase routing
 

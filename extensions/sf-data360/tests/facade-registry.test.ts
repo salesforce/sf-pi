@@ -2,8 +2,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  findCapability,
   findOperation,
   findRunbook,
+  getD360Capabilities,
   getD360Examples,
   getD360Families,
   getD360Operations,
@@ -20,199 +22,187 @@ describe("d360 facade registry", () => {
     expect(new Set(runbookNames).size).toBe(runbookNames.length);
   });
 
+  it("exposes operations and runbooks through one capability view", () => {
+    expect(getD360Capabilities()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "d360_query_sql",
+          kind: "rest_operation",
+          family: "Query",
+          phase: "retrieve",
+          safety: "safe_post",
+        }),
+        expect.objectContaining({
+          name: "agent_observability.stdm_session_timeline",
+          kind: "runbook",
+          family: "Agent Observability",
+          phase: "observe",
+          safety: "read",
+          requiredParams: ["session_id"],
+        }),
+      ]),
+    );
+
+    expect(findCapability("agent_observability.stdm_session_timeline")).toMatchObject({
+      kind: "runbook",
+      phase: "observe",
+    });
+  });
+
   it("finds Agentforce observability by intent", () => {
     const results = searchRegistry("agent trace errors");
 
     expect(results[0]?.family).toBe("Agent Observability");
-    expect(results[0]?.runbooks).toContain("agent_observability.platform_error_traces");
+    expect(results[0]?.capabilities).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "agent_observability.platform_error_traces" }),
+      ]),
+    );
   });
 
-  it("finds expanded read-only domain families by intent", () => {
-    expect(searchRegistry("connector ingestion connection")).toEqual(
+  it("returns matching capabilities for each search result", () => {
+    const results = searchRegistry("session timeline");
+
+    expect(results[0]).toMatchObject({ family: "Agent Observability" });
+    expect(results[0]?.capabilities).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          family: "Ingestion",
-          operations: expect.arrayContaining(["d360_connectors_list"]),
+          name: "agent_observability.stdm_session_timeline",
+          kind: "runbook",
         }),
       ]),
     );
-    expect(searchRegistry("identity resolution rulesets")[0]).toMatchObject({
-      family: "Identity Resolution",
-      operations: expect.arrayContaining(["d360_identity_resolutions_list", "d360_ir_list"]),
-    });
-    expect(searchRegistry("semantic retriever search index")[0]).toMatchObject({
-      family: "Semantic Retrieval",
-      operations: expect.arrayContaining(["d360_semantic_models_list", "d360_retrievers_list"]),
-    });
-    expect(searchRegistry("datakit bundle deploy")[0]).toMatchObject({
-      family: "DataKit",
-      operations: expect.arrayContaining(["d360_datakits_list", "d360_datakit_list"]),
-    });
+    expect(results[0]).not.toHaveProperty("operations");
+    expect(results[0]).not.toHaveProperty("runbooks");
+  });
+
+  it("finds expanded read-only domain families by intent", () => {
+    const ingestion = searchRegistry("connector ingestion connection").find(
+      (result) => result.family === "Ingestion",
+    );
+    expectCapabilityNames(ingestion, ["d360_connectors_list"]);
+    expectCapabilityNames(searchRegistry("identity resolution rulesets")[0], [
+      "d360_identity_resolutions_list",
+      "d360_ir_list",
+    ]);
+    expectCapabilityNames(searchRegistry("semantic retriever search index")[0], [
+      "d360_semantic_models_list",
+      "d360_retrievers_list",
+    ]);
+    expectCapabilityNames(searchRegistry("datakit bundle deploy")[0], [
+      "d360_datakits_list",
+      "d360_datakit_list",
+    ]);
   });
 
   it("finds safe POST operation families by intent", () => {
-    expect(searchRegistry("metadata search natural language")[0]).toMatchObject({
-      family: "Metadata",
-      operations: expect.arrayContaining(["d360_metadata_search"]),
-    });
-    expect(searchRegistry("validate calculated insight sql")[0]).toMatchObject({
-      family: "Calculated Insights",
-      operations: expect.arrayContaining(["d360_ci_validate"]),
-    });
-    expect(searchRegistry("semantic query gateway")[0]).toMatchObject({
-      family: "Semantic Retrieval",
-      operations: expect.arrayContaining(["d360_semantic_query"]),
-    });
-    expect(searchRegistry("create run enable calculated insight")[0]).toMatchObject({
-      family: "Calculated Insights",
-      operations: expect.arrayContaining(["d360_ci_create", "d360_ci_run", "d360_ci_enable"]),
-    });
-    expect(searchRegistry("create publish deactivate audience segment")[0]).toMatchObject({
-      family: "Segment",
-      operations: expect.arrayContaining([
-        "d360_segment_create",
-        "d360_segment_publish",
-        "d360_segment_deactivate",
-      ]),
-    });
-    expect(searchRegistry("create update activation target audience delivery")[0]).toMatchObject({
-      family: "Activation",
-      operations: expect.arrayContaining([
-        "d360_activation_create",
-        "d360_activation_update",
-        "d360_activation_target_create",
-        "d360_activation_target_update",
-      ]),
-    });
-    expect(searchRegistry("create update run schedule data transform")[0]).toMatchObject({
-      family: "DataTransform",
-      operations: expect.arrayContaining([
-        "d360_transform_create",
-        "d360_transform_update",
-        "d360_transform_run",
-        "d360_transform_schedule_set",
-      ]),
-    });
-    expect(searchRegistry("create update data action target event delivery")[0]).toMatchObject({
-      family: "DataAction",
-      operations: expect.arrayContaining([
-        "d360_dataaction_create",
-        "d360_dataaction_target_create",
-        "d360_dataaction_target_update",
-      ]),
-    });
-    expect(
+    expectCapabilityNames(searchRegistry("metadata search natural language")[0], [
+      "d360_metadata_search",
+    ]);
+    expectCapabilityNames(searchRegistry("validate calculated insight sql")[0], [
+      "d360_ci_validate",
+    ]);
+    expectCapabilityNames(searchRegistry("semantic query gateway")[0], ["d360_semantic_query"]);
+    expectCapabilityNames(searchRegistry("create run enable calculated insight")[0], [
+      "d360_ci_create",
+      "d360_ci_run",
+      "d360_ci_enable",
+    ]);
+    expectCapabilityNames(searchRegistry("create publish deactivate audience segment")[0], [
+      "d360_segment_create",
+      "d360_segment_publish",
+      "d360_segment_deactivate",
+    ]);
+    expectCapabilityNames(searchRegistry("create update activation target audience delivery")[0], [
+      "d360_activation_create",
+      "d360_activation_update",
+      "d360_activation_target_create",
+      "d360_activation_target_update",
+    ]);
+    expectCapabilityNames(searchRegistry("create update run schedule data transform")[0], [
+      "d360_transform_create",
+      "d360_transform_update",
+      "d360_transform_run",
+      "d360_transform_schedule_set",
+    ]);
+    expectCapabilityNames(searchRegistry("create update data action target event delivery")[0], [
+      "d360_dataaction_create",
+      "d360_dataaction_target_create",
+      "d360_dataaction_target_update",
+    ]);
+    expectCapabilityNames(
       searchRegistry("create update retriever configuration search index rag vector")[0],
-    ).toMatchObject({
-      family: "Semantic Retrieval",
-      operations: expect.arrayContaining([
+      [
         "d360_search_index_create",
         "d360_search_index_update",
         "d360_retriever_create",
         "d360_retriever_update",
         "d360_retriever_config_create",
         "d360_retriever_config_update",
-      ]),
-    });
-    expect(
+      ],
+    );
+    expectCapabilityNames(
       searchRegistry("create update run data stream salesforce snowflake ingestion")[0],
-    ).toMatchObject({
-      family: "DataStreams",
-      operations: expect.arrayContaining([
+      [
         "d360_datastream_create",
         "d360_datastream_update",
         "d360_datastream_run",
         "d360_datastream_create_sfdc",
         "d360_datastream_create_snowflake",
-      ]),
-    });
-    expect(searchRegistry("create update data model object dmo schema")[0]).toMatchObject({
-      family: "DMO",
-      operations: expect.arrayContaining(["d360_dmo_create", "d360_dmo_update"]),
-    });
-    expect(searchRegistry("create update data lake object dlo schema")).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          family: "DLO",
-          operations: expect.arrayContaining(["d360_dlo_create", "d360_dlo_update"]),
-        }),
-      ]),
+      ],
     );
-    expect(searchRegistry("create update add field mapping dlo dmo")[0]).toMatchObject({
-      family: "Mappings",
-      operations: expect.arrayContaining([
-        "d360_dmo_mapping_create",
-        "d360_dmo_mapping_update",
-        "d360_dmo_field_mapping_add",
-      ]),
-    });
-    expect(searchRegistry("connection test connector")[0]).toMatchObject({
-      family: "Connection",
-      operations: expect.arrayContaining(["d360_connection_test"]),
-    });
-    expect(searchRegistry("create update snowflake connection connector")[0]).toMatchObject({
-      family: "Connection",
-      operations: expect.arrayContaining([
-        "d360_connection_create",
-        "d360_connection_update",
-        "d360_connection_create_snowflake",
-      ]),
-    });
-    expect(
+    expectCapabilityNames(searchRegistry("create update data model object dmo schema")[0], [
+      "d360_dmo_create",
+      "d360_dmo_update",
+    ]);
+    const dlo = searchRegistry("create update data lake object dlo schema").find(
+      (result) => result.family === "DLO",
+    );
+    expectCapabilityNames(dlo, ["d360_dlo_create", "d360_dlo_update"]);
+    expectCapabilityNames(searchRegistry("create update add field mapping dlo dmo")[0], [
+      "d360_dmo_mapping_create",
+      "d360_dmo_mapping_update",
+      "d360_dmo_field_mapping_add",
+    ]);
+    expectCapabilityNames(searchRegistry("connection test connector")[0], ["d360_connection_test"]);
+    expectCapabilityNames(searchRegistry("create update snowflake connection connector")[0], [
+      "d360_connection_create",
+      "d360_connection_update",
+      "d360_connection_create_snowflake",
+    ]);
+    expectCapabilityNames(
       searchRegistry("create update publish run identity resolution ruleset")[0],
-    ).toMatchObject({
-      family: "Identity Resolution",
-      operations: expect.arrayContaining([
-        "d360_ir_create",
-        "d360_ir_update",
-        "d360_ir_full_update",
-        "d360_ir_publish",
-        "d360_ir_run",
-      ]),
-    });
-    expect(searchRegistry("create update add member data space dataspace")[0]).toMatchObject({
-      family: "Dataspace",
-      operations: expect.arrayContaining([
-        "d360_dataspace_create",
-        "d360_dataspace_update",
-        "d360_dataspace_member_add",
-      ]),
-    });
-    expect(
+      ["d360_ir_create", "d360_ir_update", "d360_ir_full_update", "d360_ir_publish", "d360_ir_run"],
+    );
+    expectCapabilityNames(searchRegistry("create update add member data space dataspace")[0], [
+      "d360_dataspace_create",
+      "d360_dataspace_update",
+      "d360_dataspace_member_add",
+    ]);
+    expectCapabilityNames(
       searchRegistry("create update clone semantic model data object metric relationship")[0],
-    ).toMatchObject({
-      family: "Semantic Retrieval",
-      operations: expect.arrayContaining([
+      [
         "d360_sdm_create",
         "d360_sdm_update",
         "d360_sdm_clone",
         "d360_sdm_data_object_create",
         "d360_sdm_metric_create",
         "d360_sdm_relationship_create",
-      ]),
-    });
-    expect(searchRegistry("deploy update components datakit bundle package")[0]).toMatchObject({
-      family: "DataKit",
-      operations: expect.arrayContaining(["d360_datakit_deploy"]),
-    });
-    expect(
+      ],
+    );
+    expectCapabilityNames(searchRegistry("deploy update components datakit bundle package")[0], [
+      "d360_datakit_deploy",
+    ]);
+    expectCapabilityNames(
       searchRegistry("standard mapping create preview field mapping dlo dmo")[0],
-    ).toMatchObject({
-      family: "StandardMappings",
-      operations: expect.arrayContaining([
-        "d360_standard_mapping_preview",
-        "d360_standard_mapping_create",
-      ]),
-    });
-    expect(searchRegistry("smart field match event date recommend mapping")[0]).toMatchObject({
-      family: "Smart",
-      operations: expect.arrayContaining([
-        "d360_preview_field_matches",
-        "d360_smart_mapping_suggest",
-        "d360_event_date_recommend",
-        "d360_smart_datastream_create",
-      ]),
-    });
+      ["d360_standard_mapping_preview", "d360_standard_mapping_create"],
+    );
+    expectCapabilityNames(searchRegistry("smart field match event date recommend mapping")[0], [
+      "d360_preview_field_matches",
+      "d360_smart_mapping_suggest",
+      "d360_event_date_recommend",
+      "d360_smart_datastream_create",
+    ]);
   });
 
   it("returns operation and runbook examples that point at registered names", () => {
@@ -281,3 +271,12 @@ describe("d360 facade registry", () => {
     }
   });
 });
+
+function expectCapabilityNames(
+  result: ReturnType<typeof searchRegistry>[number] | undefined,
+  names: string[],
+): void {
+  expect(result?.capabilities.map((capability) => capability.name)).toEqual(
+    expect.arrayContaining(names),
+  );
+}

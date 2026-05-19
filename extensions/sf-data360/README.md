@@ -8,9 +8,9 @@ hundreds of endpoint-specific tools.
 
 It registers four native tools:
 
-- `d360` — a facade for deterministic Data 360 workflows: search registry
-  entries, fetch examples, execute known operations, and run Agentforce
-  observability runbooks.
+- `d360` — a facade for deterministic Data 360 capabilities: search the
+  registry, fetch examples, and execute REST, local-helper, or runbook-backed
+  capabilities.
 - `d360_api` — calls Data 360 REST endpoints directly via `@salesforce/core`
   Connection (no subprocess), reusing the active Salesforce CLI auth context.
 - `d360_metadata` — compact list/describe helpers for common DMO and DLO
@@ -91,7 +91,7 @@ version.
 | Extension load                                           | Extension enabled                         | Register `d360`, `d360_api`, `d360_metadata`, `d360_probe`, and `/sf-data360`. |
 | `resources_discover`                                     | Extension enabled                         | Contribute `./skills` so `/skill:sf-data360` is visible.                       |
 | Extension explicitly disabled + `/reload` or new session | —                                         | No `d360_api`, no `d360_metadata`, no `d360_probe`, no `sf-data360` skill.     |
-| `d360`                                                   | search/examples/execute/runbook request   | Use registry-backed deterministic workflows or known operation execution.      |
+| `d360`                                                   | search/examples/execute request           | Use registry-backed deterministic D360 capability discovery and execution.     |
 | `d360_probe`                                             | Org readiness is uncertain                | Run read-only surface probes and classify readiness.                           |
 | `d360_metadata`                                          | list/describe DMO/DLO request             | Return compact metadata and save raw JSON to a temp file.                      |
 | `d360_api`                                               | `dry_run: true`                           | Return resolved request and safety decision without calling Salesforce.        |
@@ -210,6 +210,7 @@ extensions/sf-data360/
     api-card.test.ts        ← unit / smoke test
     api-tool.test.ts        ← unit / smoke test
     display-card.test.ts    ← unit / smoke test
+    facade-capabilities.test.ts← unit / smoke test
     facade-card.test.ts     ← unit / smoke test
     facade-registry.test.ts ← unit / smoke test
     facade-safety.test.ts   ← unit / smoke test

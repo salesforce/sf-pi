@@ -7,6 +7,7 @@ import { renderCardCollapsed, renderCardExpanded, type D360ResultCard } from "./
 interface D360RenderArgs {
   action?: string;
   query?: string;
+  capability?: string;
   operation?: string;
   runbook?: string;
   target_org?: string;
@@ -70,7 +71,7 @@ export function renderD360ApiResult(
 
 export function renderD360Call(args: D360RenderArgs, theme: Theme): Text {
   const action = args.action ?? "?";
-  const subject = args.runbook ?? args.operation ?? args.query;
+  const subject = args.capability ?? args.operation ?? args.runbook ?? args.query;
   const bits = [action, subject, args.target_org, args.dry_run ? "dry-run" : undefined].filter(
     (bit): bit is string => typeof bit === "string" && bit.length > 0,
   );

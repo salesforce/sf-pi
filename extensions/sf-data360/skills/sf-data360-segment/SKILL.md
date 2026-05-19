@@ -17,45 +17,29 @@ Data 360 Segment phase. Use when managing audience segments, segment publish flo
 ## Tool discipline
 
 1. Use `d360_probe` first when org readiness is uncertain.
-2. Use `d360` action=`search` to find matching operations or runbooks.
-3. Use `d360` action=`examples` before complex or mutating operations.
-4. Use `d360` action=`execute` for registry-backed operations.
-5. Use `d360_api` only as the raw REST escape hatch when the registry is insufficient.
+2. Use `d360` action=`search` to find matching D360 capabilities.
+3. Use `d360` action=`examples` with a capability before complex or mutating calls.
+4. Use `d360` action=`execute` with that capability and reviewed params.
+5. Use `d360_api` only as the raw REST escape hatch when no capability fits.
 6. Keep broad results bounded with `output_mode: "summary"` or `"file_only"`.
-7. Run dry-run review before confirmed or destructive operations.
+7. Promote repeated fallback paths into tested D360 capabilities.
 
 ## Phase coverage
 
 - **Calculated Insights** — Validate, run, and inspect calculated metrics and insights.
 - **Segment** — Create, inspect, and publish Data Cloud audience segments.
 
-- Operations: 19
-- Runbooks: 0
+- Capabilities: 19 (0 runbook-backed)
 - Safety mix: read=7, safe_post=1, confirmed=9, destructive=2
 
-## Operation map
+## D360 capabilities
 
-| Operation                       | Family              | Safety      | Summary                                                                   |
-| ------------------------------- | ------------------- | ----------- | ------------------------------------------------------------------------- |
-| `d360_calculated_insights_list` | Calculated Insights | read        | List calculated insights.                                                 |
-| `d360_ci_create`                | Calculated Insights | confirmed   | Create a calculated insight. Validate the payload before create.          |
-| `d360_ci_delete`                | Calculated Insights | destructive | Delete a calculated insight.                                              |
-| `d360_ci_disable`               | Calculated Insights | confirmed   | Disable a calculated insight.                                             |
-| `d360_ci_enable`                | Calculated Insights | confirmed   | Enable a calculated insight.                                              |
-| `d360_ci_get`                   | Calculated Insights | read        | Get one calculated insight by API name.                                   |
-| `d360_ci_list`                  | Calculated Insights | read        | List all calculated insights.                                             |
-| `d360_ci_run`                   | Calculated Insights | confirmed   | Run a calculated insight calculation.                                     |
-| `d360_ci_run_status`            | Calculated Insights | read        | Get calculated insight run status.                                        |
-| `d360_ci_update`                | Calculated Insights | confirmed   | Update a calculated insight by API name.                                  |
-| `d360_ci_validate`              | Calculated Insights | safe_post   | Validate calculated insight SQL before create/update.                     |
-| `d360_segment_create`           | Segment             | confirmed   | Create a segment. Validate DMO/CI fields and payload shape before create. |
-| `d360_segment_deactivate`       | Segment             | confirmed   | Deactivate a segment by API name.                                         |
-| `d360_segment_delete`           | Segment             | destructive | Delete a segment by API name.                                             |
-| `d360_segment_get`              | Segment             | read        | Get one segment by id.                                                    |
-| `d360_segment_list`             | Segment             | read        | List all segments.                                                        |
-| `d360_segment_publish`          | Segment             | confirmed   | Publish/calculate segment membership by id.                               |
-| `d360_segment_update`           | Segment             | confirmed   | Update a segment by id.                                                   |
-| `d360_segments_list`            | Segment             | read        | List segments with optional pagination.                                   |
+- `d360_calculated_insights_list` (rest_operation, read) — List calculated insights.
+- `d360_ci_get` (rest_operation, read) — Get one calculated insight by API name.
+- `d360_ci_list` (rest_operation, read) — List all calculated insights.
+- `d360_ci_run_status` (rest_operation, read) — Get calculated insight run status.
+- `d360_segment_get` (rest_operation, read) — Get one segment by id.
+- `d360_segment_list` (rest_operation, read) — List all segments.
 
 ## Cross-phase routing
 

@@ -69,7 +69,7 @@ class SfData360ConfigPanel implements Focusable {
     lines.push(pad(` ${t.fg("muted", "When enabled:")}`));
     lines.push(
       pad(
-        `   ${toolDot(t, enabled)} ${D360_FACADE_TOOL_NAME}        ${t.fg("dim", "search/examples/execute/runbook facade")}`,
+        `   ${toolDot(t, enabled)} ${D360_FACADE_TOOL_NAME}        ${t.fg("dim", "search/examples/execute capability facade")}`,
       ),
     );
     lines.push(

@@ -36,6 +36,13 @@
       "interaction_id": "64a3c2001eb45a35aebc575b743506c1"
     }
   },
+  "agent_observability.stdm_session_timeline": {
+    "runbook": "agent_observability.stdm_session_timeline",
+    "params": {
+      "session_id": "019e2218-ca4c-7ba4-b9ed-b3419bb1b34b",
+      "limit": 100
+    }
+  },
   "d360_metadata_search": {
     "operation": "d360_metadata_search",
     "params": {

@@ -31,12 +31,12 @@ import {
   writeFullD360Output,
 } from "./truncation.ts";
 import {
-  findOperation,
+  findCapability,
   findRunbook,
+  getD360Capabilities,
   getD360Examples,
-  getD360Operations,
-  getD360Runbooks,
   searchRegistry,
+  type D360Capability,
   type D360Operation,
 } from "./facade/registry.ts";
 import { runAgentObservabilityRunbook } from "./facade/agent-observability.ts";
@@ -44,17 +44,16 @@ import { isLocalD360Helper, runLocalD360Helper } from "./facade/local-helpers.ts
 
 export const D360_FACADE_TOOL_NAME = "d360";
 
-const D360FacadeAction = StringEnum(["search", "examples", "execute", "runbook"] as const, {
+const D360FacadeAction = StringEnum(["search", "examples", "execute"] as const, {
   description: "Facade action to run.",
 });
 
 export const D360FacadeParams = Type.Object({
   action: D360FacadeAction,
   query: Type.Optional(Type.String({ description: "Search text for action='search'." })),
-  operation: Type.Optional(
-    Type.String({ description: "Registry operation name for examples/execute." }),
+  capability: Type.Optional(
+    Type.String({ description: "D360 capability name for examples/execute." }),
   ),
-  runbook: Type.Optional(Type.String({ description: "Runbook name for examples/runbook." })),
   params: Type.Optional(
     Type.Record(Type.String(), Type.Any(), { description: "Operation/runbook parameters." }),
   ),
@@ -80,11 +79,12 @@ export const D360FacadeParams = Type.Object({
   ),
 });
 
-type D360FacadeActionValue = "search" | "examples" | "execute" | "runbook";
+type D360FacadeActionValue = "search" | "examples" | "execute";
 
 export interface D360FacadeInput {
   action: D360FacadeActionValue;
   query?: string;
+  capability?: string;
   operation?: string;
   runbook?: string;
   params?: Record<string, unknown>;
@@ -105,10 +105,10 @@ export function registerD360FacadeTool(pi: ExtensionAPI): void {
       "Facade for Data 360 operation discovery, examples, registry execution, and deterministic runbooks.",
     promptSnippet: "Search/examples/execute/runbook facade for deterministic Data 360 workflows",
     promptGuidelines: [
-      "Use d360 action='search' to discover Data 360 operation families without loading large references.",
-      "Use d360 action='examples' before complex or mutating registry operations.",
-      "Use d360 action='runbook' for deterministic Agentforce observability workflows (STDM + Agent Platform Tracing).",
-      "Use d360_api as the raw REST escape hatch when an operation is not in the facade registry.",
+      "Use d360 action='search' to discover Data 360 capabilities without loading large references.",
+      "Use d360 action='examples' with a capability before complex or mutating execution.",
+      "Use d360 action='execute' for REST, local-helper, and runbook-backed capabilities.",
+      "Use d360_api as the raw REST escape hatch when a capability is not in the facade registry.",
     ],
     parameters: D360FacadeParams,
     renderCall: renderD360Call,
@@ -127,7 +127,7 @@ export function registerD360FacadeTool(pi: ExtensionAPI): void {
   });
 }
 
-async function runFacade(
+export async function runFacade(
   input: D360FacadeInput,
   env: SfEnvironment,
   ctx: ExtensionContext,
@@ -140,8 +140,6 @@ async function runFacade(
       return runExamples(input);
     case "execute":
       return runExecute(input, env, ctx, signal);
-    case "runbook":
-      return runRunbook(input, env, signal);
     default:
       return assertNever(input.action);
   }
@@ -156,33 +154,37 @@ function runSearch(input: D360FacadeInput): Record<string, unknown> {
     query,
     summary: `${results.length} Data 360 family match(es)`,
     results,
-    hint: "Call d360 action='examples' with an operation or runbook name, then execute or runbook.",
+    hint: "Call d360 action='examples' with a capability name, then d360 action='execute'.",
   };
 }
 
 function runExamples(input: D360FacadeInput): Record<string, unknown> {
-  const name = input.operation ?? input.runbook;
+  const name = input.capability;
   if (!name) {
     return {
       ok: true,
       action: "examples",
-      summary: "Available facade examples",
-      operations: getD360Operations().map((op) => op.name),
-      runbooks: getD360Runbooks().map((runbook) => runbook.name),
+      summary: "Available D360 capability examples",
+      capabilities: getD360Capabilities().map((capability) => ({
+        name: capability.name,
+        kind: capability.kind,
+        family: capability.family,
+        phase: capability.phase,
+      })),
       examples: Object.keys(getD360Examples()),
     };
   }
 
-  const operation = findOperation(name);
-  const runbook = findRunbook(name);
+  const capability = findCapability(name);
   return {
-    ok: Boolean(operation || runbook),
+    ok: Boolean(capability),
     action: "examples",
-    summary: operation || runbook ? `Example for ${name}` : `Unknown facade item ${name}`,
-    operation,
-    runbook,
+    summary: capability ? `Example for ${name}` : `Unknown D360 capability ${name}`,
+    capability,
+    operation: capability?.operation,
+    runbook: capability?.runbook,
     example: getD360Examples()[name] ?? null,
-    hint: operation || runbook ? undefined : "Use d360 action='search' to discover names.",
+    hint: capability ? undefined : "Use d360 action='search' to discover capability names.",
   };
 }
 
@@ -192,10 +194,19 @@ async function runExecute(
   ctx: ExtensionContext,
   signal: AbortSignal | undefined,
 ): Promise<Record<string, unknown>> {
-  const operationName = requiredName(input.operation, "operation");
-  const operation = findOperation(operationName);
-  if (!operation)
-    throw new Error(`Unknown Data 360 operation '${operationName}'. Use d360 search first.`);
+  const capabilityName = requiredName(input.capability, "capability");
+  const capability = findCapability(capabilityName);
+  if (!capability)
+    throw new Error(`Unknown Data 360 capability '${capabilityName}'. Use d360 search first.`);
+
+  if (capability.kind === "runbook") {
+    return runRunbookCapability(capability, input, env, signal);
+  }
+
+  const operation = capability.operation;
+  if (!operation) {
+    throw new Error(`Capability '${capabilityName}' is not backed by a registry operation.`);
+  }
 
   const { targetOrg, apiVersion, targetOrgInfo } = await resolveTargetOrgContext(
     input.target_org,
@@ -221,6 +232,8 @@ async function runExecute(
       ...runLocalD360Helper(operation.name, params),
       targetOrg,
       apiVersion,
+      capability: capability.name,
+      capabilityKind: capability.kind,
       operation: operation.name,
     };
   }
@@ -325,12 +338,31 @@ async function runExecute(
     action: "execute",
     targetOrg,
     apiVersion,
+    capability: capability.name,
+    capabilityKind: capability.kind,
     operation: operation.name,
     safety: operation.safety,
     status: resp.status,
     request: { method: operation.method, path: apiPath, body: body ?? null },
     response: resp.body,
     summary: `${operation.name} HTTP ${resp.status}`,
+  };
+}
+
+async function runRunbookCapability(
+  capability: D360Capability,
+  input: D360FacadeInput,
+  env: SfEnvironment,
+  signal: AbortSignal | undefined,
+): Promise<Record<string, unknown>> {
+  const runbookName = capability.runbook?.name;
+  if (!runbookName) throw new Error(`Capability '${capability.name}' is not backed by a runbook.`);
+  const result = await runRunbook({ ...input, runbook: runbookName }, env, signal);
+  return {
+    ...result,
+    action: "execute",
+    capability: capability.name,
+    capabilityKind: capability.kind,
   };
 }
 

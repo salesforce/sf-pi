@@ -17,12 +17,12 @@ Data 360 Act phase. Use when managing activations, activation targets, downstrea
 ## Tool discipline
 
 1. Use `d360_probe` first when org readiness is uncertain.
-2. Use `d360` action=`search` to find matching operations or runbooks.
-3. Use `d360` action=`examples` before complex or mutating operations.
-4. Use `d360` action=`execute` for registry-backed operations.
-5. Use `d360_api` only as the raw REST escape hatch when the registry is insufficient.
+2. Use `d360` action=`search` to find matching D360 capabilities.
+3. Use `d360` action=`examples` with a capability before complex or mutating calls.
+4. Use `d360` action=`execute` with that capability and reviewed params.
+5. Use `d360_api` only as the raw REST escape hatch when no capability fits.
 6. Keep broad results bounded with `output_mode: "summary"` or `"file_only"`.
-7. Run dry-run review before confirmed or destructive operations.
+7. Promote repeated fallback paths into tested D360 capabilities.
 
 ## Phase coverage
 
@@ -30,34 +30,17 @@ Data 360 Act phase. Use when managing activations, activation targets, downstrea
 - **DataAction** — Inspect data actions and action targets.
 - **Transforms and Actions** — Inspect SQL transforms and real-time data actions.
 
-- Operations: 20
-- Runbooks: 0
+- Capabilities: 20 (0 runbook-backed)
 - Safety mix: read=10, safe_post=0, confirmed=7, destructive=3
 
-## Operation map
+## D360 capabilities
 
-| Operation                       | Family                 | Safety      | Summary                                                                           |
-| ------------------------------- | ---------------------- | ----------- | --------------------------------------------------------------------------------- |
-| `d360_activation_create`        | Activation             | confirmed   | Create an activation. Requires an active segment and an activation target.        |
-| `d360_activation_delete`        | Activation             | destructive | Delete an activation.                                                             |
-| `d360_activation_get`           | Activation             | read        | Get one activation by id.                                                         |
-| `d360_activation_list`          | Activation             | read        | List activations.                                                                 |
-| `d360_activation_target_create` | Activation             | confirmed   | Create an activation target. Must reference a valid destination/connection shape. |
-| `d360_activation_target_delete` | Activation             | destructive | Delete an activation target.                                                      |
-| `d360_activation_target_get`    | Activation             | read        | Get one activation target by id.                                                  |
-| `d360_activation_target_list`   | Activation             | read        | List activation targets.                                                          |
-| `d360_activation_target_update` | Activation             | confirmed   | Update an activation target by id.                                                |
-| `d360_activation_update`        | Activation             | confirmed   | Update an activation by id.                                                       |
-| `d360_activations_list`         | Activation             | read        | List activations with optional pagination.                                        |
-| `d360_dataaction_create`        | DataAction             | confirmed   | Create a data action. Requires a configured data action target.                   |
-| `d360_dataaction_get`           | DataAction             | read        | Get one data action.                                                              |
-| `d360_dataaction_list`          | DataAction             | read        | List data actions.                                                                |
-| `d360_dataaction_target_create` | DataAction             | confirmed   | Create a data action target for event-triggered payload delivery.                 |
-| `d360_dataaction_target_delete` | DataAction             | destructive | Delete a data action target.                                                      |
-| `d360_dataaction_target_get`    | DataAction             | read        | Get one data action target.                                                       |
-| `d360_dataaction_target_list`   | DataAction             | read        | List data action targets.                                                         |
-| `d360_dataaction_target_update` | DataAction             | confirmed   | Update a data action target by id.                                                |
-| `d360_data_actions_list`        | Transforms and Actions | read        | List Data 360 data actions.                                                       |
+- `d360_activation_get` (rest_operation, read) — Get one activation by id.
+- `d360_activation_list` (rest_operation, read) — List activations.
+- `d360_activation_target_get` (rest_operation, read) — Get one activation target by id.
+- `d360_activation_target_list` (rest_operation, read) — List activation targets.
+- `d360_activations_list` (rest_operation, read) — List activations with optional pagination.
+- `d360_data_actions_list` (rest_operation, read) — List Data 360 data actions.
 
 ## Cross-phase routing
 

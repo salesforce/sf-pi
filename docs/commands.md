@@ -43,7 +43,7 @@ _Single-plugin lifecycle for `.agent` files: in-process compile-on-save diagnost
 
 ### [SF Data 360](../extensions/sf-data360/)
 
-_Data Cloud/Data 360 facade and direct REST helper — d360 search/examples/execute/runbook, d360_api, compact metadata discovery, readiness probe, and progressive-disclosure references_
+_Data Cloud/Data 360 capability facade and direct REST helper — d360 search/examples/execute, d360_api, compact metadata discovery, readiness probe, and progressive-disclosure references_
 
 - Default: **on**
 - Commands: `/sf-data360`

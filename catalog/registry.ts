@@ -32,7 +32,7 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
   {
     id: "sf-data360",
     name: "SF Data 360",
-    description: "Data Cloud/Data 360 facade and direct REST helper — d360 search/examples/execute/runbook, d360_api, compact metadata discovery, readiness probe, and progressive-disclosure references",
+    description: "Data Cloud/Data 360 capability facade and direct REST helper — d360 search/examples/execute, d360_api, compact metadata discovery, readiness probe, and progressive-disclosure references",
     file: "extensions/sf-data360/index.ts",
     category: "agent-tool",
     maturity: "stable",

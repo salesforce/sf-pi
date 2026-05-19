@@ -17,39 +17,29 @@ Data 360 Connect phase. Use when managing connections, connectors, source system
 ## Tool discipline
 
 1. Use `d360_probe` first when org readiness is uncertain.
-2. Use `d360` action=`search` to find matching operations or runbooks.
-3. Use `d360` action=`examples` before complex or mutating operations.
-4. Use `d360` action=`execute` for registry-backed operations.
-5. Use `d360_api` only as the raw REST escape hatch when the registry is insufficient.
+2. Use `d360` action=`search` to find matching D360 capabilities.
+3. Use `d360` action=`examples` with a capability before complex or mutating calls.
+4. Use `d360` action=`execute` with that capability and reviewed params.
+5. Use `d360_api` only as the raw REST escape hatch when no capability fits.
 6. Keep broad results bounded with `output_mode: "summary"` or `"file_only"`.
-7. Run dry-run review before confirmed or destructive operations.
+7. Promote repeated fallback paths into tested D360 capabilities.
 
 ## Phase coverage
 
 - **Connection** — Inspect connectors, connections, endpoints, and source metadata.
 - **Ingestion** — Discover connectors, connections, data streams, and ingestion health surfaces.
 
-- Operations: 13
-- Runbooks: 0
+- Capabilities: 13 (0 runbook-backed)
 - Safety mix: read=8, safe_post=1, confirmed=3, destructive=1
 
-## Operation map
+## D360 capabilities
 
-| Operation                          | Family     | Safety      | Summary                                                                    |
-| ---------------------------------- | ---------- | ----------- | -------------------------------------------------------------------------- |
-| `d360_connection_create`           | Connection | confirmed   | Create a data connection. Test the connection configuration before saving. |
-| `d360_connection_create_snowflake` | Connection | confirmed   | Create a Snowflake connection with key-pair authentication.                |
-| `d360_connection_delete`           | Connection | destructive | Delete a data connection.                                                  |
-| `d360_connection_endpoints`        | Connection | read        | List pre-configured connection endpoints.                                  |
-| `d360_connection_get`              | Connection | read        | Get one connection by id.                                                  |
-| `d360_connection_list`             | Connection | read        | List connections for a connector type.                                     |
-| `d360_connection_test`             | Connection | safe_post   | Test connection configuration without saving it.                           |
-| `d360_connection_update`           | Connection | confirmed   | Update a data connection by id.                                            |
-| `d360_connector_list`              | Connection | read        | List supported connector types.                                            |
-| `d360_connector_metadata`          | Connection | read        | Get connector metadata by connector catalog name.                          |
-| `d360_snowflake_connection_list`   | Connection | read        | List Data 360 connections for a connector type, commonly SNOWFLAKE.        |
-| `d360_connections_sfdc_list`       | Ingestion  | read        | List Salesforce CRM connections.                                           |
-| `d360_connectors_list`             | Ingestion  | read        | List connector catalog entries supported by the org.                       |
+- `d360_connection_endpoints` (rest_operation, read) — List pre-configured connection endpoints.
+- `d360_connection_get` (rest_operation, read) — Get one connection by id.
+- `d360_connection_list` (rest_operation, read) — List connections for a connector type.
+- `d360_connections_sfdc_list` (rest_operation, read) — List Salesforce CRM connections.
+- `d360_connector_list` (rest_operation, read) — List supported connector types.
+- `d360_connector_metadata` (rest_operation, read) — Get connector metadata by connector catalog name.
 
 ## Cross-phase routing
 

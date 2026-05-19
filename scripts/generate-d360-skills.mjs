@@ -184,6 +184,7 @@ function renderSkill({ phase, phases, familyByName, operations, runbooks }) {
   const phaseTitle = `SF Data 360 — ${phase.label}`;
   const familyNames = [...new Set(operations.map((operation) => operation.family))].sort();
   const safetyCounts = countBy(operations, "safety");
+  const recommendedCapabilities = selectRecommendedCapabilities(operations, runbooks);
   const generatedNotice =
     "Generated from extensions/sf-data360/registry/phases.json and registry operation data. Do not edit by hand.";
 
@@ -206,22 +207,20 @@ ${phase.description}
 ## Tool discipline
 
 1. Use \`d360_probe\` first when org readiness is uncertain.
-2. Use \`d360\` action=\`search\` to find matching operations or runbooks.
-3. Use \`d360\` action=\`examples\` before complex or mutating operations.
-4. Use \`d360\` action=\`execute\` for registry-backed operations.
-5. Use \`d360_api\` only as the raw REST escape hatch when the registry is insufficient.
+2. Use \`d360\` action=\`search\` to find matching D360 capabilities.
+3. Use \`d360\` action=\`examples\` with a capability before complex or mutating calls.
+4. Use \`d360\` action=\`execute\` with that capability and reviewed params.
+5. Use \`d360_api\` only as the raw REST escape hatch when no capability fits.
 6. Keep broad results bounded with \`output_mode: "summary"\` or \`"file_only"\`.
-7. Run dry-run review before confirmed or destructive operations.
+7. Promote repeated fallback paths into tested D360 capabilities.
 
 ## Phase coverage
 
 ${renderCoverage({ familyNames, familyByName, operations, runbooks, safetyCounts })}
 
-## Operation map
+## D360 capabilities
 
-${renderOperations(operations)}
-
-${renderRunbooks(runbooks)}
+${renderRecommendedCapabilities(recommendedCapabilities)}
 
 ## Cross-phase routing
 
@@ -245,44 +244,47 @@ function renderCoverage({ familyNames, familyByName, operations, runbooks, safet
 
   return `${familyLines}
 
-- Operations: ${operations.length}
-- Runbooks: ${runbooks.length}
+- Capabilities: ${operations.length + runbooks.length} (${runbooks.length} runbook-backed)
 - Safety mix: read=${safetyCounts.read ?? 0}, safe_post=${safetyCounts.safe_post ?? 0}, confirmed=${safetyCounts.confirmed ?? 0}, destructive=${safetyCounts.destructive ?? 0}`;
 }
 
-function renderOperations(operations) {
-  if (!operations.length) {
-    return "This orchestration skill does not own direct operation coverage. Route to the phase-specific skill first, then use `d360` or `d360_api`.";
-  }
-
+function selectRecommendedCapabilities(operations, runbooks) {
   return [
-    "| Operation | Family | Safety | Summary |",
-    "| --- | --- | --- | --- |",
-    ...operations
-      .slice()
-      .sort((a, b) => a.family.localeCompare(b.family) || a.name.localeCompare(b.name))
-      .map(
-        (operation) =>
-          `| \`${operation.name}\` | ${operation.family} | ${operation.safety} | ${escapeTable(operation.description)} |`,
-      ),
-  ].join("\n");
+    ...runbooks.map((runbook) => ({
+      name: runbook.name,
+      kind: "runbook",
+      safety: "read",
+      description: runbook.description,
+    })),
+    ...operations.map((operation) => ({
+      name: operation.name,
+      kind: operation.path.startsWith("/local/") ? "local_helper" : "rest_operation",
+      safety: operation.safety,
+      description: operation.description,
+    })),
+  ]
+    .sort((a, b) => capabilityRank(a) - capabilityRank(b) || a.name.localeCompare(b.name))
+    .slice(0, 6);
 }
 
-function renderRunbooks(runbooks) {
-  if (!runbooks.length) return "";
-  return `## Runbooks
+function capabilityRank(capability) {
+  if (capability.kind === "runbook") return 0;
+  if (capability.safety === "read") return 1;
+  if (capability.safety === "safe_post") return 2;
+  if (capability.kind === "local_helper") return 3;
+  return 4;
+}
 
-${[
-  "| Runbook | Family | Summary |",
-  "| --- | --- | --- |",
-  ...runbooks
-    .slice()
-    .sort((a, b) => a.family.localeCompare(b.family) || a.name.localeCompare(b.name))
+function renderRecommendedCapabilities(capabilities) {
+  if (!capabilities.length) {
+    return "Use this orchestration skill to choose the right phase, then discover D360 capabilities with `d360` action=`search`.";
+  }
+  return capabilities
     .map(
-      (runbook) =>
-        `| \`${runbook.name}\` | ${runbook.family} | ${escapeTable(runbook.description)} |`,
-    ),
-].join("\n")}`;
+      (capability) =>
+        `- \`${capability.name}\` (${capability.kind}, ${capability.safety}) — ${capability.description}`,
+    )
+    .join("\n");
 }
 
 function renderPhaseMap(phases) {

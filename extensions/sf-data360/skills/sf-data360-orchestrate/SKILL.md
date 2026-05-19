@@ -17,24 +17,23 @@ Data 360 Orchestrate phase. Use for cross-phase Data 360 planning, pipeline setu
 ## Tool discipline
 
 1. Use `d360_probe` first when org readiness is uncertain.
-2. Use `d360` action=`search` to find matching operations or runbooks.
-3. Use `d360` action=`examples` before complex or mutating operations.
-4. Use `d360` action=`execute` for registry-backed operations.
-5. Use `d360_api` only as the raw REST escape hatch when the registry is insufficient.
+2. Use `d360` action=`search` to find matching D360 capabilities.
+3. Use `d360` action=`examples` with a capability before complex or mutating calls.
+4. Use `d360` action=`execute` with that capability and reviewed params.
+5. Use `d360_api` only as the raw REST escape hatch when no capability fits.
 6. Keep broad results bounded with `output_mode: "summary"` or `"file_only"`.
-7. Run dry-run review before confirmed or destructive operations.
+7. Promote repeated fallback paths into tested D360 capabilities.
 
 ## Phase coverage
 
 - Cross-phase orchestration skill. Use the phase map below to route work.
 
-- Operations: 0
-- Runbooks: 0
+- Capabilities: 0 (0 runbook-backed)
 - Safety mix: read=0, safe_post=0, confirmed=0, destructive=0
 
-## Operation map
+## D360 capabilities
 
-This orchestration skill does not own direct operation coverage. Route to the phase-specific skill first, then use `d360` or `d360_api`.
+Use this orchestration skill to choose the right phase, then discover D360 capabilities with `d360` action=`search`.
 
 ## Cross-phase routing
 

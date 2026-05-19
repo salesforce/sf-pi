@@ -45,10 +45,38 @@ export interface D360Family {
   keywords: string[];
 }
 
+export interface D360Phase {
+  id: string;
+  label: string;
+  skillName: string;
+  summary: string;
+  description: string;
+  familyDefaults?: string[];
+  operationOverrides?: string[];
+}
+
+export type D360CapabilityKind = "rest_operation" | "local_helper" | "runbook";
+
+export interface D360Capability {
+  name: string;
+  kind: D360CapabilityKind;
+  family: string;
+  phase?: string;
+  description: string;
+  safety: D360OperationSafety;
+  requiredParams?: string[];
+  optionalParams?: string[];
+  tips?: string;
+  operation?: D360Operation;
+  runbook?: D360RunbookInfo;
+}
+
 interface RegistrySnapshot {
   families: D360Family[];
   operations: D360Operation[];
   runbooks: D360RunbookInfo[];
+  phases: D360Phase[];
+  capabilities: D360Capability[];
   examples: Record<string, unknown>;
   mtimeKey: string;
 }
@@ -67,6 +95,10 @@ export function getD360Runbooks(): D360RunbookInfo[] {
   return loadRegistry().runbooks;
 }
 
+export function getD360Capabilities(): D360Capability[] {
+  return loadRegistry().capabilities;
+}
+
 export function getD360Examples(): Record<string, unknown> {
   return loadRegistry().examples;
 }
@@ -79,12 +111,15 @@ export function findRunbook(name: string): D360RunbookInfo | undefined {
   return getD360Runbooks().find((runbook) => runbook.name === name);
 }
 
+export function findCapability(name: string): D360Capability | undefined {
+  return getD360Capabilities().find((capability) => capability.name === name);
+}
+
 export function searchRegistry(query: string): Array<{
   family: string;
   score: number;
   summary: string;
-  operations: string[];
-  runbooks: string[];
+  capabilities: Array<Pick<D360Capability, "name" | "kind" | "safety" | "phase" | "description">>;
 }> {
   const registry = loadRegistry();
   const terms = query
@@ -92,14 +127,19 @@ export function searchRegistry(query: string): Array<{
     .split(/[^a-z0-9_]+/)
     .filter(Boolean);
   const scored = registry.families.map((family) => {
-    const operations = registry.operations.filter((op) => op.family === family.name);
-    const runbooks = registry.runbooks.filter((runbook) => runbook.family === family.name);
+    const capabilities = registry.capabilities.filter(
+      (capability) => capability.family === family.name,
+    );
     const haystack = [
       family.name,
       family.summary,
       ...family.keywords,
-      ...operations.flatMap((op) => [op.name, op.description, op.tips ?? ""]),
-      ...runbooks.flatMap((runbook) => [runbook.name, runbook.description, runbook.tips ?? ""]),
+      ...capabilities.flatMap((capability) => [
+        capability.name,
+        capability.name.replaceAll("_", " "),
+        capability.description,
+        capability.tips ?? "",
+      ]),
     ]
       .join(" ")
       .toLowerCase();
@@ -108,8 +148,13 @@ export function searchRegistry(query: string): Array<{
       family: family.name,
       score,
       summary: family.summary,
-      operations: operations.map((op) => op.name),
-      runbooks: runbooks.map((runbook) => runbook.name),
+      capabilities: capabilities.map((capability) => ({
+        name: capability.name,
+        kind: capability.kind,
+        safety: capability.safety,
+        phase: capability.phase,
+        description: capability.description,
+      })),
     };
   });
   return scored
@@ -119,19 +164,77 @@ export function searchRegistry(query: string): Array<{
 }
 
 function loadRegistry(): RegistrySnapshot {
-  const mtimeKey = ["families.json", "operations.json", "runbooks.json", "examples.json"]
+  const mtimeKey = [
+    "families.json",
+    "operations.json",
+    "runbooks.json",
+    "phases.json",
+    "examples.json",
+  ]
     .map((fileName) => statSync(path.join(REGISTRY_DIR, fileName)).mtimeMs)
     .join(":");
   if (registryCache?.mtimeKey === mtimeKey) return registryCache;
 
+  const families = readJson<D360Family[]>("families.json");
+  const operations = readJson<D360Operation[]>("operations.json");
+  const runbooks = readJson<D360RunbookInfo[]>("runbooks.json");
+  const phases = readJson<D360Phase[]>("phases.json");
+
   registryCache = {
-    families: readJson<D360Family[]>("families.json"),
-    operations: readJson<D360Operation[]>("operations.json"),
-    runbooks: readJson<D360RunbookInfo[]>("runbooks.json"),
+    families,
+    operations,
+    runbooks,
+    phases,
+    capabilities: buildCapabilities(operations, runbooks, phases),
     examples: readJson<Record<string, unknown>>("examples.json"),
     mtimeKey,
   };
   return registryCache;
+}
+
+function buildCapabilities(
+  operations: D360Operation[],
+  runbooks: D360RunbookInfo[],
+  phases: D360Phase[],
+): D360Capability[] {
+  const phaseByFamily = new Map<string, string>();
+  const phaseByOperation = new Map<string, string>();
+  for (const phase of phases) {
+    for (const family of phase.familyDefaults ?? []) phaseByFamily.set(family, phase.id);
+    for (const operation of phase.operationOverrides ?? [])
+      phaseByOperation.set(operation, phase.id);
+  }
+
+  return [
+    ...operations.map(
+      (operation): D360Capability => ({
+        name: operation.name,
+        kind: operation.path.startsWith("/local/") ? "local_helper" : "rest_operation",
+        family: operation.family,
+        phase: phaseByOperation.get(operation.name) ?? phaseByFamily.get(operation.family),
+        description: operation.description,
+        safety: operation.safety,
+        requiredParams: operation.requiredParams,
+        optionalParams: operation.optionalParams,
+        tips: operation.tips,
+        operation,
+      }),
+    ),
+    ...runbooks.map(
+      (runbook): D360Capability => ({
+        name: runbook.name,
+        kind: "runbook",
+        family: runbook.family,
+        phase: phaseByFamily.get(runbook.family),
+        description: runbook.description,
+        safety: "read",
+        requiredParams: runbook.requiredParams,
+        optionalParams: runbook.optionalParams,
+        tips: runbook.tips,
+        runbook,
+      }),
+    ),
+  ];
 }
 
 function readJson<T>(fileName: string): T {

@@ -13,25 +13,29 @@ describe("d360 facade result cards", () => {
     expect(text).toContain("💠 Data 360 search ✅");
     expect(text).toContain("Stage 2/5: Discover");
     expect(text).toContain("Agent Observability");
+    expect(text).toContain("capabilities");
     expect(text).toContain("📄 Full JSON: /tmp/pi-d360-search/output.json");
     expect(text).not.toContain('"results"');
   });
 
-  it("summarizes examples shape", () => {
+  it("summarizes capability example shapes", () => {
     const card = facadeResultToCard({
       ok: true,
       action: "examples",
       summary: "Example for d360_query_sql",
-      operation: {
+      capability: {
         name: "d360_query_sql",
+        kind: "rest_operation",
         requiredParams: ["sql"],
         optionalParams: ["dataspaceName"],
       },
     });
 
     expect(card.title).toBe("Data 360 examples");
+    expect(card.subtitle).toBe("d360_query_sql");
     expect(card.sections?.[0]?.lines).toContain("Required: sql");
     expect(card.sections?.[0]?.lines).toContain("Optional: dataspaceName");
+    expect(card.nextSteps).toEqual(["Use d360 execute with this capability and params."]);
   });
 
   it("extracts scalar query results from execute responses", () => {
@@ -147,11 +151,13 @@ describe("d360 facade result cards", () => {
     expect(text).toContain("NOT_FOUND");
   });
 
-  it("summarizes STDM timeline runbooks", () => {
+  it("summarizes runbook-backed capabilities executed through d360 execute", () => {
     const { text } = facadeResultToLlmText(
       {
         ok: true,
-        action: "runbook",
+        action: "execute",
+        capability: "agent_observability.stdm_session_timeline",
+        capabilityKind: "runbook",
         targetOrg: "AgentforceSTDM",
         dataspaceName: "default",
         runbook: "agent_observability.stdm_session_timeline",
@@ -165,7 +171,7 @@ describe("d360 facade result cards", () => {
           ].join("\n"),
         },
       },
-      { fullOutputPath: "/tmp/pi-d360-runbook/output.json" },
+      { fullOutputPath: "/tmp/pi-d360-capability/output.json" },
     );
 
     expect(text).toContain("💬 STDM session timeline ✅");
@@ -174,7 +180,7 @@ describe("d360 facade result cards", () => {
     expect(text).toContain("Rows: 8");
     expect(text).toContain("1. 👤 User");
     expect(text).toContain("Hi! What is Agent Script?");
-    expect(text).toContain("📄 Full JSON: /tmp/pi-d360-runbook/output.json");
+    expect(text).toContain("📄 Full JSON: /tmp/pi-d360-capability/output.json");
   });
 });
 
@@ -187,8 +193,9 @@ function searchResult() {
     results: [
       {
         family: "Agent Observability",
-        operations: [],
-        runbooks: ["agent_observability.stdm_session_timeline"],
+        capabilities: [
+          { name: "agent_observability.stdm_session_timeline", kind: "runbook", safety: "read" },
+        ],
       },
     ],
   };

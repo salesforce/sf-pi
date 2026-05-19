@@ -7,7 +7,7 @@
  * Design:
  * - No MCP server/client support.
  * - No 180 always-on generated operation tools.
- * - One deterministic `d360` facade for search/examples/execute/runbook,
+ * - One deterministic `d360` facade for search/examples/execute capabilities,
  *   one `d360_api` raw REST escape hatch via `@salesforce/core` Connection,
  *   one compact `d360_metadata` helper for common DMO/DLO discovery, plus
  *   an extension-owned skill for progressive disclosure.
@@ -309,15 +309,15 @@ function buildHelpText(enabled: boolean): string {
     `  Disable: /sf-pi disable sf-data360`,
     "",
     "Tools when enabled:",
-    `  ${D360_FACADE_TOOL_NAME}              Search/examples/execute/runbook facade for deterministic workflows`,
+    `  ${D360_FACADE_TOOL_NAME}              Search/examples/execute facade for deterministic D360 capabilities`,
     `  ${D360_TOOL_NAME}          Call /services/data/vXX.X Data 360 REST endpoints via @salesforce/core Connection`,
     `  ${D360_METADATA_TOOL_NAME}     Compact list/describe helpers for DMOs and DLOs`,
     `  ${D360_PROBE_TOOL_NAME}        Classify Data 360 readiness with read-only probes`,
     "",
     "Recommended workflow:",
-    "  1. Use d360 action='search' to discover a family or runbook.",
-    "  2. Use d360 action='examples' before complex calls.",
-    "  3. Use d360 action='runbook' for deterministic STDM / Platform Tracing workflows.",
+    "  1. Use d360 action='search' to discover a D360 capability.",
+    "  2. Use d360 action='examples' with that capability before complex calls.",
+    "  3. Use d360 action='execute' for REST, local-helper, and runbook-backed capabilities.",
     "  4. Use d360_api dry_run:true as the raw REST escape hatch before mutating calls.",
   ].join("\n");
 }

@@ -56,8 +56,8 @@ describe("d360 renderers", () => {
     const rendered = renderToString(
       renderD360Call(
         {
-          action: "runbook",
-          runbook: "agent_observability.stdm_session_timeline",
+          action: "execute",
+          capability: "agent_observability.stdm_session_timeline",
           target_org: "AgentforceSTDM",
         },
         passthroughTheme,
@@ -65,7 +65,7 @@ describe("d360 renderers", () => {
     );
 
     expect(rendered).toBe(
-      "💠 d360 runbook · agent_observability.stdm_session_timeline · AgentforceSTDM",
+      "💠 d360 execute · agent_observability.stdm_session_timeline · AgentforceSTDM",
     );
   });
 
