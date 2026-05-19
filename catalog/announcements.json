@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.132.0-2026-05-19",
-  "latestVersion": "0.132.0",
+  "revision": "release-0.133.0-2026-05-19",
+  "latestVersion": "0.133.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.132.0",
+      "id": "release-0.133.0",
       "kind": "update",
-      "title": "sf-pi v0.132.0 — add d360 segment and activation target lifecycles",
+      "title": "sf-pi v0.133.0 — add d360 activation lifecycle",
       "publishedAt": "2026-05-19T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.132.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.133.0",
       "severity": "info",
-      "body": "add d360 segment and activation target lifecycles"
+      "body": "add d360 activation lifecycle"
     },
     {
       "id": "pi-0.73-required",
