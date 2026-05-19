@@ -517,6 +517,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.131.0](https://github.com/salesforce/sf-pi/compare/v0.130.0...v0.131.0) (2026-05-19)
+
+
+### Features
+
+* add d360 calculated insight lifecycle ([0d5ad57](https://github.com/salesforce/sf-pi/commit/0d5ad5785a7297e5029c2249cf1fd025335624ba))
+
 ## [0.130.0](https://github.com/salesforce/sf-pi/compare/v0.129.0...v0.130.0) (2026-05-19)
 
 
