@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.112.0-2026-05-18",
-  "latestVersion": "0.112.0",
+  "revision": "release-0.113.0-2026-05-19",
+  "latestVersion": "0.113.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.112.0",
+      "id": "release-0.113.0",
       "kind": "update",
-      "title": "sf-pi v0.112.0 — sf-data360: improve result card readability",
-      "publishedAt": "2026-05-18T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.112.0",
+      "title": "sf-pi v0.113.0 — sf-data360: generate phase skill pack",
+      "publishedAt": "2026-05-19T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.113.0",
       "severity": "info",
-      "body": "sf-data360: improve result card readability"
+      "body": "sf-data360: generate phase skill pack"
     },
     {
       "id": "pi-0.73-required",
