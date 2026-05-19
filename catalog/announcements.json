@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.130.0-2026-05-19",
-  "latestVersion": "0.130.0",
+  "revision": "release-0.131.0-2026-05-19",
+  "latestVersion": "0.131.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.130.0",
+      "id": "release-0.131.0",
       "kind": "update",
-      "title": "sf-pi v0.130.0 — add d360 sweep lifecycle controls",
+      "title": "sf-pi v0.131.0 — add d360 calculated insight lifecycle",
       "publishedAt": "2026-05-19T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.130.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.131.0",
       "severity": "info",
-      "body": "add d360 sweep lifecycle controls"
+      "body": "add d360 calculated insight lifecycle"
     },
     {
       "id": "pi-0.73-required",
