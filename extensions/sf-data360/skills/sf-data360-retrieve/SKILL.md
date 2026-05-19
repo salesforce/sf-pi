@@ -32,7 +32,7 @@ Data 360 Retrieve phase. Use when running Data 360 SQL, metadata search, profile
 - **Semantic Retrieval** — Inspect retrievers, search indexes, and semantic data models for RAG and BI.
 
 - Capabilities: 62 (0 runbook-backed)
-- Safety mix: read=47, safe_post=5, confirmed=6, destructive=4
+- Safety mix: read=48, safe_post=4, confirmed=6, destructive=4
 
 ## D360 capabilities
 

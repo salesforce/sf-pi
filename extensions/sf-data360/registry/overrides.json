@@ -729,9 +729,10 @@
     "safety": "read"
   },
   "d360_sdm_validate": {
+    "method": "GET",
     "requiredParams": ["modelApiNameOrId"],
     "optionalParams": ["dataspace"],
-    "safety": "safe_post",
+    "safety": "read",
     "tips": "Use validation before semantic query or downstream BI/RAG usage."
   },
   "d360_sdm_query": {

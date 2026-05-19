@@ -30,8 +30,8 @@ Snapshot date: 2026-05-18
 
 | Kind        | Count |
 | ----------- | ----: |
-| read        |    78 |
-| safe_post   |    12 |
+| read        |    79 |
+| safe_post   |    11 |
 | confirmed   |    65 |
 | destructive |    26 |
 
@@ -183,7 +183,7 @@ All upstream tools in the snapshot have an exact facade entry.
 | d360_sdm_update                   | SDM                | rest_adjusted    | confirmed   | d360_sdm_update                   |
 | d360_sdm_delete                   | SDM                | destructive_rest | destructive | d360_sdm_delete                   |
 | d360_sdm_clone                    | SDM                | rest_adjusted    | confirmed   | d360_sdm_clone                    |
-| d360_sdm_validate                 | SDM                | rest_adjusted    | safe_post   | d360_sdm_validate                 |
+| d360_sdm_validate                 | SDM                | rest_adjusted    | read        | d360_sdm_validate                 |
 | d360_sdm_dependencies             | SDM                | rest_adjusted    | read        | d360_sdm_dependencies             |
 | d360_sdm_data_object_create       | SDM                | rest_adjusted    | confirmed   | d360_sdm_data_object_create       |
 | d360_sdm_data_objects_list        | SDM                | rest_adjusted    | read        | d360_sdm_data_objects_list        |

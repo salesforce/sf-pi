@@ -66,6 +66,63 @@ const streamDetailCapability: D360Capability = {
   },
 };
 
+const semanticDataObjectsCapability: D360Capability = {
+  name: "d360_sdm_data_objects_list",
+  kind: "rest_operation",
+  family: "Semantic Retrieval",
+  phase: "retrieve",
+  description: "List semantic data objects.",
+  safety: "read",
+  requiredParams: ["modelApiNameOrId"],
+  operation: {
+    name: "d360_sdm_data_objects_list",
+    family: "Semantic Retrieval",
+    description: "List semantic data objects.",
+    method: "GET",
+    path: "/ssot/semantic/models/{modelApiNameOrId}/data-objects",
+    safety: "read",
+    requiredParams: ["modelApiNameOrId"],
+  },
+};
+
+const semanticQueryCapability: D360Capability = {
+  name: "d360_sdm_query",
+  kind: "rest_operation",
+  family: "Semantic Retrieval",
+  phase: "retrieve",
+  description: "Run semantic query.",
+  safety: "safe_post",
+  requiredParams: ["body"],
+  operation: {
+    name: "d360_sdm_query",
+    family: "Semantic Retrieval",
+    description: "Run semantic query.",
+    method: "POST",
+    path: "/semantic-engine/gateway",
+    safety: "safe_post",
+    requiredParams: ["body"],
+  },
+};
+
+const localHelperCapability: D360Capability = {
+  name: "d360_preview_field_matches",
+  kind: "local_helper",
+  family: "Smart",
+  phase: "harmonize",
+  description: "Preview field matches.",
+  safety: "safe_post",
+  requiredParams: ["sourceFields", "targetFields"],
+  operation: {
+    name: "d360_preview_field_matches",
+    family: "Smart",
+    description: "Preview field matches.",
+    method: "POST",
+    path: "/local/preview-field-matches",
+    safety: "safe_post",
+    requiredParams: ["sourceFields", "targetFields"],
+  },
+};
+
 const safePostCapability: D360Capability = {
   name: "d360_query_sql",
   kind: "rest_operation",
@@ -153,6 +210,43 @@ describe("d360 capability sweep planning", () => {
     ]);
   });
 
+  it("builds nested semantic model read checks from a model detail response", () => {
+    const followUps = buildDynamicFollowUpChecks(
+      {
+        stage: "live",
+        capability: "d360_sdm_get",
+        family: "Semantic Retrieval",
+        safety: "read",
+        params: { modelApiNameOrId: "model-1" },
+      },
+      { ok: true, response: { id: "model-1", name: "ModelOne" } },
+      [semanticDataObjectsCapability],
+    );
+
+    expect(followUps).toEqual([
+      expect.objectContaining({
+        stage: "live",
+        capability: "d360_sdm_data_objects_list",
+        params: { modelApiNameOrId: "model-1" },
+        sourceCapability: "d360_sdm_get",
+      }),
+    ]);
+  });
+
+  it("uses curated public-safe params for local helper safe POST probes", () => {
+    const params = paramsForLiveCheck(localHelperCapability);
+
+    expect(params).toMatchObject({
+      sourceDloName: "Sweep_Source__dll",
+      targetDmoName: "Sweep_Target__dlm",
+    });
+    expect(containsPlaceholderValue(params)).toBe(false);
+  });
+
+  it("skips unsafe semantic query live probes until a dynamic model-specific payload is available", () => {
+    expect(paramsForLiveCheck(semanticQueryCapability)).toBeUndefined();
+  });
+
   it("builds placeholder params for dry-run request resolution without using them for live checks", () => {
     expect(paramsForDryRun(destructiveCapability)).toEqual({ dmoName: "SweepDryRunDmoName" });
     expect(paramsForLiveCheck(destructiveCapability)).toBeUndefined();
@@ -163,6 +257,9 @@ describe("d360 capability sweep planning", () => {
 
   it("detects placeholder payloads before live execution", () => {
     expect(containsPlaceholderValue({ body: { apiName: "Example_Score__cio" } })).toBe(true);
+    expect(containsPlaceholderValue({ body: { semanticModelId: "ExampleSemanticModel" } })).toBe(
+      true,
+    );
     expect(containsPlaceholderValue({ limit: 5, query: "AI Agent Interaction" })).toBe(false);
   });
 
@@ -189,6 +286,27 @@ describe("d360 capability sweep planning", () => {
         },
       ),
     ).toMatchObject({ outcome: "dependency_missing", fail: false });
+
+    expect(
+      classifySweepResult(
+        { stage: "live", capability: "d360_dmo_mapping_list" },
+        { ok: false, status: 500, error: "DMO or Source Object (CRM) developer Name is missing" },
+      ),
+    ).toMatchObject({ outcome: "dependency_missing", fail: false });
+
+    expect(
+      classifySweepResult(
+        { stage: "live", capability: "d360_metadata" },
+        { ok: false, status: 500, error: "Field Ids should not be empty" },
+      ),
+    ).toMatchObject({ outcome: "dependency_missing", fail: false });
+
+    expect(
+      classifySweepResult(
+        { stage: "live", capability: "agent_observability.join_interaction_trace" },
+        { ok: false, error: "No STDM interaction found for 'abc'." },
+      ),
+    ).toMatchObject({ outcome: "not_found_optional", fail: false });
 
     expect(
       classifySweepResult(

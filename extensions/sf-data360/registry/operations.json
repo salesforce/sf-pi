@@ -1480,11 +1480,11 @@
     "name": "d360_sdm_validate",
     "family": "Semantic Retrieval",
     "description": "Validate a semantic data model.",
-    "method": "POST",
+    "method": "GET",
     "path": "/ssot/semantic/models/{modelApiNameOrId}/validate",
     "requiredParams": ["modelApiNameOrId"],
     "optionalParams": ["dataspace"],
-    "safety": "safe_post",
+    "safety": "read",
     "tips": "Use validation before semantic query or downstream BI/RAG usage."
   },
   {

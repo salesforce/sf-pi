@@ -165,7 +165,8 @@ export function paramsForDryRun(capability: D360Capability): Record<string, unkn
 export function paramsForLiveCheck(
   capability: D360Capability,
 ): Record<string, unknown> | undefined {
-  if (!isLiveEligible(capability.safety)) return undefined;
+  if (!isLiveEligible(capability.safety) || liveParamDenyList.has(capability.name))
+    return undefined;
 
   const special = liveParamOverrides[capability.name];
   if (special) return special;
@@ -184,7 +185,7 @@ export function paramsForLiveCheck(
 
 export function containsPlaceholderValue(value: unknown): boolean {
   if (typeof value === "string") {
-    return /(^|[^a-z0-9])(Example|Placeholder|SomeDmo|SomeDlo|Replace|ReviewedReal|Dummy)([^a-z0-9]|$)/i.test(
+    return /(^|[^a-z0-9])(Example[A-Za-z0-9_]*|Placeholder|SomeDmo|SomeDlo|Replace|ReviewedReal|Dummy)([^a-z0-9]|$)/i.test(
       value,
     );
   }
@@ -231,7 +232,13 @@ export function classifySweepResult(
   }
 
   const message = [summary, error, JSON.stringify(result.response ?? "")].join(" ").toLowerCase();
-  if (status === 404 || message.includes("not_found") || message.includes("does not exist")) {
+  if (
+    status === 404 ||
+    message.includes("not_found") ||
+    message.includes("does not exist") ||
+    message.includes("no stdm interaction found") ||
+    message.includes("no stdm session found")
+  ) {
     return { outcome: "not_found_optional", fail: false, summary, status, error };
   }
   if (
@@ -247,6 +254,8 @@ export function classifySweepResult(
     message.includes("dependency") ||
     message.includes("invalid input") ||
     message.includes("provide a valid recordid") ||
+    message.includes("developer name is missing") ||
+    message.includes("field ids should not be empty") ||
     message.includes("not enabled") ||
     message.includes("feature")
   ) {
@@ -409,6 +418,7 @@ const dloNameCandidates = ["apiName", "name", "developerName", "dloName"];
 const dynamicFollowUps: Record<string, DynamicFollowUp[]> = {
   d360_data_spaces_list: [
     { capability: "d360_dataspace_get", params: { dataSpaceName: nameCandidates } },
+    { capability: "d360_dataspace_member_list", params: { dataSpaceName: nameCandidates } },
   ],
   d360_data_streams_list: [
     { capability: "d360_datastream_get", params: { dataStreamId: idOrNameCandidates } },
@@ -438,9 +448,82 @@ const dynamicFollowUps: Record<string, DynamicFollowUp[]> = {
     { capability: "d360_semantic_model_get", params: { semanticModelName: idOrNameCandidates } },
   ],
   d360_sdm_list: [{ capability: "d360_sdm_get", params: { modelApiNameOrId: idOrNameCandidates } }],
+  d360_sdm_get: [
+    { capability: "d360_sdm_dependencies", params: { modelApiNameOrId: idOrNameCandidates } },
+    { capability: "d360_sdm_data_objects_list", params: { modelApiNameOrId: idOrNameCandidates } },
+    { capability: "d360_sdm_calc_dims_list", params: { modelApiNameOrId: idOrNameCandidates } },
+    { capability: "d360_sdm_calc_measures_list", params: { modelApiNameOrId: idOrNameCandidates } },
+    { capability: "d360_sdm_metrics_list", params: { modelApiNameOrId: idOrNameCandidates } },
+    { capability: "d360_sdm_relationships_list", params: { modelApiNameOrId: idOrNameCandidates } },
+    { capability: "d360_sdm_validate", params: { modelApiNameOrId: idOrNameCandidates } },
+  ],
+  d360_sdm_data_objects_list: [
+    {
+      capability: "d360_sdm_data_object_get",
+      params: {
+        modelApiNameOrId: idOrNameCandidates,
+        dataObjectNameOrId: idOrNameCandidates,
+      },
+      inheritParams: ["modelApiNameOrId"],
+    },
+    {
+      capability: "d360_sdm_dimensions_list",
+      params: {
+        modelApiNameOrId: idOrNameCandidates,
+        dataObjectNameOrId: idOrNameCandidates,
+      },
+      inheritParams: ["modelApiNameOrId"],
+    },
+    {
+      capability: "d360_sdm_measurements_list",
+      params: {
+        modelApiNameOrId: idOrNameCandidates,
+        dataObjectNameOrId: idOrNameCandidates,
+      },
+      inheritParams: ["modelApiNameOrId"],
+    },
+  ],
+  d360_sdm_calc_dims_list: [
+    {
+      capability: "d360_sdm_calc_dim_get",
+      params: {
+        modelApiNameOrId: idOrNameCandidates,
+        calculatedDimensionId: idOrNameCandidates,
+      },
+      inheritParams: ["modelApiNameOrId"],
+    },
+  ],
+  d360_sdm_calc_measures_list: [
+    {
+      capability: "d360_sdm_calc_measure_get",
+      params: {
+        modelApiNameOrId: idOrNameCandidates,
+        calculatedMeasureId: idOrNameCandidates,
+      },
+      inheritParams: ["modelApiNameOrId"],
+    },
+  ],
+  d360_sdm_metrics_list: [
+    {
+      capability: "d360_sdm_metric_get",
+      params: { modelApiNameOrId: idOrNameCandidates, metricNameOrId: idOrNameCandidates },
+      inheritParams: ["modelApiNameOrId"],
+    },
+  ],
+  d360_sdm_relationships_list: [
+    {
+      capability: "d360_sdm_relationship_get",
+      params: { modelApiNameOrId: idOrNameCandidates, relationshipId: idOrNameCandidates },
+      inheritParams: ["modelApiNameOrId"],
+    },
+  ],
   d360_search_indexes_list: [
     {
       capability: "d360_search_index_get",
+      params: { searchIndexApiNameOrId: idOrNameCandidates },
+    },
+    {
+      capability: "d360_search_index_process_history",
       params: { searchIndexApiNameOrId: idOrNameCandidates },
     },
   ],
@@ -449,18 +532,50 @@ const dynamicFollowUps: Record<string, DynamicFollowUp[]> = {
       capability: "d360_search_index_get",
       params: { searchIndexApiNameOrId: idOrNameCandidates },
     },
+    {
+      capability: "d360_search_index_process_history",
+      params: { searchIndexApiNameOrId: idOrNameCandidates },
+    },
   ],
   d360_retrievers_list: [
     { capability: "d360_retriever_get", params: { retrieverId: idOrNameCandidates } },
+    { capability: "d360_retriever_config_list", params: { retrieverIdOrName: idOrNameCandidates } },
   ],
   d360_retriever_list: [
     { capability: "d360_retriever_get", params: { retrieverId: idOrNameCandidates } },
+    { capability: "d360_retriever_config_list", params: { retrieverIdOrName: idOrNameCandidates } },
+  ],
+  d360_retriever_config_list: [
+    {
+      capability: "d360_retriever_config_get",
+      params: {
+        retrieverIdOrName: idOrNameCandidates,
+        configurationIdOrName: idOrNameCandidates,
+      },
+      inheritParams: ["retrieverIdOrName"],
+    },
   ],
   d360_datakits_list: [
     { capability: "d360_datakit_get", params: { dataKitId: idOrNameCandidates } },
+    { capability: "d360_datakit_manifest", params: { dataKitId: idOrNameCandidates } },
+    { capability: "d360_datakit_components", params: { dataKitId: idOrNameCandidates } },
+  ],
+  d360_datakit_components: [
+    {
+      capability: "d360_datakit_component_status",
+      params: { dataKitId: idOrNameCandidates, componentId: idOrNameCandidates },
+      inheritParams: ["dataKitId"],
+    },
+    {
+      capability: "d360_datakit_component_deps",
+      params: { dataKitId: idOrNameCandidates, componentId: idOrNameCandidates },
+      inheritParams: ["dataKitId"],
+    },
   ],
   d360_datakit_list: [
     { capability: "d360_datakit_get", params: { dataKitId: idOrNameCandidates } },
+    { capability: "d360_datakit_manifest", params: { dataKitId: idOrNameCandidates } },
+    { capability: "d360_datakit_components", params: { dataKitId: idOrNameCandidates } },
   ],
   d360_segments_list: [
     { capability: "d360_segment_get", params: { segmentId: idOrNameCandidates } },
@@ -543,6 +658,20 @@ function exampleParams(capabilityName: string): Record<string, unknown> | undefi
     : undefined;
 }
 
+const liveParamDenyList = new Set(["d360_semantic_query", "d360_sdm_query"]);
+
+const sweepSourceFields = [
+  { name: "Id__c", label: "Id", dataType: "Text" },
+  { name: "Name__c", label: "Name", dataType: "Text" },
+  { name: "CreatedDate__c", label: "Created Date", dataType: "DateTime" },
+];
+
+const sweepTargetFields = [
+  { name: "Id__c", label: "Id", dataType: "Text" },
+  { name: "Name__c", label: "Name", dataType: "Text" },
+  { name: "CreatedDate__c", label: "Created Date", dataType: "DateTime" },
+];
+
 const liveParamOverrides: Record<string, Record<string, unknown>> = {
   d360_query_sql: {
     dataspaceName: "default",
@@ -559,6 +688,38 @@ const liveParamOverrides: Record<string, Record<string, unknown>> = {
   d360_dmo_describe: { dmoName: "ssot__AiAgentSession__dlm" },
   d360_dmo_get: { dmoName: "ssot__AiAgentSession__dlm" },
   d360_connection_list: { connectorType: "SalesforceDotCom" },
+  d360_preview_field_matches: {
+    sourceFields: sweepSourceFields,
+    targetFields: sweepTargetFields,
+    sourceDloName: "Sweep_Source__dll",
+    targetDmoName: "Sweep_Target__dlm",
+    threshold: 0.45,
+  },
+  d360_smart_mapping_suggest: {
+    sourceFields: sweepSourceFields,
+    targetFields: sweepTargetFields,
+    sourceDloName: "Sweep_Source__dll",
+    targetDmoName: "Sweep_Target__dlm",
+    threshold: 0.45,
+  },
+  d360_event_date_recommend: {
+    category: "Engagement",
+    fields: sweepSourceFields,
+  },
+  d360_smart_datastream_create: {
+    body: {
+      name: "Sweep_Engagement_Stream",
+      label: "Sweep Engagement Stream",
+      datastreamType: "EXTERNAL",
+      category: "Engagement",
+      dataLakeObjectInfo: {
+        name: "Sweep_Engagement__dll",
+        label: "Sweep Engagement",
+        fields: sweepSourceFields,
+      },
+    },
+    autoSelectEventDate: true,
+  },
 };
 
 function looksEmpty(value: unknown): boolean {
@@ -576,10 +737,14 @@ function looksEmpty(value: unknown): boolean {
 
 function firstObjectRow(response: unknown): Record<string, unknown> | undefined {
   const rows = findFirstArray(response);
-  return rows?.find(
-    (row): row is Record<string, unknown> =>
-      Boolean(row) && typeof row === "object" && !Array.isArray(row),
+  const row = rows?.find(
+    (entry): entry is Record<string, unknown> =>
+      Boolean(entry) && typeof entry === "object" && !Array.isArray(entry),
   );
+  if (row) return row;
+  return response && typeof response === "object" && !Array.isArray(response)
+    ? (response as Record<string, unknown>)
+    : undefined;
 }
 
 function findFirstArray(value: unknown): unknown[] | undefined {

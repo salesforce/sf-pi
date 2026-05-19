@@ -203,6 +203,14 @@ describe("d360 facade registry", () => {
     ]);
   });
 
+  it("uses the live semantic model validation method", () => {
+    expect(findCapability("d360_sdm_validate")?.operation).toMatchObject({
+      method: "GET",
+      safety: "read",
+      path: "/ssot/semantic/models/{modelApiNameOrId}/validate",
+    });
+  });
+
   it("returns capability-shaped examples that point at registered names", () => {
     for (const example of Object.values(getD360Examples()) as Array<Record<string, unknown>>) {
       const capability = typeof example.capability === "string" ? example.capability : undefined;
