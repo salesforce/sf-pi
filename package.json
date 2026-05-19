@@ -74,6 +74,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:sf-llm-gateway-internal:codex": "vitest run extensions/sf-llm-gateway-internal/tests/codex-regression.test.ts",
+    "e2e:d360-sweep": "node --experimental-strip-types scripts/e2e/d360-capability-sweep.ts",
     "validate": "./scripts/validate.sh",
     "scaffold": "node scripts/scaffold.mjs",
     "preinstall": "node scripts/check-node-version.mjs",

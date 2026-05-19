@@ -225,6 +225,7 @@ extensions/sf-data360/
     agent-observability-runbooks.test.ts← unit / smoke test
     api-card.test.ts        ← unit / smoke test
     api-tool.test.ts        ← unit / smoke test
+    capability-sweep.test.ts← unit / smoke test
     display-card.test.ts    ← unit / smoke test
     facade-capabilities.test.ts← unit / smoke test
     facade-card.test.ts     ← unit / smoke test
