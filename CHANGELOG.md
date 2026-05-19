@@ -517,6 +517,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.133.0](https://github.com/salesforce/sf-pi/compare/v0.132.0...v0.133.0) (2026-05-19)
+
+
+### Features
+
+* add d360 activation lifecycle ([43478f3](https://github.com/salesforce/sf-pi/commit/43478f318570e60b079cefaf26f5679c42d7082a))
+
 ## [0.132.0](https://github.com/salesforce/sf-pi/compare/v0.131.0...v0.132.0) (2026-05-19)
 
 
