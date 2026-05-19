@@ -19,10 +19,11 @@ const REFERENCES_DIR = path.join(ROOT, "extensions/sf-data360/skills/sf-data360/
 const CHECK = process.argv.includes("--check");
 
 const upstreamSnapshot = readJson(path.join(REGISTRY_DIR, "upstream-tools.json"));
+const upstreamPayloadExamples = readJson(path.join(REGISTRY_DIR, "upstream-payload-examples.json"));
 const operations = readJson(path.join(REGISTRY_DIR, "operations.json"));
 const examples = readJson(path.join(REGISTRY_DIR, "examples.json"));
 
-const report = buildReport(upstreamSnapshot, operations, examples);
+const report = buildReport(upstreamSnapshot, operations, examples, upstreamPayloadExamples);
 const prettierOptions = {
   printWidth: 100,
   ...((await resolveConfig(path.join(ROOT, "package.json"))) ?? {}),
@@ -64,7 +65,7 @@ function readText(filePath) {
   return readFileSync(filePath, "utf8");
 }
 
-function buildReport(upstream, facadeOperations, facadeExamples) {
+function buildReport(upstream, facadeOperations, facadeExamples, upstreamPayloadExamples) {
   const facadeByName = new Map(facadeOperations.map((operation) => [operation.name, operation]));
   const upstreamNames = new Set(upstream.tools.map((tool) => tool.name));
   const entries = upstream.tools.map((tool) => {
@@ -117,6 +118,7 @@ function buildReport(upstream, facadeOperations, facadeExamples) {
   );
   const extrasByKind = countBy(extras, "kind");
   const missing = entries.filter((entry) => entry.status === "missing");
+  const payloadExamples = buildPayloadExampleSummary(upstreamPayloadExamples, facadeExamples);
 
   return {
     generatedAt: "2026-05-18",
@@ -135,10 +137,44 @@ function buildReport(upstream, facadeOperations, facadeExamples) {
       byKind,
       bySafety,
       extrasByKind,
+      payloadExamples,
     },
     entries,
     extras,
   };
+}
+
+function buildPayloadExampleSummary(upstreamPayloadExamples, facadeExamples) {
+  const upstreamKeys = Object.keys(upstreamPayloadExamples ?? {});
+  const exact = upstreamKeys.filter((key) => Boolean(facadeExamples[key]));
+  const variants = upstreamKeys.filter(
+    (key) => !facadeExamples[key] && findVariantBySourceExample(facadeExamples, key),
+  );
+  const missing = upstreamKeys.filter(
+    (key) => !facadeExamples[key] && !findVariantBySourceExample(facadeExamples, key),
+  );
+  return {
+    upstreamPayloadExamples: upstreamKeys.length,
+    exactPayloadExamples: exact.length,
+    variantPayloadExamples: variants.length,
+    missingPayloadExamples: missing.length,
+    missing,
+  };
+}
+
+function findVariantBySourceExample(facadeExamples, sourceExample) {
+  for (const example of Object.values(facadeExamples ?? {})) {
+    const variants = asRecord(asRecord(example)?.variants);
+    if (!variants) continue;
+    for (const value of Object.values(variants)) {
+      if (asRecord(value)?.sourceExample === sourceExample) return value;
+    }
+  }
+  return undefined;
+}
+
+function asRecord(value) {
+  return value && typeof value === "object" && !Array.isArray(value) ? value : undefined;
 }
 
 function classifyKind(operation, upstreamTool) {
@@ -206,6 +242,10 @@ function buildMarkdown(report) {
     `- Missing upstream tools: ${report.summary.missingUpstreamTools}`,
     `- Facade registry operations: ${report.summary.facadeOperations}`,
     `- Facade extras / aliases: ${report.summary.facadeExtras}`,
+    `- Upstream payload examples: ${report.summary.payloadExamples.upstreamPayloadExamples}`,
+    `- Payload examples covered exactly: ${report.summary.payloadExamples.exactPayloadExamples}`,
+    `- Payload examples covered as variants: ${report.summary.payloadExamples.variantPayloadExamples}`,
+    `- Missing payload examples: ${report.summary.payloadExamples.missingPayloadExamples}`,
     "",
     "### Supported upstream tools by kind",
     "",

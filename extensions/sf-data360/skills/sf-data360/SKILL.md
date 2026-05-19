@@ -23,7 +23,7 @@ hardcode a path like `/services/data/v60.0/...`.
 1. Probe → `d360 search` → `d360 examples` → `d360 execute` or raw `d360_api`.
 2. Keep result sets small (`limit`, `rowLimit`, `output_mode: "summary"|"file_only"`).
 3. Prefer validation/preview/test endpoints before saving configuration.
-4. For `d360 execute` operations with `safety: "confirmed"` or `"destructive"`, run `dry_run: true` first. Only pass `allow_confirmed: true` after the resolved request has been reviewed and the user clearly intends execution.
+4. For `d360 execute` capabilities with `safety: "confirmed"` or `"destructive"`, run `dry_run: true` first. Only pass `allow_confirmed: true` after the resolved request has been reviewed and the user clearly intends execution.
 5. For a non-default explicit `target_org`, d360 tools resolve that org
    through `@salesforce/core` and use its API version and org type.
 
@@ -68,7 +68,7 @@ hardcode a path like `/services/data/v60.0/...`.
   first. `DELETE` requires `?shouldDeleteDataLakeObject=true|false`.
 - For semantic models, create the shell first; subresources are added
   via the URLs returned in the create response. Validate is GET, not POST.
-- Confirm destructive operations even in sandboxes unless the user
+- Confirm destructive capabilities even in sandboxes unless the user
   explicitly asked for them.
 
 ## Agentforce session tracing (STDM)
@@ -118,9 +118,9 @@ Read these only when needed:
 - `references/endpoint-families.md` — endpoint family map.
 - `references/workflows.md` — read-only smoke matrix and recursive validation recipe.
 - `references/action-coverage.md` — verified live-mutation lifecycle proofs.
-- `references/facade-coverage.md` — operation coverage matrix, confirmed-operation workflow, and per-family pre-flight checklist.
+- `references/facade-coverage.md` — capability coverage matrix, confirmed-capability workflow, and per-family pre-flight checklist.
 - `references/upstream-parity.md` — generated upstream MCP tool → d360 facade parity report.
-- `references/safety.md` — mutating-operation safety policy.
+- `references/safety.md` — mutating-capability safety policy.
 - `references/readiness.md` — how to interpret `d360_probe` output.
 - `references/troubleshooting.md` — symptom → cause → fix index.
 - `references/agentforce-stdm.md` — Agentforce session tracing DMO

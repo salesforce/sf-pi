@@ -14,7 +14,14 @@
     "byStatus": { "supported": 181 },
     "byKind": { "rest": 70, "destructive_rest": 26, "rest_adjusted": 80, "local_helper": 5 },
     "bySafety": { "safe_post": 12, "read": 78, "destructive": 26, "confirmed": 65 },
-    "extrasByKind": { "alias": 15, "facade_extension": 7 }
+    "extrasByKind": { "alias": 15, "facade_extension": 7 },
+    "payloadExamples": {
+      "upstreamPayloadExamples": 31,
+      "exactPayloadExamples": 20,
+      "variantPayloadExamples": 11,
+      "missingPayloadExamples": 0,
+      "missing": []
+    }
   },
   "entries": [
     {

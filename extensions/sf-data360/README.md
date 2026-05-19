@@ -9,7 +9,7 @@ hundreds of endpoint-specific tools.
 It registers four native tools:
 
 - `d360` — a facade for deterministic Data 360 capabilities: search the
-  registry, fetch examples, and execute REST, local-helper, or runbook-backed
+  registry, fetch examples, and execute REST, local-helper, or workflow-backed
   capabilities.
 - `d360_api` — calls Data 360 REST endpoints directly via `@salesforce/core`
   Connection (no subprocess), reusing the active Salesforce CLI auth context.
@@ -126,17 +126,17 @@ a small number of verified non-sensitive fields.
 
 Use `dry_run: true` before mutating calls to inspect the exact method, path,
 target org, org type, and safety decision. For registry-backed `d360 execute`
-operations with `safety: "confirmed"`, actual execution also requires
+capabilities with `safety: "confirmed"`, actual execution also requires
 `allow_confirmed: true`; dry-run is the default review step, not the approval.
 
-## Facade Operation Coverage
+## Facade Capability Coverage
 
-The `d360` facade registry is intentionally progressive: read-only operations
-first, safe validation/test/search/query POST operations second,
-non-destructive confirmed lifecycle operations third, and destructive operations
+The `d360` facade registry is intentionally progressive: read-only capabilities
+first, safe validation/test/search/query POST capabilities second,
+non-destructive confirmed lifecycle capabilities third, and destructive capabilities
 last only after stricter review UX exists.
 
-The current coverage matrix, confirmed-operation workflow, and per-family
+The current coverage matrix, confirmed-capability workflow, and per-family
 "what to run first" checklist live in
 `skills/sf-data360/references/facade-coverage.md`.
 
@@ -147,17 +147,33 @@ reference files under `skills/sf-data360/references/` for endpoint families,
 workflow recipes, action coverage, facade coverage, request-body shapes, query patterns, examples,
 safety rules, Agentforce Session Tracing (STDM), and Agent Platform Tracing.
 
+Payload examples are capability-shaped. Some upstream payload examples are
+variants of one executable capability instead of separate capabilities:
+
+```json
+{ "action": "examples", "capability": "d360_dmo_create" }
+```
+
+returns variants such as `profile`, `engagement`, and `other`, while:
+
+```json
+{ "action": "examples", "capability": "d360_dmo_create", "variant": "profile" }
+```
+
+returns the profile payload variant. Variant entries in `registry/examples.json`
+carry their source key, for example `{ "capability": "d360_dmo_create", "variant": "profile" }`.
+
 The phase skill pack (`sf-data360-connect`, `sf-data360-prepare`,
 `sf-data360-harmonize`, `sf-data360-segment`, `sf-data360-act`,
 `sf-data360-retrieve`, `sf-data360-observe`, and `sf-data360-orchestrate`) is
 generated from `registry/phases.json` and the facade registry. These generated
 `SKILL.md` files are committed so pi discovers them through the normal
 extension-owned `resources_discover` skill path; run `npm run
-generate-d360-skills` after changing phase mappings or operation coverage.
+generate-d360-skills` after changing phase mappings or capability coverage.
 
 When local references are not enough, use the public upstream Data 360 MCP server
 repo before broad web search: <https://github.com/forcedotcom/d360-mcp-server>.
-It is reference material for the roughly 180+ operation surface, facade workflow,
+It is reference material for the broad Data 360 capability surface, facade workflow,
 action families, and public payload examples. This extension still does not run
 or embed the Java MCP server.
 

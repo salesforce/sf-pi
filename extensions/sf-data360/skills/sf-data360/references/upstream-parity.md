@@ -12,6 +12,10 @@ Snapshot date: 2026-05-18
 - Missing upstream tools: 0
 - Facade registry operations: 203
 - Facade extras / aliases: 22
+- Upstream payload examples: 31
+- Payload examples covered exactly: 20
+- Payload examples covered as variants: 11
+- Missing payload examples: 0
 
 ### Supported upstream tools by kind
 

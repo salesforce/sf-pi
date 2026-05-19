@@ -65,13 +65,13 @@ export const D360FacadeParams = Type.Object({
   ),
   dry_run: Type.Optional(
     Type.Boolean({
-      description: "Return resolved operation/runbook request without network calls.",
+      description: "Return the resolved capability request without network calls.",
     }),
   ),
   allow_confirmed: Type.Optional(
     Type.Boolean({
       description:
-        "Explicitly allow a confirmed/destructive registry operation to execute after reviewing dry_run output.",
+        "Explicitly allow a confirmed/destructive capability to execute after reviewing dry_run output.",
     }),
   ),
   timeout_ms: Type.Optional(Type.Number({ description: "Optional request timeout in ms." })),
@@ -105,9 +105,8 @@ export function registerD360FacadeTool(pi: ExtensionAPI): void {
   pi.registerTool({
     name: D360_FACADE_TOOL_NAME,
     label: "Data 360 Facade",
-    description:
-      "Facade for Data 360 operation discovery, examples, registry execution, and deterministic runbooks.",
-    promptSnippet: "Search/examples/execute/runbook facade for deterministic Data 360 workflows",
+    description: "Facade for Data 360 capability discovery, examples, and deterministic execution.",
+    promptSnippet: "Search/examples/execute facade for deterministic Data 360 capabilities",
     promptGuidelines: [
       "Use d360 action='search' to discover Data 360 capabilities without loading large references.",
       "Use d360 action='examples' with a capability before complex or mutating execution.",
@@ -234,7 +233,9 @@ async function runExecute(
 
   const operation = capability.operation;
   if (!operation) {
-    throw new Error(`Capability '${capabilityName}' is not backed by a registry operation.`);
+    throw new Error(
+      `Capability '${capabilityName}' is not backed by a REST or local helper implementation.`,
+    );
   }
 
   const { targetOrg, apiVersion, targetOrgInfo } = await resolveTargetOrgContext(

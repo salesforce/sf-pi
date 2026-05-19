@@ -34,11 +34,15 @@ describe("d360 capability execution", () => {
     const actionSchema = D360FacadeParams.properties.action as unknown as { enum: string[] };
     expect(actionSchema.enum).toEqual(["search", "examples", "execute"]);
     expect(Object.keys(D360FacadeParams.properties)).toEqual(
-      expect.arrayContaining(["action", "query", "capability", "params"]),
+      expect.arrayContaining(["action", "query", "capability", "variant", "params"]),
     );
-    expect(Object.keys(D360FacadeParams.properties)).toContain("variant");
     expect(D360FacadeParams.properties).not.toHaveProperty("operation");
     expect(D360FacadeParams.properties).not.toHaveProperty("runbook");
+
+    const publicText = JSON.stringify(D360FacadeParams).toLowerCase();
+    expect(publicText).toContain("capability");
+    expect(publicText).not.toContain("operation/runbook");
+    expect(publicText).not.toContain("registry operation");
   });
 
   beforeEach(() => {

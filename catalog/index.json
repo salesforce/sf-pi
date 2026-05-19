@@ -128,7 +128,7 @@
       "resources_discover"
     ],
     "docs": {
-      "summary": "Data 360 capability facade plus direct REST access through @salesforce/core Connection with API-version pinning, target-org resolution, dry-run, safety confirmation, compact metadata helpers, deterministic observability runbooks, and progressive skill references.",
+      "summary": "Data 360 capability facade plus direct REST access through @salesforce/core Connection with API-version pinning, target-org resolution, dry-run, safety confirmation, compact metadata helpers, deterministic observability capabilities, and progressive skill references.",
       "primaryFiles": [
         "index.ts",
         "lib/facade-tool.ts",
@@ -149,7 +149,7 @@
     "entry": "extensions/sf-data360/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 5815
+    "srcLoc": 5816
   },
   {
     "id": "sf-devbar",
