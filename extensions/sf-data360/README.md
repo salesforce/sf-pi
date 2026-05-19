@@ -218,6 +218,7 @@ extensions/sf-data360/
     metadata-card.test.ts   ← unit / smoke test
     metadata-tool.test.ts   ← unit / smoke test
     path.test.ts            ← unit / smoke test
+    payload-examples.test.ts← unit / smoke test
     phase-skills.test.ts    ← unit / smoke test
     platform-tracing.test.ts← unit / smoke test
     probe-card.test.ts      ← unit / smoke test

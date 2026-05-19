@@ -99,9 +99,13 @@ function examplesCard(
   const optional = arrayValue(
     capability.optionalParams ?? operation.optionalParams ?? runbook.optionalParams,
   ).map(String);
+  const variants = arrayValue(result.variants).map(String);
+  const variant = stringValue(result.variant);
   const lines = [
     ...(required.length ? [`Required: ${required.join(", ")}`] : ["Required: none"]),
     ...(optional.length ? [`Optional: ${optional.join(", ")}`] : []),
+    ...(variants.length ? [`Available variants: ${variants.join(", ")}`] : []),
+    ...(variant ? [`Variant: ${variant}`] : []),
   ];
   return withArtifacts(
     {

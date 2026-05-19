@@ -54,8 +54,11 @@ export const D360FacadeParams = Type.Object({
   capability: Type.Optional(
     Type.String({ description: "D360 capability name for examples/execute." }),
   ),
+  variant: Type.Optional(
+    Type.String({ description: "Optional payload example variant for action='examples'." }),
+  ),
   params: Type.Optional(
-    Type.Record(Type.String(), Type.Any(), { description: "Operation/runbook parameters." }),
+    Type.Record(Type.String(), Type.Any(), { description: "Capability parameters." }),
   ),
   target_org: Type.Optional(
     Type.String({ description: "Salesforce org alias or username. Defaults to active sf-pi org." }),
@@ -85,6 +88,7 @@ export interface D360FacadeInput {
   action: D360FacadeActionValue;
   query?: string;
   capability?: string;
+  variant?: string;
   operation?: string;
   runbook?: string;
   params?: Record<string, unknown>;
@@ -176,16 +180,41 @@ function runExamples(input: D360FacadeInput): Record<string, unknown> {
   }
 
   const capability = findCapability(name);
+  const example = getD360Examples()[name] ?? null;
+  const variants = variantNames(example);
+  const selectedVariant = input.variant ? variantExample(example, input.variant) : undefined;
   return {
-    ok: Boolean(capability),
+    ok: Boolean(capability) && (!input.variant || Boolean(selectedVariant)),
     action: "examples",
     summary: capability ? `Example for ${name}` : `Unknown D360 capability ${name}`,
     capability,
     operation: capability?.operation,
     runbook: capability?.runbook,
-    example: getD360Examples()[name] ?? null,
-    hint: capability ? undefined : "Use d360 action='search' to discover capability names.",
+    variant: input.variant,
+    variants,
+    example: selectedVariant ?? example,
+    hint: capability
+      ? input.variant && !selectedVariant
+        ? `Unknown variant '${input.variant}'. Available variants: ${variants.join(", ") || "none"}.`
+        : undefined
+      : "Use d360 action='search' to discover capability names.",
   };
+}
+
+function variantNames(example: unknown): string[] {
+  const variants = asRecord(asRecord(example)?.variants);
+  return variants ? Object.keys(variants).sort() : [];
+}
+
+function variantExample(example: unknown, variant: string): unknown {
+  const variants = asRecord(asRecord(example)?.variants);
+  return variants?.[variant];
+}
+
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined;
 }
 
 async function runExecute(

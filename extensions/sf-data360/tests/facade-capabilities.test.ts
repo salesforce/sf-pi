@@ -36,6 +36,7 @@ describe("d360 capability execution", () => {
     expect(Object.keys(D360FacadeParams.properties)).toEqual(
       expect.arrayContaining(["action", "query", "capability", "params"]),
     );
+    expect(Object.keys(D360FacadeParams.properties)).toContain("variant");
     expect(D360FacadeParams.properties).not.toHaveProperty("operation");
     expect(D360FacadeParams.properties).not.toHaveProperty("runbook");
   });
@@ -66,6 +67,34 @@ describe("d360 capability execution", () => {
         kind: "runbook",
       }),
       example: expect.objectContaining({ runbook: "agent_observability.stdm_session_timeline" }),
+    });
+  });
+
+  it("resolves upstream payload example variants by canonical capability", async () => {
+    const result = await runFacade(
+      {
+        action: "examples",
+        capability: "d360_dmo_create",
+        variant: "profile",
+      },
+      env,
+      ctx,
+      undefined,
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      action: "examples",
+      variant: "profile",
+      variants: expect.arrayContaining(["profile", "engagement", "other"]),
+      example: expect.objectContaining({
+        sourceExample: "d360_dmo_create_profile",
+        capability: "d360_dmo_create",
+        variant: "profile",
+        params: expect.objectContaining({
+          body: expect.objectContaining({ name: "CustomMetric__dlm" }),
+        }),
+      }),
     });
   });
 

@@ -38,6 +38,28 @@ describe("d360 facade result cards", () => {
     expect(card.nextSteps).toEqual(["Use d360 execute with this capability and params."]);
   });
 
+  it("summarizes payload example variants", () => {
+    const card = facadeResultToCard({
+      ok: true,
+      action: "examples",
+      summary: "Example for d360_dmo_create",
+      capability: {
+        name: "d360_dmo_create",
+        kind: "rest_operation",
+        requiredParams: ["body"],
+      },
+      variants: ["engagement", "other", "profile"],
+      variant: "profile",
+      example: {
+        sourceExample: "d360_dmo_create_profile",
+        variant: "profile",
+      },
+    });
+
+    expect(card.sections?.[0]?.lines).toContain("Variant: profile");
+    expect(card.sections?.[0]?.lines).toContain("Available variants: engagement, other, profile");
+  });
+
   it("extracts scalar query results from execute responses", () => {
     const { text } = facadeResultToLlmText({
       ok: true,

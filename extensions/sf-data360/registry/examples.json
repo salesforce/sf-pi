@@ -368,6 +368,89 @@
           "refreshMode": "TOTAL_REPLACE"
         }
       }
+    },
+    "variants": {
+      "csv": {
+        "sourceExample": "d360_datastream_create_csv",
+        "capability": "d360_datastream_create",
+        "variant": "csv",
+        "params": {
+          "body": {
+            "advancedAttributes": {
+              "fileType": "CSV",
+              "delimiter": ",",
+              "fileName": "customers-100.csv"
+            },
+            "connectorInfo": {
+              "connectorType": "UploadedFiles",
+              "connectorDetails": {
+                "name": "UploadedFiles"
+              }
+            },
+            "dataAccessMode": "INGEST",
+            "dataLakeObjectInfo": {
+              "category": "Profile",
+              "dataLakeFieldInfoRepresentation": [
+                {
+                  "name": "Customer_Id",
+                  "dataType": "Text",
+                  "label": "Customer Id",
+                  "isPrimaryKey": true
+                },
+                {
+                  "name": "First_Name",
+                  "dataType": "Text",
+                  "label": "First Name",
+                  "isPrimaryKey": false
+                },
+                {
+                  "name": "Last_Name",
+                  "dataType": "Text",
+                  "label": "Last Name",
+                  "isPrimaryKey": false
+                },
+                {
+                  "name": "Email",
+                  "dataType": "Text",
+                  "label": "Email",
+                  "isPrimaryKey": false
+                },
+                {
+                  "name": "City",
+                  "dataType": "Text",
+                  "label": "City",
+                  "isPrimaryKey": false
+                },
+                {
+                  "name": "Country",
+                  "dataType": "Text",
+                  "label": "Country",
+                  "isPrimaryKey": false
+                },
+                {
+                  "name": "Subscription_Date",
+                  "dataType": "Date",
+                  "label": "Subscription Date",
+                  "isPrimaryKey": false
+                }
+              ]
+            },
+            "label": "Customer CSV Upload",
+            "refreshConfig": {
+              "frequency": {
+                "hours": [],
+                "refreshDayOfMonth": []
+              },
+              "hasHeaders": false,
+              "isAccelerationEnabled": false,
+              "refreshMode": "TOTAL_REPLACE",
+              "shouldFetchImmediately": false,
+              "shouldTreatMissingFilesAsFailures": false
+            },
+            "_note": "CSV uploads use UploadedFiles connector. refreshMode TOTAL_REPLACE replaces all data on each refresh. Field names come from CSV headers."
+          }
+        }
+      }
     }
   },
   "d360_datastream_create_sfdc": {
@@ -393,6 +476,237 @@
               "name": "default"
             }
           ]
+        }
+      }
+    },
+    "variants": {
+      "other": {
+        "sourceExample": "d360_datastream_create_other",
+        "capability": "d360_datastream_create_sfdc",
+        "variant": "other",
+        "params": {
+          "body": {
+            "connectorInfo": {
+              "connectorType": "SalesforceDotCom",
+              "connectorDetails": {
+                "sourceObject": "Product2",
+                "name": "SalesforceDotCom_00D000000000000"
+              }
+            },
+            "dataAccessMode": "INGEST",
+            "dataLakeObjectInfo": {
+              "category": "Other",
+              "dataLakeFieldInfoRepresentation": [
+                {
+                  "name": "Id",
+                  "dataType": "Text",
+                  "label": "Product ID",
+                  "isPrimaryKey": true
+                },
+                {
+                  "name": "Name",
+                  "dataType": "Text",
+                  "label": "Product Name",
+                  "isPrimaryKey": false
+                },
+                {
+                  "name": "ProductCode",
+                  "dataType": "Text",
+                  "label": "Product Code",
+                  "isPrimaryKey": false
+                },
+                {
+                  "name": "Family",
+                  "dataType": "Text",
+                  "label": "Family",
+                  "isPrimaryKey": false
+                },
+                {
+                  "name": "IsActive",
+                  "dataType": "Text",
+                  "label": "Is Active",
+                  "isPrimaryKey": false
+                },
+                {
+                  "name": "CreatedDate",
+                  "dataType": "DateTime",
+                  "label": "Created Date",
+                  "isPrimaryKey": false
+                }
+              ]
+            },
+            "label": "Product Catalog Stream",
+            "refreshConfig": {
+              "frequency": {
+                "hours": [],
+                "refreshDayOfMonth": [],
+                "frequencyType": "BATCH"
+              },
+              "hasHeaders": false,
+              "isAccelerationEnabled": false,
+              "refreshMode": "UPSERT",
+              "shouldFetchImmediately": false,
+              "shouldTreatMissingFilesAsFailures": false
+            },
+            "_note": "Other category is for reference/lookup data that doesn't fit Profile or Engagement. No eventDateColumn needed."
+          }
+        }
+      },
+      "engagement": {
+        "sourceExample": "d360_datastream_create_sfdc_engagement",
+        "capability": "d360_datastream_create_sfdc",
+        "variant": "engagement",
+        "params": {
+          "body": {
+            "connectorInfo": {
+              "connectorType": "SalesforceDotCom",
+              "connectorDetails": {
+                "sourceObject": "Task",
+                "name": "SalesforceDotCom_00D000000000000"
+              }
+            },
+            "dataAccessMode": "INGEST",
+            "dataLakeObjectInfo": {
+              "category": "Engagement",
+              "eventDateColumn": "CreatedDate",
+              "dataLakeFieldInfoRepresentation": [
+                {
+                  "name": "Id",
+                  "dataType": "Text",
+                  "label": "Task ID",
+                  "isPrimaryKey": true
+                },
+                {
+                  "name": "WhoId",
+                  "dataType": "Text",
+                  "label": "Who ID",
+                  "isPrimaryKey": false
+                },
+                {
+                  "name": "Subject",
+                  "dataType": "Text",
+                  "label": "Subject",
+                  "isPrimaryKey": false
+                },
+                {
+                  "name": "Status",
+                  "dataType": "Text",
+                  "label": "Status",
+                  "isPrimaryKey": false
+                },
+                {
+                  "name": "CreatedDate",
+                  "dataType": "DateTime",
+                  "label": "Created Date",
+                  "isPrimaryKey": false
+                },
+                {
+                  "name": "ActivityDate",
+                  "dataType": "DateTime",
+                  "label": "Activity Date",
+                  "isPrimaryKey": false
+                },
+                {
+                  "name": "LastModifiedDate",
+                  "dataType": "DateTime",
+                  "label": "Last Modified Date",
+                  "isPrimaryKey": false
+                }
+              ]
+            },
+            "label": "Task Engagement Stream",
+            "refreshConfig": {
+              "frequency": {
+                "hours": [],
+                "refreshDayOfMonth": [],
+                "frequencyType": "BATCH"
+              },
+              "hasHeaders": false,
+              "isAccelerationEnabled": false,
+              "refreshMode": "UPSERT",
+              "shouldFetchImmediately": false,
+              "shouldTreatMissingFilesAsFailures": false
+            },
+            "_note": "CRITICAL: Engagement streams MUST set eventDateColumn to an immutable date field (like CreatedDate). Do NOT use LastModifiedDate — it changes on updates and breaks time-series partitioning. Use d360_smart_datastream to auto-select the best field."
+          }
+        }
+      },
+      "profile": {
+        "sourceExample": "d360_datastream_create_sfdc_profile",
+        "capability": "d360_datastream_create_sfdc",
+        "variant": "profile",
+        "params": {
+          "body": {
+            "connectorInfo": {
+              "connectorType": "SalesforceDotCom",
+              "connectorDetails": {
+                "sourceObject": "Account",
+                "name": "SalesforceDotCom_00D000000000000"
+              }
+            },
+            "dataAccessMode": "INGEST",
+            "dataLakeObjectInfo": {
+              "category": "Profile",
+              "dataLakeFieldInfoRepresentation": [
+                {
+                  "name": "Id",
+                  "dataType": "Text",
+                  "label": "Account ID",
+                  "isPrimaryKey": true
+                },
+                {
+                  "name": "Name",
+                  "dataType": "Text",
+                  "label": "Account Name",
+                  "isPrimaryKey": false
+                },
+                {
+                  "name": "Industry",
+                  "dataType": "Text",
+                  "label": "Industry",
+                  "isPrimaryKey": false
+                },
+                {
+                  "name": "AnnualRevenue",
+                  "dataType": "Number",
+                  "label": "Annual Revenue",
+                  "isPrimaryKey": false
+                },
+                {
+                  "name": "BillingCountry",
+                  "dataType": "Text",
+                  "label": "Billing Country",
+                  "isPrimaryKey": false
+                },
+                {
+                  "name": "CreatedDate",
+                  "dataType": "DateTime",
+                  "label": "Created Date",
+                  "isPrimaryKey": false
+                },
+                {
+                  "name": "LastModifiedDate",
+                  "dataType": "DateTime",
+                  "label": "Last Modified Date",
+                  "isPrimaryKey": false
+                }
+              ]
+            },
+            "label": "Account Data Stream",
+            "refreshConfig": {
+              "frequency": {
+                "hours": [],
+                "refreshDayOfMonth": [],
+                "frequencyType": "BATCH"
+              },
+              "hasHeaders": false,
+              "isAccelerationEnabled": false,
+              "refreshMode": "UPSERT",
+              "shouldFetchImmediately": false,
+              "shouldTreatMissingFilesAsFailures": false
+            },
+            "_note": "Profile category streams do NOT need an eventDateColumn. The refreshMode UPSERT means new records are inserted and existing records are updated based on the primary key."
+          }
         }
       }
     }
@@ -568,6 +882,144 @@
           }
         ]
       }
+    },
+    "variants": {
+      "engagement": {
+        "sourceExample": "d360_dmo_create_engagement",
+        "capability": "d360_dmo_create",
+        "variant": "engagement",
+        "params": {
+          "body": {
+            "name": "WebActivity__dlm",
+            "label": "Web Activity Events",
+            "objectType": "Custom",
+            "objectCategory": "Engagement",
+            "fields": [
+              {
+                "name": "Id__c",
+                "label": "Activity ID",
+                "dataType": "Text",
+                "isPrimaryKey": true,
+                "isRequired": true
+              },
+              {
+                "name": "ContactId__c",
+                "label": "Contact ID",
+                "dataType": "Text",
+                "isRequired": true
+              },
+              {
+                "label": "Page URL",
+                "name": "PageUrl__c",
+                "dataType": "Text"
+              },
+              {
+                "label": "Event Type",
+                "name": "EventType__c",
+                "dataType": "Text"
+              },
+              {
+                "label": "Created Date",
+                "name": "CreatedDate__c",
+                "dataType": "DateTime"
+              },
+              {
+                "precision": 10,
+                "name": "Duration__c",
+                "scale": 0,
+                "label": "Duration (seconds)",
+                "dataType": "Number"
+              }
+            ],
+            "_note": "For Engagement DMOs, set eventDateColumn to an immutable DateTime field like CreatedDate__c when creating the data stream"
+          }
+        }
+      },
+      "other": {
+        "sourceExample": "d360_dmo_create_other",
+        "capability": "d360_dmo_create",
+        "variant": "other",
+        "params": {
+          "body": {
+            "name": "ProductCatalog__dlm",
+            "label": "Product Catalog",
+            "objectType": "Custom",
+            "objectCategory": "Other",
+            "fields": [
+              {
+                "name": "Id__c",
+                "label": "Product ID",
+                "dataType": "Text",
+                "isPrimaryKey": true,
+                "isRequired": true
+              },
+              {
+                "name": "ProductName__c",
+                "label": "Product Name",
+                "dataType": "Text",
+                "isRequired": true
+              },
+              {
+                "label": "Category",
+                "name": "Category__c",
+                "dataType": "Text"
+              },
+              {
+                "precision": 18,
+                "name": "Price__c",
+                "scale": 2,
+                "label": "Price",
+                "dataType": "Number"
+              },
+              {
+                "label": "Is Active",
+                "name": "IsActive__c",
+                "dataType": "Text"
+              }
+            ]
+          }
+        }
+      },
+      "profile": {
+        "sourceExample": "d360_dmo_create_profile",
+        "capability": "d360_dmo_create",
+        "variant": "profile",
+        "params": {
+          "body": {
+            "name": "CustomMetric__dlm",
+            "label": "Custom Metrics Object",
+            "objectType": "Custom",
+            "objectCategory": "Calculated",
+            "fields": [
+              {
+                "name": "Id__c",
+                "isPrimaryKey": true,
+                "isRequired": true,
+                "label": "ID",
+                "dataType": "Text"
+              },
+              {
+                "name": "MetricName__c",
+                "label": "Metric Name",
+                "dataType": "Text",
+                "isRequired": true
+              },
+              {
+                "precision": 18,
+                "name": "MetricValue__c",
+                "scale": 2,
+                "label": "Metric Value",
+                "dataType": "Number"
+              },
+              {
+                "label": "Calculation Date",
+                "name": "CalculationDate__c",
+                "dataType": "DateTime"
+              }
+            ]
+          }
+        }
+      }
     }
   },
   "d360_dmo_update": {
@@ -650,6 +1102,71 @@
             "targetFieldDeveloperName": "Name__c"
           }
         ]
+      }
+    },
+    "variants": {
+      "contact": {
+        "sourceExample": "d360_dmo_mapping_create_contact",
+        "capability": "d360_dmo_mapping_create",
+        "variant": "contact",
+        "params": {
+          "body": {
+            "sourceEntityDeveloperName": "Contact_Home__dll",
+            "targetEntityDeveloperName": "ssot__Individual__dlm",
+            "fieldMapping": [
+              {
+                "sourceFieldDeveloperName": "Id__c",
+                "targetFieldDeveloperName": "ssot__Id__c"
+              },
+              {
+                "sourceFieldDeveloperName": "FirstName__c",
+                "targetFieldDeveloperName": "ssot__FirstName__c"
+              },
+              {
+                "sourceFieldDeveloperName": "LastName__c",
+                "targetFieldDeveloperName": "ssot__LastName__c"
+              },
+              {
+                "sourceFieldDeveloperName": "Salutation__c",
+                "targetFieldDeveloperName": "ssot__Salutation__c"
+              },
+              {
+                "sourceFieldDeveloperName": "Birthdate__c",
+                "targetFieldDeveloperName": "ssot__BirthDate__c"
+              },
+              {
+                "sourceFieldDeveloperName": "Title__c",
+                "targetFieldDeveloperName": "ssot__TitleName__c"
+              }
+            ]
+          }
+        }
+      },
+      "contact_point_email": {
+        "sourceExample": "d360_dmo_mapping_create_contact_point_email",
+        "capability": "d360_dmo_mapping_create",
+        "variant": "contact_point_email",
+        "params": {
+          "body": {
+            "sourceEntityDeveloperName": "Contact_Home__dll",
+            "targetEntityDeveloperName": "ssot__ContactPointEmail__dlm",
+            "fieldMapping": [
+              {
+                "sourceFieldDeveloperName": "Id__c",
+                "targetFieldDeveloperName": "ssot__Id__c"
+              },
+              {
+                "sourceFieldDeveloperName": "Email__c",
+                "targetFieldDeveloperName": "ssot__EmailAddress__c"
+              },
+              {
+                "sourceFieldDeveloperName": "Id__c",
+                "targetFieldDeveloperName": "ssot__PartyId__c"
+              }
+            ],
+            "_note": "For ContactPointEmail, map the source person ID to both ssot__Id__c and ssot__PartyId__c. The PartyId links the email to the Individual for identity resolution. KQ_PartyId__c is auto-added."
+          }
+        }
       }
     }
   },
@@ -1118,6 +1635,22 @@
         "label": "Example Individual",
         "dataObjectType": "Dmo",
         "shouldIncludeAllFields": true
+      }
+    },
+    "variants": {
+      "ci": {
+        "sourceExample": "d360_sdm_data_object_create_ci",
+        "capability": "d360_sdm_data_object_create",
+        "variant": "ci",
+        "params": {
+          "modelApiNameOrId": "ExampleSemanticModel",
+          "body": {
+            "dataObjectType": "Cio",
+            "dataObjectName": "Revenue_By_Region__cio",
+            "label": "Revenue Metrics",
+            "shouldIncludeAllFields": true
+          }
+        }
       }
     }
   },
@@ -1664,6 +2197,53 @@
         ]
       },
       "autoSelectEventDate": true
+    },
+    "variants": {
+      "engagement_event_date": {
+        "sourceExample": "d360_smart_datastream",
+        "capability": "d360_smart_datastream_create",
+        "variant": "engagement_event_date",
+        "params": {
+          "body": {
+            "connectorInfo": {
+              "connectorType": "SalesforceDotCom",
+              "connectorDetails": {
+                "sourceObject": "Task",
+                "name": "SalesforceDotCom_00D000000000000"
+              }
+            },
+            "label": "Task Stream",
+            "dataLakeObjectInfo": {
+              "category": "Engagement",
+              "dataLakeFieldInfoRepresentation": [
+                {
+                  "dataType": "Text",
+                  "name": "Id",
+                  "isPrimaryKey": true
+                },
+                {
+                  "dataType": "DateTime",
+                  "name": "CreatedDate",
+                  "isPrimaryKey": false
+                },
+                {
+                  "dataType": "DateTime",
+                  "name": "ActivityDate",
+                  "isPrimaryKey": false
+                },
+                {
+                  "dataType": "DateTime",
+                  "name": "LastModifiedDate",
+                  "isPrimaryKey": false
+                }
+              ]
+            },
+            "dataAccessMode": "INGEST"
+          },
+          "autoSelectEventDate": true,
+          "_note": "Pass an Engagement data stream body and the tool will analyze date fields, rank them, and inject the best eventDateColumn (e.g., CreatedDate over LastModifiedDate)."
+        }
+      }
     }
   }
 }
