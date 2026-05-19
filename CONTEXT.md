@@ -76,6 +76,26 @@ _Avoid_: raw response dump, hidden API path, context-heavy transcript
 The expectation that Data 360 behavior changes, generator changes, and refactors start from a failing or protective test/check before production code changes are made.
 _Avoid_: implementation-first parity expansion, refactor without characterization, untested generator drift
 
+**D360 Capability Sweep**:
+A repeatable validation harness for **D360 Capabilities** that layers local contract tests, dry-run request checks, read-only live checks, and isolated mutation lifecycles against an explicitly targeted Data 360 org.
+_Avoid_: one-time exploratory testing, unrecorded destructive probing, treating live org availability as the only correctness signal
+
+**Sweep-Owned Resource**:
+A Data 360 asset created by a **D360 Capability Sweep** with a unique run identifier so the sweep can safely update, delete, and verify cleanup without mutating pre-existing org fixtures.
+_Avoid_: deleting arbitrary existing assets, relying on shared mutable fixtures, cleanup without ownership proof
+
+**Sweep Coverage Outcome**:
+A structured result from a **D360 Capability Sweep** that distinguishes SF Pi regressions from expected org-state conditions such as empty data, feature gating, missing dependencies, or payloads that require a fixture.
+_Avoid_: treating every unavailable optional feature as a tool failure, losing skipped/empty context in prose logs
+
+**Family Lifecycle Scenario**:
+A sweep-owned live validation path that proves a Data 360 family can perform its representative create, update, run, publish, deactivate, delete, or cleanup behavior without requiring every mutation variant to have a bespoke fixture.
+_Avoid_: one-off mutation probes, per-operation fixture sprawl, claiming full live mutation proof from dry-run-only checks
+
+**Sweep-Only Destructive Gate**:
+A narrow opt-in that lets a headless **D360 Capability Sweep** execute destructive operations against sweep-owned resources in a disposable target org without weakening the normal interactive guard for user-facing `d360` calls.
+_Avoid_: broad headless destructive bypass, deleting resources without ownership checks, making destructive execution the default
+
 **D360 Domain Boundary**:
 The boundary that keeps Data 360-specific language, registry behavior, safety interpretation, and workflow explanations inside **SF Data 360**, while shared SF Pi primitives remain generic.
 _Avoid_: generic utility sprawl, cross-extension Data 360 coupling, shared modules with extension-specific knowledge
@@ -113,6 +133,11 @@ _Avoid_: duplicated docs, hardcoded personal skill paths, Salesforce encyclopedi
 - A **D360 Reference Pattern** can be promoted into a tested **D360 Runbook** when it becomes repeated and high-value.
 - A **D360 Execution Explanation** makes **SF Data 360** transparent to humans without expanding the LLM transcript unnecessarily.
 - The **D360 TDD Contract** governs changes to **SF Data 360**.
+- A **D360 Capability Sweep** operationalizes the **D360 TDD Contract** for broad **First-Class Data 360 Parity**.
+- A **D360 Capability Sweep** may mutate **Sweep-Owned Resources** while preserving pre-existing org fixtures.
+- A **D360 Capability Sweep** reports **Sweep Coverage Outcomes** so true SF Pi regressions are separated from org-state limitations.
+- **Family Lifecycle Scenarios** provide representative live mutation proof for broad **D360 Capability** families.
+- A **Sweep-Only Destructive Gate** enables repeatable lifecycle cleanup without weakening normal user-facing destructive safeguards.
 - The **D360 Domain Boundary** protects **SF Data 360** from leaking domain-specific behavior into generic shared code.
 - The **D360 Performance Budget** keeps **SF Data 360** strict at startup and rich after intent.
 - The **D360 Fallback Ladder** governs uncovered Data 360 work.
