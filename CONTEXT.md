@@ -52,8 +52,24 @@ _Avoid_: hand-written endpoint sprawl, unreviewed mirror, ad hoc family drift
 A maintainability constraint applied to hand-written runtime TypeScript, not to generated or reference artifacts that are reviewed, reproducible, and safe to publish.
 _Avoid_: counting generated registry data as feature complexity, LOC reduction by deleting source-of-truth data
 
+**D360 Capability**:
+A Data 360 thing SF Pi can help a user do, backed by a registry operation, a local helper, or a deterministic runbook, and executed through one capability execution path. Skills route users and agents to capabilities; they do not execute capabilities themselves.
+_Avoid_: capability as a new pi tool by default, capability as a hand-written skill, endpoint-only thinking, separate public execution paths per implementation kind
+
+**D360 Runbook**:
+An executable, deterministic, multi-step **D360 Capability** that performs bounded Data 360 calls, joins or summarizes the results, and returns a structured explanation.
+_Avoid_: markdown-only orchestration, ad hoc SQL in a skill, untestable workflow recipe
+
+**D360 Example**:
+A machine-readable, public-safe input fixture that shows the expected parameter or payload shape for a **D360 Capability**.
+_Avoid_: long tutorial prose, customer-specific sample data, replacing executable validation
+
+**D360 Reference Pattern**:
+A documented Data 360 query or workflow pattern that guides agents but is not itself an executable, guaranteed **D360 Capability**.
+_Avoid_: treating every useful query as TypeScript code, hiding repeated workflows in prose forever
+
 **D360 Execution Explanation**:
-A human-visible explanation of a Data 360 operation that shows the endpoint, parameters, sanitized body, orchestration steps, safety decision, result summary, and raw-output pointer while keeping the LLM-visible result bounded.
+A human-visible explanation of a Data 360 capability that shows the endpoint or workflow, parameters, sanitized body, orchestration steps, safety decision, result summary, and raw-output pointer while keeping the LLM-visible result bounded.
 _Avoid_: raw response dump, hidden API path, context-heavy transcript
 
 **D360 TDD Contract**:
@@ -67,6 +83,10 @@ _Avoid_: generic utility sprawl, cross-extension Data 360 coupling, shared modul
 **D360 Performance Budget**:
 The expectation that **SF Data 360** pays expensive costs only after user intent is clear: startup and prompt footprint stay strict, while rich Data 360 UX appears through commands, skills, or tool results.
 _Avoid_: live startup probes, always-loaded catalogs, verbose always-on skill descriptions, broad inline result dumps
+
+**D360 Fallback Ladder**:
+The order for uncovered Data 360 work: use a **D360 Capability**, then `d360_api` with local references, then broader sf-skills or official guidance, and promote repeated fallback paths later.
+_Avoid_: hidden automatic retry router, treating sf-skills as a second execution layer, skipping local SF Data 360 references
 
 **Salesforce Operator Kernel**:
 The dense, always-available operating rules for safe Salesforce work, including how to choose APIs, verify org state, and avoid guessing live-org details.
@@ -87,10 +107,15 @@ _Avoid_: duplicated docs, hardcoded personal skill paths, Salesforce encyclopedi
 - **First-Class Data 360 Parity** guides how **SF Data 360** expands its workflow coverage.
 - **Generated Data 360 Parity** is the preferred delivery style for broad **First-Class Data 360 Parity**.
 - A **Runtime Code Budget** constrains hand-written **Runtime Surfaces**, not generated parity data.
+- A **D360 Capability** is discovered and executed through SF Data 360 **Runtime Surfaces**.
+- A **D360 Runbook** backs deterministic multi-step **D360 Capabilities**.
+- A **D360 Example** documents the input shape for a **D360 Capability**.
+- A **D360 Reference Pattern** can be promoted into a tested **D360 Runbook** when it becomes repeated and high-value.
 - A **D360 Execution Explanation** makes **SF Data 360** transparent to humans without expanding the LLM transcript unnecessarily.
 - The **D360 TDD Contract** governs changes to **SF Data 360**.
 - The **D360 Domain Boundary** protects **SF Data 360** from leaking domain-specific behavior into generic shared code.
 - The **D360 Performance Budget** keeps **SF Data 360** strict at startup and rich after intent.
+- The **D360 Fallback Ladder** governs uncovered Data 360 work.
 - A **Data 360 Skill Pack** supports **First-Class Data 360 Parity** through progressive disclosure.
 - A **Data 360 Skill Pack** is organized by **Data 360 Phase**.
 - An **Upstream Reference Fallback** can inform a **Bundled Extension** without becoming one of its **Runtime Surfaces**.

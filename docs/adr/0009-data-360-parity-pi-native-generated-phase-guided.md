@@ -10,7 +10,7 @@ SF Data 360 needs broad coverage of the public Data 360 operation surface while 
 
 ## Decision
 
-SF Data 360 will pursue first-class parity through generated, data-driven artifacts and pi-native runtime surfaces. Repeated operation coverage belongs in reviewed source data, generated registries, generated phase guidance, and parity tests; hand-written TypeScript stays focused on shared execution, target-org resolution, safety classification, rendering, truncation, and genuinely distinct runbooks.
+SF Data 360 will pursue first-class parity through generated, data-driven artifacts and pi-native runtime surfaces. Repeated operation coverage belongs in reviewed source data, generated registries, generated phase guidance, and parity tests; hand-written TypeScript stays focused on shared execution, target-org resolution, safety classification, rendering, truncation, and genuinely distinct runbooks. REST operations, local helpers, and runbooks are all D360 capabilities and should share one public `d360 execute` path rather than exposing separate public execution actions per implementation kind. The runtime may build the capability view in memory from existing registry artifacts instead of committing another broad generated catalog.
 
 The Data 360 Skill Pack is phase-first: Connect, Prepare, Harmonize, Segment, Act, Retrieve, Observe, and Orchestrate. Generated family and operation mappings can appear inside those phase skills, but endpoint families are not the primary user-facing language. The generated phase `SKILL.md` files are committed so pi can discover them through the normal extension-owned skill path without runtime generation.
 
@@ -28,5 +28,8 @@ The upstream repository is an upstream reference fallback only: agents may consu
 
 - Full parity work must follow a red/green TDD loop. Behavior changes start with failing tests; generator changes start with failing check/snapshot/parity tests; refactors start with characterization coverage.
 - Startup and prompt footprint stay strict: no live org calls, broad catalog scans, or verbose always-on skill descriptions before user intent is clear.
+- Generated phase skills stay small routing guides. Full operation/runbook listings belong to the capability catalog and `d360 search/examples`, not to skill markdown tables.
 - Rich transparency is delivered after intent through tool details and custom TUI rendering. Tool results should show endpoint, method, parameters, sanitized body, orchestration steps, safety decision, result summary, and raw-output pointers to humans while keeping LLM-visible content bounded.
+- Broad observability and Data 360 query patterns start as reference patterns. Repeated high-value patterns are promoted into tested runbook-backed D360 capabilities instead of turning skills into large query libraries or building a generic runbook DSL prematurely.
+- Uncovered Data 360 work follows a guidance fallback ladder: D360 capability, then `d360_api` with local references, then broader sf-skills or official guidance, then promotion into SF Data 360 when the path repeats. sf-skills is not a second execution layer.
 - Generic SF Pi primitives may live in `lib/common`; Data 360 registry behavior, safety interpretation, phase mappings, and execution explanations stay inside SF Data 360 unless another extension needs the same stable contract.
