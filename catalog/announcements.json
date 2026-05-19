@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.133.0-2026-05-19",
-  "latestVersion": "0.133.0",
+  "revision": "release-0.134.0-2026-05-19",
+  "latestVersion": "0.134.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.133.0",
+      "id": "release-0.134.0",
       "kind": "update",
-      "title": "sf-pi v0.133.0 — add d360 activation lifecycle",
+      "title": "sf-pi v0.134.0 — add d360 search and retriever readiness lifecycles",
       "publishedAt": "2026-05-19T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.133.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.134.0",
       "severity": "info",
-      "body": "add d360 activation lifecycle"
+      "body": "add d360 search and retriever readiness lifecycles"
     },
     {
       "id": "pi-0.73-required",
