@@ -50,6 +50,7 @@ export type MutationLifecycleName =
   | "dlo"
   | "mapping"
   | "retriever"
+  | "retriever-mutation"
   | "search-index"
   | "segment"
   | "sdm"
@@ -340,6 +341,22 @@ export function buildSearchIndexReadinessPlan(_runId = "readiness"): DmoLifecycl
         safety: "read",
         params: { limit: 10 },
         sourceCapability: "search_index_list_readiness",
+      },
+    ],
+  };
+}
+
+export function buildRetrieverMutationLifecyclePlan(runId: string): DmoLifecyclePlan {
+  return {
+    resourceName: `PiSweepRetriever_${runId}`,
+    steps: [
+      {
+        stage: "live",
+        capability: "d360_search_index_list",
+        family: "Semantic Retrieval",
+        safety: "read",
+        params: { limit: 10, runId },
+        sourceCapability: "retriever_source_index_select",
       },
     ],
   };
@@ -1567,6 +1584,7 @@ const lifecycleBuilders: Record<MutationLifecycleName, (runId: string) => DmoLif
   dlo: buildDloLifecyclePlan,
   mapping: buildMappingLifecyclePlan,
   retriever: buildRetrieverReadinessPlan,
+  "retriever-mutation": buildRetrieverMutationLifecyclePlan,
   "search-index": buildSearchIndexReadinessPlan,
   segment: buildSegmentLifecyclePlan,
   sdm: buildSemanticModelLifecyclePlan,
@@ -1672,6 +1690,12 @@ export function buildDynamicFollowUpChecks(
   result: Record<string, unknown>,
   capabilities: D360Capability[] = getD360Capabilities(),
 ): SweepCheck[] {
+  if (result.ok === true && sourceCheck.sourceCapability === "retriever_source_index_select") {
+    return buildRetrieverSourceIndexFollowUps(sourceCheck, result);
+  }
+  if (result.ok === true && sourceCheck.capability === "d360_retriever_create") {
+    return buildRetrieverCreateFollowUps(sourceCheck, result);
+  }
   if (result.ok === true && sourceCheck.capability === "d360_activation_create") {
     return buildActivationCreateFollowUps(sourceCheck, result);
   }
@@ -1710,6 +1734,64 @@ export function buildDynamicFollowUpChecks(
       },
     ];
   });
+}
+
+function buildRetrieverSourceIndexFollowUps(
+  sourceCheck: SweepCheck,
+  result: Record<string, unknown>,
+): SweepCheck[] {
+  const row = firstObjectRow(result.response);
+  if (!row) return [];
+  const searchIndexId = firstString(row, ["id", "developerName", "name"]);
+  if (!searchIndexId) return [];
+  return [
+    {
+      stage: "mutate",
+      capability: "d360_retriever_create",
+      family: "Semantic Retrieval",
+      safety: "confirmed",
+      params: { body: buildRetrieverCreateBody(sourceCheck, row, searchIndexId) },
+      sourceCapability: "retriever_create_from_search_index",
+    },
+  ];
+}
+
+function buildRetrieverCreateFollowUps(
+  sourceCheck: SweepCheck,
+  result: Record<string, unknown>,
+): SweepCheck[] {
+  const row = isRecord(result.response) ? result.response : firstObjectRow(result.response);
+  const retrieverId = row ? firstString(row, ["url", "name", "id"]) : undefined;
+  const id = retrieverId?.includes("/")
+    ? retrieverId.split("/").filter(Boolean).at(-1)
+    : retrieverId;
+  if (!id) return [];
+  return [
+    {
+      stage: "live",
+      capability: "d360_retriever_get",
+      family: "Semantic Retrieval",
+      safety: "read",
+      params: { retrieverId: id },
+      sourceCapability: `${sourceCheck.capability}_get`,
+    },
+    {
+      stage: "mutate",
+      capability: "d360_retriever_delete",
+      family: "Semantic Retrieval",
+      safety: "destructive",
+      params: { retrieverIdOrName: id },
+      sourceCapability: `${sourceCheck.capability}_delete`,
+    },
+    {
+      stage: "live",
+      capability: "d360_retriever_get",
+      family: "Semantic Retrieval",
+      safety: "read",
+      params: { retrieverId: id },
+      sourceCapability: "retriever_delete_verify",
+    },
+  ];
 }
 
 function buildActivationCreateFollowUps(
@@ -2574,6 +2656,45 @@ function calculatedInsightExpression(_runId: string): string {
   ].join(" ");
 }
 
+function buildRetrieverCreateBody(
+  sourceCheck: SweepCheck,
+  searchIndex: Record<string, unknown>,
+  searchIndexId: string,
+): Record<string, unknown> {
+  const runId = String(
+    sourceCheck.params?.runId ??
+      new Date()
+        .toISOString()
+        .replace(/[-:.TZ]/g, "")
+        .slice(0, 14),
+  );
+  const sourceDmoDeveloperName =
+    firstString(searchIndex, ["sourceDmoDeveloperName"]) ?? "ssot__AiAgentInteractionMessage__dlm";
+  return {
+    label: `Pi Sweep Retriever ${runId}`,
+    description: `Sweep-owned retriever created by run ${runId}.`,
+    dataSourceType: "SearchIndex",
+    dataSpaces: ["default"],
+    configuration: {
+      queryType: "NoCode",
+      input: { id: searchIndexId },
+      numberOfResults: 5,
+      isActive: true,
+      isCitationEnabled: false,
+      outputFields: [
+        {
+          relatedDmoName: sourceDmoDeveloperName,
+          relatedDmoFieldName: sourceDmoDeveloperName.includes("InteractionMessage")
+            ? "ssot__ContentText__c"
+            : "ssot__Id__c",
+          label: sourceDmoDeveloperName.includes("InteractionMessage") ? "Content" : "Id",
+          relationships: [],
+        },
+      ],
+    },
+  };
+}
+
 function buildDataActionTargetCreateBody(
   dataActionTargetName: string,
   runId: string,
@@ -2988,6 +3109,8 @@ function findFirstArray(value: unknown): unknown[] | undefined {
     "dataActionTargets",
     "semanticModels",
     "searchIndexes",
+    "semanticSearchDefinitionDetails",
+    "retrievers",
     "retrievers",
     "dataKits",
     "objects",

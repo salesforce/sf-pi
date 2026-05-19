@@ -756,6 +756,35 @@ describe("d360 capability sweep planning", () => {
     });
   });
 
+  it("builds retriever delete follow-ups from the create response root", () => {
+    const followUps = buildDynamicFollowUpChecks(
+      { stage: "mutate", capability: "d360_retriever_create", family: "Semantic Retrieval" },
+      {
+        ok: true,
+        response: {
+          url: "/services/data/v66.0/ssot/machine-learning/retrievers/1CxExample",
+          dataSpaces: [{ name: "default" }],
+        },
+      },
+      [],
+    );
+
+    expect(followUps.map((step) => step.capability)).toEqual([
+      "d360_retriever_get",
+      "d360_retriever_delete",
+      "d360_retriever_get",
+    ]);
+    expect(followUps[1].params).toEqual({ retrieverIdOrName: "1CxExample" });
+  });
+
+  it("builds a retriever mutation lifecycle plan", () => {
+    const lifecycle = buildMutationLifecyclePlans("20260519010101", ["retriever-mutation"])[0];
+
+    expect(lifecycle.resourceName).toBe("PiSweepRetriever_20260519010101");
+    expect(lifecycle.steps.map((step) => step.capability)).toEqual(["d360_search_index_list"]);
+    expect(lifecycle.steps[0].sourceCapability).toBe("retriever_source_index_select");
+  });
+
   it("builds search index and retriever readiness plans", () => {
     expect(buildSearchIndexReadinessPlan().steps.map((step) => step.capability)).toEqual([
       "d360_model_artifact_list",
