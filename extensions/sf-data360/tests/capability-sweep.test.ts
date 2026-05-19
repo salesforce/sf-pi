@@ -3,8 +3,10 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildCapabilitySweepPlan,
+  applySweepPreset,
   buildCleanupLifecyclePlan,
   buildDataActionLifecyclePlan,
+  buildDiscoveredCleanupLifecyclePlan,
   buildDloLifecyclePlan,
   buildDmoLifecyclePlan,
   buildDynamicFollowUpChecks,
@@ -286,12 +288,38 @@ describe("d360 capability sweep planning", () => {
     ]);
   });
 
+  it("supports preset thresholds for CI-friendly runs", () => {
+    expect(applySweepPreset({}, "agentforce-stdm-mutate")).toMatchObject({
+      minMutationOk: 30,
+      requiredOutcomes: expect.objectContaining({
+        d360_sdm_relationship_create: "mutation_ok",
+        d360_transform_update: "mutation_ok",
+        d360_dataaction_create: "mutation_ok",
+      }),
+    });
+  });
+
   it("selects specific mutation lifecycles", () => {
     const selected = buildMutationLifecyclePlans("20260519010101", ["dmo", "transform"]);
 
     expect(selected.map((lifecycle) => lifecycle.resourceName)).toEqual([
       "PiSweepDmo_20260519010101",
       "PiSwTx_20260519010101",
+    ]);
+  });
+
+  it("builds discovered stale cleanup checks from matching resources", () => {
+    const cleanup = buildDiscoveredCleanupLifecyclePlan([
+      { family: "DLO", name: "PiSweepDlo_20260519010101__dll" },
+      { family: "DLO", name: "RegularObject__dll" },
+      { family: "Semantic Retrieval", name: "PiSweepSdm_20260519010101" },
+      { family: "DataAction", name: "PiSweepAction_20260519010101" },
+    ]);
+
+    expect(cleanup.steps.map((step) => step.capability)).toEqual([
+      "d360_dlo_delete",
+      "d360_sdm_delete",
+      "d360_dataaction_delete",
     ]);
   });
 

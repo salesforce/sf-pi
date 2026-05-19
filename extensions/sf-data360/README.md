@@ -285,19 +285,24 @@ D360_SWEEP_ALLOW_DESTRUCTIVE=AgentforceSTDM npm run e2e:d360-sweep -- \
   --target-org AgentforceSTDM \
   --dry-run-only \
   --mutate \
+  --only-lifecycle \
   --lifecycle transform \
   --lifecycle data-action
 
-# Enforce coverage expectations.
+# Enforce coverage expectations directly or through a preset.
 npm run e2e:d360-sweep -- \
   --target-org AgentforceSTDM \
+  --preset agentforce-stdm-mutate \
   --require-outcome d360_transform_create=mutation_ok \
   --min-mutation-ok 10
 
-# Cleanup known sweep-owned resources for a previous run id.
+# Cleanup known sweep-owned resources for a previous run id or discover stale sweep-owned resources.
 D360_SWEEP_ALLOW_DESTRUCTIVE=AgentforceSTDM npm run e2e:d360-sweep -- \
   --target-org AgentforceSTDM \
   --cleanup-run-id 20260519170330
+D360_SWEEP_ALLOW_DESTRUCTIVE=AgentforceSTDM npm run e2e:d360-sweep -- \
+  --target-org AgentforceSTDM \
+  --cleanup-stale
 ```
 
 The sweep writes JSON and Markdown artifacts to a temp directory and reports expected org-state limitations as structured non-failing outcomes.

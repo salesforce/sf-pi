@@ -62,11 +62,18 @@ export interface SweepPlanOptions {
   maxLive?: number;
 }
 
+export type SweepPresetName = "agentforce-stdm-mutate" | "agentforce-stdm-safe";
+
 export interface SweepThresholdOptions {
   minReachable?: number;
   minMutationOk?: number;
   maxSkipped?: number;
   requiredOutcomes?: Record<string, SweepOutcome>;
+}
+
+export interface DiscoveredCleanupResource {
+  family: string;
+  name: string;
 }
 
 export interface FamilySummaryRow extends Record<
@@ -105,6 +112,9 @@ interface CliOptions extends SweepPlanOptions, SweepThresholdOptions {
   runId?: string;
   lifecycles?: MutationLifecycleName[];
   cleanupRunId?: string;
+  cleanupStale?: boolean;
+  onlyLifecycle?: boolean;
+  preset?: SweepPresetName;
 }
 
 interface MutationGateOptions {
@@ -1097,6 +1107,97 @@ export function buildMappingLifecyclePlan(runId: string): DmoLifecyclePlan {
   };
 }
 
+export function applySweepPreset<T extends SweepThresholdOptions>(
+  options: T,
+  preset: SweepPresetName,
+): T {
+  if (preset === "agentforce-stdm-safe") {
+    return {
+      ...options,
+      minReachable: options.minReachable ?? 20,
+      maxSkipped: options.maxSkipped ?? 100,
+    };
+  }
+
+  return {
+    ...options,
+    minMutationOk: options.minMutationOk ?? 30,
+    maxSkipped: options.maxSkipped ?? 10,
+    requiredOutcomes: {
+      d360_sdm_relationship_create: "mutation_ok",
+      d360_transform_update: "mutation_ok",
+      d360_dataaction_create: "mutation_ok",
+      ...(options.requiredOutcomes ?? {}),
+    },
+  };
+}
+
+export function buildDiscoveredCleanupLifecyclePlan(
+  resources: DiscoveredCleanupResource[],
+): DmoLifecyclePlan {
+  const steps = resources.flatMap((resource): SweepCheck[] => {
+    if (!isSweepOwnedResourceName(resource.name)) return [];
+    switch (resource.family) {
+      case "DMO":
+        return [cleanupCheck("d360_dmo_delete", "DMO", { dmoName: resource.name }, "cleanup_dmo")];
+      case "DLO":
+        return [cleanupCheck("d360_dlo_delete", "DLO", { dloName: resource.name }, "cleanup_dlo")];
+      case "Semantic Retrieval":
+        return [
+          cleanupCheck(
+            "d360_sdm_delete",
+            "Semantic Retrieval",
+            { modelApiNameOrId: resource.name },
+            "cleanup_sdm",
+          ),
+        ];
+      case "DataTransform":
+        return [
+          cleanupCheck(
+            "d360_transform_delete",
+            "DataTransform",
+            { transformId: resource.name },
+            "cleanup_transform",
+          ),
+        ];
+      case "DataAction":
+        return [
+          cleanupCheck(
+            "d360_dataaction_delete",
+            "DataAction",
+            { dataActionId: resource.name },
+            "cleanup_dataaction",
+          ),
+        ];
+      case "DataActionTarget":
+        return [
+          cleanupCheck(
+            "d360_dataaction_target_delete",
+            "DataAction",
+            { dataActionTargetId: resource.name },
+            "cleanup_dataaction_target",
+          ),
+        ];
+      default:
+        return [];
+    }
+  });
+  return { resourceName: "PiSweepDiscoveredCleanup", steps };
+}
+
+function cleanupCheck(
+  capability: string,
+  family: string,
+  params: Record<string, unknown>,
+  sourceCapability: string,
+): SweepCheck {
+  return { stage: "mutate", capability, family, safety: "destructive", params, sourceCapability };
+}
+
+function isSweepOwnedResourceName(name: string): boolean {
+  return /^(PiSweep|PiSw|PiRel)/.test(name);
+}
+
 export function buildCleanupLifecyclePlan(runId: string): DmoLifecyclePlan {
   const dmoNames = [
     `PiSweepDmo_${runId}__dlm`,
@@ -1495,6 +1596,8 @@ async function main(): Promise<void> {
     process.exit(2);
   }
 
+  if (options.preset) applySweepPreset(options, options.preset);
+
   const env = await loadEnvironment();
   const runId =
     options.runId ??
@@ -1508,14 +1611,16 @@ async function main(): Promise<void> {
   mkdirSync(outputDir, { recursive: true });
 
   const capabilities = getD360Capabilities();
-  const plan = options.cleanupRunId
-    ? []
-    : buildCapabilitySweepPlan(capabilities, {
-        ...options,
-        live: !options.dryRunOnly,
-      });
+  const plan =
+    options.cleanupRunId || options.cleanupStale || options.onlyLifecycle
+      ? []
+      : buildCapabilitySweepPlan(capabilities, {
+          ...options,
+          live: !options.dryRunOnly,
+        });
   const seenChecks = new Set(plan.map(checkKey));
-  if (options.mutate || options.cleanupRunId) {
+  const ctx = createHeadlessContext();
+  if (options.mutate || options.cleanupRunId || options.cleanupStale) {
     const gate = canRunMutationLifecycle({
       mutate: true,
       targetOrg: options.targetOrg,
@@ -1523,9 +1628,12 @@ async function main(): Promise<void> {
       destructiveEnvValue: process.env.D360_SWEEP_ALLOW_DESTRUCTIVE,
     });
     if (gate.ok !== true) throw new Error(gate.reason);
-    for (const lifecycle of options.cleanupRunId
+    const lifecycles = options.cleanupRunId
       ? [buildCleanupLifecyclePlan(options.cleanupRunId)]
-      : buildMutationLifecyclePlans(runId, options.lifecycles)) {
+      : options.cleanupStale
+        ? [await discoverStaleCleanupLifecyclePlan(options.targetOrg, env, ctx)]
+        : buildMutationLifecyclePlans(runId, options.lifecycles);
+    for (const lifecycle of lifecycles) {
       for (const check of lifecycle.steps) {
         const key = checkKey(check);
         if (!seenChecks.has(key)) {
@@ -1535,7 +1643,6 @@ async function main(): Promise<void> {
       }
     }
   }
-  const ctx = createHeadlessContext();
   const mutationCtx = createSweepMutationContext();
   const records: SweepRecord[] = [];
 
@@ -1639,6 +1746,54 @@ async function runFacadeWithRetry(
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function discoverStaleCleanupLifecyclePlan(
+  targetOrg: string,
+  env: SfEnvironment,
+  ctx: ExtensionContext,
+): Promise<DmoLifecyclePlan> {
+  const listCalls: Array<{ capability: string; family: string }> = [
+    { capability: "d360_dmo_list", family: "DMO" },
+    { capability: "d360_dlo_list", family: "DLO" },
+    { capability: "d360_sdm_list", family: "Semantic Retrieval" },
+    { capability: "d360_transform_list", family: "DataTransform" },
+    { capability: "d360_dataaction_list", family: "DataAction" },
+    { capability: "d360_dataaction_target_list", family: "DataActionTarget" },
+  ];
+  const resources: DiscoveredCleanupResource[] = [];
+  for (const call of listCalls) {
+    const result = await runFacade(
+      {
+        action: "execute",
+        capability: call.capability,
+        target_org: targetOrg,
+        params: { limit: 200 },
+        output_mode: "summary",
+      },
+      env,
+      ctx,
+      ctx.signal,
+    );
+    if (result.ok !== true) continue;
+    for (const row of findFirstArray(result.response)?.filter(isRecord) ?? []) {
+      const name = firstString(row, ["apiName", "name", "developerName"]);
+      if (name) resources.push({ family: call.family, name });
+    }
+  }
+  return buildDiscoveredCleanupLifecyclePlan(resources);
+}
+
+function firstString(record: Record<string, unknown>, keys: string[]): string | undefined {
+  for (const key of keys) {
+    const value = record[key];
+    if (typeof value === "string" && value.trim()) return value;
+  }
+  return undefined;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
 function checkKey(check: SweepCheck): string {
@@ -2577,6 +2732,15 @@ function parseArgs(args: string[]): CliOptions {
       case "--cleanup-run-id":
         options.cleanupRunId = requiredArg(args, ++i, arg);
         break;
+      case "--cleanup-stale":
+        options.cleanupStale = true;
+        break;
+      case "--only-lifecycle":
+        options.onlyLifecycle = true;
+        break;
+      case "--preset":
+        options.preset = parseSweepPresetName(requiredArg(args, ++i, arg));
+        break;
       case "--min-reachable":
         options.minReachable = Number(requiredArg(args, ++i, arg));
         break;
@@ -2603,6 +2767,13 @@ function parseArgs(args: string[]): CliOptions {
     }
   }
   return options;
+}
+
+function parseSweepPresetName(value: string): SweepPresetName {
+  if (value === "agentforce-stdm-mutate" || value === "agentforce-stdm-safe") return value;
+  throw new Error(
+    "Unknown preset '${value}'. Expected agentforce-stdm-mutate or agentforce-stdm-safe.",
+  );
 }
 
 function parseLifecycleName(value: string): MutationLifecycleName {
