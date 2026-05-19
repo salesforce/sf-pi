@@ -57,6 +57,7 @@ export interface SweepCheck {
   safety?: D360OperationSafety;
   params?: Record<string, unknown>;
   skipReason?: string;
+  sourceCapability?: string;
 }
 
 export interface SweepRecord extends SweepCheck {
@@ -92,10 +93,12 @@ export function buildCapabilitySweepPlan(
     if (!options.live || !isLiveEligible(capability.safety)) continue;
     const params = paramsForLiveCheck(capability);
     if (!params) {
-      checks.push({
-        ...baseCheck(capability, "live_skip"),
-        skipReason: "No public-safe live params are available yet.",
-      });
+      if (!isDynamicDetailCapability(capability.name)) {
+        checks.push({
+          ...baseCheck(capability, "live_skip"),
+          skipReason: "No public-safe live params are available yet.",
+        });
+      }
       continue;
     }
     if (options.maxLive !== undefined && liveCount >= options.maxLive) {
@@ -110,6 +113,45 @@ export function buildCapabilitySweepPlan(
   }
 
   return checks;
+}
+
+export function buildDynamicFollowUpChecks(
+  sourceCheck: SweepCheck,
+  result: Record<string, unknown>,
+  capabilities: D360Capability[] = getD360Capabilities(),
+): SweepCheck[] {
+  if (sourceCheck.stage !== "live" || result.ok !== true) return [];
+  const followUps = dynamicFollowUps[sourceCheck.capability] ?? [];
+  if (!followUps.length) return [];
+
+  const row = firstObjectRow((result as { response?: unknown }).response);
+  if (!row) return [];
+
+  return followUps.flatMap((followUp) => {
+    const capability = capabilities.find((entry) => entry.name === followUp.capability);
+    if (!capability || !isLiveEligible(capability.safety)) return [];
+
+    const params: Record<string, unknown> = { ...(followUp.constantParams ?? {}) };
+    for (const inherited of followUp.inheritParams ?? []) {
+      const value = sourceCheck.params?.[inherited];
+      if (value !== undefined) params[inherited] = value;
+    }
+    for (const [paramName, candidates] of Object.entries(followUp.params)) {
+      if (params[paramName] !== undefined) continue;
+      const value = findValueByCandidateKey(row, candidates);
+      if (value === undefined) return [];
+      params[paramName] = value;
+    }
+
+    if (containsPlaceholderValue(params)) return [];
+    return [
+      {
+        ...baseCheck(capability, "live"),
+        params,
+        sourceCapability: sourceCheck.capability,
+      },
+    ];
+  });
 }
 
 export function paramsForDryRun(capability: D360Capability): Record<string, unknown> {
@@ -233,19 +275,22 @@ async function main(): Promise<void> {
   );
   mkdirSync(outputDir, { recursive: true });
 
-  const plan = buildCapabilitySweepPlan(getD360Capabilities(), {
+  const capabilities = getD360Capabilities();
+  const plan = buildCapabilitySweepPlan(capabilities, {
     ...options,
     live: !options.dryRunOnly,
   });
+  const seenChecks = new Set(plan.map(checkKey));
   const ctx = createHeadlessContext();
   const records: SweepRecord[] = [];
 
   console.log(`D360 capability sweep`);
   console.log(`  target_org: ${options.targetOrg}`);
-  console.log(`  checks: ${plan.length}`);
+  console.log(`  initial checks: ${plan.length}`);
   console.log(`  output: ${outputDir}`);
 
-  for (const check of plan) {
+  for (let index = 0; index < plan.length; index++) {
+    const check = plan[index];
     const started = Date.now();
     let classified: Pick<SweepRecord, "outcome" | "fail" | "summary" | "status" | "error">;
     try {
@@ -263,6 +308,13 @@ async function main(): Promise<void> {
         };
         const result = await runFacade(input, env, ctx, ctx.signal);
         classified = classifySweepResult(check, result);
+        for (const followUp of buildDynamicFollowUpChecks(check, result, capabilities)) {
+          const key = checkKey(followUp);
+          if (!seenChecks.has(key)) {
+            seenChecks.add(key);
+            plan.push(followUp);
+          }
+        }
       }
     } catch (err) {
       classified = classifySweepResult(check, {
@@ -305,6 +357,10 @@ async function main(): Promise<void> {
   process.exit(summary.failed === 0 ? 0 : 1);
 }
 
+function checkKey(check: SweepCheck): string {
+  return [check.stage, check.capability, JSON.stringify(check.params ?? {})].join(":");
+}
+
 function baseCheck(capability: D360Capability, stage: SweepStage): SweepCheck {
   return {
     stage,
@@ -324,6 +380,145 @@ function matchesFilters(capability: D360Capability, options: SweepPlanOptions): 
 function isLiveEligible(safety: D360OperationSafety | undefined): boolean {
   return safety === "read" || safety === "safe_post";
 }
+
+function isDynamicDetailCapability(capabilityName: string): boolean {
+  return dynamicDetailCapabilities.has(capabilityName);
+}
+
+interface DynamicFollowUp {
+  capability: string;
+  params: Record<string, string[]>;
+  inheritParams?: string[];
+  constantParams?: Record<string, unknown>;
+}
+
+const idOrNameCandidates = [
+  "id",
+  "Id",
+  "name",
+  "apiName",
+  "developerName",
+  "devName",
+  "masterLabel",
+];
+const nameCandidates = ["name", "apiName", "developerName", "devName", "catalogName", "id"];
+const apiNameCandidates = ["apiName", "name", "developerName", "devName", "id"];
+const dmoNameCandidates = ["apiName", "name", "developerName", "dmoName"];
+const dloNameCandidates = ["apiName", "name", "developerName", "dloName"];
+
+const dynamicFollowUps: Record<string, DynamicFollowUp[]> = {
+  d360_data_spaces_list: [
+    { capability: "d360_dataspace_get", params: { dataSpaceName: nameCandidates } },
+  ],
+  d360_data_streams_list: [
+    { capability: "d360_datastream_get", params: { dataStreamId: idOrNameCandidates } },
+  ],
+  d360_datastream_list: [
+    { capability: "d360_datastream_get", params: { dataStreamId: idOrNameCandidates } },
+  ],
+  d360_data_transforms_list: [
+    { capability: "d360_transform_get", params: { transformId: idOrNameCandidates } },
+  ],
+  d360_transform_list: [
+    { capability: "d360_transform_get", params: { transformId: idOrNameCandidates } },
+  ],
+  d360_data_actions_list: [
+    { capability: "d360_dataaction_get", params: { dataActionId: idOrNameCandidates } },
+  ],
+  d360_dataaction_list: [
+    { capability: "d360_dataaction_get", params: { dataActionId: idOrNameCandidates } },
+  ],
+  d360_dataaction_target_list: [
+    {
+      capability: "d360_dataaction_target_get",
+      params: { dataActionTargetId: idOrNameCandidates },
+    },
+  ],
+  d360_semantic_models_list: [
+    { capability: "d360_semantic_model_get", params: { semanticModelName: idOrNameCandidates } },
+  ],
+  d360_sdm_list: [{ capability: "d360_sdm_get", params: { modelApiNameOrId: idOrNameCandidates } }],
+  d360_search_indexes_list: [
+    {
+      capability: "d360_search_index_get",
+      params: { searchIndexApiNameOrId: idOrNameCandidates },
+    },
+  ],
+  d360_search_index_list: [
+    {
+      capability: "d360_search_index_get",
+      params: { searchIndexApiNameOrId: idOrNameCandidates },
+    },
+  ],
+  d360_retrievers_list: [
+    { capability: "d360_retriever_get", params: { retrieverId: idOrNameCandidates } },
+  ],
+  d360_retriever_list: [
+    { capability: "d360_retriever_get", params: { retrieverId: idOrNameCandidates } },
+  ],
+  d360_datakits_list: [
+    { capability: "d360_datakit_get", params: { dataKitId: idOrNameCandidates } },
+  ],
+  d360_datakit_list: [
+    { capability: "d360_datakit_get", params: { dataKitId: idOrNameCandidates } },
+  ],
+  d360_segments_list: [
+    { capability: "d360_segment_get", params: { segmentId: idOrNameCandidates } },
+  ],
+  d360_segment_list: [
+    { capability: "d360_segment_get", params: { segmentId: idOrNameCandidates } },
+  ],
+  d360_activations_list: [
+    { capability: "d360_activation_get", params: { activationId: idOrNameCandidates } },
+  ],
+  d360_activation_list: [
+    { capability: "d360_activation_get", params: { activationId: idOrNameCandidates } },
+  ],
+  d360_activation_target_list: [
+    {
+      capability: "d360_activation_target_get",
+      params: { activationTargetId: idOrNameCandidates },
+    },
+  ],
+  d360_calculated_insights_list: [
+    { capability: "d360_ci_get", params: { ciName: apiNameCandidates } },
+  ],
+  d360_ci_list: [{ capability: "d360_ci_get", params: { ciName: apiNameCandidates } }],
+  d360_identity_resolutions_list: [
+    { capability: "d360_ir_get", params: { identityResolutionId: idOrNameCandidates } },
+  ],
+  d360_ir_list: [
+    { capability: "d360_ir_get", params: { identityResolutionId: idOrNameCandidates } },
+  ],
+  d360_connections_sfdc_list: [
+    {
+      capability: "d360_connection_get",
+      params: { connectionId: idOrNameCandidates },
+      constantParams: { connectorType: "SalesforceDotCom" },
+    },
+  ],
+  d360_connection_list: [
+    {
+      capability: "d360_connection_get",
+      params: { connectionId: idOrNameCandidates },
+      inheritParams: ["connectorType"],
+    },
+  ],
+  d360_connectors_list: [
+    { capability: "d360_connector_metadata", params: { connectorName: nameCandidates } },
+  ],
+  d360_connector_list: [
+    { capability: "d360_connector_metadata", params: { connectorName: nameCandidates } },
+  ],
+  d360_dmo_list: [{ capability: "d360_dmo_get", params: { dmoName: dmoNameCandidates } }],
+  d360_dlo_list: [{ capability: "d360_dlo_get", params: { dloName: dloNameCandidates } }],
+};
+
+const dynamicDetailCapabilities = new Set(
+  Object.values(dynamicFollowUps).flatMap((followUps) =>
+    followUps.map((followUp) => followUp.capability),
+  ),
+);
 
 function dryRunValue(paramName: string): unknown {
   if (paramName === "body") return {};
@@ -377,6 +572,71 @@ function looksEmpty(value: unknown): boolean {
     if (record[key] === 0) return true;
   }
   return false;
+}
+
+function firstObjectRow(response: unknown): Record<string, unknown> | undefined {
+  const rows = findFirstArray(response);
+  return rows?.find(
+    (row): row is Record<string, unknown> =>
+      Boolean(row) && typeof row === "object" && !Array.isArray(row),
+  );
+}
+
+function findFirstArray(value: unknown): unknown[] | undefined {
+  if (Array.isArray(value)) return value;
+  if (!value || typeof value !== "object") return undefined;
+
+  const record = value as Record<string, unknown>;
+  const preferredKeys = [
+    "records",
+    "data",
+    "items",
+    "results",
+    "dataSpaces",
+    "dataStreams",
+    "connections",
+    "connectors",
+    "segments",
+    "activations",
+    "activationTargets",
+    "calculatedInsights",
+    "identityResolutions",
+    "dataTransforms",
+    "dataActions",
+    "dataActionTargets",
+    "semanticModels",
+    "searchIndexes",
+    "retrievers",
+    "dataKits",
+    "objects",
+  ];
+  for (const key of preferredKeys) {
+    const candidate = record[key];
+    if (Array.isArray(candidate)) return candidate;
+  }
+  return Object.values(record).find(Array.isArray) as unknown[] | undefined;
+}
+
+function findValueByCandidateKey(
+  row: Record<string, unknown>,
+  candidateKeys: string[],
+): string | number | boolean | undefined {
+  const lowerCandidates = new Set(candidateKeys.map((key) => key.toLowerCase()));
+  const queue: unknown[] = [row];
+  while (queue.length) {
+    const current = queue.shift();
+    if (!current || typeof current !== "object" || Array.isArray(current)) continue;
+    for (const [key, value] of Object.entries(current as Record<string, unknown>)) {
+      if (lowerCandidates.has(key.toLowerCase()) && isScalarIdentifier(value)) return value;
+      if (value && typeof value === "object") queue.push(value);
+    }
+  }
+  return undefined;
+}
+
+function isScalarIdentifier(value: unknown): value is string | number | boolean {
+  if (typeof value === "string") return Boolean(value.trim());
+  return typeof value === "number" || typeof value === "boolean";
 }
 
 function extractError(result: Record<string, unknown>): string | undefined {

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildCapabilitySweepPlan,
+  buildDynamicFollowUpChecks,
   classifySweepResult,
   containsPlaceholderValue,
   paramsForDryRun,
@@ -46,6 +47,25 @@ const destructiveCapability: D360Capability = {
   },
 };
 
+const streamDetailCapability: D360Capability = {
+  name: "d360_datastream_get",
+  kind: "rest_operation",
+  family: "DataStreams",
+  phase: "prepare",
+  description: "Get a data stream.",
+  safety: "read",
+  requiredParams: ["dataStreamId"],
+  operation: {
+    name: "d360_datastream_get",
+    family: "DataStreams",
+    description: "Get a data stream.",
+    method: "GET",
+    path: "/ssot/data-streams/{dataStreamId}",
+    safety: "read",
+    requiredParams: ["dataStreamId"],
+  },
+};
+
 const safePostCapability: D360Capability = {
   name: "d360_query_sql",
   kind: "rest_operation",
@@ -81,6 +101,56 @@ describe("d360 capability sweep planning", () => {
     expect(plan.filter((check) => check.stage === "live").map((check) => check.capability)).toEqual(
       ["d360_data_spaces_list", "d360_query_sql"],
     );
+  });
+
+  it("waits for dynamic list results instead of marking known detail capabilities as skipped", () => {
+    const plan = buildCapabilitySweepPlan(
+      [
+        {
+          ...listCapability,
+          name: "d360_data_streams_list",
+          family: "DataStreams",
+        },
+        streamDetailCapability,
+      ],
+      {
+        targetOrg: "AgentforceSTDM",
+        live: true,
+      },
+    );
+
+    expect(plan.map((check) => `${check.stage}:${check.capability}`)).toEqual([
+      "dry_run:d360_data_streams_list",
+      "live:d360_data_streams_list",
+      "dry_run:d360_datastream_get",
+    ]);
+  });
+
+  it("builds dynamic detail checks from list responses", () => {
+    const followUps = buildDynamicFollowUpChecks(
+      {
+        stage: "live",
+        capability: "d360_data_streams_list",
+        family: "DataStreams",
+        safety: "read",
+      },
+      {
+        ok: true,
+        response: {
+          dataStreams: [{ id: "stream-1", name: "StreamOne" }],
+        },
+      },
+      [streamDetailCapability],
+    );
+
+    expect(followUps).toEqual([
+      expect.objectContaining({
+        stage: "live",
+        capability: "d360_datastream_get",
+        params: { dataStreamId: "stream-1" },
+        sourceCapability: "d360_data_streams_list",
+      }),
+    ]);
   });
 
   it("builds placeholder params for dry-run request resolution without using them for live checks", () => {

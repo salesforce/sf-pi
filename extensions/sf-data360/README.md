@@ -261,6 +261,15 @@ Run targeted tests:
 npm test -- extensions/sf-data360/tests
 ```
 
+Run the facade-first capability sweep against a disposable Data 360 org:
+
+```bash
+npm run e2e:d360-sweep -- --target-org AgentforceSTDM --dry-run-only
+npm run e2e:d360-sweep -- --target-org AgentforceSTDM --max-live 20
+```
+
+The sweep writes JSON and Markdown artifacts to a temp directory and reports expected org-state limitations as structured non-failing outcomes.
+
 Covered by unit tests:
 
 - Compact metadata helper builds safe list/describe paths and summarizes DMO/DLO list and field payloads.
@@ -271,6 +280,7 @@ Covered by unit tests:
 - HTTP errors from `Connection.request` surface as `{ status, body }` and are classified by `responseLooksLikeError`; the tool emits an error envelope instead of throwing.
 - Salesforce REST error arrays embedded in 2xx responses are still classified as failed calls.
 - Generated phase skills are committed, reproducible from `registry/phases.json`, and checked in the normal lint path.
+- The capability sweep plans dry-run coverage for every facade capability, runs bounded read/safe-post live checks, and dynamically follows list responses into detail reads when public-safe identifiers are available.
 
 ## Troubleshooting
 
