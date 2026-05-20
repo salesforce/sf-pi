@@ -59,7 +59,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export default function sfBrowser(pi: ExtensionAPI): void {
-  if (!requirePiVersion(pi, EXTENSION_ID)) return;
+  if (!requirePiVersion(pi, "sf-browser")) return;
 
   let toolsRegistered = false;
 
