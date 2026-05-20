@@ -17,6 +17,15 @@ describe("setup destinations", () => {
     expect(resolveSetupDestination("external-client-apps")).toBe(
       "/lightning/setup/ManageExternalClientApplication/home",
     );
+    expect(resolveSetupDestination("permission set groups")).toBe(
+      "/lightning/setup/PermSetGroups/home",
+    );
+    expect(resolveSetupDestination("named-credentials")).toBe(
+      "/lightning/setup/NamedCredential/home",
+    );
+    expect(resolveSetupDestination("single sign on settings")).toBe(
+      "/lightning/setup/SingleSignOn/home",
+    );
   });
 
   it("rejects combining setup and path", () => {

@@ -332,3 +332,249 @@ If activation or builder-only state cannot be handled through metadata:
 **Setup destinations**
 
 - `flows`
+
+---
+
+## Profiles evidence and fallback
+
+**Intent**
+Inspect profile setup state or capture evidence for profile-driven access.
+
+**Primary path**
+Use Metadata/Tooling/API first for profile metadata and permissions. Retrieve the relevant profile metadata before comparing or editing.
+
+**Evidence path**
+
+1. Open `profiles`.
+2. Search/open the target profile if needed.
+3. Snapshot relevant sections with focus terms such as profile label, object, field, app, or permission name.
+4. Capture Browser Evidence, using `scrollToRef` for lower-page sections.
+
+**UI Fallback Path**
+Use the profile UI only when metadata/API coverage is unavailable or a human needs visual confirmation. Change only explicitly requested settings, then retrieve/verify metadata where possible.
+
+**Known edge cases**
+
+- Profile pages are often Classic Setup Surfaces.
+- Profile permissions are broad and easy to over-edit; prefer metadata diffs.
+- Managed-package profile entries can appear with namespace-specific labels.
+
+**Setup destinations**
+
+- `profiles`
+
+---
+
+## Permission set groups evidence and fallback
+
+**Intent**
+Inspect, assign, remove, or validate Permission Set Groups.
+
+**Primary path**
+Use Salesforce data/API first, after verifying exact assignment objects and fields in the target org.
+
+**Evidence path**
+
+1. Open `permission-set-groups` for the group list.
+2. Open `users` for user assignment evidence.
+3. Capture before/after evidence when a human needs visual confirmation.
+4. Verify final assignment state through API when possible.
+
+**UI Fallback Path**
+Use the same Classic Setup dual-list approach as permission set assignment when the assignment UI is present: select the source listbox with `sf_browser_select`, click Add/Remove, snapshot before Save, save, then verify through API.
+
+**Known edge cases**
+
+- Permission set group recalculation can delay effective access.
+- Muting permission sets can make access differ from assignment state.
+- The UI may place Permission Sets and Permission Set Groups near each other; verify labels before acting.
+
+**Setup destinations**
+
+- `permission-set-groups`
+- `users`
+
+---
+
+## Named Credentials and External Credentials
+
+**Intent**
+Inspect or validate outbound authentication configuration.
+
+**Primary path**
+Use Metadata/API surfaces first for known deployable configuration:
+
+- Named Credential metadata
+- External Credential metadata, when available
+- Permission set / principal access assignments, when applicable
+
+**Evidence path**
+
+1. Open `named-credentials` for Named Credentials evidence.
+2. Use API/metadata to inspect External Credentials when UI path is not stable or secrets are involved.
+3. Snapshot only non-secret configuration sections.
+4. Capture Browser Evidence with secrets avoided or obscured.
+
+**UI Fallback Path**
+Use the UI only for unsupported setup state or human evidence. Do not expose client secrets, tokens, passwords, private keys, or authorization headers in screenshots or tool output.
+
+**Known edge cases**
+
+- External Credentials can be surfaced through newer setup pages, related tabs, or recent items depending on org/version.
+- Secrets may be masked but should still be treated as sensitive.
+- Principal access can be split across credentials and permission sets.
+
+**Setup destinations**
+
+- `named-credentials`
+
+---
+
+## Trusted URLs and Remote Site Settings
+
+**Intent**
+Inspect or validate outbound/embedded trust configuration.
+
+**Primary path**
+Use Metadata/API first:
+
+- CSP Trusted Site / Trusted URL metadata where supported
+- Remote Site Setting metadata where supported
+
+**Evidence path**
+
+1. Open `trusted-urls` for Trusted URLs / CSP Trusted Sites.
+2. Open `remote-site-settings` for Remote Site Settings.
+3. Snapshot list/detail state.
+4. Capture Browser Evidence.
+
+**UI Fallback Path**
+If metadata coverage fails, create/update only the explicitly requested trusted origin or remote site. Save, snapshot, capture evidence, and retrieve metadata afterward when possible.
+
+**Known edge cases**
+
+- Trusted URLs and Remote Site Settings solve different problems and should not be conflated.
+- URL matching rules and CSP context settings can be subtle.
+- Some orgs use newer Trusted URLs naming while older docs say CSP Trusted Sites.
+
+**Setup destinations**
+
+- `trusted-urls`
+- `remote-site-settings`
+
+---
+
+## App Manager and Lightning apps
+
+**Intent**
+Inspect Lightning apps, app navigation, and app-level configuration.
+
+**Primary path**
+Use Metadata/API first for CustomApplication and related metadata when available.
+
+**Evidence path**
+
+1. Open `app-manager`.
+2. Snapshot the app list or target app row.
+3. Capture Browser Evidence for human confirmation.
+
+**UI Fallback Path**
+Use App Manager UI only when metadata is insufficient or for visual verification. For edits, make the smallest explicit change, wait for confirmation, then retrieve metadata when possible.
+
+**Known edge cases**
+
+- App Manager can include Lightning apps, connected app-adjacent entries, and managed-package apps.
+- Some edit flows open builders or multi-step wizards.
+- Navigation item order can be metadata-backed but easier to verify visually.
+
+**Setup destinations**
+
+- `app-manager`
+
+---
+
+## Identity Provider and Single Sign-On Settings
+
+**Intent**
+Inspect identity-provider and SAML/SSO setup state.
+
+**Primary path**
+Use metadata/API first for known deployable configuration where available.
+
+**Evidence path**
+
+1. Open `identity-provider` for identity-provider setup evidence.
+2. Open `single-sign-on-settings` for SAML/SSO setup evidence.
+3. Capture screenshots that avoid certificates, secrets, and sensitive endpoint details unless explicitly needed and safe.
+
+**UI Fallback Path**
+Use UI fallback for fields or setup flows that are not metadata-covered. Verify through metadata/API where possible after any change.
+
+**Known edge cases**
+
+- Certificates and SSO settings are security-sensitive.
+- Some values are intentionally masked or only visible during creation.
+- Metadata coverage differs between identity-provider and SAML configuration surfaces.
+
+**Setup destinations**
+
+- `identity-provider`
+- `single-sign-on-settings`
+
+---
+
+## Certificate and Key Management
+
+**Intent**
+Inspect certificate, key, and API client certificate setup state.
+
+**Primary path**
+Use metadata/API first for certificate metadata where supported. Avoid exporting or exposing private key material.
+
+**Evidence path**
+
+1. Open `certificate-key-management`.
+2. Snapshot certificate list/status sections.
+3. Capture Browser Evidence only for non-secret visible state.
+
+**UI Fallback Path**
+Use UI fallback only for explicit certificate/key tasks that cannot be completed by metadata/API. Avoid screenshots of secret material.
+
+**Known edge cases**
+
+- Certificate expiration/status matters more than raw certificate contents for most evidence tasks.
+- Key material and downloads are sensitive.
+- Some certificate operations can have broad auth/integration impact.
+
+**Setup destinations**
+
+- `certificate-key-management`
+
+---
+
+## Login History evidence
+
+**Intent**
+Inspect recent login activity for identity/security troubleshooting.
+
+**Primary path**
+Use SOQL/API first where available, such as login history objects supported by the target org.
+
+**Evidence path**
+
+1. Open `login-history`.
+2. Snapshot filters/table headings and relevant rows.
+3. Capture Browser Evidence when a human needs visual confirmation.
+
+**UI Fallback Path**
+Use browser UI for human evidence or when API access is restricted. Avoid exposing IPs or usernames in public artifacts.
+
+**Known edge cases**
+
+- Login history can contain sensitive usernames, IP addresses, and locations.
+- Data retention windows vary.
+- Prefer sanitized summaries for public output.
+
+**Setup destinations**
+
+- `login-history`
