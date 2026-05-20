@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.137.0-2026-05-20",
-  "latestVersion": "0.137.0",
+  "revision": "release-0.138.0-2026-05-20",
+  "latestVersion": "0.138.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.137.0",
+      "id": "release-0.138.0",
       "kind": "update",
-      "title": "sf-pi v0.137.0 — harden sf-browser setup runbooks",
+      "title": "sf-pi v0.138.0 — expand sf-browser setup destinations",
       "publishedAt": "2026-05-20T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.137.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.138.0",
       "severity": "info",
-      "body": "harden sf-browser setup runbooks"
+      "body": "expand sf-browser setup destinations"
     },
     {
       "id": "pi-0.73-required",
