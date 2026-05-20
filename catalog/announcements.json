@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.135.0-2026-05-19",
-  "latestVersion": "0.135.0",
+  "revision": "release-0.136.0-2026-05-20",
+  "latestVersion": "0.136.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.135.0",
+      "id": "release-0.136.0",
       "kind": "update",
-      "title": "sf-pi v0.135.0 — add d360 retriever mutation lifecycle",
-      "publishedAt": "2026-05-19T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.135.0",
+      "title": "sf-pi v0.136.0 — add sf-browser extension",
+      "publishedAt": "2026-05-20T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.136.0",
       "severity": "info",
-      "body": "add d360 retriever mutation lifecycle"
+      "body": "add sf-browser extension — use literal sf-browser pi version gate"
     },
     {
       "id": "pi-0.73-required",
