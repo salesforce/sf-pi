@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.142.1-2026-05-21",
-  "latestVersion": "0.142.1",
+  "revision": "release-0.143.0-2026-05-21",
+  "latestVersion": "0.143.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.142.1",
+      "id": "release-0.143.0",
       "kind": "update",
-      "title": "sf-pi v0.142.1 — handle feedback permissions and skills HUD",
+      "title": "sf-pi v0.143.0 — sf-data-explorer: add read-only SOQL/SOSL/Data 360 SQL TUI",
       "publishedAt": "2026-05-21T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.142.1",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.143.0",
       "severity": "info",
-      "body": "handle feedback permissions and skills HUD"
+      "body": "sf-data-explorer: add read-only SOQL/SOSL/Data 360 SQL TUI"
     },
     {
       "id": "pi-0.73-required",
