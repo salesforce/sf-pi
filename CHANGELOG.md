@@ -517,6 +517,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.142.1](https://github.com/salesforce/sf-pi/compare/v0.142.0...v0.142.1) (2026-05-21)
+
+
+### Bug Fixes
+
+* handle feedback permissions and skills HUD ([aa55e16](https://github.com/salesforce/sf-pi/commit/aa55e16653aa492598d82dd71c47b6894a0eaff3))
+
 ## [0.142.0](https://github.com/salesforce/sf-pi/compare/v0.141.1...v0.142.0) (2026-05-21)
 
 
