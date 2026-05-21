@@ -42,7 +42,13 @@ import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 import { isSfPiExtensionEnabled } from "../../lib/common/sf-pi-extension-state.ts";
 import { getCachedSfEnvironment } from "../../lib/common/sf-environment/shared-runtime.ts";
 import { checkAgentBrowser } from "./lib/agent-browser.ts";
-import { getEvidenceDir, getEvidenceIndexPath, latestEvidenceCaptures } from "./lib/artifacts.ts";
+import {
+  getEvidenceDir,
+  getEvidenceIndexPath,
+  getLatestEvidencePointerPath,
+  latestEvidenceCaptures,
+} from "./lib/artifacts.ts";
+import { buildEvidenceReport } from "./lib/evidence-report.ts";
 import { COMMAND_NAME, EXTENSION_ID, SF_BROWSER_SESSION } from "./lib/constants.ts";
 import { SALESFORCE_BROWSER_GUIDANCE } from "./lib/guidance.ts";
 import { formatKnownSetupDestinations, resolveSetupDestination } from "./lib/setup-destinations.ts";
@@ -112,6 +118,7 @@ type SfBrowserAction =
   | "open"
   | "open-setup"
   | "screenshot"
+  | "evidence"
   | "doctor"
   | "guidance"
   | "help"
@@ -138,6 +145,13 @@ const SF_BROWSER_ACTIONS: SfPiCommandAction<SfBrowserAction>[] = [
     label: "Capture evidence",
     description:
       "Capture Browser Evidence in thumbnail mode and save the full screenshot privately.",
+    group: "Evidence",
+  },
+  {
+    value: "evidence",
+    label: "Show evidence for this session",
+    description:
+      "List the current pi session's Browser Evidence directory, latest pointer, and recent captures with audit status.",
     group: "Evidence",
   },
   {
@@ -231,6 +245,16 @@ async function handleAction(
     await emitOutput(ctx, "SF Browser status", buildStatusLines(ctx).join("\n"), "info", fromPanel);
     return;
   }
+  if (action === "evidence") {
+    await emitOutput(
+      ctx,
+      "SF Browser evidence",
+      buildEvidenceReport(ctx.sessionManager.getSessionId(), parseEvidenceLimit(args)),
+      "info",
+      fromPanel,
+    );
+    return;
+  }
   if (action === "doctor") {
     await emitOutput(
       ctx,
@@ -272,6 +296,12 @@ async function handleAction(
   );
 }
 
+function parseEvidenceLimit(args: string[]): number {
+  const parsed = Number(args[0]);
+  if (!Number.isFinite(parsed)) return 10;
+  return Math.min(50, Math.max(1, Math.floor(parsed)));
+}
+
 function buildStatusLines(ctx: ExtensionCommandContext): string[] {
   const env = getCachedSfEnvironment(ctx.cwd);
   const sessionId = ctx.sessionManager.getSessionId();
@@ -284,8 +314,9 @@ function buildStatusLines(ctx: ExtensionCommandContext): string[] {
     "• Evidence mode  thumbnail by default; use artifact for batches",
     `• Artifacts      ${getEvidenceDir(sessionId)}`,
     `• Index          ${getEvidenceIndexPath(sessionId)}`,
+    `• Latest pointer ${getLatestEvidencePointerPath()}`,
     recent.length
-      ? `• Recent         ${recent.map((item) => `#${item.id} ${item.label}`).join(", ")}`
+      ? `• Recent         ${recent.map((item) => `#${item.id} ${item.label}${item.setupAuditTrail ? ` (${item.setupAuditTrail.status})` : ""}`).join(", ")}`
       : "• Recent         none",
   ];
 }
@@ -308,6 +339,9 @@ function buildHelpText(): string {
     "  sf_browser_wait              Wait for expected text, URL, load state, or last-resort ms.",
     "  sf_browser_capture_evidence  Capture private screenshot evidence; thumbnail by default.",
     "  sf_browser_resolve_path       Resolve structured Salesforce routes and setup destinations without opening the browser.",
+    "",
+    "Evidence commands:",
+    "  /sf-browser evidence [limit]  List session-scoped Browser Evidence captures and artifact paths.",
     "",
     SALESFORCE_BROWSER_GUIDANCE,
   ].join("\n");

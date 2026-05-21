@@ -75,6 +75,7 @@ sf_browser_capture_evidence
 | `/sf-browser open [path\|setup]` | Open the active target org home, a provided Salesforce path, or a Setup Destination. |
 | `/sf-browser setup`              | Open Salesforce Setup home.                                                          |
 | `/sf-browser screenshot [label]` | Capture Browser Evidence with a private full screenshot and thumbnail image mode.    |
+| `/sf-browser evidence [limit]`   | List current-session Browser Evidence captures, artifact paths, and audit status.    |
 | `/sf-browser guidance`           | Print the Salesforce Browser Contract.                                               |
 | `/sf-browser help`               | Print command and tool usage.                                                        |
 
@@ -128,7 +129,7 @@ Browser Evidence is stored outside the project by default and scoped by pi sessi
   000001-label.thumb.jpg
 ```
 
-The session index keeps capture metadata and monotonically increasing evidence IDs for that session. The legacy `browser-artifacts/latest/pointer.json` location points to the current session evidence directory for quick access; screenshots are not duplicated there. V1 does not automatically clean old artifacts.
+The session index keeps capture metadata and monotonically increasing evidence IDs for that session. The legacy `browser-artifacts/latest/pointer.json` location points to the current session evidence directory for quick access; screenshots are not duplicated there. Use `/sf-browser evidence [limit]` to list recent captures, artifact paths, and Setup Audit Trail enrichment status for the current session. V1 does not automatically clean old artifacts.
 
 ## Installing agent-browser
 
@@ -155,6 +156,7 @@ extensions/sf-browser/
     agent-browser.ts        ← implementation module
     artifacts.ts            ← implementation module
     constants.ts            ← implementation module
+    evidence-report.ts      ← implementation module
     failure-diagnostics.ts  ← implementation module
     guidance.ts             ← implementation module
     lightning-state.ts      ← implementation module
@@ -181,6 +183,7 @@ extensions/sf-browser/
     tool-support.ts         ← implementation module
   tests/
     artifacts.test.ts       ← unit / smoke test
+    evidence-report.test.ts ← unit / smoke test
     failure-diagnostics.test.ts← unit / smoke test
     overlay-dismissal.test.ts← unit / smoke test
     redaction.test.ts       ← unit / smoke test
@@ -218,7 +221,7 @@ Run `npm i -g agent-browser && agent-browser install`, then `/sf-browser doctor`
 Refs are stale after Salesforce page changes. Run `sf_browser_snapshot` again and retry with fresh refs. If a click/fill/select/press action fails, SF Browser includes a recovery hint plus best-effort diagnostic snapshot and screenshot artifacts. If the compact summary omits the control you need, retry with `focus` terms or `outputMode: "full"`.
 
 **Screenshots are too heavy:**
-Use `sf_browser_capture_evidence` with `imageMode: "artifact"` for repeated captures.
+Use `sf_browser_capture_evidence` with `imageMode: "artifact"` for repeated captures. Use `/sf-browser evidence` to inspect artifact paths without adding image bytes to the transcript.
 
 **A browser action is outside the hot path:**
 Use direct `agent-browser` commands and keep SF Browser for opening, snapshots, simple actions, waits, and evidence.

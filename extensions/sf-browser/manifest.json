@@ -23,6 +23,7 @@
     "primaryFiles": [
       "index.ts",
       "lib/agent-browser.ts",
+      "lib/evidence-report.ts",
       "lib/operations.ts",
       "lib/failure-diagnostics.ts",
       "lib/setup-destinations.ts",

@@ -137,6 +137,7 @@
       "primaryFiles": [
         "index.ts",
         "lib/agent-browser.ts",
+        "lib/evidence-report.ts",
         "lib/operations.ts",
         "lib/failure-diagnostics.ts",
         "lib/setup-destinations.ts",
@@ -166,7 +167,7 @@
     "entry": "extensions/sf-browser/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 3128
+    "srcLoc": 3208
   },
   {
     "id": "sf-data360",
