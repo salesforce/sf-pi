@@ -65,9 +65,10 @@
     "check": "tsc --noEmit -p tsconfig.json",
     "check:panels": "node scripts/check-panel-consistency.mjs",
     "check:boot-path": "node scripts/check-boot-path.mjs",
+    "check:lifecycle-scripts": "node scripts/check-lifecycle-scripts.mjs",
     "eslint": "eslint . --max-warnings=0",
     "eslint:fix": "eslint . --fix",
-    "lint": "npm run format:check && npm run generate-d360-registry:check && npm run generate-d360-skills:check && npm run generate-d360-payload-examples:check && npm run generate-d360-parity:check && npm run generate-catalog:check && npm run docs:health:check && npm run spdx:check && npm run eslint",
+    "lint": "npm run format:check && npm run generate-d360-registry:check && npm run generate-d360-skills:check && npm run generate-d360-payload-examples:check && npm run generate-d360-parity:check && npm run generate-catalog:check && npm run docs:health:check && npm run spdx:check && npm run check:lifecycle-scripts && npm run eslint",
     "validate:ci": "npm run validate && npm run eslint && npm run docs:health:check && bash scripts/check-llm-artifacts.sh",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -84,15 +85,17 @@
     "generate-d360-parity:check": "node scripts/generate-d360-parity.mjs --check"
   },
   "peerDependencies": {
-    "@earendil-works/pi-coding-agent": ">=0.75.3",
+    "@earendil-works/pi-ai": "*",
+    "@earendil-works/pi-coding-agent": ">=0.75.4",
+    "@earendil-works/pi-tui": "*",
     "typebox": "*"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.0.0",
     "@commitlint/config-conventional": "^21.0.0",
-    "@earendil-works/pi-ai": "^0.75.0",
-    "@earendil-works/pi-coding-agent": "^0.75.3",
-    "@earendil-works/pi-tui": "^0.75.0",
+    "@earendil-works/pi-ai": "^0.75.4",
+    "@earendil-works/pi-coding-agent": "^0.75.4",
+    "@earendil-works/pi-tui": "^0.75.4",
     "@eslint/js": "^10.0.1",
     "@types/node": "^25.7.0",
     "@vitest/coverage-v8": "^4.1.6",

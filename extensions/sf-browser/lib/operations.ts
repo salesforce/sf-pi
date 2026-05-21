@@ -2,8 +2,13 @@
 /**
  * Shared command/tool operations for SF Browser.
  */
-import { existsSync } from "node:fs";
-import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { writeFileSync } from "node:fs";
+import {
+  formatDimensionNote,
+  resizeImage,
+  type ExtensionAPI,
+  type ExtensionContext,
+} from "@earendil-works/pi-coding-agent";
 import type { ImageContent, TextContent } from "@earendil-works/pi-ai";
 import { runAgentBrowser } from "./agent-browser.ts";
 import {
@@ -12,6 +17,7 @@ import {
   evidenceModeFromUnknown,
   imageContentFromFile,
   planEvidenceCapture,
+  readImageContentFromFile,
 } from "./artifacts.ts";
 import { OPEN_NEXT_STEPS } from "./guidance.ts";
 import { dismissAmbientOverlays } from "./overlay-dismissal.ts";
@@ -93,14 +99,23 @@ export async function captureEvidence(
 
   let image: ImageContent | null = null;
   let thumbnailPath: string | undefined;
+  let dimensionNote: string | undefined;
   if (mode === "thumbnail") {
-    await runAgentBrowser(pi, ["screenshot", planned.thumbnailPath], {
-      cwd: ctx.cwd,
-      signal,
-      extraGlobalArgs: ["--screenshot-format", "jpeg", "--screenshot-quality", "55"],
-    });
-    thumbnailPath = existsSync(planned.thumbnailPath) ? planned.thumbnailPath : undefined;
-    if (thumbnailPath) image = imageContentFromFile(thumbnailPath, "image/jpeg");
+    const sourceImage = readImageContentFromFile(planned.path, "image/png");
+    const resized = sourceImage
+      ? await resizeImage(sourceImage, {
+          maxWidth: viewport?.width ?? 1440,
+          maxHeight: viewport?.height ?? 1000,
+          maxBytes: 1_500_000,
+          jpegQuality: 55,
+        })
+      : null;
+    if (resized) {
+      thumbnailPath = thumbnailPathForMime(planned.thumbnailPath, resized.mimeType);
+      writeFileSync(thumbnailPath, Buffer.from(resized.data, "base64"));
+      image = { type: "image", data: resized.data, mimeType: resized.mimeType };
+      dimensionNote = formatDimensionNote(resized);
+    }
   } else if (mode === "full") {
     image = imageContentFromFile(planned.path, "image/png");
   }
@@ -141,6 +156,7 @@ export async function captureEvidence(
     `Path: ${capture.path}`,
     capture.thumbnailPath ? `Thumbnail: ${capture.thumbnailPath}` : undefined,
     viewport ? `Viewport: ${viewport.width}x${viewport.height}` : undefined,
+    dimensionNote,
     capture.url ? `URL: ${capture.url}` : undefined,
     scrolledToRef ? `Scrolled into view: ${scrolledToRef}` : undefined,
     overlayDismissal.dismissedRefs.length
@@ -157,6 +173,12 @@ export async function captureEvidence(
     content,
     details: { ok: true, sessionId, capture, overlayDismissal, scrolledToRef, ...duration },
   };
+}
+
+function thumbnailPathForMime(plannedPath: string, mimeType: string): string {
+  if (mimeType === "image/png") return plannedPath.replace(/\.jpg$/i, ".png");
+  if (mimeType === "image/jpeg") return plannedPath.replace(/\.png$/i, ".jpg");
+  return plannedPath;
 }
 
 function resolveEvidenceViewport(

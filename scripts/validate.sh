@@ -53,6 +53,9 @@ node scripts/check-panel-consistency.mjs
 banner "Boot-path import check"
 node scripts/check-boot-path.mjs
 
+banner "Lifecycle-script allowlist check"
+node scripts/check-lifecycle-scripts.mjs
+
 banner "Tests"
 npx vitest run --reporter=dot
 

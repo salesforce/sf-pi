@@ -61,7 +61,7 @@ export function runDoctorDiagnostics(options: { cwd?: string; home?: string } = 
       severity: "error",
       title: `Pi runtime is older than ${MIN_PI_VERSION}`,
       detail: `Detected pi ${piVersion}. sf-pi targets pi ${MIN_PI_VERSION} or newer.`,
-      fix: "Update pi with `npm install -g @earendil-works/pi-coding-agent@latest` or `pi update --self`.",
+      fix: "Update pi with `npm install -g --ignore-scripts @earendil-works/pi-coding-agent@latest` or `pi update --self`.",
     });
   }
 
@@ -537,8 +537,8 @@ export function buildRuntimeUpdateAdvice(input: {
   npmMinReleaseAge?: string;
 }): string[] {
   const installCommand = input.npmMinReleaseAge
-    ? "npm install -g @earendil-works/pi-coding-agent@latest --force --min-release-age=0"
-    : "npm install -g @earendil-works/pi-coding-agent@latest --force";
+    ? "npm install -g --ignore-scripts @earendil-works/pi-coding-agent@latest --force --min-release-age=0"
+    : "npm install -g --ignore-scripts @earendil-works/pi-coding-agent@latest --force";
   const lines = [
     "nvm use <node-version-if-applicable>",
     "npm uninstall -g @earendil-works/pi-coding-agent",

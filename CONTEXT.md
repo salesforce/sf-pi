@@ -8,6 +8,10 @@ SF Pi is a bundled set of Salesforce-focused extensions for pi. It exists to mak
 The package-level product that bundles Salesforce-oriented pi extensions.
 _Avoid_: sf-pi repo, plugin collection
 
+**Git-Installed SF Pi Package**:
+The current distribution posture for **SF Pi**: users install the public GitHub repository through pi's package installer rather than consuming a published npm package.
+_Avoid_: npm-published package, local-only checkout, private package
+
 **Bundled Extension**:
 A first-party extension shipped as part of SF Pi and managed through the shared extension catalog.
 _Avoid_: plugin, add-on, module
@@ -230,6 +234,7 @@ _Avoid_: duplicated docs, hardcoded personal skill paths, Salesforce encyclopedi
 
 ## Relationships
 
+- **SF Pi** is currently distributed as a **Git-Installed SF Pi Package**.
 - **SF Pi** contains one or more **Bundled Extensions**.
 - A **Bundled Extension** exposes zero or more **Runtime Surfaces**.
 - The **Welcome Splash** is a **Runtime Surface** owned by a **Bundled Extension**.

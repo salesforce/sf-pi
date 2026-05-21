@@ -16,7 +16,7 @@ Detected Node.js ${process.version}.
 Install or switch to Node 22, then reinstall pi and sf-pi:
   nvm install 22
   nvm use 22
-  npm install -g @earendil-works/pi-coding-agent
+  npm install -g --ignore-scripts @earendil-works/pi-coding-agent
   pi install git:github.com/salesforce/sf-pi
 `);
   process.exit(1);

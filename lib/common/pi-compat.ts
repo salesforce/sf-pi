@@ -28,7 +28,7 @@ import { fileURLToPath } from "node:url";
  * package.json. Bump this whenever sf-pi starts depending on an API added
  * in a newer pi release.
  */
-export const MIN_PI_VERSION = "0.75.3";
+export const MIN_PI_VERSION = "0.75.4";
 
 /**
  * npm scopes pi-coding-agent has shipped under, in preference order. Pi
@@ -149,7 +149,7 @@ export function requirePiVersion(
     console.warn(
       [
         `[sf-pi] Skipping "${extensionName}": requires pi-coding-agent >= ${minVersion}, found ${installed}.`,
-        "Run `pi update --self` to migrate from `@mariozechner/pi-coding-agent` to `@earendil-works/pi-coding-agent`. If `pi --version` still reports the old version, run `npm install -g @earendil-works/pi-coding-agent@latest --force --min-release-age=0`, then `hash -r` and `pi --version`.",
+        "Run `pi update --self` to migrate from `@mariozechner/pi-coding-agent` to `@earendil-works/pi-coding-agent`. If `pi --version` still reports the old version, run `npm install -g --ignore-scripts @earendil-works/pi-coding-agent@latest --force --min-release-age=0`, then `hash -r` and `pi --version`.",
       ].join(" "),
     );
   }

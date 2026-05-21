@@ -32,7 +32,7 @@ jobs:
           cache: npm
 
       - name: Install dependencies (production only)
-        run: npm ci --omit=dev --legacy-peer-deps
+        run: npm ci --omit=dev --ignore-scripts --legacy-peer-deps
 
       - name: Run license-checker
         run: |

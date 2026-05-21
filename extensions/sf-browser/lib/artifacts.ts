@@ -139,16 +139,25 @@ export function latestEvidenceCaptures(limit = 5, sessionId?: string): BrowserEv
   return evidenceStore(sessionId).read().captures.slice(-limit).reverse();
 }
 
-export function imageContentFromFile(filePath: string, mimeType: string): ImageContent | null {
+export function readImageContentFromFile(filePath: string, mimeType: string): ImageContent | null {
   if (!existsSync(filePath)) return null;
   try {
-    const size = statSync(filePath).size;
-    if (size > MAX_EMBED_BYTES) return null;
     return {
       type: "image",
       data: readFileSync(filePath).toString("base64"),
       mimeType,
     };
+  } catch {
+    return null;
+  }
+}
+
+export function imageContentFromFile(filePath: string, mimeType: string): ImageContent | null {
+  if (!existsSync(filePath)) return null;
+  try {
+    const size = statSync(filePath).size;
+    if (size > MAX_EMBED_BYTES) return null;
+    return readImageContentFromFile(filePath, mimeType);
   } catch {
     return null;
   }

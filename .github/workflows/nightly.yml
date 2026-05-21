@@ -42,7 +42,7 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci --legacy-peer-deps
+        run: npm ci --ignore-scripts --legacy-peer-deps
 
       - name: Run tests with coverage
         run: npx vitest run --coverage
@@ -74,7 +74,7 @@ jobs:
           cache: npm
 
       - name: Install locked dependencies
-        run: npm ci --legacy-peer-deps
+        run: npm ci --ignore-scripts --legacy-peer-deps
 
       - name: Overlay latest Pi packages
         run: >-

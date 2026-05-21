@@ -67,7 +67,7 @@ npm --version
 ### Step 2 — Install the pi coding agent
 
 ```bash
-npm install -g @earendil-works/pi-coding-agent
+npm install -g --ignore-scripts @earendil-works/pi-coding-agent
 ```
 
 Then run `pi` in any folder to launch the TUI. Full docs, tutorials, and
@@ -128,7 +128,7 @@ macOS, Linux, and WSL are the primary targets. Native Windows works on
 x64 and ARM64 once the `sf` CLI is installed, but WSL is recommended for
 parity with Linux/macOS shell tooling. The minimum pi version tracks the
 `peerDependencies` range in [`package.json`](./package.json) (currently
-`>=0.75.3`). Older pi runtimes are not supported; the shims in
+`>=0.75.4`). Older pi runtimes are not supported; the shims in
 [`lib/common/pi-compat.ts`](./lib/common/pi-compat.ts) fail gracefully with
 a one-line "run `pi update`" warning instead of letting extensions crash on
 missing runtime APIs.
@@ -456,7 +456,7 @@ invocation and is picked up by all sf-pi commands without any sf-pi change.
 export PI_CODING_AGENT_SESSION_DIR="$HOME/.pi-sessions"
 ```
 
-sf-pi requires pi `>=0.75.3`, so supported installations honor the env
+sf-pi requires pi `>=0.75.4`, so supported installations honor the env
 var; older pi releases should be updated before running current sf-pi.
 
 ## Adding a New Extension
@@ -546,7 +546,7 @@ Use Node.js `>=22.19`, then reinstall pi and sf-pi from the same shell:
 ```bash
 nvm install 22
 nvm use 22
-npm install -g @earendil-works/pi-coding-agent
+npm install -g --ignore-scripts @earendil-works/pi-coding-agent
 pi install git:github.com/salesforce/sf-pi
 ```
 

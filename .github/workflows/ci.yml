@@ -41,7 +41,7 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci --legacy-peer-deps
+        run: npm ci --ignore-scripts --legacy-peer-deps
 
       - name: Check generated catalog
         run: npm run generate-catalog:check
@@ -60,6 +60,9 @@ jobs:
 
       - name: Type check
         run: npm run check
+
+      - name: Check lifecycle-script allowlist
+        run: npm run check:lifecycle-scripts
 
       - name: Run tests
         run: npm test
@@ -100,7 +103,7 @@ jobs:
 
       - name: Install dependencies
         if: github.event_name == 'pull_request'
-        run: npm ci --legacy-peer-deps
+        run: npm ci --ignore-scripts --legacy-peer-deps
 
       - name: Lint PR commits against commitlint.config.mjs
         if: github.event_name == 'pull_request'
@@ -131,7 +134,7 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci --legacy-peer-deps
+        run: npm ci --ignore-scripts --legacy-peer-deps
 
       - name: Run npm audit (production only, fail on high)
         run: npm audit --omit=dev --audit-level=high

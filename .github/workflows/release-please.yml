@@ -78,8 +78,8 @@ jobs:
           # cache-poisoning surface area: this job pushes back to the
           # release branch, so a cache keyed on poisoned
           # package-lock.json content could influence release-bound
-          # commits. Plain `npm ci` is simpler and safer. See zizmor
-          # cache-poisoning rule.
+          # commits. `npm ci --ignore-scripts` is simpler and safer. See
+          # zizmor cache-poisoning rule.
 
       - name: Sync main into release PR branch + regenerate catalog
         # Two things happen here, both necessary on every release-please run:
@@ -113,7 +113,7 @@ jobs:
           fi
 
           # 2. Regenerate catalog artifacts.
-          npm ci --legacy-peer-deps
+          npm ci --ignore-scripts --legacy-peer-deps
           npm run generate-catalog
           if ! git diff --quiet; then
             git add -A

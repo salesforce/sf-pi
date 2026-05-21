@@ -62,7 +62,7 @@ jobs:
         run: node scripts/sync-agentforce-sdk.mjs --ref "$UPSTREAM_REF"
 
       - name: Install sf-pi dependencies
-        run: npm ci --legacy-peer-deps
+        run: npm ci --ignore-scripts --legacy-peer-deps
 
       - name: Validate
         run: |

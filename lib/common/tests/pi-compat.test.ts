@@ -53,13 +53,10 @@ describe("pi version floor", () => {
       peerDependencies?: Record<string, string>;
     };
 
-    expect(MIN_PI_VERSION).toBe("0.75.3");
-    expect(pkg.peerDependencies?.["@earendil-works/pi-coding-agent"]).toBe(">=0.75.3");
-    // pi-ai and pi-tui are transitive of pi-coding-agent and ship in lockstep,
-    // so they are intentionally absent from peerDependencies (see commit
-    // 4f1b753). Lock that state so they don't silently come back.
-    expect(pkg.peerDependencies?.["@earendil-works/pi-ai"]).toBeUndefined();
-    expect(pkg.peerDependencies?.["@earendil-works/pi-tui"]).toBeUndefined();
+    expect(MIN_PI_VERSION).toBe("0.75.4");
+    expect(pkg.peerDependencies?.["@earendil-works/pi-coding-agent"]).toBe(">=0.75.4");
+    expect(pkg.peerDependencies?.["@earendil-works/pi-ai"]).toBe("*");
+    expect(pkg.peerDependencies?.["@earendil-works/pi-tui"]).toBe("*");
   });
 });
 
