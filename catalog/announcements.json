@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.139.0-2026-05-20",
-  "latestVersion": "0.139.0",
+  "revision": "release-0.140.0-2026-05-20",
+  "latestVersion": "0.140.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.139.0",
+      "id": "release-0.140.0",
       "kind": "update",
-      "title": "sf-pi v0.139.0 — improve sf-browser snapshot summaries",
+      "title": "sf-pi v0.140.0 — expand sf-browser runbooks",
       "publishedAt": "2026-05-20T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.139.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.140.0",
       "severity": "info",
-      "body": "improve sf-browser snapshot summaries"
+      "body": "expand sf-browser runbooks"
     },
     {
       "id": "pi-0.73-required",
