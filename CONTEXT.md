@@ -28,6 +28,14 @@ _Avoid_: integration point, hook thing
 The SF Pi startup visual surface that introduces the session and summarizes relevant SF Pi runtime status without replacing the normal command or manager surfaces.
 _Avoid_: boot logo, decorative header, startup dashboard
 
+**Pi Runtime**:
+The upstream pi coding-agent process that hosts SF Pi and provides package loading, settings, skills, extensions, and the terminal UI.
+_Avoid_: SF Pi, bundled extension, Salesforce runtime
+
+**Release Freshness**:
+The user-visible posture that compares an installed package or runtime version with the latest known release and reports it as current, update-available, or unknown.
+_Avoid_: health check, deployment status, security support guarantee
+
 **SF Brain**:
 The Bundled Extension that gives agents compact Salesforce operator guidance and a reference map to the deeper SF Pi and Salesforce resources they should load only when needed.
 _Avoid_: Salesforce encyclopedia, all-purpose memory dump
@@ -238,6 +246,7 @@ _Avoid_: duplicated docs, hardcoded personal skill paths, Salesforce encyclopedi
 - **SF Pi** contains one or more **Bundled Extensions**.
 - A **Bundled Extension** exposes zero or more **Runtime Surfaces**.
 - The **Welcome Splash** is a **Runtime Surface** owned by a **Bundled Extension**.
+- The **Welcome Splash** may summarize **Release Freshness** for **SF Pi** and the **Pi Runtime** without becoming an update manager.
 - The **Manager Surface** controls the enabled state and configuration entry points for **Bundled Extensions**.
 - **SF Brain** is a **Bundled Extension** that provides the **Salesforce Operator Kernel**.
 - **SF Brain** routes Data 360 work to **SF Data 360** without embedding Data 360 operation details.

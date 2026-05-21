@@ -168,6 +168,7 @@ export const GLYPH_TABLE = {
   bug: { emoji: "🐛", ascii: "!" },
   pr: { emoji: "🔀", ascii: "><" },
   privacy: { emoji: "🔒", ascii: "#" },
+  pi: { emoji: "π", ascii: "p" },
   // sf-skills row → official Salesforce afv-library install status. The 📚
   // emoji literally matches the repo name ("afv-library"); ASCII fallback is
   // a single ampersand to stay one-cell wide ("&" reads as "and / library"

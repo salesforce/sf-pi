@@ -4,8 +4,8 @@
  *
  * Layout modes (driven by terminal width):
  *   - Two-column (default, termWidth ≥ SINGLE_COL_THRESHOLD):
- *       Left:  Gradient Pi logo, model info, monthly cost, extension health,
- *              Slack/Gateway/SF CLI status
+ *       Left:  Gradient Pi logo, model info, monthly cost, optional integrations,
+ *              environment checks, and release freshness rows
  *       Right: Announcements, What's New, loaded counts, recent sessions,
  *              recommended extensions, attribution
  *   - Single-column (narrow terminals): left block stacked above right block
@@ -283,7 +283,7 @@ function formatBudget(budget: number | null): string {
 }
 
 const ICON_COL_WIDTH = 2;
-const LABEL_COL_WIDTH = "sf-pi Extensions".length;
+const LABEL_COL_WIDTH = "Monthly Usage".length;
 
 type SplashGlyphKey = Parameters<typeof glyph>[0];
 
@@ -455,6 +455,55 @@ function formatSfCliStatusValue(data: SplashData, mode: GlyphMode): string {
   return `${SF_GREEN("✓")} ${SF_GREEN("Installed")}${suffix}`;
 }
 
+function formatVersion(version: string | undefined): string {
+  return version ? `v${version}` : "version unknown";
+}
+
+function formatReleaseStatusValue(
+  status: SplashData["sfPiRelease"] | SplashData["piRelease"],
+  mode: GlyphMode,
+  suffix: string = "",
+): string {
+  if (!status) {
+    return MUTED(`${glyph("hourglass", mode)} checking latest${suffix}`);
+  }
+
+  const installed = formatVersion(status.installedVersion);
+  if (status.loading || status.freshness === "checking") {
+    return `${MUTED(`${glyph("hourglass", mode)} checking latest`)} ${MUTED(`· ${installed}`)}${suffix}`;
+  }
+
+  if (status.freshness === "update-available") {
+    const latest = status.latestVersion ? `v${status.latestVersion}` : "latest";
+    return `${SF_ORANGE("↑")} ${SF_ORANGE("update available")} ${MUTED(`· ${installed} → ${latest}`)}${suffix}`;
+  }
+
+  if (status.freshness === "latest") {
+    return `${SF_GREEN("✓")} ${SF_GREEN("latest")} ${MUTED(`· ${installed}`)}${suffix}`;
+  }
+
+  const reason = status.checkSkipped ? "latest check skipped" : "latest unknown";
+  return `${SF_GREEN("✓")} ${SF_GREEN("installed")} ${MUTED(`· ${installed} (${reason})`)}${suffix}`;
+}
+
+function releaseActionHint(
+  status: SplashData["sfPiRelease"] | SplashData["piRelease"],
+): string | null {
+  if (!status || status.loading || status.freshness !== "update-available") return null;
+  return status.updateCommand ?? null;
+}
+
+function formatSfPiExtensionSuffix(data: SplashData, mode: GlyphMode): string {
+  if (data.extensionHealthLoading)
+    return ` ${MUTED(`(${glyph("hourglass", mode)} extensions loading)`)}`;
+  const extCount = data.extensionHealth.filter(
+    (e) => e.status === "active" || e.status === "locked",
+  ).length;
+  const extTotal = data.extensionHealth.length;
+  if (extTotal === 0) return "";
+  return ` ${MUTED(`(${extCount}/${extTotal} extensions active)`)}`;
+}
+
 function nodeCertSourceLabel(source: NonNullable<SplashData["nodeCert"]>["source"]): string {
   switch (source) {
     case "env":
@@ -603,16 +652,8 @@ function buildLeftColumn(
   );
   lines.push("");
 
-  // Extension health (heading only — individual items removed)
+  // Optional integration and environment statuses.
   lines.push(horizontalRule(colWidth));
-  const extCount = data.extensionHealth.filter(
-    (e) => e.status === "active" || e.status === "locked",
-  ).length;
-  const extTotal = data.extensionHealth.length;
-  const extensionValue = data.extensionHealthLoading
-    ? MUTED(`${glyph("hourglass", mode)} Loading`)
-    : `${SF_GREEN(`${extCount}`)}${MUTED(`/${extTotal} active`)}`;
-  lines.push(formatGlyphInfoRow("extensions", mode, "sf-pi Extensions", extensionValue));
 
   // Slack status is optional: hide it unless sf-slack is enabled and configured
   // or has published a live status. This keeps public/external installs quiet.
@@ -687,6 +728,31 @@ function buildLeftColumn(
   const sfSkillsHint = sfSkillsActionHint(data.sfSkills);
   if (sfSkillsHint) {
     const truncated = truncateToWidth(sfSkillsHint, Math.max(10, colWidth - 4), "…");
+    lines.push(`   ${MUTED(`→ ${truncated}`)}`);
+  }
+
+  // Release freshness rows sit under SF Skills so package/runtime update
+  // state is grouped together. The sf-pi row carries the extension
+  // active/total count, replacing the older top-level "sf-pi Extensions"
+  // row without losing the enablement signal.
+  lines.push(
+    formatGlyphInfoRow(
+      "extensions",
+      mode,
+      "sf-pi",
+      formatReleaseStatusValue(data.sfPiRelease, mode, formatSfPiExtensionSuffix(data, mode)),
+    ),
+  );
+  const sfPiHint = releaseActionHint(data.sfPiRelease);
+  if (sfPiHint) {
+    const truncated = truncateToWidth(sfPiHint, Math.max(10, colWidth - 4), "…");
+    lines.push(`   ${MUTED(`→ ${truncated}`)}`);
+  }
+
+  lines.push(formatGlyphInfoRow("pi", mode, "Pi", formatReleaseStatusValue(data.piRelease, mode)));
+  const piHint = releaseActionHint(data.piRelease);
+  if (piHint) {
+    const truncated = truncateToWidth(piHint, Math.max(10, colWidth - 4), "…");
     lines.push(`   ${MUTED(`→ ${truncated}`)}`);
   }
   lines.push("");

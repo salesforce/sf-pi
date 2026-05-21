@@ -9,7 +9,6 @@ Salesforce-branded splash screen that displays on startup with an animated Pi + 
 - Animated Pi + SALESFORCE wordmark with Salesforce-blue and pastel-rainbow palettes
 - Active model name and provider
 - Monthly cost usage line with color-coded progress (green → orange → red)
-- sf-pi extension health grid (active/disabled/locked indicators)
 - Optional Slack and auth-gated LLM Gateway status only when enabled/configured,
   plus lightweight SF CLI install/latest and Node CA certificate status
 - **Privacy row** showing pi's anonymous-telemetry posture
@@ -17,6 +16,9 @@ Salesforce-branded splash screen that displays on startup with an animated Pi + 
 override)`). Driven by `lib/common/privacy/state.ts` — see
   [`extensions/sf-pi-manager/README.md`](../sf-pi-manager/README.md) for the
   full decision matrix and the `/sf-pi telemetry` command surface.
+- **Release freshness rows** for SF Skills, sf-pi, and the Pi runtime. The
+  sf-pi row also carries the bundled-extension active/total count so the
+  splash avoids a separate redundant extension-health row.
 
 **Right column:**
 
@@ -76,51 +78,60 @@ session_shutdown
    `SF CLI installed · latest` without running org/config detection. Full
    org/API context belongs to sf-devbar.
 
-6. **Optional integration rows stay quiet** — Slack and LLM Gateway rows are
+6. **Release freshness is cache-first** — sf-pi release freshness reads the
+   local package version and the bundled/cached announcements feed on first
+   paint, then piggybacks on the deferred announcements refresh. Pi runtime
+   freshness reads the installed pi version locally, then runs a deferred
+   bounded `pi.dev` latest-version fetch that respects `PI_OFFLINE` and
+   `PI_SKIP_VERSION_CHECK`. Update hints render only when a newer version is
+   known.
+
+7. **Optional integration rows stay quiet** — Slack and LLM Gateway rows are
    hidden unless their bundled extensions are enabled and have meaningful live
    status. This keeps public/external installs from seeing Salesforce-internal or
    unconfigured integrations as startup noise.
 
-7. **Background loading** — CLI status, Node CA certificate status, monthly usage,
-   and remote announcements refresh asynchronously after the splash appears, so
-   startup remains responsive while the visible rows update in place. Node CA
+8. **Background loading** — CLI status, release freshness, Node CA certificate
+   status, monthly usage, and remote announcements refresh asynchronously after
+   the splash appears, so startup remains responsive while the visible rows
+   update in place. Node CA
    detection is local-only and cache-first: first paint reads
    `sf-welcome/node-cert-status.json`, then a deferred detector checks
    `NODE_EXTRA_CA_CERTS`, the sf-pi CA fixer state, LaunchAgent/shell exports,
    and bounded known PEM candidates without network calls, subprocesses, or
    recursive filesystem scans.
 
-8. **Salesforce brand gradient** — Uses actual Salesforce brand colors (#0070D2 blue,
+9. **Salesforce brand gradient** — Uses actual Salesforce brand colors (#0070D2 blue,
    #01C3E2 Astro cyan, #9061F9 purple) for the Pi logo gradient.
 
-9. **Terminal-aware glyph policy** — Every emoji/box icon on the splash
-   (and in the sf-devbar bottom bar) routes through
-   `lib/common/glyph-policy.ts`. On terminals known to lack emoji font
-   fallback (notably macOS Terminal.app, detected via
-   `TERM_PROGRAM=Apple_Terminal`), the policy swaps in ASCII equivalents
-   (`⚡` → `»`, `💰` → `$`, `📦` → `[]`, …) so users see readable
-   status instead of `?` tofu. Users can override via
-   `SF_PI_ASCII_ICONS=1`/`0` or `sfPi.asciiIcons: true|false` in
-   `settings.json`.
+10. **Terminal-aware glyph policy** — Every emoji/box icon on the splash
+    (and in the sf-devbar bottom bar) routes through
+    `lib/common/glyph-policy.ts`. On terminals known to lack emoji font
+    fallback (notably macOS Terminal.app, detected via
+    `TERM_PROGRAM=Apple_Terminal`), the policy swaps in ASCII equivalents
+    (`⚡` → `»`, `💰` → `$`, `📦` → `[]`, …) so users see readable
+    status instead of `?` tofu. Users can override via
+    `SF_PI_ASCII_ICONS=1`/`0` or `sfPi.asciiIcons: true|false` in
+    `settings.json`.
 
-10. **Narrow-terminal single-column fallback** — Below ~100 columns the
+11. **Narrow-terminal single-column fallback** — Below ~100 columns the
     splash stacks its two columns vertically so no content is truncated.
     Above that threshold the two-column layout grows up to 220 columns
     wide, filling wide terminals instead of leaving an ellipsised island.
 
-11. **Top-left anchored overlay** — The splash hugs the top-left corner
+12. **Top-left anchored overlay** — The splash hugs the top-left corner
     of the terminal with a 1-col left margin so it sits flush with pi's
     own prompt and bottom bar instead of floating center-screen on
     wide terminals.
 
-12. **Bundled Nerd Font installer** — Four MesloLGM Nerd Font Mono TTFs
+13. **Bundled Nerd Font installer** — Four MesloLGM Nerd Font Mono TTFs
     ship under `assets/fonts/`. `/sf-setup-fonts` copies them into
     `~/Library/Fonts` (macOS) or `~/.local/share/fonts` (Linux) with
     SHA-256 verification, idempotent on repeat runs, and best-effort
     cache refresh via `atsutil` / `fc-cache`. Windows users get manual
     install instructions.
 
-13. **One-time install prompt** — When the splash detects ASCII-fallback
+14. **One-time install prompt** — When the splash detects ASCII-fallback
     glyphs _and_ the font isn't installed _and_ the user hasn't been
     asked before, `sf-welcome` shows a single `ctx.ui.confirm()` dialog:
     "Install bundled Nerd Font?" The decision (yes or no) is persisted
@@ -161,6 +172,7 @@ extensions/sf-welcome/
     font-installer.ts       ← implementation module
     node-cert-status.ts     ← implementation module
     recommendations-status.ts← implementation module
+    release-status.ts       ← implementation module
     session-data.ts         ← implementation module
     sf-cli-status.ts        ← implementation module
     sf-skills-status.ts     ← implementation module
@@ -180,12 +192,14 @@ extensions/sf-welcome/
     font-installer.test.ts  ← unit / smoke test
     node-cert-status.test.ts← unit / smoke test
     recommendations-status.test.ts← unit / smoke test
+    release-status.test.ts  ← unit / smoke test
     sdk-migration.test.ts   ← unit / smoke test
     session-data.test.ts    ← unit / smoke test
     sf-cli-status.test.ts   ← unit / smoke test
     sf-skills-status.test.ts← unit / smoke test
     smoke.test.ts           ← unit / smoke test
     splash-privacy.test.ts  ← unit / smoke test
+    splash-release-status.test.ts← unit / smoke test
     splash-sf-skills.test.ts← unit / smoke test
     splash-wordmark-shadow.test.ts← unit / smoke test
     startup-mode.test.ts    ← unit / smoke test
@@ -220,6 +234,10 @@ user has most recently acknowledged (via a dismissed splash). The What's New
 panel appears only when the installed pi version is strictly greater than
 that stored value. First-ever launches seed the file eagerly and show no
 panel, so a fresh install is never noisy.
+
+`<globalAgentDir>/sf-pi/sf-welcome/pi-release-status.json` caches the Pi
+runtime latest-version result for 24 hours. sf-pi release freshness reuses the
+announcements state/cache under `<globalAgentDir>/state/sf-pi/announcements.json`.
 
 ## Testing Strategy
 

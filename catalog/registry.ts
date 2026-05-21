@@ -187,7 +187,7 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
   {
     id: "sf-welcome",
     name: "SF Welcome",
-    description: "Salesforce-branded splash screen with environment status, extension health, and community info",
+    description: "Salesforce-branded splash screen with environment status, release freshness, and community info",
     file: "extensions/sf-welcome/index.ts",
     category: "ui",
     maturity: "stable",

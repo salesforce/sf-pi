@@ -1,25 +1,28 @@
 {
   "id": "sf-welcome",
   "name": "SF Welcome",
-  "description": "Salesforce-branded splash screen with environment status, extension health, and community info",
+  "description": "Salesforce-branded splash screen with environment status, release freshness, and community info",
   "category": "ui",
   "maturity": "stable",
   "defaultEnabled": true,
   "commands": ["/sf-welcome", "/sf-setup-fonts"],
   "events": ["session_start", "agent_start", "tool_call", "session_shutdown"],
   "docs": {
-    "summary": "Two-column startup splash with model/cost/extension health on the left and announcements/recommended extensions/recent sessions on the right. Dismissable overlay (default) or persistent header (quietStartup), plus /sf-welcome and /sf-setup-fonts commands.",
+    "summary": "Two-column startup splash with model/cost/environment status and release freshness on the left, plus announcements/recommended extensions/recent sessions on the right. Dismissable overlay (default) or persistent header (quietStartup), plus /sf-welcome and /sf-setup-fonts commands.",
     "primaryFiles": [
       "index.ts",
       "lib/splash-component.ts",
       "lib/splash-data.ts",
-      "lib/announcements.ts",
       "lib/recommendations-status.ts",
-      "lib/whats-new.ts",
+      "lib/release-status.ts",
       "lib/sf-cli-status.ts",
+      "lib/sf-skills-status.ts",
       "lib/extension-health.ts",
       "lib/font-installer.ts"
     ],
-    "stateFiles": ["~/.pi/agent/sf-welcome-state.json"]
+    "stateFiles": [
+      "~/.pi/agent/sf-welcome-state.json",
+      "<globalAgentDir>/sf-pi/sf-welcome/pi-release-status.json"
+    ]
   }
 }

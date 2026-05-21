@@ -30,6 +30,7 @@ import { collectRecommendationsStatus } from "./recommendations-status.ts";
 import { readWelcomeState } from "./state-store.ts";
 import { collectCaBundleNudge } from "./ca-bundle-nudge.ts";
 import { readCachedNodeCertStatus } from "./node-cert-status.ts";
+import { collectInitialPiReleaseStatus, detectSfPiReleaseStatus } from "./release-status.ts";
 import { summarizeAvailableSkillSources } from "../../../lib/common/skill-sources/skill-sources.ts";
 import { getTelemetryState } from "../../../lib/common/privacy/state.ts";
 import {
@@ -52,6 +53,8 @@ export type {
   AnnouncementsSummary,
   LoadedCounts,
   SfCliStatusInfo,
+  ReleaseStatusInfo,
+  ReleaseFreshness,
   SfSkillsStatusInfo,
   SfSkillsInstallKind,
   SfSkillsFreshness,
@@ -87,6 +90,14 @@ export {
   readCachedNodeCertStatus,
   writeCachedNodeCertStatus,
 } from "./node-cert-status.ts";
+export {
+  collectInitialPiReleaseStatus,
+  detectPiReleaseStatus,
+  detectSfPiReleaseStatus,
+  fetchLatestPiVersion,
+  readCachedPiReleaseStatus,
+  writeCachedPiReleaseStatus,
+} from "./release-status.ts";
 export { estimateMonthlyCost, getRecentSessions } from "./session-data.ts";
 export {
   buildWhatsNewPayload,
@@ -313,6 +324,7 @@ export function collectInitialSplashData(
   modelName: string,
   providerName: string,
   monthlyBudgetFallback: number = 3000,
+  cwd?: string,
 ): SplashData {
   const gatewayState = getMonthlyUsageState();
   const gatewayUsage = gatewayState.monthlyUsage;
@@ -345,6 +357,8 @@ export function collectInitialSplashData(
     loadedCountsLoading: true,
     recentSessionsLoading: true,
     sfCli: { installed: false, freshness: "checking", loading: true },
+    sfPiRelease: detectSfPiReleaseStatus(cwd),
+    piRelease: collectInitialPiReleaseStatus(),
     nodeCert: { kind: "checking", loading: true },
     doctor: summarizeStartupDoctorNudge(runDoctorDiagnostics()) ?? undefined,
     privacy: collectPrivacyStatus(),
@@ -433,6 +447,8 @@ export function collectSplashData(
     caBundleNudge,
     privacy,
     sfCli: undefined,
+    sfPiRelease: detectSfPiReleaseStatus(cwd),
+    piRelease: collectInitialPiReleaseStatus(),
     nodeCert,
     whatsNew,
     announcements,

@@ -3,8 +3,8 @@
  * sf-welcome — Salesforce-branded splash screen for sf-pi.
  *
  * Displays a two-column overlay on startup with:
- *   Left column:  Gradient Pi logo, model info, monthly cost bar, extension health,
- *                 Slack, Gateway, SF CLI, and Node CA status
+ *   Left column:  Gradient Pi logo, model info, monthly cost, optional integrations,
+ *                 environment checks, and release freshness rows
  *   Right column: Announcements, What's New, loaded counts, recent sessions,
  *                  recommended extensions, attribution
  *
@@ -69,6 +69,8 @@ import {
   collectSplashData,
   detectSfCliStatus,
   detectNodeCertStatus,
+  detectPiReleaseStatus,
+  detectSfPiReleaseStatus,
   detectSfSkillsStatus,
   readCachedNodeCertStatus,
   readCachedSfCliStatus,
@@ -77,6 +79,7 @@ import {
   refreshAnnouncementsSummary,
   resolveMonthlyUsage,
   writeCachedNodeCertStatus,
+  writeCachedPiReleaseStatus,
   writeCachedSfCliStatus,
   writeCachedSfSkillsStatus,
 } from "./lib/splash-data.ts";
@@ -364,7 +367,12 @@ export default function sfWelcome(pi: ExtensionAPI) {
     // is dismissed. Done here (not inside collectSplashData) so a cached
     // splash render never races with the current process's version.
     pendingSeenVersion = readCurrentPiVersion();
-    const data = collectInitialSplashData(modelName, providerName, MONTHLY_BUDGET_FALLBACK);
+    const data = collectInitialSplashData(
+      modelName,
+      providerName,
+      MONTHLY_BUDGET_FALLBACK,
+      ctx.cwd,
+    );
     const cachedSfCli = readCachedSfCliStatus();
     if (cachedSfCli) {
       data.sfCli = cachedSfCli;
@@ -421,6 +429,7 @@ export default function sfWelcome(pi: ExtensionAPI) {
       try {
         if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
         const currentSfCli = data.sfCli;
+        const currentPiRelease = data.piRelease;
         const currentNodeCert = data.nodeCert;
         // Phase 2.3: split heavy FS work across two ticks. The first tick
         // runs collectSplashData EXCEPT loadedCounts (skipped via the
@@ -438,6 +447,7 @@ export default function sfWelcome(pi: ExtensionAPI) {
           if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
           Object.assign(data, settled);
           data.sfCli = currentSfCli ?? { installed: false, freshness: "checking", loading: true };
+          data.piRelease = currentPiRelease ?? data.piRelease;
           data.nodeCert = currentNodeCert ?? { kind: "checking", loading: true };
           data.doctor =
             summarizeStartupDoctorNudge(runDoctorDiagnostics({ cwd: ctx.cwd })) ?? undefined;
@@ -530,8 +540,31 @@ export default function sfWelcome(pi: ExtensionAPI) {
     }, 2_500);
     sfSkillsTimer.unref?.();
 
+    // Background Pi release freshness: cache-first for first paint, live
+    // refresh later. This mirrors Pi's documented update check endpoint but
+    // is delayed so it never competes with startup. It also respects
+    // PI_OFFLINE and PI_SKIP_VERSION_CHECK.
+    const piReleaseTimer = setTimeout(() => {
+      if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
+      void markBootStep("sf-welcome.pi-release-detect", () => detectPiReleaseStatus())
+        .then((status) => {
+          writeCachedPiReleaseStatus(status);
+          if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
+          data.piRelease = status;
+          scheduleSplashRepaint(ctx, generation);
+        })
+        .catch(() => {
+          if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
+          if (data.piRelease) {
+            data.piRelease = { ...data.piRelease, freshness: "unknown", loading: false };
+          }
+          scheduleSplashRepaint(ctx, generation);
+        });
+    }, 3_000);
+    piReleaseTimer.unref?.();
+
     // Background Node CA status: cache-first and strictly local. This runs
-    // after the SF CLI / SF Skills probes so it cannot affect first paint,
+    // after the SF CLI / SF Skills / Pi release probes so it cannot affect first paint,
     // and it performs no network, subprocess, or recursive filesystem work.
     const nodeCertTimer = setTimeout(() => {
       if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
@@ -556,7 +589,7 @@ export default function sfWelcome(pi: ExtensionAPI) {
         data.nodeCert = { kind: "unknown", loading: false };
         scheduleSplashRepaint(ctx, generation);
       }
-    }, 3_000);
+    }, 3_500);
     nodeCertTimer.unref?.();
 
     // Subscribe to the gateway usage store so any time the provider publishes
@@ -625,7 +658,11 @@ export default function sfWelcome(pi: ExtensionAPI) {
       )
         .then((summary) => {
           if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
-          if (!summary) return;
+          data.sfPiRelease = detectSfPiReleaseStatus(ctx.cwd);
+          if (!summary) {
+            scheduleSplashRepaint(ctx, generation);
+            return;
+          }
           data.announcements = summary;
           if (summary.visible.length > 0) {
             pendingAckedRevision = summary.revision || undefined;
@@ -741,7 +778,7 @@ export default function sfWelcome(pi: ExtensionAPI) {
       value: "summary",
       label: "Show splash summary",
       description:
-        "Print the same model, monthly-cost, gateway/slack, Node CA, extension health, and recent-session lines the splash shows on startup.",
+        "Print the same model, monthly-cost, gateway/slack, Node CA, release freshness, extension health, and recent-session lines the splash shows on startup.",
       group: "Diagnostics",
     },
     {
@@ -883,6 +920,18 @@ export default function sfWelcome(pi: ExtensionAPI) {
     } catch {
       data.nodeCert ??= { kind: "unknown", loading: false };
     }
+    data.sfPiRelease = detectSfPiReleaseStatus(ctx.cwd);
+    try {
+      const piRelease = await detectPiReleaseStatus();
+      writeCachedPiReleaseStatus(piRelease);
+      data.piRelease = piRelease;
+    } catch {
+      data.piRelease ??= {
+        freshness: "unknown",
+        loading: false,
+        updateCommand: "pi update --self",
+      };
+    }
     const healthLines = data.extensionHealth.map((ext) => {
       const statusIcon = ext.status === "active" ? "●" : ext.status === "locked" ? "◆" : "○";
       return `  ${statusIcon} ${ext.name} — ${ext.status}`;
@@ -898,6 +947,10 @@ export default function sfWelcome(pi: ExtensionAPI) {
       : "hidden";
     const slackStatus = data.slackVisible ? (data.slackStatus?.kind ?? "not checked") : "hidden";
     const nodeCertStatus = data.nodeCert?.kind ?? "not checked";
+    const activeExtensionCount = data.extensionHealth.filter(
+      (ext) => ext.status === "active" || ext.status === "locked",
+    ).length;
+    const totalExtensionCount = data.extensionHealth.length;
 
     return [
       "sf-pi Welcome Summary",
@@ -909,6 +962,8 @@ export default function sfWelcome(pi: ExtensionAPI) {
       `Gateway: ${gatewayStatus}`,
       `Slack: ${slackStatus}`,
       `Node CA Certs: ${nodeCertStatus}`,
+      `sf-pi: ${formatPlainReleaseStatus(data.sfPiRelease)} (${activeExtensionCount}/${totalExtensionCount} extensions active)`,
+      `Pi: ${formatPlainReleaseStatus(data.piRelease)}`,
       "",
       "sf-pi Extensions:",
       ...healthLines,
@@ -918,6 +973,21 @@ export default function sfWelcome(pi: ExtensionAPI) {
       "Recent Sessions:",
       ...data.recentSessions.map((s) => `  • ${s.name} (${s.timeAgo})`),
     ].join("\n");
+  }
+
+  function formatPlainReleaseStatus(
+    status: SplashData["sfPiRelease"] | SplashData["piRelease"],
+  ): string {
+    if (!status) return "not checked";
+    const installed = status.installedVersion ? `v${status.installedVersion}` : "version unknown";
+    if (status.freshness === "latest") return `latest · ${installed}`;
+    if (status.freshness === "update-available") {
+      const latest = status.latestVersion ? `v${status.latestVersion}` : "latest";
+      return `update available · ${installed} → ${latest}`;
+    }
+    if (status.freshness === "checking" || status.loading) return `checking latest · ${installed}`;
+    const reason = status.checkSkipped ? "latest check skipped" : "latest unknown";
+    return `installed · ${installed} (${reason})`;
   }
 
   async function emitWelcomeOutput(

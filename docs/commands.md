@@ -123,7 +123,7 @@ _Manage skills end-to-end: pinned HUD, tabbed datatable (Active/Discover/Stats),
 
 ### [SF Welcome](../extensions/sf-welcome/)
 
-_Salesforce-branded splash screen with environment status, extension health, and community info_
+_Salesforce-branded splash screen with environment status, release freshness, and community info_
 
 - Default: **on**
 - Commands: `/sf-welcome`, `/sf-setup-fonts`

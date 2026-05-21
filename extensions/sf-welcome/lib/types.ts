@@ -39,6 +39,20 @@ export interface SfCliStatusInfo {
   loading: boolean;
 }
 
+export type ReleaseFreshness = "checking" | "latest" | "update-available" | "unknown";
+
+export interface ReleaseStatusInfo {
+  installedVersion?: string;
+  latestVersion?: string;
+  freshness: ReleaseFreshness;
+  loading: boolean;
+  /** Optional command shown as a muted hint when freshness is update-available. */
+  updateCommand?: string;
+  /** True when the caller deliberately skipped the live latest check. */
+  checkSkipped?: boolean;
+  skipReason?: "offline" | "version-check-disabled";
+}
+
 /**
  * How the official forcedotcom/afv-library skills repo is wired into the
  * current pi install.
@@ -228,6 +242,12 @@ export interface SplashData {
    *  populated asynchronously after initial render. Mirrors the sfCli
    *  cache-first → deferred-refresh pattern; never blocks startup. */
   sfSkills?: SfSkillsStatusInfo;
+  /** sf-pi package release freshness. Local/cache-only at startup; live
+   *  freshness piggybacks on the deferred announcements refresh. */
+  sfPiRelease?: ReleaseStatusInfo;
+  /** Pi runtime release freshness. Local/cache-only at startup, then
+   *  refreshed by a deferred bounded fetch that respects Pi's offline flags. */
+  piRelease?: ReleaseStatusInfo;
   /** Node custom-CA status populated cache-first, then refreshed on a
    *  deferred timer. Never performs a live TLS probe during startup. */
   nodeCert?: NodeCertStatusInfo;

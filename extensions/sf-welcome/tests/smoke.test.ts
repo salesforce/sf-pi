@@ -50,6 +50,7 @@ describe("sf-welcome", () => {
     expect(data.providerName).toBe("fast-provider");
     expect(data.monthlyBudget).toBe(123);
     expect(data.sfCli?.loading).toBe(true);
+    expect(data.piRelease?.installedVersion).toBeDefined();
     expect(data.nodeCert?.loading).toBe(true);
     expect(data.loading).toBe(true);
     expect(data.slackLoading).toBe(true);
@@ -68,7 +69,9 @@ describe("sf-welcome", () => {
 
     expect(plain).not.toContain("Slack");
     expect(plain).not.toContain("LLM Gateway");
-    expect(plain).toContain("sf-pi Extensions");
+    expect(plain).not.toContain("sf-pi Extensions");
+    expect(plain).toContain("sf-pi");
+    expect(plain).toContain("Pi");
     expect(plain).toContain("Node CA Certs");
     expect(plain).toContain("Loading");
     expect(plain).not.toContain("Not connected");
@@ -455,7 +458,8 @@ describe("sf-welcome", () => {
 
     // Left-column content must be present…
     expect(plain).toContain("Welcome back!");
-    expect(plain).toContain("sf-pi Extensions");
+    expect(plain).toContain("sf-pi");
+    expect(plain).toContain("Pi");
     // …and the right-column 'Recent Sessions' heading confirms the stacked
     // layout is actually rendering the right-column content below the
     // left column instead of truncating it.
@@ -516,7 +520,8 @@ describe("sf-welcome", () => {
       // ASCII variants present…
       expect(plain).toMatch(/\$\s+Monthly Usage/);
       expect(plain).toMatch(/\[\] Loaded/);
-      expect(plain).toMatch(/\+\s+sf-pi Extensions/);
+      expect(plain).toMatch(/\+\s+sf-pi/);
+      expect(plain).toMatch(/p\s+Pi/);
       // …and the emoji variants are gone.
       expect(plain).not.toContain("💰 Monthly Usage");
       expect(plain).not.toContain("📦 Loaded");
