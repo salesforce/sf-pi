@@ -158,7 +158,7 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
   {
     id: "sf-skills",
     name: "SF Skills",
-    description: "Manage skills end-to-end: pinned HUD, tabbed datatable (Active/Discover/Stats), Claude/Codex/Cursor source detection, forcedotcom/afv-library install + auto-update, per-skill usage counters, and prune.",
+    description: "Manage skills end-to-end: live-context HUD, tabbed datatable (Active/Discover/Stats), Claude/Codex/Cursor source detection, forcedotcom/afv-library install + auto-update, per-skill usage counters, and prune.",
     file: "extensions/sf-skills/index.ts",
     category: "ui",
     maturity: "stable",

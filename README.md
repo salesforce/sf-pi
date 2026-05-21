@@ -384,7 +384,7 @@ For the canonical machine-readable bundle list, see [`catalog/index.json`](./cat
 | [SF LSP](./extensions/sf-lsp/)                                   | assistive  | on        | Real-time Salesforce LSP diagnostics on write/edit with a working-indicator spinner, transcript rows, and a permanent top-bar health segment in sf-devbar                                                                                      |
 | [SF DevBar](./extensions/sf-devbar/)                             | ui         | on        | Bespoke Salesforce developer status bar with org context, model info, git, and context window progress                                                                                                                                         |
 | [SF Ohana Spinner](./extensions/sf-ohana-spinner/)               | ui         | on        | Salesforce-themed rainbow spinner during LLM thinking                                                                                                                                                                                          |
-| [SF Skills](./extensions/sf-skills/)                             | ui         | on        | Manage skills end-to-end: pinned HUD, tabbed datatable (Active/Discover/Stats), Claude/Codex/Cursor source detection, forcedotcom/afv-library install + auto-update, per-skill usage counters, and prune.                                      |
+| [SF Skills](./extensions/sf-skills/)                             | ui         | on        | Manage skills end-to-end: live-context HUD, tabbed datatable (Active/Discover/Stats), Claude/Codex/Cursor source detection, forcedotcom/afv-library install + auto-update, per-skill usage counters, and prune.                                |
 | [SF Welcome](./extensions/sf-welcome/)                           | ui         | on        | Salesforce-branded splash screen with environment status, release freshness, and community info                                                                                                                                                |
 
 <!-- GENERATED:bundled-extensions:end -->
@@ -639,6 +639,7 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 **[SF Feedback](./extensions/sf-feedback/#troubleshooting)**
 
 - `/sf-feedback` opens a browser URL instead of creating the issue
+- GitHub says the account cannot create issues
 - Diagnostics show `unknown` or `unavailable`
 - A private value appears in the preview
 

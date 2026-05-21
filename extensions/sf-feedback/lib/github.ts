@@ -14,6 +14,7 @@ export interface CreateIssueResult {
   url?: string;
   fallbackUrl: string;
   detail: string;
+  shouldOpenFallback: boolean;
 }
 
 export async function createIssueWithGh(
@@ -40,6 +41,7 @@ export async function createIssueWithGh(
       url: extractIssueUrl(first.stdout) || firstLine(first.stdout),
       fallbackUrl,
       detail: "Created GitHub issue with gh CLI.",
+      shouldOpenFallback: true,
     };
   }
 
@@ -53,20 +55,37 @@ export async function createIssueWithGh(
         url: extractIssueUrl(retry.stdout) || firstLine(retry.stdout),
         fallbackUrl,
         detail: "Created GitHub issue with gh CLI without labels.",
+        shouldOpenFallback: true,
       };
     }
+    const detail = sanitizeText(retry.stderr || first.stderr || "GitHub issue creation failed.");
     return {
       ok: false,
       fallbackUrl,
-      detail: sanitizeText(retry.stderr || first.stderr || "GitHub issue creation failed."),
+      detail,
+      shouldOpenFallback: !isIssueCreationPermissionError(detail),
     };
   }
 
+  const detail = sanitizeText(first.stderr || "GitHub issue creation failed.");
   return {
     ok: false,
     fallbackUrl,
-    detail: sanitizeText(first.stderr || "GitHub issue creation failed."),
+    detail,
+    shouldOpenFallback: !isIssueCreationPermissionError(detail),
   };
+}
+
+export function isIssueCreationPermissionError(detail: string): boolean {
+  const normalized = detail.toLowerCase();
+  return (
+    normalized.includes("createissue") &&
+    (normalized.includes("enterprise managed user") ||
+      normalized.includes("unauthorized") ||
+      normalized.includes("resource not accessible") ||
+      normalized.includes("permission") ||
+      normalized.includes("forbidden"))
+  );
 }
 
 export function buildIssueUrl(title: string, body: string, labels: string[]): string {

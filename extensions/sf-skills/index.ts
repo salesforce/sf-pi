@@ -2,14 +2,16 @@
 /**
  * sf-skills behavior contract (HUD slice)
  *
- * Shows a persistent, pinned HUD in the top-right corner once the session has
- * actually used at least one skill. The HUD stays out of the way by using a
+ * Shows a pinned HUD in the top-right corner while at least one skill is still
+ * present in the active LLM context. The HUD stays out of the way by using a
  * non-capturing overlay, so scrolling chat content and tool output do not move it.
  *
  * Skill state model:
- * - In context: skill usage still present in the current LLM context
+ * - In context: skill usage still present in the current LLM context and shown
+ *   in the floating HUD
  * - Earlier in session: skill usage seen on the current branch, but no longer
- *   present in the active context after compaction or later conversation growth
+ *   present in the active context after compaction or later conversation growth;
+ *   available in `/sf-skills summary`, not in the floating HUD
  *
  * Detection signals:
  * - explicit `/skill:name` invocations (parsed from skill blocks in user messages)
@@ -169,7 +171,7 @@ function renderSkillsHelp(): string {
     "HUD (passive top-right overlay):",
     "  • In context — skills still present in active context",
     "  • Earlier in session — skills used on this branch but no longer in context after compaction/growth",
-    "  • Hidden until at least one skill is used",
+    "  • Floating HUD hides when no skills remain in active context",
     "",
     "Datatable (/sf-skills table):",
     "  • Tabs: Active / Discover / Stats",
@@ -196,6 +198,14 @@ function renderSkillsHelp(): string {
 // -------------------------------------------------------------------------------------------------
 // Extension entry point
 // -------------------------------------------------------------------------------------------------
+
+export function shouldShowFloatingHud(
+  state: SkillsHudState,
+  terminalWidth: number,
+  terminalHeight: number,
+): boolean {
+  return state.live.length > 0 && terminalWidth >= 100 && terminalHeight >= 14;
+}
 
 export default function sfSkills(pi: ExtensionAPI) {
   if (!requirePiVersion(pi, "sf-skills")) return;
@@ -243,7 +253,7 @@ export default function sfSkills(pi: ExtensionAPI) {
             margin: { top: 1, right: 2 },
             nonCapturing: true,
             visible: (terminalWidth, terminalHeight) => {
-              return hudState.hasAny && terminalWidth >= 100 && terminalHeight >= 14;
+              return shouldShowFloatingHud(hudState, terminalWidth, terminalHeight);
             },
           }),
         },

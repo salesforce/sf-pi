@@ -28,6 +28,10 @@ _Avoid_: integration point, hook thing
 The SF Pi startup visual surface that introduces the session and summarizes relevant SF Pi runtime status without replacing the normal command or manager surfaces.
 _Avoid_: boot logo, decorative header, startup dashboard
 
+**SF Skills HUD**:
+The passive floating indicator owned by the SF Skills Bundled Extension that shows skills currently active in the LLM context. Historical skill usage belongs in the command and summary surfaces, not in the persistent HUD.
+_Avoid_: skill history panel, permanent session badge, skills manager
+
 **Pi Runtime**:
 The upstream pi coding-agent process that hosts SF Pi and provides package loading, settings, skills, extensions, and the terminal UI.
 _Avoid_: SF Pi, bundled extension, Salesforce runtime
@@ -247,6 +251,7 @@ _Avoid_: duplicated docs, hardcoded personal skill paths, Salesforce encyclopedi
 - A **Bundled Extension** exposes zero or more **Runtime Surfaces**.
 - The **Welcome Splash** is a **Runtime Surface** owned by a **Bundled Extension**.
 - The **Welcome Splash** may summarize **Release Freshness** for **SF Pi** and the **Pi Runtime** without becoming an update manager.
+- The **SF Skills HUD** is a **Runtime Surface** owned by the SF Skills Bundled Extension.
 - The **Manager Surface** controls the enabled state and configuration entry points for **Bundled Extensions**.
 - **SF Brain** is a **Bundled Extension** that provides the **Salesforce Operator Kernel**.
 - **SF Brain** routes Data 360 work to **SF Data 360** without embedding Data 360 operation details.

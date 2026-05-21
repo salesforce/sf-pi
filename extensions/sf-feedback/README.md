@@ -114,6 +114,13 @@ Install and authenticate the GitHub CLI with `gh auth login`. Without an
 authenticated `gh`, SF Feedback intentionally falls back to a prefilled GitHub
 issue URL.
 
+**GitHub says the account cannot create issues:**
+Some GitHub-managed accounts cannot create issues in public repositories. When
+`gh` reports a `createIssue` permission failure, SF Feedback leaves the browser
+closed and shows a copyable Markdown draft plus the prefilled URL so you can
+submit from an account with access or share it through your maintainer/support
+path.
+
 **Diagnostics show `unknown` or `unavailable`:**
 This means one of the local diagnostic commands failed or the tool is not
 installed. The issue can still be submitted; the unavailable field is enough to

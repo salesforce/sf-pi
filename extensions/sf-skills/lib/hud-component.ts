@@ -52,22 +52,6 @@ export class SkillsHudComponent {
       );
     }
 
-    if (this.state.earlier.length > 0) {
-      if (this.state.live.length > 0) {
-        lines.push(row(""));
-      }
-      lines.push(
-        ...renderSection(
-          this.theme,
-          row,
-          "Earlier in session",
-          this.state.earlier.map((skill) => skill.name),
-          "warning",
-          innerWidth,
-        ),
-      );
-    }
-
     lines.push(this.theme.fg("border", `╰${"─".repeat(innerWidth)}╯`));
     return lines;
   }
@@ -82,10 +66,6 @@ function buildSummaryText(state: SkillsHudState): string {
 
   if (state.live.length > 0) {
     parts.push(`${state.live.length} in context`);
-  }
-
-  if (state.earlier.length > 0) {
-    parts.push(`${state.earlier.length} earlier`);
   }
 
   return parts.join(" · ");

@@ -259,6 +259,17 @@ async function handleCommand(
         return;
       }
 
+      if (!result.shouldOpenFallback) {
+        await emitCommandOutput(
+          pi,
+          ctx,
+          "GitHub account cannot create this issue.",
+          renderManualIssueDraft(result.detail, title, labels, body, result.fallbackUrl),
+          "warning",
+        );
+        return;
+      }
+
       await emitCommandOutput(
         pi,
         ctx,
@@ -367,6 +378,30 @@ function optionLabel(kind: IssueKind): string {
 function renderPreview(title: string, labels: string[], body: string): string {
   const maxBody = body.length > 6000 ? `${body.slice(0, 6000)}\n\n… preview truncated …` : body;
   return [`Title: ${title}`, `Labels: ${labels.join(", ") || "none"}`, "", maxBody].join("\n");
+}
+
+function renderManualIssueDraft(
+  detail: string,
+  title: string,
+  labels: string[],
+  body: string,
+  fallbackUrl: string,
+): string {
+  return [
+    detail,
+    "",
+    "GitHub rejected issue creation for this account, and the browser issue form is likely to fail the same way.",
+    "Copy the draft below and submit it from a GitHub account that can interact with the repository, or share it through your support/maintainer path.",
+    "",
+    `Prefilled URL, if you want to try from a different GitHub account: ${fallbackUrl}`,
+    "",
+    "---",
+    "",
+    `Title: ${title}`,
+    `Labels: ${labels.join(", ") || "none"}`,
+    "",
+    body,
+  ].join("\n");
 }
 
 function renderHelp(): string {

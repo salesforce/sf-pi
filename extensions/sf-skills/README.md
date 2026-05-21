@@ -4,9 +4,10 @@
 
 `sf-skills` is the single sf-pi extension for everything skills-related:
 
-1. **Pinned HUD** in the top-right that shows which skills are _in context_
-   (still visible to the LLM) vs. _earlier in session_ on the current branch
-   (used but compacted out). Hidden until at least one skill has been used.
+1. **Pinned HUD** in the top-right that shows skills currently _in context_
+   (still visible to the LLM). Historical _earlier in session_ usage stays
+   available in `/sf-skills summary` and the panel, but no longer keeps the
+   floating HUD visible.
 2. **Tabbed datatable** — `/sf-skills` panel → "Open skills table".
    Three tabs:
    - **Active** — every skill `pi.getCommands()` reports right now,
@@ -153,6 +154,7 @@ extensions/sf-skills/
     usage-store.ts          ← implementation module
   tests/
     defaults.test.ts        ← unit / smoke test
+    hud-visibility.test.ts  ← unit / smoke test
     prune.test.ts           ← unit / smoke test
     settings-coverage.test.ts← unit / smoke test
     skill-state.test.ts     ← unit / smoke test
@@ -192,8 +194,9 @@ opens a discovered `SKILL.md`. Indirect mentions intentionally
 don't trigger it.
 
 **A skill moved from In context to Earlier in session mid-session:**
-Expected after compaction or significant context growth. Use
-`/sf-skills` → "Show summary" or run `/sf-skills summary`.
+Expected after compaction or significant context growth. The floating HUD hides
+when no skills remain in active context. Use `/sf-skills` → "Show summary" or
+run `/sf-skills summary` to review earlier session usage.
 
 **Can I disable a globally-installed skill for one project only?**
 Not directly. Toggle scope follows install scope — install

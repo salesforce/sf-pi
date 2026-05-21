@@ -290,7 +290,7 @@
     "entry": "extensions/sf-feedback/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 943
+    "srcLoc": 994
   },
   {
     "id": "sf-guardrail",
@@ -514,7 +514,7 @@
   {
     "id": "sf-skills",
     "name": "SF Skills",
-    "description": "Manage skills end-to-end: pinned HUD, tabbed datatable (Active/Discover/Stats), Claude/Codex/Cursor source detection, forcedotcom/afv-library install + auto-update, per-skill usage counters, and prune.",
+    "description": "Manage skills end-to-end: live-context HUD, tabbed datatable (Active/Discover/Stats), Claude/Codex/Cursor source detection, forcedotcom/afv-library install + auto-update, per-skill usage counters, and prune.",
     "category": "ui",
     "maturity": "stable",
     "defaultEnabled": true,
@@ -534,7 +534,7 @@
       "session_shutdown"
     ],
     "docs": {
-      "summary": "Skills manager + passive top-right HUD overlay. Three datatable tabs (Active / Discover / Stats), source detection for global and project Claude/Codex/Cursor roots, an installer for forcedotcom/afv-library that wires the curated SF skills into settings.skills[], persistent per-skill usage counters split by global vs project, and a prune action for stale settings entries + orphan managed clones. Every enable/disable is a native pi settings.skills[] add/remove — no SKILL.md files are ever modified.",
+      "summary": "Skills manager + passive top-right live-context HUD overlay. Three datatable tabs (Active / Discover / Stats), source detection for global and project Claude/Codex/Cursor roots, an installer for forcedotcom/afv-library that wires the curated SF skills into settings.skills[], persistent per-skill usage counters split by global vs project, and a prune action for stale settings entries + orphan managed clones. Every enable/disable is a native pi settings.skills[] add/remove — no SKILL.md files are ever modified.",
       "primaryFiles": [
         "index.ts",
         "lib/hud-component.ts",
@@ -553,7 +553,7 @@
     "entry": "extensions/sf-skills/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 3238
+    "srcLoc": 3229
   },
   {
     "id": "sf-slack",
