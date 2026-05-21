@@ -18,7 +18,11 @@
 
   --vp-home-hero-name-color: transparent;
   --vp-home-hero-name-background: linear-gradient(120deg, #032d60 15%, #0176d3 55%, #5850ec);
-  --vp-home-hero-image-background-image: radial-gradient(circle, rgba(1, 118, 211, 0.35), rgba(88, 80, 236, 0.18));
+  --vp-home-hero-image-background-image: radial-gradient(
+    circle,
+    rgba(1, 118, 211, 0.35),
+    rgba(88, 80, 236, 0.18)
+  );
   --vp-home-hero-image-filter: blur(72px);
 }
 
