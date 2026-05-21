@@ -26,6 +26,7 @@ export interface BrowserEvidenceCapture {
   imageMode: EvidenceImageMode;
   includedImage: boolean;
   url?: string;
+  viewport?: { width: number; height: number; deviceScaleFactor?: number };
   setupAuditTrail?: SetupAuditTrailSummary;
 }
 

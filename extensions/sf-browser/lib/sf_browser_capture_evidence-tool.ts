@@ -58,6 +58,24 @@ export function registerSfBrowserCaptureEvidenceTool(pi: ExtensionAPI): void {
             "Recent Setup Audit Trail lookback window in minutes. Defaults to 5 and is capped at 60.",
         }),
       ),
+      viewportWidth: Type.Optional(
+        Type.Number({
+          description:
+            "Optional screenshot viewport width. Thumbnail mode defaults to 1440 for fuller visual evidence.",
+        }),
+      ),
+      viewportHeight: Type.Optional(
+        Type.Number({
+          description:
+            "Optional screenshot viewport height. Thumbnail mode defaults to 1000 for fuller visual evidence.",
+        }),
+      ),
+      deviceScaleFactor: Type.Optional(
+        Type.Number({
+          description:
+            "Optional device scale factor for evidence screenshots. Defaults to the browser's current scale and is capped at 3.",
+        }),
+      ),
     }),
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
       return captureEvidence(pi, ctx, params, signal);

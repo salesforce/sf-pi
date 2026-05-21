@@ -62,6 +62,9 @@ export async function captureEvidence(
     target_org?: string;
     includeSetupAuditTrail?: boolean;
     auditLookbackMinutes?: number;
+    viewportWidth?: number;
+    viewportHeight?: number;
+    deviceScaleFactor?: number;
   },
   signal?: AbortSignal,
 ): Promise<{ content: Array<TextContent | ImageContent>; details: Record<string, unknown> }> {
@@ -69,6 +72,9 @@ export async function captureEvidence(
   const sessionId = ctx.sessionManager.getSessionId();
   const mode = evidenceModeFromUnknown(input.imageMode);
   const planned = planEvidenceCapture(input.label, sessionId);
+  const viewport = resolveEvidenceViewport(input, mode);
+  if (viewport) await setViewport(pi, ctx.cwd, viewport, signal);
+
   const overlayDismissal =
     input.dismissOverlays === false
       ? { dismissedRefs: [], snapshotChecked: false }
@@ -119,6 +125,7 @@ export async function captureEvidence(
       imageMode: mode,
       includedImage: image !== null,
       url: currentUrl,
+      viewport,
       setupAuditTrail,
     },
     sessionId,
@@ -133,6 +140,7 @@ export async function captureEvidence(
     `Session: ${sessionId}`,
     `Path: ${capture.path}`,
     capture.thumbnailPath ? `Thumbnail: ${capture.thumbnailPath}` : undefined,
+    viewport ? `Viewport: ${viewport.width}x${viewport.height}` : undefined,
     capture.url ? `URL: ${capture.url}` : undefined,
     scrolledToRef ? `Scrolled into view: ${scrolledToRef}` : undefined,
     overlayDismissal.dismissedRefs.length
@@ -149,6 +157,49 @@ export async function captureEvidence(
     content,
     details: { ok: true, sessionId, capture, overlayDismissal, scrolledToRef, ...duration },
   };
+}
+
+function resolveEvidenceViewport(
+  input: { viewportWidth?: number; viewportHeight?: number; deviceScaleFactor?: number },
+  mode: EvidenceImageMode,
+): { width: number; height: number; deviceScaleFactor?: number } | undefined {
+  const hasExplicitViewport =
+    input.viewportWidth !== undefined || input.viewportHeight !== undefined;
+  if (!hasExplicitViewport && mode !== "thumbnail") return undefined;
+  const width = clampViewport(input.viewportWidth, 1440);
+  const height = clampViewport(input.viewportHeight, 1000);
+  const scale = input.deviceScaleFactor;
+  return {
+    width,
+    height,
+    ...(Number.isFinite(scale) && scale && scale > 0
+      ? { deviceScaleFactor: Math.min(3, scale) }
+      : {}),
+  };
+}
+
+function clampViewport(value: number | undefined, fallback: number): number {
+  if (!Number.isFinite(value)) return fallback;
+  return Math.min(3000, Math.max(320, Math.floor(value as number)));
+}
+
+async function setViewport(
+  pi: ExtensionAPI,
+  cwd: string,
+  viewport: { width: number; height: number; deviceScaleFactor?: number },
+  signal: AbortSignal | undefined,
+): Promise<void> {
+  await runAgentBrowser(
+    pi,
+    [
+      "set",
+      "viewport",
+      String(viewport.width),
+      String(viewport.height),
+      ...(viewport.deviceScaleFactor ? [String(viewport.deviceScaleFactor)] : []),
+    ],
+    { cwd, signal, timeoutMs: 15_000 },
+  );
 }
 
 async function getCurrentUrl(

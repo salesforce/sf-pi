@@ -39,7 +39,7 @@ sf_browser_capture_evidence
 - `agent-browser` is a lazy external runtime. SF Browser does not start Chrome, probe CDP, or check installation during startup.
 - V1 exposes a Hot-Path Browser Tool Set: open, snapshot, click, fill, select, press, wait, and Browser Evidence capture.
 - Long-tail browser work remains direct `agent-browser` usage.
-- Browser Evidence is session-scoped and artifact-first. Use `imageMode: "artifact"` for repeated captures and `thumbnail` when the model should inspect the current screen. Use `includeSetupAuditTrail: true` on the after-capture when a UI Mutation Fallback should include recent Setup Audit Trail context.
+- Browser Evidence is session-scoped and artifact-first. Use `imageMode: "artifact"` for repeated captures and `thumbnail` when the model should inspect the current screen. Thumbnail mode defaults the screenshot viewport to 1440x1000 so model-visible evidence is not a cramped half-height capture. Use `includeSetupAuditTrail: true` on the after-capture when a UI Mutation Fallback should include recent Setup Audit Trail context.
 - Targeted Browser Evidence can scroll an explicit ref into view before screenshot capture with `scrollToRef`.
 - Snapshots are smart and pi-native: `outputMode: "summary"` reports page URL, surface, actions, alerts, tables, and an artifact pointer by default.
 - Ambient Overlay Dismissal is best-effort and scoped to known non-workflow Salesforce overlays before evidence capture.
@@ -221,7 +221,7 @@ Run `npm i -g agent-browser && agent-browser install`, then `/sf-browser doctor`
 Refs are stale after Salesforce page changes. Run `sf_browser_snapshot` again and retry with fresh refs. If a click/fill/select/press action fails, SF Browser includes a recovery hint plus best-effort diagnostic snapshot and screenshot artifacts. If the compact summary omits the control you need, retry with `focus` terms or `outputMode: "full"`.
 
 **Screenshots are too heavy:**
-Use `sf_browser_capture_evidence` with `imageMode: "artifact"` for repeated captures. Use `/sf-browser evidence` to inspect artifact paths without adding image bytes to the transcript.
+Use `sf_browser_capture_evidence` with `imageMode: "artifact"` for repeated captures. Use `thumbnail` when the model should inspect the page; thumbnail captures use a fuller default viewport and can be overridden with `viewportWidth` / `viewportHeight`. Use `/sf-browser evidence` to inspect artifact paths without adding image bytes to the transcript.
 
 **A browser action is outside the hot path:**
 Use direct `agent-browser` commands and keep SF Browser for opening, snapshots, simple actions, waits, and evidence.
