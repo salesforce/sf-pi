@@ -215,22 +215,23 @@ per-extension view.
 
 Every slash command exposed by a bundled extension. See each extension README for subcommands and flags.
 
-| Command           | Extension                                                        | Category   |
-| ----------------- | ---------------------------------------------------------------- | ---------- |
-| `/sf-pi`          | [SF Pi Manager](./extensions/sf-pi-manager/)                     | manager    |
-| `/sf-llm-gateway` | [SF LLM Gateway Internal](./extensions/sf-llm-gateway-internal/) | provider   |
-| `/sf-agentscript` | [SF Agent Script](./extensions/sf-agentscript/)                  | agent-tool |
-| `/sf-browser`     | [SF Browser](./extensions/sf-browser/)                           | agent-tool |
-| `/sf-data360`     | [SF Data 360](./extensions/sf-data360/)                          | agent-tool |
-| `/sf-slack`       | [SF Slack](./extensions/sf-slack/)                               | agent-tool |
-| `/sf-guardrail`   | [SF Guardrail](./extensions/sf-guardrail/)                       | safety     |
-| `/sf-feedback`    | [SF Feedback](./extensions/sf-feedback/)                         | assistive  |
-| `/sf-lsp`         | [SF LSP](./extensions/sf-lsp/)                                   | assistive  |
-| `/sf-devbar`      | [SF DevBar](./extensions/sf-devbar/)                             | ui         |
-| `/sf-org`         | [SF DevBar](./extensions/sf-devbar/)                             | ui         |
-| `/sf-skills`      | [SF Skills](./extensions/sf-skills/)                             | ui         |
-| `/sf-welcome`     | [SF Welcome](./extensions/sf-welcome/)                           | ui         |
-| `/sf-setup-fonts` | [SF Welcome](./extensions/sf-welcome/)                           | ui         |
+| Command             | Extension                                                        | Category   |
+| ------------------- | ---------------------------------------------------------------- | ---------- |
+| `/sf-pi`            | [SF Pi Manager](./extensions/sf-pi-manager/)                     | manager    |
+| `/sf-llm-gateway`   | [SF LLM Gateway Internal](./extensions/sf-llm-gateway-internal/) | provider   |
+| `/sf-agentscript`   | [SF Agent Script](./extensions/sf-agentscript/)                  | agent-tool |
+| `/sf-browser`       | [SF Browser](./extensions/sf-browser/)                           | agent-tool |
+| `/sf-data360`       | [SF Data 360](./extensions/sf-data360/)                          | agent-tool |
+| `/sf-slack`         | [SF Slack](./extensions/sf-slack/)                               | agent-tool |
+| `/sf-guardrail`     | [SF Guardrail](./extensions/sf-guardrail/)                       | safety     |
+| `/sf-feedback`      | [SF Feedback](./extensions/sf-feedback/)                         | assistive  |
+| `/sf-lsp`           | [SF LSP](./extensions/sf-lsp/)                                   | assistive  |
+| `/sf-data-explorer` | [SF Data Explorer](./extensions/sf-data-explorer/)               | ui         |
+| `/sf-devbar`        | [SF DevBar](./extensions/sf-devbar/)                             | ui         |
+| `/sf-org`           | [SF DevBar](./extensions/sf-devbar/)                             | ui         |
+| `/sf-skills`        | [SF Skills](./extensions/sf-skills/)                             | ui         |
+| `/sf-welcome`       | [SF Welcome](./extensions/sf-welcome/)                           | ui         |
+| `/sf-setup-fonts`   | [SF Welcome](./extensions/sf-welcome/)                           | ui         |
 
 <!-- GENERATED:command-reference:end -->
 
@@ -382,6 +383,7 @@ For the canonical machine-readable bundle list, see [`catalog/index.json`](./cat
 | [SF Brain](./extensions/sf-brain/)                               | assistive  | on        | High-density Salesforce operator kernel injected once per session — describe-before-query rules, API picker, anonymous Apex verification loop, and CLI power moves                                                                             |
 | [SF Feedback](./extensions/sf-feedback/)                         | assistive  | on        | Guided feedback and bug-report flow that collects sanitized SF Pi diagnostics and opens a GitHub issue                                                                                                                                         |
 | [SF LSP](./extensions/sf-lsp/)                                   | assistive  | on        | Real-time Salesforce LSP diagnostics on write/edit with a working-indicator spinner, transcript rows, and a permanent top-bar health segment in sf-devbar                                                                                      |
+| [SF Data Explorer](./extensions/sf-data-explorer/)               | ui         | on        | Read-only interactive TUI explorer for SOQL, SOSL, and Data 360 SQL using sf-pi Salesforce transport plumbing.                                                                                                                                 |
 | [SF DevBar](./extensions/sf-devbar/)                             | ui         | on        | Bespoke Salesforce developer status bar with org context, model info, git, and context window progress                                                                                                                                         |
 | [SF Ohana Spinner](./extensions/sf-ohana-spinner/)               | ui         | on        | Salesforce-themed rainbow spinner during LLM thinking                                                                                                                                                                                          |
 | [SF Skills](./extensions/sf-skills/)                             | ui         | on        | Manage skills end-to-end: pinned HUD, tabbed datatable (Active/Discover/Stats), Claude/Codex/Cursor source detection, forcedotcom/afv-library install + auto-update, per-skill usage counters, and prune.                                      |
@@ -657,6 +659,13 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 - Diagnostics take >6 seconds to arrive
 - `.agent` files show no feedback or unexpected subprocess output
 - Diagnostics keep firing against files I've closed
+
+**[SF Data Explorer](./extensions/sf-data-explorer/#troubleshooting)**
+
+- `/sf-data-explorer` reports the transport could not be initialized
+- Catalog never finishes loading
+- Query refuses to run
+- Exports are not where I expect
 
 **[SF DevBar](./extensions/sf-devbar/#troubleshooting)**
 

@@ -100,6 +100,13 @@ _Real-time Salesforce LSP diagnostics on write/edit with a working-indicator spi
 
 ## Ui
 
+### [SF Data Explorer](../extensions/sf-data-explorer/)
+
+_Read-only interactive TUI explorer for SOQL, SOSL, and Data 360 SQL using sf-pi Salesforce transport plumbing._
+
+- Default: **on**
+- Commands: `/sf-data-explorer`
+
 ### [SF DevBar](../extensions/sf-devbar/)
 
 _Bespoke Salesforce developer status bar with org context, model info, git, and context window progress_

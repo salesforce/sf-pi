@@ -170,6 +170,49 @@
     "srcLoc": 3330
   },
   {
+    "id": "sf-data-explorer",
+    "name": "SF Data Explorer",
+    "description": "Read-only interactive TUI explorer for SOQL, SOSL, and Data 360 SQL using sf-pi Salesforce transport plumbing.",
+    "category": "ui",
+    "maturity": "experimental",
+    "defaultEnabled": true,
+    "alwaysActive": false,
+    "configurable": false,
+    "commands": [
+      "/sf-data-explorer"
+    ],
+    "providers": [],
+    "tools": [],
+    "events": [
+      "session_start",
+      "session_shutdown"
+    ],
+    "docs": {
+      "summary": "Keyboard-first read-only Salesforce data explorer with object/field browsing, editable query text, query execution, result detail view, JSON/CSV export, shortcut help, and explorer switching. Uses sf-pi @salesforce/core connection plumbing; no LLM required.",
+      "primaryFiles": [
+        "index.ts",
+        "lib/transport.ts",
+        "lib/command.ts",
+        "lib/ui/explorer-spa.ts",
+        "lib/modes/soql.ts",
+        "lib/modes/sosl.ts",
+        "lib/modes/data360-sql.ts"
+      ],
+      "safety": [
+        "Read-only v1: only describe, query, search, compact Data 360 metadata GETs, and Data 360 SELECT SQL calls are issued.",
+        "Core SOQL execution validates SELECT-only query text before calling /query.",
+        "SOSL execution validates FIND-only query text before calling /search.",
+        "Data 360 SQL catalog loading uses /ssot/metadata-entities; selected object details use /ssot/metadata?entityName=...; /ssot/query-sql is used only to execute the visible SQL query.",
+        "Uses sf-pi target-org and API-version resolution; no hardcoded API version.",
+        "No raw access tokens are surfaced in UI, exports, or logs."
+      ]
+    },
+    "entry": "extensions/sf-data-explorer/index.ts",
+    "hasReadme": true,
+    "hasTests": true,
+    "srcLoc": 2760
+  },
+  {
     "id": "sf-data360",
     "name": "SF Data 360",
     "description": "Data Cloud/Data 360 capability facade and direct REST helper — d360 search/examples/execute, d360_api, compact metadata discovery, readiness probe, and progressive-disclosure references",
