@@ -517,6 +517,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.143.0](https://github.com/salesforce/sf-pi/compare/v0.142.1...v0.143.0) (2026-05-21)
+
+
+### Features
+
+* **sf-data-explorer:** add read-only SOQL/SOSL/Data 360 SQL TUI ([#261](https://github.com/salesforce/sf-pi/issues/261)) ([26d22f9](https://github.com/salesforce/sf-pi/commit/26d22f9cb64c048a102cbfdf1ebd1d304fc753f4))
+
 ## [0.142.1](https://github.com/salesforce/sf-pi/compare/v0.142.0...v0.142.1) (2026-05-21)
 
 
