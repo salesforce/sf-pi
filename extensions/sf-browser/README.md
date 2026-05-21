@@ -45,6 +45,7 @@ sf_browser_capture_evidence
 - Ambient Overlay Dismissal is best-effort and scoped to known non-workflow Salesforce overlays before evidence capture.
 - Setup Destinations are curated shortcuts for known Setup paths; they are not a full Setup sitemap.
 - Structured routes can resolve common Lightning paths before opening the browser: `home`, `setup`, `object-list`, `object-new`, and `record-view`. Bounded fuzzy matching is limited to curated Setup Destinations and should ask the user to choose when multiple candidates are plausible. `object-new` opens Salesforce's deterministic new-record URL; org overrides or record-type flows can render differently, so verify with waits and snapshots after opening.
+- Failed browser actions include best-effort diagnostics: failure kind, recovery hint, current URL, compact snapshot artifact, and screenshot artifact when capture succeeds.
 - Tool results include a user-visible duration so users can understand the cost and compare optimized workflows.
 - V1 avoids permission gates and semantic browser-action mediation to reduce permission fatigue.
 - See [`../../docs/adr/0011-sf-browser-agent-browser-lazy-hot-path-runtime.md`](../../docs/adr/0011-sf-browser-agent-browser-lazy-hot-path-runtime.md).
@@ -154,6 +155,7 @@ extensions/sf-browser/
     agent-browser.ts        ← implementation module
     artifacts.ts            ← implementation module
     constants.ts            ← implementation module
+    failure-diagnostics.ts  ← implementation module
     guidance.ts             ← implementation module
     lightning-state.ts      ← implementation module
     lightning-wait.ts       ← implementation module
@@ -179,6 +181,7 @@ extensions/sf-browser/
     tool-support.ts         ← implementation module
   tests/
     artifacts.test.ts       ← unit / smoke test
+    failure-diagnostics.test.ts← unit / smoke test
     overlay-dismissal.test.ts← unit / smoke test
     redaction.test.ts       ← unit / smoke test
     salesforce-path-resolver.test.ts← unit / smoke test
@@ -212,7 +215,7 @@ Before commit, run the repo validation path from the root README/AGENTS guidance
 Run `npm i -g agent-browser && agent-browser install`, then `/sf-browser doctor`.
 
 **Snapshot refs fail:**
-Refs are stale after Salesforce page changes. Run `sf_browser_snapshot` again and retry with fresh refs. If the compact summary omits the control you need, retry with `focus` terms or `outputMode: "full"`.
+Refs are stale after Salesforce page changes. Run `sf_browser_snapshot` again and retry with fresh refs. If a click/fill/select/press action fails, SF Browser includes a recovery hint plus best-effort diagnostic snapshot and screenshot artifacts. If the compact summary omits the control you need, retry with `focus` terms or `outputMode: "full"`.
 
 **Screenshots are too heavy:**
 Use `sf_browser_capture_evidence` with `imageMode: "artifact"` for repeated captures.

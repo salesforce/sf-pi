@@ -3,6 +3,7 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { runAgentBrowser } from "./agent-browser.ts";
+import { throwWithFailureDiagnostics } from "./failure-diagnostics.ts";
 import { STALE_REF_HINT } from "./guidance.ts";
 import { startTimer } from "./timing.ts";
 import { okText } from "./tool-support.ts";
@@ -27,7 +28,23 @@ export function registerSfBrowserClickTool(pi: ExtensionAPI): void {
     }),
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
       const stopTimer = startTimer();
-      await runAgentBrowser(pi, ["click", params.ref], { cwd: ctx.cwd, signal });
+      try {
+        await runAgentBrowser(pi, ["click", params.ref], { cwd: ctx.cwd, signal });
+      } catch (error) {
+        const duration = stopTimer();
+        await throwWithFailureDiagnostics(
+          pi,
+          ctx,
+          {
+            toolName: SF_BROWSER_CLICK_TOOL_NAME,
+            action: `click ${params.ref}`,
+            ref: params.ref,
+            durationMs: duration.durationMs,
+          },
+          error,
+          signal,
+        );
+      }
       const duration = stopTimer();
       return {
         content: [

@@ -24,6 +24,7 @@
       "index.ts",
       "lib/agent-browser.ts",
       "lib/operations.ts",
+      "lib/failure-diagnostics.ts",
       "lib/setup-destinations.ts",
       "lib/overlay-dismissal.ts",
       "lib/snapshot-summary.ts",

@@ -17,7 +17,7 @@ Use Salesforce APIs first for setup and verification. Use SF Browser and agent-b
 4. After page-changing actions, run `sf_browser_wait`, then `sf_browser_snapshot` again.
 5. Capture Browser Evidence with `sf_browser_capture_evidence` when visual confirmation matters.
 
-Refs are short-lived. Treat them as stale after clicks, saves, modal opens, navigation, tab switches, or Lightning rerenders. If the summary misses needed controls, retry with `focus` terms or explicitly request `outputMode: "full"`.
+Refs are short-lived. Treat them as stale after clicks, saves, modal opens, navigation, tab switches, or Lightning rerenders. If a browser action fails, use the returned failure kind, recovery hint, diagnostic snapshot, and diagnostic screenshot before retrying. If the summary misses needed controls, retry with `focus` terms or explicitly request `outputMode: "full"`.
 
 ## Salesforce UI patterns
 

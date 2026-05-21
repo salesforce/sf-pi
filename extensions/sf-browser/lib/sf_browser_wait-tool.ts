@@ -5,6 +5,7 @@ import { StringEnum } from "@earendil-works/pi-ai";
 import { Type } from "typebox";
 import { DEFAULT_AGENT_BROWSER_TIMEOUT_MS } from "./constants.ts";
 import { runAgentBrowser } from "./agent-browser.ts";
+import { throwWithFailureDiagnostics } from "./failure-diagnostics.ts";
 import { STALE_REF_HINT } from "./guidance.ts";
 import {
   buildLightningOutcomeExpression,
@@ -94,7 +95,22 @@ export function registerSfBrowserWaitTool(pi: ExtensionAPI): void {
 
       const stopTimer = startTimer();
       const args = buildWaitArgs(params);
-      await runAgentBrowser(pi, args, { cwd: ctx.cwd, signal });
+      try {
+        await runAgentBrowser(pi, args, { cwd: ctx.cwd, signal });
+      } catch (error) {
+        const duration = stopTimer();
+        await throwWithFailureDiagnostics(
+          pi,
+          ctx,
+          {
+            toolName: SF_BROWSER_WAIT_TOOL_NAME,
+            action: `wait for ${describeWait(params)}`,
+            durationMs: duration.durationMs,
+          },
+          error,
+          signal,
+        );
+      }
       const duration = stopTimer();
       const lightningDetails = params.lightning
         ? await getLightningOutcome(pi, ctx.cwd, params.lightning, signal)

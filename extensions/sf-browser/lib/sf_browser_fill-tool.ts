@@ -3,6 +3,7 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { runAgentBrowser } from "./agent-browser.ts";
+import { throwWithFailureDiagnostics } from "./failure-diagnostics.ts";
 import { STALE_REF_HINT } from "./guidance.ts";
 import { startTimer } from "./timing.ts";
 import { okText } from "./tool-support.ts";
@@ -28,7 +29,23 @@ export function registerSfBrowserFillTool(pi: ExtensionAPI): void {
     }),
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
       const stopTimer = startTimer();
-      await runAgentBrowser(pi, ["fill", params.ref, params.value], { cwd: ctx.cwd, signal });
+      try {
+        await runAgentBrowser(pi, ["fill", params.ref, params.value], { cwd: ctx.cwd, signal });
+      } catch (error) {
+        const duration = stopTimer();
+        await throwWithFailureDiagnostics(
+          pi,
+          ctx,
+          {
+            toolName: SF_BROWSER_FILL_TOOL_NAME,
+            action: `fill ${params.ref} with ${params.secret ? "<redacted>" : JSON.stringify(params.value)}`,
+            ref: params.ref,
+            durationMs: duration.durationMs,
+          },
+          error,
+          signal,
+        );
+      }
       const duration = stopTimer();
       const valueText = params.secret ? "<redacted>" : params.value;
       return {
