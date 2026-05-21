@@ -45,7 +45,7 @@ Extensions may optionally add `docs.summary`, `docs.primaryFiles`, `docs.stateFi
 | Provider registration  | `SF LLM Gateway Internal`, `SF Slack`                                                                                                                                                                            |
 | Startup/session hooks  | `SF Pi Manager`, `SF LLM Gateway Internal`, `SF Agent Script`, `SF Browser`, `SF Data 360`, `SF Slack`, `SF Guardrail`, `SF LSP`, `SF Data Explorer`, `SF DevBar`, `SF Ohana Spinner`, `SF Skills`, `SF Welcome` |
 | Tool-call hooks        | `SF Guardrail`, `SF Welcome`                                                                                                                                                                                     |
-| Generated docs/catalog | `scripts/generate-catalog.mjs`, `catalog/index.json`, `catalog/registry.ts`, `docs/extensions.md`, `docs/commands.md`                                                                                            |
+| Generated docs/catalog | `scripts/generate-catalog.mjs`, `catalog/index.json`, `catalog/registry.ts`, `docs/extensions.md`, `docs/extensions/*.md`, `docs/.vitepress/generated-extension-sidebar.ts`, `docs/commands.md`                  |
 
 ## Generated files
 
@@ -54,6 +54,8 @@ Do not edit these by hand; edit the source manifest/docs and run `npm run genera
 - `catalog/index.json`
 - `catalog/registry.ts`
 - `docs/extensions.md`
+- `docs/extensions/*.md`
+- `docs/.vitepress/generated-extension-sidebar.ts`
 - `docs/commands.md`
 - `docs/agent-orientation.md`
 - generated marker blocks in `README.md` and `ARCHITECTURE.md`

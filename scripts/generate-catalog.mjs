@@ -12,7 +12,14 @@
 //
 // The manifest.json in each extension folder is the source of truth.
 
-import { readdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import prettier from "prettier";
@@ -27,6 +34,8 @@ const README_PATH = path.join(ROOT, "README.md");
 const ARCHITECTURE_PATH = path.join(ROOT, "ARCHITECTURE.md");
 const COMMANDS_DOC_PATH = path.join(DOCS_DIR, "commands.md");
 const EXTENSIONS_DOC_PATH = path.join(DOCS_DIR, "extensions.md");
+const EXTENSION_DOCS_DIR = path.join(DOCS_DIR, "extensions");
+const EXTENSION_SIDEBAR_PATH = path.join(DOCS_DIR, ".vitepress", "generated-extension-sidebar.ts");
 const AGENT_ORIENTATION_DOC_PATH = path.join(DOCS_DIR, "agent-orientation.md");
 const CHECK_ONLY = process.argv.includes("--check");
 const GITHUB_REPO_URL = "https://github.com/salesforce/sf-pi";
@@ -307,6 +316,31 @@ function runtimeSurfaces(manifest) {
   return surfaces.length > 0 ? surfaces.join(", ") : "none";
 }
 
+function markdownText(value) {
+  return String(value).replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+}
+
+function markdownTableText(value) {
+  return markdownText(value).replaceAll("|", "\\|");
+}
+
+function generatedList(items) {
+  if (!Array.isArray(items) || items.length === 0) return "_none_";
+  return items.map((item) => `\`${markdownText(item)}\``).join(", ");
+}
+
+function sourceFileLink(dir, file) {
+  return sourceLink(`extensions/${dir}/${file}`);
+}
+
+function extensionDocLink(dir) {
+  return `./extensions/${dir}.md`;
+}
+
+function commandLine(command) {
+  return `\`${command}\``;
+}
+
 function generateReadmeBundledExtensions(manifests) {
   const sorted = sortByCategoryThenName(manifests);
 
@@ -396,7 +430,7 @@ function generateCommandsDoc(manifests) {
       const tools = Array.isArray(manifest.tools) ? manifest.tools : [];
       const providers = Array.isArray(manifest.providers) ? manifest.providers : [];
 
-      lines.push(`### [${manifest.name}](${sourceTreeLink(`extensions/${dir}`)})`);
+      lines.push(`### [${manifest.name}](${extensionDocLink(dir)})`);
       lines.push("");
       lines.push(`_${manifest.description}_`);
       lines.push("");
@@ -451,9 +485,9 @@ function generateExtensionsDoc(manifests) {
 
     for (const { dir, manifest } of inCategory) {
       const maturity = manifest.maturity ?? "stable";
-      const summary = manifest.docs?.summary ?? manifest.description;
+      const summary = markdownTableText(manifest.docs?.summary ?? manifest.description);
       lines.push(
-        `| [${manifest.name}](${sourceTreeLink(`extensions/${dir}`)}) | ${maturity} | ${defaultLabel(manifest)} | ${runtimeSurfaces(manifest)} | ${summary} |`,
+        `| [${manifest.name}](${extensionDocLink(dir)}) | ${maturity} | ${defaultLabel(manifest)} | ${markdownTableText(runtimeSurfaces(manifest))} | ${summary} |`,
       );
     }
 
@@ -466,6 +500,172 @@ function generateExtensionsDoc(manifests) {
     "Extension facts come from each `extensions/<id>/manifest.json` file. The generated catalog, command reference, root README tables, and this page are refreshed together by `npm run generate-catalog`.",
   );
 
+  return lines.join("\n");
+}
+
+function generateExtensionDetailDoc(dir, manifest) {
+  const docs = manifest.docs && typeof manifest.docs === "object" ? manifest.docs : {};
+  const commands = Array.isArray(manifest.commands) ? manifest.commands : [];
+  const tools = Array.isArray(manifest.tools) ? manifest.tools : [];
+  const providers = Array.isArray(manifest.providers) ? manifest.providers : [];
+  const events = Array.isArray(manifest.events) ? manifest.events : [];
+  const primaryFiles = Array.isArray(docs.primaryFiles) ? docs.primaryFiles : [];
+  const stateFiles = Array.isArray(docs.stateFiles) ? docs.stateFiles : [];
+  const env = Array.isArray(docs.env) ? docs.env : [];
+  const safety = Array.isArray(docs.safety) ? docs.safety : [];
+
+  const lines = [
+    "---",
+    `title: ${JSON.stringify(manifest.name)}`,
+    `description: ${JSON.stringify(docs.summary ?? manifest.description)}`,
+    "---",
+    "",
+    `# ${manifest.name}`,
+    "",
+    markdownText(docs.summary ?? manifest.description),
+    "",
+    "## What it is",
+    "",
+    markdownText(manifest.description),
+    "",
+    "## At a glance",
+    "",
+    "| Property | Value |",
+    "| --- | --- |",
+    `| Extension id | \`${manifest.id}\` |`,
+    `| Category | ${categoryHeading(manifest.category)} |`,
+    `| Maturity | ${manifest.maturity ?? "stable"} |`,
+    `| Default state | ${defaultLabel(manifest)} |`,
+    `| Runtime surfaces | ${markdownTableText(runtimeSurfaces(manifest))} |`,
+    `| Source | [\`extensions/${dir}/\`](${sourceTreeLink(`extensions/${dir}`)}) |`,
+    `| Full README | [\`extensions/${dir}/README.md\`](${sourceFileLink(dir, "README.md")}) |`,
+    "",
+    "## How to use it",
+    "",
+  ];
+
+  if (commands.length > 0) {
+    lines.push("Open the command surface from pi:", "");
+    for (const command of commands) lines.push(`- ${commandLine(command)}`);
+    lines.push("");
+  } else if (manifest.alwaysActive || events.length > 0) {
+    lines.push(
+      "This extension works through session hooks rather than a direct slash command. Install SF Pi and keep the extension enabled to use it.",
+      "",
+    );
+  } else {
+    lines.push("This extension has no direct command surface. Manage it through `/sf-pi`.", "");
+  }
+
+  if (!manifest.alwaysActive) {
+    lines.push(
+      "Manage the extension with SF Pi Manager:",
+      "",
+      "```text",
+      `/sf-pi enable ${manifest.id}`,
+      `/sf-pi disable ${manifest.id}`,
+      `/sf-pi status ${manifest.id}`,
+      "```",
+      "",
+    );
+  } else {
+    lines.push(
+      "This extension is always active because it owns package-level management behavior.",
+      "",
+    );
+  }
+
+  lines.push("## Runtime surfaces", "");
+  if (commands.length > 0) lines.push(`- **Commands:** ${generatedList(commands)}`);
+  if (tools.length > 0) lines.push(`- **LLM tools:** ${generatedList(tools)}`);
+  if (providers.length > 0) lines.push(`- **Providers:** ${generatedList(providers)}`);
+  if (events.length > 0) lines.push(`- **Events/hooks:** ${generatedList(events)}`);
+  if (!commands.length && !tools.length && !providers.length && !events.length) {
+    lines.push("- _No direct runtime surfaces declared in the manifest._");
+  }
+  lines.push("");
+
+  if (tools.length > 0) {
+    lines.push(
+      "## Agent tools",
+      "",
+      "Agents can call these tools when the extension is enabled and configured:",
+      "",
+    );
+    for (const tool of tools) lines.push(`- \`${markdownText(tool)}\``);
+    lines.push("");
+  }
+
+  if (providers.length > 0) {
+    lines.push(
+      "## Provider surface",
+      "",
+      "This extension registers provider functionality with pi:",
+      "",
+    );
+    for (const provider of providers) lines.push(`- \`${markdownText(provider)}\``);
+    lines.push("");
+  }
+
+  if (safety.length > 0) {
+    lines.push("## Safety and privacy", "");
+    for (const item of safety) lines.push(`- ${markdownText(item)}`);
+    lines.push("");
+  }
+
+  if (env.length > 0 || stateFiles.length > 0) {
+    lines.push("## Configuration and state", "");
+    if (env.length > 0) {
+      lines.push("Environment inputs:", "");
+      for (const item of env) lines.push(`- \`${markdownText(item)}\``);
+      lines.push("");
+    }
+    if (stateFiles.length > 0) {
+      lines.push("State files:", "");
+      for (const item of stateFiles) lines.push(`- \`${markdownText(item)}\``);
+      lines.push("");
+    }
+  }
+
+  if (primaryFiles.length > 0) {
+    lines.push("## Important files", "");
+    for (const file of primaryFiles) {
+      lines.push(`- [\`${file}\`](${sourceFileLink(dir, file)})`);
+    }
+    lines.push("");
+  }
+
+  lines.push(
+    "## Learn more",
+    "",
+    `- [Full extension README](${sourceFileLink(dir, "README.md")})`,
+    `- [Source folder](${sourceTreeLink(`extensions/${dir}`)})`,
+    "- [Command reference](../commands.md)",
+    "- [Bundled extension inventory](../extensions.md)",
+    "",
+    "## Troubleshooting",
+    "",
+    `See the [Troubleshooting section in the full README](${sourceFileLink(dir, "README.md")}#troubleshooting) for extension-specific recovery steps.`,
+  );
+
+  return lines.join("\n");
+}
+
+function generateExtensionSidebar(manifests) {
+  const sorted = sortByCategoryThenName(manifests);
+  const lines = [
+    "// AUTO-GENERATED — do not edit manually.",
+    "// Source of truth: extensions/<id>/manifest.json",
+    "// Regenerate: npm run generate-catalog",
+    "",
+    "export const extensionSidebarItems = [",
+  ];
+  for (const { dir, manifest } of sorted) {
+    lines.push(
+      `  { text: ${JSON.stringify(manifest.name)}, link: ${JSON.stringify(`/extensions/${dir}`)} },`,
+    );
+  }
+  lines.push("];", "");
   return lines.join("\n");
 }
 
@@ -582,8 +782,9 @@ function generateFolderLayout(manifests) {
     "\u2502   \u251c\u2500\u2500 registry.ts             \u2190 GENERATED from manifest.json files",
     "\u2502   \u2514\u2500\u2500 index.json              \u2190 GENERATED machine-readable index",
     "\u251c\u2500\u2500 docs/",
-    "\u2502   \u251c\u2500\u2500 .vitepress/             \u2190 VitePress config/theme for GitHub Pages docs",
+    "\u2502   \u251c\u2500\u2500 .vitepress/             \u2190 VitePress config/theme + generated sidebar for GitHub Pages docs",
     "\u2502   \u251c\u2500\u2500 extensions.md           \u2190 GENERATED bundled-extension site inventory",
+    "\u2502   \u251c\u2500\u2500 extensions/              \u2190 GENERATED one page per bundled extension",
     "\u2502   \u251c\u2500\u2500 commands.md             \u2190 GENERATED per-extension command reference",
     "\u2502   \u251c\u2500\u2500 agent-orientation.md    \u2190 GENERATED agent navigation map",
     "\u2502   \u251c\u2500\u2500 human-orientation.md    \u2190 contributor walkthrough",
@@ -715,10 +916,6 @@ async function writeOrCheckExtensionReadmes(manifests) {
   }
 }
 
-function generatedList(items) {
-  return items.length > 0 ? items.map((item) => `\`${item}\``).join(", ") : "_none_";
-}
-
 function generateAgentOrientationDoc(manifests) {
   const sorted = sortByCategoryThenName(manifests);
   const lines = [
@@ -796,6 +993,8 @@ function generateAgentOrientationDoc(manifests) {
         "catalog/index.json",
         "catalog/registry.ts",
         "docs/extensions.md",
+        "docs/extensions/*.md",
+        "docs/.vitepress/generated-extension-sidebar.ts",
         "docs/commands.md",
       ],
     ],
@@ -813,6 +1012,8 @@ function generateAgentOrientationDoc(manifests) {
     "- `catalog/index.json`",
     "- `catalog/registry.ts`",
     "- `docs/extensions.md`",
+    "- `docs/extensions/*.md`",
+    "- `docs/.vitepress/generated-extension-sidebar.ts`",
     "- `docs/commands.md`",
     "- `docs/agent-orientation.md`",
     "- generated marker blocks in `README.md` and `ARCHITECTURE.md`",
@@ -936,6 +1137,40 @@ async function writeOrCheckExtensionsDoc(manifests) {
   writeOrCheck(EXTENSIONS_DOC_PATH, formatted, "docs/extensions.md");
 }
 
+async function writeOrCheckExtensionDetailDocs(manifests) {
+  mkdirSync(EXTENSION_DOCS_DIR, { recursive: true });
+  const expectedFiles = new Set(manifests.map(({ dir }) => `${dir}.md`));
+
+  for (const entry of readdirSync(EXTENSION_DOCS_DIR, { withFileTypes: true })) {
+    if (entry.isFile() && entry.name.endsWith(".md") && !expectedFiles.has(entry.name)) {
+      const stalePath = path.join(EXTENSION_DOCS_DIR, entry.name);
+      if (CHECK_ONLY) {
+        hasDiff = true;
+        console.error(`❌ docs/extensions/${entry.name} is stale. Run: npm run generate-catalog`);
+      } else {
+        unlinkSync(stalePath);
+        console.log(`✅ removed stale docs/extensions/${entry.name}`);
+      }
+    }
+  }
+
+  for (const { dir, manifest } of manifests) {
+    const raw = generateExtensionDetailDoc(dir, manifest);
+    const formatted = await prettier.format(raw, { parser: "markdown" });
+    writeOrCheck(
+      path.join(EXTENSION_DOCS_DIR, `${dir}.md`),
+      formatted,
+      `docs/extensions/${dir}.md`,
+    );
+  }
+}
+
+async function writeOrCheckExtensionSidebar(manifests) {
+  const raw = generateExtensionSidebar(manifests);
+  const formatted = await prettier.format(raw, { parser: "typescript" });
+  writeOrCheck(EXTENSION_SIDEBAR_PATH, formatted, "docs/.vitepress/generated-extension-sidebar.ts");
+}
+
 // -------------------------------------------------------------------------------------------------
 // Main
 // -------------------------------------------------------------------------------------------------
@@ -966,6 +1201,10 @@ await writeOrCheckArchitecture(manifests);
 await writeOrCheckCommandsDoc(manifests);
 
 await writeOrCheckExtensionsDoc(manifests);
+
+await writeOrCheckExtensionDetailDocs(manifests);
+
+await writeOrCheckExtensionSidebar(manifests);
 
 await writeOrCheckAgentOrientationDoc(manifests);
 

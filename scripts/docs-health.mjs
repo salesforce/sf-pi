@@ -31,6 +31,7 @@ const GENERATED_FILES = [
   "catalog/index.json",
   "catalog/registry.ts",
   "docs/extensions.md",
+  "docs/.vitepress/generated-extension-sidebar.ts",
   "docs/commands.md",
   "docs/agent-orientation.md",
 ];

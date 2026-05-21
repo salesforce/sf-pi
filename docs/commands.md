@@ -15,7 +15,7 @@ See also:
 
 ## Manager
 
-### [SF Pi Manager](https://github.com/salesforce/sf-pi/tree/main/extensions/sf-pi-manager)
+### [SF Pi Manager](./extensions/sf-pi-manager.md)
 
 _Core manager — provides /sf-pi commands_
 
@@ -24,7 +24,7 @@ _Core manager — provides /sf-pi commands_
 
 ## Provider
 
-### [SF LLM Gateway Internal](https://github.com/salesforce/sf-pi/tree/main/extensions/sf-llm-gateway-internal)
+### [SF LLM Gateway Internal](./extensions/sf-llm-gateway-internal.md)
 
 _Salesforce LLM Gateway provider with model discovery_
 
@@ -34,7 +34,7 @@ _Salesforce LLM Gateway provider with model discovery_
 
 ## Agent Tool
 
-### [SF Agent Script](https://github.com/salesforce/sf-pi/tree/main/extensions/sf-agentscript)
+### [SF Agent Script](./extensions/sf-agentscript.md)
 
 _Single-plugin lifecycle for `.agent` files: in-process compile-on-save diagnostics, an LLM-callable compile tool, multi-turn eval/regression testing against the Salesforce Evaluation API, and a placeholder for the future Agent Script LSP._
 
@@ -42,7 +42,7 @@ _Single-plugin lifecycle for `.agent` files: in-process compile-on-save diagnost
 - Commands: `/sf-agentscript`
 - Tools: `agentscript_compile`, `agentscript_create`, `agentscript_inspect`, `agentscript_mutate`, `agentscript_preview`, `agentscript_eval`, `agentscript_lifecycle`
 
-### [SF Browser](https://github.com/salesforce/sf-pi/tree/main/extensions/sf-browser)
+### [SF Browser](./extensions/sf-browser.md)
 
 _Salesforce-aware browser automation for last-mile UI work using agent-browser._
 
@@ -50,7 +50,7 @@ _Salesforce-aware browser automation for last-mile UI work using agent-browser._
 - Commands: `/sf-browser`
 - Tools: `sf_browser_open_org`, `sf_browser_snapshot`, `sf_browser_click`, `sf_browser_fill`, `sf_browser_select`, `sf_browser_press`, `sf_browser_wait`, `sf_browser_capture_evidence`, `sf_browser_resolve_path`
 
-### [SF Data 360](https://github.com/salesforce/sf-pi/tree/main/extensions/sf-data360)
+### [SF Data 360](./extensions/sf-data360.md)
 
 _Data Cloud/Data 360 capability facade and direct REST helper — d360 search/examples/execute, d360_api, compact metadata discovery, readiness probe, and progressive-disclosure references_
 
@@ -58,7 +58,7 @@ _Data Cloud/Data 360 capability facade and direct REST helper — d360 search/ex
 - Commands: `/sf-data360`
 - Tools: `d360`, `d360_api`, `d360_metadata`, `d360_probe`
 
-### [SF Slack](https://github.com/salesforce/sf-pi/tree/main/extensions/sf-slack)
+### [SF Slack](./extensions/sf-slack.md)
 
 _Slack integration — search messages, read threads, browse channel history_
 
@@ -69,7 +69,7 @@ _Slack integration — search messages, read threads, browse channel history_
 
 ## Safety
 
-### [SF Guardrail](https://github.com/salesforce/sf-pi/tree/main/extensions/sf-guardrail)
+### [SF Guardrail](./extensions/sf-guardrail.md)
 
 _Salesforce-aware safety hooks — file protection policies, dangerous-command gating, and org-aware confirmation for production deploys, apex runs, and data mutations_
 
@@ -78,21 +78,21 @@ _Salesforce-aware safety hooks — file protection policies, dangerous-command g
 
 ## Assistive
 
-### [SF Brain](https://github.com/salesforce/sf-pi/tree/main/extensions/sf-brain)
+### [SF Brain](./extensions/sf-brain.md)
 
 _High-density Salesforce operator kernel injected once per session — describe-before-query rules, API picker, anonymous Apex verification loop, and CLI power moves_
 
 - Default: **on**
 - Commands: _none_
 
-### [SF Feedback](https://github.com/salesforce/sf-pi/tree/main/extensions/sf-feedback)
+### [SF Feedback](./extensions/sf-feedback.md)
 
 _Guided feedback and bug-report flow that collects sanitized SF Pi diagnostics and opens a GitHub issue_
 
 - Default: **on**
 - Commands: `/sf-feedback`
 
-### [SF LSP](https://github.com/salesforce/sf-pi/tree/main/extensions/sf-lsp)
+### [SF LSP](./extensions/sf-lsp.md)
 
 _Real-time Salesforce LSP diagnostics on write/edit with a working-indicator spinner, transcript rows, and a permanent top-bar health segment in sf-devbar_
 
@@ -101,35 +101,35 @@ _Real-time Salesforce LSP diagnostics on write/edit with a working-indicator spi
 
 ## UI
 
-### [SF Data Explorer](https://github.com/salesforce/sf-pi/tree/main/extensions/sf-data-explorer)
+### [SF Data Explorer](./extensions/sf-data-explorer.md)
 
 _Read-only interactive TUI explorer for SOQL, SOSL, and Data 360 SQL using sf-pi Salesforce transport plumbing._
 
 - Default: **on**
 - Commands: `/sf-data-explorer`
 
-### [SF DevBar](https://github.com/salesforce/sf-pi/tree/main/extensions/sf-devbar)
+### [SF DevBar](./extensions/sf-devbar.md)
 
 _Bespoke Salesforce developer status bar with org context, model info, git, and context window progress_
 
 - Default: **on**
 - Commands: `/sf-devbar`, `/sf-org`
 
-### [SF Ohana Spinner](https://github.com/salesforce/sf-pi/tree/main/extensions/sf-ohana-spinner)
+### [SF Ohana Spinner](./extensions/sf-ohana-spinner.md)
 
 _Salesforce-themed rainbow spinner during LLM thinking_
 
 - Default: **on**
 - Commands: _none_
 
-### [SF Skills](https://github.com/salesforce/sf-pi/tree/main/extensions/sf-skills)
+### [SF Skills](./extensions/sf-skills.md)
 
 _Manage skills end-to-end: live-context HUD, tabbed datatable (Active/Discover/Stats), Claude/Codex/Cursor source detection, forcedotcom/afv-library install + auto-update, per-skill usage counters, and prune._
 
 - Default: **on**
 - Commands: `/sf-skills`
 
-### [SF Welcome](https://github.com/salesforce/sf-pi/tree/main/extensions/sf-welcome)
+### [SF Welcome](./extensions/sf-welcome.md)
 
 _Salesforce-branded splash screen with environment status, release freshness, and community info_
 

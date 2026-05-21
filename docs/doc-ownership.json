@@ -22,6 +22,16 @@
     "generated": true,
     "checks": ["npm run generate-catalog:check", "npm run docs:build"]
   },
+  "docs/extensions/*.md": {
+    "source": ["extensions/*/manifest.json", "catalog/index.json"],
+    "generated": true,
+    "checks": ["npm run generate-catalog:check", "npm run docs:build"]
+  },
+  "docs/.vitepress/generated-extension-sidebar.ts": {
+    "source": ["extensions/*/manifest.json", "catalog/index.json"],
+    "generated": true,
+    "checks": ["npm run generate-catalog:check", "npm run docs:build"]
+  },
   "docs/commands.md": {
     "source": ["extensions/*/manifest.json"],
     "generated": true,
