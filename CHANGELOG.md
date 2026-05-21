@@ -517,6 +517,24 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.141.0](https://github.com/salesforce/sf-pi/compare/v0.140.0...v0.141.0) (2026-05-21)
+
+
+### Features
+
+* **sf-browser:** add session evidence and lightning navigation reliability ([988abc9](https://github.com/salesforce/sf-pi/commit/988abc9d78e3c481cab0b18998d4f91ca0032c6b))
+* **sf-browser:** add session evidence report command ([eeb0a89](https://github.com/salesforce/sf-pi/commit/eeb0a89c3340fa2376c8fec0489b375956e7fa86))
+
+
+### Bug Fixes
+
+* **sf-browser:** add failure diagnostics for browser actions ([5bf7c11](https://github.com/salesforce/sf-pi/commit/5bf7c113e6bd6c257d1715421c8b735c53ef08a8))
+* **sf-browser:** classify classic setup save results ([fe2bb40](https://github.com/salesforce/sf-pi/commit/fe2bb40cb8db7cf1526b51486aff9a4f2ff35080))
+* **sf-browser:** harden lightning waits and add live smoke checklist ([41eae99](https://github.com/salesforce/sf-pi/commit/41eae99cb66d5976953b554f5ab6b5b3aa96f9aa))
+* **sf-browser:** reduce noisy setup snapshot summaries ([0f46079](https://github.com/salesforce/sf-pi/commit/0f4607939ba3101484dda030e88223666eeee663))
+* **sf-browser:** satisfy lint for lightning state parser ([25909b0](https://github.com/salesforce/sf-pi/commit/25909b0c6cf98f640144dcaa026f942553fd00b5))
+* **sf-browser:** use fuller viewport for thumbnail evidence ([a9dd99a](https://github.com/salesforce/sf-pi/commit/a9dd99aabde9b93c9fa517e30ae2aa8ddcd4f95f))
+
 ## [0.140.0](https://github.com/salesforce/sf-pi/compare/v0.139.0...v0.140.0) (2026-05-20)
 
 
