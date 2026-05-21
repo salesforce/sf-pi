@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.140.0-2026-05-20",
-  "latestVersion": "0.140.0",
+  "revision": "release-0.141.0-2026-05-21",
+  "latestVersion": "0.141.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.140.0",
+      "id": "release-0.141.0",
       "kind": "update",
-      "title": "sf-pi v0.140.0 — expand sf-browser runbooks",
-      "publishedAt": "2026-05-20T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.140.0",
+      "title": "sf-pi v0.141.0 — sf-browser: add session evidence and lightning navigation reliability",
+      "publishedAt": "2026-05-21T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.141.0",
       "severity": "info",
-      "body": "expand sf-browser runbooks"
+      "body": "sf-browser: add session evidence and lightning navigation reliability — sf-browser: add session evidence report command"
     },
     {
       "id": "pi-0.73-required",
