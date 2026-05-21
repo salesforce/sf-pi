@@ -25,6 +25,7 @@ sf-pi/
 │   ├── sf-agentscript/
 │   ├── sf-brain/
 │   ├── sf-browser/
+│   ├── sf-data-explorer/
 │   ├── sf-data360/
 │   ├── sf-devbar/
 │   ├── sf-feedback/

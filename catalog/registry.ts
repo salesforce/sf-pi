@@ -42,6 +42,17 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
     events: ["session_start","session_shutdown","resources_discover"],
   },
   {
+    id: "sf-data-explorer",
+    name: "SF Data Explorer",
+    description: "Read-only interactive TUI explorer for SOQL, SOSL, and Data 360 SQL using sf-pi Salesforce transport plumbing.",
+    file: "extensions/sf-data-explorer/index.ts",
+    category: "ui",
+    maturity: "experimental",
+    defaultEnabled: true,
+    commands: ["/sf-data-explorer"],
+    events: ["session_start","session_shutdown"],
+  },
+  {
     id: "sf-data360",
     name: "SF Data 360",
     description: "Data Cloud/Data 360 capability facade and direct REST helper — d360 search/examples/execute, d360_api, compact metadata discovery, readiness probe, and progressive-disclosure references",

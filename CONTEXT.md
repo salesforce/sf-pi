@@ -48,6 +48,10 @@ _Avoid_: Salesforce encyclopedia, all-purpose memory dump
 The Bundled Extension that gives agents a compact, safe Data Cloud / Data 360 workflow surface with discovery, direct REST access, metadata helpers, and readiness checks.
 _Avoid_: plugin, MCP wrapper, endpoint dump
 
+**SF Data Explorer**:
+An experimental UI Bundled Extension for keyboard-first, read-only human exploration of Salesforce data through SOQL, SOSL, and Data 360 SQL. It is a TUI explorer, not an LLM tool and not a replacement for **SF Data 360** capabilities.
+_Avoid_: Data 360 capability, agent query tool, write-capable data manager, replacement for SF Data 360
+
 **SF Browser**:
 The Bundled Extension that gives agents a compact Salesforce-aware affordance layer for `agent-browser` in last-mile UI work that Salesforce APIs cannot cover.
 _Avoid_: generic browser wrapper, Playwright replacement, UI testing framework, browser primitive clone

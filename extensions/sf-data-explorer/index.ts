@@ -1,0 +1,304 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
+import { BorderedLoader } from "@earendil-works/pi-coding-agent";
+import { openCommandPanel } from "../../lib/common/command-panel.ts";
+import {
+  buildToggleExtensionAction,
+  isLifecycleToggleAction,
+  LIFECYCLE_GROUP,
+  performToggleExtension,
+} from "../../lib/common/extension-toggle.ts";
+import { openInfoPanel } from "../../lib/common/info-panel.ts";
+import { requirePiVersion } from "../../lib/common/pi-compat.ts";
+import { withSafeCommandHandler } from "../../lib/common/safe-command-handler.ts";
+import { clearExplorerCache, cacheStatus } from "./lib/cache.ts";
+import {
+  buildHelpText,
+  DEFAULT_ORG,
+  parseCommandArgs,
+  type ParsedCommandArgs,
+} from "./lib/command.ts";
+import { createData360SqlStrategy, type Data360ObjectMeta } from "./lib/modes/data360-sql.ts";
+import { createSoqlStrategy, type CoreSObjectMeta } from "./lib/modes/soql.ts";
+import { createSoslStrategy } from "./lib/modes/sosl.ts";
+import {
+  clearSfDataExplorerTransportCacheIfInitialized,
+  getSfDataExplorerTransport,
+  type SfDataExplorerTransport,
+} from "./lib/transport.ts";
+import { ExplorerSpa, type ExplorerSpaResult } from "./lib/ui/explorer-spa.ts";
+import type { ExplorerMode, ExplorerStrategy } from "./lib/types.ts";
+
+const COMMAND = "sf-data-explorer";
+
+export default function sfDataExplorer(pi: ExtensionAPI) {
+  if (!requirePiVersion(pi, "sf-data-explorer")) return;
+
+  pi.on("session_start", () => {
+    clearExplorerCache();
+    clearSfDataExplorerTransportCacheIfInitialized();
+  });
+  pi.on("session_shutdown", () => {
+    clearExplorerCache();
+    clearSfDataExplorerTransportCacheIfInitialized();
+  });
+
+  pi.registerCommand(COMMAND, {
+    description: "Read-only interactive SOQL, SOSL, and Data 360 SQL explorer",
+    getArgumentCompletions: (prefix: string) =>
+      ["soql", "sosl", "sql", DEFAULT_ORG, "refresh", "soql refresh", "sosl refresh", "sql refresh"]
+        .filter((v) => v.startsWith(prefix))
+        .map((value) => ({ value, label: value })),
+    handler: async (args, ctx) => {
+      await withSafeCommandHandler(ctx, COMMAND, () => handleCommand(pi, ctx, args || ""));
+    },
+  });
+}
+
+async function handleCommand(
+  pi: ExtensionAPI,
+  ctx: ExtensionCommandContext,
+  args: string,
+): Promise<void> {
+  const parsed = parseCommandArgs(args);
+  if (parsed.help) {
+    ctx.ui.setEditorText(buildHelpText());
+    ctx.ui.notify("SF Data Explorer help copied to editor.", "info");
+    return;
+  }
+  if (!ctx.hasUI) {
+    ctx.ui.notify("/sf-data-explorer requires interactive pi TUI mode.", "error");
+    return;
+  }
+  if (!parsed.mode && !args.trim()) {
+    const panelMode = await openSfDataExplorerPanel(pi, ctx, parsed.org);
+    if (!panelMode) return;
+    parsed.mode = panelMode;
+  }
+  const mode = parsed.mode ?? (await pickMode(ctx));
+  if (!mode) return;
+  let current: ParsedCommandArgs & { mode: ExplorerMode } = { ...parsed, mode };
+  for (;;) {
+    const result = await launchExplorer(pi, ctx, current);
+    if (result?.kind !== "switchMode") break;
+    current = { ...current, mode: result.mode, object: undefined, forceRefresh: false };
+  }
+}
+
+async function openSfDataExplorerPanel(
+  pi: ExtensionAPI,
+  ctx: ExtensionCommandContext,
+  org: string,
+): Promise<ExplorerMode | undefined> {
+  const toggle = buildToggleExtensionAction({
+    extensionId: "sf-data-explorer",
+    cwd: ctx.cwd,
+  });
+  const actions = [
+    {
+      value: "open.soql",
+      label: "Open SOQL Explorer",
+      description: "Browse queryable core Salesforce sObjects, select fields, edit/run SOQL.",
+      group: "Open",
+    },
+    {
+      value: "open.sosl",
+      label: "Open SOSL Explorer",
+      description: "Browse searchable sObjects, build/edit/run SOSL searches.",
+      group: "Open",
+    },
+    {
+      value: "open.sql",
+      label: "Open Data 360 SQL Explorer",
+      description: "Browse Data 360 DMO/DLO metadata, select fields, edit/run Data 360 SQL.",
+      group: "Open",
+    },
+    {
+      value: "help",
+      label: "Show help",
+      description: "Show command examples, keybindings, and read-only safety notes.",
+      group: "Reference",
+    },
+    {
+      value: "close",
+      label: "Close",
+      description: "Dismiss this panel.",
+      group: LIFECYCLE_GROUP,
+    },
+    ...(toggle ? [toggle] : []),
+  ];
+
+  const action = await openCommandPanel(ctx, {
+    title: "SF Data Explorer",
+    subtitle: "Read-only SOQL, SOSL, and Data 360 SQL explorer.",
+    statusLines: [
+      `Target org: ${org}`,
+      "Read-only: describe, query, search, and Data 360 SELECT SQL only.",
+      "Tip: pass object/table deep links, e.g. /sf-data-explorer soql Account my-org",
+    ],
+    actions,
+    closeValue: "close",
+    // Lifecycle toggle calls ctx.reload() — must close panel first so the
+    // ctx.ui.custom() promise resolves before the runtime is invalidated.
+    closeBeforeAction: isLifecycleToggleAction,
+    helpText: "↑↓ move · type filter · Enter select · Esc / type 'exit' close",
+  });
+
+  switch (action) {
+    case "open.soql":
+      return "soql";
+    case "open.sosl":
+      return "sosl";
+    case "open.sql":
+      return "sql";
+    case "help":
+      await openInfoPanel(ctx, {
+        title: "SF Data Explorer help",
+        body: buildHelpText(),
+        severity: "info",
+      });
+      return openSfDataExplorerPanel(pi, ctx, org);
+    case "lifecycle.toggle":
+      await performToggleExtension(ctx, "sf-data-explorer");
+      return undefined;
+    default:
+      return undefined;
+  }
+}
+
+async function pickMode(ctx: ExtensionCommandContext): Promise<ExplorerMode | undefined> {
+  const picked = await ctx.ui.select("SF Data Explorer mode", [
+    "SOQL Explorer",
+    "SOSL Explorer",
+    "Data 360 SQL Explorer",
+    "Cancel",
+  ]);
+  if (!picked || picked === "Cancel") return undefined;
+  if (picked.startsWith("SOQL")) return "soql";
+  if (picked.startsWith("SOSL")) return "sosl";
+  return "sql";
+}
+
+async function launchExplorer(
+  pi: ExtensionAPI,
+  ctx: ExtensionCommandContext,
+  parsed: ParsedCommandArgs & { mode: ExplorerMode },
+): Promise<ExplorerSpaResult> {
+  const transport = await getSfDataExplorerTransport(pi);
+  const strategy = await buildInitialStrategy(pi, ctx, transport, parsed);
+  if (!strategy) return undefined;
+  const result = await ctx.ui.custom<ExplorerSpaResult>((tui, theme, _keybindings, done) => {
+    const spa = new ExplorerSpa({
+      org: parsed.org,
+      cwd: ctx.cwd,
+      theme,
+      strategy,
+      transportInfo: transport.info,
+      setEditorText: (text) => ctx.ui.setEditorText(text),
+      notify: (message, level) => ctx.ui.notify(message, level),
+      done: (result) => done(result),
+      requestRender: () => tui.requestRender(),
+    });
+    if (parsed.object) void spa.selectObjectByName(parsed.object, parsed.forceRefresh);
+    return spa;
+  });
+  if (result?.kind === "copyToEditor") {
+    ctx.ui.setEditorText(result.text);
+    ctx.ui.notify(`Copied ${result.label} to editor.`, "info");
+  }
+  return result;
+}
+
+async function buildInitialStrategy(
+  pi: ExtensionAPI,
+  ctx: ExtensionCommandContext,
+  transport: SfDataExplorerTransport,
+  parsed: ParsedCommandArgs & { mode: ExplorerMode },
+): Promise<ExplorerStrategy<unknown, unknown> | undefined> {
+  if (parsed.mode === "soql") {
+    const empty = createSoqlStrategy({
+      transport,
+      org: parsed.org,
+      initial: { objects: [], cacheLine: "Loading SOQL catalog…" },
+    });
+    const loaded = await runWithLoader(
+      ctx,
+      `${parsed.forceRefresh ? "Refreshing" : "Loading"} SOQL sObject catalog for ${parsed.org}…`,
+      () => empty.loadCatalog(parsed.forceRefresh),
+    );
+    if (!loaded) return undefined;
+    const cacheLine = cacheStatus(loaded.kindLabel, loaded.cached, loaded.loadedAt);
+    ctx.ui.notify(cacheLine, "info");
+    return createSoqlStrategy({
+      transport,
+      org: parsed.org,
+      initial: { objects: loaded.value as CoreSObjectMeta[], cacheLine },
+    });
+  }
+  if (parsed.mode === "sosl") {
+    const empty = createSoslStrategy({
+      transport,
+      org: parsed.org,
+      initial: { objects: [], cacheLine: "Loading SOSL catalog…" },
+    });
+    const loaded = await runWithLoader(
+      ctx,
+      `${parsed.forceRefresh ? "Refreshing" : "Loading"} SOSL searchable catalog for ${parsed.org}…`,
+      () => empty.loadCatalog(parsed.forceRefresh),
+    );
+    if (!loaded) return undefined;
+    const cacheLine = cacheStatus(loaded.kindLabel, loaded.cached, loaded.loadedAt);
+    ctx.ui.notify(cacheLine, "info");
+    return createSoslStrategy({
+      transport,
+      org: parsed.org,
+      initial: { objects: loaded.value as CoreSObjectMeta[], cacheLine },
+    });
+  }
+  const empty = createData360SqlStrategy({
+    transport,
+    org: parsed.org,
+    initial: { objects: [], cacheLine: "Loading Data 360 catalog…" },
+    requestRender: () => {},
+  });
+  const loaded = await runWithLoader(
+    ctx,
+    `${parsed.forceRefresh ? "Refreshing" : "Loading"} Data 360 DMO+DLO catalog for ${parsed.org}…`,
+    () => empty.loadCatalog(parsed.forceRefresh),
+  );
+  if (!loaded) return undefined;
+  const cacheLine = cacheStatus(loaded.kindLabel, loaded.cached, loaded.loadedAt);
+  ctx.ui.notify(cacheLine, "info");
+  return createData360SqlStrategy({
+    transport,
+    org: parsed.org,
+    initial: { objects: loaded.value as Data360ObjectMeta[], cacheLine },
+    requestRender: () => {},
+  });
+}
+
+async function runWithLoader<T>(
+  ctx: ExtensionCommandContext,
+  label: string,
+  work: (signal: AbortSignal) => Promise<T>,
+): Promise<T | undefined> {
+  const result = await ctx.ui.custom<T | { error: string } | null>((tui, theme, _kb, done) => {
+    const loader = new BorderedLoader(tui as never, theme, label);
+    loader.onAbort = () => done(null);
+    work(loader.signal)
+      .then(done)
+      .catch((error: unknown) =>
+        done({ error: error instanceof Error ? error.message : String(error) }),
+      );
+    return loader;
+  });
+  if (result === null) {
+    ctx.ui.notify("Cancelled", "info");
+    return undefined;
+  }
+  if (typeof result === "object" && result && "error" in result) {
+    ctx.ui.notify(String((result as { error: string }).error), "error");
+    return undefined;
+  }
+  return result as T;
+}
