@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.144.0-2026-05-22",
-  "latestVersion": "0.144.0",
+  "revision": "release-0.144.1-2026-05-22",
+  "latestVersion": "0.144.1",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.144.0",
+      "id": "release-0.144.1",
       "kind": "update",
-      "title": "sf-pi v0.144.0 — agentscript: improve eval and preview lifecycle",
+      "title": "sf-pi v0.144.1 — sf-agentscript: support linked context preview variables",
       "publishedAt": "2026-05-22T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.144.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.144.1",
       "severity": "info",
-      "body": "agentscript: improve eval and preview lifecycle"
+      "body": "sf-agentscript: support linked context preview variables"
     },
     {
       "id": "pi-0.73-required",
