@@ -9,10 +9,10 @@
  *   Severity 2 (Warning)          included only for known-actionable codes
  *   Severity 3/4 (Info/Hint)      always dropped
  *
- * Actionable warning codes are the ones the SDK ships with a machine-applyable
- * fix (`code-actions.ts` knows how to build TextEdits for them). We keep the
- * allowlist explicit so the agent never sees a low-value warning it can't act
- * on.
+ * Actionable warning codes are the ones our diagnostics layer can pair with a
+ * machine-applyable fix (`code-actions.ts` knows how to build TextEdits for
+ * them). We keep the allowlist explicit so the agent never sees a low-value
+ * warning it can't act on.
  */
 
 import fs from "node:fs/promises";
@@ -31,8 +31,8 @@ import type {
 // -------------------------------------------------------------------------------------------------
 
 /**
- * Severity-2 warning codes that are worth surfacing to the agent because the
- * SDK ships a deterministic fix for them. Everything else at severity 2+
+ * Severity-2 warning codes that are worth surfacing to the agent because we
+ * can build a deterministic fix for them. Everything else at severity 2+
  * is dropped to keep the feedback stream focused on things the agent can
  * actually resolve.
  */

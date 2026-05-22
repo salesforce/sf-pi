@@ -46,7 +46,7 @@ const ROOT = path.resolve(__dirname, "..");
 // -------------------------------------------------------------------------------------------------
 
 const UPSTREAM_REPO = "https://github.com/salesforce/agentscript.git";
-const UPSTREAM_SHA = "b98c087bd09d91de7f4cc1bfe829a98be573aaa6";
+const UPSTREAM_SHA = "1e6091f6cc77c8784b1f8a46d80707ae36fc6ea3";
 
 // -------------------------------------------------------------------------------------------------
 // Paths

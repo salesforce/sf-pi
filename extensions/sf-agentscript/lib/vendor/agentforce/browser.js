@@ -1,13 +1,10 @@
 var __defProp = Object.defineProperty;
-var __defNormalProp = (obj, key, value) =>
-  key in obj
-    ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value })
-    : (obj[key] = value);
+var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __export = (target, all) => {
-  for (var name in all) __defProp(target, name, { get: all[name], enumerable: true });
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
 };
-var __publicField = (obj, key, value) =>
-  __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
 
 // src/index.ts
 var index_exports = {};
@@ -29,6 +26,7 @@ __export(index_exports, {
   BooleanLiteral: () => BooleanLiteral,
   BooleanValue: () => BooleanValue,
   CAPTURE_MAP: () => CAPTURE_MAP,
+  COMMERCE_SHOPPER_SCHEMA: () => COMMERCE_SHOPPER_SCHEMA,
   CallExpression: () => CallExpression,
   CollectionBlock: () => CollectionBlock,
   ComparisonExpression: () => ComparisonExpression,
@@ -41,6 +39,7 @@ __export(index_exports, {
   Dialect: () => Dialect,
   DictLiteral: () => DictLiteral,
   Document: () => Document,
+  ESCAPE_TABLE: () => ESCAPE_TABLE,
   Ellipsis: () => Ellipsis,
   ErrorBlock: () => ErrorBlock,
   ErrorValue: () => ErrorValue,
@@ -71,6 +70,7 @@ __export(index_exports, {
   PassStore: () => PassStore,
   ProcedureValue: () => ProcedureValue,
   PronunciationDictEntryBlock: () => PronunciationDictEntryBlock,
+  RESPONSE_FORMAT_INPUT_KEYWORDS: () => RESPONSE_FORMAT_INPUT_KEYWORDS,
   ReasoningActionBlock: () => ReasoningActionBlock,
   ReasoningActionsBlock: () => ReasoningActionsBlock,
   ReferenceValue: () => ReferenceValue,
@@ -139,6 +139,7 @@ __export(index_exports, {
   emitIndent: () => emitIndent,
   emitKeyName: () => emitKeyName,
   emptyBlockPass: () => emptyBlockPass,
+  escapeStringValue: () => escapeStringValue,
   executeQuery: () => executeQuery2,
   expressionValidationPass: () => expressionValidationPass,
   extractChildren: () => extractChildren,
@@ -169,9 +170,11 @@ __export(index_exports, {
   getSchemaNamespaces: () => getSchemaNamespaces,
   getSymbolMembers: () => getSymbolMembers,
   getValueCompletions: () => getValueCompletions,
+  getWithCompletions: () => getWithCompletions,
   increaseIndentPattern: () => increaseIndentPattern,
   init: () => init,
   inlineComments: () => inlineComments,
+  interpretEscape: () => interpretEscape,
   isAtIdentifier: () => isAtIdentifier2,
   isBlockChild: () => isBlockChild,
   isCollectionFieldType: () => isCollectionFieldType,
@@ -238,23 +241,13 @@ __export(index_exports, {
   validateStrictSchema: () => validateStrictSchema,
   walkAstExpressions: () => walkAstExpressions,
   walkDefinitionKeys: () => walkDefinitionKeys,
-  withCst: () => withCst,
+  withCst: () => withCst
 });
 
 // ../parser-javascript/dist/cst-node.js
 var EMPTY_CHILDREN = Object.freeze([]);
 var CSTNode = class {
-  constructor(
-    type,
-    source,
-    startOffset,
-    endOffset,
-    startPosition,
-    endPosition,
-    isNamed = true,
-    isError = false,
-    isMissing = false,
-  ) {
+  constructor(type, source, startOffset, endOffset, startPosition, endPosition, isNamed = true, isError = false, isMissing = false) {
     __publicField(this, "type");
     /** Whether this is a "named" node (true) or anonymous punctuation/keyword (false). */
     __publicField(this, "isNamed");
@@ -323,34 +316,42 @@ var CSTNode = class {
     return this._namedChildren;
   }
   get previousSibling() {
-    if (!this.parent || this._childIndex <= 0) return null;
+    if (!this.parent || this._childIndex <= 0)
+      return null;
     return this.parent.children[this._childIndex - 1];
   }
   get nextSibling() {
-    if (!this.parent) return null;
+    if (!this.parent)
+      return null;
     const siblings = this.parent.children;
     return this._childIndex < siblings.length - 1 ? siblings[this._childIndex + 1] : null;
   }
   childForFieldName(name) {
-    if (!this._fields) return null;
+    if (!this._fields)
+      return null;
     const indices = this._fields.get(name);
-    if (!indices || indices.length === 0) return null;
+    if (!indices || indices.length === 0)
+      return null;
     return this.children[indices[0]] ?? null;
   }
   childrenForFieldName(name) {
-    if (!this._fields) return [];
+    if (!this._fields)
+      return [];
     const indices = this._fields.get(name);
-    if (!indices) return [];
+    if (!indices)
+      return [];
     return indices.map((i) => this.children[i]).filter(Boolean);
   }
   /** True if this node or any descendant has an error or missing node. */
   get hasError() {
-    if (this.isError || this.isMissing) return true;
+    if (this.isError || this.isMissing)
+      return true;
     return this.children.some((c) => c.hasError);
   }
   /** Get the field name for a child at a given index. */
   fieldNameForChild(index) {
-    if (!this._fields) return null;
+    if (!this._fields)
+      return null;
     if (!this._childFieldNames) {
       this._childFieldNames = /* @__PURE__ */ new Map();
       for (const [fieldName, indices] of this._fields) {
@@ -363,7 +364,8 @@ var CSTNode = class {
   }
   /** Add a child node, optionally associating it with a field name. */
   appendChild(child, fieldName) {
-    if (!this._children) this._children = [];
+    if (!this._children)
+      this._children = [];
     const idx2 = this._children.length;
     child.parent = this;
     child._childIndex = idx2;
@@ -372,7 +374,8 @@ var CSTNode = class {
     this.endCol = child.endCol;
     this.endOffset = child.endOffset;
     if (fieldName) {
-      if (!this._fields) this._fields = /* @__PURE__ */ new Map();
+      if (!this._fields)
+        this._fields = /* @__PURE__ */ new Map();
       let arr = this._fields.get(fieldName);
       if (!arr) {
         arr = [];
@@ -382,7 +385,8 @@ var CSTNode = class {
     }
   }
   /** @deprecated No-op: appendChild() tracks end position incrementally. */
-  finalize() {}
+  finalize() {
+  }
   /** Serialize to s-expression format for testing (named nodes only, no text). */
   toSExp() {
     return nodeToSExp(this);
@@ -400,14 +404,10 @@ function nodeToSExp(node) {
   const parts = [];
   for (let i = 0; i < node.children.length; i++) {
     const child = node.children[i];
-    if (!child.isNamed && !child.isError && !child.isMissing) continue;
+    if (!child.isNamed && !child.isError && !child.isMissing)
+      continue;
     const fieldName = node.fieldNameForChild(i);
-    const childStr =
-      child.children.length > 0 || child.isError
-        ? nodeToSExp(child)
-        : child.isMissing
-          ? `(MISSING ${child.type})`
-          : `(${child.type})`;
+    const childStr = child.children.length > 0 || child.isError ? nodeToSExp(child) : child.isMissing ? `(MISSING ${child.type})` : `(${child.type})`;
     if (fieldName) {
       parts.push(`${fieldName}: ${childStr}`);
     } else {
@@ -452,7 +452,7 @@ ${childLines.join("\n")})`;
 
 // ../parser-javascript/dist/token.js
 var TokenKind;
-(function (TokenKind2) {
+(function(TokenKind2) {
   TokenKind2["NEWLINE"] = "NEWLINE";
   TokenKind2["INDENT"] = "INDENT";
   TokenKind2["DEDENT"] = "DEDENT";
@@ -512,7 +512,7 @@ function capture(node, name, captures) {
     startRow: node.startRow,
     startCol: node.startCol,
     endRow: node.endRow,
-    endCol: node.endCol,
+    endCol: node.endCol
   });
 }
 function walkNode(node, captures) {
@@ -567,9 +567,11 @@ function walkNode(node, captures) {
 }
 function isRootLevelKey(keyNode) {
   const mappingElement = keyNode.parent;
-  if (mappingElement?.type !== "mapping_element") return false;
+  if (mappingElement?.type !== "mapping_element")
+    return false;
   const mapping = mappingElement.parent;
-  if (mapping?.type !== "mapping") return false;
+  if (mapping?.type !== "mapping")
+    return false;
   return mapping.parent?.type === "source_file";
 }
 function captureId(node, captures) {
@@ -755,10 +757,10 @@ var CH_z = 122;
 var CH_LBRACE = 123;
 var CH_NUL = 0;
 function isIdStart(c) {
-  return (c >= CH_A && c <= CH_Z) || (c >= CH_a && c <= CH_z) || c === CH_UNDERSCORE;
+  return c >= CH_A && c <= CH_Z || c >= CH_a && c <= CH_z || c === CH_UNDERSCORE;
 }
 function isIdCont(c) {
-  return isIdStart(c) || (c >= CH_0 && c <= CH_9);
+  return isIdStart(c) || c >= CH_0 && c <= CH_9;
 }
 function isDigit(c) {
   return c >= CH_0 && c <= CH_9;
@@ -808,7 +810,7 @@ var Lexer = class {
   }
   tokenize() {
     this.tokens = [];
-    const estimate = (this.source.length / 8) | 0;
+    const estimate = this.source.length / 8 | 0;
     if (estimate > 64) {
       this.tokens.length = estimate;
       this.tokens.length = 0;
@@ -858,12 +860,7 @@ var Lexer = class {
       return this.tokenizeComment();
     }
     const currentIndent = this.indentStack[this.indentStack.length - 1];
-    if (
-      this.onTemplateLine &&
-      indentLength > this.templateBaseIndent &&
-      currentIndent > this.templateBaseIndent &&
-      indentLength !== currentIndent
-    ) {
+    if (this.onTemplateLine && indentLength > this.templateBaseIndent && currentIndent > this.templateBaseIndent && indentLength !== currentIndent) {
       this.emitIndentation(currentIndent);
     } else {
       this.emitIndentation(indentLength);
@@ -906,7 +903,8 @@ var Lexer = class {
     }
   }
   emitIndentation(indentLength) {
-    if (this.bracketDepth > 0) return;
+    if (this.bracketDepth > 0)
+      return;
     const currentIndent = this.indentStack[this.indentStack.length - 1];
     if (indentLength > currentIndent) {
       this.indentStack.push(indentLength);
@@ -916,10 +914,7 @@ var Lexer = class {
         this.onTemplateLine = false;
         this.templateExprBraceDepth = -1;
       }
-      while (
-        this.indentStack.length > 1 &&
-        this.indentStack[this.indentStack.length - 1] > indentLength
-      ) {
+      while (this.indentStack.length > 1 && this.indentStack[this.indentStack.length - 1] > indentLength) {
         this.indentStack.pop();
         this.emitVirtual(TokenKind.DEDENT);
       }
@@ -965,12 +960,7 @@ var Lexer = class {
       }
       if (isDigit(this.peekCharCode(1))) {
         const prev = this.tokens[this.tokens.length - 1];
-        const isMemberAccess =
-          prev !== void 0 &&
-          (prev.kind === TokenKind.ID ||
-            prev.kind === TokenKind.NUMBER ||
-            prev.kind === TokenKind.RPAREN ||
-            prev.kind === TokenKind.RBRACKET);
+        const isMemberAccess = prev !== void 0 && (prev.kind === TokenKind.ID || prev.kind === TokenKind.NUMBER || prev.kind === TokenKind.RPAREN || prev.kind === TokenKind.RBRACKET);
         if (!isMemberAccess) {
           this.tokenizeNumber();
           return;
@@ -1013,10 +1003,12 @@ var Lexer = class {
         // INDENT/DEDENT emission (unmatched parens would eat the rest of
         // the file).
         case TokenKind.LPAREN:
-          if (!this.onTemplateLine) this.bracketDepth++;
+          if (!this.onTemplateLine)
+            this.bracketDepth++;
           break;
         case TokenKind.RPAREN:
-          if (!this.onTemplateLine) this.bracketDepth--;
+          if (!this.onTemplateLine)
+            this.bracketDepth--;
           break;
         // Track brace depth inside {!...} template expressions so that nested
         // braces (e.g. JSON objects) don't prematurely close the expression.
@@ -1039,7 +1031,8 @@ var Lexer = class {
     let i = 0;
     for (; ; i++) {
       const c = this.peekCharCode(i);
-      if (!isIdCont(c)) break;
+      if (!isIdCont(c))
+        break;
     }
     this.emitSpan(TokenKind.ID, i);
   }
@@ -1062,18 +1055,18 @@ var Lexer = class {
   }
   tryDatetime() {
     const remaining = this.source.length - this.offset;
-    if (remaining < 10) return false;
-    if (
-      this.source.charCodeAt(this.offset + 4) !== CH_DASH ||
-      this.source.charCodeAt(this.offset + 7) !== CH_DASH
-    ) {
+    if (remaining < 10)
+      return false;
+    if (this.source.charCodeAt(this.offset + 4) !== CH_DASH || this.source.charCodeAt(this.offset + 7) !== CH_DASH) {
       return false;
     }
     const slice = this.source.slice(this.offset, this.offset + 30);
     const match = slice.match(/^\d{4}-\d{2}-\d{2}(T\d{1,2}(:\d{2})?(:\d{2})?(\.\d+)?Z?)?/);
-    if (!match) return false;
+    if (!match)
+      return false;
     const matchText = match[0];
-    if (matchText.length < 10) return false;
+    if (matchText.length < 10)
+      return false;
     this.emit(TokenKind.DATETIME, matchText);
     return true;
   }
@@ -1087,9 +1080,7 @@ var Lexer = class {
       if (c === quoteCode) {
         this.advance();
         const text2 = this.source.slice(startOffset, this.offset);
-        this.tokens.push(
-          this.makeToken(TokenKind.STRING, text2, start, this.position, startOffset),
-        );
+        this.tokens.push(this.makeToken(TokenKind.STRING, text2, start, this.position, startOffset));
         return;
       }
       if (c === CH_BACKSLASH) {
@@ -1151,16 +1142,19 @@ var Lexer = class {
     const startPosition = this.position;
     const startOffset = this.offset;
     while (this.hasMore) {
-      if (this.consumeNewline()) break;
+      if (this.consumeNewline())
+        break;
       this.advance();
     }
     while (this.hasMore) {
       const lineIndent = this.consumeIndentation();
-      if (this.consumeNewline()) continue;
+      if (this.consumeNewline())
+        continue;
       const c = this.peekCharCode();
       if (c === CH_HASH) {
         while (this.hasMore) {
-          if (this.consumeNewline()) break;
+          if (this.consumeNewline())
+            break;
           this.advance();
         }
         continue;
@@ -1217,8 +1211,10 @@ var Lexer = class {
    */
   atNewline(additiveOffset = 0) {
     const firstChar = this.peekCharCode(additiveOffset);
-    if (firstChar === CH_LF) return 1;
-    if (firstChar === CH_CR && this.peekCharCode(additiveOffset + 1) === CH_LF) return 2;
+    if (firstChar === CH_LF)
+      return 1;
+    if (firstChar === CH_CR && this.peekCharCode(additiveOffset + 1) === CH_LF)
+      return 2;
     return 0;
   }
   get position() {
@@ -1231,10 +1227,7 @@ var Lexer = class {
   emit(kind, text) {
     const startPosition = this.position;
     const startOffset = this.offset;
-    invariant(
-      text === this.source.slice(startOffset, startOffset + text.length),
-      `expected '${text}' but got ${this.source.slice(startOffset, startOffset + text.length)} at offset ${startOffset}`,
-    );
+    invariant(text === this.source.slice(startOffset, startOffset + text.length), `expected '${text}' but got ${this.source.slice(startOffset, startOffset + text.length)} at offset ${startOffset}`);
     this.advance(text.length);
     this.tokens.push(this.makeToken(kind, text, startPosition, this.position, startOffset));
   }
@@ -1248,31 +1241,14 @@ var Lexer = class {
 
 // ../parser-javascript/dist/errors.js
 function makeErrorNode(source, children, startOffset, endOffset, startPosition, endPosition) {
-  const node = new CSTNode(
-    "ERROR",
-    source,
-    startOffset,
-    endOffset,
-    startPosition,
-    endPosition,
-    true,
-    true,
-  );
+  const node = new CSTNode("ERROR", source, startOffset, endOffset, startPosition, endPosition, true, true);
   for (const child of children) {
     node.appendChild(child);
   }
   return node;
 }
 function tokenToLeaf(token, source, isNamed, offset) {
-  return new CSTNode(
-    tokenTypeToNodeType(token),
-    source,
-    offset,
-    offset + token.text.length,
-    token.start,
-    token.end,
-    isNamed,
-  );
+  return new CSTNode(tokenTypeToNodeType(token), source, offset, offset + token.text.length, token.start, token.end, isNamed);
 }
 var NAMED_TOKEN_KINDS = /* @__PURE__ */ new Set([
   TokenKind.ID,
@@ -1280,7 +1256,7 @@ var NAMED_TOKEN_KINDS = /* @__PURE__ */ new Set([
   TokenKind.STRING,
   TokenKind.DATETIME,
   TokenKind.COMMENT,
-  TokenKind.ELLIPSIS,
+  TokenKind.ELLIPSIS
 ]);
 function tokenToAutoLeaf(token, source, offset) {
   return tokenToLeaf(token, source, NAMED_TOKEN_KINDS.has(token.kind), offset);
@@ -1315,23 +1291,9 @@ function makeEmptyError(ctx) {
 }
 function addMissingTarget(ctx, node) {
   const errAtom = makeEmptyError(ctx);
-  const atom = new CSTNode(
-    "atom",
-    ctx.source,
-    errAtom.startOffset,
-    errAtom.endOffset,
-    errAtom.startPosition,
-    errAtom.endPosition,
-  );
+  const atom = new CSTNode("atom", ctx.source, errAtom.startOffset, errAtom.endOffset, errAtom.startPosition, errAtom.endPosition);
   atom.appendChild(errAtom);
-  const expr = new CSTNode(
-    "expression",
-    ctx.source,
-    atom.startOffset,
-    atom.endOffset,
-    atom.startPosition,
-    atom.endPosition,
-  );
+  const expr = new CSTNode("expression", ctx.source, atom.startOffset, atom.endOffset, atom.startPosition, atom.endPosition);
   expr.appendChild(atom);
   node.appendChild(expr, "target");
 }
@@ -1346,21 +1308,12 @@ function parseOrphanBlock(ctx, parseProcedure2) {
   const children = [];
   const keywordTok = ctx.consume();
   const kwOffset = ctx.currentOffset();
-  children.push(
-    new CSTNode(
-      keywordTok.text,
-      ctx.source,
-      kwOffset,
-      kwOffset + keywordTok.text.length,
-      keywordTok.start,
-      keywordTok.end,
-      false,
-    ),
-  );
+  children.push(new CSTNode(keywordTok.text, ctx.source, kwOffset, kwOffset + keywordTok.text.length, keywordTok.start, keywordTok.end, false));
   while (!ctx.isAtSyncPoint() && !isAtEnd(ctx) && ctx.peekKind() !== TokenKind.COLON) {
     ctx.consume();
   }
-  if (ctx.peekKind() === TokenKind.COLON) ctx.consume();
+  if (ctx.peekKind() === TokenKind.COLON)
+    ctx.consume();
   if (ctx.peekKind() === TokenKind.INDENT) {
     ctx.consume();
     const proc = parseProcedure2(ctx);
@@ -1376,11 +1329,12 @@ function parseOrphanBlock(ctx, parseProcedure2) {
         ctx.consume();
       }
     }
-    if (ctx.peekKind() === TokenKind.DEDENT) ctx.consume();
+    if (ctx.peekKind() === TokenKind.DEDENT)
+      ctx.consume();
   }
-  if (ctx.peekKind() === TokenKind.NEWLINE) ctx.consume();
-  const endOffset =
-    children.length > 0 ? children[children.length - 1].endOffset : ctx.peekOffset();
+  if (ctx.peekKind() === TokenKind.NEWLINE)
+    ctx.consume();
+  const endOffset = children.length > 0 ? children[children.length - 1].endOffset : ctx.peekOffset();
   const endPos = children.length > 0 ? children[children.length - 1].endPosition : ctx.peek().start;
   return makeErrorNode(ctx.source, children, startOffset, endOffset, startPos, endPos);
 }
@@ -1393,7 +1347,8 @@ function recoverToBlockEnd(ctx, parent) {
     if (ctx.peekKind() === TokenKind.INDENT) {
       ctx.consume();
       recoverToBlockEnd(ctx, parent);
-      if (ctx.peekKind() === TokenKind.DEDENT) ctx.consume();
+      if (ctx.peekKind() === TokenKind.DEDENT)
+        ctx.consume();
       continue;
     }
     const err = synchronize(ctx);
@@ -1405,35 +1360,24 @@ function recoverToBlockEnd(ctx, parent) {
   }
 }
 function synchronizeUntil(ctx, extraStop) {
-  if (ctx.isAtSyncPoint() || isAtEnd(ctx)) return null;
-  if (extraStop && extraStop(ctx.peekKind(), ctx.peek().start.row)) return null;
+  if (ctx.isAtSyncPoint() || isAtEnd(ctx))
+    return null;
+  if (extraStop && extraStop(ctx.peekKind(), ctx.peek().start.row))
+    return null;
   const startOffset = ctx.peekOffset();
   const startPos = ctx.peek().start;
   const children = [];
-  while (
-    !ctx.isAtSyncPoint() &&
-    !isAtEnd(ctx) &&
-    !(extraStop && extraStop(ctx.peekKind(), ctx.peek().start.row))
-  ) {
+  while (!ctx.isAtSyncPoint() && !isAtEnd(ctx) && !(extraStop && extraStop(ctx.peekKind(), ctx.peek().start.row))) {
     const tok = ctx.consume();
     children.push(tokenToAutoLeaf(tok, ctx.source, ctx.currentOffset()));
   }
-  if (children.length === 0) return null;
+  if (children.length === 0)
+    return null;
   const last = children[children.length - 1];
-  return makeErrorNode(
-    ctx.source,
-    children,
-    startOffset,
-    last.endOffset,
-    startPos,
-    last.endPosition,
-  );
+  return makeErrorNode(ctx.source, children, startOffset, last.endOffset, startPos, last.endPosition);
 }
 function synchronizeRowUntilColon(ctx, row) {
-  return synchronizeUntil(
-    ctx,
-    (kind, r) => kind === TokenKind.INDENT || kind === TokenKind.COLON || r !== row,
-  );
+  return synchronizeUntil(ctx, (kind, r) => kind === TokenKind.INDENT || kind === TokenKind.COLON || r !== row);
 }
 function synchronizeRow(ctx, row) {
   return synchronizeUntil(ctx, (kind, r) => kind === TokenKind.INDENT || r !== row);
@@ -1464,7 +1408,8 @@ function isTrailingCommentOnly(ctx) {
   let i = 0;
   while (i < 50) {
     const tok = ctx.peekAt(i);
-    if (tok.kind === TokenKind.EOF || tok.kind === TokenKind.DEDENT) return true;
+    if (tok.kind === TokenKind.EOF || tok.kind === TokenKind.DEDENT)
+      return true;
     if (tok.kind === TokenKind.COMMENT || tok.kind === TokenKind.NEWLINE) {
       i++;
       continue;
@@ -1495,7 +1440,7 @@ var KEY_STOP_KEYWORDS = /* @__PURE__ */ new Set([
   "None",
   "mutable",
   "linked",
-  "empty",
+  "empty"
 ]);
 function makeMissingArgument(ctx) {
   const offset = ctx.peekOffset();
@@ -1514,19 +1459,18 @@ function makeEmptyError2(ctx) {
 }
 function parseExpression(ctx, minPrec = 0) {
   let left = parsePrefix(ctx);
-  if (!left) return null;
+  if (!left)
+    return null;
   while (true) {
     const nextKind = ctx.peekKind();
-    if (
-      nextKind === TokenKind.NEWLINE ||
-      nextKind === TokenKind.DEDENT ||
-      nextKind === TokenKind.EOF
-    )
+    if (nextKind === TokenKind.NEWLINE || nextKind === TokenKind.DEDENT || nextKind === TokenKind.EOF)
       break;
     const prec = infixPrecedence(ctx);
-    if (prec < minPrec) break;
+    if (prec < minPrec)
+      break;
     const result = parseInfix(ctx, left, prec);
-    if (!result) break;
+    if (!result)
+      break;
     left = result;
   }
   return left;
@@ -1590,10 +1534,7 @@ function parseParenthesized(ctx) {
 }
 function parseAtom(ctx) {
   const tok = ctx.peek();
-  if (
-    tok.kind === TokenKind.ID &&
-    (tok.text === "True" || tok.text === "False" || tok.text === "None")
-  ) {
+  if (tok.kind === TokenKind.ID && (tok.text === "True" || tok.text === "False" || tok.text === "None")) {
     const node = ctx.startNode("atom");
     ctx.addAnonymousChild(node, ctx.consume());
     ctx.finishNode(node, tok);
@@ -1652,17 +1593,7 @@ function parseString(ctx) {
   ctx.consume();
   const baseRow = startTok.start.row;
   const baseCol = startTok.start.column;
-  node.appendChild(
-    new CSTNode(
-      '"',
-      ctx.source,
-      tokenOffset,
-      tokenOffset + 1,
-      { row: baseRow, column: baseCol },
-      { row: baseRow, column: baseCol + 1 },
-      false,
-    ),
-  );
+  node.appendChild(new CSTNode('"', ctx.source, tokenOffset, tokenOffset + 1, { row: baseRow, column: baseCol }, { row: baseRow, column: baseCol + 1 }, false));
   let i = 1;
   const quoteChar = text[0];
   const hasClosingQuote = text.length > 1 && text[text.length - 1] === quoteChar;
@@ -1671,58 +1602,22 @@ function parseString(ctx) {
   while (i < contentEnd) {
     if (text[i] === "\\" && i + 1 < contentEnd && VALID_ESCAPES.has(text[i + 1])) {
       if (i > contentStart) {
-        node.appendChild(
-          new CSTNode(
-            "string_content",
-            ctx.source,
-            tokenOffset + contentStart,
-            tokenOffset + i,
-            { row: baseRow, column: baseCol + contentStart },
-            { row: baseRow, column: baseCol + i },
-          ),
-        );
+        node.appendChild(new CSTNode("string_content", ctx.source, tokenOffset + contentStart, tokenOffset + i, { row: baseRow, column: baseCol + contentStart }, { row: baseRow, column: baseCol + i }));
       }
       const escLen = 2;
-      node.appendChild(
-        new CSTNode(
-          "escape_sequence",
-          ctx.source,
-          tokenOffset + i,
-          tokenOffset + i + escLen,
-          { row: baseRow, column: baseCol + i },
-          { row: baseRow, column: baseCol + i + escLen },
-        ),
-      );
+      node.appendChild(new CSTNode("escape_sequence", ctx.source, tokenOffset + i, tokenOffset + i + escLen, { row: baseRow, column: baseCol + i }, { row: baseRow, column: baseCol + i + escLen }));
       i += escLen;
       contentStart = i;
     } else if (text[i] === "\\" && i + 1 < contentEnd && !VALID_ESCAPES.has(text[i + 1])) {
       if (i > contentStart) {
-        node.appendChild(
-          new CSTNode(
-            "string_content",
-            ctx.source,
-            tokenOffset + contentStart,
-            tokenOffset + i,
-            { row: baseRow, column: baseCol + contentStart },
-            { row: baseRow, column: baseCol + i },
-          ),
-        );
+        node.appendChild(new CSTNode("string_content", ctx.source, tokenOffset + contentStart, tokenOffset + i, { row: baseRow, column: baseCol + contentStart }, { row: baseRow, column: baseCol + i }));
       }
       const escStart = i;
       i += 2;
       while (i < contentEnd && /[a-zA-Z0-9_]/.test(text[i])) {
         i++;
       }
-      const errNode = new CSTNode(
-        "ERROR",
-        ctx.source,
-        tokenOffset + escStart,
-        tokenOffset + i,
-        { row: baseRow, column: baseCol + escStart },
-        { row: baseRow, column: baseCol + i },
-        true,
-        true,
-      );
+      const errNode = new CSTNode("ERROR", ctx.source, tokenOffset + escStart, tokenOffset + i, { row: baseRow, column: baseCol + escStart }, { row: baseRow, column: baseCol + i }, true, true);
       node.appendChild(errNode);
       contentStart = i;
     } else {
@@ -1730,45 +1625,14 @@ function parseString(ctx) {
     }
   }
   if (i > contentStart) {
-    node.appendChild(
-      new CSTNode(
-        "string_content",
-        ctx.source,
-        tokenOffset + contentStart,
-        tokenOffset + i,
-        { row: baseRow, column: baseCol + contentStart },
-        { row: baseRow, column: baseCol + i },
-      ),
-    );
+    node.appendChild(new CSTNode("string_content", ctx.source, tokenOffset + contentStart, tokenOffset + i, { row: baseRow, column: baseCol + contentStart }, { row: baseRow, column: baseCol + i }));
   }
   if (hasClosingQuote) {
-    node.appendChild(
-      new CSTNode(
-        quoteChar,
-        ctx.source,
-        tokenOffset + text.length - 1,
-        tokenOffset + text.length,
-        { row: baseRow, column: baseCol + text.length - 1 },
-        { row: baseRow, column: baseCol + text.length },
-        false,
-      ),
-    );
+    node.appendChild(new CSTNode(quoteChar, ctx.source, tokenOffset + text.length - 1, tokenOffset + text.length, { row: baseRow, column: baseCol + text.length - 1 }, { row: baseRow, column: baseCol + text.length }, false));
   } else {
     const missingOffset = tokenOffset + text.length;
     const missingPos = { row: baseRow, column: baseCol + text.length };
-    node.appendChild(
-      new CSTNode(
-        quoteChar,
-        ctx.source,
-        missingOffset,
-        missingOffset,
-        missingPos,
-        missingPos,
-        false,
-        false,
-        true,
-      ),
-    );
+    node.appendChild(new CSTNode(quoteChar, ctx.source, missingOffset, missingOffset, missingPos, missingPos, false, false, true));
   }
   ctx.finishNode(node, startTok);
   return node;
@@ -1805,11 +1669,7 @@ function parseList(ctx) {
       break;
     }
   }
-  while (
-    ctx.peekKind() === TokenKind.NEWLINE ||
-    ctx.peekKind() === TokenKind.INDENT ||
-    ctx.peekKind() === TokenKind.DEDENT
-  ) {
+  while (ctx.peekKind() === TokenKind.NEWLINE || ctx.peekKind() === TokenKind.INDENT || ctx.peekKind() === TokenKind.DEDENT) {
     ctx.consume();
   }
   if (ctx.peekKind() === TokenKind.RBRACKET) {
@@ -1825,11 +1685,7 @@ function parseDictionary(ctx) {
   const node = ctx.startNode("dictionary");
   ctx.addAnonymousChild(node, ctx.consume());
   while (ctx.peekKind() !== TokenKind.RBRACE && ctx.peekKind() !== TokenKind.EOF) {
-    if (
-      ctx.peekKind() === TokenKind.NEWLINE ||
-      ctx.peekKind() === TokenKind.INDENT ||
-      ctx.peekKind() === TokenKind.DEDENT
-    ) {
+    if (ctx.peekKind() === TokenKind.NEWLINE || ctx.peekKind() === TokenKind.INDENT || ctx.peekKind() === TokenKind.DEDENT) {
       ctx.consume();
       continue;
     }
@@ -1855,15 +1711,18 @@ function parseDictionary(ctx) {
 }
 function parseDictionaryPair(ctx) {
   const startTok = ctx.peek();
-  if (!isKeyStart(ctx)) return null;
+  if (!isKeyStart(ctx))
+    return null;
   const node = ctx.startNode("dictionary_pair");
   const key = parseKey(ctx);
-  if (key) node.appendChild(key, "key");
+  if (key)
+    node.appendChild(key, "key");
   if (ctx.peekKind() === TokenKind.COLON) {
     ctx.addAnonymousChild(node, ctx.consume());
   }
   const value = parseExpression(ctx, 0);
-  if (value) node.appendChild(wrapExpression(ctx, value), "value");
+  if (value)
+    node.appendChild(wrapExpression(ctx, value), "value");
   ctx.finishNode(node, startTok);
   return node;
 }
@@ -1880,17 +1739,18 @@ var INFIX_PREC_BY_KIND = /* @__PURE__ */ new Map([
   [TokenKind.PLUS, 5],
   [TokenKind.MINUS, 5],
   [TokenKind.STAR, 6],
-  [TokenKind.SLASH, 6],
+  [TokenKind.SLASH, 6]
 ]);
 var INFIX_KEYWORD_PREC = /* @__PURE__ */ new Map([
   ["if", 0],
   ["or", 1],
   ["and", 2],
-  ["is", 4],
+  ["is", 4]
 ]);
 function infixPrecedence(ctx) {
   const tok = ctx.peek();
-  if (tok.kind === TokenKind.ID) return INFIX_KEYWORD_PREC.get(tok.text) ?? -2;
+  if (tok.kind === TokenKind.ID)
+    return INFIX_KEYWORD_PREC.get(tok.text) ?? -2;
   return INFIX_PREC_BY_KIND.get(tok.kind) ?? -2;
 }
 function parseInfix(ctx, left, prec) {
@@ -1951,16 +1811,7 @@ function parseMember(ctx, object2) {
     node.appendChild(ctx.consumeNamed("id"));
   } else if (ctx.peekKind() === TokenKind.NUMBER) {
     const numNode = ctx.consumeNamed("number");
-    const errNode = new CSTNode(
-      "ERROR",
-      ctx.source,
-      numNode.startOffset,
-      numNode.endOffset,
-      numNode.startPosition,
-      numNode.endPosition,
-      true,
-      true,
-    );
+    const errNode = new CSTNode("ERROR", ctx.source, numNode.startOffset, numNode.endOffset, numNode.startPosition, numNode.endPosition, true, true);
     errNode.appendChild(numNode);
     node.appendChild(errNode);
   } else {
@@ -2027,14 +1878,7 @@ function parseIsExpression(ctx, left) {
 function parseBinaryOrComparison(ctx, left, prec) {
   const tok = ctx.peek();
   const startTok = tok;
-  const isComparison =
-    tok.kind === TokenKind.EQEQ ||
-    tok.kind === TokenKind.NEQ ||
-    tok.kind === TokenKind.LT ||
-    tok.kind === TokenKind.GT ||
-    tok.kind === TokenKind.LTE ||
-    tok.kind === TokenKind.GTE ||
-    tok.kind === TokenKind.EQ;
+  const isComparison = tok.kind === TokenKind.EQEQ || tok.kind === TokenKind.NEQ || tok.kind === TokenKind.LT || tok.kind === TokenKind.GT || tok.kind === TokenKind.LTE || tok.kind === TokenKind.GTE || tok.kind === TokenKind.EQ;
   const nodeType = isComparison ? "comparison_expression" : "binary_expression";
   const node = ctx.startNodeAt(nodeType, left);
   node.appendChild(wrapExpression(ctx, left));
@@ -2057,7 +1901,7 @@ var ATOM_TYPES = /* @__PURE__ */ new Set([
   "at_id",
   "list",
   "dictionary",
-  "ellipsis",
+  "ellipsis"
 ]);
 function wrapExpression(ctx, inner) {
   if (SKIP_WRAP_TYPES.has(inner.type)) {
@@ -2065,25 +1909,11 @@ function wrapExpression(ctx, inner) {
   }
   let wrapped = inner;
   if (ATOM_TYPES.has(inner.type)) {
-    const atom = new CSTNode(
-      "atom",
-      ctx.source,
-      inner.startOffset,
-      inner.endOffset,
-      inner.startPosition,
-      inner.endPosition,
-    );
+    const atom = new CSTNode("atom", ctx.source, inner.startOffset, inner.endOffset, inner.startPosition, inner.endPosition);
     atom.appendChild(inner);
     wrapped = atom;
   }
-  const expr = new CSTNode(
-    "expression",
-    ctx.source,
-    wrapped.startOffset,
-    wrapped.endOffset,
-    wrapped.startPosition,
-    wrapped.endPosition,
-  );
+  const expr = new CSTNode("expression", ctx.source, wrapped.startOffset, wrapped.endOffset, wrapped.startPosition, wrapped.endPosition);
   expr.appendChild(wrapped);
   return expr;
 }
@@ -2098,21 +1928,13 @@ function isKeyTokenContinuation(kind) {
   return isKeyTokenStart(kind) || kind === TokenKind.MINUS || kind === TokenKind.DOT;
 }
 function parseKey(ctx) {
-  if (!isKeyStart(ctx)) return null;
+  if (!isKeyStart(ctx))
+    return null;
   const startTok = ctx.peek();
   const node = ctx.startNode("key");
   if (ctx.peekKind() === TokenKind.NUMBER) {
     const numNode = ctx.consumeNamed("number");
-    const errNode = new CSTNode(
-      "ERROR",
-      ctx.source,
-      numNode.startOffset,
-      numNode.endOffset,
-      numNode.startPosition,
-      numNode.endPosition,
-      true,
-      true,
-    );
+    const errNode = new CSTNode("ERROR", ctx.source, numNode.startOffset, numNode.endOffset, numNode.startPosition, numNode.endPosition, true, true);
     node.appendChild(errNode);
     if (ctx.peekKind() === TokenKind.ID) {
       node.appendChild(ctx.consumeNamed("id"));
@@ -2122,11 +1944,7 @@ function parseKey(ctx) {
   } else {
     node.appendChild(ctx.consumeNamed("id"));
   }
-  if (
-    ctx.peekKind() === TokenKind.ID &&
-    !ctx.isAtSyncPoint() &&
-    ctx.peek().start.row === startTok.start.row
-  ) {
+  if (ctx.peekKind() === TokenKind.ID && !ctx.isAtSyncPoint() && ctx.peek().start.row === startTok.start.row) {
     const nextText = ctx.peek().text;
     if (!KEY_STOP_KEYWORDS.has(nextText)) {
       node.appendChild(ctx.consumeNamed("id"));
@@ -2139,7 +1957,8 @@ function parseKey(ctx) {
 // ../parser-javascript/dist/parse-statements.js
 function isStatementStart(ctx) {
   const tok = ctx.peek();
-  if (tok.kind !== TokenKind.ID) return false;
+  if (tok.kind !== TokenKind.ID)
+    return false;
   switch (tok.text) {
     case "if":
     case "run":
@@ -2159,7 +1978,8 @@ function parseProcedure(ctx, parseTemplate2) {
   const node = ctx.startNode("procedure");
   while (!isAtEnd(ctx) && ctx.peekKind() !== TokenKind.DEDENT) {
     skipNewlines(ctx);
-    if (isAtEnd(ctx) || ctx.peekKind() === TokenKind.DEDENT) break;
+    if (isAtEnd(ctx) || ctx.peekKind() === TokenKind.DEDENT)
+      break;
     if (ctx.peekKind() === TokenKind.COMMENT && isTrailingCommentOnly(ctx)) {
       break;
     }
@@ -2212,13 +2032,15 @@ function parseStatement(ctx, parseTemplate2) {
   }
   if (tok.kind === TokenKind.COMMENT) {
     const comment2 = ctx.consumeNamed("comment");
-    if (ctx.peekKind() === TokenKind.NEWLINE) ctx.consume();
+    if (ctx.peekKind() === TokenKind.NEWLINE)
+      ctx.consume();
     return comment2;
   }
   const expr = parseExpression(ctx, 0);
   if (expr) {
     const wrapped = wrapExpression(ctx, expr);
-    if (ctx.peekKind() === TokenKind.NEWLINE) ctx.consume();
+    if (ctx.peekKind() === TokenKind.NEWLINE)
+      ctx.consume();
     return wrapped;
   }
   return null;
@@ -2233,17 +2055,21 @@ function parseColonAndProcedureBody(ctx, node, row, errorOnMissingBody, parseTem
     node.appendChild(ctx.consumeNamed("comment"));
   }
   const inlineErr = synchronizeRow(ctx, row);
-  if (inlineErr) node.appendChild(inlineErr);
+  if (inlineErr)
+    node.appendChild(inlineErr);
   if (ctx.peekKind() === TokenKind.INDENT) {
     ctx.consume();
     const proc = parseProcedure(ctx, parseTemplate2);
-    if (proc) node.appendChild(proc, "consequence");
+    if (proc)
+      node.appendChild(proc, "consequence");
     consumeCommentsAndSkipNewlines(ctx, node);
-    if (ctx.peekKind() === TokenKind.DEDENT) ctx.consume();
+    if (ctx.peekKind() === TokenKind.DEDENT)
+      ctx.consume();
   } else if (errorOnMissingBody && (ctx.peekKind() === TokenKind.NEWLINE || ctx.isAtSyncPoint())) {
     node.appendChild(makeEmptyError(ctx));
   }
-  if (ctx.peekKind() === TokenKind.NEWLINE) ctx.consume();
+  if (ctx.peekKind() === TokenKind.NEWLINE)
+    ctx.consume();
 }
 function parseIfStatement(ctx, parseTemplate2) {
   const startTok = ctx.peek();
@@ -2256,51 +2082,32 @@ function parseIfStatement(ctx, parseTemplate2) {
     if (right) {
       const cmp = ctx.startNodeAt("comparison_expression", condition);
       cmp.appendChild(wrapExpression(ctx, condition));
-      const eqChild = new CSTNode(
-        "=",
-        ctx.source,
-        eqTok.startOffset,
-        eqTok.startOffset + 1,
-        eqTok.start,
-        eqTok.end,
-        false,
-      );
-      const eqErr = makeErrorNode(
-        ctx.source,
-        [eqChild],
-        eqTok.startOffset,
-        eqTok.startOffset + 1,
-        eqTok.start,
-        eqTok.end,
-      );
+      const eqChild = new CSTNode("=", ctx.source, eqTok.startOffset, eqTok.startOffset + 1, eqTok.start, eqTok.end, false);
+      const eqErr = makeErrorNode(ctx.source, [eqChild], eqTok.startOffset, eqTok.startOffset + 1, eqTok.start, eqTok.end);
       cmp.appendChild(eqErr);
       cmp.appendChild(wrapExpression(ctx, right));
       cmp.finalize();
       condition = cmp;
     }
   }
-  if (condition) node.appendChild(wrapExpression(ctx, condition), "condition");
-  if (
-    condition &&
-    ctx.peekKind() !== TokenKind.COLON &&
-    !ctx.isAtSyncPoint() &&
-    ctx.peekKind() !== TokenKind.INDENT
-  ) {
+  if (condition)
+    node.appendChild(wrapExpression(ctx, condition), "condition");
+  if (condition && ctx.peekKind() !== TokenKind.COLON && !ctx.isAtSyncPoint() && ctx.peekKind() !== TokenKind.INDENT) {
     const condRow = startTok.start.row;
     const err = synchronizeRowUntilColon(ctx, condRow);
-    if (err) node.appendChild(err);
+    if (err)
+      node.appendChild(err);
   }
   parseColonAndProcedureBody(ctx, node, startTok.start.row, true, parseTemplate2);
-  while (
-    ctx.peekKind() === TokenKind.ID &&
-    (ctx.peek().text === "elif" || ctx.peek().text === "elseif")
-  ) {
+  while (ctx.peekKind() === TokenKind.ID && (ctx.peek().text === "elif" || ctx.peek().text === "elseif")) {
     const elif = parseElifClause(ctx, parseTemplate2);
-    if (elif) node.appendChild(elif, "alternative");
+    if (elif)
+      node.appendChild(elif, "alternative");
   }
   if (ctx.peekKind() === TokenKind.ID && ctx.peek().text === "else") {
     const elseClause = parseElseClause(ctx, parseTemplate2);
-    if (elseClause) node.appendChild(elseClause, "alternative");
+    if (elseClause)
+      node.appendChild(elseClause, "alternative");
   }
   ctx.finishNode(node, startTok);
   return node;
@@ -2318,16 +2125,13 @@ function parseElifClause(ctx, parseTemplate2) {
     ctx.addAnonymousChild(node, kw);
   }
   const condition = parseExpression(ctx, 0);
-  if (condition) node.appendChild(wrapExpression(ctx, condition), "condition");
-  if (
-    condition &&
-    ctx.peekKind() !== TokenKind.COLON &&
-    !ctx.isAtSyncPoint() &&
-    ctx.peekKind() !== TokenKind.INDENT
-  ) {
+  if (condition)
+    node.appendChild(wrapExpression(ctx, condition), "condition");
+  if (condition && ctx.peekKind() !== TokenKind.COLON && !ctx.isAtSyncPoint() && ctx.peekKind() !== TokenKind.INDENT) {
     const condRow = startTok.start.row;
     const err = synchronizeRowUntilColon(ctx, condRow);
-    if (err) node.appendChild(err);
+    if (err)
+      node.appendChild(err);
   }
   parseColonAndProcedureBody(ctx, node, startTok.start.row, false, parseTemplate2);
   ctx.finishNode(node, startTok);
@@ -2360,9 +2164,7 @@ function parseRunStatement(ctx, parseTemplate2) {
     consumeCommentsAndSkipNewlines(ctx, node);
     const proc = parseProcedure(ctx, parseTemplate2);
     if (proc) {
-      const hasWithError = proc.namedChildren.some(
-        (c) => c.isError && c.children.some((cc) => cc.type === "with"),
-      );
+      const hasWithError = proc.namedChildren.some((c) => c.isError && c.children.some((cc) => cc.type === "with"));
       if (hasWithError) {
         for (const child of proc.namedChildren) {
           node.appendChild(child);
@@ -2372,9 +2174,11 @@ function parseRunStatement(ctx, parseTemplate2) {
       }
     }
     consumeCommentsAndSkipNewlines(ctx, node);
-    if (ctx.peekKind() === TokenKind.DEDENT) ctx.consume();
+    if (ctx.peekKind() === TokenKind.DEDENT)
+      ctx.consume();
   }
-  if (ctx.peekKind() === TokenKind.NEWLINE) ctx.consume();
+  if (ctx.peekKind() === TokenKind.NEWLINE)
+    ctx.consume();
   ctx.finishNode(node, startTok);
   return node;
 }
@@ -2389,38 +2193,25 @@ function parseSetStatement(ctx) {
     if (target && rhs) {
       const cmp = ctx.startNodeAt("comparison_expression", wrapExpression(ctx, target));
       cmp.appendChild(wrapExpression(ctx, target));
-      cmp.appendChild(
-        new CSTNode(
-          eqTok.text,
-          ctx.source,
-          eqTok.startOffset,
-          eqTok.startOffset + 2,
-          eqTok.start,
-          eqTok.end,
-          false,
-        ),
-      );
+      cmp.appendChild(new CSTNode(eqTok.text, ctx.source, eqTok.startOffset, eqTok.startOffset + 2, eqTok.start, eqTok.end, false));
       cmp.appendChild(wrapExpression(ctx, rhs));
       cmp.finalize();
       const wrappedCmp = wrapExpression(ctx, cmp);
-      if (ctx.peekKind() === TokenKind.NEWLINE) ctx.consume();
-      return makeErrorNode(
-        ctx.source,
-        [wrappedCmp],
-        wrappedCmp.startOffset,
-        wrappedCmp.endOffset,
-        wrappedCmp.startPosition,
-        wrappedCmp.endPosition,
-      );
+      if (ctx.peekKind() === TokenKind.NEWLINE)
+        ctx.consume();
+      return makeErrorNode(ctx.source, [wrappedCmp], wrappedCmp.startOffset, wrappedCmp.endOffset, wrappedCmp.startPosition, wrappedCmp.endPosition);
     }
   }
-  if (target) node.appendChild(wrapExpression(ctx, target), "target");
+  if (target)
+    node.appendChild(wrapExpression(ctx, target), "target");
   if (ctx.peekKind() === TokenKind.EQ) {
     ctx.addAnonymousChild(node, ctx.consume());
     const value = parseExpression(ctx, 0);
-    if (value) node.appendChild(wrapExpression(ctx, value), "value");
+    if (value)
+      node.appendChild(wrapExpression(ctx, value), "value");
   }
-  if (ctx.peekKind() === TokenKind.NEWLINE) ctx.consume();
+  if (ctx.peekKind() === TokenKind.NEWLINE)
+    ctx.consume();
   ctx.finishNode(node, startTok);
   return node;
 }
@@ -2431,22 +2222,20 @@ function parseTransitionStatement(ctx) {
   const withToList = tryParseWithToStatementList(ctx);
   if (withToList) {
     node.appendChild(withToList, "with_to_statement_list");
-  } else if (
-    !ctx.isAtSyncPoint() &&
-    ctx.peekKind() !== TokenKind.NEWLINE &&
-    ctx.peekKind() !== TokenKind.EOF
-  ) {
+  } else if (!ctx.isAtSyncPoint() && ctx.peekKind() !== TokenKind.NEWLINE && ctx.peekKind() !== TokenKind.EOF) {
     const listNode = ctx.startNode("with_to_statement_list");
     const toNode = ctx.startNode("to_statement");
     toNode.appendChild(makeMissing(ctx, "to"));
     const target = parseExpression(ctx, 0);
-    if (target) toNode.appendChild(wrapExpression(ctx, target), "target");
+    if (target)
+      toNode.appendChild(wrapExpression(ctx, target), "target");
     toNode.finalize();
     listNode.appendChild(toNode);
     listNode.finalize();
     node.appendChild(listNode, "with_to_statement_list");
   }
-  if (ctx.peekKind() === TokenKind.NEWLINE) ctx.consume();
+  if (ctx.peekKind() === TokenKind.NEWLINE)
+    ctx.consume();
   ctx.finishNode(node, startTok);
   return node;
 }
@@ -2455,23 +2244,8 @@ function parseWithStatement(ctx) {
   if (ctx.peekAt(1).kind !== TokenKind.ID && ctx.peekAt(1).kind !== TokenKind.STRING) {
     const withTok = ctx.consume();
     const kwOffset = ctx.currentOffset();
-    const withChild = new CSTNode(
-      "with",
-      ctx.source,
-      kwOffset,
-      kwOffset + 4,
-      withTok.start,
-      withTok.end,
-      false,
-    );
-    return makeErrorNode(
-      ctx.source,
-      [withChild],
-      kwOffset,
-      kwOffset + 4,
-      withTok.start,
-      withTok.end,
-    );
+    const withChild = new CSTNode("with", ctx.source, kwOffset, kwOffset + 4, withTok.start, withTok.end, false);
+    return makeErrorNode(ctx.source, [withChild], kwOffset, kwOffset + 4, withTok.start, withTok.end);
   }
   const node = ctx.startNode("with_statement");
   ctx.addAnonymousChild(node, ctx.consume());
@@ -2479,7 +2253,8 @@ function parseWithStatement(ctx) {
   if (ctx.peekKind() === TokenKind.COMMENT) {
     node.appendChild(ctx.consumeNamed("comment"));
   }
-  if (ctx.peekKind() === TokenKind.NEWLINE) ctx.consume();
+  if (ctx.peekKind() === TokenKind.NEWLINE)
+    ctx.consume();
   ctx.finishNode(node, startTok);
   return node;
 }
@@ -2493,7 +2268,8 @@ function parseWithParams(ctx, node) {
       }
     } else {
       const err = synchronize(ctx);
-      if (err) node.appendChild(err);
+      if (err)
+        node.appendChild(err);
       return;
     }
     if (ctx.peekKind() === TokenKind.EQ) {
@@ -2502,7 +2278,8 @@ function parseWithParams(ctx, node) {
       node.appendChild(makeMissing(ctx, "="));
     }
     const value = parseExpression(ctx, 0);
-    if (value) node.appendChild(wrapExpression(ctx, value), "value");
+    if (value)
+      node.appendChild(wrapExpression(ctx, value), "value");
     if (ctx.peekKind() === TokenKind.COMMA) {
       ctx.addAnonymousChild(node, ctx.consume());
     } else {
@@ -2516,15 +2293,19 @@ function parseAvailableWhenStatement(ctx) {
   ctx.addAnonymousChild(node, ctx.consume());
   ctx.addAnonymousChild(node, ctx.consume());
   const condition = parseExpression(ctx, 0);
-  if (condition) node.appendChild(wrapExpression(ctx, condition), "condition");
-  if (ctx.peekKind() === TokenKind.NEWLINE) ctx.consume();
+  if (condition)
+    node.appendChild(wrapExpression(ctx, condition), "condition");
+  if (ctx.peekKind() === TokenKind.NEWLINE)
+    ctx.consume();
   ctx.finishNode(node, startTok);
   return node;
 }
 function tryParseWithToStatementList(ctx) {
   const tok = ctx.peek();
-  if (!isTokenKind(tok, TokenKind.ID)) return null;
-  if (!["with", "to"].includes(tok.text)) return null;
+  if (!isTokenKind(tok, TokenKind.ID))
+    return null;
+  if (!["with", "to"].includes(tok.text))
+    return null;
   const startTok = tok;
   const node = ctx.startNode("with_to_statement_list");
   while (!ctx.isAtSyncPoint()) {
@@ -2541,7 +2322,8 @@ function tryParseWithToStatementList(ctx) {
       break;
     }
   }
-  if (node.children.length === 0) return null;
+  if (node.children.length === 0)
+    return null;
   ctx.finishNode(node, startTok);
   return node;
 }
@@ -2579,17 +2361,16 @@ function parseTemplate(ctx) {
   let templateOuterIndent = 0;
   for (let i = lineStart; i < pipeOffset; i++) {
     const ch = ctx.source.charCodeAt(i);
-    if (ch === 32) templateOuterIndent += 1;
-    else if (ch === 9) templateOuterIndent += 3;
-    else break;
+    if (ch === 32)
+      templateOuterIndent += 1;
+    else if (ch === 9)
+      templateOuterIndent += 3;
+    else
+      break;
   }
   const pipeToken = ctx.consume();
   ctx.addAnonymousChild(node, pipeToken);
-  const hasContentOnSameLine =
-    !isAtEnd(ctx) &&
-    ctx.peekKind() !== TokenKind.NEWLINE &&
-    ctx.peekKind() !== TokenKind.INDENT &&
-    ctx.peekKind() !== TokenKind.DEDENT;
+  const hasContentOnSameLine = !isAtEnd(ctx) && ctx.peekKind() !== TokenKind.NEWLINE && ctx.peekKind() !== TokenKind.INDENT && ctx.peekKind() !== TokenKind.DEDENT;
   if (hasContentOnSameLine) {
     const afterPipeOffset = pipeToken.startOffset + 1;
     gatherTemplateContentLine(ctx, node, afterPipeOffset);
@@ -2622,8 +2403,7 @@ function parseTemplate(ctx) {
           break;
         }
         const lastChild = node.children.length > 0 ? node.children[node.children.length - 1] : null;
-        const gapOffset =
-          lastChild && lastChild.endOffset < ctx.peekOffset() ? lastChild.endOffset : void 0;
+        const gapOffset = lastChild && lastChild.endOffset < ctx.peekOffset() ? lastChild.endOffset : void 0;
         const gapPos = gapOffset !== void 0 ? lastChild.endPosition : void 0;
         gatherTemplateContentLine(ctx, node, gapOffset, gapPos);
       }
@@ -2638,17 +2418,23 @@ function parseTemplateAsColinear(ctx) {
 }
 function templateContinues(ctx, templateOuterIndent) {
   let i = 0;
-  while (ctx.peekAt(i).kind === TokenKind.NEWLINE) i++;
+  while (ctx.peekAt(i).kind === TokenKind.NEWLINE)
+    i++;
   const tok = ctx.peekAt(i);
-  if (tok.kind === TokenKind.EOF || tok.kind === TokenKind.DEDENT) return false;
-  if (tok.start.column > templateOuterIndent) return true;
-  if (tok.kind === TokenKind.PIPE) return false;
+  if (tok.kind === TokenKind.EOF || tok.kind === TokenKind.DEDENT)
+    return false;
+  if (tok.start.column > templateOuterIndent)
+    return true;
+  if (tok.kind === TokenKind.PIPE)
+    return false;
   if (tok.kind === TokenKind.ID || tok.kind === TokenKind.STRING) {
     const after = ctx.peekAt(i + 1);
-    if (after.kind === TokenKind.COLON) return false;
+    if (after.kind === TokenKind.COLON)
+      return false;
     if (after.kind === TokenKind.ID) {
       const afterAfter = ctx.peekAt(i + 2);
-      if (afterAfter.kind === TokenKind.COLON) return false;
+      if (afterAfter.kind === TokenKind.COLON)
+        return false;
     }
   }
   if (tok.kind === TokenKind.ID) {
@@ -2661,7 +2447,8 @@ function templateContinues(ctx, templateOuterIndent) {
       case "transition":
         return false;
       case "with":
-        if (ctx.peekAt(i + 1).kind !== TokenKind.COLON) return false;
+        if (ctx.peekAt(i + 1).kind !== TokenKind.COLON)
+          return false;
         break;
       case "available":
         if (ctx.peekAt(i + 1).kind === TokenKind.ID && ctx.peekAt(i + 1).text === "when")
@@ -2669,8 +2456,10 @@ function templateContinues(ctx, templateOuterIndent) {
         break;
     }
   }
-  if (tok.kind === TokenKind.DASH_SPACE) return false;
-  if (tok.kind === TokenKind.COMMENT) return false;
+  if (tok.kind === TokenKind.DASH_SPACE)
+    return false;
+  if (tok.kind === TokenKind.COMMENT)
+    return false;
   return true;
 }
 function mergeTemplateContent(ctx, template) {
@@ -2686,14 +2475,7 @@ function mergeTemplateContent(ctx, template) {
       if (end > i + 1) {
         const first = template.children[i];
         const last = template.children[end - 1];
-        const mergedNode = new CSTNode(
-          "template_content",
-          ctx.source,
-          first.startOffset,
-          last.endOffset,
-          first.startPosition,
-          last.endPosition,
-        );
+        const mergedNode = new CSTNode("template_content", ctx.source, first.startOffset, last.endOffset, first.startPosition, last.endPosition);
         mergedNode.parent = template;
         merged.push(mergedNode);
         i = end;
@@ -2715,27 +2497,13 @@ function gatherTemplateContentLine(ctx, parent, initialOffset, initialPos) {
   let lastConsumedEndPos = contentStartPos;
   while (!isAtEnd(ctx)) {
     const tok = ctx.peek();
-    if (
-      tok.kind === TokenKind.NEWLINE ||
-      tok.kind === TokenKind.DEDENT ||
-      tok.kind === TokenKind.INDENT ||
-      tok.kind === TokenKind.EOF
-    ) {
+    if (tok.kind === TokenKind.NEWLINE || tok.kind === TokenKind.DEDENT || tok.kind === TokenKind.INDENT || tok.kind === TokenKind.EOF) {
       break;
     }
     if (tok.kind === TokenKind.TEMPLATE_EXPR_START) {
       const exprOffset = ctx.peekOffset();
       if (exprOffset > contentStartOffset) {
-        parent.appendChild(
-          new CSTNode(
-            "template_content",
-            ctx.source,
-            contentStartOffset,
-            exprOffset,
-            contentStartPos,
-            tok.start,
-          ),
-        );
+        parent.appendChild(new CSTNode("template_content", ctx.source, contentStartOffset, exprOffset, contentStartPos, tok.start));
       }
       const exprNode = parseTemplateExpression(ctx);
       parent.appendChild(exprNode);
@@ -2751,16 +2519,7 @@ function gatherTemplateContentLine(ctx, parent, initialOffset, initialPos) {
     ctx.consume();
   }
   if (lastConsumedEndOffset > contentStartOffset) {
-    parent.appendChild(
-      new CSTNode(
-        "template_content",
-        ctx.source,
-        contentStartOffset,
-        lastConsumedEndOffset,
-        contentStartPos,
-        lastConsumedEndPos,
-      ),
-    );
+    parent.appendChild(new CSTNode("template_content", ctx.source, contentStartOffset, lastConsumedEndOffset, contentStartPos, lastConsumedEndPos));
   }
 }
 function parseTemplateExpression(ctx) {
@@ -2775,7 +2534,8 @@ function parseTemplateExpression(ctx) {
   }
   if (ctx.peekKind() !== TokenKind.RBRACE && !ctx.isAtSyncPoint()) {
     const err = synchronize(ctx);
-    if (err) node.appendChild(err);
+    if (err)
+      node.appendChild(err);
   }
   if (ctx.peekKind() === TokenKind.RBRACE) {
     ctx.addAnonymousChild(node, ctx.consume());
@@ -2793,36 +2553,40 @@ function parseMappingOrExpression(ctx, parseSequence2) {
     return parseMapping(ctx, parseSequence2);
   }
   const expr = parseExpression(ctx, 0);
-  if (!expr) return null;
+  if (!expr)
+    return null;
   if (isTokenKind(ctx.peek(), TokenKind.EQ)) {
     const node = ctx.startNodeAt("assignment_expression", expr);
     node.appendChild(wrapExpression(ctx, expr), "left");
     ctx.addAnonymousChild(node, ctx.consumeKind(TokenKind.EQ));
     const right = parseExpression(ctx, 0);
-    if (right) node.appendChild(wrapExpression(ctx, right), "right");
+    if (right)
+      node.appendChild(wrapExpression(ctx, right), "right");
     return node;
   }
   return wrapExpression(ctx, expr);
 }
 function isMappingStart(ctx) {
   const tok = ctx.peek();
-  if (tok.kind === TokenKind.COMMENT) return true;
-  if (tok.kind === TokenKind.PIPE) return true;
-  if (tok.kind === TokenKind.ID && isStatementStart(ctx)) return true;
-  if (!isKeyTokenStart(tok.kind)) return false;
+  if (tok.kind === TokenKind.COMMENT)
+    return true;
+  if (tok.kind === TokenKind.PIPE)
+    return true;
+  if (tok.kind === TokenKind.ID && isStatementStart(ctx))
+    return true;
+  if (!isKeyTokenStart(tok.kind))
+    return false;
   const startRow = tok.start.row;
   for (let i = 1; i < MAX_KEY_LOOKAHEAD; i++) {
     const t = ctx.peekAt(i);
-    if (
-      t.kind === TokenKind.COLON ||
-      t.kind === TokenKind.INDENT ||
-      t.kind === TokenKind.ARROW ||
-      t.kind === TokenKind.AT
-    )
+    if (t.kind === TokenKind.COLON || t.kind === TokenKind.INDENT || t.kind === TokenKind.ARROW || t.kind === TokenKind.AT)
       return true;
-    if (i === 1 && (t.kind === TokenKind.STRING || t.kind === TokenKind.NUMBER)) return true;
-    if (t.kind === TokenKind.EOF || t.start.row !== startRow) return false;
-    if (!isKeyTokenContinuation(t.kind)) return false;
+    if (i === 1 && (t.kind === TokenKind.STRING || t.kind === TokenKind.NUMBER))
+      return true;
+    if (t.kind === TokenKind.EOF || t.start.row !== startRow)
+      return false;
+    if (!isKeyTokenContinuation(t.kind))
+      return false;
   }
   return false;
 }
@@ -2831,7 +2595,8 @@ function parseMapping(ctx, parseSequence2) {
   while (!isAtEnd(ctx)) {
     skipNewlines(ctx);
     const tok = ctx.peek();
-    if (tok.kind === TokenKind.DEDENT || tok.kind === TokenKind.EOF) break;
+    if (tok.kind === TokenKind.DEDENT || tok.kind === TokenKind.EOF)
+      break;
     if (tok.kind === TokenKind.COMMENT && isTrailingCommentOnly(ctx)) {
       break;
     }
@@ -2881,10 +2646,7 @@ function parseMappingItem(ctx, parseSequence2) {
   if (tok.kind === TokenKind.COMMENT) {
     return ctx.consumeNamed("comment");
   }
-  if (
-    tok.kind === TokenKind.ID &&
-    (tok.text === "else" || tok.text === "elif" || tok.text === "for")
-  ) {
+  if (tok.kind === TokenKind.ID && (tok.text === "else" || tok.text === "elif" || tok.text === "for")) {
     return parseOrphanBlock(ctx, (c) => parseProcedure(c, (c2) => parseTemplate(c2)));
   }
   if (isKeyStart(ctx)) {
@@ -2893,13 +2655,11 @@ function parseMappingItem(ctx, parseSequence2) {
   return null;
 }
 function isColinearMappingElement(ctx) {
-  if (!isKeyStart(ctx)) return false;
+  if (!isKeyStart(ctx))
+    return false;
   const tok = ctx.peek();
   const lookahead = 1;
-  if (
-    ctx.peekAt(lookahead).kind === TokenKind.ID &&
-    ctx.peekAt(lookahead).start.row === tok.start.row
-  ) {
+  if (ctx.peekAt(lookahead).kind === TokenKind.ID && ctx.peekAt(lookahead).start.row === tok.start.row) {
     const afterSecond = ctx.peekAt(lookahead + 1);
     if (afterSecond.kind === TokenKind.COLON && afterSecond.start.row === tok.start.row) {
       return true;
@@ -2912,13 +2672,15 @@ function parseColinearMappingElement(ctx) {
   const startTok = ctx.peek();
   const node = ctx.startNode("mapping_element");
   const key = parseKey(ctx);
-  if (key) node.appendChild(key, "key");
+  if (key)
+    node.appendChild(key, "key");
   if (ctx.peekKind() === TokenKind.COLON) {
     ctx.addAnonymousChild(node, ctx.consume());
   }
   const colinear = tryParseColinearValue(ctx);
   if (colinear) {
-    if (colinear.errorPrefix) node.appendChild(colinear.errorPrefix);
+    if (colinear.errorPrefix)
+      node.appendChild(colinear.errorPrefix);
     node.appendChild(colinear.value, "colinear_value");
   }
   ctx.finishNode(node, startTok);
@@ -2936,20 +2698,10 @@ function tryParseColinearValue(ctx) {
     return { value: parseFuzzyVariableDeclaration(ctx) };
   }
   const expr = parseExpression(ctx, 0);
-  if (!expr) return null;
-  if (
-    (expr.type === "number" || (expr.type === "id" && /^[0-9]/.test(expr.text))) &&
-    ctx.peekKind() === TokenKind.ID &&
-    ctx.peek().start.row === expr.startRow
-  ) {
-    const errNode = makeErrorNode(
-      ctx.source,
-      [wrapExpression(ctx, expr)],
-      expr.startOffset,
-      expr.endOffset,
-      expr.startPosition,
-      expr.endPosition,
-    );
+  if (!expr)
+    return null;
+  if ((expr.type === "number" || expr.type === "id" && /^[0-9]/.test(expr.text)) && ctx.peekKind() === TokenKind.ID && ctx.peek().start.row === expr.startRow) {
+    const errNode = makeErrorNode(ctx.source, [wrapExpression(ctx, expr)], expr.startOffset, expr.endOffset, expr.startPosition, expr.endPosition);
     const realValue = tryParseColinearValue(ctx);
     if (realValue) {
       return { value: realValue.value, errorPrefix: errNode };
@@ -2968,7 +2720,8 @@ function tryParseColinearValue(ctx) {
     assign.appendChild(wrapExpression(ctx, expr), "left");
     ctx.addAnonymousChild(assign, ctx.consume());
     const right = parseExpression(ctx, 0);
-    if (right) assign.appendChild(wrapExpression(ctx, right), "right");
+    if (right)
+      assign.appendChild(wrapExpression(ctx, right), "right");
     assign.finalize();
     return { value: assign };
   }
@@ -2980,8 +2733,10 @@ function levenshteinDistance(a, b) {
   const m = a.length;
   const n = b.length;
   const dp = Array.from({ length: m + 1 }, () => Array.from({ length: n + 1 }).fill(0));
-  for (let i = 0; i <= m; i++) dp[i][0] = i;
-  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  for (let i = 0; i <= m; i++)
+    dp[i][0] = i;
+  for (let j = 0; j <= n; j++)
+    dp[0][j] = j;
   for (let i = 1; i <= m; i++) {
     for (let j = 1; j <= n; j++) {
       const cost = a[i - 1] === b[j - 1] ? 0 : 1;
@@ -2999,21 +2754,16 @@ function parseFuzzyVariableDeclaration(ctx) {
   const misspelled = ctx.consume();
   const misspelledEnd = misspelled.startOffset + misspelled.text.length;
   const leaf = tokenToAutoLeaf(misspelled, ctx.source, misspelled.startOffset);
-  const errNode = makeErrorNode(
-    ctx.source,
-    [leaf],
-    misspelled.startOffset,
-    misspelledEnd,
-    misspelled.start,
-    misspelled.end,
-  );
+  const errNode = makeErrorNode(ctx.source, [leaf], misspelled.startOffset, misspelledEnd, misspelled.start, misspelled.end);
   node.appendChild(errNode);
   const typeExpr = parseExpression(ctx, 0);
-  if (typeExpr) node.appendChild(wrapExpression(ctx, typeExpr), "type");
+  if (typeExpr)
+    node.appendChild(wrapExpression(ctx, typeExpr), "type");
   if (ctx.peekKind() === TokenKind.EQ) {
     ctx.addAnonymousChild(node, ctx.consume());
     const defaultExpr = parseExpression(ctx, 0);
-    if (defaultExpr) node.appendChild(wrapExpression(ctx, defaultExpr), "default");
+    if (defaultExpr)
+      node.appendChild(wrapExpression(ctx, defaultExpr), "default");
   }
   ctx.finishNode(node, startTok);
   return node;
@@ -3026,14 +2776,7 @@ function parseMappingElement(ctx, parseSequence2) {
   node.appendChild(key, "key");
   if (ctx.peekKind() === TokenKind.COLON) {
     ctx.addAnonymousChild(node, ctx.consumeKind(TokenKind.COLON));
-  } else if (
-    ctx.peekKind() === TokenKind.INDENT ||
-    ctx.peekKind() === TokenKind.ARROW ||
-    ctx.peekKind() === TokenKind.ID ||
-    ctx.peekKind() === TokenKind.AT ||
-    ctx.peekKind() === TokenKind.STRING ||
-    ctx.peekKind() === TokenKind.NUMBER
-  ) {
+  } else if (ctx.peekKind() === TokenKind.INDENT || ctx.peekKind() === TokenKind.ARROW || ctx.peekKind() === TokenKind.ID || ctx.peekKind() === TokenKind.AT || ctx.peekKind() === TokenKind.STRING || ctx.peekKind() === TokenKind.NUMBER) {
     node.appendChild(makeMissing(ctx, ":"));
   } else {
     return node;
@@ -3050,7 +2793,8 @@ function parseMappingElement(ctx, parseSequence2) {
 function parseColinearAndBlock(ctx, node, startRow, parseSequence2) {
   const colinear = tryParseColinearValue(ctx);
   if (colinear) {
-    if (colinear.errorPrefix) node.appendChild(colinear.errorPrefix);
+    if (colinear.errorPrefix)
+      node.appendChild(colinear.errorPrefix);
     node.appendChild(colinear.value, "colinear_value");
   }
   if (ctx.peekKind() === TokenKind.COMMENT) {
@@ -3058,18 +2802,14 @@ function parseColinearAndBlock(ctx, node, startRow, parseSequence2) {
   }
   if (colinear) {
     const err = synchronizeRow(ctx, startRow);
-    if (err) node.appendChild(err);
+    if (err)
+      node.appendChild(err);
   } else if (!ctx.isAtSyncPoint() && ctx.peekKind() !== TokenKind.INDENT) {
     const err = synchronize(ctx);
-    if (err) node.appendChild(err);
+    if (err)
+      node.appendChild(err);
   }
-  if (
-    colinear?.value.type === "expression_with_to" &&
-    !colinear.value.childForFieldName("with_to_statement_list") &&
-    ctx.peekKind() === TokenKind.INDENT &&
-    ctx.peekAt(1).kind === TokenKind.ID &&
-    ctx.peekAt(1).text === "to"
-  ) {
+  if (colinear?.value.type === "expression_with_to" && !colinear.value.childForFieldName("with_to_statement_list") && ctx.peekKind() === TokenKind.INDENT && ctx.peekAt(1).kind === TokenKind.ID && ctx.peekAt(1).text === "to") {
     ctx.consumeKind(TokenKind.INDENT);
     const withToList = tryParseWithToStatementList(ctx);
     if (withToList) {
@@ -3091,9 +2831,11 @@ function parseArrowBody(ctx, node) {
     ctx.consume();
     consumeCommentsAndSkipNewlines(ctx, node);
     const proc = parseProcedure(ctx, (c) => parseTemplate(c));
-    if (proc) node.appendChild(proc, "block_value");
+    if (proc)
+      node.appendChild(proc, "block_value");
     consumeCommentsAndSkipNewlines(ctx, node);
-    if (ctx.peekKind() === TokenKind.DEDENT) ctx.consume();
+    if (ctx.peekKind() === TokenKind.DEDENT)
+      ctx.consume();
   } else {
     const emptyProc = ctx.startNode("procedure");
     emptyProc.appendChild(makeEmptyError(ctx));
@@ -3105,30 +2847,22 @@ function parseVariableDeclaration(ctx) {
   const startTok = ctx.peek();
   const node = ctx.startNode("variable_declaration");
   ctx.addAnonymousChild(node, ctx.consume());
-  if (
-    ctx.peekKind() === TokenKind.ID &&
-    (ctx.peek().text === "mutable" || ctx.peek().text === "linked")
-  ) {
+  if (ctx.peekKind() === TokenKind.ID && (ctx.peek().text === "mutable" || ctx.peek().text === "linked")) {
     const errExpr = parseExpression(ctx, 0);
     if (errExpr) {
       const wrapped = wrapExpression(ctx, errExpr);
-      const errNode = makeErrorNode(
-        ctx.source,
-        [wrapped],
-        wrapped.startOffset,
-        wrapped.endOffset,
-        wrapped.startPosition,
-        wrapped.endPosition,
-      );
+      const errNode = makeErrorNode(ctx.source, [wrapped], wrapped.startOffset, wrapped.endOffset, wrapped.startPosition, wrapped.endPosition);
       node.appendChild(errNode);
     }
   }
   const typeExpr = parseExpression(ctx, 0);
-  if (typeExpr) node.appendChild(wrapExpression(ctx, typeExpr), "type");
+  if (typeExpr)
+    node.appendChild(wrapExpression(ctx, typeExpr), "type");
   if (ctx.peekKind() === TokenKind.EQ) {
     ctx.addAnonymousChild(node, ctx.consume());
     const defaultExpr = parseExpression(ctx, 0);
-    if (defaultExpr) node.appendChild(wrapExpression(ctx, defaultExpr), "default");
+    if (defaultExpr)
+      node.appendChild(wrapExpression(ctx, defaultExpr), "default");
   }
   ctx.finishNode(node, startTok);
   return node;
@@ -3137,10 +2871,12 @@ function parseIndentedBlockValue(ctx, parent, parseSequence2) {
   ctx.consume();
   consumeCommentsAndSkipNewlines(ctx, parent);
   const blockValue = parseBlockValue(ctx, parseSequence2);
-  if (blockValue) parent.appendChild(blockValue, "block_value");
+  if (blockValue)
+    parent.appendChild(blockValue, "block_value");
   consumeCommentsAndSkipNewlines(ctx, parent);
   recoverToBlockEnd(ctx, parent);
-  if (ctx.peekKind() === TokenKind.DEDENT) ctx.consume();
+  if (ctx.peekKind() === TokenKind.DEDENT)
+    ctx.consume();
 }
 function parseBlockValue(ctx, parseSequence2) {
   const tok = ctx.peek();
@@ -3160,16 +2896,10 @@ function parseBlockValue(ctx, parseSequence2) {
 }
 function parseAtomBlockValue(ctx) {
   const expr = parseExpression(ctx, 0);
-  if (!expr) return null;
+  if (!expr)
+    return null;
   if (ATOM_TYPES.has(expr.type)) {
-    const atom = new CSTNode(
-      "atom",
-      ctx.source,
-      expr.startOffset,
-      expr.endOffset,
-      expr.startPosition,
-      expr.endPosition,
-    );
+    const atom = new CSTNode("atom", ctx.source, expr.startOffset, expr.endOffset, expr.startPosition, expr.endPosition);
     atom.appendChild(expr);
     return atom;
   }
@@ -3182,27 +2912,18 @@ function parseSequence(ctx) {
   const node = ctx.startNode("sequence");
   while (ctx.peekKind() === TokenKind.DASH_SPACE) {
     const elem = parseSequenceElement(ctx);
-    if (elem) node.appendChild(elem);
+    if (elem)
+      node.appendChild(elem);
     skipNewlines(ctx);
   }
-  while (
-    !isAtEnd(ctx) &&
-    ctx.peekKind() !== TokenKind.DEDENT &&
-    ctx.peekKind() !== TokenKind.DASH_SPACE
-  ) {
+  while (!isAtEnd(ctx) && ctx.peekKind() !== TokenKind.DEDENT && ctx.peekKind() !== TokenKind.DASH_SPACE) {
     skipNewlines(ctx);
-    if (isAtEnd(ctx) || ctx.peekKind() === TokenKind.DEDENT) break;
+    if (isAtEnd(ctx) || ctx.peekKind() === TokenKind.DEDENT)
+      break;
     const parseSeq = (_ctx) => parseSequence(_ctx);
     const item = parseMappingItem(ctx, parseSeq);
     if (item) {
-      const errNode = makeErrorNode(
-        ctx.source,
-        [item],
-        item.startOffset,
-        item.endOffset,
-        item.startPosition,
-        item.endPosition,
-      );
+      const errNode = makeErrorNode(ctx.source, [item], item.startOffset, item.endOffset, item.startPosition, item.endPosition);
       node.appendChild(errNode);
     } else {
       const err = synchronize(ctx);
@@ -3223,36 +2944,41 @@ function parseSequenceElement(ctx) {
   const parseSeq = (_ctx) => parseSequence(_ctx);
   if (isColinearMappingElement(ctx)) {
     const mappingElem = parseColinearMappingElement(ctx);
-    if (mappingElem) node.appendChild(mappingElem, "colinear_mapping_element");
-    if (ctx.peekKind() === TokenKind.NEWLINE) ctx.consume();
+    if (mappingElem)
+      node.appendChild(mappingElem, "colinear_mapping_element");
+    if (ctx.peekKind() === TokenKind.NEWLINE)
+      ctx.consume();
     if (ctx.peekKind() === TokenKind.INDENT) {
       ctx.consume();
       const blockValue = parseMapping(ctx, parseSeq);
-      if (blockValue) node.appendChild(blockValue, "block_value");
-      if (ctx.peekKind() === TokenKind.DEDENT) ctx.consume();
+      if (blockValue)
+        node.appendChild(blockValue, "block_value");
+      if (ctx.peekKind() === TokenKind.DEDENT)
+        ctx.consume();
     }
-  } else if (
-    ctx.peekKind() === TokenKind.NEWLINE ||
-    ctx.peekKind() === TokenKind.EOF ||
-    ctx.peekKind() === TokenKind.INDENT
-  ) {
-    if (ctx.peekKind() === TokenKind.NEWLINE) ctx.consume();
+  } else if (ctx.peekKind() === TokenKind.NEWLINE || ctx.peekKind() === TokenKind.EOF || ctx.peekKind() === TokenKind.INDENT) {
+    if (ctx.peekKind() === TokenKind.NEWLINE)
+      ctx.consume();
     if (ctx.peekKind() === TokenKind.INDENT) {
       ctx.consume();
       const blockValue = parseMapping(ctx, parseSeq);
-      if (blockValue) node.appendChild(blockValue, "block_value");
-      if (ctx.peekKind() === TokenKind.DEDENT) ctx.consume();
+      if (blockValue)
+        node.appendChild(blockValue, "block_value");
+      if (ctx.peekKind() === TokenKind.DEDENT)
+        ctx.consume();
     }
   } else {
     const colinear = tryParseColinearValue(ctx);
     if (colinear) {
-      if (colinear.errorPrefix) node.appendChild(colinear.errorPrefix);
+      if (colinear.errorPrefix)
+        node.appendChild(colinear.errorPrefix);
       node.appendChild(colinear.value, "colinear_value");
     }
     if (ctx.peekKind() === TokenKind.COMMENT) {
       node.appendChild(ctx.consumeNamed("comment"));
     }
-    if (ctx.peekKind() === TokenKind.NEWLINE) ctx.consume();
+    if (ctx.peekKind() === TokenKind.NEWLINE)
+      ctx.consume();
   }
   ctx.finishNode(node, startTok);
   return node;
@@ -3318,27 +3044,13 @@ var Parser = class {
     return new CSTNode(type, this.source, offset, offset, tok.start, tok.end);
   }
   startNodeAt(type, existingChild) {
-    return new CSTNode(
-      type,
-      this.source,
-      existingChild.startOffset,
-      existingChild.endOffset,
-      existingChild.startPosition,
-      existingChild.endPosition,
-    );
+    return new CSTNode(type, this.source, existingChild.startOffset, existingChild.endOffset, existingChild.startPosition, existingChild.endPosition);
   }
-  finishNode(_node, _startTok) {}
+  finishNode(_node, _startTok) {
+  }
   addAnonymousChild(parent, token) {
     const offset = token.startOffset;
-    const child = new CSTNode(
-      token.text,
-      this.source,
-      offset,
-      offset + token.text.length,
-      token.start,
-      token.end,
-      false,
-    );
+    const child = new CSTNode(token.text, this.source, offset, offset + token.text.length, token.start, token.end, false);
     parent.appendChild(child);
   }
   // --- Top-level parsing ---
@@ -3353,7 +3065,8 @@ var Parser = class {
       node.appendChild(parseSequence(this));
     } else {
       const content = parseMappingOrExpression(this, (_ctx) => parseSequence(_ctx));
-      if (content) node.appendChild(content);
+      if (content)
+        node.appendChild(content);
     }
     consumeCommentsAndSkipNewlines(this, node);
     while (!isAtEnd(this)) {
@@ -3387,7 +3100,7 @@ var Parser = class {
         text: "",
         start: pos,
         end: pos,
-        startOffset: this.source.length,
+        startOffset: this.source.length
       };
     }
     return this._eof;
@@ -3408,7 +3121,7 @@ function parseAndHighlight(source) {
 function createTsBackend() {
   return {
     parse,
-    parseAndHighlight,
+    parseAndHighlight
   };
 }
 
@@ -3429,19 +3142,15 @@ function createApi(backend) {
     }
     return backend.parseAndHighlight(source);
   }
-  return {
-    parse: parse6,
-    parseAndHighlight: parseAndHighlight3,
-    getParser: getParser3,
-    executeQuery: executeQuery3,
-  };
+  return { parse: parse6, parseAndHighlight: parseAndHighlight3, getParser: getParser3, executeQuery: executeQuery3 };
 }
 
 // ../parser/dist/adapter.js
 var adapterCache = /* @__PURE__ */ new WeakMap();
 function adaptNode(node) {
   const cached2 = adapterCache.get(node);
-  if (cached2) return cached2;
+  if (cached2)
+    return cached2;
   const adapted = new TreeSitterNodeAdapter(node);
   adapterCache.set(node, adapted);
   return adapted;
@@ -3544,17 +3253,13 @@ async function createWasmBackend(options) {
   const engineWasm = base64ToUint8Array(options.engineWasmBase64.join(""));
   const grammarWasm = base64ToUint8Array(options.grammarWasmBase64.join(""));
   const webTsModule = "web-tree-sitter";
-  const {
-    Parser: TSParser,
-    Language,
-    Query,
-  } = await import(
+  const { Parser: TSParser, Language, Query } = await import(
     /* @vite-ignore */
     webTsModule
   );
   await TSParser.init({
     locateFile: () => "",
-    wasmBinary: stripWasmSourceMapUrl(engineWasm),
+    wasmBinary: stripWasmSourceMapUrl(engineWasm)
   });
   const language = await Language.load(grammarWasm);
   const wasmParser = new TSParser();
@@ -3584,7 +3289,7 @@ async function createWasmBackend(options) {
       startRow: capture2.node.startPosition.row,
       startCol: capture2.node.startPosition.column,
       endRow: capture2.node.endPosition.row,
-      endCol: capture2.node.endPosition.column,
+      endCol: capture2.node.endPosition.column
     }));
   }
   return { parse: parse6, parseAndHighlight: parseAndHighlight3, executeQuery: executeQuery3 };
@@ -3619,13 +3324,16 @@ function stripWasmSourceMapUrl(wasm) {
         nameShift += 7;
       } while (b & 128);
       const name = String.fromCharCode(...wasm.slice(j, j + nameLen));
-      if (name === "sourceMappingURL") keep = false;
+      if (name === "sourceMappingURL")
+        keep = false;
     }
-    if (keep) sections.push([sectionStart, sectionEnd]);
+    if (keep)
+      sections.push([sectionStart, sectionEnd]);
     i = sectionEnd;
   }
   const totalSize = 8 + sections.reduce((s, [a, b]) => s + b - a, 0);
-  if (totalSize === wasm.length) return wasm;
+  if (totalSize === wasm.length)
+    return wasm;
   const out = new Uint8Array(totalSize);
   out.set(wasm.slice(0, 8), 0);
   let offset = 8;
@@ -3648,12 +3356,12 @@ function base64ToUint8Array(base642) {
 }
 
 // ../parser/dist/index.js
-var {
-  parse: parse2,
-  parseAndHighlight: parseAndHighlight2,
-  getParser,
-  executeQuery,
-} = createApi(createTsBackend());
+var { parse: parse2, parseAndHighlight: parseAndHighlight2, getParser, executeQuery } = createApi(createTsBackend());
+
+// stub:wasm-loader
+async function loadWasmModule() {
+  return void 0;
+}
 
 // src/parser.ts
 var _wasmBackend = null;
@@ -3686,14 +3394,8 @@ async function init() {
   }
 }
 async function doInit() {
-  let wasmModule;
-  try {
-    const wasmModuleName = "./wasm-constants-generated";
-    wasmModule = await import(
-      /* @vite-ignore */
-      `${wasmModuleName}.js`
-    );
-  } catch {
+  const wasmModule = await loadWasmModule();
+  if (!wasmModule) {
     _initialized = true;
     return;
   }
@@ -3704,7 +3406,7 @@ async function doInit() {
   }
   const options = {
     engineWasmBase64: TREE_SITTER_ENGINE_BASE64,
-    grammarWasmBase64: TREE_SITTER_AGENTSCRIPT_BASE64,
+    grammarWasmBase64: TREE_SITTER_AGENTSCRIPT_BASE64
   };
   _wasmBackend = await createWasmBackend(options);
   _initialized = true;
@@ -3715,24 +3417,24 @@ function toRange(node) {
   return {
     start: {
       line: node.startRow,
-      character: node.startCol,
+      character: node.startCol
     },
-    end: { line: node.endRow, character: node.endCol },
+    end: { line: node.endRow, character: node.endCol }
   };
 }
 
 // ../types/dist/diagnostic.js
 var DiagnosticSeverity;
-(function (DiagnosticSeverity2) {
-  DiagnosticSeverity2[(DiagnosticSeverity2["Error"] = 1)] = "Error";
-  DiagnosticSeverity2[(DiagnosticSeverity2["Warning"] = 2)] = "Warning";
-  DiagnosticSeverity2[(DiagnosticSeverity2["Information"] = 3)] = "Information";
-  DiagnosticSeverity2[(DiagnosticSeverity2["Hint"] = 4)] = "Hint";
+(function(DiagnosticSeverity2) {
+  DiagnosticSeverity2[DiagnosticSeverity2["Error"] = 1] = "Error";
+  DiagnosticSeverity2[DiagnosticSeverity2["Warning"] = 2] = "Warning";
+  DiagnosticSeverity2[DiagnosticSeverity2["Information"] = 3] = "Information";
+  DiagnosticSeverity2[DiagnosticSeverity2["Hint"] = 4] = "Hint";
 })(DiagnosticSeverity || (DiagnosticSeverity = {}));
 var DiagnosticTag;
-(function (DiagnosticTag2) {
-  DiagnosticTag2[(DiagnosticTag2["Unnecessary"] = 1)] = "Unnecessary";
-  DiagnosticTag2[(DiagnosticTag2["Deprecated"] = 2)] = "Deprecated";
+(function(DiagnosticTag2) {
+  DiagnosticTag2[DiagnosticTag2["Unnecessary"] = 1] = "Unnecessary";
+  DiagnosticTag2[DiagnosticTag2["Deprecated"] = 2] = "Deprecated";
 })(DiagnosticTag || (DiagnosticTag = {}));
 
 // ../language/dist/core/types.js
@@ -3740,7 +3442,7 @@ function parseCommentNode(node, attachment = "leading") {
   return {
     value: node.text.slice(1),
     attachment,
-    range: toRange(node),
+    range: toRange(node)
   };
 }
 function astField(ast, key) {
@@ -3748,10 +3450,13 @@ function astField(ast, key) {
 }
 function extractDiscriminantValue(entry, fieldName) {
   const field = entry[fieldName];
-  if (!field || typeof field !== "object") return void 0;
+  if (!field || typeof field !== "object")
+    return void 0;
   const expr = field;
-  if (typeof expr.value === "string") return expr.value;
-  if (typeof expr.name === "string") return expr.name;
+  if (typeof expr.value === "string")
+    return expr.value;
+  if (typeof expr.name === "string")
+    return expr.name;
   return void 0;
 }
 function withCst(ast, node) {
@@ -3759,15 +3464,15 @@ function withCst(ast, node) {
   const result = Object.assign(ast, {
     __cst: {
       node,
-      range: toRange(node),
+      range: toRange(node)
     },
-    __diagnostics: existing ?? [],
+    __diagnostics: existing ?? []
   });
   return result;
 }
 function createNode(ast) {
   const result = Object.assign(ast, {
-    __diagnostics: [],
+    __diagnostics: []
   });
   return result;
 }
@@ -3789,13 +3494,20 @@ function getKeyText(node) {
       if (child.type === "string_content") {
         value += child.text;
       } else if (child.type === "escape_sequence") {
-        if (child.text === '\\"') value += '"';
-        else if (child.text === "\\'") value += "'";
-        else if (child.text === "\\\\") value += "\\";
-        else if (child.text === "\\n") value += "\n";
-        else if (child.text === "\\r") value += "\r";
-        else if (child.text === "\\t") value += "	";
-        else if (child.text === "\\0") value += "\0";
+        if (child.text === '\\"')
+          value += '"';
+        else if (child.text === "\\'")
+          value += "'";
+        else if (child.text === "\\\\")
+          value += "\\";
+        else if (child.text === "\\n")
+          value += "\n";
+        else if (child.text === "\\r")
+          value += "\r";
+        else if (child.text === "\\t")
+          value += "	";
+        else if (child.text === "\\0")
+          value += "\0";
       }
     }
     return value;
@@ -3809,13 +3521,7 @@ function emitKeyName(name) {
   return quoteKeyName(name);
 }
 function quoteKeyName(name) {
-  const escaped = name
-    .replace(/\\/g, "\\\\")
-    .replace(/"/g, '\\"')
-    .replace(/\n/g, "\\n")
-    .replace(/\r/g, "\\r")
-    .replace(/\t/g, "\\t")
-    .replace(/\0/g, "\\0");
+  const escaped = name.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n").replace(/\r/g, "\\r").replace(/\t/g, "\\t").replace(/\0/g, "\\0");
   return `"${escaped}"`;
 }
 function isKeyNode(node) {
@@ -3825,9 +3531,8 @@ function getValueNodes(element) {
   return {
     blockValue: element.childForFieldName("block_value"),
     // expression is semantically a colinear value, just promoted due to inline rule
-    colinearValue:
-      element.childForFieldName("colinear_value") ?? element.childForFieldName("expression"),
-    procedure: element.childForFieldName("procedure"),
+    colinearValue: element.childForFieldName("colinear_value") ?? element.childForFieldName("expression"),
+    procedure: element.childForFieldName("procedure")
   };
 }
 function emitIndent(ctx) {
@@ -3844,32 +3549,38 @@ function inlineComments(node) {
 }
 function emitSingleComment(c, ctx) {
   const indent = emitIndent(ctx);
-  if (c.value.trim().length === 0) return `${indent}#`;
+  if (c.value.trim().length === 0)
+    return `${indent}#`;
   const prefix2 = c.range ? "#" : "# ";
   return `${indent}${prefix2}${c.value}`;
 }
 function formatInlineComment(c) {
-  if (c.value.trim().length === 0) return "#";
+  if (c.value.trim().length === 0)
+    return "#";
   const prefix2 = c.range ? "#" : "# ";
   return `${prefix2}${c.value}`;
 }
 function appendInlineToFirstLine(body, inlineComment) {
   const newlineIdx = body.indexOf("\n");
-  if (newlineIdx === -1) return `${body} ${inlineComment}`;
+  if (newlineIdx === -1)
+    return `${body} ${inlineComment}`;
   return `${body.slice(0, newlineIdx)} ${inlineComment}${body.slice(newlineIdx)}`;
 }
 function emitCommentList(comments, ctx) {
-  if (!comments || comments.length === 0) return "";
+  if (!comments || comments.length === 0)
+    return "";
   return comments.map((c) => emitSingleComment(c, ctx)).join("\n");
 }
 function wrapWithComments(body, node, ctx, trailingIndentOffset) {
-  if (!node || !node.__comments?.length) return body;
+  if (!node || !node.__comments?.length)
+    return body;
   const leading = leadingComments(node);
   const inline = inlineComments(node);
   const trailing = trailingComments(node);
   const parts = [];
   const leadingText = emitCommentList(leading, ctx);
-  if (leadingText) parts.push(leadingText);
+  if (leadingText)
+    parts.push(leadingText);
   if (body) {
     if (inline.length > 0) {
       const inlineText = inline.map((c) => formatInlineComment(c)).join(" ");
@@ -3879,47 +3590,48 @@ function wrapWithComments(body, node, ctx, trailingIndentOffset) {
     }
   }
   if (trailing.length > 0) {
-    const trailingCtx =
-      trailingIndentOffset != null ? { ...ctx, indent: ctx.indent + trailingIndentOffset } : ctx;
+    const trailingCtx = trailingIndentOffset != null ? { ...ctx, indent: ctx.indent + trailingIndentOffset } : ctx;
     const trailingText = trailing.map((c) => emitSingleComment(c, trailingCtx)).join("\n");
-    if (trailingText) parts.push(trailingText);
+    if (trailingText)
+      parts.push(trailingText);
   }
   return parts.join("\n");
 }
 var SymbolKind;
-(function (SymbolKind2) {
-  SymbolKind2[(SymbolKind2["File"] = 1)] = "File";
-  SymbolKind2[(SymbolKind2["Module"] = 2)] = "Module";
-  SymbolKind2[(SymbolKind2["Namespace"] = 3)] = "Namespace";
-  SymbolKind2[(SymbolKind2["Package"] = 4)] = "Package";
-  SymbolKind2[(SymbolKind2["Class"] = 5)] = "Class";
-  SymbolKind2[(SymbolKind2["Method"] = 6)] = "Method";
-  SymbolKind2[(SymbolKind2["Property"] = 7)] = "Property";
-  SymbolKind2[(SymbolKind2["Field"] = 8)] = "Field";
-  SymbolKind2[(SymbolKind2["Constructor"] = 9)] = "Constructor";
-  SymbolKind2[(SymbolKind2["Enum"] = 10)] = "Enum";
-  SymbolKind2[(SymbolKind2["Interface"] = 11)] = "Interface";
-  SymbolKind2[(SymbolKind2["Function"] = 12)] = "Function";
-  SymbolKind2[(SymbolKind2["Variable"] = 13)] = "Variable";
-  SymbolKind2[(SymbolKind2["Constant"] = 14)] = "Constant";
-  SymbolKind2[(SymbolKind2["String"] = 15)] = "String";
-  SymbolKind2[(SymbolKind2["Number"] = 16)] = "Number";
-  SymbolKind2[(SymbolKind2["Boolean"] = 17)] = "Boolean";
-  SymbolKind2[(SymbolKind2["Array"] = 18)] = "Array";
-  SymbolKind2[(SymbolKind2["Object"] = 19)] = "Object";
-  SymbolKind2[(SymbolKind2["Key"] = 20)] = "Key";
-  SymbolKind2[(SymbolKind2["Null"] = 21)] = "Null";
-  SymbolKind2[(SymbolKind2["EnumMember"] = 22)] = "EnumMember";
-  SymbolKind2[(SymbolKind2["Struct"] = 23)] = "Struct";
-  SymbolKind2[(SymbolKind2["Event"] = 24)] = "Event";
-  SymbolKind2[(SymbolKind2["Operator"] = 25)] = "Operator";
-  SymbolKind2[(SymbolKind2["TypeParameter"] = 26)] = "TypeParameter";
+(function(SymbolKind2) {
+  SymbolKind2[SymbolKind2["File"] = 1] = "File";
+  SymbolKind2[SymbolKind2["Module"] = 2] = "Module";
+  SymbolKind2[SymbolKind2["Namespace"] = 3] = "Namespace";
+  SymbolKind2[SymbolKind2["Package"] = 4] = "Package";
+  SymbolKind2[SymbolKind2["Class"] = 5] = "Class";
+  SymbolKind2[SymbolKind2["Method"] = 6] = "Method";
+  SymbolKind2[SymbolKind2["Property"] = 7] = "Property";
+  SymbolKind2[SymbolKind2["Field"] = 8] = "Field";
+  SymbolKind2[SymbolKind2["Constructor"] = 9] = "Constructor";
+  SymbolKind2[SymbolKind2["Enum"] = 10] = "Enum";
+  SymbolKind2[SymbolKind2["Interface"] = 11] = "Interface";
+  SymbolKind2[SymbolKind2["Function"] = 12] = "Function";
+  SymbolKind2[SymbolKind2["Variable"] = 13] = "Variable";
+  SymbolKind2[SymbolKind2["Constant"] = 14] = "Constant";
+  SymbolKind2[SymbolKind2["String"] = 15] = "String";
+  SymbolKind2[SymbolKind2["Number"] = 16] = "Number";
+  SymbolKind2[SymbolKind2["Boolean"] = 17] = "Boolean";
+  SymbolKind2[SymbolKind2["Array"] = 18] = "Array";
+  SymbolKind2[SymbolKind2["Object"] = 19] = "Object";
+  SymbolKind2[SymbolKind2["Key"] = 20] = "Key";
+  SymbolKind2[SymbolKind2["Null"] = 21] = "Null";
+  SymbolKind2[SymbolKind2["EnumMember"] = 22] = "EnumMember";
+  SymbolKind2[SymbolKind2["Struct"] = 23] = "Struct";
+  SymbolKind2[SymbolKind2["Event"] = 24] = "Event";
+  SymbolKind2[SymbolKind2["Operator"] = 25] = "Operator";
+  SymbolKind2[SymbolKind2["TypeParameter"] = 26] = "TypeParameter";
 })(SymbolKind || (SymbolKind = {}));
 function isAstNodeLike(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 function hasCstRange(value) {
-  if (value == null || typeof value !== "object") return false;
+  if (value == null || typeof value !== "object")
+    return false;
   const cst = value.__cst;
   return cst != null && typeof cst === "object" && "range" in cst;
 }
@@ -3932,16 +3644,16 @@ function attachWildcardPrefixes(schema2, prefixes) {
     value: prefixes,
     enumerable: false,
     writable: false,
-    configurable: false,
+    configurable: false
   });
 }
 function getWildcardPrefixes(schema2) {
   return schema2[WILDCARD_KEY] ?? [];
 }
-function resolveWildcardField(schema2, fieldName) {
-  for (const { prefix: prefix2, fieldType } of getWildcardPrefixes(schema2)) {
-    if (fieldName.startsWith(prefix2) && fieldName.length > prefix2.length) {
-      return fieldType;
+function resolveWildcardPrefix(schema2, fieldName) {
+  for (const wp of getWildcardPrefixes(schema2)) {
+    if (fieldName.startsWith(wp.prefix) && fieldName.length > wp.prefix.length) {
+      return wp;
     }
   }
   return void 0;
@@ -3954,11 +3666,9 @@ function hasDiscriminant(value) {
 }
 var NAMED_MAP_BRAND = Symbol.for("agentscript.NamedMap");
 function isNamedMap(value) {
-  if (value == null || typeof value !== "object") return false;
-  return (
-    Object.prototype.hasOwnProperty.call(value, NAMED_MAP_BRAND) &&
-    Reflect.get(value, NAMED_MAP_BRAND) === true
-  );
+  if (value == null || typeof value !== "object")
+    return false;
+  return Object.prototype.hasOwnProperty.call(value, NAMED_MAP_BRAND) && Reflect.get(value, NAMED_MAP_BRAND) === true;
 }
 function isSingularFieldType(_ft) {
   return true;
@@ -4057,9 +3767,7 @@ var MapEntryChild = class {
       return wrapWithComments(v.__emit(ctx), v, ctx);
     }
     if (v != null) {
-      console.warn(
-        `MapEntryChild '${this.name}': value is non-null but missing __emit \u2014 entry will be dropped from emission`,
-      );
+      console.warn(`MapEntryChild '${this.name}': value is non-null but missing __emit \u2014 entry will be dropped from emission`);
     }
     return "";
   }
@@ -4122,7 +3830,8 @@ function normalizeRawText(rawText, baseIndent) {
   while (lines.length > 0 && lines[lines.length - 1].trim() === "") {
     lines.pop();
   }
-  if (lines.length <= 1) return lines.join("\n");
+  if (lines.length <= 1)
+    return lines.join("\n");
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i];
     const wsChars = countLeadingWsChars(line);
@@ -4137,18 +3846,17 @@ function normalizeRawText(rawText, baseIndent) {
 function emitRawTextVerbatim(rawText, _originalIndent, ctx) {
   const indent = emitIndent(ctx);
   const lines = rawText.split("\n");
-  return lines
-    .map((line, i) => {
-      if (i === 0) {
-        const stripped2 = line.replace(/^\s*/, "");
-        return stripped2 ? indent + stripped2 : "";
-      }
-      const stripped = line.replace(/^\s*/, "");
-      if (!stripped) return "";
-      const lineIndent = line.length - line.trimStart().length;
-      return indent + " ".repeat(lineIndent) + stripped;
-    })
-    .join("\n");
+  return lines.map((line, i) => {
+    if (i === 0) {
+      const stripped2 = line.replace(/^\s*/, "");
+      return stripped2 ? indent + stripped2 : "";
+    }
+    const stripped = line.replace(/^\s*/, "");
+    if (!stripped)
+      return "";
+    const lineIndent = line.length - line.trimStart().length;
+    return indent + " ".repeat(lineIndent) + stripped;
+  }).join("\n");
 }
 var ErrorBlock = class {
   constructor(rawText, originalIndent) {
@@ -4204,16 +3912,12 @@ var UntypedBlock = class {
     }
     const indent = emitIndent(ctx);
     const header = this.__blockName ? `${this.key} ${this.__blockName}:` : `${this.key}:`;
-    if (this.__children.length === 0) return `${indent}${header}`;
+    if (this.__children.length === 0)
+      return `${indent}${header}`;
     const childCtx = { ...ctx, indent: ctx.indent + 1 };
-    const body = this.__children
-      .map((child) => child.__emit(childCtx))
-      .filter(Boolean)
-      .join("\n");
-    return body
-      ? `${indent}${header}
-${body}`
-      : `${indent}${header}`;
+    const body = this.__children.map((child) => child.__emit(childCtx)).filter(Boolean).join("\n");
+    return body ? `${indent}${header}
+${body}` : `${indent}${header}`;
   }
 };
 function untypedFieldType(rawText, originalIndent) {
@@ -4232,7 +3936,7 @@ function untypedFieldType(rawText, originalIndent) {
     },
     emitField: (_key, _value, ctx) => {
       return emitRawTextVerbatim(normalizedText, originalIndent, ctx);
-    },
+    }
   };
 }
 var ValueChild = class {
@@ -4264,44 +3968,27 @@ function isBlockChild(value) {
   return value != null && typeof value === "object" && "__type" in value;
 }
 function isNamedBlockValue(v) {
-  return (
-    v != null &&
-    typeof v === "object" &&
-    "__kind" in v &&
-    "emitWithKey" in v &&
-    typeof v.emitWithKey === "function"
-  );
+  return v != null && typeof v === "object" && "__kind" in v && "emitWithKey" in v && typeof v.emitWithKey === "function";
 }
 function isEmittable(value) {
-  return (
-    value != null &&
-    typeof value === "object" &&
-    "__emit" in value &&
-    typeof value.__emit === "function"
-  );
+  return value != null && typeof value === "object" && "__emit" in value && typeof value.__emit === "function";
 }
 function isSingularBlock(value) {
-  return (
-    isEmittable(value) &&
-    "__kind" in value &&
-    typeof value.__kind === "string" &&
-    "__children" in value &&
-    !("__name" in value && typeof value.__name === "string")
-  );
+  return isEmittable(value) && "__kind" in value && typeof value.__kind === "string" && "__children" in value && !("__name" in value && typeof value.__name === "string");
 }
 function emitChildren(children, ctx, sep = "\n") {
-  return children
-    .map((c) => c.__emit(ctx))
-    .filter(Boolean)
-    .join(sep);
+  return children.map((c) => c.__emit(ctx)).filter(Boolean).join(sep);
 }
 function defineFieldAccessors(block, children) {
   const defined = /* @__PURE__ */ new Set();
   for (const child of children) {
-    if (child.__type !== "field") continue;
+    if (child.__type !== "field")
+      continue;
     const fc = child;
-    if (fc.entryName) continue;
-    if (defined.has(fc.key)) continue;
+    if (fc.entryName)
+      continue;
+    if (defined.has(fc.key))
+      continue;
     defined.add(fc.key);
     Object.defineProperty(block, fc.key, {
       get() {
@@ -4311,7 +3998,7 @@ function defineFieldAccessors(block, children) {
         fc.value = newValue;
       },
       enumerable: true,
-      configurable: true,
+      configurable: true
     });
   }
 }
@@ -4343,6 +4030,28 @@ function extractChildren(parsed) {
   return { fields, children: __children };
 }
 
+// ../language/dist/core/string-escapes.js
+var ESCAPE_TABLE = /* @__PURE__ */ new Map([
+  ['"', '"'],
+  ["\\", "\\"],
+  ["n", "\n"],
+  ["t", "	"],
+  ["r", "\r"],
+  ["0", "\0"]
+]);
+function interpretEscape(char) {
+  return ESCAPE_TABLE.get(char);
+}
+var REVERSE_ESCAPE_TABLE = new Map(
+  [...ESCAPE_TABLE].map(([code, char]) => [char, `\\${code}`])
+  // backslash maps to itself in ESCAPE_TABLE ('\\' -> '\\'), so its
+  // reverse entry is already correct ('\\' -> '\\\\' via the template).
+);
+var ESCAPE_PATTERN = new RegExp("[" + [...REVERSE_ESCAPE_TABLE.keys()].map((c) => "\\x" + c.charCodeAt(0).toString(16).padStart(2, "0")).join("") + "]", "g");
+function escapeStringValue(value) {
+  return value.replace(ESCAPE_PATTERN, (ch) => REVERSE_ESCAPE_TABLE.get(ch));
+}
+
 // ../language/dist/core/expressions.js
 var _StringLiteral = class _StringLiteral extends AstNodeBase {
   constructor(value) {
@@ -4362,13 +4071,7 @@ var _StringLiteral = class _StringLiteral extends AstNodeBase {
         return cstText;
       }
     }
-    const escaped = this.value
-      .replace(/\\/g, "\\\\")
-      .replace(/"/g, '\\"')
-      .replace(/\n/g, "\\n")
-      .replace(/\t/g, "\\t")
-      .replace(/\r/g, "\\r");
-    return `"${escaped}"`;
+    return `"${escapeStringValue(this.value)}"`;
   }
   static parse(node) {
     let value = "";
@@ -4376,24 +4079,17 @@ var _StringLiteral = class _StringLiteral extends AstNodeBase {
       if (child.type === "string_content") {
         value += child.text;
       } else if (child.type === "escape_sequence") {
-        if (child.text === '\\"') value += '"';
-        else if (child.text === "\\'") value += "'";
-        else if (child.text === "\\\\") value += "\\";
-        else if (child.text === "\\n") value += "\n";
-        else if (child.text === "\\t") value += "	";
-        else if (child.text === "\\r") value += "\r";
+        const interpreted = interpretEscape(child.text[1]);
+        if (interpreted !== void 0) {
+          value += interpreted;
+        }
       }
     }
     const parsed = withCst(new _StringLiteral(value), node);
     const hasRawNewlines = node.startRow !== node.endRow;
     if (hasRawNewlines) {
       parsed.__diagnostics = [
-        createDiagnostic(
-          node,
-          "String literals must not contain raw newlines. Use template syntax (| ...) for multi-line content.",
-          DiagnosticSeverity.Error,
-          "string-contains-newline",
-        ),
+        createDiagnostic(node, "String literals must not contain raw newlines. Use template syntax (| ...) for multi-line content.", DiagnosticSeverity.Error, "string-contains-newline")
       ];
     }
     return parsed;
@@ -4437,7 +4133,10 @@ var _TemplateInterpolation = class _TemplateInterpolation extends AstNodeBase {
 __publicField(_TemplateInterpolation, "kind", "TemplateInterpolation");
 __publicField(_TemplateInterpolation, "kindLabel", "template interpolation");
 var TemplateInterpolation = _TemplateInterpolation;
-var ALL_TEMPLATE_PART_CLASSES = [TemplateText, TemplateInterpolation];
+var ALL_TEMPLATE_PART_CLASSES = [
+  TemplateText,
+  TemplateInterpolation
+];
 var TEMPLATE_PART_KINDS = new Set(ALL_TEMPLATE_PART_CLASSES.map((C) => C.kind));
 var TEMPLATE_PART_KIND_STRINGS = TEMPLATE_PART_KINDS;
 function isTemplatePartKind(kind) {
@@ -4454,32 +4153,18 @@ function parseTemplateParts(node, parseExpr) {
       if (exprNode) {
         parts.push(withCst(new TemplateInterpolation(parseExpr(exprNode)), child));
       } else {
-        diagnostics.push(
-          createDiagnostic(
-            child,
-            "Malformed template interpolation: missing expression",
-            DiagnosticSeverity.Warning,
-            "malformed-interpolation",
-          ),
-        );
+        diagnostics.push(createDiagnostic(child, "Malformed template interpolation: missing expression", DiagnosticSeverity.Warning, "malformed-interpolation"));
         parts.push(withCst(new TemplateText(child.text), child));
       }
     } else {
-      diagnostics.push(
-        createDiagnostic(
-          child,
-          `Unexpected node in template: ${child.type}`,
-          DiagnosticSeverity.Warning,
-          "unexpected-template-node",
-        ),
-      );
+      diagnostics.push(createDiagnostic(child, `Unexpected node in template: ${child.type}`, DiagnosticSeverity.Warning, "unexpected-template-node"));
     }
   }
   dedentTemplateParts(parts, node);
   return { parts, diagnostics };
 }
 function dedentTemplateParts(parts, node) {
-  const fullText = parts.map((p) => (p instanceof TemplateText ? p.value : "X")).join("");
+  const fullText = parts.map((p) => p instanceof TemplateText ? p.value : "X").join("");
   const firstNewline = fullText.indexOf("\n");
   if (firstNewline !== -1) {
     const lines = fullText.split("\n");
@@ -4491,9 +4176,11 @@ function dedentTemplateParts(parts, node) {
     } else {
       let minIndent = Infinity;
       for (let i = 1; i < lines.length; i++) {
-        if (lines[i].trim().length === 0) continue;
+        if (lines[i].trim().length === 0)
+          continue;
         const indent = lines[i].search(/\S/);
-        if (indent >= 0) minIndent = Math.min(minIndent, indent);
+        if (indent >= 0)
+          minIndent = Math.min(minIndent, indent);
       }
       stripAmount = minIndent === Infinity ? 0 : minIndent;
     }
@@ -4525,7 +4212,8 @@ function dedentTemplateParts(parts, node) {
   cleanTemplateParts(parts);
 }
 function cleanTemplateParts(parts) {
-  if (parts.length === 0) return;
+  if (parts.length === 0)
+    return;
   const firstText = parts.find((p) => p instanceof TemplateText);
   if (firstText) {
     firstText.value = stripLeadingNewlines(firstText.value);
@@ -4541,12 +4229,14 @@ function stripLeadingNewlines(value) {
 }
 function trimFirstLineWhitespace(value) {
   const nlPos = value.indexOf("\n");
-  if (nlPos === -1) return value.trimStart();
+  if (nlPos === -1)
+    return value.trimStart();
   return value.slice(0, nlPos).trimStart() + value.slice(nlPos);
 }
 function normalizeBlankLines(parts) {
   for (const part of parts) {
-    if (!(part instanceof TemplateText)) continue;
+    if (!(part instanceof TemplateText))
+      continue;
     const tp = part;
     const partLines = tp.value.split("\n");
     for (let i = 1; i < partLines.length; i++) {
@@ -4594,23 +4284,22 @@ var _TemplateExpression = class _TemplateExpression extends AstNodeBase {
     const childIndent = emitIndent({ ...ctx, indent: ctx.indent + 1 });
     const lines = rawInner.split("\n");
     if (this.barePipeMultiline && lines.length > 0) {
-      const allReindented = lines
-        .map((line) => {
-          if (line.trim().length === 0) return "";
-          return childIndent + line;
-        })
-        .join("\n");
+      const allReindented = lines.map((line) => {
+        if (line.trim().length === 0)
+          return "";
+        return childIndent + line;
+      }).join("\n");
       return `|
 ${allReindented}`;
     }
     const sep = this.spaceAfterPipe ? " " : "";
-    return lines
-      .map((line, i) => {
-        if (i === 0) return line.length > 0 ? `|${sep}${line}` : "|";
-        if (line.trim().length === 0) return "";
-        return `${childIndent}${line}`;
-      })
-      .join("\n");
+    return lines.map((line, i) => {
+      if (i === 0)
+        return line.length > 0 ? `|${sep}${line}` : "|";
+      if (line.trim().length === 0)
+        return "";
+      return `${childIndent}${line}`;
+    }).join("\n");
   }
   static parse(node, parseExpr) {
     const { parts, diagnostics } = parseTemplateParts(node, parseExpr);
@@ -4829,7 +4518,8 @@ var _BinaryExpression = class _BinaryExpression extends AstNodeBase {
     const operators = ["+", "-", "*", "/", "and", "or"];
     let operator = "+";
     for (const child of node.children) {
-      if (child.isNamed) continue;
+      if (child.isNamed)
+        continue;
       const matched = operators.find((op) => op === child.text);
       if (matched) {
         operator = matched;
@@ -4864,9 +4554,12 @@ var _UnaryExpression = class _UnaryExpression extends AstNodeBase {
     const children = node.namedChildren;
     const operand = parseExpr(children[0]);
     let operator = "not";
-    if (node.text.startsWith("not ")) operator = "not";
-    else if (node.text.startsWith("-")) operator = "-";
-    else if (node.text.startsWith("+")) operator = "+";
+    if (node.text.startsWith("not "))
+      operator = "not";
+    else if (node.text.startsWith("-"))
+      operator = "-";
+    else if (node.text.startsWith("+"))
+      operator = "+";
     return withCst(new _UnaryExpression(operator, operand), node);
   }
 };
@@ -4896,7 +4589,8 @@ var _ComparisonExpression = class _ComparisonExpression extends AstNodeBase {
     const right = operands.length > 1 ? parseExpr(operands[1]) : left;
     const opParts = [];
     for (const child of node.children) {
-      if (child === operands[0] || child === operands[1]) continue;
+      if (child === operands[0] || child === operands[1])
+        continue;
       if (child.isError) {
         opParts.push(child.text.trim());
       } else if (!child.isNamed) {
@@ -4947,9 +4641,7 @@ var _DictLiteral = class _DictLiteral extends AstNodeBase {
     return `dictionary ${this.__emit({ indent: 0 })}`;
   }
   __emit(ctx) {
-    const items = this.entries
-      .map((e) => `${e.key.__emit(ctx)}: ${e.value.__emit(ctx)}`)
-      .join(", ");
+    const items = this.entries.map((e) => `${e.key.__emit(ctx)}: ${e.value.__emit(ctx)}`).join(", ");
     return `{${items}}`;
   }
   static parse(node, parseExpr) {
@@ -4957,10 +4649,7 @@ var _DictLiteral = class _DictLiteral extends AstNodeBase {
     for (const child of node.namedChildren) {
       if (child.type === "dictionary_pair") {
         const rawKeyNode = child.childForFieldName("key");
-        const keyNode =
-          rawKeyNode?.type === "key" && rawKeyNode.namedChildren.length > 0
-            ? rawKeyNode.namedChildren[0]
-            : rawKeyNode;
+        const keyNode = rawKeyNode?.type === "key" && rawKeyNode.namedChildren.length > 0 ? rawKeyNode.namedChildren[0] : rawKeyNode;
         const valueNode = child.childForFieldName("value");
         if (keyNode && valueNode) {
           entries.push(withCst({ key: parseExpr(keyNode), value: parseExpr(valueNode) }, child));
@@ -5069,14 +4758,7 @@ var _SpreadExpression = class _SpreadExpression extends AstNodeBase {
       return withCst(new _SpreadExpression(parseExpr(exprNode)), node);
     }
     const inner = withCst(new ErrorValue(""), node);
-    inner.__diagnostics.push(
-      createDiagnostic(
-        node,
-        "Spread operator `*` requires an expression to unpack",
-        DiagnosticSeverity.Error,
-        "spread-missing-expression",
-      ),
-    );
+    inner.__diagnostics.push(createDiagnostic(node, "Spread operator `*` requires an expression to unpack", DiagnosticSeverity.Error, "spread-missing-expression"));
     return withCst(new _SpreadExpression(inner), node);
   }
 };
@@ -5090,16 +4772,14 @@ function isAtIdentifier(expr) {
   return expr instanceof AtIdentifier;
 }
 function decomposeMemberExpression(expr, knownNamespaces) {
-  if (!isMemberExpression(expr)) return null;
-  if (!expr.property) return null;
+  if (!isMemberExpression(expr))
+    return null;
+  if (!expr.property)
+    return null;
   if (isAtIdentifier(expr.object)) {
     return { namespace: expr.object.name, property: expr.property };
   }
-  if (
-    knownNamespaces &&
-    expr.object instanceof Identifier &&
-    knownNamespaces.has(expr.object.name)
-  ) {
+  if (knownNamespaces && expr.object instanceof Identifier && knownNamespaces.has(expr.object.name)) {
     return { namespace: expr.object.name, property: expr.property };
   }
   return null;
@@ -5125,7 +4805,7 @@ var ALL_EXPRESSION_CLASSES = [
   ListLiteral,
   DictLiteral,
   Ellipsis,
-  SpreadExpression,
+  SpreadExpression
 ];
 var EXPRESSION_KINDS = new Set(ALL_EXPRESSION_CLASSES.map((C) => C.kind));
 var KIND_LABELS = new Map(ALL_EXPRESSION_CLASSES.map((C) => [C.kind, C.kindLabel]));
@@ -5152,16 +4832,19 @@ var expressionParsers = {
   call_expression: (node, parseExpr) => CallExpression.parse(node, parseExpr),
   list: (node, parseExpr) => ListLiteral.parse(node, parseExpr),
   dictionary: (node, parseExpr) => DictLiteral.parse(node, parseExpr),
-  spread_expression: (node, parseExpr) => SpreadExpression.parse(node, parseExpr),
+  spread_expression: (node, parseExpr) => SpreadExpression.parse(node, parseExpr)
 };
 
 // ../language/dist/lint/lint-utils.js
 var LINT_SOURCE = "agentscript-lint";
 var SUGGESTION_THRESHOLD = 0.4;
 function levenshtein(a, b) {
-  if (a === b) return 0;
-  if (a.length === 0) return b.length;
-  if (b.length === 0) return a.length;
+  if (a === b)
+    return 0;
+  if (a.length === 0)
+    return b.length;
+  if (b.length === 0)
+    return a.length;
   if (a.length > b.length) {
     [a, b] = [b, a];
   }
@@ -5181,7 +4864,7 @@ function levenshtein(a, b) {
         // insertion
         prev[j] + 1,
         // deletion
-        prev[j - 1] + cost,
+        prev[j - 1] + cost
         // substitution
       );
     }
@@ -5190,11 +4873,13 @@ function levenshtein(a, b) {
   return prev[aLen];
 }
 function formatSuggestionHint(message, suggestion, prefix2 = "") {
-  if (!suggestion) return message;
+  if (!suggestion)
+    return message;
   return `${message}. Did you mean '${prefix2}${suggestion}'?`;
 }
 function findSuggestion(name, candidates) {
-  if (candidates.length === 0) return void 0;
+  if (candidates.length === 0)
+    return void 0;
   let bestCandidate;
   let bestDistance = Infinity;
   for (const candidate of candidates) {
@@ -5204,9 +4889,11 @@ function findSuggestion(name, candidates) {
       bestCandidate = candidate;
     }
   }
-  if (!bestCandidate) return void 0;
+  if (!bestCandidate)
+    return void 0;
   const maxLen = Math.max(name.length, bestCandidate.length);
-  if (bestDistance / maxLen > SUGGESTION_THRESHOLD) return void 0;
+  if (bestDistance / maxLen > SUGGESTION_THRESHOLD)
+    return void 0;
   if (bestDistance === 0) {
     return name === bestCandidate ? void 0 : bestCandidate;
   }
@@ -5214,7 +4901,8 @@ function findSuggestion(name, candidates) {
 }
 function resolveColinearAction(raBlock) {
   const decomposed = decomposeAtMemberExpression(raBlock.value);
-  if (!decomposed || decomposed.namespace !== "actions") return null;
+  if (!decomposed || decomposed.namespace !== "actions")
+    return null;
   return decomposed.property;
 }
 function lintDiagnostic(range, message, severity, code, options) {
@@ -5224,19 +4912,21 @@ function lintDiagnostic(range, message, severity, code, options) {
     severity,
     code,
     source: LINT_SOURCE,
-    ...(options?.tags ? { tags: options.tags } : {}),
-    ...(options?.suggestion ? { data: { suggestion: options.suggestion } } : {}),
+    ...options?.tags ? { tags: options.tags } : {},
+    ...options?.suggestion ? { data: { suggestion: options.suggestion } } : {}
   };
 }
 function extractOutputRef(value) {
   const decomposed = decomposeAtMemberExpression(value);
-  if (!decomposed || decomposed.namespace !== "outputs") return null;
+  if (!decomposed || decomposed.namespace !== "outputs")
+    return null;
   const cst = isAstNodeLike(value) ? value.__cst : void 0;
-  return { name: decomposed.property, ...(cst ? { cst } : {}) };
+  return { name: decomposed.property, ...cst ? { cst } : {} };
 }
 function extractVariableRef(expr) {
   const decomposed = decomposeAtMemberExpression(expr);
-  if (!decomposed || decomposed.namespace !== "variables") return null;
+  if (!decomposed || decomposed.namespace !== "variables")
+    return null;
   return decomposed.property;
 }
 
@@ -5258,7 +4948,7 @@ function createDiagnostic(rangeOrNode, message, severity = DiagnosticSeverity.Er
     severity,
     code,
     source: "agentscript-schema",
-    ...(data ? { data } : {}),
+    ...data ? { data } : {}
   };
 }
 function undefinedReferenceDiagnostic(range, message, referenceName, suggestion, expected) {
@@ -5271,9 +4961,9 @@ function undefinedReferenceDiagnostic(range, message, referenceName, suggestion,
     source: "agentscript-lint",
     data: {
       referenceName,
-      ...(suggestion ? { suggestion } : {}),
-      ...(expected && expected.length > 0 ? { expected } : {}),
-    },
+      ...suggestion ? { suggestion } : {},
+      ...expected && expected.length > 0 ? { expected } : {}
+    }
   };
 }
 function attachDiagnostic(node, diagnostic) {
@@ -5282,9 +4972,7 @@ function attachDiagnostic(node, diagnostic) {
     arr.push(diagnostic);
     return;
   }
-  throw new Error(
-    `attachDiagnostic: target node lacks __diagnostics array (kind: ${node.__kind ?? "unknown"}). Ensure the node was created via withCst(), createNode(), or extends AstNodeBase.`,
-  );
+  throw new Error(`attachDiagnostic: target node lacks __diagnostics array (kind: ${node.__kind ?? "unknown"}). Ensure the node was created via withCst(), createNode(), or extends AstNodeBase.`);
 }
 function createParserDiagnostic(rangeOrNode, message, code) {
   const range = "startPosition" in rangeOrNode ? toRange(rangeOrNode) : rangeOrNode;
@@ -5293,23 +4981,17 @@ function createParserDiagnostic(rangeOrNode, message, code) {
     message,
     severity: DiagnosticSeverity.Error,
     code,
-    source: "parser",
+    source: "parser"
   };
 }
-function typeMismatchDiagnostic(
-  range,
-  message,
-  expectedType,
-  actualType,
-  source = "agentscript-schema",
-) {
+function typeMismatchDiagnostic(range, message, expectedType, actualType, source = "agentscript-schema") {
   return {
     range,
     message,
     severity: DiagnosticSeverity.Error,
     code: "type-mismatch",
     source,
-    data: { expectedType, actualType },
+    data: { expectedType, actualType }
   };
 }
 var DeprecatedFieldDiagnostic = class {
@@ -5368,7 +5050,8 @@ var CommentAttacher = class {
    * false if caller should handle it differently.
    */
   tryAttachInline(node, lastTarget) {
-    if (!lastTarget?.__cst) return false;
+    if (!lastTarget?.__cst)
+      return false;
     const { __cst: cst } = lastTarget;
     if (node.startRow === cst.range.end.line) {
       attach(lastTarget, [parseCommentNode(node, "inline")]);
@@ -5393,7 +5076,8 @@ var CommentAttacher = class {
    * in an array of targets. Updates the last-target to the last item.
    */
   consumeOntoFirst(targets, extraComments) {
-    if (targets.length === 0) return;
+    if (targets.length === 0)
+      return;
     const comments = extraComments ? [...this._pending, ...extraComments] : this._pending;
     if (comments.length > 0) {
       attach(targets[0], comments);
@@ -5444,7 +5128,7 @@ var CommentAttacher = class {
     if (this._pending.length > 0 && this._lastTarget) {
       const asTrailing = this._pending.map((c) => ({
         ...c,
-        attachment: "trailing",
+        attachment: "trailing"
       }));
       attach(this._lastTarget, asTrailing);
       this._pending = [];
@@ -5452,8 +5136,9 @@ var CommentAttacher = class {
   }
 };
 function attach(node, comments) {
-  if (!node || comments.length === 0) return;
-  node.__comments = [...(node.__comments ?? []), ...comments];
+  if (!node || comments.length === 0)
+    return;
+  node.__comments = [...node.__comments ?? [], ...comments];
 }
 
 // ../language/dist/core/statements.js
@@ -5484,23 +5169,22 @@ var Template = class _Template extends AstNodeBase {
     const childIndent = emitIndent({ ...ctx, indent: ctx.indent + 1 });
     const lines = rawInner.split("\n");
     if (this.barePipeMultiline && lines.length > 0) {
-      const allReindented = lines
-        .map((line) => {
-          if (line.trim().length === 0) return "";
-          return childIndent + line;
-        })
-        .join("\n");
+      const allReindented = lines.map((line) => {
+        if (line.trim().length === 0)
+          return "";
+        return childIndent + line;
+      }).join("\n");
       return `${indent}|
 ${allReindented}`;
     }
     const continuationIndent = indent + (this.spaceAfterPipe ? "  " : " ");
-    const reindented = lines
-      .map((line, i) => {
-        if (i === 0) return line;
-        if (line.trim().length === 0) return "";
-        return continuationIndent + line;
-      })
-      .join("\n");
+    const reindented = lines.map((line, i) => {
+      if (i === 0)
+        return line;
+      if (line.trim().length === 0)
+        return "";
+      return continuationIndent + line;
+    }).join("\n");
     const sep = this.spaceAfterPipe ? " " : "";
     const prefix2 = reindented.length > 0 ? `${indent}|${sep}` : `${indent}|`;
     return `${prefix2}${reindented}`;
@@ -5548,7 +5232,8 @@ var WithClause = class _WithClause extends AstNodeBase {
     const param = paramNode ? getKeyText(paramNode) : "";
     const value = valueNode ? parseExpr(valueNode) : new Ellipsis();
     const clause = withCst(new _WithClause(param, value), node);
-    if (paramNode) clause.__paramCstNode = paramNode;
+    if (paramNode)
+      clause.__paramCstNode = paramNode;
     return clause;
   }
   /** Desugar comma-separated `with x=a,y=b` into separate WithClause nodes. */
@@ -5569,7 +5254,7 @@ var WithClause = class _WithClause extends AstNodeBase {
       if (paramNode && valueNode) {
         clause.__cst.range = {
           start: toRange(paramNode).start,
-          end: toRange(valueNode).end,
+          end: toRange(valueNode).end
         };
       }
       clauses.push(clause);
@@ -5630,9 +5315,7 @@ var AvailableWhen = class _AvailableWhen extends AstNodeBase {
   }
   __emit(ctx) {
     const indent = emitIndent(ctx);
-    const condText = this.condition
-      ? this.condition.__emit(ctx)
-      : (this.__cst?.node?.childForFieldName("condition")?.text ?? "");
+    const condText = this.condition ? this.condition.__emit(ctx) : this.__cst?.node?.childForFieldName("condition")?.text ?? "";
     return `${indent}available when ${condText}`;
   }
   static parse(node, parseExpr) {
@@ -5652,9 +5335,7 @@ var RunStatement = class _RunStatement extends AstNodeBase {
   }
   __emit(ctx) {
     const indent = emitIndent(ctx);
-    const targetText = this.target
-      ? this.target.__emit(ctx)
-      : (this.__cst?.node?.childForFieldName("target")?.text ?? "");
+    const targetText = this.target ? this.target.__emit(ctx) : this.__cst?.node?.childForFieldName("target")?.text ?? "";
     if (!targetText.trim() && this.__cst?.node) {
       const cstText = this.__cst.node.text?.trim();
       if (cstText) {
@@ -5675,15 +5356,13 @@ var RunStatement = class _RunStatement extends AstNodeBase {
     const bodyNode = node.childForFieldName("block_value");
     const diagnostics = [];
     for (const child of node.children) {
-      if (child.type !== "ERROR") continue;
+      if (child.type !== "ERROR")
+        continue;
       const hasWith = child.children.some((c) => c.type === "with");
-      if (!hasWith) continue;
+      if (!hasWith)
+        continue;
       for (const errChild of child.namedChildren) {
-        if (
-          errChild.type === "expression" ||
-          errChild.type === "member_expression" ||
-          errChild.type === "atom"
-        ) {
+        if (errChild.type === "expression" || errChild.type === "member_expression" || errChild.type === "atom") {
           targetNode = errChild;
           break;
         }
@@ -5694,14 +5373,7 @@ var RunStatement = class _RunStatement extends AstNodeBase {
         const sibling = node.children[i];
         if (sibling.type === "expression") {
           const rangeStart = withNode ? toRange(withNode).start : toRange(child).start;
-          diagnostics.push(
-            createDiagnostic(
-              { start: rangeStart, end: toRange(sibling).end },
-              `Invalid \`with\` clause: \`with ${sibling.text}\`. \`with\` requires named arguments (e.g., \`with name=@variables.name\`).`,
-              DiagnosticSeverity.Error,
-              "syntax-error",
-            ),
-          );
+          diagnostics.push(createDiagnostic({ start: rangeStart, end: toRange(sibling).end }, `Invalid \`with\` clause: \`with ${sibling.text}\`. \`with\` requires named arguments (e.g., \`with name=@variables.name\`).`, DiagnosticSeverity.Error, "syntax-error"));
           break;
         }
       }
@@ -5710,9 +5382,7 @@ var RunStatement = class _RunStatement extends AstNodeBase {
     const target = targetNode ? parseExpr(targetNode) : null;
     const body = [];
     const attacher = new CommentAttacher();
-    const outerComments = node.children
-      .filter((child) => child.type === "comment")
-      .map((c) => parseCommentNode(c, "leading"));
+    const outerComments = node.children.filter((child) => child.type === "comment").map((c) => parseCommentNode(c, "leading"));
     if (bodyNode) {
       const preBodyComments = outerComments.filter((comment2) => {
         const line = comment2.range?.start.line;
@@ -5729,10 +5399,12 @@ var RunStatement = class _RunStatement extends AstNodeBase {
           continue;
         }
         const result = parseStmt(child);
-        if (!result) continue;
+        if (!result)
+          continue;
         if (Array.isArray(result)) {
           const normalized = result.filter((stmt) => stmt !== null);
-          if (normalized.length === 0) continue;
+          if (normalized.length === 0)
+            continue;
           attacher.consumeOntoFirst(normalized);
           body.push(...normalized);
         } else {
@@ -5740,12 +5412,10 @@ var RunStatement = class _RunStatement extends AstNodeBase {
           body.push(result);
         }
       }
-      const postBodyComments = outerComments
-        .filter((comment2) => {
-          const line = comment2.range?.start.line;
-          return line !== void 0 && line > bodyNode.endRow;
-        })
-        .map((c) => ({ ...c, attachment: "trailing" }));
+      const postBodyComments = outerComments.filter((comment2) => {
+        const line = comment2.range?.start.line;
+        return line !== void 0 && line > bodyNode.endRow;
+      }).map((c) => ({ ...c, attachment: "trailing" }));
       if (postBodyComments.length > 0 && body.length > 0) {
         attach(body[body.length - 1], postBodyComments);
       }
@@ -5806,9 +5476,7 @@ var IfStatement = class _IfStatement extends AstNodeBase {
         return lines.map((line) => `${indent}${line.trim()}`).join("\n");
       }
     }
-    let condText = this.condition
-      ? this.condition.__emit(ctx)
-      : (this.__cst?.node?.childForFieldName("condition")?.text ?? "");
+    let condText = this.condition ? this.condition.__emit(ctx) : this.__cst?.node?.childForFieldName("condition")?.text ?? "";
     if (this.__cst?.node) {
       const firstLine = this.__cst.node.text?.split("\n")[0]?.trim() ?? "";
       const match = firstLine.match(/^(?:if|elif)\s+(.*?):\s*$/);
@@ -5848,7 +5516,9 @@ ${indent}else:
         const elifCondition = parseExpr(alt.childForFieldName("condition"));
         const elifConsequence = alt.childForFieldName("consequence");
         const elifBody = elifConsequence ? parseProcedure2(elifConsequence) : [];
-        orelse = [withCst(new _IfStatement(elifCondition, elifBody, orelse), alt)];
+        orelse = [
+          withCst(new _IfStatement(elifCondition, elifBody, orelse), alt)
+        ];
       }
     }
     return withCst(new _IfStatement(condition, body, orelse), node);
@@ -5875,8 +5545,10 @@ var TransitionStatement = class _TransitionStatement extends AstNodeBase {
           clauses.push(ToClause.parse(child, parseExpr));
         } else if (child.type === "with_statement") {
           const parsed = WithClause.parseAll(child, parseExpr);
-          if (Array.isArray(parsed)) clauses.push(...parsed);
-          else clauses.push(parsed);
+          if (Array.isArray(parsed))
+            clauses.push(...parsed);
+          else
+            clauses.push(parsed);
         }
       }
     }
@@ -5903,10 +5575,8 @@ var statementParsers = {
   to_statement: (node, parseExpr) => ToClause.parse(node, parseExpr),
   available_when_statement: (node, parseExpr) => AvailableWhen.parse(node, parseExpr),
   transition_statement: (node, parseExpr) => TransitionStatement.parse(node, parseExpr),
-  run_statement: (node, parseExpr, _parseProcedure, parseStmt) =>
-    RunStatement.parse(node, parseExpr, parseStmt),
-  if_statement: (node, parseExpr, parseProcedure2) =>
-    IfStatement.parse(node, parseExpr, parseProcedure2),
+  run_statement: (node, parseExpr, _parseProcedure, parseStmt) => RunStatement.parse(node, parseExpr, parseStmt),
+  if_statement: (node, parseExpr, parseProcedure2) => IfStatement.parse(node, parseExpr, parseProcedure2)
 };
 
 // ../language/dist/core/field-builder.js
@@ -5949,7 +5619,7 @@ var FieldBuilder = class {
           value: val,
           writable: true,
           enumerable: true,
-          configurable: true,
+          configurable: true
         });
       }
     }
@@ -5969,8 +5639,7 @@ function addBuilderMethods(fieldType, constraints) {
   const cats = constraints ?? [];
   function populateMethods(target, meta2, base) {
     const withMeta = (updates) => enhance({ ...meta2, ...updates }, base);
-    const withConstraint = (updates) =>
-      enhance({ ...meta2, constraints: { ...meta2.constraints, ...updates } }, base);
+    const withConstraint = (updates) => enhance({ ...meta2, constraints: { ...meta2.constraints, ...updates } }, base);
     target.describe = (desc) => withMeta({ description: desc });
     target.example = (ex) => withMeta({ example: ex });
     target.minVersion = (v) => withMeta({ minVersion: v });
@@ -5995,21 +5664,12 @@ ${value.__emit(childCtx)}`;
     target.disallowTemplates = (suggestion) => {
       const noTemplateBase = Object.create(base);
       const originalParse = base.parse.bind(base);
-      const errorMessage =
-        "Template statements (|) are not allowed in this procedure block." +
-        (suggestion ? ` ${suggestion}` : "");
+      const errorMessage = "Template statements (|) are not allowed in this procedure block." + (suggestion ? ` ${suggestion}` : "");
       function collectTemplateDiagnostics(statements, diagnostics, fallbackRange) {
         for (const stmt of statements) {
           if (stmt.__kind === "Template") {
             const range = stmt.__cst?.range ?? fallbackRange;
-            diagnostics.push(
-              createDiagnostic(
-                range,
-                errorMessage,
-                DiagnosticSeverity.Error,
-                "template-in-deterministic-procedure",
-              ),
-            );
+            diagnostics.push(createDiagnostic(range, errorMessage, DiagnosticSeverity.Error, "template-in-deterministic-procedure"));
           }
           if (stmt instanceof IfStatement) {
             collectTemplateDiagnostics(stmt.body, diagnostics, fallbackRange);
@@ -6022,7 +5682,7 @@ ${value.__emit(childCtx)}`;
           }
         }
       }
-      noTemplateBase.parse = function (node, dialect, extraElements) {
+      noTemplateBase.parse = function(node, dialect, extraElements) {
         const result = originalParse(node, dialect, extraElements);
         const diagnostics = [...result.diagnostics];
         if (result.value && "statements" in result.value) {
@@ -6055,7 +5715,7 @@ ${value.__emit(childCtx)}`;
       "omit",
       "withProperties",
       "extendProperties",
-      "withKeyPattern",
+      "withKeyPattern"
     ]) {
       const orig = baseAny[method];
       if (typeof orig === "function") {
@@ -6101,10 +5761,9 @@ ${value.__emit(childCtx)}`;
         assertNonNegativeInteger(v, "maxLength");
         return withConstraint({ maxLength: v });
       };
-      target.pattern = (regex) =>
-        withConstraint({
-          pattern: regex instanceof RegExp ? regex.source : regex,
-        });
+      target.pattern = (regex) => withConstraint({
+        pattern: regex instanceof RegExp ? regex.source : regex
+      });
     }
     if (cats.includes("generic")) {
       target.enum = (values) => withConstraint({ enum: values });
@@ -6134,57 +5793,58 @@ ${value.__emit(childCtx)}`;
 var AGENTSCRIPT_PRIMITIVE_TYPES = [
   {
     keyword: "string",
-    description: "A text value, such as a name, message, or ID.",
+    description: "A text value, such as a name, message, or ID."
   },
   {
     keyword: "number",
-    description: "A numeric value that can include decimals (e.g., 3.14).",
+    description: "A numeric value that can include decimals (e.g., 3.14)."
   },
   { keyword: "boolean", description: "A True or False value." },
   {
     keyword: "object",
-    description: "A collection of named values (key-value pairs).",
+    description: "A collection of named values (key-value pairs)."
   },
   { keyword: "currency", description: "A monetary amount." },
   {
     keyword: "date",
-    description: "A calendar date without a time (e.g., 2025-03-15).",
+    description: "A calendar date without a time (e.g., 2025-03-15)."
   },
   {
     keyword: "datetime",
-    description: "A date and time with timezone (e.g., 2025-03-15T10:30:00Z).",
+    description: "A date and time with timezone (e.g., 2025-03-15T10:30:00Z)."
   },
   {
     keyword: "time",
-    description: "A time of day without a date (e.g., 14:30).",
+    description: "A time of day without a date (e.g., 14:30)."
   },
   {
     keyword: "timestamp",
-    description: "A point in time represented as a Unix epoch value.",
+    description: "A point in time represented as a Unix epoch value."
   },
   { keyword: "id", description: "A unique record identifier." },
   {
     keyword: "integer",
-    description: "A whole number with no decimal part (e.g., 42).",
+    description: "A whole number with no decimal part (e.g., 42)."
   },
   {
     keyword: "long",
-    description: "A large whole number for values that may exceed normal integer range.",
-  },
+    description: "A large whole number for values that may exceed normal integer range."
+  }
 ];
 var VARIABLE_MODIFIERS = [
   {
     keyword: "mutable",
-    description:
-      "A variable that can be changed during the conversation. Use `set` to update its value.",
+    description: "A variable that can be changed during the conversation. Use `set` to update its value."
   },
   {
     keyword: "linked",
-    description:
-      "A variable whose value comes from an external system (e.g., a CRM record). Cannot be changed directly.",
-  },
+    description: "A variable whose value comes from an external system (e.g., a CRM record). Cannot be changed directly."
+  }
 ];
-var ALLOWED_STRING_VALUE_KINDS = /* @__PURE__ */ new Set(["StringLiteral", "TemplateExpression"]);
+var ALLOWED_STRING_VALUE_KINDS = /* @__PURE__ */ new Set([
+  "StringLiteral",
+  "TemplateExpression"
+]);
 var STRING_VALUE_DEFAULT = Array.from(ALLOWED_STRING_VALUE_KINDS);
 
 // ../language/dist/core/primitives.js
@@ -6198,7 +5858,7 @@ function validateExpression(node, dialect, accepts) {
   if (node.type === "template" && accepts.includes("TemplateExpression")) {
     return {
       expr: TemplateExpression.parse(node, (n) => dialect.parseExpression(n)),
-      diagnostics: [],
+      diagnostics: []
     };
   }
   const expr = dialect.parseExpression(node);
@@ -6208,13 +5868,8 @@ function validateExpression(node, dialect, accepts) {
     return {
       expr: withCstGuard(expr, node),
       diagnostics: [
-        typeMismatchDiagnostic(
-          toRange(node),
-          `Expected ${expected}, got ${expr.__describe()}`,
-          accepts.join(" | "),
-          expr.__kind,
-        ),
-      ],
+        typeMismatchDiagnostic(toRange(node), `Expected ${expected}, got ${expr.__describe()}`, accepts.join(" | "), expr.__kind)
+      ]
     };
   }
   return { expr: withCstGuard(expr, node), diagnostics: [] };
@@ -6232,9 +5887,12 @@ var _stringValueFieldType = {
     }
     return parseResult(expr, []);
   },
-  emit: (value, ctx) => value.__emit(ctx),
+  emit: (value, ctx) => value.__emit(ctx)
 };
-var StringValue = addBuilderMethods(_stringValueFieldType, ["string", "generic"]);
+var StringValue = addBuilderMethods(_stringValueFieldType, [
+  "string",
+  "generic"
+]);
 var _NumberValueNode = class _NumberValueNode extends AstNodeBase {
   constructor(value) {
     super();
@@ -6246,7 +5904,9 @@ var _NumberValueNode = class _NumberValueNode extends AstNodeBase {
     return String(this.value);
   }
   static parse(node, dialect) {
-    const { expr, diagnostics } = validateExpression(node, dialect, ["NumberLiteral"]);
+    const { expr, diagnostics } = validateExpression(node, dialect, [
+      "NumberLiteral"
+    ]);
     if (diagnostics.length > 0) {
       return parseResult(withCst(new _NumberValueNode(0), node), diagnostics);
     }
@@ -6260,7 +5920,10 @@ var _NumberValueNode = class _NumberValueNode extends AstNodeBase {
 __publicField(_NumberValueNode, "__fieldKind", "Primitive");
 __publicField(_NumberValueNode, "__accepts", ["NumberLiteral"]);
 var NumberValueNode = _NumberValueNode;
-var NumberValue = addBuilderMethods(NumberValueNode, ["number", "generic"]);
+var NumberValue = addBuilderMethods(NumberValueNode, [
+  "number",
+  "generic"
+]);
 var _BooleanValueNode = class _BooleanValueNode extends AstNodeBase {
   constructor(value) {
     super();
@@ -6272,7 +5935,9 @@ var _BooleanValueNode = class _BooleanValueNode extends AstNodeBase {
     return this.value ? "True" : "False";
   }
   static parse(node, dialect) {
-    const { expr, diagnostics } = validateExpression(node, dialect, ["BooleanLiteral"]);
+    const { expr, diagnostics } = validateExpression(node, dialect, [
+      "BooleanLiteral"
+    ]);
     if (diagnostics.length > 0) {
       if (expr instanceof StringLiteral) {
         const upper = expr.value.toUpperCase();
@@ -6301,22 +5966,13 @@ var _ProcedureValueNode = class _ProcedureValueNode extends AstNodeBase {
     this.statements = statements;
   }
   __emit(ctx) {
-    return this.statements
-      .map((statement) => wrapWithComments(statement.__emit(ctx), statement, ctx))
-      .join("\n");
+    return this.statements.map((statement) => wrapWithComments(statement.__emit(ctx), statement, ctx)).join("\n");
   }
   static parse(node, dialect) {
     const validTypes = /* @__PURE__ */ new Set(["procedure", "mapping", "template"]);
     const dc = new DiagnosticCollector();
     if (!validTypes.has(node.type)) {
-      dc.add(
-        createDiagnostic(
-          node,
-          `Expected procedure (->) or template (|) syntax, got '${node.text}'`,
-          DiagnosticSeverity.Error,
-          "invalid-procedure-value",
-        ),
-      );
+      dc.add(createDiagnostic(node, `Expected procedure (->) or template (|) syntax, got '${node.text}'`, DiagnosticSeverity.Error, "invalid-procedure-value"));
     }
     const statements = dialect.parseProcedure(node);
     return parseResult(withCst(new _ProcedureValueNode(statements), node), dc.all);
@@ -6332,13 +5988,13 @@ var _ProcedureValueNode = class _ProcedureValueNode extends AstNodeBase {
         const raw = value.statements[0].__emit({ ...ctx, indent: 0 });
         const lines = raw.split("\n");
         const childIndent = emitIndent({ ...ctx, indent: ctx.indent + 1 });
-        const reindented = lines
-          .map((line, i) => {
-            if (i === 0) return line;
-            if (line.trim().length === 0) return "";
-            return `${childIndent}${line}`;
-          })
-          .join("\n");
+        const reindented = lines.map((line, i) => {
+          if (i === 0)
+            return line;
+          if (line.trim().length === 0)
+            return "";
+          return `${childIndent}${line}`;
+        }).join("\n");
         return `${indent}${key}: ${reindented}`;
       }
       if (cstType === "mapping") {
@@ -6349,7 +6005,8 @@ ${value.statements[0].__emit(childCtx2)}`;
     }
     const childCtx = { ...ctx, indent: ctx.indent + 1 };
     const body = value.__emit(childCtx);
-    if (!body) return `${indent}${key}: ->`;
+    if (!body)
+      return `${indent}${key}: ->`;
     return `${indent}${key}: ->
 ${body}`;
   }
@@ -6365,27 +6022,27 @@ var ExpressionValue = addBuilderMethods({
     return parseResult(parsed, []);
   },
   emit: (value, ctx) => {
-    if (value == null) return "";
+    if (value == null)
+      return "";
     return value.__emit(ctx);
-  },
+  }
 });
 var ReferenceValue = addBuilderMethods({
   __fieldKind: "Primitive",
   __accepts: ["MemberExpression"],
   parse: (node, dialect) => {
-    const { expr, diagnostics } = validateExpression(node, dialect, ["MemberExpression"]);
+    const { expr, diagnostics } = validateExpression(node, dialect, [
+      "MemberExpression"
+    ]);
     if (diagnostics.length > 0) {
-      return parseResult(
-        withCst(new MemberExpression(new AtIdentifier(""), ""), node),
-        diagnostics,
-      );
+      return parseResult(withCst(new MemberExpression(new AtIdentifier(""), ""), node), diagnostics);
     }
     if (expr instanceof MemberExpression && expr.__cst) {
       return parseResult(expr, []);
     }
     return parseResult(withCst(new MemberExpression(new AtIdentifier(""), ""), node), []);
   },
-  emit: (value, ctx) => value.__emit(ctx),
+  emit: (value, ctx) => value.__emit(ctx)
 });
 function union(...types) {
   const expressionKindSet = EXPRESSION_KINDS;
@@ -6398,7 +6055,7 @@ function union(...types) {
       const { expr, diagnostics } = validateExpression(node, dialect, accepts);
       return parseResult(expr, diagnostics);
     },
-    emit: (value, ctx) => value.__emit(ctx),
+    emit: (value, ctx) => value.__emit(ctx)
   };
 }
 
@@ -6431,19 +6088,19 @@ var SequenceNode = class extends AstNodeBase {
 function collectMappingElements(child) {
   const elements = [];
   const colinearME = child.childForFieldName("colinear_mapping_element");
-  if (colinearME) elements.push(colinearME);
+  if (colinearME)
+    elements.push(colinearME);
   const blockValue = child.childForFieldName("block_value");
   if (blockValue) {
     for (const bvChild of blockValue.namedChildren) {
-      if (bvChild.type === "mapping_element") elements.push(bvChild);
+      if (bvChild.type === "mapping_element")
+        elements.push(bvChild);
     }
   }
   return elements;
 }
 function hasMappingContent(child) {
-  return !!(
-    child.childForFieldName("colinear_mapping_element") || child.childForFieldName("block_value")
-  );
+  return !!(child.childForFieldName("colinear_mapping_element") || child.childForFieldName("block_value"));
 }
 function createSequenceFieldType(blockType) {
   const fieldType = {
@@ -6453,7 +6110,8 @@ function createSequenceFieldType(blockType) {
       const items = [];
       const dc = new DiagnosticCollector();
       for (const child of node.namedChildren) {
-        if (child.type !== "sequence_element") continue;
+        if (child.type !== "sequence_element")
+          continue;
         if (hasMappingContent(child)) {
           if (blockType) {
             const allElements = collectMappingElements(child);
@@ -6464,19 +6122,12 @@ function createSequenceFieldType(blockType) {
               fields,
               child,
               result.diagnostics,
-              children,
+              children
             );
             items.push(blockResult.value);
             dc.merge(result);
           } else {
-            dc.add(
-              createDiagnostic(
-                child,
-                'Mapping elements are not supported in expression-only sequences. Use simple values (e.g., - "value").',
-                DiagnosticSeverity.Error,
-                "invalid-sequence-element",
-              ),
-            );
+            dc.add(createDiagnostic(child, 'Mapping elements are not supported in expression-only sequences. Use simple values (e.g., - "value").', DiagnosticSeverity.Error, "invalid-sequence-element"));
             const cv = child.childForFieldName("colinear_value");
             if (cv) {
               items.push(dialect.parseExpression(cv));
@@ -6499,7 +6150,7 @@ function createSequenceFieldType(blockType) {
       const childCtx = { ...ctx, indent: ctx.indent + 1 };
       return `${indent}${key}:
 ${value.__emit(childCtx)}`;
-    },
+    }
   };
   return addBuilderMethods(fieldType, ["sequence"]);
 }
@@ -6572,9 +6223,11 @@ var NamedMap = class _NamedMap {
   delete(key) {
     const index = this._mapIndex.ensure(this.__children);
     const entry = index.get(key);
-    if (!entry) return false;
+    if (!entry)
+      return false;
     const idx2 = this.__children.indexOf(entry);
-    if (idx2 !== -1) this.__children.splice(idx2, 1);
+    if (idx2 !== -1)
+      this.__children.splice(idx2, 1);
     return true;
   }
   clear() {
@@ -6609,7 +6262,7 @@ var NamedMap = class _NamedMap {
       callbackfn(entry.value, entry.name, this);
     }
   }
-  [((_a = NAMED_MAP_BRAND), Symbol.iterator)]() {
+  [(_a = NAMED_MAP_BRAND, Symbol.iterator)]() {
     return this.entries();
   }
   toJSON() {
@@ -6643,7 +6296,7 @@ var VariableDeclarationNode = class extends TypedDeclarationBase {
     __publicField(this, "__kind", "VariableDeclaration");
     __publicField(this, "__symbol", {
       kind: SymbolKind.Variable,
-      noRecurse: true,
+      noRecurse: true
     });
     __publicField(this, "modifier");
     this.modifier = data.modifier;
@@ -6663,7 +6316,7 @@ function overrideFactoryBuilderMethods(factory) {
   const applyMeta = (updates) => {
     f.__metadata = {
       ...f.__metadata,
-      ...updates,
+      ...updates
     };
     return f;
   };
@@ -6692,17 +6345,18 @@ function overrideFactoryBuilderMethods(factory) {
     "pick",
     "withProperties",
     "extendProperties",
-    "withKeyPattern",
+    "withKeyPattern"
   ]) {
     const orig = f[method];
-    if (typeof orig !== "function") continue;
+    if (typeof orig !== "function")
+      continue;
     f[method] = (...args) => {
       const result = orig.apply(f, args);
       if (result != null && f.__metadata) {
         const r = result;
         r.__metadata = {
           ...f.__metadata,
-          ...r.__metadata,
+          ...r.__metadata
         };
       }
       return result;
@@ -6726,9 +6380,7 @@ function normalizeSchema(schema2) {
 function validateSchemaFields(schema2) {
   for (const key of Object.keys(schema2)) {
     if (key.startsWith("__")) {
-      throw new Error(
-        `Field name '${key}' is invalid - field names cannot start with '__' (reserved for internal properties)`,
-      );
+      throw new Error(`Field name '${key}' is invalid - field names cannot start with '__' (reserved for internal properties)`);
     }
   }
 }
@@ -6748,25 +6400,21 @@ function Block(kind, inputSchema, options) {
   let blockVariants;
   if (discriminantField) {
     if (!schema2[discriminantField]) {
-      throw new Error(
-        `Block '${kind}': discriminant field '${discriminantField}' not found in base schema`,
-      );
+      throw new Error(`Block '${kind}': discriminant field '${discriminantField}' not found in base schema`);
     }
     if (rawVariantsBlock && Object.keys(rawVariantsBlock).length > 0) {
-      blockVariants = Object.fromEntries(
-        Object.entries(rawVariantsBlock).map(([name, variantSchema]) => {
-          const merged = Object.freeze({
-            ...schema2,
-            ...normalizeSchema(variantSchema),
-          });
-          validateSchemaFields(merged);
-          return [name, merged];
-        }),
-      );
+      blockVariants = Object.fromEntries(Object.entries(rawVariantsBlock).map(([name, variantSchema]) => {
+        const merged = Object.freeze({
+          ...schema2,
+          ...normalizeSchema(variantSchema)
+        });
+        validateSchemaFields(merged);
+        return [name, merged];
+      }));
       discriminantConfig = {
         field: discriminantField,
         variants: blockVariants,
-        validValues: Object.keys(blockVariants),
+        validValues: Object.keys(blockVariants)
       };
     }
   }
@@ -6786,7 +6434,7 @@ function Block(kind, inputSchema, options) {
     }
     static parse(node, dialect, extraElements) {
       const result = dialect.parseMapping(node, schema2, extraElements, {
-        discriminant: discriminantConfig,
+        discriminant: discriminantConfig
       });
       const ownDiags = result.value.__diagnostics;
       const { fields, children } = extractChildren(result.value);
@@ -6799,10 +6447,8 @@ function Block(kind, inputSchema, options) {
       const indent = emitIndent(ctx);
       const childCtx = { ...ctx, indent: ctx.indent + 1 };
       const body = value.__emit(childCtx);
-      return body
-        ? `${indent}${key}:
-${body}`
-        : `${indent}${key}:`;
+      return body ? `${indent}${key}:
+${body}` : `${indent}${key}:`;
     }
     __emit(ctx) {
       return emitChildren(this.__children, ctx);
@@ -6820,7 +6466,7 @@ ${body}`
       value: { description: options.description },
       writable: true,
       enumerable: true,
-      configurable: true,
+      configurable: true
     });
   }
   Object.defineProperty(base, "extend", {
@@ -6830,17 +6476,18 @@ ${body}`
     },
     writable: true,
     configurable: true,
-    enumerable: true,
+    enumerable: true
   });
   Object.defineProperty(base, "omit", {
     value: (...keys) => {
       const remaining = { ...schema2 };
-      for (const k of keys) delete remaining[k];
+      for (const k of keys)
+        delete remaining[k];
       return Block(kind, remaining, stripDiscriminantIfMissing(remaining, options));
     },
     writable: true,
     configurable: true,
-    enumerable: true,
+    enumerable: true
   });
   Object.defineProperty(base, "pick", {
     value: (keys) => {
@@ -6849,11 +6496,13 @@ ${body}`
       for (const key of keys) {
         const dotIdx = key.indexOf(".");
         if (dotIdx === -1) {
-          if (key in schema2) picked[key] = schema2[key];
+          if (key in schema2)
+            picked[key] = schema2[key];
         } else {
           const first = key.slice(0, dotIdx);
           const rest = key.slice(dotIdx + 1);
-          if (!nested.has(first)) nested.set(first, []);
+          if (!nested.has(first))
+            nested.set(first, []);
           nested.get(first).push(rest);
         }
       }
@@ -6867,27 +6516,26 @@ ${body}`
     },
     writable: true,
     configurable: true,
-    enumerable: true,
+    enumerable: true
   });
   Object.defineProperty(base, "__clone", {
     value: () => Block(kind, { ...schema2 }, options),
     writable: true,
     configurable: true,
-    enumerable: true,
+    enumerable: true
   });
-  const dp = (key, value) =>
-    Object.defineProperty(base, key, {
-      value,
-      writable: true,
-      configurable: true,
-      enumerable: true,
-    });
+  const dp = (key, value) => Object.defineProperty(base, key, {
+    value,
+    writable: true,
+    configurable: true,
+    enumerable: true
+  });
   dp("discriminantField", discriminantField);
   dp("resolveSchemaForDiscriminant", (value) => blockVariants?.[value] ?? schema2);
   dp("discriminant", (fieldName) => {
     return Block(kind, inputSchema ?? {}, {
       ...options,
-      discriminant: fieldName,
+      discriminant: fieldName
     });
   });
   dp("variant", (name, variantSchema) => {
@@ -6895,7 +6543,7 @@ ${body}`
     const newVariants = { ...currentVariants, [name]: variantSchema };
     return Block(kind, inputSchema ?? {}, {
       ...options,
-      variants: newVariants,
+      variants: newVariants
     });
   });
   overrideFactoryBuilderMethods(base);
@@ -6912,32 +6560,26 @@ function NamedBlock(kind, inputSchema, opts) {
   const symbol = opts?.symbol ?? { kind: SymbolKind.Class };
   const scopeLevel = opts?.scopeAlias;
   const rawVariants = opts?.variants;
-  const variants = rawVariants
-    ? Object.fromEntries(
-        Object.entries(rawVariants).map(([name, variantSchema]) => {
-          const merged = Object.freeze({
-            ...schema2,
-            ...normalizeSchema(variantSchema),
-          });
-          validateSchemaFields(merged);
-          return [name, merged];
-        }),
-      )
-    : void 0;
+  const variants = rawVariants ? Object.fromEntries(Object.entries(rawVariants).map(([name, variantSchema]) => {
+    const merged = Object.freeze({
+      ...schema2,
+      ...normalizeSchema(variantSchema)
+    });
+    validateSchemaFields(merged);
+    return [name, merged];
+  })) : void 0;
   const validVariantNames = variants ? Object.keys(variants) : void 0;
   const discriminantField = opts?.discriminant;
   let namedDiscriminantConfig;
   if (discriminantField) {
     if (!schema2[discriminantField]) {
-      throw new Error(
-        `NamedBlock '${kind}': discriminant field '${discriminantField}' not found in base schema`,
-      );
+      throw new Error(`NamedBlock '${kind}': discriminant field '${discriminantField}' not found in base schema`);
     }
     if (variants && Object.keys(variants).length > 0) {
       namedDiscriminantConfig = {
         field: discriminantField,
         variants,
-        validValues: validVariantNames,
+        validValues: validVariantNames
       };
     }
   }
@@ -6946,14 +6588,14 @@ function NamedBlock(kind, inputSchema, opts) {
       return {
         effectiveSchema: schema2,
         discriminantConfig: namedDiscriminantConfig,
-        earlyDiagnostics: [],
+        earlyDiagnostics: []
       };
     }
     if (!variants) {
       return {
         effectiveSchema: schema2,
         discriminantConfig: void 0,
-        earlyDiagnostics: [],
+        earlyDiagnostics: []
       };
     }
     const variantSchema = variants[name];
@@ -6961,20 +6603,15 @@ function NamedBlock(kind, inputSchema, opts) {
       return {
         effectiveSchema: variantSchema,
         discriminantConfig: void 0,
-        earlyDiagnostics: [],
+        earlyDiagnostics: []
       };
     }
     return {
       effectiveSchema: schema2,
       discriminantConfig: void 0,
       earlyDiagnostics: [
-        createDiagnostic(
-          cstNode,
-          `Unknown variant '${name}'. Valid variants: ${validVariantNames.join(", ")}`,
-          DiagnosticSeverity.Error,
-          "unknown-variant",
-        ),
-      ],
+        createDiagnostic(cstNode, `Unknown variant '${name}'. Valid variants: ${validVariantNames.join(", ")}`, DiagnosticSeverity.Error, "unknown-variant")
+      ]
     };
   }
   const _NamedBlockNode = class _NamedBlockNode extends BlockBase {
@@ -6990,7 +6627,7 @@ function NamedBlock(kind, inputSchema, opts) {
         value: void 0,
         writable: true,
         enumerable: false,
-        configurable: true,
+        configurable: true
       });
       this.__name = name;
       this.__children = initChildren(this, parseChildren, fields, schema2);
@@ -7043,22 +6680,10 @@ function NamedBlock(kind, inputSchema, opts) {
       if (earlyDiagnostics.length > 0) {
         return _NamedBlockNode.fromParsedFields(name, {}, node, earlyDiagnostics);
       }
-      const result = dialect.parseMapping(
-        node,
-        effectiveSchema,
-        adoptedSiblings,
-        discriminantConfig ? { discriminant: discriminantConfig } : void 0,
-      );
+      const result = dialect.parseMapping(node, effectiveSchema, adoptedSiblings, discriminantConfig ? { discriminant: discriminantConfig } : void 0);
       const ownDiags = result.value.__diagnostics;
       const { fields, children } = extractChildren(result.value);
-      return _NamedBlockNode.fromParsedFields(
-        name,
-        fields,
-        node,
-        result.diagnostics,
-        children,
-        ownDiags,
-      );
+      return _NamedBlockNode.fromParsedFields(name, fields, node, result.diagnostics, children, ownDiags);
     }
     static parseColinear(node, name, dialect, adoptedSiblings) {
       const { effectiveSchema, discriminantConfig, earlyDiagnostics } = resolveVariant(name, node);
@@ -7066,11 +6691,8 @@ function NamedBlock(kind, inputSchema, opts) {
         return _NamedBlockNode.fromParsedFields(name, {}, node, earlyDiagnostics);
       }
       const parentNode = node.parent;
-      const colinearNode =
-        parentNode?.childForFieldName("colinear_value") ??
-        parentNode?.childForFieldName("expression");
-      const bodyNode =
-        parentNode?.childForFieldName("block_value") ?? parentNode?.childForFieldName("procedure");
+      const colinearNode = parentNode?.childForFieldName("colinear_value") ?? parentNode?.childForFieldName("expression");
+      const bodyNode = parentNode?.childForFieldName("block_value") ?? parentNode?.childForFieldName("procedure");
       const dc = new DiagnosticCollector();
       let colinearValue;
       if (colinear && colinearNode) {
@@ -7089,16 +6711,12 @@ function NamedBlock(kind, inputSchema, opts) {
         const extracted = extractChildren(content.fields);
         mappingFields = extracted.fields;
         bodyChildren = extracted.children;
-        if (content.statements.length > 0) statements = content.statements;
+        if (content.statements.length > 0)
+          statements = content.statements;
         dc.mergeAll(content.diagnostics);
         bodyOwnDiags = content.fields.__diagnostics ?? [];
       } else if (adoptedSiblings && adoptedSiblings.length > 0) {
-        const adoptedResult = dialect.parseMappingElements(
-          adoptedSiblings,
-          effectiveSchema,
-          node,
-          discriminantConfig,
-        );
+        const adoptedResult = dialect.parseMappingElements(adoptedSiblings, effectiveSchema, node, discriminantConfig);
         const extracted = extractChildren(adoptedResult.value);
         mappingFields = extracted.fields;
         bodyChildren = extracted.children;
@@ -7106,31 +6724,30 @@ function NamedBlock(kind, inputSchema, opts) {
         bodyOwnDiags = adoptedResult.value.__diagnostics ?? [];
         const adoptedStatements = dialect.parseStatementNodes(adoptedSiblings);
         if (adoptedStatements.length > 0) {
-          statements = [...(statements ?? []), ...adoptedStatements];
+          statements = [...statements ?? [], ...adoptedStatements];
         }
       }
       const extraNodes = [
-        ...(colinearNode?.childForFieldName("with_to_statement_list")?.namedChildren ?? []),
-        ...(parentNode?.children
-          .filter((c) => c.type === "ERROR")
-          .flatMap((c) => c.namedChildren) ?? []),
+        ...colinearNode?.childForFieldName("with_to_statement_list")?.namedChildren ?? [],
+        ...parentNode?.children.filter((c) => c.type === "ERROR").flatMap((c) => c.namedChildren) ?? []
       ];
       if (extraNodes.length > 0) {
         const posKey = (n) => `${n.startRow}:${n.startCol}-${n.endRow}:${n.endCol}`;
-        const bodyPositions = new Set(
-          (statements ?? []).filter((s) => s.__cst?.node).map((s) => posKey(s.__cst.node)),
-        );
+        const bodyPositions = new Set((statements ?? []).filter((s) => s.__cst?.node).map((s) => posKey(s.__cst.node)));
         const extraStatements = dialect.parseStatementNodes(extraNodes).filter((s) => {
-          if (!s.__cst?.node) return true;
+          if (!s.__cst?.node)
+            return true;
           return !bodyPositions.has(posKey(s.__cst.node));
         });
         if (extraStatements.length > 0) {
-          statements = [...(statements ?? []), ...extraStatements];
+          statements = [...statements ?? [], ...extraStatements];
         }
       }
       const instance = new _NamedBlockNode(name, mappingFields, bodyChildren);
-      if (colinearValue !== void 0) instance.value = colinearValue;
-      if (statements) instance.statements = statements;
+      if (colinearValue !== void 0)
+        instance.value = colinearValue;
+      if (statements)
+        instance.statements = statements;
       const parsed = withCst(instance, node);
       parsed.__diagnostics = bodyOwnDiags;
       return parseResult(parsed, dc.all);
@@ -7147,10 +6764,8 @@ function NamedBlock(kind, inputSchema, opts) {
       const header = `${indent}${schemaKey} ${emitKeyName(this.__name)}:`;
       const childCtx = { ...ctx, indent: ctx.indent + 1 };
       const body2 = emitChildren(this.__children, childCtx);
-      return body2
-        ? `${header}
-${body2}`
-        : header;
+      return body2 ? `${header}
+${body2}` : header;
     }
     /** Emit as a nested entry with just the name (e.g., `fetch_data:` inside `actions:`). */
     emitAsEntry(ctx) {
@@ -7158,10 +6773,8 @@ ${body2}`
       const header = `${indent}${emitKeyName(this.__name)}:`;
       const childCtx = { ...ctx, indent: ctx.indent + 1 };
       const body2 = emitChildren(this.__children, childCtx);
-      return body2
-        ? `${header}
-${body2}`
-        : header;
+      return body2 ? `${header}
+${body2}` : header;
     }
     static emit(value, ctx) {
       return value.__emit(ctx);
@@ -7176,7 +6789,8 @@ ${body2}`
       const indent = emitIndent(ctx);
       const childCtx = { ...ctx, indent: ctx.indent + 1 };
       const body2 = emitChildren(value.__children, childCtx);
-      if (!body2) return "";
+      if (!body2)
+        return "";
       return `${indent}${key}:
 ${body2}`;
     }
@@ -7193,8 +6807,7 @@ ${body2}`;
           const stmt = child.value;
           if (stmt.__kind === "ToClause") {
             const val = this.value;
-            const colinearRow =
-              val instanceof AstNodeBase ? val.__cst?.node?.endPosition?.row : void 0;
+            const colinearRow = val instanceof AstNodeBase ? val.__cst?.node?.endPosition?.row : void 0;
             const toRow = stmt.__cst?.node?.startPosition?.row;
             if (colinearRow != null && toRow != null && toRow > colinearRow) {
               bodyParts.push(stmt.__emit(childCtx));
@@ -7207,7 +6820,8 @@ ${body2}`;
           continue;
         }
         const emitted = child.__emit(childCtx);
-        if (emitted) bodyParts.push(emitted);
+        if (emitted)
+          bodyParts.push(emitted);
       }
       if (bodyParts.length > 0) {
         out += "\n" + bodyParts.join("\n");
@@ -7226,13 +6840,12 @@ ${body2}`;
   __publicField(_NamedBlockNode, "capabilities", opts?.capabilities);
   let NamedBlockNode = _NamedBlockNode;
   const base = addBuilderMethods(NamedBlockNode);
-  const dp = (key, value) =>
-    Object.defineProperty(base, key, {
-      value,
-      writable: true,
-      configurable: true,
-      enumerable: true,
-    });
+  const dp = (key, value) => Object.defineProperty(base, key, {
+    value,
+    writable: true,
+    configurable: true,
+    enumerable: true
+  });
   if (opts?.description) {
     dp("__metadata", { description: opts.description });
   }
@@ -7246,7 +6859,8 @@ ${body2}`;
   });
   dp("omit", (...keys) => {
     const remaining = { ...schema2 };
-    for (const k of keys) delete remaining[k];
+    for (const k of keys)
+      delete remaining[k];
     return NamedBlock(kind, remaining, stripDiscriminantIfMissing(remaining, opts));
   });
   dp("pick", (keys) => {
@@ -7255,11 +6869,13 @@ ${body2}`;
     for (const key of keys) {
       const dotIdx = key.indexOf(".");
       if (dotIdx === -1) {
-        if (key in schema2) picked[key] = schema2[key];
+        if (key in schema2)
+          picked[key] = schema2[key];
       } else {
         const first = key.slice(0, dotIdx);
         const rest = key.slice(dotIdx + 1);
-        if (!nested.has(first)) nested.set(first, []);
+        if (!nested.has(first))
+          nested.set(first, []);
         nested.get(first).push(rest);
       }
     }
@@ -7276,13 +6892,13 @@ ${body2}`;
     const newVariants = { ...currentVariants, [name]: variantSchema };
     return NamedBlock(kind, inputSchema ?? {}, {
       ...opts,
-      variants: newVariants,
+      variants: newVariants
     });
   });
   dp("discriminant", (fieldName) => {
     return NamedBlock(kind, inputSchema ?? {}, {
       ...opts,
-      discriminant: fieldName,
+      discriminant: fieldName
     });
   });
   dp("discriminantField", discriminantField);
@@ -7294,7 +6910,8 @@ ${body2}`;
 
 // ../language/dist/core/error-recovery.js
 function detectSameRowSplit(elements, currentIndex, colinearNode, rawDeclType) {
-  if (currentIndex + 1 >= elements.length) return void 0;
+  if (currentIndex + 1 >= elements.length)
+    return void 0;
   const nextEl = elements[currentIndex + 1];
   const nextKeyNode = nextEl.childForFieldName("key");
   const nextKeyChildren = nextKeyNode?.namedChildren.filter(isKeyNode) ?? [];
@@ -7307,7 +6924,7 @@ function detectSameRowSplit(elements, currentIndex, colinearNode, rawDeclType) {
     errorPrefix,
     declType,
     mergedElement: nextEl,
-    mergedKeyRemainder: nextKeyChildren.length >= 2 ? getKeyText(nextKeyChildren[1]) : void 0,
+    mergedKeyRemainder: nextKeyChildren.length >= 2 ? getKeyText(nextKeyChildren[1]) : void 0
   };
 }
 function captureErrorPrefix(element, colinearNode) {
@@ -7316,11 +6933,7 @@ function captureErrorPrefix(element, colinearNode) {
   const colinearRow = colinearNode.startRow;
   const colinearCol = colinearNode.startCol;
   for (const child of element.namedChildren) {
-    if (
-      child.type === "ERROR" &&
-      (child.startRow < colinearRow ||
-        (child.startRow === colinearRow && child.startCol < colinearCol))
-    ) {
+    if (child.type === "ERROR" && (child.startRow < colinearRow || child.startRow === colinearRow && child.startCol < colinearCol)) {
       errorParts.push(child.text);
       if (!firstErrorNode) {
         firstErrorNode = child;
@@ -7336,7 +6949,8 @@ function detectInlineErrorSuffix(element, colinearNode, rawDeclType) {
     if (child.type === "ERROR" && child.startRow === colinearRow && child.startCol > colinearCol) {
       const firstId = child.namedChildren.find((c) => c.type === "id");
       const typeText = firstId ? firstId.text : child.text?.trim();
-      if (!typeText) continue;
+      if (!typeText)
+        continue;
       const errorPrefix = rawDeclType instanceof Identifier ? rawDeclType.name : colinearNode.text;
       const typeNode = firstId ?? child;
       const declType = withCst(new Identifier(typeText), typeNode);
@@ -7347,29 +6961,20 @@ function detectInlineErrorSuffix(element, colinearNode, rawDeclType) {
 }
 function errorBlockFromNode(node) {
   const text = node.text?.trim();
-  if (!text) return void 0;
+  if (!text)
+    return void 0;
   return new ErrorBlock(node.text, node.startCol);
 }
-function mergeProperties(
-  parsed,
-  element,
-  mergedElement,
-  mergedKeyRemainder,
-  propertiesBlock,
-  dialect,
-  dc,
-) {
+function mergeProperties(parsed, element, mergedElement, mergedKeyRemainder, propertiesBlock, dialect, dc) {
   let blockNode = element.childForFieldName("block_value");
   if (!blockNode) {
     blockNode = element.namedChildren.find((c) => c.type === "mapping") ?? null;
   }
-  const mergedBlock =
-    mergedElement.childForFieldName("block_value") ??
-    mergedElement.namedChildren.find((c) => c.type === "mapping") ??
-    null;
+  const mergedBlock = mergedElement.childForFieldName("block_value") ?? mergedElement.namedChildren.find((c) => c.type === "mapping") ?? null;
   const propBlockNode = blockNode ?? mergedBlock;
   if (propBlockNode) {
-    if (!isSingularFieldType(propertiesBlock)) return;
+    if (!isSingularFieldType(propertiesBlock))
+      return;
     const propResult = propertiesBlock.parse(propBlockNode, dialect);
     if (propResult.value && typeof propResult.value === "object") {
       parsed.properties = propResult.value;
@@ -7378,17 +6983,14 @@ function mergeProperties(
     dc.merge(propResult);
   }
   if (mergedKeyRemainder && parsed.properties) {
-    const mergedColinear =
-      mergedElement.childForFieldName("colinear_value") ??
-      mergedElement.childForFieldName("expression");
+    const mergedColinear = mergedElement.childForFieldName("colinear_value") ?? mergedElement.childForFieldName("expression");
     if (mergedColinear) {
       const exprNode = mergedColinear.childForFieldName("expression") ?? mergedColinear;
       const propValue = dialect.parseExpression(exprNode);
       const props = parsed.properties;
       const propSchema = propertiesBlock.schema;
       const rawFieldType = propSchema ? propSchema[mergedKeyRemainder] : void 0;
-      const fieldType =
-        (Array.isArray(rawFieldType) ? rawFieldType[0] : rawFieldType) ?? ExpressionValue;
+      const fieldType = (Array.isArray(rawFieldType) ? rawFieldType[0] : rawFieldType) ?? ExpressionValue;
       const children = props.__children;
       if (children) {
         const fc = new FieldChild(mergedKeyRemainder, propValue, fieldType);
@@ -7412,7 +7014,8 @@ function CollectionBlock(entryBlock, opts) {
       const dc = new DiagnosticCollector();
       let lastEntryValue;
       for (const child of node.children) {
-        if (child.type === "comment") continue;
+        if (child.type === "comment")
+          continue;
         if (child.type === "ERROR") {
           const errBlock = errorBlockFromNode(child);
           if (errBlock && lastEntryValue) {
@@ -7420,32 +7023,22 @@ function CollectionBlock(entryBlock, opts) {
           }
           continue;
         }
-        if (child.type !== "mapping_element") continue;
+        if (child.type !== "mapping_element")
+          continue;
         const [typeId, nameId] = dialect.getKeyIds(child);
         const entryName = typeId;
-        if (!entryName) continue;
+        if (!entryName)
+          continue;
         if (nameId !== void 0) {
           const keyNode = child.childForFieldName("key");
-          dc.add(
-            createDiagnostic(
-              keyNode ?? child,
-              `Composite key '${keyNode?.text ?? `${typeId} ${nameId}`}' is not allowed; expected a single name`,
-              DiagnosticSeverity.Error,
-              "composite-key",
-            ),
-          );
+          dc.add(createDiagnostic(keyNode ?? child, `Composite key '${keyNode?.text ?? `${typeId} ${nameId}`}' is not allowed; expected a single name`, DiagnosticSeverity.Error, "composite-key"));
         }
         const { blockValue, colinearValue, procedure } = getValueNodes(child);
         const valueNode = blockValue ?? colinearValue ?? procedure ?? child;
         const result = entryBlock.parse(valueNode, entryName, dialect);
         if (instance.has(entryName)) {
           const keyNode = child.childForFieldName("key");
-          const dupDiag = createDiagnostic(
-            keyNode ?? child,
-            `Duplicate key '${keyNode?.text ?? entryName}'`,
-            DiagnosticSeverity.Warning,
-            "duplicate-key",
-          );
+          const dupDiag = createDiagnostic(keyNode ?? child, `Duplicate key '${keyNode?.text ?? entryName}'`, DiagnosticSeverity.Warning, "duplicate-key");
           dc.add(dupDiag);
         }
         instance.set(entryName, result.value);
@@ -7477,7 +7070,8 @@ function CollectionBlock(entryBlock, opts) {
       const indent = emitIndent(ctx);
       const childCtx = { ...ctx, indent: ctx.indent + 1 };
       const body = emitChildren(value.__children, childCtx);
-      if (!body) return "";
+      if (!body)
+        return "";
       return `${indent}${key}:
 ${body}`;
     }
@@ -7488,18 +7082,20 @@ ${body}`;
   __publicField(_CollectionBlockNode, "entryBlock", entryBlock);
   let CollectionBlockNode = _CollectionBlockNode;
   const base = addBuilderMethods(CollectionBlockNode);
-  const dp = (key, value) =>
-    Object.defineProperty(base, key, {
-      value,
-      writable: true,
-      configurable: true,
-      enumerable: true,
-    });
+  const dp = (key, value) => Object.defineProperty(base, key, {
+    value,
+    writable: true,
+    configurable: true,
+    enumerable: true
+  });
   const entryMeta = entryBlock.__metadata;
   const collectionMeta = {};
-  if (entryMeta?.example) collectionMeta.example = entryMeta.example;
-  if (entryMeta?.description) collectionMeta.description = entryMeta.description;
-  if (opts?.description) collectionMeta.description = opts.description;
+  if (entryMeta?.example)
+    collectionMeta.example = entryMeta.example;
+  if (entryMeta?.description)
+    collectionMeta.description = entryMeta.description;
+  if (opts?.description)
+    collectionMeta.description = opts.description;
   if (Object.keys(collectionMeta).length > 0) {
     dp("__metadata", collectionMeta);
   }
@@ -7514,18 +7110,383 @@ ${body}`;
 }
 function NamedCollectionBlock(entryBlock, opts) {
   const base = CollectionBlock(entryBlock, opts);
-  const dp = (key, value) =>
-    Object.defineProperty(base, key, {
-      value,
-      writable: true,
-      configurable: true,
-      enumerable: true,
-    });
+  const dp = (key, value) => Object.defineProperty(base, key, {
+    value,
+    writable: true,
+    configurable: true,
+    enumerable: true
+  });
   dp("__isNamedCollection", true);
   dp("__clone", () => NamedCollectionBlock(entryBlock, opts));
   overrideFactoryBuilderMethods(base);
   return base;
 }
+
+// ../language/dist/core/typed-map-parser.js
+var TypedMapElement = class {
+  constructor(node, leadingComments2, index) {
+    __publicField(this, "node");
+    __publicField(this, "name");
+    __publicField(this, "index");
+    __publicField(this, "keyNode");
+    __publicField(this, "keyChildren");
+    __publicField(this, "leadingComments");
+    __publicField(this, "inlineComments");
+    this.node = node;
+    this.index = index;
+    this.leadingComments = leadingComments2;
+    const keyNode = node.childForFieldName("key");
+    this.keyNode = keyNode;
+    this.keyChildren = keyNode?.namedChildren.filter(isKeyNode) ?? [];
+    this.name = this.keyChildren[0] ? getKeyText(this.keyChildren[0]) : "";
+    this.inlineComments = node.namedChildren.filter((c) => c.type === "comment").map((c) => parseCommentNode(c, "inline"));
+  }
+  get isQuotedKey() {
+    return this.keyChildren[0]?.type === "string";
+  }
+  get isCompositeKey() {
+    return this.keyChildren.length > 1;
+  }
+  get isEmptyKey() {
+    return !this.name && this.keyChildren.length > 0;
+  }
+  get diagnosticRange() {
+    return this.keyNode ?? this.node;
+  }
+  getColinearNode() {
+    return this.node.childForFieldName("colinear_value") ?? this.node.childForFieldName("expression");
+  }
+  hasErrors() {
+    return this.node.children.some((c) => c.type === "ERROR");
+  }
+  getAttachedComments() {
+    return [
+      ...this.leadingComments.map((c) => ({
+        ...c,
+        attachment: "leading"
+      })),
+      ...this.inlineComments.map((c) => ({
+        ...c,
+        attachment: "inline"
+      }))
+    ];
+  }
+  getRawValueText() {
+    const text = this.node.text;
+    const colonIdx = text.indexOf(":");
+    return colonIdx >= 0 ? text.substring(colonIdx + 1).trimStart() : "";
+  }
+  getBlockNode() {
+    return this.node.childForFieldName("block_value") ?? this.node.namedChildren.find((c) => c.type === "mapping") ?? null;
+  }
+};
+var TypedMapParser = class {
+  constructor(declarations, blockLabel, hasModifier, modifiers, primitiveTypes2, propertiesBlock, dialect, options) {
+    __publicField(this, "dc", new DiagnosticCollector());
+    __publicField(this, "mergedElementIndices", /* @__PURE__ */ new Set());
+    __publicField(this, "elementNodes", []);
+    __publicField(this, "declarations");
+    __publicField(this, "blockLabel");
+    __publicField(this, "hasModifier");
+    __publicField(this, "modifiers");
+    __publicField(this, "primitiveTypes");
+    __publicField(this, "propertiesBlock");
+    __publicField(this, "dialect");
+    __publicField(this, "options");
+    __publicField(this, "reservedNames");
+    this.declarations = declarations;
+    this.blockLabel = blockLabel;
+    this.hasModifier = hasModifier;
+    this.modifiers = modifiers;
+    this.primitiveTypes = primitiveTypes2;
+    this.propertiesBlock = propertiesBlock;
+    this.dialect = dialect;
+    this.options = options;
+    this.reservedNames = [
+      ...keywordNames(primitiveTypes2),
+      ...keywordNames(modifiers),
+      "list"
+    ];
+  }
+  /** Walk all mapping elements and return the populated NamedMap. */
+  run(node) {
+    const { elements, trailingComments: trailingComments2 } = this.collectElements(node);
+    this.elementNodes = elements.map((el) => el.node);
+    let lastParsed;
+    for (const element of elements) {
+      lastParsed = this.processElement(element) ?? lastParsed;
+    }
+    if (trailingComments2.length > 0 && lastParsed) {
+      const asTrailing = trailingComments2.map((c) => ({
+        ...c,
+        attachment: "trailing"
+      }));
+      lastParsed.__comments = [...lastParsed.__comments ?? [], ...asTrailing];
+    }
+    this.declarations.__diagnostics = this.dc.own;
+    const parsed = withCst(this.declarations, node);
+    return parseResult(parsed, this.dc.all);
+  }
+  /** Dispatch a single mapping element to the appropriate handler. */
+  processElement(element) {
+    if (this.mergedElementIndices.has(element.index))
+      return void 0;
+    this.validateKey(element);
+    const colinearNode = element.getColinearNode();
+    if (colinearNode) {
+      return this.processColinearElement(element, colinearNode);
+    }
+    if (element.name && element.hasErrors()) {
+      return this.processErrorElement(element);
+    }
+    if (element.name) {
+      this.processMissingTypeElement(element);
+    }
+    return void 0;
+  }
+  /**
+   * Process an element that has a value after the colon.
+   *
+   * @example
+   * ```
+   * mutable customer_name: string = "Jane"
+   * age: number
+   * linked account_id: string
+   * ```
+   */
+  processColinearElement(element, colinearNode) {
+    const fieldSpec = this.dialect.parseVariableDeclaration(colinearNode);
+    this.validateReservedName(element);
+    const errorResolution = this.resolveErrorRecovery(element, colinearNode, fieldSpec.type);
+    this.validateModifier(element, fieldSpec, colinearNode);
+    if (this.primitiveTypes.length > 0) {
+      this.validateType(element, errorResolution.declType, colinearNode);
+    }
+    const decl = this.hasModifier && fieldSpec.modifier ? new VariableDeclarationNode({
+      type: errorResolution.declType,
+      defaultValue: fieldSpec.defaultValue,
+      modifier: fieldSpec.modifier
+    }) : new ParameterDeclarationNode({
+      type: errorResolution.declType,
+      defaultValue: fieldSpec.defaultValue
+    });
+    const declaration = withCst(decl, element.node);
+    const comments = element.getAttachedComments();
+    if (comments.length > 0) {
+      declaration.__comments = comments;
+    }
+    if (errorResolution.mergedElement) {
+      mergeProperties(declaration, element.node, errorResolution.mergedElement, errorResolution.mergedKeyRemainder, this.propertiesBlock, this.dialect, this.dc);
+    } else {
+      const blockNode = element.getBlockNode();
+      if (blockNode && isSingularFieldType(this.propertiesBlock)) {
+        const propResult = this.propertiesBlock.parse(blockNode, this.dialect);
+        if (propResult.value && typeof propResult.value === "object") {
+          declaration.properties = propResult.value;
+          declaration.__children.push(new FieldChild("properties", propResult.value, this.propertiesBlock));
+        }
+        this.dc.merge(propResult);
+      }
+    }
+    if (errorResolution.errorPrefix) {
+      const errorBlock = new ErrorBlock(errorResolution.errorPrefix, colinearNode.startCol);
+      declaration.__children.unshift(errorBlock);
+      if (this.hasModifier) {
+        this.emitInvalidModifierDiagnostic(errorResolution.errorPrefix, element, errorResolution.errorPrefixNode ?? colinearNode);
+      }
+    }
+    this.validateDuplicateName(element);
+    this.declarations.set(element.name, declaration);
+    return declaration;
+  }
+  /**
+   * Emit a diagnostic for an element with a name but nothing after the colon.
+   *
+   * @example
+   * ```
+   * customer_name:
+   * ```
+   */
+  processMissingTypeElement(element) {
+    const typeNames = keywordNames(this.primitiveTypes);
+    const hint = typeNames.length > 0 ? `Expected a type after ':' (${typeNames.slice(0, 5).join(", ")}, ...)` : `Expected a type after ':'`;
+    this.dc.add(createDiagnostic(element.node, `Missing type for ${this.blockLabel} '${element.name}'. ${hint}`, DiagnosticSeverity.Error, "missing-type", { expected: typeNames }));
+  }
+  /**
+   * Handle an element whose CST contains ERROR nodes but no colinear value.
+   * Preserves the raw text so the round-trip emitter can reproduce it.
+   *
+   * @example
+   * ```
+   * name: stri
+   * ```
+   */
+  processErrorElement(element) {
+    const rawValueText = element.getRawValueText();
+    if (!rawValueText)
+      return void 0;
+    const errorType = withCst(new ErrorValue(rawValueText), element.node);
+    const decl = this.hasModifier ? new VariableDeclarationNode({ type: errorType }) : new ParameterDeclarationNode({ type: errorType });
+    const declaration = withCst(decl, element.node);
+    const comments = element.getAttachedComments();
+    if (comments.length > 0) {
+      declaration.__comments = comments;
+    }
+    this.validateDuplicateName(element);
+    this.declarations.set(element.name, declaration);
+    return declaration;
+  }
+  /** Walk CST children, grouping comments with their following mapping element. */
+  collectElements(node) {
+    const elements = [];
+    let pendingComments = [];
+    for (const child of node.namedChildren) {
+      if (child.type === "comment") {
+        pendingComments.push(parseCommentNode(child, "leading"));
+        continue;
+      }
+      if (child.type === "mapping_element") {
+        elements.push(new TypedMapElement(child, pendingComments, elements.length));
+        pendingComments = [];
+        continue;
+      }
+      pendingComments = [];
+    }
+    return { elements, trailingComments: pendingComments };
+  }
+  /** Validate the element's key: composite keys, empty names, and key patterns. */
+  validateKey(element) {
+    if (element.isCompositeKey) {
+      const range = element.diagnosticRange;
+      this.dc.add(createDiagnostic(range, `Composite key '${range.text?.replace(/:$/, "") ?? element.name}' is not allowed; expected a single name`, DiagnosticSeverity.Error, "composite-key"));
+    }
+    if (element.isEmptyKey) {
+      this.dc.add(createDiagnostic(element.diagnosticRange, "Empty field name is not allowed", DiagnosticSeverity.Error, "empty-field-name"));
+    }
+    if (element.name && this.options.keyPattern) {
+      try {
+        if (!new RegExp(this.options.keyPattern).test(element.name)) {
+          this.dc.add(createDiagnostic(element.keyChildren[0] ?? element.diagnosticRange, `'${element.name}' does not match required pattern /${this.options.keyPattern}/`, DiagnosticSeverity.Error, "invalid-key-pattern"));
+        }
+      } catch {
+      }
+    }
+  }
+  /** Emit a diagnostic if the element's key is an unquoted reserved keyword. */
+  validateReservedName(element) {
+    if (!element.name || element.isQuotedKey)
+      return;
+    if (!this.reservedNames.includes(element.name))
+      return;
+    this.dc.add(createDiagnostic(element.keyChildren[0], `'${element.name}' is a reserved keyword and cannot be used as a variable name. Reserved: ${this.reservedNames.join(", ")}`, DiagnosticSeverity.Error, "reserved-name", { found: element.name, expected: this.reservedNames }));
+  }
+  /** Emit a diagnostic if the modifier keyword is not in the allowed list. */
+  validateModifier(element, fieldSpec, colinearNode) {
+    if (!this.hasModifier || !fieldSpec.modifier)
+      return;
+    this.emitInvalidModifierDiagnostic(fieldSpec.modifier.name, element, colinearNode);
+  }
+  /** Emit an invalid-modifier diagnostic if modifierText is not in the allowed list. */
+  emitInvalidModifierDiagnostic(modifierText, element, rangeNode) {
+    const modifierNames = keywordNames(this.modifiers);
+    if (modifierNames.includes(modifierText))
+      return;
+    const suggestion = findSuggestion(modifierText, modifierNames);
+    const hint = suggestion ? `Did you mean '${suggestion}'?` : `Valid modifiers: ${modifierNames.join(", ")}`;
+    this.dc.add(createDiagnostic(rangeNode, `Unknown modifier '${modifierText}' for ${this.blockLabel} ${element.name}. ${hint}`, DiagnosticSeverity.Error, "invalid-modifier", { found: modifierText, expected: modifierNames }));
+  }
+  /** Emit a diagnostic if the element's name is already defined in the map. */
+  validateDuplicateName(element) {
+    if (!element.name || !this.declarations.has(element.name))
+      return;
+    this.dc.add(createDiagnostic(element.diagnosticRange, `'${element.name}' is already defined in ${this.blockLabel}`, DiagnosticSeverity.Error, "duplicate-name"));
+  }
+  /** Orchestrate error recovery: captured prefix, inner errors, same-row split, inline suffix. */
+  resolveErrorRecovery(element, colinearNode, rawDeclType) {
+    let declType = rawDeclType;
+    let errorPrefix;
+    let errorPrefixNode;
+    let mergedElement;
+    let mergedKeyRemainder;
+    const captured = captureErrorPrefix(element.node, colinearNode);
+    let innerErrorPrefix;
+    if (colinearNode.type === "variable_declaration") {
+      const innerParts = [];
+      for (const child of colinearNode.children) {
+        if (child.type === "ERROR") {
+          const text = child.text?.trim();
+          if (text)
+            innerParts.push(text);
+        }
+      }
+      if (innerParts.length > 0) {
+        innerErrorPrefix = innerParts.join(" ");
+      }
+    }
+    const split = detectSameRowSplit(this.elementNodes, element.index, colinearNode, rawDeclType);
+    if (split) {
+      errorPrefix = captured ? `${captured.text}${split.errorPrefix}` : split.errorPrefix;
+      if (captured)
+        errorPrefixNode = captured.errorNode;
+      declType = split.declType;
+      mergedElement = split.mergedElement;
+      mergedKeyRemainder = split.mergedKeyRemainder;
+      this.mergedElementIndices.add(element.index + 1);
+    } else {
+      const suffix = detectInlineErrorSuffix(element.node, colinearNode, rawDeclType);
+      if (suffix) {
+        errorPrefix = captured ? `${captured.text}${suffix.errorPrefix}` : suffix.errorPrefix;
+        errorPrefixNode = suffix.errorNode;
+        declType = suffix.declType;
+      } else if (captured) {
+        errorPrefix = captured.text;
+        errorPrefixNode = captured.errorNode;
+      }
+    }
+    if (innerErrorPrefix) {
+      errorPrefix = errorPrefix ? `${errorPrefix} ${innerErrorPrefix}` : innerErrorPrefix;
+    }
+    return {
+      declType,
+      errorPrefix,
+      errorPrefixNode,
+      mergedElement,
+      mergedKeyRemainder
+    };
+  }
+  /** Validate the declared type against allowed primitive types. */
+  validateType(element, declType, colinearNode) {
+    if (declType instanceof Identifier) {
+      const typeName = declType.name;
+      const typeNames = keywordNames(this.primitiveTypes);
+      if (!typeNames.includes(typeName)) {
+        const suggestion = findSuggestion(typeName, typeNames);
+        const hint = suggestion ? `Did you mean '${suggestion}'?` : `Valid types: ${typeNames.join(", ")}`;
+        this.dc.add(createDiagnostic(declType.__cst ? declType.__cst.range : colinearNode, `Unknown type '${typeName}' for ${this.blockLabel} ${element.name}. ${hint}`, DiagnosticSeverity.Error, "unknown-type", { found: typeName, expected: typeNames }));
+      }
+    } else if (declType instanceof SubscriptExpression) {
+      this.validateSubscriptType(element, declType);
+    }
+  }
+  validateSubscriptType(element, declType) {
+    const obj = declType.object;
+    const idx2 = declType.index;
+    if (!(obj instanceof Identifier) || obj.name !== "list") {
+      const typeName = obj instanceof Identifier ? obj.name : obj.__emit({ indent: 0 });
+      this.dc.add(createDiagnostic(obj, `'${typeName}' does not support type parameters. Only 'list' supports type parameters (e.g., list[string]).`, DiagnosticSeverity.Error, "invalid-type-parameter", { found: typeName }));
+    } else if (idx2 instanceof SubscriptExpression) {
+      this.dc.add(createDiagnostic(idx2, `Nested list types are not supported (e.g., list[list[string]]). Use a flat list type like list[string].`, DiagnosticSeverity.Error, "nested-list-type"));
+    } else if (idx2 instanceof Identifier) {
+      const elemType = idx2.name;
+      const elemTypeNames = keywordNames(this.primitiveTypes);
+      if (!elemTypeNames.includes(elemType)) {
+        const suggestion = findSuggestion(elemType, elemTypeNames);
+        const hint = suggestion ? `Did you mean '${suggestion}'?` : `Valid element types: ${elemTypeNames.join(", ")}`;
+        this.dc.add(createDiagnostic(idx2, `Unknown list element type '${elemType}' for ${this.blockLabel} ${element.name}. ${hint}`, DiagnosticSeverity.Error, "unknown-type", { found: elemType, expected: elemTypeNames }));
+      }
+    }
+  }
+};
 
 // ../language/dist/core/typed-map-factory.js
 function TypedMap(kind, propertiesBlock, options = {}) {
@@ -7545,10 +7506,8 @@ function TypedMap(kind, propertiesBlock, options = {}) {
       const indent = emitIndent(ctx);
       const childCtx = { ...ctx, indent: ctx.indent + 1 };
       const body = value.__emit(childCtx);
-      return body
-        ? `${indent}${key}:
-${body}`
-        : `${indent}${key}:`;
+      return body ? `${indent}${key}:
+${body}` : `${indent}${key}:`;
     }
     static withProperties(newPropsBlock) {
       return TypedMap(kind, newPropsBlock, options);
@@ -7557,364 +7516,18 @@ ${body}`
       if ("extend" in propertiesBlock && typeof propertiesBlock.extend === "function") {
         return TypedMap(kind, propertiesBlock.extend(additionalFields), options);
       }
-      throw new Error(
-        `Properties block for '${kind}' does not support extend(). Use withProperties() instead.`,
-      );
+      throw new Error(`Properties block for '${kind}' does not support extend(). Use withProperties() instead.`);
     }
     static withKeyPattern(pattern) {
       return TypedMap(kind, propertiesBlock, {
         ...options,
-        keyPattern: pattern,
+        keyPattern: pattern
       });
     }
     static parse(node, dialect) {
       const instance = new _TypedMapNode();
-      const dc = new DiagnosticCollector();
-      let pendingComments = [];
-      let lastParsed;
-      const elements = [];
-      for (const child of node.namedChildren) {
-        if (child.type === "comment") {
-          pendingComments.push(parseCommentNode(child, "leading"));
-          continue;
-        }
-        if (child.type === "mapping_element") {
-          elements.push({
-            node: child,
-            leadingComments: pendingComments,
-          });
-          pendingComments = [];
-          continue;
-        }
-        pendingComments = [];
-      }
-      const elementNodes = elements.map((entry) => entry.node);
-      const skipIndices = /* @__PURE__ */ new Set();
-      for (let i = 0; i < elements.length; i++) {
-        if (skipIndices.has(i)) continue;
-        const elementEntry = elements[i];
-        const element = elementEntry.node;
-        const leadingComments2 = elementEntry.leadingComments;
-        const keyNode = element.childForFieldName("key");
-        const keyChildren = keyNode?.namedChildren.filter(isKeyNode) ?? [];
-        const name = keyChildren[0] ? getKeyText(keyChildren[0]) : "";
-        const inlineComments2 = element.namedChildren
-          .filter((c) => c.type === "comment")
-          .map((c) => parseCommentNode(c, "inline"));
-        if (keyChildren.length > 1) {
-          const keyRange = keyNode ?? element;
-          dc.add(
-            createDiagnostic(
-              keyRange,
-              `Composite key '${keyRange.text?.replace(/:$/, "") ?? name}' is not allowed; expected a single name`,
-              DiagnosticSeverity.Error,
-              "composite-key",
-            ),
-          );
-        }
-        if (!name && keyChildren.length > 0) {
-          const keyRange = keyNode ?? element;
-          const emptyDiag = createDiagnostic(
-            keyRange,
-            "Empty field name is not allowed",
-            DiagnosticSeverity.Error,
-            "empty-field-name",
-          );
-          dc.add(emptyDiag);
-        }
-        if (name && options.keyPattern) {
-          try {
-            const pattern = new RegExp(options.keyPattern);
-            if (!pattern.test(name)) {
-              const keyRange = keyChildren[0] ?? keyNode ?? element;
-              dc.add(
-                createDiagnostic(
-                  keyRange,
-                  `'${name}' does not match required pattern /${options.keyPattern}/`,
-                  DiagnosticSeverity.Error,
-                  "invalid-key-pattern",
-                ),
-              );
-            }
-          } catch {}
-        }
-        const colinearNode =
-          element.childForFieldName("colinear_value") ?? element.childForFieldName("expression");
-        if (colinearNode) {
-          const rawDecl = dialect.parseVariableDeclaration(colinearNode);
-          const reservedNames = [
-            ...keywordNames(primitiveTypes2),
-            ...keywordNames(modifiers),
-            "list",
-          ];
-          const isQuotedKey = keyChildren[0]?.type === "string";
-          if (name && !isQuotedKey && reservedNames.includes(name)) {
-            const reservedDiag = createDiagnostic(
-              keyChildren[0],
-              `'${name}' is a reserved keyword and cannot be used as a variable name. Reserved: ${reservedNames.join(", ")}`,
-              DiagnosticSeverity.Error,
-              "reserved-name",
-              {
-                found: name,
-                expected: reservedNames,
-              },
-            );
-            dc.add(reservedDiag);
-          }
-          let declType = rawDecl.type;
-          let errorPrefix;
-          let errorPrefixNode;
-          let mergedElement;
-          let mergedKeyRemainder;
-          const captured = captureErrorPrefix(element, colinearNode);
-          let innerErrorPrefix;
-          if (colinearNode.type === "variable_declaration") {
-            const innerParts = [];
-            for (const child of colinearNode.children) {
-              if (child.type === "ERROR") {
-                const text = child.text?.trim();
-                if (text) innerParts.push(text);
-              }
-            }
-            if (innerParts.length > 0) {
-              innerErrorPrefix = innerParts.join(" ");
-            }
-          }
-          const split = detectSameRowSplit(elementNodes, i, colinearNode, rawDecl.type);
-          if (split) {
-            errorPrefix = captured ? `${captured.text}${split.errorPrefix}` : split.errorPrefix;
-            if (captured) errorPrefixNode = captured.errorNode;
-            declType = split.declType;
-            mergedElement = split.mergedElement;
-            mergedKeyRemainder = split.mergedKeyRemainder;
-            skipIndices.add(i + 1);
-          } else {
-            const suffix = detectInlineErrorSuffix(element, colinearNode, rawDecl.type);
-            if (suffix) {
-              errorPrefix = captured ? `${captured.text}${suffix.errorPrefix}` : suffix.errorPrefix;
-              errorPrefixNode = suffix.errorNode;
-              declType = suffix.declType;
-            } else if (captured) {
-              errorPrefix = captured.text;
-              errorPrefixNode = captured.errorNode;
-            }
-          }
-          if (innerErrorPrefix) {
-            errorPrefix = errorPrefix ? `${errorPrefix} ${innerErrorPrefix}` : innerErrorPrefix;
-          }
-          if (hasModifier && rawDecl.modifier) {
-            const modifierText = rawDecl.modifier.name;
-            const modifierNames = keywordNames(modifiers);
-            if (!modifierNames.includes(modifierText)) {
-              const suggestion = findSuggestion(modifierText, modifierNames);
-              const hint = suggestion
-                ? `Did you mean '${suggestion}'?`
-                : `Valid modifiers: ${modifierNames.join(", ")}`;
-              const modDiag = createDiagnostic(
-                colinearNode,
-                `Unknown modifier '${modifierText}' for ${blockLabel} ${name}. ${hint}`,
-                DiagnosticSeverity.Error,
-                "invalid-modifier",
-                {
-                  found: modifierText,
-                  expected: modifierNames,
-                },
-              );
-              dc.add(modDiag);
-            }
-          }
-          if (primitiveTypes2.length > 0 && declType instanceof Identifier) {
-            const typeName = declType.name;
-            const typeNames = keywordNames(primitiveTypes2);
-            if (!typeNames.includes(typeName)) {
-              const suggestion = findSuggestion(typeName, typeNames);
-              const hint = suggestion
-                ? `Did you mean '${suggestion}'?`
-                : `Valid types: ${typeNames.join(", ")}`;
-              const typeDiag = createDiagnostic(
-                declType.__cst ? declType.__cst.range : colinearNode,
-                `Unknown type '${typeName}' for ${blockLabel} ${name}. ${hint}`,
-                DiagnosticSeverity.Error,
-                "unknown-type",
-                {
-                  found: typeName,
-                  expected: typeNames,
-                },
-              );
-              dc.add(typeDiag);
-            }
-          } else if (primitiveTypes2.length > 0 && declType instanceof SubscriptExpression) {
-            const obj = declType.object;
-            const idx2 = declType.index;
-            if (!(obj instanceof Identifier) || obj.name !== "list") {
-              const typeName = obj instanceof Identifier ? obj.name : obj.__emit({ indent: 0 });
-              const paramDiag = createDiagnostic(
-                obj,
-                `'${typeName}' does not support type parameters. Only 'list' supports type parameters (e.g., list[string]).`,
-                DiagnosticSeverity.Error,
-                "invalid-type-parameter",
-                { found: typeName },
-              );
-              dc.add(paramDiag);
-            } else if (idx2 instanceof SubscriptExpression) {
-              const nestedDiag = createDiagnostic(
-                idx2,
-                `Nested list types are not supported (e.g., list[list[string]]). Use a flat list type like list[string].`,
-                DiagnosticSeverity.Error,
-                "nested-list-type",
-              );
-              dc.add(nestedDiag);
-            } else if (idx2 instanceof Identifier) {
-              const elemType = idx2.name;
-              const elemTypeNames = keywordNames(primitiveTypes2);
-              if (!elemTypeNames.includes(elemType)) {
-                const suggestion = findSuggestion(elemType, elemTypeNames);
-                const hint = suggestion
-                  ? `Did you mean '${suggestion}'?`
-                  : `Valid element types: ${elemTypeNames.join(", ")}`;
-                const elemDiag = createDiagnostic(
-                  idx2,
-                  `Unknown list element type '${elemType}' for ${blockLabel} ${name}. ${hint}`,
-                  DiagnosticSeverity.Error,
-                  "unknown-type",
-                  {
-                    found: elemType,
-                    expected: elemTypeNames,
-                  },
-                );
-                dc.add(elemDiag);
-              }
-            }
-          }
-          const decl =
-            hasModifier && rawDecl.modifier
-              ? new VariableDeclarationNode({
-                  type: declType,
-                  defaultValue: rawDecl.defaultValue,
-                  modifier: rawDecl.modifier,
-                })
-              : new ParameterDeclarationNode({
-                  type: declType,
-                  defaultValue: rawDecl.defaultValue,
-                });
-          const parsed2 = withCst(decl, element);
-          const declComments = [
-            ...leadingComments2.map((c) => ({
-              ...c,
-              attachment: "leading",
-            })),
-            ...inlineComments2.map((c) => ({
-              ...c,
-              attachment: "inline",
-            })),
-          ];
-          if (declComments.length > 0) {
-            parsed2.__comments = declComments;
-          }
-          if (mergedElement) {
-            mergeProperties(
-              parsed2,
-              element,
-              mergedElement,
-              mergedKeyRemainder,
-              propertiesBlock,
-              dialect,
-              dc,
-            );
-          } else {
-            let blockNode = element.childForFieldName("block_value");
-            if (!blockNode) {
-              blockNode = element.namedChildren.find((c) => c.type === "mapping") ?? null;
-            }
-            if (blockNode && isSingularFieldType(propertiesBlock)) {
-              const propResult = propertiesBlock.parse(blockNode, dialect);
-              if (propResult.value && typeof propResult.value === "object") {
-                parsed2.properties = propResult.value;
-                parsed2.__children.push(
-                  new FieldChild("properties", propResult.value, propertiesBlock),
-                );
-              }
-              dc.merge(propResult);
-            }
-          }
-          if (errorPrefix) {
-            const errorBlock = new ErrorBlock(errorPrefix, colinearNode.startCol);
-            parsed2.__children.unshift(errorBlock);
-            if (hasModifier) {
-              const modNames = keywordNames(modifiers);
-              const suggestion = findSuggestion(errorPrefix, modNames);
-              const hint = suggestion
-                ? `Did you mean '${suggestion}'?`
-                : `Valid modifiers: ${modNames.join(", ")}`;
-              const errModDiag = createDiagnostic(
-                errorPrefixNode ?? colinearNode,
-                `Unknown modifier '${errorPrefix}' for ${blockLabel} ${name}. ${hint}`,
-                DiagnosticSeverity.Error,
-                "invalid-modifier",
-                {
-                  found: errorPrefix,
-                  expected: modNames,
-                },
-              );
-              dc.add(errModDiag);
-            }
-          }
-          instance.set(name, parsed2);
-          lastParsed = parsed2;
-        } else if (name && element.children.some((c) => c.type === "ERROR")) {
-          const rawElementText = element.text;
-          const colonIdx = rawElementText.indexOf(":");
-          const rawValueText =
-            colonIdx >= 0 ? rawElementText.substring(colonIdx + 1).trimStart() : "";
-          if (rawValueText) {
-            const errorType = withCst(new ErrorValue(rawValueText), element);
-            const decl = hasModifier
-              ? new VariableDeclarationNode({ type: errorType })
-              : new ParameterDeclarationNode({ type: errorType });
-            const parsed2 = withCst(decl, element);
-            const declComments = [
-              ...leadingComments2.map((c) => ({
-                ...c,
-                attachment: "leading",
-              })),
-              ...inlineComments2.map((c) => ({
-                ...c,
-                attachment: "inline",
-              })),
-            ];
-            if (declComments.length > 0) {
-              parsed2.__comments = declComments;
-            }
-            instance.set(name, parsed2);
-            lastParsed = parsed2;
-          }
-        } else if (name) {
-          const typeNames = keywordNames(primitiveTypes2);
-          const hint =
-            typeNames.length > 0
-              ? `Expected a type after ':' (${typeNames.slice(0, 5).join(", ")}, ...)`
-              : `Expected a type after ':'`;
-          dc.add(
-            createDiagnostic(
-              element,
-              `Missing type for ${blockLabel} '${name}'. ${hint}`,
-              DiagnosticSeverity.Error,
-              "missing-type",
-              { expected: typeNames },
-            ),
-          );
-        }
-      }
-      if (pendingComments.length > 0 && lastParsed) {
-        const asTrailing = pendingComments.map((c) => ({
-          ...c,
-          attachment: "trailing",
-        }));
-        lastParsed.__comments = [...(lastParsed.__comments ?? []), ...asTrailing];
-      }
-      instance.__diagnostics = dc.own;
-      const parsed = withCst(instance, node);
-      return parseResult(parsed, dc.all);
+      const parser = new TypedMapParser(instance, blockLabel, hasModifier, modifiers, primitiveTypes2, propertiesBlock, dialect, options);
+      return parser.run(node);
     }
     __emit(ctx) {
       const indent = emitIndent(ctx);
@@ -7922,10 +7535,11 @@ ${body}`
       const reservedEntryNames = /* @__PURE__ */ new Set([
         ...keywordNames(primitiveTypes2),
         ...keywordNames(modifiers),
-        "list",
+        "list"
       ]);
       for (const [name, decl] of this.entries()) {
-        if (!decl) continue;
+        if (!decl)
+          continue;
         const allComments = decl.__comments ?? [];
         const leading = allComments.filter((c) => c.attachment === "leading");
         const inline = allComments.filter((c) => c.attachment === "inline");
@@ -7954,19 +7568,18 @@ ${body}`
           line += " =";
         }
         if (inline.length > 0) {
-          const inlineText = inline
-            .map((c) => {
-              if (c.value.trim().length === 0) return "#";
-              const prefix2 = c.range ? "#" : "# ";
-              return `${prefix2}${c.value}`;
-            })
-            .join(" ");
+          const inlineText = inline.map((c) => {
+            if (c.value.trim().length === 0)
+              return "#";
+            const prefix2 = c.range ? "#" : "# ";
+            return `${prefix2}${c.value}`;
+          }).join(" ");
           line += ` ${inlineText}`;
         }
         lines.push(line);
         const trailingOutput = emitCommentList(trailing, {
           ...ctx,
-          indent: ctx.indent + 1,
+          indent: ctx.indent + 1
         });
         if (trailingOutput) {
           lines.push(trailingOutput);
@@ -7974,7 +7587,7 @@ ${body}`
         if (isEmittable(decl.properties)) {
           const propsOutput = decl.properties.__emit({
             ...ctx,
-            indent: ctx.indent + 1,
+            indent: ctx.indent + 1
           });
           if (propsOutput) {
             lines.push(propsOutput);
@@ -7999,14 +7612,14 @@ ${body}`
       value: { description: options.description },
       writable: true,
       configurable: true,
-      enumerable: true,
+      enumerable: true
     });
   }
   Object.defineProperty(base, "__clone", {
     value: () => TypedMap(kind, propertiesBlock, options),
     writable: true,
     configurable: true,
-    enumerable: true,
+    enumerable: true
   });
   overrideFactoryBuilderMethods(base);
   return base;
@@ -8044,10 +7657,10 @@ function isToClause(node) {
   return node instanceof ToClause;
 }
 function isSetClause(node) {
-  return node instanceof SetClause;
+  return isAstNodeLike(node) && node.__kind === "SetClause";
 }
 function isWithClause(node) {
-  return node instanceof WithClause;
+  return isAstNodeLike(node) && node.__kind === "WithClause";
 }
 
 // ../language/dist/core/dialect.js
@@ -8056,19 +7669,21 @@ function hasRange(c) {
 }
 function prescanDiscriminantValue(elements, fieldName) {
   for (const element of elements) {
-    if (element.type !== "mapping_element") continue;
+    if (element.type !== "mapping_element")
+      continue;
     const keyNode = element.childForFieldName("key");
-    if (!keyNode) continue;
-    if (getKeyText(keyNode) !== fieldName) continue;
+    if (!keyNode)
+      continue;
+    if (getKeyText(keyNode) !== fieldName)
+      continue;
     const { colinearValue } = getValueNodes(element);
-    if (!colinearValue) continue;
+    if (!colinearValue)
+      continue;
     const exprNode = colinearValue.childForFieldName("expression") ?? colinearValue;
     const text = exprNode.text?.trim();
-    if (!text) continue;
-    if (
-      (text.startsWith('"') && text.endsWith('"')) ||
-      (text.startsWith("'") && text.endsWith("'"))
-    ) {
+    if (!text)
+      continue;
+    if (text.startsWith('"') && text.endsWith('"') || text.startsWith("'") && text.endsWith("'")) {
       return { value: text.slice(1, -1), cstNode: exprNode };
     }
     return { value: text, cstNode: exprNode };
@@ -8079,30 +7694,28 @@ function collectAdoptedSiblings(elements, startIndex, parentColumn) {
   let lookahead = startIndex + 1;
   while (lookahead < elements.length) {
     const next = elements[lookahead];
-    if (next.startCol <= parentColumn) break;
+    if (next.startCol <= parentColumn)
+      break;
     lookahead++;
   }
   if (lookahead > startIndex + 1) {
     return {
       adopted: elements.slice(startIndex + 1, lookahead),
-      newIndex: lookahead - 1,
+      newIndex: lookahead - 1
     };
   }
   return void 0;
 }
 function hasProcedureStatements(value) {
-  return (
-    value != null &&
-    typeof value === "object" &&
-    "statements" in value &&
-    Array.isArray(value.statements)
-  );
+  return value != null && typeof value === "object" && "statements" in value && Array.isArray(value.statements);
 }
 function getElementKeyRange(element) {
   const keyNode = element.childForFieldName("key");
   const keyChild = keyNode?.namedChildren.find(isKeyNode);
-  if (keyChild) return toRange(keyChild);
-  if (keyNode) return toRange(keyNode);
+  if (keyChild)
+    return toRange(keyChild);
+  if (keyNode)
+    return toRange(keyNode);
   return void 0;
 }
 function collectAllCstDiagnostics(root) {
@@ -8113,16 +7726,11 @@ function collectAllCstDiagnostics(root) {
 function missingNodeRange(node) {
   const range = toRange(node);
   const prev = node.previousSibling;
-  if (
-    prev &&
-    range.start.line === range.end.line &&
-    range.start.character === range.end.character &&
-    prev.endPosition.row < node.startPosition.row
-  ) {
+  if (prev && range.start.line === range.end.line && range.start.character === range.end.character && prev.endPosition.row < node.startPosition.row) {
     const end = prev.endPosition;
     return {
       start: { line: end.row, character: end.column },
-      end: { line: end.row, character: end.column },
+      end: { line: end.row, character: end.column }
     };
   }
   return range;
@@ -8130,21 +7738,11 @@ function missingNodeRange(node) {
 function collectCstDiagnosticsInner(node, diagnostics) {
   for (const child of node.children) {
     if (child.isMissing) {
-      diagnostics.push(
-        createParserDiagnostic(missingNodeRange(child), `Missing ${child.type}`, "missing-token"),
-      );
+      diagnostics.push(createParserDiagnostic(missingNodeRange(child), `Missing ${child.type}`, "missing-token"));
     } else if (child.isError) {
       if (node.type !== "run_statement") {
         const text = child.text?.trim();
-        diagnostics.push(
-          createParserDiagnostic(
-            child,
-            text
-              ? `Syntax error: unexpected \`${text.length > 40 ? text.slice(0, 40) + "\u2026" : text}\``
-              : "Syntax error",
-            "syntax-error",
-          ),
-        );
+        diagnostics.push(createParserDiagnostic(child, text ? `Syntax error: unexpected \`${text.length > 40 ? text.slice(0, 40) + "\u2026" : text}\`` : "Syntax error", "syntax-error"));
       }
       collectCstDiagnosticsInner(child, diagnostics);
     } else {
@@ -8174,7 +7772,8 @@ var Dialect = class {
     if (mappingNode && mappingNode !== node) {
       const extra = [];
       for (const child of node.namedChildren) {
-        if (child === mappingNode || child.type === "comment") continue;
+        if (child === mappingNode || child.type === "comment")
+          continue;
         extra.push(child);
       }
       if (extra.length > 0) {
@@ -8191,7 +7790,9 @@ var Dialect = class {
       if (hasNonCommentContent) {
         const text = node.text?.trim();
         if (text) {
-          result.value.__children = [new ErrorBlock(node.text, node.startCol)];
+          result.value.__children = [
+            new ErrorBlock(node.text, node.startCol)
+          ];
         }
       }
     }
@@ -8202,10 +7803,7 @@ var Dialect = class {
     }
     if (docComments.length > 0) {
       const finalChildren = result.value.__children;
-      const finalAllErrors =
-        Array.isArray(finalChildren) &&
-        finalChildren.length > 0 &&
-        finalChildren.every((c) => c instanceof ErrorBlock);
+      const finalAllErrors = Array.isArray(finalChildren) && finalChildren.length > 0 && finalChildren.every((c) => c instanceof ErrorBlock);
       if (!finalAllErrors) {
         attach(result.value, docComments);
       }
@@ -8238,7 +7836,8 @@ var Dialect = class {
    */
   formatStatementContext(node) {
     const ctx = this.buildContextPath(node.parent ?? node);
-    if (ctx.length === 0) return "";
+    if (ctx.length === 0)
+      return "";
     if (ctx.length >= 3) {
       const fieldName = ctx[ctx.length - 1];
       const blockKind = ctx[0];
@@ -8263,7 +7862,8 @@ var Dialect = class {
         for (const element of elements) {
           if (element.type in statementParsers) {
             const errBlock = errorBlockFromNode(element);
-            if (errBlock) childArr.push(errBlock);
+            if (errBlock)
+              childArr.push(errBlock);
           }
         }
       }
@@ -8285,14 +7885,7 @@ var Dialect = class {
         if (variantSchema) {
           effectiveSchema = variantSchema;
         } else {
-          discriminantDiags.push(
-            createDiagnostic(
-              scan.cstNode,
-              `Unknown variant '${scan.value}' for discriminant '${discriminant.field}'. Valid values: ${discriminant.validValues.join(", ")}`,
-              DiagnosticSeverity.Error,
-              "unknown-variant",
-            ),
-          );
+          discriminantDiags.push(createDiagnostic(scan.cstNode, `Unknown variant '${scan.value}' for discriminant '${discriminant.field}'. Valid values: ${discriminant.validValues.join(", ")}`, DiagnosticSeverity.Error, "unknown-variant"));
         }
       }
     }
@@ -8300,17 +7893,19 @@ var Dialect = class {
     const fields = {};
     const collections = {};
     const dc = new DiagnosticCollector();
-    for (const d of discriminantDiags) dc.add(d);
+    for (const d of discriminantDiags)
+      dc.add(d);
     const children = [];
     const anonymousCounts = {};
     const attacher = new CommentAttacher();
     function resolveEntryInfo(ft, _tid) {
-      if (!ft) return void 0;
+      if (!ft)
+        return void 0;
       if (isNamedCollectionFieldType(ft)) {
         return {
           entryBlock: ft.entryBlock,
           parentFieldType: ft,
-          createContainer: () => new ft(),
+          createContainer: () => new ft()
         };
       }
       return void 0;
@@ -8328,33 +7923,25 @@ var Dialect = class {
       if (element.type === "ERROR") {
         const errorResult = this.parseMapping(element, schema2);
         for (const key of Object.keys(schema2)) {
-          if (key in errorResult.value) fields[key] = errorResult.value[key];
+          if (key in errorResult.value)
+            fields[key] = errorResult.value[key];
         }
         const errorRecord = errorResult.value;
         const errorChildren = Array.isArray(errorRecord.__children) ? errorRecord.__children : [];
-        const recoveredSchemaFields = Object.keys(schema2).some(
-          (k) => k in errorResult.value && errorResult.value[k] !== void 0,
-        );
+        const recoveredSchemaFields = Object.keys(schema2).some((k) => k in errorResult.value && errorResult.value[k] !== void 0);
         if (errorChildren.length > 0 && recoveredSchemaFields) {
           children.push(...errorChildren);
         } else {
           const errBlock = errorBlockFromNode(element);
-          if (errBlock) children.push(errBlock);
+          if (errBlock)
+            children.push(errBlock);
         }
         if (!insideError) {
-          const recoveredSchemaContent = Object.keys(schema2).some(
-            (k) => k in errorResult.value && errorResult.value[k] !== void 0,
-          );
+          const recoveredSchemaContent = Object.keys(schema2).some((k) => k in errorResult.value && errorResult.value[k] !== void 0);
           if (!recoveredSchemaContent) {
             const text = element.text?.trim();
             if (text) {
-              dc.add(
-                createParserDiagnostic(
-                  element,
-                  `Unrecognized syntax: ${text.length > 40 ? text.slice(0, 40) + "\u2026" : text}`,
-                  "syntax-error",
-                ),
-              );
+              dc.add(createParserDiagnostic(element, `Unrecognized syntax: ${text.length > 40 ? text.slice(0, 40) + "\u2026" : text}`, "syntax-error"));
             }
           }
         }
@@ -8362,27 +7949,25 @@ var Dialect = class {
         continue;
       }
       if (element.type !== "mapping_element") {
-        if (
-          element.type in statementParsers ||
-          element.type === "comment" ||
-          element.type === "key" ||
-          element.type === "expression_with_to" ||
-          element.type === "expression" ||
-          element.type === "variable_declaration" ||
-          element.type === "procedure"
-        ) {
+        if (element.type in statementParsers || element.type === "comment" || element.type === "key" || element.type === "expression_with_to" || element.type === "expression" || element.type === "variable_declaration" || element.type === "procedure") {
           continue;
         }
         const errBlock = errorBlockFromNode(element);
-        if (errBlock) children.push(errBlock);
+        if (errBlock)
+          children.push(errBlock);
         continue;
       }
       const dedentedCommentsForNextField = [];
       const [typeId, nameId] = this.getKeyIds(element);
       const rawFieldType = schema2[typeId];
       let fieldType = Array.isArray(rawFieldType) ? rawFieldType[0] : rawFieldType;
+      let isTypedEntryWildcard = false;
       if (!fieldType) {
-        fieldType = resolveWildcardField(schema2, typeId);
+        const wp = resolveWildcardPrefix(schema2, typeId);
+        if (wp) {
+          fieldType = wp.fieldType;
+          isTypedEntryWildcard = wp.typedEntry === true;
+        }
       }
       const inlineComments2 = this.parseInlineComments(element);
       const elementComments = this.parseElementComments(element);
@@ -8395,22 +7980,16 @@ var Dialect = class {
           const isRootLevel = parentPath.length === 0;
           const schemaKeys = Object.keys(schema2);
           const suggestion = findSuggestion(typeId, schemaKeys);
-          const baseMessage = isRootLevel
-            ? `Unknown block: ${typeId}`
-            : `Unknown field \`${typeId}\` in ${parentPath.join(" ")}`;
+          const baseMessage = isRootLevel ? `Unknown block: ${typeId}` : `Unknown field \`${typeId}\` in ${parentPath.join(" ")}`;
           const message = formatSuggestionHint(baseMessage, suggestion);
           const code = isRootLevel ? "unknown-block" : "unknown-field";
           const ownDiag = createDiagnostic(keyRange, message, DiagnosticSeverity.Warning, code, {
-            ...(suggestion ? { suggestion } : {}),
-            expected: schemaKeys,
+            ...suggestion ? { suggestion } : {},
+            expected: schemaKeys
           });
           dc.add(ownDiag);
         }
-        const {
-          blockValue: blockValue2,
-          colinearValue: colinearValue2,
-          procedure: procedure2,
-        } = getValueNodes(element);
+        const { blockValue: blockValue2, colinearValue: colinearValue2, procedure: procedure2 } = getValueNodes(element);
         const mappingNode = blockValue2?.type === "mapping" ? blockValue2 : null;
         if (colinearValue2) {
           const expr = this.parseExpression(colinearValue2);
@@ -8440,16 +8019,14 @@ var Dialect = class {
                 target.push(new ErrorBlock(`# ${parseCommentNode(child, "leading").value}`, 0));
               }
             }
-            const innerResult = this.parseMappingElements(
-              mappingNode.namedChildren,
-              {},
-              mappingNode,
-            );
+            const innerResult = this.parseMappingElements(mappingNode.namedChildren, {}, mappingNode);
             const innerRecord = innerResult.value;
-            const innerChildren = Array.isArray(innerRecord.__children)
-              ? innerRecord.__children
-              : [];
-            untypedBlock.__children = [...preBlockComments, ...innerChildren, ...postBlockComments];
+            const innerChildren = Array.isArray(innerRecord.__children) ? innerRecord.__children : [];
+            untypedBlock.__children = [
+              ...preBlockComments,
+              ...innerChildren,
+              ...postBlockComments
+            ];
             untypedBlock.__diagnostics.push(...innerResult.diagnostics);
           } else if (procedure2 && procedure2.type === "procedure") {
             const statements = this.parseProcedure(procedure2);
@@ -8467,9 +8044,7 @@ var Dialect = class {
         const keyIds = keyNode?.namedChildren.filter((n) => n.type === "id");
         const keyRange = keyIds?.[0] ? toRange(keyIds[0]) : toRange(element);
         const dep = fieldType.__metadata.deprecated;
-        const msg = dep.message
-          ? `'${typeId}' is deprecated: ${dep.message}`
-          : `'${typeId}' is deprecated`;
+        const msg = dep.message ? `'${typeId}' is deprecated: ${dep.message}` : `'${typeId}' is deprecated`;
         const depDiag = new DeprecatedFieldDiagnostic(keyRange, msg, dep.replacement);
         dc.add(depDiag);
       }
@@ -8488,20 +8063,10 @@ var Dialect = class {
         }
         const { entryBlock, parentFieldType, createContainer } = entryInfo;
         collections[typeId] ?? (collections[typeId] = createContainer());
-        const {
-          value: parsedValue,
-          extraComments,
-          diagnostics: entryDiagnostics,
-        } = this.parseNamedEntry(entryBlock, element, nameId, inlineComments2, adoptedSiblings);
+        const { value: parsedValue, extraComments, diagnostics: entryDiagnostics } = this.parseNamedEntry(entryBlock, element, nameId, inlineComments2, adoptedSiblings);
         attacher.consumeOnto(parsedValue, extraComments);
         collections[typeId].set(nameId, parsedValue);
-        const namedFc = new FieldChild(
-          typeId,
-          parsedValue,
-          parentFieldType,
-          nameId,
-          getElementKeyRange(element),
-        );
+        const namedFc = new FieldChild(typeId, parsedValue, parentFieldType, nameId, getElementKeyRange(element));
         children.push(namedFc);
         dc.mergeAll(entryDiagnostics);
       } else if (nameId && isSingularFieldType(fieldType)) {
@@ -8510,27 +8075,14 @@ var Dialect = class {
         const nameKeyNode = keyChildren?.[1];
         const nameRange = nameKeyNode ? toRange(nameKeyNode) : getElementKeyRange(element);
         if (nameRange) {
-          dc.add(
-            createDiagnostic(
-              nameRange,
-              `Unexpected name \`${nameId}\` on \`${typeId}\` \u2014 this field does not take a name`,
-              DiagnosticSeverity.Error,
-              "unexpected-block-name",
-            ),
-          );
+          dc.add(createDiagnostic(nameRange, `Unexpected name \`${nameId}\` on \`${typeId}\` \u2014 this field does not take a name`, DiagnosticSeverity.Error, "unexpected-block-name"));
         }
         const singularField = fieldType;
         if (valueNode) {
           const result = singularField.parse(valueNode, this);
           attacher.consumeOnto(result.value, inlineComments2);
           fields[typeId] = result.value;
-          const singularFc = new FieldChild(
-            typeId,
-            result.value,
-            fieldType,
-            void 0,
-            getElementKeyRange(element),
-          );
+          const singularFc = new FieldChild(typeId, result.value, fieldType, void 0, getElementKeyRange(element));
           children.push(singularFc);
           dc.merge(result);
         }
@@ -8539,39 +8091,25 @@ var Dialect = class {
           const keyNode = element.childForFieldName("key");
           const keyChildren = keyNode?.namedChildren.filter(isKeyNode);
           const keyRange = keyChildren?.[0] ? toRange(keyChildren[0]) : toRange(element);
-          const anonDiag = createDiagnostic(
-            keyRange,
-            `Anonymous ${typeId} name is not allowed`,
-            DiagnosticSeverity.Warning,
-            "anonymous-named-block",
-          );
+          const anonDiag = createDiagnostic(keyRange, `Anonymous ${typeId} name is not allowed`, DiagnosticSeverity.Warning, "anonymous-named-block");
           dc.add(anonDiag);
-          const idx2 = (anonymousCounts[typeId] = (anonymousCounts[typeId] ?? 0) + 1);
+          const idx2 = anonymousCounts[typeId] = (anonymousCounts[typeId] ?? 0) + 1;
           const syntheticName = `ILLEGAL_anonymous_${typeId}_${idx2}`;
-          const {
-            entryBlock: anonEntryBlock,
-            parentFieldType: anonParentFt,
-            createContainer,
-          } = entryInfo;
+          const { entryBlock: anonEntryBlock, parentFieldType: anonParentFt, createContainer } = entryInfo;
           collections[typeId] ?? (collections[typeId] = createContainer());
-          const {
-            value: parsedValue,
-            extraComments,
-            diagnostics: entryDiagnostics,
-          } = this.parseNamedEntry(anonEntryBlock, element, syntheticName, inlineComments2);
+          const { value: parsedValue, extraComments, diagnostics: entryDiagnostics } = this.parseNamedEntry(anonEntryBlock, element, syntheticName, inlineComments2);
           attacher.consumeOnto(parsedValue, extraComments);
           collections[typeId].set(syntheticName, parsedValue);
-          const anonFc = new FieldChild(
-            typeId,
-            parsedValue,
-            anonParentFt,
-            syntheticName,
-            getElementKeyRange(element),
-          );
+          const anonFc = new FieldChild(typeId, parsedValue, anonParentFt, syntheticName, getElementKeyRange(element));
           children.push(anonFc);
           dc.mergeAll(entryDiagnostics);
         }
       } else if (isSingularFieldType(fieldType)) {
+        let typedEntryDecl;
+        if (isTypedEntryWildcard) {
+          const colinearNode = element.childForFieldName("colinear_value") ?? element.childForFieldName("expression");
+          typedEntryDecl = colinearNode ? this.parseVariableDeclaration(colinearNode) : void 0;
+        }
         let adoptedElements;
         if (fieldType.__fieldKind === "Block" && valueNode) {
           const result2 = collectAdoptedSiblings(elements, elementIndex, element.startCol);
@@ -8584,46 +8122,39 @@ var Dialect = class {
             }
           }
         }
-        const result = this.parseSingularField(
-          fieldType,
-          typeId,
-          element,
-          valueNode,
-          inlineComments2,
-          elementComments,
-          attacher,
-          adoptedElements,
-        );
+        const result = this.parseSingularField(fieldType, typeId, element, valueNode, inlineComments2, elementComments, attacher, adoptedElements);
         if (result) {
-          fields[typeId] = result.value;
-          const singularFc = new FieldChild(
-            typeId,
-            result.value,
-            fieldType,
-            void 0,
-            getElementKeyRange(element),
-          );
+          let parsedValue = result.value;
+          if (isTypedEntryWildcard) {
+            const decl = new ParameterDeclarationNode({
+              type: typedEntryDecl?.type ?? withCst(new Identifier("unknown"), element),
+              defaultValue: typedEntryDecl?.defaultValue
+            });
+            const wrapped = withCst(decl, element);
+            if (parsedValue && typeof parsedValue === "object") {
+              wrapped.properties = parsedValue;
+              wrapped.__children.push(new FieldChild("properties", parsedValue, fieldType));
+            }
+            parsedValue = wrapped;
+          }
+          fields[typeId] = parsedValue;
+          const singularFc = new FieldChild(typeId, parsedValue, fieldType, void 0, getElementKeyRange(element));
           children.push(singularFc);
           dc.mergeAll(result.diagnostics);
           dedentedCommentsForNextField.push(...result.dedentedComments);
           for (const child of element.children) {
             if (child.isError) {
               const errBlock = errorBlockFromNode(child);
-              if (errBlock) children.push(errBlock);
+              if (errBlock)
+                children.push(errBlock);
             }
           }
         } else {
           const errBlock = errorBlockFromNode(element);
-          if (errBlock) children.push(errBlock);
+          if (errBlock)
+            children.push(errBlock);
           if (!valueNode) {
-            dc.add(
-              createDiagnostic(
-                element,
-                `Missing value for '${typeId}'`,
-                DiagnosticSeverity.Error,
-                "missing-value",
-              ),
-            );
+            dc.add(createDiagnostic(element, `Missing value for '${typeId}'`, DiagnosticSeverity.Error, "missing-value"));
           }
         }
       }
@@ -8638,7 +8169,7 @@ var Dialect = class {
     const value = {
       ...fields,
       ...collections,
-      __children: children,
+      __children: children
     };
     const parsed = withCst(value, cstNode);
     parsed.__diagnostics = dc.own;
@@ -8649,35 +8180,19 @@ var Dialect = class {
    * Handles comment splitting (before/after body), dedented comment detection,
    * and key-only fallbacks for empty blocks and typed maps.
    */
-  parseSingularField(
-    singularField,
-    typeId,
-    element,
-    valueNode,
-    inlineComments2,
-    elementComments,
-    attacher,
-    extraElements,
-  ) {
+  parseSingularField(singularField, typeId, element, valueNode, inlineComments2, elementComments, attacher, extraElements) {
     const dedentedComments = [];
     if (valueNode) {
       const result = singularField.parse(valueNode, this, extraElements);
-      const containerOnlyComments = elementComments.filter(
-        (c) => c.range?.start.line !== element.startRow,
-      );
-      const { beforeBody, afterBody } = this.splitContainerComments(
-        containerOnlyComments,
-        valueNode,
-      );
+      const containerOnlyComments = elementComments.filter((c) => c.range?.start.line !== element.startRow);
+      const { beforeBody, afterBody } = this.splitContainerComments(containerOnlyComments, valueNode);
       if (singularField.__fieldKind === "TypedMap" || singularField.__fieldKind === "Collection") {
         this.attachToFirstTypedMapEntry(result.value, beforeBody);
       } else if (singularField.__fieldKind === "Primitive") {
         this.attachToFirstProcedureStatement(result.value, beforeBody);
       } else if (singularField.__fieldKind === "Block" && beforeBody.length > 0) {
         const blockObj = result.value;
-        const firstChildKey = Object.keys(blockObj).find(
-          (k) => !k.startsWith("__") && blockObj[k] && typeof blockObj[k] === "object",
-        );
+        const firstChildKey = Object.keys(blockObj).find((k) => !k.startsWith("__") && blockObj[k] && typeof blockObj[k] === "object");
         if (firstChildKey) {
           attach(blockObj[firstChildKey], beforeBody);
         }
@@ -8685,19 +8200,17 @@ var Dialect = class {
       let remainingAfterBody = afterBody;
       if (singularField.__fieldKind === "Primitive") {
         const nestedAfterBody = afterBody.filter((c) => c.range.start.character > element.startCol);
-        const dedentedAfterBody = afterBody.filter(
-          (c) => c.range.start.character <= element.startCol,
-        );
-        const attachedToLastStmt = this.attachToLastProcedureStatement(
-          result.value,
-          nestedAfterBody,
-        );
+        const dedentedAfterBody = afterBody.filter((c) => c.range.start.character <= element.startCol);
+        const attachedToLastStmt = this.attachToLastProcedureStatement(result.value, nestedAfterBody);
         remainingAfterBody = attachedToLastStmt ? [] : nestedAfterBody;
         if (dedentedAfterBody.length > 0) {
           dedentedComments.push(...dedentedAfterBody);
         }
       }
-      attacher.consumeOnto(result.value, [...inlineComments2, ...remainingAfterBody]);
+      attacher.consumeOnto(result.value, [
+        ...inlineComments2,
+        ...remainingAfterBody
+      ]);
       if (singularField.__fieldKind === "Primitive" && result.diagnostics.length > 0) {
         const parsed = result.value;
         if (parsed.__diagnostics) {
@@ -8707,7 +8220,7 @@ var Dialect = class {
       return {
         value: result.value,
         dedentedComments,
-        diagnostics: result.diagnostics,
+        diagnostics: result.diagnostics
       };
     }
     if (singularField.__fieldKind === "Block") {
@@ -8731,9 +8244,7 @@ var Dialect = class {
   }
   /** Extract comments on the same line as an element (inline comments). */
   parseInlineComments(element) {
-    return element.children
-      .filter((c) => c.type === "comment" && c.startRow === element.startRow)
-      .map((c) => this.parseComment(c, "inline"));
+    return element.children.filter((c) => c.type === "comment" && c.startRow === element.startRow).map((c) => this.parseComment(c, "inline"));
   }
   /** Extract all comment children from an element. */
   parseElementComments(element) {
@@ -8776,27 +8287,34 @@ var Dialect = class {
   }
   /** Attach comments to the first entry of a TypedMap-like value. */
   attachToFirstTypedMapEntry(value, comments) {
-    if (comments.length === 0) return;
-    if (!isNamedMap(value)) return;
+    if (comments.length === 0)
+      return;
+    if (!isNamedMap(value))
+      return;
     const iterator = value.entries();
     const first = iterator.next();
-    if (first.done) return;
+    if (first.done)
+      return;
     attach(first.value[1], comments);
   }
   /** Attach comments to the first statement in a procedure-like value. */
   attachToFirstProcedureStatement(value, comments) {
-    if (comments.length === 0) return;
-    if (!hasProcedureStatements(value)) return;
+    if (comments.length === 0)
+      return;
+    if (!hasProcedureStatements(value))
+      return;
     attach(value.statements[0], comments);
   }
   /** Attach comments as trailing to the last statement in a procedure-like value. */
   attachToLastProcedureStatement(value, comments) {
-    if (comments.length === 0) return false;
-    if (!hasProcedureStatements(value)) return false;
+    if (comments.length === 0)
+      return false;
+    if (!hasProcedureStatements(value))
+      return false;
     const lastStmt = value.statements[value.statements.length - 1];
     const tagged = comments.map((c) => ({
       ...c,
-      attachment: "trailing",
+      attachment: "trailing"
     }));
     attach(lastStmt, tagged);
     return true;
@@ -8805,10 +8323,7 @@ var Dialect = class {
     const { blockValue, colinearValue, procedure } = getValueNodes(element);
     const valueNode = blockValue ?? colinearValue ?? procedure;
     const dc = new DiagnosticCollector();
-    const nonInlineElementComments = element.children
-      .filter((c) => c.type === "comment")
-      .filter((c) => c.startRow !== element.startRow)
-      .map((c) => this.parseComment(c, "trailing"));
+    const nonInlineElementComments = element.children.filter((c) => c.type === "comment").filter((c) => c.startRow !== element.startRow).map((c) => this.parseComment(c, "trailing"));
     let parsedValue;
     if (valueNode) {
       const result = FieldType.parse(valueNode, nameId, this);
@@ -8822,13 +8337,14 @@ var Dialect = class {
     return {
       value: parsedValue,
       extraComments: [...inlineComments2, ...nonInlineElementComments],
-      diagnostics: dc.all,
+      diagnostics: dc.all
     };
   }
   /** Returns [typeId, nameId?] where nameId is present for 2-id keys. */
   getKeyIds(element) {
     const keyNode = element.childForFieldName("key");
-    if (!keyNode) return ["", void 0];
+    if (!keyNode)
+      return ["", void 0];
     const keyChildren = keyNode.namedChildren.filter(isKeyNode);
     if (keyChildren.length === 2) {
       return [getKeyText(keyChildren[0]), getKeyText(keyChildren[1])];
@@ -8842,23 +8358,13 @@ var Dialect = class {
     }
     if (node.isMissing) {
       const expr = withCst(new ErrorValue(""), node);
-      expr.__diagnostics.push(
-        createParserDiagnostic(missingNodeRange(node), `Missing ${node.type}`, "missing-token"),
-      );
+      expr.__diagnostics.push(createParserDiagnostic(missingNodeRange(node), `Missing ${node.type}`, "missing-token"));
       return expr;
     }
     if (node.isError) {
       const text = node.text?.trim();
       const expr = withCst(new Identifier(text || ""), node);
-      expr.__diagnostics.push(
-        createParserDiagnostic(
-          node,
-          text
-            ? `Syntax error: unexpected \`${text.length > 40 ? text.slice(0, 40) + "\u2026" : text}\``
-            : "Syntax error",
-          "syntax-error",
-        ),
-      );
+      expr.__diagnostics.push(createParserDiagnostic(node, text ? `Syntax error: unexpected \`${text.length > 40 ? text.slice(0, 40) + "\u2026" : text}\`` : "Syntax error", "syntax-error"));
       return expr;
     }
     if (node.type === "atom" || node.type === "expression") {
@@ -8866,7 +8372,8 @@ var Dialect = class {
     }
     if (node.type === "expression_with_to") {
       const exprNode = node.childForFieldName("expression");
-      if (exprNode) return this.parseExpression(exprNode);
+      if (exprNode)
+        return this.parseExpression(exprNode);
     }
     if (node.type === "parenthesized_expression") {
       if (node.namedChildren.length > 0) {
@@ -8900,8 +8407,7 @@ var Dialect = class {
     return this.parseExpression(node.children[0]);
   }
   parseProcedure(node) {
-    const children =
-      node.type === "procedure" || node.type === "mapping" ? node.namedChildren : [node];
+    const children = node.type === "procedure" || node.type === "mapping" ? node.namedChildren : [node];
     return this.parseStatementNodes(children, true);
   }
   /**
@@ -8911,13 +8417,13 @@ var Dialect = class {
   parseBlockContent(node, blockSchema, options) {
     const mappingResult = this.parseMapping(node, blockSchema, void 0, {
       preserveOrphanedStatements: false,
-      discriminant: options?.discriminant,
+      discriminant: options?.discriminant
     });
     const statements = this.parseStatementNodes(node.namedChildren);
     return {
       fields: mappingResult.value,
       statements,
-      diagnostics: mappingResult.diagnostics,
+      diagnostics: mappingResult.diagnostics
     };
   }
   /**
@@ -8939,9 +8445,7 @@ var Dialect = class {
       }
       if (node.isMissing) {
         const missing = withCst(new UnknownStatement(""), node);
-        missing.__diagnostics.push(
-          createParserDiagnostic(missingNodeRange(node), `Missing ${node.type}`, "missing-token"),
-        );
+        missing.__diagnostics.push(createParserDiagnostic(missingNodeRange(node), `Missing ${node.type}`, "missing-token"));
         statements.push(missing);
         continue;
       }
@@ -8949,19 +8453,14 @@ var Dialect = class {
         const text = node.text.trim();
         if (text) {
           const unknown2 = withCst(new UnknownStatement(text), node);
-          unknown2.__diagnostics.push(
-            createParserDiagnostic(
-              node,
-              `Unrecognized syntax${this.formatStatementContext(node)}: ${text.length > 40 ? text.slice(0, 40) + "\u2026" : text}`,
-              "syntax-error",
-            ),
-          );
+          unknown2.__diagnostics.push(createParserDiagnostic(node, `Unrecognized syntax${this.formatStatementContext(node)}: ${text.length > 40 ? text.slice(0, 40) + "\u2026" : text}`, "syntax-error"));
           statements.push(unknown2);
         }
         continue;
       }
       const result = this.parseStatement(node, procedureContext);
-      if (!result) continue;
+      if (!result)
+        continue;
       if (Array.isArray(result)) {
         attacher.consumeOntoFirst(result);
         statements.push(...result);
@@ -8989,26 +8488,14 @@ var Dialect = class {
         return null;
       }
       const text = node.text.trim();
-      if (!text) return null;
+      if (!text)
+        return null;
       const unknown2 = withCst(new UnknownStatement(text), node);
-      unknown2.__diagnostics.push(
-        createParserDiagnostic(
-          node,
-          `Unrecognized syntax${this.formatStatementContext(node)}: ${text}`,
-          "syntax-error",
-        ),
-      );
+      unknown2.__diagnostics.push(createParserDiagnostic(node, `Unrecognized syntax${this.formatStatementContext(node)}: ${text}`, "syntax-error"));
       return unknown2;
     }
-    const parsed = parser(
-      node,
-      (n) => this.parseExpression(n),
-      (n) => this.parseProcedure(n),
-      (n) => this.parseStatement(n),
-    );
-    const inlineComments2 = node.namedChildren
-      .filter((c) => c.type === "comment" && c.startRow === node.startRow)
-      .map((c) => this.parseComment(c, "inline"));
+    const parsed = parser(node, (n) => this.parseExpression(n), (n) => this.parseProcedure(n), (n) => this.parseStatement(n));
+    const inlineComments2 = node.namedChildren.filter((c) => c.type === "comment" && c.startRow === node.startRow).map((c) => this.parseComment(c, "inline"));
     if (inlineComments2.length > 0) {
       if (Array.isArray(parsed)) {
         if (parsed.length > 0) {
@@ -9031,28 +8518,21 @@ var Dialect = class {
       }
       const typeNode = node.childForFieldName("type");
       const defaultNode = node.childForFieldName("default");
-      typeExpr = typeNode
-        ? this.parseExpression(typeNode)
-        : withCst(new Identifier("unknown"), node);
+      typeExpr = typeNode ? this.parseExpression(typeNode) : withCst(new Identifier("unknown"), node);
       defaultValue = defaultNode ? this.parseExpression(defaultNode) : void 0;
     } else if (node.type === "assignment_expression") {
       const leftNode = node.childForFieldName("left");
       const rightNode = node.childForFieldName("right");
-      typeExpr = leftNode
-        ? this.parseExpression(leftNode)
-        : withCst(new Identifier("unknown"), node);
+      typeExpr = leftNode ? this.parseExpression(leftNode) : withCst(new Identifier("unknown"), node);
       defaultValue = rightNode ? this.parseExpression(rightNode) : void 0;
     } else {
       typeExpr = this.parseExpression(node);
     }
-    return withCst(
-      new VariableDeclarationNode({
-        type: typeExpr,
-        defaultValue,
-        modifier,
-      }),
-      node,
-    );
+    return withCst(new VariableDeclarationNode({
+      type: typeExpr,
+      defaultValue,
+      modifier
+    }), node);
   }
   emit(value, indent = 0) {
     const ctx = { indent };
@@ -9060,12 +8540,7 @@ var Dialect = class {
       return value.__emit(ctx);
     }
     if (typeof value === "string") {
-      const escaped = value
-        .replace(/\\/g, "\\\\")
-        .replace(/"/g, '\\"')
-        .replace(/\n/g, "\\n")
-        .replace(/\t/g, "\\t")
-        .replace(/\r/g, "\\r");
+      const escaped = value.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n").replace(/\t/g, "\\t").replace(/\r/g, "\\r");
       return `"${escaped}"`;
     }
     if (typeof value === "number") {
@@ -9096,7 +8571,8 @@ function emitFromSchema(parsed, schema2, ctx) {
   const parts = [];
   for (const [key, fieldType] of Object.entries(schema2)) {
     const value = parsed[key];
-    if (value === void 0) continue;
+    if (value === void 0)
+      continue;
     if (isNamedMap(value) && isNamedCollectionFieldType(fieldType)) {
       for (const [, entry] of value) {
         if (isNamedBlockValue(entry)) {
@@ -9105,7 +8581,8 @@ function emitFromSchema(parsed, schema2, ctx) {
       }
     } else if (fieldType.emitField) {
       const s = fieldType.emitField(key, value, ctx);
-      if (s) parts.push(wrapWithComments(s, value, ctx));
+      if (s)
+        parts.push(wrapWithComments(s, value, ctx));
     } else if (fieldType.emit) {
       const indent = emitIndent(ctx);
       parts.push(wrapWithComments(`${indent}${key}: ${fieldType.emit(value, ctx)}`, value, ctx));
@@ -9115,35 +8592,23 @@ function emitFromSchema(parsed, schema2, ctx) {
 }
 
 // ../language/dist/blocks.js
-var VariablePropertiesBlock = Block(
-  "VariablePropertiesBlock",
-  {
-    description: StringValue.describe("Human-readable description."),
-    label: StringValue.describe("Display label shown in the UI."),
-    is_required: BooleanValue.describe("Whether this variable is required."),
-  },
-  { symbol: { kind: SymbolKind.Object, noRecurse: true } },
-).describe("Properties for a variable declaration.");
-var InputPropertiesBlock = Block(
-  "InputPropertiesBlock",
-  {
-    label: StringValue.describe("Display label shown in the UI."),
-    description: StringValue.describe("Human-readable description."),
-    is_required: BooleanValue.describe("Whether this input is required."),
-  },
-  { symbol: { kind: SymbolKind.Object, noRecurse: true } },
-).describe("Properties for an action input parameter.");
-var OutputPropertiesBlock = Block(
-  "OutputPropertiesBlock",
-  {
-    label: StringValue.describe("Display label shown in the UI."),
-    description: StringValue.describe("Human-readable description."),
-  },
-  { symbol: { kind: SymbolKind.Object, noRecurse: true } },
-).describe("Properties for an action output parameter.");
+var VariablePropertiesBlock = Block("VariablePropertiesBlock", {
+  description: StringValue.describe("Human-readable description."),
+  label: StringValue.describe("Display label shown in the UI."),
+  is_required: BooleanValue.describe("Whether this variable is required.")
+}, { symbol: { kind: SymbolKind.Object, noRecurse: true } }).describe("Properties for a variable declaration.");
+var InputPropertiesBlock = Block("InputPropertiesBlock", {
+  label: StringValue.describe("Display label shown in the UI."),
+  description: StringValue.describe("Human-readable description."),
+  is_required: BooleanValue.describe("Whether this input is required.")
+}, { symbol: { kind: SymbolKind.Object, noRecurse: true } }).describe("Properties for an action input parameter.");
+var OutputPropertiesBlock = Block("OutputPropertiesBlock", {
+  label: StringValue.describe("Display label shown in the UI."),
+  description: StringValue.describe("Human-readable description.")
+}, { symbol: { kind: SymbolKind.Object, noRecurse: true } }).describe("Properties for an action output parameter.");
 var VariablesBlock = TypedMap("VariablesBlock", VariablePropertiesBlock, {
   modifiers: VARIABLE_MODIFIERS,
-  primitiveTypes: AGENTSCRIPT_PRIMITIVE_TYPES,
+  primitiveTypes: AGENTSCRIPT_PRIMITIVE_TYPES
 }).describe("Global variable declarations with modifiers, types, and defaults.").example(`variables:
     # Mutable types with defaults
     user_name: mutable string = ""
@@ -9177,32 +8642,24 @@ var VariablesBlock = TypedMap("VariablesBlock", VariablePropertiesBlock, {
         description: "The contact ID from messaging"`);
 var InputsBlock = TypedMap("InputsBlock", InputPropertiesBlock, {
   modifiers: VARIABLE_MODIFIERS,
-  primitiveTypes: AGENTSCRIPT_PRIMITIVE_TYPES,
+  primitiveTypes: AGENTSCRIPT_PRIMITIVE_TYPES
 }).describe("Action input parameter declarations.");
 var OutputsBlock = TypedMap("OutputsBlock", OutputPropertiesBlock, {
   modifiers: VARIABLE_MODIFIERS,
-  primitiveTypes: AGENTSCRIPT_PRIMITIVE_TYPES,
-})
-  .describe("Action output parameter declarations.")
-  .crossBlockReferenceable();
-var ActionBlock = NamedBlock(
-  "ActionBlock",
-  {
-    description: StringValue.describe("Description of what the action does."),
-    label: StringValue.describe("Display label shown in the UI."),
-    inputs: InputsBlock,
-    outputs: OutputsBlock,
-    target: StringValue.describe(
-      'External implementation target URI (e.g., "flow://Action_Name").',
-    ),
-    source: StringValue.describe("Global namespace function name or legacy action identifier."),
-  },
-  {
-    symbol: { kind: SymbolKind.Method },
-    scopeAlias: "action",
-    capabilities: ["invocationTarget"],
-  },
-).describe("Action definition representing an external tool or flow.").example(`    actions:
+  primitiveTypes: AGENTSCRIPT_PRIMITIVE_TYPES
+}).describe("Action output parameter declarations.").crossBlockReferenceable();
+var ActionBlock = NamedBlock("ActionBlock", {
+  description: StringValue.describe("Description of what the action does."),
+  label: StringValue.describe("Display label shown in the UI."),
+  inputs: InputsBlock,
+  outputs: OutputsBlock,
+  target: StringValue.describe('External implementation target URI (e.g., "flow://Action_Name").'),
+  source: StringValue.describe("Global namespace function name or legacy action identifier.")
+}, {
+  symbol: { kind: SymbolKind.Method },
+  scopeAlias: "action",
+  capabilities: ["invocationTarget"]
+}).describe("Action definition representing an external tool or flow.").example(`    actions:
         Lookup_Order:
             description: "Retrieve order details by order number"
             inputs:
@@ -9214,28 +8671,19 @@ var ActionBlock = NamedBlock(
                     description: "Order status"
             target: "flow://Lookup_Order"`);
 var ActionsBlock = CollectionBlock(ActionBlock).describe("Collection of action definitions.");
-var ReasoningActionBlock = NamedBlock(
-  "ReasoningActionBlock",
-  {
-    description: StringValue.describe(
-      "Description of the tool provided to the LLM. Overrides the action description.",
-    ),
-    label: StringValue.describe("Human-readable label for the tool. Not provided to the LLM."),
-  },
-  {
-    colinear: ExpressionValue,
-    body: ProcedureValue,
-    symbol: { kind: SymbolKind.Method },
-    scopeAlias: "action",
-  },
-).describe("Action made available to the agent to choose during reasoning.")
-  .example(`        actions:
+var ReasoningActionBlock = NamedBlock("ReasoningActionBlock", {
+  description: StringValue.describe("Description of the tool provided to the LLM. Overrides the action description."),
+  label: StringValue.describe("Human-readable label for the tool. Not provided to the LLM.")
+}, {
+  colinear: ExpressionValue,
+  body: ProcedureValue,
+  symbol: { kind: SymbolKind.Method },
+  scopeAlias: "action"
+}).describe("Action made available to the agent to choose during reasoning.").example(`        actions:
             lookup: @actions.Lookup_Order
                 with order_number=@variables.order_number
                 set @variables.status = @outputs.status`);
-var ReasoningActionsBlock = CollectionBlock(ReasoningActionBlock).describe(
-  "Collection of reasoning action bindings.",
-);
+var ReasoningActionsBlock = CollectionBlock(ReasoningActionBlock).describe("Collection of reasoning action bindings.");
 
 // ../language/dist/core/analysis/scope.js
 function createSchemaContext(info) {
@@ -9247,15 +8695,13 @@ function createSchemaContext(info) {
     ...schemaNamespaces,
     ...scopedNamespaces.keys(),
     ...Object.keys(info.aliases),
-    ...Object.values(info.aliases),
+    ...Object.values(info.aliases)
   ]);
   const globalScopes = /* @__PURE__ */ new Map();
   if (info.globalScopes) {
     for (const [ns, scope] of Object.entries(info.globalScopes)) {
       if (reservedNamespaces.has(ns)) {
-        throw new Error(
-          `Global scope namespace '${ns}' collides with an existing namespace. Global scopes must use unique namespaces that don't overlap with schema keys, scoped namespaces, or aliases. This is a configuration error in the dialect's SchemaInfo.`,
-        );
+        throw new Error(`Global scope namespace '${ns}' collides with an existing namespace. Global scopes must use unique namespaces that don't overlap with schema keys, scoped namespaces, or aliases. This is a configuration error in the dialect's SchemaInfo.`);
       }
       globalScopes.set(ns, scope);
       if (!namespaceMetadata.has(ns)) {
@@ -9264,9 +8710,7 @@ function createSchemaContext(info) {
     }
   }
   const referenceableFields = collectReferenceableFields(info.schema);
-  const colinearResolvedScopes = new Set(
-    [...scopedNamespaces.keys()].filter((ns) => referenceableFields.has(ns)),
-  );
+  const colinearResolvedScopes = new Set([...scopedNamespaces.keys()].filter((ns) => referenceableFields.has(ns)));
   const capabilityNamespaces = buildCapabilityNamespaces(info);
   return {
     info,
@@ -9277,7 +8721,7 @@ function createSchemaContext(info) {
     globalScopes,
     colinearResolvedScopes,
     invocationTargetNamespaces: capabilityNamespaces.invocationTarget,
-    transitionTargetNamespaces: capabilityNamespaces.transitionTarget,
+    transitionTargetNamespaces: capabilityNamespaces.transitionTarget
   };
 }
 function resolveNamespaceKeys(namespace, ctx) {
@@ -9303,9 +8747,11 @@ function getScopedNamespaces(ctx) {
   return ctx.scopedNamespaces;
 }
 function activeScopeForNamespace(scopesRequired, scope) {
-  if (!scopesRequired || !scope) return void 0;
+  if (!scopesRequired || !scope)
+    return void 0;
   for (const s of scopesRequired) {
-    if (scope[s]) return s;
+    if (scope[s])
+      return s;
   }
   return void 0;
 }
@@ -9388,7 +8834,7 @@ function walkForReferenceable(schema2, result) {
 function buildCapabilityNamespaces(schemaInfo) {
   const result = {
     invocationTarget: /* @__PURE__ */ new Set(),
-    transitionTarget: /* @__PURE__ */ new Set(),
+    transitionTarget: /* @__PURE__ */ new Set()
   };
   for (const [key, rawFt] of Object.entries(schemaInfo.schema)) {
     const fieldType = resolveFieldType(rawFt);
@@ -9400,10 +8846,13 @@ function buildCapabilityNamespaces(schemaInfo) {
   return result;
 }
 function collectCapabilities(name, fieldType, result) {
-  if (!fieldType.capabilities) return;
+  if (!fieldType.capabilities)
+    return;
   for (const cap of fieldType.capabilities) {
-    if (cap === "invocationTarget") result.invocationTarget.add(name);
-    else if (cap === "transitionTarget") result.transitionTarget.add(name);
+    if (cap === "invocationTarget")
+      result.invocationTarget.add(name);
+    else if (cap === "transitionTarget")
+      result.transitionTarget.add(name);
   }
 }
 function walkForCapabilities(schema2, result) {
@@ -9419,10 +8868,12 @@ function buildScopeNavigation(schemaInfo) {
   const registry2 = /* @__PURE__ */ new Map();
   for (const [key, rawFt] of Object.entries(schemaInfo.schema)) {
     const fieldType = resolveFieldType(rawFt);
-    if (!(fieldType.isNamed || isCollectionField(fieldType)) || !fieldType.scopeAlias) continue;
+    if (!(fieldType.isNamed || isCollectionField(fieldType)) || !fieldType.scopeAlias)
+      continue;
     const existing = registry2.get(fieldType.scopeAlias);
     if (existing) {
-      if (!existing.rootKeys.includes(key)) existing.rootKeys.push(key);
+      if (!existing.rootKeys.includes(key))
+        existing.rootKeys.push(key);
     } else {
       registry2.set(fieldType.scopeAlias, { rootKeys: [key] });
     }
@@ -9439,7 +8890,7 @@ function walkSchemaForNavigation(schema2, parentScope, registry2) {
       if (!registry2.has(fieldType.scopeAlias)) {
         registry2.set(fieldType.scopeAlias, {
           rootKeys: [],
-          parentScope,
+          parentScope
         });
       }
       if (fieldType.schema) {
@@ -9454,13 +8905,14 @@ function buildNamespaceMetadata(schemaInfo, scopedNamespaces) {
   const { schema: schema2, aliases } = schemaInfo;
   const result = /* @__PURE__ */ new Map();
   for (const key of Object.keys(schema2)) {
-    if (aliases[key]) continue;
+    if (aliases[key])
+      continue;
     result.set(key, { kind: SymbolKind.Namespace });
   }
   for (const [ns, scopesRequired] of scopedNamespaces) {
     result.set(ns, {
       kind: SymbolKind.Namespace,
-      scopesRequired,
+      scopesRequired
     });
   }
   return result;
@@ -9473,32 +8925,38 @@ function updateScopeContext(obj, ctx) {
 }
 function findScopeBlock(ast, targetScope, scope, ctx) {
   const info = getScopeNavigation(ctx).get(targetScope);
-  if (!info) return null;
+  if (!info)
+    return null;
   const targetName = scope[targetScope];
-  if (!targetName) return null;
+  if (!targetName)
+    return null;
   if (!info.parentScope) {
     for (const rootKey of info.rootKeys) {
       for (const key of resolveNamespaceKeys(rootKey, ctx)) {
         const map = ast[key];
         if (isNamedMap(map)) {
           const block = map.get(targetName);
-          if (isAstNodeLike(block)) return block;
+          if (isAstNodeLike(block))
+            return block;
         }
       }
     }
     return null;
   }
   const parentBlock = findScopeBlock(ast, info.parentScope, scope, ctx);
-  if (!parentBlock) return null;
+  if (!parentBlock)
+    return null;
   return findNamedBlockInDescendants(parentBlock, targetName);
 }
 function findNamedBlockInDescendants(container, name) {
   let deferred;
   for (const [key, val] of Object.entries(container)) {
-    if (key.startsWith("__") || !val || typeof val !== "object") continue;
+    if (key.startsWith("__") || !val || typeof val !== "object")
+      continue;
     if (isNamedMap(val)) {
       const entry = val.get(name);
-      if (isAstNodeLike(entry)) return entry;
+      if (isAstNodeLike(entry))
+        return entry;
     } else if (isAstNodeLike(val)) {
       if (val.__kind && !val.__scope) {
         (deferred ?? (deferred = [])).push(val);
@@ -9508,35 +8966,75 @@ function findNamedBlockInDescendants(container, name) {
   if (deferred) {
     for (const child of deferred) {
       const found = findNamedBlockInDescendants(child, name);
-      if (found) return found;
+      if (found)
+        return found;
     }
   }
   return null;
 }
 function collectNamespaceMaps(container, namespace, result = []) {
   const direct = container[namespace];
-  if (isNamedMap(direct)) result.push(direct);
+  if (isNamedMap(direct))
+    result.push(direct);
   for (const [key, val] of Object.entries(container)) {
-    if (key.startsWith("__") || !val || typeof val !== "object") continue;
-    if (isNamedMap(val)) continue;
+    if (key.startsWith("__") || !val || typeof val !== "object")
+      continue;
+    if (isNamedMap(val))
+      continue;
     if (isAstNodeLike(val) && val.__kind && !val.__scope) {
       collectNamespaceMaps(val, namespace, result);
     }
   }
   return result;
 }
+function resolveEntryAtRoot(ast, namespace, name, ctx) {
+  for (const key of resolveNamespaceKeys(namespace, ctx)) {
+    const container = astField(ast, key);
+    if (isNamedMap(container)) {
+      const entry = container.get(name);
+      if (isAstNodeLike(entry))
+        return entry;
+    }
+  }
+  return null;
+}
+function resolveEntryInScope(ast, namespace, name, ctx, scope) {
+  if (!scope)
+    return null;
+  const scopedNamespaces = getScopedNamespaces(ctx);
+  const namespaceKeys = resolveNamespaceKeys(namespace, ctx);
+  for (const key of namespaceKeys) {
+    const scopesRequired = scopedNamespaces.get(key);
+    const activeScope = activeScopeForNamespace(scopesRequired, scope);
+    if (!activeScope)
+      continue;
+    const scopeBlock = findScopeBlock(ast, activeScope, scope, ctx);
+    if (!scopeBlock)
+      continue;
+    for (const map of collectNamespaceMaps(scopeBlock, key)) {
+      const entry = map.get(name);
+      if (isAstNodeLike(entry))
+        return entry;
+    }
+  }
+  return null;
+}
 
 // ../language/dist/core/analysis/ast-utils.js
 function isPositionInRange(line, character, range) {
-  if (line < range.start.line || line > range.end.line) return false;
-  if (line === range.start.line && character < range.start.character) return false;
-  if (line === range.end.line && character >= range.end.character) return false;
+  if (line < range.start.line || line > range.end.line)
+    return false;
+  if (line === range.start.line && character < range.start.character)
+    return false;
+  if (line === range.end.line && character > range.end.character)
+    return false;
   return true;
 }
 var MAX_LINE_LENGTH = 1e6;
 function rangeSize(range) {
   const lines = range.end.line - range.start.line;
-  if (lines === 0) return range.end.character - range.start.character;
+  if (lines === 0)
+    return range.end.character - range.start.character;
   return lines * MAX_LINE_LENGTH + (range.end.character - range.start.character);
 }
 function computeDetail(obj, kind, cst) {
@@ -9545,17 +9043,20 @@ function computeDetail(obj, kind, cst) {
     const modifier = obj.modifier;
     if (isAstNodeLike(modifier) && modifier.__cst) {
       const text = modifier.__cst.node.text?.trim();
-      if (text) parts.push(text);
+      if (text)
+        parts.push(text);
     }
     const typeVal = obj.type;
     if (isAstNodeLike(typeVal) && typeVal.__cst) {
       const text = typeVal.__cst.node.text?.trim();
-      if (text) parts.push(text);
+      if (text)
+        parts.push(text);
     }
     const defaultValue = obj.defaultValue;
     if (isAstNodeLike(defaultValue) && defaultValue.__cst) {
       const text = defaultValue.__cst.node.text?.trim();
-      if (text) parts.push("= " + text);
+      if (text)
+        parts.push("= " + text);
     }
     return parts.length > 0 ? parts.join(" ") : void 0;
   }
@@ -9593,13 +9094,15 @@ function getValueText(cst) {
     return valueNode?.text?.trim();
   }
   const text = node.text?.trim();
-  if (text && text.length > 80) return text.slice(0, 80) + "...";
+  if (text && text.length > 80)
+    return text.slice(0, 80) + "...";
   return text || void 0;
 }
 function findMappingElement(node) {
   let current = node;
   while (current) {
-    if (current.type === "mapping_element") return current;
+    if (current.type === "mapping_element")
+      return current;
     current = current.parent;
   }
   return null;
@@ -9607,28 +9110,33 @@ function findMappingElement(node) {
 
 // ../language/dist/core/analysis/symbols.js
 var SymbolTag;
-(function (SymbolTag2) {
-  SymbolTag2[(SymbolTag2["Deprecated"] = 1)] = "Deprecated";
+(function(SymbolTag2) {
+  SymbolTag2[SymbolTag2["Deprecated"] = 1] = "Deprecated";
 })(SymbolTag || (SymbolTag = {}));
 function getDocumentSymbols(ast) {
   const symbols = [];
   for (const [key, value] of Object.entries(ast)) {
-    if (key.startsWith("__")) continue;
-    if (value == null || typeof value !== "object") continue;
+    if (key.startsWith("__"))
+      continue;
+    if (value == null || typeof value !== "object")
+      continue;
     if (isNamedMap(value)) {
       const mapSymbols = processMap(key, value, true);
-      for (const sym of mapSymbols) symbols.push(sym);
+      for (const sym of mapSymbols)
+        symbols.push(sym);
       continue;
     }
     const symbol = extractSymbol(key, value);
-    if (symbol) symbols.push(symbol);
+    if (symbol)
+      symbols.push(symbol);
   }
   const blockChildren = ast.__children;
   if (Array.isArray(blockChildren)) {
     for (const child of blockChildren) {
       if (isBlockChild(child) && child.__type === "untyped") {
         const sym = extractUntypedSymbol(child);
-        if (sym) symbols.push(sym);
+        if (sym)
+          symbols.push(sym);
       }
     }
   }
@@ -9648,14 +9156,15 @@ function processMap(key, map, isRoot) {
           kind: symbolKind,
           range,
           selectionRange,
-          ...(detail ? { detail } : {}),
-        },
+          ...detail ? { detail } : {}
+        }
       ];
     }
     const children = [];
     for (const [entryName, entry] of map) {
       const entrySym = extractSymbol(entryName, entry);
-      if (entrySym) children.push(entrySym);
+      if (entrySym)
+        children.push(entrySym);
     }
     return [
       {
@@ -9663,16 +9172,17 @@ function processMap(key, map, isRoot) {
         kind: symbolKind,
         range,
         selectionRange,
-        ...(detail ? { detail } : {}),
-        ...(children.length > 0 ? { children } : {}),
-      },
+        ...detail ? { detail } : {},
+        ...children.length > 0 ? { children } : {}
+      }
     ];
   }
   if (isRoot) {
     const symbols = [];
     for (const [entryName, entry] of map) {
       const entrySym = extractSymbol(`${key} ${entryName}`, entry);
-      if (entrySym) symbols.push(entrySym);
+      if (entrySym)
+        symbols.push(entrySym);
     }
     return symbols;
   }
@@ -9680,11 +9190,13 @@ function processMap(key, map, isRoot) {
   return containerSymbol ? [containerSymbol] : [];
 }
 function extractSymbol(name, value) {
-  if (!isAstNodeLike(value)) return null;
+  if (!isAstNodeLike(value))
+    return null;
   const obj = value;
   const sym = obj.__symbol;
   const cst = obj.__cst;
-  if (!cst) return null;
+  if (!cst)
+    return null;
   const symbolKind = sym?.kind ?? SymbolKind.Property;
   const { range, selectionRange } = computeRanges(cst);
   const detail = computeDetail(obj, obj.__kind, cst);
@@ -9694,7 +9206,7 @@ function extractSymbol(name, value) {
       kind: symbolKind,
       range,
       selectionRange,
-      ...(detail ? { detail } : {}),
+      ...detail ? { detail } : {}
     };
   }
   const children = extractChildren2(obj);
@@ -9703,29 +9215,34 @@ function extractSymbol(name, value) {
     kind: symbolKind,
     range,
     selectionRange,
-    ...(detail ? { detail } : {}),
-    ...(children.length > 0 ? { children } : {}),
+    ...detail ? { detail } : {},
+    ...children.length > 0 ? { children } : {}
   };
 }
 function extractChildren2(obj) {
   const children = [];
   for (const [key, value] of Object.entries(obj)) {
-    if (key.startsWith("__")) continue;
-    if (value == null || typeof value !== "object") continue;
+    if (key.startsWith("__"))
+      continue;
+    if (value == null || typeof value !== "object")
+      continue;
     if (isNamedMap(value)) {
       const mapSymbols = processMap(key, value, false);
-      for (const sym of mapSymbols) children.push(sym);
+      for (const sym of mapSymbols)
+        children.push(sym);
       continue;
     }
     const symbol = extractSymbol(key, value);
-    if (symbol) children.push(symbol);
+    if (symbol)
+      children.push(symbol);
   }
   const blockChildren = obj.__children;
   if (Array.isArray(blockChildren)) {
     for (const child of blockChildren) {
       if (isBlockChild(child) && child.__type === "untyped") {
         const sym = extractUntypedSymbol(child);
-        if (sym) children.push(sym);
+        if (sym)
+          children.push(sym);
       }
     }
   }
@@ -9733,7 +9250,8 @@ function extractChildren2(obj) {
 }
 function extractUntypedSymbol(block) {
   const cst = block.__cst;
-  if (!cst) return null;
+  if (!cst)
+    return null;
   const { range, selectionRange } = computeRanges(cst);
   const name = block.__blockName ? `${block.key} ${block.__blockName}` : block.key;
   const childSymbols = [];
@@ -9741,7 +9259,8 @@ function extractUntypedSymbol(block) {
     if (isBlockChild(child)) {
       if (child.__type === "untyped") {
         const sym = extractUntypedSymbol(child);
-        if (sym) childSymbols.push(sym);
+        if (sym)
+          childSymbols.push(sym);
       } else if (child.__type === "field") {
         const fc = child;
         const val = fc.value;
@@ -9752,7 +9271,7 @@ function extractUntypedSymbol(block) {
             name: fc.key,
             kind: SymbolKind.Property,
             range: r,
-            selectionRange: sr,
+            selectionRange: sr
           });
         }
       }
@@ -9763,7 +9282,7 @@ function extractUntypedSymbol(block) {
     kind: SymbolKind.Property,
     range,
     selectionRange,
-    ...(childSymbols.length > 0 ? { children: childSymbols } : {}),
+    ...childSymbols.length > 0 ? { children: childSymbols } : {}
   };
 }
 function createMapContainerSymbol(name, map) {
@@ -9771,9 +9290,11 @@ function createMapContainerSymbol(name, map) {
   const entryChildren = [];
   for (const [entryName, entry] of map) {
     const sym = extractSymbol(entryName, entry);
-    if (sym) entryChildren.push(sym);
+    if (sym)
+      entryChildren.push(sym);
   }
-  if (entryChildren.length === 0) return null;
+  if (entryChildren.length === 0)
+    return null;
   let range;
   let selectionRange;
   if (cst) {
@@ -9783,7 +9304,7 @@ function createMapContainerSymbol(name, map) {
   } else {
     range = {
       start: entryChildren[0].range.start,
-      end: entryChildren[entryChildren.length - 1].range.end,
+      end: entryChildren[entryChildren.length - 1].range.end
     };
     selectionRange = range;
   }
@@ -9792,7 +9313,7 @@ function createMapContainerSymbol(name, map) {
     kind: SymbolKind.Namespace,
     range,
     selectionRange,
-    children: entryChildren,
+    children: entryChildren
   };
 }
 function computeRanges(cst) {
@@ -9801,7 +9322,7 @@ function computeRanges(cst) {
     const keyRange = getKeyRange(node);
     return {
       range: toRange(node),
-      selectionRange: keyRange ?? toRange(node),
+      selectionRange: keyRange ?? toRange(node)
     };
   }
   const parent = node.parent;
@@ -9809,12 +9330,12 @@ function computeRanges(cst) {
     const keyRange = getKeyRange(parent);
     return {
       range: toRange(parent),
-      selectionRange: keyRange ?? toRange(parent),
+      selectionRange: keyRange ?? toRange(parent)
     };
   }
   return {
     range: cst.range,
-    selectionRange: cst.range,
+    selectionRange: cst.range
   };
 }
 function getKeyRange(mappingElement) {
@@ -9826,11 +9347,14 @@ function getKeyRange(mappingElement) {
 }
 function findNamespaceSymbol(children, namespace) {
   const direct = children.find((c) => c.name === namespace);
-  if (direct) return direct;
+  if (direct)
+    return direct;
   for (const child of children) {
-    if (!child.children || child.kind !== SymbolKind.Namespace) continue;
+    if (!child.children || child.kind !== SymbolKind.Namespace)
+      continue;
     const found = findNamespaceSymbol(child.children, namespace);
-    if (found) return found;
+    if (found)
+      return found;
   }
   return void 0;
 }
@@ -9847,7 +9371,8 @@ function resolveNamespace(symbols, namespace, ctx, scope) {
           levelSym = currentChildren.find((s) => keys.some((k) => s.name === `${k} ${levelName}`));
         } else {
           for (const sym of currentChildren) {
-            if (!sym.children) continue;
+            if (!sym.children)
+              continue;
             const found = sym.children.find((c) => c.name === levelName);
             if (found) {
               levelSym = found;
@@ -9855,7 +9380,8 @@ function resolveNamespace(symbols, namespace, ctx, scope) {
             }
           }
         }
-        if (!levelSym?.children) break;
+        if (!levelSym?.children)
+          break;
         const nsSym = findNamespaceSymbol(levelSym.children, namespace);
         if (nsSym) {
           return (nsSym.children ?? []).map((c) => ({ name: c.name, symbol: c }));
@@ -9877,25 +9403,26 @@ function resolveNamespace(symbols, namespace, ctx, scope) {
       }
     }
   }
-  if (promoted.length > 0) return promoted;
+  if (promoted.length > 0)
+    return promoted;
   return null;
 }
 function getSymbolMembers(symbols, namespace, ctx, scope, position) {
-  const entries = position
-    ? resolveNamespaceBottomUp(symbols, namespace, position.line, position.character)
-    : resolveNamespace(symbols, namespace, ctx, scope);
+  const entries = position ? resolveNamespaceBottomUp(symbols, namespace, position.line, position.character) : resolveNamespace(symbols, namespace, ctx, scope);
   return entries ? entries.map((e) => e.name) : null;
 }
 function getScopeChain(scope, ctx) {
   const nav = getScopeNavigation(ctx);
   const active = [];
   for (const [level, info] of nav) {
-    if (!scope[level]) continue;
+    if (!scope[level])
+      continue;
     let depth = 0;
     let current = level;
     while (current) {
       const cur = nav.get(current);
-      if (!cur?.parentScope) break;
+      if (!cur?.parentScope)
+        break;
       current = cur.parentScope;
       depth++;
     }
@@ -9912,29 +9439,34 @@ function getSymbolNamespaceEntries(symbols, namespace, ctx, scope, position) {
 }
 function findSymbolEntry(symbols, namespace, name, ctx, scope, position) {
   const entries = getSymbolNamespaceEntries(symbols, namespace, ctx, scope, position);
-  if (!entries) return null;
+  if (!entries)
+    return null;
   return entries.find((e) => e.name === name)?.symbol ?? null;
 }
 function findContainingPath(symbols, line, character) {
   const path = [];
   let currentLevel = symbols;
-  for (;;) {
+  for (; ; ) {
     const containing = currentLevel.find((s) => isPositionInRange(line, character, s.range));
-    if (!containing) break;
+    if (!containing)
+      break;
     path.push({ symbol: containing, siblings: currentLevel });
-    if (!containing.children) break;
+    if (!containing.children)
+      break;
     currentLevel = containing.children;
   }
   return path;
 }
-function findNamespaceInLevel(siblings, namespace) {
-  const nsSym = siblings.find((s) => s.name === namespace);
+function findNamespaceInLevel(siblings, namespace, skip) {
+  const nsSym = siblings.find((s) => s.name === namespace && s !== skip);
   if (nsSym) {
     return (nsSym.children ?? []).map((c) => ({ name: c.name, symbol: c }));
   }
   const prefix2 = namespace + " ";
   const promoted = [];
   for (const s of siblings) {
+    if (s === skip)
+      continue;
     if (s.name.startsWith(prefix2)) {
       promoted.push({ name: s.name.slice(prefix2.length), symbol: s });
     }
@@ -9944,8 +9476,9 @@ function findNamespaceInLevel(siblings, namespace) {
 function resolveNamespaceBottomUp(symbols, namespace, line, character) {
   const path = findContainingPath(symbols, line, character);
   for (let i = path.length - 1; i >= 0; i--) {
-    const result = findNamespaceInLevel(path[i].siblings, namespace);
-    if (result) return result;
+    const result = findNamespaceInLevel(path[i].siblings, namespace, path[i].symbol);
+    if (result)
+      return result;
   }
   if (path.length === 0) {
     return findNamespaceInLevel(symbols, namespace);
@@ -9967,12 +9500,14 @@ function recurseAstChildren(value, recurse) {
     }
     return;
   }
-  if (!isAstNodeLike(value)) return;
+  if (!isAstNodeLike(value))
+    return;
   const children = value.__children;
   if (Array.isArray(children)) {
     const yieldedKeys = /* @__PURE__ */ new Set();
     for (const item of children) {
-      if (!isBlockChild(item)) continue;
+      if (!isBlockChild(item))
+        continue;
       const child = item;
       switch (child.__type) {
         case "field":
@@ -9980,7 +9515,8 @@ function recurseAstChildren(value, recurse) {
             if (!yieldedKeys.has(child.key)) {
               yieldedKeys.add(child.key);
               const map = value[child.key];
-              if (map !== void 0) recurse(child.key, map, value);
+              if (map !== void 0)
+                recurse(child.key, map, value);
             }
           } else {
             recurse(child.key, child.value, value);
@@ -10011,7 +9547,8 @@ function recurseAstChildren(value, recurse) {
     return;
   }
   for (const [k, val] of Object.entries(value)) {
-    if (k.startsWith("__")) continue;
+    if (k.startsWith("__"))
+      continue;
     recurse(k, val, value);
   }
 }
@@ -10087,7 +9624,8 @@ function dispatchAstChildren(value, ctx, onExpression, recurse) {
     }
     return ctx;
   }
-  if (!isAstNodeLike(value)) return ctx;
+  if (!isAstNodeLike(value))
+    return ctx;
   const newCtx = updateScopeContext(value, ctx);
   if (value.__kind && isExpressionKind(value.__kind)) {
     onExpression?.(value, newCtx);
@@ -10102,8 +9640,10 @@ function dispatchAstChildren(value, ctx, onExpression, recurse) {
   return newCtx;
 }
 function walkAstExpressions(value, callback, ctx = {}, visited = /* @__PURE__ */ new Set()) {
-  if (!value || typeof value !== "object") return;
-  if (visited.has(value)) return;
+  if (!value || typeof value !== "object")
+    return;
+  if (visited.has(value))
+    return;
   visited.add(value);
   dispatchAstChildren(value, ctx, callback, (child, newCtx) => {
     walkAstExpressions(child, callback, newCtx, visited);
@@ -10115,8 +9655,10 @@ function collectDiagnostics(value) {
   return diagnostics;
 }
 function collectDiagnosticsInner(value, diagnostics, visited) {
-  if (!value || typeof value !== "object") return;
-  if (visited.has(value)) return;
+  if (!value || typeof value !== "object")
+    return;
+  if (visited.has(value))
+    return;
   visited.add(value);
   if (isAstNodeLike(value)) {
     const nodeDiags = value.__diagnostics;
@@ -10160,7 +9702,7 @@ var PassStore = class {
   }
 };
 function each(key, selector) {
-  return { __each: true, key, ...(selector ? { selector } : {}) };
+  return { __each: true, key, ...selector ? { selector } : {} };
 }
 function isEachDep(dep) {
   return typeof dep === "object" && dep !== null && "__each" in dep;
@@ -10173,9 +9715,7 @@ function defineRule(config2) {
   for (const [name, dep] of Object.entries(config2.deps)) {
     if (isEachDep(dep)) {
       if (eachName !== void 0) {
-        throw new Error(
-          `defineRule('${config2.id}'): only one each() dep allowed, found '${eachName}' and '${name}'`,
-        );
+        throw new Error(`defineRule('${config2.id}'): only one each() dep allowed, found '${eachName}' and '${name}'`);
       }
       eachName = name;
       eachStoreKey = dep.key;
@@ -10198,7 +9738,8 @@ function defineRule(config2) {
       }
       if (eachName && eachStoreKey) {
         const raw = store.get(eachStoreKey);
-        if (raw == null) return;
+        if (raw == null)
+          return;
         const items = eachSelector ? eachSelector(raw) : Array.isArray(raw) ? raw : [];
         for (const item of items) {
           config2.run({ ...resolved, [eachName]: item });
@@ -10206,7 +9747,7 @@ function defineRule(config2) {
       } else {
         config2.run(resolved);
       }
-    },
+    }
   };
 }
 var DependencyResolutionError = class extends Error {
@@ -10224,7 +9765,7 @@ function partitionPasses(passes) {
     visitVariables: passes.filter((p) => p.visitVariables),
     visitExpression: passes.filter((p) => p.visitExpression),
     enterNode: passes.filter((p) => p.enterNode),
-    exitNode: passes.filter((p) => p.exitNode),
+    exitNode: passes.filter((p) => p.exitNode)
   };
 }
 var schemaContextKey = storeKey("schema-context");
@@ -10234,7 +9775,8 @@ var LintEngine = class {
     __publicField(this, "disabled", /* @__PURE__ */ new Set());
     __publicField(this, "source");
     this.source = options?.source ?? "lint";
-    for (const p of options?.passes ?? []) this.addPass(p);
+    for (const p of options?.passes ?? [])
+      this.addPass(p);
   }
   /** Register a pass. Throws on duplicate id. */
   addPass(pass) {
@@ -10278,12 +9820,7 @@ var LintEngine = class {
           pass.init();
         } catch (error) {
           failed.add(pass.id);
-          systemDiagnostics.push(
-            this.systemDiagnostic(
-              `Pass '${pass.id}' init failed: ${error instanceof Error ? error.message : String(error)}`,
-              "lint-pass-error",
-            ),
-          );
+          systemDiagnostics.push(this.systemDiagnostic(`Pass '${pass.id}' init failed: ${error instanceof Error ? error.message : String(error)}`, "lint-pass-error"));
         }
       }
     }
@@ -10294,58 +9831,40 @@ var LintEngine = class {
     const finalizePasses = active.filter((p) => p.finalize);
     const finalizeOrder = this.sortFinalize(finalizePasses, failed);
     for (const pass of finalizeOrder) {
-      if (failed.has(pass.id)) continue;
+      if (failed.has(pass.id))
+        continue;
       const missingDep = pass.finalizeAfter?.find((dep) => !store.has(dep));
       if (missingDep) {
         failed.add(pass.id);
-        systemDiagnostics.push(
-          this.systemDiagnostic(
-            `Pass '${pass.id}' skipped: required data '${missingDep}' not available`,
-            "lint-pass-skipped",
-          ),
-        );
+        systemDiagnostics.push(this.systemDiagnostic(`Pass '${pass.id}' skipped: required data '${missingDep}' not available`, "lint-pass-skipped"));
         continue;
       }
       try {
         pass.finalize(store, root);
       } catch (error) {
         failed.add(pass.id);
-        systemDiagnostics.push(
-          this.systemDiagnostic(
-            `Pass '${pass.id}' finalize failed: ${error instanceof Error ? error.message : String(error)}`,
-            "lint-pass-error",
-          ),
-        );
+        systemDiagnostics.push(this.systemDiagnostic(`Pass '${pass.id}' finalize failed: ${error instanceof Error ? error.message : String(error)}`, "lint-pass-error"));
       }
     }
     const runPasses = active.filter((p) => p.run);
     for (const pass of runPasses) {
-      if (failed.has(pass.id)) continue;
+      if (failed.has(pass.id))
+        continue;
       const missingKey = pass.requires?.find((key) => !store.has(key));
       if (missingKey) {
-        systemDiagnostics.push(
-          this.systemDiagnostic(
-            `Pass '${pass.id}' skipped: required data '${missingKey}' not available`,
-            "lint-pass-skipped",
-          ),
-        );
+        systemDiagnostics.push(this.systemDiagnostic(`Pass '${pass.id}' skipped: required data '${missingKey}' not available`, "lint-pass-skipped"));
         continue;
       }
       try {
         pass.run(store, root);
       } catch (error) {
-        systemDiagnostics.push(
-          this.systemDiagnostic(
-            `Pass '${pass.id}' run failed: ${error instanceof Error ? error.message : String(error)}`,
-            "lint-pass-error",
-          ),
-        );
+        systemDiagnostics.push(this.systemDiagnostic(`Pass '${pass.id}' run failed: ${error instanceof Error ? error.message : String(error)}`, "lint-pass-error"));
       }
     }
     const nodeDiagnostics = collectDiagnostics(root);
     return {
       diagnostics: [...nodeDiagnostics, ...systemDiagnostics],
-      store,
+      store
     };
   }
   /**
@@ -10357,17 +9876,13 @@ var LintEngine = class {
       const varsMap = root.variables;
       if (isNamedMap(varsMap)) {
         for (const p of sets.visitVariables) {
-          if (failed.has(p.id)) continue;
+          if (failed.has(p.id))
+            continue;
           try {
             p.visitVariables(varsMap);
           } catch (error) {
             failed.add(p.id);
-            systemDiagnostics.push(
-              this.systemDiagnostic(
-                `Pass '${p.id}' visitVariables failed: ${error instanceof Error ? error.message : String(error)}`,
-                "lint-pass-error",
-              ),
-            );
+            systemDiagnostics.push(this.systemDiagnostic(`Pass '${p.id}' visitVariables failed: ${error instanceof Error ? error.message : String(error)}`, "lint-pass-error"));
           }
         }
       }
@@ -10378,8 +9893,10 @@ var LintEngine = class {
    * Also clears lint diagnostics from previous runs.
    */
   walkNode(value, sets, ctx, key, parent, visited, failed, systemDiagnostics) {
-    if (!value || typeof value !== "object") return;
-    if (visited.has(value)) return;
+    if (!value || typeof value !== "object")
+      return;
+    if (visited.has(value))
+      return;
     visited.add(value);
     if (Array.isArray(value)) {
       for (const item of value) {
@@ -10387,78 +9904,55 @@ var LintEngine = class {
       }
       return;
     }
-    if (!isAstNodeLike(value)) return;
+    if (!isAstNodeLike(value))
+      return;
     const diags = value.__diagnostics;
     if (Array.isArray(diags)) {
       value.__diagnostics = diags.filter((d) => d.source !== this.source);
     }
     for (const p of sets.enterNode) {
-      if (failed.has(p.id)) continue;
+      if (failed.has(p.id))
+        continue;
       try {
         p.enterNode(key, value, parent);
       } catch (error) {
         failed.add(p.id);
-        systemDiagnostics.push(
-          this.systemDiagnostic(
-            `Pass '${p.id}' enterNode failed: ${error instanceof Error ? error.message : String(error)}`,
-            "lint-pass-error",
-          ),
-        );
+        systemDiagnostics.push(this.systemDiagnostic(`Pass '${p.id}' enterNode failed: ${error instanceof Error ? error.message : String(error)}`, "lint-pass-error"));
       }
     }
-    dispatchAstChildren(
-      value,
-      ctx,
-      (exprObj, exprCtx) => {
-        for (const p of sets.visitExpression) {
-          if (failed.has(p.id)) continue;
-          try {
-            p.visitExpression(exprObj, exprCtx);
-          } catch (error) {
-            failed.add(p.id);
-            systemDiagnostics.push(
-              this.systemDiagnostic(
-                `Pass '${p.id}' visitExpression failed: ${error instanceof Error ? error.message : String(error)}`,
-                "lint-pass-error",
-              ),
-            );
-          }
+    dispatchAstChildren(value, ctx, (exprObj, exprCtx) => {
+      for (const p of sets.visitExpression) {
+        if (failed.has(p.id))
+          continue;
+        try {
+          p.visitExpression(exprObj, exprCtx);
+        } catch (error) {
+          failed.add(p.id);
+          systemDiagnostics.push(this.systemDiagnostic(`Pass '${p.id}' visitExpression failed: ${error instanceof Error ? error.message : String(error)}`, "lint-pass-error"));
         }
-      },
-      (child, childCtx, childKey, childParent) => {
-        this.walkNode(
-          child,
-          sets,
-          childCtx,
-          childKey,
-          childParent,
-          visited,
-          failed,
-          systemDiagnostics,
-        );
-      },
-    );
+      }
+    }, (child, childCtx, childKey, childParent) => {
+      this.walkNode(child, sets, childCtx, childKey, childParent, visited, failed, systemDiagnostics);
+    });
     for (const p of sets.exitNode) {
-      if (failed.has(p.id)) continue;
+      if (failed.has(p.id))
+        continue;
       try {
         p.exitNode(key, value, parent);
       } catch (error) {
         failed.add(p.id);
-        systemDiagnostics.push(
-          this.systemDiagnostic(
-            `Pass '${p.id}' exitNode failed: ${error instanceof Error ? error.message : String(error)}`,
-            "lint-pass-error",
-          ),
-        );
+        systemDiagnostics.push(this.systemDiagnostic(`Pass '${p.id}' exitNode failed: ${error instanceof Error ? error.message : String(error)}`, "lint-pass-error"));
       }
     }
   }
   /** Topologically sort passes for finalize() ordering using Kahn's algorithm. */
   sortFinalize(passes, failed) {
     const active = passes.filter((p) => !failed.has(p.id));
-    if (active.length === 0) return [];
+    if (active.length === 0)
+      return [];
     const byId = /* @__PURE__ */ new Map();
-    for (const p of active) byId.set(p.id, p);
+    for (const p of active)
+      byId.set(p.id, p);
     const inDegree = /* @__PURE__ */ new Map();
     const adjacency = /* @__PURE__ */ new Map();
     for (const p of active) {
@@ -10475,7 +9969,8 @@ var LintEngine = class {
     }
     const queue = [];
     for (const [id, degree] of inDegree) {
-      if (degree === 0) queue.push(id);
+      if (degree === 0)
+        queue.push(id);
     }
     const sorted = [];
     let head = 0;
@@ -10485,16 +9980,13 @@ var LintEngine = class {
       for (const dependent of adjacency.get(id) ?? []) {
         const newDegree = (inDegree.get(dependent) ?? 1) - 1;
         inDegree.set(dependent, newDegree);
-        if (newDegree === 0) queue.push(dependent);
+        if (newDegree === 0)
+          queue.push(dependent);
       }
     }
     if (sorted.length !== active.length) {
       const unsorted = active.filter((p) => !sorted.some((s) => s.id === p.id)).map((p) => p.id);
-      throw new DependencyResolutionError(
-        `Cyclic finalize dependencies among: ${unsorted.join(", ")}`,
-        void 0,
-        unsorted,
-      );
+      throw new DependencyResolutionError(`Cyclic finalize dependencies among: ${unsorted.join(", ")}`, void 0, unsorted);
     }
     return sorted;
   }
@@ -10502,12 +9994,12 @@ var LintEngine = class {
     return {
       range: {
         start: { line: 0, character: 0 },
-        end: { line: 0, character: 0 },
+        end: { line: 0, character: 0 }
       },
       message,
       severity: DiagnosticSeverity.Information,
       code,
-      source: this.source,
+      source: this.source
     };
   }
 };
@@ -10518,7 +10010,8 @@ function queryExpressionAtPosition(index, line, character) {
   let best = null;
   let bestSize = Infinity;
   for (const entry of index.expressions) {
-    if (!isPositionInRange(line, character, entry.range)) continue;
+    if (!isPositionInRange(line, character, entry.range))
+      continue;
     const size = rangeSize(entry.range);
     if (size < bestSize) {
       best = entry;
@@ -10531,7 +10024,8 @@ function queryDefinitionAtPosition(index, line, character) {
   let best = null;
   let bestSize = Infinity;
   for (const entry of index.definitions) {
-    if (!isPositionInRange(line, character, entry.keyRange)) continue;
+    if (!isPositionInRange(line, character, entry.keyRange))
+      continue;
     const size = rangeSize(entry.keyRange);
     if (size < bestSize) {
       best = entry;
@@ -10544,7 +10038,8 @@ function queryScopeAtPosition(index, line, character) {
   let best = null;
   let bestSize = Infinity;
   for (const entry of index.scopes) {
-    if (!isPositionInRange(line, character, entry.range)) continue;
+    if (!isPositionInRange(line, character, entry.range))
+      continue;
     const size = rangeSize(entry.range);
     if (size < bestSize) {
       best = entry;
@@ -10566,7 +10061,7 @@ function findDefinitionAtPosition(ast, line, character, ctx, symbols, index) {
   }
   return {
     definition: null,
-    reason: "Cursor is not on a reference or definition key",
+    reason: "Cursor is not on a reference or definition key"
   };
 }
 function resolveWithReason(ast, ref, ctx, symbols) {
@@ -10575,14 +10070,14 @@ function resolveWithReason(ast, ref, ctx, symbols) {
     const list = [...scopesRequired].join(" or ");
     return {
       definition: null,
-      reason: `'@${ref.namespace}.${ref.name}' requires ${list} scope (cursor is outside a ${list} block)`,
+      reason: `'@${ref.namespace}.${ref.name}' requires ${list} scope (cursor is outside a ${list} block)`
     };
   }
   const definition = resolveReference(ast, ref.namespace, ref.name, ctx, ref.scope, symbols);
   if (!definition) {
     return {
       definition: null,
-      reason: `'${ref.name}' is not defined in namespace '${ref.namespace}'`,
+      reason: `'${ref.name}' is not defined in namespace '${ref.namespace}'`
     };
   }
   return { definition };
@@ -10591,16 +10086,9 @@ function findReferencesAtPosition(ast, line, character, includeDeclaration, ctx,
   const ref = findRefExpressionAtPosition(ast, line, character, index);
   const def = ref ? null : findDefinitionKeyAtPosition(ast, line, character, index);
   const target = ref ?? def;
-  if (!target) return [];
-  return findAllReferences(
-    ast,
-    target.namespace,
-    target.name,
-    ctx,
-    target.scope,
-    includeDeclaration,
-    symbols,
-  );
+  if (!target)
+    return [];
+  return findAllReferences(ast, target.namespace, target.name, ctx, target.scope, includeDeclaration, symbols);
 }
 function resolveReference(ast, namespace, name, ctx, scope, symbols) {
   if (symbols) {
@@ -10611,14 +10099,14 @@ function resolveReference(ast, namespace, name, ctx, scope, symbols) {
         name,
         symbolKind: entry.kind,
         definitionRange: entry.selectionRange,
-        fullRange: entry.range,
+        fullRange: entry.range
       };
     }
   }
   const scopesRequired = getScopedNamespaces(ctx).get(namespace);
   const activeScope = activeScopeForNamespace(scopesRequired, scope);
   if (activeScope && scope) {
-    return resolveFromScopedChild(ast, namespace, name, activeScope, scope, ctx);
+    return resolveFromScopedChild(ast, namespace, name, scope, ctx);
   }
   return resolveFromRoot(ast, namespace, name, ctx);
 }
@@ -10628,15 +10116,18 @@ function findAllReferences(ast, namespace, name, ctx, scope, includeDeclaration 
   const activeScope = activeScopeForNamespace(scopesRequired, scope);
   walkAstExpressions(ast, (expr, walkCtx) => {
     const decomposed = decomposeExpression(expr, walkCtx);
-    if (!decomposed) return;
-    if (decomposed.namespace !== namespace || decomposed.name !== name) return;
+    if (!decomposed)
+      return;
+    if (decomposed.namespace !== namespace || decomposed.name !== name)
+      return;
     if (activeScope && scope) {
-      if (walkCtx[activeScope] !== scope[activeScope]) return;
+      if (walkCtx[activeScope] !== scope[activeScope])
+        return;
     }
     occurrences.push({
       range: decomposed.range,
       nameRange: decomposed.nameRange,
-      isDefinition: false,
+      isDefinition: false
     });
   });
   if (includeDeclaration) {
@@ -10645,7 +10136,7 @@ function findAllReferences(ast, namespace, name, ctx, scope, includeDeclaration 
       occurrences.push({
         range: def.definitionRange,
         nameRange: def.definitionRange,
-        isDefinition: true,
+        isDefinition: true
       });
     }
   }
@@ -10656,9 +10147,11 @@ function findRefExpressionAtPosition(ast, line, character, index) {
     let best2 = null;
     let bestSize2 = Infinity;
     for (const entry of index.expressions) {
-      if (!isPositionInRange(line, character, entry.range)) continue;
+      if (!isPositionInRange(line, character, entry.range))
+        continue;
       const decomposed = decomposeExpression(entry.expr, entry.scope);
-      if (!decomposed) continue;
+      if (!decomposed)
+        continue;
       const size = rangeSize(entry.range);
       if (size < bestSize2) {
         best2 = decomposed;
@@ -10671,10 +10164,13 @@ function findRefExpressionAtPosition(ast, line, character, index) {
   let bestSize = Infinity;
   walkAstExpressions(ast, (expr, ctx) => {
     const cst = expr.__cst;
-    if (!cst) return;
-    if (!isPositionInRange(line, character, cst.range)) return;
+    if (!cst)
+      return;
+    if (!isPositionInRange(line, character, cst.range))
+      return;
     const decomposed = decomposeExpression(expr, ctx);
-    if (!decomposed) return;
+    if (!decomposed)
+      return;
     const size = rangeSize(cst.range);
     if (size < bestSize) {
       best = decomposed;
@@ -10686,19 +10182,21 @@ function findRefExpressionAtPosition(ast, line, character, index) {
 function findDefinitionKeyAtPosition(ast, line, character, index) {
   if (index) {
     const entry = queryDefinitionAtPosition(index, line, character);
-    if (!entry) return null;
+    if (!entry)
+      return null;
     return {
       namespace: entry.namespace,
       name: entry.name,
       range: entry.fullRange,
       nameRange: entry.keyRange,
-      scope: entry.scope,
+      scope: entry.scope
     };
   }
   let best = null;
   let bestSize = Infinity;
   walkDefinitionKeys(ast, (namespace, name, keyRange, fullRange, ctx) => {
-    if (!isPositionInRange(line, character, keyRange)) return;
+    if (!isPositionInRange(line, character, keyRange))
+      return;
     const size = rangeSize(keyRange);
     if (size < bestSize) {
       best = {
@@ -10706,7 +10204,7 @@ function findDefinitionKeyAtPosition(ast, line, character, index) {
         name,
         range: fullRange,
         nameRange: keyRange,
-        scope: ctx,
+        scope: ctx
       };
       bestSize = size;
     }
@@ -10717,14 +10215,18 @@ function walkDefinitionKeys(ast, callback) {
   walkDefinitionKeysInner(ast, callback, {}, void 0, /* @__PURE__ */ new Set());
 }
 function walkDefinitionKeysInner(value, callback, ctx, parentNamespace, visited) {
-  if (!value || typeof value !== "object") return;
-  if (visited.has(value)) return;
+  if (!value || typeof value !== "object")
+    return;
+  if (visited.has(value))
+    return;
   visited.add(value);
   if (isNamedMap(value)) {
     for (const [entryName, entry] of value) {
-      if (!isAstNodeLike(entry)) continue;
+      if (!isAstNodeLike(entry))
+        continue;
       const entryCst = entry.__cst;
-      if (!entryCst) continue;
+      if (!entryCst)
+        continue;
       const entryCtx = updateScopeContext(entry, ctx);
       const ns = parentNamespace ?? "";
       if (ns) {
@@ -10735,11 +10237,14 @@ function walkDefinitionKeysInner(value, callback, ctx, parentNamespace, visited)
     }
     return;
   }
-  if (!isAstNodeLike(value)) return;
+  if (!isAstNodeLike(value))
+    return;
   const newCtx = updateScopeContext(value, ctx);
   for (const [key, val] of Object.entries(value)) {
-    if (key.startsWith("__")) continue;
-    if (!val || typeof val !== "object") continue;
+    if (key.startsWith("__"))
+      continue;
+    if (!val || typeof val !== "object")
+      continue;
     if (isNamedMap(val)) {
       walkDefinitionKeysInner(val, callback, newCtx, key, visited);
     } else if (isAstNodeLike(val)) {
@@ -10749,9 +10254,7 @@ function walkDefinitionKeysInner(value, callback, ctx, parentNamespace, visited)
         const valCst = val.__cst;
         if (valCst) {
           const mappingNode = findMappingElement(valCst.node);
-          const { range, selectionRange } = mappingNode
-            ? computeRanges({ ...valCst, node: mappingNode })
-            : computeRanges(valCst);
+          const { range, selectionRange } = mappingNode ? computeRanges({ ...valCst, node: mappingNode }) : computeRanges(valCst);
           callback(parentNamespace, key, selectionRange, range, newCtx);
         }
         walkDefinitionKeysInner(val, callback, newCtx, void 0, visited);
@@ -10764,94 +10267,101 @@ function walkDefinitionKeysInner(value, callback, ctx, parentNamespace, visited)
 function resolveFromRoot(ast, namespace, name, ctx) {
   for (const key of resolveNamespaceKeys(namespace, ctx)) {
     const container = astField(ast, key);
-    if (!container) continue;
+    if (!container)
+      continue;
     if (isNamedMap(container)) {
       const entry = findMapEntry(container, name, namespace);
-      if (entry) return entry;
+      if (entry)
+        return entry;
     } else if (typeof container === "object") {
       const entry = findBlockProperty(container, name, namespace);
-      if (entry) return entry;
+      if (entry)
+        return entry;
     }
   }
   return null;
 }
-function resolveFromScopedChild(ast, namespace, name, targetScope, scope, ctx) {
-  const scopeBlock = findScopeBlock(ast, targetScope, scope, ctx);
-  if (!scopeBlock) return null;
-  for (const map of collectNamespaceMaps(scopeBlock, namespace)) {
-    const entry = findMapEntry(map, name, namespace);
-    if (entry) return entry;
-  }
-  return null;
+function resolveFromScopedChild(ast, namespace, name, scope, ctx) {
+  const entry = resolveEntryInScope(ast, namespace, name, ctx, scope);
+  return entry ? toMapResolvedReference(entry, namespace, name) : null;
 }
 function findMapEntry(container, name, namespace) {
-  if (!isNamedMap(container)) return null;
+  if (!isNamedMap(container))
+    return null;
   const entry = container.get(name);
-  if (!isAstNodeLike(entry)) return null;
+  if (!isAstNodeLike(entry))
+    return null;
+  return toMapResolvedReference(entry, namespace, name);
+}
+function toMapResolvedReference(entry, namespace, name) {
   const cst = entry.__cst;
-  if (!cst) return null;
-  const sym = entry.__symbol;
-  const symbolKind = sym?.kind ?? SymbolKind.Property;
+  if (!cst)
+    return null;
+  const symbolKind = entry.__symbol?.kind ?? SymbolKind.Property;
   const { range, selectionRange } = computeRanges(cst);
   return {
     namespace,
     name,
     symbolKind,
     definitionRange: selectionRange,
-    fullRange: range,
+    fullRange: range
   };
 }
 function findBlockProperty(container, name, namespace) {
-  if (!isAstNodeLike(container) || isNamedMap(container)) return null;
-  if (name.startsWith("__")) return null;
+  if (!isAstNodeLike(container) || isNamedMap(container))
+    return null;
+  if (name.startsWith("__"))
+    return null;
   const field = container[name];
-  if (!isAstNodeLike(field)) return null;
+  if (!isAstNodeLike(field))
+    return null;
   const cst = field.__cst;
-  if (!cst) return null;
+  if (!cst)
+    return null;
   const sym = field.__symbol;
   const symbolKind = sym?.kind ?? SymbolKind.Property;
   const mappingNode = findMappingElement(cst.node);
-  const { range, selectionRange } = mappingNode
-    ? computeRanges({ ...cst, node: mappingNode })
-    : computeRanges(cst);
+  const { range, selectionRange } = mappingNode ? computeRanges({ ...cst, node: mappingNode }) : computeRanges(cst);
   return {
     namespace,
     name,
     symbolKind,
     definitionRange: selectionRange,
-    fullRange: range,
+    fullRange: range
   };
 }
 function decomposeExpression(expr, ctx) {
   const decomposed = decomposeAtMemberExpression(expr);
-  if (!decomposed) return null;
+  if (!decomposed)
+    return null;
   const cst = expr.__cst;
-  if (!cst) return null;
+  if (!cst)
+    return null;
   const { range } = cst;
   const propertyNode = cst.node.namedChildren.find((n) => n.type === "id");
-  const nameRange = propertyNode
-    ? toRange(propertyNode)
-    : {
-        start: {
-          line: range.end.line,
-          character: range.end.character - decomposed.property.length,
-        },
-        end: range.end,
-      };
+  const nameRange = propertyNode ? toRange(propertyNode) : {
+    start: {
+      line: range.end.line,
+      character: range.end.character - decomposed.property.length
+    },
+    end: range.end
+  };
   return {
     namespace: decomposed.namespace,
     name: decomposed.property,
     range,
     nameRange,
-    scope: ctx,
+    scope: ctx
   };
 }
 
 // ../language/dist/core/analysis/snippet-gen.js
 function generateFieldSnippet(fieldName, fieldType, opts) {
   const ft = resolveFieldType2(fieldType);
-  if (isSequence(ft)) return void 0;
-  if (isPrimitive(ft) && !isTypedMap(ft)) return void 0;
+  if (isSequence(ft))
+    return void 0;
+  if (isPrimitive(ft) && !isTypedMap(ft))
+    return void 0;
   const tabSize = opts?.tabSize ?? 4;
   const counter = { value: 1 };
   if (isTypedMap(ft)) {
@@ -10872,14 +10382,7 @@ function snippetForBlock(name, ft, indent, counter, depth, namedEntryMode, tabSi
     lines[0] = `${pad}${name}: \${${counter.value++}}`;
     return lines.join("\n") + "$0";
   }
-  const childLines = generateChildLines(
-    ft.schema,
-    indent + 1,
-    counter,
-    depth + 1,
-    namedEntryMode,
-    tabSize,
-  );
+  const childLines = generateChildLines(ft.schema, indent + 1, counter, depth + 1, namedEntryMode, tabSize);
   if (childLines.length === 0) {
     const childPad = " ".repeat((indent + 1) * tabSize);
     lines.push(`${childPad}\${${counter.value++}}`);
@@ -10889,13 +10392,31 @@ function snippetForBlock(name, ft, indent, counter, depth, namedEntryMode, tabSi
   return depth === 0 ? lines.join("\n") + "$0" : lines.join("\n");
 }
 function snippetForCollection(name, ft, indent, counter, tabSize) {
-  const pad = " ".repeat(indent * tabSize);
+  const basePad = generatePad(indent, tabSize);
   const entryBlock = getEntryBlock(ft);
-  if (!entryBlock?.schema) {
-    return `${pad}${name} \${${counter.value++}:Name}:
-${pad}${" ".repeat(tabSize)}\${${counter.value++}}$0`;
+  if (!entryBlock?.schema || Object.keys(entryBlock.schema).length === 0) {
+    if (ft.__isNamedCollection) {
+      return [
+        `${basePad}${name} \${${counter.value++}:Name}:`,
+        `${generatePad(indent + 1, tabSize)}\${${counter.value++}}`
+      ].join("\n") + "$0";
+    }
+    return [
+      `${basePad}${name}:`,
+      `${generatePad(indent + 1, tabSize)}\${${counter.value++}:Name}:`,
+      `${generatePad(indent + 2, tabSize)}\${${counter.value++}}`
+    ].join("\n") + "$0";
   }
-  const lines = [`${pad}${name} \${${counter.value++}:Name}:`];
+  let lines;
+  if (ft.__isNamedCollection) {
+    lines = [`${basePad}${name} \${${counter.value++}:Name}:`];
+  } else {
+    lines = [
+      `${basePad}${name}:`,
+      `${generatePad(indent + 1, tabSize)}\${${counter.value++}:Name}:`
+    ];
+    indent += 1;
+  }
   const childLines = generateChildLines(
     entryBlock.schema,
     indent + 1,
@@ -10903,11 +10424,10 @@ ${pad}${" ".repeat(tabSize)}\${${counter.value++}}$0`;
     1,
     true,
     // namedEntryMode — only required fields
-    tabSize,
+    tabSize
   );
   if (childLines.length === 0) {
-    const childPad = " ".repeat((indent + 1) * tabSize);
-    lines.push(`${childPad}\${${counter.value++}}`);
+    lines.push(`${generatePad(indent + 1, tabSize)}\${${counter.value++}}`);
   } else {
     lines.push(...childLines);
   }
@@ -10934,7 +10454,8 @@ function snippetForTypedMap(name, ft, indent, counter, tabSize) {
   if (propsSchema) {
     for (const [fieldName, childFt] of Object.entries(propsSchema)) {
       const resolved = resolveFieldType2(childFt);
-      if (fieldName.startsWith("__")) continue;
+      if (fieldName.startsWith("__"))
+        continue;
       if (fieldName === "description" || resolved.__metadata?.required) {
         lines.push(`${propPad}${fieldName}: ${primitiveSnippetValue(resolved, counter)}`);
       }
@@ -10945,9 +10466,11 @@ function snippetForTypedMap(name, ft, indent, counter, tabSize) {
 function generateChildLines(schema2, indent, counter, depth, namedEntryMode, tabSize) {
   const lines = [];
   for (const [fieldName, rawFt] of Object.entries(schema2)) {
-    if (fieldName.startsWith("__")) continue;
+    if (fieldName.startsWith("__"))
+      continue;
     const ft = resolveFieldType2(rawFt);
-    if (!shouldIncludeField(ft, depth, namedEntryMode)) continue;
+    if (!shouldIncludeField(ft, depth, namedEntryMode))
+      continue;
     if (isSequence(ft) || isCollection(ft) || isTypedMap(ft)) {
       continue;
     }
@@ -10961,20 +10484,26 @@ function generateChildLines(schema2, indent, counter, depth, namedEntryMode, tab
 }
 function shouldIncludeField(ft, depth, namedEntryMode) {
   const required2 = ft.__metadata?.required === true;
-  if (required2 && depth <= 2) return true;
-  if (namedEntryMode) return false;
+  if (required2 && depth <= 2)
+    return true;
+  if (namedEntryMode)
+    return false;
   if (depth === 1) {
-    if (isPrimitive(ft)) return true;
-    if (ft.schema && hasRequiredChild(ft)) return true;
+    if (isPrimitive(ft))
+      return true;
+    if (ft.schema && hasRequiredChild(ft))
+      return true;
     return false;
   }
   return false;
 }
 function hasRequiredChild(ft) {
-  if (!ft.schema) return false;
+  if (!ft.schema)
+    return false;
   for (const childFt of Object.values(ft.schema)) {
     const resolved = resolveFieldType2(childFt);
-    if (resolved.__metadata?.required) return true;
+    if (resolved.__metadata?.required)
+      return true;
   }
   return false;
 }
@@ -10993,6 +10522,10 @@ ${childPad}\${${counter.value++}:${escapeSnippetText(placeholder)}}`;
   return `${pad}${name}: ${primitiveSnippetValue(ft, counter)}`;
 }
 function primitiveSnippetValue(ft, counter) {
+  if (isEnumValue(ft)) {
+    const placeholder2 = placeholderFromEnum(ft) ?? "value";
+    return `"\${${counter.value++}|${placeholder2}|}"`;
+  }
   if (isStringValue(ft)) {
     const placeholder2 = placeholderFromMeta(ft) ?? "value";
     return `"\${${counter.value++}:${escapeSnippetText(placeholder2)}}"`;
@@ -11016,28 +10549,19 @@ function isSequence(ft) {
   return ft.__fieldKind === "Sequence";
 }
 function isStringValue(ft) {
-  return (
-    ft.__fieldKind === "Primitive" &&
-    Array.isArray(ft.__accepts) &&
-    ft.__accepts.includes("StringLiteral")
-  );
+  return isPrimitive(ft) && Array.isArray(ft.__accepts) && ft.__accepts.includes("StringLiteral");
+}
+function isEnumValue(ft) {
+  return isPrimitive(ft) && Array.isArray(ft.__accepts) && ft.__accepts.includes("StringLiteral") && Array.isArray(ft.__metadata?.constraints?.enum);
 }
 function isBooleanValue(ft) {
-  return (
-    ft.__fieldKind === "Primitive" &&
-    Array.isArray(ft.__accepts) &&
-    ft.__accepts.includes("BooleanLiteral")
-  );
+  return isPrimitive(ft) && Array.isArray(ft.__accepts) && ft.__accepts.includes("BooleanLiteral");
 }
 function isNumberValue(ft) {
-  return (
-    ft.__fieldKind === "Primitive" &&
-    Array.isArray(ft.__accepts) &&
-    ft.__accepts.includes("NumberLiteral")
-  );
+  return isPrimitive(ft) && Array.isArray(ft.__accepts) && ft.__accepts.includes("NumberLiteral");
 }
 function isProcedureValue(ft) {
-  return ft.__fieldKind === "Primitive" && !ft.__accepts?.length;
+  return isPrimitive(ft) && !ft.__accepts?.length;
 }
 function isTypedMap(ft) {
   return ft.__isTypedMap === true;
@@ -11067,32 +10591,82 @@ function getTypedMapPropertiesSchema(ft) {
 function escapeSnippetText(text) {
   return text.replace(/\\/g, "\\\\").replace(/\$/g, "\\$").replace(/}/g, "\\}").replace(/"/g, "'");
 }
+function escapeChoiceValue(text) {
+  return text.replace(/\\/g, "\\\\").replace(/\$/g, "\\$").replace(/}/g, "\\}").replace(/\|/g, "\\|").replace(/,/g, "\\,");
+}
 function placeholderFromMeta(ft) {
+  const example = ft.__metadata?.example;
+  if (example) {
+    return example;
+  }
   const desc = ft.__metadata?.description;
-  if (!desc) return void 0;
+  if (!desc)
+    return void 0;
   const firstSentence = desc.split(/\.\s/)[0];
-  if (firstSentence.length <= 50) return firstSentence.replace(/\.$/, "");
+  if (firstSentence.length <= 50)
+    return firstSentence.replace(/\.$/, "");
   return firstSentence.slice(0, 47) + "...";
+}
+function generatePad(indent, tabSize) {
+  return " ".repeat(indent * tabSize);
+}
+function placeholderFromEnum(ft) {
+  const enumValues = ft.__metadata?.constraints?.enum;
+  if (!Array.isArray(enumValues))
+    return void 0;
+  return enumValues.map((v) => escapeChoiceValue(String(v))).join(",");
 }
 
 // ../language/dist/core/analysis/completions.js
-function findEnclosingScope(ast, line, character, index) {
-  if (index) {
-    return queryScopeAtPosition(index, line, character);
+function findEnclosingScope(ast, line, character, index, source, ctx) {
+  const scope = index ? queryScopeAtPosition(index, line, character) : (() => {
+    const s = {};
+    walkScopeBlocks(ast, line, character, s, /* @__PURE__ */ new Set());
+    return s;
+  })();
+  if (Object.keys(scope).length > 0)
+    return scope;
+  if (source && ctx) {
+    return scopeFromIndentation(source.split("\n"), line, ctx);
   }
+  return scope;
+}
+function scopeFromIndentation(lines, cursorLine, ctx) {
   const scope = {};
-  walkScopeBlocks(ast, line, character, scope, /* @__PURE__ */ new Set());
+  const rootSchema = ctx.info.schema;
+  for (const { trimmed } of walkParentsByIndent(lines, cursorLine)) {
+    const m = trimmed.match(/^([\w-]+)(?:\s+([\w-]+))?\s*:/);
+    if (!m)
+      continue;
+    const key = m[1];
+    const entryName = m[2];
+    if (!entryName)
+      continue;
+    for (const schemaKey of resolveNamespaceKeys(key, ctx)) {
+      const rawFt = rootSchema[schemaKey];
+      if (!rawFt)
+        continue;
+      const ft = Array.isArray(rawFt) ? rawFt[0] : rawFt;
+      if (ft.scopeAlias) {
+        scope[ft.scopeAlias] = entryName;
+      }
+    }
+  }
   return scope;
 }
 function walkScopeBlocks(value, line, character, scope, visited) {
-  if (!value || typeof value !== "object") return;
-  if (visited.has(value)) return;
+  if (!value || typeof value !== "object")
+    return;
+  if (visited.has(value))
+    return;
   visited.add(value);
   if (isNamedMap(value)) {
     for (const [name, entry] of value) {
-      if (!isAstNodeLike(entry)) continue;
+      if (!isAstNodeLike(entry))
+        continue;
       const cst2 = entry.__cst;
-      if (!cst2 || !isPositionInRange(line, character, cst2.range)) continue;
+      if (!cst2 || !isPositionInRange(line, character, cst2.range))
+        continue;
       const blockScope = entry.__scope;
       if (blockScope && typeof entry.__name === "string") {
         scope[blockScope] = name;
@@ -11104,9 +10678,11 @@ function walkScopeBlocks(value, line, character, scope, visited) {
     }
     return;
   }
-  if (!isAstNodeLike(value)) return;
+  if (!isAstNodeLike(value))
+    return;
   const cst = value.__cst;
-  if (cst && !isPositionInRange(line, character, cst.range)) return;
+  if (cst && !isPositionInRange(line, character, cst.range))
+    return;
   recurseAstChildren(value, (_k, child) => {
     walkScopeBlocks(child, line, character, scope, visited);
   });
@@ -11120,35 +10696,29 @@ function getAvailableNamespaces(ctx, scope) {
     candidates.push({
       name: ns,
       kind: meta2.kind,
-      detail: meta2.scopesRequired
-        ? `(scoped to ${[...meta2.scopesRequired].join(" or ")})`
-        : void 0,
+      detail: meta2.scopesRequired ? `(scoped to ${[...meta2.scopesRequired].join(" or ")})` : void 0
     });
   }
   return candidates;
 }
 function getCompletionCandidates(ast, namespace, ctx, scope, symbols, line, character) {
   let effectiveScope = scope;
-  if (
-    line !== void 0 &&
-    character !== void 0 &&
-    ctx.scopedNamespaces.has(namespace) &&
-    ctx.colinearResolvedScopes.has(namespace)
-  ) {
+  if (line !== void 0 && character !== void 0 && ctx.scopedNamespaces.has(namespace) && ctx.colinearResolvedScopes.has(namespace)) {
     const scopesRequired2 = ctx.scopedNamespaces.get(namespace);
     const activeScope2 = activeScopeForNamespace(scopesRequired2, scope);
     const override = findNestedRunSetTarget(ast, line, character);
     if (activeScope2 && override !== void 0) {
-      effectiveScope = { ...(scope ?? {}), [activeScope2]: override };
+      effectiveScope = { ...scope ?? {}, [activeScope2]: override };
     }
   }
   if (symbols) {
-    const entries = getSymbolNamespaceEntries(symbols, namespace, ctx, effectiveScope);
+    const position = line !== void 0 && character !== void 0 ? { line, character } : void 0;
+    const entries = getSymbolNamespaceEntries(symbols, namespace, ctx, effectiveScope, position);
     if (entries) {
       return entries.map(({ name, symbol }) => ({
         name,
         kind: symbol.kind,
-        detail: symbol.detail,
+        detail: symbol.detail
       }));
     }
   }
@@ -11158,12 +10728,13 @@ function getCompletionCandidates(ast, namespace, ctx, scope, symbols, line, char
     return getScopedChildCandidates(ast, namespace, activeScope, effectiveScope, ctx);
   }
   const rootCandidates = getRootCandidates(ast, namespace, ctx);
-  if (rootCandidates.length > 0) return rootCandidates;
+  if (rootCandidates.length > 0)
+    return rootCandidates;
   const globalMembers = ctx.globalScopes.get(namespace);
   if (globalMembers) {
     return [...globalMembers].map((member) => ({
       name: member,
-      kind: SymbolKind.Property,
+      kind: SymbolKind.Property
     }));
   }
   return [];
@@ -11172,29 +10743,37 @@ function findNestedRunSetTarget(ast, line, character) {
   return walkForNestedRunSet(ast, line, character, void 0, /* @__PURE__ */ new Set());
 }
 function walkForNestedRunSet(value, line, character, enclosingRunTarget, visited) {
-  if (!value || typeof value !== "object") return void 0;
-  if (visited.has(value)) return void 0;
+  if (!value || typeof value !== "object")
+    return void 0;
+  if (visited.has(value))
+    return void 0;
   visited.add(value);
   if (isNamedMap(value)) {
     for (const [, entry] of value) {
-      if (!isAstNodeLike(entry)) continue;
+      if (!isAstNodeLike(entry))
+        continue;
       const cst2 = entry.__cst;
-      if (!cst2 || !isPositionInRange(line, character, cst2.range)) continue;
+      if (!cst2 || !isPositionInRange(line, character, cst2.range))
+        continue;
       const result2 = walkForNestedRunSet(entry, line, character, enclosingRunTarget, visited);
-      if (result2 !== void 0) return result2;
+      if (result2 !== void 0)
+        return result2;
     }
     return void 0;
   }
   if (Array.isArray(value)) {
     for (const item of value) {
       const result2 = walkForNestedRunSet(item, line, character, enclosingRunTarget, visited);
-      if (result2 !== void 0) return result2;
+      if (result2 !== void 0)
+        return result2;
     }
     return void 0;
   }
-  if (!isAstNodeLike(value)) return void 0;
+  if (!isAstNodeLike(value))
+    return void 0;
   const cst = value.__cst;
-  if (cst && !isPositionInRange(line, character, cst.range)) return void 0;
+  if (cst && !isPositionInRange(line, character, cst.range))
+    return void 0;
   if (value.__kind === "SetClause" && enclosingRunTarget !== void 0) {
     return enclosingRunTarget;
   }
@@ -11210,9 +10789,11 @@ function walkForNestedRunSet(value, line, character, enclosingRunTarget, visited
   }
   let result;
   recurseAstChildren(value, (_k, child) => {
-    if (result !== void 0) return;
+    if (result !== void 0)
+      return;
     const sub = walkForNestedRunSet(child, line, character, childRunTarget, visited);
-    if (sub !== void 0) result = sub;
+    if (sub !== void 0)
+      result = sub;
   });
   return result;
 }
@@ -11230,7 +10811,8 @@ function getRootCandidates(ast, namespace, ctx) {
 }
 function getScopedChildCandidates(ast, namespace, targetScope, scope, ctx) {
   const scopeBlock = findScopeBlock(ast, targetScope, scope, ctx);
-  if (!scopeBlock) return [];
+  if (!scopeBlock)
+    return [];
   const candidates = [];
   for (const map of collectNamespaceMaps(scopeBlock, namespace)) {
     collectMapCandidates(map, candidates);
@@ -11238,9 +10820,11 @@ function getScopedChildCandidates(ast, namespace, targetScope, scope, ctx) {
   return candidates;
 }
 function collectMapCandidates(container, candidates) {
-  if (!isNamedMap(container)) return;
+  if (!isNamedMap(container))
+    return;
   for (const [name, entry] of container) {
-    if (!isAstNodeLike(entry)) continue;
+    if (!isAstNodeLike(entry))
+      continue;
     const sym = entry.__symbol;
     const symbolKind = sym?.kind ?? SymbolKind.Property;
     const cst = entry.__cst;
@@ -11250,10 +10834,13 @@ function collectMapCandidates(container, candidates) {
   }
 }
 function collectBlockCandidates(container, candidates) {
-  if (!isAstNodeLike(container) || isNamedMap(container)) return;
+  if (!isAstNodeLike(container) || isNamedMap(container))
+    return;
   for (const [name, field] of Object.entries(container)) {
-    if (name.startsWith("__")) continue;
-    if (!isAstNodeLike(field)) continue;
+    if (name.startsWith("__"))
+      continue;
+    if (!isAstNodeLike(field))
+      continue;
     const sym = field.__symbol;
     const symbolKind = sym?.kind ?? SymbolKind.Property;
     const cst = field.__cst;
@@ -11272,65 +10859,60 @@ function getFieldCompletions(ast, line, character, ctx, source) {
     const isBlankLine = currentLine.trim() === "";
     if (!result || isBlankLine) {
       const inferred = inferBlockFromIndentation(ast, line, character, rootSchema, source);
-      if (inferred) result = inferred;
+      if (inferred)
+        result = inferred;
     }
   }
   if (!result) {
-    return Object.keys(rootSchema)
-      .filter((key) => !aliases[key])
-      .filter((key) => {
-        const ft = Array.isArray(rootSchema[key]) ? rootSchema[key][0] : rootSchema[key];
-        if (ft.__metadata?.hidden) return false;
-        return !(key in ast) || isNamedMap(astField(ast, key));
-      })
-      .map((key) => {
-        const ft = Array.isArray(rootSchema[key]) ? rootSchema[key][0] : rootSchema[key];
-        return {
-          name: key,
-          kind: fieldCompletionKind(ft),
-          documentation: ft.__metadata?.description,
-          snippet: generateFieldSnippet(key, ft),
-        };
-      });
-  }
-  const { block, schema: schema2 } = result;
-  return Object.entries(schema2)
-    .filter(([name, ft]) => {
-      const fieldType = Array.isArray(ft) ? ft[0] : ft;
-      if (fieldType.__metadata?.hidden) return false;
-      if (name in block) return false;
-      const existing = block[name];
-      return !existing || isNamedMap(existing);
-    })
-    .map(([name, ft]) => {
-      const fieldType = Array.isArray(ft) ? ft[0] : ft;
+    return Object.keys(rootSchema).filter((key) => !aliases[key]).filter((key) => {
+      const ft = Array.isArray(rootSchema[key]) ? rootSchema[key][0] : rootSchema[key];
+      if (ft.__metadata?.hidden)
+        return false;
+      return !(key in ast) || isNamedMap(astField(ast, key));
+    }).map((key) => {
+      const ft = Array.isArray(rootSchema[key]) ? rootSchema[key][0] : rootSchema[key];
       return {
-        name,
-        kind: fieldCompletionKind(fieldType),
-        documentation: fieldType.__metadata?.description,
-        snippet: generateFieldSnippet(name, fieldType),
+        name: key,
+        kind: fieldCompletionKind(ft),
+        documentation: ft.__metadata?.description,
+        snippet: generateFieldSnippet(key, ft)
       };
     });
+  }
+  const { block, schema: schema2 } = result;
+  return Object.entries(schema2).filter(([name, ft]) => {
+    const fieldType = Array.isArray(ft) ? ft[0] : ft;
+    if (fieldType.__metadata?.hidden)
+      return false;
+    if (name in block)
+      return false;
+    const existing = block[name];
+    return !existing || isNamedMap(existing);
+  }).map(([name, ft]) => {
+    const fieldType = Array.isArray(ft) ? ft[0] : ft;
+    return {
+      name,
+      kind: fieldCompletionKind(fieldType),
+      documentation: fieldType.__metadata?.description,
+      snippet: generateFieldSnippet(name, fieldType)
+    };
+  });
 }
 function inferBlockFromIndentation(_ast, line, _character, rootSchema, source) {
   const lines = source.split("\n");
   const currentLine = lines[line] ?? "";
-  const cursorIndent = currentLine.length - currentLine.trimStart().length;
-  if (cursorIndent === 0) return null;
+  const cursorIndent = getIndent(currentLine);
+  if (cursorIndent === 0)
+    return null;
   const parents = [];
-  let targetIndent = cursorIndent;
-  for (let l = line - 1; l >= 0; l--) {
-    const ln = lines[l];
-    if (!ln || !ln.trim()) continue;
-    const indent = ln.length - ln.trimStart().length;
-    if (indent >= targetIndent) continue;
-    const m = ln.trimStart().match(/^([\w-]+)(?:\s+([\w-]+))?\s*:/);
-    if (!m) continue;
+  for (const { line: l, indent, trimmed } of walkParentsByIndent(lines, line)) {
+    const m = trimmed.match(/^([\w-]+)(?:\s+([\w-]+))?\s*:/);
+    if (!m)
+      continue;
     parents.unshift({ key: m[1], indent, line: l, hasEntryName: !!m[2] });
-    targetIndent = indent;
-    if (indent === 0) break;
   }
-  if (parents.length === 0) return null;
+  if (parents.length === 0)
+    return null;
   let schema2 = rootSchema;
   let mapLevel = "none";
   for (const { key, hasEntryName } of parents) {
@@ -11355,28 +10937,32 @@ function inferBlockFromIndentation(_ast, line, _character, rootSchema, source) {
       } else {
         return {
           block: { __kind: "LeafField" },
-          schema: {},
+          schema: {}
         };
       }
     } else {
       mapLevel = "none";
     }
   }
-  if (schema2 === rootSchema) return null;
+  if (schema2 === rootSchema)
+    return null;
   if (mapLevel === "named") {
     return {
       block: { __kind: "NamedMapGap" },
-      schema: {},
+      schema: {}
     };
   }
   const lastParent = parents[parents.length - 1];
   const presentKeys = { __kind: "Synthetic" };
   for (let l = lastParent.line + 1; l < lines.length; l++) {
     const ln = lines[l];
-    if (!ln || !ln.trim()) continue;
-    const indent = ln.length - ln.trimStart().length;
-    if (indent <= lastParent.indent) break;
-    if (indent !== cursorIndent) continue;
+    if (!ln || !ln.trim())
+      continue;
+    const indent = getIndent(ln);
+    if (indent <= lastParent.indent)
+      break;
+    if (indent !== cursorIndent)
+      continue;
     const km = ln.trimStart().match(/^([\w-]+)\s*:/);
     if (km && km[1] in schema2) {
       presentKeys[km[1]] = true;
@@ -11384,23 +10970,29 @@ function inferBlockFromIndentation(_ast, line, _character, rootSchema, source) {
   }
   return {
     block: presentKeys,
-    schema: schema2,
+    schema: schema2
   };
 }
 function fieldCompletionKind(ft) {
   const resolved = Array.isArray(ft) ? ft[0] : ft;
-  if (resolved.isNamed) return SymbolKind.Namespace;
-  if (resolved.__isCollection) return SymbolKind.Namespace;
-  if (resolved.schema) return SymbolKind.Object;
+  if (resolved.isNamed)
+    return SymbolKind.Namespace;
+  if (resolved.__isCollection)
+    return SymbolKind.Namespace;
+  if (resolved.schema)
+    return SymbolKind.Object;
   return SymbolKind.Property;
 }
 function findEnclosingBlockWithSchema(value, line, character, schema2, namedEntryType) {
-  if (!value || typeof value !== "object") return null;
+  if (!value || typeof value !== "object")
+    return null;
   if (isNamedMap(value)) {
     for (const [, entry] of value) {
-      if (!isAstNodeLike(entry)) continue;
+      if (!isAstNodeLike(entry))
+        continue;
       const cst = entry.__cst;
-      if (!cst || !isPositionInRange(line, character, cst.range)) continue;
+      if (!cst || !isPositionInRange(line, character, cst.range))
+        continue;
       let entrySchema = schema2;
       if (namedEntryType && hasDiscriminant(namedEntryType)) {
         const discValue = extractDiscriminantValue(entry, namedEntryType.discriminantField);
@@ -11413,40 +11005,38 @@ function findEnclosingBlockWithSchema(value, line, character, schema2, namedEntr
           entrySchema = namedEntryType.resolveSchemaForName(name);
         }
       }
-      return (
-        findDeeperBlock(entry, line, character, entrySchema) ?? {
-          block: entry,
-          schema: entrySchema,
-        }
-      );
+      return findDeeperBlock(entry, line, character, entrySchema) ?? {
+        block: entry,
+        schema: entrySchema
+      };
     }
     return null;
   }
-  if (!isAstNodeLike(value)) return null;
+  if (!isAstNodeLike(value))
+    return null;
   for (const [key, ft] of Object.entries(schema2)) {
     const fieldType = Array.isArray(ft) ? ft[0] : ft;
     const child = value[key];
-    if (!child || typeof child !== "object") continue;
+    if (!child || typeof child !== "object")
+      continue;
     if (isNamedMap(child)) {
       if (fieldType.schema) {
         const entryType = isCollectionFieldType(fieldType) ? fieldType.entryBlock : void 0;
-        const mapResult = findEnclosingBlockWithSchema(
-          child,
-          line,
-          character,
-          fieldType.schema,
-          entryType,
-        );
-        if (mapResult) return mapResult;
+        const mapResult = findEnclosingBlockWithSchema(child, line, character, fieldType.schema, entryType);
+        if (mapResult)
+          return mapResult;
       }
       continue;
     }
-    if (!isAstNodeLike(child)) continue;
+    if (!isAstNodeLike(child))
+      continue;
     const cst = child.__cst;
-    if (!cst || !isPositionInRange(line, character, cst.range)) continue;
+    if (!cst || !isPositionInRange(line, character, cst.range))
+      continue;
     if (fieldType.schema) {
       const deeper = findEnclosingBlockWithSchema(child, line, character, fieldType.schema);
-      if (deeper) return deeper;
+      if (deeper)
+        return deeper;
       return { block: child, schema: fieldType.schema };
     }
     return { block: child, schema: {} };
@@ -11457,18 +11047,23 @@ function findDeeperBlock(obj, line, character, schema2) {
   for (const [key, ft] of Object.entries(schema2)) {
     const fieldType = Array.isArray(ft) ? ft[0] : ft;
     const child = obj[key];
-    if (!child || typeof child !== "object") continue;
+    if (!child || typeof child !== "object")
+      continue;
     if (isNamedMap(child) && fieldType.schema) {
       const result = findEnclosingBlockWithSchema(child, line, character, fieldType.schema);
-      if (result) return result;
+      if (result)
+        return result;
       continue;
     }
-    if (!isAstNodeLike(child)) continue;
+    if (!isAstNodeLike(child))
+      continue;
     const cst = child.__cst;
-    if (!cst || !isPositionInRange(line, character, cst.range)) continue;
+    if (!cst || !isPositionInRange(line, character, cst.range))
+      continue;
     if (fieldType.schema) {
       const deeper = findEnclosingBlockWithSchema(child, line, character, fieldType.schema);
-      if (deeper) return deeper;
+      if (deeper)
+        return deeper;
       return { block: child, schema: fieldType.schema };
     }
   }
@@ -11477,23 +11072,19 @@ function findDeeperBlock(obj, line, character, schema2) {
 function getValueCompletions(line, _character, ctx, source) {
   const lines = source.split("\n");
   const currentLine = lines[line] ?? "";
-  const cursorIndent = currentLine.length - currentLine.trimStart().length;
-  if (cursorIndent === 0) return [];
+  const cursorIndent = getIndent(currentLine);
+  if (cursorIndent === 0)
+    return [];
   const rootSchema = ctx.info.schema;
   const parents = [];
-  let targetIndent = cursorIndent;
-  for (let l = line - 1; l >= 0; l--) {
-    const ln = lines[l];
-    if (!ln || !ln.trim()) continue;
-    const indent = ln.length - ln.trimStart().length;
-    if (indent >= targetIndent) continue;
-    const m = ln.trimStart().match(/^([\w-]+)(?:\s+([\w-]+))?\s*:/);
-    if (!m) continue;
+  for (const { trimmed, indent } of walkParentsByIndent(lines, line)) {
+    const m = trimmed.match(/^([\w-]+)(?:\s+([\w-]+))?\s*:/);
+    if (!m)
+      continue;
     parents.unshift({ key: m[1], indent, hasEntryName: !!m[2] });
-    targetIndent = indent;
-    if (indent === 0) break;
   }
-  if (parents.length === 0) return [];
+  if (parents.length === 0)
+    return [];
   let schema2 = rootSchema;
   let typedMapField = null;
   for (const { key, hasEntryName } of parents) {
@@ -11525,14 +11116,15 @@ function getValueCompletions(line, _character, ctx, source) {
       typedMapField = null;
     }
   }
-  if (!typedMapField) return [];
+  if (!typedMapField)
+    return [];
   const candidates = [];
   const primitiveTypes2 = typedMapField.__primitiveTypes ?? [];
   for (const pt of primitiveTypes2) {
     candidates.push({
       name: pt.keyword,
       kind: SymbolKind.TypeParameter,
-      documentation: pt.description,
+      documentation: pt.description
     });
   }
   return candidates;
@@ -11546,6 +11138,102 @@ function extractCandidateDocumentation(obj) {
   }
   return void 0;
 }
+function getWithCompletions(ast, line, _character, ctx, source) {
+  const lines = source.split("\n");
+  const currentLine = lines[line] ?? "";
+  const withMatch = currentLine.match(/^\s+with\s+(\w*)$/);
+  if (!withMatch)
+    return [];
+  const ref = findEnclosingActionRef(lines, line);
+  if (!ref)
+    return [];
+  const scope = findEnclosingScope(ast, line, _character, void 0, source, ctx);
+  const actionBlock = resolveEntryAtRoot(ast, ref.namespace, ref.property, ctx) ?? resolveEntryInScope(ast, ref.namespace, ref.property, ctx, scope);
+  if (!actionBlock)
+    return [];
+  const candidates = [];
+  const inputs = actionBlock.inputs;
+  if (isNamedMap(inputs)) {
+    const boundParams = collectBoundWithParams(lines, line);
+    for (const [name, entry] of inputs) {
+      if (boundParams.has(name))
+        continue;
+      if (!isAstNodeLike(entry))
+        continue;
+      const documentation = extractCandidateDocumentation(entry);
+      candidates.push({
+        name,
+        kind: SymbolKind.Property,
+        documentation
+      });
+    }
+  }
+  return candidates;
+}
+function findEnclosingActionRef(lines, cursorLine) {
+  for (const { trimmed } of walkParentsByIndent(lines, cursorLine)) {
+    const runMatch = trimmed.match(/^run\s+@(\w+)\.([\w-]+)/);
+    if (runMatch)
+      return { namespace: runMatch[1], property: runMatch[2] };
+    const entryMatch = trimmed.match(/^[\w-]+:\s+@(\w+)\.([\w-]+)/);
+    if (entryMatch) {
+      return { namespace: entryMatch[1], property: entryMatch[2] };
+    }
+    return null;
+  }
+  return null;
+}
+function collectBoundWithParams(lines, cursorLine) {
+  const bound = /* @__PURE__ */ new Set();
+  const cursorIndent = getIndent(lines[cursorLine]);
+  for (let l = cursorLine - 1; l >= 0; l--) {
+    const ln = lines[l];
+    if (!ln || !ln.trim())
+      continue;
+    const lineIndent = getIndent(ln);
+    if (lineIndent < cursorIndent)
+      break;
+    if (lineIndent !== cursorIndent)
+      continue;
+    const withParamMatch = ln.trim().match(/^with\s+([\w-]+)/);
+    if (withParamMatch) {
+      bound.add(withParamMatch[1]);
+    }
+  }
+  for (let l = cursorLine + 1; l < lines.length; l++) {
+    const ln = lines[l];
+    if (!ln || !ln.trim())
+      continue;
+    const lineIndent = getIndent(ln);
+    if (lineIndent < cursorIndent)
+      break;
+    if (lineIndent !== cursorIndent)
+      continue;
+    const withParamMatch = ln.trim().match(/^with\s+([\w-]+)/);
+    if (withParamMatch) {
+      bound.add(withParamMatch[1]);
+    }
+  }
+  return bound;
+}
+function getIndent(line) {
+  return line.length - line.trimStart().length;
+}
+function* walkParentsByIndent(lines, cursorLine) {
+  let targetIndent = getIndent(lines[cursorLine] ?? "");
+  for (let l = cursorLine - 1; l >= 0; l--) {
+    const ln = lines[l];
+    if (!ln || !ln.trim())
+      continue;
+    const indent = getIndent(ln);
+    if (indent >= targetIndent)
+      continue;
+    yield { line: l, indent, trimmed: ln.trimStart() };
+    targetIndent = indent;
+    if (indent === 0)
+      break;
+  }
+}
 
 // ../language/dist/core/analysis/schema-hover.js
 function resolveSchemaField(path, schema2) {
@@ -11557,7 +11245,8 @@ function resolveSchemaField(path, schema2) {
     const key = path[i];
     const raw = current[key];
     const field = Array.isArray(raw) ? raw[0] : raw;
-    if (!field) break;
+    if (!field)
+      break;
     lastField = field;
     lastKey = key;
     resolvedPath.push(key);
@@ -11581,12 +11270,14 @@ function resolveSchemaField(path, schema2) {
       break;
     }
   }
-  if (!lastField) return null;
+  if (!lastField)
+    return null;
   return { field: lastField, resolvedPath, lastKey };
 }
 function formatConstraints(metadata) {
   const c = metadata.constraints;
-  if (!c) return void 0;
+  if (!c)
+    return void 0;
   const parts = [];
   if (c.minimum !== void 0 && c.maximum !== void 0) {
     parts.push(`${c.minimum} \u2264 value \u2264 ${c.maximum}`);
@@ -11595,9 +11286,12 @@ function formatConstraints(metadata) {
   } else if (c.maximum !== void 0) {
     parts.push(`\u2264 ${c.maximum}`);
   }
-  if (c.exclusiveMinimum !== void 0) parts.push(`> ${c.exclusiveMinimum}`);
-  if (c.exclusiveMaximum !== void 0) parts.push(`< ${c.exclusiveMaximum}`);
-  if (c.multipleOf !== void 0) parts.push(`multiple of ${c.multipleOf}`);
+  if (c.exclusiveMinimum !== void 0)
+    parts.push(`> ${c.exclusiveMinimum}`);
+  if (c.exclusiveMaximum !== void 0)
+    parts.push(`< ${c.exclusiveMaximum}`);
+  if (c.multipleOf !== void 0)
+    parts.push(`multiple of ${c.multipleOf}`);
   if (c.minLength !== void 0 && c.maxLength !== void 0) {
     parts.push(`length ${c.minLength}\u2013${c.maxLength}`);
   } else if (c.minLength !== void 0) {
@@ -11605,7 +11299,8 @@ function formatConstraints(metadata) {
   } else if (c.maxLength !== void 0) {
     parts.push(`max length ${c.maxLength}`);
   }
-  if (c.pattern !== void 0) parts.push(`pattern \`/${c.pattern}/\``);
+  if (c.pattern !== void 0)
+    parts.push(`pattern \`/${c.pattern}/\``);
   if (c.minItems !== void 0 && c.maxItems !== void 0) {
     parts.push(`${c.minItems}\u2013${c.maxItems} items`);
   } else if (c.minItems !== void 0) {
@@ -11701,16 +11396,19 @@ function findKeywordInfo(keyword, keywords) {
 // ../language/dist/core/analysis/hover-resolver.js
 function resolveHover(root, line, character, schema2, accessor) {
   const target = findNodeAtPosition(root, line, character, accessor);
-  if (!target) return null;
+  if (!target)
+    return null;
   const targetType = accessor.type(target);
   if (findAncestorContext(root, target, "variable_declaration", accessor)) {
     const result = tryResolveModifierHover(target, root, schema2, accessor);
-    if (result) return result;
+    if (result)
+      return result;
   }
   if (targetType === "id" || targetType === "string") {
     if (targetType === "id") {
       const typeResult = tryResolveTypeHover(target, root, schema2, accessor);
-      if (typeResult) return typeResult;
+      if (typeResult)
+        return typeResult;
     }
     const path = buildSchemaPath(root, target, accessor);
     if (path.length > 0) {
@@ -11725,7 +11423,7 @@ function resolveHover(root, line, character, schema2, accessor) {
             metadata: resolved.field.__metadata,
             range: nodeRange(target, accessor),
             modifiers: resolved.field.__modifiers,
-            primitiveTypes: resolved.field.__primitiveTypes,
+            primitiveTypes: resolved.field.__primitiveTypes
           };
         }
       }
@@ -11734,24 +11432,21 @@ function resolveHover(root, line, character, schema2, accessor) {
   return null;
 }
 function findNodeAtPosition(node, line, character, a) {
-  if (
-    line < a.startLine(node) ||
-    line > a.endLine(node) ||
-    (line === a.startLine(node) && character < a.startColumn(node)) ||
-    (line === a.endLine(node) && character >= a.endColumn(node))
-  ) {
+  if (line < a.startLine(node) || line > a.endLine(node) || line === a.startLine(node) && character < a.startColumn(node) || line === a.endLine(node) && character >= a.endColumn(node)) {
     return null;
   }
   for (const child of a.children(node)) {
     const found = findNodeAtPosition(child, line, character, a);
-    if (found) return found;
+    if (found)
+      return found;
   }
   return node;
 }
 function buildSchemaPath(root, target, a) {
   const path = [];
   function walk(node) {
-    if (node === target) return true;
+    if (node === target)
+      return true;
     for (const child of a.children(node)) {
       if (walk(child)) {
         if (a.type(node) === "mapping_element") {
@@ -11770,7 +11465,8 @@ function buildSchemaPath(root, target, a) {
   return path;
 }
 function collectAncestorMappingElements(node, target, result, a) {
-  if (node === target) return true;
+  if (node === target)
+    return true;
   for (const child of a.children(node)) {
     if (collectAncestorMappingElements(child, target, result, a)) {
       if (a.type(node) === "mapping_element") {
@@ -11784,7 +11480,8 @@ function collectAncestorMappingElements(node, target, result, a) {
 function findAncestorContext(root, target, type, a) {
   let found = null;
   function walk(node) {
-    if (node === target) return true;
+    if (node === target)
+      return true;
     for (const child of a.children(node)) {
       if (walk(child)) {
         if (a.type(node) === type && !found) {
@@ -11799,69 +11496,71 @@ function findAncestorContext(root, target, type, a) {
   return found;
 }
 function containsNode(container, target, a) {
-  const startOk =
-    a.startLine(target) > a.startLine(container) ||
-    (a.startLine(target) === a.startLine(container) &&
-      a.startColumn(target) >= a.startColumn(container));
-  const endOk =
-    a.endLine(target) < a.endLine(container) ||
-    (a.endLine(target) === a.endLine(container) && a.endColumn(target) <= a.endColumn(container));
+  const startOk = a.startLine(target) > a.startLine(container) || a.startLine(target) === a.startLine(container) && a.startColumn(target) >= a.startColumn(container);
+  const endOk = a.endLine(target) < a.endLine(container) || a.endLine(target) === a.endLine(container) && a.endColumn(target) <= a.endColumn(container);
   return startOk && endOk;
 }
 function tryResolveModifierHover(target, root, schema2, a) {
   const typedMapField = findContainingTypedMapField(target, root, schema2, a);
-  if (!typedMapField?.__modifiers) return null;
+  if (!typedMapField?.__modifiers)
+    return null;
   const modifierNames = keywordNames(typedMapField.__modifiers);
   const text = a.text(target);
-  if (!modifierNames.includes(text)) return null;
+  if (!modifierNames.includes(text))
+    return null;
   const info = findKeywordInfo(text, typedMapField.__modifiers);
   return {
     kind: "modifier",
     keyword: text,
     info,
-    range: nodeRange(target, a),
+    range: nodeRange(target, a)
   };
 }
 function tryResolveTypeHover(target, root, schema2, a) {
   const varDecl = findAncestorContext(root, target, "variable_declaration", a);
-  if (!varDecl) return null;
+  if (!varDecl)
+    return null;
   const typeField = a.childByFieldName(varDecl, "type");
-  if (!typeField || !containsNode(typeField, target, a)) return null;
+  if (!typeField || !containsNode(typeField, target, a))
+    return null;
   const typedMapField = findContainingTypedMapField(target, root, schema2, a);
-  if (!typedMapField?.__primitiveTypes) return null;
+  if (!typedMapField?.__primitiveTypes)
+    return null;
   const typeNames = keywordNames(typedMapField.__primitiveTypes);
-  if (!typeNames.includes(a.text(target))) return null;
+  if (!typeNames.includes(a.text(target)))
+    return null;
   const info = findKeywordInfo(a.text(target), typedMapField.__primitiveTypes);
   return {
     kind: "type",
     keyword: a.text(target),
     info,
-    range: nodeRange(target, a),
+    range: nodeRange(target, a)
   };
 }
 function findContainingTypedMapField(target, root, schema2, a) {
   const mappingElements = [];
   collectAncestorMappingElements(root, target, mappingElements, a);
-  if (mappingElements.length < 2) return null;
+  if (mappingElements.length < 2)
+    return null;
   const fieldElement = mappingElements[mappingElements.length - 2];
   const path = buildSchemaPath(root, fieldElement, a);
   const keyNode = a.childByFieldName(fieldElement, "key");
   if (keyNode) {
     path.push(...extractKeyTexts(keyNode, a));
   }
-  if (path.length === 0) return null;
+  if (path.length === 0)
+    return null;
   const resolved = resolveSchemaField(path, schema2);
-  if (!resolved?.field.__isTypedMap) return null;
+  if (!resolved?.field.__isTypedMap)
+    return null;
   return resolved.field;
 }
 function extractKeyTexts(keyNode, a) {
-  return a
-    .namedChildren(keyNode)
-    .filter((c) => a.type(c) === "id" || a.type(c) === "string")
-    .map((c) => getKeyTextGeneric(c, a));
+  return a.namedChildren(keyNode).filter((c) => a.type(c) === "id" || a.type(c) === "string").map((c) => getKeyTextGeneric(c, a));
 }
 function getKeyTextGeneric(node, a) {
-  if (a.type(node) === "id") return a.text(node);
+  if (a.type(node) === "id")
+    return a.text(node);
   if (a.type(node) === "string") {
     let value = "";
     for (const child of a.namedChildren(node)) {
@@ -11869,13 +11568,20 @@ function getKeyTextGeneric(node, a) {
         value += a.text(child);
       } else if (a.type(child) === "escape_sequence") {
         const t = a.text(child);
-        if (t === '\\"') value += '"';
-        else if (t === "\\'") value += "'";
-        else if (t === "\\\\") value += "\\";
-        else if (t === "\\n") value += "\n";
-        else if (t === "\\r") value += "\r";
-        else if (t === "\\t") value += "	";
-        else if (t === "\\0") value += "\0";
+        if (t === '\\"')
+          value += '"';
+        else if (t === "\\'")
+          value += "'";
+        else if (t === "\\\\")
+          value += "\\";
+        else if (t === "\\n")
+          value += "\n";
+        else if (t === "\\r")
+          value += "\r";
+        else if (t === "\\t")
+          value += "	";
+        else if (t === "\\0")
+          value += "\0";
       }
     }
     return value;
@@ -11885,7 +11591,7 @@ function getKeyTextGeneric(node, a) {
 function nodeRange(node, a) {
   return {
     start: { line: a.startLine(node), character: a.startColumn(node) },
-    end: { line: a.endLine(node), character: a.endColumn(node) },
+    end: { line: a.endLine(node), character: a.endColumn(node) }
   };
 }
 
@@ -11924,10 +11630,7 @@ function checkInstance(instance, schema2, visitor) {
 }
 function checkFieldValue(value, fieldType, innerSchema, visitor) {
   if (fieldType.__fieldKind === "TypedMap" && isNamedMap(value)) {
-    const typedMapProps =
-      "propertiesSchema" in fieldType && isSchema(fieldType.propertiesSchema)
-        ? fieldType.propertiesSchema
-        : void 0;
+    const typedMapProps = "propertiesSchema" in fieldType && isSchema(fieldType.propertiesSchema) ? fieldType.propertiesSchema : void 0;
     if (typedMapProps) {
       for (const [, entry] of value) {
         if (isAstNodeLike(entry)) {
@@ -12005,19 +11708,23 @@ function getConstraints(fieldType) {
   return fieldType.__metadata?.constraints;
 }
 function extractStaticValue(value) {
-  if (!isAstNodeLike(value)) return void 0;
+  if (!isAstNodeLike(value))
+    return void 0;
   const kind = value.__kind;
   if (kind === "NumberValue") {
     const v = value.value;
-    if (typeof v === "number") return { kind: "number", raw: v };
+    if (typeof v === "number")
+      return { kind: "number", raw: v };
   }
   if (kind === "BooleanValue") {
     const v = value.value;
-    if (typeof v === "boolean") return { kind: "boolean", raw: v };
+    if (typeof v === "boolean")
+      return { kind: "boolean", raw: v };
   }
   if (kind === "StringLiteral") {
     const v = value.value;
-    if (typeof v === "string") return { kind: "string", raw: v };
+    if (typeof v === "string")
+      return { kind: "string", raw: v };
   }
   return void 0;
 }
@@ -12046,16 +11753,19 @@ function resolveCapabilityNamespaces(resolvedType, ctx) {
   return void 0;
 }
 function resolvedTypeLabel(resolvedType) {
-  if (resolvedType === "invocationTarget") return "invocation target";
-  if (resolvedType === "transitionTarget") return "transition target";
+  if (resolvedType === "invocationTarget")
+    return "invocation target";
+  if (resolvedType === "transitionTarget")
+    return "transition target";
   return resolvedType;
 }
 function validateConstraints(value, constraints, fieldName, validatedRefs, ctx) {
-  if (!isAstNodeLike(value)) return;
+  if (!isAstNodeLike(value))
+    return;
   const node = value;
   const range = node.__cst?.range ?? {
     start: { line: 0, character: 0 },
-    end: { line: 0, character: 0 },
+    end: { line: 0, character: 0 }
   };
   if (constraints.resolvedType && node instanceof MemberExpression && ctx) {
     const ref = decomposeAtMemberExpression(value);
@@ -12067,15 +11777,7 @@ function validateConstraints(value, constraints, fieldName, validatedRefs, ctx) 
         const nsRange = objectNode?.__cst?.range ?? range;
         const label = resolvedTypeLabel(constraints.resolvedType);
         const verb = constraints.resolvedType === "invocationTarget" ? "invoke" : "reference";
-        attachDiagnostic(
-          node,
-          lintDiagnostic(
-            nsRange,
-            `Cannot ${verb} '@${ref.namespace}.${ref.property}' \u2014 '${ref.namespace}' is not a valid ${label}.`,
-            DiagnosticSeverity.Error,
-            "constraint-resolved-type",
-          ),
-        );
+        attachDiagnostic(node, lintDiagnostic(nsRange, `Cannot ${verb} '@${ref.namespace}.${ref.property}' \u2014 '${ref.namespace}' is not a valid ${label}.`, DiagnosticSeverity.Error, "constraint-resolved-type"));
         return;
       }
     }
@@ -12086,14 +11788,13 @@ function validateConstraints(value, constraints, fieldName, validatedRefs, ctx) 
     if (ref && !constraints.allowedNamespaces.includes(ref.namespace)) {
       const objectNode = isAstNodeLike(node.object) ? node.object : void 0;
       const nsRange = objectNode?.__cst?.range ?? range;
-      const suggestion = findSuggestion(ref.namespace, [...constraints.allowedNamespaces]);
+      const suggestion = findSuggestion(ref.namespace, [
+        ...constraints.allowedNamespaces
+      ]);
       const allowed = constraints.allowedNamespaces.map((ns) => `@${ns}`).join(", ");
       const base = `'${fieldName}' must reference one of: ${allowed}. Got @${ref.namespace}`;
       const message = formatSuggestionHint(base, suggestion, "@");
-      attachDiagnostic(
-        node,
-        lintDiagnostic(nsRange, message, DiagnosticSeverity.Error, "constraint-allowed-namespaces"),
-      );
+      attachDiagnostic(node, lintDiagnostic(nsRange, message, DiagnosticSeverity.Error, "constraint-allowed-namespaces"));
     }
     return;
   }
@@ -12101,161 +11802,58 @@ function validateConstraints(value, constraints, fieldName, validatedRefs, ctx) 
     const items = node.items;
     const count = items.length;
     if (constraints.minItems !== void 0 && count < constraints.minItems) {
-      attachDiagnostic(
-        node,
-        lintDiagnostic(
-          range,
-          `'${fieldName}' must have at least ${constraints.minItems} item(s), got ${count}`,
-          DiagnosticSeverity.Error,
-          "constraint-min-items",
-        ),
-      );
+      attachDiagnostic(node, lintDiagnostic(range, `'${fieldName}' must have at least ${constraints.minItems} item(s), got ${count}`, DiagnosticSeverity.Error, "constraint-min-items"));
     }
     if (constraints.maxItems !== void 0 && count > constraints.maxItems) {
-      attachDiagnostic(
-        node,
-        lintDiagnostic(
-          range,
-          `'${fieldName}' must have at most ${constraints.maxItems} item(s), got ${count}`,
-          DiagnosticSeverity.Error,
-          "constraint-max-items",
-        ),
-      );
+      attachDiagnostic(node, lintDiagnostic(range, `'${fieldName}' must have at most ${constraints.maxItems} item(s), got ${count}`, DiagnosticSeverity.Error, "constraint-max-items"));
     }
     return;
   }
   const extracted = extractStaticValue(value);
-  if (!extracted) return;
+  if (!extracted)
+    return;
   const { kind, raw } = extracted;
   if (constraints.enum !== void 0 && !constraints.enum.includes(raw)) {
     const allowed = constraints.enum.map((v) => JSON.stringify(v)).join(", ");
-    attachDiagnostic(
-      node,
-      lintDiagnostic(
-        range,
-        `'${fieldName}' must be one of: ${allowed}. Got ${JSON.stringify(raw)}`,
-        DiagnosticSeverity.Error,
-        "constraint-enum",
-      ),
-    );
+    attachDiagnostic(node, lintDiagnostic(range, `'${fieldName}' must be one of: ${allowed}. Got ${JSON.stringify(raw)}`, DiagnosticSeverity.Error, "constraint-enum"));
   }
   if (constraints.const !== void 0 && raw !== constraints.const) {
-    attachDiagnostic(
-      node,
-      lintDiagnostic(
-        range,
-        `'${fieldName}' must be ${JSON.stringify(constraints.const)}. Got ${JSON.stringify(raw)}`,
-        DiagnosticSeverity.Error,
-        "constraint-const",
-      ),
-    );
+    attachDiagnostic(node, lintDiagnostic(range, `'${fieldName}' must be ${JSON.stringify(constraints.const)}. Got ${JSON.stringify(raw)}`, DiagnosticSeverity.Error, "constraint-const"));
   }
   if (kind === "number" && typeof raw === "number") {
     if (constraints.minimum !== void 0 && raw < constraints.minimum) {
-      attachDiagnostic(
-        node,
-        lintDiagnostic(
-          range,
-          `'${fieldName}' must be >= ${constraints.minimum}, got ${raw}`,
-          DiagnosticSeverity.Error,
-          "constraint-minimum",
-        ),
-      );
+      attachDiagnostic(node, lintDiagnostic(range, `'${fieldName}' must be >= ${constraints.minimum}, got ${raw}`, DiagnosticSeverity.Error, "constraint-minimum"));
     }
     if (constraints.maximum !== void 0 && raw > constraints.maximum) {
-      attachDiagnostic(
-        node,
-        lintDiagnostic(
-          range,
-          `'${fieldName}' must be <= ${constraints.maximum}, got ${raw}`,
-          DiagnosticSeverity.Error,
-          "constraint-maximum",
-        ),
-      );
+      attachDiagnostic(node, lintDiagnostic(range, `'${fieldName}' must be <= ${constraints.maximum}, got ${raw}`, DiagnosticSeverity.Error, "constraint-maximum"));
     }
     if (constraints.exclusiveMinimum !== void 0 && raw <= constraints.exclusiveMinimum) {
-      attachDiagnostic(
-        node,
-        lintDiagnostic(
-          range,
-          `'${fieldName}' must be > ${constraints.exclusiveMinimum}, got ${raw}`,
-          DiagnosticSeverity.Error,
-          "constraint-exclusive-minimum",
-        ),
-      );
+      attachDiagnostic(node, lintDiagnostic(range, `'${fieldName}' must be > ${constraints.exclusiveMinimum}, got ${raw}`, DiagnosticSeverity.Error, "constraint-exclusive-minimum"));
     }
     if (constraints.exclusiveMaximum !== void 0 && raw >= constraints.exclusiveMaximum) {
-      attachDiagnostic(
-        node,
-        lintDiagnostic(
-          range,
-          `'${fieldName}' must be < ${constraints.exclusiveMaximum}, got ${raw}`,
-          DiagnosticSeverity.Error,
-          "constraint-exclusive-maximum",
-        ),
-      );
+      attachDiagnostic(node, lintDiagnostic(range, `'${fieldName}' must be < ${constraints.exclusiveMaximum}, got ${raw}`, DiagnosticSeverity.Error, "constraint-exclusive-maximum"));
     }
     if (constraints.multipleOf !== void 0) {
       const remainder = Math.abs(raw % constraints.multipleOf);
       const epsilon = Number.EPSILON * Math.max(1, Math.abs(raw), Math.abs(constraints.multipleOf));
       if (remainder > epsilon && Math.abs(remainder - constraints.multipleOf) > epsilon) {
-        attachDiagnostic(
-          node,
-          lintDiagnostic(
-            range,
-            `'${fieldName}' must be a multiple of ${constraints.multipleOf}, got ${raw}`,
-            DiagnosticSeverity.Error,
-            "constraint-multiple-of",
-          ),
-        );
+        attachDiagnostic(node, lintDiagnostic(range, `'${fieldName}' must be a multiple of ${constraints.multipleOf}, got ${raw}`, DiagnosticSeverity.Error, "constraint-multiple-of"));
       }
     }
   }
   if (kind === "string" && typeof raw === "string") {
     if (constraints.minLength !== void 0 && raw.length < constraints.minLength) {
-      attachDiagnostic(
-        node,
-        lintDiagnostic(
-          range,
-          `'${fieldName}' must be at least ${constraints.minLength} character(s) long, got ${raw.length}`,
-          DiagnosticSeverity.Error,
-          "constraint-min-length",
-        ),
-      );
+      attachDiagnostic(node, lintDiagnostic(range, `'${fieldName}' must be at least ${constraints.minLength} character(s) long, got ${raw.length}`, DiagnosticSeverity.Error, "constraint-min-length"));
     }
     if (constraints.maxLength !== void 0 && raw.length > constraints.maxLength) {
-      attachDiagnostic(
-        node,
-        lintDiagnostic(
-          range,
-          `'${fieldName}' must be at most ${constraints.maxLength} character(s) long, got ${raw.length}`,
-          DiagnosticSeverity.Error,
-          "constraint-max-length",
-        ),
-      );
+      attachDiagnostic(node, lintDiagnostic(range, `'${fieldName}' must be at most ${constraints.maxLength} character(s) long, got ${raw.length}`, DiagnosticSeverity.Error, "constraint-max-length"));
     }
     if (constraints.pattern !== void 0) {
       const re = getCompiledPattern(constraints.pattern);
       if (re === null) {
-        attachDiagnostic(
-          node,
-          lintDiagnostic(
-            range,
-            `'${fieldName}' has invalid constraint pattern: /${constraints.pattern}/`,
-            DiagnosticSeverity.Warning,
-            "constraint-invalid-pattern",
-          ),
-        );
+        attachDiagnostic(node, lintDiagnostic(range, `'${fieldName}' has invalid constraint pattern: /${constraints.pattern}/`, DiagnosticSeverity.Warning, "constraint-invalid-pattern"));
       } else if (!re.test(raw)) {
-        attachDiagnostic(
-          node,
-          lintDiagnostic(
-            range,
-            `'${fieldName}' must match pattern /${constraints.pattern}/`,
-            DiagnosticSeverity.Error,
-            "constraint-pattern",
-          ),
-        );
+        attachDiagnostic(node, lintDiagnostic(range, `'${fieldName}' must match pattern /${constraints.pattern}/`, DiagnosticSeverity.Error, "constraint-pattern"));
       }
     }
   }
@@ -12264,16 +11862,13 @@ var constraintValidationKey = storeKey("constraint-validation");
 var ConstraintValidationPass = class {
   constructor() {
     __publicField(this, "id", constraintValidationKey);
-    __publicField(
-      this,
-      "description",
-      "Validates field values against JSON Schema-style constraints (min, max, pattern, enum, etc.)",
-    );
+    __publicField(this, "description", "Validates field values against JSON Schema-style constraints (min, max, pattern, enum, etc.)");
     __publicField(this, "requires", [schemaContextKey]);
   }
   run(store, root) {
     const ctx = store.get(schemaContextKey);
-    if (!ctx) return;
+    if (!ctx)
+      return;
     if (lastSchemaContext !== ctx) {
       patternCache.clear();
       lastSchemaContext = ctx;
@@ -12281,12 +11876,13 @@ var ConstraintValidationPass = class {
     const validatedRefs = /* @__PURE__ */ new Set();
     walkSchema(root, ctx.info.schema, {
       visitField(value, fieldType, fieldName) {
-        if (value === void 0) return;
+        if (value === void 0)
+          return;
         const constraints = getConstraints(fieldType);
         if (constraints) {
           validateConstraints(value, constraints, fieldName, validatedRefs, ctx);
         }
-      },
+      }
     });
     store.set(constraintValidationKey, validatedRefs);
   }
@@ -12300,9 +11896,11 @@ function resolveInAncestors(ancestors, namespace, name, schemaCtx) {
   const scopesRequired = schemaCtx.scopedNamespaces.get(namespace);
   for (let i = ancestors.length - 1; i >= 0; i--) {
     const obj = ancestors[i];
-    if (!isAstNodeLike(obj) || isNamedMap(obj)) continue;
+    if (!isAstNodeLike(obj) || isNamedMap(obj))
+      continue;
     if (scopesRequired) {
-      if (!obj.__scope || !scopesRequired.has(obj.__scope)) continue;
+      if (!obj.__scope || !scopesRequired.has(obj.__scope))
+        continue;
     }
     const map = obj[namespace];
     if (isNamedMap(map) && map.has(name)) {
@@ -12315,14 +11913,18 @@ function findReferencedBlock(ancestors, startIndex, ref, schemaCtx) {
   const scopesRequired = schemaCtx.scopedNamespaces.get(ref.namespace);
   for (let j = startIndex - 1; j >= 0; j--) {
     const parent = ancestors[j];
-    if (!isAstNodeLike(parent) || isNamedMap(parent)) continue;
+    if (!isAstNodeLike(parent) || isNamedMap(parent))
+      continue;
     if (scopesRequired) {
-      if (!parent.__scope || !scopesRequired.has(parent.__scope)) continue;
+      if (!parent.__scope || !scopesRequired.has(parent.__scope))
+        continue;
     }
     const refMap = parent[ref.namespace];
-    if (!isNamedMap(refMap)) continue;
+    if (!isNamedMap(refMap))
+      continue;
     const refBlock = refMap.get(ref.property);
-    if (isAstNodeLike(refBlock)) return refBlock;
+    if (isAstNodeLike(refBlock))
+      return refBlock;
   }
   return void 0;
 }
@@ -12332,19 +11934,27 @@ function isRunTransparentForOutputs(ancestors, runIdx) {
 }
 function resolveNestedRunOverride(ancestors, namespace, schemaCtx) {
   const scopesRequired = schemaCtx.scopedNamespaces.get(namespace);
-  if (!scopesRequired?.has("action")) return void 0;
+  if (!scopesRequired?.has("action"))
+    return void 0;
   for (let i = ancestors.length - 1; i >= 0; i--) {
     const obj = ancestors[i];
-    if (!isAstNodeLike(obj) || isNamedMap(obj)) continue;
-    if (obj.__scope && scopesRequired.has(obj.__scope)) return void 0;
-    if (obj.__kind !== "RunStatement") continue;
-    if (isRunTransparentForOutputs(ancestors, i)) continue;
+    if (!isAstNodeLike(obj) || isNamedMap(obj))
+      continue;
+    if (obj.__scope && scopesRequired.has(obj.__scope))
+      return void 0;
+    if (obj.__kind !== "RunStatement")
+      continue;
+    if (isRunTransparentForOutputs(ancestors, i))
+      continue;
     const target = obj.target;
-    if (!target || typeof target !== "object") continue;
+    if (!target || typeof target !== "object")
+      continue;
     const ref = decomposeAtMemberExpression(target);
-    if (!ref) continue;
+    if (!ref)
+      continue;
     const refBlock = findReferencedBlock(ancestors, i, ref, schemaCtx);
-    if (!refBlock) return void 0;
+    if (!refBlock)
+      return void 0;
     const nsMap = refBlock[namespace];
     if (isNamedMap(nsMap)) {
       return [...nsMap.keys()];
@@ -12355,35 +11965,40 @@ function resolveNestedRunOverride(ancestors, namespace, schemaCtx) {
 }
 function resolveColinearCandidates(ancestors, namespace, schemaCtx) {
   const scopesRequired = schemaCtx.scopedNamespaces.get(namespace);
-  if (!scopesRequired || scopesRequired.size === 0) return void 0;
+  if (!scopesRequired || scopesRequired.size === 0)
+    return void 0;
   for (let i = ancestors.length - 1; i >= 0; i--) {
     const obj = ancestors[i];
-    if (!isAstNodeLike(obj) || isNamedMap(obj)) continue;
+    if (!isAstNodeLike(obj) || isNamedMap(obj))
+      continue;
     const node = obj;
-    if (
-      node.__kind === "RunStatement" &&
-      scopesRequired.has("action") &&
-      !isRunTransparentForOutputs(ancestors, i)
-    ) {
+    if (node.__kind === "RunStatement" && scopesRequired.has("action") && !isRunTransparentForOutputs(ancestors, i)) {
       const target = node.target;
-      if (!target || typeof target !== "object") continue;
+      if (!target || typeof target !== "object")
+        continue;
       const ref2 = decomposeAtMemberExpression(target);
-      if (!ref2) continue;
+      if (!ref2)
+        continue;
       const refBlock2 = findReferencedBlock(ancestors, i, ref2, schemaCtx);
-      if (!refBlock2) return void 0;
+      if (!refBlock2)
+        return void 0;
       const nsMap2 = refBlock2[namespace];
       if (isNamedMap(nsMap2)) {
         return [...nsMap2.keys()];
       }
       return [];
     }
-    if (!node.__scope || !scopesRequired.has(node.__scope)) continue;
+    if (!node.__scope || !scopesRequired.has(node.__scope))
+      continue;
     const value = node.value;
-    if (!value || typeof value !== "object") continue;
+    if (!value || typeof value !== "object")
+      continue;
     const ref = decomposeAtMemberExpression(value);
-    if (!ref) continue;
+    if (!ref)
+      continue;
     const refBlock = findReferencedBlock(ancestors, i, ref, schemaCtx);
-    if (!refBlock) return void 0;
+    if (!refBlock)
+      return void 0;
     const nsMap = refBlock[namespace];
     if (isNamedMap(nsMap)) {
       return [...nsMap.keys()];
@@ -12395,15 +12010,11 @@ function resolveColinearCandidates(ancestors, namespace, schemaCtx) {
 function isSelfReference(ancestors, namespace, property) {
   for (let i = ancestors.length - 1; i >= 0; i--) {
     const obj = ancestors[i];
-    if (!isAstNodeLike(obj) || isNamedMap(obj)) continue;
+    if (!isAstNodeLike(obj) || isNamedMap(obj))
+      continue;
     const map = obj[namespace];
     if (isNamedMap(map) && map.has(property)) {
-      if (
-        i + 2 < ancestors.length &&
-        ancestors[i + 1] === map &&
-        isAstNodeLike(ancestors[i + 2]) &&
-        map.get(property) === ancestors[i + 2]
-      ) {
+      if (i + 2 < ancestors.length && ancestors[i + 1] === map && isAstNodeLike(ancestors[i + 2]) && map.get(property) === ancestors[i + 2]) {
         return true;
       }
     }
@@ -12413,14 +12024,13 @@ function isSelfReference(ancestors, namespace, property) {
 function resolveCheck(check, rctx) {
   const { expr, namespace, property, ctx, ancestors } = check;
   const { symbols, schemaCtx, validatedRefs, root } = rctx;
-  if (validatedRefs.has(expr)) return { kind: "skip-validated" };
-  if (
-    schemaCtx.scopedNamespaces.has(namespace) &&
-    schemaCtx.colinearResolvedScopes.has(namespace)
-  ) {
+  if (validatedRefs.has(expr))
+    return { kind: "skip-validated" };
+  if (schemaCtx.scopedNamespaces.has(namespace) && schemaCtx.colinearResolvedScopes.has(namespace)) {
     const runOverride = resolveNestedRunOverride(ancestors, namespace, schemaCtx);
     if (runOverride !== void 0) {
-      if (runOverride.includes(property)) return { kind: "resolved" };
+      if (runOverride.includes(property))
+        return { kind: "resolved" };
       return { kind: "colinear-miss", members: runOverride };
     }
   }
@@ -12433,7 +12043,8 @@ function resolveCheck(check, rctx) {
     }
     if (!selfRef) {
       const resolved = resolveReference(root, namespace, property, schemaCtx, ctx, symbols);
-      if (resolved) return { kind: "resolved" };
+      if (resolved)
+        return { kind: "resolved" };
     }
     if (globalMembers) {
       if (globalMembers.has(property) || globalMembers.has("*")) {
@@ -12462,11 +12073,15 @@ function resolveCheck(check, rctx) {
     if (colinearMembers === void 0) {
       return { kind: "skip-colinear-unresolvable" };
     }
-    if (colinearMembers.includes(property)) return { kind: "resolved" };
+    if (colinearMembers.includes(property))
+      return { kind: "resolved" };
     return { kind: "colinear-miss", members: colinearMembers };
   }
   if (!isSchemaKey) {
-    const knownNamespaces = [...getSchemaNamespaces(schemaCtx), ...schemaCtx.globalScopes.keys()];
+    const knownNamespaces = [
+      ...getSchemaNamespaces(schemaCtx),
+      ...schemaCtx.globalScopes.keys()
+    ];
     return { kind: "unknown-namespace", knownNamespaces };
   }
   return { kind: "skip-schema-key" };
@@ -12481,60 +12096,28 @@ function formatResolutionDiagnostic(result, namespace, property, range) {
       return void 0;
     case "global-miss": {
       const suggestion = findSuggestion(property, result.members);
-      return undefinedReferenceDiagnostic(
-        range,
-        `'${property}' is not defined in ${namespace}`,
-        referenceName,
-        suggestion,
-        result.members,
-      );
+      return undefinedReferenceDiagnostic(range, `'${property}' is not defined in ${namespace}`, referenceName, suggestion, result.members);
     }
     case "unknown-namespace": {
       const suggestion = findSuggestion(namespace, result.knownNamespaces);
-      return undefinedReferenceDiagnostic(
-        range,
-        `'@${namespace}' is not a recognized namespace`,
-        referenceName,
-        suggestion,
-        result.knownNamespaces,
-      );
+      return undefinedReferenceDiagnostic(range, `'@${namespace}' is not a recognized namespace`, referenceName, suggestion, result.knownNamespaces);
     }
     case "non-referenceable-scope":
-      return undefinedReferenceDiagnostic(
-        range,
-        `'@${namespace}' cannot be used as a reference. This namespace is scoped to its parent block and is not directly referenceable`,
-        referenceName,
-      );
+      return undefinedReferenceDiagnostic(range, `'@${namespace}' cannot be used as a reference. This namespace is scoped to its parent block and is not directly referenceable`, referenceName);
     case "colinear-miss": {
       const suggestion = findSuggestion(property, result.members);
-      return undefinedReferenceDiagnostic(
-        range,
-        `'${property}' is not defined in ${namespace}`,
-        referenceName,
-        suggestion,
-        result.members,
-      );
+      return undefinedReferenceDiagnostic(range, `'${property}' is not defined in ${namespace}`, referenceName, suggestion, result.members);
     }
     case "standard-miss": {
       const suggestion = findSuggestion(property, result.candidates);
-      return undefinedReferenceDiagnostic(
-        range,
-        `'${property}' is not defined in ${namespace}`,
-        referenceName,
-        suggestion,
-        result.candidates,
-      );
+      return undefinedReferenceDiagnostic(range, `'${property}' is not defined in ${namespace}`, referenceName, suggestion, result.candidates);
     }
   }
 }
 var UndefinedReferencePass = class {
   constructor() {
     __publicField(this, "id", storeKey("undefined-reference"));
-    __publicField(
-      this,
-      "description",
-      "Validates that @namespace.member references point to defined symbols",
-    );
+    __publicField(this, "description", "Validates that @namespace.member references point to defined symbols");
     __publicField(this, "requires", [symbolTableKey, constraintValidationKey]);
     __publicField(this, "pendingChecks", []);
     __publicField(this, "ancestorStack", []);
@@ -12551,36 +12134,32 @@ var UndefinedReferencePass = class {
   }
   visitExpression(expr, ctx) {
     const decomposed = decomposeAtMemberExpression(expr);
-    if (!decomposed) return;
+    if (!decomposed)
+      return;
     this.pendingChecks.push({
       expr,
       namespace: decomposed.namespace,
       property: decomposed.property,
       ctx,
-      ancestors: [...this.ancestorStack],
+      ancestors: [...this.ancestorStack]
     });
   }
   run(store, root) {
     const symbols = store.get(symbolTableKey) ?? [];
     const schemaCtx = store.get(schemaContextKey);
-    if (!schemaCtx) return;
+    if (!schemaCtx)
+      return;
     const validatedRefs = store.get(constraintValidationKey);
     if (!validatedRefs) {
-      throw new Error(
-        "undefined-reference pass requires constraint-validation to run first. Ensure constraintValidationPass is included and listed before undefinedReferencePass.",
-      );
+      throw new Error("undefined-reference pass requires constraint-validation to run first. Ensure constraintValidationPass is included and listed before undefinedReferencePass.");
     }
     const rctx = { symbols, schemaCtx, validatedRefs, root };
     for (const check of this.pendingChecks) {
       const result = resolveCheck(check, rctx);
       const cst = check.expr.__cst;
-      if (!cst) continue;
-      const diagnostic = formatResolutionDiagnostic(
-        result,
-        check.namespace,
-        check.property,
-        cst.range,
-      );
+      if (!cst)
+        continue;
+      const diagnostic = formatResolutionDiagnostic(result, check.namespace, check.property, cst.range);
       if (diagnostic) {
         attachDiagnostic(check.expr, diagnostic);
       }
@@ -12593,62 +12172,119 @@ function undefinedReferencePass() {
 
 // ../language/dist/lint/duplicate-keys.js
 function getKeyRange2(child) {
-  if (child.__keyRange) return child.__keyRange;
+  if (child.__keyRange)
+    return child.__keyRange;
   const val = child.value;
   if (hasCstRange(val)) {
     return val.__cst.range;
   }
   return void 0;
 }
+function clauseDedupKey(stmt) {
+  if (isWithClause(stmt)) {
+    if (!stmt.param)
+      return void 0;
+    return `with ${stmt.param}`;
+  }
+  if (isSetClause(stmt)) {
+    const targetText = stmt.target?.__cst?.node?.text?.trim();
+    if (!targetText)
+      return void 0;
+    return `set ${targetText}`;
+  }
+  return void 0;
+}
 var DuplicateKeyPass = class {
   constructor() {
     __publicField(this, "id", storeKey("duplicate-key"));
-    __publicField(this, "description", "Detects duplicate keys within block fields");
+    __publicField(this, "description", "Detects duplicate keys within block fields and duplicate `with`/`set` clauses within procedure bodies");
     __publicField(this, "nodes", []);
+    __publicField(this, "runStatements", []);
   }
   init() {
     this.nodes = [];
+    this.runStatements = [];
   }
   enterNode(_key, value, _parent) {
-    if (isAstNodeLike(value) && value.__children) {
+    if (!isAstNodeLike(value))
+      return;
+    if (value.__children) {
       this.nodes.push(value);
+    }
+    if (value.__kind === "RunStatement") {
+      this.runStatements.push(value);
     }
   }
   finalize(_store, _root) {
     for (const node of this.nodes) {
-      this.checkForDuplicates(node);
+      this.checkBlockChildren(node);
+    }
+    for (const run of this.runStatements) {
+      this.checkRunBody(run);
     }
   }
   /**
-   * Detect duplicates by walking __children (AST), not the CST.
+   * Detect duplicate FieldChild keys AND duplicate clause-statement keys
+   * inside a single block's __children array.
    *
-   * __children already reflects orphan adoption and ERROR recovery:
-   * - Adopted elements are skipped during parsing (never pushed to children)
-   * - ERROR-recovered elements have their inner __children merged
-   * - Real duplicates (same field written twice) are both pushed unconditionally
+   * Both checks share the same walk to avoid iterating twice, but use
+   * separate seen-maps because their key namespaces never collide
+   * ("description" vs "with description" vs "set description").
    */
-  checkForDuplicates(node) {
-    if (!node.__children) return;
-    const seenKeys = /* @__PURE__ */ new Map();
+  checkBlockChildren(node) {
+    if (!node.__children)
+      return;
+    const seenFields = /* @__PURE__ */ new Map();
+    const seenClauses = /* @__PURE__ */ new Map();
     for (const child of node.__children) {
-      if (!(child instanceof FieldChild)) continue;
-      const dupKey = child.entryName ? `${child.key} ${child.entryName}` : child.key;
-      if (seenKeys.has(dupKey)) {
-        const keyRange = getKeyRange2(child);
-        if (keyRange) {
-          attachDiagnostic(
-            node,
-            lintDiagnostic(
-              keyRange,
-              `Duplicate key '${dupKey}'`,
-              DiagnosticSeverity.Warning,
-              "duplicate-key",
-            ),
-          );
+      if (child instanceof FieldChild) {
+        const dupKey = child.entryName ? `${child.key} ${child.entryName}` : child.key;
+        if (seenFields.has(dupKey)) {
+          const keyRange = getKeyRange2(child);
+          if (keyRange) {
+            attachDiagnostic(node, lintDiagnostic(keyRange, `Duplicate key '${dupKey}'`, DiagnosticSeverity.Warning, "duplicate-key"));
+          }
+        } else {
+          seenFields.set(dupKey, child);
         }
-      } else {
-        seenKeys.set(dupKey, child);
+        continue;
       }
+      if (child instanceof StatementChild) {
+        this.checkClauseDuplicate(child.value, seenClauses);
+      }
+    }
+  }
+  /** Walk a RunStatement's body for duplicate `with`/`set` clauses. */
+  checkRunBody(run) {
+    const body = run.body;
+    if (!Array.isArray(body))
+      return;
+    const seenClauses = /* @__PURE__ */ new Map();
+    for (const stmt of body) {
+      if (!isAstNodeLike(stmt))
+        continue;
+      this.checkClauseDuplicate(stmt, seenClauses);
+    }
+  }
+  /**
+   * Attach a `duplicate-clause` diagnostic to `stmt` if its dedup key is
+   * already in `seen`. The diagnostic is attached to the statement node
+   * itself (not the container) so the range lands on the duplicate line,
+   * mirroring what `duplicate-key` does for FieldChild.
+   */
+  checkClauseDuplicate(stmt, seen) {
+    if (!isAstNodeLike(stmt))
+      return;
+    const dedup = clauseDedupKey(stmt);
+    if (!dedup)
+      return;
+    if (seen.has(dedup)) {
+      const range = stmt.__cst?.range;
+      if (range) {
+        attachDiagnostic(stmt, lintDiagnostic(range, `Duplicate ${dedup}`, DiagnosticSeverity.Warning, "duplicate-clause"));
+      }
+    } else {
+      seen.set(dedup, stmt);
     }
   }
 };
@@ -12663,17 +12299,13 @@ function isRequired(fieldType) {
 function blockHeaderRange(instance) {
   const fallback = {
     start: { line: 0, character: 0 },
-    end: { line: 0, character: 0 },
+    end: { line: 0, character: 0 }
   };
   const cst = instance.__cst;
-  if (!cst) return fallback;
+  if (!cst)
+    return fallback;
   const node = cst.node;
-  const mappingElement =
-    node.type === "mapping_element"
-      ? node
-      : node.parent?.type === "mapping_element"
-        ? node.parent
-        : null;
+  const mappingElement = node.type === "mapping_element" ? node : node.parent?.type === "mapping_element" ? node.parent : null;
   if (mappingElement) {
     const keyNode = mappingElement.childForFieldName("key");
     if (keyNode) {
@@ -12682,36 +12314,25 @@ function blockHeaderRange(instance) {
   }
   return {
     start: cst.range.start,
-    end: { line: cst.range.start.line, character: cst.range.start.character },
+    end: { line: cst.range.start.line, character: cst.range.start.character }
   };
 }
 var RequiredFieldPass = class {
   constructor() {
     __publicField(this, "id", storeKey("required-fields"));
-    __publicField(
-      this,
-      "description",
-      "Validates that blocks contain all required fields from their schema",
-    );
+    __publicField(this, "description", "Validates that blocks contain all required fields from their schema");
     __publicField(this, "requires", [schemaContextKey]);
   }
   run(store, root) {
     const ctx = store.get(schemaContextKey);
-    if (!ctx) return;
+    if (!ctx)
+      return;
     walkSchema(root, ctx.info.schema, {
       visitField(value, fieldType, fieldName, instance) {
         if (isRequired(fieldType) && value === void 0) {
-          attachDiagnostic(
-            instance,
-            lintDiagnostic(
-              blockHeaderRange(instance),
-              `Missing required field '${fieldName}'`,
-              DiagnosticSeverity.Error,
-              "missing-required-field",
-            ),
-          );
+          attachDiagnostic(instance, lintDiagnostic(blockHeaderRange(instance), `Missing required field '${fieldName}'`, DiagnosticSeverity.Error, "missing-required-field"));
         }
-      },
+      }
     });
   }
 };
@@ -12723,21 +12344,20 @@ function requiredFieldPass() {
 var SingularCollectionPass = class {
   constructor() {
     __publicField(this, "id", storeKey("singular-collection"));
-    __publicField(
-      this,
-      "description",
-      "Enforces that collection fields marked singular contain at most one entry",
-    );
+    __publicField(this, "description", "Enforces that collection fields marked singular contain at most one entry");
   }
   finalize(store, root) {
     const ctx = store.get(schemaContextKey);
-    if (!ctx) return;
+    if (!ctx)
+      return;
     const schema2 = ctx.info.schema;
     const rootObj = root;
     for (const [key, fieldType] of Object.entries(schema2)) {
-      if (!isSingularField(fieldType)) continue;
+      if (!isSingularField(fieldType))
+        continue;
       const collection = rootObj[key];
-      if (!isNamedMap(collection) || collection.size <= 1) continue;
+      if (!isNamedMap(collection) || collection.size <= 1)
+        continue;
       let index = 0;
       for (const [, entry] of collection) {
         if (index === 0) {
@@ -12746,15 +12366,7 @@ var SingularCollectionPass = class {
         }
         const range = getEntryRange(entry);
         if (range) {
-          attachDiagnostic(
-            root,
-            lintDiagnostic(
-              range,
-              `Only one '${key}' is allowed, but found multiple entries`,
-              DiagnosticSeverity.Error,
-              "singular-collection",
-            ),
-          );
+          attachDiagnostic(root, lintDiagnostic(range, `Only one '${key}' is allowed, but found multiple entries`, DiagnosticSeverity.Error, "singular-collection"));
         }
         index++;
       }
@@ -12783,7 +12395,8 @@ var PositionIndexPass = class {
   }
   visitExpression(expr, scope) {
     const cst = expr.__cst;
-    if (!cst) return;
+    if (!cst)
+      return;
     this.expressions.push({ expr, range: cst.range, scope });
   }
   finalize(store, root) {
@@ -12796,19 +12409,23 @@ var PositionIndexPass = class {
     store.set(positionIndexKey, {
       expressions: this.expressions,
       definitions,
-      scopes,
+      scopes
     });
   }
 };
 function walkScopeEntries(value, parentScope, visited, out) {
-  if (!value || typeof value !== "object") return;
-  if (visited.has(value)) return;
+  if (!value || typeof value !== "object")
+    return;
+  if (visited.has(value))
+    return;
   visited.add(value);
   if (isNamedMap(value)) {
     for (const [name, entry] of value) {
-      if (!isAstNodeLike(entry)) continue;
+      if (!isAstNodeLike(entry))
+        continue;
       const cst = entry.__cst;
-      if (!cst) continue;
+      if (!cst)
+        continue;
       const blockScope = entry.__scope;
       let scope = parentScope;
       if (blockScope && typeof entry.__name === "string") {
@@ -12831,9 +12448,11 @@ function positionIndexPass() {
 
 // ../language/dist/lint/unreachable-code.js
 function isTerminal(stmt) {
-  if (stmt instanceof TransitionStatement) return true;
+  if (stmt instanceof TransitionStatement)
+    return true;
   if (stmt instanceof IfStatement) {
-    if (stmt.orelse.length === 0) return false;
+    if (stmt.orelse.length === 0)
+      return false;
     return alwaysTerminates(stmt.body) && alwaysTerminates(stmt.orelse);
   }
   return false;
@@ -12853,24 +12472,17 @@ function isStatement(value) {
 function checkStatements(stmts) {
   let terminalStmt = null;
   for (const raw of stmts) {
-    if (!isStatement(raw)) continue;
+    if (!isStatement(raw))
+      continue;
     const stmt = raw;
     if (terminalStmt) {
       const range = stmt.__cst?.range ?? {
         start: { line: 0, character: 0 },
-        end: { line: 0, character: 0 },
+        end: { line: 0, character: 0 }
       };
-      if (!isAstNodeLike(stmt)) continue;
-      attachDiagnostic(
-        stmt,
-        lintDiagnostic(
-          range,
-          unreachableMessage(terminalStmt),
-          DiagnosticSeverity.Warning,
-          "unreachable-code",
-          { tags: [DiagnosticTag.Unnecessary] },
-        ),
-      );
+      if (!isAstNodeLike(stmt))
+        continue;
+      attachDiagnostic(stmt, lintDiagnostic(range, unreachableMessage(terminalStmt), DiagnosticSeverity.Warning, "unreachable-code", { tags: [DiagnosticTag.Unnecessary] }));
       continue;
     }
     if (isTerminal(stmt)) {
@@ -12887,11 +12499,7 @@ function checkStatements(stmts) {
 var UnreachableCodePass = class {
   constructor() {
     __publicField(this, "id", storeKey("unreachable-code"));
-    __publicField(
-      this,
-      "description",
-      "Detects unreachable code after terminal statements like transition",
-    );
+    __publicField(this, "description", "Detects unreachable code after terminal statements like transition");
     __publicField(this, "procedures", []);
   }
   init() {
@@ -12920,22 +12528,21 @@ var MUST_NOT_BE_EMPTY = /* @__PURE__ */ new Set(["inputs", "outputs"]);
 var EmptyBlockPass = class {
   constructor() {
     __publicField(this, "id", storeKey("empty-block"));
-    __publicField(
-      this,
-      "description",
-      "Flags empty inputs/outputs blocks that should contain at least one entry",
-    );
+    __publicField(this, "description", "Flags empty inputs/outputs blocks that should contain at least one entry");
     __publicField(this, "hits", []);
   }
   init() {
     this.hits = [];
   }
   enterNode(key, value, parent) {
-    if (!MUST_NOT_BE_EMPTY.has(key)) return;
-    if (!parent || typeof parent !== "object") return;
+    if (!MUST_NOT_BE_EMPTY.has(key))
+      return;
+    if (!parent || typeof parent !== "object")
+      return;
     let node = null;
     if (isNamedMap(value)) {
-      if (value.size > 0) return;
+      if (value.size > 0)
+        return;
       node = value;
     } else if (value == null) {
       node = null;
@@ -12945,27 +12552,18 @@ var EmptyBlockPass = class {
     this.hits.push({
       key,
       node,
-      parent,
+      parent
     });
   }
   finalize(_store, _root) {
     for (const { key, node, parent } of this.hits) {
       const cst = node?.__cst;
       const parentCst = parent.__cst;
-      const range = cst?.range ??
-        parentCst?.range ?? {
-          start: { line: 0, character: 0 },
-          end: { line: 0, character: 0 },
-        };
-      attachDiagnostic(
-        node ?? parent,
-        lintDiagnostic(
-          range,
-          `Empty '${key}' block \u2014 must contain at least one entry`,
-          DiagnosticSeverity.Error,
-          "empty-block",
-        ),
-      );
+      const range = cst?.range ?? parentCst?.range ?? {
+        start: { line: 0, character: 0 },
+        end: { line: 0, character: 0 }
+      };
+      attachDiagnostic(node ?? parent, lintDiagnostic(range, `Empty '${key}' block \u2014 must contain at least one entry`, DiagnosticSeverity.Error, "empty-block"));
     }
   }
 };
@@ -12977,27 +12575,19 @@ function emptyBlockPass() {
 var SpreadContextPass = class {
   constructor() {
     __publicField(this, "id", storeKey("spread-context"));
-    __publicField(
-      this,
-      "description",
-      "Rejects spread expressions outside call arguments or list literals",
-    );
+    __publicField(this, "description", "Rejects spread expressions outside call arguments or list literals");
   }
   enterNode(key, value, parent) {
-    if (!(value instanceof SpreadExpression)) return;
-    if (parent instanceof CallExpression && key !== "func") return;
-    if (parent instanceof ListLiteral) return;
+    if (!(value instanceof SpreadExpression))
+      return;
+    if (parent instanceof CallExpression && key !== "func")
+      return;
+    if (parent instanceof ListLiteral)
+      return;
     const cst = value.__cst;
-    if (!cst) return;
-    attachDiagnostic(
-      value,
-      lintDiagnostic(
-        cst.range,
-        "Spread expression is only allowed as a call argument or list element",
-        DiagnosticSeverity.Error,
-        "invalid-spread-context",
-      ),
-    );
+    if (!cst)
+      return;
+    attachDiagnostic(value, lintDiagnostic(cst.range, "Spread expression is only allowed as a call argument or list element", DiagnosticSeverity.Error, "invalid-spread-context"));
   }
 };
 function spreadContextPass() {
@@ -13022,20 +12612,23 @@ var UnusedVariablePass = class {
   }
   run(_store, root) {
     const variables = root.variables;
-    if (!isNamedMap(variables)) return;
+    if (!isNamedMap(variables))
+      return;
     for (const [name, decl] of variables) {
-      if (this.usedVariables.has(name)) continue;
+      if (this.usedVariables.has(name))
+        continue;
       const node = isAstNodeLike(decl) ? decl : null;
-      if (!node?.__cst) continue;
+      if (!node?.__cst)
+        continue;
       const fullRange = node.__cst.range;
       attachDiagnostic(node, {
         range: fullRange,
         message: `Variable '${name}' is declared but never used`,
-        severity: DiagnosticSeverity.Warning,
+        severity: DiagnosticSeverity.Information,
         code: "unused-variable",
         source: LINT_SOURCE,
         tags: [DiagnosticTag.Unnecessary],
-        data: { removalRange: fullRange },
+        data: { removalRange: fullRange }
       });
     }
   }
@@ -13045,7 +12638,11 @@ function unusedVariablePass() {
 }
 
 // ../language/dist/lint/expression-validation.js
-var BUILTIN_FUNCTIONS = /* @__PURE__ */ new Set(["len", "max", "min"]);
+var BUILTIN_FUNCTIONS = /* @__PURE__ */ new Set([
+  "len",
+  "max",
+  "min"
+]);
 var DEFAULT_SUPPORTED_OPERATORS = /* @__PURE__ */ new Set([
   "+",
   "-",
@@ -13059,16 +12656,12 @@ var DEFAULT_SUPPORTED_OPERATORS = /* @__PURE__ */ new Set([
   "or",
   "not",
   "in",
-  "not in",
+  "not in"
 ]);
 var ExpressionValidationPass = class {
   constructor(options = {}) {
     __publicField(this, "id", storeKey("expression-validation"));
-    __publicField(
-      this,
-      "description",
-      "Validates function calls and operators used in expressions",
-    );
+    __publicField(this, "description", "Validates function calls and operators used in expressions");
     __publicField(this, "allowedFunctions");
     __publicField(this, "namespacedFunctions");
     __publicField(this, "allowedFunctionsList");
@@ -13087,107 +12680,62 @@ var ExpressionValidationPass = class {
   }
   checkCallExpression(expr) {
     const cst = expr.__cst;
-    if (!cst) return;
+    if (!cst)
+      return;
     const func = expr.func;
-    if (!func || typeof func !== "object" || !("__kind" in func)) return;
+    if (!func || typeof func !== "object" || !("__kind" in func))
+      return;
     if (func instanceof MemberExpression) {
       const namespaceExpression = func.object;
       if (namespaceExpression instanceof Identifier) {
         const namespaceName = namespaceExpression.name;
-        const allowedInNamespace =
-          this.namespacedFunctions[namespaceName] ?? /* @__PURE__ */ new Set();
+        const allowedInNamespace = this.namespacedFunctions[namespaceName] ?? /* @__PURE__ */ new Set();
         if (!(namespaceName in this.namespacedFunctions)) {
           const knownNamespaces = Object.keys(this.namespacedFunctions);
           const suggestion = findSuggestion(namespaceName, knownNamespaces);
           const base = `'${namespaceName}' is not a recognized function. Available functions: ${[...this.allowedFunctionsList, ...knownNamespaces].join(", ")}`;
           const message = formatSuggestionHint(base, suggestion);
-          attachDiagnostic(
-            expr,
-            lintDiagnostic(cst.range, message, DiagnosticSeverity.Error, "unknown-function", {
-              suggestion,
-            }),
-          );
+          attachDiagnostic(expr, lintDiagnostic(cst.range, message, DiagnosticSeverity.Error, "unknown-function", { suggestion }));
         } else if (!allowedInNamespace.has(func.property)) {
           const allowedList = [...allowedInNamespace];
           const suggestion = findSuggestion(func.property, allowedList);
           const base = `'${func.property}' is not a recognized function in namespace '${namespaceName}'. Available functions: ${allowedList.join(", ")}`;
           const message = formatSuggestionHint(base, suggestion);
-          attachDiagnostic(
-            expr,
-            lintDiagnostic(cst.range, message, DiagnosticSeverity.Error, "unknown-function", {
-              suggestion,
-            }),
-          );
+          attachDiagnostic(expr, lintDiagnostic(cst.range, message, DiagnosticSeverity.Error, "unknown-function", { suggestion }));
         }
       } else {
-        const allNamespacedFns = Object.entries(this.namespacedFunctions).flatMap(([ns, fns]) =>
-          [...fns].map((f) => `${ns}.${f}`),
-        );
-        attachDiagnostic(
-          expr,
-          lintDiagnostic(
-            cst.range,
-            `Namespace function calls are not permitted. Only direct namespace function calls are allowed (${allNamespacedFns.join(", ")})`,
-            DiagnosticSeverity.Error,
-            "namespace-function-call",
-          ),
-        );
+        const allNamespacedFns = Object.entries(this.namespacedFunctions).flatMap(([ns, fns]) => [...fns].map((f) => `${ns}.${f}`));
+        attachDiagnostic(expr, lintDiagnostic(cst.range, `Namespace function calls are not permitted. Only direct namespace function calls are allowed (${allNamespacedFns.join(", ")})`, DiagnosticSeverity.Error, "namespace-function-call"));
       }
     } else if (func instanceof Identifier) {
       this.validateIdentifier(func, expr, this.allowedFunctions, this.allowedFunctionsList);
     } else {
-      attachDiagnostic(
-        expr,
-        lintDiagnostic(
-          cst.range,
-          `Indirect function calls are not permitted. Only direct calls to built-in functions are allowed (${this.allowedFunctionsList.join(", ")})`,
-          DiagnosticSeverity.Error,
-          "indirect-function-call",
-        ),
-      );
+      attachDiagnostic(expr, lintDiagnostic(cst.range, `Indirect function calls are not permitted. Only direct calls to built-in functions are allowed (${this.allowedFunctionsList.join(", ")})`, DiagnosticSeverity.Error, "indirect-function-call"));
     }
   }
   validateIdentifier(func, expr, allowedFunctions, allowedFunctionList) {
     const cst = expr.__cst;
-    if (!cst) return;
+    if (!cst)
+      return;
     const funcName = func.name;
     if (funcName.length === 0) {
-      attachDiagnostic(
-        expr,
-        lintDiagnostic(
-          cst.range,
-          'Unexpected Identifier node: missing "name" property',
-          DiagnosticSeverity.Warning,
-          "malformed-ast",
-        ),
-      );
+      attachDiagnostic(expr, lintDiagnostic(cst.range, 'Unexpected Identifier node: missing "name" property', DiagnosticSeverity.Warning, "malformed-ast"));
     } else if (!allowedFunctions.has(funcName)) {
       const suggestion = findSuggestion(funcName, allowedFunctionList);
       const base = `'${funcName}' is not a recognized function. Available functions: ${allowedFunctionList.join(", ")}`;
       const message = formatSuggestionHint(base, suggestion);
-      attachDiagnostic(
-        expr,
-        lintDiagnostic(cst.range, message, DiagnosticSeverity.Error, "unknown-function", {
-          suggestion,
-        }),
-      );
+      attachDiagnostic(expr, lintDiagnostic(cst.range, message, DiagnosticSeverity.Error, "unknown-function", { suggestion }));
     }
   }
   checkBinaryExpression(expr) {
     const op = expr.operator;
-    if (typeof op !== "string") return;
+    if (typeof op !== "string")
+      return;
     if (!this.supportedOperators.has(op)) {
       const cst = expr.__cst;
-      if (!cst) return;
-      attachDiagnostic(
-        expr,
-        lintDiagnostic(
-          cst.range,
-          `Operator '${op}' is not supported`,
-          DiagnosticSeverity.Error,
-          "unsupported-operator",
-        ),
-      );
+      if (!cst)
+        return;
+      attachDiagnostic(expr, lintDiagnostic(cst.range, `Operator '${op}' is not supported`, DiagnosticSeverity.Error, "unsupported-operator"));
     }
   }
 };
@@ -13217,7 +12765,7 @@ function parseDialectAnnotation(source) {
         nameStart,
         nameLength: match[1].length,
         versionStart,
-        versionLength,
+        versionLength
       };
     }
   }
@@ -13233,7 +12781,7 @@ function checkVersion(requested, available, dialectName) {
   if (reqMajor !== availMajor) {
     return {
       message: `Incompatible major version: requested ${dialectName}=${requested} but only v${available} is available`,
-      severity: 1,
+      severity: 1
     };
   }
   if (reqParts.length >= 2) {
@@ -13242,7 +12790,7 @@ function checkVersion(requested, available, dialectName) {
     if (availMinor < reqMinor) {
       return {
         message: `Minimum minor version not met: requested ${dialectName}>=${reqMajor}.${reqMinor} but v${available} is available`,
-        severity: 2,
+        severity: 2
       };
     }
   }
@@ -13268,8 +12816,8 @@ function resolveDialect(source, config2) {
               line: annotation.line,
               versionStart: annotation.versionStart,
               versionLength: annotation.versionLength,
-              suggestedVersions,
-            },
+              suggestedVersions
+            }
           };
         }
       }
@@ -13278,9 +12826,7 @@ function resolveDialect(source, config2) {
     const defaultName2 = config2.defaultDialect ?? config2.dialects[0]?.name;
     const defaultDialect2 = config2.dialects.find((d) => d.name === defaultName2);
     if (!defaultDialect2) {
-      throw new Error(
-        `No dialect available. Configure at least one dialect in DialectResolutionConfig.`,
-      );
+      throw new Error(`No dialect available. Configure at least one dialect in DialectResolutionConfig.`);
     }
     return {
       dialect: defaultDialect2,
@@ -13289,16 +12835,14 @@ function resolveDialect(source, config2) {
         line: annotation.line,
         nameStart: annotation.nameStart,
         nameLength: annotation.nameLength,
-        availableNames: config2.dialects.map((d) => d.name),
-      },
+        availableNames: config2.dialects.map((d) => d.name)
+      }
     };
   }
   const defaultName = config2.defaultDialect ?? config2.dialects[0]?.name;
   const defaultDialect = config2.dialects.find((d) => d.name === defaultName);
   if (!defaultDialect) {
-    throw new Error(
-      `No dialect available. Configure at least one dialect in DialectResolutionConfig.`,
-    );
+    throw new Error(`No dialect available. Configure at least one dialect in DialectResolutionConfig.`);
   }
   return { dialect: defaultDialect };
 }
@@ -13315,17 +12859,25 @@ var TOKEN_TYPES = [
   "comment",
   "namespace",
   "property",
-  "decorator",
+  "decorator"
 ];
-var TOKEN_MODIFIERS = ["defaultLibrary", "modification", "readonly", "block", "blockName"];
+var TOKEN_MODIFIERS = [
+  "defaultLibrary",
+  "modification",
+  "readonly",
+  "block",
+  "blockName"
+];
 function idx(name) {
   const i = TOKEN_TYPES.indexOf(name);
-  if (i === -1) throw new Error(`Unknown token type: ${name}`);
+  if (i === -1)
+    throw new Error(`Unknown token type: ${name}`);
   return i;
 }
 function bit(name) {
   const i = TOKEN_MODIFIERS.indexOf(name);
-  if (i === -1) throw new Error(`Unknown token modifier: ${name}`);
+  if (i === -1)
+    throw new Error(`Unknown token modifier: ${name}`);
   return 1 << i;
 }
 var CAPTURE_MAP = {
@@ -13342,11 +12894,11 @@ var CAPTURE_MAP = {
   // Compound capture remappings
   "keyword.modifier": {
     type: idx("keyword"),
-    modifiers: bit("modification"),
+    modifiers: bit("modification")
   },
   "constant.builtin": {
     type: idx("keyword"),
-    modifiers: 0,
+    modifiers: 0
   },
   "string.escape": { type: idx("string"), modifiers: 0 },
   module: { type: idx("namespace"), modifiers: 0 },
@@ -13362,10 +12914,10 @@ var CAPTURE_MAP = {
   // Template expression delimiters ({! }) -> keyword.modification
   "punctuation.template": {
     type: idx("keyword"),
-    modifiers: bit("modification"),
+    modifiers: bit("modification")
   },
   // @ prefix -> decorator
-  decorator: { type: idx("decorator"), modifiers: 0 },
+  decorator: { type: idx("decorator"), modifiers: 0 }
 };
 function mapCaptureToToken(captureName) {
   const name = captureName.replace(/^@/, "");
@@ -13379,7 +12931,8 @@ function mapCaptureToToken(captureName) {
   return { type: idx("variable"), modifiers: 0 };
 }
 function dedupeOverlappingTokens(tokens) {
-  if (tokens.length === 0) return [];
+  if (tokens.length === 0)
+    return [];
   const deduped = [];
   for (const current of tokens) {
     if (deduped.length === 0) {
@@ -13399,12 +12952,14 @@ function dedupeOverlappingTokens(tokens) {
   return deduped;
 }
 function generateSemanticTokens(source, captures) {
-  if (!source.trim()) return [];
+  if (!source.trim())
+    return [];
   const lines = source.split("\n");
   const tokens = [];
   for (const capture2 of captures) {
     const mapped = mapCaptureToToken(capture2.name);
-    if (!mapped) continue;
+    if (!mapped)
+      continue;
     const { type, modifiers } = mapped;
     const startLine = capture2.startRow;
     const startChar = capture2.startCol;
@@ -13414,13 +12969,14 @@ function generateSemanticTokens(source, captures) {
       const lineLength = lines[startLine]?.length ?? 0;
       const safeStart = Math.max(0, Math.min(startChar, lineLength));
       const safeEnd = Math.max(safeStart, Math.min(endChar, lineLength));
-      if (safeEnd <= safeStart) continue;
+      if (safeEnd <= safeStart)
+        continue;
       tokens.push({
         line: startLine,
         startChar: safeStart,
         length: safeEnd - safeStart,
         tokenType: type,
-        tokenModifiers: modifiers,
+        tokenModifiers: modifiers
       });
     } else {
       for (let line = startLine; line <= endLine; line++) {
@@ -13429,20 +12985,23 @@ function generateSemanticTokens(source, captures) {
         const rawEnd = line === endLine ? endChar : lineLength;
         const safeStart = Math.max(0, Math.min(rawStart, lineLength));
         const safeEnd = Math.max(safeStart, Math.min(rawEnd, lineLength));
-        if (safeEnd <= safeStart) continue;
+        if (safeEnd <= safeStart)
+          continue;
         tokens.push({
           line,
           startChar: safeStart,
           length: safeEnd - safeStart,
           tokenType: type,
-          tokenModifiers: modifiers,
+          tokenModifiers: modifiers
         });
       }
     }
   }
   tokens.sort((a, b) => {
-    if (a.line !== b.line) return a.line - b.line;
-    if (a.startChar !== b.startChar) return a.startChar - b.startChar;
+    if (a.line !== b.line)
+      return a.line - b.line;
+    if (a.startChar !== b.startChar)
+      return a.startChar - b.startChar;
     return b.length - a.length;
   });
   return dedupeOverlappingTokens(tokens);
@@ -13469,7 +13028,7 @@ var LanguageServiceImpl = class {
     this._ast = result.value;
     const engine = new LintEngine({
       passes: this.dialectConfig.createRules(),
-      source: this.source,
+      source: this.source
     });
     const engineResult = engine.run(this._ast, this.schemaContext);
     this._store = engineResult.store;
@@ -13486,59 +13045,43 @@ var LanguageServiceImpl = class {
     return this._store;
   }
   getSymbols() {
-    if (!this._ast) return [];
-    if (this._symbols) return this._symbols;
+    if (!this._ast)
+      return [];
+    if (this._symbols)
+      return this._symbols;
     this._symbols = getDocumentSymbols(this._ast);
     return this._symbols;
   }
   getDefinition(line, char) {
-    if (!this._ast) return null;
+    if (!this._ast)
+      return null;
     const index = this._store?.get(positionIndexKey);
-    return findDefinitionAtPosition(
-      this._ast,
-      line,
-      char,
-      this.schemaContext,
-      this.getSymbols(),
-      index,
-    );
+    return findDefinitionAtPosition(this._ast, line, char, this.schemaContext, this.getSymbols(), index);
   }
   getReferences(line, char, includeDeclaration = true) {
-    if (!this._ast) return [];
+    if (!this._ast)
+      return [];
     const index = this._store?.get(positionIndexKey);
-    return findReferencesAtPosition(
-      this._ast,
-      line,
-      char,
-      includeDeclaration,
-      this.schemaContext,
-      this.getSymbols(),
-      index,
-    );
+    return findReferencesAtPosition(this._ast, line, char, includeDeclaration, this.schemaContext, this.getSymbols(), index);
   }
   getCompletions(line, char, namespace) {
-    if (!this._ast) return [];
+    if (!this._ast)
+      return [];
     const scope = this.getEnclosingScope(line, char);
-    return getCompletionCandidates(
-      this._ast,
-      namespace,
-      this.schemaContext,
-      scope,
-      this.getSymbols(),
-      line,
-      char,
-    );
+    return getCompletionCandidates(this._ast, namespace, this.schemaContext, scope, this.getSymbols(), line, char);
   }
   getNamespaceCompletions(line, char) {
     const scope = this.getEnclosingScope(line, char);
     return getAvailableNamespaces(this.schemaContext, scope);
   }
   getFieldCompletions(line, char) {
-    if (!this._ast) return [];
+    if (!this._ast)
+      return [];
     return getFieldCompletions(this._ast, line, char, this.schemaContext);
   }
   getEnclosingScope(line, char) {
-    if (!this._ast) return {};
+    if (!this._ast)
+      return {};
     const index = this._store?.get(positionIndexKey);
     return findEnclosingScope(this._ast, line, char, index);
   }
@@ -13554,19 +13097,17 @@ function parseAndLint(node, dialect, options) {
   const parser = options?.dialectParser ?? new Dialect();
   const result = parser.parse(node, dialect.schemaInfo.schema);
   const ast = result.value;
-  const engine =
-    options?.engine ??
-    new LintEngine({
-      passes: dialect.createRules(),
-      source,
-    });
+  const engine = options?.engine ?? new LintEngine({
+    passes: dialect.createRules(),
+    source
+  });
   const { diagnostics: lintDiagnostics, store } = engine.run(ast, schemaCtx);
   const seen = new Set(lintDiagnostics);
   const uniqueParseDiags = result.diagnostics.filter((d) => !seen.has(d));
   return {
     ast,
     diagnostics: [...uniqueParseDiags, ...lintDiagnostics],
-    store,
+    store
   };
 }
 
@@ -13578,14 +13119,14 @@ var onEnterRules = [
     // After a line ending with `:` (mapping key, if/elif/else, etc.)
     // e.g. "agent:", "  actions:", "if x > 5:", "else:"
     beforeText: "^[^#]*:\\s*(?:#.*)?$",
-    action: "indent",
+    action: "indent"
   },
   {
     // After a line ending with `->` (arrow/procedure syntax)
     // e.g. "instructions: ->"
     beforeText: "^[^#]*->\\s*(?:#.*)?$",
-    action: "indent",
-  },
+    action: "indent"
+  }
 ];
 
 // src/semantic-tokens.ts
@@ -13603,22 +13144,14 @@ function generateSemanticTokens2(source) {
 // ../../dialect/agentscript/dist/schema.js
 var MessagesBlock = Block("MessagesBlock", {
   welcome: StringValue.describe("Welcome message shown to the user."),
-  error: StringValue.describe("Error message shown on failure.").required(),
+  error: StringValue.describe("Error message shown on failure.").required()
 }).describe("Pre-defined message templates.").example(`messages:
     welcome: "Hello! How can I help you today?"
     error: "Sorry, something went wrong. Please try again."`);
-var SystemBlock = Block(
-  "SystemBlock",
-  {
-    instructions: StringValue.describe(
-      "System-level instructions for the agent. Supports {!<expression>} interpolation with context variables.",
-    ),
-    messages: MessagesBlock.describe(
-      "Default messages for certain situations (e.g., welcome, error).",
-    ),
-  },
-  { symbol: { kind: SymbolKind.Namespace } },
-).describe("System-level instructions and messages that interact with the user.").example(`system:
+var SystemBlock = Block("SystemBlock", {
+  instructions: StringValue.describe("System-level instructions for the agent. Supports {!<expression>} interpolation with context variables."),
+  messages: MessagesBlock.describe("Default messages for certain situations (e.g., welcome, error).")
+}, { symbol: { kind: SymbolKind.Namespace } }).describe("System-level instructions and messages that interact with the user.").example(`system:
     instructions: |
         You are a helpful, professional assistant for customer support.
         Always be polite, concise, and reassuring.
@@ -13626,39 +13159,24 @@ var SystemBlock = Block(
         welcome: "Hello! How can I help you today?"
         error: "Sorry, something went wrong. Please try again."`);
 var ConfigBlock = Block("ConfigBlock", {
-  description: StringValue.describe("Agent description. Defaults to label."),
+  description: StringValue.describe("Agent description. Defaults to label.")
 }).describe("High-level agent configuration.").example(`config:
     agent_name: "My_Agent"
     description: "An AI assistant for customer support"`);
 var LanguageBlock = Block("LanguageBlock", {
-  default_locale: StringValue.describe(
-    'The primary locale for the agent (e.g., "en_US", "de", "fr").',
-  ),
+  default_locale: StringValue.describe('The primary locale for the agent (e.g., "en_US", "de", "fr").'),
   additional_locales: StringValue.describe("Comma-separated list of additional supported locales."),
-  all_additional_locales: BooleanValue.describe("Whether to support all available locales."),
+  all_additional_locales: BooleanValue.describe("Whether to support all available locales.")
 }).describe("Locale and language configuration.").example(`language:
     default_locale: "en_US"
     additional_locales: "fr, de"
     all_additional_locales: True`);
-var DialectReasoningActionBlock = ReasoningActionBlock.extend(
-  {},
-  { colinear: ExpressionValue.resolvedType("invocationTarget") },
-);
-var DialectReasoningActionsBlock = CollectionBlock(DialectReasoningActionBlock).describe(
-  "Collection of reasoning action bindings.",
-);
-var ReasoningBlock = Block(
-  "ReasoningBlock",
-  {
-    instructions: ProcedureValue.describe(
-      "Procedural instructions for the reasoning loop. Supports templating and directives.",
-    ),
-    actions: DialectReasoningActionsBlock.describe(
-      "Actions available to the agent during the reasoning loop.",
-    ),
-  },
-  { symbol: { kind: SymbolKind.Namespace } },
-).describe("Instructions and actions for the agent's reasoning loop.").example(`    reasoning:
+var DialectReasoningActionBlock = ReasoningActionBlock.extend({}, { colinear: ExpressionValue.resolvedType("invocationTarget") });
+var DialectReasoningActionsBlock = CollectionBlock(DialectReasoningActionBlock).describe("Collection of reasoning action bindings.");
+var ReasoningBlock = Block("ReasoningBlock", {
+  instructions: ProcedureValue.describe("Procedural instructions for the reasoning loop. Supports templating and directives."),
+  actions: DialectReasoningActionsBlock.describe("Actions available to the agent during the reasoning loop.")
+}, { symbol: { kind: SymbolKind.Namespace } }).describe("Instructions and actions for the agent's reasoning loop.").example(`    reasoning:
         instructions: ->
             # Conditional logic can be embedded in instructions
             if @variables.checked_loyalty_tier == False:
@@ -13717,100 +13235,54 @@ var ReasoningBlock = Block(
             escalate: @utils.escalate
                 description: "Hand off to a live human agent"`);
 var baseSubagentFields = {
-  label: StringValue.describe("Display label shown in the UI.").accepts(["StringLiteral"]),
-  description: StringValue.describe(
-    "Block description. Influences transitions to this block.",
-  ).required(),
+  label: StringValue.describe("Display label shown in the UI.").accepts([
+    "StringLiteral"
+  ]),
+  description: StringValue.describe("Block description. Influences transitions to this block.").required(),
   system: SystemBlock.pick(["instructions"]),
   actions: ActionsBlock.describe("Action definitions available to this block."),
-  schema: StringValue.describe(
-    'URI identifying the subagent schema variant (e.g., "node://CustomSubagent"). When specified, enables custom field validation.',
-  )
-    .pattern(/^node:\/\/\S+$/)
-    .accepts(["StringLiteral"]),
+  schema: StringValue.describe('URI identifying the subagent schema variant (e.g., "node://CustomSubagent"). When specified, enables custom field validation.').pattern(/^node:\/\/\S+$/).accepts(["StringLiteral"])
 };
 var defaultSubagentFields = {
   ...baseSubagentFields,
-  before_reasoning: ProcedureValue.describe(
-    "Procedures that run before the reasoning loop starts, once per turn.",
-  )
-    .omitArrow()
-    .disallowTemplates(
-      "Templates are for LLM instructions and should only be used in reasoning.instructions.",
-    ),
-  after_reasoning: ProcedureValue.describe(
-    "Procedures that run after the reasoning loop completes, once per turn.",
-  )
-    .omitArrow()
-    .disallowTemplates(
-      "Templates are for LLM instructions and should only be used in reasoning.instructions.",
-    ),
-  reasoning: ReasoningBlock.describe(
-    "Reasoning block containing instructions and actions for the agent reasoning loop.",
-  ),
+  before_reasoning: ProcedureValue.describe("Procedures that run before the reasoning loop starts, once per turn.").omitArrow().disallowTemplates("Templates are for LLM instructions and should only be used in reasoning.instructions."),
+  after_reasoning: ProcedureValue.describe("Procedures that run after the reasoning loop completes, once per turn.").omitArrow().disallowTemplates("Templates are for LLM instructions and should only be used in reasoning.instructions."),
+  reasoning: ReasoningBlock.describe("Reasoning block containing instructions and actions for the agent reasoning loop.")
 };
+var BYONReasoningBlock = ReasoningBlock.pick(["actions"]);
 var customSubagentFields = {
   ...baseSubagentFields,
-  parameters: Block("ParametersBlock", {}).describe(
-    "Custom parameters for schema variants. Structure is defined by the schema variant.",
-  ),
-  on_init: ProcedureValue.describe("Procedures that run when the subagent is initialized.")
-    .omitArrow()
-    .disallowTemplates(
-      "Templates are for LLM instructions and should only be used in reasoning.instructions.",
-    ),
-  on_exit: ProcedureValue.describe("Procedures that run when the subagent is exited from.")
-    .omitArrow()
-    .disallowTemplates(
-      "Templates are for LLM instructions and should only be used in reasoning.instructions.",
-    ),
+  parameters: Block("ParametersBlock", {}).describe("Custom parameters for schema variants. Structure is defined by the schema variant."),
+  reasoning: BYONReasoningBlock.describe("Reasoning block containing actions available to the agent (instructions not supported for custom subagents)."),
+  on_init: ProcedureValue.describe("Procedures that run when the subagent is initialized.").omitArrow().disallowTemplates("Templates are for LLM instructions and should only be used in reasoning.instructions."),
+  on_exit: ProcedureValue.describe("Procedures that run when the subagent is exited from.").omitArrow().disallowTemplates("Templates are for LLM instructions and should only be used in reasoning.instructions.")
 };
 var baseAgentOpts = {
   allowAnonymous: true,
-  capabilities: ["invocationTarget", "transitionTarget"],
+  capabilities: ["invocationTarget", "transitionTarget"]
 };
-var SubagentBlock = NamedBlock(
-  "SubagentBlock",
-  { ...defaultSubagentFields },
-  {
-    scopeAlias: "subagent",
-    ...baseAgentOpts,
-  },
-).describe("A subagent defining agent logic with actions and reasoning.");
-var StartAgentBlock = NamedBlock(
-  "StartAgentBlock",
-  { ...defaultSubagentFields },
-  {
-    scopeAlias: "subagent",
-    ...baseAgentOpts,
-  },
-).describe("The entry-point agent block.");
-var ConnectedSubagentBlock = NamedBlock(
-  "ConnectedSubagentBlock",
-  {
-    target: StringValue.accepts(["StringLiteral"])
-      .describe('URI identifying the connected agent (e.g., "agentforce://Agent_Name").')
-      .required()
-      .pattern(/^[a-zA-Z][a-zA-Z0-9_]*:\/\/\S+$/),
-    label: StringValue.describe("Human-readable label for the connected agent."),
-    description: StringValue.describe(
-      "Description of the connected agent's capabilities or when it should be called.",
-    ),
-    loading_text: StringValue.describe(
-      "Message to display while the connected agent is executing.",
-    ),
-    inputs: InputsBlock,
-  },
-  { capabilities: ["invocationTarget", "transitionTarget"] },
-);
+var SubagentBlock = NamedBlock("SubagentBlock", { ...defaultSubagentFields }, {
+  scopeAlias: "subagent",
+  ...baseAgentOpts
+}).describe("A subagent defining agent logic with actions and reasoning.");
+var StartAgentBlock = NamedBlock("StartAgentBlock", { ...defaultSubagentFields }, {
+  scopeAlias: "subagent",
+  ...baseAgentOpts
+}).describe("The entry-point agent block.");
+var ConnectedSubagentBlock = NamedBlock("ConnectedSubagentBlock", {
+  target: StringValue.accepts(["StringLiteral"]).describe('URI identifying the connected agent (e.g., "agentforce://Agent_Name").').required().pattern(/^[a-zA-Z][a-zA-Z0-9_]*:\/\/\S+$/),
+  label: StringValue.describe("Human-readable label for the connected agent."),
+  description: StringValue.describe("Description of the connected agent's capabilities or when it should be called."),
+  loading_text: StringValue.describe("Message to display while the connected agent is executing."),
+  inputs: InputsBlock
+}, { capabilities: ["invocationTarget", "transitionTarget"] });
 var AgentScriptSchema = {
   system: SystemBlock,
   config: ConfigBlock,
   variables: VariablesBlock,
   language: LanguageBlock,
   connected_subagent: NamedCollectionBlock(ConnectedSubagentBlock),
-  start_agent: NamedCollectionBlock(
-    StartAgentBlock.clone().example(`# Exactly one start_agent is required as the entry point
+  start_agent: NamedCollectionBlock(StartAgentBlock.clone().example(`# Exactly one start_agent is required as the entry point
 start_agent topic_selector:
     label: "Topic Selector"
     description: "Welcome user and route to the right subagent"
@@ -13829,10 +13301,8 @@ start_agent topic_selector:
                 description: "Handle return requests"
                 available when @variables.verified == True
             go_to_escalation: @utils.transition to @subagent.escalation
-                description: "Escalate to human agent"`),
-  ).singular(),
-  subagent: NamedCollectionBlock(
-    SubagentBlock.clone().example(`# Additional subagents handle specific conversation areas
+                description: "Escalate to human agent"`)).singular(),
+  subagent: NamedCollectionBlock(SubagentBlock.clone().example(`# Additional subagents handle specific conversation areas
 subagent Order_Management:
     description: "Handles order lookups, updates, and summaries"
 
@@ -13891,11 +13361,10 @@ subagent Order_Management:
     after_reasoning:
         if @variables.severe_weather_alert:
             transition to @subagent.severe_weather_alerts
-        set @variables.request_count = @variables.request_count + 1`),
-  ),
+        set @variables.request_count = @variables.request_count + 1`))
 };
 var AgentScriptSchemaAliases = {
-  start_agent: "subagent",
+  start_agent: "subagent"
 };
 var AgentScriptSchemaInfo = {
   schema: AgentScriptSchema,
@@ -13906,63 +13375,76 @@ var AgentScriptSchemaInfo = {
   // no arguments. These need to be promoted to typed declarations so they participate
   // in resolvedType validation instead of being silently skipped.
   globalScopes: {
-    utils: /* @__PURE__ */ new Set(["transition", "setVariables", "escalate"]),
-    system_variables: /* @__PURE__ */ new Set(["user_input"]),
-  },
+    utils: /* @__PURE__ */ new Set(["transition", "setVariables", "escalate", "end_session"]),
+    system_variables: /* @__PURE__ */ new Set(["user_input"])
+  }
 };
 var agentScriptSchemaContext = createSchemaContext(AgentScriptSchemaInfo);
 
 // ../../dialect/agentscript/dist/lint/passes/type-map.js
 function getTypeText(decl) {
   const type = decl.type;
-  if (!type) return null;
+  if (!type)
+    return null;
   const cst = type.__cst;
   return cst?.node?.text?.trim() ?? null;
 }
 function extractBooleanField(node) {
-  if (!node || typeof node !== "object") return void 0;
+  if (!node || typeof node !== "object")
+    return void 0;
   const obj = node;
-  if (obj.__kind !== "BooleanValue" || typeof obj.value !== "boolean") return void 0;
+  if (obj.__kind !== "BooleanValue" || typeof obj.value !== "boolean")
+    return void 0;
   const cst = obj.__cst;
-  if (!cst) return void 0;
+  if (!cst)
+    return void 0;
   const parent = cst.node.parent;
   let keyRange = cst.range;
   if (parent?.type === "mapping_element") {
     const keyNode = parent.childForFieldName("key");
-    if (keyNode) keyRange = toRange(keyNode);
+    if (keyNode)
+      keyRange = toRange(keyNode);
   }
   return { value: obj.value, keyRange, node: obj };
 }
 function extractStringField(node) {
-  if (!node || typeof node !== "object") return void 0;
+  if (!node || typeof node !== "object")
+    return void 0;
   const obj = node;
-  if (obj.__kind !== "StringLiteral" || typeof obj.value !== "string") return void 0;
+  if (obj.__kind !== "StringLiteral" || typeof obj.value !== "string")
+    return void 0;
   const cst = obj.__cst;
-  if (!cst) return void 0;
+  if (!cst)
+    return void 0;
   const parent = cst.node.parent;
   let keyRange = cst.range;
   if (parent?.type === "mapping_element") {
     const keyNode = parent.childForFieldName("key");
-    if (keyNode) keyRange = toRange(keyNode);
+    if (keyNode)
+      keyRange = toRange(keyNode);
   }
   return { value: obj.value, keyRange, node: obj };
 }
 function extractParamMap(mapValue) {
   const result = /* @__PURE__ */ new Map();
-  if (!mapValue || !isNamedMap(mapValue)) return result;
+  if (!mapValue || !isNamedMap(mapValue))
+    return result;
   for (const [name, decl] of mapValue) {
-    if (!decl || typeof decl !== "object") continue;
+    if (!decl || typeof decl !== "object")
+      continue;
     const obj = decl;
     const typeText = getTypeText(obj);
-    if (!typeText) continue;
+    if (!typeText)
+      continue;
     const info = {
       type: typeText,
-      hasDefault: obj.defaultValue != null,
+      hasDefault: obj.defaultValue != null
     };
     const props = obj.properties;
     if (props) {
       const isRequired2 = extractBooleanField(props.is_required);
-      if (isRequired2) info.isRequired = isRequired2.value;
+      if (isRequired2)
+        info.isRequired = isRequired2.value;
     }
     result.set(name, info);
   }
@@ -13970,22 +13452,27 @@ function extractParamMap(mapValue) {
 }
 function extractOutputParamMap(mapValue) {
   const result = /* @__PURE__ */ new Map();
-  if (!mapValue || !isNamedMap(mapValue)) return result;
+  if (!mapValue || !isNamedMap(mapValue))
+    return result;
   for (const [name, decl] of mapValue) {
-    if (!decl || typeof decl !== "object") continue;
+    if (!decl || typeof decl !== "object")
+      continue;
     const obj = decl;
     const typeText = getTypeText(obj);
-    if (!typeText) continue;
+    if (!typeText)
+      continue;
     const info = {
       type: typeText,
-      hasDefault: obj.defaultValue != null,
+      hasDefault: obj.defaultValue != null
     };
     const props = obj.properties;
     if (props) {
       const isDisplayable = extractBooleanField(props.is_displayable);
-      if (isDisplayable) info.isDisplayable = isDisplayable;
+      if (isDisplayable)
+        info.isDisplayable = isDisplayable;
       const isUsedByPlanner = extractBooleanField(props.is_used_by_planner);
-      if (isUsedByPlanner) info.isUsedByPlanner = isUsedByPlanner;
+      if (isUsedByPlanner)
+        info.isUsedByPlanner = isUsedByPlanner;
     }
     result.set(name, info);
   }
@@ -13995,11 +13482,7 @@ var typeMapKey = storeKey("type-map");
 var TypeMapAnalyzer = class {
   constructor() {
     __publicField(this, "id", typeMapKey);
-    __publicField(
-      this,
-      "description",
-      "Extracts structured type information for variables and action parameters",
-    );
+    __publicField(this, "description", "Extracts structured type information for variables and action parameters");
     __publicField(this, "variables", /* @__PURE__ */ new Map());
   }
   init() {
@@ -14007,14 +13490,16 @@ var TypeMapAnalyzer = class {
   }
   visitVariables(varsMap) {
     for (const [name, decl] of varsMap) {
-      if (!decl || typeof decl !== "object") continue;
+      if (!decl || typeof decl !== "object")
+        continue;
       const obj = decl;
       const typeText = getTypeText(obj);
-      if (!typeText) continue;
+      if (!typeText)
+        continue;
       const modifier = obj.modifier;
       this.variables.set(name, {
         type: typeText,
-        modifier: modifier?.name,
+        modifier: modifier?.name
       });
     }
   }
@@ -14026,25 +13511,27 @@ var TypeMapAnalyzer = class {
     if (ctx) {
       const subagentKeys = /* @__PURE__ */ new Set([
         ...resolveNamespaceKeys("subagent", ctx),
-        ...resolveNamespaceKeys("topic", ctx),
+        ...resolveNamespaceKeys("topic", ctx)
       ]);
       for (const topicKey of subagentKeys) {
         const topicMap = rootObj[topicKey];
-        if (!topicMap || !isNamedMap(topicMap)) continue;
+        if (!topicMap || !isNamedMap(topicMap))
+          continue;
         for (const [topicName, block] of topicMap) {
-          if (!block || typeof block !== "object") continue;
+          if (!block || typeof block !== "object")
+            continue;
           const topic = block;
           const actionsMap = topic.actions;
           if (actionsMap && isNamedMap(actionsMap)) {
             for (const [actName, actBlock] of actionsMap) {
-              if (!actBlock || typeof actBlock !== "object") continue;
+              if (!actBlock || typeof actBlock !== "object")
+                continue;
               const act = actBlock;
               const inputs = extractParamMap(act.inputs);
               const outputs = extractOutputParamMap(act.outputs);
               const requireUserConfirmation = extractBooleanField(act.require_user_confirmation);
               const sourceNode = act.source;
-              const source =
-                sourceNode && typeof sourceNode.value === "string" ? sourceNode.value : void 0;
+              const source = sourceNode && typeof sourceNode.value === "string" ? sourceNode.value : void 0;
               const target = extractStringField(act.target);
               if (!actions.has(topicName)) {
                 actions.set(topicName, /* @__PURE__ */ new Map());
@@ -14054,7 +13541,7 @@ var TypeMapAnalyzer = class {
                 outputs,
                 requireUserConfirmation,
                 source,
-                target,
+                target
               });
             }
           }
@@ -14064,7 +13551,8 @@ var TypeMapAnalyzer = class {
           const reasoningTools = reasoning?.actions;
           if (reasoningTools && isNamedMap(reasoningTools)) {
             for (const [, raBlock] of reasoningTools) {
-              if (!raBlock || typeof raBlock !== "object") continue;
+              if (!raBlock || typeof raBlock !== "object")
+                continue;
               collectTransitionTargets(raBlock, transitionTargets);
             }
           }
@@ -14075,16 +13563,19 @@ var TypeMapAnalyzer = class {
     const caMap = rootObj.connected_subagent;
     if (caMap && isNamedMap(caMap)) {
       for (const [agentName, block] of caMap) {
-        if (!block || typeof block !== "object") continue;
+        if (!block || typeof block !== "object")
+          continue;
         const node = block;
         const inputsMap = node.inputs;
         const inputs = /* @__PURE__ */ new Map();
         if (inputsMap && isNamedMap(inputsMap)) {
           for (const [inputName, paramDef] of inputsMap) {
-            if (!paramDef || typeof paramDef !== "object") continue;
+            if (!paramDef || typeof paramDef !== "object")
+              continue;
             const decl = paramDef;
             const typeText = getTypeText(decl);
-            if (!typeText) continue;
+            if (!typeText)
+              continue;
             const defaultValue = decl.defaultValue;
             const defaultValueCst = defaultValue?.__cst;
             inputs.set(inputName, {
@@ -14092,13 +13583,12 @@ var TypeMapAnalyzer = class {
               hasDefault: defaultValue != null,
               decl,
               defaultValueNode: defaultValue,
-              defaultValueCst: defaultValueCst ?? void 0,
+              defaultValueCst: defaultValueCst ?? void 0
             });
           }
         }
         const targetNode = node.target;
-        const target =
-          targetNode && typeof targetNode.value === "string" ? targetNode.value : void 0;
+        const target = targetNode && typeof targetNode.value === "string" ? targetNode.value : void 0;
         connectedAgents.set(agentName, { inputs, target, targetNode });
       }
     }
@@ -14106,15 +13596,17 @@ var TypeMapAnalyzer = class {
       variables: this.variables,
       actions,
       connectedAgents,
-      transitionTargets,
+      transitionTargets
     });
   }
 };
 function collectTransitionTargets(block, targets) {
-  if (!block || typeof block !== "object") return;
+  if (!block || typeof block !== "object")
+    return;
   const obj = block;
   const stmts = obj.statements;
-  if (!stmts) return;
+  if (!stmts)
+    return;
   for (const stmt of stmts) {
     collectTransitionTargetsFromStatement(stmt, obj, targets);
   }
@@ -14134,27 +13626,32 @@ function collectTransitionTargetsFromStatement(stmt, diagnosticParent, targets) 
   } else if (stmt.__kind === "IfStatement") {
     const body = stmt.body;
     if (body) {
-      for (const s of body) collectTransitionTargetsFromStatement(s, diagnosticParent, targets);
+      for (const s of body)
+        collectTransitionTargetsFromStatement(s, diagnosticParent, targets);
     }
     const orelse = stmt.orelse;
     if (orelse) {
-      for (const s of orelse) collectTransitionTargetsFromStatement(s, diagnosticParent, targets);
+      for (const s of orelse)
+        collectTransitionTargetsFromStatement(s, diagnosticParent, targets);
     }
   }
 }
 function collectToTarget(toClause, diagnosticParent, targets) {
   const target = toClause.target;
-  if (!target || typeof target !== "object") return;
+  if (!target || typeof target !== "object")
+    return;
   const ref = decomposeAtMemberExpression(target);
-  if (!ref) return;
+  if (!ref)
+    return;
   const targetCst = target.__cst;
   const range = targetCst?.range ?? toClause.__cst?.range;
-  if (!range) return;
+  if (!range)
+    return;
   const entry = {
     namespace: ref.namespace,
     property: ref.property,
     range,
-    diagnosticParent,
+    diagnosticParent
   };
   const list = targets.get(ref.namespace);
   if (list) {
@@ -14172,51 +13669,47 @@ var reasoningActionsKey = storeKey("reasoning-actions");
 var ReasoningActionsAnalyzer = class {
   constructor() {
     __publicField(this, "id", reasoningActionsKey);
-    __publicField(
-      this,
-      "description",
-      "Pre-resolves reasoning action references and their action signatures",
-    );
+    __publicField(this, "description", "Pre-resolves reasoning action references and their action signatures");
     __publicField(this, "finalizeAfter", [typeMapKey]);
   }
   finalize(store, root) {
     const typeMap = store.get(typeMapKey);
-    if (!typeMap) return;
+    if (!typeMap)
+      return;
     const ctx = store.get(schemaContextKey);
-    if (!ctx) return;
+    if (!ctx)
+      return;
     const raw = [];
     const rootObj = root;
     const subagentKeys = /* @__PURE__ */ new Set([
       ...resolveNamespaceKeys("subagent", ctx),
-      ...resolveNamespaceKeys("topic", ctx),
+      ...resolveNamespaceKeys("topic", ctx)
     ]);
     for (const topicKey of subagentKeys) {
       const topicMap = rootObj[topicKey];
-      if (!topicMap || !isNamedMap(topicMap)) continue;
+      if (!topicMap || !isNamedMap(topicMap))
+        continue;
       for (const [topicName, block] of topicMap) {
-        if (!block || typeof block !== "object") continue;
+        if (!block || typeof block !== "object")
+          continue;
         const topic = block;
         const reasoning = topic.reasoning;
-        if (!reasoning || typeof reasoning !== "object") continue;
+        if (!reasoning || typeof reasoning !== "object")
+          continue;
         const reasoningObj = reasoning;
         const raActions = reasoningObj.actions;
-        if (!raActions || !isNamedMap(raActions)) continue;
+        if (!raActions || !isNamedMap(raActions))
+          continue;
         for (const [, raBlock] of raActions) {
-          if (!raBlock || typeof raBlock !== "object") continue;
+          if (!raBlock || typeof raBlock !== "object")
+            continue;
           const ra = raBlock;
-          if (ra.__kind !== "ReasoningActionBlock") continue;
+          if (ra.__kind !== "ReasoningActionBlock")
+            continue;
           if (!ra.value) {
             const raCst = ra.__cst;
             if (raCst) {
-              attachDiagnostic(
-                ra,
-                lintDiagnostic(
-                  raCst.range,
-                  `Reasoning action is missing a target reference (e.g., @actions.Name, @utils.transition, @utils.setVariables)`,
-                  DiagnosticSeverity.Error,
-                  "missing-action-reference",
-                ),
-              );
+              attachDiagnostic(ra, lintDiagnostic(raCst.range, `Reasoning action is missing a target reference (e.g., @actions.Name, @utils.transition, @utils.setVariables)`, DiagnosticSeverity.Error, "missing-action-reference"));
             }
             continue;
           }
@@ -14231,7 +13724,7 @@ var ReasoningActionsAnalyzer = class {
               namespace: "actions",
               ra,
               statements,
-              actionRefRange,
+              actionRefRange
             });
             continue;
           }
@@ -14243,7 +13736,7 @@ var ReasoningActionsAnalyzer = class {
               namespace: "connected_subagent",
               ra,
               statements,
-              actionRefRange,
+              actionRefRange
             });
           }
         }
@@ -14260,14 +13753,15 @@ var ReasoningActionsAnalyzer = class {
           sig = connectedAgentSignature(agentInfo);
         }
       }
-      if (!sig) continue;
+      if (!sig)
+        continue;
       entries.push({
         topicName: r.topicName,
         refActionName: r.refActionName,
         sig,
         ra: r.ra,
         statements: r.statements,
-        actionRefRange: r.actionRefRange,
+        actionRefRange: r.actionRefRange
       });
     }
     store.set(reasoningActionsKey, entries);
@@ -14281,7 +13775,7 @@ function connectedAgentSignature(info) {
   for (const [name, inputInfo] of info.inputs) {
     inputs.set(name, {
       type: inputInfo.type,
-      hasDefault: inputInfo.hasDefault,
+      hasDefault: inputInfo.hasDefault
     });
   }
   return { inputs, outputs: /* @__PURE__ */ new Map() };
@@ -14301,15 +13795,7 @@ function actionIoRule() {
       if (!statements) {
         for (const [inputName, info] of sig.inputs) {
           if (!info.hasDefault && info.isRequired !== false && actionRefRange) {
-            attachDiagnostic(
-              ra,
-              lintDiagnostic(
-                actionRefRange,
-                `Missing required input '${inputName}' for action '${refActionName}'`,
-                DiagnosticSeverity.Error,
-                "action-missing-input",
-              ),
-            );
+            attachDiagnostic(ra, lintDiagnostic(actionRefRange, `Missing required input '${inputName}' for action '${refActionName}'`, DiagnosticSeverity.Error, "action-missing-input"));
           }
         }
         return;
@@ -14317,7 +13803,8 @@ function actionIoRule() {
       for (const stmt of statements) {
         if (stmt.__kind === "WithClause") {
           const param = stmt.param;
-          if (!param) continue;
+          if (!param)
+            continue;
           providedInputs.add(param);
           if (!sig.inputs.has(param)) {
             const cst = stmt.__cst;
@@ -14326,12 +13813,7 @@ function actionIoRule() {
               const range = paramCstNode ? toRange(paramCstNode) : cst.range;
               const suggestion = findSuggestion(param, inputNames);
               const msg = `'${param}' is not a defined input of action '${refActionName}'`;
-              attachDiagnostic(
-                stmt,
-                lintDiagnostic(range, msg, DiagnosticSeverity.Error, "action-unknown-input", {
-                  suggestion,
-                }),
-              );
+              attachDiagnostic(stmt, lintDiagnostic(range, msg, DiagnosticSeverity.Error, "action-unknown-input", { suggestion }));
             }
           }
         }
@@ -14342,41 +13824,24 @@ function actionIoRule() {
             if (cst) {
               const suggestion = findSuggestion(outputRef.name, outputNames);
               const msg = `'${outputRef.name}' is not a defined output of action '${refActionName}'`;
-              attachDiagnostic(
-                stmt,
-                lintDiagnostic(cst.range, msg, DiagnosticSeverity.Error, "action-unknown-output", {
-                  suggestion,
-                }),
-              );
+              attachDiagnostic(stmt, lintDiagnostic(cst.range, msg, DiagnosticSeverity.Error, "action-unknown-output", { suggestion }));
             }
           }
         }
       }
       for (const [inputName, info] of sig.inputs) {
-        if (
-          !info.hasDefault &&
-          info.isRequired !== false &&
-          !providedInputs.has(inputName) &&
-          actionRefRange
-        ) {
-          attachDiagnostic(
-            ra,
-            lintDiagnostic(
-              actionRefRange,
-              `Missing required input '${inputName}' for action '${refActionName}'`,
-              DiagnosticSeverity.Error,
-              "action-missing-input",
-            ),
-          );
+        if (!info.hasDefault && info.isRequired !== false && !providedInputs.has(inputName) && actionRefRange) {
+          attachDiagnostic(ra, lintDiagnostic(actionRefRange, `Missing required input '${inputName}' for action '${refActionName}'`, DiagnosticSeverity.Error, "action-missing-input"));
         }
       }
-    },
+    }
   });
 }
 
 // ../../dialect/agentscript/dist/lint/passes/action-type-check.js
 function inferExpressionType(expr, typeMap) {
-  if (!expr || typeof expr !== "object") return null;
+  if (!expr || typeof expr !== "object")
+    return null;
   const obj = expr;
   const varName = extractVariableRef(expr);
   if (varName) {
@@ -14397,8 +13862,10 @@ function inferExpressionType(expr, typeMap) {
 function typesCompatible(expected, actual) {
   const e = expected.toLowerCase();
   const a = actual.toLowerCase();
-  if (e === a) return true;
-  if (e === "object" || a === "object") return true;
+  if (e === a)
+    return true;
+  if (e === "object" || a === "object")
+    return true;
   return false;
 }
 function actionTypeCheckRule() {
@@ -14407,28 +13874,25 @@ function actionTypeCheckRule() {
     description: "Validates type compatibility in with/set clauses against action parameter types",
     deps: {
       typeMap: typeMapKey,
-      entry: each(reasoningActionsKey),
+      entry: each(reasoningActionsKey)
     },
     run({ typeMap, entry }) {
       const { sig, statements } = entry;
-      if (!statements) return;
+      if (!statements)
+        return;
       for (const stmt of statements) {
         if (stmt.__kind === "WithClause") {
           const param = stmt.param;
-          if (!param) continue;
+          if (!param)
+            continue;
           const inputInfo = sig.inputs.get(param);
-          if (!inputInfo) continue;
+          if (!inputInfo)
+            continue;
           const actualType = inferExpressionType(stmt.value, typeMap);
           if (actualType && !typesCompatible(inputInfo.type, actualType)) {
             const cst = stmt.__cst;
             if (cst) {
-              const diag = typeMismatchDiagnostic(
-                cst.range,
-                `Type mismatch: input '${param}' expects '${inputInfo.type}' but got '${actualType}'`,
-                inputInfo.type,
-                actualType,
-                LINT_SOURCE,
-              );
+              const diag = typeMismatchDiagnostic(cst.range, `Type mismatch: input '${param}' expects '${inputInfo.type}' but got '${actualType}'`, inputInfo.type, actualType, LINT_SOURCE);
               diag.severity = DiagnosticSeverity.Warning;
               attachDiagnostic(stmt, diag);
             }
@@ -14436,29 +13900,26 @@ function actionTypeCheckRule() {
         }
         if (stmt.__kind === "SetClause") {
           const outputRef = extractOutputRef(stmt.value);
-          if (!outputRef) continue;
+          if (!outputRef)
+            continue;
           const outputInfo = sig.outputs.get(outputRef.name);
-          if (!outputInfo) continue;
+          if (!outputInfo)
+            continue;
           const targetVarName = extractVariableRef(stmt.target);
-          if (!targetVarName) continue;
+          if (!targetVarName)
+            continue;
           const targetType = typeMap.variables.get(targetVarName)?.type;
           if (targetType && !typesCompatible(targetType, outputInfo.type)) {
             const cst = stmt.__cst;
             if (cst) {
-              const diag = typeMismatchDiagnostic(
-                cst.range,
-                `Type mismatch: output '${outputRef.name}' is '${outputInfo.type}' but target '@variables.${targetVarName}' expects '${targetType}'`,
-                targetType,
-                outputInfo.type,
-                LINT_SOURCE,
-              );
+              const diag = typeMismatchDiagnostic(cst.range, `Type mismatch: output '${outputRef.name}' is '${outputInfo.type}' but target '@variables.${targetVarName}' expects '${targetType}'`, targetType, outputInfo.type, LINT_SOURCE);
               diag.severity = DiagnosticSeverity.Warning;
               attachDiagnostic(stmt, diag);
             }
           }
         }
       }
-    },
+    }
   });
 }
 
@@ -14483,109 +13944,89 @@ function defaultRules() {
     // Validation
     undefinedReferencePass(),
     actionIoRule(),
-    actionTypeCheckRule(),
+    actionTypeCheckRule()
   ];
 }
 
+// ../../dialect/agentforce/dist/variants/commerce-cloud-shopper.js
+var COMMERCE_SHOPPER_SCHEMA = "node://commerce/shopper_agent/v1";
+var CommerceShopperParametersBlock = Block("ParametersBlock", {
+  template: InputsBlock.describe("Variable bindings: each key maps to a @variables.X expression, e.g., authToken: @variables.authToken.")
+}).describe("Variable binding configuration. Use parameters.template to pre-populate node inputs from agent-level variables.");
+var commerceShopperVariantFields = {
+  ...customSubagentFields,
+  parameters: CommerceShopperParametersBlock
+};
+
 // ../../dialect/agentforce/dist/schema.js
 var AFVariablesBlock = VariablesBlock.extendProperties({
-  source: ReferenceValue.describe(
-    "Where the variable gets its value. Required for linked variables, not allowed for mutable variables (e.g., @MessagingSession.Id).",
-  ).allowedNamespaces(["MessagingSession", "MessagingEndUser"]),
+  source: ReferenceValue.describe("Where the variable gets its value. Required for linked variables, not allowed for mutable variables (e.g., @MessagingSession.Id).").allowedNamespaces(["MessagingSession", "MessagingEndUser", "VoiceCall"]),
   visibility: StringValue.describe("Visibility level for the variable.").enum([
     "Internal",
     "External",
     "internal",
-    "external",
+    "external"
   ]),
   is_displayable: BooleanValue.describe("Whether this variable is visible in the UI."),
-  is_used_by_planner: BooleanValue.describe("Whether the planner can read this variable."),
+  is_used_by_planner: BooleanValue.describe("Whether the planner can read this variable.")
 }).withKeyPattern("^(?!.*__)[a-zA-Z][a-zA-Z0-9_]*$");
 var AFInputsBlock = InputsBlock.extendProperties({
-  complex_data_type_name: StringValue.describe(
-    'Complex data type name (e.g., "@apexClassType/c__RequestMetadata"). For object type, defaults to "lightning__objectType".',
-  ),
+  complex_data_type_name: StringValue.describe('Complex data type name (e.g., "@apexClassType/c__RequestMetadata"). For object type, defaults to "lightning__objectType".'),
   schema: StringValue.describe('Schema URI for input validation (e.g., "schema://city_schema").'),
   is_user_input: BooleanValue.describe("Whether this input comes from the user."),
   filter_from_agent: BooleanValue.describe("Whether to filter this input from the agent context."),
   is_displayable: BooleanValue.describe("Whether this input can be shown to users."),
-  is_used_by_planner: BooleanValue.describe("Whether the planner can use this input."),
+  is_used_by_planner: BooleanValue.describe("Whether the planner can use this input.")
 });
+var AFConnectionInputsBlock = InputsBlock.crossBlockReferenceable();
 var AFOutputsBlock = OutputsBlock.extendProperties({
   developer_name: StringValue.describe("Developer name identifier for the output field."),
   is_displayable: BooleanValue.describe("Whether this output can be shown to users."),
   is_used_by_planner: BooleanValue.describe("Whether the planner can read this output."),
-  complex_data_type_name: StringValue.describe(
-    'Complex data type name. For object type, defaults to "lightning__objectType".',
-  ),
-  filter_from_agent: BooleanValue.describe("Whether to filter this output from the agent context."),
+  complex_data_type_name: StringValue.describe('Complex data type name. For object type, defaults to "lightning__objectType".'),
+  filter_from_agent: BooleanValue.describe("Whether to filter this output from the agent context.")
 });
-var ModelConfigParamsBlock = Block("ModelConfigParamsBlock", {}).describe(
-  "Model parameters as key-value pairs. Accepts arbitrary parameters that vary by model (e.g., temperature, max_tokens, top_p). Values can be strings, numbers, booleans, or arrays. Parameters are dynamically extracted at compile time.",
-);
+var ModelConfigParamsBlock = Block("ModelConfigParamsBlock", {}).describe("Model parameters as key-value pairs. Accepts arbitrary parameters that vary by model (e.g., temperature, max_tokens, top_p). Values can be strings, numbers, booleans, or arrays. Parameters are dynamically extracted at compile time.");
 var ModelConfigBlock = Block("ModelConfigBlock", {
   model: StringValue.describe('Model identifier URI (e.g., "model://...")'),
-  params: ModelConfigParamsBlock.describe(
-    "Additional model parameters (e.g., temperature: 0.7, max_tokens: 2000)",
-  ),
+  params: ModelConfigParamsBlock.describe("Additional model parameters (e.g., temperature: 0.7, max_tokens: 2000)")
 }).describe("Model selection and parameter configuration.");
 var ContextMemoryBlock = Block("ContextMemoryBlock", {
-  enabled: BooleanValue.describe("Whether memory is enabled for the agent."),
+  enabled: BooleanValue.describe("Whether memory is enabled for the agent.")
 }).describe("Memory configuration for the agent.");
 var ContextBlock = Block("ContextBlock", {
-  memory: ContextMemoryBlock.describe("Memory configuration."),
+  memory: ContextMemoryBlock.describe("Memory configuration.")
 }).describe("Context configuration for the agent.");
-var AFConfigBlock = ConfigBlock.extend(
-  {
-    developer_name: StringValue.describe(
-      "Agent identifier. Must follow standard name field requirements. Set this or agent_name (not both).",
-    ),
-    agent_label: StringValue.describe(
-      "Display label for the agent. Defaults to normalized developer_name.",
-    ).accepts(["StringLiteral"]),
-    agent_description: StringValue.describe(
-      "Agent description used in prompts and routing. Distinct from description (internal documentation).",
-    ),
-    agent_type: StringValue.describe(
-      'Agent type (e.g., "AgentforceServiceAgent", "AgentforceEmployeeAgent", "SalesEinsteinCoach").',
-    ).enum(["AgentforceServiceAgent", "AgentforceEmployeeAgent", "SalesEinsteinCoach"]),
-    agent_id: StringValue.describe("Unique identifier for the agent."),
-    agent_name: StringValue.describe("Internal name for the agent."),
-    default_agent_user: StringValue.describe(
-      "Default user identity. Required for AgentforceServiceAgent type.",
-    ),
-    agent_version: StringValue.describe('Version identifier for the agent (e.g., "v1").'),
-    enable_enhanced_event_logs: BooleanValue.describe(
-      "Whether to record enhanced event logs for debugging and analytics.",
-    ),
-    company: StringValue.describe(
-      "Company information. Can be embedded in subagent prompts for context.",
-    ),
-    role: StringValue.describe("Job description or role for the agent."),
-    planner_type: StringValue.describe(
-      'Planner type (e.g., "AiCopilot__ReAct", "Atlas__ConcurrentMultiAgentOrchestration").',
-    ),
-    additional_parameter__reset_to_initial_node: BooleanValue.describe(
-      "Whether to reset to the initial node between turns.",
-    ).hidden(),
-    additional_parameter__DISABLE_GROUNDEDNESS: BooleanValue.describe(
-      "Whether to disable groundedness checking.",
-    ).hidden(),
-    debug: BooleanValue.describe("Whether to enable debug mode."),
-    max_tokens: NumberValue.describe("Maximum number of tokens for responses."),
-    temperature: NumberValue.describe("Sampling temperature for model responses."),
-    agent_template: StringValue.describe("Template name identifier for the agent."),
-    outbound_flow: StringValue.describe(
-      "API name of the default outbound flow for escalation routing.",
-    ),
-    user_locale: StringValue.describe('User locale override (e.g., "en_US").').deprecated(
-      "Use the language block instead.",
-    ),
-  },
-  {
-    wildcardPrefixes: [{ prefix: "additional_parameter__", fieldType: ExpressionValue }],
-  },
-).example(`config:
+var AFConfigBlock = ConfigBlock.extend({
+  developer_name: StringValue.describe("Agent identifier. Must follow standard name field requirements. Set this or agent_name (not both)."),
+  agent_label: StringValue.describe("Display label for the agent. Defaults to normalized developer_name.").accepts(["StringLiteral"]),
+  agent_description: StringValue.describe("Agent description used in prompts and routing. Distinct from description (internal documentation)."),
+  agent_type: StringValue.describe('Agent type (e.g., "AgentforceServiceAgent", "AgentforceEmployeeAgent", "SalesEinsteinCoach").').enum([
+    "AgentforceServiceAgent",
+    "AgentforceEmployeeAgent",
+    "SalesEinsteinCoach"
+  ]),
+  agent_id: StringValue.describe("Unique identifier for the agent."),
+  agent_name: StringValue.describe("Internal name for the agent."),
+  default_agent_user: StringValue.describe("Default user identity. Required for AgentforceServiceAgent type."),
+  agent_version: StringValue.describe('Version identifier for the agent (e.g., "v1").'),
+  enable_enhanced_event_logs: BooleanValue.describe("Whether to record enhanced event logs for debugging and analytics."),
+  company: StringValue.describe("Company information. Can be embedded in subagent prompts for context."),
+  role: StringValue.describe("Job description or role for the agent."),
+  planner_type: StringValue.describe('Planner type (e.g., "AiCopilot__ReAct", "Atlas__ConcurrentMultiAgentOrchestration").'),
+  additional_parameter__reset_to_initial_node: BooleanValue.describe("Whether to reset to the initial node between turns.").hidden(),
+  additional_parameter__DISABLE_GROUNDEDNESS: BooleanValue.describe("Whether to disable groundedness checking.").hidden(),
+  debug: BooleanValue.describe("Whether to enable debug mode."),
+  max_tokens: NumberValue.describe("Maximum number of tokens for responses."),
+  temperature: NumberValue.describe("Sampling temperature for model responses."),
+  agent_template: StringValue.describe("Template name identifier for the agent."),
+  outbound_flow: StringValue.describe("API name of the default outbound flow for escalation routing."),
+  user_locale: StringValue.describe('User locale override (e.g., "en_US").').deprecated("Use the language block instead.")
+}, {
+  wildcardPrefixes: [
+    { prefix: "additional_parameter__", fieldType: ExpressionValue }
+  ]
+}).example(`config:
     developer_name: "customer_support_agent"
     agent_label: "Customer Support Agent"
     description: "Assists customers with orders, returns, and account management"
@@ -14595,17 +14036,11 @@ var AFConfigBlock = ConfigBlock.extend(
     additional_parameter__reset_to_initial_node: True`);
 var AFActionBlock = ActionBlock.extend({
   source: StringValue.describe('Source URI for the action (e.g., "custom://weather_api").'),
-  require_user_confirmation: BooleanValue.describe(
-    "Whether to require user confirmation before executing.",
-  ),
-  include_in_progress_indicator: BooleanValue.describe(
-    "Whether to show a progress indicator during execution.",
-  ),
-  progress_indicator_message: StringValue.describe(
-    "Message shown during execution. Only used if include_in_progress_indicator is True.",
-  ),
+  require_user_confirmation: BooleanValue.describe("Whether to require user confirmation before executing."),
+  include_in_progress_indicator: BooleanValue.describe("Whether to show a progress indicator during execution."),
+  progress_indicator_message: StringValue.describe("Message shown during execution. Only used if include_in_progress_indicator is True."),
   inputs: AFInputsBlock,
-  outputs: AFOutputsBlock,
+  outputs: AFOutputsBlock
 }).example(`    actions:
         Lookup_Order:
             description: "Retrieve order details by order number"
@@ -14644,176 +14079,207 @@ var AFActionsBlock = CollectionBlock(AFActionBlock);
 var SecurityBlock = Block("SecurityBlock", {
   sharing_policy: Block("SharingPolicyBlock", {
     use_default_sharing_entities: BooleanValue.describe("Sharing policy for the agent."),
-    custom_sharing_entities: ExpressionSequence().describe(
-      "Custom sharing entities for the agent.",
-    ),
+    custom_sharing_entities: ExpressionSequence().describe("Custom sharing entities for the agent.")
   }).describe("Sharing policy for the agent."),
   verified_customer_record_access: Block("VerifiedCustomerRecordAccessBlock", {
-    use_default_objects: BooleanValue.describe(
-      "Whether to use default objects for record access filtering.",
-    ),
-    additional_objects: ExpressionSequence().describe(
-      "Additional objects for record access filtering.",
-    ),
-  }).describe("Verified customer record access configuration."),
+    use_default_objects: BooleanValue.describe("Whether to use default objects for record access filtering."),
+    additional_objects: ExpressionSequence().describe("Additional objects for record access filtering.")
+  }).describe("Verified customer record access configuration.")
 }).describe("Agent security configuration");
 var sharedBlockFields = {
   ...defaultSubagentFields,
   // Agentforce-specific fields
   model_config: ModelConfigBlock.describe("Model configuration for this block."),
-  security: SecurityBlock,
+  security: SecurityBlock
 };
 var sharedBlockOpts = {
   allowAnonymous: true,
-  capabilities: ["invocationTarget", "transitionTarget"],
+  capabilities: ["invocationTarget", "transitionTarget"]
 };
-var AFTopicBlock = NamedBlock(
-  "TopicBlock",
-  {
-    ...sharedBlockFields,
-    actions: AFActionsBlock,
-  },
-  { scopeAlias: "topic", ...sharedBlockOpts },
-)
-  .describe("A topic defining agent logic with actions and reasoning.")
-  .discriminant("schema");
-var AFSubagentBlock = NamedBlock(
-  "SubagentBlock",
-  {
-    ...sharedBlockFields,
-    actions: AFActionsBlock,
-  },
-  { scopeAlias: "subagent", ...sharedBlockOpts },
-)
-  .describe("A subagent defining agent logic with actions and reasoning.")
-  .discriminant("schema");
-var AFStartAgentBlock = StartAgentBlock.extend(
-  {
-    actions: AFActionsBlock,
-    reasoning: ReasoningBlock,
-    model_config: ModelConfigBlock.describe("Configuration for the model used by this block."),
-    security: SecurityBlock,
-  },
-  { scopeAlias: "topic" },
-).discriminant("schema");
+var AFTopicBlock = NamedBlock("TopicBlock", {
+  ...sharedBlockFields,
+  actions: AFActionsBlock
+}, { scopeAlias: "topic", ...sharedBlockOpts }).describe("A topic defining agent logic with actions and reasoning.").discriminant("schema");
+var commerceShopperVariant = {
+  ...commerceShopperVariantFields,
+  actions: AFActionsBlock,
+  model_config: ModelConfigBlock.describe("Model configuration for this block."),
+  security: SecurityBlock
+};
+var AFSubagentBlock = NamedBlock("SubagentBlock", {
+  ...sharedBlockFields,
+  actions: AFActionsBlock
+}, { scopeAlias: "subagent", ...sharedBlockOpts }).describe("A subagent defining agent logic with actions and reasoning.").discriminant("schema").variant(COMMERCE_SHOPPER_SCHEMA, commerceShopperVariant);
+var AFStartAgentBlock = StartAgentBlock.extend({
+  actions: AFActionsBlock,
+  reasoning: ReasoningBlock,
+  model_config: ModelConfigBlock.describe("Configuration for the model used by this block."),
+  security: SecurityBlock
+}, { scopeAlias: "topic" }).discriminant("schema");
 var KnowledgeBlock = Block("KnowledgeBlock", {
   citations_url: StringValue.describe("URL prefix for citation links."),
-  rag_feature_config_id: StringValue.describe(
-    "RAG feature configuration identifier. Typically a UUID-based identifier.",
-  ),
-  citations_enabled: BooleanValue.describe("Whether to include citations in responses."),
-}).describe("Knowledge and citation configuration for RAG-based question answering.")
-  .example(`knowledge:
+  rag_feature_config_id: StringValue.describe("RAG feature configuration identifier. Typically a UUID-based identifier."),
+  citations_enabled: BooleanValue.describe("Whether to include citations in responses.")
+}).describe("Knowledge and citation configuration for RAG-based question answering.").example(`knowledge:
     citations_url: "https://help.example.com"
     rag_feature_config_id: "my_knowledge_base"
     citations_enabled: True`);
-var ResponseActionsEntryBlock = NamedBlock(
-  "ResponseActionsBlock",
-  {
-    description: StringValue.describe(
-      "Description of the tool provided to the LLM. Overrides the action description.",
-    ),
-    label: StringValue.describe("Human-readable label for the tool. Not provided to the LLM."),
-  },
-  {
-    colinear: ExpressionValue,
-    body: ProcedureValue,
-    symbol: { kind: SymbolKind.Method },
-    scopeAlias: "action",
-  },
-).describe("Reasoning loop for connections.");
-var ConnectionBlock = NamedBlock(
-  "ConnectionBlock",
-  {
-    adaptive_response_allowed: BooleanValue.describe(
-      "Whether adaptive responses are allowed for this connection.",
-    ),
-    escalation_message: StringValue.describe("Message to show for Escalation."),
-    instructions: StringValue.describe("Instructions for the connection."),
-    outbound_route_type: StringValue.describe(
-      "Type of outbound route. Currently gets defaulted to OmniChannelFlow",
-    ),
-    outbound_route_name: StringValue.describe(
-      'Name of outbound route. Example: "flow://Route_to_ELL_Agent"',
-    ),
-    response_actions: CollectionBlock(ResponseActionsEntryBlock),
-  },
-  { symbol: { kind: SymbolKind.Interface } },
-).describe("External connection configuration.").example(`connection messaging:
-    adaptive_response_allowed: True`);
+var _inputPropsWildcard = {
+  prefix: "",
+  fieldType: void 0,
+  // patched below
+  typedEntry: true
+};
+var ResponseFormatInputPropertiesBlock = InputPropertiesBlock.extend({
+  schema: StringValue.describe('Schema URI for input validation (e.g., "messaging_components://FormName").'),
+  enum: ExpressionSequence().describe("Allowed values for this input."),
+  min_length: NumberValue.describe("Minimum string length."),
+  max_length: NumberValue.describe("Maximum string length."),
+  minimum: NumberValue.describe("Minimum numeric value."),
+  maximum: NumberValue.describe("Maximum numeric value."),
+  min_items: NumberValue.describe("Minimum array items."),
+  max_items: NumberValue.describe("Maximum array items.")
+}, {
+  symbol: { kind: SymbolKind.Object, noRecurse: true },
+  // Accept nested sub-fields (e.g. `title: string` inside `choices: list[object]`)
+  //  at any depth with the same property keywords.
+  wildcardPrefixes: [_inputPropsWildcard]
+}).describe("Properties for a response format input field.");
+var RESPONSE_FORMAT_INPUT_KEYWORDS = new Set(Object.keys(ResponseFormatInputPropertiesBlock.schema));
+_inputPropsWildcard.fieldType = ResponseFormatInputPropertiesBlock;
+var ResponseFormatInputsBlock = TypedMap("ResponseFormatInputsBlock", ResponseFormatInputPropertiesBlock, { primitiveTypes: AGENTSCRIPT_PRIMITIVE_TYPES }).describe("Structured input schema for response format definitions.");
+var ResponseFormatBlock = NamedBlock("ResponseFormatBlock", {
+  label: StringValue.describe("Human-readable label for the format. Not provided to the LLM."),
+  description: StringValue.describe("Description of the response format."),
+  source: StringValue.describe('Source identifier for an existing format (e.g., "SurfaceAction__MessagingChoices").'),
+  target: StringValue.describe('Target URI for custom format (e.g., "apex://MessagingLinksButSpecial").'),
+  inputs: ResponseFormatInputsBlock.describe("Structured input schema for this response format.")
+}, {
+  symbol: { kind: SymbolKind.Method },
+  scopeAlias: "response_formats",
+  capabilities: ["invocationTarget"]
+}).describe("Response format definition with schema and target.").example(`    response_formats:
+        # Existing format with no changes
+        messaging_rich_link:
+            source: "response_format://SurfaceAction__MessagingRichLink"
+
+        # Existing format with description override
+        messaging_choices_penguins:
+            description: "Description of this format"
+            source: "response_format://SurfaceAction__MessagingChoices"
+
+        # Custom format with structured input schema
+        custom_messaging_choices:
+            description: "A messaging choices format"
+            target: "apex://MessagingChoicesHandler"
+            inputs:
+                message: string
+                    description: "The message text"
+                    is_required: True
+                choices: list[string]
+                    is_required: True
+                title: string
+                    description: "Heading for the options"
+                    is_required: True`);
+var ResponseFormatsBlock = CollectionBlock(ResponseFormatBlock).describe("Collection of response format definitions.");
+var AvailableFormatBlock = NamedBlock("AvailableFormatBlock", {}, {
+  colinear: ExpressionValue.resolvedType("invocationTarget"),
+  symbol: { kind: SymbolKind.Method },
+  scopeAlias: "response_actions"
+}).describe("Response format made available to the LLM for selection.").example(`response_actions:
+            messaging_rich_link: @response_formats.messaging_rich_link
+            messaging_choices: @response_formats.messaging_choices`);
+var AvailableFormatsBlock = CollectionBlock(AvailableFormatBlock).describe("Formats available to the LLM for non-deterministic selection.");
+var ConnectionReasoningBlock = Block("ConnectionReasoningBlock", {
+  instructions: StringValue.describe("Connection-level instructions for the agent. Supports {!<expression>} template interpolation."),
+  response_actions: AvailableFormatsBlock.describe("Response format tools available to the LLM for non-deterministic selection during reasoning.")
+}, { symbol: { kind: SymbolKind.Namespace } }).describe("Reasoning configuration for the connection.");
+var ConnectionBlock = NamedBlock("ConnectionBlock", {
+  label: StringValue.describe("Display label for the connection.").accepts([
+    "StringLiteral"
+  ]),
+  description: StringValue.describe("Description of the connection purpose."),
+  source: StringValue.describe("Source identifier for the connection."),
+  inputs: AFConnectionInputsBlock.describe("Parameters defined by surface owners."),
+  additional_system_instructions: StringValue.describe("Additional system instructions that append to global system instructions. Supports {!<expression>} template interpolation."),
+  reasoning: ConnectionReasoningBlock.describe("Reasoning configuration with instructions and available formats."),
+  response_formats: ResponseFormatsBlock.describe("Response format definitions for this connection."),
+  adaptive_response_allowed: BooleanValue.describe("Whether adaptive responses are allowed for this connection."),
+  escalation_message: StringValue.describe("Message sent when escalating to a human agent."),
+  outbound_route_type: StringValue.describe('Type of outbound route (e.g., "OmniChannelFlow").'),
+  outbound_route_name: StringValue.describe('Name of outbound route (e.g., "flow://Route_to_Agent").')
+}, {
+  symbol: { kind: SymbolKind.Interface },
+  scopeAlias: "connection"
+}).describe("External connection configuration.").example(`connection service_email:
+    label: "Email Connection"
+    description: "Connection for email channels"
+
+    outbound_route_type: "OmniChannelFlow"
+    outbound_route_name: "flow://Route"
+
+    inputs:
+        legal_disclosure: string = "this is a disclosure"
+            description: "Legal disclosure message"
+
+    additional_system_instructions: |
+        Use recipient name if provided
+
+    reasoning:
+        instructions: |
+            Always append {!@inputs.legal_disclosure}
+            Use {!@response_actions.choices} for multiple choice responses
+
+        response_actions:
+            choices: @response_formats.email_choices
+            rich_link: @response_formats.email_rich_link
+
+    response_formats:
+        email_choices:
+            description: "Multiple choice format"
+            source: "response_format://SurfaceAction__EmailTextChoices"
+
+        email_rich_link:
+            source: "response_format://SurfaceAction__EmailTextRichLink"`);
 var ConnectionsBlock = NamedCollectionBlock(ConnectionBlock);
 var PronunciationDictEntryBlock = Block("PronunciationDictEntryBlock", {
   grapheme: StringValue.required(),
   phoneme: StringValue.required(),
-  type: StringValue.enum(["IPA", "CMU"]),
+  type: StringValue.enum(["IPA", "CMU"])
 });
 var InboundKeywordsBlock = Block("InboundKeywordsBlock", {
-  keywords: ExpressionSequence().describe("List of keywords for inbound speech detection."),
+  keywords: ExpressionSequence().describe("List of keywords for inbound speech detection.")
 }).describe("Keyword detection configuration for inbound speech.");
 var SpeakUpConfigBlock = Block("SpeakUpConfigBlock", {
-  speak_up_first_wait_time_ms: NumberValue.describe(
-    "Time in milliseconds before first speak-up prompt.",
-  )
-    .min(1e4)
-    .max(3e5),
-  speak_up_follow_up_wait_time_ms: NumberValue.describe(
-    "Time in milliseconds before follow-up speak-up prompts.",
-  )
-    .min(1e4)
-    .max(3e5),
-  speak_up_message: StringValue.describe("Message to speak when prompting the user to speak up."),
+  speak_up_first_wait_time_ms: NumberValue.describe("Time in milliseconds before first speak-up prompt.").min(1e4).max(3e5),
+  speak_up_follow_up_wait_time_ms: NumberValue.describe("Time in milliseconds before follow-up speak-up prompts.").min(1e4).max(3e5),
+  speak_up_message: StringValue.describe("Message to speak when prompting the user to speak up.")
 }).describe("Configuration for speak-up behavior.");
 var EndpointingConfigBlock = Block("EndpointingConfigBlock", {
-  max_wait_time_ms: NumberValue.describe(
-    "Maximum wait time in milliseconds for endpointing detection.",
-  )
-    .min(500)
-    .max(6e4),
+  max_wait_time_ms: NumberValue.describe("Maximum wait time in milliseconds for endpointing detection.").min(500).max(6e4)
 }).describe("Configuration for endpointing detection.");
 var BeepBoopConfigBlock = Block("BeepBoopConfigBlock", {
-  max_wait_time_ms: NumberValue.describe(
-    "Maximum wait time in milliseconds for beep-boop detection.",
-  )
-    .min(500)
-    .max(6e4),
+  max_wait_time_ms: NumberValue.describe("Maximum wait time in milliseconds for beep-boop detection.").min(500).max(6e4)
 }).describe("Configuration for beep-boop detection.");
 var AdditionalConfigsBlock = Block("AdditionalConfigsBlock", {
   speak_up_config: SpeakUpConfigBlock.describe("Configuration for speak-up prompts."),
   endpointing_config: EndpointingConfigBlock.describe("Configuration for endpointing detection."),
-  beepboop_config: BeepBoopConfigBlock.describe("Configuration for beep-boop detection."),
+  beepboop_config: BeepBoopConfigBlock.describe("Configuration for beep-boop detection.")
 }).describe("Additional voice-related configurations.");
 var FillerSentenceBlock = Block("FillerSentenceBlock", {
-  waiting: ExpressionSequence().describe(
-    "List of waiting messages for this filler sentence entry.",
-  ),
+  waiting: ExpressionSequence().describe("List of waiting messages for this filler sentence entry.")
 }).describe("A filler sentence configuration entry.");
 var VoiceModalitySchema = {
-  inbound_filler_words_detection: BooleanValue.describe(
-    "Whether to enable detection of filler words in inbound speech.",
-  ),
-  inbound_keywords: InboundKeywordsBlock.describe(
-    "Keyword detection configuration for inbound speech with boost values.",
-  ),
+  inbound_filler_words_detection: BooleanValue.describe("Whether to enable detection of filler words in inbound speech."),
+  inbound_keywords: InboundKeywordsBlock.describe("Keyword detection configuration for inbound speech with boost values."),
   voice_id: StringValue.describe('Unique identifier for the voice (e.g., "EQx6HGDYjkDpcli6vorJ").'),
-  outbound_speed: NumberValue.describe(
-    "Speech speed for outbound voice (e.g., 1.0 for normal speed).",
-  )
-    .min(0.5)
-    .max(2),
-  outbound_style_exaggeration: NumberValue.describe(
-    "Style exaggeration level for outbound voice (0.0 to 1.0).",
-  )
-    .min(0)
-    .max(1),
+  outbound_speed: NumberValue.describe("Speech speed for outbound voice (e.g., 1.0 for normal speed).").min(0.5).max(2),
+  outbound_style_exaggeration: NumberValue.describe("Style exaggeration level for outbound voice (0.0 to 1.0).").min(0).max(1),
   outbound_stability: NumberValue.describe("Voice stability for outbound speech."),
   outbound_similarity: NumberValue.describe("Voice similarity level for outbound speech."),
-  pronunciation_dict: Sequence(PronunciationDictEntryBlock).describe(
-    "List of pronunciation dictionary entries for custom word pronunciations.",
-  ),
-  outbound_filler_sentences: Sequence(FillerSentenceBlock).describe(
-    "List of filler sentence entries to use during outbound speech pauses.",
-  ),
-  additional_configs: AdditionalConfigsBlock.describe("Additional voice-related configurations."),
+  pronunciation_dict: Sequence(PronunciationDictEntryBlock).describe("List of pronunciation dictionary entries for custom word pronunciations."),
+  outbound_filler_sentences: Sequence(FillerSentenceBlock).describe("List of filler sentence entries to use during outbound speech pauses."),
+  additional_configs: AdditionalConfigsBlock.describe("Additional voice-related configurations.")
 };
 var ModalityBlock = NamedBlock("ModalityBlock").variant("voice", VoiceModalitySchema);
 var ModalitiesBlock = NamedCollectionBlock(ModalityBlock);
@@ -14821,9 +14287,7 @@ var AgentforceSchema = {
   ...AgentScriptSchema,
   config: AFConfigBlock,
   variables: AFVariablesBlock,
-  model_config: ModelConfigBlock.describe(
-    "Default model configuration for the agent. Can be overridden at topic level.",
-  ).example(`model_config:
+  model_config: ModelConfigBlock.describe("Default model configuration for the agent. Can be overridden at topic level.").example(`model_config:
     model: "model://sfdc_ai__DefaultGPT4"
     params:
         temperature: 0.7
@@ -14834,8 +14298,7 @@ var AgentforceSchema = {
   modality: ModalitiesBlock,
   security: SecurityBlock,
   context: ContextBlock,
-  subagent: NamedCollectionBlock(
-    AFSubagentBlock.clone().example(`subagent Order_Management:
+  subagent: NamedCollectionBlock(AFSubagentBlock.clone().example(`subagent Order_Management:
     description: "Handles order lookups, updates, and summaries"
 
     system:
@@ -14880,10 +14343,8 @@ var AgentforceSchema = {
                 description: "If user wants to return items"
 
     after_reasoning:
-        set @variables.request_count = @variables.request_count + 1`),
-  ),
-  start_agent: NamedCollectionBlock(
-    AFStartAgentBlock.clone().example(`start_agent topic_selector:
+        set @variables.request_count = @variables.request_count + 1`)),
+  start_agent: NamedCollectionBlock(AFStartAgentBlock.clone().example(`start_agent topic_selector:
     label: "Topic Selector"
     description: "Welcome user and route to the right topic"
     reasoning:
@@ -14900,10 +14361,8 @@ var AgentforceSchema = {
                 description: "Handle return requests"
                 available when @variables.verified == True
             go_to_escalation: @utils.transition to @subagent.escalation
-                description: "Escalate to human agent"`),
-  ).singular(),
-  topic: NamedCollectionBlock(
-    AFTopicBlock.clone().example(`topic Order_Management:
+                description: "Escalate to human agent"`)).singular(),
+  topic: NamedCollectionBlock(AFTopicBlock.clone().example(`topic Order_Management:
     description: "Handles order lookups, updates, and summaries"
 
     actions:
@@ -14916,17 +14375,11 @@ var AgentforceSchema = {
             | Help the user with their order.
         actions:
             lookup_order: @actions.Lookup_Order
-                with order_number=...`),
-  ),
-  // TODO: restore deprecated() call once migration is complete
-  // .deprecated(
-  //   'Replace topic with subagent, actions with tool_definitions and reasoning.actions with reasoning.tools.',
-  //   { replacement: 'subagent' }
-  // ),
+                with order_number=...`)).deprecated("Replace topic with subagent.", { replacement: "subagent" })
 };
 var AgentforceKindToSchemaKey = buildKindToSchemaKey(AgentforceSchema);
 var AgentforceSchemaAliases = {
-  ...AgentScriptSchemaAliases,
+  ...AgentScriptSchemaAliases
 };
 var AgentforceSchemaInfo = {
   schema: AgentforceSchema,
@@ -14935,11 +14388,12 @@ var AgentforceSchemaInfo = {
     ...AgentScriptSchemaInfo.globalScopes,
     MessagingSession: /* @__PURE__ */ new Set(["MessagingEndUserId", "Id", "EndUserLanguage"]),
     MessagingEndUser: /* @__PURE__ */ new Set(["ContactId"]),
+    VoiceCall: /* @__PURE__ */ new Set(["Id"])
   },
   // start_agent blocks are reachable via both @topic.X and @subagent.X
   extraNamespaceKeys: {
-    topic: ["start_agent"],
-  },
+    topic: ["start_agent"]
+  }
 };
 var agentforceSchemaContext = createSchemaContext(AgentforceSchemaInfo);
 
@@ -14960,20 +14414,22 @@ var VALID_SCHEMES = [
   "integrationProcedureAction",
   "mcpTool",
   "namedQuery",
+  "placeholder",
   "prompt",
   "quickAction",
   "retriever",
   "runExpressionSet",
   "serviceCatalog",
   "slack",
-  "standardInvocableAction",
+  "standardInvocableAction"
 ];
 var VALID_SCHEME_SET = new Set(VALID_SCHEMES.map((scheme) => scheme.toLowerCase()));
 function flattenActionsWithTarget(tm) {
   const result = [];
   for (const [, actionMap] of tm.actions) {
     for (const [actionName, sig] of actionMap) {
-      if (sig.target) result.push({ actionName, sig });
+      if (sig.target)
+        result.push({ actionName, sig });
     }
   }
   return result;
@@ -14981,8 +14437,7 @@ function flattenActionsWithTarget(tm) {
 function actionTargetSchemeRule() {
   return defineRule({
     id: "invalid-action-target",
-    description:
-      "Action target URIs must use a supported scheme (flow://, apex://, externalService://, standardInvocableAction://, prompt://, generatePromptResponse://, etc.).",
+    description: "Action target URIs must use a supported scheme (flow://, apex://, externalService://, standardInvocableAction://, prompt://, generatePromptResponse://, etc.).",
     deps: { action: each(typeMapKey, flattenActionsWithTarget) },
     run({ action: action2 }) {
       const { actionName, sig } = action2;
@@ -14991,43 +14446,47 @@ function actionTargetSchemeRule() {
       try {
         parsed = new URL(target.value);
       } catch {
-        attachDiagnostic(
-          target.node,
-          lintDiagnostic(
-            target.keyRange,
-            `Action '${actionName}' has an invalid target "${target.value}". Expected a URI with a supported scheme: ${VALID_SCHEMES.join(", ")}.`,
-            DiagnosticSeverity.Error,
-            "invalid-action-target",
-          ),
-        );
+        attachDiagnostic(target.node, lintDiagnostic(target.keyRange, `Action '${actionName}' has an invalid target "${target.value}". Expected a URI with a supported scheme: ${VALID_SCHEMES.join(", ")}.`, DiagnosticSeverity.Error, "invalid-action-target"));
         return;
       }
       const scheme = parsed.protocol.slice(0, -1).toLowerCase();
       if (!scheme) {
-        attachDiagnostic(
-          target.node,
-          lintDiagnostic(
-            target.keyRange,
-            `Action '${actionName}' has an invalid target "${target.value}". Expected a URI with a supported scheme: ${VALID_SCHEMES.join(", ")}.`,
-            DiagnosticSeverity.Error,
-            "invalid-action-target",
-          ),
-        );
+        attachDiagnostic(target.node, lintDiagnostic(target.keyRange, `Action '${actionName}' has an invalid target "${target.value}". Expected a URI with a supported scheme: ${VALID_SCHEMES.join(", ")}.`, DiagnosticSeverity.Error, "invalid-action-target"));
         return;
       }
       if (!VALID_SCHEME_SET.has(scheme)) {
-        attachDiagnostic(
-          target.node,
-          lintDiagnostic(
-            target.keyRange,
-            `Action '${actionName}' uses unsupported target scheme "${scheme}://". Supported schemes: ${VALID_SCHEMES.join(", ")}.`,
-            DiagnosticSeverity.Error,
-            "invalid-action-target",
-          ),
-        );
+        attachDiagnostic(target.node, lintDiagnostic(target.keyRange, `Action '${actionName}' uses unsupported target scheme "${scheme}://". Supported schemes: ${VALID_SCHEMES.join(", ")}.`, DiagnosticSeverity.Error, "invalid-action-target"));
+        return;
       }
-    },
+      if (scheme === "placeholder") {
+        attachDiagnostic(target.node, lintDiagnostic(target.keyRange, `Action '${actionName}' uses a placeholder target "${target.value}". Replace this with a real implementation before committing.`, DiagnosticSeverity.Warning, "placeholder-action-target"));
+      }
+    }
   });
+}
+
+// ../../dialect/agentforce/dist/lint/utils.js
+var ZERO_RANGE = {
+  start: { line: 0, character: 0 },
+  end: { line: 0, character: 0 }
+};
+function extractStringValue(value) {
+  if (typeof value === "string")
+    return value;
+  if (value == null || typeof value !== "object")
+    return void 0;
+  const record2 = value;
+  if (typeof record2.value === "string")
+    return record2.value;
+  return void 0;
+}
+function getBlockRange(node) {
+  if (node && typeof node === "object") {
+    const cst = node.__cst;
+    if (cst?.range)
+      return cst.range;
+  }
+  return ZERO_RANGE;
 }
 
 // ../../dialect/agentforce/dist/lint/passes/hyperclassifier.js
@@ -15035,19 +14494,16 @@ var HYPERCLASSIFIER_MODEL = "model://sfdc_ai__DefaultEinsteinHyperClassifier";
 var hyperclassifierTopicsKey = storeKey("hyperclassifier-topics");
 function getModelString(block) {
   const modelConfig2 = block.model_config;
-  if (!modelConfig2 || typeof modelConfig2 !== "object") return void 0;
+  if (!modelConfig2 || typeof modelConfig2 !== "object")
+    return void 0;
   const model = modelConfig2.model;
-  if (!model) return void 0;
-  if (typeof model === "string") return model;
-  if (typeof model === "object" && "value" in model) {
-    const v = model.value;
-    if (typeof v === "string") return v;
-  }
-  return void 0;
+  return extractStringValue(model);
 }
 function hasStatements(value) {
-  if (!value) return false;
-  if (Array.isArray(value)) return value.length > 0;
+  if (!value)
+    return false;
+  if (Array.isArray(value))
+    return value.length > 0;
   if (typeof value === "object" && "statements" in value) {
     const stmts = value.statements;
     return Array.isArray(stmts) && stmts.length > 0;
@@ -15061,21 +14517,25 @@ var HyperclassifierExtractor = class {
   }
   finalize(store, root) {
     const ctx = store.get(schemaContextKey);
-    if (!ctx) return;
+    if (!ctx)
+      return;
     const results = [];
     const rootObj = root;
     const allKeys = /* @__PURE__ */ new Set([
       ...resolveNamespaceKeys("topic", ctx),
-      ...resolveNamespaceKeys("subagent", ctx),
+      ...resolveNamespaceKeys("subagent", ctx)
     ]);
     for (const topicKey of allKeys) {
       const topicMap = rootObj[topicKey];
-      if (!topicMap || !isNamedMap(topicMap)) continue;
+      if (!topicMap || !isNamedMap(topicMap))
+        continue;
       for (const [topicName, block] of topicMap) {
-        if (!block || typeof block !== "object") continue;
+        if (!block || typeof block !== "object")
+          continue;
         const topic = block;
         const modelStr = getModelString(topic);
-        if (modelStr !== HYPERCLASSIFIER_MODEL) continue;
+        if (modelStr !== HYPERCLASSIFIER_MODEL)
+          continue;
         results.push({ topicName, block: topic, model: modelStr });
       }
     }
@@ -15098,23 +14558,15 @@ function hyperclassifierConstraintsRule() {
         const raActions = reasoningObj.tools ?? reasoningObj.actions;
         if (raActions && isNamedMap(raActions)) {
           for (const [, raBlock] of raActions) {
-            if (!raBlock || typeof raBlock !== "object") continue;
+            if (!raBlock || typeof raBlock !== "object")
+              continue;
             const ra = raBlock;
             const decomposed = decomposeAtMemberExpression(ra.value);
-            const isTransition =
-              decomposed?.namespace === "utils" && decomposed?.property === "transition";
+            const isTransition = decomposed?.namespace === "utils" && decomposed?.property === "transition";
             if (!isTransition) {
               const cst = ra.__cst;
               if (cst) {
-                attachDiagnostic(
-                  ra,
-                  lintDiagnostic(
-                    cst.range,
-                    `Only @utils.transition reasoning actions are allowed when using model: ${model}`,
-                    DiagnosticSeverity.Error,
-                    "hyperclassifier-non-transition",
-                  ),
-                );
+                attachDiagnostic(ra, lintDiagnostic(cst.range, `Only @utils.transition reasoning actions are allowed when using model: ${model}`, DiagnosticSeverity.Error, "hyperclassifier-non-transition"));
               }
             }
           }
@@ -15124,45 +14576,24 @@ function hyperclassifierConstraintsRule() {
         const br = block.before_reasoning;
         const cst = br?.__cst ?? block.__cst;
         if (cst) {
-          attachDiagnostic(
-            br ?? block,
-            lintDiagnostic(
-              cst.range,
-              `before_reasoning directives are not allowed when using model: ${model}`,
-              DiagnosticSeverity.Error,
-              "hyperclassifier-before-reasoning",
-            ),
-          );
+          attachDiagnostic(br ?? block, lintDiagnostic(cst.range, `before_reasoning directives are not allowed when using model: ${model}`, DiagnosticSeverity.Error, "hyperclassifier-before-reasoning"));
         }
       }
       if (hasStatements(block.after_reasoning)) {
         const ar = block.after_reasoning;
         const cst = ar?.__cst ?? block.__cst;
         if (cst) {
-          attachDiagnostic(
-            ar ?? block,
-            lintDiagnostic(
-              cst.range,
-              `after_reasoning directives are not allowed when using model: ${model}`,
-              DiagnosticSeverity.Error,
-              "hyperclassifier-after-reasoning",
-            ),
-          );
+          attachDiagnostic(ar ?? block, lintDiagnostic(cst.range, `after_reasoning directives are not allowed when using model: ${model}`, DiagnosticSeverity.Error, "hyperclassifier-after-reasoning"));
         }
       }
-    },
+    }
   });
 }
 
 // ../../dialect/agentforce/dist/lint/passes/connection-validation.js
-var CONNECTION_FIELDS = [
-  "adaptive_response_allowed",
-  "escalation_message",
-  "instructions",
-  "outbound_route_type",
-  "outbound_route_name",
-  "response_actions",
-];
+var CONNECTION_FIELDS = Object.keys(ConnectionBlock.schema).filter((key) => !key.startsWith("__"));
+var ALLOWED_CONNECTION_INPUT_TYPES = ["string", "number", "boolean"];
+var ALLOWED_CONNECTION_INPUT_PROPERTIES = ["description"];
 function hasField(node, field) {
   return node[field] != null;
 }
@@ -15171,39 +14602,32 @@ function hasAnyField(node) {
 }
 function fieldError(node, connectionType, fieldName) {
   const cst = node.__cst;
-  if (!cst) return;
-  attachDiagnostic(
-    node,
-    lintDiagnostic(
-      cst.range,
-      `${connectionType} connections do not support ${fieldName}`,
-      DiagnosticSeverity.Error,
-      "connection-disallowed-field",
-    ),
-  );
+  if (!cst)
+    return;
+  attachDiagnostic(node, lintDiagnostic(cst.range, `${connectionType} connections do not support ${fieldName}`, DiagnosticSeverity.Error, "connection-disallowed-field"));
+}
+function fieldNotUsedWarning(node, connectionType, fieldName) {
+  const field = node[fieldName];
+  if (!field || typeof field !== "object")
+    return;
+  const fieldCst = field.__cst;
+  if (!fieldCst)
+    return;
+  attachDiagnostic(node, lintDiagnostic(fieldCst.range, `${connectionType} connections do not use ${fieldName}`, DiagnosticSeverity.Warning, "connection-field-not-used"));
 }
 function missingFieldsError(node, connectionType) {
   const cst = node.__cst;
-  if (!cst) return;
-  attachDiagnostic(
-    node,
-    lintDiagnostic(
-      cst.range,
-      `${connectionType} connections require configuration fields (e.g. escalation_message, outbound_route_type, outbound_route_name).`,
-      DiagnosticSeverity.Error,
-      "connection-missing-required-fields",
-    ),
-  );
+  if (!cst)
+    return;
+  attachDiagnostic(node, lintDiagnostic(cst.range, `${connectionType} connections require configuration fields (e.g. escalation_message, outbound_route_type, outbound_route_name).`, DiagnosticSeverity.Error, "connection-missing-required-fields"));
 }
 function validateSlack(node) {
-  if (hasField(node, "outbound_route_name")) {
-    fieldError(node, "Slack", "outbound_route_name");
-  }
-  if (hasField(node, "outbound_route_type")) {
-    fieldError(node, "Slack", "outbound_route_type");
-  }
-  if (hasField(node, "escalation_message")) {
-    fieldError(node, "Slack", "escalation_message");
+  for (const field of CONNECTION_FIELDS) {
+    if (field === "adaptive_response_allowed")
+      continue;
+    if (hasField(node, field)) {
+      fieldError(node, "Slack", field);
+    }
   }
 }
 function validateServiceEmail(node) {
@@ -15220,15 +14644,7 @@ function validateServiceEmail(node) {
     const missing = hasRouteName ? "outbound_route_type" : "outbound_route_name";
     const cst = node.__cst;
     if (cst) {
-      attachDiagnostic(
-        node,
-        lintDiagnostic(
-          cst.range,
-          `Service email connections require both outbound_route_name and outbound_route_type, but ${missing} is missing`,
-          DiagnosticSeverity.Error,
-          "connection-missing-paired-field",
-        ),
-      );
+      attachDiagnostic(node, lintDiagnostic(cst.range, `Service email connections require both outbound_route_name and outbound_route_type, but ${missing} is missing`, DiagnosticSeverity.Error, "connection-missing-paired-field"));
     }
   }
 }
@@ -15243,16 +14659,20 @@ function validateMessaging(node) {
     const missing = hasRouteName ? "outbound_route_type" : "outbound_route_name";
     const cst = node.__cst;
     if (cst) {
-      attachDiagnostic(
-        node,
-        lintDiagnostic(
-          cst.range,
-          `Messaging connections require both outbound_route_name and outbound_route_type, but ${missing} is missing`,
-          DiagnosticSeverity.Error,
-          "connection-missing-paired-field",
-        ),
-      );
+      attachDiagnostic(node, lintDiagnostic(cst.range, `Messaging connections require both outbound_route_name and outbound_route_type, but ${missing} is missing`, DiagnosticSeverity.Error, "connection-missing-paired-field"));
     }
+  }
+  if (hasField(node, "inputs")) {
+    fieldNotUsedWarning(node, "Messaging", "inputs");
+  }
+}
+function validateCustomerWebClient(node) {
+  if (!hasAnyField(node)) {
+    missingFieldsError(node, "customer_web_client");
+    return;
+  }
+  if (hasField(node, "inputs")) {
+    fieldNotUsedWarning(node, "Customer Web Client", "inputs");
   }
 }
 function validateUnknown(node, name) {
@@ -15260,10 +14680,155 @@ function validateUnknown(node, name) {
     missingFieldsError(node, name);
   }
 }
+function validateConnectionInputs(node) {
+  const inputs = node.inputs;
+  if (!inputs || !isNamedMap(inputs))
+    return;
+  for (const [inputName, inputDecl] of inputs) {
+    if (!inputDecl || typeof inputDecl !== "object")
+      continue;
+    const input = inputDecl;
+    const typeExpr = input.type;
+    if (!typeExpr) {
+      const cst = input.__cst;
+      if (cst) {
+        const allowedTypes = ALLOWED_CONNECTION_INPUT_TYPES.join(", ");
+        attachDiagnostic(input, lintDiagnostic(cst.range, `Connection inputs require type definition. Supported types: ${allowedTypes}.`, DiagnosticSeverity.Error, "connection-input-invalid-type"));
+      }
+    } else {
+      let typeName;
+      if (typeExpr.__kind === "Identifier") {
+        typeName = typeExpr.name;
+      } else if (typeExpr.__kind === "SubscriptExpression") {
+        const cst = input.__cst;
+        if (cst) {
+          const allowedTypes = ALLOWED_CONNECTION_INPUT_TYPES.join(", ");
+          attachDiagnostic(input, lintDiagnostic(cst.range, `Connection inputs do not support list types. Supported types: ${allowedTypes}.`, DiagnosticSeverity.Error, "connection-input-invalid-type"));
+        }
+        continue;
+      }
+      if (typeName && !ALLOWED_CONNECTION_INPUT_TYPES.includes(typeName)) {
+        const cst = input.__cst;
+        if (cst) {
+          const allowedTypes = ALLOWED_CONNECTION_INPUT_TYPES.join(", ");
+          attachDiagnostic(input, lintDiagnostic(cst.range, `Connection input '${inputName}' has invalid type '${typeName}'. Supported types: ${allowedTypes}.`, DiagnosticSeverity.Error, "connection-input-invalid-type"));
+        }
+      }
+    }
+    const properties = input.properties;
+    if (properties && typeof properties === "object") {
+      for (const propName of Object.keys(properties)) {
+        if (!ALLOWED_CONNECTION_INPUT_PROPERTIES.includes(propName)) {
+          const propValue = properties[propName];
+          const cst = propValue?.__cst;
+          if (cst) {
+            const allowedProps = ALLOWED_CONNECTION_INPUT_PROPERTIES.join(", ");
+            attachDiagnostic(input, lintDiagnostic(cst.range, `Connection input '${inputName}' has unsupported property '${propName}'. Supported properties: ${allowedProps}.`, DiagnosticSeverity.Error, "connection-input-invalid-property"));
+          }
+        }
+      }
+    }
+  }
+}
+function validateResponseFormats(node) {
+  const responseFormats = node.response_formats;
+  if (!responseFormats || !isNamedMap(responseFormats))
+    return;
+  for (const [formatName, formatDecl] of responseFormats) {
+    if (!formatDecl || typeof formatDecl !== "object")
+      continue;
+    const format = formatDecl;
+    const hasInputs = format.inputs != null;
+    const hasTarget = format.target != null;
+    const hasSource = format.source != null;
+    if (hasTarget) {
+      const targetNode = format.target;
+      const targetValue = targetNode?.value;
+      if (targetValue !== void 0) {
+        const parts = targetValue.split("://");
+        if (parts.length !== 2 || !parts[0] || !parts[1]) {
+          const cst = targetNode?.__cst;
+          if (cst) {
+            attachDiagnostic(format, lintDiagnostic(cst.range, `Response format '${formatName}' target must be in the format 'type://Name' (e.g., 'apex://MyApexClass')`, DiagnosticSeverity.Error, "response-format-invalid-target"));
+          }
+        }
+      }
+    }
+    if (hasSource && (hasInputs || hasTarget)) {
+      const conflictingField = hasInputs ? "inputs" : "target";
+      const cst = format[conflictingField]?.__cst;
+      if (cst) {
+        attachDiagnostic(format, lintDiagnostic(cst.range, `Response format '${formatName}' cannot specify both 'source' and '${conflictingField}'. Use 'source' to reference an existing format, or 'inputs'/'target' to define a custom format.`, DiagnosticSeverity.Error, "response-format-conflicting-fields"));
+      }
+    }
+    if (!hasInputs && !hasTarget && !hasSource) {
+      const cst = format.__cst;
+      if (cst) {
+        attachDiagnostic(format, lintDiagnostic(cst.range, `Response format '${formatName}' must specify either 'source' (to reference an existing format schema) or 'inputs'/'target' (to define a custom format schema)`, DiagnosticSeverity.Error, "response-format-missing-required-field"));
+      }
+    }
+    if (hasInputs && isNamedMap(format.inputs)) {
+      validateInputSchemaURIs(format.inputs, format);
+    }
+  }
+}
+function validateInputSchemaURIs(inputs, formatNode) {
+  for (const [paramName, paramDecl] of inputs) {
+    if (!paramDecl || typeof paramDecl !== "object")
+      continue;
+    const decl = paramDecl;
+    const props = decl.properties;
+    if (!props)
+      continue;
+    validateSchemaField(props, paramName, formatNode, true);
+    validateNestedSchemaFields(props, formatNode);
+  }
+}
+function validateNestedSchemaFields(props, formatNode) {
+  const children = props.__children;
+  if (!Array.isArray(children))
+    return;
+  for (const child of children) {
+    if (child.__type !== "field")
+      continue;
+    const decl = child.value;
+    if (!decl || typeof decl !== "object")
+      continue;
+    const declNode = decl;
+    if (declNode.__kind !== "ParameterDeclaration")
+      continue;
+    const nestedProps = decl.properties;
+    if (!nestedProps)
+      continue;
+    validateSchemaField(nestedProps, child.key, formatNode, false);
+    validateNestedSchemaFields(nestedProps, formatNode);
+  }
+}
+function validateSchemaField(props, paramName, formatNode, isTopLevel) {
+  const schemaNode = props.schema;
+  if (schemaNode?.value === void 0)
+    return;
+  const cst = schemaNode.__cst;
+  if (!cst)
+    return;
+  const parts = schemaNode.value.split("://");
+  if (parts.length !== 2 || !parts[0] || !parts[1]) {
+    attachDiagnostic(formatNode, lintDiagnostic(cst.range, `Input '${paramName}' has invalid schema URI '${schemaNode.value}'. Expected format: 'type://target' (e.g., 'messaging_component://MyComponent')`, DiagnosticSeverity.Error, "response-format-invalid-schema-uri"));
+    return;
+  }
+  if (parts[0] !== "messaging_component") {
+    attachDiagnostic(formatNode, lintDiagnostic(cst.range, `Input '${paramName}' has unsupported schema type '${parts[0]}'. Only 'messaging_component' is currently supported.`, DiagnosticSeverity.Error, "response-format-unsupported-schema-type"));
+    return;
+  }
+  if (!isTopLevel) {
+    attachDiagnostic(formatNode, lintDiagnostic(cst.range, `Input '${paramName}' cannot use '${parts[0]}' schema on a nested field. '${parts[0]}://' is only valid on top-level input fields.`, DiagnosticSeverity.Error, "response-format-nested-schema"));
+  }
+}
 var CONNECTION_VALIDATORS = {
   slack: validateSlack,
   service_email: validateServiceEmail,
   messaging: validateMessaging,
+  customer_web_client: validateCustomerWebClient
 };
 var ConnectionValidationPass = class {
   constructor() {
@@ -15274,9 +14839,11 @@ var ConnectionValidationPass = class {
   run(_store, root) {
     const rootObj = root;
     const connections = rootObj.connection;
-    if (!connections || !isNamedMap(connections)) return;
+    if (!connections || !isNamedMap(connections))
+      return;
     for (const [name, block] of connections) {
-      if (!block || typeof block !== "object") continue;
+      if (!block || typeof block !== "object")
+        continue;
       const node = block;
       const key = name.toLowerCase();
       const validator = CONNECTION_VALIDATORS[key];
@@ -15285,6 +14852,8 @@ var ConnectionValidationPass = class {
       } else {
         validateUnknown(node, name);
       }
+      validateConnectionInputs(node);
+      validateResponseFormats(node);
     }
   }
 };
@@ -15295,20 +14864,23 @@ function connectionValidationRule() {
 // ../../dialect/agentforce/dist/lint/passes/system-message-variables.js
 function extractVariableRefs(messageValue) {
   const refs = [];
-  if (!messageValue || typeof messageValue !== "object") return refs;
+  if (!messageValue || typeof messageValue !== "object")
+    return refs;
   const obj = messageValue;
   if (obj.__kind !== "TemplateExpression" || !Array.isArray(obj.parts)) {
     return refs;
   }
   for (const part of obj.parts) {
-    if (!part || typeof part !== "object") continue;
+    if (!part || typeof part !== "object")
+      continue;
     const p = part;
-    if (p.__kind !== "TemplateInterpolation") continue;
+    if (p.__kind !== "TemplateInterpolation")
+      continue;
     const decomposed = decomposeAtMemberExpression(p.expression);
     if (decomposed?.namespace === "variables") {
       refs.push({
         name: decomposed.property,
-        node: p.expression,
+        node: p.expression
       });
     }
   }
@@ -15319,36 +14891,28 @@ function checkMessage(messageValue, messageType2, typeMap) {
     const info = typeMap.variables.get(name);
     if (info && info.modifier !== "linked") {
       const cst = node.__cst;
-      if (!cst) continue;
-      attachDiagnostic(
-        node,
-        lintDiagnostic(
-          cst.range,
-          `Variable '${name}' is ${info.modifier ?? "unmodified"} and cannot be used in ${messageType2} messages. Only linked variables are available as context variables at runtime.`,
-          DiagnosticSeverity.Error,
-          "system-message-mutable-variable",
-        ),
-      );
+      if (!cst)
+        continue;
+      attachDiagnostic(node, lintDiagnostic(cst.range, `Variable '${name}' is ${info.modifier ?? "unmodified"} and cannot be used in ${messageType2} messages. Only linked variables are available as context variables at runtime.`, DiagnosticSeverity.Error, "system-message-mutable-variable"));
     }
   }
 }
 var SystemMessageVariablesPass = class {
   constructor() {
     __publicField(this, "id", storeKey("system-message-variables"));
-    __publicField(
-      this,
-      "description",
-      "Validates that system message templates only reference linked variables",
-    );
+    __publicField(this, "description", "Validates that system message templates only reference linked variables");
     __publicField(this, "requires", [typeMapKey]);
   }
   run(store, root) {
     const typeMap = store.get(typeMapKey);
-    if (!typeMap) return;
+    if (!typeMap)
+      return;
     const system = root.system;
-    if (!system) return;
+    if (!system)
+      return;
     const messages = system.messages;
-    if (!messages) return;
+    if (!messages)
+      return;
     checkMessage(messages.welcome, "welcome", typeMap);
     checkMessage(messages.error, "error", typeMap);
   }
@@ -15359,50 +14923,45 @@ function systemMessageVariablesRule() {
 
 // ../../dialect/agentforce/dist/lint/passes/connected-agents/bound-inputs.js
 function isSimpleVariableReference(expr) {
-  if (!expr || typeof expr !== "object") return void 0;
+  if (!expr || typeof expr !== "object")
+    return void 0;
   const node = expr;
-  if (node.__kind !== "MemberExpression") return void 0;
+  if (node.__kind !== "MemberExpression")
+    return void 0;
   const ref = decomposeAtMemberExpression(expr);
-  if (!ref || ref.namespace !== "variables") return void 0;
+  if (!ref || ref.namespace !== "variables")
+    return void 0;
   return ref.property;
 }
 function boundInputsRule() {
   return defineRule({
     id: "connected-agent/bound-inputs",
-    description: "Connected agent input bindings must be simple linked variable references",
+    description: "Connected agent inputs must be bound to linked or mutable variables",
     deps: { typeMap: typeMapKey },
     run({ typeMap }) {
       for (const [, agentInfo] of typeMap.connectedAgents) {
-        for (const [, inputInfo] of agentInfo.inputs) {
-          if (!inputInfo.defaultValueNode || !inputInfo.defaultValueCst) continue;
+        for (const [inputName, inputInfo] of agentInfo.inputs) {
+          if (!inputInfo.defaultValueNode || !inputInfo.defaultValueCst) {
+            const declCst = inputInfo.decl.__cst;
+            const range = declCst?.range ?? {
+              start: { line: 0, character: 0 },
+              end: { line: 0, character: 0 }
+            };
+            attachDiagnostic(inputInfo.decl, lintDiagnostic(range, `Input '${inputName}' must be bound to a variable (e.g. ${inputName}: string = @variables.X).`, DiagnosticSeverity.Error, "bound-input-required"));
+            continue;
+          }
           const varName = isSimpleVariableReference(inputInfo.defaultValueNode);
           if (!varName) {
-            attachDiagnostic(
-              inputInfo.decl,
-              lintDiagnostic(
-                inputInfo.defaultValueCst.range,
-                `Bound input must be a simple variable reference (e.g. @variables.X).`,
-                DiagnosticSeverity.Error,
-                "bound-input-not-variable",
-              ),
-            );
+            attachDiagnostic(inputInfo.decl, lintDiagnostic(inputInfo.defaultValueCst.range, `Bound input must be a simple variable reference (e.g. @variables.X).`, DiagnosticSeverity.Error, "bound-input-not-variable"));
             continue;
           }
           const varInfo = typeMap.variables.get(varName);
-          if (varInfo && varInfo.modifier !== "linked") {
-            attachDiagnostic(
-              inputInfo.decl,
-              lintDiagnostic(
-                inputInfo.defaultValueCst.range,
-                `Bound input must reference a linked variable \u2014 '${varName}' is ${varInfo.modifier ?? "unmodified"}.`,
-                DiagnosticSeverity.Error,
-                "bound-input-not-linked",
-              ),
-            );
+          if (varInfo && varInfo.modifier !== "linked" && varInfo.modifier !== "mutable") {
+            attachDiagnostic(inputInfo.decl, lintDiagnostic(inputInfo.defaultValueCst.range, `Bound input must reference a linked or mutable variable \u2014 '${varName}' is ${varInfo.modifier ?? "unmodified"}.`, DiagnosticSeverity.Error, "bound-input-not-linked-or-mutable"));
           }
         }
       }
-    },
+    }
   });
 }
 
@@ -15414,17 +14973,9 @@ function noTransitionRule() {
     deps: { typeMap: typeMapKey },
     run({ typeMap }) {
       for (const target of typeMap.transitionTargets.get("connected_subagent") ?? []) {
-        attachDiagnostic(
-          target.diagnosticParent,
-          lintDiagnostic(
-            target.range,
-            `Transition to a connected agent is not yet supported. Use @connected_subagent.${target.property} as a tool invocation instead.`,
-            DiagnosticSeverity.Error,
-            "connected-agent-no-transition",
-          ),
-        );
+        attachDiagnostic(target.diagnosticParent, lintDiagnostic(target.range, `Transition to a connected agent is not yet supported. Use @connected_subagent.${target.property} as a tool invocation instead.`, DiagnosticSeverity.Error, "connected-agent-no-transition"));
       }
-    },
+    }
   });
 }
 
@@ -15458,43 +15009,31 @@ var ConnectedAgentTargetPass = class {
   }
   run(store) {
     const typeMap = store.get(typeMapKey);
-    if (!typeMap) return;
+    if (!typeMap)
+      return;
     for (const [, agentInfo] of typeMap.connectedAgents) {
       const { target, targetNode } = agentInfo;
-      if (!target || !targetNode) continue;
+      if (!target || !targetNode)
+        continue;
       const range = targetNode.__cst?.range ?? {
         start: { line: 0, character: 0 },
-        end: { line: 0, character: 0 },
+        end: { line: 0, character: 0 }
       };
       const schemeMatch = target.match(/^([a-zA-Z][a-zA-Z0-9_]*):\/\//);
-      if (!schemeMatch) continue;
+      if (!schemeMatch)
+        continue;
       const scheme = schemeMatch[1];
       if (!ALLOWED_SCHEMES.includes(scheme)) {
         const allowed = ALLOWED_SCHEMES.map((s) => `${s}://`).join(", ");
-        attachDiagnostic(
-          targetNode,
-          lintDiagnostic(
-            range,
-            `Unsupported connected agent target scheme '${scheme}://'. Only ${allowed} is currently supported.`,
-            DiagnosticSeverity.Error,
-            "connected-agent-unsupported-scheme",
-          ),
-        );
+        attachDiagnostic(targetNode, lintDiagnostic(range, `Unsupported connected agent target scheme '${scheme}://'. Only ${allowed} is currently supported.`, DiagnosticSeverity.Error, "connected-agent-unsupported-scheme"));
         continue;
       }
       const targetName = extractTargetName(target);
-      if (!targetName) continue;
+      if (!targetName)
+        continue;
       const nameError = validateTargetName(targetName);
       if (nameError) {
-        attachDiagnostic(
-          targetNode,
-          lintDiagnostic(
-            range,
-            nameError,
-            DiagnosticSeverity.Error,
-            "invalid-connected-subagent-target-name",
-          ),
-        );
+        attachDiagnostic(targetNode, lintDiagnostic(range, nameError, DiagnosticSeverity.Error, "invalid-connected-subagent-target-name"));
       }
     }
   }
@@ -15508,11 +15047,7 @@ var templateReferenceValidationKey = storeKey("template-reference-validation");
 var TemplateReferenceValidationPass = class {
   constructor() {
     __publicField(this, "id", templateReferenceValidationKey);
-    __publicField(
-      this,
-      "description",
-      "Validates that template interpolations in instructions use @actions.X for connected subagents",
-    );
+    __publicField(this, "description", "Validates that template interpolations in instructions use @actions.X for connected subagents");
     __publicField(this, "requires", []);
   }
   run(_store, root) {
@@ -15520,9 +15055,11 @@ var TemplateReferenceValidationPass = class {
     this.walkNode(root, null, visited);
   }
   walkNode(node, parentTopic, visited) {
-    if (!node || typeof node !== "object") return;
+    if (!node || typeof node !== "object")
+      return;
     const astNode = node;
-    if (visited.has(astNode)) return;
+    if (visited.has(astNode))
+      return;
     visited.add(astNode);
     let currentTopic = parentTopic;
     if (astNode.__kind === "SubagentBlock" || astNode.__kind === "StartAgentBlock") {
@@ -15537,8 +15074,10 @@ var TemplateReferenceValidationPass = class {
       }
     }
     for (const key in astNode) {
-      if (!Object.hasOwn(astNode, key)) continue;
-      if (key.startsWith("__")) continue;
+      if (!Object.hasOwn(astNode, key))
+        continue;
+      if (key.startsWith("__"))
+        continue;
       const value = astNode[key];
       if (value && typeof value === "object") {
         if (Array.isArray(value)) {
@@ -15553,7 +15092,8 @@ var TemplateReferenceValidationPass = class {
   }
   validateTemplateInterpolation(node, parentTopic) {
     const expression = node.expression;
-    if (!expression || typeof expression !== "object") return;
+    if (!expression || typeof expression !== "object")
+      return;
     const expr = expression;
     const decomposed = decomposeAtMemberExpression(expr);
     if (decomposed && decomposed.namespace === "connected_subagent") {
@@ -15562,37 +15102,30 @@ var TemplateReferenceValidationPass = class {
       const cst = expr.__cst;
       const range = cst?.range ?? {
         start: { line: 0, character: 0 },
-        end: { line: 0, character: 0 },
+        end: { line: 0, character: 0 }
       };
       const suggestion = actionAlias ? `{!@actions.${actionAlias}}` : `{!@actions.<action_alias>}`;
-      attachDiagnostic(
-        node,
-        lintDiagnostic(
-          range,
-          `Connected subagent '${connectedSubagentName}' cannot be referenced as {!@connected_subagent.${connectedSubagentName}} in template instructions. Use ${suggestion} instead.`,
-          DiagnosticSeverity.Error,
-          "invalid-connected-subagent-reference",
-        ),
-      );
+      attachDiagnostic(node, lintDiagnostic(range, `Connected subagent '${connectedSubagentName}' cannot be referenced as {!@connected_subagent.${connectedSubagentName}} in template instructions. Use ${suggestion} instead.`, DiagnosticSeverity.Error, "invalid-connected-subagent-reference"));
     }
   }
   findActionAlias(parentTopic, connectedSubagentName) {
-    if (!parentTopic) return null;
+    if (!parentTopic)
+      return null;
     const reasoning = parentTopic.reasoning;
-    if (!reasoning || typeof reasoning !== "object") return null;
+    if (!reasoning || typeof reasoning !== "object")
+      return null;
     const reasoningObj = reasoning;
     const actions = reasoningObj.actions;
-    if (!actions || !isNamedMap(actions)) return null;
+    if (!actions || !isNamedMap(actions))
+      return null;
     for (const [alias, actionBlock] of actions) {
-      if (!actionBlock || typeof actionBlock !== "object") continue;
+      if (!actionBlock || typeof actionBlock !== "object")
+        continue;
       const block = actionBlock;
-      if (block.__kind !== "ReasoningActionBlock") continue;
+      if (block.__kind !== "ReasoningActionBlock")
+        continue;
       const decomposed = decomposeAtMemberExpression(block.value);
-      if (
-        decomposed &&
-        decomposed.namespace === "connected_subagent" &&
-        decomposed.property === connectedSubagentName
-      ) {
+      if (decomposed && decomposed.namespace === "connected_subagent" && decomposed.property === connectedSubagentName) {
         return alias;
       }
     }
@@ -15605,94 +15138,49 @@ function templateReferenceValidationPass() {
 
 // ../../dialect/agentforce/dist/lint/passes/config-validation.js
 function getStringValue(node) {
-  if (!node || typeof node !== "object") return void 0;
+  if (!node || typeof node !== "object")
+    return void 0;
   const obj = node;
-  if (obj.__kind !== "StringLiteral" && obj.__kind !== "TemplateExpression") return void 0;
-  if (typeof obj.value !== "string" || obj.value.trim().length === 0) return void 0;
+  if (obj.__kind !== "StringLiteral" && obj.__kind !== "TemplateExpression")
+    return void 0;
+  if (typeof obj.value !== "string" || obj.value.trim().length === 0)
+    return void 0;
   return { value: obj.value, astNode: obj };
-}
-function getBlockRange(block) {
-  const cst = block.__cst;
-  return (
-    cst?.range ?? {
-      start: { line: 0, character: 0 },
-      end: { line: 0, character: 0 },
-    }
-  );
 }
 var ConfigValidationPass = class {
   constructor() {
     __publicField(this, "id", storeKey("config-validation"));
-    __publicField(
-      this,
-      "description",
-      "Validates Agentforce config block constraints (agent name, default_agent_user)",
-    );
+    __publicField(this, "description", "Validates Agentforce config block constraints (agent name, default_agent_user)");
   }
   run(_store, root) {
     const config2 = root.config;
-    if (!config2) return;
+    if (!config2)
+      return;
     const developerName = getStringValue(config2.developer_name);
     const agentName = getStringValue(config2.agent_name);
     if (!developerName && !agentName) {
-      attachDiagnostic(
-        config2,
-        lintDiagnostic(
-          getBlockRange(config2),
-          "Config requires either 'developer_name' or 'agent_name'.",
-          DiagnosticSeverity.Error,
-          "config-missing-agent-name",
-        ),
-      );
+      attachDiagnostic(config2, lintDiagnostic(getBlockRange(config2), "Config requires either 'developer_name' or 'agent_name'.", DiagnosticSeverity.Error, "config-missing-agent-name"));
     } else if (developerName && agentName) {
-      attachDiagnostic(
-        config2,
-        lintDiagnostic(
-          getBlockRange(config2),
-          "Only one of 'developer_name' or 'agent_name' can be provided, not both.",
-          DiagnosticSeverity.Error,
-          "config-duplicate-agent-name",
-        ),
-      );
+      attachDiagnostic(config2, lintDiagnostic(getBlockRange(config2), "Only one of 'developer_name' or 'agent_name' can be provided, not both.", DiagnosticSeverity.Error, "config-duplicate-agent-name"));
     }
     const agentTypeNode = config2.agent_type;
-    if (!agentTypeNode || typeof agentTypeNode !== "object") return;
+    if (!agentTypeNode || typeof agentTypeNode !== "object")
+      return;
     const agentTypeValue = typeof agentTypeNode.value === "string" ? agentTypeNode.value : void 0;
-    if (!agentTypeValue) return;
+    if (!agentTypeValue)
+      return;
     const agentTypeLower = agentTypeValue.toLowerCase();
     const defaultAgentUser = getStringValue(config2.default_agent_user);
-    if (
-      agentTypeLower === "agentforceserviceagent" ||
-      agentTypeLower === "agentforce service agent"
-    ) {
+    if (agentTypeLower === "agentforceserviceagent" || agentTypeLower === "agentforce service agent") {
       if (!defaultAgentUser) {
-        attachDiagnostic(
-          config2,
-          lintDiagnostic(
-            getBlockRange(config2),
-            `'default_agent_user' is required for ${agentTypeValue} type agents.`,
-            DiagnosticSeverity.Error,
-            "config-missing-default-agent-user",
-          ),
-        );
+        attachDiagnostic(config2, lintDiagnostic(getBlockRange(config2), `'default_agent_user' is required for ${agentTypeValue} type agents.`, DiagnosticSeverity.Error, "config-missing-default-agent-user"));
       }
-    } else if (
-      agentTypeLower === "agentforceemployeeagent" ||
-      agentTypeLower === "agentforce employee agent"
-    ) {
+    } else if (agentTypeLower === "agentforceemployeeagent" || agentTypeLower === "agentforce employee agent") {
       if (defaultAgentUser) {
         const dauNode = config2.default_agent_user;
         const dauCst = dauNode.__cst;
         const dauRange = dauCst?.range ?? getBlockRange(config2);
-        attachDiagnostic(
-          dauNode,
-          lintDiagnostic(
-            dauRange,
-            `'default_agent_user' is ignored for ${agentTypeValue} type agents.`,
-            DiagnosticSeverity.Warning,
-            "config-ignored-default-agent-user",
-          ),
-        );
+        attachDiagnostic(dauNode, lintDiagnostic(dauRange, `'default_agent_user' is ignored for ${agentTypeValue} type agents.`, DiagnosticSeverity.Warning, "config-ignored-default-agent-user"));
       }
     }
   }
@@ -15702,15 +15190,6 @@ function configValidationRule() {
 }
 
 // ../../dialect/agentforce/dist/lint/passes/variable-validation.js
-function getDeclRange(decl) {
-  const cst = decl.__cst;
-  return (
-    cst?.range ?? {
-      start: { line: 0, character: 0 },
-      end: { line: 0, character: 0 },
-    }
-  );
-}
 var VariableValidationPass = class {
   constructor() {
     __publicField(this, "id", storeKey("variable-validation"));
@@ -15719,13 +15198,16 @@ var VariableValidationPass = class {
   }
   run(store, root) {
     const typeMap = store.get(typeMapKey);
-    if (!typeMap) return;
+    if (!typeMap)
+      return;
     const varsMap = root.variables;
-    if (!varsMap || !isNamedMap(varsMap)) return;
+    if (!varsMap || !isNamedMap(varsMap))
+      return;
     for (const [name, decl] of varsMap) {
-      if (!decl || typeof decl !== "object") continue;
+      if (!decl || typeof decl !== "object")
+        continue;
       const node = decl;
-      const range = getDeclRange(node);
+      const range = getBlockRange(node);
       const properties = node.properties;
       this.validateName(name, node, range);
       const info = typeMap.variables.get(name);
@@ -15737,111 +15219,39 @@ var VariableValidationPass = class {
   }
   validateName(name, node, range) {
     if (name.startsWith("_")) {
-      attachDiagnostic(
-        node,
-        lintDiagnostic(
-          range,
-          `Variable name '${name}' cannot start with an underscore.`,
-          DiagnosticSeverity.Error,
-          "invalid-variable-name",
-        ),
-      );
+      attachDiagnostic(node, lintDiagnostic(range, `Variable name '${name}' cannot start with an underscore.`, DiagnosticSeverity.Error, "invalid-variable-name"));
     }
     const endsWith__c = name.endsWith("__c");
     if (name.endsWith("_") && !endsWith__c) {
-      attachDiagnostic(
-        node,
-        lintDiagnostic(
-          range,
-          `Variable name '${name}' cannot end with an underscore (except __c suffix).`,
-          DiagnosticSeverity.Error,
-          "invalid-variable-name",
-        ),
-      );
+      attachDiagnostic(node, lintDiagnostic(range, `Variable name '${name}' cannot end with an underscore (except __c suffix).`, DiagnosticSeverity.Error, "invalid-variable-name"));
     }
     if (name.includes("__")) {
       if (!endsWith__c) {
-        attachDiagnostic(
-          node,
-          lintDiagnostic(
-            range,
-            `Variable name '${name}' cannot contain consecutive underscores (except __c suffix).`,
-            DiagnosticSeverity.Error,
-            "invalid-variable-name",
-          ),
-        );
+        attachDiagnostic(node, lintDiagnostic(range, `Variable name '${name}' cannot contain consecutive underscores (except __c suffix).`, DiagnosticSeverity.Error, "invalid-variable-name"));
       } else if (name.slice(0, -3).includes("__")) {
-        attachDiagnostic(
-          node,
-          lintDiagnostic(
-            range,
-            `Variable name '${name}' cannot contain consecutive underscores (except __c suffix).`,
-            DiagnosticSeverity.Error,
-            "invalid-variable-name",
-          ),
-        );
+        attachDiagnostic(node, lintDiagnostic(range, `Variable name '${name}' cannot contain consecutive underscores (except __c suffix).`, DiagnosticSeverity.Error, "invalid-variable-name"));
       }
     }
   }
   validateSourceProperty(name, node, range, modifier, properties) {
     const hasSource = properties?.["source"] != null;
     if (modifier === "mutable" && hasSource) {
-      attachDiagnostic(
-        node,
-        lintDiagnostic(
-          range,
-          `Mutable variable '${name}' cannot have a source property. Only linked variables can have a source.`,
-          DiagnosticSeverity.Error,
-          "mutable-variable-cannot-have-source",
-        ),
-      );
+      attachDiagnostic(node, lintDiagnostic(range, `Mutable variable '${name}' cannot have a source property. Only linked variables can have a source.`, DiagnosticSeverity.Error, "mutable-variable-cannot-have-source"));
     }
     if (modifier === "linked" && !hasSource) {
-      attachDiagnostic(
-        node,
-        lintDiagnostic(
-          range,
-          `Linked variable '${name}' must have a source property (e.g., source: @MessagingSession.Id).`,
-          DiagnosticSeverity.Error,
-          "linked-variable-missing-source",
-        ),
-      );
+      attachDiagnostic(node, lintDiagnostic(range, `Linked variable '${name}' must have a source property (e.g., source: @MessagingSession.Id).`, DiagnosticSeverity.Error, "linked-variable-missing-source"));
     }
   }
   validateLinkedVariable(name, node, range, typeText) {
     if (typeText.startsWith("list[") || typeText.startsWith("list(")) {
-      attachDiagnostic(
-        node,
-        lintDiagnostic(
-          range,
-          `Context variable '${name}' cannot be a list.`,
-          DiagnosticSeverity.Error,
-          "linked-variable-cannot-be-list",
-        ),
-      );
+      attachDiagnostic(node, lintDiagnostic(range, `Context variable '${name}' cannot be a list.`, DiagnosticSeverity.Error, "linked-variable-cannot-be-list"));
     }
     if (typeText === "object") {
-      attachDiagnostic(
-        node,
-        lintDiagnostic(
-          range,
-          `Context variable '${name}' cannot be an object.`,
-          DiagnosticSeverity.Error,
-          "linked-variable-cannot-be-object",
-        ),
-      );
+      attachDiagnostic(node, lintDiagnostic(range, `Context variable '${name}' cannot be an object.`, DiagnosticSeverity.Error, "linked-variable-cannot-be-object"));
     }
     const obj = node;
     if (obj.defaultValue != null) {
-      attachDiagnostic(
-        node,
-        lintDiagnostic(
-          range,
-          `Context variable '${name}' cannot have a default value.`,
-          DiagnosticSeverity.Error,
-          "linked-variable-cannot-have-default",
-        ),
-      );
+      attachDiagnostic(node, lintDiagnostic(range, `Context variable '${name}' cannot have a default value.`, DiagnosticSeverity.Error, "linked-variable-cannot-have-default"));
     }
   }
 };
@@ -15852,57 +15262,52 @@ function variableValidationRule() {
 // ../../dialect/agentforce/dist/lint/passes/complex-data-type.js
 function getTypeText2(decl) {
   const type = decl.type;
-  if (!type) return null;
+  if (!type)
+    return null;
   const cst = type.__cst;
   return cst?.node?.text?.trim() ?? null;
 }
 function isObjectType(typeText) {
   return typeText === "object" || typeText === "list[object]";
 }
-function getDeclRange2(decl) {
-  const cst = decl.__cst;
-  return (
-    cst?.range ?? {
-      start: { line: 0, character: 0 },
-      end: { line: 0, character: 0 },
-    }
-  );
-}
 function hasStringField(properties, fieldName) {
-  if (!properties) return false;
+  if (!properties)
+    return false;
   const field = properties[fieldName];
-  if (!field || typeof field !== "object") return false;
+  if (!field || typeof field !== "object")
+    return false;
   const obj = field;
   return typeof obj.value === "string" && obj.value.trim().length > 0;
 }
 var ComplexDataTypePass = class {
   constructor() {
     __publicField(this, "id", storeKey("complex-data-type-warning"));
-    __publicField(
-      this,
-      "description",
-      "Warns when object-type action inputs/outputs lack complex_data_type_name or schema",
-    );
+    __publicField(this, "description", "Warns when object-type action inputs/outputs lack complex_data_type_name or schema");
     __publicField(this, "requires", [schemaContextKey]);
   }
   run(store, root) {
     const ctx = store.get(schemaContextKey);
-    if (!ctx) return;
+    if (!ctx)
+      return;
     const rootObj = root;
     const allKeys = /* @__PURE__ */ new Set([
       ...resolveNamespaceKeys("topic", ctx),
-      ...resolveNamespaceKeys("subagent", ctx),
+      ...resolveNamespaceKeys("subagent", ctx)
     ]);
     for (const topicKey of allKeys) {
       const topicMap = rootObj[topicKey];
-      if (!topicMap || !isNamedMap(topicMap)) continue;
+      if (!topicMap || !isNamedMap(topicMap))
+        continue;
       for (const [, block] of topicMap) {
-        if (!block || typeof block !== "object") continue;
+        if (!block || typeof block !== "object")
+          continue;
         const topic = block;
         const actionsMap = topic.actions;
-        if (!actionsMap || !isNamedMap(actionsMap)) continue;
+        if (!actionsMap || !isNamedMap(actionsMap))
+          continue;
         for (const [actionName, actBlock] of actionsMap) {
-          if (!actBlock || typeof actBlock !== "object") continue;
+          if (!actBlock || typeof actBlock !== "object")
+            continue;
           const act = actBlock;
           this.checkInputs(act.inputs, actionName);
           this.checkOutputs(act.outputs, actionName);
@@ -15911,50 +15316,86 @@ var ComplexDataTypePass = class {
     }
   }
   checkInputs(inputs, actionName) {
-    if (!inputs || !isNamedMap(inputs)) return;
+    if (!inputs || !isNamedMap(inputs))
+      return;
     for (const [paramName, decl] of inputs) {
-      if (!decl || typeof decl !== "object") continue;
+      if (!decl || typeof decl !== "object")
+        continue;
       const obj = decl;
       const typeText = getTypeText2(obj);
-      if (!typeText || !isObjectType(typeText)) continue;
+      if (!typeText || !isObjectType(typeText))
+        continue;
       const props = obj.properties;
       if (!hasStringField(props, "complex_data_type_name") && !hasStringField(props, "schema")) {
-        attachDiagnostic(
-          obj,
-          lintDiagnostic(
-            getDeclRange2(obj),
-            `Action input '${paramName}' in '${actionName}' has type '${typeText}' but lacks 'complex_data_type_name' or 'schema'. Consider specifying the object schema for better type validation.`,
-            DiagnosticSeverity.Warning,
-            "object-type-missing-schema",
-          ),
-        );
+        attachDiagnostic(obj, lintDiagnostic(getBlockRange(obj), `Action input '${paramName}' in '${actionName}' has type '${typeText}' but lacks 'complex_data_type_name' or 'schema'. Consider specifying the object schema for better type validation.`, DiagnosticSeverity.Warning, "object-type-missing-schema"));
       }
     }
   }
   checkOutputs(outputs, actionName) {
-    if (!outputs || !isNamedMap(outputs)) return;
+    if (!outputs || !isNamedMap(outputs))
+      return;
     for (const [outputName, decl] of outputs) {
-      if (!decl || typeof decl !== "object") continue;
+      if (!decl || typeof decl !== "object")
+        continue;
       const obj = decl;
       const typeText = getTypeText2(obj);
-      if (!typeText || !isObjectType(typeText)) continue;
+      if (!typeText || !isObjectType(typeText))
+        continue;
       const props = obj.properties;
       if (!hasStringField(props, "complex_data_type_name")) {
-        attachDiagnostic(
-          obj,
-          lintDiagnostic(
-            getDeclRange2(obj),
-            `Action output '${outputName}' in '${actionName}' has type '${typeText}' but lacks 'complex_data_type_name'. Consider specifying the object schema for better type validation.`,
-            DiagnosticSeverity.Warning,
-            "object-type-missing-schema",
-          ),
-        );
+        attachDiagnostic(obj, lintDiagnostic(getBlockRange(obj), `Action output '${outputName}' in '${actionName}' has type '${typeText}' but lacks 'complex_data_type_name'. Consider specifying the object schema for better type validation.`, DiagnosticSeverity.Warning, "object-type-missing-schema"));
       }
     }
   }
 };
 function complexDataTypeWarningRule() {
   return new ComplexDataTypePass();
+}
+
+// ../../dialect/agentforce/dist/lint/passes/custom-subagent-validation.js
+var NODE_SCHEMA_PREFIX = "node://";
+var INTERNAL_FIELD_PREFIX = "__";
+var VARIANT_ALLOWED_FIELDS = {
+  [COMMERCE_SHOPPER_SCHEMA]: new Set(Object.keys(commerceShopperVariant))
+};
+function validateBlock(name, block, schemaValue) {
+  const allowedFields = VARIANT_ALLOWED_FIELDS[schemaValue];
+  if (!allowedFields)
+    return;
+  for (const field of Object.keys(block)) {
+    if (field.startsWith(INTERNAL_FIELD_PREFIX))
+      continue;
+    if (allowedFields.has(field))
+      continue;
+    const fieldValue = block[field];
+    if (fieldValue == null)
+      continue;
+    const range = getBlockRange(fieldValue) ?? getBlockRange(block);
+    attachDiagnostic(block, lintDiagnostic(range, `'${field}' is not allowed on custom subagent '${name}'.`, DiagnosticSeverity.Error, "custom-subagent-validation"));
+  }
+}
+var CustomSubagentValidationPass = class {
+  constructor() {
+    __publicField(this, "id", storeKey("custom-subagent-validation"));
+    __publicField(this, "description", "Validates custom subagent variants against their schema");
+  }
+  run(_store, root) {
+    const collection = root["subagent"];
+    if (!collection || !isNamedMap(collection))
+      return;
+    for (const [name, block] of collection) {
+      if (!block || typeof block !== "object")
+        continue;
+      const rec = block;
+      const schemaValue = extractStringValue(rec["schema"]);
+      if (!schemaValue || !schemaValue.startsWith(NODE_SCHEMA_PREFIX))
+        continue;
+      validateBlock(name, rec, schemaValue);
+    }
+  }
+};
+function customSubagentValidationRule() {
+  return new CustomSubagentValidationPass();
 }
 
 // ../../dialect/agentforce/dist/lint/passes/index.js
@@ -15973,12 +15414,13 @@ function defaultRules2() {
     configValidationRule(),
     variableValidationRule(),
     complexDataTypeWarningRule(),
+    customSubagentValidationRule()
   ];
 }
 
 // ../../dialect/agentforce/dist/pkg-meta.js
 var DIALECT_NAME2 = "agentforce";
-var DIALECT_VERSION2 = "2.7.13";
+var DIALECT_VERSION2 = "2.9.7";
 
 // ../../dialect/agentforce/dist/index.js
 var agentforceDialect = {
@@ -15988,7 +15430,7 @@ var agentforceDialect = {
   version: DIALECT_VERSION2,
   schemaInfo: AgentforceSchemaInfo,
   createRules: defaultRules2,
-  source: "agentforce-lint",
+  source: "agentforce-lint"
 };
 
 // src/validate.ts
@@ -16018,7 +15460,7 @@ function validateStrictSchema(block) {
     if (value === void 0 || isNamedMap(value)) continue;
     if (!schema2?.[key]) {
       throw new Error(
-        `Strict mode: field "${key}" is not defined in the schema for ${block.__kind}`,
+        `Strict mode: field "${key}" is not defined in the schema for ${block.__kind}`
       );
     }
   }
@@ -16028,7 +15470,7 @@ function validateStrictSchema(block) {
       const key = child.key;
       if (!schema2?.[key]) {
         throw new Error(
-          `Strict mode: field "${key}" is not defined in the schema for ${block.__kind}`,
+          `Strict mode: field "${key}" is not defined in the schema for ${block.__kind}`
         );
       }
     }
@@ -16037,7 +15479,9 @@ function validateStrictSchema(block) {
 
 // src/children-sync.ts
 function upsertFieldChild(children, key, value, fieldType) {
-  const idx2 = children.findIndex((c) => c.__type === "field" && c.key === key && !c.entryName);
+  const idx2 = children.findIndex(
+    (c) => c.__type === "field" && c.key === key && !c.entryName
+  );
   if (value === void 0) {
     if (idx2 >= 0) children.splice(idx2, 1);
     return void 0;
@@ -16054,7 +15498,7 @@ function upsertFieldChild(children, key, value, fieldType) {
 }
 function upsertNamedFieldChild(children, key, name, value, fieldType) {
   const idx2 = children.findIndex(
-    (c) => c.__type === "field" && c.key === key && c.entryName === name,
+    (c) => c.__type === "field" && c.key === key && c.entryName === name
   );
   if (idx2 >= 0) {
     children[idx2].value = value;
@@ -16064,7 +15508,7 @@ function upsertNamedFieldChild(children, key, name, value, fieldType) {
 }
 function removeNamedFieldChild(children, key, name) {
   const idx2 = children.findIndex(
-    (c) => c.__type === "field" && c.key === key && c.entryName === name,
+    (c) => c.__type === "field" && c.key === key && c.entryName === name
   );
   if (idx2 >= 0) children.splice(idx2, 1);
 }
@@ -16078,11 +15522,16 @@ var fallbackFieldType = {
       return value.__emit(ctx);
     }
     return String(value ?? "");
-  },
+  }
 };
 function syncBlockField(block, key, value, schema2) {
   const children = getBlockChildren(block);
-  const fc = upsertFieldChild(children, key, value, schema2?.[key] ?? fallbackFieldType);
+  const fc = upsertFieldChild(
+    children,
+    key,
+    value,
+    schema2?.[key] ?? fallbackFieldType
+  );
   if (value === void 0) {
     delete block[key];
     return;
@@ -16132,7 +15581,7 @@ function removeNamedEntryChild(ast, key, name) {
 function assertSchemaField(key, schema2, kind, strict) {
   if (strict && !schema2?.[key]) {
     throw new Error(
-      `Strict mode: field "${key}" is not defined in the schema for ${kind ?? "unknown"}`,
+      `Strict mode: field "${key}" is not defined in the schema for ${kind ?? "unknown"}`
     );
   }
 }
@@ -16170,7 +15619,7 @@ function buildMutationHelpers(target, schema2, sync, options) {
         map.delete(name);
       }
       sync.removeNamedChild(key, name);
-    },
+    }
   };
 }
 function mutateComponent(block, fn, options) {
@@ -16181,11 +15630,12 @@ function mutateComponent(block, fn, options) {
       const fieldType = schema2?.[key] ?? fallbackFieldType;
       upsertFieldChild(getBlockChildren(block), key, block[key], fieldType);
     },
-    removeNamedChild: () => {},
+    removeNamedChild: () => {
+    }
   };
   const helpers = buildMutationHelpers(block, schema2, sync, {
     strict: options?.strict,
-    kind: block.__kind,
+    kind: block.__kind
   });
   fn(block, helpers);
   syncBlockChildren(block);
@@ -16224,16 +15674,16 @@ var Document = class _Document {
       __cst: {
         range: {
           start: { line: 0, character: 0 },
-          end: { line: 0, character: 0 },
-        },
+          end: { line: 0, character: 0 }
+        }
       },
       __diagnostics: [...diagnostics],
-      __children: [],
+      __children: []
     };
     const noopParser = {
       parse: () => ({
-        rootNode: emptyAst,
-      }),
+        rootNode: emptyAst
+      })
     };
     return new _Document(emptyAst, diagnostics, new PassStore(), noopParser);
   }
@@ -16250,10 +15700,14 @@ var Document = class _Document {
     return this._diagnostics.some((d) => d.severity === DiagnosticSeverity.Error);
   }
   get errors() {
-    return this._diagnostics.filter((d) => d.severity === DiagnosticSeverity.Error);
+    return this._diagnostics.filter(
+      (d) => d.severity === DiagnosticSeverity.Error
+    );
   }
   get warnings() {
-    return this._diagnostics.filter((d) => d.severity === DiagnosticSeverity.Warning);
+    return this._diagnostics.filter(
+      (d) => d.severity === DiagnosticSeverity.Warning
+    );
   }
   // ---------------------------------------------------------------------------
   // Emission
@@ -16285,7 +15739,7 @@ var Document = class _Document {
     const sync = {
       syncField: (key, value) => syncSingularField(astRoot, key, value, schema),
       addNamedChild: (key, name, value) => addNamedEntryChild(astRoot, key, name, value, schema),
-      removeNamedChild: (key, name) => removeNamedEntryChild(astRoot, key, name),
+      removeNamedChild: (key, name) => removeNamedEntryChild(astRoot, key, name)
     };
     const helpers = buildMutationHelpers(this._ast, schema, sync);
     fn(this._ast, helpers);
@@ -16312,11 +15766,17 @@ var Document = class _Document {
   }
   /** Add a named entry (topic, connection, etc.). Handles NamedMap + document `__children`. */
   addEntry(key, name, value, label) {
-    return this.mutate((_ast, helpers) => helpers.addEntry(key, name, value), label);
+    return this.mutate(
+      (_ast, helpers) => helpers.addEntry(key, name, value),
+      label
+    );
   }
   /** Remove a named entry. Handles NamedMap + document `__children`. */
   removeEntry(key, name, label) {
-    return this.mutate((_ast, helpers) => helpers.removeEntry(key, name), label);
+    return this.mutate(
+      (_ast, helpers) => helpers.removeEntry(key, name),
+      label
+    );
   }
   // ---------------------------------------------------------------------------
   // Undo / Redo
@@ -16337,7 +15797,7 @@ var Document = class _Document {
     this._redoStack.push({
       source: currentSource,
       label: lastEntry.label,
-      timestamp: Date.now(),
+      timestamp: Date.now()
     });
     this._historyIndex--;
     const entry = this._history[this._historyIndex];
@@ -16353,7 +15813,7 @@ var Document = class _Document {
     this._history.push({
       source: currentSource,
       label: redoEntry.label,
-      timestamp: Date.now(),
+      timestamp: Date.now()
     });
     this._historyIndex = this._history.length;
     const entry = this._redoStack.pop();
@@ -16377,10 +15837,7 @@ var Document = class _Document {
   getDiff(fromIndex, toIndex) {
     const from = fromIndex ?? Math.max(0, this._historyIndex - 1);
     const before = from < this._history.length ? this._history[from].source : "";
-    const after =
-      toIndex !== void 0 && toIndex < this._history.length
-        ? this._history[toIndex].source
-        : this.emit();
+    const after = toIndex !== void 0 && toIndex < this._history.length ? this._history[toIndex].source : this.emit();
     return { before, after };
   }
   // ---------------------------------------------------------------------------
@@ -16400,18 +15857,23 @@ function parse3(source) {
     const parser = getParser2();
     const tree = parser.parse(source);
     const result = parseAndLint(tree.rootNode, agentforceDialect);
-    return Document.create(result.ast, result.diagnostics, result.store, parser);
+    return Document.create(
+      result.ast,
+      result.diagnostics,
+      result.store,
+      parser
+    );
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     const diagnostic = {
       range: {
         start: { line: 0, character: 0 },
-        end: { line: 0, character: 0 },
+        end: { line: 0, character: 0 }
       },
       message: `Parse failed: ${message}`,
       severity: DiagnosticSeverity.Error,
       code: "parse-error",
-      source: "agentscript",
+      source: "agentscript"
     };
     return Document.empty([diagnostic]);
   }
@@ -16420,10 +15882,7 @@ function parse3(source) {
 // src/component-kind.ts
 var INDENT = "    ";
 function indentSource(source) {
-  return source
-    .split("\n")
-    .map((line) => INDENT + line)
-    .join("\n");
+  return source.split("\n").map((line) => INDENT + line).join("\n");
 }
 var fullSchema = AgentforceSchema;
 function extractNamedEntry(ast, key) {
@@ -16445,7 +15904,7 @@ function nestedStripWrapperCST(wrapLineOffset) {
     const wrapper = namedChildren[0];
     if (!wrapper.children) return root;
     const contentChildren = wrapper.children.filter(
-      (c) => c.isNamed && c.range.start.line >= wrapLineOffset,
+      (c) => c.isNamed && c.range.start.line >= wrapLineOffset
     );
     if (contentChildren.length === 0) return root;
     return {
@@ -16453,8 +15912,8 @@ function nestedStripWrapperCST(wrapLineOffset) {
       children: contentChildren,
       range: {
         start: { ...contentChildren[0].range.start },
-        end: { ...contentChildren[contentChildren.length - 1].range.end },
-      },
+        end: { ...contentChildren[contentChildren.length - 1].range.end }
+      }
     };
   };
 }
@@ -16464,7 +15923,7 @@ function nestedParse(schema2) {
     const result = dialectParser.parse(rootNode, schema2);
     return {
       ast: result.value,
-      diagnostics: result.diagnostics ?? [],
+      diagnostics: result.diagnostics ?? []
     };
   };
 }
@@ -16472,7 +15931,7 @@ function fullParse(rootNode) {
   const result = parseAndLint(rootNode, agentforceDialect);
   return {
     ast: result.ast,
-    diagnostics: result.diagnostics ?? [],
+    diagnostics: result.diagnostics ?? []
   };
 }
 var COMPONENT_KINDS = {
@@ -16484,7 +15943,7 @@ ${indentSource(src)}`,
     extract: (ast) => extractNamedEntry(ast, "actions"),
     parse: nestedParse({ actions: AFActionsBlock }),
     stripWrapperCST: nestedStripWrapperCST(1),
-    wrapOffsets: { lines: 1, columns: INDENT.length },
+    wrapOffsets: { lines: 1, columns: INDENT.length }
   },
   actions: {
     label: "actions (collection)",
@@ -16494,20 +15953,20 @@ ${indentSource(src)}`,
     extract: (ast) => ast["actions"],
     parse: nestedParse({ actions: AFActionsBlock }),
     stripWrapperCST: nestedStripWrapperCST(1),
-    wrapOffsets: { lines: 1, columns: INDENT.length },
+    wrapOffsets: { lines: 1, columns: INDENT.length }
   },
   reasoning_actions: {
     label: "reasoning_actions (collection)",
     schema: {
-      reasoning_actions: ReasoningActionsBlock,
+      reasoning_actions: ReasoningActionsBlock
     },
     wrap: (src) => `reasoning_actions:
 ${indentSource(src)}`,
     extract: (ast) => ast["reasoning_actions"],
     parse: nestedParse({ reasoning_actions: ReasoningActionsBlock }),
     stripWrapperCST: nestedStripWrapperCST(1),
-    wrapOffsets: { lines: 1, columns: INDENT.length },
-  },
+    wrapOffsets: { lines: 1, columns: INDENT.length }
+  }
 };
 for (const [key, fieldType] of Object.entries(fullSchema)) {
   if (key in COMPONENT_KINDS) continue;
@@ -16519,7 +15978,7 @@ for (const [key, fieldType] of Object.entries(fullSchema)) {
       extract: (ast) => extractNamedEntry(ast, key),
       parse: fullParse,
       stripWrapperCST: identityStripCST,
-      wrapOffsets: { lines: 0, columns: 0 },
+      wrapOffsets: { lines: 0, columns: 0 }
     };
   } else {
     COMPONENT_KINDS[key] = {
@@ -16530,7 +15989,7 @@ ${indentSource(src)}`,
       extract: (ast) => ast[key],
       parse: fullParse,
       stripWrapperCST: nestedStripWrapperCST(1),
-      wrapOffsets: { lines: 1, columns: INDENT.length },
+      wrapOffsets: { lines: 1, columns: INDENT.length }
     };
   }
 }
@@ -16540,7 +15999,7 @@ function getComponentKindConfig(kind) {
 function getComponentKindOptions() {
   return Object.entries(COMPONENT_KINDS).map(([key, cfg]) => ({
     value: key,
-    label: cfg.label,
+    label: cfg.label
   }));
 }
 
@@ -16586,10 +16045,7 @@ var STMT_PREFIX_LINES = countPrefixLines(STMT_PREFIX);
 var STMT_INDENT = "            ";
 function parseStatementComponent(source) {
   const parser = getParser2();
-  const indentedLines = source
-    .split("\n")
-    .map((line) => STMT_INDENT + line)
-    .join("\n");
+  const indentedLines = source.split("\n").map((line) => STMT_INDENT + line).join("\n");
   const wrappedSource = STMT_PREFIX + indentedLines;
   const tree = parser.parse(wrappedSource);
   const result = parseAndLint(tree.rootNode, agentforceDialect);
@@ -16605,7 +16061,11 @@ function parseStatementComponent(source) {
   if (!instructionsNode) return [];
   const statements = instructionsNode["statements"];
   if (!Array.isArray(statements)) return [];
-  return adjustStatementPositions(statements, STMT_PREFIX_LINES, STMT_INDENT.length);
+  return adjustStatementPositions(
+    statements,
+    STMT_PREFIX_LINES,
+    STMT_INDENT.length
+  );
 }
 function adjustStatementPositions(statements, lineOffset, columnOffset) {
   for (const stmt of statements) {
@@ -16638,7 +16098,11 @@ function parseExpressionComponent(source) {
       const decl = child;
       const defaultValue = decl.defaultValue;
       if (defaultValue) {
-        adjustExpressionPositions(defaultValue, EXPR_PREFIX_LINE, EXPR_PREFIX_COL);
+        adjustExpressionPositions(
+          defaultValue,
+          EXPR_PREFIX_LINE,
+          EXPR_PREFIX_COL
+        );
         return defaultValue;
       }
     }
@@ -16649,7 +16113,11 @@ function parseExpressionComponent(source) {
       const varDecl = entries[0][1];
       const defaultValue = varDecl.defaultValue;
       if (defaultValue) {
-        adjustExpressionPositions(defaultValue, EXPR_PREFIX_LINE, EXPR_PREFIX_COL);
+        adjustExpressionPositions(
+          defaultValue,
+          EXPR_PREFIX_LINE,
+          EXPR_PREFIX_COL
+        );
         return defaultValue;
       }
     }
@@ -16677,12 +16145,7 @@ function adjustCSTNodePositions(node, lineOffset, columnOffset) {
     }
   }
 }
-function adjustASTPositionsInPlace(
-  value,
-  lineOffset,
-  columnOffset,
-  visited = /* @__PURE__ */ new Set(),
-) {
+function adjustASTPositionsInPlace(value, lineOffset, columnOffset, visited = /* @__PURE__ */ new Set()) {
   if (!value || typeof value !== "object" || visited.has(value)) return;
   visited.add(value);
   const obj = value;
@@ -16699,7 +16162,9 @@ function adjustASTPositionsInPlace(
   for (const val of Object.values(obj)) {
     if (val && typeof val === "object") {
       if (isNamedMap(val)) {
-        val.forEach((v) => adjustASTPositionsInPlace(v, lineOffset, columnOffset, visited));
+        val.forEach(
+          (v) => adjustASTPositionsInPlace(v, lineOffset, columnOffset, visited)
+        );
       } else if (Array.isArray(val)) {
         for (const item of val) {
           adjustASTPositionsInPlace(item, lineOffset, columnOffset, visited);
@@ -16717,22 +16182,19 @@ function serializeSyntaxNode(node) {
     range: {
       start: {
         line: node.startRow,
-        character: node.startCol,
+        character: node.startCol
       },
       end: {
         line: node.endRow,
-        character: node.endCol,
-      },
+        character: node.endCol
+      }
     },
     isNamed: node.isNamed ?? true,
     hasError: node.hasError ?? false,
-    isMissing: node.isMissing ?? false,
+    isMissing: node.isMissing ?? false
   };
   if (node.children.length > 0) {
-    const fieldNameForChild =
-      "fieldNameForChild" in node && typeof node.fieldNameForChild === "function"
-        ? node.fieldNameForChild.bind(node)
-        : null;
+    const fieldNameForChild = "fieldNameForChild" in node && typeof node.fieldNameForChild === "function" ? node.fieldNameForChild.bind(node) : null;
     serialized.children = node.children.map((child, i) => {
       const childSerialized = serializeSyntaxNode(child);
       const fieldName = fieldNameForChild?.(i) ?? null;
@@ -16757,8 +16219,10 @@ function parseComponentDebug(source, kind) {
     let adjustedCst = cst;
     if (lineOffset > 0 || columnOffset > 0) {
       if (adjustedCst) adjustedCst = config2.stripWrapperCST(adjustedCst);
-      if (adjustedCst) adjustCSTNodePositions(adjustedCst, lineOffset, columnOffset);
-      if (component) adjustASTPositionsInPlace(component, lineOffset, columnOffset);
+      if (adjustedCst)
+        adjustCSTNodePositions(adjustedCst, lineOffset, columnOffset);
+      if (component)
+        adjustASTPositionsInPlace(component, lineOffset, columnOffset);
       for (const d of diagnostics) {
         adjustRange(d.range, lineOffset, columnOffset);
       }
@@ -16768,7 +16232,7 @@ function parseComponentDebug(source, kind) {
     return {
       component: void 0,
       cst: null,
-      diagnostics: [],
+      diagnostics: []
     };
   }
 }
@@ -16785,10 +16249,7 @@ function emitComponent(component, options) {
   }
   const ctx = { indent: 0, tabSize: options?.tabSize };
   if (Array.isArray(component)) {
-    return component
-      .filter(isEmittable)
-      .map((s) => s.__emit(ctx))
-      .join("\n");
+    return component.filter(isEmittable).map((s) => s.__emit(ctx)).join("\n");
   }
   if (isNamedBlockValue(component)) {
     const schemaKey = kindToSchemaKey.get(component.__kind);
@@ -16813,7 +16274,7 @@ ${component.__emit(childCtx)}`;
 // ../compiler/dist/diagnostics.js
 var FALLBACK_RANGE = {
   start: { line: 0, character: 0 },
-  end: { line: 0, character: 0 },
+  end: { line: 0, character: 0 }
 };
 
 // ../compiler/dist/sourced.js
@@ -16865,6 +16326,17 @@ var CompilerContext = class {
      */
     __publicField(this, "actionReferenceMap", /* @__PURE__ */ new Map());
     /**
+     * Map from @response_actions binding names to their corresponding response_formats definition names.
+     * Built per-connection: maps reasoning.response_actions names to the response_formats
+     * they reference (e.g., my_choice → messaging_choices).
+     */
+    __publicField(this, "responseFormatReferenceMap", /* @__PURE__ */ new Map());
+    /**
+     * Current connection name (e.g. "service_email") for @inputs reference resolution.
+     * Set per-connection during surface compilation.
+     */
+    __publicField(this, "connectionName");
+    /**
      * Connected agent input signatures: agent developer name → set of input names.
      * Populated during connected agent node compilation for downstream validation
      * of `with` clauses on @connected_subagent.X tool invocations.
@@ -16882,7 +16354,7 @@ var CompilerContext = class {
       message,
       range: range ?? FALLBACK_RANGE,
       code,
-      source: "compiler",
+      source: "compiler"
     });
   }
   error(message, range, code) {
@@ -16909,8 +16381,10 @@ var CompilerContext = class {
    * Returns 'state' for mutable, 'context' for linked, undefined for unknown.
    */
   getVariableNamespace(name) {
-    if (this.mutableVariableNames.has(name)) return "state";
-    if (this.linkedVariableNames.has(name)) return "context";
+    if (this.mutableVariableNames.has(name))
+      return "state";
+    if (this.linkedVariableNames.has(name))
+      return "context";
     return void 0;
   }
   /**
@@ -16969,7 +16443,13 @@ var EMPTY_TOPIC_VALUE = '"__EMPTY__"';
 var NEXT_TOPIC_EMPTY_CONDITION = `state.${NEXT_TOPIC_VARIABLE}=="${EMPTY_TOPIC_VALUE.replace(/"/g, "")}"`;
 var EMPTY_ESCALATION_NODE_VALUE = "'__human__'";
 var ESCALATION_TARGET = "__human__";
-var TRANSITION_TARGET_NAMESPACES = ["topic", "subagent", "start_agent", "connected_subagent"];
+var END_SESSION_TARGET = "__end_session_action__";
+var TRANSITION_TARGET_NAMESPACES = [
+  "topic",
+  "subagent",
+  "start_agent",
+  "connected_subagent"
+];
 var STATE_UPDATE_ACTION = "__state_update_action__";
 var DEFAULT_PLANNER_TYPE = "Atlas__ConcurrentMultiAgentOrchestration";
 var DEFAULT_AGENT_TYPE = "EinsteinServiceAgent";
@@ -16983,8 +16463,8 @@ var ALWAYS_PRESENT_STATE_VARIABLES = [
     data_type: "string",
     is_list: false,
     default: EMPTY_TOPIC_VALUE,
-    visibility: "Internal",
-  },
+    visibility: "Internal"
+  }
 ];
 var INSTRUCTION_STATE_VARIABLE = {
   developer_name: AGENT_INSTRUCTIONS_VARIABLE,
@@ -16993,7 +16473,7 @@ var INSTRUCTION_STATE_VARIABLE = {
   data_type: "string",
   is_list: false,
   default: "''",
-  visibility: "Internal",
+  visibility: "Internal"
 };
 var CONDITION_STATE_VARIABLE = {
   developer_name: RUNTIME_CONDITION_VARIABLE,
@@ -17001,11 +16481,9 @@ var CONDITION_STATE_VARIABLE = {
   description: "Runtime condition evaluation for if statements",
   data_type: "boolean",
   is_list: false,
-  visibility: "Internal",
+  visibility: "Internal"
 };
-var ALWAYS_PRESENT_STATE_VARIABLE_NAMES = new Set(
-  ALWAYS_PRESENT_STATE_VARIABLES.map((v) => v.developer_name),
-);
+var ALWAYS_PRESENT_STATE_VARIABLE_NAMES = new Set(ALWAYS_PRESENT_STATE_VARIABLES.map((v) => v.developer_name));
 
 // ../compiler/dist/utils.js
 function normalizeDeveloperName(name) {
@@ -17017,11 +16495,13 @@ function normalizeDeveloperName(name) {
 }
 function parseUri(uri) {
   const match = uri.match(/^(\w+):\/\/(.+)$/);
-  if (!match) return { scheme: "", path: uri };
+  if (!match)
+    return { scheme: "", path: uri };
   return { scheme: match[1], path: match[2] };
 }
 function deriveLabel(developerName, explicitLabel) {
-  if (explicitLabel) return explicitLabel;
+  if (explicitLabel)
+    return explicitLabel;
   return normalizeDeveloperName(developerName);
 }
 function dedent(text) {
@@ -17035,11 +16515,13 @@ function dedent(text) {
   }
   let minIndent = Infinity;
   for (let i = 1; i < lines.length; i++) {
-    if (lines[i].trim().length === 0) continue;
+    if (lines[i].trim().length === 0)
+      continue;
     const indent = lines[i].match(/^(\s*)/)?.[1]?.length ?? 0;
     minIndent = Math.min(minIndent, indent);
   }
-  if (minIndent === Infinity) minIndent = 0;
+  if (minIndent === Infinity)
+    minIndent = 0;
   lines[0] = lines[0].trimStart();
   if (minIndent > 0) {
     for (let i = 1; i < lines.length; i++) {
@@ -17061,33 +16543,41 @@ function dedent(text) {
 }
 
 // ../compiler/dist/ast-helpers.js
-function extractStringValue(value) {
-  if (value === void 0 || value === null) return void 0;
-  if (typeof value === "string") return value;
+function extractStringValue2(value) {
+  if (value === void 0 || value === null)
+    return void 0;
+  if (typeof value === "string")
+    return value;
   if (typeof value === "object" && "value" in value) {
     const v = value.value;
-    if (typeof v === "string") return v;
+    if (typeof v === "string")
+      return v;
   }
   if (typeof value === "object" && "content" in value) {
     const c = value.content;
-    if (typeof c === "string") return c;
+    if (typeof c === "string")
+      return c;
   }
   return void 0;
 }
 function extractSourcedString(value) {
-  const str = extractStringValue(value);
-  if (str === void 0) return void 0;
+  const str = extractStringValue2(value);
+  if (str === void 0)
+    return void 0;
   return sourced(str, getCstRange(value));
 }
 function extractDescriptionValue(value) {
-  const str = extractStringValue(value);
-  if (str === void 0) return void 0;
-  if (isTemplateValue(value)) return str;
+  const str = extractStringValue2(value);
+  if (str === void 0)
+    return void 0;
+  if (isTemplateValue(value))
+    return str;
   return dedent(str);
 }
 function extractSourcedDescription(value) {
-  const str = extractStringValue(value);
-  if (str === void 0) return void 0;
+  const str = extractStringValue2(value);
+  if (str === void 0)
+    return void 0;
   const processed = isTemplateValue(value) ? str : dedent(str);
   return sourced(processed, getCstRange(value));
 }
@@ -17095,56 +16585,72 @@ function isTemplateValue(value) {
   return typeof value === "object" && value !== null && "parts" in value && "content" in value;
 }
 function extractBooleanValue(value) {
-  if (value === void 0 || value === null) return void 0;
-  if (typeof value === "boolean") return value;
+  if (value === void 0 || value === null)
+    return void 0;
+  if (typeof value === "boolean")
+    return value;
   if (typeof value === "object" && "value" in value) {
     const v = value.value;
-    if (typeof v === "boolean") return v;
+    if (typeof v === "boolean")
+      return v;
     if (typeof v === "string") {
-      if (v.toUpperCase() === "TRUE") return true;
-      if (v.toUpperCase() === "FALSE") return false;
+      if (v.toUpperCase() === "TRUE")
+        return true;
+      if (v.toUpperCase() === "FALSE")
+        return false;
     }
   }
   if (typeof value === "string") {
-    if (value.toUpperCase() === "TRUE") return true;
-    if (value.toUpperCase() === "FALSE") return false;
+    if (value.toUpperCase() === "TRUE")
+      return true;
+    if (value.toUpperCase() === "FALSE")
+      return false;
   }
   return void 0;
 }
 function extractSourcedBoolean(value) {
   const b = extractBooleanValue(value);
-  if (b === void 0) return void 0;
+  if (b === void 0)
+    return void 0;
   return sourced(b, getCstRange(value));
 }
 function extractNumberValue(value) {
-  if (value === void 0 || value === null) return void 0;
-  if (typeof value === "number") return value;
+  if (value === void 0 || value === null)
+    return void 0;
+  if (typeof value === "number")
+    return value;
   if (typeof value === "object" && "value" in value) {
     const v = value.value;
-    if (typeof v === "number") return v;
+    if (typeof v === "number")
+      return v;
   }
   if (value instanceof UnaryExpression && value.operator === "-") {
     const inner = extractNumberValue(value.operand);
-    if (inner !== void 0) return -inner;
+    if (inner !== void 0)
+      return -inner;
   }
   return void 0;
 }
 function extractSourcedNumber(value) {
   const n = extractNumberValue(value);
-  if (n === void 0) return void 0;
+  if (n === void 0)
+    return void 0;
   return sourced(n, getCstRange(value));
 }
 function getCstRange(value) {
-  if (!value || typeof value !== "object") return void 0;
+  if (!value || typeof value !== "object")
+    return void 0;
   const cst = value.__cst;
   return cst?.range;
 }
 function iterateNamedMap(map) {
-  if (!map) return [];
+  if (!map)
+    return [];
   return Array.from(map.entries());
 }
 function getExpressionName(expr) {
-  if (expr instanceof Identifier) return expr.name;
+  if (expr instanceof Identifier)
+    return expr.name;
   if (expr instanceof SubscriptExpression) {
     if (expr.index instanceof Identifier) {
       return expr.index.name;
@@ -17174,7 +16680,8 @@ function resolveAtReference(expr, namespaces, ctx, errorLabel) {
   return void 0;
 }
 function extractDictExpression(expr) {
-  if (!expr || expr.__kind !== "DictLiteral") return void 0;
+  if (!expr || expr.__kind !== "DictLiteral")
+    return void 0;
   const dictExpr = expr;
   const result = {};
   for (const entry of dictExpr.entries) {
@@ -17196,13 +16703,17 @@ function extractStringOrIdentifierValue(expr) {
   return void 0;
 }
 function extractExpressionValue(value) {
-  if (value === void 0 || value === null) return void 0;
-  const str = extractStringValue(value);
-  if (str !== void 0) return str;
+  if (value === void 0 || value === null)
+    return void 0;
+  const str = extractStringValue2(value);
+  if (str !== void 0)
+    return str;
   const num = extractNumberValue(value);
-  if (num !== void 0) return num;
+  if (num !== void 0)
+    return num;
   const bool = extractBooleanValue(value);
-  if (bool !== void 0) return bool;
+  if (bool !== void 0)
+    return bool;
   if (typeof value === "object") {
     const obj = value;
     if (obj.__kind === "DictLiteral") {
@@ -17220,10 +16731,12 @@ function extractExpressionValue(value) {
 
 // ../compiler/dist/validation/validate-knowledge-refs.js
 function validateKnowledgeReferences(knowledgeBlock, ctx) {
-  if (!knowledgeBlock) return;
+  if (!knowledgeBlock)
+    return;
   for (const [key, value] of Object.entries(knowledgeBlock)) {
-    if (key.startsWith("__")) continue;
-    const strValue = extractStringValue(value);
+    if (key.startsWith("__"))
+      continue;
+    const strValue = extractStringValue2(value);
     if (strValue !== void 0) {
       ctx.knowledgeFields.set(key, strValue);
       continue;
@@ -17238,7 +16751,8 @@ function validateKnowledgeReferences(knowledgeBlock, ctx) {
 // ../compiler/dist/validation/validate-output.js
 function validateOutput(output, schema2, ctx) {
   const result = schema2.safeParse(output);
-  if (result.success) return;
+  if (result.success)
+    return;
   const leafIssues = flattenZodIssues(result.error.issues);
   for (const issue2 of leafIssues) {
     const path = issue2.path;
@@ -17258,8 +16772,8 @@ function issueToDiagnostic(issue2, location, found) {
     source: "compiler",
     data: {
       path: location.compiledPath,
-      ...(expected ? { expected } : {}),
-    },
+      ...expected ? { expected } : {}
+    }
   };
 }
 function formatMessage(issue2, scriptPath, found) {
@@ -17288,8 +16802,10 @@ function resolveInputValue(root, path) {
     }
     current = current[segment];
   }
-  if (current instanceof Sourced) current = current.value;
-  if (typeof current === "string") return current;
+  if (current instanceof Sourced)
+    current = current.value;
+  if (typeof current === "string")
+    return current;
   if (typeof current === "number" || typeof current === "boolean") {
     return String(current);
   }
@@ -17311,7 +16827,7 @@ function flattenZodIssues(issues) {
       }
       const childIssues = bestMember.map((child) => ({
         ...child,
-        path: [...issue2.path, ...child.path],
+        path: [...issue2.path, ...child.path]
       }));
       result.push(...flattenZodIssues(childIssues));
     } else {
@@ -17369,40 +16885,29 @@ function compileAgentConfiguration(config2, contextVariables, ctx) {
       enable_enhanced_event_logs: false,
       agent_type: DEFAULT_AGENT_TYPE,
       default_agent_user: "",
-      context_variables: contextVariables,
+      context_variables: contextVariables
     };
   }
-  const developerName =
-    extractSourcedString(config2["developer_name"]) ??
-    extractSourcedString(config2["agent_name"]) ??
-    "";
-  const enableEnhancedEventLogs =
-    extractSourcedBoolean(config2["enable_enhanced_event_logs"]) ?? false;
-  const rawAgentType = extractStringValue(config2["agent_type"]) ?? DEFAULT_AGENT_TYPE;
+  const developerName = extractSourcedString(config2["developer_name"]) ?? extractSourcedString(config2["agent_name"]) ?? "";
+  const enableEnhancedEventLogs = extractSourcedBoolean(config2["enable_enhanced_event_logs"]) ?? false;
+  const rawAgentType = extractStringValue2(config2["agent_type"]) ?? DEFAULT_AGENT_TYPE;
   const rawAgentTypeSourced = extractSourcedString(config2["agent_type"]) ?? DEFAULT_AGENT_TYPE;
-  const agentType2 =
-    rawAgentType === "AgentforceServiceAgent" ? "EinsteinServiceAgent" : rawAgentTypeSourced;
+  const agentType2 = rawAgentType === "AgentforceServiceAgent" ? "EinsteinServiceAgent" : rawAgentTypeSourced;
   const defaultAgentUser = extractSourcedString(config2["default_agent_user"]) ?? "";
   const templateName = extractSourcedString(configField(config2, "agent_template"));
-  const developerNamePlain =
-    extractStringValue(config2["developer_name"]) ??
-    extractStringValue(config2["agent_name"]) ??
-    "";
-  const agentLabelPlain = extractStringValue(config2["agent_label"]) ?? "";
+  const developerNamePlain = extractStringValue2(config2["developer_name"]) ?? extractStringValue2(config2["agent_name"]) ?? "";
+  const agentLabelPlain = extractStringValue2(config2["agent_label"]) ?? "";
   const label = deriveLabel(developerNamePlain, agentLabelPlain || void 0);
-  const description =
-    extractSourcedString(config2["agent_description"]) ??
-    extractSourcedString(config2["description"]) ??
-    label;
+  const description = extractSourcedString(config2["agent_description"]) ?? extractSourcedString(config2["description"]) ?? label;
   const result = {
     developer_name: developerName,
     label,
     description,
     enable_enhanced_event_logs: enableEnhancedEventLogs,
     agent_type: agentType2,
-    context_variables: contextVariables,
+    context_variables: contextVariables
   };
-  const defaultAgentUserPlain = extractStringValue(config2["default_agent_user"]) ?? "";
+  const defaultAgentUserPlain = extractStringValue2(config2["default_agent_user"]) ?? "";
   if (defaultAgentUserPlain) {
     result.default_agent_user = defaultAgentUser;
   }
@@ -17433,7 +16938,7 @@ function extractAdditionalParameters(config2, knowledgeBlock) {
           hasParams = true;
           continue;
         }
-        const strVal = extractStringValue(raw);
+        const strVal = extractStringValue2(raw);
         if (strVal !== void 0) {
           params[paramName] = strVal;
           hasParams = true;
@@ -17457,7 +16962,7 @@ function extractAdditionalParameters(config2, knowledgeBlock) {
     }
   }
   if (knowledgeBlock) {
-    const ragFeatureConfigId = extractStringValue(knowledgeBlock["rag_feature_config_id"]);
+    const ragFeatureConfigId = extractStringValue2(knowledgeBlock["rag_feature_config_id"]);
     if (ragFeatureConfigId) {
       params.rag_feature_config_id = ragFeatureConfigId;
       hasParams = true;
@@ -17466,7 +16971,8 @@ function extractAdditionalParameters(config2, knowledgeBlock) {
   return hasParams ? params : void 0;
 }
 function extractCompanyAndRole(config2) {
-  if (!config2) return { company: null, role: null };
+  if (!config2)
+    return { company: null, role: null };
   const company = extractSourcedString(config2["company"]) ?? null;
   const role = extractSourcedString(config2["role"]) ?? null;
   return { company, role };
@@ -17483,7 +16989,7 @@ var SCALAR_TO_STATE_VARIABLE_TYPE = {
   datetime: "timestamp",
   timestamp: "timestamp",
   currency: "currency",
-  id: "string",
+  id: "string"
 };
 function toStateVariableDataType(scalarType) {
   return SCALAR_TO_STATE_VARIABLE_TYPE[scalarType.toLowerCase()];
@@ -17497,7 +17003,7 @@ var SCALAR_TO_CONTEXT_VARIABLE_TYPE = {
   datetime: "timestamp",
   timestamp: "timestamp",
   currency: "currency",
-  id: "id",
+  id: "id"
 };
 function toContextVariableDataType(scalarType) {
   return SCALAR_TO_CONTEXT_VARIABLE_TYPE[scalarType.toLowerCase()];
@@ -17514,7 +17020,7 @@ var SCALAR_TO_PARAMETER_DATA_TYPE = {
   datetime: "DateTime",
   timestamp: "DateTime",
   currency: "Double",
-  id: "ID",
+  id: "ID"
 };
 function toParameterDataType(scalarType) {
   return SCALAR_TO_PARAMETER_DATA_TYPE[scalarType.toLowerCase()];
@@ -17524,7 +17030,7 @@ function resolveParameterTypeInfo(scalarType, _isList, complexDataTypeName) {
   if (!baseType) {
     return {
       dataType: "String",
-      complexDataTypeName: complexDataTypeName ?? null,
+      complexDataTypeName: complexDataTypeName ?? null
     };
   }
   if (baseType === "LightningTypes" && complexDataTypeName) {
@@ -17532,23 +17038,23 @@ function resolveParameterTypeInfo(scalarType, _isList, complexDataTypeName) {
       const strippedName = complexDataTypeName.substring("@apexClassType/".length);
       return {
         dataType: "ApexDefined",
-        complexDataTypeName: strippedName,
+        complexDataTypeName: strippedName
       };
     }
     return {
       dataType: "LightningTypes",
-      complexDataTypeName,
+      complexDataTypeName
     };
   }
   if (baseType === "LightningTypes") {
     return {
       dataType: "LightningTypes",
-      complexDataTypeName: "lightning__objectType",
+      complexDataTypeName: "lightning__objectType"
     };
   }
   return {
     dataType: baseType,
-    complexDataTypeName: complexDataTypeName ?? null,
+    complexDataTypeName: complexDataTypeName ?? null
   };
 }
 var STATE_VAR_TO_PARAMETER_TYPE = {
@@ -17559,7 +17065,7 @@ var STATE_VAR_TO_PARAMETER_TYPE = {
   date: "Date",
   timestamp: "DateTime",
   currency: "Double",
-  id: "ID",
+  id: "ID"
 };
 function stateVarToParameterDataType(stateVarType) {
   return STATE_VAR_TO_PARAMETER_TYPE[stateVarType] ?? "String";
@@ -17571,10 +17077,12 @@ function isStringType(dataType) {
 
 // ../compiler/dist/config/context-variables.js
 function compileContextVariables(variables, ctx) {
-  if (!variables) return [];
+  if (!variables)
+    return [];
   const result = [];
   for (const [name, def] of iterateNamedMap(variables)) {
-    if (def.modifier?.name !== "linked") continue;
+    if (def.modifier?.name !== "linked")
+      continue;
     const contextVar = compileContextVariable(name, def, ctx);
     if (contextVar) {
       result.push(contextVar);
@@ -17591,23 +17099,18 @@ function compileContextVariable(name, def, ctx) {
   }
   const dataType = toContextVariableDataType(typeStr);
   if (!dataType) {
-    ctx.error(
-      `Unsupported context variable type: '${typeStr}' for variable '${name}'`,
-      def.__cst?.range,
-    );
+    ctx.error(`Unsupported context variable type: '${typeStr}' for variable '${name}'`, def.__cst?.range);
     return void 0;
   }
   const properties = def.properties;
   const source = extractSourceField(properties?.["source"]);
   const label = extractSourcedString(properties?.["label"]) ?? normalizeDeveloperName(name);
-  const description =
-    extractSourcedDescription(properties?.["description"]) ??
-    name.replace(/(?:^|_)\w/g, (c) => c.toUpperCase());
+  const description = extractSourcedDescription(properties?.["description"]) ?? name.replace(/(?:^|_)\w/g, (c) => c.toUpperCase());
   const contextVar = {
     developer_name: name,
     label,
     description,
-    data_type: dataType,
+    data_type: dataType
   };
   if (source) {
     contextVar.field_mapping = sourced(source, getCstRange(properties?.["source"]));
@@ -17615,9 +17118,11 @@ function compileContextVariable(name, def, ctx) {
   return contextVar;
 }
 function extractSourceField(value) {
-  if (!value) return void 0;
-  const str = extractStringValue(value);
-  if (str) return str;
+  if (!value)
+    return void 0;
+  const str = extractStringValue2(value);
+  if (str)
+    return str;
   if (value instanceof MemberExpression) {
     const decomposed = decomposeAtMemberExpression(value);
     if (decomposed) {
@@ -17626,27 +17131,27 @@ function extractSourceField(value) {
   }
   if (typeof value === "object") {
     const obj = value;
-    if ("text" in obj && typeof obj.text === "string") return obj.text;
-    if ("source" in obj && typeof obj.source === "string") return obj.source;
+    if ("text" in obj && typeof obj.text === "string")
+      return obj.text;
+    if ("source" in obj && typeof obj.source === "string")
+      return obj.source;
   }
   return void 0;
 }
 
 // ../compiler/dist/config/compile-security.js
 function compileSecurity(securityBlock, ctx) {
-  if (!securityBlock) return void 0;
+  if (!securityBlock)
+    return void 0;
   const result = {};
   if (securityBlock.verified_customer_record_access) {
     const vcra = securityBlock.verified_customer_record_access;
     const useDefault = extractBooleanValue(vcra.use_default_objects);
     if (useDefault === void 0) {
-      ctx.error(
-        "verified_customer_record_access requires use_default_objects to be set to True or False",
-        getCstRange(vcra),
-      );
+      ctx.error("verified_customer_record_access requires use_default_objects to be set to True or False", getCstRange(vcra));
     } else {
       result.verified_customer_record_access = {
-        use_default_objects: useDefault,
+        use_default_objects: useDefault
       };
       if (vcra.additional_objects) {
         const additionalObjects = extractObjectList(vcra.additional_objects, ctx);
@@ -17659,11 +17164,12 @@ function compileSecurity(securityBlock, ctx) {
   return Object.keys(result).length > 0 ? result : void 0;
 }
 function extractObjectList(sequence, ctx) {
-  if (!sequence || sequence.__kind !== "Sequence") return void 0;
+  if (!sequence || sequence.__kind !== "Sequence")
+    return void 0;
   const items = [];
   for (const item of sequence.items) {
     if (item.__kind === "StringLiteral") {
-      const value = extractStringValue(item);
+      const value = extractStringValue2(item);
       if (value) {
         items.push(value);
       } else {
@@ -17677,10 +17183,7 @@ function extractObjectList(sequence, ctx) {
         ctx.error("Failed to resolve member expression in security object list", item.__cst?.range);
       }
     } else {
-      ctx.error(
-        `Unsupported expression type in security object list: ${item.__kind}`,
-        item.__cst?.range,
-      );
+      ctx.error(`Unsupported expression type in security object list: ${item.__kind}`, item.__cst?.range);
     }
   }
   return items.length > 0 ? items : void 0;
@@ -17714,8 +17217,10 @@ function compileStateVariables(variables, contextVariables, _blocks, ctx) {
     const contextVarNames = new Set(contextVariables.map((v) => v.developer_name));
     const internalNames = new Set(result.map((v) => v.developer_name));
     for (const [name, def] of iterateNamedMap(variables)) {
-      if (def.modifier?.name === "linked") continue;
-      if (contextVarNames.has(name) || internalNames.has(name)) continue;
+      if (def.modifier?.name === "linked")
+        continue;
+      if (contextVarNames.has(name) || internalNames.has(name))
+        continue;
       const stateVar = compileStateVariable(name, def, ctx);
       if (stateVar) {
         result.push(stateVar);
@@ -17727,10 +17232,7 @@ function compileStateVariables(variables, contextVariables, _blocks, ctx) {
 }
 function compileStateVariable(name, def, ctx) {
   if (name.startsWith("_") || name.endsWith("_")) {
-    ctx.warning(
-      `Variable name '${name}' should not start or end with underscores`,
-      def.__cst?.range,
-    );
+    ctx.warning(`Variable name '${name}' should not start or end with underscores`, def.__cst?.range);
   }
   if (name.includes("__")) {
     ctx.error(`Variable name '${name}' should not contain double underscores`, def.__cst?.range);
@@ -17743,17 +17245,14 @@ function compileStateVariable(name, def, ctx) {
   }
   const dataType = toStateVariableDataType(typeStr);
   if (!dataType) {
-    ctx.error(
-      `Unsupported state variable type: '${typeStr}' for variable '${name}'`,
-      def.__cst?.range,
-    );
+    ctx.error(`Unsupported state variable type: '${typeStr}' for variable '${name}'`, def.__cst?.range);
     return void 0;
   }
   const isList = isListType(def.type);
   const defaultValue = extractDefaultValue(def.defaultValue, dataType, isList);
   const label = extractSourcedString(def.properties?.["label"]) ?? normalizeDeveloperName(name);
   const description = extractSourcedDescription(def.properties?.["description"]) ?? label;
-  const rawVisibility = extractStringValue(def.properties?.["visibility"]);
+  const rawVisibility = extractStringValue2(def.properties?.["visibility"]);
   const visibility = mapVisibility(rawVisibility, name, ctx, def.__cst?.range);
   const stateVar = {
     developer_name: name,
@@ -17761,7 +17260,7 @@ function compileStateVariable(name, def, ctx) {
     description,
     data_type: dataType,
     is_list: isList,
-    visibility,
+    visibility
   };
   if (defaultValue !== null) {
     stateVar.default = defaultValue;
@@ -17769,7 +17268,8 @@ function compileStateVariable(name, def, ctx) {
   return stateVar;
 }
 function mapVisibility(value, variableName, ctx, range) {
-  if (!value) return "Internal";
+  if (!value)
+    return "Internal";
   const normalized = value.trim().toLowerCase();
   if (normalized === "private" || normalized === "internal") {
     return "Internal";
@@ -17777,29 +17277,30 @@ function mapVisibility(value, variableName, ctx, range) {
   if (normalized === "public" || normalized === "external") {
     return "External";
   }
-  ctx.warning(
-    `Unknown visibility "${value}" on variable '${variableName}'. Expected public/private (or External/Internal); defaulting to Internal.`,
-    range,
-  );
+  ctx.warning(`Unknown visibility "${value}" on variable '${variableName}'. Expected public/private (or External/Internal); defaulting to Internal.`, range);
   return "Internal";
 }
 function extractDefaultValue(defaultVal, dataType, isList) {
-  if (defaultVal === void 0 || defaultVal === null) return null;
+  if (defaultVal === void 0 || defaultVal === null)
+    return null;
   if (defaultVal instanceof NoneLiteral) {
     return null;
   }
   if (isList) {
-    if (defaultVal.__kind !== "ListLiteral") return null;
+    if (defaultVal.__kind !== "ListLiteral")
+      return null;
     const raw = extractExpressionValue(defaultVal);
-    if (!Array.isArray(raw)) return [];
+    if (!Array.isArray(raw))
+      return [];
     return raw;
   }
   if (dataType === "object") {
-    if (defaultVal.__kind !== "DictLiteral") return {};
+    if (defaultVal.__kind !== "DictLiteral")
+      return {};
     const raw = extractExpressionValue(defaultVal);
     return raw ?? {};
   }
-  const strVal = extractStringValue(defaultVal);
+  const strVal = extractStringValue2(defaultVal);
   if (strVal !== void 0) {
     if (isStringType(dataType)) {
       return `'${strVal}'`;
@@ -17807,9 +17308,11 @@ function extractDefaultValue(defaultVal, dataType, isList) {
     return strVal;
   }
   const numVal = extractNumberValue(defaultVal);
-  if (numVal !== void 0) return numVal;
+  if (numVal !== void 0)
+    return numVal;
   const boolVal = extractBooleanValue(defaultVal);
-  if (boolVal !== void 0) return boolVal;
+  if (boolVal !== void 0)
+    return boolVal;
   return null;
 }
 
@@ -17818,12 +17321,11 @@ function compileExpression(expr, ctx, options = {}) {
   let compiled = compileExprNode(expr, ctx, options);
   compiled = compiled.replace(/@variables\.(\w+)/g, (_, varName) => {
     const ns = ctx.getVariableNamespace(varName);
-    if (ns === "context") return `variables.${varName}`;
-    if (ns === "state") return `state.${varName}`;
-    ctx.warning(
-      `Variable '${varName}' not found in known variables, defaulting to state namespace`,
-      expr.__cst?.range,
-    );
+    if (ns === "context")
+      return `variables.${varName}`;
+    if (ns === "state")
+      return `state.${varName}`;
+    ctx.warning(`Variable '${varName}' not found in known variables, defaulting to state namespace`, expr.__cst?.range);
     return `state.${varName}`;
   });
   return compiled;
@@ -17854,8 +17356,7 @@ function compileExprNode(expr, ctx, opts) {
     return compileCallExpression(expr, ctx, opts);
   }
   if (expr instanceof StringLiteral) {
-    const escaped = expr.value.replace(/"/g, '\\"');
-    return `"${escaped}"`;
+    return `"${escapeStringValue(expr.value)}"`;
   }
   if (expr instanceof NumberLiteral) {
     return String(expr.value);
@@ -17891,26 +17392,41 @@ function compileMemberExpression(expr, ctx, opts) {
           return `$Context.${property}`;
         }
         const ns = ctx.getVariableNamespace(property);
-        if (ns === "context") return `variables.${property}`;
-        if (ns === "state") return `state.${property}`;
-        ctx.warning(
-          `Variable '${property}' not found in known variables, defaulting to state namespace`,
-          expr.__cst?.range,
-        );
+        if (ns === "context")
+          return `variables.${property}`;
+        if (ns === "state")
+          return `state.${property}`;
+        ctx.warning(`Variable '${property}' not found in known variables, defaulting to state namespace`, expr.__cst?.range);
         return `state.${property}`;
       }
       case "outputs":
         return `result.${property}`;
-      case "actions": {
+      case "inputs": {
+        const connName = ctx.connectionName;
+        if (connName) {
+          return `connection.${connName}.inputs.${property}`;
+        }
+        ctx.warning(`Connection input '${property}' not in a connection context, defaulting to empty namespace`, expr.__cst?.range);
+        return `inputs.${property}`;
+      }
+      case "actions":
+      case "tool_definitions":
+      case "tools": {
         if (!opts.allowActionReferences) {
           const where = opts.expressionContext ? ` in a ${opts.expressionContext}` : "";
-          ctx.error(
-            `@${namespace}.${property} cannot be used${where}. Use @${namespace} references inside instruction templates instead (e.g. | text {!@${namespace}.${property}}).`,
-            expr.__cst?.range,
-          );
+          ctx.error(`@${namespace}.${property} cannot be used${where}. Use @${namespace} references inside instruction templates instead (e.g. | text {!@${namespace}.${property}}).`, expr.__cst?.range);
         }
         const toolKey = ctx.actionReferenceMap.get(property) ?? property;
         return `action.${toolKey}`;
+      }
+      case "response_formats":
+      case "response_actions": {
+        if (!opts.allowFormatReferences) {
+          const where = opts.expressionContext ? ` in a ${opts.expressionContext}` : "";
+          ctx.error(`@${namespace}.${property} cannot be used${where}. Use @${namespace} references inside instruction templates instead (e.g. | text {!@${namespace}.${property}}).`, expr.__cst?.range);
+        }
+        const formatKey = ctx.responseFormatReferenceMap.get(property) ?? property;
+        return `response_formats.${formatKey}`;
       }
       case "system_variables": {
         if (property === "user_input") {
@@ -17932,10 +17448,7 @@ function compileMemberExpression(expr, ctx, opts) {
       }
       case "topic":
       case "subagent": {
-        ctx.error(
-          `@${namespace} cannot be referenced in LLM instructions; use transitions to switch between @${namespace}`,
-          expr.__cst?.range,
-        );
+        ctx.error(`@${namespace} cannot be referenced in LLM instructions; use transitions to switch between @${namespace}`, expr.__cst?.range);
         return "";
       }
       default: {
@@ -17951,10 +17464,7 @@ function compileMemberExpression(expr, ctx, opts) {
   return `${obj}.${expr.property}`;
 }
 function compileAtIdentifier(expr, ctx) {
-  ctx.error(
-    `Bare @${expr.name} reference requires a property (e.g., @${expr.name}.property)`,
-    expr.__cst?.range,
-  );
+  ctx.error(`Bare @${expr.name} reference requires a property (e.g., @${expr.name}.property)`, expr.__cst?.range);
   return `@${expr.name}`;
 }
 function compileSubscriptExpression(expr, ctx, opts) {
@@ -17978,16 +17488,12 @@ function compileBinaryExpression(expr, ctx, opts) {
   const left = compileExprNode(expr.left, ctx, opts);
   const right = compileExprNode(expr.right, ctx, opts);
   const rightCst = expr.right.__cst?.node;
-  const rightParenthesized =
-    rightCst?.parent?.type === "parenthesized_expression" ||
-    rightCst?.parent?.parent?.type === "parenthesized_expression";
+  const rightParenthesized = rightCst?.parent?.type === "parenthesized_expression" || rightCst?.parent?.parent?.type === "parenthesized_expression";
   if (rightParenthesized) {
     return `${left} ${expr.operator} (${right})`;
   }
   const leftCst = expr.left.__cst?.node;
-  const leftParenthesized =
-    leftCst?.parent?.type === "parenthesized_expression" ||
-    leftCst?.parent?.parent?.type === "parenthesized_expression";
+  const leftParenthesized = leftCst?.parent?.type === "parenthesized_expression" || leftCst?.parent?.parent?.type === "parenthesized_expression";
   if (leftParenthesized) {
     return `(${left}) ${expr.operator} ${right}`;
   }
@@ -18048,63 +17554,59 @@ function compileTemplatePart(part, ctx, opts) {
 
 // ../compiler/dist/expressions/compile-template.js
 function compileTemplate(parts, ctx, opts = {}) {
-  return parts
-    .map((part) => {
-      const kind = part.__kind;
-      if (part instanceof TemplateText || kind === "TemplateText") {
-        return part.value;
+  return parts.map((part) => {
+    const kind = part.__kind;
+    if (part instanceof TemplateText || kind === "TemplateText") {
+      return part.value;
+    }
+    if (part instanceof TemplateInterpolation || kind === "TemplateInterpolation") {
+      const compiled = compileExpression(part.expression, ctx, opts);
+      if (opts.isSystemMessage) {
+        return `{!${compiled}}`;
       }
-      if (part instanceof TemplateInterpolation || kind === "TemplateInterpolation") {
-        const compiled = compileExpression(part.expression, ctx, opts);
-        if (opts.isSystemMessage) {
-          return `{!${compiled}}`;
-        }
-        if (compiled.startsWith("action.")) {
-          return compiled;
-        }
-        return `{{${compiled}}}`;
+      if (compiled.startsWith("action.") || compiled.startsWith("response_formats.")) {
+        return compiled;
       }
-      return "";
-    })
-    .join("");
+      return `{{${compiled}}}`;
+    }
+    return "";
+  }).join("");
 }
 function compileTemplateValue(value, ctx, opts = {}) {
-  if (typeof value === "string") return value;
-  if (!value || typeof value !== "object") return "";
+  if (typeof value === "string")
+    return value;
+  if (!value || typeof value !== "object")
+    return "";
   const kind = value.__kind;
   if (value instanceof ProcedureValue || kind === "ProcedureValue") {
     const stmts = value.statements;
     if (stmts?.length > 0) {
-      return stmts
-        .map((stmt) => compileTemplateValue(stmt, ctx, opts))
-        .filter(Boolean)
-        .join("\n");
+      return stmts.map((stmt) => compileTemplateValue(stmt, ctx, opts)).filter(Boolean).join("\n");
     }
   }
-  if (
-    value instanceof Template ||
-    value instanceof TemplateExpression ||
-    kind === "Template" ||
-    kind === "TemplateExpression"
-  ) {
+  if (value instanceof Template || value instanceof TemplateExpression || kind === "Template" || kind === "TemplateExpression") {
     return compileTemplate(value.parts, ctx, opts);
   }
   if ("content" in value) {
     const c = value.content;
-    if (typeof c === "string") return c;
+    if (typeof c === "string")
+      return c;
   }
   if ("value" in value) {
     const v = value.value;
-    if (typeof v === "string") return v;
+    if (typeof v === "string")
+      return v;
   }
   return "";
 }
 
 // ../compiler/dist/system-messages/compile-system-messages.js
 function compileSystemMessages(systemBlock, ctx) {
-  if (!systemBlock) return [];
+  if (!systemBlock)
+    return [];
   const messages = systemBlock.messages;
-  if (!messages) return [];
+  if (!messages)
+    return [];
   const result = [];
   const welcome = messages.welcome;
   if (welcome) {
@@ -18112,7 +17614,7 @@ function compileSystemMessages(systemBlock, ctx) {
     if (msg !== void 0) {
       const systemMsg = {
         message: msg,
-        message_type: "Welcome",
+        message_type: "Welcome"
       };
       result.push(systemMsg);
     }
@@ -18123,7 +17625,7 @@ function compileSystemMessages(systemBlock, ctx) {
     if (msg !== void 0) {
       const systemMsg = {
         message: msg,
-        message_type: "Error",
+        message_type: "Error"
       };
       result.push(systemMsg);
     }
@@ -18131,10 +17633,11 @@ function compileSystemMessages(systemBlock, ctx) {
   return result;
 }
 function serializeSystemMessagesForAdditionalParams(systemMessages) {
-  if (systemMessages.length === 0) return void 0;
+  if (systemMessages.length === 0)
+    return void 0;
   const jsonArr = systemMessages.map((m) => ({
     message: m.message,
-    messageType: m.message_type,
+    messageType: m.message_type
   }));
   const parts = jsonArr.map((m) => {
     const msgEsc = JSON.stringify(m.message);
@@ -18149,13 +17652,14 @@ function compileMessageValue(value, ctx) {
     return compileTemplate(parts, ctx, { isSystemMessage: true });
   }
   const str = extractSourcedString(value);
-  if (str !== void 0) return str;
+  if (str !== void 0)
+    return str;
   return void 0;
 }
 
 // ../../node_modules/.pnpm/zod@4.3.6/node_modules/zod/v4/core/core.js
 var NEVER = Object.freeze({
-  status: "aborted",
+  status: "aborted"
 });
 // @__NO_SIDE_EFFECTS__
 function $constructor(name, initializer3, params) {
@@ -18165,9 +17669,9 @@ function $constructor(name, initializer3, params) {
         value: {
           def,
           constr: _,
-          traits: /* @__PURE__ */ new Set(),
+          traits: /* @__PURE__ */ new Set()
         },
-        enumerable: false,
+        enumerable: false
       });
     }
     if (inst._zod.traits.has(name)) {
@@ -18185,7 +17689,8 @@ function $constructor(name, initializer3, params) {
     }
   }
   const Parent = params?.Parent ?? Object;
-  class Definition extends Parent {}
+  class Definition extends Parent {
+  }
   Object.defineProperty(Definition, "name", { value: name });
   function _(def) {
     var _a3;
@@ -18200,9 +17705,10 @@ function $constructor(name, initializer3, params) {
   Object.defineProperty(_, "init", { value: init2 });
   Object.defineProperty(_, Symbol.hasInstance, {
     value: (inst) => {
-      if (params?.Parent && inst instanceof params.Parent) return true;
+      if (params?.Parent && inst instanceof params.Parent)
+        return true;
       return inst?._zod?.traits?.has(name);
-    },
+    }
   });
   Object.defineProperty(_, "name", { value: name });
   return _;
@@ -18221,7 +17727,8 @@ var $ZodEncodeError = class extends Error {
 };
 var globalConfig = {};
 function config(newConfig) {
-  if (newConfig) Object.assign(globalConfig, newConfig);
+  if (newConfig)
+    Object.assign(globalConfig, newConfig);
   return globalConfig;
 }
 
@@ -18289,7 +17796,7 @@ __export(util_exports, {
   uint8ArrayToBase64: () => uint8ArrayToBase64,
   uint8ArrayToBase64url: () => uint8ArrayToBase64url,
   uint8ArrayToHex: () => uint8ArrayToHex,
-  unwrapMessage: () => unwrapMessage,
+  unwrapMessage: () => unwrapMessage
 });
 function assertEqual(val) {
   return val;
@@ -18297,23 +17804,24 @@ function assertEqual(val) {
 function assertNotEqual(val) {
   return val;
 }
-function assertIs(_arg) {}
+function assertIs(_arg) {
+}
 function assertNever(_x) {
   throw new Error("Unexpected value in exhaustive check");
 }
-function assert(_) {}
+function assert(_) {
+}
 function getEnumValues(entries) {
   const numericValues = Object.values(entries).filter((v) => typeof v === "number");
-  const values = Object.entries(entries)
-    .filter(([k, _]) => numericValues.indexOf(+k) === -1)
-    .map(([_, v]) => v);
+  const values = Object.entries(entries).filter(([k, _]) => numericValues.indexOf(+k) === -1).map(([_, v]) => v);
   return values;
 }
 function joinValues(array2, separator = "|") {
   return array2.map((val) => stringifyPrimitive(val)).join(separator);
 }
 function jsonStringifyReplacer(_, value) {
-  if (typeof value === "bigint") return value.toString();
+  if (typeof value === "bigint")
+    return value.toString();
   return value;
 }
 function cached(getter) {
@@ -18326,7 +17834,7 @@ function cached(getter) {
         return value;
       }
       throw new Error("cached value already set");
-    },
+    }
   };
 }
 function nullish(input) {
@@ -18350,7 +17858,7 @@ function floatSafeRemainder(val, step) {
   const decCount = valDecCount > stepDecCount ? valDecCount : stepDecCount;
   const valInt = Number.parseInt(val.toFixed(decCount).replace(".", ""));
   const stepInt = Number.parseInt(step.toFixed(decCount).replace(".", ""));
-  return (valInt % stepInt) / 10 ** decCount;
+  return valInt % stepInt / 10 ** decCount;
 }
 var EVALUATING = Symbol("evaluating");
 function defineLazy(object2, key, getter) {
@@ -18368,11 +17876,11 @@ function defineLazy(object2, key, getter) {
     },
     set(v) {
       Object.defineProperty(object2, key, {
-        value: v,
+        value: v
         // configurable: true,
       });
     },
-    configurable: true,
+    configurable: true
   });
 }
 function objectClone(obj) {
@@ -18383,7 +17891,7 @@ function assignProp(target, prop, value) {
     value,
     writable: true,
     enumerable: true,
-    configurable: true,
+    configurable: true
   });
 }
 function mergeDefs(...defs) {
@@ -18398,7 +17906,8 @@ function cloneDef(schema2) {
   return mergeDefs(schema2._zod.def);
 }
 function getElementAtPath(obj, path) {
-  if (!path) return obj;
+  if (!path)
+    return obj;
   return path.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
@@ -18424,14 +17933,10 @@ function esc(str) {
   return JSON.stringify(str);
 }
 function slugify(input) {
-  return input
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, "")
-    .replace(/[\s_-]+/g, "-")
-    .replace(/^-+|-+$/g, "");
+  return input.toLowerCase().trim().replace(/[^\w\s-]/g, "").replace(/[\s_-]+/g, "-").replace(/^-+|-+$/g, "");
 }
-var captureStackTrace = "captureStackTrace" in Error ? Error.captureStackTrace : (..._args) => {};
+var captureStackTrace = "captureStackTrace" in Error ? Error.captureStackTrace : (..._args) => {
+};
 function isObject(data) {
   return typeof data === "object" && data !== null && !Array.isArray(data);
 }
@@ -18448,20 +17953,26 @@ var allowsEval = cached(() => {
   }
 });
 function isPlainObject(o) {
-  if (isObject(o) === false) return false;
+  if (isObject(o) === false)
+    return false;
   const ctor = o.constructor;
-  if (ctor === void 0) return true;
-  if (typeof ctor !== "function") return true;
+  if (ctor === void 0)
+    return true;
+  if (typeof ctor !== "function")
+    return true;
   const prot = ctor.prototype;
-  if (isObject(prot) === false) return false;
+  if (isObject(prot) === false)
+    return false;
   if (Object.prototype.hasOwnProperty.call(prot, "isPrototypeOf") === false) {
     return false;
   }
   return true;
 }
 function shallowClone(o) {
-  if (isPlainObject(o)) return { ...o };
-  if (Array.isArray(o)) return [...o];
+  if (isPlainObject(o))
+    return { ...o };
+  if (Array.isArray(o))
+    return [...o];
   return o;
 }
 function numKeys(data) {
@@ -18497,12 +18008,7 @@ var getParsedType = (data) => {
       if (data === null) {
         return "null";
       }
-      if (
-        data.then &&
-        typeof data.then === "function" &&
-        data.catch &&
-        typeof data.catch === "function"
-      ) {
+      if (data.then && typeof data.then === "function" && data.catch && typeof data.catch === "function") {
         return "promise";
       }
       if (typeof Map !== "undefined" && data instanceof Map) {
@@ -18523,74 +18029,70 @@ var getParsedType = (data) => {
   }
 };
 var propertyKeyTypes = /* @__PURE__ */ new Set(["string", "number", "symbol"]);
-var primitiveTypes = /* @__PURE__ */ new Set([
-  "string",
-  "number",
-  "bigint",
-  "boolean",
-  "symbol",
-  "undefined",
-]);
+var primitiveTypes = /* @__PURE__ */ new Set(["string", "number", "bigint", "boolean", "symbol", "undefined"]);
 function escapeRegex(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 function clone(inst, def, params) {
   const cl = new inst._zod.constr(def ?? inst._zod.def);
-  if (!def || params?.parent) cl._zod.parent = inst;
+  if (!def || params?.parent)
+    cl._zod.parent = inst;
   return cl;
 }
 function normalizeParams(_params) {
   const params = _params;
-  if (!params) return {};
-  if (typeof params === "string") return { error: () => params };
+  if (!params)
+    return {};
+  if (typeof params === "string")
+    return { error: () => params };
   if (params?.message !== void 0) {
     if (params?.error !== void 0)
       throw new Error("Cannot specify both `message` and `error` params");
     params.error = params.message;
   }
   delete params.message;
-  if (typeof params.error === "string") return { ...params, error: () => params.error };
+  if (typeof params.error === "string")
+    return { ...params, error: () => params.error };
   return params;
 }
 function createTransparentProxy(getter) {
   let target;
-  return new Proxy(
-    {},
-    {
-      get(_, prop, receiver) {
-        target ?? (target = getter());
-        return Reflect.get(target, prop, receiver);
-      },
-      set(_, prop, value, receiver) {
-        target ?? (target = getter());
-        return Reflect.set(target, prop, value, receiver);
-      },
-      has(_, prop) {
-        target ?? (target = getter());
-        return Reflect.has(target, prop);
-      },
-      deleteProperty(_, prop) {
-        target ?? (target = getter());
-        return Reflect.deleteProperty(target, prop);
-      },
-      ownKeys(_) {
-        target ?? (target = getter());
-        return Reflect.ownKeys(target);
-      },
-      getOwnPropertyDescriptor(_, prop) {
-        target ?? (target = getter());
-        return Reflect.getOwnPropertyDescriptor(target, prop);
-      },
-      defineProperty(_, prop, descriptor) {
-        target ?? (target = getter());
-        return Reflect.defineProperty(target, prop, descriptor);
-      },
+  return new Proxy({}, {
+    get(_, prop, receiver) {
+      target ?? (target = getter());
+      return Reflect.get(target, prop, receiver);
     },
-  );
+    set(_, prop, value, receiver) {
+      target ?? (target = getter());
+      return Reflect.set(target, prop, value, receiver);
+    },
+    has(_, prop) {
+      target ?? (target = getter());
+      return Reflect.has(target, prop);
+    },
+    deleteProperty(_, prop) {
+      target ?? (target = getter());
+      return Reflect.deleteProperty(target, prop);
+    },
+    ownKeys(_) {
+      target ?? (target = getter());
+      return Reflect.ownKeys(target);
+    },
+    getOwnPropertyDescriptor(_, prop) {
+      target ?? (target = getter());
+      return Reflect.getOwnPropertyDescriptor(target, prop);
+    },
+    defineProperty(_, prop, descriptor) {
+      target ?? (target = getter());
+      return Reflect.defineProperty(target, prop, descriptor);
+    }
+  });
 }
 function stringifyPrimitive(value) {
-  if (typeof value === "bigint") return value.toString() + "n";
-  if (typeof value === "string") return `"${value}"`;
+  if (typeof value === "bigint")
+    return value.toString() + "n";
+  if (typeof value === "string")
+    return `"${value}"`;
   return `${value}`;
 }
 function optionalKeys(shape) {
@@ -18603,14 +18105,11 @@ var NUMBER_FORMAT_RANGES = {
   int32: [-2147483648, 2147483647],
   uint32: [0, 4294967295],
   float32: [-34028234663852886e22, 34028234663852886e22],
-  float64: [-Number.MAX_VALUE, Number.MAX_VALUE],
+  float64: [-Number.MAX_VALUE, Number.MAX_VALUE]
 };
 var BIGINT_FORMAT_RANGES = {
-  int64: [
-    /* @__PURE__ */ BigInt("-9223372036854775808"),
-    /* @__PURE__ */ BigInt("9223372036854775807"),
-  ],
-  uint64: [/* @__PURE__ */ BigInt(0), /* @__PURE__ */ BigInt("18446744073709551615")],
+  int64: [/* @__PURE__ */ BigInt("-9223372036854775808"), /* @__PURE__ */ BigInt("9223372036854775807")],
+  uint64: [/* @__PURE__ */ BigInt(0), /* @__PURE__ */ BigInt("18446744073709551615")]
 };
 function pick(schema2, mask) {
   const currDef = schema2._zod.def;
@@ -18626,13 +18125,14 @@ function pick(schema2, mask) {
         if (!(key in currDef.shape)) {
           throw new Error(`Unrecognized key: "${key}"`);
         }
-        if (!mask[key]) continue;
+        if (!mask[key])
+          continue;
         newShape[key] = currDef.shape[key];
       }
       assignProp(this, "shape", newShape);
       return newShape;
     },
-    checks: [],
+    checks: []
   });
   return clone(schema2, def);
 }
@@ -18650,13 +18150,14 @@ function omit(schema2, mask) {
         if (!(key in currDef.shape)) {
           throw new Error(`Unrecognized key: "${key}"`);
         }
-        if (!mask[key]) continue;
+        if (!mask[key])
+          continue;
         delete newShape[key];
       }
       assignProp(this, "shape", newShape);
       return newShape;
     },
-    checks: [],
+    checks: []
   });
   return clone(schema2, def);
 }
@@ -18670,9 +18171,7 @@ function extend(schema2, shape) {
     const existingShape = schema2._zod.def.shape;
     for (const key in shape) {
       if (Object.getOwnPropertyDescriptor(existingShape, key) !== void 0) {
-        throw new Error(
-          "Cannot overwrite keys on object schemas containing refinements. Use `.safeExtend()` instead.",
-        );
+        throw new Error("Cannot overwrite keys on object schemas containing refinements. Use `.safeExtend()` instead.");
       }
     }
   }
@@ -18681,7 +18180,7 @@ function extend(schema2, shape) {
       const _shape = { ...schema2._zod.def.shape, ...shape };
       assignProp(this, "shape", _shape);
       return _shape;
-    },
+    }
   });
   return clone(schema2, def);
 }
@@ -18694,7 +18193,7 @@ function safeExtend(schema2, shape) {
       const _shape = { ...schema2._zod.def.shape, ...shape };
       assignProp(this, "shape", _shape);
       return _shape;
-    },
+    }
   });
   return clone(schema2, def);
 }
@@ -18708,7 +18207,7 @@ function merge(a, b) {
     get catchall() {
       return b._zod.def.catchall;
     },
-    checks: [],
+    checks: []
     // delete existing checks
   });
   return clone(a, def);
@@ -18729,28 +18228,25 @@ function partial(Class2, schema2, mask) {
           if (!(key in oldShape)) {
             throw new Error(`Unrecognized key: "${key}"`);
           }
-          if (!mask[key]) continue;
-          shape[key] = Class2
-            ? new Class2({
-                type: "optional",
-                innerType: oldShape[key],
-              })
-            : oldShape[key];
+          if (!mask[key])
+            continue;
+          shape[key] = Class2 ? new Class2({
+            type: "optional",
+            innerType: oldShape[key]
+          }) : oldShape[key];
         }
       } else {
         for (const key in oldShape) {
-          shape[key] = Class2
-            ? new Class2({
-                type: "optional",
-                innerType: oldShape[key],
-              })
-            : oldShape[key];
+          shape[key] = Class2 ? new Class2({
+            type: "optional",
+            innerType: oldShape[key]
+          }) : oldShape[key];
         }
       }
       assignProp(this, "shape", shape);
       return shape;
     },
-    checks: [],
+    checks: []
   });
   return clone(schema2, def);
 }
@@ -18764,28 +18260,30 @@ function required(Class2, schema2, mask) {
           if (!(key in shape)) {
             throw new Error(`Unrecognized key: "${key}"`);
           }
-          if (!mask[key]) continue;
+          if (!mask[key])
+            continue;
           shape[key] = new Class2({
             type: "nonoptional",
-            innerType: oldShape[key],
+            innerType: oldShape[key]
           });
         }
       } else {
         for (const key in oldShape) {
           shape[key] = new Class2({
             type: "nonoptional",
-            innerType: oldShape[key],
+            innerType: oldShape[key]
           });
         }
       }
       assignProp(this, "shape", shape);
       return shape;
-    },
+    }
   });
   return clone(schema2, def);
 }
 function aborted(x, startIndex = 0) {
-  if (x.aborted === true) return true;
+  if (x.aborted === true)
+    return true;
   for (let i = startIndex; i < x.issues.length; i++) {
     if (x.issues[i]?.continue !== true) {
       return true;
@@ -18807,12 +18305,7 @@ function unwrapMessage(message) {
 function finalizeIssue(iss, ctx, config2) {
   const full = { ...iss, path: iss.path ?? [] };
   if (!iss.message) {
-    const message =
-      unwrapMessage(iss.inst?._zod.def?.error?.(iss)) ??
-      unwrapMessage(ctx?.error?.(iss)) ??
-      unwrapMessage(config2.customError?.(iss)) ??
-      unwrapMessage(config2.localeError?.(iss)) ??
-      "Invalid input";
+    const message = unwrapMessage(iss.inst?._zod.def?.error?.(iss)) ?? unwrapMessage(ctx?.error?.(iss)) ?? unwrapMessage(config2.customError?.(iss)) ?? unwrapMessage(config2.localeError?.(iss)) ?? "Invalid input";
     full.message = message;
   }
   delete full.inst;
@@ -18823,14 +18316,19 @@ function finalizeIssue(iss, ctx, config2) {
   return full;
 }
 function getSizableOrigin(input) {
-  if (input instanceof Set) return "set";
-  if (input instanceof Map) return "map";
-  if (input instanceof File) return "file";
+  if (input instanceof Set)
+    return "set";
+  if (input instanceof Map)
+    return "map";
+  if (input instanceof File)
+    return "file";
   return "unknown";
 }
 function getLengthableOrigin(input) {
-  if (Array.isArray(input)) return "array";
-  if (typeof input === "string") return "string";
+  if (Array.isArray(input))
+    return "array";
+  if (typeof input === "string")
+    return "string";
   return "unknown";
 }
 function parsedType(data) {
@@ -18847,12 +18345,7 @@ function parsedType(data) {
         return "array";
       }
       const obj = data;
-      if (
-        obj &&
-        Object.getPrototypeOf(obj) !== Object.prototype &&
-        "constructor" in obj &&
-        obj.constructor
-      ) {
+      if (obj && Object.getPrototypeOf(obj) !== Object.prototype && "constructor" in obj && obj.constructor) {
         return obj.constructor.name;
       }
     }
@@ -18866,17 +18359,15 @@ function issue(...args) {
       message: iss,
       code: "custom",
       input,
-      inst,
+      inst
     };
   }
   return { ...iss };
 }
 function cleanEnum(obj) {
-  return Object.entries(obj)
-    .filter(([k, _]) => {
-      return Number.isNaN(Number.parseInt(k, 10));
-    })
-    .map((el) => el[1]);
+  return Object.entries(obj).filter(([k, _]) => {
+    return Number.isNaN(Number.parseInt(k, 10));
+  }).map((el) => el[1]);
 }
 function base64ToUint8Array2(base642) {
   const binaryString = atob(base642);
@@ -18895,7 +18386,7 @@ function uint8ArrayToBase64(bytes) {
 }
 function base64urlToUint8Array(base64url2) {
   const base642 = base64url2.replace(/-/g, "+").replace(/_/g, "/");
-  const padding = "=".repeat((4 - (base642.length % 4)) % 4);
+  const padding = "=".repeat((4 - base642.length % 4) % 4);
   return base64ToUint8Array2(base642 + padding);
 }
 function uint8ArrayToBase64url(bytes) {
@@ -18913,12 +18404,11 @@ function hexToUint8Array(hex) {
   return bytes;
 }
 function uint8ArrayToHex(bytes) {
-  return Array.from(bytes)
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
+  return Array.from(bytes).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 var Class = class {
-  constructor(..._args) {}
+  constructor(..._args) {
+  }
 };
 
 // ../../node_modules/.pnpm/zod@4.3.6/node_modules/zod/v4/core/errors.js
@@ -18926,16 +18416,16 @@ var initializer = (inst, def) => {
   inst.name = "$ZodError";
   Object.defineProperty(inst, "_zod", {
     value: inst._zod,
-    enumerable: false,
+    enumerable: false
   });
   Object.defineProperty(inst, "issues", {
     value: def,
-    enumerable: false,
+    enumerable: false
   });
   inst.message = JSON.stringify(def, jsonStringifyReplacer, 2);
   Object.defineProperty(inst, "toString", {
     value: () => inst.message,
-    enumerable: false,
+    enumerable: false
   });
 };
 var $ZodError = $constructor("$ZodError", initializer);
@@ -18995,9 +18485,7 @@ var _parse = (_Err) => (schema2, value, _ctx, _params) => {
     throw new $ZodAsyncError();
   }
   if (result.issues.length) {
-    const e = new (_params?.Err ?? _Err)(
-      result.issues.map((iss) => finalizeIssue(iss, ctx, config())),
-    );
+    const e = new (_params?.Err ?? _Err)(result.issues.map((iss) => finalizeIssue(iss, ctx, config())));
     captureStackTrace(e, _params?.callee);
     throw e;
   }
@@ -19006,11 +18494,10 @@ var _parse = (_Err) => (schema2, value, _ctx, _params) => {
 var _parseAsync = (_Err) => async (schema2, value, _ctx, params) => {
   const ctx = _ctx ? Object.assign(_ctx, { async: true }) : { async: true };
   let result = schema2._zod.run({ value, issues: [] }, ctx);
-  if (result instanceof Promise) result = await result;
+  if (result instanceof Promise)
+    result = await result;
   if (result.issues.length) {
-    const e = new (params?.Err ?? _Err)(
-      result.issues.map((iss) => finalizeIssue(iss, ctx, config())),
-    );
+    const e = new (params?.Err ?? _Err)(result.issues.map((iss) => finalizeIssue(iss, ctx, config())));
     captureStackTrace(e, params?.callee);
     throw e;
   }
@@ -19022,26 +18509,21 @@ var _safeParse = (_Err) => (schema2, value, _ctx) => {
   if (result instanceof Promise) {
     throw new $ZodAsyncError();
   }
-  return result.issues.length
-    ? {
-        success: false,
-        error: new (_Err ?? $ZodError)(
-          result.issues.map((iss) => finalizeIssue(iss, ctx, config())),
-        ),
-      }
-    : { success: true, data: result.value };
+  return result.issues.length ? {
+    success: false,
+    error: new (_Err ?? $ZodError)(result.issues.map((iss) => finalizeIssue(iss, ctx, config())))
+  } : { success: true, data: result.value };
 };
 var safeParse = /* @__PURE__ */ _safeParse($ZodRealError);
 var _safeParseAsync = (_Err) => async (schema2, value, _ctx) => {
   const ctx = _ctx ? Object.assign(_ctx, { async: true }) : { async: true };
   let result = schema2._zod.run({ value, issues: [] }, ctx);
-  if (result instanceof Promise) result = await result;
-  return result.issues.length
-    ? {
-        success: false,
-        error: new _Err(result.issues.map((iss) => finalizeIssue(iss, ctx, config()))),
-      }
-    : { success: true, data: result.value };
+  if (result instanceof Promise)
+    result = await result;
+  return result.issues.length ? {
+    success: false,
+    error: new _Err(result.issues.map((iss) => finalizeIssue(iss, ctx, config())))
+  } : { success: true, data: result.value };
 };
 var safeParseAsync = /* @__PURE__ */ _safeParseAsync($ZodRealError);
 var _encode = (_Err) => (schema2, value, _ctx) => {
@@ -19080,30 +18562,22 @@ var ulid = /^[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}$/;
 var xid = /^[0-9a-vA-V]{20}$/;
 var ksuid = /^[A-Za-z0-9]{27}$/;
 var nanoid = /^[a-zA-Z0-9_-]{21}$/;
-var duration =
-  /^P(?:(\d+W)|(?!.*W)(?=\d|T\d)(\d+Y)?(\d+M)?(\d+D)?(T(?=\d)(\d+H)?(\d+M)?(\d+([.,]\d+)?S)?)?)$/;
+var duration = /^P(?:(\d+W)|(?!.*W)(?=\d|T\d)(\d+Y)?(\d+M)?(\d+D)?(T(?=\d)(\d+H)?(\d+M)?(\d+([.,]\d+)?S)?)?)$/;
 var guid = /^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$/;
 var uuid = (version2) => {
   if (!version2)
     return /^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
-  return new RegExp(
-    `^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-${version2}[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$`,
-  );
+  return new RegExp(`^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-${version2}[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$`);
 };
-var email =
-  /^(?!\.)(?!.*\.\.)([A-Za-z0-9_'+\-\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$/;
+var email = /^(?!\.)(?!.*\.\.)([A-Za-z0-9_'+\-\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$/;
 var _emoji = `^(\\p{Extended_Pictographic}|\\p{Emoji_Component})+$`;
 function emoji() {
   return new RegExp(_emoji, "u");
 }
-var ipv4 =
-  /^(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])$/;
-var ipv6 =
-  /^(([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:))$/;
-var cidrv4 =
-  /^((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\/([0-9]|[1-2][0-9]|3[0-2])$/;
-var cidrv6 =
-  /^(([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|::|([0-9a-fA-F]{1,4})?::([0-9a-fA-F]{1,4}:?){0,6})\/(12[0-8]|1[01][0-9]|[1-9]?[0-9])$/;
+var ipv4 = /^(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])$/;
+var ipv6 = /^(([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:))$/;
+var cidrv4 = /^((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\/([0-9]|[1-2][0-9]|3[0-2])$/;
+var cidrv6 = /^(([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|::|([0-9a-fA-F]{1,4})?::([0-9a-fA-F]{1,4}:?){0,6})\/(12[0-8]|1[01][0-9]|[1-9]?[0-9])$/;
 var base64 = /^$|^(?:[0-9a-zA-Z+/]{4})*(?:(?:[0-9a-zA-Z+/]{2}==)|(?:[0-9a-zA-Z+/]{3}=))?$/;
 var base64url = /^[A-Za-z0-9_-]*$/;
 var e164 = /^\+[1-9]\d{6,14}$/;
@@ -19111,14 +18585,7 @@ var dateSource = `(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][
 var date = /* @__PURE__ */ new RegExp(`^${dateSource}$`);
 function timeSource(args) {
   const hhmm = `(?:[01]\\d|2[0-3]):[0-5]\\d`;
-  const regex =
-    typeof args.precision === "number"
-      ? args.precision === -1
-        ? `${hhmm}`
-        : args.precision === 0
-          ? `${hhmm}:[0-5]\\d`
-          : `${hhmm}:[0-5]\\d\\.\\d{${args.precision}}`
-      : `${hhmm}(?::[0-5]\\d(?:\\.\\d+)?)?`;
+  const regex = typeof args.precision === "number" ? args.precision === -1 ? `${hhmm}` : args.precision === 0 ? `${hhmm}:[0-5]\\d` : `${hhmm}:[0-5]\\d\\.\\d{${args.precision}}` : `${hhmm}(?::[0-5]\\d(?:\\.\\d+)?)?`;
   return regex;
 }
 function time(args) {
@@ -19127,8 +18594,10 @@ function time(args) {
 function datetime(args) {
   const time3 = timeSource({ precision: args.precision });
   const opts = ["Z"];
-  if (args.local) opts.push("");
-  if (args.offset) opts.push(`([+-](?:[01]\\d|2[0-3]):[0-5]\\d)`);
+  if (args.local)
+    opts.push("");
+  if (args.offset)
+    opts.push(`([+-](?:[01]\\d|2[0-3]):[0-5]\\d)`);
   const timeRegex = `${time3}(?:${opts.join("|")})`;
   return new RegExp(`^${dateSource}T(?:${timeRegex})$`);
 }
@@ -19152,7 +18621,7 @@ var $ZodCheck = /* @__PURE__ */ $constructor("$ZodCheck", (inst, def) => {
 var numericOriginMap = {
   number: "number",
   bigint: "bigint",
-  object: "date",
+  object: "date"
 };
 var $ZodCheckLessThan = /* @__PURE__ */ $constructor("$ZodCheckLessThan", (inst, def) => {
   $ZodCheck.init(inst, def);
@@ -19161,8 +18630,10 @@ var $ZodCheckLessThan = /* @__PURE__ */ $constructor("$ZodCheckLessThan", (inst,
     const bag = inst2._zod.bag;
     const curr = (def.inclusive ? bag.maximum : bag.exclusiveMaximum) ?? Number.POSITIVE_INFINITY;
     if (def.value < curr) {
-      if (def.inclusive) bag.maximum = def.value;
-      else bag.exclusiveMaximum = def.value;
+      if (def.inclusive)
+        bag.maximum = def.value;
+      else
+        bag.exclusiveMaximum = def.value;
     }
   });
   inst._zod.check = (payload) => {
@@ -19176,7 +18647,7 @@ var $ZodCheckLessThan = /* @__PURE__ */ $constructor("$ZodCheckLessThan", (inst,
       input: payload.value,
       inclusive: def.inclusive,
       inst,
-      continue: !def.abort,
+      continue: !def.abort
     });
   };
 });
@@ -19187,8 +18658,10 @@ var $ZodCheckGreaterThan = /* @__PURE__ */ $constructor("$ZodCheckGreaterThan", 
     const bag = inst2._zod.bag;
     const curr = (def.inclusive ? bag.minimum : bag.exclusiveMinimum) ?? Number.NEGATIVE_INFINITY;
     if (def.value > curr) {
-      if (def.inclusive) bag.minimum = def.value;
-      else bag.exclusiveMinimum = def.value;
+      if (def.inclusive)
+        bag.minimum = def.value;
+      else
+        bag.exclusiveMinimum = def.value;
     }
   });
   inst._zod.check = (payload) => {
@@ -19202,7 +18675,7 @@ var $ZodCheckGreaterThan = /* @__PURE__ */ $constructor("$ZodCheckGreaterThan", 
       input: payload.value,
       inclusive: def.inclusive,
       inst,
-      continue: !def.abort,
+      continue: !def.abort
     });
   };
 });
@@ -19215,18 +18688,16 @@ var $ZodCheckMultipleOf = /* @__PURE__ */ $constructor("$ZodCheckMultipleOf", (i
   inst._zod.check = (payload) => {
     if (typeof payload.value !== typeof def.value)
       throw new Error("Cannot mix number and bigint in multiple_of check.");
-    const isMultiple =
-      typeof payload.value === "bigint"
-        ? payload.value % def.value === BigInt(0)
-        : floatSafeRemainder(payload.value, def.value) === 0;
-    if (isMultiple) return;
+    const isMultiple = typeof payload.value === "bigint" ? payload.value % def.value === BigInt(0) : floatSafeRemainder(payload.value, def.value) === 0;
+    if (isMultiple)
+      return;
     payload.issues.push({
       origin: typeof payload.value,
       code: "not_multiple_of",
       divisor: def.value,
       input: payload.value,
       inst,
-      continue: !def.abort,
+      continue: !def.abort
     });
   };
 });
@@ -19241,7 +18712,8 @@ var $ZodCheckNumberFormat = /* @__PURE__ */ $constructor("$ZodCheckNumberFormat"
     bag.format = def.format;
     bag.minimum = minimum;
     bag.maximum = maximum;
-    if (isInt) bag.pattern = integer;
+    if (isInt)
+      bag.pattern = integer;
   });
   inst._zod.check = (payload) => {
     const input = payload.value;
@@ -19253,7 +18725,7 @@ var $ZodCheckNumberFormat = /* @__PURE__ */ $constructor("$ZodCheckNumberFormat"
           code: "invalid_type",
           continue: false,
           input,
-          inst,
+          inst
         });
         return;
       }
@@ -19267,7 +18739,7 @@ var $ZodCheckNumberFormat = /* @__PURE__ */ $constructor("$ZodCheckNumberFormat"
             inst,
             origin,
             inclusive: true,
-            continue: !def.abort,
+            continue: !def.abort
           });
         } else {
           payload.issues.push({
@@ -19278,7 +18750,7 @@ var $ZodCheckNumberFormat = /* @__PURE__ */ $constructor("$ZodCheckNumberFormat"
             inst,
             origin,
             inclusive: true,
-            continue: !def.abort,
+            continue: !def.abort
           });
         }
         return;
@@ -19292,7 +18764,7 @@ var $ZodCheckNumberFormat = /* @__PURE__ */ $constructor("$ZodCheckNumberFormat"
         minimum,
         inclusive: true,
         inst,
-        continue: !def.abort,
+        continue: !def.abort
       });
     }
     if (input > maximum) {
@@ -19303,7 +18775,7 @@ var $ZodCheckNumberFormat = /* @__PURE__ */ $constructor("$ZodCheckNumberFormat"
         maximum,
         inclusive: true,
         inst,
-        continue: !def.abort,
+        continue: !def.abort
       });
     }
   };
@@ -19311,19 +18783,20 @@ var $ZodCheckNumberFormat = /* @__PURE__ */ $constructor("$ZodCheckNumberFormat"
 var $ZodCheckMaxLength = /* @__PURE__ */ $constructor("$ZodCheckMaxLength", (inst, def) => {
   var _a3;
   $ZodCheck.init(inst, def);
-  (_a3 = inst._zod.def).when ??
-    (_a3.when = (payload) => {
-      const val = payload.value;
-      return !nullish(val) && val.length !== void 0;
-    });
+  (_a3 = inst._zod.def).when ?? (_a3.when = (payload) => {
+    const val = payload.value;
+    return !nullish(val) && val.length !== void 0;
+  });
   inst._zod.onattach.push((inst2) => {
     const curr = inst2._zod.bag.maximum ?? Number.POSITIVE_INFINITY;
-    if (def.maximum < curr) inst2._zod.bag.maximum = def.maximum;
+    if (def.maximum < curr)
+      inst2._zod.bag.maximum = def.maximum;
   });
   inst._zod.check = (payload) => {
     const input = payload.value;
     const length = input.length;
-    if (length <= def.maximum) return;
+    if (length <= def.maximum)
+      return;
     const origin = getLengthableOrigin(input);
     payload.issues.push({
       origin,
@@ -19332,26 +18805,27 @@ var $ZodCheckMaxLength = /* @__PURE__ */ $constructor("$ZodCheckMaxLength", (ins
       inclusive: true,
       input,
       inst,
-      continue: !def.abort,
+      continue: !def.abort
     });
   };
 });
 var $ZodCheckMinLength = /* @__PURE__ */ $constructor("$ZodCheckMinLength", (inst, def) => {
   var _a3;
   $ZodCheck.init(inst, def);
-  (_a3 = inst._zod.def).when ??
-    (_a3.when = (payload) => {
-      const val = payload.value;
-      return !nullish(val) && val.length !== void 0;
-    });
+  (_a3 = inst._zod.def).when ?? (_a3.when = (payload) => {
+    const val = payload.value;
+    return !nullish(val) && val.length !== void 0;
+  });
   inst._zod.onattach.push((inst2) => {
     const curr = inst2._zod.bag.minimum ?? Number.NEGATIVE_INFINITY;
-    if (def.minimum > curr) inst2._zod.bag.minimum = def.minimum;
+    if (def.minimum > curr)
+      inst2._zod.bag.minimum = def.minimum;
   });
   inst._zod.check = (payload) => {
     const input = payload.value;
     const length = input.length;
-    if (length >= def.minimum) return;
+    if (length >= def.minimum)
+      return;
     const origin = getLengthableOrigin(input);
     payload.issues.push({
       origin,
@@ -19360,18 +18834,17 @@ var $ZodCheckMinLength = /* @__PURE__ */ $constructor("$ZodCheckMinLength", (ins
       inclusive: true,
       input,
       inst,
-      continue: !def.abort,
+      continue: !def.abort
     });
   };
 });
 var $ZodCheckLengthEquals = /* @__PURE__ */ $constructor("$ZodCheckLengthEquals", (inst, def) => {
   var _a3;
   $ZodCheck.init(inst, def);
-  (_a3 = inst._zod.def).when ??
-    (_a3.when = (payload) => {
-      const val = payload.value;
-      return !nullish(val) && val.length !== void 0;
-    });
+  (_a3 = inst._zod.def).when ?? (_a3.when = (payload) => {
+    const val = payload.value;
+    return !nullish(val) && val.length !== void 0;
+  });
   inst._zod.onattach.push((inst2) => {
     const bag = inst2._zod.bag;
     bag.minimum = def.length;
@@ -19381,19 +18854,18 @@ var $ZodCheckLengthEquals = /* @__PURE__ */ $constructor("$ZodCheckLengthEquals"
   inst._zod.check = (payload) => {
     const input = payload.value;
     const length = input.length;
-    if (length === def.length) return;
+    if (length === def.length)
+      return;
     const origin = getLengthableOrigin(input);
     const tooBig = length > def.length;
     payload.issues.push({
       origin,
-      ...(tooBig
-        ? { code: "too_big", maximum: def.length }
-        : { code: "too_small", minimum: def.length }),
+      ...tooBig ? { code: "too_big", maximum: def.length } : { code: "too_small", minimum: def.length },
       inclusive: true,
       exact: true,
       input: payload.value,
       inst,
-      continue: !def.abort,
+      continue: !def.abort
     });
   };
 });
@@ -19409,27 +18881,30 @@ var $ZodCheckStringFormat = /* @__PURE__ */ $constructor("$ZodCheckStringFormat"
     }
   });
   if (def.pattern)
-    (_a3 = inst._zod).check ??
-      (_a3.check = (payload) => {
-        def.pattern.lastIndex = 0;
-        if (def.pattern.test(payload.value)) return;
-        payload.issues.push({
-          origin: "string",
-          code: "invalid_format",
-          format: def.format,
-          input: payload.value,
-          ...(def.pattern ? { pattern: def.pattern.toString() } : {}),
-          inst,
-          continue: !def.abort,
-        });
+    (_a3 = inst._zod).check ?? (_a3.check = (payload) => {
+      def.pattern.lastIndex = 0;
+      if (def.pattern.test(payload.value))
+        return;
+      payload.issues.push({
+        origin: "string",
+        code: "invalid_format",
+        format: def.format,
+        input: payload.value,
+        ...def.pattern ? { pattern: def.pattern.toString() } : {},
+        inst,
+        continue: !def.abort
       });
-  else (_b = inst._zod).check ?? (_b.check = () => {});
+    });
+  else
+    (_b = inst._zod).check ?? (_b.check = () => {
+    });
 });
 var $ZodCheckRegex = /* @__PURE__ */ $constructor("$ZodCheckRegex", (inst, def) => {
   $ZodCheckStringFormat.init(inst, def);
   inst._zod.check = (payload) => {
     def.pattern.lastIndex = 0;
-    if (def.pattern.test(payload.value)) return;
+    if (def.pattern.test(payload.value))
+      return;
     payload.issues.push({
       origin: "string",
       code: "invalid_format",
@@ -19437,7 +18912,7 @@ var $ZodCheckRegex = /* @__PURE__ */ $constructor("$ZodCheckRegex", (inst, def) 
       input: payload.value,
       pattern: def.pattern.toString(),
       inst,
-      continue: !def.abort,
+      continue: !def.abort
     });
   };
 });
@@ -19452,9 +18927,7 @@ var $ZodCheckUpperCase = /* @__PURE__ */ $constructor("$ZodCheckUpperCase", (ins
 var $ZodCheckIncludes = /* @__PURE__ */ $constructor("$ZodCheckIncludes", (inst, def) => {
   $ZodCheck.init(inst, def);
   const escapedRegex = escapeRegex(def.includes);
-  const pattern = new RegExp(
-    typeof def.position === "number" ? `^.{${def.position}}${escapedRegex}` : escapedRegex,
-  );
+  const pattern = new RegExp(typeof def.position === "number" ? `^.{${def.position}}${escapedRegex}` : escapedRegex);
   def.pattern = pattern;
   inst._zod.onattach.push((inst2) => {
     const bag = inst2._zod.bag;
@@ -19462,7 +18935,8 @@ var $ZodCheckIncludes = /* @__PURE__ */ $constructor("$ZodCheckIncludes", (inst,
     bag.patterns.add(pattern);
   });
   inst._zod.check = (payload) => {
-    if (payload.value.includes(def.includes, def.position)) return;
+    if (payload.value.includes(def.includes, def.position))
+      return;
     payload.issues.push({
       origin: "string",
       code: "invalid_format",
@@ -19470,7 +18944,7 @@ var $ZodCheckIncludes = /* @__PURE__ */ $constructor("$ZodCheckIncludes", (inst,
       includes: def.includes,
       input: payload.value,
       inst,
-      continue: !def.abort,
+      continue: !def.abort
     });
   };
 });
@@ -19484,7 +18958,8 @@ var $ZodCheckStartsWith = /* @__PURE__ */ $constructor("$ZodCheckStartsWith", (i
     bag.patterns.add(pattern);
   });
   inst._zod.check = (payload) => {
-    if (payload.value.startsWith(def.prefix)) return;
+    if (payload.value.startsWith(def.prefix))
+      return;
     payload.issues.push({
       origin: "string",
       code: "invalid_format",
@@ -19492,7 +18967,7 @@ var $ZodCheckStartsWith = /* @__PURE__ */ $constructor("$ZodCheckStartsWith", (i
       prefix: def.prefix,
       input: payload.value,
       inst,
-      continue: !def.abort,
+      continue: !def.abort
     });
   };
 });
@@ -19506,7 +18981,8 @@ var $ZodCheckEndsWith = /* @__PURE__ */ $constructor("$ZodCheckEndsWith", (inst,
     bag.patterns.add(pattern);
   });
   inst._zod.check = (payload) => {
-    if (payload.value.endsWith(def.suffix)) return;
+    if (payload.value.endsWith(def.suffix))
+      return;
     payload.issues.push({
       origin: "string",
       code: "invalid_format",
@@ -19514,7 +18990,7 @@ var $ZodCheckEndsWith = /* @__PURE__ */ $constructor("$ZodCheckEndsWith", (inst,
       suffix: def.suffix,
       input: payload.value,
       inst,
-      continue: !def.abort,
+      continue: !def.abort
     });
   };
 });
@@ -19530,7 +19006,8 @@ var Doc = class {
   constructor(args = []) {
     this.content = [];
     this.indent = 0;
-    if (this) this.args = args;
+    if (this)
+      this.args = args;
   }
   indented(fn) {
     this.indent += 1;
@@ -19546,9 +19023,7 @@ var Doc = class {
     const content = arg;
     const lines = content.split("\n").filter((x) => x);
     const minIndent = Math.min(...lines.map((x) => x.length - x.trimStart().length));
-    const dedented = lines
-      .map((x) => x.slice(minIndent))
-      .map((x) => " ".repeat(this.indent * 2) + x);
+    const dedented = lines.map((x) => x.slice(minIndent)).map((x) => " ".repeat(this.indent * 2) + x);
     for (const line of dedented) {
       this.content.push(line);
     }
@@ -19566,7 +19041,7 @@ var Doc = class {
 var version = {
   major: 4,
   minor: 3,
-  patch: 6,
+  patch: 6
 };
 
 // ../../node_modules/.pnpm/zod@4.3.6/node_modules/zod/v4/core/schemas.js
@@ -19576,7 +19051,7 @@ var $ZodType = /* @__PURE__ */ $constructor("$ZodType", (inst, def) => {
   inst._zod.def = def;
   inst._zod.bag = inst._zod.bag || {};
   inst._zod.version = version;
-  const checks = [...(inst._zod.def.checks ?? [])];
+  const checks = [...inst._zod.def.checks ?? []];
   if (inst._zod.traits.has("$ZodCheck")) {
     checks.unshift(inst);
   }
@@ -19597,7 +19072,8 @@ var $ZodType = /* @__PURE__ */ $constructor("$ZodType", (inst, def) => {
       for (const ch of checks2) {
         if (ch._zod.def.when) {
           const shouldRun = ch._zod.def.when(payload);
-          if (!shouldRun) continue;
+          if (!shouldRun)
+            continue;
         } else if (isAborted) {
           continue;
         }
@@ -19610,13 +19086,17 @@ var $ZodType = /* @__PURE__ */ $constructor("$ZodType", (inst, def) => {
           asyncResult = (asyncResult ?? Promise.resolve()).then(async () => {
             await _;
             const nextLen = payload.issues.length;
-            if (nextLen === currLen) return;
-            if (!isAborted) isAborted = aborted(payload, currLen);
+            if (nextLen === currLen)
+              return;
+            if (!isAborted)
+              isAborted = aborted(payload, currLen);
           });
         } else {
           const nextLen = payload.issues.length;
-          if (nextLen === currLen) continue;
-          if (!isAborted) isAborted = aborted(payload, currLen);
+          if (nextLen === currLen)
+            continue;
+          if (!isAborted)
+            isAborted = aborted(payload, currLen);
         }
       }
       if (asyncResult) {
@@ -19633,7 +19113,8 @@ var $ZodType = /* @__PURE__ */ $constructor("$ZodType", (inst, def) => {
       }
       const checkResult = runChecks(payload, checks, ctx);
       if (checkResult instanceof Promise) {
-        if (ctx.async === false) throw new $ZodAsyncError();
+        if (ctx.async === false)
+          throw new $ZodAsyncError();
         return checkResult.then((checkResult2) => inst._zod.parse(checkResult2, ctx));
       }
       return inst._zod.parse(checkResult, ctx);
@@ -19643,10 +19124,7 @@ var $ZodType = /* @__PURE__ */ $constructor("$ZodType", (inst, def) => {
         return inst._zod.parse(payload, ctx);
       }
       if (ctx.direction === "backward") {
-        const canary = inst._zod.parse(
-          { value: payload.value, issues: [] },
-          { ...ctx, skipChecks: true },
-        );
+        const canary = inst._zod.parse({ value: payload.value, issues: [] }, { ...ctx, skipChecks: true });
         if (canary instanceof Promise) {
           return canary.then((canary2) => {
             return handleCanaryResult(canary2, payload, ctx);
@@ -19656,7 +19134,8 @@ var $ZodType = /* @__PURE__ */ $constructor("$ZodType", (inst, def) => {
       }
       const result = inst._zod.parse(payload, ctx);
       if (result instanceof Promise) {
-        if (ctx.async === false) throw new $ZodAsyncError();
+        if (ctx.async === false)
+          throw new $ZodAsyncError();
         return result.then((result2) => runChecks(result2, checks, ctx));
       }
       return runChecks(result, checks, ctx);
@@ -19668,29 +19147,29 @@ var $ZodType = /* @__PURE__ */ $constructor("$ZodType", (inst, def) => {
         const r = safeParse(inst, value);
         return r.success ? { value: r.data } : { issues: r.error?.issues };
       } catch (_) {
-        return safeParseAsync(inst, value).then((r) =>
-          r.success ? { value: r.data } : { issues: r.error?.issues },
-        );
+        return safeParseAsync(inst, value).then((r) => r.success ? { value: r.data } : { issues: r.error?.issues });
       }
     },
     vendor: "zod",
-    version: 1,
+    version: 1
   }));
 });
 var $ZodString = /* @__PURE__ */ $constructor("$ZodString", (inst, def) => {
   $ZodType.init(inst, def);
-  inst._zod.pattern = [...(inst?._zod.bag?.patterns ?? [])].pop() ?? string(inst._zod.bag);
+  inst._zod.pattern = [...inst?._zod.bag?.patterns ?? []].pop() ?? string(inst._zod.bag);
   inst._zod.parse = (payload, _) => {
     if (def.coerce)
       try {
         payload.value = String(payload.value);
-      } catch (_2) {}
-    if (typeof payload.value === "string") return payload;
+      } catch (_2) {
+      }
+    if (typeof payload.value === "string")
+      return payload;
     payload.issues.push({
       expected: "string",
       code: "invalid_type",
       input: payload.value,
-      inst,
+      inst
     });
     return payload;
   };
@@ -19713,12 +19192,14 @@ var $ZodUUID = /* @__PURE__ */ $constructor("$ZodUUID", (inst, def) => {
       v5: 5,
       v6: 6,
       v7: 7,
-      v8: 8,
+      v8: 8
     };
     const v = versionMap[def.version];
-    if (v === void 0) throw new Error(`Invalid UUID version: "${def.version}"`);
+    if (v === void 0)
+      throw new Error(`Invalid UUID version: "${def.version}"`);
     def.pattern ?? (def.pattern = uuid(v));
-  } else def.pattern ?? (def.pattern = uuid());
+  } else
+    def.pattern ?? (def.pattern = uuid());
   $ZodStringFormat.init(inst, def);
 });
 var $ZodEmail = /* @__PURE__ */ $constructor("$ZodEmail", (inst, def) => {
@@ -19741,15 +19222,13 @@ var $ZodURL = /* @__PURE__ */ $constructor("$ZodURL", (inst, def) => {
             pattern: def.hostname.source,
             input: payload.value,
             inst,
-            continue: !def.abort,
+            continue: !def.abort
           });
         }
       }
       if (def.protocol) {
         def.protocol.lastIndex = 0;
-        if (
-          !def.protocol.test(url.protocol.endsWith(":") ? url.protocol.slice(0, -1) : url.protocol)
-        ) {
+        if (!def.protocol.test(url.protocol.endsWith(":") ? url.protocol.slice(0, -1) : url.protocol)) {
           payload.issues.push({
             code: "invalid_format",
             format: "url",
@@ -19757,7 +19236,7 @@ var $ZodURL = /* @__PURE__ */ $constructor("$ZodURL", (inst, def) => {
             pattern: def.protocol.source,
             input: payload.value,
             inst,
-            continue: !def.abort,
+            continue: !def.abort
           });
         }
       }
@@ -19773,7 +19252,7 @@ var $ZodURL = /* @__PURE__ */ $constructor("$ZodURL", (inst, def) => {
         format: "url",
         input: payload.value,
         inst,
-        continue: !def.abort,
+        continue: !def.abort
       });
     }
   };
@@ -19840,7 +19319,7 @@ var $ZodIPv6 = /* @__PURE__ */ $constructor("$ZodIPv6", (inst, def) => {
         format: "ipv6",
         input: payload.value,
         inst,
-        continue: !def.abort,
+        continue: !def.abort
       });
     }
   };
@@ -19855,12 +19334,16 @@ var $ZodCIDRv6 = /* @__PURE__ */ $constructor("$ZodCIDRv6", (inst, def) => {
   inst._zod.check = (payload) => {
     const parts = payload.value.split("/");
     try {
-      if (parts.length !== 2) throw new Error();
+      if (parts.length !== 2)
+        throw new Error();
       const [address, prefix2] = parts;
-      if (!prefix2) throw new Error();
+      if (!prefix2)
+        throw new Error();
       const prefixNum = Number(prefix2);
-      if (`${prefixNum}` !== prefix2) throw new Error();
-      if (prefixNum < 0 || prefixNum > 128) throw new Error();
+      if (`${prefixNum}` !== prefix2)
+        throw new Error();
+      if (prefixNum < 0 || prefixNum > 128)
+        throw new Error();
       new URL(`http://[${address}]`);
     } catch {
       payload.issues.push({
@@ -19868,14 +19351,16 @@ var $ZodCIDRv6 = /* @__PURE__ */ $constructor("$ZodCIDRv6", (inst, def) => {
         format: "cidrv6",
         input: payload.value,
         inst,
-        continue: !def.abort,
+        continue: !def.abort
       });
     }
   };
 });
 function isValidBase64(data) {
-  if (data === "") return true;
-  if (data.length % 4 !== 0) return false;
+  if (data === "")
+    return true;
+  if (data.length % 4 !== 0)
+    return false;
   try {
     atob(data);
     return true;
@@ -19888,19 +19373,21 @@ var $ZodBase64 = /* @__PURE__ */ $constructor("$ZodBase64", (inst, def) => {
   $ZodStringFormat.init(inst, def);
   inst._zod.bag.contentEncoding = "base64";
   inst._zod.check = (payload) => {
-    if (isValidBase64(payload.value)) return;
+    if (isValidBase64(payload.value))
+      return;
     payload.issues.push({
       code: "invalid_format",
       format: "base64",
       input: payload.value,
       inst,
-      continue: !def.abort,
+      continue: !def.abort
     });
   };
 });
 function isValidBase64URL(data) {
-  if (!base64url.test(data)) return false;
-  const base642 = data.replace(/[-_]/g, (c) => (c === "-" ? "+" : "/"));
+  if (!base64url.test(data))
+    return false;
+  const base642 = data.replace(/[-_]/g, (c) => c === "-" ? "+" : "/");
   const padded = base642.padEnd(Math.ceil(base642.length / 4) * 4, "=");
   return isValidBase64(padded);
 }
@@ -19909,13 +19396,14 @@ var $ZodBase64URL = /* @__PURE__ */ $constructor("$ZodBase64URL", (inst, def) =>
   $ZodStringFormat.init(inst, def);
   inst._zod.bag.contentEncoding = "base64url";
   inst._zod.check = (payload) => {
-    if (isValidBase64URL(payload.value)) return;
+    if (isValidBase64URL(payload.value))
+      return;
     payload.issues.push({
       code: "invalid_format",
       format: "base64url",
       input: payload.value,
       inst,
-      continue: !def.abort,
+      continue: !def.abort
     });
   };
 });
@@ -19926,13 +19414,18 @@ var $ZodE164 = /* @__PURE__ */ $constructor("$ZodE164", (inst, def) => {
 function isValidJWT(token, algorithm = null) {
   try {
     const tokensParts = token.split(".");
-    if (tokensParts.length !== 3) return false;
+    if (tokensParts.length !== 3)
+      return false;
     const [header] = tokensParts;
-    if (!header) return false;
+    if (!header)
+      return false;
     const parsedHeader = JSON.parse(atob(header));
-    if ("typ" in parsedHeader && parsedHeader?.typ !== "JWT") return false;
-    if (!parsedHeader.alg) return false;
-    if (algorithm && (!("alg" in parsedHeader) || parsedHeader.alg !== algorithm)) return false;
+    if ("typ" in parsedHeader && parsedHeader?.typ !== "JWT")
+      return false;
+    if (!parsedHeader.alg)
+      return false;
+    if (algorithm && (!("alg" in parsedHeader) || parsedHeader.alg !== algorithm))
+      return false;
     return true;
   } catch {
     return false;
@@ -19941,13 +19434,14 @@ function isValidJWT(token, algorithm = null) {
 var $ZodJWT = /* @__PURE__ */ $constructor("$ZodJWT", (inst, def) => {
   $ZodStringFormat.init(inst, def);
   inst._zod.check = (payload) => {
-    if (isValidJWT(payload.value, def.alg)) return;
+    if (isValidJWT(payload.value, def.alg))
+      return;
     payload.issues.push({
       code: "invalid_format",
       format: "jwt",
       input: payload.value,
       inst,
-      continue: !def.abort,
+      continue: !def.abort
     });
   };
 });
@@ -19958,25 +19452,19 @@ var $ZodNumber = /* @__PURE__ */ $constructor("$ZodNumber", (inst, def) => {
     if (def.coerce)
       try {
         payload.value = Number(payload.value);
-      } catch (_) {}
+      } catch (_) {
+      }
     const input = payload.value;
     if (typeof input === "number" && !Number.isNaN(input) && Number.isFinite(input)) {
       return payload;
     }
-    const received =
-      typeof input === "number"
-        ? Number.isNaN(input)
-          ? "NaN"
-          : !Number.isFinite(input)
-            ? "Infinity"
-            : void 0
-        : void 0;
+    const received = typeof input === "number" ? Number.isNaN(input) ? "NaN" : !Number.isFinite(input) ? "Infinity" : void 0 : void 0;
     payload.issues.push({
       expected: "number",
       code: "invalid_type",
       input,
       inst,
-      ...(received ? { received } : {}),
+      ...received ? { received } : {}
     });
     return payload;
   };
@@ -19992,14 +19480,16 @@ var $ZodBoolean = /* @__PURE__ */ $constructor("$ZodBoolean", (inst, def) => {
     if (def.coerce)
       try {
         payload.value = Boolean(payload.value);
-      } catch (_) {}
+      } catch (_) {
+      }
     const input = payload.value;
-    if (typeof input === "boolean") return payload;
+    if (typeof input === "boolean")
+      return payload;
     payload.issues.push({
       expected: "boolean",
       code: "invalid_type",
       input,
-      inst,
+      inst
     });
     return payload;
   };
@@ -20015,7 +19505,7 @@ var $ZodNever = /* @__PURE__ */ $constructor("$ZodNever", (inst, def) => {
       expected: "never",
       code: "invalid_type",
       input: payload.value,
-      inst,
+      inst
     });
     return payload;
   };
@@ -20035,7 +19525,7 @@ var $ZodArray = /* @__PURE__ */ $constructor("$ZodArray", (inst, def) => {
         expected: "array",
         code: "invalid_type",
         input,
-        inst,
+        inst
       });
       return payload;
     }
@@ -20043,13 +19533,10 @@ var $ZodArray = /* @__PURE__ */ $constructor("$ZodArray", (inst, def) => {
     const proms = [];
     for (let i = 0; i < input.length; i++) {
       const item = input[i];
-      const result = def.element._zod.run(
-        {
-          value: item,
-          issues: [],
-        },
-        ctx,
-      );
+      const result = def.element._zod.run({
+        value: item,
+        issues: []
+      }, ctx);
       if (result instanceof Promise) {
         proms.push(result.then((result2) => handleArrayResult(result2, payload, i)));
       } else {
@@ -20090,7 +19577,7 @@ function normalizeDef(def) {
     keys,
     keySet: new Set(keys),
     numKeys: keys.length,
-    optionalKeys: new Set(okeys),
+    optionalKeys: new Set(okeys)
   };
 }
 function handleCatchall(proms, input, payload, ctx, def, inst) {
@@ -20100,7 +19587,8 @@ function handleCatchall(proms, input, payload, ctx, def, inst) {
   const t = _catchall.def.type;
   const isOptionalOut = _catchall.optout === "optional";
   for (const key in input) {
-    if (keySet.has(key)) continue;
+    if (keySet.has(key))
+      continue;
     if (t === "never") {
       unrecognized.push(key);
       continue;
@@ -20117,10 +19605,11 @@ function handleCatchall(proms, input, payload, ctx, def, inst) {
       code: "unrecognized_keys",
       keys: unrecognized,
       input,
-      inst,
+      inst
     });
   }
-  if (!proms.length) return payload;
+  if (!proms.length)
+    return payload;
   return Promise.all(proms).then(() => {
     return payload;
   });
@@ -20134,10 +19623,10 @@ var $ZodObject = /* @__PURE__ */ $constructor("$ZodObject", (inst, def) => {
       get: () => {
         const newSh = { ...sh };
         Object.defineProperty(def, "shape", {
-          value: newSh,
+          value: newSh
         });
         return newSh;
-      },
+      }
     });
   }
   const _normalized = cached(() => normalizeDef(def));
@@ -20148,7 +19637,8 @@ var $ZodObject = /* @__PURE__ */ $constructor("$ZodObject", (inst, def) => {
       const field = shape[key]._zod;
       if (field.values) {
         propValues[key] ?? (propValues[key] = /* @__PURE__ */ new Set());
-        for (const v of field.values) propValues[key].add(v);
+        for (const v of field.values)
+          propValues[key].add(v);
       }
     }
     return propValues;
@@ -20164,7 +19654,7 @@ var $ZodObject = /* @__PURE__ */ $constructor("$ZodObject", (inst, def) => {
         expected: "object",
         code: "invalid_type",
         input,
-        inst,
+        inst
       });
       return payload;
     }
@@ -20271,14 +19761,16 @@ var $ZodObjectJIT = /* @__PURE__ */ $constructor("$ZodObjectJIT", (inst, def) =>
         expected: "object",
         code: "invalid_type",
         input,
-        inst,
+        inst
       });
       return payload;
     }
     if (jit && fastEnabled && ctx?.async === false && ctx.jitless !== true) {
-      if (!fastpass) fastpass = generateFastpass(def.shape);
+      if (!fastpass)
+        fastpass = generateFastpass(def.shape);
       payload = fastpass(payload, ctx);
-      if (!catchall) return payload;
+      if (!catchall)
+        return payload;
       return handleCatchall([], input, payload, ctx, value, inst);
     }
     return superParse(payload, ctx);
@@ -20300,18 +19792,14 @@ function handleUnionResults(results, final, inst, ctx) {
     code: "invalid_union",
     input: final.value,
     inst,
-    errors: results.map((result) => result.issues.map((iss) => finalizeIssue(iss, ctx, config()))),
+    errors: results.map((result) => result.issues.map((iss) => finalizeIssue(iss, ctx, config())))
   });
   return final;
 }
 var $ZodUnion = /* @__PURE__ */ $constructor("$ZodUnion", (inst, def) => {
   $ZodType.init(inst, def);
-  defineLazy(inst._zod, "optin", () =>
-    def.options.some((o) => o._zod.optin === "optional") ? "optional" : void 0,
-  );
-  defineLazy(inst._zod, "optout", () =>
-    def.options.some((o) => o._zod.optout === "optional") ? "optional" : void 0,
-  );
+  defineLazy(inst._zod, "optin", () => def.options.some((o) => o._zod.optin === "optional") ? "optional" : void 0);
+  defineLazy(inst._zod, "optout", () => def.options.some((o) => o._zod.optout === "optional") ? "optional" : void 0);
   defineLazy(inst._zod, "values", () => {
     if (def.options.every((o) => o._zod.values)) {
       return new Set(def.options.flatMap((option) => Array.from(option._zod.values)));
@@ -20334,22 +19822,21 @@ var $ZodUnion = /* @__PURE__ */ $constructor("$ZodUnion", (inst, def) => {
     let async = false;
     const results = [];
     for (const option of def.options) {
-      const result = option._zod.run(
-        {
-          value: payload.value,
-          issues: [],
-        },
-        ctx,
-      );
+      const result = option._zod.run({
+        value: payload.value,
+        issues: []
+      }, ctx);
       if (result instanceof Promise) {
         results.push(result);
         async = true;
       } else {
-        if (result.issues.length === 0) return result;
+        if (result.issues.length === 0)
+          return result;
         results.push(result);
       }
     }
-    if (!async) return handleUnionResults(results, payload, inst, ctx);
+    if (!async)
+      return handleUnionResults(results, payload, inst, ctx);
     return Promise.all(results).then((results2) => {
       return handleUnionResults(results2, payload, inst, ctx);
     });
@@ -20386,7 +19873,7 @@ function mergeValues(a, b) {
       if (!sharedValue.valid) {
         return {
           valid: false,
-          mergeErrorPath: [key, ...sharedValue.mergeErrorPath],
+          mergeErrorPath: [key, ...sharedValue.mergeErrorPath]
         };
       }
       newObj[key] = sharedValue.data;
@@ -20405,7 +19892,7 @@ function mergeValues(a, b) {
       if (!sharedValue.valid) {
         return {
           valid: false,
-          mergeErrorPath: [index, ...sharedValue.mergeErrorPath],
+          mergeErrorPath: [index, ...sharedValue.mergeErrorPath]
         };
       }
       newArray.push(sharedValue.data);
@@ -20421,7 +19908,8 @@ function handleIntersectionResults(result, left, right) {
     if (iss.code === "unrecognized_keys") {
       unrecIssue ?? (unrecIssue = iss);
       for (const k of iss.keys) {
-        if (!unrecKeys.has(k)) unrecKeys.set(k, {});
+        if (!unrecKeys.has(k))
+          unrecKeys.set(k, {});
         unrecKeys.get(k).l = true;
       }
     } else {
@@ -20431,7 +19919,8 @@ function handleIntersectionResults(result, left, right) {
   for (const iss of right.issues) {
     if (iss.code === "unrecognized_keys") {
       for (const k of iss.keys) {
-        if (!unrecKeys.has(k)) unrecKeys.set(k, {});
+        if (!unrecKeys.has(k))
+          unrecKeys.set(k, {});
         unrecKeys.get(k).r = true;
       }
     } else {
@@ -20442,12 +19931,11 @@ function handleIntersectionResults(result, left, right) {
   if (bothKeys.length && unrecIssue) {
     result.issues.push({ ...unrecIssue, keys: bothKeys });
   }
-  if (aborted(result)) return result;
+  if (aborted(result))
+    return result;
   const merged = mergeValues(left.value, right.value);
   if (!merged.valid) {
-    throw new Error(
-      `Unmergable intersection. Error path: ${JSON.stringify(merged.mergeErrorPath)}`,
-    );
+    throw new Error(`Unmergable intersection. Error path: ${JSON.stringify(merged.mergeErrorPath)}`);
   }
   result.value = merged.data;
   return result;
@@ -20461,7 +19949,7 @@ var $ZodRecord = /* @__PURE__ */ $constructor("$ZodRecord", (inst, def) => {
         expected: "record",
         code: "invalid_type",
         input,
-        inst,
+        inst
       });
       return payload;
     }
@@ -20475,14 +19963,12 @@ var $ZodRecord = /* @__PURE__ */ $constructor("$ZodRecord", (inst, def) => {
           recordKeys.add(typeof key === "number" ? key.toString() : key);
           const result = def.valueType._zod.run({ value: input[key], issues: [] }, ctx);
           if (result instanceof Promise) {
-            proms.push(
-              result.then((result2) => {
-                if (result2.issues.length) {
-                  payload.issues.push(...prefixIssues(key, result2.issues));
-                }
-                payload.value[key] = result2.value;
-              }),
-            );
+            proms.push(result.then((result2) => {
+              if (result2.issues.length) {
+                payload.issues.push(...prefixIssues(key, result2.issues));
+              }
+              payload.value[key] = result2.value;
+            }));
           } else {
             if (result.issues.length) {
               payload.issues.push(...prefixIssues(key, result.issues));
@@ -20503,19 +19989,19 @@ var $ZodRecord = /* @__PURE__ */ $constructor("$ZodRecord", (inst, def) => {
           code: "unrecognized_keys",
           input,
           inst,
-          keys: unrecognized,
+          keys: unrecognized
         });
       }
     } else {
       payload.value = {};
       for (const key of Reflect.ownKeys(input)) {
-        if (key === "__proto__") continue;
+        if (key === "__proto__")
+          continue;
         let keyResult = def.keyType._zod.run({ value: key, issues: [] }, ctx);
         if (keyResult instanceof Promise) {
           throw new Error("Async schemas not supported in object keys currently");
         }
-        const checkNumericKey =
-          typeof key === "string" && number.test(key) && keyResult.issues.length;
+        const checkNumericKey = typeof key === "string" && number.test(key) && keyResult.issues.length;
         if (checkNumericKey) {
           const retryResult = def.keyType._zod.run({ value: Number(key), issues: [] }, ctx);
           if (retryResult instanceof Promise) {
@@ -20535,21 +20021,19 @@ var $ZodRecord = /* @__PURE__ */ $constructor("$ZodRecord", (inst, def) => {
               issues: keyResult.issues.map((iss) => finalizeIssue(iss, ctx, config())),
               input: key,
               path: [key],
-              inst,
+              inst
             });
           }
           continue;
         }
         const result = def.valueType._zod.run({ value: input[key], issues: [] }, ctx);
         if (result instanceof Promise) {
-          proms.push(
-            result.then((result2) => {
-              if (result2.issues.length) {
-                payload.issues.push(...prefixIssues(key, result2.issues));
-              }
-              payload.value[keyResult.value] = result2.value;
-            }),
-          );
+          proms.push(result.then((result2) => {
+            if (result2.issues.length) {
+              payload.issues.push(...prefixIssues(key, result2.issues));
+            }
+            payload.value[keyResult.value] = result2.value;
+          }));
         } else {
           if (result.issues.length) {
             payload.issues.push(...prefixIssues(key, result.issues));
@@ -20569,12 +20053,7 @@ var $ZodEnum = /* @__PURE__ */ $constructor("$ZodEnum", (inst, def) => {
   const values = getEnumValues(def.entries);
   const valuesSet = new Set(values);
   inst._zod.values = valuesSet;
-  inst._zod.pattern = new RegExp(
-    `^(${values
-      .filter((k) => propertyKeyTypes.has(typeof k))
-      .map((o) => (typeof o === "string" ? escapeRegex(o) : o.toString()))
-      .join("|")})$`,
-  );
+  inst._zod.pattern = new RegExp(`^(${values.filter((k) => propertyKeyTypes.has(typeof k)).map((o) => typeof o === "string" ? escapeRegex(o) : o.toString()).join("|")})$`);
   inst._zod.parse = (payload, _ctx) => {
     const input = payload.value;
     if (valuesSet.has(input)) {
@@ -20584,7 +20063,7 @@ var $ZodEnum = /* @__PURE__ */ $constructor("$ZodEnum", (inst, def) => {
       code: "invalid_value",
       values,
       input,
-      inst,
+      inst
     });
     return payload;
   };
@@ -20596,9 +20075,7 @@ var $ZodLiteral = /* @__PURE__ */ $constructor("$ZodLiteral", (inst, def) => {
   }
   const values = new Set(def.values);
   inst._zod.values = values;
-  inst._zod.pattern = new RegExp(
-    `^(${def.values.map((o) => (typeof o === "string" ? escapeRegex(o) : o ? escapeRegex(o.toString()) : String(o))).join("|")})$`,
-  );
+  inst._zod.pattern = new RegExp(`^(${def.values.map((o) => typeof o === "string" ? escapeRegex(o) : o ? escapeRegex(o.toString()) : String(o)).join("|")})$`);
   inst._zod.parse = (payload, _ctx) => {
     const input = payload.value;
     if (values.has(input)) {
@@ -20608,7 +20085,7 @@ var $ZodLiteral = /* @__PURE__ */ $constructor("$ZodLiteral", (inst, def) => {
       code: "invalid_value",
       values: def.values,
       input,
-      inst,
+      inst
     });
     return payload;
   };
@@ -20645,9 +20122,7 @@ var $ZodOptional = /* @__PURE__ */ $constructor("$ZodOptional", (inst, def) => {
   inst._zod.optin = "optional";
   inst._zod.optout = "optional";
   defineLazy(inst._zod, "values", () => {
-    return def.innerType._zod.values
-      ? /* @__PURE__ */ new Set([...def.innerType._zod.values, void 0])
-      : void 0;
+    return def.innerType._zod.values ? /* @__PURE__ */ new Set([...def.innerType._zod.values, void 0]) : void 0;
   });
   defineLazy(inst._zod, "pattern", () => {
     const pattern = def.innerType._zod.pattern;
@@ -20683,12 +20158,11 @@ var $ZodNullable = /* @__PURE__ */ $constructor("$ZodNullable", (inst, def) => {
     return pattern ? new RegExp(`^(${cleanRegex(pattern.source)}|null)$`) : void 0;
   });
   defineLazy(inst._zod, "values", () => {
-    return def.innerType._zod.values
-      ? /* @__PURE__ */ new Set([...def.innerType._zod.values, null])
-      : void 0;
+    return def.innerType._zod.values ? /* @__PURE__ */ new Set([...def.innerType._zod.values, null]) : void 0;
   });
   inst._zod.parse = (payload, ctx) => {
-    if (payload.value === null) return payload;
+    if (payload.value === null)
+      return payload;
     return def.innerType._zod.run(payload, ctx);
   };
 });
@@ -20751,7 +20225,7 @@ function handleNonOptionalResult(payload, inst) {
       code: "invalid_type",
       expected: "nonoptional",
       input: payload.value,
-      inst,
+      inst
     });
   }
   return payload;
@@ -20773,9 +20247,9 @@ var $ZodCatch = /* @__PURE__ */ $constructor("$ZodCatch", (inst, def) => {
           payload.value = def.catchValue({
             ...payload,
             error: {
-              issues: result2.issues.map((iss) => finalizeIssue(iss, ctx, config())),
+              issues: result2.issues.map((iss) => finalizeIssue(iss, ctx, config()))
             },
-            input: payload.value,
+            input: payload.value
           });
           payload.issues = [];
         }
@@ -20787,9 +20261,9 @@ var $ZodCatch = /* @__PURE__ */ $constructor("$ZodCatch", (inst, def) => {
       payload.value = def.catchValue({
         ...payload,
         error: {
-          issues: result.issues.map((iss) => finalizeIssue(iss, ctx, config())),
+          issues: result.issues.map((iss) => finalizeIssue(iss, ctx, config()))
         },
-        input: payload.value,
+        input: payload.value
       });
       payload.issues = [];
     }
@@ -20868,12 +20342,13 @@ function handleRefineResult(result, payload, input, inst) {
       input,
       inst,
       // incorporates params.error into issue reporting
-      path: [...(inst._zod.def.path ?? [])],
+      path: [...inst._zod.def.path ?? []],
       // incorporates params.error into issue reporting
-      continue: !inst._zod.def.abort,
+      continue: !inst._zod.def.abort
       // params: inst._zod.def.params,
     };
-    if (inst._zod.def.params) _iss.params = inst._zod.def.params;
+    if (inst._zod.def.params)
+      _iss.params = inst._zod.def.params;
     payload.issues.push(issue(_iss));
   }
 }
@@ -20911,7 +20386,7 @@ var $ZodRegistry = class {
   get(schema2) {
     const p = schema2._zod.parent;
     if (p) {
-      const pm = { ...(this.get(p) ?? {}) };
+      const pm = { ...this.get(p) ?? {} };
       delete pm.id;
       const f = { ...pm, ...this._map.get(schema2) };
       return Object.keys(f).length ? f : void 0;
@@ -20933,7 +20408,7 @@ var globalRegistry = globalThis.__zod_globalRegistry;
 function _string(Class2, params) {
   return new Class2({
     type: "string",
-    ...normalizeParams(params),
+    ...normalizeParams(params)
   });
 }
 // @__NO_SIDE_EFFECTS__
@@ -20943,7 +20418,7 @@ function _email(Class2, params) {
     format: "email",
     check: "string_format",
     abort: false,
-    ...normalizeParams(params),
+    ...normalizeParams(params)
   });
 }
 // @__NO_SIDE_EFFECTS__
@@ -20953,7 +20428,7 @@ function _guid(Class2, params) {
     format: "guid",
     check: "string_format",
     abort: false,
-    ...normalizeParams(params),
+    ...normalizeParams(params)
   });
 }
 // @__NO_SIDE_EFFECTS__
@@ -20963,7 +20438,7 @@ function _uuid(Class2, params) {
     format: "uuid",
     check: "string_format",
     abort: false,
-    ...normalizeParams(params),
+    ...normalizeParams(params)
   });
 }
 // @__NO_SIDE_EFFECTS__
@@ -20974,7 +20449,7 @@ function _uuidv4(Class2, params) {
     check: "string_format",
     abort: false,
     version: "v4",
-    ...normalizeParams(params),
+    ...normalizeParams(params)
   });
 }
 // @__NO_SIDE_EFFECTS__
@@ -20985,7 +20460,7 @@ function _uuidv6(Class2, params) {
     check: "string_format",
     abort: false,
     version: "v6",
-    ...normalizeParams(params),
+    ...normalizeParams(params)
   });
 }
 // @__NO_SIDE_EFFECTS__
@@ -20996,7 +20471,7 @@ function _uuidv7(Class2, params) {
     check: "string_format",
     abort: false,
     version: "v7",
-    ...normalizeParams(params),
+    ...normalizeParams(params)
   });
 }
 // @__NO_SIDE_EFFECTS__
@@ -21006,7 +20481,7 @@ function _url(Class2, params) {
     format: "url",
     check: "string_format",
     abort: false,
-    ...normalizeParams(params),
+    ...normalizeParams(params)
   });
 }
 // @__NO_SIDE_EFFECTS__
@@ -21016,7 +20491,7 @@ function _emoji2(Class2, params) {
     format: "emoji",
     check: "string_format",
     abort: false,
-    ...normalizeParams(params),
+    ...normalizeParams(params)
   });
 }
 // @__NO_SIDE_EFFECTS__
@@ -21026,7 +20501,7 @@ function _nanoid(Class2, params) {
     format: "nanoid",
     check: "string_format",
     abort: false,
-    ...normalizeParams(params),
+    ...normalizeParams(params)
   });
 }
 // @__NO_SIDE_EFFECTS__
@@ -21036,7 +20511,7 @@ function _cuid(Class2, params) {
     format: "cuid",
     check: "string_format",
     abort: false,
-    ...normalizeParams(params),
+    ...normalizeParams(params)
   });
 }
 // @__NO_SIDE_EFFECTS__
@@ -21046,7 +20521,7 @@ function _cuid2(Class2, params) {
     format: "cuid2",
     check: "string_format",
     abort: false,
-    ...normalizeParams(params),
+    ...normalizeParams(params)
   });
 }
 // @__NO_SIDE_EFFECTS__
@@ -21056,7 +20531,7 @@ function _ulid(Class2, params) {
     format: "ulid",
     check: "string_format",
     abort: false,
-    ...normalizeParams(params),
+    ...normalizeParams(params)
   });
 }
 // @__NO_SIDE_EFFECTS__
@@ -21066,7 +20541,7 @@ function _xid(Class2, params) {
     format: "xid",
     check: "string_format",
     abort: false,
-    ...normalizeParams(params),
+    ...normalizeParams(params)
   });
 }
 // @__NO_SIDE_EFFECTS__
@@ -21076,7 +20551,7 @@ function _ksuid(Class2, params) {
     format: "ksuid",
     check: "string_format",
     abort: false,
-    ...normalizeParams(params),
+    ...normalizeParams(params)
   });
 }
 // @__NO_SIDE_EFFECTS__
@@ -21086,7 +20561,7 @@ function _ipv4(Class2, params) {
     format: "ipv4",
     check: "string_format",
     abort: false,
-    ...normalizeParams(params),
+    ...normalizeParams(params)
   });
 }
 // @__NO_SIDE_EFFECTS__
@@ -21096,7 +20571,7 @@ function _ipv6(Class2, params) {
     format: "ipv6",
     check: "string_format",
     abort: false,
-    ...normalizeParams(params),
+    ...normalizeParams(params)
   });
 }
 // @__NO_SIDE_EFFECTS__
@@ -21106,7 +20581,7 @@ function _cidrv4(Class2, params) {
     format: "cidrv4",
     check: "string_format",
     abort: false,
-    ...normalizeParams(params),
+    ...normalizeParams(params)
   });
 }
 // @__NO_SIDE_EFFECTS__
@@ -21116,7 +20591,7 @@ function _cidrv6(Class2, params) {
     format: "cidrv6",
     check: "string_format",
     abort: false,
-    ...normalizeParams(params),
+    ...normalizeParams(params)
   });
 }
 // @__NO_SIDE_EFFECTS__
@@ -21126,7 +20601,7 @@ function _base64(Class2, params) {
     format: "base64",
     check: "string_format",
     abort: false,
-    ...normalizeParams(params),
+    ...normalizeParams(params)
   });
 }
 // @__NO_SIDE_EFFECTS__
@@ -21136,7 +20611,7 @@ function _base64url(Class2, params) {
     format: "base64url",
     check: "string_format",
     abort: false,
-    ...normalizeParams(params),
+    ...normalizeParams(params)
   });
 }
 // @__NO_SIDE_EFFECTS__
@@ -21146,7 +20621,7 @@ function _e164(Class2, params) {
     format: "e164",
     check: "string_format",
     abort: false,
-    ...normalizeParams(params),
+    ...normalizeParams(params)
   });
 }
 // @__NO_SIDE_EFFECTS__
@@ -21156,7 +20631,7 @@ function _jwt(Class2, params) {
     format: "jwt",
     check: "string_format",
     abort: false,
-    ...normalizeParams(params),
+    ...normalizeParams(params)
   });
 }
 // @__NO_SIDE_EFFECTS__
@@ -21168,7 +20643,7 @@ function _isoDateTime(Class2, params) {
     offset: false,
     local: false,
     precision: null,
-    ...normalizeParams(params),
+    ...normalizeParams(params)
   });
 }
 // @__NO_SIDE_EFFECTS__
@@ -21177,7 +20652,7 @@ function _isoDate(Class2, params) {
     type: "string",
     format: "date",
     check: "string_format",
-    ...normalizeParams(params),
+    ...normalizeParams(params)
   });
 }
 // @__NO_SIDE_EFFECTS__
@@ -21187,7 +20662,7 @@ function _isoTime(Class2, params) {
     format: "time",
     check: "string_format",
     precision: null,
-    ...normalizeParams(params),
+    ...normalizeParams(params)
   });
 }
 // @__NO_SIDE_EFFECTS__
@@ -21196,7 +20671,7 @@ function _isoDuration(Class2, params) {
     type: "string",
     format: "duration",
     check: "string_format",
-    ...normalizeParams(params),
+    ...normalizeParams(params)
   });
 }
 // @__NO_SIDE_EFFECTS__
@@ -21204,7 +20679,7 @@ function _number(Class2, params) {
   return new Class2({
     type: "number",
     checks: [],
-    ...normalizeParams(params),
+    ...normalizeParams(params)
   });
 }
 // @__NO_SIDE_EFFECTS__
@@ -21214,27 +20689,27 @@ function _int(Class2, params) {
     check: "number_format",
     abort: false,
     format: "safeint",
-    ...normalizeParams(params),
+    ...normalizeParams(params)
   });
 }
 // @__NO_SIDE_EFFECTS__
 function _boolean(Class2, params) {
   return new Class2({
     type: "boolean",
-    ...normalizeParams(params),
+    ...normalizeParams(params)
   });
 }
 // @__NO_SIDE_EFFECTS__
 function _unknown(Class2) {
   return new Class2({
-    type: "unknown",
+    type: "unknown"
   });
 }
 // @__NO_SIDE_EFFECTS__
 function _never(Class2, params) {
   return new Class2({
     type: "never",
-    ...normalizeParams(params),
+    ...normalizeParams(params)
   });
 }
 // @__NO_SIDE_EFFECTS__
@@ -21243,7 +20718,7 @@ function _lt(value, params) {
     check: "less_than",
     ...normalizeParams(params),
     value,
-    inclusive: false,
+    inclusive: false
   });
 }
 // @__NO_SIDE_EFFECTS__
@@ -21252,7 +20727,7 @@ function _lte(value, params) {
     check: "less_than",
     ...normalizeParams(params),
     value,
-    inclusive: true,
+    inclusive: true
   });
 }
 // @__NO_SIDE_EFFECTS__
@@ -21261,7 +20736,7 @@ function _gt(value, params) {
     check: "greater_than",
     ...normalizeParams(params),
     value,
-    inclusive: false,
+    inclusive: false
   });
 }
 // @__NO_SIDE_EFFECTS__
@@ -21270,7 +20745,7 @@ function _gte(value, params) {
     check: "greater_than",
     ...normalizeParams(params),
     value,
-    inclusive: true,
+    inclusive: true
   });
 }
 // @__NO_SIDE_EFFECTS__
@@ -21278,7 +20753,7 @@ function _multipleOf(value, params) {
   return new $ZodCheckMultipleOf({
     check: "multiple_of",
     ...normalizeParams(params),
-    value,
+    value
   });
 }
 // @__NO_SIDE_EFFECTS__
@@ -21286,7 +20761,7 @@ function _maxLength(maximum, params) {
   const ch = new $ZodCheckMaxLength({
     check: "max_length",
     ...normalizeParams(params),
-    maximum,
+    maximum
   });
   return ch;
 }
@@ -21295,7 +20770,7 @@ function _minLength(minimum, params) {
   return new $ZodCheckMinLength({
     check: "min_length",
     ...normalizeParams(params),
-    minimum,
+    minimum
   });
 }
 // @__NO_SIDE_EFFECTS__
@@ -21303,7 +20778,7 @@ function _length(length, params) {
   return new $ZodCheckLengthEquals({
     check: "length_equals",
     ...normalizeParams(params),
-    length,
+    length
   });
 }
 // @__NO_SIDE_EFFECTS__
@@ -21312,7 +20787,7 @@ function _regex(pattern, params) {
     check: "string_format",
     format: "regex",
     ...normalizeParams(params),
-    pattern,
+    pattern
   });
 }
 // @__NO_SIDE_EFFECTS__
@@ -21320,7 +20795,7 @@ function _lowercase(params) {
   return new $ZodCheckLowerCase({
     check: "string_format",
     format: "lowercase",
-    ...normalizeParams(params),
+    ...normalizeParams(params)
   });
 }
 // @__NO_SIDE_EFFECTS__
@@ -21328,7 +20803,7 @@ function _uppercase(params) {
   return new $ZodCheckUpperCase({
     check: "string_format",
     format: "uppercase",
-    ...normalizeParams(params),
+    ...normalizeParams(params)
   });
 }
 // @__NO_SIDE_EFFECTS__
@@ -21337,7 +20812,7 @@ function _includes(includes, params) {
     check: "string_format",
     format: "includes",
     ...normalizeParams(params),
-    includes,
+    includes
   });
 }
 // @__NO_SIDE_EFFECTS__
@@ -21346,7 +20821,7 @@ function _startsWith(prefix2, params) {
     check: "string_format",
     format: "starts_with",
     ...normalizeParams(params),
-    prefix: prefix2,
+    prefix: prefix2
   });
 }
 // @__NO_SIDE_EFFECTS__
@@ -21355,14 +20830,14 @@ function _endsWith(suffix, params) {
     check: "string_format",
     format: "ends_with",
     ...normalizeParams(params),
-    suffix,
+    suffix
   });
 }
 // @__NO_SIDE_EFFECTS__
 function _overwrite(tx) {
   return new $ZodCheckOverwrite({
     check: "overwrite",
-    tx,
+    tx
   });
 }
 // @__NO_SIDE_EFFECTS__
@@ -21393,7 +20868,7 @@ function _array(Class2, element, params) {
     // get element() {
     //   return element;
     // },
-    ...normalizeParams(params),
+    ...normalizeParams(params)
   });
 }
 // @__NO_SIDE_EFFECTS__
@@ -21402,7 +20877,7 @@ function _refine(Class2, fn, _params) {
     type: "custom",
     check: "custom",
     fn,
-    ...normalizeParams(_params),
+    ...normalizeParams(_params)
   });
   return schema2;
 }
@@ -21414,7 +20889,8 @@ function _superRefine(fn) {
         payload.issues.push(issue(issue2, payload.value, ch._zod.def));
       } else {
         const _issue = issue2;
-        if (_issue.fatal) _issue.continue = false;
+        if (_issue.fatal)
+          _issue.continue = false;
         _issue.code ?? (_issue.code = "custom");
         _issue.input ?? (_issue.input = payload.value);
         _issue.inst ?? (_issue.inst = ch);
@@ -21430,7 +20906,7 @@ function _superRefine(fn) {
 function _check(fn, params) {
   const ch = new $ZodCheck({
     check: "custom",
-    ...normalizeParams(params),
+    ...normalizeParams(params)
   });
   ch._zod.check = fn;
   return ch;
@@ -21439,20 +20915,23 @@ function _check(fn, params) {
 // ../../node_modules/.pnpm/zod@4.3.6/node_modules/zod/v4/core/to-json-schema.js
 function initializeContext(params) {
   let target = params?.target ?? "draft-2020-12";
-  if (target === "draft-4") target = "draft-04";
-  if (target === "draft-7") target = "draft-07";
+  if (target === "draft-4")
+    target = "draft-04";
+  if (target === "draft-7")
+    target = "draft-07";
   return {
     processors: params.processors ?? {},
     metadataRegistry: params?.metadata ?? globalRegistry,
     target,
     unrepresentable: params?.unrepresentable ?? "throw",
-    override: params?.override ?? (() => {}),
+    override: params?.override ?? (() => {
+    }),
     io: params?.io ?? "output",
     counter: 0,
     seen: /* @__PURE__ */ new Map(),
     cycles: params?.cycles ?? "ref",
     reused: params?.reused ?? "inline",
-    external: params?.external ?? void 0,
+    external: params?.external ?? void 0
   };
 }
 function process2(schema2, ctx, _params = { path: [], schemaPath: [] }) {
@@ -21476,7 +20955,7 @@ function process2(schema2, ctx, _params = { path: [], schemaPath: [] }) {
     const params = {
       ..._params,
       schemaPath: [..._params.schemaPath, schema2],
-      path: _params.path,
+      path: _params.path
     };
     if (schema2._zod.processJSONSchema) {
       schema2._zod.processJSONSchema(ctx, result.schema, params);
@@ -21490,13 +20969,15 @@ function process2(schema2, ctx, _params = { path: [], schemaPath: [] }) {
     }
     const parent = schema2._zod.parent;
     if (parent) {
-      if (!result.ref) result.ref = parent;
+      if (!result.ref)
+        result.ref = parent;
       process2(parent, ctx, params);
       ctx.seen.get(parent).isParent = true;
     }
   }
   const meta2 = ctx.metadataRegistry.get(schema2);
-  if (meta2) Object.assign(result.schema, meta2);
+  if (meta2)
+    Object.assign(result.schema, meta2);
   if (ctx.io === "input" && isTransforming(schema2)) {
     delete result.schema.examples;
     delete result.schema.default;
@@ -21509,16 +20990,15 @@ function process2(schema2, ctx, _params = { path: [], schemaPath: [] }) {
 }
 function extractDefs(ctx, schema2) {
   const root = ctx.seen.get(schema2);
-  if (!root) throw new Error("Unprocessed schema. This is a bug in Zod.");
+  if (!root)
+    throw new Error("Unprocessed schema. This is a bug in Zod.");
   const idToSchema = /* @__PURE__ */ new Map();
   for (const entry of ctx.seen.entries()) {
     const id = ctx.metadataRegistry.get(entry[0])?.id;
     if (id) {
       const existing = idToSchema.get(id);
       if (existing && existing !== entry[0]) {
-        throw new Error(
-          `Duplicate schema id "${id}" detected during JSON Schema conversion. Two different schemas cannot share the same id when converted together.`,
-        );
+        throw new Error(`Duplicate schema id "${id}" detected during JSON Schema conversion. Two different schemas cannot share the same id when converted together.`);
       }
       idToSchema.set(id, entry[0]);
     }
@@ -21550,7 +21030,8 @@ function extractDefs(ctx, schema2) {
     const seen = entry[1];
     const { ref, defId } = makeURI(entry);
     seen.def = { ...seen.schema };
-    if (defId) seen.defId = defId;
+    if (defId)
+      seen.defId = defId;
     const schema3 = seen.schema;
     for (const key in schema3) {
       delete schema3[key];
@@ -21599,10 +21080,12 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 }
 function finalize(ctx, schema2) {
   const root = ctx.seen.get(schema2);
-  if (!root) throw new Error("Unprocessed schema. This is a bug in Zod.");
+  if (!root)
+    throw new Error("Unprocessed schema. This is a bug in Zod.");
   const flattenRef = (zodSchema) => {
     const seen = ctx.seen.get(zodSchema);
-    if (seen.ref === null) return;
+    if (seen.ref === null)
+      return;
     const schema3 = seen.def ?? seen.schema;
     const _cached = { ...schema3 };
     const ref = seen.ref;
@@ -21611,10 +21094,7 @@ function finalize(ctx, schema2) {
       flattenRef(ref);
       const refSeen = ctx.seen.get(ref);
       const refSchema = refSeen.schema;
-      if (
-        refSchema.$ref &&
-        (ctx.target === "draft-07" || ctx.target === "draft-04" || ctx.target === "openapi-3.0")
-      ) {
+      if (refSchema.$ref && (ctx.target === "draft-07" || ctx.target === "draft-04" || ctx.target === "openapi-3.0")) {
         schema3.allOf = schema3.allOf ?? [];
         schema3.allOf.push(refSchema);
       } else {
@@ -21624,7 +21104,8 @@ function finalize(ctx, schema2) {
       const isParentRef = zodSchema._zod.parent === ref;
       if (isParentRef) {
         for (const key in schema3) {
-          if (key === "$ref" || key === "allOf") continue;
+          if (key === "$ref" || key === "allOf")
+            continue;
           if (!(key in _cached)) {
             delete schema3[key];
           }
@@ -21632,11 +21113,9 @@ function finalize(ctx, schema2) {
       }
       if (refSchema.$ref && refSeen.def) {
         for (const key in schema3) {
-          if (key === "$ref" || key === "allOf") continue;
-          if (
-            key in refSeen.def &&
-            JSON.stringify(schema3[key]) === JSON.stringify(refSeen.def[key])
-          ) {
+          if (key === "$ref" || key === "allOf")
+            continue;
+          if (key in refSeen.def && JSON.stringify(schema3[key]) === JSON.stringify(refSeen.def[key])) {
             delete schema3[key];
           }
         }
@@ -21650,11 +21129,9 @@ function finalize(ctx, schema2) {
         schema3.$ref = parentSeen.schema.$ref;
         if (parentSeen.def) {
           for (const key in schema3) {
-            if (key === "$ref" || key === "allOf") continue;
-            if (
-              key in parentSeen.def &&
-              JSON.stringify(schema3[key]) === JSON.stringify(parentSeen.def[key])
-            ) {
+            if (key === "$ref" || key === "allOf")
+              continue;
+            if (key in parentSeen.def && JSON.stringify(schema3[key]) === JSON.stringify(parentSeen.def[key])) {
               delete schema3[key];
             }
           }
@@ -21664,7 +21141,7 @@ function finalize(ctx, schema2) {
     ctx.override({
       zodSchema,
       jsonSchema: schema3,
-      path: seen.path ?? [],
+      path: seen.path ?? []
     });
   };
   for (const entry of [...ctx.seen.entries()].reverse()) {
@@ -21682,7 +21159,8 @@ function finalize(ctx, schema2) {
   }
   if (ctx.external?.uri) {
     const id = ctx.external.registry.get(schema2)?.id;
-    if (!id) throw new Error("Schema is missing an `id` property");
+    if (!id)
+      throw new Error("Schema is missing an `id` property");
     result.$id = ctx.external.uri(id);
   }
   Object.assign(result, root.def ?? root.schema);
@@ -21710,11 +21188,11 @@ function finalize(ctx, schema2) {
         ...schema2["~standard"],
         jsonSchema: {
           input: createStandardJSONSchemaMethod(schema2, "input", ctx.processors),
-          output: createStandardJSONSchemaMethod(schema2, "output", ctx.processors),
-        },
+          output: createStandardJSONSchemaMethod(schema2, "output", ctx.processors)
+        }
       },
       enumerable: false,
-      writable: false,
+      writable: false
     });
     return finalized;
   } catch (_err) {
@@ -21723,22 +21201,19 @@ function finalize(ctx, schema2) {
 }
 function isTransforming(_schema, _ctx) {
   const ctx = _ctx ?? { seen: /* @__PURE__ */ new Set() };
-  if (ctx.seen.has(_schema)) return false;
+  if (ctx.seen.has(_schema))
+    return false;
   ctx.seen.add(_schema);
   const def = _schema._zod.def;
-  if (def.type === "transform") return true;
-  if (def.type === "array") return isTransforming(def.element, ctx);
-  if (def.type === "set") return isTransforming(def.valueType, ctx);
-  if (def.type === "lazy") return isTransforming(def.getter(), ctx);
-  if (
-    def.type === "promise" ||
-    def.type === "optional" ||
-    def.type === "nonoptional" ||
-    def.type === "nullable" ||
-    def.type === "readonly" ||
-    def.type === "default" ||
-    def.type === "prefault"
-  ) {
+  if (def.type === "transform")
+    return true;
+  if (def.type === "array")
+    return isTransforming(def.element, ctx);
+  if (def.type === "set")
+    return isTransforming(def.valueType, ctx);
+  if (def.type === "lazy")
+    return isTransforming(def.getter(), ctx);
+  if (def.type === "promise" || def.type === "optional" || def.type === "nonoptional" || def.type === "nullable" || def.type === "readonly" || def.type === "default" || def.type === "prefault") {
     return isTransforming(def.innerType, ctx);
   }
   if (def.type === "intersection") {
@@ -21752,42 +21227,42 @@ function isTransforming(_schema, _ctx) {
   }
   if (def.type === "object") {
     for (const key in def.shape) {
-      if (isTransforming(def.shape[key], ctx)) return true;
+      if (isTransforming(def.shape[key], ctx))
+        return true;
     }
     return false;
   }
   if (def.type === "union") {
     for (const option of def.options) {
-      if (isTransforming(option, ctx)) return true;
+      if (isTransforming(option, ctx))
+        return true;
     }
     return false;
   }
   if (def.type === "tuple") {
     for (const item of def.items) {
-      if (isTransforming(item, ctx)) return true;
+      if (isTransforming(item, ctx))
+        return true;
     }
-    if (def.rest && isTransforming(def.rest, ctx)) return true;
+    if (def.rest && isTransforming(def.rest, ctx))
+      return true;
     return false;
   }
   return false;
 }
-var createToJSONSchemaMethod =
-  (schema2, processors = {}) =>
-  (params) => {
-    const ctx = initializeContext({ ...params, processors });
-    process2(schema2, ctx);
-    extractDefs(ctx, schema2);
-    return finalize(ctx, schema2);
-  };
-var createStandardJSONSchemaMethod =
-  (schema2, io, processors = {}) =>
-  (params) => {
-    const { libraryOptions, target } = params ?? {};
-    const ctx = initializeContext({ ...(libraryOptions ?? {}), target, io, processors });
-    process2(schema2, ctx);
-    extractDefs(ctx, schema2);
-    return finalize(ctx, schema2);
-  };
+var createToJSONSchemaMethod = (schema2, processors = {}) => (params) => {
+  const ctx = initializeContext({ ...params, processors });
+  process2(schema2, ctx);
+  extractDefs(ctx, schema2);
+  return finalize(ctx, schema2);
+};
+var createStandardJSONSchemaMethod = (schema2, io, processors = {}) => (params) => {
+  const { libraryOptions, target } = params ?? {};
+  const ctx = initializeContext({ ...libraryOptions ?? {}, target, io, processors });
+  process2(schema2, ctx);
+  extractDefs(ctx, schema2);
+  return finalize(ctx, schema2);
+};
 
 // ../../node_modules/.pnpm/zod@4.3.6/node_modules/zod/v4/core/json-schema-processors.js
 var formatMap = {
@@ -21795,44 +21270,48 @@ var formatMap = {
   url: "uri",
   datetime: "date-time",
   json_string: "json-string",
-  regex: "",
+  regex: ""
   // do not set
 };
 var stringProcessor = (schema2, ctx, _json, _params) => {
   const json = _json;
   json.type = "string";
   const { minimum, maximum, format, patterns, contentEncoding } = schema2._zod.bag;
-  if (typeof minimum === "number") json.minLength = minimum;
-  if (typeof maximum === "number") json.maxLength = maximum;
+  if (typeof minimum === "number")
+    json.minLength = minimum;
+  if (typeof maximum === "number")
+    json.maxLength = maximum;
   if (format) {
     json.format = formatMap[format] ?? format;
-    if (json.format === "") delete json.format;
+    if (json.format === "")
+      delete json.format;
     if (format === "time") {
       delete json.format;
     }
   }
-  if (contentEncoding) json.contentEncoding = contentEncoding;
+  if (contentEncoding)
+    json.contentEncoding = contentEncoding;
   if (patterns && patterns.size > 0) {
     const regexes = [...patterns];
-    if (regexes.length === 1) json.pattern = regexes[0].source;
+    if (regexes.length === 1)
+      json.pattern = regexes[0].source;
     else if (regexes.length > 1) {
       json.allOf = [
         ...regexes.map((regex) => ({
-          ...(ctx.target === "draft-07" || ctx.target === "draft-04" || ctx.target === "openapi-3.0"
-            ? { type: "string" }
-            : {}),
-          pattern: regex.source,
-        })),
+          ...ctx.target === "draft-07" || ctx.target === "draft-04" || ctx.target === "openapi-3.0" ? { type: "string" } : {},
+          pattern: regex.source
+        }))
       ];
     }
   }
 };
 var numberProcessor = (schema2, ctx, _json, _params) => {
   const json = _json;
-  const { minimum, maximum, format, multipleOf, exclusiveMaximum, exclusiveMinimum } =
-    schema2._zod.bag;
-  if (typeof format === "string" && format.includes("int")) json.type = "integer";
-  else json.type = "number";
+  const { minimum, maximum, format, multipleOf, exclusiveMaximum, exclusiveMinimum } = schema2._zod.bag;
+  if (typeof format === "string" && format.includes("int"))
+    json.type = "integer";
+  else
+    json.type = "number";
   if (typeof exclusiveMinimum === "number") {
     if (ctx.target === "draft-04" || ctx.target === "openapi-3.0") {
       json.minimum = exclusiveMinimum;
@@ -21844,8 +21323,10 @@ var numberProcessor = (schema2, ctx, _json, _params) => {
   if (typeof minimum === "number") {
     json.minimum = minimum;
     if (typeof exclusiveMinimum === "number" && ctx.target !== "draft-04") {
-      if (exclusiveMinimum >= minimum) delete json.minimum;
-      else delete json.exclusiveMinimum;
+      if (exclusiveMinimum >= minimum)
+        delete json.minimum;
+      else
+        delete json.exclusiveMinimum;
     }
   }
   if (typeof exclusiveMaximum === "number") {
@@ -21859,11 +21340,14 @@ var numberProcessor = (schema2, ctx, _json, _params) => {
   if (typeof maximum === "number") {
     json.maximum = maximum;
     if (typeof exclusiveMaximum === "number" && ctx.target !== "draft-04") {
-      if (exclusiveMaximum <= maximum) delete json.maximum;
-      else delete json.exclusiveMaximum;
+      if (exclusiveMaximum <= maximum)
+        delete json.maximum;
+      else
+        delete json.exclusiveMaximum;
     }
   }
-  if (typeof multipleOf === "number") json.multipleOf = multipleOf;
+  if (typeof multipleOf === "number")
+    json.multipleOf = multipleOf;
 };
 var booleanProcessor = (_schema, _ctx, json, _params) => {
   json.type = "boolean";
@@ -21871,12 +21355,15 @@ var booleanProcessor = (_schema, _ctx, json, _params) => {
 var neverProcessor = (_schema, _ctx, json, _params) => {
   json.not = {};
 };
-var unknownProcessor = (_schema, _ctx, _json, _params) => {};
+var unknownProcessor = (_schema, _ctx, _json, _params) => {
+};
 var enumProcessor = (schema2, _ctx, json, _params) => {
   const def = schema2._zod.def;
   const values = getEnumValues(def.entries);
-  if (values.every((v) => typeof v === "number")) json.type = "number";
-  if (values.every((v) => typeof v === "string")) json.type = "string";
+  if (values.every((v) => typeof v === "number"))
+    json.type = "number";
+  if (values.every((v) => typeof v === "string"))
+    json.type = "string";
   json.enum = values;
 };
 var literalProcessor = (schema2, ctx, json, _params) => {
@@ -21908,10 +21395,14 @@ var literalProcessor = (schema2, ctx, json, _params) => {
       json.const = val;
     }
   } else {
-    if (vals.every((v) => typeof v === "number")) json.type = "number";
-    if (vals.every((v) => typeof v === "string")) json.type = "string";
-    if (vals.every((v) => typeof v === "boolean")) json.type = "boolean";
-    if (vals.every((v) => v === null)) json.type = "null";
+    if (vals.every((v) => typeof v === "number"))
+      json.type = "number";
+    if (vals.every((v) => typeof v === "string"))
+      json.type = "string";
+    if (vals.every((v) => typeof v === "boolean"))
+      json.type = "boolean";
+    if (vals.every((v) => v === null))
+      json.type = "null";
     json.enum = vals;
   }
 };
@@ -21929,8 +21420,10 @@ var arrayProcessor = (schema2, ctx, _json, params) => {
   const json = _json;
   const def = schema2._zod.def;
   const { minimum, maximum } = schema2._zod.bag;
-  if (typeof minimum === "number") json.minItems = minimum;
-  if (typeof maximum === "number") json.maxItems = maximum;
+  if (typeof minimum === "number")
+    json.minItems = minimum;
+  if (typeof maximum === "number")
+    json.maxItems = maximum;
   json.type = "array";
   json.items = process2(def.element, ctx, { ...params, path: [...params.path, "items"] });
 };
@@ -21943,43 +21436,40 @@ var objectProcessor = (schema2, ctx, _json, params) => {
   for (const key in shape) {
     json.properties[key] = process2(shape[key], ctx, {
       ...params,
-      path: [...params.path, "properties", key],
+      path: [...params.path, "properties", key]
     });
   }
   const allKeys = new Set(Object.keys(shape));
-  const requiredKeys = new Set(
-    [...allKeys].filter((key) => {
-      const v = def.shape[key]._zod;
-      if (ctx.io === "input") {
-        return v.optin === void 0;
-      } else {
-        return v.optout === void 0;
-      }
-    }),
-  );
+  const requiredKeys = new Set([...allKeys].filter((key) => {
+    const v = def.shape[key]._zod;
+    if (ctx.io === "input") {
+      return v.optin === void 0;
+    } else {
+      return v.optout === void 0;
+    }
+  }));
   if (requiredKeys.size > 0) {
     json.required = Array.from(requiredKeys);
   }
   if (def.catchall?._zod.def.type === "never") {
     json.additionalProperties = false;
   } else if (!def.catchall) {
-    if (ctx.io === "output") json.additionalProperties = false;
+    if (ctx.io === "output")
+      json.additionalProperties = false;
   } else if (def.catchall) {
     json.additionalProperties = process2(def.catchall, ctx, {
       ...params,
-      path: [...params.path, "additionalProperties"],
+      path: [...params.path, "additionalProperties"]
     });
   }
 };
 var unionProcessor = (schema2, ctx, json, params) => {
   const def = schema2._zod.def;
   const isExclusive = def.inclusive === false;
-  const options = def.options.map((x, i) =>
-    process2(x, ctx, {
-      ...params,
-      path: [...params.path, isExclusive ? "oneOf" : "anyOf", i],
-    }),
-  );
+  const options = def.options.map((x, i) => process2(x, ctx, {
+    ...params,
+    path: [...params.path, isExclusive ? "oneOf" : "anyOf", i]
+  }));
   if (isExclusive) {
     json.oneOf = options;
   } else {
@@ -21990,16 +21480,16 @@ var intersectionProcessor = (schema2, ctx, json, params) => {
   const def = schema2._zod.def;
   const a = process2(def.left, ctx, {
     ...params,
-    path: [...params.path, "allOf", 0],
+    path: [...params.path, "allOf", 0]
   });
   const b = process2(def.right, ctx, {
     ...params,
-    path: [...params.path, "allOf", 1],
+    path: [...params.path, "allOf", 1]
   });
   const isSimpleIntersection = (val) => "allOf" in val && Object.keys(val).length === 1;
   const allOf = [
-    ...(isSimpleIntersection(a) ? a.allOf : [a]),
-    ...(isSimpleIntersection(b) ? b.allOf : [b]),
+    ...isSimpleIntersection(a) ? a.allOf : [a],
+    ...isSimpleIntersection(b) ? b.allOf : [b]
   ];
   json.allOf = allOf;
 };
@@ -22013,7 +21503,7 @@ var recordProcessor = (schema2, ctx, _json, params) => {
   if (def.mode === "loose" && patterns && patterns.size > 0) {
     const valueSchema = process2(def.valueType, ctx, {
       ...params,
-      path: [...params.path, "patternProperties", "*"],
+      path: [...params.path, "patternProperties", "*"]
     });
     json.patternProperties = {};
     for (const pattern of patterns) {
@@ -22023,19 +21513,17 @@ var recordProcessor = (schema2, ctx, _json, params) => {
     if (ctx.target === "draft-07" || ctx.target === "draft-2020-12") {
       json.propertyNames = process2(def.keyType, ctx, {
         ...params,
-        path: [...params.path, "propertyNames"],
+        path: [...params.path, "propertyNames"]
       });
     }
     json.additionalProperties = process2(def.valueType, ctx, {
       ...params,
-      path: [...params.path, "additionalProperties"],
+      path: [...params.path, "additionalProperties"]
     });
   }
   const keyValues = keyType._zod.values;
   if (keyValues) {
-    const validKeyValues = [...keyValues].filter(
-      (v) => typeof v === "string" || typeof v === "number",
-    );
+    const validKeyValues = [...keyValues].filter((v) => typeof v === "string" || typeof v === "number");
     if (validKeyValues.length > 0) {
       json.required = validKeyValues;
     }
@@ -22070,7 +21558,8 @@ var prefaultProcessor = (schema2, ctx, json, params) => {
   process2(def.innerType, ctx, params);
   const seen = ctx.seen.get(schema2);
   seen.ref = def.innerType;
-  if (ctx.io === "input") json._prefault = JSON.parse(JSON.stringify(def.defaultValue));
+  if (ctx.io === "input")
+    json._prefault = JSON.parse(JSON.stringify(def.defaultValue));
 };
 var catchProcessor = (schema2, ctx, json, params) => {
   const def = schema2._zod.def;
@@ -22087,8 +21576,7 @@ var catchProcessor = (schema2, ctx, json, params) => {
 };
 var pipeProcessor = (schema2, ctx, _json, params) => {
   const def = schema2._zod.def;
-  const innerType =
-    ctx.io === "input" ? (def.in._zod.def.type === "transform" ? def.out : def.in) : def.out;
+  const innerType = ctx.io === "input" ? def.in._zod.def.type === "transform" ? def.out : def.in : def.out;
   process2(innerType, ctx, params);
   const seen = ctx.seen.get(schema2);
   seen.ref = innerType;
@@ -22143,38 +21631,38 @@ var initializer2 = (inst, issues) => {
   inst.name = "ZodError";
   Object.defineProperties(inst, {
     format: {
-      value: (mapper) => formatError(inst, mapper),
+      value: (mapper) => formatError(inst, mapper)
       // enumerable: false,
     },
     flatten: {
-      value: (mapper) => flattenError(inst, mapper),
+      value: (mapper) => flattenError(inst, mapper)
       // enumerable: false,
     },
     addIssue: {
       value: (issue2) => {
         inst.issues.push(issue2);
         inst.message = JSON.stringify(inst.issues, jsonStringifyReplacer, 2);
-      },
+      }
       // enumerable: false,
     },
     addIssues: {
       value: (issues2) => {
         inst.issues.push(...issues2);
         inst.message = JSON.stringify(inst.issues, jsonStringifyReplacer, 2);
-      },
+      }
       // enumerable: false,
     },
     isEmpty: {
       get() {
         return inst.issues.length === 0;
-      },
+      }
       // enumerable: false,
-    },
+    }
   });
 };
 var ZodError = $constructor("ZodError", initializer2);
 var ZodRealError = $constructor("ZodError", initializer2, {
-  Parent: Error,
+  Parent: Error
 });
 
 // ../../node_modules/.pnpm/zod@4.3.6/node_modules/zod/v4/classic/parse.js
@@ -22197,29 +21685,22 @@ var ZodType = /* @__PURE__ */ $constructor("ZodType", (inst, def) => {
   Object.assign(inst["~standard"], {
     jsonSchema: {
       input: createStandardJSONSchemaMethod(inst, "input"),
-      output: createStandardJSONSchemaMethod(inst, "output"),
-    },
+      output: createStandardJSONSchemaMethod(inst, "output")
+    }
   });
   inst.toJSONSchema = createToJSONSchemaMethod(inst, {});
   inst.def = def;
   inst.type = def.type;
   Object.defineProperty(inst, "_def", { value: def });
   inst.check = (...checks) => {
-    return inst.clone(
-      util_exports.mergeDefs(def, {
-        checks: [
-          ...(def.checks ?? []),
-          ...checks.map((ch) =>
-            typeof ch === "function"
-              ? { _zod: { check: ch, def: { check: "custom" }, onattach: [] } }
-              : ch,
-          ),
-        ],
-      }),
-      {
-        parent: true,
-      },
-    );
+    return inst.clone(util_exports.mergeDefs(def, {
+      checks: [
+        ...def.checks ?? [],
+        ...checks.map((ch) => typeof ch === "function" ? { _zod: { check: ch, def: { check: "custom" }, onattach: [] } } : ch)
+      ]
+    }), {
+      parent: true
+    });
   };
   inst.with = inst.check;
   inst.clone = (def2, params) => clone(inst, def2, params);
@@ -22230,8 +21711,7 @@ var ZodType = /* @__PURE__ */ $constructor("ZodType", (inst, def) => {
   };
   inst.parse = (data, params) => parse5(inst, data, params, { callee: inst.parse });
   inst.safeParse = (data, params) => safeParse2(inst, data, params);
-  inst.parseAsync = async (data, params) =>
-    parseAsync2(inst, data, params, { callee: inst.parseAsync });
+  inst.parseAsync = async (data, params) => parseAsync2(inst, data, params, { callee: inst.parseAsync });
   inst.safeParseAsync = async (data, params) => safeParseAsync2(inst, data, params);
   inst.spa = inst.safeParseAsync;
   inst.encode = (data, params) => encode(inst, data, params);
@@ -22268,7 +21748,7 @@ var ZodType = /* @__PURE__ */ $constructor("ZodType", (inst, def) => {
     get() {
       return globalRegistry.get(inst)?.description;
     },
-    configurable: true,
+    configurable: true
   });
   inst.meta = (...args) => {
     if (args.length === 0) {
@@ -22441,16 +21921,8 @@ var ZodNumber = /* @__PURE__ */ $constructor("ZodNumber", (inst, def) => {
   inst.step = (value, params) => inst.check(_multipleOf(value, params));
   inst.finite = () => inst;
   const bag = inst._zod.bag;
-  inst.minValue =
-    Math.max(
-      bag.minimum ?? Number.NEGATIVE_INFINITY,
-      bag.exclusiveMinimum ?? Number.NEGATIVE_INFINITY,
-    ) ?? null;
-  inst.maxValue =
-    Math.min(
-      bag.maximum ?? Number.POSITIVE_INFINITY,
-      bag.exclusiveMaximum ?? Number.POSITIVE_INFINITY,
-    ) ?? null;
+  inst.minValue = Math.max(bag.minimum ?? Number.NEGATIVE_INFINITY, bag.exclusiveMinimum ?? Number.NEGATIVE_INFINITY) ?? null;
+  inst.maxValue = Math.min(bag.maximum ?? Number.POSITIVE_INFINITY, bag.exclusiveMaximum ?? Number.POSITIVE_INFINITY) ?? null;
   inst.isInt = (bag.format ?? "").includes("int") || Number.isSafeInteger(bag.multipleOf ?? 0.5);
   inst.isFinite = true;
   inst.format = bag.format ?? null;
@@ -22532,7 +22004,7 @@ function object(shape, params) {
   const def = {
     type: "object",
     shape: shape ?? {},
-    ...util_exports.normalizeParams(params),
+    ...util_exports.normalizeParams(params)
   };
   return new ZodObject(def);
 }
@@ -22546,20 +22018,19 @@ function union2(options, params) {
   return new ZodUnion({
     type: "union",
     options,
-    ...util_exports.normalizeParams(params),
+    ...util_exports.normalizeParams(params)
   });
 }
 var ZodIntersection = /* @__PURE__ */ $constructor("ZodIntersection", (inst, def) => {
   $ZodIntersection.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json, params) =>
-    intersectionProcessor(inst, ctx, json, params);
+  inst._zod.processJSONSchema = (ctx, json, params) => intersectionProcessor(inst, ctx, json, params);
 });
 function intersection(left, right) {
   return new ZodIntersection({
     type: "intersection",
     left,
-    right,
+    right
   });
 }
 var ZodRecord = /* @__PURE__ */ $constructor("ZodRecord", (inst, def) => {
@@ -22574,7 +22045,7 @@ function record(keyType, valueType, params) {
     type: "record",
     keyType,
     valueType,
-    ...util_exports.normalizeParams(params),
+    ...util_exports.normalizeParams(params)
   });
 }
 var ZodEnum = /* @__PURE__ */ $constructor("ZodEnum", (inst, def) => {
@@ -22589,13 +22060,14 @@ var ZodEnum = /* @__PURE__ */ $constructor("ZodEnum", (inst, def) => {
     for (const value of values) {
       if (keys.has(value)) {
         newEntries[value] = def.entries[value];
-      } else throw new Error(`Key ${value} not found in enum`);
+      } else
+        throw new Error(`Key ${value} not found in enum`);
     }
     return new ZodEnum({
       ...def,
       checks: [],
       ...util_exports.normalizeParams(params),
-      entries: newEntries,
+      entries: newEntries
     });
   };
   inst.exclude = (values, params) => {
@@ -22603,13 +22075,14 @@ var ZodEnum = /* @__PURE__ */ $constructor("ZodEnum", (inst, def) => {
     for (const value of values) {
       if (keys.has(value)) {
         delete newEntries[value];
-      } else throw new Error(`Key ${value} not found in enum`);
+      } else
+        throw new Error(`Key ${value} not found in enum`);
     }
     return new ZodEnum({
       ...def,
       checks: [],
       ...util_exports.normalizeParams(params),
-      entries: newEntries,
+      entries: newEntries
     });
   };
 });
@@ -22618,7 +22091,7 @@ function _enum(values, params) {
   return new ZodEnum({
     type: "enum",
     entries,
-    ...util_exports.normalizeParams(params),
+    ...util_exports.normalizeParams(params)
   });
 }
 var ZodLiteral = /* @__PURE__ */ $constructor("ZodLiteral", (inst, def) => {
@@ -22629,19 +22102,17 @@ var ZodLiteral = /* @__PURE__ */ $constructor("ZodLiteral", (inst, def) => {
   Object.defineProperty(inst, "value", {
     get() {
       if (def.values.length > 1) {
-        throw new Error(
-          "This schema contains multiple valid literal values. Use `.values` instead.",
-        );
+        throw new Error("This schema contains multiple valid literal values. Use `.values` instead.");
       }
       return def.values[0];
-    },
+    }
   });
 });
 function literal(value, params) {
   return new ZodLiteral({
     type: "literal",
     values: Array.isArray(value) ? value : [value],
-    ...util_exports.normalizeParams(params),
+    ...util_exports.normalizeParams(params)
   });
 }
 var ZodTransform = /* @__PURE__ */ $constructor("ZodTransform", (inst, def) => {
@@ -22657,7 +22128,8 @@ var ZodTransform = /* @__PURE__ */ $constructor("ZodTransform", (inst, def) => {
         payload.issues.push(util_exports.issue(issue2, payload.value, def));
       } else {
         const _issue = issue2;
-        if (_issue.fatal) _issue.continue = false;
+        if (_issue.fatal)
+          _issue.continue = false;
         _issue.code ?? (_issue.code = "custom");
         _issue.input ?? (_issue.input = payload.value);
         _issue.inst ?? (_issue.inst = inst);
@@ -22678,7 +22150,7 @@ var ZodTransform = /* @__PURE__ */ $constructor("ZodTransform", (inst, def) => {
 function transform(fn) {
   return new ZodTransform({
     type: "transform",
-    transform: fn,
+    transform: fn
   });
 }
 var ZodOptional = /* @__PURE__ */ $constructor("ZodOptional", (inst, def) => {
@@ -22690,7 +22162,7 @@ var ZodOptional = /* @__PURE__ */ $constructor("ZodOptional", (inst, def) => {
 function optional(innerType) {
   return new ZodOptional({
     type: "optional",
-    innerType,
+    innerType
   });
 }
 var ZodExactOptional = /* @__PURE__ */ $constructor("ZodExactOptional", (inst, def) => {
@@ -22702,7 +22174,7 @@ var ZodExactOptional = /* @__PURE__ */ $constructor("ZodExactOptional", (inst, d
 function exactOptional(innerType) {
   return new ZodExactOptional({
     type: "optional",
-    innerType,
+    innerType
   });
 }
 var ZodNullable = /* @__PURE__ */ $constructor("ZodNullable", (inst, def) => {
@@ -22714,7 +22186,7 @@ var ZodNullable = /* @__PURE__ */ $constructor("ZodNullable", (inst, def) => {
 function nullable(innerType) {
   return new ZodNullable({
     type: "nullable",
-    innerType,
+    innerType
   });
 }
 var ZodDefault = /* @__PURE__ */ $constructor("ZodDefault", (inst, def) => {
@@ -22729,10 +22201,8 @@ function _default(innerType, defaultValue) {
     type: "default",
     innerType,
     get defaultValue() {
-      return typeof defaultValue === "function"
-        ? defaultValue()
-        : util_exports.shallowClone(defaultValue);
-    },
+      return typeof defaultValue === "function" ? defaultValue() : util_exports.shallowClone(defaultValue);
+    }
   });
 }
 var ZodPrefault = /* @__PURE__ */ $constructor("ZodPrefault", (inst, def) => {
@@ -22746,24 +22216,21 @@ function prefault(innerType, defaultValue) {
     type: "prefault",
     innerType,
     get defaultValue() {
-      return typeof defaultValue === "function"
-        ? defaultValue()
-        : util_exports.shallowClone(defaultValue);
-    },
+      return typeof defaultValue === "function" ? defaultValue() : util_exports.shallowClone(defaultValue);
+    }
   });
 }
 var ZodNonOptional = /* @__PURE__ */ $constructor("ZodNonOptional", (inst, def) => {
   $ZodNonOptional.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json, params) =>
-    nonoptionalProcessor(inst, ctx, json, params);
+  inst._zod.processJSONSchema = (ctx, json, params) => nonoptionalProcessor(inst, ctx, json, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function nonoptional(innerType, params) {
   return new ZodNonOptional({
     type: "nonoptional",
     innerType,
-    ...util_exports.normalizeParams(params),
+    ...util_exports.normalizeParams(params)
   });
 }
 var ZodCatch = /* @__PURE__ */ $constructor("ZodCatch", (inst, def) => {
@@ -22777,7 +22244,7 @@ function _catch(innerType, catchValue) {
   return new ZodCatch({
     type: "catch",
     innerType,
-    catchValue: typeof catchValue === "function" ? catchValue : () => catchValue,
+    catchValue: typeof catchValue === "function" ? catchValue : () => catchValue
   });
 }
 var ZodPipe = /* @__PURE__ */ $constructor("ZodPipe", (inst, def) => {
@@ -22791,7 +22258,7 @@ function pipe(in_, out) {
   return new ZodPipe({
     type: "pipe",
     in: in_,
-    out,
+    out
     // ...util.normalizeParams(params),
   });
 }
@@ -22804,7 +22271,7 @@ var ZodReadonly = /* @__PURE__ */ $constructor("ZodReadonly", (inst, def) => {
 function readonly(innerType) {
   return new ZodReadonly({
     type: "readonly",
-    innerType,
+    innerType
   });
 }
 var ZodCustom = /* @__PURE__ */ $constructor("ZodCustom", (inst, def) => {
@@ -22820,9 +22287,21 @@ function superRefine(fn) {
 }
 
 // ../compiler/dist/generated/agent-dsl.js
-var agentType = _enum(["EinsteinServiceAgent", "AgentforceEmployeeAgent", "SalesEinsteinCoach"]);
+var agentType = _enum([
+  "EinsteinServiceAgent",
+  "AgentforceEmployeeAgent",
+  "SalesEinsteinCoach"
+]);
+var byoClientConfig = object({
+  client_ref: string2(),
+  configuration: record(string2(), unknown()).optional()
+});
+var baseTransition = object({
+  target: string2(),
+  condition: unknown()
+});
 var beepBoopConfig = object({
-  max_wait_time_ms: int().gte(500).lte(6e4).nullish(),
+  max_wait_time_ms: int().gte(500).lte(6e4).nullish()
 });
 var contextVariableType = _enum([
   "boolean",
@@ -22831,51 +22310,47 @@ var contextVariableType = _enum([
   "date",
   "timestamp",
   "currency",
-  "id",
+  "id"
 ]);
 var contextVariable = object({
-  developer_name: string2()
-    .max(80)
-    .regex(/^[A-Za-z](_?[A-Za-z0-9])*$/),
+  developer_name: string2().max(80).regex(/^[A-Za-z](_?[A-Za-z0-9])*$/),
   label: string2(),
   description: string2().optional(),
   data_type: contextVariableType,
-  field_mapping: string2()
-    .regex(/.+\..+/)
-    .nullish(),
+  field_mapping: string2().regex(/.+\..+/).nullish()
 });
 var endpointingConfig = object({
-  max_wait_time_ms: int().gte(500).lte(6e4).nullish(),
+  max_wait_time_ms: int().gte(500).lte(6e4).nullish()
 });
 var inboundKeywords = object({
-  keywords: array(string2()),
+  keywords: array(string2())
 });
 var memoryConfiguration = object({
-  enabled: boolean2(),
+  enabled: boolean2()
 });
 var contextConfiguration = object({
-  memory: memoryConfiguration.nullish(),
+  memory: memoryConfiguration.nullish()
 });
 var messageType = _enum(["Welcome", "Error", "Escalation"]);
 var modelConfig = object({
   model_ref: string2().nullish(),
-  configuration: record(string2(), unknown()).nullish(),
+  configuration: record(string2(), unknown()).nullish()
 });
 var nodeReference = object({
   name: string2(),
   target: string2(),
   enabled: unknown().optional(),
   description: string2().nullish(),
-  state_updates: array(record(string2(), unknown())).nullish(),
+  state_updates: array(record(string2(), unknown())).nullish()
 });
 var outboundFillerSentences = object({
-  filler_sentences: record(string2(), array(string2())),
+  filler_sentences: record(string2(), array(string2()))
 });
 var outboundRouteType = _enum(["OmniChannelFlow"]);
 var outboundRouteConfig = object({
   escalation_message: string2().nullish(),
   outbound_route_type: outboundRouteType.optional().default("OmniChannelFlow"),
-  outbound_route_name: string2(),
+  outbound_route_name: string2()
 });
 var parameterDataType = _enum([
   "String",
@@ -22889,7 +22364,7 @@ var parameterDataType = _enum([
   "Time",
   "SObject",
   "ApexDefined",
-  "LightningTypes",
+  "LightningTypes"
 ]);
 var inputParameter = object({
   developer_name: string2(),
@@ -22900,7 +22375,7 @@ var inputParameter = object({
   is_list: boolean2().nullish(),
   required: boolean2().nullish(),
   is_user_input: boolean2().nullish(),
-  constant_value: unknown().optional(),
+  constant_value: unknown().optional()
 });
 var outputParameter = object({
   developer_name: string2(),
@@ -22910,16 +22385,11 @@ var outputParameter = object({
   complex_data_type_name: string2().nullish(),
   is_list: boolean2().nullish(),
   is_used_by_planner: boolean2().nullish(),
-  is_displayable: boolean2().nullish(),
+  is_displayable: boolean2().nullish()
 });
 var actionConfiguration = object({
-  developer_name: string2()
-    .max(80)
-    .regex(/^[A-Za-z](_?[A-Za-z0-9])*(__(_?[A-Za-z0-9])*)?$/),
-  source: string2()
-    .max(80)
-    .regex(/^[A-Za-z](_?[A-Za-z0-9])*(__(_?[A-Za-z0-9])*)?$/)
-    .nullish(),
+  developer_name: string2().max(80).regex(/^[A-Za-z](_?[A-Za-z0-9])*(__(_?[A-Za-z0-9])*)?$/),
+  source: string2().max(80).regex(/^[A-Za-z](_?[A-Za-z0-9])*(__(_?[A-Za-z0-9])*)?$/).nullish(),
   label: string2(),
   description: string2(),
   require_user_confirmation: boolean2().optional().default(false),
@@ -22928,32 +22398,30 @@ var actionConfiguration = object({
   invocation_target_type: string2(),
   invocation_target_name: string2(),
   input_type: array(inputParameter).optional().default([]),
-  output_type: array(outputParameter).optional().default([]),
+  output_type: array(outputParameter).optional().default([])
 });
 var plannerType = _enum([
   "AiCopilot__ReAct",
   "Atlas__ConcurrentMultiAgentOrchestration",
   "Atlas__VoiceAgent",
-  "SentOS__SearchAgent",
+  "SentOS__SearchAgent"
 ]);
 var pronunciationType = _enum(["IPA", "CMU"]);
 var pronunciationEntry = object({
   grapheme: string2(),
   phoneme: string2(),
-  type: pronunciationType,
+  type: pronunciationType
 });
 var pronunciationDict = object({
-  pronunciations: array(pronunciationEntry),
+  pronunciations: array(pronunciationEntry)
 });
 var retrieverConfiguration = object({
-  developer_name: string2()
-    .max(80)
-    .regex(/^[A-Za-z](_?[A-Za-z0-9])*(__(_?[A-Za-z0-9])*)?$/),
+  developer_name: string2().max(80).regex(/^[A-Za-z](_?[A-Za-z0-9])*(__(_?[A-Za-z0-9])*)?$/),
   fully_qualified_name: string2(),
   namespace: string2().nullish(),
   dataspace: string2().nullish(),
   grounding_source_type: string2().nullish(),
-  external_source: string2().nullish(),
+  external_source: string2().nullish()
 });
 var adlConfiguration = object({
   ai_ground_library_label: string2(),
@@ -22961,24 +22429,24 @@ var adlConfiguration = object({
   ai_grounding_library_name: string2(),
   ai_grounding_library_namespace: string2().nullish(),
   ai_grounding_library_fully_qualified_name: string2(),
-  referenced_retrievers: array(retrieverConfiguration).nullish(),
+  referenced_retrievers: array(retrieverConfiguration).nullish()
 });
 var knowledgeConfiguration = object({
   rag_feature_id: string2(),
   rag_feature_name: string2(),
   rag_feature_namespace: string2().nullish(),
   rag_feature_fully_qualified_name: string2(),
-  adl_configuration: adlConfiguration,
+  adl_configuration: adlConfiguration
 });
 var speakUpConfig = object({
   speak_up_first_wait_time_ms: int().gte(1e4).lte(3e5).nullish(),
   speak_up_follow_up_wait_time_ms: int().gte(1e4).lte(3e5).nullish(),
-  speak_up_message: string2().nullish(),
+  speak_up_message: string2().nullish()
 });
 var additionalVoiceConfigs = object({
   speak_up_config: speakUpConfig.nullish(),
   endpointing_config: endpointingConfig.nullish(),
-  beepboop_config: beepBoopConfig.nullish(),
+  beepboop_config: beepBoopConfig.nullish()
 });
 var stateVariableType = _enum([
   "boolean",
@@ -22988,7 +22456,7 @@ var stateVariableType = _enum([
   "timestamp",
   "currency",
   "id",
-  "object",
+  "object"
 ]);
 var supportedLocale = _enum([
   "en_US",
@@ -23030,33 +22498,51 @@ var supportedLocale = _enum([
   "el",
   "hu",
   "pl",
-  "ro",
+  "ro"
 ]);
 var languageConfiguration = object({
   default_locale: supportedLocale.nullish(),
   additional_locales: array(supportedLocale).nullish(),
-  all_additional_locales: boolean2().nullish(),
+  all_additional_locales: boolean2().nullish()
 });
 var surface = object({
   surface_type: string2(),
   adaptive_response_allowed: boolean2().nullish(),
-  outbound_route_configs: array(outboundRouteConfig).nullish(),
+  outbound_route_configs: array(outboundRouteConfig).nullish()
 });
 var systemMessage = object({
   message: string2().nullish(),
-  message_type: messageType.nullish(),
+  message_type: messageType.nullish()
+});
+var transitionMode = _enum(["manual", "auto"]);
+var transitionType = _enum(["handoff", "supervision"]);
+var relatedAgentNodeTransition = object({
+  target: string2(),
+  condition: unknown().optional(),
+  alias: string2().nullish(),
+  enabled: unknown().optional(),
+  instruction: string2().nullish(),
+  type: transitionType,
+  mode: transitionMode.optional()
+});
+var subAgentNodeTransition = object({
+  target: string2(),
+  condition: unknown().optional(),
+  alias: string2().nullish(),
+  enabled: unknown().optional(),
+  instruction: string2().nullish(),
+  type: transitionType,
+  mode: transitionMode.optional()
 });
 var verifiedCustomerRecordAccessConfig = object({
   use_default_objects: boolean2(),
-  additional_objects: array(string2()).nullish(),
+  additional_objects: array(string2()).nullish()
 });
 var securityConfiguration = object({
-  verified_customer_record_access: verifiedCustomerRecordAccessConfig.nullish(),
+  verified_customer_record_access: verifiedCustomerRecordAccessConfig.nullish()
 });
 var globalAgentConfiguration = object({
-  developer_name: string2()
-    .max(80)
-    .regex(/^[A-Za-z](_?[A-Za-z0-9])*$/),
+  developer_name: string2().max(80).regex(/^[A-Za-z](_?[A-Za-z0-9])*$/),
   label: string2(),
   description: string2().nullish(),
   enable_enhanced_event_logs: boolean2().optional().default(false),
@@ -23065,19 +22551,17 @@ var globalAgentConfiguration = object({
   default_agent_user: string2().nullish(),
   default_outbound_routing: string2().nullish(),
   context_variables: array(contextVariable).nullish(),
-  security: securityConfiguration.nullish(),
+  security: securityConfiguration.nullish()
 });
 var visibilityType = _enum(["Internal", "External"]);
 var stateVariable = object({
-  developer_name: string2()
-    .max(80)
-    .regex(/^[A-Za-z](_?[A-Za-z0-9])*$/),
+  developer_name: string2().max(80).regex(/^[A-Za-z](_?[A-Za-z0-9])*$/),
   label: string2(),
   description: string2().optional(),
   data_type: stateVariableType,
   is_list: boolean2().optional().default(false),
   default: unknown().optional(),
-  visibility: visibilityType.optional().default("Internal"),
+  visibility: visibilityType.optional().default("Internal")
 });
 var voiceConfiguration = object({
   inbound_filler_words_detection: boolean2().nullish(),
@@ -23089,13 +22573,18 @@ var voiceConfiguration = object({
   outbound_stability: number2().nullish(),
   outbound_similarity: number2().nullish(),
   pronunciation_dict: pronunciationDict.nullish(),
-  additional_configs: additionalVoiceConfigs.nullish(),
+  additional_configs: additionalVoiceConfigs.nullish()
 });
 var modalityParameters = object({
   voice: voiceConfiguration.nullish(),
-  language: languageConfiguration.nullish(),
+  language: languageConfiguration.nullish()
 });
-var relatedAgentOrRouterOrSubagentTypeEnum = _enum(["related_agent", "router", "subagent"]);
+var relatedAgentOrRouterOrSubagentTypeEnum = _enum([
+  "byon",
+  "related_agent",
+  "router",
+  "subagent"
+]);
 var actionOrHandoffTypeEnum = _enum(["action", "handoff"]);
 var action = object({
   type: actionOrHandoffTypeEnum.optional().default("action"),
@@ -23103,40 +22592,35 @@ var action = object({
   bound_inputs: record(string2(), unknown()).nullish(),
   llm_inputs: array(string2()).nullish(),
   enabled: unknown().optional(),
-  state_updates: array(record(string2(), unknown())).nullish(),
+  state_updates: array(record(string2(), unknown())).nullish()
 });
 var handOffAction = object({
   type: actionOrHandoffTypeEnum.optional().default("handoff"),
   target: string2(),
   enabled: unknown().optional(),
-  state_updates: array(record(string2(), unknown())).nullish(),
+  state_updates: array(record(string2(), unknown())).nullish()
 });
 var postToolCall = object({
   target: string2(),
-  actions: array(action),
+  actions: array(action)
 });
 var preToolCall = object({
   target: string2(),
-  actions: array(action),
+  actions: array(action)
 });
-var actionOrHandoff = intersection(
-  union2([
-    object({
-      type: literal("action"),
-    }).and(action),
-    object({
-      type: literal("handoff"),
-    }).and(handOffAction),
-  ]),
+var actionOrHandoff = intersection(union2([
   object({
-    type: actionOrHandoffTypeEnum.optional(),
-  }),
-);
+    type: literal("action")
+  }).and(action),
+  object({
+    type: literal("handoff")
+  }).and(handOffAction)
+]), object({
+  type: actionOrHandoffTypeEnum.optional()
+}));
 var relatedAgentNode = object({
   type: relatedAgentOrRouterOrSubagentTypeEnum.optional().default("related_agent"),
-  developer_name: string2()
-    .max(80)
-    .regex(/^[A-Za-z](_?[A-Za-z0-9])*(__(_?[A-Za-z0-9])*)?$/),
+  developer_name: string2().max(80).regex(/^[A-Za-z](_?[A-Za-z0-9])*(__(_?[A-Za-z0-9])*)?$/),
   label: string2().nullish(),
   description: string2().nullish(),
   invocation_target_type: string2().nullish().default("agentforce"),
@@ -23144,8 +22628,9 @@ var relatedAgentNode = object({
   loading_text: string2().nullish(),
   bound_inputs: record(string2(), unknown()).nullish(),
   on_init: array(actionOrHandoff).nullish(),
+  transitions: array(relatedAgentNodeTransition).nullish(),
   on_exit: array(action).nullish(),
-  action_definitions: array(actionConfiguration).nullish(),
+  action_definitions: array(actionConfiguration).nullish()
 });
 var routerNode = object({
   model_configuration: modelConfig.nullish(),
@@ -23154,13 +22639,12 @@ var routerNode = object({
   type: relatedAgentOrRouterOrSubagentTypeEnum.optional().default("router"),
   description: string2().nullish(),
   tools: array(nodeReference),
-  developer_name: string2()
-    .max(80)
-    .regex(/^[A-Za-z](_?[A-Za-z0-9])*(__(_?[A-Za-z0-9])*)?$/),
+  developer_name: string2().max(80).regex(/^[A-Za-z](_?[A-Za-z0-9])*(__(_?[A-Za-z0-9])*)?$/),
   label: string2().nullish(),
   on_init: array(actionOrHandoff).nullish(),
+  transitions: array(baseTransition).nullish(),
   on_exit: array(action).nullish(),
-  action_definitions: array(actionConfiguration).nullish(),
+  action_definitions: array(actionConfiguration).nullish()
 });
 var actionOrSupervisionTypeEnum = _enum(["action", "supervision"]);
 var supervisionTool = object({
@@ -23170,7 +22654,7 @@ var supervisionTool = object({
   description: string2().nullish(),
   forced: unknown().optional(),
   enabled: unknown().optional(),
-  state_updates: array(record(string2(), unknown())).nullish(),
+  state_updates: array(record(string2(), unknown())).nullish()
 });
 var tool = object({
   type: actionOrSupervisionTypeEnum.optional().default("action"),
@@ -23182,21 +22666,31 @@ var tool = object({
   name: string2(),
   description: string2().nullish(),
   input_parameters: array(inputParameter).nullish(),
-  forced: unknown().optional(),
+  forced: unknown().optional()
 });
-var actionOrSupervision = intersection(
-  union2([
-    object({
-      type: literal("action"),
-    }).and(tool),
-    object({
-      type: literal("supervision"),
-    }).and(supervisionTool),
-  ]),
+var actionOrSupervision = intersection(union2([
   object({
-    type: actionOrSupervisionTypeEnum.optional(),
-  }),
-);
+    type: literal("action")
+  }).and(tool),
+  object({
+    type: literal("supervision")
+  }).and(supervisionTool)
+]), object({
+  type: actionOrSupervisionTypeEnum.optional()
+}));
+var byonNode = object({
+  developer_name: string2().max(80).regex(/^[A-Za-z](_?[A-Za-z0-9])*(__(_?[A-Za-z0-9])*)?$/),
+  label: string2().nullish(),
+  on_init: array(actionOrHandoff).nullish(),
+  transitions: array(baseTransition).nullish(),
+  on_exit: array(action).nullish(),
+  action_definitions: array(actionConfiguration).nullish(),
+  type: relatedAgentOrRouterOrSubagentTypeEnum.optional().default("byon"),
+  description: string2().nullish(),
+  input_parameters: record(string2(), unknown()).nullish(),
+  byo_client: byoClientConfig,
+  tools: array(actionOrSupervision).nullish()
+});
 var subAgentNode = object({
   model_configuration: modelConfig.nullish(),
   before_reasoning_iteration: array(actionOrHandoff).nullish(),
@@ -23212,35 +22706,31 @@ var subAgentNode = object({
   after_all_tool_calls: array(actionOrHandoff).nullish(),
   after_reasoning: array(actionOrHandoff).nullish(),
   source: string2().nullish(),
-  developer_name: string2()
-    .max(80)
-    .regex(/^[A-Za-z](_?[A-Za-z0-9])*(__(_?[A-Za-z0-9])*)?$/),
+  developer_name: string2().max(80).regex(/^[A-Za-z](_?[A-Za-z0-9])*(__(_?[A-Za-z0-9])*)?$/),
   label: string2().nullish(),
   on_init: array(actionOrHandoff).nullish(),
+  transitions: array(subAgentNodeTransition).nullish(),
   on_exit: array(action).nullish(),
-  action_definitions: array(actionConfiguration).nullish(),
+  action_definitions: array(actionConfiguration).nullish()
 });
-var relatedAgentOrRouterOrSubagent = intersection(
-  union2([
-    object({
-      type: literal("subagent"),
-    }).and(subAgentNode),
-    object({
-      type: literal("related_agent"),
-    }).and(relatedAgentNode),
-    object({
-      type: literal("router"),
-    }).and(routerNode),
-  ]),
+var relatedAgentOrRouterOrSubagent = intersection(union2([
   object({
-    type: relatedAgentOrRouterOrSubagentTypeEnum.optional(),
-  }),
-);
+    type: literal("subagent")
+  }).and(subAgentNode),
+  object({
+    type: literal("related_agent")
+  }).and(relatedAgentNode),
+  object({
+    type: literal("router")
+  }).and(routerNode),
+  object({
+    type: literal("byon")
+  }).and(byonNode)
+]), object({
+  type: relatedAgentOrRouterOrSubagentTypeEnum.optional()
+}));
 var agentVersion = object({
-  developer_name: string2()
-    .max(80)
-    .regex(/^v[0-9]+$/)
-    .nullish(),
+  developer_name: string2().max(80).regex(/^v[0-9]+$/).nullish(),
   planner_type: plannerType,
   system_messages: array(systemMessage).nullish(),
   modality_parameters: modalityParameters.nullish(),
@@ -23253,13 +22743,13 @@ var agentVersion = object({
   knowledge_definitions: array(knowledgeConfiguration).nullish(),
   legacy_knowledge_action: actionConfiguration.nullish(),
   surfaces: array(surface).nullish(),
-  context: contextConfiguration.nullish(),
+  context: contextConfiguration.nullish()
 });
 var agentDslAuthoring = object({
   schema_version: string2(),
   global_configuration: globalAgentConfiguration,
   agent_version: union2([agentVersion, array(agentVersion)]),
-  context: contextConfiguration.nullish(),
+  context: contextConfiguration.nullish()
 });
 var zPostAgentBody = unknown();
 
@@ -23291,7 +22781,7 @@ function extractStringSequence(sequenceNode, fieldName, ctx) {
     for (const item of source) {
       const itemObj = item;
       const value = itemObj._value || item;
-      const str = extractStringValue(value);
+      const str = extractStringValue2(value);
       if (str) {
         result.push(str);
       }
@@ -23307,10 +22797,7 @@ function extractStringSequence(sequenceNode, fieldName, ctx) {
       return extracted;
     }
     if (cstNode.type === "expression_with_to" || cstNode.type === "list") {
-      ctx.warning(
-        `Unable to extract ${fieldName} from inline list syntax. CST structure may have changed.`,
-        sequenceNode.__cst?.range,
-      );
+      ctx.warning(`Unable to extract ${fieldName} from inline list syntax. CST structure may have changed.`, sequenceNode.__cst?.range);
     }
   }
   return result;
@@ -23361,7 +22848,7 @@ function compileModalityParameters(languageBlock, modalityBlock, ctx) {
   const voiceEntry = modalityBlock?.get("voice");
   const voice = compileVoiceConfiguration(voiceEntry, ctx);
   const result = {
-    language,
+    language
   };
   if (voice !== null) {
     result.voice = voice;
@@ -23369,36 +22856,24 @@ function compileModalityParameters(languageBlock, modalityBlock, ctx) {
   return result;
 }
 function compileLanguageConfiguration(languageBlock, ctx) {
-  if (!languageBlock) return null;
+  if (!languageBlock)
+    return null;
   const defaultLocaleSourced = extractSourcedString(languageBlock.default_locale);
-  const defaultLocale = extractStringValue(languageBlock.default_locale) ?? "";
+  const defaultLocale = extractStringValue2(languageBlock.default_locale) ?? "";
   if (!defaultLocale) {
     ctx.error("Language block requires a default_locale", languageBlock.__cst?.range);
     return null;
   }
   let hasValidationErrors = false;
   if (!supportedLocale.safeParse(defaultLocale).success) {
-    ctx.error(
-      `Invalid default_locale '${defaultLocale}'. Must be a supported locale.`,
-      languageBlock.__cst?.range,
-      "schema-validation",
-    );
+    ctx.error(`Invalid default_locale '${defaultLocale}'. Must be a supported locale.`, languageBlock.__cst?.range, "schema-validation");
     hasValidationErrors = true;
   }
-  const additionalLocalesStr = extractStringValue(languageBlock.additional_locales) ?? "";
-  const additionalLocales = additionalLocalesStr
-    ? additionalLocalesStr
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean)
-    : [];
+  const additionalLocalesStr = extractStringValue2(languageBlock.additional_locales) ?? "";
+  const additionalLocales = additionalLocalesStr ? additionalLocalesStr.split(",").map((s) => s.trim()).filter(Boolean) : [];
   for (const locale of additionalLocales) {
     if (!supportedLocale.safeParse(locale).success) {
-      ctx.error(
-        `Invalid additional_locale '${locale}'. Must be a supported locale.`,
-        languageBlock.__cst?.range,
-        "schema-validation",
-      );
+      ctx.error(`Invalid additional_locale '${locale}'. Must be a supported locale.`, languageBlock.__cst?.range, "schema-validation");
       hasValidationErrors = true;
     }
   }
@@ -23409,28 +22884,23 @@ function compileLanguageConfiguration(languageBlock, ctx) {
   const langConfig = {
     default_locale: defaultLocaleSourced ?? defaultLocale,
     additional_locales: additionalLocales,
-    all_additional_locales: allAdditionalLocales,
+    all_additional_locales: allAdditionalLocales
   };
   ctx.setScriptPath(langConfig, "language");
   return langConfig;
 }
 function compileVoiceConfiguration(voiceBlock, ctx) {
-  if (!voiceBlock) return null;
+  if (!voiceBlock)
+    return null;
   const voiceConfig = {};
-  const inboundFillerWordsDetection = extractSourcedBoolean(
-    voiceBlock.inbound_filler_words_detection,
-  );
+  const inboundFillerWordsDetection = extractSourcedBoolean(voiceBlock.inbound_filler_words_detection);
   if (inboundFillerWordsDetection !== void 0) {
     voiceConfig.inbound_filler_words_detection = inboundFillerWordsDetection;
   }
   if (voiceBlock.inbound_keywords) {
     const keywordsBlock = voiceBlock.inbound_keywords;
     if (keywordsBlock.keywords) {
-      const keywordsList = extractStringSequence(
-        keywordsBlock.keywords,
-        "inbound_keywords.keywords",
-        ctx,
-      );
+      const keywordsList = extractStringSequence(keywordsBlock.keywords, "inbound_keywords.keywords", ctx);
       if (keywordsList.length > 0) {
         const inboundKeywords2 = { keywords: keywordsList };
         voiceConfig.inbound_keywords = inboundKeywords2;
@@ -23479,11 +22949,7 @@ function compileVoiceConfiguration(voiceBlock, ctx) {
     for (const entry of entries) {
       const waitingSequence = entry.waiting;
       if (waitingSequence) {
-        const waiting = extractStringSequence(
-          waitingSequence,
-          "outbound_filler_sentences.waiting",
-          ctx,
-        );
+        const waiting = extractStringSequence(waitingSequence, "outbound_filler_sentences.waiting", ctx);
         if (waiting.length > 0) {
           fillerSentences.push({ filler_sentences: { waiting } });
         }
@@ -23549,14 +23015,11 @@ function compileVoiceConfiguration(voiceBlock, ctx) {
 function extractModelAndParams(modelValue, paramsValue, ctx, modelRange) {
   let modelRef = null;
   if (modelValue !== void 0) {
-    const modelStr = extractStringValue(modelValue);
+    const modelStr = extractStringValue2(modelValue);
     if (modelStr) {
       const { scheme, path } = parseUri(modelStr);
       if (!scheme) {
-        ctx.error(
-          `Model URI must include a scheme (e.g., "model://..."). Got: "${modelStr}"`,
-          modelRange,
-        );
+        ctx.error(`Model URI must include a scheme (e.g., "model://..."). Got: "${modelStr}"`, modelRange);
         return void 0;
       }
       modelRef = path;
@@ -23573,20 +23036,14 @@ function extractModelAndParams(modelValue, paramsValue, ctx, modelRange) {
   return { modelRef, params };
 }
 function extractGlobalModelConfiguration(parsed, ctx) {
-  if (!parsed.model_config) return void 0;
-  const result = extractModelAndParams(
-    parsed.model_config.model,
-    parsed.model_config.params,
-    ctx,
-    parsed.model_config.model?.__cst?.range,
-  );
-  if (!result) return void 0;
+  if (!parsed.model_config)
+    return void 0;
+  const result = extractModelAndParams(parsed.model_config.model, parsed.model_config.params, ctx, parsed.model_config.model?.__cst?.range);
+  if (!result)
+    return void 0;
   if (!result.modelRef) {
     if (result.params) {
-      ctx.warning(
-        'Global model_config has parameters but no model specified. Parameters will be ignored. Global model_config requires a model field (e.g., model: "model://gpt-4"). To apply parameters to specific topics, use topic-level model_config.',
-        parsed.model_config.__cst?.range,
-      );
+      ctx.warning('Global model_config has parameters but no model specified. Parameters will be ignored. Global model_config requires a model field (e.g., model: "model://gpt-4"). To apply parameters to specific topics, use topic-level model_config.', parsed.model_config.__cst?.range);
     }
     return void 0;
   }
@@ -23597,32 +23054,28 @@ function extractGlobalModelConfiguration(parsed, ctx) {
   return modelConfig2;
 }
 function extractBlockParams(paramsBlock, ctx) {
-  if (!paramsBlock || typeof paramsBlock !== "object") return void 0;
+  if (!paramsBlock || typeof paramsBlock !== "object")
+    return void 0;
   const result = {};
   const block = paramsBlock;
   for (const [key, value] of Object.entries(block)) {
-    if (key.startsWith("__") || key === "description") continue;
+    if (key.startsWith("__") || key === "description")
+      continue;
     const extractedValue = extractExpressionValue(value);
     if (extractedValue !== void 0) {
       result[key] = extractedValue;
     } else if (ctx && value && typeof value === "object" && value.__kind) {
-      ctx.warning(
-        `Unsupported parameter value type "${value.__kind}" \u2014 this value will be ignored. Supported types are strings, numbers, booleans, arrays, and dicts.`,
-        value.__cst?.range,
-      );
+      ctx.warning(`Unsupported parameter value type "${value.__kind}" \u2014 this value will be ignored. Supported types are strings, numbers, booleans, arrays, and dicts.`, value.__cst?.range);
     }
   }
   return Object.keys(result).length > 0 ? result : void 0;
 }
 function extractTopicModelConfiguration(topicBlock, ctx) {
-  if (!topicBlock.model_config) return void 0;
-  const result = extractModelAndParams(
-    topicBlock.model_config.model,
-    topicBlock.model_config.params,
-    ctx,
-    topicBlock.model_config.model?.__cst?.range,
-  );
-  if (!result) return void 0;
+  if (!topicBlock.model_config)
+    return void 0;
+  const result = extractModelAndParams(topicBlock.model_config.model, topicBlock.model_config.params, ctx, topicBlock.model_config.model?.__cst?.range);
+  if (!result)
+    return void 0;
   if (!result.modelRef && !result.params) {
     return void 0;
   }
@@ -23633,19 +23086,19 @@ function extractTopicModelConfiguration(topicBlock, ctx) {
   return config2;
 }
 function mergeModelConfigurations(globalConfig2, topicConfig) {
-  if (!topicConfig && !globalConfig2) return void 0;
-  if (!globalConfig2) return topicConfig;
-  if (!topicConfig) return globalConfig2;
+  if (!topicConfig && !globalConfig2)
+    return void 0;
+  if (!globalConfig2)
+    return topicConfig;
+  if (!topicConfig)
+    return globalConfig2;
   const merged = {
-    model_ref:
-      topicConfig.model_ref !== null && topicConfig.model_ref !== void 0
-        ? topicConfig.model_ref
-        : globalConfig2.model_ref,
+    model_ref: topicConfig.model_ref !== null && topicConfig.model_ref !== void 0 ? topicConfig.model_ref : globalConfig2.model_ref
   };
   if (globalConfig2.configuration || topicConfig.configuration) {
     merged.configuration = {
       ...globalConfig2.configuration,
-      ...topicConfig.configuration,
+      ...topicConfig.configuration
     };
   }
   return merged;
@@ -23653,7 +23106,8 @@ function mergeModelConfigurations(globalConfig2, topicConfig) {
 
 // ../compiler/dist/nodes/compile-actions.js
 function compileActionDefinitions(actions, ctx) {
-  if (!actions) return [];
+  if (!actions)
+    return [];
   const result = [];
   for (const [name, def] of iterateNamedMap(actions)) {
     const actionConfig = compileActionDefinition(name, def, ctx);
@@ -23667,17 +23121,22 @@ function compileActionDefinition(name, def, ctx) {
   const description = extractSourcedDescription(def["description"]) ?? "";
   const label = extractSourcedString(def["label"]) ?? normalizeDeveloperName(name);
   const requireUserConfirmation = extractSourcedBoolean(def["require_user_confirmation"]) ?? false;
-  const includeInProgressIndicator =
-    extractSourcedBoolean(def["include_in_progress_indicator"]) ?? false;
-  const progressIndicatorMessage =
-    extractSourcedString(def["progress_indicator_message"]) ?? void 0;
-  const targetUri = extractStringValue(def["target"]);
+  const includeInProgressIndicator = extractSourcedBoolean(def["include_in_progress_indicator"]) ?? false;
+  const progressIndicatorMessage = extractSourcedString(def["progress_indicator_message"]) ?? void 0;
+  const targetUri = extractStringValue2(def["target"]);
   let invocationTargetType = "externalService";
   let invocationTargetName = name;
   if (targetUri) {
     const { scheme, path } = parseUri(targetUri);
-    if (scheme) invocationTargetType = scheme;
-    if (path) invocationTargetName = path;
+    if (scheme === "placeholder") {
+      invocationTargetType = "stub";
+      ctx.warning(`Action '${name}' uses a placeholder target "${targetUri}". Replace this with a real implementation before committing.`, getCstRange(def["target"]));
+    } else {
+      if (scheme)
+        invocationTargetType = scheme;
+      if (path)
+        invocationTargetName = path;
+    }
   }
   const inputType = compileInputParameters(def["inputs"], ctx);
   const outputType = compileOutputParameters(def["outputs"], ctx);
@@ -23691,7 +23150,7 @@ function compileActionDefinition(name, def, ctx) {
     invocation_target_type: invocationTargetType,
     invocation_target_name: invocationTargetName,
     input_type: inputType,
-    output_type: outputType,
+    output_type: outputType
   };
   if (source !== void 0) {
     actionDef2.source = source;
@@ -23702,25 +23161,24 @@ function compileActionDefinition(name, def, ctx) {
   return actionDef2;
 }
 function compileInputParameters(inputs, ctx) {
-  if (!inputs) return [];
+  if (!inputs)
+    return [];
   const result = [];
   for (const [name, decl] of iterateNamedMap(inputs)) {
     const param = compileInputParameter(name, decl, ctx);
-    if (param) result.push(param);
+    if (param)
+      result.push(param);
   }
   return result;
 }
 function compileInputParameter(name, decl, ctx) {
   const typeStr = getExpressionName(decl.type);
-  if (!typeStr) return void 0;
+  if (!typeStr)
+    return void 0;
   const props = decl.properties;
   const isList = isListType(decl.type);
-  const complexDataTypeName = extractStringValue(props?.["complex_data_type_name"]) ?? void 0;
-  const { dataType, complexDataTypeName: resolvedComplexName } = resolveParameterTypeInfo(
-    typeStr,
-    isList,
-    complexDataTypeName,
-  );
+  const complexDataTypeName = extractStringValue2(props?.["complex_data_type_name"]) ?? void 0;
+  const { dataType, complexDataTypeName: resolvedComplexName } = resolveParameterTypeInfo(typeStr, isList, complexDataTypeName);
   const isUserInput = extractSourcedBoolean(props?.["is_user_input"]) ?? false;
   const required2 = extractSourcedBoolean(props?.["is_required"]) ?? false;
   const schemaUri = extractSourcedString(props?.["schema"]) ?? void 0;
@@ -23729,14 +23187,11 @@ function compileInputParameter(name, decl, ctx) {
   const param = {
     developer_name: name,
     label,
-    description:
-      extractSourcedDescription(props?.["description"]) ??
-      extractStringValue(props?.["label"]) ??
-      normalizeDeveloperName(name),
+    description: extractSourcedDescription(props?.["description"]) ?? extractStringValue2(props?.["label"]) ?? normalizeDeveloperName(name),
     data_type: dataType,
     is_list: isList,
     required: required2,
-    is_user_input: isUserInput,
+    is_user_input: isUserInput
   };
   if (resolvedComplexName != null) {
     const cdtRange = getCstRange(props?.["complex_data_type_name"]);
@@ -23751,29 +23206,28 @@ function compileInputParameter(name, decl, ctx) {
   return param;
 }
 function compileOutputParameters(outputs, ctx) {
-  if (!outputs) return [];
+  if (!outputs)
+    return [];
   const result = [];
   for (const [name, decl] of iterateNamedMap(outputs)) {
     const param = compileOutputParameter(name, decl, ctx);
-    if (param) result.push(param);
+    if (param)
+      result.push(param);
   }
   return result;
 }
 function compileOutputParameter(name, decl, _ctx) {
   const typeStr = getExpressionName(decl.type);
-  if (!typeStr) return void 0;
+  if (!typeStr)
+    return void 0;
   const props = decl.properties;
   const isList = isListType(decl.type);
-  const complexDataTypeName = extractStringValue(props?.["complex_data_type_name"]) ?? void 0;
-  const { dataType, complexDataTypeName: resolvedComplexName } = resolveParameterTypeInfo(
-    typeStr,
-    isList,
-    complexDataTypeName,
-  );
+  const complexDataTypeName = extractStringValue2(props?.["complex_data_type_name"]) ?? void 0;
+  const { dataType, complexDataTypeName: resolvedComplexName } = resolveParameterTypeInfo(typeStr, isList, complexDataTypeName);
   const filterFromAgent = extractBooleanValue(props?.["filter_from_agent"]);
   const explicitIsUsedByPlanner = extractSourcedBoolean(props?.["is_used_by_planner"]);
   const isDisplayable = extractSourcedBoolean(props?.["is_displayable"]) ?? false;
-  const isUsedByPlanner = filterFromAgent === true ? false : (explicitIsUsedByPlanner ?? true);
+  const isUsedByPlanner = filterFromAgent === true ? false : explicitIsUsedByPlanner ?? true;
   const outLabel = extractSourcedString(props?.["label"]) ?? normalizeDeveloperName(name);
   const param = {
     developer_name: name,
@@ -23782,7 +23236,7 @@ function compileOutputParameter(name, decl, _ctx) {
     data_type: dataType,
     is_list: isList,
     is_used_by_planner: isUsedByPlanner,
-    is_displayable: isDisplayable,
+    is_displayable: isDisplayable
   };
   if (resolvedComplexName != null) {
     const cdtRange = getCstRange(props?.["complex_data_type_name"]);
@@ -23792,7 +23246,8 @@ function compileOutputParameter(name, decl, _ctx) {
 }
 function extractConstantValue(decl, ctx) {
   const dv = decl.defaultValue;
-  if (!dv) return null;
+  if (!dv)
+    return null;
   if (dv instanceof MemberExpression) {
     const decomposed = decomposeAtMemberExpression(dv);
     if (decomposed && decomposed.namespace === "knowledge") {
@@ -23805,9 +23260,11 @@ function extractConstantValue(decl, ctx) {
     return null;
   }
   const sourcedStr = extractSourcedString(dv);
-  if (sourcedStr !== void 0) return sourcedStr;
+  if (sourcedStr !== void 0)
+    return sourcedStr;
   const sourcedBool = extractSourcedBoolean(dv);
-  if (sourcedBool !== void 0) return sourcedBool;
+  if (sourcedBool !== void 0)
+    return sourcedBool;
   return null;
 }
 
@@ -23815,10 +23272,7 @@ function extractConstantValue(decl, ctx) {
 function warnIfConnectedAgentTransition(targetExpr, ctx) {
   const decomposed = decomposeAtMemberExpression(targetExpr);
   if (decomposed && decomposed.namespace === "connected_subagent") {
-    ctx.warning(
-      `Transition to connected agent "${decomposed.property}" is not supported. Use @connected_subagent.${decomposed.property} as a tool invocation instead.`,
-      targetExpr.__cst?.range,
-    );
+    ctx.warning(`Transition to connected agent "${decomposed.property}" is not supported. Use @connected_subagent.${decomposed.property} as a tool invocation instead.`, targetExpr.__cst?.range);
     return true;
   }
   return false;
@@ -23826,20 +23280,11 @@ function warnIfConnectedAgentTransition(targetExpr, ctx) {
 
 // ../compiler/dist/nodes/compile-directives.js
 function compileDeterministicDirectives(directives, ctx, options = {}) {
-  const {
-    addNextTopicResetAction = true,
-    gateOnNextTopicEmpty = true,
-    agentInstructionsVariable,
-    toolNames,
-    actionDefinitionNames,
-  } = options;
+  const { addNextTopicResetAction = true, gateOnNextTopicEmpty = true, agentInstructionsVariable, toolNames, actionDefinitionNames } = options;
   const conditionStack = new ConditionStack();
   const result = [];
   if (addNextTopicResetAction) {
-    const resetAction = createStateUpdateAction(
-      [{ [NEXT_TOPIC_VARIABLE]: EMPTY_TOPIC_VALUE }],
-      "True",
-    );
+    const resetAction = createStateUpdateAction([{ [NEXT_TOPIC_VARIABLE]: EMPTY_TOPIC_VALUE }], "True");
     result.push(resetAction);
   }
   for (const directive of directives) {
@@ -23848,7 +23293,7 @@ function compileDeterministicDirectives(directives, ctx, options = {}) {
       gateOnNextTopicEmpty,
       agentInstructionsVariable,
       toolNames,
-      actionDefinitionNames,
+      actionDefinitionNames
     });
     result.push(...actions);
   }
@@ -23878,20 +23323,21 @@ function compileDirective(stmt, ctx, dctx) {
 }
 function compileRunDirective(stmt, ctx, dctx) {
   const target = resolveAtReference(stmt.target, "actions", ctx, "action target");
-  if (!target) return [];
+  if (!target)
+    return [];
   const boundInputs = {};
   const stateUpdates = [];
   for (const child of stmt.body) {
     if (child instanceof WithClause) {
       const compiledValue = compileExpression(child.value, ctx, {
-        expressionContext: "'with' clause",
+        expressionContext: "'with' clause"
       });
       boundInputs[child.param] = compiledValue;
     } else if (child instanceof SetClause) {
       const varName = resolveAtReference(child.target, "variables", ctx, "variable name");
       if (varName) {
         const compiledValue = compileExpression(child.value, ctx, {
-          expressionContext: "'set' clause",
+          expressionContext: "'set' clause"
         });
         stateUpdates.push({ [varName]: compiledValue });
       }
@@ -23903,7 +23349,7 @@ function compileRunDirective(stmt, ctx, dctx) {
     target,
     bound_inputs: Object.keys(boundInputs).length > 0 ? boundInputs : {},
     llm_inputs: [],
-    state_updates: stateUpdates,
+    state_updates: stateUpdates
   };
   if (enabled) {
     action2.enabled = enabled;
@@ -23912,9 +23358,10 @@ function compileRunDirective(stmt, ctx, dctx) {
 }
 function compileSetDirective(stmt, ctx, dctx) {
   const varName = resolveAtReference(stmt.target, "variables", ctx, "variable name");
-  if (!varName) return [];
+  if (!varName)
+    return [];
   const compiledValue = compileExpression(stmt.value, ctx, {
-    expressionContext: "'set' clause",
+    expressionContext: "'set' clause"
   });
   const enabled = buildEnabledCondition(dctx);
   const action2 = createStateUpdateAction([{ [varName]: compiledValue }], enabled);
@@ -23924,25 +23371,19 @@ function compileTransitionDirective(stmt, ctx, dctx) {
   const result = [];
   for (const clause of stmt.clauses) {
     if (clause instanceof ToClause) {
-      if (warnIfConnectedAgentTransition(clause.target, ctx)) continue;
-      const targetName = resolveAtReference(
-        clause.target,
-        TRANSITION_TARGET_NAMESPACES,
-        ctx,
-        "transition target",
-      );
-      if (!targetName) continue;
+      if (warnIfConnectedAgentTransition(clause.target, ctx))
+        continue;
+      const targetName = resolveAtReference(clause.target, TRANSITION_TARGET_NAMESPACES, ctx, "transition target");
+      if (!targetName)
+        continue;
       const enabled = buildEnabledCondition(dctx);
-      const stateAction = createStateUpdateAction(
-        [{ [NEXT_TOPIC_VARIABLE]: `"${targetName}"` }],
-        enabled,
-      );
+      const stateAction = createStateUpdateAction([{ [NEXT_TOPIC_VARIABLE]: `"${targetName}"` }], enabled);
       result.push(stateAction);
       const handoff = {
         type: "handoff",
         target: targetName,
         enabled: `state.${NEXT_TOPIC_VARIABLE}=="${targetName}"`,
-        state_updates: [{ [NEXT_TOPIC_VARIABLE]: EMPTY_TOPIC_VALUE }],
+        state_updates: [{ [NEXT_TOPIC_VARIABLE]: EMPTY_TOPIC_VALUE }]
       };
       result.push(handoff);
     }
@@ -23952,21 +23393,14 @@ function compileTransitionDirective(stmt, ctx, dctx) {
 function compileIfDirective(stmt, ctx, dctx) {
   const result = [];
   const condition = compileExpression(stmt.condition, ctx, {
-    expressionContext: "'if' condition",
+    expressionContext: "'if' condition"
   });
-  const condEnabled =
-    buildEnabledCondition(dctx) ?? (dctx.agentInstructionsVariable ? "True" : null);
-  const condAction = createStateUpdateAction(
-    [{ [RUNTIME_CONDITION_VARIABLE]: condition }],
-    condEnabled,
-  );
+  const condEnabled = buildEnabledCondition(dctx) ?? (dctx.agentInstructionsVariable ? "True" : null);
+  const condAction = createStateUpdateAction([{ [RUNTIME_CONDITION_VARIABLE]: condition }], condEnabled);
   result.push(condAction);
   if (dctx.conditionStack.depth > 0 && stmt.orelse.length > 0) {
     const range = stmt.condition.__cst?.range ?? stmt.__cst?.range;
-    ctx.warning(
-      "Nested if/else is not fully supported: the runtime uses a single condition variable, so the else branch may not evaluate correctly",
-      range,
-    );
+    ctx.warning("Nested if/else is not fully supported: the runtime uses a single condition variable, so the else branch may not evaluate correctly", range);
   }
   dctx.conditionStack.push(condition, "positive");
   for (const child of stmt.body) {
@@ -23984,20 +23418,18 @@ function compileIfDirective(stmt, ctx, dctx) {
 }
 function compileTemplateDirective(stmt, ctx, dctx) {
   const content = compileTemplateValue(stmt, ctx, {
-    allowActionReferences: true,
+    allowActionReferences: true
   });
-  if (!content) return [];
+  if (!content)
+    return [];
   const varName = dctx.agentInstructionsVariable ?? AGENT_INSTRUCTIONS_VARIABLE;
   const enabled = buildEnabledCondition(dctx);
-  const action2 = createStateUpdateAction(
-    [
-      {
-        [varName]: `template::{{state.${varName}}}
-${content}`,
-      },
-    ],
-    enabled,
-  );
+  const action2 = createStateUpdateAction([
+    {
+      [varName]: `template::{{state.${varName}}}
+${content}`
+    }
+  ], enabled);
   return [action2];
 }
 var ConditionStack = class {
@@ -24018,14 +23450,16 @@ var ConditionStack = class {
    * Returns undefined if no conditions are active.
    */
   get currentCondition() {
-    if (this.stack.length === 0) return void 0;
+    if (this.stack.length === 0)
+      return void 0;
     const parts = this.stack.map((entry) => {
       if (entry.type === "positive") {
         return `state.${RUNTIME_CONDITION_VARIABLE}`;
       }
       return `not (state.${RUNTIME_CONDITION_VARIABLE})`;
     });
-    if (parts.length === 1) return parts[0];
+    if (parts.length === 1)
+      return parts[0];
     return parts.map((p) => `(${p})`).join(" and ");
   }
 };
@@ -24034,7 +23468,7 @@ function createStateUpdateAction(stateUpdates, enabled) {
     type: "action",
     target: STATE_UPDATE_ACTION,
     enabled: enabled ?? void 0,
-    state_updates: stateUpdates,
+    state_updates: stateUpdates
   };
   if (action2.enabled === void 0) {
     delete action2.enabled;
@@ -24053,7 +23487,8 @@ function buildEnabledCondition(dctx) {
   if (parts.length === 0) {
     return null;
   }
-  if (parts.length === 1) return parts[0];
+  if (parts.length === 1)
+    return parts[0];
   return parts.map((p) => `(${p})`).join(" and ");
 }
 
@@ -24065,16 +23500,16 @@ function resolveActionType(name, def) {
     if (decomposed) {
       if (decomposed.namespace === "utils") {
         const utilName = decomposed.property;
-        if (utilName === "transition") return "transition";
-        if (utilName === "setVariables") return "setVariables";
-        if (utilName === "escalate") return "escalate";
-        if (utilName === "supervise") return "supervise";
+        if (utilName === "transition")
+          return "transition";
+        if (utilName === "setVariables")
+          return "setVariables";
+        if (utilName === "escalate")
+          return "escalate";
+        if (utilName === "end_session")
+          return "end_session";
       }
-      if (
-        decomposed.namespace === "topic" ||
-        decomposed.namespace === "subagent" ||
-        decomposed.namespace === "connected_subagent"
-      ) {
+      if (decomposed.namespace === "topic" || decomposed.namespace === "subagent" || decomposed.namespace === "connected_subagent") {
         return "supervise";
       }
     }
@@ -24103,19 +23538,15 @@ function compileTransition(name, actionDef, body, _currentTopicName, topicDescri
   let lastAvailableWhenRange;
   for (const stmt of body) {
     if (stmt instanceof ToClause) {
-      if (warnIfConnectedAgentTransition(stmt.target, ctx)) continue;
-      const targetName = resolveAtReference(
-        stmt.target,
-        TRANSITION_TARGET_NAMESPACES,
-        ctx,
-        "transition target",
-      );
+      if (warnIfConnectedAgentTransition(stmt.target, ctx))
+        continue;
+      const targetName = resolveAtReference(stmt.target, TRANSITION_TARGET_NAMESPACES, ctx, "transition target");
       if (targetName) {
         transitions.push({
           targetName,
           condition: availableWhenCondition,
           toClauseRange: stmt.__cst?.range,
-          availableWhenRange: lastAvailableWhenRange,
+          availableWhenRange: lastAvailableWhenRange
         });
         availableWhenCondition = void 0;
         lastAvailableWhenRange = void 0;
@@ -24126,19 +23557,15 @@ function compileTransition(name, actionDef, body, _currentTopicName, topicDescri
     } else if (stmt instanceof TransitionStatement) {
       for (const clause of stmt.clauses) {
         if (clause instanceof ToClause) {
-          if (warnIfConnectedAgentTransition(clause.target, ctx)) continue;
-          const targetName = resolveAtReference(
-            clause.target,
-            TRANSITION_TARGET_NAMESPACES,
-            ctx,
-            "transition target",
-          );
+          if (warnIfConnectedAgentTransition(clause.target, ctx))
+            continue;
+          const targetName = resolveAtReference(clause.target, TRANSITION_TARGET_NAMESPACES, ctx, "transition target");
           if (targetName) {
             transitions.push({
               targetName,
               condition: availableWhenCondition,
               toClauseRange: clause.__cst?.range,
-              availableWhenRange: lastAvailableWhenRange,
+              availableWhenRange: lastAvailableWhenRange
             });
             availableWhenCondition = void 0;
             lastAvailableWhenRange = void 0;
@@ -24151,12 +23578,7 @@ function compileTransition(name, actionDef, body, _currentTopicName, topicDescri
     const colinear = actionDef.value;
     if (colinear) {
       if (!warnIfConnectedAgentTransition(colinear, ctx)) {
-        const targetName = resolveAtReference(
-          colinear,
-          TRANSITION_TARGET_NAMESPACES,
-          ctx,
-          "transition target",
-        );
+        const targetName = resolveAtReference(colinear, TRANSITION_TARGET_NAMESPACES, ctx, "transition target");
         if (targetName) {
           transitions.push({ targetName, condition: void 0 });
         }
@@ -24167,16 +23589,13 @@ function compileTransition(name, actionDef, body, _currentTopicName, topicDescri
   const description = extractSourcedDescription(actionDef.description) ?? "";
   for (const trans of transitions) {
     const toolName = alias ?? name;
-    const toolDescription =
-      description ||
-      topicDescriptions[trans.targetName] ||
-      normalizeDeveloperName(trans.targetName);
+    const toolDescription = description || topicDescriptions[trans.targetName] || normalizeDeveloperName(trans.targetName);
     const tool2 = {
       type: "action",
       target: STATE_UPDATE_ACTION,
       state_updates: [{ [NEXT_TOPIC_VARIABLE]: `"${trans.targetName}"` }],
       name: toolName,
-      description: toolDescription,
+      description: toolDescription
     };
     if (trans.condition) {
       tool2.enabled = trans.condition;
@@ -24186,7 +23605,7 @@ function compileTransition(name, actionDef, body, _currentTopicName, topicDescri
       type: "handoff",
       target: trans.targetName,
       enabled: `state.${NEXT_TOPIC_VARIABLE}=="${trans.targetName}"`,
-      state_updates: [{ [NEXT_TOPIC_VARIABLE]: EMPTY_TOPIC_VALUE }],
+      state_updates: [{ [NEXT_TOPIC_VARIABLE]: EMPTY_TOPIC_VALUE }]
     };
     handOffActions.push(handoff);
   }
@@ -24208,7 +23627,7 @@ function compileSetVariables(name, actionDef, body, ctx) {
         stateUpdates.push({ [stmt.param]: `result.${stmt.param}` });
       } else {
         const compiledValue = compileExpression(stmt.value, ctx, {
-          expressionContext: "'with' clause",
+          expressionContext: "'with' clause"
         });
         stateUpdates.push({ [stmt.param]: compiledValue });
       }
@@ -24216,7 +23635,7 @@ function compileSetVariables(name, actionDef, body, ctx) {
       const varName = extractVariableName(stmt.target, ctx);
       if (varName) {
         const compiledValue = compileExpression(stmt.value, ctx, {
-          expressionContext: "'set' clause",
+          expressionContext: "'set' clause"
         });
         stateUpdates.push({ [varName]: compiledValue });
       }
@@ -24226,7 +23645,7 @@ function compileSetVariables(name, actionDef, body, ctx) {
     type: "action",
     target: STATE_UPDATE_ACTION,
     state_updates: stateUpdates,
-    name: alias ?? name,
+    name: alias ?? name
   };
   if (description !== void 0) {
     tool2.description = description;
@@ -24234,18 +23653,15 @@ function compileSetVariables(name, actionDef, body, ctx) {
   if (hasWithClauses) {
     tool2.bound_inputs = {};
     tool2.llm_inputs = llmInputs;
-    tool2.input_parameters =
-      llmInputs.length > 0
-        ? llmInputs.map((inputName) => {
-            const stateVar = ctx.stateVariables.find((v) => v.developer_name === inputName);
-            const dataType = stateVar ? stateVarToParameterDataType(stateVar.data_type) : "String";
-            return {
-              developer_name: inputName,
-              label: inputName,
-              data_type: dataType,
-            };
-          })
-        : [];
+    tool2.input_parameters = llmInputs.length > 0 ? llmInputs.map((inputName) => {
+      const stateVar = ctx.stateVariables.find((v) => v.developer_name === inputName);
+      const dataType = stateVar ? stateVarToParameterDataType(stateVar.data_type) : "String";
+      return {
+        developer_name: inputName,
+        label: inputName,
+        data_type: dataType
+      };
+    }) : [];
   }
   return tool2;
 }
@@ -24268,25 +23684,19 @@ function compileSupervision(name, actionDef, body, topicDescriptions, ctx) {
   let enabledCondition;
   for (const stmt of body) {
     if (stmt instanceof ToClause) {
-      if (warnIfConnectedAgentTransition(stmt.target, ctx)) continue;
-      const resolved = resolveAtReference(
-        stmt.target,
-        TRANSITION_TARGET_NAMESPACES,
-        ctx,
-        "transition target",
-      );
-      if (resolved) targetName = resolved;
+      if (warnIfConnectedAgentTransition(stmt.target, ctx))
+        continue;
+      const resolved = resolveAtReference(stmt.target, TRANSITION_TARGET_NAMESPACES, ctx, "transition target");
+      if (resolved)
+        targetName = resolved;
     } else if (stmt instanceof TransitionStatement) {
       for (const clause of stmt.clauses) {
         if (clause instanceof ToClause) {
-          if (warnIfConnectedAgentTransition(clause.target, ctx)) continue;
-          const resolved = resolveAtReference(
-            clause.target,
-            TRANSITION_TARGET_NAMESPACES,
-            ctx,
-            "transition target",
-          );
-          if (resolved) targetName = resolved;
+          if (warnIfConnectedAgentTransition(clause.target, ctx))
+            continue;
+          const resolved = resolveAtReference(clause.target, TRANSITION_TARGET_NAMESPACES, ctx, "transition target");
+          if (resolved)
+            targetName = resolved;
         }
       }
     } else if (stmt instanceof AvailableWhen) {
@@ -24297,25 +23707,20 @@ function compileSupervision(name, actionDef, body, topicDescriptions, ctx) {
     const colinear = actionDef.value;
     if (colinear) {
       if (!warnIfConnectedAgentTransition(colinear, ctx)) {
-        const resolved = resolveAtReference(
-          colinear,
-          TRANSITION_TARGET_NAMESPACES,
-          ctx,
-          "transition target",
-        );
-        if (resolved) targetName = resolved;
+        const resolved = resolveAtReference(colinear, TRANSITION_TARGET_NAMESPACES, ctx, "transition target");
+        if (resolved)
+          targetName = resolved;
       }
     }
   }
   const resolvedTarget = targetName ?? name;
   const alias = extractSourcedString(actionDef.label);
-  const description =
-    extractSourcedDescription(actionDef.description) ?? topicDescriptions[resolvedTarget] ?? "";
+  const description = extractSourcedDescription(actionDef.description) ?? topicDescriptions[resolvedTarget] ?? "";
   const tool2 = {
     type: "supervision",
     target: resolvedTarget,
     name: alias ?? name,
-    description,
+    description
   };
   if (enabledCondition) {
     tool2.enabled = enabledCondition;
@@ -24331,7 +23736,7 @@ function compileEscalate(name, actionDef, body, ctx) {
   for (const stmt of body) {
     if (stmt instanceof AvailableWhen) {
       enabledCondition = compileExpression(stmt.condition, ctx, {
-        expressionContext: "'available when' clause",
+        expressionContext: "'available when' clause"
       });
     }
   }
@@ -24340,7 +23745,7 @@ function compileEscalate(name, actionDef, body, ctx) {
     target: STATE_UPDATE_ACTION,
     state_updates: [{ [NEXT_TOPIC_VARIABLE]: EMPTY_ESCALATION_NODE_VALUE }],
     name: alias ?? name,
-    description,
+    description
   };
   if (enabledCondition) {
     tool2.enabled = enabledCondition;
@@ -24349,9 +23754,33 @@ function compileEscalate(name, actionDef, body, ctx) {
     type: "handoff",
     target: ESCALATION_TARGET,
     enabled: `state.${NEXT_TOPIC_VARIABLE} == ${EMPTY_ESCALATION_NODE_VALUE}`,
-    state_updates: [{ [NEXT_TOPIC_VARIABLE]: EMPTY_TOPIC_VALUE }],
+    state_updates: [{ [NEXT_TOPIC_VARIABLE]: EMPTY_TOPIC_VALUE }]
   };
   return { tool: tool2, handOffAction: handoff };
+}
+
+// ../compiler/dist/nodes/compile-end-session.js
+function compileEndSession(name, actionDef, body, ctx) {
+  const alias = extractSourcedString(actionDef.label);
+  const description = extractSourcedDescription(actionDef.description) ?? "End the session";
+  let enabledCondition;
+  for (const stmt of body) {
+    if (stmt instanceof AvailableWhen) {
+      enabledCondition = compileExpression(stmt.condition, ctx, {
+        expressionContext: "'available when' clause"
+      });
+    }
+  }
+  const tool2 = {
+    type: "action",
+    target: END_SESSION_TARGET,
+    name: alias ?? name,
+    description
+  };
+  if (enabledCondition) {
+    tool2.enabled = enabledCondition;
+  }
+  return { tool: tool2 };
 }
 
 // ../compiler/dist/nodes/compile-tool.js
@@ -24360,16 +23789,12 @@ function compileTool(name, actionDef, body, ctx) {
   let isConnectedAgent = false;
   if (actionDef.value) {
     const decomposed = decomposeAtMemberExpression(actionDef.value);
-    if (
-      decomposed &&
-      (decomposed.namespace === "actions" || decomposed.namespace === "connected_subagent")
-    ) {
+    if (decomposed && (decomposed.namespace === "actions" || decomposed.namespace === "connected_subagent")) {
       target = decomposed.property;
       isConnectedAgent = decomposed.namespace === "connected_subagent";
     }
   }
-  const description =
-    extractSourcedDescription(actionDef.description) ?? normalizeDeveloperName(name);
+  const description = extractSourcedDescription(actionDef.description) ?? normalizeDeveloperName(name);
   const alias = extractSourcedString(actionDef.label);
   const displayName = alias ?? name;
   const boundInputs = {};
@@ -24382,7 +23807,7 @@ function compileTool(name, actionDef, body, ctx) {
   for (const stmt of body) {
     if (stmt instanceof WithClause) {
       const compiledValue = compileExpression(stmt.value, ctx, {
-        expressionContext: "'with' clause",
+        expressionContext: "'with' clause"
       });
       if (stmt.value instanceof Ellipsis) {
         llmInputs.push(stmt.param);
@@ -24391,21 +23816,16 @@ function compileTool(name, actionDef, body, ctx) {
       }
       inputClauses.set(stmt.param, stmt);
     } else if (stmt instanceof SetClause) {
-      const varName = resolveAtReference(
-        stmt.target,
-        ["variables", "outputs"],
-        ctx,
-        "variable name",
-      );
+      const varName = resolveAtReference(stmt.target, ["variables", "outputs"], ctx, "variable name");
       if (varName) {
         const compiledValue = compileExpression(stmt.value, ctx, {
-          expressionContext: "'set' clause",
+          expressionContext: "'set' clause"
         });
         stateUpdates.push({ [varName]: compiledValue });
       }
     } else if (stmt instanceof AvailableWhen) {
       enabledCondition = compileExpression(stmt.condition, ctx, {
-        expressionContext: "'available when' clause",
+        expressionContext: "'available when' clause"
       });
     } else if (stmt instanceof RunStatement) {
       const postAction = compilePostToolAction(stmt, ctx);
@@ -24423,27 +23843,22 @@ function compileTool(name, actionDef, body, ctx) {
     if (decomposed2 && decomposed2.namespace === "connected_subagent") {
       const sig = ctx.connectedAgentInputs.get(target);
       if (sig) {
-        const providedInputs = /* @__PURE__ */ new Set([...Object.keys(boundInputs), ...llmInputs]);
+        const providedInputs = /* @__PURE__ */ new Set([
+          ...Object.keys(boundInputs),
+          ...llmInputs
+        ]);
         for (const inputName of providedInputs) {
           if (!sig.allInputs.has(inputName)) {
             const clause = inputClauses.get(inputName);
-            const range =
-              (clause?.__paramCstNode ? toRange(clause.__paramCstNode) : clause?.__cst?.range) ??
-              actionDef.__cst?.range;
-            ctx.warning(
-              `Unknown input "${inputName}" on connected agent "${target}". Available inputs: ${[...sig.allInputs].join(", ") || "(none)"}`,
-              range,
-            );
+            const range = (clause?.__paramCstNode ? toRange(clause.__paramCstNode) : clause?.__cst?.range) ?? actionDef.__cst?.range;
+            ctx.warning(`Unknown input "${inputName}" on connected agent "${target}". Available inputs: ${[...sig.allInputs].join(", ") || "(none)"}`, range);
           }
         }
         for (const inputName of sig.allInputs) {
           if (!sig.inputsWithDefaults.has(inputName) && !providedInputs.has(inputName)) {
             const valueExpr = actionDef.value;
             const range = valueExpr?.__cst?.range ?? actionDef.__cst?.range;
-            ctx.warning(
-              `Missing required input "${inputName}" on connected agent "${target}". Provide it via a "with" clause or "..." for LLM-filled`,
-              range,
-            );
+            ctx.warning(`Missing required input "${inputName}" on connected agent "${target}". Provide it via a "with" clause or "..." for LLM-filled`, range);
           }
         }
       }
@@ -24457,15 +23872,13 @@ function compileTool(name, actionDef, body, ctx) {
     // bound_inputs: Object.keys(boundInputs).length > 0 ? boundInputs : {},
     // llm_inputs: llmInputs,
     // Only include bound_inputs and llm_inputs for non-connected-agent tools
-    ...(isConnectedAgent
-      ? {}
-      : {
-          bound_inputs: Object.keys(boundInputs).length > 0 ? boundInputs : {},
-          llm_inputs: llmInputs,
-        }),
+    ...isConnectedAgent ? {} : {
+      bound_inputs: Object.keys(boundInputs).length > 0 ? boundInputs : {},
+      llm_inputs: llmInputs
+    },
     state_updates: stateUpdates,
     name: displayName,
-    description,
+    description
   };
   if (enabledCondition) {
     tool2.enabled = enabledCondition;
@@ -24474,12 +23887,13 @@ function compileTool(name, actionDef, body, ctx) {
   return {
     tool: tool2,
     postToolCall: postToolCall2,
-    handOffActions,
+    handOffActions
   };
 }
 function compilePostToolAction(stmt, ctx) {
   const targetName = resolveAtReference(stmt.target, "actions", ctx, "action target");
-  if (!targetName) return void 0;
+  if (!targetName)
+    return void 0;
   const boundInputs = {};
   const llmInputs = [];
   const stateUpdates = [];
@@ -24489,21 +23903,16 @@ function compilePostToolAction(stmt, ctx) {
         llmInputs.push(child.param);
       } else {
         boundInputs[child.param] = compileExpression(child.value, ctx, {
-          expressionContext: "'with' clause",
+          expressionContext: "'with' clause"
         });
       }
     } else if (child instanceof SetClause) {
-      const varName = resolveAtReference(
-        child.target,
-        ["variables", "outputs"],
-        ctx,
-        "variable name",
-      );
+      const varName = resolveAtReference(child.target, ["variables", "outputs"], ctx, "variable name");
       if (varName) {
         stateUpdates.push({
           [varName]: compileExpression(child.value, ctx, {
-            expressionContext: "'set' clause",
-          }),
+            expressionContext: "'set' clause"
+          })
         });
       }
     }
@@ -24513,7 +23922,7 @@ function compilePostToolAction(stmt, ctx) {
     target: targetName,
     bound_inputs: Object.keys(boundInputs).length > 0 ? boundInputs : {},
     llm_inputs: llmInputs,
-    state_updates: stateUpdates,
+    state_updates: stateUpdates
   };
   return action2;
 }
@@ -24521,7 +23930,7 @@ function compilePostActionConditional(stmt, ctx) {
   const actions = [];
   const handOffs = [];
   const compiledCondition = compileExpression(stmt.condition, ctx, {
-    expressionContext: "'if' statement condition",
+    expressionContext: "'if' statement condition"
   });
   const condAction = {
     type: "action",
@@ -24529,20 +23938,16 @@ function compilePostActionConditional(stmt, ctx) {
     enabled: "True",
     state_updates: [
       {
-        AgentScriptInternal_condition: compiledCondition,
-      },
-    ],
+        AgentScriptInternal_condition: compiledCondition
+      }
+    ]
   };
   actions.push(condAction);
   const bodyResult = compileConditionalBody(stmt.body, "state.AgentScriptInternal_condition", ctx);
   actions.push(...bodyResult.actions);
   handOffs.push(...bodyResult.handOffs);
   if (stmt.orelse.length > 0) {
-    const elseResult = compileConditionalBody(
-      stmt.orelse,
-      `not state.AgentScriptInternal_condition`,
-      ctx,
-    );
+    const elseResult = compileConditionalBody(stmt.orelse, `not state.AgentScriptInternal_condition`, ctx);
     actions.push(...elseResult.actions);
     handOffs.push(...elseResult.handOffs);
   }
@@ -24559,21 +23964,16 @@ function compileConditionalBody(body, enabledCondition, ctx) {
         handOffs.push(result.handOff);
       }
     } else if (stmt instanceof SetClause) {
-      const varName = resolveAtReference(
-        stmt.target,
-        ["variables", "outputs"],
-        ctx,
-        "variable name",
-      );
+      const varName = resolveAtReference(stmt.target, ["variables", "outputs"], ctx, "variable name");
       if (varName) {
         const compiledValue = compileExpression(stmt.value, ctx, {
-          expressionContext: "'set' clause",
+          expressionContext: "'set' clause"
         });
         const setAction = {
           type: "action",
           target: "__state_update_action__",
           enabled: enabledCondition,
-          state_updates: [{ [varName]: compiledValue }],
+          state_updates: [{ [varName]: compiledValue }]
         };
         actions.push(setAction);
       }
@@ -24582,7 +23982,7 @@ function compileConditionalBody(body, enabledCondition, ctx) {
       if (postAction) {
         const gatedAction = {
           ...postAction,
-          enabled: enabledCondition,
+          enabled: enabledCondition
         };
         actions.push(gatedAction);
       }
@@ -24590,9 +23990,7 @@ function compileConditionalBody(body, enabledCondition, ctx) {
       const nestedResult = compilePostActionConditional(stmt, ctx);
       const combinedActions = nestedResult.actions.map((action2) => ({
         ...action2,
-        enabled: action2.enabled
-          ? `(${enabledCondition}) and (${action2.enabled})`
-          : enabledCondition,
+        enabled: action2.enabled ? `(${enabledCondition}) and (${action2.enabled})` : enabledCondition
       }));
       actions.push(...combinedActions);
       handOffs.push(...nestedResult.handOffs);
@@ -24603,23 +24001,20 @@ function compileConditionalBody(body, enabledCondition, ctx) {
 function compileTransitionInConditional(stmt, enabledCondition, ctx) {
   for (const clause of stmt.clauses) {
     if (clause instanceof ToClause) {
-      if (warnIfConnectedAgentTransition(clause.target, ctx)) continue;
-      const targetTopicName = resolveAtReference(
-        clause.target,
-        TRANSITION_TARGET_NAMESPACES,
-        ctx,
-        "transition target",
-      );
-      if (!targetTopicName) continue;
+      if (warnIfConnectedAgentTransition(clause.target, ctx))
+        continue;
+      const targetTopicName = resolveAtReference(clause.target, TRANSITION_TARGET_NAMESPACES, ctx, "transition target");
+      if (!targetTopicName)
+        continue;
       const action2 = {
         type: "action",
         target: "__state_update_action__",
         enabled: enabledCondition,
         state_updates: [
           {
-            AgentScriptInternal_next_topic: `"${targetTopicName}"`,
-          },
-        ],
+            AgentScriptInternal_next_topic: `"${targetTopicName}"`
+          }
+        ]
       };
       const handOff = {
         type: "handoff",
@@ -24627,9 +24022,9 @@ function compileTransitionInConditional(stmt, enabledCondition, ctx) {
         enabled: `state.AgentScriptInternal_next_topic=="${targetTopicName}"`,
         state_updates: [
           {
-            AgentScriptInternal_next_topic: '"__EMPTY__"',
-          },
-        ],
+            AgentScriptInternal_next_topic: '"__EMPTY__"'
+          }
+        ]
       };
       return { action: action2, handOff };
     }
@@ -24643,8 +24038,7 @@ function compileReasoningActions(reasoning, options, ctx) {
   const tools = [];
   const postToolCalls = [];
   const handOffActions = [];
-  const { instructionTemplate, instructionTemplateParts, isProcedural, proceduralStatements } =
-    extractInstructionTemplate(reasoning, nodeType, ctx);
+  const { instructionTemplate, instructionTemplateParts, isProcedural, proceduralStatements } = extractInstructionTemplate(reasoning, nodeType, ctx);
   const reasoningTools = reasoning?.actions;
   if (!reasoningTools) {
     return {
@@ -24654,7 +24048,7 @@ function compileReasoningActions(reasoning, options, ctx) {
       instructionTemplate,
       instructionTemplateParts,
       isProcedural,
-      proceduralStatements,
+      proceduralStatements
     };
   }
   for (const [actionName, actionDef] of iterateNamedMap(reasoningTools)) {
@@ -24665,16 +24059,7 @@ function compileReasoningActions(reasoning, options, ctx) {
       emitDisallowedActionDiagnostic(actionType, actionName, nodeType, def, ctx);
       continue;
     }
-    const result = compileAction(
-      actionType,
-      actionName,
-      def,
-      body,
-      nodeType,
-      topicName,
-      topicDescriptions,
-      ctx,
-    );
+    const result = compileAction(actionType, actionName, def, body, nodeType, topicName, topicDescriptions, ctx);
     const adaptedTools = adaptToolsForNodeType(result.tools, nodeType);
     tools.push(...adaptedTools);
     if (nodeType === "subagent") {
@@ -24689,7 +24074,7 @@ function compileReasoningActions(reasoning, options, ctx) {
     instructionTemplate,
     instructionTemplateParts,
     isProcedural,
-    proceduralStatements,
+    proceduralStatements
   };
 }
 function extractInstructionTemplate(reasoning, nodeType, ctx) {
@@ -24701,7 +24086,7 @@ function extractInstructionTemplate(reasoning, nodeType, ctx) {
       instructionTemplate: void 0,
       instructionTemplateParts,
       isProcedural,
-      proceduralStatements,
+      proceduralStatements
     };
   }
   const instructions = reasoning.instructions;
@@ -24710,7 +24095,7 @@ function extractInstructionTemplate(reasoning, nodeType, ctx) {
       instructionTemplate: void 0,
       instructionTemplateParts,
       isProcedural,
-      proceduralStatements,
+      proceduralStatements
     };
   }
   if (instructions.statements) {
@@ -24721,24 +24106,22 @@ function extractInstructionTemplate(reasoning, nodeType, ctx) {
       proceduralStatements = stmts;
     }
     if (nodeType === "subagent" && !hasNonTemplate && stmts.length > 1) {
-      instructionTemplateParts = stmts
-        .map((stmt) => ({
-          text: compileTemplateValue(stmt, ctx, {
-            allowActionReferences: true,
-          }),
-          range: stmt.__cst?.range,
-        }))
-        .filter((p) => p.text);
+      instructionTemplateParts = stmts.map((stmt) => ({
+        text: compileTemplateValue(stmt, ctx, {
+          allowActionReferences: true
+        }),
+        range: stmt.__cst?.range
+      })).filter((p) => p.text);
     }
   }
   const instructionTemplate = compileTemplateValue(instructions, ctx, {
-    allowActionReferences: true,
+    allowActionReferences: true
   });
   return {
     instructionTemplate,
     instructionTemplateParts,
     isProcedural,
-    proceduralStatements,
+    proceduralStatements
   };
 }
 function emitDisallowedActionDiagnostic(actionType, actionName, nodeType, def, ctx) {
@@ -24803,57 +24186,41 @@ function compileRouterTransition(actionName, def, body, topicDescriptions, ctx) 
   let enabledCondition;
   for (const stmt of body) {
     if (stmt instanceof ToClause) {
-      if (warnIfConnectedAgentTransition(stmt.target, ctx)) continue;
-      const resolved = resolveAtReference(
-        stmt.target,
-        TRANSITION_TARGET_NAMESPACES,
-        ctx,
-        "transition target",
-      );
-      if (resolved) targetName = resolved;
+      if (warnIfConnectedAgentTransition(stmt.target, ctx))
+        continue;
+      const resolved = resolveAtReference(stmt.target, TRANSITION_TARGET_NAMESPACES, ctx, "transition target");
+      if (resolved)
+        targetName = resolved;
     } else if (stmt instanceof TransitionStatement) {
       for (const clause of stmt.clauses) {
         if (clause instanceof ToClause) {
-          if (warnIfConnectedAgentTransition(clause.target, ctx)) continue;
-          const resolved = resolveAtReference(
-            clause.target,
-            TRANSITION_TARGET_NAMESPACES,
-            ctx,
-            "transition target",
-          );
-          if (resolved) targetName = resolved;
+          if (warnIfConnectedAgentTransition(clause.target, ctx))
+            continue;
+          const resolved = resolveAtReference(clause.target, TRANSITION_TARGET_NAMESPACES, ctx, "transition target");
+          if (resolved)
+            targetName = resolved;
         }
       }
     } else if (stmt instanceof AvailableWhen) {
       enabledCondition = compileExpression(stmt.condition, ctx, {
-        expressionContext: "'available when' clause",
+        expressionContext: "'available when' clause"
       });
     }
   }
   const resolvedTarget = targetName ?? actionName;
   const alias = extractSourcedString(def.label);
-  const description =
-    extractSourcedDescription(def.description) ?? topicDescriptions[resolvedTarget] ?? "";
+  const description = extractSourcedDescription(def.description) ?? topicDescriptions[resolvedTarget] ?? "";
   const tool2 = {
     name: alias ?? actionName,
     target: resolvedTarget,
-    description,
+    description
   };
   if (enabledCondition) {
     tool2.enabled = enabledCondition;
   }
   return tool2;
 }
-function compileAction(
-  actionType,
-  actionName,
-  def,
-  body,
-  nodeType,
-  topicName,
-  topicDescriptions,
-  ctx,
-) {
+function compileAction(actionType, actionName, def, body, nodeType, topicName, topicDescriptions, ctx) {
   switch (actionType) {
     case "transition": {
       if (nodeType === "router") {
@@ -24864,7 +24231,7 @@ function compileAction(
       return {
         tools: result.tools,
         postToolCalls: [],
-        handOffActions: result.handOffActions,
+        handOffActions: result.handOffActions
       };
     }
     case "setVariables": {
@@ -24878,7 +24245,7 @@ function compileAction(
         return {
           tools: [result2.tool],
           postToolCalls: result2.postToolCall ? [result2.postToolCall] : [],
-          handOffActions: result2.handOffActions,
+          handOffActions: result2.handOffActions
         };
       }
       const result = compileSupervision(actionName, def, body, topicDescriptions, ctx);
@@ -24889,7 +24256,15 @@ function compileAction(
       return {
         tools: [result.tool],
         postToolCalls: [],
-        handOffActions: [result.handOffAction],
+        handOffActions: [result.handOffAction]
+      };
+    }
+    case "end_session": {
+      const result = compileEndSession(actionName, def, body, ctx);
+      return {
+        tools: [result.tool],
+        postToolCalls: [],
+        handOffActions: []
       };
     }
     default: {
@@ -24897,7 +24272,7 @@ function compileAction(
       return {
         tools: [result.tool],
         postToolCalls: result.postToolCall ? [result.postToolCall] : [],
-        handOffActions: result.handOffActions,
+        handOffActions: result.handOffActions
       };
     }
   }
@@ -24910,7 +24285,7 @@ function adaptToolsForNodeType(tools, nodeType) {
     const routerTool = {
       name: tool2.name,
       target: tool2.target,
-      description: tool2.description,
+      description: tool2.description
     };
     if (tool2.enabled !== void 0) {
       routerTool.enabled = tool2.enabled;
@@ -24923,32 +24298,14 @@ function adaptToolsForNodeType(tools, nodeType) {
 }
 
 // ../compiler/dist/nodes/compile-subagent-node.js
-function compileSubAgentNode(
-  topicName,
-  topicBlock,
-  systemBlock,
-  topicDescriptions,
-  globalModelConfig,
-  ctx,
-) {
+function compileSubAgentNode(topicName, topicBlock, systemBlock, topicDescriptions, globalModelConfig, ctx) {
   const description = extractSourcedDescription(topicBlock.description) ?? "";
   const label = extractSourcedString(topicBlock.label) ?? normalizeDeveloperName(topicName);
   const source = extractSourcedString(topicBlock.source) ?? void 0;
   const topicModelConfig = extractTopicModelConfiguration(topicBlock, ctx);
   const mergedModelConfig = mergeModelConfigurations(globalModelConfig, topicModelConfig);
-  const actionDefinitions = compileActionDefinitions(
-    topicBlock.tool_definitions ?? topicBlock.actions,
-    ctx,
-  );
-  const {
-    tools,
-    postToolCalls,
-    afterAllToolCalls,
-    instructionTemplate,
-    instructionTemplateParts,
-    isProcedural,
-    proceduralStatements,
-  } = compileReasoningTools(topicName, topicBlock.reasoning, topicDescriptions, ctx);
+  const actionDefinitions = compileActionDefinitions(topicBlock.tool_definitions ?? topicBlock.actions, ctx);
+  const { tools, postToolCalls, afterAllToolCalls, instructionTemplate, instructionTemplateParts, isProcedural, proceduralStatements } = compileReasoningTools(topicName, topicBlock.reasoning, topicDescriptions, ctx);
   const systemInstructions = compileSystemInstructions(systemBlock, topicBlock, ctx);
   let focusPrompt;
   let beforeReasoningIteration;
@@ -24962,8 +24319,8 @@ function compileSubAgentNode(
       const parts = instructionTemplateParts ?? [
         {
           text: instructionTemplate,
-          range: topicBlock.reasoning?.instructions?.__cst?.range,
-        },
+          range: topicBlock.reasoning?.instructions?.__cst?.range
+        }
       ];
       beforeReasoningIteration = compileSimpleInstructionIteration(parts, ctx);
     }
@@ -24971,10 +24328,7 @@ function compileSubAgentNode(
     focusPrompt = compileFocusPrompt(void 0, topicBlock.reasoning);
     beforeReasoningIteration = [];
   }
-  const beforeReasoning = compileBeforeReasoning(
-    extractStatements(topicBlock.before_reasoning),
-    ctx,
-  );
+  const beforeReasoning = compileBeforeReasoning(extractStatements(topicBlock.before_reasoning), ctx);
   const afterReasoning = compileAfterReasoning(extractStatements(topicBlock.after_reasoning), ctx);
   const node = {
     type: "subagent",
@@ -24983,7 +24337,7 @@ function compileSubAgentNode(
     tools,
     developer_name: topicName,
     label,
-    action_definitions: actionDefinitions,
+    action_definitions: actionDefinitions
   };
   if (systemInstructions) {
     node.instructions = systemInstructions;
@@ -25029,7 +24383,7 @@ function compileReasoningTools(topicName, reasoning, topicDescriptions, ctx) {
       instructionTemplate,
       instructionTemplateParts,
       isProcedural: false,
-      proceduralStatements: void 0,
+      proceduralStatements: void 0
     };
   }
   const reasoningTools = reasoning.actions;
@@ -25043,13 +24397,9 @@ function compileReasoningTools(topicName, reasoning, topicDescriptions, ctx) {
         let foundTarget = false;
         for (const stmt of body) {
           if (stmt instanceof ToClause) {
-            if (warnIfConnectedAgentTransition(stmt.target, ctx)) continue;
-            const targetName = resolveAtReference(
-              stmt.target,
-              TRANSITION_TARGET_NAMESPACES,
-              ctx,
-              "transition target",
-            );
+            if (warnIfConnectedAgentTransition(stmt.target, ctx))
+              continue;
+            const targetName = resolveAtReference(stmt.target, TRANSITION_TARGET_NAMESPACES, ctx, "transition target");
             if (targetName) {
               ctx.actionReferenceMap.set(targetName, actionKey);
               foundTarget = true;
@@ -25057,13 +24407,9 @@ function compileReasoningTools(topicName, reasoning, topicDescriptions, ctx) {
           } else if (stmt instanceof TransitionStatement) {
             for (const clause of stmt.clauses) {
               if (clause instanceof ToClause) {
-                if (warnIfConnectedAgentTransition(clause.target, ctx)) continue;
-                const targetName = resolveAtReference(
-                  clause.target,
-                  TRANSITION_TARGET_NAMESPACES,
-                  ctx,
-                  "transition target",
-                );
+                if (warnIfConnectedAgentTransition(clause.target, ctx))
+                  continue;
+                const targetName = resolveAtReference(clause.target, TRANSITION_TARGET_NAMESPACES, ctx, "transition target");
                 if (targetName) {
                   ctx.actionReferenceMap.set(targetName, actionKey);
                   foundTarget = true;
@@ -25074,12 +24420,7 @@ function compileReasoningTools(topicName, reasoning, topicDescriptions, ctx) {
         }
         if (!foundTarget && def.value) {
           if (!warnIfConnectedAgentTransition(def.value, ctx)) {
-            const targetName = resolveAtReference(
-              def.value,
-              TRANSITION_TARGET_NAMESPACES,
-              ctx,
-              "transition target",
-            );
+            const targetName = resolveAtReference(def.value, TRANSITION_TARGET_NAMESPACES, ctx, "transition target");
             if (targetName) {
               ctx.actionReferenceMap.set(targetName, actionKey);
             }
@@ -25088,15 +24429,11 @@ function compileReasoningTools(topicName, reasoning, topicDescriptions, ctx) {
       }
     }
   }
-  const result = compileReasoningActions(
-    reasoning,
-    {
-      nodeType: "subagent",
-      topicName,
-      topicDescriptions,
-    },
-    ctx,
-  );
+  const result = compileReasoningActions(reasoning, {
+    nodeType: "subagent",
+    topicName,
+    topicDescriptions
+  }, ctx);
   return {
     tools: result.tools,
     postToolCalls: result.postToolCalls,
@@ -25104,34 +24441,37 @@ function compileReasoningTools(topicName, reasoning, topicDescriptions, ctx) {
     instructionTemplate: result.instructionTemplate,
     instructionTemplateParts: result.instructionTemplateParts,
     isProcedural: result.isProcedural,
-    proceduralStatements: result.proceduralStatements,
+    proceduralStatements: result.proceduralStatements
   };
 }
 function compileSystemInstructions(systemBlock, topicBlock, ctx) {
   const opts = { allowActionReferences: true };
   if (topicBlock.system) {
     const instructions = compileTemplateValue(topicBlock.system.instructions, ctx, opts);
-    if (instructions) return dedent(instructions);
+    if (instructions)
+      return dedent(instructions);
   }
   if (systemBlock) {
     const instructions = compileTemplateValue(systemBlock.instructions, ctx, opts);
-    if (instructions) return dedent(instructions);
+    if (instructions)
+      return dedent(instructions);
   }
   return "";
 }
 function compileBeforeReasoningIteration(statements, ctx) {
-  if (statements.length === 0) return [];
+  if (statements.length === 0)
+    return [];
   const resetAction = {
     type: "action",
     target: STATE_UPDATE_ACTION,
     enabled: "True",
-    state_updates: [{ [AGENT_INSTRUCTIONS_VARIABLE]: "''" }],
+    state_updates: [{ [AGENT_INSTRUCTIONS_VARIABLE]: "''" }]
   };
   const result = [resetAction];
   const actions = compileDeterministicDirectives(statements, ctx, {
     addNextTopicResetAction: false,
     gateOnNextTopicEmpty: false,
-    agentInstructionsVariable: AGENT_INSTRUCTIONS_VARIABLE,
+    agentInstructionsVariable: AGENT_INSTRUCTIONS_VARIABLE
   });
   result.push(...actions);
   return result;
@@ -25141,7 +24481,7 @@ function compileSimpleInstructionIteration(templateParts, _ctx) {
     type: "action",
     target: STATE_UPDATE_ACTION,
     enabled: "True",
-    state_updates: [{ [AGENT_INSTRUCTIONS_VARIABLE]: "''" }],
+    state_updates: [{ [AGENT_INSTRUCTIONS_VARIABLE]: "''" }]
   };
   const result = [resetAction];
   for (const part of templateParts) {
@@ -25151,9 +24491,9 @@ function compileSimpleInstructionIteration(templateParts, _ctx) {
       state_updates: [
         {
           [AGENT_INSTRUCTIONS_VARIABLE]: `template::{{state.${AGENT_INSTRUCTIONS_VARIABLE}}}
-${part.text}`,
-        },
-      ],
+${part.text}`
+        }
+      ]
     };
     result.push(appendAction);
   }
@@ -25164,49 +24504,52 @@ function compileFocusPrompt(instructionTemplate, reasoning) {
     return instructionTemplate.trim();
   }
   if (reasoning) {
-    const focusPrompt = extractStringValue(reasoning["focus_prompt"]);
-    if (focusPrompt) return focusPrompt;
+    const focusPrompt = extractStringValue2(reasoning["focus_prompt"]);
+    if (focusPrompt)
+      return focusPrompt;
   }
   return "";
 }
 function compileBeforeReasoning(directives, ctx) {
-  if (!directives || directives.length === 0) return null;
+  if (!directives || directives.length === 0)
+    return null;
   return compileDeterministicDirectives(directives, ctx, {
     addNextTopicResetAction: true,
-    gateOnNextTopicEmpty: true,
+    gateOnNextTopicEmpty: true
   });
 }
 function compileAfterReasoning(directives, ctx) {
-  if (!directives || directives.length === 0) return null;
+  if (!directives || directives.length === 0)
+    return null;
   return compileDeterministicDirectives(directives, ctx, {
     addNextTopicResetAction: true,
-    gateOnNextTopicEmpty: true,
+    gateOnNextTopicEmpty: true
   });
 }
 function statementsHaveTemplateContent(statements) {
   for (const stmt of statements) {
     if (stmt instanceof Template) {
-      if (
-        stmt.parts?.some(
-          (p) =>
-            (p instanceof TemplateText && p.value?.trim()) || p instanceof TemplateInterpolation,
-        )
-      ) {
+      if (stmt.parts?.some((p) => p instanceof TemplateText && p.value?.trim() || p instanceof TemplateInterpolation)) {
         return true;
       }
     }
     if (stmt instanceof IfStatement) {
-      if (statementsHaveTemplateContent(stmt.body)) return true;
-      if (stmt.orelse.length > 0 && statementsHaveTemplateContent(stmt.orelse)) return true;
+      if (statementsHaveTemplateContent(stmt.body))
+        return true;
+      if (stmt.orelse.length > 0 && statementsHaveTemplateContent(stmt.orelse))
+        return true;
     } else if (stmt instanceof RunStatement) {
-      if (statementsHaveTemplateContent(stmt.body)) return true;
+      if (statementsHaveTemplateContent(stmt.body))
+        return true;
     }
   }
   return false;
 }
 function extractStatements(value) {
-  if (!value) return void 0;
-  if (Array.isArray(value)) return value;
+  if (!value)
+    return void 0;
+  if (Array.isArray(value))
+    return value;
   if ("statements" in value) {
     return value.statements;
   }
@@ -25214,39 +24557,20 @@ function extractStatements(value) {
 }
 
 // ../compiler/dist/nodes/compile-router-node.js
-function compileRouterNode(
-  topicName,
-  topicBlock,
-  systemBlock,
-  topicDescriptions,
-  globalModelConfig,
-  ctx,
-) {
+function compileRouterNode(topicName, topicBlock, systemBlock, topicDescriptions, globalModelConfig, ctx) {
   const description = extractSourcedDescription(topicBlock.description) ?? "";
   const label = extractSourcedString(topicBlock.label) ?? normalizeDeveloperName(topicName);
   const source = extractSourcedString(topicBlock.source) ?? void 0;
   const topicModelConfig = extractTopicModelConfiguration(topicBlock, ctx);
   const modelConfig2 = mergeModelConfigurations(globalModelConfig, topicModelConfig);
   const systemInstructions = compileRouterSystemInstructions(systemBlock, topicBlock, ctx);
-  const { tools, instructionTemplate, isProcedural, proceduralStatements } = compileRouterTools(
-    topicBlock.reasoning,
-    topicDescriptions,
-    ctx,
-  );
+  const { tools, instructionTemplate, isProcedural, proceduralStatements } = compileRouterTools(topicBlock.reasoning, topicDescriptions, ctx);
   const actionDefinitions = compileActionDefinitions(topicBlock.actions, ctx);
-  const beforeReasoningIteration = compileRouterBeforeReasoningIteration(
-    instructionTemplate,
-    isProcedural,
-    proceduralStatements,
-    ctx,
-  );
-  const hasInstructions =
-    isProcedural || (instructionTemplate !== void 0 && instructionTemplate !== "");
-  const instructions = hasInstructions
-    ? `${systemInstructions}
+  const beforeReasoningIteration = compileRouterBeforeReasoningIteration(instructionTemplate, isProcedural, proceduralStatements, ctx);
+  const hasInstructions = isProcedural || instructionTemplate !== void 0 && instructionTemplate !== "";
+  const instructions = hasInstructions ? `${systemInstructions}
 
-{{state.${AGENT_INSTRUCTIONS_VARIABLE}}}`
-    : systemInstructions;
+{{state.${AGENT_INSTRUCTIONS_VARIABLE}}}` : systemInstructions;
   const node = {
     model_configuration: modelConfig2,
     type: "router",
@@ -25255,7 +24579,7 @@ function compileRouterNode(
     tools,
     developer_name: topicName,
     label,
-    action_definitions: actionDefinitions,
+    action_definitions: actionDefinitions
   };
   if (beforeReasoningIteration.length > 0) {
     node.before_reasoning_iteration = beforeReasoningIteration;
@@ -25268,12 +24592,14 @@ function compileRouterNode(
 }
 function compileRouterSystemInstructions(systemBlock, topicBlock, _ctx) {
   if (topicBlock.system) {
-    const instructions = extractStringValue(topicBlock.system.instructions);
-    if (instructions) return dedent(instructions);
+    const instructions = extractStringValue2(topicBlock.system.instructions);
+    if (instructions)
+      return dedent(instructions);
   }
   if (systemBlock) {
-    const instructions = extractStringValue(systemBlock.instructions);
-    if (instructions) return dedent(instructions);
+    const instructions = extractStringValue2(systemBlock.instructions);
+    if (instructions)
+      return dedent(instructions);
   }
   return "";
 }
@@ -25285,53 +24611,45 @@ function compileRouterTools(reasoning, topicDescriptions, ctx) {
       tools,
       instructionTemplate,
       isProcedural: false,
-      proceduralStatements: void 0,
+      proceduralStatements: void 0
     };
   }
-  const result = compileReasoningActions(
-    reasoning,
-    {
-      nodeType: "router",
-      topicName: "",
-      // Router nodes don't have a current topic name
-      topicDescriptions,
-    },
-    ctx,
-  );
+  const result = compileReasoningActions(reasoning, {
+    nodeType: "router",
+    topicName: "",
+    // Router nodes don't have a current topic name
+    topicDescriptions
+  }, ctx);
   return {
     tools: result.tools,
     // Type assertion safe due to adaptation
     instructionTemplate: result.instructionTemplate,
     isProcedural: result.isProcedural,
-    proceduralStatements: result.proceduralStatements,
+    proceduralStatements: result.proceduralStatements
   };
 }
-function compileRouterBeforeReasoningIteration(
-  instructionTemplate,
-  isProcedural,
-  proceduralStatements,
-  _ctx,
-) {
+function compileRouterBeforeReasoningIteration(instructionTemplate, isProcedural, proceduralStatements, _ctx) {
   if (isProcedural && proceduralStatements) {
     const resetAction2 = {
       type: "action",
       target: STATE_UPDATE_ACTION,
       enabled: "True",
-      state_updates: [{ [AGENT_INSTRUCTIONS_VARIABLE]: "''" }],
+      state_updates: [{ [AGENT_INSTRUCTIONS_VARIABLE]: "''" }]
     };
     const actions = compileDeterministicDirectives(proceduralStatements, _ctx, {
       addNextTopicResetAction: false,
       gateOnNextTopicEmpty: false,
-      agentInstructionsVariable: AGENT_INSTRUCTIONS_VARIABLE,
+      agentInstructionsVariable: AGENT_INSTRUCTIONS_VARIABLE
     });
     return [resetAction2, ...actions];
   }
-  if (!instructionTemplate) return [];
+  if (!instructionTemplate)
+    return [];
   const resetAction = {
     type: "action",
     target: STATE_UPDATE_ACTION,
     enabled: "True",
-    state_updates: [{ [AGENT_INSTRUCTIONS_VARIABLE]: "''" }],
+    state_updates: [{ [AGENT_INSTRUCTIONS_VARIABLE]: "''" }]
   };
   const appendAction = {
     type: "action",
@@ -25339,45 +24657,26 @@ function compileRouterBeforeReasoningIteration(
     state_updates: [
       {
         [AGENT_INSTRUCTIONS_VARIABLE]: `template::{{state.${AGENT_INSTRUCTIONS_VARIABLE}}}
-${instructionTemplate}`,
-      },
-    ],
+${instructionTemplate}`
+      }
+    ]
   };
   return [resetAction, appendAction];
 }
 
 // ../compiler/dist/nodes/compile-node.js
-function compileNode(
-  topicName,
-  topicBlock,
-  systemBlock,
-  topicDescriptions,
-  globalModelConfig,
-  ctx,
-) {
+function compileNode(topicName, topicBlock, systemBlock, topicDescriptions, globalModelConfig, ctx) {
   if (isHyperclassifierNode(topicBlock)) {
-    return compileRouterNode(
-      topicName,
-      topicBlock,
-      systemBlock,
-      topicDescriptions,
-      globalModelConfig,
-      ctx,
-    );
+    return compileRouterNode(topicName, topicBlock, systemBlock, topicDescriptions, globalModelConfig, ctx);
   }
-  return compileSubAgentNode(
-    topicName,
-    topicBlock,
-    systemBlock,
-    topicDescriptions,
-    globalModelConfig,
-    ctx,
-  );
+  return compileSubAgentNode(topicName, topicBlock, systemBlock, topicDescriptions, globalModelConfig, ctx);
 }
 function isHyperclassifierNode(topicBlock) {
-  if (!topicBlock.model_config) return false;
-  const modelStr = extractStringValue(topicBlock.model_config.model);
-  if (!modelStr) return false;
+  if (!topicBlock.model_config)
+    return false;
+  const modelStr = extractStringValue2(topicBlock.model_config.model);
+  if (!modelStr)
+    return false;
   return modelStr.includes(HYPERCLASSIFIER_MODEL_PREFIX);
 }
 
@@ -25387,13 +24686,15 @@ function compileConnectedAgentNode(name, block, ctx) {
   const description = extractSourcedDescription(block.description) ?? "";
   const loadingText = extractSourcedString(block.loading_text) ?? void 0;
   const boundInputs = compileBoundInputs(block.inputs, ctx);
-  const targetUri = extractStringValue(block.target);
+  const targetUri = extractStringValue2(block.target);
   let invocationTargetType = "externalService";
   let invocationTargetName = name;
   if (targetUri) {
     const { scheme, path } = parseUri(targetUri);
-    if (scheme) invocationTargetType = scheme;
-    if (path) invocationTargetName = path;
+    if (scheme)
+      invocationTargetType = scheme;
+    if (path)
+      invocationTargetName = path;
   }
   const node = {
     type: "related_agent",
@@ -25401,7 +24702,7 @@ function compileConnectedAgentNode(name, block, ctx) {
     label,
     description,
     invocation_target_type: invocationTargetType,
-    invocation_target_name: invocationTargetName,
+    invocation_target_name: invocationTargetName
   };
   if (loadingText !== void 0) {
     node.loading_text = loadingText;
@@ -25413,7 +24714,8 @@ function compileConnectedAgentNode(name, block, ctx) {
   return node;
 }
 function compileBoundInputs(inputs, ctx) {
-  if (!inputs || inputs.size === 0) return void 0;
+  if (!inputs || inputs.size === 0)
+    return void 0;
   const result = {};
   for (const [name, decl] of iterateNamedMap(inputs)) {
     if (decl.defaultValue) {
@@ -25423,16 +24725,126 @@ function compileBoundInputs(inputs, ctx) {
   return Object.keys(result).length > 0 ? result : void 0;
 }
 
+// ../compiler/dist/nodes/compile-custom-subagent-node.js
+function extractVariableRef2(decl) {
+  if (!(decl.type instanceof MemberExpression))
+    return void 0;
+  const decomposed = decomposeAtMemberExpression(decl.type);
+  if (decomposed?.namespace !== "variables")
+    return void 0;
+  return `variables.${decomposed.property}`;
+}
+var COMMERCE_SHOPPER_BYO_CLIENT = {
+  client_ref: "icr-default",
+  configuration: {
+    node_type_id: "commerce_shopper_agent",
+    node_namespace: "commerceshopperagent"
+  }
+};
+function compileCustomSubagentNode(name, block, byoClient, topicDescriptions, ctx) {
+  const description = extractStringValue2(block.description) ?? "";
+  const label = extractStringValue2(block.label) ?? normalizeDeveloperName(name);
+  const inputParameters = compileInputParameters2(block.parameters);
+  const actionsBlock = block.actions;
+  const actionDefinitions = compileActionDefinitions(actionsBlock, ctx);
+  const boundInputTools = compileTools(actionsBlock);
+  const reasoning = block.reasoning;
+  const reasoningResult = compileReasoningActions(reasoning, {
+    nodeType: "subagent",
+    topicName: name,
+    topicDescriptions
+  }, ctx);
+  const allTools = [
+    ...boundInputTools,
+    ...reasoningResult.tools
+  ];
+  const onInitStmts = extractStatements(block.on_init);
+  const onInit = onInitStmts?.length ? compileDeterministicDirectives(onInitStmts, ctx, {
+    addNextTopicResetAction: false,
+    gateOnNextTopicEmpty: false
+  }) : null;
+  const onExitStmts = extractStatements(block.on_exit);
+  const onExit = onExitStmts?.length ? compileDeterministicDirectives(onExitStmts, ctx, {
+    addNextTopicResetAction: false,
+    gateOnNextTopicEmpty: false
+  }) : null;
+  const node = {
+    type: "byon",
+    developer_name: name,
+    description,
+    label,
+    byo_client: byoClient
+  };
+  if (inputParameters && Object.keys(inputParameters).length > 0) {
+    node.input_parameters = inputParameters;
+  }
+  if (actionDefinitions.length > 0) {
+    node.action_definitions = actionDefinitions;
+  }
+  if (allTools.length > 0) {
+    node.tools = allTools;
+  }
+  if (onInit && onInit.length > 0) {
+    node.on_init = onInit;
+  }
+  if (onExit && onExit.length > 0) {
+    node.on_exit = onExit;
+  }
+  ctx.setScriptPath(node, name);
+  return node;
+}
+function compileInputParameters2(parametersBlock) {
+  if (!parametersBlock)
+    return void 0;
+  const template = parametersBlock["template"];
+  if (!template || template.size === 0)
+    return void 0;
+  const result = {};
+  for (const [key, rawDecl] of iterateNamedMap(template)) {
+    const ref = extractVariableRef2(rawDecl);
+    if (ref)
+      result[key] = ref;
+  }
+  return Object.keys(result).length > 0 ? result : void 0;
+}
+function compileTools(actions) {
+  if (!actions)
+    return [];
+  const tools = [];
+  for (const [actionName, def] of iterateNamedMap(actions)) {
+    const inputs = def["inputs"];
+    if (!inputs)
+      continue;
+    const boundInputs = {};
+    for (const [inputName, rawDecl] of iterateNamedMap(inputs)) {
+      const ref = extractVariableRef2(rawDecl);
+      if (ref)
+        boundInputs[inputName] = ref;
+    }
+    if (Object.keys(boundInputs).length > 0) {
+      tools.push({
+        type: "action",
+        target: actionName,
+        name: actionName,
+        bound_inputs: boundInputs
+      });
+    }
+  }
+  return tools;
+}
+
 // ../compiler/dist/surfaces/compile-surfaces.js
 var CONNECTION_TYPES = {
   messaging: "messaging",
   service_email: "service_email",
   slack: "slack",
   telephony: "telephony",
-  voice: "voice",
+  voice: "voice"
+  // customer_web_client: 'customer_web_client',
 };
 function compileSurfaces(connections, agentType2, ctx) {
-  if (!connections) return [];
+  if (!connections)
+    return [];
   const result = [];
   for (const [name, def] of iterateNamedMap(connections)) {
     const surface2 = compileSurface(name, def, agentType2, ctx);
@@ -25450,7 +24862,7 @@ function compileSurface(name, def, agentType2, ctx) {
   const responseActions = compileResponseActions(def, ctx);
   validateConnection(name, connectionType, def, agentType2, ctx);
   const surface2 = {
-    surface_type: connectionType,
+    surface_type: connectionType
   };
   if (adaptiveResponseAllowed !== void 0) {
     surface2.adaptive_response_allowed = adaptiveResponseAllowed;
@@ -25477,7 +24889,7 @@ function compileOutboundRouteConfigs(def, _ctx) {
   if (routeName) {
     const config2 = {
       outbound_route_type: routeType ?? "OmniChannelFlow",
-      outbound_route_name: routeName,
+      outbound_route_name: routeName
     };
     if (escalationMessage !== void 0) {
       config2.escalation_message = escalationMessage;
@@ -25487,7 +24899,8 @@ function compileOutboundRouteConfigs(def, _ctx) {
   return [];
 }
 function compileResponseActions(def, _ctx) {
-  if (!def.response_actions) return [];
+  if (!def.response_actions)
+    return [];
   const result = [];
   for (const [name, actionDef] of iterateNamedMap(def.response_actions)) {
     const description = extractSourcedString(actionDef.description) ?? "";
@@ -25495,7 +24908,7 @@ function compileResponseActions(def, _ctx) {
     const action2 = {
       developer_name: name,
       label,
-      description,
+      description
     };
     result.push(action2);
   }
@@ -25505,20 +24918,14 @@ function validateConnection(_name, connectionType, def, agentType2, ctx) {
   switch (connectionType) {
     case "slack": {
       if (agentType2 && !agentType2.includes("Employee")) {
-        ctx.warning(
-          `Slack connection is only supported for Employee agent types`,
-          def.__cst?.range,
-        );
+        ctx.warning(`Slack connection is only supported for Employee agent types`, def.__cst?.range);
       }
       break;
     }
     case "service_email": {
-      const escalationMessage = extractStringValue(def.escalation_message);
+      const escalationMessage = extractStringValue2(def.escalation_message);
       if (escalationMessage) {
-        ctx.warning(
-          `Service email connections do not support escalation_message`,
-          def.__cst?.range,
-        );
+        ctx.warning(`Service email connections do not support escalation_message`, def.__cst?.range);
       }
       break;
     }
@@ -25528,12 +24935,7 @@ function validateConnection(_name, connectionType, def, agentType2, ctx) {
 // ../compiler/dist/agent-version/compile-agent-version.js
 function compileAgentVersion(parsed, contextVariables, additionalParameters, ctx) {
   const blocks = collectTopicBlocks(parsed);
-  const stateVariables = compileStateVariables(
-    parsed.variables,
-    contextVariables,
-    blocks.map((b) => b.block),
-    ctx,
-  );
+  const stateVariables = compileStateVariables(parsed.variables, contextVariables, blocks.map((b) => b.block), ctx);
   ctx.stateVariables = stateVariables;
   const systemMessages = compileSystemMessages(parsed.system, ctx);
   const modalityParameters2 = compileModalityParameters(parsed.language, parsed.modality, ctx);
@@ -25547,8 +24949,13 @@ function compileAgentVersion(parsed, contextVariables, additionalParameters, ctx
   }
   const nodes = [];
   for (const { name, block } of blocks) {
-    const node = compileNode(name, block, parsed.system, topicDescriptions, globalModelConfig, ctx);
-    nodes.push(node);
+    const schemaValue = extractStringValue2(block.schema);
+    if (schemaValue === COMMERCE_SHOPPER_SCHEMA) {
+      nodes.push(compileCustomSubagentNode(name, block, COMMERCE_SHOPPER_BYO_CLIENT, topicDescriptions, ctx));
+    } else {
+      const node = compileNode(name, block, parsed.system, topicDescriptions, globalModelConfig, ctx);
+      nodes.push(node);
+    }
   }
   if (parsed.connected_subagent) {
     for (const [name, block] of iterateNamedMap(parsed.connected_subagent)) {
@@ -25556,15 +24963,11 @@ function compileAgentVersion(parsed, contextVariables, additionalParameters, ctx
       nodes.push(node);
     }
   }
-  const agentType2 = extractStringValue(parsed.config?.agent_type);
+  const agentType2 = extractStringValue2(parsed.config?.agent_type);
   const surfaces = compileSurfaces(parsed.connection, agentType2 ?? void 0, ctx);
   const { company, role } = extractCompanyAndRole(parsed.config);
-  const mergedAdditionalParams = mergeSystemMessagesIntoAdditionalParams(
-    additionalParameters,
-    systemMessages,
-  );
-  const hasModalityParameters =
-    modalityParameters2.language !== null || modalityParameters2.voice !== void 0;
+  const mergedAdditionalParams = mergeSystemMessagesIntoAdditionalParams(additionalParameters, systemMessages);
+  const hasModalityParameters = modalityParameters2.language !== null || modalityParameters2.voice !== void 0;
   const version2 = {
     planner_type: DEFAULT_PLANNER_TYPE,
     system_messages: systemMessages,
@@ -25573,7 +24976,7 @@ function compileAgentVersion(parsed, contextVariables, additionalParameters, ctx
     nodes,
     surfaces,
     // Include modality_parameters if either language or voice is present
-    modality_parameters: hasModalityParameters ? modalityParameters2 : {},
+    modality_parameters: hasModalityParameters ? modalityParameters2 : {}
   };
   if (mergedAdditionalParams) {
     version2.additional_parameters = mergedAdditionalParams;
@@ -25591,7 +24994,7 @@ function collectTopicBlocks(parsed) {
       blocks.push({
         name,
         block,
-        isStartAgent: true,
+        isStartAgent: true
       });
     }
   }
@@ -25600,7 +25003,7 @@ function collectTopicBlocks(parsed) {
       blocks.push({
         name,
         block,
-        isStartAgent: false,
+        isStartAgent: false
       });
     }
   }
@@ -25609,7 +25012,7 @@ function collectTopicBlocks(parsed) {
       blocks.push({
         name,
         block,
-        isStartAgent: false,
+        isStartAgent: false
       });
     }
   }
@@ -25654,7 +25057,7 @@ function mergeSystemMessagesIntoAdditionalParams(additionalParameters, systemMes
   const serialized = serializeSystemMessagesForAdditionalParams(systemMessages);
   const result = {
     reset_to_initial_node: true,
-    ...additionalParameters,
+    ...additionalParameters
   };
   if (serialized) {
     result.system_messages = serialized;
@@ -25706,7 +25109,7 @@ function compile(ast) {
   const output = ctx.track({
     schema_version: SCHEMA_VERSION,
     global_configuration: globalConfiguration,
-    agent_version: agentVersion2,
+    agent_version: agentVersion2
   });
   validateOutput(output, agentDslAuthoring, ctx);
   if (context) {
@@ -25727,7 +25130,7 @@ function compile(ast) {
   return {
     output,
     ranges: ctx.ranges,
-    diagnostics: ctx.diagnostics,
+    diagnostics: ctx.diagnostics
   };
 }
 
@@ -25744,7 +25147,7 @@ for (let i = 0; i < chars.length; i++) {
 }
 function encodeInteger(builder, num, relative) {
   let delta = num - relative;
-  delta = delta < 0 ? (-delta << 1) | 1 : delta << 1;
+  delta = delta < 0 ? -delta << 1 | 1 : delta << 1;
   do {
     let clamped = delta & 31;
     delta >>>= 5;
@@ -25754,25 +25157,20 @@ function encodeInteger(builder, num, relative) {
   return num;
 }
 var bufLength = 1024 * 16;
-var td =
-  typeof TextDecoder !== "undefined"
-    ? /* @__PURE__ */ new TextDecoder()
-    : typeof Buffer !== "undefined"
-      ? {
-          decode(buf) {
-            const out = Buffer.from(buf.buffer, buf.byteOffset, buf.byteLength);
-            return out.toString();
-          },
-        }
-      : {
-          decode(buf) {
-            let out = "";
-            for (let i = 0; i < buf.length; i++) {
-              out += String.fromCharCode(buf[i]);
-            }
-            return out;
-          },
-        };
+var td = typeof TextDecoder !== "undefined" ? /* @__PURE__ */ new TextDecoder() : typeof Buffer !== "undefined" ? {
+  decode(buf) {
+    const out = Buffer.from(buf.buffer, buf.byteOffset, buf.byteLength);
+    return out.toString();
+  }
+} : {
+  decode(buf) {
+    let out = "";
+    for (let i = 0; i < buf.length; i++) {
+      out += String.fromCharCode(buf[i]);
+    }
+    return out;
+  }
+};
 var StringWriter = class {
   constructor() {
     this.pos = 0;
@@ -25836,7 +25234,7 @@ function put(setarr, key) {
   if (index !== void 0) return index;
   const { array: array2, _indexes: indexes } = cast(setarr);
   const length = array2.push(key);
-  return (indexes[key] = length - 1);
+  return indexes[key] = length - 1;
 }
 var COLUMN = 0;
 var SOURCES_INDEX = 1;
@@ -25864,7 +25262,7 @@ function addMapping(map, mapping) {
 function setSourceContent(map, source, content) {
   const {
     _sources: sources,
-    _sourcesContent: sourcesContent,
+    _sourcesContent: sourcesContent
     // _originalScopes: originalScopes,
   } = cast2(map);
   const index = put(sources, source);
@@ -25876,7 +25274,7 @@ function toDecodedMap(map) {
     _sources: sources,
     _sourcesContent: sourcesContent,
     _names: names,
-    _ignoreList: ignoreList,
+    _ignoreList: ignoreList
     // _originalScopes: originalScopes,
     // _generatedRanges: generatedRanges,
   } = cast2(map);
@@ -25891,7 +25289,7 @@ function toDecodedMap(map) {
     mappings,
     // originalScopes,
     // generatedRanges,
-    ignoreList: ignoreList.array,
+    ignoreList: ignoreList.array
   };
 }
 function toEncodedMap(map) {
@@ -25899,25 +25297,15 @@ function toEncodedMap(map) {
   return Object.assign({}, decoded, {
     // originalScopes: decoded.originalScopes.map((os) => encodeOriginalScopes(os)),
     // generatedRanges: encodeGeneratedRanges(decoded.generatedRanges as GeneratedRange[]),
-    mappings: encode2(decoded.mappings),
+    mappings: encode2(decoded.mappings)
   });
 }
-function addSegmentInternal(
-  skipable,
-  map,
-  genLine,
-  genColumn,
-  source,
-  sourceLine,
-  sourceColumn,
-  name,
-  content,
-) {
+function addSegmentInternal(skipable, map, genLine, genColumn, source, sourceLine, sourceColumn, name, content) {
   const {
     _mappings: mappings,
     _sources: sources,
     _sourcesContent: sourcesContent,
-    _names: names,
+    _names: names
     // _originalScopes: originalScopes,
   } = cast2(map);
   const line = getIndex(mappings, genLine);
@@ -25930,20 +25318,18 @@ function addSegmentInternal(
   assert2(sourceColumn);
   const sourcesIndex = put(sources, source);
   const namesIndex = name ? put(names, name) : NO_NAME;
-  if (sourcesIndex === sourcesContent.length)
-    sourcesContent[sourcesIndex] = content != null ? content : null;
+  if (sourcesIndex === sourcesContent.length) sourcesContent[sourcesIndex] = content != null ? content : null;
   if (skipable && skipSource(line, index, sourcesIndex, sourceLine, sourceColumn, namesIndex)) {
     return;
   }
   return insert(
     line,
     index,
-    name
-      ? [genColumn, sourcesIndex, sourceLine, sourceColumn, namesIndex]
-      : [genColumn, sourcesIndex, sourceLine, sourceColumn],
+    name ? [genColumn, sourcesIndex, sourceLine, sourceColumn, namesIndex] : [genColumn, sourcesIndex, sourceLine, sourceColumn]
   );
 }
-function assert2(_val) {}
+function assert2(_val) {
+}
 function getIndex(arr, index) {
   for (let i = arr.length; i <= index; i++) {
     arr[i] = [];
@@ -25981,12 +25367,7 @@ function skipSource(line, index, sourcesIndex, sourceLine, sourceColumn, namesIn
   if (index === 0) return false;
   const prev = line[index - 1];
   if (prev.length === 1) return false;
-  return (
-    sourcesIndex === prev[SOURCES_INDEX] &&
-    sourceLine === prev[SOURCE_LINE] &&
-    sourceColumn === prev[SOURCE_COLUMN] &&
-    namesIndex === (prev.length === 5 ? prev[NAMES_INDEX] : NO_NAME)
-  );
+  return sourcesIndex === prev[SOURCES_INDEX] && sourceLine === prev[SOURCE_LINE] && sourceColumn === prev[SOURCE_COLUMN] && namesIndex === (prev.length === 5 ? prev[NAMES_INDEX] : NO_NAME);
 }
 function addMappingInternal(skipable, map, mapping) {
   const { generated, source, original, name, content } = mapping;
@@ -26000,7 +25381,7 @@ function addMappingInternal(skipable, map, mapping) {
       null,
       null,
       null,
-      null,
+      null
     );
   }
   assert2(original);
@@ -26013,7 +25394,7 @@ function addMappingInternal(skipable, map, mapping) {
     original.line - 1,
     original.column,
     name,
-    content,
+    content
   );
 }
 
@@ -26046,13 +25427,13 @@ function serializeWithSourceMap(output, ranges, options) {
         generated: { line: genLine, column: genCol },
         source: sourcePath,
         original: { line: originalLine + 1, column: originalColumn },
-        name,
+        name
       });
     } else {
       addMapping(map, {
         generated: { line: genLine, column: genCol },
         source: sourcePath,
-        original: { line: originalLine + 1, column: originalColumn },
+        original: { line: originalLine + 1, column: originalColumn }
       });
     }
   }
@@ -26095,7 +25476,8 @@ function serializeWithSourceMap(output, ranges, options) {
       write(" ".repeat(childIndent));
       serializeValue(arr[i], childIndent);
       pathSegments.pop();
-      if (i < arr.length - 1) write(",");
+      if (i < arr.length - 1)
+        write(",");
       write("\n");
     }
     write(" ".repeat(currentIndent) + "]");
@@ -26122,7 +25504,8 @@ function serializeWithSourceMap(output, ranges, options) {
       write(": ");
       serializeValue(val, childIndent);
       pathSegments.pop();
-      if (i < keys.length - 1) write(",");
+      if (i < keys.length - 1)
+        write(",");
       write("\n");
     }
     write(" ".repeat(currentIndent) + "}");
@@ -26130,7 +25513,7 @@ function serializeWithSourceMap(output, ranges, options) {
   serializeValue(output, 0);
   return {
     json: chunks.join(""),
-    sourceMap: toEncodedMap(map),
+    sourceMap: toEncodedMap(map)
   };
 }
 
@@ -26143,21 +25526,23 @@ function compileSource(source) {
     parseResult2.ast,
     parseResult2.diagnostics,
     parseResult2.store,
-    parser,
+    parser
   );
-  const compileResult = compile(parseResult2.ast);
-  const diagnostics = [...parseResult2.diagnostics, ...compileResult.diagnostics];
+  const compileResult = compile(
+    parseResult2.ast
+  );
+  const diagnostics = [
+    ...parseResult2.diagnostics,
+    ...compileResult.diagnostics
+  ];
   diagnostics.sort(
-    (a, b) =>
-      a.severity - b.severity ||
-      a.range.start.line - b.range.start.line ||
-      a.range.start.character - b.range.start.character,
+    (a, b) => a.severity - b.severity || a.range.start.line - b.range.start.line || a.range.start.character - b.range.start.character
   );
   return {
     output: compileResult.output,
     ranges: compileResult.ranges,
     diagnostics,
-    document,
+    document
   };
 }
 
@@ -26183,6 +25568,7 @@ export {
   BooleanLiteral,
   BooleanValue,
   CAPTURE_MAP,
+  COMMERCE_SHOPPER_SCHEMA,
   CallExpression,
   CollectionBlock,
   ComparisonExpression,
@@ -26195,6 +25581,7 @@ export {
   Dialect,
   DictLiteral,
   Document,
+  ESCAPE_TABLE,
   Ellipsis,
   ErrorBlock,
   ErrorValue,
@@ -26225,6 +25612,7 @@ export {
   PassStore,
   ProcedureValue,
   PronunciationDictEntryBlock,
+  RESPONSE_FORMAT_INPUT_KEYWORDS,
   ReasoningActionBlock,
   ReasoningActionsBlock,
   ReferenceValue,
@@ -26293,6 +25681,7 @@ export {
   emitIndent,
   emitKeyName,
   emptyBlockPass,
+  escapeStringValue,
   executeQuery2 as executeQuery,
   expressionValidationPass,
   extractChildren,
@@ -26323,9 +25712,11 @@ export {
   getSchemaNamespaces,
   getSymbolMembers,
   getValueCompletions,
+  getWithCompletions,
   increaseIndentPattern,
   init,
   inlineComments,
+  interpretEscape,
   isAtIdentifier2 as isAtIdentifier,
   isBlockChild,
   isCollectionFieldType,
@@ -26392,6 +25783,6 @@ export {
   validateStrictSchema,
   walkAstExpressions,
   walkDefinitionKeys,
-  withCst,
+  withCst
 };
 //# sourceMappingURL=browser.js.map

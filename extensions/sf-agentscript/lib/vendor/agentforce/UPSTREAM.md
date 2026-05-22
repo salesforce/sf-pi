@@ -12,18 +12,18 @@ bundle.
 ## Pin
 
 - Upstream: https://github.com/salesforce/agentscript
-- Commit: `b98c087bd09d91de7f4cc1bfe829a98be573aaa6` (`b98c087bd0`)
-- Package version: `@agentscript/agentforce@2.5.19`
-- Synced: 2026-04-23
+- Commit: `1e6091f6cc77c8784b1f8a46d80707ae36fc6ea3` (`1e6091f6cc`)
+- Package version: `@agentscript/agentforce@2.5.31`
+- Synced: 2026-05-22
 - Build variant: parser-javascript (pure TS, no native/WASM deps)
 
 ## Files
 
-| File             | Purpose                                              |
-| ---------------- | ---------------------------------------------------- |
-| `browser.js`     | Self-contained ESM bundle of the SDK. Works in Node. |
-| `browser.js.map` | Source map for the bundle.                           |
-| `index.d.ts`     | Bundled TypeScript declarations for the SDK.         |
+| File | Purpose |
+| --- | --- |
+| `browser.js` | Self-contained ESM bundle of the SDK. Works in Node. |
+| `browser.js.map` | Source map for the bundle. |
+
 
 We vendor the `browser.js` bundle (not `index.js`) because it is a single
 file with all dependencies inlined. `index.js` declares its workspace peers

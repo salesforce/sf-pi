@@ -63,8 +63,7 @@ together through the SDK's `compileSource()` entry point. The returned
 - **parse / lint diagnostics** (e.g. unbalanced parens, misspelled
   modifiers, unterminated strings)
 - **compile diagnostics** (e.g. `invalid-action-target`,
-  `action-missing-input`, `linked-variable-missing-source`,
-  `unused-variable`)
+  `action-missing-input`, `linked-variable-missing-source`)
 
 This is intentional: we surface every issue either pass detects so the
 LLM (or human) sees the full picture even when the underlying compiler
@@ -72,10 +71,10 @@ is willing to tolerate some of them.
 
 sf-pi also layers a small set of local hardening diagnostics on top of
 the vendored SDK for Agentforce publish/runtime footguns that are
-source-detectable but not always compiler errors: target-backed actions
-without `outputs:`, Employee Agent service-only wiring, scoped
-`@inputs` / `@outputs` misuse, connection route shape, prompt-template
-output flags, and literal-mode procedural text. Severity-1 hardening
+source-detectable but not always compiler errors: unused variables,
+target-backed actions without `outputs:`, Employee Agent service-only
+wiring, scoped `@inputs` / `@outputs` misuse, connection route shape,
+prompt-template output flags, and literal-mode procedural text. Severity-1 hardening
 diagnostics block `agentscript_preview start` and
 `agentscript_lifecycle publish` before any org round trip.
 
