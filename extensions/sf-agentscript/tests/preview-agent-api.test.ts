@@ -5,7 +5,12 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, test, vi } from "vitest";
-import { computePublishedBypassUser, startPreviewByApiName } from "../lib/preview/client.ts";
+import {
+  computePublishedBypassUser,
+  endPreview,
+  startPreviewByApiName,
+} from "../lib/preview/client.ts";
+import { initSession } from "../lib/preview/session-store.ts";
 
 describe("computePublishedBypassUser", () => {
   test("Employee Agents use the named user context, not bot-user bypass", () => {
@@ -29,6 +34,75 @@ describe("computePublishedBypassUser", () => {
   test("unknown agent metadata is conservative", () => {
     expect(computePublishedBypassUser(undefined)).toBe(false);
     expect(computePublishedBypassUser({})).toBe(false);
+  });
+});
+
+describe("endPreview", () => {
+  test("remotely ends published-agent sessions and finalizes local metadata", async () => {
+    const cwd = await mkdtemp(path.join(tmpdir(), "sf-agentscript-preview-"));
+    const requests: Array<{ method?: string; url?: string; headers?: Record<string, string> }> = [];
+    const conn = {
+      request: vi.fn(
+        async (req: { method?: string; url?: string; headers?: Record<string, string> }) => {
+          requests.push(req);
+          return {};
+        },
+      ),
+    };
+    try {
+      await initSession(cwd, {
+        sessionId: "sid-1",
+        agentName: "My_Agent",
+        startTime: new Date().toISOString(),
+        mockMode: "Live Test",
+        sessionKind: "api_name",
+        endpoint: "test.",
+      });
+      const result = await endPreview({
+        conn: conn as never,
+        cwd,
+        agentName: "My_Agent",
+        sessionId: "sid-1",
+      });
+      expect(result.remoteEnded).toBe(true);
+      expect(result.metadata.endTime).toBeTruthy();
+      expect(requests[0]).toMatchObject({
+        method: "DELETE",
+        url: "https://test.api.salesforce.com/einstein/ai-agent/v1/sessions/sid-1",
+      });
+      expect(requests[0].headers?.["x-session-end-reason"]).toBe("UserRequest");
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test("reports remote end failures without throwing", async () => {
+    const cwd = await mkdtemp(path.join(tmpdir(), "sf-agentscript-preview-"));
+    const conn = {
+      request: vi.fn(async () => {
+        throw { statusCode: 500, message: "boom" };
+      }),
+    };
+    try {
+      await initSession(cwd, {
+        sessionId: "sid-1",
+        agentName: "My_Agent",
+        startTime: new Date().toISOString(),
+        mockMode: "Live Test",
+        sessionKind: "api_name",
+      });
+      const result = await endPreview({
+        conn: conn as never,
+        cwd,
+        agentName: "My_Agent",
+        sessionId: "sid-1",
+      });
+      expect(result.remoteEnded).toBe(false);
+      expect(result.remoteEndError).toMatch(/HTTP 500/);
+      expect(result.metadata.endTime).toBeTruthy();
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
   });
 });
 

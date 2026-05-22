@@ -31,8 +31,12 @@ import { newRunId, resolveRunDir, writeRun } from "./persist.ts";
 import { normalizeSpec } from "./normalize.ts";
 import {
   detectPlaceholderUsage,
+  injectResolvedAgentIds,
   resolveAgentIds,
+  shouldInjectResolvedAgentIds,
   substitutePlaceholders,
+  type AgentIdInjectionStats,
+  type AgentVersionResolutionMode,
   type ResolvedAgentIds,
 } from "./active-ids.ts";
 import { resolveOrgIdentity } from "../../../../lib/common/sf-conn/connection.ts";
@@ -58,8 +62,14 @@ export interface RunEvalOptions {
   /** sf CLI alias / username. Recorded in metadata. Required. */
   targetOrg: string;
   spec: EvalSpec;
-  /** For $active_* placeholder resolution. Required when the spec uses them. */
+  /** For $active_* placeholder resolution and default create-session id injection. */
   agentApiName?: string;
+  /** Default create-session id injection mode when agentApiName is supplied. Default `active`. */
+  versionResolution?: AgentVersionResolutionMode;
+  /** Required when versionResolution='version'. Pins BotVersion.VersionNumber. */
+  version?: number;
+  /** Overwrite explicit agent_id / agent_version_id fields during id injection. Default false. */
+  overwriteAgentIds?: boolean;
   /** Trace-fetch policy. Default `failed` (fetch traces for failing tests only). */
   tracesMode?: TracesMode;
   /**
@@ -104,6 +114,43 @@ export interface RunEvalResult {
   failed_batches: number;
 }
 
+function enforceLatestAcknowledgement(ids: ResolvedAgentIds, opts: RunEvalOptions): void {
+  if (ids.status === "Active" || opts.acknowledgeInactiveVersion) return;
+  throw new Error(
+    `Spec uses latest-version resolution, but the latest BotVersion for ` +
+      `'${opts.agentApiName}' is v${ids.version_number} with ` +
+      `Status='${ids.status}' — not Active. Pass ` +
+      `acknowledge_inactive_version=true to confirm you want to regression-test ` +
+      `a non-production version, or activate the version first via ` +
+      `\`agentscript_lifecycle action='activate' agent_api_name='${opts.agentApiName}' ` +
+      `version=${ids.version_number}\`.`,
+  );
+}
+
+async function resolveIdsForInjection(
+  opts: RunEvalOptions,
+  mode: AgentVersionResolutionMode,
+  activeIds: ResolvedAgentIds | null,
+  latestIds: ResolvedAgentIds | null,
+): Promise<ResolvedAgentIds> {
+  if (!opts.agentApiName) {
+    throw new Error("agent_api_name is required for default create_session id injection.");
+  }
+  if (mode === "version") {
+    if (typeof opts.version !== "number") {
+      throw new Error("version_resolution='version' requires version=<BotVersion.VersionNumber>.");
+    }
+    return await resolveAgentIds(opts.conn, opts.agentApiName, { version: opts.version });
+  }
+  if (mode === "latest") {
+    const ids =
+      latestIds ?? (await resolveAgentIds(opts.conn, opts.agentApiName, { status: "any" }));
+    enforceLatestAcknowledgement(ids, opts);
+    return ids;
+  }
+  return activeIds ?? (await resolveAgentIds(opts.conn, opts.agentApiName, { status: "Active" }));
+}
+
 // -------------------------------------------------------------------------------------------------
 // Main entry point
 // -------------------------------------------------------------------------------------------------
@@ -119,6 +166,8 @@ export async function runEval(opts: RunEvalOptions): Promise<RunEvalResult> {
   let spec = opts.spec;
   let resolvedIds: ResolvedAgentIds | null = null;
   let latestIds: ResolvedAgentIds | null = null;
+  let injectedIds: ResolvedAgentIds | null = null;
+  let injectionStats: AgentIdInjectionStats | undefined;
   const usage = detectPlaceholderUsage(spec);
   if (usage.active || usage.latest) {
     if (!opts.agentApiName) {
@@ -142,26 +191,44 @@ export async function runEval(opts: RunEvalOptions): Promise<RunEvalResult> {
           `(${latestIds.status})  botVersionId=${latestIds.bot_version_id}  ` +
           `plannerId=${latestIds.planner_id}`,
       );
-      // Preflight: refuse the run when $latest_* resolves to a non-Active
-      // version unless the caller explicitly acknowledges. Catches the
-      // accidental "I thought v12 was active but it's still v11" foot-gun.
-      if (latestIds.status !== "Active" && !opts.acknowledgeInactiveVersion) {
-        throw new Error(
-          `Spec uses $latest_* placeholders, but the latest BotVersion for ` +
-            `'${opts.agentApiName}' is v${latestIds.version_number} with ` +
-            `Status='${latestIds.status}' — not Active. Pass ` +
-            `acknowledge_inactive_version=true to confirm you want to regression-test ` +
-            `a non-production version, or activate the version first via ` +
-            `\`agentscript_lifecycle action='activate' agent_api_name='${opts.agentApiName}' ` +
-            `version=${latestIds.version_number}\`.`,
-        );
-      }
+      enforceLatestAcknowledgement(latestIds, opts);
     }
     spec = substitutePlaceholders(spec, {
       active: resolvedIds ?? undefined,
       latest: latestIds ?? undefined,
     });
   }
+
+  const wantsInjection =
+    Boolean(opts.agentApiName) &&
+    shouldInjectResolvedAgentIds(spec, opts.overwriteAgentIds ?? false);
+  if (wantsInjection) {
+    if (usage.active && usage.latest && !opts.versionResolution) {
+      throw new Error(
+        `Spec mixes $active_* and $latest_* placeholders and also has create_session steps ` +
+          `missing agent ids. Pass version_resolution='active' or 'latest', or make every ` +
+          `agent.create_session step explicit.`,
+      );
+    }
+    const mode: AgentVersionResolutionMode =
+      opts.versionResolution ?? (usage.latest && !usage.active ? "latest" : "active");
+    injectedIds = await resolveIdsForInjection(opts, mode, resolvedIds, latestIds);
+    const injected = injectResolvedAgentIds(spec, injectedIds, {
+      overwrite: opts.overwriteAgentIds ?? false,
+    });
+    spec = injected.spec;
+    injectionStats = {
+      create_session_steps: injected.create_session_steps,
+      injected_create_session_steps: injected.injected_create_session_steps,
+      explicit_create_session_steps: injected.explicit_create_session_steps,
+    };
+    log(
+      `Injected ${injectionStats.injected_create_session_steps}/${injectionStats.create_session_steps} ` +
+        `create_session step(s) from ${opts.agentApiName} v${injectedIds.version_number} ` +
+        `(${injectedIds.status}).`,
+    );
+  }
+
   spec = normalizeSpec(spec);
 
   // 2. Resolve org identity for SFAP headers
@@ -326,10 +393,29 @@ export async function runEval(opts: RunEvalOptions): Promise<RunEvalResult> {
     // (e.g. testing a freshly-published-but-Inactive version), we record
     // the latest record so the run is auditable against the actual
     // BotVersion that was exercised.
-    bot_version_id: resolvedIds?.bot_version_id ?? latestIds?.bot_version_id,
-    planner_id: resolvedIds?.planner_id ?? latestIds?.planner_id ?? null,
-    bot_version_number: resolvedIds?.version_number ?? latestIds?.version_number,
-    bot_version_status: resolvedIds?.status ?? latestIds?.status,
+    bot_id: injectedIds?.bot_id ?? resolvedIds?.bot_id ?? latestIds?.bot_id,
+    bot_version_id:
+      resolvedIds?.bot_version_id ?? latestIds?.bot_version_id ?? injectedIds?.bot_version_id,
+    planner_id: resolvedIds?.planner_id ?? latestIds?.planner_id ?? injectedIds?.planner_id ?? null,
+    bot_version_number:
+      resolvedIds?.version_number ?? latestIds?.version_number ?? injectedIds?.version_number,
+    bot_version_status: resolvedIds?.status ?? latestIds?.status ?? injectedIds?.status,
+    agent_id_resolution: injectedIds
+      ? {
+          mode: opts.versionResolution ?? (usage.latest && !usage.active ? "latest" : "active"),
+          agent_api_name: opts.agentApiName,
+          bot_id: injectedIds.bot_id,
+          bot_version_id: injectedIds.bot_version_id,
+          bot_version_number: injectedIds.version_number,
+          bot_version_status: injectedIds.status,
+          planner_id: injectedIds.planner_id,
+          ...(injectionStats ?? {
+            create_session_steps: 0,
+            injected_create_session_steps: 0,
+            explicit_create_session_steps: 0,
+          }),
+        }
+      : undefined,
     started: startedAt.toISOString(),
     completed: completedAt.toISOString(),
     duration_ms: completedAt.getTime() - startedAt.getTime(),

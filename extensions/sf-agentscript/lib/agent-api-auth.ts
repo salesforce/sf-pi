@@ -38,12 +38,78 @@ export interface AgentApiAuthResult {
   tokenKind: "named-user-jwt";
 }
 
+export interface JwtValidationResult {
+  isValid: boolean;
+  hasRequiredFields: boolean;
+  missingFields: string[];
+  isExpired: boolean;
+  expiresAt?: string;
+  issuedAt?: string;
+  subject?: string;
+  issuer?: string;
+  appId?: string;
+  scopes?: string[];
+}
+
 interface BootstrapResponse {
   access_token?: string;
 }
 
-function isJwt(token: string): boolean {
-  return token.split(".").length === 3;
+function decodeBase64UrlJson(part: string): Record<string, unknown> {
+  const normalized = part.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = normalized.padEnd(normalized.length + ((4 - (normalized.length % 4)) % 4), "=");
+  return JSON.parse(Buffer.from(padded, "base64").toString("utf8")) as Record<string, unknown>;
+}
+
+export function validateNamedUserJwt(token: string | undefined): JwtValidationResult {
+  if (!token) {
+    return {
+      isValid: false,
+      hasRequiredFields: false,
+      missingFields: ["token"],
+      isExpired: false,
+    };
+  }
+  const parts = token.split(".");
+  if (parts.length !== 3) {
+    return {
+      isValid: false,
+      hasRequiredFields: false,
+      missingFields: ["invalid JWT format - expected 3 parts"],
+      isExpired: false,
+    };
+  }
+
+  try {
+    const payload = decodeBase64UrlJson(parts[1]);
+    const missingFields = ["sub", "iss"].filter((field) => !payload[field]);
+    const exp = typeof payload.exp === "number" ? payload.exp : undefined;
+    const iat = typeof payload.iat === "number" ? payload.iat : undefined;
+    const expiresAtDate = exp ? new Date(exp * 1000) : undefined;
+    const issuedAtDate = iat ? new Date(iat * 1000) : undefined;
+    const isExpired = expiresAtDate ? expiresAtDate.getTime() <= Date.now() : false;
+    const scope = typeof payload.scope === "string" ? payload.scope : undefined;
+    const hasRequiredFields = missingFields.length === 0;
+    return {
+      isValid: hasRequiredFields && !isExpired,
+      hasRequiredFields,
+      missingFields,
+      isExpired,
+      expiresAt: expiresAtDate?.toISOString(),
+      issuedAt: issuedAtDate?.toISOString(),
+      subject: typeof payload.sub === "string" ? payload.sub : undefined,
+      issuer: typeof payload.iss === "string" ? payload.iss : undefined,
+      appId: typeof payload.sfdc_app_id === "string" ? payload.sfdc_app_id : undefined,
+      scopes: scope ? scope.split(/\s+/).filter(Boolean) : undefined,
+    };
+  } catch {
+    return {
+      isValid: false,
+      hasRequiredFields: false,
+      missingFields: ["JWT payload parse error"],
+      isExpired: false,
+    };
+  }
 }
 
 /**
@@ -98,10 +164,17 @@ export async function upgradeConnectionToNamedUserJwt(
   }
 
   const jwt = response.access_token;
-  if (!jwt || typeof jwt !== "string" || !isJwt(jwt)) {
+  const validation =
+    typeof jwt === "string" ? validateNamedUserJwt(jwt) : validateNamedUserJwt(undefined);
+  if (!validation.isValid) {
+    const reasons = [
+      ...validation.missingFields,
+      validation.isExpired ? "expired" : undefined,
+    ].filter(Boolean);
     throw new Error(
-      "Agent API auth bootstrap failed: nameduser endpoint did not return a valid JWT access_token. " +
-        "If using a custom connected app, ensure it grants chatbot_api, sfap_api, and web scopes.",
+      "Agent API auth bootstrap failed: nameduser endpoint did not return a valid JWT access_token" +
+        (reasons.length > 0 ? ` (${reasons.join(", ")})` : "") +
+        ". If using a custom connected app, ensure it grants chatbot_api, sfap_api, and web scopes.",
     );
   }
   (conn as unknown as { accessToken: string }).accessToken = jwt;

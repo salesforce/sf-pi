@@ -15,6 +15,7 @@ import { connForAgentApi } from "./agent-api-auth.ts";
 import {
   cleanupSessions,
   endPreview,
+  listStoredSessions,
   loadSession,
   sendMessage,
   startPreview,
@@ -42,12 +43,13 @@ const Params = Type.Object({
       Type.Literal("start"),
       Type.Literal("send"),
       Type.Literal("end"),
+      Type.Literal("end_all"),
       Type.Literal("trace"),
       Type.Literal("cleanup"),
     ],
     {
       description:
-        "start: open a preview session (agent_file OR agent_api_name). send: post one user utterance. end: finalize a session. trace: ad-hoc planner-trace fetch. cleanup: remove stale .sfdx/agents session dirs.",
+        "start: open a preview session (agent_file OR agent_api_name). send: post one user utterance. end: finalize a session. end_all: dry-run or end multiple stored preview sessions. trace: ad-hoc planner-trace fetch. cleanup: remove stale .sfdx/agents session dirs.",
     },
   ),
   target_org: Type.Optional(Type.String({ description: "sf CLI alias / username." })),
@@ -102,21 +104,35 @@ const Params = Type.Object({
   plan_id: Type.Optional(
     Type.String({ description: "Required for action='trace'. Plan id to fetch." }),
   ),
+  session_kind: Type.Optional(
+    Type.Union([Type.Literal("agent_file"), Type.Literal("api_name")], {
+      description:
+        "Optional for action='end_all'. Restrict to local authoring-bundle sessions or published-agent sessions.",
+    }),
+  ),
+  include_ended: Type.Optional(
+    Type.Boolean({
+      description:
+        "Optional for action='end_all'. Include sessions that already have endTime. Default false.",
+    }),
+  ),
   older_than_days: Type.Optional(
     Type.Number({
       minimum: 0,
-      description: "Optional for action='cleanup'. Default 30.",
+      description:
+        "Optional for action='cleanup' or action='end_all'. cleanup default 30; end_all has no age filter unless set.",
     }),
   ),
   dry_run: Type.Optional(
     Type.Boolean({
-      description: "Optional for action='cleanup'. Preview deletions without removing files.",
+      description:
+        "Optional for action='cleanup' or action='end_all'. end_all defaults to true; cleanup defaults to false.",
     }),
   ),
 });
 
 interface ParamsAny {
-  action: "start" | "send" | "end" | "trace" | "cleanup";
+  action: "start" | "send" | "end" | "end_all" | "trace" | "cleanup";
   target_org?: string;
   agent_file?: string;
   agent_api_name?: string;
@@ -131,6 +147,8 @@ interface ParamsAny {
     value: string | number | boolean;
   }>;
   plan_id?: string;
+  session_kind?: "agent_file" | "api_name";
+  include_ended?: boolean;
   older_than_days?: number;
   dry_run?: boolean;
 }
@@ -156,6 +174,7 @@ export function registerPreviewTool(pi: ExtensionAPI): void {
       "action='send' — POSTs one user utterance, fetches the planner trace per turn, returns a compact `digest` of every planner step (topic transitions, LLM calls, variable updates, tool invocations, errors), and writes everything to the session store. Full trace JSON lives at `trace_file` for deep dives.",
       "action='send' context_variables — pass deterministic state seeds [{name, type?, value}] to bypass auth gates, pre-fill identity, or reproduce a known-good session state. Use the same shape as eval-spec context_variables; default type is 'Text'. Per-message seeding is the live workaround for the 2026-04 regression that drops session-level seeds.",
       "action='end' — finalizes metadata (sets endTime).",
+      "action='end_all' — dry-runs by default. Scans .sfdx/agents/*/sessions/*, filters by agent_name/session_kind/target_org/older_than_days, remotely ends api_name sessions when possible, and locally finalizes agent_file sessions. Pass dry_run=false to execute.",
       "action='trace' — ad-hoc trace fetch by (session_id, plan_id) when you need to revisit a specific turn.",
       "action='cleanup' — removes session dirs older than older_than_days (default 30). Use dry_run=true to see what would be deleted.",
     ],
@@ -171,6 +190,8 @@ export function registerPreviewTool(pi: ExtensionAPI): void {
           return await actionSend(ctx, p, onUpdate);
         case "end":
           return await actionEnd(ctx, p);
+        case "end_all":
+          return await actionEndAll(ctx, p);
         case "trace":
           return await actionTrace(p);
         case "cleanup":
@@ -198,6 +219,8 @@ function checkRequired(p: ParamsAny): { ok: true } | { ok: false; error: string 
     case "end":
       if (!p.agent_name) return { ok: false, error: "action='end' requires agent_name." };
       if (!p.session_id) return { ok: false, error: "action='end' requires session_id." };
+      return { ok: true };
+    case "end_all":
       return { ok: true };
     case "trace":
       if (!p.session_id) return { ok: false, error: "action='trace' requires session_id." };
@@ -518,6 +541,152 @@ async function actionEnd(
       ]
         .filter(Boolean)
         .join("\n") + nextStepHint,
+    );
+  } catch (err) {
+    return toolError(err instanceof Error ? err.message : String(err));
+  }
+}
+
+// -------------------------------------------------------------------------------------------------
+// action = end_all
+// -------------------------------------------------------------------------------------------------
+
+async function actionEndAll(
+  ctx: ExtensionContext,
+  input: ParamsAny,
+): Promise<{
+  content: { type: "text"; text: string }[];
+  details: Record<string, unknown> | ToolError;
+}> {
+  const dryRun = input.dry_run ?? true;
+  const includeEnded = input.include_ended ?? false;
+  try {
+    const sessions = await listStoredSessions(ctx.cwd);
+    const skipped: Array<{ agent: string; session_id: string; reason: string }> = [];
+    const candidates = sessions.filter((s) => {
+      if (!s.metadata) {
+        skipped.push({ agent: s.agent, session_id: s.session_id, reason: "metadata_unreadable" });
+        return false;
+      }
+      const kind = s.metadata.sessionKind ?? "agent_file";
+      if (input.agent_name && s.agent !== input.agent_name) return false;
+      if (input.session_kind && kind !== input.session_kind) return false;
+      if (input.target_org && s.metadata.targetOrg !== input.target_org) return false;
+      if (!includeEnded && s.metadata.endTime) return false;
+      if (typeof input.older_than_days === "number" && s.age_days < input.older_than_days) {
+        return false;
+      }
+      return true;
+    });
+
+    const candidateRows = candidates.map((s) => ({
+      agent: s.agent,
+      session_id: s.session_id,
+      session_kind: s.metadata?.sessionKind ?? "agent_file",
+      target_org: s.metadata?.targetOrg,
+      age_days: s.age_days,
+      session_dir: s.session_dir,
+    }));
+
+    if (dryRun) {
+      return toolOk(
+        {
+          ok: true as const,
+          dry_run: true,
+          matched: candidateRows.length,
+          candidates: candidateRows,
+          skipped,
+        },
+        `🏁 end_all dry run: ${candidateRows.length} session(s) would be ended; skipped ${skipped.length}. Pass dry_run=false to execute.`,
+      );
+    }
+
+    const ended: Array<Record<string, unknown>> = [];
+    const localFinalized: Array<Record<string, unknown>> = [];
+    const failed: Array<Record<string, unknown>> = [];
+    const connCache = new Map<string, Awaited<ReturnType<typeof connForAgentApi>>["conn"]>();
+
+    for (const s of candidates) {
+      const meta = s.metadata;
+      if (!meta) {
+        failed.push({ agent: s.agent, session_id: s.session_id, reason: "metadata_unreadable" });
+        continue;
+      }
+      const kind = meta.sessionKind ?? "agent_file";
+      try {
+        if (kind === "api_name") {
+          const orgKey = meta.targetOrg ?? input.target_org ?? "";
+          let conn = connCache.get(orgKey);
+          if (!conn) {
+            try {
+              ({ conn } = await connForAgentApi(meta.targetOrg ?? input.target_org));
+              connCache.set(orgKey, conn);
+            } catch (err) {
+              failed.push({
+                agent: s.agent,
+                session_id: s.session_id,
+                session_kind: kind,
+                reason: "agent_api_auth_failed",
+                error: err instanceof Error ? err.message : String(err),
+              });
+              continue;
+            }
+          }
+          const result = await endPreview({
+            conn,
+            cwd: ctx.cwd,
+            agentName: s.agent,
+            sessionId: s.session_id,
+          });
+          const row = {
+            agent: s.agent,
+            session_id: s.session_id,
+            session_kind: kind,
+            ended_at: result.endedAt,
+            session_dir: s.session_dir,
+            remote_ended: result.remoteEnded,
+          };
+          if (result.remoteEnded === false) {
+            failed.push({ ...row, error: result.remoteEndError ?? "remote_end_failed" });
+          } else {
+            ended.push(row);
+          }
+        } else {
+          const result = await endPreview({
+            cwd: ctx.cwd,
+            agentName: s.agent,
+            sessionId: s.session_id,
+          });
+          localFinalized.push({
+            agent: s.agent,
+            session_id: s.session_id,
+            session_kind: kind,
+            ended_at: result.endedAt,
+            session_dir: s.session_dir,
+            remote_ended: "not_applicable",
+          });
+        }
+      } catch (err) {
+        failed.push({
+          agent: s.agent,
+          session_id: s.session_id,
+          session_kind: kind,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
+
+    return toolOk(
+      {
+        ok: failed.length === 0,
+        dry_run: false,
+        matched: candidates.length,
+        ended,
+        local_finalized: localFinalized,
+        skipped,
+        failed,
+      },
+      `🏁 end_all: ended ${ended.length} remote session(s), finalized ${localFinalized.length} local session(s), failed ${failed.length}, skipped ${skipped.length}.`,
     );
   } catch (err) {
     return toolError(err instanceof Error ? err.message : String(err));

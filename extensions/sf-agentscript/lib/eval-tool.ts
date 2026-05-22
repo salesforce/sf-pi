@@ -80,7 +80,19 @@ const Params = Type.Object({
   agent_api_name: Type.Optional(
     Type.String({
       description:
-        "Required for resolve_active. For run, only required when the spec uses $active_* placeholders.",
+        "Required for resolve_active. For run, resolves and injects missing agent.create_session ids; also required when the spec uses $active_* / $latest_* placeholders.",
+    }),
+  ),
+  version_resolution: Type.Optional(
+    Type.Union([Type.Literal("active"), Type.Literal("latest"), Type.Literal("version")], {
+      description:
+        "Optional for action='run' with agent_api_name. Default 'active' injects the production-serving Active BotVersion. 'latest' uses the newest version and requires acknowledge_inactive_version=true when non-Active. 'version' requires version=N.",
+    }),
+  ),
+  overwrite_agent_ids: Type.Optional(
+    Type.Boolean({
+      description:
+        "Optional for action='run' with agent_api_name. When true, overwrite explicit agent_id / agent_version_id fields in agent.create_session steps. Default false.",
     }),
   ),
   traces_mode: Type.Optional(
@@ -116,12 +128,12 @@ const Params = Type.Object({
         "Optional for action='run'. Confirms you intend to regression-test a non-Active BotVersion. Required when $latest_* placeholders resolve to an Inactive / InDevelopment version. Catches the 'I thought v12 was active but it's still v11' foot-gun.",
     }),
   ),
-  // resolve_active extras
+  // resolve_active extras; for action='run', also used when version_resolution='version'.
   version: Type.Optional(
     Type.Number({
       minimum: 0,
       description:
-        "Optional for action='resolve_active'. Pin to a specific BotVersion.VersionNumber (any Status). Use to look up ids for an old or non-Active version, then bake into the spec.",
+        "Optional for action='resolve_active' or action='run' with version_resolution='version'. Pin to a specific BotVersion.VersionNumber (any Status). Use to look up ids for an old or non-Active version, then bake into the spec.",
     }),
   ),
   status: Type.Optional(
@@ -219,6 +231,8 @@ interface ParamsAny {
   prompt_chars?: number;
   inline_threshold?: number;
   acknowledge_inactive_version?: boolean;
+  version_resolution?: "active" | "latest" | "version";
+  overwrite_agent_ids?: boolean;
   version?: number;
   status?: "Active" | "any";
   run_id?: string;
@@ -301,7 +315,7 @@ export function registerEvalTool(pi: ExtensionAPI): void {
     promptSnippet:
       "Run / debug / introspect Agent Script regression specs against the Salesforce Evaluation API.",
     promptGuidelines: [
-      "action='run' — full multi-turn regression. Pass agent_api_name when the spec uses $active_* OR $latest_* placeholders. Default traces_mode='failed'. Pass acknowledge_inactive_version=true when $latest_* should resolve a non-Active version (the ship→eval→activate loop).",
+      "action='run' — full multi-turn regression. Pass agent_api_name to auto-inject missing create_session ids from the Active BotVersion (safe default), or when the spec uses $active_* OR $latest_* placeholders. Default traces_mode='failed'. Pass version_resolution='latest' + acknowledge_inactive_version=true when deliberately testing a non-Active latest version (the ship→eval→activate loop).",
       "action='get_failure' — after a run returned a summary (large run with failures_truncated=true), drill into one test_id or all failures by run_id.",
       "action='trace' — fetch a planner trace for one (session_id, plan_id). Use when inline llmEvents isn't enough.",
       "action='resolve_active' — look up BotVersion + planner ids by agent_api_name. Default returns the Active version; pass status='any' for the latest regardless of state, or version=N for a specific historical version.",
@@ -384,6 +398,9 @@ async function actionRun(
       concurrency: input.concurrency ?? 8,
       promptChars: input.prompt_chars ?? 600,
       acknowledgeInactiveVersion: input.acknowledge_inactive_version,
+      versionResolution: input.version_resolution,
+      version: input.version,
+      overwriteAgentIds: input.overwrite_agent_ids,
       cwd: ctx.cwd,
       specPath: input.spec_path,
       log,

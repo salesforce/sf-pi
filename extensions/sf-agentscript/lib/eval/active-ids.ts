@@ -43,6 +43,18 @@ export interface ResolvedAgentIds {
   status: string;
 }
 
+export type AgentVersionResolutionMode = "active" | "latest" | "version";
+
+export interface AgentIdInjectionStats {
+  create_session_steps: number;
+  injected_create_session_steps: number;
+  explicit_create_session_steps: number;
+}
+
+export interface AgentIdInjectionResult<T> extends AgentIdInjectionStats {
+  spec: T;
+}
+
 export interface ResolveAgentIdsOptions {
   /**
    * Filter on BotVersion.Status. Default `'Active'` — latest version that
@@ -203,6 +215,111 @@ export function substitutePlaceholders<T>(value: T, ids: PlaceholderSet): T {
     return out as T;
   }
   return value;
+}
+
+function isAgentCreateSessionStep(value: unknown): value is Record<string, unknown> {
+  return Boolean(
+    value &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    (value as Record<string, unknown>).type === "agent.create_session",
+  );
+}
+
+function hasStringId(value: unknown): boolean {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function hasAnyStringId(step: Record<string, unknown>, keys: string[]): boolean {
+  return keys.some((key) => hasStringId(step[key]));
+}
+
+const AGENT_ID_KEYS = ["agent_id", "agentId"];
+const AGENT_VERSION_ID_KEYS = ["agent_version_id", "agentVersionId"];
+const PLANNER_ID_KEYS = [
+  "planner_id",
+  "plannerId",
+  "plannerDefinitionId",
+  "planner_definition_id",
+  "plannerVersionId",
+  "planner_version_id",
+];
+
+function hasExplicitAgentId(step: Record<string, unknown>): boolean {
+  return hasAnyStringId(step, AGENT_ID_KEYS);
+}
+
+function hasExplicitAgentVersionId(step: Record<string, unknown>): boolean {
+  return hasAnyStringId(step, AGENT_VERSION_ID_KEYS);
+}
+
+function hasExplicitPlannerId(step: Record<string, unknown>): boolean {
+  return hasAnyStringId(step, PLANNER_ID_KEYS);
+}
+
+function needsAgentIdInjection(step: Record<string, unknown>, overwrite: boolean): boolean {
+  if (overwrite) return true;
+  return !hasExplicitAgentId(step) || !hasExplicitAgentVersionId(step);
+}
+
+/**
+ * Return true when a spec has at least one `agent.create_session` step that
+ * should receive agent ids from `agent_api_name`. Explicit `agent_id` +
+ * `agent_version_id` pairs are left untouched unless `overwrite=true`.
+ */
+export function shouldInjectResolvedAgentIds(value: unknown, overwrite = false): boolean {
+  if (isAgentCreateSessionStep(value)) return needsAgentIdInjection(value, overwrite);
+  if (Array.isArray(value)) return value.some((v) => shouldInjectResolvedAgentIds(v, overwrite));
+  if (value && typeof value === "object") {
+    return Object.values(value as Record<string, unknown>).some((v) =>
+      shouldInjectResolvedAgentIds(v, overwrite),
+    );
+  }
+  return false;
+}
+
+/**
+ * Inject resolved BotDefinition/BotVersion/planner ids into create-session
+ * steps. This is the safe, JSON-native equivalent of upstream run-eval's
+ * `--api-name` convenience, but it never silently overwrites explicit ids.
+ */
+export function injectResolvedAgentIds<T>(
+  value: T,
+  ids: ResolvedAgentIds,
+  opts: { overwrite?: boolean } = {},
+): AgentIdInjectionResult<T> {
+  const overwrite = opts.overwrite ?? false;
+  const stats: AgentIdInjectionStats = {
+    create_session_steps: 0,
+    injected_create_session_steps: 0,
+    explicit_create_session_steps: 0,
+  };
+
+  const visit = (node: unknown): unknown => {
+    if (Array.isArray(node)) return node.map((v) => visit(v));
+    if (node && typeof node === "object") {
+      const out: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(node as Record<string, unknown>)) out[k] = visit(v);
+      if (isAgentCreateSessionStep(out)) {
+        stats.create_session_steps++;
+        if (needsAgentIdInjection(out, overwrite)) {
+          if (overwrite || !hasExplicitAgentId(out)) out.agent_id = ids.bot_id;
+          if (overwrite || !hasExplicitAgentVersionId(out)) {
+            out.agent_version_id = ids.bot_version_id;
+          }
+          if (ids.planner_id && (overwrite || !hasExplicitPlannerId(out)))
+            out.planner_id = ids.planner_id;
+          stats.injected_create_session_steps++;
+        } else {
+          stats.explicit_create_session_steps++;
+        }
+      }
+      return out;
+    }
+    return node;
+  };
+
+  return { spec: visit(value) as T, ...stats };
 }
 
 /**

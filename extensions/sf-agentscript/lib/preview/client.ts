@@ -17,6 +17,7 @@
  */
 
 import { randomUUID } from "node:crypto";
+import path from "node:path";
 import type { Connection } from "@salesforce/core";
 import { sfap404Message } from "../errors/sfap-404.ts";
 import { isSfapRoutingFailure, sfapRequest } from "../eval/sfap.ts";
@@ -29,6 +30,7 @@ import {
   loadSession,
   logTrace,
   logTurn,
+  recordTurnPlan,
   type PreviewMetadata,
 } from "./session-store.ts";
 import { loadAgentforceSDK } from "../sdk.ts";
@@ -359,8 +361,9 @@ export async function sendMessage(opts: PreviewSendOptions): Promise<PreviewSend
       : MESSAGES_URL(opts.sessionId);
 
   // Log the user turn first so transcripts are append-only and crash-safe.
+  const userTimestamp = new Date().toISOString();
   await logTurn(sessionDir, {
-    timestamp: new Date().toISOString(),
+    timestamp: userTimestamp,
     agentName: opts.agentName,
     sessionId: opts.sessionId,
     role: "user",
@@ -396,8 +399,9 @@ export async function sendMessage(opts: PreviewSendOptions): Promise<PreviewSend
   const agentResponse = first?.message ?? "";
 
   // Log the agent turn.
+  const agentTimestamp = new Date().toISOString();
   await logTurn(sessionDir, {
-    timestamp: new Date().toISOString(),
+    timestamp: agentTimestamp,
     agentName: opts.agentName,
     sessionId: opts.sessionId,
     role: "agent",
@@ -453,6 +457,17 @@ export async function sendMessage(opts: PreviewSendOptions): Promise<PreviewSend
       .filter((s): s is string => typeof s === "string");
     if (invokedActions.length === 0) invokedActions = undefined;
   }
+
+  await recordTurnPlan(sessionDir, {
+    agentName: opts.agentName,
+    sessionId: opts.sessionId,
+    planId: planId || undefined,
+    userText: opts.message,
+    agentText: agentResponse,
+    userTimestamp,
+    agentTimestamp,
+    traceFile: traceFile ? path.relative(sessionDir, traceFile) : undefined,
+  });
 
   // When apex_debug is requested, fetch the latest debug log captured during
   // this turn. Best-effort — we use the user's UserId from conn.identity().
@@ -737,4 +752,4 @@ export async function startPreviewByApiName(
 
 // Re-export read-side helpers for the preview tool.
 export { loadSession } from "./session-store.ts";
-export { cleanupSessions } from "./session-store.ts";
+export { cleanupSessions, listStoredSessions } from "./session-store.ts";

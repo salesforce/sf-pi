@@ -212,6 +212,7 @@ export interface RunMetadata {
   spec_path?: string;
   org?: string;
   agent_api_name?: string;
+  bot_id?: string;
   bot_version_id?: string;
   planner_id?: string | null;
   /** VersionNumber of the BotVersion the run actually exercised. */
@@ -223,6 +224,24 @@ export interface RunMetadata {
    * the ship-then-test-then-activate flow.
    */
   bot_version_status?: string;
+  /**
+   * Populated when `agent_api_name` was used to inject missing ids into
+   * `agent.create_session` steps. The default mode is `active`, preserving
+   * production-version safety while matching upstream's ergonomic `--api-name`
+   * flow for JSON specs.
+   */
+  agent_id_resolution?: {
+    mode: "active" | "latest" | "version";
+    agent_api_name?: string;
+    bot_id: string;
+    bot_version_id: string;
+    bot_version_number: number;
+    bot_version_status: string;
+    planner_id: string | null;
+    create_session_steps: number;
+    injected_create_session_steps: number;
+    explicit_create_session_steps: number;
+  };
   started: string;
   completed: string;
   duration_ms: number;

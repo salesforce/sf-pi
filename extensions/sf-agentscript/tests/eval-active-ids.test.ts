@@ -16,6 +16,8 @@
 import { describe, expect, test } from "vitest";
 import {
   detectPlaceholderUsage,
+  injectResolvedAgentIds,
+  shouldInjectResolvedAgentIds,
   specHasActivePlaceholders,
   substitutePlaceholders,
   type ResolvedAgentIds,
@@ -88,6 +90,181 @@ describe("detectPlaceholderUsage", () => {
     expect(specHasActivePlaceholders({ x: "$active_planner_id" })).toBe(true);
     expect(specHasActivePlaceholders({ x: "$latest_planner_id" })).toBe(true);
     expect(specHasActivePlaceholders({ x: "no placeholder" })).toBe(false);
+  });
+});
+
+describe("injectResolvedAgentIds", () => {
+  test("injects missing agent ids into create_session steps", () => {
+    const spec = {
+      tests: [
+        {
+          id: "route",
+          steps: [{ type: "agent.create_session", id: "cs", use_agent_api: true }],
+        },
+      ],
+    };
+    expect(shouldInjectResolvedAgentIds(spec)).toBe(true);
+    const result = injectResolvedAgentIds(spec, ACTIVE);
+    expect(result.injected_create_session_steps).toBe(1);
+    expect(result.explicit_create_session_steps).toBe(0);
+    expect(result.spec.tests[0].steps[0]).toMatchObject({
+      agent_id: "BOT-DEF-1",
+      agent_version_id: "BV-ACTIVE",
+      planner_id: "PL-ACTIVE",
+    });
+    // Original object is not mutated.
+    expect("agent_id" in spec.tests[0].steps[0]).toBe(false);
+  });
+
+  test("leaves explicit create_session ids untouched by default", () => {
+    const spec = {
+      tests: [
+        {
+          id: "explicit",
+          steps: [
+            {
+              type: "agent.create_session",
+              id: "cs",
+              agent_id: "BOT-EXPLICIT",
+              agent_version_id: "BV-EXPLICIT",
+            },
+          ],
+        },
+      ],
+    };
+    expect(shouldInjectResolvedAgentIds(spec)).toBe(false);
+    const result = injectResolvedAgentIds(spec, ACTIVE);
+    expect(result.injected_create_session_steps).toBe(0);
+    expect(result.explicit_create_session_steps).toBe(1);
+    expect(result.spec.tests[0].steps[0]).toMatchObject({
+      agent_id: "BOT-EXPLICIT",
+      agent_version_id: "BV-EXPLICIT",
+    });
+    expect("planner_id" in result.spec.tests[0].steps[0]).toBe(false);
+  });
+
+  test("treats supported alias fields as explicit before normalizeSpec runs", () => {
+    const spec = {
+      tests: [
+        {
+          id: "aliases",
+          steps: [
+            {
+              type: "agent.create_session",
+              id: "cs",
+              agentId: "BOT-ALIAS",
+              agentVersionId: "BV-ALIAS",
+            },
+          ],
+        },
+      ],
+    };
+    expect(shouldInjectResolvedAgentIds(spec)).toBe(false);
+    const result = injectResolvedAgentIds(spec, ACTIVE);
+    expect(result.injected_create_session_steps).toBe(0);
+    expect(result.spec.tests[0].steps[0]).toMatchObject({
+      agentId: "BOT-ALIAS",
+      agentVersionId: "BV-ALIAS",
+    });
+    expect("agent_id" in result.spec.tests[0].steps[0]).toBe(false);
+  });
+
+  test("partially explicit ids are preserved while missing ids are filled", () => {
+    const spec = {
+      tests: [
+        {
+          id: "partial",
+          steps: [
+            {
+              type: "agent.create_session",
+              id: "cs",
+              agent_id: "BOT-PRESERVE",
+            },
+          ],
+        },
+      ],
+    };
+    const result = injectResolvedAgentIds(spec, ACTIVE);
+    expect(result.injected_create_session_steps).toBe(1);
+    expect(result.spec.tests[0].steps[0]).toMatchObject({
+      agent_id: "BOT-PRESERVE",
+      agent_version_id: "BV-ACTIVE",
+      planner_id: "PL-ACTIVE",
+    });
+  });
+
+  test("explicit planner aliases are preserved when filling missing agent ids", () => {
+    const spec = {
+      tests: [
+        {
+          id: "planner-alias",
+          steps: [
+            {
+              type: "agent.create_session",
+              id: "cs",
+              plannerId: "PL-PRESERVE",
+            },
+          ],
+        },
+      ],
+    };
+    const result = injectResolvedAgentIds(spec, ACTIVE);
+    expect(result.spec.tests[0].steps[0]).toMatchObject({
+      agent_id: "BOT-DEF-1",
+      agent_version_id: "BV-ACTIVE",
+      plannerId: "PL-PRESERVE",
+    });
+    expect("planner_id" in result.spec.tests[0].steps[0]).toBe(false);
+  });
+
+  test("overwrite=true replaces explicit ids", () => {
+    const spec = {
+      tests: [
+        {
+          id: "overwrite",
+          steps: [
+            {
+              type: "agent.create_session",
+              id: "cs",
+              agent_id: "BOT-OLD",
+              agent_version_id: "BV-OLD",
+              planner_id: "PL-OLD",
+            },
+          ],
+        },
+      ],
+    };
+    expect(shouldInjectResolvedAgentIds(spec, true)).toBe(true);
+    const result = injectResolvedAgentIds(spec, LATEST, { overwrite: true });
+    expect(result.injected_create_session_steps).toBe(1);
+    expect(result.spec.tests[0].steps[0]).toMatchObject({
+      agent_id: "BOT-DEF-1",
+      agent_version_id: "BV-LATEST",
+      planner_id: "PL-LATEST",
+    });
+  });
+
+  test("mixed explicit and missing steps count correctly", () => {
+    const spec = {
+      tests: [
+        {
+          id: "mixed",
+          steps: [
+            { type: "agent.create_session", id: "cs1" },
+            {
+              type: "agent.create_session",
+              id: "cs2",
+              agent_id: "BOT-X",
+              agent_version_id: "BV-X",
+            },
+          ],
+        },
+      ],
+    };
+    const result = injectResolvedAgentIds(spec, ACTIVE);
+    expect(result.create_session_steps).toBe(2);
+    expect(result.injected_create_session_steps).toBe(1);
+    expect(result.explicit_create_session_steps).toBe(1);
   });
 });
 

@@ -7,7 +7,7 @@ testing against the Salesforce Evaluation API. One npm dep
 
 ## What It Does
 
-Six LLM-callable tools that close the **inspect → create → correct → self-recover** loop:
+Seven LLM-callable tools that close the **inspect → create → correct → self-recover** loop:
 
 | Tool                  | What it does                                                                                                                                                               |
 | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -15,7 +15,7 @@ Six LLM-callable tools that close the **inspect → create → correct → self-
 | `agentscript_create`  | Scaffold new `.agent` + `bundle-meta.xml`. Validates locally before writing. Returns `next_steps`.                                                                         |
 | `agentscript_inspect` | Walks the parsed AST and returns a navigable JSON graph (topics, subagents, variables, actions, line numbers, `@`-references). LLM uses it instead of re-reading the file. |
 | `agentscript_mutate`  | AST-safe edits via `Document.mutateComponent` + `emit`; coordinate fallback for `apply_quick_fix`. Always re-compiles after writing.                                       |
-| `agentscript_preview` | Live-org preview — `start` / `send` / `end` / `trace` / `cleanup`. Sessions land at `.sfdx/agents/<id>/sessions/<sid>/`. Streams progress on `send`.                       |
+| `agentscript_preview` | Live-org preview — `start` / `send` / `end` / `end_all` / `trace` / `cleanup`. Sessions land at `.sfdx/agents/<id>/sessions/<sid>/`. Streams progress on `send`.           |
 | `agentscript_eval`    | Multi-turn regression — `run` / `get_failure` / `trace` / `resolve_active`. Streams progress mid-flight. Hybrid result (inline failures small / `run_id` pointer big).     |
 
 Plus an automatic **compile-on-save hook** that runs after every successful
@@ -42,7 +42,7 @@ edit/write a .agent file ──▶ on-save hook ──▶ agentscript_compile (a
 agent loop (the four verbs):
   CREATE → INSPECT → CORRECT (mutate) → SELF-RECOVER
    │        │           │                      │
-   │        │           │                      ├─ preview {start,send,end,trace,cleanup}
+   │        │           │                      ├─ preview {start,send,end,end_all,trace,cleanup}
    │        │           │                      └─ eval {run,get_failure,trace,resolve_active}
    │        │           └─ on-save compile re-runs after every mutate
    │        └─ navigable graph: topics, subagents, variables, actions
@@ -107,8 +107,9 @@ tagged `E`, severity-2 issues `W`.
 | `agentscript_inspect`                  | One AST walk, JSON projection, line numbers 1-based; `check_targets` verifies target readiness (active Autolaunched Flow, Active Prompt Template, invocable Apex + I/O names) |
 | `agentscript_mutate`                   | AST primary (`set_field` / `rename` / `apply_quick_fix`); refuses to mutate files with severity-1 errors; auto-recompiles                                                     |
 | `agentscript_preview start`            | Local-compile first; only hits `/authoring/scripts` on success                                                                                                                |
-| `agentscript_preview send`             | POST message, fetch trace inline, write to session store                                                                                                                      |
-| `agentscript_eval run`                 | Resolve `$active_*` if present → normalize (6 passes) → batch ≤ 5 tests → fan-out POST → HTML-decode → fetch traces (failed by default) → persist artifacts                   |
+| `agentscript_preview send`             | POST message, fetch trace inline, write to session store + `turn-index.json`                                                                                                  |
+| `agentscript_preview end_all`          | Dry-run by default; scans stored sessions, filters by agent/kind/org/age, remotely ends published-agent sessions, locally finalizes authoring-bundle sessions                 |
+| `agentscript_eval run`                 | Resolve placeholders or inject missing create-session ids from `agent_api_name` (Active by default) → normalize → batch ≤ 5 tests → POST → fetch/synthesize traces → persist  |
 | Any tool error                         | Returns `{ ok: false, error, suggestion?, recover_via? }` so the LLM can chain a follow-up tool call programmatically                                                         |
 
 ## File Structure
@@ -224,6 +225,7 @@ extensions/sf-agentscript/
     diagnose-agent-user.test.ts← unit / smoke test
     diagnostics.test.ts     ← unit / smoke test
     eval-active-ids.test.ts ← unit / smoke test
+    eval-agent-id-injection.test.ts← unit / smoke test
     eval-normalize.test.ts  ← unit / smoke test
     eval-plan-id-path.test.ts← unit / smoke test
     eval-sfap.test.ts       ← unit / smoke test

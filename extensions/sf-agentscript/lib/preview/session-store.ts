@@ -7,6 +7,7 @@
  *   <cwd>/.sfdx/agents/<agentName>/sessions/<sessionId>/
  *   ├── metadata.json        { sessionId, agentName, startTime, endTime?, mockMode, planIds[] }
  *   ├── transcript.jsonl     append-only; one TranscriptEntry per line (user|agent)
+ *   ├── turn-index.json      turn → planId/user/agent/trace pointer
  *   └── traces/<planId>.json full PlannerResponse per turn
  *
  * sf-guardrail allows `.sfdx/agents/**` (carve-out from the broader `.sfdx/**`
@@ -70,6 +71,32 @@ export interface TranscriptEntry {
   planId?: string;
 }
 
+export interface TurnIndexEntry {
+  turn: number;
+  planId?: string;
+  userText?: string;
+  agentText?: string;
+  userTimestamp?: string;
+  agentTimestamp?: string;
+  traceFile?: string;
+}
+
+export interface TurnIndex {
+  schemaVersion: 1;
+  agentName: string;
+  sessionId: string;
+  turns: TurnIndexEntry[];
+}
+
+export interface StoredPreviewSession {
+  agent: string;
+  session_id: string;
+  session_dir: string;
+  metadata?: PreviewMetadata;
+  metadata_error?: string;
+  age_days: number;
+}
+
 // -------------------------------------------------------------------------------------------------
 // Path helpers
 // -------------------------------------------------------------------------------------------------
@@ -109,6 +136,56 @@ export async function loadSession(
     /* empty session — no transcript yet */
   }
   return { metadata, transcript };
+}
+
+export async function readTurnIndex(sessionDir: string): Promise<TurnIndex | null> {
+  try {
+    return JSON.parse(
+      await readFile(path.join(sessionDir, "turn-index.json"), "utf8"),
+    ) as TurnIndex;
+  } catch {
+    return null;
+  }
+}
+
+export async function recordTurnPlan(
+  sessionDir: string,
+  entry: Omit<TurnIndexEntry, "turn"> & { turn?: number; agentName: string; sessionId: string },
+): Promise<TurnIndex> {
+  const existing = await readTurnIndex(sessionDir);
+  const index: TurnIndex = existing ?? {
+    schemaVersion: 1,
+    agentName: entry.agentName,
+    sessionId: entry.sessionId,
+    turns: [],
+  };
+  const existingByTurn =
+    typeof entry.turn === "number"
+      ? index.turns.find((t) => t.turn === entry.turn)
+      : entry.planId
+        ? index.turns.find((t) => t.planId === entry.planId)
+        : undefined;
+  const turn = entry.turn ?? existingByTurn?.turn ?? maxTurn(index.turns) + 1;
+  const nextEntry: TurnIndexEntry = {
+    ...(existingByTurn ?? { turn }),
+    turn,
+    ...(entry.planId ? { planId: entry.planId } : {}),
+    ...(entry.userText !== undefined ? { userText: entry.userText } : {}),
+    ...(entry.agentText !== undefined ? { agentText: entry.agentText } : {}),
+    ...(entry.userTimestamp ? { userTimestamp: entry.userTimestamp } : {}),
+    ...(entry.agentTimestamp ? { agentTimestamp: entry.agentTimestamp } : {}),
+    ...(entry.traceFile ? { traceFile: entry.traceFile } : {}),
+  };
+  const idx = index.turns.findIndex((t) => t.turn === turn);
+  if (idx >= 0) index.turns[idx] = nextEntry;
+  else index.turns.push(nextEntry);
+  index.turns.sort((a, b) => a.turn - b.turn);
+  await writeFile(path.join(sessionDir, "turn-index.json"), JSON.stringify(index, null, 2), "utf8");
+  return index;
+}
+
+function maxTurn(turns: TurnIndexEntry[]): number {
+  return turns.reduce((max, t) => Math.max(max, t.turn), 0);
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -168,8 +245,60 @@ export async function endSession(sessionDir: string, endTime: string): Promise<P
 }
 
 // -------------------------------------------------------------------------------------------------
-// Cleanup (preview action=cleanup)
+// Session discovery / Cleanup
 // -------------------------------------------------------------------------------------------------
+
+export async function listStoredSessions(cwd: string): Promise<StoredPreviewSession[]> {
+  const now = Date.now();
+  const out: StoredPreviewSession[] = [];
+  const agentsRoot = getAgentBaseDir(cwd);
+  let agents: string[];
+  try {
+    agents = await readdir(agentsRoot);
+  } catch {
+    return [];
+  }
+
+  for (const agent of agents) {
+    const agentSessionsDir = path.join(agentsRoot, agent, "sessions");
+    let sessions: string[];
+    try {
+      sessions = await readdir(agentSessionsDir);
+    } catch {
+      continue;
+    }
+    for (const sessionId of sessions) {
+      const sessionDir = path.join(agentSessionsDir, sessionId);
+      let info;
+      try {
+        info = await stat(sessionDir);
+      } catch {
+        continue;
+      }
+      if (!info.isDirectory()) continue;
+
+      let metadata: PreviewMetadata | undefined;
+      let metadataError: string | undefined;
+      try {
+        const raw = await readFile(path.join(sessionDir, "metadata.json"), "utf8");
+        metadata = JSON.parse(raw) as PreviewMetadata;
+      } catch (err) {
+        metadataError = err instanceof Error ? err.message : String(err);
+      }
+      const referenceTime = metadata?.endTime ?? metadata?.startTime;
+      const ageMs = referenceTime ? now - new Date(referenceTime).getTime() : now - info.mtimeMs;
+      out.push({
+        agent,
+        session_id: sessionId,
+        session_dir: sessionDir,
+        metadata,
+        metadata_error: metadataError,
+        age_days: Math.floor(ageMs / (24 * 60 * 60 * 1000)),
+      });
+    }
+  }
+  return out;
+}
 
 export interface CleanupResult {
   removed: Array<{ agent: string; session_id: string; age_days: number }>;

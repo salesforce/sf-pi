@@ -2,9 +2,22 @@
 /** Tests for the named-user JWT bootstrap required by /einstein/ai-agent/* routes. */
 
 import { describe, expect, test, vi } from "vitest";
-import { upgradeConnectionToNamedUserJwt } from "../lib/agent-api-auth.ts";
+import { upgradeConnectionToNamedUserJwt, validateNamedUserJwt } from "../lib/agent-api-auth.ts";
 
-const JWT = "eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJ1aWQ6MDA1In0.signature";
+function makeJwt(payload: Record<string, unknown>): string {
+  const encode = (value: unknown): string =>
+    Buffer.from(JSON.stringify(value), "utf8").toString("base64url").replace(/=/g, "");
+  return `${encode({ alg: "RS256" })}.${encode(payload)}.signature`;
+}
+
+const JWT = makeJwt({
+  sub: "uid:005",
+  iss: "https://example.my.salesforce.com",
+  exp: Math.floor(Date.now() / 1000) + 3600,
+  iat: Math.floor(Date.now() / 1000) - 60,
+  sfdc_app_id: "app",
+  scope: "chatbot_api sfap_api web",
+});
 
 function fakeConn(opts?: { token?: string; instanceUrl?: string; response?: unknown }) {
   const conn = {
@@ -26,6 +39,34 @@ function fakeConn(opts?: { token?: string; instanceUrl?: string; response?: unkn
   };
   return conn;
 }
+
+describe("validateNamedUserJwt", () => {
+  test("validates required claims and exposes diagnostics", () => {
+    const result = validateNamedUserJwt(JWT);
+    expect(result.isValid).toBe(true);
+    expect(result.subject).toBe("uid:005");
+    expect(result.issuer).toBe("https://example.my.salesforce.com");
+    expect(result.scopes).toEqual(["chatbot_api", "sfap_api", "web"]);
+  });
+
+  test("rejects non-three-part tokens", () => {
+    expect(validateNamedUserJwt("not-a-jwt")).toMatchObject({
+      isValid: false,
+      missingFields: ["invalid JWT format - expected 3 parts"],
+    });
+  });
+
+  test("rejects expired and missing-claim tokens", () => {
+    const expired = makeJwt({ sub: "uid:005", iss: "issuer", exp: 1 });
+    expect(validateNamedUserJwt(expired)).toMatchObject({ isValid: false, isExpired: true });
+
+    const missingIssuer = makeJwt({ sub: "uid:005" });
+    expect(validateNamedUserJwt(missingIssuer)).toMatchObject({
+      isValid: false,
+      missingFields: ["iss"],
+    });
+  });
+});
 
 describe("upgradeConnectionToNamedUserJwt", () => {
   test("calls /agentforce/bootstrap/nameduser with sid cookie and installs returned JWT", async () => {
@@ -51,5 +92,48 @@ describe("upgradeConnectionToNamedUserJwt", () => {
     await expect(upgradeConnectionToNamedUserJwt(conn as never)).rejects.toThrow(
       /missing org access token/,
     );
+  });
+});
+
+describe("connForAgentApi isolation", () => {
+  test("uses fresh connections so the normal org connection token is not clobbered", async () => {
+    vi.resetModules();
+    const baseConn = {
+      accessToken: "ORG-TOKEN",
+      getUsername: () => "agent@example.com",
+      getApiVersion: () => "67.0",
+    };
+    const created: Array<
+      ReturnType<typeof fakeConn> & { setApiVersion: ReturnType<typeof vi.fn> }
+    > = [];
+
+    vi.doMock("../../../lib/common/sf-conn/connection.ts", () => ({
+      connFromAlias: vi.fn(async () => baseConn),
+    }));
+    vi.doMock("@salesforce/core", () => ({
+      AuthInfo: { create: vi.fn(async () => ({ username: "agent@example.com" })) },
+      Connection: {
+        create: vi.fn(async () => {
+          const conn = Object.assign(fakeConn({ token: "FRESH-ORG-TOKEN" }), {
+            setApiVersion: vi.fn(),
+          });
+          created.push(conn);
+          return conn;
+        }),
+      },
+    }));
+
+    const { connForAgentApi } = await import("../lib/agent-api-auth.ts");
+    const [one, two] = await Promise.all([connForAgentApi("org"), connForAgentApi("org")]);
+
+    expect(baseConn.accessToken).toBe("ORG-TOKEN");
+    expect(one.conn).not.toBe(baseConn);
+    expect(two.conn).not.toBe(baseConn);
+    expect(one.conn).not.toBe(two.conn);
+    expect(created).toHaveLength(2);
+    expect(created.every((c) => c.accessToken === JWT)).toBe(true);
+
+    vi.doUnmock("../../../lib/common/sf-conn/connection.ts");
+    vi.doUnmock("@salesforce/core");
   });
 });

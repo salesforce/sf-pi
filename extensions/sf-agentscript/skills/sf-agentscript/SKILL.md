@@ -1,6 +1,6 @@
 ---
 name: sf-agentscript
-description: Agent Script lifecycle — create, inspect, correct, and self-recover when authoring `.agent` files. Six tools for the four-verb loop, all running on the local vendored SDK with a thin @salesforce/core Connection layer for live-org operations.
+description: Agent Script lifecycle — create, inspect, correct, and self-recover when authoring `.agent` files. Seven tools for the four-verb loop, all running on the local vendored SDK with a thin @salesforce/core Connection layer for live-org operations.
 ---
 
 # SF Agent Script
@@ -13,15 +13,15 @@ Evaluation API.
 
 ## The seven tools
 
-| Tool                    | Action(s)                                                        | What it does                                                                                                                                                                                                                                                                                                        |
-| ----------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `agentscript_compile`   | `check` (default) / `format`                                     | Local-first compile via the vendored SDK. ~10ms. Returns diagnostics + `quick_fixes` with `apply_via` hints pointing at `agentscript_mutate`. `format` canonicalizes whitespace via emit() (refuses on parse errors). `fallback: "server"` retries via /authoring/scripts when local rejects.                       |
-| `agentscript_inspect`   | `structure` (default) / `find_references` / `definition`         | Read-only queries on a `.agent`. `structure` returns the navigable graph (~200 tokens vs ~3000 for a re-read). `find_references` returns every `@<ns>.<prop>` usage (with declaration site). `definition` returns the line where a symbol is declared.                                                              |
-| `agentscript_create`    | (single)                                                         | Scaffolds a new `.agent` + `bundle-meta.xml`. Local-validates before writing. Returns `next_steps` you can chain.                                                                                                                                                                                                   |
-| `agentscript_mutate`    | `set_field` / `rename` / `insert` / `delete` / `apply_quick_fix` | AST-safe edits via `Document.mutateComponent`; coordinate fallback for `apply_quick_fix`. Always re-compiles after writing — `diagnostics_after` is in the same turn. Pass `dry_run: true` to preview a change as a unified diff without writing.                                                                   |
-| `agentscript_preview`   | `start` / `send` / `end` / `trace` / `cleanup`                   | Live preview against the org. `start` accepts EITHER `agent_file` (local `.agent`, compiles + uploads) OR `agent_api_name` (converse with a published, activated agent). `send` accepts `apex_debug: true` to capture the debug log produced during the turn. Sessions land at `.sfdx/agents/<id>/sessions/<sid>/`. |
-| `agentscript_eval`      | `run` / `get_failure` / `trace` / `resolve_active`               | Multi-turn regression spec runner. Streams progress mid-flight. Hybrid result (inline failures small / `run_id` pointer big).                                                                                                                                                                                       |
-| `agentscript_lifecycle` | `publish` / `activate` / `deactivate` / `list_versions`          | Server-compile + publish (creates new agent OR new version, auto-detected). Idempotent activate / deactivate. SOQL-backed list_versions. Closes the dev loop.                                                                                                                                                       |
+| Tool                    | Action(s)                                                        | What it does                                                                                                                                                                                                                                                                                                                              |
+| ----------------------- | ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `agentscript_compile`   | `check` (default) / `format`                                     | Local-first compile via the vendored SDK. ~10ms. Returns diagnostics + `quick_fixes` with `apply_via` hints pointing at `agentscript_mutate`. `format` canonicalizes whitespace via emit() (refuses on parse errors). `fallback: "server"` retries via /authoring/scripts when local rejects.                                             |
+| `agentscript_inspect`   | `structure` (default) / `find_references` / `definition`         | Read-only queries on a `.agent`. `structure` returns the navigable graph (~200 tokens vs ~3000 for a re-read). `find_references` returns every `@<ns>.<prop>` usage (with declaration site). `definition` returns the line where a symbol is declared.                                                                                    |
+| `agentscript_create`    | (single)                                                         | Scaffolds a new `.agent` + `bundle-meta.xml`. Local-validates before writing. Returns `next_steps` you can chain.                                                                                                                                                                                                                         |
+| `agentscript_mutate`    | `set_field` / `rename` / `insert` / `delete` / `apply_quick_fix` | AST-safe edits via `Document.mutateComponent`; coordinate fallback for `apply_quick_fix`. Always re-compiles after writing — `diagnostics_after` is in the same turn. Pass `dry_run: true` to preview a change as a unified diff without writing.                                                                                         |
+| `agentscript_preview`   | `start` / `send` / `end` / `end_all` / `trace` / `cleanup`       | Live preview against the org. `start` accepts EITHER `agent_file` (local `.agent`, compiles + uploads) OR `agent_api_name` (converse with a published, activated agent). `send` captures traces and updates `turn-index.json`; `end_all` dry-runs by default for safe bulk cleanup. Sessions land at `.sfdx/agents/<id>/sessions/<sid>/`. |
+| `agentscript_eval`      | `run` / `get_failure` / `trace` / `resolve_active`               | Multi-turn regression spec runner. Streams progress mid-flight. Hybrid result (inline failures small / `run_id` pointer big).                                                                                                                                                                                                             |
+| `agentscript_lifecycle` | `publish` / `activate` / `deactivate` / `list_versions`          | Server-compile + publish (creates new agent OR new version, auto-detected). Idempotent activate / deactivate. SOQL-backed list_versions. Closes the dev loop.                                                                                                                                                                             |
 
 ## The self-recovery loop
 
@@ -153,6 +153,13 @@ Rules that apply to both:
 
 - Pass `agent_api_name` on every call. Without it the run errors out
   with a `recover_via` pointing at `resolve_active`.
+- JSON specs can omit `agent_id` / `agent_version_id` in
+  `agent.create_session` when `agent_api_name` is supplied. The runner
+  injects the Active BotVersion by default (`version_resolution='active'`),
+  preserving production-version safety while keeping specs compact.
+- Use `version_resolution='latest'` only for the ship→eval→activate loop;
+  non-Active latest versions still require `acknowledge_inactive_version=true`.
+  Use `version_resolution='version'` plus `version=N` to pin an exact version.
 - Run `action=resolve_active` first when in doubt; it returns the
   `bot_version_id`, `version_number`, and `bot_version_status` so you
   can confirm which version a run will actually hit.
