@@ -9,14 +9,14 @@ testing against the Salesforce Evaluation API. One npm dep
 
 Seven LLM-callable tools that close the **inspect → create → correct → self-recover** loop:
 
-| Tool                  | What it does                                                                                                                                                               |
-| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `agentscript_compile` | Local-first compile via vendored `@agentscript/agentforce` SDK (~10 ms). Quick fixes carry `apply_via` pointing at `agentscript_mutate`.                                   |
-| `agentscript_create`  | Scaffold new `.agent` + `bundle-meta.xml`. Validates locally before writing. Returns `next_steps`.                                                                         |
-| `agentscript_inspect` | Walks the parsed AST and returns a navigable JSON graph (topics, subagents, variables, actions, line numbers, `@`-references). LLM uses it instead of re-reading the file. |
-| `agentscript_mutate`  | AST-safe edits via `Document.mutateComponent` + `emit`; coordinate fallback for `apply_quick_fix`. Always re-compiles after writing.                                       |
-| `agentscript_preview` | Live-org preview — `start` / `send` / `end` / `end_all` / `trace` / `cleanup`. Sessions land at `.sfdx/agents/<id>/sessions/<sid>/`. Streams progress on `send`.           |
-| `agentscript_eval`    | Multi-turn regression — `run` / `get_failure` / `trace` / `resolve_active`. Streams progress mid-flight. Hybrid result (inline failures small / `run_id` pointer big).     |
+| Tool                  | What it does                                                                                                                                                                                                                                                                                     |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `agentscript_compile` | Local-first compile via vendored `@agentscript/agentforce` SDK (~10 ms). Quick fixes carry `apply_via` pointing at `agentscript_mutate`.                                                                                                                                                         |
+| `agentscript_create`  | Scaffold new `.agent` + `bundle-meta.xml`. Validates locally before writing. Returns `next_steps`.                                                                                                                                                                                               |
+| `agentscript_inspect` | Walks the parsed AST and returns a navigable JSON graph (topics, subagents, variables, actions, linked variable sources, response formats, voice modalities, line numbers, `@`-references). LLM uses it instead of re-reading the file.                                                          |
+| `agentscript_mutate`  | AST-safe edits via `Document.mutateComponent` + `emit`; coordinate fallback for `apply_quick_fix`. Always re-compiles after writing.                                                                                                                                                             |
+| `agentscript_preview` | Live-org preview — `start` / `send` / `end` / `end_all` / `trace` / `cleanup`. Sessions land at `.sfdx/agents/<id>/sessions/<sid>/`. Streams progress on `send`. Start-time `context_variables` seed mutable/context/linked variables and patch linked bindings for CLI voice/messaging preview. |
+| `agentscript_eval`    | Multi-turn regression — `run` / `get_failure` / `trace` / `resolve_active`. Streams progress mid-flight. Hybrid result (inline failures small / `run_id` pointer big).                                                                                                                           |
 
 Plus an automatic **compile-on-save hook** that runs after every successful
 `write` / `edit` of a `.agent` file and appends `LSP feedback:` to the tool result.
@@ -97,19 +97,19 @@ tagged `E`, severity-2 issues `W`.
 
 ## Behavior Matrix
 
-| Trigger                                | Result                                                                                                                                                                        |
-| -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `session_start` / `session_shutdown`   | Reset assist state, drop cached `Connection`s                                                                                                                                 |
-| `tool_result` (write/edit on `.agent`) | Compile in-process, append `LSP feedback:` block                                                                                                                              |
-| `agentscript_compile`                  | Same pipeline as on-save; quick fixes carry `apply_via`                                                                                                                       |
-| `agentscript_create`                   | Validate template locally before writing; refuse to overwrite without `overwrite: true`                                                                                       |
-| `agentscript_inspect`                  | One AST walk, JSON projection, line numbers 1-based; `check_targets` verifies target readiness (active Autolaunched Flow, Active Prompt Template, invocable Apex + I/O names) |
-| `agentscript_mutate`                   | AST primary (`set_field` / `rename` / `apply_quick_fix`); refuses to mutate files with severity-1 errors; auto-recompiles                                                     |
-| `agentscript_preview start`            | Local-compile first; only hits `/authoring/scripts` on success                                                                                                                |
-| `agentscript_preview send`             | POST message, fetch trace inline, write to session store + `turn-index.json`                                                                                                  |
-| `agentscript_preview end_all`          | Dry-run by default; scans stored sessions, filters by agent/kind/org/age, remotely ends published-agent sessions, locally finalizes authoring-bundle sessions                 |
-| `agentscript_eval run`                 | Resolve placeholders or inject missing create-session ids from `agent_api_name` (Active by default) → normalize → batch ≤ 5 tests → POST → fetch/synthesize traces → persist  |
-| Any tool error                         | Returns `{ ok: false, error, suggestion?, recover_via? }` so the LLM can chain a follow-up tool call programmatically                                                         |
+| Trigger                                | Result                                                                                                                                                                                                                                                                                |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `session_start` / `session_shutdown`   | Reset assist state, drop cached `Connection`s                                                                                                                                                                                                                                         |
+| `tool_result` (write/edit on `.agent`) | Compile in-process, append `LSP feedback:` block                                                                                                                                                                                                                                      |
+| `agentscript_compile`                  | Same pipeline as on-save; quick fixes carry `apply_via`                                                                                                                                                                                                                               |
+| `agentscript_create`                   | Validate template locally before writing; refuse to overwrite without `overwrite: true`                                                                                                                                                                                               |
+| `agentscript_inspect`                  | One AST walk, JSON projection, line numbers 1-based; includes linked variable sources, connection response formats, voice modality fields, and utility refs; `check_targets` verifies target readiness (active Autolaunched Flow, Active Prompt Template, invocable Apex + I/O names) |
+| `agentscript_mutate`                   | AST primary (`set_field` / `rename` / `apply_quick_fix`); refuses to mutate files with severity-1 errors; auto-recompiles                                                                                                                                                             |
+| `agentscript_preview start`            | Local-compile first; only hits `/authoring/scripts` on success. Optional `context_variables` are injected into state, registered on the compiled AgentJSON, and persisted for future sends.                                                                                           |
+| `agentscript_preview send`             | POST message, fetch trace inline, merge any persisted start-time context variables with per-turn overrides, write to session store + `turn-index.json`                                                                                                                                |
+| `agentscript_preview end_all`          | Dry-run by default; scans stored sessions, filters by agent/kind/org/age, remotely ends published-agent sessions, locally finalizes authoring-bundle sessions                                                                                                                         |
+| `agentscript_eval run`                 | Resolve placeholders or inject missing create-session ids from `agent_api_name` (Active by default) → normalize → batch ≤ 5 tests → POST → fetch/synthesize traces → persist                                                                                                          |
+| Any tool error                         | Returns `{ ok: false, error, suggestion?, recover_via? }` so the LLM can chain a follow-up tool call programmatically                                                                                                                                                                 |
 
 ## File Structure
 
@@ -168,6 +168,7 @@ extensions/sf-agentscript/
       types.ts              ← implementation module
     preview/
       client.ts             ← implementation module
+      context-vars.ts       ← implementation module
       error-map.ts          ← implementation module
       resolve-agent-version.ts← implementation module
       session-store.ts      ← implementation module

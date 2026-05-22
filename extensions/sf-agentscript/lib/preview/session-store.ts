@@ -20,6 +20,7 @@
 
 import { appendFile, mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
+import type { PreviewContextVariable } from "./context-vars.ts";
 
 // -------------------------------------------------------------------------------------------------
 // Public types
@@ -57,6 +58,13 @@ export interface PreviewMetadata {
    * reference an already-published agent and don't need this hint.
    */
   agentFilePath?: string;
+  /** Session-level context/state seeds supplied at preview start. */
+  previewContextVariables?: PreviewContextVariable[];
+  /** Stats from patching compiled AgentJSON for linked-variable preview. */
+  previewContextPatch?: {
+    registeredStateVariables: number;
+    rewrittenBindings: number;
+  };
   planIds: string[];
 }
 
@@ -208,6 +216,8 @@ export async function initSession(
     endpoint: meta.endpoint,
     targetOrg: meta.targetOrg,
     agentFilePath: meta.agentFilePath,
+    previewContextVariables: meta.previewContextVariables,
+    previewContextPatch: meta.previewContextPatch,
     planIds: meta.planIds ?? [],
   };
   await writeFile(path.join(dir, "metadata.json"), JSON.stringify(full, null, 2), "utf8");

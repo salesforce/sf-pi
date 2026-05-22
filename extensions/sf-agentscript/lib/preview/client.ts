@@ -36,6 +36,13 @@ import {
 import { loadAgentforceSDK } from "../sdk.ts";
 import { resolveAgentVersionDeveloperName } from "./resolve-agent-version.ts";
 import { mapPreviewError } from "./error-map.ts";
+import {
+  applyPreviewContextPatch,
+  mergeContextVariables,
+  normalizeContextVariables,
+  type PreviewContextPatchResult,
+  type PreviewContextVariable,
+} from "./context-vars.ts";
 
 // -------------------------------------------------------------------------------------------------
 // SFAP endpoint pins
@@ -109,6 +116,11 @@ export interface PreviewStartOptions {
    * fall back to the global default org and 500 with "Session not found").
    */
   targetOrg?: string;
+  /**
+   * Optional session-level state/context seeds. For linked variables, start-time
+   * seeds also patch the compiled AgentJSON so bound inputs read from state.
+   */
+  contextVariables?: ContextVariable[];
 }
 
 export interface PreviewStartResult {
@@ -123,6 +135,8 @@ export interface PreviewStartResult {
    * `sendMessage`.
    */
   digest?: TraceDigest;
+  /** Stats for start-time context injection, when context_variables were passed. */
+  contextPatch?: PreviewContextPatchResult;
 }
 
 export interface PreviewSendOptions {
@@ -153,12 +167,7 @@ export interface PreviewSendOptions {
  * coerced server-side); we keep the type permissive so callers can
  * also pass numbers or booleans without manual stringification.
  */
-export interface ContextVariable {
-  name: string;
-  /** SFAP variable type. Default 'Text'. */
-  type?: string;
-  value: string | number | boolean;
-}
+export type ContextVariable = PreviewContextVariable;
 
 export interface PreviewSendResult {
   agentResponse: string;
@@ -268,6 +277,11 @@ export async function startPreview(opts: PreviewStartOptions): Promise<PreviewSt
     developerName: versionResolution.developerName,
   } as AgentJson["agentVersion"];
 
+  const contextPatch = applyPreviewContextPatch(
+    agentJson as unknown as Parameters<typeof applyPreviewContextPatch>[0],
+    opts.contextVariables,
+  );
+
   // 4. bypassUser rule (verbatim from upstream ScriptAgent).
   let bypassUser = false;
   const defaultAgentUser = agentJson.globalConfiguration?.defaultAgentUser;
@@ -295,7 +309,7 @@ export async function startPreview(opts: PreviewStartOptions): Promise<PreviewSt
       enableSimulationMode: opts.mockMode === "Mock",
       externalSessionKey: randomUUID(),
       instanceConfig: { endpoint: opts.conn.instanceUrl },
-      variables: [],
+      variables: contextPatch.variables,
       parameters: {},
       streamingCapabilities: { chunkTypes: ["Text", "LightningChunk"] },
       richContentCapabilities: {},
@@ -334,6 +348,11 @@ export async function startPreview(opts: PreviewStartOptions): Promise<PreviewSt
     endpoint: sessionResp.endpoint,
     targetOrg: opts.targetOrg,
     agentFilePath: opts.agentFilePath,
+    previewContextVariables: opts.contextVariables,
+    previewContextPatch: {
+      registeredStateVariables: contextPatch.registeredStateVariables,
+      rewrittenBindings: contextPatch.rewrittenBindings,
+    },
   });
   const initialMsg = (sessionResp.body.messages ?? []).map((m) => m.message ?? "").join("\n");
   await logTurn(sessionDir, {
@@ -345,7 +364,13 @@ export async function startPreview(opts: PreviewStartOptions): Promise<PreviewSt
     raw: sessionResp.body.messages,
   });
 
-  return { sessionId, agentResponse: initialMsg, startedAt: startTime, sessionDir };
+  return {
+    sessionId,
+    agentResponse: initialMsg,
+    startedAt: startTime,
+    sessionDir,
+    contextPatch,
+  };
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -370,6 +395,11 @@ export async function sendMessage(opts: PreviewSendOptions): Promise<PreviewSend
     text: opts.message,
   });
 
+  const mergedContextVariables = mergeContextVariables(
+    metadata.previewContextVariables,
+    opts.contextVariables,
+  );
+
   const start = Date.now();
   const resp = await sfapRequest<SessionMessageBody>(opts.conn, {
     url: messageUrl,
@@ -377,7 +407,7 @@ export async function sendMessage(opts: PreviewSendOptions): Promise<PreviewSend
     headers: { "x-client-name": "sf-pi", "content-type": "application/json" },
     body: {
       message: { sequenceId: Date.now(), type: "Text", text: opts.message },
-      variables: normalizeContextVariables(opts.contextVariables),
+      variables: normalizeContextVariables(mergedContextVariables),
       ...(opts.apexDebug ? { apexDebugging: true } : {}),
     },
     // Pin to the SFAP host that served `start` (sessions are shard-local).
@@ -568,27 +598,7 @@ function soqlEscape(s: string): string {
   return s.replace(/'/g, "''");
 }
 
-/**
- * Normalize the LLM-friendly `context_variables` shape to the SFAP wire
- * shape expected by the /v1.1/preview/sessions/{sid}/messages endpoint.
- *
- * - default `type` to 'Text' when omitted (matches eval-spec convention)
- * - stringify primitive values; the SFAP variables array is string-typed
- *   on the wire, mirroring how the eval API serializes context_variables
- *
- * Returns [] when `vars` is empty/undefined so the body shape is unchanged
- * for callers that don't pass any seeds.
- */
-export function normalizeContextVariables(
-  vars: ContextVariable[] | undefined,
-): Array<{ name: string; type: string; value: string }> {
-  if (!vars || vars.length === 0) return [];
-  return vars.map((v) => ({
-    name: v.name,
-    type: v.type ?? "Text",
-    value: typeof v.value === "string" ? v.value : String(v.value),
-  }));
-}
+export { normalizeContextVariables, mergeContextVariables, applyPreviewContextPatch };
 
 export function computePublishedBypassUser(bot?: {
   AgentType?: string;

@@ -54,6 +54,23 @@ describe("session lifecycle", () => {
     });
   });
 
+  test("initSession persists preview context variables and patch stats", async () => {
+    const dir = await initSession(workDir, {
+      sessionId: "S1",
+      agentName: "Voice_Bot",
+      startTime: "2026-05-10T00:00:00Z",
+      mockMode: "Live Test",
+      previewContextVariables: [{ name: "VoiceCallId", type: "Text", value: "0LQxxx" }],
+      previewContextPatch: { registeredStateVariables: 1, rewrittenBindings: 2 },
+    });
+    const metaRaw = await readFile(path.join(dir, "metadata.json"), "utf8");
+    const meta = JSON.parse(metaRaw) as PreviewMetadata;
+    expect(meta.previewContextVariables).toEqual([
+      { name: "VoiceCallId", type: "Text", value: "0LQxxx" },
+    ]);
+    expect(meta.previewContextPatch).toEqual({ registeredStateVariables: 1, rewrittenBindings: 2 });
+  });
+
   test("logTurn appends to transcript.jsonl", async () => {
     const dir = await initSession(workDir, {
       sessionId: "S1",

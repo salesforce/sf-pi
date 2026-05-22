@@ -94,10 +94,13 @@ const Params = Type.Object({
         name: Type.String(),
         type: Type.Optional(Type.String()),
         value: Type.Union([Type.String(), Type.Number(), Type.Boolean()]),
+        label: Type.Optional(Type.String()),
+        description: Type.Optional(Type.String()),
+        isList: Type.Optional(Type.Boolean()),
       }),
       {
         description:
-          "Optional for action='send'. Deterministic state seeds for this turn (eval-spec context_variables shape). Use to bypass auth gates, pre-fill identity, or reproduce a known-good state. Per-message seeding is the live workaround for the 2026-04 regression that drops session-level state seeds.",
+          "Optional for action='start' and action='send'. Deterministic state seeds for mutable/context/linked variables. On start with agent_file, linked-variable bindings are patched from variables.X to state.X and persisted for every turn; send-time variables override persisted values by name.",
       },
     ),
   ),
@@ -145,6 +148,9 @@ interface ParamsAny {
     name: string;
     type?: string;
     value: string | number | boolean;
+    label?: string;
+    description?: string;
+    isList?: boolean;
   }>;
   plan_id?: string;
   session_kind?: "agent_file" | "api_name";
@@ -170,9 +176,9 @@ export function registerPreviewTool(pi: ExtensionAPI): void {
     promptSnippet:
       "Run a single .agent conversation against the live org with full trace capture per turn.",
     promptGuidelines: [
-      "action='start' — local-compiles the .agent file first; only hits /authoring/scripts on success. Returns session_id and the initial agent message.",
+      "action='start' — local-compiles the .agent file first; only hits /authoring/scripts on success. Returns session_id and the initial agent message. Pass context_variables here for linked VoiceCall/MessagingSession/context/mutable variable preview; values are persisted for every turn.",
       "action='send' — POSTs one user utterance, fetches the planner trace per turn, returns a compact `digest` of every planner step (topic transitions, LLM calls, variable updates, tool invocations, errors), and writes everything to the session store. Full trace JSON lives at `trace_file` for deep dives.",
-      "action='send' context_variables — pass deterministic state seeds [{name, type?, value}] to bypass auth gates, pre-fill identity, or reproduce a known-good session state. Use the same shape as eval-spec context_variables; default type is 'Text'. Per-message seeding is the live workaround for the 2026-04 regression that drops session-level seeds.",
+      "context_variables — deterministic state seeds [{name, type?, value, label?, description?, isList?}]. On start with agent_file, sf-pi registers stateVariables and rewrites linked boundInputs from variables.X to state.X; on send, values override the persisted start profile by name.",
       "action='end' — finalizes metadata (sets endTime).",
       "action='end_all' — dry-runs by default. Scans .sfdx/agents/*/sessions/*, filters by agent_name/session_kind/target_org/older_than_days, remotely ends api_name sessions when possible, and locally finalizes agent_file sessions. Pass dry_run=false to execute.",
       "action='trace' — ad-hoc trace fetch by (session_id, plan_id) when you need to revisit a specific turn.",
@@ -258,6 +264,12 @@ async function actionStart(
 
   // Path A — published agent (no local file, no compile).
   if (input.agent_api_name) {
+    if (input.context_variables && input.context_variables.length > 0) {
+      return toolError(
+        "context_variables on preview start are only supported with agent_file.",
+        "Published-agent preview uses the production v1 session API and has no compiled AgentJSON payload to patch. Start from the local .agent file when testing linked VoiceCall/MessagingSession variables.",
+      );
+    }
     const agentName = input.agent_name ?? input.agent_api_name;
     try {
       const { conn } = await connForAgentApi(input.target_org);
@@ -343,6 +355,7 @@ async function actionStart(
       agentFilePath: filePath,
       mockMode: input.mock_mode ?? "Mock",
       targetOrg: input.target_org,
+      contextVariables: input.context_variables,
       // (agentFilePath above is also persisted to metadata.json by
       //  startPreview — used by `end` to suggest the next publish command.)
     });
@@ -355,8 +368,18 @@ async function actionStart(
         session_dir: result.sessionDir,
         agent_name: agentName,
         via: "agent_file" as const,
+        context_patch: result.contextPatch,
       },
-      `🎬 Preview started\nsession_id: ${result.sessionId}\n${result.agentResponse}`,
+      [
+        `🎬 Preview started`,
+        `session_id: ${result.sessionId}`,
+        result.contextPatch && result.contextPatch.variables.length > 0
+          ? `context_variables: ${result.contextPatch.variables.length} seeded · ${result.contextPatch.registeredStateVariables} state slot(s) · ${result.contextPatch.rewrittenBindings} binding rewrite(s)`
+          : null,
+        result.agentResponse,
+      ]
+        .filter(Boolean)
+        .join("\n"),
     );
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

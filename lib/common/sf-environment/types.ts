@@ -87,6 +87,10 @@ export type OrgInfo = {
   orgType: OrgType;
   connectedStatus?: string;
   apiVersion?: string;
+  /** Cached Organization.NamespacePrefix when @salesforce/core has populated it. */
+  namespacePrefix?: string | null;
+  /** Cached Organization.OrganizationType / edition when available. */
+  orgEdition?: string;
   /** Error message if detection failed. */
   error?: string;
 };

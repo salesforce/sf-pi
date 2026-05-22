@@ -19,14 +19,35 @@ interface ComponentSummary {
   action_refs?: string[];
   subagent_refs?: string[];
   variable_refs?: string[];
+  response_format_refs?: string[];
+  utility_refs?: string[];
 }
 
 interface VariableSummary {
   name: string;
   type?: string;
+  modifier?: string;
   mutable?: boolean;
+  linked?: boolean;
   line?: number;
   default?: unknown;
+  source?: string;
+}
+
+interface ConnectionSummary extends ComponentSummary {
+  response_formats?: Array<{
+    name: string;
+    source?: string;
+    target?: string;
+    input_names?: string[];
+  }>;
+  response_actions?: string[];
+}
+
+interface ModalitySummary {
+  name: string;
+  line?: number;
+  fields?: Record<string, unknown>;
 }
 
 export interface InspectStructureDetails {
@@ -37,10 +58,13 @@ export interface InspectStructureDetails {
   components?: {
     config?: Record<string, unknown>;
     system?: { instructions?: string };
+    start_agents?: ComponentSummary[];
     topics: ComponentSummary[];
     subagents: ComponentSummary[];
     variables: VariableSummary[];
     actions: ComponentSummary[];
+    connections?: ConnectionSummary[];
+    modalities?: ModalitySummary[];
   };
   stats?: { topics?: number; subagents?: number; variables?: number; actions?: number };
   has_parse_errors?: boolean;
@@ -136,6 +160,18 @@ function formatStructureBody(
     lines.push(`  ${accent("⚙ ")} ${bold("config")}`);
   }
 
+  // Start agents
+  if (components.start_agents && components.start_agents.length > 0) {
+    lines.push(`  ${heading("🚦")} ${bold(`start_agents (${components.start_agents.length})`)}`);
+    for (const s of components.start_agents) {
+      const ln = s.line !== undefined ? dim(padRightVisible(`L${s.line}`, 5)) : dim("     ");
+      const util = s.utility_refs?.length
+        ? dim(` · utils ${s.utility_refs.map(code).join(", ")}`)
+        : "";
+      lines.push(`     ${ln} 🏁 ${code(s.name)}${util}`);
+    }
+  }
+
   // Topics
   if ((stats.topics ?? components.topics?.length ?? 0) > 0) {
     lines.push(`  ${heading("🗂 ")} ${bold(`topics (${components.topics.length})`)}`);
@@ -167,7 +203,32 @@ function formatStructureBody(
     lines.push(`  ${heading("🔧")} ${bold(`actions (${components.actions.length})`)}`);
     for (const a of components.actions) {
       const ln = a.line !== undefined ? dim(padRightVisible(`L${a.line}`, 5)) : dim("     ");
-      lines.push(`     ${ln} ${code(a.name)}`);
+      const util = a.utility_refs?.length
+        ? dim(` · utils ${a.utility_refs.map(code).join(", ")}`)
+        : "";
+      lines.push(`     ${ln} ${code(a.name)}${util}`);
+    }
+  }
+
+  // Connections / response formats
+  if (components.connections && components.connections.length > 0) {
+    lines.push(`  ${heading("🔌")} ${bold(`connections (${components.connections.length})`)}`);
+    for (const c of components.connections) {
+      const ln = c.line !== undefined ? dim(padRightVisible(`L${c.line}`, 5)) : dim("     ");
+      const formats = c.response_formats?.length
+        ? dim(` · formats ${c.response_formats.map((f) => code(f.name)).join(", ")}`)
+        : "";
+      lines.push(`     ${ln} ${code(c.name)}${formats}`);
+    }
+  }
+
+  // Modalities (voice, etc.)
+  if (components.modalities && components.modalities.length > 0) {
+    lines.push(`  ${heading("🎙 ")} ${bold(`modalities (${components.modalities.length})`)}`);
+    for (const m of components.modalities) {
+      const ln = m.line !== undefined ? dim(padRightVisible(`L${m.line}`, 5)) : dim("     ");
+      const fieldCount = m.fields ? Object.keys(m.fields).length : 0;
+      lines.push(`     ${ln} ${code(m.name)} ${fieldCount ? dim(`(${fieldCount} field(s))`) : ""}`);
     }
   }
 
@@ -176,8 +237,11 @@ function formatStructureBody(
     lines.push(`  ${heading("🪣")} ${bold(`variables (${components.variables.length})`)}`);
     for (const v of components.variables) {
       const ln = v.line !== undefined ? dim(padRightVisible(`L${v.line}`, 5)) : dim("     ");
-      const tag = v.type ? dim(`(${v.type}${v.mutable ? ", mutable" : ""})`) : "";
-      lines.push(`     ${ln} ${code(v.name)} ${tag}`);
+      const modifier = v.modifier ?? (v.linked ? "linked" : v.mutable ? "mutable" : undefined);
+      const flags = [v.type, modifier].filter(Boolean).join(", ");
+      const tag = flags ? dim(`(${flags})`) : "";
+      const source = v.source ? dim(` ← ${v.source}`) : "";
+      lines.push(`     ${ln} ${code(v.name)} ${tag}${source}`);
     }
   }
 

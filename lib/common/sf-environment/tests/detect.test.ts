@@ -355,6 +355,8 @@ describe("detectOrg", () => {
           alias: "TestOrg",
           instanceUrl: "https://test.sandbox.my.salesforce.com",
           isSandbox: true,
+          namespacePrefix: "pkg",
+          orgEdition: "Enterprise Edition",
         },
         instanceUrl: "https://test.sandbox.my.salesforce.com",
         apiVersion: "66.0",
@@ -368,6 +370,8 @@ describe("detectOrg", () => {
     expect(result.apiVersion).toBe("66.0");
     expect(result.connectedStatus).toBe("Connected");
     expect(result.orgId).toBe("00D000000000001");
+    expect(result.namespacePrefix).toBe("pkg");
+    expect(result.orgEdition).toBe("Enterprise Edition");
   });
 
   it("falls back to the requested alias when AuthInfoFields has none", async () => {

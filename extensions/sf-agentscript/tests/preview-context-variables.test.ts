@@ -8,7 +8,12 @@
  */
 
 import { describe, expect, test } from "vitest";
-import { normalizeContextVariables, type ContextVariable } from "../lib/preview/client.ts";
+import {
+  applyPreviewContextPatch,
+  mergeContextVariables,
+  normalizeContextVariables,
+  type ContextVariable,
+} from "../lib/preview/client.ts";
 
 describe("normalizeContextVariables", () => {
   test("undefined / empty → empty array (preserves the body shape for callers without seeds)", () => {
@@ -43,5 +48,64 @@ describe("normalizeContextVariables", () => {
       { name: "b", type: "Text", value: "true" },
       { name: "s", type: "Text", value: "hello" },
     ]);
+  });
+
+  test("mergeContextVariables lets send-time values override start-time profile values", () => {
+    expect(
+      mergeContextVariables(
+        [
+          { name: "CallerPhone", type: "Text", value: "+15550000000" },
+          { name: "IsVip", type: "Boolean", value: false },
+        ],
+        [{ name: "IsVip", type: "Boolean", value: true }],
+      ),
+    ).toEqual([
+      { name: "CallerPhone", type: "Text", value: "+15550000000" },
+      { name: "IsVip", type: "Boolean", value: true },
+    ]);
+  });
+
+  test("applyPreviewContextPatch registers state slots and rewrites linked bound inputs", () => {
+    const agentDefinition = {
+      agentVersion: {
+        stateVariables: [{ developerName: "Existing", dataType: "string" }],
+        topics: [
+          {
+            tools: [
+              {
+                boundInputs: {
+                  phoneNumber: "variables.CallerPhone",
+                  keep: "variables.Other",
+                },
+              },
+            ],
+          },
+        ],
+      },
+    };
+
+    const result = applyPreviewContextPatch(agentDefinition, [
+      { name: "CallerPhone", type: "Text", value: "+15551234567" },
+      { name: "IsVip", type: "Boolean", value: true },
+    ]);
+
+    expect(result).toMatchObject({
+      variables: [
+        { name: "CallerPhone", type: "Text", value: "+15551234567" },
+        { name: "IsVip", type: "Boolean", value: "true" },
+      ],
+      registeredStateVariables: 2,
+      rewrittenBindings: 1,
+    });
+    expect(agentDefinition.agentVersion.stateVariables).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ developerName: "CallerPhone", dataType: "string" }),
+        expect.objectContaining({ developerName: "IsVip", dataType: "boolean" }),
+      ]),
+    );
+    expect(agentDefinition.agentVersion.topics[0].tools[0].boundInputs).toEqual({
+      phoneNumber: "state.CallerPhone",
+      keep: "variables.Other",
+    });
   });
 });

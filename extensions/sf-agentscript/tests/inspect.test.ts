@@ -162,6 +162,82 @@ describe("inspectFile", () => {
     expect(typeof result.dialect?.name).toBe("string");
   });
 
+  test("surfaces linked variable source, voice modality, response formats, and end-session refs", async () => {
+    const filePath = await writeAgent(
+      "voice.agent",
+      [
+        "system:",
+        '    instructions: "You are a support assistant."',
+        "",
+        "config:",
+        '    developer_name: "Voice_Bot"',
+        '    default_agent_user: "u@example.com"',
+        "",
+        "variables:",
+        "    VoiceCallId: linked string",
+        "        source: @VoiceCall.Id",
+        '        visibility: "External"',
+        '    customer_name: mutable string = "Acme"',
+        "",
+        "connection service_email:",
+        "    response_formats:",
+        "        choices:",
+        '            source: "response_format://SurfaceAction__EmailTextChoices"',
+        "    reasoning:",
+        "        instructions: |",
+        "            Use {!@response_actions.choices} for choices.",
+        "        response_actions:",
+        "            choices: @response_formats.choices",
+        "",
+        "modality voice:",
+        '    voice_id: "voice-1"',
+        "    outbound_speed: 1.0",
+        "",
+        "start_agent main:",
+        '    description: "Main topic with end session option"',
+        "    reasoning:",
+        "        instructions: ->",
+        "            | Help the caller.",
+        "        actions:",
+        "            end_conversation: @utils.end_session",
+        '                description: "End the current session"',
+        "",
+      ].join("\n"),
+    );
+
+    const result = await inspectFile(filePath);
+    expect(result.ok).toBe(true);
+    const voiceCallId = result.components?.variables.find((v) => v.name === "VoiceCallId");
+    expect(voiceCallId).toMatchObject({
+      type: "string",
+      modifier: "linked",
+      linked: true,
+      source: "@VoiceCall.Id",
+      source_namespace: "VoiceCall",
+      source_field: "Id",
+      visibility: "External",
+    });
+    expect(result.components?.variables.find((v) => v.name === "customer_name")).toMatchObject({
+      modifier: "mutable",
+      mutable: true,
+      default: "Acme",
+    });
+    expect(result.components?.modalities?.[0]).toMatchObject({
+      name: "voice",
+      fields: { voice_id: "voice-1", outbound_speed: 1 },
+    });
+    expect(result.components?.connections?.[0]).toMatchObject({
+      name: "service_email",
+      response_formats: [
+        { name: "choices", source: "response_format://SurfaceAction__EmailTextChoices" },
+      ],
+      response_actions: ["choices"],
+    });
+    expect(result.components?.start_agents?.find((t) => t.name === "main")?.utility_refs).toContain(
+      "end_session",
+    );
+  });
+
   test("agent_type is surfaced on components.config (not components.system)", async () => {
     // Locks in the SDK schema: agent_type is a `config:` field. An
     // earlier inspect summary mirrored it onto `system` too, which was

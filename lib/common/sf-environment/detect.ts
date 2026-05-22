@@ -240,6 +240,8 @@ function readOrgInfo(org: SfOrg, requestedAlias: string): OrgInfo {
     isScratch?: boolean;
     isDevHub?: boolean;
     trailExpirationDate?: string | null;
+    namespacePrefix?: string | null;
+    orgEdition?: string;
   };
 
   const instanceUrl = fields.instanceUrl ?? conn.instanceUrl;
@@ -258,6 +260,8 @@ function readOrgInfo(org: SfOrg, requestedAlias: string): OrgInfo {
     }),
     connectedStatus: "Connected",
     apiVersion: conn.getApiVersion(),
+    namespacePrefix: fields.namespacePrefix,
+    orgEdition: fields.orgEdition,
   };
 }
 

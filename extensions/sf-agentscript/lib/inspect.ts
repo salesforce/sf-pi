@@ -33,10 +33,13 @@ export interface InspectResult {
      * which was a stale model — readers should use `config.agent_type`.
      */
     system?: { instructions: string };
+    start_agents?: ComponentSummary[];
     topics: ComponentSummary[];
     subagents: ComponentSummary[];
     variables: VariableSummary[];
     actions: ComponentSummary[];
+    connections?: ConnectionSummary[];
+    modalities?: ModalitySummary[];
   };
   stats?: { topics: number; subagents: number; variables: number; actions: number };
   /**
@@ -58,6 +61,10 @@ export interface ComponentSummary {
   subagent_refs?: string[];
   /** `@variables.X` referenced anywhere in this component. */
   variable_refs?: string[];
+  /** `@response_formats.X` / `@response_actions.X` references in this component. */
+  response_format_refs?: string[];
+  /** `@utils.X` references such as `@utils.end_session`. */
+  utility_refs?: string[];
   /**
    * For action declarations only: the raw `target:` URI (e.g. `flow://X`,
    * `apex://X`, `generatePromptResponse://X`). Empty for topics/subagents.
@@ -79,9 +86,38 @@ export interface ComponentSummary {
 export interface VariableSummary {
   name: string;
   type?: string;
+  modifier?: "mutable" | "linked" | string;
   mutable?: boolean;
+  linked?: boolean;
   line?: number;
   default?: unknown;
+  source?: string;
+  source_namespace?: string;
+  source_field?: string;
+  visibility?: string;
+  is_displayable?: boolean;
+  is_used_by_planner?: boolean;
+}
+
+export interface ConnectionSummary extends ComponentSummary {
+  input_names?: string[];
+  response_formats?: ResponseFormatSummary[];
+  response_actions?: string[];
+}
+
+export interface ResponseFormatSummary {
+  name: string;
+  line?: number;
+  source?: string;
+  target?: string;
+  input_names?: string[];
+  description?: string;
+}
+
+export interface ModalitySummary {
+  name: string;
+  line?: number;
+  fields?: Record<string, unknown>;
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -111,6 +147,37 @@ function unwrapScalar(value: unknown): string | number | boolean | undefined {
     }
   }
   return undefined;
+}
+
+function expressionName(value: unknown): string | undefined {
+  const scalar = unwrapScalar(value);
+  if (typeof scalar === "string") return scalar;
+  if (value && typeof value === "object") {
+    const obj = value as { name?: unknown; __kind?: unknown };
+    if (typeof obj.name === "string") return obj.name;
+  }
+  return undefined;
+}
+
+function memberRef(
+  value: unknown,
+): { text: string; namespace: string; property: string } | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const obj = value as { __kind?: unknown; object?: unknown; property?: unknown };
+  if (obj.__kind !== "MemberExpression") return undefined;
+  const at = obj.object as { __kind?: unknown; name?: unknown } | undefined;
+  if (!at || at.__kind !== "AtIdentifier") return undefined;
+  if (typeof at.name !== "string" || typeof obj.property !== "string") return undefined;
+  return {
+    text: `@${at.name}.${obj.property}`,
+    namespace: at.name,
+    property: obj.property,
+  };
+}
+
+function childProps(entry: Record<string, unknown>): Record<string, unknown> {
+  const props = entry.properties;
+  return props && typeof props === "object" ? (props as Record<string, unknown>) : entry;
 }
 
 interface CstMetaLite {
@@ -171,7 +238,13 @@ function namedMapEntries(value: unknown): Array<[string, unknown]> {
  */
 function collectAtRefs(
   node: unknown,
-  refs: { actions: Set<string>; subagents: Set<string>; variables: Set<string> },
+  refs: {
+    actions: Set<string>;
+    subagents: Set<string>;
+    variables: Set<string>;
+    responseFormats: Set<string>;
+    utilities: Set<string>;
+  },
   seen: WeakSet<object> = new WeakSet(),
 ): void {
   if (!node || typeof node !== "object") return;
@@ -191,6 +264,9 @@ function collectAtRefs(
         if (ns === "actions") refs.actions.add(prop);
         else if (ns === "subagent" || ns === "topic") refs.subagents.add(prop);
         else if (ns === "variables") refs.variables.add(prop);
+        else if (ns === "response_formats" || ns === "response_actions") {
+          refs.responseFormats.add(prop);
+        } else if (ns === "utils") refs.utilities.add(prop);
       }
     }
   }
@@ -213,6 +289,8 @@ function summarizeWithRefs(name: string, entry: unknown): ComponentSummary {
     actions: new Set<string>(),
     subagents: new Set<string>(),
     variables: new Set<string>(),
+    responseFormats: new Set<string>(),
+    utilities: new Set<string>(),
   };
   collectAtRefs(entry, refs);
   const e = entry as Record<string, unknown>;
@@ -224,6 +302,10 @@ function summarizeWithRefs(name: string, entry: unknown): ComponentSummary {
   if (refs.actions.size) summary.action_refs = Array.from(refs.actions).sort();
   if (refs.subagents.size) summary.subagent_refs = Array.from(refs.subagents).sort();
   if (refs.variables.size) summary.variable_refs = Array.from(refs.variables).sort();
+  if (refs.responseFormats.size) {
+    summary.response_format_refs = Array.from(refs.responseFormats).sort();
+  }
+  if (refs.utilities.size) summary.utility_refs = Array.from(refs.utilities).sort();
   // Action declarations carry a `target:` URI — surface it so downstream
   // consumers (publish pre-flight, doctor checks) can validate without
   // re-parsing the AST.
@@ -238,18 +320,92 @@ function summarizeWithRefs(name: string, entry: unknown): ComponentSummary {
 
 function summarizeVariable(name: string, entry: unknown): VariableSummary {
   const e = entry as Record<string, unknown>;
+  const props = childProps(e);
   const summary: VariableSummary = { name };
   const line = startLine(entry);
   if (typeof line === "number") summary.line = line;
-  const type = unwrapScalar(e.type);
+
+  const type = expressionName(e.type);
   if (typeof type === "string") summary.type = type;
-  const mutable = unwrapScalar(e.mutable);
-  if (typeof mutable === "boolean") summary.mutable = mutable;
-  if ("default" in e) {
-    const def = unwrapScalar(e.default);
-    summary.default = def !== undefined ? def : e.default;
+
+  const modifier = expressionName(e.modifier);
+  if (modifier) {
+    summary.modifier = modifier;
+    if (modifier === "mutable") summary.mutable = true;
+    if (modifier === "linked") summary.linked = true;
   }
+
+  if ("default" in e || "defaultValue" in e) {
+    const rawDefault = e.default ?? e.defaultValue;
+    const def = unwrapScalar(rawDefault);
+    summary.default = def !== undefined ? def : rawDefault;
+  }
+
+  const source = memberRef(props.source);
+  if (source) {
+    summary.source = source.text;
+    summary.source_namespace = source.namespace;
+    summary.source_field = source.property;
+  }
+  const visibility = unwrapScalar(props.visibility);
+  if (typeof visibility === "string") summary.visibility = visibility;
+  const isDisplayable = unwrapScalar(props.is_displayable);
+  if (typeof isDisplayable === "boolean") summary.is_displayable = isDisplayable;
+  const isUsedByPlanner = unwrapScalar(props.is_used_by_planner);
+  if (typeof isUsedByPlanner === "boolean") summary.is_used_by_planner = isUsedByPlanner;
+
   return summary;
+}
+
+function summarizeConnection(name: string, entry: unknown): ConnectionSummary {
+  const summary = summarizeWithRefs(name, entry) as ConnectionSummary;
+  const e = entry as Record<string, unknown>;
+  const inputNames = paramNames(e.inputs);
+  if (inputNames) summary.input_names = inputNames;
+
+  const responseFormats = namedMapEntries(e.response_formats).map(([n, v]) =>
+    summarizeResponseFormat(n, v),
+  );
+  if (responseFormats.length > 0) summary.response_formats = responseFormats;
+
+  const responseActions = namedMapEntries(
+    (e.reasoning as Record<string, unknown> | undefined)?.response_actions,
+  )
+    .map(([n]) => n)
+    .sort();
+  if (responseActions.length > 0) summary.response_actions = responseActions;
+  return summary;
+}
+
+function summarizeResponseFormat(name: string, entry: unknown): ResponseFormatSummary {
+  const e = entry as Record<string, unknown>;
+  const out: ResponseFormatSummary = { name };
+  const line = startLine(entry);
+  if (typeof line === "number") out.line = line;
+  const desc = unwrapScalar(e.description);
+  if (typeof desc === "string") out.description = truncate(desc, 200);
+  const source = unwrapScalar(e.source);
+  if (typeof source === "string") out.source = source;
+  const target = unwrapScalar(e.target);
+  if (typeof target === "string") out.target = target;
+  const inputNames = paramNames(e.inputs);
+  if (inputNames) out.input_names = inputNames;
+  return out;
+}
+
+function summarizeModality(name: string, entry: unknown): ModalitySummary {
+  const e = entry as Record<string, unknown>;
+  const out: ModalitySummary = { name };
+  const line = startLine(entry);
+  if (typeof line === "number") out.line = line;
+  const fields: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(e)) {
+    if (key.startsWith("__")) continue;
+    const scalar = unwrapScalar(value);
+    if (scalar !== undefined) fields[key] = scalar;
+  }
+  if (Object.keys(fields).length > 0) out.fields = fields;
+  return out;
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -300,6 +456,7 @@ export async function inspectFile(filePath: string): Promise<InspectResult> {
   const system = extractSystemSummary(ast.system);
 
   // Topics, subagents, actions are NamedMaps. Variables too.
+  const startAgents = namedMapEntries(ast.start_agent).map(([n, e]) => summarizeWithRefs(n, e));
   const topics = namedMapEntries(ast.topic).map(([n, e]) => summarizeWithRefs(n, e));
   const subagents = namedMapEntries(ast.subagent).map(([n, e]) => summarizeWithRefs(n, e));
   // Top-level `actions:` block.
@@ -329,14 +486,19 @@ export async function inspectFile(filePath: string): Promise<InspectResult> {
   }
   const actions = [...topLevelActions, ...inlineActions];
   const variables = namedMapEntries(ast.variables).map(([n, e]) => summarizeVariable(n, e));
+  const connections = namedMapEntries(ast.connection).map(([n, e]) => summarizeConnection(n, e));
+  const modalities = namedMapEntries(ast.modality).map(([n, e]) => summarizeModality(n, e));
 
   const components = {
     ...(config !== undefined ? { config } : {}),
     ...(system !== undefined ? { system } : {}),
+    ...(startAgents.length > 0 ? { start_agents: startAgents } : {}),
     topics,
     subagents,
     variables,
     actions,
+    ...(connections.length > 0 ? { connections } : {}),
+    ...(modalities.length > 0 ? { modalities } : {}),
   };
 
   return {
