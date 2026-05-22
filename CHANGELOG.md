@@ -517,6 +517,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.144.1](https://github.com/salesforce/sf-pi/compare/v0.144.0...v0.144.1) (2026-05-22)
+
+
+### Bug Fixes
+
+* **sf-agentscript:** support linked context preview variables ([7418973](https://github.com/salesforce/sf-pi/commit/7418973f91af8b40501b377ffd9914ee79219323))
+
 ## [0.144.0](https://github.com/salesforce/sf-pi/compare/v0.143.0...v0.144.0) (2026-05-22)
 
 
