@@ -27,6 +27,25 @@ describe("mapAgentApiError (preview surface)", () => {
     expect(m.message).toMatch(/v0|v1/);
   });
 
+  test("surface population failure → connection surface guidance", () => {
+    const m = mapPreviewError(
+      500,
+      {
+        errorCode: "Error",
+        message:
+          "Failed to populate planner surface. Make sure the surface type is valid and org has access to it: ServiceEmail",
+      },
+      { phase: "start", surface: "agent_file", agentFile: "/tmp/X.agent" },
+    );
+    expect(m.matched).toBe("surface-population-failed");
+    expect(m.message).toMatch(/connection surface/i);
+    expect(m.message).toMatch(/response_formats/i);
+    expect(m.recover_via).toEqual({
+      tool: "agentscript_inspect",
+      params: { path: "/tmp/X.agent" },
+    });
+  });
+
   test("session-not-found → recover_via start", () => {
     const m = mapPreviewError(
       500,

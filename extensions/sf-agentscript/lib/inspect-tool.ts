@@ -350,8 +350,10 @@ function renderStructureSummary(
   const lines = [
     `📋 Inspected ${filePath}`,
     `Dialect: ${dialect}`,
-    `Stats: ${stats.topics ?? 0} topics · ${stats.subagents ?? 0} subagents · ` +
-      `${stats.variables ?? 0} variables · ${stats.actions ?? 0} actions`,
+    `Stats: ${stats.start_agents ?? 0} start · ${stats.topics ?? 0} topics · ` +
+      `${stats.subagents ?? 0} subagents · ${stats.variables ?? 0} variables · ` +
+      `${stats.actions ?? 0} actions · ${stats.connections ?? 0} connections · ` +
+      `${stats.modalities ?? 0} modalities`,
   ];
   if (result.has_parse_errors) {
     lines.push(

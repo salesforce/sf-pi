@@ -80,7 +80,26 @@ export function mapAgentApiError(
     };
   }
 
-  // -- 2. send/end against a session the server doesn't know about ------------
+  // -- 2. preview start with unsupported / unlicensed connection surface -----
+  if (/Failed to populate planner surface/i.test(text)) {
+    return {
+      message:
+        `Preview failed while populating a connection surface. The org may not ` +
+        `have access to the surface type used by this agent, or the connection ` +
+        `block may name a surface that is not valid in this org. Original ` +
+        `message: ${text.slice(0, 300)}\n\n` +
+        `For linked/context variable testing, remove or isolate the connection ` +
+        `block and run agentscript_inspect to validate response_formats without ` +
+        `starting a live preview. If this surface is required, verify the org's ` +
+        `channel/surface entitlement and the connection name/source in the .agent file.`,
+      recover_via: context.agentFile
+        ? { tool: "agentscript_inspect", params: { path: context.agentFile } }
+        : undefined,
+      matched: "surface-population-failed",
+    };
+  }
+
+  // -- 3. send/end against a session the server doesn't know about ------------
   if (/V6Session not found|Session not found for sessionId/i.test(text)) {
     return {
       message:
@@ -98,7 +117,7 @@ export function mapAgentApiError(
     };
   }
 
-  // -- 3. start session with empty bot user (Service Agent without BotUser) ---
+  // -- 4. start session with empty bot user (Service Agent without BotUser) ---
   if (/Invalid user ID provided on start session/i.test(text)) {
     return {
       message:
@@ -115,7 +134,7 @@ export function mapAgentApiError(
     };
   }
 
-  // -- 4. published agent inactive (412 PRECONDITION_FAILED) ------------------
+  // -- 5. published agent inactive (412 PRECONDITION_FAILED) ------------------
   if (/No access to Einstein Copilot/i.test(text) || status === 412) {
     const apiName = context.agentApiName ?? "<agent>";
     return {
@@ -131,7 +150,7 @@ export function mapAgentApiError(
     };
   }
 
-  // -- 5. SFAP route unavailable in this org ----------------------------------
+  // -- 6. SFAP route unavailable in this org ----------------------------------
   if (status === 404 && /ERROR_HTTP_404|URL No Longer Exists|api\.salesforce\.com/i.test(text)) {
     return {
       message: sfap404Message({
@@ -149,7 +168,7 @@ export function mapAgentApiError(
     };
   }
 
-  // -- 6. JWT bootstrap failed ------------------------------------------------
+  // -- 7. JWT bootstrap failed ------------------------------------------------
   if (/agentforce\/bootstrap\/nameduser/i.test(text) || /sfap_api/i.test(text)) {
     return {
       message:
@@ -160,7 +179,7 @@ export function mapAgentApiError(
     };
   }
 
-  // -- 7. Service Agent activation without default_agent_user -----------------
+  // -- 8. Service Agent activation without default_agent_user -----------------
   // This is the exact text returned by the activation API for
   // `agent_type=AgentforceServiceAgent` + missing/invalid `default_agent_user`.
   // Catch it first because the broader "Activation request did not succeed"
@@ -193,7 +212,7 @@ export function mapAgentApiError(
     };
   }
 
-  // -- 8. Cryptic 500 on first publish — usually missing system PS ------------
+  // -- 9. Cryptic 500 on first publish — usually missing system PS ------------
   // The SFAP publish endpoint returns "Internal Error, try again later" when
   // the Einstein Agent User exists but lacks the `AgentforceServiceAgentUser`
   // system permission set. Doc:
@@ -223,7 +242,7 @@ export function mapAgentApiError(
     };
   }
 
-  // -- 9. Activation rejected — generic catch-all -----------------------------
+  // -- 10. Activation rejected — generic catch-all -----------------------------
   // Anything matching "Activation request did not succeed: <unknown body>"
   // that #7 didn't catch falls through here with the original message plus
   // a hint to inspect the .agent and the BotDefinition.

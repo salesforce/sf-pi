@@ -41,7 +41,15 @@ export interface InspectResult {
     connections?: ConnectionSummary[];
     modalities?: ModalitySummary[];
   };
-  stats?: { topics: number; subagents: number; variables: number; actions: number };
+  stats?: {
+    start_agents?: number;
+    topics: number;
+    subagents: number;
+    variables: number;
+    actions: number;
+    connections?: number;
+    modalities?: number;
+  };
   /**
    * True when `parse()` produced severity-1 diagnostics. The structural
    * surface may be incomplete — always run `agentscript_compile` first to
@@ -506,10 +514,13 @@ export async function inspectFile(filePath: string): Promise<InspectResult> {
     dialect,
     components,
     stats: {
+      start_agents: startAgents.length,
       topics: topics.length,
       subagents: subagents.length,
       variables: variables.length,
       actions: actions.length,
+      connections: connections.length,
+      modalities: modalities.length,
     },
     has_parse_errors: hasParseErrors,
     parse_error_count: sev1Count,

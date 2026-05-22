@@ -66,7 +66,15 @@ export interface InspectStructureDetails {
     connections?: ConnectionSummary[];
     modalities?: ModalitySummary[];
   };
-  stats?: { topics?: number; subagents?: number; variables?: number; actions?: number };
+  stats?: {
+    start_agents?: number;
+    topics?: number;
+    subagents?: number;
+    variables?: number;
+    actions?: number;
+    connections?: number;
+    modalities?: number;
+  };
   has_parse_errors?: boolean;
   parse_error_count?: number;
 }
@@ -249,10 +257,13 @@ function formatStructureBody(
   lines.push("");
   const refTotals = totalRefs(components.topics);
   const footerBits = [
+    `${stats.start_agents ?? components.start_agents?.length ?? 0} start`,
     `${stats.topics ?? 0} topics`,
     `${stats.subagents ?? 0} subagents`,
     `${stats.actions ?? 0} actions`,
     `${stats.variables ?? 0} variables`,
+    `${stats.connections ?? components.connections?.length ?? 0} connections`,
+    `${stats.modalities ?? components.modalities?.length ?? 0} modalities`,
     refTotals > 0 ? `${refTotals} @-refs` : null,
   ].filter(Boolean) as string[];
   lines.push(dim(footerBits.join(" · ")));
