@@ -22,17 +22,12 @@ const ALLOWED_INSTALL_SCRIPT_PACKAGES = new Map([
     "nested dev dependency from pi-coding-agent model tooling.",
   ],
   [
-    "node_modules/@earendil-works/pi-coding-agent/node_modules/koffi",
-    "nested optional dev dependency from pi-coding-agent provider tooling.",
-  ],
-  [
     "node_modules/@earendil-works/pi-coding-agent/node_modules/protobufjs",
     "nested dev dependency from pi-coding-agent Google client tooling.",
   ],
   ["node_modules/@google/genai", "dev dependency from pi-ai model tooling."],
   ["node_modules/esbuild", "dev dependency from VitePress/Vite docs-site bundling."],
   ["node_modules/fsevents", "optional native watcher used by development tooling."],
-  ["node_modules/koffi", "optional dev dependency from pi-ai provider tooling."],
   ["node_modules/protobufjs", "dev dependency from Google client tooling."],
 ]);
 
