@@ -20,7 +20,22 @@
  * explicit user consent.
  */
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync, chmodSync } from "node:fs";
+import {
+  chmodSync,
+  closeSync,
+  constants,
+  existsSync,
+  fstatSync,
+  fsyncSync,
+  ftruncateSync,
+  lstatSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+  writeSync,
+} from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 import { fetchWithTimeout } from "./models.ts";
@@ -352,6 +367,12 @@ export function removeZshenvBlock(currentContents: string): {
   return { contents: trimmedBefore + trimmedAfter, changed: true };
 }
 
+export interface ZshenvWriteResult {
+  changed: boolean;
+  status: "updated" | "unchanged" | "skipped";
+  message: string;
+}
+
 interface ExtractedBlock {
   found: boolean;
   startIndex: number;
@@ -380,6 +401,90 @@ function extractZshenvBlock(contents: string): ExtractedBlock {
 
 function ensureTrailingNewline(value: string): string {
   return value.endsWith("\n") ? value : `${value}\n`;
+}
+
+/**
+ * Safely apply the sentinel-guarded NODE_EXTRA_CA_CERTS block to ~/.zshenv.
+ *
+ * This opens the file first and then reads/writes through the same file
+ * descriptor. On platforms that expose O_NOFOLLOW, symlinked paths fail at
+ * open time. If that flag is unavailable, fall back to an lstat preflight and
+ * skip suspicious paths rather than writing through a symlink target.
+ */
+export function writeZshenvBlockSafely(zshenvPath: string, bundlePath: string): ZshenvWriteResult {
+  const noFollowFlag = "O_NOFOLLOW" in constants ? constants.O_NOFOLLOW : 0;
+  if (noFollowFlag === 0) {
+    try {
+      const linkStats = lstatSync(zshenvPath);
+      if (linkStats.isSymbolicLink()) {
+        return {
+          changed: false,
+          status: "skipped",
+          message: `${zshenvPath} is a symlink; skipped automatic update. Add this block manually if you trust the target:\n${buildZshenvBlock(bundlePath)}`,
+        };
+      }
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code !== "ENOENT") {
+        return {
+          changed: false,
+          status: "skipped",
+          message: `Skipped ${zshenvPath}: ${error instanceof Error ? error.message : String(error)}`,
+        };
+      }
+    }
+  }
+
+  let fd: number | undefined;
+  try {
+    fd = openSync(zshenvPath, constants.O_RDWR | constants.O_CREAT | noFollowFlag, 0o600);
+    const stats = fstatSync(fd);
+    if (!stats.isFile()) {
+      return {
+        changed: false,
+        status: "skipped",
+        message: `${zshenvPath} is not a regular file; skipped automatic update.`,
+      };
+    }
+
+    const current = readFileSync(fd, "utf8");
+    const next = applyZshenvBlock(current, bundlePath);
+    if (!next.changed) {
+      return {
+        changed: false,
+        status: "unchanged",
+        message: `${zshenvPath} already had the current block (no change).`,
+      };
+    }
+
+    ftruncateSync(fd, 0);
+    writeSync(fd, next.contents, 0, "utf8");
+    fsyncSync(fd);
+    return { changed: true, status: "updated", message: `Updated ${zshenvPath}` };
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    const reason = error instanceof Error ? error.message : String(error);
+    if (code === "ELOOP") {
+      return {
+        changed: false,
+        status: "skipped",
+        message: `${zshenvPath} is a symlink; skipped automatic update. Add this block manually if you trust the target:\n${buildZshenvBlock(bundlePath)}`,
+      };
+    }
+    return {
+      changed: false,
+      status: "skipped",
+      message: `Failed to update ${zshenvPath}: ${reason}`,
+    };
+  } finally {
+    if (fd !== undefined) {
+      try {
+        closeSync(fd);
+      } catch {
+        // Best-effort close after a user-facing shell config update.
+      }
+    }
+  }
 }
 
 /**

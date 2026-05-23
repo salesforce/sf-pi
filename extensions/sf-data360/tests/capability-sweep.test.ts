@@ -1,4 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
+import { rmSync } from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -32,6 +35,7 @@ import {
   insertFollowUpChecks,
   paramsForDryRun,
   paramsForLiveCheck,
+  resolveSweepOutputDir,
   shouldRetrySweepResult,
 } from "../../../scripts/e2e/d360-capability-sweep.ts";
 import type { D360Capability } from "../lib/facade/registry.ts";
@@ -166,6 +170,24 @@ const safePostCapability: D360Capability = {
     requiredParams: ["sql"],
   },
 };
+
+describe("d360 capability sweep output paths", () => {
+  it("honors explicit output directories unchanged except path resolution", () => {
+    expect(resolveSweepOutputDir("run-123", "relative-output")).toBe(
+      path.resolve("relative-output"),
+    );
+  });
+
+  it("creates the default output as a unique per-run temp root", () => {
+    const outputDir = resolveSweepOutputDir("run-123");
+    try {
+      expect(path.basename(outputDir)).toMatch(/^pi-d360-capability-sweeps-run-123-/);
+      expect(path.dirname(outputDir)).toBe(os.tmpdir());
+    } finally {
+      rmSync(outputDir, { recursive: true, force: true });
+    }
+  });
+});
 
 describe("d360 capability sweep planning", () => {
   it("plans dry-run coverage for every capability and live checks only for read/safe-post capabilities", () => {

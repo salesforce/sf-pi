@@ -7,7 +7,7 @@
  * building blocks: candidate probing, PEM validation, plist construction,
  * and idempotent ~/.zshenv block management.
  */
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -24,6 +24,7 @@ import {
   SENTINEL_BEGIN,
   SENTINEL_END,
   validatePemBundle,
+  writeZshenvBlockSafely,
 } from "../lib/ca-bundle-fixer.ts";
 
 // Real self-signed test certificate. Generated once via
@@ -145,6 +146,32 @@ describe("default paths", () => {
 
   it("defaults the .zshenv path to the home dir", () => {
     expect(defaultZshenvPath("/Users/test")).toBe("/Users/test/.zshenv");
+  });
+});
+
+describe("writeZshenvBlockSafely", () => {
+  it("creates and updates a regular .zshenv through a safe file descriptor", () => {
+    const zshenvPath = path.join(tmpDir, ".zshenv");
+    const result = writeZshenvBlockSafely(zshenvPath, "/tmp/internal.pem");
+    expect(result.status).toBe("updated");
+    expect(result.changed).toBe(true);
+    expect(readFileSync(zshenvPath, "utf8")).toContain(SENTINEL_BEGIN);
+  });
+
+  it("skips symlinked .zshenv files instead of writing through them", () => {
+    const target = path.join(tmpDir, "target-zshenv");
+    const link = path.join(tmpDir, ".zshenv");
+    writeFileSync(target, "# user managed elsewhere\n");
+    try {
+      symlinkSync(target, link);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "EPERM") return;
+      throw error;
+    }
+
+    const result = writeZshenvBlockSafely(link, "/tmp/internal.pem");
+    expect(result.status).toBe("skipped");
+    expect(readFileSync(target, "utf8")).toBe("# user managed elsewhere\n");
   });
 });
 

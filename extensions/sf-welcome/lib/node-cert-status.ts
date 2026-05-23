@@ -8,7 +8,7 @@
  * module refreshes in the background.  Detection is intentionally bounded:
  * no subprocesses, no network calls, no recursive filesystem scans.
  */
-import { closeSync, existsSync, openSync, readFileSync, readSync, statSync } from "node:fs";
+import { closeSync, existsSync, fstatSync, openSync, readFileSync, readSync } from "node:fs";
 import path from "node:path";
 import { homedir } from "node:os";
 import { createStateStore } from "../../../lib/common/state-store.ts";
@@ -210,18 +210,17 @@ function buildCandidateList(cwd: string, home: string): string[] {
 }
 
 function cheapPemProbe(filePath: string): PemProbe {
-  try {
-    if (!existsSync(filePath)) return { ok: false, reason: "not found" };
-    const stats = statSync(filePath);
-    if (!stats.isFile()) return { ok: false, reason: "not a file" };
-    if (stats.size === 0) return { ok: false, reason: "empty file" };
-  } catch (error) {
-    return { ok: false, reason: error instanceof Error ? error.message : String(error) };
-  }
-
   let fd: number | undefined;
   try {
+    // Open first, then inspect the file descriptor. Checking the path with
+    // exists/stat before opening creates a race where the path can be swapped
+    // between calls; fd-based probing keeps the read tied to the file we
+    // actually opened.
     fd = openSync(filePath, "r");
+    const stats = fstatSync(fd);
+    if (!stats.isFile()) return { ok: false, reason: "not a file" };
+    if (stats.size === 0) return { ok: false, reason: "empty file" };
+
     const buffer = Buffer.alloc(4096);
     const bytesRead = readSync(fd, buffer, 0, buffer.length, 0);
     const head = buffer.subarray(0, bytesRead).toString("utf8");
@@ -230,7 +229,8 @@ function cheapPemProbe(filePath: string): PemProbe {
     }
     return { ok: true };
   } catch (error) {
-    return { ok: false, reason: error instanceof Error ? error.message : String(error) };
+    const message = error instanceof Error ? error.message : String(error);
+    return { ok: false, reason: message.includes("ENOENT") ? "not found" : message };
   } finally {
     if (fd !== undefined) {
       try {

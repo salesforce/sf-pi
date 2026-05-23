@@ -12,6 +12,9 @@
  * This function was introduced in the 0.68.0 migration to replace process.cwd()
  * calls in the extension factory, which runs before session_start provides ctx.cwd.
  */
+import { mkdtempSync, rmSync } from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import {
   getGatewayConfig,
@@ -25,7 +28,9 @@ import {
 // Helpers
 // -------------------------------------------------------------------------------------------------
 
+const PI_AGENT_ENV = "PI_CODING_AGENT_DIR";
 const savedEnv: Record<string, string | undefined> = {};
+let tempAgentDir: string;
 
 function setEnv(key: string, value: string | undefined) {
   if (!(key in savedEnv)) {
@@ -53,13 +58,16 @@ function restoreEnv() {
 }
 
 beforeEach(() => {
-  // Clear gateway env vars for a clean baseline
+  tempAgentDir = mkdtempSync(path.join(os.tmpdir(), "sf-pi-global-config-"));
+  setEnv(PI_AGENT_ENV, tempAgentDir);
+  // Clear gateway env vars for a clean baseline.
   setEnv(BASE_URL_ENV, undefined);
   setEnv(API_KEY_ENV, undefined);
 });
 
 afterEach(() => {
   restoreEnv();
+  rmSync(tempAgentDir, { recursive: true, force: true });
 });
 
 // -------------------------------------------------------------------------------------------------

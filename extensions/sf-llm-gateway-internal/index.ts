@@ -214,7 +214,6 @@ import {
 } from "./lib/onboard-action.ts";
 import { markClaudeCodeNotifyShown } from "./lib/onboarding-state.ts";
 import {
-  applyZshenvBlock,
   buildLaunchAgentPlist,
   buildZshenvBlock,
   defaultLaunchAgentPath,
@@ -223,6 +222,7 @@ import {
   loadLaunchAgent,
   probeBundleCandidates,
   writeLaunchAgentPlist,
+  writeZshenvBlockSafely,
   type BundleProbeResult,
 } from "./lib/ca-bundle-fixer.ts";
 import { writeCaBundleFixerState } from "./lib/ca-bundle-fixer-state.ts";
@@ -262,7 +262,6 @@ import {
 import { installWireTrace, isWireTraceEnabled } from "./lib/wire-trace.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 import { markBootStep } from "../../lib/common/boot-timing.ts";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { globalAgentPath } from "../../lib/common/pi-paths.ts";
 
 // -------------------------------------------------------------------------------------------------
@@ -1244,30 +1243,8 @@ async function handleFixCaBundleCommand(
       return;
     }
   }
-  let zshenvCurrent = "";
-  try {
-    if (existsSync(zshenvPath)) {
-      zshenvCurrent = readFileSync(zshenvPath, "utf8");
-    }
-  } catch (error) {
-    summaryLines.push(
-      `Could not read existing ~/.zshenv: ${
-        error instanceof Error ? error.message : String(error)
-      }`,
-    );
-  }
-  const zshenvNext = applyZshenvBlock(zshenvCurrent, bundlePath);
-  if (zshenvNext.changed) {
-    try {
-      writeFileSync(zshenvPath, zshenvNext.contents, { encoding: "utf8" });
-      summaryLines.push(`Updated ${zshenvPath}`);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      summaryLines.push(`Failed to update ${zshenvPath}: ${message}`);
-    }
-  } else {
-    summaryLines.push(`${zshenvPath} already had the current block (no change).`);
-  }
+  const zshenvResult = writeZshenvBlockSafely(zshenvPath, bundlePath);
+  summaryLines.push(zshenvResult.message);
   summaryLines.push("");
 
   // Step 5 — in-process env + doctor re-probe.

@@ -11,10 +11,43 @@
  * These tests verify the cwd-threading contract: every function that previously
  * used process.cwd() internally now requires an explicit cwd parameter.
  */
-import { describe, it, expect } from "vitest";
+import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+
+vi.mock("node:child_process", () => ({
+  execFileSync: vi.fn(() => ""),
+}));
+
+const PI_AGENT_ENV = "PI_CODING_AGENT_DIR";
+let isolatedAgentDir: string;
+let isolatedHomeDir: string;
+let previousAgentDir: string | undefined;
+let previousHome: string | undefined;
+let previousUserProfile: string | undefined;
+
+beforeEach(() => {
+  previousAgentDir = process.env[PI_AGENT_ENV];
+  previousHome = process.env.HOME;
+  previousUserProfile = process.env.USERPROFILE;
+  isolatedAgentDir = mkdtempSync(path.join(tmpdir(), "sdk-migration-agent-"));
+  isolatedHomeDir = mkdtempSync(path.join(tmpdir(), "sdk-migration-home-"));
+  process.env[PI_AGENT_ENV] = isolatedAgentDir;
+  process.env.HOME = isolatedHomeDir;
+  process.env.USERPROFILE = isolatedHomeDir;
+});
+
+afterEach(() => {
+  if (previousAgentDir === undefined) delete process.env[PI_AGENT_ENV];
+  else process.env[PI_AGENT_ENV] = previousAgentDir;
+  if (previousHome === undefined) delete process.env.HOME;
+  else process.env.HOME = previousHome;
+  if (previousUserProfile === undefined) delete process.env.USERPROFILE;
+  else process.env.USERPROFILE = previousUserProfile;
+  rmSync(isolatedAgentDir, { recursive: true, force: true });
+  rmSync(isolatedHomeDir, { recursive: true, force: true });
+});
 
 // -------------------------------------------------------------------------------------------------
 // collectSplashData cwd parameter

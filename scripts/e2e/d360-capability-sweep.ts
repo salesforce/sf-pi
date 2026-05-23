@@ -10,7 +10,7 @@
  *   node --experimental-strip-types scripts/e2e/d360-capability-sweep.ts --target-org AgentforceSTDM --family Query
  */
 
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawn } from "node:child_process";
@@ -2050,6 +2050,11 @@ export function classifySweepResult(
   return { outcome: "failed", fail: true, summary, status, error };
 }
 
+export function resolveSweepOutputDir(runId: string, outputDir?: string): string {
+  if (outputDir) return path.resolve(outputDir);
+  return mkdtempSync(path.join(os.tmpdir(), `pi-d360-capability-sweeps-${runId}-`));
+}
+
 async function main(): Promise<void> {
   const options = parseArgs(process.argv.slice(2));
   if (!options.targetOrg) {
@@ -2068,10 +2073,8 @@ async function main(): Promise<void> {
       .toISOString()
       .replace(/[-:.TZ]/g, "")
       .slice(0, 14);
-  const outputDir = path.resolve(
-    options.outputDir ?? path.join(os.tmpdir(), "pi-d360-capability-sweeps", runId),
-  );
-  mkdirSync(outputDir, { recursive: true });
+  const outputDir = resolveSweepOutputDir(runId, options.outputDir);
+  if (options.outputDir) mkdirSync(outputDir, { recursive: true });
 
   const capabilities = getD360Capabilities();
   const plan =

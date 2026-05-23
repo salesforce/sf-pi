@@ -153,13 +153,19 @@ describe("formatOnboardChainReport", () => {
 // First-run notify gate
 // ════════════════════════════════════════════════════════════════════════
 
+const PI_AGENT_ENV = "PI_CODING_AGENT_DIR";
 let tmpDir: string;
+let previousAgentDir: string | undefined;
 
 beforeEach(() => {
+  previousAgentDir = process.env[PI_AGENT_ENV];
   tmpDir = mkdtempSync(path.join(os.tmpdir(), "sf-pi-onboard-firstrun-"));
+  process.env[PI_AGENT_ENV] = tmpDir;
 });
 
 afterEach(() => {
+  if (previousAgentDir === undefined) delete process.env[PI_AGENT_ENV];
+  else process.env[PI_AGENT_ENV] = previousAgentDir;
   rmSync(tmpDir, { recursive: true, force: true });
 });
 
