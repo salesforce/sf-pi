@@ -8,7 +8,7 @@
  * Live evidence: the deep-dive `agentscript.agent` example from
  * salesforce/agentscript and the `090_shipping_logistics` fixture both
  * triggered "Maximum call stack size exceeded" through the LLM-callable
- * agentscript_inspect tool surface.
+ * agentscript_authoring inspect tool surface.
  */
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";

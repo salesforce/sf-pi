@@ -91,11 +91,14 @@ export function mapAgentApiError(
         `block may name a surface that is not valid in this org. Original ` +
         `message: ${text.slice(0, 300)}\n\n` +
         `For linked/context variable testing, remove or isolate the connection ` +
-        `block and run agentscript_inspect to validate response_formats without ` +
+        `block and run agentscript_authoring inspect/context_profile to validate response_formats without ` +
         `starting a live preview. If this surface is required, verify the org's ` +
         `channel/surface entitlement and the connection name/source in the .agent file.`,
       recover_via: context.agentFile
-        ? { tool: "agentscript_inspect", params: { path: context.agentFile } }
+        ? {
+            tool: "agentscript_authoring",
+            params: { verb: "inspect", mode: "structure", agent_file: context.agentFile },
+          }
         : undefined,
       matched: "surface-population-failed",
     };
@@ -241,8 +244,8 @@ export function mapAgentApiError(
         `confirm this target org has the relevant voice/channel/surface entitlement before retrying.`,
       recover_via: context.agentFile
         ? {
-            tool: "agentscript_inspect",
-            params: { action: "context_profile", path: context.agentFile },
+            tool: "agentscript_authoring",
+            params: { verb: "inspect", mode: "context_profile", agent_file: context.agentFile },
           }
         : undefined,
       matched: "feature-gated-publish-internal-error",
@@ -287,12 +290,15 @@ export function mapAgentApiError(
     return {
       message:
         `Activation rejected by the org. Original message: ${text.slice(0, 400)}\n\n` +
-        `Run agentscript_inspect on the .agent and confirm 'config.agent_type' ` +
+        `Run agentscript_authoring inspect/structure on the .agent and confirm 'config.agent_type' ` +
         `and 'config.default_agent_user' match what the BotDefinition expects. ` +
         `If you're not sure what the org expects, run ` +
         `agentscript_lifecycle action='diagnose_agent_user'.`,
       recover_via: context.agentFile
-        ? { tool: "agentscript_inspect", params: { path: context.agentFile } }
+        ? {
+            tool: "agentscript_authoring",
+            params: { verb: "inspect", mode: "structure", agent_file: context.agentFile },
+          }
         : undefined,
       matched: "activation-rejected",
     };

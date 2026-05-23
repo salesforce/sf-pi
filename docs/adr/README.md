@@ -12,3 +12,8 @@ or accidentally contradicted in extension READMEs.
 - [0007: Single-Place Credential Entry per Integration](./0007-single-place-credentials.md)
 - [0008: Context-Injection Boundary Tags](./0008-context-injection-boundaries.md)
 - [0009: Data 360 Parity Stays Pi-Native, Generated, and Phase-Guided](./0009-data-360-parity-pi-native-generated-phase-guided.md)
+- [0010: D360 Capability Sweep](./0010-d360-capability-sweep.md)
+- [0011: SF Browser Uses Agent Browser as a Lazy Hot-Path Runtime](./0011-sf-browser-agent-browser-lazy-hot-path-runtime.md)
+- [0012: VitePress Documentation Site](./0012-vitepress-documentation-site.md)
+- [0013: Agent Script Uses Branch-Durable Tool State for Workflow Pointers](./0013-agentscript-branch-durable-tool-state.md)
+- [0014: Agent Script Public Tool Surface Uses Four Family Tools](./0014-agent-script-four-family-tool-surface.md)

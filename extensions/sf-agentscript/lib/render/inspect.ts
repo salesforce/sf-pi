@@ -273,7 +273,7 @@ function formatStructureBody(
     lines.push(
       fg(
         "warning",
-        `⚠ ${details.parse_error_count ?? 1} parse error(s) — run agentscript_compile first`,
+        `⚠ ${details.parse_error_count ?? 1} parse error(s) — run agentscript_authoring compile/check first`,
       ),
     );
   }

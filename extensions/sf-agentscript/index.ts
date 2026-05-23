@@ -19,11 +19,10 @@
  *   /sf-agentscript help      | Print command usage
  *
  * Tools registered:
- *   - agentscript_compile           — in-process .agent compile (LLM-callable)
- *   - agentscript_eval_run          — multi-turn regression run
- *   - agentscript_eval_get_failure  — drill into one failure from a previous run
- *   - agentscript_eval_trace        — fetch full planner trace by (sid, pid)
- *   - agentscript_eval_resolve      — resolve $active_* placeholders
+ *   - agentscript_authoring   — create, compile, inspect, review, mutate
+ *   - agentscript_preview     — live-org preview sessions and traces
+ *   - agentscript_eval        — eval specs, regression runs, failure drilldown
+ *   - agentscript_lifecycle   — publish, activate, list, and provision
  *
  * Precedence with sf-lsp: this extension owns `.agent` diagnostics. sf-lsp
  * checks `pi.getCommands()` for `sf-agentscript` and yields when present.
@@ -65,12 +64,9 @@ import { withSafeCommandHandler } from "../../lib/common/safe-command-handler.ts
 import { openInfoPanel } from "../../lib/common/info-panel.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 
-import { registerCompileTool } from "./lib/compile-tool.ts";
-import { registerCreateTool } from "./lib/create-tool.ts";
+import { registerAuthoringTool } from "./lib/authoring-tool.ts";
 import { registerEvalTool } from "./lib/eval-tool.ts";
-import { registerInspectTool } from "./lib/inspect-tool.ts";
 import { registerLifecycleTool } from "./lib/lifecycle-tool.ts";
-import { registerMutateTool } from "./lib/mutate-tool.ts";
 import { registerPreviewTool } from "./lib/preview-tool.ts";
 import { handleEvalAction } from "./lib/command/eval-action.ts";
 import { handleReportAction } from "./lib/command/report-action.ts";
@@ -92,11 +88,8 @@ export default function sfAgentScriptExtension(pi: ExtensionAPI): void {
   registerSessionHooks(pi, state);
   registerToolResultHook(pi, state);
 
-  // LLM-callable tools — full Agent Script lifecycle surface
-  registerCompileTool(pi);
-  registerCreateTool(pi);
-  registerInspectTool(pi);
-  registerMutateTool(pi);
+  // LLM-callable tools — four family surfaces for the Agent Script lifecycle.
+  registerAuthoringTool(pi);
   registerPreviewTool(pi);
   registerEvalTool(pi);
   registerLifecycleTool(pi);
@@ -326,11 +319,10 @@ function renderHelp(): string {
     "  /sf-agentscript help             Show this help",
     "",
     "Tools (LLM-callable):",
-    "  agentscript_compile              In-process .agent compile + diagnostics",
-    "  agentscript_eval_run             Multi-turn regression run",
-    "  agentscript_eval_get_failure     Drill into one failure from a previous run",
-    "  agentscript_eval_trace           Fetch full planner trace by (sid, pid)",
-    "  agentscript_eval_resolve         Resolve $active_* placeholders",
+    "  agentscript_authoring            Create, compile, inspect, review, and mutate .agent files",
+    "  agentscript_preview              Start/send/end live preview sessions and fetch traces",
+    "  agentscript_eval                 Generate/run eval specs, drill failures, fetch traces",
+    "  agentscript_lifecycle            Publish/activate/list/provision Agentforce agents",
   ].join("\n");
 }
 

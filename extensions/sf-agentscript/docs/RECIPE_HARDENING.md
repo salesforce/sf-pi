@@ -84,13 +84,13 @@ compile / publish. For every `target:` URI on every action declaration
 
 When any target is missing the publish raises `PreflightFailureError` with
 the full list of missing names, the deploy command to fix them, and a
-`recover_via` envelope pointing the LLM at `agentscript_inspect
+`recover_via` envelope pointing the LLM at `agentscript_authoring inspect
 action='check_targets'` for a per-target breakdown. Pass `skipPreflight:
 true` to bypass the network check (the local `bundleType` check still
 runs).
 
 **Surface**: same module is callable standalone via the new
-`agentscript_inspect action='check_targets'` action, which returns the
+`agentscript_authoring inspect action='check_targets'` action, which returns the
 same breakdown without invoking publish. Useful when authoring an agent
 before the org is ready.
 
@@ -111,7 +111,7 @@ before SDR ever sees it. Missing-field / wrong-root / unparseable cases
 each return a distinct `reason` code so the LLM error envelope can carry
 a clear suggestion ("Add `<bundleType>AGENT</bundleType>` inside
 `<AiAuthoringBundle>` and retry"). Scaffolds produced by
-`agentscript_create` already include the field; this only fires on
+`agentscript_authoring create` already include the field; this only fires on
 user-authored XML.
 
 ### `ensureSdrFriendlyLayout` — bundle deploy works regardless of caller path

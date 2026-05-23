@@ -229,7 +229,7 @@ export async function startPreview(opts: PreviewStartOptions): Promise<PreviewSt
     if (sev1.length > 0) {
       throw new Error(
         `Local compile rejected the agent source (${sev1.length} severity-1 errors). ` +
-          `Fix locally first via agentscript_compile / agentscript_mutate before starting preview.`,
+          `Fix locally first via agentscript_authoring compile/check / agentscript_authoring mutate before starting preview.`,
       );
     }
   }

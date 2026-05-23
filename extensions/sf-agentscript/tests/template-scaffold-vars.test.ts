@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /**
- * Item 2 hardening: when `agentscript_create` seeds variables from the
+ * Item 2 hardening: when `agentscript_authoring create` seeds variables from the
  * job_spec, the scaffold inserts a `# TODO(sf-pi scaffold): wire
  * @variables.<name> ...` comment immediately above each declaration so
  * the LLM (and human) sees the gap. Without that hint the next compile
@@ -12,7 +12,7 @@ import { describe, expect, test } from "vitest";
 import { generateAgentforceDefault } from "../lib/templates/agentforce-default.ts";
 import { generateMinimal } from "../lib/templates/minimal.ts";
 
-describe("agentscript_create scaffolds emit explicit agent_type (Issue 1)", () => {
+describe("agentscript_authoring create scaffolds emit explicit agent_type (Issue 1)", () => {
   // Issue 1: scaffolds that omit `agent_type` ship un-activatable bundles.
   // The server defaults the type to AgentforceServiceAgent (which then
   // requires `default_agent_user`); the local SDK lint that should catch
@@ -82,7 +82,7 @@ describe("agentscript_create scaffolds emit explicit agent_type (Issue 1)", () =
   });
 });
 
-describe("agentscript_create scaffolds wire-up TODO comments", () => {
+describe("agentscript_authoring create scaffolds wire-up TODO comments", () => {
   test("each seeded variable has a scaffold TODO comment immediately above it", () => {
     const src = generateAgentforceDefault("Sample_Bot", {
       description: "Demo agent.",

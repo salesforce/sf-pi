@@ -37,6 +37,13 @@ import { fetchTrace } from "./eval/trace-client.ts";
 import { generateSpec } from "./eval/spec-generator.ts";
 import { inspectFile } from "./inspect.ts";
 import { isAgentScriptFile } from "./file-classify.ts";
+import {
+  agentFileEvent,
+  latestEvalSpec,
+  resolveLatestEvalRun,
+  withAgentScriptBranchState,
+  type AgentScriptBranchStateEvent,
+} from "./branch-state.ts";
 import { safeResolveToolPath, toolError, toolOk, type ToolError } from "./tool-types.ts";
 import type { EvalSpec, FailureRecord, RunMetadata } from "./eval/types.ts";
 
@@ -257,15 +264,8 @@ interface ParamsAny {
 function checkRequired(p: ParamsAny): { ok: true } | { ok: false; error: string } {
   switch (p.action) {
     case "run":
-      if (!p.spec_path && !p.spec) {
-        return {
-          ok: false,
-          error: "action='run' requires either spec_path or spec.",
-        };
-      }
       return { ok: true };
     case "get_failure":
-      if (!p.run_id) return { ok: false, error: "action='get_failure' requires run_id." };
       return { ok: true };
     case "trace":
       if (!p.session_id) return { ok: false, error: "action='trace' requires session_id." };
@@ -368,11 +368,15 @@ async function actionRun(
     }
   };
 
+  if (!input.spec_path && !input.spec) {
+    const inferred = latestEvalSpec(ctx);
+    if (inferred) input = { ...input, spec_path: inferred.spec_path };
+  }
   const spec = await loadSpec(input, ctx.cwd);
   if (!spec) {
     return toolError(
       "Either spec_path or spec must be provided.",
-      "Pass spec_path: '<file.json>' or an inline spec object.",
+      "Pass spec_path: '<file.json>' or first generate a spec with agentscript_eval action='generate_spec'.",
     );
   }
 
@@ -449,14 +453,22 @@ async function actionRun(
 
   return {
     content: [{ type: "text", text }],
-    details: {
-      ok: passed,
-      run_id: result.run_id,
-      run_dir: result.run_dir,
-      totals: result.metadata.totals,
-      latency: result.latency,
-      failed_test_ids: result.failures.map((f) => f.test_id),
-    },
+    details: withAgentScriptBranchState(
+      {
+        ok: passed,
+        run_id: result.run_id,
+        run_dir: result.run_dir,
+        totals: result.metadata.totals,
+        latency: result.latency,
+        failed_test_ids: result.failures.map((f) => f.test_id),
+      },
+      evalRunEvents({
+        runId: result.run_id,
+        runDir: result.run_dir,
+        ok: passed,
+        failedTestIds: result.failures.map((f) => f.test_id),
+      }),
+    ),
   };
 }
 
@@ -494,6 +506,37 @@ function classifyRunError(
     });
   }
   return toolError(msg);
+}
+
+function evalRunEvents(input: {
+  runId: string;
+  runDir: string;
+  ok: boolean;
+  failedTestIds: string[];
+}): AgentScriptBranchStateEvent[] {
+  return [
+    {
+      schema_version: 1,
+      kind: "eval_run",
+      run_id: input.runId,
+      run_dir: input.runDir,
+      ok: input.ok,
+      failed_test_ids: input.failedTestIds,
+      source: "eval.run",
+    },
+  ];
+}
+
+function evalTraceEvents(sessionId: string, planId: string): AgentScriptBranchStateEvent[] {
+  return [
+    {
+      schema_version: 1,
+      kind: "eval_trace",
+      session_id: sessionId,
+      plan_id: planId,
+      source: "eval.trace",
+    },
+  ];
 }
 
 function headline(result: RunEvalResult, passed: boolean): string {
@@ -538,6 +581,10 @@ async function actionGetFailure(
   content: { type: "text"; text: string }[];
   details: Record<string, unknown> | ToolError;
 }> {
+  const resolvedRun = await resolveLatestEvalRun(ctx, input.run_id);
+  if ("runId" in resolvedRun === false) return resolvedRun;
+  input = { ...input, run_id: resolvedRun.runId };
+
   let all: FailureRecord[];
   let meta: RunMetadata | null;
   try {
@@ -593,16 +640,21 @@ async function actionTrace(input: ParamsAny): Promise<{
         "Confirm both ids and that the session is still resident on the planner.",
       );
     }
-    return toolOk({
-      ok: true as const,
-      session_id: input.session_id,
-      plan_id: input.plan_id,
-      trace_hint:
-        "PlannerResponse with steps[]: UserInputStep, UpdateTopicStep, " +
-        "LLMExecutionStep (promptContent, promptResponse, executionLatency), " +
-        "FunctionCallStep, ValidationPromptStep, EventStep.",
-      trace,
-    });
+    return toolOk(
+      withAgentScriptBranchState(
+        {
+          ok: true as const,
+          session_id: input.session_id,
+          plan_id: input.plan_id,
+          trace_hint:
+            "PlannerResponse with steps[]: UserInputStep, UpdateTopicStep, " +
+            "LLMExecutionStep (promptContent, promptResponse, executionLatency), " +
+            "FunctionCallStep, ValidationPromptStep, EventStep.",
+          trace,
+        },
+        evalTraceEvents(input.session_id, input.plan_id),
+      ),
+    );
   } catch (err) {
     return toolError(err instanceof Error ? err.message : String(err));
   }
@@ -691,15 +743,21 @@ async function actionGenerateSpec(
   if (!inspect.ok) {
     return toolError(
       `inspect failed: ${inspect.reason ?? "unknown"}${inspect.reason_detail ? ` — ${inspect.reason_detail}` : ""}`,
-      "Run agentscript_compile to see and fix the underlying issue.",
-      { tool: "agentscript_compile", params: { path: agentFile } },
+      "Run agentscript_authoring compile/check to see and fix the underlying issue.",
+      {
+        tool: "agentscript_authoring",
+        params: { verb: "compile", mode: "check", agent_file: agentFile },
+      },
     );
   }
   if (inspect.has_parse_errors) {
     return toolError(
       `Agent has ${inspect.parse_error_count} severity-1 parse error(s). The structural surface is incomplete; refusing to generate a spec from it.`,
-      "Fix the parse errors first via agentscript_compile / agentscript_mutate.",
-      { tool: "agentscript_compile", params: { path: agentFile } },
+      "Fix the parse errors first via agentscript_authoring compile/check and mutate/apply_quick_fix.",
+      {
+        tool: "agentscript_authoring",
+        params: { verb: "compile", mode: "check", agent_file: agentFile },
+      },
     );
   }
 
@@ -753,11 +811,27 @@ async function actionGenerateSpec(
         text: head + nextStep + "\n\n" + JSON.stringify({ summary, spec: result.spec }, null, 2),
       },
     ],
-    details: {
-      ok: true,
-      agent_file: agentFile,
-      output_path: writtenPath,
-      summary,
-    },
+    details: withAgentScriptBranchState(
+      {
+        ok: true,
+        agent_file: agentFile,
+        output_path: writtenPath,
+        summary,
+      },
+      [
+        agentFileEvent(agentFile, "eval.generate_spec"),
+        ...(writtenPath
+          ? [
+              {
+                schema_version: 1 as const,
+                kind: "eval_spec" as const,
+                spec_path: writtenPath,
+                agent_file: agentFile,
+                source: "eval.generate_spec",
+              },
+            ]
+          : []),
+      ],
+    ),
   };
 }

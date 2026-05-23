@@ -54,7 +54,7 @@ function makeCwd(disabledFiles: string[] = []): string {
 describe("formatSfPiExtensionContext", () => {
   it("lists every bundled extension with routing priority guidance", () => {
     const context = formatSfPiExtensionContext(makeCwd(), {
-      activeTools: ["agentscript_compile", "agentscript_inspect"],
+      activeTools: ["agentscript_authoring", "agentscript_preview"],
       activeSkills: ["sf-data360", "generating-apex"],
     });
 
@@ -66,7 +66,7 @@ describe("formatSfPiExtensionContext", () => {
     expect(context).toContain("Active SF skills remain fallback/workflow guidance: sf-data360");
     expect(context).toContain("- sf-agentscript (enabled)");
     expect(context).toContain("Agentforce Agent Script authoring");
-    expect(context).toContain("active tools: agentscript_compile, agentscript_inspect");
+    expect(context).toContain("active tools: agentscript_authoring, agentscript_preview");
     expect(context).toContain("- sf-data360 (enabled)");
     expect(context).toContain("- sf-pi-manager (always-on)");
   });

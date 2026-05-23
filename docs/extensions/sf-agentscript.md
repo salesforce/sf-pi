@@ -65,7 +65,7 @@ You can also manage this extension from the SF Pi home base:
 - **Maturity:** stable
 - **Default state:** on
 - **Commands:** `/sf-agentscript`
-- **LLM tools:** `agentscript_compile`, `agentscript_create`, `agentscript_inspect`, `agentscript_mutate`, `agentscript_preview`, `agentscript_eval`, `agentscript_lifecycle`
+- **LLM tools:** `agentscript_authoring`, `agentscript_preview`, `agentscript_eval`, `agentscript_lifecycle`
 - **Providers:** _none_
 - **Events/hooks:** `session_start`, `session_shutdown`, `tool_result`
 

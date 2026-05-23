@@ -10,7 +10,7 @@
  * Ideas absorbed from `@salesforce/agents/src/evalNormalizer.ts`; we own the
  * implementation. Two deliberate departures from upstream:
  *
- *   1. We DO NOT call `stripUnrecognizedFields`. The Vivint regression suite
+ *   1. We DO NOT call `stripUnrecognizedFields`. The a regression suite
  *      seeds mutable state via `context_variables` on `agent.send_message`
  *      (workaround for the 2026-04 platform regression that drops
  *      session-level state seeds). The upstream whitelist would strip it.

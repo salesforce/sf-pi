@@ -165,7 +165,10 @@ export async function createBundle(opts: CreateBundleOptions): Promise<CreateBun
         ? { default_agent_user: typeChoice.default_agent_user }
         : {}),
       next_steps: [
-        { tool: "agentscript_inspect", params: { path: agentPath } },
+        {
+          tool: "agentscript_authoring",
+          params: { verb: "inspect", mode: "structure", agent_file: agentPath },
+        },
         {
           tool: "agentscript_preview",
           params: { action: "start", agent_file: agentPath, mock_mode: "Mock" },

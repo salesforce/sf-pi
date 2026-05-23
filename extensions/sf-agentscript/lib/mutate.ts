@@ -145,7 +145,7 @@ async function applyCoordFallback(
     return {
       ok: false,
       reason: "no_matching_diagnostic",
-      reason_detail: `No '${op.diagnostic_code}' diagnostic at line ${op.line}. Re-run agentscript_compile to get current diagnostics.`,
+      reason_detail: `No '${op.diagnostic_code}' diagnostic at line ${op.line}. Re-run agentscript_authoring compile/check to get current diagnostics.`,
     };
   }
   const fixes = buildQuickFixes(sourceBefore, candidates);
@@ -222,7 +222,7 @@ async function commitOrPreview(
       reason_detail:
         `${appliedVia} mutation passed locally but the SDK emit() introduced ` +
         `${newSev1.length} new severity-1 diagnostic(s): ${newSev1.slice(0, 5).join(", ")}. ` +
-        `Refusing to write the regression to disk. Run agentscript_compile on the ` +
+        `Refusing to write the regression to disk. Run agentscript_authoring compile/check on the ` +
         `current file to confirm it is still clean, then either retry the same mutate ` +
         `(emit edge cases are non-deterministic across runs) or fall back to the ` +
         `generic edit tool for this change.`,
@@ -372,7 +372,7 @@ async function applyAstSetField(
       reason_detail:
         `set_field updates an existing field. '${op.field}' is not present on '${op.component}' ` +
         `(known fields: ${known}). To add a new field, use the generic edit tool — ` +
-        `or scaffold the field via agentscript_create with the appropriate job_spec.`,
+        `or scaffold the field via agentscript_authoring create with the appropriate job_spec.`,
     };
   }
 
@@ -630,7 +630,7 @@ function parseDocument(
         ok: false,
         reason: "has_parse_errors",
         reason_detail:
-          "Refusing to mutate a file with existing parse errors. Run agentscript_compile and fix severity-1 issues first.",
+          "Refusing to mutate a file with existing parse errors. Run agentscript_authoring compile/check and fix severity-1 issues first.",
       },
     };
   }

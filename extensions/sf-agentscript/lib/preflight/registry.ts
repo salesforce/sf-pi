@@ -53,7 +53,7 @@ export function resolverForScheme(scheme: string): TargetResolver | undefined {
 
 /**
  * The full list of registered resolvers — exposed for tests + the
- * `agentscript_inspect` doctor surface.
+ * `agentscript_authoring inspect` doctor surface.
  */
 export function listResolvers(): readonly TargetResolver[] {
   return RESOLVERS;

@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /**
- * Regression: a deep `agentscript_mutate set_field` against a real .agent
+ * Regression: a deep `agentscript_authoring mutate set_field` against a real .agent
  * file produced corrupted output (a partial copy of the file's last line
  * appended to itself). Live trace:
  *

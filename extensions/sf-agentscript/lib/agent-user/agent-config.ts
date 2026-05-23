@@ -68,7 +68,8 @@ export async function readAgentConfigSliceFromSource(
       return {
         ok: false,
         reason: "parse_failed",
-        reason_detail: "Source has parse errors. Run agentscript_compile to see them.",
+        reason_detail:
+          "Source has parse errors. Run agentscript_authoring compile/check to see them.",
       };
     }
     ast = doc.ast;

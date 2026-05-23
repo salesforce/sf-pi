@@ -31,7 +31,7 @@ import { groupEvaluators } from "./threshold.ts";
 import { summarizeLastExecution } from "../preview/trace-digest.ts";
 
 /**
- * State variable keys that carry signal for the Vivint AVA V2 agent. Add to
+ * State variable keys that carry signal for the a representative service agent. Add to
  * this list when a new flag matters; everything else is omitted from failure
  * records to keep them small enough to fit comfortably in an LLM context
  * window. Customers downstream of this plugin can override via the

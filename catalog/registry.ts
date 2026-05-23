@@ -16,7 +16,7 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
     maturity: "stable",
     defaultEnabled: true,
     commands: ["/sf-agentscript"],
-    tools: ["agentscript_compile","agentscript_create","agentscript_inspect","agentscript_mutate","agentscript_preview","agentscript_eval","agentscript_lifecycle"],
+    tools: ["agentscript_authoring","agentscript_preview","agentscript_eval","agentscript_lifecycle"],
     events: ["session_start","session_shutdown","tool_result"],
   },
   {

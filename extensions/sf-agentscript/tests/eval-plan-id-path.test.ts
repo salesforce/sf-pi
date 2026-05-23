@@ -10,7 +10,7 @@
  * Python harness.
  *
  * Fixture pulled from a real `agentscript_eval action='run'` against the
- * Vivint-DevInt org on 2026-05-14 (sanitized — only structural shape kept).
+ * a sandbox org on 2026-05-14 (sanitized — only structural shape kept).
  */
 
 import { describe, expect, test } from "vitest";

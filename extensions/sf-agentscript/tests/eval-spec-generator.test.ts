@@ -174,7 +174,7 @@ describe("generateSpec", () => {
   });
 
   test("bot_response_rating carries every required wire field (regression: API rejects without actual + utterance, scores 0 with the wrong actual path)", () => {
-    // Verified against the live eval API on AVA_Vivint_Assistant:
+    // Verified against the live eval API on Example_Service_Assistant:
     //   - omitting actual + utterance → HTTP 422 'Field required'
     //   - `actual: {turnId.response}` → HTTP 200 but score 0 with
     //     'bot response is not provided'

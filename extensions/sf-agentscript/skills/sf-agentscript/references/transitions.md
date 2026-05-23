@@ -1,8 +1,8 @@
 # Transitions in Agent Script
 
 Two shapes only. There is no guarded `when "..."` form. If you wrote
-one, `agentscript_compile` returns `[E] missing-token` on that line
-and `agentscript_mutate apply_quick_fix` will offer to strip the
+one, `agentscript_authoring compile/check` returns `[E] missing-token` on that line
+and `agentscript_authoring mutate apply_quick_fix` will offer to strip the
 `when` clause for you.
 
 ## Form 1 — deterministic transition (node-level)
@@ -47,7 +47,7 @@ transition to @topic.faq when "the user asks a question"
 ```
 
 Agent Script does not support a guarded transition syntax. The
-`agentscript_compile` `missing-token` diagnostic carries a quick
+`agentscript_authoring compile/check` `missing-token` diagnostic carries a quick
 fix that strips the `when "..."` clause (turns it into Form 1). To
 reach a topic only under specific conditions, use Form 2 inside the
 `instructions:` block.

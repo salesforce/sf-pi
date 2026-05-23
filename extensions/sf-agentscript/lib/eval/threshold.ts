@@ -2,7 +2,7 @@
 /**
  * Evaluator post-processing.
  *
- * Two custom semantics ported from the Vivint Python harness:
+ * Two custom semantics ported from the a prior Python harness:
  *
  * 1. `_thrNN` id encoding for `evaluator.text_quality` and
  *    `evaluator.text_alignment`:

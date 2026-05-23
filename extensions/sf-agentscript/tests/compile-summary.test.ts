@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /**
- * Item 4 hardening: `agentscript_compile action='check'` summary line now
+ * Item 4 hardening: `agentscript_authoring verb='compile' mode='check'` summary line now
  * includes per-issue sample bullets so the LLM can decide on next steps
  * without re-reading the full `diagnostics` array.
  *
@@ -13,7 +13,7 @@
  */
 
 import { describe, expect, test } from "vitest";
-import { renderCheckSummary } from "../lib/compile-tool.ts";
+import { renderCheckSummary } from "../lib/authoring/actions/compile.ts";
 
 function makeDiag(
   severity: 1 | 2,

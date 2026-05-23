@@ -191,14 +191,14 @@ describe("startPreviewByApiName preflight", () => {
             },
           },
         ],
-        onSessionStart: () => ({ sessionId: "ava-sid", messages: [{ message: "Hi!" }] }),
+        onSessionStart: () => ({ sessionId: "example-sid", messages: [{ message: "Hi!" }] }),
       });
       const result = await startPreviewByApiName({
         conn: conn as never,
         cwd,
-        agentApiName: "AVA_Vivint_Assistant",
+        agentApiName: "Example_Service_Assistant",
       });
-      expect(result.sessionId).toBe("ava-sid");
+      expect(result.sessionId).toBe("example-sid");
       // Confirm we did NOT call the fallback "any status" SOQL on success.
       expect(conn.queryCalls()).toBe(1);
     } finally {

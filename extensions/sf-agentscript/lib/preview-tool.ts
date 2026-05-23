@@ -25,6 +25,11 @@ import type { PreviewMetadata } from "./preview/session-store.ts";
 import { checkAgentScriptFile } from "./diagnostics.ts";
 import { fetchTrace } from "./eval/trace-client.ts";
 import { isAgentScriptFile } from "./file-classify.ts";
+import {
+  resolveActivePreviewSession,
+  withAgentScriptBranchState,
+  type AgentScriptBranchStateEvent,
+} from "./branch-state.ts";
 import { safeResolveToolPath, toolError, toolOk, type ToolError } from "./tool-types.ts";
 import {
   previewSendMarkdown,
@@ -218,13 +223,9 @@ function checkRequired(p: ParamsAny): { ok: true } | { ok: false; error: string 
       // exclusivity is enforced inside actionStart for richer messaging.
       return { ok: true };
     case "send":
-      if (!p.agent_name) return { ok: false, error: "action='send' requires agent_name." };
-      if (!p.session_id) return { ok: false, error: "action='send' requires session_id." };
       if (!p.message) return { ok: false, error: "action='send' requires message." };
       return { ok: true };
     case "end":
-      if (!p.agent_name) return { ok: false, error: "action='end' requires agent_name." };
-      if (!p.session_id) return { ok: false, error: "action='end' requires session_id." };
       return { ok: true };
     case "end_all":
       return { ok: true };
@@ -280,16 +281,27 @@ async function actionStart(
         targetOrg: input.target_org,
       });
       return toolOk(
-        {
-          ok: true as const,
-          session_id: result.sessionId,
-          agent_response: result.agentResponse,
-          started_at: result.startedAt,
-          session_dir: result.sessionDir,
-          agent_name: agentName,
-          via: "api_name" as const,
-          digest: result.digest,
-        },
+        withAgentScriptBranchState(
+          {
+            ok: true as const,
+            session_id: result.sessionId,
+            agent_response: result.agentResponse,
+            started_at: result.startedAt,
+            session_dir: result.sessionDir,
+            agent_name: agentName,
+            via: "api_name" as const,
+            digest: result.digest,
+          },
+          previewSessionEvents({
+            agentName,
+            sessionId: result.sessionId,
+            sessionDir: result.sessionDir,
+            targetOrg: input.target_org,
+            sessionKind: "api_name",
+            status: "active",
+            source: "preview.start",
+          }),
+        ),
         [
           `🎬 Preview started against published ${input.agent_api_name}`,
           `session_id: ${result.sessionId}`,
@@ -332,16 +344,22 @@ async function actionStart(
   if (!localCheck.ok) {
     return toolError(
       localCheck.unavailableReason ?? "Local Agent Script compile failed before preview.",
-      "Run agentscript_compile to see the full diagnostic details.",
-      { tool: "agentscript_compile", params: { path: filePath } },
+      "Run agentscript_authoring compile/check to see the full diagnostic details.",
+      {
+        tool: "agentscript_authoring",
+        params: { verb: "compile", mode: "check", agent_file: filePath },
+      },
     );
   }
   const blocking = localCheck.diagnostics.filter((d) => d.severity === 1);
   if (blocking.length > 0) {
     return toolError(
       `Local diagnostics rejected preview (${blocking.length} severity-1 issue${blocking.length === 1 ? "" : "s"}).`,
-      "Run agentscript_compile to see and fix the diagnostics before starting preview.",
-      { tool: "agentscript_compile", params: { path: filePath } },
+      "Run agentscript_authoring compile/check to see and fix the diagnostics before starting preview.",
+      {
+        tool: "agentscript_authoring",
+        params: { verb: "compile", mode: "check", agent_file: filePath },
+      },
     );
   }
 
@@ -360,16 +378,27 @@ async function actionStart(
       //  startPreview — used by `end` to suggest the next publish command.)
     });
     return toolOk(
-      {
-        ok: true as const,
-        session_id: result.sessionId,
-        agent_response: result.agentResponse,
-        started_at: result.startedAt,
-        session_dir: result.sessionDir,
-        agent_name: agentName,
-        via: "agent_file" as const,
-        context_patch: result.contextPatch,
-      },
+      withAgentScriptBranchState(
+        {
+          ok: true as const,
+          session_id: result.sessionId,
+          agent_response: result.agentResponse,
+          started_at: result.startedAt,
+          session_dir: result.sessionDir,
+          agent_name: agentName,
+          via: "agent_file" as const,
+          context_patch: result.contextPatch,
+        },
+        previewSessionEvents({
+          agentName,
+          sessionId: result.sessionId,
+          sessionDir: result.sessionDir,
+          targetOrg: input.target_org,
+          sessionKind: "agent_file",
+          status: "active",
+          source: "preview.start",
+        }),
+      ),
       [
         `🎬 Preview started`,
         `session_id: ${result.sessionId}`,
@@ -385,8 +414,8 @@ async function actionStart(
     const msg = err instanceof Error ? err.message : String(err);
     if (msg.includes("Local compile rejected")) {
       return toolError(msg, undefined, {
-        tool: "agentscript_compile",
-        params: { path: filePath },
+        tool: "agentscript_authoring",
+        params: { verb: "compile", mode: "check", agent_file: filePath },
       });
     }
     return toolError(msg);
@@ -416,6 +445,19 @@ async function actionSend(
     }
   };
   stream("Sending message…");
+
+  const resolvedSession = await resolveActivePreviewSession(
+    ctx,
+    input.agent_name,
+    input.session_id,
+  );
+  if ("agentName" in resolvedSession === false) return resolvedSession;
+  input = {
+    ...input,
+    agent_name: resolvedSession.agentName,
+    session_id: resolvedSession.sessionId,
+    target_org: input.target_org ?? resolvedSession.targetOrg,
+  };
 
   // Resolve the target_org from session metadata when the caller didn't
   // pass one (or refuse if it conflicts with what start was called with).
@@ -476,22 +518,32 @@ async function actionSend(
     }
 
     return toolOk(
-      {
-        ok: true as const,
-        agent_response: result.agentResponse,
-        topic: result.topic,
-        invoked_actions: result.invokedActions,
-        latency_ms: result.latencyMs,
-        plan_id: result.planId,
-        trace_file: result.traceFile,
-        report_file: reportFile,
-        digest: result.digest,
-        trace_mode: result.traceFile ? "full_v1_1" : "surface_only_production_v1",
-        ...(result.digest?.state_variables
-          ? { state_variables: result.digest.state_variables }
-          : {}),
-        ...(result.apexDebugLog ? { apex_debug_log: result.apexDebugLog } : {}),
-      },
+      withAgentScriptBranchState(
+        {
+          ok: true as const,
+          agent_response: result.agentResponse,
+          topic: result.topic,
+          invoked_actions: result.invokedActions,
+          latency_ms: result.latencyMs,
+          plan_id: result.planId,
+          trace_file: result.traceFile,
+          report_file: reportFile,
+          digest: result.digest,
+          trace_mode: result.traceFile ? "full_v1_1" : "surface_only_production_v1",
+          ...(result.digest?.state_variables
+            ? { state_variables: result.digest.state_variables }
+            : {}),
+          ...(result.apexDebugLog ? { apex_debug_log: result.apexDebugLog } : {}),
+        },
+        previewTurnEvents({
+          agentName: input.agent_name,
+          sessionId: input.session_id,
+          planId: result.planId,
+          traceFile: result.traceFile,
+          reportFile,
+          source: "preview.send",
+        }),
+      ),
       [
         `🤖 ${result.agentResponse}`,
         result.digest?.summary_line ? `→ ${result.digest.summary_line}` : null,
@@ -528,6 +580,19 @@ async function actionEnd(
   content: { type: "text"; text: string }[];
   details: Record<string, unknown> | ToolError;
 }> {
+  const resolvedSession = await resolveActivePreviewSession(
+    ctx,
+    input.agent_name,
+    input.session_id,
+  );
+  if ("agentName" in resolvedSession === false) return resolvedSession;
+  input = {
+    ...input,
+    agent_name: resolvedSession.agentName,
+    session_id: resolvedSession.sessionId,
+    target_org: input.target_org ?? resolvedSession.targetOrg,
+  };
+
   // Same target_org resolution as actionSend.
   const orgResolution = await resolveSessionTargetOrg(
     ctx.cwd,
@@ -562,14 +627,27 @@ async function actionEnd(
           }`
         : "";
     return toolOk(
-      {
-        ok: true as const,
-        ended_at: result.endedAt,
-        summary: result.summary,
-        metadata: result.metadata,
-        remote_ended: result.remoteEnded,
-        remote_end_error: result.remoteEndError,
-      },
+      withAgentScriptBranchState(
+        {
+          ok: true as const,
+          ended_at: result.endedAt,
+          summary: result.summary,
+          metadata: result.metadata,
+          remote_ended: result.remoteEnded,
+          remote_end_error: result.remoteEndError,
+        },
+        previewSessionEvents({
+          agentName: input.agent_name,
+          sessionId: input.session_id,
+          sessionDir: result.metadata
+            ? path.join(ctx.cwd, ".sfdx", "agents", input.agent_name, "sessions", input.session_id)
+            : "",
+          targetOrg: result.metadata?.targetOrg,
+          sessionKind: result.metadata?.sessionKind,
+          status: "ended",
+          source: "preview.end",
+        }),
+      ),
       [
         `🏁 session ${input.session_id.slice(0, 8)}… ended (${result.summary.turns} turns, ${result.summary.plans} plans)`,
         result.remoteEnded === false ? `⚠️ ${result.remoteEndError}` : null,
@@ -803,6 +881,52 @@ async function actionCleanup(
  * Returns a discriminated union so callers can surface a clean conflict
  * error without an exception.
  */
+function previewSessionEvents(input: {
+  agentName: string;
+  sessionId: string;
+  sessionDir: string;
+  targetOrg?: string;
+  sessionKind?: "agent_file" | "api_name";
+  status: "active" | "ended";
+  source: string;
+}): AgentScriptBranchStateEvent[] {
+  return [
+    {
+      schema_version: 1,
+      kind: "preview_session",
+      status: input.status,
+      agent_name: input.agentName,
+      session_id: input.sessionId,
+      session_dir: input.sessionDir,
+      target_org: input.targetOrg,
+      session_kind: input.sessionKind,
+      source: input.source,
+    },
+  ];
+}
+
+function previewTurnEvents(input: {
+  agentName: string;
+  sessionId: string;
+  planId: string;
+  traceFile?: string;
+  reportFile?: string;
+  source: string;
+}): AgentScriptBranchStateEvent[] {
+  return [
+    {
+      schema_version: 1,
+      kind: "preview_turn",
+      agent_name: input.agentName,
+      session_id: input.sessionId,
+      plan_id: input.planId,
+      trace_file: input.traceFile,
+      report_file: input.reportFile,
+      source: input.source,
+    },
+  ];
+}
+
 async function resolveSessionTargetOrg(
   cwd: string,
   agentName: string,

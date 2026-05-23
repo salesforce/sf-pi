@@ -327,7 +327,7 @@ export async function publishAgent(opts: PublishOptions): Promise<PublishResult>
     if (sev1.length > 0) {
       throw new Error(
         `Local compile rejected the source (${sev1.length} severity-1 errors). ` +
-          `Run agentscript_compile to see them, fix, and retry.`,
+          `Run agentscript_authoring compile/check to see them, fix, and retry.`,
       );
     }
   }

@@ -41,8 +41,8 @@ describe("mapAgentApiError (preview surface)", () => {
     expect(m.message).toMatch(/connection surface/i);
     expect(m.message).toMatch(/response_formats/i);
     expect(m.recover_via).toEqual({
-      tool: "agentscript_inspect",
-      params: { path: "/tmp/X.agent" },
+      tool: "agentscript_authoring",
+      params: { verb: "inspect", mode: "structure", agent_file: "/tmp/X.agent" },
     });
   });
 
@@ -239,8 +239,12 @@ describe("mapAgentApiError (lifecycle surface, Issue 4 patterns)", () => {
     expect(m.message).toMatch(/channel\/surface-gated/i);
     expect(m.message).toMatch(/modality voice/);
     expect(m.recover_via).toEqual({
-      tool: "agentscript_inspect",
-      params: { action: "context_profile", path: "/tmp/Voice_Bot.agent" },
+      tool: "agentscript_authoring",
+      params: {
+        verb: "inspect",
+        mode: "context_profile",
+        agent_file: "/tmp/Voice_Bot.agent",
+      },
     });
   });
 
@@ -288,8 +292,8 @@ describe("mapAgentApiError (lifecycle surface, Issue 4 patterns)", () => {
     expect(m.matched).toBe("activation-rejected");
     expect(m.message).toMatch(/Some new validation/);
     expect(m.recover_via).toEqual({
-      tool: "agentscript_inspect",
-      params: { path: "/tmp/X.agent" },
+      tool: "agentscript_authoring",
+      params: { verb: "inspect", mode: "structure", agent_file: "/tmp/X.agent" },
     });
   });
 

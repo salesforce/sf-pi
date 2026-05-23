@@ -77,7 +77,7 @@ describe("compileResultMarkdown", () => {
         },
       ],
     });
-    expect(md).toMatch(/agentscript_mutate apply_quick_fix/);
+    expect(md).toMatch(/agentscript_authoring verb=mutate mode=apply_quick_fix/);
     expect(md).toMatch(/line=6/); // 5+1
     expect(md).toMatch(/code=missing-required-field/);
   });

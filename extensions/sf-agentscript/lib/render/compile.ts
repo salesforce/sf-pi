@@ -7,8 +7,8 @@
  *   - compileResultMarkdown(...)— Markdown string (slash panels, reports)
  *
  * The LLM-facing summary text is unchanged (still produced by
- * compile-tool.ts::renderCheckSummary). This module only adds the visual
- * row that the human sees in the TUI.
+ * authoring/actions/compile.ts::renderCheckSummary). This module only adds
+ * the visual row that the human sees in the TUI.
  */
 
 import { Text } from "@earendil-works/pi-tui";
@@ -163,7 +163,7 @@ function formatCompileBody(
     const lineArg = (first?.range?.start?.line ?? 0) + 1;
     lines.push("");
     lines.push(
-      `${fg("accent", "💡 Apply fix:")} ${code(`agentscript_mutate apply_quick_fix line=${lineArg} code=${codeArg}`)}`,
+      `${fg("accent", "💡 Apply fix:")} ${code(`agentscript_authoring verb=mutate mode=apply_quick_fix line=${lineArg} code=${codeArg}`)}`,
     );
   }
 

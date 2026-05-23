@@ -5,14 +5,14 @@
  * Verifies that the agent-friendly loop the rewrite was designed for
  * actually works:
  *
- *   1. agentscript_create  scaffolds a new bundle.
- *   2. agentscript_compile shows clean diagnostics on the scaffold.
- *   3. agentscript_inspect returns a navigable graph.
+ *   1. agentscript_authoring create  scaffolds a new bundle.
+ *   2. agentscript_authoring compile/check shows clean diagnostics on the scaffold.
+ *   3. agentscript_authoring inspect returns a navigable graph.
  *   4. We inject a syntax error.
- *   5. agentscript_compile reports the error and ships a quick fix
- *      with apply_via pointing at agentscript_mutate.
- *   6. agentscript_mutate apply_quick_fix removes the error.
- *   7. agentscript_compile reports clean again.
+ *   5. agentscript_authoring compile/check reports the error and ships a quick fix
+ *      with apply_via pointing at agentscript_authoring mutate.
+ *   6. agentscript_authoring mutate apply_quick_fix removes the error.
+ *   7. agentscript_authoring compile/check reports clean again.
  *
  * No network, no Connection mocks — purely local-first via the vendored SDK.
  */
@@ -120,7 +120,7 @@ describe("self-recovery loop (create → compile → inspect → mutate → comp
     expect(compile.diagnostics.filter((d) => d.severity === 1)).toHaveLength(0);
   });
 
-  test("agentscript_mutate refuses to touch a file with severity-1 errors", async () => {
+  test("agentscript_authoring mutate refuses to touch a file with severity-1 errors", async () => {
     const filePath = path.join(workDir, "broken.agent");
     // Genuinely unparseable — missing required fields and bad indentation.
     await writeFile(filePath, "not actually agent script ::: =\n", "utf8");

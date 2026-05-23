@@ -76,6 +76,10 @@ _Avoid_: admin screen, settings page
 A way an extension participates in pi during a session, such as a command, tool, provider, event hook, or UI element.
 _Avoid_: integration point, hook thing
 
+**Branch-Durable Tool State**:
+Session-scoped workflow state reconstructed from successful tool-result details on the current Pi branch.
+_Avoid_: global latest state, prompt context, trace store, replacement for artifacts
+
 **Welcome Splash**:
 The SF Pi startup visual surface that introduces the session and summarizes relevant SF Pi runtime status without replacing the normal command or manager surfaces.
 _Avoid_: boot logo, decorative header, startup dashboard
@@ -341,6 +345,7 @@ _Avoid_: every available gateway model, benchmark target, broad live-test suite
 - The **Documentation Site** follows the **Docs Build Contract**.
 - **SF Pi** contains one or more **Bundled Extensions**.
 - A **Bundled Extension** exposes zero or more **Runtime Surfaces**.
+- **Branch-Durable Tool State** records lightweight pointers to workflow artifacts; it does not replace logs, traces, transcripts, reports, or other heavy disk artifacts.
 - The **Welcome Splash** is a **Runtime Surface** owned by a **Bundled Extension**.
 - The **Welcome Splash** may summarize **Release Freshness** for **SF Pi** and the **Pi Runtime** without becoming an update manager.
 - **Pi Runtime** **Release Freshness** should compare against the **Policy-Visible Latest** release when a **Package-Manager Release-Age Policy** is configured.
@@ -411,6 +416,7 @@ _Avoid_: every available gateway model, benchmark target, broad live-test suite
 ## Flagged ambiguities
 
 - "plugin" is ambiguous because pi calls them extensions; resolved: use **Bundled Extension** for SF Pi-owned extensions.
+- "durable context" is ambiguous because it could mean LLM prompt context, Salesforce context variables, or disk artifacts; resolved: use **Branch-Durable Tool State** for branch-aware state reconstructed from tool-result details.
 - "brain" could mean an all-purpose knowledge base; resolved: **SF Brain** stays compact and routes to the **SF Pi Reference Map** instead of loading broad Salesforce content eagerly.
 - "GitHub documentation link" could mean a wiki, README-only docs, or a static site; resolved: use **Documentation Site** for the VitePress/GitHub Pages surface.
 - "like Peekaboo" could mean copied content/theme or structural inspiration; resolved: use **Reference-Inspired Documentation** with SF Pi-specific branding.

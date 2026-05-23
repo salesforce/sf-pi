@@ -104,10 +104,10 @@ describe("reportHeader", () => {
     const md = reportHeader({
       kind: "eval",
       title: "x",
-      meta: { run_id: "abc", org: "Vivint", empty: "", undef: undefined },
+      meta: { run_id: "abc", org: "Example", empty: "", undef: undefined },
     });
     expect(md).toMatch(/_run_id: abc_/);
-    expect(md).toMatch(/_org: Vivint_/);
+    expect(md).toMatch(/_org: Example_/);
     expect(md).not.toMatch(/_empty:/);
     expect(md).not.toMatch(/_undef:/);
   });

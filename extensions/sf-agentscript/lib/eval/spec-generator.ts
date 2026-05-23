@@ -106,7 +106,7 @@ export function generateSpec(opts: GenerateSpecOptions): GenerateSpecResult {
   if (!opts.inspect.ok || !opts.inspect.components) {
     throw new Error(
       "Cannot generate spec: inspect result is not OK. " +
-        "Run agentscript_compile first and fix severity-1 errors before generating.",
+        "Run agentscript_authoring compile/check first and fix severity-1 errors before generating.",
     );
   }
   const components = opts.inspect.components;
@@ -358,7 +358,7 @@ function stringAssertionStep(o: {
  *
  * History: earlier versions of this generator emitted only `id + expected`
  * (HTTP 422) and then `{turn1.response}` (HTTP 200 but always 0 score).
- * Verified end-to-end against AVA_Vivint_Assistant: with the
+ * Verified end-to-end against Example_Service_Assistant: with the
  * lastExecution.message.message path the LLM judge returns a real score
  * (e.g. 5.0 "polite and offers transfer to a specialist").
  */

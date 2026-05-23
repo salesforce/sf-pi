@@ -52,7 +52,7 @@ export interface InspectResult {
   };
   /**
    * True when `parse()` produced severity-1 diagnostics. The structural
-   * surface may be incomplete — always run `agentscript_compile` first to
+   * surface may be incomplete — always run `agentscript_authoring compile/check` first to
    * decide whether the result is trustworthy for further mutations.
    */
   has_parse_errors?: boolean;

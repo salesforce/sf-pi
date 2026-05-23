@@ -204,7 +204,7 @@ export const placeholderResolver: TargetResolver = {
 
 Today's API is `checkActionTargets(conn, actions)`. The registry
 implementation keeps the same export and same `CheckActionTargetsResult`
-shape. Callers (`lifecycle.ts`, `inspect-tool.ts check_targets`,
+shape. Callers (`lifecycle.ts`, `authoring/actions/inspect.ts check_targets`,
 `render/lifecycle.ts`) need zero changes. Internal: the function dispatches
 to the registry instead of the hardcoded if/else for flow/apex.
 

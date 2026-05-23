@@ -86,7 +86,7 @@ describe("inspectStructureMarkdown", () => {
     });
     expect(md).toMatch(/⚠/);
     expect(md).toMatch(/3 parse error/);
-    expect(md).toMatch(/agentscript_compile/);
+    expect(md).toMatch(/agentscript_authoring compile\/check/);
   });
 
   it("footer aggregates stats and refs", () => {

@@ -48,6 +48,7 @@ export interface ToolError {
   error: string;
   suggestion?: string;
   recover_via?: ToolRecoverVia;
+  [key: string]: unknown;
 }
 
 /** Programmatic recovery hint: which tool to call next, with which params. */
@@ -88,12 +89,14 @@ export function toolError(
   error: string,
   suggestion?: string,
   recoverVia?: ToolRecoverVia,
+  extra?: Record<string, unknown>,
 ): ToolEnvelope<ToolError> {
   const details: ToolError = {
     ok: false,
     error,
     ...(suggestion ? { suggestion } : {}),
     ...(recoverVia ? { recover_via: recoverVia } : {}),
+    ...(extra ?? {}),
   };
   const lines = [`❌ ${error}`];
   if (suggestion) lines.push(`Suggested fix: ${suggestion}`);

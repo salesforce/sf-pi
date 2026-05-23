@@ -39,6 +39,11 @@ import { mapAgentApiError } from "./errors/agent-api-error-map.ts";
 import { buildFeatureProfile, type AgentFeatureProfile } from "./feature-profile.ts";
 import { sfap404Message } from "./errors/sfap-404.ts";
 import { checkBundleVsBotDivergence } from "./lifecycle-divergence.ts";
+import {
+  agentFileEvent,
+  withAgentScriptBranchState,
+  type AgentScriptBranchStateEvent,
+} from "./branch-state.ts";
 import { isAgentScriptFile } from "./file-classify.ts";
 import { activateVersion, deactivateVersion, listVersions, publishAgent } from "./lifecycle.ts";
 import { safeResolveToolPath, toolError, toolOk, type ToolError } from "./tool-types.ts";
@@ -202,6 +207,31 @@ export function registerLifecycleTool(pi: ExtensionAPI): void {
   });
 }
 
+function lifecycleVersionEvents(input: {
+  agentApiName: string;
+  agentFile?: string;
+  botId?: string;
+  botVersionId?: string;
+  versionNumber?: number;
+  status?: string;
+  source: string;
+}): AgentScriptBranchStateEvent[] {
+  return [
+    ...(input.agentFile ? [agentFileEvent(input.agentFile, input.source)] : []),
+    {
+      schema_version: 1 as const,
+      kind: "lifecycle_version" as const,
+      agent_api_name: input.agentApiName,
+      agent_file: input.agentFile,
+      bot_id: input.botId,
+      bot_version_id: input.botVersionId,
+      version_number: input.versionNumber,
+      status: input.status,
+      source: input.source,
+    },
+  ];
+}
+
 // -------------------------------------------------------------------------------------------------
 // action = publish
 // -------------------------------------------------------------------------------------------------
@@ -234,16 +264,22 @@ async function actionPublish(
   if (!localCheck.ok) {
     return toolError(
       localCheck.unavailableReason ?? "Local Agent Script compile failed before publish.",
-      "Run agentscript_compile to see the full diagnostic details.",
-      { tool: "agentscript_compile", params: { path: filePath } },
+      "Run agentscript_authoring compile/check to see the full diagnostic details.",
+      {
+        tool: "agentscript_authoring",
+        params: { verb: "compile", mode: "check", agent_file: filePath },
+      },
     );
   }
   const blocking = localCheck.diagnostics.filter((d) => d.severity === 1);
   if (blocking.length > 0) {
     return toolError(
       `Local diagnostics rejected publish (${blocking.length} severity-1 issue${blocking.length === 1 ? "" : "s"}).`,
-      "Run agentscript_compile to see and fix the diagnostics before publishing.",
-      { tool: "agentscript_compile", params: { path: filePath } },
+      "Run agentscript_authoring compile/check to see and fix the diagnostics before publishing.",
+      {
+        tool: "agentscript_authoring",
+        params: { verb: "compile", mode: "check", agent_file: filePath },
+      },
     );
   }
 
@@ -332,20 +368,30 @@ async function actionPublish(
       }
     }
     return toolOk(
-      {
-        ok: true as const,
-        agent_api_name: result.developer_name,
-        bot_id: result.bot_id,
-        bot_version_id: result.bot_version_id,
-        version_developer_name: result.version_developer_name,
-        was_new_agent: result.was_new_agent,
-        activated: result.activated,
-        authoring_bundle: result.authoring_bundle,
-        ...(result.preflight ? { preflight: result.preflight } : {}),
-        ...(featureProfile?.publish_risks.length
-          ? { publish_risks: featureProfile.publish_risks }
-          : {}),
-      },
+      withAgentScriptBranchState(
+        {
+          ok: true as const,
+          agent_api_name: result.developer_name,
+          bot_id: result.bot_id,
+          bot_version_id: result.bot_version_id,
+          version_developer_name: result.version_developer_name,
+          was_new_agent: result.was_new_agent,
+          activated: result.activated,
+          authoring_bundle: result.authoring_bundle,
+          ...(result.preflight ? { preflight: result.preflight } : {}),
+          ...(featureProfile?.publish_risks.length
+            ? { publish_risks: featureProfile.publish_risks }
+            : {}),
+        },
+        lifecycleVersionEvents({
+          agentApiName: result.developer_name,
+          agentFile: filePath,
+          botId: result.bot_id,
+          botVersionId: result.bot_version_id,
+          status: result.activated ? "Active" : undefined,
+          source: "lifecycle.publish",
+        }),
+      ),
       [
         `📦 Published ${result.developer_name}`,
         result.was_new_agent ? "  • created new agent" : "  • new version of existing agent",
@@ -367,7 +413,7 @@ async function actionPublish(
         return toolError(
           msg,
           "Add `<bundleType>AGENT</bundleType>` inside `<AiAuthoringBundle>` and retry. " +
-            "Scaffolds produced by `agentscript_create` already include this field.",
+            "Scaffolds produced by `agentscript_authoring` create already include this field.",
           path
             ? {
                 tool: "edit",
@@ -380,12 +426,13 @@ async function actionPublish(
       // can drill into the per-target breakdown without re-reading prose.
       return toolError(
         msg,
-        "Run agentscript_inspect action='check_targets' for a per-target breakdown. Then deploy the missing flows / apex classes and retry.",
+        "Run agentscript_authoring inspect/check_targets for a per-target breakdown. Then deploy the missing flows / apex classes and retry.",
         {
-          tool: "agentscript_inspect",
+          tool: "agentscript_authoring",
           params: {
-            action: "check_targets",
-            path: filePath,
+            verb: "inspect",
+            mode: "check_targets",
+            agent_file: filePath,
             target_org: input.target_org ?? "<alias>",
           },
         },
@@ -393,8 +440,8 @@ async function actionPublish(
     }
     if (/Local compile rejected/i.test(msg)) {
       return toolError(msg, undefined, {
-        tool: "agentscript_compile",
-        params: { path: filePath },
+        tool: "agentscript_authoring",
+        params: { verb: "compile", mode: "check", agent_file: filePath },
       });
     }
     return classifyLifecycleError(err, agentApiName, "publish", filePath, featureProfile);
@@ -450,14 +497,24 @@ async function actionActivate(
     const headerLines: string[] = [`🟢 ${agentApiName} v${row.VersionNumber} activated`];
     if (divergenceWarning) headerLines.push("", divergenceWarning);
     return toolOk(
-      {
-        ok: true as const,
-        agent_api_name: agentApiName,
-        bot_version_id: row.Id,
-        version_number: row.VersionNumber,
-        status: row.Status,
-        ...(divergenceDetails ? { divergence: divergenceDetails } : {}),
-      },
+      withAgentScriptBranchState(
+        {
+          ok: true as const,
+          agent_api_name: agentApiName,
+          bot_version_id: row.Id,
+          version_number: row.VersionNumber,
+          status: row.Status,
+          ...(divergenceDetails ? { divergence: divergenceDetails } : {}),
+        },
+        lifecycleVersionEvents({
+          agentApiName,
+          agentFile: input.agent_file,
+          botVersionId: row.Id,
+          versionNumber: row.VersionNumber,
+          status: row.Status,
+          source: "lifecycle.activate",
+        }),
+      ),
       headerLines.join("\n") + evalHint,
     );
   } catch (err) {
@@ -478,13 +535,22 @@ async function actionDeactivate(input: ParamsAny): Promise<{
       version: input.version,
     });
     return toolOk(
-      {
-        ok: true as const,
-        agent_api_name: agentApiName,
-        bot_version_id: row.Id,
-        version_number: row.VersionNumber,
-        status: row.Status,
-      },
+      withAgentScriptBranchState(
+        {
+          ok: true as const,
+          agent_api_name: agentApiName,
+          bot_version_id: row.Id,
+          version_number: row.VersionNumber,
+          status: row.Status,
+        },
+        lifecycleVersionEvents({
+          agentApiName,
+          botVersionId: row.Id,
+          versionNumber: row.VersionNumber,
+          status: row.Status,
+          source: "lifecycle.deactivate",
+        }),
+      ),
       `⚫ ${agentApiName} v${row.VersionNumber} deactivated`,
     );
   } catch (err) {
@@ -511,7 +577,23 @@ async function actionListVersions(input: ParamsAny): Promise<{
         return `  ${flag} v${v.version_number} · ${v.status} · ${v.bot_version_id} · ${v.developer_name ?? ""}`;
       }),
     ];
-    return toolOk({ ok: true as const, ...result }, lines.join("\n"));
+    const active = result.versions.find((v) => v.status === "Active") ?? result.versions[0];
+    return toolOk(
+      withAgentScriptBranchState(
+        { ok: true as const, ...result },
+        active
+          ? lifecycleVersionEvents({
+              agentApiName: result.agent_api_name,
+              botId: result.bot_id,
+              botVersionId: active.bot_version_id,
+              versionNumber: active.version_number,
+              status: active.status,
+              source: "lifecycle.list_versions",
+            })
+          : [],
+      ),
+      lines.join("\n"),
+    );
   } catch (err) {
     return classifyLifecycleError(err, agentApiName, "list_versions");
   }
@@ -618,10 +700,13 @@ async function actionAgentUserStatus(
     return toolError(
       `Cannot read .agent config from ${filePath}: ${cfg.reason_detail}`,
       cfg.reason === "parse_failed"
-        ? "Run agentscript_compile and fix severity-1 errors first."
+        ? "Run agentscript_authoring compile/check and fix severity-1 errors first."
         : undefined,
       cfg.reason === "parse_failed"
-        ? { tool: "agentscript_compile", params: { path: filePath } }
+        ? {
+            tool: "agentscript_authoring",
+            params: { verb: "compile", mode: "check", agent_file: filePath },
+          }
         : undefined,
     );
   }
@@ -681,10 +766,13 @@ async function actionDiagnoseAgentUser(
     return toolError(
       `Cannot read .agent config from ${filePath}: ${cfg.reason_detail}`,
       cfg.reason === "parse_failed"
-        ? "Run agentscript_compile and fix severity-1 errors first."
+        ? "Run agentscript_authoring compile/check and fix severity-1 errors first."
         : undefined,
       cfg.reason === "parse_failed"
-        ? { tool: "agentscript_compile", params: { path: filePath } }
+        ? {
+            tool: "agentscript_authoring",
+            params: { verb: "compile", mode: "check", agent_file: filePath },
+          }
         : undefined,
     );
   }
@@ -797,10 +885,13 @@ async function actionProvisionAgentUser(
     return toolError(
       `Cannot read .agent config from ${filePath}: ${cfg.reason_detail}`,
       cfg.reason === "parse_failed"
-        ? "Run agentscript_compile and fix severity-1 errors first."
+        ? "Run agentscript_authoring compile/check and fix severity-1 errors first."
         : undefined,
       cfg.reason === "parse_failed"
-        ? { tool: "agentscript_compile", params: { path: filePath } }
+        ? {
+            tool: "agentscript_authoring",
+            params: { verb: "compile", mode: "check", agent_file: filePath },
+          }
         : undefined,
     );
   }

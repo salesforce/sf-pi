@@ -14,12 +14,12 @@ The original session was a useful stress test: nothing was particularly exotic a
 | --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
 | 1   | Activation: _"This Agent Type should have a user assigned"_                                                                                                       | Scaffold omits `agent_type` entirely → SDK lint can't fire → activation is the first place we learn about it                                                           | **High** — every default scaffold is un-activatable |
 | 2   | Compile: `[E] missing-token @ L17` on `transition … when "…"`                                                                                                     | LSP message is correct but doesn't suggest the supported transition shapes                                                                                             | Medium — costs one round-trip per new author        |
-| 3   | `agentscript_mutate set_field` reported `🔧 set config.agent_type (ast) Δ -1 bytes ✓ clean` but **never added the field**                                         | `applyAstSetField` writes a property onto the parsed block AST node; SDK `emit()` ignores fields that aren't in `__children`                                           | **Critical** — silent lie to the LLM                |
+| 3   | `agentscript_authoring mutate set_field` reported `🔧 set config.agent_type (ast) Δ -1 bytes ✓ clean` but **never added the field**                               | `applyAstSetField` writes a property onto the parsed block AST node; SDK `emit()` ignores fields that aren't in `__children`                                           | **Critical** — silent lie to the LLM                |
 | 4   | Activation error pass-through: `❌ Activation request did not succeed: <msg>`                                                                                     | `lifecycle-tool.ts` `classifyLifecycleError` only matches `404` / `not found`; misses every business-validation error                                                  | High                                                |
 | 5   | `agentscript_lifecycle publish` returned _"SFAP returned 404… use an Agentforce-enabled org"_ even though we'd just published v1 successfully in the same session | `isSfapRoutingFailure` over-classifies; same hard-coded message for two very different failure modes                                                                   | High                                                |
 | 6   | After `sf project deploy start -m AiAuthoringBundle` the BotDefinition.AgentType still didn't update → activate kept failing                                      | The bundle-meta.xml had no `<target>` element, so MD API didn't link bundle ↔ BotVersion. `publishAgent` injects `<target>` for us; manual `sf project deploy` doesn't | Medium — undocumented gotcha                        |
 
-The plus side: `agentscript_compile`, `agentscript_inspect`, `agentscript_preview`, the trace store, the planner-trace digest, and the SDR-friendly bundle layout all worked exactly as advertised.
+The plus side: `agentscript_authoring compile/check`, `agentscript_authoring inspect`, `agentscript_preview`, the trace store, the planner-trace digest, and the SDR-friendly bundle layout all worked exactly as advertised.
 
 ---
 
@@ -27,7 +27,7 @@ The plus side: `agentscript_compile`, `agentscript_inspect`, `agentscript_previe
 
 ### Evidence
 
-The scaffold produced by `agentscript_create` (default template `agentforce-default`):
+The scaffold produced by `agentscript_authoring create` (default template `agentforce-default`):
 
 ```yaml
 config:
@@ -53,10 +53,10 @@ i.e. **the SDK only fires the missing-user error when `agent_type` is set explic
 
 Two non-overlapping changes:
 
-1. **Default `agent_type: "AgentforceEmployeeAgent"` in the scaffold.** Employee agents don't need a user, so `agentscript_create → agentscript_lifecycle publish activate=true` works on a dev/sandbox org with zero extra config. Most demo paths want this.
+1. **Default `agent_type: "AgentforceEmployeeAgent"` in the scaffold.** Employee agents don't need a user, so `agentscript_authoring create → agentscript_lifecycle publish activate=true` works on a dev/sandbox org with zero extra config. Most demo paths want this.
 2. **When `job_spec.agent_user` is provided, scaffold `agent_type: "AgentforceServiceAgent"` and `default_agent_user: <user>`.** That way the user signals "Service Agent" by passing a user; we don't ask them to know two fields.
 
-`agentscript_create`'s `next_steps` should also include a one-liner reminder when the scaffold is a Service Agent without `agent_user`:
+`agentscript_authoring create`'s `next_steps` should also include a one-liner reminder when the scaffold is a Service Agent without `agent_user`:
 
 > "Service Agent scaffolds need a `default_agent_user` before activation; pass `job_spec.agent_user` to scaffold one in."
 
@@ -107,7 +107,7 @@ Document the same on a single page: `references/transitions.md` in the skill, tw
 
 ### Evidence
 
-Reproduced cleanly with `agentscript_mutate set_field component=config field=agent_type value=AgentforceEmployeeAgent dry_run=true` against a probe file with no pre-existing `agent_type`:
+Reproduced cleanly with `agentscript_authoring mutate set_field component=config field=agent_type value=AgentforceEmployeeAgent dry_run=true` against a probe file with no pre-existing `agent_type`:
 
 ```
 🔍 Dry-run: set config.agent_type (ast)
@@ -156,7 +156,7 @@ Options, in order of preference:
 
 `tests/mutate.test.ts`:
 
-- `set_field` for a non-existent field on `config` returns `ok: false`, `reason: "field_not_present"` (or, if option 1 lands, `ok: true` + the file post-mutation contains the new field via `agentscript_compile + grep`).
+- `set_field` for a non-existent field on `config` returns `ok: false`, `reason: "field_not_present"` (or, if option 1 lands, `ok: true` + the file post-mutation contains the new field via `agentscript_authoring compile/check + grep`).
 - `set_field` with `dry_run: true` for a non-existent field never reports `ok: true`.
 - A small "round-trip" test: every `applyMutation set_field` that returns `ok: true` produces a source where `parseComponent + lookup` finds the new value.
 
@@ -185,7 +185,7 @@ Meanwhile, `lib/preview/error-map.ts` already has a perfect mapping for `Invalid
 2. Add three more cases that fired this session:
    - `/should have a user assigned/i` → "Add `agent_type: AgentforceServiceAgent` + `default_agent_user: <user>` to your `.agent` config and republish (lifecycle.publish, not `sf project deploy`)."
    - `/Agent Type should have/i + agent metadata says Service Agent` → identical message but with `recover_via: agentscript_lifecycle action='publish' agent_file=<bundle>.agent`.
-   - `/Activation request did not succeed/i` (catch-all) → keep the original message but append `"Run agentscript_inspect to confirm config.agent_type and config.default_agent_user are set."`
+   - `/Activation request did not succeed/i` (catch-all) → keep the original message but append `"Run agentscript_authoring inspect to confirm config.agent_type and config.default_agent_user are set."`
 
 ### Regression test
 
@@ -250,7 +250,7 @@ This is a real footgun: every time a user iterates with `sf project deploy` afte
 ### Fix
 
 1. **Document the gotcha** in `extensions/sf-agentscript/README.md` and `references/activation-checklist.md`: "After publishing, edit-then-deploy via `sf project deploy` will not propagate config changes to the BotDefinition. Always use `agentscript_lifecycle publish` for iteration."
-2. **Detect the divergence** in `agentscript_inspect action='check_targets'`: include `config.agent_type` / `default_agent_user` from the .agent file alongside the org's `BotDefinition.AgentType` (Tooling API), and diff them.
+2. **Detect the divergence** in `agentscript_authoring inspect action='check_targets'`: include `config.agent_type` / `default_agent_user` from the .agent file alongside the org's `BotDefinition.AgentType` (Tooling API), and diff them.
 3. **Emit a soft warning** in `agentscript_lifecycle activate` when the source on disk is newer than the most recent BotVersion's CreatedDate, suggesting `lifecycle.publish` instead.
 
 ### Regression test
@@ -283,8 +283,8 @@ Each item maps to a single PR, ships independently, and removes one of the failu
 
 ## What worked, for posterity
 
-- `agentscript_compile` returned a sharp `[E] missing-token @ L17`. The line number was right; the only gap was a suggestion (Issue 2).
-- `agentscript_inspect` summary was accurate. No surprises.
+- `agentscript_authoring compile/check` returned a sharp `[E] missing-token @ L17`. The line number was right; the only gap was a suggestion (Issue 2).
+- `agentscript_authoring inspect` summary was accurate. No surprises.
 - `agentscript_preview` start/send/end performed end-to-end against `AgentforceSTDM` mock mode, captured trace JSON + Markdown report under `.sfdx/agents/<bundle>/sessions/<sid>/`, and the per-turn digest was exactly the right shape for follow-up debugging.
 - `agentscript_lifecycle publish` worked on the first call (created `Demo_Greeter` v1).
 - `lifecycle.publishAgent`'s SDR-friendly bundle layout + `<target>` injection worked silently. The only reason I noticed it existed was the comparison with my failed manual `sf project deploy`.
