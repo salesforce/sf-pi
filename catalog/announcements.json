@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.145.0-2026-05-23",
-  "latestVersion": "0.145.0",
+  "revision": "release-0.146.0-2026-05-23",
+  "latestVersion": "0.146.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.145.0",
+      "id": "release-0.146.0",
       "kind": "update",
-      "title": "sf-pi v0.145.0 — brain: prioritize bundled extension workflows",
+      "title": "sf-pi v0.146.0 — sf-agentscript: refactor tool surface",
       "publishedAt": "2026-05-23T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.145.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.146.0",
       "severity": "info",
-      "body": "brain: prioritize bundled extension workflows — gateway: use pi adaptive thinking"
+      "body": "sf-agentscript: refactor tool surface"
     },
     {
       "id": "pi-0.73-required",
