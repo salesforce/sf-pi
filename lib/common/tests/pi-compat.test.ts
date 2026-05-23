@@ -53,8 +53,8 @@ describe("pi version floor", () => {
       peerDependencies?: Record<string, string>;
     };
 
-    expect(MIN_PI_VERSION).toBe("0.75.4");
-    expect(pkg.peerDependencies?.["@earendil-works/pi-coding-agent"]).toBe(">=0.75.4");
+    expect(MIN_PI_VERSION).toBe("0.75.5");
+    expect(pkg.peerDependencies?.["@earendil-works/pi-coding-agent"]).toBe(">=0.75.5");
     expect(pkg.peerDependencies?.["@earendil-works/pi-ai"]).toBe("*");
     expect(pkg.peerDependencies?.["@earendil-works/pi-tui"]).toBe("*");
   });

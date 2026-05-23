@@ -15,7 +15,6 @@ import {
   DEFAULT_CODEX_REASONING_EFFORT,
   DEFAULT_OPENAI_SERVICE_TIER,
   isGpt55ModelId,
-  mapPiLevelToOpus47Effort,
   resolveOpenAiReasoningEffort,
   resolveOpus47MaxTokensFloor,
   type PiReasoningLevel,
@@ -144,15 +143,14 @@ export function injectOpenAiReasoningEffort(
 }
 
 /**
- * Rewrite an Anthropic Messages request so Opus 4.7 runs with adaptive
- * thinking at the effort level derived from pi's reasoning setting.
+ * Apply the gateway-specific Opus 4.7 payload policy.
  *
- * Caller responsibilities:
- *  - `level` should be the pi reasoning level for the current turn, which
- *    this shim maps 1:1 to Anthropic's effort tiers (low / medium / high /
- *    xhigh). When undefined or unrecognized we fall back to "high".
- *  - `payload.max_tokens` is left untouched when already set; if absent,
- *    the shim fills in the conservative default.
+ * Pi owns the generic Anthropic adaptive-thinking shape via
+ * `compat.forceAdaptiveThinking` (`thinking: { type: "adaptive" }`,
+ * `output_config.effort`, and omitting temperature while thinking is on).
+ * SF Pi only keeps the gateway-specific output-token floor/cap policy and a
+ * defensive cleanup for legacy/pre-shaped payloads that still contain an
+ * effort value this gateway rejects for Opus 4.7.
  */
 export function applyOpus47MaxThinking(
   payload: Record<string, unknown>,
@@ -162,25 +160,12 @@ export function applyOpus47MaxThinking(
     payload.max_tokens = resolveOpus47MaxTokensFloor(level);
   }
 
-  const thinking = payload.thinking as { type?: unknown } | undefined;
-  if (!thinking || thinking.type !== "adaptive") {
-    payload.thinking = { type: "adaptive" };
+  if (typeof payload.output_config === "object" && payload.output_config !== null) {
+    const outputConfig = payload.output_config as Record<string, unknown>;
+    if (outputConfig.effort === "xhigh" || outputConfig.effort === "max") {
+      // The gateway rejects raw xhigh, and its model-specific guard restricts
+      // max to Opus 4.6. The strongest tier Opus 4.7 accepts is high.
+      outputConfig.effort = "high";
+    }
   }
-  if (!payload.output_config) {
-    payload.output_config = { effort: mapPiLevelToOpus47Effort(level) };
-  } else if (
-    typeof payload.output_config === "object" &&
-    payload.output_config !== null &&
-    (payload.output_config as Record<string, unknown>).effort === "xhigh"
-  ) {
-    // Defensive: pi-ai may emit `output_config.effort: "xhigh"` natively.
-    // The gateway's LiteLLM rejects xhigh with `Invalid effort value:
-    // xhigh`, AND its model-specific guard rejects `max` on Opus 4.7
-    // (`effort='max' is only supported by Claude Opus 4.6`). The strongest
-    // tier 4.7 accepts is `high`, so we collapse xhigh to high here.
-    (payload.output_config as Record<string, unknown>).effort = "high";
-  }
-
-  // Anthropic rejects any `temperature` != 1 with extended thinking.
-  delete payload.temperature;
 }

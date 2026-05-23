@@ -167,33 +167,6 @@ export function isOpus47ModelId(modelId: string): boolean {
   return lower.includes("opus-4-7") || lower.includes("opus-4.7");
 }
 
-/**
- * Map a pi-ai thinking level to the Anthropic `output_config.effort` value
- * for Opus 4.7.
- *
- * The gateway's LiteLLM tightened its Anthropic effort validator to
- * {low,medium,high,max}, AND its model-specific guard restricts `max` to
- * Opus 4.6 only. Opus 4.7 therefore accepts only {low,medium,high} —
- * raw `xhigh` returns `Invalid effort value: xhigh`, and `max` returns
- * `effort='max' is only supported by Claude Opus 4.6`. Pi's user-facing
- * `xhigh` collapses to `high` (Opus 4.7's strongest accepted tier).
- */
-export function mapPiLevelToOpus47Effort(
-  level: PiReasoningLevel | undefined,
-): "low" | "medium" | "high" {
-  switch (level) {
-    case "minimal":
-    case "low":
-      return "low";
-    case "medium":
-      return "medium";
-    case "xhigh":
-    case "high":
-    default:
-      return "high";
-  }
-}
-
 // -------------------------------------------------------------------------------------------------
 // Anthropic error envelope formatting
 // -------------------------------------------------------------------------------------------------

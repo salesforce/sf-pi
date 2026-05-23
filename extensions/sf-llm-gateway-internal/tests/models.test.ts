@@ -15,6 +15,7 @@ import {
   isAnthropicModelId,
   isHaiku45ModelId,
   resolvePreferredModelId,
+  shouldForceAdaptiveThinking,
   toProviderModelConfig,
 } from "../lib/models.ts";
 
@@ -285,14 +286,13 @@ describe("toProviderModelConfig", () => {
   });
 
   it("tags Claude models with the native anthropic-messages API", () => {
-    // Claude runs on pi-ai's native Anthropic transport. Most Claude ids
-    // leave `compat` undefined so pi-ai keeps its default fast path; Haiku
-    // 4.5 is the one variant that needs an AnthropicMessagesCompat override
-    // and is covered separately below.
+    // Claude runs on pi-ai's native Anthropic transport. Adaptive Claude ids
+    // use compat.forceAdaptiveThinking so pi-ai owns the generic adaptive
+    // payload shape; Haiku 4.5 has a separate eager-streaming override below.
     for (const id of ["claude-opus-4-6-v1", "claude-opus-4-7-v1", "claude-sonnet-4-6"]) {
       const config = toProviderModelConfig(id, null, new Set());
       expect(config.api).toBe("anthropic-messages");
-      expect(config.compat).toBeUndefined();
+      expect(config.compat).toMatchObject({ forceAdaptiveThinking: true });
     }
   });
 
@@ -343,6 +343,25 @@ describe("toProviderModelConfig", () => {
       expect(isHaiku45ModelId("claude-sonnet-4-6")).toBe(false);
       expect(isHaiku45ModelId("claude-3-5-haiku-20241022")).toBe(false);
       expect(isHaiku45ModelId("gpt-5")).toBe(false);
+    });
+  });
+
+  describe("shouldForceAdaptiveThinking", () => {
+    it("matches adaptive Claude gateway models", () => {
+      for (const id of [
+        "claude-opus-4-7",
+        "claude-opus-4.7",
+        "claude-opus-4-6-v1",
+        "claude-sonnet-4-6",
+      ]) {
+        expect(shouldForceAdaptiveThinking(id)).toBe(true);
+      }
+    });
+
+    it("does not match older Claude or non-Claude models", () => {
+      for (const id of ["claude-opus-4-5", "claude-sonnet-4-5", "claude-haiku-4-5", "gpt-5.5"]) {
+        expect(shouldForceAdaptiveThinking(id)).toBe(false);
+      }
     });
   });
 
@@ -418,6 +437,7 @@ describe("toProviderModelConfig", () => {
     });
     expect(cfg.contextWindow).toBe(1_000_000);
     expect(cfg.maxTokens).toBe(64_000);
+    expect(cfg.compat).toMatchObject({ forceAdaptiveThinking: true });
   });
 
   it("applies /v1/model/info to non-preset discovered models", () => {
@@ -462,16 +482,18 @@ describe("toProviderModelConfig", () => {
       expect((config as any).thinkingLevelMap?.xhigh, `${id} should opt into xhigh→high`).toBe(
         "high",
       );
+      expect(config.compat, `${id} should use Pi-native adaptive thinking`).toMatchObject({
+        forceAdaptiveThinking: true,
+      });
     }
   });
 
-  it("does not leak the Opus 4.7 xhigh opt-in to Opus 4.6", () => {
-    // Opus 4.6 uses pi-ai's default effort mapping (high/medium/low). It has
-    // no `xhigh` effort tier in the extension's transport.ts, so we
-    // deliberately leave thinkingLevelMap unset — adding xhigh here without
-    // a live probe would silently route 4.6 traffic to an unmapped tier.
+  it("uses Pi-native adaptive thinking for Opus 4.6 without leaking the Opus 4.7 xhigh opt-in", () => {
+    // Opus 4.6 needs adaptive thinking too, but it does not use the Opus 4.7
+    // xhigh→high workaround. Pi owns the adaptive payload via compat.
     const config = toProviderModelConfig("claude-opus-4-6-v1", null, new Set());
     expect((config as any).thinkingLevelMap).toBeUndefined();
+    expect(config.compat).toMatchObject({ forceAdaptiveThinking: true });
   });
 
   it("does not enable reasoning effort for non-reasoning providers like Gemini or OpenAI", () => {

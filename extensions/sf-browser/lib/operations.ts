@@ -2,7 +2,7 @@
 /**
  * Shared command/tool operations for SF Browser.
  */
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import {
   formatDimensionNote,
   resizeImage,
@@ -17,7 +17,6 @@ import {
   evidenceModeFromUnknown,
   imageContentFromFile,
   planEvidenceCapture,
-  readImageContentFromFile,
 } from "./artifacts.ts";
 import { OPEN_NEXT_STEPS } from "./guidance.ts";
 import { dismissAmbientOverlays } from "./overlay-dismissal.ts";
@@ -101,15 +100,12 @@ export async function captureEvidence(
   let thumbnailPath: string | undefined;
   let dimensionNote: string | undefined;
   if (mode === "thumbnail") {
-    const sourceImage = readImageContentFromFile(planned.path, "image/png");
-    const resized = sourceImage
-      ? await resizeImage(sourceImage, {
-          maxWidth: viewport?.width ?? 1440,
-          maxHeight: viewport?.height ?? 1000,
-          maxBytes: 1_500_000,
-          jpegQuality: 55,
-        })
-      : null;
+    const resized = await resizeImage(readFileSync(planned.path), "image/png", {
+      maxWidth: viewport?.width ?? 1440,
+      maxHeight: viewport?.height ?? 1000,
+      maxBytes: 1_500_000,
+      jpegQuality: 55,
+    });
     if (resized) {
       thumbnailPath = thumbnailPathForMime(planned.thumbnailPath, resized.mimeType);
       writeFileSync(thumbnailPath, Buffer.from(resized.data, "base64"));

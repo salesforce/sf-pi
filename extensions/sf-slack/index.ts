@@ -934,6 +934,13 @@ export default function sfSlack(pi: ExtensionAPI) {
         onProgress: (message) => {
           ctx.ui.notify(message, "info");
         },
+        onDeviceCode: (info) => {
+          const expires = info.expiresInSeconds ? `\nExpires in: ${info.expiresInSeconds}s` : "";
+          ctx.ui.notify(
+            `Open this URL in your browser:\n${info.verificationUri}\n\nCode: ${info.userCode}${expires}`,
+            "info",
+          );
+        },
         onSelect: async (prompt) => {
           // pi's full OAuth dialog can render an interactive selector; the
           // panel doesn't yet. Surface the options as text so the user can

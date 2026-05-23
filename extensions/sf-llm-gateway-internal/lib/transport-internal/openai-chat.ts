@@ -8,8 +8,9 @@
  *   - Codex `reasoning_effort` must be in `low|medium|high`.
  *   - Any OpenAI-family model with `reasoning_effort` set needs it
  *     allow-listed via `allowed_openai_params`.
- *   - gpt-5.5 force-strips `reasoning_effort` because the gateway rejects
- *     it when combined with function tools on `/v1/chat/completions`.
+ *   - If gpt-5.5 is forced onto this fallback chat path, strip
+ *     `reasoning_effort` because the gateway rejects it when combined with
+ *     function tools on `/v1/chat/completions`.
  *
  * Non-OpenAI-family models pass through untouched.
  */

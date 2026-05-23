@@ -11,14 +11,11 @@
  *   Codex without reasoning_effort returns 400              | "defaults missing values to high"
  *   Codex with nested tool shape returns 400                | "flattens Chat Completions..."
  *   Codex with minimal/xhigh is rejected                    | "clamps minimal and xhigh"
- *   Opus 4.7 accepts adaptive + effort + max_tokens verbatim | "sets adaptive thinking, effort mapped from pi level..."
+ *   Opus 4.7 accepts adaptive + effort + max_tokens          | live transport regression tests
  *   Opus 4.7 rejects max_tokens > 128000                     | "OPUS_47_MODEL_MAX_TOKENS is exactly 128000"
  *   Opus 4.7 + max_tokens:128000 + effort:max intermittently | default max_tokens lowered to OPUS_47_DEFAULT_MAX_TOKENS
  *     triggers upstream api_error: Internal server error     |
- *   Anthropic rejects temperature != 1 with adaptive         | "strips temperature even though LiteLLM would forward it"
- *   Claude on OpenAI-compat auto-translates to thinking.enabled with
- *     budget_tokens derived from max_tokens (so budget caps output)      | documented via comment on
- *                                                                         applyOpus47MaxThinking
+ *   Anthropic adaptive-thinking payload shape                | pi-ai `compat.forceAdaptiveThinking`
  */
 import { describe, expect, it } from "vitest";
 import {
@@ -232,7 +229,7 @@ describe("OpenAI reasoning effort defaults", () => {
     expect(resolveOpenAiReasoningEffort("gpt-5.2")).toBe("max");
     // gpt-5.5 is intentionally undefined — the gateway rejects
     // reasoning_effort + function tools on /v1/chat/completions for this
-    // model, and /v1/responses is not exposed on this gateway.
+    // model; gpt-5.5 normally routes through the root /responses path instead.
     expect(resolveOpenAiReasoningEffort("gpt-5.5")).toBeUndefined();
     expect(resolveOpenAiReasoningEffort("gpt-5.3-codex")).toBe("high");
     expect(resolveOpenAiReasoningEffort("gpt-4o")).toBeUndefined();
@@ -365,57 +362,6 @@ describe("isOpus47ModelId", () => {
 });
 
 describe("applyOpus47GatewayPolicy", () => {
-  it("normalizes a Pi-native xhigh effort to high in place (gateway rejects xhigh, and rejects max on Opus 4.7)", () => {
-    // pi-ai 0.73+ may emit `output_config: { effort: "xhigh" }` natively
-    // when the user picks pi's `xhigh` thinking level. The gateway's
-    // LiteLLM validator now rejects `xhigh` (`Invalid effort value:
-    // xhigh`), AND its model-specific guard rejects `max` on Opus 4.7
-    // (`effort='max' is only supported by Claude Opus 4.6`). The strongest
-    // tier Opus 4.7 accepts is `high`, so the shim collapses xhigh → high
-    // in place rather than promoting to max.
-    const payload: Record<string, unknown> = {
-      max_tokens: 32_000,
-      thinking: { type: "adaptive" },
-      output_config: { effort: "xhigh" },
-      temperature: 0.7,
-    };
-
-    applyOpus47MaxThinking(payload, "medium");
-
-    expect(payload.max_tokens).toBe(32_000);
-    expect(payload.thinking).toEqual({ type: "adaptive" });
-    expect(payload.output_config).toEqual({ effort: "high" });
-    expect(payload.temperature).toBeUndefined();
-  });
-
-  it("only fills adaptive thinking when Pi did not already supply thinking controls", () => {
-    const payload: Record<string, unknown> = {};
-
-    applyOpus47MaxThinking(payload, "xhigh");
-
-    expect(payload.thinking).toEqual({ type: "adaptive" });
-    expect(payload.output_config).toEqual({ effort: "high" });
-    expect(payload.max_tokens).toBe(64_000);
-  });
-
-  it("maps pi reasoning level to effort and sets adaptive thinking", () => {
-    const payload: Record<string, unknown> = {
-      max_tokens: 32_000,
-      temperature: 0.7,
-      messages: [{ role: "user", content: "hi" }],
-    };
-
-    applyOpus47MaxThinking(payload, "high");
-
-    expect(payload.max_tokens).toBe(32_000); // caller's explicit value preserved
-    expect(payload.thinking).toEqual({ type: "adaptive" });
-    expect(payload.output_config).toEqual({ effort: "high" });
-    // Anthropic rejects temperature != 1 under adaptive thinking.
-    expect(payload.temperature).toBeUndefined();
-    // Non-thinking fields pass through untouched.
-    expect(payload.messages).toEqual([{ role: "user", content: "hi" }]);
-  });
-
   it("fills in the level-scaled max_tokens floor when the caller did not set one", () => {
     const payload: Record<string, unknown> = {};
     applyOpus47MaxThinking(payload, "high");
@@ -458,25 +404,34 @@ describe("applyOpus47GatewayPolicy", () => {
     }
   });
 
-  it("xhigh pi level maps to high Anthropic effort on Opus 4.7 (gateway rejects both xhigh and max for this model)", () => {
-    // Opus 4.7 effort validator accepts only {low,medium,high}: raw
-    // `xhigh` is invalid and `max` is restricted to Opus 4.6. The
-    // strongest tier 4.7 accepts is `high`, so pi's user-facing `xhigh`
-    // collapses to `high` on the wire.
+  it("leaves Pi-owned adaptive-thinking fields unset when they are absent", () => {
     const payload: Record<string, unknown> = {};
+
     applyOpus47MaxThinking(payload, "xhigh");
-    expect(payload.output_config).toEqual({ effort: "high" });
+
+    expect(payload).toEqual({ max_tokens: 64_000 });
   });
 
-  it("overrides a caller-provided budget-based thinking block with adaptive (4.7 rejects budget-based)", () => {
+  it("normalizes legacy/pre-shaped xhigh and max efforts to high in place", () => {
     const payload: Record<string, unknown> = {
-      thinking: { type: "enabled", budget_tokens: 16_384 },
+      max_tokens: 32_000,
+      thinking: { type: "adaptive" },
+      output_config: { effort: "xhigh" },
+      temperature: 0.7,
     };
 
-    applyOpus47MaxThinking(payload, "high");
+    applyOpus47MaxThinking(payload, "medium");
 
+    expect(payload.max_tokens).toBe(32_000);
     expect(payload.thinking).toEqual({ type: "adaptive" });
     expect(payload.output_config).toEqual({ effort: "high" });
+    // Pi owns temperature omission while thinking is enabled; this gateway
+    // helper should not mutate unrelated generic Anthropic fields.
+    expect(payload.temperature).toBe(0.7);
+
+    const maxPayload: Record<string, unknown> = { output_config: { effort: "max" } };
+    applyOpus47MaxThinking(maxPayload, "high");
+    expect(maxPayload.output_config).toEqual({ effort: "high" });
   });
 
   it("model max is exactly 128000 — gateway returns 400 for 200000 with 'max_tokens: 200000 > 128000'", () => {
@@ -487,9 +442,7 @@ describe("applyOpus47GatewayPolicy", () => {
     expect(OPUS_47_DEFAULT_MAX_TOKENS).toBe(64_000);
   });
 
-  it("produces the byte-exact payload shape the gateway echoes for 4.7 at pi level=high", () => {
-    // Live probe via /utils/transform_request showed the gateway passes this
-    // payload through verbatim to https://api.anthropic.com/v1/messages.
+  it("produces only the gateway-specific max-token change for 4.7 at pi level=high", () => {
     const payload: Record<string, unknown> = {
       model: "claude-opus-4-7",
       messages: [{ role: "user", content: "solve 1+1" }],
@@ -500,12 +453,10 @@ describe("applyOpus47GatewayPolicy", () => {
       model: "claude-opus-4-7",
       messages: [{ role: "user", content: "solve 1+1" }],
       max_tokens: resolveOpus47MaxTokensFloor("high"),
-      thinking: { type: "adaptive" },
-      output_config: { effort: "high" },
     });
   });
 
-  it("produces the byte-exact payload shape for 4.7 at pi level=xhigh (heavy-workload profile)", () => {
+  it("produces only the gateway-specific max-token change for 4.7 at pi level=xhigh", () => {
     const payload: Record<string, unknown> = {
       model: "claude-opus-4-7",
       messages: [{ role: "user", content: "multi-step reasoning" }],
@@ -516,10 +467,6 @@ describe("applyOpus47GatewayPolicy", () => {
       model: "claude-opus-4-7",
       messages: [{ role: "user", content: "multi-step reasoning" }],
       max_tokens: 64_000,
-      thinking: { type: "adaptive" },
-      // Opus 4.7 only accepts {low,medium,high}; pi-level xhigh
-      // collapses to `high` (the strongest tier 4.7 accepts).
-      output_config: { effort: "high" },
     });
   });
 
@@ -535,11 +482,5 @@ describe("applyOpus47GatewayPolicy", () => {
     expect(ANTHROPIC_FINE_GRAINED_TOOL_STREAMING_BETA).toBe(
       "fine-grained-tool-streaming-2025-05-14",
     );
-  });
-
-  it("strips temperature even though LiteLLM silently forwards it — Anthropic upstream rejects any value != 1 with adaptive", () => {
-    const payload: Record<string, unknown> = { temperature: 0.5 };
-    applyOpus47MaxThinking(payload, "high");
-    expect(payload.temperature).toBeUndefined();
   });
 });

@@ -33,7 +33,7 @@ import {
 // that pins HTTP/1.1 and unifies fetch globals — both fixes that previously
 // forced a node:https-backed shim here. See pi 0.75.1 (#4650-#4653) and
 // pi 0.75.3 (#4681) in the pi changelog. sf-pi's package.json peer-deps
-// pin pi >= 0.75.4 so users on older pi don't reach this code path.
+// pin pi >= 0.75.5 so users on older pi don't reach this code path.
 
 interface SlackApiEnvelope {
   ok?: boolean;

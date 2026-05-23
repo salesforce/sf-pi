@@ -251,6 +251,18 @@ export type TaggedGatewayModel = ProviderModelConfig & {
   api: "openai-completions" | "anthropic-messages" | "openai-responses";
 };
 
+export function shouldForceAdaptiveThinking(modelId: string): boolean {
+  const lower = modelId.toLowerCase();
+  return (
+    lower.includes("opus-4-6") ||
+    lower.includes("opus-4.6") ||
+    lower.includes("opus-4-7") ||
+    lower.includes("opus-4.7") ||
+    lower.includes("sonnet-4-6") ||
+    lower.includes("sonnet-4.6")
+  );
+}
+
 /**
  * Clamp pi's 5-level thinking scale to the 3-level window that works on
  * `POST /responses` for gpt-5.5. The boundary values (`minimal`, `xhigh`)
@@ -376,6 +388,18 @@ export function toProviderModelConfig(
     const mergedBetas = shouldIncludeFineGrainedToolStreamingBeta(def.id, effectiveBetas)
       ? [...new Set([...effectiveBetas, ANTHROPIC_FINE_GRAINED_TOOL_STREAMING_BETA])]
       : effectiveBetas;
+    const compat: NonNullable<ProviderModelConfig["compat"]> = {
+      ...(shouldForceAdaptiveThinking(def.id) ? { forceAdaptiveThinking: true } : {}),
+      // Haiku 4.5 rejects per-tool `eager_input_streaming`. Setting this
+      // AnthropicMessagesCompat flag to false makes pi-ai (1) drop the
+      // per-tool field entirely and (2) auto-attach the legacy
+      // `fine-grained-tool-streaming-2025-05-14` beta header on tool-enabled
+      // requests, which is the streaming path Haiku 4.5 accepts. Opus and
+      // Sonnet still accept eager streaming, so we leave the flag undefined
+      // there to keep pi-ai on its default fast path.
+      ...(isHaiku45ModelId(def.id) ? { supportsEagerToolInputStreaming: false } : {}),
+    };
+
     return {
       id: def.id,
       name: def.name,
@@ -390,14 +414,7 @@ export function toProviderModelConfig(
       // actually exposes the level that the DEFAULT_THINKING_LEVEL
       // constant wants to ride on.
       ...(def.thinkingLevelMap ? { thinkingLevelMap: def.thinkingLevelMap } : {}),
-      // Haiku 4.5 rejects per-tool `eager_input_streaming`. Setting this
-      // AnthropicMessagesCompat flag to false makes pi-ai (1) drop the
-      // per-tool field entirely and (2) auto-attach the legacy
-      // `fine-grained-tool-streaming-2025-05-14` beta header on tool-enabled
-      // requests, which is the streaming path Haiku 4.5 accepts. Opus and
-      // Sonnet still accept eager streaming, so we leave compat undefined
-      // there to keep pi-ai on its default fast path.
-      ...(isHaiku45ModelId(def.id) ? { compat: { supportsEagerToolInputStreaming: false } } : {}),
+      ...(Object.keys(compat).length > 0 ? { compat } : {}),
     };
   }
 

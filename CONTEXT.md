@@ -108,6 +108,14 @@ _Avoid_: outdated, failed update, blocked registry
 The Bundled Extension that gives agents compact Salesforce operator guidance and a reference map to the deeper SF Pi and Salesforce resources they should load only when needed.
 _Avoid_: Salesforce encyclopedia, all-purpose memory dump
 
+**SF Pi Extension Context**:
+The session-visible summary that tells agents which **Bundled Extensions** are available, which are disabled, and which extension-owned workflow should be considered before generic Salesforce guidance.
+_Avoid_: extension catalog replacement, full documentation dump, skill list, plugin memory
+
+**Extension-First Routing**:
+The agent behavior where a matching enabled **Bundled Extension** is the primary path for a user's request, while broader skills and raw Salesforce commands are fallback paths.
+_Avoid_: disabling skills, tool-only routing, ignoring disabled extensions
+
 **SF Data 360**:
 The Bundled Extension that gives agents a compact, safe Data Cloud / Data 360 workflow surface with discovery, direct REST access, metadata helpers, and readiness checks.
 _Avoid_: plugin, MCP wrapper, endpoint dump
@@ -312,6 +320,10 @@ _Avoid_: bare sleep, DOMContentLoaded-only readiness, generic network idle, hidd
 A compact guide that points agents from SF Brain to repo-local sources of truth such as the extension catalog, command reference, extension READMEs, and bundled progressive skills. It may mention active SF skills as a runtime signal, but must not assume user-global skill-library paths.
 _Avoid_: duplicated docs, hardcoded personal skill paths, Salesforce encyclopedia
 
+**Critical-Path Gateway Model**:
+A model served through the SF LLM Gateway whose usage and regression risk justify targeted live confidence checks in addition to unit and type checks when gateway routing or transport behavior changes.
+_Avoid_: every available gateway model, benchmark target, broad live-test suite
+
 ## Relationships
 
 - **SF Pi** is currently distributed as a **Git-Installed SF Pi Package**.
@@ -339,6 +351,7 @@ _Avoid_: duplicated docs, hardcoded personal skill paths, Salesforce encyclopedi
 - The **SF Skills HUD** is a **Runtime Surface** owned by the SF Skills Bundled Extension.
 - The **Manager Surface** controls the enabled state and configuration entry points for **Bundled Extensions**.
 - **SF Brain** is a **Bundled Extension** that provides the **Salesforce Operator Kernel**.
+- **Critical-Path Gateway Models** use small, gated live confidence checks only when gateway transport behavior changes; this does not make every gateway model part of a broad live-test suite.
 - **SF Brain** routes Data 360 work to **SF Data 360** without embedding Data 360 operation details.
 - **SF Data 360** is a **Bundled Extension** with Data Cloud / Data 360 **Runtime Surfaces**.
 - **SF Browser** is a **Bundled Extension** with browser **Runtime Surfaces** backed by `agent-browser`.

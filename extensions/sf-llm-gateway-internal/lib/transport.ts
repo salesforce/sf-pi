@@ -10,7 +10,7 @@
  *                                          error formatting, robust-retry wrapper
  *   - `transport-internal/payloads.ts`     payload mutators (codex tools, OpenAI
  *                                          service tier, reasoning effort,
- *                                          Opus 4.7 max thinking)
+ *                                          Opus 4.7 max-token policy)
  *   - `transport-internal/anthropic.ts`    streamSfGatewayAnthropic
  *   - `transport-internal/openai-chat.ts`  streamSfGatewayOpenAI
  *   - `transport-internal/openai-responses.ts`  streamSfGatewayResponses + fallback
@@ -35,7 +35,6 @@ export {
   isOpenAiModelId,
   isOpenAiReasoningModelId,
   isOpus47ModelId,
-  mapPiLevelToOpus47Effort,
   resolveOpenAiReasoningEffort,
   resolveOpus47MaxTokensFloor,
   streamAnthropicWithRobustRetry,

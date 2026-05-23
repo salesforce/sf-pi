@@ -89,51 +89,38 @@ short-circuits subsequent sessions. Users see no prompt and no manual step.
    `{low,medium,high,max}`; raw `xhigh` returns HTTP 400
    `reasoning_effort=xhigh is not supported for this model`.
 
-   Also: **gpt-5.5 force-strips `reasoning_effort`**. The gateway returns
-   400 `"Function tools with reasoning_effort are not supported for gpt-5.5
-in /v1/chat/completions. Please use /v1/responses instead."` when an
-   agentic turn (which always carries tools) includes the field. `/v1/responses`
-   is not exposed on this gateway — the route 302s to SSO login — so the
-   only safe path is to omit the field entirely. gpt-5.5 still performs
-   implicit reasoning on every turn.
+   Also: **gpt-5 family Responses routing**. gpt-5, gpt-5-mini, and
+   gpt-5.5 route through `POST <gateway-root>/responses` instead of
+   `/v1/chat/completions`. The chat path rejects gpt-5.5 agentic turns when
+   `reasoning_effort` and function tools appear together; the root Responses
+   endpoint accepts the tool-shaped request and is the preferred path. A
+   `SF_LLM_GATEWAY_INTERNAL_GPT5_FORCE_CHAT` kill switch remains available for
+   emergency rollback.
 
 2. **Anthropic stream errors** (`streamSfGatewayAnthropic`). Retries once when
    Anthropic reports a retryable SSE error before any user-visible content is
    emitted, then normalizes raw error envelopes into a concise message that
    preserves the request id.
 
-3. **Opus 4.7 adaptive thinking** (`streamSfGatewayAnthropic`). pi-ai's
-   adaptive-thinking allow-list currently only matches Opus 4.6 / Sonnet 4.6,
-   so 4.7 would otherwise fall back to budget-based thinking (which 4.7
-   does not support) with a 32K-clamped output cap. The shim:
-   - Forces adaptive thinking: `thinking: { type: "adaptive" }` (the only
-     thinking mode 4.7 accepts).
-   - Maps the caller's pi reasoning level to `output_config.effort`:
-     `minimal`/`low` → `low`, `medium` → `medium`, `high` → `high`,
-     `xhigh` → `high`. The gateway's Anthropic effort validator accepts
-     `{low,medium,high,max}`; the model-specific guard further restricts
-     `max` to Opus 4.6 only (`effort='max' is only supported by Claude
-Opus 4.6`). Opus 4.7's strongest accepted tier is therefore `high`,
-     which is what pi's user-facing `xhigh` collapses to on the wire.
-     Unset reasoning level falls back to `high` as well.
-   - Scales `max_tokens` by pi reasoning level (`minimal`/`low` → 16K,
-     `medium` → 32K, `high`/`xhigh` → 64K). Live probes showed that
-     `max_tokens: 128000` on heavier generations intermittently surfaces
-     `api_error: Internal server error` from Anthropic upstream. 64K
-     matches what the gateway advertises via `/v1/model/info` and keeps
-     heavy-workload turns away from that failure window. Model hard
-     ceiling is 128K (`OPUS_47_MODEL_MAX_TOKENS`); callers who need the
-     extra headroom can override per request.
-   - Sanitizes a pre-existing `output_config.effort: "xhigh"` to `high`
-     in place. pi-ai 0.73+ may emit `xhigh` natively; the shim collapses
-     it before LiteLLM's validator sees the payload so users picking pi's
-     `xhigh` thinking level still get a successful upstream call.
-   - Strips `temperature`. Anthropic returns 400 (
-     _"`temperature` may only be set to 1 when thinking is enabled or in
-     adaptive mode"_) for any value ≠ 1 when adaptive thinking is on.
+3. **Opus 4.7 adaptive thinking** (`streamSfGatewayAnthropic`). pi-ai owns
+   the generic adaptive-thinking payload through the model-level
+   `compat.forceAdaptiveThinking` flag. The sf-pi shim now keeps only the
+   gateway-specific policy:
+   - Opus 4.7 presets set `compat.forceAdaptiveThinking: true`, so pi-ai sends
+     `thinking: { type: "adaptive" }` and `output_config.effort`.
+   - Opus 4.7 presets map pi's user-facing `xhigh` thinking level to `high`,
+     because the gateway rejects raw `xhigh` and restricts `max` to Opus 4.6.
+   - The wrapper scales `max_tokens` by pi reasoning level (`minimal` → 16K,
+     `low` → 24K, `medium` → 32K, `high` → 48K, `xhigh` → 64K). Live probes
+     showed that `max_tokens: 128000` on heavier generations intermittently
+     surfaces `api_error: Internal server error` from Anthropic upstream.
+     Model hard ceiling is 128K (`OPUS_47_MODEL_MAX_TOKENS`); callers who
+     need the extra headroom can override per request.
+   - A defensive cleanup still normalizes a pre-shaped
+     `output_config.effort: "xhigh" | "max"` to `high` for Opus 4.7.
 
-   Older Claude models pass straight through pi-ai's built-in per-model
-   handling.
+   Older Claude models pass through the same pi-ai Anthropic transport; their
+   model compat flags describe whether adaptive thinking is required.
 
 ## Runtime Flow
 
@@ -382,6 +369,7 @@ extensions/sf-llm-gateway-internal/
     formatting.test.ts      ← unit / smoke test
     gateway-url.test.ts     ← unit / smoke test
     global-config.test.ts   ← unit / smoke test
+    gpt55-live-regression.test.ts← unit / smoke test
     gpt55-responses.test.ts ← unit / smoke test
     latency-probe.test.ts   ← unit / smoke test
     migrate-unify-provider.test.ts← unit / smoke test
@@ -559,16 +547,13 @@ error includes an inline `Tip:` footer with next steps. For deeper
 inspection, enable wire tracing (`SF_LLM_GATEWAY_INTERNAL_TRACE=1`).
 
 **gpt-5.5 fails with `Function tools with reasoning_effort are not supported for gpt-5.5 in /v1/chat/completions. Please use /v1/responses instead.`:**
-Handled by the transport shim as of this extension version: gpt-5.5
-requests no longer carry `reasoning_effort` regardless of what pi's
-thinking selector is set to. The model still performs implicit reasoning
-(`usage.completion_tokens_details.reasoning_tokens > 0` on non-trivial
-prompts). This gateway does not expose `/v1/responses` — probing the route
-returns a 302 to an SSO login page — so we cannot pivot transports; the
-only viable fix is to omit the field. If you need explicit control over
-reasoning depth on a gpt-5 family model, use `gpt-5`, `gpt-5-mini`, or
-`gpt-5.2`-series variants, all of which accept `reasoning_effort` + tools
-on `/v1/chat/completions`.
+Handled by the transport shim as of this extension version: gpt-5.5 and
+other gpt-5-family non-Codex models route through `POST <gateway-root>/responses`
+instead of `/v1/chat/completions`. The Responses path accepts tool-shaped
+agentic requests and uses the model's thinking-level map to keep effort values
+inside the gateway-safe window. If the Responses path is unavailable, the
+`SF_LLM_GATEWAY_INTERNAL_GPT5_FORCE_CHAT=1` kill switch forces the older chat
+path for emergency rollback.
 
 **Footer shows `⚠` badge after a 429 or 5xx:**
 `provider-telemetry.ts` parses retry-after headers and surfaces a 60s
