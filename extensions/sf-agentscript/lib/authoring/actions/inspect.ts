@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Inspect actions for agentscript_authoring. */
 
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { connForAgentApi } from "../../agent-api-auth.ts";
@@ -299,6 +299,70 @@ async function actionCheckTargets(agentFile: string, targetOrg: string | undefin
   );
 }
 
+async function sourceShapeFindings(agentFile: string): Promise<ReviewFinding[]> {
+  let source = "";
+  try {
+    source = await readFile(agentFile, "utf8");
+  } catch {
+    return [];
+  }
+  const lines = source.split("\n").map((raw, index) => ({
+    raw,
+    line: index + 1,
+    trimmed: raw.trim(),
+    indent: raw.length - raw.trimStart().length,
+  }));
+  const findings: ReviewFinding[] = [];
+  const system = lines.find((line) => line.indent === 0 && /^system\s*:/.test(line.trimmed));
+  if (!system) {
+    findings.push({
+      id: "missing-system-block",
+      severity: "blocker",
+      category: "shape",
+      message:
+        "Missing top-level system block. Preview/publish may succeed, but runtime session start can fail or fall back to incomplete prompt metadata.",
+    });
+    return findings;
+  }
+  const systemLines = lines.slice(system.line).filter((line) => line.trimmed.length > 0);
+  const untilNextTop = systemLines.findIndex((line) => line.indent === 0);
+  const block = untilNextTop >= 0 ? systemLines.slice(0, untilNextTop) : systemLines;
+  if (!block.some((line) => /^instructions\s*:/.test(line.trimmed))) {
+    findings.push({
+      id: "missing-system-instructions",
+      severity: "blocker",
+      category: "shape",
+      message: "system block is missing instructions.",
+    });
+  }
+  if (!block.some((line) => /^messages\s*:/.test(line.trimmed))) {
+    findings.push({
+      id: "missing-system-messages",
+      severity: "blocker",
+      category: "shape",
+      message: "system block is missing messages.welcome and messages.error.",
+    });
+    return findings;
+  }
+  if (!block.some((line) => /^welcome\s*:/.test(line.trimmed))) {
+    findings.push({
+      id: "missing-system-welcome-message",
+      severity: "blocker",
+      category: "shape",
+      message: "system.messages is missing welcome.",
+    });
+  }
+  if (!block.some((line) => /^error\s*:/.test(line.trimmed))) {
+    findings.push({
+      id: "missing-system-error-message",
+      severity: "blocker",
+      category: "shape",
+      message: "system.messages is missing error.",
+    });
+  }
+  return findings;
+}
+
 async function actionReview(ctx: ExtensionContext, agentFile: string, input: AuthoringParams) {
   const findings: ReviewFinding[] = [];
   const compile = await checkAgentScriptFile(agentFile);
@@ -335,6 +399,8 @@ async function actionReview(ctx: ExtensionContext, agentFile: string, input: Aut
       }
     }
   }
+
+  findings.push(...(await sourceShapeFindings(agentFile)));
 
   const inspect = await inspectFile(agentFile);
   const parseBlocked = inspect.ok && inspect.has_parse_errors;

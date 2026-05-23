@@ -197,6 +197,7 @@ extensions/sf-agentscript/
     agent-api-auth.test.ts  ← unit / smoke test
     agent-api-error-map.test.ts← unit / smoke test
     agent-user-status.test.ts← unit / smoke test
+    authoring-review.test.ts← unit / smoke test
     authoring-tool.test.ts  ← unit / smoke test
     code-actions.test.ts    ← unit / smoke test
     compile-summary.test.ts ← unit / smoke test
