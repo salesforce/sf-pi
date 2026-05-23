@@ -6,7 +6,9 @@
  * the active version of every deployed Flow + ProcessBuilder. We query
  * it (not the Tooling API's `FlowDefinition`, which uses DeveloperName)
  * because invocable references resolve against the active version's
- * runtime ApiName.
+ * runtime ApiName. In orgs where Metadata API `processType=Flow` produces
+ * autolaunched flows, FlowDefinitionView reports `ProcessType='Flow'`, so
+ * active ApiName is the stable readiness signal.
  */
 
 import type { Connection } from "@salesforce/core";
@@ -20,7 +22,7 @@ export const flowResolver: TargetResolver = {
     if (names.length === 0) return new Set();
     const soql =
       `SELECT ApiName FROM FlowDefinitionView WHERE ApiName IN (${soqlInList(names)}) ` +
-      `AND IsActive = true AND ProcessType = 'AutoLaunchedFlow'`;
+      `AND IsActive = true`;
     const rows = await safeQueryRecords<{ ApiName?: string }>(conn, "/query", soql);
     if (!rows) return null;
     const found = new Set<string>();

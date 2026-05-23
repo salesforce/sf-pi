@@ -220,6 +220,7 @@ extensions/sf-agentscript/
     inspect-inline-actions.test.ts← unit / smoke test
     inspect.test.ts         ← unit / smoke test
     lifecycle-divergence.test.ts← unit / smoke test
+    lifecycle-error-classification.test.ts← unit / smoke test
     lifecycle-sdr-layout.test.ts← unit / smoke test
     mutate-dry-run.test.ts  ← unit / smoke test
     mutate-emit-regression.test.ts← unit / smoke test

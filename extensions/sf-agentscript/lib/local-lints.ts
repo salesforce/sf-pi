@@ -116,6 +116,16 @@ function schemeOf(target: string | undefined): string | undefined {
   return idx > 0 ? target?.slice(0, idx) : undefined;
 }
 
+function refNameOf(target: string | undefined): string | undefined {
+  const idx = target?.indexOf("://") ?? -1;
+  return idx > 0 ? target?.slice(idx + 3) : undefined;
+}
+
+function targetRefLooksLikeSalesforceId(target: string | undefined): boolean {
+  const ref = refNameOf(target);
+  return !!ref && /^[a-zA-Z0-9]{15}(?:[a-zA-Z0-9]{3})?$/.test(ref);
+}
+
 function parseConfig(lines: LineInfo[]): { agentType?: string; defaultAgentUserLine?: LineInfo } {
   const configLine = lines.find((l) => l.indent === 0 && l.trimmed === "config:");
   if (!configLine) return {};
@@ -238,6 +248,40 @@ function collectNumericActionIo(
     for (const line of action.lines.slice(i + 1)) {
       if (line.trimmed.length > 0 && line.indent <= sectionIndent) break;
       if (numericTypeOnLine(line)) out.push({ section, line });
+    }
+  }
+  return out;
+}
+
+function complexTypeOnLine(line: LineInfo): boolean {
+  return /^"?[A-Za-z_][\w:.-]*"?\s*:\s*(object|list\[object\])\b/.test(line.trimmed);
+}
+
+function hasComplexDataTypeChild(lines: readonly LineInfo[], index: number): boolean {
+  const parent = lines[index];
+  for (const line of lines.slice(index + 1)) {
+    if (line.trimmed.length > 0 && line.indent <= parent.indent) break;
+    if (/^complex_data_type_name\s*:/.test(line.trimmed) || /^schema\s*:/.test(line.trimmed)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function collectComplexActionIo(
+  action: ActionBlock,
+): Array<{ section: "inputs" | "outputs"; line: LineInfo }> {
+  const out: Array<{ section: "inputs" | "outputs"; line: LineInfo }> = [];
+  for (let i = 0; i < action.lines.length; i++) {
+    const section = isIoBlock(action.lines[i]);
+    if (!section) continue;
+    const sectionIndent = action.lines[i].indent;
+    for (let j = i + 1; j < action.lines.length; j++) {
+      const line = action.lines[j];
+      if (line.trimmed.length > 0 && line.indent <= sectionIndent) break;
+      if (complexTypeOnLine(line) && !hasComplexDataTypeChild(action.lines, j)) {
+        out.push({ section, line });
+      }
     }
   }
   return out;
@@ -647,6 +691,19 @@ export function buildLocalDiagnostics(source: string): AgentScriptDiagnostic[] {
 
     addPromptTemplateOutputDiagnostics(action, diagnostics);
 
+    if (targetRefLooksLikeSalesforceId(action.target) && action.targetLine !== undefined) {
+      diagnostics.push(
+        diagnostic(
+          lines[action.targetLine],
+          "target-ref-looks-like-id",
+          "Action target references should use a stable API name, not a Salesforce record id. Publish/runtime resolution expects names such as flow://MyFlow or apex://MyInvocableClass.",
+          2,
+          action.target,
+          { action: action.name, target: action.target },
+        ),
+      );
+    }
+
     const scheme = schemeOf(action.target);
     for (const item of collectNumericActionIo(action)) {
       diagnostics.push(
@@ -656,6 +713,23 @@ export function buildLocalDiagnostics(source: string): AgentScriptDiagnostic[] {
           section: item.section,
           scheme,
         }),
+      );
+    }
+    for (const item of collectComplexActionIo(action)) {
+      diagnostics.push(
+        diagnostic(
+          item.line,
+          "complex-action-io",
+          `Action ${item.section} has type object/list[object] but no complex_data_type_name or schema. Publish can fail because the platform cannot bind the target contract.`,
+          2,
+          "object",
+          {
+            action: action.name,
+            target: action.target,
+            section: item.section,
+            scheme,
+          },
+        ),
       );
     }
   }

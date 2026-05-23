@@ -46,7 +46,7 @@ describe("flowResolver", () => {
     expect(decode(captured.url)).toContain("FROM FlowDefinitionView");
     expect(decode(captured.url)).toContain("ApiName");
     expect(decode(captured.url)).toContain("IsActive = true");
-    expect(decode(captured.url)).toContain("ProcessType = 'AutoLaunchedFlow'");
+    expect(decode(captured.url)).not.toContain("ProcessType = 'AutoLaunchedFlow'");
     // Dedup
     const matches = (decode(captured.url).match(/'MyFlow'/g) ?? []).length;
     expect(matches).toBe(1);

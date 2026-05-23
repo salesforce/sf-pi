@@ -119,6 +119,103 @@ describe("checkAgentScriptFile (integration)", () => {
     expect(missing?.severity).toBe(1);
   });
 
+  it("flags target references that look like Salesforce record ids", async () => {
+    const file = writeTempAgent(
+      [
+        "system:",
+        '    instructions: "You are helpful."',
+        "",
+        "config:",
+        '    agent_name: "HelloWorldBot"',
+        '    default_agent_user: "hello@world.com"',
+        "",
+        "start_agent hello_world:",
+        '    description: "Entry topic."',
+        "    actions:",
+        "        weather:",
+        '            description: "Get weather."',
+        "            outputs:",
+        "                ok: string",
+        '            target: "flow://300WX000001ABCD"',
+        "    reasoning:",
+        "        actions:",
+        "            get_weather: @actions.weather",
+        "",
+      ].join("\n"),
+    );
+
+    const result = await checkAgentScriptFile(file);
+    const refs = result.diagnostics.filter((d) => d.code === "target-ref-looks-like-id");
+    expect(refs).toHaveLength(1);
+    expect(refs[0].severity).toBe(2);
+  });
+
+  it("flags object action I/O without complex_data_type_name or schema", async () => {
+    const file = writeTempAgent(
+      [
+        "system:",
+        '    instructions: "You are helpful."',
+        "",
+        "config:",
+        '    agent_name: "HelloWorldBot"',
+        '    default_agent_user: "hello@world.com"',
+        "",
+        "start_agent hello_world:",
+        '    description: "Entry topic."',
+        "    actions:",
+        "        find_order:",
+        '            description: "Find an order."',
+        "            inputs:",
+        "                filter: object",
+        "            outputs:",
+        "                order_data: object",
+        '            target: "flow://FindOrder"',
+        "    reasoning:",
+        "        actions:",
+        "            find: @actions.find_order",
+        "",
+      ].join("\n"),
+    );
+
+    const result = await checkAgentScriptFile(file);
+    const complex = result.diagnostics.filter((d) => d.code === "complex-action-io");
+    expect(complex).toHaveLength(2);
+    expect(complex.every((d) => d.severity === 2)).toBe(true);
+  });
+
+  it("does not flag object action I/O when a contract hint is present", async () => {
+    const file = writeTempAgent(
+      [
+        "system:",
+        '    instructions: "You are helpful."',
+        "",
+        "config:",
+        '    agent_name: "HelloWorldBot"',
+        '    default_agent_user: "hello@world.com"',
+        "",
+        "start_agent hello_world:",
+        '    description: "Entry topic."',
+        "    actions:",
+        "        find_order:",
+        '            description: "Find an order."',
+        "            inputs:",
+        "                filter: object",
+        '                    complex_data_type_name: "OrderFilter"',
+        "            outputs:",
+        "                order_data: object",
+        '                    complex_data_type_name: "OrderRecord"',
+        '            target: "flow://FindOrder"',
+        "    reasoning:",
+        "        actions:",
+        "            find: @actions.find_order",
+        "",
+      ].join("\n"),
+    );
+
+    const result = await checkAgentScriptFile(file);
+    expect(result.diagnostics.filter((d) => d.code === "complex-action-io")).toHaveLength(0);
+  });
+
   it("flags bare numeric action inputs and outputs", async () => {
     const file = writeTempAgent(
       [

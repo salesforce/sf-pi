@@ -603,7 +603,7 @@ async function actionListVersions(input: ParamsAny): Promise<{
 // Error classification
 // -------------------------------------------------------------------------------------------------
 
-function classifyLifecycleError(
+export function classifyLifecycleError(
   err: unknown,
   agentApiName: string,
   callingAction: "publish" | "activate" | "deactivate" | "list_versions",
@@ -640,7 +640,33 @@ function classifyLifecycleError(
     }
   }
 
-  // 2. SFAP routing failure on dev / non-Agentforce orgs — the upstream
+  // 2. Publish can fail with a restricted-picklist error when an action
+  //    target URI names a Flow/Apex/etc. target that is not available in the
+  //    org's generated function-definition registry. Surface it as an action
+  //    target readiness issue instead of a raw SFAP validation blob.
+  if (
+    /Generative AI Function Definition ID|Invocation Target|bad value for restricted picklist field/i.test(
+      msg,
+    )
+  ) {
+    return toolError(
+      msg,
+      "Run agentscript_authoring inspect/check_targets for a per-target breakdown. Deploy or remove missing action targets, then publish again.",
+      agentFile
+        ? {
+            tool: "agentscript_authoring",
+            params: {
+              verb: "inspect",
+              mode: "check_targets",
+              agent_file: agentFile,
+              target_org: "<alias>",
+            },
+          }
+        : undefined,
+    );
+  }
+
+  // 3. SFAP routing failure on dev / non-Agentforce orgs — the upstream
   //    layer (lifecycle.ts / preview/client.ts) already throws sfap404Message
   //    when it detects the host fallback exhausted, so we typically don't
   //    re-enter this branch with a fresh 404. We keep it as a safety net for
