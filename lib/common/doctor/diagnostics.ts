@@ -10,6 +10,7 @@ import { execFileSync } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
 import { getInstalledPiVersion, MIN_PI_VERSION } from "../pi-compat.ts";
+import { normalizeNpmConfigValue, readConfiguredNpmCommand } from "../npm-release-age-policy.ts";
 import { globalAgentPath, globalSettingsPath, projectSettingsPath } from "../pi-paths.ts";
 import type {
   AvailableSkillRoot,
@@ -454,15 +455,23 @@ function looksLikeSfPiPackage(source: string): boolean {
 }
 
 export function collectRuntimeDiagnostics(): RuntimeDiagnostics {
+  const globalSettings = readJsonObject(globalSettingsPath());
+  const npmCommand = readConfiguredNpmCommand(globalSettings) ?? ["npm"];
   const piPath = runCapture("which", ["pi"]);
   const npmPath = runCapture("which", ["npm"]);
   const allPiPaths = runCapture("which", ["-a", "pi"])
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean);
-  const npmGlobalRoot = runCapture("npm", ["root", "-g"]);
+  const npmGlobalRoot = runConfiguredNpmCapture(npmCommand, ["root", "-g"]);
+  const npmBefore = normalizeNpmConfigValue(
+    runConfiguredNpmCapture(npmCommand, ["config", "get", "before"]),
+  );
   const npmMinReleaseAge = normalizeNpmConfigValue(
-    runCapture("npm", ["config", "get", "min-release-age"]),
+    runConfiguredNpmCapture(npmCommand, ["config", "get", "min-release-age"]),
+  );
+  const npmMinimumReleaseAge = normalizeNpmConfigValue(
+    runConfiguredNpmCapture(npmCommand, ["config", "get", "minimum-release-age"]),
   );
   // Pi 0.74 renamed the npm scope. Probe the new scope first; fall back to
   // the legacy `@mariozechner` install for users mid-migration so doctor can
@@ -476,7 +485,7 @@ export function collectRuntimeDiagnostics(): RuntimeDiagnostics {
       ))
     : undefined;
   const piVersion = runCapture("pi", ["--version"]) || getInstalledPiVersion();
-  const latestPiPackageVersion = runCapture("npm", [
+  const latestPiPackageVersion = runConfiguredNpmCapture(npmCommand, [
     "view",
     "@earendil-works/pi-coding-agent",
     "version",
@@ -491,22 +500,20 @@ export function collectRuntimeDiagnostics(): RuntimeDiagnostics {
     piPath,
     allPiPaths,
     npmGlobalRoot,
+    npmBefore,
     npmMinReleaseAge,
+    npmMinimumReleaseAge,
     installedPiPackageVersion,
     latestPiPackageVersion,
     updateAdvice: buildRuntimeUpdateAdvice({
       piVersion,
       installedPiPackageVersion,
       allPiPaths,
+      npmBefore,
       npmMinReleaseAge,
+      npmMinimumReleaseAge,
     }),
   };
-}
-
-function normalizeNpmConfigValue(value: string | undefined): string | undefined {
-  const trimmed = value?.trim();
-  if (!trimmed || trimmed === "null" || trimmed === "undefined") return undefined;
-  return trimmed;
 }
 
 function readPackageVersion(packageJsonPath: string): string | undefined {
@@ -530,14 +537,27 @@ function runCapture(command: string, args: string[]): string | undefined {
   }
 }
 
+function runConfiguredNpmCapture(npmCommand: string[], args: string[]): string | undefined {
+  const [command, ...prefixArgs] = npmCommand;
+  return command ? runCapture(command, [...prefixArgs, ...args]) : undefined;
+}
+
 export function buildRuntimeUpdateAdvice(input: {
   piVersion?: string;
   installedPiPackageVersion?: string;
   allPiPaths: string[];
+  npmBefore?: string;
   npmMinReleaseAge?: string;
+  npmMinimumReleaseAge?: string;
 }): string[] {
-  const installCommand = input.npmMinReleaseAge
-    ? "npm install -g --ignore-scripts @earendil-works/pi-coding-agent@latest --force --min-release-age=0"
+  const hasReleaseAgePolicy = !!(
+    input.npmBefore ||
+    input.npmMinReleaseAge ||
+    input.npmMinimumReleaseAge
+  );
+  const bypassFlags = input.npmBefore ? "--before=null --min-release-age=0" : "--min-release-age=0";
+  const installCommand = hasReleaseAgePolicy
+    ? `npm install -g --ignore-scripts @earendil-works/pi-coding-agent@latest --force ${bypassFlags}`
     : "npm install -g --ignore-scripts @earendil-works/pi-coding-agent@latest --force";
   const lines = [
     "nvm use <node-version-if-applicable>",
@@ -547,9 +567,14 @@ export function buildRuntimeUpdateAdvice(input: {
     "pi --version",
   ];
 
-  if (input.npmMinReleaseAge) {
+  if (hasReleaseAgePolicy) {
+    const policyParts = [
+      input.npmBefore ? `before=${input.npmBefore}` : undefined,
+      input.npmMinReleaseAge ? `min-release-age=${input.npmMinReleaseAge}` : undefined,
+      input.npmMinimumReleaseAge ? `minimum-release-age=${input.npmMinimumReleaseAge}` : undefined,
+    ].filter(Boolean);
     lines.unshift(
-      `npm min-release-age is ${input.npmMinReleaseAge}; use --min-release-age=0 to bypass delayed visibility of newly published pi releases.`,
+      `npm release-age policy detected (${policyParts.join(", ")}); use the override flags below to bypass delayed visibility of newly published pi releases.`,
     );
   }
   if (input.allPiPaths.length > 1) {

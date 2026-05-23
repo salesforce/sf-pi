@@ -209,11 +209,11 @@ via name-based (`sf-pi` / `jag-pi-extensions`) or path-based detection
 
 **`pi update` completes but `pi --version` is still old:**
 Run `/sf-pi doctor runtime`. It reports the active `pi`, `node`, and `npm`
-executables, the global npm root, npm `min-release-age`, installed/latest
-`@earendil-works/pi-coding-agent` versions, and a copy-paste repair sequence for
-NVM/PATH shim mismatches. When npm release-age gating is configured, the repair
-sequence includes `--min-release-age=0` so newly published Pi releases are not
-silently skipped.
+executables, the global npm root, npm `before` / `min-release-age` policy,
+installed/latest `@earendil-works/pi-coding-agent` versions, and a copy-paste
+repair sequence for NVM/PATH shim mismatches. When npm release-age gating is
+configured, the repair sequence includes the npm override flags needed so newly
+published Pi releases are not silently skipped.
 
 **Disabling an extension through the manager doesn't take effect:**
 Pi reads the package filter at startup. After a disable, the manager

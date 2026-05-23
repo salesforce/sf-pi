@@ -479,7 +479,8 @@ function formatReleaseStatusValue(
   }
 
   if (status.freshness === "latest") {
-    return `${SF_GREEN("✓")} ${SF_GREEN("latest")} ${MUTED(`· ${installed}`)}${suffix}`;
+    const label = status.cooldownActive ? "latest allowed [cooldown active]" : "latest";
+    return `${SF_GREEN("✓")} ${SF_GREEN(label)} ${MUTED(`· ${installed}`)}${suffix}`;
   }
 
   const reason = status.checkSkipped ? "latest check skipped" : "latest unknown";

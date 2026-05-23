@@ -92,6 +92,18 @@ _Avoid_: SF Pi, bundled extension, Salesforce runtime
 The user-visible posture that compares an installed package or runtime version with the latest known release and reports it as current, update-available, or unknown.
 _Avoid_: health check, deployment status, security support guarantee
 
+**Policy-Visible Latest**:
+The newest release that the user's configured package-manager policy would currently allow SF Pi or the Pi Runtime to install.
+_Avoid_: absolute latest, registry latest, upstream latest
+
+**Package-Manager Release-Age Policy**:
+A user-configured package-manager rule that delays newly published package versions from being installable until they are old enough.
+_Avoid_: update failure, stale install, registry outage
+
+**Cooldown Active**:
+The user-facing label for a **Package-Manager Release-Age Policy** that is currently limiting which Pi Runtime release is installable.
+_Avoid_: outdated, failed update, blocked registry
+
 **SF Brain**:
 The Bundled Extension that gives agents compact Salesforce operator guidance and a reference map to the deeper SF Pi and Salesforce resources they should load only when needed.
 _Avoid_: Salesforce encyclopedia, all-purpose memory dump
@@ -319,6 +331,11 @@ _Avoid_: duplicated docs, hardcoded personal skill paths, Salesforce encyclopedi
 - A **Bundled Extension** exposes zero or more **Runtime Surfaces**.
 - The **Welcome Splash** is a **Runtime Surface** owned by a **Bundled Extension**.
 - The **Welcome Splash** may summarize **Release Freshness** for **SF Pi** and the **Pi Runtime** without becoming an update manager.
+- **Pi Runtime** **Release Freshness** should compare against the **Policy-Visible Latest** release when a **Package-Manager Release-Age Policy** is configured.
+- A **Package-Manager Release-Age Policy** is detected through the effective package-manager cutoff, preferring `before` when available and falling back to release-age settings when necessary.
+- A **Package-Manager Release-Age Policy** applies to **Pi Runtime** update reporting and runtime diagnostics, not to Git-based **SF Pi** update nudges.
+- **Cooldown Active** explains why **Pi Runtime** may be current against the **Policy-Visible Latest** while a newer absolute release exists; it should not appear when no newer absolute release is being filtered.
+- If a **Package-Manager Release-Age Policy** is detected but **Policy-Visible Latest** cannot be computed, **Pi Runtime** **Release Freshness** should degrade to unknown instead of reporting update-available from the absolute latest.
 - The **SF Skills HUD** is a **Runtime Surface** owned by the SF Skills Bundled Extension.
 - The **Manager Surface** controls the enabled state and configuration entry points for **Bundled Extensions**.
 - **SF Brain** is a **Bundled Extension** that provides the **Salesforce Operator Kernel**.

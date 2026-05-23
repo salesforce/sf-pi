@@ -149,7 +149,7 @@ export function requirePiVersion(
     console.warn(
       [
         `[sf-pi] Skipping "${extensionName}": requires pi-coding-agent >= ${minVersion}, found ${installed}.`,
-        "Run `pi update --self` to migrate from `@mariozechner/pi-coding-agent` to `@earendil-works/pi-coding-agent`. If `pi --version` still reports the old version, run `npm install -g --ignore-scripts @earendil-works/pi-coding-agent@latest --force --min-release-age=0`, then `hash -r` and `pi --version`.",
+        "Run `pi update --self` to migrate from `@mariozechner/pi-coding-agent` to `@earendil-works/pi-coding-agent`. If `pi --version` still reports the old version, run `npm install -g --ignore-scripts @earendil-works/pi-coding-agent@latest --force --before=null --min-release-age=0`, then `hash -r` and `pi --version`.",
       ].join(" "),
     );
   }

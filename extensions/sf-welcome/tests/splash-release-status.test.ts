@@ -129,6 +129,28 @@ describe("release freshness splash rows", () => {
     expect(rendered).toContain("→ pi update --self");
   });
 
+  it("shows latest allowed wording when npm cooldown filters a newer Pi release", async () => {
+    const rendered = await render(
+      baseData({
+        piRelease: {
+          installedVersion: "0.75.1",
+          latestVersion: "0.75.1",
+          absoluteLatestVersion: "0.75.4",
+          policyVisibleLatestVersion: "0.75.1",
+          cooldownActive: true,
+          freshness: "latest",
+          loading: false,
+          updateCommand: "pi update --self",
+        },
+      }),
+    );
+
+    const pi = findStatusLine(rendered, "Pi");
+    expect(pi).toContain("latest allowed [cooldown active]");
+    expect(pi).toContain("v0.75.1");
+    expect(rendered).not.toContain("→ pi update --self");
+  });
+
   it("treats skipped Pi checks as informational rather than update warnings", async () => {
     const rendered = await render(
       baseData({

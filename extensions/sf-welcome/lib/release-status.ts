@@ -8,9 +8,11 @@
  * - sf-pi freshness piggybacks on the existing announcements feed cache,
  *   so this module never performs network I/O for sf-pi.
  */
+import { execFile } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { createStateStore } from "../../../lib/common/state-store.ts";
+import { globalSettingsPath, readJsonFile } from "../../../lib/common/sf-pi-settings.ts";
 import {
   findPackageInSettings,
   type PackageEntryMatch,
@@ -22,10 +24,17 @@ import {
 } from "../../../lib/common/catalog-state/announcements-manifest.ts";
 import { compareVersions } from "../../../lib/common/catalog-state/whats-new.ts";
 import { getInstalledPiVersion } from "../../../lib/common/pi-compat.ts";
+import {
+  pickPolicyVisibleVersion,
+  readConfiguredNpmCommand,
+  resolveNpmReleaseAgePolicy,
+} from "../../../lib/common/npm-release-age-policy.ts";
 import type { ReleaseStatusInfo } from "./types.ts";
 
 const PI_LATEST_VERSION_URL = "https://pi.dev/api/latest-version";
 const PI_LATEST_TIMEOUT_MS = 5_000;
+const NPM_POLICY_TIMEOUT_MS = 3_000;
+const PI_PACKAGE_NAME = "@earendil-works/pi-coding-agent";
 const CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 interface PiReleaseStatusCacheFile {
@@ -63,6 +72,13 @@ function parseCachedStatus(value: unknown, installedVersion?: string): ReleaseSt
   return {
     installedVersion: typeof resolvedInstalled === "string" ? resolvedInstalled : undefined,
     latestVersion,
+    absoluteLatestVersion:
+      typeof record.absoluteLatestVersion === "string" ? record.absoluteLatestVersion : undefined,
+    policyVisibleLatestVersion:
+      typeof record.policyVisibleLatestVersion === "string"
+        ? record.policyVisibleLatestVersion
+        : undefined,
+    cooldownActive: record.cooldownActive === true,
     freshness,
     loading: false,
     updateCommand: typeof record.updateCommand === "string" ? record.updateCommand : undefined,
@@ -109,6 +125,21 @@ export function collectInitialPiReleaseStatus(): ReleaseStatusInfo {
 }
 
 export type PiLatestFetchFn = (signal?: AbortSignal) => Promise<string | undefined>;
+export type NpmPolicyCommandFn = (args: string[]) => Promise<string | undefined>;
+
+export interface PiReleaseStatusOptions {
+  /** Injectable npm command runner for tests. Receives args after npmCommand. */
+  runNpm?: NpmPolicyCommandFn;
+  /** Override npmCommand discovery for tests or wrappers. */
+  npmCommand?: string[];
+  /** Injectable clock for release-age cutoff tests. */
+  now?: Date;
+}
+
+interface PiReleasePolicyResult {
+  active: boolean;
+  policyVisibleLatestVersion?: string;
+}
 
 export async function fetchLatestPiVersion(signal?: AbortSignal): Promise<string | undefined> {
   try {
@@ -131,6 +162,7 @@ export async function fetchLatestPiVersion(signal?: AbortSignal): Promise<string
 export async function detectPiReleaseStatus(
   fetchLatest: PiLatestFetchFn = fetchLatestPiVersion,
   env: NodeJS.ProcessEnv = process.env,
+  options: PiReleaseStatusOptions = {},
 ): Promise<ReleaseStatusInfo> {
   const installedVersion = getInstalledPiVersion();
   const updateCommand = "pi update --self";
@@ -156,18 +188,112 @@ export async function detectPiReleaseStatus(
     };
   }
 
-  const latestVersion = await fetchLatest();
-  if (!installedVersion || !latestVersion) {
-    return { installedVersion, latestVersion, freshness: "unknown", loading: false, updateCommand };
+  const absoluteLatestVersion = await fetchLatest();
+  if (!installedVersion || !absoluteLatestVersion) {
+    return {
+      installedVersion,
+      latestVersion: absoluteLatestVersion,
+      freshness: "unknown",
+      loading: false,
+      updateCommand,
+    };
+  }
+
+  let latestVersion = absoluteLatestVersion;
+  let cooldownActive = false;
+  let policyVisibleLatestVersion: string | undefined;
+
+  if (compareVersions(absoluteLatestVersion, installedVersion) > 0) {
+    const policy = await detectPolicyVisiblePiVersion(absoluteLatestVersion, options);
+    if (policy.active) {
+      if (!policy.policyVisibleLatestVersion) {
+        return {
+          installedVersion,
+          absoluteLatestVersion,
+          freshness: "unknown",
+          loading: false,
+          updateCommand,
+        };
+      }
+
+      policyVisibleLatestVersion = policy.policyVisibleLatestVersion;
+      if (compareVersions(absoluteLatestVersion, policyVisibleLatestVersion) > 0) {
+        latestVersion = policyVisibleLatestVersion;
+        cooldownActive = true;
+      }
+    }
   }
 
   return {
     installedVersion,
     latestVersion,
+    absoluteLatestVersion: cooldownActive ? absoluteLatestVersion : undefined,
+    policyVisibleLatestVersion,
+    cooldownActive,
     freshness: freshnessFor(installedVersion, latestVersion),
     loading: false,
     updateCommand,
   };
+}
+
+async function detectPolicyVisiblePiVersion(
+  absoluteLatestVersion: string,
+  options: PiReleaseStatusOptions,
+): Promise<PiReleasePolicyResult> {
+  const [before, minReleaseAge, minimumReleaseAge] = await Promise.all([
+    runNpmPolicyCommand(["config", "get", "before"], options),
+    runNpmPolicyCommand(["config", "get", "min-release-age"], options),
+    runNpmPolicyCommand(["config", "get", "minimum-release-age"], options),
+  ]);
+
+  const policy = resolveNpmReleaseAgePolicy({
+    before,
+    minReleaseAge,
+    minimumReleaseAge,
+    now: options.now,
+  });
+  if (!policy) return { active: false };
+  if (!policy.cutoff) return { active: true };
+
+  const packageTimes = await runNpmPolicyCommand(
+    ["view", PI_PACKAGE_NAME, "time", "--json"],
+    options,
+  );
+  return {
+    active: true,
+    policyVisibleLatestVersion: pickPolicyVisibleVersion(
+      packageTimes,
+      policy.cutoff,
+      absoluteLatestVersion,
+    ),
+  };
+}
+
+async function runNpmPolicyCommand(
+  args: string[],
+  options: PiReleaseStatusOptions,
+): Promise<string | undefined> {
+  if (options.runNpm) return options.runNpm(args);
+
+  const npmCommand = options.npmCommand ??
+    readConfiguredNpmCommand(readJsonFile(globalSettingsPath())) ?? ["npm"];
+  const [command, ...prefixArgs] = npmCommand;
+  if (!command) return undefined;
+
+  return await new Promise<string | undefined>((resolve) => {
+    execFile(
+      command,
+      [...prefixArgs, ...args],
+      { encoding: "utf8", timeout: NPM_POLICY_TIMEOUT_MS },
+      (error, stdout) => {
+        if (error) {
+          resolve(undefined);
+          return;
+        }
+        resolve(stdout.trim() || undefined);
+      },
+    );
+  });
 }
 
 export function detectSfPiReleaseStatus(cwd?: string): ReleaseStatusInfo {

@@ -44,6 +44,12 @@ export type ReleaseFreshness = "checking" | "latest" | "update-available" | "unk
 export interface ReleaseStatusInfo {
   installedVersion?: string;
   latestVersion?: string;
+  /** Absolute upstream latest when `latestVersion` is policy-constrained. */
+  absoluteLatestVersion?: string;
+  /** Newest release currently allowed by the user's package-manager policy. */
+  policyVisibleLatestVersion?: string;
+  /** True when a release-age policy is hiding a newer absolute Pi release. */
+  cooldownActive?: boolean;
   freshness: ReleaseFreshness;
   loading: boolean;
   /** Optional command shown as a muted hint when freshness is update-available. */
