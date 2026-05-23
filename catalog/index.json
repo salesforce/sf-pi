@@ -167,7 +167,7 @@
     "entry": "extensions/sf-browser/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 3330
+    "srcLoc": 3326
   },
   {
     "id": "sf-data-explorer",
@@ -432,7 +432,7 @@
     "entry": "extensions/sf-llm-gateway-internal/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 11815
+    "srcLoc": 11788
   },
   {
     "id": "sf-lsp",
@@ -660,7 +660,7 @@
     "entry": "extensions/sf-slack/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 11218
+    "srcLoc": 11225
   },
   {
     "id": "sf-welcome",
