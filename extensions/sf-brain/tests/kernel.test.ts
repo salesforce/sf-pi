@@ -107,8 +107,10 @@ describe("bundled SF_KERNEL.md", () => {
     expect(body).toContain("ANONYMOUS APEX IS YOUR PRIMARY VERIFICATION TOOL");
     expect(body).toContain("POWER MOVES");
     expect(body).toContain("ORG SAFETY");
-    expect(body).toContain("DEFER TO LOADED SKILLS");
+    expect(body).toContain("PRIORITIZE SF PI EXTENSION WORKFLOWS BEFORE GENERIC SKILLS");
     expect(body).toContain("CLI NOT INSTALLED");
+    expect(body).toContain("<sf_pi_extensions>");
+    expect(body).toContain("agentscript_*");
   });
 
   it("references the canonical source-deploy-retrieve metadata registry under Rule 1", () => {

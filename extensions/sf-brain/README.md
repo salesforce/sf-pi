@@ -3,8 +3,13 @@
 ## What It Does
 
 Injects the **Salesforce Operator Kernel** into the session exactly once, on the
-first agent turn. The kernel is a compact, CLI-focused system-prompt add-on
-that teaches the agent:
+first agent turn. It also injects a small **SF Pi extension context** whenever
+the bundled-extension state or active tool/skill set changes, so agents know
+which SF Pi workflows are enabled, disabled, or unavailable in the current
+session.
+
+The kernel is a compact, CLI-focused system-prompt add-on that teaches the
+agent:
 
 1. **Retrieve before edit, describe before query** — the single biggest
    foot-gun with Salesforce LLM workflows.
@@ -22,10 +27,17 @@ that teaches the agent:
    reading ApexClass bodies from the org via Tooling queries, deep-linking into
    Setup with `sf org open --path`.
 9. **Org safety** — production confirmation gate, auth-error handling.
-10. **Defer to loaded `sf-*` skills** for language-specific work.
+10. **Extension-first routing** — use enabled SF Pi extension workflows before
+    generic skills or raw CLI, and suggest `/sf-pi enable <id>` when the
+    best-fit extension is disabled.
 11. **Lazy reference map guidance** for choosing the smallest SF Pi or Salesforce
     source of truth when the kernel is not enough.
 12. **CLI install guidance** if `sf --version` fails.
+
+The companion `<sf_pi_extensions>` block is built from the generated extension
+registry, project/global package filter state, and Pi's selected tools/skills
+for the turn. It lists every bundled extension with its enabled/disabled state,
+intent, commands, providers, and active or inactive LLM tools.
 
 The always-injected kernel body lives in [`SF_KERNEL.md`](./SF_KERNEL.md).
 Broader SF Pi and Salesforce routing guidance lives in
@@ -41,16 +53,22 @@ Extension loads
 
 First user prompt of the session
   └─ before_agent_start fires
-      ├─ session entries already contain a sf-brain-kernel custom entry? → skip
-      ├─ else resolve SF environment (shared cache from sf-devbar / sf-welcome)
-      ├─ CLI installed?
-      │   ├─ yes → load bundled kernel or user override from disk
-      │   └─ no  → load the install stub
-      └─ inject as a persistent hidden message (customType: sf-brain-kernel)
+      ├─ kernel path
+      │   ├─ session entries already contain a sf-brain-kernel custom entry? → skip
+      │   ├─ else resolve SF environment (shared cache from sf-devbar / sf-welcome)
+      │   ├─ CLI installed?
+      │   │   ├─ yes → load bundled kernel or user override from disk
+      │   │   └─ no  → load the install stub
+      │   └─ inject as a persistent hidden message (customType: sf-brain-kernel)
+      └─ extension context path
+          ├─ build <sf_pi_extensions> from registry + package filter + selected tools/skills
+          ├─ live matching context entry already exists? → skip
+          └─ inject as a persistent hidden message (customType: sf-pi-extensions-context)
 
 Subsequent turns in the same session
   └─ before_agent_start fires
-      └─ entry exists → skip
+      ├─ kernel entry exists → skip
+      └─ extension context unchanged → skip; changed → inject fresh context
 
 /reload or /resume
   └─ session entries persist → kernel already present → skip
@@ -79,6 +97,8 @@ Subsequent turns in the same session
 | before_agent_start | kernel entry already in session        | skip                                  |
 | before_agent_start | CLI installed, no kernel entry yet     | inject full kernel as hidden message  |
 | before_agent_start | CLI not installed, no kernel entry yet | inject install stub as hidden message |
+| before_agent_start | extension context unchanged            | skip                                  |
+| before_agent_start | extension context changed or missing   | inject fresh extension context        |
 
 ## User Override
 
@@ -95,8 +115,10 @@ to the bundled kernel silently.
 ```
 extensions/sf-brain/
   lib/
+    extension-context.ts    ← implementation module
     kernel.ts               ← implementation module
   tests/
+    extension-context.test.ts← unit / smoke test
     injection.test.ts       ← unit / smoke test
     kernel.test.ts          ← unit / smoke test
     reference-map.test.ts   ← unit / smoke test
@@ -123,8 +145,11 @@ Covered by unit tests:
   bundled body when CLI is installed, and is ignored when CLI is missing.
 - The injected kernel points to `SF_REFERENCE_MAP.md` without inlining the full
   map.
-- The reference map routes user intent to repo-local Salesforce resources and
-  active SF skills.
+- The extension context lists every bundled extension, reflects project-scoped
+  disabled filters, marks active AgentScript tools, and tells agents to suggest
+  `/sf-pi enable <id>` for disabled best-fit extensions.
+- The reference map routes user intent to repo-local Salesforce resources,
+  extension-first workflows, and active SF skills.
 - The `before_agent_start` handler is a no-op if a `sf-brain-kernel` entry
   already exists in the session, and injects a hidden message otherwise.
 
@@ -145,10 +170,12 @@ Covered by unit tests:
   CLI that resolves to `~/.pi/agent/sf-brain/SF_KERNEL.md`.
 - The file must be non-empty. Empty overrides silently fall back to the bundled
   kernel.
-- Restart pi or run `/reload`.
+- Start a fresh session with `/new` after changing the override. `/reload` keeps
+  the existing live kernel entry by design.
 
 **I want to see the kernel content in a session:**
 
-- The kernel is injected with `display: false`, so it does not render in the
-  transcript. Open the session JSONL file and look for a custom entry with
-  `customType: sf-brain-kernel`.
+- The kernel and extension context are injected with `display: false`, so they
+  do not render in the transcript. Open the session JSONL file and look for
+  custom entries with `customType: sf-brain-kernel` or
+  `customType: sf-pi-extensions-context`.

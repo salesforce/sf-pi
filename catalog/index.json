@@ -83,10 +83,11 @@
       "before_agent_start"
     ],
     "docs": {
-      "summary": "Injects the Salesforce Operator Kernel as a persistent hidden message exactly once per session, with a lazy reference map for routing to deeper SF Pi and Salesforce resources.",
+      "summary": "Injects the Salesforce Operator Kernel once per session plus a live bundled-extension context that prioritizes enabled SF Pi workflows before generic skills or raw CLI fallbacks.",
       "primaryFiles": [
         "index.ts",
         "lib/kernel.ts",
+        "lib/extension-context.ts",
         "SF_KERNEL.md",
         "SF_REFERENCE_MAP.md"
       ],
@@ -101,7 +102,7 @@
     "entry": "extensions/sf-brain/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 162
+    "srcLoc": 339
   },
   {
     "id": "sf-browser",

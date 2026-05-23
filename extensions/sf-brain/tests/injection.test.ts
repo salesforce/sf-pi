@@ -34,13 +34,21 @@ describe("sf-brain before_agent_start handler", () => {
     expect(brainSource).toMatch(/if \(!shouldInjectKernel\([\s\S]*?\)\) return;/);
   });
 
-  it("returns a persistent hidden custom message on first injection", () => {
+  it("returns persistent hidden custom messages for kernel and extension context", () => {
     expect(brainSource).toContain("customType: KERNEL_ENTRY_TYPE");
-    expect(brainSource).toContain("display: false");
+    expect(brainSource).toContain("customType: SF_PI_EXTENSIONS_ENTRY_TYPE");
+    expect(brainSource.match(/display: false/g)?.length).toBeGreaterThanOrEqual(2);
   });
 
   it("reuses the shared sf-environment cache before running detection", () => {
     expect(brainSource).toContain("getCachedSfEnvironment");
     expect(brainSource).toContain("getSharedSfEnvironment");
+  });
+
+  it("injects the live SF Pi extension context from selected tools and skills", () => {
+    expect(brainSource).toContain("formatSfPiExtensionContext");
+    expect(brainSource).toContain("event.systemPromptOptions.selectedTools");
+    expect(brainSource).toContain("event.systemPromptOptions.skills?.map");
+    expect(brainSource).toContain("shouldInjectSfPiExtensionContext");
   });
 });

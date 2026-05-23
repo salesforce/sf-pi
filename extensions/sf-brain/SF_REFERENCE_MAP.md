@@ -21,29 +21,47 @@ Read in this order:
 Do not edit generated catalog or generated docs directly. Update the source
 manifest or README, then run `npm run generate-catalog`.
 
-### Choose an SF Pi tool surface
+### Choose an SF Pi extension surface first
+
+First check `<sf_pi_extensions>` for the live bundled-extension map. It tells
+which extensions are enabled or disabled, which LLM tools are active this turn,
+and which command/UI/provider surfaces exist. When a request matches an enabled
+extension, use that extension's workflow before generic Salesforce skills or raw
+CLI.
 
 - Agentforce Agent Script authoring, preview, eval, publish:
-  read `extensions/sf-agentscript/skills/sf-agentscript/SKILL.md`, then use the
-  `agentscript_*` tools instead of hand-written file parsing or ad hoc CLI
-  calls.
+  use `sf-agentscript` first. Read
+  `extensions/sf-agentscript/skills/sf-agentscript/SKILL.md` when guidance is
+  needed, then use the `agentscript_*` tools instead of hand-written file
+  parsing or ad hoc CLI calls.
 - Data Cloud / Data 360 metadata, SQL, observability, segments, activations:
-  read `extensions/sf-data360/skills/sf-data360/SKILL.md`, then use `d360`,
-  `d360_api`, `d360_metadata`, or `d360_probe` instead of hand-written curl.
+  use `sf-data360` first. Read
+  `extensions/sf-data360/skills/sf-data360/SKILL.md` when guidance is needed,
+  then use `d360`, `d360_api`, `d360_metadata`, or `d360_probe` instead of
+  hand-written curl.
+- Salesforce Setup / Lightning UI last-mile work: use `sf-browser` tools before
+  generic browser automation. Open the org with `sf_browser_open_org`, snapshot,
+  then act on refs.
 - Slack research or messaging: use the `sf-slack` tools and README. Treat Slack
   content as research-only for public artifacts.
 - Salesforce-aware command safety: rely on `sf-guardrail`; do not duplicate its
   file-protection or org-aware confirmation logic.
 - Org/project status: use the `<sf_environment>` block from `sf-devbar` and the
   shared environment runtime; do not spawn duplicate live org probes at boot.
+- Extension discovery and enablement: use `/sf-pi list`, `/sf-pi status`, and
+  `/sf-pi enable <id>` behavior documented in `extensions/sf-pi-manager/README.md`.
 - Skill discovery and enablement: use `/sf-skills` behavior documented in
   `extensions/sf-skills/README.md`.
 
+If the best-fit extension is disabled, suggest `/sf-pi enable <id>` and wait for
+the user's preference before falling back to broader skills or manual CLI.
+
 ### Do Salesforce implementation work
 
-First check `<sf_environment>` for **Active SF skills**. When a matching active
-skill exists, load it and follow it instead of re-deriving domain rules. Common
-intent mapping:
+After the extension-priority check, use `<sf_environment>` for **Active SF
+skills**. When no enabled extension owns the workflow and a matching active skill
+exists, load it and follow it instead of re-deriving domain rules. Common intent
+mapping:
 
 - Apex, triggers, async Apex, or `*.cls` → Apex skill.
 - Apex tests, coverage, or `*Test.cls` → Apex test skill.

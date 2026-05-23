@@ -44,6 +44,11 @@ import {
 } from "../../lib/common/sf-environment/shared-runtime.ts";
 import { KERNEL_ENTRY_TYPE, loadKernel, shouldInjectKernel } from "./lib/kernel.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
+import {
+  formatSfPiExtensionContext,
+  SF_PI_EXTENSIONS_ENTRY_TYPE,
+  shouldInjectSfPiExtensionContext,
+} from "./lib/extension-context.ts";
 
 export default function (pi: ExtensionAPI) {
   if (!requirePiVersion(pi, "sf-brain")) return;
@@ -67,6 +72,22 @@ export default function (pi: ExtensionAPI) {
       message: {
         customType: KERNEL_ENTRY_TYPE,
         content: kernel,
+        display: false,
+      },
+    };
+  });
+
+  pi.on("before_agent_start", async (event, ctx) => {
+    const context = formatSfPiExtensionContext(ctx.cwd, {
+      activeTools: event.systemPromptOptions.selectedTools,
+      activeSkills: event.systemPromptOptions.skills?.map((skill) => skill.name),
+    });
+    if (!shouldInjectSfPiExtensionContext(ctx.sessionManager.getEntries(), context)) return;
+
+    return {
+      message: {
+        customType: SF_PI_EXTENSIONS_ENTRY_TYPE,
+        content: context,
         display: false,
       },
     };
