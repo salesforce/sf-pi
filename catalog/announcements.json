@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.144.3-2026-05-23",
-  "latestVersion": "0.144.3",
+  "revision": "release-0.144.4-2026-05-23",
+  "latestVersion": "0.144.4",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.144.3",
+      "id": "release-0.144.4",
       "kind": "update",
-      "title": "sf-pi v0.144.3 — sf-agentscript: harden channel preview lifecycle",
+      "title": "sf-pi v0.144.4 — respect npm release cooldown for pi freshness",
       "publishedAt": "2026-05-23T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.144.3",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.144.4",
       "severity": "info",
-      "body": "sf-agentscript: harden channel preview lifecycle"
+      "body": "respect npm release cooldown for pi freshness"
     },
     {
       "id": "pi-0.73-required",
