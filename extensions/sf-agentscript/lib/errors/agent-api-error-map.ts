@@ -37,6 +37,8 @@ export interface AgentApiErrorContext {
   agentApiName?: string;
   /** When known, the path to the .agent file — used in recover_via params. */
   agentFile?: string;
+  /** Local source-detected publish risks (voice, connection surfaces, response formats). */
+  publishFeatureRisks?: Array<{ code?: string; message?: string; evidence?: string[] }>;
 }
 
 export interface MappedAgentApiError {
@@ -212,7 +214,42 @@ export function mapAgentApiError(
     };
   }
 
-  // -- 9. Cryptic 500 on first publish — usually missing system PS ------------
+  // -- 9. Cryptic publish failure with source-detected channel-gated features -
+  if (
+    context.surface === "lifecycle" &&
+    context.phase === "publish" &&
+    (status >= 500 || status === 0) &&
+    /Internal Error/i.test(text) &&
+    context.publishFeatureRisks &&
+    context.publishFeatureRisks.length > 0
+  ) {
+    const risks = context.publishFeatureRisks;
+    return {
+      message:
+        `SFAP returned an Internal Error on publish, and the source uses ` +
+        `channel/surface-gated Agentforce features that can compile and preview ` +
+        `but still require org entitlement at publish time.\n\n` +
+        risks
+          .map(
+            (risk) =>
+              `• ${risk.code ?? "feature-risk"}: ${risk.message ?? "publish may require org support"}` +
+              (risk.evidence?.length ? ` Evidence: ${risk.evidence.join(", ")}` : ""),
+          )
+          .join("\n") +
+        `\n\nIf this is a generic lifecycle smoke, remove voice modality / VoiceCall-linked ` +
+        `variables / connection surfaces and retry. If those features are required, ` +
+        `confirm this target org has the relevant voice/channel/surface entitlement before retrying.`,
+      recover_via: context.agentFile
+        ? {
+            tool: "agentscript_inspect",
+            params: { action: "context_profile", path: context.agentFile },
+          }
+        : undefined,
+      matched: "feature-gated-publish-internal-error",
+    };
+  }
+
+  // -- 10. Cryptic 500 on first publish — usually missing system PS ------------
   // The SFAP publish endpoint returns "Internal Error, try again later" when
   // the Einstein Agent User exists but lacks the `AgentforceServiceAgentUser`
   // system permission set. Doc:
@@ -242,7 +279,7 @@ export function mapAgentApiError(
     };
   }
 
-  // -- 10. Activation rejected — generic catch-all -----------------------------
+  // -- 11. Activation rejected — generic catch-all -----------------------------
   // Anything matching "Activation request did not succeed: <unknown body>"
   // that #7 didn't catch falls through here with the original message plus
   // a hint to inspect the .agent and the BotDefinition.

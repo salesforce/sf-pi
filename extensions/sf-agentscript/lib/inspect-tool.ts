@@ -6,8 +6,10 @@
  *   structure        Default. Navigable graph of components + line numbers.
  *   find_references  Every `@<ns>.<prop>` usage of a symbol (+ declaration).
  *   definition       Where the symbol is declared (file + line).
+ *   check_targets    Pre-flight every action target against the org.
+ *   context_profile  Compact linked/mutable context seed template + publish risks.
  *
- * All actions run locally on the vendored SDK — ~10ms, no network.
+ * All actions run locally on the vendored SDK — ~10ms, no network except check_targets.
  */
 
 import { Type } from "typebox";
@@ -19,6 +21,7 @@ import { renderInspectCall, renderInspectResult } from "./render/inspect.ts";
 import { connForAgentApi } from "./agent-api-auth.ts";
 import { connFromAlias } from "../../../lib/common/sf-conn/connection.ts";
 import { checkActionTargets } from "./preflight.ts";
+import { buildFeatureProfile } from "./feature-profile.ts";
 
 export const INSPECT_TOOL_NAME = "agentscript_inspect";
 
@@ -34,11 +37,12 @@ const Params = Type.Object({
         Type.Literal("find_references"),
         Type.Literal("definition"),
         Type.Literal("check_targets"),
+        Type.Literal("context_profile"),
       ],
       {
         default: "structure",
         description:
-          "structure (default): navigable component graph + line numbers. find_references: every usage of an `@<ns>.<prop>` symbol including the declaration. definition: where a symbol is declared. check_targets: pre-flight every `@actions.X` declaration's `target:` URI (flow://X / apex://X) against the org via Tooling API.",
+          "structure (default): navigable component graph + line numbers. context_profile: compact linked/mutable context seed template + publish risks. find_references: every usage of an `@<ns>.<prop>` symbol including the declaration. definition: where a symbol is declared. check_targets: pre-flight every `@actions.X` declaration's `target:` URI (flow://X / apex://X) against the org via Tooling API.",
       },
     ),
   ),
@@ -59,7 +63,7 @@ const Params = Type.Object({
 });
 
 interface ParamsAny {
-  action?: "structure" | "find_references" | "definition" | "check_targets";
+  action?: "structure" | "find_references" | "definition" | "check_targets" | "context_profile";
   path: string;
   symbol?: string;
   target_org?: string;
@@ -77,6 +81,7 @@ export function registerInspectTool(pi: ExtensionAPI): void {
       "Query a .agent file's structure, references, or definitions. No re-read needed.",
     promptGuidelines: [
       "Use action='structure' (or omit action) BEFORE re-reading a `.agent` file — returns ~200 tokens vs ~3000 for a full read.",
+      "Use action='context_profile' before previewing/publishing voice, messaging, or stateful agents. It returns linked variables, mutable variables, a context_variables seed template, modalities, response formats, and publish-risk warnings.",
       "Use action='find_references' before mutating a symbol so you know the blast radius. Returns the declaration site (is_declaration=true) plus every usage with line + character + a context snippet.",
       "Use action='definition' to jump from a usage to its declaration. Returns line + character + file. Cheaper than find_references when you only need the source of truth.",
       "Use action='check_targets' BEFORE publishing to confirm every `target:` URI on action declarations resolves in the org. Catches missing flows / apex classes BEFORE a publish + activate round-trip would fail at preview-start runtime. Requires target_org.",
@@ -117,6 +122,8 @@ export function registerInspectTool(pi: ExtensionAPI): void {
       switch (action) {
         case "structure":
           return await actionStructure(filePath);
+        case "context_profile":
+          return await actionContextProfile(filePath);
         case "find_references":
           return await actionFindReferences(filePath, p.symbol as string);
         case "definition":
@@ -161,6 +168,49 @@ async function actionStructure(filePath: string): Promise<{
       parse_error_count: result.parse_error_count ?? 0,
     },
     summaryText,
+  );
+}
+
+// -------------------------------------------------------------------------------------------------
+// action = context_profile
+// -------------------------------------------------------------------------------------------------
+
+async function actionContextProfile(filePath: string): Promise<{
+  content: { type: "text"; text: string }[];
+  details: Record<string, unknown> | ToolError;
+}> {
+  const result = await inspectFile(filePath);
+  if (!result.ok) {
+    if (result.reason === "sdk_unavailable") {
+      return toolError(
+        `Agent Script SDK unavailable: ${result.reason_detail ?? "unknown reason"}.`,
+        "Run /sf-agentscript doctor to diagnose the vendored bundle.",
+        { tool: "sf-agentscript", params: { action: "doctor" } },
+      );
+    }
+    return toolError(`context_profile failed: ${result.reason ?? "unknown"}`, result.reason_detail);
+  }
+  const profile = buildFeatureProfile(result);
+  const lines = [
+    `🧬 Context profile ${filePath}`,
+    `linked: ${profile.linked_variables.length} · mutable: ${profile.mutable_variables.length} · ` +
+      `modalities: ${profile.modalities.length} · response_formats: ${profile.response_formats.length}`,
+  ];
+  if (profile.context_variables_template.length > 0) {
+    lines.push(`preview seed: ${profile.context_variables_template.map((v) => v.name).join(", ")}`);
+  }
+  if (profile.publish_risks.length > 0) {
+    lines.push(`publish risks: ${profile.publish_risks.map((r) => r.code).join(", ")}`);
+  }
+  return toolOk(
+    {
+      ok: true as const,
+      action: "context_profile" as const,
+      path: filePath,
+      dialect: result.dialect,
+      context_profile: profile,
+    },
+    lines.join("\n"),
   );
 }
 

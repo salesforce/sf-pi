@@ -217,6 +217,33 @@ describe("mapAgentApiError (lifecycle surface, Issue 4 patterns)", () => {
     expect(m.recover_via).toBeUndefined();
   });
 
+  test("internal-error-publish with channel-gated features → feature entitlement hint", () => {
+    const m = mapAgentApiError(
+      500,
+      { message: "Internal Error, try again later" },
+      {
+        phase: "publish",
+        surface: "lifecycle",
+        agentApiName: "Voice_Bot",
+        agentFile: "/tmp/Voice_Bot.agent",
+        publishFeatureRisks: [
+          {
+            code: "voice_modality_publish_may_require_channel_entitlement",
+            message: "modality voice may require voice-channel support",
+            evidence: ["modality voice"],
+          },
+        ],
+      },
+    );
+    expect(m.matched).toBe("feature-gated-publish-internal-error");
+    expect(m.message).toMatch(/channel\/surface-gated/i);
+    expect(m.message).toMatch(/modality voice/);
+    expect(m.recover_via).toEqual({
+      tool: "agentscript_inspect",
+      params: { action: "context_profile", path: "/tmp/Voice_Bot.agent" },
+    });
+  });
+
   test("internal-error-publish (HTTP 500 on publish) → diagnose hint", () => {
     const m = mapAgentApiError(
       500,

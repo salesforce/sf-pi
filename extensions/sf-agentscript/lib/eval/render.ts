@@ -168,6 +168,7 @@ export function buildTurnSummary(
   const digest = summarizeLastExecution(le, {
     userInput: digestUtterance,
     planId: planIdForTurn,
+    stateVariables: sc.stateVariables,
   });
 
   return {

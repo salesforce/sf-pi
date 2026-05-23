@@ -11,6 +11,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { inspectFile } from "../lib/inspect.ts";
+import { buildFeatureProfile } from "../lib/feature-profile.ts";
 
 let workDir: string;
 
@@ -235,6 +236,17 @@ describe("inspectFile", () => {
     });
     expect(result.components?.start_agents?.find((t) => t.name === "main")?.utility_refs).toContain(
       "end_session",
+    );
+
+    const profile = buildFeatureProfile(result);
+    expect(profile.context_variables_template.map((v) => v.name)).toContain("VoiceCallId");
+    expect(profile.publish_risks.map((r) => r.code)).toEqual(
+      expect.arrayContaining([
+        "voice_linked_variable_publish_may_require_channel_entitlement",
+        "voice_modality_publish_may_require_channel_entitlement",
+        "connection_surface_publish_may_require_channel_entitlement",
+        "response_format_publish_may_require_surface_entitlement",
+      ]),
     );
   });
 

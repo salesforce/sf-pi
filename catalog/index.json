@@ -65,7 +65,7 @@
     "entry": "extensions/sf-agentscript/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 19390
+    "srcLoc": 19735
   },
   {
     "id": "sf-brain",

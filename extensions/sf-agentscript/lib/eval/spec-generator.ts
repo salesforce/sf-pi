@@ -398,28 +398,25 @@ function normalizeSeeds(vars: ContextVariableSeed[] | undefined): WireContextVar
 }
 
 /**
- * Synthesize a user utterance from a subagent description. We use the
- * description verbatim as the user's intent — descriptions are typically
- * authored as "Handles billing inquiries: payment links, card updates,
- * financing." which reads cleanly as an utterance prefix.
+ * Synthesize a route-targeting user utterance from a subagent name +
+ * description. Utility-transition agents need stronger prompts than
+ * "I have a question about ..."; ask for the named path directly so the
+ * planner has a clear routing intent.
  *
  * Falls back to the subagent name when no description is present.
  * Returns undefined when neither yields anything useful (signals to the
  * caller to skip this subagent).
  */
 function synthesizeUtterance(sa: ComponentSummary): string | undefined {
+  const human = humanize(sa.name);
+  if (!human) return undefined;
   if (sa.description) {
-    // Use the first sentence of the description so we don't dump three
-    // paragraphs at the planner.
     const firstSentence = sa.description.split(/[.!?](\s|$)/)[0]?.trim();
     if (firstSentence) {
-      return `I have a question about: ${firstSentence.toLowerCase()}`;
+      return `Please route me to the ${human} path now. I want to ${firstSentence.toLowerCase()}.`;
     }
   }
-  // Fall back to a humanized subagent name.
-  const human = humanize(sa.name);
-  if (human) return `I need help with ${human.toLowerCase()}`;
-  return undefined;
+  return `Please route me to the ${human} path now.`;
 }
 
 function synthesizeActionUtterance(a: ComponentSummary): string | undefined {

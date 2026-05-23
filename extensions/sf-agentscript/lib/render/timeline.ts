@@ -154,6 +154,14 @@ function formatSendBody(
     lines.push(`${ok("🤖")} ${digest.turn.agent_response}`);
   }
 
+  if (digest.state_variables && Object.keys(digest.state_variables).length > 0) {
+    lines.push("");
+    const entries = Object.entries(digest.state_variables)
+      .slice(0, 8)
+      .map(([key, value]) => `${key}=${clipLine(String(value), 80)}`);
+    lines.push(`${accent("🧪 state")} ${dim(entries.join(", "))}`);
+  }
+
   // Timeline header
   lines.push("");
   lines.push(dim(ansi ? "─── Timeline ───" : "**Timeline**"));

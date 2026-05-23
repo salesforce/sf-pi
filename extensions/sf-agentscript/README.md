@@ -194,6 +194,7 @@ extensions/sf-agentscript/
     diagnostics.ts          ← implementation module
     doctor.ts               ← implementation module
     eval-tool.ts            ← implementation module
+    feature-profile.ts      ← implementation module
     feedback.ts             ← implementation module
     file-classify.ts        ← implementation module
     inspect-tool.ts         ← implementation module
@@ -276,6 +277,30 @@ extensions/sf-agentscript/
 <!-- GENERATED:file-structure:end -->
 
 `lib/eval/` is the eval runner (sfap transport + normalize + active-ids + orchestrator + render + persist). `lib/preview/` is the live-org preview client + session store. `lib/templates/` is the scaffold templates for `agentscript_create`. `lib/vendor/agentforce/` is the upstream SDK bundle, refreshed via `scripts/sync-agentforce-sdk.mjs`.
+
+## Voice and linked-context preview
+
+`agentscript_preview action='start'` accepts `context_variables` for local
+`agent_file` sessions. sf-pi uses those values in three ways so voice,
+messaging, and stateful agents can be exercised without a real channel record:
+
+1. Sends the values in the preview session `variables[]` state seed.
+2. Registers missing state slots in the compiled `agentVersion.stateVariables[]`.
+3. Rewrites compiled linked bindings from `variables.<Name>` to `state.<Name>`
+   for injected names.
+
+Use `agentscript_inspect action='context_profile'` first to get a compact seed
+template for linked and mutable variables plus publish-risk warnings. Voice
+features are intentionally split by lifecycle stage: local compile + preview can
+work with `@VoiceCall.*` and `modality voice`, but publish may still require
+voice/channel entitlement in the target org. When publish returns a generic
+SFAP `Internal Error` and voice/channel features are present, sf-pi maps it to a
+feature-gated publish diagnostic instead of leaving the opaque 500 untouched.
+
+Published-agent preview (`agent_api_name`) uses the production v1 session API.
+That API returns a surface digest only and does not expose the full v1.1 planner
+trace file. Use local `agent_file` preview when you need step-by-step LLM,
+transition, variable-update, and tool-call traces.
 
 ## Testing Strategy
 

@@ -34,6 +34,10 @@ function fixtureDigest(): TraceDigest {
       plan_id: "8a3f7d1e-aaaa-bbbb-cccc-dddddddddddd",
       trace_file: ".sfdx/agents/AS/sessions/8a3f.../t3.json",
     },
+    state_variables: {
+      verified_check: true,
+      CustomerName: "Example Customer",
+    },
     timeline: [
       { i: 0, t: "UserInputStep", user: "I think someone broke into my account…" },
       { i: 1, t: "BeforeReasoningIterationStep", ms: 12, agent: "Triage" },
@@ -111,6 +115,13 @@ describe("previewSendMarkdown", () => {
     expect(md).toMatch(/I think someone broke into my account/);
     expect(md).toMatch(/🤖/);
     expect(md).toMatch(/secure your account/);
+  });
+
+  it("includes selected state variables when the digest provides them", () => {
+    const md = previewSendMarkdown(fixtureDigest(), { ok: true });
+    expect(md).toMatch(/🧪 state/);
+    expect(md).toMatch(/verified_check=true/);
+    expect(md).toMatch(/CustomerName=Example Customer/);
   });
 
   it("renders one row per timeline step in order", () => {

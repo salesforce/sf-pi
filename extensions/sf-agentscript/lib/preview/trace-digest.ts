@@ -77,6 +77,8 @@ export interface TraceDigest {
   };
   /** One row per planner step. Empty array for eval-source (no fine-grained timeline). */
   timeline: DigestRow[];
+  /** Selected non-internal state/context variables observed during this turn. */
+  state_variables?: Record<string, unknown>;
   /** Step-level errors aggregated across the timeline. */
   errors: Array<{ step?: number; type?: string; message: string }>;
   stats: DigestStats;
@@ -245,6 +247,26 @@ function extractSessionInitial(step: StepLike): Partial<DigestRow> {
   };
 }
 
+function stateVariablesFromStep(step: StepLike): Record<string, unknown> | undefined {
+  const data = (step.data ?? {}) as Record<string, unknown>;
+  const candidates = [data.variable_values, data.state_variables, step.state_variables];
+  for (const candidate of candidates) {
+    if (candidate && typeof candidate === "object" && !Array.isArray(candidate)) {
+      return filterStateVariables(candidate as Record<string, unknown>);
+    }
+  }
+  return undefined;
+}
+
+function filterStateVariables(vars: Record<string, unknown>): Record<string, unknown> | undefined {
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(vars)) {
+    if (key.startsWith("__") || key.startsWith("AgentScriptInternal_")) continue;
+    out[key] = value;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
 const EXTRACTORS: Record<string, (step: StepLike) => Partial<DigestRow>> = {
   LLMStep: extractLLMStep,
   LLMExecutionStep: extractLLMStep,
@@ -315,6 +337,7 @@ export function summarizeTrace(trace: unknown, opts: SummarizeOptions = {}): Tra
   let functionCalls = 0;
   let prevTopic: string | undefined;
   let lastTopic: string | undefined = t.topic;
+  let stateVariables: Record<string, unknown> | undefined;
 
   for (let i = 0; i < stepsRaw.length; i++) {
     const step = stepsRaw[i] ?? {};
@@ -329,6 +352,8 @@ export function summarizeTrace(trace: unknown, opts: SummarizeOptions = {}): Tra
     };
     if (row.ms === undefined) delete row.ms;
     timeline.push(row);
+    const stateFromStep = stateVariablesFromStep(step);
+    if (stateFromStep) stateVariables = { ...(stateVariables ?? {}), ...stateFromStep };
 
     // Stat collection — keep these per-type so the stats object is
     // accurate even when the runtime adds/renames step types.
@@ -390,6 +415,7 @@ export function summarizeTrace(trace: unknown, opts: SummarizeOptions = {}): Tra
       trace_file: opts.traceFile,
     },
     timeline,
+    ...(stateVariables ? { state_variables: stateVariables } : {}),
     errors,
     stats,
     summary_line,
@@ -418,7 +444,12 @@ interface LastExecutionLLMEvent {
  */
 export function summarizeLastExecution(
   lastExec: LastExecution | undefined,
-  ctx: { userInput?: string; planId?: string; traceFile?: string } = {},
+  ctx: {
+    userInput?: string;
+    planId?: string;
+    traceFile?: string;
+    stateVariables?: Record<string, unknown>;
+  } = {},
 ): TraceDigest {
   const timeline: DigestRow[] = [];
   const errors: TraceDigest["errors"] = [];
@@ -506,6 +537,8 @@ export function summarizeLastExecution(
     totalMs: typeof lastExec?.latency === "number" ? lastExec.latency : 0,
   });
 
+  const stateVariables = filterStateVariables(ctx.stateVariables ?? {});
+
   return {
     source: "eval",
     turn: {
@@ -517,6 +550,7 @@ export function summarizeLastExecution(
       trace_file: ctx.traceFile,
     },
     timeline,
+    ...(stateVariables ? { state_variables: stateVariables } : {}),
     errors,
     stats,
     summary_line,

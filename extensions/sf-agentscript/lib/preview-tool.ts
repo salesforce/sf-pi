@@ -486,15 +486,27 @@ async function actionSend(
         trace_file: result.traceFile,
         report_file: reportFile,
         digest: result.digest,
+        trace_mode: result.traceFile ? "full_v1_1" : "surface_only_production_v1",
+        ...(result.digest?.state_variables
+          ? { state_variables: result.digest.state_variables }
+          : {}),
         ...(result.apexDebugLog ? { apex_debug_log: result.apexDebugLog } : {}),
       },
       [
         `🤖 ${result.agentResponse}`,
         result.digest?.summary_line ? `→ ${result.digest.summary_line}` : null,
+        result.digest?.state_variables
+          ? `state: ${Object.entries(result.digest.state_variables)
+              .slice(0, 6)
+              .map(([k, v]) => `${k}=${String(v).slice(0, 80)}`)
+              .join(", ")}`
+          : null,
         result.digest && result.digest.errors.length > 0
           ? `⚠️ errors: ${result.digest.errors.length}`
           : null,
-        `plan=${result.planId.slice(0, 8)}… trace_file=${result.traceFile ?? "<none>"}`,
+        result.traceFile
+          ? `plan=${result.planId.slice(0, 8)}… trace_file=${result.traceFile}`
+          : `plan=${result.planId.slice(0, 8)}… trace_file=<none> (published-agent preview is surface-only; use agent_file preview for full v1.1 traces)`,
         reportFile ? `report_file=${reportFile}` : null,
       ]
         .filter(Boolean)

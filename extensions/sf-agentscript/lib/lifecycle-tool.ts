@@ -36,6 +36,7 @@ import {
 import { checkAgentScriptFile } from "./diagnostics.ts";
 import { inspectFile } from "./inspect.ts";
 import { mapAgentApiError } from "./errors/agent-api-error-map.ts";
+import { buildFeatureProfile, type AgentFeatureProfile } from "./feature-profile.ts";
 import { sfap404Message } from "./errors/sfap-404.ts";
 import { checkBundleVsBotDivergence } from "./lifecycle-divergence.ts";
 import { isAgentScriptFile } from "./file-classify.ts";
@@ -247,6 +248,19 @@ async function actionPublish(
   }
 
   const agentApiName = input.agent_api_name ?? path.basename(filePath, ".agent");
+  let featureProfile: AgentFeatureProfile | undefined;
+  try {
+    const inspect = await inspectFile(filePath);
+    if (inspect.ok) {
+      featureProfile = buildFeatureProfile(inspect);
+      for (const risk of featureProfile.publish_risks) {
+        stream(`Pre-flight warning — ${risk.message}`);
+      }
+    }
+  } catch {
+    // Feature-risk classification is advisory. Publish preflight below still runs.
+  }
+
   // The bundle directory contains both the `.agent` file and the
   // `.bundle-meta.xml` file. SDR's ComponentSet.fromSource(bundleDir)
   // walks both and zips them up for the deploy().
@@ -300,6 +314,12 @@ async function actionPublish(
       : null;
     const missing = result.preflight?.missing_action_targets ?? [];
     const preflightLines: string[] = [];
+    for (const risk of featureProfile?.publish_risks ?? []) {
+      preflightLines.push(`  ⚠️ ${risk.message}`);
+      for (const evidence of risk.evidence.slice(0, 3)) {
+        preflightLines.push(`     • ${evidence}`);
+      }
+    }
     if (missing.length > 0) {
       preflightLines.push(
         `  ⚠️ ${missing.length} action target(s) missing in org (preview will fail until deployed):`,
@@ -322,6 +342,9 @@ async function actionPublish(
         activated: result.activated,
         authoring_bundle: result.authoring_bundle,
         ...(result.preflight ? { preflight: result.preflight } : {}),
+        ...(featureProfile?.publish_risks.length
+          ? { publish_risks: featureProfile.publish_risks }
+          : {}),
       },
       [
         `📦 Published ${result.developer_name}`,
@@ -374,7 +397,7 @@ async function actionPublish(
         params: { path: filePath },
       });
     }
-    return toolError(msg);
+    return classifyLifecycleError(err, agentApiName, "publish", filePath, featureProfile);
   }
 }
 
@@ -503,6 +526,7 @@ function classifyLifecycleError(
   agentApiName: string,
   callingAction: "publish" | "activate" | "deactivate" | "list_versions",
   agentFile?: string,
+  featureProfile?: AgentFeatureProfile,
 ): { content: { type: "text"; text: string }[]; details: ToolError } {
   const msg = err instanceof Error ? err.message : String(err);
 
@@ -526,6 +550,7 @@ function classifyLifecycleError(
         surface: "lifecycle",
         agentApiName,
         agentFile,
+        publishFeatureRisks: featureProfile?.publish_risks,
       },
     );
     if (mapped.matched) {
