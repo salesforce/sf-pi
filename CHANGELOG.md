@@ -517,6 +517,18 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.145.0](https://github.com/salesforce/sf-pi/compare/v0.144.5...v0.145.0) (2026-05-23)
+
+
+### Features
+
+* **brain:** prioritize bundled extension workflows ([f181d96](https://github.com/salesforce/sf-pi/commit/f181d96d4fb5bcef012753982c1a8ddc72ca7ecc))
+
+
+### Bug Fixes
+
+* **gateway:** use pi adaptive thinking ([69556fb](https://github.com/salesforce/sf-pi/commit/69556fb3f793df4ad1b34547a6c7d7884474ff5f))
+
 ## [0.144.5](https://github.com/salesforce/sf-pi/compare/v0.144.4...v0.144.5) (2026-05-23)
 
 
