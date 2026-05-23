@@ -517,6 +517,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.144.3](https://github.com/salesforce/sf-pi/compare/v0.144.2...v0.144.3) (2026-05-23)
+
+
+### Bug Fixes
+
+* **sf-agentscript:** harden channel preview lifecycle ([581fe15](https://github.com/salesforce/sf-pi/commit/581fe15e4c3ab79387476f534d74c5de0726f176))
+
 ## [0.144.2](https://github.com/salesforce/sf-pi/compare/v0.144.1...v0.144.2) (2026-05-22)
 
 
