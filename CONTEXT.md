@@ -92,6 +92,18 @@ _Avoid_: skill history panel, permanent session badge, skills manager
 The upstream pi coding-agent process that hosts SF Pi and provides package loading, settings, skills, extensions, and the terminal UI.
 _Avoid_: SF Pi, bundled extension, Salesforce runtime
 
+**Opportunistic Herdr Adapter**:
+An SF Pi integration posture where Herdr-specific behavior activates only inside a Herdr-managed pane with an active Herdr tool surface, while non-Herdr sessions keep normal Pi operation and receive guidance only through explicit status or doctor commands.
+_Avoid_: hidden Herdr dependency, automatic handoff, remote Herdr controller, startup requirement
+
+**Herdr Workflow Mode**:
+The compact SF Brain guidance state that tells agents to use Herdr for pane orchestration only when the current Pi session is running inside Herdr and the active `herdr` tool surface from the Pi → Herdr control package is available.
+_Avoid_: standalone extension, workflow catalog, mandatory terminal manager, stale session instruction, passive status bridge requirement
+
+**Passive Herdr Status Bridge**:
+The Herdr-installed Pi extension that reports Pi agent state back to Herdr for sidebar/status visibility without being required for SF Brain's pane-orchestration guidance.
+_Avoid_: active tool provider, workflow mode requirement, pane-control API
+
 **Release Freshness**:
 The user-visible posture that compares an installed package or runtime version with the latest known release and reports it as current, update-available, or unknown.
 _Avoid_: health check, deployment status, security support guarantee

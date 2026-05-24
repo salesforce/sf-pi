@@ -46,6 +46,7 @@ import { KERNEL_ENTRY_TYPE, loadKernel, shouldInjectKernel } from "./lib/kernel.
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 import {
   formatSfPiExtensionContext,
+  isHerdrWorkflowModeActive,
   SF_PI_EXTENSIONS_ENTRY_TYPE,
   shouldInjectSfPiExtensionContext,
 } from "./lib/extension-context.ts";
@@ -78,9 +79,11 @@ export default function (pi: ExtensionAPI) {
   });
 
   pi.on("before_agent_start", async (event, ctx) => {
+    const activeTools = event.systemPromptOptions.selectedTools;
     const context = formatSfPiExtensionContext(ctx.cwd, {
-      activeTools: event.systemPromptOptions.selectedTools,
+      activeTools,
       activeSkills: event.systemPromptOptions.skills?.map((skill) => skill.name),
+      herdrWorkflowMode: isHerdrWorkflowModeActive({ env: process.env, activeTools }),
     });
     if (!shouldInjectSfPiExtensionContext(ctx.sessionManager.getEntries(), context)) return;
 

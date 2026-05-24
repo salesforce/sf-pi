@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   formatSfPiExtensionContext,
+  isHerdrWorkflowModeActive,
   SF_PI_EXTENSIONS_CLOSE_TAG,
   SF_PI_EXTENSIONS_ENTRY_TYPE,
   SF_PI_EXTENSIONS_OPEN_TAG,
@@ -83,6 +84,55 @@ describe("formatSfPiExtensionContext", () => {
     expect(context).toContain("- sf-slack (disabled)");
     expect(context).toContain("Suggest: /sf-pi enable sf-slack.");
   });
+
+  it("renders Herdr Workflow Mode only when requested", () => {
+    const inactiveContext = formatSfPiExtensionContext(makeCwd(), {
+      activeTools: ["read", "bash", "herdr"],
+    });
+    const activeContext = formatSfPiExtensionContext(makeCwd(), {
+      activeTools: ["read", "bash", "herdr"],
+      herdrWorkflowMode: true,
+    });
+
+    expect(inactiveContext).not.toContain("Herdr Workflow Mode");
+    expect(activeContext).toContain("Herdr Workflow Mode: active.");
+    expect(activeContext).toContain("Use the `herdr` tool for long-running");
+    expect(activeContext).toContain("Prefer reusing existing panes/tabs");
+    expect(activeContext).toContain("fall back to normal SF Pi operation");
+  });
+});
+
+describe("isHerdrWorkflowModeActive", () => {
+  it("requires active-control Herdr env and the active herdr tool", () => {
+    const env = {
+      HERDR_ENV: "1",
+      HERDR_PANE_ID: "pane-1",
+    };
+
+    expect(isHerdrWorkflowModeActive({ env, activeTools: ["read", "herdr"] })).toBe(true);
+    expect(isHerdrWorkflowModeActive({ env, activeTools: ["read"] })).toBe(false);
+    expect(
+      isHerdrWorkflowModeActive({
+        env: { ...env, HERDR_ENV: "0" },
+        activeTools: ["read", "herdr"],
+      }),
+    ).toBe(false);
+    expect(
+      isHerdrWorkflowModeActive({
+        env: { ...env, HERDR_PANE_ID: "" },
+        activeTools: ["read", "herdr"],
+      }),
+    ).toBe(false);
+  });
+
+  it("does not require the passive Herdr socket bridge", () => {
+    expect(
+      isHerdrWorkflowModeActive({
+        env: { HERDR_ENV: "1", HERDR_PANE_ID: "pane-1" },
+        activeTools: ["herdr"],
+      }),
+    ).toBe(true);
+  });
 });
 
 describe("shouldInjectSfPiExtensionContext", () => {
@@ -98,6 +148,25 @@ describe("shouldInjectSfPiExtensionContext", () => {
     ];
 
     expect(shouldInjectSfPiExtensionContext(entries as never, context)).toBe(false);
+  });
+
+  it("injects again when Herdr Workflow Mode is no longer active", () => {
+    const cwd = makeCwd();
+    const herdrContext = formatSfPiExtensionContext(cwd, {
+      activeTools: ["read", "herdr"],
+      herdrWorkflowMode: true,
+    });
+    const normalContext = formatSfPiExtensionContext(cwd, { activeTools: ["read", "herdr"] });
+    const entries = [
+      {
+        id: "1",
+        type: "custom_message",
+        customType: SF_PI_EXTENSIONS_ENTRY_TYPE,
+        content: herdrContext,
+      },
+    ];
+
+    expect(shouldInjectSfPiExtensionContext(entries as never, normalContext)).toBe(true);
   });
 
   it("injects again when the live context changed", () => {

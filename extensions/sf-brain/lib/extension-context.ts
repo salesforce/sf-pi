@@ -24,6 +24,12 @@ type ExtensionIntent = {
 type ExtensionContextOptions = {
   activeTools?: readonly string[];
   activeSkills?: readonly string[];
+  herdrWorkflowMode?: boolean;
+};
+
+type HerdrEnvironment = {
+  HERDR_ENV?: string;
+  HERDR_PANE_ID?: string;
 };
 
 const EXTENSION_INTENTS: Record<string, ExtensionIntent> = {
@@ -109,6 +115,26 @@ export function formatSfPiExtensionContext(
   if (activeSfSkills.length > 0) {
     lines.push(`Active SF skills remain fallback/workflow guidance: ${activeSfSkills.join(", ")}`);
   }
+  if (options.herdrWorkflowMode) {
+    lines.push("");
+    lines.push("Herdr Workflow Mode: active.");
+    lines.push(
+      "- Use the `herdr` tool for long-running, parallel, or pane-oriented workflows: servers, tests, log tails, previews, evals, and multi-pane monitoring.",
+    );
+    lines.push(
+      "- Prefer reusing existing panes/tabs before creating new ones; use stable aliases like `server`, `tests`, `logs`, `preview`, or `eval`.",
+    );
+    lines.push(
+      "- Preserve current UI focus unless the user asks otherwise or visible interaction is required.",
+    );
+    lines.push(
+      "- Use `herdr.run` for command-style submission, `herdr.watch`/`herdr.read` for output and readiness, and `herdr.wait_agent` only for recognized agent panes.",
+    );
+    lines.push("- Keep quick one-shot commands and normal file edits on the ordinary tool path.");
+    lines.push(
+      "- If Herdr is unavailable or a Herdr action fails, fall back to normal SF Pi operation without blocking the task.",
+    );
+  }
 
   lines.push("");
   lines.push("Extension map:");
@@ -131,6 +157,16 @@ export function shouldInjectSfPiExtensionContext(
 ): boolean {
   const stillFresh = (entry: CustomMessageEntry) => entry.content === context;
   return shouldInjectOnce(entries, SF_PI_EXTENSIONS_ENTRY_TYPE, stillFresh);
+}
+
+export function isHerdrWorkflowModeActive(options: {
+  env?: HerdrEnvironment;
+  activeTools?: readonly string[];
+}): boolean {
+  const env = options.env ?? {};
+  return (
+    env.HERDR_ENV === "1" && !!env.HERDR_PANE_ID && (options.activeTools ?? []).includes("herdr")
+  );
 }
 
 function formatExtensionLine(

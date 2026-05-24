@@ -37,7 +37,12 @@ agent:
 The companion `<sf_pi_extensions>` block is built from the generated extension
 registry, project/global package filter state, and Pi's selected tools/skills
 for the turn. It lists every bundled extension with its enabled/disabled state,
-intent, commands, providers, and active or inactive LLM tools.
+intent, commands, providers, and active or inactive LLM tools. When the active
+`npm:@ogulcancelik/pi-herdr` control path is available — the current session is
+running inside a Herdr-managed pane and the `herdr` tool is active — it also
+includes compact Herdr Workflow Mode guidance for pane orchestration. The
+separate `herdr-agent-state.ts` socket bridge is passive Herdr → Pi status
+reporting and is not required for this guidance.
 
 The always-injected kernel body lives in [`SF_KERNEL.md`](./SF_KERNEL.md).
 Broader SF Pi and Salesforce routing guidance lives in
@@ -62,6 +67,7 @@ First user prompt of the session
       │   └─ inject as a persistent hidden message (customType: sf-brain-kernel)
       └─ extension context path
           ├─ build <sf_pi_extensions> from registry + package filter + selected tools/skills
+          ├─ if Herdr pane env + selected tool are active, add compact Herdr Workflow Mode guidance
           ├─ live matching context entry already exists? → skip
           └─ inject as a persistent hidden message (customType: sf-pi-extensions-context)
 
@@ -92,13 +98,15 @@ Subsequent turns in the same session
 
 ## Behavior Matrix
 
-| Event              | Condition                              | Result                                |
-| ------------------ | -------------------------------------- | ------------------------------------- |
-| before_agent_start | kernel entry already in session        | skip                                  |
-| before_agent_start | CLI installed, no kernel entry yet     | inject full kernel as hidden message  |
-| before_agent_start | CLI not installed, no kernel entry yet | inject install stub as hidden message |
-| before_agent_start | extension context unchanged            | skip                                  |
-| before_agent_start | extension context changed or missing   | inject fresh extension context        |
+| Event              | Condition                               | Result                                |
+| ------------------ | --------------------------------------- | ------------------------------------- |
+| before_agent_start | kernel entry already in session         | skip                                  |
+| before_agent_start | CLI installed, no kernel entry yet      | inject full kernel as hidden message  |
+| before_agent_start | CLI not installed, no kernel entry yet  | inject install stub as hidden message |
+| before_agent_start | extension context unchanged             | skip                                  |
+| before_agent_start | extension context changed or missing    | inject fresh extension context        |
+| before_agent_start | Herdr pane env and `herdr` tool active  | include Herdr Workflow Mode guidance  |
+| before_agent_start | Herdr pane env or `herdr` tool inactive | omit Herdr guidance; normal fallback  |
 
 ## User Override
 
@@ -148,6 +156,8 @@ Covered by unit tests:
 - The extension context lists every bundled extension, reflects project-scoped
   disabled filters, marks active AgentScript tools, and tells agents to suggest
   `/sf-pi enable <id>` for disabled best-fit extensions.
+- Herdr Workflow Mode appears only when strict activation succeeds: `HERDR_ENV`
+  and `HERDR_PANE_ID` identify a managed pane, and `herdr` is an active tool.
 - The reference map routes user intent to repo-local Salesforce resources,
   extension-first workflows, and active SF skills.
 - The `before_agent_start` handler is a no-op if a `sf-brain-kernel` entry
