@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.146.2-2026-05-24",
-  "latestVersion": "0.146.2",
+  "revision": "release-0.146.3-2026-05-24",
+  "latestVersion": "0.146.3",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.146.2",
+      "id": "release-0.146.3",
       "kind": "update",
-      "title": "sf-pi v0.146.2 — sf-agentscript: generate topic eval probes",
+      "title": "sf-pi v0.146.3 — sf-agentscript: use turn output in generated eval ratings",
       "publishedAt": "2026-05-24T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.146.2",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.146.3",
       "severity": "info",
-      "body": "sf-agentscript: generate topic eval probes — sf-agentscript: review system prompt shape"
+      "body": "sf-agentscript: use turn output in generated eval ratings"
     },
     {
       "id": "pi-0.73-required",
