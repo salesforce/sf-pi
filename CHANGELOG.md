@@ -517,6 +517,18 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.148.0](https://github.com/salesforce/sf-pi/compare/v0.147.0...v0.148.0) (2026-05-24)
+
+
+### Features
+
+* **sf-brain:** add conditional Herdr workflow guidance ([0ac5ab7](https://github.com/salesforce/sf-pi/commit/0ac5ab7514f8f6c241aa611a54f823d857d58d63))
+
+
+### Bug Fixes
+
+* **sf-agentscript:** query flow metadata per target ([9374797](https://github.com/salesforce/sf-pi/commit/9374797d2b19f44df126f1c3a008bbee2a18bb1b))
+
 ## [0.147.0](https://github.com/salesforce/sf-pi/compare/v0.146.4...v0.147.0) (2026-05-24)
 
 
