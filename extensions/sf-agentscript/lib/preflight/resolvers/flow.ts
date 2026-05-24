@@ -48,16 +48,19 @@ export const flowResolver: TargetResolver = {
   },
   async resolveTargets(conn: Connection, targets: readonly ActionTarget[]) {
     if (targets.length === 0) return [];
-    const refNames = targets.map((target) => target.ref_name);
-    const soql =
-      `SELECT Definition.DeveloperName, Metadata FROM Flow ` +
-      `WHERE Definition.DeveloperName IN (${soqlInList(refNames)}) AND Status = 'Active'`;
-    const rows = await safeQueryRecords<FlowToolingRow>(conn, "/tooling/query", soql);
-    if (!rows) return null;
-
     const byName = new Map<string, FlowToolingRow>();
-    for (const row of rows) {
-      const name = row.Definition?.DeveloperName;
+    for (const refName of [...new Set(targets.map((target) => target.ref_name))]) {
+      // Tooling API refuses Metadata queries that can return multiple rows:
+      // "query qualifications must specify no more than one row". Query one
+      // active Flow at a time and cache by DeveloperName so duplicate action
+      // targets still only pay once.
+      const soql =
+        `SELECT Definition.DeveloperName, Metadata FROM Flow ` +
+        `WHERE Definition.DeveloperName = '${refName.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}' AND Status = 'Active' LIMIT 1`;
+      const rows = await safeQueryRecords<FlowToolingRow>(conn, "/tooling/query", soql);
+      if (!rows) return null;
+      const row = rows[0];
+      const name = row?.Definition?.DeveloperName;
       if (typeof name === "string" && !byName.has(name)) byName.set(name, row);
     }
 
