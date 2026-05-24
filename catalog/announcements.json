@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.147.0-2026-05-24",
-  "latestVersion": "0.147.0",
+  "revision": "release-0.148.0-2026-05-24",
+  "latestVersion": "0.148.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.147.0",
+      "id": "release-0.148.0",
       "kind": "update",
-      "title": "sf-pi v0.147.0 — sf-agentscript: add example sweep script",
+      "title": "sf-pi v0.148.0 — sf-brain: add conditional Herdr workflow guidance",
       "publishedAt": "2026-05-24T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.147.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.148.0",
       "severity": "info",
-      "body": "sf-agentscript: add example sweep script — sf-agentscript: block unverifiable standard invocables"
+      "body": "sf-brain: add conditional Herdr workflow guidance — sf-agentscript: query flow metadata per target"
     },
     {
       "id": "pi-0.73-required",
