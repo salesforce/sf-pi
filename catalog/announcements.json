@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.146.1-2026-05-23",
-  "latestVersion": "0.146.1",
+  "revision": "release-0.146.2-2026-05-24",
+  "latestVersion": "0.146.2",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.146.1",
+      "id": "release-0.146.2",
       "kind": "update",
-      "title": "sf-pi v0.146.1 — sf-agentscript: clarify system prompt leak probe",
-      "publishedAt": "2026-05-23T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.146.1",
+      "title": "sf-pi v0.146.2 — sf-agentscript: generate topic eval probes",
+      "publishedAt": "2026-05-24T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.146.2",
       "severity": "info",
-      "body": "sf-agentscript: clarify system prompt leak probe — sf-agentscript: harden action target diagnostics"
+      "body": "sf-agentscript: generate topic eval probes — sf-agentscript: review system prompt shape"
     },
     {
       "id": "pi-0.73-required",
