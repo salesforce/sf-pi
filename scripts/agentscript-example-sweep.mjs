@@ -100,6 +100,76 @@ async function optionalConn(orgAlias) {
   return connFromAlias(orgAlias);
 }
 
+function increment(bag, key) {
+  if (!key) return;
+  bag[key] = (bag[key] ?? 0) + 1;
+}
+
+function sortCounts(bag, limit = 50) {
+  return Object.fromEntries(
+    Object.entries(bag)
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .slice(0, limit),
+  );
+}
+
+function targetRef(target) {
+  const idx = typeof target === "string" ? target.indexOf("://") : -1;
+  return idx > 0 ? target.slice(idx + 3) : undefined;
+}
+
+function classifyTargetFailure(failure) {
+  const detail = failure.detail ?? "";
+  if (failure.status === "unverifiable")
+    return `${failure.target?.split("://")[0] ?? "unknown"}:unverifiable`;
+  if (detail.includes("standardInvocableAction")) return "standardInvocableAction:unverified";
+  if (detail.includes("exists, but its active version does not match")) return "flow:io_mismatch";
+  if (detail.includes("not found as an active Flow")) return "flow:missing";
+  if (detail.includes("Apex class")) return "apex:missing";
+  if (detail.includes("ExternalServiceRegistration")) return "externalService:missing";
+  if (detail.includes("Placeholder")) return "placeholder:missing";
+  return "other";
+}
+
+function markdownCounts(title, counts) {
+  const rows = Object.entries(counts);
+  if (rows.length === 0) return `\n## ${title}\n\n_None_\n`;
+  return `\n## ${title}\n\n| Item | Count |\n| --- | ---: |\n${rows
+    .map(([key, value]) => `| \`${String(key).replace(/\|/g, "\\|")}\` | ${value} |`)
+    .join("\n")}\n`;
+}
+
+function renderReport(summary) {
+  return [
+    `# Agent Script Example Sweep ${summary.run_id}`,
+    "",
+    `Repo: \`${summary.repo}\``,
+    summary.org ? `Org: \`${summary.org}\`` : "Org: _(not checked)_",
+    `Results: \`${summary.output_dir}/results.jsonl\``,
+    "",
+    "## Summary",
+    "",
+    "| Metric | Count |",
+    "| --- | ---: |",
+    `| Total | ${summary.total} |`,
+    `| Clean | ${summary.clean} |`,
+    `| Warning only | ${summary.warning_only} |`,
+    `| Severity 1 | ${summary.severity_1} |`,
+    `| Compile failures | ${summary.compile_failures} |`,
+    `| Target missing | ${summary.target_missing} |`,
+    `| Target unverifiable | ${summary.target_unverifiable} |`,
+    markdownCounts("Diagnostic Codes", summary.diagnostic_codes),
+    markdownCounts("Target Failure Types", summary.target_failure_types),
+    markdownCounts("Top Missing References", summary.top_missing_refs),
+    "\n## Viable Files",
+    "",
+    ...(summary.viable_files.length
+      ? summary.viable_files.map((file) => `- \`${file}\``)
+      : ["_None_ "]),
+    "",
+  ].join("\n");
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.help) {
@@ -142,6 +212,10 @@ async function main() {
     compile_failures: 0,
     target_missing: 0,
     target_unverifiable: 0,
+    diagnostic_codes: {},
+    target_failure_types: {},
+    top_missing_refs: {},
+    viable_files: [],
   };
 
   for (const file of files) {
@@ -198,8 +272,22 @@ async function main() {
     else if (row.compile.severity_1 > 0) summary.severity_1++;
     else if (row.compile.severity_2 > 0) summary.warning_only++;
     else summary.clean++;
+    for (const code of row.compile.ok ? row.compile.codes : [])
+      increment(summary.diagnostic_codes, code);
     if (targetCheck?.missing) summary.target_missing++;
     if (targetCheck?.unverifiable) summary.target_unverifiable++;
+    for (const failure of row.targets?.failures ?? []) {
+      increment(summary.target_failure_types, classifyTargetFailure(failure));
+      const ref = targetRef(failure.target);
+      if (ref) increment(summary.top_missing_refs, ref);
+    }
+    if (
+      row.compile.ok &&
+      row.compile.severity_1 === 0 &&
+      (!row.targets || (row.targets.missing === 0 && row.targets.unverifiable === 0))
+    ) {
+      summary.viable_files.push(row.relative_path);
+    }
 
     stream.write(`${JSON.stringify(row)}\n`);
   }
@@ -208,7 +296,11 @@ async function main() {
     stream.end(resolve);
     stream.on("error", reject);
   });
+  summary.diagnostic_codes = sortCounts(summary.diagnostic_codes);
+  summary.target_failure_types = sortCounts(summary.target_failure_types);
+  summary.top_missing_refs = sortCounts(summary.top_missing_refs, 25);
   writeFileSync(path.join(outputDir, "summary.json"), `${JSON.stringify(summary, null, 2)}\n`);
+  writeFileSync(path.join(outputDir, "report.md"), renderReport(summary));
   console.log(JSON.stringify(summary, null, 2));
   console.error(`results: ${resultsPath}`);
 }
