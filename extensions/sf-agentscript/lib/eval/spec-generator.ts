@@ -258,7 +258,7 @@ function buildRoutingTest(
       actualPath: `{turn1.response}`,
       rubric:
         `The agent's response should be relevant to the user's request to "${escapeForRubric(utterance)}". ` +
-        `It should stay on the supported domain. If the requested path depends on prerequisite workflow steps, identity verification, or missing user inputs, the agent may ask for those prerequisites or explain the required sequence instead of completing the path immediately.`,
+        `A passing response stays on the supported domain and is allowed to ask clarifying questions, ask whether the user wants human assistance, request identity verification, request missing inputs, or explain prerequisite workflow steps instead of completing the path immediately.`,
     }),
   );
 
@@ -438,10 +438,21 @@ function synthesizeUtterance(sa: ComponentSummary): string | undefined {
   if (sa.description) {
     const firstSentence = sa.description.split(/[.!?](\s|$)/)[0]?.trim();
     if (firstSentence) {
-      return `I need help with ${firstSentence.toLowerCase()}.`;
+      return `I need help with ${normalizeDescriptionForUtterance(firstSentence)}.`;
     }
   }
   return `I need help with the ${human} path.`;
+}
+
+function normalizeDescriptionForUtterance(description: string): string {
+  return description
+    .trim()
+    .replace(
+      /^(handles|manages|provides|creates|attempts|assesses|conducts|presents|retrieves|analyzes|evaluates|calculates|fetches|initiates|notifies|converts|updates|processes)\b\s*/i,
+      "",
+    )
+    .replace(/^the\s+/i, "the ")
+    .toLowerCase();
 }
 
 function synthesizeActionUtterance(a: ComponentSummary): string | undefined {
