@@ -517,6 +517,16 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.146.2](https://github.com/salesforce/sf-pi/compare/v0.146.1...v0.146.2) (2026-05-24)
+
+
+### Bug Fixes
+
+* **sf-agentscript:** generate topic eval probes ([dc1aeaf](https://github.com/salesforce/sf-pi/commit/dc1aeaf59629ca9893c7b15038ea9a37971f7851))
+* **sf-agentscript:** review system prompt shape ([e859235](https://github.com/salesforce/sf-pi/commit/e859235e02b49b0e244938ee1c94807bf48b5c59))
+* **sf-agentscript:** soften generated eval probes ([67ac270](https://github.com/salesforce/sf-pi/commit/67ac2703e10f1d044c510adc59c40c1ab7c74509))
+* **sf-agentscript:** use turn responses in generated evals ([53ab182](https://github.com/salesforce/sf-pi/commit/53ab18200db1f6d95f0d9738991a6da8872881cc))
+
 ## [0.146.1](https://github.com/salesforce/sf-pi/compare/v0.146.0...v0.146.1) (2026-05-23)
 
 
