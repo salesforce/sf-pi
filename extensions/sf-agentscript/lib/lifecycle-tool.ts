@@ -337,6 +337,7 @@ async function actionPublish(
       conn,
       agentApiConn,
       agentSource: source,
+      agentFilePath: filePath,
       bundleDir,
       agentApiName,
       activate: input.activate ?? false,

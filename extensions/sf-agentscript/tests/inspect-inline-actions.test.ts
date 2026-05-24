@@ -33,6 +33,10 @@ system:
 
 start_agent agent_router:
    description: "router"
+   actions:
+      route_check:
+         description: "Checks route"
+         target: "flow://RouteCheck"
    reasoning:
       instructions:|
          test
@@ -54,19 +58,21 @@ subagent work:
       instructions: "do something"
 `;
 
-describe("inspectFile walks inline subagent actions", () => {
-  it("surfaces actions declared inside `subagent.<X>.actions:`", async () => {
+describe("inspectFile walks inline actions", () => {
+  it("surfaces actions declared inside start_agent and subagent action blocks", async () => {
     const filePath = path.join(workDir, "InlineActionsTest.agent");
     await writeFile(filePath, INLINE_AGENT_SOURCE, "utf-8");
     const inspect = await inspectFile(filePath);
     expect(inspect.ok).toBe(true);
     const actions = inspect.components?.actions ?? [];
-    expect(actions.length).toBe(2);
+    expect(actions.length).toBe(3);
     const byName = new Map(actions.map((a) => [a.name, a]));
+    expect(byName.get("route_check")?.target).toBe("flow://RouteCheck");
+    expect(byName.get("route_check")?.parent).toBe("start_agent.agent_router");
     expect(byName.get("classify_issue")?.target).toBe("apex://IssueClassifier");
     expect(byName.get("classify_issue")?.parent).toBe("subagent.work");
     expect(byName.get("log_event")?.target).toBe("flow://LogEvent");
     expect(byName.get("log_event")?.parent).toBe("subagent.work");
-    expect(inspect.stats?.actions).toBe(2);
+    expect(inspect.stats?.actions).toBe(3);
   });
 });

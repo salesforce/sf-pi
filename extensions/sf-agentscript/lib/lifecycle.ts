@@ -186,6 +186,8 @@ export interface PublishOptions {
   /** Named-user JWT connection for `/einstein/ai-agent/*` SFAP routes. Defaults to conn for tests/back-compat. */
   agentApiConn?: Connection;
   agentSource: string;
+  /** Absolute path to the local .agent file used for source-aware preflights. */
+  agentFilePath?: string;
   /**
    * Path to the on-disk bundle directory that contains both the
    * `<agentApiName>.agent` file and the `<agentApiName>.bundle-meta.xml`
@@ -362,7 +364,8 @@ export async function publishAgent(opts: PublishOptions): Promise<PublishResult>
         // declarations under `subagent.<X>.actions:` / `topic.<X>.actions:`.
         // CSA-style recipes declare every action inline, so a top-level-only
         // walk would silently miss them all and the pre-flight would no-op.
-        const agentPath = path.join(opts.bundleDir, `${opts.agentApiName}.agent`);
+        const agentPath =
+          opts.agentFilePath ?? path.join(opts.bundleDir, `${opts.agentApiName}.agent`);
         const inspect = await inspectFile(agentPath);
         const actions = inspect.ok ? (inspect.components?.actions ?? []) : [];
         const targeted = actions.filter((a) => typeof a.target === "string" && a.target.length > 0);

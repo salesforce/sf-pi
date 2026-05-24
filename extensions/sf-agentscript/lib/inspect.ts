@@ -476,6 +476,14 @@ export async function inspectFile(filePath: string): Promise<InspectResult> {
   // its parent component recorded so downstream consumers (publish
   // pre-flight, check_targets) can attribute it back to the source block.
   const inlineActions: ComponentSummary[] = [];
+  for (const [parentName, entry] of namedMapEntries(ast.start_agent)) {
+    const inner = (entry as { actions?: unknown }).actions;
+    for (const [aName, aEntry] of namedMapEntries(inner)) {
+      const summary = summarizeWithRefs(aName, aEntry);
+      summary.parent = `start_agent.${parentName}`;
+      inlineActions.push(summary);
+    }
+  }
   for (const [parentName, entry] of namedMapEntries(ast.subagent)) {
     const inner = (entry as { actions?: unknown }).actions;
     for (const [aName, aEntry] of namedMapEntries(inner)) {
