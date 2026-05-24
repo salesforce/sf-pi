@@ -517,6 +517,15 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.146.4](https://github.com/salesforce/sf-pi/compare/v0.146.3...v0.146.4) (2026-05-24)
+
+
+### Bug Fixes
+
+* **sf-agentscript:** inspect start agent actions ([3257fea](https://github.com/salesforce/sf-pi/commit/3257fea1ea0a3b267a7e311d5de185ab3b2962ae))
+* **sf-agentscript:** narrow target id heuristic ([965761f](https://github.com/salesforce/sf-pi/commit/965761fd2d56f16bdc544642a053eefb5c521c7d))
+* **sf-agentscript:** validate flow action contracts ([57bbb21](https://github.com/salesforce/sf-pi/commit/57bbb217f5a868d45ec01da92ee38b7fcada6e11))
+
 ## [0.146.3](https://github.com/salesforce/sf-pi/compare/v0.146.2...v0.146.3) (2026-05-24)
 
 
