@@ -202,13 +202,10 @@ describe("generateSpec", () => {
     }
   });
 
-  test("bot_response_rating carries every required wire field (regression: API rejects without actual + utterance, scores 0 with the wrong actual path)", () => {
-    // Verified against the live eval API on Example_Service_Assistant:
-    //   - omitting actual + utterance → HTTP 422 'Field required'
-    //   - `actual: {turnId.response}` → HTTP 200 but score 0 with
-    //     'bot response is not provided'
-    //   - `actual: {stateId.response.planner_response.lastExecution.message.message}`
-    //     → HTTP 200 with a real LLM-judge score (5.0 polite/relevant)
+  test("bot_response_rating carries every required wire field and reads direct send_message response", () => {
+    // Live examples showed `agent.get_state.lastExecution.message` can lag
+    // behind tool/user-input handoff turns and return the welcome message;
+    // `turn1.response` carries the actual response to the generated utterance.
     const out = generateSpec({
       inspect: fakeInspect({
         subagents: [{ name: "billing", description: "Handles billing." }],
@@ -220,9 +217,7 @@ describe("generateSpec", () => {
         expect(step).toMatchObject({
           type: "evaluator.bot_response_rating",
           utterance: expect.any(String),
-          actual: expect.stringMatching(
-            /^\{state\d+\.response\.planner_response\.lastExecution\.message\.message\}$/,
-          ),
+          actual: "{turn1.response}",
           expected: expect.any(String),
           threshold: 3,
         });
@@ -233,7 +228,7 @@ describe("generateSpec", () => {
     }
   });
 
-  test("safety probes include a get_state step (so bot_response_rating has a state ref to read from)", () => {
+  test("safety probes include a get_state step for debugging parity", () => {
     const out = generateSpec({
       inspect: fakeInspect(),
       includeGuardrail: false,
