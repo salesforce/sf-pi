@@ -140,6 +140,7 @@ extensions/sf-agentscript/
         placeholder.ts      ← implementation module
         prompt-template.ts  ← implementation module
         quick-action.ts     ← implementation module
+        standard-invocable.ts← implementation module
       bundle-type.ts        ← implementation module
       index.ts              ← implementation module
       parse.ts              ← implementation module

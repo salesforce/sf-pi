@@ -79,16 +79,17 @@ describe("checkActionTargets dispatch", () => {
     expect(byName.get("miss_apex")?.metadata_label).toBe("ApexClass");
   });
 
-  it("standardInvocableAction:// always resolves without a network call", async () => {
+  it("standardInvocableAction:// blocks until a precise resolver is available", async () => {
     const conn = fakeConn({});
     const result = await checkActionTargets(conn, [
       { name: "x", target: "standardInvocableAction://emailSimple" },
       { name: "y", target: "https://example.com/webhook" },
       { name: "z", target: "mcp://server-ping" },
     ] as ComponentSummary[]);
-    expect(result.ok).toBe(true);
-    expect(result.resolved).toBe(3);
-    expect(result.missing).toBe(0);
+    expect(result.ok).toBe(false);
+    expect(result.resolved).toBe(2);
+    expect(result.missing).toBe(1);
+    expect(result.targets.find((t) => t.name === "x")?.detail).toMatch(/cannot be verified/);
   });
 
   it("placeholder:// always counts as missing (matches compiler warning)", async () => {

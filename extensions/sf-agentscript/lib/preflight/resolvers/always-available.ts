@@ -3,7 +3,6 @@
  * Resolver for schemes that don't have a queryable SF metadata record
  * but are intended to "just work" at runtime.
  *
- *   standardInvocableAction:// — built-in Salesforce invocable, always available
  *   http:// / https://         — outbound HTTP via External Service / Named Credential
  *   mcp:// / mcpTool://        — MCP server (external)
  *   slack://                   — Slack invocable (external bridge)
@@ -19,7 +18,7 @@
 import type { TargetResolver } from "../types.ts";
 
 export const alwaysAvailableResolver: TargetResolver = {
-  schemes: ["standardInvocableAction", "http", "https", "mcp", "mcpTool", "slack", "byon"],
+  schemes: ["http", "https", "mcp", "mcpTool", "slack", "byon"],
   metadataLabel: "Built-in / external (no pre-flight)",
   async resolve(_conn, names) {
     // Pretend we found everything. The runtime decides.

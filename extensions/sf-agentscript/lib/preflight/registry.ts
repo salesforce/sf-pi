@@ -18,6 +18,7 @@ import { flowResolver } from "./resolvers/flow.ts";
 import { placeholderResolver } from "./resolvers/placeholder.ts";
 import { promptTemplateResolver } from "./resolvers/prompt-template.ts";
 import { quickActionResolver } from "./resolvers/quick-action.ts";
+import { standardInvocableResolver } from "./resolvers/standard-invocable.ts";
 import type { TargetResolver } from "./types.ts";
 
 const RESOLVERS: TargetResolver[] = [
@@ -27,6 +28,7 @@ const RESOLVERS: TargetResolver[] = [
   externalServiceResolver,
   promptTemplateResolver,
   quickActionResolver,
+  standardInvocableResolver,
   alwaysAvailableResolver,
   placeholderResolver,
 ];

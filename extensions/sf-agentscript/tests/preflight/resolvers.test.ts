@@ -265,15 +265,7 @@ describe("quickActionResolver", () => {
 
 describe("alwaysAvailableResolver", () => {
   it("returns Set(allNames) without a network call for all its schemes", async () => {
-    const expected = [
-      "standardInvocableAction",
-      "http",
-      "https",
-      "mcp",
-      "mcpTool",
-      "slack",
-      "byon",
-    ];
+    const expected = ["http", "https", "mcp", "mcpTool", "slack", "byon"];
     expect(new Set(alwaysAvailableResolver.schemes)).toEqual(new Set(expected));
     const { conn } = fakeConn([]);
     const found = await alwaysAvailableResolver.resolve(conn, ["A", "B", "C"]);
