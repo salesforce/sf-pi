@@ -517,6 +517,18 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.147.0](https://github.com/salesforce/sf-pi/compare/v0.146.4...v0.147.0) (2026-05-24)
+
+
+### Features
+
+* **sf-agentscript:** add example sweep script ([ca236fc](https://github.com/salesforce/sf-pi/commit/ca236fcc7c627687432f10adf34bf9ca204a2ea1))
+
+
+### Bug Fixes
+
+* **sf-agentscript:** block unverifiable standard invocables ([2dd48a9](https://github.com/salesforce/sf-pi/commit/2dd48a941b7eb28aab6dba900a7c6ebde924577f))
+
 ## [0.146.4](https://github.com/salesforce/sf-pi/compare/v0.146.3...v0.146.4) (2026-05-24)
 
 
