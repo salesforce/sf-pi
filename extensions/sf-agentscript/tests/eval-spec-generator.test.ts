@@ -33,6 +33,8 @@ describe("generateSpec", () => {
   test("empty agent → only safety + guardrail rows by default", () => {
     const out = generateSpec({ inspect: fakeInspect() });
     expect(out.summary.subagent_tests).toBe(0);
+    expect(out.summary.topic_tests).toBe(0);
+    expect(out.summary.routing_tests).toBe(0);
     expect(out.summary.action_tests).toBe(0);
     expect(out.summary.guardrail_tests).toBe(1);
     expect(out.summary.safety_tests).toBe(SAFETY_PROBES.length);
@@ -40,9 +42,10 @@ describe("generateSpec", () => {
     expect(out.spec.tests.length).toBe(1 + SAFETY_PROBES.length);
   });
 
-  test("emits one routing test per non-start subagent", () => {
+  test("emits one routing test per non-start subagent and legacy topic", () => {
     const out = generateSpec({
       inspect: fakeInspect({
+        topics: [{ name: "orders", description: "Tracks orders." }],
         subagents: [
           { name: "start_agent", description: "Routing dispatcher." },
           { name: "billing", description: "Handles billing inquiries." },
@@ -53,8 +56,14 @@ describe("generateSpec", () => {
       includeGuardrail: false,
     });
     expect(out.summary.subagent_tests).toBe(2);
+    expect(out.summary.topic_tests).toBe(1);
+    expect(out.summary.routing_tests).toBe(3);
     expect(out.summary.skipped_subagents).toEqual(["start_agent"]);
-    expect(out.spec.tests.map((t) => t.id)).toEqual(["subagent_billing", "subagent_appointments"]);
+    expect(out.spec.tests.map((t) => t.id)).toEqual([
+      "subagent_billing",
+      "subagent_appointments",
+      "topic_orders",
+    ]);
   });
 
   test("send_message uses session JSONPath; topic assertion uses state output", () => {
@@ -127,7 +136,7 @@ describe("generateSpec", () => {
     expect("context_variables" in send).toBe(false);
   });
 
-  test("action probes — only top-level actions with a target", () => {
+  test("action probes include inline and top-level actions with a target", () => {
     const out = generateSpec({
       inspect: fakeInspect({
         subagents: [],
@@ -137,7 +146,7 @@ describe("generateSpec", () => {
             description: "Look up the customer's current balance.",
             target: "apex://LookupBalance",
           },
-          // Inline action — should be skipped (covered by parent subagent test).
+          // Inline action — still useful as a direct action-invocation smoke row.
           {
             name: "send_email",
             description: "Send confirmation email.",
@@ -151,9 +160,9 @@ describe("generateSpec", () => {
       includeSafetyProbes: false,
       includeGuardrail: false,
     });
-    expect(out.summary.action_tests).toBe(1);
+    expect(out.summary.action_tests).toBe(2);
     expect(out.summary.skipped_actions).toEqual(["describe_thing"]);
-    expect(out.spec.tests[0].id).toBe("action_lookup_balance");
+    expect(out.spec.tests.map((t) => t.id)).toEqual(["action_lookup_balance", "action_send_email"]);
     const assert = out.spec.tests[0].steps.find((s) => s.type === "evaluator.string_assertion")!;
     expect(assert.expected).toBe("lookup_balance");
     expect(assert.operator).toBe("contains");

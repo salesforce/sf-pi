@@ -92,7 +92,12 @@ export interface GenerateSpecResult {
 
 export interface GeneratedSpecSummary {
   total_tests: number;
+  /** Backward-compatible count for explicit subagent blocks. */
   subagent_tests: number;
+  /** Routing tests generated from deprecated/legacy topic blocks. */
+  topic_tests: number;
+  /** Total routing tests across topic + subagent blocks. */
+  routing_tests: number;
   action_tests: number;
   guardrail_tests: number;
   safety_tests: number;
@@ -123,12 +128,13 @@ export function generateSpec(opts: GenerateSpecOptions): GenerateSpecResult {
   const skippedActions: string[] = [];
 
   let subagentCount = 0;
+  let topicCount = 0;
   let actionCount = 0;
 
   // Subagent routing tests — one per non-start subagent.
   if (includeSubagent) {
     for (const sa of components.subagents ?? []) {
-      if (subagentCount + actionCount >= maxFunctional) break;
+      if (subagentCount + topicCount + actionCount >= maxFunctional) break;
       const slug = slugify(sa.name);
       // start_agent is the dispatcher — testing routing TO it is meaningless.
       if (slug === "start_agent" || slug === "start") {
@@ -140,18 +146,32 @@ export function generateSpec(opts: GenerateSpecOptions): GenerateSpecResult {
         skippedSubagents.push(sa.name);
         continue;
       }
-      tests.push(buildSubagentTest(sa.name, slug, utterance, ctx));
+      tests.push(buildRoutingTest("subagent", sa.name, slug, utterance, ctx));
       subagentCount++;
     }
   }
 
-  // Action invocation tests — one per top-level action with a target.
+  // Topic routing tests — legacy examples and old syntax still use topic
+  // blocks. Treat them as routable units so generated specs contain
+  // functional rows instead of only guardrail/safety tests.
+  if (includeSubagent) {
+    for (const topic of components.topics ?? []) {
+      if (subagentCount + topicCount + actionCount >= maxFunctional) break;
+      const slug = slugify(topic.name);
+      const utterance = synthesizeUtterance(topic);
+      if (!utterance) {
+        skippedSubagents.push(topic.name);
+        continue;
+      }
+      tests.push(buildRoutingTest("topic", topic.name, slug, utterance, ctx));
+      topicCount++;
+    }
+  }
+
+  // Action invocation tests — one per action with a target.
   if (includeAction) {
     for (const a of components.actions ?? []) {
-      if (subagentCount + actionCount >= maxFunctional) break;
-      // Skip inline actions (declared inside a topic/subagent body) — they
-      // already get exercised through the subagent routing test.
-      if (a.parent) continue;
+      if (subagentCount + topicCount + actionCount >= maxFunctional) break;
       if (!a.target) {
         skippedActions.push(a.name);
         continue;
@@ -187,6 +207,8 @@ export function generateSpec(opts: GenerateSpecOptions): GenerateSpecResult {
     summary: {
       total_tests: tests.length,
       subagent_tests: subagentCount,
+      topic_tests: topicCount,
+      routing_tests: subagentCount + topicCount,
       action_tests: actionCount,
       guardrail_tests: guardrailCount,
       safety_tests: safetyCount,
@@ -200,15 +222,16 @@ export function generateSpec(opts: GenerateSpecOptions): GenerateSpecResult {
 // Test builders
 // -------------------------------------------------------------------------------------------------
 
-function buildSubagentTest(
-  subagentName: string,
+function buildRoutingTest(
+  kind: "subagent" | "topic",
+  targetName: string,
   slug: string,
   utterance: string,
   ctx: WireContextVariable[],
 ): EvalTest {
-  const expectedTopic = subagentName;
+  const expectedTopic = targetName;
   return {
-    id: `subagent_${slug}`,
+    id: `${kind}_${slug}`,
     steps: [
       sessionStep(),
       sendMessageStep(`turn1`, utterance, ctx),
@@ -227,7 +250,7 @@ function buildSubagentTest(
         actualPath: `{state1.response.planner_response.lastExecution.message.message}`,
         rubric:
           `The agent's response should be relevant to the user's request to "${escapeForRubric(utterance)}". ` +
-          `It should engage the topic, not refuse, and stay on the supported domain.`,
+          `It should engage the ${kind}, not refuse, and stay on the supported domain.`,
       }),
     ],
   };
