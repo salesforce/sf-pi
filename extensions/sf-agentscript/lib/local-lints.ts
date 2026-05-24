@@ -123,7 +123,15 @@ function refNameOf(target: string | undefined): string | undefined {
 
 function targetRefLooksLikeSalesforceId(target: string | undefined): boolean {
   const ref = refNameOf(target);
-  return !!ref && /^[a-zA-Z0-9]{15}(?:[a-zA-Z0-9]{3})?$/.test(ref);
+  // Match common Salesforce key prefixes instead of every 15-char token.
+  // Names such as standardInvocableAction://SendEmailAction are valid and
+  // happen to be 15 characters; broad length-only detection is too noisy.
+  return (
+    !!ref &&
+    /^(?:00D|005|001|003|500|301|300|01p|0X9|0Xx|0Mw|0Af)[A-Za-z0-9]{12}(?:[A-Za-z0-9]{3})?$/.test(
+      ref,
+    )
+  );
 }
 
 function parseConfig(lines: LineInfo[]): { agentType?: string; defaultAgentUserLine?: LineInfo } {

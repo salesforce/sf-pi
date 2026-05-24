@@ -119,6 +119,35 @@ describe("checkAgentScriptFile (integration)", () => {
     expect(missing?.severity).toBe(1);
   });
 
+  it("does not flag 15-character action target names that are not Salesforce ids", async () => {
+    const file = writeTempAgent(
+      [
+        "system:",
+        '    instructions: "You are helpful."',
+        "",
+        "config:",
+        '    agent_name: "HelloWorldBot"',
+        '    default_agent_user: "hello@world.com"',
+        "",
+        "start_agent hello_world:",
+        '    description: "Entry topic."',
+        "    actions:",
+        "        email:",
+        '            description: "Send email."',
+        "            outputs:",
+        "                ok: string",
+        '            target: "standardInvocableAction://SendEmailAction"',
+        "    reasoning:",
+        "        actions:",
+        "            send: @actions.email",
+        "",
+      ].join("\n"),
+    );
+
+    const result = await checkAgentScriptFile(file);
+    expect(result.diagnostics.filter((d) => d.code === "target-ref-looks-like-id")).toHaveLength(0);
+  });
+
   it("flags target references that look like Salesforce record ids", async () => {
     const file = writeTempAgent(
       [
