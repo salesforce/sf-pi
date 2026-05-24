@@ -258,7 +258,7 @@ function buildRoutingTest(
       actualPath: `{turn1.response}`,
       rubric:
         `The agent's response should be relevant to the user's request to "${escapeForRubric(utterance)}". ` +
-        `It should engage the ${kind}, ask for prerequisite information if needed, and stay on the supported domain.`,
+        `It should stay on the supported domain. If the requested path depends on prerequisite workflow steps, identity verification, or missing user inputs, the agent may ask for those prerequisites or explain the required sequence instead of completing the path immediately.`,
     }),
   );
 
@@ -438,10 +438,10 @@ function synthesizeUtterance(sa: ComponentSummary): string | undefined {
   if (sa.description) {
     const firstSentence = sa.description.split(/[.!?](\s|$)/)[0]?.trim();
     if (firstSentence) {
-      return `Please route me to the ${human} path now. I want to ${firstSentence.toLowerCase()}.`;
+      return `I need help with ${firstSentence.toLowerCase()}.`;
     }
   }
-  return `Please route me to the ${human} path now.`;
+  return `I need help with the ${human} path.`;
 }
 
 function synthesizeActionUtterance(a: ComponentSummary): string | undefined {

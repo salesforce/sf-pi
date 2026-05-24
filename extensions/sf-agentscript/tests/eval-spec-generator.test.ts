@@ -77,8 +77,7 @@ describe("generateSpec", () => {
     const test = out.spec.tests[0];
     const send = test.steps.find((s) => s.type === "agent.send_message")!;
     expect(send.session_id).toBe("$.outputs[0].session_id");
-    expect(send.utterance).toContain("route me to the billing path");
-    expect(send.utterance).toContain("handles billing");
+    expect(send.utterance).toContain("I need help with handles billing");
 
     const assert = test.steps.find((s) => s.type === "evaluator.string_assertion")!;
     expect(assert.actual).toBe("{state1.response.planner_response.lastExecution.topic}");
