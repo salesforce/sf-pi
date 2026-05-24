@@ -229,30 +229,42 @@ function buildRoutingTest(
   utterance: string,
   ctx: WireContextVariable[],
 ): EvalTest {
-  const expectedTopic = targetName;
-  return {
-    id: `${kind}_${slug}`,
-    steps: [
-      sessionStep(),
-      sendMessageStep(`turn1`, utterance, ctx),
-      getStateStep(`state1`),
-      // Assert the planner routed to the expected subagent. The runtime
-      // exposes the topic at lastExecution.topic on the state output.
+  const steps: EvalStep[] = [
+    sessionStep(),
+    sendMessageStep(`turn1`, utterance, ctx),
+    getStateStep(`state1`),
+  ];
+
+  // Subagent routing is the modern shape and has a stable planner topic to
+  // assert. Legacy topic blocks often sit behind authentication/start-router
+  // gates; exact topic assertions make starter specs fail even when the
+  // response correctly asks for prerequisite information. Keep topic probes
+  // as LLM-judged smoke rows.
+  if (kind === "subagent") {
+    steps.push(
       stringAssertionStep({
         id: `eval_topic_${slug}`,
         actualPath: `{state1.response.planner_response.lastExecution.topic}`,
-        expected: expectedTopic,
+        expected: targetName,
         operator: "equals",
       }),
-      botResponseRatingStep({
-        id: `eval_response_${slug}`,
-        utterance,
-        actualPath: `{state1.response.planner_response.lastExecution.message.message}`,
-        rubric:
-          `The agent's response should be relevant to the user's request to "${escapeForRubric(utterance)}". ` +
-          `It should engage the ${kind}, not refuse, and stay on the supported domain.`,
-      }),
-    ],
+    );
+  }
+
+  steps.push(
+    botResponseRatingStep({
+      id: `eval_response_${slug}`,
+      utterance,
+      actualPath: `{state1.response.planner_response.lastExecution.message.message}`,
+      rubric:
+        `The agent's response should be relevant to the user's request to "${escapeForRubric(utterance)}". ` +
+        `It should engage the ${kind}, ask for prerequisite information if needed, and stay on the supported domain.`,
+    }),
+  );
+
+  return {
+    id: `${kind}_${slug}`,
+    steps,
   };
 }
 
@@ -268,17 +280,10 @@ function buildActionTest(
       sessionStep(),
       sendMessageStep(`turn1`, utterance, ctx),
       getStateStep(`state1`),
-      // Action invocation is best-asserted via the planner's
-      // invokedActions array. We use a string_assertion that the action
-      // name appears in the comma-joined invokedActions value (the eval
-      // API doesn't natively support array-contains on this path; we
-      // assert against a substring of the raw JSON).
-      stringAssertionStep({
-        id: `eval_action_${slug}`,
-        actualPath: `{state1.response.planner_response.lastExecution.invokedActions}`,
-        expected: actionName,
-        operator: "contains",
-      }),
+      // Starter action probes are intentionally LLM-judged only. Many actions
+      // require slot-filled inputs; a good first-turn response asks for those
+      // values rather than invoking the target immediately. Hand-written specs
+      // can add exact invokedActions assertions once they provide all inputs.
       botResponseRatingStep({
         id: `eval_response_action_${slug}`,
         utterance,

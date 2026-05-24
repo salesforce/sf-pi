@@ -66,7 +66,7 @@ describe("generateSpec", () => {
     ]);
   });
 
-  test("send_message uses session JSONPath; topic assertion uses state output", () => {
+  test("subagent send_message uses session JSONPath; topic assertion uses state output", () => {
     const out = generateSpec({
       inspect: fakeInspect({
         subagents: [{ name: "billing", description: "Handles billing." }],
@@ -136,6 +136,24 @@ describe("generateSpec", () => {
     expect("context_variables" in send).toBe(false);
   });
 
+  test("legacy topic probes omit exact topic assertions", () => {
+    const out = generateSpec({
+      inspect: fakeInspect({
+        topics: [{ name: "orders", description: "Tracks orders." }],
+      }),
+      includeActionTests: false,
+      includeSafetyProbes: false,
+      includeGuardrail: false,
+    });
+    expect(out.spec.tests[0].id).toBe("topic_orders");
+    expect(out.spec.tests[0].steps.some((s) => s.type === "evaluator.string_assertion")).toBe(
+      false,
+    );
+    expect(out.spec.tests[0].steps.some((s) => s.type === "evaluator.bot_response_rating")).toBe(
+      true,
+    );
+  });
+
   test("action probes include inline and top-level actions with a target", () => {
     const out = generateSpec({
       inspect: fakeInspect({
@@ -163,9 +181,11 @@ describe("generateSpec", () => {
     expect(out.summary.action_tests).toBe(2);
     expect(out.summary.skipped_actions).toEqual(["describe_thing"]);
     expect(out.spec.tests.map((t) => t.id)).toEqual(["action_lookup_balance", "action_send_email"]);
-    const assert = out.spec.tests[0].steps.find((s) => s.type === "evaluator.string_assertion")!;
-    expect(assert.expected).toBe("lookup_balance");
-    expect(assert.operator).toBe("contains");
+    expect(out.spec.tests[0].steps.some((s) => s.type === "evaluator.string_assertion")).toBe(
+      false,
+    );
+    const rating = out.spec.tests[0].steps.find((s) => s.type === "evaluator.bot_response_rating")!;
+    expect(rating.expected).toMatch(/attempt the "lookup_balance" action/);
   });
 
   test("safety probes are included by default and use bot_response_rating", () => {
