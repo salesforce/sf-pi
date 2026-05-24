@@ -713,6 +713,20 @@ export function buildLocalDiagnostics(source: string): AgentScriptDiagnostic[] {
     }
 
     const scheme = schemeOf(action.target);
+    const refName = refNameOf(action.target);
+    if (scheme === "apex" && refName?.includes(".") && action.targetLine !== undefined) {
+      diagnostics.push(
+        diagnostic(
+          lines[action.targetLine],
+          "apex-target-method-suffix",
+          "apex:// targets should reference the invocable Apex class API name, not Class.method. Use apex://MyInvocableClass and expose one @InvocableMethod on that class.",
+          2,
+          action.target,
+          { action: action.name, target: action.target, ref_name: refName },
+        ),
+      );
+    }
+
     for (const item of collectNumericActionIo(action)) {
       diagnostics.push(
         diagnostic(item.line, "numeric-action-io", numericMessage(scheme), 2, "number", {

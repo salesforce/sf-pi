@@ -119,6 +119,37 @@ describe("checkAgentScriptFile (integration)", () => {
     expect(missing?.severity).toBe(1);
   });
 
+  it("flags apex targets that include a method suffix", async () => {
+    const file = writeTempAgent(
+      [
+        "system:",
+        '    instructions: "You are helpful."',
+        "",
+        "config:",
+        '    agent_name: "HelloWorldBot"',
+        '    default_agent_user: "hello@world.com"',
+        "",
+        "start_agent hello_world:",
+        '    description: "Entry topic."',
+        "    actions:",
+        "        update_order:",
+        '            description: "Update order."',
+        "            outputs:",
+        "                ok: boolean",
+        '            target: "apex://OrderController.updateOrder"',
+        "    reasoning:",
+        "        actions:",
+        "            update: @actions.update_order",
+        "",
+      ].join("\n"),
+    );
+
+    const result = await checkAgentScriptFile(file);
+    const refs = result.diagnostics.filter((d) => d.code === "apex-target-method-suffix");
+    expect(refs).toHaveLength(1);
+    expect(refs[0].severity).toBe(2);
+  });
+
   it("does not flag 15-character action target names that are not Salesforce ids", async () => {
     const file = writeTempAgent(
       [
