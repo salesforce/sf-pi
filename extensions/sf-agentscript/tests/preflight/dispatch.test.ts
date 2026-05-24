@@ -17,7 +17,7 @@ import type { ComponentSummary } from "../../lib/inspect.ts";
  * referenced (parsed out of the URL). Resolvers that miss the sObject
  * lookup get `[]` and produce missing/unverifiable verdicts.
  */
-function fakeConn(byObject: Record<string, Array<Record<string, string>>>) {
+function fakeConn(byObject: Record<string, Array<Record<string, unknown>>>) {
   const handler = vi.fn(async (options: { url: string }) => {
     const url = decodeURIComponent(options.url);
     for (const [sobject, rows] of Object.entries(byObject)) {
@@ -31,7 +31,7 @@ function fakeConn(byObject: Record<string, Array<Record<string, string>>>) {
 describe("checkActionTargets dispatch", () => {
   it("routes flow + apex + agentforce + externalService through their resolvers", async () => {
     const conn = fakeConn({
-      FlowDefinitionView: [{ ApiName: "Foo" }],
+      Flow: [{ Definition: { DeveloperName: "Foo" }, Metadata: {} }],
       ApexClass: [
         {
           Name: "Bar",
@@ -60,7 +60,7 @@ describe("checkActionTargets dispatch", () => {
 
   it("flags missing names per resolver, allows partial pass", async () => {
     const conn = fakeConn({
-      FlowDefinitionView: [{ ApiName: "Found" }],
+      Flow: [{ Definition: { DeveloperName: "Found" }, Metadata: {} }],
       ApexClass: [],
     });
     const result = await checkActionTargets(conn, [
@@ -114,7 +114,9 @@ describe("checkActionTargets dispatch", () => {
   });
 
   it("dedups bucketed queries — same scheme + same name only emits one IN-list entry", async () => {
-    const handler = vi.fn(async () => ({ records: [{ ApiName: "X" }] }));
+    const handler = vi.fn(async () => ({
+      records: [{ Definition: { DeveloperName: "X" }, Metadata: {} }],
+    }));
     const conn = { request: handler } as unknown as Connection;
     const result = await checkActionTargets(conn, [
       { name: "a", target: "flow://X" },

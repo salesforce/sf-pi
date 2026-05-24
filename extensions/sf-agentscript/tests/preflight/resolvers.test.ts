@@ -24,7 +24,7 @@ interface CapturedRequest {
   url?: string;
 }
 
-function fakeConn(rows: Array<Record<string, string>>) {
+function fakeConn(rows: Array<Record<string, unknown>>) {
   const captured: CapturedRequest = {};
   const request = vi.fn(async (options: { url: string }) => {
     captured.url = options.url;
@@ -46,7 +46,6 @@ describe("flowResolver", () => {
     expect(decode(captured.url)).toContain("FROM FlowDefinitionView");
     expect(decode(captured.url)).toContain("ApiName");
     expect(decode(captured.url)).toContain("IsActive = true");
-    expect(decode(captured.url)).not.toContain("ProcessType = 'AutoLaunchedFlow'");
     // Dedup
     const matches = (decode(captured.url).match(/'MyFlow'/g) ?? []).length;
     expect(matches).toBe(1);
@@ -59,6 +58,43 @@ describe("flowResolver", () => {
     expect(
       (conn as unknown as { request: { mock: { calls: unknown[] } } }).request.mock.calls,
     ).toHaveLength(0);
+  });
+
+  it("checks Agent Script I/O names against active Flow variables", async () => {
+    const { conn } = fakeConn([
+      {
+        Definition: { DeveloperName: "MyFlow" },
+        Metadata: {
+          variables: [
+            { name: "order_id", isInput: true, isOutput: false },
+            { name: "status", isInput: false, isOutput: true },
+          ],
+        },
+      },
+    ]);
+    const detailed = await flowResolver.resolveTargets?.(conn, [
+      {
+        name: "ok",
+        target: "flow://MyFlow",
+        scheme: "flow",
+        ref_name: "MyFlow",
+        input_names: ["order_id"],
+        output_names: ["status"],
+      },
+      {
+        name: "bad",
+        target: "flow://MyFlow",
+        scheme: "flow",
+        ref_name: "MyFlow",
+        input_names: ["customer_id"],
+        output_names: ["status"],
+      },
+    ]);
+    expect(detailed?.[0].status).toBe("ok");
+    expect(detailed?.[1].status).toBe("missing");
+    expect(detailed?.[1].reason).toBe("io_mismatch");
+    expect(detailed?.[1].detail).toMatch(/customer_id/);
+    expect(detailed?.[1].data?.actual_inputs).toEqual(["order_id"]);
   });
 
   it("fixHint suggests deploying the Flow", () => {

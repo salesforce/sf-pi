@@ -106,7 +106,7 @@ describe("extractActionTargets", () => {
 // ─── checkActionTargets ───────────────────────────────────────────────────────
 
 describe("checkActionTargets", () => {
-  function fakeConn(records: { sobject: string; rows: Array<Record<string, string>> }[]) {
+  function fakeConn(records: { sobject: string; rows: Array<Record<string, unknown>> }[]) {
     // Mock connRequest by replacing the module's request helper. Easiest:
     // construct a Connection-like stub whose only required attribute is
     // `request` (used by connRequest under the hood).
@@ -122,7 +122,7 @@ describe("checkActionTargets", () => {
 
   it("returns ok when all flows + apex classes resolve", async () => {
     const conn = fakeConn([
-      { sobject: "FlowDefinitionView", rows: [{ ApiName: "LogEvent" }] },
+      { sobject: "Flow", rows: [{ Definition: { DeveloperName: "LogEvent" }, Metadata: {} }] },
       {
         sobject: "ApexClass",
         rows: [
@@ -145,7 +145,7 @@ describe("checkActionTargets", () => {
 
   it("flags missing targets and continues", async () => {
     const conn = fakeConn([
-      { sobject: "FlowDefinitionView", rows: [{ ApiName: "Found" }] },
+      { sobject: "Flow", rows: [{ Definition: { DeveloperName: "Found" }, Metadata: {} }] },
       { sobject: "ApexClass", rows: [] },
     ]);
     const result = await checkActionTargets(conn, [
@@ -159,7 +159,7 @@ describe("checkActionTargets", () => {
     const missingNames = result.targets.filter((t) => t.status === "missing").map((t) => t.name);
     expect(missingNames.sort()).toEqual(["miss_apex", "miss_flow"]);
     const byName = new Map(result.targets.map((t) => [t.name, t]));
-    expect(byName.get("miss_flow")?.detail).toMatch(/active Autolaunched Flow/);
+    expect(byName.get("miss_flow")?.detail).toMatch(/active Flow/);
     expect(byName.get("miss_apex")?.detail).toMatch(/not found in the org/);
   });
 
