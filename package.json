@@ -110,7 +110,7 @@
     "prettier": "^3.6.2",
     "typebox": "^1.1.37",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.59.4",
+    "typescript-eslint": "^8.60.0",
     "vitepress": "^1.6.4",
     "vitest": "^4.1.7"
   },
