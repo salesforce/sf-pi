@@ -517,6 +517,22 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.149.0](https://github.com/salesforce/sf-pi/compare/v0.148.0...v0.149.0) (2026-05-25)
+
+
+### Features
+
+* add dynamic sf herdr lane planning ([069091c](https://github.com/salesforce/sf-pi/commit/069091ce9eea20b42422f49ede656803686851a2))
+* **sf-agentscript:** generate target stubs ([1ee6be8](https://github.com/salesforce/sf-pi/commit/1ee6be8f2450b4570ae8a308a72edb116325145f))
+* **sf-agentscript:** report sweep findings ([e6db818](https://github.com/salesforce/sf-pi/commit/e6db81886f091471c9c2d505625986a2df7d2682))
+
+
+### Bug Fixes
+
+* **sf-agentscript:** detect apex method targets ([c5ddbbd](https://github.com/salesforce/sf-pi/commit/c5ddbbdfb6a29e26c0c76584b902c2e34baa4500))
+* **sf-agentscript:** relax generated prerequisite rubrics ([828a2d3](https://github.com/salesforce/sf-pi/commit/828a2d364169504cdcc1537ca44fb633b480794c))
+* **sf-agentscript:** soften generated routing rubrics ([347ee6c](https://github.com/salesforce/sf-pi/commit/347ee6cd3356fd6a615556d2f5f8fe9218d1fee9))
+
 ## [0.148.0](https://github.com/salesforce/sf-pi/compare/v0.147.0...v0.148.0) (2026-05-24)
 
 
