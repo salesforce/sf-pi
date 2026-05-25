@@ -300,7 +300,7 @@ async function actionCheckTargets(agentFile: string, targetOrg: string | undefin
 }
 
 async function sourceShapeFindings(agentFile: string): Promise<ReviewFinding[]> {
-  let source = "";
+  let source: string;
   try {
     source = await readFile(agentFile, "utf8");
   } catch {
