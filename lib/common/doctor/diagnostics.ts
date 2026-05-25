@@ -12,6 +12,7 @@ import path from "node:path";
 import { getInstalledPiVersion, MIN_PI_VERSION } from "../pi-compat.ts";
 import { normalizeNpmConfigValue, readConfiguredNpmCommand } from "../npm-release-age-policy.ts";
 import { globalAgentPath, globalSettingsPath, projectSettingsPath } from "../pi-paths.ts";
+import { readCachedRuntimeDiagnostics, writeCachedRuntimeDiagnostics } from "./runtime-cache.ts";
 import type {
   AvailableSkillRoot,
   DoctorIssue,
@@ -34,9 +35,14 @@ interface SkillRootCandidate {
   settingsValue?: string;
 }
 
-export function runDoctorDiagnostics(options: { cwd?: string; home?: string } = {}): DoctorReport {
+export type DoctorRuntimeMode = "live" | "cached";
+
+export function runDoctorDiagnostics(
+  options: { cwd?: string; home?: string; runtime?: DoctorRuntimeMode } = {},
+): DoctorReport {
   const cwd = options.cwd ?? process.cwd();
   const home = options.home ?? os.homedir();
+  const runtimeMode = options.runtime ?? "live";
   const globalSettings = readJsonObject(globalSettingsPath());
   const projectSettings = readJsonObject(projectSettingsPath(cwd));
   const effectiveSettings = { ...globalSettings, ...projectSettings };
@@ -49,7 +55,8 @@ export function runDoctorDiagnostics(options: { cwd?: string; home?: string } = 
   const staleSkillPaths = findStaleSkillPaths(effectiveSettings, home);
   const availableSkillRoots = findAvailableSkillRoots(effectiveSettings, home);
   const sfPiPackageDuplicates = findSfPiPackageDuplicates(cwd);
-  const runtime = collectRuntimeDiagnostics();
+  const runtime =
+    runtimeMode === "cached" ? collectStartupRuntimeDiagnostics() : collectRuntimeDiagnostics();
   const piVersion = runtime.piVersion;
   const nodeVersion = runtime.nodeVersion;
   const safeStartRequested = isTruthyEnv(process.env.SF_PI_SAFE_START);
@@ -452,6 +459,52 @@ function findSfPiPackageDuplicates(cwd: string): SfPiPackageDuplicate[] {
 function looksLikeSfPiPackage(source: string): boolean {
   const lower = source.toLowerCase();
   return lower.includes("salesforce/sf-pi") || lower.endsWith("/sf-pi") || lower === "sf-pi";
+}
+
+export function collectStartupRuntimeDiagnostics(): RuntimeDiagnostics {
+  const cached = readCachedRuntimeDiagnostics();
+  if (cached) {
+    return {
+      ...cached,
+      // These two fields are process-local and always cheaper/more accurate
+      // than whatever the previous session persisted.
+      nodeVersion: process.version,
+      nodePath: process.execPath,
+    };
+  }
+
+  const piVersion = getInstalledPiVersion();
+  return {
+    piVersion,
+    requiredPiVersion: MIN_PI_VERSION,
+    nodeVersion: process.version,
+    nodePath: process.execPath,
+    allPiPaths: [],
+    updateAdvice: [],
+  };
+}
+
+let runtimeRefreshInFlight: Promise<RuntimeDiagnostics> | null = null;
+let runtimeLastRefreshAt = 0;
+const RUNTIME_REFRESH_DEDUPE_MS = 5 * 60 * 1000;
+
+export function refreshRuntimeDiagnosticsCache(): Promise<RuntimeDiagnostics> {
+  if (runtimeRefreshInFlight) return runtimeRefreshInFlight;
+  if (runtimeLastRefreshAt && Date.now() - runtimeLastRefreshAt < RUNTIME_REFRESH_DEDUPE_MS) {
+    const cached = readCachedRuntimeDiagnostics();
+    if (cached) return Promise.resolve(cached);
+  }
+  runtimeRefreshInFlight = Promise.resolve()
+    .then(() => {
+      const runtime = collectRuntimeDiagnostics();
+      writeCachedRuntimeDiagnostics(runtime);
+      runtimeLastRefreshAt = Date.now();
+      return runtime;
+    })
+    .finally(() => {
+      runtimeRefreshInFlight = null;
+    });
+  return runtimeRefreshInFlight;
 }
 
 export function collectRuntimeDiagnostics(): RuntimeDiagnostics {

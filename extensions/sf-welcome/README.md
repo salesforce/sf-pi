@@ -173,6 +173,8 @@ extensions/sf-welcome/
     ca-bundle-nudge.ts      ← implementation module
     extension-health.ts     ← implementation module
     font-installer.ts       ← implementation module
+    font-status.ts          ← implementation module
+    node-cert-cache.ts      ← implementation module
     node-cert-status.ts     ← implementation module
     recommendations-status.ts← implementation module
     release-status.ts       ← implementation module

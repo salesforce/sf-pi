@@ -29,7 +29,7 @@ import {
 import { collectRecommendationsStatus } from "./recommendations-status.ts";
 import { readWelcomeState } from "./state-store.ts";
 import { collectCaBundleNudge } from "./ca-bundle-nudge.ts";
-import { readCachedNodeCertStatus } from "./node-cert-status.ts";
+import { readCachedNodeCertStatus } from "./node-cert-cache.ts";
 import { collectInitialPiReleaseStatus, detectSfPiReleaseStatus } from "./release-status.ts";
 import { summarizeAvailableSkillSources } from "../../../lib/common/skill-sources/skill-sources.ts";
 import { getTelemetryState } from "../../../lib/common/privacy/state.ts";
@@ -42,6 +42,7 @@ import {
 // `export type` block below, which does not require a local import.
 import type {
   AnnouncementsSummary,
+  DoctorNudgeSummary,
   LoadedCounts,
   PrivacyStatusSummary,
   SplashData,
@@ -84,12 +85,7 @@ export {
   readCachedSfSkillsStatus,
   writeCachedSfSkillsStatus,
 } from "./sf-skills-status.ts";
-export {
-  detectNodeCertStatus,
-  extractNodeExtraCaCertsValues,
-  readCachedNodeCertStatus,
-  writeCachedNodeCertStatus,
-} from "./node-cert-status.ts";
+export { readCachedNodeCertStatus, writeCachedNodeCertStatus } from "./node-cert-cache.ts";
 export {
   collectInitialPiReleaseStatus,
   detectPiReleaseStatus,
@@ -294,7 +290,10 @@ function shouldShowGatewayStatus(cwd: string, modelName: string, providerName: s
  * splash and footer never disagree. Falls back to a best-effort estimate
  * from local session files when the gateway hasn't populated its cache.
  */
-export function resolveMonthlyUsage(monthlyBudgetFallback: number = 3000): {
+export function resolveMonthlyUsage(
+  monthlyBudgetFallback: number = 3000,
+  options: { includeSessionFallback?: boolean } = {},
+): {
   monthlyCost: number;
   monthlyBudget: number | null;
   monthlyUsageSource: "gateway" | "sessions";
@@ -303,7 +302,12 @@ export function resolveMonthlyUsage(monthlyBudgetFallback: number = 3000): {
   // Narrow once so TS proves non-undefined without a non-null assertion.
   const gatewayUsage = gatewayState.monthlyUsage;
   const usesGateway = !!gatewayUsage;
-  const monthlyCost = gatewayUsage ? gatewayUsage.spend : estimateMonthlyCost();
+  const includeSessionFallback = options.includeSessionFallback !== false;
+  const monthlyCost = gatewayUsage
+    ? gatewayUsage.spend
+    : includeSessionFallback
+      ? estimateMonthlyCost()
+      : 0;
   // Gateway budgets with no ceiling come through as 0 or a sentinel value.
   // Treat anything non-positive as "unlimited" (null → ∞ on render).
   const gatewayBudget = gatewayState.monthlyUsage?.maxBudget;
@@ -325,6 +329,7 @@ export function collectInitialSplashData(
   providerName: string,
   monthlyBudgetFallback: number = 3000,
   cwd?: string,
+  options: { doctor?: DoctorNudgeSummary } = {},
 ): SplashData {
   const gatewayState = getMonthlyUsageState();
   const gatewayUsage = gatewayState.monthlyUsage;
@@ -360,7 +365,10 @@ export function collectInitialSplashData(
     sfPiRelease: detectSfPiReleaseStatus(cwd),
     piRelease: collectInitialPiReleaseStatus(),
     nodeCert: { kind: "checking", loading: true },
-    doctor: summarizeStartupDoctorNudge(runDoctorDiagnostics()) ?? undefined,
+    doctor:
+      options.doctor ??
+      summarizeStartupDoctorNudge(runDoctorDiagnostics({ cwd, runtime: "cached" })) ??
+      undefined,
     privacy: collectPrivacyStatus(),
   };
 }
@@ -370,11 +378,19 @@ export function collectSplashData(
   providerName: string,
   cwd: string,
   monthlyBudgetFallback: number = 3000,
+  options: {
+    includeLoadedCounts?: boolean;
+    includeSessionCostFallback?: boolean;
+    doctor?: DoctorNudgeSummary;
+  } = {},
 ): SplashData {
+  const includeLoadedCounts = options.includeLoadedCounts !== false;
   const extensionHealth = discoverExtensionHealth(cwd);
   // extensionHealth is still surfaced in the splash header counter; no other
   // consumer needs the derived list anymore now that Tips is gone.
-  const usage = resolveMonthlyUsage(monthlyBudgetFallback);
+  const usage = resolveMonthlyUsage(monthlyBudgetFallback, {
+    includeSessionFallback: options.includeSessionCostFallback !== false,
+  });
   const gatewayState = getMonthlyUsageState();
   const slackStatus = getSlackStatus();
   const slackVisible = shouldShowSlackStatus(cwd);
@@ -415,7 +431,10 @@ export function collectSplashData(
         }
       : undefined;
 
-  const doctor = summarizeStartupDoctorNudge(runDoctorDiagnostics({ cwd })) ?? undefined;
+  const doctor =
+    options.doctor ??
+    summarizeStartupDoctorNudge(runDoctorDiagnostics({ cwd, runtime: "cached" })) ??
+    undefined;
   const privacy = collectPrivacyStatus();
   const nodeCert = readCachedNodeCertStatus() ?? { kind: "checking" as const, loading: true };
   // Cache-first read: collectCaBundleNudge only inspects pre-persisted
@@ -428,7 +447,9 @@ export function collectSplashData(
   return {
     modelName,
     providerName,
-    loadedCounts: discoverLoadedCounts(cwd),
+    loadedCounts: includeLoadedCounts
+      ? discoverLoadedCounts(cwd)
+      : { extensions: 0, skills: 0, promptTemplates: 0 },
     recentSessions: getRecentSessions(3),
     extensionHealth,
     slackConnected: checkSlackConnection(cwd),
@@ -455,7 +476,7 @@ export function collectSplashData(
     loading: false,
     slackLoading: false,
     extensionHealthLoading: false,
-    loadedCountsLoading: false,
+    loadedCountsLoading: !includeLoadedCounts,
     recentSessionsLoading: false,
   };
 }

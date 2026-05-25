@@ -43,6 +43,7 @@ import {
   type ToolResultContentPart,
 } from "./lib/feedback.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
+import { markBootStep } from "../../lib/common/boot-timing.ts";
 import {
   createActivityStore,
   recordCheck,
@@ -148,38 +149,46 @@ export default function sfLspExtension(pi: ExtensionAPI) {
 
       if (!ctx.hasUI) return;
 
-      // Probe doctor in the background so the top-bar LSP segment fills in
-      // with green/red availability before the first check fires.
-      void doctorLsp(ctx.cwd)
-        .then((statuses) => {
-          seedFromDoctor(activity, statuses);
-          setSfLspHealthFromDoctor(statuses);
-        })
-        .catch(() => {
-          // doctor runs on a best-effort basis; leave health as "unknown"
-        });
+      // Probe doctor after the first-paint boot storm. The top-bar LSP
+      // segment starts dim/unknown, then fills in once the bounded local
+      // checks finish.
+      const doctorTimer = setTimeout(() => {
+        if (ctx.signal?.aborted) return;
+        void markBootStep("sf-lsp.doctor (deferred)", () => doctorLsp(ctx.cwd))
+          .then((statuses) => {
+            if (ctx.signal?.aborted) return;
+            seedFromDoctor(activity, statuses);
+            setSfLspHealthFromDoctor(statuses);
+          })
+          .catch(() => {
+            // doctor runs on a best-effort basis; leave health as "unknown"
+          });
+      }, 1_500);
+      doctorTimer.unref?.();
 
       // First-boot / update prompt for the bundled LSP servers. Runs
-      // non-awaited so session_start never blocks on marketplace /
-      // npm-registry lookups or a download. The orchestrator is
-      // self-guarding: it exits silently when nothing is missing or
-      // outdated, when the user already declined the current version,
-      // or when we've already prompted this session. On completion it
-      // re-probes the doctor so the top-bar LSP segment repaints.
-      void maybePromptLspInstall(ctx, exec, {
-        onInstallCompleted: () => {
-          void doctorLsp(ctx.cwd)
-            .then((statuses) => {
-              seedFromDoctor(activity, statuses);
-              setSfLspHealthFromDoctor(statuses);
-            })
-            .catch(() => {
-              // same best-effort contract as the initial probe
-            });
-        },
-      }).catch(() => {
-        // orchestrator swallows its own errors; this catch is belt-and-suspenders.
-      });
+      // non-awaited and delayed so marketplace / npm-registry lookups or a
+      // download never compete with startup first paint.
+      const installTimer = setTimeout(() => {
+        if (ctx.signal?.aborted) return;
+        void markBootStep("sf-lsp.install-prompt (deferred)", () =>
+          maybePromptLspInstall(ctx, exec, {
+            onInstallCompleted: () => {
+              void doctorLsp(ctx.cwd)
+                .then((statuses) => {
+                  seedFromDoctor(activity, statuses);
+                  setSfLspHealthFromDoctor(statuses);
+                })
+                .catch(() => {
+                  // same best-effort contract as the initial probe
+                });
+            },
+          }),
+        ).catch(() => {
+          // orchestrator swallows its own errors; this catch is belt-and-suspenders.
+        });
+      }, 4_500);
+      installTimer.unref?.();
     });
 
     pi.on("session_shutdown", async (event, ctx) => {

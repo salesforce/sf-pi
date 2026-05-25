@@ -11,7 +11,6 @@
 import { closeSync, existsSync, fstatSync, openSync, readFileSync, readSync } from "node:fs";
 import path from "node:path";
 import { homedir } from "node:os";
-import { createStateStore } from "../../../lib/common/state-store.ts";
 import {
   hasCaBundleFixApplied,
   readCaBundleFixerState,
@@ -20,17 +19,12 @@ import { buildCandidatePaths } from "../../sf-llm-gateway-internal/lib/ca-bundle
 import { getGatewayConfig } from "../../sf-llm-gateway-internal/lib/config.ts";
 import { readCaProbeState } from "../../sf-llm-gateway-internal/lib/ca-probe-state.ts";
 import type { NodeCertStatusInfo, NodeCertStatusSource } from "./types.ts";
+export { readCachedNodeCertStatus, writeCachedNodeCertStatus } from "./node-cert-cache.ts";
 
 const NODE_EXTRA_CA_CERTS = "NODE_EXTRA_CA_CERTS";
 const PEM_HEADER = "-----BEGIN CERTIFICATE-----";
-const CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 const SHELL_STARTUP_FILES = [".zshenv", ".zprofile", ".zshrc"] as const;
 const LAUNCH_AGENT_PLIST = "Library/LaunchAgents/com.salesforce.sf-pi.node-extra-ca-certs.plist";
-
-interface NodeCertStatusCacheFile {
-  status?: NodeCertStatusInfo;
-  savedAt?: number;
-}
 
 export interface DetectNodeCertStatusOptions {
   cwd?: string;
@@ -44,80 +38,6 @@ export interface DetectNodeCertStatusOptions {
 interface PemProbe {
   ok: boolean;
   reason?: string;
-}
-
-function getCacheStore() {
-  return createStateStore<NodeCertStatusCacheFile>({
-    namespace: "sf-welcome",
-    filename: "node-cert-status.json",
-    schemaVersion: 1,
-    defaults: {},
-    mode: 0o600,
-    migrate(raw, fromVersion) {
-      if (fromVersion !== 0) return null;
-      return raw && typeof raw === "object" && !Array.isArray(raw)
-        ? (raw as NodeCertStatusCacheFile)
-        : null;
-    },
-  });
-}
-
-function parseCachedStatus(value: unknown): NodeCertStatusInfo | null {
-  if (!value || typeof value !== "object") return null;
-  const record = value as Partial<NodeCertStatusInfo>;
-  if (
-    record.kind !== "checking" &&
-    record.kind !== "verified" &&
-    record.kind !== "installed" &&
-    record.kind !== "found" &&
-    record.kind !== "not-configured" &&
-    record.kind !== "invalid" &&
-    record.kind !== "unknown"
-  ) {
-    return null;
-  }
-  return {
-    kind: record.kind,
-    source: parseSource(record.source),
-    path: typeof record.path === "string" ? record.path : undefined,
-    reason: typeof record.reason === "string" ? record.reason : undefined,
-    loading: false,
-  };
-}
-
-function parseSource(value: unknown): NodeCertStatusSource | undefined {
-  if (
-    value === "env" ||
-    value === "launch-agent" ||
-    value === "shell" ||
-    value === "fixer" ||
-    value === "candidate" ||
-    value === "probe"
-  ) {
-    return value;
-  }
-  return undefined;
-}
-
-export function readCachedNodeCertStatus(
-  maxAgeMs: number = CACHE_MAX_AGE_MS,
-): NodeCertStatusInfo | null {
-  try {
-    const cache = getCacheStore().read();
-    if (typeof cache.savedAt !== "number") return null;
-    if (Date.now() - cache.savedAt > maxAgeMs) return null;
-    return parseCachedStatus(cache.status);
-  } catch {
-    return null;
-  }
-}
-
-export function writeCachedNodeCertStatus(status: NodeCertStatusInfo): void {
-  try {
-    getCacheStore().write({ status: { ...status, loading: false }, savedAt: Date.now() });
-  } catch {
-    // Cache is best-effort. The splash falls back to "Checking" / "Unknown".
-  }
 }
 
 export function detectNodeCertStatus(

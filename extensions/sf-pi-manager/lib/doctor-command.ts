@@ -8,6 +8,7 @@ import {
   type RegisteredDoctorOutcome,
 } from "../../../lib/common/doctor/registry.ts";
 import type { DoctorIssue, DoctorReport } from "../../../lib/common/doctor/types.ts";
+import { writeCachedRuntimeDiagnostics } from "../../../lib/common/doctor/runtime-cache.ts";
 
 export type DoctorSubcommand = "status" | "fix" | "runtime";
 export type DoctorFixTarget = "all" | "startup" | "skills";
@@ -50,11 +51,13 @@ export async function handleDoctor(ctx: ExtensionCommandContext, args: DoctorArg
 
 function handleRuntime(ctx: ExtensionCommandContext): void {
   const report = runDoctorDiagnostics({ cwd: ctx.cwd });
+  writeCachedRuntimeDiagnostics(report.runtime);
   ctx.ui.notify(renderRuntimeReport(report), "info");
 }
 
 async function handleStatus(ctx: ExtensionCommandContext): Promise<void> {
   const report = runDoctorDiagnostics({ cwd: ctx.cwd });
+  writeCachedRuntimeDiagnostics(report.runtime);
   // Aggregate every registered per-extension doctor with a small budget so
   // a slow network probe never blocks the report. Slow / failed providers
   // are surfaced inline as "timeout" / "error" rows.
@@ -76,6 +79,7 @@ async function handleStatus(ctx: ExtensionCommandContext): Promise<void> {
 
 async function handleFix(ctx: ExtensionCommandContext, target: DoctorFixTarget): Promise<void> {
   const report = runDoctorDiagnostics({ cwd: ctx.cwd });
+  writeCachedRuntimeDiagnostics(report.runtime);
   const hasStartupFix = target === "all" || target === "startup";
   const hasSkillsFix = target === "all" || target === "skills";
 

@@ -301,7 +301,7 @@
     "entry": "extensions/sf-devbar/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 1743
+    "srcLoc": 1749
   },
   {
     "id": "sf-feedback",
@@ -524,7 +524,7 @@
     "entry": "extensions/sf-lsp/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 3857
+    "srcLoc": 3866
   },
   {
     "id": "sf-ohana-spinner",
@@ -604,7 +604,7 @@
     "entry": "extensions/sf-pi-manager/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 3463
+    "srcLoc": 3476
   },
   {
     "id": "sf-skills",
@@ -712,7 +712,7 @@
     "entry": "extensions/sf-slack/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 11225
+    "srcLoc": 11232
   },
   {
     "id": "sf-welcome",
@@ -756,6 +756,6 @@
     "entry": "extensions/sf-welcome/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 5391
+    "srcLoc": 5454
   }
 ]

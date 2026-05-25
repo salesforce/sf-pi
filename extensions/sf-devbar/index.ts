@@ -296,22 +296,21 @@ export default function sfDevBar(pi: ExtensionAPI) {
   }
 
   // --- Helper: refresh git changes (async, non-blocking) ---
-  function refreshGitChanges(
+  async function refreshGitChanges(
     ctx: ExtensionContext,
     gitBranch?: string | null,
     generation: number = activeSessionGeneration,
-  ) {
-    getGitChanges(exec, ctx.cwd)
-      .then((changes) => {
-        if (!isActiveSession(ctx, generation)) return;
-        gitChanges = changes;
-        // Use the explicitly passed branch, or fall back to the latest known branch
-        updateTopBar(ctx, gitBranch !== undefined ? gitBranch : latestGitBranch);
-        requestFooterRender?.();
-      })
-      .catch(() => {
-        // Silently ignore — git may not be available
-      });
+  ): Promise<void> {
+    try {
+      const changes = await getGitChanges(exec, ctx.cwd);
+      if (!isActiveSession(ctx, generation)) return;
+      gitChanges = changes;
+      // Use the explicitly passed branch, or fall back to the latest known branch
+      updateTopBar(ctx, gitBranch !== undefined ? gitBranch : latestGitBranch);
+      requestFooterRender?.();
+    } catch {
+      // Silently ignore — git may not be available
+    }
   }
 
   // ===========================================================================================
@@ -451,8 +450,15 @@ export default function sfDevBar(pi: ExtensionAPI) {
       };
     });
 
-    // Fire-and-forget: async git changes
-    refreshGitChanges(ctx, null, generation);
+    // Fire-and-forget: async git changes, delayed so `git status` does not
+    // join the first-paint boot storm.
+    const gitTimer = setTimeout(() => {
+      if (!isActiveSession(ctx, generation)) return;
+      void markBootStep("sf-devbar.git-status (deferred)", () =>
+        refreshGitChanges(ctx, null, generation),
+      ).catch(() => undefined);
+    }, 1_500);
+    gitTimer.unref?.();
   });
 
   // --- Session shutdown: clean exit ---

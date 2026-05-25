@@ -95,6 +95,7 @@ import { handleTelemetry, parseTelemetryArgs } from "./lib/telemetry-command.ts"
 import { assertTelemetryDefault } from "../../lib/common/privacy/assert-default.ts";
 import { getTelemetryState } from "../../lib/common/privacy/state.ts";
 import {
+  refreshRuntimeDiagnosticsCache,
   runDoctorDiagnostics,
   summarizeStartupDoctorNudge,
 } from "../../lib/common/doctor/diagnostics.ts";
@@ -291,6 +292,16 @@ export default function sfPiManagerExtension(pi: ExtensionAPI) {
     updateRecommendationsNudge(ctx);
     updateAnnouncementsNudge(ctx);
     updateDoctorNudge(ctx);
+
+    const doctorRefreshTimer = setTimeout(() => {
+      if (ctx.signal?.aborted) return;
+      void refreshRuntimeDiagnosticsCache()
+        .then(() => {
+          if (!ctx.signal?.aborted) updateDoctorNudge(ctx);
+        })
+        .catch(() => undefined);
+    }, 2_500);
+    doctorRefreshTimer.unref?.();
   });
 
   pi.on("session_shutdown", async (_event, ctx) => {
@@ -813,12 +824,11 @@ function updateAnnouncementsNudge(ctx: ExtensionContext): void {
   }
 }
 
-// Footer nudge for actionable setup issues. Doctor scans only local files and
-// settings, so running it at session_start is cheap and does not touch the
-// network or the Salesforce org.
+// Footer nudge for actionable setup issues. Startup uses cached runtime
+// diagnostics; the live runtime refresh is delayed until after first paint.
 function updateDoctorNudge(ctx: ExtensionContext): void {
   try {
-    const report = runDoctorDiagnostics({ cwd: ctx.cwd });
+    const report = runDoctorDiagnostics({ cwd: ctx.cwd, runtime: "cached" });
     const nudge = summarizeStartupDoctorNudge(report);
     if (!nudge || nudge.issueCount === 0) {
       ctx.ui.setStatus(DOCTOR_STATUS_KEY, undefined);

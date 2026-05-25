@@ -396,9 +396,16 @@ export default function sfSlack(pi: ExtensionAPI) {
       lastError = null;
       updateStatus(ctx, "connected", generation);
 
-      void markBootStep("sf-slack.cache-prewarm (deferred)", () =>
-        Promise.all([prewarmUserCache(token, ctx.signal), prewarmChannelCache(token, ctx.signal)]),
-      ).catch(() => undefined);
+      const prewarmTimer = setTimeout(() => {
+        if (!isActiveSession(ctx, generation)) return;
+        void markBootStep("sf-slack.cache-prewarm (deferred)", () =>
+          Promise.all([
+            prewarmUserCache(token, ctx.signal),
+            prewarmChannelCache(token, ctx.signal),
+          ]),
+        ).catch(() => undefined);
+      }, 1_500);
+      prewarmTimer.unref?.();
     } catch (error) {
       if (isAbortError(error) && ctx.signal?.aborted) return;
       const message = error instanceof Error ? error.message : String(error);

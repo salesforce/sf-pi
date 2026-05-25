@@ -68,25 +68,24 @@ import {
   collectInitialSplashData,
   collectSplashData,
   detectSfCliStatus,
-  detectNodeCertStatus,
   detectPiReleaseStatus,
   detectSfPiReleaseStatus,
   detectSfSkillsStatus,
-  readCachedNodeCertStatus,
   readCachedSfCliStatus,
   readCachedSfSkillsStatus,
   readCurrentPiVersion,
   refreshAnnouncementsSummary,
   resolveMonthlyUsage,
-  writeCachedNodeCertStatus,
   writeCachedPiReleaseStatus,
   writeCachedSfCliStatus,
   writeCachedSfSkillsStatus,
 } from "./lib/splash-data.ts";
+import { readCachedNodeCertStatus, writeCachedNodeCertStatus } from "./lib/node-cert-cache.ts";
 import { acknowledgeAnnouncementsRevision } from "../../lib/common/catalog-state/announcements-state.ts";
 import { SfWelcomeOverlay, SfWelcomeHeader } from "./lib/splash-component.ts";
 import { isQuietStartupEnabled, isVerboseStartupRequested } from "./lib/startup-mode.ts";
 import {
+  refreshRuntimeDiagnosticsCache,
   resolveConfiguredWelcomeMode,
   runDoctorDiagnostics,
   shouldForceSafeWelcome,
@@ -102,7 +101,7 @@ import {
 } from "../../lib/common/monthly-usage/store.ts";
 import { subscribeSlackStatus } from "../../lib/common/slack-status/store.ts";
 import { isSfPiExtensionEnabled } from "../../lib/common/sf-pi-extension-state.ts";
-import { FONT_FAMILY_NAME, isFontFamilyInstalled, runFontInstall } from "./lib/font-installer.ts";
+import { FONT_FAMILY_NAME, isFontFamilyInstalled } from "./lib/font-status.ts";
 import { readWelcomeState, writeWelcomeState } from "./lib/state-store.ts";
 import { resolveGlyphMode } from "../../lib/common/glyph-policy.ts";
 import { discoverLoadedCounts } from "./lib/splash-data.ts";
@@ -367,11 +366,14 @@ export default function sfWelcome(pi: ExtensionAPI) {
     // is dismissed. Done here (not inside collectSplashData) so a cached
     // splash render never races with the current process's version.
     pendingSeenVersion = readCurrentPiVersion();
+    const startupDoctorReport = runDoctorDiagnostics({ cwd: ctx.cwd, runtime: "cached" });
+    const startupDoctorNudge = summarizeStartupDoctorNudge(startupDoctorReport) ?? undefined;
     const data = collectInitialSplashData(
       modelName,
       providerName,
       MONTHLY_BUDGET_FALLBACK,
       ctx.cwd,
+      { doctor: startupDoctorNudge },
     );
     const cachedSfCli = readCachedSfCliStatus();
     if (cachedSfCli) {
@@ -387,8 +389,7 @@ export default function sfWelcome(pi: ExtensionAPI) {
     if (cachedNodeCert) {
       data.nodeCert = cachedNodeCert;
     }
-    const doctorReport = runDoctorDiagnostics({ cwd: ctx.cwd });
-    data.doctor = summarizeStartupDoctorNudge(doctorReport) ?? undefined;
+    data.doctor = startupDoctorNudge;
 
     // Safe-start policy: setup warnings, SF_PI_SAFE_START, or explicit
     // sfPi.welcome.mode=header keep startup non-blocking. Users can still
@@ -397,8 +398,8 @@ export default function sfWelcome(pi: ExtensionAPI) {
     if (welcomeMode === "off") return;
     const verboseRequested = isVerboseStartupRequested();
     const isQuiet = isQuietStartupEnabled(ctx.cwd, verboseRequested);
-    const forceHeader = shouldForceSafeWelcome(doctorReport);
-    const safeStart = doctorReport.safeStartRequested;
+    const forceHeader = shouldForceSafeWelcome(startupDoctorReport);
+    const safeStart = startupDoctorReport.safeStartRequested;
     if (
       welcomeMode === "header" ||
       safeStart ||
@@ -439,7 +440,11 @@ export default function sfWelcome(pi: ExtensionAPI) {
         // tick. On a warm cache the difference is invisible; on a cold
         // cache (machine just woke) the splash paints ~50ms sooner.
         const fullData = markBootStep("sf-welcome.collect-splash", () =>
-          collectSplashData(modelName, providerName, ctx.cwd, MONTHLY_BUDGET_FALLBACK),
+          collectSplashData(modelName, providerName, ctx.cwd, MONTHLY_BUDGET_FALLBACK, {
+            doctor: data.doctor,
+            includeLoadedCounts: false,
+            includeSessionCostFallback: false,
+          }),
         );
         // collectSplashData is sync — markBootStep returns the sync result
         // wrapped in a resolved Promise; settle synchronously below.
@@ -449,8 +454,7 @@ export default function sfWelcome(pi: ExtensionAPI) {
           data.sfCli = currentSfCli ?? { installed: false, freshness: "checking", loading: true };
           data.piRelease = currentPiRelease ?? data.piRelease;
           data.nodeCert = currentNodeCert ?? { kind: "checking", loading: true };
-          data.doctor =
-            summarizeStartupDoctorNudge(runDoctorDiagnostics({ cwd: ctx.cwd })) ?? undefined;
+          data.doctor = startupDoctorNudge;
 
           if (!data.whatsNew && pendingSeenVersion) {
             writeWelcomeState({ lastSeenPiVersion: pendingSeenVersion });
@@ -491,6 +495,36 @@ export default function sfWelcome(pi: ExtensionAPI) {
         // local settings/session scan fails unexpectedly.
       }
     });
+
+    const doctorRefreshTimer = setTimeout(() => {
+      if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
+      void markBootStep("sf-welcome.doctor-runtime-refresh", () => refreshRuntimeDiagnosticsCache())
+        .then(() => {
+          if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
+          const report = runDoctorDiagnostics({ cwd: ctx.cwd, runtime: "cached" });
+          data.doctor = summarizeStartupDoctorNudge(report) ?? undefined;
+          scheduleSplashRepaint(ctx, generation);
+        })
+        .catch(() => undefined);
+    }, 1_500);
+    doctorRefreshTimer.unref?.();
+
+    const monthlyCostTimer = setTimeout(() => {
+      if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
+      void markBootStep("sf-welcome.monthly-cost-fallback", () =>
+        resolveMonthlyUsage(MONTHLY_BUDGET_FALLBACK, { includeSessionFallback: true }),
+      )
+        .then((usage) => {
+          if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
+          if (usage.monthlyUsageSource !== "sessions") return;
+          data.monthlyCost = usage.monthlyCost;
+          data.monthlyBudget = usage.monthlyBudget;
+          data.monthlyUsageSource = usage.monthlyUsageSource;
+          scheduleSplashRepaint(ctx, generation);
+        })
+        .catch(() => undefined);
+    }, 1_800);
+    monthlyCostTimer.unref?.();
 
     // Background CLI status: cache-first for first paint, live refresh later.
     // SF CLI freshness is informational, so we defer the subprocess + npm
@@ -569,9 +603,10 @@ export default function sfWelcome(pi: ExtensionAPI) {
     const nodeCertTimer = setTimeout(() => {
       if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
       try {
-        const cert = markBootStep("sf-welcome.node-cert-detect", () =>
-          detectNodeCertStatus(ctx.cwd),
-        );
+        const cert = markBootStep("sf-welcome.node-cert-detect", async () => {
+          const { detectNodeCertStatus } = await import("./lib/node-cert-status.ts");
+          return detectNodeCertStatus(ctx.cwd);
+        });
         void cert
           .then((status) => {
             writeCachedNodeCertStatus(status);
@@ -680,7 +715,7 @@ export default function sfWelcome(pi: ExtensionAPI) {
     // side task. Running it unawaited keeps session_start non-blocking,
     // and Pi will render the confirm dialog after the splash dismisses
     // (so the user sees the splash first, then a single prompt).
-    if (!doctorReport.safeStartRequested) {
+    if (!startupDoctorReport.safeStartRequested) {
       void maybePromptFontInstall(ctx, generation);
     }
   });
@@ -857,6 +892,7 @@ export default function sfWelcome(pi: ExtensionAPI) {
     }
 
     if (action === "fonts") {
+      const { runFontInstall } = await import("./lib/font-installer.ts");
       const result = await runFontInstall(exec);
       // Record that the user explicitly opted in so the one-time startup
       // splash prompt does not ask again. Mirrors the /sf-setup-fonts
@@ -914,6 +950,7 @@ export default function sfWelcome(pi: ExtensionAPI) {
 
     const data = collectSplashData(modelName, providerName, ctx.cwd, MONTHLY_BUDGET_FALLBACK);
     try {
+      const { detectNodeCertStatus } = await import("./lib/node-cert-status.ts");
       const nodeCert = detectNodeCertStatus(ctx.cwd);
       writeCachedNodeCertStatus(nodeCert);
       data.nodeCert = nodeCert;
@@ -1098,6 +1135,7 @@ export default function sfWelcome(pi: ExtensionAPI) {
     if (action === "install") {
       ctx.ui.setStatus("sf-setup-fonts", "Installing bundled Nerd Font…");
       try {
+        const { runFontInstall } = await import("./lib/font-installer.ts");
         const result = await runFontInstall(exec);
         // Record decision so the splash won't re-ask.
         writeWelcomeState({
@@ -1243,6 +1281,7 @@ export default function sfWelcome(pi: ExtensionAPI) {
     // notification /sf-setup-fonts would.
     writeWelcomeState({ fontInstallDecision: "yes", fontInstallPromptedAt: promptedAt });
 
+    const { runFontInstall } = await import("./lib/font-installer.ts");
     const result = await runFontInstall(exec, platform);
     if (!isActiveSession(ctx, generation)) return;
     ctx.ui.notify(result.summary, result.severity);
