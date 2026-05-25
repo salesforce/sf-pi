@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.149.1-2026-05-25",
-  "latestVersion": "0.149.1",
+  "revision": "release-0.149.2-2026-05-25",
+  "latestVersion": "0.149.2",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.149.1",
+      "id": "release-0.149.2",
       "kind": "update",
-      "title": "sf-pi v0.149.1 — clear agent script lint warning",
+      "title": "sf-pi v0.149.2 — optimize sf-pi startup probes",
       "publishedAt": "2026-05-25T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.149.1",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.149.2",
       "severity": "info",
-      "body": "clear agent script lint warning"
+      "body": "optimize sf-pi startup probes"
     },
     {
       "id": "pi-0.73-required",
