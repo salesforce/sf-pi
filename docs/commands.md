@@ -58,6 +58,14 @@ _Data Cloud/Data 360 capability facade and direct REST helper — d360 search/ex
 - Commands: `/sf-data360`
 - Tools: `d360`, `d360_api`, `d360_metadata`, `d360_probe`
 
+### [SF Herdr](./extensions/sf-herdr)
+
+_Dynamic Herdr lane planning for Salesforce workflows without replacing the upstream Herdr tool._
+
+- Default: **on**
+- Commands: `/sf-herdr`
+- Tools: `sf_herdr_plan`
+
 ### [SF Slack](./extensions/sf-slack)
 
 _Slack integration — search messages, read threads, browse channel history_

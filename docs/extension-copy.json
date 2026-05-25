@@ -179,6 +179,29 @@
       "Production-aware Salesforce operation confirmation."
     ]
   },
+  "sf-herdr": {
+    "shortName": "Herdr",
+    "intentGroup": "Work safely",
+    "promise": "Plan dynamic Herdr lanes for Salesforce workflows without hiding pane actions.",
+    "bestFor": "Herdr lane planning",
+    "benefits": [
+      "Turns workflow context into pane plans for tests, logs, previews, evals, servers, and reviews.",
+      "Keeps actual pane mutations visible through the upstream Herdr tool.",
+      "Uses workflow profiles and recent activity signals instead of fixed permanent panes."
+    ],
+    "tryFirst": { "label": "Open Herdr planning status", "code": "/sf-herdr" },
+    "useCases": [
+      "Plan an ephemeral test lane that closes on success and stays open on failure.",
+      "Coordinate Agent Script preview or eval work with related Apex log lanes.",
+      "Keep UI bundle servers or log tails sticky while short validation lanes clean themselves up.",
+      "Inspect which workflow SF Pi currently infers from recent tool activity."
+    ],
+    "whatYouGet": [
+      "A non-mutating `sf_herdr_plan` tool for phased lane guidance.",
+      "Managed Herdr workflow profiles and status surfaces.",
+      "Branch-scoped workflow signal inference from recent tool calls and file edits."
+    ]
+  },
   "sf-llm-gateway-internal": {
     "shortName": "LLM Gateway",
     "intentGroup": "Personalize pi",

@@ -75,6 +75,12 @@ SF Pi is useful because it is a bundle: each extension adds a focused Salesforce
   <span>Add Salesforce-aware safety checks around risky files, shell commands, org mutations, and production work.</span>
   <span class="sfpi-card-meta"><code class="sfpi-code-chip">/sf-guardrail</code></span>
 </a>
+<a class="sfpi-extension-card" href="./extensions/sf-herdr">
+  <span class="sfpi-card-kicker">Herdr lane planning</span>
+  <strong>Herdr</strong>
+  <span>Plan dynamic Herdr lanes for Salesforce workflows without hiding pane actions.</span>
+  <span class="sfpi-card-meta"><code class="sfpi-code-chip">/sf-herdr</code></span>
+</a>
 </div>
 
 ## Collaborate and improve

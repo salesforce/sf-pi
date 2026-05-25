@@ -107,6 +107,23 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
     },
   },
   {
+    id: "sf-herdr",
+    name: "SF Herdr",
+    description: "Dynamic Herdr lane planning for Salesforce workflows without replacing the upstream Herdr tool.",
+    file: "extensions/sf-herdr/index.ts",
+    category: "agent-tool",
+    maturity: "experimental",
+    defaultEnabled: true,
+    commands: ["/sf-herdr"],
+    tools: ["sf_herdr_plan"],
+    events: ["session_start","session_tree","tool_execution_end","tool_result","resources_discover","session_shutdown"],
+    configurable: true,
+    getConfigPanel: async () => {
+      const mod = await import("../extensions/sf-herdr/lib/config-panel.ts");
+      return mod.createConfigPanel;
+    },
+  },
+  {
     id: "sf-llm-gateway-internal",
     name: "SF LLM Gateway Internal",
     description: "Salesforce LLM Gateway provider with model discovery",

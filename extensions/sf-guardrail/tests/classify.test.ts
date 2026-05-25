@@ -140,6 +140,42 @@ describe("classify — commandGate (Tier 2)", () => {
     });
     expect(decision).toBeUndefined();
   });
+
+  it("confirms dangerous herdr.run commands", () => {
+    const config = readBundledConfig();
+    const decision = classify({
+      toolName: "herdr",
+      input: { action: "run", pane: "tests", command: "rm -rf tmp/" },
+      cwd: "/project",
+      config,
+    });
+    expect(decision?.feature).toBe("commandGate");
+    expect(decision?.action).toBe("confirm");
+    expect(decision?.ruleId).toBe("rm-rf");
+    expect(decision?.subject).toBe("rm -rf tmp/");
+  });
+
+  it("ignores non-run herdr actions", () => {
+    const config = readBundledConfig();
+    const decision = classify({
+      toolName: "herdr",
+      input: { action: "read", pane: "tests", command: "rm -rf tmp/" },
+      cwd: "/project",
+      config,
+    });
+    expect(decision).toBeUndefined();
+  });
+
+  it("ignores herdr.run without a string command", () => {
+    const config = readBundledConfig();
+    const decision = classify({
+      toolName: "herdr",
+      input: { action: "run", pane: "tests" },
+      cwd: "/project",
+      config,
+    });
+    expect(decision).toBeUndefined();
+  });
 });
 
 describe("classify — orgAwareGate (Tier 2)", () => {
@@ -156,6 +192,22 @@ describe("classify — orgAwareGate (Tier 2)", () => {
     expect(decision?.ruleId).toBe("sf-deploy-prod");
     expect(decision?.orgAlias).toBe("Prod");
     expect(decision?.orgType).toBe("production");
+  });
+
+  it("confirms herdr.run sf project deploy start against production", () => {
+    mockedEnv = env("Prod", "production");
+    const config = readBundledConfig();
+    const decision = classify({
+      toolName: "herdr",
+      input: { action: "run", pane: "deploy", command: "sf project deploy start -o Prod" },
+      cwd: "/project",
+      config,
+    });
+    expect(decision?.feature).toBe("orgAwareGate");
+    expect(decision?.ruleId).toBe("sf-deploy-prod");
+    expect(decision?.orgAlias).toBe("Prod");
+    expect(decision?.orgType).toBe("production");
+    expect(decision?.subject).toBe("sf project deploy start -o Prod");
   });
 
   it("does NOT fire for sandbox targets", () => {

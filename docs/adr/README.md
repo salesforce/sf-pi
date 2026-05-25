@@ -18,3 +18,4 @@ or accidentally contradicted in extension READMEs.
 - [0013: Agent Script Uses Branch-Durable Tool State for Workflow Pointers](./0013-agentscript-branch-durable-tool-state.md)
 - [0014: Agent Script Public Tool Surface Uses Four Family Tools](./0014-agent-script-four-family-tool-surface.md)
 - [0015: SF Brain Provides Conditional Herdr Workflow Mode](./0015-sf-brain-herdr-workflow-mode.md)
+- [0016: Dynamic SF Herdr Lane Planning](./0016-dynamic-sf-herdr-lane-planning.md)

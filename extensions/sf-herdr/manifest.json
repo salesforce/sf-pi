@@ -1,0 +1,37 @@
+{
+  "id": "sf-herdr",
+  "name": "SF Herdr",
+  "description": "Dynamic Herdr lane planning for Salesforce workflows without replacing the upstream Herdr tool.",
+  "category": "agent-tool",
+  "maturity": "experimental",
+  "defaultEnabled": true,
+  "configurable": true,
+  "commands": ["/sf-herdr"],
+  "tools": ["sf_herdr_plan"],
+  "events": [
+    "session_start",
+    "session_tree",
+    "tool_execution_end",
+    "tool_result",
+    "resources_discover",
+    "session_shutdown"
+  ],
+  "docs": {
+    "summary": "Owns SF Pi-managed Herdr workflow profiles, dynamic workflow signals, status/doctor surfaces, and a non-mutating lane planner. It does not duplicate the upstream herdr tool; actual pane mutations remain explicit herdr tool calls.",
+    "primaryFiles": [
+      "index.ts",
+      "lib/sf_herdr_plan-tool.ts",
+      "lib/signal-state.ts",
+      "lib/status.ts",
+      "lib/config-panel.ts",
+      "../../lib/common/herdr-profile/store.ts",
+      "../../docs/adr/0016-dynamic-sf-herdr-lane-planning.md"
+    ],
+    "stateFiles": ["<globalAgentDir>/sf-pi/herdr/preferences.json"],
+    "safety": [
+      "Does not register or wrap the upstream herdr tool; pane mutations stay explicit herdr calls.",
+      "sf_herdr_plan is non-mutating and never generates shell commands.",
+      "sf-guardrail mediates herdr.run.command when dangerous-command or org-aware rules match."
+    ]
+  }
+}

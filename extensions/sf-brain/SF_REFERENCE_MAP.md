@@ -78,6 +78,30 @@ If no matching skill is active, use the Salesforce Operator Kernel rules:
 retrieve before metadata edits, describe before data queries, choose the right
 API, pin the org API version, and verify with the smallest safe live-org check.
 
+### Use Herdr workflow lanes when active
+
+When `<sf_pi_extensions>` says Herdr Workflow Mode is active, use Herdr as the
+visible pane orchestration layer around SF Pi workflows:
+
+1. If `sf_herdr_plan` is active, call it for dynamic Salesforce workflow lanes
+   before creating panes. The plan is non-mutating.
+2. Execute the returned phases explicitly with the upstream `herdr` tool:
+   discover/reuse → create → run → observe → cleanup.
+3. Let the owning SF Pi extension or Salesforce skill choose the actual command;
+   `sf_herdr_plan` only plans lane placement/lifecycle.
+4. Close ephemeral split panes only after successful watched completion. Preserve
+   failures/timeouts for inspection.
+5. Prefer sticky/manual lanes for servers, log tails, and reviewer agents.
+
+Common intents:
+
+- Apex tests or anonymous Apex debugging → plan `run-tests` or `tail-logs`.
+- Agent Script preview/eval → plan `preview` or `eval`, with Apex logs as a
+  related signal when actions invoke Apex.
+- Data 360 sweeps or async checks → plan `eval` for a sweep-style lane.
+- Salesforce browser/UI fallback → plan `verify` or `tail-logs` around browser evidence.
+- UI bundle work → plan `server` for dev server lanes and `run-tests` for test lanes.
+
 ### Keep context efficient
 
 - Prefer structure/inspect/list tools over full file reads when available.

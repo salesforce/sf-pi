@@ -11,6 +11,7 @@ export const extensionSidebarItems = [
   { text: "Data 360", link: "/extensions/sf-data360" },
   { text: "Brain", link: "/extensions/sf-brain" },
   { text: "Guardrail", link: "/extensions/sf-guardrail" },
+  { text: "Herdr", link: "/extensions/sf-herdr" },
   { text: "Feedback", link: "/extensions/sf-feedback" },
   { text: "Slack", link: "/extensions/sf-slack" },
   { text: "LLM Gateway", link: "/extensions/sf-llm-gateway-internal" },

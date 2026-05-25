@@ -7,6 +7,9 @@
  *   2. commandGate       → allowedPatterns / autoDenyPatterns / confirm.
  *   3. orgAwareGate      → production-only rules.
  *
+ * `bash.command` and `herdr.run.command` share the same command-safety path so
+ * Herdr pane orchestration cannot bypass Salesforce-aware command mediation.
+ *
  * This module performs no I/O beyond `existsSync` via policies.matchPath.
  * It has no knowledge of pi.ctx, ui prompts, or the audit log; those are
  * orchestrated in index.ts based on the returned ClassifiedDecision.
@@ -53,9 +56,11 @@ export function classify(input: ClassifyInput): ClassifiedDecision | undefined {
     }
   }
 
+  const shellCommand = pickShellCommand(toolName, toolInput);
+
   // ── 2. Dangerous command gate ─────────────────────────────────────────────
-  if (config.features.commandGate && toolName === "bash") {
-    const command = typeof toolInput.command === "string" ? toolInput.command : "";
+  if (config.features.commandGate && shellCommand) {
+    const command = shellCommand.command;
     const outcome = evaluateCommand(command, config.commandGate);
     if (outcome) {
       if (outcome.action === "allow") return undefined;
@@ -82,8 +87,8 @@ export function classify(input: ClassifyInput): ClassifiedDecision | undefined {
   }
 
   // ── 3. Org-aware gate ─────────────────────────────────────────────────────
-  if (config.features.orgAwareGate && toolName === "bash") {
-    const command = typeof toolInput.command === "string" ? toolInput.command : "";
+  if (config.features.orgAwareGate && shellCommand) {
+    const command = shellCommand.command;
     const org = resolveOrgContext(command, cwd, config.productionAliases);
     const outcome = evaluateOrgAware(command, config.orgAwareGate.rules, org);
     if (outcome) {
@@ -106,6 +111,19 @@ export function classify(input: ClassifyInput): ClassifiedDecision | undefined {
     }
   }
 
+  return undefined;
+}
+
+function pickShellCommand(
+  toolName: string,
+  input: Record<string, unknown>,
+): { command: string } | undefined {
+  if (toolName === "bash") {
+    return typeof input.command === "string" ? { command: input.command } : undefined;
+  }
+  if (toolName === "herdr" && input.action === "run") {
+    return typeof input.command === "string" ? { command: input.command } : undefined;
+  }
   return undefined;
 }
 

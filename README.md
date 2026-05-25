@@ -224,6 +224,7 @@ Every slash command exposed by a bundled extension. See each extension README fo
 | `/sf-agentscript`   | [SF Agent Script](./extensions/sf-agentscript/)                  | agent-tool |
 | `/sf-browser`       | [SF Browser](./extensions/sf-browser/)                           | agent-tool |
 | `/sf-data360`       | [SF Data 360](./extensions/sf-data360/)                          | agent-tool |
+| `/sf-herdr`         | [SF Herdr](./extensions/sf-herdr/)                               | agent-tool |
 | `/sf-slack`         | [SF Slack](./extensions/sf-slack/)                               | agent-tool |
 | `/sf-guardrail`     | [SF Guardrail](./extensions/sf-guardrail/)                       | safety     |
 | `/sf-feedback`      | [SF Feedback](./extensions/sf-feedback/)                         | assistive  |
@@ -380,6 +381,7 @@ For the canonical machine-readable bundle list, see [`catalog/index.json`](./cat
 | [SF Agent Script](./extensions/sf-agentscript/)                  | agent-tool | on        | Single-plugin lifecycle for `.agent` files: in-process compile-on-save diagnostics, an LLM-callable compile tool, multi-turn eval/regression testing against the Salesforce Evaluation API, and a placeholder for the future Agent Script LSP. |
 | [SF Browser](./extensions/sf-browser/)                           | agent-tool | on        | Salesforce-aware browser automation for last-mile UI work using agent-browser.                                                                                                                                                                 |
 | [SF Data 360](./extensions/sf-data360/)                          | agent-tool | on        | Data Cloud/Data 360 capability facade and direct REST helper — d360 search/examples/execute, d360_api, compact metadata discovery, readiness probe, and progressive-disclosure references                                                      |
+| [SF Herdr](./extensions/sf-herdr/)                               | agent-tool | on        | Dynamic Herdr lane planning for Salesforce workflows without replacing the upstream Herdr tool.                                                                                                                                                |
 | [SF Slack](./extensions/sf-slack/)                               | agent-tool | on        | Slack integration — search messages, read threads, browse channel history                                                                                                                                                                      |
 | [SF Guardrail](./extensions/sf-guardrail/)                       | safety     | on        | Salesforce-aware safety hooks — file protection policies, dangerous-command gating, and org-aware confirmation for production deploys, apex runs, and data mutations                                                                           |
 | [SF Brain](./extensions/sf-brain/)                               | assistive  | on        | High-density Salesforce operator kernel injected once per session — describe-before-query rules, API picker, anonymous Apex verification loop, and CLI power moves                                                                             |
@@ -615,6 +617,13 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 - `/skill:sf-data360` is missing
 - A mutating call is blocked in headless mode
 - The wrong API version appears in my path
+
+**[SF Herdr](./extensions/sf-herdr/#troubleshooting)**
+
+- `sf_herdr_plan` says generic workflow
+- Herdr is not available
+- A lane stayed open
+- The main pane was shrunk too much
 
 **[SF Slack](./extensions/sf-slack/#troubleshooting)**
 

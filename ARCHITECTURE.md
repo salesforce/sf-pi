@@ -30,6 +30,7 @@ sf-pi/
 │   ├── sf-devbar/
 │   ├── sf-feedback/
 │   ├── sf-guardrail/
+│   ├── sf-herdr/
 │   ├── sf-llm-gateway-internal/
 │   ├── sf-lsp/
 │   ├── sf-ohana-spinner/

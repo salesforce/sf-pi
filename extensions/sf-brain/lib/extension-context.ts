@@ -119,10 +119,16 @@ export function formatSfPiExtensionContext(
     lines.push("");
     lines.push("Herdr Workflow Mode: active.");
     lines.push(
-      "- Use the `herdr` tool for long-running, parallel, or pane-oriented workflows: servers, tests, log tails, previews, evals, and multi-pane monitoring.",
+      "- Use the `herdr` tool for long-running, parallel, or command-scoped pane workflows: servers, tests, log tails, previews, evals, and multi-pane monitoring.",
     );
     lines.push(
       "- Prefer reusing existing panes/tabs before creating new ones; use stable aliases like `server`, `tests`, `logs`, `preview`, or `eval`.",
+    );
+    lines.push(
+      "- Create panes just in time for the command/tool being run; never pre-open log/tail panes from session or workflow inference alone.",
+    );
+    lines.push(
+      "- Protect the main orchestrator pane: do not stack multiple splits directly off it or shrink it below roughly half the tab; reuse a worker pane or choose a tab when a second simultaneous lane is unavoidable.",
     );
     lines.push(
       "- Preserve current UI focus unless the user asks otherwise or visible interaction is required.",
@@ -130,6 +136,11 @@ export function formatSfPiExtensionContext(
     lines.push(
       "- Use `herdr.run` for command-style submission, `herdr.watch`/`herdr.read` for output and readiness, and `herdr.wait_agent` only for recognized agent panes.",
     );
+    if (activeTools.has("sf_herdr_plan")) {
+      lines.push(
+        "- Use `sf_herdr_plan` before creating dynamic Salesforce workflow lanes; it is non-mutating and actual pane actions must remain explicit `herdr` calls.",
+      );
+    }
     lines.push("- Keep quick one-shot commands and normal file edits on the ordinary tool path.");
     lines.push(
       "- If Herdr is unavailable or a Herdr action fails, fall back to normal SF Pi operation without blocking the task.",

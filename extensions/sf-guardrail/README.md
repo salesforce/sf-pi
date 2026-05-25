@@ -17,11 +17,12 @@ feature tiers, all toggleable via the config:
    dotenv-style secret files.
 
 2. **commandGate** — dangerous-command patterns matched structurally
-   against the tokenized bash command. Ships with `rm -rf`, `sudo`,
-   `sf org delete`, `git push --force`. Prompts user confirmation via
-   `ctx.ui.select` (Allow once / Allow for this session / Block).
+   against the tokenized shell command from `bash.command` or
+   `herdr.run.command`. Ships with `rm -rf`, `sudo`, `sf org delete`,
+   `git push --force`. Prompts user confirmation via `ctx.ui.select`
+   (Allow once / Allow for this session / Block).
 
-3. **orgAwareGate** — bash rules that fire only when the resolved
+3. **orgAwareGate** — shell-command rules that fire only when the resolved
    target-org type matches. Ships with four production-only rules:
    - `sf project deploy start | resume`
    - `sf apex run`
@@ -110,6 +111,19 @@ synchronously and fail-closed (treat as production) when the alias is
 unknown. Users who frequently target a non-default production alias can
 list it in `productionAliases` to override detection.
 
+### Why mediate `herdr.run` like `bash`?
+
+Herdr Workflow Mode lets agents run commands in other panes without blocking the
+main Pi pane. Those pane commands are still shell commands, so they must not
+become a safety bypass around dangerous-command confirmation or production-org
+confirmation. `sf-guardrail` therefore extracts commands from both
+`bash.command` and `herdr.run.command`, evaluates them through the same gates,
+and records the original tool name in the audit trail.
+
+Only `herdr.run` is mediated in v1. Pane reads, watches, waits, splits, tab
+creation, focus changes, and low-level `herdr.send` are not complete command
+submissions and stay outside this command-safety seam.
+
 ### Why hand-rolled tokenizer instead of a shell parser package?
 
 The only three things we extract from bash commands are the head word,
@@ -141,6 +155,7 @@ current turn so hostile agent loops can't bypass a prior confirmation.
 | tool_call          | policies protection blocks tool         | `{ block: true, reason }`, audit       |
 | tool_call          | commandGate allowedPatterns             | Pass through                           |
 | tool_call          | commandGate autoDenyPatterns            | `{ block }`, audit                     |
+| tool_call          | `herdr.run` command matches a gate      | same confirmation path as `bash`       |
 | tool_call          | previously allowed (session memory)     | Pass through, audit as allow_session   |
 | tool_call          | interactive confirmation                | `ctx.ui.select`, audit per choice      |
 | tool_call          | headless + env opt-in                   | Pass through, audit as headless_pass   |
@@ -214,7 +229,7 @@ Covered by unit tests:
   `productionAliases`, and fails closed to "production" on unknown
   aliases.
 - `classify` end-to-end produces the right decision for representative
-  `read`/`write`/`bash` tool calls with the bundled config.
+  `read`/`write`/`bash`/`herdr.run` tool calls with the bundled config.
 - Config loader parses bundled defaults, merges user override by id,
   disables bundled rules via `enabled: false`, and falls back silently
   on malformed JSON.

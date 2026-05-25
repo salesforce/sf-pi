@@ -63,12 +63,13 @@ describe("formatSfPiExtensionContext", () => {
     expect(context.endsWith(SF_PI_EXTENSIONS_CLOSE_TAG)).toBe(true);
     expect(context).toContain("SF Pi bundled-extension routing priority");
     expect(context).toContain("follow the latest one");
-    expect(context).toContain("Status: 15/15 bundled extensions enabled.");
+    expect(context).toContain("Status: 16/16 bundled extensions enabled.");
     expect(context).toContain("Active SF skills remain fallback/workflow guidance: sf-data360");
     expect(context).toContain("- sf-agentscript (enabled)");
     expect(context).toContain("Agentforce Agent Script authoring");
     expect(context).toContain("active tools: agentscript_authoring, agentscript_preview");
     expect(context).toContain("- sf-data360 (enabled)");
+    expect(context).toContain("- sf-herdr (enabled)");
     expect(context).toContain("- sf-pi-manager (always-on)");
   });
 
@@ -98,6 +99,8 @@ describe("formatSfPiExtensionContext", () => {
     expect(activeContext).toContain("Herdr Workflow Mode: active.");
     expect(activeContext).toContain("Use the `herdr` tool for long-running");
     expect(activeContext).toContain("Prefer reusing existing panes/tabs");
+    expect(activeContext).toContain("Create panes just in time");
+    expect(activeContext).toContain("Protect the main orchestrator pane");
     expect(activeContext).toContain("fall back to normal SF Pi operation");
   });
 });

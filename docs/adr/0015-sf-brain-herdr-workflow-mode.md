@@ -130,3 +130,21 @@ agents toward unavailable tooling. Herdr support must be opportunistic.
   for documented runbooks.
 - Revisit a dedicated `sf-herdr` extension only after SF Pi needs a user-facing
   command/status/settings surface or shared Herdr state.
+
+## Follow-up decisions
+
+### Dynamic lane planning supersedes the no-tool v1 posture
+
+ADR 0016 keeps ADR 0015's opportunistic activation model but supersedes the
+"no new tools" v1 posture with one narrow exception: `sf-herdr` may register a
+non-mutating planner tool that returns lane plans while leaving all pane
+mutations to explicit upstream `herdr` tool calls.
+
+### SF Guardrail mediates `herdr.run` commands
+
+Herdr Workflow Mode gives agents a safe reason to run long-lived commands in
+other panes, but those commands are still shell commands. `sf-guardrail` should
+therefore evaluate `herdr.run.command` through the same dangerous-command and
+org-aware gates as `bash.command`. This is command mediation, not pane-management
+mediation: reads, watches, waits, splits, tab creation, focus changes, and raw
+`herdr.send` remain outside the v1 guardrail scope.

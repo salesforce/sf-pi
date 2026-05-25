@@ -104,7 +104,7 @@
     "entry": "extensions/sf-brain/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 376
+    "srcLoc": 387
   },
   {
     "id": "sf-browser",
@@ -385,7 +385,56 @@
     "entry": "extensions/sf-guardrail/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 2112
+    "srcLoc": 2128
+  },
+  {
+    "id": "sf-herdr",
+    "name": "SF Herdr",
+    "description": "Dynamic Herdr lane planning for Salesforce workflows without replacing the upstream Herdr tool.",
+    "category": "agent-tool",
+    "maturity": "experimental",
+    "defaultEnabled": true,
+    "alwaysActive": false,
+    "configurable": true,
+    "commands": [
+      "/sf-herdr"
+    ],
+    "providers": [],
+    "tools": [
+      "sf_herdr_plan"
+    ],
+    "events": [
+      "session_start",
+      "session_tree",
+      "tool_execution_end",
+      "tool_result",
+      "resources_discover",
+      "session_shutdown"
+    ],
+    "docs": {
+      "summary": "Owns SF Pi-managed Herdr workflow profiles, dynamic workflow signals, status/doctor surfaces, and a non-mutating lane planner. It does not duplicate the upstream herdr tool; actual pane mutations remain explicit herdr tool calls.",
+      "primaryFiles": [
+        "index.ts",
+        "lib/sf_herdr_plan-tool.ts",
+        "lib/signal-state.ts",
+        "lib/status.ts",
+        "lib/config-panel.ts",
+        "../../lib/common/herdr-profile/store.ts",
+        "../../docs/adr/0016-dynamic-sf-herdr-lane-planning.md"
+      ],
+      "stateFiles": [
+        "<globalAgentDir>/sf-pi/herdr/preferences.json"
+      ],
+      "safety": [
+        "Does not register or wrap the upstream herdr tool; pane mutations stay explicit herdr calls.",
+        "sf_herdr_plan is non-mutating and never generates shell commands.",
+        "sf-guardrail mediates herdr.run.command when dangerous-command or org-aware rules match."
+      ]
+    },
+    "entry": "extensions/sf-herdr/index.ts",
+    "hasReadme": true,
+    "hasTests": true,
+    "srcLoc": 729
   },
   {
     "id": "sf-llm-gateway-internal",

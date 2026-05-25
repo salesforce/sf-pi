@@ -38,6 +38,7 @@ code lives in `extensions/<id>/lib/`.
 | `slack-status/store.ts`                       | `sf-slack` (producer); `sf-welcome`, `sf-devbar` (consumers)                | Decoupled Slack auth/readiness status store                                        |
 | `sf-lsp-health/index.ts`                      | `sf-lsp` (producer); `sf-devbar` (consumer)                                 | In-process LSP availability + last-error registry; powers the devbar LSP segment   |
 | `sf-lsp-health/types.ts`                      | `sf-lsp`, `sf-devbar`                                                       | Availability/severity union + payload shape for the registry                       |
+| `herdr-profile/store.ts`                      | `sf-herdr`, `sf-brain`                                                      | Managed Herdr workflow profiles, defaults, and non-mutating lane-plan builder      |
 | `skill-sources/skill-sources.ts`              | `sf-pi-manager`, `sf-welcome`                                               | Detects + wires Claude Code / Codex / Cursor skill roots for `/sf-pi skills`       |
 | `sf-pi-extension-state.ts`                    | `sf-welcome`, `sf-devbar`, diagnostics                                      | Shared bundled-extension enablement checks from Pi package filters                 |
 | `catalog-state/announcements-manifest.ts`     | `sf-welcome`, `sf-pi-manager`                                               | Load + validate `catalog/announcements.json`                                       |

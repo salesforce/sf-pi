@@ -104,6 +104,34 @@ _Avoid_: standalone extension, workflow catalog, mandatory terminal manager, sta
 The Herdr-installed Pi extension that reports Pi agent state back to Herdr for sidebar/status visibility without being required for SF Brain's pane-orchestration guidance.
 _Avoid_: active tool provider, workflow mode requirement, pane-control API
 
+**Herdr Command Mediation**:
+The SF Guardrail behavior where shell commands submitted through Herdr pane orchestration are evaluated by the same dangerous-command and org-aware safety gates as ordinary bash tool calls.
+_Avoid_: duplicate safety engine, Herdr-specific allowlist, bypass around Salesforce org safety, pane-management gating
+
+**SF Herdr**:
+An experimental SF Pi Bundled Extension that owns Herdr status, preferences, dynamic workflow signals, and non-mutating lane planning while leaving the actual `herdr` tool to the upstream Pi → Herdr control package.
+_Avoid_: duplicate Herdr tool provider, pane orchestration runtime, mandatory dependency, replacement for SF Brain or SF Guardrail
+
+**Herdr Workflow Profile**:
+A configurable preference profile that describes how a workflow family should use Herdr lanes, with global defaults plus per-workflow overrides for families such as Apex, Agent Script, Data 360, browser/UI, UI bundle, and generic work.
+_Avoid_: hardcoded extension behavior, global-only Herdr preference, invisible terminal mutation
+
+**Dynamic Herdr Lane**:
+An ephemeral, sticky, or manual Herdr pane/tab lane created during an agent workflow for a specific purpose such as tests, logs, preview, eval, deploy validation, server output, or reviewer work. Ephemeral lanes prefer split panes and close with `herdr.stop` on successful watched completion; they stay open on failure or timeout. Sticky and manual lanes may use tabs and stay open until an explicit cleanup decision.
+_Avoid_: fixed permanent pane, hidden terminal mutation, unbounded pane accumulation, replacement for the underlying Herdr tool, relying on unavailable tab-close primitives
+
+**Hybrid Herdr Orchestration**:
+The SF Herdr architecture where SF Pi owns workflow policies, preferences, status, and non-mutating lane planning, while actual pane/tab mutations remain explicit `herdr` tool calls visible in the transcript.
+_Avoid_: extension-only auto-splitting, duplicate Herdr runtime, compound tool hiding individual pane actions
+
+**Herdr Lane Plan**:
+A non-mutating, phased plan returned by SF Herdr that maps a workflow intent and inferred workflow context to recommended Herdr actions, aliases, lifecycle, watch/read strategy, and cleanup rules without creating, running, or closing panes itself. Its phases are discover/reuse, create, run, observe, and cleanup.
+_Avoid_: hidden execution, compound mutation, transcript-free cleanup, fixed recipe detached from user preferences, shell command generation
+
+**Herdr Workflow Signal**:
+A lightweight observation from recent tool calls, tool results, file edits, or Herdr pane commands that helps SF Herdr infer the current workflow context for planning without forcing a single session-wide mode. Signals are kept in a branch-scoped in-memory index reconstructed from session history, not in global preferences.
+_Avoid_: permanent mode switch, hidden pane mutation trigger, full transcript analytics, replacing extension-first routing, persisted global activity log
+
 **Release Freshness**:
 The user-visible posture that compares an installed package or runtime version with the latest known release and reports it as current, update-available, or unknown.
 _Avoid_: health check, deployment status, security support guarantee

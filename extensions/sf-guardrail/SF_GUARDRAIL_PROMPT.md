@@ -9,13 +9,15 @@ Hard-blocked (no prompt, return an error to you):
   (carve-out: .sfdx/agents/\*\* is allowed for sf-agentscript preview sessions)
 - Reads/writes to secret files (.env, .env.local, .env.production, .dev.vars)
 
-Dangerous-command confirmation (shell-AST matched, not regex):
+Dangerous-command confirmation (shell-AST matched from `bash.command` or
+`herdr.run.command`, not regex):
 
 - rm -rf, sudo, chmod -R 777, chown -R, dd of=, mkfs.\*
 - sf org delete (scratch/sandbox)
 - git push --force / -f
 
-Org-aware confirmation (only when target org resolves to PRODUCTION):
+Org-aware confirmation (from `bash.command` or `herdr.run.command`, only when
+target org resolves to PRODUCTION):
 
 - sf project deploy start|resume
 - sf apex run
