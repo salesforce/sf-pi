@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "revision": "2026-05-01",
+  "revision": "2026-05-25",
   "bundles": [
     {
       "id": "default",
@@ -15,7 +15,8 @@
         "glimpseui",
         "pi-tool-display",
         "pi-updater",
-        "pi-subagents"
+        "pi-subagents",
+        "pi-herdr"
       ]
     }
   ],
@@ -98,6 +99,16 @@
       "homepage": "https://github.com/nicobailon/pi-subagents",
       "license": "MIT",
       "rationale": "Unlocks multi-agent workflows — advisory review, implementation handoffs, and parallel fan-out — that pair naturally with the sf-pi planning and skill surface.",
+      "scope": "global"
+    },
+    "pi-herdr": {
+      "id": "pi-herdr",
+      "name": "pi-herdr / Herdr",
+      "description": "Alpha Herdr-native workspace, tab, and pane orchestration for pi with command output watches and agent status waits.",
+      "source": "npm:@ogulcancelik/pi-herdr",
+      "homepage": "https://github.com/ogulcancelik/pi-extensions",
+      "license": "MIT",
+      "rationale": "Alpha but powerful: enables sf-herdr to run dynamic Salesforce workflow lanes for tests, log tails, previews, evals, servers, and cleanup while keeping pane actions explicit.",
       "scope": "global"
     }
   }
