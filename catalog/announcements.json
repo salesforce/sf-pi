@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.149.2-2026-05-25",
-  "latestVersion": "0.149.2",
+  "revision": "release-0.149.3-2026-05-26",
+  "latestVersion": "0.149.3",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.149.2",
+      "id": "release-0.149.3",
       "kind": "update",
-      "title": "sf-pi v0.149.2 — optimize sf-pi startup probes",
-      "publishedAt": "2026-05-25T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.149.2",
+      "title": "sf-pi v0.149.3 — cache gateway startup status",
+      "publishedAt": "2026-05-26T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.149.3",
       "severity": "info",
-      "body": "optimize sf-pi startup probes"
+      "body": "cache gateway startup status"
     },
     {
       "id": "pi-0.73-required",
