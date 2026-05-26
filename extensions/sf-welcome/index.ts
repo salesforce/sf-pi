@@ -39,8 +39,6 @@ import type {
   ExtensionAPI,
   ExtensionCommandContext,
   ExtensionContext,
-  KeybindingsManager,
-  Theme,
 } from "@earendil-works/pi-coding-agent";
 import {
   type CommandPanelAction,
@@ -57,13 +55,7 @@ import {
   type LifecycleActionId,
 } from "../../lib/common/extension-toggle.ts";
 import type { SplashData } from "./lib/types.ts";
-import {
-  matchesKey,
-  type Component,
-  type Focusable,
-  type OverlayHandle,
-  type TUI,
-} from "@earendil-works/pi-tui";
+import { matchesKey } from "@earendil-works/pi-tui";
 import {
   collectInitialSplashData,
   collectSplashData,
@@ -82,13 +74,11 @@ import {
 } from "./lib/splash-data.ts";
 import { readCachedNodeCertStatus, writeCachedNodeCertStatus } from "./lib/node-cert-cache.ts";
 import { acknowledgeAnnouncementsRevision } from "../../lib/common/catalog-state/announcements-state.ts";
-import { SfWelcomeOverlay, SfWelcomeHeader } from "./lib/splash-component.ts";
-import { isQuietStartupEnabled, isVerboseStartupRequested } from "./lib/startup-mode.ts";
+import { SfWelcomeHeader } from "./lib/splash-component.ts";
 import {
   refreshRuntimeDiagnosticsCache,
   resolveConfiguredWelcomeMode,
   runDoctorDiagnostics,
-  shouldForceSafeWelcome,
   summarizeStartupDoctorNudge,
 } from "../../lib/common/doctor/diagnostics.ts";
 
@@ -136,8 +126,6 @@ function isReducedMotionRequested(): boolean {
 export default function sfWelcome(pi: ExtensionAPI) {
   if (!requirePiVersion(pi, "sf-welcome")) return;
 
-  let dismissOverlay: ((persistSeen?: boolean) => void) | null = null;
-  let overlayRequestRender: (() => void) | null = null;
   let headerActive = false;
   let activeHeader: SfWelcomeHeader | null = null;
   let headerRequestRender: ((force?: boolean) => void) | null = null;
@@ -149,8 +137,6 @@ export default function sfWelcome(pi: ExtensionAPI) {
    * reloads. */
   let unsubscribeUsageStore: (() => void) | null = null;
   let unsubscribeSlackStore: (() => void) | null = null;
-  let shouldDismissEarly = false;
-  let isStreaming = false;
   let startupRunId = 0;
   let activeSessionGeneration = 0;
   let activeSessionKey: string | null = null;
@@ -281,9 +267,7 @@ export default function sfWelcome(pi: ExtensionAPI) {
     if (headerActive) {
       activeHeader?.invalidate();
       headerRequestRender?.(force);
-      return;
     }
-    overlayRequestRender?.();
   }
 
   /**
@@ -316,17 +300,9 @@ export default function sfWelcome(pi: ExtensionAPI) {
     coalesceTimer.unref?.();
   }
 
-  // Helper: dismiss welcome screen (overlay or header)
+  // Helper: dismiss welcome screen header
   function dismiss(ctx: ExtensionContext) {
     if (!isActiveSession(ctx)) return;
-    if (dismissOverlay) {
-      dismissOverlay();
-      dismissOverlay = null;
-      overlayRequestRender = null;
-    } else {
-      // Overlay not set up yet — mark for immediate dismissal
-      shouldDismissEarly = true;
-    }
     if (headerActive) {
       headerActive = false;
       resetHeaderAnimation();
@@ -348,12 +324,8 @@ export default function sfWelcome(pi: ExtensionAPI) {
     const generation = beginActiveSession(ctx);
 
     // Reset state
-    dismissOverlay = null;
-    overlayRequestRender = null;
     headerActive = false;
     resetHeaderAnimation();
-    shouldDismissEarly = false;
-    isStreaming = false;
 
     if (!ctx.hasUI) return;
 
@@ -391,24 +363,12 @@ export default function sfWelcome(pi: ExtensionAPI) {
     }
     data.doctor = startupDoctorNudge;
 
-    // Safe-start policy: setup warnings, SF_PI_SAFE_START, or explicit
-    // sfPi.welcome.mode=header keep startup non-blocking. Users can still
-    // force the full overlay with sfPi.welcome.mode=overlay or --verbose.
+    // Startup is intentionally non-blocking: render as a header so the user
+    // can type while background rows refresh. The full overlay remains useful
+    // for previews/tests but is no longer used on automatic startup.
     const welcomeMode = resolveConfiguredWelcomeMode(ctx.cwd);
     if (welcomeMode === "off") return;
-    const verboseRequested = isVerboseStartupRequested();
-    const isQuiet = isQuietStartupEnabled(ctx.cwd, verboseRequested);
-    const forceHeader = shouldForceSafeWelcome(startupDoctorReport);
-    const safeStart = startupDoctorReport.safeStartRequested;
-    if (
-      welcomeMode === "header" ||
-      safeStart ||
-      (!verboseRequested && welcomeMode !== "overlay" && (forceHeader || isQuiet))
-    ) {
-      setupHeader(ctx, data, generation);
-    } else {
-      setupOverlay(ctx, data, generation);
-    }
+    setupHeader(ctx, data, generation);
 
     // Kick the gateway's monthly-usage cache in the background so the splash
     // matches the bottom bar. We don't await it here — the splash renders
@@ -727,7 +687,6 @@ export default function sfWelcome(pi: ExtensionAPI) {
   });
 
   pi.on("agent_start", async (_event, ctx) => {
-    isStreaming = true;
     dismiss(ctx);
   });
 
@@ -744,14 +703,6 @@ export default function sfWelcome(pi: ExtensionAPI) {
     // No-op when SF_PI_BOOT_TIMING isn't set.
     flushBootTiming();
     resetBootTiming();
-
-    if (dismissOverlay) {
-      dismissOverlay(false);
-    }
-    dismissOverlay = null;
-    overlayRequestRender = null;
-    shouldDismissEarly = false;
-    isStreaming = false;
 
     if (headerActive && ctx.hasUI) {
       ctx.ui.setHeader(undefined);
@@ -1309,195 +1260,5 @@ export default function sfWelcome(pi: ExtensionAPI) {
     // immediately after installing the header so the default editor frame is
     // replaced as quickly as sf-pi can manage without Pi core changes.
     headerRequestRender?.(true);
-  }
-
-  function setupOverlay(ctx: ExtensionContext, data: SplashData, generation: number) {
-    // Pi guarantees the TUI is ready by session_start — no setTimeout needed.
-    if (!ctx.hasUI || !isActiveSession(ctx, generation)) return;
-    if (shouldDismissEarly || isStreaming) {
-      shouldDismissEarly = false;
-      return;
-    }
-
-    // Skip if session already has activity. `getBranch()` returns SessionEntry
-    // which only carries message/custom/etc. entries — tool activity is nested
-    // inside message.content. Type the iteration as a loose shape so we can
-    // also defensively check for legacy tool_call/tool_result entry types that
-    // some upstream versions may expose separately.
-    type ActivityEntry = { type: string; message?: { role?: string } };
-    const sessionEvents: ActivityEntry[] = ctx.sessionManager?.getBranch?.() ?? [];
-    const hasActivity = sessionEvents.some(
-      (e) =>
-        (e.type === "message" && e.message?.role === "assistant") ||
-        e.type === "tool_call" ||
-        e.type === "tool_result",
-    );
-    if (hasActivity) return;
-
-    // Hide pi's built-in working loader row while the splash overlay is up
-    // so an early streaming start doesn't paint a loader behind the welcome
-    // panel. Restored in the component's dispose handler (every dismiss
-    // path goes through dispose). No-op on pi < 0.70.3.
-    ctx.ui.setWorkingVisible(false);
-
-    // The overlay component we return also exposes `focused` (Focusable) so the
-    // TUI can manage cursor visibility, and a `dispose()` method that pi calls
-    // when the overlay closes. Neither is part of plain `Component`, so we
-    // describe the return shape explicitly.
-    type OverlayComponent = Component & Focusable & { dispose?(): void };
-    ctx.ui
-      .custom<void>(
-        (
-          tui: TUI,
-          _theme: Theme,
-          _keybindings: KeybindingsManager,
-          done: (result: void) => void,
-        ): OverlayComponent => {
-          if (!isActiveSession(ctx, generation)) {
-            done();
-            return {
-              focused: false,
-              render: () => [],
-              invalidate: () => {},
-              handleInput: () => {},
-              dispose: () => {},
-            };
-          }
-
-          const welcome = new SfWelcomeOverlay(data);
-
-          // Same startup smoothing as quiet-header mode: once the overlay has
-          // a TUI handle, force a full repaint to replace Pi's default frame.
-          tui.requestRender(true);
-
-          let dismissed = false;
-          // Separate interval for the Pi + SALESFORCE color shimmer.
-          // Ticks for ~5 seconds on boot, then stops — the animation is
-          // a one-time "boot-up moment," not an ongoing repaint cost.
-          //
-          // Opt-out: set SF_PI_REDUCED_MOTION=1 to skip the animation
-          // entirely. Honors the motion-preference convention used by
-          // prefers-reduced-motion in modern OSes.
-          const headerIntervalRef: { current?: ReturnType<typeof setInterval> } = {};
-          const reducedMotion = isReducedMotionRequested();
-          let overlayHeaderOffset = 0;
-
-          const doDismiss = (persistSeen: boolean = true) => {
-            if (dismissed) return;
-            dismissed = true;
-            clearInterval(headerIntervalRef.current);
-            if (dismissOverlay === doDismiss) {
-              dismissOverlay = null;
-            }
-            if (isActiveSession(ctx, generation)) {
-              overlayRequestRender = null;
-            }
-            // Persist the seen version on every user-visible dismiss path,
-            // including direct keypress dismissals that bypass the outer
-            // dismiss() helper. Shutdown passes false.
-            if (persistSeen) {
-              markWhatsNewSeen();
-              markAnnouncementsSeen();
-            }
-            done();
-          };
-
-          // Store dismiss callback for external triggers
-          dismissOverlay = doDismiss;
-
-          // Wire the external render hook through the captured `tui` so
-          // async refreshes (SF env detection, monthly usage) can repaint
-          // the overlay immediately. OverlayHandle doesn't expose a repaint
-          // API, so this is the authoritative path.
-          overlayRequestRender = () => {
-            if (!dismissed && isActiveSession(ctx, generation)) tui.requestRender(true);
-          };
-
-          // Check if early dismissal was requested between the outer check and this point
-          if (shouldDismissEarly) {
-            shouldDismissEarly = false;
-            doDismiss();
-          }
-
-          // Kick off the color-cycle animation for the brand mark. Runs
-          // at a 400 ms shimmer cadence and stops
-          // itself once HEADER_ANIMATION_FRAMES frames have elapsed;
-          // the final frame becomes the permanent look of the mark.
-          //
-          // `welcome.invalidate()` before requestRender is belt-and-
-          // braces: the TUI's diff engine skips the repaint if render()
-          // returns bytes identical to the previous frame. Invalidating
-          // first drops any cached output so the new offset always paints.
-          if (!reducedMotion) {
-            headerIntervalRef.current = setInterval(() => {
-              if (dismissed) return;
-              if (!isActiveSession(ctx, generation)) {
-                clearInterval(headerIntervalRef.current);
-                return;
-              }
-              overlayHeaderOffset += 1;
-              welcome.setHeaderOffset(overlayHeaderOffset);
-              welcome.invalidate();
-              // force:true bypasses pi-tui's diff cache so the new
-              // per-character color bytes definitely land on screen
-              // (sf-tui.d.ts requestRender(force?: boolean)).
-              tui.requestRender(true);
-              if (overlayHeaderOffset >= HEADER_ANIMATION_FRAMES) {
-                clearInterval(headerIntervalRef.current);
-              }
-            }, HEADER_FRAME_MS);
-          }
-
-          return {
-            focused: false,
-            invalidate: () => {
-              if (isActiveSession(ctx, generation)) welcome.invalidate();
-            },
-            render: (width: number) =>
-              isActiveSession(ctx, generation) ? welcome.render(width) : [],
-            handleInput: () => doDismiss(),
-            dispose: () => {
-              dismissed = true;
-              if (dismissOverlay === doDismiss) {
-                dismissOverlay = null;
-              }
-              if (isActiveSession(ctx, generation)) {
-                overlayRequestRender = null;
-              }
-              clearInterval(headerIntervalRef.current);
-              // Restore the built-in working loader row we hid before opening
-              // the overlay. Runs on every close path (keypress, external
-              // dismiss, session shutdown).
-              ctx.ui.setWorkingVisible(true);
-            },
-          };
-        },
-        {
-          overlay: true,
-          // Use function form for responsive sizing on terminal resize.
-          // Anchored top-left with a 1-col left margin so the splash
-          // hugs pi's own left-aligned chrome (prompt row, bottom bar)
-          // instead of floating center-screen on wide terminals.
-          overlayOptions: () => ({
-            anchor: "top-left" as const,
-            margin: { top: 1, left: 1 },
-          }),
-          onHandle: (_handle: OverlayHandle) => {
-            // OverlayHandle exposes hide/setHidden/focus/unfocus but no
-            // requestRender. The factory above wires overlayRequestRender
-            // through the captured `tui` instance, which is the right place
-            // to trigger repaints. Kept as a typed reference so future code
-            // that needs the handle has it.
-          },
-        },
-      )
-      .catch((error) => {
-        // If custom() itself rejects we never got a dispose call, so restore
-        // the loader row here as a belt-and-suspenders fallback.
-        ctx.ui.setWorkingVisible(true);
-        // Debug-ish log, but `no-console` only allows warn/error/info. Overlay
-        // failures are rare and worth surfacing, so route through console.warn.
-        if (isActiveSession(ctx, generation)) console.warn("[sf-welcome] Overlay failed:", error);
-      });
   }
 }

@@ -41,9 +41,8 @@ override)`). Driven by `lib/common/privacy/state.ts` — see
 ```
 Extension loads
   └─ session_start (reason="startup")
-       ├─ setup issues / SF_PI_SAFE_START=1 → show non-blocking header + doctor nudge
-       ├─ quietStartup=false → show overlay (any-key dismiss)
-       └─ quietStartup=true  → show persistent header (Esc dismiss)
+       ├─ sfPi.welcome.mode=off → skip
+       └─ otherwise → show non-blocking persistent header (Esc dismiss)
 
 Dismissal triggers:
   ├─ Any keypress (overlay)
@@ -67,11 +66,11 @@ session_shutdown
    for bundled extension metadata and combines it with settings.json filter state.
    This keeps the welcome screen aligned with the actual bundle list.
 
-4. **Overlay vs header modes** — Matches Pi's startup precedence rules while
-   adding sf-pi safe start. `quietStartup: true` in settings.json switches to a
-   non-blocking header, `sfPi.welcome.mode` can force `auto`/`overlay`/`header`/`off`,
-   and `SF_PI_SAFE_START=1` keeps startup non-blocking so users can run
-   `/sf-pi doctor`. `--verbose` still forces the overlay unless safe-start is active.
+4. **Non-blocking startup header** — Startup renders as a persistent header so
+   users can type while cache-first rows refresh. `sfPi.welcome.mode=off` disables
+   the startup surface entirely. The older full overlay remains in code for visual
+   previews and explicit future surfaces, but automatic startup no longer uses a
+   capturing overlay.
 
 5. **Lightweight SF CLI status** — The welcome screen checks only
    `sf --version` plus an optional npm-registry lookup so it can show
@@ -146,8 +145,7 @@ session_shutdown
 
 | Event/Trigger    | Condition                     | Result                                      |
 | ---------------- | ----------------------------- | ------------------------------------------- |
-| session_start    | reason="startup", quiet=false | Show overlay                                |
-| session_start    | reason="startup", quiet=true  | Show persistent header                      |
+| session_start    | reason="startup", mode≠off    | Show persistent header                      |
 | session_start    | reason≠"startup"              | Skip (resume, reload, fork)                 |
 | session_start    | first-ever launch             | Persist current pi version, omit What's New |
 | agent_start      | overlay/header visible        | Dismiss + persist seen pi version           |
@@ -271,15 +269,10 @@ Terminal.app and some Powerlevel10k setups. Fixes:
   above — they fall back to the color emoji font on their own.
 
 **Splash feels too busy, stuck, or setup warnings are noisy:**
-Enable the compact header mode: `"quietStartup": true` in the same
-`settings.json`, or run `/sf-pi doctor fix startup`. The dismissable splash is
-replaced by a compact header above the prompt. Press Esc to dismiss it. For
-recovery when the overlay is in the way, launch `SF_PI_SAFE_START=1 pi` and run
-`/sf-pi doctor`.
-
-You can also set `sfPi.welcome.mode` to `auto`, `overlay`, `header`, or `off`
-in settings. Safe-start and detected setup issues prefer the non-blocking
-header so users can repair the harness from inside pi.
+Startup now uses the compact non-blocking header by default. Press Esc to
+dismiss it, or set `sfPi.welcome.mode` to `off` in settings to hide it.
+For recovery launch, `SF_PI_SAFE_START=1 pi` still resolves to the same
+non-blocking header so users can repair the harness from inside pi.
 
 **Splash content gets truncated in a narrow terminal:**
 Fixed — below ~100 columns the splash now stacks to a single column instead
