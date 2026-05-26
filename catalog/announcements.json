@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.149.3-2026-05-26",
-  "latestVersion": "0.149.3",
+  "revision": "release-0.149.4-2026-05-26",
+  "latestVersion": "0.149.4",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.149.3",
+      "id": "release-0.149.4",
       "kind": "update",
-      "title": "sf-pi v0.149.3 — cache gateway startup status",
+      "title": "sf-pi v0.149.4 — make welcome startup non-blocking",
       "publishedAt": "2026-05-26T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.149.3",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.149.4",
       "severity": "info",
-      "body": "cache gateway startup status"
+      "body": "make welcome startup non-blocking"
     },
     {
       "id": "pi-0.73-required",
