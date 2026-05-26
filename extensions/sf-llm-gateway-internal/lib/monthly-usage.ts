@@ -36,6 +36,10 @@ import {
   registerMonthlyUsageRefresher,
   setMonthlyUsageState,
 } from "../../../lib/common/monthly-usage/store.ts";
+import {
+  readCachedMonthlyUsageSnapshot,
+  writeCachedMonthlyUsageSnapshot,
+} from "../../../lib/common/monthly-usage/cache.ts";
 import { API_KEY_ENV, getGatewayConfig, getMergedSavedGatewayConfig } from "./config.ts";
 import { toGatewayRootBaseUrl } from "./gateway-url.ts";
 import { fetchWithTimeout } from "./models.ts";
@@ -155,6 +159,10 @@ async function tracedProbe<T>(
  * session_start. Returns the unregister handle for session_shutdown.
  */
 export function registerGatewayMonthlyUsageRefresher(): () => void {
+  const cached = readCachedMonthlyUsageSnapshot();
+  if (cached) {
+    setMonthlyUsageState(cached);
+  }
   const unregister = registerMonthlyUsageRefresher(refreshMonthlyUsage);
   return () => {
     unregister();
@@ -307,6 +315,7 @@ export async function refreshMonthlyUsage(force: boolean, cwd: string): Promise<
     }
 
     setMonthlyUsageState(snapshot);
+    writeCachedMonthlyUsageSnapshot(snapshot);
     lastFetchAt = Date.now();
   })();
 
@@ -398,7 +407,7 @@ function publishError(
   connectionStatus: GatewayConnectionStatus,
   keyConflict: KeyConflictWarning | null,
 ): void {
-  setMonthlyUsageState({
+  const snapshot: MonthlyUsageSnapshot = {
     monthlyUsage: null,
     monthlyUsageError: message,
     keyInfo: null,
@@ -407,7 +416,9 @@ function publishError(
     healthError: message,
     connectionStatus,
     keyConflict,
-  });
+  };
+  setMonthlyUsageState(snapshot);
+  writeCachedMonthlyUsageSnapshot(snapshot);
 }
 
 /**
@@ -420,10 +431,13 @@ function publishChecking(keyConflict: KeyConflictWarning | null): void {
   const previous = getMonthlyUsageState();
   setMonthlyUsageState({
     ...previous,
-    connectionStatus: {
-      kind: "checking",
-      checkedAt: new Date().toISOString(),
-    },
+    connectionStatus:
+      previous.connectionStatus && previous.connectionStatus.kind !== "checking"
+        ? previous.connectionStatus
+        : {
+            kind: "checking",
+            checkedAt: new Date().toISOString(),
+          },
     keyConflict,
   });
 }

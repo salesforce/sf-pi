@@ -6,7 +6,7 @@
  * to decide what to display; repair code lives in fixes.ts.
  */
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
-import { execFileSync } from "node:child_process";
+import { execFile, execFileSync } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
 import { getInstalledPiVersion, MIN_PI_VERSION } from "../pi-compat.ts";
@@ -494,9 +494,8 @@ export function refreshRuntimeDiagnosticsCache(): Promise<RuntimeDiagnostics> {
     const cached = readCachedRuntimeDiagnostics();
     if (cached) return Promise.resolve(cached);
   }
-  runtimeRefreshInFlight = Promise.resolve()
-    .then(() => {
-      const runtime = collectRuntimeDiagnostics();
+  runtimeRefreshInFlight = collectRuntimeDiagnosticsAsync()
+    .then((runtime) => {
       writeCachedRuntimeDiagnostics(runtime);
       runtimeLastRefreshAt = Date.now();
       return runtime;
@@ -505,6 +504,69 @@ export function refreshRuntimeDiagnosticsCache(): Promise<RuntimeDiagnostics> {
       runtimeRefreshInFlight = null;
     });
   return runtimeRefreshInFlight;
+}
+
+export async function collectRuntimeDiagnosticsAsync(): Promise<RuntimeDiagnostics> {
+  const globalSettings = readJsonObject(globalSettingsPath());
+  const npmCommand = readConfiguredNpmCommand(globalSettings) ?? ["npm"];
+  const [piPath, npmPath, allPiPathsRaw, npmGlobalRoot, npmBeforeRaw, npmMinRaw, npmMinimumRaw] =
+    await Promise.all([
+      runCaptureAsync("which", ["pi"]),
+      runCaptureAsync("which", ["npm"]),
+      runCaptureAsync("which", ["-a", "pi"]),
+      runConfiguredNpmCaptureAsync(npmCommand, ["root", "-g"]),
+      runConfiguredNpmCaptureAsync(npmCommand, ["config", "get", "before"]),
+      runConfiguredNpmCaptureAsync(npmCommand, ["config", "get", "min-release-age"]),
+      runConfiguredNpmCaptureAsync(npmCommand, ["config", "get", "minimum-release-age"]),
+    ]);
+  const allPiPaths = allPiPathsRaw
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const npmBefore = normalizeNpmConfigValue(npmBeforeRaw);
+  const npmMinReleaseAge = normalizeNpmConfigValue(npmMinRaw);
+  const npmMinimumReleaseAge = normalizeNpmConfigValue(npmMinimumRaw);
+  const installedPiPackageVersion = npmGlobalRoot
+    ? (readPackageVersion(
+        path.join(npmGlobalRoot, "@earendil-works", "pi-coding-agent", "package.json"),
+      ) ??
+      readPackageVersion(
+        path.join(npmGlobalRoot, "@mariozechner", "pi-coding-agent", "package.json"),
+      ))
+    : undefined;
+  const [piVersionRaw, latestPiPackageVersion] = await Promise.all([
+    runCaptureAsync("pi", ["--version"]),
+    runConfiguredNpmCaptureAsync(npmCommand, [
+      "view",
+      "@earendil-works/pi-coding-agent",
+      "version",
+    ]),
+  ]);
+  const piVersion = piVersionRaw || getInstalledPiVersion();
+
+  return {
+    piVersion,
+    requiredPiVersion: MIN_PI_VERSION,
+    nodeVersion: process.version,
+    nodePath: process.execPath,
+    npmPath,
+    piPath,
+    allPiPaths,
+    npmGlobalRoot,
+    npmBefore,
+    npmMinReleaseAge,
+    npmMinimumReleaseAge,
+    installedPiPackageVersion,
+    latestPiPackageVersion,
+    updateAdvice: buildRuntimeUpdateAdvice({
+      piVersion,
+      installedPiPackageVersion,
+      allPiPaths,
+      npmBefore,
+      npmMinReleaseAge,
+      npmMinimumReleaseAge,
+    }),
+  };
 }
 
 export function collectRuntimeDiagnostics(): RuntimeDiagnostics {
@@ -593,6 +655,31 @@ function runCapture(command: string, args: string[]): string | undefined {
 function runConfiguredNpmCapture(npmCommand: string[], args: string[]): string | undefined {
   const [command, ...prefixArgs] = npmCommand;
   return command ? runCapture(command, [...prefixArgs, ...args]) : undefined;
+}
+
+function runCaptureAsync(command: string, args: string[]): Promise<string> {
+  return new Promise((resolve) => {
+    execFile(
+      command,
+      args,
+      {
+        encoding: "utf8",
+        timeout: 5_000,
+      },
+      (error, stdout) => {
+        if (error) {
+          resolve("");
+          return;
+        }
+        resolve(typeof stdout === "string" ? stdout.trim() : "");
+      },
+    );
+  });
+}
+
+function runConfiguredNpmCaptureAsync(npmCommand: string[], args: string[]): Promise<string> {
+  const [command, ...prefixArgs] = npmCommand;
+  return command ? runCaptureAsync(command, [...prefixArgs, ...args]) : Promise.resolve("");
 }
 
 export function buildRuntimeUpdateAdvice(input: {

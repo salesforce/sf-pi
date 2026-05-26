@@ -3,7 +3,8 @@
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { __resetMonthlyUsageCacheForTests } from "../../../lib/common/monthly-usage/cache.ts";
 import {
   __resetMonthlyUsageStoreForTests,
   getMonthlyUsageState,
@@ -22,8 +23,14 @@ const originalBaseUrl = process.env[BASE_URL_ENV];
 const originalApiKey = process.env[API_KEY_ENV];
 
 describe("gateway monthly usage refresh", () => {
+  beforeEach(() => {
+    __resetMonthlyUsageStoreForTests();
+    __resetMonthlyUsageCacheForTests();
+  });
+
   afterEach(() => {
     __resetMonthlyUsageStoreForTests();
+    __resetMonthlyUsageCacheForTests();
     globalThis.fetch = originalFetch;
     restoreEnv(BASE_URL_ENV, originalBaseUrl);
     restoreEnv(API_KEY_ENV, originalApiKey);

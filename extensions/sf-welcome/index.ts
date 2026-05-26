@@ -509,23 +509,6 @@ export default function sfWelcome(pi: ExtensionAPI) {
     }, 1_500);
     doctorRefreshTimer.unref?.();
 
-    const monthlyCostTimer = setTimeout(() => {
-      if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
-      void markBootStep("sf-welcome.monthly-cost-fallback", () =>
-        resolveMonthlyUsage(MONTHLY_BUDGET_FALLBACK, { includeSessionFallback: true }),
-      )
-        .then((usage) => {
-          if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
-          if (usage.monthlyUsageSource !== "sessions") return;
-          data.monthlyCost = usage.monthlyCost;
-          data.monthlyBudget = usage.monthlyBudget;
-          data.monthlyUsageSource = usage.monthlyUsageSource;
-          scheduleSplashRepaint(ctx, generation);
-        })
-        .catch(() => undefined);
-    }, 1_800);
-    monthlyCostTimer.unref?.();
-
     // Background CLI status: cache-first for first paint, live refresh later.
     // SF CLI freshness is informational, so we defer the subprocess + npm
     // registry check by 2s. The row renders cached status immediately when
@@ -638,7 +621,9 @@ export default function sfWelcome(pi: ExtensionAPI) {
     unsubscribeUsageStore?.();
     unsubscribeUsageStore = subscribeMonthlyUsageState(() => {
       if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
-      const usage = resolveMonthlyUsage(MONTHLY_BUDGET_FALLBACK);
+      const usage = resolveMonthlyUsage(MONTHLY_BUDGET_FALLBACK, {
+        includeSessionFallback: false,
+      });
       const gatewayState = getMonthlyUsageState();
       data.monthlyCost = usage.monthlyCost;
       data.monthlyBudget = usage.monthlyBudget;
