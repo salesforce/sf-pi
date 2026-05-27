@@ -517,6 +517,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.149.5](https://github.com/salesforce/sf-pi/compare/v0.149.4...v0.149.5) (2026-05-27)
+
+
+### Bug Fixes
+
+* extend welcome animation duration ([bc5a931](https://github.com/salesforce/sf-pi/commit/bc5a931302f9b862aa0956de3fe8e9b4a06c717c))
+
 ## [0.149.4](https://github.com/salesforce/sf-pi/compare/v0.149.3...v0.149.4) (2026-05-26)
 
 
