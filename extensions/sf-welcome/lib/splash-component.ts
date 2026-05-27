@@ -68,7 +68,7 @@ const WORDMARK_SHADOW = (text: string) => fg256(238, text); // Subtle depth on d
 //
 // Animation: buildLeftColumn() takes a headerOffset integer that the
 // owner (SfWelcomeOverlay/SfWelcomeHeader via setHeaderOffset) ticks up every 400 ms
-// for the first few seconds of the splash. Each tick advances the
+// for the first 8 seconds of the splash. Each tick advances the
 // per-character color index by 1, so colors travel left→right through
 // every section. After the animation window ends, the offset stays
 // pinned on the final frame — no ongoing repaint cost.
@@ -1076,7 +1076,8 @@ function renderSplashBox(
 export class SfWelcomeOverlay implements Component {
   private data: SplashData;
   // Per-character color offset driven by the extension's animation
-  // interval. Incremented each tick for a few seconds, then frozen.
+  // interval. Incremented each tick for the startup animation window,
+  // then frozen.
   private headerOffset: number = 0;
 
   constructor(data: SplashData) {

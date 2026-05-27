@@ -113,7 +113,8 @@ const FONTS_COMMAND_NAME = "sf-setup-fonts";
  * they replace this value (and may be ∞ if there's no fixed cap). */
 const MONTHLY_BUDGET_FALLBACK = 3000;
 const HEADER_FRAME_MS = 400;
-const HEADER_ANIMATION_FRAMES = 13; // 13 × 400 ms ≈ 5 s
+const HEADER_ANIMATION_DURATION_MS = 8_000;
+const HEADER_ANIMATION_FRAMES = Math.ceil(HEADER_ANIMATION_DURATION_MS / HEADER_FRAME_MS);
 
 function isReducedMotionRequested(): boolean {
   return process.env.SF_PI_REDUCED_MOTION === "1" || process.env.SF_PI_REDUCED_MOTION === "true";
