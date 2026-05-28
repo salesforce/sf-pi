@@ -22,6 +22,7 @@
  */
 
 import fs from "node:fs/promises";
+import { withFileMutationQueue } from "@earendil-works/pi-coding-agent";
 import { loadAgentforceSDK, getSdkLoadError } from "./sdk.ts";
 import { checkAgentScriptFile } from "./diagnostics.ts";
 import { buildQuickFixes } from "./code-actions.ts";
@@ -81,6 +82,10 @@ export interface MutateResult {
 // -------------------------------------------------------------------------------------------------
 
 export async function applyMutation(op: MutateOp): Promise<MutateResult> {
+  return withFileMutationQueue(op.path, () => applyMutationQueued(op));
+}
+
+async function applyMutationQueued(op: MutateOp): Promise<MutateResult> {
   const sdk = await loadAgentforceSDK();
   if (!sdk) {
     return {

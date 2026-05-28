@@ -67,7 +67,7 @@
     "entry": "extensions/sf-agentscript/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 21062
+    "srcLoc": 21083
   },
   {
     "id": "sf-brain",
@@ -213,7 +213,7 @@
     "entry": "extensions/sf-data-explorer/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 2766
+    "srcLoc": 2711
   },
   {
     "id": "sf-data360",
@@ -261,7 +261,7 @@
     "entry": "extensions/sf-data360/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 5816
+    "srcLoc": 5696
   },
   {
     "id": "sf-devbar",
@@ -648,7 +648,7 @@
     "entry": "extensions/sf-skills/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 3229
+    "srcLoc": 3200
   },
   {
     "id": "sf-slack",

@@ -38,8 +38,8 @@ Extension loads
   └─ otherwise falls back to a direct mode picker
 
 /sf-data-explorer <mode> [object] [target-org]
-  ├─ lazy-loads sf-pi Salesforce connection internals (connFromAlias, connRequest,
-  │   buildApiPath, resolveApiVersion, detectEnvironment)
+  ├─ lazy-loads sf-pi shared Salesforce connection/REST helpers (connFromAlias,
+  │   connRequest, buildApiPath, resolveApiVersion, detectEnvironment)
   ├─ resolves target org and API version
   ├─ loads the mode's catalog (cache-first), populates the object pane
   ├─ on object selection, loads describe/metadata fields, populates the field pane
@@ -49,7 +49,7 @@ Extension loads
 ```
 
 - The extension registers `/sf-data-explorer` at startup and does not perform live org calls on the boot path.
-- On explicit command invocation, it lazy-loads sf-pi Salesforce connection internals and resolves the target org/API version.
+- On explicit command invocation, it lazy-loads sf-pi shared Salesforce connection and REST helpers, then resolves the target org/API version.
 - The TUI opens a deterministic three-pane explorer: objects, fields, query/result.
 - SOQL and Data 360 SQL validators require `SELECT`; SOSL validator requires `FIND`.
 - Results can be browsed in-table, opened in detail, copied, or saved as JSON/CSV.

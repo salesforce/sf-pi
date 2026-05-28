@@ -17,6 +17,7 @@
 import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { withFileMutationQueue } from "@earendil-works/pi-coding-agent";
 import { chooseAgentTypeFromSpec, type ScaffoldAgentType } from "./templates/agent-type.ts";
 import { generateAgentforceDefault } from "./templates/agentforce-default.ts";
 import { generateMinimal } from "./templates/minimal.ts";
@@ -151,8 +152,8 @@ export async function createBundle(opts: CreateBundleOptions): Promise<CreateBun
     await mkdir(targetDir, { recursive: true });
     const agentPath = path.join(targetDir, `${opts.bundle_name}.agent`);
     const metaPath = path.join(targetDir, `${opts.bundle_name}.bundle-meta.xml`);
-    await writeFile(agentPath, source, "utf8");
-    await writeFile(metaPath, BUNDLE_META_XML_BODY, "utf8");
+    await withFileMutationQueue(agentPath, () => writeFile(agentPath, source, "utf8"));
+    await withFileMutationQueue(metaPath, () => writeFile(metaPath, BUNDLE_META_XML_BODY, "utf8"));
 
     return {
       ok: true,

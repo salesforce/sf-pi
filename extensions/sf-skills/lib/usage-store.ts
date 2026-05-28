@@ -17,15 +17,13 @@
  *             via lib/common/state-store.ts (canonical path).
  *
  *   project — `<projectRoot>/.pi/sf-skills-usage.json` (only when cwd
- *             is inside the repo). We don't use state-store here
- *             because it always writes under the global agent dir.
+ *             is inside the repo). Uses the shared state-store helper with
+ *             a legacy flat project path override.
  *
  * Both are atomic-write JSON with schemaVersion = 1.
  */
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
-import path from "node:path";
 import { createStateStore, type StateStore } from "../../../lib/common/state-store.ts";
-import { projectConfigDir } from "../../../lib/common/pi-paths.ts";
+import { projectConfigPath } from "../../../lib/common/pi-paths.ts";
 
 // -------------------------------------------------------------------------------------------------
 // Types
@@ -66,59 +64,30 @@ export function globalUsageStore(): StateStore<UsageState> {
  * agent dir. Implementation matches state-store.ts atomic-write +
  * schemaVersion envelope so hand-edits remain forwards-compatible.
  */
-export interface ProjectStore {
-  read(): UsageState;
-  write(state: UsageState): void;
+export type ProjectStore = StateStore<UsageState> & {
   bump(name: string, when?: Date): UsageState;
-  readonly path: string;
-}
+};
 
 export function projectUsageStore(cwd: string): ProjectStore {
-  const filePath = path.join(projectConfigDir(cwd), PROJECT_FILENAME);
-
-  function read(): UsageState {
-    if (!existsSync(filePath)) return { records: {} };
-    try {
-      const raw = readFileSync(filePath, "utf8");
-      const parsed = JSON.parse(raw);
-      if (!parsed || typeof parsed !== "object") return { records: {} };
-      const env = parsed as { schemaVersion?: number; state?: { records?: unknown } };
-      if (env.schemaVersion !== SCHEMA_VERSION) return { records: {} };
-      const records = env.state?.records;
-      if (!records || typeof records !== "object") return { records: {} };
-      return { records: records as Record<string, UsageRecord> };
-    } catch {
-      return { records: {} };
-    }
-  }
-
-  function write(state: UsageState): void {
-    const dir = path.dirname(filePath);
-    try {
-      mkdirSync(dir, { recursive: true });
-    } catch {
-      return;
-    }
-    const envelope = { schemaVersion: SCHEMA_VERSION, state };
-    const tmp = `${filePath}.${process.pid}.tmp`;
-    try {
-      writeFileSync(tmp, `${JSON.stringify(envelope, null, 2)}\n`, "utf8");
-      renameSync(tmp, filePath);
-    } catch {
-      // best-effort
-    }
-  }
+  const store = createStateStore<UsageState>({
+    namespace: "sf-skills",
+    filename: "usage.json",
+    schemaVersion: SCHEMA_VERSION,
+    defaults: { records: {} },
+    pathOverride: projectConfigPath(cwd, PROJECT_FILENAME),
+  });
 
   function bump(name: string, when: Date = new Date()): UsageState {
-    const current = read();
-    const next: UsageState = { records: { ...current.records } };
-    const prev = next.records[name] ?? { count: 0, lastUsedAt: "" };
-    next.records[name] = { count: prev.count + 1, lastUsedAt: when.toISOString() };
-    write(next);
-    return next;
+    const iso = when.toISOString();
+    return store.update((current) => {
+      const records = { ...current.records };
+      const prev = records[name] ?? { count: 0, lastUsedAt: "" };
+      records[name] = { count: prev.count + 1, lastUsedAt: iso };
+      return { records };
+    });
   }
 
-  return { read, write, bump, path: filePath };
+  return { ...store, bump };
 }
 
 // -------------------------------------------------------------------------------------------------

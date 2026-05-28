@@ -21,6 +21,7 @@
 
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { withFileMutationQueue } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { connForAgentApi } from "./agent-api-auth.ts";
@@ -783,8 +784,10 @@ async function actionGenerateSpec(
       ? input.output_path
       : path.resolve(ctx.cwd, input.output_path);
     try {
-      await mkdir(path.dirname(abs), { recursive: true });
-      await writeFile(abs, JSON.stringify(result.spec, null, 2) + "\n", "utf-8");
+      await withFileMutationQueue(abs, async () => {
+        await mkdir(path.dirname(abs), { recursive: true });
+        await writeFile(abs, JSON.stringify(result.spec, null, 2) + "\n", "utf-8");
+      });
       writtenPath = abs;
     } catch (err) {
       return toolError(

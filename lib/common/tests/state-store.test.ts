@@ -21,7 +21,7 @@ import {
 import path from "node:path";
 import os from "node:os";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { canonicalStatePath, createStateStore } from "../state-store.ts";
+import { canonicalProjectStatePath, canonicalStatePath, createStateStore } from "../state-store.ts";
 
 interface DemoState {
   count: number;
@@ -209,12 +209,31 @@ describe("createStateStore", () => {
     });
   });
 
-  describe("canonicalStatePath", () => {
-    it("places state under <globalAgentDir>/sf-pi/<namespace>/<filename>", () => {
+  describe("canonical paths", () => {
+    it("places global state under <globalAgentDir>/sf-pi/<namespace>/<filename>", () => {
       const resolved = canonicalStatePath("sf-welcome", "state.json");
       // We assert the suffix only — the prefix depends on the host home dir
       // and any pi-coding-agent agent-dir override.
       expect(resolved.endsWith(path.join("sf-pi", "sf-welcome", "state.json"))).toBe(true);
+    });
+
+    it("places project state under <cwd>/.pi/<namespace>/<filename>", () => {
+      const resolved = canonicalProjectStatePath(tmpDir, "sf-skills", "usage.json");
+      expect(resolved).toBe(path.join(tmpDir, ".pi", "sf-skills", "usage.json"));
+    });
+
+    it("createStateStore supports project-scoped state without pathOverride", () => {
+      const store = createStateStore<DemoState>({
+        namespace: "sf-skills",
+        filename: "usage.json",
+        schemaVersion: 1,
+        defaults: { ...DEFAULTS },
+        scope: "project",
+        cwd: tmpDir,
+      });
+      store.write({ count: 4, label: "project" });
+      expect(store.path).toBe(path.join(tmpDir, ".pi", "sf-skills", "usage.json"));
+      expect(store.read()).toEqual({ count: 4, label: "project" });
     });
   });
 });

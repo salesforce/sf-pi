@@ -12,51 +12,53 @@ code lives in `extensions/<id>/lib/`.
 
 ## Module map
 
-| Module                                        | Owners (what uses it)                                                       | What it provides                                                                   |
-| --------------------------------------------- | --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| `command-actions.ts`                          | command-bearing extensions (incremental adoption)                           | One catalog → panel rows + completions + help + README table                       |
-| `command-panel.ts`                            | command-bearing extensions                                                  | Shared grouped status/actions panel built on Pi's native `ctx.ui.custom()`         |
-| `info-panel.ts`                               | command-bearing extensions                                                  | In-TUI info popup for command panels with headless `ctx.ui.notify()` fallback      |
-| `extension-toggle.ts`                         | every command-bearing extension                                             | Shared "Disable / Enable this extension" action row + `performToggleExtension`     |
-| `sf-pi-package-state.ts`                      | `extension-toggle.ts`, `sf-pi-manager`                                      | Read/write sf-pi's package filter list in pi `settings.json`                       |
-| `sf-pi-settings.ts`                           | `sf-pi-package-state.ts`, `sf-pi-manager`                                   | Tiny tolerant JSON read/write for global + project pi `settings.json`              |
-| `ui-glyphs.ts`                                | command-bearing extensions                                                  | Semantic UI glyphs for panels/popups with ASCII fallback (rides `glyph-policy`)    |
-| `pi-compat.ts`                                | all extensions                                                              | Feature-detecting shims for pi APIs that may not exist on older pi runtimes        |
-| `pi-paths.ts`                                 | all extensions that touch settings                                          | Global + project `settings.json` paths, pi home dir resolution                     |
-| `state-store.ts`                              | extensions that persist per-user state                                      | Shared `createStateStore<T>()`: atomic write, schema versioning, safe defaults     |
-| `exec-adapter.ts`                             | `sf-environment` consumers                                                  | Adapter from `pi.exec()` to the `ExecFn` type used by `sf-environment/detect.ts`   |
-| `sf-conn/connection.ts`                       | `sf-agentscript`, `sf-data360`, `sf-environment`                            | Cached `@salesforce/core` Org / Connection lookup (replaces `sf api request rest`) |
-| `sf-conn/request.ts`                          | `sf-data360`                                                                | `connRequest` thin wrapper that turns HTTP errors into `{ status, body }` data     |
-| `glyph-policy.ts`                             | `sf-welcome`, `sf-devbar`                                                   | Decides emoji vs ASCII glyphs based on terminal + user prefs + env vars            |
-| `display/types.ts`                            | `sf-pi-manager`, `sf-lsp`, `sf-agentscript-…`                               | `SfPiDisplayProfile` union + shared display types                                  |
-| `display/settings.ts`                         | `sf-pi-manager`                                                             | Read/write the shared `sfPi.display.profile` setting (project > global)            |
-| `display/diagnostics.ts`                      | `sf-lsp`, `sf-agentscript`                                                  | `details.sfPiDiagnostics` contract for LSP-style tool results                      |
-| `doctor/diagnostics.ts`                       | `sf-pi-manager`, `sf-welcome`                                               | Read-only diagnostics powering `/sf-pi doctor` (side-effect free)                  |
-| `doctor/fixes.ts`                             | `sf-pi-manager`                                                             | Safe-repair operations for `/sf-pi doctor fix startup`/`skills` (gated by HITL)    |
-| `doctor/types.ts`                             | `sf-pi-manager`, `sf-welcome`                                               | Shared diagnostic + fix-target shapes                                              |
-| `monthly-usage/store.ts`                      | `sf-llm-gateway-internal` (producer); `sf-welcome`, `sf-devbar` (consumers) | Decoupled monthly-usage state store with refresher registration                    |
-| `slack-status/store.ts`                       | `sf-slack` (producer); `sf-welcome`, `sf-devbar` (consumers)                | Decoupled Slack auth/readiness status store                                        |
-| `sf-lsp-health/index.ts`                      | `sf-lsp` (producer); `sf-devbar` (consumer)                                 | In-process LSP availability + last-error registry; powers the devbar LSP segment   |
-| `sf-lsp-health/types.ts`                      | `sf-lsp`, `sf-devbar`                                                       | Availability/severity union + payload shape for the registry                       |
-| `herdr-profile/store.ts`                      | `sf-herdr`, `sf-brain`                                                      | Managed Herdr workflow profiles, defaults, and non-mutating lane-plan builder      |
-| `skill-sources/skill-sources.ts`              | `sf-pi-manager`, `sf-welcome`                                               | Detects + wires Claude Code / Codex / Cursor skill roots for `/sf-pi skills`       |
-| `sf-pi-extension-state.ts`                    | `sf-welcome`, `sf-devbar`, diagnostics                                      | Shared bundled-extension enablement checks from Pi package filters                 |
-| `catalog-state/announcements-manifest.ts`     | `sf-welcome`, `sf-pi-manager`                                               | Load + validate `catalog/announcements.json`                                       |
-| `catalog-state/announcements-state.ts`        | `sf-welcome`, `sf-pi-manager`                                               | Per-user announcements dismissal/ack state file                                    |
-| `catalog-state/announcements-orchestrator.ts` | `sf-welcome`, `sf-pi-manager`                                               | Compose bundled + remote + update-nudge feed into a render-ready payload           |
-| `catalog-state/announcements-remote.ts`       | `announcements-orchestrator`                                                | Optional network fetch for the remote announcements feed                           |
-| `catalog-state/announcements-update.ts`       | `announcements-orchestrator`                                                | Synthesize the "new sf-pi version available" nudge from CHANGELOG diff             |
-| `catalog-state/announcements-filter.ts`       | `announcements-orchestrator`                                                | Pure merge / filter / sort rules (severity, expiry, version gates)                 |
-| `catalog-state/recommendations-manifest.ts`   | `sf-welcome`, `sf-pi-manager`                                               | Load + validate `catalog/recommendations.json` and resolve bundles                 |
-| `catalog-state/recommendations-state.ts`      | `sf-welcome`, `sf-pi-manager`                                               | Per-user recommendation decisions + ack state file                                 |
-| `catalog-state/whats-new.ts`                  | `sf-welcome`, orchestrator                                                  | Parse the pi-coding-agent CHANGELOG into the splash-ready bullet payload           |
-| `sf-environment/detect.ts`                    | shared runtime                                                              | Pure detection logic — runs SF CLI, parses config, returns a snapshot              |
-| `sf-environment/shared-runtime.ts`            | `sf-welcome`, `sf-devbar`, others                                           | In-memory + persisted cache so startup runs SF CLI **once** per session            |
-| `sf-environment/persisted-cache.ts`           | shared runtime                                                              | Disk persistence for the last-known snapshot                                       |
-| `sf-environment/format-agent-context.ts`      | `sf-slack`, `sf-devbar`                                                     | Shared `<sf_environment>` context-block formatter                                  |
-| `sf-environment/types.ts`                     | all SF-aware extensions                                                     | `SfEnvironment` snapshot shape                                                     |
-| `test-fixtures.ts`                            | tests across extensions                                                     | Shared factories for Pi context stubs + common fixtures                            |
-| `tests/`                                      | —                                                                           | Tests for the shared modules themselves                                            |
+| Module                                        | Owners (what uses it)                                                       | What it provides                                                                             |
+| --------------------------------------------- | --------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `command-actions.ts`                          | command-bearing extensions (incremental adoption)                           | One catalog → panel rows + completions + help + README table                                 |
+| `command-panel.ts`                            | command-bearing extensions                                                  | Shared grouped status/actions panel built on Pi's native `ctx.ui.custom()`                   |
+| `info-panel.ts`                               | command-bearing extensions                                                  | In-TUI info popup for command panels with headless `ctx.ui.notify()` fallback                |
+| `extension-toggle.ts`                         | every command-bearing extension                                             | Shared "Disable / Enable this extension" action row + `performToggleExtension`               |
+| `sf-pi-package-state.ts`                      | `extension-toggle.ts`, `sf-pi-manager`                                      | Read/write sf-pi's package filter list in pi `settings.json`                                 |
+| `sf-pi-settings.ts`                           | `sf-pi-package-state.ts`, `sf-pi-manager`                                   | Tiny tolerant JSON read/write for global + project pi `settings.json`                        |
+| `ui-glyphs.ts`                                | command-bearing extensions                                                  | Semantic UI glyphs for panels/popups with ASCII fallback (rides `glyph-policy`)              |
+| `pi-compat.ts`                                | all extensions                                                              | Feature-detecting shims for pi APIs that may not exist on older pi runtimes                  |
+| `pi-paths.ts`                                 | all extensions that touch settings                                          | Global + project `settings.json` paths, pi home dir resolution                               |
+| `state-store.ts`                              | extensions that persist per-user/project state                              | Shared `createStateStore<T>()`: scoped paths, atomic write, schema versioning, safe defaults |
+| `exec-adapter.ts`                             | `sf-environment` consumers                                                  | Adapter from `pi.exec()` to the `ExecFn` type used by `sf-environment/detect.ts`             |
+| `sf-conn/connection.ts`                       | `sf-agentscript`, `sf-data360`, `sf-environment`                            | Cached `@salesforce/core` Org / Connection lookup (replaces `sf api request rest`)           |
+| `sf-conn/request.ts`                          | `sf-data360`, `sf-data-explorer`                                            | `connRequest` thin wrapper that turns HTTP errors into `{ status, body }` data               |
+| `sf-rest/path.ts`                             | `sf-data360`, `sf-data-explorer`                                            | Shared `/services/data/vXX.X` path + query-string helpers                                    |
+| `sf-rest/target-org.ts`                       | `sf-data360`, `sf-data-explorer`                                            | Shared target-org, API-version, and org-type resolution for REST calls                       |
+| `glyph-policy.ts`                             | `sf-welcome`, `sf-devbar`                                                   | Decides emoji vs ASCII glyphs based on terminal + user prefs + env vars                      |
+| `display/types.ts`                            | `sf-pi-manager`, `sf-lsp`, `sf-agentscript-…`                               | `SfPiDisplayProfile` union + shared display types                                            |
+| `display/settings.ts`                         | `sf-pi-manager`                                                             | Read/write the shared `sfPi.display.profile` setting (project > global)                      |
+| `display/diagnostics.ts`                      | `sf-lsp`, `sf-agentscript`                                                  | `details.sfPiDiagnostics` contract for LSP-style tool results                                |
+| `doctor/diagnostics.ts`                       | `sf-pi-manager`, `sf-welcome`                                               | Read-only diagnostics powering `/sf-pi doctor` (side-effect free)                            |
+| `doctor/fixes.ts`                             | `sf-pi-manager`                                                             | Safe-repair operations for `/sf-pi doctor fix startup`/`skills` (gated by HITL)              |
+| `doctor/types.ts`                             | `sf-pi-manager`, `sf-welcome`                                               | Shared diagnostic + fix-target shapes                                                        |
+| `monthly-usage/store.ts`                      | `sf-llm-gateway-internal` (producer); `sf-welcome`, `sf-devbar` (consumers) | Decoupled monthly-usage state store with refresher registration                              |
+| `slack-status/store.ts`                       | `sf-slack` (producer); `sf-welcome`, `sf-devbar` (consumers)                | Decoupled Slack auth/readiness status store                                                  |
+| `sf-lsp-health/index.ts`                      | `sf-lsp` (producer); `sf-devbar` (consumer)                                 | In-process LSP availability + last-error registry; powers the devbar LSP segment             |
+| `sf-lsp-health/types.ts`                      | `sf-lsp`, `sf-devbar`                                                       | Availability/severity union + payload shape for the registry                                 |
+| `herdr-profile/store.ts`                      | `sf-herdr`, `sf-brain`                                                      | Managed Herdr workflow profiles, defaults, and non-mutating lane-plan builder                |
+| `skill-sources/skill-sources.ts`              | `sf-pi-manager`, `sf-welcome`                                               | Detects + wires Claude Code / Codex / Cursor skill roots for `/sf-pi skills`                 |
+| `sf-pi-extension-state.ts`                    | `sf-welcome`, `sf-devbar`, diagnostics                                      | Shared bundled-extension enablement checks from Pi package filters                           |
+| `catalog-state/announcements-manifest.ts`     | `sf-welcome`, `sf-pi-manager`                                               | Load + validate `catalog/announcements.json`                                                 |
+| `catalog-state/announcements-state.ts`        | `sf-welcome`, `sf-pi-manager`                                               | Per-user announcements dismissal/ack state file                                              |
+| `catalog-state/announcements-orchestrator.ts` | `sf-welcome`, `sf-pi-manager`                                               | Compose bundled + remote + update-nudge feed into a render-ready payload                     |
+| `catalog-state/announcements-remote.ts`       | `announcements-orchestrator`                                                | Optional network fetch for the remote announcements feed                                     |
+| `catalog-state/announcements-update.ts`       | `announcements-orchestrator`                                                | Synthesize the "new sf-pi version available" nudge from CHANGELOG diff                       |
+| `catalog-state/announcements-filter.ts`       | `announcements-orchestrator`                                                | Pure merge / filter / sort rules (severity, expiry, version gates)                           |
+| `catalog-state/recommendations-manifest.ts`   | `sf-welcome`, `sf-pi-manager`                                               | Load + validate `catalog/recommendations.json` and resolve bundles                           |
+| `catalog-state/recommendations-state.ts`      | `sf-welcome`, `sf-pi-manager`                                               | Per-user recommendation decisions + ack state file                                           |
+| `catalog-state/whats-new.ts`                  | `sf-welcome`, orchestrator                                                  | Parse the pi-coding-agent CHANGELOG into the splash-ready bullet payload                     |
+| `sf-environment/detect.ts`                    | shared runtime                                                              | Pure detection logic — runs SF CLI, parses config, returns a snapshot                        |
+| `sf-environment/shared-runtime.ts`            | `sf-welcome`, `sf-devbar`, others                                           | In-memory + persisted cache so startup runs SF CLI **once** per session                      |
+| `sf-environment/persisted-cache.ts`           | shared runtime                                                              | Disk persistence for the last-known snapshot                                                 |
+| `sf-environment/format-agent-context.ts`      | `sf-slack`, `sf-devbar`                                                     | Shared `<sf_environment>` context-block formatter                                            |
+| `sf-environment/types.ts`                     | all SF-aware extensions                                                     | `SfEnvironment` snapshot shape                                                               |
+| `test-fixtures.ts`                            | tests across extensions                                                     | Shared factories for Pi context stubs + common fixtures                                      |
+| `tests/`                                      | —                                                                           | Tests for the shared modules themselves                                                      |
 
 ## State-persistence decision tree
 
@@ -78,9 +80,10 @@ Q3. Is the state a user-facing pi setting they'd hand-edit?
           Project > global precedence; never write opaque blobs there.
           Examples: package filter list, provider/model config, default thinking level
 
-Q4. Otherwise (per-user persisted state, sf-pi only) →
+Q4. Otherwise (per-user/project persisted state, sf-pi only) →
     use the shared lib/common/state-store.ts helper.
-    File path: <globalAgentDir>/sf-pi/<namespace>/<filename>.json
+    Global file path: <globalAgentDir>/sf-pi/<namespace>/<filename>.json
+    Project file path: <cwd>/.pi/<namespace>/<filename>.json
     Always: schemaVersion, atomic write (tmp + rename), safe defaults on parse error.
     Pass `mode: 0o600` for files that hold a token or other secret.
 ```

@@ -19,8 +19,10 @@
  * - Optional `mode` (e.g. `0o600`) for sensitive blobs like saved API
  *   keys so each migration can lock down its own file.
  *
- * sf-pi state files standardize at:
+ * sf-pi global state files standardize at:
  *   <globalAgentDir>/sf-pi/<namespace>/<filename>
+ * Project-scoped state files standardize at:
+ *   <cwd>/.pi/<namespace>/<filename>
  * Older state files outside this layout (e.g. `sf-welcome-state.json` in
  * the agent root, `state/sf-pi/recommendations.json`) keep their own
  * paths via the `pathOverride` option for backwards compat. New
@@ -36,7 +38,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import path from "node:path";
-import { globalAgentPath } from "./pi-paths.ts";
+import { globalAgentPath, projectConfigDir } from "./pi-paths.ts";
 
 /**
  * On-disk envelope. Adds `schemaVersion` so future shape changes can run
@@ -80,10 +82,16 @@ export interface StateStoreOptions<T> {
    */
   mode?: number;
   /**
+   * State scope. Global state uses `<globalAgentDir>/sf-pi/...`; project
+   * state uses `<cwd>/.pi/...`. Defaults to global.
+   */
+  scope?: "global" | "project";
+  /** Required when `scope: "project"` and `pathOverride` is not set. */
+  cwd?: string;
+  /**
    * Custom absolute path override. Use for legacy state files that
-   * predate this helper. New code should leave this unset so the
-   * canonical `<globalAgentDir>/sf-pi/<namespace>/<filename>` layout is
-   * used.
+   * predate this helper or that intentionally keep a flat project path.
+   * New code should leave this unset so the canonical scoped layout is used.
    */
   pathOverride?: string;
 }
@@ -104,7 +112,7 @@ export interface StateStore<T> {
 }
 
 export function createStateStore<T>(options: StateStoreOptions<T>): StateStore<T> {
-  const filePath = options.pathOverride ?? canonicalStatePath(options.namespace, options.filename);
+  const filePath = options.pathOverride ?? statePath(options);
   const { schemaVersion, defaults, migrate, mode } = options;
 
   function read(): T {
@@ -192,9 +200,28 @@ export function createStateStore<T>(options: StateStoreOptions<T>): StateStore<T
   };
 }
 
-/** Public canonical path so tests and migration code can compare paths. */
+/** Public canonical global path so tests and migration code can compare paths. */
 export function canonicalStatePath(namespace: string, filename: string): string {
   return globalAgentPath("sf-pi", namespace, filename);
+}
+
+/** Public canonical project path for project-scoped state. */
+export function canonicalProjectStatePath(
+  cwd: string,
+  namespace: string,
+  filename: string,
+): string {
+  return path.join(projectConfigDir(cwd), namespace, filename);
+}
+
+function statePath<T>(options: StateStoreOptions<T>): string {
+  if (options.scope === "project") {
+    if (!options.cwd) {
+      throw new Error("createStateStore scope='project' requires cwd unless pathOverride is set.");
+    }
+    return canonicalProjectStatePath(options.cwd, options.namespace, options.filename);
+  }
+  return canonicalStatePath(options.namespace, options.filename);
 }
 
 function isEnvelope(value: unknown): value is OnDiskEnvelope {

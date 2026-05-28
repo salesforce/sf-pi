@@ -1,9 +1,19 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 import fs from "node:fs/promises";
-import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { connFromAlias, clearConnectionCache } from "../../../lib/common/sf-conn/connection.ts";
+import { connRequest } from "../../../lib/common/sf-conn/request.ts";
+import { detectEnvironment } from "../../../lib/common/sf-environment/detect.ts";
+import type { SfEnvironment } from "../../../lib/common/sf-environment/types.ts";
+import { buildApiPath, type QueryParams } from "../../../lib/common/sf-rest/path.ts";
+import {
+  normalizeTargetOrg,
+  resolveApiVersion,
+  resolveExplicitTargetOrg,
+  resolveOrgType,
+} from "../../../lib/common/sf-rest/target-org.ts";
 import type {
   CoreQueryResponse,
   CoreSearchResponse,
@@ -38,7 +48,7 @@ export interface SfDataExplorerTransport {
     targetOrg?: string;
     method: Method;
     path: string;
-    query?: Record<string, unknown>;
+    query?: QueryParams;
     body?: unknown;
     timeoutMs?: number;
     signal?: AbortSignal;
@@ -67,36 +77,8 @@ export interface SfDataExplorerTransport {
 
 type ExecResult = { stdout: string; stderr: string; code: number | null };
 
-interface SfPiModules {
-  connFromAlias: (alias?: string) => Promise<unknown>;
-  connRequest: <T>(
-    conn: unknown,
-    opts: {
-      method: Method;
-      url: string;
-      body?: unknown;
-      timeoutMs?: number;
-      headers?: Record<string, string>;
-    },
-  ) => Promise<{ status: number; body: T }>;
-  clearConnectionCache: () => void;
-  buildApiPath: (path: string, apiVersion: string, query?: Record<string, unknown>) => string;
-  resolveApiVersion: (env: unknown, targetOrgInfo?: unknown) => string;
-  resolveExplicitTargetOrg: (targetOrg: string | undefined, env: unknown) => Promise<unknown>;
-  normalizeTargetOrg: (targetOrg: string | undefined, env: unknown) => string | undefined;
-  resolveOrgType?: (targetOrg: string | undefined, env: unknown, targetOrgInfo?: unknown) => string;
-  detectEnvironment: (
-    exec: (
-      command: string,
-      args: string[],
-      options?: { timeout?: number; cwd?: string },
-    ) => Promise<ExecResult>,
-    cwd: string,
-  ) => Promise<unknown>;
-}
-
 let transportPromise: Promise<SfDataExplorerTransport> | undefined;
-const envCache = new Map<string, unknown>();
+const envCache = new Map<string, SfEnvironment>();
 
 export function getSfDataExplorerTransport(pi: ExtensionAPI): Promise<SfDataExplorerTransport> {
   transportPromise ??= initialize(pi);
@@ -115,8 +97,7 @@ export function clearSfDataExplorerTransportCacheIfInitialized(): void {
 }
 
 async function initialize(pi: ExtensionAPI): Promise<SfDataExplorerTransport> {
-  const sfPiPath = await resolveSfPiPath();
-  const modules = await loadModules(sfPiPath);
+  const sfPiPath = await resolveBundledSfPiPath();
   const sourceCommit = await tryReadCommit(sfPiPath);
   const cwd = process.cwd();
   const exec = async (
@@ -130,10 +111,10 @@ async function initialize(pi: ExtensionAPI): Promise<SfDataExplorerTransport> {
     });
     return { stdout: result.stdout, stderr: result.stderr, code: result.code };
   };
-  const loadEnv = async (): Promise<unknown> => {
+  const loadEnv = async (): Promise<SfEnvironment> => {
     const cached = envCache.get(cwd);
     if (cached) return cached;
-    const env = await modules.detectEnvironment(exec, cwd);
+    const env = await detectEnvironment(exec, cwd);
     envCache.set(cwd, env);
     return env;
   };
@@ -142,12 +123,12 @@ async function initialize(pi: ExtensionAPI): Promise<SfDataExplorerTransport> {
   async function resolveTarget(targetOrg?: string): Promise<TargetContext> {
     const env = (await envPromise) ?? (await loadEnv());
     const requestedOrg = targetOrg && targetOrg !== "default" ? targetOrg : undefined;
-    const resolvedTargetOrg = modules.normalizeTargetOrg(requestedOrg, env) ?? requestedOrg;
-    const targetOrgInfo = await modules
-      .resolveExplicitTargetOrg(resolvedTargetOrg, env)
-      .catch(() => undefined);
-    const apiVersion = modules.resolveApiVersion(env, targetOrgInfo);
-    const orgType = modules.resolveOrgType?.(resolvedTargetOrg, env, targetOrgInfo) ?? "unknown";
+    const resolvedTargetOrg = normalizeTargetOrg(requestedOrg, env) ?? requestedOrg;
+    const targetOrgInfo = await resolveExplicitTargetOrg(resolvedTargetOrg, env).catch(
+      () => undefined,
+    );
+    const apiVersion = resolveApiVersion(env, targetOrgInfo);
+    const orgType = resolveOrgType(resolvedTargetOrg, env, targetOrgInfo);
     return { targetOrg: resolvedTargetOrg, apiVersion, orgType };
   }
 
@@ -155,7 +136,7 @@ async function initialize(pi: ExtensionAPI): Promise<SfDataExplorerTransport> {
     targetOrg?: string;
     method: Method;
     path: string;
-    query?: Record<string, unknown>;
+    query?: QueryParams;
     body?: unknown;
     timeoutMs?: number;
     signal?: AbortSignal;
@@ -166,9 +147,9 @@ async function initialize(pi: ExtensionAPI): Promise<SfDataExplorerTransport> {
       throw new Error(
         "No Salesforce target org is configured. Pass a target org or set sf config target-org.",
       );
-    const conn = await modules.connFromAlias(context.targetOrg);
-    const url = modules.buildApiPath(args.path, context.apiVersion, args.query);
-    const resp = await modules.connRequest<T>(conn, {
+    const conn = await connFromAlias(context.targetOrg);
+    const url = buildApiPath(args.path, context.apiVersion, args.query);
+    const resp = await connRequest<T>(conn, {
       method: args.method,
       url,
       body: args.method === "GET" ? undefined : args.body,
@@ -214,64 +195,25 @@ async function initialize(pi: ExtensionAPI): Promise<SfDataExplorerTransport> {
       }),
     clearCache: () => {
       envCache.clear();
-      modules.clearConnectionCache();
+      clearConnectionCache();
     },
   };
 }
 
-async function loadModules(sfPiPath: string): Promise<SfPiModules> {
-  const url = (rel: string): string => `file://${path.join(sfPiPath, rel)}`;
-  const [conn, req, p, t, env] = await Promise.all([
-    import(url("lib/common/sf-conn/connection.ts")),
-    import(url("lib/common/sf-conn/request.ts")),
-    import(url("extensions/sf-data360/lib/path.ts")),
-    import(url("extensions/sf-data360/lib/target-org.ts")),
-    import(url("lib/common/sf-environment/detect.ts")),
-  ]);
-  return {
-    connFromAlias: conn.connFromAlias,
-    connRequest: req.connRequest,
-    clearConnectionCache: conn.clearConnectionCache,
-    buildApiPath: p.buildApiPath,
-    resolveApiVersion: t.resolveApiVersion,
-    resolveExplicitTargetOrg: t.resolveExplicitTargetOrg,
-    normalizeTargetOrg: t.normalizeTargetOrg,
-    resolveOrgType: t.resolveOrgType,
-    detectEnvironment: env.detectEnvironment,
-  };
-}
-
-export async function resolveSfPiPath(): Promise<string> {
-  const candidates: string[] = [];
-  if (process.env.SF_DATA_EXPLORER_SFPI_PATH)
-    candidates.push(process.env.SF_DATA_EXPLORER_SFPI_PATH);
-  const here = path.dirname(fileURLToPath(import.meta.url));
-  candidates.push(...ancestorCandidates(here));
-  candidates.push(...ancestorCandidates(process.cwd()));
-  candidates.push(path.join(os.homedir(), ".pi/agent/git/github.com/salesforce/sf-pi"));
-  for (const candidate of Array.from(new Set(candidates))) {
+async function resolveBundledSfPiPath(): Promise<string> {
+  let cur = path.dirname(fileURLToPath(import.meta.url));
+  for (let i = 0; i < 10; i += 1) {
     try {
-      const stat = await fs.stat(path.join(candidate, "lib/common/sf-conn/connection.ts"));
-      if (stat.isFile()) return candidate;
+      const stat = await fs.stat(path.join(cur, "package.json"));
+      if (stat.isFile()) return cur;
     } catch {
-      // continue
+      // continue walking up
     }
-  }
-  throw new Error(
-    "sf-data-explorer requires sf-pi. Install with `pi install git:github.com/salesforce/sf-pi` or set SF_DATA_EXPLORER_SFPI_PATH.",
-  );
-}
-
-function ancestorCandidates(start: string): string[] {
-  const out: string[] = [];
-  let cur = path.resolve(start);
-  for (let i = 0; i < 8; i += 1) {
-    out.push(cur);
     const next = path.dirname(cur);
     if (next === cur) break;
     cur = next;
   }
-  return out;
+  return process.cwd();
 }
 
 async function tryReadCommit(sfPiPath: string): Promise<string | undefined> {

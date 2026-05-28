@@ -3,6 +3,7 @@
 
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { withFileMutationQueue } from "@earendil-works/pi-coding-agent";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { connForAgentApi } from "../../agent-api-auth.ts";
 import {
@@ -511,12 +512,14 @@ async function actionReview(ctx: ExtensionContext, agentFile: string, input: Aut
     outputPath = path.isAbsolute(input.output_path)
       ? input.output_path
       : path.resolve(ctx.cwd, input.output_path);
-    await mkdir(path.dirname(outputPath), { recursive: true });
-    await writeFile(
-      outputPath,
-      renderReviewMarkdown({ ...detailsBase, output_path: outputPath }),
-      "utf8",
-    );
+    await withFileMutationQueue(outputPath, async () => {
+      await mkdir(path.dirname(outputPath), { recursive: true });
+      await writeFile(
+        outputPath,
+        renderReviewMarkdown({ ...detailsBase, output_path: outputPath }),
+        "utf8",
+      );
+    });
   }
 
   const details = withAgentScriptBranchState(

@@ -15,6 +15,7 @@
 
 import { mkdir, rename, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import { withFileMutationQueue } from "@earendil-works/pi-coding-agent";
 
 export interface ReportWriteResult {
   path: string;
@@ -32,12 +33,14 @@ export async function writeMarkdownReport(
   targetPath: string,
   content: string,
 ): Promise<ReportWriteResult> {
-  const dir = dirname(targetPath);
-  await mkdir(dir, { recursive: true });
-  const tmpPath = `${targetPath}.tmp`;
-  await writeFile(tmpPath, content, "utf-8");
-  await rename(tmpPath, targetPath);
-  return { path: targetPath, bytes: Buffer.byteLength(content, "utf-8") };
+  return withFileMutationQueue(targetPath, async () => {
+    const dir = dirname(targetPath);
+    await mkdir(dir, { recursive: true });
+    const tmpPath = `${targetPath}.tmp`;
+    await writeFile(tmpPath, content, "utf-8");
+    await rename(tmpPath, targetPath);
+    return { path: targetPath, bytes: Buffer.byteLength(content, "utf-8") };
+  });
 }
 
 /** Build the absolute path for an eval run's report. */

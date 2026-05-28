@@ -2,6 +2,7 @@
 /** Compile/check + compile/format actions for agentscript_authoring. */
 
 import { readFile, writeFile } from "node:fs/promises";
+import { withFileMutationQueue } from "@earendil-works/pi-coding-agent";
 import { connForAgentApi } from "../../agent-api-auth.ts";
 import { checkAgentScriptFile } from "../../diagnostics.ts";
 import { isAgentScriptFile } from "../../file-classify.ts";
@@ -193,6 +194,13 @@ async function actionCheck(
 }
 
 async function actionFormat(agentFile: string): Promise<{
+  content: { type: "text"; text: string }[];
+  details: Record<string, unknown> | ToolError;
+}> {
+  return withFileMutationQueue(agentFile, () => actionFormatQueued(agentFile));
+}
+
+async function actionFormatQueued(agentFile: string): Promise<{
   content: { type: "text"; text: string }[];
   details: Record<string, unknown> | ToolError;
 }> {
