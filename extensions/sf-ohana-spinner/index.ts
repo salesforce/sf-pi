@@ -47,6 +47,11 @@ export default function (pi: ExtensionAPI) {
   let activeSessionGeneration = 0;
   let activeSessionKey: string | null = null;
 
+  /** Pure-number guard — safe to call from a timer with a stale ctx. */
+  function isCurrentGeneration(generation: number): boolean {
+    return generation === activeSessionGeneration;
+  }
+
   function sessionKey(ctx: ExtensionContext): string {
     return `${ctx.sessionManager.getSessionId()}::${ctx.cwd}`;
   }
@@ -63,17 +68,28 @@ export default function (pi: ExtensionAPI) {
    * default working message — otherwise "Working..." paints next to the custom
    * indicator. */
   function applyCalmIndicator(ctx: ExtensionContext, generation: number) {
-    if (!ctx.hasUI || !isActiveSession(ctx, generation)) return;
-    ctx.ui.setWorkingIndicator({ frames: buildCalmFrames(), intervalMs: FRAME_INTERVAL_MS });
-    ctx.ui.setWorkingMessage("");
+    if (!isCurrentGeneration(generation)) return;
+    try {
+      if (!ctx.hasUI || !isActiveSession(ctx, generation)) return;
+      ctx.ui.setWorkingIndicator({ frames: buildCalmFrames(), intervalMs: FRAME_INTERVAL_MS });
+      ctx.ui.setWorkingMessage("");
+    } catch {
+      // Stale ctx; drop the tick. Rethrowing would surface as an unhandled
+      // rejection from setInterval and terminate the host process.
+    }
   }
 
   async function applyOhanaIndicator(ctx: ExtensionContext, generation: number) {
-    if (!ctx.hasUI || !isActiveSession(ctx, generation)) return;
-    const frames = buildRainbowFrames(await pickRandomMessage());
-    if (!ctx.hasUI || !isActiveSession(ctx, generation)) return;
-    ctx.ui.setWorkingIndicator({ frames, intervalMs: FRAME_INTERVAL_MS });
-    ctx.ui.setWorkingMessage("");
+    if (!isCurrentGeneration(generation)) return;
+    try {
+      if (!ctx.hasUI || !isActiveSession(ctx, generation)) return;
+      const frames = buildRainbowFrames(await pickRandomMessage());
+      if (!isCurrentGeneration(generation) || !ctx.hasUI) return;
+      ctx.ui.setWorkingIndicator({ frames, intervalMs: FRAME_INTERVAL_MS });
+      ctx.ui.setWorkingMessage("");
+    } catch {
+      // See applyCalmIndicator.
+    }
   }
 
   pi.on("session_start", async (_event, ctx) => {

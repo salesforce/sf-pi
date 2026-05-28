@@ -131,6 +131,50 @@ describe("sf-ohana-spinner waiting-state outcome", () => {
   });
 });
 
+describe("sf-ohana-spinner stale-ctx safety", () => {
+  it("swallows a stale-ctx throw from the rotation timer", async () => {
+    vi.useFakeTimers();
+    try {
+      const cwd = tempCwd();
+      writeScopedOhanaSpinnerSettings(cwd, "project", { mode: "ohana" });
+
+      const handlers = registerExtension();
+      const ctx = createCtx(cwd);
+      await runSessionStart(handlers, ctx);
+
+      const indicatorCallsBeforeStale = ctx.ui.setWorkingIndicator.mock.calls.length;
+
+      // Mimic ExtensionRunner.assertActive throwing after session replacement.
+      const staleError = new Error(
+        "This extension ctx is stale after session replacement or reload.",
+      );
+      Object.defineProperty(ctx, "hasUI", {
+        get() {
+          throw staleError;
+        },
+      });
+      ctx.sessionManager.getSessionId = () => {
+        throw staleError;
+      };
+
+      const rejections: unknown[] = [];
+      const onRejection = (reason: unknown) => rejections.push(reason);
+      process.on("unhandledRejection", onRejection);
+      try {
+        await vi.advanceTimersByTimeAsync(5_000);
+        await Promise.resolve();
+      } finally {
+        process.off("unhandledRejection", onRejection);
+      }
+
+      expect(rejections).toEqual([]);
+      expect(ctx.ui.setWorkingIndicator.mock.calls.length).toBe(indicatorCallsBeforeStale);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
 describe("Ohana visible message outcomes", () => {
   it("keeps every possible visible message short and product/platform-oriented", () => {
     const personSpecificTerms = /\b(founder|co-founder|executive|CEO|CTO)\b/i;

@@ -558,7 +558,7 @@
     "entry": "extensions/sf-ohana-spinner/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 417
+    "srcLoc": 432
   },
   {
     "id": "sf-pi-manager",
