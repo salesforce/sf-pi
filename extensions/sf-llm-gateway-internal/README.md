@@ -103,22 +103,20 @@ short-circuits subsequent sessions. Users see no prompt and no manual step.
    emitted, then normalizes raw error envelopes into a concise message that
    preserves the request id.
 
-3. **Opus 4.7 adaptive thinking** (`streamSfGatewayAnthropic`). pi-ai owns
+3. **Opus 4.7+ adaptive thinking** (`streamSfGatewayAnthropic`). pi-ai owns
    the generic adaptive-thinking payload through the model-level
-   `compat.forceAdaptiveThinking` flag. The sf-pi shim now keeps only the
-   gateway-specific policy:
-   - Opus 4.7 presets set `compat.forceAdaptiveThinking: true`, so pi-ai sends
+   `compat.forceAdaptiveThinking` flag. The transport is now a single
+   unified path for all Claude models:
+   - Opus 4.7+ presets set `compat.forceAdaptiveThinking: true`, so pi-ai sends
      `thinking: { type: "adaptive" }` and `output_config.effort`.
-   - Opus 4.7 presets map pi's user-facing `xhigh` thinking level to `high`,
-     because the gateway rejects raw `xhigh` and restricts `max` to Opus 4.6.
-   - The wrapper scales `max_tokens` by pi reasoning level (`minimal` → 16K,
-     `low` → 24K, `medium` → 32K, `high` → 48K, `xhigh` → 64K). Live probes
-     showed that `max_tokens: 128000` on heavier generations intermittently
-     surfaces `api_error: Internal server error` from Anthropic upstream.
-     Model hard ceiling is 128K (`OPUS_47_MODEL_MAX_TOKENS`); callers who
-     need the extra headroom can override per request.
-   - A defensive cleanup still normalizes a pre-shaped
-     `output_config.effort: "xhigh" | "max"` to `high` for Opus 4.7.
+   - Opus 4.7+ presets map pi's user-facing `xhigh` thinking level to `max`
+     (the gateway now accepts `effort=max` for all Opus 4.7+ models).
+   - `max_tokens` is set to 128K by the model preset. Live probes (May 2026)
+     confirmed `max_tokens: 128000 + effort: max` works reliably on both
+     Opus 4.7 and 4.8 without the earlier intermittent `api_error`.
+   - No transport-level payload shaping is needed — pi-ai handles adaptive
+     thinking via model compat flags, and the gateway accepts the full
+     effort range.
 
    Older Claude models pass through the same pi-ai Anthropic transport; their
    model compat flags describe whether adaptive thinking is required.
@@ -457,10 +455,10 @@ extension wraps that as a first-class command:
 Examples:
 
 ```text
-/sf-llm-gateway-internal debug claude-opus-4-7 adaptive reasoning=xhigh
+/sf-llm-gateway-internal debug claude-opus-4-8 adaptive reasoning=xhigh
   → Upstream: https://api.anthropic.com/v1/messages
-    Body:     { thinking: { type: "adaptive" }, output_config: { effort: "high" }, max_tokens: 64000, ... }
-    Note:     pi `xhigh` collapses to gateway-accepted `high` for Opus 4.7.
+    Body:     { thinking: { type: "adaptive" }, output_config: { effort: "max" }, max_tokens: 128000, ... }
+    Note:     pi `xhigh` maps to `max` for Opus 4.7+.
 
 /sf-llm-gateway-internal debug gpt-5 reasoning=high
   → Body:     { reasoning_effort: "high", allowed_openai_params: ["reasoning_effort"], ... }
@@ -539,14 +537,14 @@ Anthropic transport instead of the OpenAI-compat one. If you still see
 truncation, confirm the selected model is a Claude id in
 `/sf-llm-gateway models`.
 
-**Opus 4.7 returns `api_error: Internal server error` on heavy turns:**
-Handled by the transport shim: `max_tokens` now scales by pi reasoning
-level (minimal=16K … xhigh=64K) instead of unconditionally flooring at
-64K, and transient mid-stream failures use Pi's provider retry budget
+**Opus 4.7/4.8 returns `api_error: Internal server error` on heavy turns:**
+Transient mid-stream failures use Pi's provider retry budget
 (`retry.provider.maxRetries`, Gateway default: 3) with exponential backoff
 before bubbling. If the retry exhausts, the final error includes an inline
 `Tip:` footer with next steps. For deeper inspection, enable wire tracing
-(`SF_LLM_GATEWAY_INTERNAL_TRACE=1`).
+(`SF_LLM_GATEWAY_INTERNAL_TRACE=1`). Note: the earlier instability at
+`max_tokens=128000 + effort=max` has been resolved upstream (May 2026);
+the transport no longer applies level-scaled output-token floors.
 
 **gpt-5.5 fails with `Function tools with reasoning_effort are not supported for gpt-5.5 in /v1/chat/completions. Please use /v1/responses instead.`:**
 Handled by the transport shim as of this extension version: gpt-5.5 and

@@ -142,14 +142,14 @@ describe("buildBootstrapModelList", () => {
   it("includes the default, previous default, and fallback model IDs", () => {
     const models = buildBootstrapModelList(null, new Set());
     const ids = models.map((model) => model.id);
+    expect(ids).toContain("claude-opus-4-8");
     expect(ids).toContain("claude-opus-4-7");
-    expect(ids).toContain("claude-opus-4-6-v1");
     expect(ids).toContain("claude-sonnet-4-6");
   });
 
   it("puts the default model first", () => {
     const models = buildBootstrapModelList(null, new Set());
-    expect(models[0]?.id).toBe("claude-opus-4-7");
+    expect(models[0]?.id).toBe("claude-opus-4-8");
   });
 
   // Regression: before live discovery lands, the bootstrap must contain at

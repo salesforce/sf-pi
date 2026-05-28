@@ -63,11 +63,11 @@ export const CA_BUNDLE_SOURCE_ENV = "SF_LLM_GATEWAY_INTERNAL_CA_BUNDLE_SOURCE";
 // Env vars are still accepted as an automation fallback when no saved config exists.
 export const DEFAULT_BASE_URL = "";
 
-export const DEFAULT_MODEL_ID = "claude-opus-4-7";
+export const DEFAULT_MODEL_ID = "claude-opus-4-8";
 export const FALLBACK_MODEL_ID = "claude-sonnet-4-6";
 
 /** Previous default kept as a named constant for backward compatibility in presets. */
-export const PREVIOUS_DEFAULT_MODEL_ID = "claude-opus-4-6-v1";
+export const PREVIOUS_DEFAULT_MODEL_ID = "claude-opus-4-7";
 export const DEFAULT_THINKING_LEVEL = "xhigh" as const;
 // When the user turns the gateway off, switch them to a model that actually
 // exists on the gateway. `openai-codex/gpt-5.5` used to be here but is not

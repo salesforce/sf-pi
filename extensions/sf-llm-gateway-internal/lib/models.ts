@@ -746,10 +746,13 @@ export {
 // -------------------------------------------------------------------------------------------------
 
 export function getShortModelLabel(modelId: string): string {
-  if (modelId === DEFAULT_MODEL_ID || modelId === "claude-opus-4-7-v1") {
+  if (modelId === DEFAULT_MODEL_ID) {
+    return "Opus 4.8 [1M]";
+  }
+  if (modelId === PREVIOUS_DEFAULT_MODEL_ID || modelId === "claude-opus-4-7-v1") {
     return "Opus 4.7 [1M]";
   }
-  if (modelId === PREVIOUS_DEFAULT_MODEL_ID) {
+  if (modelId === "claude-opus-4-6-v1") {
     return "Opus 4.6 [1M]";
   }
   if (modelId === FALLBACK_MODEL_ID) {

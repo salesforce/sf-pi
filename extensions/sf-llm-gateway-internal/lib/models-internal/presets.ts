@@ -46,15 +46,16 @@ export const ALWAYS_INCLUDE_MODEL_IDS = [
   DEFAULT_MODEL_ID,
   PREVIOUS_DEFAULT_MODEL_ID,
   FALLBACK_MODEL_ID,
+  "claude-opus-4-7",
   "gpt-5",
 ];
 
 export const MODEL_PRESETS: Record<string, Omit<GatewayModelDefinition, "id">> = {
-  // --- Opus 4.8 ---
+  // --- Opus 4.8 (current default) ---
   //
   // 1M context, 128K output (confirmed via /model_group/info and live probes).
   // Supports effort=max natively. Same thinking-level map as 4.7.
-  "claude-opus-4-8": {
+  [DEFAULT_MODEL_ID]: {
     family: "anthropic",
     name: "[SF LLM Gateway] Claude Opus 4.8 [1M] Global",
     reasoning: true,
@@ -64,7 +65,7 @@ export const MODEL_PRESETS: Record<string, Omit<GatewayModelDefinition, "id">> =
     betaHeaders: [],
     thinkingLevelMap: OPUS_47_THINKING_LEVEL_MAP,
   },
-  // --- Opus 4.7 (current default) ---
+  // --- Opus 4.7 (previous default) ---
   //
   // contextWindow is 1M: live probes confirmed the upstream accepts >200K
   // input tokens without the context-1m beta header, and gateway metadata
@@ -74,7 +75,7 @@ export const MODEL_PRESETS: Record<string, Omit<GatewayModelDefinition, "id">> =
   // maxTokens is 128_000. Live probes (May 2026) confirmed
   // `max_tokens: 128000 + effort: "max"` works reliably — the earlier
   // intermittent `api_error` at this setting has been resolved upstream.
-  [DEFAULT_MODEL_ID]: {
+  [PREVIOUS_DEFAULT_MODEL_ID]: {
     family: "anthropic",
     name: "[SF LLM Gateway] Claude Opus 4.7 [1M] Global",
     reasoning: true,
@@ -114,8 +115,8 @@ export const MODEL_PRESETS: Record<string, Omit<GatewayModelDefinition, "id">> =
     betaHeaders: [],
     thinkingLevelMap: OPUS_47_THINKING_LEVEL_MAP,
   },
-  // --- Opus 4.6 (previous default) ---
-  [PREVIOUS_DEFAULT_MODEL_ID]: {
+  // --- Opus 4.6 ---
+  "claude-opus-4-6-v1": {
     family: "anthropic",
     name: "[SF LLM Gateway] Claude Opus 4.6 [1M] Global",
     reasoning: true,
