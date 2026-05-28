@@ -517,6 +517,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.149.6](https://github.com/salesforce/sf-pi/compare/v0.149.5...v0.149.6) (2026-05-28)
+
+
+### Bug Fixes
+
+* **sf-ohana-spinner:** avoid stale ctx in rotation timer ([e80f48b](https://github.com/salesforce/sf-pi/commit/e80f48bb95e4d4e7526998b966ee1fd6f1a699cf))
+
 ## [0.149.5](https://github.com/salesforce/sf-pi/compare/v0.149.4...v0.149.5) (2026-05-27)
 
 
