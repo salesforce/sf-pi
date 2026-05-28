@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.149.6-2026-05-28",
-  "latestVersion": "0.149.6",
+  "revision": "release-0.149.7-2026-05-28",
+  "latestVersion": "0.149.7",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.149.6",
+      "id": "release-0.149.7",
       "kind": "update",
-      "title": "sf-pi v0.149.6 — sf-ohana-spinner: avoid stale ctx in rotation timer",
+      "title": "sf-pi v0.149.7 — align gateway retries with pi provider settings",
       "publishedAt": "2026-05-28T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.149.6",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.149.7",
       "severity": "info",
-      "body": "sf-ohana-spinner: avoid stale ctx in rotation timer"
+      "body": "align gateway retries with pi provider settings"
     },
     {
       "id": "pi-0.73-required",
