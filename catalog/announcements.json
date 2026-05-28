@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.150.0-2026-05-28",
-  "latestVersion": "0.150.0",
+  "revision": "release-0.151.0-2026-05-28",
+  "latestVersion": "0.151.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.150.0",
+      "id": "release-0.151.0",
       "kind": "update",
-      "title": "sf-pi v0.150.0 — sf-llm-gateway-internal: add Opus 4.8 preset, unlock effort=max for 4.7+",
+      "title": "sf-pi v0.151.0 — sf-llm-gateway-internal: promote Opus 4.8 to default model",
       "publishedAt": "2026-05-28T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.150.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.151.0",
       "severity": "info",
-      "body": "sf-llm-gateway-internal: add Opus 4.8 preset, unlock effort=max for 4.7+"
+      "body": "sf-llm-gateway-internal: promote Opus 4.8 to default model"
     },
     {
       "id": "pi-0.73-required",
