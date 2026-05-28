@@ -28,20 +28,13 @@ const DEFAULT_ANTHROPIC_BETA_HEADERS = [
 ] as const;
 
 /**
- * Opus 4.7 thinking-level map. Pi 0.73+ routes pi's `xhigh` selector
- * through this map onto the wire. Without this entry, the `/thinking`
- * selector hides `xhigh` entirely.
- *
- * The gateway's LiteLLM tightened its Anthropic effort validator to
- * {low,medium,high,max}, AND its model-specific guard restricts `max` to
- * Opus 4.6 only. Opus 4.7 therefore accepts only {low,medium,high} —
- * raw `xhigh` returns `Invalid effort value`, and `max` returns
- * `effort='max' is only supported by Claude Opus 4.6`. Map pi's user-
- * facing `xhigh` to the strongest tier 4.7 accepts (`high`) so the
- * selector stays visible without breaking the wire request.
+ * Opus 4.7+ thinking-level map. Pi's user-facing `xhigh` selector maps to
+ * Anthropic's native `max` effort tier on the wire. The gateway now accepts
+ * `{low, medium, high, max}` for all Opus 4.7+ models (verified via live
+ * probes May 2026). Previous restriction to `high` only has been lifted.
  */
 const OPUS_47_THINKING_LEVEL_MAP: ProviderModelConfig["thinkingLevelMap"] = {
-  xhigh: "high",
+  xhigh: "max",
 };
 
 /**
@@ -57,6 +50,20 @@ export const ALWAYS_INCLUDE_MODEL_IDS = [
 ];
 
 export const MODEL_PRESETS: Record<string, Omit<GatewayModelDefinition, "id">> = {
+  // --- Opus 4.8 ---
+  //
+  // 1M context, 128K output (confirmed via /model_group/info and live probes).
+  // Supports effort=max natively. Same thinking-level map as 4.7.
+  "claude-opus-4-8": {
+    family: "anthropic",
+    name: "[SF LLM Gateway] Claude Opus 4.8 [1M] Global",
+    reasoning: true,
+    input: ["text", "image"],
+    contextWindow: 1_000_000,
+    maxTokens: 128_000,
+    betaHeaders: [],
+    thinkingLevelMap: OPUS_47_THINKING_LEVEL_MAP,
+  },
   // --- Opus 4.7 (current default) ---
   //
   // contextWindow is 1M: live probes confirmed the upstream accepts >200K
@@ -64,19 +71,16 @@ export const MODEL_PRESETS: Record<string, Omit<GatewayModelDefinition, "id">> =
   // now advertises 1M natively. Keep default betaHeaders empty so the
   // default Opus 4.7 path avoids deprecated / unnecessary beta flags.
   //
-  // maxTokens is deliberately 64_000 here. Live probes showed
-  // `max_tokens: 128000 + effort: "max"` on heavier generations
-  // intermittently surfaces `api_error: Internal server error` from
-  // Anthropic upstream (~5% of trials). 64K matches what the gateway
-  // advertises via /v1/model/info and showed no failures in the same
-  // harness.
+  // maxTokens is 128_000. Live probes (May 2026) confirmed
+  // `max_tokens: 128000 + effort: "max"` works reliably — the earlier
+  // intermittent `api_error` at this setting has been resolved upstream.
   [DEFAULT_MODEL_ID]: {
     family: "anthropic",
     name: "[SF LLM Gateway] Claude Opus 4.7 [1M] Global",
     reasoning: true,
     input: ["text", "image"],
     contextWindow: 1_000_000,
-    maxTokens: 64_000,
+    maxTokens: 128_000,
     betaHeaders: [],
     thinkingLevelMap: OPUS_47_THINKING_LEVEL_MAP,
   },
@@ -86,7 +90,7 @@ export const MODEL_PRESETS: Record<string, Omit<GatewayModelDefinition, "id">> =
     reasoning: true,
     input: ["text", "image"],
     contextWindow: 1_000_000,
-    maxTokens: 64_000,
+    maxTokens: 128_000,
     betaHeaders: [],
     thinkingLevelMap: OPUS_47_THINKING_LEVEL_MAP,
   },
@@ -96,7 +100,7 @@ export const MODEL_PRESETS: Record<string, Omit<GatewayModelDefinition, "id">> =
     reasoning: true,
     input: ["text", "image"],
     contextWindow: 1_000_000,
-    maxTokens: 64_000,
+    maxTokens: 128_000,
     betaHeaders: [],
     thinkingLevelMap: OPUS_47_THINKING_LEVEL_MAP,
   },
@@ -106,7 +110,7 @@ export const MODEL_PRESETS: Record<string, Omit<GatewayModelDefinition, "id">> =
     reasoning: true,
     input: ["text", "image"],
     contextWindow: 1_000_000,
-    maxTokens: 64_000,
+    maxTokens: 128_000,
     betaHeaders: [],
     thinkingLevelMap: OPUS_47_THINKING_LEVEL_MAP,
   },

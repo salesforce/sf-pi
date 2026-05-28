@@ -385,118 +385,49 @@ describe("isOpus47ModelId", () => {
 });
 
 describe("applyOpus47GatewayPolicy", () => {
-  it("fills in the level-scaled max_tokens floor when the caller did not set one", () => {
-    const payload: Record<string, unknown> = {};
-    applyOpus47MaxThinking(payload, "high");
-    // high → 48K floor. This is intentionally lower than the xhigh 64K
-    // floor so that running pi at high does not inflate every turn into
-    // the heavy-workload request profile that correlates with Anthropic's
-    // intermittent api_error window.
-    expect(payload.max_tokens).toBe(resolveOpus47MaxTokensFloor("high"));
-    expect(payload.max_tokens).toBe(48_000);
-  });
-
-  it("falls back to OPUS_47_DEFAULT_MAX_TOKENS when no pi reasoning level is known", () => {
-    const payload: Record<string, unknown> = {};
-    applyOpus47MaxThinking(payload);
-    expect(payload.max_tokens).toBe(OPUS_47_DEFAULT_MAX_TOKENS);
-  });
-
-  it("uses per-level floors: minimal/low/medium/high/xhigh do not all collapse to 64K", () => {
-    // The whole point of this fix is that low-effort turns no longer inherit
-    // the 64K xhigh profile. Assert the distinct floors in one place so any
-    // future regression flips this test immediately.
-    const floors = {
-      minimal: resolveOpus47MaxTokensFloor("minimal"),
-      low: resolveOpus47MaxTokensFloor("low"),
-      medium: resolveOpus47MaxTokensFloor("medium"),
-      high: resolveOpus47MaxTokensFloor("high"),
-      xhigh: resolveOpus47MaxTokensFloor("xhigh"),
-    };
-    expect(floors).toEqual({
-      minimal: 16_000,
-      low: 24_000,
-      medium: 32_000,
-      high: 48_000,
-      xhigh: 64_000,
-    });
-    // And every floor stays at or below the model hard ceiling so the
-    // gateway never 400s on our own default.
-    for (const value of Object.values(floors)) {
-      expect(value).toBeLessThanOrEqual(OPUS_47_MODEL_MAX_TOKENS);
-    }
-  });
-
-  it("leaves Pi-owned adaptive-thinking fields unset when they are absent", () => {
-    const payload: Record<string, unknown> = {};
-
-    applyOpus47MaxThinking(payload, "xhigh");
-
-    expect(payload).toEqual({ max_tokens: 64_000 });
-  });
-
-  it("normalizes legacy/pre-shaped xhigh and max efforts to high in place", () => {
+  it("is a no-op — gateway restrictions that motivated level-scaled floors have been lifted", () => {
     const payload: Record<string, unknown> = {
+      model: "claude-opus-4-7",
       max_tokens: 32_000,
       thinking: { type: "adaptive" },
-      output_config: { effort: "xhigh" },
-      temperature: 0.7,
+      output_config: { effort: "max" },
+      messages: [{ role: "user", content: "solve 1+1" }],
     };
-
-    applyOpus47MaxThinking(payload, "medium");
-
-    expect(payload.max_tokens).toBe(32_000);
-    expect(payload.thinking).toEqual({ type: "adaptive" });
-    expect(payload.output_config).toEqual({ effort: "high" });
-    // Pi owns temperature omission while thinking is enabled; this gateway
-    // helper should not mutate unrelated generic Anthropic fields.
-    expect(payload.temperature).toBe(0.7);
-
-    const maxPayload: Record<string, unknown> = { output_config: { effort: "max" } };
-    applyOpus47MaxThinking(maxPayload, "high");
-    expect(maxPayload.output_config).toEqual({ effort: "high" });
+    const original = { ...payload, output_config: { ...(payload.output_config as object) } };
+    applyOpus47MaxThinking(payload, "high");
+    // Function is a no-op: payload is unchanged
+    expect(payload).toEqual(original);
   });
 
-  it("model max is exactly 128000 — gateway returns 400 for 200000 with 'max_tokens: 200000 > 128000'", () => {
+  it("does not fill max_tokens — the preset handles that via pi-ai", () => {
+    const payload: Record<string, unknown> = {};
+    applyOpus47MaxThinking(payload, "xhigh");
+    expect(payload).toEqual({});
+  });
+
+  it("does not normalize effort — max and xhigh pass through to the gateway", () => {
+    const payload: Record<string, unknown> = {
+      output_config: { effort: "max" },
+    };
+    applyOpus47MaxThinking(payload, "high");
+    expect(payload.output_config).toEqual({ effort: "max" });
+
+    const xhighPayload: Record<string, unknown> = {
+      output_config: { effort: "xhigh" },
+    };
+    applyOpus47MaxThinking(xhighPayload, "medium");
+    expect(xhighPayload.output_config).toEqual({ effort: "xhigh" });
+  });
+
+  it("model max is exactly 128000 — gateway returns 400 above this", () => {
     expect(OPUS_47_MODEL_MAX_TOKENS).toBe(128_000);
   });
 
-  it("default max is 64000 — matches what the gateway advertises and avoids the 128K+max api_error window", () => {
-    expect(OPUS_47_DEFAULT_MAX_TOKENS).toBe(64_000);
-  });
-
-  it("produces only the gateway-specific max-token change for 4.7 at pi level=high", () => {
-    const payload: Record<string, unknown> = {
-      model: "claude-opus-4-7",
-      messages: [{ role: "user", content: "solve 1+1" }],
-    };
-    applyOpus47MaxThinking(payload, "high");
-
-    expect(payload).toEqual({
-      model: "claude-opus-4-7",
-      messages: [{ role: "user", content: "solve 1+1" }],
-      max_tokens: resolveOpus47MaxTokensFloor("high"),
-    });
-  });
-
-  it("produces only the gateway-specific max-token change for 4.7 at pi level=xhigh", () => {
-    const payload: Record<string, unknown> = {
-      model: "claude-opus-4-7",
-      messages: [{ role: "user", content: "multi-step reasoning" }],
-    };
-    applyOpus47MaxThinking(payload, "xhigh");
-
-    expect(payload).toEqual({
-      model: "claude-opus-4-7",
-      messages: [{ role: "user", content: "multi-step reasoning" }],
-      max_tokens: 64_000,
-    });
-  });
-
-  it("respects a caller-provided max_tokens above the level-scaled floor", () => {
-    const payload: Record<string, unknown> = { max_tokens: 80_000 };
-    applyOpus47MaxThinking(payload, "medium");
-    expect(payload.max_tokens).toBe(80_000);
+  it("deprecated constants return 128_000 for backwards compat", () => {
+    expect(OPUS_47_DEFAULT_MAX_TOKENS).toBe(128_000);
+    expect(resolveOpus47MaxTokensFloor("high")).toBe(128_000);
+    expect(resolveOpus47MaxTokensFloor("xhigh")).toBe(128_000);
+    expect(resolveOpus47MaxTokensFloor(undefined)).toBe(128_000);
   });
 
   it("exposes ANTHROPIC_FINE_GRAINED_TOOL_STREAMING_BETA so lib/models.ts can merge it", () => {

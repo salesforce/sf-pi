@@ -56,15 +56,16 @@ export const ANTHROPIC_EARLY_STREAM_RETRIES = GATEWAY_PROVIDER_DEFAULT_MAX_RETRI
 export const ANTHROPIC_EARLY_STREAM_RETRY_DELAYS_MS = [500, 1500, 4000] as const;
 
 /**
- * Default max_tokens floor scaled by pi reasoning level. See the file
- * header in `lib/transport.ts` for the failure mode that drove this.
+ * @deprecated Removed — the upstream instability at 128K+max that motivated
+ * level-scaled floors has been resolved. Kept only as a type-compatible stub
+ * for any downstream test imports that reference it before cleanup.
  */
 export const OPUS_47_MAX_TOKENS_FLOOR_BY_LEVEL: Record<PiReasoningLevel, number> = {
-  minimal: 16_000,
-  low: 24_000,
-  medium: 32_000,
-  high: 48_000,
-  xhigh: 64_000,
+  minimal: 128_000,
+  low: 128_000,
+  medium: 128_000,
+  high: 128_000,
+  xhigh: 128_000,
 };
 
 /**
@@ -84,9 +85,10 @@ export const DEFAULT_OPENAI_SERVICE_TIER = "priority";
 export type PiReasoningLevel = "minimal" | "low" | "medium" | "high" | "xhigh";
 
 /**
- * Default cap for Opus 4.7 output tokens when no pi reasoning level is set.
+ * @deprecated Use the model preset's maxTokens (128_000) directly.
+ * Kept for backwards-compatible imports.
  */
-export const OPUS_47_DEFAULT_MAX_TOKENS = 64_000;
+export const OPUS_47_DEFAULT_MAX_TOKENS = 128_000;
 
 /**
  * Hard upstream ceiling for Opus 4.7. Gateway returns 400 above this.
@@ -94,12 +96,11 @@ export const OPUS_47_DEFAULT_MAX_TOKENS = 64_000;
 export const OPUS_47_MODEL_MAX_TOKENS = 128_000;
 
 /**
- * Return the max_tokens floor that applies to an Opus 4.7 turn at a given
- * pi reasoning level. Exported for tests and for the `/debug` command.
+ * @deprecated The level-scaled floor is no longer needed. Returns 128_000
+ * unconditionally. Kept for backwards-compatible imports.
  */
-export function resolveOpus47MaxTokensFloor(level: PiReasoningLevel | undefined): number {
-  if (!level) return OPUS_47_DEFAULT_MAX_TOKENS;
-  return OPUS_47_MAX_TOKENS_FLOOR_BY_LEVEL[level] ?? OPUS_47_DEFAULT_MAX_TOKENS;
+export function resolveOpus47MaxTokensFloor(_level?: PiReasoningLevel | undefined): number {
+  return OPUS_47_MODEL_MAX_TOKENS;
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -173,10 +174,33 @@ export function resolveOpenAiReasoningEffort(modelId: string): string | undefine
   return DEFAULT_OPENAI_REASONING_EFFORT;
 }
 
-/** True for Claude Opus 4.7 variants. */
+/**
+ * Extract the Opus minor version from a model ID, or null if not an Opus model.
+ * Matches both dash (`opus-4-7`) and dot (`opus-4.7`) conventions, and
+ * handles Bedrock-prefixed ids like `us.anthropic.claude-opus-4-8-v1`.
+ */
+export function extractOpusMinorVersion(modelId: string): number | null {
+  const match = modelId.toLowerCase().match(/opus-4[.-](\d+)/);
+  return match ? parseInt(match[1], 10) : null;
+}
+
+/** True for Claude Opus 4.6+ (supports adaptive thinking). */
+export function isOpus46OrNewerModelId(modelId: string): boolean {
+  const v = extractOpusMinorVersion(modelId);
+  return v !== null && v >= 6;
+}
+
+/** True for Claude Opus 4.7+ (1M context, native gateway support, no beta headers needed). */
+export function isOpus47OrNewerModelId(modelId: string): boolean {
+  const v = extractOpusMinorVersion(modelId);
+  return v !== null && v >= 7;
+}
+
+/**
+ * @deprecated Use `isOpus47OrNewerModelId` instead. Kept for backwards compat.
+ */
 export function isOpus47ModelId(modelId: string): boolean {
-  const lower = modelId.toLowerCase();
-  return lower.includes("opus-4-7") || lower.includes("opus-4.7");
+  return isOpus47OrNewerModelId(modelId);
 }
 
 // -------------------------------------------------------------------------------------------------

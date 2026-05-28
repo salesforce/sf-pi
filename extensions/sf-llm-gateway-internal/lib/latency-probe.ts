@@ -11,7 +11,7 @@ import { API_KEY_ENV, getGatewayConfig } from "./config.ts";
 import { toGatewayOpenAiBaseUrl, toGatewayRootBaseUrl } from "./gateway-url.ts";
 import { fetchWithTimeout } from "./models.ts";
 import { isAnthropicModelId } from "./models.ts";
-import { isGpt5FamilyResponsesModelId, isOpus47ModelId } from "./transport.ts";
+import { isGpt5FamilyResponsesModelId, isOpus47OrNewerModelId } from "./transport.ts";
 
 const METADATA_TIMEOUT_MS = 15_000;
 const GENERATION_TIMEOUT_MS = 180_000;
@@ -119,7 +119,7 @@ export async function fetchGatewayLatencyProbe(
   }
 
   if (options.includeBetaCompare) {
-    if (isOpus47ModelId(options.modelId)) {
+    if (isOpus47OrNewerModelId(options.modelId)) {
       const fillerWords = options.includeLarge ? LARGE_FILLER_WORDS : SMALL_FILLER_WORDS;
       probes.push(
         await generationProbe({
@@ -147,7 +147,7 @@ export async function fetchGatewayLatencyProbe(
   }
 
   if (options.includeBedrock) {
-    if (isOpus47ModelId(options.modelId)) {
+    if (isOpus47OrNewerModelId(options.modelId)) {
       probes.push(await bedrockOpus47Probe(rootUrl, authHeaders, options.includeLarge));
     } else {
       notes.push("--bedrock currently runs only for Opus 4.7 model IDs.");

@@ -16,7 +16,6 @@ import {
   DEFAULT_OPENAI_SERVICE_TIER,
   isGpt55ModelId,
   resolveOpenAiReasoningEffort,
-  resolveOpus47MaxTokensFloor,
   type PiReasoningLevel,
 } from "./shared.ts";
 
@@ -143,29 +142,14 @@ export function injectOpenAiReasoningEffort(
 }
 
 /**
- * Apply the gateway-specific Opus 4.7 payload policy.
- *
- * Pi owns the generic Anthropic adaptive-thinking shape via
- * `compat.forceAdaptiveThinking` (`thinking: { type: "adaptive" }`,
- * `output_config.effort`, and omitting temperature while thinking is on).
- * SF Pi only keeps the gateway-specific output-token floor/cap policy and a
- * defensive cleanup for legacy/pre-shaped payloads that still contain an
- * effort value this gateway rejects for Opus 4.7.
+ * @deprecated The gateway now accepts `effort=max` and `effort=xhigh` for
+ * Opus 4.7+, and the upstream instability at 128K output tokens is resolved.
+ * This function is a no-op stub kept for backwards-compatible imports.
+ * New code should not call it.
  */
 export function applyOpus47MaxThinking(
-  payload: Record<string, unknown>,
-  level?: PiReasoningLevel,
+  _payload: Record<string, unknown>,
+  _level?: PiReasoningLevel,
 ): void {
-  if (typeof payload.max_tokens !== "number" || payload.max_tokens <= 0) {
-    payload.max_tokens = resolveOpus47MaxTokensFloor(level);
-  }
-
-  if (typeof payload.output_config === "object" && payload.output_config !== null) {
-    const outputConfig = payload.output_config as Record<string, unknown>;
-    if (outputConfig.effort === "xhigh" || outputConfig.effort === "max") {
-      // The gateway rejects raw xhigh, and its model-specific guard restricts
-      // max to Opus 4.6. The strongest tier Opus 4.7 accepts is high.
-      outputConfig.effort = "high";
-    }
-  }
+  // No-op: gateway restrictions that motivated this function have been lifted.
 }

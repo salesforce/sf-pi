@@ -34,7 +34,8 @@ import {
   ANTHROPIC_FINE_GRAINED_TOOL_STREAMING_BETA,
   isGpt5FamilyResponsesModelId,
   isGpt55ModelId,
-  isOpus47ModelId,
+  isOpus46OrNewerModelId,
+  isOpus47OrNewerModelId,
 } from "./transport.ts";
 
 // -------------------------------------------------------------------------------------------------
@@ -254,12 +255,7 @@ export type TaggedGatewayModel = ProviderModelConfig & {
 export function shouldForceAdaptiveThinking(modelId: string): boolean {
   const lower = modelId.toLowerCase();
   return (
-    lower.includes("opus-4-6") ||
-    lower.includes("opus-4.6") ||
-    lower.includes("opus-4-7") ||
-    lower.includes("opus-4.7") ||
-    lower.includes("sonnet-4-6") ||
-    lower.includes("sonnet-4.6")
+    isOpus46OrNewerModelId(modelId) || lower.includes("sonnet-4-6") || lower.includes("sonnet-4.6")
   );
 }
 
@@ -490,7 +486,7 @@ function shouldIncludeFineGrainedToolStreamingBeta(
   effectiveBetas: readonly string[],
 ): boolean {
   if (effectiveBetas.length === 0) return false;
-  return !isOpus47ModelId(modelId);
+  return !isOpus47OrNewerModelId(modelId);
 }
 
 /** Resolve a short alias to the full beta value. */
@@ -660,8 +656,9 @@ export function inferModelDefinition(id: string): GatewayModelDefinition {
   if (family === "anthropic") {
     const isOpus = lower.includes("opus");
     const isHaiku = lower.includes("haiku");
-    const is47OrNewer = lower.includes("4-7") || lower.includes("4.7");
-    const is46OrNewer = lower.includes("4-6") || lower.includes("4.6") || is47OrNewer;
+    const is47OrNewer = isOpus47OrNewerModelId(id);
+    const is46OrNewer =
+      isOpus46OrNewerModelId(id) || lower.includes("4-6") || lower.includes("4.6");
     const has1m = is46OrNewer && isOpus;
     const reasoning =
       !isHaiku &&
@@ -685,15 +682,13 @@ export function inferModelDefinition(id: string): GatewayModelDefinition {
           ? [INTERLEAVED_THINKING_BETA]
           : [];
 
-    // Opus 4.7 output default is 64K. Avoids the `api_error: Internal
-    // server error` window observed at 128K + effort=max. Model hard
-    // ceiling is 128K; callers can opt into that per request.
-    const opus47OutputTokens = 64_000;
+    // Opus 4.7+ output: 128K confirmed stable via live probes (May 2026).
+    // Older Opus with 1M context (4.6) also gets 128K. Others get 32K/64K.
     const maxTokens = isHaiku
       ? 8_192
       : isOpus
         ? is47OrNewer
-          ? opus47OutputTokens
+          ? 128_000
           : has1m
             ? 128_000
             : 32_768

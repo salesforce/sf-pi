@@ -237,20 +237,19 @@ describe("toProviderModelConfig", () => {
     // Opus 4.7 now advertises 1M input natively through the gateway, and live
     // probes confirm >200K-token requests work without context-1m. Keep the
     // default route free of deprecated / unnecessary beta flags. maxTokens is
-    // still 64K because earlier heavy-generation probes showed 128K output
-    // requests were less reliable; callers can raise per request.
+    // 128K confirmed stable via live probes (May 2026).
     const config = toProviderModelConfig("claude-opus-4-7", null, new Set());
     expect(config.id).toBe("claude-opus-4-7");
     expect(config.reasoning).toBe(true);
     expect(config.contextWindow).toBe(1_000_000);
-    expect(config.maxTokens).toBe(64_000);
+    expect(config.maxTokens).toBe(128_000);
     expect(config.headers).toBeUndefined();
   });
 
   it("uses the same no-beta preset for unknown Opus 4.7 model IDs via inference", () => {
     const config = toProviderModelConfig("claude-opus-4-7-preview", null, new Set());
     expect(config.contextWindow).toBe(1_000_000);
-    expect(config.maxTokens).toBe(64_000);
+    expect(config.maxTokens).toBe(128_000);
     expect(config.headers).toBeUndefined();
   });
 
@@ -436,7 +435,7 @@ describe("toProviderModelConfig", () => {
       supportsVision: true,
     });
     expect(cfg.contextWindow).toBe(1_000_000);
-    expect(cfg.maxTokens).toBe(64_000);
+    expect(cfg.maxTokens).toBe(128_000);
     expect(cfg.compat).toMatchObject({ forceAdaptiveThinking: true });
   });
 
@@ -464,23 +463,21 @@ describe("toProviderModelConfig", () => {
     expect((config as any).thinkingLevelMap?.high).toBe("high");
   });
 
-  it("opts Opus 4.7 into the pi xhigh thinking level via thinkingLevelMap (mapped to gateway-accepted high)", () => {
+  it("opts Opus 4.7+ into the pi xhigh thinking level via thinkingLevelMap (mapped to max)", () => {
     // pi 0.72 hides `xhigh` from the /thinking selector unless the model's
-    // thinkingLevelMap.xhigh is explicitly set. The gateway's LiteLLM
-    // rejects raw `xhigh` upstream, AND its model-specific guard rejects
-    // `max` on Opus 4.7 (`max` is exclusive to Opus 4.6). The strongest
-    // tier Opus 4.7 accepts is `high`, so pi's user-facing `xhigh`
-    // collapses to `high` on the wire. Regression test pins the opt-in
-    // for every Opus 4.7 preset id.
+    // thinkingLevelMap.xhigh is explicitly set. The gateway now accepts
+    // `max` for Opus 4.7+ (verified May 2026). Pi's user-facing `xhigh`
+    // maps to Anthropic's native `max` effort tier.
     for (const id of [
       "claude-opus-4-7",
       "claude-opus-4-7-v1",
       "claude-opus-4-7-20250416",
       "us.anthropic.claude-opus-4-7-v1",
+      "claude-opus-4-8",
     ]) {
       const config = toProviderModelConfig(id, null, new Set());
-      expect((config as any).thinkingLevelMap?.xhigh, `${id} should opt into xhigh→high`).toBe(
-        "high",
+      expect((config as any).thinkingLevelMap?.xhigh, `${id} should opt into xhigh→max`).toBe(
+        "max",
       );
       expect(config.compat, `${id} should use Pi-native adaptive thinking`).toMatchObject({
         forceAdaptiveThinking: true,
@@ -488,9 +485,9 @@ describe("toProviderModelConfig", () => {
     }
   });
 
-  it("uses Pi-native adaptive thinking for Opus 4.6 without leaking the Opus 4.7 xhigh opt-in", () => {
-    // Opus 4.6 needs adaptive thinking too, but it does not use the Opus 4.7
-    // xhigh→high workaround. Pi owns the adaptive payload via compat.
+  it("uses Pi-native adaptive thinking for Opus 4.6 without leaking the Opus 4.7+ xhigh opt-in", () => {
+    // Opus 4.6 needs adaptive thinking too, but it does not use the Opus 4.7+
+    // xhigh→max mapping. Pi owns the adaptive payload via compat.
     const config = toProviderModelConfig("claude-opus-4-6-v1", null, new Set());
     expect((config as any).thinkingLevelMap).toBeUndefined();
     expect(config.compat).toMatchObject({ forceAdaptiveThinking: true });

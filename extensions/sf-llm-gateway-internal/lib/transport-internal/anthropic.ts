@@ -2,14 +2,13 @@
 /**
  * Anthropic Messages transport for the SF LLM Gateway.
  *
- * Wraps pi-ai's `streamSimpleAnthropic` with the Gateway-specific Opus 4.7
- * output-token policy. Pi owns the generic adaptive-thinking payload via the
- * model's `compat.forceAdaptiveThinking` flag; this wrapper only pre-sets
- * `options.maxTokens` to the level-scaled floor so low-effort turns avoid the
- * gateway's heavier 64K/128K request profile unless the caller asked for it.
+ * All Claude models go through the same path: pi-ai's `streamSimpleAnthropic`
+ * wrapped in the early-stream retry wrapper (`streamAnthropicWithRobustRetry`).
  *
- * Older Claude models pass straight through — their model compat flags tell
- * pi-ai whether adaptive thinking is required.
+ * Pi owns the generic adaptive-thinking payload via the model's
+ * `compat.forceAdaptiveThinking` flag. The gateway now accepts `effort=max`
+ * and `max_tokens=128000` for Opus 4.7+ without instability, so no
+ * transport-level payload shaping is needed.
  *
  * The Anthropic-specific early-stream retry wrapper
  * (`streamAnthropicWithRobustRetry`) lives in `./shared.ts` and uses the same
@@ -22,15 +21,7 @@ import {
   type Model,
   type SimpleStreamOptions,
 } from "@earendil-works/pi-ai";
-import { applyOpus47MaxThinking } from "./payloads.ts";
-import {
-  isOpus47ModelId,
-  OPUS_47_MODEL_MAX_TOKENS,
-  resolveOpus47MaxTokensFloor,
-  streamAnthropicWithRobustRetry,
-  withGatewayProviderRetryDefaults,
-  type PiReasoningLevel,
-} from "./shared.ts";
+import { streamAnthropicWithRobustRetry, withGatewayProviderRetryDefaults } from "./shared.ts";
 
 export function streamSfGatewayAnthropic(
   model: Model<"anthropic-messages">,
@@ -40,45 +31,9 @@ export function streamSfGatewayAnthropic(
   const gatewayOptions = withGatewayProviderRetryDefaults(options);
   const maxRetries = gatewayOptions.maxRetries;
 
-  if (!isOpus47ModelId(model.id)) {
-    return streamAnthropicWithRobustRetry(
-      model,
-      () => streamSimpleAnthropic(model, context, gatewayOptions),
-      gatewayOptions.signal,
-      { maxRetries },
-    );
-  }
-
-  const existingOnPayload = gatewayOptions.onPayload;
-  const piLevel = gatewayOptions.reasoning as PiReasoningLevel | undefined;
-
-  const wrappedOptions: SimpleStreamOptions = {
-    ...gatewayOptions,
-    // Use a floor scaled by the pi reasoning level so low-effort turns do not
-    // get silently inflated into the Opus 4.7 64K-output profile that
-    // correlates with Anthropic's intermittent `api_error: Internal server
-    // error` window. Keep the caller's explicit value when it is already above
-    // the level-scaled floor. Never exceed the model's hard 128K ceiling.
-    maxTokens: Math.min(
-      Math.max(options?.maxTokens ?? 0, resolveOpus47MaxTokensFloor(piLevel)),
-      OPUS_47_MODEL_MAX_TOKENS,
-    ),
-    onPayload: async (payload, payloadModel) => {
-      let nextPayload = payload;
-
-      if (payload && typeof payload === "object" && !Array.isArray(payload)) {
-        const objectPayload = payload as Record<string, unknown>;
-        applyOpus47MaxThinking(objectPayload, piLevel);
-        nextPayload = objectPayload;
-      }
-
-      return existingOnPayload ? existingOnPayload(nextPayload, payloadModel) : nextPayload;
-    },
-  };
-
   return streamAnthropicWithRobustRetry(
     model,
-    () => streamSimpleAnthropic(model, context, wrappedOptions),
+    () => streamSimpleAnthropic(model, context, gatewayOptions),
     gatewayOptions.signal,
     { maxRetries },
   );

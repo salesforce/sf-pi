@@ -10,7 +10,7 @@
  * Goal: verify the actual sf-pi transport path for the critical-path Opus 4.7
  * model. Pi owns the generic adaptive-thinking payload via
  * `compat.forceAdaptiveThinking`; sf-pi keeps the gateway-specific
- * max_tokens floor and xhigh→high mapping.
+ * adaptive thinking and xhigh→max mapping.
  */
 import { describe, expect, it } from "vitest";
 import type {
@@ -39,7 +39,7 @@ const describeLive = hasLiveGatewayConfig ? describe : describe.skip;
 
 describeLive("sf-llm-gateway-internal Opus 4.7 live regression", () => {
   it(
-    "uses Pi-native adaptive thinking with sf-pi's gateway-specific xhigh max-token policy",
+    "uses Pi-native adaptive thinking with xhigh mapped to max effort",
     async () => {
       const capturedPayloads: Record<string, unknown>[] = [];
       const events = await collectStream(
@@ -59,9 +59,11 @@ describeLive("sf-llm-gateway-internal Opus 4.7 live regression", () => {
       const payload = capturedPayloads[0];
       expect(payload).toBeDefined();
       expect(payload?.thinking).toEqual({ type: "adaptive", display: "summarized" });
-      expect(payload?.output_config).toEqual({ effort: "high" });
+      // xhigh maps to "max" via thinkingLevelMap; pi-ai sends output_config.effort=max
+      expect(payload?.output_config).toEqual({ effort: "max" });
       expect(payload?.temperature).toBeUndefined();
-      expect(payload?.max_tokens).toBe(64_000);
+      // Transport no longer clamps max_tokens; pi-ai passes the preset value (128K)
+      expect(payload?.max_tokens).toBe(128_000);
       expect(events.some((event) => event.type === "error")).toBe(false);
       expect(events.some((event) => event.type === "done")).toBe(true);
     },
