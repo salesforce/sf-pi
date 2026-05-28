@@ -14,7 +14,7 @@
  *   All models are registered under the provider-level api so pi always
  *   invokes this provider's custom `streamSimple` dispatcher. The dispatcher
  *   detects Claude by model id and delegates to `streamSfGatewayAnthropic`
- *   (our Opus 4.7 / robust-retry shim); non-Claude models stay on
+ *   (our Opus 4.7 / early-stream retry shim); non-Claude models stay on
  *   `streamSfGatewayOpenAI`. The `api` tag on each model is kept internal —
  *   only the gateway-root `baseUrl` is set on Anthropic models at
  *   registration time, which is why the dispatcher no longer needs to
@@ -349,7 +349,7 @@ function registerProviders(
   // Keep the internal `api` tag off the Pi-facing model config: if Claude
   // were registered with per-model `api: "anthropic-messages"`, pi would
   // route it to pi-ai's built-in Anthropic transport and skip our Opus 4.7
-  // / robust-retry shim in transport.ts.
+  // / early-stream retry shim in transport.ts.
   const gatewayOpenAiBaseUrl = toGatewayOpenAiBaseUrl(config.baseUrl);
   const gatewayRootBaseUrl = toGatewayRootBaseUrl(config.baseUrl);
   //
@@ -365,7 +365,7 @@ function registerProviders(
   // In both cases we strip the internal `api` tag before handing the model
   // to pi. Without that, pi bypasses our `streamSimple` dispatcher and
   // calls pi-ai's built-in transport directly — skipping the Opus 4.7
-  // robust-retry, the Codex fixups, and the Responses fallback-to-chat.
+  // early-stream retry, the Codex fixups, and the Responses fallback-to-chat.
   const providerModels: ProviderModelConfig[] = models.map(({ api, ...rest }) => ({
     ...rest,
     ...(api === "anthropic-messages" || api === "openai-responses"

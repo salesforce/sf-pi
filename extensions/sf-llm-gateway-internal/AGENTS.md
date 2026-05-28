@@ -107,7 +107,7 @@ When adding a subcommand:
 - `tests/command-parsing.test.ts` — every new subcommand needs a parse case
 - `tests/config.test.ts` — settings mutations covered by the `apply*` / `restore*` helpers
 - `tests/models.test.ts` — family inference / new presets / beta resolution
-- `tests/robust-retry.test.ts` — transport-level retry behavior
+- `tests/robust-retry.test.ts` — Anthropic early-stream retry behavior
 - `tests/codex-regression.test.ts` — gated live test; runs only when
   `SF_LLM_GATEWAY_INTERNAL_*` env vars are present
 

@@ -231,7 +231,7 @@ with AGENTS.md §3 ("split by responsibility").
 modules under `lib/transport-internal/`:
 
 - `shared.ts` (487 LOC) — constants, types, model-id detection, error
-  formatting, robust-retry wrapper
+  formatting, early-stream retry wrapper
 - `payloads.ts` (190 LOC) — gateway payload mutators (codex tools,
   OpenAI service tier, reasoning effort, Opus 4.7 max thinking)
 - `anthropic.ts` (81 LOC) — `streamSfGatewayAnthropic`

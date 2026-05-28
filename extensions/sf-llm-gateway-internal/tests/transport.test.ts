@@ -20,6 +20,7 @@
 import { describe, expect, it } from "vitest";
 import {
   ANTHROPIC_FINE_GRAINED_TOOL_STREAMING_BETA,
+  GATEWAY_PROVIDER_DEFAULT_MAX_RETRIES,
   OPUS_47_DEFAULT_MAX_TOKENS,
   OPUS_47_MODEL_MAX_TOKENS,
   allowReasoningEffortParam,
@@ -34,10 +35,32 @@ import {
   isOpenAiReasoningModelId,
   isOpus47ModelId,
   normalizeCodexReasoningEffort,
+  resolveGatewayProviderMaxRetries,
   resolveOpenAiReasoningEffort,
   resolveOpus47MaxTokensFloor,
   stripReasoningEffortForGpt55,
+  withGatewayProviderRetryDefaults,
 } from "../lib/transport.ts";
+
+describe("Gateway provider retry defaults", () => {
+  it("defaults to 3 retries when Pi has no retry.provider.maxRetries setting", () => {
+    expect(GATEWAY_PROVIDER_DEFAULT_MAX_RETRIES).toBe(3);
+    expect(resolveGatewayProviderMaxRetries(undefined)).toBe(3);
+    expect(withGatewayProviderRetryDefaults(undefined).maxRetries).toBe(3);
+  });
+
+  it("honors explicit Pi provider retry overrides, including 0 to disable", () => {
+    expect(resolveGatewayProviderMaxRetries(0)).toBe(0);
+    expect(resolveGatewayProviderMaxRetries(5)).toBe(5);
+    expect(withGatewayProviderRetryDefaults({ maxRetries: 0 }).maxRetries).toBe(0);
+    expect(withGatewayProviderRetryDefaults({ maxRetries: 5 }).maxRetries).toBe(5);
+  });
+
+  it("normalizes invalid direct option values back to the Gateway default", () => {
+    expect(resolveGatewayProviderMaxRetries(Number.NaN)).toBe(3);
+    expect(resolveGatewayProviderMaxRetries(Number.POSITIVE_INFINITY)).toBe(3);
+  });
+});
 
 describe("formatAnthropicStreamError", () => {
   it("renders Anthropic SSE error envelopes without dumping raw JSON", () => {

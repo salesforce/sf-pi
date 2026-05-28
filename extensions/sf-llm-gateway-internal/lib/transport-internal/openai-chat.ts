@@ -26,17 +26,18 @@ import {
   injectOpenAiReasoningEffort,
   injectOpenAiServiceTier,
 } from "./payloads.ts";
-import { isCodexModelId, isOpenAiModelId } from "./shared.ts";
+import { isCodexModelId, isOpenAiModelId, withGatewayProviderRetryDefaults } from "./shared.ts";
 
 export function streamSfGatewayOpenAI(
   model: Model<"openai-completions">,
   context: Context,
   options?: SimpleStreamOptions,
 ): AssistantMessageEventStream {
-  const existingOnPayload = options?.onPayload;
+  const gatewayOptions = withGatewayProviderRetryDefaults(options);
+  const existingOnPayload = gatewayOptions.onPayload;
 
   const wrappedOptions: SimpleStreamOptions = {
-    ...options,
+    ...gatewayOptions,
     onPayload: async (payload, payloadModel) => {
       let nextPayload = payload;
 

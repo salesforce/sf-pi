@@ -415,12 +415,11 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
     // Fresh session — forget any thinking-level we set in a previous session.
     lastAppliedThinkingLevel = undefined;
 
-    // Install the retry-telemetry listener so transparent inner-stream
-    // retries surface as user-visible notifications. Before this, the
-    // robust retry was fully silent and users had no way to tell whether
-    // pi had tried anything or was just slow. The listener captures `ctx`
-    // by closure — session_shutdown clears it so we do not hold a stale
-    // reference past the session.
+    // Install the retry-telemetry listener so transparent Anthropic
+    // early-stream retries surface as user-visible notifications. These
+    // retries use the same provider retry budget Pi passes through the
+    // transport; the listener captures `ctx` by closure — session_shutdown
+    // clears it so we do not hold a stale reference past the session.
     setRetryEventListener((event: RetryEvent) => {
       const level: "info" | "warning" = event.type === "retry_exhausted" ? "warning" : "info";
       ctx.ui.notify(formatRetryEventNotification(event), level);

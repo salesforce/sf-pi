@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /**
- * Tests for lib/retry-telemetry — the small event bus the robust retry uses
- * to surface inner-retry state to the UI, and the guidance footer appended
+ * Tests for lib/retry-telemetry — the small event bus the early-stream retry
+ * uses to surface retry state to the UI, and the guidance footer appended
  * to final error messages.
  *
  * These tests cover:
@@ -134,8 +134,10 @@ describe("formatRetryEventNotification", () => {
 describe("formatRetryGuidanceFooter", () => {
   it("includes the settings path and the Anthropic status URL verbatim", () => {
     const footer = formatRetryGuidanceFooter();
-    expect(footer).toContain("retry.maxRetries");
+    expect(footer).toContain("retry.provider.maxRetries");
     expect(footer).toContain("~/.pi/agent/settings.json");
+    expect(footer).toContain("default: 3");
+    expect(footer).toContain("set it to 0 to disable");
     expect(footer).toContain("/compact");
     expect(footer).toContain("https://status.anthropic.com");
   });

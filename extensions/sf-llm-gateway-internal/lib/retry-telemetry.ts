@@ -6,8 +6,8 @@
  *
  * The extension entry point installs a listener on init that turns these
  * events into `ctx.ui.notify` messages, so users actually see that a
- * transient upstream failure was handled. Before this, the robust retry was
- * fully silent — users had no way to tell whether pi had tried anything or
+ * transient upstream failure was handled. Before this, the early-stream retry
+ * was fully silent — users had no way to tell whether pi had tried anything or
  * was just slow.
  *
  * Everything here is pure + in-memory:
@@ -83,11 +83,11 @@ export function emitRetryEvent(event: RetryEvent): void {
  * footer the extension shows when forwarding the final error through the UI.
  *
  * Kept intentionally terse so it fits in a single transcript line. Includes
- * the exact settings path and the Anthropic status URL verbatim so users can
- * act on it immediately.
+ * the exact Pi provider-retry setting, settings path, and Anthropic status URL
+ * verbatim so users can act on it immediately.
  */
 export function formatRetryGuidanceFooter(): string {
-  return `Tip: bump retry.maxRetries in ${RETRY_GUIDANCE_SETTINGS_PATH}, or run /compact to shrink context. Upstream status: ${RETRY_GUIDANCE_STATUS_URL}`;
+  return `Tip: Gateway retries use Pi's retry.provider.maxRetries setting (default: 3) in ${RETRY_GUIDANCE_SETTINGS_PATH}; set it higher to retry more, set it to 0 to disable, or run /compact to shrink context. Upstream status: ${RETRY_GUIDANCE_STATUS_URL}`;
 }
 
 /**

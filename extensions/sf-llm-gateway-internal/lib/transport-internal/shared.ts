@@ -2,8 +2,8 @@
 /**
  * Shared transport primitives for the SF LLM Gateway.
  *
- * Holds constants, types, model-id detection, error formatters, retry
- * helpers, and the robust-retry wrapper used by the Anthropic transport.
+ * Holds constants, types, model-id detection, error formatters, provider retry
+ * defaults, and the early-stream retry wrapper used by the Anthropic transport.
  * Per-transport streamers live next to this file in
  * `./anthropic.ts`, `./openai-chat.ts`, and `./openai-responses.ts`.
  *
@@ -16,6 +16,7 @@ import {
   type AssistantMessageEvent,
   type AssistantMessageEventStream,
   type Model,
+  type SimpleStreamOptions,
 } from "@earendil-works/pi-ai";
 import { emitRetryEvent } from "../retry-telemetry.ts";
 import { formatRetryGuidanceFooter } from "../retry-telemetry.ts";
@@ -34,11 +35,22 @@ export const DEFAULT_OPENAI_REASONING_EFFORT = "high";
 export const MAX_OPENAI_REASONING_EFFORT = "max";
 
 /**
+ * Gateway-specific provider retry default when Pi has not supplied
+ * `retry.provider.maxRetries`. Pi 0.76 passes the user's provider retry value
+ * through `SimpleStreamOptions.maxRetries`; SF Pi only fills the default for
+ * this provider so the transport has one retry budget for SDK-level retries,
+ * Responses fallback, and Anthropic early-stream SSE retries.
+ */
+export const GATEWAY_PROVIDER_DEFAULT_MAX_RETRIES = 3;
+
+/**
  * How many additional attempts to make after the initial upstream request when
  * Anthropic returns a retryable SSE error envelope before any user-visible
  * content has been emitted. Total attempts = 1 + ANTHROPIC_EARLY_STREAM_RETRIES.
+ * Kept as a backwards-compatible alias for tests and older imports; new code
+ * should use GATEWAY_PROVIDER_DEFAULT_MAX_RETRIES.
  */
-export const ANTHROPIC_EARLY_STREAM_RETRIES = 3;
+export const ANTHROPIC_EARLY_STREAM_RETRIES = GATEWAY_PROVIDER_DEFAULT_MAX_RETRIES;
 
 /** Exponential-backoff delays applied between inner stream retry attempts. */
 export const ANTHROPIC_EARLY_STREAM_RETRY_DELAYS_MS = [500, 1500, 4000] as const;
@@ -264,7 +276,25 @@ export function annotateErrorWithGuidance(
 }
 
 // -------------------------------------------------------------------------------------------------
-// Robust retry wrapper for Anthropic streams
+// Gateway provider retry defaults
+// -------------------------------------------------------------------------------------------------
+
+export function resolveGatewayProviderMaxRetries(maxRetries: number | undefined): number {
+  if (maxRetries === undefined) return GATEWAY_PROVIDER_DEFAULT_MAX_RETRIES;
+  if (!Number.isFinite(maxRetries)) return GATEWAY_PROVIDER_DEFAULT_MAX_RETRIES;
+  return Math.max(0, Math.floor(maxRetries));
+}
+
+export function withGatewayProviderRetryDefaults(
+  options: SimpleStreamOptions | undefined,
+): SimpleStreamOptions {
+  const maxRetries = resolveGatewayProviderMaxRetries(options?.maxRetries);
+  if (options?.maxRetries === maxRetries) return options;
+  return { ...options, maxRetries };
+}
+
+// -------------------------------------------------------------------------------------------------
+// Early-stream retry wrapper for Anthropic streams
 // -------------------------------------------------------------------------------------------------
 
 function isUserVisibleStreamEvent(event: AssistantMessageEvent): boolean {
@@ -301,8 +331,8 @@ function sleepForRetry(ms: number, signal?: AbortSignal): Promise<void> {
 }
 
 /**
- * Options exposed for tests. Production callers never pass these — the
- * defaults come from the module-level ANTHROPIC_EARLY_STREAM_* constants.
+ * Options exposed for tests. Production callers usually pass the Pi provider
+ * retry budget through `maxRetries`; tests can override delays and sleep.
  */
 export interface RobustRetryTestHooks {
   maxRetries?: number;
@@ -313,9 +343,10 @@ export interface RobustRetryTestHooks {
 
 /**
  * Anthropic can return transient failures as SSE `event: error` after HTTP 200.
- * The SDK's request-level retries do not see those frames. This wrapper
- * transparently retries the upstream call when the error arrives before any
- * user-visible content has been forwarded downstream.
+ * The SDK's request-level retries do not see those frames. This wrapper uses
+ * the same provider retry budget Pi passes as `maxRetries` and retries the
+ * upstream call only when the error arrives before any user-visible content has
+ * been forwarded downstream.
  */
 export function streamAnthropicWithRobustRetry(
   model: Model<"anthropic-messages">,

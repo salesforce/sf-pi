@@ -167,7 +167,42 @@ describe("streamAnthropicWithRobustRetry", () => {
     expect(calls()).toBe(2);
   });
 
-  it("retries multiple times within the budget (3 attempts total by default shape)", async () => {
+  it("uses the Gateway default provider retry budget of 3 retries", async () => {
+    const { createInner, calls } = queueFactory([
+      [startEvent(), errorEvent(ANTHROPIC_500_ENVELOPE)],
+      [startEvent(), errorEvent(ANTHROPIC_500_ENVELOPE)],
+      [startEvent(), errorEvent(ANTHROPIC_500_ENVELOPE)],
+      [startEvent(), textDeltaEvent("ok"), doneEvent()],
+    ]);
+
+    const stream = streamAnthropicWithRobustRetry(MODEL, createInner, undefined, {
+      retryDelaysMs: [0, 0, 0],
+      sleep: async () => {},
+    });
+    const events = await drain(stream);
+
+    expect(events.map((e) => e.type)).toEqual(["start", "text_delta", "done"]);
+    expect(calls()).toBe(4);
+  });
+
+  it("honors an explicit provider retry budget of 0 as disabled", async () => {
+    const { createInner, calls } = queueFactory([
+      [startEvent(), errorEvent(ANTHROPIC_500_ENVELOPE)],
+      [startEvent(), textDeltaEvent("should not be used"), doneEvent()],
+    ]);
+
+    const stream = streamAnthropicWithRobustRetry(MODEL, createInner, undefined, {
+      maxRetries: 0,
+      retryDelaysMs: [0],
+      sleep: async () => {},
+    });
+    const events = await drain(stream);
+
+    expect(events.some((e) => e.type === "error")).toBe(true);
+    expect(calls()).toBe(1);
+  });
+
+  it("retries multiple times within the explicit provider retry budget", async () => {
     const { createInner, calls } = queueFactory([
       [startEvent(), errorEvent(ANTHROPIC_500_ENVELOPE)],
       [startEvent(), errorEvent(ANTHROPIC_500_ENVELOPE)],
@@ -372,7 +407,7 @@ describe("streamAnthropicWithRobustRetry", () => {
   //
   // The retry wrapper must surface what it did through the telemetry bus so
   // the UI can tell the user "upstream hiccuped, we retried, here's how it
-  // ended". Before this, the robust retry was fully silent.
+  // ended". Before this, early-stream retry was fully silent.
   // -----------------------------------------------------------------------
 
   it("emits retry_attempt + retry_recovered when a retry succeeds", async () => {

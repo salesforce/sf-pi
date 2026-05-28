@@ -97,7 +97,8 @@ short-circuits subsequent sessions. Users see no prompt and no manual step.
    `SF_LLM_GATEWAY_INTERNAL_GPT5_FORCE_CHAT` kill switch remains available for
    emergency rollback.
 
-2. **Anthropic stream errors** (`streamSfGatewayAnthropic`). Retries once when
+2. **Anthropic stream errors** (`streamSfGatewayAnthropic`). Uses Pi's
+   provider retry budget (`retry.provider.maxRetries`, Gateway default: 3) when
    Anthropic reports a retryable SSE error before any user-visible content is
    emitted, then normalizes raw error envelopes into a concise message that
    preserves the request id.
@@ -541,10 +542,11 @@ truncation, confirm the selected model is a Claude id in
 **Opus 4.7 returns `api_error: Internal server error` on heavy turns:**
 Handled by the transport shim: `max_tokens` now scales by pi reasoning
 level (minimal=16K … xhigh=64K) instead of unconditionally flooring at
-64K, and transient mid-stream failures retry up to 3 times with
-exponential backoff before bubbling. If the retry exhausts, the final
-error includes an inline `Tip:` footer with next steps. For deeper
-inspection, enable wire tracing (`SF_LLM_GATEWAY_INTERNAL_TRACE=1`).
+64K, and transient mid-stream failures use Pi's provider retry budget
+(`retry.provider.maxRetries`, Gateway default: 3) with exponential backoff
+before bubbling. If the retry exhausts, the final error includes an inline
+`Tip:` footer with next steps. For deeper inspection, enable wire tracing
+(`SF_LLM_GATEWAY_INTERNAL_TRACE=1`).
 
 **gpt-5.5 fails with `Function tools with reasoning_effort are not supported for gpt-5.5 in /v1/chat/completions. Please use /v1/responses instead.`:**
 Handled by the transport shim as of this extension version: gpt-5.5 and

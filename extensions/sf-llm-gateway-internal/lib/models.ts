@@ -378,7 +378,7 @@ export function toProviderModelConfig(
     //   sets any model-level `anthropic-beta`, that value replaces pi-ai's
     //   default rather than comma-merging. For older models where we still
     //   send default betas, include fine-grained-tool-streaming too so tool
-    //   argument streaming stays on the robust path. Do not add it to Opus
+    //   argument streaming stays on the Gateway transport path. Do not add it to Opus
     //   4.7's no-beta default.
     const effectiveBetas = resolveEffectiveBetas(
       def.betaHeaders ?? [],

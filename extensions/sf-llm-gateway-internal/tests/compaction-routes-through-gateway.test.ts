@@ -8,7 +8,7 @@
  * built-in transport. That preserves our single-LLM-I/O-choke-point
  * invariant for the gateway:
  *
- *   prompt caching, Opus 4.7 robust-retry, gpt-5.5 /responses fallback,
+ *   prompt caching, Opus 4.7 early-stream retry, gpt-5.5 /responses fallback,
  *   reasoning_effort fixups, billing visibility — all of these live in
  *   `unifiedStream` and would silently bypass on compaction without
  *   #4484.

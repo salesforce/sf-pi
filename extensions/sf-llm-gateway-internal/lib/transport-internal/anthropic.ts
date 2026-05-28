@@ -11,9 +11,9 @@
  * Older Claude models pass straight through — their model compat flags tell
  * pi-ai whether adaptive thinking is required.
  *
- * The Anthropic-specific transient-error retry wrapper
- * (`streamAnthropicWithRobustRetry`) lives in `./shared.ts` so the OpenAI
- * transports can avoid pulling its dependencies.
+ * The Anthropic-specific early-stream retry wrapper
+ * (`streamAnthropicWithRobustRetry`) lives in `./shared.ts` and uses the same
+ * provider retry budget Pi passes through `options.maxRetries`.
  */
 import {
   streamSimpleAnthropic,
@@ -28,6 +28,7 @@ import {
   OPUS_47_MODEL_MAX_TOKENS,
   resolveOpus47MaxTokensFloor,
   streamAnthropicWithRobustRetry,
+  withGatewayProviderRetryDefaults,
   type PiReasoningLevel,
 } from "./shared.ts";
 
@@ -36,19 +37,23 @@ export function streamSfGatewayAnthropic(
   context: Context,
   options?: SimpleStreamOptions,
 ): AssistantMessageEventStream {
+  const gatewayOptions = withGatewayProviderRetryDefaults(options);
+  const maxRetries = gatewayOptions.maxRetries;
+
   if (!isOpus47ModelId(model.id)) {
     return streamAnthropicWithRobustRetry(
       model,
-      () => streamSimpleAnthropic(model, context, options),
-      options?.signal,
+      () => streamSimpleAnthropic(model, context, gatewayOptions),
+      gatewayOptions.signal,
+      { maxRetries },
     );
   }
 
-  const existingOnPayload = options?.onPayload;
-  const piLevel = options?.reasoning as PiReasoningLevel | undefined;
+  const existingOnPayload = gatewayOptions.onPayload;
+  const piLevel = gatewayOptions.reasoning as PiReasoningLevel | undefined;
 
   const wrappedOptions: SimpleStreamOptions = {
-    ...options,
+    ...gatewayOptions,
     // Use a floor scaled by the pi reasoning level so low-effort turns do not
     // get silently inflated into the Opus 4.7 64K-output profile that
     // correlates with Anthropic's intermittent `api_error: Internal server
@@ -74,6 +79,7 @@ export function streamSfGatewayAnthropic(
   return streamAnthropicWithRobustRetry(
     model,
     () => streamSimpleAnthropic(model, context, wrappedOptions),
-    options?.signal,
+    gatewayOptions.signal,
+    { maxRetries },
   );
 }

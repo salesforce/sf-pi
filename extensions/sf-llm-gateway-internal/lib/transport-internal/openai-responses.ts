@@ -22,6 +22,7 @@ import {
   type SimpleStreamOptions,
 } from "@earendil-works/pi-ai";
 import { streamSfGatewayOpenAI } from "./openai-chat.ts";
+import { withGatewayProviderRetryDefaults } from "./shared.ts";
 
 export const GPT5_FORCE_CHAT_ENV = "SF_LLM_GATEWAY_INTERNAL_GPT5_FORCE_CHAT";
 export const GPT55_FORCE_CHAT_ENV = "SF_LLM_GATEWAY_INTERNAL_GPT55_FORCE_CHAT";
@@ -65,6 +66,7 @@ export function streamSfGatewayResponses(
   },
   hooks?: Gpt55ResponsesTestHooks,
 ): AssistantMessageEventStream {
+  const gatewayOptions = withGatewayProviderRetryDefaults(options);
   const responsesStreamer = hooks?.responsesStreamer ?? streamSimpleOpenAIResponses;
   const chatStreamer = hooks?.chatStreamer ?? ((m, c, o) => streamSfGatewayOpenAI(m, c, o));
 
@@ -74,15 +76,15 @@ export function streamSfGatewayResponses(
         ? GPT5_FORCE_CHAT_ENV
         : GPT55_FORCE_CHAT_ENV;
       fallback.onFallback?.(`${envName}=1 — using chat completions path`);
-      return chatStreamer(fallback.chatModel, context, options);
+      return chatStreamer(fallback.chatModel, context, gatewayOptions);
     }
   }
 
-  const upstream = responsesStreamer(model, context, options);
+  const upstream = responsesStreamer(model, context, gatewayOptions);
 
   if (!fallback) return upstream;
 
-  return wrapWithChatFallback(upstream, context, options, fallback, chatStreamer);
+  return wrapWithChatFallback(upstream, context, gatewayOptions, fallback, chatStreamer);
 }
 
 function wrapWithChatFallback(

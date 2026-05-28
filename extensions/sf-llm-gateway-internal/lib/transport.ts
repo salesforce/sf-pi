@@ -7,7 +7,7 @@
  * `./transport-internal/`:
  *
  *   - `transport-internal/shared.ts`       constants, types, model-id detection,
- *                                          error formatting, robust-retry wrapper
+ *                                          error formatting, early-stream retry
  *   - `transport-internal/payloads.ts`     payload mutators (codex tools, OpenAI
  *                                          service tier, reasoning effort,
  *                                          Opus 4.7 max-token policy)
@@ -27,6 +27,7 @@ export {
   ANTHROPIC_FINE_GRAINED_TOOL_STREAMING_BETA,
   OPUS_47_DEFAULT_MAX_TOKENS,
   OPUS_47_MODEL_MAX_TOKENS,
+  GATEWAY_PROVIDER_DEFAULT_MAX_RETRIES,
   annotateErrorWithGuidance,
   formatAnthropicStreamError,
   isCodexModelId,
@@ -35,9 +36,11 @@ export {
   isOpenAiModelId,
   isOpenAiReasoningModelId,
   isOpus47ModelId,
+  resolveGatewayProviderMaxRetries,
   resolveOpenAiReasoningEffort,
   resolveOpus47MaxTokensFloor,
   streamAnthropicWithRobustRetry,
+  withGatewayProviderRetryDefaults,
   type RobustRetryTestHooks,
 } from "./transport-internal/shared.ts";
 

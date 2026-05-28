@@ -200,6 +200,44 @@ describe("streamSfGatewayResponses", () => {
     return types;
   }
 
+  it("passes the Gateway default provider retry budget to Responses", async () => {
+    let observedMaxRetries: number | undefined;
+    const hooks: Gpt55ResponsesTestHooks = {
+      responsesStreamer: (_model, _context, options) => {
+        observedMaxRetries = options?.maxRetries;
+        return happyResponsesStreamer();
+      },
+      chatStreamer: emptyChatStreamer,
+    };
+
+    await collect(
+      streamSfGatewayResponses(responsesModel, context, undefined, { chatModel }, hooks),
+    );
+
+    expect(observedMaxRetries).toBe(3);
+  });
+
+  it("preserves explicit Pi provider retry overrides, including 0", async () => {
+    let observedMaxRetries: number | undefined;
+    const hooks: Gpt55ResponsesTestHooks = {
+      responsesStreamer: (_model, _context, options) => {
+        observedMaxRetries = options?.maxRetries;
+        return happyResponsesStreamer();
+      },
+      chatStreamer: emptyChatStreamer,
+    };
+
+    await collect(
+      streamSfGatewayResponses(responsesModel, context, { maxRetries: 0 }, { chatModel }, hooks),
+    );
+    expect(observedMaxRetries).toBe(0);
+
+    await collect(
+      streamSfGatewayResponses(responsesModel, context, { maxRetries: 5 }, { chatModel }, hooks),
+    );
+    expect(observedMaxRetries).toBe(5);
+  });
+
   it("delegates to the Responses streamer on the happy path", async () => {
     const hooks: Gpt55ResponsesTestHooks = {
       responsesStreamer: happyResponsesStreamer,
