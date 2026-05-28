@@ -131,6 +131,87 @@ describe("sf-ohana-spinner waiting-state outcome", () => {
   });
 });
 
+describe("sf-ohana-spinner stale-ctx safety", () => {
+  it("does not keep reading a replaced session ctx from the rotation timer", async () => {
+    vi.useFakeTimers();
+    try {
+      const cwd = tempCwd();
+      writeScopedOhanaSpinnerSettings(cwd, "project", { mode: "ohana" });
+
+      const handlers = registerExtension();
+      const staleCtx = createCtx(cwd, "session-1");
+      await runSessionStart(handlers, staleCtx);
+      const staleIndicatorCalls = staleCtx.ui.setWorkingIndicator.mock.calls.length;
+
+      const activeCtx = createCtx(cwd, "session-2");
+      await runSessionStart(handlers, activeCtx);
+
+      const staleError = new Error(
+        "This extension ctx is stale after session replacement or reload.",
+      );
+      Object.defineProperty(staleCtx, "hasUI", {
+        get() {
+          throw staleError;
+        },
+      });
+      Object.defineProperty(staleCtx, "cwd", {
+        get() {
+          throw staleError;
+        },
+      });
+      staleCtx.sessionManager.getSessionId = () => {
+        throw staleError;
+      };
+
+      const rejections: unknown[] = [];
+      const onRejection = (reason: unknown) => rejections.push(reason);
+      process.on("unhandledRejection", onRejection);
+      try {
+        await vi.advanceTimersByTimeAsync(5_000);
+        await Promise.resolve();
+      } finally {
+        process.off("unhandledRejection", onRejection);
+      }
+
+      expect(rejections).toEqual([]);
+      expect(staleCtx.ui.setWorkingIndicator.mock.calls.length).toBe(staleIndicatorCalls);
+      expect(activeCtx.ui.setWorkingIndicator.mock.calls.length).toBeGreaterThan(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("catches rotation failures so timer promises cannot crash the host", async () => {
+    vi.useFakeTimers();
+    try {
+      const cwd = tempCwd();
+      writeScopedOhanaSpinnerSettings(cwd, "project", { mode: "ohana" });
+
+      const handlers = registerExtension();
+      const ctx = createCtx(cwd);
+      await runSessionStart(handlers, ctx);
+
+      ctx.ui.setWorkingIndicator.mockImplementation(() => {
+        throw new Error("simulated UI rotation failure");
+      });
+
+      const rejections: unknown[] = [];
+      const onRejection = (reason: unknown) => rejections.push(reason);
+      process.on("unhandledRejection", onRejection);
+      try {
+        await vi.advanceTimersByTimeAsync(5_000);
+        await Promise.resolve();
+      } finally {
+        process.off("unhandledRejection", onRejection);
+      }
+
+      expect(rejections).toEqual([]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
 describe("Ohana visible message outcomes", () => {
   it("keeps every possible visible message short and product/platform-oriented", () => {
     const personSpecificTerms = /\b(founder|co-founder|executive|CEO|CTO)\b/i;
