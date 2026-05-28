@@ -517,6 +517,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.151.0](https://github.com/salesforce/sf-pi/compare/v0.150.0...v0.151.0) (2026-05-28)
+
+
+### Features
+
+* **sf-llm-gateway-internal:** promote Opus 4.8 to default model ([a8f5055](https://github.com/salesforce/sf-pi/commit/a8f505505830225ddcfa6a3c67794264471a8f67))
+
 ## [0.150.0](https://github.com/salesforce/sf-pi/compare/v0.149.7...v0.150.0) (2026-05-28)
 
 
