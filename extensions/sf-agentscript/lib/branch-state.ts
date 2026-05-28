@@ -10,7 +10,7 @@
  */
 
 import { access, readFile } from "node:fs/promises";
-import type { ExtensionContext, SessionEntry } from "@earendil-works/pi-coding-agent";
+import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { isAgentScriptFile } from "./file-classify.ts";
 import { toolError, type ToolEnvelope, type ToolError } from "./tool-types.ts";
 
@@ -156,7 +156,7 @@ export function agentFileEvent(agentFile: string, source: string): AgentFileBran
 }
 
 export function reconstructAgentScriptBranchState(ctx: ExtensionContext): AgentScriptBranchState {
-  const entries = getBranchEntries(ctx);
+  const entries = ctx.sessionManager.getBranch();
   const events: AgentScriptBranchStateEvent[] = [];
 
   for (const entry of entries) {
@@ -182,16 +182,6 @@ export function reconstructAgentScriptBranchState(ctx: ExtensionContext): AgentS
     evalTraces: events.filter((e): e is EvalTraceBranchEvent => e.kind === "eval_trace"),
     reviewResults: events.filter((e): e is ReviewResultBranchEvent => e.kind === "review_result"),
   };
-}
-
-function getBranchEntries(ctx: ExtensionContext): readonly SessionEntry[] {
-  const manager = ctx.sessionManager as unknown as {
-    getBranch?: () => readonly SessionEntry[];
-    getEntries?: () => readonly SessionEntry[];
-  };
-  if (typeof manager.getBranch === "function") return manager.getBranch();
-  if (typeof manager.getEntries === "function") return manager.getEntries();
-  return [];
 }
 
 function isAgentScriptBranchStateEvent(value: unknown): value is AgentScriptBranchStateEvent {

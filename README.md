@@ -130,7 +130,7 @@ macOS, Linux, and WSL are the primary targets. Native Windows works on
 x64 and ARM64 once the `sf` CLI is installed, but WSL is recommended for
 parity with Linux/macOS shell tooling. The minimum pi version tracks the
 `peerDependencies` range in [`package.json`](./package.json) (currently
-`>=0.75.5`). Older pi runtimes are not supported; the shims in
+`>=0.76.0`). Older pi runtimes are not supported; the shims in
 [`lib/common/pi-compat.ts`](./lib/common/pi-compat.ts) fail gracefully with
 a one-line "run `pi update`" warning instead of letting extensions crash on
 missing runtime APIs.
@@ -463,7 +463,7 @@ invocation and is picked up by all sf-pi commands without any sf-pi change.
 export PI_CODING_AGENT_SESSION_DIR="$HOME/.pi-sessions"
 ```
 
-sf-pi requires pi `>=0.75.5`, so supported installations honor the env
+sf-pi requires pi `>=0.76.0`, so supported installations honor the env
 var; older pi releases should be updated before running current sf-pi.
 
 ## Adding a New Extension
