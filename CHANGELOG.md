@@ -517,6 +517,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.150.0](https://github.com/salesforce/sf-pi/compare/v0.149.7...v0.150.0) (2026-05-28)
+
+
+### Features
+
+* **sf-llm-gateway-internal:** add Opus 4.8 preset, unlock effort=max for 4.7+ ([d5f770b](https://github.com/salesforce/sf-pi/commit/d5f770b1284f76604f645d5af14899ddf01b7a22))
+
 ## [0.149.7](https://github.com/salesforce/sf-pi/compare/v0.149.6...v0.149.7) (2026-05-28)
 
 
