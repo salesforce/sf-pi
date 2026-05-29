@@ -68,6 +68,7 @@ import { buildSkillCatalog, type SkillCatalog } from "./lib/catalog.ts";
 import {
   planConflictWinner,
   planConsolidateScopes,
+  planRescopeToProject,
   planSkillGate,
   type ScopeOps,
 } from "./lib/resolution.ts";
@@ -537,7 +538,66 @@ export default function sfSkills(pi: ExtensionAPI) {
       await consolidateScopes(ctx, catalog);
       return;
     }
+    if (result.kind === "rescope") {
+      await rescopeToProject(ctx, catalog, result.skillPaths, result.label);
+      return;
+    }
     await applyFunnelResult(ctx, catalog, result.actions);
+  }
+
+  /**
+   * Move global-enabled skills to the current project (drop global, add
+   * project). Because removing from global affects every other project, any
+   * multi-skill move confirms first.
+   */
+  async function rescopeToProject(
+    ctx: ExtensionCommandContext,
+    catalog: SkillCatalog,
+    skillPaths: string[],
+    label: string,
+  ): Promise<void> {
+    const wanted = new Set(skillPaths);
+    const targets = catalog.skills.filter((s) => wanted.has(s.filePath) && s.enabledGlobal);
+    if (targets.length === 0) {
+      ctx.ui.notify("Nothing to move — no global-enabled skills in the selection.", "info");
+      return;
+    }
+    if (targets.length > 1) {
+      const confirmed = await ctx.ui.confirm(
+        `Move ${targets.length} skill(s) to project scope?`,
+        `Moving ${label} removes ${targets.length} skill(s) from global settings — they will be DISABLED in your other projects (re-enable per project as needed). They stay enabled here.`,
+      );
+      if (!confirmed) return;
+    }
+
+    const plan = planRescopeToProject({ skills: targets, cwd: ctx.cwd });
+    const summary: string[] = [];
+    try {
+      for (const op of plan.ops) {
+        const updated = updateSkillSources({
+          add: op.add,
+          remove: op.remove,
+          scope: op.scope,
+          cwd: ctx.cwd,
+        });
+        summary.push(`${op.scope} skills[] (${updated.skills.length})`);
+      }
+    } catch (error) {
+      ctx.ui.notify(
+        `Failed to move to project: ${error instanceof Error ? error.message : String(error)}`,
+        "warning",
+      );
+      return;
+    }
+    if (summary.length === 0) {
+      ctx.ui.notify("Nothing to change.", "info");
+      return;
+    }
+    ctx.ui.notify(
+      `Moved ${plan.affected} skill(s) to project scope. Applied: ${summary.join(", ")}\nReloading…`,
+      "info",
+    );
+    await ctx.reload();
   }
 
   /**

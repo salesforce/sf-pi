@@ -226,3 +226,41 @@ Possible future work after Phase 2:
 - branch-aware diffs of skill state
 - filters for Salesforce-only vs all discovered skills
 - clickable or keyboard-selectable skill rows that jump to related session context
+
+## Deferred: Portable Skill Manifest (export / import)
+
+Requested by users who want to share a project's skill setup with teammates.
+**Deferred** — it adds a lot of surface (git cloning, trust prompts, path
+resolution, a new file format) relative to v1 value. Captured here so the
+design we agreed on isn't lost.
+
+Decisions reached (if/when revived):
+
+- **Subordinate artifact, not a new source of truth.** A `.pi/skills.json`
+  (JSON) that `export` writes and `import` compiles into the project's native
+  `settings.skills[]`. `settings.skills[]` stays authoritative (Compiled Skill
+  Resolution); the manifest is to it what a committed dependency spec is to an
+  installed tree.
+- **Sources + selection.** The manifest declares both where skills come from
+  and which are enabled. Sources use a Logical Source Reference: `in-repo`
+  (repo-relative path), `git` (repo URL, optionally pinned), `managed`
+  (afv-library), or `harness`/`local` (machine-specific; wired only if present).
+  Absolute `~/` paths are never the portable form.
+- **import is explicit and confirm-gated.** Never auto-applies at boot (network
+  - running unvetted skills). At most a cache-first deferred nudge when a
+    `.pi/skills.json` is present. Confirms before cloning any `git` source
+    (importing a manifest = running code a teammate referenced). Resolves each
+    source by kind, reports missing `local` sources without failing, idempotent.
+- **export** captures the current project's enabled skills, classifies each to a
+  Logical Source Reference, and warns on non-portable `local` sources. Commit
+  the manifest; the compiled `settings.json skills[]` stays per-machine, and a
+  teammate re-imports after clone. No forced gitignore.
+
+## Deferred: other thread asks
+
+- **Named profiles** — switchable skill sets beyond global/project. Defer until
+  there's demand; risks overlapping with the manifest above.
+- **Standalone / upstream extraction** — `catalog.ts` / `resolution.ts` / the
+  funnel view are domain-agnostic and could be extracted, but the natural home
+  is **pi core** (it owns `settings.skills[]`), not a separate Salesforce
+  extension. Park as an upstream candidate; not an sf-pi deliverable.

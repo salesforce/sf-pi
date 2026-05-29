@@ -132,6 +132,10 @@ _Avoid_: standalone installer feature, mutating user-owned checkouts, treating t
 The single resolved model of the whole skill world at a moment: every skill found across every source, each tagged with where it sits in the **Skill Funnel** — seen or gated out, enabled at global or project scope, and whether it is a conflict winner, loser, or unaffected. It is built from the **Pi Runtime** loader result (winners plus collision diagnostics) cross-referenced with on-disk roots and `settings.skills[]`, and every SF Skills surface reads from it instead of recomputing.
 _Avoid_: winners-only inventory, per-surface ad hoc scans, a second skill loader
 
+**Skill Rescope**:
+Moving a skill's wiring from global to the current project — removing its global `settings.skills[]` coverage and adding project coverage — so an everywhere-on skill becomes project-only. Offered per-skill, per-source, and as a bulk move-all-global. Because it removes from global, anything affecting more than one skill warns that those skills will be disabled in other projects.
+_Avoid_: copying to project while leaving it global (no scoping benefit), silently disabling skills in other projects
+
 **Pi Runtime**:
 The upstream pi coding-agent process that hosts SF Pi and provides package loading, settings, skills, extensions, and the terminal UI.
 _Avoid_: SF Pi, bundled extension, Salesforce runtime

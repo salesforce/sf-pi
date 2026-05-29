@@ -198,6 +198,59 @@ export class SkillFunnelViewComponent implements Focusable {
       }
       return;
     }
+    if (data === "m") {
+      this.rescopeAtCursor();
+      return;
+    }
+    if (data === "M") {
+      this.rescopeAllGlobal();
+      return;
+    }
+  }
+
+  /** `m`: move the cursor's skill (Global/Project tab) or whole source (Sources tab) to project. */
+  private rescopeAtCursor(): void {
+    if (this.staged.size > 0) {
+      this.notice = "apply or cancel pending changes before moving to project";
+      return;
+    }
+    if (this.tab === "sources") {
+      const src = this.sourceRowsFiltered()[this.cursor.sources];
+      if (!src) return;
+      const paths = this.props.catalog.skills
+        .filter((s) => s.sourceId === src.id && s.enabledGlobal)
+        .map((s) => s.filePath);
+      if (paths.length === 0) {
+        this.notice = "no global-enabled skills under this source to move";
+        return;
+      }
+      this.done({ kind: "rescope", skillPaths: paths, label: `source "${src.label}"` });
+      return;
+    }
+    if (this.tab === "global" || this.tab === "project" || this.tab === "catalog") {
+      const rows = this.tab === "catalog" ? this.catalogRowsFiltered() : this.skillRowsFiltered();
+      const row = rows[this.cursor[this.tab]];
+      if (!row) return;
+      if (!row.enabledGlobal) {
+        this.notice = "only globally-enabled skills can be moved to project";
+        return;
+      }
+      this.done({ kind: "rescope", skillPaths: [row.filePath], label: row.name });
+    }
+  }
+
+  /** `M`: move every global-enabled skill to the current project. */
+  private rescopeAllGlobal(): void {
+    if (this.staged.size > 0) {
+      this.notice = "apply or cancel pending changes before moving to project";
+      return;
+    }
+    const paths = this.props.catalog.skills.filter((s) => s.enabledGlobal).map((s) => s.filePath);
+    if (paths.length === 0) {
+      this.notice = "no global-enabled skills to move";
+      return;
+    }
+    this.done({ kind: "rescope", skillPaths: paths, label: "all global skills" });
   }
 
   /**
@@ -409,11 +462,11 @@ export class SkillFunnelViewComponent implements Focusable {
       catalog:
         "Every skill found everywhere. Funnel = where it lands · Scope = G/P/default · Used = invocations.",
       sources:
-        "Source Gate — which roots Pi may load from. g toggles a source · a adds a custom path.",
+        "Source Gate — which roots Pi may load from. g toggles · a adds a path · m moves a source to project.",
       global:
-        "Skill Gate (global) — skills wired for every project. g enables/disables · [✓] = on.",
+        "Skill Gate (global) — wired for every project. g toggles · m moves a skill to project · M moves all.",
       project:
-        "Skill Gate (project) — wired for THIS project only. p enables/disables · globally-on shows locked.",
+        "Skill Gate (project) — wired for THIS project only. p toggles · globally-on shows locked (m to move).",
       conflicts:
         "Same skill name from 2+ sources. w = rewire winner · r = resolve by file · c = consolidate global+project dupes.",
     };
@@ -445,6 +498,7 @@ export class SkillFunnelViewComponent implements Focusable {
       `    ${theme.fg("muted", "○gated")}    not loaded (source off or skill off)`,
       "",
       `  ${h("Scope flags")}   ${k("G")} global · ${k("P")} project · ${d("default")} auto-discovered · ${d("—")} not wired`,
+      `  ${h("Move")}          ${k("m")} move skill/source global→project · ${k("M")} move all global → this project`,
       `  ${h("Conflicts")}     ${k("RESOLVABLE")} rewire (w) · ${theme.fg("warning", "REPORT-ONLY")} file action (r) · ${k("c")} consolidate global+project dupes`,
       "",
       d("  press any key to close"),
@@ -733,10 +787,10 @@ export class SkillFunnelViewComponent implements Focusable {
     const base = "↑↓ move · ←→ tab · g global";
     const extra =
       this.tab === "sources"
-        ? " · a add path"
+        ? " · a add path · m move source→project"
         : this.tab === "conflicts"
           ? " · w winner · r file · c consolidate"
-          : " · p project";
+          : " · p project · m move→project · M move all global";
     return ` ${theme.fg("dim", `${base}${extra} · / filter · ? legend · enter apply · esc close`)}`;
   }
 

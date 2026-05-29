@@ -195,6 +195,69 @@ export function planConsolidateScopes(input: {
 }
 
 // -------------------------------------------------------------------------------------------------
+// Rescope (global → project)
+// -------------------------------------------------------------------------------------------------
+
+export interface RescopePlan extends SettingsPlan {
+  /** How many global-enabled skills are being moved to project scope. */
+  affected: number;
+}
+
+/**
+ * Plan a move of skills from global to the CURRENT project: remove their global
+ * `settings.skills[]` coverage (expand-minus-one when a parent dir is wired) and
+ * add per-file project coverage. The net effect is "everywhere-on → this-project
+ * only". Only global-enabled skills are moved; others are skipped.
+ *
+ * Note: we wire the skill's exact file at project scope rather than its source
+ * directory, so rescoping one skill never drags its whole source along.
+ */
+export function planRescopeToProject(input: {
+  skills: CatalogSkill[];
+  cwd: string;
+  home?: string;
+}): RescopePlan {
+  const opsByScope = new Map<SkillSourceScope, ScopeOps>();
+  const expandedFrom: string[] = [];
+  const pushOp = (scope: SkillSourceScope, add: string[], remove: string[]) => {
+    const existing = opsByScope.get(scope) ?? { scope, add: [], remove: [] };
+    existing.add.push(...add);
+    existing.remove.push(...remove);
+    opsByScope.set(scope, existing);
+  };
+
+  const affected = new Set<string>();
+  for (const skill of input.skills) {
+    if (!skill.enabledGlobal) continue; // only global-enabled skills can be demoted
+    // Remove global coverage (exact entry, or expand a parent dir minus this one).
+    const drop = planDisable({
+      skillPath: skill.filePath,
+      scope: "global",
+      cwd: input.cwd,
+      home: input.home,
+    });
+    if (drop.coverage === "none") continue;
+    pushOp("global", drop.add, drop.remove);
+    if (drop.expandedFrom) expandedFrom.push(drop.expandedFrom);
+    // Add per-file project coverage. We don't use planEnable here: its
+    // cross-scope "already covered" check would treat the still-present global
+    // wiring as coverage and add nothing. updateSkillSources dedupes the add.
+    pushOp("project", [skill.filePath], []);
+    affected.add(skill.name);
+  }
+
+  return {
+    ops: [...opsByScope.values()].filter((o) => o.add.length > 0 || o.remove.length > 0),
+    affected: affected.size,
+    expandedFrom: expandedFrom.length > 0 ? expandedFrom : undefined,
+    note:
+      affected.size === 0
+        ? "No global-enabled skills to move."
+        : `Moving ${affected.size} skill(s) from global to project scope.`,
+  };
+}
+
+// -------------------------------------------------------------------------------------------------
 // Conflict winner
 // -------------------------------------------------------------------------------------------------
 

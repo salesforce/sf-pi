@@ -17,7 +17,10 @@ Catalog → Sources (Source Gate) → Global → Project (Skill Gate) → Effect
    - **Sources** — the **Source Gate**: which roots Pi may see
      (Claude/Codex/Cursor/custom/managed/auto-default). `a` adds a custom path.
    - **Global / Project** — the **Skill Gate**: toggle individual skills at each
-     scope. `g` toggles global, `p` toggles project.
+     scope. `g` toggles global, `p` toggles project. `m` moves a skill (or, on
+     the Sources tab, a whole source) from global to the current project; `M`
+     moves every global skill to this project (local-first **Skill Rescope** —
+     it drops the global wiring, so multi-skill moves confirm first).
    - **Conflicts** — pick a winner (`w`) for resolvable name collisions.
 2. **Passive HUD** in the top-right showing skills currently _in context_.
    Unchanged behavior; it is one optional surface, not the extension's identity.

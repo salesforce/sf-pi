@@ -10,7 +10,12 @@ import { afterEach, describe, expect, it } from "vitest";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { planConflictWinner, planConsolidateScopes, planSkillGate } from "../lib/resolution.ts";
+import {
+  planConflictWinner,
+  planConsolidateScopes,
+  planRescopeToProject,
+  planSkillGate,
+} from "../lib/resolution.ts";
 import type { CatalogConflict, CatalogSkill, SkillCatalog } from "../lib/catalog.ts";
 
 const tempDirs: string[] = [];
@@ -281,6 +286,50 @@ describe("planConsolidateScopes", () => {
       }),
     ]);
     const plan = planConsolidateScopes({ catalog, keepScope: "project", cwd: project, home });
+    expect(plan.affected).toBe(0);
+    expect(plan.ops).toEqual([]);
+  });
+});
+
+describe("planRescopeToProject", () => {
+  it("drops global coverage and adds per-file project coverage for a global skill", () => {
+    const home = makeHome();
+    const project = makeProjectDir();
+    const root = path.join(home, ".claude", "skills");
+    writeGlobalSettings(home, [root]); // dir-wired globally
+    writeProjectSettings(project, []);
+    for (const name of ["grill-me", "other"]) {
+      mkdirSync(path.join(root, name), { recursive: true });
+      writeFileSync(path.join(root, name, "SKILL.md"), "x");
+    }
+    const file = path.join(root, "grill-me", "SKILL.md");
+    const plan = planRescopeToProject({
+      skills: [skillRow({ name: "grill-me", filePath: file, enabledGlobal: true })],
+      cwd: project,
+      home,
+    });
+    expect(plan.affected).toBe(1);
+    const g = plan.ops.find((o) => o.scope === "global")!;
+    const p = plan.ops.find((o) => o.scope === "project")!;
+    // Global: parent dir expanded so grill-me is excluded.
+    expect(g.remove).toContain(root);
+    expect(g.add).toContain(path.join(root, "other", "SKILL.md"));
+    expect(g.add).not.toContain(file);
+    // Project: the skill is now wired per-file.
+    expect(p.add).toContain(file);
+  });
+
+  it("skips skills that aren't enabled globally", () => {
+    const home = makeHome();
+    const project = makeProjectDir();
+    writeGlobalSettings(home, []);
+    writeProjectSettings(project, []);
+    const file = path.join(project, "x", "only-project", "SKILL.md");
+    const plan = planRescopeToProject({
+      skills: [skillRow({ name: "only-project", filePath: file, enabledProject: true })],
+      cwd: project,
+      home,
+    });
     expect(plan.affected).toBe(0);
     expect(plan.ops).toEqual([]);
   });

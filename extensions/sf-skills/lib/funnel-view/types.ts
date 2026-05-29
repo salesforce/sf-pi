@@ -42,7 +42,11 @@ export type FunnelResult =
   | { kind: "resolve"; name: string; winnerPath: string }
   // Bulk de-duplicate skills wired in both global and project scope. Handled
   // interactively in index.ts (it prompts which scope to keep).
-  | { kind: "consolidate" };
+  | { kind: "consolidate" }
+  // Move global-enabled skills to the current project (drop global, add
+  // project). `skillPaths` is the set the funnel gathered (one skill, a whole
+  // source, or all global). index.ts confirms multi-skill moves.
+  | { kind: "rescope"; skillPaths: string[]; label: string };
 
 export interface FunnelViewProps {
   catalog: SkillCatalog;
