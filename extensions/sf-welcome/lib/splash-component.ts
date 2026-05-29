@@ -379,7 +379,7 @@ function formatSfSkillsStatusValue(data: SplashData, mode: GlyphMode): string {
   // buildLeftColumn) so the row text itself stays inside the 72-col
   // left-column cap that the SALESFORCE wordmark drives.
   if (skills.installKind === "not-installed") {
-    return `${SF_ORANGE("↑")} ${SF_ORANGE("Install official skills")} ${MUTED("· afv-library")}`;
+    return `${SF_ORANGE("↑")} ${SF_ORANGE("Install official skills")} ${MUTED("· afv-library · this project")}`;
   }
 
   const skillCountSuffix =

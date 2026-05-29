@@ -194,7 +194,7 @@ function renderSkillsHelp(): string {
     "  • enter applies staged changes, esc cancels",
     "",
     "Defaults (forcedotcom/afv-library):",
-    "  • /sf-skills defaults install  [project|global]",
+    "  • /sf-skills defaults install  [project|global]   (default: project; clones once, shared)",
     "  • /sf-skills defaults update   [project|global]",
     "  • /sf-skills defaults link <path> [project|global]",
     "  • /sf-skills defaults unlink <path> [project|global] [--delete]",

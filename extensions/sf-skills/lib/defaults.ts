@@ -143,6 +143,12 @@ export function inspectManagedClone(scope: SkillSourceScope, cwd?: string): Mana
 // -------------------------------------------------------------------------------------------------
 
 export interface InstallOptions {
+  /**
+   * Where to WIRE the skills (which `settings.skills[]` gets the entry).
+   * Default is "project" (local-first). The CONTENT is always cloned once into
+   * the global managed dir and shared — we never duplicate the 57-skill clone
+   * per project. So "project" means "global clone, enabled in this project".
+   */
   scope: SkillSourceScope;
   cwd?: string;
   /** Override for tests. */
@@ -151,49 +157,77 @@ export interface InstallOptions {
   repoUrl?: string;
 }
 
-/** Clone afv-library into the managed dir (idempotent) and wire it into settings. */
+/**
+ * Ensure the afv-library clone exists (once, globally) and wire it into the
+ * chosen scope's `settings.skills[]`. Content lives global + shared; wiring is
+ * the scoping lever (local-first by default). Idempotent.
+ */
 export async function installDefaults(options: InstallOptions): Promise<InstallResult> {
-  const clone = inspectManagedClone(options.scope, options.cwd);
+  const wireScope = options.scope;
+  // Content always lives in the GLOBAL managed dir — one clone, shared across
+  // every project that wires it. Project wiring references this same path.
+  const content = inspectManagedClone("global");
+  const settingsValue = managedSettingsValue("global");
   const repoUrl = options.repoUrl ?? REPO_URL;
 
-  if (!clone.exists) {
-    mkdirSync(path.dirname(clone.rootPath), { recursive: true });
-    const result = await runGit(["clone", "--depth", "1", repoUrl, clone.rootPath], {
-      cwd: path.dirname(clone.rootPath),
+  if (!content.exists) {
+    mkdirSync(path.dirname(content.rootPath), { recursive: true });
+    const result = await runGit(["clone", "--depth", "1", repoUrl, content.rootPath], {
+      cwd: path.dirname(content.rootPath),
       spawn: options.spawn,
     });
     if (!result.success) {
       return {
         ok: false,
-        clone,
+        clone: content,
         message: `git clone failed: ${result.stderr || result.stdout || "unknown error"}`,
       };
     }
     writeFileSync(
-      path.join(clone.rootPath, SENTINEL_FILE),
+      path.join(content.rootPath, SENTINEL_FILE),
       "Managed by sf-skills. Do not edit by hand — `/sf-skills defaults update` and `/sf-skills defaults unlink --delete` operate on this directory.\n",
       "utf8",
     );
   }
 
-  if (!clone.wired) {
+  const alreadyWired = isManagedWired(wireScope, options.cwd, content.skillsPath);
+  if (!alreadyWired) {
     updateSkillSources({
-      add: [clone.settingsValue],
+      add: [settingsValue],
       remove: [],
-      scope: options.scope,
+      scope: wireScope,
       cwd: options.cwd,
     });
   }
 
-  // Re-inspect so the caller gets the post-install state.
-  const next = inspectManagedClone(options.scope, options.cwd);
+  // Report state: global content clone, wired-status reflecting the wire scope.
+  const next = inspectManagedClone("global");
+  const clone: ManagedClone = {
+    ...next,
+    scope: wireScope,
+    settingsValue,
+    wired: isManagedWired(wireScope, options.cwd, content.skillsPath),
+  };
+  const wiredVerb = alreadyWired ? "still wired" : "now wired";
   return {
     ok: true,
-    clone: next,
-    message: clone.exists
-      ? `Already installed at ${next.rootPath}; ${clone.wired ? "still wired" : "now wired"} in ${options.scope} settings.`
-      : `Cloned afv-library into ${next.rootPath} and wired it in ${options.scope} settings.`,
+    clone,
+    message: content.exists
+      ? `Already cloned at ${next.rootPath}; ${wiredVerb} in ${wireScope} settings.`
+      : `Cloned afv-library into ${next.rootPath} and wired it in ${wireScope} settings.`,
   };
+}
+
+/** Is the managed skills dir wired in the given scope's settings? */
+function isManagedWired(
+  scope: SkillSourceScope,
+  cwd: string | undefined,
+  skillsPath: string,
+): boolean {
+  const detection = detectSkillSources({ cwd });
+  const settingsPath = scope === "project" ? detection.projectSettingsPath : detection.settingsPath;
+  if (!settingsPath) return false;
+  return readSkillsArray(settingsPath).some((value) => resolvesToSamePath(value, skillsPath, cwd));
 }
 
 // -------------------------------------------------------------------------------------------------

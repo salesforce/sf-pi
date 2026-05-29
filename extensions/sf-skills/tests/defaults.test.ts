@@ -84,18 +84,20 @@ function fakeGit(_command: string, args: readonly string[], opts: { cwd: string 
 }
 
 describe("parseDefaultsArgs", () => {
-  it("defaults to status when no args", () => {
+  it("defaults to status when no args, project scope (local-first)", () => {
     expect(parseDefaultsArgs("")).toEqual({
       action: "status",
-      scope: "global",
+      scope: "project",
       target: undefined,
       deleteOnDisk: false,
     });
   });
 
-  it("recognizes install/update with optional scope", () => {
+  it("recognizes install/update with optional scope; defaults to project", () => {
     expect(parseDefaultsArgs(" install ").action).toBe("install");
+    expect(parseDefaultsArgs(" install ").scope).toBe("project"); // local-first default
     expect(parseDefaultsArgs(" install project ").scope).toBe("project");
+    expect(parseDefaultsArgs(" install global ").scope).toBe("global"); // explicit opt-in
     expect(parseDefaultsArgs(" update global ").scope).toBe("global");
   });
 
@@ -160,23 +162,28 @@ describe("installDefaults (with fake git)", () => {
     await installDefaults({ scope: "global", spawn: fakeGit });
     const second = await installDefaults({ scope: "global", spawn: fakeGit });
     expect(second.ok).toBe(true);
-    expect(second.message).toMatch(/Already installed/);
+    expect(second.message).toMatch(/Already cloned/);
   });
 
-  it("respects scope='project' (writes to project settings)", async () => {
+  it("scope='project' clones ONCE globally and wires the global path into project settings", async () => {
     const home = makeHome();
     process.env.HOME = home;
     const cwd = makeCwd();
     const result = await installDefaults({ scope: "project", cwd, spawn: fakeGit });
     expect(result.ok).toBe(true);
-    expect(result.clone.rootPath).toBe(path.join(cwd, ".pi", "sf-skills", "afv-library"));
+    // Content is the single global clone — never a per-project clone.
+    expect(result.clone.rootPath).toBe(path.join(home, ".pi", "agent", "sf-skills", "afv-library"));
+    expect(result.clone.scope).toBe("project");
+    expect(result.clone.wired).toBe(true);
 
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const fs = require("node:fs");
+    // Project settings reference the GLOBAL clone path (local-first enablement).
     const settings = JSON.parse(fs.readFileSync(path.join(cwd, ".pi", "settings.json"), "utf8"));
-    expect(settings.skills).toContain("./.pi/sf-skills/afv-library/skills");
-
-    // Global settings should not have been written.
+    expect(settings.skills).toContain("~/.pi/agent/sf-skills/afv-library/skills");
+    // No per-project clone was created.
+    expect(fs.existsSync(path.join(cwd, ".pi", "sf-skills", "afv-library"))).toBe(false);
+    // Global settings were not written (only project scope was wired).
     expect(fs.existsSync(path.join(home, ".pi", "agent", "settings.json"))).toBe(false);
   });
 });

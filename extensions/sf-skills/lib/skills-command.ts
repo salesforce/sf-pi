@@ -61,7 +61,10 @@ export function parseDefaultsArgs(raw: string): DefaultsArgs {
 
   // Scope marker (project|global) can appear at any positional slot; pull
   // it out so the remaining slot is unambiguously the target path.
-  let scope: SkillSourceScope = "global";
+  // Default is "project" (local-first): `defaults install` wires the curated
+  // skills into the current project; `defaults install global` is the explicit
+  // opt-in for everywhere. The content is cloned once globally either way.
+  let scope: SkillSourceScope = "project";
   const scopeIndex = positional.findIndex(
     (t) => t.toLowerCase() === "project" || t.toLowerCase() === "global",
   );
@@ -204,7 +207,9 @@ function renderStatus(cwd: string): string {
     lines.push("");
   }
   lines.push("Commands:");
-  lines.push("  /sf-skills defaults install [project|global]");
+  lines.push(
+    "  /sf-skills defaults install [project|global]  (default: project; content cloned once globally)",
+  );
   lines.push("  /sf-skills defaults update  [project|global]");
   lines.push("  /sf-skills defaults link    <path> [project|global]");
   lines.push("  /sf-skills defaults unlink  <path> [project|global] [--delete]");

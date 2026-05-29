@@ -28,8 +28,10 @@ Catalog → Sources (Source Gate) → Global → Project (Skill Gate) → Effect
    Claude/Codex/Cursor roots and remembers user-added custom paths + gate state
    so a seen-but-empty custom source survives reload.
 4. **forcedotcom/afv-library installer** — `/sf-skills defaults install` clones
-   the curated skill collection into a managed dir and wires it in as a
-   **Managed Source** (sentinel-gated update/unlink).
+   the curated skill collection **once** into the global managed dir (shared,
+   no per-project duplication) and wires it into the **current project** by
+   default (local-first). `defaults install global` is the explicit opt-in to
+   enable it everywhere. Sentinel-gated update/unlink.
 5. **Usage counters** — explicit `/skill:<name>` invocations bump persistent
    global + project counters shown as the `USED` column and `/sf-skills metrics`.
 6. **Prune** — `/sf-skills prune` reports stale settings entries + orphan
