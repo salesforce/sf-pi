@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.152.0-2026-05-29",
-  "latestVersion": "0.152.0",
+  "revision": "release-0.152.1-2026-05-29",
+  "latestVersion": "0.152.1",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.152.0",
+      "id": "release-0.152.1",
       "kind": "update",
-      "title": "sf-pi v0.152.0 — sf-skills: rewrite as a Skill Funnel governance manager",
+      "title": "sf-pi v0.152.1 — sf-skills: stop input freeze after applying funnel changes",
       "publishedAt": "2026-05-29T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.152.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.152.1",
       "severity": "info",
-      "body": "sf-skills: rewrite as a Skill Funnel governance manager — sf-skills: remove non-null assertions to satisfy eslint --max-warnings=0"
+      "body": "sf-skills: stop input freeze after applying funnel changes"
     },
     {
       "id": "pi-0.73-required",
