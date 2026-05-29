@@ -149,7 +149,8 @@ export class SkillFunnelViewComponent implements Focusable {
       return;
     }
     if (data >= "1" && data <= "5") {
-      this.tab = FUNNEL_TABS[Number(data) - 1]!.id;
+      const tab = FUNNEL_TABS[Number(data) - 1];
+      if (tab) this.tab = tab.id;
       return;
     }
     if (data === "/") {
@@ -248,7 +249,7 @@ export class SkillFunnelViewComponent implements Focusable {
 
   private switchTab(delta: number): void {
     const idx = FUNNEL_TABS.findIndex((t) => t.id === this.tab);
-    this.tab = FUNNEL_TABS[(idx + delta + FUNNEL_TABS.length) % FUNNEL_TABS.length]!.id;
+    this.tab = FUNNEL_TABS[(idx + delta + FUNNEL_TABS.length) % FUNNEL_TABS.length]?.id ?? this.tab;
   }
 
   private resetCursor(): void {
@@ -476,23 +477,23 @@ export class SkillFunnelViewComponent implements Focusable {
     if (view.total === 0) {
       out.push(row(theme.fg("dim", "  Nothing here.")));
     } else if (this.tab === "sources") {
-      this.renderRange(view, (i) =>
-        out.push(
-          row(
-            this.renderSourceRow(theme, innerWidth, widths, this.sourceRowsFiltered()[i]!, i, view),
-          ),
-        ),
-      );
+      const rows = this.sourceRowsFiltered();
+      this.renderRange(view, (i) => {
+        const r = rows[i];
+        if (r) out.push(row(this.renderSourceRow(theme, innerWidth, widths, r, i, view)));
+      });
     } else if (this.tab === "conflicts") {
       const rows = this.conflictNavRows();
-      this.renderRange(view, (i) =>
-        out.push(row(this.renderConflictRow(theme, innerWidth, rows[i]!, i, view))),
-      );
+      this.renderRange(view, (i) => {
+        const r = rows[i];
+        if (r) out.push(row(this.renderConflictRow(theme, innerWidth, r, i, view)));
+      });
     } else {
       const rows = this.tab === "catalog" ? this.catalogRowsFiltered() : this.skillRowsFiltered();
-      this.renderRange(view, (i) =>
-        out.push(row(this.renderSkillRow(theme, innerWidth, widths, rows[i]!, i, view))),
-      );
+      this.renderRange(view, (i) => {
+        const r = rows[i];
+        if (r) out.push(row(this.renderSkillRow(theme, innerWidth, widths, r, i, view)));
+      });
     }
     while (out.length < view.viewport + 2) out.push(row(""));
     return out;

@@ -90,13 +90,17 @@ export function gatherCatalogInput(opts: GatherOptions): SkillCatalogInput {
 
   const load = deps.loadSkills({ cwd, agentDir, skillPaths, includeDefaults: true });
   const winners = load.skills.map((s) => ({ name: s.name, filePath: s.filePath }));
-  const collisions = load.diagnostics
-    .filter((d) => d.type === "collision" && d.collision)
-    .map((d) => ({
-      name: d.collision!.name,
-      winnerPath: d.collision!.winnerPath,
-      loserPath: d.collision!.loserPath,
-    }));
+  const collisions = load.diagnostics.flatMap((d) =>
+    d.type === "collision" && d.collision
+      ? [
+          {
+            name: d.collision.name,
+            winnerPath: d.collision.winnerPath,
+            loserPath: d.collision.loserPath,
+          },
+        ]
+      : [],
+  );
 
   const loadedPaths = deps
     .getCommands()
