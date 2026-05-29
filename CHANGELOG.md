@@ -517,6 +517,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.152.2](https://github.com/salesforce/sf-pi/compare/v0.152.1...v0.152.2) (2026-05-29)
+
+
+### Bug Fixes
+
+* cancel deferred timers on session_shutdown so reload can't crash pi ([1bd79d4](https://github.com/salesforce/sf-pi/commit/1bd79d4a6a348c541fc73ff6911af0181827fb7b))
+
 ## [0.152.1](https://github.com/salesforce/sf-pi/compare/v0.152.0...v0.152.1) (2026-05-29)
 
 

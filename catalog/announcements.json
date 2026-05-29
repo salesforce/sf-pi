@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.152.1-2026-05-29",
-  "latestVersion": "0.152.1",
+  "revision": "release-0.152.2-2026-05-29",
+  "latestVersion": "0.152.2",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.152.1",
+      "id": "release-0.152.2",
       "kind": "update",
-      "title": "sf-pi v0.152.1 — sf-skills: stop input freeze after applying funnel changes",
+      "title": "sf-pi v0.152.2 — cancel deferred timers on session_shutdown so reload can't crash pi",
       "publishedAt": "2026-05-29T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.152.1",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.152.2",
       "severity": "info",
-      "body": "sf-skills: stop input freeze after applying funnel changes"
+      "body": "cancel deferred timers on session_shutdown so reload can't crash pi"
     },
     {
       "id": "pi-0.73-required",
