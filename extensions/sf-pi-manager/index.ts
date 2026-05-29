@@ -258,6 +258,19 @@ export default function sfPiManagerExtension(pi: ExtensionAPI) {
     },
   });
 
+  // A deferred timer captures `ctx`, whose `signal` getter throws once the ctx
+  // is stale (after ctx.reload()). Track it so session_shutdown can cancel it
+  // before the runtime is torn down — otherwise a reload within the timer
+  // window fires it against a stale ctx and crashes pi.
+  let doctorRefreshTimer: ReturnType<typeof setTimeout> | undefined;
+  const isAbortedSafe = (ctx: ExtensionContext): boolean => {
+    try {
+      return ctx.signal?.aborted ?? false;
+    } catch {
+      return true; // stale ctx ⇒ bail out
+    }
+  };
+
   pi.on("session_start", async (_event, ctx) => {
     // Idempotent: writes pi setting + audit record only when the key is
     // currently undefined. Respects an explicit `true` user opt-in.
@@ -293,11 +306,12 @@ export default function sfPiManagerExtension(pi: ExtensionAPI) {
     updateAnnouncementsNudge(ctx);
     updateDoctorNudge(ctx);
 
-    const doctorRefreshTimer = setTimeout(() => {
-      if (ctx.signal?.aborted) return;
+    if (doctorRefreshTimer) clearTimeout(doctorRefreshTimer);
+    doctorRefreshTimer = setTimeout(() => {
+      if (isAbortedSafe(ctx)) return;
       void refreshRuntimeDiagnosticsCache()
         .then(() => {
-          if (!ctx.signal?.aborted) updateDoctorNudge(ctx);
+          if (!isAbortedSafe(ctx)) updateDoctorNudge(ctx);
         })
         .catch(() => undefined);
     }, 2_500);
@@ -305,6 +319,8 @@ export default function sfPiManagerExtension(pi: ExtensionAPI) {
   });
 
   pi.on("session_shutdown", async (_event, ctx) => {
+    if (doctorRefreshTimer) clearTimeout(doctorRefreshTimer);
+    doctorRefreshTimer = undefined;
     ctx.ui.setStatus(STATUS_KEY, undefined);
     ctx.ui.setStatus(RECOMMENDATIONS_STATUS_KEY, undefined);
     ctx.ui.setStatus(ANNOUNCEMENTS_STATUS_KEY, undefined);

@@ -137,7 +137,27 @@ export default function sfLspExtension(pi: ExtensionAPI) {
   // ==========================================================================================
 
   function registerSessionHooks(pi: ExtensionAPI): void {
+    // Deferred timers capture `ctx`, but `ctx.signal` is a getter that THROWS
+    // once the ctx is stale (after ctx.reload(), newSession, fork, etc.). If a
+    // reload lands before these fire, the pending timer would touch the stale
+    // ctx and crash pi with an uncaughtException. Track them so session_shutdown
+    // can clear them before the runtime is torn down.
+    let pendingTimers: Array<ReturnType<typeof setTimeout>> = [];
+    const clearPendingTimers = () => {
+      for (const t of pendingTimers) clearTimeout(t);
+      pendingTimers = [];
+    };
+    // ctx.signal access is itself unsafe on a stale ctx — guard the getter.
+    const isAborted = (ctx: ExtensionContext): boolean => {
+      try {
+        return ctx.signal?.aborted ?? false;
+      } catch {
+        return true; // stale ctx ⇒ treat as aborted and bail out
+      }
+    };
+
     pi.on("session_start", async (_event, ctx) => {
+      clearPendingTimers();
       resetState(state);
       resetActivityStore(activity);
       unavailableSeenByLanguage.clear();
@@ -153,10 +173,10 @@ export default function sfLspExtension(pi: ExtensionAPI) {
       // segment starts dim/unknown, then fills in once the bounded local
       // checks finish.
       const doctorTimer = setTimeout(() => {
-        if (ctx.signal?.aborted) return;
+        if (isAborted(ctx)) return;
         void markBootStep("sf-lsp.doctor (deferred)", () => doctorLsp(ctx.cwd))
           .then((statuses) => {
-            if (ctx.signal?.aborted) return;
+            if (isAborted(ctx)) return;
             seedFromDoctor(activity, statuses);
             setSfLspHealthFromDoctor(statuses);
           })
@@ -165,12 +185,13 @@ export default function sfLspExtension(pi: ExtensionAPI) {
           });
       }, 1_500);
       doctorTimer.unref?.();
+      pendingTimers.push(doctorTimer);
 
       // First-boot / update prompt for the bundled LSP servers. Runs
       // non-awaited and delayed so marketplace / npm-registry lookups or a
       // download never compete with startup first paint.
       const installTimer = setTimeout(() => {
-        if (ctx.signal?.aborted) return;
+        if (isAborted(ctx)) return;
         void markBootStep("sf-lsp.install-prompt (deferred)", () =>
           maybePromptLspInstall(ctx, exec, {
             onInstallCompleted: () => {
@@ -189,9 +210,13 @@ export default function sfLspExtension(pi: ExtensionAPI) {
         });
       }, 4_500);
       installTimer.unref?.();
+      pendingTimers.push(installTimer);
     });
 
     pi.on("session_shutdown", async (event, ctx) => {
+      // Cancel deferred timers before the runtime is torn down so they never
+      // fire against a stale ctx (which would crash pi on reload).
+      clearPendingTimers();
       if (ctx) resetLspIndicator(ctx, workingIndicator);
       resetState(state);
       resetActivityStore(activity);

@@ -178,6 +178,7 @@ extensions/sf-lsp/
     install-detect.test.ts  ← unit / smoke test
     install-state.test.ts   ← unit / smoke test
     install-versioning.test.ts← unit / smoke test
+    reload-safety.test.ts   ← unit / smoke test
     smoke.test.ts           ← unit / smoke test
     transcript.test.ts      ← unit / smoke test
   CREDITS.md                ← extension attribution

@@ -411,7 +411,21 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
   // on /sf-llm-gateway as the single entry point. If any caller still
   // types the old name, pi's "unknown command" guidance covers it.
 
+  // Deferred startup timers capture `ctx`, whose getters (cwd, ui, …) throw
+  // once the ctx is stale after ctx.reload(). Track them so session_shutdown
+  // cancels them before teardown; a reload within the timer window would
+  // otherwise fire them against a stale ctx and crash pi.
+  let deferredStartupTimers: Array<ReturnType<typeof setTimeout>> = [];
+  const clearDeferredStartupTimers = () => {
+    for (const t of deferredStartupTimers) clearTimeout(t);
+    deferredStartupTimers = [];
+  };
+
   pi.on("session_start", async (_event, ctx) => {
+    clearDeferredStartupTimers();
+    // Capture cwd while the ctx is valid; deferred callbacks must not read
+    // ctx.cwd later (the getter throws on a stale ctx).
+    const startupCwd = ctx.cwd;
     // Fresh session — forget any thinking-level we set in a previous session.
     lastAppliedThinkingLevel = undefined;
 
@@ -463,10 +477,11 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
     // /sf-llm-gateway refresh still awaits discoverAndRegister immediately.
     const discoveryTimer = setTimeout(() => {
       void markBootStep("sf-llm-gateway.discover (deferred)", () =>
-        discoverAndRegister(pi, getBetaOverrides(), getBetaExtras(), ctx.cwd),
+        discoverAndRegister(pi, getBetaOverrides(), getBetaExtras(), startupCwd),
       ).catch(() => undefined);
     }, 2_500);
     discoveryTimer.unref?.();
+    deferredStartupTimers.push(discoveryTimer);
 
     // Phase 1.6: key-conflict detection is surfaced by sf-welcome's inline
     // gateway row and /sf-llm-gateway doctor / usage-probe --trace. Do not
@@ -481,7 +496,7 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
     // Sentinel-marked once shown so this never nags twice.
     const claudeNotifyTimer = setTimeout(() => {
       void markBootStep("sf-llm-gateway.claude-code-nudge (deferred)", () => {
-        const decision = shouldNotifyClaudeCodeFirstRun({ cwd: ctx.cwd });
+        const decision = shouldNotifyClaudeCodeFirstRun({ cwd: startupCwd });
         if (!decision.shouldNotify) return Promise.resolve();
         const summary = decision.importedBaseUrl
           ? `Found gateway credentials in Claude Code (${decision.importedBaseUrl}). Run /${FRIENDLY_COMMAND_NAME} onboard to import them.`
@@ -492,6 +507,7 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
       }).catch(() => undefined);
     }, 4_000);
     claudeNotifyTimer.unref?.();
+    deferredStartupTimers.push(claudeNotifyTimer);
   });
 
   // Track whether we've already kicked off the cold-start details fetch
@@ -549,6 +565,7 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
   });
 
   pi.on("session_shutdown", async (_event, ctx) => {
+    clearDeferredStartupTimers();
     clearProviderSignal();
     clearRetryEventListener();
     lastAppliedThinkingLevel = undefined;
