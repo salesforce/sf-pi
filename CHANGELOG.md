@@ -517,6 +517,18 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.152.0](https://github.com/salesforce/sf-pi/compare/v0.151.0...v0.152.0) (2026-05-29)
+
+
+### Features
+
+* **sf-skills:** rewrite as a Skill Funnel governance manager ([36988b7](https://github.com/salesforce/sf-pi/commit/36988b7eb889e714cd0096d6d99fbf72750d3a08))
+
+
+### Bug Fixes
+
+* **sf-skills:** remove non-null assertions to satisfy eslint --max-warnings=0 ([77cd243](https://github.com/salesforce/sf-pi/commit/77cd243c2cd5f7e4e62b9a9c9ff9e5ea5bc9600b))
+
 ## [0.151.0](https://github.com/salesforce/sf-pi/compare/v0.150.0...v0.151.0) (2026-05-28)
 
 
