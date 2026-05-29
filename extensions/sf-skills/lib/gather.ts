@@ -146,9 +146,16 @@ interface BuildSourcesArgs {
 }
 
 function buildSources(args: BuildSourcesArgs): CatalogSourceInput[] {
-  const wiredAbs = new Set(
-    [...args.settingsGlobal, ...args.settingsProject].filter((e) => e.isDir).map((e) => e.absPath),
-  );
+  // A source is "wired" when any settings entry sits AT or UNDER its root —
+  // this covers both directory entries and per-file (`…/SKILL.md`) entries,
+  // the latter produced by expand-minus-one. Using only `isDir` entries here
+  // is what made per-file-wired skills show up as "Unknown source".
+  const settingsAbs = [...args.settingsGlobal, ...args.settingsProject].map((e) => ({
+    abs: e.absPath,
+    isDir: e.isDir,
+  }));
+  const isWiredUnder = (rootAbs: string): boolean =>
+    settingsAbs.some((e) => e.abs === rootAbs || e.abs.startsWith(`${rootAbs}${path.sep}`));
 
   // Collect candidate roots keyed by normalized absolute path so we never
   // scan the same dir twice or emit duplicate source rows.
@@ -163,6 +170,27 @@ function buildSources(args: BuildSourcesArgs): CatalogSourceInput[] {
   add(defaultRoot(path.join(args.cwd, ".pi", "skills"), "Pi project skills"));
   add(defaultRoot(path.join(args.home, ".agents", "skills"), ".agents (global)"));
   add(defaultRoot(path.join(args.cwd, ".agents", "skills"), ".agents (project)"));
+
+  // 1b. The curated afv-library managed clone lives at a well-known location at
+  // each scope. Recognize it explicitly so installs that predate the Source
+  // Registry (and per-file wirings under it) are labelled "afv-library" instead
+  // of "Unknown source", and stay visible even when fully disabled.
+  add({
+    id: "afv-library (global)",
+    rootPath: path.join(args.agentDir, "sf-skills", "afv-library", "skills"),
+    kind: "managed",
+    label: "afv-library (global)",
+    gate: "seen",
+    autoDefault: false,
+  });
+  add({
+    id: "afv-library (project)",
+    rootPath: path.join(args.cwd, ".pi", "sf-skills", "afv-library", "skills"),
+    kind: "managed",
+    label: "afv-library (project)",
+    gate: "seen",
+    autoDefault: false,
+  });
 
   // 2. Detected harness roots (Claude/Codex/Cursor), global + project.
   for (const cand of detectSkillSources({ cwd: args.cwd }).candidates) {
@@ -188,15 +216,20 @@ function buildSources(args: BuildSourcesArgs): CatalogSourceInput[] {
     });
   }
 
-  // 4. Any wired settings dir not already a known root → an implicit custom source.
+  // 4. Any wired settings entry not already covered by a known root → an
+  // implicit source. Directory entries become a source at that dir; per-file
+  // entries are attributed to their containing skill dir so their skills get a
+  // real source (and don't read as "Unknown source").
   for (const entry of [...args.settingsGlobal, ...args.settingsProject]) {
-    if (!entry.isDir) continue;
-    if (byRoot.has(norm(entry.absPath))) continue;
+    const rootAbs = entry.isDir ? entry.absPath : path.dirname(entry.absPath);
+    if (byRoot.has(norm(rootAbs))) continue;
+    // Skip if an existing source root already contains this entry.
+    if ([...byRoot.values()].some((s) => isUnder(entry.absPath, s.rootPath))) continue;
     add({
       id: entry.raw,
-      rootPath: entry.absPath,
+      rootPath: rootAbs,
       kind: "custom",
-      label: entry.raw,
+      label: entry.isDir ? entry.raw : path.basename(rootAbs),
       gate: "seen",
       autoDefault: false,
     });
@@ -206,9 +239,14 @@ function buildSources(args: BuildSourcesArgs): CatalogSourceInput[] {
   const out: CatalogSourceInput[] = [];
   for (const spec of byRoot.values()) {
     if (!isDirectory(spec.rootPath)) continue;
-    // A wired auto-default override or settings dir is seen regardless of a
-    // stale registry "off" — wiring is the stronger signal.
-    const gate = spec.autoDefault || wiredAbs.has(spec.rootPath) ? "seen" : spec.gate;
+    // Seen when: an auto-default, a managed install that exists on disk (so it
+    // stays visible even with everything disabled), or anything wired at/under
+    // the root (dir OR per-file). Wiring is the stronger signal than a stale
+    // registry "off".
+    const gate =
+      spec.autoDefault || spec.kind === "managed" || isWiredUnder(spec.rootPath)
+        ? "seen"
+        : spec.gate;
     const skills = scanRoot(spec, args.loadSkillsFromDir);
     out.push({
       id: spec.id,
@@ -297,6 +335,13 @@ function isDirectory(p: string): boolean {
   } catch {
     return false;
   }
+}
+
+/** True when `child` is the same path as, or nested under, `root`. */
+function isUnder(child: string, root: string): boolean {
+  const c = norm(child);
+  const r = norm(root);
+  return c === r || c.startsWith(`${r}${path.sep}`);
 }
 
 function uniq(values: string[]): string[] {

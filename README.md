@@ -697,6 +697,7 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 
 **[SF Skills](./extensions/sf-skills/#troubleshooting)**
 
+- My skills look duplicated — a wall of conflicts, and some show "Unknown source"
 - Can I disable a globally-enabled skill for just one project
 - A conflict shows REPORT-ONLY and `w` does nothing
 - I added a custom path but it vanished after reload

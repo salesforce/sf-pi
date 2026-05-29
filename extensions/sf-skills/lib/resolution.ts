@@ -21,7 +21,7 @@
  * This module never writes; it only plans.
  */
 import { planDisable, planEnable } from "./settings-coverage.ts";
-import type { CatalogConflict, CatalogSkill } from "./catalog.ts";
+import type { CatalogConflict, CatalogSkill, SkillCatalog } from "./catalog.ts";
 import type { SkillSourceScope } from "../../../lib/common/skill-sources/skill-sources.ts";
 
 // -------------------------------------------------------------------------------------------------
@@ -122,6 +122,75 @@ export function planSkillGate(input: SkillGateInput): SettingsPlan {
   return {
     ops: [{ scope, add: plan.add, remove: plan.remove }],
     expandedFrom: plan.expandedFrom ? [plan.expandedFrom] : undefined,
+  };
+}
+
+// -------------------------------------------------------------------------------------------------
+// Scope consolidation
+// -------------------------------------------------------------------------------------------------
+
+export interface ConsolidatePlan extends SettingsPlan {
+  /** How many skill names were wired in both scopes and got de-duplicated. */
+  affected: number;
+}
+
+/**
+ * Plan a bulk de-duplication of skills wired in BOTH global and project scope
+ * (the "afv-library installed twice" mess that produces a wall of conflicts).
+ * Keeps `keepScope`'s wiring and removes the other scope's coverage for every
+ * name present in both — clearing the self-conflicts in one shot.
+ */
+export function planConsolidateScopes(input: {
+  catalog: SkillCatalog;
+  keepScope: SkillSourceScope;
+  cwd: string;
+  home?: string;
+}): ConsolidatePlan {
+  const dropScope: SkillSourceScope = input.keepScope === "project" ? "global" : "project";
+
+  // Names wired in both scopes (by any copy).
+  const globalNames = new Set<string>();
+  const projectNames = new Set<string>();
+  for (const s of input.catalog.skills) {
+    if (s.enabledGlobal) globalNames.add(s.name);
+    if (s.enabledProject) projectNames.add(s.name);
+  }
+  const dupNames = new Set([...globalNames].filter((n) => projectNames.has(n)));
+
+  const opsByScope = new Map<SkillSourceScope, ScopeOps>();
+  const expandedFrom: string[] = [];
+  const pushOp = (scope: SkillSourceScope, add: string[], remove: string[]) => {
+    const existing = opsByScope.get(scope) ?? { scope, add: [], remove: [] };
+    existing.add.push(...add);
+    existing.remove.push(...remove);
+    opsByScope.set(scope, existing);
+  };
+
+  const affected = new Set<string>();
+  for (const skill of input.catalog.skills) {
+    if (!dupNames.has(skill.name)) continue;
+    const wiredInDrop = dropScope === "global" ? skill.enabledGlobal : skill.enabledProject;
+    if (!wiredInDrop) continue;
+    const plan = planDisable({
+      skillPath: skill.filePath,
+      scope: dropScope,
+      cwd: input.cwd,
+      home: input.home,
+    });
+    if (plan.coverage === "none") continue;
+    pushOp(dropScope, plan.add, plan.remove);
+    if (plan.expandedFrom) expandedFrom.push(plan.expandedFrom);
+    affected.add(skill.name);
+  }
+
+  return {
+    ops: [...opsByScope.values()].filter((o) => o.add.length > 0 || o.remove.length > 0),
+    affected: affected.size,
+    expandedFrom: expandedFrom.length > 0 ? expandedFrom : undefined,
+    note:
+      affected.size === 0
+        ? "No skills are wired in both scopes — nothing to consolidate."
+        : `Consolidating ${affected.size} duplicate skill(s) to ${input.keepScope} scope.`,
   };
 }
 

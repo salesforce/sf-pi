@@ -65,7 +65,12 @@ import { loadUsageMap, recordSkillInvocation } from "./lib/usage-store.ts";
 import { applyPrunePlan, buildPrunePlan } from "./lib/prune.ts";
 import { gatherCatalogInput } from "./lib/gather.ts";
 import { buildSkillCatalog, type SkillCatalog } from "./lib/catalog.ts";
-import { planConflictWinner, planSkillGate, type ScopeOps } from "./lib/resolution.ts";
+import {
+  planConflictWinner,
+  planConsolidateScopes,
+  planSkillGate,
+  type ScopeOps,
+} from "./lib/resolution.ts";
 import { SkillFunnelViewComponent } from "./lib/funnel-view/index.ts";
 import type { FunnelAction, FunnelResult } from "./lib/funnel-view/types.ts";
 import { applyFileAction, type FileActionOp } from "./lib/conflict-actions.ts";
@@ -528,7 +533,74 @@ export default function sfSkills(pi: ExtensionAPI) {
       await resolveConflictByFile(ctx, catalog, result.name, result.winnerPath);
       return;
     }
+    if (result.kind === "consolidate") {
+      await consolidateScopes(ctx, catalog);
+      return;
+    }
     await applyFunnelResult(ctx, catalog, result.actions);
+  }
+
+  /**
+   * Bulk-resolve "wired in both global and project" duplicates (the
+   * afv-installed-twice mess). Prompts which scope to keep, then removes the
+   * other scope's wiring for every duplicated skill in one reload.
+   */
+  async function consolidateScopes(
+    ctx: ExtensionCommandContext,
+    catalog: SkillCatalog,
+  ): Promise<void> {
+    // Count duplicates up front so we can tell the user what they're fixing.
+    const preview = planConsolidateScopes({ catalog, keepScope: "project", cwd: ctx.cwd });
+    if (preview.affected === 0) {
+      ctx.ui.notify(
+        "No skills are wired in both global and project — nothing to consolidate.",
+        "info",
+      );
+      return;
+    }
+    const OPTIONS: Array<{ label: string; scope: "project" | "global" | "cancel" }> = [
+      {
+        label: `Keep project, drop global (recommended) — fixes ${preview.affected} duplicate(s)`,
+        scope: "project",
+      },
+      { label: "Keep global, drop project", scope: "global" },
+      { label: "Cancel", scope: "cancel" },
+    ];
+    const picked = await ctx.ui.select(
+      `${preview.affected} skill(s) are wired in BOTH global and project. Which scope should win?`,
+      OPTIONS.map((o) => o.label),
+    );
+    const keep = OPTIONS.find((o) => o.label === picked)?.scope;
+    if (!keep || keep === "cancel") return;
+
+    const plan = planConsolidateScopes({ catalog, keepScope: keep, cwd: ctx.cwd });
+    const summary: string[] = [];
+    try {
+      for (const op of plan.ops) {
+        const updated = updateSkillSources({
+          add: op.add,
+          remove: op.remove,
+          scope: op.scope,
+          cwd: ctx.cwd,
+        });
+        summary.push(`${op.scope} skills[] (${updated.skills.length})`);
+      }
+    } catch (error) {
+      ctx.ui.notify(
+        `Failed to consolidate: ${error instanceof Error ? error.message : String(error)}`,
+        "warning",
+      );
+      return;
+    }
+    if (summary.length === 0) {
+      ctx.ui.notify("Nothing to change.", "info");
+      return;
+    }
+    ctx.ui.notify(
+      `Consolidated ${plan.affected} duplicate(s) to ${keep} scope. Applied: ${summary.join(", ")}\nReloading…`,
+      "info",
+    );
+    await ctx.reload();
   }
 
   /**

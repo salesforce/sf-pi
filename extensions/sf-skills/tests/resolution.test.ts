@@ -10,8 +10,8 @@ import { afterEach, describe, expect, it } from "vitest";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { planConflictWinner, planSkillGate } from "../lib/resolution.ts";
-import type { CatalogConflict, CatalogSkill } from "../lib/catalog.ts";
+import { planConflictWinner, planConsolidateScopes, planSkillGate } from "../lib/resolution.ts";
+import type { CatalogConflict, CatalogSkill, SkillCatalog } from "../lib/catalog.ts";
 
 const tempDirs: string[] = [];
 const AGENT_DIR_ENV = "PI_CODING_AGENT_DIR";
@@ -224,5 +224,64 @@ describe("planConflictWinner", () => {
     expect(globalOps.add).not.toContain(afvDup);
     // The claude (winner) root is untouched.
     expect(globalOps.remove).not.toContain(claudeRoot);
+  });
+});
+
+describe("planConsolidateScopes", () => {
+  function catalogOf(skills: CatalogSkill[]): SkillCatalog {
+    return { skills, conflicts: [], sources: [] };
+  }
+
+  it("drops the non-kept scope for skills wired in both global and project", () => {
+    const home = makeHome();
+    const project = makeProjectDir();
+    const globalAfv = path.join(home, "afv", "skills");
+    const projectAfv = path.join(project, ".pi", "sf-skills", "afv-library", "skills");
+    // afv wired as a dir in BOTH scopes; each has the dup skill + a sibling.
+    writeGlobalSettings(home, [globalAfv]);
+    writeProjectSettings(project, [projectAfv]);
+    for (const [root, names] of [
+      [globalAfv, ["dup", "g-extra"]],
+      [projectAfv, ["dup", "p-extra"]],
+    ] as const) {
+      for (const n of names) {
+        mkdirSync(path.join(root, n), { recursive: true });
+        writeFileSync(path.join(root, n, "SKILL.md"), "x");
+      }
+    }
+    const gDup = path.join(globalAfv, "dup", "SKILL.md");
+    const pDup = path.join(projectAfv, "dup", "SKILL.md");
+    const catalog = catalogOf([
+      skillRow({ name: "dup", filePath: gDup, enabledGlobal: true }),
+      skillRow({ name: "dup", filePath: pDup, enabledProject: true }),
+    ]);
+
+    const plan = planConsolidateScopes({ catalog, keepScope: "project", cwd: project, home });
+    expect(plan.affected).toBe(1);
+    // Only the global scope is touched; project wiring is kept.
+    const globalOp = plan.ops.find((o) => o.scope === "global");
+    expect(globalOp).toBeDefined();
+    expect(globalOp!.remove).toContain(globalAfv); // expanded-minus-one
+    expect(globalOp!.add).toContain(path.join(globalAfv, "g-extra", "SKILL.md"));
+    expect(globalOp!.add).not.toContain(gDup);
+    expect(plan.ops.find((o) => o.scope === "project")).toBeUndefined();
+  });
+
+  it("is a no-op when nothing is wired in both scopes", () => {
+    const home = makeHome();
+    const project = makeProjectDir();
+    writeGlobalSettings(home, []);
+    writeProjectSettings(project, []);
+    const catalog = catalogOf([
+      skillRow({ name: "a", filePath: path.join(home, "x", "a", "SKILL.md"), enabledGlobal: true }),
+      skillRow({
+        name: "b",
+        filePath: path.join(project, "y", "b", "SKILL.md"),
+        enabledProject: true,
+      }),
+    ]);
+    const plan = planConsolidateScopes({ catalog, keepScope: "project", cwd: project, home });
+    expect(plan.affected).toBe(0);
+    expect(plan.ops).toEqual([]);
   });
 });

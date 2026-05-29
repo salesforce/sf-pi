@@ -171,6 +171,14 @@ Run: `npm test`
 
 ## Troubleshooting
 
+**My skills look duplicated — a wall of conflicts, and some show "Unknown source":**
+A source (often `afv-library`) is wired in **both** global and project scope, so
+every skill collides with its other-scope copy. On the **Conflicts** tab press
+`c` (_consolidate_) and pick a scope to keep — it removes the other scope's
+wiring for all duplicates in one shot. The "Unknown source" label was a
+mis-attribution of the managed afv-library clone (now labelled `afv-library`);
+disabling those no longer makes them vanish.
+
 **Can I disable a globally-enabled skill for just one project?**
 No — pi merges global + project `settings.skills[]` additively, so the project
 Skill Gate can only add, never subtract a globally-enabled skill. The Project

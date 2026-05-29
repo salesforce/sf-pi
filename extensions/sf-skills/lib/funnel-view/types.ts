@@ -39,7 +39,10 @@ export type FunnelResult =
   // Resolve a conflict by file action (disable/move/delete). Handled
   // interactively in index.ts because it needs confirm dialogs the overlay
   // component can't open itself.
-  | { kind: "resolve"; name: string; winnerPath: string };
+  | { kind: "resolve"; name: string; winnerPath: string }
+  // Bulk de-duplicate skills wired in both global and project scope. Handled
+  // interactively in index.ts (it prompts which scope to keep).
+  | { kind: "consolidate" };
 
 export interface FunnelViewProps {
   catalog: SkillCatalog;

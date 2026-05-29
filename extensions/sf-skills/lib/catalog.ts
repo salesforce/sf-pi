@@ -249,12 +249,13 @@ export function buildSkillCatalog(input: SkillCatalogInput): SkillCatalog {
       else conflictRole = reportOnly ? "report-only-loser" : "loser";
     }
 
+    const fallbackLabel = fallbackSourceLabel(copy.filePath);
     const row: CatalogSkill = {
       name: copy.name,
       filePath: copy.filePath,
       description: copy.description,
-      sourceId: copy.source?.id ?? "(unknown)",
-      sourceLabel: copy.source?.label ?? "Unknown source",
+      sourceId: copy.source?.id ?? fallbackLabel,
+      sourceLabel: copy.source?.label ?? fallbackLabel,
       sourceKind: copy.source?.kind ?? "custom",
       autoDefault: copy.source?.autoDefault ?? false,
       seen: copy.source ? copy.source.gate === "seen" : true,
@@ -353,6 +354,23 @@ function ensureCopy(
     (s) => filePath === s.rootPath || filePath.startsWith(`${s.rootPath}${path.sep}`),
   );
   addCopy({ name, filePath, source });
+}
+
+/**
+ * Best-effort label for a copy with no matched source — never the bare
+ * "Unknown source". Recognizes the afv-library managed clone in the path and
+ * otherwise names the skill's containing root directory.
+ */
+function fallbackSourceLabel(filePath: string): string {
+  const norm = filePath.replace(/\\/g, "/");
+  if (norm.includes("/afv-library/")) return "afv-library";
+  // …/<root>/<skill>/SKILL.md → name the <root> directory; for a loose
+  // …/<root>/<name>.md → name the <root> directory too.
+  const parts = norm.split("/").filter(Boolean);
+  const base = parts[parts.length - 1] ?? "";
+  const rootIdx = base.toLowerCase() === "skill.md" ? parts.length - 3 : parts.length - 2;
+  const root = rootIdx >= 0 ? parts[rootIdx] : undefined;
+  return root ? `${root} (wired)` : "wired path";
 }
 
 function coveredBy(filePath: string, entries: ResolvedSettingsEntry[]): boolean {

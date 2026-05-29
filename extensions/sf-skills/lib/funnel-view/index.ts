@@ -188,6 +188,16 @@ export class SkillFunnelViewComponent implements Focusable {
       if (this.tab === "conflicts") this.resolveByFileAtCursor();
       return;
     }
+    if (data === "c" || data === "C") {
+      if (this.tab === "conflicts") {
+        if (this.staged.size > 0) {
+          this.notice = "apply or cancel pending changes before consolidating";
+          return;
+        }
+        this.done({ kind: "consolidate" });
+      }
+      return;
+    }
   }
 
   /**
@@ -405,7 +415,7 @@ export class SkillFunnelViewComponent implements Focusable {
       project:
         "Skill Gate (project) — wired for THIS project only. p enables/disables · globally-on shows locked.",
       conflicts:
-        "Same skill name from 2+ sources. w = rewire winner · r = resolve by file (disable/move/delete).",
+        "Same skill name from 2+ sources. w = rewire winner · r = resolve by file · c = consolidate global+project dupes.",
     };
     return ` ${theme.fg("dim", `${text[this.tab]}  ·  ? legend`)}`;
   }
@@ -435,7 +445,7 @@ export class SkillFunnelViewComponent implements Focusable {
       `    ${theme.fg("muted", "○gated")}    not loaded (source off or skill off)`,
       "",
       `  ${h("Scope flags")}   ${k("G")} global · ${k("P")} project · ${d("default")} auto-discovered · ${d("—")} not wired`,
-      `  ${h("Conflicts")}     ${k("RESOLVABLE")} rewire to fix · ${theme.fg("warning", "REPORT-ONLY")} needs a file move/delete (r)`,
+      `  ${h("Conflicts")}     ${k("RESOLVABLE")} rewire (w) · ${theme.fg("warning", "REPORT-ONLY")} file action (r) · ${k("c")} consolidate global+project dupes`,
       "",
       d("  press any key to close"),
     ];
@@ -725,7 +735,7 @@ export class SkillFunnelViewComponent implements Focusable {
       this.tab === "sources"
         ? " · a add path"
         : this.tab === "conflicts"
-          ? " · w winner · r resolve(file)"
+          ? " · w winner · r file · c consolidate"
           : " · p project";
     return ` ${theme.fg("dim", `${base}${extra} · / filter · ? legend · enter apply · esc close`)}`;
   }

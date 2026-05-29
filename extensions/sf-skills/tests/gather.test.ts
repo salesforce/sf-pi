@@ -122,6 +122,53 @@ describe("gatherCatalogInput", () => {
     expect(src!.skills.map((s) => s.name)).toContain("beta");
   });
 
+  it("labels the managed afv-library install (not 'Unknown source'), even with per-file wiring", () => {
+    const home = tmp("sf-gather-home-");
+    const cwd = tmp("sf-gather-cwd-");
+    const agentDir = path.join(home, ".pi", "agent");
+    process.env[AGENT_DIR_ENV] = agentDir;
+
+    // afv-library cloned at the well-known global location, wired PER-FILE
+    // (as expand-minus-one produces) rather than as a directory entry.
+    const afvRoot = path.join(agentDir, "sf-skills", "afv-library", "skills");
+    const f1 = writeSkill(afvRoot, "generating-apex");
+    const f2 = writeSkill(afvRoot, "deploying-metadata");
+    mkdirSync(agentDir, { recursive: true });
+    writeFileSync(path.join(agentDir, "settings.json"), JSON.stringify({ skills: [f1, f2] }));
+
+    const input = gatherCatalogInput({ cwd, deps: fakeDeps() });
+    const afv = input.sources.find((s) => s.rootPath === path.normalize(afvRoot));
+    expect(afv).toBeDefined();
+    expect(afv!.kind).toBe("managed");
+    expect(afv!.label).toBe("afv-library (global)");
+    expect(afv!.gate).toBe("seen");
+    expect(afv!.skills.map((s) => s.name).sort()).toEqual([
+      "deploying-metadata",
+      "generating-apex",
+    ]);
+    // None of these should land as an unknown/orphan source.
+    expect(input.sources.some((s) => s.label.toLowerCase().includes("unknown"))).toBe(false);
+  });
+
+  it("keeps the managed afv-library source visible even when nothing is wired (no vanish)", () => {
+    const home = tmp("sf-gather-home-");
+    const cwd = tmp("sf-gather-cwd-");
+    const agentDir = path.join(home, ".pi", "agent");
+    process.env[AGENT_DIR_ENV] = agentDir;
+
+    // Clone exists on disk but settings.skills[] is empty (all disabled).
+    const afvRoot = path.join(agentDir, "sf-skills", "afv-library", "skills");
+    writeSkill(afvRoot, "generating-apex");
+    mkdirSync(agentDir, { recursive: true });
+    writeFileSync(path.join(agentDir, "settings.json"), JSON.stringify({ skills: [] }));
+
+    const input = gatherCatalogInput({ cwd, deps: fakeDeps() });
+    const afv = input.sources.find((s) => s.rootPath === path.normalize(afvRoot));
+    expect(afv).toBeDefined();
+    expect(afv!.gate).toBe("seen"); // managed install on disk stays visible
+    expect(afv!.skills.map((s) => s.name)).toContain("generating-apex");
+  });
+
   it("passes loadSkills collisions through verbatim", () => {
     const home = tmp("sf-gather-home-");
     const cwd = tmp("sf-gather-cwd-");
