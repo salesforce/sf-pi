@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.152.3-2026-05-29",
-  "latestVersion": "0.152.3",
+  "revision": "release-0.153.0-2026-05-29",
+  "latestVersion": "0.153.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.152.3",
+      "id": "release-0.153.0",
       "kind": "update",
-      "title": "sf-pi v0.152.3 — sf-skills: label managed afv install, stop vanish-on-disable, add scope consolidate",
+      "title": "sf-pi v0.153.0 — sf-skills: rescope skills global → project (local-first migration)",
       "publishedAt": "2026-05-29T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.152.3",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.153.0",
       "severity": "info",
-      "body": "sf-skills: label managed afv install, stop vanish-on-disable, add scope consolidate"
+      "body": "sf-skills: rescope skills global → project (local-first migration)"
     },
     {
       "id": "pi-0.73-required",

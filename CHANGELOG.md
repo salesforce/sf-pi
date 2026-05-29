@@ -517,6 +517,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.153.0](https://github.com/salesforce/sf-pi/compare/v0.152.3...v0.153.0) (2026-05-29)
+
+
+### Features
+
+* **sf-skills:** rescope skills global → project (local-first migration) ([a15ac28](https://github.com/salesforce/sf-pi/commit/a15ac283f1592d1cc00cfbbede54b16aa3dbeaed))
+
 ## [0.152.3](https://github.com/salesforce/sf-pi/compare/v0.152.2...v0.152.3) (2026-05-29)
 
 
