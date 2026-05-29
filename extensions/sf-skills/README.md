@@ -140,6 +140,7 @@ extensions/sf-skills/
     gather.test.ts          ← unit / smoke test
     hud-visibility.test.ts  ← unit / smoke test
     prune.test.ts           ← unit / smoke test
+    reload-safety.test.ts   ← unit / smoke test
     resolution.test.ts      ← unit / smoke test
     settings-coverage.test.ts← unit / smoke test
     skill-state.test.ts     ← unit / smoke test

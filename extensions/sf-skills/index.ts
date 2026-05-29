@@ -282,10 +282,20 @@ export default function sfSkills(pi: ExtensionAPI) {
     refreshHud(ctx);
   }
 
-  pi.on("session_start", async (_event, ctx) => {
+  pi.on("session_start", async (event, ctx) => {
     dismissOverlay();
     hudState = EMPTY_STATE;
     if (!ctx.hasUI) {
+      return;
+    }
+    if (event.reason === "reload") {
+      // reload() emits session_start while it is still unwinding the previous
+      // runtime. Mounting a ctx.ui.custom overlay synchronously here strands
+      // the overlay promise and freezes all input (the same failure mode the
+      // command panel guards against). Defer the HUD mount until reload() has
+      // fully returned and the event loop turns.
+      const timer = setTimeout(() => rebuildAndRender(ctx), 0);
+      timer.unref?.();
       return;
     }
     rebuildAndRender(ctx);
@@ -388,9 +398,13 @@ export default function sfSkills(pi: ExtensionAPI) {
       closeValue: "close",
       state: panelState,
       onAction: (action) => handleSkillsCommand(ctx, action, true),
-      // Lifecycle toggle calls ctx.reload() — must close panel first so the
-      // ctx.ui.custom() promise resolves before the runtime is invalidated.
-      closeBeforeAction: isLifecycleToggleAction,
+      // Close the panel BEFORE actions that open their own overlay or call
+      // ctx.reload(): the lifecycle toggle (reload) and the funnel (a nested
+      // capturing overlay that itself reloads on apply). Otherwise reload tears
+      // the runtime down while this panel's ctx.ui.custom() promise is still
+      // mounted, stranding it — pi never calls its done(), and all input
+      // freezes until Ctrl+C. See lib/common/command-panel.ts.
+      closeBeforeAction: (action) => isLifecycleToggleAction(action) || action === "funnel",
     });
   }
 
