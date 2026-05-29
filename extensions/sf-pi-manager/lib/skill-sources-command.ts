@@ -18,11 +18,6 @@ import {
   updateSkillSources,
   type SkillSourceCandidate,
 } from "../../../lib/common/skill-sources/skill-sources.ts";
-import {
-  SkillSourcesOverlayComponent,
-  type SkillSourcesOverlayResult,
-  type SkillSourceRow,
-} from "./skill-sources-overlay.ts";
 
 export type SkillsSubcommand = "overlay" | "list" | "link" | "unlink" | "status";
 
@@ -98,139 +93,23 @@ export async function handleSkills(
 // Overlay
 // -------------------------------------------------------------------------------------------------
 
-async function handleOverlay(ctx: ExtensionCommandContext, packageVersion: string): Promise<void> {
-  if (!ctx.hasUI) {
-    handleList(ctx);
-    return;
-  }
-
-  const detection = detectSkillSources({ cwd: ctx.cwd });
-  const rows: SkillSourceRow[] = detection.candidates.map((candidate) => ({
-    candidate,
-    // Pre-check any currently-wired root so Enter is a no-op by default.
-    // Available-but-not-wired roots start unchecked so the user opts in
-    // deliberately — a quiet opt-in here would surprise people.
-    selected: candidate.wired,
-    previouslyWired: candidate.wired,
-  }));
-
-  if (rows.length === 0 && detection.staleWired.length === 0) {
-    ctx.ui.notify(
-      [
-        "No external skill directories detected.",
-        "",
-        "sf-pi looks for (global):",
-        "  ~/.claude/skills   (Claude Code)",
-        "  ~/.codex/skills    (OpenAI Codex)",
-        "  ~/.cursor/skills   (Cursor)",
-        "",
-        "And these inside your current project:",
-        "  ./.claude/skills   ./.codex/skills   ./.cursor/skills",
-        "",
-        "Create one of these directories (or add your own path via settings.json → skills[])",
-        "and re-run /sf-pi skills.",
-      ].join("\n"),
-      "info",
-    );
-    return;
-  }
-
-  ctx.ui.setWorkingVisible(false);
-  let result: SkillSourcesOverlayResult | undefined;
-  try {
-    result = await ctx.ui.custom<SkillSourcesOverlayResult | undefined>(
-      (_tui, theme, _keybindings, done) =>
-        new SkillSourcesOverlayComponent(
-          theme,
-          packageVersion,
-          detection.settingsPath,
-          rows,
-          detection.staleWired,
-          done,
-        ),
-      {
-        overlay: true,
-        overlayOptions: () => ({
-          anchor: "center" as const,
-          width: "78%",
-          minWidth: 70,
-        }),
-      },
-    );
-  } finally {
-    ctx.ui.setWorkingVisible(true);
-  }
-
-  if (!result || result.kind === "cancel") return;
-  await applyOverlayResult(ctx, result);
-}
-
-async function applyOverlayResult(
-  ctx: ExtensionCommandContext,
-  result: Extract<SkillSourcesOverlayResult, { kind: "apply" }>,
-): Promise<void> {
-  // Group adds/removes per scope so each settings file is written exactly
-  // once with only the entries it should own.
-  const globalAdd: string[] = [];
-  const globalRemove: string[] = [];
-  const projectAdd: string[] = [];
-  const projectRemove: string[] = [];
-
-  for (const row of result.rows) {
-    const bucketAdd = row.candidate.scope === "project" ? projectAdd : globalAdd;
-    const bucketRemove = row.candidate.scope === "project" ? projectRemove : globalRemove;
-    if (row.selected && !row.previouslyWired) bucketAdd.push(row.candidate.settingsPath);
-    if (!row.selected && row.previouslyWired) bucketRemove.push(row.candidate.settingsPath);
-  }
-  // Stale wired pruning is global-only — the existing overlay only
-  // surfaces stale entries from the global file, so this preserves
-  // its current contract.
-  if (result.pruneStale) globalRemove.push(...result.staleWired);
-
-  const hasChanges =
-    globalAdd.length > 0 ||
-    globalRemove.length > 0 ||
-    projectAdd.length > 0 ||
-    projectRemove.length > 0;
-  if (!hasChanges) {
-    ctx.ui.notify("No changes — skill sources already match your selection.", "info");
-    return;
-  }
-
-  const summary: string[] = [];
-  try {
-    if (globalAdd.length > 0 || globalRemove.length > 0) {
-      const updated = updateSkillSources({
-        add: globalAdd,
-        remove: globalRemove,
-        scope: "global",
-      });
-      summary.push(`global skills[] (${updated.skills.length})`);
-    }
-    if (projectAdd.length > 0 || projectRemove.length > 0) {
-      const updated = updateSkillSources({
-        add: projectAdd,
-        remove: projectRemove,
-        scope: "project",
-        cwd: ctx.cwd,
-      });
-      summary.push(`project skills[] (${updated.skills.length})`);
-    }
-  } catch (error) {
-    ctx.ui.notify(
-      `Failed to update skill sources: ${error instanceof Error ? error.message : String(error)}`,
-      "warning",
-    );
-    return;
-  }
-
-  const totalAdd = globalAdd.length + projectAdd.length;
-  const totalRemove = globalRemove.length + projectRemove.length;
-  const parts: string[] = [];
-  if (totalAdd > 0) parts.push(`+${totalAdd} added`);
-  if (totalRemove > 0) parts.push(`-${totalRemove} removed`);
-  ctx.ui.notify(`${parts.join(", ")}. ${summary.join(", ")}. Reloading…`, "info");
-  await ctx.reload();
+async function handleOverlay(ctx: ExtensionCommandContext, _packageVersion: string): Promise<void> {
+  // Skill management moved to the SF Skills extension's Skill Funnel
+  // (`/sf-skills`). `/sf-pi skills` is now a read-only pointer + summary; it no
+  // longer owns the wiring UI. The list/link/unlink subcommands remain as
+  // headless escape hatches.
+  ctx.ui.notify(
+    [
+      "Skill management lives in the Skill Funnel now: run /sf-skills",
+      "",
+      "  /sf-skills            Catalog → Sources → Global → Project → Conflicts",
+      "  /sf-skills funnel     gate sources, toggle skills per scope, resolve conflicts",
+      "",
+      "Read-only here: /sf-pi skills list · status. Headless wiring: link / unlink.",
+    ].join("\n"),
+    "info",
+  );
+  handleList(ctx);
 }
 
 // -------------------------------------------------------------------------------------------------

@@ -24,7 +24,7 @@
  * - /sf-pi display [profile]  show or set compact/balanced/verbose display profile
  * - /sf-pi recommended [...]  manage recommended external extensions
  * - /sf-pi announcements [...] list/dismiss/reset sf-pi announcements
- * - /sf-pi skills [...]       wire Claude Code / Codex / Cursor skill dirs
+ * - /sf-pi skills [...]       read-only skill-source summary (manage in /sf-skills)
  * - /sf-pi doctor [fix ...]   diagnose and repair startup/skill setup
  * - /sf-pi help               show available commands
  *
@@ -743,7 +743,7 @@ function handleHelp(ctx: ExtensionCommandContext): void {
     `  /${COMMAND_NAME} display [profile] [scope] Show or set display profile`,
     `  /${COMMAND_NAME} recommended [...]         Manage recommended external extensions`,
     `  /${COMMAND_NAME} announcements [...]       List/dismiss/reset sf-pi announcements`,
-    `  /${COMMAND_NAME} skills [...]              Wire Claude Code / Codex / Cursor skill dirs`,
+    `  /${COMMAND_NAME} skills [...]              Skill-source summary (manage in /sf-skills)`,
     `  /${COMMAND_NAME} doctor [fix ...]          Diagnose and repair startup/skill setup`,
     `  /${COMMAND_NAME} telemetry [status|on|off] Show or change pi anonymous-telemetry posture`,
     `  /${COMMAND_NAME} help                      Show this help`,

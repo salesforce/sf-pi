@@ -604,12 +604,12 @@
     "entry": "extensions/sf-pi-manager/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 3476
+    "srcLoc": 3205
   },
   {
     "id": "sf-skills",
     "name": "SF Skills",
-    "description": "Manage skills end-to-end: live-context HUD, tabbed datatable (Active/Discover/Stats), Claude/Codex/Cursor source detection, forcedotcom/afv-library install + auto-update, per-skill usage counters, and prune.",
+    "description": "Manage skills through one Skill Funnel: catalog every source (Claude/Codex/Cursor/custom/managed) → gate sources → toggle skills per scope (global/project) → resolve name conflicts, all compiled to native settings.skills[]. Plus a passive live-context HUD, forcedotcom/afv-library install, per-skill usage counters, and prune.",
     "category": "ui",
     "maturity": "stable",
     "defaultEnabled": true,
@@ -629,18 +629,19 @@
       "session_shutdown"
     ],
     "docs": {
-      "summary": "Skills manager + passive top-right live-context HUD overlay. Three datatable tabs (Active / Discover / Stats), source detection for global and project Claude/Codex/Cursor roots, an installer for forcedotcom/afv-library that wires the curated SF skills into settings.skills[], persistent per-skill usage counters split by global vs project, and a prune action for stale settings entries + orphan managed clones. Every enable/disable is a native pi settings.skills[] add/remove — no SKILL.md files are ever modified.",
+      "summary": "Skills manager built on the Skill Funnel: a five-tab view (Catalog / Sources / Global / Project / Conflicts) over one resolved Skill Catalog. Source Gate decides which roots Pi sees; Skill Gate toggles individual skills at global and project scope; Skill Conflict Resolution picks a winner by exclusion. Every decision compiles to native settings.skills[] (Compiled Skill Resolution) — no SKILL.md files are ever modified. A Source Registry remembers custom paths and gate state; conflicts that touch an auto-discovered default root are report-only. Plus a passive live-context HUD, forcedotcom/afv-library install, per-skill usage counters, and prune.",
       "primaryFiles": [
         "index.ts",
+        "lib/catalog.ts",
+        "lib/gather.ts",
+        "lib/resolution.ts",
+        "lib/funnel-view/index.ts",
+        "lib/funnel-view/model.ts",
+        "lib/settings-coverage.ts",
         "lib/hud-component.ts",
         "lib/skill-state.ts",
-        "lib/table-data.ts",
-        "lib/table-overlay/index.ts",
-        "lib/source-labels.ts",
-        "lib/classify.ts",
         "lib/defaults.ts",
         "lib/skills-command.ts",
-        "lib/settings-coverage.ts",
         "lib/usage-store.ts",
         "lib/prune.ts"
       ]
@@ -648,7 +649,7 @@
     "entry": "extensions/sf-skills/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 3200
+    "srcLoc": 4005
   },
   {
     "id": "sf-slack",

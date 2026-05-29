@@ -144,7 +144,6 @@ extensions/sf-pi-manager/
     recommendations.ts      ← implementation module
     render.ts               ← implementation module
     skill-sources-command.ts← implementation module
-    skill-sources-overlay.ts← implementation module
     telemetry-command.ts    ← implementation module
   tests/
     announcements-command.test.ts← unit / smoke test

@@ -3,13 +3,7 @@
  * Tests for the pure scroll math used by the redesigned datatable.
  */
 import { describe, expect, it } from "vitest";
-import {
-  jumpToEnd,
-  jumpToStart,
-  slice,
-  step,
-  viewportSize,
-} from "../lib/table-overlay/viewport.ts";
+import { jumpToEnd, jumpToStart, slice, step, viewportSize } from "../lib/funnel-view/viewport.ts";
 
 describe("viewportSize", () => {
   it("caps at 22 rows on tall terminals", () => {

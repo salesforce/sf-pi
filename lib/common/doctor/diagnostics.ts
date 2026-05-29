@@ -9,6 +9,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { execFile, execFileSync } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
+import { loadSkills } from "@earendil-works/pi-coding-agent";
 import { getInstalledPiVersion, MIN_PI_VERSION } from "../pi-compat.ts";
 import { normalizeNpmConfigValue, readConfiguredNpmCommand } from "../npm-release-age-policy.ts";
 import { globalAgentPath, globalSettingsPath, projectSettingsPath } from "../pi-paths.ts";
@@ -51,7 +52,18 @@ export function runDoctorDiagnostics(
   const welcomeMode = typeof welcomeSettings.mode === "string" ? welcomeSettings.mode : undefined;
 
   const skillLocations = discoverSkillLocations({ cwd, home, settings: effectiveSettings });
-  const skillCollisions = findSkillCollisions(skillLocations);
+  // Root-scan collisions cover all known harness roots (even unwired ones), so
+  // the doctor can proactively warn. In live mode we also union Pi's
+  // authoritative loadSkills collisions so the count can never be LOWER than
+  // what Pi actually reports at startup (and matches the Skill Funnel). The
+  // loader scan is skipped in cached mode to keep first paint off the hot path.
+  const skillCollisions =
+    runtimeMode === "live"
+      ? mergeCollisions(
+          findSkillCollisions(skillLocations),
+          findLoaderCollisions({ cwd, home, settings: effectiveSettings }),
+        )
+      : findSkillCollisions(skillLocations);
   const staleSkillPaths = findStaleSkillPaths(effectiveSettings, home);
   const availableSkillRoots = findAvailableSkillRoots(effectiveSettings, home);
   const sfPiPackageDuplicates = findSfPiPackageDuplicates(cwd);
@@ -261,6 +273,78 @@ export function discoverSkillLocations(options: {
     }
   }
   return locations;
+}
+
+/**
+ * Derive collisions from Pi's own loadSkills result — the authoritative record
+ * of what Pi found competing at startup. Grouped by name: the winner is Pi's
+ * kept copy, duplicates are every skipped copy. This is the same data Pi prints
+ * as `[Skill conflicts]` and the Skill Funnel surfaces, so unioning it keeps all
+ * three counts consistent.
+ */
+export function findLoaderCollisions(options: {
+  cwd: string;
+  home: string;
+  settings: Record<string, unknown>;
+}): SkillCollision[] {
+  const skillPaths = Array.isArray(options.settings.skills)
+    ? options.settings.skills.filter((v): v is string => typeof v === "string")
+    : [];
+  let diagnostics: Array<{ collision?: { name: string; winnerPath: string; loserPath: string } }>;
+  try {
+    const result = loadSkills({
+      cwd: options.cwd,
+      agentDir: globalAgentPath(),
+      skillPaths,
+      includeDefaults: true,
+    });
+    diagnostics = result.diagnostics as typeof diagnostics;
+  } catch {
+    return [];
+  }
+
+  // Group loser paths by name; the winner path is shared across a name's diagnostics.
+  const byName = new Map<string, { winner: string; losers: Set<string> }>();
+  for (const d of diagnostics) {
+    const c = d.collision;
+    if (!c) continue;
+    const group = byName.get(c.name) ?? { winner: c.winnerPath, losers: new Set<string>() };
+    group.losers.add(c.loserPath);
+    byName.set(c.name, group);
+  }
+
+  const collisions: SkillCollision[] = [];
+  for (const [name, group] of [...byName.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+    const preferred = loaderLocation(name, group.winner, options);
+    const duplicates = [...group.losers].map((file) => loaderLocation(name, file, options));
+    collisions.push({ name, locations: [preferred, ...duplicates], preferred, duplicates });
+  }
+  return collisions;
+}
+
+/** Best-effort SkillLocation for a loadSkills path (root/label are advisory here). */
+function loaderLocation(name: string, file: string, options: { home: string }): SkillLocation {
+  const dir = path.dirname(file);
+  return {
+    name,
+    file,
+    root: dir,
+    rootLabel: toDisplayRoot(dir, options.home),
+    rootKind: "settings",
+    settingsValue: undefined,
+  };
+}
+
+function toDisplayRoot(dir: string, home: string): string {
+  return dir.startsWith(`${home}${path.sep}`) ? `~/${path.relative(home, dir)}` : dir;
+}
+
+/** Union two collision lists by skill name; entries from `base` win on overlap. */
+export function mergeCollisions(base: SkillCollision[], extra: SkillCollision[]): SkillCollision[] {
+  const byName = new Map<string, SkillCollision>();
+  for (const c of base) byName.set(c.name, c);
+  for (const c of extra) if (!byName.has(c.name)) byName.set(c.name, c);
+  return [...byName.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export function findSkillCollisions(locations: SkillLocation[]): SkillCollision[] {

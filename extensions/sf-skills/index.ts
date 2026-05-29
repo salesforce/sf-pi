@@ -30,6 +30,8 @@
  */
 import {
   buildSessionContext,
+  loadSkills,
+  loadSkillsFromDir,
   parseSkillBlock,
   type ExtensionAPI,
   type ExtensionCommandContext,
@@ -58,11 +60,15 @@ import { openInfoPanel } from "../../lib/common/info-panel.ts";
 import { withSafeCommandHandler } from "../../lib/common/safe-command-handler.ts";
 import { handleDefaults, parseDefaultsArgs } from "./lib/skills-command.ts";
 import { updateSkillSources } from "../../lib/common/skill-sources/skill-sources.ts";
-import { buildActiveRows, buildDiscoverRows } from "./lib/table-data.ts";
+import { setSourceGate, upsertSource } from "../../lib/common/skill-sources/source-registry.ts";
 import { loadUsageMap, recordSkillInvocation } from "./lib/usage-store.ts";
 import { applyPrunePlan, buildPrunePlan } from "./lib/prune.ts";
-import { planDisable, planEnable } from "./lib/settings-coverage.ts";
-import { SkillsTableOverlayComponent, type TableResult } from "./lib/table-overlay/index.ts";
+import { gatherCatalogInput } from "./lib/gather.ts";
+import { buildSkillCatalog, type SkillCatalog } from "./lib/catalog.ts";
+import { planConflictWinner, planSkillGate, type ScopeOps } from "./lib/resolution.ts";
+import { SkillFunnelViewComponent } from "./lib/funnel-view/index.ts";
+import type { FunnelAction, FunnelResult } from "./lib/funnel-view/types.ts";
+import { applyFileAction, type FileActionOp } from "./lib/conflict-actions.ts";
 
 // -------------------------------------------------------------------------------------------------
 // Constants
@@ -80,7 +86,7 @@ const EMPTY_STATE: SkillsHudState = {
 
 type SkillsAction =
   | "summary"
-  | "table"
+  | "funnel"
   | "metrics"
   | "prune"
   | "help"
@@ -95,10 +101,10 @@ const SKILLS_ACTIONS: CommandPanelAction<SkillsAction>[] = [
     group: "Status",
   },
   {
-    value: "table",
-    label: "Open skills table",
+    value: "funnel",
+    label: "Open skill funnel",
     description:
-      "Tabbed datatable: Active, Discover, Stats. Toggle global / project wiring per row.",
+      "Catalog → Sources → Global → Project → Conflicts. Gate sources, toggle skills per scope, resolve conflicts.",
     group: "Status",
   },
   {
@@ -173,12 +179,13 @@ function renderSkillsHelp(): string {
     "  • Earlier in session — skills used on this branch but no longer in context after compaction/growth",
     "  • Floating HUD hides when no skills remain in active context",
     "",
-    "Datatable (/sf-skills table):",
-    "  • Tabs: Active / Discover / Stats",
-    "  • Active — every skill pi.getCommands() reports right now, with Wired column",
-    "  • Discover — active set + on-disk candidates not yet in settings.skills[]",
-    "  • Stats — per-skill usage counters (populated as you invoke /skill:<name>)",
-    "  • g toggles global wiring, p toggles project, enter applies, esc cancels",
+    "Funnel (/sf-skills funnel):",
+    "  • Tabs: Catalog / Sources / Global / Project / Conflicts",
+    "  • Catalog — every skill found across every source (incl. gated-off + losers)",
+    "  • Sources — Source Gate: which roots Pi sees (a adds a custom path)",
+    "  • Global / Project — Skill Gate per scope; g toggles global, p toggles project",
+    "  • Conflicts — pick a winner (w) for resolvable name collisions",
+    "  • enter applies staged changes, esc cancels",
     "",
     "Defaults (forcedotcom/afv-library):",
     "  • /sf-skills defaults install  [project|global]",
@@ -189,7 +196,7 @@ function renderSkillsHelp(): string {
     "Commands:",
     "  /sf-skills           Open status & controls panel",
     "  /sf-skills summary   HUD summary text",
-    "  /sf-skills table     Open the tabbed datatable",
+    "  /sf-skills funnel    Open the skill funnel",
     "  /sf-skills defaults  Manage afv-library installs (see above)",
     "  /sf-skills help      Show this help",
   ].join("\n");
@@ -413,8 +420,8 @@ export default function sfSkills(pi: ExtensionAPI) {
       return;
     }
 
-    if (subcommand === "table") {
-      await openSkillsTable(ctx);
+    if (subcommand === "funnel" || subcommand === "table") {
+      await openFunnel(ctx);
       return;
     }
 
@@ -462,31 +469,39 @@ export default function sfSkills(pi: ExtensionAPI) {
     ctx.ui.notify(body ? `${title}\n\n${body}` : title, level === "success" ? "info" : level);
   }
 
-  async function openSkillsTable(ctx: ExtensionCommandContext): Promise<void> {
+  async function openFunnel(ctx: ExtensionCommandContext): Promise<void> {
     if (!ctx.hasUI) {
       ctx.ui.notify(
-        "The skills table needs an interactive terminal. Use /sf-skills summary or /sf-skills defaults status instead.",
+        "The skill funnel needs an interactive terminal. Use /sf-skills summary or /sf-skills metrics instead.",
         "info",
       );
       return;
     }
-    const commands = pi.getCommands();
-    const usage = loadUsageMap("all", ctx.cwd);
-    const active = buildActiveRows({ commands, cwd: ctx.cwd, usage });
-    const discover = buildDiscoverRows({ commands, cwd: ctx.cwd, usage });
+
+    // Heavy catalog work happens HERE, on explicit /sf-skills intent — never
+    // in a session hook. See tests/boot-path.test.ts for the enforced contract.
+    const input = gatherCatalogInput({
+      cwd: ctx.cwd,
+      deps: { loadSkills, loadSkillsFromDir, getCommands: () => pi.getCommands() },
+    });
+    const catalog = buildSkillCatalog(input);
 
     ctx.ui.setWorkingVisible(false);
-    let result: TableResult | undefined;
+    let result: FunnelResult | undefined;
     try {
-      result = await ctx.ui.custom<TableResult | undefined>(
+      result = await ctx.ui.custom<FunnelResult>(
         (_tui, theme, _keybindings, done) =>
-          new SkillsTableOverlayComponent(theme, { active, discover, cwd: ctx.cwd }, done),
+          new SkillFunnelViewComponent(theme, { catalog, cwd: ctx.cwd }, done),
         {
           overlay: true,
+          // Fixed max column width (pi clamps to the terminal on narrow
+          // screens); the component's flex columns fill whatever it gets, so
+          // the funnel is responsive between ~84 and ~152 columns.
           overlayOptions: () => ({
             anchor: "center" as const,
-            width: "82%",
-            minWidth: 80,
+            width: 152,
+            minWidth: 84,
+            maxHeight: "90%",
           }),
         },
       );
@@ -495,12 +510,84 @@ export default function sfSkills(pi: ExtensionAPI) {
     }
 
     if (!result || result.kind === "cancel") return;
-    await applyTableResult(ctx, result);
+    if (result.kind === "resolve") {
+      await resolveConflictByFile(ctx, catalog, result.name, result.winnerPath);
+      return;
+    }
+    await applyFunnelResult(ctx, catalog, result.actions);
   }
 
-  async function applyTableResult(
+  /**
+   * Interactive, consent-gated file-level conflict resolution (ADR-0018).
+   * Keeps the chosen winner; the loser copies are disabled / quarantined /
+   * deleted on the user's explicit choice. Delete double-confirms.
+   */
+  async function resolveConflictByFile(
     ctx: ExtensionCommandContext,
-    result: Extract<TableResult, { kind: "apply" }>,
+    catalog: SkillCatalog,
+    name: string,
+    winnerPath: string,
+  ): Promise<void> {
+    const conflict = catalog.conflicts.find((c) => c.name === name);
+    if (!conflict) {
+      ctx.ui.notify(`Conflict "${name}" is no longer present.`, "info");
+      return;
+    }
+    const losers = conflict.copies.filter((c) => c.filePath !== winnerPath);
+    if (losers.length === 0) {
+      ctx.ui.notify(`Nothing to resolve for "${name}".`, "info");
+      return;
+    }
+    const winnerLabel =
+      conflict.copies.find((c) => c.filePath === winnerPath)?.sourceLabel ?? "selected copy";
+    const OPTIONS: Array<{ label: string; op: FileActionOp | "cancel" }> = [
+      { label: "Disable in place (rename SKILL.md → .disabled, reversible)", op: "disable" },
+      { label: "Move to quarantine (reversible)", op: "quarantine" },
+      { label: "Delete permanently", op: "delete" },
+      { label: "Cancel", op: "cancel" },
+    ];
+    const picked = await ctx.ui.select(
+      `Resolve "${name}" — keep ${winnerLabel}. What about the other ${losers.length} cop${losers.length === 1 ? "y" : "ies"}?`,
+      OPTIONS.map((o) => o.label),
+    );
+    const choice = OPTIONS.find((o) => o.label === picked)?.op;
+    if (!choice || choice === "cancel") return;
+
+    if (choice === "delete") {
+      const confirmed = await ctx.ui.confirm(
+        "Delete skill folders?",
+        `Permanently delete ${losers.length} skill folder(s) for "${name}". This cannot be undone (unless under git).`,
+      );
+      if (!confirmed) return;
+    }
+
+    const results = applyFileAction(
+      choice,
+      losers.map((l) => l.filePath),
+    );
+    const ok = results.filter((r) => r.ok);
+    const failed = results.filter((r) => !r.ok);
+    const lines = [
+      `${choice} ${ok.length}/${results.length} copy(ies) for "${name}".`,
+      ...ok.map((r) => `  ✓ ${r.from}${r.to ? ` → ${r.to}` : ""}`),
+      ...failed.map((r) => `  ⚠ ${r.from}: ${r.error}`),
+    ];
+    ctx.ui.notify(
+      `${lines.join("\n")}${ok.length > 0 ? "\nReloading…" : ""}`,
+      failed.length > 0 ? "warning" : "info",
+    );
+    if (ok.length > 0) await ctx.reload();
+  }
+
+  /**
+   * Compile staged funnel actions through the Resolution Policy into native
+   * settings.skills[] ops + Source Registry writes (Compiled Skill
+   * Resolution), apply them, then reload so Pi re-runs its loader.
+   */
+  async function applyFunnelResult(
+    ctx: ExtensionCommandContext,
+    catalog: SkillCatalog,
+    actions: FunnelAction[],
   ): Promise<void> {
     const buckets: Record<"global" | "project", { add: string[]; remove: string[] }> = {
       global: { add: [], remove: [] },
@@ -508,52 +595,59 @@ export default function sfSkills(pi: ExtensionAPI) {
     };
     const skipped: string[] = [];
     const expansions: string[] = [];
-
-    for (const t of result.toggles) {
-      const bucket = buckets[t.scope];
-      if (t.enable) {
-        // Native pi-aware enable: if the file is already covered by a
-        // wider settings entry, the toggle is a no-op (and would have
-        // produced a duplicate-load warning before this fix).
-        const plan = planEnable({ skillPath: t.skillPath, scope: t.scope, cwd: ctx.cwd });
-        if (plan.alreadyCovered) {
-          // Cross-scope: pi loads from global+project additively, so a skill
-          // already covered in EITHER scope is loaded for this session.
-          // Adding it again would only produce a name-collision warning.
-          const where = plan.coveredInScope ?? t.scope;
-          skipped.push(
-            where === t.scope
-              ? `${t.name} → ${t.scope}: already wired in this scope`
-              : `${t.name} → ${t.scope}: already loaded via ${where} settings (would duplicate)`,
-          );
-          continue;
-        }
-        for (const value of plan.add) bucket.add.push(value);
-      } else {
-        // Native pi-aware disable: if a parent dir covers the file, expand
-        // it into per-file entries minus the disabled one. If neither the
-        // file nor a parent is wired (auto-discovered or bundled), refuse.
-        const plan = planDisable({ skillPath: t.skillPath, scope: t.scope, cwd: ctx.cwd });
-        if (plan.coverage === "none") {
-          skipped.push(
-            `${t.name} → ${t.scope}: not wired in this scope (auto-discovered or bundled)`,
-          );
-          continue;
-        }
-        for (const value of plan.remove) bucket.remove.push(value);
-        for (const value of plan.add) bucket.add.push(value);
-        if (plan.coverage === "parent" && plan.expandedFrom) {
-          expansions.push(
-            `${plan.expandedFrom} → ${plan.expandedSiblingCount ?? 0} per-file entr${
-              plan.expandedSiblingCount === 1 ? "y" : "ies"
-            } (so ${t.name} can be excluded)`,
-          );
-        }
+    const pushOps = (ops: ScopeOps[]) => {
+      for (const op of ops) {
+        buckets[op.scope].add.push(...op.add);
+        buckets[op.scope].remove.push(...op.remove);
       }
-    }
+    };
 
-    for (const c of result.addCandidates) {
-      buckets[c.scope].add.push(c.settingsValue);
+    for (const action of actions) {
+      if (action.kind === "skill-gate") {
+        const skill = catalog.skills.find((s) => s.filePath === action.skillPath);
+        if (!skill) {
+          skipped.push(`${action.name}: no longer in catalog`);
+          continue;
+        }
+        const plan = planSkillGate({
+          skill,
+          enable: action.enable,
+          scope: action.scope,
+          cwd: ctx.cwd,
+        });
+        if (plan.blocked) {
+          skipped.push(`${action.name} → ${action.scope}: ${plan.note ?? plan.blocked}`);
+          continue;
+        }
+        pushOps(plan.ops);
+        if (plan.expandedFrom) expansions.push(...plan.expandedFrom);
+      } else if (action.kind === "conflict-winner") {
+        const conflict = catalog.conflicts.find((c) => c.name === action.name);
+        if (!conflict) {
+          skipped.push(`${action.name}: conflict no longer present`);
+          continue;
+        }
+        const plan = planConflictWinner({ conflict, winnerPath: action.winnerPath, cwd: ctx.cwd });
+        if (plan.blocked) {
+          skipped.push(`${action.name}: ${plan.note ?? plan.blocked}`);
+          continue;
+        }
+        pushOps(plan.ops);
+        if (plan.expandedFrom) expansions.push(...plan.expandedFrom);
+      } else if (action.kind === "source-gate") {
+        const source = catalog.sources.find((s) => s.id === action.sourceId);
+        if (action.seen) buckets[action.scope].add.push(action.value);
+        else buckets[action.scope].remove.push(action.value);
+        // Persist the gate only for custom/managed roots so a seen-but-empty
+        // source survives reload. Harness/default gate is reconstructable
+        // from settings wiring alone.
+        if (source && (source.kind === "custom" || source.kind === "managed")) {
+          setSourceGate(action.scope, action.sourceId, action.seen ? "seen" : "off", ctx.cwd);
+        }
+      } else if (action.kind === "add-source") {
+        buckets[action.scope].add.push(action.value);
+        upsertSource(action.scope, { value: action.value, kind: "custom", gate: "seen" }, ctx.cwd);
+      }
     }
 
     const summary: string[] = [];
@@ -561,17 +655,12 @@ export default function sfSkills(pi: ExtensionAPI) {
       for (const scope of ["global", "project"] as const) {
         const b = buckets[scope];
         if (b.add.length === 0 && b.remove.length === 0) continue;
-        const updated = updateSkillSources({
-          add: b.add,
-          remove: b.remove,
-          scope,
-          cwd: ctx.cwd,
-        });
+        const updated = updateSkillSources({ add: b.add, remove: b.remove, scope, cwd: ctx.cwd });
         summary.push(`${scope} skills[] (${updated.skills.length})`);
       }
     } catch (error) {
       ctx.ui.notify(
-        `Failed to apply skill toggles: ${error instanceof Error ? error.message : String(error)}`,
+        `Failed to apply funnel changes: ${error instanceof Error ? error.message : String(error)}`,
         "warning",
       );
       return;
@@ -579,7 +668,7 @@ export default function sfSkills(pi: ExtensionAPI) {
 
     const lines: string[] = [];
     if (summary.length > 0) lines.push(`Applied: ${summary.join(", ")}`);
-    for (const e of expansions) lines.push(`Expanded ${e}`);
+    for (const e of expansions) lines.push(`Expanded ${e} (minus-one to exclude a skill)`);
     for (const s of skipped) lines.push(`Skipped ${s}`);
 
     if (summary.length === 0) {

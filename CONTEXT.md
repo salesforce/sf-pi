@@ -88,6 +88,50 @@ _Avoid_: boot logo, decorative header, startup dashboard
 The passive floating indicator owned by the SF Skills Bundled Extension that shows skills currently active in the LLM context. Historical skill usage belongs in the command and summary surfaces, not in the persistent HUD.
 _Avoid_: skill history panel, permanent session badge, skills manager
 
+**Skill Funnel**:
+The staged governance model the SF Skills Bundled Extension presents over skills: the full on-disk catalog narrows through which sources Pi should see, then which skills are enabled globally, then which are enabled for the current project, ending in the effective set Pi loads with conflicts resolved. It is a view-and-control surface over the **Pi Runtime** skill loader, never a second loader.
+_Avoid_: replacement skill loader, hidden enable state, per-skill loader fork
+
+**Compiled Skill Resolution**:
+The principle that every SF Skills enable, disable, and conflict-winner decision is compiled down to native **Pi Runtime** `settings.skills[]` entries (global or project) rather than persisted as a shadow runtime state the loader does not understand. SF Skills owns the policy; Pi stays the single loader.
+_Avoid_: shadow enabled-set the loader ignores, renamed SKILL.md files, edited frontmatter, symlink mirror as the effective set
+
+**Source Gate**:
+The **Skill Funnel** stage that decides whether a whole skill root — a harness directory such as `~/.claude/skills`, or a custom path — is allowed to contribute candidates at all. A source being seen does not enable its skills; it only lets them reach the **Skill Gate**.
+_Avoid_: per-skill toggle, treating an enabled source as all-skills-on
+
+**Skill Gate**:
+The **Skill Funnel** stage that decides whether an individual skill is wired, evaluated separately at global and project scope. Enabling a subset of a seen source compiles to explicit per-skill `settings.skills[]` entries rather than the parent root.
+_Avoid_: whole-root toggle, source-level granularity, single shared global/project decision
+
+**Skill Conflict Resolution**:
+How SF Skills handles two or more skills that share a `name` across sources. Resolution is by exclusion: the chosen winner stays wired and every losing root is expanded so its copy never loads, clearing the **Pi Runtime** collision entirely. Reordering is not used because auto-discovered defaults always load first and array order across scopes is not user-controllable.
+_Avoid_: precedence list that leaves collisions in place, reordering defaults, renaming or moving SKILL.md to win
+
+**Resolvable Conflict**:
+A skill-name collision where every copy lives in a settings-wired source, so **Skill Conflict Resolution** can pick a winner and exclude the rest.
+_Avoid_: treating every collision as resolvable
+
+**Report-Only Conflict**:
+A skill-name collision where at least one copy lives in an auto-discovered default root (`~/.pi/agent/skills`, `.pi/skills`, `.agents/skills`). The default always wins, so it cannot be resolved by rewiring `settings.skills[]`. SF Skills reports it and offers **Consented File Resolution** as the way to clear it.
+_Avoid_: silent loss, automatic file move, claiming a winner that settings rewiring cannot enforce
+
+**Consented File Resolution**:
+The explicit, user-chosen path that clears a conflict SF Skills cannot fix through `settings.skills[]` by acting on the losing copy's files — disable in place (rename out of discovery), move to quarantine, or delete — always behind a per-conflict choice and a confirm for delete. It is separate from the automatic **Compiled Skill Resolution** path, which never mutates files. See ADR-0018.
+_Avoid_: automatic file mutation, silent deletion, blurring with Compiled Skill Resolution
+
+**Source Registry**:
+The small persisted record of which skill roots SF Skills knows about — the built-in harness roots plus user-added custom paths — and each one's seen/off **Source Gate** state, kept per scope. It exists because a source that is seen but has no enabled skills leaves no `settings.skills[]` trace and would otherwise be forgotten. **Skill Gate** and conflict-winner state are not stored here; they are derived from `settings.skills[]`.
+_Avoid_: shadow enabled-set, duplicate of settings.skills[], per-skill state store
+
+**Managed Source**:
+A skill root that SF Skills itself clones and can self-update — currently the curated `forcedotcom/afv-library` checkout — marked with a `.sf-skills-managed` sentinel so SF Skills only ever pulls or deletes trees it created. It is one kind of entry in the **Source Registry**, distinct from a plain registered pointer to a user-owned root.
+_Avoid_: standalone installer feature, mutating user-owned checkouts, treating the clone as the effective set
+
+**Skill Catalog**:
+The single resolved model of the whole skill world at a moment: every skill found across every source, each tagged with where it sits in the **Skill Funnel** — seen or gated out, enabled at global or project scope, and whether it is a conflict winner, loser, or unaffected. It is built from the **Pi Runtime** loader result (winners plus collision diagnostics) cross-referenced with on-disk roots and `settings.skills[]`, and every SF Skills surface reads from it instead of recomputing.
+_Avoid_: winners-only inventory, per-surface ad hoc scans, a second skill loader
+
 **Pi Runtime**:
 The upstream pi coding-agent process that hosts SF Pi and provides package loading, settings, skills, extensions, and the terminal UI.
 _Avoid_: SF Pi, bundled extension, Salesforce runtime
@@ -394,6 +438,16 @@ _Avoid_: every available gateway model, benchmark target, broad live-test suite
 - **Cooldown Active** explains why **Pi Runtime** may be current against the **Policy-Visible Latest** while a newer absolute release exists; it should not appear when no newer absolute release is being filtered.
 - If a **Package-Manager Release-Age Policy** is detected but **Policy-Visible Latest** cannot be computed, **Pi Runtime** **Release Freshness** should degrade to unknown instead of reporting update-available from the absolute latest.
 - The **SF Skills HUD** is a **Runtime Surface** owned by the SF Skills Bundled Extension.
+- The **Skill Funnel** is the governance model the SF Skills Bundled Extension presents over the **Pi Runtime** skill loader.
+- The **Skill Funnel** is realized through **Compiled Skill Resolution** so the **Pi Runtime** remains the single skill loader.
+- The **Skill Funnel** applies a **Source Gate** then a **Skill Gate**, with the **Skill Gate** evaluated independently at global and project scope.
+- The **Skill Funnel** uses **Skill Conflict Resolution** to collapse a colliding skill name to one effective copy.
+- **Skill Conflict Resolution** classifies each collision as a **Resolvable Conflict** or a **Report-Only Conflict** depending on whether any copy lives in an auto-discovered default root.
+- A **Report-Only Conflict** is cleared through **Consented File Resolution**, which is explicit and confirm-gated, never part of automatic **Compiled Skill Resolution**.
+- The **Source Registry** persists **Source Gate** state and custom paths; **Skill Gate** and conflict-winner state are derived from `settings.skills[]`.
+- A **Managed Source** is a self-updating, sentinel-marked entry in the **Source Registry**.
+- The **Skill Catalog** is the single resolved model every SF Skills surface reads from; it is assembled from the **Pi Runtime** loader result cross-referenced with the **Source Registry** and `settings.skills[]`.
+- The SF Skills Bundled Extension is the single home for the **Skill Funnel**; the **Manager Surface** `/sf-pi skills` is demoted to a read-only summary that points to it, and both read shared **Source Registry** primitives from `lib/common`.
 - The **Manager Surface** controls the enabled state and configuration entry points for **Bundled Extensions**.
 - **SF Brain** is a **Bundled Extension** that provides the **Salesforce Operator Kernel**.
 - **Critical-Path Gateway Models** use small, gated live confidence checks only when gateway transport behavior changes; this does not make every gateway model part of a broad live-test suite.
