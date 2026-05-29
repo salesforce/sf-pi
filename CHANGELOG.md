@@ -517,6 +517,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.152.1](https://github.com/salesforce/sf-pi/compare/v0.152.0...v0.152.1) (2026-05-29)
+
+
+### Bug Fixes
+
+* **sf-skills:** stop input freeze after applying funnel changes ([6f7c4cd](https://github.com/salesforce/sf-pi/commit/6f7c4cd3a0d364b03212d0f5b794d3d9d5bfdf96))
+
 ## [0.152.0](https://github.com/salesforce/sf-pi/compare/v0.151.0...v0.152.0) (2026-05-29)
 
 
