@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.151.0-2026-05-28",
-  "latestVersion": "0.151.0",
+  "revision": "release-0.152.0-2026-05-29",
+  "latestVersion": "0.152.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.151.0",
+      "id": "release-0.152.0",
       "kind": "update",
-      "title": "sf-pi v0.151.0 — sf-llm-gateway-internal: promote Opus 4.8 to default model",
-      "publishedAt": "2026-05-28T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.151.0",
+      "title": "sf-pi v0.152.0 — sf-skills: rewrite as a Skill Funnel governance manager",
+      "publishedAt": "2026-05-29T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.152.0",
       "severity": "info",
-      "body": "sf-llm-gateway-internal: promote Opus 4.8 to default model"
+      "body": "sf-skills: rewrite as a Skill Funnel governance manager — sf-skills: remove non-null assertions to satisfy eslint --max-warnings=0"
     },
     {
       "id": "pi-0.73-required",
