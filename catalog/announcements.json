@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.152.2-2026-05-29",
-  "latestVersion": "0.152.2",
+  "revision": "release-0.152.3-2026-05-29",
+  "latestVersion": "0.152.3",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.152.2",
+      "id": "release-0.152.3",
       "kind": "update",
-      "title": "sf-pi v0.152.2 — cancel deferred timers on session_shutdown so reload can't crash pi",
+      "title": "sf-pi v0.152.3 — sf-skills: label managed afv install, stop vanish-on-disable, add scope consolidate",
       "publishedAt": "2026-05-29T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.152.2",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.152.3",
       "severity": "info",
-      "body": "cancel deferred timers on session_shutdown so reload can't crash pi"
+      "body": "sf-skills: label managed afv install, stop vanish-on-disable, add scope consolidate"
     },
     {
       "id": "pi-0.73-required",
