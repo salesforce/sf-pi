@@ -67,6 +67,31 @@
       "Artifact-first screenshots so the transcript stays readable."
     ]
   },
+  "sf-code-analyzer": {
+    "shortName": "Code Analyzer",
+    "intentGroup": "Build agents",
+    "promise": "Run Salesforce Code Analyzer scans and setup checks from pi with agent-friendly report summaries and deferred quality feedback.",
+    "bestFor": "Code quality and security scans",
+    "benefits": [
+      "Checks Code Analyzer setup without leaving pi.",
+      "Runs explicit scans through the supported Salesforce CLI contract.",
+      "Adds readiness-gated deferred scans after agent edit passes.",
+      "Keeps full reports as artifacts while giving agents actionable summaries."
+    ],
+    "tryFirst": { "label": "Open Code Analyzer status", "code": "/sf-code-analyzer" },
+    "useCases": [
+      "Verify Code Analyzer plugin and engine prerequisites.",
+      "Run recommended, security, AppExchange, or custom rule-selector scans.",
+      "List rules before choosing scan selectors.",
+      "Generate effective Code Analyzer configuration for review.",
+      "Run explicit ApexGuru analysis for one Apex file when the target org supports it."
+    ],
+    "whatYouGet": [
+      "A `code_analyzer` family tool for doctor, run, rules, config, and last-report workflows.",
+      "Session-scoped JSON/YAML report artifacts outside the project by default.",
+      "A standard SF Pi command panel and aggregated doctor contribution."
+    ]
+  },
   "sf-data-explorer": {
     "shortName": "Data Explorer",
     "intentGroup": "Work with Salesforce orgs",

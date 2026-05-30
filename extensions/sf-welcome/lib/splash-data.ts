@@ -32,6 +32,7 @@ import { collectCaBundleNudge } from "./ca-bundle-nudge.ts";
 import { readCachedNodeCertStatus } from "./node-cert-cache.ts";
 import { collectInitialPiReleaseStatus, detectSfPiReleaseStatus } from "./release-status.ts";
 import { summarizeAvailableSkillSources } from "../../../lib/common/skill-sources/skill-sources.ts";
+import { readCodeAnalyzerReadiness } from "../../../lib/common/code-analyzer-status/store.ts";
 import { getTelemetryState } from "../../../lib/common/privacy/state.ts";
 import {
   runDoctorDiagnostics,
@@ -366,6 +367,10 @@ export function collectInitialSplashData(
     sfCli: { installed: false, freshness: "checking", loading: true },
     sfPiRelease: detectSfPiReleaseStatus(cwd),
     piRelease: collectInitialPiReleaseStatus(),
+    codeAnalyzer:
+      cwd && isSfPiExtensionEnabled(cwd, "sf-code-analyzer")
+        ? readCodeAnalyzerReadiness()
+        : undefined,
     nodeCert: { kind: "checking", loading: true },
     doctor:
       options.doctor ??
@@ -472,6 +477,9 @@ export function collectSplashData(
     sfCli: undefined,
     sfPiRelease: detectSfPiReleaseStatus(cwd),
     piRelease: collectInitialPiReleaseStatus(),
+    codeAnalyzer: isSfPiExtensionEnabled(cwd, "sf-code-analyzer")
+      ? readCodeAnalyzerReadiness()
+      : undefined,
     nodeCert,
     whatsNew,
     announcements,

@@ -11,6 +11,7 @@ import type {
   KeyConflictWarning,
 } from "../../../lib/common/monthly-usage/store.ts";
 import type { SlackStatusSnapshot } from "../../../lib/common/slack-status/store.ts";
+import type { CodeAnalyzerReadinessState } from "../../../lib/common/code-analyzer-status/store.ts";
 
 export interface RecentSession {
   name: string;
@@ -256,6 +257,8 @@ export interface SplashData {
   /** Pi runtime release freshness. Local/cache-only at startup, then
    *  refreshed by a deferred bounded fetch that respects Pi's offline flags. */
   piRelease?: ReleaseStatusInfo;
+  /** Cached Code Analyzer readiness. Read-only at startup; refreshed by sf-code-analyzer. */
+  codeAnalyzer?: CodeAnalyzerReadinessState;
   /** Node custom-CA status populated cache-first, then refreshed on a
    *  deferred timer. Never performs a live TLS probe during startup. */
   nodeCert?: NodeCertStatusInfo;

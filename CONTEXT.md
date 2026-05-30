@@ -236,6 +236,42 @@ _Avoid_: plugin, MCP wrapper, endpoint dump
 An experimental UI Bundled Extension for keyboard-first, read-only human exploration of Salesforce data through SOQL, SOSL, and Data 360 SQL. It is a TUI explorer, not an LLM tool and not a replacement for **SF Data 360** capabilities.
 _Avoid_: Data 360 capability, agent query tool, write-capable data manager, replacement for SF Data 360
 
+**SF Code Analyzer**:
+A planned SF Pi **Bundled Extension** for Salesforce Code Analyzer workflows inside pi, using the canonical extension id `sf-code-analyzer` and command `/sf-code-analyzer`.
+_Avoid_: sf-codeanalyzer, Code Analyzer plugin, scanner extension
+
+**Deferred Code Analyzer Quality Pass**:
+An automatic **SF Code Analyzer** workflow that collects supported files changed by the agent, waits until the agent finishes the current response, then runs a grouped targeted scan and optionally steers a repair pass.
+_Avoid_: inline edit feedback, save-time project analysis, hidden quality gate, scan after every file edit
+
+**Targeted Code Analyzer Scan**:
+A narrow **SF Code Analyzer** workflow scoped to specific changed source files, intended to give timely advisory feedback without replacing explicit full-project scans.
+_Avoid_: full scan, hidden quality gate, save-time project analysis
+
+**Explicit Code Analyzer Scan**:
+A user- or agent-requested **SF Code Analyzer** workflow for project-wide, security, AppExchange, or broad engine coverage where scan cost and scope should be visible before execution.
+_Avoid_: automatic background sweep, implicit gate, hidden CI substitute
+
+**Quality-Biased Code Analyzer Feedback**:
+The **SF Code Analyzer** feedback posture where users always see compact scan activity, while agents receive enough violation context, rationale, and fix data to act well without receiving unbounded raw reports.
+_Avoid_: silent scan, raw report dump, token-minimal at the cost of repair quality
+
+**Code Analyzer Report Artifact**:
+A session-scoped output file produced by **SF Code Analyzer** for full-fidelity scan results, referenced from transcript rows and tool details instead of being pasted into prompt context.
+_Avoid_: source-controlled report by default, global scan database, hidden temp file
+
+**Progress-Gated Code Analyzer Repair Loop**:
+An automatic scan→repair cycle owned by **SF Code Analyzer** that continues without a fixed numeric cap only while file edits or violation signatures show progress.
+_Avoid_: infinite repair loop, fixed-pass quality ceiling, retry regardless of progress
+
+**ApexGuru Auto Insight**:
+A default-on-when-available **SF Code Analyzer** stage that uses cached org readiness to run ApexGuru sequentially on changed production Apex files after the local deferred scan.
+_Avoid_: startup ApexGuru probe, explicit-only ApexGuru, heuristic file picker, automatic test-class scan, severity-gated ApexGuru
+
+**Code Analyzer Install Recommendation**:
+A cache-first, dismissible **SF Code Analyzer** onboarding nudge that recommends installing or updating the official Code Analyzer CLI plugin and prerequisites without adding startup latency.
+_Avoid_: mandatory startup install, hidden first-scan installation, boot-blocking probe
+
 **SF Browser**:
 The Bundled Extension that gives agents a compact Salesforce-aware affordance layer for `agent-browser` in last-mile UI work that Salesforce APIs cannot cover.
 _Avoid_: generic browser wrapper, Playwright replacement, UI testing framework, browser primitive clone
@@ -477,6 +513,14 @@ _Avoid_: every available gateway model, benchmark target, broad live-test suite
 - **Critical-Path Gateway Models** use small, gated live confidence checks only when gateway transport behavior changes; this does not make every gateway model part of a broad live-test suite.
 - **SF Brain** routes Data 360 work to **SF Data 360** without embedding Data 360 operation details.
 - **SF Data 360** is a **Bundled Extension** with Data Cloud / Data 360 **Runtime Surfaces**.
+- **SF Code Analyzer** is a **Bundled Extension** with code-analysis **Runtime Surfaces**.
+- A **Deferred Code Analyzer Quality Pass** uses one or more **Targeted Code Analyzer Scans** after the agent completes the current edit pass.
+- A **Targeted Code Analyzer Scan** complements, but does not replace, an **Explicit Code Analyzer Scan**.
+- **Quality-Biased Code Analyzer Feedback** governs both human-visible scan summaries and LLM-visible repair guidance.
+- A **Progress-Gated Code Analyzer Repair Loop** may follow a **Deferred Code Analyzer Quality Pass** when actionable findings remain.
+- An **ApexGuru Auto Insight** may run after the local **Deferred Code Analyzer Quality Pass** even when local high-severity findings remain.
+- **Code Analyzer Report Artifacts** preserve full scan output without making the project tree the default storage location.
+- A **Code Analyzer Install Recommendation** may appear in SF Pi startup surfaces without making **SF Code Analyzer** part of the boot critical path.
 - **SF Browser** is a **Bundled Extension** with browser **Runtime Surfaces** backed by `agent-browser`.
 - **SF Browser** owns Salesforce context, safe org opening, artifact handling, and guidance; `agent-browser` owns generic browser execution.
 - **SF Browser** exposes a small v1 **Runtime Surface**: one cache-first `/sf-browser` command panel and a **Hot-Path Browser Tool Set**.
@@ -534,6 +578,7 @@ _Avoid_: every available gateway model, benchmark target, broad live-test suite
 ## Flagged ambiguities
 
 - "plugin" is ambiguous because pi calls them extensions; resolved: use **Bundled Extension** for SF Pi-owned extensions.
+- "sf-codeanalyzer" conflicts with SF Pi's kebab-case extension-id convention; resolved: use `sf-code-analyzer` and `/sf-code-analyzer`.
 - "durable context" is ambiguous because it could mean LLM prompt context, Salesforce context variables, or disk artifacts; resolved: use **Branch-Durable Tool State** for branch-aware state reconstructed from tool-result details.
 - "brain" could mean an all-purpose knowledge base; resolved: **SF Brain** stays compact and routes to the **SF Pi Reference Map** instead of loading broad Salesforce content eagerly.
 - "GitHub documentation link" could mean a wiki, README-only docs, or a static site; resolved: use **Documentation Site** for the VitePress/GitHub Pages surface.

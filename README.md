@@ -223,6 +223,7 @@ Every slash command exposed by a bundled extension. See each extension README fo
 | `/sf-llm-gateway`   | [SF LLM Gateway Internal](./extensions/sf-llm-gateway-internal/) | provider   |
 | `/sf-agentscript`   | [SF Agent Script](./extensions/sf-agentscript/)                  | agent-tool |
 | `/sf-browser`       | [SF Browser](./extensions/sf-browser/)                           | agent-tool |
+| `/sf-code-analyzer` | [SF Code Analyzer](./extensions/sf-code-analyzer/)               | agent-tool |
 | `/sf-data360`       | [SF Data 360](./extensions/sf-data360/)                          | agent-tool |
 | `/sf-herdr`         | [SF Herdr](./extensions/sf-herdr/)                               | agent-tool |
 | `/sf-slack`         | [SF Slack](./extensions/sf-slack/)                               | agent-tool |
@@ -381,6 +382,7 @@ For the canonical machine-readable bundle list, see [`catalog/index.json`](./cat
 | [SF LLM Gateway Internal](./extensions/sf-llm-gateway-internal/) | provider   | on        | Salesforce LLM Gateway provider with model discovery                                                                                                                                                                                                                                                                                   |
 | [SF Agent Script](./extensions/sf-agentscript/)                  | agent-tool | on        | Single-plugin lifecycle for `.agent` files: in-process compile-on-save diagnostics, an LLM-callable compile tool, multi-turn eval/regression testing against the Salesforce Evaluation API, and a placeholder for the future Agent Script LSP.                                                                                         |
 | [SF Browser](./extensions/sf-browser/)                           | agent-tool | on        | Salesforce-aware browser automation for last-mile UI work using agent-browser.                                                                                                                                                                                                                                                         |
+| [SF Code Analyzer](./extensions/sf-code-analyzer/)               | agent-tool | on        | Salesforce Code Analyzer workflows for pi: setup readiness, explicit scans, rule discovery, config generation, report artifacts, deferred agent quality passes, and ApexGuru analysis.                                                                                                                                                 |
 | [SF Data 360](./extensions/sf-data360/)                          | agent-tool | on        | Data Cloud/Data 360 capability facade and direct REST helper — d360 search/examples/execute, d360_api, compact metadata discovery, readiness probe, and progressive-disclosure references                                                                                                                                              |
 | [SF Herdr](./extensions/sf-herdr/)                               | agent-tool | on        | Dynamic Herdr lane planning for Salesforce workflows without replacing the upstream Herdr tool.                                                                                                                                                                                                                                        |
 | [SF Slack](./extensions/sf-slack/)                               | agent-tool | on        | Slack integration — search messages, read threads, browse channel history                                                                                                                                                                                                                                                              |
@@ -609,6 +611,13 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 - Snapshot refs fail
 - Screenshots are too heavy
 - A browser action is outside the hot path
+
+**[SF Code Analyzer](./extensions/sf-code-analyzer/#troubleshooting)**
+
+- `code_analyzer doctor` says the plugin is missing
+- PMD, CPD, or SFGE rules fail
+- Flow Scanner rules fail
+- A scan wrote files I did not expect
 
 **[SF Data 360](./extensions/sf-data360/#troubleshooting)**
 

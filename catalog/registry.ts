@@ -42,6 +42,18 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
     events: ["session_start","session_shutdown","resources_discover"],
   },
   {
+    id: "sf-code-analyzer",
+    name: "SF Code Analyzer",
+    description: "Salesforce Code Analyzer workflows for pi: setup readiness, explicit scans, rule discovery, config generation, report artifacts, deferred agent quality passes, and ApexGuru analysis.",
+    file: "extensions/sf-code-analyzer/index.ts",
+    category: "agent-tool",
+    maturity: "experimental",
+    defaultEnabled: true,
+    commands: ["/sf-code-analyzer"],
+    tools: ["code_analyzer"],
+    events: ["session_start","session_shutdown"],
+  },
+  {
     id: "sf-data-explorer",
     name: "SF Data Explorer",
     description: "Read-only interactive TUI explorer for SOQL, SOSL, and Data 360 SQL using sf-pi Salesforce transport plumbing.",

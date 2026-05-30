@@ -173,6 +173,57 @@
     "srcLoc": 3326
   },
   {
+    "id": "sf-code-analyzer",
+    "name": "SF Code Analyzer",
+    "description": "Salesforce Code Analyzer workflows for pi: setup readiness, explicit scans, rule discovery, config generation, report artifacts, deferred agent quality passes, and ApexGuru analysis.",
+    "category": "agent-tool",
+    "maturity": "experimental",
+    "defaultEnabled": true,
+    "alwaysActive": false,
+    "configurable": false,
+    "commands": [
+      "/sf-code-analyzer"
+    ],
+    "providers": [],
+    "tools": [
+      "code_analyzer"
+    ],
+    "events": [
+      "session_start",
+      "session_shutdown"
+    ],
+    "docs": {
+      "summary": "Wraps the supported `sf code-analyzer` CLI contract with a pi-native command panel and one `code_analyzer` family tool for doctor, run, rules, config, ApexGuru, and last-report workflows. Reports are written as session-scoped artifacts outside the project tree by default. Deferred post-agent local quality scans are readiness-gated and run after the agent finishes an edit pass.",
+      "primaryFiles": [
+        "index.ts",
+        "lib/code_analyzer-tool.ts",
+        "lib/auto-scan.ts",
+        "lib/cli.ts",
+        "lib/apexguru.ts",
+        "lib/apexguru-readiness.ts",
+        "lib/display.ts",
+        "lib/artifacts.ts",
+        "lib/readiness.ts",
+        "lib/settings.ts",
+        "lib/types.ts",
+        "lib/extension-doctor.ts"
+      ],
+      "stateFiles": [
+        "<globalAgentDir>/sf-pi/code-analyzer/sessions/<workspace-session-id>/*"
+      ],
+      "safety": [
+        "Runs Code Analyzer through the supported Salesforce CLI plugin instead of importing engine internals.",
+        "Writes default reports outside the project tree so automatic or explicit scans do not dirty source control unless output_files are supplied.",
+        "Doctor/setup checks are command/tool driven; no Code Analyzer subprocess runs on the startup critical path.",
+        "V1 does not apply fixes automatically; fixes and suggestions are surfaced for the agent to apply with normal pi file-editing tools."
+      ]
+    },
+    "entry": "extensions/sf-code-analyzer/index.ts",
+    "hasReadme": true,
+    "hasTests": true,
+    "srcLoc": 1701
+  },
+  {
     "id": "sf-data-explorer",
     "name": "SF Data Explorer",
     "description": "Read-only interactive TUI explorer for SOQL, SOSL, and Data 360 SQL using sf-pi Salesforce transport plumbing.",
@@ -757,6 +808,6 @@
     "entry": "extensions/sf-welcome/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 5341
+    "srcLoc": 5386
   }
 ]

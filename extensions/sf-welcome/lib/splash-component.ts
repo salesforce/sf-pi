@@ -434,6 +434,27 @@ function sfSkillsActionHint(skills: SplashData["sfSkills"]): string | null {
   return null;
 }
 
+function formatCodeAnalyzerStatusValue(data: SplashData): string {
+  const status = data.codeAnalyzer;
+  if (!status || status.status === "unknown") {
+    return `${SF_ORANGE("○")} ${SF_ORANGE("Install recommended")}`;
+  }
+  if (status.status === "ready") {
+    const suffix = status.pluginVersion ? ` ${MUTED(`(${status.pluginVersion})`)}` : "";
+    return `${SF_GREEN("✓")} ${SF_GREEN("Ready")}${suffix}`;
+  }
+  if (status.status === "partial") {
+    return `${SF_ORANGE("!")} ${SF_ORANGE("Partial setup")} ${MUTED("· /sf-code-analyzer doctor")}`;
+  }
+  return `${SF_ORANGE("↑")} ${SF_ORANGE("Install recommended")}`;
+}
+
+function codeAnalyzerActionHint(data: SplashData): string | null {
+  if (!data.codeAnalyzer) return null;
+  if (data.codeAnalyzer.status === "ready") return null;
+  return "/sf-code-analyzer doctor";
+}
+
 function formatSfCliStatusValue(data: SplashData, mode: GlyphMode): string {
   const cli = data.sfCli;
 
@@ -699,6 +720,22 @@ function buildLeftColumn(
   // the welcome splash. Keep this directly under the gateway row so both
   // environment statuses read as one aligned block.
   lines.push(formatGlyphInfoRow("cli", mode, "SF CLI", formatSfCliStatusValue(data, mode)));
+
+  if (data.codeAnalyzer) {
+    lines.push(
+      formatGlyphInfoRow(
+        "codeAnalyzer",
+        mode,
+        "Code Analyzer",
+        formatCodeAnalyzerStatusValue(data),
+      ),
+    );
+    const codeAnalyzerHint = codeAnalyzerActionHint(data);
+    if (codeAnalyzerHint) {
+      const truncated = truncateToWidth(codeAnalyzerHint, Math.max(10, colWidth - 4), "…");
+      lines.push(`   ${MUTED(`→ ${truncated}`)}`);
+    }
+  }
 
   // Node custom-CA posture. Cache-first like SF CLI / SF Skills: the row can
   // say "Checking" on first paint, then update once the deferred local-only

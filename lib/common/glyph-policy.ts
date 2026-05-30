@@ -158,6 +158,7 @@ export const GLYPH_TABLE = {
   slack: { emoji: "💬", ascii: ">" },
   gateway: { emoji: "🔗", ascii: "~" },
   cli: { emoji: "🧰", ascii: ">" },
+  codeAnalyzer: { emoji: "🧪", ascii: "ca" },
   nodeCert: { emoji: "🔐", ascii: "#" },
   cloud: { emoji: "☁", ascii: "*" }, // Salesforce Environment / Salesforce AI
   loaded: { emoji: "📦", ascii: "[]" },
