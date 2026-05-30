@@ -40,7 +40,10 @@ import { buildExecFn } from "../../lib/common/exec-adapter.ts";
 import { registerExtensionDoctor } from "../../lib/common/doctor/registry.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 import { isSfPiExtensionEnabled } from "../../lib/common/sf-pi-extension-state.ts";
-import { formatApexGuruSetupRunbook } from "./lib/apexguru-guidance.ts";
+import {
+  buildApexGuruBrowserFollowUp,
+  formatApexGuruSetupRunbook,
+} from "./lib/apexguru-guidance.ts";
 import { refreshApexGuruReadiness } from "./lib/apexguru-readiness.ts";
 import { registerDeferredCodeAnalyzerAutoScan } from "./lib/auto-scan.ts";
 import { registerCodeAnalyzerTool } from "./lib/code_analyzer-tool.ts";
@@ -63,6 +66,7 @@ const COMMAND_NAME = "sf-code-analyzer";
 type CodeAnalyzerPanelAction =
   | "status"
   | "doctor"
+  | "setup"
   | "auto-scan-on"
   | "auto-scan-off"
   | "auto-scan-reset"
@@ -74,6 +78,7 @@ type CodeAnalyzerPanelAction =
   | "apexguru-auto-global-on"
   | "apexguru-auto-global-off"
   | "apexguru-setup-help"
+  | "apexguru-setup-start"
   | "help"
   | "close"
   | LifecycleActionId;
@@ -90,6 +95,13 @@ const CODE_ANALYZER_ACTIONS: SfPiCommandAction<CodeAnalyzerPanelAction>[] = [
     label: "Run doctor",
     description: "Check Salesforce CLI, Code Analyzer plugin, Java, and Python prerequisites.",
     group: "Diagnostics",
+  },
+  {
+    value: "setup",
+    label: "Install/update Code Analyzer plugin",
+    description:
+      "Ask for approval, then run `sf plugins install code-analyzer` and refresh readiness.",
+    group: "Setup",
   },
   {
     value: "auto-scan-on",
@@ -158,9 +170,16 @@ const CODE_ANALYZER_ACTIONS: SfPiCommandAction<CodeAnalyzerPanelAction>[] = [
   },
   {
     value: "apexguru-setup-help",
-    label: "Check ApexGuru setup with SF Browser",
+    label: "Show ApexGuru SF Browser runbook",
     description:
       "Show the HIL-gated SF Browser runbook for checking Scale Center / ApexGuru Insights and enabling only if available.",
+    group: "ApexGuru setup",
+  },
+  {
+    value: "apexguru-setup-start",
+    label: "Start ApexGuru setup check with SF Browser",
+    description:
+      "Ask for approval, then queue a visible agent follow-up that uses SF Browser tools according to the runbook.",
     group: "ApexGuru setup",
   },
   {
@@ -370,8 +389,18 @@ async function handleAction(
     return;
   }
 
+  if (action === "setup") {
+    await runSetupAction(pi, ctx, fromPanel);
+    return;
+  }
+
   if (action === "help") {
     await emitOutput(ctx, "SF Code Analyzer help", buildHelpText(), "info", fromPanel);
+    return;
+  }
+
+  if (action === "apexguru-setup-start") {
+    await startApexGuruBrowserSetup(pi, ctx, fromPanel);
     return;
   }
 
@@ -399,6 +428,100 @@ async function handleAction(
     "SF Code Analyzer — unknown subcommand",
     `Unknown /${COMMAND_NAME} subcommand: ${action}. Use status, doctor, or help.`,
     "warning",
+    fromPanel,
+  );
+}
+
+async function runSetupAction(
+  pi: ExtensionAPI,
+  ctx: ExtensionCommandContext,
+  fromPanel: boolean,
+): Promise<void> {
+  const command = "sf plugins install code-analyzer";
+  if (!ctx.hasUI) {
+    await emitOutput(
+      ctx,
+      "SF Code Analyzer setup",
+      `Run this command manually to install or update the Code Analyzer plugin:\n${command}`,
+      "info",
+      fromPanel,
+    );
+    return;
+  }
+
+  const confirmed = await ctx.ui.confirm(
+    "Install/update Code Analyzer plugin?",
+    `This runs:\n${command}\n\nIt changes your local Salesforce CLI plugin state. Continue?`,
+  );
+  if (!confirmed) {
+    await emitOutput(
+      ctx,
+      "SF Code Analyzer setup cancelled",
+      "No changes were made.",
+      "info",
+      fromPanel,
+    );
+    return;
+  }
+
+  ctx.ui.setStatus("sf-code-analyzer", "Code Analyzer setup: installing plugin…");
+  try {
+    const result = await pi.exec("sf", ["plugins", "install", "code-analyzer"], {
+      cwd: ctx.cwd,
+      timeout: 180_000,
+    });
+    const exec = buildExecFn(pi, ctx.cwd);
+    const readiness = await refreshCodeAnalyzerReadiness(exec).catch(() => undefined);
+    await emitOutput(
+      ctx,
+      "SF Code Analyzer setup complete",
+      [
+        `Command: ${command}`,
+        `Exit code: ${result.code}`,
+        readiness ? `Readiness: ${readiness.summary}` : undefined,
+        result.stdout?.trim() ? `stdout:\n${result.stdout.trim()}` : undefined,
+        result.stderr?.trim() ? `stderr:\n${result.stderr.trim()}` : undefined,
+      ]
+        .filter(Boolean)
+        .join("\n\n"),
+      result.code === 0 ? "success" : "warning",
+      fromPanel,
+    );
+  } finally {
+    ctx.ui.setStatus("sf-code-analyzer", undefined);
+  }
+}
+
+async function startApexGuruBrowserSetup(
+  pi: ExtensionAPI,
+  ctx: ExtensionCommandContext,
+  fromPanel: boolean,
+): Promise<void> {
+  const runbook = formatApexGuruSetupRunbook();
+  if (!ctx.hasUI) {
+    await emitOutput(ctx, "ApexGuru setup check with SF Browser", runbook, "info", fromPanel);
+    return;
+  }
+  const confirmed = await ctx.ui.confirm(
+    "Start ApexGuru setup check with SF Browser?",
+    `${runbook}\n\nThis queues a normal agent follow-up that uses sf_browser tools visibly. No Setup enable/accept/save click should happen without a second explicit approval.`,
+  );
+  if (!confirmed) {
+    await emitOutput(
+      ctx,
+      "ApexGuru setup check cancelled",
+      "No browser workflow was started.",
+      "info",
+      fromPanel,
+    );
+    return;
+  }
+  pi.sendUserMessage(buildApexGuruBrowserFollowUp(), { deliverAs: "followUp" });
+  await emitOutput(
+    ctx,
+    "ApexGuru setup check queued",
+    "Queued a visible agent follow-up to use SF Browser according to the ApexGuru setup runbook.",
+    "success",
     fromPanel,
   );
 }
@@ -432,6 +555,7 @@ function buildHelpText(): string {
     "  code_analyzer action='run'          Run a scan and parse JSON output.",
     "  code_analyzer action='config'       Write effective Code Analyzer config.",
     "  code_analyzer action='apexguru'     Run explicit ApexGuru analysis for one Apex file.",
+    "  /sf-code-analyzer setup     Install/update the Code Analyzer CLI plugin after approval.",
     "  code_analyzer action='apexguru_setup_help'  Show the HIL-gated SF Browser runbook.",
     "  code_analyzer action='last_report'  Summarize the latest report on this branch.",
     "",

@@ -119,11 +119,15 @@ extensions/sf-code-analyzer/
     extension-doctor.ts     ← implementation module
     file-classify.ts        ← implementation module
     readiness.ts            ← implementation module
+    report-filter.ts        ← implementation module
     settings.ts             ← implementation module
     transcript.ts           ← implementation module
     types.ts                ← implementation module
   tests/
+    apexguru-readiness.test.ts← unit / smoke test
     display.test.ts         ← unit / smoke test
+    report-filter.test.ts   ← unit / smoke test
+    settings.test.ts        ← unit / smoke test
     smoke.test.ts           ← unit / smoke test
     transcript-format.test.ts← unit / smoke test
   index.ts                  ← Pi extension entry point

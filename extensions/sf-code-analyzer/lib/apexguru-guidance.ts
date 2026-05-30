@@ -17,6 +17,17 @@ export function isApexGuruUnavailableMessage(message: string | undefined): boole
   );
 }
 
+export function buildApexGuruBrowserFollowUp(targetOrg?: string): string {
+  return [
+    "Use SF Browser to check ApexGuru setup for the current Salesforce org.",
+    targetOrg
+      ? `Target org: ${targetOrg}`
+      : "Target org: use the current configured Salesforce target org.",
+    "Follow the ApexGuru setup runbook from code_analyzer action='apexguru_setup_help'.",
+    "Open Setup, search for Scale Center, Scale Insights, and ApexGuru Insights, capture Browser Evidence if unavailable, and ask for explicit approval before any Enable, Accept, Save, or agreement click.",
+  ].join("\n");
+}
+
 export function formatApexGuruSetupRunbook(targetOrg?: string): string {
   return [
     "✨ ApexGuru Setup Check with SF Browser",

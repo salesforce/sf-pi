@@ -8,7 +8,11 @@ import { Type } from "typebox";
 import { buildExecFn } from "../../../lib/common/exec-adapter.ts";
 import { nextReportPath } from "./artifacts.ts";
 import { runApexGuru, validateApexGuru } from "./apexguru.ts";
-import { formatApexGuruSetupRunbook, formatApexGuruSetupSuggestion } from "./apexguru-guidance.ts";
+import {
+  buildApexGuruBrowserFollowUp,
+  formatApexGuruSetupRunbook,
+  formatApexGuruSetupSuggestion,
+} from "./apexguru-guidance.ts";
 import {
   runCodeAnalyzer,
   runCodeAnalyzerConfig,
@@ -16,6 +20,7 @@ import {
   runCodeAnalyzerRules,
 } from "./cli.ts";
 import { renderDoctor, renderToolSummary } from "./display.ts";
+import { applyReportFilters, summaryFromReportFile } from "./report-filter.ts";
 import type { CodeAnalyzerReportSummary } from "./types.ts";
 
 export const CODE_ANALYZER_TOOL_NAME = "code_analyzer";
@@ -60,6 +65,20 @@ const CodeAnalyzerParams = Type.Object({
   target_org: Type.Optional(
     Type.String({ description: "Salesforce org alias or username for ApexGuru actions." }),
   ),
+  report_file: Type.Optional(
+    Type.String({ description: "For last_report, inspect this explicit report artifact path." }),
+  ),
+  engine: Type.Optional(
+    Type.String({ description: "For last_report, filter findings by engine." }),
+  ),
+  rule: Type.Optional(Type.String({ description: "For last_report, filter findings by rule." })),
+  file: Type.Optional(Type.String({ description: "For last_report, filter findings by file." })),
+  start_browser_workflow: Type.Optional(
+    Type.Boolean({
+      description:
+        "For apexguru_setup_help, ask for approval and queue an SF Browser setup-check follow-up.",
+    }),
+  ),
   output_files: Type.Optional(
     Type.Array(Type.String(), {
       description: "Additional output files. Format inferred from extension.",
@@ -92,6 +111,11 @@ type CodeAnalyzerToolInput = {
   no_suppressions?: boolean;
   include_unmodified_rules?: boolean;
   target_org?: string;
+  report_file?: string;
+  engine?: string;
+  rule?: string;
+  file?: string;
+  start_browser_workflow?: boolean;
   output_files?: string[];
   timeout_ms?: number;
   output_mode?: "summary" | "inline" | "file_only";
@@ -132,7 +156,7 @@ export function registerCodeAnalyzerTool(pi: ExtensionAPI): void {
       }
 
       if (input.action === "last_report") {
-        const latest = findLatestReport(ctx);
+        const latest = findReport(ctx, input);
         return {
           content: [
             {
@@ -148,6 +172,17 @@ export function registerCodeAnalyzerTool(pi: ExtensionAPI): void {
 
       if (input.action === "apexguru_setup_help") {
         const text = formatApexGuruSetupRunbook(input.target_org);
+        if (input.start_browser_workflow && ctx.hasUI) {
+          const confirmed = await ctx.ui.confirm(
+            "Start ApexGuru setup check with SF Browser?",
+            `${text}\n\nThis queues a normal agent follow-up that uses sf_browser tools visibly. No Setup enable/accept/save click should happen without a second explicit approval.`,
+          );
+          if (confirmed) {
+            pi.sendUserMessage(buildApexGuruBrowserFollowUp(input.target_org), {
+              deliverAs: "followUp",
+            });
+          }
+        }
         return {
           content: [{ type: "text", text }],
           details: { [CODE_ANALYZER_DETAILS_KEY]: { action: input.action, runbook: text } },
@@ -228,6 +263,23 @@ function runningMessage(input: CodeAnalyzerToolInput): string {
     default:
       return `Code Analyzer ${input.action} running…`;
   }
+}
+
+function findReport(
+  ctx: ExtensionContext,
+  input: CodeAnalyzerToolInput,
+): CodeAnalyzerReportSummary | undefined {
+  const report = input.report_file
+    ? summaryFromReportFile(input.report_file)
+    : findLatestReport(ctx);
+  return report
+    ? applyReportFilters(report, {
+        engine: input.engine,
+        severity_threshold: input.severity_threshold,
+        rule: input.rule,
+        file: input.file,
+      })
+    : undefined;
 }
 
 function findLatestReport(ctx: ExtensionContext): CodeAnalyzerReportSummary | undefined {

@@ -21,6 +21,7 @@
       "lib/display.ts",
       "lib/artifacts.ts",
       "lib/readiness.ts",
+      "lib/report-filter.ts",
       "lib/settings.ts",
       "lib/types.ts",
       "lib/extension-doctor.ts"

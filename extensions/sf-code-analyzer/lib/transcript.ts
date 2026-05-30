@@ -6,7 +6,7 @@ import { Text } from "@earendil-works/pi-tui";
 export const CODE_ANALYZER_TRANSCRIPT_TYPE = "sf-code-analyzer";
 
 export interface CodeAnalyzerTranscriptDetails {
-  status: "clean" | "findings" | "skipped" | "timeout" | "error" | "stopped";
+  status: "running" | "clean" | "findings" | "skipped" | "timeout" | "error" | "stopped";
   reportFile?: string;
   targetCount?: number;
   violationCount?: number;

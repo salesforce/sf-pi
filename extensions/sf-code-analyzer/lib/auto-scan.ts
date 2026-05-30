@@ -19,13 +19,30 @@ import { nextReportPath } from "./artifacts.ts";
 import { runCodeAnalyzer } from "./cli.ts";
 import { renderActionableFindings } from "./display.ts";
 import { isApexGuruReadyForAutoInsight, readApexGuruReadiness } from "./apexguru-readiness.ts";
-import { classifyCodeAnalyzerTarget, isProductionApexFile } from "./file-classify.ts";
+import {
+  classifyCodeAnalyzerTarget,
+  isProductionApexFile,
+  type CodeAnalyzerTarget,
+} from "./file-classify.ts";
 import { isCodeAnalyzerReadyForAutoScan, readCodeAnalyzerReadiness } from "./readiness.ts";
 import { readEffectiveCodeAnalyzerSettings } from "./settings.ts";
 import { emitCodeAnalyzerTranscript } from "./transcript.ts";
+import type { CodeAnalyzerReportSummary, CodeAnalyzerRunJson } from "./types.ts";
 
 const AUTO_SCAN_TIMEOUT_MS = 30_000;
 const AUTO_APEXGURU_BATCH_TIMEOUT_MS = 60_000;
+
+interface ScanGroup {
+  selector: string;
+  targets: CodeAnalyzerTarget[];
+}
+
+interface ScanOutcome {
+  selector: string;
+  targetCount: number;
+  summary?: CodeAnalyzerReportSummary;
+  error?: string;
+}
 
 export function registerDeferredCodeAnalyzerAutoScan(pi: ExtensionAPI, exec: ExecFn): void {
   const pendingFiles = new Set<string>();
@@ -62,134 +79,55 @@ export function registerDeferredCodeAnalyzerAutoScan(pi: ExtensionAPI, exec: Exe
     try {
       const targets = files
         .map((file) => classifyCodeAnalyzerTarget(file))
-        .filter((t) => t !== null);
+        .filter((target): target is CodeAnalyzerTarget => target !== null);
       if (targets.length === 0) return;
-      const selectors = [...new Set(targets.map((target) => target.selector))];
-      emitCodeAnalyzerTranscript(
-        pi,
-        formatLocalScanTranscript("running", {
-          selectors,
-          targetCount: targets.length,
-        }),
-        { status: "skipped", targetCount: targets.length },
+
+      const groups = groupTargets(targets);
+      const localOutcomes = await Promise.all(
+        groups.map((group) => runLocalScanGroup(pi, exec, ctx, group)),
       );
-      const summary = await runCodeAnalyzer(exec, ctx, {
-        workspace: ["."],
-        target: targets.map((target) => target.path),
-        rule_selector: selectors,
-        include_fixes: true,
-        include_suggestions: true,
-        timeout_ms: AUTO_SCAN_TIMEOUT_MS,
-      });
 
-      const apexFiles = targets
-        .map((target) => target.path)
-        .filter((file) => isProductionApexFile(file))
-        .sort();
-      if (settings.apexGuruAuto && apexFiles.length > 0 && !isApexGuruReadyForAutoInsight()) {
-        const apexGuruState = readApexGuruReadiness();
-        emitCodeAnalyzerTranscript(
-          pi,
-          formatApexGuruSkippedTranscript(
-            apexGuruState.access,
-            apexGuruState.message,
-            apexFiles.length,
-          ),
-          { status: "skipped", targetCount: apexFiles.length },
-        );
-      }
-      if (settings.apexGuruAuto && apexFiles.length > 0 && isApexGuruReadyForAutoInsight()) {
-        const apexGuruStarted = Date.now();
-        for (const file of apexFiles) {
-          const remaining = AUTO_APEXGURU_BATCH_TIMEOUT_MS - (Date.now() - apexGuruStarted);
-          if (remaining <= 0) {
-            emitCodeAnalyzerTranscript(
-              pi,
-              `[sf-code-analyzer] ApexGuru auto insight budget exhausted · ${apexFiles.length} candidate(s)`,
-              { status: "timeout", targetCount: apexFiles.length },
-            );
-            break;
-          }
-          try {
-            const apexGuru = await runApexGuru({
-              file,
-              cwd: ctx.cwd,
-              timeout_ms: remaining,
-              reportFile: nextReportPath(ctx, "run", "json"),
-            });
-            const apexViolations = apexGuru.run?.violations ?? [];
-            if (summary.run) {
-              summary.run.violations = [...(summary.run.violations ?? []), ...apexViolations];
-              summary.run.violationCounts = undefined;
-            }
-            emitCodeAnalyzerTranscript(
-              pi,
-              formatApexGuruTranscript(apexViolations.length ? "findings" : "clean", {
-                file,
-                durationMs: apexGuru.durationMs,
-                violationCount: apexViolations.length,
-                reportFile: apexGuru.reportFile,
-              }),
-              {
-                status: apexViolations.length ? "findings" : "clean",
-                reportFile: apexGuru.reportFile,
-                violationCount: apexViolations.length,
-                durationMs: apexGuru.durationMs,
-              },
-            );
-          } catch (error) {
-            emitCodeAnalyzerTranscript(
-              pi,
-              `[sf-code-analyzer] ApexGuru auto insight skipped · ${path.basename(file)} · ${message(error)}`,
-              { status: "skipped" },
-            );
-          }
-        }
-      }
-
-      const violations = summary.run?.violations ?? [];
+      const apexGuruViolations = await runApexGuruAutoInsights(
+        pi,
+        ctx,
+        settings.apexGuruAuto,
+        targets,
+      );
+      const localViolations = localOutcomes.flatMap(
+        (outcome) => outcome.summary?.run?.violations ?? [],
+      );
+      const violations = [...localViolations, ...apexGuruViolations];
       const signature = violationSignature(violations);
-      const count = violations.length;
-      const clean = count === 0;
-      emitCodeAnalyzerTranscript(
-        pi,
-        formatLocalScanTranscript(clean ? "clean" : "findings", {
-          selectors,
-          targetCount: targets.length,
-          durationMs: summary.durationMs,
-          violationCount: count,
-          reportFile: summary.reportFile,
-        }),
-        {
-          status: clean ? "clean" : "findings",
-          reportFile: summary.reportFile,
-          targetCount: targets.length,
-          violationCount: count,
-          durationMs: summary.durationMs,
-        },
-      );
+      const reports = localOutcomes
+        .map((outcome) => outcome.summary?.reportFile)
+        .filter((report): report is string => Boolean(report));
 
-      if (clean) {
+      if (violations.length === 0) {
         lastViolationSignature = undefined;
         return;
       }
       if (signature === lastViolationSignature) {
         emitCodeAnalyzerTranscript(
           pi,
-          `[sf-code-analyzer] repair loop stopped · violation signature unchanged · report: ${summary.reportFile}`,
-          { status: "stopped", reportFile: summary.reportFile, violationCount: count },
+          `[sf-code-analyzer] repair loop stopped · violation signature unchanged · reports: ${reports.join(", ") || "none"}`,
+          { status: "stopped", violationCount: violations.length },
         );
         return;
       }
       lastViolationSignature = signature;
-      const feedback = renderActionableFindings(summary.run);
+
+      const aggregateRun: CodeAnalyzerRunJson = {
+        violationCounts: undefined,
+        violations,
+      };
+      const feedback = renderActionableFindings(aggregateRun);
       if (!feedback) return;
       pi.sendUserMessage(
         [
           "<sf_code_analyzer>",
           "Deferred Code Analyzer scan completed after the edit pass.",
-          `Targets: ${targets.length}`,
-          `Report: ${summary.reportFile}`,
+          `Groups: ${groups.map((group) => `${group.selector} (${group.targets.length})`).join(", ")}`,
+          `Reports: ${reports.join(", ") || "none"}`,
           "",
           feedback,
           "",
@@ -212,6 +150,144 @@ export function registerDeferredCodeAnalyzerAutoScan(pi: ExtensionAPI, exec: Exe
     running = false;
     lastViolationSignature = undefined;
   });
+}
+
+async function runLocalScanGroup(
+  pi: ExtensionAPI,
+  exec: ExecFn,
+  ctx: ExtensionContext,
+  group: ScanGroup,
+): Promise<ScanOutcome> {
+  emitCodeAnalyzerTranscript(
+    pi,
+    formatLocalScanTranscript("running", {
+      selectors: [group.selector],
+      targetCount: group.targets.length,
+    }),
+    { status: "running", targetCount: group.targets.length },
+  );
+  try {
+    const summary = await runCodeAnalyzer(exec, ctx, {
+      workspace: ["."],
+      target: group.targets.map((target) => target.path),
+      rule_selector: [group.selector],
+      include_fixes: true,
+      include_suggestions: true,
+      timeout_ms: AUTO_SCAN_TIMEOUT_MS,
+    });
+    const count = summary.run?.violations?.length ?? 0;
+    emitCodeAnalyzerTranscript(
+      pi,
+      formatLocalScanTranscript(count === 0 ? "clean" : "findings", {
+        selectors: [group.selector],
+        targetCount: group.targets.length,
+        durationMs: summary.durationMs,
+        violationCount: count,
+        reportFile: summary.reportFile,
+      }),
+      {
+        status: count === 0 ? "clean" : "findings",
+        reportFile: summary.reportFile,
+        targetCount: group.targets.length,
+        violationCount: count,
+        durationMs: summary.durationMs,
+      },
+    );
+    return { selector: group.selector, targetCount: group.targets.length, summary };
+  } catch (error) {
+    const errorMessage = message(error);
+    emitCodeAnalyzerTranscript(
+      pi,
+      `⚠️ 🧪 Code Analyzer auto-scan error\n   Tool: Local Salesforce Code Analyzer CLI\n   Engines: ${group.selector}\n   Targets: ${group.targets.length} changed file${group.targets.length === 1 ? "" : "s"}\n   Error: ${errorMessage}`,
+      { status: "error", targetCount: group.targets.length },
+    );
+    return { selector: group.selector, targetCount: group.targets.length, error: errorMessage };
+  }
+}
+
+async function runApexGuruAutoInsights(
+  pi: ExtensionAPI,
+  ctx: ExtensionContext,
+  enabled: boolean,
+  targets: CodeAnalyzerTarget[],
+) {
+  const apexFiles = targets
+    .map((target) => target.path)
+    .filter((file) => isProductionApexFile(file))
+    .sort();
+  if (!enabled || apexFiles.length === 0) return [];
+
+  if (!isApexGuruReadyForAutoInsight()) {
+    const apexGuruState = readApexGuruReadiness();
+    emitCodeAnalyzerTranscript(
+      pi,
+      formatApexGuruSkippedTranscript(
+        apexGuruState.access,
+        apexGuruState.message,
+        apexFiles.length,
+      ),
+      { status: "skipped", targetCount: apexFiles.length },
+    );
+    return [];
+  }
+
+  const violations = [];
+  const apexGuruStarted = Date.now();
+  for (const file of apexFiles) {
+    const remaining = AUTO_APEXGURU_BATCH_TIMEOUT_MS - (Date.now() - apexGuruStarted);
+    if (remaining <= 0) {
+      emitCodeAnalyzerTranscript(
+        pi,
+        `[sf-code-analyzer] ApexGuru auto insight budget exhausted · ${apexFiles.length} candidate(s)`,
+        { status: "timeout", targetCount: apexFiles.length },
+      );
+      break;
+    }
+    try {
+      const apexGuru = await runApexGuru({
+        file,
+        cwd: ctx.cwd,
+        timeout_ms: remaining,
+        reportFile: nextReportPath(ctx, "run", "json"),
+      });
+      const apexViolations = apexGuru.run?.violations ?? [];
+      violations.push(...apexViolations);
+      emitCodeAnalyzerTranscript(
+        pi,
+        formatApexGuruTranscript(apexViolations.length ? "findings" : "clean", {
+          file,
+          durationMs: apexGuru.durationMs,
+          violationCount: apexViolations.length,
+          reportFile: apexGuru.reportFile,
+        }),
+        {
+          status: apexViolations.length ? "findings" : "clean",
+          reportFile: apexGuru.reportFile,
+          violationCount: apexViolations.length,
+          durationMs: apexGuru.durationMs,
+        },
+      );
+    } catch (error) {
+      emitCodeAnalyzerTranscript(
+        pi,
+        `[sf-code-analyzer] ApexGuru auto insight skipped · ${path.basename(file)} · ${message(error)}`,
+        { status: "skipped" },
+      );
+    }
+  }
+  return violations;
+}
+
+function groupTargets(targets: CodeAnalyzerTarget[]): ScanGroup[] {
+  const groups = new Map<string, CodeAnalyzerTarget[]>();
+  for (const target of targets) {
+    const list = groups.get(target.selector) ?? [];
+    list.push(target);
+    groups.set(target.selector, list);
+  }
+  return [...groups.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([selector, groupedTargets]) => ({ selector, targets: groupedTargets }));
 }
 
 function collectChangedFile(

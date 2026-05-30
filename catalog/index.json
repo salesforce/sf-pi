@@ -205,6 +205,7 @@
         "lib/display.ts",
         "lib/artifacts.ts",
         "lib/readiness.ts",
+        "lib/report-filter.ts",
         "lib/settings.ts",
         "lib/types.ts",
         "lib/extension-doctor.ts"
@@ -222,7 +223,7 @@
     "entry": "extensions/sf-code-analyzer/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 2097
+    "srcLoc": 2438
   },
   {
     "id": "sf-data-explorer",
