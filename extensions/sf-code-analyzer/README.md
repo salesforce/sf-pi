@@ -139,6 +139,7 @@ extensions/sf-code-analyzer/
     report-filter.test.ts   ← unit / smoke test
     settings.test.ts        ← unit / smoke test
     smoke.test.ts           ← unit / smoke test
+    tool-actions.test.ts    ← unit / smoke test
     transcript-format.test.ts← unit / smoke test
   index.ts                  ← Pi extension entry point
   manifest.json             ← source-of-truth extension metadata
