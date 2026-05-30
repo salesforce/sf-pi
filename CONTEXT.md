@@ -260,6 +260,10 @@ _Avoid_: silent scan, raw report dump, token-minimal at the cost of repair quali
 A session-scoped output file produced by **SF Code Analyzer** for full-fidelity scan results, referenced from transcript rows and tool details instead of being pasted into prompt context.
 _Avoid_: source-controlled report by default, global scan database, hidden temp file
 
+**Code Analyzer Output Mode**:
+A per-call display contract for **SF Code Analyzer** results: `summary` for bounded default detail, `inline` for richer truncated detail, and `file_only` for minimal prompt impact with artifact paths.
+_Avoid_: raw report dump, boolean verbose flag, output without artifact
+
 **Progress-Gated Code Analyzer Repair Loop**:
 An automatic scan→repair cycle owned by **SF Code Analyzer** that continues without a fixed numeric cap only while file edits or violation signatures show progress.
 _Avoid_: infinite repair loop, fixed-pass quality ceiling, retry regardless of progress
@@ -268,9 +272,21 @@ _Avoid_: infinite repair loop, fixed-pass quality ceiling, retry regardless of p
 A default-on-when-available **SF Code Analyzer** stage that uses cached org readiness to run ApexGuru sequentially on changed production Apex files after the local deferred scan.
 _Avoid_: startup ApexGuru probe, explicit-only ApexGuru, heuristic file picker, automatic test-class scan, severity-gated ApexGuru
 
+**ApexGuru Readiness Key**:
+The identity tuple used to decide whether cached ApexGuru availability applies to the current target: org id, user id, instance URL, and API version.
+_Avoid_: alias-only cache, org-only cache, single global readiness flag
+
 **Code Analyzer Install Recommendation**:
 A cache-first, dismissible **SF Code Analyzer** onboarding nudge that recommends installing or updating the official Code Analyzer CLI plugin and prerequisites without adding startup latency.
 _Avoid_: mandatory startup install, hidden first-scan installation, boot-blocking probe
+
+**Code Analyzer Scoped Preference**:
+An SF Pi-owned setting for **SF Code Analyzer** automation where project scope overrides global scope, which overrides the extension default.
+_Avoid_: shadow Code Analyzer rule config, global-only automation setting, hidden project override
+
+**ApexGuru Browser Setup Runbook**:
+A check-first, evidence-first **SF Browser** workflow that looks for Scale Center / Scale Insights / ApexGuru Insights and helps enable ApexGuru only when the UI clearly exposes that option and HIL approves the click.
+_Avoid_: hidden browser mutation, guessed setup path, enablement promise, browser action without approval
 
 **SF Browser**:
 The Bundled Extension that gives agents a compact Salesforce-aware affordance layer for `agent-browser` in last-mile UI work that Salesforce APIs cannot cover.
@@ -519,8 +535,12 @@ _Avoid_: every available gateway model, benchmark target, broad live-test suite
 - **Quality-Biased Code Analyzer Feedback** governs both human-visible scan summaries and LLM-visible repair guidance.
 - A **Progress-Gated Code Analyzer Repair Loop** may follow a **Deferred Code Analyzer Quality Pass** when actionable findings remain.
 - An **ApexGuru Auto Insight** may run after the local **Deferred Code Analyzer Quality Pass** even when local high-severity findings remain.
+- An **ApexGuru Auto Insight** requires a fresh cache entry matching the current **ApexGuru Readiness Key**.
 - **Code Analyzer Report Artifacts** preserve full scan output without making the project tree the default storage location.
+- A **Code Analyzer Output Mode** controls prompt-visible detail while preserving full **Code Analyzer Report Artifacts**.
 - A **Code Analyzer Install Recommendation** may appear in SF Pi startup surfaces without making **SF Code Analyzer** part of the boot critical path.
+- A **Code Analyzer Scoped Preference** controls SF Pi-owned automation only; Code Analyzer rules still belong to upstream `code-analyzer.yml` or per-run arguments.
+- An **ApexGuru Browser Setup Runbook** is offered automatically as guidance, but actual SF Browser navigation or setup mutation requires explicit user approval.
 - **SF Browser** is a **Bundled Extension** with browser **Runtime Surfaces** backed by `agent-browser`.
 - **SF Browser** owns Salesforce context, safe org opening, artifact handling, and guidance; `agent-browser` owns generic browser execution.
 - **SF Browser** exposes a small v1 **Runtime Surface**: one cache-first `/sf-browser` command panel and a **Hot-Path Browser Tool Set**.

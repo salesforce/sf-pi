@@ -14,6 +14,8 @@ the supported `sf code-analyzer` CLI commands with:
 - explicit ApexGuru analysis for one Apex file when the target org supports it
 - ApexGuru automatic insights that are default-on when cached org readiness is enabled
 - automatic ApexGuru setup suggestions that offer SF Browser guidance only after user approval
+- scoped automation preferences with project > global > default precedence
+- `summary`, `inline`, and `file_only` output modes for explicit report actions
 
 ## Runtime Flow
 
@@ -87,14 +89,17 @@ code_analyzer action='run'
 
 `code_analyzer` actions:
 
-| Action        | Description                                                              |
-| ------------- | ------------------------------------------------------------------------ |
-| `doctor`      | Check setup prerequisites.                                               |
-| `run`         | Run `sf code-analyzer run` and parse JSON output.                        |
-| `rules`       | Run `sf code-analyzer rules` and parse JSON output.                      |
-| `config`      | Run `sf code-analyzer config` and write YAML config output.              |
-| `apexguru`    | Run explicit ApexGuru analysis for one Apex file.                        |
-| `last_report` | Summarize the latest Code Analyzer report on the current session branch. |
+| Action                | Description                                                              |
+| --------------------- | ------------------------------------------------------------------------ |
+| `doctor`              | Check setup prerequisites.                                               |
+| `run`                 | Run `sf code-analyzer run` and parse JSON output.                        |
+| `rules`               | Run `sf code-analyzer rules` and parse JSON output.                      |
+| `config`              | Run `sf code-analyzer config` and write YAML config output.              |
+| `apexguru`            | Run explicit ApexGuru analysis for one Apex file.                        |
+| `apexguru_setup_help` | Show the HIL-gated SF Browser setup-check runbook.                       |
+| `last_report`         | Summarize the latest Code Analyzer report on the current session branch. |
+
+For `run`, `rules`, `config`, and `last_report`, set `output_mode` to `summary` (default), `inline`, or `file_only` to control prompt-visible detail while keeping the full artifact on disk.
 
 ## File Structure
 

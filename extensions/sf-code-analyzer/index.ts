@@ -40,6 +40,7 @@ import { buildExecFn } from "../../lib/common/exec-adapter.ts";
 import { registerExtensionDoctor } from "../../lib/common/doctor/registry.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 import { isSfPiExtensionEnabled } from "../../lib/common/sf-pi-extension-state.ts";
+import { formatApexGuruSetupRunbook } from "./lib/apexguru-guidance.ts";
 import { refreshApexGuruReadiness } from "./lib/apexguru-readiness.ts";
 import { registerDeferredCodeAnalyzerAutoScan } from "./lib/auto-scan.ts";
 import { registerCodeAnalyzerTool } from "./lib/code_analyzer-tool.ts";
@@ -47,7 +48,14 @@ import { runCodeAnalyzerDoctor } from "./lib/cli.ts";
 import { renderDoctor } from "./lib/display.ts";
 import { buildCodeAnalyzerDoctor } from "./lib/extension-doctor.ts";
 import { formatReadinessLine, refreshCodeAnalyzerReadiness } from "./lib/readiness.ts";
-import { readEffectiveCodeAnalyzerSettings, writeCodeAnalyzerSetting } from "./lib/settings.ts";
+import {
+  describeSetting,
+  readEffectiveCodeAnalyzerSettings,
+  resetProjectCodeAnalyzerSetting,
+  writeCodeAnalyzerSetting,
+  type CodeAnalyzerSettingKey,
+  type EffectiveCodeAnalyzerSettings,
+} from "./lib/settings.ts";
 import { registerCodeAnalyzerTranscriptRenderer } from "./lib/transcript.ts";
 
 const COMMAND_NAME = "sf-code-analyzer";
@@ -57,8 +65,15 @@ type CodeAnalyzerPanelAction =
   | "doctor"
   | "auto-scan-on"
   | "auto-scan-off"
+  | "auto-scan-reset"
+  | "auto-scan-global-on"
+  | "auto-scan-global-off"
   | "apexguru-auto-on"
   | "apexguru-auto-off"
+  | "apexguru-auto-reset"
+  | "apexguru-auto-global-on"
+  | "apexguru-auto-global-off"
+  | "apexguru-setup-help"
   | "help"
   | "close"
   | LifecycleActionId;
@@ -78,28 +93,75 @@ const CODE_ANALYZER_ACTIONS: SfPiCommandAction<CodeAnalyzerPanelAction>[] = [
   },
   {
     value: "auto-scan-on",
-    label: "Enable deferred auto-scan",
-    description: "Turn on post-agent Code Analyzer scans for this project.",
-    group: "Automation",
+    label: "Enable deferred auto-scan for this project",
+    description: "Set a project override that turns on post-agent Code Analyzer scans.",
+    group: "Automation — project",
   },
   {
     value: "auto-scan-off",
-    label: "Disable deferred auto-scan",
-    description: "Turn off post-agent Code Analyzer scans for this project.",
-    group: "Automation",
+    label: "Disable deferred auto-scan for this project",
+    description: "Set a project override that turns off post-agent Code Analyzer scans.",
+    group: "Automation — project",
+  },
+  {
+    value: "auto-scan-reset",
+    label: "Reset deferred auto-scan project override",
+    description: "Remove the project override so global/default deferred auto-scan applies.",
+    group: "Automation — project",
   },
   {
     value: "apexguru-auto-on",
-    label: "Enable ApexGuru auto insights",
+    label: "Enable ApexGuru auto insights for this project",
     description:
-      "Turn on automatic ApexGuru insights for this project when cached org readiness is enabled.",
-    group: "Automation",
+      "Set a project override that turns on automatic ApexGuru insights when cached org readiness is enabled.",
+    group: "Automation — project",
   },
   {
     value: "apexguru-auto-off",
-    label: "Disable ApexGuru auto insights",
-    description: "Turn off automatic ApexGuru insights for this project.",
-    group: "Automation",
+    label: "Disable ApexGuru auto insights for this project",
+    description: "Set a project override that turns off automatic ApexGuru insights.",
+    group: "Automation — project",
+  },
+  {
+    value: "apexguru-auto-reset",
+    label: "Reset ApexGuru auto project override",
+    description: "Remove the project override so global/default ApexGuru automation applies.",
+    group: "Automation — project",
+  },
+  {
+    value: "auto-scan-global-on",
+    label: "Enable deferred auto-scan globally",
+    description:
+      "Set a global preference that turns on post-agent Code Analyzer scans unless a project overrides it.",
+    group: "Automation — global",
+  },
+  {
+    value: "auto-scan-global-off",
+    label: "Disable deferred auto-scan globally",
+    description:
+      "Set a global preference that turns off post-agent Code Analyzer scans unless a project overrides it.",
+    group: "Automation — global",
+  },
+  {
+    value: "apexguru-auto-global-on",
+    label: "Enable ApexGuru auto insights globally",
+    description:
+      "Set a global preference that turns on ApexGuru auto insights unless a project overrides it.",
+    group: "Automation — global",
+  },
+  {
+    value: "apexguru-auto-global-off",
+    label: "Disable ApexGuru auto insights globally",
+    description:
+      "Set a global preference that turns off ApexGuru auto insights unless a project overrides it.",
+    group: "Automation — global",
+  },
+  {
+    value: "apexguru-setup-help",
+    label: "Check ApexGuru setup with SF Browser",
+    description:
+      "Show the HIL-gated SF Browser runbook for checking Scale Center / ApexGuru Insights and enabling only if available.",
+    group: "ApexGuru setup",
   },
   {
     value: "help",
@@ -205,8 +267,8 @@ function buildPanelStatus(ctx: ExtensionCommandContext): string[] {
     `${enabled ? "✓" : "○"} Extension ${enabled ? "enabled" : "disabled"}`,
     `${enabled ? "✓" : "○"} Tool code_analyzer ${enabled ? "available after session_start" : "not registered"}`,
     `• Readiness ${formatReadinessLine()}`,
-    `• Deferred auto-scan ${settings.autoScan ? "on" : "off"}`,
-    `• ApexGuru auto insights ${settings.apexGuruAuto ? "on when cached org readiness is enabled" : "off"}`,
+    `• Deferred auto-scan ${describeSetting(settings, "autoScan")}`,
+    `• ApexGuru auto insights ${describeSetting(settings, "apexGuruAuto")}`,
   ];
 }
 
@@ -223,11 +285,36 @@ async function handleAction(
 
   if (action === "auto-scan-on" || action === "auto-scan-off") {
     const enabled = action === "auto-scan-on";
-    writeCodeAnalyzerSetting(ctx.cwd, "project", "autoScan", enabled);
+    const settings = writeCodeAnalyzerSetting(ctx.cwd, "project", "autoScan", enabled);
     await emitOutput(
       ctx,
       "SF Code Analyzer automation updated",
-      `Deferred auto-scan is now ${enabled ? "on" : "off"} for this project.`,
+      scopedSettingText("Deferred auto-scan", settings, "autoScan"),
+      "success",
+      fromPanel,
+    );
+    return;
+  }
+
+  if (action === "auto-scan-reset") {
+    const settings = resetProjectCodeAnalyzerSetting(ctx.cwd, "autoScan");
+    await emitOutput(
+      ctx,
+      "SF Code Analyzer automation updated",
+      scopedSettingText("Deferred auto-scan", settings, "autoScan"),
+      "success",
+      fromPanel,
+    );
+    return;
+  }
+
+  if (action === "auto-scan-global-on" || action === "auto-scan-global-off") {
+    const enabled = action === "auto-scan-global-on";
+    const settings = writeCodeAnalyzerSetting(ctx.cwd, "global", "autoScan", enabled);
+    await emitOutput(
+      ctx,
+      "SF Code Analyzer automation updated",
+      scopedSettingText("Deferred auto-scan", settings, "autoScan"),
       "success",
       fromPanel,
     );
@@ -236,12 +323,48 @@ async function handleAction(
 
   if (action === "apexguru-auto-on" || action === "apexguru-auto-off") {
     const enabled = action === "apexguru-auto-on";
-    writeCodeAnalyzerSetting(ctx.cwd, "project", "apexGuruAuto", enabled);
+    const settings = writeCodeAnalyzerSetting(ctx.cwd, "project", "apexGuruAuto", enabled);
     await emitOutput(
       ctx,
       "SF Code Analyzer automation updated",
-      `ApexGuru auto insights are now ${enabled ? "on when available" : "off"} for this project.`,
+      scopedSettingText("ApexGuru auto insights", settings, "apexGuruAuto"),
       "success",
+      fromPanel,
+    );
+    return;
+  }
+
+  if (action === "apexguru-auto-reset") {
+    const settings = resetProjectCodeAnalyzerSetting(ctx.cwd, "apexGuruAuto");
+    await emitOutput(
+      ctx,
+      "SF Code Analyzer automation updated",
+      scopedSettingText("ApexGuru auto insights", settings, "apexGuruAuto"),
+      "success",
+      fromPanel,
+    );
+    return;
+  }
+
+  if (action === "apexguru-auto-global-on" || action === "apexguru-auto-global-off") {
+    const enabled = action === "apexguru-auto-global-on";
+    const settings = writeCodeAnalyzerSetting(ctx.cwd, "global", "apexGuruAuto", enabled);
+    await emitOutput(
+      ctx,
+      "SF Code Analyzer automation updated",
+      scopedSettingText("ApexGuru auto insights", settings, "apexGuruAuto"),
+      "success",
+      fromPanel,
+    );
+    return;
+  }
+
+  if (action === "apexguru-setup-help") {
+    await emitOutput(
+      ctx,
+      "ApexGuru setup check with SF Browser",
+      formatApexGuruSetupRunbook(),
+      "info",
       fromPanel,
     );
     return;
@@ -280,6 +403,14 @@ async function handleAction(
   );
 }
 
+function scopedSettingText(
+  label: string,
+  settings: EffectiveCodeAnalyzerSettings,
+  key: CodeAnalyzerSettingKey,
+): string {
+  return `${label}: ${describeSetting(settings, key)}.`;
+}
+
 function buildStatusText(ctx: ExtensionCommandContext): string {
   return [
     "SF Code Analyzer status",
@@ -301,7 +432,10 @@ function buildHelpText(): string {
     "  code_analyzer action='run'          Run a scan and parse JSON output.",
     "  code_analyzer action='config'       Write effective Code Analyzer config.",
     "  code_analyzer action='apexguru'     Run explicit ApexGuru analysis for one Apex file.",
+    "  code_analyzer action='apexguru_setup_help'  Show the HIL-gated SF Browser runbook.",
     "  code_analyzer action='last_report'  Summarize the latest report on this branch.",
+    "",
+    "Output modes: summary (default), inline, file_only.",
     "",
     "Default reports are written under the global SF Pi Code Analyzer artifact directory, outside the project tree.",
   ].join("\n");

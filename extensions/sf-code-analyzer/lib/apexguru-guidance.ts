@@ -17,6 +17,27 @@ export function isApexGuruUnavailableMessage(message: string | undefined): boole
   );
 }
 
+export function formatApexGuruSetupRunbook(targetOrg?: string): string {
+  return [
+    "✨ ApexGuru Setup Check with SF Browser",
+    "",
+    "Purpose: check whether Salesforce Setup exposes Scale Center / Scale Insights / ApexGuru Insights, and help enable ApexGuru only if the UI clearly offers that option.",
+    "",
+    "Human-in-the-loop contract:",
+    "- Do not open SF Browser until the user approves this workflow.",
+    "- Do not click Enable, Accept, Save, or agreement controls until the user approves that specific action.",
+    "- Capture Browser Evidence when no setup entry is visible, before any enablement click, and after any approved change.",
+    "",
+    "Suggested SF Browser steps after approval:",
+    `1. Open Setup in ${targetOrg ?? "the target org"} with sf_browser_open_org(setup='setup-home').`,
+    "2. Search Quick Find for Scale Center, Scale Insights, and ApexGuru Insights.",
+    "3. If no destination is visible, capture evidence and stop with an explanation.",
+    "4. If a destination is visible, navigate to it and capture evidence.",
+    "5. If an enable or agreement action is visible, explain it and ask for explicit approval before clicking.",
+    "6. After any approved enable/save, verify with code_analyzer action='apexguru' or the ApexGuru validate endpoint.",
+  ].join("\n");
+}
+
 export function formatApexGuruSetupSuggestion(reason: string): string {
   return [
     "✨ ApexGuru setup needed",

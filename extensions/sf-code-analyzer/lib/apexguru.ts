@@ -77,9 +77,15 @@ export async function runApexGuru(input: {
   };
 }
 
-export async function validateApexGuru(
-  targetOrg?: string,
-): Promise<{ access: string; message: string; orgId?: string; instanceUrl?: string }> {
+export async function validateApexGuru(targetOrg?: string): Promise<{
+  access: string;
+  message: string;
+  orgId?: string;
+  userId?: string;
+  instanceUrl?: string;
+  apiVersion?: string;
+  targetOrg?: string;
+}> {
   const conn = await connFromAlias(targetOrg);
   const apiVersion = getApiVersion(conn);
   const response = (await conn.request({
@@ -89,14 +95,17 @@ export async function validateApexGuru(
   const status = response.status?.toLowerCase() ?? "unknown";
   const identity = await conn
     .identity()
-    .catch(() => undefined as { organization_id?: string } | undefined);
+    .catch(() => undefined as { organization_id?: string; user_id?: string } | undefined);
   return {
     access: status === "success" ? "enabled" : status === "failed" ? "eligible" : "ineligible",
     message:
       response.message ??
       (status === "success" ? "ApexGuru access is enabled." : `ApexGuru status: ${status}`),
     orgId: identity?.organization_id,
+    userId: identity?.user_id,
     instanceUrl: conn.instanceUrl,
+    apiVersion,
+    targetOrg,
   };
 }
 

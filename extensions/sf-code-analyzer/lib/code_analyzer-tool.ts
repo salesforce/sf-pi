@@ -8,7 +8,7 @@ import { Type } from "typebox";
 import { buildExecFn } from "../../../lib/common/exec-adapter.ts";
 import { nextReportPath } from "./artifacts.ts";
 import { runApexGuru, validateApexGuru } from "./apexguru.ts";
-import { formatApexGuruSetupSuggestion } from "./apexguru-guidance.ts";
+import { formatApexGuruSetupRunbook, formatApexGuruSetupSuggestion } from "./apexguru-guidance.ts";
 import {
   runCodeAnalyzer,
   runCodeAnalyzerConfig,
@@ -22,9 +22,12 @@ export const CODE_ANALYZER_TOOL_NAME = "code_analyzer";
 export const CODE_ANALYZER_DETAILS_KEY = "sfCodeAnalyzer";
 
 const CodeAnalyzerParams = Type.Object({
-  action: StringEnum(["doctor", "run", "rules", "config", "apexguru", "last_report"] as const, {
-    description: "Code Analyzer action to run.",
-  }),
+  action: StringEnum(
+    ["doctor", "run", "rules", "config", "apexguru", "apexguru_setup_help", "last_report"] as const,
+    {
+      description: "Code Analyzer action to run.",
+    },
+  ),
   workspace: Type.Optional(
     Type.Array(Type.String(), {
       description: "Workspace paths/globs. Defaults to ['.'] for run.",
@@ -63,10 +66,22 @@ const CodeAnalyzerParams = Type.Object({
     }),
   ),
   timeout_ms: Type.Optional(Type.Number({ description: "Optional command timeout in ms." })),
+  output_mode: Type.Optional(
+    StringEnum(["summary", "inline", "file_only"] as const, {
+      description: "How much result detail to return. Defaults to summary.",
+    }),
+  ),
 });
 
 type CodeAnalyzerToolInput = {
-  action: "doctor" | "run" | "rules" | "config" | "apexguru" | "last_report";
+  action:
+    | "doctor"
+    | "run"
+    | "rules"
+    | "config"
+    | "apexguru"
+    | "apexguru_setup_help"
+    | "last_report";
   workspace?: string[];
   target?: string[];
   rule_selector?: string[];
@@ -79,6 +94,7 @@ type CodeAnalyzerToolInput = {
   target_org?: string;
   output_files?: string[];
   timeout_ms?: number;
+  output_mode?: "summary" | "inline" | "file_only";
 };
 
 export function registerCodeAnalyzerTool(pi: ExtensionAPI): void {
@@ -87,7 +103,7 @@ export function registerCodeAnalyzerTool(pi: ExtensionAPI): void {
     name: CODE_ANALYZER_TOOL_NAME,
     label: "Code Analyzer",
     description:
-      "Run Salesforce Code Analyzer actions: doctor, run, rules, config, or summarize the last report.",
+      "Run Salesforce Code Analyzer actions: doctor, run, rules, config, ApexGuru, ApexGuru setup help, or summarize the last report.",
     promptSnippet:
       "Run Salesforce Code Analyzer scans, rule discovery, config generation, and report summaries.",
     promptGuidelines: [
@@ -95,6 +111,8 @@ export function registerCodeAnalyzerTool(pi: ExtensionAPI): void {
       "Use code_analyzer action='rules' to preview rule selectors before broad scans.",
       "Use code_analyzer action='run' for explicit user-requested scans; automatic deferred scans are owned by sf-code-analyzer.",
       "Use code_analyzer action='apexguru' for explicit ApexGuru performance analysis of one Apex file when org readiness allows.",
+      "Use code_analyzer action='apexguru_setup_help' to get the SF Browser setup-check runbook; do not start browser setup without user approval.",
+      "Use code_analyzer output_mode='inline' for richer bounded detail and output_mode='file_only' when the report path is enough.",
       "Use code_analyzer action='last_report' to recover the latest Code Analyzer report from the current session branch.",
     ],
     parameters: CodeAnalyzerParams,
@@ -120,7 +138,7 @@ export function registerCodeAnalyzerTool(pi: ExtensionAPI): void {
             {
               type: "text",
               text: latest
-                ? renderToolSummary(latest)
+                ? renderToolSummary(latest, input.output_mode ?? "summary")
                 : "No Code Analyzer report found on this branch.",
             },
           ],
@@ -128,9 +146,19 @@ export function registerCodeAnalyzerTool(pi: ExtensionAPI): void {
         };
       }
 
+      if (input.action === "apexguru_setup_help") {
+        const text = formatApexGuruSetupRunbook(input.target_org);
+        return {
+          content: [{ type: "text", text }],
+          details: { [CODE_ANALYZER_DETAILS_KEY]: { action: input.action, runbook: text } },
+        };
+      }
+
       const summary = await executeReportAction(exec, ctx, input);
       return {
-        content: [{ type: "text", text: renderToolSummary(summary) }],
+        content: [
+          { type: "text", text: renderToolSummary(summary, input.output_mode ?? "summary") },
+        ],
         details: { [CODE_ANALYZER_DETAILS_KEY]: { action: input.action, report: summary } },
       };
     },
@@ -193,6 +221,8 @@ function runningMessage(input: CodeAnalyzerToolInput): string {
       return `⚙️ Salesforce Code Analyzer config generation running…`;
     case "doctor":
       return "🩺 Salesforce Code Analyzer setup doctor running…";
+    case "apexguru_setup_help":
+      return "🧭 Preparing ApexGuru SF Browser setup-check runbook…";
     case "last_report":
       return "📄 Reading latest Code Analyzer report from this session branch…";
     default:

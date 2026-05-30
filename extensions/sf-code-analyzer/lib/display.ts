@@ -2,12 +2,14 @@
 /**
  * Human and LLM summaries for Code Analyzer reports.
  */
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import type {
   CodeAnalyzerDoctorReport,
   CodeAnalyzerReportSummary,
   CodeAnalyzerRunJson,
   CodeAnalyzerViolation,
+  CodeAnalyzerOutputMode,
 } from "./types.ts";
 
 const SEVERITY_LABELS: Record<number, string> = {
@@ -37,13 +39,31 @@ function status(value: { ok: boolean; detail: string }): string {
   return `${value.ok ? "✓" : "✗"} ${value.detail}`;
 }
 
-export function renderToolSummary(summary: CodeAnalyzerReportSummary): string {
-  if (summary.kind === "run") return renderRunSummary(summary);
-  if (summary.kind === "rules") return renderRulesSummary(summary);
-  return renderConfigSummary(summary);
+export function renderToolSummary(
+  summary: CodeAnalyzerReportSummary,
+  mode: CodeAnalyzerOutputMode = "summary",
+): string {
+  if (mode === "file_only") return renderFileOnlySummary(summary);
+  if (summary.kind === "run") return renderRunSummary(summary, mode);
+  if (summary.kind === "rules") return renderRulesSummary(summary, mode);
+  return renderConfigSummary(summary, mode);
 }
 
-function renderRunSummary(summary: CodeAnalyzerReportSummary): string {
+function renderFileOnlySummary(summary: CodeAnalyzerReportSummary): string {
+  const count = summary.run?.violationCounts?.total ?? summary.run?.violations?.length;
+  return [
+    `${summary.source === "apexguru" ? "✨ ApexGuru" : "🧪 Code Analyzer"} ${summary.kind} ${summary.ok ? "completed" : "failed"} in ${formatMs(summary.durationMs)}.`,
+    count !== undefined ? `Violations: ${count}.` : undefined,
+    summary.reportFile ? `Report: ${summary.reportFile}` : undefined,
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+function renderRunSummary(
+  summary: CodeAnalyzerReportSummary,
+  mode: CodeAnalyzerOutputMode,
+): string {
   const run = summary.run;
   const counts = run?.violationCounts;
   const total = counts?.total ?? run?.violations?.length ?? 0;
@@ -65,43 +85,68 @@ function renderRunSummary(summary: CodeAnalyzerReportSummary): string {
       : undefined,
     summary.exitCode !== 0 ? `Exit code: ${summary.exitCode}` : undefined,
   ].filter(Boolean) as string[];
-  const feedback = renderActionableFindings(run);
+  const feedback = renderActionableFindings(run, mode === "inline" ? "inline" : "summary");
   if (feedback) parts.push("", feedback);
   if (!summary.ok && summary.stderrPreview) parts.push("", `stderr:\n${summary.stderrPreview}`);
   return parts.join("\n");
 }
 
-function renderRulesSummary(summary: CodeAnalyzerReportSummary): string {
+function renderRulesSummary(
+  summary: CodeAnalyzerReportSummary,
+  mode: CodeAnalyzerOutputMode,
+): string {
   const count = summary.rules?.rules?.length ?? 0;
-  return [
+  const lines = [
     `📚 Salesforce Code Analyzer rule discovery ${summary.ok ? "completed" : "failed"} in ${formatMs(summary.durationMs)}.`,
     `Tool: sf code-analyzer rules.`,
     summary.selectors?.length ? `Selectors / engines: ${summary.selectors.join(", ")}.` : undefined,
     `Rules: ${count}.`,
     summary.reportFile ? `JSON report: ${summary.reportFile}` : undefined,
     !summary.ok && summary.stderrPreview ? `stderr:\n${summary.stderrPreview}` : undefined,
-  ]
-    .filter(Boolean)
-    .join("\n");
+  ].filter(Boolean) as string[];
+  if (mode === "inline" && summary.rules?.rules?.length) {
+    lines.push("", "Rules:");
+    for (const rule of summary.rules.rules.slice(0, 80)) {
+      lines.push(
+        `- sev${rule.severity ?? "?"} ${rule.engine}/${rule.name} · ${(rule.tags ?? []).join(",")}`,
+      );
+    }
+    if (summary.rules.rules.length > 80)
+      lines.push(`… ${summary.rules.rules.length - 80} more rule(s) in report.`);
+  }
+  return lines.join("\n");
 }
 
-function renderConfigSummary(summary: CodeAnalyzerReportSummary): string {
-  return [
+function renderConfigSummary(
+  summary: CodeAnalyzerReportSummary,
+  mode: CodeAnalyzerOutputMode,
+): string {
+  const lines = [
     `⚙️ Salesforce Code Analyzer config ${summary.ok ? "written" : "failed"} in ${formatMs(summary.durationMs)}.`,
     `Tool: sf code-analyzer config.`,
     summary.selectors?.length ? `Selectors / engines: ${summary.selectors.join(", ")}.` : undefined,
     summary.reportFile ? `Config file: ${summary.reportFile}` : undefined,
     !summary.ok && summary.stderrPreview ? `stderr:\n${summary.stderrPreview}` : undefined,
-  ]
-    .filter(Boolean)
-    .join("\n");
+  ].filter(Boolean) as string[];
+  if (mode === "inline" && summary.reportFile && existsSync(summary.reportFile)) {
+    lines.push(
+      "",
+      "Config preview:",
+      truncateText(readFileSync(summary.reportFile, "utf8"), 8_000),
+    );
+  }
+  return lines.join("\n");
 }
 
-export function renderActionableFindings(run: CodeAnalyzerRunJson | undefined): string | undefined {
+export function renderActionableFindings(
+  run: CodeAnalyzerRunJson | undefined,
+  mode: CodeAnalyzerOutputMode = "summary",
+): string | undefined {
   const violations = run?.violations ?? [];
   if (violations.length === 0) return undefined;
 
-  const selected = selectFindings(violations);
+  const selected =
+    mode === "inline" ? violations.slice(0, 80).sort(compareViolation) : selectFindings(violations);
   const lines = ["Actionable findings:"];
   selected.forEach((violation, index) => {
     lines.push(renderViolation(index + 1, violation));
@@ -168,6 +213,12 @@ function primaryFile(violation: CodeAnalyzerViolation): string {
 
 function primaryLocation(violation: CodeAnalyzerViolation) {
   return violation.locations[violation.primaryLocationIndex] ?? violation.locations[0] ?? {};
+}
+
+function truncateText(value: string, maxChars: number): string {
+  return value.length <= maxChars
+    ? value
+    : `${value.slice(0, maxChars)}\n… truncated ${value.length - maxChars} chars`;
 }
 
 function formatMs(ms: number): string {

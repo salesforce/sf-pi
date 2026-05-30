@@ -7,7 +7,16 @@
  * to summarize findings without depending on Code Analyzer internals.
  */
 
-export type CodeAnalyzerAction = "doctor" | "run" | "rules" | "config" | "apexguru" | "last_report";
+export type CodeAnalyzerAction =
+  | "doctor"
+  | "run"
+  | "rules"
+  | "config"
+  | "apexguru"
+  | "apexguru_setup_help"
+  | "last_report";
+
+export type CodeAnalyzerOutputMode = "summary" | "inline" | "file_only";
 
 export type CodeAnalyzerEngine =
   | "cpd"
