@@ -517,6 +517,14 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.155.0](https://github.com/salesforce/sf-pi/compare/v0.154.2...v0.155.0) (2026-05-30)
+
+
+### Features
+
+* add sf-code-analyzer extension ([6e8c4a7](https://github.com/salesforce/sf-pi/commit/6e8c4a79b0974bb1169d3a65e2709fdb07f36e68))
+* suggest ApexGuru setup with browser approval ([79a22e9](https://github.com/salesforce/sf-pi/commit/79a22e960ec3ac3634e188e75882c0dfaaf0c5c3))
+
 ## [0.154.2](https://github.com/salesforce/sf-pi/compare/v0.154.1...v0.154.2) (2026-05-30)
 
 
