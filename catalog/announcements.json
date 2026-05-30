@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.157.0-2026-05-30",
-  "latestVersion": "0.157.0",
+  "revision": "release-0.158.0-2026-05-30",
+  "latestVersion": "0.158.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.157.0",
+      "id": "release-0.158.0",
       "kind": "update",
-      "title": "sf-pi v0.157.0 — expand code analyzer controls",
+      "title": "sf-pi v0.158.0 — add code analyzer scan recipes",
       "publishedAt": "2026-05-30T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.157.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.158.0",
       "severity": "info",
-      "body": "expand code analyzer controls"
+      "body": "add code analyzer scan recipes"
     },
     {
       "id": "pi-0.73-required",
