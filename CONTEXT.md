@@ -252,6 +252,10 @@ _Avoid_: full scan, hidden quality gate, save-time project analysis
 A **Deferred Code Analyzer Quality Pass** execution shape where changed files are grouped by selector profile and every group runs in parallel with its own transcript rows and report artifact.
 _Avoid_: one mixed selector run, per-file scan storm, hidden aggregate-only scan
 
+**Auto Scan Plan**:
+The pure **SF Code Analyzer** planning result that classifies changed files into selector groups, ApexGuru candidates, and skipped unsupported files without running scans or emitting UI.
+_Avoid_: readiness decision, transcript rendering, network call, hidden execution
+
 **Explicit Code Analyzer Scan**:
 A user- or agent-requested **SF Code Analyzer** workflow for project-wide, security, AppExchange, or broad engine coverage where scan cost and scope should be visible before execution.
 _Avoid_: automatic background sweep, implicit gate, hidden CI substitute
@@ -580,6 +584,7 @@ _Avoid_: every available gateway model, benchmark target, broad live-test suite
 - **SF Code Analyzer** is a **Bundled Extension** with code-analysis **Runtime Surfaces**.
 - A **Deferred Code Analyzer Quality Pass** uses one or more **Targeted Code Analyzer Scans** after the agent completes the current edit pass.
 - A **Grouped Code Analyzer Auto Scan** runs selector-profile groups in parallel and aggregates findings into one repair follow-up.
+- An **Auto Scan Plan** is the testable seam for classification and grouping inside a **Deferred Code Analyzer Quality Pass**.
 - A **Targeted Code Analyzer Scan** complements, but does not replace, an **Explicit Code Analyzer Scan**.
 - **Quality-Biased Code Analyzer Feedback** governs both human-visible scan summaries and LLM-visible repair guidance.
 - A **Progress-Gated Code Analyzer Repair Loop** may follow a **Deferred Code Analyzer Quality Pass** when actionable findings remain.

@@ -16,14 +16,11 @@ import { isEditToolResult, isWriteToolResult } from "@earendil-works/pi-coding-a
 import type { ExecFn } from "../../../lib/common/sf-environment/detect.ts";
 import { runApexGuru } from "./apexguru.ts";
 import { nextReportPath } from "./artifacts.ts";
+import { type AutoScanGroup, planAutoScanGroups } from "./auto-scan-plan.ts";
 import { runCodeAnalyzer } from "./cli.ts";
 import { renderActionableFindings } from "./display.ts";
 import { isApexGuruReadyForAutoInsight, readApexGuruReadiness } from "./apexguru-readiness.ts";
-import {
-  classifyCodeAnalyzerTarget,
-  isProductionApexFile,
-  type CodeAnalyzerTarget,
-} from "./file-classify.ts";
+import { classifyCodeAnalyzerTarget } from "./file-classify.ts";
 import { isCodeAnalyzerReadyForAutoScan, readCodeAnalyzerReadiness } from "./readiness.ts";
 import { buildScanRecipeGuidance } from "./recipes.ts";
 import { readEffectiveCodeAnalyzerSettings } from "./settings.ts";
@@ -32,11 +29,6 @@ import type { CodeAnalyzerReportSummary, CodeAnalyzerRunJson } from "./types.ts"
 
 const AUTO_SCAN_TIMEOUT_MS = 30_000;
 const AUTO_APEXGURU_BATCH_TIMEOUT_MS = 60_000;
-
-interface ScanGroup {
-  selector: string;
-  targets: CodeAnalyzerTarget[];
-}
 
 interface ScanOutcome {
   selector: string;
@@ -78,12 +70,10 @@ export function registerDeferredCodeAnalyzerAutoScan(pi: ExtensionAPI, exec: Exe
     const files = [...pendingFiles].sort();
     pendingFiles.clear();
     try {
-      const targets = files
-        .map((file) => classifyCodeAnalyzerTarget(file))
-        .filter((target): target is CodeAnalyzerTarget => target !== null);
-      if (targets.length === 0) return;
+      const plan = planAutoScanGroups(files);
+      if (plan.groups.length === 0) return;
 
-      const groups = groupTargets(targets);
+      const groups = plan.groups;
       const localOutcomes = await Promise.all(
         groups.map((group) => runLocalScanGroup(pi, exec, ctx, group)),
       );
@@ -92,7 +82,7 @@ export function registerDeferredCodeAnalyzerAutoScan(pi: ExtensionAPI, exec: Exe
         pi,
         ctx,
         settings.apexGuruAuto,
-        targets,
+        plan.apexGuruCandidates,
       );
       const localViolations = localOutcomes.flatMap(
         (outcome) => outcome.summary?.run?.violations ?? [],
@@ -157,7 +147,7 @@ async function runLocalScanGroup(
   pi: ExtensionAPI,
   exec: ExecFn,
   ctx: ExtensionContext,
-  group: ScanGroup,
+  group: AutoScanGroup,
 ): Promise<ScanOutcome> {
   emitCodeAnalyzerTranscript(
     pi,
@@ -168,7 +158,7 @@ async function runLocalScanGroup(
     { status: "running", targetCount: group.targets.length },
   );
   try {
-    const targetPaths = group.targets.map((target) => target.path);
+    const targetPaths = group.targets;
     const summary = await runCodeAnalyzer(exec, ctx, {
       workspace: ["."],
       target: targetPaths,
@@ -222,12 +212,9 @@ async function runApexGuruAutoInsights(
   pi: ExtensionAPI,
   ctx: ExtensionContext,
   enabled: boolean,
-  targets: CodeAnalyzerTarget[],
+  apexFiles: string[],
 ) {
-  const apexFiles = targets
-    .map((target) => target.path)
-    .filter((file) => isProductionApexFile(file))
-    .sort();
+  apexFiles = [...apexFiles].sort();
   if (!enabled || apexFiles.length === 0) return [];
 
   if (!isApexGuruReadyForAutoInsight()) {
@@ -289,18 +276,6 @@ async function runApexGuruAutoInsights(
     }
   }
   return violations;
-}
-
-function groupTargets(targets: CodeAnalyzerTarget[]): ScanGroup[] {
-  const groups = new Map<string, CodeAnalyzerTarget[]>();
-  for (const target of targets) {
-    const list = groups.get(target.selector) ?? [];
-    list.push(target);
-    groups.set(target.selector, list);
-  }
-  return [...groups.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([selector, groupedTargets]) => ({ selector, targets: groupedTargets }));
 }
 
 function collectChangedFile(
