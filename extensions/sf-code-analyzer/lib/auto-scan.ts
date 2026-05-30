@@ -25,6 +25,7 @@ import {
   type CodeAnalyzerTarget,
 } from "./file-classify.ts";
 import { isCodeAnalyzerReadyForAutoScan, readCodeAnalyzerReadiness } from "./readiness.ts";
+import { renderBroaderRecipeSuggestion, suggestBroaderRecipes } from "./recipes.ts";
 import { readEffectiveCodeAnalyzerSettings } from "./settings.ts";
 import { emitCodeAnalyzerTranscript } from "./transcript.ts";
 import type { CodeAnalyzerReportSummary, CodeAnalyzerRunJson } from "./types.ts";
@@ -167,9 +168,10 @@ async function runLocalScanGroup(
     { status: "running", targetCount: group.targets.length },
   );
   try {
+    const targetPaths = group.targets.map((target) => target.path);
     const summary = await runCodeAnalyzer(exec, ctx, {
       workspace: ["."],
-      target: group.targets.map((target) => target.path),
+      target: targetPaths,
       rule_selector: [group.selector],
       include_fixes: true,
       include_suggestions: true,
@@ -193,6 +195,15 @@ async function runLocalScanGroup(
         durationMs: summary.durationMs,
       },
     );
+    const suggestion = renderBroaderRecipeSuggestion(
+      suggestBroaderRecipes({ selectors: [group.selector], targets: targetPaths }),
+    );
+    if (suggestion) {
+      emitCodeAnalyzerTranscript(pi, suggestion, {
+        status: "skipped",
+        targetCount: group.targets.length,
+      });
+    }
     return { selector: group.selector, targetCount: group.targets.length, summary };
   } catch (error) {
     const errorMessage = message(error);

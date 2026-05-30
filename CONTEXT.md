@@ -272,6 +272,18 @@ _Avoid_: raw report dump, boolean verbose flag, output without artifact
 A read-only view over a **Code Analyzer Report Artifact** that narrows findings by report path, engine, severity, rule, or file without creating a separate report database.
 _Avoid_: global report index, mutable report state, scan re-execution
 
+**Code Analyzer Scan Recipe**:
+A named, public-safe **SF Code Analyzer** preset that explains when to use a rule selector, workspace/target posture, output files, and Herdr guidance without executing the scan automatically.
+_Avoid_: hidden scan, shipped rule implementation, noisy default, recipe as rule config
+
+**Code Analyzer Broader-Scan Suggestion**:
+A contextual nudge from **SF Code Analyzer** that recommends a stronger explicit recipe such as Security, AppExchange, all-rules, CPD, RetireJS, or SFGE when the user’s development task appears to warrant it.
+_Avoid_: automatic broad scan, mandatory gate, replacing user intent, always-on noisy warning
+
+**Code Analyzer Herdr Handoff**:
+A recipe-level recommendation that tells the agent to call `sf_herdr_plan` visibly for broad or long-running **SF Code Analyzer** scans, without `sf-code-analyzer` invoking Herdr internally.
+_Avoid_: hidden cross-extension tool call, automatic pane creation, direct Herdr dependency inside Code Analyzer
+
 **Progress-Gated Code Analyzer Repair Loop**:
 An automatic scan→repair cycle owned by **SF Code Analyzer** that continues without a fixed numeric cap only while file edits or violation signatures show progress.
 _Avoid_: infinite repair loop, fixed-pass quality ceiling, retry regardless of progress
@@ -292,9 +304,17 @@ _Avoid_: mandatory startup install, hidden first-scan installation, boot-blockin
 A HIL-gated **SF Code Analyzer** command-panel action that can run `sf plugins install code-analyzer` interactively and otherwise prints the manual command in headless mode.
 _Avoid_: headless install, startup install, auto-install from scan, hidden CLI plugin mutation
 
+**Code Analyzer Local Setup Status**:
+The before/after setup status for **SF Code Analyzer** based only on local Salesforce CLI/plugin/prerequisite probes, not upstream latest-version checks.
+_Avoid_: package manager, npm latest probe, release freshness, version-policy logic
+
 **Code Analyzer Scoped Preference**:
 An SF Pi-owned setting for **SF Code Analyzer** automation where project scope overrides global scope, which overrides the extension default.
 _Avoid_: shadow Code Analyzer rule config, global-only automation setting, hidden project override
+
+**Code Analyzer Actionable Status**:
+The compact `/sf-code-analyzer` status posture that shows only readiness, prerequisite, ApexGuru cache, latest report, and automation-source facts that help a user choose the next action.
+_Avoid_: dashboard, full rule catalog, report history table, per-engine encyclopedia
 
 **ApexGuru Browser Setup Runbook**:
 A check-first, evidence-first **SF Browser** workflow that looks for Scale Center / Scale Insights / ApexGuru Insights and helps enable ApexGuru only when the UI clearly exposes that option and HIL approves the click.
@@ -556,9 +576,14 @@ _Avoid_: every available gateway model, benchmark target, broad live-test suite
 - **Code Analyzer Report Artifacts** preserve full scan output without making the project tree the default storage location.
 - A **Code Analyzer Output Mode** controls prompt-visible detail while preserving full **Code Analyzer Report Artifacts**.
 - A **Code Analyzer Report Filter** powers `last_report` inspection without introducing a global report store.
+- **Code Analyzer Scan Recipes** make the default-vs-broader-scan distinction explicit without shipping rule implementations.
+- A **Code Analyzer Broader-Scan Suggestion** may recommend a stronger explicit scan, but does not automatically run broad or noisy recipes.
+- A **Code Analyzer Herdr Handoff** keeps long-scan lane planning visible and outside hidden `sf-code-analyzer` internals.
 - A **Code Analyzer Install Recommendation** may appear in SF Pi startup surfaces without making **SF Code Analyzer** part of the boot critical path.
 - A **Code Analyzer Setup Action** is the only SF Pi path that installs or updates the Code Analyzer CLI plugin, and it requires interactive user approval.
+- **Code Analyzer Local Setup Status** gives before/after transparency without making SF Pi a Code Analyzer release manager.
 - A **Code Analyzer Scoped Preference** controls SF Pi-owned automation only; Code Analyzer rules still belong to upstream `code-analyzer.yml` or per-run arguments.
+- **Code Analyzer Actionable Status** keeps `/sf-code-analyzer` useful without becoming a dashboard.
 - An **ApexGuru Browser Setup Runbook** is offered automatically as guidance, but actual SF Browser navigation or setup mutation requires explicit user approval.
 - An **ApexGuru Browser Setup Handoff** uses normal SF Browser tools visibly rather than hiding browser automation inside **SF Code Analyzer**.
 - **SF Browser** is a **Bundled Extension** with browser **Runtime Surfaces** backed by `agent-browser`.

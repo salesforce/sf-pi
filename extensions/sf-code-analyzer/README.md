@@ -16,6 +16,7 @@ the supported `sf code-analyzer` CLI commands with:
 - automatic ApexGuru setup suggestions that offer SF Browser guidance only after user approval
 - scoped automation preferences with project > global > default precedence
 - `summary`, `inline`, and `file_only` output modes for explicit report actions
+- scan recipes that explain default automatic profiles, broader explicit scans, and Herdr handoff guidance
 
 ## Runtime Flow
 
@@ -92,6 +93,7 @@ code_analyzer action='run'
 | Action                | Description                                                              |
 | --------------------- | ------------------------------------------------------------------------ |
 | `doctor`              | Check setup prerequisites.                                               |
+| `recipes`             | Show scan recipes and Herdr handoff guidance.                            |
 | `run`                 | Run `sf code-analyzer run` and parse JSON output.                        |
 | `rules`               | Run `sf code-analyzer rules` and parse JSON output.                      |
 | `config`              | Run `sf code-analyzer config` and write YAML config output.              |
@@ -119,6 +121,7 @@ extensions/sf-code-analyzer/
     extension-doctor.ts     ← implementation module
     file-classify.ts        ← implementation module
     readiness.ts            ← implementation module
+    recipes.ts              ← implementation module
     report-filter.ts        ← implementation module
     settings.ts             ← implementation module
     transcript.ts           ← implementation module
@@ -126,6 +129,7 @@ extensions/sf-code-analyzer/
   tests/
     apexguru-readiness.test.ts← unit / smoke test
     display.test.ts         ← unit / smoke test
+    recipes.test.ts         ← unit / smoke test
     report-filter.test.ts   ← unit / smoke test
     settings.test.ts        ← unit / smoke test
     smoke.test.ts           ← unit / smoke test

@@ -20,6 +20,7 @@ import {
   runCodeAnalyzerRules,
 } from "./cli.ts";
 import { renderDoctor, renderToolSummary } from "./display.ts";
+import { renderRecipes } from "./recipes.ts";
 import { applyReportFilters, summaryFromReportFile } from "./report-filter.ts";
 import type { CodeAnalyzerReportSummary } from "./types.ts";
 
@@ -28,7 +29,16 @@ export const CODE_ANALYZER_DETAILS_KEY = "sfCodeAnalyzer";
 
 const CodeAnalyzerParams = Type.Object({
   action: StringEnum(
-    ["doctor", "run", "rules", "config", "apexguru", "apexguru_setup_help", "last_report"] as const,
+    [
+      "doctor",
+      "run",
+      "rules",
+      "config",
+      "apexguru",
+      "apexguru_setup_help",
+      "recipes",
+      "last_report",
+    ] as const,
     {
       description: "Code Analyzer action to run.",
     },
@@ -100,6 +110,7 @@ type CodeAnalyzerToolInput = {
     | "config"
     | "apexguru"
     | "apexguru_setup_help"
+    | "recipes"
     | "last_report";
   workspace?: string[];
   target?: string[];
@@ -132,6 +143,7 @@ export function registerCodeAnalyzerTool(pi: ExtensionAPI): void {
       "Run Salesforce Code Analyzer scans, rule discovery, config generation, and report summaries.",
     promptGuidelines: [
       "Use code_analyzer action='doctor' before diagnosing Code Analyzer setup or engine prerequisite issues.",
+      "Use code_analyzer action='recipes' to see default automatic profiles and broader explicit scan presets.",
       "Use code_analyzer action='rules' to preview rule selectors before broad scans.",
       "Use code_analyzer action='run' for explicit user-requested scans; automatic deferred scans are owned by sf-code-analyzer.",
       "Use code_analyzer action='apexguru' for explicit ApexGuru performance analysis of one Apex file when org readiness allows.",
@@ -167,6 +179,14 @@ export function registerCodeAnalyzerTool(pi: ExtensionAPI): void {
             },
           ],
           details: { [CODE_ANALYZER_DETAILS_KEY]: { action: "last_report", report: latest } },
+        };
+      }
+
+      if (input.action === "recipes") {
+        const text = renderRecipes({ inline: input.output_mode === "inline" });
+        return {
+          content: [{ type: "text", text }],
+          details: { [CODE_ANALYZER_DETAILS_KEY]: { action: input.action, recipes: text } },
         };
       }
 
@@ -250,6 +270,8 @@ function runningMessage(input: CodeAnalyzerToolInput): string {
       return `✨ ApexGuru org-backed analysis running for ${input.target?.[0] ?? "target file"}…`;
     case "run":
       return `🧪 Salesforce Code Analyzer CLI scan running (${(input.rule_selector ?? ["Recommended"]).join(", ")})…`;
+    case "recipes":
+      return "📋 Reading Salesforce Code Analyzer scan recipes…";
     case "rules":
       return `📚 Salesforce Code Analyzer rule discovery running…`;
     case "config":

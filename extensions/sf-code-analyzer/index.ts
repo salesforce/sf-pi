@@ -49,6 +49,7 @@ import { registerDeferredCodeAnalyzerAutoScan } from "./lib/auto-scan.ts";
 import { registerCodeAnalyzerTool } from "./lib/code_analyzer-tool.ts";
 import { runCodeAnalyzerDoctor } from "./lib/cli.ts";
 import { renderDoctor } from "./lib/display.ts";
+import { renderRecipes } from "./lib/recipes.ts";
 import { buildCodeAnalyzerDoctor } from "./lib/extension-doctor.ts";
 import { formatReadinessLine, refreshCodeAnalyzerReadiness } from "./lib/readiness.ts";
 import {
@@ -67,6 +68,7 @@ type CodeAnalyzerPanelAction =
   | "status"
   | "doctor"
   | "setup"
+  | "recipes"
   | "auto-scan-on"
   | "auto-scan-off"
   | "auto-scan-reset"
@@ -102,6 +104,13 @@ const CODE_ANALYZER_ACTIONS: SfPiCommandAction<CodeAnalyzerPanelAction>[] = [
     description:
       "Ask for approval, then run `sf plugins install code-analyzer` and refresh readiness.",
     group: "Setup",
+  },
+  {
+    value: "recipes",
+    label: "Show scan recipes",
+    description:
+      "Show default automatic profiles, broader explicit scan presets, and Herdr handoff guidance.",
+    group: "Reference",
   },
   {
     value: "auto-scan-on",
@@ -389,6 +398,17 @@ async function handleAction(
     return;
   }
 
+  if (action === "recipes") {
+    await emitOutput(
+      ctx,
+      "SF Code Analyzer scan recipes",
+      renderRecipes({ inline: true }),
+      "info",
+      fromPanel,
+    );
+    return;
+  }
+
   if (action === "setup") {
     await runSetupAction(pi, ctx, fromPanel);
     return;
@@ -551,6 +571,7 @@ function buildHelpText(): string {
     "",
     "LLM tool actions:",
     "  code_analyzer action='doctor'       Check setup prerequisites.",
+    "  code_analyzer action='recipes'      Show scan recipes and Herdr handoff guidance.",
     "  code_analyzer action='rules'        Preview rule selectors.",
     "  code_analyzer action='run'          Run a scan and parse JSON output.",
     "  code_analyzer action='config'       Write effective Code Analyzer config.",
