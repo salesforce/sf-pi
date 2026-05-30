@@ -16,8 +16,15 @@ import { isEditToolResult, isWriteToolResult } from "@earendil-works/pi-coding-a
 import type { ExecFn } from "../../../lib/common/sf-environment/detect.ts";
 import { runApexGuru } from "./apexguru.ts";
 import { buildAutoScanFollowUp } from "./auto-scan-followup.ts";
-import { nextReportPath } from "./artifacts.ts";
 import { type AutoScanGroup, planAutoScanGroups } from "./auto-scan-plan.ts";
+import {
+  formatApexGuruBudgetExhaustedTranscript,
+  formatApexGuruSkippedTranscript,
+  formatApexGuruTranscript,
+  formatAutoScanErrorTranscript,
+  formatLocalScanTranscript,
+} from "./auto-scan-transcript.ts";
+import { nextReportPath } from "./artifacts.ts";
 import { runCodeAnalyzer } from "./cli.ts";
 import { isApexGuruReadyForAutoInsight, readApexGuruReadiness } from "./apexguru-readiness.ts";
 import { classifyCodeAnalyzerTarget } from "./file-classify.ts";
@@ -203,7 +210,11 @@ async function runLocalScanGroup(
     const errorMessage = message(error);
     emitCodeAnalyzerTranscript(
       pi,
-      `⚠️ 🧪 Code Analyzer auto-scan error\n   Tool: Local Salesforce Code Analyzer CLI\n   Engines: ${group.selector}\n   Targets: ${group.targets.length} changed file${group.targets.length === 1 ? "" : "s"}\n   Error: ${errorMessage}`,
+      formatAutoScanErrorTranscript({
+        selector: group.selector,
+        targetCount: group.targets.length,
+        error: errorMessage,
+      }),
       { status: "error", targetCount: group.targets.length },
     );
     return { selector: group.selector, targetCount: group.targets.length, error: errorMessage };
@@ -223,11 +234,11 @@ async function runApexGuruAutoInsights(
     const apexGuruState = readApexGuruReadiness();
     emitCodeAnalyzerTranscript(
       pi,
-      formatApexGuruSkippedTranscript(
-        apexGuruState.access,
-        apexGuruState.message,
-        apexFiles.length,
-      ),
+      formatApexGuruSkippedTranscript({
+        access: apexGuruState.access,
+        reason: apexGuruState.message,
+        targetCount: apexFiles.length,
+      }),
       { status: "skipped", targetCount: apexFiles.length },
     );
     return { violations: [], groups: [] };
@@ -239,11 +250,10 @@ async function runApexGuruAutoInsights(
   for (const file of apexFiles) {
     const remaining = AUTO_APEXGURU_BATCH_TIMEOUT_MS - (Date.now() - apexGuruStarted);
     if (remaining <= 0) {
-      emitCodeAnalyzerTranscript(
-        pi,
-        `[sf-code-analyzer] ApexGuru auto insight budget exhausted · ${apexFiles.length} candidate(s)`,
-        { status: "timeout", targetCount: apexFiles.length },
-      );
+      emitCodeAnalyzerTranscript(pi, formatApexGuruBudgetExhaustedTranscript(apexFiles.length), {
+        status: "timeout",
+        targetCount: apexFiles.length,
+      });
       break;
     }
     try {
@@ -323,69 +333,6 @@ function violationSignature(
     })
     .sort()
     .join("|");
-}
-
-function formatLocalScanTranscript(
-  status: "running" | "clean" | "findings",
-  input: {
-    selectors: string[];
-    targetCount: number;
-    durationMs?: number;
-    violationCount?: number;
-    reportFile?: string;
-  },
-): string {
-  const title =
-    status === "running"
-      ? "🔄 🧪 Code Analyzer auto-scan running"
-      : status === "clean"
-        ? "✅ 🧪 Code Analyzer auto-scan clean"
-        : `⚠️ 🧪 Code Analyzer auto-scan found ${input.violationCount ?? 0} finding(s)`;
-  return [
-    title,
-    "   Tool: Local Salesforce Code Analyzer CLI",
-    `   Engines: ${input.selectors.join(", ")}`,
-    `   Targets: ${input.targetCount} changed file${input.targetCount === 1 ? "" : "s"}`,
-    input.durationMs !== undefined ? `   Duration: ${formatMs(input.durationMs)}` : undefined,
-    input.reportFile ? `   Report: ${input.reportFile}` : undefined,
-  ]
-    .filter(Boolean)
-    .join("\n");
-}
-
-function formatApexGuruTranscript(
-  status: "clean" | "findings",
-  input: { file: string; durationMs: number; violationCount: number; reportFile?: string },
-): string {
-  return [
-    status === "clean"
-      ? "✅ ✨ ApexGuru auto insight clean"
-      : `⚠️ ✨ ApexGuru auto insight found ${input.violationCount} finding(s)`,
-    "   Tool: ApexGuru Insights org service",
-    `   Target: ${path.basename(input.file)}`,
-    `   Duration: ${formatMs(input.durationMs)}`,
-    input.reportFile ? `   Report: ${input.reportFile}` : undefined,
-  ]
-    .filter(Boolean)
-    .join("\n");
-}
-
-function formatApexGuruSkippedTranscript(
-  access: string,
-  reason: string,
-  targetCount: number,
-): string {
-  return [
-    "⚪ ✨ ApexGuru auto insight skipped",
-    "   Tool: ApexGuru Insights org service",
-    `   Reason: ${access.replace(/_/g, " ")} · ${reason}`,
-    `   Targets: ${targetCount} changed production Apex file${targetCount === 1 ? "" : "s"}`,
-    "   Setup help: I can use SF Browser to check Scale Center / ApexGuru Insights and help enable ApexGuru if Salesforce exposes the setup option, after your approval.",
-  ].join("\n");
-}
-
-function formatMs(ms: number): string {
-  return ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(1)}s`;
 }
 
 function message(error: unknown): string {

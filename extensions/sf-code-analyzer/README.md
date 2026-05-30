@@ -116,6 +116,7 @@ extensions/sf-code-analyzer/
     artifacts.ts            ← implementation module
     auto-scan-followup.ts   ← implementation module
     auto-scan-plan.ts       ← implementation module
+    auto-scan-transcript.ts ← implementation module
     auto-scan.ts            ← implementation module
     cli.ts                  ← implementation module
     code_analyzer-tool.ts   ← implementation module
@@ -132,6 +133,7 @@ extensions/sf-code-analyzer/
     apexguru-readiness.test.ts← unit / smoke test
     auto-scan-followup.test.ts← unit / smoke test
     auto-scan-plan.test.ts  ← unit / smoke test
+    auto-scan-transcript.test.ts← unit / smoke test
     display.test.ts         ← unit / smoke test
     recipes.test.ts         ← unit / smoke test
     report-filter.test.ts   ← unit / smoke test
