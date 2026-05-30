@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.158.0-2026-05-30",
-  "latestVersion": "0.158.0",
+  "revision": "release-0.159.0-2026-05-30",
+  "latestVersion": "0.159.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.158.0",
+      "id": "release-0.159.0",
       "kind": "update",
-      "title": "sf-pi v0.158.0 — add code analyzer scan recipes",
+      "title": "sf-pi v0.159.0 — strengthen analyzer recipe guidance",
       "publishedAt": "2026-05-30T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.158.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.159.0",
       "severity": "info",
-      "body": "add code analyzer scan recipes"
+      "body": "strengthen analyzer recipe guidance — satisfy recipe content sniff lint"
     },
     {
       "id": "pi-0.73-required",
