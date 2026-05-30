@@ -132,7 +132,7 @@ describe("formatAgentContext", () => {
     expect(ctx).toContain("auth expired");
   });
 
-  // --- systemPromptOptions-aware context (0.68.0 adoption) ---
+  // --- systemPromptOptions-aware context ---
 
   it("omits tool/skill lines when no options provided", () => {
     const env = makeEnv({ projectDetected: true, projectName: "x" });
@@ -148,17 +148,13 @@ describe("formatAgentContext", () => {
     expect(ctx).not.toContain("Active SF skills:");
   });
 
-  it("includes all active tools verbatim when provided", () => {
+  it("does not include active tools when provided", () => {
     const env = makeEnv({ projectDetected: true, projectName: "x" });
     const ctx = formatAgentContext(env, {
       activeTools: ["bash", "read", "sf-deploy", "slack"],
     })!;
-    expect(ctx).toContain("Active tools:");
-    expect(ctx).toContain("bash");
-    expect(ctx).toContain("read");
-    expect(ctx).toContain("sf-deploy");
-    // No name-prefix filter: extension-contributed tools are listed too.
-    expect(ctx).toMatch(/Active tools:.*slack/);
+    expect(ctx).not.toContain("Active tools:");
+    expect(ctx).not.toContain("sf-deploy");
   });
 
   it("includes active SF skills when provided", () => {
@@ -173,25 +169,14 @@ describe("formatAgentContext", () => {
     expect(ctx).not.toMatch(/Active SF skills:.*visual-explainer/);
   });
 
-  it("includes both tools and skills when both are provided", () => {
+  it("keeps active tools out of the environment block when skills are provided", () => {
     const env = makeEnv({ projectDetected: true, projectName: "x" });
     const ctx = formatAgentContext(env, {
       activeTools: ["bash", "edit"],
       activeSkills: ["sf-apex"],
     })!;
-    expect(ctx).toContain("Active tools:");
+    expect(ctx).not.toContain("Active tools:");
     expect(ctx).toContain("Active SF skills:");
-  });
-
-  it("includes non-sf tools verbatim (no prefix filter)", () => {
-    const env = makeEnv({ projectDetected: true, projectName: "x" });
-    const ctx = formatAgentContext(env, {
-      activeTools: ["slack", "slack_channel", "my-custom-tool"],
-    })!;
-    expect(ctx).toContain("Active tools:");
-    expect(ctx).toContain("slack");
-    expect(ctx).toContain("slack_channel");
-    expect(ctx).toContain("my-custom-tool");
   });
 
   it("omits skills line when no skills pass the sf- prefix filter", () => {

@@ -376,7 +376,7 @@ function registerProviders(
   const providerConfig: ProviderConfig = {
     name: PROVIDER_DISPLAY_NAME,
     baseUrl: gatewayOpenAiBaseUrl,
-    apiKey: config.apiKey ?? API_KEY_ENV,
+    apiKey: config.apiKey ?? `$${API_KEY_ENV}`,
     authHeader: true,
     api: "openai-completions",
     models: providerModels,

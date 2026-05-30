@@ -211,6 +211,35 @@ describe("scope-probe", () => {
       expect(pi.getActiveTools()).toEqual(["bash", "slack", "slack_file", "slack_send"]);
     });
 
+    it("does not restore Slack tools that Pi did not select", async () => {
+      const pi = new FakePi(
+        ["bash", "slack", "slack_file", "slack_send"],
+        ["bash", "slack", "slack_file"],
+      );
+
+      mockAuthTestScopes("search:read.public");
+      let result = await probeAndGateTools(
+        pi as never,
+        "xoxp-test",
+        undefined,
+        ["search:read.public", "files:read", "chat:write"],
+        "user",
+      );
+      expect(result.gatedTools.sort()).toEqual(["slack_file", "slack_send"]);
+      expect(pi.getActiveTools()).toEqual(["bash", "slack"]);
+
+      mockAuthTestScopes("search:read.public, files:read, chat:write");
+      result = await probeAndGateTools(
+        pi as never,
+        "xoxp-test",
+        undefined,
+        ["search:read.public", "files:read", "chat:write"],
+        "user",
+      );
+      expect(result.gatedTools).toEqual([]);
+      expect(pi.getActiveTools()).toEqual(["bash", "slack", "slack_file"]);
+    });
+
     it("deactivates all Slack tools while preserving non-Slack tools", () => {
       const pi = new FakePi(["bash", "slack", "slack_file"], ["bash", "slack", "slack_file"]);
       deactivateSlackTools(pi as never);

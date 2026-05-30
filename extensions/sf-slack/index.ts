@@ -454,7 +454,7 @@ export default function sfSlack(pi: ExtensionAPI) {
 
   // ─── Auth provider registration ─────────────────────────────────────────────
   pi.registerProvider(PROVIDER_NAME, {
-    apiKey: ENV_TOKEN,
+    apiKey: `$${ENV_TOKEN}`,
     oauth: {
       name: "SF Slack",
       login: loginSlack,

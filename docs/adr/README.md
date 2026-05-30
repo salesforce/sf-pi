@@ -19,3 +19,6 @@ or accidentally contradicted in extension READMEs.
 - [0014: Agent Script Public Tool Surface Uses Four Family Tools](./0014-agent-script-four-family-tool-surface.md)
 - [0015: SF Brain Provides Conditional Herdr Workflow Mode](./0015-sf-brain-herdr-workflow-mode.md)
 - [0016: Dynamic SF Herdr Lane Planning](./0016-dynamic-sf-herdr-lane-planning.md)
+- [0017: Skill Funnel Additive Project Scope](./0017-skill-funnel-additive-project-scope.md)
+- [0018: Consented File-Level Conflict Resolution](./0018-consented-file-level-conflict-resolution.md)
+- [0019: Pi 0.77/0.78 Compatibility-Preserving Adoption](./0019-pi-077-078-compatibility-preserving-adoption.md)

@@ -106,13 +106,8 @@ export function formatAgentContext(
     lines.push("Run: sf org login web --set-default --alias MyOrg");
   }
 
-  // Append active tools/skills when known, so the agent can tailor its
-  // approach to what is actually available in this session. Tools are
-  // listed verbatim (no name-prefix filter) so extension-contributed tools
-  // are visible alongside the core editing tools.
-  if (options?.activeTools?.length) {
-    lines.push(`Active tools: ${options.activeTools.join(", ")}`);
-  }
+  // Append Salesforce skill hints when known. Tool routing belongs in
+  // <sf_pi_extensions>, not in this Salesforce environment fact block.
   if (options?.activeSkills?.length) {
     const sfSkills = options.activeSkills.filter((s) => s.startsWith("sf-"));
     if (sfSkills.length > 0) {

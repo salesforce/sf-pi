@@ -357,7 +357,7 @@ export class GatewayConfigPanelComponent implements Focusable {
     }
     lines.push(
       pad(
-        `   ${this.renderButton("save-enable", "Save + enable Opus 4.7")}  ${this.renderButton("save", "Save only")}`,
+        `   ${this.renderButton("save-enable", "Save + enable default model")}  ${this.renderButton("save", "Save only")}`,
       ),
     );
     lines.push(

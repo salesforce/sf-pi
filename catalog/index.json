@@ -713,7 +713,7 @@
     "entry": "extensions/sf-slack/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 11232
+    "srcLoc": 11249
   },
   {
     "id": "sf-welcome",
@@ -757,6 +757,6 @@
     "entry": "extensions/sf-welcome/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 5217
+    "srcLoc": 5223
   }
 ]

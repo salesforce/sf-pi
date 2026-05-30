@@ -154,7 +154,10 @@ export function gateToolsFromGrantedScopes(
 }
 
 /** Hide every Slack-owned tool while preserving non-Slack active tools. */
+const scopeGateBaselineByPi = new WeakMap<ExtensionAPI, string[]>();
+
 export function deactivateSlackTools(pi: ExtensionAPI): void {
+  scopeGateBaselineByPi.delete(pi);
   const activeTools = pi
     .getActiveTools()
     .filter(
@@ -166,16 +169,33 @@ export function deactivateSlackTools(pi: ExtensionAPI): void {
 
 function applyScopeGate(pi: ExtensionAPI, gatedTools: string[]): void {
   const registeredTools = pi.getAllTools().map((tool) => tool.name);
+  const registeredToolSet = new Set(registeredTools);
   const activeNonSlack = pi
     .getActiveTools()
     .filter(
       (toolName) =>
         !ALL_SLACK_TOOL_NAMES.includes(toolName as (typeof ALL_SLACK_TOOL_NAMES)[number]),
     );
-  const activeSlack = ALL_SLACK_TOOL_NAMES.filter(
-    (toolName) => registeredTools.includes(toolName) && !gatedTools.includes(toolName),
+  const baselineSlack = getScopeGateBaseline(pi, registeredToolSet);
+  const activeSlack = baselineSlack.filter(
+    (toolName) => registeredToolSet.has(toolName) && !gatedTools.includes(toolName),
   );
   pi.setActiveTools([...activeNonSlack, ...activeSlack]);
+}
+
+function getScopeGateBaseline(pi: ExtensionAPI, registeredTools: ReadonlySet<string>): string[] {
+  const existing = scopeGateBaselineByPi.get(pi);
+  if (existing) return existing;
+
+  const baseline = pi
+    .getActiveTools()
+    .filter(
+      (toolName) =>
+        registeredTools.has(toolName) &&
+        ALL_SLACK_TOOL_NAMES.includes(toolName as (typeof ALL_SLACK_TOOL_NAMES)[number]),
+    );
+  scopeGateBaselineByPi.set(pi, baseline);
+  return baseline;
 }
 
 export async function probeAndGateTools(

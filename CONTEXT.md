@@ -140,6 +140,18 @@ _Avoid_: copying to project while leaving it global (no scoping benefit), silent
 The upstream pi coding-agent process that hosts SF Pi and provides package loading, settings, skills, extensions, and the terminal UI.
 _Avoid_: SF Pi, bundled extension, Salesforce runtime
 
+**Compatibility-Preserving Adoption Slice**:
+A release-adoption change set that aligns **SF Pi** with newer **Pi Runtime** behavior without raising the minimum supported **Pi Runtime** version. It may fix copy, tests, prompt ownership, or code that already uses existing runtime interfaces, but it does not import newer-only APIs or require compatibility shims.
+_Avoid_: runtime-floor bump, broad rewrite, opportunistic API adoption
+
+**Pi Runtime Tool Selection Authority**:
+The principle that the **Pi Runtime** active-tool set is the source of truth for which LLM-callable tools are available in a session. **Bundled Extensions** may narrow that set for scope or safety, but must not re-enable tools excluded by native tool selection such as allowlists or exclude lists.
+_Avoid_: second tool loader, extension-owned active-tool registry, per-extension tool resurrection
+
+**Pi Session Display Name**:
+The human-readable session name owned by the **Pi Runtime** and set through native session naming surfaces such as startup naming or in-session renaming. **Bundled Extensions** may display it when present, but should not create a parallel naming system.
+_Avoid_: SF Pi session label, welcome-only name, inferred project identity
+
 **Opportunistic Herdr Adapter**:
 An SF Pi integration posture where Herdr-specific behavior activates only inside a Herdr-managed pane with an active Herdr tool surface, while non-Herdr sessions keep normal Pi operation and receive guidance only through explicit status or doctor commands.
 _Avoid_: hidden Herdr dependency, automatic handoff, remote Herdr controller, startup requirement
@@ -201,8 +213,12 @@ The Bundled Extension that gives agents compact Salesforce operator guidance and
 _Avoid_: Salesforce encyclopedia, all-purpose memory dump
 
 **SF Pi Extension Context**:
-The session-visible summary that tells agents which **Bundled Extensions** are available, which are disabled, and which extension-owned workflow should be considered before generic Salesforce guidance.
+The session-visible summary that tells agents which **Bundled Extensions** are available, which are disabled, and which extension-owned workflow should be considered before generic Salesforce guidance. Tool availability for extension routing belongs here, not in Salesforce environment facts.
 _Avoid_: extension catalog replacement, full documentation dump, skill list, plugin memory
+
+**SF Environment Context**:
+The session-visible summary of Salesforce project and org facts such as CLI version, default org, instance, API version, and config scope. It does not own tool-routing facts.
+_Avoid_: extension routing context, active-tool inventory, generic runtime status
 
 **Extension-First Routing**:
 The agent behavior where a matching enabled **Bundled Extension** is the primary path for a user's request, while broader skills and raw Salesforce commands are fallback paths.

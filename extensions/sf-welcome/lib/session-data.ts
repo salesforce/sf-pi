@@ -69,7 +69,7 @@ export function getRecentSessions(maxCount: number = 3): RecentSession[] {
   const seen = new Set<string>();
   const uniqueSessions: { name: string; mtime: number }[] = [];
   for (const session of sessions) {
-    const name = readProjectName(session.path, session.projectDir);
+    const name = readSessionDisplayName(session.path, session.projectDir);
     if (!seen.has(name)) {
       seen.add(name);
       uniqueSessions.push({ name, mtime: session.mtime });
@@ -84,19 +84,27 @@ export function getRecentSessions(maxCount: number = 3): RecentSession[] {
   }));
 }
 
-function readProjectName(sessionPath: string, projectDir: string): string {
+function readSessionDisplayName(sessionPath: string, projectDir: string): string {
+  let projectName: string | undefined;
+  let sessionName: string | undefined;
+
   try {
-    const firstLine = readFileSync(sessionPath, "utf-8").split("\n", 1)[0];
-    if (firstLine) {
-      const header = JSON.parse(firstLine) as { cwd?: unknown };
-      if (typeof header.cwd === "string" && header.cwd.trim()) {
-        return basename(header.cwd) || header.cwd;
+    for (const line of readFileSync(sessionPath, "utf-8").split("\n")) {
+      if (!line.trim()) continue;
+      const entry = JSON.parse(line) as { type?: unknown; cwd?: unknown; name?: unknown };
+      if (projectName === undefined && typeof entry.cwd === "string" && entry.cwd.trim()) {
+        projectName = basename(entry.cwd) || entry.cwd;
+      }
+      if (entry.type === "session_info") {
+        sessionName =
+          typeof entry.name === "string" && entry.name.trim() ? entry.name.trim() : undefined;
       }
     }
   } catch {
     // Fall through to the directory-derived label below.
   }
-  return projectNameFromSessionDir(projectDir);
+
+  return sessionName ?? projectName ?? projectNameFromSessionDir(projectDir);
 }
 
 function projectNameFromSessionDir(projectDir: string): string {
