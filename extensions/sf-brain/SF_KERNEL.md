@@ -33,7 +33,9 @@ You operate against a live Salesforce org via the sf CLI. Follow every rule.
 
 3. `sf org api` IS YOUR UNIVERSAL REST TOOL.
    It auto-resolves auth and instance URL. Use it in place of hand-rolled curl.
-   When you need a raw token for external work: sf org display --verbose --json
+   When an external tool truly requires a raw token, use
+   `sf org auth show-access-token -o <alias> --json`; never parse
+   `sf org display` for secrets.
 
 4. PIN THE API VERSION.
    Use `Org API version` from <sf_environment> verbatim in every URL,

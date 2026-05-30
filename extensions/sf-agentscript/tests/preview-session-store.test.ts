@@ -47,6 +47,7 @@ describe("session lifecycle", () => {
     const meta = JSON.parse(metaRaw) as PreviewMetadata;
     expect(meta).toMatchObject({
       sessionId: "S1",
+      agentId: "Billing_Bot",
       agentName: "Billing_Bot",
       startTime: "2026-05-10T00:00:00Z",
       mockMode: "Mock",
@@ -95,8 +96,8 @@ describe("session lifecycle", () => {
     });
     const { transcript } = await loadSession(workDir, "B", "S1");
     expect(transcript).toHaveLength(2);
-    expect(transcript[0].role).toBe("user");
-    expect(transcript[1].planId).toBe("P1");
+    expect(transcript[0]).toMatchObject({ role: "user", agentId: "B" });
+    expect(transcript[1]).toMatchObject({ role: "agent", agentId: "B", planId: "P1" });
   });
 
   test("logTrace writes the file and updates planIds", async () => {
@@ -147,8 +148,20 @@ describe("session lifecycle", () => {
 
     const index = await readTurnIndex(dir);
     expect(index?.turns).toHaveLength(2);
+    expect(index).toMatchObject({
+      version: "1.0",
+      schemaVersion: 1,
+      agentId: "B",
+      agentName: "B",
+      sessionId: "S1",
+    });
     expect(index?.turns[0]).toMatchObject({
       turn: 1,
+      timestamp: "t1",
+      role: "user",
+      summary: "hello",
+      summaryTruncated: false,
+      multiModal: null,
       planId: "P1",
       userText: "hello",
       agentText: "hello again",
@@ -171,7 +184,16 @@ describe("session lifecycle", () => {
       agentText: "hi",
     });
     const index = await readTurnIndex(dir);
-    expect(index?.turns).toEqual([{ turn: 1, userText: "hello", agentText: "hi" }]);
+    expect(index?.turns).toHaveLength(1);
+    expect(index?.turns[0]).toMatchObject({
+      turn: 1,
+      role: "user",
+      summary: "hello",
+      summaryTruncated: false,
+      multiModal: null,
+      userText: "hello",
+      agentText: "hi",
+    });
   });
 
   test("listStoredSessions discovers valid and malformed sessions", async () => {

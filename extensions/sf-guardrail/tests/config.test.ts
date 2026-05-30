@@ -34,7 +34,16 @@ describe("bundled defaults", () => {
     expect(policyIds).toContain("secret-files");
     const cmdIds = config.commandGate.patterns.map((p) => p.id);
     expect(cmdIds).toEqual(
-      expect.arrayContaining(["rm-rf", "sudo", "sf-org-delete", "git-force-push"]),
+      expect.arrayContaining([
+        "rm-rf",
+        "sudo",
+        "sf-org-delete",
+        "sf-org-auth-show-access-token",
+        "sf-org-auth-show-sfdx-auth-url",
+        "sf-org-auth-show-user-password",
+        "sf-temp-show-secrets",
+        "git-force-push",
+      ]),
     );
     const orgRuleIds = config.orgAwareGate.rules.map((r) => r.id);
     expect(orgRuleIds).toEqual(

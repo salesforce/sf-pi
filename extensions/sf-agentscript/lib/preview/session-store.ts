@@ -5,7 +5,7 @@
  * Layout (Salesforce-standard, mirrored from `@salesforce/agents` ScriptAgent):
  *
  *   <cwd>/.sfdx/agents/<agentName>/sessions/<sessionId>/
- *   ├── metadata.json        { sessionId, agentName, startTime, endTime?, mockMode, planIds[] }
+ *   ├── metadata.json        { sessionId, agentId, agentName, startTime, endTime?, mockMode, planIds[] }
  *   ├── transcript.jsonl     append-only; one TranscriptEntry per line (user|agent)
  *   ├── turn-index.json      turn → planId/user/agent/trace pointer
  *   └── traces/<planId>.json full PlannerResponse per turn
@@ -30,6 +30,9 @@ export type SfapHostPrefix = "" | "test." | "dev.";
 
 export interface PreviewMetadata {
   sessionId: string;
+  /** Upstream @salesforce/agents session-history key. Mirrors agentName for sf-pi. */
+  agentId: string;
+  /** Backward-compatible sf-pi display key used by existing branch/session flows. */
   agentName: string;
   startTime: string;
   endTime?: string;
@@ -70,6 +73,9 @@ export interface PreviewMetadata {
 
 export interface TranscriptEntry {
   timestamp: string;
+  /** Upstream @salesforce/agents transcript key. Mirrors agentName for sf-pi. */
+  agentId?: string;
+  /** Backward-compatible sf-pi display key. */
   agentName: string;
   sessionId: string;
   role: "user" | "agent";
@@ -81,18 +87,31 @@ export interface TranscriptEntry {
 
 export interface TurnIndexEntry {
   turn: number;
-  planId?: string;
+  /** Upstream @salesforce/agents fields; retained alongside sf-pi's richer exchange fields. */
+  timestamp?: string;
+  role?: "user" | "agent";
+  summary?: string;
+  summaryTruncated?: boolean;
+  multiModal?: string | null;
+  planId?: string | null;
+  traceFile?: string | null;
+  reason?: string;
+  /** sf-pi exchange fields. */
   userText?: string;
   agentText?: string;
   userTimestamp?: string;
   agentTimestamp?: string;
-  traceFile?: string;
 }
 
 export interface TurnIndex {
+  /** Upstream @salesforce/agents version key. */
+  version: "1.0";
+  /** Backward-compatible sf-pi schema marker. */
   schemaVersion: 1;
+  agentId: string;
   agentName: string;
   sessionId: string;
+  created: string;
   turns: TurnIndexEntry[];
 }
 
@@ -133,13 +152,17 @@ export async function loadSession(
   const dir = getSessionDir(cwd, agentName, sessionId);
   const metaRaw = await readFile(path.join(dir, "metadata.json"), "utf8");
   const metadata = JSON.parse(metaRaw) as PreviewMetadata;
+  metadata.agentId ??= metadata.agentName;
   let transcript: TranscriptEntry[] = [];
   try {
     const raw = await readFile(path.join(dir, "transcript.jsonl"), "utf8");
     transcript = raw
       .split("\n")
       .filter((l) => l.trim())
-      .map((l) => JSON.parse(l) as TranscriptEntry);
+      .map((l) => {
+        const entry = JSON.parse(l) as TranscriptEntry;
+        return { ...entry, agentId: entry.agentId ?? entry.agentName };
+      });
   } catch {
     /* empty session — no transcript yet */
   }
@@ -161,12 +184,28 @@ export async function recordTurnPlan(
   entry: Omit<TurnIndexEntry, "turn"> & { turn?: number; agentName: string; sessionId: string },
 ): Promise<TurnIndex> {
   const existing = await readTurnIndex(sessionDir);
-  const index: TurnIndex = existing ?? {
-    schemaVersion: 1,
-    agentName: entry.agentName,
-    sessionId: entry.sessionId,
-    turns: [],
-  };
+  const now = new Date().toISOString();
+  const created = entry.userTimestamp ?? entry.agentTimestamp ?? now;
+  const index: TurnIndex = existing
+    ? {
+        ...existing,
+        version: existing.version ?? "1.0",
+        schemaVersion: existing.schemaVersion ?? 1,
+        agentId: existing.agentId ?? existing.agentName ?? entry.agentName,
+        agentName: existing.agentName ?? entry.agentName,
+        sessionId: existing.sessionId ?? entry.sessionId,
+        created: existing.created ?? created,
+        turns: existing.turns ?? [],
+      }
+    : {
+        version: "1.0",
+        schemaVersion: 1,
+        agentId: entry.agentName,
+        agentName: entry.agentName,
+        sessionId: entry.sessionId,
+        created,
+        turns: [],
+      };
   const existingByTurn =
     typeof entry.turn === "number"
       ? index.turns.find((t) => t.turn === entry.turn)
@@ -174,15 +213,31 @@ export async function recordTurnPlan(
         ? index.turns.find((t) => t.planId === entry.planId)
         : undefined;
   const turn = entry.turn ?? existingByTurn?.turn ?? maxTurn(index.turns) + 1;
+  const rawSummary =
+    entry.userText ?? existingByTurn?.userText ?? entry.agentText ?? existingByTurn?.summary ?? "";
+  const summary = rawSummary.length > 100 ? `${rawSummary.slice(0, 100)}...` : rawSummary;
   const nextEntry: TurnIndexEntry = {
     ...(existingByTurn ?? { turn }),
     turn,
-    ...(entry.planId ? { planId: entry.planId } : {}),
+    timestamp: entry.userTimestamp ?? entry.agentTimestamp ?? existingByTurn?.timestamp ?? now,
+    role: entry.userText !== undefined ? "user" : (existingByTurn?.role ?? "agent"),
+    summary,
+    summaryTruncated: rawSummary.length > 100,
+    multiModal: existingByTurn?.multiModal ?? null,
+    ...(entry.planId
+      ? { planId: entry.planId }
+      : existingByTurn?.planId
+        ? { planId: existingByTurn.planId }
+        : {}),
+    ...(entry.traceFile
+      ? { traceFile: entry.traceFile }
+      : existingByTurn?.traceFile
+        ? { traceFile: existingByTurn.traceFile }
+        : {}),
     ...(entry.userText !== undefined ? { userText: entry.userText } : {}),
     ...(entry.agentText !== undefined ? { agentText: entry.agentText } : {}),
     ...(entry.userTimestamp ? { userTimestamp: entry.userTimestamp } : {}),
     ...(entry.agentTimestamp ? { agentTimestamp: entry.agentTimestamp } : {}),
-    ...(entry.traceFile ? { traceFile: entry.traceFile } : {}),
   };
   const idx = index.turns.findIndex((t) => t.turn === turn);
   if (idx >= 0) index.turns[idx] = nextEntry;
@@ -202,13 +257,17 @@ function maxTurn(turns: TurnIndexEntry[]): number {
 
 export async function initSession(
   cwd: string,
-  meta: Omit<PreviewMetadata, "endTime" | "planIds"> & { planIds?: string[] },
+  meta: Omit<PreviewMetadata, "agentId" | "endTime" | "planIds"> & {
+    agentId?: string;
+    planIds?: string[];
+  },
 ): Promise<string> {
   const dir = getSessionDir(cwd, meta.agentName, meta.sessionId);
   await mkdir(dir, { recursive: true });
   await mkdir(path.join(dir, "traces"), { recursive: true });
   const full: PreviewMetadata = {
     sessionId: meta.sessionId,
+    agentId: meta.agentId ?? meta.agentName,
     agentName: meta.agentName,
     startTime: meta.startTime,
     mockMode: meta.mockMode,
@@ -225,7 +284,8 @@ export async function initSession(
 }
 
 export async function logTurn(sessionDir: string, entry: TranscriptEntry): Promise<void> {
-  await appendFile(path.join(sessionDir, "transcript.jsonl"), JSON.stringify(entry) + "\n", "utf8");
+  const full: TranscriptEntry = { ...entry, agentId: entry.agentId ?? entry.agentName };
+  await appendFile(path.join(sessionDir, "transcript.jsonl"), JSON.stringify(full) + "\n", "utf8");
 }
 
 export async function logTrace(sessionDir: string, planId: string, trace: unknown): Promise<void> {
@@ -236,6 +296,7 @@ export async function logTrace(sessionDir: string, planId: string, trace: unknow
     const metaPath = path.join(sessionDir, "metadata.json");
     const metaRaw = await readFile(metaPath, "utf8");
     const meta = JSON.parse(metaRaw) as PreviewMetadata;
+    meta.agentId ??= meta.agentName;
     if (!meta.planIds.includes(planId)) {
       meta.planIds.push(planId);
       await writeFile(metaPath, JSON.stringify(meta, null, 2), "utf8");
@@ -249,6 +310,7 @@ export async function endSession(sessionDir: string, endTime: string): Promise<P
   const metaPath = path.join(sessionDir, "metadata.json");
   const metaRaw = await readFile(metaPath, "utf8");
   const meta = JSON.parse(metaRaw) as PreviewMetadata;
+  meta.agentId ??= meta.agentName;
   meta.endTime = endTime;
   await writeFile(metaPath, JSON.stringify(meta, null, 2), "utf8");
   return meta;
@@ -292,6 +354,7 @@ export async function listStoredSessions(cwd: string): Promise<StoredPreviewSess
       try {
         const raw = await readFile(path.join(sessionDir, "metadata.json"), "utf8");
         metadata = JSON.parse(raw) as PreviewMetadata;
+        metadata.agentId ??= metadata.agentName ?? agent;
       } catch (err) {
         metadataError = err instanceof Error ? err.message : String(err);
       }
@@ -360,6 +423,7 @@ export async function cleanupSessions(
       try {
         const raw = await readFile(path.join(sessionDir, "metadata.json"), "utf8");
         metadata = JSON.parse(raw) as PreviewMetadata;
+        metadata.agentId ??= metadata.agentName ?? agent;
       } catch {
         // Treat sessions without metadata as old enough to remove if the
         // dir mtime exceeds the cutoff.

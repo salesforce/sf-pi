@@ -19,7 +19,8 @@ feature tiers, all toggleable via the config:
 2. **commandGate** — dangerous-command patterns matched structurally
    against the tokenized shell command from `bash.command` or
    `herdr.run.command`. Ships with `rm -rf`, `sudo`, `sf org delete`,
-   `git push --force`. Prompts user confirmation via `ctx.ui.select`
+   explicit Salesforce CLI credential reveal commands, `SF_TEMP_SHOW_SECRETS=true`,
+   and `git push --force`. Prompts user confirmation via `ctx.ui.select`
    (Allow once / Allow for this session / Block).
 
 3. **orgAwareGate** — shell-command rules that fire only when the resolved

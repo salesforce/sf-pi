@@ -141,6 +141,32 @@ describe("classify — commandGate (Tier 2)", () => {
     expect(decision).toBeUndefined();
   });
 
+  it("confirms explicit Salesforce CLI credential reveal commands", () => {
+    const config = readBundledConfig();
+    const decision = classify({
+      toolName: "bash",
+      input: { command: "sf org auth show-access-token -o DevHub --json" },
+      cwd: "/project",
+      config,
+    });
+    expect(decision?.feature).toBe("commandGate");
+    expect(decision?.action).toBe("confirm");
+    expect(decision?.ruleId).toBe("sf-org-auth-show-access-token");
+  });
+
+  it("confirms temporary Salesforce CLI secret-output override", () => {
+    const config = readBundledConfig();
+    const decision = classify({
+      toolName: "bash",
+      input: { command: "SF_TEMP_SHOW_SECRETS=true sf org display -o DevHub --json" },
+      cwd: "/project",
+      config,
+    });
+    expect(decision?.feature).toBe("commandGate");
+    expect(decision?.action).toBe("confirm");
+    expect(decision?.ruleId).toBe("sf-temp-show-secrets");
+  });
+
   it("confirms dangerous herdr.run commands", () => {
     const config = readBundledConfig();
     const decision = classify({

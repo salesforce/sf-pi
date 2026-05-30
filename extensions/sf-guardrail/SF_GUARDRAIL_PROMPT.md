@@ -14,6 +14,8 @@ Dangerous-command confirmation (shell-AST matched from `bash.command` or
 
 - rm -rf, sudo, chmod -R 777, chown -R, dd of=, mkfs.\*
 - sf org delete (scratch/sandbox)
+- sf org auth show-access-token|show-sfdx-auth-url|show-user-password
+- SF_TEMP_SHOW_SECRETS=true
 - git push --force / -f
 
 Org-aware confirmation (from `bash.command` or `herdr.run.command`, only when

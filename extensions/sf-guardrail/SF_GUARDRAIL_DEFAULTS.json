@@ -74,6 +74,26 @@
         "pattern": "sf org delete",
         "description": "delete scratch/sandbox org"
       },
+      {
+        "id": "sf-org-auth-show-access-token",
+        "pattern": "org auth show-access-token",
+        "description": "reveal Salesforce org access token"
+      },
+      {
+        "id": "sf-org-auth-show-sfdx-auth-url",
+        "pattern": "org auth show-sfdx-auth-url",
+        "description": "reveal Salesforce org SFDX auth URL"
+      },
+      {
+        "id": "sf-org-auth-show-user-password",
+        "pattern": "org auth show-user-password",
+        "description": "reveal Salesforce org user password"
+      },
+      {
+        "id": "sf-temp-show-secrets",
+        "pattern": "SF_TEMP_SHOW_SECRETS=true",
+        "description": "temporarily restore legacy Salesforce CLI secret output"
+      },
       { "id": "git-force-push", "pattern": "git push --force", "description": "git force push" },
       {
         "id": "git-force-push-short",
