@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.154.0-2026-05-29",
-  "latestVersion": "0.154.0",
+  "revision": "release-0.154.1-2026-05-30",
+  "latestVersion": "0.154.1",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.154.0",
+      "id": "release-0.154.1",
       "kind": "update",
-      "title": "sf-pi v0.154.0 — sf-skills: defaults install is local-first (clone once global, wire current project)",
-      "publishedAt": "2026-05-29T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.154.0",
+      "title": "sf-pi v0.154.1 — align with pi runtime tool selection",
+      "publishedAt": "2026-05-30T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.154.1",
       "severity": "info",
-      "body": "sf-skills: defaults install is local-first (clone once global, wire current project)"
+      "body": "align with pi runtime tool selection"
     },
     {
       "id": "pi-0.73-required",
