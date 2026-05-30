@@ -276,6 +276,10 @@ _Avoid_: global report index, mutable report state, scan re-execution
 A named, public-safe **SF Code Analyzer** preset that explains when to use a rule selector, workspace/target posture, output files, and Herdr guidance without executing the scan automatically.
 _Avoid_: hidden scan, shipped rule implementation, noisy default, recipe as rule config
 
+**Scan Recipe Contract**:
+The public behavior contract for **Code Analyzer Scan Recipes**: one deep interface builds recipe text, contextual broader-scan suggestions, and Herdr handoff metadata without executing scans.
+_Avoid_: implementation detail test, recipe execution path, hidden rule catalog, shallow helper pile
+
 **Code Analyzer Broader-Scan Suggestion**:
 A contextual nudge from **SF Code Analyzer** that recommends a stronger explicit recipe such as Security, AppExchange, all-rules, CPD, RetireJS, or SFGE when the user’s development task appears to warrant it.
 _Avoid_: automatic broad scan, mandatory gate, replacing user intent, always-on noisy warning
@@ -585,6 +589,7 @@ _Avoid_: every available gateway model, benchmark target, broad live-test suite
 - A **Code Analyzer Output Mode** controls prompt-visible detail while preserving full **Code Analyzer Report Artifacts**.
 - A **Code Analyzer Report Filter** powers `last_report` inspection without introducing a global report store.
 - **Code Analyzer Scan Recipes** make the default-vs-broader-scan distinction explicit without shipping rule implementations.
+- The **Scan Recipe Contract** is a first TDD target because it is stable, pure, and central to broader-scan guidance.
 - A **Code Analyzer Broader-Scan Suggestion** may recommend a stronger explicit scan, but does not automatically run broad or noisy recipes.
 - A **Code Analyzer Content Sniff** can improve suggestions without turning auto-scan into a parser or broad analysis engine.
 - A **Code Analyzer Herdr Handoff** keeps long-scan lane planning visible and outside hidden `sf-code-analyzer` internals.

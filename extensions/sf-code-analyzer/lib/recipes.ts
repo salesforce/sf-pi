@@ -4,6 +4,7 @@ import { existsSync, readFileSync } from "node:fs";
 
 export interface CodeAnalyzerRecipe {
   id: string;
+  kind: "automatic" | "explicit";
   label: string;
   when: string;
   ruleSelector: string[];
@@ -21,9 +22,24 @@ export interface CodeAnalyzerHerdrHandoff {
   reason: string;
 }
 
+export interface ScanRecipeGuidanceInput {
+  selectors: string[];
+  targets: string[];
+  includeExamples?: boolean;
+  includeCatalog?: boolean;
+}
+
+export interface ScanRecipeGuidance {
+  recipes: CodeAnalyzerRecipe[];
+  suggestions: CodeAnalyzerRecipe[];
+  herdrHandoffs: CodeAnalyzerHerdrHandoff[];
+  text: string;
+}
+
 export const CODE_ANALYZER_RECIPES: CodeAnalyzerRecipe[] = [
   {
     id: "auto-apex-default",
+    kind: "automatic",
     label: "Automatic Apex default",
     when: "Post-agent auto-scan for changed Apex, trigger, or .apex files.",
     ruleSelector: ["pmd:Recommended"],
@@ -31,6 +47,7 @@ export const CODE_ANALYZER_RECIPES: CodeAnalyzerRecipe[] = [
   },
   {
     id: "auto-js-default",
+    kind: "automatic",
     label: "Automatic JavaScript/TypeScript default",
     when: "Post-agent auto-scan for changed JavaScript or TypeScript files.",
     ruleSelector: ["eslint:Recommended"],
@@ -38,6 +55,7 @@ export const CODE_ANALYZER_RECIPES: CodeAnalyzerRecipe[] = [
   },
   {
     id: "auto-flow-default",
+    kind: "automatic",
     label: "Automatic Flow metadata default",
     when: "Post-agent auto-scan for changed Flow metadata files.",
     ruleSelector: ["flow:Recommended"],
@@ -45,6 +63,7 @@ export const CODE_ANALYZER_RECIPES: CodeAnalyzerRecipe[] = [
   },
   {
     id: "full-recommended",
+    kind: "explicit",
     label: "Full project recommended scan",
     when: "Before a larger checkpoint when you want recommended rules across eligible engines.",
     ruleSelector: ["Recommended"],
@@ -54,6 +73,7 @@ export const CODE_ANALYZER_RECIPES: CodeAnalyzerRecipe[] = [
   },
   {
     id: "security",
+    kind: "explicit",
     label: "Security-focused scan",
     when: "Auth, permissions, CRUD/FLS, sharing, dynamic SOQL, callouts, endpoints, secrets, crypto, or guest/Experience changes.",
     ruleSelector: ["Recommended:Security"],
@@ -64,6 +84,7 @@ export const CODE_ANALYZER_RECIPES: CodeAnalyzerRecipe[] = [
   },
   {
     id: "appexchange",
+    kind: "explicit",
     label: "AppExchange security review scan",
     when: "Managed package, AppExchange, ISV, packaging, or security review preparation.",
     ruleSelector: ["AppExchange"],
@@ -74,6 +95,7 @@ export const CODE_ANALYZER_RECIPES: CodeAnalyzerRecipe[] = [
   },
   {
     id: "all-rules",
+    kind: "explicit",
     label: "All rules scan",
     when: "Explicit exhaustive scan, CI hardening, or pre-release quality sweep.",
     ruleSelector: ["all"],
@@ -83,6 +105,7 @@ export const CODE_ANALYZER_RECIPES: CodeAnalyzerRecipe[] = [
   },
   {
     id: "retire-js",
+    kind: "explicit",
     label: "Dependency vulnerability scan",
     when: "package.json, lockfile, or dependency updates.",
     ruleSelector: ["retire-js:Recommended"],
@@ -92,6 +115,7 @@ export const CODE_ANALYZER_RECIPES: CodeAnalyzerRecipe[] = [
   },
   {
     id: "cpd",
+    kind: "explicit",
     label: "Duplication scan",
     when: "Many files changed, refactors, migrations, or copy/similar-logic cleanup.",
     ruleSelector: ["cpd:Recommended"],
@@ -101,6 +125,7 @@ export const CODE_ANALYZER_RECIPES: CodeAnalyzerRecipe[] = [
   },
   {
     id: "sfge",
+    kind: "explicit",
     label: "Salesforce Graph Engine scan",
     when: "Apex data-flow or security-sensitive SOQL/DML path changes.",
     ruleSelector: ["sfge:Recommended"],
@@ -111,6 +136,7 @@ export const CODE_ANALYZER_RECIPES: CodeAnalyzerRecipe[] = [
   },
   {
     id: "apex-performance",
+    kind: "explicit",
     label: "Apex performance scan",
     when: "Apex loops, SOQL/DML paths, describe calls, queueing, or performance-sensitive service changes.",
     ruleSelector: ["pmd:Recommended:Performance"],
@@ -118,10 +144,35 @@ export const CODE_ANALYZER_RECIPES: CodeAnalyzerRecipe[] = [
   },
 ];
 
+export function buildScanRecipeGuidance(input: ScanRecipeGuidanceInput): ScanRecipeGuidance {
+  const suggestionIds = suggestBroaderRecipes(input);
+  const suggestions = suggestionIds
+    .map((id) => CODE_ANALYZER_RECIPES.find((recipe) => recipe.id === id))
+    .filter((recipe): recipe is CodeAnalyzerRecipe => Boolean(recipe));
+  const herdrHandoffs = herdrHandoffsForRecipes(suggestionIds);
+  const recipeText =
+    input.includeCatalog === false ? undefined : renderRecipes({ inline: input.includeExamples });
+  const suggestionText = renderBroaderRecipeSuggestion(suggestionIds);
+  const herdrText = herdrHandoffs.length
+    ? [
+        "",
+        "Herdr handoff:",
+        "If sf_herdr_plan is available and the user chooses one of these broad scans, call it visibly before running the scan.",
+      ].join("\n")
+    : "";
+  return {
+    recipes: CODE_ANALYZER_RECIPES,
+    suggestions,
+    herdrHandoffs,
+    text: [recipeText, suggestionText, herdrText].filter(Boolean).join("\n"),
+  };
+}
+
 export function renderRecipes(options: { inline?: boolean } = {}): string {
   const lines = ["📋 SF Code Analyzer scan recipes", ""];
   for (const recipe of CODE_ANALYZER_RECIPES) {
     lines.push(`${recipe.herdrRecommended ? "🐑 " : ""}${recipe.id} — ${recipe.label}`);
+    lines.push(`  Kind: ${recipe.kind}`);
     lines.push(`  When: ${recipe.when}`);
     lines.push(`  rule_selector: ${recipe.ruleSelector.join(", ")}`);
     if (recipe.outputFiles?.length) lines.push(`  output_files: ${recipe.outputFiles.join(", ")}`);

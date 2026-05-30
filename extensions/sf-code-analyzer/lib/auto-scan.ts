@@ -25,7 +25,7 @@ import {
   type CodeAnalyzerTarget,
 } from "./file-classify.ts";
 import { isCodeAnalyzerReadyForAutoScan, readCodeAnalyzerReadiness } from "./readiness.ts";
-import { renderBroaderRecipeSuggestion, suggestBroaderRecipes } from "./recipes.ts";
+import { buildScanRecipeGuidance } from "./recipes.ts";
 import { readEffectiveCodeAnalyzerSettings } from "./settings.ts";
 import { emitCodeAnalyzerTranscript } from "./transcript.ts";
 import type { CodeAnalyzerReportSummary, CodeAnalyzerRunJson } from "./types.ts";
@@ -195,11 +195,13 @@ async function runLocalScanGroup(
         durationMs: summary.durationMs,
       },
     );
-    const suggestion = renderBroaderRecipeSuggestion(
-      suggestBroaderRecipes({ selectors: [group.selector], targets: targetPaths }),
-    );
-    if (suggestion) {
-      emitCodeAnalyzerTranscript(pi, suggestion, {
+    const guidance = buildScanRecipeGuidance({
+      selectors: [group.selector],
+      targets: targetPaths,
+      includeCatalog: false,
+    });
+    if (guidance.text) {
+      emitCodeAnalyzerTranscript(pi, guidance.text, {
         status: "skipped",
         targetCount: group.targets.length,
       });
