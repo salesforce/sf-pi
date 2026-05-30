@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.154.2-2026-05-30",
-  "latestVersion": "0.154.2",
+  "revision": "release-0.155.0-2026-05-30",
+  "latestVersion": "0.155.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.154.2",
+      "id": "release-0.155.0",
       "kind": "update",
-      "title": "sf-pi v0.154.2 — sf-welcome: show SF Skills availability separately",
+      "title": "sf-pi v0.155.0 — add sf-code-analyzer extension",
       "publishedAt": "2026-05-30T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.154.2",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.155.0",
       "severity": "info",
-      "body": "sf-welcome: show SF Skills availability separately"
+      "body": "add sf-code-analyzer extension — suggest ApexGuru setup with browser approval"
     },
     {
       "id": "pi-0.73-required",
