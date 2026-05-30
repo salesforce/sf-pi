@@ -517,6 +517,18 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.159.0](https://github.com/salesforce/sf-pi/compare/v0.158.0...v0.159.0) (2026-05-30)
+
+
+### Features
+
+* strengthen analyzer recipe guidance ([a81dc9d](https://github.com/salesforce/sf-pi/commit/a81dc9d3d9d6593f91e366590a937e21cfd28cbf))
+
+
+### Bug Fixes
+
+* satisfy recipe content sniff lint ([4f9d561](https://github.com/salesforce/sf-pi/commit/4f9d561f651dcb5c50bee1ef928ab137f09c146e))
+
 ## [0.158.0](https://github.com/salesforce/sf-pi/compare/v0.157.0...v0.158.0) (2026-05-30)
 
 
