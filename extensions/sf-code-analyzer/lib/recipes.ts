@@ -239,7 +239,7 @@ function sniffChangedContent(targets: string[]): { security: boolean; dataFlow: 
   let dataFlow = false;
   for (const target of targets) {
     if (!existsSync(target)) continue;
-    let content = "";
+    let content: string;
     try {
       content = readFileSync(target, "utf8").slice(0, 64 * 1024);
     } catch {
