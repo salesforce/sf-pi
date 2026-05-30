@@ -18,7 +18,7 @@ import { runApexGuru } from "./apexguru.ts";
 import { nextReportPath } from "./artifacts.ts";
 import { runCodeAnalyzer } from "./cli.ts";
 import { renderActionableFindings } from "./display.ts";
-import { isApexGuruReadyForAutoInsight } from "./apexguru-readiness.ts";
+import { isApexGuruReadyForAutoInsight, readApexGuruReadiness } from "./apexguru-readiness.ts";
 import { classifyCodeAnalyzerTarget, isProductionApexFile } from "./file-classify.ts";
 import { isCodeAnalyzerReadyForAutoScan, readCodeAnalyzerReadiness } from "./readiness.ts";
 import { readEffectiveCodeAnalyzerSettings } from "./settings.ts";
@@ -82,12 +82,24 @@ export function registerDeferredCodeAnalyzerAutoScan(pi: ExtensionAPI, exec: Exe
         timeout_ms: AUTO_SCAN_TIMEOUT_MS,
       });
 
-      if (settings.apexGuruAuto && isApexGuruReadyForAutoInsight()) {
+      const apexFiles = targets
+        .map((target) => target.path)
+        .filter((file) => isProductionApexFile(file))
+        .sort();
+      if (settings.apexGuruAuto && apexFiles.length > 0 && !isApexGuruReadyForAutoInsight()) {
+        const apexGuruState = readApexGuruReadiness();
+        emitCodeAnalyzerTranscript(
+          pi,
+          formatApexGuruSkippedTranscript(
+            apexGuruState.access,
+            apexGuruState.message,
+            apexFiles.length,
+          ),
+          { status: "skipped", targetCount: apexFiles.length },
+        );
+      }
+      if (settings.apexGuruAuto && apexFiles.length > 0 && isApexGuruReadyForAutoInsight()) {
         const apexGuruStarted = Date.now();
-        const apexFiles = targets
-          .map((target) => target.path)
-          .filter((file) => isProductionApexFile(file))
-          .sort();
         for (const file of apexFiles) {
           const remaining = AUTO_APEXGURU_BATCH_TIMEOUT_MS - (Date.now() - apexGuruStarted);
           if (remaining <= 0) {
@@ -283,6 +295,20 @@ function formatApexGuruTranscript(
   ]
     .filter(Boolean)
     .join("\n");
+}
+
+function formatApexGuruSkippedTranscript(
+  access: string,
+  reason: string,
+  targetCount: number,
+): string {
+  return [
+    "⚪ ✨ ApexGuru auto insight skipped",
+    "   Tool: ApexGuru Insights org service",
+    `   Reason: ${access.replace(/_/g, " ")} · ${reason}`,
+    `   Targets: ${targetCount} changed production Apex file${targetCount === 1 ? "" : "s"}`,
+    "   Setup help: I can use SF Browser to check Scale Center / ApexGuru Insights and help enable ApexGuru if Salesforce exposes the setup option, after your approval.",
+  ].join("\n");
 }
 
 function formatMs(ms: number): string {

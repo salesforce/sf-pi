@@ -16,6 +16,7 @@
       "lib/auto-scan.ts",
       "lib/cli.ts",
       "lib/apexguru.ts",
+      "lib/apexguru-guidance.ts",
       "lib/apexguru-readiness.ts",
       "lib/display.ts",
       "lib/artifacts.ts",

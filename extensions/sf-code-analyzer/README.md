@@ -13,6 +13,7 @@ the supported `sf code-analyzer` CLI commands with:
 - deferred post-agent local quality scans on supported file edits
 - explicit ApexGuru analysis for one Apex file when the target org supports it
 - ApexGuru automatic insights that are default-on when cached org readiness is enabled
+- automatic ApexGuru setup suggestions that offer SF Browser guidance only after user approval
 
 ## Runtime Flow
 
@@ -52,7 +53,9 @@ code_analyzer action='run'
 - **Deferred quality pass** — automatic local scans wait until the agent finishes
   an edit response. See ADR 0021.
 - **ApexGuru boundary** — explicit ApexGuru is available now; automatic ApexGuru
-  is cache-first and default-on when cached availability is enabled. See ADR 0026.
+  is cache-first and default-on when cached availability is enabled. When ApexGuru
+  is unavailable, SF Pi suggests checking Setup with SF Browser but does not
+  open or mutate Setup without user approval. See ADR 0026.
 
 ## Behavior Matrix
 
@@ -100,6 +103,7 @@ code_analyzer action='run'
 ```
 extensions/sf-code-analyzer/
   lib/
+    apexguru-guidance.ts    ← implementation module
     apexguru-readiness.ts   ← implementation module
     apexguru.ts             ← implementation module
     artifacts.ts            ← implementation module

@@ -8,6 +8,7 @@ import { Type } from "typebox";
 import { buildExecFn } from "../../../lib/common/exec-adapter.ts";
 import { nextReportPath } from "./artifacts.ts";
 import { runApexGuru, validateApexGuru } from "./apexguru.ts";
+import { formatApexGuruSetupSuggestion } from "./apexguru-guidance.ts";
 import {
   runCodeAnalyzer,
   runCodeAnalyzerConfig,
@@ -147,7 +148,19 @@ async function executeReportAction(
       throw new Error("code_analyzer action='apexguru' requires target with one Apex file.");
     const availability = await validateApexGuru(input.target_org);
     if (availability.access !== "enabled") {
-      throw new Error(`ApexGuru is not enabled for the target org: ${availability.message}`);
+      return {
+        kind: "run",
+        ok: false,
+        source: "apexguru",
+        command: `ApexGuru ${file}`,
+        durationMs: 0,
+        targets: [file],
+        selectors: ["apexguru"],
+        stderrPreview: formatApexGuruSetupSuggestion(
+          `ApexGuru is not enabled for the target org: ${availability.message}`,
+        ),
+        exitCode: 1,
+      };
     }
     return runApexGuru({
       file,

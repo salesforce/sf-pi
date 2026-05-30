@@ -16,5 +16,7 @@ describe("sf-code-analyzer auto-scan transcript", () => {
   it("renders friendly ApexGuru scan rows", () => {
     expect(source).toContain("✨ ApexGuru auto insight");
     expect(source).toContain("Tool: ApexGuru Insights org service");
+    expect(source).toContain("ApexGuru auto insight skipped");
+    expect(source).toContain("SF Browser to check Scale Center / ApexGuru Insights");
   });
 });
