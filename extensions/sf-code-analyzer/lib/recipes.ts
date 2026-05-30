@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Static, public-safe scan recipe catalog for SF Code Analyzer. */
+import { existsSync, readFileSync } from "node:fs";
 
 export interface CodeAnalyzerRecipe {
   id: string;
@@ -11,6 +12,13 @@ export interface CodeAnalyzerRecipe {
   outputFiles?: string[];
   herdrRecommended?: boolean;
   herdrReason?: string;
+}
+
+export interface CodeAnalyzerHerdrHandoff {
+  recipeId: string;
+  intent: string;
+  suggestedCommand: string;
+  reason: string;
 }
 
 export const CODE_ANALYZER_RECIPES: CodeAnalyzerRecipe[] = [
@@ -120,7 +128,7 @@ export function renderRecipes(options: { inline?: boolean } = {}): string {
     if (recipe.herdrRecommended) {
       lines.push(`  Herdr recommended: ${recipe.herdrReason}`);
       lines.push(
-        "  Next agent step: call sf_herdr_plan visibly if available before running this scan.",
+        "  Next agent step: If sf_herdr_plan is available, call it visibly before running this broad scan.",
       );
     }
     if (options.inline) {
@@ -140,10 +148,11 @@ export function suggestBroaderRecipes(input: { selectors: string[]; targets: str
     suggestions.add("retire-js");
   }
   if (targets.length >= 8) suggestions.add("cpd");
-  if (targets.some((target) => /\.cls$|\.trigger$|\.apex$/.test(target))) {
-    suggestions.add("security");
-    suggestions.add("sfge");
-  }
+
+  const content = sniffChangedContent(input.targets);
+  const hasApex = targets.some((target) => /\.cls$|\.trigger$|\.apex$/.test(target));
+  if (hasApex || content.security) suggestions.add("security");
+  if (hasApex && content.dataFlow) suggestions.add("sfge");
   return [...suggestions];
 }
 
@@ -160,4 +169,54 @@ export function renderBroaderRecipeSuggestion(recipeIds: string[]): string | und
         `- ${recipe.id}: ${recipe.label} — rule_selector ${recipe.ruleSelector.join(", ")}${recipe.herdrRecommended ? " (Herdr recommended)" : ""}`,
     ),
   ].join("\n");
+}
+
+export function herdrHandoffsForRecipes(recipeIds: string[]): CodeAnalyzerHerdrHandoff[] {
+  return recipeIds
+    .map((id) => CODE_ANALYZER_RECIPES.find((recipe) => recipe.id === id))
+    .filter((recipe): recipe is CodeAnalyzerRecipe => Boolean(recipe?.herdrRecommended))
+    .map((recipe) => ({
+      recipeId: recipe.id,
+      intent: `Plan a Herdr lane for Salesforce Code Analyzer recipe '${recipe.id}' (${recipe.label}).`,
+      suggestedCommand: commandForRecipe(recipe),
+      reason: recipe.herdrReason ?? "This scan can be long-running.",
+    }));
+}
+
+function sniffChangedContent(targets: string[]): { security: boolean; dataFlow: boolean } {
+  let security = false;
+  let dataFlow = false;
+  for (const target of targets) {
+    if (!existsSync(target)) continue;
+    let content = "";
+    try {
+      content = readFileSync(target, "utf8").slice(0, 64 * 1024);
+    } catch {
+      continue;
+    }
+    security ||=
+      /without\s+sharing|Database\.query|String\.escapeSingleQuotes|HttpRequest|NamedCredential|Crypto\.|WITH\s+USER_MODE|Security\.stripInaccessible|UserInfo\.|\bSite\b|\bNetwork\b|\bGuest\b/i.test(
+        content,
+      );
+    dataFlow ||=
+      /\bSELECT\b|\binsert\b|\bupdate\b|\bdelete\b|\bupsert\b|Database\.|@AuraEnabled/i.test(
+        content,
+      );
+  }
+  return { security, dataFlow };
+}
+
+function commandForRecipe(recipe: CodeAnalyzerRecipe): string {
+  const args = [
+    "sf code-analyzer run",
+    ...recipe.ruleSelector.map((selector) => `--rule-selector ${quote(selector)}`),
+    ...recipe.workspace.map((workspace) => `--workspace ${quote(workspace)}`),
+    ...(recipe.target ?? []).map((target) => `--target ${quote(target)}`),
+    ...(recipe.outputFiles ?? []).map((file) => `--output-file ${quote(file)}`),
+  ];
+  return args.join(" ");
+}
+
+function quote(value: string): string {
+  return /\s/.test(value) ? JSON.stringify(value) : value;
 }

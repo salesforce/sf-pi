@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   CODE_ANALYZER_RECIPES,
+  herdrHandoffsForRecipes,
   renderBroaderRecipeSuggestion,
   suggestBroaderRecipes,
 } from "../lib/recipes.ts";
@@ -21,7 +22,7 @@ describe("Code Analyzer recipes", () => {
         selectors: ["pmd:Recommended"],
         targets: ["force-app/classes/Foo.cls"],
       }),
-    ).toEqual(["security", "sfge"]);
+    ).toEqual(["security"]);
     expect(
       suggestBroaderRecipes({ selectors: ["eslint:Recommended"], targets: ["package.json"] }),
     ).toEqual(["retire-js"]);
@@ -32,5 +33,12 @@ describe("Code Analyzer recipes", () => {
     expect(rendered).toContain("Broader scan suggestions");
     expect(rendered).toContain("security");
     expect(rendered).toContain("sfge");
+  });
+
+  it("builds structured Herdr handoff metadata", () => {
+    const [handoff] = herdrHandoffsForRecipes(["appexchange"]);
+    expect(handoff.intent).toContain("AppExchange");
+    expect(handoff.suggestedCommand).toContain("sf code-analyzer run");
+    expect(handoff.suggestedCommand).toContain("--rule-selector AppExchange");
   });
 });

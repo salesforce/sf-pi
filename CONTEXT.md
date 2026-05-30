@@ -280,9 +280,17 @@ _Avoid_: hidden scan, shipped rule implementation, noisy default, recipe as rule
 A contextual nudge from **SF Code Analyzer** that recommends a stronger explicit recipe such as Security, AppExchange, all-rules, CPD, RetireJS, or SFGE when the user’s development task appears to warrant it.
 _Avoid_: automatic broad scan, mandatory gate, replacing user intent, always-on noisy warning
 
+**Code Analyzer Content Sniff**:
+A bounded, regex-only inspection of changed files already collected by **SF Code Analyzer** auto-scan, used only to improve **Code Analyzer Broader-Scan Suggestions**.
+_Avoid_: AST parser, model call, whole-project scan, unbounded file read
+
 **Code Analyzer Herdr Handoff**:
 A recipe-level recommendation that tells the agent to call `sf_herdr_plan` visibly for broad or long-running **SF Code Analyzer** scans, without `sf-code-analyzer` invoking Herdr internally.
 _Avoid_: hidden cross-extension tool call, automatic pane creation, direct Herdr dependency inside Code Analyzer
+
+**Code Analyzer Herdr Handoff Metadata**:
+Structured data returned with **Code Analyzer Scan Recipes** that carries the Herdr intent, suggested command, and reason so the agent can make a visible `sf_herdr_plan` call when appropriate.
+_Avoid_: prose-only hidden contract, automatic Herdr invocation, missing suggested command
 
 **Progress-Gated Code Analyzer Repair Loop**:
 An automatic scan→repair cycle owned by **SF Code Analyzer** that continues without a fixed numeric cap only while file edits or violation signatures show progress.
@@ -578,7 +586,9 @@ _Avoid_: every available gateway model, benchmark target, broad live-test suite
 - A **Code Analyzer Report Filter** powers `last_report` inspection without introducing a global report store.
 - **Code Analyzer Scan Recipes** make the default-vs-broader-scan distinction explicit without shipping rule implementations.
 - A **Code Analyzer Broader-Scan Suggestion** may recommend a stronger explicit scan, but does not automatically run broad or noisy recipes.
+- A **Code Analyzer Content Sniff** can improve suggestions without turning auto-scan into a parser or broad analysis engine.
 - A **Code Analyzer Herdr Handoff** keeps long-scan lane planning visible and outside hidden `sf-code-analyzer` internals.
+- **Code Analyzer Herdr Handoff Metadata** gives the agent enough structure to call `sf_herdr_plan` visibly when a selected recipe warrants it.
 - A **Code Analyzer Install Recommendation** may appear in SF Pi startup surfaces without making **SF Code Analyzer** part of the boot critical path.
 - A **Code Analyzer Setup Action** is the only SF Pi path that installs or updates the Code Analyzer CLI plugin, and it requires interactive user approval.
 - **Code Analyzer Local Setup Status** gives before/after transparency without making SF Pi a Code Analyzer release manager.

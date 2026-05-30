@@ -20,7 +20,7 @@ import {
   runCodeAnalyzerRules,
 } from "./cli.ts";
 import { renderDoctor, renderToolSummary } from "./display.ts";
-import { renderRecipes } from "./recipes.ts";
+import { herdrHandoffsForRecipes, renderRecipes } from "./recipes.ts";
 import { applyReportFilters, summaryFromReportFile } from "./report-filter.ts";
 import type { CodeAnalyzerReportSummary } from "./types.ts";
 
@@ -184,9 +184,24 @@ export function registerCodeAnalyzerTool(pi: ExtensionAPI): void {
 
       if (input.action === "recipes") {
         const text = renderRecipes({ inline: input.output_mode === "inline" });
+        const recommended = herdrHandoffsForRecipes([
+          "full-recommended",
+          "security",
+          "appexchange",
+          "all-rules",
+          "retire-js",
+          "cpd",
+          "sfge",
+        ]);
         return {
           content: [{ type: "text", text }],
-          details: { [CODE_ANALYZER_DETAILS_KEY]: { action: input.action, recipes: text } },
+          details: {
+            [CODE_ANALYZER_DETAILS_KEY]: {
+              action: input.action,
+              recipes: text,
+              herdrHandoff: recommended,
+            },
+          },
         };
       }
 
