@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.154.1-2026-05-30",
-  "latestVersion": "0.154.1",
+  "revision": "release-0.154.2-2026-05-30",
+  "latestVersion": "0.154.2",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.154.1",
+      "id": "release-0.154.2",
       "kind": "update",
-      "title": "sf-pi v0.154.1 — align with pi runtime tool selection",
+      "title": "sf-pi v0.154.2 — sf-welcome: show SF Skills availability separately",
       "publishedAt": "2026-05-30T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.154.1",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.154.2",
       "severity": "info",
-      "body": "align with pi runtime tool selection"
+      "body": "sf-welcome: show SF Skills availability separately"
     },
     {
       "id": "pi-0.73-required",
