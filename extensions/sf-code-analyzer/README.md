@@ -60,6 +60,122 @@ code_analyzer action='run'
   is unavailable, SF Pi suggests checking Setup with SF Browser but does not
   open or mutate Setup without user approval. See ADR 0026.
 
+## User Guide
+
+### What runs automatically?
+
+`sf-code-analyzer` watches successful pi `write` and `edit` tool results for
+supported files. It does **not** watch arbitrary editor saves or shell-created
+files. After the agent finishes its current response, the extension runs a
+readiness-gated deferred scan for changed files:
+
+| Changed file type                     | Automatic selector   |
+| ------------------------------------- | -------------------- |
+| Apex classes, triggers, `.apex` files | `pmd:Recommended`    |
+| JavaScript / TypeScript               | `eslint:Recommended` |
+| Flow metadata (`*.flow-meta.xml`)     | `flow:Recommended`   |
+
+Automatic scans are intentionally narrow. They are fast quality checks for the
+files the agent just touched, not replacements for full-project, AppExchange, or
+CI scans.
+
+### `Recommended` is not `all`
+
+The default explicit run uses Code Analyzer's `Recommended` selector:
+
+```json
+{ "action": "run", "rule_selector": ["Recommended"], "workspace": ["."] }
+```
+
+That is different from an exhaustive scan:
+
+```json
+{ "action": "run", "rule_selector": ["all"], "workspace": ["."] }
+```
+
+Use `all` only when you explicitly want broad/noisy coverage, usually in a
+Herdr lane or CI-style validation.
+
+### Recipes and broader suggestions
+
+`code_analyzer action='recipes'` lists named scan recipes. Recipes are metadata
+only: they explain the selector and workflow, but never execute a scan by
+themselves.
+
+Common explicit recipes:
+
+| Recipe        | Selector                | When to use                                                                             |
+| ------------- | ----------------------- | --------------------------------------------------------------------------------------- |
+| `security`    | `Recommended:Security`  | Auth, CRUD/FLS, sharing, dynamic SOQL, callouts, secrets, crypto, guest/Experience work |
+| `appexchange` | `AppExchange`           | Managed package, ISV, AppExchange security review preparation                           |
+| `all-rules`   | `all`                   | Exhaustive pre-release or CI hardening                                                  |
+| `retire-js`   | `retire-js:Recommended` | Dependency manifest or lockfile changes                                                 |
+| `cpd`         | `cpd:Recommended`       | Broad refactors or duplicate-code checks                                                |
+| `sfge`        | `sfge:Recommended`      | Apex data-flow or security-sensitive SOQL/DML paths                                     |
+
+When changed files look security-sensitive or broad, the automatic scan can emit
+a compact suggestion such as:
+
+```text
+💡 Broader scan suggestions (not run automatically):
+- security: Security-focused scan — rule_selector Recommended:Security (Herdr recommended)
+```
+
+These suggestions are educational. The extension does not run broader recipes
+automatically.
+
+### Herdr handoff
+
+Long-running recipes include Herdr handoff metadata and text guidance. If a
+recipe says Herdr is recommended and `sf_herdr_plan` is available, the agent
+should call `sf_herdr_plan` visibly before running the broad scan. The Code
+Analyzer extension does not invoke Herdr internally and does not create panes on
+its own.
+
+### ApexGuru
+
+ApexGuru is org-backed, not a local Code Analyzer engine. It requires a target
+org whose ApexGuru service is enabled for the current org/user. When unavailable,
+SF Pi can suggest an SF Browser setup check, but it will not open Setup or click
+Enable/Accept/Save without user approval.
+
+Use:
+
+```json
+{ "action": "apexguru", "target": ["force-app/main/default/classes/MyClass.cls"] }
+```
+
+To see the HIL-gated browser setup runbook:
+
+```json
+{ "action": "apexguru_setup_help" }
+```
+
+### Output modes and artifacts
+
+For `run`, `rules`, `config`, and `last_report`, use:
+
+| Output mode | Behavior                                            |
+| ----------- | --------------------------------------------------- |
+| `summary`   | Bounded default detail plus artifact path           |
+| `inline`    | Richer truncated detail plus artifact path          |
+| `file_only` | Minimal prompt output with counts and artifact path |
+
+Full JSON/YAML/HTML/SARIF outputs are preserved as report artifacts. By default,
+SF Pi writes its own artifacts under the global agent directory rather than the
+project tree. User-supplied `output_files` are passed directly to Code Analyzer.
+
+### Automation settings
+
+`/sf-code-analyzer` exposes project and global controls for:
+
+- deferred auto-scan;
+- ApexGuru auto insights.
+
+Project settings override global settings, which override extension defaults.
+Use project overrides when a repository needs stricter or quieter automation
+than your global default.
+
 ## Behavior Matrix
 
 | Event/Trigger                 | Condition         | Result                                                                   |
@@ -145,6 +261,7 @@ extensions/sf-code-analyzer/
   index.ts                  ← Pi extension entry point
   manifest.json             ← source-of-truth extension metadata
   README.md                 ← human + agent walkthrough
+  ROADMAP.md                ← extension-specific phased roadmap
 ```
 
 <!-- GENERATED:file-structure:end -->
