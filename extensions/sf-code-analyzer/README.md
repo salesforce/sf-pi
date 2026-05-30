@@ -132,6 +132,7 @@ extensions/sf-code-analyzer/
   tests/
     apexguru-readiness.test.ts← unit / smoke test
     auto-scan-followup.test.ts← unit / smoke test
+    auto-scan-orchestration.test.ts← unit / smoke test
     auto-scan-plan.test.ts  ← unit / smoke test
     auto-scan-transcript.test.ts← unit / smoke test
     display.test.ts         ← unit / smoke test

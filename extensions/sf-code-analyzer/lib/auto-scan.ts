@@ -45,7 +45,26 @@ interface ScanOutcome {
   guidanceText?: string;
 }
 
-export function registerDeferredCodeAnalyzerAutoScan(pi: ExtensionAPI, exec: ExecFn): void {
+export interface DeferredCodeAnalyzerAutoScanDeps {
+  readSettings?: typeof readEffectiveCodeAnalyzerSettings;
+  readReadiness?: typeof readCodeAnalyzerReadiness;
+  isReadyForAutoScan?: typeof isCodeAnalyzerReadyForAutoScan;
+  runCodeAnalyzer?: typeof runCodeAnalyzer;
+  readApexGuruReadiness?: typeof readApexGuruReadiness;
+  isApexGuruReadyForAutoInsight?: typeof isApexGuruReadyForAutoInsight;
+  runApexGuru?: typeof runApexGuru;
+  nextReportPath?: typeof nextReportPath;
+  buildScanRecipeGuidance?: typeof buildScanRecipeGuidance;
+}
+
+export function registerDeferredCodeAnalyzerAutoScan(
+  pi: ExtensionAPI,
+  exec: ExecFn,
+  deps: DeferredCodeAnalyzerAutoScanDeps = {},
+): void {
+  const readSettings = deps.readSettings ?? readEffectiveCodeAnalyzerSettings;
+  const readReadiness = deps.readReadiness ?? readCodeAnalyzerReadiness;
+  const isReady = deps.isReadyForAutoScan ?? isCodeAnalyzerReadyForAutoScan;
   const pendingFiles = new Set<string>();
   let running = false;
   let lastViolationSignature: string | undefined;
@@ -56,14 +75,14 @@ export function registerDeferredCodeAnalyzerAutoScan(pi: ExtensionAPI, exec: Exe
 
   pi.on("agent_end", async (_event, ctx) => {
     if (running || pendingFiles.size === 0) return;
-    const settings = readEffectiveCodeAnalyzerSettings(ctx.cwd);
+    const settings = readSettings(ctx.cwd);
     if (!settings.autoScan) {
       pendingFiles.clear();
       return;
     }
 
-    const readiness = readCodeAnalyzerReadiness();
-    if (!isCodeAnalyzerReadyForAutoScan(readiness)) {
+    const readiness = readReadiness();
+    if (!isReady(readiness)) {
       const count = pendingFiles.size;
       pendingFiles.clear();
       emitCodeAnalyzerTranscript(
@@ -83,7 +102,7 @@ export function registerDeferredCodeAnalyzerAutoScan(pi: ExtensionAPI, exec: Exe
 
       const groups = plan.groups;
       const localOutcomes = await Promise.all(
-        groups.map((group) => runLocalScanGroup(pi, exec, ctx, group)),
+        groups.map((group) => runLocalScanGroup(pi, exec, ctx, group, deps)),
       );
 
       const apexGuruOutcome = await runApexGuruAutoInsights(
@@ -91,6 +110,7 @@ export function registerDeferredCodeAnalyzerAutoScan(pi: ExtensionAPI, exec: Exe
         ctx,
         settings.apexGuruAuto,
         plan.apexGuruCandidates,
+        deps,
       );
       const violations = [
         ...localOutcomes.flatMap((outcome) => outcome.summary?.run?.violations ?? []),
@@ -152,7 +172,10 @@ async function runLocalScanGroup(
   exec: ExecFn,
   ctx: ExtensionContext,
   group: AutoScanGroup,
+  deps: DeferredCodeAnalyzerAutoScanDeps,
 ): Promise<ScanOutcome> {
+  const executeCodeAnalyzer = deps.runCodeAnalyzer ?? runCodeAnalyzer;
+  const buildGuidance = deps.buildScanRecipeGuidance ?? buildScanRecipeGuidance;
   emitCodeAnalyzerTranscript(
     pi,
     formatLocalScanTranscript("running", {
@@ -163,7 +186,7 @@ async function runLocalScanGroup(
   );
   try {
     const targetPaths = group.targets;
-    const summary = await runCodeAnalyzer(exec, ctx, {
+    const summary = await executeCodeAnalyzer(exec, ctx, {
       workspace: ["."],
       target: targetPaths,
       rule_selector: [group.selector],
@@ -189,7 +212,7 @@ async function runLocalScanGroup(
         durationMs: summary.durationMs,
       },
     );
-    const guidance = buildScanRecipeGuidance({
+    const guidance = buildGuidance({
       selectors: [group.selector],
       targets: targetPaths,
       includeCatalog: false,
@@ -226,12 +249,17 @@ async function runApexGuruAutoInsights(
   ctx: ExtensionContext,
   enabled: boolean,
   apexFiles: string[],
+  deps: DeferredCodeAnalyzerAutoScanDeps,
 ) {
+  const readApexReadiness = deps.readApexGuruReadiness ?? readApexGuruReadiness;
+  const isApexReady = deps.isApexGuruReadyForAutoInsight ?? isApexGuruReadyForAutoInsight;
+  const executeApexGuru = deps.runApexGuru ?? runApexGuru;
+  const reportPath = deps.nextReportPath ?? nextReportPath;
   apexFiles = [...apexFiles].sort();
   if (!enabled || apexFiles.length === 0) return { violations: [], groups: [] };
 
-  if (!isApexGuruReadyForAutoInsight()) {
-    const apexGuruState = readApexGuruReadiness();
+  if (!isApexReady()) {
+    const apexGuruState = readApexReadiness();
     emitCodeAnalyzerTranscript(
       pi,
       formatApexGuruSkippedTranscript({
@@ -257,11 +285,11 @@ async function runApexGuruAutoInsights(
       break;
     }
     try {
-      const apexGuru = await runApexGuru({
+      const apexGuru = await executeApexGuru({
         file,
         cwd: ctx.cwd,
         timeout_ms: remaining,
-        reportFile: nextReportPath(ctx, "run", "json"),
+        reportFile: reportPath(ctx, "run", "json"),
       });
       const apexViolations = apexGuru.run?.violations ?? [];
       violations.push(...apexViolations);
