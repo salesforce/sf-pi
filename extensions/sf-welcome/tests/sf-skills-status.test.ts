@@ -26,8 +26,10 @@ import {
   countSkillsInDir,
   detectInstallStateLocal,
   detectLinkedAfvCheckout,
+  detectManagedSourceAvailabilityLocal,
   detectSfSkillsStatus,
   readCachedSfSkillsStatus,
+  reconcileCachedSfSkillsStatus,
   readLocalGitHead,
   writeCachedSfSkillsStatus,
 } from "../lib/sf-skills-status.ts";
@@ -211,7 +213,80 @@ describe("detectInstallStateLocal", () => {
     expect(status.rootPath).toBe(rootPath);
     expect(status.skillsPath).toBe(skillsPath);
     expect(status.localSha).toBe("1111111111111111111111111111111111111111");
+    expect(status.wired).toBe(true);
     expect(status.freshness).toBe("unknown");
+  });
+
+  it("reports managed available when the global clone exists but is not wired", () => {
+    const { rootPath, skillsPath } = createManagedGlobal();
+    writeFileSync(path.join(tmpDir, "settings.json"), JSON.stringify({ skills: [] }));
+    const status = detectInstallStateLocal(homeDir);
+    expect(status.installKind).toBe("managed");
+    expect(status.scope).toBe("global");
+    expect(status.rootPath).toBe(rootPath);
+    expect(status.skillsPath).toBe(skillsPath);
+    expect(status.wired).toBe(false);
+  });
+
+  it("reports project-wired when the shared global clone is wired in project settings", () => {
+    const { skillsPath } = createManagedGlobal();
+    writeFileSync(path.join(tmpDir, "settings.json"), JSON.stringify({ skills: [] }));
+    mkdirSync(path.join(homeDir, ".pi"), { recursive: true });
+    writeFileSync(
+      path.join(homeDir, ".pi", "settings.json"),
+      JSON.stringify({ skills: [skillsPath] }),
+    );
+    const status = detectInstallStateLocal(homeDir);
+    expect(status.installKind).toBe("managed");
+    expect(status.scope).toBe("project");
+    expect(status.wired).toBe(true);
+  });
+
+  it("recognizes a legacy project-local managed clone as available", () => {
+    const rootPath = path.join(homeDir, ".pi", "sf-skills", "afv-library");
+    const skillsPath = path.join(rootPath, "skills");
+    mkdirSync(skillsPath, { recursive: true });
+    writeFileSync(path.join(rootPath, ".sf-skills-managed"), "managed\n");
+    const status = detectInstallStateLocal(homeDir);
+    expect(status.installKind).toBe("managed");
+    expect(status.scope).toBe("project");
+    expect(status.rootPath).toBe(rootPath);
+    expect(status.skillsPath).toBe(skillsPath);
+    expect(status.wired).toBe(false);
+  });
+
+  it("startup availability probe omits git and skill-count fields", () => {
+    const { rootPath, skillsPath } = createManagedGlobal();
+    writeFileSync(path.join(tmpDir, "settings.json"), JSON.stringify({ skills: [] }));
+    expect(detectManagedSourceAvailabilityLocal(homeDir)).toEqual({
+      installKind: "managed",
+      scope: "global",
+      wired: false,
+      rootPath,
+      skillsPath,
+      freshness: "unknown",
+      loading: false,
+    });
+  });
+
+  it("reconciles a stale not-installed cache with live managed availability", () => {
+    const { rootPath, skillsPath } = createManagedGlobal();
+    writeFileSync(path.join(tmpDir, "settings.json"), JSON.stringify({ skills: [] }));
+    expect(
+      reconcileCachedSfSkillsStatus(homeDir, {
+        installKind: "not-installed",
+        freshness: "unknown",
+        loading: false,
+      }),
+    ).toEqual({
+      installKind: "managed",
+      scope: "global",
+      wired: false,
+      rootPath,
+      skillsPath,
+      freshness: "unknown",
+      loading: false,
+    });
   });
 
   it("reports linked when only a user-owned checkout is wired", () => {
@@ -266,6 +341,7 @@ describe("detectSfSkillsStatus", () => {
       behindBy: 0,
     }));
     expect(status.installKind).toBe("managed");
+    expect(status.wired).toBe(true);
     expect(status.freshness).toBe("latest");
     expect(status.commitsBehind).toBe(0);
     expect(status.remoteSha).toBe(sha);
@@ -334,6 +410,7 @@ describe("readCachedSfSkillsStatus / writeCachedSfSkillsStatus", () => {
       remoteSha: "abc1234abc1234abc1234abc1234abc1234abcd",
       commitsBehind: 0,
       skillCount: 12,
+      wired: false,
       freshness: "latest",
       loading: false,
     });
@@ -343,6 +420,7 @@ describe("readCachedSfSkillsStatus / writeCachedSfSkillsStatus", () => {
       freshness: "latest",
       commitsBehind: 0,
       skillCount: 12,
+      wired: false,
       loading: false,
     });
   });

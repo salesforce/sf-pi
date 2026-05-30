@@ -81,8 +81,10 @@ export {
 export {
   detectSfSkillsStatus,
   detectInstallStateLocal,
+  detectManagedSourceAvailabilityLocal,
   fetchUpstreamCompare,
   readCachedSfSkillsStatus,
+  reconcileCachedSfSkillsStatus,
   writeCachedSfSkillsStatus,
 } from "./sf-skills-status.ts";
 export { readCachedNodeCertStatus, writeCachedNodeCertStatus } from "./node-cert-cache.ts";

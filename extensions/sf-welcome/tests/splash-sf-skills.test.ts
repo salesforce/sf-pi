@@ -2,7 +2,7 @@
 /**
  * Render-level checks for the SF Skills splash row.
  *
- * Tests the five visual states the row can be in. Strips ANSI before
+ * Tests the visual states the row can be in. Strips ANSI before
  * matching so the assertions describe what the user actually sees, not
  * the color-code payload. The row label and ↑ glyph are colored at
  * render time; we verify the text + ASCII glyph here and trust the
@@ -61,7 +61,7 @@ async function renderRow(sfSkills: SfSkillsStatusInfo | undefined): Promise<Rend
   }
 }
 
-describe("SF Skills splash row — five render states", () => {
+describe("SF Skills splash row render states", () => {
   it("loading: shows the hourglass while the deferred refresh runs", async () => {
     const { row, hint } = await renderRow({
       installKind: "not-installed",
@@ -90,10 +90,47 @@ describe("SF Skills splash row — five render states", () => {
     expect(hint).toContain("/sf-skills defaults install");
   });
 
+  it("managed + available: green ✓ with enable-command sub-line", async () => {
+    const { row, hint } = await renderRow({
+      installKind: "managed",
+      scope: "global",
+      wired: false,
+      rootPath: "/home/me/.pi/agent/sf-skills/afv-library",
+      skillsPath: "/home/me/.pi/agent/sf-skills/afv-library/skills",
+      freshness: "unknown",
+      loading: false,
+    });
+    expect(row).toContain("✓");
+    expect(row).toContain("afv-library available");
+    expect(row).not.toContain("Install official skills");
+    expect(hint).not.toBeNull();
+    expect(hint).toContain("/sf-skills defaults install");
+  });
+
+  it("managed + available + update-available: update hint wins", async () => {
+    const { row, hint } = await renderRow({
+      installKind: "managed",
+      scope: "global",
+      wired: false,
+      rootPath: "/home/me/.pi/agent/sf-skills/afv-library",
+      skillsPath: "/home/me/.pi/agent/sf-skills/afv-library/skills",
+      localSha: "a".repeat(40),
+      remoteSha: "b".repeat(40),
+      commitsBehind: 3,
+      freshness: "update-available",
+      loading: false,
+    });
+    expect(row).toContain("↑");
+    expect(row).toContain("3 commits behind");
+    expect(hint).not.toBeNull();
+    expect(hint).toContain("/sf-skills defaults update");
+  });
+
   it("managed + latest: green ✓ with skill count and 'latest' suffix, no hint", async () => {
     const { row, hint } = await renderRow({
       installKind: "managed",
       scope: "global",
+      wired: true,
       rootPath: "/home/me/.pi/agent/sf-skills/afv-library",
       skillsPath: "/home/me/.pi/agent/sf-skills/afv-library/skills",
       localSha: "a".repeat(40),
@@ -115,6 +152,7 @@ describe("SF Skills splash row — five render states", () => {
     const { row, hint } = await renderRow({
       installKind: "managed",
       scope: "global",
+      wired: true,
       rootPath: "/home/me/.pi/agent/sf-skills/afv-library",
       skillsPath: "/home/me/.pi/agent/sf-skills/afv-library/skills",
       localSha: "a".repeat(40),
@@ -134,6 +172,7 @@ describe("SF Skills splash row — five render states", () => {
     const { row } = await renderRow({
       installKind: "managed",
       scope: "global",
+      wired: true,
       rootPath: "/home/me/.pi/agent/sf-skills/afv-library",
       skillsPath: "/home/me/.pi/agent/sf-skills/afv-library/skills",
       localSha: "a".repeat(40),
@@ -170,6 +209,7 @@ describe("SF Skills splash row — five render states", () => {
     const { row, hint } = await renderRow({
       installKind: "managed",
       scope: "global",
+      wired: true,
       rootPath: "/home/me/.pi/agent/sf-skills/afv-library",
       skillsPath: "/home/me/.pi/agent/sf-skills/afv-library/skills",
       localSha: "a".repeat(40),

@@ -66,6 +66,7 @@ import {
   readCachedSfCliStatus,
   readCachedSfSkillsStatus,
   readCurrentPiVersion,
+  reconcileCachedSfSkillsStatus,
   refreshAnnouncementsSummary,
   resolveMonthlyUsage,
   writeCachedPiReleaseStatus,
@@ -354,7 +355,7 @@ export default function sfWelcome(pi: ExtensionAPI) {
     }
     // sf-skills status is also cache-first — the deferred refresh below
     // populates the live value and writes back to disk for the next launch.
-    const cachedSfSkills = readCachedSfSkillsStatus();
+    const cachedSfSkills = reconcileCachedSfSkillsStatus(ctx.cwd, readCachedSfSkillsStatus());
     if (cachedSfSkills) {
       data.sfSkills = cachedSfSkills;
     }

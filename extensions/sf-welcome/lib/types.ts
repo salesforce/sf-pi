@@ -60,7 +60,7 @@ export interface ReleaseStatusInfo {
 }
 
 /**
- * How the official forcedotcom/afv-library skills repo is wired into the
+ * How the official forcedotcom/afv-library skills repo is available to the
  * current pi install.
  *
  *   managed       — cloned + sentinel-marked by `/sf-skills defaults install`
@@ -74,9 +74,11 @@ export type SfSkillsFreshness = "checking" | "latest" | "update-available" | "un
 
 export interface SfSkillsStatusInfo {
   installKind: SfSkillsInstallKind;
-  /** Scope of the install — "global" or "project". Undefined when not installed. */
+  /** Scope of the install or current-session wiring — "global" or "project". Undefined when not installed. */
   scope?: "global" | "project";
-  /** Absolute path to the wired skills/ dir. Undefined when not installed. */
+  /** For managed sources, whether the current global/project Skill Gate wires the source. */
+  wired?: boolean;
+  /** Absolute path to the skills/ dir. Undefined when not installed. */
   skillsPath?: string;
   /** Absolute path to the repo root. Undefined when not installed. */
   rootPath?: string;

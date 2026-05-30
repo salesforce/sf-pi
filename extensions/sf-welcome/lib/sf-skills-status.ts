@@ -7,6 +7,7 @@
  * single splash row:
  *
  *     📚 SF Skills    ✓ afv-library installed · latest
+ *     📚 SF Skills    ✓ afv-library available
  *     📚 SF Skills    ↑ afv-library · 12 commits behind
  *     📚 SF Skills    ✓ afv-library linked · ~/work/afv-library
  *     📚 SF Skills    ↑ Install official skills (·  /sf-skills defaults install)
@@ -25,7 +26,7 @@
  *   4. On-disk cache lives under the canonical sf-pi/<ns>/<file> layout via
  *      the shared state-store, with a 24 h TTL identical to sf-cli-status.
  *
- * Re-uses `inspectManagedClone()` from extensions/sf-skills/lib/defaults.ts as
+ * Re-uses `managedClonePath()` from extensions/sf-skills/lib/defaults.ts as
  * the source of truth for managed-clone paths so the two extensions can never
  * disagree on where the repo lives.
  */
@@ -34,7 +35,7 @@ import path from "node:path";
 import { homedir } from "node:os";
 import { createStateStore } from "../../../lib/common/state-store.ts";
 import { globalSettingsPath, projectSettingsPath } from "../../../lib/common/pi-paths.ts";
-import { inspectManagedClone } from "../../sf-skills/lib/defaults.ts";
+import { managedClonePath } from "../../sf-skills/lib/defaults.ts";
 import type { SfSkillsStatusInfo } from "./types.ts";
 
 // -------------------------------------------------------------------------------------------------
@@ -46,6 +47,8 @@ const REPO_NAME = "afv-library";
 const REPO_DEFAULT_BRANCH = "main";
 const GITHUB_COMPARE_TIMEOUT_MS = 5_000;
 const CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+const MANAGED_SENTINEL_FILE = ".sf-skills-managed";
+const SKILLS_SUBDIR = "skills";
 
 // -------------------------------------------------------------------------------------------------
 // State-store cache (mirrors sf-cli-status.ts)
@@ -112,6 +115,12 @@ function parseCachedStatus(value: unknown): SfSkillsStatusInfo | null {
       typeof record.skillCount === "number" && Number.isFinite(record.skillCount)
         ? record.skillCount
         : undefined,
+    wired:
+      typeof record.wired === "boolean"
+        ? record.wired
+        : record.installKind === "managed"
+          ? true
+          : undefined,
     freshness: record.freshness,
     // Cached values are display-ready; a background refresh may update them.
     loading: false,
@@ -249,7 +258,7 @@ export function detectLinkedAfvCheckout(
       const rootPath = path.dirname(expanded);
       const gitMarker = path.join(rootPath, ".git");
       if (!existsSync(gitMarker)) continue;
-      // Skip the managed paths; those are reported via inspectManagedClone.
+      // Skip the managed paths; those are reported via Managed Source Availability.
       if (looksLikeManagedClone(rootPath)) continue;
       return { rootPath, skillsPath: expanded, scope };
     }
@@ -267,7 +276,117 @@ function expandPath(value: string, cwd: string): string {
 }
 
 function looksLikeManagedClone(rootPath: string): boolean {
-  return existsSync(path.join(rootPath, ".sf-skills-managed"));
+  return existsSync(path.join(rootPath, MANAGED_SENTINEL_FILE));
+}
+
+function isDirectory(absolutePath: string): boolean {
+  try {
+    return statSync(absolutePath).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+function readSettingsSkills(filePath: string): string[] {
+  if (!existsSync(filePath)) return [];
+  try {
+    const parsed = JSON.parse(readFileSync(filePath, "utf8"));
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return [];
+    const skills = (parsed as Record<string, unknown>).skills;
+    return Array.isArray(skills) ? skills.filter((v): v is string => typeof v === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+function settingsIncludesSkillsPath(filePath: string, skillsPath: string, cwd: string): boolean {
+  return readSettingsSkills(filePath).some(
+    (value) => path.normalize(expandPath(value, cwd)) === path.normalize(skillsPath),
+  );
+}
+
+function detectManagedWiring(
+  skillsPath: string,
+  cwd: string,
+): { wired: boolean; scope?: "global" | "project" } {
+  if (settingsIncludesSkillsPath(globalSettingsPath(), skillsPath, cwd)) {
+    return { wired: true, scope: "global" };
+  }
+  if (settingsIncludesSkillsPath(projectSettingsPath(cwd), skillsPath, cwd)) {
+    return { wired: true, scope: "project" };
+  }
+  return { wired: false };
+}
+
+function managedCloneAvailability(
+  scope: "global" | "project",
+  cwd: string,
+): { rootPath: string; skillsPath: string; scope: "global" | "project"; wired: boolean } | null {
+  const rootPath =
+    scope === "project" ? managedClonePath("project", cwd) : managedClonePath("global");
+  if (!isDirectory(rootPath)) return null;
+  if (!existsSync(path.join(rootPath, MANAGED_SENTINEL_FILE))) return null;
+  const skillsPath = path.join(rootPath, SKILLS_SUBDIR);
+  const wiring = detectManagedWiring(skillsPath, cwd);
+  return {
+    rootPath,
+    skillsPath,
+    scope: wiring.scope ?? scope,
+    wired: wiring.wired,
+  };
+}
+
+function findManagedSourceAvailability(
+  cwd: string,
+): { rootPath: string; skillsPath: string; scope: "global" | "project"; wired: boolean } | null {
+  return managedCloneAvailability("global", cwd) ?? managedCloneAvailability("project", cwd);
+}
+
+/**
+ * O(1) startup-safe Managed Source Availability probe.
+ *
+ * This intentionally avoids git reads, skill counting, catalog loading, and
+ * network calls. It only checks the managed clone paths + sentinel and whether
+ * the current global/project settings wire that exact skills/ path.
+ */
+export function detectManagedSourceAvailabilityLocal(cwd: string): SfSkillsStatusInfo | null {
+  const managed = findManagedSourceAvailability(cwd);
+  if (!managed) return null;
+  return {
+    installKind: "managed",
+    scope: managed.scope,
+    wired: managed.wired,
+    skillsPath: managed.skillsPath,
+    rootPath: managed.rootPath,
+    freshness: "unknown",
+    loading: false,
+  };
+}
+
+/** Merge a cached freshness result with live local Managed Source Availability. */
+export function reconcileCachedSfSkillsStatus(
+  cwd: string,
+  cached: SfSkillsStatusInfo | null,
+): SfSkillsStatusInfo | null {
+  const localManaged = detectManagedSourceAvailabilityLocal(cwd);
+  if (localManaged) {
+    if (cached?.installKind === "managed" && cached.rootPath === localManaged.rootPath) {
+      return {
+        ...cached,
+        scope: localManaged.scope,
+        wired: localManaged.wired,
+        skillsPath: localManaged.skillsPath,
+        rootPath: localManaged.rootPath,
+        loading: false,
+      };
+    }
+    return localManaged;
+  }
+
+  if (cached?.installKind === "managed") {
+    return { installKind: "not-installed", freshness: "unknown", loading: false };
+  }
+  return cached;
 }
 
 /**
@@ -284,14 +403,9 @@ function looksLikeManagedClone(rootPath: string): boolean {
  * (the renderer treats not-installed specially regardless of freshness).
  */
 export function detectInstallStateLocal(cwd: string): SfSkillsStatusInfo {
-  const globalClone = inspectManagedClone("global");
-  if (globalClone.exists && globalClone.managed && globalClone.wired) {
-    return buildManagedStatus(globalClone.rootPath, globalClone.skillsPath, "global");
-  }
-
-  const projectClone = inspectManagedClone("project", cwd);
-  if (projectClone.exists && projectClone.managed && projectClone.wired) {
-    return buildManagedStatus(projectClone.rootPath, projectClone.skillsPath, "project");
+  const managed = findManagedSourceAvailability(cwd);
+  if (managed) {
+    return buildManagedStatus(managed.rootPath, managed.skillsPath, managed.scope, managed.wired);
   }
 
   const linked = detectLinkedAfvCheckout(cwd);
@@ -322,17 +436,19 @@ function buildManagedStatus(
   rootPath: string,
   skillsPath: string,
   scope: "global" | "project",
+  wired: boolean,
 ): SfSkillsStatusInfo {
   return {
     installKind: "managed",
     scope,
+    wired,
     skillsPath,
     rootPath,
     localSha: readLocalGitHead(rootPath),
     skillCount: countSkillsInDir(skillsPath),
     // The remote comparison runs in detectSfSkillsStatus(); local-only
-    // detection leaves this unknown so the row paints "Installed" while
-    // the network probe is in flight.
+    // detection leaves this unknown so the row paints "Installed" / "Available"
+    // while the network probe is in flight.
     freshness: "unknown",
     loading: false,
   };

@@ -82,11 +82,15 @@ session_shutdown
    paint, then piggybacks on the deferred announcements refresh. Pi runtime
    freshness reads the installed pi version locally, then runs a deferred
    bounded `pi.dev` latest-version fetch that respects `PI_OFFLINE` and
-   `PI_SKIP_VERSION_CHECK`. When npm release-age gating is configured, the
-   Pi runtime row compares against the newest package version npm can currently
-   install and renders `latest allowed [cooldown active]` instead of a false
-   update warning. Update hints render only when a newer installable version is
-   known.
+   `PI_SKIP_VERSION_CHECK`. The SF Skills row separates **Managed Source
+   Availability** from current-project **Skill Gate** wiring: the orange
+   `Install official skills` nudge appears only when no sentinel-managed
+   `afv-library` checkout exists, while an unwired local checkout renders as
+   `afv-library available` with a quiet enable hint. When npm release-age
+   gating is configured, the Pi runtime row compares against the newest package
+   version npm can currently install and renders a cooldown-active latest label
+   instead of a false update warning. Update hints render only when a newer
+   installable version is known.
 
 7. **Optional integration rows stay quiet** — Slack and LLM Gateway rows are
    hidden unless their bundled extensions are enabled and have meaningful live

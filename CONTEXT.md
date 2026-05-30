@@ -128,6 +128,10 @@ _Avoid_: shadow enabled-set, duplicate of settings.skills[], per-skill state sto
 A skill root that SF Skills itself clones and can self-update — currently the curated `forcedotcom/afv-library` checkout — marked with a `.sf-skills-managed` sentinel so SF Skills only ever pulls or deletes trees it created. It is one kind of entry in the **Source Registry**, distinct from a plain registered pointer to a user-owned root.
 _Avoid_: standalone installer feature, mutating user-owned checkouts, treating the clone as the effective set
 
+**Managed Source Availability**:
+Whether the SF Skills managed `forcedotcom/afv-library` checkout exists locally with its sentinel, independent of whether the current global or project **Skill Gate** wires that source into the **Pi Runtime**.
+_Avoid_: installed skills, active skills, current project enablement, package installation
+
 **Skill Catalog**:
 The single resolved model of the whole skill world at a moment: every skill found across every source, each tagged with where it sits in the **Skill Funnel** — seen or gated out, enabled at global or project scope, and whether it is a conflict winner, loser, or unaffected. It is built from the **Pi Runtime** loader result (winners plus collision diagnostics) cross-referenced with on-disk roots and `settings.skills[]`, and every SF Skills surface reads from it instead of recomputing.
 _Avoid_: winners-only inventory, per-surface ad hoc scans, a second skill loader

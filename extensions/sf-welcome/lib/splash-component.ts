@@ -401,13 +401,16 @@ function formatSfSkillsStatusValue(data: SplashData, mode: GlyphMode): string {
     return `${SF_ORANGE("↑")} ${SF_ORANGE("afv-library")} ${MUTED(`· ${behind}`)}`;
   }
 
+  const managedLabel = skills.wired === false ? "afv-library available" : "afv-library installed";
+
   if (skills.freshness === "latest") {
-    return `${SF_GREEN("✓")} ${SF_GREEN("afv-library installed")} ${MUTED("· latest")}${skillCountSuffix}`;
+    return `${SF_GREEN("✓")} ${SF_GREEN(managedLabel)} ${MUTED("· latest")}${skillCountSuffix}`;
   }
 
-  // freshness === "unknown" — we know it's installed; the network probe
-  // either hasn't run yet or failed. Render green to avoid a false alarm.
-  return `${SF_GREEN("✓")} ${SF_GREEN("afv-library installed")}${skillCountSuffix}`;
+  // freshness === "unknown" — we know the managed source is available; the
+  // network probe either hasn't run yet or failed. Render green to avoid a
+  // false install alarm when the current project deliberately hasn't wired it.
+  return `${SF_GREEN("✓")} ${SF_GREEN(managedLabel)}${skillCountSuffix}`;
 }
 
 /** Suggested follow-up command for the current sf-skills state, or null when
@@ -424,6 +427,9 @@ function sfSkillsActionHint(skills: SplashData["sfSkills"]): string | null {
   if (skills.installKind === "not-installed") return "/sf-skills defaults install";
   if (skills.installKind === "managed" && skills.freshness === "update-available") {
     return "/sf-skills defaults update";
+  }
+  if (skills.installKind === "managed" && skills.wired === false) {
+    return "/sf-skills defaults install";
   }
   return null;
 }
