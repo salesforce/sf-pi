@@ -62,7 +62,7 @@ You can also manage this extension from the SF Pi home base:
 - **Maturity:** experimental
 - **Default state:** on
 - **Commands:** `/sf-browser`
-- **LLM tools:** `sf_browser_open_org`, `sf_browser_snapshot`, `sf_browser_click`, `sf_browser_fill`, `sf_browser_select`, `sf_browser_press`, `sf_browser_wait`, `sf_browser_capture_evidence`, `sf_browser_resolve_path`
+- **LLM tools:** `sf_browser_open_org`, `sf_browser_snapshot`, `sf_browser_click`, `sf_browser_fill`, `sf_browser_select`, `sf_browser_press`, `sf_browser_editor`, `sf_browser_wait`, `sf_browser_capture_evidence`, `sf_browser_resolve_path`
 - **Providers:** _none_
 - **Events/hooks:** `session_start`, `session_shutdown`, `resources_discover`
 

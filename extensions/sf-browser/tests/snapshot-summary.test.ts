@@ -61,6 +61,24 @@ describe("snapshot summary", () => {
     expect(objectNew).not.toContain("List view");
   });
 
+  it("classifies id-only record URLs and quick action URLs", () => {
+    const idOnlyRecord = summarizeSnapshot({
+      snapshot: '- heading "Account Acme" [level=1, ref=e1]',
+      fullSnapshotPath: "/tmp/snapshot.txt",
+      url: "https://example.my.salesforce.com/lightning/r/001000000000001AAA/view",
+    });
+    const quickAction = summarizeSnapshot({
+      snapshot: '- heading "New Contact" [level=2, ref=e1]',
+      fullSnapshotPath: "/tmp/snapshot.txt",
+      url: "https://example.my.salesforce.com/lightning/action/quick/Global.NewContact?recordId=001000000000001AAA",
+    });
+
+    expect(idOnlyRecord).toContain("Record page");
+    expect(idOnlyRecord).toContain("Record Id: 001000000000001AAA");
+    expect(idOnlyRecord).toContain("Mode: view");
+    expect(quickAction).toContain("Quick action page");
+  });
+
   it("does not classify setup pages as builders from promotional text alone", () => {
     const summary = summarizeSnapshot({
       snapshot: [
@@ -144,6 +162,112 @@ describe("snapshot summary", () => {
     expect(summary).toContain("Ignored short focus terms: On");
     expect(focusSection).not.toContain('link "Skip to Navigation"');
     expect(summary).toContain('heading "Agentforce Agents"');
+  });
+
+  it("summarizes record tabs, actions, field edits, and related-list cards", () => {
+    const summary = summarizeSnapshot({
+      snapshot: [
+        '- heading "Account SF Browser Smoke" [level=1, ref=e35]',
+        '- tab "Related" [selected, ref=e40]',
+        '- tab "Details" [ref=e41]',
+        '- button "New Contact" [ref=e48]',
+        '- button "New Case" [ref=e49]',
+        '- button "Edit Phone" [ref=e73]',
+        '- heading "Contacts (1)" [level=2, ref=e73]',
+        '- button "New" [ref=e88]',
+        '- heading "Browser Smoke Contact Open Browser Smoke Contact Preview" [level=3, ref=e95]',
+        '- link "View All Contacts" [ref=e63]',
+      ].join("\n"),
+      fullSnapshotPath: "/tmp/snapshot.txt",
+      url: "https://example.my.salesforce.com/lightning/r/Account/001000000000001AAA/view",
+      focus: ["Phone"],
+    });
+
+    expect(summary).toContain("🧭 Tabs:");
+    expect(summary).toContain("Related [selected] e40");
+    expect(summary).toContain("Details e41");
+    expect(summary).toContain("⚡ Record actions:");
+    expect(summary).toContain('button "New Contact" [ref=e48]');
+    expect(summary).toContain("✏️ Field edit actions:");
+    expect(summary).toContain('button "Edit Phone" [ref=e73]');
+    expect(summary).toContain("🔗 Related lists:");
+    expect(summary).toContain("Contacts (1) [card]");
+    expect(summary).toContain("View All e63");
+  });
+
+  it("summarizes object-list controls and full related-list pages", () => {
+    const listSummary = summarizeSnapshot({
+      snapshot: [
+        '- heading "Accounts All Accounts" [level=1, ref=e35]',
+        '- button "New" [ref=e37]',
+        '- button "List View Controls" [expanded=false, ref=e41]',
+        '- searchbox "Search this list..." [ref=e44]',
+        '- columnheader "Account Name" [ref=e252]',
+        '- rowheader "Acme Corp Edit Account Name" [ref=e51]',
+      ].join("\n"),
+      fullSnapshotPath: "/tmp/snapshot.txt",
+      url: "https://example.my.salesforce.com/lightning/o/Account/list?filterName=AllAccounts",
+    });
+    const relatedSummary = summarizeSnapshot({
+      snapshot: [
+        '- heading "Contacts" [level=1, ref=e34]',
+        '- button "New" [ref=e38]',
+        '- rowheader "Browser Contact Open Browser Contact Preview" [ref=e43]',
+        '- button "Show Actions" [expanded=false, ref=e64]',
+      ].join("\n"),
+      fullSnapshotPath: "/tmp/snapshot.txt",
+      url: "https://example.my.salesforce.com/lightning/r/Account/001000000000001AAA/related/Contacts/view",
+    });
+
+    expect(listSummary).toContain("📋 Object list controls:");
+    expect(listSummary).toContain("List view heading: Accounts All Accounts");
+    expect(listSummary).toContain('button "List View Controls"');
+    expect(relatedSummary).toContain("Contacts [full page]");
+    expect(relatedSummary).toContain("row action e64");
+  });
+
+  it("summarizes quick action forms from URL and required fields", () => {
+    const summary = summarizeSnapshot({
+      snapshot: [
+        '- heading "New Contact" [level=2, ref=e2]',
+        '- textbox "Last Name *" [required, ref=e10]',
+        '- textbox "Email" [ref=e5]',
+        '- button "Cancel" [ref=e3]',
+        '- button "Save" [ref=e4]',
+      ].join("\n"),
+      fullSnapshotPath: "/tmp/snapshot.txt",
+      url: "https://example.my.salesforce.com/lightning/action/quick/Global.NewContact?objectApiName=Contact&context=RECORD_DETAIL&recordId=001000000000001AAA",
+    });
+
+    expect(summary).toContain("⚡ Quick action:");
+    expect(summary).toContain("Action: Global.NewContact");
+    expect(summary).toContain("Object: Contact");
+    expect(summary).toContain("Context: RECORD_DETAIL");
+    expect(summary).toContain("Parent record: 001000000000001AAA");
+    expect(summary).toContain("Required fields: Last Name *");
+    expect(summary).toContain('button "Save" [ref=e4]');
+  });
+
+  it("surfaces editor hints without treating every textbox as an editor", () => {
+    const summary = summarizeSnapshot({
+      snapshot: [
+        '- textbox "Search Setup" [ref=e1]',
+        '- textbox "SIC Code" [ref=e2]',
+        '- textbox "Description" [ref=e3]: before browser smoke',
+        '- textbox "Agent Script Editor" [ref=e4]',
+        '- StaticText "monaco-editor"',
+      ].join("\n"),
+      fullSnapshotPath: "/tmp/snapshot.txt",
+    });
+
+    const editorSection = summary.split("✏️ Editor hints:")[1]?.split("\n\n")[0] ?? "";
+
+    expect(summary).toContain("Editor hints");
+    expect(editorSection).toContain("sf_browser_editor action=detect");
+    expect(editorSection).toContain('textbox "Agent Script Editor"');
+    expect(editorSection).not.toContain('textbox "Search Setup"');
+    expect(editorSection).not.toContain('textbox "SIC Code"');
+    expect(editorSection).not.toContain('textbox "Description"');
   });
 
   it("defaults unknown output mode to summary", () => {

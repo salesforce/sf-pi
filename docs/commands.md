@@ -48,7 +48,7 @@ _Salesforce-aware browser automation for last-mile UI work using agent-browser._
 
 - Default: **on**
 - Commands: `/sf-browser`
-- Tools: `sf_browser_open_org`, `sf_browser_snapshot`, `sf_browser_click`, `sf_browser_fill`, `sf_browser_select`, `sf_browser_press`, `sf_browser_wait`, `sf_browser_capture_evidence`, `sf_browser_resolve_path`
+- Tools: `sf_browser_open_org`, `sf_browser_snapshot`, `sf_browser_click`, `sf_browser_fill`, `sf_browser_select`, `sf_browser_press`, `sf_browser_editor`, `sf_browser_wait`, `sf_browser_capture_evidence`, `sf_browser_resolve_path`
 
 ### [SF Code Analyzer](./extensions/sf-code-analyzer)
 

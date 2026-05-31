@@ -18,7 +18,14 @@ export type SalesforceRoute =
   | { type: "setup"; destination: string }
   | { type: "object-list"; objectApiName: string }
   | { type: "object-new"; objectApiName: string }
-  | { type: "record-view"; objectApiName: string; recordId: string };
+  | { type: "record-view"; objectApiName: string; recordId: string }
+  | { type: "list-view"; objectApiName: string; filterName: string }
+  | {
+      type: "record-related-list";
+      objectApiName: string;
+      recordId: string;
+      relatedListApiName: string;
+    };
 
 export interface SalesforcePathResolverInput {
   path?: string;
@@ -105,7 +112,7 @@ function resolveExplicitPath(pathValue: string): SalesforcePathResolverResult {
       message: "Salesforce path must start with '/'.",
     };
   }
-  if (/\s|[\u0000-\u001f\u007f]/.test(trimmed)) {
+  if (hasWhitespaceOrControl(trimmed)) {
     return {
       ok: false,
       reason: "invalid_route",
@@ -144,6 +151,32 @@ function resolveRoute(route: SalesforceRoute): SalesforcePathResolverResult {
         ok: true,
         path: `/lightning/r/${object.value}/${id.value}/view`,
         kind: "record-view",
+      };
+    }
+    case "list-view": {
+      const object = validateObjectApiName(route.objectApiName);
+      if (object.valid === false) return object.error;
+      const filterName = validatePathToken(route.filterName, "filterName");
+      if (filterName.valid === false) return filterName.error;
+      return {
+        ok: true,
+        path: `/lightning/o/${object.value}/list?filterName=${encodeURIComponent(filterName.value)}`,
+        kind: "list-view",
+      };
+    }
+    case "record-related-list": {
+      const object = validateObjectApiName(route.objectApiName);
+      if (object.valid === false) return object.error;
+      const id = validateRecordId(route.recordId);
+      if (id.valid === false) return id.error;
+      const relatedList = validatePathToken(route.relatedListApiName, "relatedListApiName");
+      if (relatedList.valid === false) return relatedList.error;
+      return {
+        ok: true,
+        path: `/lightning/r/${object.value}/${id.value}/related/${encodeURIComponent(
+          relatedList.value,
+        )}/view`,
+        kind: "record-related-list",
       };
     }
     default:
@@ -269,6 +302,25 @@ function validateRecordId(
     };
   }
   return { valid: true, value: trimmed };
+}
+
+function validatePathToken(
+  value: string | undefined,
+  field: string,
+): { valid: true; value: string } | { valid: false; error: SalesforcePathResolverResult } {
+  const trimmed = value?.trim() ?? "";
+  if (!trimmed || hasWhitespaceOrControl(trimmed) || /[/?#]/.test(trimmed)) {
+    return { valid: false, error: invalidRoute(`Invalid ${field} ${JSON.stringify(value)}.`) };
+  }
+  return { valid: true, value: trimmed };
+}
+
+function hasWhitespaceOrControl(value: string): boolean {
+  for (const char of value) {
+    const code = char.charCodeAt(0);
+    if (code <= 0x20 || code === 0x7f) return true;
+  }
+  return false;
 }
 
 function invalidRoute(message: string): SalesforcePathResolverResult {

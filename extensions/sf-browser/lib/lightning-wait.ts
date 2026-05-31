@@ -3,6 +3,7 @@
 
 export type LightningWaitModeValue =
   | "app-ready"
+  | "navigation-ready"
   | "record-view"
   | "modal-open"
   | "modal-closed"
@@ -12,6 +13,7 @@ export type LightningWaitModeValue =
 
 export type LightningWaitOutcome =
   | "app-ready"
+  | "navigation-ready"
   | "record-view"
   | "modal-open"
   | "modal-closed"
@@ -54,10 +56,23 @@ function firstVisible(selectors) {
 function textOf(el) {
   return (el && (el.innerText || el.textContent) || '').trim().replace(/\s+/g, ' ').slice(0, 500);
 }
+function lightningShellVisible() {
+  return firstVisible([
+    'div.desktop.container',
+    'div.oneContent',
+    'one-app',
+    '.setupcontent',
+    'setup-root',
+    'div[data-aura-rendered-by]',
+    '.slds-template__container'
+  ]);
+}
 function recordViewMatch() {
-  const match = location.pathname.match(/\/lightning\/r\/([^/]+)\/([a-zA-Z0-9]{15}(?:[a-zA-Z0-9]{3})?)\/view/);
-  if (!match) return null;
-  return { selector: 'location.pathname', url: location.pathname };
+  const withObject = location.pathname.match(/\/lightning\/r\/([^/]+)\/([a-zA-Z0-9]{15}(?:[a-zA-Z0-9]{3})?)\/view/);
+  if (withObject) return { selector: 'location.pathname', url: location.pathname };
+  const idOnly = location.pathname.match(/\/lightning\/r\/([a-zA-Z0-9]{15}(?:[a-zA-Z0-9]{3})?)\/view/);
+  if (idOnly) return { selector: 'location.pathname', url: location.pathname };
+  return null;
 }
 function modalVisible() {
   return firstVisible([
@@ -88,8 +103,25 @@ function spinnerVisible() {
     '.slds-is-loading',
     '.lafPageHostLoading',
     'lightning-spinner',
+    'lightning-primitive-spinner',
     '[role="progressbar"]',
     '[aria-busy="true"]'
+  ]);
+}
+function stencilVisible() {
+  return firstVisible([
+    '.stencil',
+    '[class*="stencil"]',
+    '.slds-skeleton',
+    '[class*="skeleton"]'
+  ]);
+}
+function blockingBackdropVisible() {
+  return firstVisible([
+    '.slds-backdrop_open',
+    '.slds-backdrop.slds-backdrop_open',
+    '.modal-backdrop',
+    '.uiBlockUI'
   ]);
 }
 function validationVisible() {
@@ -127,11 +159,37 @@ function bodyHasErrorText() {
   }
   return null;
 }
+function quickActionMatch() {
+  if (!/\/lightning\/action\/quick\//.test(location.pathname)) return null;
+  if (!textOf(document.body)) return null;
+  return { selector: 'location.pathname', url: location.pathname };
+}
 function appReady() {
   if (document.readyState === 'loading' || !document.body) return null;
+  const shell = lightningShellVisible() || quickActionMatch();
+  if (!shell) return null;
   if (spinnerVisible()) return null;
+  if (stencilVisible()) return null;
+  if (blockingBackdropVisible() && !modalVisible()) return null;
   if (!textOf(document.body)) return null;
-  return { selector: 'body' };
+  return { selector: shell.selector };
+}
+function isAuthRedirectUrl(href) {
+  return /frontdoor\.jsp|contentDoor|\/secur\//i.test(href) || /^https?:\/\/login\./i.test(href) || /file\.force\.com/i.test(href);
+}
+function navigationReady() {
+  const ready = appReady();
+  if (!ready) return null;
+  const href = location.href;
+  if (isAuthRedirectUrl(href)) {
+    window.__sfPiNavigationReadyState = { lastHref: href, stableTicks: 0 };
+    return null;
+  }
+  const previous = window.__sfPiNavigationReadyState || { lastHref: '', stableTicks: 0 };
+  const stableTicks = previous.lastHref === href ? previous.stableTicks + 1 : 0;
+  window.__sfPiNavigationReadyState = { lastHref: href, stableTicks };
+  if (stableTicks < 2) return null;
+  return { selector: ready.selector, url: location.pathname };
 }
 function classifySaveResult() {
   const toast = toastVisible();
@@ -154,11 +212,27 @@ function classifySaveResult() {
 }
 window.__sfPiLightningOutcome = function(mode) {
   if (mode === 'save-result') return classifySaveResult();
-  if (mode === 'app-ready') return appReady() ? { outcome: 'app-ready', matched: appReady() } : { outcome: 'ambiguous' };
-  if (mode === 'record-view') return recordViewMatch() ? { outcome: 'record-view', matched: recordViewMatch() } : { outcome: 'ambiguous' };
-  if (mode === 'modal-open') return modalVisible() ? { outcome: 'modal-open', matched: { selector: modalVisible().selector, text: textOf(modalVisible().el) } } : { outcome: 'ambiguous' };
+  if (mode === 'app-ready') {
+    const ready = appReady();
+    return ready ? { outcome: 'app-ready', matched: ready } : { outcome: 'ambiguous' };
+  }
+  if (mode === 'navigation-ready') {
+    const ready = navigationReady();
+    return ready ? { outcome: 'navigation-ready', matched: ready } : { outcome: 'ambiguous' };
+  }
+  if (mode === 'record-view') {
+    const record = recordViewMatch();
+    return record ? { outcome: 'record-view', matched: record } : { outcome: 'ambiguous' };
+  }
+  if (mode === 'modal-open') {
+    const modal = modalVisible();
+    return modal ? { outcome: 'modal-open', matched: { selector: modal.selector, text: textOf(modal.el) } } : { outcome: 'ambiguous' };
+  }
   if (mode === 'modal-closed') return !modalVisible() ? { outcome: 'modal-closed' } : { outcome: 'ambiguous' };
-  if (mode === 'toast') return toastVisible() ? { outcome: 'toast', matched: { selector: toastVisible().selector, text: textOf(toastVisible().el) } } : { outcome: 'ambiguous' };
+  if (mode === 'toast') {
+    const toast = toastVisible();
+    return toast ? { outcome: 'toast', matched: { selector: toast.selector, text: textOf(toast.el) } } : { outcome: 'ambiguous' };
+  }
   if (mode === 'spinner-gone') return !spinnerVisible() ? { outcome: 'spinner-gone' } : { outcome: 'ambiguous' };
   return { outcome: 'ambiguous' };
 };

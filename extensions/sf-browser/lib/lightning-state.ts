@@ -62,6 +62,19 @@ function parseLightningUrl(
     };
   }
 
+  const idOnlyRecord = pathname.match(
+    /\/lightning\/r\/([a-zA-Z0-9]{15}(?:[a-zA-Z0-9]{3})?)\/([^/?#]+)/,
+  );
+  if (idOnlyRecord) {
+    const mode =
+      idOnlyRecord[2] === "edit" || idOnlyRecord[2] === "view" ? idOnlyRecord[2] : undefined;
+    return {
+      surface: "record-page",
+      recordId: idOnlyRecord[1],
+      ...(mode ? { mode } : {}),
+    };
+  }
+
   const object = pathname.match(/\/lightning\/o\/([^/]+)\/([^/?#]+)/);
   if (object) {
     const objectApiName = decodeURIComponent(object[1] ?? "");
@@ -74,6 +87,8 @@ function parseLightningUrl(
   }
 
   if (/\/lightning\/page\/home\/?$/i.test(pathname)) return { surface: "home" };
+
+  if (/\/lightning\/action\/quick\//i.test(pathname)) return { surface: "unknown" };
 
   if (/\/lightning\/setup\//i.test(pathname)) {
     return { surface: "setup-page", setupDestination: setupDestinationFromPath(pathname) };

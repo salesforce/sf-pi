@@ -55,6 +55,7 @@ import { formatKnownSetupDestinations, resolveSetupDestination } from "./lib/set
 import { captureEvidence, openOrgInAgentBrowser } from "./lib/operations.ts";
 import { registerSfBrowserCaptureEvidenceTool } from "./lib/sf_browser_capture_evidence-tool.ts";
 import { registerSfBrowserClickTool } from "./lib/sf_browser_click-tool.ts";
+import { registerSfBrowserEditorTool } from "./lib/sf_browser_editor-tool.ts";
 import { registerSfBrowserFillTool } from "./lib/sf_browser_fill-tool.ts";
 import { registerSfBrowserOpenOrgTool } from "./lib/sf_browser_open_org-tool.ts";
 import { registerSfBrowserPressTool } from "./lib/sf_browser_press-tool.ts";
@@ -79,6 +80,7 @@ export default function sfBrowser(pi: ExtensionAPI): void {
     registerSfBrowserFillTool(pi);
     registerSfBrowserSelectTool(pi);
     registerSfBrowserPressTool(pi);
+    registerSfBrowserEditorTool(pi);
     registerSfBrowserWaitTool(pi);
     registerSfBrowserCaptureEvidenceTool(pi);
     registerSfBrowserResolvePathTool(pi);
@@ -336,7 +338,8 @@ function buildHelpText(): string {
     "  sf_browser_fill              Fill a ref from the latest snapshot.",
     "  sf_browser_select            Select values in Salesforce select/listbox refs.",
     "  sf_browser_press             Press keyboard keys such as Enter or Escape.",
-    "  sf_browser_wait              Wait for expected text, URL, load state, or last-resort ms.",
+    "  sf_browser_editor            Detect/read/write visible editor surfaces; never clicks Save/Apply.",
+    "  sf_browser_wait              Wait for text, URL, load state, Lightning state (navigation-ready/app-ready/save-result), or last-resort ms.",
     "  sf_browser_capture_evidence  Capture private screenshot evidence; thumbnail by default.",
     "  sf_browser_resolve_path       Resolve structured Salesforce routes and setup destinations without opening the browser.",
     "",

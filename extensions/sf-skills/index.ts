@@ -409,7 +409,9 @@ export default function sfSkills(pi: ExtensionAPI) {
       // capturing overlay that itself reloads on apply). Otherwise reload tears
       // the runtime down while this panel's ctx.ui.custom() promise is still
       // mounted, stranding it — pi never calls its done(), and all input
-      // freezes until Ctrl+C. See lib/common/command-panel.ts.
+      // freezes until Ctrl+C. This is the lifecycle shorthand
+      // (`closeBeforeAction: isLifecycleToggleAction`) plus the nested funnel
+      // overlay case. See lib/common/command-panel.ts.
       closeBeforeAction: (action) => isLifecycleToggleAction(action) || action === "funnel",
     });
   }

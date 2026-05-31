@@ -13,17 +13,8 @@ export const SALESFORCE_BROWSER_GUIDANCE = [
   "Prefer refs from the latest snapshot. If ref-based tools are insufficient, use direct agent-browser commands for the long tail.",
   "For Salesforce lookup/combobox controls: fill the visible input, wait for options, snapshot, then click the desired option.",
   "For Setup pages, prefer curated Setup Destinations over search-and-click navigation when the target path is known.",
-  "For Setup and Lightning pages, wait for expected text or URL patterns instead of relying on DOMContentLoaded alone.",
+  "After deep-link navigation or opening a Setup Destination, use sf_browser_wait with lightning='navigation-ready'; use app-ready for in-page Lightning rerenders.",
   "Capture Browser Evidence with artifact mode for batches and thumbnail mode when the model should inspect the current screen. Keep dismissOverlays enabled unless the overlay is the subject of the evidence.",
-].join("\n");
-
-export const OPEN_NEXT_STEPS = [
-  "Next:",
-  "1. Run sf_browser_snapshot.",
-  "2. Use refs from the latest snapshot for click/fill.",
-  "3. After page-changing actions, wait and snapshot again.",
-  "4. Use Salesforce APIs for verification when possible.",
-  "5. Capture Browser Evidence when visual confirmation matters.",
 ].join("\n");
 
 export const STALE_REF_HINT =

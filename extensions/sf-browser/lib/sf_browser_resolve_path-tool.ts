@@ -4,6 +4,7 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { isResolvedSalesforcePath, resolveSalesforcePath } from "./salesforce-path-resolver.ts";
 import { SalesforceRouteSchema } from "./salesforce-path-schema.ts";
+import { getSetupDestination } from "./setup-destinations.ts";
 import { startTimer } from "./timing.ts";
 import { okText } from "./tool-support.ts";
 
@@ -60,6 +61,7 @@ export function registerSfBrowserResolvePathTool(pi: ExtensionAPI): void {
         };
       }
 
+      const setupDestination = getSetupDestination(result.destination);
       return {
         content: [
           {
@@ -69,6 +71,13 @@ export function registerSfBrowserResolvePathTool(pi: ExtensionAPI): void {
               `Path: ${result.path}`,
               `Kind: ${result.kind}`,
               result.destination ? `Destination: ${result.destination}` : undefined,
+              setupDestination ? `Use for: ${setupDestination.useFor}` : undefined,
+              setupDestination
+                ? `Suggested wait: lightning='${setupDestination.suggestedWait.lightning}'`
+                : undefined,
+              setupDestination?.defaultFocus.length
+                ? `Default focus terms: ${setupDestination.defaultFocus.join(", ")}`
+                : undefined,
               result.confidence !== undefined
                 ? `Confidence: ${result.confidence.toFixed(2)}`
                 : undefined,
@@ -76,7 +85,21 @@ export function registerSfBrowserResolvePathTool(pi: ExtensionAPI): void {
             ]),
           },
         ],
-        details: { ok: true, ...result, ...duration } as Record<string, unknown>,
+        details: {
+          ok: true,
+          ...result,
+          ...(setupDestination
+            ? {
+                setupDestination: {
+                  id: setupDestination.id,
+                  suggestedWait: setupDestination.suggestedWait,
+                  defaultFocus: setupDestination.defaultFocus,
+                  runbookRefs: setupDestination.runbookRefs,
+                },
+              }
+            : {}),
+          ...duration,
+        } as Record<string, unknown>,
       };
     },
   });

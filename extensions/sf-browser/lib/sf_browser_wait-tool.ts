@@ -25,6 +25,7 @@ const LoadState = StringEnum(["domcontentloaded", "networkidle"] as const, {
 const LightningWaitMode = StringEnum(
   [
     "app-ready",
+    "navigation-ready",
     "record-view",
     "modal-open",
     "modal-closed",
@@ -34,7 +35,7 @@ const LightningWaitMode = StringEnum(
   ] as const,
   {
     description:
-      "Salesforce Lightning semantic state to wait for. save-result classifies the first visible post-save outcome; it is not a success assertion.",
+      "Salesforce Lightning semantic state to wait for. navigation-ready waits for deep-link URL stabilization plus app readiness; save-result classifies the first visible post-save outcome and is not a success assertion.",
   },
 );
 
@@ -69,6 +70,7 @@ export function registerSfBrowserWaitTool(pi: ExtensionAPI): void {
     promptSnippet: "Wait for Salesforce UI text, URL, load state, Lightning state, or delay",
     promptGuidelines: [
       "Use sf_browser_wait with expected text, URL, or lightning state after Salesforce actions; use ms only as a last resort for Lightning async rendering.",
+      "Use lightning='navigation-ready' after sf_browser_open_org or deep-link navigation; use lightning='app-ready' after in-page Lightning rerenders.",
       "Use lightning='save-result' after Save to classify success, validation, error, or ambiguous post-save outcomes; it is not a success assertion.",
       "If sf_browser_wait says the wait may have timed out, snapshot or verify through API before continuing.",
     ],

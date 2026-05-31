@@ -126,6 +126,7 @@
       "sf_browser_fill",
       "sf_browser_select",
       "sf_browser_press",
+      "sf_browser_editor",
       "sf_browser_wait",
       "sf_browser_capture_evidence",
       "sf_browser_resolve_path"
@@ -143,13 +144,16 @@
         "lib/evidence-report.ts",
         "lib/operations.ts",
         "lib/failure-diagnostics.ts",
+        "lib/editor-surfaces.ts",
         "lib/setup-destinations.ts",
         "lib/overlay-dismissal.ts",
         "lib/snapshot-summary.ts",
         "lib/lightning-wait.ts",
+        "lib/sf_browser_editor-tool.ts",
         "lib/sf_browser_select-tool.ts",
         "lib/sf_browser_resolve_path-tool.ts",
         "lib/salesforce-path-resolver.ts",
+        "lib/salesforce-route-verifier.ts",
         "skills/sf-browser/SKILL.md",
         "skills/sf-browser/references/setup-runbooks.md",
         "skills/sf-browser/references/setup-destinations.md",
@@ -170,7 +174,7 @@
     "entry": "extensions/sf-browser/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 3326
+    "srcLoc": 4762
   },
   {
     "id": "sf-code-analyzer",
@@ -703,7 +707,7 @@
     "entry": "extensions/sf-skills/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 4439
+    "srcLoc": 4441
   },
   {
     "id": "sf-slack",

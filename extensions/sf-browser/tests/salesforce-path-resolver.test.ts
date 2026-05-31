@@ -24,6 +24,24 @@ describe("salesforce path resolver", () => {
         route: { type: "record-view", objectApiName: "Account", recordId: "001000000000001AAA" },
       }),
     ).toMatchObject({ ok: true, path: "/lightning/r/Account/001000000000001AAA/view" });
+    expect(
+      resolveSalesforcePath({
+        route: { type: "list-view", objectApiName: "Account", filterName: "AllAccounts" },
+      }),
+    ).toMatchObject({ ok: true, path: "/lightning/o/Account/list?filterName=AllAccounts" });
+    expect(
+      resolveSalesforcePath({
+        route: {
+          type: "record-related-list",
+          objectApiName: "Account",
+          recordId: "001000000000001AAA",
+          relatedListApiName: "Contacts",
+        },
+      }),
+    ).toMatchObject({
+      ok: true,
+      path: "/lightning/r/Account/001000000000001AAA/related/Contacts/view",
+    });
   });
 
   it("resolves exact and bounded fuzzy setup destinations", () => {
@@ -58,6 +76,11 @@ describe("salesforce path resolver", () => {
     expect(
       resolveSalesforcePath({
         route: { type: "record-view", objectApiName: "Account", recordId: "not-an-id" },
+      }),
+    ).toMatchObject({ ok: false, reason: "invalid_route" });
+    expect(
+      resolveSalesforcePath({
+        route: { type: "list-view", objectApiName: "Account", filterName: "Bad Filter" },
       }),
     ).toMatchObject({ ok: false, reason: "invalid_route" });
   });

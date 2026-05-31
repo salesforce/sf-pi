@@ -43,14 +43,14 @@ sf_browser_capture_evidence
 ## Key Architecture Decisions
 
 - `agent-browser` is a lazy external runtime. SF Browser does not start Chrome, probe CDP, or check installation during startup.
-- V1 exposes a Hot-Path Browser Tool Set: open, snapshot, click, fill, select, press, wait, and Browser Evidence capture.
+- V1 exposes a Hot-Path Browser Tool Set: open, snapshot, click, fill, select, press, editor, wait, and Browser Evidence capture.
 - Long-tail browser work remains direct `agent-browser` usage.
 - Browser Evidence is session-scoped and artifact-first. Use `imageMode: "artifact"` for repeated captures and `thumbnail` when the model should inspect the current screen. Thumbnail mode defaults the screenshot viewport to 1440x1000 so model-visible evidence is not a cramped half-height capture. Use `includeSetupAuditTrail: true` on the after-capture when a UI Mutation Fallback should include recent Setup Audit Trail context.
 - Targeted Browser Evidence can scroll an explicit ref into view before screenshot capture with `scrollToRef`.
-- Snapshots are smart and pi-native: `outputMode: "summary"` reports page URL, surface, actions, alerts, tables, and an artifact pointer by default.
+- Snapshots are smart and pi-native: `outputMode: "summary"` reports page URL, surface, tabs, record actions, field edit actions, related lists, object-list controls, quick-action forms, alerts, tables, and an artifact pointer by default.
 - Ambient Overlay Dismissal is best-effort and scoped to known non-workflow Salesforce overlays before evidence capture.
-- Setup Destinations are curated shortcuts for known Setup paths; they are not a full Setup sitemap.
-- Structured routes can resolve common Lightning paths before opening the browser: `home`, `setup`, `object-list`, `object-new`, and `record-view`. Bounded fuzzy matching is limited to curated Setup Destinations and should ask the user to choose when multiple candidates are plausible. `object-new` opens Salesforce's deterministic new-record URL; org overrides or record-type flows can render differently, so verify with waits and snapshots after opening.
+- Setup Destinations are curated shortcuts for known Setup paths; they are not a full Setup sitemap. The runtime registry owns each destination's path, intent, expected surface, suggested wait, focus terms, and runbook references so agents can navigate without brittle Setup search.
+- Structured routes can resolve common Lightning paths before opening the browser: `home`, `setup`, `object-list`, `object-new`, `record-view`, `list-view`, and `record-related-list`. `sf_browser_resolve_path` remains deterministic/local; `sf_browser_open_org` verifies structured routes through Salesforce APIs before opening. Bounded fuzzy matching is limited to curated Setup Destinations and verified list-view / related-list labels; ambiguous matches fail closed with candidates. `object-new` opens Salesforce's deterministic new-record URL; org overrides or record-type flows can render differently, so verify with waits and snapshots after opening.
 - Failed browser actions include best-effort diagnostics: failure kind, recovery hint, current URL, compact snapshot artifact, and screenshot artifact when capture succeeds.
 - Tool results include a user-visible duration so users can understand the cost and compare optimized workflows.
 - V1 avoids permission gates and semantic browser-action mediation to reduce permission fatigue.
@@ -87,17 +87,18 @@ sf_browser_capture_evidence
 
 ## Agent Tools
 
-| Tool                          | Purpose                                                                                                                                                                           |
-| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `sf_browser_open_org`         | Open a Salesforce org/path or curated Setup Destination in the shared `agent-browser` session without exposing login URLs.                                                        |
-| `sf_browser_snapshot`         | Capture a smart pi-native snapshot: page URL, surface, actions, tables, alerts, and artifact pointer.                                                                             |
-| `sf_browser_click`            | Click a ref from the latest snapshot.                                                                                                                                             |
-| `sf_browser_fill`             | Fill a ref from the latest snapshot.                                                                                                                                              |
-| `sf_browser_select`           | Select values in Salesforce select/listbox refs, including Classic Setup dual-list controls.                                                                                      |
-| `sf_browser_press`            | Press keys such as `Enter`, `Escape`, or `Control+a`.                                                                                                                             |
-| `sf_browser_wait`             | Wait for expected text, URL, load state, Lightning semantic state, or last-resort milliseconds; reports near-timeout waits as ambiguous.                                          |
-| `sf_browser_capture_evidence` | Capture session-scoped screenshot evidence, optionally scroll to a ref, dismiss ambient overlays, enrich with recent Setup Audit Trail context, and return bounded image content. |
-| `sf_browser_resolve_path`     | Resolve structured Salesforce routes and bounded fuzzy Setup Destinations to deterministic paths without opening the browser.                                                     |
+| Tool                          | Purpose                                                                                                                                                                            |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sf_browser_open_org`         | Open a Salesforce org/path or curated Setup Destination in the shared `agent-browser` session without exposing login URLs.                                                         |
+| `sf_browser_snapshot`         | Capture a smart pi-native snapshot: page URL, surface, actions, tables, alerts, and artifact pointer.                                                                              |
+| `sf_browser_click`            | Click a ref from the latest snapshot.                                                                                                                                              |
+| `sf_browser_fill`             | Fill a ref from the latest snapshot.                                                                                                                                               |
+| `sf_browser_select`           | Select values in Salesforce select/listbox refs, including Classic Setup dual-list controls.                                                                                       |
+| `sf_browser_press`            | Press keys such as `Enter`, `Escape`, or `Control+a`.                                                                                                                              |
+| `sf_browser_editor`           | Detect, read, or replace visible Salesforce editor-like surfaces such as Monaco, textareas, and contenteditable fields; never clicks Save/Apply.                                   |
+| `sf_browser_wait`             | Wait for expected text, URL, load state, Lightning semantic state such as `navigation-ready` / `app-ready`, or last-resort milliseconds; reports near-timeout waits as ambiguous.  |
+| `sf_browser_capture_evidence` | Capture session-scoped screenshot evidence, optionally scroll to a ref, dismiss ambient overlays, enrich with recent Setup Audit Trail context, and return bounded image content.  |
+| `sf_browser_resolve_path`     | Resolve structured Salesforce routes and bounded fuzzy Setup Destinations to deterministic paths without opening the browser; route verification happens in `sf_browser_open_org`. |
 
 ## Setup Runbooks
 
@@ -115,14 +116,15 @@ Runbooks document the preferred API or owning-extension path, the Browser Eviden
 
 - Use Salesforce APIs first for setup and verification.
 - Prefer curated Setup Destinations over search-and-click navigation when the target Setup path is known.
-- Run `sf_browser_snapshot` before acting. It reports page URL, surface type, primary actions, tables/lists, alerts, and focus matches while storing the full raw tree as an artifact.
+- Run `sf_browser_snapshot` before acting. It reports page URL, surface type, tabs, record actions, field edit actions, related lists, object-list controls, quick-action forms, tables/lists, alerts, and focus matches while storing the full raw tree as an artifact.
 - Treat refs as stale after clicks, saves, modal opens, navigation, tab switches, and Lightning rerenders.
 - For Salesforce lookup and combobox controls: fill the visible input, wait for options, snapshot, then click the desired option.
+- For code-like editor surfaces where normal fill is insufficient, use `sf_browser_editor` with `action: "detect"`, then read or write by `editorIndex`. Editor writes replace visible editor content only; they never click Save or Apply and do not echo full content.
 - Use `imageMode: "artifact"` for batches; use `thumbnail` for model-visible current-screen inspection. Use `scrollToRef` when evidence needs to prove a lower-page section.
 - Leave `dismissOverlays` enabled for evidence capture unless the overlay is part of the task being documented.
 - Use `sf_browser_select` for Classic Setup listbox and dual-list controls, then click Add or Remove and snapshot before saving.
-- If `sf_browser_wait` reports an ambiguous wait, snapshot or verify through API before continuing.
-- Use direct `agent-browser` commands for scroll, hover, drag, upload, tabs, console, network, trace, video, HAR, eval, or advanced CDP.
+- After opening a deep link or Setup Destination, prefer `sf_browser_wait` with `lightning: "navigation-ready"`, then snapshot. If `sf_browser_wait` reports an ambiguous wait, snapshot or verify through API before continuing.
+- Use direct `agent-browser` commands for scroll, hover, drag, upload, tabs, console, network, trace, video, HAR, eval, advanced CDP, or long-tail editor/shadow-DOM work outside `sf_browser_editor`.
 
 ## State and Artifacts
 
@@ -162,6 +164,7 @@ extensions/sf-browser/
     agent-browser.ts        ← implementation module
     artifacts.ts            ← implementation module
     constants.ts            ← implementation module
+    editor-surfaces.ts      ← implementation module
     evidence-report.ts      ← implementation module
     failure-diagnostics.ts  ← implementation module
     guidance.ts             ← implementation module
@@ -173,10 +176,12 @@ extensions/sf-browser/
     salesforce-open.ts      ← implementation module
     salesforce-path-resolver.ts← implementation module
     salesforce-path-schema.ts← implementation module
+    salesforce-route-verifier.ts← implementation module
     setup-audit-trail.ts    ← implementation module
     setup-destinations.ts   ← implementation module
     sf_browser_capture_evidence-tool.ts← implementation module
     sf_browser_click-tool.ts← implementation module
+    sf_browser_editor-tool.ts← implementation module
     sf_browser_fill-tool.ts ← implementation module
     sf_browser_open_org-tool.ts← implementation module
     sf_browser_press-tool.ts← implementation module
@@ -189,11 +194,13 @@ extensions/sf-browser/
     tool-support.ts         ← implementation module
   tests/
     artifacts.test.ts       ← unit / smoke test
+    editor-surfaces.test.ts ← unit / smoke test
     evidence-report.test.ts ← unit / smoke test
     failure-diagnostics.test.ts← unit / smoke test
     overlay-dismissal.test.ts← unit / smoke test
     redaction.test.ts       ← unit / smoke test
     salesforce-path-resolver.test.ts← unit / smoke test
+    salesforce-route-verifier.test.ts← unit / smoke test
     setup-audit-trail.test.ts← unit / smoke test
     setup-destinations.test.ts← unit / smoke test
     smoke.test.ts           ← unit / smoke test

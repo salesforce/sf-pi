@@ -18,8 +18,8 @@ import {
   imageContentFromFile,
   planEvidenceCapture,
 } from "./artifacts.ts";
-import { OPEN_NEXT_STEPS } from "./guidance.ts";
 import { dismissAmbientOverlays } from "./overlay-dismissal.ts";
+import { getSetupDestination, getSetupDestinationByPath } from "./setup-destinations.ts";
 import { redactUrl } from "./redaction.ts";
 import { fetchSetupAuditTrail, summarizeSetupAuditTrail } from "./setup-audit-trail.ts";
 import { resolveOpenOrgUrl, summarizeOpenTarget, type OpenOrgInput } from "./salesforce-open.ts";
@@ -40,9 +40,10 @@ export async function openOrgInAgentBrowser(
     text: okText([
       summarizeOpenTarget(open.targetOrg, open.path),
       input.purpose ? `Purpose: ${input.purpose}` : undefined,
+      ...formatVerifiedRoute(open.verifiedRoute),
       `Duration: ${duration.durationText}`,
       "",
-      OPEN_NEXT_STEPS,
+      buildOpenNextSteps(input, open.path),
     ]),
     details: {
       ok: true,
@@ -51,6 +52,8 @@ export async function openOrgInAgentBrowser(
       setup: input.setup,
       purpose: input.purpose,
       session: "sf-pi",
+      openGuidance: openGuidanceDetails(input, open.path),
+      ...(open.verifiedRoute ? { verifiedRoute: open.verifiedRoute } : {}),
       ...duration,
     },
   };
@@ -169,6 +172,91 @@ export async function captureEvidence(
     content,
     details: { ok: true, sessionId, capture, overlayDismissal, scrolledToRef, ...duration },
   };
+}
+
+function formatVerifiedRoute(
+  verifiedRoute: Awaited<ReturnType<typeof resolveOpenOrgUrl>>["verifiedRoute"],
+): string[] {
+  if (!verifiedRoute) return [];
+  const lines = ["Verified route:"];
+  if (verifiedRoute.objectApiName) lines.push(`- Object: ${verifiedRoute.objectApiName}`);
+  if (verifiedRoute.recordId) lines.push(`- Record: ${verifiedRoute.recordId}`);
+  if (verifiedRoute.listView) {
+    lines.push(
+      `- List view: ${[
+        verifiedRoute.listView.label,
+        verifiedRoute.listView.apiName,
+        verifiedRoute.listView.id,
+      ]
+        .filter(Boolean)
+        .join(" / ")}`,
+    );
+  }
+  if (verifiedRoute.relatedList) {
+    lines.push(
+      `- Related list: ${[
+        verifiedRoute.relatedList.label,
+        verifiedRoute.relatedList.relatedListId,
+        verifiedRoute.relatedList.objectApiName,
+      ]
+        .filter(Boolean)
+        .join(" / ")}`,
+    );
+  }
+  return lines;
+}
+
+function buildOpenNextSteps(input: OpenOrgInput, path: string | undefined): string {
+  const setupDestination = getSetupDestination(input.setup) ?? getSetupDestinationByPath(path);
+  const wait = setupDestination?.suggestedWait.lightning ?? suggestedWaitForRoute(input, path);
+  const focus = setupDestination?.defaultFocus;
+  const extra = [
+    `1. Run sf_browser_wait with lightning='${wait}'.`,
+    `2. Run sf_browser_snapshot${focus?.length ? ` with focus terms: ${focus.join(", ")}` : ""}.`,
+    "3. Use refs from the latest snapshot for click/fill/select/press.",
+    "4. After page-changing actions, wait and snapshot again.",
+    "5. Use Salesforce APIs for verification when possible.",
+    "6. Capture Browser Evidence when visual confirmation matters.",
+  ];
+  if (!setupDestination) return ["Next:", ...extra].join("\n");
+  return [
+    `Setup Destination: ${setupDestination.id} — ${setupDestination.useFor}`,
+    `Expected surface: ${setupDestination.expectedSurface}`,
+    setupDestination.runbookRefs.length
+      ? `Runbook refs: ${setupDestination.runbookRefs.join(", ")}`
+      : undefined,
+    "Next:",
+    ...extra,
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+function openGuidanceDetails(
+  input: OpenOrgInput,
+  path: string | undefined,
+): Record<string, unknown> {
+  const setupDestination = getSetupDestination(input.setup) ?? getSetupDestinationByPath(path);
+  return {
+    suggestedWait: {
+      lightning: setupDestination?.suggestedWait.lightning ?? suggestedWaitForRoute(input, path),
+    },
+    ...(setupDestination
+      ? {
+          setupDestination: setupDestination.id,
+          expectedSurface: setupDestination.expectedSurface,
+          defaultFocus: setupDestination.defaultFocus,
+          runbookRefs: setupDestination.runbookRefs,
+        }
+      : {}),
+  };
+}
+
+function suggestedWaitForRoute(input: OpenOrgInput, path: string | undefined): string {
+  if (input.route?.type === "record-view") return "record-view";
+  if (input.route?.type === "object-new") return "navigation-ready";
+  if (path?.startsWith("/lightning/setup/")) return "navigation-ready";
+  return "navigation-ready";
 }
 
 function thumbnailPathForMime(plannedPath: string, mimeType: string): string {

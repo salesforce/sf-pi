@@ -23,4 +23,23 @@ export const SalesforceRouteSchema = Type.Union([
     objectApiName: Type.String({ description: "Salesforce object API name, such as Account." }),
     recordId: Type.String({ description: "15 or 18 character Salesforce record id." }),
   }),
+  Type.Object({
+    type: Type.Literal("list-view"),
+    objectApiName: Type.String({ description: "Salesforce object API name, such as Account." }),
+    filterName: Type.String({
+      description:
+        "List view id, API/developer name, or exact label. sf_browser_open_org verifies and resolves this before navigation.",
+    }),
+  }),
+  Type.Object({
+    type: Type.Literal("record-related-list"),
+    objectApiName: Type.String({
+      description: "Parent Salesforce object API name, such as Account.",
+    }),
+    recordId: Type.String({ description: "15 or 18 character Salesforce record id." }),
+    relatedListApiName: Type.String({
+      description:
+        "Related list id/API name or exact label, such as Contacts. sf_browser_open_org verifies and resolves this before navigation.",
+    }),
+  }),
 ]);

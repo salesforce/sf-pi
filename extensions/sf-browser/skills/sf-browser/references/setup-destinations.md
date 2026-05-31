@@ -2,7 +2,7 @@
 
 Setup Destinations are curated, public-safe shortcuts from stable names to Salesforce Setup paths. Prefer them over search-and-click navigation when the target Setup page is known.
 
-This list is intentionally small. It is not a full Salesforce Setup sitemap.
+This list is intentionally small. It is not a full Salesforce Setup sitemap. The runtime registry in `lib/setup-destinations.ts` is the source of truth for destination paths plus agent navigation metadata such as suggested waits, expected surfaces, focus terms, and runbook references; this Markdown table is drift-tested against that registry.
 
 | Destination                  | Path                                                    | Use for                                                                         |
 | ---------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------- |

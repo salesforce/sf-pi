@@ -40,6 +40,22 @@ describe("wait classification", () => {
     expect(expression).toContain("classic-success");
   });
 
+  it("adds navigation-ready for frontdoor/deep-link stabilization", () => {
+    const args = buildWaitArgs({ lightning: "navigation-ready" });
+    const expression = buildLightningOutcomeExpression("navigation-ready");
+
+    expect(args[2]).toContain('"navigation-ready"');
+    expect(expression).toContain("navigationReady");
+    expect(expression).toContain("__sfPiNavigationReadyState");
+    expect(expression).toContain("frontdoor");
+  });
+
+  it("handles id-only record redirects and quick action pages", () => {
+    expect(LIGHTNING_WAIT_HELPERS).toContain("idOnly");
+    expect(LIGHTNING_WAIT_HELPERS).toContain("quickActionMatch");
+    expect(LIGHTNING_WAIT_HELPERS).toContain("lightning\\/action\\/quick");
+  });
+
   it("uses hardened Salesforce modal/toast/spinner selectors", () => {
     expect(LIGHTNING_WAIT_HELPERS).toContain('[role="dialog"]');
     expect(LIGHTNING_WAIT_HELPERS).toContain(".uiModal");
@@ -47,6 +63,9 @@ describe("wait classification", () => {
     expect(LIGHTNING_WAIT_HELPERS).toContain('[aria-busy="true"]');
     expect(LIGHTNING_WAIT_HELPERS).toContain("[data-error-message]");
     expect(LIGHTNING_WAIT_HELPERS).toContain("visibleSaveButton");
+    expect(LIGHTNING_WAIT_HELPERS).toContain("lightningShellVisible");
+    expect(LIGHTNING_WAIT_HELPERS).toContain("stencilVisible");
+    expect(LIGHTNING_WAIT_HELPERS).toContain("blockingBackdropVisible");
   });
 
   it("builds separate Lightning outcome expressions for structured details", () => {

@@ -20,6 +20,7 @@ import {
   resolveSalesforcePath,
   type SalesforceRoute,
 } from "./salesforce-path-resolver.ts";
+import { resolveVerifiedRoutePath, type VerifiedRouteResult } from "./salesforce-route-verifier.ts";
 
 export interface OpenOrgInput {
   target_org?: string;
@@ -33,6 +34,7 @@ export interface OpenOrgUrlResult {
   targetOrg: string;
   path?: string;
   url: string;
+  verifiedRoute?: VerifiedRouteResult;
 }
 
 export async function resolveOpenOrgUrl(
@@ -48,7 +50,8 @@ export async function resolveOpenOrgUrl(
     );
   }
 
-  const pathValue = resolveOpenPath(input);
+  const resolvedPath = await resolveOpenPathForBrowser(targetOrg, input);
+  const pathValue = resolvedPath.path;
   const args = ["org", "open", "--url-only", "--json", "-o", targetOrg];
   if (pathValue) args.push("--path", pathValue);
 
@@ -64,7 +67,7 @@ export async function resolveOpenOrgUrl(
 
   const url = extractUrlFromSfOpen(result.stdout);
   if (!url) throw new Error("sf org open did not return a URL in JSON output.");
-  return { targetOrg, path: pathValue, url };
+  return { targetOrg, path: pathValue, url, verifiedRoute: resolvedPath.verifiedRoute };
 }
 
 export async function resolveTargetOrg(
@@ -92,6 +95,15 @@ export function resolveOpenPath(input: OpenOrgInput): string | undefined {
   });
   if (isResolvedSalesforcePath(result)) return result.path;
   throw new Error(result.message);
+}
+
+async function resolveOpenPathForBrowser(
+  targetOrg: string,
+  input: OpenOrgInput,
+): Promise<{ path?: string; verifiedRoute?: VerifiedRouteResult }> {
+  if (!input.route) return { path: resolveOpenPath(input) };
+  const verifiedRoute = await resolveVerifiedRoutePath(targetOrg, input.route);
+  return { path: verifiedRoute.path, verifiedRoute };
 }
 
 export function summarizeOpenTarget(targetOrg: string, pathValue: string | undefined): string {

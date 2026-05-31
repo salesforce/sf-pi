@@ -25,6 +25,8 @@ const MAX_FOCUS_LINES = 24;
 const MAX_ALERT_LINES = 12;
 const MAX_ACTION_LINES = 28;
 const MAX_NAV_LINES = 12;
+const MAX_SEMANTIC_LINES = 12;
+const MAX_FIELD_EDIT_LINES = 8;
 const MAX_COLUMNS = 10;
 const MAX_ROWS = 8;
 const MIN_FOCUS_TERM_LENGTH = 3;
@@ -81,9 +83,16 @@ export function summarizeSnapshot(input: SnapshotSummaryInput): string {
   const page = summarizePage(lines, input.url, focusTerms);
   const lightningState = formatLightningState(deriveLightningState({ url: input.url, lines }));
   const surface = classifySurface(lines, input.url);
+  const tabs = collectTabs(lines);
+  const recordActions = collectRecordActions(lines);
+  const fieldEditActions = collectFieldEditActions(lines, focusTerms);
+  const relatedLists = collectRelatedLists(lines, input.url);
+  const objectListControls = collectObjectListControls(lines, input.url);
+  const quickAction = summarizeQuickAction(lines, input.url);
   const actions = collectPrimaryActions(lines, alerts);
   const setupNavigation = collectSetupNavigation(lines, focusMatches);
   const tableSummary = summarizeTables(lines, focusTerms);
+  const editorHints = collectEditorHints(lines);
 
   const sections: string[] = ["🧭 Snapshot summary", ""];
   appendSection(sections, "📍 Page", page);
@@ -95,17 +104,31 @@ export function summarizeSnapshot(input: SnapshotSummaryInput): string {
     ]);
   }
   appendSection(sections, "⚠️ Alerts / validation", alerts);
+  appendSection(sections, "🧭 Tabs", tabs);
+  appendSection(sections, "⚡ Record actions", recordActions);
+  appendSection(sections, "✏️ Field edit actions", fieldEditActions);
+  appendSection(sections, "🔗 Related lists", relatedLists);
+  appendSection(sections, "📋 Object list controls", objectListControls);
+  appendSection(sections, "⚡ Quick action", quickAction);
   appendSection(sections, "🎯 Primary actions", actions);
   appendSection(sections, "🗂️ Setup navigation", setupNavigation);
   appendSection(sections, "📊 Tables / lists", tableSummary);
+  appendSection(sections, "✏️ Editor hints", editorHints);
   appendSection(sections, "🔎 Focus matches", focusMatches);
   appendSection(sections, "📄 Artifact", [`Full snapshot: ${input.fullSnapshotPath}`]);
 
   if (
     !alerts.length &&
+    !tabs.length &&
+    !recordActions.length &&
+    !fieldEditActions.length &&
+    !relatedLists.length &&
+    !objectListControls.length &&
+    !quickAction.length &&
     !actions.length &&
     !setupNavigation.length &&
     !tableSummary.length &&
+    !editorHints.length &&
     !focusMatches.length
   ) {
     sections.push(
@@ -157,6 +180,7 @@ function classifySurface(lines: string[], url: string | undefined): string[] {
   ) {
     return ["Object Manager page"];
   }
+  if (/\/lightning\/action\/quick\//i.test(safeUrl)) return ["Quick action page"];
   if (/\/lightning\/r\//i.test(safeUrl)) return ["Record page"];
   if (/\/lightning\/o\/[^/]+\/new\b/i.test(safeUrl)) return ["Object new page"];
   if (/\/lightning\/o\//i.test(safeUrl)) return ["List view"];
@@ -250,6 +274,152 @@ function collectSetupNavigation(lines: string[], exclude: string[]): string[] {
   return unique(out);
 }
 
+function collectTabs(lines: string[]): string[] {
+  return unique(
+    lines
+      .filter((line) => /^- tab /.test(line))
+      .filter((line) => !isGlobalChromeLine(line))
+      .map((line) => {
+        const label = extractQuotedName(line);
+        const selected = /\[selected/.test(line) ? " [selected]" : "";
+        const ref = extractRef(line);
+        return `${label}${selected}${ref ? ` ${ref}` : ""}`;
+      })
+      .filter(Boolean)
+      .slice(0, MAX_SEMANTIC_LINES),
+  );
+}
+
+function collectRecordActions(lines: string[]): string[] {
+  return unique(
+    lines
+      .filter((line) => /^- (button|link) /.test(line))
+      .filter((line) => !isGlobalChromeLine(line))
+      .filter((line) => !isFieldEditAction(line))
+      .map(formatLine)
+      .filter((line) => {
+        const label = extractQuotedName(line);
+        return isRecordActionLabel(label);
+      })
+      .slice(0, MAX_SEMANTIC_LINES),
+  );
+}
+
+function collectFieldEditActions(lines: string[], focusTerms: string[]): string[] {
+  const fieldEditLines = lines
+    .filter(isFieldEditAction)
+    .filter((line) => !isGlobalChromeLine(line));
+  const focused = focusTerms.length
+    ? fieldEditLines.filter((line) => {
+        const lower = line.toLowerCase();
+        return focusTerms.some((term) => lower.includes(term.toLowerCase()));
+      })
+    : [];
+  return unique([...focused, ...fieldEditLines].map(formatLine)).slice(0, MAX_FIELD_EDIT_LINES);
+}
+
+function collectRelatedLists(lines: string[], url: string | undefined): string[] {
+  const out: string[] = [];
+  const related = relatedListFromUrl(url);
+  if (related) {
+    const newButton = lines.find((line) => /^- button "New"/.test(line));
+    const row = lines.find((line) => /^- rowheader /.test(line));
+    const rowAction = lines.find((line) => /button "Show Actions"/.test(line));
+    out.push(
+      [
+        `${related} [full page]`,
+        newButton ? `New ${extractRef(newButton) ?? ""}`.trim() : undefined,
+        row ? `first row ${JSON.stringify(cleanRowName(extractQuotedName(row)))}` : undefined,
+        rowAction ? `row action ${extractRef(rowAction) ?? ""}`.trim() : undefined,
+      ]
+        .filter(Boolean)
+        .join("; "),
+    );
+  }
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i] ?? "";
+    if (!/^- heading ".+\(\d+\)"/.test(line)) continue;
+    const label = extractQuotedName(line);
+    if (!label) continue;
+    const nearby = lines.slice(Math.max(0, i - 8), i + 20);
+    const newButton = nearby.find((item) => /^- button "New"/.test(item));
+    const viewAll = nearby.find((item) => /link "View All /.test(item));
+    const row = nearby.find((item) => /^- (heading|rowheader|link) "/.test(item) && item !== line);
+    out.push(
+      [
+        `${label} [card]`,
+        newButton ? `New ${extractRef(newButton) ?? ""}`.trim() : undefined,
+        viewAll ? `View All ${extractRef(viewAll) ?? ""}`.trim() : undefined,
+        row ? `first row ${JSON.stringify(cleanRowName(extractQuotedName(row)))}` : undefined,
+      ]
+        .filter(Boolean)
+        .join("; "),
+    );
+  }
+  return unique(out).slice(0, MAX_SEMANTIC_LINES);
+}
+
+function collectObjectListControls(lines: string[], url: string | undefined): string[] {
+  if (!/\/lightning\/o\/[^/]+\/list/i.test(url ?? "")) return [];
+  const heading = lines.find((line) => /^- heading /.test(line));
+  const controls = lines
+    .filter((line) => /^- (button|searchbox) /.test(line))
+    .filter((line) => !isGlobalChromeLine(line))
+    .filter((line) =>
+      /New|Import|Printable View|Assign Label|Search this list|List View Controls|Show filters|Refresh|Display as|Edit List/i.test(
+        line,
+      ),
+    )
+    .map(formatLine)
+    .slice(0, MAX_SEMANTIC_LINES);
+  return unique(
+    [heading ? `List view heading: ${extractQuotedName(heading)}` : undefined, ...controls].filter(
+      (line): line is string => !!line,
+    ),
+  );
+}
+
+function summarizeQuickAction(lines: string[], url: string | undefined): string[] {
+  const parsed = parseQuickActionUrl(url);
+  if (!parsed) return [];
+  const requiredFields = lines
+    .filter(
+      (line) => /^- (textbox|combobox|checkbox|listbox) /.test(line) && /\[required/.test(line),
+    )
+    .map(extractQuotedName)
+    .filter(Boolean)
+    .slice(0, MAX_SEMANTIC_LINES);
+  const buttons = lines
+    .filter((line) => /^- button "(Save|Cancel|Cancel and close)/.test(line))
+    .map(formatLine)
+    .slice(0, MAX_SEMANTIC_LINES);
+  return [
+    `Action: ${parsed.actionName}`,
+    parsed.objectApiName ? `Object: ${parsed.objectApiName}` : undefined,
+    parsed.context ? `Context: ${parsed.context}` : undefined,
+    parsed.recordId ? `Parent record: ${parsed.recordId}` : undefined,
+    requiredFields.length ? `Required fields: ${requiredFields.join(", ")}` : undefined,
+    buttons.length ? `Buttons: ${buttons.join("; ")}` : undefined,
+  ].filter((line): line is string => !!line);
+}
+
+function collectEditorHints(lines: string[]): string[] {
+  const hints = lines
+    .filter(
+      (line) =>
+        /monaco|code editor|script editor|formula editor/i.test(line) ||
+        (/\btextbox\b/i.test(line) && /\b(json|sql|editor|template)\b/i.test(line)),
+    )
+    .filter((line) => !isGlobalChromeLine(line))
+    .map(formatLine);
+  if (!hints.length) return [];
+  return unique([
+    ...hints.slice(0, 8),
+    "If normal fill is insufficient, use sf_browser_editor action=detect, then read/write by editorIndex. Editor writes do not click Save/Apply.",
+  ]);
+}
+
 function summarizeTables(lines: string[], focusTerms: string[]): string[] {
   const columns = lines.filter((line) => /^- columnheader /.test(line)).map(extractQuotedName);
   const rows = lines
@@ -292,6 +462,69 @@ function isAlertLine(line: string): boolean {
     /\b(insufficient|not allowed)\b/i.test(line) ||
     /can't /i.test(line)
   );
+}
+
+function relatedListFromUrl(url: string | undefined): string | undefined {
+  const pathname = pathnameFromUrl(url);
+  const match = pathname.match(/\/lightning\/r\/[^/]+\/[^/]+\/related\/([^/]+)\/view/i);
+  if (match?.[1]) return decodeURIComponent(match[1]);
+  return undefined;
+}
+
+function parseQuickActionUrl(
+  url: string | undefined,
+): { actionName: string; objectApiName?: string; context?: string; recordId?: string } | undefined {
+  if (!url) return undefined;
+  try {
+    const parsed = new URL(url);
+    const match = parsed.pathname.match(/\/lightning\/action\/quick\/([^/?#]+)/i);
+    if (!match?.[1]) return undefined;
+    return {
+      actionName: decodeURIComponent(match[1]),
+      objectApiName: parsed.searchParams.get("objectApiName") ?? undefined,
+      context: parsed.searchParams.get("context") ?? undefined,
+      recordId: parsed.searchParams.get("recordId") ?? undefined,
+    };
+  } catch {
+    const match = url.match(/\/lightning\/action\/quick\/([^/?#]+)/i);
+    return match?.[1] ? { actionName: decodeURIComponent(match[1]) } : undefined;
+  }
+}
+
+function pathnameFromUrl(url: string | undefined): string {
+  if (!url) return "";
+  try {
+    return new URL(url).pathname;
+  } catch {
+    return url;
+  }
+}
+
+function isRecordActionLabel(label: string): boolean {
+  if (!label) return false;
+  if (
+    /^(Add favorite|Edit nav items|Open |Select |Show |Sort by:|Pin this|List View Controls|Refresh|Display as|Show filters)/i.test(
+      label,
+    )
+  ) {
+    return false;
+  }
+  if (
+    /^(New|Follow|Edit|Delete|Clone|Change Owner|Printable View|Import|Assign Label|Upload Files|Show All Activities)/i.test(
+      label,
+    )
+  ) {
+    return true;
+  }
+  return false;
+}
+
+function isFieldEditAction(line: string): boolean {
+  return /^- button "Edit [^"]+"/.test(line);
+}
+
+function extractRef(line: string): string | undefined {
+  return line.match(/\bref=(e\d+)\b/)?.[1];
 }
 
 function isPrimaryActionLine(line: string): boolean {
