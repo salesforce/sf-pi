@@ -811,21 +811,11 @@ async function runManifest(
       signal,
     );
     const beforeRows = rowCountFromResult(before, 0);
-    const job = await runData360V2Action(
-      {
-        tool: "data360_prepare",
-        action: "ingest_job.create",
-        target_org: input.target_org,
-        params: {
-          authSessionId,
-          sourceName: plan.manifest.source.name,
-          object: dataset.schemaName,
-        },
-      },
-      env,
-      ctx,
-      signal,
-    );
+    const job = await createManifestIngestJob(input, env, ctx, signal, {
+      authSessionId,
+      sourceName: plan.manifest.source.name,
+      object: dataset.schemaName,
+    });
     if (job.ok === false)
       return { ...job, summary: `manifest.run job create failed for ${dataset.schemaName}` };
     const jobId = stringFromPath(job, ["response", "id"]);
@@ -915,6 +905,44 @@ async function resolveIngestApiConnectorName(
     if (typeof match?.name === "string" && match.name.trim()) return match.name.trim();
   }
   return source.name;
+}
+
+async function createManifestIngestJob(
+  input: Data360V2Input,
+  env: SfEnvironment,
+  ctx: ExtensionContext,
+  signal: AbortSignal | undefined,
+  params: { authSessionId: string; sourceName: string; object: string },
+): Promise<Record<string, unknown>> {
+  const maxAttempts =
+    typeof input.params?.jobCreateMaxAttempts === "number" ? input.params.jobCreateMaxAttempts : 6;
+  const retryMs =
+    typeof input.params?.jobCreateRetryMs === "number" ? input.params.jobCreateRetryMs : 10_000;
+  let last: Record<string, unknown> | undefined;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    last = await runData360V2Action(
+      {
+        tool: "data360_prepare",
+        action: "ingest_job.create",
+        target_org: input.target_org,
+        params,
+      },
+      env,
+      ctx,
+      signal,
+    );
+    if (last.ok !== false) return last;
+    if (!looksLikeTenantObjectNotReady(last)) return last;
+    if (retryMs > 0) await sleep(retryMs);
+  }
+  return last ?? { ok: false, error: "INGEST_JOB_CREATE_FAILED" };
+}
+
+function looksLikeTenantObjectNotReady(result: Record<string, unknown>): boolean {
+  const status = result.status;
+  const response = asRecord(result.response);
+  const message = typeof response?.message === "string" ? response.message : "";
+  return status === 404 && /requested resource/i.test(message);
 }
 
 async function pollManifestJob(

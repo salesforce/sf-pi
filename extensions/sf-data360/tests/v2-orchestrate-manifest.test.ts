@@ -175,6 +175,7 @@ describe("Data 360 v2 CSV manifest orchestration", () => {
       if (request.url.includes("/ssot/query-sql")) return { data: [[queryCount++ > 0 ? 1 : 0]] };
       return {};
     });
+    let createAttempts = 0;
     const fetchMock = vi.fn(async (url: string) => {
       if (url.endsWith("/services/oauth2/token")) {
         return jsonResponse({
@@ -188,7 +189,16 @@ describe("Data 360 v2 CSV manifest orchestration", () => {
           instance_url: "tenant.example.c360a.salesforce.com",
         });
       }
-      if (url.endsWith("/api/v1/ingest/jobs")) return jsonResponse({ id: "job-1", state: "Open" });
+      if (url.endsWith("/api/v1/ingest/jobs")) {
+        createAttempts += 1;
+        if (createAttempts === 1) {
+          return jsonResponse(
+            { error: "404 NOT_FOUND", message: "The requested resource doesn't exist." },
+            404,
+          );
+        }
+        return jsonResponse({ id: "job-1", state: "Open" }, 201);
+      }
       if (url.endsWith("/batches")) return jsonResponse({ accepted: true });
       if (url.endsWith("/api/v1/ingest/jobs/job-1"))
         return jsonResponse({ id: "job-1", state: "JobComplete" });
@@ -221,13 +231,21 @@ describe("Data 360 v2 CSV manifest orchestration", () => {
         action: "manifest.run",
         target_org: "AgentforceSTDM",
         allow_confirmed: true,
-        params: { manifestPath, authSessionId, pollIntervalMs: 0, maxPolls: 1 },
+        params: {
+          manifestPath,
+          authSessionId,
+          pollIntervalMs: 0,
+          maxPolls: 1,
+          jobCreateRetryMs: 0,
+          jobCreateMaxAttempts: 2,
+        },
       },
       env,
       ctx,
       undefined,
     );
 
+    expect(createAttempts).toBe(2);
     expect(result).toMatchObject({
       ok: true,
       action: "manifest.run",
@@ -278,10 +296,10 @@ describe("Data 360 v2 CSV manifest orchestration", () => {
   });
 });
 
-function jsonResponse(body: unknown): Response {
+function jsonResponse(body: unknown, status = 200): Response {
   return {
-    ok: true,
-    status: 200,
+    ok: status >= 200 && status < 300,
+    status,
     json: async () => body,
     text: async () => JSON.stringify(body),
   } as Response;
