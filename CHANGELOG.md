@@ -517,6 +517,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.161.0](https://github.com/salesforce/sf-pi/compare/v0.160.0...v0.161.0) (2026-06-01)
+
+
+### Features
+
+* **sf-data360:** add data360 family tool surface ([4d33c0c](https://github.com/salesforce/sf-pi/commit/4d33c0cc3da5198a5bfab38c8cbc4bdc293054ee))
+
 ## [0.160.0](https://github.com/salesforce/sf-pi/compare/v0.159.0...v0.160.0) (2026-05-31)
 
 
