@@ -1,0 +1,59 @@
+[
+  {
+    "tool": "data360_prepare",
+    "phase": "prepare",
+    "operationNames": ["d360_data_streams_list"]
+  },
+  {
+    "tool": "data360_activate",
+    "phase": "act",
+    "operationNames": ["d360_data_actions_list"]
+  },
+  {
+    "tool": "data360_query",
+    "phase": "retrieve",
+    "families": ["Query", "Metadata", "Profile and Data Graph"]
+  },
+  {
+    "tool": "data360_connect",
+    "phase": "connect",
+    "families": ["Connection", "Ingestion"]
+  },
+  {
+    "tool": "data360_prepare",
+    "phase": "prepare",
+    "families": [
+      "Dataspace",
+      "DLO",
+      "DataStreams",
+      "DataTransform",
+      "DataKit",
+      "Transforms and Actions"
+    ]
+  },
+  {
+    "tool": "data360_harmonize",
+    "phase": "harmonize",
+    "families": ["DMO", "Mappings", "StandardMappings", "Smart", "Identity Resolution"]
+  },
+  {
+    "tool": "data360_segment",
+    "phase": "segment",
+    "families": ["Calculated Insights", "Segment"]
+  },
+  {
+    "tool": "data360_activate",
+    "phase": "act",
+    "families": ["Activation", "DataAction"]
+  },
+  {
+    "tool": "data360_semantic",
+    "phase": "semantic",
+    "families": ["Semantic Retrieval"]
+  },
+  {
+    "tool": "data360_observe",
+    "phase": "observe",
+    "families": ["Agent Observability"]
+  }
+]

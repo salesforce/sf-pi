@@ -3,51 +3,52 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
-const SKILLS_DIR = "extensions/sf-data360/skills";
-const PHASE_SKILLS = [
-  "sf-data360-connect",
-  "sf-data360-prepare",
-  "sf-data360-harmonize",
-  "sf-data360-segment",
-  "sf-data360-act",
-  "sf-data360-retrieve",
-  "sf-data360-observe",
-  "sf-data360-orchestrate",
+const REFERENCES_DIR = "extensions/sf-data360/references/phases";
+const PHASE_REFERENCES = [
+  "connect.md",
+  "prepare.md",
+  "harmonize.md",
+  "segment.md",
+  "act.md",
+  "retrieve.md",
+  "observe.md",
+  "orchestrate.md",
 ] as const;
 
-describe("d360 phase skill pack", () => {
-  it("commits one generated SKILL.md for each canonical Data 360 phase", () => {
-    for (const skillName of PHASE_SKILLS) {
-      const skillPath = path.join(SKILLS_DIR, skillName, "SKILL.md");
-      expect(existsSync(skillPath), `${skillPath} should exist`).toBe(true);
+describe("Data 360 phase references", () => {
+  it("commits one generated reference page for each canonical Data 360 phase", () => {
+    for (const fileName of PHASE_REFERENCES) {
+      const referencePath = path.join(REFERENCES_DIR, fileName);
+      expect(existsSync(referencePath), `${referencePath} should exist`).toBe(true);
 
-      const content = readFileSync(skillPath, "utf8");
-      expect(content).toContain(`name: ${skillName}`);
+      const content = readFileSync(referencePath, "utf8");
       expect(content).toContain("Generated from extensions/sf-data360/registry/phases.json");
+      expect(content).not.toContain("---\nname:");
+      expect(content).not.toContain("SKILL.md");
     }
   });
 
-  it("keeps generated phase skills small and capability-oriented", () => {
-    for (const skillName of PHASE_SKILLS) {
-      const content = readFileSync(path.join(SKILLS_DIR, skillName, "SKILL.md"), "utf8");
-      expect(content).toContain("D360 capabilities");
+  it("keeps generated phase references concise and action-oriented", () => {
+    for (const fileName of PHASE_REFERENCES) {
+      const content = readFileSync(path.join(REFERENCES_DIR, fileName), "utf8");
+      expect(content).toContain("Data 360 family actions");
       expect(content).not.toContain("## Operation map");
       expect(content).not.toContain("action=`runbook`");
-      expect(content.split("\n").length).toBeLessThanOrEqual(70);
+      expect(content.split("\n").length).toBeLessThanOrEqual(90);
     }
   });
 
-  it("keeps generated phase skills behind a check script in the normal lint path", () => {
+  it("keeps generated phase references behind a check script in the normal lint path", () => {
     const packageJson = JSON.parse(readFileSync("package.json", "utf8")) as {
       scripts?: Record<string, string>;
     };
 
-    expect(packageJson.scripts?.["generate-d360-skills"]).toBe(
-      "node scripts/generate-d360-skills.mjs",
+    expect(packageJson.scripts?.["generate-d360-references"]).toBe(
+      "node scripts/generate-d360-references.mjs",
     );
-    expect(packageJson.scripts?.["generate-d360-skills:check"]).toBe(
-      "node scripts/generate-d360-skills.mjs --check",
+    expect(packageJson.scripts?.["generate-d360-references:check"]).toBe(
+      "node scripts/generate-d360-references.mjs --check",
     );
-    expect(packageJson.scripts?.lint).toContain("generate-d360-skills:check");
+    expect(packageJson.scripts?.lint).toContain("generate-d360-references:check");
   });
 });

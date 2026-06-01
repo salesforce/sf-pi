@@ -9,13 +9,13 @@ Agent rules for editing this extension. Repo-level rules still apply.
 3. `extensions/sf-data360/lib/facade-tool.ts` — `d360` search/examples/execute capability facade
 4. `extensions/sf-data360/lib/api-tool.ts` — `d360_api` execution flow
 5. `extensions/sf-data360/lib/metadata-tool.ts` — compact DMO/DLO discovery flow
-6. `extensions/sf-data360/skills/sf-data360/SKILL.md` — user-facing workflow
+6. `extensions/sf-data360/references/README.md` — reference-document index
 
 ## File map
 
 | Responsibility                                              | File                                |
 | ----------------------------------------------------------- | ----------------------------------- |
-| Extension entry, command, skill contribution                | `index.ts`                          |
+| Extension entry, command, and tool registration             | `index.ts`                          |
 | Registry facade and deterministic runbooks                  | `lib/facade-tool.ts`, `lib/facade/` |
 | Tool registration and raw `@salesforce/core` REST execution | `lib/api-tool.ts`                   |
 | Compact DMO/DLO metadata list and describe helper           | `lib/metadata-tool.ts`              |
@@ -24,16 +24,16 @@ Agent rules for editing this extension. Repo-level rules still apply.
 | REST path and query-string normalization                    | `lib/path.ts`                       |
 | Method/path safety classification                           | `lib/safety.ts`                     |
 | Output truncation                                           | `lib/truncation.ts`                 |
-| Progressive-disclosure guidance                             | `skills/sf-data360/SKILL.md`        |
-| Detailed references                                         | `skills/sf-data360/references/*.md` |
+| Progressive-disclosure guidance                             | `references/*.md`                   |
+| Generated phase references                                  | `references/phases/*.md`            |
 
 ## Conventions
 
 - Do not add MCP support here.
 - Do not add hundreds of always-on endpoint-specific tools. Prefer extending
   the `d360` registry facade with verified D360 capabilities.
-- Keep `SKILL.md` short; put large endpoint catalogs and examples in
-  `references/` files.
+- Do not add extension-owned Agent Skills for Data 360. Put guidance in
+  `references/` files and rely on the `data360_*` tools for agent routing.
 - Use the public upstream repo, <https://github.com/forcedotcom/d360-mcp-server>,
   as the first external reference for action-family and payload-shape questions
   before broad web search.

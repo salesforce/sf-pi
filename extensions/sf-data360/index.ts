@@ -7,30 +7,27 @@
  * Design:
  * - No MCP server/client support.
  * - No 180 always-on generated operation tools.
- * - One deterministic `d360` facade for search/examples/execute capabilities,
- *   one `d360_api` raw REST escape hatch via `@salesforce/core` Connection,
- *   one compact `d360_metadata` helper for common DMO/DLO discovery, plus
- *   an extension-owned skill for progressive disclosure.
- * - The skill is contributed only while this extension is enabled. Disabling
- *   sf-data360 removes both the tool and skill on reload/new sessions.
+ * - One pi-native v2 family tool surface (`data360_*`) over the shared
+ *   action registry/dispatcher, plus plain reference docs for progressive
+ *   disclosure.
+ * - sf-data360 does not contribute Agent Skills; disabling the extension removes
+ *   its tools on reload/new sessions.
  *
  * Behavior matrix:
  *
  *   Event/Trigger          | Result
  *   -----------------------|-----------------------------------------------------------
- *   extension load         | Register d360, d360_api, d360_metadata, d360_probe, and /sf-data360
+ *   extension load         | Register data360_* family tools and /sf-data360
  *   session_start          | Re-register tools if enabled; clear cached @salesforce/core Org
  *   session_shutdown       | Clear cached @salesforce/core Org so resume re-auths cleanly
- *   resources_discover     | Contribute ./skills so sf-data360 skill is visible
+ *   resources_discover     | Re-register tools on reload; no skill contribution
  *   /sf-data360 (no args)  | Open standardized command panel (status/help/close)
  *   /sf-data360 status     | Print enablement, tools, target org, and API version
  *   /sf-data360 help       | Print command usage
- *   d360_api dry_run       | Resolve path/org/safety without calling Salesforce
- *   d360_api read          | Call Data 360 REST endpoint via @salesforce/core Connection
- *   d360_api mutating      | Confirm dangerous calls according to safety policy
+ *   data360_* dry_run      | Resolve action/org/safety without calling Salesforce
+ *   data360_* read         | Call Data 360 REST endpoint via @salesforce/core Connection
+ *   data360_* mutating     | Confirm dangerous calls according to safety policy
  */
-import { fileURLToPath } from "node:url";
-import path from "node:path";
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 
 import { type CommandPanelState, openCommandPanel } from "../../lib/common/command-panel.ts";
@@ -58,17 +55,11 @@ import type { SfEnvironment } from "../../lib/common/sf-environment/types.ts";
 import { clearConnectionCache } from "../../lib/common/sf-conn/connection.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 import { isSfPiExtensionEnabled } from "../../lib/common/sf-pi-extension-state.ts";
-import { D360_TOOL_NAME, registerD360ApiTool } from "./lib/api-tool.ts";
-import { D360_FACADE_TOOL_NAME, registerD360FacadeTool } from "./lib/facade-tool.ts";
-import { D360_METADATA_TOOL_NAME, registerD360MetadataTool } from "./lib/metadata-tool.ts";
-import { D360_PROBE_TOOL_NAME, registerD360ProbeTool } from "./lib/probe-tool.ts";
+import { registerData360V2Tools, DATA360_V2_TOOL_DEFS } from "./lib/v2/tools.ts";
 import { registerExtensionDoctor } from "../../lib/common/doctor/registry.ts";
 import { buildSfData360Doctor } from "./lib/extension-doctor.ts";
 
 const COMMAND_NAME = "sf-data360";
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
 export default function sfData360(pi: ExtensionAPI) {
   if (!requirePiVersion(pi, "sf-data360")) return;
 
@@ -76,10 +67,7 @@ export default function sfData360(pi: ExtensionAPI) {
 
   function ensureToolsRegistered(): void {
     if (toolsRegistered) return;
-    registerD360FacadeTool(pi);
-    registerD360ApiTool(pi);
-    registerD360MetadataTool(pi);
-    registerD360ProbeTool(pi);
+    registerData360V2Tools(pi);
     toolsRegistered = true;
   }
 
@@ -101,8 +89,8 @@ export default function sfData360(pi: ExtensionAPI) {
   });
 
   // Contribute a small org-connectivity + readiness probe to the
-  // aggregated `/sf-pi doctor` view. The full d360_probe tool stays
-  // available to the agent for deep diagnostics.
+  // aggregated `/sf-pi doctor` view. Deep readiness remains available through
+  // data360_discover readiness actions.
   registerExtensionDoctor("sf-data360", buildSfData360Doctor(pi));
 
   pi.on("resources_discover", (event) => {
@@ -111,11 +99,10 @@ export default function sfData360(pi: ExtensionAPI) {
       toolsRegistered = false;
       ensureToolsRegistered();
     }
-    return { skillPaths: [path.join(__dirname, "skills")] };
   });
 
   pi.registerCommand(COMMAND_NAME, {
-    description: "Show Data 360 direct REST helper status and usage",
+    description: "Show Data 360 family-tool status and usage",
     // Single source of truth for completions — SF_DATA360_ACTIONS drives
     // the panel rows, the completions, and the auto-generated help block.
     getArgumentCompletions: (prefix: string) =>
@@ -246,11 +233,15 @@ function buildPanelStatusLines(ctx: ExtensionCommandContext): string[] {
   const env = getCachedSfEnvironment(ctx.cwd);
   return [
     `${enabled ? "✓" : "✗"} Extension     ${enabled ? "enabled" : "disabled (use /sf-pi enable sf-data360)"}`,
-    `• Tools         ${enabled ? `${D360_FACADE_TOOL_NAME}, ${D360_TOOL_NAME}, ${D360_METADATA_TOOL_NAME}, ${D360_PROBE_TOOL_NAME}` : "not registered"}`,
-    `• Skill         ${enabled ? "sf-data360 (extension-owned)" : "not registered"}`,
+    `• Tools         ${enabled ? formatData360ToolNames() : "not registered"}`,
+    `• References    extensions/sf-data360/references/`,
     `• Target org    ${env?.config.targetOrg ?? "not resolved (run Show status)"}`,
     `• API version   ${env?.org.apiVersion ?? env?.project.sourceApiVersion ?? "66.0"}`,
   ];
+}
+
+function formatData360ToolNames(): string {
+  return DATA360_V2_TOOL_DEFS.map((tool) => tool.name).join(", ");
 }
 
 function buildStatusText(enabled: boolean, env: SfEnvironment): string {
@@ -258,14 +249,14 @@ function buildStatusText(enabled: boolean, env: SfEnvironment): string {
     "SF Data 360 — status",
     "",
     `Enabled: ${enabled ? "yes (default)" : "no (re-enable with /sf-pi enable sf-data360)"}`,
-    `Tools: ${enabled ? `${D360_FACADE_TOOL_NAME}, ${D360_TOOL_NAME}, ${D360_METADATA_TOOL_NAME}, ${D360_PROBE_TOOL_NAME}` : "not registered"}`,
-    `Skill: ${enabled ? "sf-data360" : "not registered"} (extension-owned)`,
+    `Tools: ${enabled ? formatData360ToolNames() : "not registered"}`,
+    `References: extensions/sf-data360/references/`,
     `SF CLI: ${env.cli.installed ? (env.cli.version ?? "installed") : "not installed"}`,
     `Target org: ${env.config.targetOrg ?? "not configured"}`,
     `Org type: ${env.org.orgType}`,
     `API version: ${env.org.apiVersion ?? env.project.sourceApiVersion ?? "66.0"}`,
     "",
-    "Use /skill:sf-data360 for workflow guidance, d360 for facade workflows, or d360_api as an escape hatch.",
+    "Use data360_* family tools for Data 360 work; read extensions/sf-data360/references/ for deeper guidance.",
   ].join("\n");
 }
 
@@ -295,7 +286,7 @@ async function emitOutput(
 
 function buildHelpText(enabled: boolean): string {
   return [
-    "SF Data 360 — facade + direct REST helper",
+    "SF Data 360 — agent-first family tools",
     "",
     formatHelpFromActions(
       SF_DATA360_ACTIONS.filter((a) => a.value !== "close" && a.value !== "lifecycle.toggle"),
@@ -309,15 +300,12 @@ function buildHelpText(enabled: boolean): string {
     `  Disable: /sf-pi disable sf-data360`,
     "",
     "Tools when enabled:",
-    `  ${D360_FACADE_TOOL_NAME}              Search/examples/execute facade for deterministic D360 capabilities`,
-    `  ${D360_TOOL_NAME}          Call /services/data/vXX.X Data 360 REST endpoints via @salesforce/core Connection`,
-    `  ${D360_METADATA_TOOL_NAME}     Compact list/describe helpers for DMOs and DLOs`,
-    `  ${D360_PROBE_TOOL_NAME}        Classify Data 360 readiness with read-only probes`,
+    ...DATA360_V2_TOOL_DEFS.map((tool) => `  ${tool.name.padEnd(24)} ${tool.description}`),
     "",
     "Recommended workflow:",
-    "  1. Use d360 action='search' to discover a D360 capability.",
-    "  2. Use d360 action='examples' with that capability before complex calls.",
-    "  3. Use d360 action='execute' for REST, local-helper, and runbook-backed capabilities.",
-    "  4. Use d360_api dry_run:true as the raw REST escape hatch before mutating calls.",
+    "  1. Pick the lifecycle family: discover, connect, prepare, harmonize, segment, activate, query, semantic, observe, or orchestrate.",
+    "  2. Use actions.search or action.describe inside that family when the exact action is unclear.",
+    "  3. Use dry_run:true before confirmed/destructive actions and plan-first orchestrated journeys.",
+    "  4. Use data360_api only as the raw REST escape hatch for endpoints not yet promoted to family actions.",
   ].join("\n");
 }

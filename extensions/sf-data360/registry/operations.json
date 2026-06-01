@@ -2068,5 +2068,52 @@
     "optionalParams": ["autoSelectEventDate"],
     "safety": "safe_post",
     "tips": "Local helper. Review enhancedBody, then dry-run d360_datastream_create."
+  },
+  {
+    "name": "d360_ingest_api_connections_list",
+    "family": "Connection",
+    "description": "List Ingestion API source connections.",
+    "method": "GET",
+    "path": "/ssot/connections?connectorType=IngestApi",
+    "safety": "read"
+  },
+  {
+    "name": "d360_ingest_api_schema_get",
+    "family": "Connection",
+    "description": "Get the registered schema for an Ingestion API source connection.",
+    "method": "GET",
+    "path": "/ssot/connections/{connectionId}/schema",
+    "requiredParams": ["connectionId"],
+    "safety": "read"
+  },
+  {
+    "name": "d360_ingest_api_schema_test",
+    "family": "Connection",
+    "description": "Validate an Ingestion API source schema payload before upload.",
+    "method": "POST",
+    "path": "/ssot/connections/{connectionId}/schema/actions/test",
+    "safety": "safe_post",
+    "requiredParams": ["connectionId", "body"],
+    "tips": "Schema object names and labels must be API-safe. Use this before source_schema.put."
+  },
+  {
+    "name": "d360_ingest_api_schema_put",
+    "family": "Connection",
+    "description": "Upload or replace the registered schema for an Ingestion API source connection.",
+    "method": "PUT",
+    "path": "/ssot/connections/{connectionId}/schema",
+    "safety": "confirmed",
+    "requiredParams": ["connectionId", "body"],
+    "tips": "Run source_schema.test first. Mutates the source schema used by future stream creation."
+  },
+  {
+    "name": "d360_datastream_create_ingest_api",
+    "family": "DataStreams",
+    "description": "Create an Ingestion API data stream from a registered source schema object.",
+    "method": "POST",
+    "path": "/ssot/data-streams",
+    "safety": "confirmed",
+    "requiredParams": ["body"],
+    "tips": "Use connectorInfo.connectorType=IngestApi and connectorDetails.events=[schemaObjectName]."
   }
 ]

@@ -1693,5 +1693,49 @@
       }
     },
     "capability": "d360_smart_datastream_create"
+  },
+  "d360_ingest_api_schema_put": {
+    "capability": "d360_ingest_api_schema_put",
+    "params": {
+      "connectionId": "1WM000000000000AAA",
+      "body": {
+        "schemas": [
+          {
+            "name": "DemoObject",
+            "label": "DemoObject",
+            "schemaType": "IngestApi",
+            "fields": [
+              { "name": "Id", "label": "Id", "dataType": "Text" },
+              { "name": "CreatedDate", "label": "CreatedDate", "dataType": "DateTime" },
+              { "name": "Name", "label": "Name", "dataType": "Text" }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "d360_datastream_create_ingest_api": {
+    "capability": "d360_datastream_create_ingest_api",
+    "params": {
+      "body": {
+        "name": "DemoIngestStream",
+        "label": "DemoIngestStream",
+        "datastreamType": "INGESTAPI",
+        "connectorInfo": {
+          "connectorType": "IngestApi",
+          "connectorDetails": { "name": "DemoIngestSource", "events": ["DemoObject"] }
+        },
+        "dataLakeObjectInfo": {
+          "name": "DemoIngestStream__dll",
+          "label": "DemoIngestStream",
+          "category": "Other",
+          "dataspaceInfo": [{ "name": "default" }],
+          "dataLakeFieldInputRepresentations": [
+            { "label": "Id", "name": "Id", "dataType": "Text", "isPrimaryKey": true }
+          ],
+          "recordModifiedFieldName": "CreatedDate"
+        }
+      }
+    }
   }
 }

@@ -11,10 +11,8 @@ import { type Focusable, matchesKey, visibleWidth } from "@earendil-works/pi-tui
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import type { ConfigPanelFactory, ConfigPanelResult } from "../../../catalog/registry.ts";
 import { isSfPiExtensionEnabled } from "../../../lib/common/sf-pi-extension-state.ts";
-import { D360_TOOL_NAME, HEADLESS_WRITE_ENV } from "./api-tool.ts";
-import { D360_FACADE_TOOL_NAME } from "./facade-tool.ts";
-import { D360_METADATA_TOOL_NAME } from "./metadata-tool.ts";
-import { D360_PROBE_TOOL_NAME } from "./probe-tool.ts";
+import { HEADLESS_WRITE_ENV } from "./api-tool.ts";
+import { DATA360_V2_TOOL_DEFS } from "./v2/tools.ts";
 
 function padAnsi(text: string, width: number): string {
   return `${text}${" ".repeat(Math.max(0, width - visibleWidth(text)))}`;
@@ -67,30 +65,13 @@ class SfData360ConfigPanel implements Focusable {
     lines.push(pad(""));
 
     lines.push(pad(` ${t.fg("muted", "When enabled:")}`));
+    for (const tool of DATA360_V2_TOOL_DEFS.slice(0, 6)) {
+      lines.push(
+        pad(`   ${toolDot(t, enabled)} ${tool.name.padEnd(22)} ${t.fg("dim", tool.label)}`),
+      );
+    }
     lines.push(
-      pad(
-        `   ${toolDot(t, enabled)} ${D360_FACADE_TOOL_NAME}        ${t.fg("dim", "search/examples/execute capability facade")}`,
-      ),
-    );
-    lines.push(
-      pad(
-        `   ${toolDot(t, enabled)} ${D360_TOOL_NAME}    ${t.fg("dim", "direct Data 360 REST calls")}`,
-      ),
-    );
-    lines.push(
-      pad(
-        `   ${toolDot(t, enabled)} ${D360_METADATA_TOOL_NAME} ${t.fg("dim", "compact DMO/DLO discovery")}`,
-      ),
-    );
-    lines.push(
-      pad(
-        `   ${toolDot(t, enabled)} ${D360_PROBE_TOOL_NAME}  ${t.fg("dim", "read-only readiness probes")}`,
-      ),
-    );
-    lines.push(
-      pad(
-        `   ${toolDot(t, enabled)} /skill:sf-data360 ${t.fg("dim", "workflow + reference docs")}`,
-      ),
+      pad(`   ${t.fg("dim", `… ${DATA360_V2_TOOL_DEFS.length - 6} more data360_* tools`)}`),
     );
     lines.push(pad(""));
 
@@ -103,14 +84,14 @@ class SfData360ConfigPanel implements Focusable {
     lines.push(pad(""));
 
     lines.push(pad(` ${t.fg("muted", "References:")}`));
-    lines.push(pad(`   ${t.fg("dim", "extensions/sf-data360/skills/sf-data360/references/")}`));
+    lines.push(pad(`   ${t.fg("dim", "extensions/sf-data360/references/")}`));
     lines.push(pad(""));
     lines.push(
       pad(
         ` ${t.fg(
           "dim",
           enabled
-            ? "Use /sf-data360 for status, /skill:sf-data360 for guidance. Esc to go back."
+            ? "Use /sf-data360 for status; read references/ for deeper guidance. Esc to go back."
             : "Re-enable with /sf-pi enable sf-data360, then /reload. Esc to go back.",
         )}`,
       ),

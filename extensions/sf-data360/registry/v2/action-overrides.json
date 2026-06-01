@@ -1,0 +1,268 @@
+{
+  "operations": {
+    "d360_ingest_api_connections_list": {
+      "tool": "data360_connect",
+      "phase": "connect",
+      "action": "source.list_ingest_api",
+      "aliases": ["connection.list_ingest_api"]
+    },
+    "d360_ingest_api_schema_get": {
+      "tool": "data360_connect",
+      "phase": "connect",
+      "action": "source_schema.get",
+      "aliases": ["ingest_api.schema.get"]
+    },
+    "d360_ingest_api_schema_test": {
+      "tool": "data360_connect",
+      "phase": "connect",
+      "action": "source_schema.test",
+      "aliases": ["ingest_api.schema.test"]
+    },
+    "d360_ingest_api_schema_put": {
+      "tool": "data360_connect",
+      "phase": "connect",
+      "action": "source_schema.put",
+      "aliases": ["ingest_api.schema.put"]
+    },
+    "d360_datastream_create_ingest_api": {
+      "tool": "data360_prepare",
+      "phase": "prepare",
+      "action": "stream.create_ingest_api",
+      "aliases": ["data_stream.create_ingest_api"]
+    },
+    "d360_query_sql": {
+      "tool": "data360_query",
+      "phase": "retrieve",
+      "action": "sql.run"
+    },
+    "d360_query_sql_status": {
+      "tool": "data360_query",
+      "phase": "retrieve",
+      "action": "sql.status"
+    },
+    "d360_query_sql_rows": {
+      "tool": "data360_query",
+      "phase": "retrieve",
+      "action": "sql.rows"
+    },
+    "d360_query_sql_cancel": {
+      "tool": "data360_query",
+      "phase": "retrieve",
+      "action": "sql.cancel"
+    },
+    "d360_metadata_entities": {
+      "tool": "data360_query",
+      "phase": "retrieve",
+      "action": "metadata.entities"
+    },
+    "d360_metadata_search": {
+      "tool": "data360_query",
+      "phase": "retrieve",
+      "action": "metadata.search"
+    },
+    "d360_metadata": {
+      "tool": "data360_query",
+      "phase": "retrieve",
+      "action": "metadata.query"
+    },
+    "d360_profile_metadata_model": {
+      "tool": "data360_query",
+      "phase": "retrieve",
+      "action": "profile.metadata_model"
+    },
+    "d360_insights_metadata_get": {
+      "tool": "data360_query",
+      "phase": "retrieve",
+      "action": "insight.metadata_get"
+    }
+  },
+  "localActions": [
+    {
+      "tool": "data360_query",
+      "phase": "retrieve",
+      "family": "Query",
+      "action": "sql.verify_rows",
+      "description": "Build a bounded row-count verification query for a Data Lake Object.",
+      "safety": "safe_post",
+      "requiredParams": ["dloName"],
+      "optionalParams": ["dataspaceName"],
+      "implementation": {
+        "kind": "local",
+        "name": "sql.verify_rows"
+      },
+      "aliases": ["sql.count_dlo"]
+    },
+    {
+      "tool": "data360_prepare",
+      "phase": "prepare",
+      "family": "Ingestion",
+      "action": "ingest_job.create",
+      "description": "Create a tenant Ingestion API bulk ingest job.",
+      "safety": "confirmed",
+      "requiredParams": ["sourceName", "object"],
+      "optionalParams": ["operation", "tenantHost"],
+      "implementation": {
+        "kind": "tenant_ingest",
+        "name": "ingest_job.create"
+      },
+      "aliases": ["tenant_ingest.job.create"]
+    },
+    {
+      "tool": "data360_prepare",
+      "phase": "prepare",
+      "family": "Ingestion",
+      "action": "ingest_job.upload_csv",
+      "description": "Upload CSV bytes to an open tenant Ingestion API bulk ingest job.",
+      "safety": "confirmed",
+      "requiredParams": ["jobId", "csvPath"],
+      "optionalParams": ["tenantHost"],
+      "implementation": {
+        "kind": "tenant_ingest",
+        "name": "ingest_job.upload_csv"
+      },
+      "aliases": ["tenant_ingest.job.upload_csv"]
+    },
+    {
+      "tool": "data360_prepare",
+      "phase": "prepare",
+      "family": "Ingestion",
+      "action": "ingest_job.close",
+      "description": "Close a tenant Ingestion API bulk ingest job by marking upload complete.",
+      "safety": "confirmed",
+      "requiredParams": ["jobId"],
+      "optionalParams": ["tenantHost"],
+      "implementation": {
+        "kind": "tenant_ingest",
+        "name": "ingest_job.close"
+      },
+      "aliases": ["tenant_ingest.job.close"]
+    },
+    {
+      "tool": "data360_prepare",
+      "phase": "prepare",
+      "family": "Ingestion",
+      "action": "ingest_job.poll",
+      "description": "Poll tenant Ingestion API bulk ingest job status.",
+      "safety": "read",
+      "requiredParams": ["jobId"],
+      "optionalParams": ["tenantHost"],
+      "implementation": {
+        "kind": "tenant_ingest",
+        "name": "ingest_job.poll"
+      },
+      "aliases": ["tenant_ingest.job.poll"]
+    },
+    {
+      "tool": "data360_connect",
+      "phase": "connect",
+      "family": "Connection",
+      "action": "auth.status",
+      "description": "Inspect whether Data Cloud tenant ingest auth is configured for Ingestion API jobs.",
+      "safety": "read",
+      "requiredParams": [],
+      "optionalParams": ["tenantHost"],
+      "implementation": {
+        "kind": "tenant_ingest_auth",
+        "name": "auth.status"
+      },
+      "aliases": ["ingest_auth.status"]
+    },
+    {
+      "tool": "data360_connect",
+      "phase": "connect",
+      "family": "Connection",
+      "action": "auth.plan",
+      "description": "Plan a headless-safe Data Cloud tenant ingest auth setup path without persisting credentials.",
+      "safety": "read",
+      "requiredParams": [],
+      "optionalParams": ["strategy", "tenantHost"],
+      "implementation": {
+        "kind": "tenant_ingest_auth",
+        "name": "auth.plan"
+      },
+      "aliases": ["ingest_auth.plan"]
+    },
+    {
+      "tool": "data360_connect",
+      "phase": "connect",
+      "family": "Connection",
+      "action": "auth.exchange",
+      "description": "Exchange a PKCE Salesforce authorization code for Data Cloud tenant token metadata without returning tokens.",
+      "safety": "confirmed",
+      "requiredParams": [
+        "strategy",
+        "loginUrl",
+        "clientId",
+        "redirectUri",
+        "authorizationCode",
+        "codeVerifier"
+      ],
+      "optionalParams": [],
+      "implementation": {
+        "kind": "tenant_ingest_auth",
+        "name": "auth.exchange"
+      },
+      "aliases": ["ingest_auth.exchange_pkce"]
+    },
+    {
+      "tool": "data360_connect",
+      "phase": "connect",
+      "family": "Connection",
+      "action": "auth.pkce_start",
+      "description": "Start a PKCE authorization flow for Data Cloud ingest auth and keep the code verifier in memory only.",
+      "safety": "read",
+      "requiredParams": ["loginUrl", "clientId", "redirectUri"],
+      "optionalParams": ["scopes"],
+      "implementation": {
+        "kind": "tenant_ingest_auth",
+        "name": "auth.pkce_start"
+      },
+      "aliases": ["ingest_auth.pkce_start"]
+    },
+    {
+      "tool": "data360_prepare",
+      "phase": "prepare",
+      "family": "Ingestion",
+      "action": "csv_schema.infer",
+      "description": "Infer an Ingestion API schema from a local CSV file.",
+      "safety": "read",
+      "requiredParams": ["csvPath", "schemaName", "primaryKey"],
+      "optionalParams": ["recordModifiedField"],
+      "implementation": {
+        "kind": "local",
+        "name": "csv_schema.infer"
+      },
+      "aliases": ["csv.infer_schema"]
+    },
+    {
+      "tool": "data360_connect",
+      "phase": "connect",
+      "family": "Connection",
+      "action": "auth.sessions",
+      "description": "List in-memory Data Cloud ingest auth sessions without tokens.",
+      "safety": "read",
+      "requiredParams": [],
+      "optionalParams": [],
+      "implementation": {
+        "kind": "tenant_ingest_auth",
+        "name": "auth.sessions"
+      },
+      "aliases": ["ingest_auth.sessions"]
+    },
+    {
+      "tool": "data360_connect",
+      "phase": "connect",
+      "family": "Connection",
+      "action": "auth.clear",
+      "description": "Clear one or all in-memory Data Cloud ingest auth sessions.",
+      "safety": "read",
+      "requiredParams": [],
+      "optionalParams": ["authSessionId"],
+      "implementation": {
+        "kind": "tenant_ingest_auth",
+        "name": "auth.clear"
+      },
+      "aliases": ["ingest_auth.clear"]
+    }
+  ]
+}

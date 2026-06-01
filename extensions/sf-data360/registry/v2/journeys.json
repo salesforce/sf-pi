@@ -1,0 +1,129 @@
+[
+  {
+    "tool": "data360_orchestrate",
+    "phase": "orchestrate",
+    "family": "Journey",
+    "action": "ingest_csv.plan",
+    "description": "Plan Route A local CSV ingestion through Ingestion API source schema, data stream, tenant ingest job, and SQL verification.",
+    "safety": "read",
+    "requiredParams": ["sourceName", "schemaObjectName", "streamName", "csvPath"],
+    "optionalParams": ["connectionId", "dataspaceName", "dloName"],
+    "implementation": {
+      "kind": "journey",
+      "name": "ingest_csv"
+    },
+    "aliases": ["journey.ingest_csv.plan"]
+  },
+  {
+    "tool": "data360_orchestrate",
+    "phase": "orchestrate",
+    "family": "Journey",
+    "action": "ingest_auth.pkce_interactive",
+    "description": "Run an interactive localhost PKCE flow for Data Cloud ingest auth and return sanitized in-memory auth session metadata.",
+    "safety": "confirmed",
+    "requiredParams": ["loginUrl", "clientId", "redirectUri"],
+    "optionalParams": ["scopes"],
+    "implementation": {
+      "kind": "journey",
+      "name": "ingest_auth.pkce_interactive"
+    },
+    "aliases": ["journey.ingest_auth.pkce_interactive"]
+  },
+  {
+    "tool": "data360_orchestrate",
+    "phase": "orchestrate",
+    "family": "Journey",
+    "action": "manifest.validate",
+    "description": "Validate a Data 360 CSV ingestion manifest.",
+    "safety": "read",
+    "requiredParams": ["manifestPath"],
+    "optionalParams": [],
+    "implementation": {
+      "kind": "journey",
+      "name": "manifest.validate"
+    },
+    "aliases": ["journey.manifest.validate"]
+  },
+  {
+    "tool": "data360_orchestrate",
+    "phase": "orchestrate",
+    "family": "Journey",
+    "action": "manifest.plan",
+    "description": "Plan a multi-file Data 360 CSV ingestion manifest without mutation.",
+    "safety": "read",
+    "requiredParams": ["manifestPath"],
+    "optionalParams": [],
+    "implementation": {
+      "kind": "journey",
+      "name": "manifest.plan"
+    },
+    "aliases": ["journey.manifest.plan"]
+  },
+  {
+    "tool": "data360_orchestrate",
+    "phase": "orchestrate",
+    "family": "Journey",
+    "action": "manifest.run",
+    "description": "Run a Data 360 CSV ingestion manifest through source schema, streams, jobs, and verification.",
+    "safety": "confirmed",
+    "requiredParams": ["manifestPath", "authSessionId"],
+    "optionalParams": [],
+    "implementation": {
+      "kind": "journey",
+      "name": "manifest.run"
+    },
+    "aliases": ["journey.manifest.run"]
+  },
+  {
+    "tool": "data360_orchestrate",
+    "phase": "orchestrate",
+    "family": "Journey",
+    "action": "ingest_csv.run",
+    "description": "Run a single CSV ingestion journey or dry-run its manifest-backed plan.",
+    "safety": "confirmed",
+    "requiredParams": [
+      "csvPath",
+      "sourceName",
+      "connectionId",
+      "schemaName",
+      "streamName",
+      "primaryKey"
+    ],
+    "optionalParams": ["authSessionId"],
+    "implementation": {
+      "kind": "journey",
+      "name": "ingest_csv.run"
+    },
+    "aliases": ["journey.ingest_csv.run"]
+  },
+  {
+    "tool": "data360_orchestrate",
+    "phase": "orchestrate",
+    "family": "Journey",
+    "action": "cleanup.plan",
+    "description": "Plan cleanup of explicitly owned Data 360 resources.",
+    "safety": "read",
+    "requiredParams": [],
+    "optionalParams": ["dataStreamIds", "shouldDeleteDataLakeObject"],
+    "implementation": {
+      "kind": "journey",
+      "name": "cleanup.plan"
+    },
+    "aliases": ["journey.cleanup.plan"]
+  },
+  {
+    "tool": "data360_orchestrate",
+    "phase": "orchestrate",
+    "family": "Journey",
+    "action": "cleanup.run",
+    "description": "Run cleanup of explicitly owned Data 360 resources after confirmation.",
+    "safety": "destructive",
+    "requiredParams": [],
+    "optionalParams": ["dataStreamIds", "shouldDeleteDataLakeObject"],
+    "implementation": {
+      "kind": "journey",
+      "name": "cleanup.run"
+    },
+    "aliases": ["journey.cleanup.run"]
+  }
+]

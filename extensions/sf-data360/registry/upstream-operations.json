@@ -1433,5 +1433,40 @@
     "description": "Enhance a data stream create body with smart event date selection.",
     "method": "POST",
     "path": "/local/smart-datastream-create"
+  },
+  {
+    "name": "d360_ingest_api_connections_list",
+    "family": "Connection",
+    "description": "List Ingestion API source connections.",
+    "method": "GET",
+    "path": "/ssot/connections?connectorType=IngestApi"
+  },
+  {
+    "name": "d360_ingest_api_schema_get",
+    "family": "Connection",
+    "description": "Get the registered schema for an Ingestion API source connection.",
+    "method": "GET",
+    "path": "/ssot/connections/{connectionId}/schema"
+  },
+  {
+    "name": "d360_ingest_api_schema_test",
+    "family": "Connection",
+    "description": "Validate an Ingestion API source schema payload before upload.",
+    "method": "POST",
+    "path": "/ssot/connections/{connectionId}/schema/actions/test"
+  },
+  {
+    "name": "d360_ingest_api_schema_put",
+    "family": "Connection",
+    "description": "Upload or replace the registered schema for an Ingestion API source connection.",
+    "method": "PUT",
+    "path": "/ssot/connections/{connectionId}/schema"
+  },
+  {
+    "name": "d360_datastream_create_ingest_api",
+    "family": "DataStreams",
+    "description": "Create an Ingestion API data stream from a registered source schema object.",
+    "method": "POST",
+    "path": "/ssot/data-streams"
   }
 ]

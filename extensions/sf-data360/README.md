@@ -2,110 +2,128 @@
 
 ## What It Does
 
-`sf-data360` gives agents a small, deterministic way to work with Salesforce
-Data Cloud / Data 360 REST APIs without adding MCP support and without exposing
+`sf-data360` gives agents a pi-native, workflow-oriented way to work with
+Salesforce Data Cloud / Data 360 without adding MCP support and without exposing
 hundreds of endpoint-specific tools.
 
-It registers four native tools:
+It registers the v2 `data360_*` family tool surface:
 
-- `d360` — a facade for deterministic Data 360 capabilities: search the
-  registry, fetch examples, and execute REST, local-helper, or workflow-backed
-  capabilities.
-- `d360_api` — calls Data 360 REST endpoints directly via `@salesforce/core`
-  Connection (no subprocess), reusing the active Salesforce CLI auth context.
-- `d360_metadata` — compact list/describe helpers for common DMO and DLO
-  discovery tasks, avoiding broad nested catalog payloads by default.
-- `d360_probe` — runs read-only probes across core Data 360 surfaces and
-  classifies org readiness as ready, ready-empty, partial, or blocked.
+- `data360_discover` — readiness, action discovery, examples, catalog, and
+  routing explanation.
+- `data360_connect` — connectors, connections, endpoints, source schemas, and
+  auth preflight.
+- `data360_prepare` — dataspaces, DLOs, data streams, ingest jobs, transforms,
+  and DataKits.
+- `data360_harmonize` — DMOs, mappings, standard mappings, smart mapping, and
+  identity resolution.
+- `data360_segment` — calculated insights, segment definitions, publish, and
+  status.
+- `data360_activate` — activations, activation targets, data actions, and action
+  targets.
+- `data360_query` — SQL, metadata search/get, profile query, data graph,
+  rows/count/sample, and verification.
+- `data360_semantic` — semantic models, semantic objects, metrics, search
+  indexes, and retrievers.
+- `data360_observe` — Agentforce STDM sessions, platform tracing spans, trace
+  trees, action failures, and latency analysis.
+- `data360_orchestrate` — journeys, manifests, plans, multi-step workflows,
+  sweeps, and cleanup.
+- `data360_api` — raw REST escape hatch for endpoints not yet promoted to a
+  family action.
 
-It is enabled by default and contributes an extension-owned `sf-data360` skill. The skill is only visible while this extension is enabled, so explicitly disabling the extension removes both the tools and the skill on `/reload` or new sessions.
+Legacy `d360`, `d360_api`, `d360_metadata`, and `d360_probe` implementations stay
+in the codebase as migration adapters and fallback references, but the visible
+public tool surface is `data360_*`.
+
+It is enabled by default and ships plain reference documentation under
+`references/`. It does not contribute Agent Skills; explicitly disabling the
+extension removes the tools on `/reload` or new sessions.
 
 ## Design Rationale
 
 The intended balance is:
 
-- **Context-efficient:** four small tools plus a small skill description.
-- **Composable:** the agent can still script REST workflows, pagination, and
-  JSON transforms on the fly.
-- **Deterministic:** the tool pins the API version, resolves the target org,
-  builds query strings, handles JSON bodies, truncates large output, and gates
-  risky writes.
-- **Progressive disclosure:** large endpoint catalogs and examples live in skill
-  reference files that the agent reads only when relevant.
+- **Agent-intuitive:** tools match Data 360 lifecycle families and user journeys,
+  not raw endpoint families.
+- **Context-efficient:** each tool has a compact schema; action catalogs and
+  examples are disclosed on demand through `actions.search`, `action.describe`,
+  and `examples.get`.
+- **Composable:** agents can still chain family actions, journeys, pagination,
+  and JSON transforms without loading the full 200+ operation catalog into the
+  prompt.
+- **Deterministic:** actions route through the generated registry, pin the API
+  version, resolve the target org, build query strings, handle JSON bodies,
+  truncate large output, and gate risky writes.
+- **Pi-native:** no MCP runtime or Java subprocess is used; the v2 tools run
+  through the existing `@salesforce/core` connection and SF Pi safety/rendering
+  modules.
 
 ## Runtime Flow
 
 ```
 Extension loads
-  ├─ register d360, d360_api, d360_metadata, and d360_probe
+  ├─ register data360_* family tools
   ├─ register /sf-data360
   └─ resources_discover
-       └─ contribute ./skills so /skill:sf-data360 exists only while enabled
+       └─ re-register tools on reload; no Agent Skill contribution
 
-Agent calls d360_api
+Agent calls a data360_* tool
+  ├─ action.describe / actions.search? → local registry lookup, no network call
   ├─ Resolve SF environment from shared sf-pi cache / sf CLI
-  ├─ Normalize path to /services/data/v<active-api-version>/...
-  ├─ Classify safety by method + path
-  ├─ dry_run? → return resolved request, no network call
+  ├─ Resolve action → capability / local helper / journey
+  ├─ Normalize path to /services/data/v<active-api-version>/... when REST-backed
+  ├─ Classify safety by action + method + path
+  ├─ dry_run? → return resolved request/plan, no mutation
   ├─ confirmation required? → ask user or fail closed in headless mode
-  └─ conn.request(method, path, body) via @salesforce/core
+  └─ execute via existing adapters
        └─ truncate large output and save full result to temp file
 ```
 
-## Metadata Helper Shape
-
-```json
-{ "action": "list_dmos", "max_results": 25 }
-```
-
-```json
-{ "action": "describe_dmo", "api_name": "ssot__Account__dlm", "max_fields": 25 }
-```
-
-Use `d360_metadata` for simple DMO/DLO lists and one-object descriptions. Use
-`d360_api` for lower-level endpoints or advanced workflows. DLO `category`
-filters apply to compact metadata categories, which can differ from detailed DLO
-schema categories.
-
 ## Tool Shape
+
+Every v2 family tool uses the same compact envelope:
 
 ```json
 {
-  "method": "GET",
-  "path": "/ssot/data-model-objects",
-  "query": { "category": "Profile" },
+  "action": "stream.create_ingest_api",
+  "params": {},
   "target_org": "optional-alias",
   "dry_run": true,
+  "allow_confirmed": false,
   "output_mode": "summary"
 }
 ```
 
-`path` is relative to `/services/data/vXX.X`. If a caller supplies a full
-`/services/data/vNN.N/...` path, `d360_api` rewrites it to the active org API
-version.
+Use `actions.search` and `action.describe` to discover exact actions without
+loading the whole catalog:
+
+```json
+{ "action": "actions.search", "params": { "query": "ingestion api stream" } }
+```
+
+```json
+{ "action": "action.describe", "params": { "action": "stream.create_ingest_api" } }
+```
 
 ## Behavior Matrix
 
-| Event / trigger                                          | Condition                                 | Result                                                                         |
-| -------------------------------------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------ |
-| Extension load                                           | Extension enabled                         | Register `d360`, `d360_api`, `d360_metadata`, `d360_probe`, and `/sf-data360`. |
-| `resources_discover`                                     | Extension enabled                         | Contribute `./skills` so `/skill:sf-data360` is visible.                       |
-| Extension explicitly disabled + `/reload` or new session | —                                         | No `d360_api`, no `d360_metadata`, no `d360_probe`, no `sf-data360` skill.     |
-| `d360`                                                   | search/examples/execute request           | Use registry-backed deterministic D360 capability discovery and execution.     |
-| `d360_probe`                                             | Org readiness is uncertain                | Run read-only surface probes and classify readiness.                           |
-| `d360_metadata`                                          | list/describe DMO/DLO request             | Return compact metadata and save raw JSON to a temp file.                      |
-| `d360_api`                                               | `dry_run: true`                           | Return resolved request and safety decision without calling Salesforce.        |
-| `d360_api`                                               | Read/query/validate/test request          | Execute via `@salesforce/core` Connection (`conn.request`).                    |
-| `d360_api`                                               | `output_mode: "summary"` or `"file_only"` | Save full output to a temp file and avoid large inline payloads.               |
-| `d360_api`                                               | Confirmation required and UI is available | Prompt the user to allow once or block.                                        |
-| `d360_api`                                               | Confirmation required and headless        | Fail closed unless `SF_D360_ALLOW_HEADLESS_WRITE=1`.                           |
+| Event / trigger                                          | Condition                 | Result                                                                         |
+| -------------------------------------------------------- | ------------------------- | ------------------------------------------------------------------------------ |
+| Extension load                                           | Extension enabled         | Register `data360_*` family tools and `/sf-data360`.                           |
+| `resources_discover`                                     | Extension enabled         | Re-register tools on reload; no Agent Skill contribution.                      |
+| Extension explicitly disabled + `/reload` or new session | —                         | No `data360_*` tools.                                                          |
+| `actions.search` / `action.describe`                     | Any v2 family tool        | Query local v2 action registry without a network call.                         |
+| REST-backed family action                                | `dry_run: true`           | Return resolved request, target org, API version, and safety without mutation. |
+| REST-backed family action                                | Read/query/validate/test  | Execute via `@salesforce/core` Connection (`conn.request`).                    |
+| REST-backed family action                                | Confirmed/destructive     | Require dry-run review and confirmation according to safety policy.            |
+| `data360_orchestrate`                                    | `*.plan` action           | Return a cross-phase plan without mutation.                                    |
+| `data360_api`                                            | Raw endpoint escape hatch | Use only when no family action exists yet.                                     |
 
 ## DMO/DLO Discovery Defaults
 
-For a simple "list DMOs" request, use `d360_metadata` with `action:
-"list_dmos"` or the compact metadata endpoint
-`/ssot/metadata-entities?entityType=DataModelObject`. Do not use
-`/ssot/data-model-objects` broadly unless the user explicitly needs full DMO
+For a simple "list DMOs" request, use `data360_harmonize` with the DMO list/get
+actions or `data360_query` metadata actions such as `metadata.entities`. Do not
+use `/ssot/data-model-objects` broadly unless the user explicitly needs full DMO
 field definitions or the standard catalog.
 
 List actions cap inline output by default and save the full raw response to a temp file. Use `category` and `max_results` to narrow the inline table.
@@ -124,52 +142,37 @@ a small number of verified non-sensitive fields.
 | `DELETE`                                                                       | Always confirmed.                                |
 | Headless mutating call requiring confirmation                                  | Blocked unless `SF_D360_ALLOW_HEADLESS_WRITE=1`. |
 
-Use `dry_run: true` before mutating calls to inspect the exact method, path,
-target org, org type, and safety decision. For registry-backed `d360 execute`
-capabilities with `safety: "confirmed"`, actual execution also requires
-`allow_confirmed: true`; dry-run is the default review step, not the approval.
+Use `dry_run: true` before mutating calls to inspect the exact action, method,
+path, target org, org type, and safety decision. For v2 family actions with
+`safety: "confirmed"`, actual execution also requires `allow_confirmed: true`;
+dry-run is the default review step, not the approval.
 
-## Facade Capability Coverage
+## V2 Action Coverage
 
-The `d360` facade registry is intentionally progressive: read-only capabilities
-first, safe validation/test/search/query POST capabilities second,
-non-destructive confirmed lifecycle capabilities third, and destructive capabilities
-last only after stricter review UX exists.
+The v2 action registry is generated from the existing operation registry plus
+curated ownership and rename overlays under `registry/v2/`. Every operation must
+resolve to exactly one primary `data360_*` tool/action unless an explicit tested
+exception exists. The current coverage matrix, confirmed-capability workflow,
+and per-family "what to run first" checklist live in
+`references/facade-coverage.md` while the v2 action map stabilizes.
 
-The current coverage matrix, confirmed-capability workflow, and per-family
-"what to run first" checklist live in
-`skills/sf-data360/references/facade-coverage.md`.
+## References
 
-## Skill and References
+Plain reference files under `references/` cover endpoint families, workflow
+recipes, action coverage, request-body shapes, query patterns, examples, safety
+rules, Agentforce Session Tracing (STDM), and Agent Platform Tracing. These are
+not Agent Skills; agents should read the specific reference file when deeper
+guidance is needed.
 
-The bundled `sf-data360` skill is intentionally short. It points agents to
-reference files under `skills/sf-data360/references/` for endpoint families,
-workflow recipes, action coverage, facade coverage, request-body shapes, query patterns, examples,
-safety rules, Agentforce Session Tracing (STDM), and Agent Platform Tracing.
+Payload examples remain capability-shaped internally. V2 tools expose them
+through `examples.get` on the relevant family action, while registry entries in
+`registry/examples.json` continue to carry canonical capability names and variant
+metadata such as `{ "capability": "d360_dmo_create", "variant": "profile" }`.
 
-Payload examples are capability-shaped. Some upstream payload examples are
-variants of one executable capability instead of separate capabilities:
-
-```json
-{ "action": "examples", "capability": "d360_dmo_create" }
-```
-
-returns variants such as `profile`, `engagement`, and `other`, while:
-
-```json
-{ "action": "examples", "capability": "d360_dmo_create", "variant": "profile" }
-```
-
-returns the profile payload variant. Variant entries in `registry/examples.json`
-carry their source key, for example `{ "capability": "d360_dmo_create", "variant": "profile" }`.
-
-The phase skill pack (`sf-data360-connect`, `sf-data360-prepare`,
-`sf-data360-harmonize`, `sf-data360-segment`, `sf-data360-act`,
-`sf-data360-retrieve`, `sf-data360-observe`, and `sf-data360-orchestrate`) is
-generated from `registry/phases.json` and the facade registry. These generated
-`SKILL.md` files are committed so pi discovers them through the normal
-extension-owned `resources_discover` skill path; run `npm run
-generate-d360-skills` after changing phase mappings or capability coverage.
+The phase reference pages under `references/phases/` are generated from
+`registry/phases.json`, the v2 action map, and registry operation data. Run
+`npm run generate-d360-references` after changing phase mappings or capability
+coverage.
 
 When local references are not enough, use the public upstream Data 360 MCP server
 repo before broad web search: <https://github.com/forcedotcom/d360-mcp-server>.
@@ -211,6 +214,19 @@ extensions/sf-data360/
       local-helpers.ts      ← implementation module
       registry.ts           ← implementation module
       sql.ts                ← implementation module
+    v2/
+      ingest/
+        auth.ts             ← implementation module
+        interactive-auth.ts ← implementation module
+        tenant-client.ts    ← implementation module
+        types.ts            ← implementation module
+      action-registry.ts    ← implementation module
+      action-types.ts       ← implementation module
+      cleanup.ts            ← implementation module
+      csv-schema.ts         ← implementation module
+      dispatcher.ts         ← implementation module
+      manifest.ts           ← implementation module
+      tools.ts              ← implementation module
     api-tool.ts             ← implementation module
     config-panel.ts         ← implementation module
     extension-doctor.ts     ← implementation module
@@ -221,6 +237,7 @@ extensions/sf-data360/
     safety.ts               ← implementation module
     target-org.ts           ← implementation module
     truncation.ts           ← implementation module
+    v2-tool-names.ts        ← implementation module
   tests/
     agent-observability-runbooks.test.ts← unit / smoke test
     api-card.test.ts        ← unit / smoke test
@@ -245,6 +262,16 @@ extensions/sf-data360/
     smoke.test.ts           ← unit / smoke test
     target-org.test.ts      ← unit / smoke test
     truncation.test.ts      ← unit / smoke test
+    v2-action-registry.test.ts← unit / smoke test
+    v2-auth-sessions-cleanup.test.ts← unit / smoke test
+    v2-dispatcher.test.ts   ← unit / smoke test
+    v2-execute-parity.test.ts← unit / smoke test
+    v2-ingest-auth-exchange.test.ts← unit / smoke test
+    v2-ingest-auth-interactive.test.ts← unit / smoke test
+    v2-ingest-auth.test.ts  ← unit / smoke test
+    v2-ingest-jobs.test.ts  ← unit / smoke test
+    v2-legacy-compatibility.test.ts← unit / smoke test
+    v2-orchestrate-manifest.test.ts← unit / smoke test
   AGENTS.md                 ← extension-specific agent editing rules
   index.ts                  ← Pi extension entry point
   manifest.json             ← source-of-truth extension metadata
@@ -321,7 +348,7 @@ Covered by unit tests:
 - Request resolution chooses the target org API version, resolves explicit non-default target orgs before execution, and fails closed if that resolution fails.
 - HTTP errors from `Connection.request` surface as `{ status, body }` and are classified by `responseLooksLikeError`; the tool emits an error envelope instead of throwing.
 - Salesforce REST error arrays embedded in 2xx responses are still classified as failed calls.
-- Generated phase skills are committed, reproducible from `registry/phases.json`, and checked in the normal lint path.
+- Generated phase references are committed, reproducible from `registry/phases.json`, and checked in the normal lint path.
 - The capability sweep plans dry-run coverage for every facade capability, runs bounded read/safe-post live checks, dynamically follows list responses into detail reads when public-safe identifiers are available, can run focused sweep-owned mutation lifecycles behind an explicit destructive gate, writes a family summary table, supports coverage thresholds, and includes run-id cleanup helpers.
 
 ## Troubleshooting
@@ -332,7 +359,7 @@ Covered by unit tests:
 
 **Connector detail returns `NOT_FOUND`:** Use the connector catalog `name` from `GET /ssot/connectors`, not necessarily the `connectorType` shown on a connection.
 
-**`/skill:sf-data360` is missing:** `sf-data360` is enabled by default, so first check whether it was explicitly disabled in `/sf-pi`, then run `/reload`. The skill is contributed by the extension, not registered as a standalone package skill.
+**`data360_*` tools are missing:** `sf-data360` is enabled by default, so first check whether it was explicitly disabled in `/sf-pi`, then run `/reload`. The extension registers tools directly and does not contribute Agent Skills.
 
 **A mutating call is blocked in headless mode:** Re-run with `dry_run: true` and
 review the resolved request. If automation should be allowed, set

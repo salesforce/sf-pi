@@ -68,7 +68,7 @@ export interface ProbeResult {
   exitCode?: number | null;
 }
 
-const PROBES: Array<{ name: string; path: string; requiredForReady?: boolean }> = [
+export const PROBES: Array<{ name: string; path: string; requiredForReady?: boolean }> = [
   { name: "data_spaces", path: "/ssot/data-spaces", requiredForReady: true },
   { name: "dmo_catalog", path: "/ssot/data-model-objects?limit=1", requiredForReady: true },
   { name: "dlo_catalog", path: "/ssot/data-lake-objects?limit=1" },

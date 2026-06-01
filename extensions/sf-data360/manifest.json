@@ -1,31 +1,46 @@
 {
   "id": "sf-data360",
   "name": "SF Data 360",
-  "description": "Data Cloud/Data 360 capability facade and direct REST helper — d360 search/examples/execute, d360_api, compact metadata discovery, readiness probe, and progressive-disclosure references",
+  "description": "Data Cloud/Data 360 v2 family tools — discover, connect, prepare, harmonize, segment, activate, query, semantic, observe, orchestrate, and raw API escape hatch",
   "category": "agent-tool",
   "maturity": "stable",
   "defaultEnabled": true,
   "configurable": true,
   "commands": ["/sf-data360"],
-  "tools": ["d360", "d360_api", "d360_metadata", "d360_probe"],
+  "tools": [
+    "data360_discover",
+    "data360_connect",
+    "data360_prepare",
+    "data360_harmonize",
+    "data360_segment",
+    "data360_activate",
+    "data360_query",
+    "data360_semantic",
+    "data360_observe",
+    "data360_orchestrate",
+    "data360_api"
+  ],
   "events": ["session_start", "session_shutdown", "resources_discover"],
   "docs": {
-    "summary": "Data 360 capability facade plus direct REST access through @salesforce/core Connection with API-version pinning, target-org resolution, dry-run, safety confirmation, compact metadata helpers, deterministic observability capabilities, and progressive skill references.",
+    "summary": "Data 360 v2 family tool surface over the generated operation registry: compact action discovery, dry-run planning, target-org resolution, safety confirmation, bounded output, journey orchestration, and a raw REST escape hatch through @salesforce/core Connection.",
     "primaryFiles": [
       "index.ts",
+      "lib/v2/tools.ts",
+      "lib/v2/dispatcher.ts",
+      "lib/v2/action-registry.ts",
+      "lib/facade/registry.ts",
       "lib/facade-tool.ts",
       "lib/api-tool.ts",
       "lib/path.ts",
       "lib/safety.ts",
-      "lib/metadata-tool.ts",
-      "lib/probe-tool.ts",
       "lib/config-panel.ts",
-      "skills/sf-data360/SKILL.md"
+      "references/README.md"
     ],
     "safety": [
       "No MCP runtime or Java subprocess is used.",
+      "The v2 data360_* tools route through the shared action registry and existing safety gates.",
       "Mutating calls are classified by method/path and confirmed when required.",
-      "The sf-data360 skill is contributed only while the extension is enabled."
+      "The extension uses plain reference docs instead of contributing Agent Skills."
     ]
   }
 }

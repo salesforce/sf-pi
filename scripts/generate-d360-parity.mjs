@@ -15,7 +15,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ROOT = path.resolve(__dirname, "..");
 const REGISTRY_DIR = path.join(ROOT, "extensions/sf-data360/registry");
-const REFERENCES_DIR = path.join(ROOT, "extensions/sf-data360/skills/sf-data360/references");
+const REFERENCES_DIR = path.join(ROOT, "extensions/sf-data360/references");
 const CHECK = process.argv.includes("--check");
 
 const upstreamSnapshot = readJson(path.join(REGISTRY_DIR, "upstream-tools.json"));

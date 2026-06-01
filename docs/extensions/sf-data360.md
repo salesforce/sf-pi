@@ -49,8 +49,9 @@ You can also manage this extension from the SF Pi home base:
 ## Safety notes
 
 - No MCP runtime or Java subprocess is used.
+- The v2 data360\_\* tools route through the shared action registry and existing safety gates.
 - Mutating calls are classified by method/path and confirmed when required.
-- The sf-data360 skill is contributed only while the extension is enabled.
+- The extension uses plain reference docs instead of contributing Agent Skills.
 
 ## Exact reference
 
@@ -62,7 +63,7 @@ You can also manage this extension from the SF Pi home base:
 - **Maturity:** stable
 - **Default state:** on
 - **Commands:** `/sf-data360`
-- **LLM tools:** `d360`, `d360_api`, `d360_metadata`, `d360_probe`
+- **LLM tools:** `data360_discover`, `data360_connect`, `data360_prepare`, `data360_harmonize`, `data360_segment`, `data360_activate`, `data360_query`, `data360_semantic`, `data360_observe`, `data360_orchestrate`, `data360_api`
 - **Providers:** _none_
 - **Events/hooks:** `session_start`, `session_shutdown`, `resources_discover`
 

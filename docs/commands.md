@@ -60,11 +60,11 @@ _Salesforce Code Analyzer workflows for pi: setup readiness, explicit scans, rul
 
 ### [SF Data 360](./extensions/sf-data360)
 
-_Data Cloud/Data 360 capability facade and direct REST helper — d360 search/examples/execute, d360_api, compact metadata discovery, readiness probe, and progressive-disclosure references_
+_Data Cloud/Data 360 v2 family tools — discover, connect, prepare, harmonize, segment, activate, query, semantic, observe, orchestrate, and raw API escape hatch_
 
 - Default: **on**
 - Commands: `/sf-data360`
-- Tools: `d360`, `d360_api`, `d360_metadata`, `d360_probe`
+- Tools: `data360_discover`, `data360_connect`, `data360_prepare`, `data360_harmonize`, `data360_segment`, `data360_activate`, `data360_query`, `data360_semantic`, `data360_observe`, `data360_orchestrate`, `data360_api`
 
 ### [SF Herdr](./extensions/sf-herdr)
 

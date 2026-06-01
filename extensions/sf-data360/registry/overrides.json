@@ -1044,5 +1044,23 @@
     "optionalParams": ["autoSelectEventDate"],
     "safety": "safe_post",
     "tips": "Local helper. Review enhancedBody, then dry-run d360_datastream_create."
+  },
+  "d360_ingest_api_schema_get": {
+    "requiredParams": ["connectionId"]
+  },
+  "d360_ingest_api_schema_test": {
+    "safety": "safe_post",
+    "requiredParams": ["connectionId", "body"],
+    "tips": "Schema object names and labels must be API-safe. Use this before source_schema.put."
+  },
+  "d360_ingest_api_schema_put": {
+    "safety": "confirmed",
+    "requiredParams": ["connectionId", "body"],
+    "tips": "Run source_schema.test first. Mutates the source schema used by future stream creation."
+  },
+  "d360_datastream_create_ingest_api": {
+    "safety": "confirmed",
+    "requiredParams": ["body"],
+    "tips": "Use connectorInfo.connectorType=IngestApi and connectorDetails.events=[schemaObjectName]."
   }
 }

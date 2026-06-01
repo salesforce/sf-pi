@@ -116,7 +116,7 @@ export function registerD360ApiTool(pi: ExtensionAPI): void {
       "Use /ssot/metadata-entities?entityType=DataModelObject for concise DMO lists; do not call /ssot/data-model-objects broadly unless full DMO definitions or fields are explicitly needed.",
       "Before querying DMO records, inspect the selected DMO with GET /ssot/data-model-objects/{dmoApiName}, then run COUNT(*) before sampling rows.",
       "Keep Data 360 result sets small; for broad/list responses use output_mode:'summary' or output_mode:'file_only' instead of pasting full nested payloads.",
-      "Before complex Data 360 create/update calls, read the sf-data360 skill references for payload examples.",
+      "Before complex Data 360 create/update calls, read extensions/sf-data360/references/ for payload examples.",
     ],
     parameters: D360ApiParams,
     renderCall: renderD360ApiCall,

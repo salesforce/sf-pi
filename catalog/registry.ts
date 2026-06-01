@@ -67,13 +67,13 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
   {
     id: "sf-data360",
     name: "SF Data 360",
-    description: "Data Cloud/Data 360 capability facade and direct REST helper — d360 search/examples/execute, d360_api, compact metadata discovery, readiness probe, and progressive-disclosure references",
+    description: "Data Cloud/Data 360 v2 family tools — discover, connect, prepare, harmonize, segment, activate, query, semantic, observe, orchestrate, and raw API escape hatch",
     file: "extensions/sf-data360/index.ts",
     category: "agent-tool",
     maturity: "stable",
     defaultEnabled: true,
     commands: ["/sf-data360"],
-    tools: ["d360","d360_api","d360_metadata","d360_probe"],
+    tools: ["data360_discover","data360_connect","data360_prepare","data360_harmonize","data360_segment","data360_activate","data360_query","data360_semantic","data360_observe","data360_orchestrate","data360_api"],
     events: ["session_start","session_shutdown","resources_discover"],
     configurable: true,
     getConfigPanel: async () => {
