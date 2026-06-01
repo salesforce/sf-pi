@@ -770,6 +770,13 @@ async function runManifest(
   );
   if (schemaPut.ok === false) return { ...schemaPut, summary: "manifest.run schema upload failed" };
 
+  const connectorName = await resolveIngestApiConnectorName(
+    input,
+    env,
+    ctx,
+    signal,
+    plan.manifest.source,
+  );
   const results: Record<string, unknown>[] = [];
   for (const dataset of plan.datasets) {
     const stream = await runData360V2Action(
@@ -778,7 +785,7 @@ async function runManifest(
         action: "stream.create_ingest_api",
         target_org: input.target_org,
         allow_confirmed: true,
-        params: { body: streamCreateBody(plan.manifest.source.name, dataset) },
+        params: { body: streamCreateBody(connectorName, dataset) },
       },
       env,
       ctx,
@@ -876,6 +883,38 @@ async function runManifest(
     results,
     summary: `manifest.run started ${results.length} dataset ingest job(s)`,
   };
+}
+
+async function resolveIngestApiConnectorName(
+  input: Data360V2Input,
+  env: SfEnvironment,
+  ctx: ExtensionContext,
+  signal: AbortSignal | undefined,
+  source: { name: string; connectionId: string },
+): Promise<string> {
+  const listed = await runData360V2Action(
+    {
+      tool: "data360_connect",
+      action: "source.list_ingest_api",
+      target_org: input.target_org,
+    },
+    env,
+    ctx,
+    signal,
+  );
+  const connections = asRecord(listed.response)?.connections;
+  if (Array.isArray(connections)) {
+    const match = connections.map(asRecord).find((connection) => {
+      return (
+        connection?.id === source.connectionId ||
+        connection?.connectionId === source.connectionId ||
+        connection?.name === source.name ||
+        connection?.label === source.name
+      );
+    });
+    if (typeof match?.name === "string" && match.name.trim()) return match.name.trim();
+  }
+  return source.name;
 }
 
 async function pollManifestJob(
