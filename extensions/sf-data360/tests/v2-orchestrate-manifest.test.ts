@@ -166,10 +166,17 @@ describe("Data 360 v2 CSV manifest orchestration", () => {
       if (request.url.includes("/schema") && request.method === "GET") return { schemas: [] };
       if (request.url.includes("/schema/actions/test")) return { ok: true };
       if (request.url.includes("/schema") && request.method === "PUT") return { ok: true };
-      if (request.url.endsWith("/ssot/data-streams")) {
+      if (request.url.endsWith("/ssot/data-streams") && request.method === "POST") {
+        return { name: "GPSProvidersStream_ABC" };
+      }
+      if (request.url.includes("/ssot/data-streams") && request.method === "GET") {
         return {
-          name: "GPSProvidersStream_ABC",
-          dataLakeObjectName: "GPSProvidersStream_ABC__dll",
+          dataStreams: [
+            {
+              name: "GPSProvidersStream_ABC",
+              dataLakeObjectInfo: { name: "GPSProvidersStream_short_ABC__dll" },
+            },
+          ],
         };
       }
       if (request.url.includes("/ssot/query-sql")) return { data: [[queryCount++ > 0 ? 1 : 0]] };
@@ -255,6 +262,7 @@ describe("Data 360 v2 CSV manifest orchestration", () => {
           jobId: "job-1",
           jobState: "JobComplete",
           beforeRows: 0,
+          dloName: "GPSProvidersStream_short_ABC__dll",
           afterRows: 1,
         }),
       ],

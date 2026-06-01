@@ -794,11 +794,7 @@ async function runManifest(
     if (stream.ok === false)
       return { ...stream, summary: `manifest.run stream create failed for ${dataset.schemaName}` };
     const streamName = stringFromPath(stream, ["response", "name"], dataset.streamName);
-    const dloName = stringFromPath(
-      stream,
-      ["response", "dataLakeObjectName"],
-      `${streamName}__dll`,
-    );
+    const dloName = await resolveCreatedDloName(input, env, ctx, signal, streamName);
     const before = await runData360V2Action(
       {
         tool: "data360_query",
@@ -905,6 +901,33 @@ async function resolveIngestApiConnectorName(
     if (typeof match?.name === "string" && match.name.trim()) return match.name.trim();
   }
   return source.name;
+}
+
+async function resolveCreatedDloName(
+  input: Data360V2Input,
+  env: SfEnvironment,
+  ctx: ExtensionContext,
+  signal: AbortSignal | undefined,
+  streamName: string,
+): Promise<string> {
+  const listed = await runData360V2Action(
+    {
+      tool: "data360_prepare",
+      action: "stream.list",
+      target_org: input.target_org,
+      params: { limit: 100 },
+    },
+    env,
+    ctx,
+    signal,
+  );
+  const streams = asRecord(listed.response)?.dataStreams;
+  if (Array.isArray(streams)) {
+    const match = streams.map(asRecord).find((stream) => stream?.name === streamName);
+    const dloName = asRecord(match?.dataLakeObjectInfo)?.name;
+    if (typeof dloName === "string" && dloName.trim()) return dloName.trim();
+  }
+  return `${streamName}__dll`;
 }
 
 async function createManifestIngestJob(
