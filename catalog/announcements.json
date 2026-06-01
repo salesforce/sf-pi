@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.162.2-2026-06-01",
-  "latestVersion": "0.162.2",
+  "revision": "release-0.162.3-2026-06-01",
+  "latestVersion": "0.162.3",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.162.2",
+      "id": "release-0.162.3",
       "kind": "update",
-      "title": "sf-pi v0.162.2 — sf-data360: retry manifest ingest job creation",
+      "title": "sf-pi v0.162.3 — sf-data360: resolve manifest dlo names",
       "publishedAt": "2026-06-01T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.162.2",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.162.3",
       "severity": "info",
-      "body": "sf-data360: retry manifest ingest job creation"
+      "body": "sf-data360: resolve manifest dlo names"
     },
     {
       "id": "pi-0.73-required",
