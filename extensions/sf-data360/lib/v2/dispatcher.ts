@@ -715,6 +715,122 @@ async function runTenantIngestAction(
   };
 }
 
+function agentBehaviorSteps(): Data360V2Step[] {
+  return [
+    {
+      label: "Find or inspect the STDM session timeline",
+      tool: "data360_observe",
+      action: "stdm.session_timeline",
+    },
+    {
+      label: "Find recent platform error traces",
+      tool: "data360_observe",
+      action: "trace.error_traces",
+    },
+    {
+      label: "Summarize backend latency by operation",
+      tool: "data360_observe",
+      action: "trace.operation_latency_summary",
+    },
+  ];
+}
+
+async function runAgentBehaviorInvestigation(
+  input: Data360V2Input,
+  env: SfEnvironment,
+  ctx: ExtensionContext,
+  signal: AbortSignal | undefined,
+): Promise<Record<string, unknown>> {
+  const params = input.params ?? {};
+  const sessionId = typeof params.session_id === "string" ? params.session_id : params.sessionId;
+  const traceId = typeof params.trace_id === "string" ? params.trace_id : params.traceId;
+  const since = typeof params.since === "string" ? params.since : undefined;
+  const limit = typeof params.limit === "number" ? params.limit : undefined;
+  if (!sessionId && !traceId && !since) {
+    return {
+      ok: false,
+      tool: input.tool,
+      action: input.action,
+      error: "MISSING_INVESTIGATION_INPUT",
+      summary: "Pass session_id, trace_id, or since to run an Agentforce investigation.",
+      recover_via: { tool: "data360_orchestrate", action: "agent_behavior_investigation.plan" },
+    };
+  }
+  const sections: Array<Record<string, unknown>> = [];
+  if (sessionId) {
+    sections.push(
+      await runInvestigationSection(input, env, ctx, signal, "stdm.session_timeline", {
+        session_id: sessionId,
+        limit,
+      }),
+    );
+  }
+  if (since) {
+    sections.push(
+      await runInvestigationSection(input, env, ctx, signal, "trace.error_traces", {
+        since,
+        limit,
+      }),
+    );
+    sections.push(
+      await runInvestigationSection(input, env, ctx, signal, "trace.operation_latency_summary", {
+        since,
+        limit,
+      }),
+    );
+  }
+  if (traceId) {
+    sections.push(
+      await runInvestigationSection(input, env, ctx, signal, "trace.trace_tree", {
+        trace_id: traceId,
+      }),
+    );
+  }
+  return {
+    ok: sections.every((section) => section.ok !== false),
+    tool: input.tool,
+    action: input.action,
+    journey: "agent_behavior_investigation",
+    sections,
+    report: agentBehaviorReport(sections),
+    summary: "Agent behavior investigation complete",
+    next_actions: [
+      { tool: "data360_observe", action: "trace.trace_tree" },
+      { tool: "data360_observe", action: "trace.join_interaction_trace" },
+    ],
+  };
+}
+
+async function runInvestigationSection(
+  input: Data360V2Input,
+  env: SfEnvironment,
+  ctx: ExtensionContext,
+  signal: AbortSignal | undefined,
+  action: string,
+  params: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  const result = await runData360V2Action(
+    { tool: "data360_observe", action, target_org: input.target_org, params },
+    env,
+    ctx,
+    signal,
+  );
+  return {
+    action,
+    ok: result.ok !== false,
+    summary: result.summary,
+    result: result.result,
+  };
+}
+
+function agentBehaviorReport(sections: Array<Record<string, unknown>>): string {
+  return [
+    "✅ Agent behavior investigation complete",
+    "",
+    ...sections.map((section) => `- ${section.action}: ${section.summary ?? "complete"}`),
+  ].join("\n");
+}
+
 function planKnownJourney(
   input: Data360V2Input,
   journeyName: string,
@@ -1259,23 +1375,10 @@ async function runJourneyAction(
     ]);
   }
   if (action.implementation?.name === "agent_behavior_investigation.plan") {
-    return planKnownJourney(input, "agent_behavior_investigation", [
-      {
-        label: "Find or inspect the STDM session timeline",
-        tool: "data360_observe",
-        action: "stdm.session_timeline",
-      },
-      {
-        label: "Find recent platform error traces",
-        tool: "data360_observe",
-        action: "trace.error_traces",
-      },
-      {
-        label: "Summarize backend latency by operation",
-        tool: "data360_observe",
-        action: "trace.operation_latency_summary",
-      },
-    ]);
+    return planKnownJourney(input, "agent_behavior_investigation", agentBehaviorSteps());
+  }
+  if (action.implementation?.name === "agent_behavior_investigation.run") {
+    return runAgentBehaviorInvestigation(input, env, ctx, signal);
   }
   if (action.implementation?.name === "manifest.validate") {
     const manifest = await loadManifest(input.params ?? {});

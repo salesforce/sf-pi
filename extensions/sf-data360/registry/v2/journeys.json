@@ -200,5 +200,20 @@
       "name": "agent_behavior_investigation.plan"
     },
     "aliases": ["journey.agent_behavior_investigation.plan"]
+  },
+  {
+    "tool": "data360_orchestrate",
+    "phase": "orchestrate",
+    "family": "Journey",
+    "action": "agent_behavior_investigation.run",
+    "description": "Run read-only Agentforce STDM and platform tracing investigation actions and summarize findings.",
+    "safety": "read",
+    "requiredParams": [],
+    "optionalParams": ["session_id", "trace_id", "since", "limit"],
+    "implementation": {
+      "kind": "journey",
+      "name": "agent_behavior_investigation.run"
+    },
+    "aliases": ["journey.agent_behavior_investigation.run"]
   }
 ]
