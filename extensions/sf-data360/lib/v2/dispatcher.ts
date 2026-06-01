@@ -1377,6 +1377,42 @@ async function runJourneyAction(
   if (action.implementation?.name === "agent_behavior_investigation.plan") {
     return planKnownJourney(input, "agent_behavior_investigation", agentBehaviorSteps());
   }
+  if (action.implementation?.name === "semantic_retrieval.plan") {
+    return planKnownJourney(input, "semantic_retrieval", [
+      {
+        label: "List or choose a semantic model",
+        tool: "data360_semantic",
+        action: "semantic_model.list",
+      },
+      {
+        label: "Find embedding model artifacts",
+        tool: "data360_semantic",
+        action: "model_artifact.list",
+      },
+      {
+        label: "Inspect search index configuration options",
+        tool: "data360_semantic",
+        action: "search_index.config",
+      },
+      {
+        label: "Create or update a semantic search index",
+        tool: "data360_semantic",
+        action: "search_index.create",
+      },
+      { label: "Create retriever", tool: "data360_semantic", action: "retriever.create" },
+      {
+        label: "Create retriever configuration",
+        tool: "data360_semantic",
+        action: "retriever.config.create",
+      },
+      {
+        label: "Validate semantic model",
+        tool: "data360_semantic",
+        action: "semantic_model.validate",
+      },
+      { label: "Read retriever details", tool: "data360_semantic", action: "retriever.get" },
+    ]);
+  }
   if (action.implementation?.name === "agent_behavior_investigation.run") {
     return runAgentBehaviorInvestigation(input, env, ctx, signal);
   }

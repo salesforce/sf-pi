@@ -1214,6 +1214,18 @@
     "aliases": ["journey.manifest.validate"]
   },
   {
+    "tool": "data360_orchestrate",
+    "action": "semantic_retrieval.plan",
+    "phase": "orchestrate",
+    "family": "Journey",
+    "description": "Plan semantic model, search index, and retriever setup for RAG or BI-style retrieval without mutation.",
+    "safety": "read",
+    "requiredParams": [],
+    "optionalParams": ["sourceObjects", "retrievalUseCase"],
+    "implementation": { "kind": "journey", "name": "semantic_retrieval.plan" },
+    "aliases": ["journey.semantic_retrieval.plan"]
+  },
+  {
     "tool": "data360_prepare",
     "action": "csv_schema.infer",
     "phase": "prepare",
