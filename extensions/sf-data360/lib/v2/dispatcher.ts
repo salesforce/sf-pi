@@ -929,9 +929,12 @@ async function planActivateSegmentJourney(
     readiness: blockers.length ? "blocked" : warnings.length ? "ready_with_warnings" : "ready",
     blockers,
     warnings,
-    recommendedFirstAction: blockers.some((entry) => entry.includes("activation target"))
-      ? { tool: "data360_activate", action: "activation_target.create" }
-      : { tool: "data360_activate", action: "activation.create" },
+    recommendedFirstAction:
+      !segmentId || !segment.ok
+        ? { tool: "data360_segment", action: "segment.get" }
+        : blockers.some((entry) => entry.includes("activation target"))
+          ? { tool: "data360_activate", action: "activation_target.create" }
+          : { tool: "data360_activate", action: "activation.create" },
     preflight: { segment, activationTargets, activations },
   };
 }
