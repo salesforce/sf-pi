@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.164.0-2026-06-01",
-  "latestVersion": "0.164.0",
+  "revision": "release-0.165.0-2026-06-01",
+  "latestVersion": "0.165.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.164.0",
+      "id": "release-0.165.0",
       "kind": "update",
-      "title": "sf-pi v0.164.0 — sf-data360: run agent behavior investigation",
+      "title": "sf-pi v0.165.0 — sf-data360: plan semantic retrieval journeys",
       "publishedAt": "2026-06-01T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.164.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.165.0",
       "severity": "info",
-      "body": "sf-data360: run agent behavior investigation"
+      "body": "sf-data360: plan semantic retrieval journeys"
     },
     {
       "id": "pi-0.73-required",
