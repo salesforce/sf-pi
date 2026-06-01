@@ -230,5 +230,35 @@
       "name": "semantic_retrieval.plan"
     },
     "aliases": ["journey.semantic_retrieval.plan"]
+  },
+  {
+    "tool": "data360_orchestrate",
+    "phase": "orchestrate",
+    "family": "Journey",
+    "action": "build_segment.plan",
+    "description": "Plan calculated insight and segment creation/publish steps without mutation.",
+    "safety": "read",
+    "requiredParams": [],
+    "optionalParams": ["profileDmo", "segmentDefinition"],
+    "implementation": {
+      "kind": "journey",
+      "name": "build_segment.plan"
+    },
+    "aliases": ["journey.build_segment.plan"]
+  },
+  {
+    "tool": "data360_orchestrate",
+    "phase": "orchestrate",
+    "family": "Journey",
+    "action": "activate_segment.plan",
+    "description": "Plan activation target and activation creation steps without mutation.",
+    "safety": "read",
+    "requiredParams": [],
+    "optionalParams": ["segment", "target"],
+    "implementation": {
+      "kind": "journey",
+      "name": "activate_segment.plan"
+    },
+    "aliases": ["journey.activate_segment.plan"]
   }
 ]

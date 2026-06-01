@@ -1377,6 +1377,39 @@ async function runJourneyAction(
   if (action.implementation?.name === "agent_behavior_investigation.plan") {
     return planKnownJourney(input, "agent_behavior_investigation", agentBehaviorSteps());
   }
+  if (action.implementation?.name === "build_segment.plan") {
+    return planKnownJourney(input, "build_segment", [
+      { label: "Inspect profile DMO fields", tool: "data360_harmonize", action: "dmo.get" },
+      { label: "Validate calculated insight SQL", tool: "data360_segment", action: "ci.validate" },
+      { label: "Create calculated insight", tool: "data360_segment", action: "ci.create" },
+      { label: "Run calculated insight", tool: "data360_segment", action: "ci.run" },
+      {
+        label: "Check calculated insight run status",
+        tool: "data360_segment",
+        action: "ci.run.status",
+      },
+      { label: "Create segment", tool: "data360_segment", action: "segment.create" },
+      { label: "Publish segment", tool: "data360_segment", action: "segment.publish" },
+      { label: "Verify segment", tool: "data360_segment", action: "segment.get" },
+    ]);
+  }
+  if (action.implementation?.name === "activate_segment.plan") {
+    return planKnownJourney(input, "activate_segment", [
+      { label: "Verify segment status", tool: "data360_segment", action: "segment.get" },
+      {
+        label: "List activation targets",
+        tool: "data360_activate",
+        action: "activation_target.list",
+      },
+      {
+        label: "Create activation target if needed",
+        tool: "data360_activate",
+        action: "activation_target.create",
+      },
+      { label: "Create activation", tool: "data360_activate", action: "activation.create" },
+      { label: "Verify activation", tool: "data360_activate", action: "activation.get" },
+    ]);
+  }
   if (action.implementation?.name === "semantic_retrieval.plan") {
     return planKnownJourney(input, "semantic_retrieval", [
       {
