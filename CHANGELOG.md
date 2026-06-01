@@ -517,6 +517,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.162.0](https://github.com/salesforce/sf-pi/compare/v0.161.0...v0.162.0) (2026-06-01)
+
+
+### Features
+
+* **sf-data360:** add journey intent planner ([cd2b4f0](https://github.com/salesforce/sf-pi/commit/cd2b4f09879b84397b995e508424f4988c51e065))
+
 ## [0.161.0](https://github.com/salesforce/sf-pi/compare/v0.160.0...v0.161.0) (2026-06-01)
 
 
