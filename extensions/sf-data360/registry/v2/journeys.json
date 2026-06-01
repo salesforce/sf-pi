@@ -170,5 +170,35 @@
       "name": "cleanup.run"
     },
     "aliases": ["journey.cleanup.run"]
+  },
+  {
+    "tool": "data360_orchestrate",
+    "phase": "orchestrate",
+    "family": "Journey",
+    "action": "make_data_usable.plan",
+    "description": "Plan how to connect, land, model, map, and verify new data without mutation.",
+    "safety": "read",
+    "requiredParams": [],
+    "optionalParams": ["sourceType", "targetModel"],
+    "implementation": {
+      "kind": "journey",
+      "name": "make_data_usable.plan"
+    },
+    "aliases": ["journey.make_data_usable.plan"]
+  },
+  {
+    "tool": "data360_orchestrate",
+    "phase": "orchestrate",
+    "family": "Journey",
+    "action": "agent_behavior_investigation.plan",
+    "description": "Plan Agentforce STDM and platform tracing queries for an agent/session investigation.",
+    "safety": "read",
+    "requiredParams": [],
+    "optionalParams": ["agentOrSession", "timeRange"],
+    "implementation": {
+      "kind": "journey",
+      "name": "agent_behavior_investigation.plan"
+    },
+    "aliases": ["journey.agent_behavior_investigation.plan"]
   }
 ]

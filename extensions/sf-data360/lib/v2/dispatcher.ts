@@ -715,6 +715,30 @@ async function runTenantIngestAction(
   };
 }
 
+function planKnownJourney(
+  input: Data360V2Input,
+  journeyName: string,
+  steps: Data360V2Step[],
+): Record<string, unknown> {
+  const journey = findData360Journey(journeyName);
+  return {
+    ok: true,
+    tool: input.tool,
+    action: input.action,
+    journey: journeyName,
+    phases: journey?.phases ?? [],
+    requiredInputs: journey?.requiredInputs ?? [],
+    providedInputs: input.params ?? {},
+    missingInputs: (journey?.requiredInputs ?? []).filter(
+      (entry) => input.params?.[entry] === undefined,
+    ),
+    steps,
+    verification: journey?.verification ?? [],
+    suggestedQuestions: journey?.suggestedQuestions ?? [],
+    summary: `${journeyName} plan resolved without mutation`,
+  };
+}
+
 async function runManifest(
   input: Data360V2Input,
   env: SfEnvironment,
@@ -791,8 +815,9 @@ async function runManifest(
       ctx,
       signal,
     );
-    if (stream.ok === false)
-      return { ...stream, summary: `manifest.run stream create failed for ${dataset.schemaName}` };
+    if (stream.ok === false) {
+      return manifestFailure(input, "stream.create_ingest_api", dataset.schemaName, stream);
+    }
     const streamName = stringFromPath(stream, ["response", "name"], dataset.streamName);
     const dloName = await resolveCreatedDloName(input, env, ctx, signal, streamName);
     const before = await runData360V2Action(
@@ -812,8 +837,9 @@ async function runManifest(
       sourceName: plan.manifest.source.name,
       object: dataset.schemaName,
     });
-    if (job.ok === false)
-      return { ...job, summary: `manifest.run job create failed for ${dataset.schemaName}` };
+    if (job.ok === false) {
+      return manifestFailure(input, "ingest_job.create", dataset.schemaName, job);
+    }
     const jobId = stringFromPath(job, ["response", "id"]);
     await runData360V2Action(
       {
@@ -837,8 +863,9 @@ async function runManifest(
       ctx,
       signal,
     );
-    if (close.ok === false)
-      return { ...close, summary: `manifest.run job close failed for ${dataset.schemaName}` };
+    if (close.ok === false) {
+      return manifestFailure(input, "ingest_job.close", dataset.schemaName, close);
+    }
     const finalJob = await pollManifestJob(input, env, ctx, signal, authSessionId, jobId);
     const after = await runData360V2Action(
       {
@@ -867,8 +894,55 @@ async function runManifest(
     tool: input.tool,
     action: input.action,
     results,
-    summary: `manifest.run started ${results.length} dataset ingest job(s)`,
+    report: manifestRunReport(results),
+    summary: `Manifest run complete for ${results.length} dataset(s)`,
+    next_actions: [
+      { tool: "data360_orchestrate", action: "cleanup.plan" },
+      { tool: "data360_query", action: "sql.verify_rows" },
+    ],
   };
+}
+
+function manifestFailure(
+  input: Data360V2Input,
+  failedStep: string,
+  failedDataset: string,
+  failure: Record<string, unknown>,
+): Record<string, unknown> {
+  return {
+    ...failure,
+    failedStep,
+    failedDataset,
+    retryable: true,
+    recover_via: {
+      tool: "data360_orchestrate",
+      action: "manifest.run",
+      params: {
+        ...(input.params ?? {}),
+        resumeFrom: failedStep,
+      },
+    },
+    cleanupPlan: { tool: "data360_orchestrate", action: "cleanup.plan" },
+    summary: `manifest.run failed at ${failedStep} for ${failedDataset}`,
+  };
+}
+
+function manifestRunReport(results: Record<string, unknown>[]): string {
+  const lines = [
+    "✅ Manifest run complete",
+    "",
+    "| Dataset | DLO | Rows | Job |",
+    "| --- | --- | ---: | --- |",
+  ];
+  for (const result of results) {
+    const schemaName = String(result.schemaName ?? "(unknown)");
+    const dloName = String(result.dloName ?? "(unknown)");
+    const beforeRows = Number(result.beforeRows ?? 0);
+    const afterRows = Number(result.afterRows ?? beforeRows);
+    const jobState = String(result.jobState ?? "unknown");
+    lines.push(`| ${schemaName} | ${dloName} | ${beforeRows} → ${afterRows} | ${jobState} |`);
+  }
+  return lines.join("\n");
 }
 
 async function resolveIngestApiConnectorName(
@@ -1159,6 +1233,49 @@ async function runJourneyAction(
         },
       ],
     };
+  }
+  if (action.implementation?.name === "make_data_usable.plan") {
+    return planKnownJourney(input, "make_data_usable", [
+      {
+        label: "Validate or create source connection",
+        tool: "data360_connect",
+        action: "connection.test",
+      },
+      {
+        label: "Land raw data through a stream or manifest",
+        tool: "data360_orchestrate",
+        action: "manifest.plan",
+      },
+      {
+        label: "Map raw data to the target model",
+        tool: "data360_harmonize",
+        action: "mapping.create",
+      },
+      {
+        label: "Verify loaded rows and mappings",
+        tool: "data360_query",
+        action: "sql.verify_rows",
+      },
+    ]);
+  }
+  if (action.implementation?.name === "agent_behavior_investigation.plan") {
+    return planKnownJourney(input, "agent_behavior_investigation", [
+      {
+        label: "Find or inspect the STDM session timeline",
+        tool: "data360_observe",
+        action: "stdm.session_timeline",
+      },
+      {
+        label: "Find recent platform error traces",
+        tool: "data360_observe",
+        action: "trace.error_traces",
+      },
+      {
+        label: "Summarize backend latency by operation",
+        tool: "data360_observe",
+        action: "trace.operation_latency_summary",
+      },
+    ]);
   }
   if (action.implementation?.name === "manifest.validate") {
     const manifest = await loadManifest(input.params ?? {});
