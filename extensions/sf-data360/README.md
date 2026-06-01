@@ -263,6 +263,7 @@ extensions/sf-data360/
     smoke.test.ts           ← unit / smoke test
     target-org.test.ts      ← unit / smoke test
     truncation.test.ts      ← unit / smoke test
+    v2-action-curation.test.ts← unit / smoke test
     v2-action-registry.test.ts← unit / smoke test
     v2-auth-sessions-cleanup.test.ts← unit / smoke test
     v2-dispatcher.test.ts   ← unit / smoke test

@@ -123,7 +123,7 @@
   },
   {
     "tool": "data360_activate",
-    "action": "activation.list.activation_list",
+    "action": "activation.list.compat",
     "phase": "act",
     "family": "Activation",
     "capability": "d360_activation_list",
@@ -150,20 +150,7 @@
   },
   {
     "tool": "data360_activate",
-    "action": "data_action.list",
-    "phase": "act",
-    "family": "Transforms and Actions",
-    "capability": "d360_data_actions_list",
-    "description": "List Data 360 data actions.",
-    "safety": "read",
-    "requiredParams": [],
-    "optionalParams": ["limit", "offset"],
-    "endpoint": { "method": "GET", "path": "/ssot/data-actions" },
-    "aliases": ["d360_data_actions_list"]
-  },
-  {
-    "tool": "data360_activate",
-    "action": "dataaction_target.create",
+    "action": "data_action_target.create",
     "phase": "act",
     "family": "DataAction",
     "capability": "d360_dataaction_target_create",
@@ -177,7 +164,7 @@
   },
   {
     "tool": "data360_activate",
-    "action": "dataaction_target.delete",
+    "action": "data_action_target.delete",
     "phase": "act",
     "family": "DataAction",
     "capability": "d360_dataaction_target_delete",
@@ -191,7 +178,7 @@
   },
   {
     "tool": "data360_activate",
-    "action": "dataaction_target.get",
+    "action": "data_action_target.get",
     "phase": "act",
     "family": "DataAction",
     "capability": "d360_dataaction_target_get",
@@ -204,7 +191,7 @@
   },
   {
     "tool": "data360_activate",
-    "action": "dataaction_target.list",
+    "action": "data_action_target.list",
     "phase": "act",
     "family": "DataAction",
     "capability": "d360_dataaction_target_list",
@@ -217,7 +204,7 @@
   },
   {
     "tool": "data360_activate",
-    "action": "dataaction_target.update",
+    "action": "data_action_target.update",
     "phase": "act",
     "family": "DataAction",
     "capability": "d360_dataaction_target_update",
@@ -231,7 +218,7 @@
   },
   {
     "tool": "data360_activate",
-    "action": "dataaction.create",
+    "action": "data_action.create",
     "phase": "act",
     "family": "DataAction",
     "capability": "d360_dataaction_create",
@@ -245,7 +232,7 @@
   },
   {
     "tool": "data360_activate",
-    "action": "dataaction.delete",
+    "action": "data_action.delete",
     "phase": "act",
     "family": "DataAction",
     "capability": "d360_dataaction_delete",
@@ -259,7 +246,7 @@
   },
   {
     "tool": "data360_activate",
-    "action": "dataaction.get",
+    "action": "data_action.get",
     "phase": "act",
     "family": "DataAction",
     "capability": "d360_dataaction_get",
@@ -272,7 +259,7 @@
   },
   {
     "tool": "data360_activate",
-    "action": "dataaction.list",
+    "action": "data_action.list",
     "phase": "act",
     "family": "DataAction",
     "capability": "d360_dataaction_list",
@@ -282,6 +269,19 @@
     "optionalParams": ["limit", "offset"],
     "endpoint": { "method": "GET", "path": "/ssot/data-actions" },
     "aliases": ["d360_dataaction_list"]
+  },
+  {
+    "tool": "data360_activate",
+    "action": "data_action.list.catalog",
+    "phase": "act",
+    "family": "Transforms and Actions",
+    "capability": "d360_data_actions_list",
+    "description": "List Data 360 data actions.",
+    "safety": "read",
+    "requiredParams": [],
+    "optionalParams": ["limit", "offset"],
+    "endpoint": { "method": "GET", "path": "/ssot/data-actions" },
+    "aliases": ["d360_data_actions_list"]
   },
   {
     "tool": "data360_connect",
@@ -2146,19 +2146,6 @@
   },
   {
     "tool": "data360_segment",
-    "action": "ci_run.status",
-    "phase": "segment",
-    "family": "Calculated Insights",
-    "capability": "d360_ci_run_status",
-    "description": "Get calculated insight run status.",
-    "safety": "read",
-    "requiredParams": ["ciName"],
-    "optionalParams": [],
-    "endpoint": { "method": "GET", "path": "/ssot/calculated-insights/{ciName}/actions/run" },
-    "aliases": ["d360_ci_run_status"]
-  },
-  {
-    "tool": "data360_segment",
     "action": "ci.create",
     "phase": "segment",
     "family": "Calculated Insights",
@@ -2241,7 +2228,7 @@
   },
   {
     "tool": "data360_segment",
-    "action": "ci.list.ci_list",
+    "action": "ci.list.compat",
     "phase": "segment",
     "family": "Calculated Insights",
     "capability": "d360_ci_list",
@@ -2265,6 +2252,19 @@
     "endpoint": { "method": "POST", "path": "/ssot/calculated-insights/{ciName}/actions/run" },
     "aliases": ["d360_ci_run"],
     "tips": "Run after validating and creating/enabling the calculated insight. Use dry_run first; execution can consume compute and update downstream results."
+  },
+  {
+    "tool": "data360_segment",
+    "action": "ci.run.status",
+    "phase": "segment",
+    "family": "Calculated Insights",
+    "capability": "d360_ci_run_status",
+    "description": "Get calculated insight run status.",
+    "safety": "read",
+    "requiredParams": ["ciName"],
+    "optionalParams": [],
+    "endpoint": { "method": "GET", "path": "/ssot/calculated-insights/{ciName}/actions/run" },
+    "aliases": ["d360_ci_run_status"]
   },
   {
     "tool": "data360_segment",
@@ -2364,7 +2364,7 @@
   },
   {
     "tool": "data360_segment",
-    "action": "segment.list.segment_list",
+    "action": "segment.list.compat",
     "phase": "segment",
     "family": "Segment",
     "capability": "d360_segment_list",
@@ -2419,7 +2419,7 @@
   },
   {
     "tool": "data360_semantic",
-    "action": "retriever_config.create",
+    "action": "retriever.config.create",
     "phase": "semantic",
     "family": "Semantic Retrieval",
     "capability": "d360_retriever_config_create",
@@ -2436,7 +2436,7 @@
   },
   {
     "tool": "data360_semantic",
-    "action": "retriever_config.delete",
+    "action": "retriever.config.delete",
     "phase": "semantic",
     "family": "Semantic Retrieval",
     "capability": "d360_retriever_config_delete",
@@ -2453,7 +2453,7 @@
   },
   {
     "tool": "data360_semantic",
-    "action": "retriever_config.get",
+    "action": "retriever.config.get",
     "phase": "semantic",
     "family": "Semantic Retrieval",
     "capability": "d360_retriever_config_get",
@@ -2469,7 +2469,7 @@
   },
   {
     "tool": "data360_semantic",
-    "action": "retriever_config.list",
+    "action": "retriever.config.list",
     "phase": "semantic",
     "family": "Semantic Retrieval",
     "capability": "d360_retriever_config_list",
@@ -2485,7 +2485,7 @@
   },
   {
     "tool": "data360_semantic",
-    "action": "retriever_config.update",
+    "action": "retriever.config.update",
     "phase": "semantic",
     "family": "Semantic Retrieval",
     "capability": "d360_retriever_config_update",
@@ -2570,7 +2570,7 @@
   },
   {
     "tool": "data360_semantic",
-    "action": "retriever.list.retriever_list",
+    "action": "retriever.list.compat",
     "phase": "semantic",
     "family": "Semantic Retrieval",
     "capability": "d360_retriever_list",
@@ -2608,616 +2608,6 @@
     },
     "aliases": ["d360_retriever_update"],
     "tips": "Use dry_run first; updates change retriever metadata used by downstream RAG flows."
-  },
-  {
-    "tool": "data360_semantic",
-    "action": "sdm_calc_dim.create",
-    "phase": "semantic",
-    "family": "Semantic Retrieval",
-    "capability": "d360_sdm_calc_dim_create",
-    "description": "Create a calculated dimension in a semantic data model.",
-    "safety": "confirmed",
-    "requiredParams": ["modelApiNameOrId", "body"],
-    "optionalParams": ["dataspace"],
-    "endpoint": {
-      "method": "POST",
-      "path": "/ssot/semantic/models/{modelApiNameOrId}/calculated-dimensions"
-    },
-    "aliases": ["d360_sdm_calc_dim_create"],
-    "tips": "Use [DataObject].[Field] formula syntax and dry-run before execution."
-  },
-  {
-    "tool": "data360_semantic",
-    "action": "sdm_calc_dim.delete",
-    "phase": "semantic",
-    "family": "Semantic Retrieval",
-    "capability": "d360_sdm_calc_dim_delete",
-    "description": "Delete a calculated dimension from a semantic data model.",
-    "safety": "destructive",
-    "requiredParams": ["modelApiNameOrId", "calculatedDimensionId"],
-    "optionalParams": ["dataspace"],
-    "endpoint": {
-      "method": "DELETE",
-      "path": "/ssot/semantic/models/{modelApiNameOrId}/calculated-dimensions/{calculatedDimensionId}"
-    },
-    "aliases": ["d360_sdm_calc_dim_delete"],
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
-  },
-  {
-    "tool": "data360_semantic",
-    "action": "sdm_calc_dim.get",
-    "phase": "semantic",
-    "family": "Semantic Retrieval",
-    "capability": "d360_sdm_calc_dim_get",
-    "description": "Get a calculated dimension from a semantic data model.",
-    "safety": "read",
-    "requiredParams": ["modelApiNameOrId", "calculatedDimensionId"],
-    "optionalParams": ["dataspace"],
-    "endpoint": {
-      "method": "GET",
-      "path": "/ssot/semantic/models/{modelApiNameOrId}/calculated-dimensions/{calculatedDimensionId}"
-    },
-    "aliases": ["d360_sdm_calc_dim_get"]
-  },
-  {
-    "tool": "data360_semantic",
-    "action": "sdm_calc_dim.update",
-    "phase": "semantic",
-    "family": "Semantic Retrieval",
-    "capability": "d360_sdm_calc_dim_update",
-    "description": "Update a calculated dimension in a semantic data model.",
-    "safety": "confirmed",
-    "requiredParams": ["modelApiNameOrId", "calculatedDimensionId", "body"],
-    "optionalParams": ["dataspace"],
-    "endpoint": {
-      "method": "PATCH",
-      "path": "/ssot/semantic/models/{modelApiNameOrId}/calculated-dimensions/{calculatedDimensionId}"
-    },
-    "aliases": ["d360_sdm_calc_dim_update"],
-    "tips": "Dry-run first and validate formula syntax with supported formula metadata."
-  },
-  {
-    "tool": "data360_semantic",
-    "action": "sdm_calc_dims.list",
-    "phase": "semantic",
-    "family": "Semantic Retrieval",
-    "capability": "d360_sdm_calc_dims_list",
-    "description": "List calculated dimensions in a semantic data model.",
-    "safety": "read",
-    "requiredParams": ["modelApiNameOrId"],
-    "optionalParams": ["dataspace"],
-    "endpoint": {
-      "method": "GET",
-      "path": "/ssot/semantic/models/{modelApiNameOrId}/calculated-dimensions"
-    },
-    "aliases": ["d360_sdm_calc_dims_list"]
-  },
-  {
-    "tool": "data360_semantic",
-    "action": "sdm_calc_measure.create",
-    "phase": "semantic",
-    "family": "Semantic Retrieval",
-    "capability": "d360_sdm_calc_measure_create",
-    "description": "Create a calculated measurement in a semantic data model.",
-    "safety": "confirmed",
-    "requiredParams": ["modelApiNameOrId", "body"],
-    "optionalParams": ["dataspace"],
-    "endpoint": {
-      "method": "POST",
-      "path": "/ssot/semantic/models/{modelApiNameOrId}/calculated-measurements"
-    },
-    "aliases": ["d360_sdm_calc_measure_create"],
-    "tips": "Use aggregationType UserAgg for aggregate formulas and dry-run before execution."
-  },
-  {
-    "tool": "data360_semantic",
-    "action": "sdm_calc_measure.delete",
-    "phase": "semantic",
-    "family": "Semantic Retrieval",
-    "capability": "d360_sdm_calc_measure_delete",
-    "description": "Delete a calculated measurement from a semantic data model.",
-    "safety": "destructive",
-    "requiredParams": ["modelApiNameOrId", "calculatedMeasureId"],
-    "optionalParams": ["dataspace"],
-    "endpoint": {
-      "method": "DELETE",
-      "path": "/ssot/semantic/models/{modelApiNameOrId}/calculated-measurements/{calculatedMeasureId}"
-    },
-    "aliases": ["d360_sdm_calc_measure_delete"],
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
-  },
-  {
-    "tool": "data360_semantic",
-    "action": "sdm_calc_measure.get",
-    "phase": "semantic",
-    "family": "Semantic Retrieval",
-    "capability": "d360_sdm_calc_measure_get",
-    "description": "Get a calculated measurement from a semantic data model.",
-    "safety": "read",
-    "requiredParams": ["modelApiNameOrId", "calculatedMeasureId"],
-    "optionalParams": ["dataspace"],
-    "endpoint": {
-      "method": "GET",
-      "path": "/ssot/semantic/models/{modelApiNameOrId}/calculated-measurements/{calculatedMeasureId}"
-    },
-    "aliases": ["d360_sdm_calc_measure_get"]
-  },
-  {
-    "tool": "data360_semantic",
-    "action": "sdm_calc_measure.update",
-    "phase": "semantic",
-    "family": "Semantic Retrieval",
-    "capability": "d360_sdm_calc_measure_update",
-    "description": "Update a calculated measurement in a semantic data model.",
-    "safety": "confirmed",
-    "requiredParams": ["modelApiNameOrId", "calculatedMeasureId", "body"],
-    "optionalParams": ["dataspace"],
-    "endpoint": {
-      "method": "PATCH",
-      "path": "/ssot/semantic/models/{modelApiNameOrId}/calculated-measurements/{calculatedMeasureId}"
-    },
-    "aliases": ["d360_sdm_calc_measure_update"],
-    "tips": "Dry-run first and verify downstream metrics or semantic queries that reference the measure."
-  },
-  {
-    "tool": "data360_semantic",
-    "action": "sdm_calc_measures.list",
-    "phase": "semantic",
-    "family": "Semantic Retrieval",
-    "capability": "d360_sdm_calc_measures_list",
-    "description": "List calculated measurements in a semantic data model.",
-    "safety": "read",
-    "requiredParams": ["modelApiNameOrId"],
-    "optionalParams": ["dataspace"],
-    "endpoint": {
-      "method": "GET",
-      "path": "/ssot/semantic/models/{modelApiNameOrId}/calculated-measurements"
-    },
-    "aliases": ["d360_sdm_calc_measures_list"]
-  },
-  {
-    "tool": "data360_semantic",
-    "action": "sdm_data_object.create",
-    "phase": "semantic",
-    "family": "Semantic Retrieval",
-    "capability": "d360_sdm_data_object_create",
-    "description": "Add a data object to a semantic data model.",
-    "safety": "confirmed",
-    "requiredParams": ["modelApiNameOrId", "body"],
-    "optionalParams": ["dataspace"],
-    "endpoint": {
-      "method": "POST",
-      "path": "/ssot/semantic/models/{modelApiNameOrId}/data-objects"
-    },
-    "aliases": ["d360_sdm_data_object_create"],
-    "tips": "Verify the DMO, DLO, or CIO exists first. Use dataObjectType Dmo, Dlo, or Cio. Dry-run before execution."
-  },
-  {
-    "tool": "data360_semantic",
-    "action": "sdm_data_object.delete",
-    "phase": "semantic",
-    "family": "Semantic Retrieval",
-    "capability": "d360_sdm_data_object_delete",
-    "description": "Delete a data object from a semantic data model.",
-    "safety": "destructive",
-    "requiredParams": ["modelApiNameOrId", "dataObjectNameOrId"],
-    "optionalParams": ["dataspace"],
-    "endpoint": {
-      "method": "DELETE",
-      "path": "/ssot/semantic/models/{modelApiNameOrId}/data-objects/{dataObjectNameOrId}"
-    },
-    "aliases": ["d360_sdm_data_object_delete"],
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
-  },
-  {
-    "tool": "data360_semantic",
-    "action": "sdm_data_object.get",
-    "phase": "semantic",
-    "family": "Semantic Retrieval",
-    "capability": "d360_sdm_data_object_get",
-    "description": "Get a data object from a semantic data model.",
-    "safety": "read",
-    "requiredParams": ["modelApiNameOrId", "dataObjectNameOrId"],
-    "optionalParams": ["dataspace"],
-    "endpoint": {
-      "method": "GET",
-      "path": "/ssot/semantic/models/{modelApiNameOrId}/data-objects/{dataObjectNameOrId}"
-    },
-    "aliases": ["d360_sdm_data_object_get"]
-  },
-  {
-    "tool": "data360_semantic",
-    "action": "sdm_data_object.update",
-    "phase": "semantic",
-    "family": "Semantic Retrieval",
-    "capability": "d360_sdm_data_object_update",
-    "description": "Update a data object in a semantic data model.",
-    "safety": "confirmed",
-    "requiredParams": ["modelApiNameOrId", "dataObjectNameOrId", "body"],
-    "optionalParams": ["dataspace"],
-    "endpoint": {
-      "method": "PATCH",
-      "path": "/ssot/semantic/models/{modelApiNameOrId}/data-objects/{dataObjectNameOrId}"
-    },
-    "aliases": ["d360_sdm_data_object_update"],
-    "tips": "Use dry_run first; changing a semantic data object can affect dimensions, measurements, relationships, and queries."
-  },
-  {
-    "tool": "data360_semantic",
-    "action": "sdm_data_objects.list",
-    "phase": "semantic",
-    "family": "Semantic Retrieval",
-    "capability": "d360_sdm_data_objects_list",
-    "description": "List data objects in a semantic data model.",
-    "safety": "read",
-    "requiredParams": ["modelApiNameOrId"],
-    "optionalParams": ["dataspace"],
-    "endpoint": {
-      "method": "GET",
-      "path": "/ssot/semantic/models/{modelApiNameOrId}/data-objects"
-    },
-    "aliases": ["d360_sdm_data_objects_list"]
-  },
-  {
-    "tool": "data360_semantic",
-    "action": "sdm_dimensions.list",
-    "phase": "semantic",
-    "family": "Semantic Retrieval",
-    "capability": "d360_sdm_dimensions_list",
-    "description": "List dimensions for a semantic data object.",
-    "safety": "read",
-    "requiredParams": ["modelApiNameOrId", "dataObjectNameOrId"],
-    "optionalParams": ["dataspace"],
-    "endpoint": {
-      "method": "GET",
-      "path": "/ssot/semantic/models/{modelApiNameOrId}/data-objects/{dataObjectNameOrId}/dimensions"
-    },
-    "aliases": ["d360_sdm_dimensions_list"]
-  },
-  {
-    "tool": "data360_semantic",
-    "action": "sdm_formula.metadata",
-    "phase": "semantic",
-    "family": "Semantic Retrieval",
-    "capability": "d360_sdm_formula_metadata",
-    "description": "Get supported formula metadata for semantic data models.",
-    "safety": "read",
-    "requiredParams": [],
-    "optionalParams": ["modelApiNameOrId"],
-    "endpoint": { "method": "GET", "path": "/ssot/semantic/models/formula-metadata" },
-    "aliases": ["d360_sdm_formula_metadata"]
-  },
-  {
-    "tool": "data360_semantic",
-    "action": "sdm_measurements.list",
-    "phase": "semantic",
-    "family": "Semantic Retrieval",
-    "capability": "d360_sdm_measurements_list",
-    "description": "List measurements for a semantic data object.",
-    "safety": "read",
-    "requiredParams": ["modelApiNameOrId", "dataObjectNameOrId"],
-    "optionalParams": ["dataspace"],
-    "endpoint": {
-      "method": "GET",
-      "path": "/ssot/semantic/models/{modelApiNameOrId}/data-objects/{dataObjectNameOrId}/measurements"
-    },
-    "aliases": ["d360_sdm_measurements_list"]
-  },
-  {
-    "tool": "data360_semantic",
-    "action": "sdm_metric.create",
-    "phase": "semantic",
-    "family": "Semantic Retrieval",
-    "capability": "d360_sdm_metric_create",
-    "description": "Create a metric in a semantic data model.",
-    "safety": "confirmed",
-    "requiredParams": ["modelApiNameOrId", "body"],
-    "optionalParams": ["dataspace"],
-    "endpoint": { "method": "POST", "path": "/ssot/semantic/models/{modelApiNameOrId}/metrics" },
-    "aliases": ["d360_sdm_metric_create"],
-    "tips": "Verify the metric definition JSON and dry-run before execution."
-  },
-  {
-    "tool": "data360_semantic",
-    "action": "sdm_metric.delete",
-    "phase": "semantic",
-    "family": "Semantic Retrieval",
-    "capability": "d360_sdm_metric_delete",
-    "description": "Delete a metric from a semantic data model.",
-    "safety": "destructive",
-    "requiredParams": ["modelApiNameOrId", "metricNameOrId"],
-    "optionalParams": ["dataspace"],
-    "endpoint": {
-      "method": "DELETE",
-      "path": "/ssot/semantic/models/{modelApiNameOrId}/metrics/{metricNameOrId}"
-    },
-    "aliases": ["d360_sdm_metric_delete"],
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
-  },
-  {
-    "tool": "data360_semantic",
-    "action": "sdm_metric.get",
-    "phase": "semantic",
-    "family": "Semantic Retrieval",
-    "capability": "d360_sdm_metric_get",
-    "description": "Get a metric from a semantic data model.",
-    "safety": "read",
-    "requiredParams": ["modelApiNameOrId", "metricNameOrId"],
-    "optionalParams": ["dataspace"],
-    "endpoint": {
-      "method": "GET",
-      "path": "/ssot/semantic/models/{modelApiNameOrId}/metrics/{metricNameOrId}"
-    },
-    "aliases": ["d360_sdm_metric_get"]
-  },
-  {
-    "tool": "data360_semantic",
-    "action": "sdm_metric.update",
-    "phase": "semantic",
-    "family": "Semantic Retrieval",
-    "capability": "d360_sdm_metric_update",
-    "description": "Update a metric in a semantic data model.",
-    "safety": "confirmed",
-    "requiredParams": ["modelApiNameOrId", "metricNameOrId", "body"],
-    "optionalParams": ["dataspace"],
-    "endpoint": {
-      "method": "PUT",
-      "path": "/ssot/semantic/models/{modelApiNameOrId}/metrics/{metricNameOrId}"
-    },
-    "aliases": ["d360_sdm_metric_update"],
-    "tips": "Dry-run first; metric changes can affect BI and semantic query consumers."
-  },
-  {
-    "tool": "data360_semantic",
-    "action": "sdm_metrics.list",
-    "phase": "semantic",
-    "family": "Semantic Retrieval",
-    "capability": "d360_sdm_metrics_list",
-    "description": "List metrics in a semantic data model.",
-    "safety": "read",
-    "requiredParams": ["modelApiNameOrId"],
-    "optionalParams": ["dataspace"],
-    "endpoint": { "method": "GET", "path": "/ssot/semantic/models/{modelApiNameOrId}/metrics" },
-    "aliases": ["d360_sdm_metrics_list"]
-  },
-  {
-    "tool": "data360_semantic",
-    "action": "sdm_permissions",
-    "phase": "semantic",
-    "family": "Semantic Retrieval",
-    "capability": "d360_sdm_permissions",
-    "description": "Get semantic data model permissions.",
-    "safety": "read",
-    "requiredParams": [],
-    "optionalParams": [],
-    "endpoint": { "method": "GET", "path": "/ssot/semantic/permissions" },
-    "aliases": ["d360_sdm_permissions"]
-  },
-  {
-    "tool": "data360_semantic",
-    "action": "sdm_relationship.create",
-    "phase": "semantic",
-    "family": "Semantic Retrieval",
-    "capability": "d360_sdm_relationship_create",
-    "description": "Create a relationship between semantic data objects.",
-    "safety": "confirmed",
-    "requiredParams": ["modelApiNameOrId", "body"],
-    "optionalParams": ["dataspace"],
-    "endpoint": {
-      "method": "POST",
-      "path": "/ssot/semantic/models/{modelApiNameOrId}/relationships"
-    },
-    "aliases": ["d360_sdm_relationship_create"],
-    "tips": "Use semantic field API names from data object list output, not raw DMO field names. Dry-run before execution."
-  },
-  {
-    "tool": "data360_semantic",
-    "action": "sdm_relationship.delete",
-    "phase": "semantic",
-    "family": "Semantic Retrieval",
-    "capability": "d360_sdm_relationship_delete",
-    "description": "Delete a relationship from a semantic data model.",
-    "safety": "destructive",
-    "requiredParams": ["modelApiNameOrId", "relationshipId"],
-    "optionalParams": ["dataspace"],
-    "endpoint": {
-      "method": "DELETE",
-      "path": "/ssot/semantic/models/{modelApiNameOrId}/relationships/{relationshipId}"
-    },
-    "aliases": ["d360_sdm_relationship_delete"],
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
-  },
-  {
-    "tool": "data360_semantic",
-    "action": "sdm_relationship.get",
-    "phase": "semantic",
-    "family": "Semantic Retrieval",
-    "capability": "d360_sdm_relationship_get",
-    "description": "Get a relationship from a semantic data model.",
-    "safety": "read",
-    "requiredParams": ["modelApiNameOrId", "relationshipId"],
-    "optionalParams": ["dataspace"],
-    "endpoint": {
-      "method": "GET",
-      "path": "/ssot/semantic/models/{modelApiNameOrId}/relationships/{relationshipId}"
-    },
-    "aliases": ["d360_sdm_relationship_get"]
-  },
-  {
-    "tool": "data360_semantic",
-    "action": "sdm_relationship.update",
-    "phase": "semantic",
-    "family": "Semantic Retrieval",
-    "capability": "d360_sdm_relationship_update",
-    "description": "Update a relationship in a semantic data model.",
-    "safety": "confirmed",
-    "requiredParams": ["modelApiNameOrId", "relationshipId", "body"],
-    "optionalParams": ["dataspace"],
-    "endpoint": {
-      "method": "PATCH",
-      "path": "/ssot/semantic/models/{modelApiNameOrId}/relationships/{relationshipId}"
-    },
-    "aliases": ["d360_sdm_relationship_update"],
-    "tips": "Dry-run first; relationship changes affect joins and semantic query results."
-  },
-  {
-    "tool": "data360_semantic",
-    "action": "sdm_relationships.list",
-    "phase": "semantic",
-    "family": "Semantic Retrieval",
-    "capability": "d360_sdm_relationships_list",
-    "description": "List relationships in a semantic data model.",
-    "safety": "read",
-    "requiredParams": ["modelApiNameOrId"],
-    "optionalParams": ["dataspace"],
-    "endpoint": {
-      "method": "GET",
-      "path": "/ssot/semantic/models/{modelApiNameOrId}/relationships"
-    },
-    "aliases": ["d360_sdm_relationships_list"]
-  },
-  {
-    "tool": "data360_semantic",
-    "action": "sdm.clone",
-    "phase": "semantic",
-    "family": "Semantic Retrieval",
-    "capability": "d360_sdm_clone",
-    "description": "Clone a semantic data model.",
-    "safety": "confirmed",
-    "requiredParams": ["modelApiNameOrId", "body"],
-    "optionalParams": ["dataspace"],
-    "endpoint": { "method": "POST", "path": "/ssot/semantic/models/{modelApiNameOrId}/clone" },
-    "aliases": ["d360_sdm_clone"],
-    "tips": "Dry-run first and verify the target apiName does not collide with an existing semantic model."
-  },
-  {
-    "tool": "data360_semantic",
-    "action": "sdm.create",
-    "phase": "semantic",
-    "family": "Semantic Retrieval",
-    "capability": "d360_sdm_create",
-    "description": "Create a semantic data model shell.",
-    "safety": "confirmed",
-    "requiredParams": ["body"],
-    "optionalParams": ["dataspace"],
-    "endpoint": { "method": "POST", "path": "/ssot/semantic/models" },
-    "aliases": ["d360_sdm_create"],
-    "tips": "Create the shell first, then add data objects, relationships, calculated fields, and metrics. Use dry_run before execution."
-  },
-  {
-    "tool": "data360_semantic",
-    "action": "sdm.delete",
-    "phase": "semantic",
-    "family": "Semantic Retrieval",
-    "capability": "d360_sdm_delete",
-    "description": "Delete a semantic data model.",
-    "safety": "destructive",
-    "requiredParams": ["modelApiNameOrId"],
-    "optionalParams": ["dataspace"],
-    "endpoint": { "method": "DELETE", "path": "/ssot/semantic/models/{modelApiNameOrId}" },
-    "aliases": ["d360_sdm_delete"],
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
-  },
-  {
-    "tool": "data360_semantic",
-    "action": "sdm.dependencies",
-    "phase": "semantic",
-    "family": "Semantic Retrieval",
-    "capability": "d360_sdm_dependencies",
-    "description": "Get dependencies of a semantic data model.",
-    "safety": "read",
-    "requiredParams": ["modelApiNameOrId"],
-    "optionalParams": ["dataspace"],
-    "endpoint": {
-      "method": "GET",
-      "path": "/ssot/semantic/models/{modelApiNameOrId}/dependencies"
-    },
-    "aliases": ["d360_sdm_dependencies"]
-  },
-  {
-    "tool": "data360_semantic",
-    "action": "sdm.get",
-    "phase": "semantic",
-    "family": "Semantic Retrieval",
-    "capability": "d360_sdm_get",
-    "description": "Get a semantic data model by API name or id.",
-    "safety": "read",
-    "requiredParams": ["modelApiNameOrId"],
-    "optionalParams": ["dataspace"],
-    "endpoint": { "method": "GET", "path": "/ssot/semantic/models/{modelApiNameOrId}" },
-    "aliases": ["d360_sdm_get"]
-  },
-  {
-    "tool": "data360_semantic",
-    "action": "sdm.list",
-    "phase": "semantic",
-    "family": "Semantic Retrieval",
-    "capability": "d360_sdm_list",
-    "description": "List semantic data models.",
-    "safety": "read",
-    "requiredParams": [],
-    "optionalParams": ["dataspace", "limit", "offset"],
-    "endpoint": { "method": "GET", "path": "/ssot/semantic/models" },
-    "aliases": ["d360_sdm_list"]
-  },
-  {
-    "tool": "data360_semantic",
-    "action": "sdm.query",
-    "phase": "semantic",
-    "family": "Semantic Retrieval",
-    "capability": "d360_sdm_query",
-    "description": "Execute a semantic query through the semantic engine gateway.",
-    "safety": "safe_post",
-    "requiredParams": ["body"],
-    "optionalParams": [],
-    "endpoint": { "method": "POST", "path": "/semantic-engine/gateway" },
-    "aliases": ["d360_sdm_query"],
-    "tips": "Keep query limits small and verify semantic model ids and field expressions first."
-  },
-  {
-    "tool": "data360_semantic",
-    "action": "sdm.update",
-    "phase": "semantic",
-    "family": "Semantic Retrieval",
-    "capability": "d360_sdm_update",
-    "description": "Update a semantic data model.",
-    "safety": "confirmed",
-    "requiredParams": ["modelApiNameOrId", "body"],
-    "optionalParams": ["dataspace"],
-    "endpoint": { "method": "PATCH", "path": "/ssot/semantic/models/{modelApiNameOrId}" },
-    "aliases": ["d360_sdm_update"],
-    "tips": "Use dry_run first; model metadata changes can affect semantic queries, dashboards, and RAG retrievers."
-  },
-  {
-    "tool": "data360_semantic",
-    "action": "sdm.validate",
-    "phase": "semantic",
-    "family": "Semantic Retrieval",
-    "capability": "d360_sdm_validate",
-    "description": "Validate a semantic data model.",
-    "safety": "read",
-    "requiredParams": ["modelApiNameOrId"],
-    "optionalParams": ["dataspace"],
-    "endpoint": { "method": "GET", "path": "/ssot/semantic/models/{modelApiNameOrId}/validate" },
-    "aliases": ["d360_sdm_validate"],
-    "tips": "Use validation before semantic query or downstream BI/RAG usage."
-  },
-  {
-    "tool": "data360_semantic",
-    "action": "search_index_process_history",
-    "phase": "semantic",
-    "family": "Semantic Retrieval",
-    "capability": "d360_search_index_process_history",
-    "description": "Get process run history for a search index.",
-    "safety": "read",
-    "requiredParams": ["searchIndexApiNameOrId"],
-    "optionalParams": ["limit", "offset"],
-    "endpoint": {
-      "method": "GET",
-      "path": "/ssot/search-index/{searchIndexApiNameOrId}/process-history"
-    },
-    "aliases": ["d360_search_index_process_history"],
-    "tips": "The upstream MCP notes offset is 1-based and pagination may be unreliable."
   },
   {
     "tool": "data360_semantic",
@@ -3290,7 +2680,7 @@
   },
   {
     "tool": "data360_semantic",
-    "action": "search_index.list.search_index_list",
+    "action": "search_index.list.compat",
     "phase": "semantic",
     "family": "Semantic Retrieval",
     "capability": "d360_search_index_list",
@@ -3300,6 +2690,23 @@
     "optionalParams": ["limit", "offset"],
     "endpoint": { "method": "GET", "path": "/ssot/search-index" },
     "aliases": ["d360_search_index_list"]
+  },
+  {
+    "tool": "data360_semantic",
+    "action": "search_index.process_history",
+    "phase": "semantic",
+    "family": "Semantic Retrieval",
+    "capability": "d360_search_index_process_history",
+    "description": "Get process run history for a search index.",
+    "safety": "read",
+    "requiredParams": ["searchIndexApiNameOrId"],
+    "optionalParams": ["limit", "offset"],
+    "endpoint": {
+      "method": "GET",
+      "path": "/ssot/search-index/{searchIndexApiNameOrId}/process-history"
+    },
+    "aliases": ["d360_search_index_process_history"],
+    "tips": "The upstream MCP notes offset is 1-based and pagination may be unreliable."
   },
   {
     "tool": "data360_semantic",
@@ -3317,7 +2724,356 @@
   },
   {
     "tool": "data360_semantic",
+    "action": "semantic_model.calculated_dimension.create",
+    "phase": "semantic",
+    "family": "Semantic Retrieval",
+    "capability": "d360_sdm_calc_dim_create",
+    "description": "Create a calculated dimension in a semantic data model.",
+    "safety": "confirmed",
+    "requiredParams": ["modelApiNameOrId", "body"],
+    "optionalParams": ["dataspace"],
+    "endpoint": {
+      "method": "POST",
+      "path": "/ssot/semantic/models/{modelApiNameOrId}/calculated-dimensions"
+    },
+    "aliases": ["d360_sdm_calc_dim_create"],
+    "tips": "Use [DataObject].[Field] formula syntax and dry-run before execution."
+  },
+  {
+    "tool": "data360_semantic",
+    "action": "semantic_model.calculated_dimension.delete",
+    "phase": "semantic",
+    "family": "Semantic Retrieval",
+    "capability": "d360_sdm_calc_dim_delete",
+    "description": "Delete a calculated dimension from a semantic data model.",
+    "safety": "destructive",
+    "requiredParams": ["modelApiNameOrId", "calculatedDimensionId"],
+    "optionalParams": ["dataspace"],
+    "endpoint": {
+      "method": "DELETE",
+      "path": "/ssot/semantic/models/{modelApiNameOrId}/calculated-dimensions/{calculatedDimensionId}"
+    },
+    "aliases": ["d360_sdm_calc_dim_delete"],
+    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+  },
+  {
+    "tool": "data360_semantic",
+    "action": "semantic_model.calculated_dimension.get",
+    "phase": "semantic",
+    "family": "Semantic Retrieval",
+    "capability": "d360_sdm_calc_dim_get",
+    "description": "Get a calculated dimension from a semantic data model.",
+    "safety": "read",
+    "requiredParams": ["modelApiNameOrId", "calculatedDimensionId"],
+    "optionalParams": ["dataspace"],
+    "endpoint": {
+      "method": "GET",
+      "path": "/ssot/semantic/models/{modelApiNameOrId}/calculated-dimensions/{calculatedDimensionId}"
+    },
+    "aliases": ["d360_sdm_calc_dim_get"]
+  },
+  {
+    "tool": "data360_semantic",
+    "action": "semantic_model.calculated_dimension.list",
+    "phase": "semantic",
+    "family": "Semantic Retrieval",
+    "capability": "d360_sdm_calc_dims_list",
+    "description": "List calculated dimensions in a semantic data model.",
+    "safety": "read",
+    "requiredParams": ["modelApiNameOrId"],
+    "optionalParams": ["dataspace"],
+    "endpoint": {
+      "method": "GET",
+      "path": "/ssot/semantic/models/{modelApiNameOrId}/calculated-dimensions"
+    },
+    "aliases": ["d360_sdm_calc_dims_list"]
+  },
+  {
+    "tool": "data360_semantic",
+    "action": "semantic_model.calculated_dimension.update",
+    "phase": "semantic",
+    "family": "Semantic Retrieval",
+    "capability": "d360_sdm_calc_dim_update",
+    "description": "Update a calculated dimension in a semantic data model.",
+    "safety": "confirmed",
+    "requiredParams": ["modelApiNameOrId", "calculatedDimensionId", "body"],
+    "optionalParams": ["dataspace"],
+    "endpoint": {
+      "method": "PATCH",
+      "path": "/ssot/semantic/models/{modelApiNameOrId}/calculated-dimensions/{calculatedDimensionId}"
+    },
+    "aliases": ["d360_sdm_calc_dim_update"],
+    "tips": "Dry-run first and validate formula syntax with supported formula metadata."
+  },
+  {
+    "tool": "data360_semantic",
+    "action": "semantic_model.calculated_measure.create",
+    "phase": "semantic",
+    "family": "Semantic Retrieval",
+    "capability": "d360_sdm_calc_measure_create",
+    "description": "Create a calculated measurement in a semantic data model.",
+    "safety": "confirmed",
+    "requiredParams": ["modelApiNameOrId", "body"],
+    "optionalParams": ["dataspace"],
+    "endpoint": {
+      "method": "POST",
+      "path": "/ssot/semantic/models/{modelApiNameOrId}/calculated-measurements"
+    },
+    "aliases": ["d360_sdm_calc_measure_create"],
+    "tips": "Use aggregationType UserAgg for aggregate formulas and dry-run before execution."
+  },
+  {
+    "tool": "data360_semantic",
+    "action": "semantic_model.calculated_measure.delete",
+    "phase": "semantic",
+    "family": "Semantic Retrieval",
+    "capability": "d360_sdm_calc_measure_delete",
+    "description": "Delete a calculated measurement from a semantic data model.",
+    "safety": "destructive",
+    "requiredParams": ["modelApiNameOrId", "calculatedMeasureId"],
+    "optionalParams": ["dataspace"],
+    "endpoint": {
+      "method": "DELETE",
+      "path": "/ssot/semantic/models/{modelApiNameOrId}/calculated-measurements/{calculatedMeasureId}"
+    },
+    "aliases": ["d360_sdm_calc_measure_delete"],
+    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+  },
+  {
+    "tool": "data360_semantic",
+    "action": "semantic_model.calculated_measure.get",
+    "phase": "semantic",
+    "family": "Semantic Retrieval",
+    "capability": "d360_sdm_calc_measure_get",
+    "description": "Get a calculated measurement from a semantic data model.",
+    "safety": "read",
+    "requiredParams": ["modelApiNameOrId", "calculatedMeasureId"],
+    "optionalParams": ["dataspace"],
+    "endpoint": {
+      "method": "GET",
+      "path": "/ssot/semantic/models/{modelApiNameOrId}/calculated-measurements/{calculatedMeasureId}"
+    },
+    "aliases": ["d360_sdm_calc_measure_get"]
+  },
+  {
+    "tool": "data360_semantic",
+    "action": "semantic_model.calculated_measure.list",
+    "phase": "semantic",
+    "family": "Semantic Retrieval",
+    "capability": "d360_sdm_calc_measures_list",
+    "description": "List calculated measurements in a semantic data model.",
+    "safety": "read",
+    "requiredParams": ["modelApiNameOrId"],
+    "optionalParams": ["dataspace"],
+    "endpoint": {
+      "method": "GET",
+      "path": "/ssot/semantic/models/{modelApiNameOrId}/calculated-measurements"
+    },
+    "aliases": ["d360_sdm_calc_measures_list"]
+  },
+  {
+    "tool": "data360_semantic",
+    "action": "semantic_model.calculated_measure.update",
+    "phase": "semantic",
+    "family": "Semantic Retrieval",
+    "capability": "d360_sdm_calc_measure_update",
+    "description": "Update a calculated measurement in a semantic data model.",
+    "safety": "confirmed",
+    "requiredParams": ["modelApiNameOrId", "calculatedMeasureId", "body"],
+    "optionalParams": ["dataspace"],
+    "endpoint": {
+      "method": "PATCH",
+      "path": "/ssot/semantic/models/{modelApiNameOrId}/calculated-measurements/{calculatedMeasureId}"
+    },
+    "aliases": ["d360_sdm_calc_measure_update"],
+    "tips": "Dry-run first and verify downstream metrics or semantic queries that reference the measure."
+  },
+  {
+    "tool": "data360_semantic",
+    "action": "semantic_model.clone",
+    "phase": "semantic",
+    "family": "Semantic Retrieval",
+    "capability": "d360_sdm_clone",
+    "description": "Clone a semantic data model.",
+    "safety": "confirmed",
+    "requiredParams": ["modelApiNameOrId", "body"],
+    "optionalParams": ["dataspace"],
+    "endpoint": { "method": "POST", "path": "/ssot/semantic/models/{modelApiNameOrId}/clone" },
+    "aliases": ["d360_sdm_clone"],
+    "tips": "Dry-run first and verify the target apiName does not collide with an existing semantic model."
+  },
+  {
+    "tool": "data360_semantic",
+    "action": "semantic_model.create",
+    "phase": "semantic",
+    "family": "Semantic Retrieval",
+    "capability": "d360_sdm_create",
+    "description": "Create a semantic data model shell.",
+    "safety": "confirmed",
+    "requiredParams": ["body"],
+    "optionalParams": ["dataspace"],
+    "endpoint": { "method": "POST", "path": "/ssot/semantic/models" },
+    "aliases": ["d360_sdm_create"],
+    "tips": "Create the shell first, then add data objects, relationships, calculated fields, and metrics. Use dry_run before execution."
+  },
+  {
+    "tool": "data360_semantic",
+    "action": "semantic_model.data_object.create",
+    "phase": "semantic",
+    "family": "Semantic Retrieval",
+    "capability": "d360_sdm_data_object_create",
+    "description": "Add a data object to a semantic data model.",
+    "safety": "confirmed",
+    "requiredParams": ["modelApiNameOrId", "body"],
+    "optionalParams": ["dataspace"],
+    "endpoint": {
+      "method": "POST",
+      "path": "/ssot/semantic/models/{modelApiNameOrId}/data-objects"
+    },
+    "aliases": ["d360_sdm_data_object_create"],
+    "tips": "Verify the DMO, DLO, or CIO exists first. Use dataObjectType Dmo, Dlo, or Cio. Dry-run before execution."
+  },
+  {
+    "tool": "data360_semantic",
+    "action": "semantic_model.data_object.delete",
+    "phase": "semantic",
+    "family": "Semantic Retrieval",
+    "capability": "d360_sdm_data_object_delete",
+    "description": "Delete a data object from a semantic data model.",
+    "safety": "destructive",
+    "requiredParams": ["modelApiNameOrId", "dataObjectNameOrId"],
+    "optionalParams": ["dataspace"],
+    "endpoint": {
+      "method": "DELETE",
+      "path": "/ssot/semantic/models/{modelApiNameOrId}/data-objects/{dataObjectNameOrId}"
+    },
+    "aliases": ["d360_sdm_data_object_delete"],
+    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+  },
+  {
+    "tool": "data360_semantic",
+    "action": "semantic_model.data_object.get",
+    "phase": "semantic",
+    "family": "Semantic Retrieval",
+    "capability": "d360_sdm_data_object_get",
+    "description": "Get a data object from a semantic data model.",
+    "safety": "read",
+    "requiredParams": ["modelApiNameOrId", "dataObjectNameOrId"],
+    "optionalParams": ["dataspace"],
+    "endpoint": {
+      "method": "GET",
+      "path": "/ssot/semantic/models/{modelApiNameOrId}/data-objects/{dataObjectNameOrId}"
+    },
+    "aliases": ["d360_sdm_data_object_get"]
+  },
+  {
+    "tool": "data360_semantic",
+    "action": "semantic_model.data_object.list",
+    "phase": "semantic",
+    "family": "Semantic Retrieval",
+    "capability": "d360_sdm_data_objects_list",
+    "description": "List data objects in a semantic data model.",
+    "safety": "read",
+    "requiredParams": ["modelApiNameOrId"],
+    "optionalParams": ["dataspace"],
+    "endpoint": {
+      "method": "GET",
+      "path": "/ssot/semantic/models/{modelApiNameOrId}/data-objects"
+    },
+    "aliases": ["d360_sdm_data_objects_list"]
+  },
+  {
+    "tool": "data360_semantic",
+    "action": "semantic_model.data_object.update",
+    "phase": "semantic",
+    "family": "Semantic Retrieval",
+    "capability": "d360_sdm_data_object_update",
+    "description": "Update a data object in a semantic data model.",
+    "safety": "confirmed",
+    "requiredParams": ["modelApiNameOrId", "dataObjectNameOrId", "body"],
+    "optionalParams": ["dataspace"],
+    "endpoint": {
+      "method": "PATCH",
+      "path": "/ssot/semantic/models/{modelApiNameOrId}/data-objects/{dataObjectNameOrId}"
+    },
+    "aliases": ["d360_sdm_data_object_update"],
+    "tips": "Use dry_run first; changing a semantic data object can affect dimensions, measurements, relationships, and queries."
+  },
+  {
+    "tool": "data360_semantic",
+    "action": "semantic_model.delete",
+    "phase": "semantic",
+    "family": "Semantic Retrieval",
+    "capability": "d360_sdm_delete",
+    "description": "Delete a semantic data model.",
+    "safety": "destructive",
+    "requiredParams": ["modelApiNameOrId"],
+    "optionalParams": ["dataspace"],
+    "endpoint": { "method": "DELETE", "path": "/ssot/semantic/models/{modelApiNameOrId}" },
+    "aliases": ["d360_sdm_delete"],
+    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+  },
+  {
+    "tool": "data360_semantic",
+    "action": "semantic_model.dependencies",
+    "phase": "semantic",
+    "family": "Semantic Retrieval",
+    "capability": "d360_sdm_dependencies",
+    "description": "Get dependencies of a semantic data model.",
+    "safety": "read",
+    "requiredParams": ["modelApiNameOrId"],
+    "optionalParams": ["dataspace"],
+    "endpoint": {
+      "method": "GET",
+      "path": "/ssot/semantic/models/{modelApiNameOrId}/dependencies"
+    },
+    "aliases": ["d360_sdm_dependencies"]
+  },
+  {
+    "tool": "data360_semantic",
+    "action": "semantic_model.dimension.list",
+    "phase": "semantic",
+    "family": "Semantic Retrieval",
+    "capability": "d360_sdm_dimensions_list",
+    "description": "List dimensions for a semantic data object.",
+    "safety": "read",
+    "requiredParams": ["modelApiNameOrId", "dataObjectNameOrId"],
+    "optionalParams": ["dataspace"],
+    "endpoint": {
+      "method": "GET",
+      "path": "/ssot/semantic/models/{modelApiNameOrId}/data-objects/{dataObjectNameOrId}/dimensions"
+    },
+    "aliases": ["d360_sdm_dimensions_list"]
+  },
+  {
+    "tool": "data360_semantic",
+    "action": "semantic_model.formula_metadata",
+    "phase": "semantic",
+    "family": "Semantic Retrieval",
+    "capability": "d360_sdm_formula_metadata",
+    "description": "Get supported formula metadata for semantic data models.",
+    "safety": "read",
+    "requiredParams": [],
+    "optionalParams": ["modelApiNameOrId"],
+    "endpoint": { "method": "GET", "path": "/ssot/semantic/models/formula-metadata" },
+    "aliases": ["d360_sdm_formula_metadata"]
+  },
+  {
+    "tool": "data360_semantic",
     "action": "semantic_model.get",
+    "phase": "semantic",
+    "family": "Semantic Retrieval",
+    "capability": "d360_sdm_get",
+    "description": "Get a semantic data model by API name or id.",
+    "safety": "read",
+    "requiredParams": ["modelApiNameOrId"],
+    "optionalParams": ["dataspace"],
+    "endpoint": { "method": "GET", "path": "/ssot/semantic/models/{modelApiNameOrId}" },
+    "aliases": ["d360_sdm_get"]
+  },
+  {
+    "tool": "data360_semantic",
+    "action": "semantic_model.get.catalog",
     "phase": "semantic",
     "family": "Semantic Retrieval",
     "capability": "d360_semantic_model_get",
@@ -3333,6 +3089,19 @@
     "action": "semantic_model.list",
     "phase": "semantic",
     "family": "Semantic Retrieval",
+    "capability": "d360_sdm_list",
+    "description": "List semantic data models.",
+    "safety": "read",
+    "requiredParams": [],
+    "optionalParams": ["dataspace", "limit", "offset"],
+    "endpoint": { "method": "GET", "path": "/ssot/semantic/models" },
+    "aliases": ["d360_sdm_list"]
+  },
+  {
+    "tool": "data360_semantic",
+    "action": "semantic_model.list.catalog",
+    "phase": "semantic",
+    "family": "Semantic Retrieval",
     "capability": "d360_semantic_models_list",
     "description": "List semantic data models.",
     "safety": "read",
@@ -3340,6 +3109,237 @@
     "optionalParams": ["limit", "offset"],
     "endpoint": { "method": "GET", "path": "/ssot/semantic/models" },
     "aliases": ["d360_semantic_models_list"]
+  },
+  {
+    "tool": "data360_semantic",
+    "action": "semantic_model.measurement.list",
+    "phase": "semantic",
+    "family": "Semantic Retrieval",
+    "capability": "d360_sdm_measurements_list",
+    "description": "List measurements for a semantic data object.",
+    "safety": "read",
+    "requiredParams": ["modelApiNameOrId", "dataObjectNameOrId"],
+    "optionalParams": ["dataspace"],
+    "endpoint": {
+      "method": "GET",
+      "path": "/ssot/semantic/models/{modelApiNameOrId}/data-objects/{dataObjectNameOrId}/measurements"
+    },
+    "aliases": ["d360_sdm_measurements_list"]
+  },
+  {
+    "tool": "data360_semantic",
+    "action": "semantic_model.metric.create",
+    "phase": "semantic",
+    "family": "Semantic Retrieval",
+    "capability": "d360_sdm_metric_create",
+    "description": "Create a metric in a semantic data model.",
+    "safety": "confirmed",
+    "requiredParams": ["modelApiNameOrId", "body"],
+    "optionalParams": ["dataspace"],
+    "endpoint": { "method": "POST", "path": "/ssot/semantic/models/{modelApiNameOrId}/metrics" },
+    "aliases": ["d360_sdm_metric_create"],
+    "tips": "Verify the metric definition JSON and dry-run before execution."
+  },
+  {
+    "tool": "data360_semantic",
+    "action": "semantic_model.metric.delete",
+    "phase": "semantic",
+    "family": "Semantic Retrieval",
+    "capability": "d360_sdm_metric_delete",
+    "description": "Delete a metric from a semantic data model.",
+    "safety": "destructive",
+    "requiredParams": ["modelApiNameOrId", "metricNameOrId"],
+    "optionalParams": ["dataspace"],
+    "endpoint": {
+      "method": "DELETE",
+      "path": "/ssot/semantic/models/{modelApiNameOrId}/metrics/{metricNameOrId}"
+    },
+    "aliases": ["d360_sdm_metric_delete"],
+    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+  },
+  {
+    "tool": "data360_semantic",
+    "action": "semantic_model.metric.get",
+    "phase": "semantic",
+    "family": "Semantic Retrieval",
+    "capability": "d360_sdm_metric_get",
+    "description": "Get a metric from a semantic data model.",
+    "safety": "read",
+    "requiredParams": ["modelApiNameOrId", "metricNameOrId"],
+    "optionalParams": ["dataspace"],
+    "endpoint": {
+      "method": "GET",
+      "path": "/ssot/semantic/models/{modelApiNameOrId}/metrics/{metricNameOrId}"
+    },
+    "aliases": ["d360_sdm_metric_get"]
+  },
+  {
+    "tool": "data360_semantic",
+    "action": "semantic_model.metric.list",
+    "phase": "semantic",
+    "family": "Semantic Retrieval",
+    "capability": "d360_sdm_metrics_list",
+    "description": "List metrics in a semantic data model.",
+    "safety": "read",
+    "requiredParams": ["modelApiNameOrId"],
+    "optionalParams": ["dataspace"],
+    "endpoint": { "method": "GET", "path": "/ssot/semantic/models/{modelApiNameOrId}/metrics" },
+    "aliases": ["d360_sdm_metrics_list"]
+  },
+  {
+    "tool": "data360_semantic",
+    "action": "semantic_model.metric.update",
+    "phase": "semantic",
+    "family": "Semantic Retrieval",
+    "capability": "d360_sdm_metric_update",
+    "description": "Update a metric in a semantic data model.",
+    "safety": "confirmed",
+    "requiredParams": ["modelApiNameOrId", "metricNameOrId", "body"],
+    "optionalParams": ["dataspace"],
+    "endpoint": {
+      "method": "PUT",
+      "path": "/ssot/semantic/models/{modelApiNameOrId}/metrics/{metricNameOrId}"
+    },
+    "aliases": ["d360_sdm_metric_update"],
+    "tips": "Dry-run first; metric changes can affect BI and semantic query consumers."
+  },
+  {
+    "tool": "data360_semantic",
+    "action": "semantic_model.permissions",
+    "phase": "semantic",
+    "family": "Semantic Retrieval",
+    "capability": "d360_sdm_permissions",
+    "description": "Get semantic data model permissions.",
+    "safety": "read",
+    "requiredParams": [],
+    "optionalParams": [],
+    "endpoint": { "method": "GET", "path": "/ssot/semantic/permissions" },
+    "aliases": ["d360_sdm_permissions"]
+  },
+  {
+    "tool": "data360_semantic",
+    "action": "semantic_model.query",
+    "phase": "semantic",
+    "family": "Semantic Retrieval",
+    "capability": "d360_sdm_query",
+    "description": "Execute a semantic query through the semantic engine gateway.",
+    "safety": "safe_post",
+    "requiredParams": ["body"],
+    "optionalParams": [],
+    "endpoint": { "method": "POST", "path": "/semantic-engine/gateway" },
+    "aliases": ["d360_sdm_query"],
+    "tips": "Keep query limits small and verify semantic model ids and field expressions first."
+  },
+  {
+    "tool": "data360_semantic",
+    "action": "semantic_model.query.gateway",
+    "phase": "semantic",
+    "family": "Semantic Retrieval",
+    "capability": "d360_semantic_query",
+    "description": "Execute a semantic data model query.",
+    "safety": "safe_post",
+    "requiredParams": ["body"],
+    "optionalParams": [],
+    "endpoint": { "method": "POST", "path": "/semantic-engine/gateway" },
+    "aliases": ["d360_semantic_query"],
+    "tips": "Semantic queries use /semantic-engine/gateway, not /ssot/query-sql."
+  },
+  {
+    "tool": "data360_semantic",
+    "action": "semantic_model.relationship.create",
+    "phase": "semantic",
+    "family": "Semantic Retrieval",
+    "capability": "d360_sdm_relationship_create",
+    "description": "Create a relationship between semantic data objects.",
+    "safety": "confirmed",
+    "requiredParams": ["modelApiNameOrId", "body"],
+    "optionalParams": ["dataspace"],
+    "endpoint": {
+      "method": "POST",
+      "path": "/ssot/semantic/models/{modelApiNameOrId}/relationships"
+    },
+    "aliases": ["d360_sdm_relationship_create"],
+    "tips": "Use semantic field API names from data object list output, not raw DMO field names. Dry-run before execution."
+  },
+  {
+    "tool": "data360_semantic",
+    "action": "semantic_model.relationship.delete",
+    "phase": "semantic",
+    "family": "Semantic Retrieval",
+    "capability": "d360_sdm_relationship_delete",
+    "description": "Delete a relationship from a semantic data model.",
+    "safety": "destructive",
+    "requiredParams": ["modelApiNameOrId", "relationshipId"],
+    "optionalParams": ["dataspace"],
+    "endpoint": {
+      "method": "DELETE",
+      "path": "/ssot/semantic/models/{modelApiNameOrId}/relationships/{relationshipId}"
+    },
+    "aliases": ["d360_sdm_relationship_delete"],
+    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+  },
+  {
+    "tool": "data360_semantic",
+    "action": "semantic_model.relationship.get",
+    "phase": "semantic",
+    "family": "Semantic Retrieval",
+    "capability": "d360_sdm_relationship_get",
+    "description": "Get a relationship from a semantic data model.",
+    "safety": "read",
+    "requiredParams": ["modelApiNameOrId", "relationshipId"],
+    "optionalParams": ["dataspace"],
+    "endpoint": {
+      "method": "GET",
+      "path": "/ssot/semantic/models/{modelApiNameOrId}/relationships/{relationshipId}"
+    },
+    "aliases": ["d360_sdm_relationship_get"]
+  },
+  {
+    "tool": "data360_semantic",
+    "action": "semantic_model.relationship.list",
+    "phase": "semantic",
+    "family": "Semantic Retrieval",
+    "capability": "d360_sdm_relationships_list",
+    "description": "List relationships in a semantic data model.",
+    "safety": "read",
+    "requiredParams": ["modelApiNameOrId"],
+    "optionalParams": ["dataspace"],
+    "endpoint": {
+      "method": "GET",
+      "path": "/ssot/semantic/models/{modelApiNameOrId}/relationships"
+    },
+    "aliases": ["d360_sdm_relationships_list"]
+  },
+  {
+    "tool": "data360_semantic",
+    "action": "semantic_model.relationship.update",
+    "phase": "semantic",
+    "family": "Semantic Retrieval",
+    "capability": "d360_sdm_relationship_update",
+    "description": "Update a relationship in a semantic data model.",
+    "safety": "confirmed",
+    "requiredParams": ["modelApiNameOrId", "relationshipId", "body"],
+    "optionalParams": ["dataspace"],
+    "endpoint": {
+      "method": "PATCH",
+      "path": "/ssot/semantic/models/{modelApiNameOrId}/relationships/{relationshipId}"
+    },
+    "aliases": ["d360_sdm_relationship_update"],
+    "tips": "Dry-run first; relationship changes affect joins and semantic query results."
+  },
+  {
+    "tool": "data360_semantic",
+    "action": "semantic_model.update",
+    "phase": "semantic",
+    "family": "Semantic Retrieval",
+    "capability": "d360_sdm_update",
+    "description": "Update a semantic data model.",
+    "safety": "confirmed",
+    "requiredParams": ["modelApiNameOrId", "body"],
+    "optionalParams": ["dataspace"],
+    "endpoint": { "method": "PATCH", "path": "/ssot/semantic/models/{modelApiNameOrId}" },
+    "aliases": ["d360_sdm_update"],
+    "tips": "Use dry_run first; model metadata changes can affect semantic queries, dashboards, and RAG retrievers."
   },
   {
     "tool": "data360_semantic",
@@ -3356,16 +3356,16 @@
   },
   {
     "tool": "data360_semantic",
-    "action": "semantic.query",
+    "action": "semantic_model.validate.compat",
     "phase": "semantic",
     "family": "Semantic Retrieval",
-    "capability": "d360_semantic_query",
-    "description": "Execute a semantic data model query.",
-    "safety": "safe_post",
-    "requiredParams": ["body"],
-    "optionalParams": [],
-    "endpoint": { "method": "POST", "path": "/semantic-engine/gateway" },
-    "aliases": ["d360_semantic_query"],
-    "tips": "Semantic queries use /semantic-engine/gateway, not /ssot/query-sql."
+    "capability": "d360_sdm_validate",
+    "description": "Validate a semantic data model.",
+    "safety": "read",
+    "requiredParams": ["modelApiNameOrId"],
+    "optionalParams": ["dataspace"],
+    "endpoint": { "method": "GET", "path": "/ssot/semantic/models/{modelApiNameOrId}/validate" },
+    "aliases": ["d360_sdm_validate"],
+    "tips": "Use validation before semantic query or downstream BI/RAG usage."
   }
 ]

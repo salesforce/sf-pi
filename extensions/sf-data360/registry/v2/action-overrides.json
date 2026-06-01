@@ -74,6 +74,216 @@
       "tool": "data360_query",
       "phase": "retrieve",
       "action": "insight.metadata_get"
+    },
+    "d360_dataaction_list": {
+      "action": "data_action.list"
+    },
+    "d360_dataaction_get": {
+      "action": "data_action.get"
+    },
+    "d360_dataaction_create": {
+      "action": "data_action.create"
+    },
+    "d360_dataaction_delete": {
+      "action": "data_action.delete"
+    },
+    "d360_data_actions_list": {
+      "action": "data_action.list.catalog"
+    },
+    "d360_dataaction_target_list": {
+      "action": "data_action_target.list"
+    },
+    "d360_dataaction_target_get": {
+      "action": "data_action_target.get"
+    },
+    "d360_dataaction_target_create": {
+      "action": "data_action_target.create"
+    },
+    "d360_dataaction_target_update": {
+      "action": "data_action_target.update"
+    },
+    "d360_dataaction_target_delete": {
+      "action": "data_action_target.delete"
+    },
+    "d360_activations_list": {
+      "action": "activation.list"
+    },
+    "d360_activation_list": {
+      "action": "activation.list.compat"
+    },
+    "d360_calculated_insights_list": {
+      "action": "ci.list"
+    },
+    "d360_ci_list": {
+      "action": "ci.list.compat"
+    },
+    "d360_ci_run_status": {
+      "action": "ci.run.status"
+    },
+    "d360_segments_list": {
+      "action": "segment.list"
+    },
+    "d360_segment_list": {
+      "action": "segment.list.compat"
+    },
+    "d360_sdm_list": {
+      "action": "semantic_model.list"
+    },
+    "d360_sdm_get": {
+      "action": "semantic_model.get"
+    },
+    "d360_sdm_create": {
+      "action": "semantic_model.create"
+    },
+    "d360_sdm_update": {
+      "action": "semantic_model.update"
+    },
+    "d360_sdm_delete": {
+      "action": "semantic_model.delete"
+    },
+    "d360_sdm_clone": {
+      "action": "semantic_model.clone"
+    },
+    "d360_sdm_validate": {
+      "action": "semantic_model.validate.compat"
+    },
+    "d360_semantic_models_list": {
+      "action": "semantic_model.list.catalog"
+    },
+    "d360_semantic_model_get": {
+      "action": "semantic_model.get.catalog"
+    },
+    "d360_semantic_model_validate": {
+      "action": "semantic_model.validate"
+    },
+    "d360_sdm_dependencies": {
+      "action": "semantic_model.dependencies"
+    },
+    "d360_sdm_query": {
+      "action": "semantic_model.query"
+    },
+    "d360_semantic_query": {
+      "action": "semantic_model.query.gateway"
+    },
+    "d360_sdm_formula_metadata": {
+      "action": "semantic_model.formula_metadata"
+    },
+    "d360_sdm_permissions": {
+      "action": "semantic_model.permissions"
+    },
+    "d360_sdm_data_objects_list": {
+      "action": "semantic_model.data_object.list"
+    },
+    "d360_sdm_data_object_get": {
+      "action": "semantic_model.data_object.get"
+    },
+    "d360_sdm_data_object_create": {
+      "action": "semantic_model.data_object.create"
+    },
+    "d360_sdm_data_object_update": {
+      "action": "semantic_model.data_object.update"
+    },
+    "d360_sdm_data_object_delete": {
+      "action": "semantic_model.data_object.delete"
+    },
+    "d360_sdm_dimensions_list": {
+      "action": "semantic_model.dimension.list"
+    },
+    "d360_sdm_measurements_list": {
+      "action": "semantic_model.measurement.list"
+    },
+    "d360_sdm_calc_dims_list": {
+      "action": "semantic_model.calculated_dimension.list"
+    },
+    "d360_sdm_calc_dim_get": {
+      "action": "semantic_model.calculated_dimension.get"
+    },
+    "d360_sdm_calc_dim_create": {
+      "action": "semantic_model.calculated_dimension.create"
+    },
+    "d360_sdm_calc_dim_update": {
+      "action": "semantic_model.calculated_dimension.update"
+    },
+    "d360_sdm_calc_dim_delete": {
+      "action": "semantic_model.calculated_dimension.delete"
+    },
+    "d360_sdm_calc_measures_list": {
+      "action": "semantic_model.calculated_measure.list"
+    },
+    "d360_sdm_calc_measure_get": {
+      "action": "semantic_model.calculated_measure.get"
+    },
+    "d360_sdm_calc_measure_create": {
+      "action": "semantic_model.calculated_measure.create"
+    },
+    "d360_sdm_calc_measure_update": {
+      "action": "semantic_model.calculated_measure.update"
+    },
+    "d360_sdm_calc_measure_delete": {
+      "action": "semantic_model.calculated_measure.delete"
+    },
+    "d360_sdm_metrics_list": {
+      "action": "semantic_model.metric.list"
+    },
+    "d360_sdm_metric_get": {
+      "action": "semantic_model.metric.get"
+    },
+    "d360_sdm_metric_create": {
+      "action": "semantic_model.metric.create"
+    },
+    "d360_sdm_metric_update": {
+      "action": "semantic_model.metric.update"
+    },
+    "d360_sdm_metric_delete": {
+      "action": "semantic_model.metric.delete"
+    },
+    "d360_sdm_relationships_list": {
+      "action": "semantic_model.relationship.list"
+    },
+    "d360_sdm_relationship_get": {
+      "action": "semantic_model.relationship.get"
+    },
+    "d360_sdm_relationship_create": {
+      "action": "semantic_model.relationship.create"
+    },
+    "d360_sdm_relationship_update": {
+      "action": "semantic_model.relationship.update"
+    },
+    "d360_sdm_relationship_delete": {
+      "action": "semantic_model.relationship.delete"
+    },
+    "d360_retrievers_list": {
+      "action": "retriever.list"
+    },
+    "d360_retriever_list": {
+      "action": "retriever.list.compat"
+    },
+    "d360_retriever_config_list": {
+      "action": "retriever.config.list"
+    },
+    "d360_retriever_config_get": {
+      "action": "retriever.config.get"
+    },
+    "d360_retriever_config_create": {
+      "action": "retriever.config.create"
+    },
+    "d360_retriever_config_update": {
+      "action": "retriever.config.update"
+    },
+    "d360_retriever_config_delete": {
+      "action": "retriever.config.delete"
+    },
+    "d360_search_indexes_list": {
+      "action": "search_index.list"
+    },
+    "d360_search_index_list": {
+      "action": "search_index.list.compat"
+    },
+    "d360_search_index_process_history": {
+      "action": "search_index.process_history"
+    },
+    "d360_model_artifact_list": {
+      "action": "model_artifact.list"
     }
   },
   "localActions": [
