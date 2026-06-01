@@ -831,6 +831,213 @@ function agentBehaviorReport(sections: Array<Record<string, unknown>>): string {
   ].join("\n");
 }
 
+async function planSemanticRetrievalJourney(
+  input: Data360V2Input,
+  env: SfEnvironment,
+  ctx: ExtensionContext,
+  signal: AbortSignal | undefined,
+): Promise<Record<string, unknown>> {
+  const base = planKnownJourney(input, "semantic_retrieval", semanticRetrievalSteps());
+  const [semanticModels, modelArtifacts, searchIndexConfig, retrievers] = await Promise.all([
+    preflightAction(input, env, ctx, signal, "data360_semantic", "semantic_model.list"),
+    preflightAction(input, env, ctx, signal, "data360_semantic", "model_artifact.list"),
+    preflightAction(input, env, ctx, signal, "data360_semantic", "search_index.config"),
+    preflightAction(input, env, ctx, signal, "data360_semantic", "retriever.list"),
+  ]);
+  const blockers: string[] = [];
+  const warnings: string[] = [];
+  if (modelArtifacts.ok && modelArtifacts.count === 0)
+    blockers.push("No embedding model artifacts found.");
+  if (!searchIndexConfig.ok) blockers.push("Search index configuration is unavailable.");
+  if (semanticModels.ok && semanticModels.count === 0)
+    warnings.push("No semantic models found yet.");
+  if (retrievers.ok && retrievers.count === 0) warnings.push("No retrievers found yet.");
+  return {
+    ...base,
+    readiness: blockers.length ? "blocked" : warnings.length ? "ready_with_warnings" : "ready",
+    blockers,
+    warnings,
+    recommendedFirstAction: blockers.length
+      ? { tool: "data360_semantic", action: "model_artifact.list" }
+      : { tool: "data360_semantic", action: "semantic_model.list" },
+    preflight: { semanticModels, modelArtifacts, searchIndexConfig, retrievers },
+  };
+}
+
+async function planBuildSegmentJourney(
+  input: Data360V2Input,
+  env: SfEnvironment,
+  ctx: ExtensionContext,
+  signal: AbortSignal | undefined,
+): Promise<Record<string, unknown>> {
+  const base = planKnownJourney(input, "build_segment", buildSegmentSteps());
+  const profileDmoName =
+    typeof input.params?.profileDmo === "string" ? input.params.profileDmo : undefined;
+  const [profileDmo, calculatedInsights, segments] = await Promise.all([
+    profileDmoName
+      ? preflightAction(input, env, ctx, signal, "data360_harmonize", "dmo.get", {
+          dmoName: profileDmoName,
+        })
+      : Promise.resolve({ ok: false, count: 0, summary: "No profileDmo provided" }),
+    preflightAction(input, env, ctx, signal, "data360_segment", "ci.list"),
+    preflightAction(input, env, ctx, signal, "data360_segment", "segment.list"),
+  ]);
+  const blockers: string[] = [];
+  const warnings: string[] = [];
+  if (!profileDmoName)
+    warnings.push("No profileDmo provided; choose a profile DMO before building a segment.");
+  else if (!profileDmo.ok) blockers.push(`Profile DMO ${profileDmoName} was not readable.`);
+  if (calculatedInsights.ok && calculatedInsights.count === 0)
+    warnings.push("No calculated insights found yet.");
+  if (segments.ok && segments.count === 0) warnings.push("No existing segments found yet.");
+  return {
+    ...base,
+    readiness: blockers.length ? "blocked" : warnings.length ? "ready_with_warnings" : "ready",
+    blockers,
+    warnings,
+    availableCalculatedInsights: calculatedInsights.count,
+    availableSegments: segments.count,
+    recommendedFirstAction: { tool: "data360_segment", action: "ci.validate" },
+    preflight: { profileDmo, calculatedInsights, segments },
+  };
+}
+
+async function planActivateSegmentJourney(
+  input: Data360V2Input,
+  env: SfEnvironment,
+  ctx: ExtensionContext,
+  signal: AbortSignal | undefined,
+): Promise<Record<string, unknown>> {
+  const base = planKnownJourney(input, "activate_segment", activateSegmentSteps());
+  const segmentId =
+    typeof input.params?.segmentId === "string" ? input.params.segmentId : undefined;
+  const [segment, activationTargets, activations] = await Promise.all([
+    segmentId
+      ? preflightAction(input, env, ctx, signal, "data360_segment", "segment.get", { segmentId })
+      : Promise.resolve({ ok: false, count: 0, summary: "No segmentId provided" }),
+    preflightAction(input, env, ctx, signal, "data360_activate", "activation_target.list"),
+    preflightAction(input, env, ctx, signal, "data360_activate", "activation.list"),
+  ]);
+  const blockers: string[] = [];
+  const warnings: string[] = [];
+  if (!segmentId) warnings.push("No segmentId provided; verify the segment before activation.");
+  else if (!segment.ok) blockers.push(`Segment ${segmentId} was not readable.`);
+  if (activationTargets.ok && activationTargets.count === 0)
+    blockers.push("No activation targets available.");
+  return {
+    ...base,
+    readiness: blockers.length ? "blocked" : warnings.length ? "ready_with_warnings" : "ready",
+    blockers,
+    warnings,
+    recommendedFirstAction: blockers.some((entry) => entry.includes("activation target"))
+      ? { tool: "data360_activate", action: "activation_target.create" }
+      : { tool: "data360_activate", action: "activation.create" },
+    preflight: { segment, activationTargets, activations },
+  };
+}
+
+async function preflightAction(
+  input: Data360V2Input,
+  env: SfEnvironment,
+  ctx: ExtensionContext,
+  signal: AbortSignal | undefined,
+  tool: Data360V2ToolName,
+  action: string,
+  params?: Record<string, unknown>,
+): Promise<{ ok: boolean; count: number; summary?: unknown }> {
+  const result = await runData360V2Action(
+    { tool, action, target_org: input.target_org, params },
+    env,
+    ctx,
+    signal,
+  );
+  return { ok: result.ok !== false, count: countResponseItems(result), summary: result.summary };
+}
+
+function countResponseItems(result: Record<string, unknown>): number {
+  const directCount = result.count;
+  if (typeof directCount === "number") return directCount;
+  const response = asRecord(result.response);
+  if (!response) return result.ok === false ? 0 : 1;
+  if (typeof response.totalSize === "number") return response.totalSize;
+  for (const value of Object.values(response)) {
+    if (Array.isArray(value)) return value.length;
+  }
+  return result.ok === false ? 0 : 1;
+}
+
+function semanticRetrievalSteps(): Data360V2Step[] {
+  return [
+    {
+      label: "List or choose a semantic model",
+      tool: "data360_semantic",
+      action: "semantic_model.list",
+    },
+    {
+      label: "Find embedding model artifacts",
+      tool: "data360_semantic",
+      action: "model_artifact.list",
+    },
+    {
+      label: "Inspect search index configuration options",
+      tool: "data360_semantic",
+      action: "search_index.config",
+    },
+    {
+      label: "Create or update a semantic search index",
+      tool: "data360_semantic",
+      action: "search_index.create",
+    },
+    { label: "Create retriever", tool: "data360_semantic", action: "retriever.create" },
+    {
+      label: "Create retriever configuration",
+      tool: "data360_semantic",
+      action: "retriever.config.create",
+    },
+    {
+      label: "Validate semantic model",
+      tool: "data360_semantic",
+      action: "semantic_model.validate",
+    },
+    { label: "Read retriever details", tool: "data360_semantic", action: "retriever.get" },
+  ];
+}
+
+function buildSegmentSteps(): Data360V2Step[] {
+  return [
+    { label: "Inspect profile DMO fields", tool: "data360_harmonize", action: "dmo.get" },
+    { label: "Validate calculated insight SQL", tool: "data360_segment", action: "ci.validate" },
+    { label: "Create calculated insight", tool: "data360_segment", action: "ci.create" },
+    { label: "Run calculated insight", tool: "data360_segment", action: "ci.run" },
+    {
+      label: "Check calculated insight run status",
+      tool: "data360_segment",
+      action: "ci.run.status",
+    },
+    { label: "Create segment", tool: "data360_segment", action: "segment.create" },
+    { label: "Publish segment", tool: "data360_segment", action: "segment.publish" },
+    { label: "Verify segment", tool: "data360_segment", action: "segment.get" },
+  ];
+}
+
+function activateSegmentSteps(): Data360V2Step[] {
+  return [
+    { label: "Verify segment status", tool: "data360_segment", action: "segment.get" },
+    {
+      label: "List activation targets",
+      tool: "data360_activate",
+      action: "activation_target.list",
+    },
+    {
+      label: "Create activation target if needed",
+      tool: "data360_activate",
+      action: "activation_target.create",
+    },
+    { label: "Create activation", tool: "data360_activate", action: "activation.create" },
+    { label: "Verify activation", tool: "data360_activate", action: "activation.get" },
+  ];
+}
+
 function planKnownJourney(
   input: Data360V2Input,
   journeyName: string,
@@ -1378,73 +1585,13 @@ async function runJourneyAction(
     return planKnownJourney(input, "agent_behavior_investigation", agentBehaviorSteps());
   }
   if (action.implementation?.name === "build_segment.plan") {
-    return planKnownJourney(input, "build_segment", [
-      { label: "Inspect profile DMO fields", tool: "data360_harmonize", action: "dmo.get" },
-      { label: "Validate calculated insight SQL", tool: "data360_segment", action: "ci.validate" },
-      { label: "Create calculated insight", tool: "data360_segment", action: "ci.create" },
-      { label: "Run calculated insight", tool: "data360_segment", action: "ci.run" },
-      {
-        label: "Check calculated insight run status",
-        tool: "data360_segment",
-        action: "ci.run.status",
-      },
-      { label: "Create segment", tool: "data360_segment", action: "segment.create" },
-      { label: "Publish segment", tool: "data360_segment", action: "segment.publish" },
-      { label: "Verify segment", tool: "data360_segment", action: "segment.get" },
-    ]);
+    return planBuildSegmentJourney(input, env, ctx, signal);
   }
   if (action.implementation?.name === "activate_segment.plan") {
-    return planKnownJourney(input, "activate_segment", [
-      { label: "Verify segment status", tool: "data360_segment", action: "segment.get" },
-      {
-        label: "List activation targets",
-        tool: "data360_activate",
-        action: "activation_target.list",
-      },
-      {
-        label: "Create activation target if needed",
-        tool: "data360_activate",
-        action: "activation_target.create",
-      },
-      { label: "Create activation", tool: "data360_activate", action: "activation.create" },
-      { label: "Verify activation", tool: "data360_activate", action: "activation.get" },
-    ]);
+    return planActivateSegmentJourney(input, env, ctx, signal);
   }
   if (action.implementation?.name === "semantic_retrieval.plan") {
-    return planKnownJourney(input, "semantic_retrieval", [
-      {
-        label: "List or choose a semantic model",
-        tool: "data360_semantic",
-        action: "semantic_model.list",
-      },
-      {
-        label: "Find embedding model artifacts",
-        tool: "data360_semantic",
-        action: "model_artifact.list",
-      },
-      {
-        label: "Inspect search index configuration options",
-        tool: "data360_semantic",
-        action: "search_index.config",
-      },
-      {
-        label: "Create or update a semantic search index",
-        tool: "data360_semantic",
-        action: "search_index.create",
-      },
-      { label: "Create retriever", tool: "data360_semantic", action: "retriever.create" },
-      {
-        label: "Create retriever configuration",
-        tool: "data360_semantic",
-        action: "retriever.config.create",
-      },
-      {
-        label: "Validate semantic model",
-        tool: "data360_semantic",
-        action: "semantic_model.validate",
-      },
-      { label: "Read retriever details", tool: "data360_semantic", action: "retriever.get" },
-    ]);
+    return planSemanticRetrievalJourney(input, env, ctx, signal);
   }
   if (action.implementation?.name === "agent_behavior_investigation.run") {
     return runAgentBehaviorInvestigation(input, env, ctx, signal);

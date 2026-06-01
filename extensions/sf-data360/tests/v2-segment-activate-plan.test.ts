@@ -1,6 +1,14 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const orgCreateMock = vi.fn();
+const requestMock = vi.fn();
+
+vi.mock("@salesforce/core", () => ({
+  Org: { create: (opts: unknown) => orgCreateMock(opts) },
+}));
+
+import { clearConnectionCache } from "../../../lib/common/sf-conn/connection.ts";
 import type { SfEnvironment } from "../../../lib/common/sf-environment/types.ts";
 import { runData360V2Action } from "../lib/v2/dispatcher.ts";
 
@@ -22,7 +30,23 @@ const env: SfEnvironment = {
 const ctx = { hasUI: false } as never;
 
 describe("Data 360 v2 segment and activation planning", () => {
-  it("plans segment creation and publishing without mutation", async () => {
+  beforeEach(() => {
+    clearConnectionCache();
+    requestMock.mockReset();
+    orgCreateMock.mockReset();
+    orgCreateMock.mockResolvedValue({ getConnection: () => ({ request: requestMock }) });
+  });
+
+  it("plans segment creation and publishing with DMO/CI/segment readiness", async () => {
+    requestMock.mockImplementation(async (request: { url: string }) => {
+      if (request.url.includes("/data-model-objects/"))
+        return { name: "ssot__Individual__dlm", fields: [] };
+      if (request.url.includes("/calculated-insights"))
+        return { calculatedInsights: [{ name: "Existing__cio" }] };
+      if (request.url.includes("/segments")) return { segments: [] };
+      return {};
+    });
+
     const result = await runData360V2Action(
       {
         tool: "data360_orchestrate",
@@ -40,7 +64,14 @@ describe("Data 360 v2 segment and activation planning", () => {
       action: "build_segment.plan",
       journey: "build_segment",
       phases: ["segment", "retrieve"],
-      summary: expect.stringContaining("build_segment plan resolved"),
+      readiness: "ready_with_warnings",
+      availableCalculatedInsights: 1,
+      availableSegments: 0,
+      preflight: {
+        profileDmo: { ok: true },
+        calculatedInsights: { count: 1, ok: true },
+        segments: { count: 0, ok: true },
+      },
     });
     expect(result.steps).toEqual(
       expect.arrayContaining([
@@ -56,13 +87,20 @@ describe("Data 360 v2 segment and activation planning", () => {
     );
   });
 
-  it("plans segment activation without mutation", async () => {
+  it("plans segment activation with activation target readiness", async () => {
+    requestMock.mockImplementation(async (request: { url: string }) => {
+      if (request.url.includes("/segments/")) return { id: "seg-1", status: "ACTIVE" };
+      if (request.url.includes("/activation-targets")) return { activationTargets: [] };
+      if (request.url.includes("/activations")) return { activations: [] };
+      return {};
+    });
+
     const result = await runData360V2Action(
       {
         tool: "data360_orchestrate",
         action: "activate_segment.plan",
         target_org: "AgentforceSTDM",
-        params: { segment: "High_Value_Customers", target: "Marketing Destination" },
+        params: { segmentId: "seg-1", target: "Marketing Destination" },
       },
       env,
       ctx,
@@ -74,7 +112,14 @@ describe("Data 360 v2 segment and activation planning", () => {
       action: "activate_segment.plan",
       journey: "activate_segment",
       phases: ["act", "segment"],
-      summary: expect.stringContaining("activate_segment plan resolved"),
+      readiness: "blocked",
+      blockers: expect.arrayContaining([expect.stringContaining("activation target")]),
+      recommendedFirstAction: { tool: "data360_activate", action: "activation_target.create" },
+      preflight: {
+        segment: { ok: true },
+        activationTargets: { count: 0, ok: true },
+        activations: { count: 0, ok: true },
+      },
     });
     expect(result.steps).toEqual(
       expect.arrayContaining([
