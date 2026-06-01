@@ -20,6 +20,7 @@ import {
   tenantIngestTokenExchange,
 } from "./ingest/auth.ts";
 import { planInteractivePkceAuth, runInteractivePkceAuth } from "./ingest/interactive-auth.ts";
+import { findData360Journey, getData360Journeys, planData360Intent } from "./journey-catalog.ts";
 import { loadManifest, planManifest } from "./manifest.ts";
 import { executeTenantIngestRequest, planTenantIngestRequest } from "./ingest/tenant-client.ts";
 import type { TenantIngestActionName } from "./ingest/types.ts";
@@ -1006,6 +1007,69 @@ async function runJourneyAction(
   ctx: ExtensionContext,
   signal: AbortSignal | undefined,
 ): Promise<Record<string, unknown>> {
+  if (action.implementation?.name === "journey.list") {
+    return {
+      ok: true,
+      tool: input.tool,
+      action: input.action,
+      journeys: getData360Journeys().map((journey) => ({
+        name: journey.name,
+        summary: journey.summary,
+        phases: journey.phases,
+        planAction: journey.planAction,
+        runAction: journey.runAction,
+      })),
+      summary: "Listed Data 360 outcome journeys",
+    };
+  }
+  if (action.implementation?.name === "journey.describe") {
+    const journeyName = requiredStringParam(input.params, "journey");
+    const journey = findData360Journey(journeyName);
+    if (!journey) {
+      return {
+        ok: false,
+        tool: input.tool,
+        action: input.action,
+        error: "UNKNOWN_JOURNEY",
+        summary: `Unknown Data 360 journey '${journeyName}'.`,
+        suggestions: getData360Journeys().map((entry) => entry.name),
+      };
+    }
+    return {
+      ok: true,
+      tool: input.tool,
+      action: input.action,
+      journey,
+      availableActions: journey.availableActions,
+      summary: `${journey.name}: ${journey.summary}`,
+      next_actions: journey.availableActions.slice(0, 3),
+    };
+  }
+  if (action.implementation?.name === "intent.plan") {
+    const utterance = requiredStringParam(input.params, "utterance");
+    const plan = planData360Intent(utterance);
+    return {
+      ok: true,
+      tool: input.tool,
+      action: input.action,
+      utterance,
+      recommendedJourney: plan.journey.name,
+      journey: plan.journey,
+      confidence: plan.confidence,
+      missingInputs: plan.missingInputs,
+      suggestedQuestions: plan.journey.suggestedQuestions,
+      targetTool: plan.targetTool,
+      targetAction: plan.targetAction,
+      summary: `Recommended Data 360 journey: ${plan.journey.name}`,
+      next_actions: [
+        {
+          tool: plan.targetTool,
+          action: plan.targetAction,
+          params: { journey: plan.journey.name },
+        },
+      ],
+    };
+  }
   if (action.implementation?.name === "manifest.validate") {
     const manifest = await loadManifest(input.params ?? {});
     return {

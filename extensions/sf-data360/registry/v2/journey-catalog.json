@@ -1,0 +1,137 @@
+[
+  {
+    "name": "ingest_csv",
+    "summary": "Load one or more local CSV files into Data 360 through Ingestion API streams and tenant ingest jobs.",
+    "utterances": ["load csv", "ingest csv", "upload local file", "load local data"],
+    "phases": ["connect", "prepare", "retrieve"],
+    "requiredInputs": ["sourceName", "connectionId", "csvPath", "primaryKey"],
+    "planAction": "manifest.plan",
+    "runAction": "manifest.run",
+    "verification": ["sql.verify_rows"],
+    "availableActions": [
+      { "tool": "data360_orchestrate", "action": "manifest.plan" },
+      { "tool": "data360_orchestrate", "action": "manifest.run" },
+      { "tool": "data360_prepare", "action": "csv_schema.infer" },
+      { "tool": "data360_prepare", "action": "ingest_job.create" }
+    ],
+    "suggestedQuestions": [
+      "Which CSV file or manifest should I load?",
+      "Which Ingestion API source should I use?",
+      "Which field is the primary key?"
+    ]
+  },
+  {
+    "name": "make_data_usable",
+    "summary": "Connect, land, model, map, and verify new data so it can be used by Data 360 workloads.",
+    "utterances": [
+      "make data usable",
+      "load data into data cloud",
+      "ingest and map",
+      "pull in new data"
+    ],
+    "phases": ["connect", "prepare", "harmonize", "retrieve"],
+    "requiredInputs": ["source", "primaryKey", "targetModel"],
+    "planAction": "make_data_usable.plan",
+    "runAction": "make_data_usable.run",
+    "verification": ["sql.verify_rows", "mapping.get"],
+    "availableActions": [
+      { "tool": "data360_orchestrate", "action": "manifest.plan" },
+      { "tool": "data360_connect", "action": "connection.test" },
+      { "tool": "data360_prepare", "action": "stream.create_ingest_api" },
+      { "tool": "data360_harmonize", "action": "mapping.create" },
+      { "tool": "data360_query", "action": "sql.verify_rows" }
+    ],
+    "suggestedQuestions": [
+      "Is the source local CSV, S3, Snowflake, CRM, or another connector?",
+      "Should this data land raw only or map to an existing DMO?",
+      "What is the primary key and target model?"
+    ]
+  },
+  {
+    "name": "build_segment",
+    "summary": "Create calculated insights and audience segments, then publish and verify segment status.",
+    "utterances": ["build audience", "create segment", "publish segment", "target group"],
+    "phases": ["segment", "retrieve"],
+    "requiredInputs": ["segmentDefinition", "profileDmo"],
+    "planAction": "build_segment.plan",
+    "runAction": "build_segment.run",
+    "verification": ["ci.run_status", "segment.get"],
+    "availableActions": [
+      { "tool": "data360_segment", "action": "ci.validate" },
+      { "tool": "data360_segment", "action": "ci.create" },
+      { "tool": "data360_segment", "action": "segment.create" },
+      { "tool": "data360_segment", "action": "segment.publish" }
+    ],
+    "suggestedQuestions": [
+      "Which profile object defines the audience?",
+      "Do you already have a calculated insight?"
+    ]
+  },
+  {
+    "name": "activate_segment",
+    "summary": "Deliver an audience downstream through activation targets or data actions.",
+    "utterances": ["activate segment", "send audience", "deliver downstream", "data action"],
+    "phases": ["act", "segment"],
+    "requiredInputs": ["segment", "target"],
+    "planAction": "activate_segment.plan",
+    "runAction": "activate_segment.run",
+    "verification": ["activation.get", "activation_target.get"],
+    "availableActions": [
+      { "tool": "data360_activate", "action": "activation_target.create" },
+      { "tool": "data360_activate", "action": "activation.create" },
+      { "tool": "data360_activate", "action": "data_action.create" }
+    ],
+    "suggestedQuestions": [
+      "Which segment should be activated?",
+      "Which downstream target should receive it?"
+    ]
+  },
+  {
+    "name": "semantic_retrieval",
+    "summary": "Create semantic, search-index, and retriever resources for RAG or BI-style retrieval.",
+    "utterances": [
+      "semantic retrieval",
+      "create retriever",
+      "rag",
+      "search index",
+      "semantic model"
+    ],
+    "phases": ["semantic", "retrieve"],
+    "requiredInputs": ["sourceObjects", "retrievalUseCase"],
+    "planAction": "semantic_retrieval.plan",
+    "runAction": "semantic_retrieval.run",
+    "verification": ["semantic_model.validate", "retriever.get"],
+    "availableActions": [
+      { "tool": "data360_semantic", "action": "semantic_model.list" },
+      { "tool": "data360_semantic", "action": "search_index.create" },
+      { "tool": "data360_semantic", "action": "retriever.create" }
+    ],
+    "suggestedQuestions": ["Which data should be searchable?", "Is this for RAG, BI, or both?"]
+  },
+  {
+    "name": "agent_behavior_investigation",
+    "summary": "Investigate Agentforce sessions, errors, traces, and latency using STDM and platform tracing data.",
+    "utterances": [
+      "agent failed",
+      "why did my agent",
+      "trace error",
+      "agent slow",
+      "session timeline"
+    ],
+    "phases": ["observe", "retrieve"],
+    "requiredInputs": ["agentOrSession", "timeRange"],
+    "planAction": "agent_behavior_investigation.plan",
+    "runAction": "agent_behavior_investigation.run",
+    "verification": ["stdm.session_timeline", "trace.error_traces"],
+    "availableActions": [
+      { "tool": "data360_observe", "action": "stdm.session_timeline" },
+      { "tool": "data360_observe", "action": "trace.error_traces" },
+      { "tool": "data360_observe", "action": "trace.trace_tree" },
+      { "tool": "data360_observe", "action": "trace.operation_latency_summary" }
+    ],
+    "suggestedQuestions": [
+      "Which agent, session, or trace should I inspect?",
+      "What time window should I use?"
+    ]
+  }
+]

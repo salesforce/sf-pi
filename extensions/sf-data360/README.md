@@ -225,6 +225,7 @@ extensions/sf-data360/
       cleanup.ts            ← implementation module
       csv-schema.ts         ← implementation module
       dispatcher.ts         ← implementation module
+      journey-catalog.ts    ← implementation module
       manifest.ts           ← implementation module
       tools.ts              ← implementation module
     api-tool.ts             ← implementation module
@@ -270,6 +271,7 @@ extensions/sf-data360/
     v2-ingest-auth-interactive.test.ts← unit / smoke test
     v2-ingest-auth.test.ts  ← unit / smoke test
     v2-ingest-jobs.test.ts  ← unit / smoke test
+    v2-intent-plan.test.ts  ← unit / smoke test
     v2-legacy-compatibility.test.ts← unit / smoke test
     v2-orchestrate-manifest.test.ts← unit / smoke test
   AGENTS.md                 ← extension-specific agent editing rules

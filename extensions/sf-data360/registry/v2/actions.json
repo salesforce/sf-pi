@@ -1107,6 +1107,42 @@
   },
   {
     "tool": "data360_orchestrate",
+    "action": "intent.plan",
+    "phase": "orchestrate",
+    "family": "Journey",
+    "description": "Route a natural-language Data 360 user utterance to a recommended journey and next action.",
+    "safety": "read",
+    "requiredParams": ["utterance"],
+    "optionalParams": [],
+    "implementation": { "kind": "journey", "name": "intent.plan" },
+    "aliases": ["intent.route"]
+  },
+  {
+    "tool": "data360_orchestrate",
+    "action": "journey.describe",
+    "phase": "orchestrate",
+    "family": "Journey",
+    "description": "Describe one curated Data 360 outcome journey, including phases, inputs, verification, and available actions.",
+    "safety": "read",
+    "requiredParams": ["journey"],
+    "optionalParams": [],
+    "implementation": { "kind": "journey", "name": "journey.describe" },
+    "aliases": ["journey.catalog.describe"]
+  },
+  {
+    "tool": "data360_orchestrate",
+    "action": "journey.list",
+    "phase": "orchestrate",
+    "family": "Journey",
+    "description": "List curated Data 360 outcome journeys that map user intent to tools and actions.",
+    "safety": "read",
+    "requiredParams": [],
+    "optionalParams": [],
+    "implementation": { "kind": "journey", "name": "journey.list" },
+    "aliases": ["journey.catalog.list"]
+  },
+  {
+    "tool": "data360_orchestrate",
     "action": "manifest.plan",
     "phase": "orchestrate",
     "family": "Journey",

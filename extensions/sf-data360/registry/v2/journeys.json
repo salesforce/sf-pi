@@ -3,6 +3,51 @@
     "tool": "data360_orchestrate",
     "phase": "orchestrate",
     "family": "Journey",
+    "action": "journey.list",
+    "description": "List curated Data 360 outcome journeys that map user intent to tools and actions.",
+    "safety": "read",
+    "requiredParams": [],
+    "optionalParams": [],
+    "implementation": {
+      "kind": "journey",
+      "name": "journey.list"
+    },
+    "aliases": ["journey.catalog.list"]
+  },
+  {
+    "tool": "data360_orchestrate",
+    "phase": "orchestrate",
+    "family": "Journey",
+    "action": "journey.describe",
+    "description": "Describe one curated Data 360 outcome journey, including phases, inputs, verification, and available actions.",
+    "safety": "read",
+    "requiredParams": ["journey"],
+    "optionalParams": [],
+    "implementation": {
+      "kind": "journey",
+      "name": "journey.describe"
+    },
+    "aliases": ["journey.catalog.describe"]
+  },
+  {
+    "tool": "data360_orchestrate",
+    "phase": "orchestrate",
+    "family": "Journey",
+    "action": "intent.plan",
+    "description": "Route a natural-language Data 360 user utterance to a recommended journey and next action.",
+    "safety": "read",
+    "requiredParams": ["utterance"],
+    "optionalParams": [],
+    "implementation": {
+      "kind": "journey",
+      "name": "intent.plan"
+    },
+    "aliases": ["intent.route"]
+  },
+  {
+    "tool": "data360_orchestrate",
+    "phase": "orchestrate",
+    "family": "Journey",
     "action": "ingest_csv.plan",
     "description": "Plan Route A local CSV ingestion through Ingestion API source schema, data stream, tenant ingest job, and SQL verification.",
     "safety": "read",
