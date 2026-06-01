@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.161.0-2026-06-01",
-  "latestVersion": "0.161.0",
+  "revision": "release-0.162.0-2026-06-01",
+  "latestVersion": "0.162.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.161.0",
+      "id": "release-0.162.0",
       "kind": "update",
-      "title": "sf-pi v0.161.0 — sf-data360: add data360 family tool surface",
+      "title": "sf-pi v0.162.0 — sf-data360: add journey intent planner",
       "publishedAt": "2026-06-01T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.161.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.162.0",
       "severity": "info",
-      "body": "sf-data360: add data360 family tool surface"
+      "body": "sf-data360: add journey intent planner"
     },
     {
       "id": "pi-0.73-required",
