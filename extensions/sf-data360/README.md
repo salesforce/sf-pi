@@ -276,6 +276,7 @@ extensions/sf-data360/
     v2-ingest-jobs.test.ts  ← unit / smoke test
     v2-intent-plan.test.ts  ← unit / smoke test
     v2-journey-hardening.test.ts← unit / smoke test
+    v2-journey-run-actions.test.ts← unit / smoke test
     v2-legacy-compatibility.test.ts← unit / smoke test
     v2-make-data-usable-run.test.ts← unit / smoke test
     v2-orchestrate-manifest.test.ts← unit / smoke test

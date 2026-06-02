@@ -1052,6 +1052,18 @@
   },
   {
     "tool": "data360_orchestrate",
+    "action": "activate_segment.run",
+    "phase": "orchestrate",
+    "family": "Journey",
+    "description": "Run activation target and activation setup from reviewed payloads.",
+    "safety": "confirmed",
+    "requiredParams": [],
+    "optionalParams": ["segmentId", "activationTargetBody", "activationBody", "activationId"],
+    "implementation": { "kind": "journey", "name": "activate_segment.run" },
+    "aliases": ["journey.activate_segment.run"]
+  },
+  {
+    "tool": "data360_orchestrate",
     "action": "agent_behavior_investigation.plan",
     "phase": "orchestrate",
     "family": "Journey",
@@ -1085,6 +1097,18 @@
     "optionalParams": ["profileDmo", "segmentDefinition"],
     "implementation": { "kind": "journey", "name": "build_segment.plan" },
     "aliases": ["journey.build_segment.plan"]
+  },
+  {
+    "tool": "data360_orchestrate",
+    "action": "build_segment.run",
+    "phase": "orchestrate",
+    "family": "Journey",
+    "description": "Run calculated insight and segment setup from reviewed payloads.",
+    "safety": "confirmed",
+    "requiredParams": [],
+    "optionalParams": ["ciValidateBody", "ciBody", "ciName", "segmentBody", "segmentId"],
+    "implementation": { "kind": "journey", "name": "build_segment.run" },
+    "aliases": ["journey.build_segment.run"]
   },
   {
     "tool": "data360_orchestrate",
@@ -1260,6 +1284,24 @@
     "optionalParams": ["sourceObjects", "retrievalUseCase"],
     "implementation": { "kind": "journey", "name": "semantic_retrieval.plan" },
     "aliases": ["journey.semantic_retrieval.plan"]
+  },
+  {
+    "tool": "data360_orchestrate",
+    "action": "semantic_retrieval.run",
+    "phase": "orchestrate",
+    "family": "Journey",
+    "description": "Run semantic search-index and retriever setup from reviewed payloads.",
+    "safety": "confirmed",
+    "requiredParams": [],
+    "optionalParams": [
+      "searchIndexBody",
+      "retrieverBody",
+      "retrieverConfigBody",
+      "retrieverIdOrName",
+      "semanticModelName"
+    ],
+    "implementation": { "kind": "journey", "name": "semantic_retrieval.run" },
+    "aliases": ["journey.semantic_retrieval.run"]
   },
   {
     "tool": "data360_prepare",

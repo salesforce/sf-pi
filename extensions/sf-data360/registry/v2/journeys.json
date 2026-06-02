@@ -275,5 +275,56 @@
       "name": "make_data_usable.run"
     },
     "aliases": ["journey.make_data_usable.run"]
+  },
+  {
+    "tool": "data360_orchestrate",
+    "phase": "orchestrate",
+    "family": "Journey",
+    "action": "semantic_retrieval.run",
+    "description": "Run semantic search-index and retriever setup from reviewed payloads.",
+    "safety": "confirmed",
+    "requiredParams": [],
+    "optionalParams": [
+      "searchIndexBody",
+      "retrieverBody",
+      "retrieverConfigBody",
+      "retrieverIdOrName",
+      "semanticModelName"
+    ],
+    "implementation": {
+      "kind": "journey",
+      "name": "semantic_retrieval.run"
+    },
+    "aliases": ["journey.semantic_retrieval.run"]
+  },
+  {
+    "tool": "data360_orchestrate",
+    "phase": "orchestrate",
+    "family": "Journey",
+    "action": "build_segment.run",
+    "description": "Run calculated insight and segment setup from reviewed payloads.",
+    "safety": "confirmed",
+    "requiredParams": [],
+    "optionalParams": ["ciValidateBody", "ciBody", "ciName", "segmentBody", "segmentId"],
+    "implementation": {
+      "kind": "journey",
+      "name": "build_segment.run"
+    },
+    "aliases": ["journey.build_segment.run"]
+  },
+  {
+    "tool": "data360_orchestrate",
+    "phase": "orchestrate",
+    "family": "Journey",
+    "action": "activate_segment.run",
+    "description": "Run activation target and activation setup from reviewed payloads.",
+    "safety": "confirmed",
+    "requiredParams": [],
+    "optionalParams": ["segmentId", "activationTargetBody", "activationBody", "activationId"],
+    "implementation": {
+      "kind": "journey",
+      "name": "activate_segment.run"
+    },
+    "aliases": ["journey.activate_segment.run"]
   }
 ]

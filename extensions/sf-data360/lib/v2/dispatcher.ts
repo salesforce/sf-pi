@@ -1143,6 +1143,215 @@ function planKnownJourney(
   };
 }
 
+async function runSemanticRetrieval(
+  input: Data360V2Input,
+  env: SfEnvironment,
+  ctx: ExtensionContext,
+  signal: AbortSignal | undefined,
+): Promise<Record<string, unknown>> {
+  const gate = requireConfirmedRun(input, "semantic_retrieval.run");
+  if (gate) return gate;
+  const steps = [];
+  if (input.params?.searchIndexBody) {
+    steps.push(
+      await executeJourneyStep(input, env, ctx, signal, "data360_semantic", "search_index.create", {
+        body: input.params.searchIndexBody,
+      }),
+    );
+  }
+  if (input.params?.retrieverBody) {
+    steps.push(
+      await executeJourneyStep(input, env, ctx, signal, "data360_semantic", "retriever.create", {
+        body: input.params.retrieverBody,
+      }),
+    );
+  }
+  if (input.params?.retrieverConfigBody) {
+    steps.push(
+      await executeJourneyStep(
+        input,
+        env,
+        ctx,
+        signal,
+        "data360_semantic",
+        "retriever.config.create",
+        {
+          retrieverIdOrName: input.params.retrieverIdOrName,
+          body: input.params.retrieverConfigBody,
+        },
+      ),
+    );
+  }
+  if (typeof input.params?.semanticModelName === "string") {
+    steps.push(
+      await executeJourneyStep(
+        input,
+        env,
+        ctx,
+        signal,
+        "data360_semantic",
+        "semantic_model.validate",
+        {
+          semanticModelName: input.params.semanticModelName,
+        },
+      ),
+    );
+  }
+  return journeyRunResult(input, "semantic_retrieval", steps);
+}
+
+async function runBuildSegment(
+  input: Data360V2Input,
+  env: SfEnvironment,
+  ctx: ExtensionContext,
+  signal: AbortSignal | undefined,
+): Promise<Record<string, unknown>> {
+  const gate = requireConfirmedRun(input, "build_segment.run");
+  if (gate) return gate;
+  const steps = [];
+  if (input.params?.ciValidateBody) {
+    steps.push(
+      await executeJourneyStep(input, env, ctx, signal, "data360_segment", "ci.validate", {
+        body: input.params.ciValidateBody,
+      }),
+    );
+  }
+  if (input.params?.ciBody) {
+    steps.push(
+      await executeJourneyStep(input, env, ctx, signal, "data360_segment", "ci.create", {
+        body: input.params.ciBody,
+      }),
+    );
+  }
+  if (typeof input.params?.ciName === "string") {
+    steps.push(
+      await executeJourneyStep(input, env, ctx, signal, "data360_segment", "ci.run", {
+        ciName: input.params.ciName,
+      }),
+    );
+    steps.push(
+      await executeJourneyStep(input, env, ctx, signal, "data360_segment", "ci.run.status", {
+        ciName: input.params.ciName,
+      }),
+    );
+  }
+  if (input.params?.segmentBody) {
+    steps.push(
+      await executeJourneyStep(input, env, ctx, signal, "data360_segment", "segment.create", {
+        body: input.params.segmentBody,
+      }),
+    );
+  }
+  if (typeof input.params?.segmentId === "string") {
+    steps.push(
+      await executeJourneyStep(input, env, ctx, signal, "data360_segment", "segment.publish", {
+        segmentId: input.params.segmentId,
+      }),
+    );
+  }
+  return journeyRunResult(input, "build_segment", steps);
+}
+
+async function runActivateSegment(
+  input: Data360V2Input,
+  env: SfEnvironment,
+  ctx: ExtensionContext,
+  signal: AbortSignal | undefined,
+): Promise<Record<string, unknown>> {
+  const gate = requireConfirmedRun(input, "activate_segment.run");
+  if (gate) return gate;
+  const steps = [];
+  if (typeof input.params?.segmentId === "string") {
+    steps.push(
+      await executeJourneyStep(input, env, ctx, signal, "data360_segment", "segment.get", {
+        segmentId: input.params.segmentId,
+      }),
+    );
+  }
+  if (input.params?.activationTargetBody) {
+    steps.push(
+      await executeJourneyStep(
+        input,
+        env,
+        ctx,
+        signal,
+        "data360_activate",
+        "activation_target.create",
+        {
+          body: input.params.activationTargetBody,
+        },
+      ),
+    );
+  }
+  if (input.params?.activationBody) {
+    steps.push(
+      await executeJourneyStep(input, env, ctx, signal, "data360_activate", "activation.create", {
+        body: input.params.activationBody,
+      }),
+    );
+  }
+  if (typeof input.params?.activationId === "string") {
+    steps.push(
+      await executeJourneyStep(input, env, ctx, signal, "data360_activate", "activation.get", {
+        activationId: input.params.activationId,
+      }),
+    );
+  }
+  return journeyRunResult(input, "activate_segment", steps);
+}
+
+function requireConfirmedRun(
+  input: Data360V2Input,
+  actionName: string,
+): Record<string, unknown> | undefined {
+  if (input.allow_confirmed) return undefined;
+  return {
+    ok: false,
+    tool: input.tool,
+    action: input.action,
+    error: "CONFIRMATION_REQUIRED",
+    summary: `${actionName} requires allow_confirmed=true after reviewing its plan.`,
+  };
+}
+
+async function executeJourneyStep(
+  input: Data360V2Input,
+  env: SfEnvironment,
+  ctx: ExtensionContext,
+  signal: AbortSignal | undefined,
+  tool: Data360V2ToolName,
+  action: string,
+  params: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  const result = await runData360V2Action(
+    { tool, action, target_org: input.target_org, allow_confirmed: true, params },
+    env,
+    ctx,
+    signal,
+  );
+  return { tool, action, ok: result.ok !== false, summary: result.summary, result };
+}
+
+function journeyRunResult(
+  input: Data360V2Input,
+  journey: string,
+  steps: Array<Record<string, unknown>>,
+): Record<string, unknown> {
+  return {
+    ok: steps.every((step) => step.ok !== false),
+    tool: input.tool,
+    action: input.action,
+    journey,
+    steps,
+    summary: `${journey} run completed ${steps.length} step(s)`,
+    report: [
+      `✅ ${journey} run complete`,
+      "",
+      ...steps.map((step) => `- ${step.tool} ${step.action}: ${step.summary ?? "complete"}`),
+    ].join("\n"),
+  };
+}
+
 async function runMakeDataUsable(
   input: Data360V2Input,
   env: SfEnvironment,
@@ -1718,6 +1927,15 @@ async function runJourneyAction(
   if (action.implementation?.name === "make_data_usable.run") {
     return runMakeDataUsable(input, env, ctx, signal);
   }
+  if (action.implementation?.name === "semantic_retrieval.run") {
+    return runSemanticRetrieval(input, env, ctx, signal);
+  }
+  if (action.implementation?.name === "build_segment.run") {
+    return runBuildSegment(input, env, ctx, signal);
+  }
+  if (action.implementation?.name === "activate_segment.run") {
+    return runActivateSegment(input, env, ctx, signal);
+  }
   if (action.implementation?.name === "make_data_usable.plan") {
     return planKnownJourney(input, "make_data_usable", [
       {
@@ -1767,6 +1985,9 @@ async function runJourneyAction(
       datasetCount: manifest.datasets.length,
       summary: `Validated Data 360 ingest manifest with ${manifest.datasets.length} dataset(s)`,
     };
+  }
+  if (action.implementation?.name === "ingest_csv.run" && input.allow_confirmed) {
+    return runManifest(input, env, ctx, signal);
   }
   if (
     action.implementation?.name === "manifest.plan" ||
