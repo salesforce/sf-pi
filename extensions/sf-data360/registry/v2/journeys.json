@@ -260,5 +260,20 @@
       "name": "activate_segment.plan"
     },
     "aliases": ["journey.activate_segment.plan"]
+  },
+  {
+    "tool": "data360_orchestrate",
+    "phase": "orchestrate",
+    "family": "Journey",
+    "action": "make_data_usable.run",
+    "description": "Run CSV ingestion and return harmonization next steps that make landed data usable.",
+    "safety": "confirmed",
+    "requiredParams": ["manifestPath", "authSessionId"],
+    "optionalParams": ["pollIntervalMs", "maxPolls"],
+    "implementation": {
+      "kind": "journey",
+      "name": "make_data_usable.run"
+    },
+    "aliases": ["journey.make_data_usable.run"]
   }
 ]

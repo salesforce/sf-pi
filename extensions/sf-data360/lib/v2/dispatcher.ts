@@ -1143,6 +1143,80 @@ function planKnownJourney(
   };
 }
 
+async function runMakeDataUsable(
+  input: Data360V2Input,
+  env: SfEnvironment,
+  ctx: ExtensionContext,
+  signal: AbortSignal | undefined,
+): Promise<Record<string, unknown>> {
+  if (!input.allow_confirmed) {
+    return {
+      ok: false,
+      tool: input.tool,
+      action: input.action,
+      error: "CONFIRMATION_REQUIRED",
+      summary:
+        "make_data_usable.run requires allow_confirmed=true after reviewing make_data_usable.plan or manifest.plan.",
+    };
+  }
+  const ingestion = await runManifest(input, env, ctx, signal);
+  if (ingestion.ok === false) return ingestion;
+  const harmonizationPlan = buildPostIngestHarmonizationPlan(ingestion);
+  return {
+    ok: true,
+    tool: input.tool,
+    action: input.action,
+    journey: "make_data_usable",
+    ingestion,
+    harmonizationPlan,
+    report: makeDataUsableReport(ingestion, harmonizationPlan),
+    summary: "make_data_usable.run completed ingestion and prepared harmonization next steps",
+    next_actions: harmonizationPlan.slice(0, 3),
+  };
+}
+
+function buildPostIngestHarmonizationPlan(
+  ingestion: Record<string, unknown>,
+): Array<Record<string, unknown>> {
+  const results = Array.isArray(ingestion.results) ? ingestion.results : [];
+  return [
+    ...results.flatMap((result) => {
+      const record = asRecord(result) ?? {};
+      return [
+        { tool: "data360_prepare", action: "dlo.get", params: { dloName: record.dloName } },
+        {
+          tool: "data360_harmonize",
+          action: "dmo.get",
+          params: { dmoName: record.targetDmo ?? "<targetDmo>" },
+        },
+        {
+          tool: "data360_harmonize",
+          action: "mapping.create",
+          params: {
+            sourceDloName: record.dloName,
+            targetDmoName: record.targetDmo ?? "<targetDmo>",
+          },
+        },
+        { tool: "data360_query", action: "sql.verify_rows", params: { dloName: record.dloName } },
+      ];
+    }),
+  ];
+}
+
+function makeDataUsableReport(
+  ingestion: Record<string, unknown>,
+  harmonizationPlan: Array<Record<string, unknown>>,
+): string {
+  return [
+    "✅ Make data usable run complete",
+    "",
+    String(ingestion.report ?? ingestion.summary ?? "Ingestion complete."),
+    "",
+    "Next harmonization actions:",
+    ...harmonizationPlan.map((step) => `- ${step.tool} ${step.action}`),
+  ].join("\n");
+}
+
 async function runManifest(
   input: Data360V2Input,
   env: SfEnvironment,
@@ -1640,6 +1714,9 @@ async function runJourneyAction(
         },
       ],
     };
+  }
+  if (action.implementation?.name === "make_data_usable.run") {
+    return runMakeDataUsable(input, env, ctx, signal);
   }
   if (action.implementation?.name === "make_data_usable.plan") {
     return planKnownJourney(input, "make_data_usable", [

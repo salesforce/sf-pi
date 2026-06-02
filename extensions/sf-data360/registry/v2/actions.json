@@ -1203,6 +1203,18 @@
   },
   {
     "tool": "data360_orchestrate",
+    "action": "make_data_usable.run",
+    "phase": "orchestrate",
+    "family": "Journey",
+    "description": "Run CSV ingestion and return harmonization next steps that make landed data usable.",
+    "safety": "confirmed",
+    "requiredParams": ["manifestPath", "authSessionId"],
+    "optionalParams": ["pollIntervalMs", "maxPolls"],
+    "implementation": { "kind": "journey", "name": "make_data_usable.run" },
+    "aliases": ["journey.make_data_usable.run"]
+  },
+  {
+    "tool": "data360_orchestrate",
     "action": "manifest.plan",
     "phase": "orchestrate",
     "family": "Journey",
