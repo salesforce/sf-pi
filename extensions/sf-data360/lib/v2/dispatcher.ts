@@ -228,7 +228,21 @@ function runCatalogSearch(input: Data360V2Input): Record<string, unknown> {
     query,
     summary: `${results.length} matching Data 360 action(s)`,
     results,
+    report: catalogSearchReport(query, results),
   };
+}
+
+function catalogSearchReport(query: string, results: ReturnType<typeof summarizeAction>[]): string {
+  const lines = [
+    `🔎 Data 360 action search: ${query || "(all actions)"}`,
+    "",
+    "| Tool | Action | Safety |",
+    "| --- | --- | --- |",
+  ];
+  for (const result of results.slice(0, 10)) {
+    lines.push(`| ${String(result.tool)} | ${String(result.action)} | ${String(result.safety)} |`);
+  }
+  return lines.join("\n");
 }
 
 function runCatalogAction(input: Data360V2Input): Record<string, unknown> {
@@ -786,8 +800,11 @@ async function runAgentBehaviorInvestigation(
       }),
     );
   }
+  const unavailable = sections.filter((section) => section.status === "unavailable");
   return {
     ok: sections.every((section) => section.ok !== false),
+    readiness: unavailable.length ? "partial" : "ready",
+    missingSurfaces: [...new Set(unavailable.map((section) => section.surface))],
     tool: input.tool,
     action: input.action,
     journey: "agent_behavior_investigation",
@@ -815,19 +832,39 @@ async function runInvestigationSection(
     ctx,
     signal,
   );
+  if (result.ok === false && isMissingTelemetrySurface(result)) {
+    return {
+      action,
+      status: "unavailable",
+      surface: "Agent Platform Tracing",
+      reason: "TelemetryTraceSpan table not found",
+      summary: result.summary,
+    };
+  }
   return {
     action,
     ok: result.ok !== false,
+    status: result.ok === false ? "failed" : "complete",
     summary: result.summary,
     result: result.result,
   };
 }
 
+function isMissingTelemetrySurface(result: Record<string, unknown>): boolean {
+  const blob = stringify(result).toLowerCase();
+  return blob.includes("telemetrytracespan") && blob.includes("does not exist");
+}
+
 function agentBehaviorReport(sections: Array<Record<string, unknown>>): string {
+  const unavailable = sections.filter((section) => section.status === "unavailable");
   return [
-    "✅ Agent behavior investigation complete",
+    unavailable.length
+      ? "⚠️ Agent behavior investigation complete with missing telemetry surfaces"
+      : "✅ Agent behavior investigation complete",
     "",
-    ...sections.map((section) => `- ${section.action}: ${section.summary ?? "complete"}`),
+    ...sections.map(
+      (section) => `- ${section.action}: ${section.summary ?? section.status ?? "complete"}`,
+    ),
   ].join("\n");
 }
 
@@ -1039,6 +1076,47 @@ function activateSegmentSteps(): Data360V2Step[] {
     { label: "Create activation", tool: "data360_activate", action: "activation.create" },
     { label: "Verify activation", tool: "data360_activate", action: "activation.get" },
   ];
+}
+
+function journeyDescribeReport(journey: {
+  name: string;
+  summary: string;
+  phases: string[];
+  requiredInputs: string[];
+  availableActions: Array<{ tool: string; action: string }>;
+}): string {
+  return [
+    `🧭 ${journey.name}`,
+    journey.summary,
+    "",
+    `Phases: ${journey.phases.join(" → ")}`,
+    `Required inputs: ${journey.requiredInputs.join(", ") || "none"}`,
+    "",
+    "Available actions:",
+    ...journey.availableActions.map((action) => `- ${action.tool} ${action.action}`),
+  ].join("\n");
+}
+
+function intentPlanReport(
+  utterance: string,
+  plan: {
+    journey: { name: string; summary: string };
+    confidence: string;
+    missingInputs: string[];
+    targetTool: string;
+    targetAction: string;
+  },
+): string {
+  return [
+    `Recommended journey: ${plan.journey.name}`,
+    `Confidence: ${plan.confidence}`,
+    `Utterance: ${utterance}`,
+    "",
+    plan.journey.summary,
+    "",
+    `Missing inputs: ${plan.missingInputs.join(", ") || "none"}`,
+    `Next: ${plan.targetTool} ${plan.targetAction}`,
+  ].join("\n");
 }
 
 function planKnownJourney(
@@ -1486,6 +1564,7 @@ async function runLocalAction(
     request,
     response: resp.body,
     summary: `Verified row count for ${dloName} HTTP ${resp.status}`,
+    report: `Row count for ${dloName}: ${rowCountFromResult({ response: resp.body }, 0)}`,
     next_actions: nextActionsFor(action),
   };
 }
@@ -1532,6 +1611,7 @@ async function runJourneyAction(
       journey,
       availableActions: journey.availableActions,
       summary: `${journey.name}: ${journey.summary}`,
+      report: journeyDescribeReport(journey),
       next_actions: journey.availableActions.slice(0, 3),
     };
   }
@@ -1551,6 +1631,7 @@ async function runJourneyAction(
       targetTool: plan.targetTool,
       targetAction: plan.targetAction,
       summary: `Recommended Data 360 journey: ${plan.journey.name}`,
+      report: intentPlanReport(utterance, plan),
       next_actions: [
         {
           tool: plan.targetTool,

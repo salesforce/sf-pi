@@ -278,6 +278,7 @@ extensions/sf-data360/
     v2-journey-hardening.test.ts← unit / smoke test
     v2-legacy-compatibility.test.ts← unit / smoke test
     v2-orchestrate-manifest.test.ts← unit / smoke test
+    v2-result-ux.test.ts    ← unit / smoke test
     v2-segment-activate-plan.test.ts← unit / smoke test
     v2-semantic-retrieval-plan.test.ts← unit / smoke test
   AGENTS.md                 ← extension-specific agent editing rules

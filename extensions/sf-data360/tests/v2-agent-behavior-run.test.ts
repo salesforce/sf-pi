@@ -102,6 +102,44 @@ describe("Data 360 v2 Agentforce behavior investigation run", () => {
     );
   });
 
+  it("treats missing optional telemetry surfaces as partial success", async () => {
+    requestMock.mockRejectedValue(
+      Object.assign(new Error('table "ssot__TelemetryTraceSpan__dlm" does not exist'), {
+        statusCode: 500,
+        errorCode: "BAD_REQUEST",
+      }),
+    );
+
+    const result = await runData360V2Action(
+      {
+        tool: "data360_orchestrate",
+        action: "agent_behavior_investigation.run",
+        target_org: "AgentforceSTDM",
+        params: { since: "2026-06-01", limit: 5 },
+      },
+      env,
+      ctx,
+      undefined,
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      readiness: "partial",
+      missingSurfaces: ["Agent Platform Tracing"],
+      sections: [
+        expect.objectContaining({
+          action: "trace.error_traces",
+          status: "unavailable",
+        }),
+        expect.objectContaining({
+          action: "trace.operation_latency_summary",
+          status: "unavailable",
+        }),
+      ],
+    });
+    expect(result.report).toContain("missing telemetry surfaces");
+  });
+
   it("requires at least one investigation input", async () => {
     const result = await runData360V2Action(
       {
