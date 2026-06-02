@@ -268,6 +268,7 @@ extensions/sf-data360/
     v2-activate-plan-recommendation.test.ts← unit / smoke test
     v2-agent-behavior-run.test.ts← unit / smoke test
     v2-auth-sessions-cleanup.test.ts← unit / smoke test
+    v2-cleanup-discover-owned.test.ts← unit / smoke test
     v2-dispatcher.test.ts   ← unit / smoke test
     v2-execute-parity.test.ts← unit / smoke test
     v2-ingest-auth-exchange.test.ts← unit / smoke test

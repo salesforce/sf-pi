@@ -326,5 +326,20 @@
       "name": "activate_segment.run"
     },
     "aliases": ["journey.activate_segment.run"]
+  },
+  {
+    "tool": "data360_orchestrate",
+    "phase": "orchestrate",
+    "family": "Journey",
+    "action": "cleanup.discover_owned",
+    "description": "Discover explicit cleanup candidates by safe prefixes and produce cleanup.plan parameters without deleting anything.",
+    "safety": "read",
+    "requiredParams": ["prefixes"],
+    "optionalParams": ["maxResults", "shouldDeleteDataLakeObject"],
+    "implementation": {
+      "kind": "journey",
+      "name": "cleanup.discover_owned"
+    },
+    "aliases": ["journey.cleanup.discover_owned"]
   }
 ]

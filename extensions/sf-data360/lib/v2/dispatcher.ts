@@ -1426,6 +1426,88 @@ function makeDataUsableReport(
   ].join("\n");
 }
 
+async function discoverOwnedCleanup(
+  input: Data360V2Input,
+  env: SfEnvironment,
+  ctx: ExtensionContext,
+  signal: AbortSignal | undefined,
+): Promise<Record<string, unknown>> {
+  const prefixes = normalizeCleanupPrefixes(input.params?.prefixes);
+  if (!prefixes.length) {
+    return {
+      ok: false,
+      tool: input.tool,
+      action: input.action,
+      error: "MISSING_CLEANUP_PREFIXES",
+      summary: "Pass one or more explicit prefixes, such as ['GPS', 'SfPi'].",
+    };
+  }
+  const listed = await runData360V2Action(
+    {
+      tool: "data360_prepare",
+      action: "stream.list",
+      target_org: input.target_org,
+      params: { limit: input.params?.maxResults ?? 200 },
+    },
+    env,
+    ctx,
+    signal,
+  );
+  const streams = asRecord(listed.response)?.dataStreams;
+  const candidates = Array.isArray(streams)
+    ? streams
+        .map(asRecord)
+        .filter((stream): stream is Record<string, unknown> => Boolean(stream))
+        .filter((stream) => matchesCleanupPrefix(stream, prefixes))
+        .slice(0, typeof input.params?.maxResults === "number" ? input.params.maxResults : 50)
+        .map(cleanupCandidate)
+    : [];
+  const dataStreamIds = candidates.map((candidate) => candidate.id).filter(Boolean);
+  return {
+    ok: true,
+    tool: input.tool,
+    action: input.action,
+    prefixes,
+    candidateCount: candidates.length,
+    candidates,
+    cleanupPlan: {
+      tool: "data360_orchestrate",
+      action: "cleanup.plan",
+      params: {
+        dataStreamIds,
+        shouldDeleteDataLakeObject: input.params?.shouldDeleteDataLakeObject === true,
+      },
+    },
+    summary: `Discovered ${candidates.length} cleanup candidate(s) for ${prefixes.join(", ")}`,
+  };
+}
+
+function normalizeCleanupPrefixes(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value
+      .filter((entry): entry is string => typeof entry === "string" && Boolean(entry.trim()))
+      .map((entry) => entry.trim());
+  }
+  if (typeof value === "string" && value.trim()) return [value.trim()];
+  return [];
+}
+
+function matchesCleanupPrefix(stream: Record<string, unknown>, prefixes: string[]): boolean {
+  const name = String(stream.name ?? "");
+  const label = String(stream.label ?? "");
+  return prefixes.some((prefix) => name.startsWith(prefix) || label.startsWith(prefix));
+}
+
+function cleanupCandidate(stream: Record<string, unknown>): Record<string, unknown> {
+  return {
+    id: typeof stream.id === "string" ? stream.id : undefined,
+    name: stream.name,
+    label: stream.label,
+    status: stream.status,
+    dloName: asRecord(stream.dataLakeObjectInfo)?.name ?? stream.dataLakeObjectName,
+  };
+}
+
 async function runManifest(
   input: Data360V2Input,
   env: SfEnvironment,
@@ -2026,6 +2108,9 @@ async function runJourneyAction(
       };
     }
     return runManifest(input, env, ctx, signal);
+  }
+  if (action.implementation?.name === "cleanup.discover_owned") {
+    return discoverOwnedCleanup(input, env, ctx, signal);
   }
   if (
     action.implementation?.name === "cleanup.plan" ||
