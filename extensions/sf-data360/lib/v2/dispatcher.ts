@@ -1462,7 +1462,9 @@ async function discoverOwnedCleanup(
         .slice(0, typeof input.params?.maxResults === "number" ? input.params.maxResults : 50)
         .map(cleanupCandidate)
     : [];
-  const dataStreamIds = candidates.map((candidate) => candidate.id).filter(Boolean);
+  const dataStreamIds = candidates
+    .map((candidate) => candidate.cleanupIdentifier)
+    .filter((value): value is string => typeof value === "string" && Boolean(value));
   return {
     ok: true,
     tool: input.tool,
@@ -1499,8 +1501,12 @@ function matchesCleanupPrefix(stream: Record<string, unknown>, prefixes: string[
 }
 
 function cleanupCandidate(stream: Record<string, unknown>): Record<string, unknown> {
+  const id = typeof stream.id === "string" && stream.id.trim() ? stream.id.trim() : undefined;
+  const name =
+    typeof stream.name === "string" && stream.name.trim() ? stream.name.trim() : undefined;
   return {
-    id: typeof stream.id === "string" ? stream.id : undefined,
+    id,
+    cleanupIdentifier: id ?? name,
     name: stream.name,
     label: stream.label,
     status: stream.status,

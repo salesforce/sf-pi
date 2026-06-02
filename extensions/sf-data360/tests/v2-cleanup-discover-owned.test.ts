@@ -97,6 +97,39 @@ describe("Data 360 v2 cleanup owned discovery", () => {
     ]);
   });
 
+  it("uses stream names as cleanup identifiers when ids are absent", async () => {
+    requestMock.mockResolvedValue({
+      dataStreams: [
+        {
+          name: "GPSProvidersStream_ABC",
+          label: "GPS Providers",
+          status: "ACTIVE",
+          dataLakeObjectInfo: { name: "GPSProvidersStream_ABC__dll" },
+        },
+      ],
+    });
+
+    const result = await runData360V2Action(
+      {
+        tool: "data360_orchestrate",
+        action: "cleanup.discover_owned",
+        target_org: "AgentforceSTDM",
+        params: { prefixes: ["GPS"], shouldDeleteDataLakeObject: true },
+      },
+      env,
+      ctx,
+      undefined,
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      candidates: [expect.objectContaining({ cleanupIdentifier: "GPSProvidersStream_ABC" })],
+      cleanupPlan: {
+        params: { dataStreamIds: ["GPSProvidersStream_ABC"], shouldDeleteDataLakeObject: true },
+      },
+    });
+  });
+
   it("requires explicit prefixes to avoid broad accidental cleanup discovery", async () => {
     const result = await runData360V2Action(
       {
