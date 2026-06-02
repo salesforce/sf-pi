@@ -517,6 +517,14 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.168.0](https://github.com/salesforce/sf-pi/compare/v0.167.1...v0.168.0) (2026-06-02)
+
+
+### Features
+
+* **sf-data360:** polish journey result UX ([a42cab9](https://github.com/salesforce/sf-pi/commit/a42cab9c9fa426ce4a15494f9c42b04e1d0d3711))
+* **sf-data360:** run make data usable journey ([00259c5](https://github.com/salesforce/sf-pi/commit/00259c55a7a81f82a55100891b8a31c300ccd2f1))
+
 ## [0.167.1](https://github.com/salesforce/sf-pi/compare/v0.167.0...v0.167.1) (2026-06-01)
 
 

@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.167.1-2026-06-01",
-  "latestVersion": "0.167.1",
+  "revision": "release-0.168.0-2026-06-02",
+  "latestVersion": "0.168.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.167.1",
+      "id": "release-0.168.0",
       "kind": "update",
-      "title": "sf-pi v0.167.1 — sf-data360: improve activation plan recommendations",
-      "publishedAt": "2026-06-01T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.167.1",
+      "title": "sf-pi v0.168.0 — sf-data360: polish journey result UX",
+      "publishedAt": "2026-06-02T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.168.0",
       "severity": "info",
-      "body": "sf-data360: improve activation plan recommendations"
+      "body": "sf-data360: polish journey result UX — sf-data360: run make data usable journey"
     },
     {
       "id": "pi-0.73-required",
