@@ -182,6 +182,7 @@ extensions/sf-agentscript/
     feature-profile.ts      ← implementation module
     feedback.ts             ← implementation module
     file-classify.ts        ← implementation module
+    inspect-structure.ts    ← implementation module
     inspect.ts              ← implementation module
     lifecycle-divergence.ts ← implementation module
     lifecycle-tool.ts       ← implementation module
