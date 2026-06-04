@@ -30,6 +30,9 @@ Rules:
 - `verb="compile"` defaults `mode` to `check`; `mode="format"` writes canonical SDK formatting.
 - `verb="inspect"` defaults `mode` to `structure`; modes include `context_profile`, `find_references`, `definition`, `check_targets`, and `review`.
 - `verb="mutate"` requires `mode`; modes include `set_field`, `rename`, `insert`, `delete`, and `apply_quick_fix`.
+  - `set_field` is a structured scalar field update/upsert for targeted component fields.
+  - `rename` is reference-safe for declarable symbols (`@subagent.X`, `@topic.X`, `@actions.X`, `@variables.X`) and accepts legacy component paths.
+  - `insert` / `delete` intentionally guide callers to generic file edits followed by compile/check for broader source construction.
 - `agent_file` may be omitted only when exactly one current `.agent` file exists on the active Pi branch. Ambiguity is refused with structured candidates.
 
 ## Branch-Durable Tool State

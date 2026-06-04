@@ -97,7 +97,11 @@ Prefer `agentscript_authoring` mutate over generic file editing when the change 
 
 Use `mode="apply_quick_fix"` from compile quick-fix `apply_via` hints. If line numbers may have shifted, compile/check again first.
 
-`mode="set_field"` supports scalar values: string, number, boolean, null. Use generic editing for list/object insertion until structural support exists.
+`mode="set_field"` supports scalar values: string, number, boolean, null. It updates existing fields and may add known scalar fields such as `config.agent_type`; use generic editing for list/object/block construction.
+
+`mode="rename"` is for reference-safe renames of declarable symbols (`@subagent.X`, `@topic.X`, `@actions.X`, `@variables.X`). It also accepts legacy component paths such as `subagent.billing`.
+
+`mode="insert"` and `mode="delete"` intentionally guide you to the generic edit tool followed by compile/check; they are not broad structured source-construction engines.
 
 Use `dry_run=true` for risky changes.
 

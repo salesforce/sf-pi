@@ -96,6 +96,14 @@ _Avoid_: forked AgentScript compiler, duplicate LSP implementation, replacement 
 The SF Pi-owned projection of parsed Agent Script into an agent-friendly summary of config, topics, subagents, variables, actions, references, targets, and readiness metadata.
 _Avoid_: generic LSP feature, full AST dump, replacement for official parser semantics
 
+**Agent Script Mutation Adapter**:
+The SF Pi-owned editing layer that turns agent-facing mutate requests into safe Agent Script source changes, preferring Official AgentScript Package Dependency mutation/emission APIs and retaining only workflow guards that prevent corrupt or misleading edits.
+_Avoid_: custom AST emitter, generic text-edit replacement, bypass around official package mutation semantics
+
+**Minimal Structured Agent Script Mutation**:
+The mutation posture where SF Pi structures only edits that clearly beat generic text editing: official quick fixes, reference-safe renames, and targeted field updates. Broader source construction and deletion use normal file editing followed by Agent Script compile/check.
+_Avoid_: full AST refactoring engine, structured mutation for every possible edit, generic-edit bypass
+
 **Welcome Splash**:
 The SF Pi startup visual surface that introduces the session and summarizes relevant SF Pi runtime status without replacing the normal command or manager surfaces.
 _Avoid_: boot logo, decorative header, startup dashboard

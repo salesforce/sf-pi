@@ -1,24 +1,15 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /**
- * Apply mutations to a `.agent` file with AST primary, coordinate fallback.
+ * Minimal structured mutation for `.agent` files.
  *
- * Five operations exposed today; two are AST-safe in this rewrite, three
- * fall back to coordinate edits or return `ast_unsupported` so the LLM
- * uses the generic `edit` tool. Always re-compiles after writing so
- * `diagnostics_after` gives the LLM same-turn feedback.
+ * SF Pi structures only edits that clearly beat generic text editing:
+ * targeted scalar field upserts, reference-safe symbol renames, and exact
+ * diagnostic quick fixes. Broader source construction/deletion stays with the
+ * normal edit tool followed by compile/check.
  *
- *   set_field         AST  — singular blocks (config/system) and named entries
- *                            (topic.X, subagent.X) using doc.mutate()
- *   apply_quick_fix   COORD — applies the SDK-provided TextEdits from
- *                            buildQuickFixes() (matches today's compile-on-save)
- *   rename            AST  — currently topic→subagent only (the one
- *                            deprecation we ship a fix for); other renames
- *                            return ast_unsupported
- *   insert / delete   not yet implemented (return ast_unsupported with a
- *                            hint pointing to the generic `edit` tool)
- *
- * Refuses to mutate when the source already has parse errors — emitting a
- * file from a half-parsed AST corrupts it.
+ * Every write path re-compiles after writing so `diagnostics_after` gives the
+ * LLM same-turn feedback. AST paths refuse to mutate files with parse errors —
+ * emitting from a half-parsed AST can corrupt source.
  */
 
 import fs from "node:fs/promises";
@@ -26,6 +17,7 @@ import { withFileMutationQueue } from "@earendil-works/pi-coding-agent";
 import { loadAgentforceSDK, getSdkLoadError } from "./sdk.ts";
 import { checkAgentScriptFile } from "./diagnostics.ts";
 import { buildQuickFixes } from "./code-actions.ts";
+import { processAgentforceDocument } from "./agentforce-document.ts";
 import type { AgentScriptDiagnostic, AgentScriptQuickFix, AgentScriptRange } from "./types.ts";
 
 // -------------------------------------------------------------------------------------------------
@@ -115,11 +107,7 @@ async function applyMutationQueued(op: MutateOp): Promise<MutateResult> {
       return applyAstRename(op, sourceBefore, sdk);
     case "insert":
     case "delete":
-      return {
-        ok: false,
-        reason: "ast_unsupported",
-        reason_detail: `Op '${op.op}' not yet implemented. Use the generic edit tool, or apply_quick_fix when the diagnostic ships a fix.`,
-      };
+      return guidanceForGenericEdit(op);
   }
 }
 
@@ -340,8 +328,113 @@ function applySingleEdit(lines: string[], range: AgentScriptRange, newText: stri
   lines.splice(start.line, end.line - start.line + 1, merged);
 }
 
+interface MutationHelpers {
+  setField(key: string, value: unknown): void;
+}
+
+function resolveMutableComponent(
+  ast: Record<string, unknown>,
+  component: string,
+): { ok: true; component: Record<string, unknown> } | { ok: false; error: MutateResult } {
+  const parts = component.split(".");
+  const head = parts[0];
+  if (head === "config" || head === "system") {
+    const block = ast[head];
+    if (!block || typeof block !== "object") {
+      return {
+        ok: false,
+        error: {
+          ok: false,
+          reason: "block_not_found",
+          reason_detail: `Block '${head}' not present in document.`,
+        },
+      };
+    }
+    return { ok: true, component: block as Record<string, unknown> };
+  }
+
+  if (head === "topic" || head === "subagent" || head === "actions" || head === "variables") {
+    const entryName = parts[1];
+    if (!entryName) {
+      return {
+        ok: false,
+        error: {
+          ok: false,
+          reason: "bad_component",
+          reason_detail: `Component '${component}' missing an entry name (e.g. 'subagent.billing').`,
+        },
+      };
+    }
+    const map = ast[head] as { get?: (n: string) => unknown } | undefined;
+    if (!map || typeof map.get !== "function") {
+      return {
+        ok: false,
+        error: {
+          ok: false,
+          reason: "block_not_found",
+          reason_detail: `Named-map block '${head}' is missing or not iterable.`,
+        },
+      };
+    }
+    const entry = map.get(entryName);
+    if (!entry || typeof entry !== "object") {
+      return {
+        ok: false,
+        error: {
+          ok: false,
+          reason: "entry_not_found",
+          reason_detail: `Entry '${component}' not found in '${head}' map.`,
+        },
+      };
+    }
+    return { ok: true, component: entry as Record<string, unknown> };
+  }
+
+  return {
+    ok: false,
+    error: {
+      ok: false,
+      reason: "unknown_component_kind",
+      reason_detail:
+        `Unknown component kind '${head}'. Supported: config, system, ` +
+        `topic.<name>, subagent.<name>, actions.<name>, variables.<name>.`,
+    },
+  };
+}
+
+const MISSING_SCALAR_FIELD_ALLOWLIST: Record<string, Set<string>> = {
+  config: new Set([
+    "agent_name",
+    "agent_type",
+    "description",
+    "default_agent_user",
+    "default_locale",
+  ]),
+  system: new Set(["instructions"]),
+  topic: new Set(["description"]),
+  subagent: new Set(["description"]),
+  actions: new Set(["description", "label", "target"]),
+  variables: new Set(["description", "default", "source", "visibility"]),
+};
+
+function canUpsertMissingScalarField(component: string, field: string): boolean {
+  const kind = component.split(".")[0];
+  return MISSING_SCALAR_FIELD_ALLOWLIST[kind]?.has(field) === true;
+}
+
+function guidanceForGenericEdit(op: Extract<MutateOp, { op: "insert" | "delete" }>): MutateResult {
+  return {
+    ok: false,
+    reason: "use_generic_edit",
+    reason_detail:
+      `Structured ${op.op} is intentionally not implemented. Use the generic edit tool ` +
+      `for broader source ${op.op === "insert" ? "construction" : "deletion"}, then run ` +
+      `agentscript_authoring compile/check to verify the file.`,
+  };
+}
+
 // -------------------------------------------------------------------------------------------------
-// op: set_field  (AST primary)
+// op: set_field  (structured scalar upsert)
 // -------------------------------------------------------------------------------------------------
 
 async function applyAstSetField(
@@ -353,39 +446,28 @@ async function applyAstSetField(
   if (parsed.ok === false) return parsed.error;
   const { doc } = parsed;
 
-  // ---- Layer 1: refuse to add new fields ---------------------------------
-  //
-  // set_field UPDATES an existing field. Adding a new field via property
-  // assignment on the AST node does NOT propagate to the SDK's emit() — the
-  // CST __children list is the source of truth for serialization. Without
-  // this guard, an `add` masquerades as a successful update: the tool
-  // reports ok=true, the file is unchanged except for whitespace round-trip,
-  // and the LLM ships a bundle silently missing the field. Refusing
-  // up-front routes the LLM to the generic `edit` tool (which handles new
-  // fields correctly) instead of letting it cascade into a broken publish.
-  // See docs/POSTMORTEM_E2E_DEMO.md for the original repro.
+  const target = resolveMutableComponent(
+    doc.ast as unknown as Record<string, unknown>,
+    op.component,
+  );
+  if (target.ok === false) return target.error;
+
   const beforeKeys = getTargetFieldKeys(
     doc.ast as unknown as Record<string, unknown>,
     op.component,
   );
   if (beforeKeys.ok === false) return beforeKeys.error;
-  if (!beforeKeys.keys.includes(op.field)) {
-    const known = beforeKeys.keys.length > 0 ? beforeKeys.keys.join(", ") : "<none>";
+  if (!beforeKeys.keys.includes(op.field) && !canUpsertMissingScalarField(op.component, op.field)) {
     return {
       ok: false,
-      reason: "field_not_present",
+      reason: "invalid_field",
       reason_detail:
-        `set_field updates an existing field. '${op.field}' is not present on '${op.component}' ` +
-        `(known fields: ${known}). To add a new field, use the generic edit tool — ` +
-        `or scaffold the field via agentscript_authoring create with the appropriate job_spec.`,
+        `set_field may add missing fields only for known scalar Agent Script fields. ` +
+        `'${op.field}' is not present on '${op.component}'. Use the generic edit tool for ` +
+        `broader source construction, then run agentscript_authoring compile/check.`,
     };
   }
 
-  // The official SDK package wraps scalar field values in nodes (StringLiteral,
-  // NumberLiteral, BooleanLiteral, etc.) that carry an `__emit()` method.
-  // Assigning a raw JS string to `entry.description` corrupts emit() because
-  // the value loses its node identity. Wrap the LLM-supplied scalar via
-  // parseComponent('...', 'expression') so it lands as a real Literal node.
   const wrappedValue = wrapScalarForAst(op.value, sdk);
   if (wrappedValue.ok === false) {
     return {
@@ -394,68 +476,47 @@ async function applyAstSetField(
       reason_detail: wrappedValue.reason,
     };
   }
-  const valueNode = wrappedValue.node;
 
-  const componentParts = op.component.split(".");
-  const head = componentParts[0];
+  const mutateComponent = (
+    sdk as {
+      mutateComponent?: (
+        block: Record<string, unknown>,
+        fn: (block: Record<string, unknown>, helpers: MutationHelpers) => void,
+        options?: { strict?: boolean },
+      ) => unknown;
+    }
+  ).mutateComponent;
+  if (typeof mutateComponent !== "function") {
+    return {
+      ok: false,
+      reason: "sdk_unavailable",
+      reason_detail: "Official SDK package does not expose mutateComponent.",
+    };
+  }
 
   try {
-    if (head === "config" || head === "system") {
-      // Singular blocks. Set a top-level field via doc.mutate.
-      doc.mutate((ast: Record<string, unknown>) => {
-        const block = ast[head] as Record<string, unknown> | undefined;
-        if (block) (block as Record<string, unknown>)[op.field] = valueNode;
-      });
-    } else if (
-      head === "topic" ||
-      head === "subagent" ||
-      head === "actions" ||
-      head === "variables"
-    ) {
-      const entryName = componentParts[1];
-      // Layer 1 validated entryName is non-empty and the entry exists.
-      doc.mutate((ast: Record<string, unknown>) => {
-        const map = ast[head];
-        if (!map || typeof (map as { get?: unknown }).get !== "function") return;
-        const entry = (map as { get: (n: string) => Record<string, unknown> | undefined }).get(
-          entryName,
-        );
-        if (entry) entry[op.field] = valueNode;
-      });
-    }
-    // No `else` branch: Layer 1's getTargetFieldKeys already returned
-    // unknown_component_kind for any other head value.
-
-    if (!doc.isDirty) {
-      return {
-        ok: false,
-        reason: "noop",
-        reason_detail: `Component '${op.component}' or field '${op.field}' not found; nothing changed.`,
-      };
-    }
-    const after = doc.emit();
-    if (after === sourceBefore) {
-      return { ok: false, reason: "noop", reason_detail: "Mutation did not change source." };
-    }
-
-    // ---- Layer 2: post-emit verification -------------------------------
-    //
-    // Catches any future regression in the SDK's mutate-then-emit path.
-    // Re-parses the emitted source and confirms `op.field` is still
-    // addressable on the target component. Costs one extra parse per
-    // mutate (~1ms on a typical bundle); skipped neither for normal nor
-    // for dry_run paths because a dry-run that lies is just as bad.
-    const verify = await verifyFieldPresentAfterEmit(after, op.component, op.field, sdk);
-    if (verify.ok === false) return verify.error;
-
-    return await commitOrPreview(op, sourceBefore, after, "ast", `set ${op.component}.${op.field}`);
+    mutateComponent(
+      target.component,
+      (_block, helpers) => helpers.setField(op.field, wrappedValue.node),
+      { strict: true },
+    );
   } catch (err) {
     return {
       ok: false,
-      reason: "ast_mutation_failed",
+      reason: "invalid_field",
       reason_detail: err instanceof Error ? err.message : String(err),
     };
   }
+
+  const after = doc.emit();
+  if (after === sourceBefore) {
+    return { ok: false, reason: "noop", reason_detail: "Mutation did not change source." };
+  }
+
+  const verify = await verifyFieldPresentAfterEmit(after, op.component, op.field, sdk);
+  if (verify.ok === false) return verify.error;
+
+  return await commitOrPreview(op, sourceBefore, after, "ast", `set ${op.component}.${op.field}`);
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -467,58 +528,263 @@ async function applyAstRename(
   sourceBefore: string,
   sdk: unknown,
 ): Promise<MutateResult> {
-  // Today: only topic.X → subagent.X. The deprecated-field quick-fix
-  // already has the deeper @-reference rewrite logic; defer to it via
-  // apply_quick_fix when possible.
-  const fromMatch = /^topic\.([\w-]+)$/.exec(op.from);
-  const toMatch = /^subagent\.([\w-]+)$/.exec(op.to);
-  if (!fromMatch || !toMatch || fromMatch[1] !== toMatch[1]) {
-    return {
-      ok: false,
-      reason: "rename_unsupported",
-      reason_detail: `Only topic.X → subagent.X renames are AST-supported. Use apply_quick_fix on the deprecated-field diagnostic, or the generic edit tool.`,
-    };
+  const from = normalizeRenameSymbol(op.from);
+  const to = normalizeRenameSymbol(op.to);
+  if (from.ok === false) return from.error;
+  if (to.ok === false) return to.error;
+
+  if (!DECLARABLE_RENAME_NAMESPACES.has(from.symbol.namespace)) {
+    return unsupportedRename(`Namespace '${from.symbol.namespace}' is not renameable.`);
   }
-  const entryName = fromMatch[1];
+  if (!DECLARABLE_RENAME_NAMESPACES.has(to.symbol.namespace)) {
+    return unsupportedRename(`Namespace '${to.symbol.namespace}' is not renameable.`);
+  }
+
+  if (
+    from.symbol.namespace !== to.symbol.namespace &&
+    !isTopicSubagentConversion(from.symbol, to.symbol)
+  ) {
+    return unsupportedRename(
+      "Cross-namespace renames are only supported for topic.X ↔ subagent.X conversions.",
+    );
+  }
 
   const parsed = parseDocument(sourceBefore, sdk);
   if (parsed.ok === false) return parsed.error;
-  const { doc } = parsed;
 
-  try {
-    // Move the entry from `topic` to `subagent`. The SDK's addEntry/removeEntry
-    // handle the underlying NamedMap + __children sync.
-    const ast = doc.ast as Record<string, unknown>;
-    const topicMap = ast.topic as { get?: (n: string) => unknown } | undefined;
-    const entry = topicMap?.get?.(entryName);
-    if (!entry) {
-      return {
-        ok: false,
-        reason: "entry_not_found",
-        reason_detail: `Topic '${entryName}' not found.`,
-      };
-    }
-    doc.removeEntry("topic", entryName);
-    doc.addEntry("subagent", entryName, entry as never);
+  const after = await (from.symbol.namespace === to.symbol.namespace
+    ? renameWithinNamespace(sourceBefore, from.symbol, to.symbol)
+    : renameTopicSubagent(sourceBefore, parsed.doc, from.symbol, to.symbol));
 
-    const after = doc.emit();
-    if (after === sourceBefore) {
-      return { ok: false, reason: "noop", reason_detail: "Rename produced identical source." };
-    }
-    return await commitOrPreview(
-      op,
-      sourceBefore,
-      after,
-      "ast",
-      `renamed topic.${entryName} → subagent.${entryName}`,
-    );
-  } catch (err) {
+  if (after.ok === false) return after.error;
+  if (after.source === sourceBefore) {
+    return { ok: false, reason: "noop", reason_detail: "Rename produced identical source." };
+  }
+
+  return await commitOrPreview(
+    op,
+    sourceBefore,
+    after.source,
+    "ast",
+    `renamed ${formatSymbol(from.symbol)} → ${formatSymbol(to.symbol)}`,
+  );
+}
+
+// -------------------------------------------------------------------------------------------------
+// Rename helpers
+// -------------------------------------------------------------------------------------------------
+
+interface RenameSymbol {
+  namespace: string;
+  name: string;
+}
+
+const DECLARABLE_RENAME_NAMESPACES = new Set(["topic", "subagent", "actions", "variables"]);
+
+function normalizeRenameSymbol(
+  raw: string,
+): { ok: true; symbol: RenameSymbol } | { ok: false; error: MutateResult } {
+  const m = /^@?([\w-]+)\.([\w-]+)$/.exec(raw);
+  if (!m) {
     return {
       ok: false,
-      reason: "ast_mutation_failed",
-      reason_detail: err instanceof Error ? err.message : String(err),
+      error: {
+        ok: false,
+        reason: "bad_symbol",
+        reason_detail: `Rename values must be '@<namespace>.<name>' or '<namespace>.<name>', got '${raw}'.`,
+      },
     };
   }
+  return { ok: true, symbol: { namespace: m[1], name: m[2] } };
+}
+
+function formatSymbol(symbol: RenameSymbol): string {
+  return `@${symbol.namespace}.${symbol.name}`;
+}
+
+function unsupportedRename(reason: string): MutateResult {
+  return {
+    ok: false,
+    reason: "rename_unsupported",
+    reason_detail:
+      `${reason} Supported structured renames: same-namespace declarable symbols ` +
+      `(@subagent.X, @topic.X, @actions.X, @variables.X), plus topic.X ↔ subagent.X ` +
+      `conversions with the same name. Use the generic edit tool for broader source rewrites, ` +
+      `then run agentscript_authoring compile/check.`,
+  };
+}
+
+function isTopicSubagentConversion(from: RenameSymbol, to: RenameSymbol): boolean {
+  return (
+    from.name === to.name &&
+    ((from.namespace === "topic" && to.namespace === "subagent") ||
+      (from.namespace === "subagent" && to.namespace === "topic"))
+  );
+}
+
+async function renameWithinNamespace(
+  source: string,
+  from: RenameSymbol,
+  to: RenameSymbol,
+): Promise<{ ok: true; source: string } | { ok: false; error: MutateResult }> {
+  if (from.name === to.name) return { ok: true, source };
+
+  const resolved = await resolveSymbol(source, from);
+  if (resolved.ok === false) return resolved;
+
+  const existing = await resolveSymbol(source, to);
+  if (existing.ok) {
+    return {
+      ok: false,
+      error: {
+        ok: false,
+        reason: "target_exists",
+        reason_detail: `${formatSymbol(to)} is already declared. Choose a unique target name.`,
+      },
+    };
+  }
+
+  const declarationEdit = replaceNameOnLine(source, resolved.definitionLine, from.name, to.name);
+  if (!declarationEdit) {
+    return {
+      ok: false,
+      error: {
+        ok: false,
+        reason: "rename_unsupported",
+        reason_detail: `Could not locate declaration name '${from.name}' for ${formatSymbol(from)}. Use generic edit + compile/check.`,
+      },
+    };
+  }
+
+  const edits = [
+    declarationEdit,
+    ...findExactTokenEdits(source, formatSymbol(from), formatSymbol(to)),
+  ];
+  return { ok: true, source: applyTextEdits(source, edits) };
+}
+
+async function renameTopicSubagent(
+  source: string,
+  _doc: ParsedDoc,
+  from: RenameSymbol,
+  to: RenameSymbol,
+): Promise<{ ok: true; source: string } | { ok: false; error: MutateResult }> {
+  const resolved = await resolveSymbol(source, from);
+  if (resolved.ok === false) return resolved;
+
+  const existing = await resolveSymbol(source, to);
+  if (existing.ok) {
+    return {
+      ok: false,
+      error: {
+        ok: false,
+        reason: "target_exists",
+        reason_detail: `${formatSymbol(to)} is already declared. Remove it or choose a different conversion target.`,
+      },
+    };
+  }
+
+  const declarationEdit = replaceNameOnLine(
+    source,
+    resolved.definitionLine,
+    from.namespace,
+    to.namespace,
+  );
+  if (!declarationEdit) {
+    return {
+      ok: false,
+      error: {
+        ok: false,
+        reason: "rename_unsupported",
+        reason_detail: `Could not locate '${from.namespace}' keyword on declaration line for ${formatSymbol(from)}. Use generic edit + compile/check.`,
+      },
+    };
+  }
+
+  const edits = [
+    declarationEdit,
+    ...findExactTokenEdits(source, formatSymbol(from), formatSymbol(to)),
+  ];
+  return { ok: true, source: applyTextEdits(source, edits) };
+}
+
+async function resolveSymbol(
+  source: string,
+  symbol: RenameSymbol,
+): Promise<{ ok: true; definitionLine: number } | { ok: false; error: MutateResult }> {
+  const state = await processAgentforceDocument(source);
+  if (!state.ast) {
+    return {
+      ok: false,
+      error: { ok: false, reason: "parse_failed", reason_detail: "Agent Script AST unavailable." },
+    };
+  }
+  const { resolveReference } = await import("@sf-agentscript/language");
+  const definition = resolveReference(
+    state.ast,
+    symbol.namespace,
+    symbol.name,
+    state.service.schemaContext,
+    undefined,
+    state.service.getSymbols(),
+  );
+  const line = definition?.definitionRange?.start?.line;
+  if (!definition || typeof line !== "number") {
+    return {
+      ok: false,
+      error: {
+        ok: false,
+        reason: "entry_not_found",
+        reason_detail: `${formatSymbol(symbol)} is not declared.`,
+      },
+    };
+  }
+  return { ok: true, definitionLine: line };
+}
+
+function replaceNameOnLine(
+  source: string,
+  lineIndex: number,
+  fromText: string,
+  toText: string,
+): AgentScriptQuickFix["edits"][number] | null {
+  const lines = source.split("\n");
+  const line = lines[lineIndex] ?? "";
+  const character = line.indexOf(fromText);
+  if (character < 0) return null;
+  return {
+    range: {
+      start: { line: lineIndex, character },
+      end: { line: lineIndex, character: character + fromText.length },
+    },
+    newText: toText,
+  };
+}
+
+function findExactTokenEdits(
+  source: string,
+  fromToken: string,
+  toToken: string,
+): AgentScriptQuickFix["edits"] {
+  const edits: AgentScriptQuickFix["edits"] = [];
+  const lines = source.split("\n");
+  for (let line = 0; line < lines.length; line++) {
+    const text = lines[line] ?? "";
+    let searchFrom = 0;
+    while (searchFrom < text.length) {
+      const character = text.indexOf(fromToken, searchFrom);
+      if (character < 0) break;
+      edits.push({
+        range: {
+          start: { line, character },
+          end: { line, character: character + fromToken.length },
+        },
+        newText: toToken,
+      });
+      searchFrom = character + fromToken.length;
+    }
+  }
+  return edits;
 }
 
 // -------------------------------------------------------------------------------------------------

@@ -1,14 +1,13 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /**
- * Tests for mutate.ts — AST-primary, coordinate-fallback edits.
+ * Tests for mutate.ts — minimal structured mutations plus coordinate-fallback edits.
  *
  * Real SDK, real fixture file. We validate:
- *   - apply_quick_fix works end-to-end via the SDK's deprecated-field
- *     diagnostic.
- *   - set_field rewrites a topic description.
- *   - rename topic.X → subagent.X is AST-applied.
+ *   - apply_quick_fix works end-to-end via SDK/LSP diagnostics.
+ *   - set_field rewrites and upserts scalar fields.
+ *   - rename updates declarations and references for supported symbols.
  *   - mutate refuses to touch a file with severity-1 parse errors.
- *   - bad component / unsupported ops return clear `reason` fields.
+ *   - unsupported broad insert/delete modes guide the agent to generic edit.
  */
 
 import { mkdtemp, readFile, writeFile, rm } from "node:fs/promises";
@@ -33,6 +32,27 @@ async function writeAgent(name: string, source: string): Promise<string> {
   return filePath;
 }
 
+const FULL_FIXTURE = [
+  "config:",
+  '    agent_name: "Test_Bot"',
+  '    description: "Demo"',
+  "",
+  "system:",
+  "    instructions: |",
+  "        old instructions",
+  "",
+  "topic billing:",
+  '    description: "old billing description"',
+  "",
+  "topic faq:",
+  '    description: "old faq description"',
+  "",
+  "start_agent main:",
+  '    description: "entry"',
+  "    transition to @topic.billing",
+  "",
+].join("\n");
+
 describe("applyMutation: apply_quick_fix", () => {
   test("returns no_matching_diagnostic when the line/code don't match", async () => {
     const filePath = await writeAgent(
@@ -51,28 +71,6 @@ describe("applyMutation: apply_quick_fix", () => {
 });
 
 describe("applyMutation: set_field", () => {
-  // Canonical fixture used by every set_field success-path test below.
-  const FULL_FIXTURE = [
-    "config:",
-    '    agent_name: "Test_Bot"',
-    '    description: "Demo"',
-    "",
-    "system:",
-    "    instructions: |",
-    "        old instructions",
-    "",
-    "topic billing:",
-    '    description: "old billing description"',
-    "",
-    "topic faq:",
-    '    description: "old faq description"',
-    "",
-    "start_agent main:",
-    '    description: "entry"',
-    "    transition to @topic.billing",
-    "",
-  ].join("\n");
-
   test("rewrites a nested topic.description (string) via AST and re-compiles", async () => {
     const filePath = await writeAgent("bot.agent", FULL_FIXTURE);
     const result = await applyMutation({
@@ -109,6 +107,22 @@ describe("applyMutation: set_field", () => {
     expect(after).toContain("updated demo description");
   });
 
+  test("upserts a schema-valid scalar field on config", async () => {
+    const filePath = await writeAgent("bot.agent", FULL_FIXTURE);
+    const result = await applyMutation({
+      op: "set_field",
+      path: filePath,
+      component: "config",
+      field: "agent_type",
+      value: "AgentforceEmployeeAgent",
+    });
+    if (!result.ok) {
+      throw new Error(`Expected success, got ${result.reason}: ${result.reason_detail}`);
+    }
+    const after = await readFile(filePath, "utf8");
+    expect(after).toContain('agent_type: "AgentforceEmployeeAgent"');
+  });
+
   test("set_field rejects array values with a clear unsupported_value_type reason", async () => {
     const filePath = await writeAgent("bot.agent", FULL_FIXTURE);
     const result = await applyMutation({
@@ -131,7 +145,7 @@ describe("applyMutation: set_field", () => {
     const result = await applyMutation({
       op: "set_field",
       path: filePath,
-      component: "topic", // missing entry name
+      component: "topic",
       field: "description",
       value: "x",
     });
@@ -139,52 +153,30 @@ describe("applyMutation: set_field", () => {
     expect(result.reason).toBe("bad_component");
   });
 
-  test("refuses to add a NEW field on config (field_not_present)", async () => {
-    // Repro of the original Issue 3 from docs/POSTMORTEM_E2E_DEMO.md:
-    // set_field on a missing field used to silently report success while
-    // emit() dropped the new field on the floor. Now it returns a clean
-    // error so the LLM falls back to the generic edit tool.
-    const filePath = await writeAgent("bot.agent", FULL_FIXTURE);
-    const before = await readFile(filePath, "utf8");
-    const result = await applyMutation({
-      op: "set_field",
-      path: filePath,
-      component: "config",
-      field: "agent_type", // not present in FULL_FIXTURE
-      value: "AgentforceEmployeeAgent",
-    });
-    expect(result.ok).toBe(false);
-    expect(result.reason).toBe("field_not_present");
-    expect(result.reason_detail).toMatch(/known fields:/i);
-    expect(result.reason_detail).toMatch(/edit tool/i);
-    // File on disk MUST be untouched (no whitespace round-trip leaks).
-    expect(await readFile(filePath, "utf8")).toBe(before);
-  });
-
-  test("refuses to add a NEW field on system (field_not_present)", async () => {
+  test("refuses to add a field outside the scalar upsert allowlist", async () => {
     const filePath = await writeAgent("bot.agent", FULL_FIXTURE);
     const result = await applyMutation({
       op: "set_field",
       path: filePath,
       component: "system",
-      field: "agent_type", // system has only `instructions`
+      field: "agent_type",
       value: "AgentforceEmployeeAgent",
     });
     expect(result.ok).toBe(false);
-    expect(result.reason).toBe("field_not_present");
+    expect(result.reason).toBe("invalid_field");
   });
 
-  test("refuses to add a NEW field on topic.<name> (field_not_present)", async () => {
+  test("refuses to add a non-scalar field on topic.<name>", async () => {
     const filePath = await writeAgent("bot.agent", FULL_FIXTURE);
     const result = await applyMutation({
       op: "set_field",
       path: filePath,
       component: "topic.faq",
-      field: "reasoning", // topic.faq has only `description`
+      field: "reasoning",
       value: "x",
     });
     expect(result.ok).toBe(false);
-    expect(result.reason).toBe("field_not_present");
+    expect(result.reason).toBe("invalid_field");
   });
 
   test("returns entry_not_found when the named entry doesn't exist", async () => {
@@ -200,9 +192,7 @@ describe("applyMutation: set_field", () => {
     expect(result.reason).toBe("entry_not_found");
   });
 
-  test("dry_run on a missing field also refuses (no diff produced)", async () => {
-    // Dry-runs that lie are just as bad as wet-runs that lie. The Layer 1
-    // guard fires before commitOrPreview is reached.
+  test("dry_run on a scalar upsert returns a preview diff", async () => {
     const filePath = await writeAgent("bot.agent", FULL_FIXTURE);
     const result = await applyMutation({
       op: "set_field",
@@ -212,10 +202,10 @@ describe("applyMutation: set_field", () => {
       value: "AgentforceEmployeeAgent",
       dry_run: true,
     });
-    expect(result.ok).toBe(false);
-    expect(result.reason).toBe("field_not_present");
-    expect(result.diff).toBeUndefined();
-    expect(result.preview_source).toBeUndefined();
+    expect(result.ok).toBe(true);
+    expect(result.was_dry_run).toBe(true);
+    expect(result.diff).toContain('agent_type: "AgentforceEmployeeAgent"');
+    expect(result.preview_source).toContain('agent_type: "AgentforceEmployeeAgent"');
   });
 
   test("returns unknown_component_kind for unrecognized heads", async () => {
@@ -236,28 +226,74 @@ describe("applyMutation: set_field", () => {
 });
 
 describe("applyMutation: rename", () => {
-  test("rejects non topic→subagent renames", async () => {
+  test("renames a declarable symbol and its references", async () => {
     const filePath = await writeAgent(
       "bot.agent",
-      ["system:", '    instructions: "x"', ""].join("\n"),
+      [
+        "config:",
+        '    agent_name: "Test_Bot"',
+        '    description: "Demo"',
+        "",
+        "subagent billing:",
+        '    description: "Billing"',
+        "",
+        "start_agent main:",
+        '    description: "entry"',
+        "    transition to @subagent.billing",
+        "",
+      ].join("\n"),
     );
     const result = await applyMutation({
       op: "rename",
       path: filePath,
-      from: "topic.foo",
-      to: "topic.bar",
+      from: "@subagent.billing",
+      to: "@subagent.account_billing",
+    });
+    if (!result.ok) {
+      throw new Error(`Expected success, got ${result.reason}: ${result.reason_detail}`);
+    }
+    const after = await readFile(filePath, "utf8");
+    expect(after).toContain("subagent account_billing:");
+    expect(after).toContain("transition to @subagent.account_billing");
+    expect(after).not.toContain("subagent billing:");
+  });
+
+  test("supports legacy topic.X → subagent.X conversion input", async () => {
+    const filePath = await writeAgent("bot.agent", FULL_FIXTURE);
+    const result = await applyMutation({
+      op: "rename",
+      path: filePath,
+      from: "topic.billing",
+      to: "subagent.billing",
+    });
+    if (!result.ok) {
+      throw new Error(`Expected success, got ${result.reason}: ${result.reason_detail}`);
+    }
+    const after = await readFile(filePath, "utf8");
+    expect(after).toContain("subagent billing:");
+    expect(after).toContain("transition to @subagent.billing");
+  });
+
+  test("rejects broad cross-namespace renames", async () => {
+    const filePath = await writeAgent("bot.agent", FULL_FIXTURE);
+    const result = await applyMutation({
+      op: "rename",
+      path: filePath,
+      from: "topic.billing",
+      to: "variables.billing",
     });
     expect(result.ok).toBe(false);
     expect(result.reason).toBe("rename_unsupported");
   });
 });
 
-describe("applyMutation: insert / delete (not yet implemented)", () => {
-  test("returns ast_unsupported with a hint", async () => {
+describe("applyMutation: insert / delete guidance", () => {
+  test("returns use_generic_edit with a compile/check hint", async () => {
     const filePath = await writeAgent(
       "bot.agent",
       ["system:", '    instructions: "x"', ""].join("\n"),
     );
+
     const insert = await applyMutation({
       op: "insert",
       path: filePath,
@@ -265,8 +301,9 @@ describe("applyMutation: insert / delete (not yet implemented)", () => {
       child: "lookup",
     });
     expect(insert.ok).toBe(false);
-    expect(insert.reason).toBe("ast_unsupported");
-    expect(insert.reason_detail).toContain("not yet implemented");
+    expect(insert.reason).toBe("use_generic_edit");
+    expect(insert.reason_detail).toContain("generic edit tool");
+    expect(insert.reason_detail).toContain("compile/check");
   });
 });
 

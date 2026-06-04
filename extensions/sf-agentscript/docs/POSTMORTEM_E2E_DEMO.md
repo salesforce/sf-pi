@@ -135,30 +135,15 @@ This writes a JS property onto the parsed block AST node. The SDK's `emit()` wal
 
 ### Fix
 
-Options, in order of preference:
+The mutation adapter now uses the official SDK package's structured mutation/emission helpers for targeted scalar field updates, then keeps the post-emit verification guard. `set_field` may upsert a known scalar field such as `config.agent_type`; broader list/object/block construction still routes to the generic edit tool plus `agentscript_authoring compile/check`.
 
-1. **Use the SDK's CST-aware insertion API.** The official SDK package exposes `parseComponent('field: value', 'config_field')` (similar to how `wrapScalarForAst` already calls `parseComponent(value, 'expression')`); inject the resulting CST node into `block.__children` at the right position. This is the only fix that lets `set_field` legitimately add fields.
-2. **If (1) is too invasive, refuse to add new fields.** Detect `op.field not in originalBlockKeys` before mutating; return:
+### Regression test
 
-   ```json
-   {
-     "ok": false,
-     "reason": "field_not_present",
-     "reason_detail": "set_field updates existing fields. To add a new field, use the edit tool."
-   }
-   ```
+`tests/mutate.test.ts` verifies that:
 
-3. **Post-emit verification.** After `doc.emit()`, parse the emitted source, look up `op.component.op.field`; if absent, refuse to write and return a clear error. Slower but bulletproof; works regardless of which CST API we use.
-
-(I'd ship 2 + 3 together as a hotfix and chase 1 separately.)
-
-### Regression test (must-have before merging the fix)
-
-`tests/mutate.test.ts`:
-
-- `set_field` for a non-existent field on `config` returns `ok: false`, `reason: "field_not_present"` (or, if option 1 lands, `ok: true` + the file post-mutation contains the new field via `agentscript_authoring compile/check + grep`).
-- `set_field` with `dry_run: true` for a non-existent field never reports `ok: true`.
-- A small "round-trip" test: every `applyMutation set_field` that returns `ok: true` produces a source where `parseComponent + lookup` finds the new value.
+- `set_field` for a non-existent scalar field on `config` returns `ok: true` and the file contains the new field.
+- `set_field` with `dry_run: true` for a scalar upsert returns a truthful diff/preview source.
+- non-scalar or non-allowlisted field construction returns `invalid_field` / `unsupported_value_type` guidance instead of reporting a misleading success.
 
 ---
 
@@ -272,7 +257,7 @@ The session above went `create → compile → preview → publish → activate`
 
 If we ship in priority order:
 
-1. **Hotfix (1 day):** Issue 3 (silent `set_field` lie). Add the `field_not_present` guard + post-emit verification + regression tests. This is a correctness bug; everything downstream that calls `set_field` to add a field is currently broken.
+1. **Hotfix (shipped):** Issue 3 (silent `set_field` lie). Use official structured mutation/emission helpers for scalar upserts, keep post-emit verification, and cover truthful dry-run/output behavior with regression tests.
 2. **High-value DX (2 days):** Issues 1 + 4. Promote `agent_type: AgentforceEmployeeAgent` in the default scaffold; promote `error-map.ts` to a shared module and add the activation cases. Both changes touch <100 LoC.
 3. **Documentation + small lint (1 day):** Issues 2, 5, 6. The `transition … when` quick-fix, the 404 message rewrite, and the docs entry on `sf project deploy` divergence.
 4. **Cross-cutting (separate roadmap item):** doctor.diagnose, breadcrumb-aware 404 messaging.

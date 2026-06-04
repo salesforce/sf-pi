@@ -131,12 +131,22 @@ const Params = Type.Object({
   ),
   field: Type.Optional(Type.String({ description: "For mutate.set_field. Field name." })),
   value: Type.Optional(Type.Any({ description: "For mutate.set_field. New scalar value." })),
-  from: Type.Optional(Type.String({ description: "For mutate.rename. Source component." })),
-  to: Type.Optional(Type.String({ description: "For mutate.rename. Target component." })),
-  parent: Type.Optional(Type.String({ description: "For mutate.insert. Parent component path." })),
-  child: Type.Optional(Type.Any({ description: "For mutate.insert. Child node." })),
+  from: Type.Optional(
+    Type.String({
+      description: "For mutate.rename. Source symbol/component, e.g. '@subagent.billing'.",
+    }),
+  ),
+  to: Type.Optional(
+    Type.String({
+      description: "For mutate.rename. Target symbol/component, e.g. '@subagent.account_billing'.",
+    }),
+  ),
+  parent: Type.Optional(
+    Type.String({ description: "For mutate.insert guidance. Parent component path." }),
+  ),
+  child: Type.Optional(Type.Any({ description: "For mutate.insert guidance. Child node." })),
   target: Type.Optional(
-    Type.String({ description: "For mutate.delete. Component path to remove." }),
+    Type.String({ description: "For mutate.delete guidance. Component path to remove." }),
   ),
   diagnostic_code: Type.Optional(
     Type.String({ description: "For mutate.apply_quick_fix. Diagnostic code." }),
