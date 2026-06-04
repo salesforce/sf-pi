@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.173.0-2026-06-04",
-  "latestVersion": "0.173.0",
+  "revision": "release-0.174.0-2026-06-04",
+  "latestVersion": "0.174.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.173.0",
+      "id": "release-0.174.0",
       "kind": "update",
-      "title": "sf-pi v0.173.0 — sf-agentscript: use official AgentScript packages",
+      "title": "sf-pi v0.174.0 — sf-agentscript: report AgentScript package versions",
       "publishedAt": "2026-06-04T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.173.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.174.0",
       "severity": "info",
-      "body": "sf-agentscript: use official AgentScript packages"
+      "body": "sf-agentscript: report AgentScript package versions"
     },
     {
       "id": "pi-0.73-required",

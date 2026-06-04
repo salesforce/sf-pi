@@ -517,6 +517,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.174.0](https://github.com/salesforce/sf-pi/compare/v0.173.0...v0.174.0) (2026-06-04)
+
+
+### Features
+
+* **sf-agentscript:** report AgentScript package versions ([e62e84e](https://github.com/salesforce/sf-pi/commit/e62e84edfe6d3c4c8f87562d315b61f37f1d84c7))
+
 ## [0.173.0](https://github.com/salesforce/sf-pi/compare/v0.172.0...v0.173.0) (2026-06-04)
 
 
