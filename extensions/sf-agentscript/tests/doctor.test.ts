@@ -13,12 +13,16 @@ function baseStatus(): DoctorStatus {
         kind: "direct",
         declaredVersion: "2.5.32",
         resolvedVersion: "2.5.32",
+        latestVersion: "2.5.32",
+        freshness: "current",
         loaded: true,
       },
       {
         name: "@sf-agentscript/compiler",
         kind: "transitive",
         resolvedVersion: "2.6.9",
+        latestVersion: "2.7.0",
+        freshness: "update_available",
         loaded: true,
       },
     ],
@@ -36,8 +40,10 @@ describe("renderDoctorReport", () => {
     const report = renderDoctorReport(baseStatus());
     expect(report).toContain("AgentScript packages:");
     expect(report).toContain(
-      "@sf-agentscript/agentforce: direct, declared 2.5.32, resolved 2.5.32",
+      "@sf-agentscript/agentforce: direct, declared 2.5.32, resolved 2.5.32, latest 2.5.32, current",
     );
-    expect(report).toContain("@sf-agentscript/compiler: transitive, not declared, resolved 2.6.9");
+    expect(report).toContain(
+      "@sf-agentscript/compiler: transitive, not declared, resolved 2.6.9, latest 2.7.0, update available",
+    );
   });
 });

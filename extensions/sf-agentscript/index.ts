@@ -225,7 +225,9 @@ async function handleAgentScriptCommand(
   }
   if (subcommand === "doctor") {
     const targetOrg = parseDoctorTargetOrg(args);
-    const status = await probeDoctor(ctx.cwd, targetOrg);
+    const status = await probeDoctor(ctx.cwd, targetOrg, {
+      includeFreshness: parseDoctorFreshness(args),
+    });
     await emitOutput(
       ctx,
       "Agent Script doctor",
@@ -292,6 +294,10 @@ async function emitOutput(
   }
 }
 
+function parseDoctorFreshness(args: string[]): boolean {
+  return args.includes("--freshness") || args.includes("--packages");
+}
+
 function parseDoctorTargetOrg(args: string[]): string | undefined {
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
@@ -310,7 +316,7 @@ function renderHelp(): string {
     "",
     "Commands:",
     "  /sf-agentscript                  Open status & controls panel",
-    "  /sf-agentscript doctor [--org A] Show SDK status + optional SFAP readiness for org A",
+    "  /sf-agentscript doctor [--org A] [--freshness] Show SDK status + optional SFAP/package freshness",
     "  /sf-agentscript check <file>     Run one manual compile diagnostic pass",
     "  /sf-agentscript eval <spec.json> [--org A] [--agent N] [--traces failed|all|off]",
     "                                   [--concurrency N] [--prompt-chars N] [--verbose]",

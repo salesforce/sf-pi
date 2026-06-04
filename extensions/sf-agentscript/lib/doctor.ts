@@ -23,6 +23,8 @@ export interface AgentScriptPackageStatus {
   kind: "direct" | "transitive";
   declaredVersion?: string;
   resolvedVersion?: string;
+  latestVersion?: string;
+  freshness?: "current" | "update_available" | "unknown";
   loaded: boolean;
 }
 
@@ -46,7 +48,11 @@ export interface DoctorStatus {
 // Probe
 // -------------------------------------------------------------------------------------------------
 
-export async function probeDoctor(cwd: string, targetOrg?: string): Promise<DoctorStatus> {
+export async function probeDoctor(
+  cwd: string,
+  targetOrg?: string,
+  options: { includeFreshness?: boolean } = {},
+): Promise<DoctorStatus> {
   const sdk = await loadAgentforceSDK();
 
   const dialectsProbed: string[] = [];
@@ -66,7 +72,7 @@ export async function probeDoctor(cwd: string, targetOrg?: string): Promise<Doct
     loadError = `${AGENTFORCE_SDK_PACKAGE} failed to import.`;
   }
 
-  const agentScriptPackages = await readAgentScriptPackageStatuses();
+  const agentScriptPackages = await readAgentScriptPackageStatuses(options.includeFreshness);
   const sdkPackageVersion = agentScriptPackages.find(
     (pkg) => pkg.name === AGENTFORCE_SDK_PACKAGE,
   )?.declaredVersion;
@@ -137,7 +143,9 @@ export async function probeDoctor(cwd: string, targetOrg?: string): Promise<Doct
   };
 }
 
-async function readAgentScriptPackageStatuses(): Promise<AgentScriptPackageStatus[]> {
+async function readAgentScriptPackageStatuses(
+  includeFreshness = false,
+): Promise<AgentScriptPackageStatus[]> {
   const fs = await import("node:fs/promises");
   let dependencies: Record<string, string> = {};
   try {
@@ -158,14 +166,34 @@ async function readAgentScriptPackageStatuses(): Promise<AgentScriptPackageStatu
   return Promise.all(
     packages.map(async (pkg) => {
       const resolvedVersion = await readInstalledPackageVersion(pkg.name);
+      const latestVersion = includeFreshness ? await fetchLatestNpmVersion(pkg.name) : undefined;
       return {
         ...pkg,
         declaredVersion: dependencies[pkg.name],
         resolvedVersion,
+        latestVersion,
+        freshness: latestVersion
+          ? resolvedVersion === latestVersion
+            ? "current"
+            : "update_available"
+          : undefined,
         loaded: Boolean(resolvedVersion),
       };
     }),
   );
+}
+
+async function fetchLatestNpmVersion(packageName: string): Promise<string | undefined> {
+  try {
+    const url = `https://registry.npmjs.org/${encodeURIComponent(packageName).replace("%40", "@")}`;
+    const response = await fetch(url, { headers: { accept: "application/json" } });
+    if (!response.ok) return undefined;
+    const body = (await response.json()) as { "dist-tags"?: { latest?: unknown } };
+    const latest = body["dist-tags"]?.latest;
+    return typeof latest === "string" ? latest : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 async function readInstalledPackageVersion(packageName: string): Promise<string | undefined> {
@@ -351,14 +379,17 @@ export function renderDoctorReport(status: DoctorStatus): string {
 function renderPackageStatusCompact(pkg: AgentScriptPackageStatus): string {
   const declared = pkg.declaredVersion ? ` declared ${pkg.declaredVersion}` : "";
   const resolved = pkg.resolvedVersion ? ` resolved ${pkg.resolvedVersion}` : " unresolved";
-  return `${pkg.name} (${pkg.kind}${declared},${resolved})`;
+  const latest = pkg.latestVersion ? ` latest ${pkg.latestVersion}` : "";
+  return `${pkg.name} (${pkg.kind}${declared},${resolved}${latest})`;
 }
 
 function renderPackageStatusLine(pkg: AgentScriptPackageStatus): string {
-  const icon = pkg.loaded ? "✅" : "⚠️";
+  const icon = pkg.loaded ? (pkg.freshness === "update_available" ? "⚠️" : "✅") : "⚠️";
   const declared = pkg.declaredVersion ? `declared ${pkg.declaredVersion}` : "not declared";
   const resolved = pkg.resolvedVersion ? `resolved ${pkg.resolvedVersion}` : "not resolved";
-  return `${icon} ${pkg.name}: ${pkg.kind}, ${declared}, ${resolved}`;
+  const latest = pkg.latestVersion ? `, latest ${pkg.latestVersion}` : "";
+  const freshness = pkg.freshness ? `, ${pkg.freshness.replace("_", " ")}` : "";
+  return `${icon} ${pkg.name}: ${pkg.kind}, ${declared}, ${resolved}${latest}${freshness}`;
 }
 
 function renderSfapProbe(
