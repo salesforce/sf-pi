@@ -517,6 +517,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.175.0](https://github.com/salesforce/sf-pi/compare/v0.174.0...v0.175.0) (2026-06-04)
+
+
+### Features
+
+* **sf-agentscript:** add package freshness doctor ([1757108](https://github.com/salesforce/sf-pi/commit/1757108fb9bc96a34122021e431cf075f6879c10))
+
 ## [0.174.0](https://github.com/salesforce/sf-pi/compare/v0.173.0...v0.174.0) (2026-06-04)
 
 
