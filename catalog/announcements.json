@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.171.1-2026-06-04",
-  "latestVersion": "0.171.1",
+  "revision": "release-0.172.0-2026-06-04",
+  "latestVersion": "0.172.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.171.1",
+      "id": "release-0.172.0",
       "kind": "update",
-      "title": "sf-pi v0.171.1 — sf-browser: diagnose browser launch failures",
+      "title": "sf-pi v0.172.0 — sf-data360: add live-read action sweep",
       "publishedAt": "2026-06-04T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.171.1",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.172.0",
       "severity": "info",
-      "body": "sf-browser: diagnose browser launch failures"
+      "body": "sf-data360: add live-read action sweep"
     },
     {
       "id": "pi-0.73-required",
