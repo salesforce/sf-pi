@@ -131,6 +131,10 @@ type WalkAstExpressions = (
   callback: (expr: { __kind?: string; object?: unknown; property?: unknown }) => void,
 ) => void;
 
+type DecomposeAtMemberExpression = (
+  expr: unknown,
+) => { namespace: string; property: string } | null;
+
 function truncate(s: unknown, n: number): string {
   if (typeof s !== "string") return "";
   return s.length <= n ? s : s.slice(0, n - 1) + "…";
@@ -166,17 +170,14 @@ function expressionName(value: unknown): string | undefined {
 
 function memberRef(
   value: unknown,
+  decomposeAtMemberExpression: DecomposeAtMemberExpression,
 ): { text: string; namespace: string; property: string } | undefined {
-  if (!value || typeof value !== "object") return undefined;
-  const obj = value as { __kind?: unknown; object?: unknown; property?: unknown };
-  if (obj.__kind !== "MemberExpression") return undefined;
-  const at = obj.object as { __kind?: unknown; name?: unknown } | undefined;
-  if (!at || at.__kind !== "AtIdentifier") return undefined;
-  if (typeof at.name !== "string" || typeof obj.property !== "string") return undefined;
+  const ref = decomposeAtMemberExpression(value);
+  if (!ref) return undefined;
   return {
-    text: `@${at.name}.${obj.property}`,
-    namespace: at.name,
-    property: obj.property,
+    text: `@${ref.namespace}.${ref.property}`,
+    namespace: ref.namespace,
+    property: ref.property,
   };
 }
 
@@ -251,9 +252,10 @@ function collectAtRefs(
     utilities: Set<string>;
   },
   walkAstExpressions: WalkAstExpressions,
+  decomposeAtMemberExpression: DecomposeAtMemberExpression,
 ): void {
   walkAstExpressions(node, (expr) => {
-    const ref = memberRef(expr);
+    const ref = memberRef(expr, decomposeAtMemberExpression);
     if (!ref) return;
     if (ref.namespace === "actions") refs.actions.add(ref.property);
     else if (ref.namespace === "subagent" || ref.namespace === "topic") {
@@ -276,6 +278,7 @@ function summarizeWithRefs(
   name: string,
   entry: unknown,
   walkAstExpressions: WalkAstExpressions,
+  decomposeAtMemberExpression: DecomposeAtMemberExpression,
 ): ComponentSummary {
   const refs = {
     actions: new Set<string>(),
@@ -284,7 +287,7 @@ function summarizeWithRefs(
     responseFormats: new Set<string>(),
     utilities: new Set<string>(),
   };
-  collectAtRefs(entry, refs, walkAstExpressions);
+  collectAtRefs(entry, refs, walkAstExpressions, decomposeAtMemberExpression);
   const e = entry as Record<string, unknown>;
   const summary: ComponentSummary = { name };
   const line = startLine(entry);
@@ -310,7 +313,11 @@ function summarizeWithRefs(
   return summary;
 }
 
-function summarizeVariable(name: string, entry: unknown): VariableSummary {
+function summarizeVariable(
+  name: string,
+  entry: unknown,
+  decomposeAtMemberExpression: DecomposeAtMemberExpression,
+): VariableSummary {
   const e = entry as Record<string, unknown>;
   const props = childProps(e);
   const summary: VariableSummary = { name };
@@ -333,7 +340,7 @@ function summarizeVariable(name: string, entry: unknown): VariableSummary {
     summary.default = def !== undefined ? def : rawDefault;
   }
 
-  const source = memberRef(props.source);
+  const source = memberRef(props.source, decomposeAtMemberExpression);
   if (source) {
     summary.source = source.text;
     summary.source_namespace = source.namespace;
@@ -353,8 +360,14 @@ function summarizeConnection(
   name: string,
   entry: unknown,
   walkAstExpressions: WalkAstExpressions,
+  decomposeAtMemberExpression: DecomposeAtMemberExpression,
 ): ConnectionSummary {
-  const summary = summarizeWithRefs(name, entry, walkAstExpressions) as ConnectionSummary;
+  const summary = summarizeWithRefs(
+    name,
+    entry,
+    walkAstExpressions,
+    decomposeAtMemberExpression,
+  ) as ConnectionSummary;
   const e = entry as Record<string, unknown>;
   const inputNames = paramNames(e.inputs);
   if (inputNames) summary.input_names = inputNames;
@@ -412,6 +425,7 @@ export function projectInspectStructure(input: {
   hasParseErrors: boolean;
   parseErrorCount: number;
   walkAstExpressions: WalkAstExpressions;
+  decomposeAtMemberExpression: DecomposeAtMemberExpression;
 }): InspectResult {
   const ast = (input.ast ?? {}) as Record<string, unknown>;
 
@@ -421,17 +435,17 @@ export function projectInspectStructure(input: {
 
   // Topics, subagents, actions are NamedMaps. Variables too.
   const startAgents = namedMapEntries(ast.start_agent).map(([n, e]) =>
-    summarizeWithRefs(n, e, input.walkAstExpressions),
+    summarizeWithRefs(n, e, input.walkAstExpressions, input.decomposeAtMemberExpression),
   );
   const topics = namedMapEntries(ast.topic).map(([n, e]) =>
-    summarizeWithRefs(n, e, input.walkAstExpressions),
+    summarizeWithRefs(n, e, input.walkAstExpressions, input.decomposeAtMemberExpression),
   );
   const subagents = namedMapEntries(ast.subagent).map(([n, e]) =>
-    summarizeWithRefs(n, e, input.walkAstExpressions),
+    summarizeWithRefs(n, e, input.walkAstExpressions, input.decomposeAtMemberExpression),
   );
   // Top-level `actions:` block.
   const topLevelActions = namedMapEntries(ast.actions).map(([n, e]) =>
-    summarizeWithRefs(n, e, input.walkAstExpressions),
+    summarizeWithRefs(n, e, input.walkAstExpressions, input.decomposeAtMemberExpression),
   );
   // Inline action declarations inside `start_agent.<X>.actions:`,
   // `subagent.<X>.actions:`, and `topic.<X>.actions:`. Many real-world agents
@@ -443,7 +457,12 @@ export function projectInspectStructure(input: {
   for (const [parentName, entry] of namedMapEntries(ast.start_agent)) {
     const inner = (entry as { actions?: unknown }).actions;
     for (const [aName, aEntry] of namedMapEntries(inner)) {
-      const summary = summarizeWithRefs(aName, aEntry, input.walkAstExpressions);
+      const summary = summarizeWithRefs(
+        aName,
+        aEntry,
+        input.walkAstExpressions,
+        input.decomposeAtMemberExpression,
+      );
       summary.parent = `start_agent.${parentName}`;
       inlineActions.push(summary);
     }
@@ -451,7 +470,12 @@ export function projectInspectStructure(input: {
   for (const [parentName, entry] of namedMapEntries(ast.subagent)) {
     const inner = (entry as { actions?: unknown }).actions;
     for (const [aName, aEntry] of namedMapEntries(inner)) {
-      const summary = summarizeWithRefs(aName, aEntry, input.walkAstExpressions);
+      const summary = summarizeWithRefs(
+        aName,
+        aEntry,
+        input.walkAstExpressions,
+        input.decomposeAtMemberExpression,
+      );
       summary.parent = `subagent.${parentName}`;
       inlineActions.push(summary);
     }
@@ -459,15 +483,22 @@ export function projectInspectStructure(input: {
   for (const [parentName, entry] of namedMapEntries(ast.topic)) {
     const inner = (entry as { actions?: unknown }).actions;
     for (const [aName, aEntry] of namedMapEntries(inner)) {
-      const summary = summarizeWithRefs(aName, aEntry, input.walkAstExpressions);
+      const summary = summarizeWithRefs(
+        aName,
+        aEntry,
+        input.walkAstExpressions,
+        input.decomposeAtMemberExpression,
+      );
       summary.parent = `topic.${parentName}`;
       inlineActions.push(summary);
     }
   }
   const actions = [...topLevelActions, ...inlineActions];
-  const variables = namedMapEntries(ast.variables).map(([n, e]) => summarizeVariable(n, e));
+  const variables = namedMapEntries(ast.variables).map(([n, e]) =>
+    summarizeVariable(n, e, input.decomposeAtMemberExpression),
+  );
   const connections = namedMapEntries(ast.connection).map(([n, e]) =>
-    summarizeConnection(n, e, input.walkAstExpressions),
+    summarizeConnection(n, e, input.walkAstExpressions, input.decomposeAtMemberExpression),
   );
   const modalities = namedMapEntries(ast.modality).map(([n, e]) => summarizeModality(n, e));
 

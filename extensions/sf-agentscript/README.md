@@ -266,6 +266,16 @@ extensions/sf-agentscript/
 
 <!-- GENERATED:file-structure:end -->
 
+## AgentScript Package Updates
+
+Check current, resolved, and npm-latest official AgentScript package versions with:
+
+```bash
+npm run agentscript:versions
+```
+
+Refresh direct AgentScript dependencies intentionally with `npm install --save-exact`; `@sf-agentscript/compiler` remains transitive through `@sf-agentscript/agentforce` unless SF Pi imports it directly.
+
 ## Testing Strategy
 
 Targeted extension suite:

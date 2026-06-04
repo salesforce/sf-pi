@@ -60,13 +60,15 @@ export async function inspectFile(filePath: string): Promise<InspectResult> {
     if (((diag as { severity?: number })?.severity ?? 0) === 1) sev1Count += 1;
   }
 
-  const { walkAstExpressions } = await import("@sf-agentscript/language");
+  const { decomposeAtMemberExpression, walkAstExpressions } =
+    await import("@sf-agentscript/language");
   return projectInspectStructure({
     ast: doc.ast,
     dialect: resolveDialectInfo(source, sdk),
     hasParseErrors: sev1Count > 0,
     parseErrorCount: sev1Count,
     walkAstExpressions,
+    decomposeAtMemberExpression,
   });
 }
 

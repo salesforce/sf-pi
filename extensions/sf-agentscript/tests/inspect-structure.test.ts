@@ -8,7 +8,7 @@
  */
 
 import { parse } from "@sf-agentscript/agentforce";
-import { walkAstExpressions } from "@sf-agentscript/language";
+import { decomposeAtMemberExpression, walkAstExpressions } from "@sf-agentscript/language";
 import { describe, expect, test } from "vitest";
 import { projectInspectStructure } from "../lib/inspect-structure.ts";
 
@@ -64,6 +64,7 @@ describe("projectInspectStructure", () => {
       hasParseErrors: false,
       parseErrorCount: 0,
       walkAstExpressions,
+      decomposeAtMemberExpression,
     });
 
     expect({

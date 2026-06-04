@@ -656,10 +656,7 @@ async function renameWithinNamespace(
     };
   }
 
-  const edits = [
-    declarationEdit,
-    ...findExactTokenEdits(source, formatSymbol(from), formatSymbol(to)),
-  ];
+  const edits = [declarationEdit, ...(await findReferenceRenameEdits(source, from, to))];
   return { ok: true, source: applyTextEdits(source, edits) };
 }
 
@@ -701,10 +698,7 @@ async function renameTopicSubagent(
     };
   }
 
-  const edits = [
-    declarationEdit,
-    ...findExactTokenEdits(source, formatSymbol(from), formatSymbol(to)),
-  ];
+  const edits = [declarationEdit, ...(await findReferenceRenameEdits(source, from, to))];
   return { ok: true, source: applyTextEdits(source, edits) };
 }
 
@@ -759,6 +753,53 @@ function replaceNameOnLine(
     },
     newText: toText,
   };
+}
+
+async function findReferenceRenameEdits(
+  source: string,
+  from: RenameSymbol,
+  to: RenameSymbol,
+): Promise<AgentScriptQuickFix["edits"]> {
+  const edits: AgentScriptQuickFix["edits"] = [];
+  const seen = new Set<string>();
+  try {
+    const state = await processAgentforceDocument(source);
+    if (state.ast) {
+      const { findAllReferences } = await import("@sf-agentscript/language");
+      const refs = findAllReferences(
+        state.ast,
+        from.namespace,
+        from.name,
+        state.service.schemaContext,
+        undefined,
+        true,
+        state.service.getSymbols(),
+      ) as Array<{ range: AgentScriptRange; isDefinition: boolean }>;
+      for (const ref of refs) {
+        if (ref.isDefinition) continue;
+        addRenameEdit(edits, seen, { range: ref.range, newText: formatSymbol(to) });
+      }
+    }
+  } catch {
+    // Exact token fallback below still handles common Agent Script reference
+    // shapes such as deterministic transitions.
+  }
+
+  for (const edit of findExactTokenEdits(source, formatSymbol(from), formatSymbol(to))) {
+    addRenameEdit(edits, seen, edit);
+  }
+  return edits;
+}
+
+function addRenameEdit(
+  edits: AgentScriptQuickFix["edits"],
+  seen: Set<string>,
+  edit: AgentScriptQuickFix["edits"][number],
+): void {
+  const key = `${edit.range.start.line}:${edit.range.start.character}:${edit.range.end.line}:${edit.range.end.character}`;
+  if (seen.has(key)) return;
+  seen.add(key);
+  edits.push(edit);
 }
 
 function findExactTokenEdits(
