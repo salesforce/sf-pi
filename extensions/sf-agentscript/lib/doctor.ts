@@ -7,6 +7,7 @@
  */
 
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { existsSync } from "node:fs";
 import { access, constants } from "node:fs/promises";
 import type { ExtensionDoctorReport } from "../../../lib/common/doctor/registry.ts";
@@ -17,10 +18,19 @@ import { probeSfapReadiness, type SfapReadinessReport } from "./sfap-readiness.t
 // Status shape
 // -------------------------------------------------------------------------------------------------
 
+export interface AgentScriptPackageStatus {
+  name: string;
+  kind: "direct" | "transitive";
+  declaredVersion?: string;
+  resolvedVersion?: string;
+  loaded: boolean;
+}
+
 export interface DoctorStatus {
   sdkLoaded: boolean;
   sdkPackage: string;
   sdkPackageVersion?: string;
+  agentScriptPackages: AgentScriptPackageStatus[];
   dialectsProbed: string[];
   loadError?: string;
   upstreamNote: string;
@@ -56,7 +66,10 @@ export async function probeDoctor(cwd: string, targetOrg?: string): Promise<Doct
     loadError = `${AGENTFORCE_SDK_PACKAGE} failed to import.`;
   }
 
-  const sdkPackageVersion = await readAgentforcePackageVersion();
+  const agentScriptPackages = await readAgentScriptPackageStatuses();
+  const sdkPackageVersion = agentScriptPackages.find(
+    (pkg) => pkg.name === AGENTFORCE_SDK_PACKAGE,
+  )?.declaredVersion;
   const upstreamNote = sdkPackageVersion
     ? `${AGENTFORCE_SDK_PACKAGE}@${sdkPackageVersion}`
     : AGENTFORCE_SDK_PACKAGE;
@@ -112,6 +125,7 @@ export async function probeDoctor(cwd: string, targetOrg?: string): Promise<Doct
     sdkLoaded,
     sdkPackage: AGENTFORCE_SDK_PACKAGE,
     sdkPackageVersion,
+    agentScriptPackages,
     dialectsProbed,
     loadError,
     upstreamNote,
@@ -123,14 +137,65 @@ export async function probeDoctor(cwd: string, targetOrg?: string): Promise<Doct
   };
 }
 
-async function readAgentforcePackageVersion(): Promise<string | undefined> {
+async function readAgentScriptPackageStatuses(): Promise<AgentScriptPackageStatus[]> {
+  const fs = await import("node:fs/promises");
+  let dependencies: Record<string, string> = {};
   try {
-    const fs = await import("node:fs/promises");
     const raw = await fs.readFile(new URL("../../../package.json", import.meta.url), "utf8");
     const parsed = JSON.parse(raw) as { dependencies?: Record<string, string> };
-    return parsed.dependencies?.[AGENTFORCE_SDK_PACKAGE];
+    dependencies = parsed.dependencies ?? {};
+  } catch {
+    dependencies = {};
+  }
+
+  const packages: Array<{ name: string; kind: "direct" | "transitive" }> = [
+    { name: AGENTFORCE_SDK_PACKAGE, kind: "direct" },
+    { name: "@sf-agentscript/compiler", kind: "transitive" },
+    { name: "@sf-agentscript/language", kind: "direct" },
+    { name: "@sf-agentscript/lsp", kind: "direct" },
+  ];
+
+  return Promise.all(
+    packages.map(async (pkg) => {
+      const resolvedVersion = await readInstalledPackageVersion(pkg.name);
+      return {
+        ...pkg,
+        declaredVersion: dependencies[pkg.name],
+        resolvedVersion,
+        loaded: Boolean(resolvedVersion),
+      };
+    }),
+  );
+}
+
+async function readInstalledPackageVersion(packageName: string): Promise<string | undefined> {
+  try {
+    const resolved = await import.meta.resolve(packageName);
+    const start = fileURLToPath(resolved);
+    const packageJson = await findNearestPackageJson(path.dirname(start));
+    if (!packageJson) return undefined;
+    const fs = await import("node:fs/promises");
+    const raw = await fs.readFile(packageJson, "utf8");
+    const parsed = JSON.parse(raw) as { version?: string };
+    return parsed.version;
   } catch {
     return undefined;
+  }
+}
+
+async function findNearestPackageJson(startDir: string): Promise<string | undefined> {
+  const fs = await import("node:fs/promises");
+  let current = startDir;
+  for (;;) {
+    const candidate = path.join(current, "package.json");
+    try {
+      await fs.access(candidate, constants.R_OK);
+      return candidate;
+    } catch {
+      const parent = path.dirname(current);
+      if (parent === current) return undefined;
+      current = parent;
+    }
   }
 }
 
@@ -170,6 +235,24 @@ export async function runExtensionDoctor(cwd: string): Promise<ExtensionDoctorRe
       title: "Official AgentScript SDK failed to load",
       detail: status.loadError ?? "Unknown SDK load failure",
       fix: "Run `npm install` at the repo root or reinstall sf-pi.",
+    });
+  }
+
+  const missingPackage = status.agentScriptPackages.find((pkg) => !pkg.loaded);
+  if (missingPackage) {
+    checks.push({
+      id: "agentscript.package-versions",
+      severity: "warn",
+      title: "Some @sf-agentscript packages are not resolvable",
+      detail: status.agentScriptPackages.map(renderPackageStatusCompact).join("; "),
+      fix: "Run `npm install` at the repo root.",
+    });
+  } else if (status.agentScriptPackages.length > 0) {
+    checks.push({
+      id: "agentscript.package-versions",
+      severity: "ok",
+      title: "AgentScript package versions resolved",
+      detail: status.agentScriptPackages.map(renderPackageStatusCompact).join("; "),
     });
   }
 
@@ -229,6 +312,13 @@ export function renderDoctorReport(status: DoctorStatus): string {
     lines.push("   tip: run `npm install` at the repo root or reinstall sf-pi.");
   }
 
+  if (status.agentScriptPackages.length > 0) {
+    lines.push("", "AgentScript packages:");
+    for (const pkg of status.agentScriptPackages) {
+      lines.push(renderPackageStatusLine(pkg));
+    }
+  }
+
   if (status.salesforceCoreResolved) {
     lines.push(
       `✅ @salesforce/core: resolved${status.salesforceCoreVersion ? ` (v${status.salesforceCoreVersion})` : ""}`,
@@ -256,6 +346,19 @@ export function renderDoctorReport(status: DoctorStatus): string {
   }
 
   return lines.join("\n");
+}
+
+function renderPackageStatusCompact(pkg: AgentScriptPackageStatus): string {
+  const declared = pkg.declaredVersion ? ` declared ${pkg.declaredVersion}` : "";
+  const resolved = pkg.resolvedVersion ? ` resolved ${pkg.resolvedVersion}` : " unresolved";
+  return `${pkg.name} (${pkg.kind}${declared},${resolved})`;
+}
+
+function renderPackageStatusLine(pkg: AgentScriptPackageStatus): string {
+  const icon = pkg.loaded ? "✅" : "⚠️";
+  const declared = pkg.declaredVersion ? `declared ${pkg.declaredVersion}` : "not declared";
+  const resolved = pkg.resolvedVersion ? `resolved ${pkg.resolvedVersion}` : "not resolved";
+  return `${icon} ${pkg.name}: ${pkg.kind}, ${declared}, ${resolved}`;
 }
 
 function renderSfapProbe(
