@@ -226,6 +226,7 @@ extensions/sf-agentscript/
     inspect-actions.test.ts ← unit / smoke test
     inspect-cycle-safety.test.ts← unit / smoke test
     inspect-inline-actions.test.ts← unit / smoke test
+    inspect-structure.test.ts← unit / smoke test
     inspect.test.ts         ← unit / smoke test
     lifecycle-divergence.test.ts← unit / smoke test
     lifecycle-error-classification.test.ts← unit / smoke test

@@ -23,7 +23,8 @@ export interface AgentforceSourceAnalysis {
   sdk: AgentforceSDK;
   dialect?: AgentScriptDialectInfo;
   compileDiagnostics: AgentScriptDiagnostic[];
-  documentState?: DocumentState;
+  compileOutput?: unknown;
+  documentState: DocumentState;
 }
 
 export type AgentforceSourceAnalysisFailure = {
@@ -36,8 +37,9 @@ export type AgentforceSourceAnalysisFailure = {
 export async function processAgentforceDocument(
   source: string,
   uri = AGENTFORCE_DOCUMENT_URI,
+  options: { compile?: boolean } = {},
 ): Promise<DocumentState> {
-  const [{ getParser }, { defaultDialects, processDocument }] = await Promise.all([
+  const [{ compile, getParser }, { defaultDialects, processDocument }] = await Promise.all([
     import("@sf-agentscript/agentforce"),
     import("@sf-agentscript/lsp"),
   ]);
@@ -51,6 +53,14 @@ export async function processAgentforceDocument(
     dialects: [agentforceDialect],
     defaultDialect: agentforceDialect.name,
     parser: getParser() as unknown as LspParser,
+    compile: options.compile
+      ? (dialectName) =>
+          dialectName === "agentforce"
+            ? {
+                compile: (ast) => compile(ast as never),
+              }
+            : undefined
+      : undefined,
   });
 }
 
@@ -74,33 +84,34 @@ export async function analyzeAgentScriptSource(
 
   const dialect = resolveDialectInfo(source, sdk);
 
-  let compileDiagnostics: AgentScriptDiagnostic[];
+  let documentState: DocumentState;
   try {
-    const compileResult = sdk.compileSource(source);
-    const rawDiagnostics = Array.isArray(compileResult.diagnostics)
-      ? compileResult.diagnostics
-      : [];
-    compileDiagnostics = rawDiagnostics
-      .map((raw) => toAgentScriptDiagnostic(raw))
-      .filter((diagnostic): diagnostic is AgentScriptDiagnostic => diagnostic !== null);
+    documentState = await processAgentforceDocument(source, AGENTFORCE_DOCUMENT_URI, {
+      compile: true,
+    });
   } catch (error) {
     return {
       ok: false,
       dialect,
       failureKind: "compile_threw",
-      unavailableReason: `Agent Script SDK threw during compileSource(): ${error instanceof Error ? error.message : String(error)}`,
+      unavailableReason: `Agent Script SDK threw during analysis: ${error instanceof Error ? error.message : String(error)}`,
     };
   }
 
-  let documentState: DocumentState | undefined;
-  try {
-    documentState = await processAgentforceDocument(source);
-  } catch {
-    // compileDiagnostics remains useful for parser/compiler failures. The LSP
-    // document state is best-effort for code actions, references, and symbols.
-  }
+  const compileDiagnostics = documentState.diagnostics
+    .map((raw) => toAgentScriptDiagnostic(raw))
+    .filter((diagnostic): diagnostic is AgentScriptDiagnostic => diagnostic !== null);
 
-  return { ok: true, analysis: { sdk, dialect, compileDiagnostics, documentState } };
+  return {
+    ok: true,
+    analysis: {
+      sdk,
+      dialect,
+      compileDiagnostics,
+      compileOutput: documentState.compileOutput,
+      documentState,
+    },
+  };
 }
 
 /** Coerce an official SDK/LSP diagnostic into the local stable shape. */
