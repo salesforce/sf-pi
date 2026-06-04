@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.172.0-2026-06-04",
-  "latestVersion": "0.172.0",
+  "revision": "release-0.173.0-2026-06-04",
+  "latestVersion": "0.173.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.172.0",
+      "id": "release-0.173.0",
       "kind": "update",
-      "title": "sf-pi v0.172.0 — sf-data360: add live-read action sweep",
+      "title": "sf-pi v0.173.0 — sf-agentscript: use official AgentScript packages",
       "publishedAt": "2026-06-04T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.172.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.173.0",
       "severity": "info",
-      "body": "sf-data360: add live-read action sweep"
+      "body": "sf-agentscript: use official AgentScript packages"
     },
     {
       "id": "pi-0.73-required",
