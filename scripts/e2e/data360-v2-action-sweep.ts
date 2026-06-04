@@ -24,8 +24,16 @@ import type {
 } from "../../extensions/sf-data360/lib/v2/action-types.ts";
 import { runData360V2Action } from "../../extensions/sf-data360/lib/v2/dispatcher.ts";
 
-export type V2SweepStage = "describe" | "metadata" | "dry_run" | "missing_params";
-export type V2SweepOutcome = "ok" | "skipped" | "failed";
+export type V2SweepStage = "describe" | "metadata" | "dry_run" | "missing_params" | "live_read";
+export type V2SweepOutcome =
+  | "ok"
+  | "skipped"
+  | "failed"
+  | "reachable"
+  | "empty"
+  | "feature_gated"
+  | "not_found_optional"
+  | "dependency_missing";
 
 export interface V2SweepRecord {
   stage: V2SweepStage;
@@ -46,6 +54,8 @@ export interface V2SweepOptions {
   actions?: string[];
   tools?: string[];
   includeMissingParams?: boolean;
+  liveRead?: boolean;
+  maxLiveRead?: number;
 }
 
 const SKIP_DRY_RUN_IMPLEMENTATION_KINDS = new Set(["journey"]);
@@ -68,10 +78,14 @@ const SKIP_DRY_RUN_ACTIONS = new Set([
 
 export function buildV2SweepPlan(
   actions: Data360V2ActionDefinition[],
-  options: Pick<V2SweepOptions, "actions" | "tools" | "includeMissingParams"> = {},
+  options: Pick<
+    V2SweepOptions,
+    "actions" | "tools" | "includeMissingParams" | "liveRead" | "maxLiveRead"
+  > = {},
 ): V2SweepRecord[] {
   const selected = actions.filter((action) => matchesFilters(action, options));
   const records: V2SweepRecord[] = [];
+  let liveReadCount = 0;
   for (const action of selected) {
     records.push(baseRecord(action, "describe"));
     records.push(baseRecord(action, "metadata"));
@@ -88,6 +102,27 @@ export function buildV2SweepPlan(
     if (options.includeMissingParams !== false && (action.requiredParams?.length ?? 0) > 0) {
       records.push(baseRecord(action, "missing_params"));
     }
+    if (options.liveRead && action.safety === "read") {
+      const params = paramsForLiveRead(action);
+      if (!params) {
+        records.push({
+          ...baseRecord(action, "live_read"),
+          outcome: "skipped",
+          fail: false,
+          summary: "Skipped live read: no public-safe live params are available.",
+        });
+      } else if (options.maxLiveRead !== undefined && liveReadCount >= options.maxLiveRead) {
+        records.push({
+          ...baseRecord(action, "live_read"),
+          outcome: "skipped",
+          fail: false,
+          summary: `Skipped after --max-live-read ${options.maxLiveRead}.`,
+        });
+      } else {
+        records.push({ ...baseRecord(action, "live_read"), params });
+        liveReadCount++;
+      }
+    }
   }
   return records;
 }
@@ -97,6 +132,21 @@ export function paramsForDryRun(action: Data360V2ActionDefinition): Record<strin
   for (const required of action.requiredParams ?? [])
     params[required] = placeholderForParam(required);
   return { ...params, ...specialDryRunParams(action) };
+}
+
+export function paramsForLiveRead(
+  action: Data360V2ActionDefinition,
+): Record<string, unknown> | undefined {
+  if (action.safety !== "read") return undefined;
+  if ((action.capability ?? "").startsWith("agent_observability.")) return undefined;
+  if (action.implementation) return undefined;
+  if ((action.requiredParams?.length ?? 0) === 0) return {};
+  switch (action.action) {
+    case "metadata.entities":
+      return { entityType: "DataModelObject" };
+    default:
+      return undefined;
+  }
 }
 
 export function canDryRun(action: Data360V2ActionDefinition): boolean {
@@ -188,6 +238,21 @@ async function runV2SweepRecord(
         ? fail(record, String(result.summary ?? result.error ?? "dry-run failed"))
         : pass(record, "dry-run ok");
     }
+    if (record.stage === "live_read") {
+      const result = await runData360V2Action(
+        {
+          tool: record.tool as Data360V2Input["tool"],
+          action: record.action,
+          target_org: targetOrg,
+          params: record.params,
+          output_mode: "summary",
+        },
+        env,
+        ctx,
+        undefined,
+      );
+      return classifyLiveReadResult(record, result);
+    }
     if (record.stage === "missing_params") {
       try {
         const result = await runData360V2Action(
@@ -215,6 +280,63 @@ async function runV2SweepRecord(
   } catch (error) {
     return fail(record, error instanceof Error ? error.message : String(error));
   }
+}
+
+export function classifyLiveReadResult(record: V2SweepRecord, result: unknown): V2SweepRecord {
+  const data = asRecord(result);
+  if (!data) return fail(record, "Live read returned a non-object result.");
+  const blob = JSON.stringify(data).toLowerCase();
+  if (data.ok === false) {
+    if (blob.includes("functionality_not_enabled") || blob.includes("not currently enabled")) {
+      return {
+        ...record,
+        outcome: "feature_gated",
+        fail: false,
+        summary: String(data.summary ?? "Feature gated"),
+      };
+    }
+    if (
+      blob.includes("not_found") ||
+      blob.includes("does not exist") ||
+      blob.includes("doesn't exist")
+    ) {
+      return {
+        ...record,
+        outcome: "not_found_optional",
+        fail: false,
+        summary: String(data.summary ?? "Optional surface not found"),
+      };
+    }
+    if (blob.includes("missing") || blob.includes("required") || blob.includes("dependency")) {
+      return {
+        ...record,
+        outcome: "dependency_missing",
+        fail: false,
+        summary: String(data.summary ?? "Dependency missing"),
+      };
+    }
+    return fail(record, String(data.summary ?? data.error ?? "Live read failed"));
+  }
+  const response = asRecord(data.response);
+  if (response) {
+    const count = responseItemCount(response);
+    if (count === 0)
+      return {
+        ...record,
+        outcome: "empty",
+        fail: false,
+        summary: "Live read reachable but empty.",
+      };
+  }
+  return { ...record, outcome: "reachable", fail: false, summary: "Live read reachable." };
+}
+
+function responseItemCount(response: Record<string, unknown>): number | undefined {
+  if (typeof response.totalSize === "number") return response.totalSize;
+  for (const value of Object.values(response)) {
+    if (Array.isArray(value)) return value.length;
+  }
+  return undefined;
 }
 
 function metadataOk(record: V2SweepRecord): V2SweepRecord {
@@ -331,7 +453,7 @@ function writeReports(records: V2SweepRecord[], outputDir: string): void {
     failed: records.filter((record) => record.fail).length,
     skipped: records.filter((record) => record.outcome === "skipped").length,
     byStage: Object.fromEntries(
-      ["describe", "metadata", "dry_run", "missing_params"].map((stage) => [
+      ["describe", "metadata", "dry_run", "missing_params", "live_read"].map((stage) => [
         stage,
         records.filter((record) => record.stage === stage).length,
       ]),
@@ -393,6 +515,8 @@ function parseArgs(argv: string[]): V2SweepOptions {
     else if (arg === "--tool") (options.tools ??= []).push(argv[++i]);
     else if (arg === "--action") (options.actions ??= []).push(argv[++i]);
     else if (arg === "--no-missing-params") options.includeMissingParams = false;
+    else if (arg === "--live-read") options.liveRead = true;
+    else if (arg === "--max-live-read") options.maxLiveRead = Number(argv[++i]);
   }
   return options;
 }

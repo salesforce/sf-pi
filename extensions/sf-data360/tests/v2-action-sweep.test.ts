@@ -4,8 +4,10 @@ import { describe, expect, it } from "vitest";
 import {
   buildV2SweepPlan,
   canDryRun,
+  classifyLiveReadResult,
   classifyUsefulMissingParamResult,
   paramsForDryRun,
+  paramsForLiveRead,
 } from "../../../scripts/e2e/data360-v2-action-sweep.ts";
 import type { Data360V2ActionDefinition } from "../lib/v2/action-types.ts";
 
@@ -35,8 +37,8 @@ const journeyAction: Data360V2ActionDefinition = {
 };
 
 describe("Data 360 v2 action sweep", () => {
-  it("plans describe, metadata, dry-run, and missing-param checks", () => {
-    const plan = buildV2SweepPlan([restAction, journeyAction]);
+  it("plans describe, metadata, dry-run, missing-param, and live-read checks", () => {
+    const plan = buildV2SweepPlan([restAction, journeyAction], { liveRead: true });
 
     expect(plan).toEqual(
       expect.arrayContaining([
@@ -61,6 +63,12 @@ describe("Data 360 v2 action sweep", () => {
           action: "stream.get",
         }),
         expect.objectContaining({
+          stage: "live_read",
+          tool: "data360_prepare",
+          action: "stream.get",
+          outcome: "skipped",
+        }),
+        expect.objectContaining({
           stage: "dry_run",
           tool: "data360_orchestrate",
           action: "manifest.run",
@@ -74,9 +82,29 @@ describe("Data 360 v2 action sweep", () => {
     expect(paramsForDryRun(restAction)).toEqual({ dataStreamId: "PlaceholderDataStreamId" });
   });
 
+  it("builds public-safe live-read params only when possible", () => {
+    expect(paramsForLiveRead(restAction)).toBeUndefined();
+    expect(paramsForLiveRead({ ...restAction, action: "stream.list", requiredParams: [] })).toEqual(
+      {},
+    );
+  });
+
   it("skips fixture-dependent journey dry-runs", () => {
     expect(canDryRun(restAction)).toBe(true);
     expect(canDryRun(journeyAction)).toBe(false);
+  });
+
+  it("classifies live-read optional surface outcomes without failing", () => {
+    expect(
+      classifyLiveReadResult(restActionRecord(), {
+        ok: false,
+        response: { errorCode: "NOT_FOUND" },
+        summary: "not found",
+      }),
+    ).toEqual(expect.objectContaining({ outcome: "not_found_optional", fail: false }));
+    expect(
+      classifyLiveReadResult(restActionRecord(), { ok: true, response: { dataStreams: [] } }),
+    ).toEqual(expect.objectContaining({ outcome: "empty", fail: false }));
   });
 
   it("accepts useful missing-param errors", () => {
@@ -92,3 +120,16 @@ describe("Data 360 v2 action sweep", () => {
     ).toEqual(expect.objectContaining({ ok: true }));
   });
 });
+
+function restActionRecord() {
+  return {
+    stage: "live_read" as const,
+    tool: restAction.tool,
+    action: restAction.action,
+    capability: restAction.capability,
+    safety: restAction.safety,
+    outcome: "ok" as const,
+    fail: false,
+    summary: "planned",
+  };
+}
