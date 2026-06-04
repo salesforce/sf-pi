@@ -4,9 +4,10 @@
  *
  * SF Browser keeps browser semantics in agent-browser. This module only adds
  * the single default SF Browser session, output redaction, and actionable
- * install errors.
+ * install/launch errors.
  */
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { BROWSER_LAUNCH_RECOVERY, isBrowserLaunchFailure } from "./browser-launch-diagnostics.ts";
 import {
   DEFAULT_AGENT_BROWSER_TIMEOUT_MS,
   INSTALL_GUIDANCE,
@@ -97,6 +98,14 @@ function formatAgentBrowserError(stdout: string, stderr: string, code: number): 
   const missing = /not found|ENOENT|command not found|spawn agent-browser/i.test(body);
   if (missing || !body) {
     return [`agent-browser failed with code ${code}.`, "", INSTALL_GUIDANCE].join("\n");
+  }
+  if (isBrowserLaunchFailure(body)) {
+    return [
+      `agent-browser failed with code ${code}.`,
+      body,
+      "",
+      `Recovery: ${BROWSER_LAUNCH_RECOVERY}`,
+    ].join("\n");
   }
   return `agent-browser failed with code ${code}.\n${body}`;
 }

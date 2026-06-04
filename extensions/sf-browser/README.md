@@ -163,6 +163,7 @@ extensions/sf-browser/
   lib/
     agent-browser.ts        ← implementation module
     artifacts.ts            ← implementation module
+    browser-launch-diagnostics.ts← implementation module
     constants.ts            ← implementation module
     editor-surfaces.ts      ← implementation module
     evidence-report.ts      ← implementation module
@@ -193,6 +194,7 @@ extensions/sf-browser/
     timing.ts               ← implementation module
     tool-support.ts         ← implementation module
   tests/
+    agent-browser.test.ts   ← unit / smoke test
     artifacts.test.ts       ← unit / smoke test
     editor-surfaces.test.ts ← unit / smoke test
     evidence-report.test.ts ← unit / smoke test
@@ -229,6 +231,16 @@ Before commit, run the repo validation path from the root README/AGENTS guidance
 
 **`agent-browser` is missing:**
 Run `npm i -g agent-browser && agent-browser install`, then `/sf-browser doctor`.
+
+**Chrome/Chromium cannot launch in a container or CI runner:**
+If SF Browser reports `DevToolsActivePort`, `Failed to launch the browser process`, `requires the chromium snap`, `No usable sandbox`, or `cannot open display`, point `agent-browser` at a working Chrome/Chromium executable and use container-safe launch flags:
+
+```bash
+export AGENT_BROWSER_EXECUTABLE_PATH=/path/to/chrome
+export AGENT_BROWSER_ARGS=--no-sandbox,--disable-dev-shm-usage
+```
+
+You can also run `agent-browser install`, then `/sf-browser doctor` to verify `agent-browser` itself is installed.
 
 **Snapshot refs fail:**
 Refs are stale after Salesforce page changes. Run `sf_browser_snapshot` again and retry with fresh refs. If a click/fill/select/press action fails, SF Browser includes a recovery hint plus best-effort diagnostic snapshot and screenshot artifacts. If the compact summary omits the control you need, retry with `focus` terms or `outputMode: "full"`.

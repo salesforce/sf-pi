@@ -23,10 +23,23 @@ describe("failure diagnostics", () => {
     expect(classifyBrowserFailure("button is not visible")).toBe("element-not-found");
   });
 
+  it("classifies browser launch failures after missing agent-browser checks", () => {
+    expect(classifyBrowserFailure("spawn agent-browser ENOENT")).toBe("agent-browser-missing");
+    expect(classifyBrowserFailure("Chrome exited early without writing DevToolsActivePort")).toBe(
+      "browser-launch",
+    );
+    expect(classifyBrowserFailure("requires the chromium snap")).toBe("browser-launch");
+    expect(classifyBrowserFailure("Failed to launch the browser process")).toBe("browser-launch");
+    expect(classifyBrowserFailure("No usable sandbox")).toBe("browser-launch");
+    expect(classifyBrowserFailure("cannot open display")).toBe("browser-launch");
+  });
+
   it("returns recovery hints for known failure kinds", () => {
     expect(recoveryHint("stale-ref")).toContain("fresh ref");
     expect(recoveryHint("timeout")).toContain("timed out");
     expect(recoveryHint("agent-browser-missing")).toContain("/sf-browser doctor");
+    expect(recoveryHint("browser-launch")).toContain("AGENT_BROWSER_EXECUTABLE_PATH");
+    expect(recoveryHint("browser-launch")).toContain("AGENT_BROWSER_ARGS");
   });
 
   it("formats diagnostics with artifact paths without losing the original error", () => {

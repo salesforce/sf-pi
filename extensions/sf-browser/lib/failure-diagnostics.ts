@@ -9,6 +9,7 @@
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { commitEvidenceCapture, planEvidenceCapture } from "./artifacts.ts";
 import { runAgentBrowser } from "./agent-browser.ts";
+import { BROWSER_LAUNCH_RECOVERY, isBrowserLaunchFailure } from "./browser-launch-diagnostics.ts";
 import { redactText, sanitizeLabel } from "./redaction.ts";
 import { formatDuration } from "./timing.ts";
 import { okText, writeBrowserArtifact } from "./tool-support.ts";
@@ -19,6 +20,7 @@ export type BrowserFailureKind =
   | "timeout"
   | "navigation"
   | "agent-browser-missing"
+  | "browser-launch"
   | "unknown";
 
 export interface BrowserFailureDiagnosticsInput {
@@ -42,6 +44,7 @@ export function classifyBrowserFailure(message: string): BrowserFailureKind {
   if (/ENOENT|command not found|spawn agent-browser|agent-browser.*missing/i.test(message)) {
     return "agent-browser-missing";
   }
+  if (isBrowserLaunchFailure(message)) return "browser-launch";
   if (/ref(?:erence)? not found|element not found:\s*@e\d+|unknown ref|stale/i.test(message)) {
     return "stale-ref";
   }
@@ -71,6 +74,8 @@ export function recoveryHint(kind: BrowserFailureKind): string {
       return "The page navigated or the frame changed during the action. Wait for a URL/text/Lightning state, then snapshot before the next action.";
     case "agent-browser-missing":
       return "agent-browser is missing or unavailable. Run /sf-browser doctor for install and runtime guidance.";
+    case "browser-launch":
+      return BROWSER_LAUNCH_RECOVERY;
     default:
       return "Capture a fresh snapshot, inspect the current page state, and retry only with current refs.";
   }

@@ -608,6 +608,7 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 **[SF Browser](./extensions/sf-browser/#troubleshooting)**
 
 - `agent-browser` is missing
+- Chrome/Chromium cannot launch in a container or CI runner
 - Snapshot refs fail
 - Screenshots are too heavy
 - A browser action is outside the hot path
