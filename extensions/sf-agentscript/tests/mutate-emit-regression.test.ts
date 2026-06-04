@@ -8,7 +8,7 @@
  *   reported  Δ 16 bytes  Post-compile: ❌ 1 error(s) @ L127
  *   actual    last line had `description: "...for another issue."r another issue."`
  *
- * Root cause is in the vendored SDK's CST/AST emit() — under specific
+ * Root cause is in the official SDK package's CST/AST emit() — under specific
  * shapes the proposed `after` string contains duplicated tail bytes. We
  * couldn't reproduce it deterministically from clean source, but the
  * symptom is consistent: emit() introduces severity-1 errors that weren't

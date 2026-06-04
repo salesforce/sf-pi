@@ -85,14 +85,14 @@ async function actionCheck(
       case "compile_threw":
         return toolError(
           `Agent Script SDK threw during compile: ${reason}`,
-          "This is most likely a vendored SDK bug. Run /sf-agentscript doctor.",
+          "This is most likely an official SDK package bug. Run /sf-agentscript doctor.",
           { tool: "sf-agentscript", params: { action: "doctor" } },
         );
       case "sdk_unavailable":
       default:
         return toolError(
           `Agent Script SDK unavailable: ${reason}`,
-          "Run /sf-agentscript doctor to diagnose the vendored bundle.",
+          "Run /sf-agentscript doctor to diagnose the official SDK package.",
           { tool: "sf-agentscript", params: { action: "doctor" } },
         );
     }
@@ -208,7 +208,7 @@ async function actionFormatQueued(agentFile: string): Promise<{
   if (!sdk) {
     return toolError(
       "Agent Script SDK unavailable.",
-      "Run /sf-agentscript doctor to diagnose the vendored bundle.",
+      "Run /sf-agentscript doctor to diagnose the official SDK package.",
       { tool: "sf-agentscript", params: { action: "doctor" } },
     );
   }

@@ -14,7 +14,7 @@
  *   6. agentscript_authoring mutate apply_quick_fix removes the error.
  *   7. agentscript_authoring compile/check reports clean again.
  *
- * No network, no Connection mocks — purely local-first via the vendored SDK.
+ * No network, no Connection mocks — purely local-first via the official SDK package.
  */
 
 import { mkdtemp, rm, writeFile } from "node:fs/promises";

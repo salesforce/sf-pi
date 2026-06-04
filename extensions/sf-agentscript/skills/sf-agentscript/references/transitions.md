@@ -65,8 +65,8 @@ to fan out. That's the hub-and-spoke pattern from the asset library.
 
 ## Reference
 
-- Vendored SDK schema and diagnostic codes:
-  `extensions/sf-agentscript/lib/vendor/agentforce/`
+- Official SDK schema and diagnostic codes:
+  `@sf-agentscript/agentforce`
 - Quick-fix implementation: `extensions/sf-agentscript/lib/code-actions.ts`
   (case `missing-token`)
 - Test coverage: `extensions/sf-agentscript/tests/code-actions.test.ts`

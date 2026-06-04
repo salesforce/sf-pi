@@ -4,7 +4,7 @@
  *
  * Idea borrowed from `@salesforce/agents` `ScriptAgent.createAuthoringBundle`;
  * we own the implementation. Local-first: the generated source is compiled
- * via the vendored SDK before it lands on disk so a template bug surfaces
+ * via the official SDK package before it lands on disk so a template bug surfaces
  * as a CreateBundleResult failure rather than an unparseable file.
  *
  * Default location matches Salesforce convention:

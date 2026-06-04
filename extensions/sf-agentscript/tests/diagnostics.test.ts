@@ -2,7 +2,7 @@
 /**
  * End-to-end tests for the diagnostics layer.
  *
- * These hit the real vendored SDK so we prove:
+ * These hit the real official SDK package so we prove:
  *  - the bundle is loadable
  *  - our filter + code-action layer produces the shapes we expect on real
  *    SDK output

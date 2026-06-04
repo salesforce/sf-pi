@@ -7,7 +7,7 @@
  * Fields the spec accepts:
  *   description, agent_user, topics: [{name, description?}], variables: [...]
  *
- * Output is always parse-clean against the vendored SDK (we validate after
+ * Output is always parse-clean against the official SDK package (we validate after
  * generation; if validation fails, that's a template bug).
  *
  * agent_type policy (Issue 1 — see docs/POSTMORTEM_E2E_DEMO.md):

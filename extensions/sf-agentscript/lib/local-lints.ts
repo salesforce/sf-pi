@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /**
  * Local Agent Script hardening diagnostics that are not emitted by the
- * vendored SDK yet.
+ * official SDK package yet.
  *
  * Scope is intentionally narrow: deterministic publish/runtime footguns from
  * the Agentforce skill that we can prove from source text alone. No org calls,

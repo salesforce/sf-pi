@@ -72,7 +72,7 @@ async function actionStructure(agentFile: string) {
     if (result.reason === "sdk_unavailable") {
       return toolError(
         `Agent Script SDK unavailable: ${result.reason_detail ?? "unknown reason"}.`,
-        "Run /sf-agentscript doctor to diagnose the vendored bundle.",
+        "Run /sf-agentscript doctor to diagnose the official SDK package.",
         { tool: "sf-agentscript", params: { action: "doctor" } },
       );
     }
@@ -104,7 +104,7 @@ async function actionContextProfile(agentFile: string) {
     if (result.reason === "sdk_unavailable") {
       return toolError(
         `Agent Script SDK unavailable: ${result.reason_detail ?? "unknown reason"}.`,
-        "Run /sf-agentscript doctor to diagnose the vendored bundle.",
+        "Run /sf-agentscript doctor to diagnose the official SDK package.",
         { tool: "sf-agentscript", params: { action: "doctor" } },
       );
     }
@@ -149,7 +149,7 @@ async function actionFindReferences(agentFile: string, symbol: string) {
     if (result.reason === "sdk_unavailable") {
       return toolError(
         `Agent Script SDK unavailable: ${result.reason_detail ?? "unknown reason"}.`,
-        "Run /sf-agentscript doctor to diagnose the vendored bundle.",
+        "Run /sf-agentscript doctor to diagnose the official SDK package.",
         { tool: "sf-agentscript", params: { action: "doctor" } },
       );
     }
@@ -189,7 +189,7 @@ async function actionDefinition(agentFile: string, symbol: string) {
     if (result.reason === "sdk_unavailable") {
       return toolError(
         `Agent Script SDK unavailable: ${result.reason_detail ?? "unknown reason"}.`,
-        "Run /sf-agentscript doctor to diagnose the vendored bundle.",
+        "Run /sf-agentscript doctor to diagnose the official SDK package.",
         { tool: "sf-agentscript", params: { action: "doctor" } },
       );
     }

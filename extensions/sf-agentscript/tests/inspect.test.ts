@@ -3,7 +3,7 @@
  * Tests for inspect.ts — the structural summary of a `.agent` file.
  *
  * We use a small fixture written to a temp dir so we exercise the real
- * vendored SDK end-to-end. No mocks; if the SDK breaks, these tests catch it.
+ * official SDK package end-to-end. No mocks; if the SDK breaks, these tests catch it.
  */
 
 import { mkdtemp, writeFile, rm } from "node:fs/promises";

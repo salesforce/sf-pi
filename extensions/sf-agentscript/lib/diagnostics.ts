@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /**
- * Run the vendored SDK over a `.agent` file and produce a filtered,
+ * Run the official AgentScript SDK over a `.agent` file and produce a filtered,
  * agent-friendly result.
  *
  * Decision rules (see README for the agent-facing behavior matrix):
@@ -143,7 +143,7 @@ export async function checkAgentScriptFile(filePath: string): Promise<AgentScrip
       quickFixes: [],
       failureKind: "sdk_unavailable",
       unavailableReason:
-        getSdkLoadError() ?? "The vendored @agentscript/agentforce SDK failed to load.",
+        getSdkLoadError() ?? "The official @sf-agentscript/agentforce SDK failed to load.",
     };
   }
 
@@ -187,7 +187,7 @@ export async function checkAgentScriptFile(filePath: string): Promise<AgentScrip
   const filtered = all.filter(isActionable);
   const localDiagnostics = buildLocalDiagnostics(source);
   const diagnostics = [...filtered, ...localDiagnostics];
-  const quickFixes = buildQuickFixes(source, diagnostics);
+  const quickFixes = await buildQuickFixes(source, diagnostics);
 
   return {
     ok: true,

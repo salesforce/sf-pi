@@ -153,7 +153,7 @@ async function applyCoordFallback(
       reason_detail: `No '${op.diagnostic_code}' diagnostic at line ${op.line}. Re-run agentscript_authoring compile/check to get current diagnostics.`,
     };
   }
-  const fixes = buildQuickFixes(sourceBefore, candidates);
+  const fixes = await buildQuickFixes(sourceBefore, candidates);
   const fix = fixes[op.fix_index ?? 0];
   if (!fix) {
     return {
@@ -201,7 +201,7 @@ async function commitOrPreview(
   }
   // Defensive write: confirm the proposed source is a regression-free
   // rewrite of the original BEFORE clobbering the file on disk. The
-  // vendored SDK's CST/AST emit has shown rare edge cases where a deep
+  // official SDK package's CST/AST emit has shown rare edge cases where a deep
   // mutation causes emit() to duplicate a small tail of the source
   // (observed live: `set_field` on a deep `topic.escalation.description`
   // appended a partial copy of the file's last line). Pre-write
@@ -381,7 +381,7 @@ async function applyAstSetField(
     };
   }
 
-  // The vendored SDK wraps scalar field values in nodes (StringLiteral,
+  // The official SDK package wraps scalar field values in nodes (StringLiteral,
   // NumberLiteral, BooleanLiteral, etc.) that carry an `__emit()` method.
   // Assigning a raw JS string to `entry.description` corrupts emit() because
   // the value loses its node identity. Wrap the LLM-supplied scalar via

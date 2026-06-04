@@ -6,7 +6,7 @@
  * @salesforce/agents.
  *
  * Local-first: when `agentSource` is provided, we compile via the local
- * vendored SDK first (rejects bad input before we burn a network call) and
+ * official SDK package first (rejects bad input before we burn a network call) and
  * only fall back to the server compile endpoint when local fails.
  *
  * Endpoints used:

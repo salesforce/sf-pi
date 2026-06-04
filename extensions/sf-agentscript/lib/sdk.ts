@@ -1,26 +1,15 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /**
- * Thin wrapper around the vendored @agentscript/agentforce SDK.
+ * Thin lazy-loading wrapper around the official @sf-agentscript/agentforce SDK.
  *
- * The SDK is the single-file `browser.js` bundle in `./vendor/agentforce/`.
- * We lazy-import it so an extension load failure doesn't crash pi, and we
- * cache the loaded module for the session.
- *
- * Why lazy + cached:
- *  - Pi boots all extensions up front. We don't want `.agent` users to pay
- *    nothing if they never edit one.
- *  - The bundle is ~800 KB gzipped on disk, a few ms to eval.
- *  - We want to keep the SDK import behind a single surface so tests can
- *    stub it easily.
- *
- * Anything the rest of the extension needs from the SDK lives here.
+ * Pi boots all extensions up front. Keep the AgentScript package behind one
+ * cached import surface so users who never touch `.agent` files do not pay the
+ * load cost, and so callers can render a helpful doctor/setup error if package
+ * resolution fails.
  */
 
-import path from "node:path";
-import { pathToFileURL } from "node:url";
-
 // -------------------------------------------------------------------------------------------------
-// Shape of the vendored SDK we depend on
+// Shape of the official SDK we depend on
 // -------------------------------------------------------------------------------------------------
 
 export interface AgentforceSDK {
@@ -54,22 +43,13 @@ export interface AgentforceSDK {
 // Load + cache
 // -------------------------------------------------------------------------------------------------
 
+export const AGENTFORCE_SDK_PACKAGE = "@sf-agentscript/agentforce";
+
 let cachedSdk: AgentforceSDK | null = null;
 let loadError: Error | null = null;
 
 /**
- * Path to the vendored bundle. Exported so the doctor command can show the
- * same path it actually loaded.
- */
-export const VENDORED_SDK_PATH = path.resolve(
-  new URL(".", import.meta.url).pathname,
-  "vendor",
-  "agentforce",
-  "browser.js",
-);
-
-/**
- * Load the vendored SDK once per process. Returns `null` if loading fails —
+ * Load the official SDK once per process. Returns `null` if loading fails —
  * callers render a helpful setup note in that case instead of crashing.
  */
 export async function loadAgentforceSDK(): Promise<AgentforceSDK | null> {
@@ -77,11 +57,10 @@ export async function loadAgentforceSDK(): Promise<AgentforceSDK | null> {
   if (loadError) return null;
 
   try {
-    const moduleUrl = pathToFileURL(VENDORED_SDK_PATH).href;
-    const mod = (await import(moduleUrl)) as AgentforceSDK;
+    const mod = (await import(AGENTFORCE_SDK_PACKAGE)) as AgentforceSDK;
 
     if (typeof mod.parse !== "function" || typeof mod.compileSource !== "function") {
-      throw new Error("Vendored SDK is missing parse() or compileSource() exports.");
+      throw new Error("Official AgentScript SDK is missing parse() or compileSource() exports.");
     }
 
     cachedSdk = mod;

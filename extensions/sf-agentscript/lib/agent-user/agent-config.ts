@@ -5,7 +5,7 @@
  * fields, and depending on the broader inspect surface here would couple
  * lifecycle preflight to inspect's evolving shape.
  *
- * Uses the vendored SDK to parse + walk the AST exactly the way the
+ * Uses the official SDK package to parse + walk the AST exactly the way the
  * mutate path does (lib/mutate.ts), so a malformed config block is
  * surfaced as a clean error instead of a silent skip.
  */

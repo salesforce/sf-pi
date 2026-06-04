@@ -2,7 +2,7 @@
 /**
  * Local types for sf-agentscript.
  *
- * These shadow the pieces of the vendored SDK we actually use, so the
+ * These shadow the pieces of the official SDK package we actually use, so the
  * extension's internal types stay decoupled from the raw SDK surface.
  */
 
@@ -10,7 +10,7 @@
  * LSP-shape severity levels.
  *
  * Matches the LSP spec and matches the DiagnosticSeverity enum inside the
- * vendored SDK (`Error = 1, Warning = 2, Information = 3, Hint = 4`).
+ * official SDK package (`Error = 1, Warning = 2, Information = 3, Hint = 4`).
  */
 export type AgentScriptSeverity = 1 | 2 | 3 | 4;
 
@@ -85,7 +85,7 @@ export interface AgentScriptCheckResult {
   unavailableReason?: string;
   /**
    * Why ok=false, in a tool-routable enum.
-   * - 'sdk_unavailable' — vendored SDK failed to load. Recover via doctor.
+   * - 'sdk_unavailable' — official SDK package failed to load. Recover via doctor.
    * - 'read_failed'     — filesystem read of `filePath` failed (ENOENT, EACCES).
    * - 'compile_threw'   — the SDK threw during compileSource(). Likely an SDK bug.
    */

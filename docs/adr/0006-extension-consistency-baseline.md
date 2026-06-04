@@ -173,7 +173,7 @@ Providers registered:
 
 - `sf-llm-gateway-internal` — reuses the existing
   `fetchGatewayDoctorReport` (URL signature, `/v1/models`, `/health/readiness`).
-- `sf-agentscript` — reuses `probeDoctor` (vendored SDK + dialect probe).
+- `sf-agentscript` — reuses `probeDoctor` (official SDK package + dialect probe).
 - `sf-lsp` — reuses `doctorLsp` per language (Apex/LWC/Agent Script).
 - `sf-data360` — small org-connectivity check + a single `/ssot/data-spaces`
   probe (full `d360_probe` stays available to the agent for deep diagnostics).

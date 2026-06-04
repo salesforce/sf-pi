@@ -13,7 +13,7 @@
  *   session_shutdown          | Reset assist state
  *   tool_result (write/edit)  | Compile `.agent` files in-process; append LSP feedback
  *   /sf-agentscript           | Open status & controls panel (or run subcommand)
- *   /sf-agentscript doctor    | Show vendored SDK status + readiness
+ *   /sf-agentscript doctor    | Show official SDK package status + readiness
  *   /sf-agentscript check     | Manually compile a `.agent` file
  *   /sf-agentscript eval      | Run a multi-turn regression spec
  *   /sf-agentscript help      | Print command usage
@@ -114,7 +114,7 @@ const AGENTSCRIPT_ACTIONS: CommandPanelAction<AgentScriptAction>[] = [
   {
     value: "doctor",
     label: "Run doctor",
-    description: "Show SDK load status, vendored bundle path, and current Agent Script readiness.",
+    description: "Show SDK package load status and current Agent Script readiness.",
     group: "Diagnostics",
   },
   {
@@ -200,7 +200,7 @@ async function handleAgentScriptPanel(
     subtitle: "Authoring assist, compile, and eval against the Salesforce Evaluation API.",
     statusLines: () => [
       `${doctor.sdkLoaded ? "✓" : "✗"} SDK           ${doctor.sdkLoaded ? "loaded" : "unavailable"}`,
-      `• Vendored path ${doctor.vendoredSdkPath}`,
+      `• SDK package ${doctor.upstreamNote}`,
       `• Session files ${state.lastStatusByFile.size} tracked file(s)`,
     ],
     actions: () => buildAgentScriptActions(ctx.cwd),

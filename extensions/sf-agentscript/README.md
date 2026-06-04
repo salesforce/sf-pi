@@ -168,6 +168,7 @@ extensions/sf-agentscript/
       agentforce-default.ts ← implementation module
       minimal.ts            ← implementation module
     agent-api-auth.ts       ← implementation module
+    agentforce-document.ts  ← implementation module
     authoring-tool.ts       ← implementation module
     branch-state.ts         ← implementation module
     code-actions.ts         ← implementation module
@@ -279,7 +280,7 @@ All Salesforce API calls use `@salesforce/core` `Connection` with the same auth 
 
 ## Troubleshooting
 
-- **Agent Script SDK unavailable:** run `/sf-agentscript doctor` to inspect the vendored SDK bundle.
+- **Agent Script SDK unavailable:** run `/sf-agentscript doctor` to inspect the official SDK package resolution.
 - **Preview session not found:** confirm `target_org` matches the org used at preview start, or start a fresh preview session.
 - **Eval trace fetch returns null:** eval-created sessions may be closed by the service before live trace fetch succeeds; synthesized traces and failure records remain in the run directory.
 - **Service Agent publish/activation fails:** run `agentscript_lifecycle action="diagnose_agent_user"`, then `provision_agent_user` in dry-run mode before executing changes.

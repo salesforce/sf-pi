@@ -15,7 +15,7 @@
  *   - First-call success is more important than matching production
  *     patterns; the LLM and the human can switch to Service in a single
  *     two-field edit when needed.
- *   - The vendored SDK's `config-missing-default-agent-user` lint only
+ *   - The official SDK package's `config-missing-default-agent-user` lint only
  *     fires when `agent_type` is explicitly set; emitting it always means
  *     the lint catches every future divergence.
  */

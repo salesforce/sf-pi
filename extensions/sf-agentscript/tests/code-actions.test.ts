@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /**
- * Tests for quick fix generation — pure functions that take a source string
- * plus synthetic diagnostics and emit TextEdits.
+ * Tests for quick fix generation — official LSP fixes plus SF Pi-specific
+ * hardening fixes take a source string and diagnostics and emit TextEdits.
  */
 import { describe, expect, it } from "vitest";
 import { buildQuickFixes } from "../lib/code-actions.ts";
@@ -20,14 +20,14 @@ function makeDiagnostic(overrides: Partial<AgentScriptDiagnostic>): AgentScriptD
 }
 
 describe("buildQuickFixes", () => {
-  it("returns no fixes when diagnostics lack codes", () => {
+  it("returns no fixes when diagnostics lack codes", async () => {
     const source = "config:\n  agent_name: hi\n";
-    const fixes = buildQuickFixes(source, [makeDiagnostic({ code: undefined })]);
+    const fixes = await buildQuickFixes(source, [makeDiagnostic({ code: undefined })]);
     expect(fixes).toEqual([]);
   });
 
   describe("invalid-modifier / unknown-type", () => {
-    it("produces a typo replacement when the found string is on the line", () => {
+    it("produces a typo replacement when the found string is on the line", async () => {
       const source = [
         "# @dialect: agentforce 2.5",
         "variables:",
@@ -46,8 +46,8 @@ describe("buildQuickFixes", () => {
         data: { found: "mutabl", expected: ["mutable", "linked"] },
       });
 
-      const [fix] = buildQuickFixes(source, [diagnostic]);
-      expect(fix.title).toBe("Change 'mutabl' to 'mutable'");
+      const [fix] = await buildQuickFixes(source, [diagnostic]);
+      expect(fix.title).toBe("Change to 'mutable'");
       expect(fix.preferred).toBe(true);
       expect(fix.edits).toEqual([
         {
@@ -60,7 +60,7 @@ describe("buildQuickFixes", () => {
       ]);
     });
 
-    it("skips when no close match exists", () => {
+    it("skips when no close match exists", async () => {
       const source = "foo: xyz\n";
       const diagnostic = makeDiagnostic({
         code: "invalid-modifier",
@@ -71,12 +71,12 @@ describe("buildQuickFixes", () => {
         data: { found: "xyz", expected: ["mutable"] },
       });
 
-      expect(buildQuickFixes(source, [diagnostic])).toEqual([]);
+      await expect(buildQuickFixes(source, [diagnostic])).resolves.toEqual([]);
     });
   });
 
   describe("unknown-dialect", () => {
-    it("produces one fix per available dialect, preferring the first", () => {
+    it("produces one fix per available dialect", async () => {
       const source = "# @dialect: agentfrce 2.5\n";
       const diagnostic = makeDiagnostic({
         code: "unknown-dialect",
@@ -87,17 +87,17 @@ describe("buildQuickFixes", () => {
         data: { availableNames: ["agentforce", "agentscript"] },
       });
 
-      const fixes = buildQuickFixes(source, [diagnostic]);
+      const fixes = await buildQuickFixes(source, [diagnostic]);
       expect(fixes).toHaveLength(2);
       expect(fixes[0].title).toBe("Change to 'agentforce'");
-      expect(fixes[0].preferred).toBe(true);
+      expect(fixes[0].preferred).toBe(false);
       expect(fixes[1].preferred).toBe(false);
       expect(fixes[0].edits[0].newText).toBe("agentforce");
     });
   });
 
   describe("deprecated-field", () => {
-    it("replaces the diagnostic range with data.replacement", () => {
+    it("replaces the diagnostic range with data.replacement", async () => {
       const source = "topic billing:\n  description: hi\n";
       const diagnostic = makeDiagnostic({
         code: "deprecated-field",
@@ -109,23 +109,23 @@ describe("buildQuickFixes", () => {
         data: { replacement: "subagent" },
       });
 
-      const [fix] = buildQuickFixes(source, [diagnostic]);
-      expect(fix.title).toBe("Replace with 'subagent'");
+      const [fix] = await buildQuickFixes(source, [diagnostic]);
+      expect(fix.title).toBe("Convert to subagent");
       expect(fix.edits[0].newText).toBe("subagent");
     });
 
-    it("skips when replacement is missing", () => {
+    it("skips when replacement is missing", async () => {
       const source = "foo\n";
       const diagnostic = makeDiagnostic({
         code: "deprecated-field",
         data: {},
       });
-      expect(buildQuickFixes(source, [diagnostic])).toEqual([]);
+      await expect(buildQuickFixes(source, [diagnostic])).resolves.toEqual([]);
     });
   });
 
   describe("unused-variable", () => {
-    it("deletes from column 0 to the next line's start", () => {
+    it("deletes from column 0 to the next line's start", async () => {
       const source = 'variables:\n  case_id: mutable string = ""\nsystem:\n  instructions: hi\n';
       const diagnostic = makeDiagnostic({
         code: "unused-variable",
@@ -142,7 +142,7 @@ describe("buildQuickFixes", () => {
         },
       });
 
-      const [fix] = buildQuickFixes(source, [diagnostic]);
+      const [fix] = await buildQuickFixes(source, [diagnostic]);
       expect(fix.edits[0]).toEqual({
         range: {
           start: { line: 1, character: 0 },
@@ -154,7 +154,7 @@ describe("buildQuickFixes", () => {
   });
 
   describe("invalid-version", () => {
-    it("produces one fix per suggested version", () => {
+    it("produces one fix per suggested version", async () => {
       const source = "# @dialect: agentforce 99.9\n";
       const diagnostic = makeDiagnostic({
         code: "invalid-version",
@@ -165,7 +165,7 @@ describe("buildQuickFixes", () => {
         data: { suggestedVersions: ["2.5", "2"] },
       });
 
-      const fixes = buildQuickFixes(source, [diagnostic]);
+      const fixes = await buildQuickFixes(source, [diagnostic]);
       expect(fixes.map((fix) => fix.edits[0].newText)).toEqual(["2.5", "2"]);
       expect(fixes[0].preferred).toBe(true);
       expect(fixes[1].preferred).toBe(false);
@@ -177,7 +177,7 @@ describe("buildQuickFixes", () => {
     // syntax. Compile reports `missing-token`; the fix strips the
     // `when ...` clause.
 
-    it("strips the when-clause from a deterministic transition line", () => {
+    it("strips the when-clause from a deterministic transition line", async () => {
       const source =
         "topic greeting:\n" +
         '    description: "hi"\n' +
@@ -190,7 +190,7 @@ describe("buildQuickFixes", () => {
           end: { line: 2, character: 33 },
         },
       });
-      const [fix] = buildQuickFixes(source, [diagnostic]);
+      const [fix] = await buildQuickFixes(source, [diagnostic]);
       expect(fix).toBeDefined();
       expect(fix.title).toMatch(/transitions don't support guards/i);
       expect(fix.preferred).toBe(true);
@@ -200,36 +200,36 @@ describe("buildQuickFixes", () => {
       expect(fix.edits[0].range.start).toEqual({ line: 2, character: 0 });
     });
 
-    it("handles deeper @-paths and unquoted condition text", () => {
+    it("handles deeper @-paths and unquoted condition text", async () => {
       const source = "    transition to @topic.foo.bar when something\n";
       const diagnostic = makeDiagnostic({
         code: "missing-token",
         range: { start: { line: 0, character: 30 }, end: { line: 0, character: 30 } },
       });
-      const [fix] = buildQuickFixes(source, [diagnostic]);
+      const [fix] = await buildQuickFixes(source, [diagnostic]);
       expect(fix).toBeDefined();
       expect(fix.edits[0].newText).toBe("    transition to @topic.foo.bar");
     });
 
-    it("does NOT trigger on plain transition lines (no when keyword)", () => {
+    it("does NOT trigger on plain transition lines (no when keyword)", async () => {
       const source = "    transition to @topic.faq\n";
       const diagnostic = makeDiagnostic({
         code: "missing-token",
         range: { start: { line: 0, character: 4 }, end: { line: 0, character: 4 } },
       });
-      expect(buildQuickFixes(source, [diagnostic])).toEqual([]);
+      await expect(buildQuickFixes(source, [diagnostic])).resolves.toEqual([]);
     });
 
-    it("does NOT trigger on a missing-token error elsewhere in the file", () => {
+    it("does NOT trigger on a missing-token error elsewhere in the file", async () => {
       const source = 'config:\n    agent_name "X"\n'; // colon missing
       const diagnostic = makeDiagnostic({
         code: "missing-token",
         range: { start: { line: 1, character: 14 }, end: { line: 1, character: 14 } },
       });
-      expect(buildQuickFixes(source, [diagnostic])).toEqual([]);
+      await expect(buildQuickFixes(source, [diagnostic])).resolves.toEqual([]);
     });
 
-    it("does NOT match a comment containing the word 'when'", () => {
+    it("does NOT match a comment containing the word 'when'", async () => {
       // The line starts with whitespace + a `#` comment; the regex anchors on
       // "transition\s+to\s+@" so it cannot match here. Belt + suspenders.
       const source = "    # transition to @topic.x when comment\n";
@@ -237,7 +237,7 @@ describe("buildQuickFixes", () => {
         code: "missing-token",
         range: { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } },
       });
-      expect(buildQuickFixes(source, [diagnostic])).toEqual([]);
+      await expect(buildQuickFixes(source, [diagnostic])).resolves.toEqual([]);
     });
   });
 });

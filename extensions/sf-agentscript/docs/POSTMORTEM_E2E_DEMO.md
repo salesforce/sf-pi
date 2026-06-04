@@ -35,7 +35,7 @@ config:
   description: "..."
 ```
 
-No `agent_type`, no `default_agent_user`. The vendored SDK has a `config-missing-default-agent-user` lint at `vendor/agentforce/browser.js` ~L15658:
+No `agent_type`, no `default_agent_user`. The official SDK package emits a `config-missing-default-agent-user` lint:
 
 ```js
 const agentTypeNode = config2.agent_type;
@@ -137,7 +137,7 @@ This writes a JS property onto the parsed block AST node. The SDK's `emit()` wal
 
 Options, in order of preference:
 
-1. **Use the SDK's CST-aware insertion API.** The vendored SDK exposes `parseComponent('field: value', 'config_field')` (similar to how `wrapScalarForAst` already calls `parseComponent(value, 'expression')`); inject the resulting CST node into `block.__children` at the right position. This is the only fix that lets `set_field` legitimately add fields.
+1. **Use the SDK's CST-aware insertion API.** The official SDK package exposes `parseComponent('field: value', 'config_field')` (similar to how `wrapScalarForAst` already calls `parseComponent(value, 'expression')`); inject the resulting CST node into `block.__children` at the right position. This is the only fix that lets `set_field` legitimately add fields.
 2. **If (1) is too invasive, refuse to add new fields.** Detect `op.field not in originalBlockKeys` before mutating; return:
 
    ```json

@@ -50,7 +50,7 @@ You can also manage this extension from the SF Pi home base:
 
 - Compile-on-save stays silent on unsupported files and on failed write/edit results.
 - Eval, trace, and preview API calls go through @salesforce/core Connection so the active org's auth context is reused; no token leaves jsforce.
-- Local-first: compile and validate run via the vendored SDK before any network call.
+- Local-first: compile and validate run via official @sf-agentscript packages before any network call.
 - Trace fetches are idempotent GETs; failures are logged and never fail an eval run.
 - 5xx-only retry on POST avoids amplifying server-side overload (no Retry-After contract on the Eval API).
 - Preview sessions land under .sfdx/agents/** (sf-guardrail carve-out); rest of .sfdx/** stays blocked.

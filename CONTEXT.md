@@ -80,6 +80,22 @@ _Avoid_: integration point, hook thing
 Session-scoped workflow state reconstructed from successful tool-result details on the current Pi branch.
 _Avoid_: global latest state, prompt context, trace store, replacement for artifacts
 
+**Agent Script Toolchain Source**:
+The source of the Agent Script parsing, linting, and compilation capability that the SF Agent Script Bundled Extension uses for local authoring feedback before live-org preview, eval, or lifecycle work.
+_Avoid_: agent runtime dependency, Salesforce org compiler, npm support inside .agent files
+
+**Official AgentScript Package Dependency**:
+A public `@sf-agentscript/*` npm package used by the SF Agent Script Bundled Extension as the maintained source for Agent Script parser, compiler, dialect, language-service, or LSP behavior.
+_Avoid_: vendored compiler copy, private fork, aspirational dependency not imported by code
+
+**Agent Script Hardening Adapter**:
+The thin SF Pi-owned layer that keeps Salesforce/pi-specific diagnostics, quick fixes, rendering, and workflow guardrails around the generic behavior supplied by Official AgentScript Package Dependencies.
+_Avoid_: forked AgentScript compiler, duplicate LSP implementation, replacement for upstream package behavior
+
+**Structural Agent Script Inspection**:
+The SF Pi-owned projection of parsed Agent Script into an agent-friendly summary of config, topics, subagents, variables, actions, references, targets, and readiness metadata.
+_Avoid_: generic LSP feature, full AST dump, replacement for official parser semantics
+
 **Welcome Splash**:
 The SF Pi startup visual surface that introduces the session and summarizes relevant SF Pi runtime status without replacing the normal command or manager surfaces.
 _Avoid_: boot logo, decorative header, startup dashboard

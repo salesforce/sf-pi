@@ -2,15 +2,15 @@
 /**
  * `/sf-agentscript` command renderer.
  *
- * Produces the doctor report (SDK load status, vendored bundle path, dialect
- * probe) and a usage hint when the user passes an unknown subcommand.
+ * Produces the doctor report (SDK package load status, dialect probe) and a
+ * usage hint when the user passes an unknown subcommand.
  */
 
 import path from "node:path";
 import { existsSync } from "node:fs";
 import { access, constants } from "node:fs/promises";
 import type { ExtensionDoctorReport } from "../../../lib/common/doctor/registry.ts";
-import { loadAgentforceSDK, VENDORED_SDK_PATH } from "./sdk.ts";
+import { AGENTFORCE_SDK_PACKAGE, loadAgentforceSDK } from "./sdk.ts";
 import { probeSfapReadiness, type SfapReadinessReport } from "./sfap-readiness.ts";
 
 // -------------------------------------------------------------------------------------------------
@@ -19,7 +19,8 @@ import { probeSfapReadiness, type SfapReadinessReport } from "./sfap-readiness.t
 
 export interface DoctorStatus {
   sdkLoaded: boolean;
-  vendoredSdkPath: string;
+  sdkPackage: string;
+  sdkPackageVersion?: string;
   dialectsProbed: string[];
   loadError?: string;
   upstreamNote: string;
@@ -52,24 +53,13 @@ export async function probeDoctor(cwd: string, targetOrg?: string): Promise<Doct
       sdkLoaded = false;
     }
   } else {
-    loadError = "Vendored SDK failed to import.";
+    loadError = `${AGENTFORCE_SDK_PACKAGE} failed to import.`;
   }
 
-  // Source the upstream pin from the committed UPSTREAM.md so the doctor
-  // report shows the same commit CI synced.
-  let upstreamNote = "Pinned via scripts/sync-agentforce-sdk.mjs";
-  try {
-    const upstreamMdPath = path.join(path.dirname(VENDORED_SDK_PATH), "UPSTREAM.md");
-    const fs = await import("node:fs/promises");
-    const contents = await fs.readFile(upstreamMdPath, "utf8");
-    const commitLine = contents.match(/^- Commit: `([^`]+)`/m);
-    const versionLine = contents.match(/^- Package version: `([^`]+)`/m);
-    if (commitLine && versionLine) {
-      upstreamNote = `${versionLine[1]} @ ${commitLine[1].slice(0, 10)}`;
-    }
-  } catch {
-    // Ignore — we just fall back to the default note.
-  }
+  const sdkPackageVersion = await readAgentforcePackageVersion();
+  const upstreamNote = sdkPackageVersion
+    ? `${AGENTFORCE_SDK_PACKAGE}@${sdkPackageVersion}`
+    : AGENTFORCE_SDK_PACKAGE;
 
   // P7: @salesforce/core resolves?
   let salesforceCoreResolved = false;
@@ -120,7 +110,8 @@ export async function probeDoctor(cwd: string, targetOrg?: string): Promise<Doct
 
   return {
     sdkLoaded,
-    vendoredSdkPath: VENDORED_SDK_PATH,
+    sdkPackage: AGENTFORCE_SDK_PACKAGE,
+    sdkPackageVersion,
     dialectsProbed,
     loadError,
     upstreamNote,
@@ -130,6 +121,17 @@ export async function probeDoctor(cwd: string, targetOrg?: string): Promise<Doct
     sfdxAgentsPath,
     sfapReadiness,
   };
+}
+
+async function readAgentforcePackageVersion(): Promise<string | undefined> {
+  try {
+    const fs = await import("node:fs/promises");
+    const raw = await fs.readFile(new URL("../../../package.json", import.meta.url), "utf8");
+    const parsed = JSON.parse(raw) as { dependencies?: Record<string, string> };
+    return parsed.dependencies?.[AGENTFORCE_SDK_PACKAGE];
+  } catch {
+    return undefined;
+  }
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -150,8 +152,8 @@ export async function runExtensionDoctor(cwd: string): Promise<ExtensionDoctorRe
     checks.push({
       id: "agentscript.sdk-loaded",
       severity: "ok",
-      title: `Vendored Agent Script SDK loaded (${status.upstreamNote})`,
-      detail: `source: ${status.vendoredSdkPath}`,
+      title: `Official AgentScript SDK loaded (${status.upstreamNote})`,
+      detail: `package: ${status.sdkPackage}`,
     });
     if (status.dialectsProbed.length > 0) {
       checks.push({
@@ -165,9 +167,9 @@ export async function runExtensionDoctor(cwd: string): Promise<ExtensionDoctorRe
     checks.push({
       id: "agentscript.sdk-load-failed",
       severity: "error",
-      title: "Vendored Agent Script SDK failed to load",
+      title: "Official AgentScript SDK failed to load",
       detail: status.loadError ?? "Unknown SDK load failure",
-      fix: "Re-run scripts/sync-agentforce-sdk.mjs or reinstall sf-pi.",
+      fix: "Run `npm install` at the repo root or reinstall sf-pi.",
     });
   }
 
@@ -216,15 +218,15 @@ export function renderDoctorReport(status: DoctorStatus): string {
 
   if (status.sdkLoaded) {
     lines.push(`✅ SDK: loaded (${status.upstreamNote})`);
-    lines.push(`   source: ${status.vendoredSdkPath}`);
+    lines.push(`   package: ${status.sdkPackage}`);
     if (status.dialectsProbed.length > 0) {
       lines.push(`   dialects: ${status.dialectsProbed.join(", ")}`);
     }
   } else {
     lines.push(`❌ SDK: not loaded`);
-    lines.push(`   source: ${status.vendoredSdkPath}`);
+    lines.push(`   package: ${status.sdkPackage}`);
     if (status.loadError) lines.push(`   reason: ${status.loadError}`);
-    lines.push(`   tip: re-run scripts/sync-agentforce-sdk.mjs or reinstall sf-pi.`);
+    lines.push("   tip: run `npm install` at the repo root or reinstall sf-pi.");
   }
 
   if (status.salesforceCoreResolved) {

@@ -6,13 +6,14 @@
  * Returns a navigable, JSON-serializable summary: dialect, config, system,
  * topics (with action + subagent references), subagents, variables, actions.
  *
- * Implementation: parse via the vendored SDK, walk the typed AST once,
+ * Implementation: parse via the official SDK package, walk the typed AST once,
  * project the fields we care about. No I/O beyond the file read.
  *
  * Never throws. Failures surface as `{ok: false, reason: ...}`.
  */
 
 import fs from "node:fs/promises";
+import { processAgentforceDocument } from "./agentforce-document.ts";
 import { loadAgentforceSDK, getSdkLoadError } from "./sdk.ts";
 
 // -------------------------------------------------------------------------------------------------
@@ -28,7 +29,7 @@ export interface InspectResult {
     config?: Record<string, unknown>;
     /**
      * Note: `agent_type` is a `config:` field per the SDK schema (see
-     * vendored browser.js around the AgentforceConfigSchema definition).
+     * official SDK package around the AgentforceConfigSchema definition).
      * Earlier versions of this summary mirrored it onto `system` too,
      * which was a stale model — readers should use `config.agent_type`.
      */
@@ -141,7 +142,7 @@ function truncate(s: unknown, n: number): string {
 
 /**
  * Extract a scalar value from a node that may be a raw primitive or a
- * vendored SDK wrapper like `_StringLiteral { value: "..." }` /
+ * official SDK package wrapper like `_StringLiteral { value: "..." }` /
  * `_NumberLiteral { value: N }`. Returns `undefined` for non-scalar shapes.
  */
 function unwrapScalar(value: unknown): string | number | boolean | undefined {
@@ -605,25 +606,12 @@ function parseSymbol(
   return { ok: true, namespace: m[1], property: m[2] };
 }
 
-function namedMapKeyFor(namespace: string): string | null {
-  if (
-    namespace === "topic" ||
-    namespace === "subagent" ||
-    namespace === "actions" ||
-    namespace === "variables"
-  ) {
-    return namespace;
-  }
-  return null;
-}
+const DEFINITION_NAMESPACES = new Set(["topic", "subagent", "actions", "variables"]);
 
 export async function findReferences(
   filePath: string,
   symbol: string,
 ): Promise<FindReferencesResult> {
-  const sdk = await loadAgentforceSDK();
-  if (!sdk) return { ok: false, reason: "sdk_unavailable", reason_detail: getSdkLoadError() };
-
   const sym = parseSymbol(symbol);
   if (sym.ok === false) return { ok: false, reason: "bad_symbol", reason_detail: sym.reason };
 
@@ -638,9 +626,9 @@ export async function findReferences(
     };
   }
 
-  let doc: { ast: unknown };
+  let state: Awaited<ReturnType<typeof processAgentforceDocument>>;
   try {
-    doc = (sdk as unknown as { parse: (s: string) => typeof doc }).parse(source);
+    state = await processAgentforceDocument(source);
   } catch (err) {
     return {
       ok: false,
@@ -650,75 +638,48 @@ export async function findReferences(
   }
 
   const lines = source.split("\n");
-  const refs: ReferenceHit[] = [];
+  const { findAllReferences } = await import("@sf-agentscript/language");
+  const refs: ReferenceHit[] = state.ast
+    ? (
+        findAllReferences(
+          state.ast,
+          sym.namespace,
+          sym.property,
+          state.service.schemaContext,
+          undefined,
+          true,
+          state.service.getSymbols(),
+        ) as Array<{
+          range: { start: { line: number; character: number } };
+          isDefinition: boolean;
+        }>
+      ).map((ref) => {
+        const lineIdx = ref.range.start.line;
+        return {
+          line: lineIdx + 1,
+          character: ref.range.start.character,
+          context: (lines[lineIdx] ?? "").trim().slice(0, 120),
+          is_declaration: ref.isDefinition,
+        };
+      })
+    : [];
 
-  const walkExpressions = (
-    sdk as unknown as {
-      walkAstExpressions: (ast: unknown, visitor: (expr: unknown) => void) => void;
-    }
-  ).walkAstExpressions;
-
-  walkExpressions(doc.ast, (expr) => {
-    if (!expr || typeof expr !== "object") return;
-    const node = expr as {
-      __kind?: string;
-      object?: unknown;
-      property?: string;
-      __cst?: { range?: { start?: { line?: number; character?: number } } };
-    };
-    if (node.__kind !== "MemberExpression") return;
-    const objExpr = node.object as
-      | {
-          __kind?: string;
-          name?: string;
-          __cst?: { range?: { start?: { line?: number; character?: number } } };
-        }
-      | undefined;
-    if (!objExpr || objExpr.__kind !== "AtIdentifier") return;
-    if (objExpr.name !== sym.namespace || node.property !== sym.property) return;
-
-    const cst = objExpr.__cst?.range?.start;
-    if (!cst) return;
-    const lineIdx = cst.line ?? 0;
-    const charIdx = (cst.character ?? 0) > 0 ? (cst.character ?? 0) - 1 : 0;
-    refs.push({
-      line: lineIdx + 1,
-      character: charIdx,
-      context: (lines[lineIdx] ?? "").trim().slice(0, 120),
-      is_declaration: false,
-    });
-  });
-
-  // Add the declaration site if present in the corresponding NamedMap.
-  const ast = (doc.ast ?? {}) as Record<string, unknown>;
-  const mapKey = namedMapKeyFor(sym.namespace);
-  if (mapKey) {
-    const map = ast[mapKey];
-    if (map && typeof (map as { get?: unknown }).get === "function") {
-      const entry = (map as { get: (n: string) => unknown }).get(sym.property);
-      if (entry) {
-        const declLine = startLine(entry);
-        if (typeof declLine === "number") {
-          refs.unshift({
-            line: declLine,
-            character: 0,
-            context: (lines[declLine - 1] ?? "").trim().slice(0, 120),
-            is_declaration: true,
-          });
-        }
-      }
-    }
-  }
+  refs.sort((a, b) => Number(b.is_declaration) - Number(a.is_declaration) || a.line - b.line);
 
   return { ok: true, symbol, references: refs, total: refs.length };
 }
 
 export async function findDefinition(filePath: string, symbol: string): Promise<DefinitionResult> {
-  const sdk = await loadAgentforceSDK();
-  if (!sdk) return { ok: false, reason: "sdk_unavailable", reason_detail: getSdkLoadError() };
-
   const sym = parseSymbol(symbol);
   if (sym.ok === false) return { ok: false, reason: "bad_symbol", reason_detail: sym.reason };
+
+  if (!DEFINITION_NAMESPACES.has(sym.namespace)) {
+    return {
+      ok: false,
+      reason: "bad_symbol",
+      reason_detail: `Namespace '${sym.namespace}' is not declarable. Supported: @topic.X, @subagent.X, @actions.X, @variables.X.`,
+    };
+  }
 
   let source: string;
   try {
@@ -731,9 +692,9 @@ export async function findDefinition(filePath: string, symbol: string): Promise<
     };
   }
 
-  let doc: { ast: unknown };
+  let state: Awaited<ReturnType<typeof processAgentforceDocument>>;
   try {
-    doc = (sdk as unknown as { parse: (s: string) => typeof doc }).parse(source);
+    state = await processAgentforceDocument(source);
   } catch (err) {
     return {
       ok: false,
@@ -742,36 +703,30 @@ export async function findDefinition(filePath: string, symbol: string): Promise<
     };
   }
 
-  const ast = (doc.ast ?? {}) as Record<string, unknown>;
-  const mapKey = namedMapKeyFor(sym.namespace);
-  if (!mapKey) {
-    return {
-      ok: false,
-      reason: "bad_symbol",
-      reason_detail: `Namespace '${sym.namespace}' is not declarable. Supported: @topic.X, @subagent.X, @actions.X, @variables.X.`,
-    };
+  if (!state.ast) {
+    return { ok: false, reason: "not_found", reason_detail: `${symbol} has no AST.` };
   }
-  const map = ast[mapKey];
-  if (!map || typeof (map as { get?: unknown }).get !== "function") {
-    return {
-      ok: false,
-      reason: "not_found",
-      reason_detail: `Namespace '${sym.namespace}' is empty.`,
-    };
-  }
-  const entry = (map as { get: (n: string) => unknown }).get(sym.property);
-  if (!entry) {
+
+  const { resolveReference } = await import("@sf-agentscript/language");
+  const definition = resolveReference(
+    state.ast,
+    sym.namespace,
+    sym.property,
+    state.service.schemaContext,
+    undefined,
+    state.service.getSymbols(),
+  ) as { definitionRange?: { start?: { line?: number; character?: number } } } | null;
+
+  const start = definition?.definitionRange?.start;
+  if (typeof start?.line !== "number") {
     return { ok: false, reason: "not_found", reason_detail: `${symbol} is not declared.` };
   }
-  const declLine = startLine(entry);
-  if (typeof declLine !== "number") {
-    return { ok: false, reason: "not_found", reason_detail: `${symbol} has no line metadata.` };
-  }
+
   return {
     ok: true,
     symbol,
-    line: declLine,
-    character: 0,
+    line: start.line + 1,
+    character: start.character ?? 0,
     file: filePath,
   };
 }

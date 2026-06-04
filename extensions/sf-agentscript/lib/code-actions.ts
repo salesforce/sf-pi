@@ -2,211 +2,90 @@
 /**
  * Build safe, deterministic quick fixes for a set of filtered diagnostics.
  *
- * We intentionally handle only the codes where upstream ships a fix with an
- * exact TextEdit range — so the agent can apply the edit by-coordinates without
- * guessing. The fixes below mirror the upstream
- * `@agentscript/lsp/providers/code-actions.ts` behavior, scoped to the subset
- * where we don't need AST walking:
- *
- *   invalid-modifier, unknown-type  → replace typo with best candidate
- *   unknown-dialect                 → replace with each available dialect
- *   deprecated-field                → replace with `data.replacement` when set
- *   unused-variable                 → delete `data.removalRange`
- *   invalid-version                 → replace with each suggested version
- *
- * We do NOT attempt the `topic → subagent` rename, because that needs the AST
- * to rename `@topic.X` references. The agent can still do that from the
- * deprecation message alone.
+ * Generic AgentScript quick fixes are delegated to the official
+ * @sf-agentscript/lsp provider. SF Pi keeps only the Salesforce/pi-specific
+ * hardening fixes that upstream does not own.
  */
 
+import { AGENTFORCE_DOCUMENT_URI, processAgentforceDocument } from "./agentforce-document.ts";
 import type { AgentScriptDiagnostic, AgentScriptQuickFix, AgentScriptRange } from "./types.ts";
 
 // -------------------------------------------------------------------------------------------------
-// Shape of SDK-provided diagnostic data we trust
+// Shape of diagnostic data we trust for local hardening fixes
 // -------------------------------------------------------------------------------------------------
 
 /**
- * `data.found` + `data.expected` travels on `invalid-modifier` / `unknown-type`.
- */
-interface SuggestionData {
-  found?: string;
-  expected?: string[];
-}
-
-/**
- * `data.removalRange` travels on `unused-variable`.
+ * `data.removalRange` travels on local diagnostics that remove a declaration.
  */
 interface RemovalRangeData {
   removalRange?: AgentScriptRange;
 }
 
-/**
- * `data.replacement` travels on `deprecated-field` when the SDK knows the
- * one-to-one replacement.
- */
-interface ReplacementData {
-  replacement?: string;
-}
-
-/**
- * `data.availableNames` travels on `unknown-dialect`.
- */
-interface AvailableNamesData {
-  availableNames?: string[];
-}
-
-/**
- * `data.suggestedVersions` travels on `invalid-version`.
- */
-interface SuggestedVersionsData {
-  suggestedVersions?: string[];
-}
-
 // -------------------------------------------------------------------------------------------------
-// Typo closest-match
+// Official LSP quick-fix adapter
 // -------------------------------------------------------------------------------------------------
 
-/**
- * Minimal Levenshtein distance. Enough to rank a handful of dialect/modifier
- * candidates — not meant for large corpora.
- */
-function editDistance(a: string, b: string): number {
-  if (a === b) return 0;
-  if (a.length === 0) return b.length;
-  if (b.length === 0) return a.length;
-
-  const rows = a.length + 1;
-  const cols = b.length + 1;
-  const dp = new Array<number>(rows * cols);
-
-  for (let i = 0; i < rows; i++) dp[i * cols] = i;
-  for (let j = 0; j < cols; j++) dp[j] = j;
-
-  for (let i = 1; i < rows; i++) {
-    for (let j = 1; j < cols; j++) {
-      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-      dp[i * cols + j] = Math.min(
-        dp[(i - 1) * cols + j] + 1,
-        dp[i * cols + (j - 1)] + 1,
-        dp[(i - 1) * cols + (j - 1)] + cost,
-      );
-    }
-  }
-
-  return dp[rows * cols - 1];
-}
-
-/**
- * Best typo match for `found` against `candidates`, or `undefined` when no
- * candidate is reasonably close.
- */
-function bestSuggestion(found: string, candidates: string[]): string | undefined {
-  if (candidates.length === 0) return undefined;
-
-  let best: string | undefined;
-  let bestScore = Infinity;
-  for (const candidate of candidates) {
-    const score = editDistance(found, candidate);
-    if (score < bestScore) {
-      bestScore = score;
-      best = candidate;
-    }
-  }
-
-  // Reject suggestions that are farther than half the input length — those
-  // are usually not typos, they're different words.
-  if (best && bestScore * 2 > found.length) return undefined;
-  return best;
-}
-
-// -------------------------------------------------------------------------------------------------
-// Per-code fix builders
-// -------------------------------------------------------------------------------------------------
-
-/**
- * Build a text-edit that replaces an exact substring on the diagnostic's line.
- * Returns `null` when the substring isn't on the line (shouldn't happen, but we
- * guard defensively because TextEdits with bad ranges corrupt files).
- */
-function replaceSubstringOnLine(
-  source: string,
-  line: number,
-  substring: string,
-  replacement: string,
-): AgentScriptQuickFix["edits"][number] | null {
+function fullDocumentRange(source: string): AgentScriptRange {
   const lines = source.split("\n");
-  const lineText = lines[line];
-  if (!lineText) return null;
-
-  const col = lineText.indexOf(substring);
-  if (col === -1) return null;
-
+  const lastLine = Math.max(0, lines.length - 1);
   return {
-    range: {
-      start: { line, character: col },
-      end: { line, character: col + substring.length },
-    },
-    newText: replacement,
+    start: { line: 0, character: 0 },
+    end: { line: lastLine, character: lines[lastLine]?.length ?? 0 },
   };
 }
 
-function buildSuggestionFix(
+function codeOf(diagnostic: unknown): string | undefined {
+  const code = (diagnostic as { code?: unknown } | undefined)?.code;
+  return typeof code === "string" ? code : undefined;
+}
+
+async function officialQuickFixes(
   source: string,
-  diagnostic: AgentScriptDiagnostic,
-): AgentScriptQuickFix | null {
-  const data = (diagnostic.data ?? {}) as SuggestionData;
-  if (!data.found || !Array.isArray(data.expected) || data.expected.length === 0) return null;
+  diagnostics: AgentScriptDiagnostic[],
+): Promise<AgentScriptQuickFix[]> {
+  let actions: Array<{
+    title: string;
+    isPreferred?: boolean;
+    diagnostics?: AgentScriptDiagnostic[];
+    edit?: { changes?: Record<string, Array<{ range: AgentScriptRange; newText: string }>> };
+  }>;
+  try {
+    const [state, { provideCodeActions }] = await Promise.all([
+      processAgentforceDocument(source, AGENTFORCE_DOCUMENT_URI),
+      import("@sf-agentscript/lsp"),
+    ]);
+    actions = provideCodeActions(
+      state,
+      fullDocumentRange(source),
+      diagnostics as Parameters<typeof provideCodeActions>[2],
+    ) as typeof actions;
+  } catch {
+    return [];
+  }
 
-  const suggestion = bestSuggestion(data.found, data.expected);
-  if (!suggestion) return null;
+  const fixes: AgentScriptQuickFix[] = [];
+  for (const action of actions) {
+    const edits = action.edit?.changes?.[AGENTFORCE_DOCUMENT_URI];
+    if (!edits || edits.length === 0) continue;
 
-  const edit = replaceSubstringOnLine(source, diagnostic.range.start.line, data.found, suggestion);
-  if (!edit) return null;
-
-  return {
-    title: `Change '${data.found}' to '${suggestion}'`,
-    preferred: true,
-    diagnosticLine: diagnostic.range.start.line,
-    diagnosticCode: diagnostic.code,
-    edits: [edit],
-  };
+    const firstDiagnostic = action.diagnostics?.[0];
+    fixes.push({
+      title: action.title,
+      preferred: action.isPreferred === true,
+      diagnosticLine: firstDiagnostic?.range.start.line ?? edits[0].range.start.line,
+      diagnosticCode: codeOf(firstDiagnostic),
+      edits: edits.map((edit) => ({
+        range: edit.range,
+        newText: edit.newText,
+      })),
+    });
+  }
+  return fixes;
 }
 
-function buildUnknownDialectFixes(diagnostic: AgentScriptDiagnostic): AgentScriptQuickFix[] {
-  const data = (diagnostic.data ?? {}) as AvailableNamesData;
-  if (!Array.isArray(data.availableNames) || data.availableNames.length === 0) return [];
-
-  return data.availableNames.map((name, index) => ({
-    title: `Change to '${name}'`,
-    preferred: index === 0,
-    diagnosticLine: diagnostic.range.start.line,
-    diagnosticCode: diagnostic.code,
-    edits: [
-      {
-        range: diagnostic.range,
-        newText: name,
-      },
-    ],
-  }));
-}
-
-function buildDeprecatedFieldFix(diagnostic: AgentScriptDiagnostic): AgentScriptQuickFix | null {
-  const data = (diagnostic.data ?? {}) as ReplacementData;
-  if (!data.replacement || typeof data.replacement !== "string") return null;
-
-  return {
-    title: `Replace with '${data.replacement}'`,
-    preferred: true,
-    diagnosticLine: diagnostic.range.start.line,
-    diagnosticCode: diagnostic.code,
-    edits: [
-      {
-        range: diagnostic.range,
-        newText: data.replacement,
-      },
-    ],
-  };
-}
+// -------------------------------------------------------------------------------------------------
+// SF Pi local hardening fix builders
+// -------------------------------------------------------------------------------------------------
 
 function buildRemovalRangeFix(
   source: string,
@@ -245,13 +124,6 @@ function buildRemovalRangeFix(
   };
 }
 
-function buildUnusedVariableFix(
-  source: string,
-  diagnostic: AgentScriptDiagnostic,
-): AgentScriptQuickFix | null {
-  return buildRemovalRangeFix(source, diagnostic, "Remove unused variable");
-}
-
 function buildEmployeeDefaultUserFix(
   source: string,
   diagnostic: AgentScriptDiagnostic,
@@ -266,23 +138,6 @@ function buildEmployeeDefaultUserFix(
 /**
  * Detect the `transition to @topic.X when "..."` footgun and offer to
  * strip the unsupported `when` clause.
- *
- * Agent Script supports two transition shapes:
- *   - `transition to @topic.X`            — deterministic
- *   - `@utils.transition to @topic.X` (in instructions) — LLM-discretionary
- *
- * Guarded transitions don't exist; the `when` keyword turns the line into
- * a parse error (`missing-token`). The SDK message correctly says "missing
- * token" but doesn't tell the author that the syntax just isn't a thing.
- *
- * This fix pattern-matches the surrounding line text on the diagnostic's
- * line and, if it looks like the `when`-suffix shape, emits a single
- * preferred quick fix that strips everything from `when` onward. We do
- * NOT try to convert into the `@utils.transition` form because that
- * requires moving the line into the parent node's `instructions:` block;
- * the simple deterministic-transition form is the right default.
- *
- * See docs/POSTMORTEM_E2E_DEMO.md Issue 2.
  */
 const TRANSITION_WHEN_RE = /^(?<keep>\s*transition\s+to\s+@[A-Za-z_][\w.]*)\s+when\b.*$/;
 
@@ -312,23 +167,30 @@ function buildMissingTokenTransitionFix(
   };
 }
 
-function buildInvalidVersionFixes(diagnostic: AgentScriptDiagnostic): AgentScriptQuickFix[] {
-  const data = (diagnostic.data ?? {}) as SuggestedVersionsData;
-  const suggestions = data.suggestedVersions;
-  if (!Array.isArray(suggestions) || suggestions.length === 0) return [];
+function localHardeningQuickFixes(
+  source: string,
+  diagnostics: AgentScriptDiagnostic[],
+): AgentScriptQuickFix[] {
+  const fixes: AgentScriptQuickFix[] = [];
 
-  return suggestions.map((version, index) => ({
-    title: `Set version to '${version}'`,
-    preferred: index === 0,
-    diagnosticLine: diagnostic.range.start.line,
-    diagnosticCode: diagnostic.code,
-    edits: [
-      {
-        range: diagnostic.range,
-        newText: version,
-      },
-    ],
-  }));
+  for (const diagnostic of diagnostics) {
+    switch (diagnostic.code) {
+      case "employee-agent-default-user": {
+        const fix = buildEmployeeDefaultUserFix(source, diagnostic);
+        if (fix) fixes.push(fix);
+        break;
+      }
+      case "missing-token": {
+        const fix = buildMissingTokenTransitionFix(source, diagnostic);
+        if (fix) fixes.push(fix);
+        break;
+      }
+      default:
+        break;
+    }
+  }
+
+  return fixes;
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -342,58 +204,13 @@ function buildInvalidVersionFixes(diagnostic: AgentScriptDiagnostic): AgentScrip
  * can't accidentally surface fixes for warnings the rest of the system chose
  * to hide.
  */
-export function buildQuickFixes(
+export async function buildQuickFixes(
   source: string,
   diagnostics: AgentScriptDiagnostic[],
-): AgentScriptQuickFix[] {
-  const fixes: AgentScriptQuickFix[] = [];
-
-  for (const diagnostic of diagnostics) {
-    if (!diagnostic.code) continue;
-
-    switch (diagnostic.code) {
-      case "invalid-modifier":
-      case "unknown-type": {
-        const fix = buildSuggestionFix(source, diagnostic);
-        if (fix) fixes.push(fix);
-        break;
-      }
-      case "unknown-dialect": {
-        fixes.push(...buildUnknownDialectFixes(diagnostic));
-        break;
-      }
-      case "deprecated-field": {
-        const fix = buildDeprecatedFieldFix(diagnostic);
-        if (fix) fixes.push(fix);
-        break;
-      }
-      case "unused-variable": {
-        const fix = buildUnusedVariableFix(source, diagnostic);
-        if (fix) fixes.push(fix);
-        break;
-      }
-      case "employee-agent-default-user": {
-        const fix = buildEmployeeDefaultUserFix(source, diagnostic);
-        if (fix) fixes.push(fix);
-        break;
-      }
-      case "invalid-version": {
-        fixes.push(...buildInvalidVersionFixes(diagnostic));
-        break;
-      }
-      case "missing-token": {
-        // Pattern-aware fix for `transition to @topic.X when "..."`. Other
-        // missing-token diagnostics are not auto-fixable.
-        const fix = buildMissingTokenTransitionFix(source, diagnostic);
-        if (fix) fixes.push(fix);
-        break;
-      }
-      default:
-        // Not all codes have machine-applyable fixes. The diagnostic still gets
-        // rendered — the agent just doesn't get a prebuilt TextEdit.
-        break;
-    }
-  }
-
-  return fixes;
+): Promise<AgentScriptQuickFix[]> {
+  if (diagnostics.length === 0) return [];
+  return [
+    ...(await officialQuickFixes(source, diagnostics)),
+    ...localHardeningQuickFixes(source, diagnostics),
+  ];
 }
