@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.170.1-2026-06-02",
-  "latestVersion": "0.170.1",
+  "revision": "release-0.171.0-2026-06-04",
+  "latestVersion": "0.171.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.170.1",
+      "id": "release-0.171.0",
       "kind": "update",
-      "title": "sf-pi v0.170.1 — sf-data360: make cleanup discovery actionable",
-      "publishedAt": "2026-06-02T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.170.1",
+      "title": "sf-pi v0.171.0 — sf-data360: add v2 action sweep",
+      "publishedAt": "2026-06-04T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.171.0",
       "severity": "info",
-      "body": "sf-data360: make cleanup discovery actionable"
+      "body": "sf-data360: add v2 action sweep"
     },
     {
       "id": "pi-0.73-required",
