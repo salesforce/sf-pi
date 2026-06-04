@@ -16,15 +16,10 @@
  */
 
 import fs from "node:fs/promises";
-import { loadAgentforceSDK, getSdkLoadError } from "./sdk.ts";
+import { analyzeAgentScriptSource } from "./agentforce-document.ts";
 import { buildQuickFixes } from "./code-actions.ts";
 import { buildLocalDiagnostics } from "./local-lints.ts";
-import type {
-  AgentScriptCheckResult,
-  AgentScriptDiagnostic,
-  AgentScriptDialectInfo,
-  AgentScriptSeverity,
-} from "./types.ts";
+import type { AgentScriptCheckResult, AgentScriptDiagnostic } from "./types.ts";
 
 // -------------------------------------------------------------------------------------------------
 // Actionability filter
@@ -58,73 +53,6 @@ function isActionable(diagnostic: AgentScriptDiagnostic): boolean {
 }
 
 // -------------------------------------------------------------------------------------------------
-// Type narrowing of SDK output
-// -------------------------------------------------------------------------------------------------
-
-/**
- * Coerce an SDK diagnostic into our local shape.
- *
- * The SDK diagnostic type is the LSP-compatible one — same field names, same
- * semantics. We copy defensively so nothing downstream mutates SDK internals.
- */
-function toAgentScriptDiagnostic(raw: unknown): AgentScriptDiagnostic | null {
-  if (!raw || typeof raw !== "object") return null;
-  const value = raw as Record<string, unknown>;
-  const range = value.range as
-    | { start: { line?: number; character?: number }; end: { line?: number; character?: number } }
-    | undefined;
-  if (!range || !range.start || !range.end) return null;
-
-  const severity = typeof value.severity === "number" ? (value.severity as AgentScriptSeverity) : 1;
-  const message = typeof value.message === "string" ? value.message : "";
-
-  return {
-    range: {
-      start: { line: range.start.line ?? 0, character: range.start.character ?? 0 },
-      end: { line: range.end.line ?? 0, character: range.end.character ?? 0 },
-    },
-    message,
-    severity,
-    code: typeof value.code === "string" ? value.code : undefined,
-    source: typeof value.source === "string" ? value.source : undefined,
-    tags: Array.isArray(value.tags) ? (value.tags as (1 | 2)[]) : undefined,
-    data: (value.data ?? undefined) as Record<string, unknown> | undefined,
-  };
-}
-
-// -------------------------------------------------------------------------------------------------
-// Dialect resolution
-// -------------------------------------------------------------------------------------------------
-
-function resolveDialectInfo(
-  source: string,
-  sdk: Awaited<ReturnType<typeof loadAgentforceSDK>>,
-): AgentScriptDialectInfo | undefined {
-  if (!sdk) return undefined;
-
-  // Fast path: explicit annotation on the first ~10 lines.
-  const annotation = sdk.parseDialectAnnotation(source);
-  if (annotation) {
-    return { name: annotation.name, version: annotation.version };
-  }
-
-  // Otherwise ask the SDK for the resolved dialect using the known dialect list.
-  try {
-    const resolved = sdk.resolveDialect(source, { dialects: [sdk.agentforceDialect] });
-    if (resolved.unknownDialect) {
-      return {
-        name: resolved.unknownDialect.name,
-        unknown: true,
-        availableNames: resolved.unknownDialect.availableNames,
-      };
-    }
-    return { name: resolved.dialect.name };
-  } catch {
-    return undefined;
-  }
-}
-
-// -------------------------------------------------------------------------------------------------
 // Public API
 // -------------------------------------------------------------------------------------------------
 
@@ -135,18 +63,6 @@ function resolveDialectInfo(
  * the caller can render a one-time setup note.
  */
 export async function checkAgentScriptFile(filePath: string): Promise<AgentScriptCheckResult> {
-  const sdk = await loadAgentforceSDK();
-  if (!sdk) {
-    return {
-      ok: false,
-      diagnostics: [],
-      quickFixes: [],
-      failureKind: "sdk_unavailable",
-      unavailableReason:
-        getSdkLoadError() ?? "The official @sf-agentscript/agentforce SDK failed to load.",
-    };
-  }
-
   let source: string;
   try {
     source = await fs.readFile(filePath, "utf8");
@@ -160,39 +76,27 @@ export async function checkAgentScriptFile(filePath: string): Promise<AgentScrip
     };
   }
 
-  const dialect = resolveDialectInfo(source, sdk);
-
-  // Declared without an initializer on purpose: the try block always writes
-  // a value before the next use, and the catch arm returns. A pre-assignment
-  // here would be dead code flagged by `no-useless-assignment`.
-  let rawDiagnostics: unknown[];
-  try {
-    const compileResult = sdk.compileSource(source);
-    rawDiagnostics = Array.isArray(compileResult.diagnostics) ? compileResult.diagnostics : [];
-  } catch (error) {
+  const analysis = await analyzeAgentScriptSource(source);
+  if (analysis.ok === false) {
     return {
       ok: false,
       diagnostics: [],
       quickFixes: [],
-      dialect,
-      failureKind: "compile_threw",
-      unavailableReason: `Agent Script SDK threw during compileSource(): ${error instanceof Error ? error.message : String(error)}`,
+      dialect: analysis.dialect,
+      failureKind: analysis.failureKind,
+      unavailableReason: analysis.unavailableReason,
     };
   }
 
-  const all = rawDiagnostics
-    .map((raw) => toAgentScriptDiagnostic(raw))
-    .filter((diagnostic): diagnostic is AgentScriptDiagnostic => diagnostic !== null);
-
-  const filtered = all.filter(isActionable);
+  const filtered = analysis.analysis.compileDiagnostics.filter(isActionable);
   const localDiagnostics = buildLocalDiagnostics(source);
   const diagnostics = [...filtered, ...localDiagnostics];
-  const quickFixes = await buildQuickFixes(source, diagnostics);
+  const quickFixes = await buildQuickFixes(source, diagnostics, analysis.analysis.documentState);
 
   return {
     ok: true,
     diagnostics,
-    dialect,
+    dialect: analysis.analysis.dialect,
     quickFixes,
   };
 }

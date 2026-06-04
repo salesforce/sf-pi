@@ -8,6 +8,7 @@
  */
 
 import { AGENTFORCE_DOCUMENT_URI, processAgentforceDocument } from "./agentforce-document.ts";
+import type { DocumentState } from "@sf-agentscript/lsp";
 import type { AgentScriptDiagnostic, AgentScriptQuickFix, AgentScriptRange } from "./types.ts";
 
 // -------------------------------------------------------------------------------------------------
@@ -42,6 +43,7 @@ function codeOf(diagnostic: unknown): string | undefined {
 async function officialQuickFixes(
   source: string,
   diagnostics: AgentScriptDiagnostic[],
+  state?: DocumentState,
 ): Promise<AgentScriptQuickFix[]> {
   let actions: Array<{
     title: string;
@@ -50,12 +52,12 @@ async function officialQuickFixes(
     edit?: { changes?: Record<string, Array<{ range: AgentScriptRange; newText: string }>> };
   }>;
   try {
-    const [state, { provideCodeActions }] = await Promise.all([
-      processAgentforceDocument(source, AGENTFORCE_DOCUMENT_URI),
+    const [documentState, { provideCodeActions }] = await Promise.all([
+      state ?? processAgentforceDocument(source, AGENTFORCE_DOCUMENT_URI),
       import("@sf-agentscript/lsp"),
     ]);
     actions = provideCodeActions(
-      state,
+      documentState,
       fullDocumentRange(source),
       diagnostics as Parameters<typeof provideCodeActions>[2],
     ) as typeof actions;
@@ -207,10 +209,11 @@ function localHardeningQuickFixes(
 export async function buildQuickFixes(
   source: string,
   diagnostics: AgentScriptDiagnostic[],
+  state?: DocumentState,
 ): Promise<AgentScriptQuickFix[]> {
   if (diagnostics.length === 0) return [];
   return [
-    ...(await officialQuickFixes(source, diagnostics)),
+    ...(await officialQuickFixes(source, diagnostics, state)),
     ...localHardeningQuickFixes(source, diagnostics),
   ];
 }
