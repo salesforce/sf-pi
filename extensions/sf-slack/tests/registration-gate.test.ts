@@ -9,7 +9,7 @@
  *
  * Contract verified:
  *   1. There is no unconditional `register*Tool(pi)` at module scope.
- *   2. All nine Slack tools are registered behind the gate helper.
+ *   2. All ten Slack tools are registered behind the gate helper.
  *   3. The gate helper is invoked from session_start AND /sf-slack refresh.
  *   4. session_start gates tools from captured/cached scopes before first turn.
  *   5. The workspace context injection no longer includes cache-size or
@@ -40,7 +40,7 @@ describe("sf-slack conditional tool registration (Option B)", () => {
     expect(indexSource).toContain("if (slackToolsRegistered) return;");
   });
 
-  it("gate registers all nine Slack tools", () => {
+  it("gate registers all ten Slack tools", () => {
     const gate = indexSource.match(
       /function ensureSlackToolsRegistered\(\)[^{]*\{([\s\S]*?)\n\s{2}\}/,
     );
@@ -56,6 +56,7 @@ describe("sf-slack conditional tool registration (Option B)", () => {
       "registerFileTool(pi)",
       "registerCanvasTool(pi)",
       "registerSendTool(pi)",
+      "registerScheduleTool(pi)",
     ];
     for (const call of expected) {
       expect(body).toContain(call);

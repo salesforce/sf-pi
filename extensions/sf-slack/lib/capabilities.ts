@@ -37,6 +37,7 @@ export const ALL_SLACK_TOOL_NAMES = [
   "slack_file",
   "slack_canvas",
   "slack_send",
+  "slack_schedule",
 ] as const;
 
 export type SlackToolName = (typeof ALL_SLACK_TOOL_NAMES)[number];

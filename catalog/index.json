@@ -743,7 +743,8 @@
       "slack_user",
       "slack_file",
       "slack_canvas",
-      "slack_send"
+      "slack_send",
+      "slack_schedule"
     ],
     "events": [
       "session_start",
@@ -751,7 +752,7 @@
       "before_agent_start"
     ],
     "docs": {
-      "summary": "Full Slack integration. Read-only search/thread/history/channel/user/file/canvas plus send-with-confirm. Tools register only after a token resolves (Pi auth store -> SLACK_USER_TOKEN), keeping the system prompt cache stable when Slack is not configured.",
+      "summary": "Full Slack integration. Read-only search/thread/history/channel/user/file/canvas plus confirmed send and scheduled-message management. Tools register only after a token resolves (Pi auth store -> SLACK_USER_TOKEN), keeping the system prompt cache stable when Slack is not configured.",
       "primaryFiles": [
         "index.ts",
         "lib/auth.ts",
@@ -759,13 +760,14 @@
         "lib/tools.ts",
         "lib/research-tool.ts",
         "lib/send-tool.ts",
+        "lib/schedule-tool.ts",
         "lib/recipient-confirm.ts",
         "lib/config-panel.ts",
         "lib/preferences-panel.ts"
       ],
       "stateFiles": [
         "Pi auth store via /login sf-slack",
-        "session entries: SlackSendAuditEntry, SlackPreferences"
+        "session entries: SlackSendAuditEntry, SlackScheduleAuditEntry, SlackPreferences"
       ],
       "env": [
         "SLACK_USER_TOKEN",
@@ -774,14 +776,15 @@
       ],
       "safety": [
         "slack_send requires user confirmation in interactive mode and refuses headless unless SLACK_ALLOW_HEADLESS_SEND=1.",
-        "Read-only by default; only canvas create/edit and slack_send mutate.",
+        "slack_schedule schedule/delete require user confirmation in interactive mode and refuse headless unless SLACK_ALLOW_HEADLESS_SEND=1.",
+        "Read-only by default; only canvas create/edit, slack_send, and slack_schedule schedule/delete mutate.",
         "Tokens are never displayed unmasked."
       ]
     },
     "entry": "extensions/sf-slack/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 11249
+    "srcLoc": 12063
   },
   {
     "id": "sf-welcome",

@@ -3,16 +3,16 @@
 ## What It Does
 
 Full Slack integration for pi — search messages, read threads, browse channel
-history, look up channels/users/files, read/create/edit canvases, and post
-messages with human-in-the-loop confirmation. Includes runtime scope probing
+history, look up channels/users/files, read/create/edit canvases, post
+messages with human-in-the-loop confirmation, and manage API-scheduled messages. Includes runtime scope probing
 and agent context injection.
 
-The extension registers 9 tools, an auth provider, a status command,
+The extension registers 10 tools, an auth provider, a status command,
 scope probing on session start, and system prompt context injection.
 
-One of those tools (`slack_send`) is the **only** write-to-humans surface in
-sf-pi: every call confirms with the user via `ctx.ui.confirm()` before
-posting.
+`slack_send` and `slack_schedule` are the write-to-humans surfaces in
+sf-slack: posting, scheduling, and deleting scheduled messages confirm with
+the user via `ctx.ui.confirm()` before mutating Slack.
 
 ## Type-Safety Best Practices Used
 
@@ -205,7 +205,7 @@ chat:write,im:write,mpim:write
 ```
 
 Omit the `chat:write` / `im:write` / `mpim:write` scopes if you do not want message
-posting. `slack_send` remains gated and confirmed even when those scopes exist.
+posting. `slack_send` and `slack_schedule` remain gated and confirmed even when those scopes exist.
 `chat:write.public` is intentionally not part of the user-token scope bundle; it
 is a bot/app public-channel posting enhancer and does not replace user-token
 `chat:write` for this extension.
@@ -371,6 +371,35 @@ Safety rails (enforced in `lib/send-tool.ts`):
 
 Never returns raw tokens or credentials in its output.
 
+### 10. `slack_schedule` — Scheduled messages (human-in-the-loop write)
+
+Uses Slack's supported public Web API scheduled-message endpoints. Messages
+queued by `chat.scheduleMessage` are fully functional: they post at the
+requested time and are visible programmatically through
+`chat.scheduledMessages.list`. They are API queue items rather than Slack client
+scheduled drafts, so they do not show in Slack's client-side **Drafts & sent →
+Scheduled** tab. Using Slack's internal draft APIs is intentionally out of scope
+for this supported implementation.
+
+| Action     | Parameters                                                           | API                           | Description                         |
+| ---------- | -------------------------------------------------------------------- | ----------------------------- | ----------------------------------- |
+| `schedule` | `channel_id`, `message`, `post_at`, `thread_ts?`, `reply_broadcast?` | `chat.scheduleMessage`        | Queue a future message              |
+| `list`     | `channel_id?`, `oldest?`, `latest?`, `limit?`, `cursor?`             | `chat.scheduledMessages.list` | List pending API-scheduled messages |
+| `delete`   | `channel_id`, `scheduled_message_id`                                 | `chat.deleteScheduledMessage` | Cancel a pending scheduled message  |
+
+Safety rails mirror `slack_send`:
+
+- Requires a user token with `chat:write`; no extra Slack scope is needed for
+  scheduling.
+- `schedule` and `delete` show an explicit confirmation dialog in interactive
+  mode.
+- Non-interactive modes refuse writes unless `SLACK_ALLOW_HEADLESS_SEND=1`.
+- `SLACK_SEND_DRY_RUN=1` rehearses `schedule` without calling Slack.
+- Schedule times are validated locally: at least 2 minutes in the future and no
+  more than 120 days out.
+- Slack's `restricted_too_many` error is surfaced when a channel already has too
+  many messages scheduled for the same 5-minute window.
+
 ## Scope Probing & Tool Gating
 
 On `session_start`, the extension makes a lightweight `auth.test` call and reads
@@ -388,6 +417,7 @@ removed from the active tool set, keeping the LLM system prompt clean.
 | `slack_file`           | `files:read`                                                                     | File search may still work through `slack` when `search:read.files` exists                                |
 | `slack_canvas`         | `canvases:read` or `files:read`                                                  | Metadata and section lookup degrade independently by action                                               |
 | `slack_send`           | user token + `chat:write`                                                        | DMs can reuse an existing `D...` channel; opening a new DM still needs `im:write`; all sends require HITL |
+| `slack_schedule`       | user token + `chat:write`                                                        | Uses public chat.\* scheduled-message APIs; listable programmatically, not shown in Slack Scheduled UI    |
 
 `/sf-slack` renders both the raw granted/requested scope diff and a capability
 summary such as Search, History, Files, Canvases, and Posting. This keeps a
@@ -455,16 +485,16 @@ returns full bodies regardless of the shared display profile.
 
 ## Environment Variables
 
-| Variable                    | Required | Description                                                                            |
-| --------------------------- | -------- | -------------------------------------------------------------------------------------- |
-| `SLACK_USER_TOKEN`          | Optional | Slack user OAuth token (xoxp-...) for automation                                       |
-| `SLACK_TEAM_ID`             | Optional | Workspace or enterprise grid team ID                                                   |
-| `SLACK_CLIENT_ID`           | Optional | OAuth app client ID (enables OAuth flow)                                               |
-| `SLACK_CLIENT_SECRET`       | Optional | OAuth app client secret                                                                |
-| `SLACK_REDIRECT_URI`        | Optional | OAuth redirect URI                                                                     |
-| `SLACK_SCOPES`              | Optional | Override default scope list                                                            |
-| `SLACK_ALLOW_HEADLESS_SEND` | Optional | `1` allows `slack_send` in non-interactive mode (`pi -p`, RPC). Default refuses.       |
-| `SLACK_SEND_DRY_RUN`        | Optional | `1` runs the full `slack_send` confirm UX + audit entry without calling the Slack API. |
+| Variable                    | Required | Description                                                                                                        |
+| --------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------ |
+| `SLACK_USER_TOKEN`          | Optional | Slack user OAuth token (xoxp-...) for automation                                                                   |
+| `SLACK_TEAM_ID`             | Optional | Workspace or enterprise grid team ID                                                                               |
+| `SLACK_CLIENT_ID`           | Optional | OAuth app client ID (enables OAuth flow)                                                                           |
+| `SLACK_CLIENT_SECRET`       | Optional | OAuth app client secret                                                                                            |
+| `SLACK_REDIRECT_URI`        | Optional | OAuth redirect URI                                                                                                 |
+| `SLACK_SCOPES`              | Optional | Override default scope list                                                                                        |
+| `SLACK_ALLOW_HEADLESS_SEND` | Optional | `1` allows `slack_send` in non-interactive mode (`pi -p`, RPC). Default refuses.                                   |
+| `SLACK_SEND_DRY_RUN`        | Optional | `1` runs the full `slack_send` / `slack_schedule schedule` confirm UX + audit entry without calling the Slack API. |
 
 ## File Structure
 
@@ -491,6 +521,7 @@ extensions/sf-slack/
     resolve-tool.ts         ← implementation module
     resolve.ts              ← implementation module
     runtime-cache.ts        ← implementation module
+    schedule-tool.ts        ← implementation module
     scope-probe.ts          ← implementation module
     search-plan.ts          ← implementation module
     send-tool-recipient.ts  ← implementation module
@@ -523,6 +554,7 @@ extensions/sf-slack/
     resolve-tool-clarify-gate.test.ts← unit / smoke test
     resolve.test.ts         ← unit / smoke test
     runtime-cache.test.ts   ← unit / smoke test
+    schedule-tool.test.ts   ← unit / smoke test
     scope-probe.test.ts     ← unit / smoke test
     search-plan.test.ts     ← unit / smoke test
     send-tool.test.ts       ← unit / smoke test
@@ -629,7 +661,7 @@ appends a typed audit entry to the session branch.
 - NEVER exposes full tokens — always masked in display
 - Recommended auth path is the `/sf-slack` panel's **Connect to Slack** action
   (writes to pi's central auth store — same destination /login used to write to)
-- All tools are read-only except `slack_canvas` create/edit and `slack_send`
+- All tools are read-only except `slack_canvas` create/edit, `slack_send`, and `slack_schedule` schedule/delete
 - `slack_send` always requires an explicit user confirmation in interactive
   mode; headless mode refuses unless `SLACK_ALLOW_HEADLESS_SEND=1`
 - No access tokens, credentials, or secrets in agent context or tool output

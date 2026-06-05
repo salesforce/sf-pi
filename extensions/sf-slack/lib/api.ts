@@ -19,7 +19,10 @@ import {
   SLACK_API_BASE,
   ENV_TEAM_ID,
   type ApiResult,
+  type ChatDeleteScheduledMessageResponse,
   type ChatPostMessageResponse,
+  type ChatScheduleMessageResponse,
+  type ChatScheduledMessagesListResponse,
   type ConversationsInfoResponse,
   type ConversationsListResponse,
   type ConversationsOpenResponse,
@@ -708,10 +711,10 @@ function getBestUserName(user?: {
 
 // ─── Error helpers ──────────────────────────────────────────────────────────────
 
-// ─── chat.postMessage + conversations.open (slack_send) ───────────────────────────
+// ─── chat.* write helpers + conversations.open ─────────────────────────────────
 //
-// Typed helpers for the two endpoints slack_send touches. chat.postMessage
-// goes through the JSON caller because Slack recommends JSON bodies for
+// Typed helpers for the endpoints slack_send / slack_schedule touch. chat.*
+// writes go through the JSON caller because Slack recommends JSON bodies for
 // non-trivial `text` (preserves newlines and unicode without URL-encoding
 // gotchas). conversations.open is form-encoded to match Slack's example.
 
@@ -721,6 +724,40 @@ export async function chatPostMessage(
   signal?: AbortSignal,
 ): Promise<ApiResult<ChatPostMessageResponse>> {
   return slackApiJson<ChatPostMessageResponse>("chat.postMessage", token, body, signal);
+}
+
+export async function chatScheduleMessage(
+  token: string,
+  body: JsonCompatibleParams,
+  signal?: AbortSignal,
+): Promise<ApiResult<ChatScheduleMessageResponse>> {
+  return slackApiJson<ChatScheduleMessageResponse>("chat.scheduleMessage", token, body, signal);
+}
+
+export async function chatScheduledMessagesList(
+  token: string,
+  body: JsonCompatibleParams,
+  signal?: AbortSignal,
+): Promise<ApiResult<ChatScheduledMessagesListResponse>> {
+  return slackApiJson<ChatScheduledMessagesListResponse>(
+    "chat.scheduledMessages.list",
+    token,
+    body,
+    signal,
+  );
+}
+
+export async function chatDeleteScheduledMessage(
+  token: string,
+  body: JsonCompatibleParams,
+  signal?: AbortSignal,
+): Promise<ApiResult<ChatDeleteScheduledMessageResponse>> {
+  return slackApiJson<ChatDeleteScheduledMessageResponse>(
+    "chat.deleteScheduledMessage",
+    token,
+    body,
+    signal,
+  );
 }
 
 export async function conversationsOpenDM(
@@ -778,6 +815,16 @@ export function summarizeSlackError(
       return "Slack API reported a missing required argument. On Enterprise Grid, run /sf-slack refresh or set SLACK_TEAM_ID so calls can include team_id.";
     case "thread_not_found":
       return "Slack thread not found. Ensure the ts is a valid parent message timestamp.";
+    case "time_in_past":
+      return "Slack rejected the schedule time because it is in the past.";
+    case "time_too_far":
+      return "Slack can only schedule messages up to 120 days in the future.";
+    case "invalid_time":
+      return "Slack rejected the schedule time. Use a Unix timestamp in seconds.";
+    case "restricted_too_many":
+      return "Slack rejected the schedule because too many messages are already scheduled in that channel for that 5-minute window.";
+    case "invalid_scheduled_message_id":
+      return "Slack could not find that scheduled message, or it is already posted/deleted or too close to posting to delete.";
     case "rate_limited":
     case "http_429":
       return "Slack is rate-limiting this workspace — the call retried once and was still throttled. Wait a few seconds and try again.";
