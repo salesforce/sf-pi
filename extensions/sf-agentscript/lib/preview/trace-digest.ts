@@ -58,6 +58,14 @@ export interface DigestStats {
   errors: number;
 }
 
+export interface VariableChangeDigest {
+  step: number;
+  name: string;
+  value_preview?: string;
+  previous_value_preview?: string;
+  reason?: string;
+}
+
 export interface TraceDigest {
   /**
    * "preview"        — built from a full v1.1 preview plan timeline (rich, every step type).
@@ -77,6 +85,8 @@ export interface TraceDigest {
   };
   /** One row per planner step. Empty array for eval-source (no fine-grained timeline). */
   timeline: DigestRow[];
+  /** User-authored/non-internal variable mutations observed during this turn. */
+  variable_changes?: VariableChangeDigest[];
   /** Selected non-internal state/context variables observed during this turn. */
   state_variables?: Record<string, unknown>;
   /** Step-level errors aggregated across the timeline. */
@@ -178,23 +188,36 @@ function extractEnabledTools(step: StepLike): Partial<DigestRow> {
   };
 }
 
-function extractVariableUpdate(step: StepLike): Partial<DigestRow> {
+function isInternalVariable(name: string | undefined): boolean {
+  return !!name && (name.startsWith("__") || name.startsWith("AgentScriptInternal_"));
+}
+
+function valuePreview(value: unknown): string | undefined {
+  return typeof value === "string"
+    ? clip(value, MAX_VAR_VALUE_CHARS)
+    : clip(JSON.stringify(value ?? null), MAX_VAR_VALUE_CHARS);
+}
+
+function variableUpdates(step: StepLike): Record<string, unknown>[] {
   const data = (step.data ?? {}) as Record<string, unknown>;
   const updates = Array.isArray(data.variable_updates) ? data.variable_updates : [];
+  return updates.filter((update): update is Record<string, unknown> => {
+    return !!update && typeof update === "object";
+  });
+}
+
+function extractVariableUpdate(step: StepLike): Partial<DigestRow> {
+  const updates = variableUpdates(step);
   if (updates.length === 0) return {};
   // Keep the first update inline; the rest are summarized as `+N more`.
-  const first = updates[0] as Record<string, unknown>;
+  const first = updates[0];
   const name = asString(first.variable_name);
-  const rawValue = first.variable_new_value;
-  const valuePreview =
-    typeof rawValue === "string"
-      ? clip(rawValue, MAX_VAR_VALUE_CHARS)
-      : clip(JSON.stringify(rawValue ?? null), MAX_VAR_VALUE_CHARS);
-  // Skip internal scaffolding keys to keep the digest signal-rich.
-  const isInternal = name?.startsWith("__") || name?.startsWith("AgentScriptInternal_");
+  const preview = valuePreview(first.variable_new_value);
+  // Skip internal scaffolding keys in the renderer by tagging them here.
+  const isInternal = isInternalVariable(name);
   return {
     var: name,
-    value_preview: valuePreview,
+    value_preview: preview,
     internal: isInternal || undefined,
     extra_updates: updates.length > 1 ? updates.length - 1 : undefined,
   };
@@ -338,6 +361,7 @@ export function summarizeTrace(trace: unknown, opts: SummarizeOptions = {}): Tra
   let prevTopic: string | undefined;
   let lastTopic: string | undefined = t.topic;
   let stateVariables: Record<string, unknown> | undefined;
+  const variableChanges: VariableChangeDigest[] = [];
 
   for (let i = 0; i < stepsRaw.length; i++) {
     const step = stepsRaw[i] ?? {};
@@ -358,8 +382,20 @@ export function summarizeTrace(trace: unknown, opts: SummarizeOptions = {}): Tra
     // Stat collection — keep these per-type so the stats object is
     // accurate even when the runtime adds/renames step types.
     if (type === "LLMStep" || type === "LLMExecutionStep") llmCalls++;
-    else if (type === "VariableUpdateStep") varsUpdated++;
-    else if (type === "UpdateTopicStep") {
+    else if (type === "VariableUpdateStep") {
+      varsUpdated++;
+      for (const update of variableUpdates(step)) {
+        const name = asString(update.variable_name);
+        if (!name || isInternalVariable(name)) continue;
+        variableChanges.push({
+          step: i,
+          name,
+          value_preview: valuePreview(update.variable_new_value),
+          previous_value_preview: valuePreview(update.variable_old_value),
+          reason: asString(update.variable_change_reason),
+        });
+      }
+    } else if (type === "UpdateTopicStep") {
       const newTopic = asString(step.topic);
       if (newTopic && newTopic !== prevTopic) {
         topicChanges++;
@@ -415,6 +451,7 @@ export function summarizeTrace(trace: unknown, opts: SummarizeOptions = {}): Tra
       trace_file: opts.traceFile,
     },
     timeline,
+    ...(variableChanges.length > 0 ? { variable_changes: variableChanges } : {}),
     ...(stateVariables ? { state_variables: stateVariables } : {}),
     errors,
     stats,

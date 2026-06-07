@@ -124,6 +124,39 @@ describe("previewSendMarkdown", () => {
     expect(md).toMatch(/CustomerName=Example Customer/);
   });
 
+  it("summarizes changed variables above the timeline", () => {
+    const digest = fixtureDigest();
+    digest.variable_changes = [
+      {
+        step: 6,
+        name: "verified_check",
+        previous_value_preview: "false",
+        value_preview: "true",
+      },
+    ];
+    const md = previewSendMarkdown(digest, { ok: true });
+    expect(md).toMatch(/🧬 changed/);
+    expect(md).toMatch(/verified_check=false → true/);
+  });
+
+  it("hides internal variable rows from the human timeline", () => {
+    const digest = fixtureDigest();
+    digest.timeline.splice(6, 0, {
+      i: 99,
+      t: "VariableUpdateStep",
+      var: "__plannerScratch",
+      value_preview: "noise",
+      internal: true,
+    });
+    digest.stats.step_count = digest.timeline.length;
+    digest.stats.vars_updated = 2;
+    const md = previewSendMarkdown(digest, { ok: true });
+    expect(md).toMatch(/9 steps raw/);
+    expect(md).toMatch(/8 shown/);
+    expect(md).toMatch(/1 internal hidden/);
+    expect(md).not.toMatch(/__plannerScratch/);
+  });
+
   it("renders one row per timeline step in order", () => {
     const md = previewSendMarkdown(fixtureDigest(), { ok: true });
     // The renderer strips the "Step" suffix and uses overrides from the

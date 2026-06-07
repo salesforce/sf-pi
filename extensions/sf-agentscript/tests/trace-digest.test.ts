@@ -176,6 +176,40 @@ describe("summarizeTrace (preview source)", () => {
     expect(vu.extra_updates).toBe(1);
   });
 
+  test("collects non-internal variable changes separately", () => {
+    const trace = {
+      plan: [
+        {
+          type: "VariableUpdateStep",
+          startExecutionTime: 0,
+          endExecutionTime: 0,
+          data: {
+            variable_updates: [
+              {
+                variable_name: "case_id",
+                variable_old_value: null,
+                variable_new_value: "500xx000001",
+                variable_change_reason: "set by route",
+              },
+              { variable_name: "__plannerScratch", variable_new_value: "noise" },
+              { variable_name: "AgentScriptInternal_state", variable_new_value: true },
+            ],
+          },
+        },
+      ],
+    };
+    const d = summarizeTrace(trace);
+    expect(d.variable_changes).toEqual([
+      {
+        step: 0,
+        name: "case_id",
+        previous_value_preview: "null",
+        value_preview: "500xx000001",
+        reason: "set by route",
+      },
+    ]);
+  });
+
   test("unknown step type still emits a row with hint preview", () => {
     const d = summarizeTrace({ plan: FAKE_PLAN });
     const future = d.timeline.find((r) => r.t === "FutureNewStepKindStep");

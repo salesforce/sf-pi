@@ -14,7 +14,7 @@
 
 import { Text } from "@earendil-works/pi-tui";
 import type { Theme } from "@earendil-works/pi-coding-agent";
-import type { TraceDigest } from "../preview/trace-digest.ts";
+import type { TraceDigest, VariableChangeDigest } from "../preview/trace-digest.ts";
 import {
   fmtMs,
   rowDetail,
@@ -154,29 +154,40 @@ function formatSendBody(
     lines.push(`${ok("🤖")} ${digest.turn.agent_response}`);
   }
 
+  if (digest.variable_changes && digest.variable_changes.length > 0) {
+    lines.push("");
+    lines.push(`${accent("🧬 changed")} ${dim(formatVariableChanges(digest.variable_changes))}`);
+  }
+
   if (digest.state_variables && Object.keys(digest.state_variables).length > 0) {
     lines.push("");
-    const entries = Object.entries(digest.state_variables)
-      .slice(0, 8)
+    const entries = selectStateEntries(digest.state_variables)
+      .slice(0, 10)
       .map(([key, value]) => `${key}=${clipLine(String(value), 80)}`);
-    lines.push(`${accent("🧪 state")} ${dim(entries.join(", "))}`);
+    lines.push(`${accent("🧪 state snapshot")} ${dim(entries.join(", "))}`);
   }
 
   // Timeline header
   lines.push("");
-  lines.push(dim(ansi ? "─── Timeline ───" : "**Timeline**"));
+  const rowsToRender = compactTimelineRows(digest.timeline);
+  const hiddenRows = digest.timeline.length - rowsToRender.length;
+  const header =
+    hiddenRows > 0
+      ? `─── Timeline (${rowsToRender.length} shown, ${hiddenRows} internal hidden) ───`
+      : "─── Timeline ───";
+  lines.push(dim(ansi ? header : `**${header.replaceAll("─", "").trim()}**`));
 
   // Timeline rows. `row.ms` is the per-step duration, so we accumulate to
   // get a virtual clock. The first row sits at t+0; subsequent offsets are
   // the running sum of preceding durations. Rows without a `ms` value
   // contribute 0 to the clock but still get a relative label so the order
   // stays scannable.
-  const widestLabel = digest.timeline.reduce((max, row) => {
+  const widestLabel = rowsToRender.reduce((max, row) => {
     const lbl = stepLabel(row.t);
     return Math.max(max, visibleWidth(lbl));
   }, 0);
   let clock = 0;
-  for (const row of digest.timeline) {
+  for (const row of rowsToRender) {
     const tStr = clock === 0 ? "+0ms" : `+${fmtMs(clock)}`;
     const tBlock = padRightVisible(dim(tStr), 8);
     const style = styleForStep(row.t);
@@ -206,14 +217,18 @@ function formatSendBody(
   lines.push("");
   lines.push(dim(ansi ? "─── Stats ───" : "**Stats**"));
   const stats = digest.stats;
+  const internalVarRows = digest.timeline.filter(isInternalVariableRow).length;
   const statsBits = [
-    `${ok(`${stats.step_count} steps`)}`,
+    `${ok(`${stats.step_count} step${stats.step_count === 1 ? "" : "s"} raw`)}`,
+    hiddenRows > 0 ? `${ok(`${rowsToRender.length} shown`)}` : null,
     `${ok(`${stats.llm_calls} LLM call${stats.llm_calls === 1 ? "" : "s"}`)}`,
     stats.function_calls > 0
       ? `${ok(`${stats.function_calls} fn call${stats.function_calls === 1 ? "" : "s"}`)}`
       : null,
     stats.vars_updated > 0
-      ? `${ok(`${stats.vars_updated} var update${stats.vars_updated === 1 ? "" : "s"}`)}`
+      ? `${ok(`${stats.vars_updated} var update${stats.vars_updated === 1 ? "" : "s"}`)}${
+          internalVarRows > 0 ? dim(` (${internalVarRows} internal hidden)`) : ""
+        }`
       : null,
     stats.topic_changes > 0
       ? `${ok(`${stats.topic_changes} transition${stats.topic_changes === 1 ? "" : "s"}`)}`
@@ -244,6 +259,40 @@ function formatSendBody(
 }
 
 // ─── Internal helpers ────────────────────────────────────────────────────────
+
+function formatVariableChanges(changes: VariableChangeDigest[]): string {
+  return changes
+    .slice(0, 8)
+    .map((change) => {
+      const value = change.value_preview ?? "?";
+      const previous = change.previous_value_preview;
+      const rendered = previous === undefined ? value : `${previous} → ${value}`;
+      return `${change.name}=${clipLine(rendered, 80)}`;
+    })
+    .concat(changes.length > 8 ? [`+${changes.length - 8} more`] : [])
+    .join(", ");
+}
+
+function selectStateEntries(vars: Record<string, unknown>): Array<[string, unknown]> {
+  return Object.entries(vars).filter(([key]) => !isInternalVariableName(key));
+}
+
+function compactTimelineRows(rows: TraceDigest["timeline"]): TraceDigest["timeline"] {
+  return rows.filter((row) => !isInternalVariableRow(row));
+}
+
+function isInternalVariableRow(row: TraceDigest["timeline"][number]): boolean {
+  return (
+    row.t === "VariableUpdateStep" && (row.internal === true || isInternalVariableName(row.var))
+  );
+}
+
+function isInternalVariableName(value: unknown): boolean {
+  return (
+    typeof value === "string" &&
+    (value.startsWith("__") || value.startsWith("AgentScriptInternal_"))
+  );
+}
 
 function getFirstText(content: unknown[] | undefined): string {
   const first = content?.[0];

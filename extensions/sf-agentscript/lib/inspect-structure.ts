@@ -337,7 +337,14 @@ function summarizeVariable(
   if ("default" in e || "defaultValue" in e) {
     const rawDefault = e.default ?? e.defaultValue;
     const def = unwrapScalar(rawDefault);
-    summary.default = def !== undefined ? def : rawDefault;
+    if (def !== undefined || rawDefault === undefined) {
+      summary.default = def;
+    } else if (Array.isArray((rawDefault as { value?: unknown })?.value)) {
+      summary.default = [];
+    } else if (rawDefault && typeof rawDefault === "object") {
+      const kind = (rawDefault as { __kind?: unknown }).__kind;
+      summary.default = typeof kind === "string" ? `[${kind}]` : "[non-scalar]";
+    }
   }
 
   const source = memberRef(props.source, decomposeAtMemberExpression);

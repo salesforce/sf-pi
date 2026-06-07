@@ -9,12 +9,12 @@ Use this skill whenever the user is editing `.agent` files, debugging an Agentfo
 
 ## Tools
 
-| Tool                    | Use it for                                                                                                                                                       |
-| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `agentscript_authoring` | Create bundles, compile/check or format `.agent` files, inspect structure/references/targets, run deterministic review, and mutate source. Uses `verb` + `mode`. |
-| `agentscript_preview`   | Start/send/end live preview sessions, fetch planner traces, bulk-end sessions, and clean stale preview artifacts.                                                |
-| `agentscript_eval`      | Generate starter eval specs, run regression suites, drill into failures, fetch traces, and resolve active/latest version ids.                                    |
-| `agentscript_lifecycle` | Publish, activate/deactivate, list versions, and diagnose/provision Service Agent users.                                                                         |
+| Tool                    | Use it for                                                                                                                                                        |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `agentscript_authoring` | Create bundles, compile/check or format `.agent` files, inspect structure/references/targets, run deterministic review, and mutate source. Uses `verb` + `mode`.  |
+| `agentscript_preview`   | Start/send/end live preview sessions, fetch planner traces, bulk-end sessions, clean stale preview artifacts, and render compact variable/topic/action timelines. |
+| `agentscript_eval`      | Generate starter eval specs, run regression suites, drill into failures, fetch traces, and resolve active/latest version ids.                                     |
+| `agentscript_lifecycle` | Publish, activate/deactivate, list versions, and diagnose/provision Service Agent users.                                                                          |
 
 ## Authoring contract
 
@@ -119,6 +119,8 @@ Use `verb="create"` for new bundles. It writes `.agent` plus `bundle-meta.xml`, 
 After a single preview session is active on the branch, `send` and `end` may omit `agent_name` and `session_id`. If more than one session is active, pass both explicitly.
 
 Use `context_variables` to seed deterministic session state for preview or per-turn sends.
+
+Preview send output highlights user-visible variable mutations, state snapshots, topic transitions, action calls, errors, and a compact timeline. Internal planner variable spam is hidden in the human report by default; use `agentscript_preview trace` with the returned `plan_id` when the full raw trace is needed.
 
 ## Eval
 

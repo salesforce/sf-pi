@@ -9,12 +9,12 @@ multi-turn evals, and publish/activation workflows. Salesforce calls use
 
 `sf-agentscript` exposes four LLM-callable family tools:
 
-| Tool                    | What it owns                                                                                                                                                                             |
-| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `agentscript_authoring` | Local `.agent` authoring: create bundles, compile/check or format, inspect structure/references/targets, deterministic readiness review, and structural mutations. Uses `verb` + `mode`. |
-| `agentscript_preview`   | Live-org preview: start/send/end sessions, fetch traces, bulk end sessions, and clean stale preview artifacts.                                                                           |
-| `agentscript_eval`      | Regression workflow: generate starter specs, run evals, drill into failures, fetch traces, and resolve active/latest BotVersion ids.                                                     |
-| `agentscript_lifecycle` | Publish/activation workflow: publish versions, activate/deactivate, list versions, and diagnose/provision Service Agent users.                                                           |
+| Tool                    | What it owns                                                                                                                                                                                                                                                                                                |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `agentscript_authoring` | Local `.agent` authoring: create bundles, compile/check or format, inspect structure/references/targets, deterministic readiness review, and structural mutations. Uses `verb` + `mode`.                                                                                                                    |
+| `agentscript_preview`   | Live-org preview: start/send/end sessions, fetch traces, bulk end sessions, and clean stale preview artifacts. Send renders a compact trace waterfall that highlights user-visible variable changes, state snapshots, topic transitions, action calls, and hides internal planner variable spam by default. |
+| `agentscript_eval`      | Regression workflow: generate starter specs, run evals, drill into failures, fetch traces, and resolve active/latest BotVersion ids.                                                                                                                                                                        |
+| `agentscript_lifecycle` | Publish/activation workflow: publish versions, activate/deactivate, list versions, and diagnose/provision Service Agent users.                                                                                                                                                                              |
 
 ## Authoring API
 
@@ -41,7 +41,7 @@ Successful tool results may include `details.sf_agentscript_branch_state`, an ar
 
 Branch state stores only lightweight pointers such as file paths, session ids, run ids, plan ids, and readiness summaries. Heavy evidence remains on disk:
 
-- preview traces/transcripts under `.sfdx/agents/**`
+- preview traces/transcripts and compact per-turn reports under `.sfdx/agents/**`
 - eval runs, raw responses, failures, and traces under `.pi/state/sf-agentscript/**`
 - optional review reports at the caller-provided `output_path`
 

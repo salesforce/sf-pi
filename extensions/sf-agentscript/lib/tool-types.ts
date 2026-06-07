@@ -71,11 +71,38 @@ export function toolOk<T extends Record<string, unknown>>(
   details: T,
   summaryText?: string,
 ): ToolEnvelope<T> {
-  const text = summaryText ?? JSON.stringify(details, null, 2);
+  const safeDetails = makeJsonSafe(details) as T;
+  const text = summaryText ?? JSON.stringify(safeDetails, null, 2);
   return {
     content: [{ type: "text", text }],
-    details,
+    details: safeDetails,
   };
+}
+
+function makeJsonSafe(value: unknown, seen = new WeakSet<object>()): unknown {
+  if (value === null || value === undefined) return value;
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return value;
+  }
+  if (typeof value === "bigint") return value.toString();
+  if (typeof value === "function" || typeof value === "symbol") return undefined;
+  if (value instanceof Date) return value.toISOString();
+  if (Array.isArray(value)) {
+    if (seen.has(value)) return "[Circular]";
+    seen.add(value);
+    return value.map((item) => makeJsonSafe(item, seen));
+  }
+  if (typeof value === "object") {
+    if (seen.has(value)) return "[Circular]";
+    seen.add(value);
+    const out: Record<string, unknown> = {};
+    for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+      const safeChild = makeJsonSafe(child, seen);
+      if (safeChild !== undefined) out[key] = safeChild;
+    }
+    return out;
+  }
+  return String(value);
 }
 
 /**
@@ -91,13 +118,13 @@ export function toolError(
   recoverVia?: ToolRecoverVia,
   extra?: Record<string, unknown>,
 ): ToolEnvelope<ToolError> {
-  const details: ToolError = {
+  const details = makeJsonSafe({
     ok: false,
     error,
     ...(suggestion ? { suggestion } : {}),
     ...(recoverVia ? { recover_via: recoverVia } : {}),
     ...(extra ?? {}),
-  };
+  }) as ToolError;
   const lines = [`❌ ${error}`];
   if (suggestion) lines.push(`Suggested fix: ${suggestion}`);
   if (recoverVia) {
