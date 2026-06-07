@@ -11,6 +11,7 @@ function profile(overrides: Partial<AgentFeatureProfile> = {}): AgentFeatureProf
     context_variables_template: [],
     modalities: [],
     response_formats: [],
+    connection_names: [],
     utility_refs: [],
     publish_risks: [],
     ...overrides,
@@ -42,6 +43,7 @@ describe("checkSurfaceReadiness", () => {
     expect(checks.map((check) => check.code)).toEqual([
       "voice-messaging-channel-missing",
       "voice-service-channel-missing",
+      "agent-channel-connection-manual-verification",
     ]);
     expect(checks.every((check) => check.status === "warning")).toBe(true);
   });
@@ -60,6 +62,7 @@ describe("checkSurfaceReadiness", () => {
       "voice-messaging-channel-found:ok",
       "voice-channel-routing-incomplete:warning",
       "voice-service-channel-found:ok",
+      "agent-channel-connection-manual-verification:warning",
     ]);
   });
 
@@ -75,6 +78,44 @@ describe("checkSurfaceReadiness", () => {
     expect(checks.map((check) => `${check.code}:${check.status}`)).toEqual([
       "voice-messaging-channel-unverifiable:unverifiable",
       "voice-service-channel-unverifiable:unverifiable",
+      "agent-channel-connection-manual-verification:warning",
+    ]);
+  });
+
+  test("warns when messaging metadata has no digital channel records", async () => {
+    const checks = await checkSurfaceReadiness(
+      connWith({
+        "MessageType != 'PstnVoice'": [],
+        "RelatedEntity = 'MessagingSession'": [],
+      }),
+      profile({ connection_names: ["messaging"] }),
+    );
+    expect(checks.map((check) => check.code)).toEqual([
+      "messaging-channel-missing",
+      "messaging-service-channel-missing",
+      "agent-channel-connection-manual-verification",
+    ]);
+  });
+
+  test("warns when a messaging channel exists without routing fields", async () => {
+    const checks = await checkSurfaceReadiness(
+      connWith({
+        "MessageType != 'PstnVoice'": [
+          { DeveloperName: "WebChat", MessageType: "EmbeddedMessaging" },
+        ],
+        "RelatedEntity = 'MessagingSession'": [
+          { DeveloperName: "sfdc_livemessage", RelatedEntity: "MessagingSession" },
+        ],
+      }),
+      profile({
+        linked_variables: [{ name: "MessagingSessionId", source_namespace: "MessagingSession" }],
+      }),
+    );
+    expect(checks.map((check) => `${check.code}:${check.status}`)).toEqual([
+      "messaging-channel-found:ok",
+      "messaging-channel-routing-incomplete:warning",
+      "messaging-service-channel-found:ok",
+      "agent-channel-connection-manual-verification:warning",
     ]);
   });
 });

@@ -55,7 +55,8 @@ Auto-resolution validates referenced disk artifacts before use and proceeds only
 - structural/readiness findings that can be proven from the parsed file
 - publish-risk signals from the feature profile
 - read-only action-target checks when `target_org` is provided
-- read-only surface readiness checks, such as voice channel and VoiceCall ServiceChannel probes for voice-linked agents when `target_org` is provided
+- read-only surface readiness checks, such as voice/messaging channel and ServiceChannel probes for channel-linked agents when `target_org` is provided
+- Service Agent user readiness checks for `default_agent_user` license/user/system permission-set wiring when `target_org` is provided
 
 Readiness values are `ready`, `ready_with_warnings`, `blocked`, and `partial`. There is no numeric score and no hidden model call. Pass `output_path` to write a Markdown report.
 

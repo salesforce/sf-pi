@@ -5,6 +5,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { withFileMutationQueue } from "@earendil-works/pi-coding-agent";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { checkAgentUserStatus } from "../../agent-user/status.ts";
 import { connForAgentApi } from "../../agent-api-auth.ts";
 import {
   agentFileEvent,
@@ -473,6 +474,33 @@ async function actionReview(ctx: ExtensionContext, agentFile: string, input: Aut
             });
           }
         }
+        const config = inspect.components?.config ?? {};
+        const agentType = typeof config.agent_type === "string" ? config.agent_type : undefined;
+        const defaultAgentUser =
+          typeof config.default_agent_user === "string" ? config.default_agent_user : undefined;
+        if (agentType === "AgentforceServiceAgent") {
+          const userStatus = await checkAgentUserStatus(conn, {
+            agent_type: agentType,
+            default_agent_user: defaultAgentUser,
+          });
+          if (!userStatus.ok) {
+            findings.push({
+              id: `agent-user-${userStatus.reason ?? "not-ready"}`,
+              severity: "blocker",
+              category: "org",
+              message: userStatus.short_message,
+              recover_via: {
+                tool: "agentscript_lifecycle",
+                params: {
+                  action: "diagnose_agent_user",
+                  agent_file: agentFile,
+                  target_org: input.target_org,
+                },
+              },
+            });
+          }
+        }
+
         const surfaceChecks = await checkSurfaceReadiness(conn, profile);
         for (const check of surfaceChecks) {
           if (check.status === "ok") continue;

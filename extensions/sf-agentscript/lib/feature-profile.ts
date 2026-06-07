@@ -32,6 +32,7 @@ export interface AgentFeatureProfile {
     source?: string;
     target?: string;
   }>;
+  connection_names: string[];
   utility_refs: string[];
   publish_risks: FeatureRisk[];
 }
@@ -53,7 +54,8 @@ export function buildFeatureProfile(inspect: InspectResult): AgentFeatureProfile
   const linked = variables.filter((v) => v.linked || v.modifier === "linked" || v.source);
   const mutable = variables.filter((v) => v.mutable || v.modifier === "mutable");
   const modalities = (components?.modalities ?? []).map((m) => m.name).sort();
-  const responseFormats = (components?.connections ?? []).flatMap((conn) =>
+  const connections = components?.connections ?? [];
+  const responseFormats = connections.flatMap((conn) =>
     (conn.response_formats ?? []).map((format) => ({
       connection: conn.name,
       name: format.name,
@@ -96,12 +98,13 @@ export function buildFeatureProfile(inspect: InspectResult): AgentFeatureProfile
     })),
     modalities,
     response_formats: responseFormats,
+    connection_names: connections.map((connection) => connection.name).sort(),
     utility_refs: utilityRefs,
     publish_risks: buildPublishRisks({
       linked,
       modalities,
       responseFormats,
-      connections: components?.connections ?? [],
+      connections,
     }),
   };
 }

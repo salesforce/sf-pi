@@ -50,6 +50,10 @@ export async function checkSurfaceReadiness(
   if (needsVoiceReadiness(profile)) {
     checks.push(...(await checkVoiceReadiness(conn)));
   }
+  if (needsMessagingReadiness(profile)) {
+    checks.push(...(await checkMessagingReadiness(conn)));
+  }
+  checks.push(...channelConnectionGapChecks(profile));
   return checks;
 }
 
@@ -58,6 +62,31 @@ function needsVoiceReadiness(profile: AgentFeatureProfile): boolean {
     profile.modalities.includes("voice") ||
     profile.linked_variables.some((variable) => variable.source_namespace === "VoiceCall")
   );
+}
+
+function needsMessagingReadiness(profile: AgentFeatureProfile): boolean {
+  return (
+    profile.modalities.includes("messaging") ||
+    profile.connection_names.some((name) => name.toLowerCase() === "messaging") ||
+    profile.linked_variables.some((variable) => variable.source_namespace === "MessagingSession")
+  );
+}
+
+function channelConnectionGapChecks(profile: AgentFeatureProfile): SurfaceReadinessCheck[] {
+  const surfaces: string[] = [];
+  if (needsVoiceReadiness(profile)) surfaces.push("voice");
+  if (needsMessagingReadiness(profile)) surfaces.push("messaging");
+  if (surfaces.length === 0) return [];
+  return [
+    {
+      code: "agent-channel-connection-manual-verification",
+      surface: surfaces.includes("voice") ? "voice" : "messaging",
+      status: "warning",
+      message:
+        "Agent-to-channel connection readiness cannot be fully verified through the Agent Script compiler. Confirm the published agent is connected to the intended channel surface before end-to-end testing.",
+      evidence: [`surfaces: ${surfaces.join(", ")}`],
+    },
+  ];
 }
 
 async function checkVoiceReadiness(conn: Connection): Promise<SurfaceReadinessCheck[]> {
@@ -141,6 +170,87 @@ async function checkVoiceReadiness(conn: Connection): Promise<SurfaceReadinessCh
   return checks;
 }
 
+async function checkMessagingReadiness(conn: Connection): Promise<SurfaceReadinessCheck[]> {
+  const checks: SurfaceReadinessCheck[] = [];
+  const channels = await queryOptional<VoiceMessagingChannelRecord>(
+    conn,
+    "SELECT Id, DeveloperName, MasterLabel, MessageType, IsActive, SessionHandlerId, FallbackQueueId FROM MessagingChannel WHERE MessageType != 'PstnVoice' LIMIT 10",
+  );
+  if (channels === null) {
+    checks.push({
+      code: "messaging-channel-unverifiable",
+      surface: "messaging",
+      status: "unverifiable",
+      message:
+        "Could not verify MessagingChannel readiness in the target org. Messaging Agent Script can compile while channel setup is still incomplete.",
+    });
+  } else if (channels.length === 0) {
+    checks.push({
+      code: "messaging-channel-missing",
+      surface: "messaging",
+      status: "warning",
+      message:
+        "No non-voice MessagingChannel records were found in the target org. Messaging-linked Agent Script may compile, but digital-channel routing is likely not configured.",
+    });
+  } else {
+    const inactive = channels.filter((channel) => channel.IsActive === false);
+    checks.push({
+      code: "messaging-channel-found",
+      surface: "messaging",
+      status: inactive.length > 0 ? "warning" : "ok",
+      message:
+        inactive.length > 0
+          ? "MessagingChannel records exist, but at least one appears inactive. Confirm channel activation before end-to-end messaging tests."
+          : "MessagingChannel records exist in the target org.",
+      evidence: channels.map(formatMessagingChannelEvidence),
+    });
+    const missingRouting = channels.filter(
+      (channel) => !channel.SessionHandlerId && !channel.FallbackQueueId,
+    );
+    if (missingRouting.length > 0) {
+      checks.push({
+        code: "messaging-channel-routing-incomplete",
+        surface: "messaging",
+        status: "warning",
+        message:
+          "At least one MessagingChannel has no SessionHandlerId or FallbackQueueId. Conversations may not route to an agent or queue.",
+        evidence: missingRouting.map(formatMessagingChannelEvidence),
+      });
+    }
+  }
+
+  const serviceChannels = await queryOptional<ServiceChannelRecord>(
+    conn,
+    "SELECT Id, DeveloperName, MasterLabel, RelatedEntity FROM ServiceChannel WHERE RelatedEntity = 'MessagingSession' OR DeveloperName = 'sfdc_livemessage' LIMIT 5",
+  );
+  if (serviceChannels === null) {
+    checks.push({
+      code: "messaging-service-channel-unverifiable",
+      surface: "messaging",
+      status: "unverifiable",
+      message: "Could not verify ServiceChannel readiness for MessagingSession in the target org.",
+    });
+  } else if (serviceChannels.length === 0) {
+    checks.push({
+      code: "messaging-service-channel-missing",
+      surface: "messaging",
+      status: "warning",
+      message:
+        "No ServiceChannel for MessagingSession was found. Messaging escalation or queue routing may be incomplete even when Agent Script compilation succeeds.",
+    });
+  } else {
+    checks.push({
+      code: "messaging-service-channel-found",
+      surface: "messaging",
+      status: "ok",
+      message: "A MessagingSession ServiceChannel is present in the target org.",
+      evidence: serviceChannels.map(formatServiceChannelEvidence),
+    });
+  }
+
+  return checks;
+}
+
 async function queryOptional<T>(conn: Connection, soql: string): Promise<T[] | null> {
   try {
     const result = (await conn.query(soql)) as QueryResult<T>;
@@ -153,6 +263,17 @@ async function queryOptional<T>(conn: Connection, soql: string): Promise<T[] | n
 function formatVoiceChannelEvidence(channel: VoiceMessagingChannelRecord): string {
   const label = channel.DeveloperName ?? channel.MasterLabel ?? channel.Id ?? "MessagingChannel";
   const flags = [
+    channel.IsActive === false ? "inactive" : null,
+    channel.SessionHandlerId ? "session handler set" : null,
+    channel.FallbackQueueId ? "fallback queue set" : null,
+  ].filter(Boolean);
+  return `${label}${flags.length > 0 ? ` (${flags.join(", ")})` : ""}`;
+}
+
+function formatMessagingChannelEvidence(channel: VoiceMessagingChannelRecord): string {
+  const label = channel.DeveloperName ?? channel.MasterLabel ?? channel.Id ?? "MessagingChannel";
+  const flags = [
+    channel.MessageType ? `type=${channel.MessageType}` : null,
     channel.IsActive === false ? "inactive" : null,
     channel.SessionHandlerId ? "session handler set" : null,
     channel.FallbackQueueId ? "fallback queue set" : null,

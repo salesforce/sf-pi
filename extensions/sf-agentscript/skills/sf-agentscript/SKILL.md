@@ -89,7 +89,7 @@ Use `inspect/find_references` before mutating a symbol. Use `inspect/definition`
 
 Use `inspect/check_targets` before publish when action targets must resolve in the org. Requires `target_org`.
 
-Use `inspect/review` before publish or after behavioral changes. It is deterministic: no hidden model call, no numeric score. Readiness is `ready`, `ready_with_warnings`, `blocked`, or `partial`. Pass `target_org` to include read-only org checks: action-target resolution plus surface readiness probes such as voice channel and VoiceCall ServiceChannel checks for voice-linked agents. Pass `output_path` to write a Markdown report.
+Use `inspect/review` before publish or after behavioral changes. It is deterministic: no hidden model call, no numeric score. Readiness is `ready`, `ready_with_warnings`, `blocked`, or `partial`. Pass `target_org` to include read-only org checks: action-target resolution, Service Agent user readiness, and surface readiness probes such as voice/messaging channel + ServiceChannel checks for channel-linked agents. Pass `output_path` to write a Markdown report.
 
 ### Mutate
 
