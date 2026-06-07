@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.175.1-2026-06-07",
-  "latestVersion": "0.175.1",
+  "revision": "release-0.175.2-2026-06-07",
+  "latestVersion": "0.175.2",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.175.1",
+      "id": "release-0.175.2",
       "kind": "update",
-      "title": "sf-pi v0.175.1 — sf-agentscript: compact preview trace output",
+      "title": "sf-pi v0.175.2 — sf-agentscript: suppress agentforce schema debug output",
       "publishedAt": "2026-06-07T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.175.1",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.175.2",
       "severity": "info",
-      "body": "sf-agentscript: compact preview trace output"
+      "body": "sf-agentscript: suppress agentforce schema debug output"
     },
     {
       "id": "pi-0.73-required",
