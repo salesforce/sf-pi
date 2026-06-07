@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.176.0-2026-06-07",
-  "latestVersion": "0.176.0",
+  "revision": "release-0.177.0-2026-06-07",
+  "latestVersion": "0.177.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.176.0",
+      "id": "release-0.177.0",
       "kind": "update",
-      "title": "sf-pi v0.176.0 — sf-agentscript: render structured preview trace reports",
+      "title": "sf-pi v0.177.0 — sf-agentscript: preflight voice surface readiness",
       "publishedAt": "2026-06-07T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.176.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.177.0",
       "severity": "info",
-      "body": "sf-agentscript: render structured preview trace reports"
+      "body": "sf-agentscript: preflight voice surface readiness"
     },
     {
       "id": "pi-0.73-required",
