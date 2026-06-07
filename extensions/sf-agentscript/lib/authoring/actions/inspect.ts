@@ -18,6 +18,7 @@ import { isAgentScriptFile } from "../../file-classify.ts";
 import { findDefinition, findReferences, inspectFile } from "../../inspect.ts";
 import { connFromAlias } from "../../../../../lib/common/sf-conn/connection.ts";
 import { checkActionTargets } from "../../preflight.ts";
+import { checkSurfaceReadiness } from "../../preflight/surface-readiness.ts";
 import { safeResolveToolPath, toolError, toolOk, type ToolError } from "../../tool-types.ts";
 import type { AuthoringParams } from "../params.ts";
 
@@ -471,6 +472,17 @@ async function actionReview(ctx: ExtensionContext, agentFile: string, input: Aut
               evidence: target.detail ? [target.detail] : undefined,
             });
           }
+        }
+        const surfaceChecks = await checkSurfaceReadiness(conn, profile);
+        for (const check of surfaceChecks) {
+          if (check.status === "ok") continue;
+          findings.push({
+            id: `surface-${check.code}`,
+            severity: "warning",
+            category: "org",
+            message: check.message,
+            evidence: check.evidence,
+          });
         }
       } catch (err) {
         findings.push({

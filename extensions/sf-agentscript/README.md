@@ -55,6 +55,7 @@ Auto-resolution validates referenced disk artifacts before use and proceeds only
 - structural/readiness findings that can be proven from the parsed file
 - publish-risk signals from the feature profile
 - read-only action-target checks when `target_org` is provided
+- read-only surface readiness checks, such as voice channel and VoiceCall ServiceChannel probes for voice-linked agents when `target_org` is provided
 
 Readiness values are `ready`, `ready_with_warnings`, `blocked`, and `partial`. There is no numeric score and no hidden model call. Pass `output_path` to write a Markdown report.
 
@@ -158,6 +159,7 @@ extensions/sf-agentscript/
       parse.ts              ← implementation module
       registry.ts           ← implementation module
       soql.ts               ← implementation module
+      surface-readiness.ts  ← implementation module
       types.ts              ← implementation module
     preview/
       client.ts             ← implementation module
@@ -262,6 +264,7 @@ extensions/sf-agentscript/
     render-timeline.test.ts ← unit / smoke test
     self-recovery.test.ts   ← unit / smoke test
     smoke.test.ts           ← unit / smoke test
+    surface-readiness.test.ts← unit / smoke test
     template-scaffold-vars.test.ts← unit / smoke test
     tool-schema-openai-strict.test.ts← unit / smoke test
     tool-types.test.ts      ← unit / smoke test
