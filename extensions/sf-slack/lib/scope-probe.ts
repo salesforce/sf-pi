@@ -77,6 +77,14 @@ const TOOL_SCOPE_REQUIREMENTS: ToolScopeRequirement[] = [
     anyOf: ["chat:write"],
     tokenTypes: ["user"],
   },
+  {
+    // slack_schedule uses Slack's public chat.scheduleMessage / list / delete
+    // endpoints. Keep it behind the same user-token chat:write gate as
+    // slack_send because schedule/delete are Slack write operations.
+    tool: "slack_schedule",
+    anyOf: ["chat:write"],
+    tokenTypes: ["user"],
+  },
 ];
 
 export interface ProbeResult {

@@ -80,7 +80,7 @@ _Slack integration — search messages, read threads, browse channel history_
 
 - Default: **on**
 - Commands: `/sf-slack`
-- Tools: `slack`, `slack_time_range`, `slack_resolve`, `slack_research`, `slack_channel`, `slack_user`, `slack_file`, `slack_canvas`, `slack_send`
+- Tools: `slack`, `slack_time_range`, `slack_resolve`, `slack_research`, `slack_channel`, `slack_user`, `slack_file`, `slack_canvas`, `slack_send`, `slack_schedule`
 - Providers: `sf-slack`
 
 ## Safety

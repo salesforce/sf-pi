@@ -68,6 +68,7 @@ describe("extension detail helpers", () => {
         "slack_file",
         "slack_canvas",
         "slack_send",
+        "slack_schedule",
       ],
       events: ["session_start", "session_shutdown", "before_agent_start"],
     });

@@ -733,6 +733,34 @@ export interface ChatPostMessageResponse {
   };
 }
 
+export interface ChatScheduleMessageResponse {
+  channel?: string;
+  scheduled_message_id?: string;
+  post_at?: number | string;
+  message?: {
+    text?: string;
+    type?: string;
+    subtype?: string;
+  };
+}
+
+export interface ScheduledMessage {
+  id?: string;
+  channel_id?: string;
+  post_at?: number | string;
+  date_created?: number | string;
+  text?: string;
+}
+
+export interface ChatScheduledMessagesListResponse {
+  scheduled_messages?: ScheduledMessage[];
+  response_metadata?: SlackResponseMetadata;
+}
+
+export interface ChatDeleteScheduledMessageResponse {
+  ok?: boolean;
+}
+
 export interface ConversationsOpenResponse {
   ok?: boolean;
   channel?: {
@@ -758,6 +786,79 @@ export interface SlackSendAuditEntry {
   text: string;
   message_ts?: string;
   permalink?: string;
+  dry_run?: boolean;
+}
+
+// ─── slack_schedule ───────────────────────────────────────────────────────────
+//
+// Scheduled messages are their own write surface because Slack's public Web API
+// schedule queue is distinct from Slack's client-side scheduled-draft UI. The
+// tool uses only supported chat.* endpoints: chat.scheduleMessage,
+// chat.scheduledMessages.list, and chat.deleteScheduledMessage.
+
+export const SlackScheduleParams = Type.Object({
+  action: StringEnum(["schedule", "list", "delete"] as const, {
+    description:
+      "schedule: queue a future Slack message. list: list pending API-scheduled messages. delete: cancel a pending API-scheduled message.",
+  }),
+  channel_id: Type.Optional(
+    Type.String({
+      description:
+        "Slack conversation ID (C..., G..., or D...). Required for schedule/delete; optional filter for list. Use slack_resolve first for fuzzy channel names.",
+    }),
+  ),
+  message: Type.Optional(
+    Type.String({
+      description:
+        "Message body for action=schedule. Supports Slack mrkdwn. No Slack-side footer is appended.",
+    }),
+  ),
+  post_at: Type.Optional(
+    Type.Number({
+      description:
+        "Unix timestamp in seconds for action=schedule. Must be at least 2 minutes in the future and no more than 120 days out.",
+    }),
+  ),
+  thread_ts: Type.Optional(
+    Type.String({
+      description: "Optional parent message timestamp to schedule the message as a thread reply.",
+    }),
+  ),
+  reply_broadcast: Type.Optional(
+    Type.Boolean({
+      description:
+        "When scheduling a thread reply, also broadcast the reply to the parent channel. Default false.",
+    }),
+  ),
+  scheduled_message_id: Type.Optional(
+    Type.String({
+      description: "Scheduled message ID returned by action=schedule. Required for action=delete.",
+    }),
+  ),
+  oldest: Type.Optional(
+    Type.String({ description: "For action=list, oldest Unix timestamp boundary." }),
+  ),
+  latest: Type.Optional(
+    Type.String({ description: "For action=list, latest Unix timestamp boundary." }),
+  ),
+  limit: Type.Optional(
+    Type.Number({ description: "For action=list, max results (default 20, max 100)." }),
+  ),
+  cursor: Type.Optional(Type.String({ description: "For action=list, pagination cursor." })),
+});
+
+export const SCHEDULE_ENTRY_TYPE = "sf-slack-scheduled";
+
+export interface SlackScheduleAuditEntry {
+  ts: number;
+  action: "schedule" | "delete";
+  channel: string;
+  channel_name?: string;
+  text?: string;
+  post_at?: number;
+  thread_ts?: string;
+  reply_broadcast?: boolean;
+  scheduled_message_id?: string;
   dry_run?: boolean;
 }
 

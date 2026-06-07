@@ -49,7 +49,8 @@ You can also manage this extension from the SF Pi home base:
 ## Safety notes
 
 - slack_send requires user confirmation in interactive mode and refuses headless unless SLACK_ALLOW_HEADLESS_SEND=1.
-- Read-only by default; only canvas create/edit and slack_send mutate.
+- slack_schedule schedule/delete require user confirmation in interactive mode and refuse headless unless SLACK_ALLOW_HEADLESS_SEND=1.
+- Read-only by default; only canvas create/edit, slack_send, and slack_schedule schedule/delete mutate.
 - Tokens are never displayed unmasked.
 
 ## Exact reference
@@ -62,7 +63,7 @@ You can also manage this extension from the SF Pi home base:
 - **Maturity:** stable
 - **Default state:** on
 - **Commands:** `/sf-slack`
-- **LLM tools:** `slack`, `slack_time_range`, `slack_resolve`, `slack_research`, `slack_channel`, `slack_user`, `slack_file`, `slack_canvas`, `slack_send`
+- **LLM tools:** `slack`, `slack_time_range`, `slack_resolve`, `slack_research`, `slack_channel`, `slack_user`, `slack_file`, `slack_canvas`, `slack_send`, `slack_schedule`
 - **Providers:** `sf-slack`
 - **Events/hooks:** `session_start`, `session_shutdown`, `before_agent_start`
 

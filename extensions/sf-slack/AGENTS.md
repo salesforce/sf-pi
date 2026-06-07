@@ -25,6 +25,7 @@ Tools and their supporting modules follow a **one-file-per-concern** split:
 | `slack_file`                         | `lib/file-tool.ts`                   | `lib/api.ts`                                        |
 | `slack_canvas`                       | `lib/canvas-tool.ts`                 | `lib/api.ts`                                        |
 | `slack_send`                         | `lib/send-tool.ts`                   | `lib/api.ts`, `lib/recipient-confirm.ts`            |
+| `slack_schedule`                     | `lib/schedule-tool.ts`               | `lib/api.ts`                                        |
 | Shared HITL recipient confirmation   | `lib/recipient-confirm.ts`           | `lib/resolve.ts`                                    |
 | Auth + token cache                   | `lib/auth.ts`                        | —                                                   |
 | Runtime scope probing                | `lib/scope-probe.ts`                 | —                                                   |
@@ -61,14 +62,19 @@ Tools and their supporting modules follow a **one-file-per-concern** split:
 
 ## Non-goals
 
-- This extension has **two** write surfaces: `slack_canvas` (create/edit)
-  and `slack_send` (post messages). Every `slack_send` call goes through
-  an explicit `ctx.ui.confirm()` dialog in interactive mode, and is
-  refused in non-interactive mode unless `SLACK_ALLOW_HEADLESS_SEND=1`.
-- No reactions, edits or deletes of existing messages, scheduled messages,
-  ephemeral messages, block kit, attachments, or file uploads. Each of
-  those is a different confirmation-UX conversation and belongs in its
-  own proposal.
+- This extension has **three** write surfaces: `slack_canvas` (create/edit),
+  `slack_send` (post messages), and `slack_schedule` (schedule/delete pending
+  API-scheduled messages). Every `slack_send` call and every `slack_schedule`
+  schedule/delete call goes through an explicit `ctx.ui.confirm()` dialog in
+  interactive mode, and is refused in non-interactive mode unless
+  `SLACK_ALLOW_HEADLESS_SEND=1`.
+- `slack_schedule` must stay on Slack's supported public Web API endpoints
+  (`chat.scheduleMessage`, `chat.scheduledMessages.list`,
+  `chat.deleteScheduledMessage`). Do not silently switch it to Slack's
+  internal drafts APIs; those require a separate auth/security proposal.
+- No reactions, edits or deletes of existing posted messages, ephemeral
+  messages, block kit, attachments, or file uploads. Each of those is a
+  different confirmation-UX conversation and belongs in its own proposal.
 - Do not add tools that require additional Slack scopes without
   surfacing them in the scope-probe output and setup overlay.
 - Do not add alternate send paths that skip the confirm dialog. The

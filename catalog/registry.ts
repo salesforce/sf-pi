@@ -216,7 +216,7 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
     defaultEnabled: true,
     commands: ["/sf-slack"],
     providers: ["sf-slack"],
-    tools: ["slack","slack_time_range","slack_resolve","slack_research","slack_channel","slack_user","slack_file","slack_canvas","slack_send"],
+    tools: ["slack","slack_time_range","slack_resolve","slack_research","slack_channel","slack_user","slack_file","slack_canvas","slack_send","slack_schedule"],
     events: ["session_start","session_shutdown","before_agent_start"],
     configurable: true,
     getConfigPanel: async () => {

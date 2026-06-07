@@ -3,7 +3,8 @@
  * sf-slack behavior contract
  *
  * Full Slack integration: search messages, read threads, browse channel history,
- * look up channels/users/files, read/create/edit canvases.
+ * look up channels/users/files, read/create/edit canvases, send messages, and
+ * schedule/list/delete API-scheduled messages.
  *
  * Token resolution chain (checked in order):
  *   1. Pi auth store (~/.pi/agent/auth.json via /login sf-slack)
@@ -34,7 +35,8 @@
  *
  * Security:
  *   - NEVER exposes full tokens — always masked in display
- *   - Read-only except slack_canvas create/edit
+ *   - Read-only except slack_canvas create/edit, slack_send, and slack_schedule
+ *     schedule/delete
  *   - Supports Pi auth storage by default, with an env fallback for automation
  */
 import type {
@@ -79,6 +81,7 @@ import { registerFileTool } from "./lib/file-tool.ts";
 import { registerCanvasTool } from "./lib/canvas-tool.ts";
 import { registerResolveTool } from "./lib/resolve-tool.ts";
 import { registerResearchTool } from "./lib/research-tool.ts";
+import { registerScheduleTool } from "./lib/schedule-tool.ts";
 import { registerSendTool } from "./lib/send-tool.ts";
 import { registerTimeRangeTool } from "./lib/time-range-tool.ts";
 import {
@@ -436,8 +439,10 @@ export default function sfSlack(pi: ExtensionAPI) {
   //   - slack_user:       directory lookup
   //   - slack_file:       may be scope-gated off by probeAndGateTools()
   //   - slack_canvas:     read/write canvases
-  //   - slack_send:       post messages (the ONE high blast-radius write
+  //   - slack_send:       post messages (the primary high-blast-radius write
   //                       surface; every call confirms via ctx.ui.confirm)
+  //   - slack_schedule:   schedule/list/delete API-scheduled messages (also
+  //                       confirmed for schedule/delete)
   function ensureSlackToolsRegistered(): void {
     if (slackToolsRegistered) return;
     registerSlackTool(pi);
@@ -449,6 +454,7 @@ export default function sfSlack(pi: ExtensionAPI) {
     registerFileTool(pi);
     registerCanvasTool(pi);
     registerSendTool(pi);
+    registerScheduleTool(pi);
     slackToolsRegistered = true;
   }
 

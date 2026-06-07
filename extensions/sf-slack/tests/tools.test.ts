@@ -39,6 +39,11 @@ describe("tool modules", () => {
     const mod = await import("../lib/canvas-tool.ts");
     expect(typeof mod.registerCanvasTool).toBe("function");
   });
+
+  it("schedule-tool exports registerScheduleTool", async () => {
+    const mod = await import("../lib/schedule-tool.ts");
+    expect(typeof mod.registerScheduleTool).toBe("function");
+  });
 });
 
 describe("tool argument compatibility", () => {
