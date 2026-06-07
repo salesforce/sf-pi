@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.177.0-2026-06-07",
-  "latestVersion": "0.177.0",
+  "revision": "release-0.178.0-2026-06-07",
+  "latestVersion": "0.178.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.177.0",
+      "id": "release-0.178.0",
       "kind": "update",
-      "title": "sf-pi v0.177.0 — sf-agentscript: preflight voice surface readiness",
+      "title": "sf-pi v0.178.0 — sf-agentscript: expand channel preflight review",
       "publishedAt": "2026-06-07T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.177.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.178.0",
       "severity": "info",
-      "body": "sf-agentscript: preflight voice surface readiness"
+      "body": "sf-agentscript: expand channel preflight review"
     },
     {
       "id": "pi-0.73-required",
