@@ -49,19 +49,21 @@ export async function processAgentforceDocument(
     throw new Error("@sf-agentscript/lsp did not expose the agentforce dialect.");
   }
 
-  return processDocument(uri, source, {
-    dialects: [agentforceDialect],
-    defaultDialect: agentforceDialect.name,
-    parser: getParser() as unknown as LspParser,
-    compile: options.compile
-      ? (dialectName) =>
-          dialectName === "agentforce"
-            ? {
-                compile: (ast) => compile(ast as never),
-              }
-            : undefined
-      : undefined,
-  });
+  return suppressAgentforceSchemaDebugLog(() =>
+    processDocument(uri, source, {
+      dialects: [agentforceDialect],
+      defaultDialect: agentforceDialect.name,
+      parser: getParser() as unknown as LspParser,
+      compile: options.compile
+        ? (dialectName) =>
+            dialectName === "agentforce"
+              ? {
+                  compile: (ast) => compile(ast as never),
+                }
+              : undefined
+        : undefined,
+    }),
+  );
 }
 
 /**
@@ -138,6 +140,40 @@ export function toAgentScriptDiagnostic(raw: unknown): AgentScriptDiagnostic | n
     tags: Array.isArray(value.tags) ? (value.tags as (1 | 2)[]) : undefined,
     data: (value.data ?? undefined) as Record<string, unknown> | undefined,
   };
+}
+
+function suppressAgentforceSchemaDebugLog<T>(run: () => T): T {
+  const runtimeConsole = globalThis.console;
+  const originalLog = runtimeConsole.log;
+  const restore = () => {
+    runtimeConsole.log = originalLog;
+  };
+  runtimeConsole.log = (...args: Parameters<typeof runtimeConsole.log>) => {
+    // The current AgentScript dialect linter emits this debug line while
+    // checking complex action I/O contracts. Keep normal logs visible, but
+    // suppress this package noise so preview/compile/test output stays clean.
+    if (args.length === 2 && args[0] === "Schema: " && typeof args[1] === "boolean") return;
+    originalLog.apply(runtimeConsole, args);
+  };
+  try {
+    const result = run();
+    if (isPromiseLike(result)) {
+      return Promise.resolve(result).finally(restore) as T;
+    }
+    restore();
+    return result;
+  } catch (error) {
+    restore();
+    throw error;
+  }
+}
+
+function isPromiseLike(value: unknown): value is Promise<unknown> {
+  return (
+    !!value &&
+    (typeof value === "object" || typeof value === "function") &&
+    typeof (value as { then?: unknown }).then === "function"
+  );
 }
 
 export function resolveDialectInfo(

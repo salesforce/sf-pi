@@ -10,7 +10,7 @@
 import { mkdtempSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { checkAgentScriptFile } from "../lib/diagnostics.ts";
 
 function writeTempAgent(contents: string): string {
@@ -237,8 +237,16 @@ describe("checkAgentScriptFile (integration)", () => {
       ].join("\n"),
     );
 
-    const result = await checkAgentScriptFile(file);
-    const complex = result.diagnostics.filter((d) => d.code === "complex-action-io");
+    const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    let result: Awaited<ReturnType<typeof checkAgentScriptFile>> | undefined;
+    try {
+      result = await checkAgentScriptFile(file);
+      expect(log).not.toHaveBeenCalledWith("Schema: ", expect.any(Boolean));
+    } finally {
+      log.mockRestore();
+    }
+    expect(result).toBeDefined();
+    const complex = result!.diagnostics.filter((d) => d.code === "complex-action-io");
     expect(complex).toHaveLength(2);
     expect(complex.every((d) => d.severity === 2)).toBe(true);
   });
