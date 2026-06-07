@@ -96,6 +96,18 @@ _Avoid_: forked AgentScript compiler, duplicate LSP implementation, replacement 
 The SF Pi-owned projection of parsed Agent Script into an agent-friendly summary of config, topics, subagents, variables, actions, references, targets, and readiness metadata.
 _Avoid_: generic LSP feature, full AST dump, replacement for official parser semantics
 
+**Preview Trace Report**:
+The human-facing, structured render of an Agent Script preview turn, organized for debugging with sections such as turn summary, route path, state changes, key state, tool activity, planner timeline, evaluations, diagnostics, and drill pointers. It may be richer than the LLM-facing payload.
+_Avoid_: raw planner trace, LLM prompt payload, artifact store, unstructured terminal dump
+
+**LLM Trace Digest**:
+The compact, structured Agent Script preview summary returned to the model so it can reason about a turn without consuming the full human report or raw trace. It stores clipped signals and pointers to artifacts rather than full prompts, full state maps, or full action payloads.
+_Avoid_: human report, raw trace JSON, full action I/O dump, branch state
+
+**Action I/O Appendix**:
+The screenshot-friendly section of a **Preview Trace Report** that summarizes called action inputs and outputs with display budgets, redaction, field/path coverage, and raw-trace pointers so humans can debug tool behavior without making the default report an unbounded data dump.
+_Avoid_: raw JSON wall, complete artifact copy, LLM context payload, hidden-only action details
+
 **Agent Script Mutation Adapter**:
 The SF Pi-owned editing layer that turns agent-facing mutate requests into safe Agent Script source changes, preferring Official AgentScript Package Dependency mutation/emission APIs and retaining only workflow guards that prevent corrupt or misleading edits.
 _Avoid_: custom AST emitter, generic text-edit replacement, bypass around official package mutation semantics

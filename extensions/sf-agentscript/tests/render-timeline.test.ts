@@ -38,6 +38,19 @@ function fixtureDigest(): TraceDigest {
       verified_check: true,
       CustomerName: "Example Customer",
     },
+    tool_activity: {
+      enabled: [{ step: 2, agent: "Triage", tools: ["transition_topic", "reset_password"] }],
+      called: [
+        {
+          step: 5,
+          name: "reset_password",
+          latency_ms: 350,
+          input: { fields: [{ path: "user_id", value_preview: "u_42" }] },
+          output: { fields: [{ path: "status", value_preview: "started" }] },
+          has_output: true,
+        },
+      ],
+    },
     timeline: [
       { i: 0, t: "UserInputStep", user: "I think someone broke into my account…" },
       { i: 1, t: "BeforeReasoningIterationStep", ms: 12, agent: "Triage" },
@@ -82,11 +95,14 @@ function fixtureDigest(): TraceDigest {
         response_chars: 312,
         response_type: "Inform",
         is_content_safe: true,
+        safety_score: 0.999,
       },
+      { i: 8, t: "OutputEvaluationStep", ms: 30 },
+      { i: 9, t: "GuardrailsStep", ms: 40 },
     ],
     errors: [],
     stats: {
-      step_count: 8,
+      step_count: 10,
       llm_calls: 2,
       vars_updated: 1,
       topic_changes: 1,
@@ -119,9 +135,9 @@ describe("previewSendMarkdown", () => {
 
   it("includes selected state variables when the digest provides them", () => {
     const md = previewSendMarkdown(fixtureDigest(), { ok: true });
-    expect(md).toMatch(/🧪 state/);
-    expect(md).toMatch(/verified_check=true/);
-    expect(md).toMatch(/CustomerName=Example Customer/);
+    expect(md).toMatch(/🧪 Key State Snapshot/);
+    expect(md).toMatch(/verified_check\s+true/);
+    expect(md).toMatch(/CustomerName\s+Example Customer/);
   });
 
   it("summarizes changed variables above the timeline", () => {
@@ -135,8 +151,8 @@ describe("previewSendMarkdown", () => {
       },
     ];
     const md = previewSendMarkdown(digest, { ok: true });
-    expect(md).toMatch(/🧬 changed/);
-    expect(md).toMatch(/verified_check=false → true/);
+    expect(md).toMatch(/🧬 State Changes/);
+    expect(md).toMatch(/verified_check\s+false → true/);
   });
 
   it("hides internal variable rows from the human timeline", () => {
@@ -151,8 +167,8 @@ describe("previewSendMarkdown", () => {
     digest.stats.step_count = digest.timeline.length;
     digest.stats.vars_updated = 2;
     const md = previewSendMarkdown(digest, { ok: true });
-    expect(md).toMatch(/9 steps raw/);
-    expect(md).toMatch(/8 shown/);
+    expect(md).toMatch(/11 steps raw/);
+    expect(md).toMatch(/10 shown/);
     expect(md).toMatch(/1 internal hidden/);
     expect(md).not.toMatch(/__plannerScratch/);
   });
@@ -188,26 +204,46 @@ describe("previewSendMarkdown", () => {
     expect(md).toMatch(/\+500ms/);
   });
 
-  it("surfaces tool_calls as a sub-row", () => {
+  it("surfaces tool activity and LLM tool calls", () => {
     const md = previewSendMarkdown(fixtureDigest(), { ok: true });
-    expect(md).toMatch(/↳ tool_calls:/);
-    expect(md).toMatch(/transition_topic/);
+    expect(md).toMatch(/🛠 Tool Activity/);
+    expect(md).toMatch(/enabled\s+transition_topic, reset_password/);
+    expect(md).toMatch(/called\s+reset_password/);
+    expect(md).toMatch(/calls transition_topic/);
+  });
+
+  it("renders a screenshot-friendly action I/O appendix", () => {
+    const md = previewSendMarkdown(fixtureDigest(), { ok: true });
+    expect(md).toMatch(/🛠 Action I\/O Appendix/);
     expect(md).toMatch(/reset_password/);
+    expect(md).toMatch(/input/);
+    expect(md).toMatch(/user_id\s+u_42/);
+    expect(md).toMatch(/output/);
+    expect(md).toMatch(/status\s+started/);
+  });
+
+  it("renders evaluations separately from the timeline", () => {
+    const md = previewSendMarkdown(fixtureDigest(), { ok: true });
+    expect(md).toMatch(/🛡 Evaluations/);
+    expect(md).toMatch(/response safety\s+pass/);
+    expect(md).toMatch(/safety score\s+0\.999/);
+    expect(md).toMatch(/output eval\s+observed/);
+    expect(md).toMatch(/guardrails\s+1 step observed/);
   });
 
   it("renders the stats line", () => {
     const md = previewSendMarkdown(fixtureDigest(), { ok: true });
-    expect(md).toMatch(/8 steps/);
+    expect(md).toMatch(/10 steps/);
     expect(md).toMatch(/2 LLM calls/);
-    expect(md).toMatch(/1 fn call/);
+    expect(md).toMatch(/1 action/);
     expect(md).toMatch(/1 var update/);
     expect(md).toMatch(/1 transition/);
   });
 
   it("includes the trace_file pointer", () => {
     const md = previewSendMarkdown(fixtureDigest(), { ok: true });
-    expect(md).toMatch(/trace_file:/);
-    expect(md).toMatch(/\.sfdx\/agents/);
+    expect(md).toMatch(/trace_file/);
+    expect(md).toMatch(/t3\.json/);
   });
 
   it("emits the drill-down recover_via hint", () => {

@@ -547,19 +547,20 @@ async function actionSend(
       [
         `🤖 ${result.agentResponse}`,
         result.digest?.summary_line ? `→ ${result.digest.summary_line}` : null,
-        result.digest?.state_variables
-          ? `state: ${Object.entries(result.digest.state_variables)
-              .slice(0, 6)
-              .map(([k, v]) => `${k}=${String(v).slice(0, 80)}`)
-              .join(", ")}`
+        result.digest?.variable_changes?.length
+          ? `state_changes=${result.digest.variable_changes.length}`
+          : null,
+        result.digest?.tool_activity?.called?.length
+          ? `actions_called=${result.digest.tool_activity.called.length}`
           : null,
         result.digest && result.digest.errors.length > 0
-          ? `⚠️ errors: ${result.digest.errors.length}`
+          ? `⚠️ errors=${result.digest.errors.length}`
           : null,
         result.traceFile
-          ? `plan=${result.planId.slice(0, 8)}… trace_file=${result.traceFile}`
-          : `plan=${result.planId.slice(0, 8)}… trace_file=<none> (published-agent preview is surface-only; use agent_file preview for full v1.1 traces)`,
-        reportFile ? `report_file=${reportFile}` : null,
+          ? `plan=${result.planId.slice(0, 8)}… trace=full_v1_1`
+          : `plan=${result.planId.slice(0, 8)}… trace=surface_only (use agent_file preview for full v1.1 traces)`,
+        reportFile ? "human_report=written" : null,
+        "Use details.digest for compact structured trace; use agentscript_preview trace for full raw trace.",
       ]
         .filter(Boolean)
         .join("\n"),

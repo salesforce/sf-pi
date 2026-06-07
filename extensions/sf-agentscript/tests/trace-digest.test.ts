@@ -151,6 +151,29 @@ describe("summarizeTrace (preview source)", () => {
     expect(fn?.has_output).toBe(true);
   });
 
+  test("collects route path and tool activity for the human trace report", () => {
+    const d = summarizeTrace({ plan: FAKE_PLAN });
+    expect(d.route_path).toEqual([
+      { step: 6, from: "Triage", to: "password_help", type: "handoff" },
+    ]);
+    expect(d.tool_activity?.enabled?.[0]).toEqual({
+      step: 3,
+      agent: "Triage",
+      tools: ["go_password", "go_vpn"],
+    });
+    expect(d.tool_activity?.called?.[0]).toMatchObject({
+      step: 8,
+      name: "Update Session Routing",
+      has_output: true,
+    });
+    expect(d.tool_activity?.called?.[0]?.input?.fields).toEqual([
+      { path: "supportPath", value_preview: "Password Reset" },
+    ]);
+    expect(d.tool_activity?.called?.[0]?.output?.fields).toEqual([
+      { path: "caseId", value_preview: "12345-ABCDE" },
+    ]);
+  });
+
   test("VariableUpdateStep clips long values + reports extra updates", () => {
     const longBlob = "X".repeat(500);
     const trace = {
@@ -207,6 +230,58 @@ describe("summarizeTrace (preview source)", () => {
         value_preview: "500xx000001",
         reason: "set by route",
       },
+    ]);
+  });
+
+  test("redacts sensitive-looking action I/O paths", () => {
+    const d = summarizeTrace({
+      plan: [
+        {
+          type: "FunctionStep",
+          function: {
+            name: "send_notification",
+            input: { phone: "+15551234567", delivery: "SMS" },
+            output: { token: "secret-token", status: "queued" },
+          },
+        },
+      ],
+    });
+    expect(d.tool_activity?.called?.[0]?.input?.fields).toContainEqual({
+      path: "phone",
+      value_preview: "••••",
+      redacted: true,
+    });
+    expect(d.tool_activity?.called?.[0]?.output?.fields).toContainEqual({
+      path: "token",
+      value_preview: "••••",
+      redacted: true,
+    });
+    expect(d.tool_activity?.called?.[0]?.output?.fields).toContainEqual({
+      path: "status",
+      value_preview: "queued",
+    });
+  });
+
+  test("adds diagnostics only when rule-based findings exist", () => {
+    const d = summarizeTrace({
+      plan: [
+        {
+          type: "EnabledToolsStep",
+          data: { agent_name: "Help", enabled_tools: ["lookup_case"] },
+        },
+        {
+          type: "LLMStep",
+          data: {
+            agent_name: "Help",
+            prompt_content: "x".repeat(16000),
+            prompt_response: "{}",
+          },
+        },
+      ],
+    });
+    expect(d.diagnostics?.map((item) => item.message)).toEqual([
+      "1 tool was enabled but no action was called.",
+      "Large LLM prompt: 16k chars.",
     ]);
   });
 

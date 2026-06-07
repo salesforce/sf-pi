@@ -66,6 +66,50 @@ export interface VariableChangeDigest {
   reason?: string;
 }
 
+export interface RouteTransitionDigest {
+  step: number;
+  from?: string;
+  to?: string;
+  type?: string;
+}
+
+export interface ToolEnabledDigest {
+  step: number;
+  agent?: string;
+  tools: string[];
+}
+
+export interface ActionFieldPreview {
+  path: string;
+  value_preview: string;
+  redacted?: boolean;
+}
+
+export interface ActionValuePreview {
+  fields: ActionFieldPreview[];
+  omitted_fields?: number;
+}
+
+export interface ActionCallDigest {
+  step: number;
+  name: string;
+  latency_ms?: number;
+  input?: ActionValuePreview;
+  output?: ActionValuePreview;
+  has_output?: boolean;
+}
+
+export interface ToolActivityDigest {
+  enabled?: ToolEnabledDigest[];
+  called?: ActionCallDigest[];
+}
+
+export interface TraceFindingDigest {
+  severity: "info" | "warning" | "error";
+  message: string;
+  step?: number;
+}
+
 export interface TraceDigest {
   /**
    * "preview"        — built from a full v1.1 preview plan timeline (rich, every step type).
@@ -85,10 +129,16 @@ export interface TraceDigest {
   };
   /** One row per planner step. Empty array for eval-source (no fine-grained timeline). */
   timeline: DigestRow[];
+  /** Topic/subagent transitions observed during this turn. */
+  route_path?: RouteTransitionDigest[];
   /** User-authored/non-internal variable mutations observed during this turn. */
   variable_changes?: VariableChangeDigest[];
   /** Selected non-internal state/context variables observed during this turn. */
   state_variables?: Record<string, unknown>;
+  /** Tool enablement and called action input/output previews. */
+  tool_activity?: ToolActivityDigest;
+  /** Rule-based preview findings. Render only when non-empty. */
+  diagnostics?: TraceFindingDigest[];
   /** Step-level errors aggregated across the timeline. */
   errors: Array<{ step?: number; type?: string; message: string }>;
   stats: DigestStats;
@@ -106,6 +156,9 @@ const MAX_USER_CHARS = 240;
 const MAX_VAR_VALUE_CHARS = 80;
 const MAX_HINT_CHARS = 200;
 const MAX_TOOL_ARGS_CHARS = 120;
+const MAX_ACTION_VALUE_CHARS = 120;
+const MAX_ACTION_FIELDS = 28;
+const MAX_ACTION_ARRAY_ITEMS = 3;
 
 function clip(s: unknown, n: number): string | undefined {
   if (typeof s !== "string") return undefined;
@@ -196,6 +249,84 @@ function valuePreview(value: unknown): string | undefined {
   return typeof value === "string"
     ? clip(value, MAX_VAR_VALUE_CHARS)
     : clip(JSON.stringify(value ?? null), MAX_VAR_VALUE_CHARS);
+}
+
+function actionScalarPreview(value: unknown): string {
+  if (typeof value === "string") return clip(value, MAX_ACTION_VALUE_CHARS) ?? "";
+  return clip(JSON.stringify(value ?? null), MAX_ACTION_VALUE_CHARS) ?? String(value);
+}
+
+function shouldRedactPath(path: string): boolean {
+  return /(^|[._-])(authorization|auth|cookie|email|password|phone|secret|session|token)([._-]|$)/i.test(
+    path,
+  );
+}
+
+function actionValuePreview(value: unknown): ActionValuePreview | undefined {
+  if (value === undefined || value === null) return undefined;
+  const fields: ActionFieldPreview[] = [];
+  let omitted = 0;
+  const add = (path: string, raw: unknown) => {
+    if (fields.length >= MAX_ACTION_FIELDS) {
+      omitted++;
+      return;
+    }
+    const redacted = shouldRedactPath(path);
+    fields.push({
+      path: path || "$",
+      value_preview: redacted ? "••••" : actionScalarPreview(raw),
+      ...(redacted ? { redacted: true } : {}),
+    });
+  };
+  const walk = (raw: unknown, path: string, depth: number) => {
+    if (fields.length >= MAX_ACTION_FIELDS) {
+      omitted++;
+      return;
+    }
+    if (raw === null || raw === undefined || typeof raw !== "object") {
+      add(path, raw);
+      return;
+    }
+    if (Array.isArray(raw)) {
+      add(path, `[${raw.length} item${raw.length === 1 ? "" : "s"}]`);
+      if (depth >= 2) return;
+      raw
+        .slice(0, MAX_ACTION_ARRAY_ITEMS)
+        .forEach((item, index) => walk(item, `${path}[${index}]`, depth + 1));
+      if (raw.length > MAX_ACTION_ARRAY_ITEMS) omitted += raw.length - MAX_ACTION_ARRAY_ITEMS;
+      return;
+    }
+    const entries = Object.entries(raw as Record<string, unknown>);
+    if (entries.length === 0) {
+      add(path, "{}");
+      return;
+    }
+    if (depth >= 3) {
+      add(path, `{${entries.length} field${entries.length === 1 ? "" : "s"}}`);
+      return;
+    }
+    for (const [key, child] of entries) {
+      walk(child, path ? `${path}.${key}` : key, depth + 1);
+    }
+  };
+  walk(value, "", 0);
+  return fields.length > 0
+    ? { fields, ...(omitted > 0 ? { omitted_fields: omitted } : {}) }
+    : undefined;
+}
+
+function actionCallDigest(step: StepLike, stepIndex: number): ActionCallDigest | undefined {
+  const fn = step.function as { name?: string; input?: unknown; output?: unknown } | undefined;
+  if (!fn?.name) return undefined;
+  return {
+    step: stepIndex,
+    name: fn.name,
+    latency_ms:
+      asNumber(step.executionLatency) ?? ms(step.startExecutionTime, step.endExecutionTime),
+    input: actionValuePreview(fn.input),
+    output: actionValuePreview(fn.output),
+    has_output: fn.output !== undefined && fn.output !== null,
+  };
 }
 
 function variableUpdates(step: StepLike): Record<string, unknown>[] {
@@ -362,6 +493,9 @@ export function summarizeTrace(trace: unknown, opts: SummarizeOptions = {}): Tra
   let lastTopic: string | undefined = t.topic;
   let stateVariables: Record<string, unknown> | undefined;
   const variableChanges: VariableChangeDigest[] = [];
+  const routePath: RouteTransitionDigest[] = [];
+  const toolsEnabled: ToolEnabledDigest[] = [];
+  const actionsCalled: ActionCallDigest[] = [];
 
   for (let i = 0; i < stepsRaw.length; i++) {
     const step = stepsRaw[i] ?? {};
@@ -382,7 +516,17 @@ export function summarizeTrace(trace: unknown, opts: SummarizeOptions = {}): Tra
     // Stat collection — keep these per-type so the stats object is
     // accurate even when the runtime adds/renames step types.
     if (type === "LLMStep" || type === "LLMExecutionStep") llmCalls++;
-    else if (type === "VariableUpdateStep") {
+    else if (type === "EnabledToolsStep") {
+      if (Array.isArray(row.tools) && row.tools.length > 0) {
+        toolsEnabled.push({
+          step: i,
+          agent: asString(row.agent),
+          tools: (row.tools as unknown[]).filter(
+            (tool): tool is string => typeof tool === "string",
+          ),
+        });
+      }
+    } else if (type === "VariableUpdateStep") {
       varsUpdated++;
       for (const update of variableUpdates(step)) {
         const name = asString(update.variable_name);
@@ -402,8 +546,17 @@ export function summarizeTrace(trace: unknown, opts: SummarizeOptions = {}): Tra
         prevTopic = newTopic;
         lastTopic = newTopic;
       }
+    } else if (type === "TransitionStep") {
+      routePath.push({
+        step: i,
+        from: asString(row.from),
+        to: asString(row.to),
+        type: asString(row.transition_type),
+      });
     } else if (type === "FunctionStep" || type === "FunctionCallStep") {
       functionCalls++;
+      const call = actionCallDigest(step, i);
+      if (call) actionsCalled.push(call);
     }
 
     // Error harvesting — runtime steps surface errors in a few shapes.
@@ -438,6 +591,14 @@ export function summarizeTrace(trace: unknown, opts: SummarizeOptions = {}): Tra
     functionCalls,
     totalMs: opts.latencyMs ?? totalMs,
   });
+  const toolActivity: ToolActivityDigest | undefined =
+    toolsEnabled.length > 0 || actionsCalled.length > 0
+      ? {
+          ...(toolsEnabled.length > 0 ? { enabled: toolsEnabled } : {}),
+          ...(actionsCalled.length > 0 ? { called: actionsCalled } : {}),
+        }
+      : undefined;
+  const diagnostics = buildTraceFindings({ timeline, errors, toolActivity });
 
   return {
     source: "preview",
@@ -451,8 +612,11 @@ export function summarizeTrace(trace: unknown, opts: SummarizeOptions = {}): Tra
       trace_file: opts.traceFile,
     },
     timeline,
+    ...(routePath.length > 0 ? { route_path: routePath } : {}),
     ...(variableChanges.length > 0 ? { variable_changes: variableChanges } : {}),
     ...(stateVariables ? { state_variables: stateVariables } : {}),
+    ...(toolActivity ? { tool_activity: toolActivity } : {}),
+    ...(diagnostics.length > 0 ? { diagnostics } : {}),
     errors,
     stats,
     summary_line,
@@ -460,6 +624,44 @@ export function summarizeTrace(trace: unknown, opts: SummarizeOptions = {}): Tra
       ? { notes: ["Trace has no plan timeline; this is the eval API surface — see lastExecution."] }
       : {}),
   };
+}
+
+function buildTraceFindings(input: {
+  timeline: DigestRow[];
+  errors: TraceDigest["errors"];
+  toolActivity?: ToolActivityDigest;
+}): TraceFindingDigest[] {
+  const findings: TraceFindingDigest[] = [];
+  for (const error of input.errors) {
+    findings.push({ severity: "error", message: error.message, step: error.step });
+  }
+  const enabledCount =
+    input.toolActivity?.enabled?.reduce((sum, item) => sum + item.tools.length, 0) ?? 0;
+  const calledCount = input.toolActivity?.called?.length ?? 0;
+  if (enabledCount > 0 && calledCount === 0) {
+    findings.push({
+      severity: "info",
+      message: `${enabledCount} tool${enabledCount === 1 ? " was" : "s were"} enabled but no action was called.`,
+    });
+  }
+  for (const row of input.timeline) {
+    const promptChars = typeof row.prompt_chars === "number" ? row.prompt_chars : 0;
+    if (promptChars >= 16000) {
+      findings.push({
+        severity: "warning",
+        step: row.i,
+        message: `Large LLM prompt: ${Math.round(promptChars / 100) / 10}k chars.`,
+      });
+    }
+    if (row.t === "PlannerResponseStep" && row.is_content_safe === false) {
+      findings.push({
+        severity: "error",
+        step: row.i,
+        message: "Planner response was marked unsafe.",
+      });
+    }
+  }
+  return findings;
 }
 
 // -------------------------------------------------------------------------------------------------

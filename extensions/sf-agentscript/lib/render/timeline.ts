@@ -14,17 +14,12 @@
 
 import { Text } from "@earendil-works/pi-tui";
 import type { Theme } from "@earendil-works/pi-coding-agent";
-import type { TraceDigest, VariableChangeDigest } from "../preview/trace-digest.ts";
-import {
-  fmtMs,
-  rowDetail,
-  rowSubRow,
-  stepLabel,
-  styleForStep,
-  visibleWidth,
-  padRightVisible,
-  clipLine,
-} from "./shared.ts";
+import type {
+  ActionValuePreview,
+  TraceDigest,
+  VariableChangeDigest,
+} from "../preview/trace-digest.ts";
+import { fmtMs, stepLabel, styleForStep, padRightVisible, clipLine } from "./shared.ts";
 
 // ─── Result shape we expect in `details` from preview-tool.ts ────────────────
 
@@ -133,97 +128,149 @@ function formatSendBody(
   const accent = (s: string): string => fg("accent", s);
   const ok = (s: string): string => fg("success", s);
   const err = (s: string): string => fg("error", s);
+  const code = (s: string): string => fg("mdCode", s);
 
   const lines: string[] = [];
-
-  // Header line: 🎬 session  ·  topic  ·  latency
   const sid = (details.plan_id ?? digest.turn.plan_id ?? "").slice(0, 8);
   const totalMs = digest.turn.latency_ms ?? details.latency_ms;
-  const headerBits: string[] = [bold(`🎬 ${digest.turn.topic ?? "(no topic)"}`)];
-  if (sid) headerBits.push(dim(`plan=${sid}…`));
+  const headerBits: string[] = [bold("🎬 Preview Trace Report")];
+  if (digest.turn.topic) headerBits.push(accent(digest.turn.topic));
   if (typeof totalMs === "number") headerBits.push(dim(fmtMs(totalMs)));
-  lines.push(headerBits.join("  "));
+  if (sid) headerBits.push(dim(`plan=${sid}…`));
+  lines.push(headerBits.join(" · "));
 
-  // User input + agent response cards
+  lines.push("");
+  lines.push(sectionTitle("🧾", "Turn Summary", ansi, dim));
   if (digest.turn.user_input) {
-    lines.push("");
-    lines.push(`${accent("👤")} ${dim(`"${clipLine(digest.turn.user_input, 200)}"`)}`);
+    lines.push(sectionRow("👤", "User", `"${clipLine(digest.turn.user_input, 200)}"`, theme));
   }
   if (digest.turn.agent_response) {
+    lines.push(sectionRow("🤖", "Agent", clipLine(digest.turn.agent_response, 260), theme));
+  }
+  const outcome = formatOutcome(digest);
+  if (outcome)
+    lines.push(sectionRow(outcome.startsWith("⚠") ? "⚠" : "✅", "Outcome", outcome, theme));
+
+  const route = routePath(digest);
+  if (route.length > 0) {
     lines.push("");
-    lines.push(`${ok("🤖")} ${digest.turn.agent_response}`);
+    lines.push(sectionTitle("🧭", "Route Path", ansi, dim));
+    for (const item of route) lines.push(`  ${fg("success", "🔀")} ${code(item)}`);
   }
 
   if (digest.variable_changes && digest.variable_changes.length > 0) {
     lines.push("");
-    lines.push(`${accent("🧬 changed")} ${dim(formatVariableChanges(digest.variable_changes))}`);
+    lines.push(sectionTitle("🧬", "State Changes", ansi, dim));
+    for (const change of digest.variable_changes.slice(0, 10)) {
+      lines.push(sectionRow("📦", change.name, formatVariableChange(change), theme));
+    }
+    if (digest.variable_changes.length > 10) {
+      lines.push(`  ${dim(`👁 +${digest.variable_changes.length - 10} more changes in trace`)}`);
+    }
   }
 
   if (digest.state_variables && Object.keys(digest.state_variables).length > 0) {
     lines.push("");
-    const entries = selectStateEntries(digest.state_variables)
-      .slice(0, 10)
-      .map(([key, value]) => `${key}=${clipLine(String(value), 80)}`);
-    lines.push(`${accent("🧪 state snapshot")} ${dim(entries.join(", "))}`);
-  }
-
-  // Timeline header
-  lines.push("");
-  const rowsToRender = compactTimelineRows(digest.timeline);
-  const hiddenRows = digest.timeline.length - rowsToRender.length;
-  const header =
-    hiddenRows > 0
-      ? `─── Timeline (${rowsToRender.length} shown, ${hiddenRows} internal hidden) ───`
-      : "─── Timeline ───";
-  lines.push(dim(ansi ? header : `**${header.replaceAll("─", "").trim()}**`));
-
-  // Timeline rows. `row.ms` is the per-step duration, so we accumulate to
-  // get a virtual clock. The first row sits at t+0; subsequent offsets are
-  // the running sum of preceding durations. Rows without a `ms` value
-  // contribute 0 to the clock but still get a relative label so the order
-  // stays scannable.
-  const widestLabel = rowsToRender.reduce((max, row) => {
-    const lbl = stepLabel(row.t);
-    return Math.max(max, visibleWidth(lbl));
-  }, 0);
-  let clock = 0;
-  for (const row of rowsToRender) {
-    const tStr = clock === 0 ? "+0ms" : `+${fmtMs(clock)}`;
-    const tBlock = padRightVisible(dim(tStr), 8);
-    const style = styleForStep(row.t);
-    const glyph = ansi ? fg(style.color, style.glyph) : style.glyph;
-    const label = padRightVisible(fg(style.color, stepLabel(row.t)), widestLabel + 2);
-    const detail = rowDetail(row, theme);
-    const main = `  ${tBlock} ${glyph}  ${label}${detail}`;
-    lines.push(main);
-    const sub = rowSubRow(row, theme);
-    if (sub) lines.push(`  ${" ".repeat(8)}    ${sub}`);
-    if (typeof row.ms === "number" && Number.isFinite(row.ms) && row.ms > 0) {
-      clock += row.ms;
+    lines.push(sectionTitle("🧪", "Key State Snapshot", ansi, dim));
+    const entries = selectStateEntries(digest.state_variables).slice(0, 8);
+    for (const [key, value] of entries) {
+      lines.push(sectionRow(iconForStateKey(key), key, formatStateValue(value), theme));
+    }
+    const visibleCount = selectStateEntries(digest.state_variables).length;
+    if (visibleCount > entries.length) {
+      lines.push(`  ${dim(`👁 +${visibleCount - entries.length} more visible vars in trace`)}`);
     }
   }
 
-  // Per-step errors block
+  const toolActivity = digest.tool_activity;
+  if (toolActivity?.enabled?.length || toolActivity?.called?.length) {
+    lines.push("");
+    lines.push(sectionTitle("🛠", "Tool Activity", ansi, dim));
+    const enabledTools = unique(toolActivity.enabled?.flatMap((item) => item.tools) ?? []);
+    if (enabledTools.length > 0) {
+      lines.push(sectionRow("🧰", "enabled", formatList(enabledTools, 6), theme));
+    }
+    const called = toolActivity.called ?? [];
+    lines.push(
+      sectionRow(
+        "🛠",
+        "called",
+        called.length
+          ? formatList(
+              called.map((call) => call.name),
+              6,
+            )
+          : "none",
+        theme,
+      ),
+    );
+  }
+
+  if (toolActivity?.called?.length) {
+    lines.push("");
+    lines.push(sectionTitle("🛠", "Action I/O Appendix", ansi, dim));
+    for (const call of toolActivity.called.slice(0, 4)) {
+      const status = call.has_output === false ? "no output" : "output captured";
+      const latency = typeof call.latency_ms === "number" ? ` · ${fmtMs(call.latency_ms)}` : "";
+      lines.push(
+        `  ${fg("toolTitle", "🛠")} ${code(call.name)}${dim(latency)} ${dim(`· ${status}`)}`,
+      );
+      appendActionValue(lines, "input", call.input, theme);
+      appendActionValue(lines, "output", call.output, theme);
+    }
+    if (toolActivity.called.length > 4) {
+      lines.push(`  ${dim(`👁 +${toolActivity.called.length - 4} more action calls in trace`)}`);
+    }
+  }
+
+  lines.push("");
+  lines.push(sectionTitle("⏱", timelineHeader(digest), ansi, dim));
+  appendTimeline(lines, digest, theme, ansi);
+
+  const evaluations = evaluationRows(digest);
+  if (evaluations.length > 0) {
+    lines.push("");
+    lines.push(sectionTitle("🛡", "Evaluations", ansi, dim));
+    for (const item of evaluations)
+      lines.push(sectionRow(item.icon, item.label, item.value, theme));
+  }
+
+  if (digest.diagnostics && digest.diagnostics.length > 0) {
+    lines.push("");
+    lines.push(sectionTitle("🧯", "Diagnostics", ansi, dim));
+    for (const finding of digest.diagnostics) {
+      const glyph =
+        finding.severity === "error"
+          ? err("⚠")
+          : finding.severity === "warning"
+            ? fg("warning", "⚠")
+            : dim("ⓘ");
+      const where = typeof finding.step === "number" ? dim(`step ${finding.step} · `) : "";
+      lines.push(`  ${glyph} ${where}${clipLine(finding.message, 180)}`);
+    }
+  }
+
   if (digest.errors.length > 0) {
     lines.push("");
-    lines.push(err(ansi ? "─── Errors ───" : "**Errors**"));
+    lines.push(sectionTitle("⚠", "Errors", ansi, err));
     for (const e of digest.errors) {
       const where = typeof e.step === "number" ? `step ${e.step}` : (e.type ?? "?");
-      lines.push(`  ${err("⚠")}  ${dim(where)}  ${clipLine(e.message, 200)}`);
+      lines.push(`  ${err("⚠")} ${dim(where)} ${clipLine(e.message, 200)}`);
     }
   }
 
-  // Stats footer
   lines.push("");
-  lines.push(dim(ansi ? "─── Stats ───" : "**Stats**"));
+  lines.push(sectionTitle("📊", "Stats", ansi, dim));
   const stats = digest.stats;
+  const rowsToRender = compactTimelineRows(digest.timeline);
+  const hiddenRows = digest.timeline.length - rowsToRender.length;
   const internalVarRows = digest.timeline.filter(isInternalVariableRow).length;
   const statsBits = [
     `${ok(`${stats.step_count} step${stats.step_count === 1 ? "" : "s"} raw`)}`,
     hiddenRows > 0 ? `${ok(`${rowsToRender.length} shown`)}` : null,
     `${ok(`${stats.llm_calls} LLM call${stats.llm_calls === 1 ? "" : "s"}`)}`,
     stats.function_calls > 0
-      ? `${ok(`${stats.function_calls} fn call${stats.function_calls === 1 ? "" : "s"}`)}`
+      ? `${ok(`${stats.function_calls} action${stats.function_calls === 1 ? "" : "s"}`)}`
       : null,
     stats.vars_updated > 0
       ? `${ok(`${stats.vars_updated} var update${stats.vars_updated === 1 ? "" : "s"}`)}${
@@ -237,21 +284,23 @@ function formatSendBody(
   ].filter(Boolean) as string[];
   lines.push(`  ${statsBits.join(" · ")}`);
 
-  // Footer: trace file + drill hint
   lines.push("");
+  lines.push(sectionTitle("🔎", "Drill", ansi, dim));
   if (digest.turn.trace_file ?? details.trace_file) {
-    lines.push(dim(`📄 trace_file: ${digest.turn.trace_file ?? details.trace_file}`));
+    const tracePath = digest.turn.trace_file ?? details.trace_file ?? "";
+    lines.push(sectionRow("📄", "trace_file", shortenPath(tracePath), theme));
   }
   if (digest.notes && digest.notes.length > 0) {
-    for (const n of digest.notes) {
-      // Notes are informational (e.g. "production-v1 endpoint has no
-      // per-step trace") — not warnings. Render in dim gray.
-      lines.push(dim(`ⓘ ${n}`));
-    }
+    for (const n of digest.notes) lines.push(`  ${dim(`ⓘ ${n}`)}`);
   }
   if (sid && digest.turn.plan_id) {
     lines.push(
-      `${fg("accent", "💡 Drill:")} ${fg("mdCode", `agentscript_preview trace plan_id=${digest.turn.plan_id}`)}`,
+      sectionRow(
+        "💡",
+        "trace",
+        code(`agentscript_preview trace plan_id=${digest.turn.plan_id}`),
+        theme,
+      ),
     );
   }
 
@@ -260,21 +309,256 @@ function formatSendBody(
 
 // ─── Internal helpers ────────────────────────────────────────────────────────
 
-function formatVariableChanges(changes: VariableChangeDigest[]): string {
-  return changes
-    .slice(0, 8)
-    .map((change) => {
-      const value = change.value_preview ?? "?";
-      const previous = change.previous_value_preview;
-      const rendered = previous === undefined ? value : `${previous} → ${value}`;
-      return `${change.name}=${clipLine(rendered, 80)}`;
-    })
-    .concat(changes.length > 8 ? [`+${changes.length - 8} more`] : [])
-    .join(", ");
+function sectionTitle(
+  icon: string,
+  label: string,
+  ansi: boolean,
+  dim: (s: string) => string,
+): string {
+  return dim(ansi ? `─── ${icon} ${label} ───` : `**${icon} ${label}**`);
+}
+
+function sectionRow(icon: string, label: string, value: string, theme?: Theme): string {
+  const key = theme ? theme.fg("mdCode", padRightVisible(label, 16)) : padRightVisible(label, 16);
+  return `  ${icon} ${key} ${value}`;
+}
+
+function formatOutcome(digest: TraceDigest): string | null {
+  const response = [...digest.timeline].reverse().find((row) => row.t === "PlannerResponseStep");
+  const responseType =
+    typeof response?.response_type === "string" ? response.response_type : undefined;
+  const safe = response?.is_content_safe;
+  const parts: string[] = [];
+  if (responseType) parts.push(responseType);
+  if (safe === true) parts.push("safety pass");
+  else if (safe === false) parts.push("⚠ safety failed");
+  const guardrail = [...digest.timeline].reverse().find((row) => /guardrail/i.test(row.t));
+  if (guardrail) parts.push("guardrails observed");
+  else if (digest.stats.errors === 0) parts.push("no trace errors");
+  return parts.length > 0 ? parts.join(" · ") : null;
+}
+
+function routePath(digest: TraceDigest): string[] {
+  if (digest.route_path && digest.route_path.length > 0) {
+    return digest.route_path
+      .map((item) => {
+        if (item.from && item.to) return `${item.from} → ${item.to}`;
+        return item.to ?? item.from ?? "";
+      })
+      .filter(Boolean);
+  }
+  if (digest.turn.topic_changed_from && digest.turn.topic) {
+    return [`${digest.turn.topic_changed_from} → ${digest.turn.topic}`];
+  }
+  return digest.turn.topic ? [digest.turn.topic] : [];
+}
+
+function formatVariableChange(change: VariableChangeDigest): string {
+  const next = change.value_preview ?? "?";
+  const previous = change.previous_value_preview;
+  const rendered = previous === undefined ? next : `${previous} → ${next}`;
+  return clipLine(rendered, 120);
 }
 
 function selectStateEntries(vars: Record<string, unknown>): Array<[string, unknown]> {
-  return Object.entries(vars).filter(([key]) => !isInternalVariableName(key));
+  const changed = new Set<string>();
+  // This function is intentionally generic. Agent-specific prioritization
+  // belongs in the trace/digest source, not hardcoded into the renderer.
+  const visible = Object.entries(vars).filter(([key]) => !isInternalVariableName(key));
+  return visible.filter(([key]) => !changed.has(key));
+}
+
+function iconForStateKey(key: string): string {
+  if (/verified|auth|check|permission/i.test(key)) return "🔐";
+  if (/email|sms|phone|delivery|channel/i.test(key)) return "✉️";
+  if (/count|attempt|number|total/i.test(key)) return "🔢";
+  if (/ready|enabled|active|done|completed/i.test(key)) return "⚙️";
+  return "📦";
+}
+
+function formatStateValue(value: unknown): string {
+  if (typeof value === "string") return clipLine(shortenIdentifier(value), 120);
+  return clipLine(JSON.stringify(value ?? null), 120);
+}
+
+function shortenIdentifier(value: string): string {
+  if (/^[a-zA-Z0-9]{15,18}$/.test(value)) return `${value.slice(0, 3)}…${value.slice(-3)}`;
+  if (/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(value)) return `${value.slice(0, 8)}…`;
+  return value;
+}
+
+function formatList(values: string[], max: number): string {
+  const shown = values.slice(0, max);
+  return `${shown.join(", ")}${values.length > max ? `, +${values.length - max} more` : ""}`;
+}
+
+function unique(values: string[]): string[] {
+  return Array.from(new Set(values));
+}
+
+function appendActionValue(
+  lines: string[],
+  label: "input" | "output",
+  value: ActionValuePreview | undefined,
+  theme?: Theme,
+): void {
+  const dim = (s: string) => (theme ? theme.fg("dim", s) : s);
+  const code = (s: string) => (theme ? theme.fg("mdCode", s) : s);
+  if (!value || value.fields.length === 0) {
+    lines.push(`      ${dim(label)} ${dim("(none captured)")}`);
+    return;
+  }
+  lines.push(`      ${dim(label)}`);
+  for (const field of value.fields.slice(0, 12)) {
+    const suffix = field.redacted ? dim(" redacted") : "";
+    lines.push(`        ${code(padRightVisible(field.path, 28))} ${field.value_preview}${suffix}`);
+  }
+  const omitted = (value.omitted_fields ?? 0) + Math.max(0, value.fields.length - 12);
+  if (omitted > 0) lines.push(`        ${dim(`… ${omitted} more field/path previews in trace`)}`);
+}
+
+function evaluationRows(
+  digest: TraceDigest,
+): Array<{ icon: string; label: string; value: string }> {
+  const rows: Array<{ icon: string; label: string; value: string }> = [];
+  const response = [...digest.timeline].reverse().find((row) => row.t === "PlannerResponseStep");
+  if (response) {
+    if (response.is_content_safe === true) {
+      rows.push({ icon: "✅", label: "response safety", value: "pass" });
+    } else if (response.is_content_safe === false) {
+      rows.push({ icon: "⚠", label: "response safety", value: "failed" });
+    }
+    if (typeof response.safety_score === "number") {
+      rows.push({ icon: "📈", label: "safety score", value: response.safety_score.toFixed(3) });
+    }
+  }
+  const outputEval = digest.timeline.find((row) => row.t === "OutputEvaluationStep");
+  if (outputEval) {
+    rows.push({ icon: "🧪", label: "output eval", value: "observed" });
+  }
+  const guardrails = digest.timeline.filter((row) => /guardrail/i.test(row.t));
+  if (guardrails.length > 0) {
+    rows.push({
+      icon: "🛡",
+      label: "guardrails",
+      value: `${guardrails.length} step${guardrails.length === 1 ? "" : "s"} observed`,
+    });
+  }
+  return rows;
+}
+
+function timelineHeader(digest: TraceDigest): string {
+  const rowsToRender = compactTimelineRows(digest.timeline);
+  const hiddenRows = digest.timeline.length - rowsToRender.length;
+  return hiddenRows > 0
+    ? `Planner Timeline (${rowsToRender.length} shown, ${hiddenRows} internal hidden)`
+    : "Planner Timeline";
+}
+
+function appendTimeline(
+  lines: string[],
+  digest: TraceDigest,
+  theme: Theme | undefined,
+  ansi: boolean,
+): void {
+  const rows = compactTimelineRows(digest.timeline);
+  const dim = (s: string) => (theme ? theme.fg("dim", s) : s);
+  const fg = (token: Parameters<Theme["fg"]>[0], s: string): string =>
+    theme ? theme.fg(token, s) : s;
+  const widths = { time: 8, step: 18, actor: 20 };
+  lines.push(
+    `  ${dim(padRightVisible("Time", widths.time))} ${dim(padRightVisible("Step", widths.step))} ${dim(
+      padRightVisible("Actor/Scope", widths.actor),
+    )} ${dim("Details")}`,
+  );
+  let clock = 0;
+  for (const row of rows) {
+    const tStr = clock === 0 ? "+0ms" : `+${fmtMs(clock)}`;
+    const style = styleForStep(row.t);
+    const labelText = `${ansi ? style.glyph : style.glyph} ${stepLabel(row.t)}`;
+    const label = fg(style.color, padRightVisible(labelText, widths.step));
+    const cells = timelineCells(row);
+    lines.push(
+      `  ${dim(padRightVisible(tStr, widths.time))} ${label} ${padRightVisible(cells.actor, widths.actor)} ${cells.details}`,
+    );
+    if (typeof row.ms === "number" && Number.isFinite(row.ms) && row.ms > 0) clock += row.ms;
+  }
+}
+
+function timelineCells(row: TraceDigest["timeline"][number]): { actor: string; details: string } {
+  switch (row.t) {
+    case "UserInputStep":
+      return { actor: "—", details: typeof row.user === "string" ? `"${row.user}"` : "" };
+    case "SessionInitialStateStep": {
+      const directive =
+        typeof row.directive_context === "string" ? row.directive_context : "on_message";
+      const vars = typeof row.vars === "number" ? `${row.vars} vars seeded` : "";
+      return { actor: directive, details: vars };
+    }
+    case "NodeEntryStateStep":
+      return { actor: typeof row.node === "string" ? row.node : "—", details: "—" };
+    case "BeforeReasoningStep":
+    case "BeforeReasoningIterationStep":
+    case "AfterReasoningStep":
+    case "ReasoningStep":
+      return { actor: typeof row.agent === "string" ? row.agent : "—", details: "—" };
+    case "UpdateTopicStep":
+      return { actor: typeof row.topic === "string" ? row.topic : "—", details: "—" };
+    case "TransitionStep":
+      return {
+        actor: typeof row.from === "string" ? row.from : "—",
+        details: typeof row.to === "string" ? `→ ${row.to}` : "—",
+      };
+    case "EnabledToolsStep": {
+      const tools = Array.isArray(row.tools) ? (row.tools as string[]) : [];
+      return {
+        actor: typeof row.agent === "string" ? row.agent : "—",
+        details: tools.length ? formatList(tools, 4) : "—",
+      };
+    }
+    case "LLMStep":
+    case "LLMExecutionStep": {
+      const prompt =
+        typeof row.prompt_chars === "number"
+          ? `${Math.round(row.prompt_chars / 100) / 10}k prompt`
+          : "prompt ?";
+      const response =
+        typeof row.response_chars === "number"
+          ? `${row.response_chars} response chars`
+          : "response ?";
+      const calls = Array.isArray(row.tool_calls)
+        ? ` · calls ${(row.tool_calls as string[]).join(", ")}`
+        : "";
+      return {
+        actor: typeof row.agent === "string" ? row.agent : "—",
+        details: `${prompt} → ${response}${calls}`,
+      };
+    }
+    case "FunctionStep":
+    case "FunctionCallStep":
+      return {
+        actor: typeof row.fn === "string" ? row.fn : "(unknown)",
+        details: row.has_output === true ? "output captured" : "no output captured",
+      };
+    case "VariableUpdateStep":
+      return {
+        actor: typeof row.var === "string" ? row.var : "(unknown)",
+        details: typeof row.value_preview === "string" ? row.value_preview : "?",
+      };
+    case "PlannerResponseStep": {
+      const parts: string[] = [];
+      if (typeof row.response_type === "string") parts.push(row.response_type);
+      if (row.is_content_safe === true) parts.push("safe ✓");
+      else if (row.is_content_safe === false) parts.push("unsafe ⚠");
+      if (typeof row.response_chars === "number") parts.push(`${row.response_chars} chars`);
+      return {
+        actor: typeof row.response_type === "string" ? row.response_type : "—",
+        details: parts.join(" · "),
+      };
+    }
+    default:
+      return { actor: "—", details: typeof row.hint === "string" ? clipLine(row.hint, 100) : "—" };
+  }
 }
 
 function compactTimelineRows(rows: TraceDigest["timeline"]): TraceDigest["timeline"] {
@@ -292,6 +576,12 @@ function isInternalVariableName(value: unknown): boolean {
     typeof value === "string" &&
     (value.startsWith("__") || value.startsWith("AgentScriptInternal_"))
   );
+}
+
+function shortenPath(path: string): string {
+  const parts = path.split("/").filter(Boolean);
+  if (parts.length <= 4) return path;
+  return `…/${parts.slice(-4).join("/")}`;
 }
 
 function getFirstText(content: unknown[] | undefined): string {

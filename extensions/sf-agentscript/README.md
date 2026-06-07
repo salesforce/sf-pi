@@ -9,12 +9,12 @@ multi-turn evals, and publish/activation workflows. Salesforce calls use
 
 `sf-agentscript` exposes four LLM-callable family tools:
 
-| Tool                    | What it owns                                                                                                                                                                                                                                                                                                |
-| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `agentscript_authoring` | Local `.agent` authoring: create bundles, compile/check or format, inspect structure/references/targets, deterministic readiness review, and structural mutations. Uses `verb` + `mode`.                                                                                                                    |
-| `agentscript_preview`   | Live-org preview: start/send/end sessions, fetch traces, bulk end sessions, and clean stale preview artifacts. Send renders a compact trace waterfall that highlights user-visible variable changes, state snapshots, topic transitions, action calls, and hides internal planner variable spam by default. |
-| `agentscript_eval`      | Regression workflow: generate starter specs, run evals, drill into failures, fetch traces, and resolve active/latest BotVersion ids.                                                                                                                                                                        |
-| `agentscript_lifecycle` | Publish/activation workflow: publish versions, activate/deactivate, list versions, and diagnose/provision Service Agent users.                                                                                                                                                                              |
+| Tool                    | What it owns                                                                                                                                                                                                                                            |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `agentscript_authoring` | Local `.agent` authoring: create bundles, compile/check or format, inspect structure/references/targets, deterministic readiness review, and structural mutations. Uses `verb` + `mode`.                                                                |
+| `agentscript_preview`   | Live-org preview: start/send/end sessions, fetch traces, bulk end sessions, and clean stale preview artifacts. Send renders a rich human Preview Trace Report while keeping the LLM payload compact through a structured digest and raw-trace pointers. |
+| `agentscript_eval`      | Regression workflow: generate starter specs, run evals, drill into failures, fetch traces, and resolve active/latest BotVersion ids.                                                                                                                    |
+| `agentscript_lifecycle` | Publish/activation workflow: publish versions, activate/deactivate, list versions, and diagnose/provision Service Agent users.                                                                                                                          |
 
 ## Authoring API
 
@@ -57,6 +57,15 @@ Auto-resolution validates referenced disk artifacts before use and proceeds only
 - read-only action-target checks when `target_org` is provided
 
 Readiness values are `ready`, `ready_with_warnings`, `blocked`, and `partial`. There is no numeric score and no hidden model call. Pass `output_path` to write a Markdown report.
+
+## Preview Trace Reports
+
+`agentscript_preview action="send"` separates human readability from model context efficiency:
+
+- The TUI/report surface renders a rich Preview Trace Report with turn summary, route path, state changes, key state snapshot, tool activity, action I/O appendix, aligned planner timeline, diagnostics, stats, and drill pointers.
+- The LLM-facing text remains compact: a response, short summary, counts, and pointers. Structured details live in `details.digest`; raw prompts, full state, and full action payloads stay in persisted trace artifacts.
+- Internal planner variable spam is hidden from the human timeline by default, while user-visible state changes show previous → new previews when available.
+- Action input/output previews are screenshot-friendly and bounded/redacted; use `agentscript_preview trace` with the returned `plan_id` for the full raw trace.
 
 ## Runtime Flow
 
