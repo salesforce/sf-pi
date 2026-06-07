@@ -517,6 +517,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.177.0](https://github.com/salesforce/sf-pi/compare/v0.176.0...v0.177.0) (2026-06-07)
+
+
+### Features
+
+* **sf-agentscript:** preflight voice surface readiness ([054c982](https://github.com/salesforce/sf-pi/commit/054c982bc4c1e509ef18857855920c968939befd))
+
 ## [0.176.0](https://github.com/salesforce/sf-pi/compare/v0.175.2...v0.176.0) (2026-06-07)
 
 
