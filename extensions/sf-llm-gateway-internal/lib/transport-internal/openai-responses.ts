@@ -22,7 +22,36 @@ import {
   type SimpleStreamOptions,
 } from "@earendil-works/pi-ai";
 import { streamSfGatewayOpenAI } from "./openai-chat.ts";
+import { injectOpenAiServiceTier } from "./payloads.ts";
 import { withGatewayProviderRetryDefaults } from "./shared.ts";
+
+/**
+ * Wrap stream options with an `onPayload` hook that sets the gateway's
+ * priority service tier on the Responses request body.
+ *
+ * The chat transport (`streamSfGatewayOpenAI`) already injects
+ * `service_tier` for every OpenAI-family model, but gpt-5 family models
+ * route through `/responses` and bypassed that injection entirely — live
+ * probes confirmed those requests ran at `service_tier: default` instead of
+ * `priority`. Applying the same idempotent injection here closes that gap.
+ * `injectOpenAiServiceTier` leaves any caller-provided value untouched, so
+ * the chat fallback path can reuse these options without double-setting.
+ */
+function withPriorityServiceTier(options: SimpleStreamOptions): SimpleStreamOptions {
+  const existingOnPayload = options.onPayload;
+  return {
+    ...options,
+    onPayload: async (payload, payloadModel) => {
+      let nextPayload = payload;
+      if (payload && typeof payload === "object" && !Array.isArray(payload)) {
+        const objectPayload = payload as Record<string, unknown>;
+        injectOpenAiServiceTier(objectPayload);
+        nextPayload = objectPayload;
+      }
+      return existingOnPayload ? existingOnPayload(nextPayload, payloadModel) : nextPayload;
+    },
+  };
+}
 
 export const GPT5_FORCE_CHAT_ENV = "SF_LLM_GATEWAY_INTERNAL_GPT5_FORCE_CHAT";
 export const GPT55_FORCE_CHAT_ENV = "SF_LLM_GATEWAY_INTERNAL_GPT55_FORCE_CHAT";
@@ -66,7 +95,7 @@ export function streamSfGatewayResponses(
   },
   hooks?: Gpt55ResponsesTestHooks,
 ): AssistantMessageEventStream {
-  const gatewayOptions = withGatewayProviderRetryDefaults(options);
+  const gatewayOptions = withPriorityServiceTier(withGatewayProviderRetryDefaults(options));
   const responsesStreamer = hooks?.responsesStreamer ?? streamSimpleOpenAIResponses;
   const chatStreamer = hooks?.chatStreamer ?? ((m, c, o) => streamSfGatewayOpenAI(m, c, o));
 

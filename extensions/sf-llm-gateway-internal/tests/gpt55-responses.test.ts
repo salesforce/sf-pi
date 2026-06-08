@@ -200,6 +200,52 @@ describe("streamSfGatewayResponses", () => {
     return types;
   }
 
+  it("injects service_tier: priority onto the Responses payload", async () => {
+    let observedTier: unknown;
+    const hooks: Gpt55ResponsesTestHooks = {
+      responsesStreamer: (_model, _ctx, options) => {
+        const payload: Record<string, unknown> = { model: "gpt-5.5", input: "hi" };
+        void Promise.resolve(options?.onPayload?.(payload, responsesModel)).then(() => {
+          observedTier = payload.service_tier;
+        });
+        return happyResponsesStreamer();
+      },
+      chatStreamer: emptyChatStreamer,
+    };
+
+    await collect(
+      streamSfGatewayResponses(responsesModel, context, undefined, { chatModel }, hooks),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(observedTier).toBe("priority");
+  });
+
+  it("leaves a caller-provided service_tier untouched", async () => {
+    let observedTier: unknown;
+    const hooks: Gpt55ResponsesTestHooks = {
+      responsesStreamer: (_model, _ctx, options) => {
+        const payload: Record<string, unknown> = {
+          model: "gpt-5.5",
+          input: "hi",
+          service_tier: "flex",
+        };
+        void Promise.resolve(options?.onPayload?.(payload, responsesModel)).then(() => {
+          observedTier = payload.service_tier;
+        });
+        return happyResponsesStreamer();
+      },
+      chatStreamer: emptyChatStreamer,
+    };
+
+    await collect(
+      streamSfGatewayResponses(responsesModel, context, undefined, { chatModel }, hooks),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(observedTier).toBe("flex");
+  });
+
   it("passes the Gateway default provider retry budget to Responses", async () => {
     let observedMaxRetries: number | undefined;
     const hooks: Gpt55ResponsesTestHooks = {
