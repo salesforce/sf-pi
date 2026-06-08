@@ -517,6 +517,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.178.1](https://github.com/salesforce/sf-pi/compare/v0.178.0...v0.178.1) (2026-06-08)
+
+
+### Bug Fixes
+
+* **sf-llm-gateway:** apply priority service tier on gpt-5 Responses path ([ffbf56e](https://github.com/salesforce/sf-pi/commit/ffbf56e0cc4a31b9039976d1b8872a63aa6610b4))
+
 ## [0.178.0](https://github.com/salesforce/sf-pi/compare/v0.177.0...v0.178.0) (2026-06-07)
 
 
