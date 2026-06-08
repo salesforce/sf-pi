@@ -125,19 +125,33 @@ The first pack is **Data Cloud**, addressed by a structured route:
 { "route": { "type": "data-cloud", "destination": "data-spaces" } }
 ```
 
-Packs are grown and re-verified by the dev-time **Navigation Hardening
-Harness**, never by runtime scraping:
+## Navigation Hardening Harness
+
+The dev-time **Navigation Hardening Harness** re-verifies navigation against a
+live org, never by runtime scraping. It covers every navigation surface,
+selected with `--surface` (default `all`):
+
+| `--surface`          | What it checks                                                                                                                   |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `data-cloud`         | The Data Cloud Destination Pack (verify pack entries + discover app/setup nav)                                                   |
+| `setup-destinations` | Every curated Setup Destination opens and renders                                                                                |
+| `routes`             | Structured route templates: `home`, `object-list`, `object-new`, and sampled `record-view` / `list-view` / `record-related-list` |
+| `all`                | All of the above                                                                                                                 |
 
 ```bash
-npm run e2e:sf-browser-harden -- --org <alias>          # verify + discover + screenshots
-npm run e2e:sf-browser-harden -- --org <alias> --mutate # + one reversible mutation lifecycle
+npm run e2e:sf-browser-harden -- --org <alias>                              # all surfaces
+npm run e2e:sf-browser-harden -- --org <alias> --surface setup-destinations # one surface
+npm run e2e:sf-browser-harden -- --org <alias> --surface routes --object Contact
+npm run e2e:sf-browser-harden -- --org <alias> --mutate                     # + reversible mutation lifecycle
 ```
 
-The harness opens each entry against a live org, applies the suggested
-Lightning-Aware Wait, captures one Browser Evidence screenshot per entry plus a
-contact-sheet `report.html`, asserts the expected surface, crawls for candidate
-entries, and prints a pack proposal to review before promotion. Screenshots are
-not committed to git. See ADR 0030.
+For each entry the harness opens it against the org, applies the suggested
+Lightning-Aware Wait, captures one Browser Evidence screenshot, asserts the
+expected surface, and (for Data Cloud) crawls for candidate entries. It writes a
+group-tagged contact-sheet `report.html` and prints confirmed/proposed paths to
+review before promoting to `verified`. Routes that need live data sample the
+org (`--object`, default `Account`) and skip cleanly when none exist.
+Screenshots are not committed to git. See ADR 0030.
 
 Runbooks document the preferred API or owning-extension path, the Browser Evidence path, and the UI Fallback Path for common setup/admin tasks. `live-smoke.md` documents a read-only checklist for validating route resolution, Lightning waits, snapshots, and session-scoped evidence against a connected sandbox/dev org.
 

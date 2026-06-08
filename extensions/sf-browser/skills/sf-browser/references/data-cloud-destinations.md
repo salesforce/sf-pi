@@ -54,13 +54,16 @@ paths.
 
 ## Hardening
 
-Re-verify and extend this pack against a live org:
+Re-verify and extend this pack against a live org. The harness covers every
+navigation surface via `--surface` (default `all`): `data-cloud`,
+`setup-destinations`, and `routes`.
 
 ```bash
-npm run e2e:sf-browser-harden -- --org <alias>
+npm run e2e:sf-browser-harden -- --org <alias>                    # all surfaces
+npm run e2e:sf-browser-harden -- --org <alias> --surface data-cloud
 npm run e2e:sf-browser-harden -- --org <alias> --mutate
 ```
 
 The harness writes one Browser Evidence screenshot per entry plus a
-contact-sheet `report.html`, and prints a pack proposal to review before
-promoting entries to `status: "verified"`.
+group-tagged contact-sheet `report.html`, and prints confirmed/proposed paths
+to review before promoting entries to `status: "verified"`.

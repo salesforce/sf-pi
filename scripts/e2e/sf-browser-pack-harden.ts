@@ -1,6 +1,13 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /**
- * Navigation Hardening Harness for SF Browser Destination Packs.
+ * Navigation Hardening Harness for SF Browser.
+ *
+ * Covers every navigation surface, selected with --surface (default all):
+ *   - data-cloud         : the Data Cloud Destination Pack (verify + discover)
+ *   - setup-destinations : the curated Setup Destination list (open + confirm)
+ *   - routes             : structured route templates (home, object-list,
+ *                          object-new, and sampled record-view / list-view /
+ *                          record-related-list)
  *
  * Dev-time only. NOT a runtime tool, NOT in the manifest tool set, NOT in the
  * boot path, NOT in the default `npm test`. It drives a live, headless
@@ -49,6 +56,9 @@ import {
   type LightningWaitModeValue,
 } from "../../extensions/sf-browser/lib/lightning-wait.ts";
 import { resolveOpenOrgUrl } from "../../extensions/sf-browser/lib/salesforce-open.ts";
+import type { SalesforceRoute } from "../../extensions/sf-browser/lib/salesforce-path-resolver.ts";
+import { resolveVerifiedRoutePath } from "../../extensions/sf-browser/lib/salesforce-route-verifier.ts";
+import { knownSetupDestinationRecords } from "../../extensions/sf-browser/lib/setup-destinations.ts";
 
 // ---------------------------------------------------------------------------
 // Thin pi/ctx shims so we can reuse the SF Browser lib without a live pi host.
@@ -95,30 +105,46 @@ const ctx = { cwd: process.cwd() } as unknown as ExtensionContext;
 // CLI args
 // ---------------------------------------------------------------------------
 
+type Surface = "data-cloud" | "setup-destinations" | "routes";
+const ALL_SURFACES: Surface[] = ["data-cloud", "setup-destinations", "routes"];
+
 interface HarnessOptions {
   targetOrg: string;
-  pack: string;
+  surfaces: Surface[];
+  object: string;
   mutate: boolean;
   limit?: number;
 }
 
 function parseArgs(argv: string[]): HarnessOptions {
-  const opts: Partial<HarnessOptions> = { pack: "data-cloud", mutate: false };
+  const opts: Partial<HarnessOptions> = { mutate: false, object: "Account" };
+  let surface = "all";
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === "--org" || arg === "--target-org") opts.targetOrg = argv[++i];
-    else if (arg === "--pack") opts.pack = argv[++i];
+    else if (arg === "--surface") surface = argv[++i];
+    else if (arg === "--pack")
+      surface = argv[++i]; // back-compat alias (e.g. --pack data-cloud)
+    else if (arg === "--object") opts.object = argv[++i];
     else if (arg === "--mutate") opts.mutate = true;
     else if (arg === "--limit") opts.limit = Number(argv[++i]);
     else if (!arg.startsWith("--") && !opts.targetOrg) opts.targetOrg = arg;
   }
   if (!opts.targetOrg) {
     throw new Error(
-      "Usage: sf-browser-pack-harden --org <alias> [--pack data-cloud] [--mutate] [--limit N]",
+      "Usage: sf-browser-pack-harden --org <alias> [--surface all|data-cloud|setup-destinations|routes] [--object <ApiName>] [--mutate] [--limit N]",
     );
   }
-  if (opts.pack !== "data-cloud") {
-    throw new Error(`Unknown pack ${JSON.stringify(opts.pack)}. Only 'data-cloud' is supported.`);
+  opts.surfaces =
+    surface === "all"
+      ? [...ALL_SURFACES]
+      : (surface.split(",").map((s) => s.trim()) as Surface[]).filter((s) =>
+          ALL_SURFACES.includes(s),
+        );
+  if (!opts.surfaces.length) {
+    throw new Error(
+      `Unknown surface ${JSON.stringify(surface)}. Use all, ${ALL_SURFACES.join(", ")}.`,
+    );
   }
   return opts as HarnessOptions;
 }
@@ -131,6 +157,8 @@ type EntryResult = {
   id: string;
   label: string;
   surface: string;
+  /** Which suite produced this row: data-cloud | setup-destination | route | mutation. */
+  group: string;
   status: DataCloudDestinationRecord["status"];
   path: string;
   outcome: "confirmed" | "broken" | "proposed" | "needs-review" | "skipped";
@@ -140,6 +168,18 @@ type EntryResult = {
   screenshot?: string;
   note?: string;
 };
+
+/** Generic navigable check shared by every suite. */
+interface NavCheck {
+  id: string;
+  label: string;
+  surface: string;
+  path: string;
+  waitMode: LightningWaitModeValue;
+  expectedSurface: string;
+  group: string;
+  status?: DataCloudDestinationRecord["status"];
+}
 
 // ---------------------------------------------------------------------------
 // Browser steps (reuse the real SF Browser lib path)
@@ -247,19 +287,301 @@ async function resolveAppPath(targetOrg: string, appDevName: string): Promise<st
 
 async function main(): Promise<void> {
   const opts = parseArgs(process.argv.slice(2));
-  const sessionId = `harden-${opts.pack}-${timestamp()}`;
+  const sessionId = `harden-${timestamp()}`;
   const evidenceDir = getEvidenceDir(sessionId);
-  const records = dataCloudDestinationRecords().slice(0, opts.limit ?? Infinity);
+  const results: EntryResult[] = [];
+
+  console.log(
+    `SF Browser navigation hardening — surfaces=${opts.surfaces.join(",")} org=${opts.targetOrg}`,
+  );
+  console.log(`Evidence dir: ${evidenceDir}\n`);
+
+  const want = (s: Surface) => opts.surfaces.includes(s);
+  if (want("data-cloud")) {
+    results.push(...(await runDataCloudSuite(opts.targetOrg, sessionId, opts.limit)));
+  }
+  if (want("setup-destinations")) {
+    results.push(...(await runSetupDestinationsSuite(opts.targetOrg, sessionId, opts.limit)));
+  }
+  if (want("routes")) {
+    results.push(...(await runRoutesSuite(opts.targetOrg, sessionId, opts.object)));
+  }
+  if (opts.mutate) {
+    results.push(await runMutationLifecycle(opts.targetOrg, sessionId));
+  }
+
+  writeReport(evidenceDir, opts, results);
+  printSummary(results, evidenceDir);
+}
+
+// ---------------------------------------------------------------------------
+// Suites
+// ---------------------------------------------------------------------------
+
+/** Generic open -> wait -> screenshot -> classify, shared by every suite. */
+async function verifyNav(
+  targetOrg: string,
+  sessionId: string,
+  check: NavCheck,
+): Promise<EntryResult> {
+  const base = {
+    id: check.id,
+    label: check.label,
+    surface: check.surface,
+    group: check.group,
+    status: check.status ?? ("verified" as const),
+    path: check.path,
+    expected: check.expectedSurface,
+  };
+  try {
+    await openPath(targetOrg, check.path);
+    const observed = await waitAndClassify(check.waitMode);
+    const shot = await screenshot(check.id, sessionId);
+    const reachable = observed.outcome !== "ambiguous";
+    return {
+      ...base,
+      outcome: reachable ? "confirmed" : "needs-review",
+      observedOutcome: observed.outcome,
+      observedUrl: await currentUrlPath(),
+      screenshot: path.basename(shot),
+      note: reachable
+        ? undefined
+        : "Lightning wait stayed ambiguous; inspect the screenshot before trusting this path.",
+    };
+  } catch (error) {
+    return { ...base, outcome: "broken", note: errorText(error) };
+  }
+}
+
+/** Curated Setup Destinations: open each known path and confirm it renders. */
+async function runSetupDestinationsSuite(
+  targetOrg: string,
+  sessionId: string,
+  limit?: number,
+): Promise<EntryResult[]> {
+  const records = knownSetupDestinationRecords().slice(0, limit ?? Infinity);
+  const out: EntryResult[] = [];
+  for (const d of records) {
+    out.push(
+      await verifyNav(targetOrg, sessionId, {
+        id: `setup-${d.id}`,
+        label: d.label,
+        surface: "setup-node",
+        path: d.path,
+        waitMode: d.suggestedWait.lightning,
+        expectedSurface: d.expectedSurface,
+        group: "setup-destination",
+      }),
+    );
+  }
+  return out;
+}
+
+/** Structured routes: open template routes, sampling live data where needed. */
+async function runRoutesSuite(
+  targetOrg: string,
+  sessionId: string,
+  object: string,
+): Promise<EntryResult[]> {
+  const out: EntryResult[] = [];
+  const G = "route";
+
+  out.push(
+    await verifyNav(targetOrg, sessionId, {
+      id: "route-home",
+      label: "Home",
+      surface: "home",
+      path: "/lightning/page/home",
+      waitMode: "app-ready",
+      expectedSurface: "Lightning home page",
+      group: G,
+    }),
+  );
+  out.push(
+    await verifyRoute(
+      targetOrg,
+      sessionId,
+      "route-object-list",
+      `Object list (${object})`,
+      { type: "object-list", objectApiName: object },
+      "app-ready",
+      G,
+    ),
+  );
+  out.push(
+    await verifyRoute(
+      targetOrg,
+      sessionId,
+      "route-object-new",
+      `New ${object}`,
+      { type: "object-new", objectApiName: object },
+      "navigation-ready",
+      G,
+    ),
+  );
+
+  // Routes that need live data: sample from the org, skip cleanly if absent.
+  const conn = await connFromAlias(targetOrg);
+  const recordId = await sampleRecordId(conn, object);
+  out.push(
+    recordId
+      ? await verifyRoute(
+          targetOrg,
+          sessionId,
+          "route-record-view",
+          `${object} record view`,
+          { type: "record-view", objectApiName: object, recordId },
+          "record-view",
+          G,
+        )
+      : skippedRoute("route-record-view", `No ${object} record to sample`, G),
+  );
+
+  const listView = await sampleListView(conn, object);
+  out.push(
+    listView
+      ? await verifyRoute(
+          targetOrg,
+          sessionId,
+          "route-list-view",
+          `${object} list view`,
+          { type: "list-view", objectApiName: object, filterName: listView },
+          "app-ready",
+          G,
+        )
+      : skippedRoute("route-list-view", `No list view found for ${object}`, G),
+  );
+
+  const related = await sampleRelatedList(conn, object);
+  out.push(
+    recordId && related
+      ? await verifyRoute(
+          targetOrg,
+          sessionId,
+          "route-related-list",
+          `${object} related list`,
+          {
+            type: "record-related-list",
+            objectApiName: object,
+            recordId,
+            relatedListApiName: related,
+          },
+          "app-ready",
+          G,
+        )
+      : skippedRoute("route-related-list", `No related list / record to sample for ${object}`, G),
+  );
+
+  return out;
+}
+
+/** Resolve a structured route to a verified path, then open + classify it. */
+async function verifyRoute(
+  targetOrg: string,
+  sessionId: string,
+  id: string,
+  label: string,
+  route: SalesforceRoute,
+  waitMode: LightningWaitModeValue,
+  group: string,
+): Promise<EntryResult> {
+  try {
+    const verified = await resolveVerifiedRoutePath(targetOrg, route);
+    return await verifyNav(targetOrg, sessionId, {
+      id,
+      label,
+      surface: route.type,
+      path: verified.path,
+      waitMode,
+      expectedSurface: "Lightning page",
+      group,
+    });
+  } catch (error) {
+    return {
+      id,
+      label,
+      surface: route.type,
+      group,
+      status: "verified",
+      path: "",
+      outcome: "broken",
+      expected: "Lightning page",
+      note: errorText(error),
+    };
+  }
+}
+
+function skippedRoute(id: string, note: string, group: string): EntryResult {
+  return {
+    id,
+    label: id,
+    surface: "route",
+    group,
+    status: "candidate",
+    path: "",
+    outcome: "skipped",
+    expected: "Lightning page",
+    note,
+  };
+}
+
+async function sampleRecordId(
+  conn: Awaited<ReturnType<typeof connFromAlias>>,
+  object: string,
+): Promise<string | undefined> {
+  try {
+    const result = (await conn.query(`SELECT Id FROM ${object} LIMIT 1`)) as {
+      records?: Array<{ Id?: string }>;
+    };
+    return result.records?.[0]?.Id;
+  } catch {
+    return undefined;
+  }
+}
+
+async function sampleListView(
+  conn: Awaited<ReturnType<typeof connFromAlias>>,
+  object: string,
+): Promise<string | undefined> {
+  try {
+    const response = (await conn.request(
+      `/services/data/v${conn.version}/ui-api/list-info/${object}?pageSize=5`,
+    )) as { lists?: Array<{ id?: string; apiName?: string; developerName?: string }> };
+    const first = response.lists?.[0];
+    return first?.apiName || first?.developerName || first?.id || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+async function sampleRelatedList(
+  conn: Awaited<ReturnType<typeof connFromAlias>>,
+  object: string,
+): Promise<string | undefined> {
+  try {
+    const response = (await conn.request(
+      `/services/data/v${conn.version}/ui-api/related-list-info/${object}`,
+    )) as { relatedLists?: Array<{ relatedListId?: string }> };
+    return response.relatedLists?.[0]?.relatedListId || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Data Cloud pack suite: verify pack entries + discover app/setup nav. */
+async function runDataCloudSuite(
+  targetOrg: string,
+  sessionId: string,
+  limit?: number,
+): Promise<EntryResult[]> {
+  const records = dataCloudDestinationRecords().slice(0, limit ?? Infinity);
   const results: EntryResult[] = [];
   const navLinks: Array<{ label: string; href: string }> = [];
-
-  console.log(`SF Browser pack hardening — pack=${opts.pack} org=${opts.targetOrg}`);
-  console.log(`Evidence dir: ${evidenceDir}\n`);
 
   // Resolve the app open path once for app-tab discovery.
   const appRecord = records.find((r) => r.discoveryHint?.app);
   const appDevName = appRecord?.discoveryHint?.app;
-  const appPath = appDevName ? await resolveAppPath(opts.targetOrg, appDevName) : undefined;
+  const appPath = appDevName ? await resolveAppPath(targetOrg, appDevName) : undefined;
   if (appDevName && !appPath) {
     console.warn(`! Could not resolve app path for ${appDevName}; app-tab discovery limited.\n`);
   }
@@ -268,7 +590,7 @@ async function main(): Promise<void> {
   // nav links for discovery.
   if (appRecord && appPath) {
     try {
-      await openPath(opts.targetOrg, appPath);
+      await openPath(targetOrg, appPath);
       const observed = await waitAndClassify("app-ready");
       const shot = await screenshot("app", sessionId);
       navLinks.push(...(await collectNavLinks()));
@@ -276,6 +598,7 @@ async function main(): Promise<void> {
         id: appRecord.id,
         label: appRecord.label,
         surface: appRecord.surface,
+        group: "data-cloud",
         status: appRecord.status,
         path: appPath,
         outcome: observed.outcome === "ambiguous" ? "needs-review" : "confirmed",
@@ -295,7 +618,7 @@ async function main(): Promise<void> {
 
     // VERIFY entries that have a concrete path.
     if (record.path) {
-      results.push(await verifyEntry(opts.targetOrg, record, sessionId));
+      results.push(await verifyEntry(targetOrg, record, sessionId));
       continue;
     }
 
@@ -307,6 +630,7 @@ async function main(): Promise<void> {
         id: record.id,
         label: record.label,
         surface: record.surface,
+        group: "data-cloud",
         status: record.status,
         path: match.href,
         outcome: "proposed",
@@ -318,6 +642,7 @@ async function main(): Promise<void> {
         id: record.id,
         label: record.label,
         surface: record.surface,
+        group: "data-cloud",
         status: record.status,
         path: "",
         outcome: "needs-review",
@@ -332,14 +657,9 @@ async function main(): Promise<void> {
   // DISCOVER setup-node children from the Data Cloud Setup Home left nav.
   // These are real /lightning/setup/... anchors (reliable, unlike JS app tabs),
   // so they are proposed as setup-node entries the human can promote directly.
-  results.push(...(await discoverSetupNodes(opts.targetOrg)));
+  results.push(...(await discoverSetupNodes(targetOrg)));
 
-  if (opts.mutate) {
-    results.push(await runMutationLifecycle(opts.targetOrg, sessionId));
-  }
-
-  writeReport(evidenceDir, opts, results);
-  printSummary(results, evidenceDir);
+  return results;
 }
 
 /**
@@ -368,6 +688,7 @@ async function discoverSetupNodes(targetOrg: string): Promise<EntryResult[]> {
         id,
         label: link.label,
         surface: "setup-node",
+        group: "data-cloud",
         status: "candidate",
         path: link.href,
         outcome: "proposed",
@@ -382,6 +703,7 @@ async function discoverSetupNodes(targetOrg: string): Promise<EntryResult[]> {
         id: "setup-node-discovery",
         label: "Setup node discovery",
         surface: "setup-node",
+        group: "data-cloud",
         status: "candidate",
         path: "",
         outcome: "broken",
@@ -440,6 +762,7 @@ async function verifyEntry(
       id: record.id,
       label: record.label,
       surface: record.surface,
+      group: "data-cloud",
       status: record.status,
       path: record.path,
       outcome: reachable ? "confirmed" : "needs-review",
@@ -495,6 +818,7 @@ async function runMutationLifecycle(targetOrg: string, sessionId: string): Promi
       id,
       label: "Mutation lifecycle (Data Spaces, no-save)",
       surface: "builder-page",
+      group: "mutation",
       status: "candidate",
       path: mutablePath,
       outcome: clickOutcome === "clicked" && reversible ? "confirmed" : "needs-review",
@@ -508,6 +832,7 @@ async function runMutationLifecycle(targetOrg: string, sessionId: string): Promi
       id,
       label: "Mutation lifecycle (Data Spaces, no-save)",
       surface: "builder-page",
+      group: "mutation",
       status: "candidate",
       path: mutablePath,
       outcome: "broken",
@@ -530,16 +855,16 @@ function writeReport(evidenceDir: string, opts: HarnessOptions, results: EntryRe
 
 function renderMarkdown(opts: HarnessOptions, results: EntryResult[]): string {
   const lines = [
-    `# SF Browser pack hardening — ${opts.pack}`,
+    `# SF Browser navigation hardening — ${opts.surfaces.join(", ")}`,
     ``,
     `Org: ${opts.targetOrg}  ·  Generated: ${new Date().toISOString()}`,
     ``,
-    `| id | surface | outcome | observed | path | note |`,
-    `| --- | --- | --- | --- | --- | --- |`,
+    `| group | id | surface | outcome | observed | path | note |`,
+    `| --- | --- | --- | --- | --- | --- | --- |`,
   ];
-  for (const r of results) {
+  for (const r of sortByGroup(results)) {
     lines.push(
-      `| ${r.id} | ${r.surface} | ${r.outcome} | ${r.observedOutcome ?? ""} | ${r.path || ""} | ${(r.note ?? "").replace(/\|/g, "\\|")} |`,
+      `| ${r.group} | ${r.id} | ${r.surface} | ${r.outcome} | ${r.observedOutcome ?? ""} | ${r.path || ""} | ${(r.note ?? "").replace(/\|/g, "\\|")} |`,
     );
   }
   return lines.join("\n") + "\n";
@@ -555,7 +880,7 @@ function renderHtml(opts: HarnessOptions, results: EntryResult[]): string {
         ${img}
         <figcaption>
           <strong>${r.id}</strong> <span class="badge">${r.outcome}</span><br/>
-          <small>${r.surface} · observed: ${r.observedOutcome ?? "—"}</small><br/>
+          <small>${r.group} · ${r.surface} · observed: ${r.observedOutcome ?? "—"}</small><br/>
           <code>${r.path || "(no path)"}</code>
           ${r.note ? `<p>${escapeHtml(r.note)}</p>` : ""}
         </figcaption>
@@ -563,7 +888,7 @@ function renderHtml(opts: HarnessOptions, results: EntryResult[]): string {
     })
     .join("\n");
   return `<!doctype html><html><head><meta charset="utf-8"/>
-<title>SF Browser pack hardening — ${opts.pack}</title>
+<title>SF Browser navigation hardening — ${escapeHtml(opts.surfaces.join(", "))}</title>
 <style>
   body { font: 14px/1.4 -apple-system, system-ui, sans-serif; margin: 24px; background: #0b1021; color: #e6e9f5; }
   h1 { font-size: 18px; }
@@ -580,27 +905,36 @@ function renderHtml(opts: HarnessOptions, results: EntryResult[]): string {
   .needs-review .badge { background: #9a7d1f; }
   p { color: #b9c0db; font-size: 12px; }
 </style></head><body>
-<h1>SF Browser pack hardening — ${opts.pack}</h1>
+<h1>SF Browser navigation hardening — ${escapeHtml(opts.surfaces.join(", "))}</h1>
 <p>Org: ${escapeHtml(opts.targetOrg)} · Generated: ${new Date().toISOString()}</p>
 <div class="grid">${cards}</div>
 </body></html>`;
 }
 
 function printSummary(results: EntryResult[], evidenceDir: string): void {
-  const by = (o: EntryResult["outcome"]) => results.filter((r) => r.outcome === o).length;
+  const count = (rows: EntryResult[], o: EntryResult["outcome"]) =>
+    rows.filter((r) => r.outcome === o).length;
+  const groups = [...new Set(results.map((r) => r.group))];
   console.log(`\nResults: ${results.length} entries`);
-  console.log(
-    `  confirmed=${by("confirmed")} proposed=${by("proposed")} needs-review=${by("needs-review")} broken=${by("broken")}`,
-  );
+  for (const group of groups) {
+    const rows = results.filter((r) => r.group === group);
+    console.log(
+      `  [${group}] confirmed=${count(rows, "confirmed")} proposed=${count(rows, "proposed")} needs-review=${count(rows, "needs-review")} skipped=${count(rows, "skipped")} broken=${count(rows, "broken")}`,
+    );
+  }
   console.log(`\nReport: ${path.join(evidenceDir, "report.html")}`);
 
   const proposals = results.filter((r) => r.outcome === "proposed" || r.outcome === "confirmed");
   if (proposals.length) {
-    console.log(`\nPack proposal (review, then promote to status:"verified" with these paths):`);
-    for (const r of proposals) {
-      console.log(`  ${r.id.padEnd(22)} ${r.path}`);
+    console.log(`\nProposals / confirmed paths (review before promoting to status:"verified"):`);
+    for (const r of sortByGroup(proposals)) {
+      console.log(`  [${r.group}] ${r.id.padEnd(24)} ${r.path}`);
     }
   }
+}
+
+function sortByGroup(results: EntryResult[]): EntryResult[] {
+  return [...results].sort((a, b) => a.group.localeCompare(b.group) || a.id.localeCompare(b.id));
 }
 
 // ---------------------------------------------------------------------------
@@ -616,6 +950,7 @@ function brokenResult(
     id: record.id,
     label: record.label,
     surface: record.surface,
+    group: "data-cloud",
     status: record.status,
     path: pathValue,
     outcome: "broken",
