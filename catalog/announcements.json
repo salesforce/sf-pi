@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.179.0-2026-06-08",
-  "latestVersion": "0.179.0",
+  "revision": "release-0.180.0-2026-06-08",
+  "latestVersion": "0.180.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.179.0",
+      "id": "release-0.180.0",
       "kind": "update",
-      "title": "sf-pi v0.179.0 — sf-browser: Data Cloud Destination Pack + navigation hardening harness",
+      "title": "sf-pi v0.180.0 — sf-browser: extend navigation hardening harness to all surfaces",
       "publishedAt": "2026-06-08T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.179.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.180.0",
       "severity": "info",
-      "body": "sf-browser: Data Cloud Destination Pack + navigation hardening harness"
+      "body": "sf-browser: extend navigation hardening harness to all surfaces — docs: keep README pi floor at &gt;=0.76.0 to match package.json"
     },
     {
       "id": "pi-0.73-required",

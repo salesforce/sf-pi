@@ -517,6 +517,18 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.180.0](https://github.com/salesforce/sf-pi/compare/v0.179.0...v0.180.0) (2026-06-08)
+
+
+### Features
+
+* **sf-browser:** extend navigation hardening harness to all surfaces ([7537765](https://github.com/salesforce/sf-pi/commit/7537765e15d024c82a83bb7a6a964717d1a6ed0b))
+
+
+### Bug Fixes
+
+* **docs:** keep README pi floor at &gt;=0.76.0 to match package.json ([bdd2884](https://github.com/salesforce/sf-pi/commit/bdd2884496a9fc2f88b1cf4809447619eea77ffa))
+
 ## [0.179.0](https://github.com/salesforce/sf-pi/compare/v0.178.1...v0.179.0) (2026-06-08)
 
 
