@@ -517,6 +517,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.179.0](https://github.com/salesforce/sf-pi/compare/v0.178.1...v0.179.0) (2026-06-08)
+
+
+### Features
+
+* **sf-browser:** Data Cloud Destination Pack + navigation hardening harness ([0c053a2](https://github.com/salesforce/sf-pi/commit/0c053a2f9277445dac7fd3d858222adce267e0f9))
+
 ## [0.178.1](https://github.com/salesforce/sf-pi/compare/v0.178.0...v0.178.1) (2026-06-08)
 
 
