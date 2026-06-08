@@ -107,8 +107,37 @@ SF Browser includes documentation-first setup runbooks for API-first/browser-rea
 ```text
 extensions/sf-browser/skills/sf-browser/references/setup-runbooks.md
 extensions/sf-browser/skills/sf-browser/references/setup-destinations.md
+extensions/sf-browser/skills/sf-browser/references/data-cloud-destinations.md
 extensions/sf-browser/skills/sf-browser/references/live-smoke.md
 ```
+
+## Destination Packs
+
+A **Destination Pack** gives comprehensive navigation for one product area
+without bloating the small curated Setup Destination list or scraping menus at
+runtime. Each entry is typed by surface (`setup-node`, `app-tab`,
+`builder-page`) and is `verified`, `candidate`, or `broken`; the runtime agent
+navigates only to `verified` entries.
+
+The first pack is **Data Cloud**, addressed by a structured route:
+
+```json
+{ "route": { "type": "data-cloud", "destination": "data-spaces" } }
+```
+
+Packs are grown and re-verified by the dev-time **Navigation Hardening
+Harness**, never by runtime scraping:
+
+```bash
+npm run e2e:sf-browser-harden -- --org <alias>          # verify + discover + screenshots
+npm run e2e:sf-browser-harden -- --org <alias> --mutate # + one reversible mutation lifecycle
+```
+
+The harness opens each entry against a live org, applies the suggested
+Lightning-Aware Wait, captures one Browser Evidence screenshot per entry plus a
+contact-sheet `report.html`, asserts the expected surface, crawls for candidate
+entries, and prints a pack proposal to review before promotion. Screenshots are
+not committed to git. See ADR 0030.
 
 Runbooks document the preferred API or owning-extension path, the Browser Evidence path, and the UI Fallback Path for common setup/admin tasks. `live-smoke.md` documents a read-only checklist for validating route resolution, Lightning waits, snapshots, and session-scoped evidence against a connected sandbox/dev org.
 
@@ -165,6 +194,7 @@ extensions/sf-browser/
     artifacts.ts            ← implementation module
     browser-launch-diagnostics.ts← implementation module
     constants.ts            ← implementation module
+    data-cloud-pack.ts      ← implementation module
     editor-surfaces.ts      ← implementation module
     evidence-report.ts      ← implementation module
     failure-diagnostics.ts  ← implementation module
@@ -196,6 +226,7 @@ extensions/sf-browser/
   tests/
     agent-browser.test.ts   ← unit / smoke test
     artifacts.test.ts       ← unit / smoke test
+    data-cloud-pack.test.ts ← unit / smoke test
     editor-surfaces.test.ts ← unit / smoke test
     evidence-report.test.ts ← unit / smoke test
     failure-diagnostics.test.ts← unit / smoke test

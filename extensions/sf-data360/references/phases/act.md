@@ -34,10 +34,10 @@ Data 360 Act phase. Use when managing activations, activation targets, downstrea
 - `data360_activate` `activation_target.list` (rest_operation, read) — List activation targets.
 - `data360_activate` `activation.get` (rest_operation, read) — Get one activation by id.
 - `data360_activate` `activation.list` (rest_operation, read) — List activations with optional pagination.
-- `data360_activate` `activation.list.activation_list` (rest_operation, read) — List activations.
-- `data360_activate` `data_action.list` (rest_operation, read) — List Data 360 data actions.
-- `data360_activate` `dataaction_target.get` (rest_operation, read) — Get one data action target.
-- `data360_activate` `dataaction_target.list` (rest_operation, read) — List data action targets.
+- `data360_activate` `activation.list.compat` (rest_operation, read) — List activations.
+- `data360_activate` `data_action_target.get` (rest_operation, read) — Get one data action target.
+- `data360_activate` `data_action_target.list` (rest_operation, read) — List data action targets.
+- `data360_activate` `data_action.get` (rest_operation, read) — Get one data action.
 
 ## Cross-phase routing
 

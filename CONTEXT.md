@@ -576,6 +576,18 @@ _Avoid_: success, completed, reliable wait, hidden timeout
 A named **SF Browser** wait for Salesforce Lightning semantic state such as app readiness, record view, modal state, toast visibility, spinner completion, or save outcome.
 _Avoid_: bare sleep, DOMContentLoaded-only readiness, generic network idle, hidden compound step
 
+**Destination Pack**:
+A generated, live-verified set of **SF Browser** navigation destinations for one product area, kept separate from the intentionally small curated **Setup Destination** list. Each entry is typed by **Navigation Surface**, carries its path or path pattern, expected surface, suggested wait, and focus terms, and is marked verified, candidate, or broken. A pack is comprehensive for its area without making the curated list a sitemap, and the runtime agent only ever reads verified entries.
+_Avoid_: hand-maintained sitemap, runtime live menu scraper, unverified entries in the runtime path, second copy of SF Data 360 API workflows
+
+**Navigation Surface**:
+The **SF Browser** discriminator that classifies a **Destination Pack** entry as a `setup-node` (a `/lightning/setup/...` admin page), an `app-tab` (a Lightning app tab, usually an object list view), or a `builder-page` (a record, detail, or builder deep link reached from a tab). It lets one uniform resolve→open→wait→snapshot workflow carry the real per-surface differences in URL shape, expected Lightning surface, and verification.
+_Avoid_: untyped raw paths, separate resolver per surface, surface-specific agent workflows
+
+**Navigation Hardening Harness**:
+A dev-time, re-runnable **SF Browser** loop that opens each **Destination Pack** entry against a live org, applies the suggested **Lightning-Aware Wait**, captures a **Browser Evidence** screenshot, and asserts the entry's expected **Navigation Surface**. It may recursively crawl a product area's Setup tree and app navigation to emit candidate entries for human review, and it marks changed or unreachable entries broken. Its output feeds back into the pack; re-running it catches Salesforce navigation drift. It is the mechanism behind recursively hardening navigation, and it never auto-commits discovered entries into the runtime pack.
+_Avoid_: runtime navigation path, auto-committed unreviewed entries, CI regression suite, replacement for API-first verification
+
 **SF Pi Reference Map**:
 A compact guide that points agents from SF Brain to repo-local sources of truth such as the extension catalog, command reference, extension READMEs, and bundled progressive skills. It may mention active SF skills as a runtime signal, but must not assume user-global skill-library paths.
 _Avoid_: duplicated docs, hardcoded personal skill paths, Salesforce encyclopedia
@@ -679,6 +691,11 @@ _Avoid_: every available gateway model, benchmark target, broad live-test suite
 - **UI Fallback Recovery** captures the failure, verifies state through APIs when possible, then navigates to a known safe destination before retrying.
 - An **Ambiguous Wait** should prompt snapshot/API verification instead of being reported as an unconditional success.
 - A **Lightning-Aware Wait** keeps browser operations composable while avoiding repeated ad hoc Lightning readiness heuristics.
+- A **Destination Pack** gives **SF Browser** comprehensive navigation for one product area while keeping the curated **Setup Destination** list intentionally small and not a sitemap.
+- A **Destination Pack** entry is typed by **Navigation Surface** so one uniform navigation workflow carries the real differences between setup nodes, app tabs, and builder pages.
+- The runtime agent reads only verified **Destination Pack** entries; the **Navigation Hardening Harness** is the dev-time loop that discovers, verifies, screenshots, and proposes entries without acting as a runtime live menu scraper.
+- A **Navigation Hardening Harness** captures **Browser Evidence** per entry and asserts the expected **Navigation Surface**, so navigation drift is caught by re-running it rather than by a runtime crawl.
+- A **Destination Pack** stays inside the **D360 Domain Boundary** by owning only navigation, UI evidence, and UI mutation fallback; **SF Data 360** still owns Data Cloud API workflows.
 - **First-Class Data 360 Parity** guides how **SF Data 360** expands its workflow coverage.
 - **Generated Data 360 Parity** is the preferred delivery style for broad **First-Class Data 360 Parity**.
 - A **Runtime Code Budget** constrains hand-written **Runtime Surfaces**, not generated parity data.

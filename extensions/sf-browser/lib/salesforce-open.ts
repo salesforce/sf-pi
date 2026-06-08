@@ -102,6 +102,9 @@ async function resolveOpenPathForBrowser(
   input: OpenOrgInput,
 ): Promise<{ path?: string; verifiedRoute?: VerifiedRouteResult }> {
   if (!input.route) return { path: resolveOpenPath(input) };
+  // Data Cloud routes resolve against the local verified Destination Pack, like
+  // setup destinations; they are known Lightning paths and need no API check.
+  if (input.route.type === "data-cloud") return { path: resolveOpenPath(input) };
   const verifiedRoute = await resolveVerifiedRoutePath(targetOrg, input.route);
   return { path: verifiedRoute.path, verifiedRoute };
 }

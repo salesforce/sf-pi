@@ -7,6 +7,11 @@
  * curated Setup Destinations.
  */
 import {
+  formatNavigableDataCloudDestinations,
+  getDataCloudDestination,
+  isNavigable,
+} from "./data-cloud-pack.ts";
+import {
   formatKnownSetupDestinations,
   knownSetupDestinations,
   normalizeSetupDestination,
@@ -16,6 +21,7 @@ import {
 export type SalesforceRoute =
   | { type: "home" }
   | { type: "setup"; destination: string }
+  | { type: "data-cloud"; destination: string }
   | { type: "object-list"; objectApiName: string }
   | { type: "object-new"; objectApiName: string }
   | { type: "record-view"; objectApiName: string; recordId: string }
@@ -54,7 +60,9 @@ export type SalesforcePathResolverResult =
         | "multiple_targets"
         | "invalid_route"
         | "unknown_setup_destination"
-        | "ambiguous_setup_destination";
+        | "ambiguous_setup_destination"
+        | "unknown_data_cloud_destination"
+        | "unverified_data_cloud_destination";
       message: string;
       candidates?: SetupDestinationCandidate[];
     };
@@ -132,6 +140,8 @@ function resolveRoute(route: SalesforceRoute): SalesforcePathResolverResult {
       return { ok: true, path: "/lightning/page/home", kind: "home" };
     case "setup":
       return resolveSetupPath(route.destination);
+    case "data-cloud":
+      return resolveDataCloudPath(route.destination);
     case "object-list": {
       const object = validateObjectApiName(route.objectApiName);
       if (object.valid === false) return object.error;
@@ -184,6 +194,34 @@ function resolveRoute(route: SalesforceRoute): SalesforcePathResolverResult {
         `Unsupported route type: ${JSON.stringify((route as { type?: unknown }).type)}.`,
       );
   }
+}
+
+function resolveDataCloudPath(rawDestination: string | undefined): SalesforcePathResolverResult {
+  if (!rawDestination?.trim()) return invalidRoute("Data Cloud destination is required.");
+  const record = getDataCloudDestination(rawDestination);
+  if (!record) {
+    return {
+      ok: false,
+      reason: "unknown_data_cloud_destination",
+      message: `Unknown Data Cloud destination ${JSON.stringify(
+        rawDestination,
+      )}. Navigable destinations: ${formatNavigableDataCloudDestinations()}`,
+    };
+  }
+  if (!isNavigable(record)) {
+    return {
+      ok: false,
+      reason: "unverified_data_cloud_destination",
+      message: `Data Cloud destination ${JSON.stringify(rawDestination)} is ${record.status} and not navigable at runtime. Run the navigation hardening harness to verify it. Navigable destinations: ${formatNavigableDataCloudDestinations()}`,
+    };
+  }
+  return {
+    ok: true,
+    path: record.path,
+    kind: "data-cloud",
+    destination: record.id,
+    confidence: 1,
+  };
 }
 
 function resolveSetupPath(rawDestination: string | undefined): SalesforcePathResolverResult {

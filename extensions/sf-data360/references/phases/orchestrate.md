@@ -28,14 +28,14 @@ Data 360 Orchestrate phase. Use for cross-phase Data 360 planning, pipeline setu
 
 ## Data 360 family actions
 
+- `data360_orchestrate` `activate_segment.plan` (journey, read) — Plan activation target and activation creation steps without mutation.
+- `data360_orchestrate` `agent_behavior_investigation.plan` (journey, read) — Plan Agentforce STDM and platform tracing queries for an agent/session investigation.
+- `data360_orchestrate` `agent_behavior_investigation.run` (journey, read) — Run read-only Agentforce STDM and platform tracing investigation actions and summarize findings.
+- `data360_orchestrate` `build_segment.plan` (journey, read) — Plan calculated insight and segment creation/publish steps without mutation.
+- `data360_orchestrate` `cleanup.discover_owned` (journey, read) — Discover explicit cleanup candidates by safe prefixes and produce cleanup.plan parameters without deleting anything.
 - `data360_orchestrate` `cleanup.plan` (journey, read) — Plan cleanup of explicitly owned Data 360 resources.
 - `data360_orchestrate` `ingest_csv.plan` (journey, read) — Plan Route A local CSV ingestion through Ingestion API source schema, data stream, tenant ingest job, and SQL verification.
-- `data360_orchestrate` `manifest.plan` (journey, read) — Plan a multi-file Data 360 CSV ingestion manifest without mutation.
-- `data360_orchestrate` `manifest.validate` (journey, read) — Validate a Data 360 CSV ingestion manifest.
-- `data360_orchestrate` `cleanup.run` (journey, destructive) — Run cleanup of explicitly owned Data 360 resources after confirmation.
-- `data360_orchestrate` `ingest_auth.pkce_interactive` (journey, confirmed) — Run an interactive localhost PKCE flow for Data Cloud ingest auth and return sanitized in-memory auth session metadata.
-- `data360_orchestrate` `ingest_csv.run` (journey, confirmed) — Run a single CSV ingestion journey or dry-run its manifest-backed plan.
-- `data360_orchestrate` `manifest.run` (journey, confirmed) — Run a Data 360 CSV ingestion manifest through source schema, streams, jobs, and verification.
+- `data360_orchestrate` `intent.plan` (journey, read) — Route a natural-language Data 360 user utterance to a recommended journey and next action.
 
 ## Cross-phase routing
 

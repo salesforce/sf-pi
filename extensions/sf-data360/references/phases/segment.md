@@ -29,13 +29,13 @@ Data 360 Segment phase. Use when managing audience segments, segment publish flo
 
 ## Data 360 family actions
 
-- `data360_segment` `ci_run.status` (rest_operation, read) — Get calculated insight run status.
 - `data360_segment` `ci.get` (rest_operation, read) — Get one calculated insight by API name.
 - `data360_segment` `ci.list` (rest_operation, read) — List calculated insights.
-- `data360_segment` `ci.list.ci_list` (rest_operation, read) — List all calculated insights.
+- `data360_segment` `ci.list.compat` (rest_operation, read) — List all calculated insights.
+- `data360_segment` `ci.run.status` (rest_operation, read) — Get calculated insight run status.
 - `data360_segment` `segment.get` (rest_operation, read) — Get one segment by id.
 - `data360_segment` `segment.list` (rest_operation, read) — List segments with optional pagination.
-- `data360_segment` `segment.list.segment_list` (rest_operation, read) — List all segments.
+- `data360_segment` `segment.list.compat` (rest_operation, read) — List all segments.
 - `data360_segment` `ci.validate` (rest_operation, safe_post) — Validate calculated insight SQL before create/update.
 
 ## Cross-phase routing

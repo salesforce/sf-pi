@@ -11,6 +11,13 @@ export const SalesforceRouteSchema = Type.Union([
     }),
   }),
   Type.Object({
+    type: Type.Literal("data-cloud"),
+    destination: Type.String({
+      description:
+        "Data Cloud Destination Pack entry id, such as setup-home. Only verified entries are navigable at runtime.",
+    }),
+  }),
+  Type.Object({
     type: Type.Literal("object-list"),
     objectApiName: Type.String({ description: "Salesforce object API name, such as Account." }),
   }),

@@ -85,6 +85,10 @@ export async function verifySalesforceRoute(
       throw new Error(
         "Setup routes are resolved through the curated local Setup Destination registry.",
       );
+    case "data-cloud":
+      throw new Error(
+        "Data Cloud routes are resolved through the local verified Data Cloud Destination Pack.",
+      );
     case "object-list": {
       const object = await verifyObject(conn, route.objectApiName);
       return { path: `/lightning/o/${object.name}/list`, objectApiName: object.name };
