@@ -98,6 +98,10 @@ export async function openCommandPanel<T extends string>(
   ctx: ExtensionCommandContext,
   options: CommandPanelOptions<T>,
 ): Promise<T | null> {
+  if (ctx.mode !== "tui") {
+    return openDialogCommandPanel(ctx, options);
+  }
+
   const state = options.state;
   const glyphs = resolveUiGlyphs(ctx.cwd);
 
@@ -180,6 +184,33 @@ export async function openCommandPanel<T extends string>(
   }
 
   return result ?? null;
+}
+
+async function openDialogCommandPanel<T extends string>(
+  ctx: ExtensionCommandContext,
+  options: CommandPanelOptions<T>,
+): Promise<T | null> {
+  if (!ctx.hasUI) return null;
+
+  const actions = typeof options.actions === "function" ? options.actions() : options.actions;
+  const entries = actions.map((action, index) => ({
+    action,
+    option: `${index + 1}. ${action.group} · ${action.label} — ${action.description}`,
+  }));
+  const selected = await ctx.ui.select(
+    [options.title, options.subtitle].filter(Boolean).join("\n"),
+    entries.map((entry) => entry.option),
+  );
+  const entry = entries.find((candidate) => candidate.option === selected);
+  if (!entry) return null;
+
+  const value = entry.action.value;
+  if (value === options.closeValue) return value;
+
+  if (options.onAction) {
+    await options.onAction(value);
+  }
+  return value;
 }
 
 class GroupedActionList<T extends string> implements Component {

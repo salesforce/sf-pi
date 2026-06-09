@@ -14,8 +14,8 @@
  * - Capped length: never more than WHATSNEW_MAX_BULLETS lines on the splash.
  */
 import { existsSync, readFileSync } from "node:fs";
-import { createRequire } from "node:module";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
+import * as PiRuntime from "@earendil-works/pi-coding-agent";
 
 /** Upper bound on bullets rendered on the splash. */
 export const WHATSNEW_MAX_BULLETS = 8;
@@ -110,16 +110,20 @@ export function buildWhatsNewPayload(
 // -------------------------------------------------------------------------------------------------
 
 /**
- * Read the installed pi-coding-agent version.
+ * Read the installed Pi Runtime version.
  *
- * We resolve the package.json via Node's module resolver rather than globbing
- * node_modules so we always get the copy pi was actually loaded from.
+ * The normal path uses Pi's public VERSION export so SF Pi does not
+ * rediscover the package root. Tests can still pass `piPackagePath` to read
+ * a fixture package.json.
  */
 export function readCurrentPiVersion(piPackagePath?: string): string | undefined {
-  const pkgPath = piPackagePath
-    ? join(piPackagePath, "package.json")
-    : resolvePackageJsonFromRequire();
-  if (!pkgPath || !existsSync(pkgPath)) return undefined;
+  if (!piPackagePath) {
+    const version = (PiRuntime as { VERSION?: unknown }).VERSION;
+    return typeof version === "string" && version.trim() ? version.trim() : undefined;
+  }
+
+  const pkgPath = join(piPackagePath, "package.json");
+  if (!existsSync(pkgPath)) return undefined;
   try {
     const raw = readFileSync(pkgPath, "utf-8");
     const pkg = JSON.parse(raw) as { version?: unknown };
@@ -129,31 +133,21 @@ export function readCurrentPiVersion(piPackagePath?: string): string | undefined
   }
 }
 
-function resolvePackageJsonFromRequire(): string | undefined {
-  // Try the post-0.74 `@earendil-works` scope first; fall back to the
-  // legacy `@mariozechner` scope for users mid-migration. Returns the
-  // first scope that resolves; `undefined` if neither is installed.
-  const candidates = [
-    "@earendil-works/pi-coding-agent/package.json",
-    "@mariozechner/pi-coding-agent/package.json",
-  ];
-  const require = createRequire(import.meta.url);
-  for (const id of candidates) {
-    try {
-      return require.resolve(id);
-    } catch {
-      // try next scope
-    }
+function resolvePiPackageDir(): string | undefined {
+  const getPackageDir = (PiRuntime as { getPackageDir?: unknown }).getPackageDir;
+  if (typeof getPackageDir !== "function") return undefined;
+  try {
+    const dir = getPackageDir();
+    return typeof dir === "string" && dir.trim() ? dir : undefined;
+  } catch {
+    return undefined;
   }
-  return undefined;
 }
 
 /** Locate the CHANGELOG.md that ships with the installed pi package. */
 export function resolveChangelogPath(piPackagePath?: string): string | undefined {
-  if (piPackagePath) return join(piPackagePath, "CHANGELOG.md");
-  const pkgJson = resolvePackageJsonFromRequire();
-  if (!pkgJson) return undefined;
-  return join(dirname(pkgJson), "CHANGELOG.md");
+  const packageDir = piPackagePath ?? resolvePiPackageDir();
+  return packageDir ? join(packageDir, "CHANGELOG.md") : undefined;
 }
 
 // -------------------------------------------------------------------------------------------------

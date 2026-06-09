@@ -19,69 +19,32 @@
  *   accidental runs on pre-floor builds while the version gate escalates
  *   to a clean opt-out for extensions that hard-require newer APIs.
  */
-import { existsSync, readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import * as PiRuntime from "@earendil-works/pi-coding-agent";
+
 /**
  * Minimum pi-coding-agent version required by sf-pi extensions. Keep in
  * sync with `peerDependencies.@earendil-works/pi-coding-agent` in the root
  * package.json. Bump this whenever sf-pi starts depending on an API added
  * in a newer pi release.
  */
-export const MIN_PI_VERSION = "0.76.0";
+export const MIN_PI_VERSION = "0.79.0";
 
 /**
- * npm scopes pi-coding-agent has shipped under, in preference order. Pi
- * 0.74.0 (2026-05-07) renamed every package from `@mariozechner/*` to
- * `@earendil-works/*`. We probe the new scope first; if only the legacy
- * scope is present we still report the version (so the version gate fires
- * with a useful number instead of "unknown") and let the floor check below
- * surface the upgrade hint.
- */
-const PI_PACKAGE_SCOPES = ["@earendil-works", "@mariozechner"] as const;
-
-/**
- * Cached pi-coding-agent version read from its package.json. Cached because
- * it is stable for the life of the pi process and all ten sf-pi extensions
- * call `requirePiVersion()` at startup.
+ * Cached pi-coding-agent version exported by the host Pi Runtime. Cached
+ * because it is stable for the life of the pi process and every sf-pi
+ * extension calls `requirePiVersion()` at startup.
  */
 let cachedPiVersion: string | undefined | null = null;
 
 /**
- * Read pi-coding-agent's installed version from its package.json. Returns
- * `undefined` if the package cannot be resolved.
- *
- * Implementation: `pi-coding-agent`'s `exports` map does not expose
- * `./package.json`, so `require.resolve("@earendil-works/pi-coding-agent/package.json")`
- * fails with ERR_PACKAGE_PATH_NOT_EXPORTED. Instead we walk up from this
- * file's location looking for
- * `node_modules/@earendil-works/pi-coding-agent/package.json` (the post-0.74
- * scope) or, as a fallback for users mid-migration, the legacy
- * `@mariozechner` scope. This works for both the installed case (node_modules
- * in the pi host) and the linked case (node_modules inside sf-pi itself).
+ * Read the host Pi Runtime's installed version from Pi's public export.
+ * This keeps the version gate aligned with Pi instead of re-discovering the
+ * package root through node_modules path walking.
  */
 export function getInstalledPiVersion(): string | undefined {
   if (cachedPiVersion !== null) return cachedPiVersion;
-  try {
-    const here = fileURLToPath(import.meta.url);
-    let dir = dirname(here);
-    for (let i = 0; i < 20; i += 1) {
-      for (const scope of PI_PACKAGE_SCOPES) {
-        const candidate = join(dir, "node_modules", scope, "pi-coding-agent", "package.json");
-        if (existsSync(candidate)) {
-          const pkg = JSON.parse(readFileSync(candidate, "utf-8")) as { version?: unknown };
-          cachedPiVersion = typeof pkg.version === "string" ? pkg.version : undefined;
-          return cachedPiVersion;
-        }
-      }
-      const parent = dirname(dir);
-      if (parent === dir) break;
-      dir = parent;
-    }
-    cachedPiVersion = undefined;
-  } catch {
-    cachedPiVersion = undefined;
-  }
+  const version = (PiRuntime as { VERSION?: unknown }).VERSION;
+  cachedPiVersion = typeof version === "string" && version.trim() ? version.trim() : undefined;
   return cachedPiVersion;
 }
 
@@ -149,7 +112,7 @@ export function requirePiVersion(
     console.warn(
       [
         `[sf-pi] Skipping "${extensionName}": requires pi-coding-agent >= ${minVersion}, found ${installed}.`,
-        "Run `pi update --self` to migrate from `@mariozechner/pi-coding-agent` to `@earendil-works/pi-coding-agent`. If `pi --version` still reports the old version, run `npm install -g --ignore-scripts @earendil-works/pi-coding-agent@latest --force --before=null --min-release-age=0`, then `hash -r` and `pi --version`.",
+        "Run `pi update --self`. If `pi --version` still reports the old version, run `npm install -g --ignore-scripts @earendil-works/pi-coding-agent@latest --force --before=null --min-release-age=0`, then `hash -r` and `pi --version`.",
       ].join(" "),
     );
   }

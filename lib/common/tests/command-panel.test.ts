@@ -13,8 +13,8 @@
  *      `closeBeforeAction`. The lint `npm run check:panels` enforces the
  *      wiring; this test pins the predicate itself.
  */
-import { describe, expect, it } from "vitest";
-import { matchesCloseKeyword } from "../command-panel.ts";
+import { describe, expect, it, vi } from "vitest";
+import { matchesCloseKeyword, openCommandPanel } from "../command-panel.ts";
 import { isLifecycleToggleAction } from "../extension-toggle.ts";
 
 describe("matchesCloseKeyword", () => {
@@ -43,6 +43,52 @@ describe("matchesCloseKeyword", () => {
     expect(matchesCloseKeyword("")).toBe(false);
     expect(matchesCloseKeyword("save")).toBe(false);
     expect(matchesCloseKeyword("exitnow")).toBe(false);
+  });
+});
+
+describe("openCommandPanel", () => {
+  it("uses dialog UI instead of custom components outside TUI mode", async () => {
+    const onAction = vi.fn();
+    const ctx = {
+      mode: "rpc",
+      hasUI: true,
+      cwd: process.cwd(),
+      ui: {
+        custom: vi.fn(async () => {
+          throw new Error("custom UI should not be used in RPC mode");
+        }),
+        select: vi.fn(async (_title: string, options: string[]) => options[0]),
+      },
+    } as never;
+
+    const result = await openCommandPanel(ctx, {
+      title: "Test panel",
+      actions: [
+        { value: "status", label: "Show status", description: "Display status", group: "Status" },
+        { value: "close", label: "Close", description: "Dismiss", group: "Lifecycle" },
+      ],
+      closeValue: "close",
+      onAction,
+    });
+
+    expect(result).toBe("status");
+    expect(onAction).toHaveBeenCalledWith("status");
+    expect((ctx as { ui: { custom: ReturnType<typeof vi.fn> } }).ui.custom).not.toHaveBeenCalled();
+  });
+
+  it("returns null without UI instead of trying to render a panel", async () => {
+    const result = await openCommandPanel(
+      { mode: "print", hasUI: false, cwd: process.cwd(), ui: {} } as never,
+      {
+        title: "Test panel",
+        actions: [
+          { value: "status", label: "Show status", description: "Display status", group: "Status" },
+        ],
+        closeValue: "status",
+      },
+    );
+
+    expect(result).toBeNull();
   });
 });
 

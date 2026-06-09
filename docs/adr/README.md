@@ -30,3 +30,7 @@ or accidentally contradicted in extension READMEs.
 - [0025: SF Code Analyzer Does Not Create a Shadow Rule Configuration Store](./0025-sf-code-analyzer-configuration-boundary.md)
 - [0026: ApexGuru Auto Insights Are Default-On When Cached Availability Is Enabled](./0026-sf-code-analyzer-apexguru-auto-insights.md)
 - [0027: Data 360 v2 Uses Pi-Native Family Tools over a Shared Action Registry](./0027-data-360-v2-family-tools.md)
+- [0028: SF Agent Script Uses Official AgentScript Packages](./0028-official-agentscript-packages.md)
+- [0029: Agent Script Uses Minimal Structured Mutation](./0029-minimal-structured-agent-script-mutation.md)
+- [0030: SF Browser Destination Packs Navigation Hardening](./0030-sf-browser-destination-packs-navigation-hardening.md)
+- [0031: Pi 0.79 Agent Workflow Alignment](./0031-pi-079-agent-workflow-alignment.md)

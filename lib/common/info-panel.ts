@@ -4,7 +4,8 @@
  *
  * Use this for status/help/result text that is part of an interactive command
  * flow. It keeps output close to the panel instead of appending long blocks to
- * the transcript. Headless/non-UI callers still fall back to ctx.ui.notify().
+ * the transcript. RPC callers fall back to ctx.ui.notify(); headless callers
+ * write the bounded body to stdout.
  */
 import type { ExtensionCommandContext, Theme } from "@earendil-works/pi-coding-agent";
 import {
@@ -33,6 +34,11 @@ export async function openInfoPanel(
   const glyphs = resolveUiGlyphs(ctx.cwd);
 
   if (!ctx.hasUI) {
+    console.info(body);
+    return;
+  }
+
+  if (ctx.mode !== "tui") {
     ctx.ui.notify(body, severity === "success" ? "info" : severity);
     return;
   }

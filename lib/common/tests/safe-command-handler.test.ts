@@ -18,6 +18,7 @@ interface StubUi {
 }
 
 interface StubCtx {
+  mode: "tui" | "print";
   hasUI: boolean;
   cwd: string;
   ui: StubUi;
@@ -25,6 +26,7 @@ interface StubCtx {
 
 function makeStubCtx(hasUI: boolean): StubCtx {
   return {
+    mode: hasUI ? "tui" : "print",
     hasUI,
     cwd: "/tmp",
     ui: {
