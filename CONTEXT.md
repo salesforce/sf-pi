@@ -116,6 +116,14 @@ _Avoid_: provisioning workflow, browser automation, generic org doctor, raw setu
 The published-agent portion of **Surface Readiness Preflight** that checks whether target-org planner metadata for an existing agent is compatible with the channel surfaces implied by the Agent Script source. It is skipped for brand-new local agents whose published BotDefinition does not exist yet.
 _Avoid_: local compile validation, planner metadata generation, publish operation, generic BotDefinition lookup
 
+**Routing Flow Readiness Preflight**:
+The channel-routing portion of **Surface Readiness Preflight** that checks whether a target-org channel's session handler resolves to an active routing flow appropriate for the channel surface.
+_Avoid_: flow creation, flow repair, action-target contract validation, runtime call diagnosis
+
+**Queue Readiness Preflight**:
+The fallback and handoff portion of **Surface Readiness Preflight** that checks whether target-org channel fallback queues resolve, support the expected work object, have members, and expose routing configuration evidence.
+_Avoid_: queue creation, queue membership mutation, routing model enforcement, Omni-Channel provisioning workflow
+
 **Agent Script Mutation Adapter**:
 The SF Pi-owned editing layer that turns agent-facing mutate requests into safe Agent Script source changes, preferring Official AgentScript Package Dependency mutation/emission APIs and retaining only workflow guards that prevent corrupt or misleading edits.
 _Avoid_: custom AST emitter, generic text-edit replacement, bypass around official package mutation semantics

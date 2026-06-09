@@ -10,24 +10,20 @@
 
 import type { Connection } from "@salesforce/core";
 import type { AgentFeatureProfile } from "../feature-profile.ts";
+import {
+  channelLabel,
+  needsMessagingReadiness,
+  needsVoiceReadiness,
+  queryChannels,
+  queryOptional,
+  type ChannelRecord,
+} from "./surface/common.ts";
 import { checkPlannerReadiness } from "./surface/planner.ts";
+import { checkQueueReadiness } from "./surface/queue.ts";
+import { checkRoutingFlowReadiness } from "./surface/routing-flow.ts";
 import type { SurfaceReadinessCheck } from "./surface/types.ts";
 
 export type { SurfaceReadinessCheck, SurfaceReadinessStatus } from "./surface/types.ts";
-
-interface QueryResult<T> {
-  records?: T[];
-}
-
-interface VoiceMessagingChannelRecord {
-  Id?: string;
-  DeveloperName?: string;
-  MasterLabel?: string;
-  MessageType?: string;
-  IsActive?: boolean;
-  SessionHandlerId?: string | null;
-  FallbackQueueId?: string | null;
-}
 
 interface ServiceChannelRecord {
   Id?: string;
@@ -53,23 +49,10 @@ export async function checkSurfaceReadiness(
     checks.push(...(await checkMessagingReadiness(conn)));
   }
   checks.push(...(await checkPlannerReadiness(conn, profile, context)));
+  checks.push(...(await checkRoutingFlowReadiness(conn, profile)));
+  checks.push(...(await checkQueueReadiness(conn, profile)));
   checks.push(...channelConnectionGapChecks(profile));
   return checks;
-}
-
-function needsVoiceReadiness(profile: AgentFeatureProfile): boolean {
-  return (
-    profile.modalities.includes("voice") ||
-    profile.linked_variables.some((variable) => variable.source_namespace === "VoiceCall")
-  );
-}
-
-function needsMessagingReadiness(profile: AgentFeatureProfile): boolean {
-  return (
-    profile.modalities.includes("messaging") ||
-    profile.connection_names.some((name) => name.toLowerCase() === "messaging") ||
-    profile.linked_variables.some((variable) => variable.source_namespace === "MessagingSession")
-  );
 }
 
 function channelConnectionGapChecks(profile: AgentFeatureProfile): SurfaceReadinessCheck[] {
@@ -91,10 +74,7 @@ function channelConnectionGapChecks(profile: AgentFeatureProfile): SurfaceReadin
 
 async function checkVoiceReadiness(conn: Connection): Promise<SurfaceReadinessCheck[]> {
   const checks: SurfaceReadinessCheck[] = [];
-  const voiceChannels = await queryOptional<VoiceMessagingChannelRecord>(
-    conn,
-    "SELECT Id, DeveloperName, MasterLabel, MessageType, IsActive, SessionHandlerId, FallbackQueueId FROM MessagingChannel WHERE MessageType = 'PstnVoice' LIMIT 5",
-  );
+  const voiceChannels = await queryChannels(conn, "MessageType = 'PstnVoice'", 5);
   if (voiceChannels === null) {
     checks.push({
       code: "voice-messaging-channel-unverifiable",
@@ -172,10 +152,7 @@ async function checkVoiceReadiness(conn: Connection): Promise<SurfaceReadinessCh
 
 async function checkMessagingReadiness(conn: Connection): Promise<SurfaceReadinessCheck[]> {
   const checks: SurfaceReadinessCheck[] = [];
-  const channels = await queryOptional<VoiceMessagingChannelRecord>(
-    conn,
-    "SELECT Id, DeveloperName, MasterLabel, MessageType, IsActive, SessionHandlerId, FallbackQueueId FROM MessagingChannel WHERE MessageType != 'PstnVoice' LIMIT 10",
-  );
+  const channels = await queryChannels(conn, "MessageType != 'PstnVoice'", 10);
   if (channels === null) {
     checks.push({
       code: "messaging-channel-unverifiable",
@@ -251,17 +228,8 @@ async function checkMessagingReadiness(conn: Connection): Promise<SurfaceReadine
   return checks;
 }
 
-async function queryOptional<T>(conn: Connection, soql: string): Promise<T[] | null> {
-  try {
-    const result = (await conn.query(soql)) as QueryResult<T>;
-    return result.records ?? [];
-  } catch {
-    return null;
-  }
-}
-
-function formatVoiceChannelEvidence(channel: VoiceMessagingChannelRecord): string {
-  const label = channel.DeveloperName ?? channel.MasterLabel ?? channel.Id ?? "MessagingChannel";
+function formatVoiceChannelEvidence(channel: ChannelRecord): string {
+  const label = channelLabel(channel);
   const flags = [
     channel.IsActive === false ? "inactive" : null,
     channel.SessionHandlerId ? "session handler set" : null,
@@ -270,8 +238,8 @@ function formatVoiceChannelEvidence(channel: VoiceMessagingChannelRecord): strin
   return `${label}${flags.length > 0 ? ` (${flags.join(", ")})` : ""}`;
 }
 
-function formatMessagingChannelEvidence(channel: VoiceMessagingChannelRecord): string {
-  const label = channel.DeveloperName ?? channel.MasterLabel ?? channel.Id ?? "MessagingChannel";
+function formatMessagingChannelEvidence(channel: ChannelRecord): string {
+  const label = channelLabel(channel);
   const flags = [
     channel.MessageType ? `type=${channel.MessageType}` : null,
     channel.IsActive === false ? "inactive" : null,
