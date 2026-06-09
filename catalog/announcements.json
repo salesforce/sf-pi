@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.181.0-2026-06-09",
-  "latestVersion": "0.181.0",
+  "revision": "release-0.182.0-2026-06-09",
+  "latestVersion": "0.182.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.181.0",
+      "id": "release-0.182.0",
       "kind": "update",
-      "title": "sf-pi v0.181.0 — align sf-pi with pi 0.79 runtime",
+      "title": "sf-pi v0.182.0 — make extension settings surfaces mode-aware",
       "publishedAt": "2026-06-09T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.181.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.182.0",
       "severity": "info",
-      "body": "align sf-pi with pi 0.79 runtime"
+      "body": "make extension settings surfaces mode-aware — sf-agentscript: preflight published voice planners"
     },
     {
       "id": "pi-0.73-required",
