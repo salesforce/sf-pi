@@ -66,8 +66,10 @@ async function handleCommand(
     ctx.ui.notify("SF Data Explorer help copied to editor.", "info");
     return;
   }
-  if (!ctx.hasUI) {
-    ctx.ui.notify("/sf-data-explorer requires interactive pi TUI mode.", "error");
+  if (ctx.mode !== "tui") {
+    const message = "/sf-data-explorer requires interactive pi TUI mode.";
+    if (ctx.hasUI) ctx.ui.notify(message, "error");
+    else console.info(message);
     return;
   }
   if (!parsed.mode && !args.trim()) {

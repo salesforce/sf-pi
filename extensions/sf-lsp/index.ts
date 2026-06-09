@@ -456,6 +456,16 @@ export default function sfLspExtension(pi: ExtensionAPI) {
       seedFromDoctor(activity, statuses);
       setSfLspHealthFromDoctor(statuses);
 
+      if (ctx.mode !== "tui") {
+        await emitLspOutput(
+          ctx,
+          "sf-lsp status",
+          renderDoctorReport(statuses),
+          statuses.some((status) => !status.available) ? "warning" : "info",
+        );
+        return;
+      }
+
       const action = await openSfLspPanel(ctx, {
         store: activity,
         doctorStatuses: statuses,

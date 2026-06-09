@@ -34,12 +34,15 @@ The current baseline is mixed:
 Use the `sf-lsp` panel style as the standard interactive command surface for SF
 Pi extensions:
 
-1. **No-args slash command opens an action panel** when `ctx.hasUI` is true.
-   Headless/print/RPC modes fall back to concise text status plus help.
+1. **No-args slash command opens an action panel** only when `ctx.mode === "tui"`.
+   RPC mode has `ctx.hasUI === true`, but custom TUI components are not available
+   there; RPC should use Pi-native dialog/notification methods such as
+   `ctx.ui.select()` and `ctx.ui.notify()`. Print/JSON modes fall back to concise
+   text status plus help.
 2. **Panels are Pi-native TUI components**, built from existing primitives such
-   as `DynamicBorder`, `SelectList`, `SettingsList`, `Text`, and `Spacer`.
-   Avoid one-off custom routers unless the surface truly needs custom rendering
-   like the startup splash.
+   as `DynamicBorder`, `SelectList`, `SettingsList`, `Text`, and `Spacer`, and
+   guarded by `ctx.mode === "tui"`. Avoid one-off custom routers unless the
+   surface truly needs custom rendering like the startup splash.
 3. **Every action has a label and description.** Descriptions must explain what
    the action does and any safety/troubleshooting implication. The description is
    rendered in the panel and reused in command completions when possible.
@@ -57,6 +60,9 @@ Pi extensions:
    `lib/config-panel.ts` implementations can remain, but they should be opened
    from the standard action panel or the manager detail page as a settings
    action. The manager should not be the only path to configure an extension.
+   New or touched preference surfaces should expose descriptor-backed fields
+   (key, label, description, values, default) so a future Pi-native extension
+   settings menu can reuse the same semantics without another migration.
 7. **Diagnostics and health actions are first-class.** Troubleshooting commands
    such as `doctor`, `probe`, `health`, `refresh`, `install status`, and `sent`
    should be grouped under clear section labels and should use action
@@ -164,6 +170,10 @@ type SfPiCommandAction = {
 - Slash completion becomes self-documenting because subcommands carry
   descriptions.
 - Existing text commands remain scriptable and stable.
+- RPC/SDK workflows do not get routed into TUI-only `ctx.ui.custom()` surfaces
+  just because `ctx.hasUI` is true.
+- Descriptor-backed preference modules become the migration path toward future
+  Pi-native extension settings menus.
 - Some bespoke UI code can be removed from `sf-pi-manager` over time.
 - The first migration should avoid a large shared framework. Extract common code
   only once the pattern has repeated enough to prove the abstraction.

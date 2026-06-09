@@ -271,7 +271,7 @@
     "entry": "extensions/sf-data-explorer/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 2711
+    "srcLoc": 2713
   },
   {
     "id": "sf-data360",
@@ -592,7 +592,7 @@
     "entry": "extensions/sf-lsp/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 3890
+    "srcLoc": 3899
   },
   {
     "id": "sf-ohana-spinner",
@@ -784,7 +784,7 @@
     "entry": "extensions/sf-slack/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 12063
+    "srcLoc": 12171
   },
   {
     "id": "sf-welcome",

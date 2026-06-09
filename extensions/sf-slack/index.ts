@@ -864,10 +864,6 @@ export default function sfSlack(pi: ExtensionAPI) {
     }
 
     if (sub === "settings") {
-      if (!ctx.hasUI) {
-        ctx.ui.notify("/sf-slack settings requires interactive mode.", "warning");
-        return;
-      }
       await openPreferencesPanel(
         ctx,
         { ...getPreferences() },

@@ -7,22 +7,25 @@
  *   - `lib/config-panel.ts`      — ConfigPanelFactory invoked by sf-pi-manager
  *   - `lib/preferences-panel.ts` — mutable user-preference editor (this file)
  *
- * Exposes three user-facing toggles that the LLM-side and TUI-side code both
- * read via preferences.ts:
+ * Renders from the descriptor seam in preferences.ts. This keeps the current
+ * TUI/RPC adapters thin and gives a future Pi-native settings menu one place
+ * to read labels, descriptions, allowed values, and defaults.
  *
- *   1. Default search detail   (auto | summary | preview | full) — P2
- *   2. Research summary widget (on | off)                  — P4
- *   3. Compact permalinks      (on | off)                  — P5
- *
- * This module only owns the UI; persistence is handled by the caller so the
- * extension can stay the single source of truth for `pi.appendEntry`.
+ * This module only owns the UI adapters; persistence is handled by the caller
+ * so the extension can stay the single source of truth for `pi.appendEntry`.
  */
 
 import { DynamicBorder, getSettingsListTheme } from "@earendil-works/pi-coding-agent";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { Container, type SettingItem, SettingsList, Text } from "@earendil-works/pi-tui";
-import { resolveUiGlyphs } from "../../../lib/common/ui-glyphs.ts";
-import type { DefaultFieldsMode, OnOff, SlackPreferences, ThreadBodyMode } from "./preferences.ts";
+import { resolveUiGlyphs, type UiGlyphs } from "../../../lib/common/ui-glyphs.ts";
+import {
+  SLACK_PREFERENCE_DESCRIPTORS,
+  applyPreferenceValue,
+  type SlackPreferenceKey,
+  type SlackPreferenceSection,
+  type SlackPreferences,
+} from "./preferences.ts";
 
 export interface PreferencesPanelOptions {
   /** Called when the user changes a row. The caller is responsible for
@@ -45,37 +48,18 @@ export async function openPreferencesPanel(
   const working: SlackPreferences = { ...current };
   const glyphs = resolveUiGlyphs(ctx.cwd);
 
+  if (!ctx.hasUI) {
+    console.info(renderPreferencesSummary(working));
+    return;
+  }
+
+  if (ctx.mode !== "tui") {
+    await openPreferencesDialog(ctx, working, options);
+    return;
+  }
+
   await ctx.ui.custom<void>((tui, theme, _kb, done) => {
-    const items: SettingItem[] = [
-      {
-        id: "defaultFields",
-        label: `${glyphs.status} Result detail · Default search detail`,
-        description: "Controls default body detail for search and research results.",
-        currentValue: working.defaultFields,
-        values: ["auto", "summary", "preview", "full"],
-      },
-      {
-        id: "threadBodies",
-        label: `${glyphs.status} Result detail · Thread/history bodies`,
-        description: "Controls message body detail when reading threads and channel history.",
-        currentValue: working.threadBodies,
-        values: ["full", "preview"],
-      },
-      {
-        id: "showWidget",
-        label: `${glyphs.controls} UI feedback · Research summary widget`,
-        description: "Shows or hides the lightweight Slack research activity widget.",
-        currentValue: working.showWidget,
-        values: ["on", "off"],
-      },
-      {
-        id: "compactPermalinks",
-        label: `${glyphs.links} Links · Compact permalinks (OSC 8)`,
-        description: "Renders cleaner terminal hyperlinks when the terminal supports OSC 8 links.",
-        currentValue: working.compactPermalinks,
-        values: ["on", "off"],
-      },
-    ];
+    const items = buildSettingItems(working, glyphs);
 
     const container = new Container();
     container.addChild(new DynamicBorder((s: string) => theme.fg("borderAccent", s)));
@@ -103,15 +87,9 @@ export async function openPreferencesPanel(
       Math.min(items.length + 2, 12),
       getSettingsListTheme(),
       (id, newValue) => {
-        if (id === "defaultFields") {
-          working.defaultFields = newValue as DefaultFieldsMode;
-        } else if (id === "showWidget") {
-          working.showWidget = newValue as OnOff;
-        } else if (id === "compactPermalinks") {
-          working.compactPermalinks = newValue as OnOff;
-        } else if (id === "threadBodies") {
-          working.threadBodies = newValue as ThreadBodyMode;
-        }
+        const next = applyPreferenceValue(working, id as SlackPreferenceKey, newValue);
+        if (!next) return;
+        Object.assign(working, next);
         options.onChange({ ...working });
       },
       () => done(),
@@ -132,6 +110,91 @@ export async function openPreferencesPanel(
       },
     };
   });
+}
+
+function buildSettingItems(working: SlackPreferences, glyphs: UiGlyphs): SettingItem[] {
+  return SLACK_PREFERENCE_DESCRIPTORS.map((descriptor) => ({
+    id: descriptor.key,
+    label: `${sectionIcon(descriptor.section, glyphs)} ${sectionLabel(descriptor.section)} · ${descriptor.label}`,
+    description: descriptor.description,
+    currentValue: String(working[descriptor.key]),
+    values: descriptor.values.map(String),
+  }));
+}
+
+async function openPreferencesDialog(
+  ctx: ExtensionContext,
+  working: SlackPreferences,
+  options: PreferencesPanelOptions,
+): Promise<void> {
+  while (true) {
+    const entries = SLACK_PREFERENCE_DESCRIPTORS.map((descriptor, index) => ({
+      descriptor,
+      option: `${index + 1}. ${sectionLabel(descriptor.section)} · ${descriptor.label} — current: ${working[descriptor.key]}`,
+    }));
+    const doneOption = "Done";
+    const selected = await ctx.ui.select("SF Slack Settings", [
+      ...entries.map((entry) => entry.option),
+      doneOption,
+    ]);
+    if (!selected || selected === doneOption) return;
+
+    const entry = entries.find((candidate) => candidate.option === selected);
+    if (!entry) return;
+
+    const valueEntries = entry.descriptor.values.map((value) => {
+      const stringValue = String(value);
+      return {
+        value: stringValue,
+        option:
+          stringValue === working[entry.descriptor.key] ? `${stringValue} (current)` : stringValue,
+      };
+    });
+    const pickedValue = await ctx.ui.select(
+      `${entry.descriptor.label}\n${entry.descriptor.description}`,
+      valueEntries.map((candidate) => candidate.option),
+    );
+    const valueEntry = valueEntries.find((candidate) => candidate.option === pickedValue);
+    if (!valueEntry) continue;
+
+    const next = applyPreferenceValue(working, entry.descriptor.key, valueEntry.value);
+    if (!next) continue;
+    Object.assign(working, next);
+    options.onChange({ ...working });
+    ctx.ui.notify(`${entry.descriptor.label}: ${valueEntry.value}`, "info");
+  }
+}
+
+function renderPreferencesSummary(prefs: SlackPreferences): string {
+  return [
+    "SF Slack settings require an interactive Pi UI or RPC UI client.",
+    "Current preferences:",
+    ...SLACK_PREFERENCE_DESCRIPTORS.map(
+      (descriptor) => `- ${descriptor.label}: ${prefs[descriptor.key]}`,
+    ),
+  ].join("\n");
+}
+
+function sectionLabel(section: SlackPreferenceSection): string {
+  switch (section) {
+    case "result":
+      return "Result detail";
+    case "feedback":
+      return "UI feedback";
+    case "links":
+      return "Links";
+  }
+}
+
+function sectionIcon(section: SlackPreferenceSection, glyphs: UiGlyphs): string {
+  switch (section) {
+    case "result":
+      return glyphs.status;
+    case "feedback":
+      return glyphs.controls;
+    case "links":
+      return glyphs.links;
+  }
 }
 
 // Legacy alias kept for one release while callers migrate to openPreferencesPanel.

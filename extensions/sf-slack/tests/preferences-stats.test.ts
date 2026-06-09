@@ -2,14 +2,17 @@
 /**
  * Tests for the sf-slack preferences module (P3) and stats module (P4).
  */
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import {
   DEFAULT_PREFERENCES,
+  SLACK_PREFERENCE_DESCRIPTORS,
+  applyPreferenceValue,
   getPreferences,
   resetPreferences,
   sanitize,
   setPreferences,
 } from "../lib/preferences.ts";
+import { openPreferencesPanel } from "../lib/preferences-panel.ts";
 import { getStats, recordSample, renderStatsLines, resetStats } from "../lib/stats.ts";
 
 describe("preferences", () => {
@@ -34,6 +37,59 @@ describe("preferences", () => {
     expect(cleaned.defaultFields).toBe(DEFAULT_PREFERENCES.defaultFields);
     expect(cleaned.showWidget).toBe(DEFAULT_PREFERENCES.showWidget);
     expect(cleaned.compactPermalinks).toBe(DEFAULT_PREFERENCES.compactPermalinks);
+  });
+
+  it("describes every user-facing preference once", () => {
+    expect(SLACK_PREFERENCE_DESCRIPTORS.map((descriptor) => descriptor.key)).toEqual([
+      "defaultFields",
+      "threadBodies",
+      "showWidget",
+      "compactPermalinks",
+    ]);
+    for (const descriptor of SLACK_PREFERENCE_DESCRIPTORS) {
+      expect(descriptor.label).toBeTruthy();
+      expect(descriptor.description).toBeTruthy();
+      expect(descriptor.values).toContain(DEFAULT_PREFERENCES[descriptor.key]);
+    }
+  });
+
+  it("applies descriptor-backed string values and rejects invalid values", () => {
+    const changed = applyPreferenceValue(DEFAULT_PREFERENCES, "threadBodies", "preview");
+    expect(changed?.threadBodies).toBe("preview");
+    expect(applyPreferenceValue(DEFAULT_PREFERENCES, "threadBodies", "fuller")).toBeNull();
+  });
+
+  it("uses dialog UI instead of custom TUI in RPC mode", async () => {
+    const onChange = vi.fn();
+    const optionsSeen: string[][] = [];
+    let pickedSetting = false;
+    const ctx = {
+      mode: "rpc",
+      hasUI: true,
+      cwd: process.cwd(),
+      ui: {
+        custom: vi.fn(async () => {
+          throw new Error("custom UI should not be used in RPC mode");
+        }),
+        notify: vi.fn(),
+        select: vi.fn(async (title: string, options: string[]) => {
+          optionsSeen.push(options);
+          if (title === "SF Slack Settings") {
+            if (pickedSetting) return "Done";
+            pickedSetting = true;
+            return options.find((option) => option.includes("Thread/history bodies")) ?? "Done";
+          }
+          if (options.includes("preview")) return "preview";
+          return undefined;
+        }),
+      },
+    } as never;
+
+    await openPreferencesPanel(ctx, DEFAULT_PREFERENCES, { onChange });
+
+    expect(onChange).toHaveBeenCalledWith({ ...DEFAULT_PREFERENCES, threadBodies: "preview" });
+    expect(optionsSeen.length).toBeGreaterThanOrEqual(2);
+    expect((ctx as { ui: { custom: ReturnType<typeof vi.fn> } }).ui.custom).not.toHaveBeenCalled();
   });
 });
 

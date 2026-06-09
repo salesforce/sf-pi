@@ -241,7 +241,7 @@ export default function sfSkills(pi: ExtensionAPI) {
   }
 
   function ensureHudMounted(ctx: ExtensionContext): void {
-    if (!ctx.hasUI || hudComponent || dismissHud) {
+    if (ctx.mode !== "tui" || hudComponent || dismissHud) {
       return;
     }
 
@@ -291,7 +291,7 @@ export default function sfSkills(pi: ExtensionAPI) {
   pi.on("session_start", async (event, ctx) => {
     dismissOverlay();
     hudState = EMPTY_STATE;
-    if (!ctx.hasUI) {
+    if (ctx.mode !== "tui") {
       return;
     }
     if (event.reason === "reload") {
@@ -492,11 +492,11 @@ export default function sfSkills(pi: ExtensionAPI) {
   }
 
   async function openFunnel(ctx: ExtensionCommandContext): Promise<void> {
-    if (!ctx.hasUI) {
-      ctx.ui.notify(
-        "The skill funnel needs an interactive terminal. Use /sf-skills summary or /sf-skills metrics instead.",
-        "info",
-      );
+    if (ctx.mode !== "tui") {
+      const message =
+        "The skill funnel needs an interactive Pi TUI. Use /sf-skills summary or /sf-skills metrics instead.";
+      if (ctx.hasUI) ctx.ui.notify(message, "info");
+      else console.info(message);
       return;
     }
 

@@ -19,6 +19,17 @@ export type DefaultFieldsMode = "auto" | FieldsMode;
 export type OnOff = "on" | "off";
 /** Body-detail level for thread/history ladders in the tool-result TUI. */
 export type ThreadBodyMode = "full" | "preview";
+export type SlackPreferenceKey = keyof SlackPreferences;
+export type SlackPreferenceSection = "result" | "feedback" | "links";
+
+export interface SlackPreferenceDescriptor<K extends SlackPreferenceKey = SlackPreferenceKey> {
+  key: K;
+  section: SlackPreferenceSection;
+  label: string;
+  description: string;
+  values: readonly SlackPreferences[K][];
+  defaultValue: SlackPreferences[K];
+}
 
 /** Preference record shape. Kept flat so SettingsList rows map 1:1. */
 export interface SlackPreferences {
@@ -44,6 +55,10 @@ export interface SlackPreferences {
 /** customType used with `pi.appendEntry` for persistence. */
 export const PREFS_ENTRY_TYPE = "sf-slack-prefs";
 
+const FIELDS: readonly DefaultFieldsMode[] = ["auto", "summary", "preview", "full"] as const;
+const ON_OFF: readonly OnOff[] = ["on", "off"] as const;
+const THREAD_BODIES: readonly ThreadBodyMode[] = ["full", "preview"] as const;
+
 export const DEFAULT_PREFERENCES: SlackPreferences = {
   // "auto" follows the shared /sf-pi display profile: compact → summary,
   // balanced → preview, verbose → full. Balanced preserves the old default.
@@ -54,6 +69,46 @@ export const DEFAULT_PREFERENCES: SlackPreferences = {
   // the terse 110-char clip can flip this back to "preview" via settings.
   threadBodies: "full",
 };
+
+/**
+ * Descriptor seam for every user-facing Slack preference. The current TUI and
+ * RPC dialog adapters render from this list; a future Pi-native settings menu
+ * can consume the same descriptors without changing preference semantics.
+ */
+export const SLACK_PREFERENCE_DESCRIPTORS = [
+  {
+    key: "defaultFields",
+    section: "result",
+    label: "Default search detail",
+    description: "Controls default body detail for search and research results.",
+    values: FIELDS,
+    defaultValue: DEFAULT_PREFERENCES.defaultFields,
+  },
+  {
+    key: "threadBodies",
+    section: "result",
+    label: "Thread/history bodies",
+    description: "Controls message body detail when reading threads and channel history.",
+    values: THREAD_BODIES,
+    defaultValue: DEFAULT_PREFERENCES.threadBodies,
+  },
+  {
+    key: "showWidget",
+    section: "feedback",
+    label: "Research summary widget",
+    description: "Shows or hides the lightweight Slack research activity widget.",
+    values: ON_OFF,
+    defaultValue: DEFAULT_PREFERENCES.showWidget,
+  },
+  {
+    key: "compactPermalinks",
+    section: "links",
+    label: "Compact permalinks (OSC 8)",
+    description: "Renders cleaner terminal hyperlinks when the terminal supports OSC 8 links.",
+    values: ON_OFF,
+    defaultValue: DEFAULT_PREFERENCES.compactPermalinks,
+  },
+] as const satisfies readonly SlackPreferenceDescriptor[];
 
 // ─── In-memory singleton ────────────────────────────────────────────────────────
 
@@ -79,25 +134,33 @@ export function resetPreferences(): SlackPreferences {
 
 // ─── Validation ────────────────────────────────────────────────────────────────
 
-const FIELDS: readonly DefaultFieldsMode[] = ["auto", "summary", "preview", "full"] as const;
-const ON_OFF: readonly OnOff[] = ["on", "off"] as const;
-const THREAD_BODIES: readonly ThreadBodyMode[] = ["full", "preview"] as const;
+/** Return a descriptor by key. Exported so UI adapters don't duplicate labels. */
+export function getPreferenceDescriptor(
+  key: SlackPreferenceKey,
+): SlackPreferenceDescriptor | undefined {
+  return SLACK_PREFERENCE_DESCRIPTORS.find((descriptor) => descriptor.key === key);
+}
+
+/** Apply one string value from a UI adapter, returning null for invalid input. */
+export function applyPreferenceValue(
+  prefs: SlackPreferences,
+  key: SlackPreferenceKey,
+  value: string,
+): SlackPreferences | null {
+  const descriptor = getPreferenceDescriptor(key);
+  if (!descriptor || !(descriptor.values as readonly string[]).includes(value)) return null;
+  return sanitize({ ...prefs, [key]: value });
+}
 
 /** Clamp any unknown stored values back to defaults so reload from an older
  *  prefs entry can't poison the rest of the extension. */
 export function sanitize(input: Partial<SlackPreferences>): SlackPreferences {
-  return {
-    defaultFields: FIELDS.includes(input.defaultFields as DefaultFieldsMode)
-      ? (input.defaultFields as DefaultFieldsMode)
-      : DEFAULT_PREFERENCES.defaultFields,
-    showWidget: ON_OFF.includes(input.showWidget as OnOff)
-      ? (input.showWidget as OnOff)
-      : DEFAULT_PREFERENCES.showWidget,
-    compactPermalinks: ON_OFF.includes(input.compactPermalinks as OnOff)
-      ? (input.compactPermalinks as OnOff)
-      : DEFAULT_PREFERENCES.compactPermalinks,
-    threadBodies: THREAD_BODIES.includes(input.threadBodies as ThreadBodyMode)
-      ? (input.threadBodies as ThreadBodyMode)
-      : DEFAULT_PREFERENCES.threadBodies,
-  };
+  const out: SlackPreferences = { ...DEFAULT_PREFERENCES };
+  for (const descriptor of SLACK_PREFERENCE_DESCRIPTORS) {
+    const value = input[descriptor.key];
+    if ((descriptor.values as readonly unknown[]).includes(value)) {
+      (out as Record<SlackPreferenceKey, unknown>)[descriptor.key] = value;
+    }
+  }
+  return out;
 }
