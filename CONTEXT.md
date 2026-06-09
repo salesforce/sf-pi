@@ -108,6 +108,14 @@ _Avoid_: human report, raw trace JSON, full action I/O dump, branch state
 The screenshot-friendly section of a **Preview Trace Report** that summarizes called action inputs and outputs with display budgets, redaction, field/path coverage, and raw-trace pointers so humans can debug tool behavior without making the default report an unbounded data dump.
 _Avoid_: raw JSON wall, complete artifact copy, LLM context payload, hidden-only action details
 
+**Surface Readiness Preflight**:
+The read-only Agent Script review layer that checks target-org channel, planner, routing, queue, and runtime prerequisites that local Agent Script compilation cannot prove. It reports readiness findings and recovery guidance without creating metadata, automating UI-only setup, or replacing preview/eval validation.
+_Avoid_: provisioning workflow, browser automation, generic org doctor, raw setup script, compiler replacement
+
+**Planner Readiness Preflight**:
+The published-agent portion of **Surface Readiness Preflight** that checks whether target-org planner metadata for an existing agent is compatible with the channel surfaces implied by the Agent Script source. It is skipped for brand-new local agents whose published BotDefinition does not exist yet.
+_Avoid_: local compile validation, planner metadata generation, publish operation, generic BotDefinition lookup
+
 **Agent Script Mutation Adapter**:
 The SF Pi-owned editing layer that turns agent-facing mutate requests into safe Agent Script source changes, preferring Official AgentScript Package Dependency mutation/emission APIs and retaining only workflow guards that prevent corrupt or misleading edits.
 _Avoid_: custom AST emitter, generic text-edit replacement, bypass around official package mutation semantics

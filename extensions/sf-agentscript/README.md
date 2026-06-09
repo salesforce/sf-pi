@@ -55,7 +55,7 @@ Auto-resolution validates referenced disk artifacts before use and proceeds only
 - structural/readiness findings that can be proven from the parsed file
 - publish-risk signals from the feature profile
 - read-only action-target checks when `target_org` is provided
-- read-only surface readiness checks, such as voice/messaging channel and ServiceChannel probes for channel-linked agents when `target_org` is provided
+- read-only surface readiness checks, such as voice/messaging channel, ServiceChannel, and published voice planner probes for channel-linked agents when `target_org` is provided
 - Service Agent user readiness checks for `default_agent_user` license/user/system permission-set wiring when `target_org` is provided
 
 Readiness values are `ready`, `ready_with_warnings`, `blocked`, and `partial`. There is no numeric score and no hidden model call. Pass `output_path` to write a Markdown report.
@@ -155,6 +155,9 @@ extensions/sf-agentscript/
         prompt-template.ts  ← implementation module
         quick-action.ts     ← implementation module
         standard-invocable.ts← implementation module
+      surface/
+        planner.ts          ← implementation module
+        types.ts            ← implementation module
       bundle-type.ts        ← implementation module
       index.ts              ← implementation module
       parse.ts              ← implementation module
@@ -247,6 +250,7 @@ extensions/sf-agentscript/
     mutate-emit-regression.test.ts← unit / smoke test
     mutate.test.ts          ← unit / smoke test
     path-containment.test.ts← unit / smoke test
+    planner-readiness.test.ts← unit / smoke test
     preflight.test.ts       ← unit / smoke test
     preview-agent-api.test.ts← unit / smoke test
     preview-agent-version-resolver.test.ts← unit / smoke test

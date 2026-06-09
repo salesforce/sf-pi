@@ -501,12 +501,13 @@ async function actionReview(ctx: ExtensionContext, agentFile: string, input: Aut
           }
         }
 
-        const surfaceChecks = await checkSurfaceReadiness(conn, profile);
+        const agentApiName = typeof config.agent_name === "string" ? config.agent_name : undefined;
+        const surfaceChecks = await checkSurfaceReadiness(conn, profile, { agentApiName });
         for (const check of surfaceChecks) {
           if (check.status === "ok") continue;
           findings.push({
             id: `surface-${check.code}`,
-            severity: "warning",
+            severity: check.status === "blocker" ? "blocker" : "warning",
             category: "org",
             message: check.message,
             evidence: check.evidence,

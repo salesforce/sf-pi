@@ -10,16 +10,10 @@
 
 import type { Connection } from "@salesforce/core";
 import type { AgentFeatureProfile } from "../feature-profile.ts";
+import { checkPlannerReadiness } from "./surface/planner.ts";
+import type { SurfaceReadinessCheck } from "./surface/types.ts";
 
-export type SurfaceReadinessStatus = "ok" | "warning" | "unverifiable";
-
-export interface SurfaceReadinessCheck {
-  code: string;
-  surface: "voice" | "messaging";
-  status: SurfaceReadinessStatus;
-  message: string;
-  evidence?: string[];
-}
+export type { SurfaceReadinessCheck, SurfaceReadinessStatus } from "./surface/types.ts";
 
 interface QueryResult<T> {
   records?: T[];
@@ -42,9 +36,14 @@ interface ServiceChannelRecord {
   RelatedEntity?: string;
 }
 
+export interface SurfaceReadinessContext {
+  agentApiName?: string;
+}
+
 export async function checkSurfaceReadiness(
   conn: Connection,
   profile: AgentFeatureProfile,
+  context: SurfaceReadinessContext = {},
 ): Promise<SurfaceReadinessCheck[]> {
   const checks: SurfaceReadinessCheck[] = [];
   if (needsVoiceReadiness(profile)) {
@@ -53,6 +52,7 @@ export async function checkSurfaceReadiness(
   if (needsMessagingReadiness(profile)) {
     checks.push(...(await checkMessagingReadiness(conn)));
   }
+  checks.push(...(await checkPlannerReadiness(conn, profile, context)));
   checks.push(...channelConnectionGapChecks(profile));
   return checks;
 }
