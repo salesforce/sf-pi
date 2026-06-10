@@ -454,7 +454,7 @@ async function handleCommand(
     }
     case "skills": {
       const skillsArgs = parseSkillsArgs(args.rest ?? "");
-      await handleSkills(ctx, PACKAGE_VERSION, skillsArgs);
+      await handleSkills(ctx, skillsArgs);
       break;
     }
     case "doctor": {

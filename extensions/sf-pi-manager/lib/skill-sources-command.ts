@@ -65,14 +65,10 @@ export function parseSkillsArgs(raw: string): SkillsArgs {
 // Dispatcher
 // -------------------------------------------------------------------------------------------------
 
-export async function handleSkills(
-  ctx: ExtensionCommandContext,
-  packageVersion: string,
-  args: SkillsArgs,
-): Promise<void> {
+export async function handleSkills(ctx: ExtensionCommandContext, args: SkillsArgs): Promise<void> {
   switch (args.subcommand) {
     case "overlay":
-      await handleOverlay(ctx, packageVersion);
+      await handleOverlay(ctx);
       break;
     case "list":
       handleList(ctx);
@@ -93,7 +89,7 @@ export async function handleSkills(
 // Overlay
 // -------------------------------------------------------------------------------------------------
 
-async function handleOverlay(ctx: ExtensionCommandContext, _packageVersion: string): Promise<void> {
+async function handleOverlay(ctx: ExtensionCommandContext): Promise<void> {
   // Skill management moved to the SF Skills extension's Skill Funnel
   // (`/sf-skills`). `/sf-pi skills` is now a read-only pointer + summary; it no
   // longer owns the wiring UI. The list/link/unlink subcommands remain as
