@@ -517,6 +517,19 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.183.0](https://github.com/salesforce/sf-pi/compare/v0.182.0...v0.183.0) (2026-06-10)
+
+
+### Features
+
+* **sf-agentscript:** diagnose channel runtime smoke ([9cb6d7e](https://github.com/salesforce/sf-pi/commit/9cb6d7e6d77a647e98a9772d5b26d533ccc53aca))
+
+
+### Bug Fixes
+
+* remove unused skill source argument ([49660af](https://github.com/salesforce/sf-pi/commit/49660af4f2d91cf92080a942efa78ec27875b0f1))
+* respect project trust for skill sources ([da723f5](https://github.com/salesforce/sf-pi/commit/da723f54263f38926543faa292f99cb21d9b2d50))
+
 ## [0.182.0](https://github.com/salesforce/sf-pi/compare/v0.181.0...v0.182.0) (2026-06-09)
 
 
