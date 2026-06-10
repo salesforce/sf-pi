@@ -59,6 +59,8 @@ export interface GatherDeps {
 export interface GatherOptions {
   cwd: string;
   deps: GatherDeps;
+  /** Whether Pi has trusted project-local settings/resources for this cwd. */
+  projectTrusted?: boolean;
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -71,24 +73,30 @@ export interface GatherOptions {
  */
 export function gatherCatalogInput(opts: GatherOptions): SkillCatalogInput {
   const { cwd, deps } = opts;
+  const projectTrusted = opts.projectTrusted !== false;
   const home = deps.home ?? os.homedir();
   const agentDir = deps.agentDir ?? globalAgentDir();
 
   const settingsGlobal = readSettingsEntries(globalSettingsPath(), home, cwd);
-  const settingsProject = readSettingsEntries(projectSettingsPath(cwd), home, cwd);
+  const settingsProject = projectTrusted
+    ? readSettingsEntries(projectSettingsPath(cwd), home, cwd)
+    : [];
 
   const registryGlobal = readSourceRegistry("global");
-  const registryProject = readSourceRegistry("project", cwd);
+  const registryProject = projectTrusted ? readSourceRegistry("project", cwd) : [];
 
   // Roots we ask the Pi loader to consider beyond the auto-defaults: every
   // wired settings entry plus any registered source the user has marked seen.
+  // When project trust is inactive, keep the loader global-only so SF Pi does
+  // not rediscover project-local skills behind Pi's trust gate.
   const skillPaths = uniq([
+    ...(projectTrusted ? [] : [path.join(agentDir, "skills")]),
     ...settingsGlobal.map((e) => e.raw),
     ...settingsProject.map((e) => e.raw),
     ...[...registryGlobal, ...registryProject].filter((s) => s.gate === "seen").map((s) => s.value),
   ]);
 
-  const load = deps.loadSkills({ cwd, agentDir, skillPaths, includeDefaults: true });
+  const load = deps.loadSkills({ cwd, agentDir, skillPaths, includeDefaults: projectTrusted });
   const winners = load.skills.map((s) => ({ name: s.name, filePath: s.filePath }));
   const collisions = load.diagnostics.flatMap((d) =>
     d.type === "collision" && d.collision
@@ -111,6 +119,7 @@ export function gatherCatalogInput(opts: GatherOptions): SkillCatalogInput {
     cwd,
     home,
     agentDir,
+    projectTrusted,
     settingsGlobal,
     settingsProject,
     registry: [...registryGlobal, ...registryProject],
@@ -139,6 +148,7 @@ interface BuildSourcesArgs {
   cwd: string;
   home: string;
   agentDir: string;
+  projectTrusted: boolean;
   settingsGlobal: ResolvedSettingsEntry[];
   settingsProject: ResolvedSettingsEntry[];
   registry: RegisteredSource[];
@@ -167,9 +177,13 @@ function buildSources(args: BuildSourcesArgs): CatalogSourceInput[] {
 
   // 1. Auto-discovered defaults (always seen, never settings-wired).
   add(defaultRoot(path.join(args.agentDir, "skills"), "Pi user skills"));
-  add(defaultRoot(path.join(args.cwd, ".pi", "skills"), "Pi project skills"));
+  if (args.projectTrusted) {
+    add(defaultRoot(path.join(args.cwd, ".pi", "skills"), "Pi project skills"));
+  }
   add(defaultRoot(path.join(args.home, ".agents", "skills"), ".agents (global)"));
-  add(defaultRoot(path.join(args.cwd, ".agents", "skills"), ".agents (project)"));
+  if (args.projectTrusted) {
+    add(defaultRoot(path.join(args.cwd, ".agents", "skills"), ".agents (project)"));
+  }
 
   // 1b. The curated afv-library managed clone lives at a well-known location at
   // each scope. Recognize it explicitly so installs that predate the Source
@@ -183,17 +197,20 @@ function buildSources(args: BuildSourcesArgs): CatalogSourceInput[] {
     gate: "seen",
     autoDefault: false,
   });
-  add({
-    id: "afv-library (project)",
-    rootPath: path.join(args.cwd, ".pi", "sf-skills", "afv-library", "skills"),
-    kind: "managed",
-    label: "afv-library (project)",
-    gate: "seen",
-    autoDefault: false,
-  });
+  if (args.projectTrusted) {
+    add({
+      id: "afv-library (project)",
+      rootPath: path.join(args.cwd, ".pi", "sf-skills", "afv-library", "skills"),
+      kind: "managed",
+      label: "afv-library (project)",
+      gate: "seen",
+      autoDefault: false,
+    });
+  }
 
-  // 2. Detected harness roots (Claude/Codex/Cursor), global + project.
-  for (const cand of detectSkillSources({ cwd: args.cwd }).candidates) {
+  // 2. Detected harness roots (Claude/Codex/Cursor), global + trusted project.
+  for (const cand of detectSkillSources({ cwd: args.cwd, includeProject: args.projectTrusted })
+    .candidates) {
     add({
       id: cand.settingsPath,
       rootPath: cand.absolutePath,

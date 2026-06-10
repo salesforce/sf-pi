@@ -126,7 +126,7 @@ export function inspectManagedClone(scope: SkillSourceScope, cwd?: string): Mana
 
   let wired = false;
   if (exists) {
-    const detection = detectSkillSources({ cwd });
+    const detection = detectSkillSources({ cwd, includeProject: scope === "project" });
     const settingsPath =
       scope === "project" ? detection.projectSettingsPath : detection.settingsPath;
     if (settingsPath) {
@@ -224,7 +224,7 @@ function isManagedWired(
   cwd: string | undefined,
   skillsPath: string,
 ): boolean {
-  const detection = detectSkillSources({ cwd });
+  const detection = detectSkillSources({ cwd, includeProject: scope === "project" });
   const settingsPath = scope === "project" ? detection.projectSettingsPath : detection.settingsPath;
   if (!settingsPath) return false;
   return readSkillsArray(settingsPath).some((value) => resolvesToSamePath(value, skillsPath, cwd));

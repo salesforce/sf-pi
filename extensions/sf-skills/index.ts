@@ -81,6 +81,8 @@ import { applyFileAction, type FileActionOp } from "./lib/conflict-actions.ts";
 // -------------------------------------------------------------------------------------------------
 
 const COMMAND_NAME = "sf-skills";
+const PROJECT_SCOPE_UNTRUSTED_MESSAGE =
+  "Project-scope skill management is unavailable until Pi trusts this project. Use /trust for future sessions, or restart with --approve if you want SF Pi to read or write project-local skill settings.";
 
 const EMPTY_STATE: SkillsHudState = {
   live: [],
@@ -504,6 +506,7 @@ export default function sfSkills(pi: ExtensionAPI) {
     // in a session hook. See tests/boot-path.test.ts for the enforced contract.
     const input = gatherCatalogInput({
       cwd: ctx.cwd,
+      projectTrusted: ctx.isProjectTrusted(),
       deps: { loadSkills, loadSkillsFromDir, getCommands: () => pi.getCommands() },
     });
     const catalog = buildSkillCatalog(input);
@@ -558,6 +561,11 @@ export default function sfSkills(pi: ExtensionAPI) {
     skillPaths: string[],
     label: string,
   ): Promise<void> {
+    if (!ctx.isProjectTrusted()) {
+      ctx.ui.notify(PROJECT_SCOPE_UNTRUSTED_MESSAGE, "warning");
+      return;
+    }
+
     const wanted = new Set(skillPaths);
     const targets = catalog.skills.filter((s) => wanted.has(s.filePath) && s.enabledGlobal);
     if (targets.length === 0) {
@@ -634,6 +642,11 @@ export default function sfSkills(pi: ExtensionAPI) {
     );
     const keep = OPTIONS.find((o) => o.label === picked)?.scope;
     if (!keep || keep === "cancel") return;
+
+    if (keep === "project" && !ctx.isProjectTrusted()) {
+      ctx.ui.notify(PROJECT_SCOPE_UNTRUSTED_MESSAGE, "warning");
+      return;
+    }
 
     const plan = planConsolidateScopes({ catalog, keepScope: keep, cwd: ctx.cwd });
     const summary: string[] = [];
@@ -737,6 +750,14 @@ export default function sfSkills(pi: ExtensionAPI) {
     catalog: SkillCatalog,
     actions: FunnelAction[],
   ): Promise<void> {
+    if (
+      !ctx.isProjectTrusted() &&
+      actions.some((action) => "scope" in action && action.scope === "project")
+    ) {
+      ctx.ui.notify(PROJECT_SCOPE_UNTRUSTED_MESSAGE, "warning");
+      return;
+    }
+
     const buckets: Record<"global" | "project", { add: string[]; remove: string[] }> = {
       global: { add: [], remove: [] },
       project: { add: [], remove: [] },
@@ -779,6 +800,10 @@ export default function sfSkills(pi: ExtensionAPI) {
         if (plan.blocked) {
           skipped.push(`${action.name}: ${plan.note ?? plan.blocked}`);
           continue;
+        }
+        if (!ctx.isProjectTrusted() && plan.ops.some((op) => op.scope === "project")) {
+          ctx.ui.notify(PROJECT_SCOPE_UNTRUSTED_MESSAGE, "warning");
+          return;
         }
         pushOps(plan.ops);
         if (plan.expandedFrom) expansions.push(...plan.expandedFrom);
@@ -835,7 +860,8 @@ export default function sfSkills(pi: ExtensionAPI) {
     apply: boolean,
     fromPanel: boolean,
   ): Promise<void> {
-    const plan = buildPrunePlan(ctx.cwd);
+    const projectTrusted = ctx.isProjectTrusted();
+    const plan = buildPrunePlan(ctx.cwd, { includeProject: projectTrusted });
     const lines: string[] = [];
     lines.push(`Stale settings entries: ${plan.staleWired.length}`);
     for (const raw of plan.staleWired) lines.push(`  ○ ${raw}`);
@@ -859,6 +885,7 @@ export default function sfSkills(pi: ExtensionAPI) {
     const outcome = applyPrunePlan(plan, ctx.cwd, {
       removeStale: true,
       deleteOrphans: true,
+      includeProject: projectTrusted,
     });
     lines.push("");
     lines.push(

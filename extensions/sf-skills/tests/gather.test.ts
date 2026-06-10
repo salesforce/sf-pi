@@ -105,6 +105,49 @@ describe("gatherCatalogInput", () => {
     ).toBe(true);
   });
 
+  it("excludes project-local settings and roots when project trust is inactive", () => {
+    const home = tmp("sf-gather-home-");
+    const cwd = tmp("sf-gather-cwd-");
+    const agentDir = path.join(home, ".pi", "agent");
+    process.env[AGENT_DIR_ENV] = agentDir;
+
+    const globalRoot = path.join(agentDir, "skills");
+    const projectRoot = path.join(cwd, ".pi", "skills");
+    const projectHarnessRoot = path.join(cwd, ".claude", "skills");
+    writeSkill(globalRoot, "global-skill");
+    writeSkill(projectRoot, "project-skill");
+    writeSkill(projectHarnessRoot, "project-harness-skill");
+    mkdirSync(path.join(cwd, ".pi"), { recursive: true });
+    writeFileSync(
+      path.join(cwd, ".pi", "settings.json"),
+      JSON.stringify({ skills: ["./.claude/skills"] }),
+    );
+
+    const loadSkills = vi.fn(() => ({
+      skills: [],
+      diagnostics: [],
+    })) as unknown as GatherDeps["loadSkills"];
+
+    const input = gatherCatalogInput({
+      cwd,
+      projectTrusted: false,
+      deps: fakeDeps({ loadSkills }),
+    });
+
+    expect(loadSkills).toHaveBeenCalledWith(
+      expect.objectContaining({
+        includeDefaults: false,
+        skillPaths: [path.join(agentDir, "skills")],
+      }),
+    );
+    expect(input.settingsProject).toEqual([]);
+    expect(input.sources.some((s) => s.rootPath === path.normalize(projectRoot))).toBe(false);
+    expect(input.sources.some((s) => s.rootPath === path.normalize(projectHarnessRoot))).toBe(
+      false,
+    );
+    expect(input.sources.some((s) => s.rootPath === path.normalize(globalRoot))).toBe(true);
+  });
+
   it("remembers a seen-but-empty registered custom source and gates it seen", () => {
     const home = tmp("sf-gather-home-");
     const cwd = tmp("sf-gather-cwd-");

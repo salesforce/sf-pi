@@ -52,12 +52,14 @@ export interface PruneOutcome {
 // Read-side: build the plan
 // -------------------------------------------------------------------------------------------------
 
-export function buildPrunePlan(cwd: string): PrunePlan {
-  const detection = detectSkillSources({ cwd });
+export function buildPrunePlan(cwd: string, options: { includeProject?: boolean } = {}): PrunePlan {
+  const includeProject = options.includeProject !== false;
+  const detection = detectSkillSources({ cwd, includeProject });
   const staleWired = detection.staleWired;
   const orphanManagedDirs: PrunePlan["orphanManagedDirs"] = [];
 
-  for (const scope of ["global", "project"] as const) {
+  const scopes: SkillSourceScope[] = includeProject ? ["global", "project"] : ["global"];
+  for (const scope of scopes) {
     const root = safeManagedRoot(scope, cwd);
     if (!root) continue;
     const parent = path.dirname(root); // <agentDir>/sf-skills/  or  <cwd>/.pi/sf-skills/
@@ -67,9 +69,9 @@ export function buildPrunePlan(cwd: string): PrunePlan {
       if (!isDirectory(dirPath)) continue;
       if (!existsSync(path.join(dirPath, SENTINEL_FILE))) continue;
       // Sentinel-marked dir. Orphan iff the corresponding skills/ subdir
-      // is NOT referenced by any settings entry (verbatim or by absolute path).
+      // is NOT referenced by any included settings entry (verbatim or by absolute path).
       const skillsDir = path.join(dirPath, "skills");
-      const referenced = isReferencedInSettings(skillsDir, cwd);
+      const referenced = isReferencedInSettings(skillsDir, cwd, { includeProject });
       if (!referenced) {
         orphanManagedDirs.push({ scope, absolutePath: dirPath });
       }
@@ -86,15 +88,17 @@ export function buildPrunePlan(cwd: string): PrunePlan {
 export function applyPrunePlan(
   plan: PrunePlan,
   cwd: string,
-  options: { removeStale: boolean; deleteOrphans: boolean },
+  options: { removeStale: boolean; deleteOrphans: boolean; includeProject?: boolean },
 ): PruneOutcome {
+  const includeProject = options.includeProject !== false;
   const outcome: PruneOutcome = { staleRemoved: 0, dirsDeleted: 0, errors: [] };
 
   if (options.removeStale && plan.staleWired.length > 0) {
-    // Stale entries can live in either settings file. Remove from both;
-    // updateSkillSources is idempotent so calling on a settings file
-    // that doesn't contain the value is harmless.
-    for (const scope of ["global", "project"] as const) {
+    // Stale entries can live in either included settings file. Remove from
+    // global and, when trusted, project; updateSkillSources is idempotent so
+    // calling on a settings file that doesn't contain the value is harmless.
+    const scopes: SkillSourceScope[] = includeProject ? ["global", "project"] : ["global"];
+    for (const scope of scopes) {
       try {
         updateSkillSources({
           add: [],
@@ -113,6 +117,7 @@ export function applyPrunePlan(
 
   if (options.deleteOrphans) {
     for (const orphan of plan.orphanManagedDirs) {
+      if (orphan.scope === "project" && !includeProject) continue;
       try {
         rmSync(orphan.absolutePath, { recursive: true, force: true });
         outcome.dirsDeleted += 1;
@@ -155,11 +160,15 @@ function readdirSafe(p: string): string[] {
   }
 }
 
-function isReferencedInSettings(absolutePath: string, cwd: string): boolean {
+function isReferencedInSettings(
+  absolutePath: string,
+  cwd: string,
+  options: { includeProject: boolean },
+): boolean {
   // detectSkillSources only looks at known external roots (Claude/Codex/Cursor).
   // For managed clones we want to check the raw settings.skills[] arrays
   // ourselves so we catch absolute, ~/, and ./-prefixed forms uniformly.
-  const detection = detectSkillSources({ cwd });
+  const detection = detectSkillSources({ cwd, includeProject: options.includeProject });
   const normalizedTarget = path.normalize(absolutePath);
   for (const settingsPath of [detection.settingsPath, detection.projectSettingsPath]) {
     if (!settingsPath) continue;

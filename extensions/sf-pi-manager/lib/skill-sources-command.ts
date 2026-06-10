@@ -117,10 +117,13 @@ async function handleOverlay(ctx: ExtensionCommandContext, _packageVersion: stri
 // -------------------------------------------------------------------------------------------------
 
 function handleList(ctx: ExtensionCommandContext): void {
-  const detection = detectSkillSources({ cwd: ctx.cwd });
+  const projectTrusted = ctx.isProjectTrusted();
+  const detection = detectSkillSources({ cwd: ctx.cwd, includeProject: projectTrusted });
   if (detection.candidates.length === 0 && detection.staleWired.length === 0) {
     ctx.ui.notify(
-      "No external skill directories detected under ~/.claude, ~/.codex, ~/.cursor, or this project.",
+      projectTrusted
+        ? "No external skill directories detected under ~/.claude, ~/.codex, ~/.cursor, or this project."
+        : "No external global skill directories detected under ~/.claude, ~/.codex, or ~/.cursor. Project sources are hidden until Pi trusts this project.",
       "info",
     );
     return;
@@ -129,15 +132,23 @@ function handleList(ctx: ExtensionCommandContext): void {
   const lines = [
     `sf-pi external skill sources:`,
     `  global settings:  ${detection.settingsPath}`,
-    detection.projectSettingsPath
+    projectTrusted && detection.projectSettingsPath
       ? `  project settings: ${detection.projectSettingsPath}`
-      : `  project settings: (not in a project root)`,
+      : projectTrusted
+        ? `  project settings: (not in a project root)`
+        : `  project settings: (unavailable until project is trusted)`,
     "",
     ...detection.candidates.map(renderCandidateLine),
   ];
   if (detection.staleWired.length > 0) {
     lines.push("", "Stale entries in settings.skills[] (path no longer exists):");
     for (const raw of detection.staleWired) lines.push(`  ○ ${raw}`);
+  }
+  if (!projectTrusted) {
+    lines.push(
+      "",
+      "Project-scope sources are hidden until Pi trusts this project. Use /trust for future sessions, or restart with --approve to include them.",
+    );
   }
   lines.push(
     "",
@@ -147,7 +158,8 @@ function handleList(ctx: ExtensionCommandContext): void {
 }
 
 function handleStatus(ctx: ExtensionCommandContext): void {
-  const detection = detectSkillSources({ cwd: ctx.cwd });
+  const projectTrusted = ctx.isProjectTrusted();
+  const detection = detectSkillSources({ cwd: ctx.cwd, includeProject: projectTrusted });
   const globalRoots = detection.candidates.filter((c) => c.scope === "global");
   const projectRoots = detection.candidates.filter((c) => c.scope === "project");
   const globalWired = globalRoots.filter((c) => c.wired).length;
@@ -160,7 +172,11 @@ function handleStatus(ctx: ExtensionCommandContext): void {
     `  wired:              ${globalWired}`,
     `  available (opt in): ${globalRoots.length - globalWired}`,
     "",
-    `Project settings:     ${detection.projectSettingsPath ?? "(not in a project root)"}`,
+    `Project settings:     ${
+      projectTrusted
+        ? (detection.projectSettingsPath ?? "(not in a project root)")
+        : "(unavailable until project is trusted)"
+    }`,
     `  detected:           ${projectRoots.length}`,
     `  wired:              ${projectWired}`,
     `  available (opt in): ${projectRoots.length - projectWired}`,
@@ -180,7 +196,7 @@ async function handleLink(ctx: ExtensionCommandContext, target: string | undefin
     );
     return;
   }
-  const detection = detectSkillSources({ cwd: ctx.cwd });
+  const detection = detectSkillSources({ cwd: ctx.cwd, includeProject: ctx.isProjectTrusted() });
   const resolved = resolveTarget(detection.candidates, target);
   if (!resolved) {
     ctx.ui.notify(
@@ -219,7 +235,7 @@ async function handleUnlink(
     ctx.ui.notify(`Usage: ${PREFIX} unlink <path|label>`, "warning");
     return;
   }
-  const detection = detectSkillSources({ cwd: ctx.cwd });
+  const detection = detectSkillSources({ cwd: ctx.cwd, includeProject: ctx.isProjectTrusted() });
   const resolved = resolveTarget(detection.candidates, target);
   // Fall back to removing the raw user input — lets users unlink entries
   // we don't recognize (e.g. arbitrary paths they added manually).

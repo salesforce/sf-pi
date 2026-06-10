@@ -100,9 +100,23 @@ export async function handleDefaults(
     level: "info" | "warning" | "error" | "success",
   ) => Promise<void>,
 ): Promise<void> {
+  const projectTrusted = ctx.isProjectTrusted();
+  if (args.scope === "project" && args.action !== "status" && !projectTrusted) {
+    await emit(
+      "Project scope unavailable",
+      "Project-scope skill management is unavailable until Pi trusts this project. Use /trust for future sessions, or restart with --approve if you want SF Pi to read or write project-local skill settings.",
+      "warning",
+    );
+    return;
+  }
+
   switch (args.action) {
     case "status":
-      await emit("SF Skills defaults", renderStatus(ctx.cwd), "info");
+      await emit(
+        "SF Skills defaults",
+        renderStatus(ctx.cwd, { includeProject: projectTrusted }),
+        "info",
+      );
       return;
 
     case "install": {
@@ -185,9 +199,16 @@ export async function handleDefaults(
 // Status rendering
 // -------------------------------------------------------------------------------------------------
 
-function renderStatus(cwd: string): string {
+function renderStatus(cwd: string, opts: { includeProject: boolean }): string {
   const lines: string[] = ["forcedotcom/afv-library managed checkouts:", ""];
   for (const scope of ["global", "project"] as const) {
+    if (scope === "project" && !opts.includeProject) {
+      lines.push("PROJECT");
+      lines.push("  status:  unavailable until Pi trusts this project");
+      lines.push("");
+      continue;
+    }
+
     const targetPath = managedClonePath(scope, cwd);
     const clone = inspectManagedClone(scope, cwd);
     lines.push(`${scope.toUpperCase()}`);

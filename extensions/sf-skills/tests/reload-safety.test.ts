@@ -27,6 +27,7 @@ function buildExtension() {
 function fakeUiCtx() {
   return {
     hasUI: true,
+    mode: "tui",
     cwd: process.cwd(),
     sessionManager: { getBranch: () => [], getLeafId: () => null },
     ui: {

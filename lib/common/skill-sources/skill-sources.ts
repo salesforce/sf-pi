@@ -132,11 +132,13 @@ function knownProjectRoots(cwd: string): KnownRoot[] {
 export interface SkillSourcesResult {
   /** Global settings file path — always returned for backwards compatibility. */
   settingsPath: string;
-  /** Project settings file path when `cwd` was supplied, else undefined. */
+  /** Project settings file path when trusted project scope was supplied, else undefined. */
   projectSettingsPath?: string;
+  /** True when project-local roots/settings were included in this detection pass. */
+  projectIncluded: boolean;
   /** Every candidate root we detected on disk, wired or not. */
   candidates: SkillSourceCandidate[];
-  /** Entries in either settings.skills[] that point at a non-existent path.
+  /** Entries in included settings.skills[] files that point at a non-existent path.
    *  Surfaced so users can prune stale references. */
   staleWired: string[];
 }
@@ -152,21 +154,22 @@ export interface SkillSourcesResult {
  * The result is safe to render even when settings are missing or malformed.
  */
 export function detectSkillSources(
-  opts: { home?: string; cwd?: string } | string = {},
+  opts: { home?: string; cwd?: string; includeProject?: boolean } | string = {},
 ): SkillSourcesResult {
   // Backwards-compat: legacy callers passed `home` positionally.
   const args = typeof opts === "string" ? { home: opts } : opts;
   const home = args.home ?? os.homedir();
   const cwd = args.cwd;
+  const includeProject = !!cwd && args.includeProject !== false;
 
   const globalPath = globalSettingsPath();
-  const projectPath = cwd ? projectSettingsPath(cwd) : undefined;
+  const projectPath = includeProject ? projectSettingsPath(cwd) : undefined;
   const globalWired = readWiredSkillPaths(globalPath, home, cwd);
   const projectWired = projectPath ? readWiredSkillPaths(projectPath, home, cwd) : null;
 
   const candidates: SkillSourceCandidate[] = [];
   const roots: KnownRoot[] = [...knownGlobalRoots(home)];
-  if (cwd) roots.push(...knownProjectRoots(cwd));
+  if (includeProject) roots.push(...knownProjectRoots(cwd));
 
   for (const root of roots) {
     if (!isDirectory(root.absolute)) continue;
@@ -203,6 +206,7 @@ export function detectSkillSources(
   return {
     settingsPath: globalPath,
     projectSettingsPath: projectPath,
+    projectIncluded: includeProject,
     candidates,
     staleWired,
   };

@@ -113,6 +113,32 @@ describe("detectSkillSources", () => {
     expect(result.staleWired).toContain("~/some/missing/dir");
   });
 
+  it("does not inspect project-scope candidates when project scope is excluded", () => {
+    const home = makeHome();
+    process.env.HOME = home;
+    const cwd = mkdtempSync(path.join(tmpdir(), "sf-skill-sources-cwd-"));
+    tempDirs.push(cwd);
+    mkdirSync(path.join(cwd, ".claude", "skills", "my-skill"), { recursive: true });
+    writeFileSync(
+      path.join(cwd, ".claude", "skills", "my-skill", "SKILL.md"),
+      "---\nname: my-skill\n---\n",
+    );
+    const projectSettingsPath = path.join(cwd, ".pi", "settings.json");
+    mkdirSync(path.dirname(projectSettingsPath), { recursive: true });
+    writeFileSync(
+      projectSettingsPath,
+      `${JSON.stringify({ skills: ["./missing-project-skills"] }, null, 2)}\n`,
+      "utf8",
+    );
+
+    const result = detectSkillSources({ home, cwd, includeProject: false });
+
+    expect(result.projectIncluded).toBe(false);
+    expect(result.projectSettingsPath).toBeUndefined();
+    expect(result.candidates.some((c) => c.scope === "project")).toBe(false);
+    expect(result.staleWired).not.toContain("./missing-project-skills");
+  });
+
   it("detects project-scope candidates when cwd is supplied", () => {
     const home = makeHome();
     process.env.HOME = home;
