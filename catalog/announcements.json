@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.182.0-2026-06-09",
-  "latestVersion": "0.182.0",
+  "revision": "release-0.183.0-2026-06-10",
+  "latestVersion": "0.183.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.182.0",
+      "id": "release-0.183.0",
       "kind": "update",
-      "title": "sf-pi v0.182.0 — make extension settings surfaces mode-aware",
-      "publishedAt": "2026-06-09T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.182.0",
+      "title": "sf-pi v0.183.0 — sf-agentscript: diagnose channel runtime smoke",
+      "publishedAt": "2026-06-10T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.183.0",
       "severity": "info",
-      "body": "make extension settings surfaces mode-aware — sf-agentscript: preflight published voice planners"
+      "body": "sf-agentscript: diagnose channel runtime smoke — remove unused skill source argument"
     },
     {
       "id": "pi-0.73-required",
