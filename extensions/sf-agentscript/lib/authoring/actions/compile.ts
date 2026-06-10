@@ -18,6 +18,7 @@ import {
 } from "../../branch-state.ts";
 import type { AuthoringParams } from "../params.ts";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type { TimingCollector } from "../../timings.ts";
 
 interface QuickFixView extends AgentScriptQuickFix {
   apply_via: {
@@ -36,6 +37,7 @@ interface QuickFixView extends AgentScriptQuickFix {
 export async function runCompileAction(
   ctx: ExtensionContext,
   input: AuthoringParams,
+  timings?: TimingCollector,
 ): Promise<{
   content: { type: "text"; text: string }[];
   details: Record<string, unknown> | ToolError;
@@ -62,17 +64,20 @@ export async function runCompileAction(
   if (mode !== "check") {
     return toolError("INVALID_PARAMS", "verb='compile' supports mode='check' or mode='format'.");
   }
-  return actionCheck(agentFile, input);
+  return actionCheck(agentFile, input, timings);
 }
 
 async function actionCheck(
   agentFile: string,
   input: AuthoringParams,
+  timings?: TimingCollector,
 ): Promise<{
   content: { type: "text"; text: string }[];
   details: Record<string, unknown> | ToolError;
 }> {
-  const result = await checkAgentScriptFile(agentFile);
+  const result = timings
+    ? await timings.time("local_compile", () => checkAgentScriptFile(agentFile))
+    : await checkAgentScriptFile(agentFile);
 
   if (!result.ok) {
     const reason = result.unavailableReason ?? "unknown reason";
@@ -106,9 +111,14 @@ async function actionCheck(
       );
     }
     try {
-      const { conn } = await connForAgentApi(input.target_org);
+      const authPhase = timings?.phase("agent_api_auth");
+      const auth = await connForAgentApi(input.target_org);
+      authPhase?.end({ cache: auth.cache });
+      const { conn } = auth;
       const source = await readFile(agentFile, "utf8");
-      const serverResult = await serverCompile(conn, source);
+      const serverResult = timings
+        ? await timings.time("server_compile", () => serverCompile(conn, source))
+        : await serverCompile(conn, source);
       if (serverResult.ok) {
         const details = withAgentScriptBranchState(
           {

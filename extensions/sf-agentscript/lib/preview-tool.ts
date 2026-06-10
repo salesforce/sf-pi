@@ -37,6 +37,7 @@ import {
   renderPreviewSendResult,
 } from "./render/timeline.ts";
 import { previewReportPath, reportHeader, writeMarkdownReport } from "./render/report-writer.ts";
+import { createTimingCollector, withTimings, type TimingCollector } from "./timings.ts";
 
 export const PREVIEW_TOOL_NAME = "agentscript_preview";
 
@@ -191,23 +192,34 @@ export function registerPreviewTool(pi: ExtensionAPI): void {
     ],
     parameters: Params,
     async execute(_id, params, _signal, onUpdate, ctx) {
+      const timings = createTimingCollector();
       const p = params as ParamsAny;
       const reqOk = checkRequired(p);
-      if (reqOk.ok === false) return toolError("INVALID_PARAMS", reqOk.error);
+      if (reqOk.ok === false) {
+        return withTimings(toolError("INVALID_PARAMS", reqOk.error), timings, { appendLine: true });
+      }
+      let result;
       switch (p.action) {
         case "start":
-          return await actionStart(ctx, p);
+          result = await actionStart(ctx, p, timings);
+          break;
         case "send":
-          return await actionSend(ctx, p, onUpdate);
+          result = await actionSend(ctx, p, onUpdate, timings);
+          break;
         case "end":
-          return await actionEnd(ctx, p);
+          result = await timings.time("preview.end", () => actionEnd(ctx, p));
+          break;
         case "end_all":
-          return await actionEndAll(ctx, p);
+          result = await timings.time("preview.end_all", () => actionEndAll(ctx, p));
+          break;
         case "trace":
-          return await actionTrace(p);
+          result = await actionTrace(p, timings);
+          break;
         case "cleanup":
-          return await actionCleanup(ctx, p);
+          result = await timings.time("preview.cleanup", () => actionCleanup(ctx, p));
+          break;
       }
+      return withTimings(result, timings, { appendLine: true });
     },
   });
 }
@@ -245,6 +257,7 @@ function checkRequired(p: ParamsAny): { ok: true } | { ok: false; error: string 
 async function actionStart(
   ctx: ExtensionContext,
   input: ParamsAny,
+  timings?: TimingCollector,
 ): Promise<{
   content: { type: "text"; text: string }[];
   details: Record<string, unknown> | ToolError;
@@ -273,12 +286,16 @@ async function actionStart(
     }
     const agentName = input.agent_name ?? input.agent_api_name;
     try {
-      const { conn } = await connForAgentApi(input.target_org);
+      const authPhase = timings?.phase("agent_api_auth");
+      const auth = await connForAgentApi(input.target_org);
+      authPhase?.end({ cache: auth.cache });
+      const { conn } = auth;
       const result = await startPreviewByApiName({
         conn,
         cwd: ctx.cwd,
         agentApiName: input.agent_api_name,
         targetOrg: input.target_org,
+        timings,
       });
       return toolOk(
         withAgentScriptBranchState(
@@ -332,7 +349,9 @@ async function actionStart(
   }
   let source: string;
   try {
-    source = await readFile(filePath, "utf8");
+    source = timings
+      ? await timings.time("read_agent_source", () => readFile(filePath, "utf8"))
+      : await readFile(filePath, "utf8");
   } catch (err) {
     return toolError(
       `Cannot read ${filePath}: ${err instanceof Error ? err.message : String(err)}`,
@@ -340,7 +359,9 @@ async function actionStart(
   }
   const agentName = input.agent_name ?? path.basename(filePath, ".agent");
 
-  const localCheck = await checkAgentScriptFile(filePath);
+  const localCheck = timings
+    ? await timings.time("local_compile", () => checkAgentScriptFile(filePath))
+    : await checkAgentScriptFile(filePath);
   if (!localCheck.ok) {
     return toolError(
       localCheck.unavailableReason ?? "Local Agent Script compile failed before preview.",
@@ -364,7 +385,10 @@ async function actionStart(
   }
 
   try {
-    const { conn } = await connForAgentApi(input.target_org);
+    const authPhase = timings?.phase("agent_api_auth");
+    const auth = await connForAgentApi(input.target_org);
+    authPhase?.end({ cache: auth.cache });
+    const { conn } = auth;
     const result = await startPreview({
       conn,
       cwd: ctx.cwd,
@@ -374,6 +398,7 @@ async function actionStart(
       mockMode: input.mock_mode ?? "Mock",
       targetOrg: input.target_org,
       contextVariables: input.context_variables,
+      timings,
       // (agentFilePath above is also persisted to metadata.json by
       //  startPreview — used by `end` to suggest the next publish command.)
     });
@@ -430,6 +455,7 @@ async function actionSend(
   ctx: ExtensionContext,
   input: ParamsAny,
   onUpdate?: OnUpdateFn,
+  timings?: TimingCollector,
 ): Promise<{
   content: { type: "text"; text: string }[];
   details: Record<string, unknown> | ToolError;
@@ -446,11 +472,11 @@ async function actionSend(
   };
   stream("Sending message…");
 
-  const resolvedSession = await resolveActivePreviewSession(
-    ctx,
-    input.agent_name,
-    input.session_id,
-  );
+  const resolvedSession = timings
+    ? await timings.time("resolve_preview_session", () =>
+        resolveActivePreviewSession(ctx, input.agent_name, input.session_id),
+      )
+    : await resolveActivePreviewSession(ctx, input.agent_name, input.session_id);
   if ("agentName" in resolvedSession === false) return resolvedSession;
   input = {
     ...input,
@@ -462,16 +488,18 @@ async function actionSend(
   // Resolve the target_org from session metadata when the caller didn't
   // pass one (or refuse if it conflicts with what start was called with).
   // Prevents the silent "send hits the wrong org → Session not found" bug.
-  const orgResolution = await resolveSessionTargetOrg(
-    ctx.cwd,
-    input.agent_name,
-    input.session_id,
-    input.target_org,
-  );
+  const orgResolution = timings
+    ? await timings.time("resolve_session_org", () =>
+        resolveSessionTargetOrg(ctx.cwd, input.agent_name, input.session_id, input.target_org),
+      )
+    : await resolveSessionTargetOrg(ctx.cwd, input.agent_name, input.session_id, input.target_org);
   if (orgResolution.kind === "conflict") return toolError(orgResolution.message);
 
   try {
-    const { conn } = await connForAgentApi(orgResolution.targetOrg);
+    const authPhase = timings?.phase("agent_api_auth");
+    const auth = await connForAgentApi(orgResolution.targetOrg);
+    authPhase?.end({ cache: auth.cache });
+    const { conn } = auth;
     const result = await sendMessage({
       conn,
       cwd: ctx.cwd,
@@ -480,6 +508,7 @@ async function actionSend(
       message: input.message,
       apexDebug: input.apex_debug,
       contextVariables: input.context_variables,
+      timings,
     });
     stream("Trace captured");
 
@@ -510,7 +539,11 @@ async function actionSend(
             plan_id: result.planId,
             trace_file: result.traceFile,
           });
-        const written = await writeMarkdownReport(previewReportPath(sessionDir, result.planId), md);
+        const written = timings
+          ? await timings.time("write_preview_report", () =>
+              writeMarkdownReport(previewReportPath(sessionDir, result.planId), md),
+            )
+          : await writeMarkdownReport(previewReportPath(sessionDir, result.planId), md);
         reportFile = written.path;
       }
     } catch {
@@ -811,13 +844,22 @@ async function actionEndAll(
 // action = trace
 // -------------------------------------------------------------------------------------------------
 
-async function actionTrace(input: ParamsAny): Promise<{
+async function actionTrace(
+  input: ParamsAny,
+  timings?: TimingCollector,
+): Promise<{
   content: { type: "text"; text: string }[];
   details: Record<string, unknown> | ToolError;
 }> {
   try {
-    const { conn } = await connForAgentApi(input.target_org);
-    const trace = await fetchTrace(conn, input.session_id, input.plan_id);
+    const authPhase = timings?.phase("agent_api_auth");
+    const auth = await connForAgentApi(input.target_org);
+    authPhase?.end({ cache: auth.cache });
+    const trace = timings
+      ? await timings.time("trace_fetch", () =>
+          fetchTrace(auth.conn, input.session_id, input.plan_id),
+        )
+      : await fetchTrace(auth.conn, input.session_id, input.plan_id);
     if (trace == null) {
       return toolError(
         `Trace not found for session=${input.session_id} plan=${input.plan_id}.`,

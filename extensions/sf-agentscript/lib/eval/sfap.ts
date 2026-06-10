@@ -18,6 +18,7 @@
  */
 
 import type { Connection } from "@salesforce/core";
+import { clearAgentApiAuthCache } from "../agent-api-auth.ts";
 
 // -------------------------------------------------------------------------------------------------
 // Public types
@@ -52,6 +53,8 @@ export interface SfapResponse<T = unknown> {
   body: T;
   /** Which SFAP host actually answered (`""` = prod, `"test."` = sandbox). */
   endpoint: "" | "test." | "dev.";
+  /** In-memory endpoint-cache status for local operation timings. */
+  endpoint_cache?: "hit" | "miss" | "refresh" | "bypass";
 }
 
 /**
@@ -74,6 +77,7 @@ export function isSfapRoutingFailure<T>(resp: SfapResponse<T>): boolean {
 
 const PREFIXES = ["", "test.", "dev."] as const;
 const HOST_RE = /https:\/\/(?:test\.|dev\.)?api\.salesforce\.com/;
+const sfapEndpointCache = new Map<string, SfapResponse["endpoint"]>();
 
 function swapEndpoint(url: string, prefix: string): string {
   return url.replace(HOST_RE, `https://${prefix}api.salesforce.com`);
@@ -179,19 +183,30 @@ export async function sfapRequest<T = unknown>(
   // Resolution order:
   //   1. `pinnedEndpoint` set → only that host (sticky session continuity).
   //   2. `fallback === false` → only production.
-  //   3. default → walk api → test.api → dev.api on 404.
+  //   3. cached prefix first when available, then normal api → test.api → dev.api on 404.
+  const cacheKey = sfapEndpointCacheKey(conn);
+  const cachedEndpoint = sfapEndpointCache.get(cacheKey);
+  const cacheEnabled = req.pinnedEndpoint === undefined && req.fallback !== false;
   const endpoints =
     req.pinnedEndpoint !== undefined
       ? [req.pinnedEndpoint]
       : req.fallback === false
         ? [""]
-        : (PREFIXES as readonly string[]);
+        : cachedEndpoint
+          ? [cachedEndpoint, ...PREFIXES.filter((prefix) => prefix !== cachedEndpoint)]
+          : (PREFIXES as readonly string[]);
   const maxRetries = req.maxRetries ?? 2;
   const timeoutMs = req.timeoutMs ?? (req.method === "POST" ? 300_000 : 60_000);
 
   let lastStatus = 0;
   let lastBody: unknown = null;
   let lastEndpoint: SfapResponse["endpoint"] = "";
+
+  const cacheState = (endpoint: SfapResponse["endpoint"]): SfapResponse["endpoint_cache"] => {
+    if (!cacheEnabled) return "bypass";
+    if (!cachedEndpoint) return "miss";
+    return endpoint === cachedEndpoint ? "hit" : "refresh";
+  };
 
   for (let i = 0; i < endpoints.length; i++) {
     const prefix = endpoints[i] as SfapResponse["endpoint"];
@@ -205,7 +220,13 @@ export async function sfapRequest<T = unknown>(
       lastEndpoint = prefix;
 
       if (result.status >= 200 && result.status < 300) {
-        return { status: result.status, body: result.body, endpoint: prefix };
+        if (cacheEnabled) sfapEndpointCache.set(cacheKey, prefix);
+        return {
+          status: result.status,
+          body: result.body,
+          endpoint: prefix,
+          endpoint_cache: cacheState(prefix),
+        };
       }
 
       // 404 → walk to next endpoint variant (sandbox-safe SFAP routing).
@@ -219,12 +240,24 @@ export async function sfapRequest<T = unknown>(
 
       // 4xx (other than 404 with more endpoints to try) → terminal.
       if (result.status >= 400 && result.status < 500) {
-        return { status: result.status, body: result.body, endpoint: prefix };
+        if (result.status === 401) clearAgentApiAuthCache();
+        return {
+          status: result.status,
+          body: result.body,
+          endpoint: prefix,
+          endpoint_cache: cacheState(prefix),
+        };
       }
 
       // Out of retries on 5xx → terminal.
       if (attempt === maxRetries) {
-        return { status: result.status, body: result.body, endpoint: prefix };
+        if (result.status === 401) clearAgentApiAuthCache();
+        return {
+          status: result.status,
+          body: result.body,
+          endpoint: prefix,
+          endpoint_cache: cacheState(prefix),
+        };
       }
     }
   }
@@ -233,5 +266,32 @@ export async function sfapRequest<T = unknown>(
     status: lastStatus || 404,
     body: (lastBody ?? {}) as T,
     endpoint: lastEndpoint,
+    endpoint_cache: cacheState(lastEndpoint),
   };
+}
+
+function sfapEndpointCacheKey(conn: Connection): string {
+  const opts = conn.getConnectionOptions?.() as { instanceUrl?: string } | undefined;
+  const instanceUrl = conn.instanceUrl ?? opts?.instanceUrl ?? "<unknown-instance>";
+  let username = "<unknown-user>";
+  let apiVersion = "<unknown-api>";
+  try {
+    username = conn.getUsername?.() ?? username;
+  } catch {
+    /* best-effort */
+  }
+  try {
+    apiVersion = conn.getApiVersion?.() ?? apiVersion;
+  } catch {
+    /* best-effort */
+  }
+  return [username, instanceUrl, apiVersion].join("::");
+}
+
+export function clearSfapEndpointCache(): void {
+  sfapEndpointCache.clear();
+}
+
+export function sfapEndpointCacheSize(): number {
+  return sfapEndpointCache.size;
 }

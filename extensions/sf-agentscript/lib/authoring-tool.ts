@@ -17,6 +17,7 @@ import { runInspectAction } from "./authoring/actions/inspect.ts";
 import { runMutateAction } from "./authoring/actions/mutate.ts";
 import { validateAuthoringParams, type AuthoringParams } from "./authoring/params.ts";
 import { toolError } from "./tool-types.ts";
+import { createTimingCollector, withTimings } from "./timings.ts";
 
 export const AUTHORING_TOOL_NAME = "agentscript_authoring";
 
@@ -221,24 +222,35 @@ export function registerAuthoringTool(pi: ExtensionAPI): void {
     ],
     parameters: Params,
     async execute(_id, params, _signal, _onUpdate, ctx) {
+      const timings = createTimingCollector();
       const p = params as AuthoringParams;
       const valid = validateAuthoringParams(p);
-      if (valid.ok === false) return toolError("INVALID_PARAMS", valid.error);
+      if (valid.ok === false) {
+        return withTimings(toolError("INVALID_PARAMS", valid.error), timings, { appendLine: true });
+      }
+      let result;
       switch (p.verb) {
         case "create":
-          return runCreateAction(ctx, p);
+          result = await timings.time("authoring.create", () => runCreateAction(ctx, p));
+          break;
         case "compile":
-          return runCompileAction(ctx, p);
+          result = await runCompileAction(ctx, p, timings);
+          break;
         case "inspect":
-          return runInspectAction(ctx, p);
+          result = await runInspectAction(ctx, p, timings);
+          break;
         case "mutate":
-          return runMutateAction(ctx, p);
+          result = await timings.time(`authoring.mutate.${p.mode ?? "unknown"}`, () =>
+            runMutateAction(ctx, p),
+          );
+          break;
         default:
-          return toolError(
+          result = toolError(
             "INVALID_PARAMS",
             `Unsupported authoring verb '${String((p as { verb?: unknown }).verb)}'.`,
           );
       }
+      return withTimings(result, timings, { appendLine: true });
     },
   });
 }

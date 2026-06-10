@@ -104,6 +104,10 @@ _Avoid_: raw planner trace, LLM prompt payload, artifact store, unstructured ter
 The compact, structured Agent Script preview summary returned to the model so it can reason about a turn without consuming the full human report or raw trace. It stores clipped signals and pointers to artifacts rather than full prompts, full state maps, or full action payloads.
 _Avoid_: human report, raw trace JSON, full action I/O dump, branch state
 
+**Local Operation Timings**:
+Phase-duration measurements recorded inside SF Pi tool results and existing local artifacts so users can understand where time was spent during a workflow. They are local diagnostic facts, not external analytics or telemetry.
+_Avoid_: external telemetry, usage analytics, monitoring beacon, performance tracking service
+
 **Action I/O Appendix**:
 The screenshot-friendly section of a **Preview Trace Report** that summarizes called action inputs and outputs with display budgets, redaction, field/path coverage, and raw-trace pointers so humans can debug tool behavior without making the default report an unbounded data dump.
 _Avoid_: raw JSON wall, complete artifact copy, LLM context payload, hidden-only action details

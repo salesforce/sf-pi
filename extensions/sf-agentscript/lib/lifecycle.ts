@@ -27,6 +27,7 @@ import { isSfapRoutingFailure, sfapRequest } from "./eval/sfap.ts";
 import { inspectFile } from "./inspect.ts";
 import { checkActionTargets, checkBundleType } from "./preflight.ts";
 import { loadAgentforceSDK } from "./sdk.ts";
+import type { TimingCollector } from "./timings.ts";
 
 // -------------------------------------------------------------------------------------------------
 // Endpoints
@@ -203,6 +204,8 @@ export interface PublishOptions {
   activate?: boolean;
   /** Optional progress callback. */
   log?: (msg: string) => void;
+  /** Optional local operation timing collector owned by the tool wrapper. */
+  timings?: TimingCollector;
   /**
    * When true, skip the action-target Tooling-API pre-flight (network).
    * The local bundleType pre-flight always runs; it's a file read.
@@ -319,10 +322,14 @@ export async function publishAgent(opts: PublishOptions): Promise<PublishResult>
 
   // Local pre-flight when the SDK is loadable — saves a network call when the
   // source is obviously broken.
-  const sdk = await loadAgentforceSDK();
+  const sdk = opts.timings
+    ? await opts.timings.time("load_agentscript_sdk", () => loadAgentforceSDK())
+    : await loadAgentforceSDK();
   if (sdk) {
     log("Pre-flighting local compile…");
-    const compile = sdk.compileSource(opts.agentSource);
+    const compile = opts.timings
+      ? await opts.timings.time("sdk_compile_guard", () => sdk.compileSource(opts.agentSource))
+      : sdk.compileSource(opts.agentSource);
     const sev1 = compile.diagnostics
       .filter((d): d is { severity?: number } => typeof d === "object" && d !== null)
       .filter((d) => (d as { severity?: number }).severity === 1);
@@ -341,7 +348,9 @@ export async function publishAgent(opts: PublishOptions): Promise<PublishResult>
   // INVALID_BUNDLE envelope with a clear next step.
   if (opts.bundleDir) {
     const bundleMetaPath = path.join(opts.bundleDir, `${opts.agentApiName}.bundle-meta.xml`);
-    const bundleCheck = await checkBundleType(bundleMetaPath);
+    const bundleCheck = opts.timings
+      ? await opts.timings.time("bundle_type_preflight", () => checkBundleType(bundleMetaPath))
+      : await checkBundleType(bundleMetaPath);
     if (!bundleCheck.ok) {
       throw new PreflightFailureError(
         `Bundle XML is invalid: ${bundleCheck.detail}`,
@@ -366,12 +375,18 @@ export async function publishAgent(opts: PublishOptions): Promise<PublishResult>
         // walk would silently miss them all and the pre-flight would no-op.
         const agentPath =
           opts.agentFilePath ?? path.join(opts.bundleDir, `${opts.agentApiName}.agent`);
-        const inspect = await inspectFile(agentPath);
+        const inspect = opts.timings
+          ? await opts.timings.time("inspect_structure", () => inspectFile(agentPath))
+          : await inspectFile(agentPath);
         const actions = inspect.ok ? (inspect.components?.actions ?? []) : [];
         const targeted = actions.filter((a) => typeof a.target === "string" && a.target.length > 0);
         if (targeted.length > 0) {
           log(`Pre-flighting ${targeted.length} action target(s) against the org…`);
-          const tcheck = await checkActionTargets(opts.conn, targeted);
+          const tcheck = opts.timings
+            ? await opts.timings.time("action_target_preflight", () =>
+                checkActionTargets(opts.conn, targeted),
+              )
+            : await checkActionTargets(opts.conn, targeted);
           const missing = tcheck.targets.filter((t) => t.status === "missing");
           preflightFindings = {
             actions_inspected: tcheck.total,
@@ -421,7 +436,9 @@ export async function publishAgent(opts: PublishOptions): Promise<PublishResult>
   const agentApiConn = opts.agentApiConn ?? opts.conn;
 
   log("Server-compiling…");
-  const compileResult = await serverCompile(agentApiConn, opts.agentSource);
+  const compileResult = opts.timings
+    ? await opts.timings.time("server_compile", () => serverCompile(agentApiConn, opts.agentSource))
+    : await serverCompile(agentApiConn, opts.agentSource);
   if (compileResult.ok === false) {
     if (
       isSfapRoutingFailure({ status: compileResult.status, body: compileResult.body, endpoint: "" })
@@ -435,7 +452,11 @@ export async function publishAgent(opts: PublishOptions): Promise<PublishResult>
   const agentJson = compileResult.agentJson;
 
   log("Looking up existing BotDefinition…");
-  const existingBotId = await findBotId(opts.conn, opts.agentApiName);
+  const existingBotId = opts.timings
+    ? await opts.timings.time("bot_definition_lookup", () =>
+        findBotId(opts.conn, opts.agentApiName),
+      )
+    : await findBotId(opts.conn, opts.agentApiName);
   const url = existingBotId ? `${AGENTS_URL}/${existingBotId}/versions` : AGENTS_URL;
   log(
     existingBotId
@@ -443,15 +464,33 @@ export async function publishAgent(opts: PublishOptions): Promise<PublishResult>
       : `Publishing new agent ${opts.agentApiName}…`,
   );
 
-  const publishResp = await sfapRequest<PublishResponseBody>(agentApiConn, {
-    url,
-    method: "POST",
-    headers: { "x-client-name": "sf-pi", "content-type": "application/json" },
-    body: {
-      agentDefinition: agentJson,
-      instanceConfig: { endpoint: opts.conn.instanceUrl },
-    },
-  });
+  const publishResp = opts.timings
+    ? await opts.timings.time("sfap_publish", () =>
+        sfapRequest<PublishResponseBody>(agentApiConn, {
+          url,
+          method: "POST",
+          headers: { "x-client-name": "sf-pi", "content-type": "application/json" },
+          body: {
+            agentDefinition: agentJson,
+            instanceConfig: { endpoint: opts.conn.instanceUrl },
+          },
+        }),
+      )
+    : await sfapRequest<PublishResponseBody>(agentApiConn, {
+        url,
+        method: "POST",
+        headers: { "x-client-name": "sf-pi", "content-type": "application/json" },
+        body: {
+          agentDefinition: agentJson,
+          instanceConfig: { endpoint: opts.conn.instanceUrl },
+        },
+      });
+  if (opts.timings) {
+    opts.timings.add("sfap_endpoint_cache", 0, {
+      cache: publishResp.endpoint_cache,
+      endpoint: publishResp.endpoint,
+    });
+  }
   if (publishResp.status < 200 || publishResp.status >= 300) {
     if (isSfapRoutingFailure(publishResp)) {
       throw new Error(sfap404Message({ phase: "publish", agentApiName: opts.agentApiName }));
@@ -465,7 +504,11 @@ export async function publishAgent(opts: PublishOptions): Promise<PublishResult>
     throw new Error(`Publish returned no botId/botVersionId: ${errorMessage ?? "unknown"}`);
   }
 
-  const versionDetails = await getVersionDetails(opts.conn, botVersionId);
+  const versionDetails = opts.timings
+    ? await opts.timings.time("bot_version_lookup", () =>
+        getVersionDetails(opts.conn, botVersionId),
+      )
+    : await getVersionDetails(opts.conn, botVersionId);
   const versionDeveloperName = versionDetails?.DeveloperName;
   const versionNumber = versionDetails?.VersionNumber;
 
@@ -505,18 +548,36 @@ export async function publishAgent(opts: PublishOptions): Promise<PublishResult>
       let tmpRoot: string | undefined;
       try {
         // 1. Inject <target> into the local bundle-meta.xml (CLI does this exact step).
-        original = (await injectBundleTarget(bundleMetaPath, target)).original;
+        original = (
+          await (opts.timings
+            ? opts.timings.time("inject_bundle_target", () =>
+                injectBundleTarget(bundleMetaPath, target),
+              )
+            : injectBundleTarget(bundleMetaPath, target))
+        ).original;
 
         // 2. Deploy via SDR ComponentSet.fromSource(bundleDir). This zips the
         //    bundle directory + a generated package.xml manifest and calls
         //    conn.metadata.deploy under the hood — same SOAP endpoint the
         //    CLI uses, just without us hand-rolling the zip format.
-        const deploySource = await ensureSdrFriendlyLayout(opts.bundleDir, opts.agentApiName);
+        const deploySource = opts.timings
+          ? await opts.timings.time("sdr_layout_prepare", () =>
+              ensureSdrFriendlyLayout(opts.bundleDir as string, opts.agentApiName),
+            )
+          : await ensureSdrFriendlyLayout(opts.bundleDir, opts.agentApiName);
         if (deploySource.tmpRoot) tmpRoot = deploySource.tmpRoot;
-        const { ComponentSet } = await loadSdr();
+        const { ComponentSet } = opts.timings
+          ? await opts.timings.time("load_sdr", () => loadSdr())
+          : await loadSdr();
         const componentSet = ComponentSet.fromSource(deploySource.bundleDir);
-        const deployJob = await componentSet.deploy({ usernameOrConnection: opts.conn });
-        const deployResult = await deployJob.pollStatus();
+        const deployJob = await (opts.timings
+          ? opts.timings.time("bundle_deploy_start", () =>
+              componentSet.deploy({ usernameOrConnection: opts.conn }),
+            )
+          : componentSet.deploy({ usernameOrConnection: opts.conn }));
+        const deployResult = await (opts.timings
+          ? opts.timings.time("bundle_deploy_poll", () => deployJob.pollStatus())
+          : deployJob.pollStatus());
         const success = deployResult.response?.success === true;
         if (success) {
           authoringBundleResult = { full_name: bundleFullName, target, created: true };
@@ -566,7 +627,11 @@ export async function publishAgent(opts: PublishOptions): Promise<PublishResult>
   let activated = false;
   if (opts.activate) {
     log(`Activating ${botVersionId}…`);
-    await setVersionStatus(opts.conn, botVersionId, "Active");
+    await (opts.timings
+      ? opts.timings.time("activate_version", () =>
+          setVersionStatus(opts.conn, botVersionId, "Active"),
+        )
+      : setVersionStatus(opts.conn, botVersionId, "Active"));
     activated = true;
   }
 

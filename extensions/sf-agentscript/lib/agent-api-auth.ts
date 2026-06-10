@@ -23,6 +23,16 @@ let corePromise:
     }>
   | undefined;
 
+const JWT_EXPIRY_SAFETY_MS = 60_000;
+const JWT_NO_EXP_FALLBACK_TTL_MS = 5 * 60_000;
+
+interface AgentApiAuthCacheEntry {
+  promise: Promise<AgentApiAuthResult>;
+  expiresAtMs?: number;
+}
+
+const agentApiAuthCache = new Map<string, AgentApiAuthCacheEntry>();
+
 async function loadSfCore() {
   corePromise ??= import("@salesforce/core").then(({ AuthInfo, Connection }) => ({
     AuthInfo,
@@ -36,6 +46,8 @@ export interface AgentApiAuthResult {
   username: string;
   instanceUrl: string;
   tokenKind: "named-user-jwt";
+  /** In-memory cache status for local operation timings. Never persisted. */
+  cache: "hit" | "miss";
 }
 
 export interface JwtValidationResult {
@@ -194,6 +206,35 @@ export async function connForAgentApi(targetOrg?: string): Promise<AgentApiAuthR
     throw new Error("Agent API auth bootstrap failed: could not resolve org username.");
   }
 
+  const key = agentApiAuthCacheKey(baseConn, targetOrg, username);
+  const cached = agentApiAuthCache.get(key);
+  if (cached && isCacheEntryUsable(cached)) {
+    try {
+      const result = await cached.promise;
+      if (isCacheEntryUsable(cached)) return { ...result, cache: "hit" };
+    } catch {
+      agentApiAuthCache.delete(key);
+    }
+  } else if (cached) {
+    agentApiAuthCache.delete(key);
+  }
+
+  const entry: AgentApiAuthCacheEntry = {
+    promise: createAgentApiConnection(baseConn, username).catch((err) => {
+      agentApiAuthCache.delete(key);
+      throw err;
+    }),
+  };
+  agentApiAuthCache.set(key, entry);
+  const result = await entry.promise;
+  entry.expiresAtMs = agentApiJwtExpiresAtMs(result.conn);
+  return { ...result, cache: "miss" };
+}
+
+async function createAgentApiConnection(
+  baseConn: ConnectionType,
+  username: string,
+): Promise<AgentApiAuthResult> {
   const { AuthInfo, Connection } = await loadSfCore();
   const authInfo = await AuthInfo.create({ username });
   const conn = await Connection.create({ authInfo });
@@ -208,5 +249,45 @@ export async function connForAgentApi(targetOrg?: string): Promise<AgentApiAuthR
     username,
     instanceUrl: conn.instanceUrl,
     tokenKind: "named-user-jwt",
+    cache: "miss",
   };
+}
+
+function agentApiAuthCacheKey(
+  conn: ConnectionType,
+  targetOrg: string | undefined,
+  username: string,
+): string {
+  const opts = conn.getConnectionOptions?.() as { instanceUrl?: string } | undefined;
+  const instanceUrl = conn.instanceUrl ?? opts?.instanceUrl ?? "<unknown-instance>";
+  let apiVersion = "<unknown-api>";
+  try {
+    apiVersion = conn.getApiVersion?.() ?? apiVersion;
+  } catch {
+    /* best-effort */
+  }
+  return [targetOrg ?? "<default>", username, instanceUrl, apiVersion].join("::");
+}
+
+function isCacheEntryUsable(entry: AgentApiAuthCacheEntry): boolean {
+  if (entry.expiresAtMs === undefined) return true;
+  return entry.expiresAtMs - JWT_EXPIRY_SAFETY_MS > Date.now();
+}
+
+function agentApiJwtExpiresAtMs(conn: ConnectionType): number {
+  const token = (conn as unknown as { accessToken?: string }).accessToken;
+  const validation = validateNamedUserJwt(token);
+  if (validation.expiresAt) {
+    const parsed = Date.parse(validation.expiresAt);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return Date.now() + JWT_NO_EXP_FALLBACK_TTL_MS;
+}
+
+export function clearAgentApiAuthCache(): void {
+  agentApiAuthCache.clear();
+}
+
+export function agentApiAuthCacheSize(): number {
+  return agentApiAuthCache.size;
 }

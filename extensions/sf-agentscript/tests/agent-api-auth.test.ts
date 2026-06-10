@@ -1,8 +1,12 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Tests for the named-user JWT bootstrap required by /einstein/ai-agent/* routes. */
 
-import { describe, expect, test, vi } from "vitest";
-import { upgradeConnectionToNamedUserJwt, validateNamedUserJwt } from "../lib/agent-api-auth.ts";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+import {
+  clearAgentApiAuthCache,
+  upgradeConnectionToNamedUserJwt,
+  validateNamedUserJwt,
+} from "../lib/agent-api-auth.ts";
 
 function makeJwt(payload: Record<string, unknown>): string {
   const encode = (value: unknown): string =>
@@ -17,6 +21,10 @@ const JWT = makeJwt({
   iat: Math.floor(Date.now() / 1000) - 60,
   sfdc_app_id: "app",
   scope: "chatbot_api sfap_api web",
+});
+
+beforeEach(() => {
+  clearAgentApiAuthCache();
 });
 
 function fakeConn(opts?: { token?: string; instanceUrl?: string; response?: unknown }) {
@@ -125,13 +133,68 @@ describe("connForAgentApi isolation", () => {
 
     const { connForAgentApi } = await import("../lib/agent-api-auth.ts");
     const [one, two] = await Promise.all([connForAgentApi("org"), connForAgentApi("org")]);
+    const three = await connForAgentApi("org");
 
     expect(baseConn.accessToken).toBe("ORG-TOKEN");
     expect(one.conn).not.toBe(baseConn);
     expect(two.conn).not.toBe(baseConn);
+    expect(three.conn).not.toBe(baseConn);
+    expect(one.conn).toBe(two.conn);
+    expect(two.conn).toBe(three.conn);
+    expect(created).toHaveLength(1);
+    expect(created.every((c) => c.accessToken === JWT)).toBe(true);
+    expect(one.cache).toBe("miss");
+    expect(two.cache).toBe("hit");
+    expect(three.cache).toBe("hit");
+
+    vi.doUnmock("../../../lib/common/sf-conn/connection.ts");
+    vi.doUnmock("@salesforce/core");
+  });
+
+  test("refreshes the cache when the cached JWT is near expiry", async () => {
+    vi.resetModules();
+    const nearExpiryJwt = makeJwt({
+      sub: "uid:005",
+      iss: "https://example.my.salesforce.com",
+      exp: Math.floor(Date.now() / 1000) + 10,
+    });
+    const longLivedJwt = makeJwt({
+      sub: "uid:005",
+      iss: "https://example.my.salesforce.com",
+      exp: Math.floor(Date.now() / 1000) + 3600,
+    });
+    const baseConn = {
+      accessToken: "ORG-TOKEN",
+      getUsername: () => "agent@example.com",
+      getApiVersion: () => "67.0",
+    };
+    const created: Array<ReturnType<typeof fakeConn>> = [];
+
+    vi.doMock("../../../lib/common/sf-conn/connection.ts", () => ({
+      connFromAlias: vi.fn(async () => baseConn),
+    }));
+    vi.doMock("@salesforce/core", () => ({
+      AuthInfo: { create: vi.fn(async () => ({ username: "agent@example.com" })) },
+      Connection: {
+        create: vi.fn(async () => {
+          const response = { access_token: created.length === 0 ? nearExpiryJwt : longLivedJwt };
+          const conn = Object.assign(fakeConn({ token: "FRESH-ORG-TOKEN", response }), {
+            setApiVersion: vi.fn(),
+          });
+          created.push(conn);
+          return conn;
+        }),
+      },
+    }));
+
+    const { connForAgentApi } = await import("../lib/agent-api-auth.ts");
+    const one = await connForAgentApi("org");
+    const two = await connForAgentApi("org");
+
+    expect(one.cache).toBe("miss");
+    expect(two.cache).toBe("miss");
     expect(one.conn).not.toBe(two.conn);
     expect(created).toHaveLength(2);
-    expect(created.every((c) => c.accessToken === JWT)).toBe(true);
 
     vi.doUnmock("../../../lib/common/sf-conn/connection.ts");
     vi.doUnmock("@salesforce/core");

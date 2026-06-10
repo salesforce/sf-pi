@@ -43,6 +43,7 @@ import {
   type PreviewContextPatchResult,
   type PreviewContextVariable,
 } from "./context-vars.ts";
+import type { TimingCollector } from "../timings.ts";
 
 // -------------------------------------------------------------------------------------------------
 // SFAP endpoint pins
@@ -121,6 +122,8 @@ export interface PreviewStartOptions {
    * seeds also patch the compiled AgentJSON so bound inputs read from state.
    */
   contextVariables?: ContextVariable[];
+  /** Optional local operation timing collector owned by the tool wrapper. */
+  timings?: TimingCollector;
 }
 
 export interface PreviewStartResult {
@@ -159,6 +162,8 @@ export interface PreviewSendOptions {
    * field via `lib/eval/normalize.ts` (no `stripUnrecognizedFields`).
    */
   contextVariables?: ContextVariable[];
+  /** Optional local operation timing collector owned by the tool wrapper. */
+  timings?: TimingCollector;
 }
 
 /**
@@ -195,6 +200,8 @@ export interface PreviewStartByApiNameOptions {
   agentApiName: string;
   /** See `PreviewStartOptions.targetOrg`. */
   targetOrg?: string;
+  /** Optional local operation timing collector owned by the tool wrapper. */
+  timings?: TimingCollector;
 }
 
 export interface PreviewEndOptions {
@@ -218,13 +225,23 @@ export interface PreviewEndResult {
 
 export async function startPreview(opts: PreviewStartOptions): Promise<PreviewStartResult> {
   // 1. Local-first validation
-  const sdk = await loadAgentforceSDK();
+  const sdk = opts.timings
+    ? await opts.timings.time("load_agentscript_sdk", () => loadAgentforceSDK())
+    : await loadAgentforceSDK();
   if (sdk) {
-    const compileResult = (
-      sdk as unknown as {
-        compileSource: (s: string) => { diagnostics: { severity: number }[] };
-      }
-    ).compileSource(opts.agentSource);
+    const compileResult = opts.timings
+      ? await opts.timings.time("sdk_compile_guard", () =>
+          (
+            sdk as unknown as {
+              compileSource: (s: string) => { diagnostics: { severity: number }[] };
+            }
+          ).compileSource(opts.agentSource),
+        )
+      : (
+          sdk as unknown as {
+            compileSource: (s: string) => { diagnostics: { severity: number }[] };
+          }
+        ).compileSource(opts.agentSource);
     const sev1 = compileResult.diagnostics.filter((d) => d.severity === 1);
     if (sev1.length > 0) {
       throw new Error(
@@ -235,15 +252,33 @@ export async function startPreview(opts: PreviewStartOptions): Promise<PreviewSt
   }
 
   // 2. Server compile to obtain AgentJSON for the session start payload.
-  const compileResp = await sfapRequest<CompileResponseBody>(opts.conn, {
-    url: COMPILE_URL,
-    method: "POST",
-    headers: { "x-client-name": "sf-pi", "content-type": "application/json" },
-    body: {
-      assets: [{ type: "AFScript", name: "AFScript", content: opts.agentSource }],
-      afScriptVersion: "2.0.0",
-    },
-  });
+  const compileResp = opts.timings
+    ? await opts.timings.time("server_compile", () =>
+        sfapRequest<CompileResponseBody>(opts.conn, {
+          url: COMPILE_URL,
+          method: "POST",
+          headers: { "x-client-name": "sf-pi", "content-type": "application/json" },
+          body: {
+            assets: [{ type: "AFScript", name: "AFScript", content: opts.agentSource }],
+            afScriptVersion: "2.0.0",
+          },
+        }),
+      )
+    : await sfapRequest<CompileResponseBody>(opts.conn, {
+        url: COMPILE_URL,
+        method: "POST",
+        headers: { "x-client-name": "sf-pi", "content-type": "application/json" },
+        body: {
+          assets: [{ type: "AFScript", name: "AFScript", content: opts.agentSource }],
+          afScriptVersion: "2.0.0",
+        },
+      });
+  if (opts.timings) {
+    opts.timings.add("sfap_endpoint_cache", 0, {
+      cache: compileResp.endpoint_cache,
+      endpoint: compileResp.endpoint,
+    });
+  }
   if (
     compileResp.status < 200 ||
     compileResp.status >= 300 ||
@@ -266,12 +301,21 @@ export async function startPreview(opts: PreviewStartOptions): Promise<PreviewSt
   // found" when this is null/missing or names a non-existent BotVersion.
   // Resolution priority: caller override → bundle-meta `<target>vN</target>`
   // → latest BotVersion via SOQL → `"v0"` (server fresh-preview sentinel).
-  const versionResolution = await resolveAgentVersionDeveloperName({
-    override: opts.versionDeveloperName,
-    agentFilePath: opts.agentFilePath,
-    conn: opts.conn,
-    agentName: opts.agentName,
-  });
+  const versionResolution = opts.timings
+    ? await opts.timings.time("version_resolution", () =>
+        resolveAgentVersionDeveloperName({
+          override: opts.versionDeveloperName,
+          agentFilePath: opts.agentFilePath,
+          conn: opts.conn,
+          agentName: opts.agentName,
+        }),
+      )
+    : await resolveAgentVersionDeveloperName({
+        override: opts.versionDeveloperName,
+        agentFilePath: opts.agentFilePath,
+        conn: opts.conn,
+        agentName: opts.agentName,
+      });
   agentJson.agentVersion = {
     ...((agentJson.agentVersion as Record<string, unknown> | undefined) ?? {}),
     developerName: versionResolution.developerName,
@@ -286,9 +330,15 @@ export async function startPreview(opts: PreviewStartOptions): Promise<PreviewSt
   let bypassUser = false;
   const defaultAgentUser = agentJson.globalConfiguration?.defaultAgentUser;
   if (defaultAgentUser) {
-    const r = await opts.conn.query<{ Id: string }>(
-      `SELECT Id FROM User WHERE Username='${soqlEscape(defaultAgentUser)}'`,
-    );
+    const r = opts.timings
+      ? await opts.timings.time("bypass_user_lookup", () =>
+          opts.conn.query<{ Id: string }>(
+            `SELECT Id FROM User WHERE Username='${soqlEscape(defaultAgentUser)}'`,
+          ),
+        )
+      : await opts.conn.query<{ Id: string }>(
+          `SELECT Id FROM User WHERE Username='${soqlEscape(defaultAgentUser)}'`,
+        );
     bypassUser = r.totalSize === 1;
   }
   if (bypassUser && agentJson.globalConfiguration?.agentType === "AgentforceEmployeeAgent") {
@@ -296,28 +346,59 @@ export async function startPreview(opts: PreviewStartOptions): Promise<PreviewSt
   }
 
   // 5. Start session.
-  const sessionResp = await sfapRequest<SessionStartBody>(opts.conn, {
-    url: SESSIONS_URL,
-    method: "POST",
-    headers: {
-      "x-attributed-client": "no-builder",
-      "x-client-name": "sf-pi",
-      "content-type": "application/json",
-    },
-    body: {
-      agentDefinition: agentJson,
-      enableSimulationMode: opts.mockMode === "Mock",
-      externalSessionKey: randomUUID(),
-      instanceConfig: { endpoint: opts.conn.instanceUrl },
-      variables: contextPatch.variables,
-      parameters: {},
-      streamingCapabilities: { chunkTypes: ["Text", "LightningChunk"] },
-      richContentCapabilities: {},
-      bypassUser,
-      executionHistory: [],
-      conversationContext: [],
-    },
-  });
+  const sessionResp = opts.timings
+    ? await opts.timings.time("preview_session_start", () =>
+        sfapRequest<SessionStartBody>(opts.conn, {
+          url: SESSIONS_URL,
+          method: "POST",
+          headers: {
+            "x-attributed-client": "no-builder",
+            "x-client-name": "sf-pi",
+            "content-type": "application/json",
+          },
+          body: {
+            agentDefinition: agentJson,
+            enableSimulationMode: opts.mockMode === "Mock",
+            externalSessionKey: randomUUID(),
+            instanceConfig: { endpoint: opts.conn.instanceUrl },
+            variables: contextPatch.variables,
+            parameters: {},
+            streamingCapabilities: { chunkTypes: ["Text", "LightningChunk"] },
+            richContentCapabilities: {},
+            bypassUser,
+            executionHistory: [],
+            conversationContext: [],
+          },
+        }),
+      )
+    : await sfapRequest<SessionStartBody>(opts.conn, {
+        url: SESSIONS_URL,
+        method: "POST",
+        headers: {
+          "x-attributed-client": "no-builder",
+          "x-client-name": "sf-pi",
+          "content-type": "application/json",
+        },
+        body: {
+          agentDefinition: agentJson,
+          enableSimulationMode: opts.mockMode === "Mock",
+          externalSessionKey: randomUUID(),
+          instanceConfig: { endpoint: opts.conn.instanceUrl },
+          variables: contextPatch.variables,
+          parameters: {},
+          streamingCapabilities: { chunkTypes: ["Text", "LightningChunk"] },
+          richContentCapabilities: {},
+          bypassUser,
+          executionHistory: [],
+          conversationContext: [],
+        },
+      });
+  if (opts.timings) {
+    opts.timings.add("sfap_endpoint_cache", 0, {
+      cache: sessionResp.endpoint_cache,
+      endpoint: sessionResp.endpoint,
+    });
+  }
   if (sessionResp.status < 200 || sessionResp.status >= 300) {
     const mapped = mapPreviewError(sessionResp.status, sessionResp.body, {
       phase: "start",
@@ -339,30 +420,59 @@ export async function startPreview(opts: PreviewStartOptions): Promise<PreviewSt
   // Also persist target-org and agent-file path so end can suggest the
   // exact next `lifecycle publish` command without the caller refeeding
   // them.
-  const sessionDir = await initSession(opts.cwd, {
-    sessionId,
-    agentName: opts.agentName,
-    startTime,
-    mockMode: opts.mockMode,
-    sessionKind: "agent_file",
-    endpoint: sessionResp.endpoint,
-    targetOrg: opts.targetOrg,
-    agentFilePath: opts.agentFilePath,
-    previewContextVariables: opts.contextVariables,
-    previewContextPatch: {
-      registeredStateVariables: contextPatch.registeredStateVariables,
-      rewrittenBindings: contextPatch.rewrittenBindings,
-    },
-  });
+  const sessionDir = opts.timings
+    ? await opts.timings.time("persist_preview_session", () =>
+        initSession(opts.cwd, {
+          sessionId,
+          agentName: opts.agentName,
+          startTime,
+          mockMode: opts.mockMode,
+          sessionKind: "agent_file",
+          endpoint: sessionResp.endpoint,
+          targetOrg: opts.targetOrg,
+          agentFilePath: opts.agentFilePath,
+          previewContextVariables: opts.contextVariables,
+          previewContextPatch: {
+            registeredStateVariables: contextPatch.registeredStateVariables,
+            rewrittenBindings: contextPatch.rewrittenBindings,
+          },
+        }),
+      )
+    : await initSession(opts.cwd, {
+        sessionId,
+        agentName: opts.agentName,
+        startTime,
+        mockMode: opts.mockMode,
+        sessionKind: "agent_file",
+        endpoint: sessionResp.endpoint,
+        targetOrg: opts.targetOrg,
+        agentFilePath: opts.agentFilePath,
+        previewContextVariables: opts.contextVariables,
+        previewContextPatch: {
+          registeredStateVariables: contextPatch.registeredStateVariables,
+          rewrittenBindings: contextPatch.rewrittenBindings,
+        },
+      });
   const initialMsg = (sessionResp.body.messages ?? []).map((m) => m.message ?? "").join("\n");
-  await logTurn(sessionDir, {
-    timestamp: startTime,
-    agentName: opts.agentName,
-    sessionId,
-    role: "agent",
-    text: initialMsg,
-    raw: sessionResp.body.messages,
-  });
+  await (opts.timings
+    ? opts.timings.time("persist_initial_turn", () =>
+        logTurn(sessionDir, {
+          timestamp: startTime,
+          agentName: opts.agentName,
+          sessionId,
+          role: "agent",
+          text: initialMsg,
+          raw: sessionResp.body.messages,
+        }),
+      )
+    : logTurn(sessionDir, {
+        timestamp: startTime,
+        agentName: opts.agentName,
+        sessionId,
+        role: "agent",
+        text: initialMsg,
+        raw: sessionResp.body.messages,
+      }));
 
   return {
     sessionId,
@@ -379,7 +489,11 @@ export async function startPreview(opts: PreviewStartOptions): Promise<PreviewSt
 
 export async function sendMessage(opts: PreviewSendOptions): Promise<PreviewSendResult> {
   const sessionDir = getSessionDir(opts.cwd, opts.agentName, opts.sessionId);
-  const { metadata } = await loadSession(opts.cwd, opts.agentName, opts.sessionId);
+  const { metadata } = opts.timings
+    ? await opts.timings.time("load_preview_session", () =>
+        loadSession(opts.cwd, opts.agentName, opts.sessionId),
+      )
+    : await loadSession(opts.cwd, opts.agentName, opts.sessionId);
   const messageUrl =
     metadata.sessionKind === "api_name"
       ? PROD_MESSAGES_URL(opts.sessionId)
@@ -387,13 +501,23 @@ export async function sendMessage(opts: PreviewSendOptions): Promise<PreviewSend
 
   // Log the user turn first so transcripts are append-only and crash-safe.
   const userTimestamp = new Date().toISOString();
-  await logTurn(sessionDir, {
-    timestamp: userTimestamp,
-    agentName: opts.agentName,
-    sessionId: opts.sessionId,
-    role: "user",
-    text: opts.message,
-  });
+  await (opts.timings
+    ? opts.timings.time("persist_user_turn", () =>
+        logTurn(sessionDir, {
+          timestamp: userTimestamp,
+          agentName: opts.agentName,
+          sessionId: opts.sessionId,
+          role: "user",
+          text: opts.message,
+        }),
+      )
+    : logTurn(sessionDir, {
+        timestamp: userTimestamp,
+        agentName: opts.agentName,
+        sessionId: opts.sessionId,
+        role: "user",
+        text: opts.message,
+      }));
 
   const mergedContextVariables = mergeContextVariables(
     metadata.previewContextVariables,
@@ -401,20 +525,43 @@ export async function sendMessage(opts: PreviewSendOptions): Promise<PreviewSend
   );
 
   const start = Date.now();
-  const resp = await sfapRequest<SessionMessageBody>(opts.conn, {
-    url: messageUrl,
-    method: "POST",
-    headers: { "x-client-name": "sf-pi", "content-type": "application/json" },
-    body: {
-      message: { sequenceId: Date.now(), type: "Text", text: opts.message },
-      variables: normalizeContextVariables(mergedContextVariables),
-      ...(opts.apexDebug ? { apexDebugging: true } : {}),
-    },
-    // Pin to the SFAP host that served `start` (sessions are shard-local).
-    // Falls back to the full host walk for legacy sessions written before
-    // we persisted `endpoint` in metadata.
-    ...(metadata.endpoint !== undefined ? { pinnedEndpoint: metadata.endpoint } : {}),
-  });
+  const resp = opts.timings
+    ? await opts.timings.time("preview_send_message", () =>
+        sfapRequest<SessionMessageBody>(opts.conn, {
+          url: messageUrl,
+          method: "POST",
+          headers: { "x-client-name": "sf-pi", "content-type": "application/json" },
+          body: {
+            message: { sequenceId: Date.now(), type: "Text", text: opts.message },
+            variables: normalizeContextVariables(mergedContextVariables),
+            ...(opts.apexDebug ? { apexDebugging: true } : {}),
+          },
+          // Pin to the SFAP host that served `start` (sessions are shard-local).
+          // Falls back to the full host walk for legacy sessions written before
+          // we persisted `endpoint` in metadata.
+          ...(metadata.endpoint !== undefined ? { pinnedEndpoint: metadata.endpoint } : {}),
+        }),
+      )
+    : await sfapRequest<SessionMessageBody>(opts.conn, {
+        url: messageUrl,
+        method: "POST",
+        headers: { "x-client-name": "sf-pi", "content-type": "application/json" },
+        body: {
+          message: { sequenceId: Date.now(), type: "Text", text: opts.message },
+          variables: normalizeContextVariables(mergedContextVariables),
+          ...(opts.apexDebug ? { apexDebugging: true } : {}),
+        },
+        // Pin to the SFAP host that served `start` (sessions are shard-local).
+        // Falls back to the full host walk for legacy sessions written before
+        // we persisted `endpoint` in metadata.
+        ...(metadata.endpoint !== undefined ? { pinnedEndpoint: metadata.endpoint } : {}),
+      });
+  if (opts.timings) {
+    opts.timings.add("sfap_endpoint_cache", 0, {
+      cache: resp.endpoint_cache,
+      endpoint: resp.endpoint,
+    });
+  }
   if (resp.status < 200 || resp.status >= 300) {
     const mapped = mapPreviewError(resp.status, resp.body, {
       phase: "send",
@@ -430,15 +577,27 @@ export async function sendMessage(opts: PreviewSendOptions): Promise<PreviewSend
 
   // Log the agent turn.
   const agentTimestamp = new Date().toISOString();
-  await logTurn(sessionDir, {
-    timestamp: agentTimestamp,
-    agentName: opts.agentName,
-    sessionId: opts.sessionId,
-    role: "agent",
-    text: agentResponse,
-    raw: resp.body.messages,
-    planId,
-  });
+  await (opts.timings
+    ? opts.timings.time("persist_agent_turn", () =>
+        logTurn(sessionDir, {
+          timestamp: agentTimestamp,
+          agentName: opts.agentName,
+          sessionId: opts.sessionId,
+          role: "agent",
+          text: agentResponse,
+          raw: resp.body.messages,
+          planId,
+        }),
+      )
+    : logTurn(sessionDir, {
+        timestamp: agentTimestamp,
+        agentName: opts.agentName,
+        sessionId: opts.sessionId,
+        role: "agent",
+        text: agentResponse,
+        raw: resp.body.messages,
+        planId,
+      }));
 
   // Fetch + persist the trace if available; otherwise (production-v1) build
   // a surface digest directly from the send response.
@@ -448,12 +607,21 @@ export async function sendMessage(opts: PreviewSendOptions): Promise<PreviewSend
   let digest: TraceDigest | undefined;
   if (planId && metadata.sessionKind !== "api_name") {
     try {
-      const trace = await fetchTrace(opts.conn, opts.sessionId, planId, {
-        timeoutMs: 60_000,
-        pinnedEndpoint: metadata.endpoint,
-      });
+      const trace = opts.timings
+        ? await opts.timings.time("trace_fetch", () =>
+            fetchTrace(opts.conn, opts.sessionId, planId, {
+              timeoutMs: 60_000,
+              pinnedEndpoint: metadata.endpoint,
+            }),
+          )
+        : await fetchTrace(opts.conn, opts.sessionId, planId, {
+            timeoutMs: 60_000,
+            pinnedEndpoint: metadata.endpoint,
+          });
       if (trace) {
-        await logTrace(sessionDir, planId, trace);
+        await (opts.timings
+          ? opts.timings.time("persist_trace", () => logTrace(sessionDir, planId, trace))
+          : logTrace(sessionDir, planId, trace));
         const tracePath = `${sessionDir}/traces/${planId}.json`;
         traceFile = tracePath;
         digest = summarizeTrace(trace, {
@@ -488,23 +656,38 @@ export async function sendMessage(opts: PreviewSendOptions): Promise<PreviewSend
     if (invokedActions.length === 0) invokedActions = undefined;
   }
 
-  await recordTurnPlan(sessionDir, {
-    agentName: opts.agentName,
-    sessionId: opts.sessionId,
-    planId: planId || undefined,
-    userText: opts.message,
-    agentText: agentResponse,
-    userTimestamp,
-    agentTimestamp,
-    traceFile: traceFile ? path.relative(sessionDir, traceFile) : undefined,
-  });
+  await (opts.timings
+    ? opts.timings.time("persist_turn_index", () =>
+        recordTurnPlan(sessionDir, {
+          agentName: opts.agentName,
+          sessionId: opts.sessionId,
+          planId: planId || undefined,
+          userText: opts.message,
+          agentText: agentResponse,
+          userTimestamp,
+          agentTimestamp,
+          traceFile: traceFile ? path.relative(sessionDir, traceFile) : undefined,
+        }),
+      )
+    : recordTurnPlan(sessionDir, {
+        agentName: opts.agentName,
+        sessionId: opts.sessionId,
+        planId: planId || undefined,
+        userText: opts.message,
+        agentText: agentResponse,
+        userTimestamp,
+        agentTimestamp,
+        traceFile: traceFile ? path.relative(sessionDir, traceFile) : undefined,
+      }));
 
   // When apex_debug is requested, fetch the latest debug log captured during
   // this turn. Best-effort — we use the user's UserId from conn.identity().
   let apexDebugLog: string | undefined;
   if (opts.apexDebug) {
     try {
-      apexDebugLog = await fetchLatestApexDebugLog(opts.conn, start);
+      apexDebugLog = opts.timings
+        ? await opts.timings.time("apex_debug_log", () => fetchLatestApexDebugLog(opts.conn, start))
+        : await fetchLatestApexDebugLog(opts.conn, start);
     } catch {
       /* non-fatal */
     }
@@ -639,24 +822,45 @@ export async function startPreviewByApiName(
   // (e.g. v12 Inactive / v11 Inactive / v10 Active). The /v1/agents/{botId}/sessions
   // endpoint serves whichever version is Active — not necessarily the
   // latest one — so the preflight should reflect that.
-  const r = await opts.conn.query<{
-    Id: string;
-    AgentType?: string;
-    BotUserId?: string | null;
-    BotVersions?: {
-      records?: Array<{
-        Id?: string;
-        DeveloperName?: string | null;
-        Status?: string | null;
-        VersionNumber?: number | null;
-      }>;
-    } | null;
-  }>(
-    `SELECT Id, AgentType, BotUserId, ` +
-      `(SELECT Id, DeveloperName, Status, VersionNumber FROM BotVersions ` +
-      `WHERE Status='Active' ORDER BY VersionNumber DESC LIMIT 1) ` +
-      `FROM BotDefinition WHERE DeveloperName='${soqlEscape(opts.agentApiName)}'`,
-  );
+  const r = await (opts.timings
+    ? opts.timings.time("published_agent_preflight", () =>
+        opts.conn.query<{
+          Id: string;
+          AgentType?: string;
+          BotUserId?: string | null;
+          BotVersions?: {
+            records?: Array<{
+              Id?: string;
+              DeveloperName?: string | null;
+              Status?: string | null;
+              VersionNumber?: number | null;
+            }>;
+          } | null;
+        }>(
+          `SELECT Id, AgentType, BotUserId, ` +
+            `(SELECT Id, DeveloperName, Status, VersionNumber FROM BotVersions ` +
+            `WHERE Status='Active' ORDER BY VersionNumber DESC LIMIT 1) ` +
+            `FROM BotDefinition WHERE DeveloperName='${soqlEscape(opts.agentApiName)}'`,
+        ),
+      )
+    : opts.conn.query<{
+        Id: string;
+        AgentType?: string;
+        BotUserId?: string | null;
+        BotVersions?: {
+          records?: Array<{
+            Id?: string;
+            DeveloperName?: string | null;
+            Status?: string | null;
+            VersionNumber?: number | null;
+          }>;
+        } | null;
+      }>(
+        `SELECT Id, AgentType, BotUserId, ` +
+          `(SELECT Id, DeveloperName, Status, VersionNumber FROM BotVersions ` +
+          `WHERE Status='Active' ORDER BY VersionNumber DESC LIMIT 1) ` +
+          `FROM BotDefinition WHERE DeveloperName='${soqlEscape(opts.agentApiName)}'`,
+      ));
   const bot = r.records[0];
   const botId = bot?.Id;
   if (!botId) {
@@ -672,13 +876,23 @@ export async function startPreviewByApiName(
     // Discover the latest version of any status so we can produce a
     // useful error: "latest is v12 Inactive — activate it" beats a
     // bare "no Active version".
-    const fallback = await opts.conn.query<{
-      VersionNumber: number;
-      Status: string;
-    }>(
-      `SELECT VersionNumber, Status FROM BotVersion ` +
-        `WHERE BotDefinitionId='${botId}' ORDER BY VersionNumber DESC LIMIT 1`,
-    );
+    const fallback = await (opts.timings
+      ? opts.timings.time("published_agent_latest_version_lookup", () =>
+          opts.conn.query<{
+            VersionNumber: number;
+            Status: string;
+          }>(
+            `SELECT VersionNumber, Status FROM BotVersion ` +
+              `WHERE BotDefinitionId='${botId}' ORDER BY VersionNumber DESC LIMIT 1`,
+          ),
+        )
+      : opts.conn.query<{
+          VersionNumber: number;
+          Status: string;
+        }>(
+          `SELECT VersionNumber, Status FROM BotVersion ` +
+            `WHERE BotDefinitionId='${botId}' ORDER BY VersionNumber DESC LIMIT 1`,
+        ));
     const latest = fallback.records[0];
     if (!latest) {
       throw new Error(
@@ -702,19 +916,43 @@ export async function startPreviewByApiName(
     bypassUser,
   });
   const bypassUser = computePublishedBypassUser(bot);
-  let sessionResp = await sfapRequest<SessionStartBody>(opts.conn, {
-    url: PROD_AGENT_SESSION_URL(botId),
-    method: "POST",
-    headers: { "x-client-name": "sf-pi", "content-type": "application/json" },
-    body: startBody(bypassUser),
-  });
-  if (bypassUser && isInvalidUserIdStartFailure(sessionResp)) {
-    sessionResp = await sfapRequest<SessionStartBody>(opts.conn, {
-      url: PROD_AGENT_SESSION_URL(botId),
-      method: "POST",
-      headers: { "x-client-name": "sf-pi", "content-type": "application/json" },
-      body: startBody(false),
+  let sessionResp = await (opts.timings
+    ? opts.timings.time("published_session_start", () =>
+        sfapRequest<SessionStartBody>(opts.conn, {
+          url: PROD_AGENT_SESSION_URL(botId),
+          method: "POST",
+          headers: { "x-client-name": "sf-pi", "content-type": "application/json" },
+          body: startBody(bypassUser),
+        }),
+      )
+    : sfapRequest<SessionStartBody>(opts.conn, {
+        url: PROD_AGENT_SESSION_URL(botId),
+        method: "POST",
+        headers: { "x-client-name": "sf-pi", "content-type": "application/json" },
+        body: startBody(bypassUser),
+      }));
+  if (opts.timings) {
+    opts.timings.add("sfap_endpoint_cache", 0, {
+      cache: sessionResp.endpoint_cache,
+      endpoint: sessionResp.endpoint,
     });
+  }
+  if (bypassUser && isInvalidUserIdStartFailure(sessionResp)) {
+    sessionResp = await (opts.timings
+      ? opts.timings.time("published_session_start_retry", () =>
+          sfapRequest<SessionStartBody>(opts.conn, {
+            url: PROD_AGENT_SESSION_URL(botId),
+            method: "POST",
+            headers: { "x-client-name": "sf-pi", "content-type": "application/json" },
+            body: startBody(false),
+          }),
+        )
+      : sfapRequest<SessionStartBody>(opts.conn, {
+          url: PROD_AGENT_SESSION_URL(botId),
+          method: "POST",
+          headers: { "x-client-name": "sf-pi", "content-type": "application/json" },
+          body: startBody(false),
+        }));
   }
   if (sessionResp.status < 200 || sessionResp.status >= 300) {
     const mapped = mapPreviewError(sessionResp.status, sessionResp.body, {
@@ -733,24 +971,47 @@ export async function startPreviewByApiName(
   // Persist the SFAP host that served `start` (api / test.api / dev.api)
   // and target-org so send/end/trace can route correctly without the
   // caller having to repeat `target_org` on every call.
-  const sessionDir = await initSession(opts.cwd, {
-    sessionId,
-    agentName: opts.agentApiName,
-    startTime,
-    mockMode: "Live Test",
-    sessionKind: "api_name",
-    endpoint: sessionResp.endpoint,
-    targetOrg: opts.targetOrg,
-  });
+  const sessionDir = await (opts.timings
+    ? opts.timings.time("persist_preview_session", () =>
+        initSession(opts.cwd, {
+          sessionId,
+          agentName: opts.agentApiName,
+          startTime,
+          mockMode: "Live Test",
+          sessionKind: "api_name",
+          endpoint: sessionResp.endpoint,
+          targetOrg: opts.targetOrg,
+        }),
+      )
+    : initSession(opts.cwd, {
+        sessionId,
+        agentName: opts.agentApiName,
+        startTime,
+        mockMode: "Live Test",
+        sessionKind: "api_name",
+        endpoint: sessionResp.endpoint,
+        targetOrg: opts.targetOrg,
+      }));
   const initialMsg = (sessionResp.body.messages ?? []).map((m) => m.message ?? "").join("\n");
-  await logTurn(sessionDir, {
-    timestamp: startTime,
-    agentName: opts.agentApiName,
-    sessionId,
-    role: "agent",
-    text: initialMsg,
-    raw: sessionResp.body.messages,
-  });
+  await (opts.timings
+    ? opts.timings.time("persist_initial_turn", () =>
+        logTurn(sessionDir, {
+          timestamp: startTime,
+          agentName: opts.agentApiName,
+          sessionId,
+          role: "agent",
+          text: initialMsg,
+          raw: sessionResp.body.messages,
+        }),
+      )
+    : logTurn(sessionDir, {
+        timestamp: startTime,
+        agentName: opts.agentApiName,
+        sessionId,
+        role: "agent",
+        text: initialMsg,
+        raw: sessionResp.body.messages,
+      }));
   // Build a surface digest from the welcome message. The user input is
   // intentionally absent (the start call has no utterance) — the LLM
   // sees a digest with response_type / safety / planId only.

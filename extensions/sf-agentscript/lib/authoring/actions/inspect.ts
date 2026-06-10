@@ -22,6 +22,7 @@ import { diagnoseRuntimeSmoke, type RuntimeSmokeResult } from "../../preflight/r
 import { collectOrgReviewFindings } from "../../review/org-checks.ts";
 import type { ReviewFinding } from "../../review/types.ts";
 import { safeResolveToolPath, toolError, toolOk, type ToolError } from "../../tool-types.ts";
+import type { TimingCollector } from "../../timings.ts";
 import type { AuthoringParams } from "../params.ts";
 
 export type ReviewReadiness = "ready" | "ready_with_warnings" | "blocked" | "partial";
@@ -29,6 +30,7 @@ export type ReviewReadiness = "ready" | "ready_with_warnings" | "blocked" | "par
 export async function runInspectAction(
   ctx: ExtensionContext,
   input: AuthoringParams,
+  timings?: TimingCollector,
 ): Promise<{
   content: { type: "text"; text: string }[];
   details: Record<string, unknown> | ToolError;
@@ -44,26 +46,28 @@ export async function runInspectAction(
   const mode = input.mode ?? "structure";
   switch (mode) {
     case "structure":
-      return actionStructure(agentFile);
+      return actionStructure(agentFile, timings);
     case "context_profile":
-      return actionContextProfile(agentFile);
+      return actionContextProfile(agentFile, timings);
     case "find_references":
-      return actionFindReferences(agentFile, input.symbol as string);
+      return actionFindReferences(agentFile, input.symbol as string, timings);
     case "definition":
-      return actionDefinition(agentFile, input.symbol as string);
+      return actionDefinition(agentFile, input.symbol as string, timings);
     case "check_targets":
-      return actionCheckTargets(agentFile, input.target_org);
+      return actionCheckTargets(agentFile, input.target_org, timings);
     case "review":
-      return actionReview(ctx, agentFile, input);
+      return actionReview(ctx, agentFile, input, timings);
     case "runtime_smoke":
-      return actionRuntimeSmoke(agentFile, input);
+      return actionRuntimeSmoke(agentFile, input, timings);
     default:
       return toolError("INVALID_PARAMS", `Unsupported inspect mode '${String(mode)}'.`);
   }
 }
 
-async function actionStructure(agentFile: string) {
-  const result = await inspectFile(agentFile);
+async function actionStructure(agentFile: string, timings?: TimingCollector) {
+  const result = timings
+    ? await timings.time("inspect_structure", () => inspectFile(agentFile))
+    : await inspectFile(agentFile);
   if (!result.ok) {
     if (result.reason === "sdk_unavailable") {
       return toolError(
@@ -94,8 +98,10 @@ async function actionStructure(agentFile: string) {
   );
 }
 
-async function actionContextProfile(agentFile: string) {
-  const result = await inspectFile(agentFile);
+async function actionContextProfile(agentFile: string, timings?: TimingCollector) {
+  const result = timings
+    ? await timings.time("inspect_structure", () => inspectFile(agentFile))
+    : await inspectFile(agentFile);
   if (!result.ok) {
     if (result.reason === "sdk_unavailable") {
       return toolError(
@@ -139,8 +145,10 @@ async function actionContextProfile(agentFile: string) {
   );
 }
 
-async function actionFindReferences(agentFile: string, symbol: string) {
-  const result = await findReferences(agentFile, symbol);
+async function actionFindReferences(agentFile: string, symbol: string, timings?: TimingCollector) {
+  const result = timings
+    ? await timings.time("find_references", () => findReferences(agentFile, symbol))
+    : await findReferences(agentFile, symbol);
   if (!result.ok) {
     if (result.reason === "sdk_unavailable") {
       return toolError(
@@ -179,8 +187,10 @@ async function actionFindReferences(agentFile: string, symbol: string) {
   );
 }
 
-async function actionDefinition(agentFile: string, symbol: string) {
-  const result = await findDefinition(agentFile, symbol);
+async function actionDefinition(agentFile: string, symbol: string, timings?: TimingCollector) {
+  const result = timings
+    ? await timings.time("find_definition", () => findDefinition(agentFile, symbol))
+    : await findDefinition(agentFile, symbol);
   if (!result.ok) {
     if (result.reason === "sdk_unavailable") {
       return toolError(
@@ -219,14 +229,20 @@ async function actionDefinition(agentFile: string, symbol: string) {
   );
 }
 
-async function actionCheckTargets(agentFile: string, targetOrg: string | undefined) {
+async function actionCheckTargets(
+  agentFile: string,
+  targetOrg: string | undefined,
+  timings?: TimingCollector,
+) {
   if (!targetOrg) {
     return toolError(
       "inspect.check_targets requires target_org.",
       "Pass target_org=<sf alias> so we can query the org via Tooling API.",
     );
   }
-  const inspect = await inspectFile(agentFile);
+  const inspect = timings
+    ? await timings.time("inspect_structure", () => inspectFile(agentFile))
+    : await inspectFile(agentFile);
   if (!inspect.ok)
     return toolError(`Inspect failed: ${inspect.reason ?? "unknown"}`, inspect.reason_detail);
   const actions = inspect.components?.actions ?? [];
@@ -251,11 +267,18 @@ async function actionCheckTargets(agentFile: string, targetOrg: string | undefin
   }
   let conn;
   try {
-    conn = await connForAgentApi(targetOrg).then((c) => c.conn);
+    const authPhase = timings?.phase("agent_api_auth");
+    const auth = await connForAgentApi(targetOrg);
+    authPhase?.end({ cache: auth.cache });
+    conn = auth.conn;
   } catch {
-    conn = await connFromAlias(targetOrg);
+    conn = timings
+      ? await timings.time("org_connection", () => connFromAlias(targetOrg))
+      : await connFromAlias(targetOrg);
   }
-  const result = await checkActionTargets(conn, actions);
+  const result = timings
+    ? await timings.time("action_target_preflight", () => checkActionTargets(conn, actions))
+    : await checkActionTargets(conn, actions);
   const summaryLines = [
     result.ok
       ? `✓ All ${result.total} action target(s) resolved in org`
@@ -296,7 +319,11 @@ async function actionCheckTargets(agentFile: string, targetOrg: string | undefin
   );
 }
 
-async function actionRuntimeSmoke(agentFile: string, input: AuthoringParams) {
+async function actionRuntimeSmoke(
+  agentFile: string,
+  input: AuthoringParams,
+  timings?: TimingCollector,
+) {
   if (!input.target_org) {
     return toolError(
       "inspect.runtime_smoke requires target_org.",
@@ -305,11 +332,20 @@ async function actionRuntimeSmoke(agentFile: string, input: AuthoringParams) {
   }
   let conn;
   try {
-    conn = await connForAgentApi(input.target_org).then((c) => c.conn);
+    const authPhase = timings?.phase("agent_api_auth");
+    const auth = await connForAgentApi(input.target_org);
+    authPhase?.end({ cache: auth.cache });
+    conn = auth.conn;
   } catch {
-    conn = await connFromAlias(input.target_org);
+    conn = timings
+      ? await timings.time("org_connection", () => connFromAlias(input.target_org))
+      : await connFromAlias(input.target_org);
   }
-  const smoke = await diagnoseRuntimeSmoke(conn, { phoneNumber: input.phone_number });
+  const smoke = timings
+    ? await timings.time("runtime_smoke", () =>
+        diagnoseRuntimeSmoke(conn, { phoneNumber: input.phone_number }),
+      )
+    : await diagnoseRuntimeSmoke(conn, { phoneNumber: input.phone_number });
   const details = withAgentScriptBranchState(
     {
       ok: smoke.ok,
@@ -388,9 +424,16 @@ async function sourceShapeFindings(agentFile: string): Promise<ReviewFinding[]> 
   return findings;
 }
 
-async function actionReview(ctx: ExtensionContext, agentFile: string, input: AuthoringParams) {
+async function actionReview(
+  ctx: ExtensionContext,
+  agentFile: string,
+  input: AuthoringParams,
+  timings?: TimingCollector,
+) {
   const findings: ReviewFinding[] = [];
-  const compile = await checkAgentScriptFile(agentFile);
+  const compile = timings
+    ? await timings.time("local_compile", () => checkAgentScriptFile(agentFile))
+    : await checkAgentScriptFile(agentFile);
   if (!compile.ok) {
     findings.push({
       id: "compile-unavailable",
@@ -425,9 +468,15 @@ async function actionReview(ctx: ExtensionContext, agentFile: string, input: Aut
     }
   }
 
-  findings.push(...(await sourceShapeFindings(agentFile)));
+  findings.push(
+    ...(timings
+      ? await timings.time("source_shape_checks", () => sourceShapeFindings(agentFile))
+      : await sourceShapeFindings(agentFile)),
+  );
 
-  const inspect = await inspectFile(agentFile);
+  const inspect = timings
+    ? await timings.time("inspect_structure", () => inspectFile(agentFile))
+    : await inspectFile(agentFile);
   const parseBlocked = inspect.ok && inspect.has_parse_errors;
   if (!inspect.ok) {
     findings.push({
@@ -472,21 +521,37 @@ async function actionReview(ctx: ExtensionContext, agentFile: string, input: Aut
       try {
         let conn;
         try {
-          conn = await connForAgentApi(input.target_org).then((c) => c.conn);
+          const authPhase = timings?.phase("agent_api_auth");
+          const auth = await connForAgentApi(input.target_org);
+          authPhase?.end({ cache: auth.cache });
+          conn = auth.conn;
         } catch {
-          conn = await connFromAlias(input.target_org);
+          conn = timings
+            ? await timings.time("org_connection", () => connFromAlias(input.target_org))
+            : await connFromAlias(input.target_org);
         }
-        findings.push(
-          ...(await collectOrgReviewFindings({
-            conn,
-            actions,
-            profile,
-            config: inspect.components?.config ?? {},
-            agentFile,
-            targetOrg: input.target_org,
-            phoneNumber: input.phone_number,
-          })),
-        );
+        const orgFindings = timings
+          ? await timings.time("org_review_preflight", () =>
+              collectOrgReviewFindings({
+                conn,
+                actions,
+                profile,
+                config: inspect.components?.config ?? {},
+                agentFile,
+                targetOrg: input.target_org as string,
+                phoneNumber: input.phone_number,
+              }),
+            )
+          : await collectOrgReviewFindings({
+              conn,
+              actions,
+              profile,
+              config: inspect.components?.config ?? {},
+              agentFile,
+              targetOrg: input.target_org,
+              phoneNumber: input.phone_number,
+            });
+        findings.push(...orgFindings);
       } catch (err) {
         findings.push({
           id: "target-check-failed",

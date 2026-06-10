@@ -15,7 +15,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { isSfapRoutingFailure, sfapRequest } from "../lib/eval/sfap.ts";
+import { clearSfapEndpointCache, isSfapRoutingFailure, sfapRequest } from "../lib/eval/sfap.ts";
 
 interface RequestArg {
   url: string;
@@ -44,6 +44,7 @@ function fakeConn(handler: (i: number, req: RequestArg) => unknown | Promise<unk
 }
 
 beforeEach(() => {
+  clearSfapEndpointCache();
   vi.useFakeTimers();
 });
 
@@ -205,6 +206,57 @@ describe("sfapRequest", () => {
       fallback: false,
     });
     expect(result.status).toBe(404);
+    expect(result.endpoint_cache).toBe("bypass");
     expect(calls).toHaveLength(1);
+  });
+
+  test("uses the cached successful endpoint first on later calls", async () => {
+    const { conn, calls } = fakeConn((i) => {
+      if (i === 0) return { throws: { statusCode: 404, message: "Not Found" } };
+      return { ok: true };
+    });
+    const first = await sfapRequest(conn as never, {
+      url: "https://api.salesforce.com/x",
+      method: "GET",
+    });
+    const second = await sfapRequest(conn as never, {
+      url: "https://api.salesforce.com/x",
+      method: "GET",
+    });
+
+    expect(first.endpoint).toBe("test.");
+    expect(first.endpoint_cache).toBe("miss");
+    expect(second.endpoint).toBe("test.");
+    expect(second.endpoint_cache).toBe("hit");
+    expect(calls.map((c) => c.url)).toEqual([
+      "https://api.salesforce.com/x",
+      "https://test.api.salesforce.com/x",
+      "https://test.api.salesforce.com/x",
+    ]);
+  });
+
+  test("refreshes the cached endpoint after a cached 404", async () => {
+    const { conn, calls } = fakeConn((i) => {
+      if (i === 0) return { throws: { statusCode: 404, message: "Not Found" } };
+      if (i === 1) return { ok: true }; // seed test.api
+      if (i === 2) return { throws: { statusCode: 404, message: "Not Found" } }; // cached test.api stale
+      if (i === 3) return { throws: { statusCode: 404, message: "Not Found" } }; // api also wrong
+      return { ok: true }; // dev.api succeeds
+    });
+    await sfapRequest(conn as never, { url: "https://api.salesforce.com/x", method: "GET" });
+    const refreshed = await sfapRequest(conn as never, {
+      url: "https://api.salesforce.com/x",
+      method: "GET",
+    });
+
+    expect(refreshed.endpoint).toBe("dev.");
+    expect(refreshed.endpoint_cache).toBe("refresh");
+    expect(calls.map((c) => c.url)).toEqual([
+      "https://api.salesforce.com/x",
+      "https://test.api.salesforce.com/x",
+      "https://test.api.salesforce.com/x",
+      "https://api.salesforce.com/x",
+      "https://dev.api.salesforce.com/x",
+    ]);
   });
 });

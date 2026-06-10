@@ -49,6 +49,7 @@ import { safeResolveToolPath, toolError, toolOk, type ToolError } from "./tool-t
 import type { EvalSpec, FailureRecord, RunMetadata } from "./eval/types.ts";
 
 import { renderEvalCall, renderEvalRunResult, renderEvalGetFailureResult } from "./render/eval.ts";
+import { createTimingCollector, withTimings, type TimingCollector } from "./timings.ts";
 
 export const EVAL_TOOL_NAME = "agentscript_eval";
 
@@ -325,21 +326,31 @@ export function registerEvalTool(pi: ExtensionAPI): void {
     ],
     parameters: Params,
     async execute(_id, params, _signal, onUpdate, ctx) {
+      const timings = createTimingCollector();
       const p = params as ParamsAny;
       const reqOk = checkRequired(p);
-      if (reqOk.ok === false) return toolError("INVALID_PARAMS", reqOk.error);
+      if (reqOk.ok === false) {
+        return withTimings(toolError("INVALID_PARAMS", reqOk.error), timings, { appendLine: true });
+      }
+      let result;
       switch (p.action) {
         case "run":
-          return await actionRun(ctx, p, onUpdate);
+          result = await actionRun(ctx, p, onUpdate, timings);
+          break;
         case "get_failure":
-          return await actionGetFailure(ctx, p);
+          result = await timings.time("eval.get_failure", () => actionGetFailure(ctx, p));
+          break;
         case "trace":
-          return await actionTrace(p);
+          result = await actionTrace(p, timings);
+          break;
         case "resolve_active":
-          return await actionResolveActive(p);
+          result = await timings.time("eval.resolve_active", () => actionResolveActive(p));
+          break;
         case "generate_spec":
-          return await actionGenerateSpec(ctx, p);
+          result = await timings.time("eval.generate_spec", () => actionGenerateSpec(ctx, p));
+          break;
       }
+      return withTimings(result, timings, { appendLine: true });
     },
   });
 }
@@ -354,6 +365,7 @@ async function actionRun(
   ctx: ExtensionContext,
   input: ParamsAny,
   onUpdate?: OnUpdateFn,
+  timings?: TimingCollector,
 ): Promise<{
   content: { type: "text"; text: string }[];
   details: Record<string, unknown> | ToolError;
@@ -373,7 +385,9 @@ async function actionRun(
     const inferred = latestEvalSpec(ctx);
     if (inferred) input = { ...input, spec_path: inferred.spec_path };
   }
-  const spec = await loadSpec(input, ctx.cwd);
+  const spec = timings
+    ? await timings.time("load_eval_spec", () => loadSpec(input, ctx.cwd))
+    : await loadSpec(input, ctx.cwd);
   if (!spec) {
     return toolError(
       "Either spec_path or spec must be provided.",
@@ -383,11 +397,16 @@ async function actionRun(
 
   let result: RunEvalResult;
   try {
-    const conn = await connFromAlias(input.target_org);
+    const conn = timings
+      ? await timings.time("org_connection", () => connFromAlias(input.target_org))
+      : await connFromAlias(input.target_org);
     let traceConn;
     if ((input.traces_mode ?? "failed") !== "off") {
       try {
-        ({ conn: traceConn } = await connForAgentApi(input.target_org));
+        const authPhase = timings?.phase("agent_api_auth");
+        const auth = await connForAgentApi(input.target_org);
+        authPhase?.end({ cache: auth.cache });
+        traceConn = auth.conn;
       } catch {
         // Trace fetches are a debugging aid and already non-fatal; run eval even
         // when the named-user JWT bootstrap is unavailable.
@@ -409,12 +428,15 @@ async function actionRun(
       cwd: ctx.cwd,
       specPath: input.spec_path,
       log,
+      timings,
     });
   } catch (err) {
     return classifyRunError(err, input);
   }
 
-  await recordRunInIndex(ctx.cwd, result.run_id);
+  await (timings
+    ? timings.time("record_eval_run_index", () => recordRunInIndex(ctx.cwd, result.run_id))
+    : recordRunInIndex(ctx.cwd, result.run_id));
 
   const inlineThreshold = input.inline_threshold ?? 5;
   const passed = result.totals.test_fail === 0 && result.totals.errors === 0;
@@ -626,15 +648,26 @@ async function actionGetFailure(
 // action = trace
 // -------------------------------------------------------------------------------------------------
 
-async function actionTrace(input: ParamsAny): Promise<{
+async function actionTrace(
+  input: ParamsAny,
+  timings?: TimingCollector,
+): Promise<{
   content: { type: "text"; text: string }[];
   details: Record<string, unknown> | ToolError;
 }> {
   try {
-    const { conn } = await connForAgentApi(input.target_org);
-    const trace = await fetchTrace(conn, input.session_id, input.plan_id, {
-      timeoutMs: input.timeout_ms ?? 60_000,
-    });
+    const authPhase = timings?.phase("agent_api_auth");
+    const auth = await connForAgentApi(input.target_org);
+    authPhase?.end({ cache: auth.cache });
+    const trace = timings
+      ? await timings.time("trace_fetch", () =>
+          fetchTrace(auth.conn, input.session_id, input.plan_id, {
+            timeoutMs: input.timeout_ms ?? 60_000,
+          }),
+        )
+      : await fetchTrace(auth.conn, input.session_id, input.plan_id, {
+          timeoutMs: input.timeout_ms ?? 60_000,
+        });
     if (trace == null) {
       return toolError(
         `Trace not found for session=${input.session_id} plan=${input.plan_id}.`,

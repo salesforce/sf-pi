@@ -219,6 +219,7 @@ extensions/sf-agentscript/
     preview-tool.ts         ← implementation module
     sdk.ts                  ← implementation module
     sfap-readiness.ts       ← implementation module
+    timings.ts              ← implementation module
     tool-types.ts           ← implementation module
     types.ts                ← implementation module
   tests/
@@ -286,6 +287,7 @@ extensions/sf-agentscript/
     smoke.test.ts           ← unit / smoke test
     surface-readiness.test.ts← unit / smoke test
     template-scaffold-vars.test.ts← unit / smoke test
+    timings.test.ts         ← unit / smoke test
     tool-schema-openai-strict.test.ts← unit / smoke test
     tool-types.test.ts      ← unit / smoke test
     trace-digest.test.ts    ← unit / smoke test

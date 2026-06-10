@@ -49,6 +49,7 @@ import type {
   RunTotals,
   TracesMode,
 } from "./types.ts";
+import type { TimingCollector } from "../timings.ts";
 
 // -------------------------------------------------------------------------------------------------
 // Run options + result
@@ -98,6 +99,8 @@ export interface RunEvalOptions {
   runBase?: string;
   /** Opaque progress logger; called with status strings. */
   log?: (msg: string) => void;
+  /** Optional local operation timing collector owned by the tool wrapper. */
+  timings?: TimingCollector;
   /** Optional override for which state-variable keys get surfaced. */
   interestingStateKeys?: readonly string[];
 }
@@ -177,7 +180,11 @@ export async function runEval(opts: RunEvalOptions): Promise<RunEvalResult> {
       );
     }
     if (usage.active) {
-      resolvedIds = await resolveAgentIds(opts.conn, opts.agentApiName, { status: "Active" });
+      resolvedIds = opts.timings
+        ? await opts.timings.time("resolve_active_agent_ids", () =>
+            resolveAgentIds(opts.conn, opts.agentApiName as string, { status: "Active" }),
+          )
+        : await resolveAgentIds(opts.conn, opts.agentApiName, { status: "Active" });
       log(
         `Active: ${opts.agentApiName} v${resolvedIds.version_number} ` +
           `(${resolvedIds.status})  botVersionId=${resolvedIds.bot_version_id}  ` +
@@ -185,7 +192,11 @@ export async function runEval(opts: RunEvalOptions): Promise<RunEvalResult> {
       );
     }
     if (usage.latest) {
-      latestIds = await resolveAgentIds(opts.conn, opts.agentApiName, { status: "any" });
+      latestIds = opts.timings
+        ? await opts.timings.time("resolve_latest_agent_ids", () =>
+            resolveAgentIds(opts.conn, opts.agentApiName as string, { status: "any" }),
+          )
+        : await resolveAgentIds(opts.conn, opts.agentApiName, { status: "any" });
       log(
         `Latest: ${opts.agentApiName} v${latestIds.version_number} ` +
           `(${latestIds.status})  botVersionId=${latestIds.bot_version_id}  ` +
@@ -212,7 +223,11 @@ export async function runEval(opts: RunEvalOptions): Promise<RunEvalResult> {
     }
     const mode: AgentVersionResolutionMode =
       opts.versionResolution ?? (usage.latest && !usage.active ? "latest" : "active");
-    injectedIds = await resolveIdsForInjection(opts, mode, resolvedIds, latestIds);
+    injectedIds = opts.timings
+      ? await opts.timings.time("resolve_injected_agent_ids", () =>
+          resolveIdsForInjection(opts, mode, resolvedIds, latestIds),
+        )
+      : await resolveIdsForInjection(opts, mode, resolvedIds, latestIds);
     const injected = injectResolvedAgentIds(spec, injectedIds, {
       overwrite: opts.overwriteAgentIds ?? false,
     });
@@ -229,10 +244,14 @@ export async function runEval(opts: RunEvalOptions): Promise<RunEvalResult> {
     );
   }
 
-  spec = normalizeSpec(spec);
+  spec = opts.timings
+    ? await opts.timings.time("normalize_eval_spec", () => normalizeSpec(spec))
+    : normalizeSpec(spec);
 
   // 2. Resolve org identity for SFAP headers
-  const ident = await resolveOrgIdentity(opts.conn);
+  const ident = opts.timings
+    ? await opts.timings.time("org_identity", () => resolveOrgIdentity(opts.conn))
+    : await resolveOrgIdentity(opts.conn);
   const headers: EvalApiHeaders = {
     orgId: ident.org_id,
     userId: ident.user_id,
@@ -253,30 +272,61 @@ export async function runEval(opts: RunEvalOptions): Promise<RunEvalResult> {
   const results: Array<EvalApiResponse["results"]> = new Array(batches.length).fill(null);
   let failedBatches = 0;
   const sema = makeSemaphore(concurrency);
-  await Promise.all(
-    batches.map((b, idx) =>
-      sema(async () => {
-        const res = await callEval(opts.conn, b, headers);
-        if (res.status >= 200 && res.status < 300) {
-          results[idx] = res.body.results ?? [];
-          if (batches.length > 1) {
-            log(
-              `  batch ${idx + 1}/${batches.length}: ${(results[idx] ?? []).length} tests complete`,
-            );
-          }
-        } else {
-          failedBatches++;
-          const snippet = JSON.stringify(res.body).slice(0, 1500);
-          log(`  batch ${idx + 1}/${batches.length}: HTTP ${res.status}  ${snippet}`);
-          results[idx] = [];
-        }
-      }),
-    ),
-  );
+  await (opts.timings
+    ? opts.timings.time("eval_batches", () =>
+        Promise.all(
+          batches.map((b, idx) =>
+            sema(async () => {
+              const res = await callEval(opts.conn, b, headers);
+              if (opts.timings) {
+                opts.timings.add("sfap_endpoint_cache", 0, {
+                  cache: res.endpoint_cache,
+                  endpoint: res.endpoint,
+                });
+              }
+              if (res.status >= 200 && res.status < 300) {
+                results[idx] = res.body.results ?? [];
+                if (batches.length > 1) {
+                  log(
+                    `  batch ${idx + 1}/${batches.length}: ${(results[idx] ?? []).length} tests complete`,
+                  );
+                }
+              } else {
+                failedBatches++;
+                const snippet = JSON.stringify(res.body).slice(0, 1500);
+                log(`  batch ${idx + 1}/${batches.length}: HTTP ${res.status}  ${snippet}`);
+                results[idx] = [];
+              }
+            }),
+          ),
+        ),
+      )
+    : Promise.all(
+        batches.map((b, idx) =>
+          sema(async () => {
+            const res = await callEval(opts.conn, b, headers);
+            if (res.status >= 200 && res.status < 300) {
+              results[idx] = res.body.results ?? [];
+              if (batches.length > 1) {
+                log(
+                  `  batch ${idx + 1}/${batches.length}: ${(results[idx] ?? []).length} tests complete`,
+                );
+              }
+            } else {
+              failedBatches++;
+              const snippet = JSON.stringify(res.body).slice(0, 1500);
+              log(`  batch ${idx + 1}/${batches.length}: HTTP ${res.status}  ${snippet}`);
+              results[idx] = [];
+            }
+          }),
+        ),
+      ));
 
   // 4. Merge + HTML-decode
   const mergedRaw: EvalApiResponse = { results: results.flatMap((r) => r ?? []) };
-  const merged = deepDecode(mergedRaw);
+  const merged = opts.timings
+    ? await opts.timings.time("decode_eval_response", () => deepDecode(mergedRaw))
+    : deepDecode(mergedRaw);
 
   // 5. Trace surface — synthesize-then-merge.
   //
@@ -324,7 +374,11 @@ export async function runEval(opts: RunEvalOptions): Promise<RunEvalResult> {
       const filtered = {
         results: (merged.results ?? []).filter((t) => inScopeIds.has(String(t.id ?? ""))),
       };
-      const synthesized = synthesizeTracesFromMerged(filtered, { utteranceIndex });
+      const synthesized = opts.timings
+        ? await opts.timings.time("synthesize_eval_traces", () =>
+            synthesizeTracesFromMerged(filtered, { utteranceIndex }),
+          )
+        : synthesizeTracesFromMerged(filtered, { utteranceIndex });
       synthesizedCount = synthesized.size;
       for (const [k, v] of synthesized.entries()) traces.set(k, v);
       log(`Synthesized ${synthesizedCount} trace(s) from inline eval data (mode=${tracesMode}).`);
@@ -340,10 +394,17 @@ export async function runEval(opts: RunEvalOptions): Promise<RunEvalResult> {
       log(
         `Attempting ${unique} live trace fetch(es) (best-effort — eval sessions are typically GC'd by the time we get here)…`,
       );
-      const live = await fetchTracesConcurrent(opts.traceConn ?? opts.conn, planKeys, {
-        concurrency,
-        log,
-      });
+      const live = opts.timings
+        ? await opts.timings.time("live_trace_fetch", () =>
+            fetchTracesConcurrent(opts.traceConn ?? opts.conn, planKeys, {
+              concurrency,
+              log,
+            }),
+          )
+        : await fetchTracesConcurrent(opts.traceConn ?? opts.conn, planKeys, {
+            concurrency,
+            log,
+          });
       for (const [k, body] of live.entries()) {
         if (body != null) {
           traces.set(k, body);
@@ -378,7 +439,9 @@ export async function runEval(opts: RunEvalOptions): Promise<RunEvalResult> {
         : undefined,
     utteranceIndex,
   };
-  const { totals, failures } = summarize(merged, buildOpts);
+  const { totals, failures } = opts.timings
+    ? await opts.timings.time("summarize_eval_results", () => summarize(merged, buildOpts))
+    : summarize(merged, buildOpts);
   const lat = latencySummary(totals.latencies);
 
   // 7. Build metadata
@@ -442,7 +505,11 @@ export async function runEval(opts: RunEvalOptions): Promise<RunEvalResult> {
   let runDir: string | undefined;
   if (!opts.noPersist) {
     runDir = resolveRunDir(opts.cwd, runId, opts.runBase);
-    await writeRun({ runDir, merged, traces, metadata, failures, spec });
+    await (opts.timings
+      ? opts.timings.time("persist_eval_run", () =>
+          writeRun({ runDir, merged, traces, metadata, failures, spec }),
+        )
+      : writeRun({ runDir, merged, traces, metadata, failures, spec }));
     log(`Artifacts: ${runDir}/`);
   }
 

@@ -48,6 +48,7 @@ import { isAgentScriptFile } from "./file-classify.ts";
 import { activateVersion, deactivateVersion, listVersions, publishAgent } from "./lifecycle.ts";
 import { safeResolveToolPath, toolError, toolOk, type ToolError } from "./tool-types.ts";
 import { renderLifecycleCall, renderLifecycleResult } from "./render/lifecycle.ts";
+import { createTimingCollector, withTimings, type TimingCollector } from "./timings.ts";
 
 export const LIFECYCLE_TOOL_NAME = "agentscript_lifecycle";
 
@@ -174,6 +175,7 @@ export function registerLifecycleTool(pi: ExtensionAPI): void {
     ],
     parameters: Params,
     async execute(_id, params, _signal, onUpdate, ctx) {
+      const timings = createTimingCollector();
       const p = params as ParamsAny;
       const stream = (msg: string): void => {
         try {
@@ -186,23 +188,40 @@ export function registerLifecycleTool(pi: ExtensionAPI): void {
         }
       };
       const reqOk = checkRequired(p);
-      if (reqOk.ok === false) return toolError("INVALID_PARAMS", reqOk.error);
+      if (reqOk.ok === false) {
+        return withTimings(toolError("INVALID_PARAMS", reqOk.error), timings, { appendLine: true });
+      }
+      let result;
       switch (p.action) {
         case "publish":
-          return await actionPublish(ctx, p, stream);
+          result = await actionPublish(ctx, p, stream, timings);
+          break;
         case "activate":
-          return await actionActivate(ctx, p);
+          result = await timings.time("lifecycle.activate", () => actionActivate(ctx, p));
+          break;
         case "deactivate":
-          return await actionDeactivate(p);
+          result = await timings.time("lifecycle.deactivate", () => actionDeactivate(p));
+          break;
         case "list_versions":
-          return await actionListVersions(p);
+          result = await timings.time("lifecycle.list_versions", () => actionListVersions(p));
+          break;
         case "agent_user_status":
-          return await actionAgentUserStatus(ctx, p);
+          result = await timings.time("lifecycle.agent_user_status", () =>
+            actionAgentUserStatus(ctx, p),
+          );
+          break;
         case "diagnose_agent_user":
-          return await actionDiagnoseAgentUser(ctx, p);
+          result = await timings.time("lifecycle.diagnose_agent_user", () =>
+            actionDiagnoseAgentUser(ctx, p),
+          );
+          break;
         case "provision_agent_user":
-          return await actionProvisionAgentUser(ctx, p, stream);
+          result = await timings.time("lifecycle.provision_agent_user", () =>
+            actionProvisionAgentUser(ctx, p, stream),
+          );
+          break;
       }
+      return withTimings(result, timings, { appendLine: true });
     },
   });
 }
@@ -240,6 +259,7 @@ async function actionPublish(
   ctx: ExtensionContext,
   input: ParamsAny,
   stream: (msg: string) => void,
+  timings?: TimingCollector,
 ): Promise<{
   content: { type: "text"; text: string }[];
   details: Record<string, unknown> | ToolError;
@@ -253,14 +273,18 @@ async function actionPublish(
 
   let source: string;
   try {
-    source = await readFile(filePath, "utf8");
+    source = timings
+      ? await timings.time("read_agent_source", () => readFile(filePath, "utf8"))
+      : await readFile(filePath, "utf8");
   } catch (err) {
     return toolError(
       `Cannot read ${filePath}: ${err instanceof Error ? err.message : String(err)}`,
     );
   }
 
-  const localCheck = await checkAgentScriptFile(filePath);
+  const localCheck = timings
+    ? await timings.time("local_compile", () => checkAgentScriptFile(filePath))
+    : await checkAgentScriptFile(filePath);
   if (!localCheck.ok) {
     return toolError(
       localCheck.unavailableReason ?? "Local Agent Script compile failed before publish.",
@@ -286,7 +310,9 @@ async function actionPublish(
   const agentApiName = input.agent_api_name ?? path.basename(filePath, ".agent");
   let featureProfile: AgentFeatureProfile | undefined;
   try {
-    const inspect = await inspectFile(filePath);
+    const inspect = timings
+      ? await timings.time("inspect_structure", () => inspectFile(filePath))
+      : await inspectFile(filePath);
     if (inspect.ok) {
       featureProfile = buildFeatureProfile(inspect);
       for (const risk of featureProfile.publish_risks) {
@@ -303,7 +329,9 @@ async function actionPublish(
   const bundleDir = path.dirname(filePath);
 
   try {
-    const conn = await connFromAlias(input.target_org);
+    const conn = timings
+      ? await timings.time("org_connection", () => connFromAlias(input.target_org))
+      : await connFromAlias(input.target_org);
 
     // Service-Agent preflight: a missing/inactive user or unassigned
     // system PS is the #1 reason publish fails with a cryptic message.
@@ -312,10 +340,17 @@ async function actionPublish(
     // and we proceed without disruption. See agent-user-setup.md skill.
     const cfg = await readAgentConfigSlice(filePath);
     if (cfg.ok && cfg.agent_type === "AgentforceServiceAgent") {
-      const status = await checkAgentUserStatus(conn, {
-        agent_type: cfg.agent_type,
-        default_agent_user: cfg.default_agent_user,
-      });
+      const status = timings
+        ? await timings.time("service_agent_user_preflight", () =>
+            checkAgentUserStatus(conn, {
+              agent_type: cfg.agent_type,
+              default_agent_user: cfg.default_agent_user,
+            }),
+          )
+        : await checkAgentUserStatus(conn, {
+            agent_type: cfg.agent_type,
+            default_agent_user: cfg.default_agent_user,
+          });
       if (!status.ok) {
         stream(`Pre-flight — Service Agent user wiring: ${status.short_message}`);
         return toolError(
@@ -332,7 +367,10 @@ async function actionPublish(
         );
       }
     }
-    const { conn: agentApiConn } = await connForAgentApi(input.target_org);
+    const authPhase = timings?.phase("agent_api_auth");
+    const auth = await connForAgentApi(input.target_org);
+    authPhase?.end({ cache: auth.cache });
+    const { conn: agentApiConn } = auth;
     const result = await publishAgent({
       conn,
       agentApiConn,
@@ -342,6 +380,7 @@ async function actionPublish(
       agentApiName,
       activate: input.activate ?? false,
       log: stream,
+      timings,
     });
     const ab = result.authoring_bundle;
     const bundleLine = ab

@@ -71,6 +71,8 @@ import { registerPreviewTool } from "./lib/preview-tool.ts";
 import { handleEvalAction } from "./lib/command/eval-action.ts";
 import { handleReportAction } from "./lib/command/report-action.ts";
 import { clearConnectionCache } from "../../lib/common/sf-conn/connection.ts";
+import { clearAgentApiAuthCache } from "./lib/agent-api-auth.ts";
+import { clearSfapEndpointCache } from "./lib/eval/sfap.ts";
 
 const EXTENSION_ID = "sf-agentscript";
 const COMMAND_NAME = "sf-agentscript";
@@ -379,10 +381,14 @@ function registerSessionHooks(pi: ExtensionAPI, state: AgentScriptAssistState): 
   pi.on("session_start", async () => {
     resetState(state);
     clearConnectionCache();
+    clearAgentApiAuthCache();
+    clearSfapEndpointCache();
   });
   pi.on("session_shutdown", async () => {
     resetState(state);
     clearConnectionCache();
+    clearAgentApiAuthCache();
+    clearSfapEndpointCache();
   });
 }
 
