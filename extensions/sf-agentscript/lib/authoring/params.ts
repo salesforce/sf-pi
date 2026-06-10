@@ -9,7 +9,8 @@ export type InspectMode =
   | "find_references"
   | "definition"
   | "check_targets"
-  | "review";
+  | "review"
+  | "runtime_smoke";
 export type MutateMode = "set_field" | "rename" | "insert" | "delete" | "apply_quick_fix";
 export type AuthoringMode = CompileMode | InspectMode | MutateMode;
 
@@ -29,6 +30,7 @@ export interface AuthoringParams {
   // inspect
   symbol?: string;
   output_path?: string;
+  phone_number?: string;
   // mutate
   component?: string;
   field?: string;
@@ -122,6 +124,14 @@ export const AUTHORING_ACTION_SPECS: Record<string, AuthoringActionSpec> = {
     verb: "inspect",
     mode: "review",
     required: [],
+    inferable: ["agent_file"],
+    writes: false,
+  },
+  "inspect.runtime_smoke": {
+    key: "inspect.runtime_smoke",
+    verb: "inspect",
+    mode: "runtime_smoke",
+    required: ["target_org"],
     inferable: ["agent_file"],
     writes: false,
   },

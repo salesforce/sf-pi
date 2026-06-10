@@ -43,9 +43,13 @@ describe("checkSurfaceReadiness", () => {
     expect(checks.map((check) => check.code)).toEqual([
       "voice-messaging-channel-missing",
       "voice-service-channel-missing",
+      "agentforce-settings-unverifiable",
+      "voice-phone-number-unverifiable",
       "agent-channel-connection-manual-verification",
     ]);
-    expect(checks.every((check) => check.status === "warning")).toBe(true);
+    expect(
+      checks.every((check) => check.status === "warning" || check.status === "unverifiable"),
+    ).toBe(true);
   });
 
   test("warns when a voice channel exists without routing fields", async () => {
@@ -62,6 +66,8 @@ describe("checkSurfaceReadiness", () => {
       "voice-messaging-channel-found:ok",
       "voice-channel-routing-incomplete:warning",
       "voice-service-channel-found:ok",
+      "agentforce-settings-unverifiable:unverifiable",
+      "voice-phone-number-unverifiable:unverifiable",
       "agent-channel-connection-manual-verification:warning",
     ]);
   });
@@ -78,6 +84,8 @@ describe("checkSurfaceReadiness", () => {
     expect(checks.map((check) => `${check.code}:${check.status}`)).toEqual([
       "voice-messaging-channel-unverifiable:unverifiable",
       "voice-service-channel-unverifiable:unverifiable",
+      "agentforce-settings-unverifiable:unverifiable",
+      "voice-phone-number-unverifiable:unverifiable",
       "agent-channel-connection-manual-verification:warning",
     ]);
   });
@@ -93,6 +101,7 @@ describe("checkSurfaceReadiness", () => {
     expect(checks.map((check) => check.code)).toEqual([
       "messaging-channel-missing",
       "messaging-service-channel-missing",
+      "agentforce-settings-unverifiable",
       "agent-channel-connection-manual-verification",
     ]);
   });
@@ -115,6 +124,7 @@ describe("checkSurfaceReadiness", () => {
       "messaging-channel-found:ok",
       "messaging-channel-routing-incomplete:warning",
       "messaging-service-channel-found:ok",
+      "agentforce-settings-unverifiable:unverifiable",
       "agent-channel-connection-manual-verification:warning",
     ]);
   });

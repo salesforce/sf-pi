@@ -28,7 +28,7 @@ Rules:
 
 - `verb="create"` omits `mode` and requires `bundle_name`.
 - `verb="compile"` defaults `mode` to `check`; `mode="format"` writes canonical SDK formatting.
-- `verb="inspect"` defaults `mode` to `structure`; modes: `structure`, `context_profile`, `find_references`, `definition`, `check_targets`, `review`.
+- `verb="inspect"` defaults `mode` to `structure`; modes: `structure`, `context_profile`, `find_references`, `definition`, `check_targets`, `review`, `runtime_smoke`.
 - `verb="mutate"` requires `mode`; modes: `set_field`, `rename`, `insert`, `delete`, `apply_quick_fix`.
 - Use `agent_file`, not a generic path field.
 - `agent_file` may be omitted only when exactly one current `.agent` file exists on the active Pi branch. Ambiguity is refused with candidates.
@@ -89,7 +89,9 @@ Use `inspect/find_references` before mutating a symbol. Use `inspect/definition`
 
 Use `inspect/check_targets` before publish when action targets must resolve in the org. Requires `target_org`.
 
-Use `inspect/review` before publish or after behavioral changes. It is deterministic: no hidden model call, no numeric score. Readiness is `ready`, `ready_with_warnings`, `blocked`, or `partial`. Pass `target_org` to include read-only org checks: action-target resolution, Service Agent user readiness, and surface readiness probes such as voice/messaging channel, ServiceChannel, published voice planner, routing-flow, and fallback-queue checks for channel-linked agents. Pass `output_path` to write a Markdown report.
+Use `inspect/review` before publish or after behavioral changes. It is deterministic: no hidden model call, no numeric score. Readiness is `ready`, `ready_with_warnings`, `blocked`, or `partial`. Pass `target_org` to include read-only org checks: action-target resolution, Service Agent user readiness, and surface readiness probes such as Agentforce settings, phone number, voice/messaging channel, ServiceChannel, published voice planner, routing-flow, and fallback-queue checks for channel-linked agents. Pass `output_path` to write a Markdown report.
+
+Use `inspect/runtime_smoke` only after a test call or message. It is read-only and diagnoses recent VoiceCall, AgentWork, and MessagingSession records; it does not place calls, send messages, or replace preview/eval.
 
 ### Mutate
 

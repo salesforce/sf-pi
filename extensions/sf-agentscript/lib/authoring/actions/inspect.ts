@@ -5,7 +5,6 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { withFileMutationQueue } from "@earendil-works/pi-coding-agent";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { checkAgentUserStatus } from "../../agent-user/status.ts";
 import { connForAgentApi } from "../../agent-api-auth.ts";
 import {
   agentFileEvent,
@@ -19,20 +18,13 @@ import { isAgentScriptFile } from "../../file-classify.ts";
 import { findDefinition, findReferences, inspectFile } from "../../inspect.ts";
 import { connFromAlias } from "../../../../../lib/common/sf-conn/connection.ts";
 import { checkActionTargets } from "../../preflight.ts";
-import { checkSurfaceReadiness } from "../../preflight/surface-readiness.ts";
+import { diagnoseRuntimeSmoke, type RuntimeSmokeResult } from "../../preflight/runtime-smoke.ts";
+import { collectOrgReviewFindings } from "../../review/org-checks.ts";
+import type { ReviewFinding } from "../../review/types.ts";
 import { safeResolveToolPath, toolError, toolOk, type ToolError } from "../../tool-types.ts";
 import type { AuthoringParams } from "../params.ts";
 
 export type ReviewReadiness = "ready" | "ready_with_warnings" | "blocked" | "partial";
-
-interface ReviewFinding {
-  id: string;
-  severity: "blocker" | "warning" | "info";
-  category: "compile" | "shape" | "flow" | "actions" | "deployment" | "org";
-  message: string;
-  evidence?: string[];
-  recover_via?: { tool: string; params: Record<string, unknown> };
-}
 
 export async function runInspectAction(
   ctx: ExtensionContext,
@@ -63,6 +55,8 @@ export async function runInspectAction(
       return actionCheckTargets(agentFile, input.target_org);
     case "review":
       return actionReview(ctx, agentFile, input);
+    case "runtime_smoke":
+      return actionRuntimeSmoke(agentFile, input);
     default:
       return toolError("INVALID_PARAMS", `Unsupported inspect mode '${String(mode)}'.`);
   }
@@ -302,6 +296,34 @@ async function actionCheckTargets(agentFile: string, targetOrg: string | undefin
   );
 }
 
+async function actionRuntimeSmoke(agentFile: string, input: AuthoringParams) {
+  if (!input.target_org) {
+    return toolError(
+      "inspect.runtime_smoke requires target_org.",
+      "Pass target_org=<sf alias> so we can query recent VoiceCall, AgentWork, and MessagingSession records.",
+    );
+  }
+  let conn;
+  try {
+    conn = await connForAgentApi(input.target_org).then((c) => c.conn);
+  } catch {
+    conn = await connFromAlias(input.target_org);
+  }
+  const smoke = await diagnoseRuntimeSmoke(conn, { phoneNumber: input.phone_number });
+  const details = withAgentScriptBranchState(
+    {
+      ok: smoke.ok,
+      action: "inspect.runtime_smoke" as const,
+      agent_file: agentFile,
+      path: agentFile,
+      target_org: input.target_org,
+      runtime_smoke: smoke,
+    },
+    inspectEvents(agentFile, "runtime_smoke"),
+  );
+  return toolOk(details, renderRuntimeSmokeSummary(agentFile, smoke));
+}
+
 async function sourceShapeFindings(agentFile: string): Promise<ReviewFinding[]> {
   let source: string;
   try {
@@ -454,65 +476,17 @@ async function actionReview(ctx: ExtensionContext, agentFile: string, input: Aut
         } catch {
           conn = await connFromAlias(input.target_org);
         }
-        const targets = await checkActionTargets(conn, actions);
-        for (const target of targets.targets) {
-          if (target.status === "missing") {
-            findings.push({
-              id: `target-missing-${target.name}`,
-              severity: "blocker",
-              category: "org",
-              message: `Action target missing in org: ${target.name} → ${target.target}`,
-              evidence: target.detail ? [target.detail] : undefined,
-            });
-          } else if (target.status === "unverifiable") {
-            findings.push({
-              id: `target-unverifiable-${target.name}`,
-              severity: "warning",
-              category: "org",
-              message: `Action target could not be verified: ${target.name} → ${target.target}`,
-              evidence: target.detail ? [target.detail] : undefined,
-            });
-          }
-        }
-        const config = inspect.components?.config ?? {};
-        const agentType = typeof config.agent_type === "string" ? config.agent_type : undefined;
-        const defaultAgentUser =
-          typeof config.default_agent_user === "string" ? config.default_agent_user : undefined;
-        if (agentType === "AgentforceServiceAgent") {
-          const userStatus = await checkAgentUserStatus(conn, {
-            agent_type: agentType,
-            default_agent_user: defaultAgentUser,
-          });
-          if (!userStatus.ok) {
-            findings.push({
-              id: `agent-user-${userStatus.reason ?? "not-ready"}`,
-              severity: "blocker",
-              category: "org",
-              message: userStatus.short_message,
-              recover_via: {
-                tool: "agentscript_lifecycle",
-                params: {
-                  action: "diagnose_agent_user",
-                  agent_file: agentFile,
-                  target_org: input.target_org,
-                },
-              },
-            });
-          }
-        }
-
-        const agentApiName = typeof config.agent_name === "string" ? config.agent_name : undefined;
-        const surfaceChecks = await checkSurfaceReadiness(conn, profile, { agentApiName });
-        for (const check of surfaceChecks) {
-          if (check.status === "ok") continue;
-          findings.push({
-            id: `surface-${check.code}`,
-            severity: check.status === "blocker" ? "blocker" : "warning",
-            category: "org",
-            message: check.message,
-            evidence: check.evidence,
-          });
-        }
+        findings.push(
+          ...(await collectOrgReviewFindings({
+            conn,
+            actions,
+            profile,
+            config: inspect.components?.config ?? {},
+            agentFile,
+            targetOrg: input.target_org,
+            phoneNumber: input.phone_number,
+          })),
+        );
       } catch (err) {
         findings.push({
           id: "target-check-failed",
@@ -628,6 +602,28 @@ function renderStructureSummary(
     lines.push(
       `⚠️ File has ${result.parse_error_count ?? 1} severity-1 parse error(s) — run agentscript_authoring compile/check first; the structural surface may be incomplete.`,
     );
+  }
+  return lines.join("\n");
+}
+
+function renderRuntimeSmokeSummary(agentFile: string, smoke: RuntimeSmokeResult): string {
+  const warningCount = smoke.findings.filter((finding) => finding.severity === "warning").length;
+  const unverifiableCount = smoke.findings.filter(
+    (finding) => finding.severity === "unverifiable",
+  ).length;
+  const icon = warningCount > 0 ? "⚠️" : unverifiableCount > 0 ? "❔" : "✅";
+  const lines = [
+    `${icon} Runtime smoke: ${smoke.surface}`,
+    `agent_file: ${agentFile}`,
+    `findings: ${warningCount} warning(s), ${unverifiableCount} unverifiable`,
+  ];
+  for (const finding of smoke.findings.slice(0, 6)) {
+    const marker = finding.severity === "ok" ? "✓" : finding.severity === "warning" ? "⚠" : "?";
+    lines.push(`  ${marker} ${finding.message}`);
+    for (const evidence of finding.evidence ?? []) lines.push(`    ${evidence}`);
+  }
+  if (smoke.findings.length > 6) {
+    lines.push(`  …and ${smoke.findings.length - 6} more in details.runtime_smoke.findings`);
   }
   return lines.join("\n");
 }

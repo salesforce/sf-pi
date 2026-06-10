@@ -55,10 +55,12 @@ Auto-resolution validates referenced disk artifacts before use and proceeds only
 - structural/readiness findings that can be proven from the parsed file
 - publish-risk signals from the feature profile
 - read-only action-target checks when `target_org` is provided
-- read-only surface readiness checks, such as voice/messaging channel, ServiceChannel, published voice planner, routing-flow, and fallback-queue probes for channel-linked agents when `target_org` is provided
+- read-only surface readiness checks, such as Agentforce settings, phone number, voice/messaging channel, ServiceChannel, published voice planner, routing-flow, and fallback-queue probes for channel-linked agents when `target_org` is provided
 - Service Agent user readiness checks for `default_agent_user` license/user/system permission-set wiring when `target_org` is provided
 
 Readiness values are `ready`, `ready_with_warnings`, `blocked`, and `partial`. There is no numeric score and no hidden model call. Pass `output_path` to write a Markdown report.
+
+Use `agentscript_authoring { "verb": "inspect", "mode": "runtime_smoke", "target_org": "..." }` after a test call or message to query recent VoiceCall, AgentWork, and MessagingSession records and get a read-only runtime diagnosis.
 
 ## Preview Trace Reports
 
@@ -157,14 +159,17 @@ extensions/sf-agentscript/
         standard-invocable.ts← implementation module
       surface/
         common.ts           ← implementation module
+        phone.ts            ← implementation module
         planner.ts          ← implementation module
         queue.ts            ← implementation module
         routing-flow.ts     ← implementation module
+        settings.ts         ← implementation module
         types.ts            ← implementation module
       bundle-type.ts        ← implementation module
       index.ts              ← implementation module
       parse.ts              ← implementation module
       registry.ts           ← implementation module
+      runtime-smoke.ts      ← implementation module
       soql.ts               ← implementation module
       surface-readiness.ts  ← implementation module
       types.ts              ← implementation module
@@ -184,6 +189,9 @@ extensions/sf-agentscript/
       report-writer.ts      ← implementation module
       shared.ts             ← implementation module
       timeline.ts           ← implementation module
+    review/
+      org-checks.ts         ← implementation module
+      types.ts              ← implementation module
     templates/
       agent-type.ts         ← implementation module
       agentforce-default.ts ← implementation module
@@ -253,6 +261,7 @@ extensions/sf-agentscript/
     mutate-emit-regression.test.ts← unit / smoke test
     mutate.test.ts          ← unit / smoke test
     path-containment.test.ts← unit / smoke test
+    phone-settings-readiness.test.ts← unit / smoke test
     planner-readiness.test.ts← unit / smoke test
     preflight.test.ts       ← unit / smoke test
     preview-agent-api.test.ts← unit / smoke test
@@ -272,6 +281,7 @@ extensions/sf-agentscript/
     render-report-writer.test.ts← unit / smoke test
     render-timeline.test.ts ← unit / smoke test
     routing-flow-readiness.test.ts← unit / smoke test
+    runtime-smoke.test.ts   ← unit / smoke test
     self-recovery.test.ts   ← unit / smoke test
     smoke.test.ts           ← unit / smoke test
     surface-readiness.test.ts← unit / smoke test

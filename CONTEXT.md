@@ -124,6 +124,18 @@ _Avoid_: flow creation, flow repair, action-target contract validation, runtime 
 The fallback and handoff portion of **Surface Readiness Preflight** that checks whether target-org channel fallback queues resolve, support the expected work object, have members, and expose routing configuration evidence.
 _Avoid_: queue creation, queue membership mutation, routing model enforcement, Omni-Channel provisioning workflow
 
+**Runtime Smoke Diagnosis**:
+The explicit, read-only Agent Script inspection mode that looks at recent target-org runtime records after a test call or message and explains where the interaction likely stopped. It is evidence-based and opt-in, not part of default readiness review.
+_Avoid_: default compile/review check, live test execution, transcript dump, observability replacement
+
+**Phone Number Readiness Preflight**:
+The voice-channel portion of **Surface Readiness Preflight** that checks whether target-org phone-number records exist and are live enough for calls to reach Salesforce.
+_Avoid_: phone number provisioning, provider setup, exact call routing proof, telephony account validation
+
+**Agentforce Settings Readiness Preflight**:
+The target-org settings portion of **Surface Readiness Preflight** that checks whether Agentforce-related platform settings appear enabled before publish or channel runtime work.
+_Avoid_: settings deployment, terms acceptance, setup wizard automation, license provisioning
+
 **Agent Script Mutation Adapter**:
 The SF Pi-owned editing layer that turns agent-facing mutate requests into safe Agent Script source changes, preferring Official AgentScript Package Dependency mutation/emission APIs and retaining only workflow guards that prevent corrupt or misleading edits.
 _Avoid_: custom AST emitter, generic text-edit replacement, bypass around official package mutation semantics

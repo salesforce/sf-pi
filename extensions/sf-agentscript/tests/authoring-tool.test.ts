@@ -5,6 +5,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import type { ExtensionContext, ToolDefinition } from "@earendil-works/pi-coding-agent";
 import { registerAuthoringTool } from "../lib/authoring-tool.ts";
+import { validateAuthoringParams } from "../lib/authoring/params.ts";
 import { AGENTSCRIPT_BRANCH_STATE_KEY } from "../lib/branch-state.ts";
 import { createBundle } from "../lib/create.ts";
 
@@ -35,6 +36,16 @@ function ctxWithBranch(branch: unknown[] = []): ExtensionContext {
 }
 
 describe("agentscript_authoring", () => {
+  test("inspect/runtime_smoke requires target_org", () => {
+    expect(validateAuthoringParams({ verb: "inspect", mode: "runtime_smoke" })).toEqual({
+      ok: false,
+      error: "inspect.runtime_smoke requires: target_org.",
+    });
+    expect(
+      validateAuthoringParams({ verb: "inspect", mode: "runtime_smoke", target_org: "dev" }),
+    ).toMatchObject({ ok: true, key: "inspect.runtime_smoke" });
+  });
+
   test("compile/check works through the family tool and emits branch state", async () => {
     const created = await createBundle({ cwd: workDir, bundle_name: "Authoring_Bot" });
     if (created.ok === false) throw new Error(created.reason_detail ?? created.reason);

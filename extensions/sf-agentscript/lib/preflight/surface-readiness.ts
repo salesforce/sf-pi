@@ -18,9 +18,11 @@ import {
   queryOptional,
   type ChannelRecord,
 } from "./surface/common.ts";
+import { checkPhoneReadiness } from "./surface/phone.ts";
 import { checkPlannerReadiness } from "./surface/planner.ts";
 import { checkQueueReadiness } from "./surface/queue.ts";
 import { checkRoutingFlowReadiness } from "./surface/routing-flow.ts";
+import { checkAgentforceSettingsReadiness } from "./surface/settings.ts";
 import type { SurfaceReadinessCheck } from "./surface/types.ts";
 
 export type { SurfaceReadinessCheck, SurfaceReadinessStatus } from "./surface/types.ts";
@@ -34,6 +36,7 @@ interface ServiceChannelRecord {
 
 export interface SurfaceReadinessContext {
   agentApiName?: string;
+  phoneNumber?: string;
 }
 
 export async function checkSurfaceReadiness(
@@ -48,6 +51,8 @@ export async function checkSurfaceReadiness(
   if (needsMessagingReadiness(profile)) {
     checks.push(...(await checkMessagingReadiness(conn)));
   }
+  checks.push(...(await checkAgentforceSettingsReadiness(conn, profile)));
+  checks.push(...(await checkPhoneReadiness(conn, profile, { phoneNumber: context.phoneNumber })));
   checks.push(...(await checkPlannerReadiness(conn, profile, context)));
   checks.push(...(await checkRoutingFlowReadiness(conn, profile)));
   checks.push(...(await checkQueueReadiness(conn, profile)));

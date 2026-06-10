@@ -44,6 +44,7 @@ const Params = Type.Object({
         Type.Literal("definition"),
         Type.Literal("check_targets"),
         Type.Literal("review"),
+        Type.Literal("runtime_smoke"),
         Type.Literal("set_field"),
         Type.Literal("rename"),
         Type.Literal("insert"),
@@ -124,6 +125,9 @@ const Params = Type.Object({
   ),
   output_path: Type.Optional(
     Type.String({ description: "For inspect.review. Optional Markdown report output path." }),
+  ),
+  phone_number: Type.Optional(
+    Type.String({ description: "Optional phone number for voice surface/runtime checks." }),
   ),
   // mutate
   component: Type.Optional(
@@ -213,6 +217,7 @@ export function registerAuthoringTool(pi: ExtensionAPI): void {
       "Preferred loop: compile/check → inspect/structure or inspect/review → mutate with dry_run for risky edits → compile/check again → preview/eval/lifecycle.",
       "Use mutate/apply_quick_fix from compile quick_fixes.apply_via. Do not use the generic edit tool when mutate supports the change.",
       "inspect/review is deterministic v1: readiness is ready | ready_with_warnings | blocked | partial; no numeric score and no hidden LLM review. Pass output_path to write a Markdown report.",
+      "inspect/runtime_smoke is explicit and read-only. Use it after a test call/message to diagnose recent VoiceCall, AgentWork, and MessagingSession records; requires target_org.",
     ],
     parameters: Params,
     async execute(_id, params, _signal, _onUpdate, ctx) {
