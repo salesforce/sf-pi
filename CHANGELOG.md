@@ -517,6 +517,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.184.0](https://github.com/salesforce/sf-pi/compare/v0.183.0...v0.184.0) (2026-06-10)
+
+
+### Features
+
+* **agentscript:** add timings and connection caches ([1186c86](https://github.com/salesforce/sf-pi/commit/1186c86a9795c0c0977d62177f7dd05653ce9e38))
+
 ## [0.183.0](https://github.com/salesforce/sf-pi/compare/v0.182.0...v0.183.0) (2026-06-10)
 
 
