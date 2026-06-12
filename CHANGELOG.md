@@ -517,6 +517,14 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.184.2](https://github.com/salesforce/sf-pi/compare/v0.184.1...v0.184.2) (2026-06-12)
+
+
+### Bug Fixes
+
+* **sf-browser:** handle classic setup submits ([0d75612](https://github.com/salesforce/sf-pi/commit/0d75612b607cad2f4925a52b5f24a2aebc3b6086))
+* **sf-browser:** remove iframe retry lint warning ([a522649](https://github.com/salesforce/sf-pi/commit/a5226493389de6dfa762efe4bbce643159e20eac))
+
 ## [0.184.1](https://github.com/salesforce/sf-pi/compare/v0.184.0...v0.184.1) (2026-06-12)
 
 
