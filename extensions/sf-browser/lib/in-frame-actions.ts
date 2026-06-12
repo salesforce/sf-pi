@@ -24,8 +24,10 @@ export function findInFrameRetryPlan(
   const frameStack: Array<{ indent: number; ref: string }> = [];
   for (const line of snapshot.split(/\r?\n/)) {
     const indent = leadingSpaces(line);
-    while (frameStack.length && frameStack[frameStack.length - 1]!.indent >= indent) {
+    let currentFrame = frameStack.at(-1);
+    while (currentFrame && currentFrame.indent >= indent) {
       frameStack.pop();
+      currentFrame = frameStack.at(-1);
     }
 
     const lineRef = extractRef(line);
