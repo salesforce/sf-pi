@@ -608,6 +608,14 @@ _Avoid_: unknown failure, blind retry, stale ref assumption, generic snapshot lo
 An internal **SF Browser** adapter that lets the existing **Hot-Path Browser Tool Set** recover same-origin **Classic Setup Surface** interactions without making raw frame evaluation the normal user-facing interface.
 _Avoid_: public eval workflow, iframe-specific tool sprawl, browser framework, forcing agents to rediscover frame internals
 
+**Classic Setup Submit Adapter**:
+An internal **SF Browser** adapter for committing **Classic Setup Surface** form actions. It keeps the public click/press interface small while handling Salesforce confirm dialogs, mutation evidence, submit waits, and browser-runtime timeout recovery behind the existing **Hot-Path Browser Tool Set** seam.
+_Avoid_: public dialog tool workflow, raw eval submit, manual confirm polling by agents, browser framework
+
+**Salesforce Confirm Dialog Policy**:
+The **SF Browser** rule that a browser action explicitly marked `mutation: true` may auto-accept a Salesforce confirm dialog that belongs to the same committing action, provided SF Browser records the dialog text and mutation evidence for auditability.
+_Avoid_: silent confirm acceptance, separate HIL prompt for the same approved mutation, accepting unrelated dialogs, generic website confirm policy
+
 **UI Fallback Recovery**:
 The part of a **UI Fallback Path** that returns the browser to a known safe page after a validation error, stale form, timeout, or ambiguous **Classic Setup Surface** state.
 _Avoid_: blind retry, Cancel-only recovery, keep clicking, ignore validation
@@ -734,6 +742,8 @@ _Avoid_: every available gateway model, benchmark target, broad live-test suite
 - **Mutation Evidence** is captured through normal **Browser Evidence** with clear before/after labels, should be auditable by session, and should surface Setup Audit Trail context when requested and available.
 - A **Covered Element Failure** should recover with specific guidance instead of a generic snapshot-and-retry loop.
 - An **In-Frame Action Adapter** belongs behind the existing **Hot-Path Browser Tool Set** seam rather than as a public frame/eval tool.
+- A **Classic Setup Submit Adapter** should handle Salesforce confirm dialogs, mutation evidence, submit waits, and browser-runtime timeout recovery behind the existing click/press tool interface.
+- The **Salesforce Confirm Dialog Policy** lets `mutation: true` auto-accept same-action Salesforce confirm dialogs while recording the dialog text and evidence.
 - A **Classic Setup Surface** often needs `select` plus Add/Remove controls, API verification after save, and direct navigation recovery after validation failures.
 - **UI Fallback Recovery** captures the failure, verifies state through APIs when possible, then navigates to a known safe destination before retrying.
 - An **Ambiguous Wait** should prompt snapshot/API verification instead of being reported as an unconditional success.

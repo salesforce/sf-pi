@@ -70,7 +70,9 @@ Treat a DNS, TLS, timeout, or connection failure as not yet verified. A normal S
 **Known edge cases**
 
 - My Domain Setup can render as a Classic Setup Surface inside the Lightning Setup shell.
-- A click may fail with a covered-element diagnostic when the frame host receives the hit-test. Capture diagnostics and use the same-origin iframe escape hatch only as a last-mile recovery until SF Browser has native in-frame retry.
+- A click may fail with a covered-element diagnostic when the frame host receives the hit-test. Capture diagnostics and use the same-origin iframe recovery path only as a last-mile recovery.
+- `agent-browser frame @iframeRef` can scope snapshots and click-style commands for same-origin Visualforce frames, but raw `eval` may still run in the top document. Do not depend on frame-local eval for My Domain form submission or dialog handling.
+- Saving My Domain details can trigger a long-running Classic Setup submit and may leave a headless browser session unhealthy. If subsequent snapshots are empty or commands time out, reopen from the Salesforce org alias, then verify whether the domain state actually changed before retrying.
 - Provisioning may take time. Avoid repeated clicks while the UI is waiting.
 - The page may expose org-specific hostnames. Keep screenshots and examples public-safe before sharing them externally.
 - Deployment and login-policy changes can affect active users and integrations; do not perform them as a background convenience step.

@@ -6,6 +6,11 @@ import { Type } from "typebox";
 import { DEFAULT_AGENT_BROWSER_TIMEOUT_MS } from "./constants.ts";
 import { runAgentBrowser } from "./agent-browser.ts";
 import { checkpointEvidenceLabel } from "./evidence-policy.ts";
+import {
+  defaultCheckpointEvidenceTarget,
+  prepareCheckpointEvidenceTarget,
+  type CheckpointEvidenceTarget,
+} from "./evidence-target.ts";
 import { throwWithFailureDiagnostics } from "./failure-diagnostics.ts";
 import { STALE_REF_HINT } from "./guidance.ts";
 import {
@@ -22,6 +27,11 @@ export const SF_BROWSER_WAIT_TOOL_NAME = "sf_browser_wait";
 
 const LoadState = StringEnum(["domcontentloaded", "networkidle"] as const, {
   description: "Load state to wait for.",
+});
+
+const CheckpointEvidenceTargetMode = StringEnum(["current", "record-details"] as const, {
+  description:
+    "Where automatic checkpoint evidence should focus. record-details clicks the Details tab on record pages before capturing evidence.",
 });
 
 const LightningWaitMode = StringEnum(
@@ -92,6 +102,7 @@ export function registerSfBrowserWaitTool(pi: ExtensionAPI): void {
             "Override automatic Browser Evidence checkpoint capture. Defaults to true for navigation-ready, record-view, and save-result Lightning waits; false for other waits.",
         }),
       ),
+      checkpointEvidenceTarget: Type.Optional(CheckpointEvidenceTargetMode),
     }),
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
       const modeCount = [params.text, params.url, params.load, params.lightning, params.ms].filter(
@@ -148,6 +159,17 @@ export function registerSfBrowserWaitTool(pi: ExtensionAPI): void {
         },
       ];
       const checkpointLabel = checkpointEvidenceLabel(params);
+      const checkpointTarget = checkpointLabel
+        ? ((params.checkpointEvidenceTarget as CheckpointEvidenceTarget | undefined) ??
+          defaultCheckpointEvidenceTarget(params.lightning))
+        : undefined;
+      const checkpointTargetResult = checkpointTarget
+        ? await prepareCheckpointEvidenceTarget(pi, {
+            cwd: ctx.cwd,
+            target: checkpointTarget,
+            signal,
+          })
+        : undefined;
       const checkpoint = checkpointLabel
         ? await captureEvidence(pi, ctx, { label: checkpointLabel, imageMode: "thumbnail" }, signal)
         : undefined;
@@ -158,6 +180,7 @@ export function registerSfBrowserWaitTool(pi: ExtensionAPI): void {
           ambiguous,
           wait: params,
           checkpointEvidence: checkpoint?.details.capture,
+          checkpointEvidenceTarget: checkpointTargetResult,
           ...(lightningDetails
             ? { outcome: lightningDetails.outcome, matched: lightningDetails.matched }
             : {}),

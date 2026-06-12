@@ -3,6 +3,10 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { runAgentBrowser } from "./agent-browser.ts";
+import {
+  type AcceptedBrowserDialog,
+  runClassicSetupMutationClick,
+} from "./classic-setup-submit.ts";
 import { evidenceLabelForMutationBefore, shouldCaptureMutationBefore } from "./evidence-policy.ts";
 import { throwWithFailureDiagnostics } from "./failure-diagnostics.ts";
 import { STALE_REF_HINT } from "./guidance.ts";
@@ -49,8 +53,18 @@ export function registerSfBrowserClickTool(pi: ExtensionAPI): void {
           )
         : undefined;
       let recoveredIframeRef: string | undefined;
+      let acceptedDialogs: AcceptedBrowserDialog[] = [];
       try {
-        await runAgentBrowser(pi, ["click", params.ref], { cwd: ctx.cwd, signal });
+        if (params.mutation === true) {
+          const submit = await runClassicSetupMutationClick(pi, {
+            cwd: ctx.cwd,
+            ref: params.ref,
+            signal,
+          });
+          acceptedDialogs = submit.acceptedDialogs;
+        } else {
+          await runAgentBrowser(pi, ["click", params.ref], { cwd: ctx.cwd, signal });
+        }
       } catch (error) {
         const retry = await retryInFrameAction(pi, {
           cwd: ctx.cwd,
@@ -92,6 +106,7 @@ export function registerSfBrowserClickTool(pi: ExtensionAPI): void {
               recoveredIframeRef
                 ? `Recovered covered-element failure by retrying inside frame ${recoveredIframeRef}.`
                 : undefined,
+              ...formatAcceptedDialogs(acceptedDialogs),
               `Duration: ${duration.durationText}`,
               STALE_REF_HINT,
             ]),
@@ -104,9 +119,19 @@ export function registerSfBrowserClickTool(pi: ExtensionAPI): void {
           mutation: params.mutation,
           beforeMutationEvidence: beforeEvidence?.details.capture,
           recoveredIframeRef,
+          acceptedDialogs,
           ...duration,
         },
       };
     },
+  });
+}
+
+function formatAcceptedDialogs(dialogs: AcceptedBrowserDialog[]): string[] {
+  if (!dialogs.length) return [];
+  return dialogs.map((dialog, index) => {
+    const label = dialog.type ? `${dialog.type} dialog` : "browser dialog";
+    const message = dialog.message ? `: ${dialog.message}` : "";
+    return `Accepted Salesforce ${label} ${index + 1}${message}`;
   });
 }

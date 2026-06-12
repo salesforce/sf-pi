@@ -2,7 +2,7 @@
 /**
  * Shared command/tool operations for SF Browser.
  */
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import {
   formatDimensionNote,
   resizeImage,
@@ -98,6 +98,18 @@ export async function captureEvidence(
   }
 
   await runAgentBrowser(pi, ["screenshot", planned.path], { cwd: ctx.cwd, signal });
+  if (!existsSync(planned.path)) {
+    return buildMissingScreenshotCaptureResult({
+      sessionId,
+      label: planned.label,
+      path: planned.path,
+      mode,
+      viewport,
+      overlayDismissal,
+      scrolledToRef,
+      duration: stopTimer(),
+    });
+  }
 
   let image: ImageContent | null = null;
   let thumbnailPath: string | undefined;
@@ -171,6 +183,61 @@ export async function captureEvidence(
   return {
     content,
     details: { ok: true, sessionId, capture, overlayDismissal, scrolledToRef, ...duration },
+  };
+}
+
+export function formatMissingScreenshotCaptureText(input: {
+  label: string;
+  mode: EvidenceImageMode;
+  path: string;
+  sessionId: string;
+  durationText: string;
+}): string {
+  return okText([
+    "Browser Evidence capture incomplete: screenshot file was not produced.",
+    `Label: ${input.label}`,
+    `Mode: ${input.mode}`,
+    `Duration: ${input.durationText}`,
+    `Session: ${input.sessionId}`,
+    `Expected path: ${input.path}`,
+    "Recovery: reopen the page from the Salesforce org alias or restart the browser session, then capture evidence again.",
+  ]);
+}
+
+function buildMissingScreenshotCaptureResult(input: {
+  sessionId: string;
+  label: string;
+  path: string;
+  mode: EvidenceImageMode;
+  viewport: { width: number; height: number; deviceScaleFactor?: number } | undefined;
+  overlayDismissal: { dismissedRefs: string[]; snapshotChecked: boolean };
+  scrolledToRef: string | undefined;
+  duration: { durationMs: number; durationText: string };
+}): { content: TextContent[]; details: Record<string, unknown> } {
+  return {
+    content: [
+      {
+        type: "text",
+        text: formatMissingScreenshotCaptureText({
+          label: input.label,
+          mode: input.mode,
+          path: input.path,
+          sessionId: input.sessionId,
+          durationText: input.duration.durationText,
+        }),
+      },
+    ],
+    details: {
+      ok: false,
+      code: "screenshot-missing-after-capture",
+      sessionId: input.sessionId,
+      expectedPath: input.path,
+      imageMode: input.mode,
+      viewport: input.viewport,
+      overlayDismissal: input.overlayDismissal,
+      scrolledToRef: input.scrolledToRef,
+      ...input.duration,
+    },
   };
 }
 

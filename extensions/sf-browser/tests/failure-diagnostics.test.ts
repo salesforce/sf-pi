@@ -23,6 +23,15 @@ describe("failure diagnostics", () => {
     expect(classifyBrowserFailure("button is not visible")).toBe("element-not-found");
   });
 
+  it("classifies agent-browser runtime command timeouts separately", () => {
+    expect(classifyBrowserFailure("Command timed out after 60 seconds")).toBe(
+      "browser-runtime-timeout",
+    );
+    expect(classifyBrowserFailure("agent-browser command timed out while reading snapshot")).toBe(
+      "browser-runtime-timeout",
+    );
+  });
+
   it("classifies covered Salesforce UI layers before generic element failures", () => {
     expect(classifyBrowserFailure("Element is covered by <force-aloha-page>")).toBe(
       "covered-element",
@@ -48,6 +57,8 @@ describe("failure diagnostics", () => {
     expect(recoveryHint("covered-element")).toContain("Classic Setup frame host");
     expect(recoveryHint("covered-element")).toContain("force-aloha-page");
     expect(recoveryHint("timeout")).toContain("timed out");
+    expect(recoveryHint("browser-runtime-timeout")).toContain("runtime may be wedged");
+    expect(recoveryHint("browser-runtime-timeout")).toContain("Salesforce org alias");
     expect(recoveryHint("agent-browser-missing")).toContain("/sf-browser doctor");
     expect(recoveryHint("browser-launch")).toContain("AGENT_BROWSER_EXECUTABLE_PATH");
     expect(recoveryHint("browser-launch")).toContain("AGENT_BROWSER_ARGS");

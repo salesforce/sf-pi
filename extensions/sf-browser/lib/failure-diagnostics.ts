@@ -24,6 +24,7 @@ export type BrowserFailureKind =
   | "covered-element"
   | "element-not-found"
   | "timeout"
+  | "browser-runtime-timeout"
   | "navigation"
   | "agent-browser-missing"
   | "browser-launch"
@@ -59,6 +60,9 @@ export function classifyBrowserFailure(message: string): BrowserFailureKind {
   if (/element not found|no element|not visible|not attached|detached/i.test(message)) {
     return "element-not-found";
   }
+  if (/command timed out after|agent-browser.*timed out|browser command timed out/i.test(message)) {
+    return "browser-runtime-timeout";
+  }
   if (/timeout|timed out|deadline|exceeded/i.test(message)) return "timeout";
   if (
     /navigation|net::|frame was detached|execution context was destroyed|target closed/i.test(
@@ -84,6 +88,8 @@ export function recoveryHint(kind: BrowserFailureKind): string {
       return "The target element was not found or was not interactable. Snapshot with focus terms, check overlays/modals, then retry with a visible ref.";
     case "timeout":
       return "The browser action or wait timed out. Snapshot the current state and verify through API when possible before retrying.";
+    case "browser-runtime-timeout":
+      return "The agent-browser runtime may be wedged after a long-running browser action. Reopen from the Salesforce org alias or restart the browser session, then verify state through Salesforce APIs before retrying.";
     case "navigation":
       return "The page navigated or the frame changed during the action. Wait for a URL/text/Lightning state, then snapshot before the next action.";
     case "agent-browser-missing":
