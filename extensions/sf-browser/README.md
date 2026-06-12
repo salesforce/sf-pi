@@ -210,9 +210,12 @@ extensions/sf-browser/
     constants.ts            ← implementation module
     data-cloud-pack.ts      ← implementation module
     editor-surfaces.ts      ← implementation module
+    evidence-panel.ts       ← implementation module
+    evidence-policy.ts      ← implementation module
     evidence-report.ts      ← implementation module
     failure-diagnostics.ts  ← implementation module
     guidance.ts             ← implementation module
+    in-frame-actions.ts     ← implementation module
     lightning-state.ts      ← implementation module
     lightning-wait.ts       ← implementation module
     operations.ts           ← implementation module
@@ -242,8 +245,11 @@ extensions/sf-browser/
     artifacts.test.ts       ← unit / smoke test
     data-cloud-pack.test.ts ← unit / smoke test
     editor-surfaces.test.ts ← unit / smoke test
+    evidence-panel.test.ts  ← unit / smoke test
+    evidence-policy.test.ts ← unit / smoke test
     evidence-report.test.ts ← unit / smoke test
     failure-diagnostics.test.ts← unit / smoke test
+    in-frame-actions.test.ts← unit / smoke test
     overlay-dismissal.test.ts← unit / smoke test
     redaction.test.ts       ← unit / smoke test
     salesforce-path-resolver.test.ts← unit / smoke test

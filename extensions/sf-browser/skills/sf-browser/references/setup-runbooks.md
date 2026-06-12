@@ -21,6 +21,66 @@ Each runbook should answer:
 
 ---
 
+## Change My Domain name
+
+**Intent**
+Change, provision, or deploy an org's My Domain name when the task explicitly requires the Salesforce Setup UI.
+
+**Primary path**
+No stable metadata or CLI mutation path is assumed for renaming/provisioning My Domain. Before using the UI, confirm that the user really wants a My Domain change, because it can affect login URLs, redirects, integrations, and user access.
+
+Use non-UI checks only for context and close-out verification. Do not treat a browser toast or page text alone as proof that the new domain is reachable.
+
+**Evidence path**
+
+1. Open the Setup Destination:
+   ```json
+   { "setup": "my-domain" }
+   ```
+2. Wait with `lightning: "navigation-ready"`.
+3. Run `sf_browser_snapshot` with focus terms:
+   ```json
+   { "focus": ["My Domain", "Check Availability", "Save", "Deploy"] }
+   ```
+4. Capture before evidence with a public-safe label such as `before-my-domain-change`.
+5. Use the visible Setup page state to identify whether the org is ready to rename, provisioning, ready to deploy, or already deployed.
+
+**UI Fallback Path**
+Use this path only when the user has explicitly requested the My Domain change and no stable non-UI mutation path is available.
+
+1. Capture before evidence.
+2. Enter only the user-requested domain value.
+3. Check availability through the visible Setup control.
+4. If the UI reports the value is unavailable or invalid, capture error evidence and stop. Do not guess another name.
+5. If the UI offers a save/accept/provision action, click only the visible action that matches the requested step.
+6. Wait for the page to settle, then snapshot again.
+7. If provisioning is in progress, poll with waits/snapshots rather than repeated clicks.
+8. Deploy only when the user explicitly requested deployment and the UI clearly presents the deploy action.
+9. Capture after evidence.
+
+**Independent verify loop**
+After the UI reports success or readiness, verify reachability outside the browser automation session using the hostname shown by Setup:
+
+```bash
+curl --head --location --max-time 20 https://<my-domain-hostname>/
+```
+
+Treat a DNS, TLS, timeout, or connection failure as not yet verified. A normal Salesforce login redirect or HTTP success response is a reachability signal, not proof that every integration has been updated.
+
+**Known edge cases**
+
+- My Domain Setup can render as a Classic Setup Surface inside the Lightning Setup shell.
+- A click may fail with a covered-element diagnostic when the frame host receives the hit-test. Capture diagnostics and use the same-origin iframe escape hatch only as a last-mile recovery until SF Browser has native in-frame retry.
+- Provisioning may take time. Avoid repeated clicks while the UI is waiting.
+- The page may expose org-specific hostnames. Keep screenshots and examples public-safe before sharing them externally.
+- Deployment and login-policy changes can affect active users and integrations; do not perform them as a background convenience step.
+
+**Setup destinations**
+
+- `my-domain`
+
+---
+
 ## Verify Agentforce enablement
 
 **Intent**

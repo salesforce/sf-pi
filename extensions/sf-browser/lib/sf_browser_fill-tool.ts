@@ -5,6 +5,7 @@ import { Type } from "typebox";
 import { runAgentBrowser } from "./agent-browser.ts";
 import { throwWithFailureDiagnostics } from "./failure-diagnostics.ts";
 import { STALE_REF_HINT } from "./guidance.ts";
+import { retryInFrameAction } from "./in-frame-actions.ts";
 import { startTimer } from "./timing.ts";
 import { okText } from "./tool-support.ts";
 
@@ -29,22 +30,34 @@ export function registerSfBrowserFillTool(pi: ExtensionAPI): void {
     }),
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
       const stopTimer = startTimer();
+      let recoveredIframeRef: string | undefined;
       try {
         await runAgentBrowser(pi, ["fill", params.ref, params.value], { cwd: ctx.cwd, signal });
       } catch (error) {
-        const duration = stopTimer();
-        await throwWithFailureDiagnostics(
-          pi,
-          ctx,
-          {
-            toolName: SF_BROWSER_FILL_TOOL_NAME,
-            action: `fill ${params.ref} with ${params.secret ? "<redacted>" : JSON.stringify(params.value)}`,
-            ref: params.ref,
-            durationMs: duration.durationMs,
-          },
+        const retry = await retryInFrameAction(pi, {
+          cwd: ctx.cwd,
+          targetRef: params.ref,
+          actionArgs: ["fill", params.ref, params.value],
           error,
           signal,
-        );
+        });
+        if (retry.ok) {
+          recoveredIframeRef = retry.iframeRef;
+        } else {
+          const duration = stopTimer();
+          await throwWithFailureDiagnostics(
+            pi,
+            ctx,
+            {
+              toolName: SF_BROWSER_FILL_TOOL_NAME,
+              action: `fill ${params.ref} with ${params.secret ? "<redacted>" : JSON.stringify(params.value)}`,
+              ref: params.ref,
+              durationMs: duration.durationMs,
+            },
+            error,
+            signal,
+          );
+        }
       }
       const duration = stopTimer();
       const valueText = params.secret ? "<redacted>" : params.value;
@@ -54,13 +67,22 @@ export function registerSfBrowserFillTool(pi: ExtensionAPI): void {
             type: "text" as const,
             text: okText([
               `Filled ${params.ref} with ${JSON.stringify(valueText)}.`,
+              recoveredIframeRef
+                ? `Recovered covered-element failure by retrying inside frame ${recoveredIframeRef}.`
+                : undefined,
               `Duration: ${duration.durationText}`,
               "For Salesforce lookup/combobox controls: wait for options, snapshot, then click the desired option.",
               STALE_REF_HINT,
             ]),
           },
         ],
-        details: { ok: true, ref: params.ref, secret: params.secret === true, ...duration },
+        details: {
+          ok: true,
+          ref: params.ref,
+          secret: params.secret === true,
+          recoveredIframeRef,
+          ...duration,
+        },
       };
     },
   });

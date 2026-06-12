@@ -6,6 +6,7 @@ import {
   buildLightningWaitExpression,
   LIGHTNING_WAIT_HELPERS,
 } from "../lib/lightning-wait.ts";
+import { checkpointEvidenceLabel } from "../lib/evidence-policy.ts";
 import { buildWaitArgs, classifyWait } from "../lib/sf_browser_wait-tool.ts";
 
 describe("wait classification", () => {
@@ -73,5 +74,16 @@ describe("wait classification", () => {
 
     expect(expression).toContain("__sfPiLightningOutcome");
     expect(expression).toContain('"toast"');
+  });
+
+  it("captures checkpoint evidence for meaningful semantic waits only", () => {
+    expect(checkpointEvidenceLabel({ lightning: "navigation-ready" })).toBe(
+      "checkpoint-navigation-ready",
+    );
+    expect(checkpointEvidenceLabel({ lightning: "record-view" })).toBe("checkpoint-record-view");
+    expect(checkpointEvidenceLabel({ lightning: "save-result" })).toBe(
+      "after-mutation-save-result",
+    );
+    expect(checkpointEvidenceLabel({ lightning: "spinner-gone" })).toBeUndefined();
   });
 });

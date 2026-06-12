@@ -520,6 +520,10 @@ _Avoid_: automatic visual search, screenshot spam, page-top evidence for lower-p
 The lightweight per-session manifest that assigns monotonically increasing IDs to **Browser Evidence** artifacts.
 _Avoid_: screenshot database, trace store, media library
 
+**Browser Evidence Display Policy**:
+The **SF Browser** rule for when **Browser Evidence** is rendered visibly in the CLI/TUI versus stored only as an artifact: explicit evidence captures, failure diagnostics, and key navigation checkpoints may show bounded thumbnails, while ordinary browser actions stay text-only unless evidence is requested.
+_Avoid_: screenshot every click, hidden visual progress, unbounded screenshot transcript, artifact-only user feedback
+
 **Browser Evidence Latest Pointer**:
 A compatibility reference from the legacy latest evidence location to the current session's **Browser Evidence** directory.
 _Avoid_: duplicate screenshot store, canonical evidence location, cross-session audit log
@@ -595,6 +599,14 @@ _Avoid_: human approval, permission gate, full audit system, hidden mutation log
 **Classic Setup Surface**:
 A Salesforce Setup page rendered inside the Lightning Setup shell with classic-style iframe behavior, form posts, dual-list controls, and validation messages that require **SF Browser** fallback patterns different from standard Lightning UI.
 _Avoid_: legacy page, iframe hack, old UI, unsupported surface
+
+**Covered Element Failure**:
+An **SF Browser** action failure where the visible target cannot be reached because another Salesforce UI layer, such as an ambient overlay or **Classic Setup Surface** frame host, receives the hit-test instead.
+_Avoid_: unknown failure, blind retry, stale ref assumption, generic snapshot loop
+
+**In-Frame Action Adapter**:
+An internal **SF Browser** adapter that lets the existing **Hot-Path Browser Tool Set** recover same-origin **Classic Setup Surface** interactions without making raw frame evaluation the normal user-facing interface.
+_Avoid_: public eval workflow, iframe-specific tool sprawl, browser framework, forcing agents to rediscover frame internals
 
 **UI Fallback Recovery**:
 The part of a **UI Fallback Path** that returns the browser to a known safe page after a validation error, stale form, timeout, or ambiguous **Classic Setup Surface** state.
@@ -702,6 +714,7 @@ _Avoid_: every available gateway model, benchmark target, broad live-test suite
 - **SF Browser Guidance** is surfaced through SF Brain routing, SF Browser command/tool results, and optional progressive skills rather than an always-injected context block.
 - **Browser Evidence** is session-scoped and artifact-first: repeated captures reference stored files for the current session, while model-visible images are explicit and size-bounded.
 - **Browser Evidence** uses a **Browser Evidence Index** for the session and no automatic cleanup.
+- A **Browser Evidence Display Policy** makes explicit captures, failure diagnostics, and key navigation checkpoints visible with bounded thumbnails while avoiding screenshot spam for ordinary browser actions.
 - A **Browser Evidence Latest Pointer** may preserve quick access to the current session's evidence without duplicating screenshots.
 - **Targeted Browser Evidence** uses explicit refs for scroll targeting; focus-to-scroll remains a future design choice.
 - `agent-browser` is a **Lazy Browser Runtime** for **SF Browser**.
@@ -719,6 +732,8 @@ _Avoid_: every available gateway model, benchmark target, broad live-test suite
 - A **UI Fallback Path** should be hardened through repeated navigation, evidence capture, and documented edge cases, but it should not replace a stable primary API or owning extension path.
 - A **UI Mutation Fallback** stays frictionless in the browser tool layer; **Mutation Evidence** provides transparency without human-in-the-loop confirmation.
 - **Mutation Evidence** is captured through normal **Browser Evidence** with clear before/after labels, should be auditable by session, and should surface Setup Audit Trail context when requested and available.
+- A **Covered Element Failure** should recover with specific guidance instead of a generic snapshot-and-retry loop.
+- An **In-Frame Action Adapter** belongs behind the existing **Hot-Path Browser Tool Set** seam rather than as a public frame/eval tool.
 - A **Classic Setup Surface** often needs `select` plus Add/Remove controls, API verification after save, and direct navigation recovery after validation failures.
 - **UI Fallback Recovery** captures the failure, verifies state through APIs when possible, then navigates to a known safe destination before retrying.
 - An **Ambiguous Wait** should prompt snapshot/API verification instead of being reported as an unconditional success.

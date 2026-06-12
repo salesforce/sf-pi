@@ -23,6 +23,15 @@ describe("failure diagnostics", () => {
     expect(classifyBrowserFailure("button is not visible")).toBe("element-not-found");
   });
 
+  it("classifies covered Salesforce UI layers before generic element failures", () => {
+    expect(classifyBrowserFailure("Element is covered by <force-aloha-page>")).toBe(
+      "covered-element",
+    );
+    expect(classifyBrowserFailure("element receives events but has a covering element")).toBe(
+      "covered-element",
+    );
+  });
+
   it("classifies browser launch failures after missing agent-browser checks", () => {
     expect(classifyBrowserFailure("spawn agent-browser ENOENT")).toBe("agent-browser-missing");
     expect(classifyBrowserFailure("Chrome exited early without writing DevToolsActivePort")).toBe(
@@ -36,6 +45,8 @@ describe("failure diagnostics", () => {
 
   it("returns recovery hints for known failure kinds", () => {
     expect(recoveryHint("stale-ref")).toContain("fresh ref");
+    expect(recoveryHint("covered-element")).toContain("Classic Setup frame host");
+    expect(recoveryHint("covered-element")).toContain("force-aloha-page");
     expect(recoveryHint("timeout")).toContain("timed out");
     expect(recoveryHint("agent-browser-missing")).toContain("/sf-browser doctor");
     expect(recoveryHint("browser-launch")).toContain("AGENT_BROWSER_EXECUTABLE_PATH");
@@ -50,6 +61,7 @@ describe("failure diagnostics", () => {
       currentUrl: "https://example.lightning.force.com/lightning/page/home",
       snapshotPath: "/tmp/snapshot.txt",
       screenshotPath: "/tmp/failure.png",
+      screenshotThumbnailPath: "/tmp/failure.thumb.jpg",
     };
 
     const text = formatBrowserFailure(
@@ -61,6 +73,7 @@ describe("failure diagnostics", () => {
     expect(text).toContain("Attempted: click @e42");
     expect(text).toContain("Diagnostic snapshot: /tmp/snapshot.txt");
     expect(text).toContain("Diagnostic screenshot: /tmp/failure.png");
+    expect(text).toContain("Diagnostic thumbnail: /tmp/failure.thumb.jpg");
     expect(text).toContain("Element not found: @e42");
   });
 });

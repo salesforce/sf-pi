@@ -49,6 +49,7 @@ import {
   latestEvidenceCaptures,
 } from "./lib/artifacts.ts";
 import { buildEvidenceReport } from "./lib/evidence-report.ts";
+import { openEvidencePanel, splitEvidenceContent } from "./lib/evidence-panel.ts";
 import { COMMAND_NAME, EXTENSION_ID, SF_BROWSER_SESSION } from "./lib/constants.ts";
 import { SALESFORCE_BROWSER_GUIDANCE } from "./lib/guidance.ts";
 import { formatKnownSetupDestinations, resolveSetupDestination } from "./lib/setup-destinations.ts";
@@ -283,9 +284,7 @@ async function handleAction(
       label: args.join(" ") || "panel-capture",
       imageMode: "thumbnail",
     });
-    const text =
-      result.content.find((part) => part.type === "text")?.text ?? "Captured Browser Evidence.";
-    await emitOutput(ctx, "SF Browser evidence", text, "success", fromPanel);
+    await emitEvidenceOutput(ctx, "SF Browser evidence", result.content, "success", fromPanel);
     return;
   }
 
@@ -348,6 +347,22 @@ function buildHelpText(): string {
     "",
     SALESFORCE_BROWSER_GUIDANCE,
   ].join("\n");
+}
+
+async function emitEvidenceOutput(
+  ctx: ExtensionCommandContext,
+  title: string,
+  content: Awaited<ReturnType<typeof captureEvidence>>["content"],
+  severity: InfoPanelSeverity,
+  fromPanel: boolean,
+): Promise<void> {
+  const { text, image } = splitEvidenceContent(content);
+  const body = text || "Captured Browser Evidence.";
+  if (image && ctx.hasUI && ctx.mode === "tui") {
+    await openEvidencePanel(ctx, { title, text: body, image });
+    return;
+  }
+  await emitOutput(ctx, title, body, severity, fromPanel);
 }
 
 async function emitOutput(

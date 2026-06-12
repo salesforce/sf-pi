@@ -16,6 +16,7 @@ This list is intentionally small. It is not a full Salesforce Setup sitemap. The
 | `flows`                      | `/lightning/setup/Flows/home`                           | Flow list, Flow Builder entry, flow activation evidence.                        |
 | `identity-provider`          | `/lightning/setup/IdpPage/home`                         | Identity Provider setup evidence and fallback navigation.                       |
 | `login-history`              | `/lightning/setup/OrgLoginHistory/home`                 | Login History evidence and identity/security investigation support.             |
+| `my-domain`                  | `/lightning/setup/OrgDomain/home`                       | My Domain rename, provisioning, deployment evidence, and UI-only fallback.      |
 | `named-credentials`          | `/lightning/setup/NamedCredential/home`                 | Named Credentials setup evidence.                                               |
 | `object-manager`             | `/lightning/setup/ObjectManager/home`                   | Object and field setup navigation.                                              |
 | `permission-set-groups`      | `/lightning/setup/PermSetGroups/home`                   | Permission Set Group list and assignment fallback support.                      |

@@ -5,6 +5,7 @@ import { StringEnum } from "@earendil-works/pi-ai";
 import { Type } from "typebox";
 import { DEFAULT_AGENT_BROWSER_TIMEOUT_MS } from "./constants.ts";
 import { runAgentBrowser } from "./agent-browser.ts";
+import { checkpointEvidenceLabel } from "./evidence-policy.ts";
 import { throwWithFailureDiagnostics } from "./failure-diagnostics.ts";
 import { STALE_REF_HINT } from "./guidance.ts";
 import {
@@ -13,6 +14,7 @@ import {
   type LightningOutcomeDetails,
   type LightningWaitModeValue,
 } from "./lightning-wait.ts";
+import { captureEvidence } from "./operations.ts";
 import { startTimer } from "./timing.ts";
 import { okText } from "./tool-support.ts";
 
@@ -84,6 +86,12 @@ export function registerSfBrowserWaitTool(pi: ExtensionAPI): void {
       load: Type.Optional(LoadState),
       lightning: Type.Optional(LightningWaitMode),
       ms: Type.Optional(Type.Number({ description: "Milliseconds to wait. Last resort only." })),
+      checkpointEvidence: Type.Optional(
+        Type.Boolean({
+          description:
+            "Override automatic Browser Evidence checkpoint capture. Defaults to true for navigation-ready, record-view, and save-result Lightning waits; false for other waits.",
+        }),
+      ),
     }),
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
       const modeCount = [params.text, params.url, params.load, params.lightning, params.ms].filter(
@@ -120,30 +128,36 @@ export function registerSfBrowserWaitTool(pi: ExtensionAPI): void {
       const classification = classifyWait(duration.durationMs, params);
       const outcome = lightningDetails?.outcome;
       const ambiguous = classification.ambiguous || outcome === "ambiguous";
+      const content = [
+        {
+          type: "text" as const,
+          text: okText([
+            `${classification.label}: ${describeWait(params)}.`,
+            outcome ? `Outcome: ${outcome}.` : undefined,
+            lightningDetails?.matched?.text
+              ? `Matched text: ${lightningDetails.matched.text}`
+              : undefined,
+            lightningDetails?.matched?.url
+              ? `Matched URL: ${lightningDetails.matched.url}`
+              : undefined,
+            `Duration: ${duration.durationText}`,
+            classification.note,
+            "Prefer expected text, URL, or Lightning waits over fixed sleeps for Salesforce Lightning pages.",
+            STALE_REF_HINT,
+          ]),
+        },
+      ];
+      const checkpointLabel = checkpointEvidenceLabel(params);
+      const checkpoint = checkpointLabel
+        ? await captureEvidence(pi, ctx, { label: checkpointLabel, imageMode: "thumbnail" }, signal)
+        : undefined;
       return {
-        content: [
-          {
-            type: "text" as const,
-            text: okText([
-              `${classification.label}: ${describeWait(params)}.`,
-              outcome ? `Outcome: ${outcome}.` : undefined,
-              lightningDetails?.matched?.text
-                ? `Matched text: ${lightningDetails.matched.text}`
-                : undefined,
-              lightningDetails?.matched?.url
-                ? `Matched URL: ${lightningDetails.matched.url}`
-                : undefined,
-              `Duration: ${duration.durationText}`,
-              classification.note,
-              "Prefer expected text, URL, or Lightning waits over fixed sleeps for Salesforce Lightning pages.",
-              STALE_REF_HINT,
-            ]),
-          },
-        ],
+        content: checkpoint ? [...content, ...checkpoint.content] : content,
         details: {
           ok: true,
           ambiguous,
           wait: params,
+          checkpointEvidence: checkpoint?.details.capture,
           ...(lightningDetails
             ? { outcome: lightningDetails.outcome, matched: lightningDetails.matched }
             : {}),

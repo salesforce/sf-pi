@@ -34,6 +34,7 @@ describe("setup destinations", () => {
     expect(resolveSetupDestination("single sign on settings")).toBe(
       "/lightning/setup/SingleSignOn/home",
     );
+    expect(resolveSetupDestination("my domain")).toBe("/lightning/setup/OrgDomain/home");
   });
 
   it("rejects combining setup and path", () => {
@@ -55,6 +56,20 @@ describe("setup destinations", () => {
     expect(destination?.suggestedWait).toEqual({ lightning: "navigation-ready" });
     expect(destination?.defaultFocus).toContain("Manage Assignments");
     expect(destination?.runbookRefs.length).toBeGreaterThan(0);
+  });
+
+  it("marks My Domain as a Classic Setup Surface with focused runbook metadata", () => {
+    const destination = getSetupDestination("my-domain");
+
+    expect(destination?.path).toBe("/lightning/setup/OrgDomain/home");
+    expect(destination?.expectedSurface).toBe("Classic Setup Surface");
+    expect(destination?.defaultFocus).toEqual([
+      "My Domain",
+      "Check Availability",
+      "Save",
+      "Deploy",
+    ]);
+    expect(destination?.runbookRefs).toContain("setup-runbooks.md#change-my-domain-name");
   });
 
   it("keeps the Markdown reference table in sync with the runtime registry", () => {

@@ -130,6 +130,16 @@ const SETUP_DESTINATION_RECORDS = [
     runbookRefs: ["setup-runbooks.md#login-history-evidence"],
   },
   {
+    id: "my-domain",
+    path: "/lightning/setup/OrgDomain/home",
+    label: "My Domain",
+    useFor: "My Domain rename, provisioning, deployment evidence, and UI-only fallback.",
+    expectedSurface: "Classic Setup Surface",
+    suggestedWait: { lightning: "navigation-ready" },
+    defaultFocus: ["My Domain", "Check Availability", "Save", "Deploy"],
+    runbookRefs: ["setup-runbooks.md#change-my-domain-name"],
+  },
+  {
     id: "named-credentials",
     path: "/lightning/setup/NamedCredential/home",
     label: "Named Credentials",

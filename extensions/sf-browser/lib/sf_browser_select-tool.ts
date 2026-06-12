@@ -5,6 +5,7 @@ import { Type } from "typebox";
 import { runAgentBrowser } from "./agent-browser.ts";
 import { throwWithFailureDiagnostics } from "./failure-diagnostics.ts";
 import { STALE_REF_HINT } from "./guidance.ts";
+import { retryInFrameAction } from "./in-frame-actions.ts";
 import { startTimer } from "./timing.ts";
 import { okText } from "./tool-support.ts";
 
@@ -37,25 +38,37 @@ export function registerSfBrowserSelectTool(pi: ExtensionAPI): void {
     }),
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
       const stopTimer = startTimer();
+      let recoveredIframeRef: string | undefined;
       try {
         await runAgentBrowser(pi, ["select", params.ref, ...params.values], {
           cwd: ctx.cwd,
           signal,
         });
       } catch (error) {
-        const duration = stopTimer();
-        await throwWithFailureDiagnostics(
-          pi,
-          ctx,
-          {
-            toolName: SF_BROWSER_SELECT_TOOL_NAME,
-            action: `select ${params.ref}`,
-            ref: params.ref,
-            durationMs: duration.durationMs,
-          },
+        const retry = await retryInFrameAction(pi, {
+          cwd: ctx.cwd,
+          targetRef: params.ref,
+          actionArgs: ["select", params.ref, ...params.values],
           error,
           signal,
-        );
+        });
+        if (retry.ok) {
+          recoveredIframeRef = retry.iframeRef;
+        } else {
+          const duration = stopTimer();
+          await throwWithFailureDiagnostics(
+            pi,
+            ctx,
+            {
+              toolName: SF_BROWSER_SELECT_TOOL_NAME,
+              action: `select ${params.ref}`,
+              ref: params.ref,
+              durationMs: duration.durationMs,
+            },
+            error,
+            signal,
+          );
+        }
       }
       const duration = stopTimer();
       return {
@@ -65,6 +78,9 @@ export function registerSfBrowserSelectTool(pi: ExtensionAPI): void {
             text: okText([
               `Selected ${params.values.map((value) => JSON.stringify(value)).join(", ")} in ${params.ref}.`,
               params.reason ? `Reason: ${params.reason}` : undefined,
+              recoveredIframeRef
+                ? `Recovered covered-element failure by retrying inside frame ${recoveredIframeRef}.`
+                : undefined,
               `Duration: ${duration.durationText}`,
               "For Classic Setup dual-list controls: click Add or Remove, then snapshot before saving.",
               STALE_REF_HINT,
@@ -76,6 +92,7 @@ export function registerSfBrowserSelectTool(pi: ExtensionAPI): void {
           ref: params.ref,
           values: params.values,
           reason: params.reason,
+          recoveredIframeRef,
           ...duration,
         },
       };

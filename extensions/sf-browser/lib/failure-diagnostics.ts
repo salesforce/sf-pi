@@ -6,7 +6,12 @@
  * session-scoped context for the next agent turn to recover without dumping
  * screenshots or raw accessibility trees into the transcript.
  */
-import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { readFileSync, writeFileSync } from "node:fs";
+import {
+  resizeImage,
+  type ExtensionAPI,
+  type ExtensionContext,
+} from "@earendil-works/pi-coding-agent";
 import { commitEvidenceCapture, planEvidenceCapture } from "./artifacts.ts";
 import { runAgentBrowser } from "./agent-browser.ts";
 import { BROWSER_LAUNCH_RECOVERY, isBrowserLaunchFailure } from "./browser-launch-diagnostics.ts";
@@ -16,6 +21,7 @@ import { okText, writeBrowserArtifact } from "./tool-support.ts";
 
 export type BrowserFailureKind =
   | "stale-ref"
+  | "covered-element"
   | "element-not-found"
   | "timeout"
   | "navigation"
@@ -37,6 +43,7 @@ export interface BrowserFailureDiagnostics {
   currentUrl?: string;
   snapshotPath?: string;
   screenshotPath?: string;
+  screenshotThumbnailPath?: string;
   diagnosticsError?: string;
 }
 
@@ -45,6 +52,7 @@ export function classifyBrowserFailure(message: string): BrowserFailureKind {
     return "agent-browser-missing";
   }
   if (isBrowserLaunchFailure(message)) return "browser-launch";
+  if (isCoveredElementFailure(message)) return "covered-element";
   if (/ref(?:erence)? not found|element not found:\s*@e\d+|unknown ref|stale/i.test(message)) {
     return "stale-ref";
   }
@@ -62,10 +70,16 @@ export function classifyBrowserFailure(message: string): BrowserFailureKind {
   return "unknown";
 }
 
+function isCoveredElementFailure(message: string): boolean {
+  return /\bcovered by\b|\bcovering element\b|force-aloha-page|aloha-page/i.test(message);
+}
+
 export function recoveryHint(kind: BrowserFailureKind): string {
   switch (kind) {
     case "stale-ref":
       return "The page likely rerendered and invalidated the ref. Run sf_browser_snapshot and retry with a fresh ref.";
+    case "covered-element":
+      return "The target is covered by another Salesforce UI layer. If it is an ambient overlay, dismiss it or capture evidence with dismissOverlays enabled. If the cover is a Classic Setup frame host such as force-aloha-page, use the same-origin iframe escape hatch with direct agent-browser commands until SF Browser can retry in-frame automatically.";
     case "element-not-found":
       return "The target element was not found or was not interactable. Snapshot with focus terms, check overlays/modals, then retry with a visible ref.";
     case "timeout":
@@ -99,13 +113,9 @@ export async function buildFailureDiagnostics(
   try {
     diagnostics.currentUrl = await safeCurrentUrl(pi, ctx.cwd, signal);
     diagnostics.snapshotPath = await safeSnapshotArtifact(pi, ctx, input, signal);
-    diagnostics.screenshotPath = await safeScreenshotArtifact(
-      pi,
-      ctx,
-      input,
-      diagnostics.currentUrl,
-      signal,
-    );
+    const screenshot = await safeScreenshotArtifact(pi, ctx, input, diagnostics.currentUrl, signal);
+    diagnostics.screenshotPath = screenshot?.path;
+    diagnostics.screenshotThumbnailPath = screenshot?.thumbnailPath;
   } catch (diagnosticsError) {
     diagnostics.diagnosticsError = redactText(
       diagnosticsError instanceof Error ? diagnosticsError.message : String(diagnosticsError),
@@ -130,6 +140,9 @@ export function formatBrowserFailure(
     diagnostics.currentUrl ? `URL: ${diagnostics.currentUrl}` : undefined,
     diagnostics.snapshotPath ? `Diagnostic snapshot: ${diagnostics.snapshotPath}` : undefined,
     diagnostics.screenshotPath ? `Diagnostic screenshot: ${diagnostics.screenshotPath}` : undefined,
+    diagnostics.screenshotThumbnailPath
+      ? `Diagnostic thumbnail: ${diagnostics.screenshotThumbnailPath}`
+      : undefined,
     diagnostics.diagnosticsError
       ? `Diagnostic capture issue: ${diagnostics.diagnosticsError}`
       : undefined,
@@ -199,7 +212,7 @@ async function safeScreenshotArtifact(
   input: BrowserFailureDiagnosticsInput,
   currentUrl: string | undefined,
   signal: AbortSignal | undefined,
-): Promise<string | undefined> {
+): Promise<{ path: string; thumbnailPath?: string } | undefined> {
   const sessionId = ctx.sessionManager.getSessionId();
   const planned = planEvidenceCapture(diagnosticLabel(input, "screenshot"), sessionId);
   try {
@@ -208,20 +221,48 @@ async function safeScreenshotArtifact(
       signal,
       timeoutMs: 15_000,
     });
+    const thumbnailPath = await safeThumbnail(planned.path, planned.thumbnailPath);
     commitEvidenceCapture(
       {
         id: planned.id,
         label: planned.label,
         path: planned.path,
+        thumbnailPath,
         createdAt: new Date().toISOString(),
-        imageMode: "artifact",
+        imageMode: "thumbnail",
         includedImage: false,
         url: currentUrl,
       },
       sessionId,
     );
-    return planned.path;
+    return { path: planned.path, thumbnailPath };
   } catch {
     return undefined;
   }
+}
+
+async function safeThumbnail(
+  screenshotPath: string,
+  plannedThumbnailPath: string,
+): Promise<string | undefined> {
+  try {
+    const resized = await resizeImage(readFileSync(screenshotPath), "image/png", {
+      maxWidth: 1440,
+      maxHeight: 1000,
+      maxBytes: 1_500_000,
+      jpegQuality: 55,
+    });
+    if (!resized) return undefined;
+    const thumbnailPath = thumbnailPathForMime(plannedThumbnailPath, resized.mimeType);
+    writeFileSync(thumbnailPath, Buffer.from(resized.data, "base64"));
+    return thumbnailPath;
+  } catch {
+    return undefined;
+  }
+}
+
+function thumbnailPathForMime(plannedPath: string, mimeType: string): string {
+  if (mimeType === "image/png") return plannedPath.replace(/\.jpg$/i, ".png");
+  if (mimeType === "image/jpeg") return plannedPath.replace(/\.png$/i, ".jpg");
+  return plannedPath;
 }
