@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.184.2-2026-06-12",
-  "latestVersion": "0.184.2",
+  "revision": "release-0.184.3-2026-06-13",
+  "latestVersion": "0.184.3",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.184.2",
+      "id": "release-0.184.3",
       "kind": "update",
-      "title": "sf-pi v0.184.2 — sf-browser: handle classic setup submits",
-      "publishedAt": "2026-06-12T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.184.2",
+      "title": "sf-pi v0.184.3 — sf-guardrail: reduce approval fatigue",
+      "publishedAt": "2026-06-13T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.184.3",
       "severity": "info",
-      "body": "sf-browser: handle classic setup submits — sf-browser: remove iframe retry lint warning"
+      "body": "sf-guardrail: reduce approval fatigue"
     },
     {
       "id": "pi-0.73-required",
