@@ -72,7 +72,7 @@ afterEach(() => {
 });
 
 describe("Safety Kernel — policies (Tier 1)", () => {
-  it("blocks writes to destructiveChanges.xml", async () => {
+  it("confirms writes to destructiveChanges.xml", async () => {
     const config = readBundledConfig();
     const decision = await evaluateSafety({
       toolName: "write",
@@ -81,11 +81,11 @@ describe("Safety Kernel — policies (Tier 1)", () => {
       config,
     });
     expect(decision?.feature).toBe("policies");
-    expect(decision?.action).toBe("block");
+    expect(decision?.action).toBe("confirm");
     expect(decision?.ruleId).toBe("sf-destructive-changes-xml");
   });
 
-  it("blocks writes to .sf/**", async () => {
+  it("confirms writes to .sf/**", async () => {
     const config = readBundledConfig();
     const decision = await evaluateSafety({
       toolName: "write",
@@ -93,7 +93,7 @@ describe("Safety Kernel — policies (Tier 1)", () => {
       cwd: "/project",
       config,
     });
-    expect(decision?.action).toBe("block");
+    expect(decision?.action).toBe("confirm");
     expect(decision?.ruleId).toBe("sf-cli-state");
   });
 
@@ -108,7 +108,7 @@ describe("Safety Kernel — policies (Tier 1)", () => {
     expect(decision).toBeUndefined();
   });
 
-  it("blocks writes to .forceignore (readOnly)", async () => {
+  it("confirms writes to .forceignore (readOnly)", async () => {
     const config = readBundledConfig();
     const decision = await evaluateSafety({
       toolName: "write",
@@ -117,7 +117,7 @@ describe("Safety Kernel — policies (Tier 1)", () => {
       config,
     });
     expect(decision?.ruleId).toBe("sf-forceignore");
-    expect(decision?.action).toBe("block");
+    expect(decision?.action).toBe("confirm");
   });
 
   it("allows reads to .env.example (allowedPatterns short-circuits)", async () => {
@@ -157,7 +157,7 @@ describe("Safety Kernel — commandGate (Tier 2)", () => {
     expect(decision?.ruleId).toBe("sf-org-delete");
   });
 
-  it("makes verified non-production sf org delete eligible for a short persisted grant", async () => {
+  it("builds a session-scoped envelope for verified non-production sf org delete", async () => {
     lookupOrg("MyScratch", "scratch");
     const config = readBundledConfig();
     const decision = await evaluateSafety({
@@ -168,7 +168,8 @@ describe("Safety Kernel — commandGate (Tier 2)", () => {
     });
     expect(decision?.ruleId).toBe("sf-org-delete");
     expect(decision?.orgType).toBe("scratch");
-    expect(decision?.approvalScope?.persistedGrant?.label).toContain("30 minutes");
+    expect(decision?.approvalScope?.operationFamily).toBe("sf org delete");
+    expect(decision?.approvalScope?.persistedGrant).toBeUndefined();
   });
 
   it("ignores benign commands", async () => {
@@ -293,7 +294,8 @@ describe("Safety Kernel — orgAwareGate (Tier 2)", () => {
     expect(decision?.ruleId).toBe("sf-deploy-prod");
     expect(decision?.orgAlias).toBe("Prod");
     expect(decision?.orgType).toBe("production");
-    expect(decision?.approvalScope?.persistedGrant?.label).toContain("60 minutes");
+    expect(decision?.approvalScope?.operationFamily).toBe("sf project deploy");
+    expect(decision?.approvalScope?.persistedGrant).toBeUndefined();
   });
 
   it("confirms herdr.run sf project deploy start against production", async () => {
@@ -392,7 +394,8 @@ describe("Safety Kernel — orgAwareGate (Tier 2)", () => {
     expect(decision?.ruleId).toBe("sf-deploy-prod");
     expect(decision?.orgResolutionSource).toBe("lookup");
     expect(decision?.orgResolutionGuessed).toBe(false);
-    expect(decision?.approvalScope?.persistedGrant?.label).toContain("60 minutes");
+    expect(decision?.approvalScope?.operationFamily).toBe("sf project deploy");
+    expect(decision?.approvalScope?.persistedGrant).toBeUndefined();
   });
 
   it("confirms sf apex run on production", async () => {

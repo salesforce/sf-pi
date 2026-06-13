@@ -36,6 +36,40 @@ describe("guardrail preferences", () => {
     expect(preferences.preferenceValue(config, "confirmTimeoutMs")).toBe("120000");
   });
 
+  it("applies Power Tool preset as confirm for every rule", () => {
+    const config = configModule.readBundledConfig();
+
+    preferences.applyGuardrailPreset("powerTool", config);
+
+    const loaded = configModule.loadConfig().config;
+    expect(loaded.policies.rules.every((rule) => rule.behavior === "confirm")).toBe(true);
+    expect(loaded.commandGate.patterns.every((pattern) => pattern.behavior === "confirm")).toBe(
+      true,
+    );
+    expect(loaded.orgAwareGate.rules.every((rule) => rule.behavior === "confirm")).toBe(true);
+  });
+
+  it("applies Strict preset as hard block for sensitive rules only", () => {
+    const config = configModule.readBundledConfig();
+
+    preferences.applyGuardrailPreset("strict", config);
+
+    const loaded = configModule.loadConfig().config;
+    expect(loaded.policies.rules.find((rule) => rule.id === "secret-files")?.behavior).toBe(
+      "block",
+    );
+    expect(loaded.policies.rules.find((rule) => rule.id === "sf-cli-state")?.behavior).toBe(
+      "block",
+    );
+    expect(
+      loaded.commandGate.patterns.find((pattern) => pattern.id === "sf-org-auth-show-access-token")
+        ?.behavior,
+    ).toBe("block");
+    expect(loaded.orgAwareGate.rules.find((rule) => rule.id === "sf-deploy-prod")?.behavior).toBe(
+      "confirm",
+    );
+  });
+
   it("writes production aliases from comma/newline text that loadConfig reads", () => {
     const aliases = preferences.updateProductionAliasesFromText("Prod, prod\nProd");
 
@@ -67,35 +101,44 @@ describe("guardrail preferences", () => {
     );
   });
 
-  it("writes policy rule enablement overrides that loadConfig reads", () => {
+  it("writes policy rule behavior overrides that loadConfig reads", () => {
     const config = configModule.readBundledConfig();
 
-    preferences.updateUserPreference("policies.rules.secret-files.enabled", "off", config);
+    preferences.updateUserPreference("policies.rules.secret-files.enabled", "hard block", config);
 
     const { config: loaded } = configModule.loadConfig();
-    expect(loaded.policies.rules.find((rule) => rule.id === "secret-files")?.enabled).toBe(false);
+    const rule = loaded.policies.rules.find((candidate) => candidate.id === "secret-files");
+    expect(rule?.behavior).toBe("block");
+    expect(rule?.enabled).toBe(true);
+    expect(preferences.preferenceValue(loaded, "policies.rules.secret-files.enabled")).toBe(
+      "hard block",
+    );
   });
 
-  it("writes command pattern enablement overrides that loadConfig reads", () => {
+  it("writes command pattern behavior overrides that loadConfig reads", () => {
     const config = configModule.readBundledConfig();
 
     preferences.updateUserPreference("commandGate.patterns.rm-rf.enabled", "off", config);
 
     const { config: loaded } = configModule.loadConfig();
-    expect(loaded.commandGate.patterns.find((pattern) => pattern.id === "rm-rf")?.enabled).toBe(
-      false,
-    );
+    const pattern = loaded.commandGate.patterns.find((candidate) => candidate.id === "rm-rf");
+    expect(pattern?.behavior).toBe("off");
+    expect(pattern?.enabled).toBe(false);
   });
 
-  it("writes org-aware rule enablement overrides that loadConfig reads", () => {
+  it("writes org-aware rule behavior overrides that loadConfig reads", () => {
     const config = configModule.readBundledConfig();
 
-    preferences.updateUserPreference("orgAwareGate.rules.sf-deploy-prod.enabled", "off", config);
+    preferences.updateUserPreference(
+      "orgAwareGate.rules.sf-deploy-prod.enabled",
+      "confirm",
+      config,
+    );
 
     const { config: loaded } = configModule.loadConfig();
-    expect(loaded.orgAwareGate.rules.find((rule) => rule.id === "sf-deploy-prod")?.enabled).toBe(
-      false,
-    );
+    const rule = loaded.orgAwareGate.rules.find((candidate) => candidate.id === "sf-deploy-prod");
+    expect(rule?.behavior).toBe("confirm");
+    expect(rule?.enabled).toBe(true);
   });
 
   it("preserves advanced rule overrides when updating common preferences", () => {

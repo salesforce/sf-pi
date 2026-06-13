@@ -9,6 +9,7 @@
 import { fingerprintCommand, fingerprintPath } from "./fingerprint.ts";
 import { evaluateCommand } from "./command-gate.ts";
 import { resolveOrgContext, resolveOrgContextWithLookup } from "./org-context.ts";
+import { behaviorToAction, resolveRuleBehavior } from "./rule-behavior.ts";
 import { safetyEnvelopeForCommand } from "./safety-envelope.ts";
 import { detectSafeTempCleanup } from "./temp-cleanup.ts";
 import type { ClassifiedDecision, GuardrailConfig, ShellCommandSafetySubject } from "./types.ts";
@@ -44,13 +45,17 @@ export function evaluateCommandRisk(
   if (!outcome) return undefined;
   if (outcome.action === "allow") return { kind: "allowListed" };
 
-  if (outcome.action === "autodeny") {
+  const behavior = outcome.action === "autodeny" ? "block" : resolveRuleBehavior(outcome.matched);
+  const action = behaviorToAction(behavior);
+  if (!action) return undefined;
+
+  if (action === "block") {
     return {
       kind: "decision",
       decision: {
         ruleId: outcome.matched.id,
         feature: "commandGate",
-        action: "block",
+        action,
         reason: `Blocked: ${outcome.matched.description ?? outcome.matched.pattern}`,
         fingerprint: fingerprintCommand(subject.command),
         subject: subject.command,

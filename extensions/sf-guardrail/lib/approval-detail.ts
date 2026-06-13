@@ -69,12 +69,7 @@ function renderEnvelopeLines(decision: ClassifiedDecision): string[] {
   if (envelope.detail) lines.push(`- Detail: ${envelope.detail}`);
   if (envelope.operationFamily) lines.push(`- Operation family: ${envelope.operationFamily}`);
   if (envelope.riskTier) lines.push(`- Risk tier: ${envelope.riskTier}`);
-  if (envelope.persistedGrant) {
-    lines.push(`- Persisted grant option: ${envelope.persistedGrant.label}`);
-    lines.push(`- Grant TTL: ${formatDuration(envelope.persistedGrant.ttlMs)}`);
-  } else {
-    lines.push("- Persisted grant option: not available for this risk");
-  }
+  lines.push("- Approval duration: current session");
   return lines;
 }
 
@@ -99,10 +94,4 @@ function advisoryGuidance(decision: ClassifiedDecision): string[] {
     default:
       return [];
   }
-}
-
-function formatDuration(ms: number): string {
-  const minutes = Math.round(ms / 60000);
-  if (minutes >= 60 && minutes % 60 === 0) return `${minutes / 60} hour(s)`;
-  return `${minutes} minute(s)`;
 }

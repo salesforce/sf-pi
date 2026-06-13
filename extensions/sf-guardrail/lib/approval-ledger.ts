@@ -3,8 +3,8 @@
  * Approval Ledger for sf-guardrail.
  *
  * Owns decision audit entries, session approval memory, revocation markers,
- * persisted approval grants, and user-facing approval summaries. This is the
- * single caller-facing seam for approval memory.
+ * and legacy persisted approval cleanup/rendering. This is the single
+ * caller-facing seam for approval memory.
  */
 import path from "node:path";
 import type { CustomEntry, ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
@@ -127,10 +127,6 @@ export function forgetSessionApprovals(pi?: ExtensionAPI): void {
   if (pi) pi.appendEntry(ALLOW_REVOKE_ENTRY_TYPE, { revokedAt: Date.now() });
 }
 
-export function hasPersistedApproval(cwd: string, decision: ClassifiedDecision): boolean {
-  return !!findPersistedApproval(cwd, decision);
-}
-
 export function createPersistedApproval(
   cwd: string,
   decision: ClassifiedDecision,
@@ -215,33 +211,6 @@ export function listProjectApprovals(cwd: string): PersistedApprovalGrant[] {
 export function projectKeyForCwd(cwd: string): string {
   const project = detectProject(cwd);
   return path.resolve(project.projectRoot ?? cwd);
-}
-
-function findPersistedApproval(
-  cwd: string,
-  decision: ClassifiedDecision,
-): PersistedApprovalGrant | undefined {
-  if (!decision.approvalScope?.persistedGrant) return undefined;
-  const projectKey = projectKeyForCwd(cwd);
-  const now = Date.now();
-  const state = pruneExpired(now);
-  const grant = state.grants.find(
-    (item) =>
-      item.projectKey === projectKey &&
-      item.ruleId === decision.ruleId &&
-      item.fingerprint === decision.fingerprint &&
-      item.expiresAt > now,
-  );
-  if (!grant) return undefined;
-
-  grantStore.update((current) => ({
-    grants: current.grants
-      .filter((item) => item.expiresAt > now)
-      .map((item) =>
-        item.id === grant.id ? { ...item, lastUsedAt: now, useCount: item.useCount + 1 } : item,
-      ),
-  }));
-  return grant;
 }
 
 function pruneExpired(now: number): ApprovalGrantState {

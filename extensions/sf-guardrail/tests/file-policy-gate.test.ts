@@ -16,7 +16,7 @@ import { readBundledConfig } from "../lib/config.ts";
 import { evaluateFilePolicy } from "../lib/file-policy-gate.ts";
 
 describe("evaluateFilePolicy", () => {
-  it("returns a block decision when the policy blocks the current tool", () => {
+  it("returns a confirm decision when the policy blocks the current tool", () => {
     const decision = evaluateFilePolicy(
       { kind: "file", toolName: "write", path: "force-app/main/default/destructiveChanges.xml" },
       "/project",
@@ -24,7 +24,7 @@ describe("evaluateFilePolicy", () => {
     );
 
     expect(decision).toMatchObject({
-      action: "block",
+      action: "confirm",
       feature: "policies",
       ruleId: "sf-destructive-changes-xml",
       subject: "force-app/main/default/destructiveChanges.xml",
@@ -49,6 +49,20 @@ describe("evaluateFilePolicy", () => {
     );
 
     expect(decision).toBeUndefined();
+  });
+
+  it("returns a block decision when rule behavior is hard block", () => {
+    const config = readBundledConfig();
+    const rule = config.policies.rules.find((candidate) => candidate.id === "secret-files");
+    if (rule) rule.behavior = "block";
+
+    const decision = evaluateFilePolicy(
+      { kind: "file", toolName: "read", path: ".env" },
+      "/project",
+      config,
+    );
+
+    expect(decision).toMatchObject({ action: "block", ruleId: "secret-files" });
   });
 
   it("returns no decision when policies are disabled", () => {

@@ -74,6 +74,21 @@ describe("evaluateOrgAwareRisk", () => {
     expect(decision?.approvalScope?.operationFamily).toBe("sf project deploy");
   });
 
+  it("returns block decisions when org-aware rule behavior is hard block", () => {
+    mockedEnv = env("Prod", "production");
+    const config = readBundledConfig();
+    const rule = config.orgAwareGate.rules.find((candidate) => candidate.id === "sf-deploy-prod");
+    if (rule) rule.behavior = "block";
+
+    const decision = evaluateOrgAwareRisk(
+      { kind: "shellCommand", toolName: "bash", command: "sf project deploy start -o Prod" },
+      "/project",
+      config,
+    );
+
+    expect(decision).toMatchObject({ action: "block", ruleId: "sf-deploy-prod" });
+  });
+
   it("returns no decision for sandbox targets", () => {
     mockedEnv = env("DevInt", "sandbox");
 

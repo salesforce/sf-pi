@@ -73,7 +73,7 @@ afterEach(() => {
 });
 
 describe("Safety Kernel", () => {
-  it("returns a hard-block Guardrail Decision for protected file writes", async () => {
+  it("returns a confirmable Guardrail Decision for protected file writes", async () => {
     const decision = await evaluateSafety({
       toolName: "write",
       input: { path: "force-app/main/default/destructiveChanges.xml" },
@@ -82,7 +82,7 @@ describe("Safety Kernel", () => {
     });
 
     expect(decision).toMatchObject({
-      action: "block",
+      action: "confirm",
       feature: "policies",
       ruleId: "sf-destructive-changes-xml",
       subject: "force-app/main/default/destructiveChanges.xml",
@@ -122,7 +122,7 @@ describe("Safety Kernel", () => {
       riskTier: "production_deploy",
     });
     expect(decision?.approvalScope?.fingerprint).toContain("family=sf project deploy");
-    expect(decision?.approvalScope?.persistedGrant?.label).toContain("60 minutes");
+    expect(decision?.approvalScope?.persistedGrant).toBeUndefined();
   });
 
   it("returns no decision for verified non-production deploys", async () => {

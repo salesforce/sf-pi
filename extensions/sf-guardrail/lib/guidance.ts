@@ -7,6 +7,7 @@
  * and compact so rule changes update agent guidance without maintaining a
  * second policy prompt by hand.
  */
+import { labelForRuleBehavior, resolveRuleBehavior } from "./rule-behavior.ts";
 import type { GuardrailConfig, OrgAwareRule, ShellAstMatch } from "./types.ts";
 
 export function renderGuardrailGuidance(config: GuardrailConfig): string {
@@ -22,14 +23,15 @@ export function renderGuardrailGuidance(config: GuardrailConfig): string {
   if (!config.features.policies) {
     lines.push("- Disabled in the effective config.");
   } else {
-    const active = config.policies.rules.filter((rule) => rule.enabled !== false);
+    const active = config.policies.rules.filter((rule) => resolveRuleBehavior(rule) !== "off");
     if (active.length === 0) {
       lines.push("- No active file-protection rules.");
     } else {
       for (const rule of active) {
         const access = rule.protection === "readOnly" ? "read-only" : rule.protection;
+        const behavior = labelForRuleBehavior(resolveRuleBehavior(rule));
         lines.push(
-          `- ${rule.description ?? rule.id}: ${access}; patterns ${formatList(rule.patterns.map((p) => p.pattern))}`,
+          `- ${rule.description ?? rule.id}: ${behavior}; ${access}; patterns ${formatList(rule.patterns.map((p) => p.pattern))}`,
         );
         if (rule.allowedPatterns?.length) {
           lines.push(
@@ -44,12 +46,17 @@ export function renderGuardrailGuidance(config: GuardrailConfig): string {
   if (!config.features.commandGate) {
     lines.push("- Disabled in the effective config.");
   } else {
-    const active = config.commandGate.patterns.filter((pattern) => pattern.enabled !== false);
+    const active = config.commandGate.patterns.filter(
+      (pattern) => resolveRuleBehavior(pattern) !== "off",
+    );
     if (active.length === 0) {
       lines.push("- No active dangerous-command patterns.");
     } else {
       for (const pattern of active) {
-        lines.push(`- ${pattern.pattern}${pattern.description ? ` (${pattern.description})` : ""}`);
+        const behavior = labelForRuleBehavior(resolveRuleBehavior(pattern));
+        lines.push(
+          `- ${pattern.pattern}${pattern.description ? ` (${pattern.description})` : ""}: ${behavior}`,
+        );
       }
     }
   }
@@ -58,7 +65,7 @@ export function renderGuardrailGuidance(config: GuardrailConfig): string {
   if (!config.features.orgAwareGate) {
     lines.push("- Disabled in the effective config.");
   } else {
-    const active = config.orgAwareGate.rules.filter((rule) => rule.enabled !== false);
+    const active = config.orgAwareGate.rules.filter((rule) => resolveRuleBehavior(rule) !== "off");
     if (active.length === 0) {
       lines.push("- No active org-aware rules.");
     } else {
@@ -81,8 +88,8 @@ export function renderGuardrailGuidance(config: GuardrailConfig): string {
     "- Prefer `Savepoint sp = Database.setSavepoint(); ... Database.rollback(sp);` for anonymous-apex DML rehearsals on production.",
     `- In headless / non-interactive mode, gated calls fail closed unless ${config.headlessEscapeHatchEnv}=1 is set.`,
     "",
-    "Override: `/sf-guardrail` shows active rules, recent decisions, and active approval grants.",
-    "Users may choose a scoped allow at the confirmation dialog; session allows persist via pi's session entries, and selected low-risk grants may persist for a short project-scoped TTL.",
+    "Override: `/sf-guardrail` shows active rules, recent decisions, and active approval state.",
+    "Users may choose a scoped allow at the confirmation dialog; session approvals persist via pi's session entries and can be revoked with `/sf-guardrail forget`.",
     "</sf_guardrail>",
     "",
   );
@@ -92,7 +99,8 @@ export function renderGuardrailGuidance(config: GuardrailConfig): string {
 
 function formatOrgAwareRule(rule: OrgAwareRule): string {
   const orgTypes = rule.whenOrgType.join("|").toUpperCase();
-  return `${formatShellAst(rule.match.ast)} when target org is ${orgTypes}${rule.description ? ` (${rule.description})` : ""}`;
+  const behavior = labelForRuleBehavior(resolveRuleBehavior(rule));
+  return `${formatShellAst(rule.match.ast)} when target org is ${orgTypes}${rule.description ? ` (${rule.description})` : ""}: ${behavior}`;
 }
 
 function formatShellAst(ast: ShellAstMatch): string {

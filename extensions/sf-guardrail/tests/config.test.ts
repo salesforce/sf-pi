@@ -50,6 +50,8 @@ describe("bundled defaults", () => {
       ]),
     );
     expect(config.confirmTimeoutMs).toBe(120000);
+    expect(config.policies.rules.find((r) => r.id === "secret-files")?.behavior).toBe("confirm");
+    expect(config.commandGate.patterns.find((p) => p.id === "rm-rf")?.behavior).toBe("confirm");
     const orgRuleIds = config.orgAwareGate.rules.map((r) => r.id);
     expect(orgRuleIds).toEqual(
       expect.arrayContaining([
@@ -110,6 +112,7 @@ describe("loadConfig with user override", () => {
     });
     const { config } = loadConfig();
     const pattern = config.commandGate.patterns.find((p) => p.id === "rm-rf");
+    expect(pattern?.behavior).toBe("off");
     expect(pattern?.enabled).toBe(false);
   });
 
@@ -128,7 +131,28 @@ describe("loadConfig with user override", () => {
     });
     const { config } = loadConfig();
     const rule = config.policies.rules.find((r) => r.id === "secret-files");
+    expect(rule?.behavior).toBe("off");
     expect(rule?.enabled).toBe(false);
+  });
+
+  it("accepts explicit hard block behavior from override", () => {
+    writeOverride({
+      orgAwareGate: {
+        rules: [
+          {
+            id: "sf-deploy-prod",
+            match: { tool: "bash", ast: { cmd: "sf", subCmd: ["project", "deploy", "start"] } },
+            whenOrgType: ["production"],
+            action: "confirm",
+            behavior: "block",
+          },
+        ],
+      },
+    });
+    const { config } = loadConfig();
+    const rule = config.orgAwareGate.rules.find((r) => r.id === "sf-deploy-prod");
+    expect(rule?.behavior).toBe("block");
+    expect(rule?.enabled).toBe(true);
   });
 
   it("merges scalar fields (productionAliases) from override", () => {

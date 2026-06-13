@@ -12,6 +12,22 @@ _Avoid_: generic guardrails, policy platform, security scanner, Salesforce org p
 The product posture where **SF Guardrail** evaluates risky agent actions and returns a clear allow, block, or human-approval decision. It is opinionated and narrow rather than a configurable policy platform.
 _Avoid_: policy engine, governance framework, rule marketplace, shell sandbox
 
+**Power Tool Mode**:
+The default SF Guardrail posture where risky actions are human-confirmable rather than hard-blocked. The human can override after reviewing the **Safety Envelope** and risk guidance.
+_Avoid_: unsafe mode, trust mode, disabled guardrail
+
+**Rule Behavior**:
+The per-rule setting that decides whether a risk is off, human-confirmable, or a non-overridable hard block.
+_Avoid_: enabled flag, theme, policy mode
+
+**Hard-Block Theme**:
+A user-facing preset that applies a set of **Rule Behaviors**. It is a shortcut for common setups, not the underlying configuration model.
+_Avoid_: policy engine, security profile, admin policy, rule marketplace
+
+**Strict Theme**:
+An opt-in **Hard-Block Theme** that sets selected sensitive rules to hard block while leaving other rules human-confirmable.
+_Avoid_: default mode, compliance engine, global policy
+
 **Safety Kernel**:
 The pure decision module that evaluates a **Safety Subject** and returns a **Guardrail Decision** without performing Pi Runtime UI, session, or persistence side effects.
 _Avoid_: event handler, policy engine, approval manager, command panel
@@ -29,12 +45,20 @@ A narrow safety check that explains why a **Safety Subject** is risky, such as p
 _Avoid_: rule engine, detector, scanner
 
 **Safety Envelope**:
-The exact scope covered by an allow decision, such as the risk gate, project, verified org identity, operation family, TTL, and safety-relevant target details.
+The exact scope covered by an allow decision, such as the risk gate, project, verified org identity, operation family, session path, and safety-relevant target details.
 _Avoid_: approval scope, blanket allow, trust mode, bypass, global allowlist
 
 **Org-Aware Gate**:
-A **Risk Gate** whose decision depends on the resolved Salesforce org identity and org type for a shell command.
+A **Risk Gate** whose decision depends on the resolved Salesforce org identity and detected org type for a shell command.
 _Avoid_: production detector, deploy blocker, org policy engine
+
+**Detected Org Type**:
+The Salesforce org type SF Guardrail receives from SF Pi's Salesforce environment detection: scratch, sandbox, developer, trial, production, or unknown.
+_Avoid_: demo type, training type, name-based environment guess
+
+**Unknown Org**:
+A target org whose type cannot be verified from the available Salesforce/Core org facts. SF Guardrail treats it as production for risky operations.
+_Avoid_: assume sandbox, infer from alias name, demo org guess
 
 **Operation Family**:
 A small, named class of related actions that may share an approval when the rest of the **Safety Envelope** is unchanged, such as Salesforce metadata deploys to one verified org.
@@ -50,10 +74,14 @@ _Avoid_: audit helper, allowlist, approval store, grant manager
 
 **Session Approval**:
 A branch/session-scoped approval that suppresses repeated prompts for the same **Safety Envelope** during the current Pi session path.
-_Avoid_: permanent allow, global trust, hidden bypass
+_Avoid_: timed grant, permanent allow, global trust, hidden bypass
+
+**Session-Scoped Approval Envelope**:
+A **Safety Envelope** that has been accepted by the human for the current Pi session path only. It replaces wall-clock approval grants as the preferred way to reduce prompt fatigue.
+_Avoid_: minute-based grant, persisted allow, trust mode
 
 **Persisted Approval Grant**:
-A user-local, TTL-bound approval that can suppress future prompts for a narrow **Safety Envelope** outside the current session.
+A deprecated user-local, TTL-bound approval that could suppress future prompts outside the current session.
 _Avoid_: permanent allowlist, trust mode, project policy
 
 **Fail-Closed Outcome**:
@@ -73,8 +101,8 @@ A non-blocking instruction that helps the agent recover safely after a block or 
 _Avoid_: hard gate, policy requirement, mandatory workflow
 
 **Hard Block**:
-A **Guardrail Decision** that refuses an action without asking the user because the safety boundary is intentionally non-negotiable.
-_Avoid_: prompt, warning, soft block
+A **Guardrail Decision** that refuses an action without asking the user because the selected **Hard-Block Theme** makes that safety boundary non-overridable.
+_Avoid_: default refusal, prompt, warning, soft block
 
 **Rule-Derived Guidance**:
 The agent-visible SF Guardrail instructions generated from the effective ruleset and runtime config rather than maintained as a separate policy prompt.

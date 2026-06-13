@@ -75,6 +75,23 @@ describe("evaluateCommandRisk", () => {
     }
   });
 
+  it("returns block decisions when command pattern behavior is hard block", () => {
+    const config = readBundledConfig();
+    const pattern = config.commandGate.patterns.find((candidate) => candidate.id === "rm-rf");
+    if (pattern) pattern.behavior = "block";
+
+    const result = evaluateCommandRisk(
+      { kind: "shellCommand", toolName: "bash", command: "rm -rf tmp/" },
+      "/project",
+      config,
+    );
+
+    expect(result).toMatchObject({
+      kind: "decision",
+      decision: { action: "block", ruleId: "rm-rf" },
+    });
+  });
+
   it("returns allowListed when configured allowedPatterns match", () => {
     const config = readBundledConfig();
     config.commandGate.allowedPatterns = [
@@ -108,7 +125,8 @@ describe("evaluateCommandRisk", () => {
       },
     });
     if (result?.kind === "decision") {
-      expect(result.decision.approvalScope?.persistedGrant?.label).toContain("30 minutes");
+      expect(result.decision.approvalScope?.operationFamily).toBe("sf org delete");
+      expect(result.decision.approvalScope?.persistedGrant).toBeUndefined();
     }
   });
 });

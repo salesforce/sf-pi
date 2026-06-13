@@ -24,6 +24,7 @@ One-file-per-concern split:
 | Safety decision seam             | `lib/safety-kernel.ts`            |
 | Safety subject normalization     | `lib/safety-subject.ts`           |
 | Safety envelope construction     | `lib/safety-envelope.ts`          |
+| Rule behavior resolution         | `lib/rule-behavior.ts`            |
 | Bundled + override config loader | `lib/config.ts`                   |
 | Shell tokenizer + AST matcher    | `lib/bash-ast.ts`                 |
 | File-policy risk gate            | `lib/file-policy-gate.ts`         |
@@ -52,9 +53,9 @@ One-file-per-concern split:
    the config schema and decision shapes are defined. Every other module
    imports its types from there.
 2. **Pure evaluators.** `safety-kernel.ts`, `safety-subject.ts`,
-   `safety-envelope.ts`, `guidance.ts`, `file-policy-gate.ts`, `policies.ts`,
-   `command-gate.ts`, `org-aware-gate.ts` do not touch `ctx`,
-   `pi`, or any pi API.
+   `safety-envelope.ts`, `rule-behavior.ts`, `guidance.ts`,
+   `file-policy-gate.ts`, `policies.ts`, `command-gate.ts`,
+   `org-aware-gate.ts` do not touch `ctx`, `pi`, or any pi API.
    They take config + input, return decisions.
    Side effects (prompts, appendEntry, notify) happen only in `index.ts`,
    `hitl.ts`, and approval-ledger/UI adapters.

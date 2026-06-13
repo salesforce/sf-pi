@@ -111,15 +111,14 @@ describe("Approval Ledger", () => {
     expect(ledger.hasSessionApproval(d)).toBe(false);
   });
 
-  it("creates, finds, renders, and clears persisted project approvals", () => {
+  it("creates, renders, and clears legacy persisted project approvals", () => {
     const d = decision();
 
     const created = ledger.createPersistedApproval(cwd, d);
 
     expect(created?.projectKey).toBe(path.resolve(cwd));
-    expect(ledger.hasPersistedApproval(cwd, d)).toBe(true);
     expect(ledger.renderProjectApprovals(cwd)).toContain("production deploys to Prod");
     expect(ledger.clearProjectApprovals(cwd)).toBe(1);
-    expect(ledger.hasPersistedApproval(cwd, d)).toBe(false);
+    expect(ledger.renderProjectApprovals(cwd)).toContain("No active");
   });
 });

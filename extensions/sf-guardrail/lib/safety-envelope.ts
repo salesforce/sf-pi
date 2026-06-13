@@ -2,10 +2,9 @@
 /**
  * Safety Envelope builders.
  *
- * A Safety Envelope answers what an approval covers and whether that envelope
- * is eligible for a short persisted grant. This module is the domain-facing
- * seam for the envelope-first redesign while the persisted decision field is
- * still named `approvalScope` for compatibility.
+ * A Safety Envelope answers what a session-scoped approval covers. This module
+ * is the domain-facing seam for the envelope-first redesign while the persisted
+ * decision field is still named `approvalScope` for compatibility.
  */
 import { approvalScopeForCommand, approvalScopeForOrgAware } from "./approval-scope.ts";
 import type { OrgContext } from "./org-context.ts";

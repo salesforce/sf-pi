@@ -8,6 +8,7 @@
 import { splitSimpleCommands } from "./bash-ast.ts";
 import { evaluateOrgAware } from "./org-aware-gate.ts";
 import { resolveOrgContext, resolveOrgContextWithLookup, type OrgContext } from "./org-context.ts";
+import { behaviorToAction, resolveRuleBehavior } from "./rule-behavior.ts";
 import { safetyEnvelopeForOrgAware } from "./safety-envelope.ts";
 import type { ClassifiedDecision, GuardrailConfig, ShellCommandSafetySubject } from "./types.ts";
 
@@ -54,6 +55,10 @@ function buildOrgAwareDecision(
   const outcome = evaluateOrgAware(orgCommand, config.orgAwareGate.rules, org);
   if (!outcome) return undefined;
 
+  const behavior = resolveRuleBehavior(outcome.rule);
+  const action = behaviorToAction(behavior);
+  if (!action) return undefined;
+
   const message = renderBlockMessage(outcome.rule.confirmMessage, {
     command: fullCommand,
     orgAlias: org.alias ?? "<unknown>",
@@ -63,7 +68,7 @@ function buildOrgAwareDecision(
   return {
     ruleId: outcome.rule.id,
     feature: "orgAwareGate",
-    action: outcome.rule.action,
+    action,
     reason: org.guessed
       ? `${message}\n\nNote: sf-guardrail could not verify the target org type and is treating it as production.`
       : message,

@@ -26,10 +26,6 @@ function productionDeploy(overrides: Partial<ClassifiedDecision> = {}): Classifi
       detail: "Same project, same resolved org, production deploy command family.",
       riskTier: "production_deploy",
       operationFamily: "sf project deploy",
-      persistedGrant: {
-        label: "Allow production deploys to Prod in this project for 60 minutes",
-        ttlMs: 60 * 60 * 1000,
-      },
     },
     ...overrides,
   };
@@ -47,7 +43,7 @@ describe("renderApprovalDetail", () => {
     expect(detail).toContain("Approval covers:");
     expect(detail).toContain("- production deploys to Prod");
     expect(detail).toContain("- Operation family: sf project deploy");
-    expect(detail).toContain("- Grant TTL: 1 hour(s)");
+    expect(detail).toContain("- Approval duration: current session");
     expect(detail).toContain("Prefer `sf project deploy validate` or `--check-only`");
   });
 
@@ -69,7 +65,7 @@ describe("renderApprovalDetail", () => {
 
     expect(detail).toContain("Risk gate:\n- Dangerous command (rm-rf)");
     expect(detail).toContain("- this exact command");
-    expect(detail).toContain("- Persisted grant option: not available for this risk");
+    expect(detail).toContain("- Approval duration: current session");
   });
 
   it("marks guessed org resolution as fail-closed", () => {

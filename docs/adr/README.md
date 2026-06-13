@@ -44,3 +44,8 @@ or accidentally contradicted in extension READMEs.
 - [0039: SF Guardrail Exposes No LLM Tools](./0039-sf-guardrail-exposes-no-llm-tools.md)
 - [0040: SF Guardrail Keeps Workflow Rehearsals Advisory](./0040-sf-guardrail-keeps-workflow-rehearsals-advisory.md)
 - [0041: SF Guardrail Defers Project-Local Rule Overrides](./0041-sf-guardrail-defers-project-local-rule-overrides.md)
+- [0042: SF Guardrail Uses Session-Scoped Approval Envelopes](./0042-sf-guardrail-uses-session-scoped-approval-envelopes.md)
+- [0043: SF Guardrail Relies on Detected Salesforce Org Type](./0043-sf-guardrail-relies-on-detected-salesforce-org-type.md)
+- [0044: SF Guardrail Defaults to Confirmable Power Tool Mode](./0044-sf-guardrail-defaults-to-confirmable-power-tool-mode.md)
+- [0045: SF Guardrail Hard-Block Themes Start with Two Presets](./0045-sf-guardrail-hard-block-themes-start-with-two-presets.md)
+- [0046: SF Guardrail Rules Use Explicit Behavior Settings](./0046-sf-guardrail-rules-use-explicit-behavior-settings.md)

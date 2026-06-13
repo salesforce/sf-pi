@@ -26,9 +26,8 @@ are not promises — priority is the rough order.
 - [x] Session allow-memory via `pi.appendEntry`; survives /resume,
       /fork, /tree; `/sf-guardrail forget` writes a native session revocation
       marker so older allows do not restore.
-- [x] Risk-tiered persisted approval grants for verified production deploys
-      and exact verified non-production org deletes, scoped to the current
-      project with short TTLs.
+- [x] Session-scoped Safety Envelope approvals for repeated risky actions in
+      the current Pi session path.
 - [x] Audit trail persisted as session entries; shown by
       `/sf-guardrail audit`.
 - [x] Headless fail-closed with `SF_GUARDRAIL_ALLOW_HEADLESS=1` escape.
@@ -47,7 +46,8 @@ are not promises — priority is the rough order.
 - [x] Rule-derived agent guidance (`lib/guidance.ts`) replacing the bundled
       static prompt file while preserving the user override path.
 - [x] Pi-native `/sf-guardrail settings` for common preferences and per-rule
-      enablement of file-policy and org-aware rules.
+      behavior (`off`, `confirm`, `hard block`) across file-policy,
+      command-pattern, and org-aware rules.
 - [x] Envelope-first HIL detail copy (`lib/approval-detail.ts`).
 - [x] Dedicated Safety Kernel risk gates for file policies, command risk, and
       org-aware operations (`file-policy-gate.ts`, `command-risk-gate.ts`,
@@ -61,7 +61,8 @@ are not promises — priority is the rough order.
       persisted-grant storage into `approval-ledger.ts` and deleting the old
       helper modules.
 - [x] Production aliases editor via `/sf-guardrail aliases`.
-- [x] Command-gate per-pattern `enabled` semantics and settings toggles.
+- [x] Command-gate per-pattern behavior semantics and settings toggles.
+- [x] Power Tool and Strict preset actions as shortcuts over per-rule behavior.
 - [ ] **README user-facing cleanup follow-up** — keep detailed rationale in
       `CONTEXT.md`, `REDESIGN.md`, and ADRs; keep README focused on usage and
       troubleshooting.

@@ -2,16 +2,11 @@
 /**
  * Approval scope / safety-envelope helpers.
  *
- * A scope answers two questions in one place:
- *   1. What does an "allow" cover?
- *   2. Is that scope eligible for a short persisted grant?
+ * A scope answers what a session-scoped "allow" covers.
  */
 import { fingerprintCommand } from "./fingerprint.ts";
 import type { OrgContext } from "./org-context.ts";
 import type { ApprovalScope } from "./types.ts";
-
-const PROD_DEPLOY_TTL_MS = 60 * 60 * 1000;
-const NONPROD_ORG_DELETE_TTL_MS = 30 * 60 * 1000;
 
 export function approvalScopeForOrgAware(
   ruleId: string,
@@ -29,12 +24,6 @@ export function approvalScopeForOrgAware(
       riskTier: "production_deploy",
       operationFamily: "sf project deploy",
     };
-    if (!org.guessed && org.type === "production") {
-      scope.persistedGrant = {
-        label: `Allow ${label} in this project for 60 minutes`,
-        ttlMs: PROD_DEPLOY_TTL_MS,
-      };
-    }
     return scope;
   }
 
@@ -61,12 +50,6 @@ export function approvalScopeForCommand(
       riskTier: "nonprod_org_delete",
       operationFamily: "sf org delete",
     };
-    if (!org.guessed && isNonProduction(org.type)) {
-      scope.persistedGrant = {
-        label: `Allow ${label} in this project for 30 minutes`,
-        ttlMs: NONPROD_ORG_DELETE_TTL_MS,
-      };
-    }
     return scope;
   }
 
@@ -76,8 +59,4 @@ export function approvalScopeForCommand(
     riskTier: "local_dangerous_exact",
     operationFamily: fingerprintCommand(command),
   };
-}
-
-function isNonProduction(type: OrgContext["type"]): boolean {
-  return type === "sandbox" || type === "scratch" || type === "developer" || type === "trial";
 }

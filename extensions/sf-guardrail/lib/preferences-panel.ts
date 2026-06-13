@@ -5,7 +5,8 @@
 import { DynamicBorder, getSettingsListTheme } from "@earendil-works/pi-coding-agent";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { Container, type SettingItem, SettingsList, Text } from "@earendil-works/pi-tui";
-import type { GuardrailConfig } from "./types.ts";
+import type { GuardrailConfig, RuleBehavior } from "./types.ts";
+import { behaviorEnabled, ruleBehaviorFromLabel } from "./rule-behavior.ts";
 import {
   buildGuardrailPreferenceDescriptors,
   preferenceValue,
@@ -148,21 +149,21 @@ function updateWorkingConfig(
   if (descriptor.key.startsWith("policies.rules.")) {
     const ruleId = descriptor.key.slice("policies.rules.".length, -".enabled".length);
     const rule = config.policies.rules.find((candidate) => candidate.id === ruleId);
-    if (rule) rule.enabled = value === "on";
+    if (rule) applyRuleBehavior(rule, value);
     return;
   }
 
   if (descriptor.key.startsWith("commandGate.patterns.")) {
     const patternId = descriptor.key.slice("commandGate.patterns.".length, -".enabled".length);
     const pattern = config.commandGate.patterns.find((candidate) => candidate.id === patternId);
-    if (pattern) pattern.enabled = value === "on";
+    if (pattern) applyRuleBehavior(pattern, value);
     return;
   }
 
   if (descriptor.key.startsWith("orgAwareGate.rules.")) {
     const ruleId = descriptor.key.slice("orgAwareGate.rules.".length, -".enabled".length);
     const rule = config.orgAwareGate.rules.find((candidate) => candidate.id === ruleId);
-    if (rule) rule.enabled = value === "on";
+    if (rule) applyRuleBehavior(rule, value);
     return;
   }
 
@@ -188,6 +189,15 @@ function updateWorkingConfig(
       break;
     }
   }
+}
+
+function applyRuleBehavior(
+  target: { behavior?: RuleBehavior; enabled?: boolean },
+  value: string,
+): void {
+  const behavior = ruleBehaviorFromLabel(value) ?? "confirm";
+  target.behavior = behavior;
+  target.enabled = behaviorEnabled(behavior);
 }
 
 function cloneConfig(config: GuardrailConfig): GuardrailConfig {

@@ -23,8 +23,9 @@ feature tiers, all toggleable via the config:
    `mkfs.*`, `sf org delete`, explicit Salesforce CLI credential reveal
    commands, `SF_TEMP_SHOW_SECRETS=true`, and `git push --force`.
    Strictly validated OS temp-directory cleanup is auto-allowed and audited;
-   other dangerous commands prompt via `ctx.ui.select` (Allow once / Allow
-   for this session / Block).
+   other dangerous commands default to `confirm` behavior and prompt via
+   `ctx.ui.select` (Allow once / Allow for this session / Block). Individual
+   rules can be set to `off`, `confirm`, or `hard block` in settings.
 
 3. **orgAwareGate** — shell-command rules that fire only when the resolved
    target-org type matches. Explicit non-default target aliases get a bounded,
@@ -45,13 +46,10 @@ Plus:
   `pi.appendEntry` so `/resume` and `/fork` inherit the allowance. Org-aware
   allows use a safety envelope (rule + resolved org + command family) instead
   of an exact command string where that reduces repeat prompts safely.
-- **Persisted approval grants** — grant-eligible prompts keep three choices; the
-  middle choice becomes a scoped TTL grant (for example, allow verified
-  production deploys in this project for 60 minutes, or allow deleting one
-  verified non-production org target for 30 minutes). Grants are user-local,
-  project-scoped, auditable, and ignored in headless mode unless the explicit
-  headless escape hatch is set.
-- **Audit trail** — every decision (auto-allow, allow, persisted allow, block,
+- **Session-scoped approvals** — confirm prompts keep three choices; the
+  middle choice allows the same Safety Envelope for the current session path.
+  Session approvals are auditable and can be cleared with `/sf-guardrail forget`.
+- **Audit trail** — every decision (auto-allow, allow, session allow, block,
   timeout, cancel, headless-pass) is persisted as a session entry. Inspect with
   `/sf-guardrail audit`.
 - **Headless mode** — fail-closed by default; set
@@ -76,8 +74,7 @@ Extension loads
        ├─ commandGate hit (autoDeny)                      → { block }, audit
        ├─ commandGate hit (confirm) OR orgAwareGate hit   →
        │      previously granted for this session         → pass through, audit as allow_session
-       │      active persisted grant + UI/headless opt-in  → pass through, audit as allow_persisted
-       │      interactive                                 → ctx.ui.select (Allow once / scoped allow / Block)
+       │      interactive                                 → ctx.ui.select (Allow once / Allow for session / Block)
        │      headless + env opt-in                       → pass through, audit as headless_pass
        │      headless + no opt-in                        → { block }, audit as headless_block
        └─ no rule matched                                 → pass through
@@ -88,8 +85,9 @@ Extension loads
 Bundled defaults live in `SF_GUARDRAIL_DEFAULTS.json` next to `index.ts`.
 A user override file at `<globalAgentDir>/sf-guardrail/rules.json`
 (typically `~/.pi/agent/sf-guardrail/rules.json`) merges over the
-bundled defaults by rule `id` — last wins. To disable a bundled rule
-without removing it, override with `{ "id": "...", "enabled": false }`.
+bundled defaults by rule `id` — last wins. Rule behavior is
+`off`, `confirm`, or `block`; legacy `{ "id": "...", "enabled": false }`
+still maps to `off`.
 
 Project-level overrides (`.pi/sf-guardrail/rules.json`) are on the
 roadmap — see `ROADMAP.md`.
@@ -99,12 +97,16 @@ roadmap — see `ROADMAP.md`.
 - `/sf-guardrail` → open status & controls panel in UI; status summary in no-UI mode
 - `/sf-guardrail list` → full dump of active rules
 - `/sf-guardrail audit` → up to 50 recent decisions from the session
-- `/sf-guardrail grants` → list active persisted approval grants for the current project
+- `/sf-guardrail grants` → list legacy persisted approval grants, if any
 - `/sf-guardrail settings` → edit common guardrail preferences and per-rule
-  enablement with Pi's SettingsList UI while preserving advanced JSON rule overrides
+  behavior (`off`, `confirm`, `hard block`) with Pi's SettingsList UI while
+  preserving advanced JSON rule overrides
 - `/sf-guardrail aliases` → edit aliases that should be treated as production
+- `/sf-guardrail power-tool` → set every rule to `confirm`
+- `/sf-guardrail strict` → hard-block secret, credential, and CLI-state rules;
+  set other rules to `confirm`
 - `/sf-guardrail forget` → revoke session allow-memory for this branch and clear
-  active persisted approval grants for the current project
+  legacy persisted approval grants for the current project
 - `/sf-guardrail install-preset` → write bundled defaults to the user
   override file, with per-rule reconciliation when the file already
   exists
@@ -125,6 +127,10 @@ engine. The canonical terms live in `CONTEXT.md`; the redesign plan lives in
 - ADR 0039 — no LLM tools
 - ADR 0040 — workflow rehearsals stay advisory
 - ADR 0041 — project-local overrides are deferred
+- ADR 0042 — session-scoped approval envelopes
+- ADR 0043 — detected Salesforce org type is the classification source
+- ADR 0044 — Power Tool mode defaults to confirmable actions
+- ADR 0046 — per-rule behavior is `off`, `confirm`, or `hard block`
 
 ## Behavior Matrix
 
@@ -176,6 +182,7 @@ extensions/sf-guardrail/
     preferences.ts          ← implementation module
     production-aliases-panel.ts← implementation module
     prompt-injection.ts     ← implementation module
+    rule-behavior.ts        ← implementation module
     safety-envelope.ts      ← implementation module
     safety-kernel.ts        ← implementation module
     safety-subject.ts       ← implementation module
@@ -199,6 +206,7 @@ extensions/sf-guardrail/
     policies.test.ts        ← unit / smoke test
     preferences.test.ts     ← unit / smoke test
     prompt-injection.test.ts← unit / smoke test
+    rule-behavior.test.ts   ← unit / smoke test
     safety-envelope.test.ts ← unit / smoke test
     safety-kernel-contract.test.ts← unit / smoke test
     safety-kernel.test.ts   ← unit / smoke test
@@ -246,13 +254,13 @@ Covered by unit tests:
 - Safety Envelope builders preserve exact-command, production deploy, and
   non-production org-delete approval coverage.
 - Approval Ledger tests cover audit entries, session approvals, revocation,
-  persisted grants, rendering, and clearing.
+  legacy persisted grant rendering, and clearing.
 - Rule-derived guidance reflects the effective config and preserves the
   user override prompt path.
-- Pi-native preferences write common settings and per-rule enablement while
+- Pi-native preferences write common settings and per-rule behavior while
   preserving advanced JSON overrides.
 - Envelope-first HIL detail renders risk gate, subject, target org, approval
-  coverage, grant TTL, and advisory recovery guidance.
+  coverage, session duration, and advisory recovery guidance.
 - Safety Kernel contract tests produce the right decision for representative
   `read`/`write`/`bash`/`herdr.run` tool calls with the bundled config.
 - Config loader parses bundled defaults, merges user override by id,

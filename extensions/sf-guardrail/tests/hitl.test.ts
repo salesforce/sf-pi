@@ -29,12 +29,9 @@ describe("confirmDecision", () => {
     });
   });
 
-  it("uses a scoped persisted-grant label when provided", async () => {
-    const result = await confirmDecision(ctxWithSelection("Allow for 60 minutes in this project"), {
-      ...base,
-      scopedAllowLabel: "Allow for 60 minutes in this project",
-    });
-    expect(result.outcome).toBe("allow_persisted");
+  it("allows for the current session when selected", async () => {
+    const result = await confirmDecision(ctxWithSelection("Allow for this session"), base);
+    expect(result.outcome).toBe("allow_session");
   });
 
   it("returns actionable block reason when blocked", async () => {

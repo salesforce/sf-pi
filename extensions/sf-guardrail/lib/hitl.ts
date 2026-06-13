@@ -16,7 +16,6 @@ import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 export type ConfirmResult =
   | { outcome: "allow_once" }
   | { outcome: "allow_session" }
-  | { outcome: "allow_persisted" }
   | { outcome: "block"; reason: string }
   | { outcome: "timeout"; reason: string }
   | { outcome: "cancel"; reason: string }
@@ -29,7 +28,6 @@ export interface ConfirmOptions {
   timeoutMs: number;
   escapeHatchEnv: string;
   signal?: AbortSignal;
-  scopedAllowLabel?: string;
 }
 
 const ALLOW_ONCE_LABEL = "Allow once";
@@ -60,18 +58,17 @@ export async function confirmDecision(
   ctx.ui.notify?.(`sf-guardrail approval required: ${options.title}`, "warning");
 
   try {
-    const scopedLabel = options.scopedAllowLabel ?? ALLOW_SESSION_LABEL;
-    const picked = await ctx.ui.select(header, [ALLOW_ONCE_LABEL, scopedLabel, BLOCK_LABEL], {
-      timeout: options.timeoutMs,
-      signal: options.signal,
-    });
+    const picked = await ctx.ui.select(
+      header,
+      [ALLOW_ONCE_LABEL, ALLOW_SESSION_LABEL, BLOCK_LABEL],
+      {
+        timeout: options.timeoutMs,
+        signal: options.signal,
+      },
+    );
 
     if (picked === ALLOW_ONCE_LABEL) return { outcome: "allow_once" };
-    if (picked === scopedLabel) {
-      return options.scopedAllowLabel
-        ? { outcome: "allow_persisted" }
-        : { outcome: "allow_session" };
-    }
+    if (picked === ALLOW_SESSION_LABEL) return { outcome: "allow_session" };
     if (picked === BLOCK_LABEL) {
       return { outcome: "block", reason: detailedBlockReason("Blocked by user", options) };
     }

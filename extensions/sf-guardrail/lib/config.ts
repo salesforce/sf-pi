@@ -31,6 +31,7 @@ import type {
   PoliciesConfig,
   PolicyRule,
 } from "./types.ts";
+import { behaviorEnabled, resolveRuleBehavior } from "./rule-behavior.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -206,6 +207,11 @@ function sanitizePolicyRule(input: unknown): PolicyRule | undefined {
     : [];
   const protection =
     raw.protection === "readOnly" || raw.protection === "none" ? raw.protection : "noAccess";
+  const behavior = resolveRuleBehavior({
+    behavior: sanitizeBehavior(raw.behavior),
+    enabled: typeof raw.enabled === "boolean" ? raw.enabled : undefined,
+    protection,
+  });
   return {
     id,
     description: typeof raw.description === "string" ? raw.description : undefined,
@@ -214,7 +220,8 @@ function sanitizePolicyRule(input: unknown): PolicyRule | undefined {
     protection,
     onlyIfExists: typeof raw.onlyIfExists === "boolean" ? raw.onlyIfExists : true,
     blockMessage: typeof raw.blockMessage === "string" ? raw.blockMessage : undefined,
-    enabled: typeof raw.enabled === "boolean" ? raw.enabled : true,
+    behavior,
+    enabled: behaviorEnabled(behavior),
   };
 }
 
@@ -232,13 +239,24 @@ function sanitizeCommandPattern(input: unknown): CommandPattern | undefined {
   if (!input || typeof input !== "object") return undefined;
   const raw = input as Record<string, unknown>;
   if (typeof raw.id !== "string" || typeof raw.pattern !== "string") return undefined;
+  const action = raw.action === "block" ? "block" : "confirm";
+  const behavior = resolveRuleBehavior({
+    behavior: sanitizeBehavior(raw.behavior),
+    enabled: typeof raw.enabled === "boolean" ? raw.enabled : undefined,
+    action,
+  });
   return {
     id: raw.id,
     pattern: raw.pattern,
     description: typeof raw.description === "string" ? raw.description : undefined,
-    action: raw.action === "block" ? "block" : "confirm",
-    enabled: typeof raw.enabled === "boolean" ? raw.enabled : true,
+    action,
+    behavior,
+    enabled: behaviorEnabled(behavior),
   };
+}
+
+function sanitizeBehavior(value: unknown): "off" | "confirm" | "block" | undefined {
+  return value === "off" || value === "confirm" || value === "block" ? value : undefined;
 }
 
 function sanitizeOrgAwareRule(input: unknown): OrgAwareRule | undefined {
@@ -256,6 +274,12 @@ function sanitizeOrgAwareRule(input: unknown): OrgAwareRule | undefined {
           ["production", "sandbox", "scratch", "developer", "trial", "unknown"].includes(v),
       )
     : [];
+  const action = raw.action === "block" ? "block" : "confirm";
+  const behavior = resolveRuleBehavior({
+    behavior: sanitizeBehavior(raw.behavior),
+    enabled: typeof raw.enabled === "boolean" ? raw.enabled : undefined,
+    action,
+  });
   return {
     id: raw.id,
     description: typeof raw.description === "string" ? raw.description : undefined,
@@ -275,9 +299,10 @@ function sanitizeOrgAwareRule(input: unknown): OrgAwareRule | undefined {
       },
     },
     whenOrgType,
-    action: raw.action === "block" ? "block" : "confirm",
+    action,
+    behavior,
     confirmMessage: typeof raw.confirmMessage === "string" ? raw.confirmMessage : undefined,
-    enabled: typeof raw.enabled === "boolean" ? raw.enabled : true,
+    enabled: behaviorEnabled(behavior),
   };
 }
 

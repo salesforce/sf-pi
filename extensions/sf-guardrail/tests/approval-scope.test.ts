@@ -17,15 +17,14 @@ function org(overrides: Partial<OrgContext> = {}): OrgContext {
 }
 
 describe("approval scope", () => {
-  it("makes production deploys eligible for a 60 minute project grant", () => {
+  it("builds a session-scoped production deploy scope", () => {
     const scope = approvalScopeForOrgAware(
       "sf-deploy-prod",
       "sf project deploy start -o Prod",
       org(),
     );
     expect(scope.fingerprint).toBe("org=00DPROD|type=production|family=sf project deploy");
-    expect(scope.persistedGrant?.ttlMs).toBe(60 * 60 * 1000);
-    expect(scope.persistedGrant?.label).toContain("60 minutes");
+    expect(scope.persistedGrant).toBeUndefined();
   });
 
   it("does not persist guessed production deploy grants", () => {
@@ -37,14 +36,14 @@ describe("approval scope", () => {
     expect(scope.persistedGrant).toBeUndefined();
   });
 
-  it("makes exact verified non-production org delete eligible for a 30 minute grant", () => {
+  it("builds a session-scoped verified non-production org delete scope", () => {
     const scope = approvalScopeForCommand(
       "sf-org-delete",
       "sf org delete scratch -o Scratch",
       org({ alias: "Scratch", orgId: "00DSCRATCH", type: "scratch" }),
     );
     expect(scope.fingerprint).toBe("org=00DSCRATCH|type=scratch|family=sf org delete");
-    expect(scope.persistedGrant?.ttlMs).toBe(30 * 60 * 1000);
+    expect(scope.persistedGrant).toBeUndefined();
   });
 
   it("does not persist production org delete grants", () => {

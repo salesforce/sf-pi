@@ -10,6 +10,7 @@
 // ─── Config schema ──────────────────────────────────────────────────────────────
 
 export type ProtectionLevel = "noAccess" | "readOnly" | "none";
+export type RuleBehavior = "off" | "confirm" | "block";
 
 export interface PolicyPattern {
   pattern: string;
@@ -27,7 +28,9 @@ export interface PolicyRule {
   onlyIfExists?: boolean;
   /** Message shown when the rule blocks. {file} is replaced with the path. */
   blockMessage?: string;
-  /** Per-rule enabled flag. Default true. */
+  /** Per-rule behavior. Default confirm. */
+  behavior?: RuleBehavior;
+  /** Compatibility flag. `false` is treated as behavior='off'. */
   enabled?: boolean;
 }
 
@@ -37,7 +40,9 @@ export interface CommandPattern {
   description?: string;
   /** Override the default `confirm` action for this pattern. Currently unused in MVP. */
   action?: "confirm" | "block";
-  /** Per-pattern enabled flag. Default true. */
+  /** Per-pattern behavior. Default confirm. */
+  behavior?: RuleBehavior;
+  /** Compatibility flag. `false` is treated as behavior='off'. */
   enabled?: boolean;
 }
 
@@ -87,6 +92,9 @@ export interface OrgAwareRule {
   whenOrgType: OrgTypeFilter[];
   action: "confirm" | "block";
   confirmMessage?: string;
+  /** Per-rule behavior. Default confirm. */
+  behavior?: RuleBehavior;
+  /** Compatibility flag. `false` is treated as behavior='off'. */
   enabled?: boolean;
 }
 
@@ -162,6 +170,7 @@ export interface ApprovalScope {
   detail?: string;
   riskTier?: string;
   operationFamily?: string;
+  /** Legacy compatibility only. New approvals are session-scoped. */
   persistedGrant?: {
     label: string;
     ttlMs: number;

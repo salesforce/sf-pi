@@ -20,7 +20,7 @@ function org(overrides: Partial<OrgContext> = {}): OrgContext {
 }
 
 describe("Safety Envelope builders", () => {
-  it("builds a project-grant-eligible production deploy envelope", () => {
+  it("builds a session-scoped production deploy envelope", () => {
     const envelope = safetyEnvelopeForOrgAware(
       "sf-deploy-prod",
       "sf project deploy start -o Prod",
@@ -33,7 +33,7 @@ describe("Safety Envelope builders", () => {
       riskTier: "production_deploy",
       operationFamily: "sf project deploy",
     });
-    expect(envelope.persistedGrant?.ttlMs).toBe(60 * 60 * 1000);
+    expect(envelope.persistedGrant).toBeUndefined();
   });
 
   it("does not persist guessed production deploy envelopes", () => {
@@ -64,7 +64,7 @@ describe("Safety Envelope builders", () => {
     });
   });
 
-  it("builds a short-grant envelope for verified non-production org delete", () => {
+  it("builds a session-scoped envelope for verified non-production org delete", () => {
     const envelope = safetyEnvelopeForCommand(
       "sf-org-delete",
       "sf org delete scratch -o Scratch",
@@ -77,7 +77,7 @@ describe("Safety Envelope builders", () => {
       riskTier: "nonprod_org_delete",
       operationFamily: "sf org delete",
     });
-    expect(envelope.persistedGrant?.ttlMs).toBe(30 * 60 * 1000);
+    expect(envelope.persistedGrant).toBeUndefined();
   });
 
   it("does not persist production org delete envelopes", () => {

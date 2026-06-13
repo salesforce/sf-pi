@@ -8,7 +8,19 @@
  */
 import { readJsonFile, writeJsonFile } from "../../../lib/common/sf-pi-settings.ts";
 import { readBundledConfig, userConfigPath } from "./config.ts";
-import type { CommandPattern, GuardrailConfig, OrgAwareRule, PolicyRule } from "./types.ts";
+import type {
+  CommandPattern,
+  GuardrailConfig,
+  OrgAwareRule,
+  PolicyRule,
+  RuleBehavior,
+} from "./types.ts";
+import {
+  behaviorEnabled,
+  labelForRuleBehavior,
+  resolveRuleBehavior,
+  ruleBehaviorFromLabel,
+} from "./rule-behavior.ts";
 
 export type StaticGuardrailPreferenceKey =
   | "enabled"
@@ -23,6 +35,8 @@ export type GuardrailPreferenceKey =
   | `policies.rules.${string}.enabled`
   | `commandGate.patterns.${string}.enabled`
   | `orgAwareGate.rules.${string}.enabled`;
+
+export type GuardrailPreset = "powerTool" | "strict";
 
 export interface GuardrailPreferenceDescriptor {
   key: GuardrailPreferenceKey;
@@ -78,20 +92,20 @@ export function buildGuardrailPreferenceDescriptors(
     ...config.policies.rules.map((rule) => ({
       key: policyRulePreferenceKey(rule.id),
       label: `Policy · ${rule.description ?? rule.id}`,
-      description: `Enable or disable policy rule ${rule.id}.`,
-      values: ["on", "off"],
+      description: `Choose behavior for policy rule ${rule.id}.`,
+      values: ["confirm", "hard block", "off"],
     })),
     ...config.commandGate.patterns.map((pattern) => ({
       key: commandPatternPreferenceKey(pattern.id),
       label: `Command · ${pattern.description ?? pattern.id}`,
-      description: `Enable or disable command pattern ${pattern.id}.`,
-      values: ["on", "off"],
+      description: `Choose behavior for command pattern ${pattern.id}.`,
+      values: ["confirm", "hard block", "off"],
     })),
     ...config.orgAwareGate.rules.map((rule) => ({
       key: orgAwareRulePreferenceKey(rule.id),
       label: `Org-aware · ${rule.description ?? rule.id}`,
-      description: `Enable or disable org-aware rule ${rule.id}.`,
-      values: ["on", "off"],
+      description: `Choose behavior for org-aware rule ${rule.id}.`,
+      values: ["confirm", "hard block", "off"],
     })),
   ];
 }
@@ -99,22 +113,22 @@ export function buildGuardrailPreferenceDescriptors(
 export function preferenceValue(config: GuardrailConfig, key: GuardrailPreferenceKey): string {
   const policyRuleId = parseRulePreferenceKey(key, "policies.rules.");
   if (policyRuleId) {
-    return onOff(config.policies.rules.find((rule) => rule.id === policyRuleId)?.enabled !== false);
+    const rule = config.policies.rules.find((candidate) => candidate.id === policyRuleId);
+    return labelForRuleBehavior(resolveRuleBehavior(rule ?? { behavior: "off" }));
   }
 
   const commandPatternId = parseRulePreferenceKey(key, "commandGate.patterns.");
   if (commandPatternId) {
-    return onOff(
-      config.commandGate.patterns.find((pattern) => pattern.id === commandPatternId)?.enabled !==
-        false,
+    const pattern = config.commandGate.patterns.find(
+      (candidate) => candidate.id === commandPatternId,
     );
+    return labelForRuleBehavior(resolveRuleBehavior(pattern ?? { behavior: "off" }));
   }
 
   const orgRuleId = parseRulePreferenceKey(key, "orgAwareGate.rules.");
   if (orgRuleId) {
-    return onOff(
-      config.orgAwareGate.rules.find((rule) => rule.id === orgRuleId)?.enabled !== false,
-    );
+    const rule = config.orgAwareGate.rules.find((candidate) => candidate.id === orgRuleId);
+    return labelForRuleBehavior(resolveRuleBehavior(rule ?? { behavior: "off" }));
   }
 
   switch (key) {
@@ -131,6 +145,26 @@ export function preferenceValue(config: GuardrailConfig, key: GuardrailPreferenc
     case "confirmTimeoutMs":
       return String(config.confirmTimeoutMs);
   }
+}
+
+export function applyGuardrailPreset(
+  preset: GuardrailPreset,
+  effectiveConfig: GuardrailConfig,
+): void {
+  const current = readJsonFile(userConfigPath());
+  const next = { ...current };
+
+  for (const rule of effectiveConfig.policies.rules) {
+    upsertPolicyRuleBehavior(next, rule, behaviorForPreset(preset, rule.id));
+  }
+  for (const pattern of effectiveConfig.commandGate.patterns) {
+    upsertCommandPatternBehavior(next, pattern, behaviorForPreset(preset, pattern.id));
+  }
+  for (const rule of effectiveConfig.orgAwareGate.rules) {
+    upsertOrgAwareRuleBehavior(next, rule, behaviorForPreset(preset, rule.id));
+  }
+
+  writeJsonFile(userConfigPath(), next);
 }
 
 export function updateProductionAliasesFromText(value: string): string[] {
@@ -156,7 +190,7 @@ export function updateUserPreference(
   if (policyRuleId) {
     const rule = effectiveConfig.policies.rules.find((candidate) => candidate.id === policyRuleId);
     if (!rule) return;
-    upsertPolicyRuleEnabled(next, rule, parseOnOff(value));
+    upsertPolicyRuleBehavior(next, rule, parseRuleBehavior(value));
     writeJsonFile(userConfigPath(), next);
     return;
   }
@@ -167,7 +201,7 @@ export function updateUserPreference(
       (candidate) => candidate.id === commandPatternId,
     );
     if (!pattern) return;
-    upsertCommandPatternEnabled(next, pattern, parseOnOff(value));
+    upsertCommandPatternBehavior(next, pattern, parseRuleBehavior(value));
     writeJsonFile(userConfigPath(), next);
     return;
   }
@@ -176,7 +210,7 @@ export function updateUserPreference(
   if (orgRuleId) {
     const rule = effectiveConfig.orgAwareGate.rules.find((candidate) => candidate.id === orgRuleId);
     if (!rule) return;
-    upsertOrgAwareRuleEnabled(next, rule, parseOnOff(value));
+    upsertOrgAwareRuleBehavior(next, rule, parseRuleBehavior(value));
     writeJsonFile(userConfigPath(), next);
     return;
   }
@@ -208,52 +242,53 @@ export function updateUserPreference(
   writeJsonFile(userConfigPath(), next);
 }
 
-function upsertPolicyRuleEnabled(
+function upsertPolicyRuleBehavior(
   target: Record<string, unknown>,
   rule: PolicyRule,
-  enabled: boolean,
+  behavior: RuleBehavior,
 ): void {
   const policies = objectValue(target.policies);
   const rules = arrayValue(policies.rules);
-  policies.rules = upsertRule(rules, rule, enabled);
+  policies.rules = upsertRuleBehavior(rules, rule, behavior);
   target.policies = policies;
 }
 
-function upsertCommandPatternEnabled(
+function upsertCommandPatternBehavior(
   target: Record<string, unknown>,
   pattern: CommandPattern,
-  enabled: boolean,
+  behavior: RuleBehavior,
 ): void {
   const commandGate = objectValue(target.commandGate);
   const patterns = arrayValue(commandGate.patterns);
-  commandGate.patterns = upsertRule(patterns, pattern, enabled);
+  commandGate.patterns = upsertRuleBehavior(patterns, pattern, behavior);
   target.commandGate = commandGate;
 }
 
-function upsertOrgAwareRuleEnabled(
+function upsertOrgAwareRuleBehavior(
   target: Record<string, unknown>,
   rule: OrgAwareRule,
-  enabled: boolean,
+  behavior: RuleBehavior,
 ): void {
   const orgAwareGate = objectValue(target.orgAwareGate);
   const rules = arrayValue(orgAwareGate.rules);
-  orgAwareGate.rules = upsertRule(rules, rule, enabled);
+  orgAwareGate.rules = upsertRuleBehavior(rules, rule, behavior);
   target.orgAwareGate = orgAwareGate;
 }
 
-function upsertRule<T extends { id: string }>(
+function upsertRuleBehavior<T extends { id: string }>(
   rules: unknown[],
   rule: T,
-  enabled: boolean,
+  behavior: RuleBehavior,
 ): unknown[] {
-  const nextRule = { ...rule, enabled };
+  const enabled = behaviorEnabled(behavior);
+  const nextRule = { ...rule, behavior, enabled };
   let found = false;
   const next = rules.map((candidate) => {
     if (!candidate || typeof candidate !== "object") return candidate;
     const raw = candidate as Record<string, unknown>;
     if (raw.id !== rule.id) return candidate;
     found = true;
-    return { ...raw, enabled };
+    return { ...raw, behavior, enabled };
   });
   if (!found) next.push(nextRule);
   return next;
@@ -287,6 +322,24 @@ function parseRulePreferenceKey(
 ): string | undefined {
   if (!key.startsWith(prefix) || !key.endsWith(".enabled")) return undefined;
   return key.slice(prefix.length, -".enabled".length);
+}
+
+function behaviorForPreset(preset: GuardrailPreset, id: string): RuleBehavior {
+  if (preset === "powerTool") return "confirm";
+  return STRICT_BLOCK_IDS.has(id) ? "block" : "confirm";
+}
+
+const STRICT_BLOCK_IDS = new Set([
+  "secret-files",
+  "sf-cli-state",
+  "sf-org-auth-show-access-token",
+  "sf-org-auth-show-sfdx-auth-url",
+  "sf-org-auth-show-user-password",
+  "sf-temp-show-secrets",
+]);
+
+function parseRuleBehavior(value: string): RuleBehavior {
+  return ruleBehaviorFromLabel(value) ?? "confirm";
 }
 
 function parseProductionAliases(value: string): string[] {

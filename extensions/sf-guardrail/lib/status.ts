@@ -6,6 +6,7 @@
  * current config and the recent audit entries; this module returns the
  * string shown via ctx.ui.notify.
  */
+import { labelForRuleBehavior, resolveRuleBehavior } from "./rule-behavior.ts";
 import type { DecisionEntryData, GuardrailConfig } from "./types.ts";
 
 export interface StatusInput {
@@ -29,13 +30,13 @@ export function renderStatus(input: StatusInput): string {
   lines.push(`  features: ${features.join(", ") || "none"}`);
 
   lines.push(
-    `  policies: ${count(config.policies.rules, (r) => r.enabled !== false)} active / ${config.policies.rules.length} defined`,
+    `  policies: ${count(config.policies.rules, (r) => resolveRuleBehavior(r) !== "off")} active / ${config.policies.rules.length} defined`,
   );
   lines.push(
-    `  command gate: ${count(config.commandGate.patterns, (p) => p.enabled !== false)} active / ${config.commandGate.patterns.length} patterns; ${config.commandGate.allowedPatterns.length} allowed; ${config.commandGate.autoDenyPatterns.length} auto-deny`,
+    `  command gate: ${count(config.commandGate.patterns, (p) => resolveRuleBehavior(p) !== "off")} active / ${config.commandGate.patterns.length} patterns; ${config.commandGate.allowedPatterns.length} allowed; ${config.commandGate.autoDenyPatterns.length} auto-deny`,
   );
   lines.push(
-    `  org-aware gate: ${count(config.orgAwareGate.rules, (r) => r.enabled !== false)} active / ${config.orgAwareGate.rules.length} defined`,
+    `  org-aware gate: ${count(config.orgAwareGate.rules, (r) => resolveRuleBehavior(r) !== "off")} active / ${config.orgAwareGate.rules.length} defined`,
   );
 
   if (config.productionAliases.length > 0) {
@@ -76,7 +77,7 @@ export function renderRules(config: GuardrailConfig): string {
   const lines: string[] = [];
   lines.push("Policies:");
   for (const rule of config.policies.rules) {
-    const status = rule.enabled === false ? "[off]" : "[on]";
+    const status = `[${labelForRuleBehavior(resolveRuleBehavior(rule))}]`;
     lines.push(`  ${status} ${rule.id} (${rule.protection})  ${rule.description ?? ""}`.trimEnd());
     for (const p of rule.patterns) {
       lines.push(`      ${p.regex ? "regex" : "glob"}: ${p.pattern}`);
@@ -85,13 +86,13 @@ export function renderRules(config: GuardrailConfig): string {
   lines.push("");
   lines.push("Command gate:");
   for (const p of config.commandGate.patterns) {
-    const status = p.enabled === false ? "[off]" : "[on]";
+    const status = `[${labelForRuleBehavior(resolveRuleBehavior(p))}]`;
     lines.push(`  ${status} ${p.id}  ${p.pattern}  ${p.description ?? ""}`.trimEnd());
   }
   lines.push("");
   lines.push("Org-aware gate:");
   for (const rule of config.orgAwareGate.rules) {
-    const status = rule.enabled === false ? "[off]" : "[on]";
+    const status = `[${labelForRuleBehavior(resolveRuleBehavior(rule))}]`;
     const types = rule.whenOrgType.join(",");
     lines.push(
       `  ${status} ${rule.id} (${rule.action}, orgType=${types})  ${rule.description ?? ""}`.trimEnd(),

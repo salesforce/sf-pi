@@ -7,7 +7,7 @@ This plan simplifies SF Guardrail around the decisions captured in ADRs 0033–0
 1. Keep SF Guardrail a **Safety Mediator**, not a configurable policy engine.
 2. Make human approval explicit through **Safety Envelopes**.
 3. Concentrate risky-action evaluation in a pure **Safety Kernel**.
-4. Concentrate audit, session approvals, and persisted grants in an **Approval Ledger**.
+4. Concentrate audit, session approvals, and legacy grant cleanup in an **Approval Ledger**.
 5. Generate agent-visible guidance from the active ruleset.
 6. Prefer pi-native settings, session entries, and TUI components over custom infrastructure.
 7. Preserve fail-closed behavior and current safety coverage throughout the refactor.
@@ -49,7 +49,7 @@ extensions/sf-guardrail/
     shell-command.ts       # shell tokenization and target-org extraction
     org-context.ts         # cache-first org resolution
     ruleset.ts             # bundled rules, preferences, advanced overrides, summaries
-    approval-ledger.ts     # audit + session approvals + persisted grants
+    approval-ledger.ts     # audit + session approvals + legacy grant cleanup
     human-approval.ts      # ctx.ui / headless adapter
     command-panel.ts       # /sf-guardrail panel and command routing
     guidance.ts            # rule-derived agent guidance
@@ -101,7 +101,7 @@ Coverage must include:
 - deploy rehearsal allows
 - guessed-org fail-closed behavior
 - session approval envelope matching
-- persisted grant eligibility and ineligibility
+- session-scoped approval envelopes
 - headless fail-closed behavior
 
 Acceptance:
@@ -141,7 +141,7 @@ Add:
 
 - `lib/approval-ledger.ts`
 
-Consolidate orchestration behind `approval-ledger.ts`. It now owns formerly separate audit, allow-memory, and persisted-grant helpers; `approval-scope.ts` remains the compatibility source for Safety Envelope construction.
+Consolidate orchestration behind `approval-ledger.ts`. It now owns formerly separate audit, allow-memory, and legacy persisted-grant helpers; `approval-scope.ts` remains the compatibility source for Safety Envelope construction.
 
 The ledger should own:
 
@@ -149,8 +149,8 @@ The ledger should own:
 - record outcomes
 - check session approvals
 - create session approvals
-- check persisted grants
-- create persisted grants
+- check legacy persisted grants
+- create legacy persisted grants only for compatibility
 - clear current project approvals
 - read recent decisions
 
@@ -158,7 +158,7 @@ Acceptance:
 
 - Callers do not manually coordinate separate audit, allow-memory, and grant modules.
 - `/sf-guardrail audit`, `/sf-guardrail grants`, and `/sf-guardrail forget` still behave the same.
-- Headless persisted grants remain fail-closed unless the explicit env escape hatch is set.
+- New approvals are session-scoped; legacy persisted grants remain fail-closed unless the explicit env escape hatch is set.
 
 ### Phase 4 — Human approval copy and envelope-first UX
 
@@ -170,7 +170,7 @@ Update the HIL adapter to show:
 - target subject
 - resolved org identity when present
 - safety envelope
-- TTL when persisted grant is offered
+- session-scoped approval duration
 - advisory recovery guidance
 
 Use pi-native primitives first:
@@ -185,7 +185,7 @@ Acceptance:
 
 - The user can tell what an approval covers before selecting allow.
 - Exact-command approvals remain exact for broad local dangerous commands.
-- Production deploy grants remain project + verified org + deploy-family scoped.
+- Production deploy session approvals remain project + verified org + deploy-family scoped.
 
 ### Phase 5 — Rule-derived guidance
 

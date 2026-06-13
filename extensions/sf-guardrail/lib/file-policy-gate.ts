@@ -7,6 +7,7 @@
  */
 import { fingerprintPath } from "./fingerprint.ts";
 import { blockedTools, matchPath } from "./policies.ts";
+import { behaviorToAction, resolveRuleBehavior } from "./rule-behavior.ts";
 import type { ClassifiedDecision, FileSafetySubject, GuardrailConfig } from "./types.ts";
 
 export function evaluateFilePolicy(
@@ -19,13 +20,17 @@ export function evaluateFilePolicy(
   const matched = matchPath(subject.path, cwd, config.policies.rules);
   if (!matched) return undefined;
 
+  const behavior = resolveRuleBehavior(matched.rule);
+  const action = behaviorToAction(behavior);
+  if (!action) return undefined;
+
   const blocked = blockedTools(matched.rule.protection);
   if (!blocked.includes(subject.toolName)) return undefined;
 
   return {
     ruleId: matched.rule.id,
     feature: "policies",
-    action: "block",
+    action,
     reason: renderBlockMessage(matched.rule.blockMessage, { file: subject.path }),
     fingerprint: fingerprintPath(subject.path),
     subject: subject.path,

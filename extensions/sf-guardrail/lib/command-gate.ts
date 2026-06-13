@@ -15,6 +15,7 @@
  * confirmation.
  */
 import { tokenizeSimpleCommands } from "./bash-ast.ts";
+import { resolveRuleBehavior } from "./rule-behavior.ts";
 import type { CommandGateConfig, CommandPattern } from "./types.ts";
 
 export type CommandGateOutcome =
@@ -49,7 +50,7 @@ function findMatch(command: string, patterns: CommandPattern[]): CommandPattern 
   const headAndArgs = commands.flatMap((item) => [item.tokens.head, ...item.tokens.args]);
 
   for (const p of patterns) {
-    if (p.enabled === false) continue;
+    if (resolveRuleBehavior(p) === "off") continue;
     if (patternMatches(command, headAndArgs, p.pattern)) return p;
   }
   return undefined;

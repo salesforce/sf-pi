@@ -75,10 +75,8 @@ import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 import { shouldInjectOnce } from "../../lib/common/session/inject-once.ts";
 import {
   clearProjectApprovals,
-  createPersistedApproval,
   forgetSessionApprovals,
   grantSessionApproval,
-  hasPersistedApproval,
   hasSessionApproval,
   readRecentDecisions,
   recordDecision,
@@ -91,6 +89,7 @@ import { loadConfig } from "./lib/config.ts";
 import { confirmDecision } from "./lib/hitl.ts";
 import { installPreset } from "./lib/install-preset.ts";
 import { loadPrompt } from "./lib/prompt-injection.ts";
+import { applyGuardrailPreset } from "./lib/preferences.ts";
 import { openGuardrailPreferencesPanel } from "./lib/preferences-panel.ts";
 import { openProductionAliasesEditor } from "./lib/production-aliases-panel.ts";
 import { renderAudit, renderRules, renderStatus } from "./lib/status.ts";
@@ -178,15 +177,6 @@ export default function sfGuardrail(pi: ExtensionAPI) {
       return undefined;
     }
 
-    // Previously granted for this project? Headless stays fail-closed unless
-    // the existing explicit headless escape hatch is set.
-    const headlessGrantAllowed =
-      ctx.hasUI || isTruthyEnv(process.env[config.headlessEscapeHatchEnv]);
-    if (headlessGrantAllowed && hasPersistedApproval(ctx.cwd, decision)) {
-      recordDecision(pi, decision, "allow_persisted", event.toolName);
-      return undefined;
-    }
-
     // Confirmation required.
     const result = await confirmDecision(ctx, {
       title: decision.promptTitle ?? "sf-guardrail",
@@ -194,7 +184,6 @@ export default function sfGuardrail(pi: ExtensionAPI) {
       timeoutMs: config.confirmTimeoutMs,
       escapeHatchEnv: config.headlessEscapeHatchEnv,
       signal: ctx.signal,
-      scopedAllowLabel: decision.approvalScope?.persistedGrant?.label,
     });
 
     switch (result.outcome) {
@@ -204,10 +193,6 @@ export default function sfGuardrail(pi: ExtensionAPI) {
       case "allow_session":
         grantSessionApproval(pi, decision);
         recordDecision(pi, decision, "allow_session", event.toolName);
-        return undefined;
-      case "allow_persisted":
-        createPersistedApproval(ctx.cwd, decision);
-        recordDecision(pi, decision, "allow_persisted", event.toolName);
         return undefined;
       case "headless_pass":
         recordDecision(pi, decision, "headless_pass", event.toolName);
@@ -262,6 +247,8 @@ type GuardrailAction =
   | "grants"
   | "settings"
   | "aliases"
+  | "preset-power-tool"
+  | "preset-strict"
   | "forget"
   | "install-preset"
   | "help"
@@ -303,6 +290,18 @@ const GUARDRAIL_ACTIONS: CommandPanelAction<GuardrailAction>[] = [
     value: "aliases",
     label: "Edit production aliases",
     description: "Add or remove aliases that sf-guardrail should treat as production.",
+    group: "Controls",
+  },
+  {
+    value: "preset-power-tool",
+    label: "Apply Power Tool preset",
+    description: "Set every rule to confirm so risky actions stay human-overridable.",
+    group: "Controls",
+  },
+  {
+    value: "preset-strict",
+    label: "Apply Strict preset",
+    description: "Hard-block secret/credential/internal-state rules and confirm the rest.",
     group: "Controls",
   },
   {
@@ -428,6 +427,30 @@ async function handleGuardrailCommand(
     return;
   }
 
+  if (sub === "preset-power-tool" || sub === "power-tool") {
+    applyGuardrailPreset("powerTool", config);
+    await emitGuardrailOutput(
+      ctx,
+      "SF Guardrail preset applied",
+      "Power Tool preset applied: risky rules are set to confirm.",
+      "info",
+      fromPanel,
+    );
+    return;
+  }
+
+  if (sub === "preset-strict" || sub === "strict") {
+    applyGuardrailPreset("strict", config);
+    await emitGuardrailOutput(
+      ctx,
+      "SF Guardrail preset applied",
+      "Strict preset applied: secret, credential, and CLI-state rules are hard-blocked; other rules confirm.",
+      "info",
+      fromPanel,
+    );
+    return;
+  }
+
   if (sub === "forget") {
     forgetSessionApprovals(pi);
     const removed = clearProjectApprovals(ctx.cwd);
@@ -449,7 +472,7 @@ async function handleGuardrailCommand(
   await emitGuardrailOutput(
     ctx,
     "Unknown command",
-    `Unknown /sf-guardrail subcommand: ${sub}. Use status, list, audit, grants, settings, aliases, forget, install-preset, help.`,
+    `Unknown /sf-guardrail subcommand: ${sub}. Use status, list, audit, grants, settings, aliases, power-tool, strict, forget, install-preset, help.`,
     "warning",
     fromPanel,
   );
@@ -498,12 +521,10 @@ function renderGuardrailHelp(): string {
     `  /${COMMAND_NAME} grants          Show active persisted approval grants`,
     `  /${COMMAND_NAME} settings        Edit common guardrail preferences`,
     `  /${COMMAND_NAME} aliases         Edit production aliases`,
+    `  /${COMMAND_NAME} power-tool      Apply confirm-by-default preset`,
+    `  /${COMMAND_NAME} strict          Apply strict hard-block preset`,
     `  /${COMMAND_NAME} forget          Clear session allows and project approval grants`,
     `  /${COMMAND_NAME} install-preset  Write/reconcile bundled defaults to user config`,
     `  /${COMMAND_NAME} help            Show this help`,
   ].join("\n");
-}
-
-function isTruthyEnv(value: string | undefined): boolean {
-  return !!value && value !== "0" && value.toLowerCase() !== "false";
 }

@@ -17,6 +17,7 @@
       "lib/safety-kernel.ts",
       "lib/safety-subject.ts",
       "lib/safety-envelope.ts",
+      "lib/rule-behavior.ts",
       "lib/file-policy-gate.ts",
       "lib/policies.ts",
       "lib/command-risk-gate.ts",
