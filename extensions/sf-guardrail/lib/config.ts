@@ -237,6 +237,7 @@ function sanitizeCommandPattern(input: unknown): CommandPattern | undefined {
     pattern: raw.pattern,
     description: typeof raw.description === "string" ? raw.description : undefined,
     action: raw.action === "block" ? "block" : "confirm",
+    enabled: typeof raw.enabled === "boolean" ? raw.enabled : true,
   };
 }
 

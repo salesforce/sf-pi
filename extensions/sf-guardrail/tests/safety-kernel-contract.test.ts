@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /**
- * End-to-end classification tests — wire the real config + bundled defaults
- * through classify() and assert on the decisions for representative tool
- * calls. These are the contract for the tool_call handler.
+ * End-to-end Safety Kernel contract tests — wire the real config + bundled
+ * defaults through evaluateSafety() and assert on representative Guardrail
+ * Decisions. These are the contract for the tool_call handler.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
@@ -33,7 +33,7 @@ vi.mock("node:fs", async () => {
   };
 });
 
-import { classify, classifyWithOrgLookup } from "../lib/classify.ts";
+import { evaluateSafety } from "../lib/safety-kernel.ts";
 import { readBundledConfig } from "../lib/config.ts";
 
 function env(orgAlias: string, orgType: SfEnvironment["org"]["orgType"]): SfEnvironment {
@@ -71,10 +71,10 @@ afterEach(() => {
   mockedLookup = {};
 });
 
-describe("classify — policies (Tier 1)", () => {
-  it("blocks writes to destructiveChanges.xml", () => {
+describe("Safety Kernel — policies (Tier 1)", () => {
+  it("blocks writes to destructiveChanges.xml", async () => {
     const config = readBundledConfig();
-    const decision = classify({
+    const decision = await evaluateSafety({
       toolName: "write",
       input: { path: "force-app/main/default/destructiveChanges.xml" },
       cwd: "/project",
@@ -85,9 +85,9 @@ describe("classify — policies (Tier 1)", () => {
     expect(decision?.ruleId).toBe("sf-destructive-changes-xml");
   });
 
-  it("blocks writes to .sf/**", () => {
+  it("blocks writes to .sf/**", async () => {
     const config = readBundledConfig();
-    const decision = classify({
+    const decision = await evaluateSafety({
       toolName: "write",
       input: { path: ".sf/orgs.json" },
       cwd: "/project",
@@ -97,9 +97,9 @@ describe("classify — policies (Tier 1)", () => {
     expect(decision?.ruleId).toBe("sf-cli-state");
   });
 
-  it("allows reads to .forceignore (readOnly, not noAccess)", () => {
+  it("allows reads to .forceignore (readOnly, not noAccess)", async () => {
     const config = readBundledConfig();
-    const decision = classify({
+    const decision = await evaluateSafety({
       toolName: "read",
       input: { path: ".forceignore" },
       cwd: "/project",
@@ -108,9 +108,9 @@ describe("classify — policies (Tier 1)", () => {
     expect(decision).toBeUndefined();
   });
 
-  it("blocks writes to .forceignore (readOnly)", () => {
+  it("blocks writes to .forceignore (readOnly)", async () => {
     const config = readBundledConfig();
-    const decision = classify({
+    const decision = await evaluateSafety({
       toolName: "write",
       input: { path: ".forceignore" },
       cwd: "/project",
@@ -120,9 +120,9 @@ describe("classify — policies (Tier 1)", () => {
     expect(decision?.action).toBe("block");
   });
 
-  it("allows reads to .env.example (allowedPatterns short-circuits)", () => {
+  it("allows reads to .env.example (allowedPatterns short-circuits)", async () => {
     const config = readBundledConfig();
-    const decision = classify({
+    const decision = await evaluateSafety({
       toolName: "read",
       input: { path: ".env.example" },
       cwd: "/project",
@@ -132,10 +132,10 @@ describe("classify — policies (Tier 1)", () => {
   });
 });
 
-describe("classify — commandGate (Tier 2)", () => {
-  it("confirms rm -rf", () => {
+describe("Safety Kernel — commandGate (Tier 2)", () => {
+  it("confirms rm -rf", async () => {
     const config = readBundledConfig();
-    const decision = classify({
+    const decision = await evaluateSafety({
       toolName: "bash",
       input: { command: "rm -rf tmp/" },
       cwd: "/project",
@@ -146,9 +146,9 @@ describe("classify — commandGate (Tier 2)", () => {
     expect(decision?.ruleId).toBe("rm-rf");
   });
 
-  it("confirms sf org delete", () => {
+  it("confirms sf org delete", async () => {
     const config = readBundledConfig();
-    const decision = classify({
+    const decision = await evaluateSafety({
       toolName: "bash",
       input: { command: "sf org delete scratch -o MyScratch" },
       cwd: "/project",
@@ -160,7 +160,7 @@ describe("classify — commandGate (Tier 2)", () => {
   it("makes verified non-production sf org delete eligible for a short persisted grant", async () => {
     lookupOrg("MyScratch", "scratch");
     const config = readBundledConfig();
-    const decision = await classifyWithOrgLookup({
+    const decision = await evaluateSafety({
       toolName: "bash",
       input: { command: "sf org delete scratch -o MyScratch" },
       cwd: "/project",
@@ -171,9 +171,9 @@ describe("classify — commandGate (Tier 2)", () => {
     expect(decision?.approvalScope?.persistedGrant?.label).toContain("30 minutes");
   });
 
-  it("ignores benign commands", () => {
+  it("ignores benign commands", async () => {
     const config = readBundledConfig();
-    const decision = classify({
+    const decision = await evaluateSafety({
       toolName: "bash",
       input: { command: "sf org list --all --json" },
       cwd: "/project",
@@ -182,9 +182,9 @@ describe("classify — commandGate (Tier 2)", () => {
     expect(decision).toBeUndefined();
   });
 
-  it("confirms explicit Salesforce CLI credential reveal commands", () => {
+  it("confirms explicit Salesforce CLI credential reveal commands", async () => {
     const config = readBundledConfig();
-    const decision = classify({
+    const decision = await evaluateSafety({
       toolName: "bash",
       input: { command: "sf org auth show-access-token -o DevHub --json" },
       cwd: "/project",
@@ -195,9 +195,9 @@ describe("classify — commandGate (Tier 2)", () => {
     expect(decision?.ruleId).toBe("sf-org-auth-show-access-token");
   });
 
-  it("confirms temporary Salesforce CLI secret-output override", () => {
+  it("confirms temporary Salesforce CLI secret-output override", async () => {
     const config = readBundledConfig();
-    const decision = classify({
+    const decision = await evaluateSafety({
       toolName: "bash",
       input: { command: "SF_TEMP_SHOW_SECRETS=true sf org display -o DevHub --json" },
       cwd: "/project",
@@ -208,9 +208,9 @@ describe("classify — commandGate (Tier 2)", () => {
     expect(decision?.ruleId).toBe("sf-temp-show-secrets");
   });
 
-  it("confirms dangerous herdr.run commands", () => {
+  it("confirms dangerous herdr.run commands", async () => {
     const config = readBundledConfig();
-    const decision = classify({
+    const decision = await evaluateSafety({
       toolName: "herdr",
       input: { action: "run", pane: "tests", command: "rm -rf tmp/" },
       cwd: "/project",
@@ -222,11 +222,11 @@ describe("classify — commandGate (Tier 2)", () => {
     expect(decision?.subject).toBe("rm -rf tmp/");
   });
 
-  it("auto-allows strictly validated OS temp cleanup", () => {
+  it("auto-allows strictly validated OS temp cleanup", async () => {
     const tempDir = mkdtempSync(path.join(tmpdir(), "tmp.sf-guardrail-"));
     try {
       const config = readBundledConfig();
-      const decision = classify({
+      const decision = await evaluateSafety({
         toolName: "bash",
         input: { command: `rm -rf ${tempDir}` },
         cwd: "/project",
@@ -239,11 +239,11 @@ describe("classify — commandGate (Tier 2)", () => {
     }
   });
 
-  it("does not auto-allow chained temp cleanup", () => {
+  it("does not auto-allow chained temp cleanup", async () => {
     const tempDir = mkdtempSync(path.join(tmpdir(), "tmp.sf-guardrail-"));
     try {
       const config = readBundledConfig();
-      const decision = classify({
+      const decision = await evaluateSafety({
         toolName: "bash",
         input: { command: `echo ok && rm -rf ${tempDir}` },
         cwd: "/project",
@@ -256,9 +256,9 @@ describe("classify — commandGate (Tier 2)", () => {
     }
   });
 
-  it("ignores non-run herdr actions", () => {
+  it("ignores non-run herdr actions", async () => {
     const config = readBundledConfig();
-    const decision = classify({
+    const decision = await evaluateSafety({
       toolName: "herdr",
       input: { action: "read", pane: "tests", command: "rm -rf tmp/" },
       cwd: "/project",
@@ -267,9 +267,9 @@ describe("classify — commandGate (Tier 2)", () => {
     expect(decision).toBeUndefined();
   });
 
-  it("ignores herdr.run without a string command", () => {
+  it("ignores herdr.run without a string command", async () => {
     const config = readBundledConfig();
-    const decision = classify({
+    const decision = await evaluateSafety({
       toolName: "herdr",
       input: { action: "run", pane: "tests" },
       cwd: "/project",
@@ -279,11 +279,11 @@ describe("classify — commandGate (Tier 2)", () => {
   });
 });
 
-describe("classify — orgAwareGate (Tier 2)", () => {
-  it("confirms sf project deploy start against production", () => {
+describe("Safety Kernel — orgAwareGate (Tier 2)", () => {
+  it("confirms sf project deploy start against production", async () => {
     mockedEnv = env("Prod", "production");
     const config = readBundledConfig();
-    const decision = classify({
+    const decision = await evaluateSafety({
       toolName: "bash",
       input: { command: "sf project deploy start -o Prod" },
       cwd: "/project",
@@ -296,10 +296,10 @@ describe("classify — orgAwareGate (Tier 2)", () => {
     expect(decision?.approvalScope?.persistedGrant?.label).toContain("60 minutes");
   });
 
-  it("confirms herdr.run sf project deploy start against production", () => {
+  it("confirms herdr.run sf project deploy start against production", async () => {
     mockedEnv = env("Prod", "production");
     const config = readBundledConfig();
-    const decision = classify({
+    const decision = await evaluateSafety({
       toolName: "herdr",
       input: { action: "run", pane: "deploy", command: "sf project deploy start -o Prod" },
       cwd: "/project",
@@ -312,10 +312,10 @@ describe("classify — orgAwareGate (Tier 2)", () => {
     expect(decision?.subject).toBe("sf project deploy start -o Prod");
   });
 
-  it("confirms chained sf project deploy start against production", () => {
+  it("confirms chained sf project deploy start against production", async () => {
     mockedEnv = env("Prod", "production");
     const config = readBundledConfig();
-    const decision = classify({
+    const decision = await evaluateSafety({
       toolName: "bash",
       input: { command: "cd force-app && sf project deploy start -o Prod" },
       cwd: "/project",
@@ -326,10 +326,10 @@ describe("classify — orgAwareGate (Tier 2)", () => {
     expect(decision?.subject).toBe("cd force-app && sf project deploy start -o Prod");
   });
 
-  it("confirms sf project deploy quick against production", () => {
+  it("confirms sf project deploy quick against production", async () => {
     mockedEnv = env("Prod", "production");
     const config = readBundledConfig();
-    const decision = classify({
+    const decision = await evaluateSafety({
       toolName: "bash",
       input: { command: "sf project deploy quick -o Prod" },
       cwd: "/project",
@@ -338,7 +338,7 @@ describe("classify — orgAwareGate (Tier 2)", () => {
     expect(decision?.ruleId).toBe("sf-deploy-prod");
   });
 
-  it("does NOT fire for production deploy rehearsal commands", () => {
+  it("does NOT fire for production deploy rehearsal commands", async () => {
     mockedEnv = env("Prod", "production");
     const config = readBundledConfig();
     for (const command of [
@@ -349,15 +349,15 @@ describe("classify — orgAwareGate (Tier 2)", () => {
       "sf project deploy start --dry-run -o Prod",
     ]) {
       expect(
-        classify({ toolName: "bash", input: { command }, cwd: "/project", config }),
+        await evaluateSafety({ toolName: "bash", input: { command }, cwd: "/project", config }),
       ).toBeUndefined();
     }
   });
 
-  it("does NOT fire for sandbox targets", () => {
+  it("does NOT fire for sandbox targets", async () => {
     mockedEnv = env("DevInt", "sandbox");
     const config = readBundledConfig();
-    const decision = classify({
+    const decision = await evaluateSafety({
       toolName: "bash",
       input: { command: "sf project deploy start -o DevInt" },
       cwd: "/project",
@@ -370,7 +370,7 @@ describe("classify — orgAwareGate (Tier 2)", () => {
     mockedEnv = env("DevInt", "sandbox");
     lookupOrg("Scratch", "scratch");
     const config = readBundledConfig();
-    const decision = await classifyWithOrgLookup({
+    const decision = await evaluateSafety({
       toolName: "bash",
       input: { command: "sf project deploy start -o Scratch" },
       cwd: "/project",
@@ -383,7 +383,7 @@ describe("classify — orgAwareGate (Tier 2)", () => {
     mockedEnv = env("DevInt", "sandbox");
     lookupOrg("Prod", "production");
     const config = readBundledConfig();
-    const decision = await classifyWithOrgLookup({
+    const decision = await evaluateSafety({
       toolName: "bash",
       input: { command: "sf project deploy start -o Prod" },
       cwd: "/project",
@@ -395,10 +395,10 @@ describe("classify — orgAwareGate (Tier 2)", () => {
     expect(decision?.approvalScope?.persistedGrant?.label).toContain("60 minutes");
   });
 
-  it("confirms sf apex run on production", () => {
+  it("confirms sf apex run on production", async () => {
     mockedEnv = env("Prod", "production");
     const config = readBundledConfig();
-    const decision = classify({
+    const decision = await evaluateSafety({
       toolName: "bash",
       input: { command: "sf apex run -f scripts/apex/check.apex -o Prod" },
       cwd: "/project",
@@ -407,10 +407,10 @@ describe("classify — orgAwareGate (Tier 2)", () => {
     expect(decision?.ruleId).toBe("sf-apex-run-prod");
   });
 
-  it("confirms sf data upsert on production", () => {
+  it("confirms sf data upsert on production", async () => {
     mockedEnv = env("Prod", "production");
     const config = readBundledConfig();
-    const decision = classify({
+    const decision = await evaluateSafety({
       toolName: "bash",
       input: { command: "sf data upsert --file x.csv --sobject Account -o Prod" },
       cwd: "/project",
@@ -419,10 +419,10 @@ describe("classify — orgAwareGate (Tier 2)", () => {
     expect(decision?.ruleId).toBe("sf-data-mutate-prod");
   });
 
-  it("confirms sf org api DELETE on production", () => {
+  it("confirms sf org api DELETE on production", async () => {
     mockedEnv = env("Prod", "production");
     const config = readBundledConfig();
-    const decision = classify({
+    const decision = await evaluateSafety({
       toolName: "bash",
       input: {
         command: "sf org api /services/data/v66.0/sobjects/Account/001x --method DELETE -o Prod",
@@ -433,10 +433,10 @@ describe("classify — orgAwareGate (Tier 2)", () => {
     expect(decision?.ruleId).toBe("sf-org-api-destructive-prod");
   });
 
-  it("does NOT fire for sf org api GET", () => {
+  it("does NOT fire for sf org api GET", async () => {
     mockedEnv = env("Prod", "production");
     const config = readBundledConfig();
-    const decision = classify({
+    const decision = await evaluateSafety({
       toolName: "bash",
       input: { command: "sf org api /services/data/v66.0/query --method GET -o Prod" },
       cwd: "/project",
@@ -445,10 +445,10 @@ describe("classify — orgAwareGate (Tier 2)", () => {
     expect(decision).toBeUndefined();
   });
 
-  it("fails closed when alias is unknown and not in productionAliases", () => {
+  it("fails closed when alias is unknown and not in productionAliases", async () => {
     mockedEnv = null;
     const config = readBundledConfig();
-    const decision = classify({
+    const decision = await evaluateSafety({
       toolName: "bash",
       input: { command: "sf project deploy start -o SomeOrg" },
       cwd: "/project",

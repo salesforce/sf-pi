@@ -64,6 +64,15 @@ describe("evaluateCommand", () => {
     expect(evaluateCommand("ls -la", gate)).toBeUndefined();
   });
 
+  it("skips disabled dangerous patterns", () => {
+    const out = evaluateCommand("rm -rf tmp/", {
+      patterns: [{ id: "rm-rf", pattern: "rm -rf", enabled: false }],
+      allowedPatterns: [],
+      autoDenyPatterns: [],
+    });
+    expect(out).toBeUndefined();
+  });
+
   it("confirms git push --force", () => {
     expect(evaluateCommand("git push --force origin main", gate)?.matched.id).toBe("git-force");
   });

@@ -430,12 +430,23 @@
       "summary": "Salesforce-aware safety layer for pi: file-protection policies, AST-matched command gating, org-aware confirmation on production deploys/Apex/DML/destructive REST, plus a once-per-session prompt-injection that teaches the LLM the gating categories and validate-first workflow.",
       "primaryFiles": [
         "index.ts",
-        "lib/classify.ts",
+        "lib/safety-kernel.ts",
+        "lib/safety-subject.ts",
+        "lib/safety-envelope.ts",
+        "lib/file-policy-gate.ts",
         "lib/policies.ts",
+        "lib/command-risk-gate.ts",
         "lib/command-gate.ts",
+        "lib/org-aware-risk-gate.ts",
         "lib/org-aware-gate.ts",
+        "lib/guidance.ts",
         "lib/hitl.ts",
-        "lib/audit.ts",
+        "lib/approval-detail.ts",
+        "lib/preferences.ts",
+        "lib/preferences-panel.ts",
+        "lib/production-aliases-panel.ts",
+        "lib/approval-ledger.ts",
+        "lib/fingerprint.ts",
         "lib/config.ts"
       ],
       "stateFiles": [
@@ -453,7 +464,7 @@
     "entry": "extensions/sf-guardrail/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 2818
+    "srcLoc": 3598
   },
   {
     "id": "sf-herdr",

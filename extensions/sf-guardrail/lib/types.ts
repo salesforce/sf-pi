@@ -37,6 +37,8 @@ export interface CommandPattern {
   description?: string;
   /** Override the default `confirm` action for this pattern. Currently unused in MVP. */
   action?: "confirm" | "block";
+  /** Per-pattern enabled flag. Default true. */
+  enabled?: boolean;
 }
 
 export interface CommandGateConfig {
@@ -118,6 +120,22 @@ export interface GuardrailConfig {
   orgAwareGate: OrgAwareGateConfig;
 }
 
+// ─── Safety subject model ───────────────────────────────────────────────────────
+
+export type SafetySubject = FileSafetySubject | ShellCommandSafetySubject;
+
+export interface FileSafetySubject {
+  kind: "file";
+  toolName: string;
+  path: string;
+}
+
+export interface ShellCommandSafetySubject {
+  kind: "shellCommand";
+  toolName: "bash" | "herdr";
+  command: string;
+}
+
 // ─── Decision model ─────────────────────────────────────────────────────────────
 
 export type DecisionOutcome =
@@ -150,6 +168,9 @@ export interface ApprovalScope {
   };
 }
 
+/** Compatibility alias for the envelope-first redesign vocabulary. */
+export type SafetyEnvelope = ApprovalScope;
+
 export interface ClassifiedDecision {
   ruleId: string;
   feature: "policies" | "commandGate" | "orgAwareGate";
@@ -162,8 +183,8 @@ export interface ClassifiedDecision {
   fingerprint: string;
   /** File path (policies) or shell command (commandGate / orgAwareGate). */
   subject: string;
-  /** Human-readable and persisted approval scope metadata. */
-  approvalScope?: ApprovalScope;
+  /** Human-readable Safety Envelope metadata. Kept as approvalScope for compatibility. */
+  approvalScope?: SafetyEnvelope;
   /** Target-org context if resolved. */
   orgAlias?: string;
   orgType?: OrgTypeFilter;

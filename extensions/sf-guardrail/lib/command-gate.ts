@@ -49,6 +49,7 @@ function findMatch(command: string, patterns: CommandPattern[]): CommandPattern 
   const headAndArgs = commands.flatMap((item) => [item.tokens.head, ...item.tokens.args]);
 
   for (const p of patterns) {
+    if (p.enabled === false) continue;
     if (patternMatches(command, headAndArgs, p.pattern)) return p;
   }
   return undefined;

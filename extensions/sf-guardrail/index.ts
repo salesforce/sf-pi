@@ -41,7 +41,7 @@
  *   -------------------|-----------------------------------|--------------------------------------
  *   session_start      | —                                 | Hydrate allow-memory from entries; notify loaded
  *   before_agent_start | prompt entry already in session   | Skip
- *   before_agent_start | first call, features.promptInj on | Inject SF_GUARDRAIL_PROMPT as hidden msg
+ *   before_agent_start | first call, features.promptInj on | Inject rule-derived hidden guidance
  *   tool_call          | guardrail disabled                | Pass through
  *   tool_call          | classifies to block               | { block: true, reason }, audit
  *   tool_call          | classifies to confirm, allowed    | Pass through, audit as allow_session
@@ -73,19 +73,26 @@ import { runExtensionDoctor as runGuardrailExtensionDoctor } from "./lib/extensi
 import { openInfoPanel } from "../../lib/common/info-panel.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 import { shouldInjectOnce } from "../../lib/common/session/inject-once.ts";
-import { record, readRecent } from "./lib/audit.ts";
-import { forgetSession, grant, isAllowed, restore } from "./lib/allowlist.ts";
 import {
-  clearProjectGrants,
-  createGrant,
-  findValidGrant,
-  renderProjectGrants,
-} from "./lib/approval-grants.ts";
-import { classifyWithOrgLookup } from "./lib/classify.ts";
+  clearProjectApprovals,
+  createPersistedApproval,
+  forgetSessionApprovals,
+  grantSessionApproval,
+  hasPersistedApproval,
+  hasSessionApproval,
+  readRecentDecisions,
+  recordDecision,
+  renderProjectApprovals,
+  restoreApprovalLedger,
+} from "./lib/approval-ledger.ts";
+import { renderApprovalDetail } from "./lib/approval-detail.ts";
+import { evaluateSafety } from "./lib/safety-kernel.ts";
 import { loadConfig } from "./lib/config.ts";
 import { confirmDecision } from "./lib/hitl.ts";
 import { installPreset } from "./lib/install-preset.ts";
 import { loadPrompt } from "./lib/prompt-injection.ts";
+import { openGuardrailPreferencesPanel } from "./lib/preferences-panel.ts";
+import { openProductionAliasesEditor } from "./lib/production-aliases-panel.ts";
 import { renderAudit, renderRules, renderStatus } from "./lib/status.ts";
 import { COMMAND_NAME, INJECTION_ENTRY_TYPE, type GuardrailConfig } from "./lib/types.ts";
 
@@ -108,13 +115,13 @@ export default function sfGuardrail(pi: ExtensionAPI) {
 
   // ─── session_start: hydrate allow-memory ──────────────────────────────────
   pi.on("session_start", async (_event, ctx) => {
-    restore(ctx);
+    restoreApprovalLedger(ctx);
   });
 
   pi.on("session_tree", async (_event, ctx) => {
     // /tree navigation rewrites the active branch — allowances on the old
     // branch should not leak. Rehydrate from the new branch only.
-    restore(ctx);
+    restoreApprovalLedger(ctx);
   });
 
   // ─── before_agent_start: inject guardrail prompt once per live session ──
@@ -129,7 +136,7 @@ export default function sfGuardrail(pi: ExtensionAPI) {
     if (!config.features.promptInjection) return;
     if (!shouldInjectOnce(ctx.sessionManager.getEntries(), INJECTION_ENTRY_TYPE)) return;
 
-    const prompt = loadPrompt();
+    const prompt = loadPrompt(config);
     return {
       message: {
         customType: INJECTION_ENTRY_TYPE,
@@ -144,7 +151,7 @@ export default function sfGuardrail(pi: ExtensionAPI) {
     const { config } = getConfig();
     if (!config.enabled) return undefined;
 
-    const decision = await classifyWithOrgLookup({
+    const decision = await evaluateSafety({
       toolName: event.toolName,
       input: (event.input ?? {}) as Record<string, unknown>,
       cwd: ctx.cwd,
@@ -154,20 +161,20 @@ export default function sfGuardrail(pi: ExtensionAPI) {
 
     // Audited auto-allow → no prompt.
     if (decision.action === "allow") {
-      record(pi, decision, "allow_auto", event.toolName);
+      recordDecision(pi, decision, "allow_auto", event.toolName);
       return undefined;
     }
 
     // Hard block → no prompt.
     if (decision.action === "block") {
-      record(pi, decision, "hard_block", event.toolName);
+      recordDecision(pi, decision, "hard_block", event.toolName);
       if (ctx.hasUI) ctx.ui.notify(decision.reason, "warning");
       return { block: true, reason: decision.reason };
     }
 
     // Previously granted for this session?
-    if (isAllowed(decision.ruleId, decision.fingerprint)) {
-      record(pi, decision, "allow_session", event.toolName);
+    if (hasSessionApproval(decision)) {
+      recordDecision(pi, decision, "allow_session", event.toolName);
       return undefined;
     }
 
@@ -175,15 +182,15 @@ export default function sfGuardrail(pi: ExtensionAPI) {
     // the existing explicit headless escape hatch is set.
     const headlessGrantAllowed =
       ctx.hasUI || isTruthyEnv(process.env[config.headlessEscapeHatchEnv]);
-    if (headlessGrantAllowed && findValidGrant(ctx.cwd, decision)) {
-      record(pi, decision, "allow_persisted", event.toolName);
+    if (headlessGrantAllowed && hasPersistedApproval(ctx.cwd, decision)) {
+      recordDecision(pi, decision, "allow_persisted", event.toolName);
       return undefined;
     }
 
     // Confirmation required.
     const result = await confirmDecision(ctx, {
       title: decision.promptTitle ?? "sf-guardrail",
-      detail: decision.reason,
+      detail: renderApprovalDetail(decision),
       timeoutMs: config.confirmTimeoutMs,
       escapeHatchEnv: config.headlessEscapeHatchEnv,
       signal: ctx.signal,
@@ -192,38 +199,38 @@ export default function sfGuardrail(pi: ExtensionAPI) {
 
     switch (result.outcome) {
       case "allow_once":
-        record(pi, decision, "allow_once", event.toolName);
+        recordDecision(pi, decision, "allow_once", event.toolName);
         return undefined;
       case "allow_session":
-        grant(pi, decision.ruleId, decision.fingerprint);
-        record(pi, decision, "allow_session", event.toolName);
+        grantSessionApproval(pi, decision);
+        recordDecision(pi, decision, "allow_session", event.toolName);
         return undefined;
       case "allow_persisted":
-        createGrant(ctx.cwd, decision);
-        record(pi, decision, "allow_persisted", event.toolName);
+        createPersistedApproval(ctx.cwd, decision);
+        recordDecision(pi, decision, "allow_persisted", event.toolName);
         return undefined;
       case "headless_pass":
-        record(pi, decision, "headless_pass", event.toolName);
+        recordDecision(pi, decision, "headless_pass", event.toolName);
         return undefined;
       case "headless_block":
-        record(pi, decision, "headless_block", event.toolName);
+        recordDecision(pi, decision, "headless_block", event.toolName);
         return { block: true, reason: result.reason };
       case "timeout":
-        record(pi, decision, "timeout", event.toolName);
+        recordDecision(pi, decision, "timeout", event.toolName);
         return { block: true, reason: result.reason };
       case "cancel":
-        record(pi, decision, "cancel", event.toolName);
+        recordDecision(pi, decision, "cancel", event.toolName);
         return { block: true, reason: result.reason };
       case "block":
       default:
-        record(pi, decision, "block", event.toolName);
+        recordDecision(pi, decision, "block", event.toolName);
         return { block: true, reason: result.reason };
     }
   });
 
   // ─── /sf-guardrail command ────────────────────────────────────────────────
   pi.registerCommand(COMMAND_NAME, {
-    description: "Inspect and manage sf-guardrail — status, rules, audit, install-preset",
+    description: "Inspect and manage sf-guardrail — status, settings, rules, audit",
     getArgumentCompletions: (prefix) => {
       const lower = prefix.toLowerCase();
       const items = GUARDRAIL_ACTIONS.filter((action) => action.value !== "close")
@@ -253,6 +260,8 @@ type GuardrailAction =
   | "list"
   | "audit"
   | "grants"
+  | "settings"
+  | "aliases"
   | "forget"
   | "install-preset"
   | "help"
@@ -283,6 +292,18 @@ const GUARDRAIL_ACTIONS: CommandPanelAction<GuardrailAction>[] = [
     label: "Show approval grants",
     description: "List active persisted approval grants for this project.",
     group: "Troubleshooting",
+  },
+  {
+    value: "settings",
+    label: "Open settings",
+    description: "Edit common guardrail preferences with Pi's SettingsList UI.",
+    group: "Controls",
+  },
+  {
+    value: "aliases",
+    label: "Edit production aliases",
+    description: "Add or remove aliases that sf-guardrail should treat as production.",
+    group: "Controls",
   },
   {
     value: "forget",
@@ -356,7 +377,7 @@ async function handleGuardrailCommand(
         : renderStatus({
             config,
             configSource: source,
-            recent: readRecent(ctx, 5),
+            recent: readRecentDecisions(ctx, 5),
             hasUI: ctx.hasUI,
             headlessEnabled: !!process.env[config.headlessEscapeHatchEnv],
           });
@@ -379,7 +400,7 @@ async function handleGuardrailCommand(
     await emitGuardrailOutput(
       ctx,
       "SF Guardrail audit",
-      renderAudit(readRecent(ctx, 50)),
+      renderAudit(readRecentDecisions(ctx, 50)),
       "info",
       fromPanel,
     );
@@ -390,16 +411,26 @@ async function handleGuardrailCommand(
     await emitGuardrailOutput(
       ctx,
       "SF Guardrail approval grants",
-      renderProjectGrants(ctx.cwd),
+      renderProjectApprovals(ctx.cwd),
       "info",
       fromPanel,
     );
     return;
   }
 
+  if (sub === "settings") {
+    await openGuardrailPreferencesPanel(ctx, config);
+    return;
+  }
+
+  if (sub === "aliases") {
+    await openProductionAliasesEditor(ctx, config);
+    return;
+  }
+
   if (sub === "forget") {
-    forgetSession(pi);
-    const removed = clearProjectGrants(ctx.cwd);
+    forgetSessionApprovals(pi);
+    const removed = clearProjectApprovals(ctx.cwd);
     await emitGuardrailOutput(
       ctx,
       "SF Guardrail active approvals cleared",
@@ -418,7 +449,7 @@ async function handleGuardrailCommand(
   await emitGuardrailOutput(
     ctx,
     "Unknown command",
-    `Unknown /sf-guardrail subcommand: ${sub}. Use status, list, audit, grants, forget, install-preset, help.`,
+    `Unknown /sf-guardrail subcommand: ${sub}. Use status, list, audit, grants, settings, aliases, forget, install-preset, help.`,
     "warning",
     fromPanel,
   );
@@ -443,7 +474,7 @@ function buildGuardrailPanelStatus(
   config: GuardrailConfig,
   source: string,
 ): string[] {
-  const recent = readRecent(ctx, 5);
+  const recent = readRecentDecisions(ctx, 5);
   return [
     `✓ Config        ${source}`,
     `${config.enabled ? "✓" : "○"} Guardrail     ${config.enabled ? "enabled" : "disabled"}`,
@@ -465,6 +496,8 @@ function renderGuardrailHelp(): string {
     `  /${COMMAND_NAME} list            List active file/command/org-aware rules`,
     `  /${COMMAND_NAME} audit           Show recent decisions in this session branch`,
     `  /${COMMAND_NAME} grants          Show active persisted approval grants`,
+    `  /${COMMAND_NAME} settings        Edit common guardrail preferences`,
+    `  /${COMMAND_NAME} aliases         Edit production aliases`,
     `  /${COMMAND_NAME} forget          Clear session allows and project approval grants`,
     `  /${COMMAND_NAME} install-preset  Write/reconcile bundled defaults to user config`,
     `  /${COMMAND_NAME} help            Show this help`,

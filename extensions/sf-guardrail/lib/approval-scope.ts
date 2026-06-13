@@ -6,7 +6,7 @@
  *   1. What does an "allow" cover?
  *   2. Is that scope eligible for a short persisted grant?
  */
-import { fingerprintCommand } from "./allowlist.ts";
+import { fingerprintCommand } from "./fingerprint.ts";
 import type { OrgContext } from "./org-context.ts";
 import type { ApprovalScope } from "./types.ts";
 

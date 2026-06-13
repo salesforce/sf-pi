@@ -6,51 +6,66 @@ Repo-level rules still apply; see root `AGENTS.md`.
 ## Read first
 
 1. `extensions/sf-guardrail/README.md` — feature list and flow diagram
-2. `extensions/sf-guardrail/ROADMAP.md` — what is explicitly out of MVP
-3. `extensions/sf-guardrail/index.ts` — event wiring
-4. `extensions/sf-guardrail/lib/types.ts` — schema boundary
-5. The specific `lib/*.ts` module you're editing
+2. `extensions/sf-guardrail/CONTEXT.md` — canonical safety language
+3. `extensions/sf-guardrail/REDESIGN.md` — simplification plan and target architecture
+4. `extensions/sf-guardrail/ROADMAP.md` — what is explicitly out of MVP
+5. `extensions/sf-guardrail/index.ts` — event wiring
+6. `extensions/sf-guardrail/lib/types.ts` — schema boundary
+7. The specific `lib/*.ts` module you're editing
 
 ## File map (what lives where)
 
 One-file-per-concern split:
 
-| Responsibility                   | File                      |
-| -------------------------------- | ------------------------- |
-| Event wiring + command handler   | `index.ts`                |
-| Schema + persisted entry types   | `lib/types.ts`            |
-| Bundled + override config loader | `lib/config.ts`           |
-| Shell tokenizer + AST matcher    | `lib/bash-ast.ts`         |
-| File-path policy matcher         | `lib/policies.ts`         |
-| Dangerous-command matcher        | `lib/command-gate.ts`     |
-| Target-org resolution            | `lib/org-context.ts`      |
-| Production-only rule matcher     | `lib/org-aware-gate.ts`   |
-| Classification orchestrator      | `lib/classify.ts`         |
-| Confirmation dialog wrapper      | `lib/hitl.ts`             |
-| Session allow-memory             | `lib/allowlist.ts`        |
-| Decision audit trail             | `lib/audit.ts`            |
-| `/sf-guardrail install-preset`   | `lib/install-preset.ts`   |
-| Kernel body loader + override    | `lib/prompt-injection.ts` |
-| Formatters for `/sf-guardrail`   | `lib/status.ts`           |
-| Read-only config panel           | `lib/config-panel.ts`     |
+| Responsibility                   | File                              |
+| -------------------------------- | --------------------------------- |
+| Event wiring + command handler   | `index.ts`                        |
+| Schema + persisted entry types   | `lib/types.ts`                    |
+| Safety decision seam             | `lib/safety-kernel.ts`            |
+| Safety subject normalization     | `lib/safety-subject.ts`           |
+| Safety envelope construction     | `lib/safety-envelope.ts`          |
+| Bundled + override config loader | `lib/config.ts`                   |
+| Shell tokenizer + AST matcher    | `lib/bash-ast.ts`                 |
+| File-policy risk gate            | `lib/file-policy-gate.ts`         |
+| File-path policy matcher         | `lib/policies.ts`                 |
+| Command risk gate                | `lib/command-risk-gate.ts`        |
+| Dangerous-command matcher        | `lib/command-gate.ts`             |
+| Target-org resolution            | `lib/org-context.ts`              |
+| Org-aware risk gate              | `lib/org-aware-risk-gate.ts`      |
+| Production-only rule matcher     | `lib/org-aware-gate.ts`           |
+| Confirmation dialog wrapper      | `lib/hitl.ts`                     |
+| Approval dialog detail formatter | `lib/approval-detail.ts`          |
+| Approval memory seam             | `lib/approval-ledger.ts`          |
+| Safety Envelope fingerprints     | `lib/fingerprint.ts`              |
+| `/sf-guardrail settings`         | `lib/preferences-panel.ts`        |
+| Common preference descriptors    | `lib/preferences.ts`              |
+| Production aliases editor        | `lib/production-aliases-panel.ts` |
+| `/sf-guardrail install-preset`   | `lib/install-preset.ts`           |
+| Rule-derived agent guidance      | `lib/guidance.ts`                 |
+| Kernel body loader + override    | `lib/prompt-injection.ts`         |
+| Formatters for `/sf-guardrail`   | `lib/status.ts`                   |
+| Read-only config panel           | `lib/config-panel.ts`             |
 
 ## Conventions
 
 1. **Types live at the boundary.** `lib/types.ts` is the only place where
    the config schema and decision shapes are defined. Every other module
    imports its types from there.
-2. **Pure evaluators.** `policies.ts`, `command-gate.ts`,
-   `org-aware-gate.ts`, `classify.ts` do not touch `ctx`, `pi`, or any
-   pi API. They take config + input, return decisions. Side effects
-   (prompts, appendEntry, notify) happen only in `index.ts` and `hitl.ts`.
+2. **Pure evaluators.** `safety-kernel.ts`, `safety-subject.ts`,
+   `safety-envelope.ts`, `guidance.ts`, `file-policy-gate.ts`, `policies.ts`,
+   `command-gate.ts`, `org-aware-gate.ts` do not touch `ctx`,
+   `pi`, or any pi API.
+   They take config + input, return decisions.
+   Side effects (prompts, appendEntry, notify) happen only in `index.ts`,
+   `hitl.ts`, and approval-ledger/UI adapters.
 3. **Fail-closed is the rule.** Any ambiguity — unknown org type,
    unreadable override, tokenizer failure, timeout — must default to
    blocking. The command-gate substring fallback for tokenizer failure
    is the sole exception: it prefers false-positive over false-negative
    because that error direction is safer.
 4. **No new `tool_call` side effects without audit.** Every decision path
-   must call `record(...)` in `lib/audit.ts` so `/sf-guardrail audit`
-   stays truthful.
+   must call `recordDecision(...)` through `lib/approval-ledger.ts` so
+   `/sf-guardrail audit` stays truthful.
 5. **No runtime deps.** Keep the tokenizer, globber, and matchers
    dependency-free. If we ever need a real shell AST, prefer a well-
    maintained package (`shell-quote`) and pin the version, rather than
@@ -62,7 +77,7 @@ One-file-per-concern split:
 - Adding a new bundled rule means:
   1. Add the rule to `SF_GUARDRAIL_DEFAULTS.json` with a stable id.
   2. Update `tests/config.test.ts` to assert the id ships.
-  3. Update `tests/classify.test.ts` with a match + non-match case.
+  3. Update `tests/safety-kernel-contract.test.ts` with a match + non-match case.
   4. Document the rule in `README.md` under the relevant feature tier.
 - Never add a rule whose id collides with a rule already in the override
   merge path (bundled ids are stable API; renaming them breaks user
@@ -74,7 +89,7 @@ One-file-per-concern split:
   `lib/types.ts` (`allow_once`, `allow_session`, `allow_persisted`,
   `allow_auto`, `block`, `timeout`, `cancel`, `hard_block`,
   `headless_pass`, `headless_block`). Anything new needs plumb-through
-  in `audit.ts` and `status.ts`.
+  in `approval-ledger.ts` and `status.ts`.
 - Headless escape hatch is an env var only. No config-file setting to
   "always allow headless" — that would hide behavior from the user.
 - Timeouts equal block. User-facing copy may say "approval expired", but

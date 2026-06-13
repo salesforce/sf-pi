@@ -16,9 +16,8 @@
  *   - pipelines / `&&` / `;`    — we tokenize the first simple command only.
  *     Since our rules target well-known sf/git/rm invocations, the common
  *     false-negative (`cd foo && sf project deploy`) only lets a rule skip;
- *     it does not make us match the wrong rule. classify.ts tests against
- *     the full command string via fallback regex for the command-gate path,
- *     which catches the `&&`-chained case.
+ *     it does not make us match the wrong rule. Command risk-gate tests cover
+ *     the common chained command shapes we support.
  *   - shell expansions (backticks, $(...), variable substitution)
  *   - heredocs
  *

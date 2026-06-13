@@ -32,7 +32,7 @@ export function renderStatus(input: StatusInput): string {
     `  policies: ${count(config.policies.rules, (r) => r.enabled !== false)} active / ${config.policies.rules.length} defined`,
   );
   lines.push(
-    `  command gate: ${config.commandGate.patterns.length} patterns; ${config.commandGate.allowedPatterns.length} allowed; ${config.commandGate.autoDenyPatterns.length} auto-deny`,
+    `  command gate: ${count(config.commandGate.patterns, (p) => p.enabled !== false)} active / ${config.commandGate.patterns.length} patterns; ${config.commandGate.allowedPatterns.length} allowed; ${config.commandGate.autoDenyPatterns.length} auto-deny`,
   );
   lines.push(
     `  org-aware gate: ${count(config.orgAwareGate.rules, (r) => r.enabled !== false)} active / ${config.orgAwareGate.rules.length} defined`,
@@ -85,7 +85,8 @@ export function renderRules(config: GuardrailConfig): string {
   lines.push("");
   lines.push("Command gate:");
   for (const p of config.commandGate.patterns) {
-    lines.push(`  [on]  ${p.id}  ${p.pattern}  ${p.description ?? ""}`.trimEnd());
+    const status = p.enabled === false ? "[off]" : "[on]";
+    lines.push(`  ${status} ${p.id}  ${p.pattern}  ${p.description ?? ""}`.trimEnd());
   }
   lines.push("");
   lines.push("Org-aware gate:");

@@ -66,7 +66,7 @@ Extension loads
   ├─ session_tree     → rehydrate after tree navigation
   ├─ before_agent_start
   │    ├─ prompt entry already in session → skip
-  │    └─ features.promptInjection on     → inject SF_GUARDRAIL_PROMPT.md
+  │    └─ features.promptInjection on     → inject rule-derived guidance
   │                                        as a hidden custom message
   └─ tool_call
        ├─ guardrail disabled                             → pass through
@@ -100,68 +100,31 @@ roadmap — see `ROADMAP.md`.
 - `/sf-guardrail list` → full dump of active rules
 - `/sf-guardrail audit` → up to 50 recent decisions from the session
 - `/sf-guardrail grants` → list active persisted approval grants for the current project
+- `/sf-guardrail settings` → edit common guardrail preferences and per-rule
+  enablement with Pi's SettingsList UI while preserving advanced JSON rule overrides
+- `/sf-guardrail aliases` → edit aliases that should be treated as production
 - `/sf-guardrail forget` → revoke session allow-memory for this branch and clear
   active persisted approval grants for the current project
 - `/sf-guardrail install-preset` → write bundled defaults to the user
   override file, with per-rule reconciliation when the file already
   exists
 
-## Key Architecture Decisions
+## Architecture References
 
-### Why standalone, not a wrapper around `@aliou/pi-guardrails`?
+SF Guardrail is intentionally a **Safety Mediator**, not a general policy
+engine. The canonical terms live in `CONTEXT.md`; the redesign plan lives in
+`REDESIGN.md`; stable trade-offs are recorded in repo ADRs, especially:
 
-`@aliou/pi-guardrails` is a well-designed generic safety extension but
-cannot see Salesforce context: it can't distinguish
-`sf project deploy start -o sandbox` from `sf project deploy start -o prod`
-because it doesn't know what the alias resolves to. The design here
-keeps the good ideas — glob+regex policies, three-level protection,
-AST-matched dangerous commands, config layering by id — and adds the
-missing piece: `whenOrgType` filters that read the shared sf-devbar
-environment cache and map aliases to org types without a CLI call on
-the hot path.
-
-### Why read the env cache instead of calling `sf` on every tool_call?
-
-`sf org display` takes tens to hundreds of milliseconds and can stall
-on an expired token. sf-devbar already populates the shared cache at
-`session_start`. `tool_call` is the hot path; we read the cache
-synchronously first and only run a bounded in-process lookup when an explicit
-non-default alias would otherwise be treated as guessed production. Lookup
-failure still fails closed. Users who frequently target a non-default
-production alias can list it in `productionAliases` to override detection.
-
-### Why mediate `herdr.run` like `bash`?
-
-Herdr Workflow Mode lets agents run commands in other panes without blocking the
-main Pi pane. Those pane commands are still shell commands, so they must not
-become a safety bypass around dangerous-command confirmation or production-org
-confirmation. `sf-guardrail` therefore extracts commands from both
-`bash.command` and `herdr.run.command`, evaluates them through the same gates,
-and records the original tool name in the audit trail.
-
-Only `herdr.run` is mediated in v1. Pane reads, watches, waits, splits, tab
-creation, focus changes, and low-level `herdr.send` are not complete command
-submissions and stay outside this command-safety seam.
-
-### Why hand-rolled tokenizer instead of a shell parser package?
-
-The only three things we extract from bash commands are the head word,
-positional subcommand arguments, and `-o`/`--target-org` values. The
-popular parser packages either have ancient dependencies (`shell-parse`,
-last published 2012) or ship more features than a `tool_call` hook
-should be pulling in. A small tokenizer/splitter covers the shapes we care
-about, keeps the dependency graph at zero, and is documented in
-`lib/bash-ast.ts`. Exotic shell syntax (heredocs, process substitution)
-falls back to the conservative prompt/block paths rather than silent allow.
-
-### Why "Allow for this session" persists via `pi.appendEntry`?
-
-Because `/resume` and `/fork` inherit session entries, the allowance
-survives session replacement — the user only has to grant once per
-investigation. `/sf-guardrail forget` appends a native Pi session-entry
-revocation marker so `/reload` and tree navigation do not restore older
-session allows, and it also clears active persisted grants for the current
-project.
+- ADR 0004 — fail-closed guardrail behavior
+- ADR 0033 — safety mediator posture
+- ADR 0034 — Safety Envelope approvals
+- ADR 0035 — Safety Kernel seam
+- ADR 0036 — Approval Ledger seam
+- ADR 0037 — rule-derived guidance
+- ADR 0038 — pi-native preferences with advanced rule overrides
+- ADR 0039 — no LLM tools
+- ADR 0040 — workflow rehearsals stay advisory
+- ADR 0041 — project-local overrides are deferred
 
 ## Behavior Matrix
 
@@ -191,37 +154,55 @@ project.
 ```
 extensions/sf-guardrail/
   lib/
-    allowlist.ts            ← implementation module
-    approval-grants.ts      ← implementation module
+    approval-detail.ts      ← implementation module
+    approval-ledger.ts      ← implementation module
     approval-scope.ts       ← implementation module
-    audit.ts                ← implementation module
     bash-ast.ts             ← implementation module
-    classify.ts             ← implementation module
     command-gate.ts         ← implementation module
+    command-risk-gate.ts    ← implementation module
     config-panel.ts         ← implementation module
     config.ts               ← implementation module
     extension-doctor.ts     ← implementation module
+    file-policy-gate.ts     ← implementation module
+    fingerprint.ts          ← implementation module
+    guidance.ts             ← implementation module
     hitl.ts                 ← implementation module
     install-preset.ts       ← implementation module
     org-aware-gate.ts       ← implementation module
+    org-aware-risk-gate.ts  ← implementation module
     org-context.ts          ← implementation module
     policies.ts             ← implementation module
+    preferences-panel.ts    ← implementation module
+    preferences.ts          ← implementation module
+    production-aliases-panel.ts← implementation module
     prompt-injection.ts     ← implementation module
+    safety-envelope.ts      ← implementation module
+    safety-kernel.ts        ← implementation module
+    safety-subject.ts       ← implementation module
     status.ts               ← implementation module
     temp-cleanup.ts         ← implementation module
     types.ts                ← implementation module
   tests/
-    allowlist.test.ts       ← unit / smoke test
-    approval-grants.test.ts ← unit / smoke test
+    approval-detail.test.ts ← unit / smoke test
+    approval-ledger.test.ts ← unit / smoke test
     approval-scope.test.ts  ← unit / smoke test
     bash-ast.test.ts        ← unit / smoke test
-    classify.test.ts        ← unit / smoke test
     command-gate.test.ts    ← unit / smoke test
+    command-risk-gate.test.ts← unit / smoke test
     config.test.ts          ← unit / smoke test
+    file-policy-gate.test.ts← unit / smoke test
+    guidance.test.ts        ← unit / smoke test
     hitl.test.ts            ← unit / smoke test
     hook-order.test.ts      ← unit / smoke test
+    org-aware-risk-gate.test.ts← unit / smoke test
     org-context.test.ts     ← unit / smoke test
     policies.test.ts        ← unit / smoke test
+    preferences.test.ts     ← unit / smoke test
+    prompt-injection.test.ts← unit / smoke test
+    safety-envelope.test.ts ← unit / smoke test
+    safety-kernel-contract.test.ts← unit / smoke test
+    safety-kernel.test.ts   ← unit / smoke test
+    safety-subject.test.ts  ← unit / smoke test
     smoke.test.ts           ← unit / smoke test
   AGENTS.md                 ← extension-specific agent editing rules
   index.ts                  ← Pi extension entry point
@@ -229,7 +210,6 @@ extensions/sf-guardrail/
   README.md                 ← human + agent walkthrough
   ROADMAP.md                ← extension-specific phased roadmap
   SF_GUARDRAIL_DEFAULTS.json← supporting file
-  SF_GUARDRAIL_PROMPT.md    ← supporting file
 ```
 
 <!-- GENERATED:file-structure:end -->
@@ -258,7 +238,22 @@ Covered by unit tests:
 - `resolveOrgContext` prefers `-o` over default alias, honors
   `productionAliases`, resolves explicit aliases through a bounded cached
   lookup when needed, and fails closed to "production" on unknown aliases.
-- `classify` end-to-end produces the right decision for representative
+- Safety Subject normalization covers file tools, `bash.command`, and
+  `herdr.run.command`.
+- Safety Kernel characterization tests preserve end-to-end decisions for
+  protected files, dangerous commands, org-aware gates, Herdr mediation,
+  and safe temp cleanup.
+- Safety Envelope builders preserve exact-command, production deploy, and
+  non-production org-delete approval coverage.
+- Approval Ledger tests cover audit entries, session approvals, revocation,
+  persisted grants, rendering, and clearing.
+- Rule-derived guidance reflects the effective config and preserves the
+  user override prompt path.
+- Pi-native preferences write common settings and per-rule enablement while
+  preserving advanced JSON overrides.
+- Envelope-first HIL detail renders risk gate, subject, target org, approval
+  coverage, grant TTL, and advisory recovery guidance.
+- Safety Kernel contract tests produce the right decision for representative
   `read`/`write`/`bash`/`herdr.run` tool calls with the bundled config.
 - Config loader parses bundled defaults, merges user override by id,
   disables bundled rules via `enabled: false`, and falls back silently

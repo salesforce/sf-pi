@@ -133,4 +133,4 @@ Cross-references between blocks use the bare opening tag as the anchor
 - `extensions/sf-brain/SF_KERNEL.md` and `extensions/sf-brain/lib/kernel.ts`
   (`KERNEL_OPEN_TAG`, `KERNEL_CLOSE_TAG`) — `<sf_operator_kernel>`
 - `extensions/sf-slack/index.ts` — `<slack_workspace>`
-- `extensions/sf-guardrail/SF_GUARDRAIL_PROMPT.md` — `<sf_guardrail>`
+- `extensions/sf-guardrail/lib/guidance.ts` — `<sf_guardrail>`

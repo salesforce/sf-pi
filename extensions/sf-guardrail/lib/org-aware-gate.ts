@@ -4,7 +4,7 @@
  * `orgAwareGate.rules` in the context of the resolved target-org type.
  *
  * A rule fires only when both the AST match and the org-type filter match.
- * First fire wins; classify.ts stops iterating.
+ * First fire wins; the Safety Kernel stops iterating.
  */
 import { matches, tokenize } from "./bash-ast.ts";
 import type { OrgContext } from "./org-context.ts";

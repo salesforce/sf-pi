@@ -95,6 +95,24 @@ describe("loadConfig with user override", () => {
     expect(config.policies.rules.find((r) => r.id === "sf-destructive-changes-xml")).toBeDefined();
   });
 
+  it("disables a bundled command pattern when override sets enabled: false", () => {
+    writeOverride({
+      commandGate: {
+        patterns: [
+          {
+            id: "rm-rf",
+            pattern: "rm -rf",
+            description: "recursive force delete",
+            enabled: false,
+          },
+        ],
+      },
+    });
+    const { config } = loadConfig();
+    const pattern = config.commandGate.patterns.find((p) => p.id === "rm-rf");
+    expect(pattern?.enabled).toBe(false);
+  });
+
   it("disables a bundled rule when override sets enabled: false", () => {
     writeOverride({
       policies: {
