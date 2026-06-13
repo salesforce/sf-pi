@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.184.4-2026-06-13",
-  "latestVersion": "0.184.4",
+  "revision": "release-0.184.5-2026-06-13",
+  "latestVersion": "0.184.5",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.184.4",
+      "id": "release-0.184.5",
       "kind": "update",
-      "title": "sf-pi v0.184.4 — sf-guardrail: release simplified safety architecture",
+      "title": "sf-pi v0.184.5 — sf-guardrail: use confirmable rule behavior",
       "publishedAt": "2026-06-13T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.184.4",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.184.5",
       "severity": "info",
-      "body": "sf-guardrail: release simplified safety architecture"
+      "body": "sf-guardrail: use confirmable rule behavior"
     },
     {
       "id": "pi-0.73-required",
