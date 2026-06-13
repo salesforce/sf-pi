@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.184.3-2026-06-13",
-  "latestVersion": "0.184.3",
+  "revision": "release-0.184.4-2026-06-13",
+  "latestVersion": "0.184.4",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.184.3",
+      "id": "release-0.184.4",
       "kind": "update",
-      "title": "sf-pi v0.184.3 — sf-guardrail: reduce approval fatigue",
+      "title": "sf-pi v0.184.4 — sf-guardrail: release simplified safety architecture",
       "publishedAt": "2026-06-13T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.184.3",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.184.4",
       "severity": "info",
-      "body": "sf-guardrail: reduce approval fatigue"
+      "body": "sf-guardrail: release simplified safety architecture"
     },
     {
       "id": "pi-0.73-required",
