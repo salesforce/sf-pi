@@ -17,6 +17,8 @@ const gate: CommandGateConfig = {
     { id: "sudo", pattern: "sudo" },
     { id: "git-force", pattern: "git push --force" },
     { id: "sf-org-delete", pattern: "sf org delete" },
+    { id: "dd-of", pattern: "dd of=" },
+    { id: "mkfs", pattern: "mkfs.*" },
   ],
   allowedPatterns: [{ id: "npm-test", pattern: "npm test" }],
   autoDenyPatterns: [{ id: "rm-root", pattern: "rm -rf /" }],
@@ -70,5 +72,17 @@ describe("evaluateCommand", () => {
     expect(evaluateCommand("sf org delete scratch -o MyScratch", gate)?.matched.id).toBe(
       "sf-org-delete",
     );
+  });
+
+  it("confirms dangerous commands later in a shell chain", () => {
+    expect(evaluateCommand("echo ok && rm -rf tmp/", gate)?.matched.id).toBe("rm-rf");
+  });
+
+  it("confirms dd output writes", () => {
+    expect(evaluateCommand("dd if=image.iso of=/dev/disk4", gate)?.matched.id).toBe("dd-of");
+  });
+
+  it("confirms mkfs family commands", () => {
+    expect(evaluateCommand("mkfs.ext4 /dev/disk4", gate)?.matched.id).toBe("mkfs");
   });
 });

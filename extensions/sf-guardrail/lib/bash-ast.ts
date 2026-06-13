@@ -33,6 +33,13 @@ export interface TokenizedCommand {
   args: string[];
 }
 
+export interface SimpleCommand {
+  /** Source for this simple command, trimmed and quote-preserving. */
+  source: string;
+  /** Parsed head + args for this simple command. */
+  tokens: TokenizedCommand;
+}
+
 /**
  * Tokenize a POSIX-style simple command into space-separated words, respecting
  * single quotes, double quotes, and backslash escapes. Everything before the
@@ -41,7 +48,90 @@ export interface TokenizedCommand {
  * Returns `undefined` when the input has no head word (empty or whitespace).
  */
 export function tokenize(command: string): TokenizedCommand | undefined {
+  const first = splitSimpleCommands(command)[0];
+  return first ? tokenizeSimple(first) : undefined;
+}
+
+/**
+ * Split a shell line into simple commands while respecting quotes/escapes.
+ * This intentionally stays conservative: it does not model subshells or
+ * expansions, but it lets org-aware gates inspect common agent command shapes
+ * such as `cd force-app && sf project deploy start -o Prod` instead of only
+ * seeing the leading `cd`.
+ */
+export function splitSimpleCommands(command: string): string[] {
   const source = command.trim();
+  if (source.length === 0) return [];
+
+  const out: string[] = [];
+  let current = "";
+  let quote: '"' | "'" | null = null;
+  let i = 0;
+
+  const push = () => {
+    const trimmed = current.trim();
+    if (trimmed.length > 0) out.push(trimmed);
+    current = "";
+  };
+
+  while (i < source.length) {
+    const ch = source[i];
+
+    if (quote) {
+      current += ch;
+      if (ch === "\\" && quote === '"' && i + 1 < source.length) {
+        current += source[i + 1];
+        i += 2;
+        continue;
+      }
+      if (ch === quote) quote = null;
+      i += 1;
+      continue;
+    }
+
+    if (ch === "'" || ch === '"') {
+      quote = ch;
+      current += ch;
+      i += 1;
+      continue;
+    }
+
+    if (ch === "\\" && i + 1 < source.length) {
+      current += ch + source[i + 1];
+      i += 2;
+      continue;
+    }
+
+    if (ch === ";" || ch === "|") {
+      push();
+      if (ch === "|" && source[i + 1] === ch) i += 2;
+      else i += 1;
+      continue;
+    }
+    if (ch === "&" && source[i + 1] === "&") {
+      push();
+      i += 2;
+      continue;
+    }
+
+    current += ch;
+    i += 1;
+  }
+  push();
+  return out;
+}
+
+export function tokenizeSimpleCommands(command: string): SimpleCommand[] {
+  return splitSimpleCommands(command)
+    .map((source) => ({ source, tokens: tokenizeSimple(source) }))
+    .filter((item): item is SimpleCommand => item.tokens !== undefined);
+}
+
+export function hasShellChain(command: string): boolean {
+  return splitSimpleCommands(command).length > 1;
+}
+
+function tokenizeSimple(source: string): TokenizedCommand | undefined {
   if (source.length === 0) return undefined;
 
   const tokens: string[] = [];
@@ -85,16 +175,6 @@ export function tokenize(command: string): TokenizedCommand | undefined {
       current += source[i + 1];
       i += 2;
       continue;
-    }
-
-    // Split/terminators: treat ;, &&, ||, | as end-of-simple-command.
-    if (ch === ";" || ch === "|") {
-      push();
-      break;
-    }
-    if (ch === "&" && source[i + 1] === "&") {
-      push();
-      break;
     }
 
     if (ch === " " || ch === "\t" || ch === "\n") {

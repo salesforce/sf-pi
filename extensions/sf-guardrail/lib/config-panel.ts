@@ -3,8 +3,8 @@
  * Config panel for sf-guardrail — read-only status shown in the sf-pi
  * Extension Manager overlay. Modeled on sf-slack/config-panel.ts.
  *
- * Operators who want to *edit* config use `/sf-guardrail settings` (settings
- * overlay) or hand-edit the override file. This panel just summarizes what
+ * Operators who want to *edit* config use `/sf-guardrail install-preset`
+ * and then hand-edit the override file. This panel just summarizes what
  * is loaded so the manager overlay can answer "is this active? with which
  * rules?".
  */

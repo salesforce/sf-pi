@@ -16,7 +16,7 @@ const source = readFileSync(path.resolve("extensions/sf-guardrail/index.ts"), "u
 describe("sf-guardrail hook order", () => {
   it("enforces safety in tool_call before tools execute", () => {
     expect(source).toContain('pi.on("tool_call"');
-    expect(source).toContain("classify({");
+    expect(source).toContain("classifyWithOrgLookup({");
     expect(source).toContain("return { block: true");
     expect(source).not.toContain('pi.on("tool_result"');
   });

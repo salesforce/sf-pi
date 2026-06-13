@@ -70,13 +70,15 @@ One-file-per-concern split:
 
 ## HITL invariants
 
-- Every gated path ends in exactly one of: `allow_once`, `allow_session`,
-  `block`, `hard_block`, `headless_pass`, `headless_block`. That set
-  is defined in `lib/types.ts` and anything new needs a plumb-through
+- Every gated path ends in one of the `DecisionOutcome` values in
+  `lib/types.ts` (`allow_once`, `allow_session`, `allow_persisted`,
+  `allow_auto`, `block`, `timeout`, `cancel`, `hard_block`,
+  `headless_pass`, `headless_block`). Anything new needs plumb-through
   in `audit.ts` and `status.ts`.
 - Headless escape hatch is an env var only. No config-file setting to
   "always allow headless" — that would hide behavior from the user.
-- Timeouts equal block. Never auto-accept on timeout.
+- Timeouts equal block. User-facing copy may say "approval expired", but
+  expired approval still fails closed. Never auto-accept on timeout.
 
 ## Non-goals
 

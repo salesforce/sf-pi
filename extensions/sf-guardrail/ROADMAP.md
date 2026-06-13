@@ -12,14 +12,22 @@ rough order.
 - [x] Bundled rules for `destructiveChanges*.xml`, `.forceignore`,
       `.sf/**`, `.sfdx/**`, `.env*`.
 - [x] Command gate: structural token matching for `rm -rf`, `sudo`,
-      `sf org delete`, `git push --force`.
-- [x] Org-aware gate: `sf project deploy`, `sf apex run`, `sf data
-(delete|update|upsert|import)`, `sf org api --method
-DELETE|PATCH|PUT` — production only.
-- [x] Target-org resolution via shared sf-devbar env cache, with
-      `productionAliases` user override and fail-closed default.
+      `chmod -R 777`, `chown -R`, `dd of=`, `mkfs.*`, `sf org delete`,
+      `git push --force`, including commands later in simple shell chains.
+- [x] Strict temp cleanup auto-allow for literal, single-target OS temp
+      `rm -rf` / `rm -fr` cleanup with audit.
+- [x] Org-aware gate: mutating `sf project deploy start|resume|quick`,
+      `sf apex run`, `sf data (delete|update|upsert|import)`,
+      `sf org api --method DELETE|PATCH|PUT` — production only.
+- [x] Target-org resolution via shared sf-devbar env cache plus bounded cached
+      lookup for explicit aliases, with `productionAliases` user override and
+      fail-closed default.
 - [x] Session allow-memory via `pi.appendEntry`; survives /resume,
-      /fork, /tree.
+      /fork, /tree; `/sf-guardrail forget` writes a native session revocation
+      marker so older allows do not restore.
+- [x] Risk-tiered persisted approval grants for verified production deploys
+      and exact verified non-production org deletes, scoped to the current
+      project with short TTLs.
 - [x] Audit trail persisted as session entries; shown by
       `/sf-guardrail audit`.
 - [x] Headless fail-closed with `SF_GUARDRAIL_ALLOW_HEADLESS=1` escape.

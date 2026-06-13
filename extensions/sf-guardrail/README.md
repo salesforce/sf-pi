@@ -17,15 +17,21 @@ feature tiers, all toggleable via the config:
    dotenv-style secret files.
 
 2. **commandGate** — dangerous-command patterns matched structurally
-   against the tokenized shell command from `bash.command` or
-   `herdr.run.command`. Ships with `rm -rf`, `sudo`, `sf org delete`,
-   explicit Salesforce CLI credential reveal commands, `SF_TEMP_SHOW_SECRETS=true`,
-   and `git push --force`. Prompts user confirmation via `ctx.ui.select`
-   (Allow once / Allow for this session / Block).
+   against tokenized shell commands from `bash.command` or
+   `herdr.run.command`, including commands later in simple shell chains.
+   Ships with `rm -rf`, `sudo`, `chmod -R 777`, `chown -R`, `dd of=`,
+   `mkfs.*`, `sf org delete`, explicit Salesforce CLI credential reveal
+   commands, `SF_TEMP_SHOW_SECRETS=true`, and `git push --force`.
+   Strictly validated OS temp-directory cleanup is auto-allowed and audited;
+   other dangerous commands prompt via `ctx.ui.select` (Allow once / Allow
+   for this session / Block).
 
 3. **orgAwareGate** — shell-command rules that fire only when the resolved
-   target-org type matches. Ships with four production-only rules:
-   - `sf project deploy start | resume`
+   target-org type matches. Explicit non-default target aliases get a bounded,
+   cached, in-process org lookup before a guessed-production prompt; lookup
+   failure still fails closed. Ships with four production-only rules:
+   - `sf project deploy start | resume | quick` (recognized validate,
+     preview, report, check-only, and dry-run rehearsals are allowed)
    - `sf apex run`
    - `sf data delete | update | upsert | import`
    - `sf org api --method DELETE | PATCH | PUT`
@@ -36,10 +42,18 @@ Plus:
   the LLM which categories are gated and which rehearsal patterns to
   prefer (`deploy validate`, `--check-only`, `Savepoint` + `rollback`).
 - **Session allow-memory** — "Allow for this session" persists via
-  `pi.appendEntry` so `/resume` and `/fork` inherit the allowance. Clear
-  it with `/sf-guardrail forget`.
-- **Audit trail** — every decision (allow, block, headless-pass) is
-  persisted as a session entry. Inspect with `/sf-guardrail audit`.
+  `pi.appendEntry` so `/resume` and `/fork` inherit the allowance. Org-aware
+  allows use a safety envelope (rule + resolved org + command family) instead
+  of an exact command string where that reduces repeat prompts safely.
+- **Persisted approval grants** — grant-eligible prompts keep three choices; the
+  middle choice becomes a scoped TTL grant (for example, allow verified
+  production deploys in this project for 60 minutes, or allow deleting one
+  verified non-production org target for 30 minutes). Grants are user-local,
+  project-scoped, auditable, and ignored in headless mode unless the explicit
+  headless escape hatch is set.
+- **Audit trail** — every decision (auto-allow, allow, persisted allow, block,
+  timeout, cancel, headless-pass) is persisted as a session entry. Inspect with
+  `/sf-guardrail audit`.
 - **Headless mode** — fail-closed by default; set
   `SF_GUARDRAIL_ALLOW_HEADLESS=1` to let gated calls through with an
   audit warning when there is no TUI.
@@ -57,11 +71,13 @@ Extension loads
   └─ tool_call
        ├─ guardrail disabled                             → pass through
        ├─ policies hit + protection blocks this tool     → { block: true, reason }, audit
+       ├─ commandGate hit (safe temp cleanup)             → pass through, audit as allow_auto
        ├─ commandGate hit (allow)                         → pass through
        ├─ commandGate hit (autoDeny)                      → { block }, audit
        ├─ commandGate hit (confirm) OR orgAwareGate hit   →
        │      previously granted for this session         → pass through, audit as allow_session
-       │      interactive                                 → ctx.ui.select (Allow once / Allow session / Block)
+       │      active persisted grant + UI/headless opt-in  → pass through, audit as allow_persisted
+       │      interactive                                 → ctx.ui.select (Allow once / scoped allow / Block)
        │      headless + env opt-in                       → pass through, audit as headless_pass
        │      headless + no opt-in                        → { block }, audit as headless_block
        └─ no rule matched                                 → pass through
@@ -83,8 +99,9 @@ roadmap — see `ROADMAP.md`.
 - `/sf-guardrail` → open status & controls panel in UI; status summary in no-UI mode
 - `/sf-guardrail list` → full dump of active rules
 - `/sf-guardrail audit` → up to 50 recent decisions from the session
-- `/sf-guardrail forget` → clear session allow-memory (entries remain
-  on disk; `/reload` will restore them)
+- `/sf-guardrail grants` → list active persisted approval grants for the current project
+- `/sf-guardrail forget` → revoke session allow-memory for this branch and clear
+  active persisted approval grants for the current project
 - `/sf-guardrail install-preset` → write bundled defaults to the user
   override file, with per-rule reconciliation when the file already
   exists
@@ -108,9 +125,10 @@ the hot path.
 `sf org display` takes tens to hundreds of milliseconds and can stall
 on an expired token. sf-devbar already populates the shared cache at
 `session_start`. `tool_call` is the hot path; we read the cache
-synchronously and fail-closed (treat as production) when the alias is
-unknown. Users who frequently target a non-default production alias can
-list it in `productionAliases` to override detection.
+synchronously first and only run a bounded in-process lookup when an explicit
+non-default alias would otherwise be treated as guessed production. Lookup
+failure still fails closed. Users who frequently target a non-default
+production alias can list it in `productionAliases` to override detection.
 
 ### Why mediate `herdr.run` like `bash`?
 
@@ -131,38 +149,40 @@ The only three things we extract from bash commands are the head word,
 positional subcommand arguments, and `-o`/`--target-org` values. The
 popular parser packages either have ancient dependencies (`shell-parse`,
 last published 2012) or ship more features than a `tool_call` hook
-should be pulling in. 60 lines of tokenizer covers the shapes we care
+should be pulling in. A small tokenizer/splitter covers the shapes we care
 about, keeps the dependency graph at zero, and is documented in
 `lib/bash-ast.ts`. Exotic shell syntax (heredocs, process substitution)
-falls back to a whole-string substring check in the command gate so we
-never silently miss a dangerous pattern.
+falls back to the conservative prompt/block paths rather than silent allow.
 
 ### Why "Allow for this session" persists via `pi.appendEntry`?
 
 Because `/resume` and `/fork` inherit session entries, the allowance
 survives session replacement — the user only has to grant once per
-investigation. `/sf-guardrail forget` drops the in-memory cache for the
-current turn so hostile agent loops can't bypass a prior confirmation.
+investigation. `/sf-guardrail forget` appends a native Pi session-entry
+revocation marker so `/reload` and tree navigation do not restore older
+session allows, and it also clears active persisted grants for the current
+project.
 
 ## Behavior Matrix
 
-| Event              | Condition                               | Result                                 |
-| ------------------ | --------------------------------------- | -------------------------------------- |
-| session_start      | —                                       | Hydrate allow-memory from entries      |
-| session_tree       | —                                       | Rehydrate allow-memory from new branch |
-| before_agent_start | prompt entry already in session         | Skip                                   |
-| before_agent_start | features.promptInjection on, first call | Inject hidden kernel message           |
-| tool_call          | guardrail disabled                      | Pass through                           |
-| tool_call          | policies protection blocks tool         | `{ block: true, reason }`, audit       |
-| tool_call          | commandGate allowedPatterns             | Pass through                           |
-| tool_call          | commandGate autoDenyPatterns            | `{ block }`, audit                     |
-| tool_call          | `herdr.run` command matches a gate      | same confirmation path as `bash`       |
-| tool_call          | previously allowed (session memory)     | Pass through, audit as allow_session   |
-| tool_call          | interactive confirmation                | `ctx.ui.select`, audit per choice      |
-| tool_call          | headless + env opt-in                   | Pass through, audit as headless_pass   |
-| tool_call          | headless + no env opt-in                | `{ block }`, audit as headless_block   |
-| /sf-guardrail      | UI available                            | Open status & controls panel           |
-| /sf-guardrail      | no UI                                   | Show status summary                    |
+| Event              | Condition                               | Result                                           |
+| ------------------ | --------------------------------------- | ------------------------------------------------ |
+| session_start      | —                                       | Hydrate allow-memory from entries                |
+| session_tree       | —                                       | Rehydrate allow-memory from new branch           |
+| before_agent_start | prompt entry already in session         | Skip                                             |
+| before_agent_start | features.promptInjection on, first call | Inject hidden kernel message                     |
+| tool_call          | guardrail disabled                      | Pass through                                     |
+| tool_call          | policies protection blocks tool         | `{ block: true, reason }`, audit                 |
+| tool_call          | commandGate safe temp cleanup           | Pass through, audit as allow_auto                |
+| tool_call          | commandGate allowedPatterns             | Pass through                                     |
+| tool_call          | commandGate autoDenyPatterns            | `{ block }`, audit                               |
+| tool_call          | `herdr.run` command matches a gate      | same confirmation path as `bash`                 |
+| tool_call          | previously allowed (session memory)     | Pass through, audit as allow_session             |
+| tool_call          | interactive confirmation                | `ctx.ui.select`, status/notify, audit per choice |
+| tool_call          | headless + env opt-in                   | Pass through, audit as headless_pass             |
+| tool_call          | headless + no env opt-in                | `{ block }`, audit as headless_block             |
+| /sf-guardrail      | UI available                            | Open status & controls panel                     |
+| /sf-guardrail      | no UI                                   | Show status summary                              |
 
 ## File Structure
 
@@ -172,6 +192,8 @@ current turn so hostile agent loops can't bypass a prior confirmation.
 extensions/sf-guardrail/
   lib/
     allowlist.ts            ← implementation module
+    approval-grants.ts      ← implementation module
+    approval-scope.ts       ← implementation module
     audit.ts                ← implementation module
     bash-ast.ts             ← implementation module
     classify.ts             ← implementation module
@@ -186,12 +208,17 @@ extensions/sf-guardrail/
     policies.ts             ← implementation module
     prompt-injection.ts     ← implementation module
     status.ts               ← implementation module
+    temp-cleanup.ts         ← implementation module
     types.ts                ← implementation module
   tests/
+    allowlist.test.ts       ← unit / smoke test
+    approval-grants.test.ts ← unit / smoke test
+    approval-scope.test.ts  ← unit / smoke test
     bash-ast.test.ts        ← unit / smoke test
     classify.test.ts        ← unit / smoke test
     command-gate.test.ts    ← unit / smoke test
     config.test.ts          ← unit / smoke test
+    hitl.test.ts            ← unit / smoke test
     hook-order.test.ts      ← unit / smoke test
     org-context.test.ts     ← unit / smoke test
     policies.test.ts        ← unit / smoke test
@@ -224,11 +251,13 @@ Covered by unit tests:
   overlap, and respects `enabled: false`.
 - `evaluateCommand` matches multi-word patterns only as consecutive
   tokens (so `echo "sf org delete"` does not misfire), single-word
-  patterns as individual tokens, and short-circuits on
-  allowed/autoDeny.
+  patterns as individual tokens, checks simple shell chains, and
+  short-circuits on allowed/autoDeny.
+- Strict temp cleanup validation only auto-allows literal, single-target
+  `rm -rf` / `rm -fr` commands under the real OS temp directory.
 - `resolveOrgContext` prefers `-o` over default alias, honors
-  `productionAliases`, and fails closed to "production" on unknown
-  aliases.
+  `productionAliases`, resolves explicit aliases through a bounded cached
+  lookup when needed, and fails closed to "production" on unknown aliases.
 - `classify` end-to-end produces the right decision for representative
   `read`/`write`/`bash`/`herdr.run` tool calls with the bundled config.
 - Config loader parses bundled defaults, merges user override by id,
@@ -239,13 +268,13 @@ Covered by unit tests:
 
 **All production confirms are firing on my sandbox:**
 
-- The env cache couldn't resolve your org type. Run
-  `sf org display -o <alias> --json` and confirm `orgType` is not
-  `unknown`. If it reports `sandbox`, then sf-devbar's cache is stale —
-  run `/sf-devbar refresh` or restart pi. If Salesforce genuinely
-  reports `unknown`, list your non-production aliases in a user
-  override under `productionAliases: []`, or disable the
-  `sf-*-prod` rules you don't want via `{ "id": "...", "enabled": false }`.
+- Run `/sf-guardrail audit` first. Recent entries include whether the org
+  type was resolved from cache, lookup, `productionAliases`, or guessed. If the
+  entry is guessed, run `sf org display -o <alias> --json` and confirm the org
+  is authenticated and reports a non-production type. If the alias still cannot
+  be resolved, run `/sf-devbar refresh` or restart pi. `productionAliases` is
+  only for aliases you want treated as production; do not add sandbox/scratch
+  aliases there.
 
 **I cannot write to `destructiveChanges.xml` even though my rule is supposed to be off:**
 

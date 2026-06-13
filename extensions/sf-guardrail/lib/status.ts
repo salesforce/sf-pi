@@ -65,8 +65,11 @@ function count<T>(xs: T[], pred: (x: T) => boolean): number {
 function formatEntry(e: DecisionEntryData): string {
   const when = new Date(e.timestamp).toISOString().slice(11, 19);
   const shortSubject = e.subject.length > 60 ? e.subject.slice(0, 57) + "…" : e.subject;
-  const orgSuffix = e.orgAlias ? ` org=${e.orgAlias}(${e.orgType ?? "?"})` : "";
-  return `${when}  ${e.outcome}  ${e.ruleId}${orgSuffix}  ${e.toolName}  ${shortSubject}`;
+  const orgSuffix = e.orgAlias
+    ? ` org=${e.orgAlias}(${e.orgType ?? "?"}${e.orgResolutionGuessed ? ",guessed" : ""}${e.orgResolutionSource ? `,${e.orgResolutionSource}` : ""})`
+    : "";
+  const scopeSuffix = e.approvalScopeLabel ? ` scope=${e.approvalScopeLabel}` : "";
+  return `${when}  ${e.outcome}  ${e.ruleId}${orgSuffix}${scopeSuffix}  ${e.toolName}  ${shortSubject}`;
 }
 
 export function renderRules(config: GuardrailConfig): string {

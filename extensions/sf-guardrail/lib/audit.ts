@@ -31,6 +31,13 @@ export function record(
     fingerprint: decision.fingerprint,
     orgAlias: decision.orgAlias,
     orgType: decision.orgType,
+    orgId: decision.orgId,
+    orgUsername: decision.orgUsername,
+    orgResolutionGuessed: decision.orgResolutionGuessed,
+    orgResolutionSource: decision.orgResolutionSource,
+    approvalScopeLabel: decision.approvalScope?.label,
+    approvalScopeDetail: decision.approvalScope?.detail,
+    approvalRiskTier: decision.approvalScope?.riskTier,
     reason: decision.reason,
   };
   pi.appendEntry(DECISION_ENTRY_TYPE, data);

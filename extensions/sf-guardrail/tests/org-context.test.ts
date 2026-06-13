@@ -7,17 +7,23 @@
  *   - unknown aliases (no cache, no list) fail closed to "production"
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { SfEnvironment } from "../../../lib/common/sf-environment/types.ts";
+import type { OrgInfo, SfEnvironment } from "../../../lib/common/sf-environment/types.ts";
 
 // Mock the shared cache module. The returned `env` is set per-test via
 // `setEnv(...)` so each scenario is explicit.
 let mockedEnv: SfEnvironment | null = null;
+let mockedLookup: Record<string, OrgInfo> = {};
 
 vi.mock("../../../lib/common/sf-environment/shared-runtime.ts", () => ({
   getCachedSfEnvironment: () => mockedEnv,
 }));
 
-import { resolveOrgContext } from "../lib/org-context.ts";
+vi.mock("../../../lib/common/sf-environment/detect.ts", () => ({
+  detectOrg: async (targetOrg: string) =>
+    mockedLookup[targetOrg] ?? { detected: false, orgType: "unknown" },
+}));
+
+import { resolveOrgContext, resolveOrgContextWithLookup } from "../lib/org-context.ts";
 
 function setEnv(env: SfEnvironment | null): void {
   mockedEnv = env;
@@ -28,13 +34,25 @@ function makeEnv(orgAlias: string, orgType: SfEnvironment["org"]["orgType"]): Sf
     cli: { installed: true, version: "2.0.0" },
     project: { detected: false },
     config: { hasTargetOrg: true, targetOrg: orgAlias, location: "Global" },
-    org: { detected: true, alias: orgAlias, orgType },
+    org: {
+      detected: true,
+      alias: orgAlias,
+      username: `${orgAlias}@example.test`,
+      orgId: `00D${orgAlias}`,
+      orgType,
+    },
     detectedAt: Date.now(),
   };
 }
 
-beforeEach(() => setEnv(null));
-afterEach(() => setEnv(null));
+beforeEach(() => {
+  setEnv(null);
+  mockedLookup = {};
+});
+afterEach(() => {
+  setEnv(null);
+  mockedLookup = {};
+});
 
 describe("resolveOrgContext", () => {
   it("prefers -o alias from the command over default", () => {
@@ -77,6 +95,35 @@ describe("resolveOrgContext", () => {
     setEnv(makeEnv("Prod", "production"));
     const ctx = resolveOrgContext("sf apex run -f x.apex -o Prod", "/tmp", []);
     expect(ctx.type).toBe("production");
+    expect(ctx.guessed).toBe(false);
+  });
+
+  it("username matching cached org uses cached org type", () => {
+    setEnv(makeEnv("DevInt", "sandbox"));
+    const ctx = resolveOrgContext("sf apex run -f x.apex -o DevInt@example.test", "/tmp", []);
+    expect(ctx.type).toBe("sandbox");
+    expect(ctx.guessed).toBe(false);
+  });
+
+  it("unknown cached default org type fails closed to production", () => {
+    setEnv(makeEnv("Mystery", "unknown"));
+    const ctx = resolveOrgContext("sf apex run -f x.apex -o Mystery", "/tmp", []);
+    expect(ctx.type).toBe("production");
+    expect(ctx.guessed).toBe(true);
+  });
+
+  it("bounded lookup resolves explicit scratch aliases", async () => {
+    setEnv(makeEnv("DevInt", "sandbox"));
+    mockedLookup.Scratch = {
+      detected: true,
+      alias: "Scratch",
+      username: "scratch@example.test",
+      orgId: "00DScratch",
+      orgType: "scratch",
+    };
+    const ctx = await resolveOrgContextWithLookup("sf project deploy start -o Scratch", "/tmp", []);
+    expect(ctx.type).toBe("scratch");
+    expect(ctx.source).toBe("lookup");
     expect(ctx.guessed).toBe(false);
   });
 

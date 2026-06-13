@@ -5,12 +5,21 @@
  * calls. These are the contract for the tool_call handler.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { SfEnvironment } from "../../../lib/common/sf-environment/types.ts";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import type { OrgInfo, SfEnvironment } from "../../../lib/common/sf-environment/types.ts";
 
 let mockedEnv: SfEnvironment | null = null;
+let mockedLookup: Record<string, OrgInfo> = {};
 
 vi.mock("../../../lib/common/sf-environment/shared-runtime.ts", () => ({
   getCachedSfEnvironment: () => mockedEnv,
+}));
+
+vi.mock("../../../lib/common/sf-environment/detect.ts", () => ({
+  detectOrg: async (targetOrg: string) =>
+    mockedLookup[targetOrg] ?? { detected: false, orgType: "unknown" },
 }));
 
 // File-existence check path for policies.matchPath. onlyIfExists defaults true
@@ -24,7 +33,7 @@ vi.mock("node:fs", async () => {
   };
 });
 
-import { classify } from "../lib/classify.ts";
+import { classify, classifyWithOrgLookup } from "../lib/classify.ts";
 import { readBundledConfig } from "../lib/config.ts";
 
 function env(orgAlias: string, orgType: SfEnvironment["org"]["orgType"]): SfEnvironment {
@@ -32,16 +41,34 @@ function env(orgAlias: string, orgType: SfEnvironment["org"]["orgType"]): SfEnvi
     cli: { installed: true, version: "2.0.0" },
     project: { detected: false },
     config: { hasTargetOrg: true, targetOrg: orgAlias, location: "Global" },
-    org: { detected: true, alias: orgAlias, orgType },
+    org: {
+      detected: true,
+      alias: orgAlias,
+      username: `${orgAlias}@example.test`,
+      orgId: `00D${orgAlias}`,
+      orgType,
+    },
     detectedAt: Date.now(),
+  };
+}
+
+function lookupOrg(alias: string, orgType: OrgInfo["orgType"]): void {
+  mockedLookup[alias] = {
+    detected: true,
+    alias,
+    username: `${alias}@example.test`,
+    orgId: `00D${alias}`,
+    orgType,
   };
 }
 
 beforeEach(() => {
   mockedEnv = null;
+  mockedLookup = {};
 });
 afterEach(() => {
   mockedEnv = null;
+  mockedLookup = {};
 });
 
 describe("classify — policies (Tier 1)", () => {
@@ -130,6 +157,20 @@ describe("classify — commandGate (Tier 2)", () => {
     expect(decision?.ruleId).toBe("sf-org-delete");
   });
 
+  it("makes verified non-production sf org delete eligible for a short persisted grant", async () => {
+    lookupOrg("MyScratch", "scratch");
+    const config = readBundledConfig();
+    const decision = await classifyWithOrgLookup({
+      toolName: "bash",
+      input: { command: "sf org delete scratch -o MyScratch" },
+      cwd: "/project",
+      config,
+    });
+    expect(decision?.ruleId).toBe("sf-org-delete");
+    expect(decision?.orgType).toBe("scratch");
+    expect(decision?.approvalScope?.persistedGrant?.label).toContain("30 minutes");
+  });
+
   it("ignores benign commands", () => {
     const config = readBundledConfig();
     const decision = classify({
@@ -181,6 +222,40 @@ describe("classify — commandGate (Tier 2)", () => {
     expect(decision?.subject).toBe("rm -rf tmp/");
   });
 
+  it("auto-allows strictly validated OS temp cleanup", () => {
+    const tempDir = mkdtempSync(path.join(tmpdir(), "tmp.sf-guardrail-"));
+    try {
+      const config = readBundledConfig();
+      const decision = classify({
+        toolName: "bash",
+        input: { command: `rm -rf ${tempDir}` },
+        cwd: "/project",
+        config,
+      });
+      expect(decision?.action).toBe("allow");
+      expect(decision?.ruleId).toBe("safe-temp-cleanup");
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it("does not auto-allow chained temp cleanup", () => {
+    const tempDir = mkdtempSync(path.join(tmpdir(), "tmp.sf-guardrail-"));
+    try {
+      const config = readBundledConfig();
+      const decision = classify({
+        toolName: "bash",
+        input: { command: `echo ok && rm -rf ${tempDir}` },
+        cwd: "/project",
+        config,
+      });
+      expect(decision?.action).toBe("confirm");
+      expect(decision?.ruleId).toBe("rm-rf");
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
   it("ignores non-run herdr actions", () => {
     const config = readBundledConfig();
     const decision = classify({
@@ -218,6 +293,7 @@ describe("classify — orgAwareGate (Tier 2)", () => {
     expect(decision?.ruleId).toBe("sf-deploy-prod");
     expect(decision?.orgAlias).toBe("Prod");
     expect(decision?.orgType).toBe("production");
+    expect(decision?.approvalScope?.persistedGrant?.label).toContain("60 minutes");
   });
 
   it("confirms herdr.run sf project deploy start against production", () => {
@@ -236,6 +312,48 @@ describe("classify — orgAwareGate (Tier 2)", () => {
     expect(decision?.subject).toBe("sf project deploy start -o Prod");
   });
 
+  it("confirms chained sf project deploy start against production", () => {
+    mockedEnv = env("Prod", "production");
+    const config = readBundledConfig();
+    const decision = classify({
+      toolName: "bash",
+      input: { command: "cd force-app && sf project deploy start -o Prod" },
+      cwd: "/project",
+      config,
+    });
+    expect(decision?.ruleId).toBe("sf-deploy-prod");
+    expect(decision?.orgCommand).toBe("sf project deploy start -o Prod");
+    expect(decision?.subject).toBe("cd force-app && sf project deploy start -o Prod");
+  });
+
+  it("confirms sf project deploy quick against production", () => {
+    mockedEnv = env("Prod", "production");
+    const config = readBundledConfig();
+    const decision = classify({
+      toolName: "bash",
+      input: { command: "sf project deploy quick -o Prod" },
+      cwd: "/project",
+      config,
+    });
+    expect(decision?.ruleId).toBe("sf-deploy-prod");
+  });
+
+  it("does NOT fire for production deploy rehearsal commands", () => {
+    mockedEnv = env("Prod", "production");
+    const config = readBundledConfig();
+    for (const command of [
+      "sf project deploy validate -o Prod",
+      "sf project deploy preview -o Prod",
+      "sf project deploy report -o Prod",
+      "sf project deploy start --check-only -o Prod",
+      "sf project deploy start --dry-run -o Prod",
+    ]) {
+      expect(
+        classify({ toolName: "bash", input: { command }, cwd: "/project", config }),
+      ).toBeUndefined();
+    }
+  });
+
   it("does NOT fire for sandbox targets", () => {
     mockedEnv = env("DevInt", "sandbox");
     const config = readBundledConfig();
@@ -246,6 +364,35 @@ describe("classify — orgAwareGate (Tier 2)", () => {
       config,
     });
     expect(decision).toBeUndefined();
+  });
+
+  it("does NOT fire for explicit non-default scratch aliases resolved by lookup", async () => {
+    mockedEnv = env("DevInt", "sandbox");
+    lookupOrg("Scratch", "scratch");
+    const config = readBundledConfig();
+    const decision = await classifyWithOrgLookup({
+      toolName: "bash",
+      input: { command: "sf project deploy start -o Scratch" },
+      cwd: "/project",
+      config,
+    });
+    expect(decision).toBeUndefined();
+  });
+
+  it("keeps explicit non-default production aliases gated after lookup", async () => {
+    mockedEnv = env("DevInt", "sandbox");
+    lookupOrg("Prod", "production");
+    const config = readBundledConfig();
+    const decision = await classifyWithOrgLookup({
+      toolName: "bash",
+      input: { command: "sf project deploy start -o Prod" },
+      cwd: "/project",
+      config,
+    });
+    expect(decision?.ruleId).toBe("sf-deploy-prod");
+    expect(decision?.orgResolutionSource).toBe("lookup");
+    expect(decision?.orgResolutionGuessed).toBe(false);
+    expect(decision?.approvalScope?.persistedGrant?.label).toContain("60 minutes");
   });
 
   it("confirms sf apex run on production", () => {

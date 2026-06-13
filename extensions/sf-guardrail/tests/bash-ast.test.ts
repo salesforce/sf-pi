@@ -9,7 +9,13 @@
  *   - Pipeline termination so we only consider the first simple command.
  */
 import { describe, expect, it } from "vitest";
-import { extractTargetOrg, matches, tokenize } from "../lib/bash-ast.ts";
+import {
+  extractTargetOrg,
+  matches,
+  splitSimpleCommands,
+  tokenize,
+  tokenizeSimpleCommands,
+} from "../lib/bash-ast.ts";
 
 describe("tokenize", () => {
   it("strips path from head word", () => {
@@ -39,6 +45,16 @@ describe("tokenize", () => {
       "start",
     ]);
     expect(tokenize("sf org list --all | grep prod")?.args).toEqual(["org", "list", "--all"]);
+  });
+
+  it("splits shell chains into simple commands without splitting quoted text", () => {
+    expect(splitSimpleCommands("cd force-app && sf project deploy start -o Prod")).toEqual([
+      "cd force-app",
+      "sf project deploy start -o Prod",
+    ]);
+    expect(
+      tokenizeSimpleCommands("echo 'a && b'; sf org list").map((item) => item.tokens.head),
+    ).toEqual(["echo", "sf"]);
   });
 
   it("returns undefined for empty input", () => {

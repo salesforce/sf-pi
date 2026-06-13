@@ -34,3 +34,4 @@ or accidentally contradicted in extension READMEs.
 - [0029: Agent Script Uses Minimal Structured Mutation](./0029-minimal-structured-agent-script-mutation.md)
 - [0030: SF Browser Destination Packs Navigation Hardening](./0030-sf-browser-destination-packs-navigation-hardening.md)
 - [0031: Pi 0.79 Agent Workflow Alignment](./0031-pi-079-agent-workflow-alignment.md)
+- [0032: SF Guardrail Uses Risk-Tiered Approval Grants](./0032-sf-guardrail-risk-tiered-approval-grants.md)

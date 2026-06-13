@@ -14,7 +14,7 @@
  * short-circuits to block (no prompt); everything else requires user
  * confirmation.
  */
-import { tokenize } from "./bash-ast.ts";
+import { tokenizeSimpleCommands } from "./bash-ast.ts";
 import type { CommandGateConfig, CommandPattern } from "./types.ts";
 
 export type CommandGateOutcome =
@@ -45,8 +45,8 @@ export function evaluateCommand(
 
 function findMatch(command: string, patterns: CommandPattern[]): CommandPattern | undefined {
   if (patterns.length === 0) return undefined;
-  const tokens = tokenize(command);
-  const headAndArgs = tokens ? [tokens.head, ...tokens.args] : [];
+  const commands = tokenizeSimpleCommands(command);
+  const headAndArgs = commands.flatMap((item) => [item.tokens.head, ...item.tokens.args]);
 
   for (const p of patterns) {
     if (patternMatches(command, headAndArgs, p.pattern)) return p;
@@ -57,6 +57,13 @@ function findMatch(command: string, patterns: CommandPattern[]): CommandPattern 
 function patternMatches(command: string, tokens: string[], pattern: string): boolean {
   const trimmed = pattern.trim();
   if (trimmed.length === 0) return false;
+
+  if (trimmed === "dd of=") {
+    return tokens[0] === "dd" && tokens.slice(1).some((token) => token.startsWith("of="));
+  }
+  if (trimmed === "mkfs.*") {
+    return tokens.some((token) => token === "mkfs" || token.startsWith("mkfs."));
+  }
 
   const words = trimmed.split(/\s+/).filter(Boolean);
 

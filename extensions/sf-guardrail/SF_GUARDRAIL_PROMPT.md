@@ -21,7 +21,7 @@ Dangerous-command confirmation (shell-AST matched from `bash.command` or
 Org-aware confirmation (from `bash.command` or `herdr.run.command`, only when
 target org resolves to PRODUCTION):
 
-- sf project deploy start|resume
+- sf project deploy start|resume|quick (recognized validate/preview/report/check-only/dry-run rehearsals are allowed)
 - sf apex run
 - sf data delete|update|upsert|import
 - sf org api --method DELETE|PATCH|PUT
@@ -30,6 +30,7 @@ Target-org resolution:
 
 - Parse -o <alias> / --target-org <alias> from the command.
 - Else use the default-org alias from <sf_environment>.
+- Explicit non-default aliases may be resolved with a bounded cached org lookup.
 - If unresolvable, the guardrail treats the org as production (fail-closed).
 
 Implications for how you should work:
@@ -40,7 +41,8 @@ Implications for how you should work:
 - In headless / non-interactive mode, gated calls fail closed unless the
   user has set SF_GUARDRAIL_ALLOW_HEADLESS=1.
 
-Override: `/sf-guardrail` shows active rules and recent decisions. Users may
-grant "Allow for this session" at the confirmation dialog, which persists via
-pi's session entries.
+Override: `/sf-guardrail` shows active rules, recent decisions, and active
+approval grants. Users may choose a scoped allow at the confirmation dialog;
+session allows persist via pi's session entries, and selected low-risk grants
+may persist for a short project-scoped TTL.
 </sf_guardrail>

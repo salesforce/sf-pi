@@ -13,7 +13,7 @@ import { loadConfig } from "./config.ts";
 
 const HEADLESS_ALLOW_ENV = "SF_GUARDRAIL_ALLOW_HEADLESS";
 
-export async function runExtensionDoctor(_cwd: string): Promise<ExtensionDoctorReport> {
+export async function runExtensionDoctor(): Promise<ExtensionDoctorReport> {
   const checks: ExtensionDoctorReport["checks"] = [];
 
   const { config, source } = loadConfig();
@@ -24,7 +24,7 @@ export async function runExtensionDoctor(_cwd: string): Promise<ExtensionDoctorR
     title: `Configuration source: ${source}`,
     detail:
       source === "override"
-        ? "Using user override at <globalAgentDir>/sf-pi/sf-guardrail/overrides.json"
+        ? "Using user override at <globalAgentDir>/sf-guardrail/rules.json"
         : "Using bundled defaults (run /sf-guardrail install-preset to fork them).",
   });
 

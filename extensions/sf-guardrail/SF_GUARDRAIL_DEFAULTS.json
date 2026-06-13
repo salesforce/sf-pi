@@ -9,7 +9,7 @@
   },
   "productionAliases": [],
   "headlessEscapeHatchEnv": "SF_GUARDRAIL_ALLOW_HEADLESS",
-  "confirmTimeoutMs": 30000,
+  "confirmTimeoutMs": 120000,
   "policies": {
     "rules": [
       {
@@ -70,6 +70,18 @@
       { "id": "rm-rf", "pattern": "rm -rf", "description": "recursive force delete" },
       { "id": "sudo", "pattern": "sudo", "description": "superuser command" },
       {
+        "id": "chmod-777",
+        "pattern": "chmod -R 777",
+        "description": "recursive world-writable chmod"
+      },
+      {
+        "id": "chown-recursive",
+        "pattern": "chown -R",
+        "description": "recursive ownership change"
+      },
+      { "id": "dd-of", "pattern": "dd of=", "description": "dd writing to an output device/file" },
+      { "id": "mkfs", "pattern": "mkfs.*", "description": "filesystem formatting command" },
+      {
         "id": "sf-org-delete",
         "pattern": "sf org delete",
         "description": "delete scratch/sandbox org"
@@ -109,7 +121,10 @@
       {
         "id": "sf-deploy-prod",
         "description": "Metadata deploy targeting production",
-        "match": { "tool": "bash", "ast": { "cmd": "sf", "subCmd": ["project", "deploy"] } },
+        "match": {
+          "tool": "bash",
+          "ast": { "cmd": "sf", "subCmd": ["project", "deploy", ["start", "resume", "quick"]] }
+        },
         "whenOrgType": ["production"],
         "action": "confirm",
         "confirmMessage": "Deploy to PRODUCTION org {orgAlias} ({orgType})?\n\n  {command}\n\nPrefer `sf project deploy validate` as a rehearsal first.",

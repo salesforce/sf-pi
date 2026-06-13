@@ -236,6 +236,58 @@ _Avoid_: standalone extension, workflow catalog, mandatory terminal manager, sta
 The Herdr-installed Pi extension that reports Pi agent state back to Herdr for sidebar/status visibility without being required for SF Brain's pane-orchestration guidance.
 _Avoid_: active tool provider, workflow mode requirement, pane-control API
 
+**SF Guardrail**:
+The **Bundled Extension** that mediates risky file access, dangerous shell commands, and production-sensitive Salesforce operations in the **Pi Runtime**.
+_Avoid_: generic guardrails, security scanner, Salesforce org policy engine
+
+**Fail-Closed Guardrail**:
+The **SF Guardrail** safety posture where ambiguous parsing, target-org resolution, config, or confirmation outcomes resolve to block or confirmation rather than silent allow.
+_Avoid_: best-effort allow, convenience-first safety, silent bypass
+
+**Org-Aware Gate**:
+An **SF Guardrail** decision branch whose outcome depends on the resolved target Salesforce org type for a shell command.
+_Avoid_: production detector, deploy blocker, org policy
+
+**Dangerous Command Gate**:
+An **SF Guardrail** decision branch for locally risky shell commands independent of Salesforce org type.
+_Avoid_: shell linter, command runner, terminal sandbox
+
+**Session Allow-Memory**:
+A session/branch-scoped **SF Guardrail** approval that suppresses repeated prompts within a defined **Safety Envelope**.
+_Avoid_: global allowlist, permanent bypass, command history
+
+**Persisted Approval Grant**:
+A user-approved, TTL-bound **SF Guardrail** allowance stored outside the current session and matched against a **Safety Envelope** before suppressing a future prompt.
+_Avoid_: permanent allowlist, trust mode, global bypass
+
+**Risk-Tiered Approval Persistence**:
+The **SF Guardrail** rule that only selected confirmation classes are eligible for **Persisted Approval Grants**, with stricter TTLs and envelopes for higher-risk operations.
+_Avoid_: one-size-fits-all approval memory, blanket persistence
+
+**Project-Scoped Approval**:
+A **Persisted Approval Grant** whose **Safety Envelope** includes the current Salesforce project identity.
+_Avoid_: project config, repo-shared approval
+
+**Org-Scoped Approval**:
+A **Persisted Approval Grant** whose **Safety Envelope** includes a verified Salesforce org identity and org type.
+_Avoid_: alias-only approval, guessed-org approval
+
+**Safety Envelope**:
+The precise scope covered by an **SF Guardrail** allow decision, such as rule, resolved org identity, command family, and safety-relevant target details.
+_Avoid_: blanket allow, exact command only, trust mode
+
+**Strict Temp Cleanup Allowance**:
+An automatic **SF Guardrail** allow path for provably scoped cleanup of run-owned directories under the operating system temp directory.
+_Avoid_: general rm bypass, tmp allowlist, delete permission
+
+**Guardrail Audit Trail**:
+The session-local record of **SF Guardrail** allow, block, timeout, cancel, headless, and auto-allow decisions.
+_Avoid_: telemetry, analytics, external logging
+
+**Human-in-the-Loop Confirmation**:
+The interactive **SF Guardrail** confirmation step used when a risky operation cannot be automatically allowed or blocked.
+_Avoid_: silent approval, background prompt, policy exception
+
 **Herdr Command Mediation**:
 The SF Guardrail behavior where shell commands submitted through Herdr pane orchestration are evaluated by the same dangerous-command and org-aware safety gates as ordinary bash tool calls.
 _Avoid_: duplicate safety engine, Herdr-specific allowlist, bypass around Salesforce org safety, pane-management gating

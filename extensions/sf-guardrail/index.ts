@@ -75,7 +75,13 @@ import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 import { shouldInjectOnce } from "../../lib/common/session/inject-once.ts";
 import { record, readRecent } from "./lib/audit.ts";
 import { forgetSession, grant, isAllowed, restore } from "./lib/allowlist.ts";
-import { classify } from "./lib/classify.ts";
+import {
+  clearProjectGrants,
+  createGrant,
+  findValidGrant,
+  renderProjectGrants,
+} from "./lib/approval-grants.ts";
+import { classifyWithOrgLookup } from "./lib/classify.ts";
 import { loadConfig } from "./lib/config.ts";
 import { confirmDecision } from "./lib/hitl.ts";
 import { installPreset } from "./lib/install-preset.ts";
@@ -98,7 +104,7 @@ export default function sfGuardrail(pi: ExtensionAPI) {
   // Contribute Guardrail config readiness to the aggregated `/sf-pi doctor`
   // view. Recent decisions stay in /sf-guardrail audit (which has access to
   // the ExtensionContext); this provider is cwd-only by design.
-  registerExtensionDoctor("sf-guardrail", (cwd) => runGuardrailExtensionDoctor(cwd));
+  registerExtensionDoctor("sf-guardrail", () => runGuardrailExtensionDoctor());
 
   // ─── session_start: hydrate allow-memory ──────────────────────────────────
   pi.on("session_start", async (_event, ctx) => {
@@ -138,13 +144,19 @@ export default function sfGuardrail(pi: ExtensionAPI) {
     const { config } = getConfig();
     if (!config.enabled) return undefined;
 
-    const decision = classify({
+    const decision = await classifyWithOrgLookup({
       toolName: event.toolName,
       input: (event.input ?? {}) as Record<string, unknown>,
       cwd: ctx.cwd,
       config,
     });
     if (!decision) return undefined;
+
+    // Audited auto-allow → no prompt.
+    if (decision.action === "allow") {
+      record(pi, decision, "allow_auto", event.toolName);
+      return undefined;
+    }
 
     // Hard block → no prompt.
     if (decision.action === "block") {
@@ -159,6 +171,15 @@ export default function sfGuardrail(pi: ExtensionAPI) {
       return undefined;
     }
 
+    // Previously granted for this project? Headless stays fail-closed unless
+    // the existing explicit headless escape hatch is set.
+    const headlessGrantAllowed =
+      ctx.hasUI || isTruthyEnv(process.env[config.headlessEscapeHatchEnv]);
+    if (headlessGrantAllowed && findValidGrant(ctx.cwd, decision)) {
+      record(pi, decision, "allow_persisted", event.toolName);
+      return undefined;
+    }
+
     // Confirmation required.
     const result = await confirmDecision(ctx, {
       title: decision.promptTitle ?? "sf-guardrail",
@@ -166,6 +187,7 @@ export default function sfGuardrail(pi: ExtensionAPI) {
       timeoutMs: config.confirmTimeoutMs,
       escapeHatchEnv: config.headlessEscapeHatchEnv,
       signal: ctx.signal,
+      scopedAllowLabel: decision.approvalScope?.persistedGrant?.label,
     });
 
     switch (result.outcome) {
@@ -176,11 +198,21 @@ export default function sfGuardrail(pi: ExtensionAPI) {
         grant(pi, decision.ruleId, decision.fingerprint);
         record(pi, decision, "allow_session", event.toolName);
         return undefined;
+      case "allow_persisted":
+        createGrant(ctx.cwd, decision);
+        record(pi, decision, "allow_persisted", event.toolName);
+        return undefined;
       case "headless_pass":
         record(pi, decision, "headless_pass", event.toolName);
         return undefined;
       case "headless_block":
         record(pi, decision, "headless_block", event.toolName);
+        return { block: true, reason: result.reason };
+      case "timeout":
+        record(pi, decision, "timeout", event.toolName);
+        return { block: true, reason: result.reason };
+      case "cancel":
+        record(pi, decision, "cancel", event.toolName);
         return { block: true, reason: result.reason };
       case "block":
       default:
@@ -207,10 +239,10 @@ export default function sfGuardrail(pi: ExtensionAPI) {
       await withSafeCommandHandler(ctx, COMMAND_NAME, async () => {
         const sub = (args ?? "").trim().toLowerCase();
         if (sub === "" && ctx.hasUI) {
-          await handleGuardrailPanel(ctx);
+          await handleGuardrailPanel(pi, ctx);
           return;
         }
-        await handleGuardrailCommand(ctx, sub === "" ? "status" : sub);
+        await handleGuardrailCommand(pi, ctx, sub === "" ? "status" : sub);
       });
     },
   });
@@ -220,6 +252,7 @@ type GuardrailAction =
   | "status"
   | "list"
   | "audit"
+  | "grants"
   | "forget"
   | "install-preset"
   | "help"
@@ -246,10 +279,15 @@ const GUARDRAIL_ACTIONS: CommandPanelAction<GuardrailAction>[] = [
     group: "Troubleshooting",
   },
   {
+    value: "grants",
+    label: "Show approval grants",
+    description: "List active persisted approval grants for this project.",
+    group: "Troubleshooting",
+  },
+  {
     value: "forget",
-    label: "Forget session allows",
-    description:
-      "Clear in-memory allow-for-session decisions for this turn; persisted entries remain.",
+    label: "Forget active approvals",
+    description: "Clear session allows and active persisted approval grants for this project.",
     group: "Controls",
   },
   {
@@ -279,7 +317,7 @@ function buildGuardrailActions(cwd: string): CommandPanelAction<GuardrailAction>
   return toggle ? [...GUARDRAIL_ACTIONS, toggle] : GUARDRAIL_ACTIONS;
 }
 
-async function handleGuardrailPanel(ctx: ExtensionCommandContext): Promise<void> {
+async function handleGuardrailPanel(pi: ExtensionAPI, ctx: ExtensionCommandContext): Promise<void> {
   const panelState: CommandPanelState<GuardrailAction> = {};
   await openCommandPanel(ctx, {
     title: "🛡 SF Guardrail — status & controls",
@@ -291,7 +329,7 @@ async function handleGuardrailPanel(ctx: ExtensionCommandContext): Promise<void>
     actions: () => buildGuardrailActions(ctx.cwd),
     closeValue: "close",
     state: panelState,
-    onAction: (action) => handleGuardrailCommand(ctx, action, true),
+    onAction: (action) => handleGuardrailCommand(pi, ctx, action, true),
     // Lifecycle toggle calls ctx.reload() — must close panel first so the
     // ctx.ui.custom() promise resolves before the runtime is invalidated.
     closeBeforeAction: isLifecycleToggleAction,
@@ -299,6 +337,7 @@ async function handleGuardrailPanel(ctx: ExtensionCommandContext): Promise<void>
 }
 
 async function handleGuardrailCommand(
+  pi: ExtensionAPI,
   ctx: ExtensionCommandContext,
   sub: string,
   fromPanel = false,
@@ -347,12 +386,24 @@ async function handleGuardrailCommand(
     return;
   }
 
-  if (sub === "forget") {
-    forgetSession();
+  if (sub === "grants") {
     await emitGuardrailOutput(
       ctx,
-      "SF Guardrail session allow-list cleared",
-      "In-memory allows are cleared for this turn. Session entries remain; /reload restores them.",
+      "SF Guardrail approval grants",
+      renderProjectGrants(ctx.cwd),
+      "info",
+      fromPanel,
+    );
+    return;
+  }
+
+  if (sub === "forget") {
+    forgetSession(pi);
+    const removed = clearProjectGrants(ctx.cwd);
+    await emitGuardrailOutput(
+      ctx,
+      "SF Guardrail active approvals cleared",
+      `Session allows are revoked for this branch. Cleared ${removed} persisted approval grant(s) for this project.`,
       "info",
       fromPanel,
     );
@@ -367,7 +418,7 @@ async function handleGuardrailCommand(
   await emitGuardrailOutput(
     ctx,
     "Unknown command",
-    `Unknown /sf-guardrail subcommand: ${sub}. Use status, list, audit, forget, install-preset, help.`,
+    `Unknown /sf-guardrail subcommand: ${sub}. Use status, list, audit, grants, forget, install-preset, help.`,
     "warning",
     fromPanel,
   );
@@ -413,8 +464,13 @@ function renderGuardrailHelp(): string {
     `  /${COMMAND_NAME} status          Show active features and recent decisions`,
     `  /${COMMAND_NAME} list            List active file/command/org-aware rules`,
     `  /${COMMAND_NAME} audit           Show recent decisions in this session branch`,
-    `  /${COMMAND_NAME} forget          Clear in-memory allow-for-session decisions`,
+    `  /${COMMAND_NAME} grants          Show active persisted approval grants`,
+    `  /${COMMAND_NAME} forget          Clear session allows and project approval grants`,
     `  /${COMMAND_NAME} install-preset  Write/reconcile bundled defaults to user config`,
     `  /${COMMAND_NAME} help            Show this help`,
   ].join("\n");
+}
+
+function isTruthyEnv(value: string | undefined): boolean {
+  return !!value && value !== "0" && value.toLowerCase() !== "false";
 }

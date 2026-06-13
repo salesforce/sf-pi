@@ -10,17 +10,16 @@
  *     Timeout equals block.
  *   - Headless mode → env escape hatch allows pass-through with an audit
  *     warning; otherwise block. Never fail-open silently.
- *
- * The helper is a pure orchestrator; it does not know which rule is firing
- * or which audit entry to emit. index.ts handles those side effects based
- * on the returned ConfirmResult.
  */
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 
 export type ConfirmResult =
   | { outcome: "allow_once" }
   | { outcome: "allow_session" }
+  | { outcome: "allow_persisted" }
   | { outcome: "block"; reason: string }
+  | { outcome: "timeout"; reason: string }
+  | { outcome: "cancel"; reason: string }
   | { outcome: "headless_pass" }
   | { outcome: "headless_block"; reason: string };
 
@@ -30,6 +29,7 @@ export interface ConfirmOptions {
   timeoutMs: number;
   escapeHatchEnv: string;
   signal?: AbortSignal;
+  scopedAllowLabel?: string;
 }
 
 const ALLOW_ONCE_LABEL = "Allow once";
@@ -53,20 +53,48 @@ export async function confirmDecision(
     };
   }
 
-  const header = `${options.title}\n\n${options.detail}`;
-  const picked = await ctx.ui.select(header, [ALLOW_ONCE_LABEL, ALLOW_SESSION_LABEL, BLOCK_LABEL], {
-    timeout: options.timeoutMs,
-    signal: options.signal,
-  });
+  const timeoutSeconds = Math.ceil(options.timeoutMs / 1000);
+  const header = `${options.title}\n\n${options.detail}\n\nApproval timeout: ${timeoutSeconds}s.`;
+  const startedAt = Date.now();
+  ctx.ui.setStatus?.("sf-guardrail", `Approval required: ${options.title}`);
+  ctx.ui.notify?.(`sf-guardrail approval required: ${options.title}`, "warning");
 
-  if (picked === ALLOW_ONCE_LABEL) return { outcome: "allow_once" };
-  if (picked === ALLOW_SESSION_LABEL) return { outcome: "allow_session" };
-  if (picked === BLOCK_LABEL) {
-    return { outcome: "block", reason: "Blocked by user via sf-guardrail." };
+  try {
+    const scopedLabel = options.scopedAllowLabel ?? ALLOW_SESSION_LABEL;
+    const picked = await ctx.ui.select(header, [ALLOW_ONCE_LABEL, scopedLabel, BLOCK_LABEL], {
+      timeout: options.timeoutMs,
+      signal: options.signal,
+    });
+
+    if (picked === ALLOW_ONCE_LABEL) return { outcome: "allow_once" };
+    if (picked === scopedLabel) {
+      return options.scopedAllowLabel
+        ? { outcome: "allow_persisted" }
+        : { outcome: "allow_session" };
+    }
+    if (picked === BLOCK_LABEL) {
+      return { outcome: "block", reason: detailedBlockReason("Blocked by user", options) };
+    }
+
+    const elapsed = Date.now() - startedAt;
+    if (elapsed >= options.timeoutMs - 250) {
+      return {
+        outcome: "timeout",
+        reason: detailedBlockReason(
+          `Approval expired after ${timeoutSeconds}s with no response`,
+          options,
+        ),
+      };
+    }
+    return {
+      outcome: "cancel",
+      reason: detailedBlockReason("Approval was cancelled", options),
+    };
+  } finally {
+    ctx.ui.setStatus?.("sf-guardrail", undefined);
   }
-  // Timeout or Esc
-  return {
-    outcome: "block",
-    reason: "Blocked by sf-guardrail (timed out or cancelled).",
-  };
+}
+
+function detailedBlockReason(summary: string, options: ConfirmOptions): string {
+  return `${summary} by sf-guardrail.\n\n${options.title}\n\n${options.detail}\n\nRun /sf-guardrail audit to inspect recent decisions, then retry if appropriate.`;
 }

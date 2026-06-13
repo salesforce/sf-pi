@@ -38,6 +38,10 @@ describe("bundled defaults", () => {
         "rm-rf",
         "sudo",
         "sf-org-delete",
+        "chmod-777",
+        "chown-recursive",
+        "dd-of",
+        "mkfs",
         "sf-org-auth-show-access-token",
         "sf-org-auth-show-sfdx-auth-url",
         "sf-org-auth-show-user-password",
@@ -45,6 +49,7 @@ describe("bundled defaults", () => {
         "git-force-push",
       ]),
     );
+    expect(config.confirmTimeoutMs).toBe(120000);
     const orgRuleIds = config.orgAwareGate.rules.map((r) => r.id);
     expect(orgRuleIds).toEqual(
       expect.arrayContaining([

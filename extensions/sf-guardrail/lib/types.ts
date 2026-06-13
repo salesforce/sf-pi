@@ -123,7 +123,11 @@ export interface GuardrailConfig {
 export type DecisionOutcome =
   | "allow_once"
   | "allow_session"
+  | "allow_persisted"
+  | "allow_auto"
   | "block"
+  | "timeout"
+  | "cancel"
   | "hard_block"
   | "headless_pass"
   | "headless_block";
@@ -134,10 +138,22 @@ export type DecisionOutcome =
  * but multiple command-gate or org-aware rules may fire; index.ts iterates them
  * in order and stops at the first block/deny.
  */
+export interface ApprovalScope {
+  fingerprint: string;
+  label: string;
+  detail?: string;
+  riskTier?: string;
+  operationFamily?: string;
+  persistedGrant?: {
+    label: string;
+    ttlMs: number;
+  };
+}
+
 export interface ClassifiedDecision {
   ruleId: string;
   feature: "policies" | "commandGate" | "orgAwareGate";
-  action: "block" | "confirm";
+  action: "allow" | "block" | "confirm";
   /** Human-readable reason surfaced back to the LLM on block. */
   reason: string;
   /** Displayed to the user in the confirmation dialog. */
@@ -146,9 +162,17 @@ export interface ClassifiedDecision {
   fingerprint: string;
   /** File path (policies) or shell command (commandGate / orgAwareGate). */
   subject: string;
+  /** Human-readable and persisted approval scope metadata. */
+  approvalScope?: ApprovalScope;
   /** Target-org context if resolved. */
   orgAlias?: string;
   orgType?: OrgTypeFilter;
+  orgId?: string;
+  orgUsername?: string;
+  orgResolutionGuessed?: boolean;
+  orgResolutionSource?: "cache" | "lookup" | "productionAliases" | "guessed";
+  orgTargetExplicit?: boolean;
+  orgCommand?: string;
 }
 
 // ─── Persisted entries (pi.appendEntry customType values) ───────────────────────
@@ -158,6 +182,9 @@ export const DECISION_ENTRY_TYPE = "sf-guardrail-decision";
 
 /** Session allow-memory. Rendered/cleared by `/sf-guardrail forget`. */
 export const ALLOW_ENTRY_TYPE = "sf-guardrail-allow";
+
+/** Session allow-memory revocation marker. */
+export const ALLOW_REVOKE_ENTRY_TYPE = "sf-guardrail-allow-revoke";
 
 /** Injection guard. Emitted once per session like sf-brain's kernel. */
 export const INJECTION_ENTRY_TYPE = "sf-guardrail-prompt";
@@ -172,6 +199,13 @@ export interface DecisionEntryData {
   fingerprint: string;
   orgAlias?: string;
   orgType?: OrgTypeFilter;
+  orgId?: string;
+  orgUsername?: string;
+  orgResolutionGuessed?: boolean;
+  orgResolutionSource?: "cache" | "lookup" | "productionAliases" | "guessed";
+  approvalScopeLabel?: string;
+  approvalScopeDetail?: string;
+  approvalRiskTier?: string;
   reason: string;
 }
 
@@ -179,6 +213,10 @@ export interface AllowEntryData {
   ruleId: string;
   fingerprint: string;
   grantedAt: number;
+}
+
+export interface AllowRevokeEntryData {
+  revokedAt: number;
 }
 
 // ─── Command / slot constants ───────────────────────────────────────────────────

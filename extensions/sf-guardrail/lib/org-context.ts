@@ -2,36 +2,46 @@
 /**
  * Resolve the target-org context for an incoming bash command.
  *
- * The contract is deliberately simple:
+ * Fast path stays cache-first for the tool_call hot path:
  *   1. If the command has `-o <alias>` or `--target-org <alias>`, that wins.
  *   2. Else, use the default-org alias from the sf-devbar shared cache.
- *   3. Org *type* comes from the same cached `<sf_environment>`
- *      snapshot. If the alias isn't the default, we don't re-detect (we'd
- *      need an sf CLI call and we need this hook to stay hot); instead we
- *      consult `productionAliases` from config and otherwise fall back to
- *      "unknown".
- *   4. "unknown" maps to "production" for safety reasons — fail-closed.
+ *   3. If the target matches any known identity for the cached org, use the
+ *      cached org type.
+ *   4. Otherwise fail closed to production.
  *
- * Why read the cache instead of calling sf CLI here:
- *   - tool_call is on the hot path; spawning sf must not block it.
- *   - sf-devbar already populates the cache on session_start.
- *   - For alias values that differ from the default, we trade accuracy for
- *     latency and bias toward production. Users who regularly target a
- *     non-default production alias should list it in `productionAliases`.
+ * `resolveOrgContextWithLookup()` is the bounded slow path used only after an
+ * org-aware rule would fire because the fast path guessed production for an
+ * explicit target. It performs an in-process Salesforce auth/org lookup and
+ * caches the result by alias so scratch/sandbox aliases do not repeatedly
+ * trigger production prompts.
  */
 import { getCachedSfEnvironment } from "../../../lib/common/sf-environment/shared-runtime.ts";
+import { detectOrg } from "../../../lib/common/sf-environment/detect.ts";
 import type { OrgInfo } from "../../../lib/common/sf-environment/types.ts";
 import { extractTargetOrg, tokenize } from "./bash-ast.ts";
 import type { OrgTypeFilter } from "./types.ts";
 
+export type OrgResolutionSource = "cache" | "lookup" | "productionAliases" | "guessed";
+
 export interface OrgContext {
-  /** Alias or username used on the command (or default if unflagged). */
+  /** Alias, username, or org id used on the command (or default if unflagged). */
   alias: string | undefined;
+  /** Stable org id when detection provides it. */
+  orgId?: string;
+  /** Username when detection provides it. */
+  username?: string;
   /** Resolved type, biased to "production" when uncertain. */
   type: OrgTypeFilter;
-  /** True when we had to guess — callers may want to warn the user. */
+  /** True when we had to guess — callers should warn/audit this. */
   guessed: boolean;
+  /** True when the command supplied -o / --target-org explicitly. */
+  explicit: boolean;
+  /** Where the org facts came from. */
+  source: OrgResolutionSource;
 }
+
+const LOOKUP_TIMEOUT_MS = 2_500;
+const lookupCache = new Map<string, OrgContext>();
 
 export function resolveOrgContext(
   command: string,
@@ -44,29 +54,89 @@ export function resolveOrgContext(
 
   const defaultAlias = env?.org?.alias ?? env?.config?.targetOrg;
   const alias = explicit ?? defaultAlias;
+  const isExplicit = explicit !== undefined;
 
   if (!alias) {
-    // No alias at all — treat as production per the fail-closed rule.
-    return { alias: undefined, type: "production", guessed: true };
+    return guessedProduction(undefined, isExplicit);
   }
 
-  // User-listed prod aliases always trump detection.
   if (productionAliases.includes(alias)) {
-    return { alias, type: "production", guessed: false };
+    return {
+      alias,
+      type: "production",
+      guessed: false,
+      explicit: isExplicit,
+      source: "productionAliases",
+    };
   }
 
-  // If the command alias matches the default, we already know the type
-  // from the cached OrgInfo. Otherwise it's ambiguous.
-  if (env?.org?.alias && alias === env.org.alias) {
-    return { alias, type: mapOrgType(env.org), guessed: false };
+  if (env?.org?.detected && matchesCachedOrg(alias, env.org, env.config?.targetOrg)) {
+    return fromOrgInfo(alias, env.org, isExplicit, "cache");
   }
 
-  // Different alias from default, not in the user's production list, no
-  // detection data → fail closed.
-  return { alias, type: "production", guessed: true };
+  return guessedProduction(alias, isExplicit);
 }
 
-function mapOrgType(org: OrgInfo): OrgTypeFilter {
+export async function resolveOrgContextWithLookup(
+  command: string,
+  cwd: string,
+  productionAliases: string[],
+): Promise<OrgContext> {
+  const fast = resolveOrgContext(command, cwd, productionAliases);
+  if (!fast.guessed || !fast.explicit || !fast.alias) return fast;
+
+  const cached = lookupCache.get(fast.alias);
+  if (cached) return cached;
+
+  try {
+    const org = await withTimeout(detectOrg(fast.alias), LOOKUP_TIMEOUT_MS);
+    if (!org.detected) return fast;
+    const resolved = fromOrgInfo(fast.alias, org, true, "lookup");
+    lookupCache.set(fast.alias, resolved);
+    return resolved;
+  } catch {
+    return fast;
+  }
+}
+
+function matchesCachedOrg(alias: string, org: OrgInfo, configuredTargetOrg?: string): boolean {
+  return [configuredTargetOrg, org.alias, org.username, org.orgId].some((value) => value === alias);
+}
+
+function fromOrgInfo(
+  alias: string,
+  org: OrgInfo,
+  explicit: boolean,
+  source: OrgResolutionSource,
+): OrgContext {
+  const mapped = mapOrgType(org);
+  if (mapped === "unknown") {
+    return {
+      alias,
+      orgId: org.orgId,
+      username: org.username,
+      type: "production",
+      guessed: true,
+      explicit,
+      source: "guessed",
+    };
+  }
+  return {
+    alias,
+    orgId: org.orgId,
+    username: org.username,
+    type: mapped,
+    guessed: false,
+    explicit,
+    source,
+  };
+}
+
+function guessedProduction(alias: string | undefined, explicit: boolean): OrgContext {
+  return { alias, type: "production", guessed: true, explicit, source: "guessed" };
+}
+
+function mapOrgType(org: OrgInfo): OrgTypeFilter | "unknown" {
   switch (org.orgType) {
     case "production":
     case "sandbox":
@@ -76,5 +146,20 @@ function mapOrgType(org: OrgInfo): OrgTypeFilter {
       return org.orgType;
     default:
       return "unknown";
+  }
+}
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  let timer: NodeJS.Timeout | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timer = setTimeout(() => reject(new Error("Timed out resolving org context")), timeoutMs);
+        timer.unref?.();
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
   }
 }

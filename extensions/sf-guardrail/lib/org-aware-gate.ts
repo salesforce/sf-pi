@@ -28,7 +28,12 @@ export function evaluateOrgAware(
     if (rule.enabled === false) continue;
     if (!rule.whenOrgType.includes(org.type)) continue;
     if (!matches(tokens, rule.match.ast)) continue;
+    if (rule.id === "sf-deploy-prod" && hasDeployRehearsalFlag(tokens.args)) continue;
     return { rule, command, org };
   }
   return undefined;
+}
+
+function hasDeployRehearsalFlag(args: string[]): boolean {
+  return args.some((arg) => arg === "--check-only" || arg === "--checkonly" || arg === "--dry-run");
 }
