@@ -121,12 +121,12 @@
   },
   "dependencies": {
     "@salesforce/core": "^8.31.0",
-    "@salesforce/source-deploy-retrieve": "^12.36.1",
+    "@salesforce/source-deploy-retrieve": "^12.36.2",
     "@sf-agentscript/agentforce": "2.5.32",
     "@sf-agentscript/language": "2.5.4",
     "@sf-agentscript/lsp": "2.2.26",
     "node-emoji": "^2.2.0",
-    "vscode-languageserver-protocol": "^3.17.5"
+    "vscode-languageserver-protocol": "^3.18.0"
   },
   "overridesNotes": {
     "fast-xml-parser": "Force >= 5.7.0 to clear GHSA-gh4j-gqv2-49f6 (XMLBuilder CDATA injection). Reaches sf-pi through pi-ai -> AWS SDK Bedrock client; remove once upstream AWS SDK resolves the advisory.",
