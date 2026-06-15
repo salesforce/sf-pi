@@ -51,3 +51,4 @@ or accidentally contradicted in extension READMEs.
 - [0046: SF Guardrail Rules Use Explicit Behavior Settings](./0046-sf-guardrail-rules-use-explicit-behavior-settings.md)
 - [0047: SF Guardrail Settings Use a Section Chooser](./0047-sf-guardrail-settings-use-section-chooser.md)
 - [0049: SF Guardrail Routine Preferences Live in Pi Settings](./0049-sf-guardrail-routine-preferences-live-in-pi-settings.md)
+- [0050: SF Pi Manager Configurable Extensions Use Settings Drill-In](./0050-manager-configurable-extensions-use-settings-drill-in.md)

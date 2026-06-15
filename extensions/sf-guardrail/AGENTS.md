@@ -39,6 +39,7 @@ One-file-per-concern split:
 | Approval memory seam                 | `lib/approval-ledger.ts`                            |
 | Safety Envelope fingerprints         | `lib/fingerprint.ts`                                |
 | Manager-backed Guardrail Preferences | `lib/config-panel.ts` + `lib/guardrail-settings.ts` |
+| Settings panel model helpers         | `lib/config-panel-model.ts`                         |
 | Common preference descriptors        | `lib/preferences.ts`                                |
 | Production aliases editor            | `lib/production-aliases-panel.ts`                   |
 | `/sf-guardrail install-preset`       | `lib/install-preset.ts`                             |

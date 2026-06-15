@@ -132,6 +132,43 @@ describe("guardrail preferences", () => {
     });
   });
 
+  it("exposes custom advanced command rules as rule descriptors", () => {
+    const overridePath = configModule.userConfigPath();
+    mkdirSync(path.dirname(overridePath), { recursive: true });
+    writeFileSync(
+      overridePath,
+      JSON.stringify(
+        {
+          commandGate: {
+            patterns: [
+              {
+                id: "custom-prod-reset",
+                pattern: "sf data delete bulk",
+                description: "Bulk delete command used in reset scripts",
+              },
+            ],
+          },
+        },
+        null,
+        2,
+      ) + "\n",
+      "utf8",
+    );
+
+    const { config } = configModule.loadConfig();
+    const descriptors = preferences.buildGuardrailPreferenceDescriptors(config);
+
+    expect(
+      descriptors.find(
+        (descriptor) => descriptor.key === "commandGate.patterns.custom-prod-reset.enabled",
+      ),
+    ).toMatchObject({
+      section: "commands",
+      label: "Bulk delete command used in reset scripts",
+      example: "sf data delete bulk",
+    });
+  });
+
   it("writes policy rule behavior overrides to Pi settings that loadConfig reads", () => {
     const config = configModule.readBundledConfig();
 

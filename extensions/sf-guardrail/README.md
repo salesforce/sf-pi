@@ -103,7 +103,8 @@ weakening remains deferred — see `ROADMAP.md`.
 - `/sf-guardrail audit` → up to 50 recent decisions from the session
 - `/sf-guardrail grants` → list legacy persisted approval grants, if any
 - `/sf-guardrail settings` → compatibility help that points to `/sf-pi` →
-  SF Guardrail → Settings, where routine preferences are edited
+  SF Guardrail → Settings, where routine preferences are edited in focused
+  nested pages
 - `/sf-guardrail aliases` → edit aliases that should be treated as production;
   saved to Pi settings
 - `/sf-guardrail power-tool` → set every rule to `confirm` in Pi settings
@@ -136,6 +137,7 @@ engine. The canonical terms live in `CONTEXT.md`; the redesign plan lives in
 - ADR 0046 — per-rule behavior is `off`, `confirm`, or `hard block`
 - ADR 0047 — settings use a section chooser (superseded by ADR 0049)
 - ADR 0049 — routine preferences live in Pi settings and the Manager Surface
+- ADR 0050 — configurable extension settings use Manager Surface drill-in
 
 ## Behavior Matrix
 
@@ -171,6 +173,7 @@ extensions/sf-guardrail/
     bash-ast.ts             ← implementation module
     command-gate.ts         ← implementation module
     command-risk-gate.ts    ← implementation module
+    config-panel-model.ts   ← implementation module
     config-panel.ts         ← implementation module
     config.ts               ← implementation module
     extension-doctor.ts     ← implementation module
@@ -263,8 +266,8 @@ Covered by unit tests:
   legacy persisted grant rendering, and clearing.
 - Rule-derived guidance reflects the effective config and preserves the
   user override prompt path.
-- Pi-native preferences are stored under `sfPi.guardrail`, surfaced from the
-  SF Pi Manager config panel, and preserve advanced JSON overrides.
+- Pi-native preferences are stored under `sfPi.guardrail`, surfaced from nested
+  SF Pi Manager settings pages, and preserve advanced JSON overrides.
 - Envelope-first HIL detail renders risk gate, subject, target org, approval
   coverage, session duration, and advisory recovery guidance.
 - Safety Kernel contract tests produce the right decision for representative

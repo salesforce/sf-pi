@@ -445,6 +445,7 @@
         "lib/approval-detail.ts",
         "lib/preferences.ts",
         "lib/guardrail-settings.ts",
+        "lib/config-panel-model.ts",
         "lib/production-aliases-panel.ts",
         "lib/approval-ledger.ts",
         "lib/fingerprint.ts",
@@ -465,7 +466,7 @@
     "entry": "extensions/sf-guardrail/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 4095
+    "srcLoc": 4694
   },
   {
     "id": "sf-herdr",
@@ -684,7 +685,7 @@
     "entry": "extensions/sf-pi-manager/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 3232
+    "srcLoc": 3333
   },
   {
     "id": "sf-skills",

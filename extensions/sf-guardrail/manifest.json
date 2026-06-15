@@ -29,6 +29,7 @@
       "lib/approval-detail.ts",
       "lib/preferences.ts",
       "lib/guardrail-settings.ts",
+      "lib/config-panel-model.ts",
       "lib/production-aliases-panel.ts",
       "lib/approval-ledger.ts",
       "lib/fingerprint.ts",

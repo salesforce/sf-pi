@@ -2,10 +2,10 @@
 /**
  * TUI overlay component for the sf-pi extension manager.
  *
- * Two-level navigation:
- *   Level 0 (list)   — Extension list with enable/disable toggles and scope selector
- *   Level 1 (detail) — Per-extension details for every extension, with inline settings
- *                      for configurable extensions
+ * Three-level navigation:
+ *   Level 0 (list)     — Extension list with enable/disable toggles and scope selector
+ *   Level 1 (detail)   — Per-extension details and actions
+ *   Level 2 (settings) — Config panel for configurable extensions
  *
  * The overlay is a composite router: one overlay stays open, and internal state
  * switches between the list view and a detail/config view. No screen flicker.
@@ -13,7 +13,7 @@
  * Keybindings:
  *   ↑↓       navigate list
  *   Space    toggle enable/disable (list view, or detail view without settings)
- *   Enter    open detail view for the selected extension
+ *   Enter    open selected item/action
  *   A        toggle all
  *   S        cycle scope (global ↔ project)
  *   Esc      back to list (from detail) or apply/close (from list)
@@ -65,7 +65,18 @@ export type OverlayResult = {
   scope: "global" | "project";
 };
 
-type OverlayView = { kind: "list" } | { kind: "detail"; extensionId: string };
+type OverlayView =
+  | { kind: "list" }
+  | { kind: "detail"; extensionId: string; actionIndex: number }
+  | { kind: "settings"; extensionId: string };
+
+type DetailAction = "settings" | "toggle" | "back";
+
+interface DetailActionItem {
+  value: DetailAction;
+  label: string;
+  description: string;
+}
 
 // -------------------------------------------------------------------------------------------------
 // Helpers
@@ -158,7 +169,7 @@ export class SfPiOverlayComponent implements Focusable {
             this.configFactories.set(ext.id, factory);
             this.pendingFactories.delete(ext.id);
             if (
-              this.view.kind === "detail" &&
+              this.view.kind === "settings" &&
               this.activePanelExtId === ext.id &&
               !this.activePanel
             ) {
@@ -173,6 +184,17 @@ export class SfPiOverlayComponent implements Focusable {
   }
 
   handleInput(data: string): void {
+    // --- Settings view ---
+    if (this.view.kind === "settings") {
+      if (this.activePanel) {
+        this.activePanel.focused = this.focused;
+        this.activePanel.handleInput?.(data);
+      } else if (matchesKey(data, "escape")) {
+        this.returnToDetail();
+      }
+      return;
+    }
+
     // --- Detail view ---
     if (this.view.kind === "detail") {
       if (matchesKey(data, "escape")) {
@@ -180,14 +202,18 @@ export class SfPiOverlayComponent implements Focusable {
         return;
       }
 
-      if (!this.activePanel && matchesKey(data, "space")) {
-        this.toggleActiveDetailExtension();
+      if (matchesKey(data, "up") || matchesKey(data, "k")) {
+        this.moveDetailAction(-1);
         return;
       }
 
-      if (this.activePanel) {
-        this.activePanel.focused = this.focused;
-        this.activePanel.handleInput?.(data);
+      if (matchesKey(data, "down") || matchesKey(data, "j")) {
+        this.moveDetailAction(1);
+        return;
+      }
+
+      if (matchesKey(data, "return") || matchesKey(data, "enter") || matchesKey(data, "space")) {
+        this.runSelectedDetailAction();
       }
       return;
     }
@@ -254,6 +280,10 @@ export class SfPiOverlayComponent implements Focusable {
 
     if (this.view.kind === "detail") {
       return this.renderDetailView(innerWidth, row);
+    }
+
+    if (this.view.kind === "settings") {
+      return this.renderSettingsView(innerWidth, row);
     }
 
     return this.renderListView(innerWidth, row);
@@ -447,35 +477,54 @@ export class SfPiOverlayComponent implements Focusable {
       );
     }
 
-    if (ext.configurable) {
-      lines.push(row(""));
-      lines.push(row(` ${theme.fg("accent", theme.bold("Settings"))}`));
-      if (this.activePanel) {
-        this.activePanel.focused = this.focused;
-        const contentRows = this.activePanel.renderContent
-          ? this.activePanel.renderContent(innerWidth)
-          : this.activePanel.render(innerWidth);
-        for (const contentRow of contentRows) {
-          lines.push(row(contentRow));
-        }
-      } else if (this.pendingFactories.has(ext.id)) {
-        lines.push(row(`  ${theme.fg("dim", "Loading settings panel…")}`));
-      } else {
-        lines.push(row(`  ${theme.fg("muted", "Settings panel unavailable.")}`));
-      }
-    } else {
-      lines.push(row(""));
-      lines.push(row(` ${theme.fg("accent", theme.bold("Actions"))}`));
-      if (ext.alwaysActive) {
-        lines.push(row(`  ${theme.fg("dim", "This extension is locked and always active.")}`));
-      } else {
-        lines.push(row(`  ${theme.fg("dim", "Space toggle enabled/disabled")}`));
-      }
-      lines.push(row(`  ${theme.fg("dim", "Esc back to the extension list")}`));
+    lines.push(row(""));
+    lines.push(row(` ${theme.fg("accent", theme.bold("Actions"))}`));
+    const actions = this.getDetailActions(ext);
+    const actionIndex = this.view.kind === "detail" ? this.view.actionIndex : 0;
+    for (let i = 0; i < actions.length; i++) {
+      const action = actions[i];
+      if (!action) continue;
+      const selected = i === actionIndex;
+      const cursor = selected ? theme.fg("accent", "→") : " ";
+      const label = selected ? theme.fg("accent", action.label) : theme.fg("text", action.label);
+      lines.push(row(`  ${cursor} ${label}`));
+      lines.push(row(`     ${theme.fg("dim", action.description)}`));
     }
 
     lines.push(theme.fg("border", `╰${"─".repeat(innerWidth)}╯`));
 
+    return lines;
+  }
+
+  private renderSettingsView(innerWidth: number, row: (content?: string) => string): string[] {
+    const lines: string[] = [];
+    const theme = this.theme;
+    const ext = this.getActiveExtension();
+
+    if (!ext) {
+      return this.renderListView(innerWidth, row);
+    }
+
+    lines.push(theme.fg("border", `╭${"─".repeat(innerWidth)}╮`));
+    const breadcrumb = `← Esc back  SF Pi › ${ext.name} › Settings`;
+    lines.push(row(` ${theme.fg("accent", theme.bold(breadcrumb))}`));
+    lines.push(row(""));
+
+    if (this.activePanel) {
+      this.activePanel.focused = this.focused;
+      const contentRows = this.activePanel.renderContent
+        ? this.activePanel.renderContent(innerWidth)
+        : this.activePanel.render(innerWidth);
+      for (const contentRow of contentRows) {
+        lines.push(row(contentRow));
+      }
+    } else if (this.pendingFactories.has(ext.id)) {
+      lines.push(row(` ${theme.fg("dim", "Loading settings panel…")}`));
+    } else {
+      lines.push(row(` ${theme.fg("muted", "Settings panel unavailable.")}`));
+    }
+
+    lines.push(theme.fg("border", `╰${"─".repeat(innerWidth)}╯`));
     return lines;
   }
 
@@ -484,9 +533,15 @@ export class SfPiOverlayComponent implements Focusable {
   // -------------------------------------------------------------------------------------------------
 
   private drillIntoDetail(extensionId: string): void {
+    this.activePanelExtId = null;
+    this.activePanel = null;
+    this.view = { kind: "detail", extensionId, actionIndex: 0 };
+  }
+
+  private drillIntoSettings(extensionId: string): void {
     this.activePanelExtId = extensionId;
     this.activePanel = null;
-    this.view = { kind: "detail", extensionId };
+    this.view = { kind: "settings", extensionId };
     this.attachConfigPanel(extensionId);
   }
 
@@ -505,9 +560,21 @@ export class SfPiOverlayComponent implements Focusable {
         if (result?.needsReload) {
           this.configPanelReloadNeeded = true;
         }
-        this.returnToList();
+        this.returnToDetail();
       },
     ) as ConfigPanel;
+  }
+
+  private returnToDetail(): void {
+    const extensionId =
+      this.view.kind === "settings" ? this.view.extensionId : this.activePanelExtId;
+    this.activePanel = null;
+    this.activePanelExtId = null;
+    if (extensionId) {
+      this.view = { kind: "detail", extensionId, actionIndex: 0 };
+      return;
+    }
+    this.view = { kind: "list" };
   }
 
   private returnToList(): void {
@@ -540,11 +607,61 @@ export class SfPiOverlayComponent implements Focusable {
   // -------------------------------------------------------------------------------------------------
 
   private getActiveExtension(): ExtensionState | undefined {
-    if (this.view.kind !== "detail") {
+    const view = this.view;
+    if (view.kind === "list") {
       return undefined;
     }
-    const detailView = this.view;
-    return this.extensions.find((ext) => ext.id === detailView.extensionId);
+    return this.extensions.find((ext) => ext.id === view.extensionId);
+  }
+
+  private getDetailActions(ext: ExtensionState): DetailActionItem[] {
+    const actions: DetailActionItem[] = [];
+    if (ext.configurable) {
+      actions.push({
+        value: "settings",
+        label: "Settings",
+        description: "Open this extension's focused settings page.",
+      });
+    }
+    if (!ext.alwaysActive) {
+      actions.push({
+        value: "toggle",
+        label: ext.enabled ? "Disable extension" : "Enable extension",
+        description: ext.enabled
+          ? "Add this extension to the disabled package filters."
+          : "Remove this extension from the disabled package filters.",
+      });
+    }
+    actions.push({ value: "back", label: "Back", description: "Return to the extension list." });
+    return actions;
+  }
+
+  private moveDetailAction(direction: -1 | 1): void {
+    if (this.view.kind !== "detail") return;
+    const ext = this.getActiveExtension();
+    if (!ext) return;
+    const count = this.getDetailActions(ext).length;
+    this.view.actionIndex = (this.view.actionIndex + direction + count) % count;
+  }
+
+  private runSelectedDetailAction(): void {
+    if (this.view.kind !== "detail") return;
+    const ext = this.getActiveExtension();
+    if (!ext) return;
+    const action = this.getDetailActions(ext)[this.view.actionIndex];
+    if (!action) return;
+
+    switch (action.value) {
+      case "settings":
+        this.drillIntoSettings(ext.id);
+        return;
+      case "toggle":
+        this.toggleActiveDetailExtension();
+        return;
+      case "back":
+        this.returnToList();
+        return;
+    }
   }
 
   private getVisibleExtensionCount(): number {

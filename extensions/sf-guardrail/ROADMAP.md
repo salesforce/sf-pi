@@ -46,7 +46,7 @@ are not promises — priority is the rough order.
 - [x] Rule-derived agent guidance (`lib/guidance.ts`) replacing the bundled
       static prompt file while preserving the user override path.
 - [x] Pi settings-backed Guardrail Preferences under `sfPi.guardrail`, with
-      the SF Pi Manager config panel as the mutable settings surface.
+      nested SF Pi Manager settings pages as the mutable settings surface.
 - [x] `/sf-guardrail settings` compatibility help that redirects users to the
       Manager Surface instead of opening an extension-owned settings editor.
 - [x] Envelope-first HIL detail copy (`lib/approval-detail.ts`).
@@ -61,7 +61,8 @@ are not promises — priority is the rough order.
 - [x] Deepened Approval Ledger internals by moving audit, session approval, and
       persisted-grant storage into `approval-ledger.ts` and deleting the old
       helper modules.
-- [x] Production aliases editor via `/sf-guardrail aliases`.
+- [x] Production aliases editor via `/sf-guardrail aliases` and the nested
+      Manager settings page.
 - [x] Command-gate per-pattern behavior semantics and settings toggles.
 - [x] Power Tool and Strict preset actions as shortcuts over per-rule behavior.
 - [ ] **README user-facing cleanup follow-up** — keep detailed rationale in
