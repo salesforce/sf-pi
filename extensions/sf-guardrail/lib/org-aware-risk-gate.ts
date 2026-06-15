@@ -17,8 +17,6 @@ export function evaluateOrgAwareRisk(
   cwd: string,
   config: GuardrailConfig,
 ): ClassifiedDecision | undefined {
-  if (!config.enabled || !config.features.orgAwareGate) return undefined;
-
   for (const orgCommand of splitSimpleCommands(subject.command)) {
     const org = resolveOrgContext(orgCommand, cwd, config.productionAliases);
     const decision = buildOrgAwareDecision(config, subject.command, orgCommand, org);

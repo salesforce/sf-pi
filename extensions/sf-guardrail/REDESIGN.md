@@ -198,7 +198,7 @@ Add:
 Generate the `<sf_guardrail>` message from:
 
 - effective ruleset
-- enabled feature flags
+- per-rule Rule Behavior
 - headless behavior
 - org-resolution behavior
 - advisory recovery guidance
@@ -222,7 +222,6 @@ Add or update:
 
 Use pi-native/shared SF Pi settings patterns for:
 
-- feature toggles
 - confirmation timeout
 - production aliases
 - per-bundled-rule Rule Behavior

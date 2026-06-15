@@ -23,17 +23,12 @@ describe("renderGuardrailGuidance", () => {
     expect(guidance).toContain("</sf_guardrail>");
   });
 
-  it("reflects disabled features instead of listing stale bundled behavior", () => {
+  it("does not render obsolete broad feature disabled messages", () => {
     const config = readBundledConfig();
-    config.features.commandGate = false;
-    config.features.orgAwareGate = false;
 
     const guidance = renderGuardrailGuidance(config);
 
-    expect(guidance).toContain(
-      "Dangerous-command confirmation:\n- Disabled in the effective config.",
-    );
-    expect(guidance).toContain("Org-aware confirmation:\n- Disabled in the effective config.");
+    expect(guidance).not.toContain("Disabled in the effective config.");
   });
 
   it("omits disabled command patterns from active guidance", () => {

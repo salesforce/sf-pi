@@ -69,8 +69,6 @@ async function reconcile(
   const out: GuardrailConfig = JSON.parse(JSON.stringify(bundled));
 
   // Scalars: keep user's values if present.
-  if (typeof existing.enabled === "boolean") out.enabled = existing.enabled;
-  if (existing.features) out.features = { ...out.features, ...existing.features };
   if (Array.isArray(existing.productionAliases)) out.productionAliases = existing.productionAliases;
   if (typeof existing.confirmTimeoutMs === "number")
     out.confirmTimeoutMs = existing.confirmTimeoutMs;

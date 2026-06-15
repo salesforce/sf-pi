@@ -8,7 +8,7 @@
  * from scratch and layered with org-aware confirmation tuned for Salesforce
  * workflows (prod deploys, apex run, data mutations, destructive REST calls).
  *
- * Three feature tiers, all toggleable via features.* in the config:
+ * Three rule families, each controlled by per-rule behavior:
  *
  *   1. policies        — file-protection rules with three levels
  *                        (noAccess, readOnly, none). Strongest wins.
@@ -26,7 +26,7 @@
  *                        HTTP-method REST calls on production. Prompts.
  *
  * Plus:
- *   - promptInjection  — once-per-session sf-brain-style kernel so the LLM
+ *   - rule guidance    — once-per-session sf-brain-style kernel so the LLM
  *                        knows the gating categories and recommended
  *                        workflow (validate, check-only, Savepoint rollback).
  *   - session memory   — "Allow for this session" persists via pi.appendEntry.
@@ -41,7 +41,7 @@
  *   -------------------|-----------------------------------|--------------------------------------
  *   session_start      | —                                 | Hydrate allow-memory from entries; notify loaded
  *   before_agent_start | prompt entry already in session   | Skip
- *   before_agent_start | first call, features.promptInj on | Inject rule-derived hidden guidance
+ *   before_agent_start | first call                       | Inject rule-derived hidden guidance
  *   tool_call          | guardrail disabled                | Pass through
  *   tool_call          | classifies to block               | { block: true, reason }, audit
  *   tool_call          | classifies to confirm, allowed    | Pass through, audit as allow_session
@@ -87,7 +87,6 @@ import { type GuardrailConfigSource, loadConfig } from "./lib/config.ts";
 import { confirmDecision } from "./lib/hitl.ts";
 import { installPreset } from "./lib/install-preset.ts";
 import { loadPrompt } from "./lib/prompt-injection.ts";
-import { applyGuardrailPreset } from "./lib/preferences.ts";
 import { openProductionAliasesEditor } from "./lib/production-aliases-panel.ts";
 import { renderAudit, renderRules, renderStatus } from "./lib/status.ts";
 import { COMMAND_NAME, INJECTION_ENTRY_TYPE, type GuardrailConfig } from "./lib/types.ts";
@@ -130,8 +129,6 @@ export default function sfGuardrail(pi: ExtensionAPI) {
   // injection and the guardrail prompt was re-injected on every turn.
   pi.on("before_agent_start", async (_event, ctx) => {
     const { config } = getConfig();
-    if (!config.enabled) return;
-    if (!config.features.promptInjection) return;
     if (!shouldInjectOnce(ctx.sessionManager.getEntries(), INJECTION_ENTRY_TYPE)) return;
 
     const prompt = loadPrompt(config);
@@ -147,7 +144,6 @@ export default function sfGuardrail(pi: ExtensionAPI) {
   // ─── tool_call: the main enforcement seam ─────────────────────────────────
   pi.on("tool_call", async (event, ctx) => {
     const { config } = getConfig();
-    if (!config.enabled) return undefined;
 
     const decision = await evaluateSafety({
       toolName: event.toolName,
@@ -272,18 +268,6 @@ function buildGuardrailManagerActions(pi: ExtensionAPI): ManagerDetailAction[] {
       run: (ctx) => handleGuardrailCommand(pi, ctx, "aliases", true),
     },
     {
-      id: "power-tool",
-      label: "Apply Power Tool Mode",
-      description: "Set risky rules to Ask me.",
-      run: (ctx) => handleGuardrailCommand(pi, ctx, "power-tool", true),
-    },
-    {
-      id: "strict",
-      label: "Apply Strict Theme",
-      description: "Block sensitive rules and ask for the rest.",
-      run: (ctx) => handleGuardrailCommand(pi, ctx, "strict", true),
-    },
-    {
       id: "advanced-override-template",
       label: "Advanced override template",
       description: "Write bundled defaults to the expert override file.",
@@ -318,15 +302,13 @@ async function openGuardrailInManager(
 const GUARDRAIL_SUBCOMMANDS = [
   {
     value: "status",
-    description: "Show active features, config source, headless behavior, and recent decisions.",
+    description: "Show active rules, config source, headless behavior, and recent decisions.",
   },
   { value: "list", description: "Print the effective guardrail rule set." },
   { value: "audit", description: "List recent guardrail decisions." },
   { value: "grants", description: "List active persisted approval grants." },
   { value: "settings", description: "Open SF Guardrail settings in the SF Pi Manager." },
   { value: "aliases", description: "Edit production aliases." },
-  { value: "power-tool", description: "Apply confirm-by-default Power Tool Mode." },
-  { value: "strict", description: "Apply the Strict Theme." },
   { value: "forget", description: "Clear session allows and persisted project grants." },
   {
     value: "install-preset",
@@ -411,30 +393,6 @@ async function handleGuardrailCommand(
     return;
   }
 
-  if (sub === "preset-power-tool" || sub === "power-tool") {
-    applyGuardrailPreset("powerTool", config);
-    await emitGuardrailOutput(
-      ctx,
-      "SF Guardrail preset applied",
-      "Power Tool preset applied: risky rules are set to confirm.",
-      "info",
-      fromPanel,
-    );
-    return;
-  }
-
-  if (sub === "preset-strict" || sub === "strict") {
-    applyGuardrailPreset("strict", config);
-    await emitGuardrailOutput(
-      ctx,
-      "SF Guardrail preset applied",
-      "Strict preset applied: secret, credential, and CLI-state rules are hard-blocked; other rules confirm.",
-      "info",
-      fromPanel,
-    );
-    return;
-  }
-
   if (sub === "forget") {
     forgetSessionApprovals(pi);
     const removed = clearProjectApprovals(ctx.cwd);
@@ -456,7 +414,7 @@ async function handleGuardrailCommand(
   await emitGuardrailOutput(
     ctx,
     "Unknown command",
-    `Unknown /sf-guardrail subcommand: ${sub}. Use status, list, audit, grants, settings, aliases, power-tool, strict, forget, install-preset, help.`,
+    `Unknown /sf-guardrail subcommand: ${sub}. Use status, list, audit, grants, settings, aliases, forget, install-preset, help.`,
     "warning",
     fromPanel,
   );
@@ -499,14 +457,12 @@ function renderGuardrailHelp(): string {
     "",
     "Commands:",
     `  /${COMMAND_NAME}                 Open SF Guardrail in the SF Pi Manager`,
-    `  /${COMMAND_NAME} status          Show active features and recent decisions`,
+    `  /${COMMAND_NAME} status          Show active rules and recent decisions`,
     `  /${COMMAND_NAME} list            List active file/command/org-aware rules`,
     `  /${COMMAND_NAME} audit           Show recent decisions in this session branch`,
     `  /${COMMAND_NAME} grants          Show active persisted approval grants`,
     `  /${COMMAND_NAME} settings        Show where Pi-backed guardrail preferences live`,
     `  /${COMMAND_NAME} aliases         Edit production aliases`,
-    `  /${COMMAND_NAME} power-tool      Apply confirm-by-default preset`,
-    `  /${COMMAND_NAME} strict          Apply strict hard-block preset`,
     `  /${COMMAND_NAME} forget          Clear session allows and project approval grants`,
     `  /${COMMAND_NAME} install-preset  Export bundled defaults to advanced override config`,
     `  /${COMMAND_NAME} help            Show this help`,

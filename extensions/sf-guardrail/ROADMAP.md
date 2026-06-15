@@ -64,7 +64,7 @@ are not promises — priority is the rough order.
 - [x] Production aliases editor via `/sf-guardrail aliases` and the nested
       Manager settings page.
 - [x] Command-gate per-pattern behavior semantics and settings toggles.
-- [x] Power Tool and Strict preset actions as shortcuts over per-rule behavior.
+- [x] Rule-only settings model; bulk posture presets removed in favor of per-rule behavior.
 - [ ] **README user-facing cleanup follow-up** — keep detailed rationale in
       `CONTEXT.md`, `REDESIGN.md`, and ADRs; keep README focused on usage and
       troubleshooting.

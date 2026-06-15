@@ -65,9 +65,10 @@ describe("evaluateFilePolicy", () => {
     expect(decision).toMatchObject({ action: "block", ruleId: "secret-files" });
   });
 
-  it("returns no decision when policies are disabled", () => {
+  it("returns no decision when the matching rule behavior is off", () => {
     const config = readBundledConfig();
-    config.features.policies = false;
+    const rule = config.policies.rules.find((candidate) => candidate.id === "secret-files");
+    if (rule) rule.behavior = "off";
 
     const decision = evaluateFilePolicy(
       { kind: "file", toolName: "write", path: ".env" },

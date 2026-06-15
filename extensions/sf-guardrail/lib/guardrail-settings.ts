@@ -11,7 +11,7 @@ import {
   readJsonFile,
   writeJsonFile,
 } from "../../../lib/common/sf-pi-settings.ts";
-import type { GuardrailConfig, GuardrailFeatures, RuleBehavior } from "./types.ts";
+import type { GuardrailConfig, RuleBehavior } from "./types.ts";
 import { behaviorEnabled } from "./rule-behavior.ts";
 
 export interface GuardrailSettingsRuleBehaviors {
@@ -21,9 +21,6 @@ export interface GuardrailSettingsRuleBehaviors {
 }
 
 export interface GuardrailPiSettings {
-  /** Compatibility only. New UI should use /sf-pi enable/disable instead. */
-  enabled?: boolean;
-  features?: Partial<GuardrailFeatures>;
   confirmTimeoutMs?: number;
   productionAliases?: string[];
   ruleBehaviors?: GuardrailSettingsRuleBehaviors;
@@ -55,8 +52,6 @@ export function updateGuardrailPiSettings(
 
 export function hasGuardrailPiSettings(settings: GuardrailPiSettings): boolean {
   return (
-    typeof settings.enabled === "boolean" ||
-    settings.features !== undefined ||
     typeof settings.confirmTimeoutMs === "number" ||
     settings.productionAliases !== undefined ||
     settings.ruleBehaviors !== undefined
@@ -71,13 +66,6 @@ export function applyGuardrailPiSettings(
 
   const next: GuardrailConfig = JSON.parse(JSON.stringify(config)) as GuardrailConfig;
 
-  if (typeof settings.enabled === "boolean") next.enabled = settings.enabled;
-  if (settings.features) {
-    next.features = {
-      ...next.features,
-      ...settings.features,
-    };
-  }
   if (typeof settings.confirmTimeoutMs === "number" && settings.confirmTimeoutMs > 0) {
     next.confirmTimeoutMs = settings.confirmTimeoutMs;
   }
@@ -87,16 +75,6 @@ export function applyGuardrailPiSettings(
 
   applyRuleBehaviors(next, settings.ruleBehaviors);
   return next;
-}
-
-export function setGuardrailFeaturePreference(
-  key: keyof GuardrailFeatures,
-  enabled: boolean,
-): GuardrailPiSettings {
-  return updateGuardrailPiSettings((settings) => ({
-    ...settings,
-    features: { ...(settings.features ?? {}), [key]: enabled },
-  }));
 }
 
 export function setGuardrailTimeoutPreference(confirmTimeoutMs: number): GuardrailPiSettings {
@@ -156,10 +134,6 @@ function normalizeGuardrailPiSettings(input: unknown): GuardrailPiSettings {
   const raw = input as Record<string, unknown>;
   const next: GuardrailPiSettings = {};
 
-  if (typeof raw.enabled === "boolean") next.enabled = raw.enabled;
-  const features = normalizeFeatures(raw.features);
-  if (features) next.features = features;
-
   if (typeof raw.confirmTimeoutMs === "number" && raw.confirmTimeoutMs > 0) {
     next.confirmTimeoutMs = raw.confirmTimeoutMs;
   }
@@ -172,16 +146,6 @@ function normalizeGuardrailPiSettings(input: unknown): GuardrailPiSettings {
   if (ruleBehaviors) next.ruleBehaviors = ruleBehaviors;
 
   return next;
-}
-
-function normalizeFeatures(input: unknown): Partial<GuardrailFeatures> | undefined {
-  if (!input || typeof input !== "object" || Array.isArray(input)) return undefined;
-  const raw = input as Record<string, unknown>;
-  const features: Partial<GuardrailFeatures> = {};
-  for (const key of ["policies", "commandGate", "orgAwareGate", "promptInjection"] as const) {
-    if (typeof raw[key] === "boolean") features[key] = raw[key];
-  }
-  return Object.keys(features).length > 0 ? features : undefined;
 }
 
 function normalizeRuleBehaviors(input: unknown): GuardrailSettingsRuleBehaviors | undefined {
@@ -206,9 +170,6 @@ function normalizeBehaviorMap(input: unknown): Record<string, RuleBehavior> | un
 
 function pruneEmptyGuardrailSettings(settings: GuardrailPiSettings): GuardrailPiSettings {
   const next: GuardrailPiSettings = {};
-  if (typeof settings.enabled === "boolean") next.enabled = settings.enabled;
-  if (settings.features && Object.keys(settings.features).length > 0)
-    next.features = settings.features;
   if (typeof settings.confirmTimeoutMs === "number")
     next.confirmTimeoutMs = settings.confirmTimeoutMs;
   if (settings.productionAliases) next.productionAliases = settings.productionAliases;

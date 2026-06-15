@@ -15,8 +15,6 @@ export function evaluateFilePolicy(
   cwd: string,
   config: GuardrailConfig,
 ): ClassifiedDecision | undefined {
-  if (!config.enabled || !config.features.policies) return undefined;
-
   const matched = matchPath(subject.path, cwd, config.policies.rules);
   if (!matched) return undefined;
 

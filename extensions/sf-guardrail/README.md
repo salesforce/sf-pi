@@ -39,9 +39,9 @@ feature tiers, all toggleable via the config:
 
 Plus:
 
-- **promptInjection** — once-per-session sf-brain-style kernel telling
-  the LLM which categories are gated and which rehearsal patterns to
-  prefer (`deploy validate`, `--check-only`, `Savepoint` + `rollback`).
+- **Rule-derived guidance** — once-per-session sf-brain-style kernel telling
+  the LLM which rules are active and which rehearsal patterns to prefer
+  (`deploy validate`, `--check-only`, `Savepoint` + `rollback`).
 - **Session allow-memory** — "Allow for this session" persists via
   `pi.appendEntry` so `/resume` and `/fork` inherit the allowance. Org-aware
   allows use a safety envelope (rule + resolved org + command family) instead
@@ -64,10 +64,9 @@ Extension loads
   ├─ session_tree     → rehydrate after tree navigation
   ├─ before_agent_start
   │    ├─ prompt entry already in session → skip
-  │    └─ features.promptInjection on     → inject rule-derived guidance
+  │    └─ first call                      → inject rule-derived guidance
   │                                        as a hidden custom message
   └─ tool_call
-       ├─ guardrail disabled                             → pass through
        ├─ policies hit + protection blocks this tool     → { block: true, reason }, audit
        ├─ commandGate hit (safe temp cleanup)             → pass through, audit as allow_auto
        ├─ commandGate hit (allow)                         → pass through
@@ -84,9 +83,9 @@ Extension loads
 
 Bundled defaults live in `SF_GUARDRAIL_DEFAULTS.json` next to `index.ts`.
 Routine Guardrail Preferences live in Pi's global settings file under
-`sfPi.guardrail` (typically `~/.pi/agent/settings.json`). These cover feature
-toggles, confirmation timeout, production aliases, and bundled-rule behavior
-(`off`, `confirm`, or `block`).
+`sfPi.guardrail` (typically `~/.pi/agent/settings.json`). These cover
+confirmation timeout, production aliases, and bundled-rule behavior (`off`,
+`confirm`, or `block`).
 
 Advanced rule overrides remain in `<globalAgentDir>/sf-guardrail/rules.json`
 (typically `~/.pi/agent/sf-guardrail/rules.json`). Use that file only for
@@ -107,9 +106,6 @@ weakening remains deferred — see `ROADMAP.md`.
   nested pages
 - `/sf-guardrail aliases` → edit aliases that should be treated as production;
   saved to Pi settings
-- `/sf-guardrail power-tool` → set every rule to `confirm` in Pi settings
-- `/sf-guardrail strict` → hard-block secret, credential, and CLI-state rules;
-  set other rules to `confirm` in Pi settings
 - `/sf-guardrail forget` → revoke session allow-memory for this branch and clear
   legacy persisted approval grants for the current project
 - `/sf-guardrail install-preset` → export bundled defaults to the advanced
@@ -133,12 +129,13 @@ engine. The canonical terms live in `CONTEXT.md`; the redesign plan lives in
 - ADR 0041 — project-local overrides are deferred
 - ADR 0042 — session-scoped approval envelopes
 - ADR 0043 — detected Salesforce org type is the classification source
-- ADR 0044 — Power Tool mode defaults to confirmable actions
+- ADR 0044 — Power Tool mode defaults to confirmable actions (superseded by ADR 0052)
 - ADR 0046 — per-rule behavior is `off`, `confirm`, or `hard block`
 - ADR 0047 — settings use a section chooser (superseded by ADR 0049)
 - ADR 0049 — routine preferences live in Pi settings and the Manager Surface
 - ADR 0050 — configurable extension settings use Manager Surface drill-in
 - ADR 0051 — extension commands deep-link to the Manager Surface
+- ADR 0052 — rule behavior is the only safety model
 
 ## Behavior Matrix
 
@@ -147,8 +144,7 @@ engine. The canonical terms live in `CONTEXT.md`; the redesign plan lives in
 | session_start      | —                                       | Hydrate allow-memory from entries                |
 | session_tree       | —                                       | Rehydrate allow-memory from new branch           |
 | before_agent_start | prompt entry already in session         | Skip                                             |
-| before_agent_start | features.promptInjection on, first call | Inject hidden kernel message                     |
-| tool_call          | guardrail disabled                      | Pass through                                     |
+| before_agent_start | first call, prompt not already injected | Inject hidden kernel message                     |
 | tool_call          | policies protection blocks tool         | `{ block: true, reason }`, audit                 |
 | tool_call          | commandGate safe temp cleanup           | Pass through, audit as allow_auto                |
 | tool_call          | commandGate allowedPatterns             | Pass through                                     |
@@ -158,7 +154,7 @@ engine. The canonical terms live in `CONTEXT.md`; the redesign plan lives in
 | tool_call          | interactive confirmation                | `ctx.ui.select`, status/notify, audit per choice |
 | tool_call          | headless + env opt-in                   | Pass through, audit as headless_pass             |
 | tool_call          | headless + no env opt-in                | `{ block }`, audit as headless_block             |
-| /sf-guardrail      | UI available                            | Open status & controls panel                     |
+| /sf-guardrail      | UI available                            | Open `SF Pi › SF Guardrail` in Manager Surface   |
 | /sf-guardrail      | no UI                                   | Show status summary                              |
 
 ## File Structure

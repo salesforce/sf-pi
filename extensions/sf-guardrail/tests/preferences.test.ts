@@ -30,46 +30,32 @@ afterEach(() => {
 });
 
 describe("guardrail preferences", () => {
-  it("renders current preference values from effective config", () => {
+  it("exposes only timeout and rule behavior as normal preference keys", () => {
     const config = configModule.readBundledConfig();
+    const descriptors = preferences.buildGuardrailPreferenceDescriptors(config);
 
-    expect(preferences.preferenceValue(config, "enabled")).toBe("on");
-    expect(preferences.preferenceValue(config, "features.commandGate")).toBe("on");
     expect(preferences.preferenceValue(config, "confirmTimeoutMs")).toBe("120000");
+    expect(descriptors.map((descriptor) => descriptor.key)).not.toEqual(
+      expect.arrayContaining([
+        "enabled",
+        "features.policies",
+        "features.commandGate",
+        "features.orgAwareGate",
+        "features.promptInjection",
+      ]),
+    );
   });
 
-  it("applies Power Tool preset as confirm for every rule", () => {
-    const config = configModule.readBundledConfig();
+  it("writes timeout overrides to Pi settings that loadConfig reads", () => {
+    preferences.updateUserPreference("confirmTimeoutMs", "60000");
 
-    preferences.applyGuardrailPreset("powerTool", config);
+    const { config, source } = configModule.loadConfig();
+    const settings = JSON.parse(readFileSync(settingsModule.globalSettingsPath(), "utf8"));
 
-    const loaded = configModule.loadConfig().config;
-    expect(loaded.policies.rules.every((rule) => rule.behavior === "confirm")).toBe(true);
-    expect(loaded.commandGate.patterns.every((pattern) => pattern.behavior === "confirm")).toBe(
-      true,
-    );
-    expect(loaded.orgAwareGate.rules.every((rule) => rule.behavior === "confirm")).toBe(true);
-  });
-
-  it("applies Strict preset as hard block for sensitive rules only", () => {
-    const config = configModule.readBundledConfig();
-
-    preferences.applyGuardrailPreset("strict", config);
-
-    const loaded = configModule.loadConfig().config;
-    expect(loaded.policies.rules.find((rule) => rule.id === "secret-files")?.behavior).toBe(
-      "block",
-    );
-    expect(loaded.policies.rules.find((rule) => rule.id === "sf-cli-state")?.behavior).toBe(
-      "block",
-    );
-    expect(
-      loaded.commandGate.patterns.find((pattern) => pattern.id === "sf-org-auth-show-access-token")
-        ?.behavior,
-    ).toBe("block");
-    expect(loaded.orgAwareGate.rules.find((rule) => rule.id === "sf-deploy-prod")?.behavior).toBe(
-      "confirm",
-    );
+    expect(source).toBe("settings");
+    expect(config.confirmTimeoutMs).toBe(60000);
+    expect(settings.sfPi.guardrail.confirmTimeoutMs).toBe(60000);
+    expect(existsSync(configModule.userConfigPath())).toBe(false);
   });
 
   it("writes production aliases from comma/newline text that loadConfig reads", () => {
@@ -77,21 +63,6 @@ describe("guardrail preferences", () => {
 
     expect(aliases).toEqual(["Prod", "prod"]);
     expect(configModule.loadConfig().config.productionAliases).toEqual(["Prod", "prod"]);
-  });
-
-  it("writes common preference overrides to Pi settings that loadConfig reads", () => {
-    preferences.updateUserPreference("features.commandGate", "off");
-    preferences.updateUserPreference("confirmTimeoutMs", "60000");
-
-    const { config, source } = configModule.loadConfig();
-    const settings = JSON.parse(readFileSync(settingsModule.globalSettingsPath(), "utf8"));
-
-    expect(source).toBe("settings");
-    expect(config.features.commandGate).toBe(false);
-    expect(config.confirmTimeoutMs).toBe(60000);
-    expect(settings.sfPi.guardrail.features.commandGate).toBe(false);
-    expect(settings.sfPi.guardrail.confirmTimeoutMs).toBe(60000);
-    expect(existsSync(configModule.userConfigPath())).toBe(false);
   });
 
   it("exposes sectioned, example-rich rule descriptors", () => {
@@ -111,8 +82,6 @@ describe("guardrail preferences", () => {
       section: "files",
       label: "Secret files",
       example: "read .env, write .env.production",
-      powerToolRecommendation: "Ask me",
-      strictRecommendation: "Block",
     });
     expect(
       descriptors.find((descriptor) => descriptor.key === "commandGate.patterns.rm-rf.enabled"),
@@ -231,7 +200,7 @@ describe("guardrail preferences", () => {
     expect(rule?.enabled).toBe(true);
   });
 
-  it("preserves advanced rule overrides when updating common preferences", () => {
+  it("preserves advanced rule overrides when updating timeout", () => {
     const overridePath = configModule.userConfigPath();
     mkdirSync(path.dirname(overridePath), { recursive: true });
     writeFileSync(
@@ -256,13 +225,13 @@ describe("guardrail preferences", () => {
 
     const before = readFileSync(overridePath, "utf8");
 
-    preferences.updateUserPreference("features.commandGate", "off");
+    preferences.updateUserPreference("confirmTimeoutMs", "60000");
 
     const after = readFileSync(overridePath, "utf8");
     const raw = JSON.parse(after);
     const settings = JSON.parse(readFileSync(settingsModule.globalSettingsPath(), "utf8"));
     expect(after).toBe(before);
     expect(raw.commandGate.patterns[0].id).toBe("custom-danger");
-    expect(settings.sfPi.guardrail.features.commandGate).toBe(false);
+    expect(settings.sfPi.guardrail.confirmTimeoutMs).toBe(60000);
   });
 });

@@ -2,19 +2,15 @@
 /**
  * Common sf-guardrail preferences.
  *
- * These are the normal user-facing toggles exposed through Pi settings.
- * Advanced rule overrides remain in the sf-guardrail override file and are
- * not touched when these common preferences are updated.
+ * Routine preferences are intentionally narrow: approval timeout, production
+ * aliases, and per-rule behavior. Advanced rule definitions remain in the
+ * sf-guardrail override file and are not touched by these helpers.
  */
 import { readBundledConfig } from "./config.ts";
 import {
-  readGuardrailPiSettings,
-  setGuardrailFeaturePreference,
   setGuardrailProductionAliases,
   setGuardrailRuleBehaviorPreference,
   setGuardrailTimeoutPreference,
-  updateGuardrailPiSettings,
-  writeGuardrailPiSettings,
 } from "./guardrail-settings.ts";
 import type {
   CommandPattern,
@@ -29,13 +25,7 @@ import {
   ruleBehaviorFromLabel,
 } from "./rule-behavior.ts";
 
-export type StaticGuardrailPreferenceKey =
-  | "enabled"
-  | "features.policies"
-  | "features.commandGate"
-  | "features.orgAwareGate"
-  | "features.promptInjection"
-  | "confirmTimeoutMs";
+export type StaticGuardrailPreferenceKey = "confirmTimeoutMs";
 
 export type GuardrailPreferenceKey =
   | StaticGuardrailPreferenceKey
@@ -43,15 +33,7 @@ export type GuardrailPreferenceKey =
   | `commandGate.patterns.${string}.enabled`
   | `orgAwareGate.rules.${string}.enabled`;
 
-export type GuardrailPreset = "powerTool" | "strict";
-export type GuardrailSettingsSection =
-  | "posture"
-  | "core"
-  | "files"
-  | "commands"
-  | "orgs"
-  | "aliases"
-  | "advanced";
+export type GuardrailSettingsSection = "files" | "commands" | "orgs" | "aliases" | "advanced";
 
 export interface GuardrailPreferenceDescriptor {
   key: GuardrailPreferenceKey;
@@ -60,76 +42,17 @@ export interface GuardrailPreferenceDescriptor {
   description: string;
   values: string[];
   example?: string;
-  powerToolRecommendation?: string;
-  strictRecommendation?: string;
   why?: string;
 }
 
 export const GUARDRAIL_PREFERENCE_DESCRIPTORS: GuardrailPreferenceDescriptor[] = [
   {
-    key: "enabled",
-    section: "core",
-    label: "Guardrail enabled",
-    description: "Master switch for sf-guardrail mediation.",
-    values: ["on", "off"],
-    example: "When off, sf-guardrail does not mediate tool calls.",
-    powerToolRecommendation: "on",
-    strictRecommendation: "on",
-    why: "Keep this on so risky actions remain visible and auditable.",
-  },
-  {
-    key: "features.policies",
-    section: "core",
-    label: "File protection enabled",
-    description: "Enable rules for risky file reads and writes.",
-    values: ["on", "off"],
-    example: "read .env, write .sf/config.json",
-    powerToolRecommendation: "on",
-    strictRecommendation: "on",
-    why: "File risks are common in Salesforce projects and should be visible to the human.",
-  },
-  {
-    key: "features.commandGate",
-    section: "core",
-    label: "Dangerous commands enabled",
-    description: "Enable rules for risky local shell commands from bash and herdr.run.",
-    values: ["on", "off"],
-    example: "rm -rf tmp/, git push --force",
-    powerToolRecommendation: "on",
-    strictRecommendation: "on",
-    why: "SF Pi is a power tool, so risky commands should be explainable and approved.",
-  },
-  {
-    key: "features.orgAwareGate",
-    section: "core",
-    label: "Production operations enabled",
-    description: "Enable rules that depend on detected Salesforce org type.",
-    values: ["on", "off"],
-    example: "sf project deploy start -o Prod",
-    powerToolRecommendation: "on",
-    strictRecommendation: "on",
-    why: "Production-sensitive actions need human visibility even when they are intentional.",
-  },
-  {
-    key: "features.promptInjection",
-    section: "core",
-    label: "Agent guidance enabled",
-    description: "Inject compact guidance generated from the effective rule set.",
-    values: ["on", "off"],
-    example: "The agent sees which risks are guarded and how approvals work.",
-    powerToolRecommendation: "on",
-    strictRecommendation: "on",
-    why: "Rule-derived guidance keeps the agent aligned with your current settings.",
-  },
-  {
     key: "confirmTimeoutMs",
-    section: "core",
+    section: "advanced",
     label: "Approval timeout",
     description: "How long human approval dialogs wait before blocking.",
     values: ["30000", "60000", "120000", "300000"],
     example: "120000 = two minutes.",
-    powerToolRecommendation: "120000",
-    strictRecommendation: "120000",
     why: "Timeouts fail closed so unattended prompts do not silently approve risky work.",
   },
 ];
@@ -146,8 +69,6 @@ export function buildGuardrailPreferenceDescriptors(
         label: policyRuleLabel(rule),
         description: policyRuleDescription(rule),
         example: policyRuleExample(rule),
-        powerToolRecommendation: "Ask me",
-        strictRecommendation: strictRecommendationFor(rule.id),
         why: policyRuleWhy(rule),
       }),
     ),
@@ -158,8 +79,6 @@ export function buildGuardrailPreferenceDescriptors(
         label: commandPatternLabel(pattern),
         description: commandPatternDescription(pattern),
         example: commandPatternExample(pattern),
-        powerToolRecommendation: "Ask me",
-        strictRecommendation: strictRecommendationFor(pattern.id),
         why: commandPatternWhy(pattern),
       }),
     ),
@@ -170,8 +89,6 @@ export function buildGuardrailPreferenceDescriptors(
         label: orgAwareRuleLabel(rule),
         description: orgAwareRuleDescription(rule),
         example: orgAwareRuleExample(rule),
-        powerToolRecommendation: "Ask me",
-        strictRecommendation: "Ask me",
         why: orgAwareRuleWhy(rule),
       }),
     ),
@@ -200,44 +117,9 @@ export function preferenceValue(config: GuardrailConfig, key: GuardrailPreferenc
   }
 
   switch (key) {
-    case "enabled":
-      return onOff(config.enabled);
-    case "features.policies":
-      return onOff(config.features.policies);
-    case "features.commandGate":
-      return onOff(config.features.commandGate);
-    case "features.orgAwareGate":
-      return onOff(config.features.orgAwareGate);
-    case "features.promptInjection":
-      return onOff(config.features.promptInjection);
     case "confirmTimeoutMs":
       return String(config.confirmTimeoutMs);
   }
-}
-
-export function applyGuardrailPreset(
-  preset: GuardrailPreset,
-  effectiveConfig: GuardrailConfig,
-): void {
-  const current = readGuardrailPiSettings();
-  const ruleBehaviors = {
-    ...(current.ruleBehaviors ?? {}),
-    policies: { ...(current.ruleBehaviors?.policies ?? {}) },
-    commandGate: { ...(current.ruleBehaviors?.commandGate ?? {}) },
-    orgAwareGate: { ...(current.ruleBehaviors?.orgAwareGate ?? {}) },
-  };
-
-  for (const rule of effectiveConfig.policies.rules) {
-    ruleBehaviors.policies[rule.id] = behaviorForPreset(preset, rule.id);
-  }
-  for (const pattern of effectiveConfig.commandGate.patterns) {
-    ruleBehaviors.commandGate[pattern.id] = behaviorForPreset(preset, pattern.id);
-  }
-  for (const rule of effectiveConfig.orgAwareGate.rules) {
-    ruleBehaviors.orgAwareGate[rule.id] = behaviorForPreset(preset, rule.id);
-  }
-
-  writeGuardrailPiSettings({ ...current, ruleBehaviors });
 }
 
 export function updateProductionAliasesFromText(value: string): string[] {
@@ -282,22 +164,6 @@ export function updateUserPreference(
   }
 
   switch (key) {
-    case "enabled":
-      // Compatibility only. New UI uses /sf-pi enable/disable for the extension.
-      updateGuardrailPiSettings((settings) => ({ ...settings, enabled: parseOnOff(value) }));
-      return;
-    case "features.policies":
-      setGuardrailFeaturePreference("policies", parseOnOff(value));
-      return;
-    case "features.commandGate":
-      setGuardrailFeaturePreference("commandGate", parseOnOff(value));
-      return;
-    case "features.orgAwareGate":
-      setGuardrailFeaturePreference("orgAwareGate", parseOnOff(value));
-      return;
-    case "features.promptInjection":
-      setGuardrailFeaturePreference("promptInjection", parseOnOff(value));
-      return;
     case "confirmTimeoutMs": {
       const parsed = Number(value);
       if (!Number.isFinite(parsed) || parsed <= 0) return;
@@ -331,10 +197,6 @@ function ruleDescriptor(
   input: Omit<GuardrailPreferenceDescriptor, "values">,
 ): GuardrailPreferenceDescriptor {
   return { ...input, values: ["confirm", "hard block", "off"] };
-}
-
-function strictRecommendationFor(id: string): string {
-  return STRICT_BLOCK_IDS.has(id) ? "Block" : "Ask me";
 }
 
 function policyRuleLabel(rule: PolicyRule): string {
@@ -393,7 +255,7 @@ function policyRuleWhy(rule: PolicyRule): string {
     case "sf-forceignore":
       return "This file changes which metadata is retrieved or deployed.";
     default:
-      return "Use Ask me when the action may be intentional; use Block for non-overridable team safety.";
+      return "Use Ask me when the action may be intentional; use Block when the rule should not be human-overridable.";
   }
 }
 
@@ -482,7 +344,7 @@ function commandPatternWhy(pattern: CommandPattern): string {
     case "sf-org-delete":
       return "Org deletion can remove a working environment; verify the alias first.";
     default:
-      return "Use Ask me for power-tool workflows; use Block for non-overridable team safety.";
+      return "Use Ask me when the action may be intentional; use Block when the rule should not be human-overridable.";
   }
 }
 
@@ -546,20 +408,6 @@ function orgAwareRuleWhy(rule: OrgAwareRule): string {
   }
 }
 
-function behaviorForPreset(preset: GuardrailPreset, id: string): RuleBehavior {
-  if (preset === "powerTool") return "confirm";
-  return STRICT_BLOCK_IDS.has(id) ? "block" : "confirm";
-}
-
-const STRICT_BLOCK_IDS = new Set([
-  "secret-files",
-  "sf-cli-state",
-  "sf-org-auth-show-access-token",
-  "sf-org-auth-show-sfdx-auth-url",
-  "sf-org-auth-show-user-password",
-  "sf-temp-show-secrets",
-]);
-
 function parseRuleBehavior(value: string): RuleBehavior {
   return ruleBehaviorFromLabel(value) ?? "confirm";
 }
@@ -574,12 +422,4 @@ function parseProductionAliases(value: string): string[] {
     aliases.push(alias);
   }
   return aliases;
-}
-
-function onOff(value: boolean): string {
-  return value ? "on" : "off";
-}
-
-function parseOnOff(value: string): boolean {
-  return value === "on";
 }

@@ -106,17 +106,8 @@ export interface PoliciesConfig {
   rules: PolicyRule[];
 }
 
-export interface GuardrailFeatures {
-  policies: boolean;
-  commandGate: boolean;
-  orgAwareGate: boolean;
-  promptInjection: boolean;
-}
-
 export interface GuardrailConfig {
   version: 1;
-  enabled: boolean;
-  features: GuardrailFeatures;
   /** Aliases the user has tagged as production. Merged with type detection. */
   productionAliases: string[];
   /** Env var name that opens a headless escape hatch when set to a truthy value. */

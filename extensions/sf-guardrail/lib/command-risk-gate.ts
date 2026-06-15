@@ -23,8 +23,6 @@ export function evaluateCommandRisk(
   cwd: string,
   config: GuardrailConfig,
 ): CommandRiskResult | undefined {
-  if (!config.enabled || !config.features.commandGate) return undefined;
-
   const safeCleanup = detectSafeTempCleanup(subject.command);
   if (safeCleanup) {
     return {

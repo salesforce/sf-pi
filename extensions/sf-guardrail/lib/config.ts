@@ -23,7 +23,6 @@ import type {
   CommandGateConfig,
   CommandPattern,
   GuardrailConfig,
-  GuardrailFeatures,
   OrgAwareGateConfig,
   OrgAwareRule,
   PoliciesConfig,
@@ -100,8 +99,6 @@ export function loadConfig(): { config: GuardrailConfig; source: GuardrailConfig
 function merge(base: GuardrailConfig, overlay: Partial<GuardrailConfig>): GuardrailConfig {
   const next: GuardrailConfig = {
     version: 1,
-    enabled: overlay.enabled ?? base.enabled,
-    features: mergeFeatures(base.features, overlay.features),
     productionAliases: Array.isArray(overlay.productionAliases)
       ? overlay.productionAliases.map(String)
       : base.productionAliases,
@@ -119,21 +116,6 @@ function merge(base: GuardrailConfig, overlay: Partial<GuardrailConfig>): Guardr
     orgAwareGate: mergeOrgAwareGate(base.orgAwareGate, overlay.orgAwareGate),
   };
   return next;
-}
-
-function mergeFeatures(
-  base: GuardrailFeatures,
-  overlay: Partial<GuardrailFeatures> | undefined,
-): GuardrailFeatures {
-  if (!overlay) return { ...base };
-  return {
-    policies: typeof overlay.policies === "boolean" ? overlay.policies : base.policies,
-    commandGate: typeof overlay.commandGate === "boolean" ? overlay.commandGate : base.commandGate,
-    orgAwareGate:
-      typeof overlay.orgAwareGate === "boolean" ? overlay.orgAwareGate : base.orgAwareGate,
-    promptInjection:
-      typeof overlay.promptInjection === "boolean" ? overlay.promptInjection : base.promptInjection,
-  };
 }
 
 function mergePolicies(
@@ -325,13 +307,6 @@ function fallbackConfig(): GuardrailConfig {
   // in a correctly-installed build. Keeps guardrail inert rather than throwing.
   return {
     version: 1,
-    enabled: false,
-    features: {
-      policies: false,
-      commandGate: false,
-      orgAwareGate: false,
-      promptInjection: false,
-    },
     productionAliases: [],
     headlessEscapeHatchEnv: "SF_GUARDRAIL_ALLOW_HEADLESS",
     confirmTimeoutMs: 30000,

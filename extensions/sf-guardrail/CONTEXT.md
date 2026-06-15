@@ -12,21 +12,9 @@ _Avoid_: generic guardrails, policy platform, security scanner, Salesforce org p
 The product posture where **SF Guardrail** evaluates risky agent actions and returns a clear allow, block, or human-approval decision. It is opinionated and narrow rather than a configurable policy platform.
 _Avoid_: policy engine, governance framework, rule marketplace, shell sandbox
 
-**Power Tool Mode**:
-The default SF Guardrail posture where risky actions are human-confirmable rather than hard-blocked. The human can override after reviewing the **Safety Envelope** and risk guidance.
-_Avoid_: unsafe mode, trust mode, disabled guardrail
-
 **Rule Behavior**:
 The per-rule setting that decides whether a risk is off, human-confirmable, or a non-overridable hard block. The settings UI presents these as Off, Ask me, and Block.
 _Avoid_: enabled flag, theme, policy mode
-
-**Hard-Block Theme**:
-A user-facing preset that applies a set of **Rule Behaviors**. It is a shortcut for common setups, not the underlying configuration model.
-_Avoid_: policy engine, security profile, admin policy, rule marketplace
-
-**Strict Theme**:
-An opt-in **Hard-Block Theme** that sets selected sensitive rules to hard block while leaving other rules human-confirmable.
-_Avoid_: default mode, compliance engine, global policy
 
 **Safety Kernel**:
 The pure decision module that evaluates a **Safety Subject** and returns a **Guardrail Decision** without performing Pi Runtime UI, session, or persistence side effects.
@@ -101,7 +89,7 @@ A non-blocking instruction that helps the agent recover safely after a block or 
 _Avoid_: hard gate, policy requirement, mandatory workflow
 
 **Hard Block**:
-A **Guardrail Decision** that refuses an action without asking the user because the selected **Hard-Block Theme** makes that safety boundary non-overridable.
+A **Guardrail Decision** that refuses an action without asking the user because the matching **Rule Behavior** is Block.
 _Avoid_: default refusal, prompt, warning, soft block
 
 **Rule-Derived Guidance**:

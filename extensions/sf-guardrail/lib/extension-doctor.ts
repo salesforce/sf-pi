@@ -10,6 +10,7 @@
  */
 import type { ExtensionDoctorReport } from "../../../lib/common/doctor/registry.ts";
 import { loadConfig } from "./config.ts";
+import { resolveRuleBehavior } from "./rule-behavior.ts";
 
 const HEADLESS_ALLOW_ENV = "SF_GUARDRAIL_ALLOW_HEADLESS";
 
@@ -28,23 +29,28 @@ export async function runExtensionDoctor(): Promise<ExtensionDoctorReport> {
         : "Using Pi settings and/or advanced overrides for effective config.",
   });
 
-  const featureNames: string[] = [];
-  if (config.features.policies) featureNames.push("policies");
-  if (config.features.commandGate) featureNames.push("commandGate");
-  if (config.features.orgAwareGate) featureNames.push("orgAwareGate");
-  if (config.features.promptInjection) featureNames.push("promptInjection");
+  const activePolicyCount = config.policies.rules.filter(
+    (rule) => resolveRuleBehavior(rule) !== "off",
+  ).length;
+  const activeCommandCount = config.commandGate.patterns.filter(
+    (pattern) => resolveRuleBehavior(pattern) !== "off",
+  ).length;
+  const activeOrgAwareCount = config.orgAwareGate.rules.filter(
+    (rule) => resolveRuleBehavior(rule) !== "off",
+  ).length;
+  const activeRuleCount = activePolicyCount + activeCommandCount + activeOrgAwareCount;
 
   checks.push({
-    id: "guardrail.features",
-    severity: featureNames.length > 0 ? "ok" : "warn",
+    id: "guardrail.rules",
+    severity: activeRuleCount > 0 ? "ok" : "warn",
     title:
-      featureNames.length > 0
-        ? `Active feature tiers: ${featureNames.join(", ")}`
-        : "All Guardrail features disabled",
-    detail: `${config.policies.rules.length} policies, ${config.commandGate.patterns.length} command-gate patterns, ${config.orgAwareGate.rules.length} org-aware rules loaded.`,
+      activeRuleCount > 0
+        ? `Active rules: ${activeRuleCount}`
+        : "All Guardrail rules are set to Off",
+    detail: `${activePolicyCount}/${config.policies.rules.length} file policies, ${activeCommandCount}/${config.commandGate.patterns.length} command patterns, ${activeOrgAwareCount}/${config.orgAwareGate.rules.length} org-aware rules active.`,
     fix:
-      featureNames.length === 0
-        ? "Re-enable features in /sf-pi → SF Guardrail → Settings."
+      activeRuleCount === 0
+        ? "Set at least one rule to Ask me or Block in /sf-pi → SF Guardrail → Settings."
         : undefined,
   });
 

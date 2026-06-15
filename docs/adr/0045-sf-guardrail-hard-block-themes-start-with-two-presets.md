@@ -1,5 +1,5 @@
 ---
-status: superseded by ADR-0046
+status: superseded by ADR-0052
 ---
 
 # SF Guardrail hard-block themes start with two presets
@@ -10,4 +10,4 @@ This keeps the product simple while still supporting users or teams that want st
 
 **Consequences**
 
-Superseded by ADR-0046: themes are convenience presets only, while the underlying configuration is per-rule behavior: off, confirm, or hard block.
+Superseded by ADR-0052: SF Guardrail no longer has hard-block themes or bulk presets. The only safety model is per-rule behavior: off, confirm, or hard block.

@@ -26,7 +26,8 @@ afterEach(() => {
 describe("bundled defaults", () => {
   it("parse without error and ship the expected rules", () => {
     const config = readBundledConfig();
-    expect(config.enabled).toBe(true);
+    expect("enabled" in config).toBe(false);
+    expect("features" in config).toBe(false);
     const policyIds = config.policies.rules.map((r) => r.id);
     expect(policyIds).toContain("sf-destructive-changes-xml");
     expect(policyIds).toContain("sf-forceignore");
@@ -153,6 +154,13 @@ describe("loadConfig with user override", () => {
     const rule = config.orgAwareGate.rules.find((r) => r.id === "sf-deploy-prod");
     expect(rule?.behavior).toBe("block");
     expect(rule?.enabled).toBe(true);
+  });
+
+  it("ignores obsolete broad master switches from overrides", () => {
+    writeOverride({ enabled: false, features: { commandGate: false, orgAwareGate: false } });
+    const { config } = loadConfig();
+    expect("enabled" in config).toBe(false);
+    expect("features" in config).toBe(false);
   });
 
   it("merges scalar fields (productionAliases) from override", () => {

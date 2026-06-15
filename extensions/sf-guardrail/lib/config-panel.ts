@@ -12,7 +12,7 @@ import type { ConfigPanelFactory, ConfigPanelResult } from "../../../catalog/reg
 import { globalSettingsPath } from "../../../lib/common/sf-pi-settings.ts";
 import { loadConfig, userConfigPath } from "./config.ts";
 import {
-  applyGuardrailPreset,
+  GUARDRAIL_PREFERENCE_DESCRIPTORS,
   buildGuardrailPreferenceDescriptors,
   preferenceValue,
   productionAliasesText,
@@ -39,8 +39,6 @@ function padAnsi(text: string, width: number): string {
 
 type SettingsPage =
   | { kind: "home" }
-  | { kind: "posture" }
-  | { kind: "core" }
   | { kind: "rules"; section: RulePanelSection; filter: string; filtering: boolean }
   | { kind: "rule-detail"; section: RulePanelSection; ruleId: string }
   | { kind: "aliases"; editing: boolean; draft: string }
@@ -97,12 +95,6 @@ class SfGuardrailConfigPanel implements Focusable {
       case "home":
         this.handleHomeInput(data);
         return;
-      case "posture":
-        this.handlePostureInput(data);
-        return;
-      case "core":
-        this.handleDescriptorInput(data, "core", this.coreDescriptors());
-        return;
       case "rules":
         this.handleRulesInput(data);
         return;
@@ -132,12 +124,6 @@ class SfGuardrailConfigPanel implements Focusable {
     switch (this.page.kind) {
       case "home":
         lines.push(...this.renderHome(width));
-        break;
-      case "posture":
-        lines.push(...this.renderPosture(width));
-        break;
-      case "core":
-        lines.push(...this.renderDescriptorPage(width, "core", this.coreDescriptors()));
         break;
       case "rules":
         lines.push(...this.renderRulesPage(width, this.page.section));
@@ -199,6 +185,9 @@ class SfGuardrailConfigPanel implements Focusable {
       ` ${t.fg("muted", "Advanced overrides:")}  ${t.fg("dim", userConfigPath())}`,
       ` ${t.fg("muted", "Effective source:")}     ${t.fg("text", this.source)}`,
       "",
+      ` ${t.fg("muted", "Approval timeout:")}    ${t.fg("text", displayValue(preferenceValue(this.config, "confirmTimeoutMs")))}`,
+      ` ${t.fg("muted", "Headless mode:")}       ${t.fg("text", process.env[this.config.headlessEscapeHatchEnv] ? "opt-in pass" : "fail-closed")}`,
+      "",
       ` ${t.fg("accent", themeBold(t, "Sections"))}`,
     ];
 
@@ -213,71 +202,6 @@ class SfGuardrailConfigPanel implements Focusable {
       lines.push(
         `    ${t.fg("dim", truncateToWidth(item.description, Math.max(20, width - 6), "…"))}`,
       );
-    }
-    return lines;
-  }
-
-  private renderPosture(width: number): string[] {
-    const t = this.theme;
-    const selected = this.selected("posture");
-    const rows = [
-      {
-        label: "Power Tool Mode",
-        description: "Risky actions ask first. Best for normal development.",
-      },
-      {
-        label: "Strict Theme",
-        description: "Secrets, credentials, and CLI state block; other rules ask first.",
-      },
-    ];
-    const lines = [` ${t.fg("accent", themeBold(t, "Choose a preset"))}`];
-    for (let i = 0; i < rows.length; i++) {
-      const row = rows[i];
-      if (!row) continue;
-      const isSelected = i === selected;
-      lines.push(
-        ` ${isSelected ? t.fg("accent", "→") : " "} ${isSelected ? t.fg("accent", row.label) : row.label}`,
-      );
-      lines.push(`    ${t.fg("dim", row.description)}`);
-    }
-    lines.push("", ` ${t.fg("accent", themeBold(t, "Preview"))}`);
-    for (const preview of this.posturePreviewRows(width)) lines.push(preview);
-    return lines;
-  }
-
-  private posturePreviewRows(width: number): string[] {
-    const t = this.theme;
-    const rows = [
-      ["Secret files", this.ruleValue("policies.rules.secret-files.enabled")],
-      ["Salesforce CLI state", this.ruleValue("policies.rules.sf-cli-state.enabled")],
-      [
-        "Credential reveal commands",
-        this.ruleValue("commandGate.patterns.sf-org-auth-show-access-token.enabled"),
-      ],
-      ["Production operations", this.ruleValue("orgAwareGate.rules.sf-deploy-prod.enabled")],
-    ];
-    const labelWidth = Math.min(30, Math.max(18, Math.floor(width / 2)));
-    return rows.map(([label, value]) => {
-      const padding = " ".repeat(Math.max(1, labelWidth - visibleWidth(label)));
-      return `   ${t.fg("muted", label)}${padding}${t.fg("text", displayValue(value))}`;
-    });
-  }
-
-  private renderDescriptorPage(
-    width: number,
-    key: string,
-    descriptors: GuardrailPreferenceDescriptor[],
-  ): string[] {
-    const t = this.theme;
-    const selected = Math.min(this.selected(key), Math.max(0, descriptors.length - 1));
-    const lines = [
-      ` ${t.fg("accent", themeBold(t, "Setting"))}${" ".repeat(28)}${t.fg("accent", themeBold(t, "Value"))}`,
-    ];
-    for (let i = 0; i < descriptors.length; i++) {
-      const descriptor = descriptors[i];
-      if (!descriptor) continue;
-      lines.push(this.renderDescriptorLine(descriptor, i === selected, width));
-      if (i === selected) lines.push(...this.detailLines(descriptor, width));
     }
     return lines;
   }
@@ -383,32 +307,11 @@ class SfGuardrailConfigPanel implements Focusable {
         this.page = { kind: "aliases", editing: false, draft: productionAliasesText(this.config) };
       } else if (item.value === "advanced") {
         this.page = { kind: "advanced" };
-      } else {
-        this.page = { kind: item.value };
       }
-    }
-  }
-
-  private handlePostureInput(data: string): void {
-    if (matchesKey(data, "up")) this.moveSelection("posture", 2, -1);
-    else if (matchesKey(data, "down")) this.moveSelection("posture", 2, 1);
-    else if (data === "p") this.applyPreset("powerTool");
-    else if (data === "s") this.applyPreset("strict");
-    else if (matchesKey(data, "return") || matchesKey(data, "enter")) {
-      this.applyPreset(this.selected("posture") === 0 ? "powerTool" : "strict");
-    }
-  }
-
-  private handleDescriptorInput(
-    data: string,
-    key: string,
-    descriptors: GuardrailPreferenceDescriptor[],
-  ): void {
-    if (matchesKey(data, "up")) this.moveSelection(key, descriptors.length, -1);
-    else if (matchesKey(data, "down")) this.moveSelection(key, descriptors.length, 1);
-    else if (matchesKey(data, "left")) this.cycleDescriptor(key, descriptors, -1);
-    else if (matchesKey(data, "right") || matchesKey(data, "space")) {
-      this.cycleDescriptor(key, descriptors, 1);
+    } else if (matchesKey(data, "left")) {
+      this.cycleTimeout(-1);
+    } else if (matchesKey(data, "right") || matchesKey(data, "space")) {
+      this.cycleTimeout(1);
     }
   }
 
@@ -500,12 +403,6 @@ class SfGuardrailConfigPanel implements Focusable {
     this.page = { kind: "home" };
   }
 
-  private coreDescriptors(): GuardrailPreferenceDescriptor[] {
-    return buildGuardrailPreferenceDescriptors(this.config).filter(
-      (descriptor) => descriptor.section === "core" && descriptor.key !== "enabled",
-    );
-  }
-
   private ruleRows(section: RulePanelSection): RuleRow[] {
     const descriptors = buildGuardrailPreferenceDescriptors(this.config).filter(
       (descriptor) => descriptor.section === section,
@@ -551,22 +448,6 @@ class SfGuardrailConfigPanel implements Focusable {
     return this.config.orgAwareGate.rules.find((rule) => rule.id === id);
   }
 
-  private renderDescriptorLine(
-    descriptor: GuardrailPreferenceDescriptor,
-    selected: boolean,
-    width: number,
-  ): string {
-    const t = this.theme;
-    const current = displayValue(preferenceValue(this.config, descriptor.key));
-    const prefix = selected ? t.fg("accent", " → ") : "   ";
-    const valueWidth = 12;
-    const labelWidth = Math.max(18, width - valueWidth - 7);
-    const label = truncateToWidth(descriptor.label, labelWidth, "…");
-    const padding = " ".repeat(Math.max(1, labelWidth - visibleWidth(label) + 1));
-    const value = selected ? t.fg("accent", current) : t.fg("muted", current);
-    return `${prefix}${label}${padding}${value}`;
-  }
-
   private renderRuleLine(row: RuleRow, selected: boolean, width: number): string {
     const t = this.theme;
     const prefix = selected ? t.fg("accent", " → ") : "   ";
@@ -577,18 +458,6 @@ class SfGuardrailConfigPanel implements Focusable {
     const source = sourceLabel(row.definitionSource, row.behaviorSource);
     const text = `${prefix}${selected ? t.fg("accent", id) : id}${idPadding}${t.fg(selected ? "accent" : "muted", behavior.padEnd(10))}${t.fg("dim", source)}`;
     return truncateToWidth(text, width, "");
-  }
-
-  private detailLines(descriptor: GuardrailPreferenceDescriptor, width: number): string[] {
-    const t = this.theme;
-    const detailWidth = Math.max(20, width - 6);
-    const lines = [
-      descriptor.description,
-      descriptor.example ? `Example: ${descriptor.example}` : undefined,
-      descriptor.why ? `Why: ${descriptor.why}` : undefined,
-      `Values: ${descriptor.values.map(displayValue).join(" · ")}`,
-    ].filter((line): line is string => !!line);
-    return lines.map((line) => `     ${t.fg("dim", truncateToWidth(line, detailWidth, "…"))}`);
   }
 
   private ruleSummaryLines(row: RuleRow, width: number): string[] {
@@ -602,23 +471,6 @@ class SfGuardrailConfigPanel implements Focusable {
       .filter((line): line is string => !!line)
       .join(" · ");
     return [`     ${t.fg("dim", truncateToWidth(summary, Math.max(20, width - 6), "…"))}`];
-  }
-
-  private cycleDescriptor(
-    key: string,
-    descriptors: GuardrailPreferenceDescriptor[],
-    direction: -1 | 1,
-  ): void {
-    const descriptor = descriptors[this.selected(key)];
-    if (!descriptor) return;
-    const current = preferenceValue(this.config, descriptor.key);
-    const currentIndex = Math.max(0, descriptor.values.indexOf(current));
-    const nextIndex =
-      (currentIndex + direction + descriptor.values.length) % descriptor.values.length;
-    const nextValue = descriptor.values[nextIndex];
-    if (!nextValue) return;
-    updateUserPreference(descriptor.key, nextValue, this.config);
-    this.reload(`${descriptor.label}: ${displayValue(nextValue)} saved.`);
   }
 
   private cycleRule(section: RulePanelSection, rows: RuleRow[], direction: -1 | 1): void {
@@ -637,11 +489,17 @@ class SfGuardrailConfigPanel implements Focusable {
     this.reload(`${row.id}: ${displayValue(nextValue)} saved.`);
   }
 
-  private applyPreset(preset: "powerTool" | "strict"): void {
-    applyGuardrailPreset(preset, this.config);
-    this.reload(
-      `${preset === "powerTool" ? "Power Tool Mode" : "Strict Theme"} saved to Pi settings.`,
-    );
+  private cycleTimeout(direction: -1 | 1): void {
+    const descriptor = GUARDRAIL_PREFERENCE_DESCRIPTORS[0];
+    if (!descriptor) return;
+    const current = preferenceValue(this.config, descriptor.key);
+    const currentIndex = Math.max(0, descriptor.values.indexOf(current));
+    const nextIndex =
+      (currentIndex + direction + descriptor.values.length) % descriptor.values.length;
+    const nextValue = descriptor.values[nextIndex];
+    if (!nextValue) return;
+    updateUserPreference(descriptor.key, nextValue, this.config);
+    this.reload(`Approval timeout: ${displayValue(nextValue)} saved.`);
   }
 
   private selected(key: string): number {
@@ -653,18 +511,10 @@ class SfGuardrailConfigPanel implements Focusable {
     this.selectedByPage[key] = (this.selected(key) + direction + count) % count;
   }
 
-  private ruleValue(key: GuardrailPreferenceDescriptor["key"]): string {
-    return preferenceValue(this.config, key);
-  }
-
   private pageTitle(): string | undefined {
     switch (this.page.kind) {
       case "home":
         return undefined;
-      case "posture":
-        return "Safety posture";
-      case "core":
-        return "Core controls";
       case "rules":
         return rulesTitle(this.page.section);
       case "rule-detail":
@@ -677,9 +527,7 @@ class SfGuardrailConfigPanel implements Focusable {
   }
 
   private footerText(): string {
-    if (this.page.kind === "home") return "↑↓ move · Enter open · Esc back";
-    if (this.page.kind === "posture")
-      return "↑↓ move · Enter apply · p Power Tool · s Strict · Esc back";
+    if (this.page.kind === "home") return "↑↓ move · Enter open · ←/→ timeout · Esc back";
     if (this.page.kind === "rules") {
       return this.page.filtering
         ? "type filter · Enter apply · Esc clear"

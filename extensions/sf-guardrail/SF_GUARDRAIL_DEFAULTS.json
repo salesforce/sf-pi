@@ -1,12 +1,5 @@
 {
   "version": 1,
-  "enabled": true,
-  "features": {
-    "policies": true,
-    "commandGate": true,
-    "orgAwareGate": true,
-    "promptInjection": true
-  },
   "productionAliases": [],
   "headlessEscapeHatchEnv": "SF_GUARDRAIL_ALLOW_HEADLESS",
   "confirmTimeoutMs": 120000,

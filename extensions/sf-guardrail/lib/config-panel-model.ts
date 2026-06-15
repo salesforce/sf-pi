@@ -17,16 +17,6 @@ export interface SettingsSectionItem {
 
 export const SECTION_ITEMS: SettingsSectionItem[] = [
   {
-    value: "posture",
-    label: "Safety posture",
-    description: "Apply Power Tool Mode or Strict Theme.",
-  },
-  {
-    value: "core",
-    label: "Core controls",
-    description: "Feature toggles and approval timeout.",
-  },
-  {
     value: "files",
     label: "File protection rules",
     description: "One row per effective file policy rule id.",

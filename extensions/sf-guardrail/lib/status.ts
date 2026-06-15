@@ -21,14 +21,7 @@ export interface StatusInput {
 export function renderStatus(input: StatusInput): string {
   const { config, configSource, recent, hasUI, headlessEnabled } = input;
   const lines: string[] = [];
-  lines.push(`sf-guardrail: ${config.enabled ? "on" : "off"} (source: ${configSource})`);
-
-  const features: string[] = [];
-  if (config.features.policies) features.push("policies");
-  if (config.features.commandGate) features.push("commandGate");
-  if (config.features.orgAwareGate) features.push("orgAwareGate");
-  if (config.features.promptInjection) features.push("promptInjection");
-  lines.push(`  features: ${features.join(", ") || "none"}`);
+  lines.push(`sf-guardrail: extension-enabled (source: ${configSource})`);
 
   lines.push(
     `  policies: ${count(config.policies.rules, (r) => resolveRuleBehavior(r) !== "off")} active / ${config.policies.rules.length} defined`,

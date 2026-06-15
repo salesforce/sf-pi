@@ -20,58 +20,50 @@ export function renderGuardrailGuidance(config: GuardrailConfig): string {
   ];
 
   lines.push("File protection:");
-  if (!config.features.policies) {
-    lines.push("- Disabled in the effective config.");
+  const activePolicies = config.policies.rules.filter(
+    (rule) => resolveRuleBehavior(rule) !== "off",
+  );
+  if (activePolicies.length === 0) {
+    lines.push("- No active file-protection rules.");
   } else {
-    const active = config.policies.rules.filter((rule) => resolveRuleBehavior(rule) !== "off");
-    if (active.length === 0) {
-      lines.push("- No active file-protection rules.");
-    } else {
-      for (const rule of active) {
-        const access = rule.protection === "readOnly" ? "read-only" : rule.protection;
-        const behavior = labelForRuleBehavior(resolveRuleBehavior(rule));
+    for (const rule of activePolicies) {
+      const access = rule.protection === "readOnly" ? "read-only" : rule.protection;
+      const behavior = labelForRuleBehavior(resolveRuleBehavior(rule));
+      lines.push(
+        `- ${rule.description ?? rule.id}: ${behavior}; ${access}; patterns ${formatList(rule.patterns.map((p) => p.pattern))}`,
+      );
+      if (rule.allowedPatterns?.length) {
         lines.push(
-          `- ${rule.description ?? rule.id}: ${behavior}; ${access}; patterns ${formatList(rule.patterns.map((p) => p.pattern))}`,
+          `  allowed carve-outs: ${formatList(rule.allowedPatterns.map((p) => p.pattern))}`,
         );
-        if (rule.allowedPatterns?.length) {
-          lines.push(
-            `  allowed carve-outs: ${formatList(rule.allowedPatterns.map((p) => p.pattern))}`,
-          );
-        }
       }
     }
   }
 
   lines.push("", "Dangerous-command confirmation:");
-  if (!config.features.commandGate) {
-    lines.push("- Disabled in the effective config.");
+  const activeCommands = config.commandGate.patterns.filter(
+    (pattern) => resolveRuleBehavior(pattern) !== "off",
+  );
+  if (activeCommands.length === 0) {
+    lines.push("- No active dangerous-command patterns.");
   } else {
-    const active = config.commandGate.patterns.filter(
-      (pattern) => resolveRuleBehavior(pattern) !== "off",
-    );
-    if (active.length === 0) {
-      lines.push("- No active dangerous-command patterns.");
-    } else {
-      for (const pattern of active) {
-        const behavior = labelForRuleBehavior(resolveRuleBehavior(pattern));
-        lines.push(
-          `- ${pattern.pattern}${pattern.description ? ` (${pattern.description})` : ""}: ${behavior}`,
-        );
-      }
+    for (const pattern of activeCommands) {
+      const behavior = labelForRuleBehavior(resolveRuleBehavior(pattern));
+      lines.push(
+        `- ${pattern.pattern}${pattern.description ? ` (${pattern.description})` : ""}: ${behavior}`,
+      );
     }
   }
 
   lines.push("", "Org-aware confirmation:");
-  if (!config.features.orgAwareGate) {
-    lines.push("- Disabled in the effective config.");
+  const activeOrgRules = config.orgAwareGate.rules.filter(
+    (rule) => resolveRuleBehavior(rule) !== "off",
+  );
+  if (activeOrgRules.length === 0) {
+    lines.push("- No active org-aware rules.");
   } else {
-    const active = config.orgAwareGate.rules.filter((rule) => resolveRuleBehavior(rule) !== "off");
-    if (active.length === 0) {
-      lines.push("- No active org-aware rules.");
-    } else {
-      for (const rule of active) {
-        lines.push(`- ${formatOrgAwareRule(rule)}`);
-      }
+    for (const rule of activeOrgRules) {
+      lines.push(`- ${formatOrgAwareRule(rule)}`);
     }
   }
 
