@@ -3,8 +3,8 @@
 ## Inspiration
 
 `sf-welcome` was built from scratch for sf-pi. Its two-column splash,
-announcement panel, "What's New" view, and Salesforce-branded layout are
-original to this package — no upstream pi extension was cloned or ported.
+announcement panel, and Salesforce-branded layout are original to this package
+— no upstream pi extension was cloned or ported.
 
 The gradient color palette (blue → cyan → purple) is inspired by the
 Salesforce brand system. The Nerd Font bundle shipped in `assets/fonts/`

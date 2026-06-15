@@ -121,6 +121,15 @@ short-circuits subsequent sessions. Users see no prompt and no manual step.
    Older Claude models pass through the same pi-ai Anthropic transport; their
    model compat flags describe whether adaptive thinking is required.
 
+### Gateway-specific model metadata
+
+Some model metadata intentionally differs from Pi's direct-provider defaults
+because the gateway route has separately verified limits. In particular,
+`gpt-5.5` is advertised as a 1M-context gateway model with 128K max output,
+while Codex-family presets stay capped at 272K/128K. Keep larger-than-upstream
+metadata behind focused tests so it is clear the value is gateway-specific, not
+a stale copy of Pi Runtime model metadata.
+
 ## Runtime Flow
 
 ```

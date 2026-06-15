@@ -418,6 +418,16 @@ describe("toProviderModelConfig", () => {
     });
   });
 
+  it("keeps gateway-specific gpt-5.5 context larger than Codex while Codex stays capped", () => {
+    const gpt55 = toProviderModelConfig("gpt-5.5", null, new Set());
+    const codex = toProviderModelConfig("gpt-5.3-codex", null, new Set());
+
+    expect(gpt55.contextWindow).toBe(1_000_000);
+    expect(gpt55.maxTokens).toBe(128_000);
+    expect(codex.contextWindow).toBe(272_000);
+    expect(codex.maxTokens).toBe(128_000);
+  });
+
   it("uses the updated Codex 272K/128K preset", () => {
     const codex = toProviderModelConfig("gpt-5.3-codex", null, new Set());
     expect(codex.contextWindow).toBe(272_000);

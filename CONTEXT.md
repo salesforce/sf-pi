@@ -320,6 +320,14 @@ _Avoid_: permanent mode switch, hidden pane mutation trigger, full transcript an
 The user-visible posture that compares an installed package or runtime version with the latest known release and reports it as current, update-available, or unknown.
 _Avoid_: health check, deployment status, security support guarantee
 
+**Pi Runtime Freshness Row**:
+The small **Welcome Splash** status row that reports whether the installed **Pi Runtime** appears current enough for **SF Pi** to run well. It may show installed/latest versions and update guidance, but it does not summarize upstream Pi release notes.
+_Avoid_: changelog panel, release-note digest, SF Pi update manager
+
+**Pi Runtime Release Notes Surface**:
+A user-facing summary of upstream **Pi Runtime** release-note bullets, changelog highlights, or version-diff prose. This belongs to the **Pi Runtime**, not to **SF Pi** startup surfaces.
+_Avoid_: SF Pi What's New panel for Pi runtime, Salesforce workflow status, release freshness
+
 **Policy-Visible Latest**:
 The newest release that the user's configured package-manager policy would currently allow SF Pi or the Pi Runtime to install.
 _Avoid_: absolute latest, registry latest, upstream latest
@@ -700,6 +708,10 @@ _Avoid_: duplicated docs, hardcoded personal skill paths, Salesforce encyclopedi
 A model served through the SF LLM Gateway whose usage and regression risk justify targeted live confidence checks in addition to unit and type checks when gateway routing or transport behavior changes.
 _Avoid_: every available gateway model, benchmark target, broad live-test suite
 
+**Gateway-Specific Model Metadata**:
+A model capability value, such as context window or max output tokens, that intentionally differs from upstream **Pi Runtime** direct-provider metadata because the SF LLM Gateway route has separately verified limits. Larger-than-upstream values require focused tests and a docs note that explains the gateway-specific evidence.
+_Avoid_: stale copied metadata, optimistic context window, untested provider override
+
 ## Relationships
 
 - **SF Pi** is currently distributed as a **Git-Installed SF Pi Package**.
@@ -720,6 +732,7 @@ _Avoid_: every available gateway model, benchmark target, broad live-test suite
 - **Branch-Durable Tool State** records lightweight pointers to workflow artifacts; it does not replace logs, traces, transcripts, reports, or other heavy disk artifacts.
 - The **Welcome Splash** is a **Runtime Surface** owned by a **Bundled Extension**.
 - The **Welcome Splash** may summarize **Release Freshness** for **SF Pi** and the **Pi Runtime** without becoming an update manager.
+- The **Welcome Splash** may keep a **Pi Runtime Freshness Row** but should not own a **Pi Runtime Release Notes Surface**.
 - **Pi Runtime** **Release Freshness** should compare against the **Policy-Visible Latest** release when a **Package-Manager Release-Age Policy** is configured.
 - A **Package-Manager Release-Age Policy** is detected through the effective package-manager cutoff, preferring `before` when available and falling back to release-age settings when necessary.
 - A **Package-Manager Release-Age Policy** applies to **Pi Runtime** update reporting and runtime diagnostics, not to Git-based **SF Pi** update nudges.
@@ -739,6 +752,7 @@ _Avoid_: every available gateway model, benchmark target, broad live-test suite
 - The **Manager Surface** controls the enabled state and configuration entry points for **Bundled Extensions**.
 - **SF Brain** is a **Bundled Extension** that provides the **Salesforce Operator Kernel**.
 - **Critical-Path Gateway Models** use small, gated live confidence checks only when gateway transport behavior changes; this does not make every gateway model part of a broad live-test suite.
+- **Gateway-Specific Model Metadata** may exceed upstream **Pi Runtime** metadata only when backed by focused tests and a docs note.
 - **SF Brain** routes Data 360 work to **SF Data 360** without embedding Data 360 operation details.
 - **SF Data 360** is a **Bundled Extension** with Data Cloud / Data 360 **Runtime Surfaces**.
 - **SF Code Analyzer** is a **Bundled Extension** with code-analysis **Runtime Surfaces**.

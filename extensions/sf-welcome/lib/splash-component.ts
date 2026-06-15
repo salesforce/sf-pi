@@ -6,7 +6,7 @@
  *   - Two-column (default, termWidth ≥ SINGLE_COL_THRESHOLD):
  *       Left:  Gradient Pi logo, model info, monthly cost, optional integrations,
  *              environment checks, and release freshness rows
- *       Right: Announcements, What's New, loaded counts, recent sessions,
+ *       Right: Announcements, loaded counts, recent sessions,
  *              recommended extensions, attribution
  *   - Single-column (narrow terminals): left block stacked above right block
  *     so no content gets squeezed or truncated with an ellipsis. See issue #17
@@ -855,28 +855,6 @@ function buildRightColumn(data: SplashData, colWidth: number, mode: GlyphMode): 
         item.severity === "critical" ? SF_RED : item.severity === "warn" ? SF_ORANGE : SF_CYAN;
       const marker = markerColor(announcementMarker(item.kind));
       const truncated = truncateToWidth(item.title, Math.max(10, colWidth - 4), "…");
-      lines.push(` ${marker} ${MUTED(truncated)}`);
-    }
-    lines.push(horizontalRule(colWidth));
-  }
-
-  // --- What's New (only when a pi version bump is unacknowledged) ---
-  // Rendered at the top of the right column so the user sees new
-  // capabilities before the regular tips list. Stays compact (max 8
-  // bullets) so the panel never dominates the splash. See lib/whats-new.ts
-  // for the selection rules.
-  if (data.whatsNew && data.whatsNew.bullets.length > 0) {
-    const versionRange = data.whatsNew.fromVersion
-      ? `v${data.whatsNew.fromVersion} → v${data.whatsNew.toVersion}`
-      : `v${data.whatsNew.toVersion}`;
-    lines.push(
-      ` ${BOLD}${GOLD(`${glyph("whatsNew", mode)} What's New`)}${RESET} ${MUTED(`(${versionRange})`)}`,
-    );
-    for (const bullet of data.whatsNew.bullets) {
-      const marker = bullet.section === "feature" ? SF_GREEN("+") : SF_CYAN("※");
-      // Reserve room for the marker + spacing so long bullets truncate with
-      // an ellipsis instead of wrapping into the next column cell.
-      const truncated = truncateToWidth(bullet.text, Math.max(10, colWidth - 4), "…");
       lines.push(` ${marker} ${MUTED(truncated)}`);
     }
     lines.push(horizontalRule(colWidth));

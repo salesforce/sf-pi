@@ -5,7 +5,7 @@
  * Displays a two-column overlay on startup with:
  *   Left column:  Gradient Pi logo, model info, monthly cost, optional integrations,
  *                 environment checks, and release freshness rows
- *   Right column: Announcements, What's New, loaded counts, recent sessions,
+ *   Right column: Announcements, loaded counts, recent sessions,
  *                  recommended extensions, attribution
  *
  * Supports two modes:
@@ -18,11 +18,6 @@
  *   - Agent starts responding (agent_start event)
  *   - Tool call execution
  *
- * Persistence:
- *   - On dismiss the extension writes the current pi-coding-agent version to
- *     `~/.pi/agent/sf-welcome-state.json` so the What's New panel only reappears
- *     after the next pi version bump.
- *
  * Behavior matrix:
  *
  *   Event/Trigger         | Condition                    | Result
@@ -30,9 +25,9 @@
  *   session_start         | reason="startup", no quiet   | Show overlay splash
  *   session_start         | reason="startup", quiet=true | Show persistent header
  *   session_start         | reason!="startup"            | Skip (resume, reload, fork, etc.)
- *   agent_start           | overlay visible              | Dismiss overlay + persist seen version
- *   tool_call             | overlay visible              | Dismiss overlay + persist seen version
- *   any keypress          | overlay visible              | Dismiss overlay + persist seen version
+ *   agent_start           | overlay visible              | Dismiss overlay
+ *   tool_call             | overlay visible              | Dismiss overlay
+ *   any keypress          | overlay visible              | Dismiss overlay
  *   /sf-welcome           | always                       | Show splash info summary
  */
 import type {
@@ -65,7 +60,6 @@ import {
   detectSfSkillsStatus,
   readCachedSfCliStatus,
   readCachedSfSkillsStatus,
-  readCurrentPiVersion,
   reconcileCachedSfSkillsStatus,
   refreshAnnouncementsSummary,
   resolveMonthlyUsage,
@@ -142,13 +136,9 @@ export default function sfWelcome(pi: ExtensionAPI) {
   let startupRunId = 0;
   let activeSessionGeneration = 0;
   let activeSessionKey: string | null = null;
-  /** Snapshot of the pi version active for the current startup. Persisted
-   * the first time the user dismisses this startup's splash so repeat
-   * launches skip the What's New panel until pi updates again. */
-  let pendingSeenVersion: string | undefined;
-  /** Announcements revision active at session_start. Persisted alongside
-   * the What's New ack when the splash is dismissed so the maintainer
-   * nudge doesn't re-arm until the manifest revision actually bumps. */
+  /** Announcements revision active at session_start. Persisted when the
+   * splash is dismissed so the maintainer nudge doesn't re-arm until the
+   * manifest revision actually bumps. */
   let pendingAckedRevision: string | undefined;
 
   // Use the shared exec adapter instead of a per-extension wrapper
@@ -177,24 +167,9 @@ export default function sfWelcome(pi: ExtensionAPI) {
   }
 
   /**
-   * Persist the current pi version exactly once per startup.
-   *
-   * We only write on dismiss (not on session_start) so a user who reloads
-   * repeatedly without dismissing never over-writes their "last seen"
-   * pointer. Downgrades still write the lower version so the panel
-   * doesn't replay an older changelog on next launch.
-   */
-  function markWhatsNewSeen() {
-    if (!pendingSeenVersion) return;
-    const toPersist = pendingSeenVersion;
-    pendingSeenVersion = undefined;
-    writeWelcomeState({ lastSeenPiVersion: toPersist });
-  }
-
-  /**
    * Persist the current announcements revision exactly once per startup.
-   * Same contract as markWhatsNewSeen(): any user-visible dismiss path
-   * counts as acknowledgement so the footer nudge clears.
+   * Any user-visible dismiss path counts as acknowledgement so the footer
+   * nudge clears.
    */
   function markAnnouncementsSeen() {
     if (!pendingAckedRevision) return;
@@ -310,7 +285,6 @@ export default function sfWelcome(pi: ExtensionAPI) {
       resetHeaderAnimation();
       ctx.ui.setHeader(undefined);
     }
-    markWhatsNewSeen();
     markAnnouncementsSeen();
     // Subscription lifetime matches the splash lifetime — once the splash
     // is dismissed there is no component to repaint, so drop the listener.
@@ -336,10 +310,6 @@ export default function sfWelcome(pi: ExtensionAPI) {
 
     const modelName = ctx.model?.name || ctx.model?.id || "No model";
     const providerName = ctx.model?.provider || "Unknown provider";
-    // Capture the current pi version so we can persist it once the splash
-    // is dismissed. Done here (not inside collectSplashData) so a cached
-    // splash render never races with the current process's version.
-    pendingSeenVersion = readCurrentPiVersion();
     const startupDoctorReport = runDoctorDiagnostics({ cwd: ctx.cwd, runtime: "cached" });
     const startupDoctorNudge = summarizeStartupDoctorNudge(startupDoctorReport) ?? undefined;
     const data = collectInitialSplashData(
@@ -417,11 +387,6 @@ export default function sfWelcome(pi: ExtensionAPI) {
           data.piRelease = currentPiRelease ?? data.piRelease;
           data.nodeCert = currentNodeCert ?? { kind: "checking", loading: true };
           data.doctor = startupDoctorNudge;
-
-          if (!data.whatsNew && pendingSeenVersion) {
-            writeWelcomeState({ lastSeenPiVersion: pendingSeenVersion });
-            pendingSeenVersion = undefined;
-          }
 
           if (data.announcements && data.announcements.visible.length > 0) {
             pendingAckedRevision = data.announcements.revision || undefined;

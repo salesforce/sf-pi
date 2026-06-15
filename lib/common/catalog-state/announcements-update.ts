@@ -8,10 +8,9 @@
  * anyway, so we generate the item on the fly and funnel it through the
  * same filter/render pipeline as regular notes.
  *
- * Update summary reuses sf-welcome's existing CHANGELOG parser (whats-new.ts)
- * so the body lists the same feature/fix bullets the splash's What's New
- * panel would \u2014 except we read the repo-local CHANGELOG.md instead of
- * pi-coding-agent's.
+ * Update summary uses the shared CHANGELOG parser (whats-new.ts) so the body
+ * can list a few public-safe sf-pi feature/fix bullets from the repo-local
+ * CHANGELOG.md without adding a separate release-note renderer.
  */
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";

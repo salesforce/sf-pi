@@ -30,7 +30,6 @@ override)`). Driven by `lib/common/privacy/state.ts` — see
   for full bodies and the complete list. Dismissed via
   `/sf-pi announcements dismiss <id>`, disabled entirely via
   `SF_PI_ANNOUNCEMENTS=off` or `{ "sfPi": { "announcements": false } }`.
-- **What's New panel** (only after a pi-coding-agent version bump) with feature + fix bullets distilled from the bundled CHANGELOG.md
 - Loaded counts (extensions, skills, prompt templates)
 - Recent sessions with relative timestamps
 - Recommended external pi packages (top 4 pending items), sf-pi shortcut tips, and skill-source nudges
@@ -147,19 +146,18 @@ session_shutdown
 
 ## Behavior Matrix
 
-| Event/Trigger    | Condition                     | Result                                      |
-| ---------------- | ----------------------------- | ------------------------------------------- |
-| session_start    | reason="startup", mode≠off    | Show persistent header                      |
-| session_start    | reason≠"startup"              | Skip (resume, reload, fork)                 |
-| session_start    | first-ever launch             | Persist current pi version, omit What's New |
-| agent_start      | overlay/header visible        | Dismiss + persist seen pi version           |
-| tool_call        | overlay/header visible        | Dismiss + persist seen pi version           |
-| any keypress     | overlay visible               | Dismiss + persist seen pi version           |
-| Escape           | header visible                | Dismiss + persist seen pi version           |
-| session_shutdown | —                             | Clear overlay/header state and listeners    |
-| /sf-welcome      | always                        | Show text summary                           |
-| /sf-setup-fonts  | always                        | Install bundled Nerd Font + refresh cache   |
-| session_start    | ascii + no font + never asked | Ask once, persist answer, never re-ask      |
+| Event/Trigger    | Condition                     | Result                                    |
+| ---------------- | ----------------------------- | ----------------------------------------- |
+| session_start    | reason="startup", mode≠off    | Show persistent header                    |
+| session_start    | reason≠"startup"              | Skip (resume, reload, fork)               |
+| agent_start      | overlay/header visible        | Dismiss                                   |
+| tool_call        | overlay/header visible        | Dismiss                                   |
+| any keypress     | overlay visible               | Dismiss                                   |
+| Escape           | header visible                | Dismiss                                   |
+| session_shutdown | —                             | Clear overlay/header state and listeners  |
+| /sf-welcome      | always                        | Show text summary                         |
+| /sf-setup-fonts  | always                        | Install bundled Nerd Font + refresh cache |
+| session_start    | ascii + no font + never asked | Ask once, persist answer, never re-ask    |
 
 ## File Structure
 
@@ -211,7 +209,6 @@ extensions/sf-welcome/
     splash-wordmark-shadow.test.ts← unit / smoke test
     startup-mode.test.ts    ← unit / smoke test
     state-store.test.ts     ← unit / smoke test
-    whats-new.test.ts       ← unit / smoke test
   CREDITS.md                ← extension attribution
   index.ts                  ← Pi extension entry point
   manifest.json             ← source-of-truth extension metadata
@@ -236,11 +233,10 @@ Use these only for local visual QA; runtime behavior still lives in
 
 ## Persistent State
 
-`~/.pi/agent/sf-welcome-state.json` records the pi-coding-agent version the
-user has most recently acknowledged (via a dismissed splash). The What's New
-panel appears only when the installed pi version is strictly greater than
-that stored value. First-ever launches seed the file eagerly and show no
-panel, so a fresh install is never noisy.
+`~/.pi/agent/sf-welcome-state.json` records local SF Welcome preferences such
+as the one-time bundled font prompt decision. Older installs may still carry a
+legacy `lastSeenPiVersion` key; SF Welcome preserves it on write but no longer
+uses it because upstream Pi owns Pi Runtime release-note surfaces.
 
 `<globalAgentDir>/sf-pi/sf-welcome/pi-release-status.json` caches the Pi
 runtime latest-version result for 24 hours. sf-pi release freshness reuses the
@@ -282,12 +278,6 @@ non-blocking header so users can repair the harness from inside pi.
 Fixed — below ~100 columns the splash now stacks to a single column instead
 of clipping the right-hand tips panel. Above that width it grows up to 220
 columns.
-
-**What's New panel shows on first run or won't go away:**
-The panel appears only when the installed pi version is strictly greater
-than the version recorded in `~/.pi/agent/sf-welcome-state.json`. First
-launches seed that file so no panel shows. Delete the file to resurface
-the banner, or let a future version bump supersede it.
 
 **`/sf-setup-fonts` says everything is already installed but the splash still shows ASCII:**
 The install is idempotent and verified by SHA-256. Two likely causes:

@@ -262,9 +262,6 @@ export interface SplashData {
   /** Node custom-CA status populated cache-first, then refreshed on a
    *  deferred timer. Never performs a live TLS probe during startup. */
   nodeCert?: NodeCertStatusInfo;
-  /** Short summary of pi-coding-agent changes since the user's last splash.
-   * Present only when there is something new to announce. */
-  whatsNew?: WhatsNewSummary;
   /** Maintainer announcements and update nudges, sourced from
    * catalog/announcements.json (+ optional remote feed). Undefined when
    * the feature is disabled or there is nothing active to show. */
@@ -287,17 +284,4 @@ export interface AnnouncementsSummary {
   totalActive: number;
   /** Ordered, capped items to render. */
   visible: AnnouncementLine[];
-}
-
-/** One-line distilled change sourced from the pi CHANGELOG. */
-export interface WhatsNewBulletItem {
-  text: string;
-  section: "feature" | "fix";
-}
-
-/** Compact payload that drives the What's New splash panel. */
-export interface WhatsNewSummary {
-  fromVersion?: string;
-  toVersion: string;
-  bullets: WhatsNewBulletItem[];
 }

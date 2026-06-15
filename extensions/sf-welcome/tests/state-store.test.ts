@@ -30,13 +30,6 @@ describe("state-store", () => {
     expect(state).toEqual({});
   });
 
-  it("round-trips lastSeenPiVersion", () => {
-    const dir = makeTempDir("welcome-state-");
-    const path = join(dir, "state.json");
-    writeWelcomeState({ lastSeenPiVersion: "0.68.0" }, path);
-    expect(readWelcomeState(path)).toEqual({ lastSeenPiVersion: "0.68.0" });
-  });
-
   it("merges updates rather than overwriting unknown keys", () => {
     const dir = makeTempDir("welcome-state-");
     const path = join(dir, "state.json");
@@ -50,29 +43,23 @@ describe("state-store", () => {
       "utf-8",
     );
 
-    writeWelcomeState({ lastSeenPiVersion: "0.68.1" }, path);
+    writeWelcomeState({ fontInstallDecision: "yes" }, path);
     const raw = JSON.parse(readFileSync(path, "utf-8")) as {
       schemaVersion?: number;
       state?: Record<string, unknown>;
     };
     expect(raw.schemaVersion).toBe(1);
-    expect(raw.state?.lastSeenPiVersion).toBe("0.68.1");
+    expect(raw.state?.lastSeenPiVersion).toBe("0.67.5");
+    expect(raw.state?.fontInstallDecision).toBe("yes");
     expect(raw.state?.futureKey).toBe("still here");
-    // The typed read should still return only the known slice.
-    expect(readWelcomeState(path)).toEqual({ lastSeenPiVersion: "0.68.1" });
+    // The typed read should still return only the current known slice.
+    expect(readWelcomeState(path)).toEqual({ fontInstallDecision: "yes" });
   });
 
   it("treats malformed JSON as an empty state", () => {
     const dir = makeTempDir("welcome-state-");
     const path = join(dir, "state.json");
     writeFileSync(path, "{not-json", "utf-8");
-    expect(readWelcomeState(path)).toEqual({});
-  });
-
-  it("drops whitespace-only lastSeenPiVersion values on read", () => {
-    const dir = makeTempDir("welcome-state-");
-    const path = join(dir, "state.json");
-    writeFileSync(path, JSON.stringify({ lastSeenPiVersion: "   " }), "utf-8");
     expect(readWelcomeState(path)).toEqual({});
   });
 

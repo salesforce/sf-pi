@@ -1,23 +1,13 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /**
- * What's New discovery for sf-welcome.
+ * Shared changelog summarization for sf-pi update announcements.
  *
- * Reads the CHANGELOG.md that ships with the installed pi-coding-agent
- * package, slices out the range between the user's last seen version and
- * the currently installed version, and distills it into a short list of
- * bullets for the splash screen's right column.
- *
- * Design goals:
- * - Zero network traffic: the changelog is always the local file.
- * - Failure is silent: if anything fails to resolve, the panel is omitted.
- * - Deterministic: same version pair always yields the same bullets.
- * - Capped length: never more than WHATSNEW_MAX_BULLETS lines on the splash.
+ * SF Welcome no longer renders upstream Pi Runtime release-note bullets. This
+ * module stays in lib/common because the sf-pi update announcement still uses
+ * the same deterministic parser to summarize this repository's CHANGELOG.md.
  */
-import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
-import * as PiRuntime from "@earendil-works/pi-coding-agent";
 
-/** Upper bound on bullets rendered on the splash. */
+/** Upper bound on bullets kept for a compact update summary. */
 export const WHATSNEW_MAX_BULLETS = 8;
 
 /** Max bullets per section inside the final summary when both sections exist. */
@@ -34,120 +24,10 @@ export interface WhatsNewBullet {
   section: "feature" | "fix";
 }
 
-export interface WhatsNewPayload {
-  /** Version the user had acknowledged before this launch, if any. */
-  fromVersion?: string;
-  /** Version currently installed. */
-  toVersion: string;
-  /** Distilled bullet list for the splash panel. */
-  bullets: WhatsNewBullet[];
-}
-
 export interface ChangelogSection {
   version: string;
   date?: string;
   sections: Record<string, string[]>;
-}
-
-// -------------------------------------------------------------------------------------------------
-// Entry point
-// -------------------------------------------------------------------------------------------------
-
-/**
- * Resolve the current pi version and the caller-supplied last-seen version,
- * then build the splash payload. Returns `null` when there is nothing new
- * to show (same version, downgrade, missing changelog, or first-ever launch).
- *
- * Callers (currently sf-welcome) supply `lastSeenPiVersion` from their own
- * state store. Keeping that parameter explicit lets this module live in
- * `lib/common/` without depending on any extension's internal state file.
- */
-export function buildWhatsNewPayload(
-  options: {
-    /** Caller's last-acknowledged pi version (e.g. from sf-welcome state). */
-    lastSeenPiVersion?: string;
-    piPackagePath?: string;
-  } = {},
-): WhatsNewPayload | null {
-  const current = readCurrentPiVersion(options.piPackagePath);
-  if (!current) return null;
-
-  const lastSeen = options.lastSeenPiVersion;
-
-  // First-ever launch — no previous version to compare against.
-  // Returning null lets the caller persist the current version without
-  // showing a panel the first time.
-  if (!lastSeen) return null;
-
-  if (!isVersionGreater(current, lastSeen)) return null;
-
-  const changelogPath = resolveChangelogPath(options.piPackagePath);
-  if (!changelogPath || !existsSync(changelogPath)) return null;
-
-  let raw: string;
-  try {
-    raw = readFileSync(changelogPath, "utf-8");
-  } catch {
-    return null;
-  }
-
-  const sections = parseChangelog(raw);
-  const relevant = sliceChangelog(sections, lastSeen, current);
-  if (relevant.length === 0) return null;
-
-  const bullets = summarizeChangelog(relevant);
-  if (bullets.length === 0) return null;
-
-  return {
-    fromVersion: lastSeen,
-    toVersion: current,
-    bullets,
-  };
-}
-
-// -------------------------------------------------------------------------------------------------
-// Package/version resolution
-// -------------------------------------------------------------------------------------------------
-
-/**
- * Read the installed Pi Runtime version.
- *
- * The normal path uses Pi's public VERSION export so SF Pi does not
- * rediscover the package root. Tests can still pass `piPackagePath` to read
- * a fixture package.json.
- */
-export function readCurrentPiVersion(piPackagePath?: string): string | undefined {
-  if (!piPackagePath) {
-    const version = (PiRuntime as { VERSION?: unknown }).VERSION;
-    return typeof version === "string" && version.trim() ? version.trim() : undefined;
-  }
-
-  const pkgPath = join(piPackagePath, "package.json");
-  if (!existsSync(pkgPath)) return undefined;
-  try {
-    const raw = readFileSync(pkgPath, "utf-8");
-    const pkg = JSON.parse(raw) as { version?: unknown };
-    return typeof pkg.version === "string" && pkg.version.trim() ? pkg.version.trim() : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-function resolvePiPackageDir(): string | undefined {
-  const getPackageDir = (PiRuntime as { getPackageDir?: unknown }).getPackageDir;
-  if (typeof getPackageDir !== "function") return undefined;
-  try {
-    const dir = getPackageDir();
-    return typeof dir === "string" && dir.trim() ? dir : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-/** Locate the CHANGELOG.md that ships with the installed pi package. */
-export function resolveChangelogPath(piPackagePath?: string): string | undefined {
-  const packageDir = piPackagePath ?? resolvePiPackageDir();
-  return packageDir ? join(packageDir, "CHANGELOG.md") : undefined;
 }
 
 // -------------------------------------------------------------------------------------------------

@@ -170,4 +170,24 @@ describe("release freshness splash rows", () => {
     expect(pi).toContain("latest check skipped");
     expect(pi).not.toContain("update available");
   });
+
+  it("does not render Pi Runtime release-note bullets in SF Welcome", async () => {
+    const data = baseData() as SplashData & {
+      whatsNew: {
+        fromVersion: string;
+        toVersion: string;
+        bullets: Array<{ text: string; section: "feature" }>;
+      };
+    };
+    data.whatsNew = {
+      fromVersion: "0.79.3",
+      toVersion: "0.79.4",
+      bullets: [{ text: "Automatic first-run theme selection", section: "feature" }],
+    };
+    const rendered = await render(data);
+
+    expect(rendered).toContain("Pi");
+    expect(rendered).not.toContain("What's New");
+    expect(rendered).not.toContain("Automatic first-run theme selection");
+  });
 });

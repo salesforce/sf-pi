@@ -718,7 +718,6 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 - Splash shows `?` boxes (tofu) where glyphs should be
 - Splash feels too busy, stuck, or setup warnings are noisy
 - Splash content gets truncated in a narrow terminal
-- What's New panel shows on first run or won't go away
 - `/sf-setup-fonts` says everything is already installed but the splash still shows ASCII
 - I was asked to install the font once and declined — how do I get the prompt back
 

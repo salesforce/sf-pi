@@ -66,8 +66,8 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
   `typebox`. Verified that `parseChangelog` in
   `lib/common/catalog-state/whats-new.ts` already handles pi 0.74.1's
   changelog layout (`### New Features` / `### Added` / `### Fixed`) — the
-  existing fixture in `extensions/sf-welcome/tests/whats-new.test.ts` covers
-  the same shape, so no test churn was needed.
+  fixture in `lib/common/tests/changelog-summary.test.ts` covers the same
+  shape.
 - Updated the `### Supported platforms` README paragraph to reflect that
   pi 0.74.1 ships standalone Windows ARM64 binaries; the `sf` CLI is now the
   only Windows prerequisite. WSL is still recommended for shell parity with

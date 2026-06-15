@@ -2,8 +2,7 @@
 /**
  * Persistent state store for sf-welcome.
  *
- * Tracks cross-session preferences like "last pi version the user has seen"
- * so the What's New panel only appears when something has actually changed.
+ * Tracks cross-session preferences such as the one-time bundled font prompt.
  *
  * Backed by the shared `lib/common/state-store.ts` helper (atomic write,
  * schema versioning, safe defaults). The on-disk path is preserved at
@@ -41,8 +40,6 @@ export function canonicalSfWelcomeStatePath(): string {
 }
 
 export interface SfWelcomeState {
-  /** Latest pi-coding-agent version acknowledged via a dismissed splash. */
-  lastSeenPiVersion?: string;
   /**
    * Records the user's answer to the one-time "install bundled Nerd Font"
    * prompt. Once set, the prompt never fires again (manual
@@ -81,9 +78,6 @@ function buildStore(filePath: string) {
 
 function parseLooseState(parsed: Record<string, unknown>): SfWelcomeState {
   const state: SfWelcomeState = {};
-  if (typeof parsed.lastSeenPiVersion === "string" && parsed.lastSeenPiVersion.trim()) {
-    state.lastSeenPiVersion = parsed.lastSeenPiVersion.trim();
-  }
   if (parsed.fontInstallDecision === "yes" || parsed.fontInstallDecision === "no") {
     state.fontInstallDecision = parsed.fontInstallDecision;
   }
@@ -96,8 +90,7 @@ function parseLooseState(parsed: Record<string, unknown>): SfWelcomeState {
 /**
  * Read the persisted welcome state.
  *
- * Returns an empty object when the file is missing or unreadable — the
- * caller can treat a missing `lastSeenPiVersion` as "first-ever launch".
+ * Returns an empty object when the file is missing or unreadable.
  * The file may carry forward-compat fields written by a newer sf-pi; the
  * typed slice strips them so callers see only what they understand.
  */
