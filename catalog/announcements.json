@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.187.4-2026-06-15",
-  "latestVersion": "0.187.4",
+  "revision": "release-0.188.0-2026-06-15",
+  "latestVersion": "0.188.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.187.4",
+      "id": "release-0.188.0",
       "kind": "update",
-      "title": "sf-pi v0.187.4 — sf-pi: keep manager open for detail actions",
+      "title": "sf-pi v0.188.0 — sf-guardrail: expand dangerous command coverage",
       "publishedAt": "2026-06-15T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.187.4",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.188.0",
       "severity": "info",
-      "body": "sf-pi: keep manager open for detail actions"
+      "body": "sf-guardrail: expand dangerous command coverage — audit: override form-data to patched version"
     },
     {
       "id": "pi-0.73-required",

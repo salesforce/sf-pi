@@ -517,6 +517,18 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.188.0](https://github.com/salesforce/sf-pi/compare/v0.187.4...v0.188.0) (2026-06-15)
+
+
+### Features
+
+* **sf-guardrail:** expand dangerous command coverage ([a93ba55](https://github.com/salesforce/sf-pi/commit/a93ba55d7be3000ff607ba018c9324de67e34c99))
+
+
+### Bug Fixes
+
+* **audit:** override form-data to patched version ([d0acde3](https://github.com/salesforce/sf-pi/commit/d0acde3ef258a6f7b6f07e8bcb1d270963972f4b))
+
 ## [0.187.4](https://github.com/salesforce/sf-pi/compare/v0.187.3...v0.187.4) (2026-06-15)
 
 
