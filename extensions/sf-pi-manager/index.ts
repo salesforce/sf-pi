@@ -113,6 +113,7 @@ import { migrateExtensionAliases } from "./lib/extension-aliases.ts";
 import {
   collectManagerDetailActions,
   runCollectedManagerDetailAction,
+  type ManagerDetailAction,
 } from "../../lib/common/manager-actions.ts";
 import {
   SF_PI_MANAGER_OPEN_EVENT,
@@ -563,7 +564,7 @@ async function handleOverlay(
           scope,
           () => tui.terminal.rows,
           done,
-          (extensionId) => collectManagerDetailActions(pi, extensionId),
+          (extensionId) => collectOverlayActions(pi, extensionId, initialRoute),
           initialRoute,
         ),
       {
@@ -606,6 +607,20 @@ async function handleOverlay(
       ctx.ui.notify(`Manager action unavailable: ${result.action.actionId}`, "warning");
     }
   }
+}
+
+function collectOverlayActions(
+  pi: ExtensionAPI,
+  extensionId: string,
+  initialRoute: OverlayInitialRoute | undefined,
+): ManagerDetailAction[] {
+  const direct =
+    initialRoute?.extensionId === extensionId && initialRoute.actions ? initialRoute.actions : [];
+  const discovered = collectManagerDetailActions(pi, extensionId);
+  const byId = new Map<string, ManagerDetailAction>();
+  for (const action of discovered) byId.set(action.id, action);
+  for (const action of direct) byId.set(action.id, action);
+  return [...byId.values()];
 }
 
 async function handleList(

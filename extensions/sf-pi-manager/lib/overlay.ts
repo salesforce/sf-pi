@@ -73,6 +73,7 @@ export type OverlayResult = {
 export type OverlayInitialRoute = {
   extensionId?: string;
   view?: "detail" | "settings";
+  actions?: ManagerDetailAction[];
 };
 
 type OverlayView =

@@ -1,12 +1,15 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Shared event contract for opening the SF Pi Manager from extension commands. */
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
+import type { ManagerDetailAction } from "./manager-actions.ts";
 
 export const SF_PI_MANAGER_OPEN_EVENT = "sf-pi-manager:open";
 
 export type SfPiManagerOpenRoute = {
   extensionId?: string;
   view?: "detail" | "settings";
+  /** Optional direct actions for the target extension. Used by extension-owned deep links. */
+  actions?: ManagerDetailAction[];
 };
 
 export type SfPiManagerOpenRequest = {
