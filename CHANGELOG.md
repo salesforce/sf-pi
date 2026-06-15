@@ -517,6 +517,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.187.2](https://github.com/salesforce/sf-pi/compare/v0.187.1...v0.187.2) (2026-06-15)
+
+
+### Bug Fixes
+
+* **sf-pi:** discover manager actions via event bus ([27bd27e](https://github.com/salesforce/sf-pi/commit/27bd27e0eae0a41a037d169dc8ea98adce082350))
+
 ## [0.187.1](https://github.com/salesforce/sf-pi/compare/v0.187.0...v0.187.1) (2026-06-15)
 
 
