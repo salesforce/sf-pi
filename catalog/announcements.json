@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.187.3-2026-06-15",
-  "latestVersion": "0.187.3",
+  "revision": "release-0.187.4-2026-06-15",
+  "latestVersion": "0.187.4",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.187.3",
+      "id": "release-0.187.4",
       "kind": "update",
-      "title": "sf-pi v0.187.3 — sf-guardrail: preserve manager actions after settings",
+      "title": "sf-pi v0.187.4 — sf-pi: keep manager open for detail actions",
       "publishedAt": "2026-06-15T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.187.3",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.187.4",
       "severity": "info",
-      "body": "sf-guardrail: preserve manager actions after settings"
+      "body": "sf-pi: keep manager open for detail actions"
     },
     {
       "id": "pi-0.73-required",
