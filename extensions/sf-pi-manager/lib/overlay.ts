@@ -31,10 +31,7 @@ import type {
   ConfigPanelFactory,
   ConfigPanelResult,
 } from "../../../catalog/registry.ts";
-import {
-  getManagerDetailActions,
-  type ManagerDetailAction,
-} from "../../../lib/common/manager-actions.ts";
+import type { ManagerDetailAction } from "../../../lib/common/manager-actions.ts";
 import {
   buildExtensionDetailSummary,
   getExtensionStatus,
@@ -165,6 +162,7 @@ export class SfPiOverlayComponent implements Focusable {
     initialScope: "global" | "project",
     private readonly getTerminalRows: () => number,
     private readonly done: (result: OverlayResult | undefined) => void,
+    private readonly getExtensionActions: (extensionId: string) => ManagerDetailAction[],
     initialRoute?: OverlayInitialRoute,
   ) {
     this.extensions = initialStates.map((e) => ({ ...e }));
@@ -658,7 +656,7 @@ export class SfPiOverlayComponent implements Focusable {
   }
 
   private extensionSpecificActions(ext: ExtensionState): DetailActionItem[] {
-    return getManagerDetailActions(ext.id).map((action: ManagerDetailAction) => ({
+    return this.getExtensionActions(ext.id).map((action: ManagerDetailAction) => ({
       value: `manager:${action.id}`,
       label: action.label,
       description: action.description,

@@ -1,6 +1,8 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/** Shared Manager Surface action registry for extension-owned detail actions. */
-import type { ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
+/** Shared Manager Surface action discovery for extension-owned detail actions. */
+import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
+
+export const SF_PI_MANAGER_ACTIONS_EVENT = "sf-pi-manager:actions";
 
 export interface ManagerDetailAction {
   id: string;
@@ -9,27 +11,40 @@ export interface ManagerDetailAction {
   run(ctx: ExtensionCommandContext): Promise<void> | void;
 }
 
-const actionsByExtension = new Map<string, ManagerDetailAction[]>();
+export interface ManagerDetailActionsRequest {
+  extensionId: string;
+  actions: ManagerDetailAction[];
+}
 
 export function registerManagerDetailActions(
+  pi: Pick<ExtensionAPI, "events">,
   extensionId: string,
   actions: ManagerDetailAction[],
 ): void {
-  actionsByExtension.set(extensionId, [...actions]);
+  pi.events.on(SF_PI_MANAGER_ACTIONS_EVENT, (request: ManagerDetailActionsRequest) => {
+    if (request.extensionId !== extensionId) return;
+    request.actions.push(...actions);
+  });
 }
 
-export function getManagerDetailActions(extensionId: string): ManagerDetailAction[] {
-  return [...(actionsByExtension.get(extensionId) ?? [])];
+export function collectManagerDetailActions(
+  pi: Pick<ExtensionAPI, "events">,
+  extensionId: string,
+): ManagerDetailAction[] {
+  const request: ManagerDetailActionsRequest = { extensionId, actions: [] };
+  pi.events.emit(SF_PI_MANAGER_ACTIONS_EVENT, request);
+  return request.actions;
 }
 
-export async function runManagerDetailAction(
+export async function runCollectedManagerDetailAction(
+  pi: Pick<ExtensionAPI, "events">,
   extensionId: string,
   actionId: string,
   ctx: ExtensionCommandContext,
 ): Promise<boolean> {
-  const action = actionsByExtension
-    .get(extensionId)
-    ?.find((candidate) => candidate.id === actionId);
+  const action = collectManagerDetailActions(pi, extensionId).find(
+    (candidate) => candidate.id === actionId,
+  );
   if (!action) return false;
   await action.run(ctx);
   return true;

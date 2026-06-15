@@ -106,7 +106,7 @@ export default function sfGuardrail(pi: ExtensionAPI) {
   // the ExtensionContext); this provider is cwd-only by design.
   registerExtensionDoctor("sf-guardrail", () => runGuardrailExtensionDoctor());
 
-  registerManagerDetailActions("sf-guardrail", [
+  registerManagerDetailActions(pi, "sf-guardrail", [
     {
       id: "rules",
       label: "Effective rules",
