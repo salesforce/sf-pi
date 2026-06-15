@@ -2,8 +2,8 @@
 
 ## What It Does
 
-A Salesforce-aware safety layer on top of pi's `tool_call` hook. Three
-feature tiers, all toggleable via the config:
+A Salesforce-aware safety layer on top of pi's `tool_call` hook. Three rule
+families, each controlled by per-rule behavior (`off`, `confirm`, or `block`):
 
 1. **policies** — file-protection rules with three levels:
    - `noAccess` blocks `read`, `write`, `edit`, `bash`, `grep`, `find`, `ls`
@@ -19,9 +19,11 @@ feature tiers, all toggleable via the config:
 2. **commandGate** — dangerous-command patterns matched structurally
    against tokenized shell commands from `bash.command` or
    `herdr.run.command`, including commands later in simple shell chains.
-   Ships with `rm -rf`, `sudo`, `chmod -R 777`, `chown -R`, `dd of=`,
-   `mkfs.*`, `sf org delete`, explicit Salesforce CLI credential reveal
-   commands, `SF_TEMP_SHOW_SECRETS=true`, and `git push --force`.
+   Ships with recursive deletion variants, permission/ownership changes,
+   destructive git commands, pipe-to-shell and base64-to-shell patterns,
+   process/system disruption commands, container/cloud/database destruction
+   commands, `sf org delete`, explicit Salesforce CLI credential reveal
+   commands, and `SF_TEMP_SHOW_SECRETS=true`.
    Strictly validated OS temp-directory cleanup is auto-allowed and audited;
    other dangerous commands default to `confirm` behavior and prompt via
    `ctx.ui.select` (Allow once / Allow for this session / Block). Individual
@@ -234,6 +236,9 @@ Run: `npm test`
 Covered by unit tests:
 
 - Tokenizer handles quoting, escapes, and pipeline terminators.
+- Command matcher expands common shell wrappers (`bash -c`, `sudo bash -c`,
+  `xargs`) and structural bypasses (`curl|bash`, base64 decode to shell,
+  `find -delete`, `find -exec rm`) without LLM calls or subprocesses.
 - AST matcher supports alternatives, leading flags, `flagIn` constraints,
   and `--flag=value` shorthand.
 - Target-org extraction prefers `-o` over `--target-org`, returns

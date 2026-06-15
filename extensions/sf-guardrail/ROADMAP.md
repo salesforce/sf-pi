@@ -11,10 +11,11 @@ are not promises — priority is the rough order.
 - [x] Bundled rules for `destructiveChanges*.xml`, `.forceignore`,
       `.sf/**`, `.sfdx/**`, dotenv-style secret files, and
       `.sfdx/agents/**` carve-out.
-- [x] Command gate: structural token matching for `rm -rf`, `sudo`,
-      `chmod -R 777`, `chown -R`, `dd of=`, `mkfs.*`, `sf org delete`,
-      credential reveal commands, `SF_TEMP_SHOW_SECRETS=true`, and
-      `git push --force`, including commands later in simple shell chains.
+- [x] Command gate: structural token matching for recursive deletion variants,
+      permission/ownership changes, destructive git, pipe-to-shell,
+      base64-to-shell, process/system disruption, container/cloud/database
+      destruction, Salesforce org deletion, credential reveal commands, and
+      commands later in simple shell chains.
 - [x] Strict temp cleanup auto-allow for literal, single-target OS temp
       `rm -rf` / `rm -fr` cleanup with audit.
 - [x] Org-aware gate: mutating `sf project deploy start|resume|quick`,

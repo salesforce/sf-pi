@@ -8,7 +8,11 @@
       {
         "id": "sf-destructive-changes-xml",
         "description": "Destructive-deploy manifest — block direct edits",
-        "patterns": [{ "pattern": "**/destructiveChanges*.xml" }],
+        "patterns": [
+          {
+            "pattern": "**/destructiveChanges*.xml"
+          }
+        ],
         "protection": "noAccess",
         "blockMessage": "Writes to {file} are blocked by sf-guardrail. Stage deletes via a reviewed metadata change, not by hand-editing destructiveChanges.xml.",
         "enabled": true,
@@ -17,7 +21,11 @@
       {
         "id": "sf-forceignore",
         "description": ".forceignore — changes ship/retrieve behavior silently",
-        "patterns": [{ "pattern": "**/.forceignore" }],
+        "patterns": [
+          {
+            "pattern": "**/.forceignore"
+          }
+        ],
         "protection": "readOnly",
         "blockMessage": "{file} is read-only under sf-guardrail. Edits alter retrieve/deploy behavior — change it from a terminal with review.",
         "enabled": true,
@@ -26,8 +34,19 @@
       {
         "id": "sf-cli-state",
         "description": "SF CLI / sfdx state directories — never edit by hand",
-        "patterns": [{ "pattern": ".sf/**" }, { "pattern": ".sfdx/**" }],
-        "allowedPatterns": [{ "pattern": ".sfdx/agents/**" }],
+        "patterns": [
+          {
+            "pattern": ".sf/**"
+          },
+          {
+            "pattern": ".sfdx/**"
+          }
+        ],
+        "allowedPatterns": [
+          {
+            "pattern": ".sfdx/agents/**"
+          }
+        ],
         "protection": "noAccess",
         "blockMessage": "{file} is internal sf CLI state. sf-guardrail blocks direct access; use sf commands instead. (Carve-out: .sfdx/agents/** is allowed for sf-agentscript preview sessions — the Salesforce-standard agent session layout.)",
         "enabled": true,
@@ -37,19 +56,41 @@
         "id": "secret-files",
         "description": "Dotenv-style secret files",
         "patterns": [
-          { "pattern": ".env" },
-          { "pattern": ".env.local" },
-          { "pattern": ".env.production" },
-          { "pattern": ".env.prod" },
-          { "pattern": ".dev.vars" }
+          {
+            "pattern": ".env"
+          },
+          {
+            "pattern": ".env.local"
+          },
+          {
+            "pattern": ".env.production"
+          },
+          {
+            "pattern": ".env.prod"
+          },
+          {
+            "pattern": ".dev.vars"
+          }
         ],
         "allowedPatterns": [
-          { "pattern": ".env.example" },
-          { "pattern": ".env.sample" },
-          { "pattern": ".env.test" },
-          { "pattern": "*.example.env" },
-          { "pattern": "*.sample.env" },
-          { "pattern": "*.test.env" }
+          {
+            "pattern": ".env.example"
+          },
+          {
+            "pattern": ".env.sample"
+          },
+          {
+            "pattern": ".env.test"
+          },
+          {
+            "pattern": "*.example.env"
+          },
+          {
+            "pattern": "*.sample.env"
+          },
+          {
+            "pattern": "*.test.env"
+          }
         ],
         "protection": "noAccess",
         "blockMessage": "{file} may contain secrets; sf-guardrail blocks access. Use an *.example.env template or an environment-backed secret store.",
@@ -60,11 +101,74 @@
   },
   "commandGate": {
     "patterns": [
-      { "id": "rm-rf", "pattern": "rm -rf", "description": "recursive force delete" },
-      { "id": "sudo", "pattern": "sudo", "description": "superuser command" },
+      {
+        "id": "find-delete",
+        "pattern": "find -delete",
+        "description": "find deleting matched files"
+      },
+      {
+        "id": "find-exec-rm",
+        "pattern": "find -exec rm",
+        "description": "find executing rm on matched files"
+      },
+      {
+        "id": "rm-rf",
+        "pattern": "rm -rf",
+        "description": "recursive force delete"
+      },
+      {
+        "id": "rm-fr",
+        "pattern": "rm -fr",
+        "description": "recursive force delete (flag order variant)"
+      },
+      {
+        "id": "rm-r-f",
+        "pattern": "rm -r -f",
+        "description": "recursive force delete (split flags)"
+      },
+      {
+        "id": "shred",
+        "pattern": "shred",
+        "description": "secure file shredding"
+      },
+      {
+        "id": "srm",
+        "pattern": "srm",
+        "description": "secure recursive file removal"
+      },
+      {
+        "id": "wipe",
+        "pattern": "wipe",
+        "description": "secure file wiping"
+      },
+      {
+        "id": "truncate-zero",
+        "pattern": "truncate -s 0",
+        "description": "truncate file contents to zero bytes"
+      },
+      {
+        "id": "sudo",
+        "pattern": "sudo",
+        "description": "superuser command"
+      },
       {
         "id": "chmod-777",
         "pattern": "chmod -R 777",
+        "description": "recursive world-writable chmod"
+      },
+      {
+        "id": "chmod-000",
+        "pattern": "chmod -R 000",
+        "description": "recursive permission lockout chmod"
+      },
+      {
+        "id": "chmod-a-rwx",
+        "pattern": "chmod -R a+rwx",
+        "description": "recursive world-writable chmod"
+      },
+      {
+        "id": "chmod-ugo-rwx",
+        "pattern": "chmod -R ugo+rwx",
         "description": "recursive world-writable chmod"
       },
       {
@@ -72,8 +176,121 @@
         "pattern": "chown -R",
         "description": "recursive ownership change"
       },
-      { "id": "dd-of", "pattern": "dd of=", "description": "dd writing to an output device/file" },
-      { "id": "mkfs", "pattern": "mkfs.*", "description": "filesystem formatting command" },
+      {
+        "id": "chgrp-recursive",
+        "pattern": "chgrp -R",
+        "description": "recursive group ownership change"
+      },
+      {
+        "id": "dd-of",
+        "pattern": "dd of=",
+        "description": "dd writing to an output device/file"
+      },
+      {
+        "id": "mkfs",
+        "pattern": "mkfs.*",
+        "description": "filesystem formatting command"
+      },
+      {
+        "id": "remote-script-to-shell",
+        "pattern": "remote-script-to-shell",
+        "description": "pipe remote script into a shell"
+      },
+      {
+        "id": "base64-decode-to-shell",
+        "pattern": "base64-decode-to-shell",
+        "description": "pipe decoded base64 payload into a shell"
+      },
+      {
+        "id": "killall-9",
+        "pattern": "killall -9",
+        "description": "force kill matching processes"
+      },
+      {
+        "id": "pkill-9",
+        "pattern": "pkill -9",
+        "description": "force kill matching processes"
+      },
+      {
+        "id": "reboot",
+        "pattern": "reboot",
+        "description": "reboot the machine"
+      },
+      {
+        "id": "shutdown",
+        "pattern": "shutdown",
+        "description": "shut down the machine"
+      },
+      {
+        "id": "git-reset-hard",
+        "pattern": "git reset --hard",
+        "description": "discard local git changes"
+      },
+      {
+        "id": "git-clean-fd",
+        "pattern": "git clean -fd",
+        "description": "delete untracked files and directories"
+      },
+      {
+        "id": "git-clean-fdx",
+        "pattern": "git clean -fdx",
+        "description": "delete all untracked and ignored files"
+      },
+      {
+        "id": "git-force-push",
+        "pattern": "git push --force",
+        "description": "git force push"
+      },
+      {
+        "id": "git-force-push-short",
+        "pattern": "git push -f",
+        "description": "git force push (short flag)"
+      },
+      {
+        "id": "docker-system-prune",
+        "pattern": "docker system prune",
+        "description": "delete Docker images, containers, networks, or cache"
+      },
+      {
+        "id": "docker-compose-down-volumes",
+        "pattern": "docker compose down -v",
+        "description": "stop compose stack and delete volumes"
+      },
+      {
+        "id": "docker-rm-force",
+        "pattern": "docker rm -f",
+        "description": "force remove Docker containers"
+      },
+      {
+        "id": "kubectl-delete",
+        "pattern": "kubectl delete",
+        "description": "delete Kubernetes resources"
+      },
+      {
+        "id": "terraform-destroy",
+        "pattern": "terraform destroy",
+        "description": "destroy Terraform-managed infrastructure"
+      },
+      {
+        "id": "terraform-apply-destroy",
+        "pattern": "terraform apply -destroy",
+        "description": "destroy Terraform-managed infrastructure"
+      },
+      {
+        "id": "dropdb",
+        "pattern": "dropdb",
+        "description": "drop PostgreSQL database"
+      },
+      {
+        "id": "redis-flushall",
+        "pattern": "redis-cli FLUSHALL",
+        "description": "delete all Redis keys"
+      },
+      {
+        "id": "redis-flushdb",
+        "pattern": "redis-cli FLUSHDB",
+        "description": "delete Redis database keys"
+      },
       {
         "id": "sf-org-delete",
         "pattern": "sf org delete",
@@ -98,12 +315,6 @@
         "id": "sf-temp-show-secrets",
         "pattern": "SF_TEMP_SHOW_SECRETS=true",
         "description": "temporarily restore legacy Salesforce CLI secret output"
-      },
-      { "id": "git-force-push", "pattern": "git push --force", "description": "git force push" },
-      {
-        "id": "git-force-push-short",
-        "pattern": "git push -f",
-        "description": "git force push (short flag)"
       }
     ],
     "allowedPatterns": [],
@@ -116,7 +327,10 @@
         "description": "Metadata deploy targeting production",
         "match": {
           "tool": "bash",
-          "ast": { "cmd": "sf", "subCmd": ["project", "deploy", ["start", "resume", "quick"]] }
+          "ast": {
+            "cmd": "sf",
+            "subCmd": ["project", "deploy", ["start", "resume", "quick"]]
+          }
         },
         "whenOrgType": ["production"],
         "action": "confirm",
@@ -126,7 +340,13 @@
       {
         "id": "sf-apex-run-prod",
         "description": "Anonymous Apex targeting production",
-        "match": { "tool": "bash", "ast": { "cmd": "sf", "subCmd": ["apex", "run"] } },
+        "match": {
+          "tool": "bash",
+          "ast": {
+            "cmd": "sf",
+            "subCmd": ["apex", "run"]
+          }
+        },
         "whenOrgType": ["production"],
         "action": "confirm",
         "confirmMessage": "Run anonymous Apex on PRODUCTION org {orgAlias}?\n\n  {command}\n\nWrap DML in Savepoint + Database.rollback() when rehearsing.",
@@ -137,7 +357,10 @@
         "description": "sf data delete/update/upsert/import targeting production",
         "match": {
           "tool": "bash",
-          "ast": { "cmd": "sf", "subCmd": ["data", ["delete", "update", "upsert", "import"]] }
+          "ast": {
+            "cmd": "sf",
+            "subCmd": ["data", ["delete", "update", "upsert", "import"]]
+          }
         },
         "whenOrgType": ["production"],
         "action": "confirm",
@@ -152,7 +375,9 @@
           "ast": {
             "cmd": "sf",
             "subCmd": ["org", "api"],
-            "flagIn": { "--method": ["DELETE", "PATCH", "PUT"] }
+            "flagIn": {
+              "--method": ["DELETE", "PATCH", "PUT"]
+            }
           }
         },
         "whenOrgType": ["production"],
