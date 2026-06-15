@@ -17,7 +17,7 @@ The default SF Guardrail posture where risky actions are human-confirmable rathe
 _Avoid_: unsafe mode, trust mode, disabled guardrail
 
 **Rule Behavior**:
-The per-rule setting that decides whether a risk is off, human-confirmable, or a non-overridable hard block.
+The per-rule setting that decides whether a risk is off, human-confirmable, or a non-overridable hard block. The settings UI presents these as Off, Ask me, and Block.
 _Avoid_: enabled flag, theme, policy mode
 
 **Hard-Block Theme**:
@@ -111,6 +111,10 @@ _Avoid_: second rule source, hand-maintained policy prompt, duplicated safety do
 **Guardrail Preference**:
 A normal user-facing SF Guardrail setting such as feature enablement, confirmation timeout, production aliases, or bundled-rule enablement.
 _Avoid_: rule override, policy config, hidden JSON setting
+
+**Guardrail Settings Surface**:
+The immediate user-facing settings experience owned by `/sf-guardrail settings`. It should be self-serving, example-rich, and descriptor-driven so it can later feed a shared SF Pi Manager settings surface.
+_Avoid_: raw rule dump, JSON editor, one-off settings hack
 
 **Advanced Rule Override**:
 An expert-level JSON customization that adds or replaces a rule in the effective ruleset by stable rule id.

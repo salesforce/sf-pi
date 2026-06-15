@@ -49,3 +49,4 @@ or accidentally contradicted in extension READMEs.
 - [0044: SF Guardrail Defaults to Confirmable Power Tool Mode](./0044-sf-guardrail-defaults-to-confirmable-power-tool-mode.md)
 - [0045: SF Guardrail Hard-Block Themes Start with Two Presets](./0045-sf-guardrail-hard-block-themes-start-with-two-presets.md)
 - [0046: SF Guardrail Rules Use Explicit Behavior Settings](./0046-sf-guardrail-rules-use-explicit-behavior-settings.md)
+- [0047: SF Guardrail Settings Use a Section Chooser](./0047-sf-guardrail-settings-use-section-chooser.md)

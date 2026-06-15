@@ -45,9 +45,10 @@ are not promises — priority is the rough order.
 - [x] Approval Ledger facade (`lib/approval-ledger.ts`).
 - [x] Rule-derived agent guidance (`lib/guidance.ts`) replacing the bundled
       static prompt file while preserving the user override path.
-- [x] Pi-native `/sf-guardrail settings` for common preferences and per-rule
-      behavior (`off`, `confirm`, `hard block`) across file-policy,
-      command-pattern, and org-aware rules.
+- [x] Pi-native `/sf-guardrail settings` with a section chooser, selected-row
+      detail cards, examples, recommendations, and per-rule behavior (`off`,
+      `confirm`, `hard block`) across file-policy, command-pattern, and
+      org-aware rules.
 - [x] Envelope-first HIL detail copy (`lib/approval-detail.ts`).
 - [x] Dedicated Safety Kernel risk gates for file policies, command risk, and
       org-aware operations (`file-policy-gate.ts`, `command-risk-gate.ts`,

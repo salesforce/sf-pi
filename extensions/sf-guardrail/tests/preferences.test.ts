@@ -88,7 +88,7 @@ describe("guardrail preferences", () => {
     expect(config.confirmTimeoutMs).toBe(60000);
   });
 
-  it("exposes bundled policy and org-aware rules as preference descriptors", () => {
+  it("exposes sectioned, example-rich rule descriptors", () => {
     const config = configModule.readBundledConfig();
     const descriptors = preferences.buildGuardrailPreferenceDescriptors(config);
 
@@ -99,6 +99,31 @@ describe("guardrail preferences", () => {
         "orgAwareGate.rules.sf-deploy-prod.enabled",
       ]),
     );
+    expect(
+      descriptors.find((descriptor) => descriptor.key === "policies.rules.secret-files.enabled"),
+    ).toMatchObject({
+      section: "files",
+      label: "Secret files",
+      example: "read .env, write .env.production",
+      powerToolRecommendation: "Ask me",
+      strictRecommendation: "Block",
+    });
+    expect(
+      descriptors.find((descriptor) => descriptor.key === "commandGate.patterns.rm-rf.enabled"),
+    ).toMatchObject({
+      section: "commands",
+      label: "Recursive force delete",
+      example: "rm -rf tmp/",
+    });
+    expect(
+      descriptors.find(
+        (descriptor) => descriptor.key === "orgAwareGate.rules.sf-deploy-prod.enabled",
+      ),
+    ).toMatchObject({
+      section: "orgs",
+      label: "Production deploy",
+      example: "sf project deploy start -o Prod",
+    });
   });
 
   it("writes policy rule behavior overrides that loadConfig reads", () => {

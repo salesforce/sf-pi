@@ -98,8 +98,8 @@ roadmap — see `ROADMAP.md`.
 - `/sf-guardrail list` → full dump of active rules
 - `/sf-guardrail audit` → up to 50 recent decisions from the session
 - `/sf-guardrail grants` → list legacy persisted approval grants, if any
-- `/sf-guardrail settings` → edit common guardrail preferences and per-rule
-  behavior (`off`, `confirm`, `hard block`) with Pi's SettingsList UI while
+- `/sf-guardrail settings` → open a sectioned settings surface with examples,
+  recommendations, and per-rule behavior (`Ask me`, `Block`, `Off`) while
   preserving advanced JSON rule overrides
 - `/sf-guardrail aliases` → edit aliases that should be treated as production
 - `/sf-guardrail power-tool` → set every rule to `confirm`
@@ -131,6 +131,7 @@ engine. The canonical terms live in `CONTEXT.md`; the redesign plan lives in
 - ADR 0043 — detected Salesforce org type is the classification source
 - ADR 0044 — Power Tool mode defaults to confirmable actions
 - ADR 0046 — per-rule behavior is `off`, `confirm`, or `hard block`
+- ADR 0047 — settings use a section chooser
 
 ## Behavior Matrix
 
@@ -257,7 +258,8 @@ Covered by unit tests:
   legacy persisted grant rendering, and clearing.
 - Rule-derived guidance reflects the effective config and preserves the
   user override prompt path.
-- Pi-native preferences write common settings and per-rule behavior while
+- Pi-native preferences use a section chooser and selected-row detail cards with
+  examples, Power Tool/Strict recommendations, and per-rule behavior while
   preserving advanced JSON overrides.
 - Envelope-first HIL detail renders risk gate, subject, target org, approval
   coverage, session duration, and advisory recovery guidance.
