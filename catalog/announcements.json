@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.189.3-2026-06-15",
-  "latestVersion": "0.189.3",
+  "revision": "release-0.190.0-2026-06-15",
+  "latestVersion": "0.190.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.189.3",
+      "id": "release-0.190.0",
       "kind": "update",
-      "title": "sf-pi v0.189.3 — harden Data 360 PKCE callback handling",
+      "title": "sf-pi v0.190.0 — agentscript: cache local analysis snapshots",
       "publishedAt": "2026-06-15T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.189.3",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.190.0",
       "severity": "info",
-      "body": "harden Data 360 PKCE callback handling"
+      "body": "agentscript: cache local analysis snapshots — satisfy Data 360 sweep lint findings"
     },
     {
       "id": "pi-0.73-required",
