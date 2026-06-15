@@ -55,19 +55,7 @@
  */
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 
-import {
-  type CommandPanelAction,
-  type CommandPanelState,
-  openCommandPanel,
-} from "../../lib/common/command-panel.ts";
 import { withSafeCommandHandler } from "../../lib/common/safe-command-handler.ts";
-import {
-  buildToggleExtensionAction,
-  isLifecycleToggleAction,
-  LIFECYCLE_GROUP,
-  performToggleExtension,
-  type LifecycleActionId,
-} from "../../lib/common/extension-toggle.ts";
 import { registerExtensionDoctor } from "../../lib/common/doctor/registry.ts";
 import { runExtensionDoctor as runGuardrailExtensionDoctor } from "./lib/extension-doctor.ts";
 import { openInfoPanel } from "../../lib/common/info-panel.ts";
@@ -217,20 +205,20 @@ export default function sfGuardrail(pi: ExtensionAPI) {
     description: "Inspect and manage sf-guardrail — status, settings, rules, audit",
     getArgumentCompletions: (prefix) => {
       const lower = prefix.toLowerCase();
-      const items = GUARDRAIL_ACTIONS.filter((action) => action.value !== "close")
-        .filter((action) => action.value.startsWith(lower))
-        .map((action) => ({
+      const items = GUARDRAIL_SUBCOMMANDS.filter((action) => action.value.startsWith(lower)).map(
+        (action) => ({
           value: action.value,
           label: action.value,
           description: action.description,
-        }));
+        }),
+      );
       return items.length > 0 ? items : null;
     },
     handler: async (args, ctx) => {
       await withSafeCommandHandler(ctx, COMMAND_NAME, async () => {
         const sub = (args ?? "").trim().toLowerCase();
         if (sub === "" && ctx.hasUI) {
-          await handleGuardrailPanel(pi, ctx);
+          pi.sendUserMessage("/sf-pi open sf-guardrail");
           return;
         }
         await handleGuardrailCommand(pi, ctx, sub === "" ? "status" : sub);
@@ -239,121 +227,22 @@ export default function sfGuardrail(pi: ExtensionAPI) {
   });
 }
 
-type GuardrailAction =
-  | "status"
-  | "list"
-  | "audit"
-  | "grants"
-  | "settings"
-  | "aliases"
-  | "preset-power-tool"
-  | "preset-strict"
-  | "forget"
-  | "install-preset"
-  | "help"
-  | "close"
-  | LifecycleActionId;
-
-const GUARDRAIL_ACTIONS: CommandPanelAction<GuardrailAction>[] = [
+const GUARDRAIL_SUBCOMMANDS = [
   {
     value: "status",
-    label: "Show status",
     description: "Show active features, config source, headless behavior, and recent decisions.",
-    group: "Status",
   },
-  {
-    value: "list",
-    label: "List active rules",
-    description: "Print the full file-protection, dangerous-command, and org-aware rule set.",
-    group: "Rules",
-  },
-  {
-    value: "audit",
-    label: "Show audit trail",
-    description: "List recent allow/block decisions recorded in the current session branch.",
-    group: "Troubleshooting",
-  },
-  {
-    value: "grants",
-    label: "Show approval grants",
-    description: "List active persisted approval grants for this project.",
-    group: "Troubleshooting",
-  },
-  {
-    value: "settings",
-    label: "Settings moved to /sf-pi",
-    description: "Show where native Pi-backed guardrail preferences now live.",
-    group: "Controls",
-  },
-  {
-    value: "aliases",
-    label: "Edit production aliases",
-    description: "Edit aliases that sf-guardrail should treat as production; saved to Pi settings.",
-    group: "Controls",
-  },
-  {
-    value: "preset-power-tool",
-    label: "Apply Power Tool preset",
-    description: "Set every rule to confirm so risky actions stay human-overridable.",
-    group: "Controls",
-  },
-  {
-    value: "preset-strict",
-    label: "Apply Strict preset",
-    description: "Hard-block secret/credential/internal-state rules and confirm the rest.",
-    group: "Controls",
-  },
-  {
-    value: "forget",
-    label: "Forget active approvals",
-    description: "Clear session allows and active persisted approval grants for this project.",
-    group: "Controls",
-  },
-  {
-    value: "install-preset",
-    label: "Install bundled preset",
-    description: "Write or reconcile the bundled guardrail defaults into the user override file.",
-    group: "Controls",
-  },
-  {
-    value: "help",
-    label: "Show help",
-    description: "Print command usage and explain which troubleshooting command to run.",
-    group: "Reference",
-  },
-  {
-    value: "close",
-    label: "Close",
-    description: "Dismiss this panel.",
-    group: LIFECYCLE_GROUP,
-  },
-];
-
-// Compose the live action list so the lifecycle toggle row reflects the
-// current enablement state on every panel open.
-function buildGuardrailActions(cwd: string): CommandPanelAction<GuardrailAction>[] {
-  const toggle = buildToggleExtensionAction({ extensionId: "sf-guardrail", cwd });
-  return toggle ? [...GUARDRAIL_ACTIONS, toggle] : GUARDRAIL_ACTIONS;
-}
-
-async function handleGuardrailPanel(pi: ExtensionAPI, ctx: ExtensionCommandContext): Promise<void> {
-  const panelState: CommandPanelState<GuardrailAction> = {};
-  await openCommandPanel(ctx, {
-    title: "🛡 SF Guardrail — status & controls",
-    subtitle: "Inspect safety rules, audit decisions, and session overrides.",
-    statusLines: () => {
-      const { config, source } = loadConfig();
-      return buildGuardrailPanelStatus(ctx, config, source);
-    },
-    actions: () => buildGuardrailActions(ctx.cwd),
-    closeValue: "close",
-    state: panelState,
-    onAction: (action) => handleGuardrailCommand(pi, ctx, action, true),
-    // Lifecycle toggle calls ctx.reload() — must close panel first so the
-    // ctx.ui.custom() promise resolves before the runtime is invalidated.
-    closeBeforeAction: isLifecycleToggleAction,
-  });
-}
+  { value: "list", description: "Print the effective guardrail rule set." },
+  { value: "audit", description: "List recent guardrail decisions." },
+  { value: "grants", description: "List active persisted approval grants." },
+  { value: "settings", description: "Open SF Guardrail settings in the SF Pi Manager." },
+  { value: "aliases", description: "Edit production aliases." },
+  { value: "power-tool", description: "Apply confirm-by-default Power Tool Mode." },
+  { value: "strict", description: "Apply the Strict Theme." },
+  { value: "forget", description: "Clear session allows and persisted project grants." },
+  { value: "install-preset", description: "Write bundled defaults to the advanced override file." },
+  { value: "help", description: "Show command usage." },
+] as const;
 
 async function handleGuardrailCommand(
   pi: ExtensionAPI,
@@ -361,11 +250,6 @@ async function handleGuardrailCommand(
   sub: string,
   fromPanel = false,
 ): Promise<void> {
-  if (sub === "lifecycle.toggle") {
-    await performToggleExtension(ctx, "sf-guardrail");
-    return;
-  }
-
   const { config, source } = loadConfig();
 
   if (sub === "status" || sub === "help") {
@@ -417,6 +301,10 @@ async function handleGuardrailCommand(
   }
 
   if (sub === "settings") {
+    if (ctx.hasUI) {
+      pi.sendUserMessage("/sf-pi open sf-guardrail settings");
+      return;
+    }
     await emitGuardrailOutput(
       ctx,
       "SF Guardrail settings moved",
@@ -497,23 +385,6 @@ async function emitGuardrailOutput(
   ctx.ui.notify(body ? `${title}\n\n${body}` : title, level === "success" ? "info" : level);
 }
 
-function buildGuardrailPanelStatus(
-  ctx: ExtensionCommandContext,
-  config: GuardrailConfig,
-  source: string,
-): string[] {
-  const recent = readRecentDecisions(ctx, 5);
-  return [
-    `✓ Config        ${source}`,
-    `${config.enabled ? "✓" : "○"} Guardrail     ${config.enabled ? "enabled" : "disabled"}`,
-    `${config.features.policies ? "✓" : "○"} Policies      ${config.policies.rules.length} rule(s)`,
-    `${config.features.commandGate ? "✓" : "○"} Commands      ${config.commandGate.patterns.length} dangerous pattern(s)`,
-    `${config.features.orgAwareGate ? "✓" : "○"} Org-aware     ${config.orgAwareGate.rules.length} production-aware rule(s)`,
-    `${process.env[config.headlessEscapeHatchEnv] ? "◐" : "✓"} Headless      ${process.env[config.headlessEscapeHatchEnv] ? "escape hatch enabled" : "fail-closed"}`,
-    `• Recent audit  ${recent.length} decision(s) in this branch`,
-  ];
-}
-
 function renderSettingsMovedHelp(): string {
   return [
     "Routine Guardrail Preferences now live in Pi settings under sfPi.guardrail.",
@@ -536,7 +407,7 @@ function renderGuardrailHelp(): string {
     "sf-guardrail — Salesforce-aware safety layer",
     "",
     "Commands:",
-    `  /${COMMAND_NAME}                 Open status & controls panel`,
+    `  /${COMMAND_NAME}                 Open SF Guardrail in the SF Pi Manager`,
     `  /${COMMAND_NAME} status          Show active features and recent decisions`,
     `  /${COMMAND_NAME} list            List active file/command/org-aware rules`,
     `  /${COMMAND_NAME} audit           Show recent decisions in this session branch`,

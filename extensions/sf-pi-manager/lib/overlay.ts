@@ -63,6 +63,14 @@ export type OverlayResult = {
   disabledFiles: Set<string>;
   needsReload?: boolean;
   scope: "global" | "project";
+  action?: {
+    command: string;
+  };
+};
+
+export type OverlayInitialRoute = {
+  extensionId?: string;
+  view?: "detail" | "settings";
 };
 
 type OverlayView =
@@ -70,12 +78,13 @@ type OverlayView =
   | { kind: "detail"; extensionId: string; actionIndex: number }
   | { kind: "settings"; extensionId: string };
 
-type DetailAction = "settings" | "toggle" | "back";
+type DetailAction = "settings" | "toggle" | "back" | `command:${string}`;
 
 interface DetailActionItem {
   value: DetailAction;
   label: string;
   description: string;
+  command?: string;
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -84,6 +93,10 @@ interface DetailActionItem {
 
 function padAnsi(text: string, width: number): string {
   return `${text}${" ".repeat(Math.max(0, width - visibleWidth(text)))}`;
+}
+
+function managerCommand(label: string, description: string, command: string): DetailActionItem {
+  return { value: `command:${command}`, label, description, command };
 }
 
 function wrapPlainText(text: string, width: number): string[] {
@@ -151,6 +164,7 @@ export class SfPiOverlayComponent implements Focusable {
     initialScope: "global" | "project",
     private readonly getTerminalRows: () => number,
     private readonly done: (result: OverlayResult | undefined) => void,
+    initialRoute?: OverlayInitialRoute,
   ) {
     this.extensions = initialStates.map((e) => ({ ...e }));
     this.scope = initialScope;
@@ -180,6 +194,10 @@ export class SfPiOverlayComponent implements Focusable {
             this.pendingFactories.delete(ext.id);
           });
       }
+    }
+
+    if (initialRoute?.extensionId) {
+      this.applyInitialRoute(initialRoute);
     }
   }
 
@@ -532,6 +550,18 @@ export class SfPiOverlayComponent implements Focusable {
   // View transitions
   // -------------------------------------------------------------------------------------------------
 
+  private applyInitialRoute(route: OverlayInitialRoute): void {
+    const index = this.extensions.findIndex((ext) => ext.id === route.extensionId);
+    if (index < 0 || !route.extensionId) return;
+    this.selectedIndex = index;
+    this.ensureSelectionVisible();
+    if (route.view === "settings") {
+      this.drillIntoSettings(route.extensionId);
+    } else {
+      this.drillIntoDetail(route.extensionId);
+    }
+  }
+
   private drillIntoDetail(extensionId: string): void {
     this.activePanelExtId = null;
     this.activePanel = null;
@@ -585,18 +615,7 @@ export class SfPiOverlayComponent implements Focusable {
 
   private applyAndClose(): void {
     if (this.changed || this.configPanelReloadNeeded) {
-      const disabledFiles = new Set<string>();
-      for (const ext of this.extensions) {
-        if (!ext.enabled && !ext.alwaysActive) {
-          disabledFiles.add(ext.file);
-        }
-      }
-      this.done({
-        changed: true,
-        disabledFiles,
-        needsReload: this.configPanelReloadNeeded,
-        scope: this.scope,
-      });
+      this.done(this.buildResult());
     } else {
       this.done(undefined);
     }
@@ -623,6 +642,7 @@ export class SfPiOverlayComponent implements Focusable {
         description: "Open this extension's focused settings page.",
       });
     }
+    actions.push(...this.extensionSpecificActions(ext));
     if (!ext.alwaysActive) {
       actions.push({
         value: "toggle",
@@ -634,6 +654,53 @@ export class SfPiOverlayComponent implements Focusable {
     }
     actions.push({ value: "back", label: "Back", description: "Return to the extension list." });
     return actions;
+  }
+
+  private extensionSpecificActions(ext: ExtensionState): DetailActionItem[] {
+    if (ext.id !== "sf-guardrail") return [];
+    return [
+      managerCommand(
+        "Effective rules",
+        "Show resolved file, command, and org-aware rules.",
+        "sf-guardrail list",
+      ),
+      managerCommand(
+        "Audit trail",
+        "Show recent allow/block/timeout decisions.",
+        "sf-guardrail audit",
+      ),
+      managerCommand(
+        "Approval grants",
+        "Show legacy persisted approval grants.",
+        "sf-guardrail grants",
+      ),
+      managerCommand(
+        "Forget approvals",
+        "Clear session approvals and persisted project grants.",
+        "sf-guardrail forget",
+      ),
+      managerCommand(
+        "Production aliases",
+        "Edit aliases treated as production.",
+        "sf-guardrail aliases",
+      ),
+      managerCommand(
+        "Apply Power Tool Mode",
+        "Set risky rules to Ask me.",
+        "sf-guardrail power-tool",
+      ),
+      managerCommand(
+        "Apply Strict Theme",
+        "Block sensitive rules and ask for the rest.",
+        "sf-guardrail strict",
+      ),
+      managerCommand(
+        "Advanced override template",
+        "Write bundled defaults to the expert override file.",
+        "sf-guardrail install-preset",
+      ),
+      managerCommand("Help", "Show the sf-guardrail command reference.", "sf-guardrail help"),
+    ];
   }
 
   private moveDetailAction(direction: -1 | 1): void {
@@ -661,7 +728,28 @@ export class SfPiOverlayComponent implements Focusable {
       case "back":
         this.returnToList();
         return;
+      default:
+        if (action.command) {
+          this.done(this.buildResult({ command: action.command }));
+        }
+        return;
     }
+  }
+
+  private buildResult(action?: { command: string }): OverlayResult {
+    const disabledFiles = new Set<string>();
+    for (const ext of this.extensions) {
+      if (!ext.enabled && !ext.alwaysActive) {
+        disabledFiles.add(ext.file);
+      }
+    }
+    return {
+      changed: this.changed,
+      disabledFiles,
+      needsReload: this.configPanelReloadNeeded,
+      scope: this.scope,
+      action,
+    };
   }
 
   private getVisibleExtensionCount(): number {

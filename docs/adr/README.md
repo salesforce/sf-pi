@@ -52,3 +52,4 @@ or accidentally contradicted in extension READMEs.
 - [0047: SF Guardrail Settings Use a Section Chooser](./0047-sf-guardrail-settings-use-section-chooser.md)
 - [0049: SF Guardrail Routine Preferences Live in Pi Settings](./0049-sf-guardrail-routine-preferences-live-in-pi-settings.md)
 - [0050: SF Pi Manager Configurable Extensions Use Settings Drill-In](./0050-manager-configurable-extensions-use-settings-drill-in.md)
+- [0051: Extension Commands Deep-Link to the Manager Surface](./0051-extension-commands-deep-link-to-manager-surface.md)

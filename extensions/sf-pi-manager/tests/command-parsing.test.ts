@@ -112,6 +112,21 @@ describe("parseCommandArgs", () => {
   it("parses 'open' as overlay alias", () => {
     const result = parseCommandArgs("open");
     expect(result.subcommand).toBe("overlay");
+    expect(result.route?.extensionId).toBeUndefined();
+  });
+
+  it("parses 'open <extension>' as a detail deep link", () => {
+    const result = parseCommandArgs("open sf-guardrail");
+    expect(result.subcommand).toBe("overlay");
+    expect(result.target).toBe("sf-guardrail");
+    expect(result.route).toEqual({ extensionId: "sf-guardrail", view: "detail" });
+  });
+
+  it("parses 'open <extension> settings' as a settings deep link", () => {
+    const result = parseCommandArgs("open sf-guardrail settings global");
+    expect(result.subcommand).toBe("overlay");
+    expect(result.scope).toBe("global");
+    expect(result.route).toEqual({ extensionId: "sf-guardrail", view: "settings" });
   });
 
   it("defaults unknown subcommands to help", () => {

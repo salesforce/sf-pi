@@ -98,7 +98,7 @@ weakening remains deferred — see `ROADMAP.md`.
 
 ## Commands
 
-- `/sf-guardrail` → open status & controls panel in UI; status summary in no-UI mode
+- `/sf-guardrail` → open `SF Pi › SF Guardrail` in the Manager Surface when UI is available; status summary in no-UI mode
 - `/sf-guardrail list` → full dump of active rules
 - `/sf-guardrail audit` → up to 50 recent decisions from the session
 - `/sf-guardrail grants` → list legacy persisted approval grants, if any
@@ -138,6 +138,7 @@ engine. The canonical terms live in `CONTEXT.md`; the redesign plan lives in
 - ADR 0047 — settings use a section chooser (superseded by ADR 0049)
 - ADR 0049 — routine preferences live in Pi settings and the Manager Surface
 - ADR 0050 — configurable extension settings use Manager Surface drill-in
+- ADR 0051 — extension commands deep-link to the Manager Surface
 
 ## Behavior Matrix
 

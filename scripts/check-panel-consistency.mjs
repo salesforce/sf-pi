@@ -22,6 +22,7 @@
  *   - sf-pi-manager itself (provides the overlay; not a per-extension panel)
  *   - sf-brain (alwaysActive; no command surface)
  *   - sf-ohana-spinner (no command surface)
+ *   - sf-guardrail (no-args command deep-links to the Manager Surface; see ADR 0051)
  */
 
 import { existsSync, readFileSync, readdirSync } from "node:fs";
@@ -38,6 +39,7 @@ const EXEMPT_EXTENSIONS = new Map([
   ["sf-pi-manager", "provides the package overlay; not a per-extension settings panel"],
   ["sf-brain", "alwaysActive; no command surface"],
   ["sf-ohana-spinner", "no command surface"],
+  ["sf-guardrail", "no-args command deep-links to the Manager Surface; see ADR 0051"],
   [
     "sf-lsp",
     "renders rich Doctor + Recent activity sections in its own ctx.ui.custom layout; still uses openInfoPanel for action results and the shared lifecycle toggle",

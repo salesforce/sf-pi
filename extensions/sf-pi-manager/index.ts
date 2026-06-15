@@ -15,6 +15,7 @@
  *
  * Commands:
  * - /sf-pi                    open interactive TUI overlay
+ * - /sf-pi open <id> [settings] deep-link to an extension detail/settings page
  * - /sf-pi list               list extensions with enabled/disabled status
  * - /sf-pi enable <name>      enable a specific extension
  * - /sf-pi disable <name>     disable a specific extension
@@ -34,6 +35,7 @@
  *   -----------------------------|-----------------------------|-----------------------------------
  *   /sf-pi (no args)             | has UI                      | Open TUI overlay
  *   /sf-pi (no args)             | no UI                       | Fall back to list
+ *   /sf-pi open <id> [settings]  | has UI                      | Open extension detail/settings page
  *   /sf-pi list                  | package in settings         | Show extension states
  *   /sf-pi list                  | package NOT in settings     | Show states (all enabled assumed)
  *   /sf-pi enable <id>           | valid, currently disabled   | Remove exclusion, reload
@@ -60,7 +62,12 @@ import type {
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 import { SF_PI_REGISTRY } from "../../catalog/registry.ts";
-import { SfPiOverlayComponent, type ExtensionState, type OverlayResult } from "./lib/overlay.ts";
+import {
+  SfPiOverlayComponent,
+  type ExtensionState,
+  type OverlayInitialRoute,
+  type OverlayResult,
+} from "./lib/overlay.ts";
 import {
   applyExtensionState,
   findPackageInSettings,
@@ -166,6 +173,7 @@ type CommandArgs = {
    */
   scope: "global" | "project" | undefined;
   target?: string;
+  route?: OverlayInitialRoute;
   /** Raw tail after the subcommand token, used by multi-arg subcommands. */
   rest?: string;
 };
@@ -187,6 +195,7 @@ export default function sfPiManagerExtension(pi: ExtensionAPI) {
         "enable-all",
         "disable-all",
         "status",
+        "open",
         "display",
         "recommended",
         "announcements",
@@ -225,13 +234,23 @@ export default function sfPiManagerExtension(pi: ExtensionAPI) {
         return profiles.length > 0 ? profiles : null;
       }
 
-      // Second token for enable/disable: extension IDs
-      if ((sub === "enable" || sub === "disable") && tokens.length <= 2) {
-        const ids = SF_PI_REGISTRY.filter((e) => !e.alwaysActive)
+      // Second token for enable/disable/open: extension IDs
+      if ((sub === "enable" || sub === "disable" || sub === "open") && tokens.length <= 2) {
+        const candidates =
+          sub === "open" ? SF_PI_REGISTRY : SF_PI_REGISTRY.filter((e) => !e.alwaysActive);
+        const ids = candidates
           .map((e) => e.id)
           .filter((id) => id.startsWith(current.toLowerCase()))
           .map((id) => ({ value: id, label: id }));
         return ids.length > 0 ? ids : null;
+      }
+
+      // Third token for open: detail/settings view
+      if (sub === "open" && tokens.length <= 3) {
+        const views = ["detail", "settings"]
+          .filter((s) => s.startsWith(current.toLowerCase()))
+          .map((s) => ({ value: s, label: s }));
+        return views.length > 0 ? views : null;
       }
 
       // Scope completion for subcommands that accept it
@@ -375,6 +394,17 @@ export function parseCommandArgs(raw: string): CommandArgs {
         : undefined;
     return { subcommand: "display", scope, target };
   }
+  if (sub === "open") {
+    const target =
+      tokens[1] && tokens[1].toLowerCase() !== "global" && tokens[1].toLowerCase() !== "project"
+        ? tokens[1]
+        : undefined;
+    const viewToken = tokens
+      .find((token, index) => index > 1 && token !== "global" && token !== "project")
+      ?.toLowerCase();
+    const view = viewToken === "settings" ? "settings" : "detail";
+    return { subcommand: "overlay", scope, target, route: { extensionId: target, view } };
+  }
   if (sub === "help") return { subcommand: "help", scope };
   if (sub === "enable-all") return { subcommand: "enable-all", scope };
   if (sub === "disable-all") return { subcommand: "disable-all", scope };
@@ -396,7 +426,7 @@ export function parseCommandArgs(raw: string): CommandArgs {
   }
 
   // No subcommand or unknown → open overlay
-  if (!sub || sub === "manage" || sub === "open") return { subcommand: "overlay", scope };
+  if (!sub || sub === "manage") return { subcommand: "overlay", scope };
 
   return { subcommand: "help", scope };
 }
@@ -413,7 +443,7 @@ async function handleCommand(
 
   switch (args.subcommand) {
     case "overlay":
-      await handleOverlay(ctx, scope);
+      await handleOverlay(pi, ctx, scope, args.route);
       break;
     case "list":
       await handleList(ctx, scope);
@@ -479,8 +509,10 @@ async function handleCommand(
 // -------------------------------------------------------------------------------------------------
 
 async function handleOverlay(
+  pi: ExtensionAPI,
   ctx: ExtensionCommandContext,
   scope: "global" | "project",
+  initialRoute?: OverlayInitialRoute,
 ): Promise<void> {
   if (!ctx.hasUI) {
     // Fall back to list in non-interactive mode
@@ -515,6 +547,7 @@ async function handleOverlay(
           scope,
           () => tui.terminal.rows,
           done,
+          initialRoute,
         ),
       {
         overlay: true,
@@ -530,18 +563,24 @@ async function handleOverlay(
     ctx.ui.setWorkingVisible(true);
   }
 
-  if (!result || !result.changed) {
+  if (!result) {
     return;
   }
 
-  // Use the scope from the overlay result (user may have toggled it)
-  const effectiveScope = result.scope ?? scope;
-  const effectiveMatch = findPackageInSettings(ctx.cwd, effectiveScope) ?? match;
+  if (result.changed || result.needsReload) {
+    // Use the scope from the overlay result (user may have toggled it)
+    const effectiveScope = result.scope ?? scope;
+    const effectiveMatch = findPackageInSettings(ctx.cwd, effectiveScope) ?? match;
 
-  applyExtensionState(effectiveMatch, result.disabledFiles);
-  ctx.ui.notify("sf-pi extensions updated. Reloading…", "info");
-  await ctx.reload();
-  return;
+    applyExtensionState(effectiveMatch, result.disabledFiles);
+    ctx.ui.notify("sf-pi extensions updated. Reloading…", "info");
+    await ctx.reload();
+    return;
+  }
+
+  if (result.action?.command) {
+    pi.sendUserMessage(`/${result.action.command}`);
+  }
 }
 
 async function handleList(
@@ -750,6 +789,7 @@ function handleHelp(ctx: ExtensionCommandContext): void {
     "",
     "Commands:",
     `  /${COMMAND_NAME}                          Open interactive TUI overlay`,
+    `  /${COMMAND_NAME} open <id> [settings]      Open an extension detail/settings page`,
     `  /${COMMAND_NAME} list [global|project]     List extensions with status`,
     `  /${COMMAND_NAME} enable <id> [scope]       Enable an extension`,
     `  /${COMMAND_NAME} disable <id> [scope]      Disable an extension`,
