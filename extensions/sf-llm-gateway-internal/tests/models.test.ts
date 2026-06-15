@@ -6,6 +6,7 @@
  * bootstrap/discovered catalog building, preferred-model resolution,
  * and toProviderModelConfig.
  */
+import type { ProviderModelConfig } from "@earendil-works/pi-coding-agent";
 import { describe, expect, it } from "vitest";
 import {
   buildBootstrapModelList,
@@ -18,6 +19,17 @@ import {
   shouldForceAdaptiveThinking,
   toProviderModelConfig,
 } from "../lib/models.ts";
+
+type GatewayCompat = NonNullable<ProviderModelConfig["compat"]> & {
+  maxTokensField?: string;
+  supportsReasoningEffort?: boolean;
+};
+
+function gatewayCompat(config: {
+  compat?: ProviderModelConfig["compat"];
+}): GatewayCompat | undefined {
+  return config.compat as GatewayCompat | undefined;
+}
 
 // -------------------------------------------------------------------------------------------------
 // Family detection
@@ -281,7 +293,7 @@ describe("toProviderModelConfig", () => {
     expect(config.id).toBe("gemini-2.5-pro");
     expect(config.reasoning).toBe(true);
     expect(config.input).toEqual(["text", "image"]);
-    expect((config.compat as any)?.maxTokensField).toBe("max_tokens");
+    expect(gatewayCompat(config)?.maxTokensField).toBe("max_tokens");
   });
 
   it("tags Claude models with the native anthropic-messages API", () => {
@@ -465,12 +477,12 @@ describe("toProviderModelConfig", () => {
 
   it("enables Codex reasoning effort with gateway-safe clamping", () => {
     const config = toProviderModelConfig("gpt-5.3-codex", null, new Set());
-    expect((config.compat as any)?.supportsReasoningEffort).toBe(true);
+    expect(gatewayCompat(config)?.supportsReasoningEffort).toBe(true);
     // Migrated from compat.reasoningEffortMap to model-level
     // thinkingLevelMap in pi >= 0.72 (pi-mono #3208).
-    expect((config as any).thinkingLevelMap?.minimal).toBe("low");
-    expect((config as any).thinkingLevelMap?.xhigh).toBe("high");
-    expect((config as any).thinkingLevelMap?.high).toBe("high");
+    expect(config.thinkingLevelMap?.minimal).toBe("low");
+    expect(config.thinkingLevelMap?.xhigh).toBe("high");
+    expect(config.thinkingLevelMap?.high).toBe("high");
   });
 
   it("opts Opus 4.7+ into the pi xhigh thinking level via thinkingLevelMap (mapped to max)", () => {
@@ -486,9 +498,7 @@ describe("toProviderModelConfig", () => {
       "claude-opus-4-8",
     ]) {
       const config = toProviderModelConfig(id, null, new Set());
-      expect((config as any).thinkingLevelMap?.xhigh, `${id} should opt into xhigh→max`).toBe(
-        "max",
-      );
+      expect(config.thinkingLevelMap?.xhigh, `${id} should opt into xhigh→max`).toBe("max");
       expect(config.compat, `${id} should use Pi-native adaptive thinking`).toMatchObject({
         forceAdaptiveThinking: true,
       });
@@ -499,15 +509,15 @@ describe("toProviderModelConfig", () => {
     // Opus 4.6 needs adaptive thinking too, but it does not use the Opus 4.7+
     // xhigh→max mapping. Pi owns the adaptive payload via compat.
     const config = toProviderModelConfig("claude-opus-4-6-v1", null, new Set());
-    expect((config as any).thinkingLevelMap).toBeUndefined();
+    expect(config.thinkingLevelMap).toBeUndefined();
     expect(config.compat).toMatchObject({ forceAdaptiveThinking: true });
   });
 
   it("does not enable reasoning effort for non-reasoning providers like Gemini or OpenAI", () => {
     const gemini = toProviderModelConfig("gemini-2.5-pro", null, new Set());
     const openai = toProviderModelConfig("gpt-4o", null, new Set());
-    expect((gemini.compat as any)?.supportsReasoningEffort).toBe(false);
-    expect((openai.compat as any)?.supportsReasoningEffort).toBe(false);
+    expect(gatewayCompat(gemini)?.supportsReasoningEffort).toBe(false);
+    expect(gatewayCompat(openai)?.supportsReasoningEffort).toBe(false);
   });
 
   it("adds Anthropic beta headers only for Anthropic models", () => {

@@ -3,8 +3,11 @@
 import { describe, expect, it } from "vitest";
 import type { ReleaseStatusInfo, SplashData } from "../lib/types.ts";
 
+const ANSI_ESCAPE = String.fromCharCode(27);
+const ANSI_PATTERN = new RegExp(`${ANSI_ESCAPE}\\[[0-9;]*m`, "g");
+
 function stripAnsi(s: string): string {
-  return s.replace(/\x1b\[[0-9;]*m/g, "");
+  return s.replace(ANSI_PATTERN, "");
 }
 
 function baseData(overrides: Partial<SplashData> = {}): SplashData {
