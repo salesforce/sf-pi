@@ -517,6 +517,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.189.3](https://github.com/salesforce/sf-pi/compare/v0.189.2...v0.189.3) (2026-06-15)
+
+
+### Bug Fixes
+
+* harden Data 360 PKCE callback handling ([fb27f94](https://github.com/salesforce/sf-pi/commit/fb27f94540faa588ed35c4f0c5c55272ae3a6da4))
+
 ## [0.189.2](https://github.com/salesforce/sf-pi/compare/v0.189.1...v0.189.2) (2026-06-15)
 
 
