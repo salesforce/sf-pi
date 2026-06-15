@@ -47,17 +47,19 @@
  *   tool_call          | classifies to confirm, allowed    | Pass through, audit as allow_session
  *   tool_call          | classifies to confirm, user picks | Allow once / Allow session / Block, audit
  *   tool_call          | classifies to confirm, headless   | Fail closed unless env opt-in, audit
- *   /sf-guardrail      | no args                           | status notification
+ *   /sf-guardrail      | UI available                     | open Manager detail page
+ *   /sf-guardrail      | no UI                            | status notification
+ *   /sf-guardrail settings | UI available                  | open Manager settings page
  *   /sf-guardrail list | —                                 | rules notification
  *   /sf-guardrail audit| —                                 | decisions notification
  *   /sf-guardrail forget | —                               | clear session allow-memory
- *   /sf-guardrail install-preset | —                       | write/merge override file with bundled
+ *   /sf-guardrail install-preset | —                       | export advanced override template
  */
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 
+import { registerManagerDetailActions } from "../../lib/common/manager-actions.ts";
 import {
-  SF_PI_MANAGER_OPEN_EVENT,
-  type SfPiManagerOpenRequest,
+  openExtensionInManager,
   type SfPiManagerOpenRoute,
 } from "../../lib/common/manager-deep-link.ts";
 import { withSafeCommandHandler } from "../../lib/common/safe-command-handler.ts";
@@ -103,6 +105,63 @@ export default function sfGuardrail(pi: ExtensionAPI) {
   // view. Recent decisions stay in /sf-guardrail audit (which has access to
   // the ExtensionContext); this provider is cwd-only by design.
   registerExtensionDoctor("sf-guardrail", () => runGuardrailExtensionDoctor());
+
+  registerManagerDetailActions("sf-guardrail", [
+    {
+      id: "rules",
+      label: "Effective rules",
+      description: "Show resolved file, command, and org-aware rules.",
+      run: (ctx) => handleGuardrailCommand(pi, ctx, "list", true),
+    },
+    {
+      id: "audit",
+      label: "Audit trail",
+      description: "Show recent allow/block/timeout decisions.",
+      run: (ctx) => handleGuardrailCommand(pi, ctx, "audit", true),
+    },
+    {
+      id: "grants",
+      label: "Approval grants",
+      description: "Show legacy persisted approval grants.",
+      run: (ctx) => handleGuardrailCommand(pi, ctx, "grants", true),
+    },
+    {
+      id: "forget",
+      label: "Forget approvals",
+      description: "Clear session approvals and persisted project grants.",
+      run: (ctx) => handleGuardrailCommand(pi, ctx, "forget", true),
+    },
+    {
+      id: "aliases",
+      label: "Production aliases",
+      description: "Edit aliases treated as production.",
+      run: (ctx) => handleGuardrailCommand(pi, ctx, "aliases", true),
+    },
+    {
+      id: "power-tool",
+      label: "Apply Power Tool Mode",
+      description: "Set risky rules to Ask me.",
+      run: (ctx) => handleGuardrailCommand(pi, ctx, "power-tool", true),
+    },
+    {
+      id: "strict",
+      label: "Apply Strict Theme",
+      description: "Block sensitive rules and ask for the rest.",
+      run: (ctx) => handleGuardrailCommand(pi, ctx, "strict", true),
+    },
+    {
+      id: "advanced-override-template",
+      label: "Advanced override template",
+      description: "Write bundled defaults to the expert override file.",
+      run: (ctx) => handleGuardrailCommand(pi, ctx, "install-preset", true),
+    },
+    {
+      id: "help",
+      label: "Help",
+      description: "Show the sf-guardrail command reference.",
+      run: (ctx) => handleGuardrailCommand(pi, ctx, "help", true),
+    },
+  ]);
 
   // ─── session_start: hydrate allow-memory ──────────────────────────────────
   pi.on("session_start", async (_event, ctx) => {
@@ -237,26 +296,12 @@ async function openGuardrailInManager(
   ctx: ExtensionCommandContext,
   view: NonNullable<SfPiManagerOpenRoute["view"]>,
 ): Promise<void> {
-  let accepted = false;
-  const result = new Promise<void>((resolve, reject) => {
-    const request: SfPiManagerOpenRequest = {
-      ctx,
-      route: { extensionId: "sf-guardrail", view },
-      accept: () => {
-        accepted = true;
-      },
-      resolve,
-      reject,
-    };
-    pi.events.emit(SF_PI_MANAGER_OPEN_EVENT, request);
-  });
+  const opened = await openExtensionInManager(pi, ctx, { extensionId: "sf-guardrail", view });
 
-  if (!accepted) {
+  if (!opened) {
     ctx.ui.notify("SF Pi Manager is unavailable. Try /sf-pi open sf-guardrail.", "warning");
     return;
   }
-
-  await result;
 }
 
 const GUARDRAIL_SUBCOMMANDS = [
@@ -272,7 +317,10 @@ const GUARDRAIL_SUBCOMMANDS = [
   { value: "power-tool", description: "Apply confirm-by-default Power Tool Mode." },
   { value: "strict", description: "Apply the Strict Theme." },
   { value: "forget", description: "Clear session allows and persisted project grants." },
-  { value: "install-preset", description: "Write bundled defaults to the advanced override file." },
+  {
+    value: "install-preset",
+    description: "Export bundled defaults to the advanced override file.",
+  },
   { value: "help", description: "Show command usage." },
 ] as const;
 
@@ -449,7 +497,7 @@ function renderGuardrailHelp(): string {
     `  /${COMMAND_NAME} power-tool      Apply confirm-by-default preset`,
     `  /${COMMAND_NAME} strict          Apply strict hard-block preset`,
     `  /${COMMAND_NAME} forget          Clear session allows and project approval grants`,
-    `  /${COMMAND_NAME} install-preset  Write/reconcile bundled defaults to user config`,
+    `  /${COMMAND_NAME} install-preset  Export bundled defaults to advanced override config`,
     `  /${COMMAND_NAME} help            Show this help`,
   ].join("\n");
 }

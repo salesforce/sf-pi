@@ -32,6 +32,10 @@ import type {
   ConfigPanelResult,
 } from "../../../catalog/registry.ts";
 import {
+  getManagerDetailActions,
+  type ManagerDetailAction,
+} from "../../../lib/common/manager-actions.ts";
+import {
   buildExtensionDetailSummary,
   getExtensionStatus,
   getExtensionStatusLabel,
@@ -64,7 +68,8 @@ export type OverlayResult = {
   needsReload?: boolean;
   scope: "global" | "project";
   action?: {
-    command: string;
+    extensionId: string;
+    actionId: string;
   };
 };
 
@@ -78,13 +83,13 @@ type OverlayView =
   | { kind: "detail"; extensionId: string; actionIndex: number }
   | { kind: "settings"; extensionId: string };
 
-type DetailAction = "settings" | "toggle" | "back" | `command:${string}`;
+type DetailAction = "settings" | "toggle" | "back" | `manager:${string}`;
 
 interface DetailActionItem {
   value: DetailAction;
   label: string;
   description: string;
-  command?: string;
+  managerActionId?: string;
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -93,10 +98,6 @@ interface DetailActionItem {
 
 function padAnsi(text: string, width: number): string {
   return `${text}${" ".repeat(Math.max(0, width - visibleWidth(text)))}`;
-}
-
-function managerCommand(label: string, description: string, command: string): DetailActionItem {
-  return { value: `command:${command}`, label, description, command };
 }
 
 function wrapPlainText(text: string, width: number): string[] {
@@ -657,50 +658,12 @@ export class SfPiOverlayComponent implements Focusable {
   }
 
   private extensionSpecificActions(ext: ExtensionState): DetailActionItem[] {
-    if (ext.id !== "sf-guardrail") return [];
-    return [
-      managerCommand(
-        "Effective rules",
-        "Show resolved file, command, and org-aware rules.",
-        "sf-guardrail list",
-      ),
-      managerCommand(
-        "Audit trail",
-        "Show recent allow/block/timeout decisions.",
-        "sf-guardrail audit",
-      ),
-      managerCommand(
-        "Approval grants",
-        "Show legacy persisted approval grants.",
-        "sf-guardrail grants",
-      ),
-      managerCommand(
-        "Forget approvals",
-        "Clear session approvals and persisted project grants.",
-        "sf-guardrail forget",
-      ),
-      managerCommand(
-        "Production aliases",
-        "Edit aliases treated as production.",
-        "sf-guardrail aliases",
-      ),
-      managerCommand(
-        "Apply Power Tool Mode",
-        "Set risky rules to Ask me.",
-        "sf-guardrail power-tool",
-      ),
-      managerCommand(
-        "Apply Strict Theme",
-        "Block sensitive rules and ask for the rest.",
-        "sf-guardrail strict",
-      ),
-      managerCommand(
-        "Advanced override template",
-        "Write bundled defaults to the expert override file.",
-        "sf-guardrail install-preset",
-      ),
-      managerCommand("Help", "Show the sf-guardrail command reference.", "sf-guardrail help"),
-    ];
+    return getManagerDetailActions(ext.id).map((action: ManagerDetailAction) => ({
+      value: `manager:${action.id}`,
+      label: action.label,
+      description: action.description,
+      managerActionId: action.id,
+    }));
   }
 
   private moveDetailAction(direction: -1 | 1): void {
@@ -729,14 +692,14 @@ export class SfPiOverlayComponent implements Focusable {
         this.returnToList();
         return;
       default:
-        if (action.command) {
-          this.done(this.buildResult({ command: action.command }));
+        if (action.managerActionId) {
+          this.done(this.buildResult({ extensionId: ext.id, actionId: action.managerActionId }));
         }
         return;
     }
   }
 
-  private buildResult(action?: { command: string }): OverlayResult {
+  private buildResult(action?: { extensionId: string; actionId: string }): OverlayResult {
     const disabledFiles = new Set<string>();
     for (const ext of this.extensions) {
       if (!ext.enabled && !ext.alwaysActive) {

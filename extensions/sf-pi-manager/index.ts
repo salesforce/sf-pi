@@ -110,6 +110,7 @@ import { loadAnnouncementsManifest } from "../../lib/common/catalog-state/announ
 import { buildAnnouncementsSync } from "../../lib/common/catalog-state/announcements-orchestrator.ts";
 import { readAnnouncementsState } from "../../lib/common/catalog-state/announcements-state.ts";
 import { migrateExtensionAliases } from "./lib/extension-aliases.ts";
+import { runManagerDetailAction } from "../../lib/common/manager-actions.ts";
 import {
   SF_PI_MANAGER_OPEN_EVENT,
   type SfPiManagerOpenRequest,
@@ -590,8 +591,15 @@ async function handleOverlay(
     return;
   }
 
-  if (result.action?.command) {
-    pi.sendUserMessage(`/${result.action.command}`);
+  if (result.action) {
+    const handled = await runManagerDetailAction(
+      result.action.extensionId,
+      result.action.actionId,
+      ctx,
+    );
+    if (!handled) {
+      ctx.ui.notify(`Manager action unavailable: ${result.action.actionId}`, "warning");
+    }
   }
 }
 

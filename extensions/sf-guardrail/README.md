@@ -112,7 +112,7 @@ weakening remains deferred — see `ROADMAP.md`.
   set other rules to `confirm` in Pi settings
 - `/sf-guardrail forget` → revoke session allow-memory for this branch and clear
   legacy persisted approval grants for the current project
-- `/sf-guardrail install-preset` → write bundled defaults to the advanced
+- `/sf-guardrail install-preset` → export bundled defaults to the advanced
   override file for expert customization
 
 ## Architecture References
@@ -188,7 +188,6 @@ extensions/sf-guardrail/
     org-aware-risk-gate.ts  ← implementation module
     org-context.ts          ← implementation module
     policies.ts             ← implementation module
-    preferences-panel.ts    ← implementation module
     preferences.ts          ← implementation module
     production-aliases-panel.ts← implementation module
     prompt-injection.ts     ← implementation module
