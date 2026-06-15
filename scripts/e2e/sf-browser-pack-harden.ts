@@ -59,6 +59,7 @@ import { resolveOpenOrgUrl } from "../../extensions/sf-browser/lib/salesforce-op
 import type { SalesforceRoute } from "../../extensions/sf-browser/lib/salesforce-path-resolver.ts";
 import { resolveVerifiedRoutePath } from "../../extensions/sf-browser/lib/salesforce-route-verifier.ts";
 import { knownSetupDestinationRecords } from "../../extensions/sf-browser/lib/setup-destinations.ts";
+import { markdownTableCell } from "../lib/text-escape.mjs";
 
 // ---------------------------------------------------------------------------
 // Thin pi/ctx shims so we can reuse the SF Browser lib without a live pi host.
@@ -864,7 +865,7 @@ function renderMarkdown(opts: HarnessOptions, results: EntryResult[]): string {
   ];
   for (const r of sortByGroup(results)) {
     lines.push(
-      `| ${r.group} | ${r.id} | ${r.surface} | ${r.outcome} | ${r.observedOutcome ?? ""} | ${r.path || ""} | ${(r.note ?? "").replace(/\|/g, "\\|")} |`,
+      `| ${markdownTableCell(r.group)} | ${markdownTableCell(r.id)} | ${markdownTableCell(r.surface)} | ${markdownTableCell(r.outcome)} | ${markdownTableCell(r.observedOutcome ?? "")} | ${markdownTableCell(r.path || "")} | ${markdownTableCell(r.note ?? "")} |`,
     );
   }
   return lines.join("\n") + "\n";

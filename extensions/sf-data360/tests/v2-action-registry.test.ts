@@ -7,6 +7,7 @@ import {
   getData360Actions,
   searchData360Actions,
 } from "../lib/v2/action-registry.ts";
+import { getData360Journeys } from "../lib/v2/journey-catalog.ts";
 
 const V2_TOOLS = [
   "data360_discover",
@@ -73,5 +74,10 @@ describe("Data 360 v2 action registry", () => {
         expect.objectContaining({ tool: "data360_connect", action: "source_schema.test" }),
       ]),
     );
+  });
+
+  it("treats generated registries as session-stable after first load", () => {
+    expect(getData360Actions()).toBe(getData360Actions());
+    expect(getData360Journeys()).toBe(getData360Journeys());
   });
 });

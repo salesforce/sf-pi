@@ -14,6 +14,7 @@ import {
   visibleWidth,
   wrapTextWithAnsi,
 } from "@earendil-works/pi-tui";
+import { redactDisplayText } from "./redaction.ts";
 import { iconForSeverity, resolveUiGlyphs, type UiGlyphs } from "./ui-glyphs.ts";
 
 export type InfoPanelSeverity = "info" | "warning" | "error" | "success";
@@ -30,7 +31,12 @@ export async function openInfoPanel(
   options: InfoPanelOptions,
 ): Promise<void> {
   const severity = options.severity ?? "info";
-  const body = options.body.trim() || options.title;
+  const body = redactDisplayText(options.body.trim() || options.title);
+  const safeOptions = {
+    ...options,
+    title: redactDisplayText(options.title),
+    footer: options.footer ? redactDisplayText(options.footer) : undefined,
+  };
   const glyphs = resolveUiGlyphs(ctx.cwd);
 
   if (!ctx.hasUI) {
@@ -45,7 +51,7 @@ export async function openInfoPanel(
 
   await ctx.ui.custom<void>(
     (_tui, theme, _keybindings, done) => {
-      const panel = new InfoPanelComponent(theme, glyphs, { ...options, body, severity }, done);
+      const panel = new InfoPanelComponent(theme, glyphs, { ...safeOptions, body, severity }, done);
       return {
         render: (width: number) => panel.render(width),
         invalidate: () => panel.invalidate(),

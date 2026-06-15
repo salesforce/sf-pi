@@ -191,7 +191,7 @@ function buildWordmarkRows(): string[] {
 function paintWordmarkRowsWithShadow(rows: string[], offset: number): string[] {
   const paintedRows: string[] = [];
   const foregroundState = { charIndex: 0 };
-  for (let rowIndex = 0; rowIndex <= rows.length; rowIndex++) {
+  for (let rowIndex = 0; rowIndex < rows.length + 1; rowIndex++) {
     let painted = "";
     const foregroundRow = rows[rowIndex] ?? "";
     const shadowSourceRow = rowIndex > 0 ? (rows[rowIndex - 1] ?? "") : "";

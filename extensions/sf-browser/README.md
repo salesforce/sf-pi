@@ -206,6 +206,7 @@ extensions/sf-browser/
   lib/
     agent-browser.ts        ← implementation module
     artifacts.ts            ← implementation module
+    browser-expression.ts   ← implementation module
     browser-launch-diagnostics.ts← implementation module
     classic-setup-submit.ts ← implementation module
     constants.ts            ← implementation module
@@ -245,6 +246,7 @@ extensions/sf-browser/
   tests/
     agent-browser.test.ts   ← unit / smoke test
     artifacts.test.ts       ← unit / smoke test
+    browser-expression.test.ts← unit / smoke test
     classic-setup-submit.test.ts← unit / smoke test
     data-cloud-pack.test.ts ← unit / smoke test
     editor-surfaces.test.ts ← unit / smoke test

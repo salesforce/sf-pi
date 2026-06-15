@@ -6,7 +6,7 @@
  * It gives v2 family tools a compact, stable Interface while keeping the
  * 200+ operation catalog behind an on-demand action map.
  */
-import { readFileSync, statSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -16,19 +16,11 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ACTIONS_PATH = path.resolve(__dirname, "..", "..", "registry", "v2", "actions.json");
 
-interface Data360V2ActionSnapshot {
-  mtimeMs: number;
-  actions: Data360V2ActionDefinition[];
-}
-
-let cache: Data360V2ActionSnapshot | undefined;
+let cache: Data360V2ActionDefinition[] | undefined;
 
 export function getData360Actions(): Data360V2ActionDefinition[] {
-  const mtimeMs = statSync(ACTIONS_PATH).mtimeMs;
-  if (cache?.mtimeMs === mtimeMs) return cache.actions;
-  const actions = JSON.parse(readFileSync(ACTIONS_PATH, "utf8")) as Data360V2ActionDefinition[];
-  cache = { mtimeMs, actions };
-  return actions;
+  cache ??= JSON.parse(readFileSync(ACTIONS_PATH, "utf8")) as Data360V2ActionDefinition[];
+  return cache;
 }
 
 export function getData360ActionsForTool(tool: Data360V2ToolName): Data360V2ActionDefinition[] {

@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 import { describe, expect, test } from "vitest";
-import { renderDoctorReport, type DoctorStatus } from "../lib/doctor.ts";
+import { npmRegistryPackageUrl, renderDoctorReport, type DoctorStatus } from "../lib/doctor.ts";
 
 function baseStatus(): DoctorStatus {
   return {
@@ -36,6 +36,12 @@ function baseStatus(): DoctorStatus {
 }
 
 describe("renderDoctorReport", () => {
+  test("builds scoped npm registry URLs", () => {
+    expect(npmRegistryPackageUrl("@sf-agentscript/agentforce")).toBe(
+      "https://registry.npmjs.org/@sf-agentscript%2Fagentforce",
+    );
+  });
+
   test("renders official AgentScript package versions", () => {
     const report = renderDoctorReport(baseStatus());
     expect(report).toContain("AgentScript packages:");

@@ -183,9 +183,13 @@ async function readAgentScriptPackageStatuses(
   );
 }
 
+export function npmRegistryPackageUrl(packageName: string): string {
+  return `https://registry.npmjs.org/${encodeURIComponent(packageName).replaceAll("%40", "@")}`;
+}
+
 async function fetchLatestNpmVersion(packageName: string): Promise<string | undefined> {
   try {
-    const url = `https://registry.npmjs.org/${encodeURIComponent(packageName).replace("%40", "@")}`;
+    const url = npmRegistryPackageUrl(packageName);
     const response = await fetch(url, { headers: { accept: "application/json" } });
     if (!response.ok) return undefined;
     const body = (await response.json()) as { "dist-tags"?: { latest?: unknown } };

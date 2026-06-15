@@ -56,6 +56,14 @@ _Avoid_: copied reference-site colors, washed-out cyan links, terminal-first doc
 The validation expectation that the **Documentation Site** has local npm scripts and is built in CI before public publication.
 _Avoid_: Pages-only validation, ad hoc npx builds, unchecked markdown site
 
+**Security Alert Remediation Policy**:
+The release-readiness posture that repository security alerts for runtime, build, test, and documentation tooling dependencies should be fixed or explicitly mitigated before release. Dependency triage may consider exploitability and scope, but dev-only placement is not enough by itself to ignore an alert.
+_Avoid_: runtime-only vulnerability posture, dependency triage by package section alone, silent alert dismissal
+
+**Shared Output Redaction**:
+The common SF Pi display boundary that removes obvious secret-bearing values before text reaches command panels, notifications, or headless console output. It is a safety baseline for shared display plumbing, not a replacement for extension-specific public-issue sanitization or secret storage rules.
+_Avoid_: headless-only redaction, per-extension display drift, treating visible UI output as safe by default
+
 **README Quickstart Role**:
 The root README remains a complete GitHub-facing quickstart and generated inventory while adding a prominent link to the **Documentation Site** for deeper navigation.
 _Avoid_: README replacement, aggressive README migration, contributor-only README
@@ -500,6 +508,10 @@ _Avoid_: treating endpoint families as the primary user-facing workflow language
 A delivery style for **First-Class Data 360 Parity** where repeated family coverage is produced from reviewed source data, while hand-written code stays focused on shared behavior and genuinely distinct workflows.
 _Avoid_: hand-written endpoint sprawl, unreviewed mirror, ad hoc family drift
 
+**Session-Stable Generated Registry**:
+The runtime posture for reviewed generated registries that are loaded after user intent and may be cached for the current Pi process without hot-reloading file changes. Regenerating the source registry is a development action that can require a session restart before runtime tools observe it.
+_Avoid_: stat-before-read hot reload, runtime file watcher, always-reparse generated data
+
 **Runtime Code Budget**:
 A maintainability constraint applied to hand-written runtime TypeScript, not to generated or reference artifacts that are reviewed, reproducible, and safe to publish.
 _Avoid_: counting generated registry data as feature complexity, LOC reduction by deleting source-of-truth data
@@ -555,6 +567,10 @@ _Avoid_: generic utility sprawl, cross-extension Data 360 coupling, shared modul
 **D360 Performance Budget**:
 The expectation that **SF Data 360** pays expensive costs only after user intent is clear: startup and prompt footprint stay strict, while rich Data 360 UX appears through commands, skills, or tool results.
 _Avoid_: live startup probes, always-loaded catalogs, verbose always-on skill descriptions, broad inline result dumps
+
+**Trusted Interactive Auth Option**:
+An internal SF Data 360 option or test seam for local OAuth UX such as opening the browser, separate from user-provided action parameters. Public tool inputs may choose an auth workflow, but they should not directly control security-sensitive browser or callback behavior without validation.
+_Avoid_: user-controlled browser-open bypass, arbitrary redirect listener, treating OAuth UX toggles as data payload fields
 
 **D360 Fallback Ladder**:
 The order for uncovered Data 360 work: use a **D360 Capability**, then `d360_api` with local references, then broader sf-skills or official guidance, and promote repeated fallback paths later.
@@ -727,6 +743,8 @@ _Avoid_: stale copied metadata, optimistic context window, untested provider ove
 - The root README keeps the **README Quickstart Role** after the **Documentation Site** is introduced.
 - The **Documentation Site** uses **Source Deep Links** for detailed docs outside `docs/`.
 - The **Documentation Site** follows the **Docs Build Contract**.
+- The **Security Alert Remediation Policy** applies to **SF Pi** release readiness, including dependency alerts in build, test, and documentation tooling.
+- **Shared Output Redaction** applies at common display boundaries before command-panel, notification, or headless output is shown.
 - **SF Pi** contains one or more **Bundled Extensions**.
 - A **Bundled Extension** exposes zero or more **Runtime Surfaces**.
 - **Branch-Durable Tool State** records lightweight pointers to workflow artifacts; it does not replace logs, traces, transcripts, reports, or other heavy disk artifacts.
@@ -821,6 +839,7 @@ _Avoid_: stale copied metadata, optimistic context window, untested provider ove
 - A **Destination Pack** stays inside the **D360 Domain Boundary** by owning only navigation, UI evidence, and UI mutation fallback; **SF Data 360** still owns Data Cloud API workflows.
 - **First-Class Data 360 Parity** guides how **SF Data 360** expands its workflow coverage.
 - **Generated Data 360 Parity** is the preferred delivery style for broad **First-Class Data 360 Parity**.
+- A **Session-Stable Generated Registry** may cache reviewed generated Data 360 registry files for a Pi process without stat-before-read hot reload.
 - A **Runtime Code Budget** constrains hand-written **Runtime Surfaces**, not generated parity data.
 - A **D360 Capability** is discovered and executed through SF Data 360 **Runtime Surfaces**.
 - A **D360 Runbook** backs deterministic multi-step **D360 Capabilities**.
@@ -835,6 +854,7 @@ _Avoid_: stale copied metadata, optimistic context window, untested provider ove
 - A **Sweep-Only Destructive Gate** enables repeatable lifecycle cleanup without weakening normal user-facing destructive safeguards.
 - The **D360 Domain Boundary** protects **SF Data 360** from leaking domain-specific behavior into generic shared code.
 - The **D360 Performance Budget** keeps **SF Data 360** strict at startup and rich after intent.
+- **Trusted Interactive Auth Options** keep SF Data 360 OAuth browser behavior separate from user-provided action parameters.
 - The **D360 Fallback Ladder** governs uncovered Data 360 work.
 - A **Data 360 Skill Pack** supports **First-Class Data 360 Parity** through progressive disclosure.
 - A **Data 360 Skill Pack** is organized by **Data 360 Phase**.

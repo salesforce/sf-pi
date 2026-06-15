@@ -12,6 +12,8 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { npmRegistryPackageUrl } from "./lib/npm-registry-url.mjs";
+
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 const PACKAGES = [
@@ -41,7 +43,7 @@ function lockVersion(packageName) {
 
 async function latestVersion(packageName) {
   try {
-    const url = `https://registry.npmjs.org/${encodeURIComponent(packageName).replace("%40", "@")}`;
+    const url = npmRegistryPackageUrl(packageName);
     const response = await fetch(url, { headers: { accept: "application/json" } });
     if (!response.ok) return undefined;
     const body = await response.json();

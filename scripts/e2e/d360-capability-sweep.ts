@@ -3383,7 +3383,7 @@ function parseArgs(args: string[]): CliOptions {
 function parseSweepPresetName(value: string): SweepPresetName {
   if (value === "agentforce-stdm-mutate" || value === "agentforce-stdm-safe") return value;
   throw new Error(
-    "Unknown preset '${value}'. Expected agentforce-stdm-mutate or agentforce-stdm-safe.",
+    `Unknown preset '${value}'. Expected agentforce-stdm-mutate or agentforce-stdm-safe.`,
   );
 }
 

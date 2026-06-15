@@ -20,6 +20,8 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { inspect as nodeInspect } from "node:util";
 
+import { markdownTableCell } from "./lib/text-escape.mjs";
+
 const __filename = fileURLToPath(import.meta.url);
 const ROOT = path.resolve(path.dirname(__filename), "..");
 
@@ -134,9 +136,7 @@ function classifyTargetFailure(failure) {
 function markdownCounts(title, counts) {
   const rows = Object.entries(counts);
   if (rows.length === 0) return `\n## ${title}\n\n_None_\n`;
-  return `\n## ${title}\n\n| Item | Count |\n| --- | ---: |\n${rows
-    .map(([key, value]) => `| \`${String(key).replace(/\|/g, "\\|")}\` | ${value} |`)
-    .join("\n")}\n`;
+  return `\n## ${title}\n\n| Item | Count |\n| --- | ---: |\n${rows.map(([key, value]) => `| \`${markdownTableCell(key)}\` | ${value} |`).join("\n")}\n`;
 }
 
 function renderReport(summary) {

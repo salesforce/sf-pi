@@ -14,7 +14,8 @@ export interface InteractivePkceReadyEvent {
 }
 
 export interface InteractivePkceOptions {
-  autoOpen?: boolean;
+  /** Internal test seam; public action params must not control browser opening directly. */
+  authorizationOpener?: (url: string) => void;
   fetchFn?: typeof fetch;
   timeoutMs?: number;
   onReady?: (event: InteractivePkceReadyEvent) => void | Promise<void>;
@@ -84,13 +85,14 @@ export async function runInteractivePkceAuth(
       try {
         const callbackUrl = actualBaseUrl(server, redirect);
         started = startTenantIngestPkce({ ...params, redirectUri: callbackUrl });
+        const authorizationUrl = validateSalesforceAuthorizationUrl(started.authorization.url);
         const ready = {
-          authorizationUrl: started.authorization.url,
+          authorizationUrl,
           callbackUrl,
           state: started.authorization.state,
         };
         await options.onReady?.(ready);
-        if (options.autoOpen !== false) openAuthorizationUrl(started.authorization.url);
+        (options.authorizationOpener ?? openAuthorizationUrl)(authorizationUrl);
       } catch (error) {
         clearTimeout(timeout);
         closeServer(server);
@@ -138,6 +140,19 @@ function actualBaseUrl(server: http.Server, redirect: { host: string; pathname: 
 function openAuthorizationUrl(url: string): void {
   if (os.platform() !== "darwin") return;
   execFile("open", [url], () => undefined);
+}
+
+export function validateSalesforceAuthorizationUrl(value: string): string {
+  const url = new URL(value);
+  if (url.protocol !== "https:") throw new Error("OAuth authorization URL must use https.");
+  const host = url.hostname.toLowerCase();
+  const allowed =
+    host === "login.salesforce.com" ||
+    host === "test.salesforce.com" ||
+    host.endsWith(".my.salesforce.com") ||
+    host.endsWith(".sandbox.my.salesforce.com");
+  if (!allowed) throw new Error("OAuth authorization URL must target a Salesforce host.");
+  return url.toString();
 }
 
 function closeServer(server: http.Server): void {

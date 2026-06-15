@@ -2,7 +2,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { SfEnvironment } from "../../../lib/common/sf-environment/types.ts";
-import { runInteractivePkceAuth } from "../lib/v2/ingest/interactive-auth.ts";
+import {
+  runInteractivePkceAuth,
+  validateSalesforceAuthorizationUrl,
+} from "../lib/v2/ingest/interactive-auth.ts";
 import { runData360V2Action } from "../lib/v2/dispatcher.ts";
 
 const env: SfEnvironment = {
@@ -85,7 +88,7 @@ describe("Data 360 interactive PKCE auth orchestration", () => {
         redirectUri: "http://127.0.0.1:0/OauthRedirect",
       },
       {
-        autoOpen: false,
+        authorizationOpener: () => undefined,
         fetchFn: fetchMock as typeof fetch,
         onReady: async ({ callbackUrl, state }) => {
           await fetch(`${callbackUrl}?code=secret-auth-code&state=${state}`);
@@ -105,6 +108,23 @@ describe("Data 360 interactive PKCE auth orchestration", () => {
     expect(text).not.toContain("secret-data-cloud-token");
     expect(text).not.toContain("secret-auth-code");
     expect(text).not.toContain("code_verifier");
+  });
+
+  it("allows only Salesforce HTTPS authorization URLs for browser opening", () => {
+    expect(
+      validateSalesforceAuthorizationUrl("https://test.salesforce.com/services/oauth2/authorize"),
+    ).toBe("https://test.salesforce.com/services/oauth2/authorize");
+    expect(
+      validateSalesforceAuthorizationUrl(
+        "https://example--sandbox.sandbox.my.salesforce.com/services/oauth2/authorize",
+      ),
+    ).toContain("sandbox.my.salesforce.com");
+    expect(() => validateSalesforceAuthorizationUrl("http://test.salesforce.com/auth")).toThrow(
+      "https",
+    );
+    expect(() => validateSalesforceAuthorizationUrl("https://example.invalid/auth")).toThrow(
+      "Salesforce host",
+    );
   });
 });
 

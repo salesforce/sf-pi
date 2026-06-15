@@ -8,6 +8,7 @@
  */
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { runAgentBrowser } from "./agent-browser.ts";
+import { buildBrowserHelperExpression } from "./browser-expression.ts";
 import { throwWithFailureDiagnostics } from "./failure-diagnostics.ts";
 import { redactText } from "./redaction.ts";
 import { startTimer } from "./timing.ts";
@@ -114,8 +115,12 @@ function normalizeEditorInput(input: EditorOperationInput): Required<EditorOpera
   };
 }
 
-function buildEditorExpression(input: Required<EditorOperationInput>): string {
-  return `(() => { ${EDITOR_HELPERS} return window.__sfPiEditorOperation(${JSON.stringify(input)}); })()`;
+export function buildEditorExpression(input: Required<EditorOperationInput>): string {
+  return buildBrowserHelperExpression({
+    helpers: EDITOR_HELPERS,
+    functionName: "__sfPiEditorOperation",
+    payload: input,
+  });
 }
 
 function parseEditorResult(stdout: string): EditorOperationResult {

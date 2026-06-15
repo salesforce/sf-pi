@@ -15,6 +15,8 @@
 
 import { inspect } from "node:util";
 
+import { soqlStringLiteral } from "./lib/text-escape.mjs";
+
 function parseArgs(argv) {
   const out = { execute: false };
   for (let i = 0; i < argv.length; i++) {
@@ -39,7 +41,7 @@ function usage() {
 }
 
 function soqlEscape(value) {
-  return String(value).replace(/'/g, "\\'");
+  return soqlStringLiteral(value);
 }
 
 async function main() {

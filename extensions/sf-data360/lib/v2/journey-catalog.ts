@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 
-import { readFileSync, statSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -45,16 +45,11 @@ const JOURNEY_CATALOG_PATH = path.resolve(
   "journey-catalog.json",
 );
 
-let cache: { mtimeMs: number; journeys: Data360JourneyDefinition[] } | undefined;
+let cache: Data360JourneyDefinition[] | undefined;
 
 export function getData360Journeys(): Data360JourneyDefinition[] {
-  const mtimeMs = statSync(JOURNEY_CATALOG_PATH).mtimeMs;
-  if (cache?.mtimeMs === mtimeMs) return cache.journeys;
-  const journeys = JSON.parse(
-    readFileSync(JOURNEY_CATALOG_PATH, "utf8"),
-  ) as Data360JourneyDefinition[];
-  cache = { mtimeMs, journeys };
-  return journeys;
+  cache ??= JSON.parse(readFileSync(JOURNEY_CATALOG_PATH, "utf8")) as Data360JourneyDefinition[];
+  return cache;
 }
 
 export function findData360Journey(name: string): Data360JourneyDefinition | undefined {

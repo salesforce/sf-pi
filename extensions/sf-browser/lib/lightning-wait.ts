@@ -1,6 +1,8 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Browser-side Lightning wait helpers for SF Browser. */
 
+import { buildBrowserHelperExpression } from "./browser-expression.ts";
+
 export type LightningWaitModeValue =
   | "app-ready"
   | "navigation-ready"
@@ -32,11 +34,20 @@ export interface LightningOutcomeDetails {
 }
 
 export function buildLightningWaitExpression(mode: LightningWaitModeValue): string {
-  return `(() => { ${LIGHTNING_WAIT_HELPERS} return window.__sfPiLightningWait(${JSON.stringify(mode)}); })()`;
+  return buildBrowserHelperExpression({
+    helpers: LIGHTNING_WAIT_HELPERS,
+    functionName: "__sfPiLightningWait",
+    payload: mode,
+  });
 }
 
 export function buildLightningOutcomeExpression(mode: LightningWaitModeValue): string {
-  return `(() => { ${LIGHTNING_WAIT_HELPERS} return JSON.stringify(window.__sfPiLightningOutcome(${JSON.stringify(mode)})); })()`;
+  return buildBrowserHelperExpression({
+    helpers: LIGHTNING_WAIT_HELPERS,
+    functionName: "__sfPiLightningOutcome",
+    payload: mode,
+    stringifyResult: true,
+  });
 }
 
 export const LIGHTNING_WAIT_HELPERS = String.raw`
