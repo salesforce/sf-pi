@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.189.2-2026-06-15",
-  "latestVersion": "0.189.2",
+  "revision": "release-0.189.3-2026-06-15",
+  "latestVersion": "0.189.3",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.189.2",
+      "id": "release-0.189.3",
       "kind": "update",
-      "title": "sf-pi v0.189.2 — address CodeQL security findings",
+      "title": "sf-pi v0.189.3 — harden Data 360 PKCE callback handling",
       "publishedAt": "2026-06-15T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.189.2",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.189.3",
       "severity": "info",
-      "body": "address CodeQL security findings — remediate vulnerable dev dependencies"
+      "body": "harden Data 360 PKCE callback handling"
     },
     {
       "id": "pi-0.73-required",
