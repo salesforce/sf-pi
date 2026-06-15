@@ -117,7 +117,8 @@
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.61.1",
     "vitepress": "^1.6.4",
-    "vitest": "^4.1.9"
+    "vitest": "^4.1.9",
+    "vite": "7.3.5"
   },
   "dependencies": {
     "@salesforce/core": "^8.31.0",
@@ -131,16 +132,26 @@
   "overridesNotes": {
     "fast-xml-parser": "Force >= 5.7.0 to clear GHSA-gh4j-gqv2-49f6 (XMLBuilder CDATA injection). Reaches sf-pi through pi-ai -> AWS SDK Bedrock client; remove once upstream AWS SDK resolves the advisory.",
     "@mistralai/mistralai": "Hard-pin to 2.2.1, the last clean release before the npm-publish-account takeover (GHSA-3q49-cfcf-g5fm, published 2026-05-11). Versions 2.2.2/2.2.3/2.2.4 are flagged as malware by GitHub Advisory DB. Reaches sf-pi transitively through @earendil-works/pi-ai. Tarball verified: SRI integrity sha512-uKU8C... matches registry, hasInstallScript=false, no preinstall/postinstall hooks. Remove once upstream republishes a clean Mistral SDK and pi-ai bumps past it.",
-    "vitepress": "VitePress 1.6.4 currently depends on Vite 5.x, which is covered by GHSA-4w7w-66w2-5vf9 and pulls a vulnerable esbuild range. Keep VitePress on the stable 1.x line for docs, but override its nested Vite/plugin-vue stack to patched versions. Remove once VitePress 1.x or a stable 2.x release carries patched transitive dependencies.",
-    "form-data": "Force >= 4.0.6 to clear GHSA-hmw2-7cc7-3qxx (CRLF injection in multipart field names/filenames). Reaches sf-pi through @salesforce/core -> @jsforce/jsforce-node; remove once upstream ranges naturally resolve to a patched version."
+    "vitepress": "VitePress 1.6.4 currently depends on Vite 5.x. Keep VitePress on the stable 1.x line for docs, but override its nested Vite/plugin-vue stack to patched versions that clear active Vite/esbuild advisories and still pass the docs build. Remove once VitePress 1.x or a stable 2.x release carries patched transitive dependencies.",
+    "form-data": "Force >= 4.0.6 to clear GHSA-hmw2-7cc7-3qxx (CRLF injection in multipart field names/filenames). Reaches sf-pi through @salesforce/core -> @jsforce/jsforce-node; remove once upstream ranges naturally resolve to a patched version.",
+    "vitest": "Vitest resolves Vite as a transitive test runner dependency. Force the patched Vite 7 line for tests until Vitest naturally resolves to a patched Vite release without overrides.",
+    "esbuild": "Force >= 0.28.1 to clear GHSA-gv7w-rqvm-qjhr. Vite uses esbuild as build/test tooling; remove once all Vite ranges in the tree naturally require a patched esbuild.",
+    "vite": "Direct dev dependency used to satisfy Vite peer imports for VitePress/Vitest while pinning a patched Vite line. Keep aligned with the transitive Vite overrides and remove only if docs/test tooling no longer requires a root peer install."
   },
   "overrides": {
     "fast-xml-parser": "^5.7.0",
     "@mistralai/mistralai": "2.2.1",
     "form-data": "^4.0.6",
     "vitepress": {
-      "vite": "^6.4.2",
+      "vite": "7.3.5",
       "@vitejs/plugin-vue": "^6.0.7"
-    }
+    },
+    "vitest": {
+      "vite": "7.3.5"
+    },
+    "@vitest/mocker": {
+      "vite": "7.3.5"
+    },
+    "esbuild": "^0.28.1"
   }
 }
