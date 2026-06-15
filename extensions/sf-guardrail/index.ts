@@ -55,6 +55,11 @@
  */
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 
+import {
+  SF_PI_MANAGER_OPEN_EVENT,
+  type SfPiManagerOpenRequest,
+  type SfPiManagerOpenRoute,
+} from "../../lib/common/manager-deep-link.ts";
 import { withSafeCommandHandler } from "../../lib/common/safe-command-handler.ts";
 import { registerExtensionDoctor } from "../../lib/common/doctor/registry.ts";
 import { runExtensionDoctor as runGuardrailExtensionDoctor } from "./lib/extension-doctor.ts";
@@ -218,13 +223,40 @@ export default function sfGuardrail(pi: ExtensionAPI) {
       await withSafeCommandHandler(ctx, COMMAND_NAME, async () => {
         const sub = (args ?? "").trim().toLowerCase();
         if (sub === "" && ctx.hasUI) {
-          pi.sendUserMessage("/sf-pi open sf-guardrail");
+          await openGuardrailInManager(pi, ctx, "detail");
           return;
         }
         await handleGuardrailCommand(pi, ctx, sub === "" ? "status" : sub);
       });
     },
   });
+}
+
+async function openGuardrailInManager(
+  pi: ExtensionAPI,
+  ctx: ExtensionCommandContext,
+  view: NonNullable<SfPiManagerOpenRoute["view"]>,
+): Promise<void> {
+  let accepted = false;
+  const result = new Promise<void>((resolve, reject) => {
+    const request: SfPiManagerOpenRequest = {
+      ctx,
+      route: { extensionId: "sf-guardrail", view },
+      accept: () => {
+        accepted = true;
+      },
+      resolve,
+      reject,
+    };
+    pi.events.emit(SF_PI_MANAGER_OPEN_EVENT, request);
+  });
+
+  if (!accepted) {
+    ctx.ui.notify("SF Pi Manager is unavailable. Try /sf-pi open sf-guardrail.", "warning");
+    return;
+  }
+
+  await result;
 }
 
 const GUARDRAIL_SUBCOMMANDS = [
@@ -302,7 +334,7 @@ async function handleGuardrailCommand(
 
   if (sub === "settings") {
     if (ctx.hasUI) {
-      pi.sendUserMessage("/sf-pi open sf-guardrail settings");
+      await openGuardrailInManager(pi, ctx, "settings");
       return;
     }
     await emitGuardrailOutput(

@@ -110,6 +110,10 @@ import { loadAnnouncementsManifest } from "../../lib/common/catalog-state/announ
 import { buildAnnouncementsSync } from "../../lib/common/catalog-state/announcements-orchestrator.ts";
 import { readAnnouncementsState } from "../../lib/common/catalog-state/announcements-state.ts";
 import { migrateExtensionAliases } from "./lib/extension-aliases.ts";
+import {
+  SF_PI_MANAGER_OPEN_EVENT,
+  type SfPiManagerOpenRequest,
+} from "../../lib/common/manager-deep-link.ts";
 
 export {
   applyExtensionState,
@@ -184,6 +188,14 @@ type CommandArgs = {
 
 export default function sfPiManagerExtension(pi: ExtensionAPI) {
   if (!requirePiVersion(pi, "sf-pi-manager")) return;
+
+  pi.events.on(SF_PI_MANAGER_OPEN_EVENT, (request: SfPiManagerOpenRequest) => {
+    request.accept?.();
+    void handleOverlay(pi, request.ctx, resolveEffectiveScope(request.ctx.cwd), request.route).then(
+      request.resolve,
+      request.reject,
+    );
+  });
 
   pi.registerCommand(COMMAND_NAME, {
     description: "Salesforce pi extension manager — browse, enable, and disable extensions",
