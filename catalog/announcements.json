@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.186.0-2026-06-15",
-  "latestVersion": "0.186.0",
+  "revision": "release-0.187.0-2026-06-15",
+  "latestVersion": "0.187.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.186.0",
+      "id": "release-0.187.0",
       "kind": "update",
-      "title": "sf-pi v0.186.0 — sf-guardrail: add nested settings navigation",
+      "title": "sf-pi v0.187.0 — sf-pi: deep link extension commands to manager",
       "publishedAt": "2026-06-15T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.186.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.187.0",
       "severity": "info",
-      "body": "sf-guardrail: add nested settings navigation"
+      "body": "sf-pi: deep link extension commands to manager"
     },
     {
       "id": "pi-0.73-required",
