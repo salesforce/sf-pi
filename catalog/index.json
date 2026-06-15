@@ -444,7 +444,7 @@
         "lib/hitl.ts",
         "lib/approval-detail.ts",
         "lib/preferences.ts",
-        "lib/preferences-panel.ts",
+        "lib/guardrail-settings.ts",
         "lib/production-aliases-panel.ts",
         "lib/approval-ledger.ts",
         "lib/fingerprint.ts",
@@ -465,7 +465,7 @@
     "entry": "extensions/sf-guardrail/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 4205
+    "srcLoc": 4095
   },
   {
     "id": "sf-herdr",

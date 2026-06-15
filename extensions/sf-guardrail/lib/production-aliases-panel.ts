@@ -17,7 +17,7 @@ export async function openProductionAliasesEditor(
       [
         "SF Guardrail production aliases require an interactive Pi UI or RPC UI client to edit.",
         `Current aliases: ${current || "(none)"}`,
-        "Use /sf-guardrail settings in interactive mode to edit common preferences.",
+        "Use /sf-pi → SF Guardrail → Settings for common preferences.",
       ].join("\n"),
     );
     return;

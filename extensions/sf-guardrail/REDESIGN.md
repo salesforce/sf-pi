@@ -211,19 +211,21 @@ Acceptance:
 
 ### Phase 6 — Pi-native preferences
 
-Goal: make common settings discoverable without JSON editing.
+Goal: make common settings discoverable without JSON editing and without an
+extension-owned settings editor.
 
 Add or update:
 
-- `/sf-guardrail settings`
-- config panel behavior
+- Pi settings storage under `sfPi.guardrail`
+- SF Pi Manager config panel behavior
+- `/sf-guardrail settings` compatibility/help redirect
 
 Use pi-native/shared SF Pi settings patterns for:
 
 - feature toggles
 - confirmation timeout
 - production aliases
-- per-bundled-rule enablement
+- per-bundled-rule Rule Behavior
 
 Keep advanced JSON overrides for:
 
@@ -233,9 +235,10 @@ Keep advanced JSON overrides for:
 
 Acceptance:
 
-- Common preferences are editable from the command/UI surface.
+- Common preferences are editable from the Manager Surface and stored in Pi settings.
+- `/sf-guardrail settings` no longer opens a bespoke mutable TUI.
 - Advanced overrides are still supported but no longer the main path.
-- No project-local overrides yet.
+- No project-local overrides or project-local weakening yet.
 
 ### Phase 7 — README and roadmap cleanup
 

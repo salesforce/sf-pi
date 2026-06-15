@@ -4,16 +4,14 @@
  *
  * Merge strategy (last wins):
  *   1. Bundled: `extensions/sf-guardrail/SF_GUARDRAIL_DEFAULTS.json`
- *   2. User override: `<globalAgentDir>/sf-guardrail/rules.json`
+ *   2. Advanced override: `<globalAgentDir>/sf-guardrail/rules.json`
+ *   3. Routine Pi preferences: `settings.json -> sfPi.guardrail`
  *
  * Rule-set merging is by `id` (not by array index). A user-defined rule with
- * id "sf-deploy-prod" replaces the bundled one wholesale; to *disable* a
- * bundled rule without removing it, override with `{ "id": "...", "enabled": false }`.
+ * id "sf-deploy-prod" replaces the bundled one wholesale. Routine bundled-rule
+ * behavior is overlaid from Pi settings so the manager surface reflects runtime.
  *
- * Scalar fields (enabled, productionAliases, confirmTimeoutMs, feature toggles)
- * use simple last-wins semantics. Missing fields fall back to bundled defaults.
- *
- * Project-level overrides (`.pi/sf-guardrail/rules.json`) are out of MVP scope.
+ * Project-level overrides / project-local guardrail preferences are deferred.
  * See ROADMAP.md.
  */
 import { existsSync, readFileSync } from "node:fs";
@@ -32,6 +30,13 @@ import type {
   PolicyRule,
 } from "./types.ts";
 import { behaviorEnabled, resolveRuleBehavior } from "./rule-behavior.ts";
+import {
+  applyGuardrailPiSettings,
+  hasGuardrailPiSettings,
+  readGuardrailPiSettings,
+} from "./guardrail-settings.ts";
+
+export type GuardrailConfigSource = "bundled" | "override" | "settings" | "override+settings";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -74,11 +79,20 @@ export function readUserOverride(): Partial<GuardrailConfig> | undefined {
  * Result is sanitized: every field that ships in bundled defaults is present,
  * and unknown fields are dropped.
  */
-export function loadConfig(): { config: GuardrailConfig; source: "bundled" | "override" } {
+export function loadConfig(): { config: GuardrailConfig; source: GuardrailConfigSource } {
   const bundled = readBundledConfig();
   const override = readUserOverride();
-  if (!override) return { config: bundled, source: "bundled" };
-  return { config: merge(bundled, override), source: "override" };
+  const settings = readGuardrailPiSettings();
+
+  let config = override ? merge(bundled, override) : bundled;
+  let source: GuardrailConfigSource = override ? "override" : "bundled";
+
+  if (hasGuardrailPiSettings(settings)) {
+    config = applyGuardrailPiSettings(config, settings);
+    source = override ? "override+settings" : "settings";
+  }
+
+  return { config, source };
 }
 
 // ─── Merge helpers ──────────────────────────────────────────────────────────────

@@ -33,7 +33,7 @@ are not promises — priority is the rough order.
 - [x] Headless fail-closed with `SF_GUARDRAIL_ALLOW_HEADLESS=1` escape.
 - [x] `/sf-guardrail` command surface: status, list, audit, grants, settings,
       forget, install-preset.
-- [x] Read-only config panel in the `/sf-pi` manager overlay.
+- [x] SF Pi Manager config panel for status and routine Guardrail Preferences.
 
 ## Shipped (simplification/redesign slices)
 
@@ -45,10 +45,10 @@ are not promises — priority is the rough order.
 - [x] Approval Ledger facade (`lib/approval-ledger.ts`).
 - [x] Rule-derived agent guidance (`lib/guidance.ts`) replacing the bundled
       static prompt file while preserving the user override path.
-- [x] Pi-native `/sf-guardrail settings` with a section chooser, selected-row
-      detail cards, examples, recommendations, and per-rule behavior (`off`,
-      `confirm`, `hard block`) across file-policy, command-pattern, and
-      org-aware rules.
+- [x] Pi settings-backed Guardrail Preferences under `sfPi.guardrail`, with
+      the SF Pi Manager config panel as the mutable settings surface.
+- [x] `/sf-guardrail settings` compatibility help that redirects users to the
+      Manager Surface instead of opening an extension-owned settings editor.
 - [x] Envelope-first HIL detail copy (`lib/approval-detail.ts`).
 - [x] Dedicated Safety Kernel risk gates for file policies, command risk, and
       org-aware operations (`file-policy-gate.ts`, `command-risk-gate.ts`,
@@ -84,9 +84,9 @@ are not promises — priority is the rough order.
 - [ ] **Type-to-confirm for explicit production actions** — upgrade selected
       `action: "confirm"` rules to require retyping the org alias for actions
       with real blast radius.
-- [ ] **Project-local overrides** — `.pi/sf-guardrail/rules.json` is deferred
-      by ADR 0041. If added later, it must require trusted project context and
-      stay subordinate to the Safety Mediator posture.
+- [ ] **Project-local overrides / preferences** — project-local rule overrides
+      and project-local guardrail weakening are deferred by ADR 0041 and ADR 0049. If added later, they must require trusted project context and stay
+      subordinate to the Safety Mediator posture.
 - [ ] **Deploy-rehearsal enforcement** — require a preceding
       `sf project deploy validate` or `sf project deploy preview` before
       production deploy. ADR 0040 keeps this advisory until a separate decision

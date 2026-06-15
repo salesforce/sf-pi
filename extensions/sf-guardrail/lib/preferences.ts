@@ -2,12 +2,20 @@
 /**
  * Common sf-guardrail preferences.
  *
- * These are the normal user-facing toggles exposed by `/sf-guardrail settings`.
- * Advanced rule overrides still live in the same override file and are
- * preserved when these common preferences are updated.
+ * These are the normal user-facing toggles exposed through Pi settings.
+ * Advanced rule overrides remain in the sf-guardrail override file and are
+ * not touched when these common preferences are updated.
  */
-import { readJsonFile, writeJsonFile } from "../../../lib/common/sf-pi-settings.ts";
-import { readBundledConfig, userConfigPath } from "./config.ts";
+import { readBundledConfig } from "./config.ts";
+import {
+  readGuardrailPiSettings,
+  setGuardrailFeaturePreference,
+  setGuardrailProductionAliases,
+  setGuardrailRuleBehaviorPreference,
+  setGuardrailTimeoutPreference,
+  updateGuardrailPiSettings,
+  writeGuardrailPiSettings,
+} from "./guardrail-settings.ts";
 import type {
   CommandPattern,
   GuardrailConfig,
@@ -16,7 +24,6 @@ import type {
   RuleBehavior,
 } from "./types.ts";
 import {
-  behaviorEnabled,
   labelForRuleBehavior,
   resolveRuleBehavior,
   ruleBehaviorFromLabel,
@@ -212,26 +219,30 @@ export function applyGuardrailPreset(
   preset: GuardrailPreset,
   effectiveConfig: GuardrailConfig,
 ): void {
-  const current = readJsonFile(userConfigPath());
-  const next = { ...current };
+  const current = readGuardrailPiSettings();
+  const ruleBehaviors = {
+    ...(current.ruleBehaviors ?? {}),
+    policies: { ...(current.ruleBehaviors?.policies ?? {}) },
+    commandGate: { ...(current.ruleBehaviors?.commandGate ?? {}) },
+    orgAwareGate: { ...(current.ruleBehaviors?.orgAwareGate ?? {}) },
+  };
 
   for (const rule of effectiveConfig.policies.rules) {
-    upsertPolicyRuleBehavior(next, rule, behaviorForPreset(preset, rule.id));
+    ruleBehaviors.policies[rule.id] = behaviorForPreset(preset, rule.id);
   }
   for (const pattern of effectiveConfig.commandGate.patterns) {
-    upsertCommandPatternBehavior(next, pattern, behaviorForPreset(preset, pattern.id));
+    ruleBehaviors.commandGate[pattern.id] = behaviorForPreset(preset, pattern.id);
   }
   for (const rule of effectiveConfig.orgAwareGate.rules) {
-    upsertOrgAwareRuleBehavior(next, rule, behaviorForPreset(preset, rule.id));
+    ruleBehaviors.orgAwareGate[rule.id] = behaviorForPreset(preset, rule.id);
   }
 
-  writeJsonFile(userConfigPath(), next);
+  writeGuardrailPiSettings({ ...current, ruleBehaviors });
 }
 
 export function updateProductionAliasesFromText(value: string): string[] {
   const aliases = parseProductionAliases(value);
-  const current = readJsonFile(userConfigPath());
-  writeJsonFile(userConfigPath(), { ...current, productionAliases: aliases });
+  setGuardrailProductionAliases(aliases);
   return aliases;
 }
 
@@ -244,15 +255,11 @@ export function updateUserPreference(
   value: string,
   effectiveConfig: GuardrailConfig = readBundledConfig(),
 ): void {
-  const current = readJsonFile(userConfigPath());
-  const next = { ...current };
-
   const policyRuleId = parseRulePreferenceKey(key, "policies.rules.");
   if (policyRuleId) {
     const rule = effectiveConfig.policies.rules.find((candidate) => candidate.id === policyRuleId);
     if (!rule) return;
-    upsertPolicyRuleBehavior(next, rule, parseRuleBehavior(value));
-    writeJsonFile(userConfigPath(), next);
+    setGuardrailRuleBehaviorPreference("policies", rule.id, parseRuleBehavior(value));
     return;
   }
 
@@ -262,8 +269,7 @@ export function updateUserPreference(
       (candidate) => candidate.id === commandPatternId,
     );
     if (!pattern) return;
-    upsertCommandPatternBehavior(next, pattern, parseRuleBehavior(value));
-    writeJsonFile(userConfigPath(), next);
+    setGuardrailRuleBehaviorPreference("commandGate", pattern.id, parseRuleBehavior(value));
     return;
   }
 
@@ -271,98 +277,34 @@ export function updateUserPreference(
   if (orgRuleId) {
     const rule = effectiveConfig.orgAwareGate.rules.find((candidate) => candidate.id === orgRuleId);
     if (!rule) return;
-    upsertOrgAwareRuleBehavior(next, rule, parseRuleBehavior(value));
-    writeJsonFile(userConfigPath(), next);
+    setGuardrailRuleBehaviorPreference("orgAwareGate", rule.id, parseRuleBehavior(value));
     return;
   }
 
   switch (key) {
     case "enabled":
-      next.enabled = parseOnOff(value);
-      break;
+      // Compatibility only. New UI uses /sf-pi enable/disable for the extension.
+      updateGuardrailPiSettings((settings) => ({ ...settings, enabled: parseOnOff(value) }));
+      return;
     case "features.policies":
+      setGuardrailFeaturePreference("policies", parseOnOff(value));
+      return;
     case "features.commandGate":
+      setGuardrailFeaturePreference("commandGate", parseOnOff(value));
+      return;
     case "features.orgAwareGate":
-    case "features.promptInjection": {
-      const features =
-        next.features && typeof next.features === "object"
-          ? { ...(next.features as Record<string, unknown>) }
-          : {};
-      features[key.slice("features.".length)] = parseOnOff(value);
-      next.features = features;
-      break;
-    }
+      setGuardrailFeaturePreference("orgAwareGate", parseOnOff(value));
+      return;
+    case "features.promptInjection":
+      setGuardrailFeaturePreference("promptInjection", parseOnOff(value));
+      return;
     case "confirmTimeoutMs": {
       const parsed = Number(value);
       if (!Number.isFinite(parsed) || parsed <= 0) return;
-      next.confirmTimeoutMs = parsed;
-      break;
+      setGuardrailTimeoutPreference(parsed);
+      return;
     }
   }
-
-  writeJsonFile(userConfigPath(), next);
-}
-
-function upsertPolicyRuleBehavior(
-  target: Record<string, unknown>,
-  rule: PolicyRule,
-  behavior: RuleBehavior,
-): void {
-  const policies = objectValue(target.policies);
-  const rules = arrayValue(policies.rules);
-  policies.rules = upsertRuleBehavior(rules, rule, behavior);
-  target.policies = policies;
-}
-
-function upsertCommandPatternBehavior(
-  target: Record<string, unknown>,
-  pattern: CommandPattern,
-  behavior: RuleBehavior,
-): void {
-  const commandGate = objectValue(target.commandGate);
-  const patterns = arrayValue(commandGate.patterns);
-  commandGate.patterns = upsertRuleBehavior(patterns, pattern, behavior);
-  target.commandGate = commandGate;
-}
-
-function upsertOrgAwareRuleBehavior(
-  target: Record<string, unknown>,
-  rule: OrgAwareRule,
-  behavior: RuleBehavior,
-): void {
-  const orgAwareGate = objectValue(target.orgAwareGate);
-  const rules = arrayValue(orgAwareGate.rules);
-  orgAwareGate.rules = upsertRuleBehavior(rules, rule, behavior);
-  target.orgAwareGate = orgAwareGate;
-}
-
-function upsertRuleBehavior<T extends { id: string }>(
-  rules: unknown[],
-  rule: T,
-  behavior: RuleBehavior,
-): unknown[] {
-  const enabled = behaviorEnabled(behavior);
-  const nextRule = { ...rule, behavior, enabled };
-  let found = false;
-  const next = rules.map((candidate) => {
-    if (!candidate || typeof candidate !== "object") return candidate;
-    const raw = candidate as Record<string, unknown>;
-    if (raw.id !== rule.id) return candidate;
-    found = true;
-    return { ...raw, behavior, enabled };
-  });
-  if (!found) next.push(nextRule);
-  return next;
-}
-
-function objectValue(value: unknown): Record<string, unknown> {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? { ...(value as Record<string, unknown>) }
-    : {};
-}
-
-function arrayValue(value: unknown): unknown[] {
-  return Array.isArray(value) ? [...value] : [];
 }
 
 function policyRulePreferenceKey(ruleId: string): `policies.rules.${string}.enabled` {

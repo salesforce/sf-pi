@@ -85,12 +85,11 @@ import {
 } from "./lib/approval-ledger.ts";
 import { renderApprovalDetail } from "./lib/approval-detail.ts";
 import { evaluateSafety } from "./lib/safety-kernel.ts";
-import { loadConfig } from "./lib/config.ts";
+import { type GuardrailConfigSource, loadConfig } from "./lib/config.ts";
 import { confirmDecision } from "./lib/hitl.ts";
 import { installPreset } from "./lib/install-preset.ts";
 import { loadPrompt } from "./lib/prompt-injection.ts";
 import { applyGuardrailPreset } from "./lib/preferences.ts";
-import { openGuardrailPreferencesPanel } from "./lib/preferences-panel.ts";
 import { openProductionAliasesEditor } from "./lib/production-aliases-panel.ts";
 import { renderAudit, renderRules, renderStatus } from "./lib/status.ts";
 import { COMMAND_NAME, INJECTION_ENTRY_TYPE, type GuardrailConfig } from "./lib/types.ts";
@@ -98,12 +97,12 @@ import { COMMAND_NAME, INJECTION_ENTRY_TYPE, type GuardrailConfig } from "./lib/
 export default function sfGuardrail(pi: ExtensionAPI) {
   if (!requirePiVersion(pi, "sf-guardrail")) return;
 
-  // Config is loaded lazily per event. Reading the override file on every
-  // tool_call keeps edits in `<globalAgentDir>/sf-guardrail/rules.json`
-  // effective without a /reload, matching sf-brain's override ergonomics.
-  // The I/O cost is one JSON.parse per tool call on a file under ~10KB —
-  // acceptable for a safety layer; we'd revisit if it shows up in profiles.
-  function getConfig(): { config: GuardrailConfig; source: "bundled" | "override" } {
+  // Config is loaded lazily per event. Reading Pi settings plus the advanced
+  // override file on every tool_call keeps `/sf-pi` settings edits and expert
+  // JSON overrides effective without a /reload. The I/O cost is two small
+  // JSON parses per tool call — acceptable for a safety layer; we'd revisit if
+  // it shows up in profiles.
+  function getConfig(): { config: GuardrailConfig; source: GuardrailConfigSource } {
     return loadConfig();
   }
 
@@ -282,14 +281,14 @@ const GUARDRAIL_ACTIONS: CommandPanelAction<GuardrailAction>[] = [
   },
   {
     value: "settings",
-    label: "Open settings",
-    description: "Edit common guardrail preferences with Pi's SettingsList UI.",
+    label: "Settings moved to /sf-pi",
+    description: "Show where native Pi-backed guardrail preferences now live.",
     group: "Controls",
   },
   {
     value: "aliases",
     label: "Edit production aliases",
-    description: "Add or remove aliases that sf-guardrail should treat as production.",
+    description: "Edit aliases that sf-guardrail should treat as production; saved to Pi settings.",
     group: "Controls",
   },
   {
@@ -418,7 +417,13 @@ async function handleGuardrailCommand(
   }
 
   if (sub === "settings") {
-    await openGuardrailPreferencesPanel(ctx, config);
+    await emitGuardrailOutput(
+      ctx,
+      "SF Guardrail settings moved",
+      renderSettingsMovedHelp(),
+      "info",
+      fromPanel,
+    );
     return;
   }
 
@@ -509,6 +514,23 @@ function buildGuardrailPanelStatus(
   ];
 }
 
+function renderSettingsMovedHelp(): string {
+  return [
+    "Routine Guardrail Preferences now live in Pi settings under sfPi.guardrail.",
+    "",
+    "Open them from:",
+    "  /sf-pi → SF Guardrail → Settings",
+    "",
+    "Saved at:",
+    "  ~/.pi/agent/settings.json",
+    "",
+    "Advanced custom rule overrides remain expert-only JSON:",
+    "  ~/.pi/agent/sf-guardrail/rules.json",
+    "",
+    "Runtime safety decisions read the effective config on each tool call. Reload is recommended after changing settings so hidden agent guidance refreshes.",
+  ].join("\n");
+}
+
 function renderGuardrailHelp(): string {
   return [
     "sf-guardrail — Salesforce-aware safety layer",
@@ -519,7 +541,7 @@ function renderGuardrailHelp(): string {
     `  /${COMMAND_NAME} list            List active file/command/org-aware rules`,
     `  /${COMMAND_NAME} audit           Show recent decisions in this session branch`,
     `  /${COMMAND_NAME} grants          Show active persisted approval grants`,
-    `  /${COMMAND_NAME} settings        Edit common guardrail preferences`,
+    `  /${COMMAND_NAME} settings        Show where Pi-backed guardrail preferences live`,
     `  /${COMMAND_NAME} aliases         Edit production aliases`,
     `  /${COMMAND_NAME} power-tool      Apply confirm-by-default preset`,
     `  /${COMMAND_NAME} strict          Apply strict hard-block preset`,

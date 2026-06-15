@@ -17,35 +17,35 @@ Repo-level rules still apply; see root `AGENTS.md`.
 
 One-file-per-concern split:
 
-| Responsibility                   | File                              |
-| -------------------------------- | --------------------------------- |
-| Event wiring + command handler   | `index.ts`                        |
-| Schema + persisted entry types   | `lib/types.ts`                    |
-| Safety decision seam             | `lib/safety-kernel.ts`            |
-| Safety subject normalization     | `lib/safety-subject.ts`           |
-| Safety envelope construction     | `lib/safety-envelope.ts`          |
-| Rule behavior resolution         | `lib/rule-behavior.ts`            |
-| Bundled + override config loader | `lib/config.ts`                   |
-| Shell tokenizer + AST matcher    | `lib/bash-ast.ts`                 |
-| File-policy risk gate            | `lib/file-policy-gate.ts`         |
-| File-path policy matcher         | `lib/policies.ts`                 |
-| Command risk gate                | `lib/command-risk-gate.ts`        |
-| Dangerous-command matcher        | `lib/command-gate.ts`             |
-| Target-org resolution            | `lib/org-context.ts`              |
-| Org-aware risk gate              | `lib/org-aware-risk-gate.ts`      |
-| Production-only rule matcher     | `lib/org-aware-gate.ts`           |
-| Confirmation dialog wrapper      | `lib/hitl.ts`                     |
-| Approval dialog detail formatter | `lib/approval-detail.ts`          |
-| Approval memory seam             | `lib/approval-ledger.ts`          |
-| Safety Envelope fingerprints     | `lib/fingerprint.ts`              |
-| `/sf-guardrail settings`         | `lib/preferences-panel.ts`        |
-| Common preference descriptors    | `lib/preferences.ts`              |
-| Production aliases editor        | `lib/production-aliases-panel.ts` |
-| `/sf-guardrail install-preset`   | `lib/install-preset.ts`           |
-| Rule-derived agent guidance      | `lib/guidance.ts`                 |
-| Kernel body loader + override    | `lib/prompt-injection.ts`         |
-| Formatters for `/sf-guardrail`   | `lib/status.ts`                   |
-| Read-only config panel           | `lib/config-panel.ts`             |
+| Responsibility                       | File                                                |
+| ------------------------------------ | --------------------------------------------------- |
+| Event wiring + command handler       | `index.ts`                                          |
+| Schema + persisted entry types       | `lib/types.ts`                                      |
+| Safety decision seam                 | `lib/safety-kernel.ts`                              |
+| Safety subject normalization         | `lib/safety-subject.ts`                             |
+| Safety envelope construction         | `lib/safety-envelope.ts`                            |
+| Rule behavior resolution             | `lib/rule-behavior.ts`                              |
+| Bundled + override config loader     | `lib/config.ts`                                     |
+| Shell tokenizer + AST matcher        | `lib/bash-ast.ts`                                   |
+| File-policy risk gate                | `lib/file-policy-gate.ts`                           |
+| File-path policy matcher             | `lib/policies.ts`                                   |
+| Command risk gate                    | `lib/command-risk-gate.ts`                          |
+| Dangerous-command matcher            | `lib/command-gate.ts`                               |
+| Target-org resolution                | `lib/org-context.ts`                                |
+| Org-aware risk gate                  | `lib/org-aware-risk-gate.ts`                        |
+| Production-only rule matcher         | `lib/org-aware-gate.ts`                             |
+| Confirmation dialog wrapper          | `lib/hitl.ts`                                       |
+| Approval dialog detail formatter     | `lib/approval-detail.ts`                            |
+| Approval memory seam                 | `lib/approval-ledger.ts`                            |
+| Safety Envelope fingerprints         | `lib/fingerprint.ts`                                |
+| Manager-backed Guardrail Preferences | `lib/config-panel.ts` + `lib/guardrail-settings.ts` |
+| Common preference descriptors        | `lib/preferences.ts`                                |
+| Production aliases editor            | `lib/production-aliases-panel.ts`                   |
+| `/sf-guardrail install-preset`       | `lib/install-preset.ts`                             |
+| Rule-derived agent guidance          | `lib/guidance.ts`                                   |
+| Kernel body loader + override        | `lib/prompt-injection.ts`                           |
+| Formatters for `/sf-guardrail`       | `lib/status.ts`                                     |
+| SF Pi Manager settings adapter       | `lib/config-panel.ts`                               |
 
 ## Conventions
 
@@ -105,6 +105,7 @@ One-file-per-concern split:
   would be hostile. Revisit as opt-in later.
 - No opt-in LLM command explainer in MVP. It is a legitimate follow-up
   once we have telemetry on how often users accept without context.
-- No project-local config layer in MVP (`.pi/sf-guardrail/rules.json`).
-  Roadmap item. Adding it means plumbing `cwd` through `loadConfig()`
-  and updating the merge to three layers.
+- No project-local guardrail preference layer in MVP. Routine preferences
+  are global Pi settings under `sfPi.guardrail`; project-local weakening is
+  deferred with project-local rule overrides. Adding either means plumbing
+  trust-aware `cwd` through settings resolution and recording a new ADR.

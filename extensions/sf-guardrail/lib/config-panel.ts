@@ -1,17 +1,24 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /**
- * Config panel for sf-guardrail — read-only status shown in the sf-pi
- * Extension Manager overlay. Modeled on sf-slack/config-panel.ts.
+ * Config panel for sf-guardrail inside the SF Pi Manager surface.
  *
- * Operators who want to *edit* config use `/sf-guardrail install-preset`
- * and then hand-edit the override file. This panel just summarizes what
- * is loaded so the manager overlay can answer "is this active? with which
- * rules?".
+ * Routine Guardrail Preferences are backed by Pi's native settings.json under
+ * `sfPi.guardrail`. Advanced custom rule overrides stay in the expert override
+ * file and are summarized here instead of edited inline.
  */
-import { type Focusable, matchesKey, visibleWidth } from "@earendil-works/pi-tui";
+import { type Focusable, matchesKey, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import type { ConfigPanelFactory, ConfigPanelResult } from "../../../catalog/registry.ts";
+import { globalSettingsPath } from "../../../lib/common/sf-pi-settings.ts";
 import { loadConfig, userConfigPath } from "./config.ts";
+import {
+  applyGuardrailPreset,
+  buildGuardrailPreferenceDescriptors,
+  preferenceValue,
+  updateUserPreference,
+  type GuardrailPreferenceDescriptor,
+} from "./preferences.ts";
+import type { GuardrailConfig } from "./types.ts";
 
 function padAnsi(text: string, width: number): string {
   return `${text}${" ".repeat(Math.max(0, width - visibleWidth(text)))}`;
@@ -19,95 +26,208 @@ function padAnsi(text: string, width: number): string {
 
 class SfGuardrailConfigPanel implements Focusable {
   focused = false;
+  private selected = 0;
+  private lastSavedMessage = "";
+  private config: GuardrailConfig;
+  private source: string;
 
   constructor(
     private readonly theme: Theme,
+    private readonly scope: "global" | "project",
     private readonly done: (result: ConfigPanelResult | undefined) => void,
-  ) {}
+  ) {
+    const loaded = loadConfig();
+    this.config = loaded.config;
+    this.source = loaded.source;
+  }
 
   handleInput(data: string): void {
-    if (matchesKey(data, "escape") || matchesKey(data, "q")) {
+    if (matchesKey(data, "escape") || data === "q") {
       this.done(undefined);
+      return;
+    }
+
+    if (this.scope === "project") return;
+
+    if (matchesKey(data, "up") && this.selected > 0) {
+      this.selected -= 1;
+      return;
+    }
+    if (matchesKey(data, "down") && this.selected < this.descriptors().length - 1) {
+      this.selected += 1;
+      return;
+    }
+    if (matchesKey(data, "left")) {
+      this.cycleSelected(-1);
+      return;
+    }
+    if (matchesKey(data, "right") || matchesKey(data, "space")) {
+      this.cycleSelected(1);
+      return;
+    }
+    if (data === "p") {
+      applyGuardrailPreset("powerTool", this.config);
+      this.reload("Power Tool preset saved to Pi settings.");
+      return;
+    }
+    if (data === "s") {
+      applyGuardrailPreset("strict", this.config);
+      this.reload("Strict preset saved to Pi settings.");
     }
   }
 
   renderContent(width: number): string[] {
     const lines: string[] = [];
     const t = this.theme;
-    const pad = (content: string) => padAnsi(content, width);
+    const pad = (content = "") => padAnsi(truncateToWidth(content, width, ""), width);
 
-    const { config, source } = loadConfig();
-    const enabled = config.enabled;
-
-    lines.push(pad(` ${t.fg("muted", "SF Guardrail — active rules")}`));
+    lines.push(pad(` ${t.fg("muted", "SF Guardrail — settings")}`));
     lines.push(pad(""));
 
-    const dot = enabled ? t.fg("success", "●") : t.fg("error", "●");
-    const status = enabled ? "Enabled" : "Disabled";
-    lines.push(pad(` ${dot} ${t.fg("text", status)}   ${t.fg("dim", `(source: ${source})`)}`));
-    lines.push(pad(""));
-
-    lines.push(pad(` ${t.fg("muted", "Features:")}`));
-    lines.push(
-      pad(
-        `   ${featureDot(t, config.features.policies)} policies         ${t.fg("dim", `${activeCount(config.policies.rules.map((r) => r.enabled))}/${config.policies.rules.length} rules`)}`,
-      ),
-    );
-    lines.push(
-      pad(
-        `   ${featureDot(t, config.features.commandGate)} commandGate      ${t.fg("dim", `${config.commandGate.patterns.length} patterns, ${config.commandGate.autoDenyPatterns.length} auto-deny`)}`,
-      ),
-    );
-    lines.push(
-      pad(
-        `   ${featureDot(t, config.features.orgAwareGate)} orgAwareGate     ${t.fg("dim", `${activeCount(config.orgAwareGate.rules.map((r) => r.enabled))}/${config.orgAwareGate.rules.length} rules`)}`,
-      ),
-    );
-    lines.push(
-      pad(
-        `   ${featureDot(t, config.features.promptInjection)} promptInjection  ${t.fg("dim", "inject once per session")}`,
-      ),
-    );
-    lines.push(pad(""));
-
-    if (config.productionAliases.length > 0) {
+    if (this.scope === "project") {
+      lines.push(pad(` ${t.fg("warning", "Project-scoped guardrail settings are deferred.")}`));
+      lines.push(pad(""));
       lines.push(
         pad(
-          ` ${t.fg("muted", "Production aliases:")} ${t.fg("text", config.productionAliases.join(", "))}`,
+          ` ${t.fg("dim", "Guardrail preferences are global-only so a repository cannot silently weaken local safety rules.")}`,
         ),
       );
-    } else {
-      lines.push(
-        pad(
-          ` ${t.fg("muted", "Production aliases:")} ${t.fg("dim", "(none — relies on org-type detection)")}`,
-        ),
-      );
+      lines.push(pad(""));
+      lines.push(pad(` ${t.fg("muted", "Global settings:")} ${t.fg("dim", globalSettingsPath())}`));
+      lines.push(pad(` ${t.fg("dim", "Esc to go back.")}`));
+      return lines;
     }
 
     lines.push(
-      pad(` ${t.fg("muted", "Confirm timeout:")} ${t.fg("text", `${config.confirmTimeoutMs} ms`)}`),
+      pad(` ${t.fg("muted", "Routine preferences:")} ${t.fg("dim", globalSettingsPath())}`),
     );
+    lines.push(pad(` ${t.fg("muted", "Advanced overrides:")}  ${t.fg("dim", userConfigPath())}`));
+    lines.push(pad(` ${t.fg("muted", "Effective source:")}     ${t.fg("text", this.source)}`));
+    lines.push(pad(""));
     lines.push(
-      pad(` ${t.fg("muted", "Headless env:")}    ${t.fg("text", config.headlessEscapeHatchEnv)}`),
+      pad(
+        ` ${t.fg("dim", "←/→ changes the selected value immediately. p = Power Tool, s = Strict.")}`,
+      ),
     );
     lines.push(pad(""));
 
-    lines.push(pad(` ${t.fg("muted", "Override file:")} ${t.fg("dim", userConfigPath())}`));
-    lines.push(pad(""));
-    lines.push(pad(` ${t.fg("dim", "Use /sf-guardrail to inspect. Esc to go back.")}`));
+    const descriptors = this.descriptors();
+    let currentSection = "";
+    for (let i = 0; i < descriptors.length; i++) {
+      const descriptor = descriptors[i];
+      if (!descriptor) continue;
+      if (descriptor.section !== currentSection) {
+        currentSection = descriptor.section;
+        lines.push(pad(` ${t.fg("accent", sectionTitle(currentSection))}`));
+      }
+      lines.push(pad(this.renderDescriptorLine(descriptor, i === this.selected, width)));
+      if (i === this.selected) {
+        for (const detail of this.detailLines(descriptor, width)) lines.push(pad(detail));
+      }
+    }
 
+    lines.push(pad(""));
+    if (this.lastSavedMessage) lines.push(pad(` ${t.fg("success", this.lastSavedMessage)}`));
+    lines.push(pad(` ${t.fg("dim", "Esc back · changes are saved as you edit")}`));
     return lines;
+  }
+
+  render(width: number): string[] {
+    return this.renderContent(width);
+  }
+
+  invalidate(): void {}
+
+  private descriptors(): GuardrailPreferenceDescriptor[] {
+    return buildGuardrailPreferenceDescriptors(this.config).filter(
+      (descriptor) =>
+        descriptor.key !== "enabled" &&
+        descriptor.section !== "posture" &&
+        descriptor.section !== "aliases" &&
+        descriptor.section !== "advanced",
+    );
+  }
+
+  private renderDescriptorLine(
+    descriptor: GuardrailPreferenceDescriptor,
+    selected: boolean,
+    width: number,
+  ): string {
+    const t = this.theme;
+    const current = displayValue(preferenceValue(this.config, descriptor.key));
+    const prefix = selected ? t.fg("accent", " → ") : "   ";
+    const valueWidth = 12;
+    const labelWidth = Math.max(18, width - valueWidth - 7);
+    const label = truncateToWidth(descriptor.label, labelWidth, "…");
+    const padding = " ".repeat(Math.max(1, labelWidth - visibleWidth(label) + 1));
+    const value = selected ? t.fg("accent", current) : t.fg("muted", current);
+    return `${prefix}${label}${padding}${value}`;
+  }
+
+  private detailLines(descriptor: GuardrailPreferenceDescriptor, width: number): string[] {
+    const t = this.theme;
+    const detailWidth = Math.max(20, width - 6);
+    const lines = [
+      descriptor.description,
+      descriptor.example ? `Example: ${descriptor.example}` : undefined,
+      descriptor.why ? `Why: ${descriptor.why}` : undefined,
+      `Values: ${descriptor.values.map(displayValue).join(" · ")}`,
+    ].filter((line): line is string => !!line);
+    return lines.map((line) => `     ${t.fg("dim", truncateToWidth(line, detailWidth, "…"))}`);
+  }
+
+  private cycleSelected(direction: -1 | 1): void {
+    const descriptor = this.descriptors()[this.selected];
+    if (!descriptor) return;
+    const current = preferenceValue(this.config, descriptor.key);
+    const currentIndex = Math.max(0, descriptor.values.indexOf(current));
+    const nextIndex =
+      (currentIndex + direction + descriptor.values.length) % descriptor.values.length;
+    const nextValue = descriptor.values[nextIndex];
+    if (!nextValue) return;
+    updateUserPreference(descriptor.key, nextValue, this.config);
+    this.reload(`${descriptor.label}: ${displayValue(nextValue)} saved.`);
+  }
+
+  private reload(message: string): void {
+    const loaded = loadConfig();
+    this.config = loaded.config;
+    this.source = loaded.source;
+    this.lastSavedMessage = message;
   }
 }
 
-function featureDot(t: Theme, on: boolean): string {
-  return on ? t.fg("success", "●") : t.fg("dim", "○");
+function sectionTitle(section: string): string {
+  switch (section) {
+    case "core":
+      return "Core controls";
+    case "files":
+      return "File protection";
+    case "commands":
+      return "Dangerous commands";
+    case "orgs":
+      return "Salesforce org operations";
+    default:
+      return section;
+  }
 }
 
-function activeCount(flags: (boolean | undefined)[]): number {
-  return flags.filter((v) => v !== false).length;
+function displayValue(value: string): string {
+  switch (value) {
+    case "confirm":
+      return "Ask me";
+    case "hard block":
+    case "block":
+      return "Block";
+    case "off":
+      return "Off";
+    case "on":
+      return "On";
+    default:
+      return value.endsWith("000") ? `${Number(value) / 1000}s` : value;
+  }
 }
 
-export const createConfigPanel: ConfigPanelFactory = (theme, _cwd, _scope, done) => {
-  return new SfGuardrailConfigPanel(theme, done);
+export const createConfigPanel: ConfigPanelFactory = (theme, _cwd, scope, done) => {
+  return new SfGuardrailConfigPanel(theme, scope, done);
 };

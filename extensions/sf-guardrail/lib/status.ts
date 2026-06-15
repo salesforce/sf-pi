@@ -7,11 +7,12 @@
  * string shown via ctx.ui.notify.
  */
 import { labelForRuleBehavior, resolveRuleBehavior } from "./rule-behavior.ts";
+import type { GuardrailConfigSource } from "./config.ts";
 import type { DecisionEntryData, GuardrailConfig } from "./types.ts";
 
 export interface StatusInput {
   config: GuardrailConfig;
-  configSource: "bundled" | "override";
+  configSource: GuardrailConfigSource;
   recent: DecisionEntryData[];
   hasUI: boolean;
   headlessEnabled: boolean;

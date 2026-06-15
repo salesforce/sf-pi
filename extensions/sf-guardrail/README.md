@@ -83,14 +83,18 @@ Extension loads
 ## Config Layers
 
 Bundled defaults live in `SF_GUARDRAIL_DEFAULTS.json` next to `index.ts`.
-A user override file at `<globalAgentDir>/sf-guardrail/rules.json`
-(typically `~/.pi/agent/sf-guardrail/rules.json`) merges over the
-bundled defaults by rule `id` — last wins. Rule behavior is
-`off`, `confirm`, or `block`; legacy `{ "id": "...", "enabled": false }`
-still maps to `off`.
+Routine Guardrail Preferences live in Pi's global settings file under
+`sfPi.guardrail` (typically `~/.pi/agent/settings.json`). These cover feature
+toggles, confirmation timeout, production aliases, and bundled-rule behavior
+(`off`, `confirm`, or `block`).
 
-Project-level overrides (`.pi/sf-guardrail/rules.json`) are on the
-roadmap — see `ROADMAP.md`.
+Advanced rule overrides remain in `<globalAgentDir>/sf-guardrail/rules.json`
+(typically `~/.pi/agent/sf-guardrail/rules.json`). Use that file only for
+custom patterns or full bundled-rule replacement by stable rule `id`.
+
+Effective config is resolved in this order: bundled defaults, advanced override
+JSON, then Pi settings for routine preferences. Project-local guardrail
+weakening remains deferred — see `ROADMAP.md`.
 
 ## Commands
 
@@ -98,18 +102,17 @@ roadmap — see `ROADMAP.md`.
 - `/sf-guardrail list` → full dump of active rules
 - `/sf-guardrail audit` → up to 50 recent decisions from the session
 - `/sf-guardrail grants` → list legacy persisted approval grants, if any
-- `/sf-guardrail settings` → open a sectioned settings surface with examples,
-  recommendations, and per-rule behavior (`Ask me`, `Block`, `Off`) while
-  preserving advanced JSON rule overrides
-- `/sf-guardrail aliases` → edit aliases that should be treated as production
-- `/sf-guardrail power-tool` → set every rule to `confirm`
+- `/sf-guardrail settings` → compatibility help that points to `/sf-pi` →
+  SF Guardrail → Settings, where routine preferences are edited
+- `/sf-guardrail aliases` → edit aliases that should be treated as production;
+  saved to Pi settings
+- `/sf-guardrail power-tool` → set every rule to `confirm` in Pi settings
 - `/sf-guardrail strict` → hard-block secret, credential, and CLI-state rules;
-  set other rules to `confirm`
+  set other rules to `confirm` in Pi settings
 - `/sf-guardrail forget` → revoke session allow-memory for this branch and clear
   legacy persisted approval grants for the current project
-- `/sf-guardrail install-preset` → write bundled defaults to the user
-  override file, with per-rule reconciliation when the file already
-  exists
+- `/sf-guardrail install-preset` → write bundled defaults to the advanced
+  override file for expert customization
 
 ## Architecture References
 
@@ -131,7 +134,8 @@ engine. The canonical terms live in `CONTEXT.md`; the redesign plan lives in
 - ADR 0043 — detected Salesforce org type is the classification source
 - ADR 0044 — Power Tool mode defaults to confirmable actions
 - ADR 0046 — per-rule behavior is `off`, `confirm`, or `hard block`
-- ADR 0047 — settings use a section chooser
+- ADR 0047 — settings use a section chooser (superseded by ADR 0049)
+- ADR 0049 — routine preferences live in Pi settings and the Manager Surface
 
 ## Behavior Matrix
 
@@ -172,6 +176,7 @@ extensions/sf-guardrail/
     extension-doctor.ts     ← implementation module
     file-policy-gate.ts     ← implementation module
     fingerprint.ts          ← implementation module
+    guardrail-settings.ts   ← implementation module
     guidance.ts             ← implementation module
     hitl.ts                 ← implementation module
     install-preset.ts       ← implementation module
@@ -258,9 +263,8 @@ Covered by unit tests:
   legacy persisted grant rendering, and clearing.
 - Rule-derived guidance reflects the effective config and preserves the
   user override prompt path.
-- Pi-native preferences use a section chooser and selected-row detail cards with
-  examples, Power Tool/Strict recommendations, and per-rule behavior while
-  preserving advanced JSON overrides.
+- Pi-native preferences are stored under `sfPi.guardrail`, surfaced from the
+  SF Pi Manager config panel, and preserve advanced JSON overrides.
 - Envelope-first HIL detail renders risk gate, subject, target org, approval
   coverage, session duration, and advisory recovery guidance.
 - Safety Kernel contract tests produce the right decision for representative

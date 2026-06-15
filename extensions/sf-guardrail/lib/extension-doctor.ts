@@ -23,9 +23,9 @@ export async function runExtensionDoctor(): Promise<ExtensionDoctorReport> {
     severity: "ok",
     title: `Configuration source: ${source}`,
     detail:
-      source === "override"
-        ? "Using user override at <globalAgentDir>/sf-guardrail/rules.json"
-        : "Using bundled defaults (run /sf-guardrail install-preset to fork them).",
+      source === "bundled"
+        ? "Using bundled defaults."
+        : "Using Pi settings and/or advanced overrides for effective config.",
   });
 
   const featureNames: string[] = [];
@@ -44,7 +44,7 @@ export async function runExtensionDoctor(): Promise<ExtensionDoctorReport> {
     detail: `${config.policies.rules.length} policies, ${config.commandGate.patterns.length} command-gate patterns, ${config.orgAwareGate.rules.length} org-aware rules loaded.`,
     fix:
       featureNames.length === 0
-        ? "Re-enable features in /sf-guardrail config or run /sf-guardrail install-preset to restore defaults."
+        ? "Re-enable features in /sf-pi → SF Guardrail → Settings."
         : undefined,
   });
 

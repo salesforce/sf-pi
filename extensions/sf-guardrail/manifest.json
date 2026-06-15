@@ -28,7 +28,7 @@
       "lib/hitl.ts",
       "lib/approval-detail.ts",
       "lib/preferences.ts",
-      "lib/preferences-panel.ts",
+      "lib/guardrail-settings.ts",
       "lib/production-aliases-panel.ts",
       "lib/approval-ledger.ts",
       "lib/fingerprint.ts",

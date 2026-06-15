@@ -109,15 +109,15 @@ The agent-visible SF Guardrail instructions generated from the effective ruleset
 _Avoid_: second rule source, hand-maintained policy prompt, duplicated safety docs
 
 **Guardrail Preference**:
-A normal user-facing SF Guardrail setting such as feature enablement, confirmation timeout, production aliases, or bundled-rule enablement.
+A normal user-facing SF Guardrail setting such as feature enablement, confirmation timeout, production aliases, or bundled-rule **Rule Behavior**. Routine **Guardrail Preferences** live in Pi settings under `sfPi.guardrail`.
 _Avoid_: rule override, policy config, hidden JSON setting
 
 **Guardrail Settings Surface**:
-The immediate user-facing settings experience owned by `/sf-guardrail settings`. It should be self-serving, example-rich, and descriptor-driven so it can later feed a shared SF Pi Manager settings surface.
+The user-facing settings experience for routine **Guardrail Preferences** in the SF Pi **Manager Surface**. `/sf-guardrail settings` is a compatibility/help entrypoint, not the mutable settings owner.
 _Avoid_: raw rule dump, JSON editor, one-off settings hack
 
 **Advanced Rule Override**:
-An expert-level JSON customization that adds or replaces a rule in the effective ruleset by stable rule id.
+An expert-level JSON customization that adds or replaces a rule in the effective ruleset by stable rule id. Advanced overrides remain separate from routine Pi settings.
 _Avoid_: normal setting, policy platform, team governance system
 
 **Project-Local Rule Override**:

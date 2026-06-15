@@ -3,7 +3,7 @@
  * Guardrail preference tests.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -15,12 +15,14 @@ vi.mock("@earendil-works/pi-coding-agent", () => ({
 
 let configModule: typeof import("../lib/config.ts");
 let preferences: typeof import("../lib/preferences.ts");
+let settingsModule: typeof import("../../../lib/common/sf-pi-settings.ts");
 
 beforeEach(async () => {
   vi.resetModules();
   tempAgentDir = mkdtempSync(path.join(tmpdir(), "sf-guardrail-prefs-agent-"));
   configModule = await import("../lib/config.ts");
   preferences = await import("../lib/preferences.ts");
+  settingsModule = await import("../../../lib/common/sf-pi-settings.ts");
 });
 
 afterEach(() => {
@@ -77,15 +79,19 @@ describe("guardrail preferences", () => {
     expect(configModule.loadConfig().config.productionAliases).toEqual(["Prod", "prod"]);
   });
 
-  it("writes common preference overrides that loadConfig reads", () => {
+  it("writes common preference overrides to Pi settings that loadConfig reads", () => {
     preferences.updateUserPreference("features.commandGate", "off");
     preferences.updateUserPreference("confirmTimeoutMs", "60000");
 
     const { config, source } = configModule.loadConfig();
+    const settings = JSON.parse(readFileSync(settingsModule.globalSettingsPath(), "utf8"));
 
-    expect(source).toBe("override");
+    expect(source).toBe("settings");
     expect(config.features.commandGate).toBe(false);
     expect(config.confirmTimeoutMs).toBe(60000);
+    expect(settings.sfPi.guardrail.features.commandGate).toBe(false);
+    expect(settings.sfPi.guardrail.confirmTimeoutMs).toBe(60000);
+    expect(existsSync(configModule.userConfigPath())).toBe(false);
   });
 
   it("exposes sectioned, example-rich rule descriptors", () => {
@@ -126,15 +132,19 @@ describe("guardrail preferences", () => {
     });
   });
 
-  it("writes policy rule behavior overrides that loadConfig reads", () => {
+  it("writes policy rule behavior overrides to Pi settings that loadConfig reads", () => {
     const config = configModule.readBundledConfig();
 
     preferences.updateUserPreference("policies.rules.secret-files.enabled", "hard block", config);
 
-    const { config: loaded } = configModule.loadConfig();
+    const { config: loaded, source } = configModule.loadConfig();
+    const settings = JSON.parse(readFileSync(settingsModule.globalSettingsPath(), "utf8"));
     const rule = loaded.policies.rules.find((candidate) => candidate.id === "secret-files");
+    expect(source).toBe("settings");
     expect(rule?.behavior).toBe("block");
     expect(rule?.enabled).toBe(true);
+    expect(settings.sfPi.guardrail.ruleBehaviors.policies["secret-files"]).toBe("block");
+    expect(existsSync(configModule.userConfigPath())).toBe(false);
     expect(preferences.preferenceValue(loaded, "policies.rules.secret-files.enabled")).toBe(
       "hard block",
     );
@@ -149,6 +159,24 @@ describe("guardrail preferences", () => {
     const pattern = loaded.commandGate.patterns.find((candidate) => candidate.id === "rm-rf");
     expect(pattern?.behavior).toBe("off");
     expect(pattern?.enabled).toBe(false);
+  });
+
+  it("uses Pi settings rule behavior in safety decisions without advanced override files", async () => {
+    const { evaluateSafety } = await import("../lib/safety-kernel.ts");
+    const config = configModule.readBundledConfig();
+
+    preferences.updateUserPreference("commandGate.patterns.rm-rf.enabled", "off", config);
+
+    const { config: loaded } = configModule.loadConfig();
+    expect(
+      await evaluateSafety({
+        toolName: "bash",
+        input: { command: "rm -rf build" },
+        cwd: "/project",
+        config: loaded,
+      }),
+    ).toBeUndefined();
+    expect(existsSync(configModule.userConfigPath())).toBe(false);
   });
 
   it("writes org-aware rule behavior overrides that loadConfig reads", () => {
@@ -189,10 +217,15 @@ describe("guardrail preferences", () => {
       "utf8",
     );
 
-    preferences.updateUserPreference("enabled", "off");
+    const before = readFileSync(overridePath, "utf8");
 
-    const raw = JSON.parse(readFileSync(overridePath, "utf8"));
-    expect(raw.enabled).toBe(false);
+    preferences.updateUserPreference("features.commandGate", "off");
+
+    const after = readFileSync(overridePath, "utf8");
+    const raw = JSON.parse(after);
+    const settings = JSON.parse(readFileSync(settingsModule.globalSettingsPath(), "utf8"));
+    expect(after).toBe(before);
     expect(raw.commandGate.patterns[0].id).toBe("custom-danger");
+    expect(settings.sfPi.guardrail.features.commandGate).toBe(false);
   });
 });
