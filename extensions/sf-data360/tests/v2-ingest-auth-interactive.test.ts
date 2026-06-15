@@ -110,6 +110,24 @@ describe("Data 360 interactive PKCE auth orchestration", () => {
     expect(text).not.toContain("code_verifier");
   });
 
+  it("rejects OAuth callbacks that do not include an authorization code", async () => {
+    await expect(
+      runInteractivePkceAuth(
+        {
+          loginUrl: "https://test.salesforce.com",
+          clientId: "public-client-id",
+          redirectUri: "http://127.0.0.1:0/OauthRedirect",
+        },
+        {
+          authorizationOpener: () => undefined,
+          onReady: async ({ callbackUrl, state }) => {
+            await fetch(`${callbackUrl}?error=access_denied&state=${state}`);
+          },
+        },
+      ),
+    ).rejects.toThrow("Missing OAuth authorization code");
+  });
+
   it("allows only Salesforce HTTPS authorization URLs for browser opening", () => {
     expect(
       validateSalesforceAuthorizationUrl("https://test.salesforce.com/services/oauth2/authorize"),

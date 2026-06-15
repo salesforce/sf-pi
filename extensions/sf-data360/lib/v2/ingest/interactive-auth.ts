@@ -51,10 +51,6 @@ export async function runInteractivePkceAuth(
           res.writeHead(404).end("Not found");
           return;
         }
-        const error = requestUrl.searchParams.get("error");
-        if (error) {
-          throw new Error(`${error}: ${requestUrl.searchParams.get("error_description") ?? ""}`);
-        }
         const code = requestUrl.searchParams.get("code") ?? "";
         const state = requestUrl.searchParams.get("state") ?? "";
         if (!code) throw new Error("Missing OAuth authorization code.");
