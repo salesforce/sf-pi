@@ -314,7 +314,8 @@ export function buildSemanticModelLifecyclePlan(runId: string): DmoLifecyclePlan
   };
 }
 
-export function buildSearchIndexReadinessPlan(_runId = "readiness"): DmoLifecyclePlan {
+export function buildSearchIndexReadinessPlan(runId = "readiness"): DmoLifecyclePlan {
+  void runId;
   return {
     resourceName: "PiSweepSearchIndexReadiness",
     steps: [
@@ -362,7 +363,8 @@ export function buildRetrieverMutationLifecyclePlan(runId: string): DmoLifecycle
   };
 }
 
-export function buildRetrieverReadinessPlan(_runId = "readiness"): DmoLifecyclePlan {
+export function buildRetrieverReadinessPlan(runId = "readiness"): DmoLifecyclePlan {
+  void runId;
   return {
     resourceName: "PiSweepRetrieverReadiness",
     steps: [
@@ -2650,7 +2652,8 @@ function buildCalculatedInsightCreateBody(runId: string): Record<string, unknown
   };
 }
 
-function calculatedInsightExpression(_runId: string): string {
+function calculatedInsightExpression(runId: string): string {
+  void runId;
   return [
     "SELECT ssot__AiAgentSession__dlm.ssot__Id__c AS session_id__c,",
     "COUNT(*) AS interaction_count__c",
