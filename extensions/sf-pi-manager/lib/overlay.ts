@@ -64,10 +64,6 @@ export type OverlayResult = {
   disabledFiles: Set<string>;
   needsReload?: boolean;
   scope: "global" | "project";
-  action?: {
-    extensionId: string;
-    actionId: string;
-  };
 };
 
 export type OverlayInitialRoute = {
@@ -87,7 +83,7 @@ interface DetailActionItem {
   value: DetailAction;
   label: string;
   description: string;
-  managerActionId?: string;
+  managerAction?: ManagerDetailAction;
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -147,6 +143,7 @@ export class SfPiOverlayComponent implements Focusable {
   private activePanelExtId: string | null = null;
   private configPanelReloadNeeded = false;
   private scope: "global" | "project";
+  private actionInFlight = false;
 
   // Resolved config panel factories keyed by extension id.
   // ConfigPanelFactory returns Focusable, but our panels also implement Component.
@@ -164,6 +161,7 @@ export class SfPiOverlayComponent implements Focusable {
     private readonly getTerminalRows: () => number,
     private readonly done: (result: OverlayResult | undefined) => void,
     private readonly getExtensionActions: (extensionId: string) => ManagerDetailAction[],
+    private readonly runManagerAction: (action: ManagerDetailAction) => Promise<void> | void,
     initialRoute?: OverlayInitialRoute,
   ) {
     this.extensions = initialStates.map((e) => ({ ...e }));
@@ -215,6 +213,10 @@ export class SfPiOverlayComponent implements Focusable {
 
     // --- Detail view ---
     if (this.view.kind === "detail") {
+      if (this.actionInFlight) {
+        return;
+      }
+
       if (matchesKey(data, "escape")) {
         this.returnToList();
         return;
@@ -661,7 +663,7 @@ export class SfPiOverlayComponent implements Focusable {
       value: `manager:${action.id}`,
       label: action.label,
       description: action.description,
-      managerActionId: action.id,
+      managerAction: action,
     }));
   }
 
@@ -691,14 +693,24 @@ export class SfPiOverlayComponent implements Focusable {
         this.returnToList();
         return;
       default:
-        if (action.managerActionId) {
-          this.done(this.buildResult({ extensionId: ext.id, actionId: action.managerActionId }));
+        if (action.managerAction) {
+          void this.runManagerActionInPlace(action.managerAction);
         }
         return;
     }
   }
 
-  private buildResult(action?: { extensionId: string; actionId: string }): OverlayResult {
+  private async runManagerActionInPlace(action: ManagerDetailAction): Promise<void> {
+    if (this.actionInFlight) return;
+    this.actionInFlight = true;
+    try {
+      await this.runManagerAction(action);
+    } finally {
+      this.actionInFlight = false;
+    }
+  }
+
+  private buildResult(): OverlayResult {
     const disabledFiles = new Set<string>();
     for (const ext of this.extensions) {
       if (!ext.enabled && !ext.alwaysActive) {
@@ -710,7 +722,6 @@ export class SfPiOverlayComponent implements Focusable {
       disabledFiles,
       needsReload: this.configPanelReloadNeeded,
       scope: this.scope,
-      action,
     };
   }
 

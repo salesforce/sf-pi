@@ -112,7 +112,6 @@ import { readAnnouncementsState } from "../../lib/common/catalog-state/announcem
 import { migrateExtensionAliases } from "./lib/extension-aliases.ts";
 import {
   collectManagerDetailActions,
-  runCollectedManagerDetailAction,
   type ManagerDetailAction,
 } from "../../lib/common/manager-actions.ts";
 import {
@@ -565,6 +564,7 @@ async function handleOverlay(
           () => tui.terminal.rows,
           done,
           (extensionId) => collectOverlayActions(pi, extensionId, initialRoute),
+          (action) => action.run(ctx),
           initialRoute,
         ),
       {
@@ -594,18 +594,6 @@ async function handleOverlay(
     ctx.ui.notify("sf-pi extensions updated. Reloading…", "info");
     await ctx.reload();
     return;
-  }
-
-  if (result.action) {
-    const handled = await runCollectedManagerDetailAction(
-      pi,
-      result.action.extensionId,
-      result.action.actionId,
-      ctx,
-    );
-    if (!handled) {
-      ctx.ui.notify(`Manager action unavailable: ${result.action.actionId}`, "warning");
-    }
   }
 }
 
