@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.184.5-2026-06-13",
-  "latestVersion": "0.184.5",
+  "revision": "release-0.184.6-2026-06-15",
+  "latestVersion": "0.184.6",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.184.5",
+      "id": "release-0.184.6",
       "kind": "update",
-      "title": "sf-pi v0.184.5 — sf-guardrail: use confirmable rule behavior",
-      "publishedAt": "2026-06-13T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.184.5",
+      "title": "sf-pi v0.184.6 — sf-guardrail: improve settings navigation",
+      "publishedAt": "2026-06-15T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.184.6",
       "severity": "info",
-      "body": "sf-guardrail: use confirmable rule behavior"
+      "body": "sf-guardrail: improve settings navigation"
     },
     {
       "id": "pi-0.73-required",
