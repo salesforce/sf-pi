@@ -4,7 +4,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { withFileMutationQueue } from "@earendil-works/pi-coding-agent";
 import { connForAgentApi } from "../../agent-api-auth.ts";
-import { checkAgentScriptFile } from "../../diagnostics.ts";
+import { getAgentScriptAnalysis, invalidateAgentScriptAnalysis } from "../../analysis-snapshot.ts";
 import { isAgentScriptFile } from "../../file-classify.ts";
 import { serverCompile } from "../../lifecycle.ts";
 import { loadAgentforceSDK } from "../../sdk.ts";
@@ -76,8 +76,10 @@ async function actionCheck(
   details: Record<string, unknown> | ToolError;
 }> {
   const result = timings
-    ? await timings.time("local_compile", () => checkAgentScriptFile(agentFile))
-    : await checkAgentScriptFile(agentFile);
+    ? await timings.time("local_compile", async () =>
+        (await getAgentScriptAnalysis(agentFile)).getCompile(),
+      )
+    : await (await getAgentScriptAnalysis(agentFile)).getCompile();
 
   if (!result.ok) {
     const reason = result.unavailableReason ?? "unknown reason";
@@ -264,6 +266,7 @@ async function actionFormatQueued(agentFile: string): Promise<{
     return toolOk(details, `✓ ${agentFile} already canonically formatted`);
   }
   await writeFile(agentFile, formatted, "utf8");
+  invalidateAgentScriptAnalysis(agentFile);
   const details = withAgentScriptBranchState(
     {
       ok: true as const,

@@ -22,6 +22,30 @@ export interface CollectOrgReviewFindingsInput {
 export async function collectOrgReviewFindings(
   input: CollectOrgReviewFindingsInput,
 ): Promise<ReviewFinding[]> {
+  const agentType =
+    typeof input.config.agent_type === "string" ? input.config.agent_type : undefined;
+  const defaultAgentUser =
+    typeof input.config.default_agent_user === "string"
+      ? input.config.default_agent_user
+      : undefined;
+  const agentApiName =
+    typeof input.config.agent_name === "string" ? input.config.agent_name : undefined;
+
+  const [targetFindings, agentUserFindings, surfaceFindings] = await Promise.all([
+    collectActionTargetFindings(input),
+    agentType === "AgentforceServiceAgent"
+      ? collectAgentUserFindings(input, agentType, defaultAgentUser)
+      : Promise.resolve([]),
+    collectSurfaceFindings(input, agentApiName),
+  ]);
+
+  // Deterministic output order even though the read-only checks run in parallel.
+  return [...targetFindings, ...agentUserFindings, ...surfaceFindings];
+}
+
+async function collectActionTargetFindings(
+  input: CollectOrgReviewFindingsInput,
+): Promise<ReviewFinding[]> {
   const findings: ReviewFinding[] = [];
   const targets = await checkActionTargets(input.conn, input.actions);
   for (const target of targets.targets) {
@@ -43,52 +67,52 @@ export async function collectOrgReviewFindings(
       });
     }
   }
+  return findings;
+}
 
-  const agentType =
-    typeof input.config.agent_type === "string" ? input.config.agent_type : undefined;
-  const defaultAgentUser =
-    typeof input.config.default_agent_user === "string"
-      ? input.config.default_agent_user
-      : undefined;
-  if (agentType === "AgentforceServiceAgent") {
-    const userStatus = await checkAgentUserStatus(input.conn, {
-      agent_type: agentType,
-      default_agent_user: defaultAgentUser,
-    });
-    if (!userStatus.ok) {
-      findings.push({
-        id: `agent-user-${userStatus.reason ?? "not-ready"}`,
-        severity: "blocker",
-        category: "org",
-        message: userStatus.short_message,
-        recover_via: {
-          tool: "agentscript_lifecycle",
-          params: {
-            action: "diagnose_agent_user",
-            agent_file: input.agentFile,
-            target_org: input.targetOrg,
-          },
+async function collectAgentUserFindings(
+  input: CollectOrgReviewFindingsInput,
+  agentType: string,
+  defaultAgentUser: string | undefined,
+): Promise<ReviewFinding[]> {
+  const userStatus = await checkAgentUserStatus(input.conn, {
+    agent_type: agentType,
+    default_agent_user: defaultAgentUser,
+  });
+  if (userStatus.ok) return [];
+  return [
+    {
+      id: `agent-user-${userStatus.reason ?? "not-ready"}`,
+      severity: "blocker",
+      category: "org",
+      message: userStatus.short_message,
+      recover_via: {
+        tool: "agentscript_lifecycle",
+        params: {
+          action: "diagnose_agent_user",
+          agent_file: input.agentFile,
+          target_org: input.targetOrg,
         },
-      });
-    }
-  }
+      },
+    },
+  ];
+}
 
-  const agentApiName =
-    typeof input.config.agent_name === "string" ? input.config.agent_name : undefined;
+async function collectSurfaceFindings(
+  input: CollectOrgReviewFindingsInput,
+  agentApiName: string | undefined,
+): Promise<ReviewFinding[]> {
   const surfaceChecks = await checkSurfaceReadiness(input.conn, input.profile, {
     agentApiName,
     phoneNumber: input.phoneNumber,
   });
-  for (const check of surfaceChecks) {
-    if (check.status === "ok") continue;
-    findings.push({
+  return surfaceChecks
+    .filter((check) => check.status !== "ok")
+    .map((check) => ({
       id: `surface-${check.code}`,
       severity: check.status === "blocker" ? "blocker" : "warning",
       category: "org",
       message: check.message,
       evidence: check.evidence,
-    });
-  }
-
-  return findings;
+    }));
 }

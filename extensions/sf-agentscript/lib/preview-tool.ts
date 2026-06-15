@@ -7,11 +7,11 @@
  * sf-guardrail allows .sfdx/agents/** specifically).
  */
 
-import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { Type } from "typebox";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { connForAgentApi } from "./agent-api-auth.ts";
+import { getAgentScriptAnalysis } from "./analysis-snapshot.ts";
 import {
   cleanupSessions,
   endPreview,
@@ -22,7 +22,6 @@ import {
   startPreviewByApiName,
 } from "./preview/client.ts";
 import type { PreviewMetadata } from "./preview/session-store.ts";
-import { checkAgentScriptFile } from "./diagnostics.ts";
 import { fetchTrace } from "./eval/trace-client.ts";
 import { isAgentScriptFile } from "./file-classify.ts";
 import {
@@ -347,21 +346,22 @@ async function actionStart(
   if (!isAgentScriptFile(filePath)) {
     return toolError(`Not an Agent Script file: ${filePath}`, "Pass a path ending in `.agent`.");
   }
-  let source: string;
+  let analysis;
   try {
-    source = timings
-      ? await timings.time("read_agent_source", () => readFile(filePath, "utf8"))
-      : await readFile(filePath, "utf8");
+    analysis = timings
+      ? await timings.time("load_analysis_snapshot", () => getAgentScriptAnalysis(filePath))
+      : await getAgentScriptAnalysis(filePath);
   } catch (err) {
     return toolError(
       `Cannot read ${filePath}: ${err instanceof Error ? err.message : String(err)}`,
     );
   }
+  const source = analysis.source;
   const agentName = input.agent_name ?? path.basename(filePath, ".agent");
 
   const localCheck = timings
-    ? await timings.time("local_compile", () => checkAgentScriptFile(filePath))
-    : await checkAgentScriptFile(filePath);
+    ? await timings.time("local_compile", () => analysis.getCompile())
+    : await analysis.getCompile();
   if (!localCheck.ok) {
     return toolError(
       localCheck.unavailableReason ?? "Local Agent Script compile failed before preview.",
@@ -399,6 +399,7 @@ async function actionStart(
       targetOrg: input.target_org,
       contextVariables: input.context_variables,
       timings,
+      skipLocalValidation: true,
       // (agentFilePath above is also persisted to metadata.json by
       //  startPreview — used by `end` to suggest the next publish command.)
     });

@@ -15,6 +15,7 @@
 import fs from "node:fs/promises";
 import { withFileMutationQueue } from "@earendil-works/pi-coding-agent";
 import { loadAgentforceSDK, getSdkLoadError } from "./sdk.ts";
+import { invalidateAgentScriptAnalysis } from "./analysis-snapshot.ts";
 import { checkAgentScriptFile } from "./diagnostics.ts";
 import { buildQuickFixes } from "./code-actions.ts";
 import { processAgentforceDocument } from "./agentforce-document.ts";
@@ -223,6 +224,7 @@ async function commitOrPreview(
   }
 
   await fs.writeFile(op.path, after, "utf8");
+  invalidateAgentScriptAnalysis(op.path);
   const recompile = await checkAgentScriptFile(op.path);
   return {
     ok: true,

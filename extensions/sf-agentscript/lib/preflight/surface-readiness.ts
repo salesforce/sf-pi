@@ -44,20 +44,35 @@ export async function checkSurfaceReadiness(
   profile: AgentFeatureProfile,
   context: SurfaceReadinessContext = {},
 ): Promise<SurfaceReadinessCheck[]> {
-  const checks: SurfaceReadinessCheck[] = [];
-  if (needsVoiceReadiness(profile)) {
-    checks.push(...(await checkVoiceReadiness(conn)));
-  }
-  if (needsMessagingReadiness(profile)) {
-    checks.push(...(await checkMessagingReadiness(conn)));
-  }
-  checks.push(...(await checkAgentforceSettingsReadiness(conn, profile)));
-  checks.push(...(await checkPhoneReadiness(conn, profile, { phoneNumber: context.phoneNumber })));
-  checks.push(...(await checkPlannerReadiness(conn, profile, context)));
-  checks.push(...(await checkRoutingFlowReadiness(conn, profile)));
-  checks.push(...(await checkQueueReadiness(conn, profile)));
-  checks.push(...channelConnectionGapChecks(profile));
-  return checks;
+  const [
+    voiceChecks,
+    messagingChecks,
+    settingsChecks,
+    phoneChecks,
+    plannerChecks,
+    routingFlowChecks,
+    queueChecks,
+  ] = await Promise.all([
+    needsVoiceReadiness(profile) ? checkVoiceReadiness(conn) : Promise.resolve([]),
+    needsMessagingReadiness(profile) ? checkMessagingReadiness(conn) : Promise.resolve([]),
+    checkAgentforceSettingsReadiness(conn, profile),
+    checkPhoneReadiness(conn, profile, { phoneNumber: context.phoneNumber }),
+    checkPlannerReadiness(conn, profile, context),
+    checkRoutingFlowReadiness(conn, profile),
+    checkQueueReadiness(conn, profile),
+  ]);
+
+  // Preserve the previous logical ordering even though checks run concurrently.
+  return [
+    ...voiceChecks,
+    ...messagingChecks,
+    ...settingsChecks,
+    ...phoneChecks,
+    ...plannerChecks,
+    ...routingFlowChecks,
+    ...queueChecks,
+    ...channelConnectionGapChecks(profile),
+  ];
 }
 
 function channelConnectionGapChecks(profile: AgentFeatureProfile): SurfaceReadinessCheck[] {

@@ -72,6 +72,10 @@ import { handleEvalAction } from "./lib/command/eval-action.ts";
 import { handleReportAction } from "./lib/command/report-action.ts";
 import { clearConnectionCache } from "../../lib/common/sf-conn/connection.ts";
 import { clearAgentApiAuthCache } from "./lib/agent-api-auth.ts";
+import {
+  clearAgentScriptAnalysisCache,
+  invalidateAgentScriptAnalysis,
+} from "./lib/analysis-snapshot.ts";
 import { clearSfapEndpointCache } from "./lib/eval/sfap.ts";
 
 const EXTENSION_ID = "sf-agentscript";
@@ -382,12 +386,14 @@ function registerSessionHooks(pi: ExtensionAPI, state: AgentScriptAssistState): 
     resetState(state);
     clearConnectionCache();
     clearAgentApiAuthCache();
+    clearAgentScriptAnalysisCache();
     clearSfapEndpointCache();
   });
   pi.on("session_shutdown", async () => {
     resetState(state);
     clearConnectionCache();
     clearAgentApiAuthCache();
+    clearAgentScriptAnalysisCache();
     clearSfapEndpointCache();
   });
 }
@@ -414,6 +420,7 @@ async function handleToolResult(
   const filePath = resolveToolPath(rawPath, ctx.cwd);
   if (!isAgentScriptFile(filePath)) return undefined;
 
+  invalidateAgentScriptAnalysis(filePath);
   const checkResult = await checkAgentScriptFile(filePath);
   const existingContent: ToolResultContentPart[] = Array.isArray(event.content)
     ? event.content

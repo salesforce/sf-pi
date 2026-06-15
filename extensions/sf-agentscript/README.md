@@ -198,6 +198,7 @@ extensions/sf-agentscript/
       minimal.ts            ← implementation module
     agent-api-auth.ts       ← implementation module
     agentforce-document.ts  ← implementation module
+    analysis-snapshot.ts    ← implementation module
     authoring-tool.ts       ← implementation module
     branch-state.ts         ← implementation module
     code-actions.ts         ← implementation module
@@ -230,6 +231,7 @@ extensions/sf-agentscript/
     agent-api-auth.test.ts  ← unit / smoke test
     agent-api-error-map.test.ts← unit / smoke test
     agent-user-status.test.ts← unit / smoke test
+    analysis-snapshot.test.ts← unit / smoke test
     authoring-review.test.ts← unit / smoke test
     authoring-tool.test.ts  ← unit / smoke test
     code-actions.test.ts    ← unit / smoke test

@@ -17,11 +17,11 @@
  * Local-first: publish pre-flights via the local SDK before the server call.
  */
 
-import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { Type } from "typebox";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { connForAgentApi } from "./agent-api-auth.ts";
+import { getAgentScriptAnalysis } from "./analysis-snapshot.ts";
 import { connFromAlias } from "../../../lib/common/sf-conn/connection.ts";
 import {
   checkAgentUserStatus,
@@ -33,7 +33,6 @@ import {
   type ProvisionReport,
   type ProvisionStep,
 } from "./agent-user/index.ts";
-import { checkAgentScriptFile } from "./diagnostics.ts";
 import { inspectFile } from "./inspect.ts";
 import { mapAgentApiError } from "./errors/agent-api-error-map.ts";
 import { buildFeatureProfile, type AgentFeatureProfile } from "./feature-profile.ts";
@@ -271,20 +270,21 @@ async function actionPublish(
     return toolError(`Not an Agent Script file: ${filePath}`, "Pass a path ending in `.agent`.");
   }
 
-  let source: string;
+  let analysis;
   try {
-    source = timings
-      ? await timings.time("read_agent_source", () => readFile(filePath, "utf8"))
-      : await readFile(filePath, "utf8");
+    analysis = timings
+      ? await timings.time("load_analysis_snapshot", () => getAgentScriptAnalysis(filePath))
+      : await getAgentScriptAnalysis(filePath);
   } catch (err) {
     return toolError(
       `Cannot read ${filePath}: ${err instanceof Error ? err.message : String(err)}`,
     );
   }
+  const source = analysis.source;
 
   const localCheck = timings
-    ? await timings.time("local_compile", () => checkAgentScriptFile(filePath))
-    : await checkAgentScriptFile(filePath);
+    ? await timings.time("local_compile", () => analysis.getCompile())
+    : await analysis.getCompile();
   if (!localCheck.ok) {
     return toolError(
       localCheck.unavailableReason ?? "Local Agent Script compile failed before publish.",
@@ -311,8 +311,8 @@ async function actionPublish(
   let featureProfile: AgentFeatureProfile | undefined;
   try {
     const inspect = timings
-      ? await timings.time("inspect_structure", () => inspectFile(filePath))
-      : await inspectFile(filePath);
+      ? await timings.time("inspect_structure", () => analysis.getInspect())
+      : await analysis.getInspect();
     if (inspect.ok) {
       featureProfile = buildFeatureProfile(inspect);
       for (const risk of featureProfile.publish_risks) {
@@ -381,6 +381,8 @@ async function actionPublish(
       activate: input.activate ?? false,
       log: stream,
       timings,
+      localCompileChecked: true,
+      inspectResult: await analysis.getInspect(),
     });
     const ab = result.authoring_bundle;
     const bundleLine = ab

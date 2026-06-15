@@ -6,16 +6,16 @@ import path from "node:path";
 import { withFileMutationQueue } from "@earendil-works/pi-coding-agent";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { connForAgentApi } from "../../agent-api-auth.ts";
+import { getAgentScriptAnalysis } from "../../analysis-snapshot.ts";
 import {
   agentFileEvent,
   resolveCurrentAgentFile,
   withAgentScriptBranchState,
   type AgentScriptBranchStateEvent,
 } from "../../branch-state.ts";
-import { checkAgentScriptFile } from "../../diagnostics.ts";
 import { buildFeatureProfile } from "../../feature-profile.ts";
 import { isAgentScriptFile } from "../../file-classify.ts";
-import { findDefinition, findReferences, inspectFile } from "../../inspect.ts";
+import { findDefinition, findReferences } from "../../inspect.ts";
 import { connFromAlias } from "../../../../../lib/common/sf-conn/connection.ts";
 import { checkActionTargets } from "../../preflight.ts";
 import { diagnoseRuntimeSmoke, type RuntimeSmokeResult } from "../../preflight/runtime-smoke.ts";
@@ -66,8 +66,10 @@ export async function runInspectAction(
 
 async function actionStructure(agentFile: string, timings?: TimingCollector) {
   const result = timings
-    ? await timings.time("inspect_structure", () => inspectFile(agentFile))
-    : await inspectFile(agentFile);
+    ? await timings.time("inspect_structure", async () =>
+        (await getAgentScriptAnalysis(agentFile)).getInspect(),
+      )
+    : await (await getAgentScriptAnalysis(agentFile)).getInspect();
   if (!result.ok) {
     if (result.reason === "sdk_unavailable") {
       return toolError(
@@ -99,9 +101,10 @@ async function actionStructure(agentFile: string, timings?: TimingCollector) {
 }
 
 async function actionContextProfile(agentFile: string, timings?: TimingCollector) {
+  const analysis = await getAgentScriptAnalysis(agentFile);
   const result = timings
-    ? await timings.time("inspect_structure", () => inspectFile(agentFile))
-    : await inspectFile(agentFile);
+    ? await timings.time("inspect_structure", () => analysis.getInspect())
+    : await analysis.getInspect();
   if (!result.ok) {
     if (result.reason === "sdk_unavailable") {
       return toolError(
@@ -112,7 +115,7 @@ async function actionContextProfile(agentFile: string, timings?: TimingCollector
     }
     return toolError(`context_profile failed: ${result.reason ?? "unknown"}`, result.reason_detail);
   }
-  const profile = buildFeatureProfile(result);
+  const profile = (await analysis.getFeatureProfile()) ?? buildFeatureProfile(result);
   const lines = [
     `🧬 Context profile ${agentFile}`,
     `linked: ${profile.linked_variables.length} · mutable: ${profile.mutable_variables.length} · ` +
@@ -241,8 +244,10 @@ async function actionCheckTargets(
     );
   }
   const inspect = timings
-    ? await timings.time("inspect_structure", () => inspectFile(agentFile))
-    : await inspectFile(agentFile);
+    ? await timings.time("inspect_structure", async () =>
+        (await getAgentScriptAnalysis(agentFile)).getInspect(),
+      )
+    : await (await getAgentScriptAnalysis(agentFile)).getInspect();
   if (!inspect.ok)
     return toolError(`Inspect failed: ${inspect.reason ?? "unknown"}`, inspect.reason_detail);
   const actions = inspect.components?.actions ?? [];
@@ -431,9 +436,10 @@ async function actionReview(
   timings?: TimingCollector,
 ) {
   const findings: ReviewFinding[] = [];
+  const analysis = await getAgentScriptAnalysis(agentFile);
   const compile = timings
-    ? await timings.time("local_compile", () => checkAgentScriptFile(agentFile))
-    : await checkAgentScriptFile(agentFile);
+    ? await timings.time("local_compile", () => analysis.getCompile())
+    : await analysis.getCompile();
   if (!compile.ok) {
     findings.push({
       id: "compile-unavailable",
@@ -475,8 +481,8 @@ async function actionReview(
   );
 
   const inspect = timings
-    ? await timings.time("inspect_structure", () => inspectFile(agentFile))
-    : await inspectFile(agentFile);
+    ? await timings.time("inspect_structure", () => analysis.getInspect())
+    : await analysis.getInspect();
   const parseBlocked = inspect.ok && inspect.has_parse_errors;
   if (!inspect.ok) {
     findings.push({
@@ -506,7 +512,7 @@ async function actionReview(
         message: "One or more subagents are missing descriptions.",
       });
     }
-    const profile = buildFeatureProfile(inspect);
+    const profile = (await analysis.getFeatureProfile()) ?? buildFeatureProfile(inspect);
     for (const risk of profile.publish_risks) {
       findings.push({
         id: `publish-risk-${risk.code}`,

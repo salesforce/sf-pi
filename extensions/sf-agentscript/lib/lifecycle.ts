@@ -24,7 +24,7 @@ import type { Connection } from "@salesforce/core";
 import type { ComponentSet as ComponentSetType } from "@salesforce/source-deploy-retrieve";
 import { sfap404Message } from "./errors/sfap-404.ts";
 import { isSfapRoutingFailure, sfapRequest } from "./eval/sfap.ts";
-import { inspectFile } from "./inspect.ts";
+import { inspectFile, type InspectResult } from "./inspect.ts";
 import { checkActionTargets, checkBundleType } from "./preflight.ts";
 import { loadAgentforceSDK } from "./sdk.ts";
 import type { TimingCollector } from "./timings.ts";
@@ -206,6 +206,10 @@ export interface PublishOptions {
   log?: (msg: string) => void;
   /** Optional local operation timing collector owned by the tool wrapper. */
   timings?: TimingCollector;
+  /** True when caller already performed an equivalent local compile/check. */
+  localCompileChecked?: boolean;
+  /** Stable structural inspection result from an Agent Script Analysis Snapshot. */
+  inspectResult?: InspectResult;
   /**
    * When true, skip the action-target Tooling-API pre-flight (network).
    * The local bundleType pre-flight always runs; it's a file read.
@@ -322,9 +326,11 @@ export async function publishAgent(opts: PublishOptions): Promise<PublishResult>
 
   // Local pre-flight when the SDK is loadable — saves a network call when the
   // source is obviously broken.
-  const sdk = opts.timings
-    ? await opts.timings.time("load_agentscript_sdk", () => loadAgentforceSDK())
-    : await loadAgentforceSDK();
+  const sdk = opts.localCompileChecked
+    ? null
+    : opts.timings
+      ? await opts.timings.time("load_agentscript_sdk", () => loadAgentforceSDK())
+      : await loadAgentforceSDK();
   if (sdk) {
     log("Pre-flighting local compile…");
     const compile = opts.timings
@@ -375,9 +381,11 @@ export async function publishAgent(opts: PublishOptions): Promise<PublishResult>
         // walk would silently miss them all and the pre-flight would no-op.
         const agentPath =
           opts.agentFilePath ?? path.join(opts.bundleDir, `${opts.agentApiName}.agent`);
-        const inspect = opts.timings
-          ? await opts.timings.time("inspect_structure", () => inspectFile(agentPath))
-          : await inspectFile(agentPath);
+        const inspect =
+          opts.inspectResult ??
+          (opts.timings
+            ? await opts.timings.time("inspect_structure", () => inspectFile(agentPath))
+            : await inspectFile(agentPath));
         const actions = inspect.ok ? (inspect.components?.actions ?? []) : [];
         const targeted = actions.filter((a) => typeof a.target === "string" && a.target.length > 0);
         if (targeted.length > 0) {

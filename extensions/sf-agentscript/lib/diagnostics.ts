@@ -76,6 +76,10 @@ export async function checkAgentScriptFile(filePath: string): Promise<AgentScrip
     };
   }
 
+  return checkAgentScriptSource(source);
+}
+
+export async function checkAgentScriptSource(source: string): Promise<AgentScriptCheckResult> {
   const analysis = await analyzeAgentScriptSource(source);
   if (analysis.ok === false) {
     return {

@@ -26,11 +26,6 @@ export type {
 // -------------------------------------------------------------------------------------------------
 
 export async function inspectFile(filePath: string): Promise<InspectResult> {
-  const sdk = await loadAgentforceSDK();
-  if (!sdk) {
-    return { ok: false, reason: "sdk_unavailable", reason_detail: getSdkLoadError() };
-  }
-
   let source: string;
   try {
     source = await fs.readFile(filePath, "utf8");
@@ -40,6 +35,15 @@ export async function inspectFile(filePath: string): Promise<InspectResult> {
       reason: "read_failed",
       reason_detail: err instanceof Error ? err.message : String(err),
     };
+  }
+
+  return inspectSource(source);
+}
+
+export async function inspectSource(source: string): Promise<InspectResult> {
+  const sdk = await loadAgentforceSDK();
+  if (!sdk) {
+    return { ok: false, reason: "sdk_unavailable", reason_detail: getSdkLoadError() };
   }
 
   let doc: { ast: unknown; hasErrors: boolean; diagnostics: readonly unknown[] };

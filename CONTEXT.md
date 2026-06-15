@@ -104,6 +104,10 @@ _Avoid_: forked AgentScript compiler, duplicate LSP implementation, replacement 
 The SF Pi-owned projection of parsed Agent Script into an agent-friendly summary of config, topics, subagents, variables, actions, references, targets, and readiness metadata.
 _Avoid_: generic LSP feature, full AST dump, replacement for official parser semantics
 
+**Agent Script Analysis Snapshot**:
+A process-local, source-versioned reuse unit for Agent Script authoring facts such as diagnostics, structural inspection, and feature profile. It is keyed by local file facts or source identity, used to avoid repeated parsing/compilation within and across unchanged tool calls, and never persisted to branch state or disk.
+_Avoid_: durable workflow state, artifact, global cache, replacement for official package behavior
+
 **Preview Trace Report**:
 The human-facing, structured render of an Agent Script preview turn, organized for debugging with sections such as turn summary, route path, state changes, key state, tool activity, planner timeline, evaluations, diagnostics, and drill pointers. It may be richer than the LLM-facing payload.
 _Avoid_: raw planner trace, LLM prompt payload, artifact store, unstructured terminal dump

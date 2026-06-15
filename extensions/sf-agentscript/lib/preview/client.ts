@@ -124,6 +124,8 @@ export interface PreviewStartOptions {
   contextVariables?: ContextVariable[];
   /** Optional local operation timing collector owned by the tool wrapper. */
   timings?: TimingCollector;
+  /** True when caller already performed an equivalent local compile/check. */
+  skipLocalValidation?: boolean;
 }
 
 export interface PreviewStartResult {
@@ -225,9 +227,11 @@ export interface PreviewEndResult {
 
 export async function startPreview(opts: PreviewStartOptions): Promise<PreviewStartResult> {
   // 1. Local-first validation
-  const sdk = opts.timings
-    ? await opts.timings.time("load_agentscript_sdk", () => loadAgentforceSDK())
-    : await loadAgentforceSDK();
+  const sdk = opts.skipLocalValidation
+    ? null
+    : opts.timings
+      ? await opts.timings.time("load_agentscript_sdk", () => loadAgentforceSDK())
+      : await loadAgentforceSDK();
   if (sdk) {
     const compileResult = opts.timings
       ? await opts.timings.time("sdk_compile_guard", () =>
