@@ -35,7 +35,7 @@ are not promises — priority is the rough order.
       `/sf-guardrail audit`.
 - [x] Headless fail-closed with `SF_GUARDRAIL_ALLOW_HEADLESS=1` escape.
 - [x] `/sf-guardrail` command surface: status, list, audit, grants, settings,
-      forget, install-preset.
+      aliases, forget.
 - [x] SF Pi Manager config panel for status and routine Guardrail Preferences.
 
 ## Shipped (simplification/redesign slices)
@@ -64,7 +64,7 @@ are not promises — priority is the rough order.
 - [x] Deepened Approval Ledger internals by moving audit, session approval, and
       persisted-grant storage into `approval-ledger.ts` and deleting the old
       helper modules.
-- [x] Production aliases editor via `/sf-guardrail aliases` and the nested
+- [x] Protected org aliases editor via `/sf-guardrail aliases` and the nested
       Manager settings page.
 - [x] Command-gate per-pattern behavior semantics and settings toggles.
 - [x] Rule-only settings model; bulk posture presets removed in favor of per-rule behavior.

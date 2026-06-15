@@ -8,6 +8,6 @@ Rule-derived guidance is always injected once per session when SF Guardrail is e
 
 **Consequences**
 
-Users tune safety rule by rule in the Manager Settings Surface. Disabling a category means setting that category's rules to `Off`, not toggling a broad master switch. Approval timeout and production aliases remain routine Guardrail Preferences stored under `sfPi.guardrail`; headless behavior remains env-only via `SF_GUARDRAIL_ALLOW_HEADLESS`.
+Users tune safety rule by rule in the Manager Settings Surface. Disabling a category means setting that category's rules to `Off`, not toggling a broad master switch. Approval timeout and protected org aliases remain routine Guardrail Preferences stored under `sfPi.guardrail`; headless behavior remains env-only via `SF_GUARDRAIL_ALLOW_HEADLESS`.
 
 Legacy fields such as `enabled` and `features.*` are ignored by the effective configuration. Older bulk preset commands and UI actions are removed. Advanced Rule Overrides remain the expert mechanism for changing rule definitions, while Pi settings remain the routine mechanism for changing Rule Behavior.

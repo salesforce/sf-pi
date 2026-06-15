@@ -33,8 +33,8 @@ export const SECTION_ITEMS: SettingsSectionItem[] = [
   },
   {
     value: "aliases",
-    label: "Production aliases",
-    description: "Aliases treated as production when resolving org risk.",
+    label: "Protected org aliases",
+    description: "Treat aliases as production-level risk targets.",
   },
   {
     value: "advanced",

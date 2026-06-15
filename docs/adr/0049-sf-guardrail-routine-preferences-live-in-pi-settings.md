@@ -2,7 +2,7 @@
 
 SF Guardrail routine preferences now live in Pi's native settings file under `sfPi.guardrail`. The SF Pi Manager config surface is the primary mutable UI for these preferences. `/sf-guardrail settings` remains as a compatibility/help entrypoint that points users to the manager surface instead of opening an extension-owned settings editor.
 
-Routine preferences include confirmation timeout, production aliases, and bundled-rule behavior values (`off`, `confirm`, `block`). Advanced rule overrides remain in `~/.pi/agent/sf-guardrail/rules.json` and are reserved for custom file policies, custom command patterns, custom org-aware rules, or full bundled-rule replacement by stable id. ADR 0052 later removed bulk posture modes and broad feature toggles from this model.
+Routine preferences include confirmation timeout, protected org aliases, and bundled-rule behavior values (`off`, `confirm`, `block`). Advanced rule overrides remain in `~/.pi/agent/sf-guardrail/rules.json` and are reserved for custom file policies, custom command patterns, custom org-aware rules, or full bundled-rule replacement by stable id. ADR 0052 later removed bulk posture modes and broad feature toggles from this model.
 
 This supersedes the earlier direction that `/sf-guardrail settings` should own the primary mutable settings flow. The sectioned settings chooser was useful as an interim surface, but it duplicated Pi/manager navigation semantics and mixed routine preference writes with the advanced override file. Moving routine settings to Pi settings keeps the storage model consistent with other user-facing Pi preferences and avoids maintaining a bespoke settings editor for normal use.
 
@@ -14,4 +14,4 @@ Project-local guardrail preference weakening remains deferred. A repository shou
 
 The SF Pi Manager config panel becomes the normal place to inspect and change Guardrail Preferences. `/sf-guardrail` stays focused on safety mediation: status, effective rules, audit, approval grants, and approval revocation.
 
-The Guardrail Settings Surface uses nested pages instead of one flat list: a settings home page links to File protection rules, Dangerous command rules, Salesforce org operation rules, Production aliases, and Advanced Rule Overrides. Rule pages render one row per effective rule id, including custom rules from the advanced override file, so advanced users can map the UI back to JSON while routine behavior changes still save to Pi settings.
+The Guardrail Settings Surface uses nested pages instead of one flat list: a settings home page links to File protection rules, Dangerous command rules, Salesforce org operation rules, Protected org aliases, and Advanced Rule Overrides. Rule pages render one row per effective rule id, including custom rules from the advanced override file, so advanced users can map the UI back to JSON while routine behavior changes still save to Pi settings.

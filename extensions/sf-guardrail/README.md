@@ -92,7 +92,7 @@ Extension loads
 Bundled defaults live in `SF_GUARDRAIL_DEFAULTS.json` next to `index.ts`.
 Routine Guardrail Preferences live in Pi's global settings file under
 `sfPi.guardrail` (typically `~/.pi/agent/settings.json`). These cover
-confirmation timeout, production aliases, and bundled-rule behavior (`off`,
+confirmation timeout, protected org aliases, and bundled-rule behavior (`off`,
 `confirm`, or `block`).
 
 Advanced rule overrides remain in `<globalAgentDir>/sf-guardrail/rules.json`
@@ -112,12 +112,10 @@ weakening remains deferred — see `ROADMAP.md`.
 - `/sf-guardrail settings` → compatibility help that points to `/sf-pi` →
   SF Guardrail → Settings, where routine preferences are edited in focused
   nested pages
-- `/sf-guardrail aliases` → edit aliases that should be treated as production;
-  saved to Pi settings
+- `/sf-guardrail aliases` → edit aliases that should receive production-level
+  guardrail prompts; saved to Pi settings
 - `/sf-guardrail forget` → revoke session allow-memory for this branch and clear
   legacy persisted approval grants for the current project
-- `/sf-guardrail install-preset` → export bundled defaults to the advanced
-  override file for expert customization
 
 ## Architecture References
 
@@ -187,7 +185,6 @@ extensions/sf-guardrail/
     guardrail-settings.ts   ← implementation module
     guidance.ts             ← implementation module
     hitl.ts                 ← implementation module
-    install-preset.ts       ← implementation module
     org-aware-gate.ts       ← implementation module
     org-aware-risk-gate.ts  ← implementation module
     org-context.ts          ← implementation module
@@ -291,9 +288,9 @@ Covered by unit tests:
   type was resolved from cache, lookup, `productionAliases`, or guessed. If the
   entry is guessed, run `sf org display -o <alias> --json` and confirm the org
   is authenticated and reports a non-production type. If the alias still cannot
-  be resolved, run `/sf-devbar refresh` or restart pi. `productionAliases` is
-  only for aliases you want treated as production; do not add sandbox/scratch
-  aliases there.
+  be resolved, run `/sf-devbar refresh` or restart pi. Protected org aliases are
+  for aliases that should receive production-level prompts; do not add ordinary
+  sandbox/scratch aliases there.
 
 **I cannot write to `destructiveChanges.xml` even though my rule is supposed to be off:**
 

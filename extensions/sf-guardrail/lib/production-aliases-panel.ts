@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /**
- * Production alias editor for `/sf-guardrail aliases`.
+ * Protected org alias editor for `/sf-guardrail aliases`.
  */
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import type { GuardrailConfig } from "./types.ts";
@@ -15,7 +15,7 @@ export async function openProductionAliasesEditor(
   if (!ctx.hasUI) {
     console.info(
       [
-        "SF Guardrail production aliases require an interactive Pi UI or RPC UI client to edit.",
+        "SF Guardrail protected org aliases require an interactive Pi UI or RPC UI client to edit.",
         `Current aliases: ${current || "(none)"}`,
         "Use /sf-pi → SF Guardrail → Settings for common preferences.",
       ].join("\n"),
@@ -24,7 +24,7 @@ export async function openProductionAliasesEditor(
   }
 
   const value = await ctx.ui.input(
-    "SF Guardrail production aliases (comma-separated). Leave blank to clear.",
+    "SF Guardrail protected org aliases (comma-separated). Leave blank to clear.",
     current,
   );
   if (value === undefined) return;
@@ -32,8 +32,8 @@ export async function openProductionAliasesEditor(
   const aliases = updateProductionAliasesFromText(value);
   ctx.ui.notify(
     aliases.length > 0
-      ? `SF Guardrail production aliases: ${aliases.join(", ")}`
-      : "SF Guardrail production aliases cleared.",
+      ? `SF Guardrail protected org aliases: ${aliases.join(", ")}`
+      : "SF Guardrail protected org aliases cleared.",
     "info",
   );
 }

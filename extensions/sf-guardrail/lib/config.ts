@@ -48,8 +48,8 @@ export function userConfigPath(): string {
 }
 
 /**
- * Load the bundled defaults verbatim. Exposed so tests and `install-preset`
- * can read the shipping rule set without re-implementing parsing.
+ * Load the bundled defaults verbatim. Exposed so tests and tooling can read
+ * the shipping rule set without re-implementing parsing.
  */
 export function readBundledConfig(): GuardrailConfig {
   const text = readFileSync(BUNDLED_PATH, "utf8");

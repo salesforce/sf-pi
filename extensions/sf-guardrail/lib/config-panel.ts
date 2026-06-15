@@ -261,15 +261,15 @@ class SfGuardrailConfigPanel implements Focusable {
     if (this.page.kind === "aliases" && this.page.editing) {
       return [
         ` ${t.fg("accent", themeBold(t, "Edit aliases"))}`,
-        `   ${t.fg("dim", "Comma-separated aliases treated as production.")}`,
+        `   ${t.fg("dim", "Comma-separated aliases to treat as production-level risk targets.")}`,
         "",
         `   ${t.fg("muted", "Aliases:")} ${this.page.draft}`,
       ];
     }
     return [
-      ` ${t.fg("accent", themeBold(t, "Production aliases"))}`,
+      ` ${t.fg("accent", themeBold(t, "Protected org aliases"))}`,
       ...wrapLines(
-        "Aliases listed here are treated as production when resolving org risk.",
+        "Aliases listed here receive production-level guardrail prompts. Useful for prod, full-copy, staging, or any org you want extra confirmation for.",
         width - 3,
       ).map((line) => ` ${t.fg("dim", line)}`),
       "",
@@ -346,7 +346,7 @@ class SfGuardrailConfigPanel implements Focusable {
       this.page = { ...this.page, editing: true, draft: productionAliasesText(this.config) };
     } else if (data === "c" || data === "C") {
       updateProductionAliasesFromText("");
-      this.reload("Production aliases cleared.");
+      this.reload("Protected org aliases cleared.");
       this.page = { kind: "aliases", editing: false, draft: "" };
     }
   }
@@ -361,8 +361,8 @@ class SfGuardrailConfigPanel implements Focusable {
       const aliases = updateProductionAliasesFromText(this.page.draft);
       this.reload(
         aliases.length > 0
-          ? `Production aliases saved: ${aliases.join(", ")}`
-          : "Production aliases cleared.",
+          ? `Protected org aliases saved: ${aliases.join(", ")}`
+          : "Protected org aliases cleared.",
       );
       this.page = { kind: "aliases", editing: false, draft: productionAliasesText(this.config) };
       return;
@@ -520,7 +520,7 @@ class SfGuardrailConfigPanel implements Focusable {
       case "rule-detail":
         return `${rulesTitle(this.page.section)} › ${this.page.ruleId}`;
       case "aliases":
-        return "Production aliases";
+        return "Protected org aliases";
       case "advanced":
         return "Advanced Rule Overrides";
     }

@@ -223,7 +223,7 @@ Add or update:
 Use pi-native/shared SF Pi settings patterns for:
 
 - confirmation timeout
-- production aliases
+- protected org aliases
 - per-bundled-rule Rule Behavior
 
 Keep advanced JSON overrides for:

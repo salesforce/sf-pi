@@ -53,7 +53,6 @@
  *   /sf-guardrail list | —                                 | rules notification
  *   /sf-guardrail audit| —                                 | decisions notification
  *   /sf-guardrail forget | —                               | clear session allow-memory
- *   /sf-guardrail install-preset | —                       | export advanced override template
  */
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 
@@ -85,7 +84,6 @@ import { renderApprovalDetail } from "./lib/approval-detail.ts";
 import { evaluateSafety } from "./lib/safety-kernel.ts";
 import { type GuardrailConfigSource, loadConfig } from "./lib/config.ts";
 import { confirmDecision } from "./lib/hitl.ts";
-import { installPreset } from "./lib/install-preset.ts";
 import { loadPrompt } from "./lib/prompt-injection.ts";
 import { openProductionAliasesEditor } from "./lib/production-aliases-panel.ts";
 import { renderAudit, renderRules, renderStatus } from "./lib/status.ts";
@@ -263,15 +261,9 @@ function buildGuardrailManagerActions(pi: ExtensionAPI): ManagerDetailAction[] {
     },
     {
       id: "aliases",
-      label: "Production aliases",
-      description: "Edit aliases treated as production.",
+      label: "Protected org aliases",
+      description: "Treat aliases as production-level risk targets.",
       run: (ctx) => handleGuardrailCommand(pi, ctx, "aliases", true),
-    },
-    {
-      id: "advanced-override-template",
-      label: "Advanced override template",
-      description: "Write bundled defaults to the expert override file.",
-      run: (ctx) => handleGuardrailCommand(pi, ctx, "install-preset", true),
     },
     {
       id: "help",
@@ -308,12 +300,8 @@ const GUARDRAIL_SUBCOMMANDS = [
   { value: "audit", description: "List recent guardrail decisions." },
   { value: "grants", description: "List active persisted approval grants." },
   { value: "settings", description: "Open SF Guardrail settings in the SF Pi Manager." },
-  { value: "aliases", description: "Edit production aliases." },
+  { value: "aliases", description: "Edit protected org aliases." },
   { value: "forget", description: "Clear session allows and persisted project grants." },
-  {
-    value: "install-preset",
-    description: "Export bundled defaults to the advanced override file.",
-  },
   { value: "help", description: "Show command usage." },
 ] as const;
 
@@ -406,15 +394,10 @@ async function handleGuardrailCommand(
     return;
   }
 
-  if (sub === "install-preset") {
-    await installPreset(ctx);
-    return;
-  }
-
   await emitGuardrailOutput(
     ctx,
     "Unknown command",
-    `Unknown /sf-guardrail subcommand: ${sub}. Use status, list, audit, grants, settings, aliases, forget, install-preset, help.`,
+    `Unknown /sf-guardrail subcommand: ${sub}. Use status, list, audit, grants, settings, aliases, forget, help.`,
     "warning",
     fromPanel,
   );
@@ -462,9 +445,8 @@ function renderGuardrailHelp(): string {
     `  /${COMMAND_NAME} audit           Show recent decisions in this session branch`,
     `  /${COMMAND_NAME} grants          Show active persisted approval grants`,
     `  /${COMMAND_NAME} settings        Show where Pi-backed guardrail preferences live`,
-    `  /${COMMAND_NAME} aliases         Edit production aliases`,
+    `  /${COMMAND_NAME} aliases         Edit protected org aliases`,
     `  /${COMMAND_NAME} forget          Clear session allows and project approval grants`,
-    `  /${COMMAND_NAME} install-preset  Export bundled defaults to advanced override config`,
     `  /${COMMAND_NAME} help            Show this help`,
   ].join("\n");
 }

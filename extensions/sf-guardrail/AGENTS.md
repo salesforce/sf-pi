@@ -41,8 +41,7 @@ One-file-per-concern split:
 | Manager-backed Guardrail Preferences | `lib/config-panel.ts` + `lib/guardrail-settings.ts` |
 | Settings panel model helpers         | `lib/config-panel-model.ts`                         |
 | Common preference descriptors        | `lib/preferences.ts`                                |
-| Production aliases editor            | `lib/production-aliases-panel.ts`                   |
-| `/sf-guardrail install-preset`       | `lib/install-preset.ts`                             |
+| Protected org aliases editor         | `lib/production-aliases-panel.ts`                   |
 | Rule-derived agent guidance          | `lib/guidance.ts`                                   |
 | Kernel body loader + override        | `lib/prompt-injection.ts`                           |
 | Formatters for `/sf-guardrail`       | `lib/status.ts`                                     |

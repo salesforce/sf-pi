@@ -97,7 +97,7 @@ The agent-visible SF Guardrail instructions generated from the effective ruleset
 _Avoid_: second rule source, hand-maintained policy prompt, duplicated safety docs
 
 **Guardrail Preference**:
-A normal user-facing SF Guardrail setting such as feature enablement, confirmation timeout, production aliases, or bundled-rule **Rule Behavior**. Routine **Guardrail Preferences** live in Pi settings under `sfPi.guardrail`.
+A normal user-facing SF Guardrail setting such as confirmation timeout, protected org aliases, or bundled-rule **Rule Behavior**. Routine **Guardrail Preferences** live in Pi settings under `sfPi.guardrail`.
 _Avoid_: rule override, policy config, hidden JSON setting
 
 **Guardrail Settings Surface**:
