@@ -517,6 +517,18 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.190.0](https://github.com/salesforce/sf-pi/compare/v0.189.3...v0.190.0) (2026-06-15)
+
+
+### Features
+
+* **agentscript:** cache local analysis snapshots ([44fe1bc](https://github.com/salesforce/sf-pi/commit/44fe1bcf702dcb3c4267e7f88fe930038baa6c02))
+
+
+### Bug Fixes
+
+* satisfy Data 360 sweep lint findings ([dadc9c0](https://github.com/salesforce/sf-pi/commit/dadc9c0e6c75345b29329b1c05de7033e154de13))
+
 ## [0.189.3](https://github.com/salesforce/sf-pi/compare/v0.189.2...v0.189.3) (2026-06-15)
 
 
