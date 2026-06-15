@@ -292,6 +292,91 @@
         "description": "delete Redis database keys"
       },
       {
+        "id": "sf-project-delete-source",
+        "pattern": "sf project delete source",
+        "description": "delete source locally and from an org"
+      },
+      {
+        "id": "sf-project-delete-tracking",
+        "pattern": "sf project delete tracking",
+        "description": "delete local source tracking information"
+      },
+      {
+        "id": "sf-project-reset-tracking",
+        "pattern": "sf project reset tracking",
+        "description": "reset local and remote source tracking"
+      },
+      {
+        "id": "sf-package-delete",
+        "pattern": "sf package delete",
+        "description": "delete a package"
+      },
+      {
+        "id": "sf-package-version-delete",
+        "pattern": "sf package version delete",
+        "description": "delete a package version"
+      },
+      {
+        "id": "sf-package-uninstall",
+        "pattern": "sf package uninstall",
+        "description": "uninstall a package from an org"
+      },
+      {
+        "id": "sf-package-version-promote",
+        "pattern": "sf package version promote",
+        "description": "promote a package version to released"
+      },
+      {
+        "id": "sf-package-push-upgrade-schedule",
+        "pattern": "sf package push-upgrade schedule",
+        "description": "schedule a package push upgrade"
+      },
+      {
+        "id": "sf-package-push-upgrade-abort",
+        "pattern": "sf package push-upgrade abort",
+        "description": "abort a package push upgrade"
+      },
+      {
+        "id": "sf-org-logout-all",
+        "pattern": "sf org logout --all",
+        "description": "log out of every authenticated Salesforce org"
+      },
+      {
+        "id": "sf-org-generate-password",
+        "pattern": "sf org generate password",
+        "description": "generate or expose a Salesforce org user password"
+      },
+      {
+        "id": "sf-plugins-install",
+        "pattern": "sf plugins install",
+        "description": "install a Salesforce CLI plugin"
+      },
+      {
+        "id": "sf-plugins-uninstall",
+        "pattern": "sf plugins uninstall",
+        "description": "uninstall a Salesforce CLI plugin"
+      },
+      {
+        "id": "sf-plugins-remove",
+        "pattern": "sf plugins remove",
+        "description": "remove a Salesforce CLI plugin"
+      },
+      {
+        "id": "sf-plugins-reset",
+        "pattern": "sf plugins reset",
+        "description": "reset Salesforce CLI plugin state"
+      },
+      {
+        "id": "sf-agent-adl-delete",
+        "pattern": "sf agent adl delete",
+        "description": "delete an Agentforce Data Library"
+      },
+      {
+        "id": "sf-agent-adl-file-delete",
+        "pattern": "sf agent adl file delete",
+        "description": "delete a file from an Agentforce Data Library"
+      },
+      {
         "id": "sf-org-delete",
         "pattern": "sf org delete",
         "description": "delete scratch/sandbox org"
@@ -384,6 +469,62 @@
         "action": "confirm",
         "confirmMessage": "Call PRODUCTION org {orgAlias} REST API with destructive HTTP method?\n\n  {command}",
         "enabled": true
+      },
+      {
+        "id": "sf-data-create-prod",
+        "description": "sf data create record/file targeting production",
+        "match": {
+          "tool": "bash",
+          "ast": {
+            "cmd": "sf",
+            "subCmd": ["data", "create", ["record", "file"]]
+          }
+        },
+        "whenOrgType": ["production"],
+        "action": "confirm",
+        "confirmMessage": "Create data on PRODUCTION org {orgAlias}?\n\n  {command}"
+      },
+      {
+        "id": "sf-package-install-prod",
+        "description": "Package install or upgrade targeting production",
+        "match": {
+          "tool": "bash",
+          "ast": {
+            "cmd": "sf",
+            "subCmd": ["package", "install"]
+          }
+        },
+        "whenOrgType": ["production"],
+        "action": "confirm",
+        "confirmMessage": "Install or upgrade a package on PRODUCTION org {orgAlias}?\n\n  {command}"
+      },
+      {
+        "id": "sf-agent-activate-prod",
+        "description": "Agent activation/deactivation targeting production",
+        "match": {
+          "tool": "bash",
+          "ast": {
+            "cmd": "sf",
+            "subCmd": ["agent", ["activate", "deactivate"]]
+          }
+        },
+        "whenOrgType": ["production"],
+        "action": "confirm",
+        "confirmMessage": "Change active agent state on PRODUCTION org {orgAlias}?\n\n  {command}"
+      },
+      {
+        "id": "sf-agent-publish-prod",
+        "description": "Agent authoring-bundle publish targeting production",
+        "match": {
+          "tool": "bash",
+          "ast": {
+            "cmd": "sf",
+            "subCmd": ["agent", "publish", "authoring-bundle"]
+          }
+        },
+        "whenOrgType": ["production"],
+        "action": "confirm",
+        "confirmMessage": "Publish an agent authoring bundle to PRODUCTION org {orgAlias}?\n\n  {command}"
       }
     ]
   }

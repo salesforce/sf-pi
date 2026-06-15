@@ -262,6 +262,54 @@ describe("Safety Kernel — commandGate (Tier 2)", () => {
     }
   });
 
+  it("confirms expanded Salesforce CLI command-gate patterns", async () => {
+    const config = readBundledConfig();
+    for (const [command, ruleId] of [
+      ["sf project delete source --metadata ApexClass:Foo -o Dev", "sf-project-delete-source"],
+      ["sf project delete tracking -o Dev", "sf-project-delete-tracking"],
+      ["sf project reset tracking -o Dev", "sf-project-reset-tracking"],
+      ["sf package delete --package 0Ho... --target-dev-hub DevHub", "sf-package-delete"],
+      [
+        "sf package version delete --package 04t... --target-dev-hub DevHub",
+        "sf-package-version-delete",
+      ],
+      ["sf package uninstall --package 04t... -o Dev", "sf-package-uninstall"],
+      [
+        "sf package version promote --package 04t... --target-dev-hub DevHub",
+        "sf-package-version-promote",
+      ],
+      [
+        "sf package push-upgrade schedule --package 04t... --target-dev-hub DevHub",
+        "sf-package-push-upgrade-schedule",
+      ],
+      [
+        "sf package push-upgrade abort --push-request-id 0DV... --target-dev-hub DevHub",
+        "sf-package-push-upgrade-abort",
+      ],
+      ["sf org logout --all --no-prompt", "sf-org-logout-all"],
+      ["sf org generate password -o Scratch", "sf-org-generate-password"],
+      ["sf plugins install my-plugin", "sf-plugins-install"],
+      ["sf plugins uninstall my-plugin", "sf-plugins-uninstall"],
+      ["sf plugins remove my-plugin", "sf-plugins-remove"],
+      ["sf plugins reset --hard", "sf-plugins-reset"],
+      ["sf agent adl delete --library-id 0DL... -o Dev", "sf-agent-adl-delete"],
+      [
+        "sf agent adl file delete --library-id 0DL... --file-id 068... -o Dev",
+        "sf-agent-adl-file-delete",
+      ],
+    ] as const) {
+      const decision = await evaluateSafety({
+        toolName: "bash",
+        input: { command },
+        cwd: "/project",
+        config,
+      });
+      expect(decision?.feature).toBe("commandGate");
+      expect(decision?.action).toBe("confirm");
+      expect(decision?.ruleId).toBe(ruleId);
+    }
+  });
+
   it("confirms dangerous herdr.run commands", async () => {
     const config = readBundledConfig();
     const decision = await evaluateSafety({
@@ -499,6 +547,51 @@ describe("Safety Kernel — orgAwareGate (Tier 2)", () => {
       config,
     });
     expect(decision).toBeUndefined();
+  });
+
+  it("confirms additional Salesforce mutations on production", async () => {
+    mockedEnv = env("Prod", "production");
+    const config = readBundledConfig();
+    for (const [command, ruleId] of [
+      [
+        "sf data create record --sobject Account --values 'Name=Acme' -o Prod",
+        "sf-data-create-prod",
+      ],
+      ["sf data create file --file local.pdf --title Local -o Prod", "sf-data-create-prod"],
+      ["sf package install --package 04t... -o Prod", "sf-package-install-prod"],
+      ["sf agent activate --api-name MyAgent -o Prod", "sf-agent-activate-prod"],
+      ["sf agent deactivate --api-name MyAgent -o Prod", "sf-agent-activate-prod"],
+      ["sf agent publish authoring-bundle --api-name MyAgent -o Prod", "sf-agent-publish-prod"],
+    ] as const) {
+      const decision = await evaluateSafety({
+        toolName: "bash",
+        input: { command },
+        cwd: "/project",
+        config,
+      });
+      expect(decision?.feature).toBe("orgAwareGate");
+      expect(decision?.action).toBe("confirm");
+      expect(decision?.ruleId).toBe(ruleId);
+    }
+  });
+
+  it("does NOT fire additional Salesforce mutation rules for sandbox targets", async () => {
+    mockedEnv = env("DevInt", "sandbox");
+    const config = readBundledConfig();
+    for (const command of [
+      "sf data create record --sobject Account --values 'Name=Acme' -o DevInt",
+      "sf package install --package 04t... -o DevInt",
+      "sf agent activate --api-name MyAgent -o DevInt",
+      "sf agent publish authoring-bundle --api-name MyAgent -o DevInt",
+    ]) {
+      const decision = await evaluateSafety({
+        toolName: "bash",
+        input: { command },
+        cwd: "/project",
+        config,
+      });
+      expect(decision).toBeUndefined();
+    }
   });
 
   it("fails closed when alias is unknown and not in productionAliases", async () => {

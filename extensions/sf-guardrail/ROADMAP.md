@@ -14,12 +14,14 @@ are not promises — priority is the rough order.
 - [x] Command gate: structural token matching for recursive deletion variants,
       permission/ownership changes, destructive git, pipe-to-shell,
       base64-to-shell, process/system disruption, container/cloud/database
-      destruction, Salesforce org deletion, credential reveal commands, and
-      commands later in simple shell chains.
+      destruction, Salesforce CLI project/package/plugin/org/agent destructive
+      operations, credential reveal commands, and commands later in simple shell
+      chains.
 - [x] Strict temp cleanup auto-allow for literal, single-target OS temp
       `rm -rf` / `rm -fr` cleanup with audit.
 - [x] Org-aware gate: mutating `sf project deploy start|resume|quick`,
-      `sf apex run`, `sf data (delete|update|upsert|import)`,
+      `sf apex run`, `sf data (create|delete|update|upsert|import)`,
+      `sf package install`, `sf agent activate|deactivate|publish`, and
       `sf org api --method DELETE|PATCH|PUT` — production only.
 - [x] Target-org resolution via shared sf-devbar env cache plus bounded cached
       lookup for explicit aliases, with `productionAliases` user override and

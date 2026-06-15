@@ -22,8 +22,9 @@ families, each controlled by per-rule behavior (`off`, `confirm`, or `block`):
    Ships with recursive deletion variants, permission/ownership changes,
    destructive git commands, pipe-to-shell and base64-to-shell patterns,
    process/system disruption commands, container/cloud/database destruction
-   commands, `sf org delete`, explicit Salesforce CLI credential reveal
-   commands, and `SF_TEMP_SHOW_SECRETS=true`.
+   commands, Salesforce CLI project/package/plugin/org/agent destructive
+   operations, explicit Salesforce CLI credential reveal commands, and
+   `SF_TEMP_SHOW_SECRETS=true`.
    Strictly validated OS temp-directory cleanup is auto-allowed and audited;
    other dangerous commands default to `confirm` behavior and prompt via
    `ctx.ui.select` (Allow once / Allow for this session / Block). Individual
@@ -32,12 +33,17 @@ families, each controlled by per-rule behavior (`off`, `confirm`, or `block`):
 3. **orgAwareGate** — shell-command rules that fire only when the resolved
    target-org type matches. Explicit non-default target aliases get a bounded,
    cached, in-process org lookup before a guessed-production prompt; lookup
-   failure still fails closed. Ships with four production-only rules:
+   failure still fails closed. Ships with production-only rules for metadata,
+   data, package, and Agentforce mutations:
    - `sf project deploy start | resume | quick` (recognized validate,
      preview, report, check-only, and dry-run rehearsals are allowed)
    - `sf apex run`
    - `sf data delete | update | upsert | import`
    - `sf org api --method DELETE | PATCH | PUT`
+   - `sf data create record | file`
+   - `sf package install`
+   - `sf agent activate | deactivate`
+   - `sf agent publish authoring-bundle`
 
 Plus:
 
