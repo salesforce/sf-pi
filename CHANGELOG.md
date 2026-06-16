@@ -517,6 +517,18 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.191.0](https://github.com/salesforce/sf-pi/compare/v0.190.0...v0.191.0) (2026-06-16)
+
+
+### Features
+
+* **devbar:** add configurable colors ([ae56259](https://github.com/salesforce/sf-pi/commit/ae56259ca008a1ce1ff0c6a499b5c3d9e457913b))
+
+
+### Bug Fixes
+
+* **devbar:** avoid control regex analyzer findings ([821975a](https://github.com/salesforce/sf-pi/commit/821975af7512cbd89feb5708f06ef604c591d3b0))
+
 ## [0.190.0](https://github.com/salesforce/sf-pi/compare/v0.189.3...v0.190.0) (2026-06-15)
 
 
