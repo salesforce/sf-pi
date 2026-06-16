@@ -239,6 +239,7 @@ extensions/sf-agentscript/
     create.test.ts          ← unit / smoke test
     custom-ps.test.ts       ← unit / smoke test
     diagnose-agent-user.test.ts← unit / smoke test
+    diagnostic-parity.test.ts← unit / smoke test
     diagnostics.test.ts     ← unit / smoke test
     doctor.test.ts          ← unit / smoke test
     eval-active-ids.test.ts ← unit / smoke test
