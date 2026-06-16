@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.190.0-2026-06-15",
-  "latestVersion": "0.190.0",
+  "revision": "release-0.191.0-2026-06-16",
+  "latestVersion": "0.191.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.190.0",
+      "id": "release-0.191.0",
       "kind": "update",
-      "title": "sf-pi v0.190.0 — agentscript: cache local analysis snapshots",
-      "publishedAt": "2026-06-15T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.190.0",
+      "title": "sf-pi v0.191.0 — devbar: add configurable colors",
+      "publishedAt": "2026-06-16T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.191.0",
       "severity": "info",
-      "body": "agentscript: cache local analysis snapshots — satisfy Data 360 sweep lint findings"
+      "body": "devbar: add configurable colors — devbar: avoid control regex analyzer findings"
     },
     {
       "id": "pi-0.73-required",
