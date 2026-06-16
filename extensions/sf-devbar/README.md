@@ -100,7 +100,7 @@ as results arrive:
 
 | Command               | Description                                                    |
 | --------------------- | -------------------------------------------------------------- |
-| `/sf-devbar`          | Open status & controls panel in UI; toggle bars in no-UI mode  |
+| `/sf-devbar`          | Open SF DevBar in SF Pi Manager; show status in no-UI mode     |
 | `/sf-devbar status`   | Show current org/environment details                           |
 | `/sf-devbar toggle`   | Toggle bars on/off                                             |
 | `/sf-devbar refresh`  | Force Salesforce environment re-detection and settings refresh |
@@ -120,8 +120,8 @@ as results arrive:
 | thinking_level_select | thinking changes | Repaint rainbow thinking badge                            |
 | turn_end / agent_end  | —                | Refresh context, footer, and git state                    |
 | session_shutdown      | —                | Clear custom widget/footer                                |
-| `/sf-devbar`          | UI available     | Open status & controls panel                              |
-| `/sf-devbar`          | no UI            | Toggle enabled state                                      |
+| `/sf-devbar`          | UI available     | Open SF Pi Manager detail page for SF DevBar              |
+| `/sf-devbar`          | no UI            | Show current status                                       |
 | `/sf-devbar toggle`   | —                | Toggle enabled state                                      |
 | `/sf-devbar refresh`  | —                | Force environment re-detection and color settings refresh |
 | `/sf-devbar settings` | UI available     | Open SF Pi Manager settings for DevBar colors             |
@@ -158,7 +158,9 @@ manual JSON values fail soft and fall back to the next valid source.
 
 Accepted color formats are `#RGB` and `#RRGGBB`; the settings panel normalizes
 values to lowercase `#rrggbb`. Palette fields accept comma-separated colors in
-the panel, or JSON arrays in settings files.
+the panel, or JSON arrays in settings files. Press `Enter` on a color row to open
+a focused edit page with a visible draft cursor; `Esc` cancels that field edit
+and returns to the settings list.
 
 Only DevBar-owned hardcoded true-color accents are configurable. Semantic theme
 colors such as production warnings, LSP success/error states, and git status

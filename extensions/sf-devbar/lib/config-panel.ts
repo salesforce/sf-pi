@@ -129,6 +129,11 @@ class SfDevbarConfigPanel implements Focusable {
   }
 
   renderContent(width: number): string[] {
+    if (this.editingKey) return this.renderEditContent(width);
+    return this.renderListContent(width);
+  }
+
+  private renderListContent(width: number): string[] {
     const t = this.theme;
     const pad = (content = "") => padAnsi(truncateToWidth(content, width, ""), width);
     const effective = this.effectiveColors();
@@ -143,17 +148,52 @@ class SfDevbarConfigPanel implements Focusable {
 
     for (const [i, descriptor] of DEVBAR_COLOR_DESCRIPTORS.entries()) {
       lines.push(this.renderRow(descriptor, effective, i === this.cursor, width));
-      if (this.editingKey === descriptor.key) {
-        lines.push(`    ${t.fg("muted", "Edit:")} ${t.fg("accent", this.draftText || " ")}`);
-      }
     }
 
     lines.push("");
     if (this.lastError) lines.push(` ${t.fg("warning", this.lastError)}`);
     if (this.lastMessage) lines.push(` ${t.fg("success", this.lastMessage)}`);
     lines.push(
-      ` ${t.fg("dim", "↑/↓ select · Enter edit · Backspace clear field · r reset scope · s save · Esc back")}`,
+      ` ${t.fg("dim", "↑/↓ select · Enter edit · Backspace clear field · r reset scope · s save · Esc cancel/back")}`,
     );
+    return lines.map(pad);
+  }
+
+  private renderEditContent(width: number): string[] {
+    const t = this.theme;
+    const pad = (content = "") => padAnsi(truncateToWidth(content, width, ""), width);
+    const descriptor = this.editingDescriptor();
+    if (!descriptor) return this.renderListContent(width);
+
+    const effective = this.effectiveColors();
+    const current = effective.colors[descriptor.key];
+    const currentText = Array.isArray(current) ? formatPalette(current) : String(current);
+    const draft = `${this.draftText}${t.fg("accent", "█")}`;
+    const lines: string[] = [
+      ` ${t.fg("accent", themeBold(t, `SF Pi › SF DevBar › Settings › Edit ${descriptor.label}`))}`,
+      "",
+      ` ${t.fg("muted", "Field:")}  ${t.fg("text", descriptor.label)}`,
+      ` ${t.fg("muted", "Type:")}   ${t.fg("text", descriptor.kind === "palette" ? "Palette" : "Color")}`,
+      ` ${t.fg("muted", "Source:")} ${t.fg("text", effective.sources[descriptor.key])}`,
+      "",
+      ` ${t.fg("muted", "Current effective value:")}`,
+      `   ${t.fg("dim", currentText)}`,
+      "",
+      ` ${t.fg("muted", "Draft:")}`,
+      `   ${t.fg("accent", draft)}`,
+      "",
+      ` ${t.fg("muted", "Accepted formats:")}`,
+      `   ${t.fg("dim", "#RGB or #RRGGBB")}`,
+    ];
+
+    if (descriptor.kind === "palette") {
+      lines.push(`   ${t.fg("dim", "#b281d6, #5fafff, #82d8ff")}`);
+      lines.push(`   ${t.fg("dim", '["#b281d6", "#5fafff", "#82d8ff"]')}`);
+    }
+
+    lines.push("");
+    if (this.lastError) lines.push(` ${t.fg("warning", this.lastError)}`);
+    lines.push(` ${t.fg("dim", "Enter accept · Esc cancel edit · Backspace delete")}`);
     return lines.map(pad);
   }
 
@@ -243,6 +283,11 @@ class SfDevbarConfigPanel implements Focusable {
     const first = DEVBAR_COLOR_DESCRIPTORS[0];
     if (!first) throw new Error("DevBar color descriptors are empty");
     return first;
+  }
+
+  private editingDescriptor(): DevbarColorDescriptor | undefined {
+    const key = this.editingKey;
+    return key ? DEVBAR_COLOR_DESCRIPTORS.find((item) => item.key === key) : undefined;
   }
 
   private effectiveColors(): {

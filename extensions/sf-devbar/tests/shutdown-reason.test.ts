@@ -3,7 +3,7 @@
  * Tests for session_shutdown reason awareness across extensions.
  *
  * Covers:
- * - sf-devbar: skips teardown on reload
+ * - sf-devbar: clears UI surfaces even on reload
  * - sf-lsp: skips LSP shutdown on reload
  * - sf-skills: preserves state on reload
  *
@@ -30,16 +30,15 @@ function readExtensionSource(extensionId: string, file = "index.ts"): string {
 describe("sf-devbar session_shutdown reason", () => {
   const source = readExtensionSource("sf-devbar");
 
-  it("reads event.reason in session_shutdown handler", () => {
-    // Must destructure or read the event parameter, not ignore it with _event
-    expect(source).toMatch(/pi\.on\("session_shutdown",\s*async\s*\(event/);
+  it("registers a session_shutdown handler", () => {
+    expect(source).toMatch(/pi\.on\("session_shutdown",\s*async\s*\(_event,\s*ctx\)/);
   });
 
-  it("skips teardown on reload", () => {
-    expect(source).toContain('event.reason === "reload"');
+  it("does not skip teardown on reload", () => {
+    expect(source).not.toContain('event.reason === "reload"');
   });
 
-  it("still cleans up footer and widget on non-reload shutdown", () => {
+  it("cleans up footer and widget on shutdown", () => {
     expect(source).toContain("setFooter(undefined)");
     expect(source).toContain("setWidget(WIDGET_KEY, undefined)");
   });

@@ -19,4 +19,18 @@ describe("sf-devbar", () => {
     expect(source).toContain("pi.getFlag(FLAG_NAME) === true");
     expect(source).not.toContain("pi.getFlag(`--${FLAG_NAME}`)");
   });
+
+  it("routes the no-args UI command to the SF Pi Manager detail page", () => {
+    expect(source).toContain('openDevbarInManager(ctx, "detail")');
+    expect(source).not.toContain("handleDevbarPanel");
+    expect(source).not.toContain('title: "📊 SF DevBar — status & controls"');
+  });
+
+  it("registers Manager detail actions for the old panel features", () => {
+    expect(source).toContain('registerManagerDetailActions(pi, "sf-devbar"');
+    expect(source).toContain('id: "status"');
+    expect(source).toContain('id: "refresh"');
+    expect(source).toContain('id: "toggle-bars"');
+    expect(source).toContain('id: "help"');
+  });
 });

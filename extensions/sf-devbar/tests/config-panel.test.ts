@@ -18,10 +18,16 @@ const stubTheme: Theme = {
   bold: (text: string) => `<b>${text}</b>`,
 } as Theme;
 
+type TestPanel = { handleInput(data: string): void; renderContent(width: number): string[] };
+
 function makeTempDir(prefix: string): string {
   const dir = mkdtempSync(join(tmpdir(), prefix));
   tempDirs.push(dir);
   return dir;
+}
+
+function makePanel(cwd: string, onDone: (value: unknown) => void = () => undefined): TestPanel {
+  return createConfigPanel(stubTheme, cwd, "project", onDone) as unknown as TestPanel;
 }
 
 afterEach(() => {
@@ -45,19 +51,25 @@ describe("DevBar config panel parsers", () => {
 });
 
 describe("DevBar config panel", () => {
-  it("buffers edits and saves project scoped overrides once", () => {
+  it("opens a dedicated edit page, buffers valid edits, and saves once", () => {
     const cwd = makeTempDir("devbar-config-panel-");
     mkdirSync(join(cwd, ".pi"), { recursive: true });
     writeFileSync(join(cwd, ".pi", "settings.json"), JSON.stringify({ theme: "dark" }), "utf-8");
     let result: unknown;
-    const panel = createConfigPanel(stubTheme, cwd, "project", (value) => {
+    const panel = makePanel(cwd, (value) => {
       result = value;
-    }) as unknown as { handleInput(data: string): void; renderContent(width: number): string[] };
+    });
 
     panel.handleInput("enter");
+    expect(panel.renderContent(100).join("\n")).toContain("Edit Folder path");
     for (let i = 0; i < 7; i++) panel.handleInput("backspace");
     panel.handleInput("#abc");
     panel.handleInput("enter");
+
+    const listView = panel.renderContent(100).join("\n");
+    expect(listView).toContain("unsaved changes");
+    expect(listView).not.toContain("Edit:");
+
     panel.handleInput("s");
 
     expect(result).toEqual({ needsReload: true });
@@ -66,19 +78,39 @@ describe("DevBar config panel", () => {
     expect(raw.sfPi.devbar.colors).toEqual({ folderPath: "#aabbcc" });
   });
 
-  it("keeps invalid edits open without writing settings", () => {
+  it("keeps invalid edits on the edit page without writing settings", () => {
     const cwd = makeTempDir("devbar-config-panel-");
     let result: unknown;
-    const panel = createConfigPanel(stubTheme, cwd, "project", (value) => {
+    const panel = makePanel(cwd, (value) => {
       result = value;
-    }) as unknown as { handleInput(data: string): void; renderContent(width: number): string[] };
+    });
 
     panel.handleInput("enter");
     for (let i = 0; i < 7; i++) panel.handleInput("backspace");
     panel.handleInput("not-a-color");
     panel.handleInput("enter");
 
+    const rendered = panel.renderContent(100).join("\n");
     expect(result).toBeUndefined();
-    expect(panel.renderContent(100).join("\n")).toContain("Invalid color");
+    expect(rendered).toContain("Edit Folder path");
+    expect(rendered).toContain("Invalid color");
+  });
+
+  it("cancels the active field edit with escape without leaving settings", () => {
+    const cwd = makeTempDir("devbar-config-panel-");
+    let result: unknown;
+    const panel = makePanel(cwd, (value) => {
+      result = value;
+    });
+
+    panel.handleInput("enter");
+    panel.handleInput("#abc");
+    panel.handleInput("escape");
+
+    const rendered = panel.renderContent(100).join("\n");
+    expect(result).toBeUndefined();
+    expect(rendered).toContain("SF Pi › SF DevBar › Settings");
+    expect(rendered).not.toContain("Edit Folder path");
+    expect(rendered).not.toContain("#abc");
   });
 });

@@ -14,20 +14,20 @@
  *   Event/Trigger         | Result
  *   ----------------------|------------------------------------------------------------
  *   session_start         | Activate both bars, load cached org, start async checks
- *   session_shutdown      | Restore default footer + clear widget
+ *   session_shutdown      | Clear custom footer + widget
  *   model_select          | Update model name, detect SF LLM Gateway, refresh bars
  *   thinking_level_select | Repaint top bar immediately on thinking-level change
  *   turn_start            | Set thinking indicator on top bar
  *   turn_end              | Refresh git changes, update context bar, trigger footer repaint
  *   agent_end             | Final git refresh + footer repaint
- *   /sf-devbar            | Toggle bars on/off
+ *   /sf-devbar            | Open SF DevBar in the SF Pi Manager
  *   /sf-devbar help       | Show help
  *   Ctrl+Shift+B          | Keyboard toggle for bars
  *   --no-devbar flag      | Launch pi without the status bar
  *
  * Pi SDK features used:
  *   setWidget, setFooter, setTitle
- *   session_start, session_shutdown (with reason), model_select, turn_start, turn_end, agent_end
+ *   session_start, session_shutdown, model_select, turn_start, turn_end, agent_end
  *   before_agent_start (with systemPromptOptions)
  *   registerCommand, registerShortcut, registerFlag
  *   getThinkingLevel, getContextUsage, ctx.model, ctx.cwd, ctx.hasUI
@@ -74,12 +74,9 @@ import { openInfoPanel } from "../../lib/common/info-panel.ts";
 import { openExtensionInManager } from "../../lib/common/manager-deep-link.ts";
 import { settingsPathForScope } from "./lib/settings.ts";
 import {
-  buildToggleExtensionAction,
-  isLifecycleToggleAction,
-  LIFECYCLE_GROUP,
-  performToggleExtension,
-  type LifecycleActionId,
-} from "../../lib/common/extension-toggle.ts";
+  registerManagerDetailActions,
+  type ManagerDetailAction,
+} from "../../lib/common/manager-actions.ts";
 
 // -------------------------------------------------------------------------------------------------
 // Constants
@@ -117,7 +114,6 @@ export default function sfDevBar(pi: ExtensionAPI) {
    * when the user keeps the default so the top bar stays unchanged. */
   let imageWidthPill = "";
   let devbarColors: DevbarColors = DEFAULT_DEVBAR_COLORS;
-  let hasCustomColors = false;
 
   // Reference to footer's tui.requestRender for reactive updates.
   // The wrapper installed below includes a session-generation guard so stale
@@ -222,7 +218,6 @@ export default function sfDevBar(pi: ExtensionAPI) {
     const settings = readDevbarRuntimeSettings(cwd);
     imageWidthPill = formatImageWidthPill(settings.imageWidthCells);
     devbarColors = settings.colors;
-    hasCustomColors = settings.hasCustomColors;
   }
 
   // --- Helper: collect bottom-bar state ---
@@ -471,12 +466,11 @@ export default function sfDevBar(pi: ExtensionAPI) {
   });
 
   // --- Session shutdown: clean exit ---
-  // Uses the shutdown reason to decide cleanup depth. On reload, skip footer/widget
-  // teardown since the new extension instance will re-set them immediately.
-  pi.on("session_shutdown", async (event, ctx) => {
+  // Always clear DevBar-owned UI surfaces. Reload-driven settings changes can
+  // otherwise leave stale footer/widget rows behind until the next repaint.
+  pi.on("session_shutdown", async (_event, ctx) => {
     endActiveSession(ctx);
     if (!ctx.hasUI) return;
-    if (event.reason === "reload") return; // New instance handles re-init
     ctx.ui.setFooter(undefined);
     ctx.ui.setWidget(WIDGET_KEY, undefined);
   });
@@ -564,76 +558,48 @@ export default function sfDevBar(pi: ExtensionAPI) {
     };
   });
 
-  type DevbarAction =
-    | "status"
-    | "toggle"
-    | "refresh"
-    | "settings"
-    | "help"
-    | "close"
-    | LifecycleActionId;
-
-  const DEVBAR_ACTIONS: CommandPanelAction<DevbarAction>[] = [
-    {
-      value: "status",
-      label: "Show current status",
-      description: "Print the detected Salesforce org/environment details used by the bottom bar.",
-      group: "Status",
-    },
-    {
-      value: "toggle",
-      label: "Toggle bars on/off",
-      description: "Enable or disable the top-bar widget and custom footer for this session.",
-      group: "Controls",
-    },
-    {
-      value: "refresh",
-      label: "Refresh org environment",
-      description:
-        "Force re-detection of the Salesforce CLI org/project environment, re-read DevBar settings, and repaint bars.",
-      group: "Troubleshooting",
-    },
-    {
-      value: "settings",
-      label: "Open settings",
-      description: "Edit DevBar colors in the SF Pi Manager settings surface.",
-      group: "Controls",
-    },
-    {
-      value: "help",
-      label: "Show help",
-      description: "Print commands, keyboard shortcut, and launch flag reference.",
-      group: "Reference",
-    },
-    {
-      value: "close",
-      label: "Close",
-      description: "Dismiss this panel.",
-      group: LIFECYCLE_GROUP,
-    },
-  ];
-
-  // Compose the live action list so the lifecycle toggle row reflects the
-  // current enablement state on every panel open.
-  function buildDevbarActions(cwd: string): CommandPanelAction<DevbarAction>[] {
-    const toggle = buildToggleExtensionAction({ extensionId: "sf-devbar", cwd });
-    return toggle ? [...DEVBAR_ACTIONS, toggle] : DEVBAR_ACTIONS;
+  function buildDevbarManagerActions(): ManagerDetailAction[] {
+    return [
+      {
+        id: "status",
+        label: "Current status",
+        description: "Show the detected Salesforce org/environment details used by the bottom bar.",
+        run: (ctx) => handleDevbarCommand(ctx, "status", true),
+      },
+      {
+        id: "refresh",
+        label: "Refresh environment",
+        description: "Re-read DevBar settings and force Salesforce CLI org/project detection.",
+        run: (ctx) => handleDevbarCommand(ctx, "refresh", true),
+      },
+      {
+        id: "toggle-bars",
+        label: "Toggle bars for this session",
+        description: "Hide or show the top widget and custom footer until reload/session restart.",
+        run: (ctx) => toggleDevbar(ctx, true),
+      },
+      {
+        id: "help",
+        label: "Help",
+        description: "Show the sf-devbar command reference.",
+        run: (ctx) => handleDevbarCommand(ctx, "help", true),
+      },
+    ];
   }
 
-  async function handleDevbarPanel(ctx: ExtensionCommandContext): Promise<void> {
-    const panelState: CommandPanelState<DevbarAction> = {};
-    await openCommandPanel(ctx, {
-      title: "📊 SF DevBar — status & controls",
-      subtitle: "Manage the top status bar and Salesforce environment context.",
-      statusLines: () => buildDevbarPanelStatus(ctx),
-      actions: () => buildDevbarActions(ctx.cwd),
-      closeValue: "close",
-      state: panelState,
-      onAction: (action) => handleDevbarCommand(ctx, action, true),
-      // Lifecycle toggle calls ctx.reload() — must close panel first so the
-      // ctx.ui.custom() promise resolves before the runtime is invalidated.
-      closeBeforeAction: isLifecycleToggleAction,
+  async function openDevbarInManager(
+    ctx: ExtensionCommandContext,
+    view: "detail" | "settings",
+  ): Promise<boolean> {
+    const opened = await openExtensionInManager(pi, ctx, {
+      extensionId: "sf-devbar",
+      view,
+      actions: buildDevbarManagerActions(),
     });
+    if (!opened) {
+      ctx.ui.notify("SF Pi Manager is unavailable. Try /sf-pi open sf-devbar.", "warning");
+    }
+    return opened;
   }
 
   async function handleDevbarCommand(
@@ -641,10 +607,6 @@ export default function sfDevBar(pi: ExtensionAPI) {
     sub: string,
     fromPanel = false,
   ): Promise<void> {
-    if (sub === "lifecycle.toggle") {
-      await performToggleExtension(ctx, "sf-devbar");
-      return;
-    }
     if (sub === "settings") {
       await openDevbarSettings(ctx, fromPanel);
       return;
@@ -684,10 +646,7 @@ export default function sfDevBar(pi: ExtensionAPI) {
     fromPanel = false,
   ): Promise<void> {
     if (ctx.hasUI) {
-      const opened = await openExtensionInManager(pi, ctx, {
-        extensionId: "sf-devbar",
-        view: "settings",
-      });
+      const opened = await openDevbarInManager(ctx, "settings");
       if (opened) return;
     }
 
@@ -773,29 +732,12 @@ export default function sfDevBar(pi: ExtensionAPI) {
     ctx.ui.notify(body ? `${title}\n\n${body}` : title, level === "success" ? "info" : level);
   }
 
-  function buildDevbarPanelStatus(ctx: ExtensionCommandContext): string[] {
-    return [
-      `${enabled ? "✓" : "○"} Bars          ${enabled ? "enabled" : "disabled"}`,
-      `${env ? "✓" : "◐"} SF environment ${env ? formatEnvSummary(env) : "not detected yet"}`,
-      `• Model         ${ctx.model ? `${ctx.model.provider}/${ctx.model.id}` : "unknown"}`,
-      `• Image pill    ${imageWidthPill || "default"}`,
-      `• Colors        ${hasCustomColors ? "custom" : "default"}`,
-      `• Shortcut      Ctrl+Shift+B`,
-    ];
-  }
-
-  function formatEnvSummary(value: SfEnvironment): string {
-    if (!value.project.detected) return "not an SFDX project";
-    const org = value.org.alias ?? value.config.targetOrg ?? value.org.username ?? "no default org";
-    return `${org} (${value.org.orgType})`;
-  }
-
   function renderDevbarHelp(): string {
     return [
       "sf-devbar — Salesforce Developer Status Bar",
       "",
       "Commands:",
-      `  /${COMMAND_NAME}          Open status & controls panel`,
+      `  /${COMMAND_NAME}          Open SF DevBar in the SF Pi Manager`,
       `  /${COMMAND_NAME} status   Show current org/environment details`,
       `  /${COMMAND_NAME} toggle   Toggle bars on/off`,
       `  /${COMMAND_NAME} refresh  Force re-detection and re-read DevBar settings`,
@@ -839,6 +781,24 @@ export default function sfDevBar(pi: ExtensionAPI) {
     ].join("\n");
   }
 
+  const DEVBAR_SUBCOMMANDS = [
+    {
+      value: "status",
+      description: "Show current org/environment details.",
+    },
+    { value: "toggle", description: "Toggle bars on/off for this session." },
+    {
+      value: "refresh",
+      description: "Force re-detection and re-read DevBar settings.",
+    },
+    { value: "settings", description: "Open color settings in SF Pi Manager." },
+    { value: "help", description: "Show this help." },
+  ] as const;
+
+  // SF Pi Manager provides the persistent Disable/Enable row on the detail page;
+  // no per-extension buildToggleExtensionAction row is needed after ADR 0051 routing.
+  registerManagerDetailActions(pi, "sf-devbar", buildDevbarManagerActions());
+
   // ===========================================================================================
   // Command: /sf-devbar
   // ===========================================================================================
@@ -847,23 +807,23 @@ export default function sfDevBar(pi: ExtensionAPI) {
     description: "Show and control the SF DevBar status bars",
     getArgumentCompletions: (prefix) => {
       const lower = prefix.toLowerCase();
-      const items = DEVBAR_ACTIONS.filter((action) => action.value !== "close")
-        .filter((action) => action.value.startsWith(lower))
-        .map((action) => ({
+      const items = DEVBAR_SUBCOMMANDS.filter((action) => action.value.startsWith(lower)).map(
+        (action) => ({
           value: action.value,
           label: action.value,
           description: action.description,
-        }));
+        }),
+      );
       return items.length > 0 ? items : null;
     },
     handler: async (args, ctx) => {
       await withSafeCommandHandler(ctx, COMMAND_NAME, async () => {
         const sub = (args ?? "").trim().toLowerCase();
         if (sub === "" && ctx.hasUI) {
-          await handleDevbarPanel(ctx);
+          await openDevbarInManager(ctx, "detail");
           return;
         }
-        await handleDevbarCommand(ctx, sub === "" ? "toggle" : sub);
+        await handleDevbarCommand(ctx, sub === "" ? "status" : sub);
       });
     },
   });
