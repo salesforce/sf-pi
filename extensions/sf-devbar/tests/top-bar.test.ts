@@ -211,6 +211,51 @@ describe("renderTopBar", () => {
     expect(line).toContain("Claude Opus 4.7");
   });
 
+  it("uses custom model and folder colors when provided", () => {
+    const [line] = renderTopBar(
+      makeState({
+        modelProvider: "sf-llm-gateway-internal",
+        modelName: "Claude Opus 4.7",
+        colors: {
+          folderPath: "#112233",
+          modelName: "#445566",
+          orgWarning: "#cc8866",
+          sandboxTrial: "#82aacc",
+          contextEmptyFg: "#3c3c4a",
+          contextEmptyBg: "#28282e",
+          gatewayRainbow: ["#010203", "#040506"],
+          thinkingRainbow: ["#b281d6", "#d787af"],
+        },
+      }),
+      stubTheme,
+    );
+
+    expect(line).toMatch(/\x1b\[38;2;68;85;102mClaude Opus 4\.7/);
+    expect(line).toMatch(/\x1b\[38;2;17;34;51m.*my-project/);
+    expect(line).toMatch(/\x1b\[38;2;1;2;3m/);
+  });
+
+  it("uses custom context empty foreground and background colors", () => {
+    const [line] = renderTopBar(
+      makeState({
+        contextPercent: 10,
+        colors: {
+          folderPath: "#00afaf",
+          modelName: "#d787af",
+          orgWarning: "#cc8866",
+          sandboxTrial: "#82aacc",
+          contextEmptyFg: "#112233",
+          contextEmptyBg: "#445566",
+          gatewayRainbow: ["#b281d6", "#d787af"],
+          thinkingRainbow: ["#010203", "#040506"],
+        },
+      }),
+      stubTheme,
+    );
+
+    expect(line).toMatch(/\x1b\[38;2;17;34;51;48;2;68;85;102m/);
+  });
+
   it("formats context window size correctly", () => {
     const [line1M] = renderTopBar(
       makeState({ contextWindow: 1_000_000, modelName: "test" }),

@@ -12,6 +12,8 @@
  */
 import { existsSync, readFileSync } from "node:fs";
 import { globalSettingsPath, projectSettingsPath } from "../../../lib/common/pi-paths.ts";
+import { hasDevbarColorOverrides, type DevbarColors } from "./colors.ts";
+import { readEffectiveDevbarSettings } from "./settings.ts";
 
 /** Pi's default inline image width in terminal cells (see pi docs/settings.md). */
 export const DEFAULT_IMAGE_WIDTH_CELLS = 60;
@@ -25,6 +27,12 @@ export const DEFAULT_IMAGE_WIDTH_CELLS = 60;
  */
 export interface TerminalDevbarSettings {
   imageWidthCells?: number;
+}
+
+/** Runtime settings cached by sf-devbar outside render paths. */
+export interface DevbarRuntimeSettings extends TerminalDevbarSettings {
+  colors: DevbarColors;
+  hasCustomColors: boolean;
 }
 
 /**
@@ -48,6 +56,22 @@ export function readTerminalDevbarSettings(
     return { imageWidthCells: globalValue };
   }
   return {};
+}
+
+/** Read all DevBar runtime settings once for caller-side caching. */
+export function readDevbarRuntimeSettings(
+  cwd: string,
+  globalSettingsFile: string = globalSettingsPath(),
+): DevbarRuntimeSettings {
+  const terminal = readTerminalDevbarSettings(cwd, globalSettingsFile);
+  const colorSettings = readEffectiveDevbarSettings(cwd, globalSettingsFile);
+  return {
+    ...terminal,
+    colors: colorSettings.colors,
+    hasCustomColors:
+      hasDevbarColorOverrides(colorSettings.global.colors) ||
+      hasDevbarColorOverrides(colorSettings.project.colors),
+  };
 }
 
 function readSettingsJson(path: string): unknown {

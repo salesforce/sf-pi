@@ -339,7 +339,7 @@
     "maturity": "stable",
     "defaultEnabled": true,
     "alwaysActive": false,
-    "configurable": false,
+    "configurable": true,
     "commands": [
       "/sf-devbar",
       "/sf-org"
@@ -362,6 +362,9 @@
         "index.ts",
         "lib/top-bar.ts",
         "lib/bottom-bar.ts",
+        "lib/colors.ts",
+        "lib/settings.ts",
+        "lib/config-panel.ts",
         "lib/git-changes.ts",
         "lib/settings-reader.ts"
       ]
@@ -369,7 +372,7 @@
     "entry": "extensions/sf-devbar/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 1749
+    "srcLoc": 2472
   },
   {
     "id": "sf-feedback",

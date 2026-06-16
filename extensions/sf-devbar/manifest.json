@@ -5,6 +5,7 @@
   "category": "ui",
   "maturity": "stable",
   "defaultEnabled": true,
+  "configurable": true,
   "commands": ["/sf-devbar", "/sf-org"],
   "events": [
     "session_start",
@@ -22,6 +23,9 @@
       "index.ts",
       "lib/top-bar.ts",
       "lib/bottom-bar.ts",
+      "lib/colors.ts",
+      "lib/settings.ts",
+      "lib/config-panel.ts",
       "lib/git-changes.ts",
       "lib/settings-reader.ts"
     ]

@@ -15,6 +15,7 @@
 
 import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import { formatGitChanges, type GitChanges } from "./git-changes.ts";
+import { DEFAULT_DEVBAR_COLORS, type DevbarColors } from "./colors.ts";
 import { resolveGlyphMode, type GlyphMode } from "../../../lib/common/glyph-policy.ts";
 import type {
   SfLspActivity,
@@ -61,6 +62,8 @@ export type TopBarState = {
   imageWidthPill?: string;
   /** Optional glyph mode override (test hook). Production auto-detects. */
   glyphMode?: GlyphMode;
+  /** Resolved DevBar-owned true-color accents. Defaults preserve classic colors. */
+  colors?: DevbarColors;
 };
 
 // -------------------------------------------------------------------------------------------------
@@ -141,26 +144,27 @@ export function renderTopBarParts(
 ): { left: string; right: string } {
   const sep = ` ${theme.fg("dim", SEP_CHAR)} `;
   const mode = state.glyphMode ?? resolveGlyphMode();
+  const colors = state.colors ?? DEFAULT_DEVBAR_COLORS;
   const leftSegments: string[] = [];
 
   // 1. SF Pi brand icon + powerline separator + model segment (no gap)
   const brandIcon = theme.bold(theme.fg("accent", mode === "ascii" ? "sf-pi" : "\ue22c"));
-  const modelSeg = formatModelSegment(state, theme, mode);
+  const modelSeg = formatModelSegment(state, theme, mode, colors);
   leftSegments.push(brandIcon + sep + modelSeg);
 
   // 2. Thinking level (rainbow gradient, hidden when "off")
-  const thinkSeg = formatThinkingSegment(state.thinkingLevel, theme);
+  const thinkSeg = formatThinkingSegment(state.thinkingLevel, theme, colors);
   if (thinkSeg) leftSegments.push(thinkSeg);
 
   // 3. Working folder — teal color matching pi-powerline-footer
-  leftSegments.push(formatFolderSegment(state.folderName, mode));
+  leftSegments.push(formatFolderSegment(state.folderName, mode, colors));
 
   // 4. Git branch + changes
   const gitSeg = formatGitSegment(state, theme, mode);
   if (gitSeg) leftSegments.push(gitSeg);
 
   // 5. Context window progress bar
-  const ctxSeg = formatContextSegment(state.contextPercent, theme);
+  const ctxSeg = formatContextSegment(state.contextPercent, theme, colors);
   if (ctxSeg) leftSegments.push(ctxSeg);
 
   // 6. Optional inline-image-width pill — only when the user has nudged the
@@ -280,16 +284,6 @@ export type { SfLspAvailability, SfLspActivity };
 // Segment formatters
 // -------------------------------------------------------------------------------------------------
 
-/**
- * Teal color for folder path, matching pi-powerline-footer's "path" color (#00afaf).
- */
-const TEAL_HEX = "#00afaf";
-
-/**
- * Light pink/mauve for model name, matching pi-powerline-footer's "model" color (#d787af).
- */
-const MODEL_PINK_HEX = "#d787af";
-
 /** Apply a hex color to text using raw ANSI true-color escapes. */
 function hexFg(hex: string, text: string): string {
   const h = hex.replace("#", "");
@@ -301,15 +295,14 @@ function hexFg(hex: string, text: string): string {
 
 /** Apply foreground + background using raw ANSI true-color escapes. */
 function hexFgBg(fgHex: string, bgHex: string, text: string): string {
-  const fh = fgHex.replace("#", "");
-  const bh = bgHex.replace("#", "");
-  const fr = parseInt(fh.slice(0, 2), 16),
-    fg = parseInt(fh.slice(2, 4), 16),
-    fb = parseInt(fh.slice(4, 6), 16);
-  const br = parseInt(bh.slice(0, 2), 16),
-    bg = parseInt(bh.slice(2, 4), 16),
-    bb = parseInt(bh.slice(4, 6), 16);
+  const [fr, fg, fb] = hexToRgb(fgHex);
+  const [br, bg, bb] = hexToRgb(bgHex);
   return `\x1b[38;2;${fr};${fg};${fb};48;2;${br};${bg};${bb}m${text}\x1b[0m`;
+}
+
+function hexToRgb(hex: string): [number, number, number] {
+  const h = hex.replace("#", "");
+  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
 }
 
 /**
@@ -318,16 +311,10 @@ function hexFgBg(fgHex: string, bgHex: string, text: string): string {
  * Each visible character gets an interpolated color from a pastel rainbow
  * palette. Spaces and punctuation pass through without advancing the color.
  */
-function rainbowGradient(text: string): string {
-  const palette: [number, number, number][] = [
-    [178, 129, 214], // lavender
-    [215, 135, 175], // pink
-    [254, 188, 56], // gold
-    [137, 210, 129], // green
-    [0, 175, 175], // teal
-    [23, 143, 185], // blue
-    [178, 129, 214], // lavender (wrap)
-  ];
+function rainbowGradient(text: string, hexPalette: readonly string[]): string {
+  const palette = (hexPalette.length > 0 ? hexPalette : DEFAULT_DEVBAR_COLORS.gatewayRainbow).map(
+    hexToRgb,
+  );
 
   // Count color-cycling characters (skip brackets, spaces)
   const skipChars = new Set([" ", "[", "]"]);
@@ -370,7 +357,12 @@ function cleanModelName(raw: string): string {
     .trim();
 }
 
-function formatModelSegment(state: TopBarState, theme: BarTheme, mode: GlyphMode): string {
+function formatModelSegment(
+  state: TopBarState,
+  theme: BarTheme,
+  mode: GlyphMode,
+  colors: DevbarColors,
+): string {
   const parts: string[] = [];
 
   // Robot/chip icon. Nerd Font glyphs look great in Ghostty/iTerm but
@@ -381,7 +373,7 @@ function formatModelSegment(state: TopBarState, theme: BarTheme, mode: GlyphMode
   // provider registration (OpenAI-compat or Anthropic-native).
   const isGateway = isGatewayProvider(state.modelProvider);
   if (isGateway) {
-    parts.push(theme.bold(rainbowGradient("[SF LLM Gateway]")));
+    parts.push(theme.bold(rainbowGradient("[SF LLM Gateway]", colors.gatewayRainbow)));
   }
 
   // Model name — strip embedded gateway/size labels to avoid duplication
@@ -396,7 +388,7 @@ function formatModelSegment(state: TopBarState, theme: BarTheme, mode: GlyphMode
   }
 
   // Apply consistent pink color when using gateway, otherwise muted.
-  parts.push(isGateway ? hexFg(MODEL_PINK_HEX, modelLabel) : theme.fg("muted", modelLabel));
+  parts.push(isGateway ? hexFg(colors.modelName, modelLabel) : theme.fg("muted", modelLabel));
 
   return parts.join(" ");
 }
@@ -421,25 +413,17 @@ function formatContextWindowSize(tokens: number): string {
  * high/xhigh levels, and a muted theme color for lower levels.
  * Returns null when thinking is "off" or undefined.
  */
-function formatThinkingSegment(level: string | undefined, theme: BarTheme): string | null {
+function formatThinkingSegment(
+  level: string | undefined,
+  theme: BarTheme,
+  colors: DevbarColors,
+): string | null {
   if (!level || level === "off") return null;
 
   const label = `think:${level}`;
 
   // Only use rainbow for high/xhigh (matching pi-powerline-footer behavior)
   if (level === "high" || level === "xhigh") {
-    // Softer pastel rainbow matching pi-powerline-footer's RAINBOW_COLORS
-    const rainbowHexColors = [
-      "#b281d6",
-      "#d787af",
-      "#febc38",
-      "#e4c00f",
-      "#89d281",
-      "#00afaf",
-      "#178fb9",
-      "#b281d6",
-    ];
-
     let rainbow = "";
     let colorIndex = 0;
     for (const char of label) {
@@ -447,10 +431,11 @@ function formatThinkingSegment(level: string | undefined, theme: BarTheme): stri
       if (char === " " || char === ":") {
         rainbow += char;
       } else {
-        rainbow += hexFg(rainbowHexColors[colorIndex % rainbowHexColors.length], char).replace(
-          "\x1b[0m",
-          "",
-        ); // Strip individual resets, add one at end
+        const color =
+          colors.thinkingRainbow[colorIndex % colors.thinkingRainbow.length] ??
+          DEFAULT_DEVBAR_COLORS.thinkingRainbow[0] ??
+          DEFAULT_DEVBAR_COLORS.modelName;
+        rainbow += hexFg(color, char).replace("\x1b[0m", ""); // Strip individual resets, add one at end
         colorIndex++;
       }
     }
@@ -465,9 +450,9 @@ function formatThinkingSegment(level: string | undefined, theme: BarTheme): stri
 /**
  * Render the working folder in teal, matching pi-powerline-footer's "path" color.
  */
-function formatFolderSegment(folderName: string, mode: GlyphMode): string {
+function formatFolderSegment(folderName: string, mode: GlyphMode, colors: DevbarColors): string {
   const icon = mode === "ascii" ? "dir" : "📂";
-  return hexFg(TEAL_HEX, `${icon} ${folderName}`);
+  return hexFg(colors.folderPath, `${icon} ${folderName}`);
 }
 
 function formatGitSegment(state: TopBarState, theme: BarTheme, mode: GlyphMode): string | null {
@@ -499,7 +484,11 @@ function formatGitSegment(state: TopBarState, theme: BarTheme, mode: GlyphMode):
  * Uses a light grey background for the empty portion to show available space.
  * Colors: teal <60%, amber 60-80%, red >80%.
  */
-function formatContextSegment(percent: number | null | undefined, theme: BarTheme): string | null {
+function formatContextSegment(
+  percent: number | null | undefined,
+  theme: BarTheme,
+  colors: DevbarColors,
+): string | null {
   if (percent == null) return null;
 
   const clamped = Math.max(0, Math.min(100, percent));
@@ -521,7 +510,10 @@ function formatContextSegment(percent: number | null | undefined, theme: BarThem
     "█".repeat(fullCells) + (hasPartial ? partials[remainder] : ""),
   );
   // Grey background on empty portion to show available space clearly
-  const emptyStr = emptyCells > 0 ? hexFgBg("#3c3c4a", "#28282e", "░".repeat(emptyCells)) : "";
+  const emptyStr =
+    emptyCells > 0
+      ? hexFgBg(colors.contextEmptyFg, colors.contextEmptyBg, "░".repeat(emptyCells))
+      : "";
   const labelText = `${clamped.toFixed(1)}%`;
   const label = clamped > 80 ? theme.bold(theme.fg(color, labelText)) : theme.fg(color, labelText);
 

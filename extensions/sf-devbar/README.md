@@ -98,32 +98,71 @@ as results arrive:
 
 ## Commands
 
-| Command              | Description                                                   |
-| -------------------- | ------------------------------------------------------------- |
-| `/sf-devbar`         | Open status & controls panel in UI; toggle bars in no-UI mode |
-| `/sf-devbar status`  | Show current org/environment details                          |
-| `/sf-devbar toggle`  | Toggle bars on/off                                            |
-| `/sf-devbar refresh` | Force Salesforce environment re-detection                     |
-| `/sf-devbar help`    | Show help                                                     |
-| `/sf-org`            | Show detected Salesforce org status                           |
-| `Ctrl+Shift+B`       | Keyboard toggle                                               |
-| `pi --no-devbar`     | Launch without status bars                                    |
+| Command               | Description                                                    |
+| --------------------- | -------------------------------------------------------------- |
+| `/sf-devbar`          | Open status & controls panel in UI; toggle bars in no-UI mode  |
+| `/sf-devbar status`   | Show current org/environment details                           |
+| `/sf-devbar toggle`   | Toggle bars on/off                                             |
+| `/sf-devbar refresh`  | Force Salesforce environment re-detection and settings refresh |
+| `/sf-devbar settings` | Open DevBar color settings in SF Pi Manager                    |
+| `/sf-devbar help`     | Show help                                                      |
+| `/sf-org`             | Show detected Salesforce org status                            |
+| `Ctrl+Shift+B`        | Keyboard toggle                                                |
+| `pi --no-devbar`      | Launch without status bars                                     |
 
 ## Behavior Matrix
 
-| Event/Trigger         | Condition        | Result                                 |
-| --------------------- | ---------------- | -------------------------------------- |
-| session_start         | UI available     | Render bars with cached data           |
-| session_start         | `--no-devbar`    | Stay silent                            |
-| model_select          | model changes    | Repaint model/gateway badge            |
-| thinking_level_select | thinking changes | Repaint rainbow thinking badge         |
-| turn_end / agent_end  | —                | Refresh context, footer, and git state |
-| session_shutdown      | —                | Clear custom widget/footer             |
-| `/sf-devbar`          | UI available     | Open status & controls panel           |
-| `/sf-devbar`          | no UI            | Toggle enabled state                   |
-| `/sf-devbar toggle`   | —                | Toggle enabled state                   |
-| `/sf-devbar refresh`  | —                | Force environment re-detection         |
-| `/sf-org`             | —                | Show Salesforce environment summary    |
+| Event/Trigger         | Condition        | Result                                                    |
+| --------------------- | ---------------- | --------------------------------------------------------- |
+| session_start         | UI available     | Render bars with cached data                              |
+| session_start         | `--no-devbar`    | Stay silent                                               |
+| model_select          | model changes    | Repaint model/gateway badge                               |
+| thinking_level_select | thinking changes | Repaint rainbow thinking badge                            |
+| turn_end / agent_end  | —                | Refresh context, footer, and git state                    |
+| session_shutdown      | —                | Clear custom widget/footer                                |
+| `/sf-devbar`          | UI available     | Open status & controls panel                              |
+| `/sf-devbar`          | no UI            | Toggle enabled state                                      |
+| `/sf-devbar toggle`   | —                | Toggle enabled state                                      |
+| `/sf-devbar refresh`  | —                | Force environment re-detection and color settings refresh |
+| `/sf-devbar settings` | UI available     | Open SF Pi Manager settings for DevBar colors             |
+| `/sf-org`             | —                | Show Salesforce environment summary                       |
+
+## Color Preferences
+
+DevBar colors are configurable from **SF Pi Manager → SF DevBar → Settings**
+or directly with `/sf-devbar settings` in TUI mode. Settings are saved in
+Pi's native settings files under `sfPi.devbar.colors`.
+
+Project settings override global settings per field; omitted fields inherit
+from the next source and ultimately from the classic DevBar defaults. Invalid
+manual JSON values fail soft and fall back to the next valid source.
+
+```json
+{
+  "sfPi": {
+    "devbar": {
+      "colors": {
+        "folderPath": "#5fafff",
+        "modelName": "#d7afff",
+        "orgWarning": "#ffaf5f",
+        "sandboxTrial": "#82d8ff",
+        "contextEmptyFg": "#5c5c66",
+        "contextEmptyBg": "#24242a",
+        "gatewayRainbow": ["#b281d6", "#5fafff", "#82d8ff"],
+        "thinkingRainbow": ["#d7afff", "#ffaf5f", "#82d8ff"]
+      }
+    }
+  }
+}
+```
+
+Accepted color formats are `#RGB` and `#RRGGBB`; the settings panel normalizes
+values to lowercase `#rrggbb`. Palette fields accept comma-separated colors in
+the panel, or JSON arrays in settings files.
+
+Only DevBar-owned hardcoded true-color accents are configurable. Semantic theme
+colors such as production warnings, LSP success/error states, and git status
+colors continue to come from the active Pi theme.
 
 ## File Structure
 
@@ -133,13 +172,19 @@ as results arrive:
 extensions/sf-devbar/
   lib/
     bottom-bar.ts           ← implementation module
+    colors.ts               ← implementation module
+    config-panel.ts         ← implementation module
     git-changes.ts          ← implementation module
     settings-reader.ts      ← implementation module
+    settings.ts             ← implementation module
     top-bar.ts              ← implementation module
   tests/
     bottom-bar.test.ts      ← unit / smoke test
+    colors.test.ts          ← unit / smoke test
+    config-panel.test.ts    ← unit / smoke test
     git-changes.test.ts     ← unit / smoke test
     settings-reader.test.ts ← unit / smoke test
+    settings.test.ts        ← unit / smoke test
     shutdown-reason.test.ts ← unit / smoke test
     smoke.test.ts           ← unit / smoke test
     system-prompt-options.test.ts← unit / smoke test

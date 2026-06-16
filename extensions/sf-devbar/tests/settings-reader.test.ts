@@ -16,6 +16,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   DEFAULT_IMAGE_WIDTH_CELLS,
   formatImageWidthPill,
+  readDevbarRuntimeSettings,
   readTerminalDevbarSettings,
 } from "../lib/settings-reader.ts";
 
@@ -114,6 +115,23 @@ describe("readTerminalDevbarSettings", () => {
     mkdirSync(join(homeDir, ".pi", "agent"), { recursive: true });
     writeFileSync(globalSettingsFile, "{not json", "utf-8");
     expect(readTerminalDevbarSettings(cwd, globalSettingsFile)).toEqual({});
+  });
+});
+
+describe("readDevbarRuntimeSettings", () => {
+  it("combines terminal image width and effective color settings", () => {
+    const { cwd, globalSettingsFile } = makeScopes({
+      project: {
+        terminal: { imageWidthCells: 88 },
+        sfPi: { devbar: { colors: { folderPath: "#abc" } } },
+      },
+    });
+
+    const settings = readDevbarRuntimeSettings(cwd, globalSettingsFile);
+
+    expect(settings.imageWidthCells).toBe(88);
+    expect(settings.colors.folderPath).toBe("#aabbcc");
+    expect(settings.hasCustomColors).toBe(true);
   });
 });
 

@@ -227,4 +227,35 @@ describe("renderBottomBarParts", () => {
     expect(left).toContain("◆");
     expect(left).toContain("GT-Dev");
   });
+
+  it("uses custom org warning and sandbox/trial colors when provided", () => {
+    const colors = {
+      folderPath: "#00afaf",
+      modelName: "#d787af",
+      orgWarning: "#112233",
+      sandboxTrial: "#445566",
+      contextEmptyFg: "#3c3c4a",
+      contextEmptyBg: "#28282e",
+      gatewayRainbow: ["#b281d6", "#d787af"],
+      thinkingRainbow: ["#b281d6", "#d787af"],
+    };
+
+    const { left: warningLeft } = renderBottomBarParts(
+      makeState({ projectDetected: true, orgName: "Missing", colors }),
+      stubTheme,
+    );
+    expect(warningLeft).toMatch(/\x1b\[38;2;17;34;51m/);
+
+    const { left: sandboxLeft } = renderBottomBarParts(
+      makeState({
+        orgType: "sandbox",
+        orgDetected: true,
+        projectDetected: true,
+        orgName: "DevInt",
+        colors,
+      }),
+      stubTheme,
+    );
+    expect(sandboxLeft).toMatch(/\x1b\[38;2;68;85;102m/);
+  });
 });

@@ -22,6 +22,7 @@
 
 import type { OrgType } from "../../../lib/common/sf-environment/types.ts";
 import { glyph, resolveGlyphMode, type GlyphMode } from "../../../lib/common/glyph-policy.ts";
+import { DEFAULT_DEVBAR_COLORS, type DevbarColors } from "./colors.ts";
 
 // -------------------------------------------------------------------------------------------------
 // Types
@@ -54,6 +55,8 @@ export type BottomBarState = {
   /** Optional glyph mode override (test hook). Production leaves this
    * undefined and lets `resolveGlyphMode()` auto-detect. */
   glyphMode?: GlyphMode;
+  /** Resolved DevBar-owned true-color accents. Defaults preserve classic colors. */
+  colors?: DevbarColors;
 };
 
 // -------------------------------------------------------------------------------------------------
@@ -92,6 +95,7 @@ export function renderBottomBarParts(
   // that terminal we swap in ASCII fallbacks to avoid tofu boxes around
   // the org badge.
   const mode: GlyphMode = state.glyphMode ?? resolveGlyphMode();
+  const colors = state.colors ?? DEFAULT_DEVBAR_COLORS;
 
   // --- Left side ---
   const leftSegments: string[] = [];
@@ -109,7 +113,7 @@ export function renderBottomBarParts(
   // global default org does not appear while the user is outside a Salesforce
   // folder. The "SFDX Project" prefix is the explicit environment indicator.
   if (state.projectDetected) {
-    leftSegments.push(formatProjectOrgSegment(state, theme, mode));
+    leftSegments.push(formatProjectOrgSegment(state, theme, mode, colors));
   }
 
   // --- Right side ---
@@ -131,21 +135,26 @@ export function renderBottomBarParts(
 // Segment formatters
 // -------------------------------------------------------------------------------------------------
 
-function formatProjectOrgSegment(state: BottomBarState, theme: BarTheme, mode: GlyphMode): string {
+function formatProjectOrgSegment(
+  state: BottomBarState,
+  theme: BarTheme,
+  mode: GlyphMode,
+  colors: DevbarColors,
+): string {
   const prefix = theme.fg("dim", "SFDX Project →");
   const isProd = state.orgType === "production";
 
   if (state.orgDetected && state.orgName) {
-    const badge = formatOrgTypeBadge(state.orgType, theme, mode);
+    const badge = formatOrgTypeBadge(state.orgType, theme, mode, colors);
     const orgLabel = badge ? `${state.orgName} [${badge}]` : state.orgName;
     return `${prefix} ${theme.bold(theme.fg(isProd ? "error" : "accent", orgLabel))}`;
   }
 
   if (state.orgName) {
-    return `${prefix} ${hexFg("#cc8866", `${glyph("warn", mode)} ${state.orgName}`)}`;
+    return `${prefix} ${hexFg(colors.orgWarning, `${glyph("warn", mode)} ${state.orgName}`)}`;
   }
 
-  return `${prefix} ${hexFg("#cc8866", `${glyph("warn", mode)} No org configured`)}`;
+  return `${prefix} ${hexFg(colors.orgWarning, `${glyph("warn", mode)} No org configured`)}`;
 }
 
 /**
@@ -158,10 +167,11 @@ function formatOrgTypeBadge(
   orgType: OrgType | undefined,
   theme: BarTheme,
   mode: GlyphMode,
+  colors: DevbarColors,
 ): string | null {
   switch (orgType) {
     case "sandbox":
-      return hexFg("#82aacc", `${glyph("hex", mode)} sandbox`);
+      return hexFg(colors.sandboxTrial, `${glyph("hex", mode)} sandbox`);
     case "scratch":
       return theme.fg("accent", `${glyph("diamondOpen", mode)} scratch`);
     case "developer":
@@ -169,7 +179,7 @@ function formatOrgTypeBadge(
     case "production":
       return theme.bold(theme.fg("error", `${glyph("warn", mode)} PRODUCTION`));
     case "trial":
-      return hexFg("#82aacc", `${glyph("hex", mode)} trial`);
+      return hexFg(colors.sandboxTrial, `${glyph("hex", mode)} trial`);
     case "unknown":
     default:
       return null;

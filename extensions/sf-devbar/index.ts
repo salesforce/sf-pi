@@ -58,7 +58,8 @@ import {
 import { renderTopBarLine, type TopBarState } from "./lib/top-bar.ts";
 import { renderBottomBarParts, type BottomBarState } from "./lib/bottom-bar.ts";
 import { getGitChanges, type GitChanges } from "./lib/git-changes.ts";
-import { formatImageWidthPill, readTerminalDevbarSettings } from "./lib/settings-reader.ts";
+import { formatImageWidthPill, readDevbarRuntimeSettings } from "./lib/settings-reader.ts";
+import { DEFAULT_DEVBAR_COLORS, type DevbarColors } from "./lib/colors.ts";
 import { buildExecFn } from "../../lib/common/exec-adapter.ts";
 import { basename } from "node:path";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
@@ -70,6 +71,8 @@ import {
 } from "../../lib/common/command-panel.ts";
 import { withSafeCommandHandler } from "../../lib/common/safe-command-handler.ts";
 import { openInfoPanel } from "../../lib/common/info-panel.ts";
+import { openExtensionInManager } from "../../lib/common/manager-deep-link.ts";
+import { settingsPathForScope } from "./lib/settings.ts";
 import {
   buildToggleExtensionAction,
   isLifecycleToggleAction,
@@ -113,6 +116,8 @@ export default function sfDevBar(pi: ExtensionAPI) {
   /** Pre-formatted inline-image-width pill (e.g. "img:120c"). Empty string
    * when the user keeps the default so the top bar stays unchanged. */
   let imageWidthPill = "";
+  let devbarColors: DevbarColors = DEFAULT_DEVBAR_COLORS;
+  let hasCustomColors = false;
 
   // Reference to footer's tui.requestRender for reactive updates.
   // The wrapper installed below includes a session-generation guard so stale
@@ -202,19 +207,22 @@ export default function sfDevBar(pi: ExtensionAPI) {
       // change, and buildTopBarState is only called from inside render(),
       // so this stays consistent with the terminal output.
       lspHealth: getSfLspHealth(),
+      colors: devbarColors,
     };
   }
 
   /**
-   * Re-read Pi's terminal.* settings and refresh the inline image pill.
+   * Re-read Pi settings used by the DevBar and cache them outside render paths.
    *
    * Pi does not emit a dedicated settings_change event today, so we refresh
-   * on session_start plus whenever the user toggles or pins the devbar.
-   * Reads are cheap (<1ms) and any failure silently falls back to "no pill".
+   * on session_start plus explicit toggle/refresh paths. Reads are cheap
+   * (<1ms) and any failure silently falls back to default settings.
    */
-  function refreshImageWidthPill(cwd: string): void {
-    const { imageWidthCells } = readTerminalDevbarSettings(cwd);
-    imageWidthPill = formatImageWidthPill(imageWidthCells);
+  function refreshDevbarSettings(cwd: string): void {
+    const settings = readDevbarRuntimeSettings(cwd);
+    imageWidthPill = formatImageWidthPill(settings.imageWidthCells);
+    devbarColors = settings.colors;
+    hasCustomColors = settings.hasCustomColors;
   }
 
   // --- Helper: collect bottom-bar state ---
@@ -224,6 +232,7 @@ export default function sfDevBar(pi: ExtensionAPI) {
       orgType: env?.org?.orgType,
       projectDetected: env?.project?.detected,
       orgDetected: env?.org?.detected,
+      colors: devbarColors,
     };
   }
 
@@ -385,7 +394,7 @@ export default function sfDevBar(pi: ExtensionAPI) {
     // Reset per-session state
     gitChanges = null;
     isThinking = false;
-    refreshImageWidthPill(ctx.cwd);
+    refreshDevbarSettings(ctx.cwd);
 
     // Set terminal title
     updateTitle(ctx);
@@ -555,7 +564,14 @@ export default function sfDevBar(pi: ExtensionAPI) {
     };
   });
 
-  type DevbarAction = "status" | "toggle" | "refresh" | "help" | "close" | LifecycleActionId;
+  type DevbarAction =
+    | "status"
+    | "toggle"
+    | "refresh"
+    | "settings"
+    | "help"
+    | "close"
+    | LifecycleActionId;
 
   const DEVBAR_ACTIONS: CommandPanelAction<DevbarAction>[] = [
     {
@@ -574,8 +590,14 @@ export default function sfDevBar(pi: ExtensionAPI) {
       value: "refresh",
       label: "Refresh org environment",
       description:
-        "Force re-detection of the Salesforce CLI org/project environment and repaint bars.",
+        "Force re-detection of the Salesforce CLI org/project environment, re-read DevBar settings, and repaint bars.",
       group: "Troubleshooting",
+    },
+    {
+      value: "settings",
+      label: "Open settings",
+      description: "Edit DevBar colors in the SF Pi Manager settings surface.",
+      group: "Controls",
     },
     {
       value: "help",
@@ -623,6 +645,11 @@ export default function sfDevBar(pi: ExtensionAPI) {
       await performToggleExtension(ctx, "sf-devbar");
       return;
     }
+    if (sub === "settings") {
+      await openDevbarSettings(ctx, fromPanel);
+      return;
+    }
+
     if (sub === "help") {
       await emitDevbarOutput(ctx, "SF DevBar help", renderDevbarHelp(), "info", fromPanel);
       return;
@@ -646,8 +673,29 @@ export default function sfDevBar(pi: ExtensionAPI) {
     await emitDevbarOutput(
       ctx,
       "Unknown command",
-      `Unknown /${COMMAND_NAME} subcommand: ${sub}. Use status, toggle, refresh, help.`,
+      `Unknown /${COMMAND_NAME} subcommand: ${sub}. Use status, toggle, refresh, settings, help.`,
       "warning",
+      fromPanel,
+    );
+  }
+
+  async function openDevbarSettings(
+    ctx: ExtensionCommandContext,
+    fromPanel = false,
+  ): Promise<void> {
+    if (ctx.hasUI) {
+      const opened = await openExtensionInManager(pi, ctx, {
+        extensionId: "sf-devbar",
+        view: "settings",
+      });
+      if (opened) return;
+    }
+
+    await emitDevbarOutput(
+      ctx,
+      "SF DevBar settings",
+      renderDevbarSettingsHelp(ctx.cwd),
+      "info",
       fromPanel,
     );
   }
@@ -657,7 +705,7 @@ export default function sfDevBar(pi: ExtensionAPI) {
 
     if (enabled) {
       env = getCachedSfEnvironment(ctx.cwd);
-      refreshImageWidthPill(ctx.cwd);
+      refreshDevbarSettings(ctx.cwd);
       updateTitle(ctx);
       updateTopBar(ctx);
       requestFooterRender?.();
@@ -689,6 +737,7 @@ export default function sfDevBar(pi: ExtensionAPI) {
     if (force || !env) {
       ctx.ui.setStatus(`${COMMAND_NAME}-command`, "SF DevBar: detecting Salesforce environment…");
       try {
+        refreshDevbarSettings(ctx.cwd);
         env = await getSharedSfEnvironment(exec, ctx.cwd, force ? { force: true } : undefined);
         updateTitle(ctx);
         updateTopBar(ctx);
@@ -730,6 +779,7 @@ export default function sfDevBar(pi: ExtensionAPI) {
       `${env ? "✓" : "◐"} SF environment ${env ? formatEnvSummary(env) : "not detected yet"}`,
       `• Model         ${ctx.model ? `${ctx.model.provider}/${ctx.model.id}` : "unknown"}`,
       `• Image pill    ${imageWidthPill || "default"}`,
+      `• Colors        ${hasCustomColors ? "custom" : "default"}`,
       `• Shortcut      Ctrl+Shift+B`,
     ];
   }
@@ -748,7 +798,8 @@ export default function sfDevBar(pi: ExtensionAPI) {
       `  /${COMMAND_NAME}          Open status & controls panel`,
       `  /${COMMAND_NAME} status   Show current org/environment details`,
       `  /${COMMAND_NAME} toggle   Toggle bars on/off`,
-      `  /${COMMAND_NAME} refresh  Force re-detection`,
+      `  /${COMMAND_NAME} refresh  Force re-detection and re-read DevBar settings`,
+      `  /${COMMAND_NAME} settings Open color settings in SF Pi Manager`,
       `  /${COMMAND_NAME} help     Show this help`,
       "",
       "Keyboard shortcut:",
@@ -756,6 +807,35 @@ export default function sfDevBar(pi: ExtensionAPI) {
       "",
       "CLI flag:",
       "  pi --no-devbar  Launch without status bars",
+    ].join("\n");
+  }
+
+  function renderDevbarSettingsHelp(cwd: string): string {
+    return [
+      "Open /sf-pi in a TUI session and choose SF DevBar → Settings, or run:",
+      "",
+      "  /sf-pi open sf-devbar settings",
+      "",
+      "Settings paths:",
+      `  Project: ${settingsPathForScope(cwd, "project")}`,
+      `  Global:  ${settingsPathForScope(cwd, "global")}`,
+      "",
+      "Example:",
+      JSON.stringify(
+        {
+          sfPi: {
+            devbar: {
+              colors: {
+                folderPath: "#5fafff",
+                modelName: "#d7afff",
+                gatewayRainbow: ["#b281d6", "#5fafff", "#82d8ff"],
+              },
+            },
+          },
+        },
+        null,
+        2,
+      ),
     ].join("\n");
   }
 
@@ -799,7 +879,7 @@ export default function sfDevBar(pi: ExtensionAPI) {
 
       if (enabled) {
         env = getCachedSfEnvironment(ctx.cwd);
-        refreshImageWidthPill(ctx.cwd);
+        refreshDevbarSettings(ctx.cwd);
         updateTitle(ctx);
         updateTopBar(ctx);
         requestFooterRender?.();

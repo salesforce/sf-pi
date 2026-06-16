@@ -84,6 +84,14 @@ _Avoid_: admin screen, settings page
 A way an extension participates in pi during a session, such as a command, tool, provider, event hook, or UI element.
 _Avoid_: integration point, hook thing
 
+**DevBar Color Preference**:
+A user-controlled visual preference for SF DevBar status surfaces that adapts contrast, terminal-theme fit, or accent intensity without changing extension source. It is scoped through Pi settings, with project overrides layered over global defaults.
+_Avoid_: full theme replacement, color picker workflow, hardcoded local fork
+
+**Scoped DevBar Color Override**:
+A single color or palette value saved in either global or project Pi settings to override one DevBar color field while inheriting every omitted field from the next source.
+_Avoid_: full color map copy, theme preset, hidden local source edit
+
 **Branch-Durable Tool State**:
 Session-scoped workflow state reconstructed from successful tool-result details on the current Pi branch.
 _Avoid_: global latest state, prompt context, trace store, replacement for artifacts
