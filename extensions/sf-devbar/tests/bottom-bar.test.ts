@@ -11,6 +11,12 @@ const stubTheme: BarTheme = {
   bold: (text) => `<b>${text}</b>`,
 };
 
+const ESC = "\u001b";
+
+function ansiFg(r: number, g: number, b: number): string {
+  return `${ESC}[38;2;${r};${g};${b}m`;
+}
+
 function makeState(overrides?: Partial<BottomBarState>): BottomBarState {
   return {
     ...overrides,
@@ -244,7 +250,7 @@ describe("renderBottomBarParts", () => {
       makeState({ projectDetected: true, orgName: "Missing", colors }),
       stubTheme,
     );
-    expect(warningLeft).toMatch(/\x1b\[38;2;17;34;51m/);
+    expect(warningLeft).toContain(ansiFg(17, 34, 51));
 
     const { left: sandboxLeft } = renderBottomBarParts(
       makeState({
@@ -256,6 +262,6 @@ describe("renderBottomBarParts", () => {
       }),
       stubTheme,
     );
-    expect(sandboxLeft).toMatch(/\x1b\[38;2;68;85;102m/);
+    expect(sandboxLeft).toContain(ansiFg(68, 85, 102));
   });
 });

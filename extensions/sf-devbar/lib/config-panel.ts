@@ -294,12 +294,44 @@ class SfDevbarConfigPanel implements Focusable {
   }
 }
 
+const ESC = "\u001b";
+const BRACKETED_PASTE_START = `${ESC}[200~`;
+const BRACKETED_PASTE_END = `${ESC}[201~`;
+
 export function normalizeTextInput(data: string): string {
   if (!data) return "";
-  const withoutPasteMarkers = data.replace(/\x1b\[200~/g, "").replace(/\x1b\[201~/g, "");
-  if (/^\x1b\[[0-9;]*[A-Za-z~]$/.test(withoutPasteMarkers)) return "";
-  if (/^\[[0-9;]*[A-Za-z~]$/.test(withoutPasteMarkers)) return "";
-  return withoutPasteMarkers.replace(/[\r\n]/g, "");
+  const withoutPasteMarkers = data
+    .split(BRACKETED_PASTE_START)
+    .join("")
+    .split(BRACKETED_PASTE_END)
+    .join("");
+  if (isTerminalEscapeSequence(withoutPasteMarkers)) return "";
+  return withoutPasteMarkers.split("\r").join("").split("\n").join("");
+}
+
+function isTerminalEscapeSequence(value: string): boolean {
+  const csi = value.startsWith(`${ESC}[`)
+    ? value.slice(2)
+    : value.startsWith("[")
+      ? value.slice(1)
+      : null;
+  if (!csi) return false;
+  if (csi.length === 0) return false;
+  const finalChar = csi[csi.length - 1];
+  if (!finalChar) return false;
+  const finalCode = finalChar.charCodeAt(0);
+  if (
+    !(
+      (finalCode >= 65 && finalCode <= 90) ||
+      (finalCode >= 97 && finalCode <= 122) ||
+      finalChar === "~"
+    )
+  )
+    return false;
+  return [...csi.slice(0, -1)].every((char) => {
+    const code = char.charCodeAt(0);
+    return (code >= 48 && code <= 57) || char === ";";
+  });
 }
 
 type PanelKey = "escape" | "up" | "down" | "enter" | "return" | "backspace" | "delete";

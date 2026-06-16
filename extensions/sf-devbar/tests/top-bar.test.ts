@@ -11,6 +11,17 @@ const stubTheme: BarTheme = {
   bold: (text) => `<b>${text}</b>`,
 };
 
+const ESC = "\u001b";
+const ANSI_FG_PREFIX = `${ESC}[38;2;`;
+
+function ansiFg(r: number, g: number, b: number): string {
+  return `${ANSI_FG_PREFIX}${r};${g};${b}m`;
+}
+
+function ansiFgBg(fr: number, fg: number, fb: number, br: number, bg: number, bb: number): string {
+  return `${ANSI_FG_PREFIX}${fr};${fg};${fb};48;2;${br};${bg};${bb}m`;
+}
+
 function makeState(overrides?: Partial<TopBarState>): TopBarState {
   return {
     folderName: "my-project",
@@ -77,7 +88,7 @@ describe("renderTopBar", () => {
     expect(line).toContain("e");
     expect(line).toContain("w");
     expect(line).toContain("y");
-    expect(line).toMatch(/\x1b\[38;2;\d+;\d+;\d+m/); // Rainbow ANSI codes
+    expect(line).toContain(ANSI_FG_PREFIX); // Rainbow ANSI codes
     expect(line).toContain("Claude Opus 4.7");
   });
 
@@ -93,10 +104,10 @@ describe("renderTopBar", () => {
     expect(line).toContain("G");
     expect(line).toContain("t");
     expect(line).toContain("y");
-    expect(line).toMatch(/\x1b\[38;2;\d+;\d+;\d+m/);
+    expect(line).toContain(ANSI_FG_PREFIX);
     expect(line).toContain("Claude Opus 4.7");
     // Pink accent #d787af -> rgb(215,135,175) must apply to the model label.
-    expect(line).toMatch(/\x1b\[38;2;215;135;175m/);
+    expect(line).toContain(ansiFg(215, 135, 175));
   });
 
   it("shows plain model name for non-gateway providers", () => {
@@ -121,7 +132,7 @@ describe("renderTopBar", () => {
     expect(line).toContain("n");
     expect(line).toContain("k");
     // Also verify the ANSI color codes are present (true-color rainbow rendering)
-    expect(line).toMatch(/\x1b\[38;2;\d+;\d+;\d+m/);
+    expect(line).toContain(ANSI_FG_PREFIX);
   });
 
   it("hides thinking when off", () => {
@@ -207,7 +218,7 @@ describe("renderTopBar", () => {
       stubTheme,
     );
     // Pink #d787af -> rgb(215,135,175)
-    expect(line).toMatch(/\x1b\[38;2;215;135;175m/);
+    expect(line).toContain(ansiFg(215, 135, 175));
     expect(line).toContain("Claude Opus 4.7");
   });
 
@@ -230,9 +241,10 @@ describe("renderTopBar", () => {
       stubTheme,
     );
 
-    expect(line).toMatch(/\x1b\[38;2;68;85;102mClaude Opus 4\.7/);
-    expect(line).toMatch(/\x1b\[38;2;17;34;51m.*my-project/);
-    expect(line).toMatch(/\x1b\[38;2;1;2;3m/);
+    expect(line).toContain(`${ansiFg(68, 85, 102)}Claude Opus 4.7`);
+    expect(line).toContain(ansiFg(17, 34, 51));
+    expect(line).toContain("my-project");
+    expect(line).toContain(ansiFg(1, 2, 3));
   });
 
   it("uses custom context empty foreground and background colors", () => {
@@ -253,7 +265,7 @@ describe("renderTopBar", () => {
       stubTheme,
     );
 
-    expect(line).toMatch(/\x1b\[38;2;17;34;51;48;2;68;85;102m/);
+    expect(line).toContain(ansiFgBg(17, 34, 51, 68, 85, 102));
   });
 
   it("formats context window size correctly", () => {
