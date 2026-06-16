@@ -160,7 +160,7 @@ update lines 14, 18, 22 in
 `force-app/future_recipes/contextHandling/aiAuthoringBundles/ContextHandling/ContextHandling.agent`
 from `@messagingSession.X` → `@MessagingSession.X`.
 
-### Misc — `unused-variable` warnings (sev-2, non-blocking)
+### Misc — `unused-variable` cleanup diagnostics (sev-3, non-blocking)
 
 5 recipes declare variables that are never read:
 

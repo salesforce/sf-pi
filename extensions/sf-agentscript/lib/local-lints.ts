@@ -52,8 +52,6 @@ const ACTION_FIELD_NAMES = new Set([
   "variables",
 ]);
 
-const VARIABLE_FIELD_NAMES = new Set(["default", "description", "source", "visibility"]);
-
 function makeRange(line: number, raw: string, search?: string): AgentScriptRange {
   const character = search ? Math.max(0, raw.indexOf(search)) : 0;
   return {
@@ -466,108 +464,6 @@ function addRunInAfterReasoningDiagnostics(
   }
 }
 
-interface VariableDeclaration {
-  name: string;
-  line: LineInfo;
-  removalStartLine: number;
-}
-
-function findVariablesBlock(lines: readonly LineInfo[]): { header: LineInfo; lines: LineInfo[] }[] {
-  const blocks: { header: LineInfo; lines: LineInfo[] }[] = [];
-  for (let i = 0; i < lines.length; i++) {
-    const header = lines[i];
-    if (header.indent !== 0 || header.trimmed !== "variables:") continue;
-    const blockLines: LineInfo[] = [];
-    for (const line of lines.slice(i + 1)) {
-      if (line.trimmed.length > 0 && line.indent <= header.indent) break;
-      blockLines.push(line);
-    }
-    blocks.push({ header, lines: blockLines });
-  }
-  return blocks;
-}
-
-function variableChildIndent(blockLines: readonly LineInfo[]): number | undefined {
-  const childIndents = blockLines
-    .filter((line) => line.trimmed.length > 0 && !line.trimmed.startsWith("#"))
-    .map((line) => line.indent);
-  return childIndents.length > 0 ? Math.min(...childIndents) : undefined;
-}
-
-function variableNameFromDeclaration(line: LineInfo): string | undefined {
-  const match =
-    /^(?<name>[A-Za-z_][\w-]*)\s*:\s*(?:(?:mutable|linked)\s+)?[A-Za-z_][\w.-]*(?:\s*=.*)?$/.exec(
-      line.trimmed,
-    );
-  const name = match?.groups?.name;
-  if (!name || VARIABLE_FIELD_NAMES.has(name)) return undefined;
-  return name;
-}
-
-function collectVariableDeclarations(lines: readonly LineInfo[]): VariableDeclaration[] {
-  const declarations: VariableDeclaration[] = [];
-  for (const block of findVariablesBlock(lines)) {
-    const childIndent = variableChildIndent(block.lines);
-    if (childIndent === undefined) continue;
-    for (const line of block.lines) {
-      if (line.indent !== childIndent || line.trimmed.startsWith("#")) continue;
-      const name = variableNameFromDeclaration(line);
-      if (!name) continue;
-
-      let removalStartLine = line.line;
-      for (let i = line.line - 1; i > block.header.line; i--) {
-        const previous = lines[i];
-        if (!previous || previous.trimmed.length === 0) break;
-        if (!previous.trimmed.startsWith("#") || previous.indent !== line.indent) break;
-        removalStartLine = previous.line;
-      }
-
-      declarations.push({ name, line, removalStartLine });
-    }
-  }
-  return declarations;
-}
-
-function variableRefRegex(name: string): RegExp {
-  return new RegExp(`@variables\\.${escapeRegExp(name)}\\b`);
-}
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function hasVariableReference(lines: readonly LineInfo[], name: string): boolean {
-  const ref = variableRefRegex(name);
-  return lines.some((line) => {
-    if (line.trimmed.startsWith("#") || line.trimmed.startsWith("|")) return false;
-    return ref.test(line.raw);
-  });
-}
-
-function addUnusedVariableDiagnostics(
-  lines: readonly LineInfo[],
-  diagnostics: AgentScriptDiagnostic[],
-): void {
-  for (const variable of collectVariableDeclarations(lines)) {
-    if (hasVariableReference(lines, variable.name)) continue;
-    diagnostics.push(
-      diagnostic(
-        variable.line,
-        "unused-variable",
-        `Variable '${variable.name}' is declared but never referenced as @variables.${variable.name}.`,
-        2,
-        variable.name,
-        {
-          removalRange: {
-            start: { line: variable.removalStartLine, character: 0 },
-            end: { line: variable.line, character: variable.line.raw.length },
-          },
-        },
-      ),
-    );
-  }
-}
-
 function outputEntryLines(action: ActionBlock, outputName: string): LineInfo[] | undefined {
   const outputsLine = action.lines.find((l) => /^outputs\s*:/.test(l.trimmed));
   if (!outputsLine) return undefined;
@@ -627,7 +523,6 @@ export function buildLocalDiagnostics(source: string): AgentScriptDiagnostic[] {
   const diagnostics: AgentScriptDiagnostic[] = [];
 
   addConnectionMessagingDiagnostics(findConnectionMessagingBlock(lines), diagnostics);
-  addUnusedVariableDiagnostics(lines, diagnostics);
   addInputsScopeDiagnostics(lines, diagnostics);
   addOutputsScopeDiagnostics(lines, diagnostics);
   addLiteralModeProceduralDiagnostics(lines, diagnostics);

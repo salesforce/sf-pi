@@ -104,6 +104,10 @@ _Avoid_: agent runtime dependency, Salesforce org compiler, npm support inside .
 A public `@sf-agentscript/*` npm package used by the SF Agent Script Bundled Extension as the maintained source for Agent Script parser, compiler, dialect, language-service, or LSP behavior.
 _Avoid_: vendored compiler copy, private fork, aspirational dependency not imported by code
 
+**Agent Script Language Override Canary**:
+A temporary npm override posture that forces SF Pi's Agent Script toolchain to resolve one newer `@sf-agentscript/language` version and matching foundational `@sf-agentscript/types` version before every upstream package declaration has caught up. It is accepted only with strict local validation and removal criteria.
+_Avoid_: private AgentScript fork, permanent compatibility layer, duplicate language-service runtime
+
 **Agent Script Hardening Adapter**:
 The thin SF Pi-owned layer that keeps Salesforce/pi-specific diagnostics, quick fixes, rendering, and workflow guardrails around the generic behavior supplied by Official AgentScript Package Dependencies.
 _Avoid_: forked AgentScript compiler, duplicate LSP implementation, replacement for upstream package behavior

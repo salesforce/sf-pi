@@ -4,7 +4,7 @@
  * job_spec, the scaffold inserts a `# TODO(sf-pi scaffold): wire
  * @variables.<name> ...` comment immediately above each declaration so
  * the LLM (and human) sees the gap. Without that hint the next compile
- * surfaces `unused-variable` warnings with no context that they're
+ * surfaces actionable `unused-variable` cleanup with no context that it's
  * intentional scaffold state.
  */
 
@@ -113,8 +113,8 @@ describe("agentscript_authoring create scaffolds wire-up TODO comments", () => {
 
   test("scaffolded TODO is a YAML comment and does not break parsing", async () => {
     // Smoke-check via the SDK so we know the comment is in a parser-friendly
-    // location. `unused-variable` is expected (sev 2 = warning), but the
-    // file must still be ok=true and emit no severity-1 errors.
+    // location. `unused-variable` is expected (sev 3 = actionable info), but
+    // the file must still be ok=true and emit no severity-1 errors.
     const { mkdtemp, writeFile, rm } = await import("node:fs/promises");
     const { tmpdir } = await import("node:os");
     const path = await import("node:path");
@@ -133,6 +133,7 @@ describe("agentscript_authoring create scaffolds wire-up TODO comments", () => {
       expect(r.diagnostics.filter((d) => d.severity === 1)).toEqual([]);
       const unused = r.diagnostics.find((d) => d.code === "unused-variable");
       expect(unused).toBeTruthy();
+      expect(unused?.severity).toBe(3);
     } finally {
       await rm(dir, { recursive: true, force: true });
     }

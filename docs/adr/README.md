@@ -54,3 +54,4 @@ or accidentally contradicted in extension READMEs.
 - [0050: SF Pi Manager Configurable Extensions Use Settings Drill-In](./0050-manager-configurable-extensions-use-settings-drill-in.md)
 - [0051: Extension Commands Deep-Link to the Manager Surface](./0051-extension-commands-deep-link-to-manager-surface.md)
 - [0052: SF Guardrail Is Rule-Behavior Only](./0052-sf-guardrail-is-rule-behavior-only.md)
+- [0053: Agent Script Uses a Language Override Canary](./0053-agentscript-language-override-canary.md)

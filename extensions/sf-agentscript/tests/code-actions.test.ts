@@ -129,7 +129,7 @@ describe("buildQuickFixes", () => {
       const source = 'variables:\n  case_id: mutable string = ""\nsystem:\n  instructions: hi\n';
       const diagnostic = makeDiagnostic({
         code: "unused-variable",
-        severity: 2,
+        severity: 3,
         range: {
           start: { line: 1, character: 2 },
           end: { line: 1, character: 29 },

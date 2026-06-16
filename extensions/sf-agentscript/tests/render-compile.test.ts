@@ -25,7 +25,7 @@ describe("compileResultMarkdown", () => {
       action: "check",
       path: "/topics/x.agent",
       clean: false,
-      diagnostic_count: 3,
+      diagnostic_count: 4,
       quick_fix_count: 1,
       dialect: { name: "agentforce-default" },
       compiled_via: "local",
@@ -48,12 +48,19 @@ describe("compileResultMarkdown", () => {
           message: "instructions evaluate to ''",
           range: { start: { line: 28 } },
         },
+        {
+          severity: 3,
+          code: "unused-variable",
+          message: "Variable 'case_id' is declared but never used",
+          range: { start: { line: 30 } },
+        },
       ],
     });
     expect(md).toMatch(/❌/);
-    expect(md).toMatch(/3 issues/);
+    expect(md).toMatch(/4 issues/);
     expect(md).toMatch(/2 errors/);
     expect(md).toMatch(/1 warning/);
+    expect(md).toMatch(/1 info/);
     expect(md).toMatch(/quick-fix ready/);
     expect(md).toMatch(/missing-required-field/);
     expect(md).toMatch(/L17/); // 16+1

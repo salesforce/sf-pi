@@ -71,22 +71,18 @@ export function renderCompileResult(
       0,
     );
   }
-  return new Text(formatCompileBody(details, theme, /*ansi=*/ true), 0, 0);
+  return new Text(formatCompileBody(details, theme), 0, 0);
 }
 
 // ─── Markdown emitter ─────────────────────────────────────────────────────────
 
 export function compileResultMarkdown(details: CompileResultDetails): string {
-  return formatCompileBody(details, undefined, /*ansi=*/ false);
+  return formatCompileBody(details, undefined);
 }
 
 // ─── Shared body formatter ────────────────────────────────────────────────────
 
-function formatCompileBody(
-  details: CompileResultDetails,
-  theme: Theme | undefined,
-  _ansi: boolean,
-): string {
+function formatCompileBody(details: CompileResultDetails, theme: Theme | undefined): string {
   const fg = (token: Parameters<Theme["fg"]>[0], s: string): string =>
     theme ? theme.fg(token, s) : s;
   const bold = (s: string): string => (theme ? theme.bold(s) : `**${s}**`);
@@ -117,6 +113,7 @@ function formatCompileBody(
   // Check action — has diagnostics
   const sev1 = diagnostics.filter((d) => d.severity === 1).length;
   const sev2 = diagnostics.filter((d) => d.severity === 2).length;
+  const sev3 = diagnostics.filter((d) => d.severity === 3).length;
   const fixCount = details.quick_fix_count ?? 0;
 
   const headerBits = [
@@ -125,6 +122,7 @@ function formatCompileBody(
   ];
   if (sev1 > 0) headerBits.push(err(`● ${sev1} error${sev1 === 1 ? "" : "s"}`));
   if (sev2 > 0) headerBits.push(warn(`⚠ ${sev2} warning${sev2 === 1 ? "" : "s"}`));
+  if (sev3 > 0) headerBits.push(dim(`ⓘ ${sev3} info`));
   if (fixCount > 0) headerBits.push(fg("accent", `🔧 ${fixCount} quick-fix ready`));
 
   const lines: string[] = [];
@@ -132,7 +130,7 @@ function formatCompileBody(
   lines.push(dim(dialectName));
   lines.push("");
 
-  // Sort: errors first, then warnings, in original order within group.
+  // Sort: errors first, then warnings/info, in original order within group.
   const ordered = [...diagnostics].sort((a, b) => a.severity - b.severity);
   const widestCode = ordered
     .slice(0, 8)

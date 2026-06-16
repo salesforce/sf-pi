@@ -312,6 +312,14 @@ npm run agentscript:versions
 
 Refresh direct AgentScript dependencies intentionally with `npm install --save-exact`; `@sf-agentscript/compiler` remains transitive through `@sf-agentscript/agentforce` unless SF Pi imports it directly.
 
+SF Pi may temporarily use an npm override canary for `@sf-agentscript/language` and the matching `@sf-agentscript/types` when the latest language-service behavior is needed before every upstream package declaration catches up. When that canary is active, verify a single effective language/types pair with:
+
+```bash
+npm ls @sf-agentscript/language @sf-agentscript/types --all
+```
+
+Remove the override once the direct AgentScript packages naturally resolve the same versions without transitive duplication. See [`ADR 0053`](../../docs/adr/0053-agentscript-language-override-canary.md).
+
 ## Testing Strategy
 
 Targeted extension suite:

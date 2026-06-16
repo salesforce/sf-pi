@@ -7,12 +7,13 @@
  *
  *   Severity 1 (Error)            always included
  *   Severity 2 (Warning)          included only for known-actionable codes
- *   Severity 3/4 (Info/Hint)      always dropped
+ *   Severity 3 (Information)      included only for known quick-fixable cleanup
+ *   Severity 4 (Hint)             always dropped
  *
- * Actionable warning codes are the ones our diagnostics layer can pair with a
+ * Actionable codes are the ones our diagnostics layer can pair with a
  * machine-applyable fix (`code-actions.ts` knows how to build TextEdits for
- * them). We keep the allowlist explicit so the agent never sees a low-value
- * warning it can't act on.
+ * them). We keep the allowlists explicit so the agent never sees low-value
+ * lint noise it can't act on.
  */
 
 import fs from "node:fs/promises";
@@ -27,18 +28,24 @@ import type { AgentScriptCheckResult, AgentScriptDiagnostic } from "./types.ts";
 
 /**
  * Severity-2 warning codes that are worth surfacing to the agent because we
- * can build a deterministic fix for them. Everything else at severity 2+
- * is dropped to keep the feedback stream focused on things the agent can
- * actually resolve.
+ * can build a deterministic fix for them. Everything else at severity 2 is
+ * dropped to keep the feedback stream focused on things the agent can actually
+ * resolve.
  */
 const ACTIONABLE_WARNING_CODES = new Set<string>([
   "deprecated-field",
-  "unused-variable",
   "invalid-version",
   "unknown-dialect",
   "invalid-modifier",
   "unknown-type",
 ]);
+
+/**
+ * Upstream emits unused-variable as informational cleanup with DiagnosticTag
+ * Unnecessary and a removalRange. Surface it because the official LSP provider
+ * supplies a deterministic quick fix, but keep upstream's lower severity.
+ */
+const ACTIONABLE_INFO_CODES = new Set<string>(["unused-variable"]);
 
 function isActionable(diagnostic: AgentScriptDiagnostic): boolean {
   // Severity 1 (Error): always include.
@@ -49,7 +56,17 @@ function isActionable(diagnostic: AgentScriptDiagnostic): boolean {
     return ACTIONABLE_WARNING_CODES.has(diagnostic.code);
   }
 
+  // Severity 3 (Information): include only for quick-fixable cleanup.
+  if (diagnostic.severity === 3 && diagnostic.code) {
+    return ACTIONABLE_INFO_CODES.has(diagnostic.code) && hasRemovalRange(diagnostic);
+  }
+
   return false;
+}
+
+function hasRemovalRange(diagnostic: AgentScriptDiagnostic): boolean {
+  const range = diagnostic.data?.removalRange;
+  return !!range && typeof range === "object";
 }
 
 // -------------------------------------------------------------------------------------------------

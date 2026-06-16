@@ -203,7 +203,7 @@ function localHardeningQuickFixes(
  * Build the ordered list of quick fixes for a document.
  *
  * Input is the already-filtered diagnostic list so that quick fix generation
- * can't accidentally surface fixes for warnings the rest of the system chose
+ * can't accidentally surface fixes for diagnostics the rest of the system chose
  * to hide.
  */
 export async function buildQuickFixes(

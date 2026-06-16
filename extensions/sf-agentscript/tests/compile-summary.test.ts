@@ -6,9 +6,9 @@
  *
  * Contract:
  *   - clean files emit a single `✓` line
- *   - dirty files emit `❌ <path> — N issue(s) (kE·mW), F fix(es) ready`
+ *   - dirty files emit `❌ <path> — N issue(s) (kE·mW[·nI]), F fix(es) ready`
  *     followed by up to MAX_SAMPLE_LINES bullets, errors first
- *   - bullet shape is `  • [E|W] <code> @ L<1-based-line>`
+ *   - bullet shape is `  • [E|W|I] <code> @ L<1-based-line>`
  *   - excess diagnostics are summarized as `…and X more in details.diagnostics`
  */
 
@@ -16,7 +16,7 @@ import { describe, expect, test } from "vitest";
 import { renderCheckSummary } from "../lib/authoring/actions/compile.ts";
 
 function makeDiag(
-  severity: 1 | 2,
+  severity: 1 | 2 | 3,
   code: string,
   line: number,
 ): { severity: number; code: string; range: { start: { line: number } }; message: string } {
@@ -34,27 +34,27 @@ describe("renderCheckSummary", () => {
     expect(out).toBe("✓ /tmp/X.agent compiles clean (agentforce)");
   });
 
-  test("dirty file: header counts errors and warnings, and lists samples errors-first", () => {
+  test("dirty file: header counts errors, warnings, and info, and lists samples errors-first", () => {
     const diags = [
-      makeDiag(2, "unused-variable", 11),
+      makeDiag(3, "unused-variable", 11),
       makeDiag(1, "action-missing-input", 42),
-      makeDiag(2, "unused-variable", 13),
+      makeDiag(2, "empty-template", 13),
       makeDiag(1, "invalid-action-target", 67),
     ];
     const out = renderCheckSummary("/tmp/X.agent", diags, 4, "agentforce");
     const lines = out.split("\n");
-    expect(lines[0]).toBe("❌ /tmp/X.agent — 4 issue(s) (2E·2W), 4 fix(es) ready");
+    expect(lines[0]).toBe("❌ /tmp/X.agent — 4 issue(s) (2E·1W·1I), 4 fix(es) ready");
     expect(lines[1]).toBe("  • [E] action-missing-input @ L42");
     expect(lines[2]).toBe("  • [E] invalid-action-target @ L67");
-    expect(lines[3]).toBe("  • [W] unused-variable @ L11");
-    expect(lines[4]).toBe("  • [W] unused-variable @ L13");
+    expect(lines[3]).toBe("  • [W] empty-template @ L13");
+    expect(lines[4]).toBe("  • [I] unused-variable @ L11");
   });
 
   test("more than MAX_SAMPLE_LINES diagnostics emits an overflow summary", () => {
-    const diags = Array.from({ length: 8 }, (_v, i) => makeDiag(2, "unused-variable", i + 1));
+    const diags = Array.from({ length: 8 }, (_v, i) => makeDiag(3, "unused-variable", i + 1));
     const out = renderCheckSummary("/tmp/X.agent", diags, 8);
     const lines = out.split("\n");
-    expect(lines[0]).toContain("8 issue(s) (0E·8W)");
+    expect(lines[0]).toContain("8 issue(s) (0E·0W·8I)");
     expect(lines).toHaveLength(7); // header + 5 samples + overflow
     expect(lines[6]).toBe("  …and 3 more in details.diagnostics");
   });

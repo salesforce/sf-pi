@@ -56,8 +56,8 @@ export function generateAgentforceDefault(bundleName: string, jobSpec?: AgentJob
   //
   // sf-pi note: every seeded variable gets a TODO comment immediately above
   // its declaration so the LLM (or human) sees that the scaffold left it
-  // unwired. Without that hint, an `unused-variable` warning shows up on
-  // the very next compile and there is no signal that the warning is
+  // unwired. Without that hint, an actionable `unused-variable` info diagnostic
+  // shows up on the very next compile and there is no signal that the cleanup is
   // intentional scaffold state. The comment is preserved by the parser and
   // shows up at the right line number in compile diagnostics.
   const vars = jobSpec?.variables ?? [];
@@ -67,7 +67,7 @@ export function generateAgentforceDefault(bundleName: string, jobSpec?: AgentJob
       const modifier = v.mutable ? "mutable " : "";
       const defaultClause = v.default !== undefined ? ` = ${formatVariableDefault(v.default)}` : "";
       lines.push(
-        `    # TODO(sf-pi scaffold): wire @variables.${v.name} into a topic / before_reasoning. Compile will warn 'unused-variable' until then.`,
+        `    # TODO(sf-pi scaffold): wire @variables.${v.name} into a topic / before_reasoning. Compile will report 'unused-variable' until then.`,
       );
       lines.push(`    ${v.name}: ${modifier}${v.type}${defaultClause}`);
       if (v.description) {

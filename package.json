@@ -121,13 +121,13 @@
     "vite": "7.3.5"
   },
   "dependencies": {
-    "@salesforce/core": "^8.31.0",
-    "@salesforce/source-deploy-retrieve": "^12.36.1",
-    "@sf-agentscript/agentforce": "2.5.32",
-    "@sf-agentscript/language": "2.5.4",
-    "@sf-agentscript/lsp": "2.2.26",
+    "@salesforce/core": "^8.31.1",
+    "@salesforce/source-deploy-retrieve": "^12.36.2",
+    "@sf-agentscript/agentforce": "2.5.34",
+    "@sf-agentscript/language": "2.9.0",
+    "@sf-agentscript/lsp": "2.3.8",
     "node-emoji": "^2.2.0",
-    "vscode-languageserver-protocol": "^3.17.5"
+    "vscode-languageserver-protocol": "^3.18.0"
   },
   "overridesNotes": {
     "fast-xml-parser": "Force >= 5.7.0 to clear GHSA-gh4j-gqv2-49f6 (XMLBuilder CDATA injection). Reaches sf-pi through pi-ai -> AWS SDK Bedrock client; remove once upstream AWS SDK resolves the advisory.",
@@ -136,7 +136,9 @@
     "form-data": "Force >= 4.0.6 to clear GHSA-hmw2-7cc7-3qxx (CRLF injection in multipart field names/filenames). Reaches sf-pi through @salesforce/core -> @jsforce/jsforce-node; remove once upstream ranges naturally resolve to a patched version.",
     "vitest": "Vitest resolves Vite as a transitive test runner dependency. Force the patched Vite 7 line for tests until Vitest naturally resolves to a patched Vite release without overrides.",
     "esbuild": "Force >= 0.28.1 to clear GHSA-gv7w-rqvm-qjhr. Vite uses esbuild as build/test tooling; remove once all Vite ranges in the tree naturally require a patched esbuild.",
-    "vite": "Direct dev dependency used to satisfy Vite peer imports for VitePress/Vitest while pinning a patched Vite line. Keep aligned with the transitive Vite overrides and remove only if docs/test tooling no longer requires a root peer install."
+    "vite": "Direct dev dependency used to satisfy Vite peer imports for VitePress/Vitest while pinning a patched Vite line. Keep aligned with the transitive Vite overrides and remove only if docs/test tooling no longer requires a root peer install.",
+    "@sf-agentscript/language": "Canary override: force every AgentScript package onto language-service 2.9.0 so SF Pi uses the latest @sf-agentscript/language behavior even while some upstream packages still declare 2.5.4. Remove once @sf-agentscript/agentforce and @sf-agentscript/lsp naturally declare a 2.9.x-compatible language dependency.",
+    "@sf-agentscript/types": "Pair with the @sf-agentscript/language canary so the AgentScript toolchain resolves one foundational types package (0.2.3) instead of mixing 0.2.2 and 0.2.3. Remove with the language override once upstream declarations catch up."
   },
   "overrides": {
     "fast-xml-parser": "^5.7.0",
@@ -152,6 +154,8 @@
     "@vitest/mocker": {
       "vite": "7.3.5"
     },
-    "esbuild": "^0.28.1"
+    "esbuild": "^0.28.1",
+    "@sf-agentscript/language": "2.9.0",
+    "@sf-agentscript/types": "0.2.3"
   }
 }

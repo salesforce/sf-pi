@@ -59,7 +59,7 @@ describe("checkAgentScriptFile (integration)", () => {
     expect(result.diagnostics.some((d) => d.severity === 1)).toBe(true);
   });
 
-  it("includes unused-variable as a severity-2 actionable warning with a fix", async () => {
+  it("includes upstream unused-variable as actionable info with a fix", async () => {
     const file = writeTempAgent(
       [
         "system:",
@@ -84,6 +84,8 @@ describe("checkAgentScriptFile (integration)", () => {
     const result = await checkAgentScriptFile(file);
     const unused = result.diagnostics.find((d) => d.code === "unused-variable");
     expect(unused, "expected unused-variable diagnostic").toBeDefined();
+    expect(unused?.severity).toBe(3);
+    expect(unused?.source).toBe("agentscript-lint");
 
     const unusedFix = result.quickFixes.find((f) => f.diagnosticCode === "unused-variable");
     expect(unusedFix, "expected unused-variable fix").toBeDefined();

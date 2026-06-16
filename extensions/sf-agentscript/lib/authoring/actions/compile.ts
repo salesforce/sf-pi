@@ -330,6 +330,7 @@ export function renderCheckSummary(
   }
   const sev1 = diagnostics.filter((d) => d.severity === 1).length;
   const sev2 = diagnostics.filter((d) => d.severity === 2).length;
+  const sev3 = diagnostics.filter((d) => d.severity === 3).length;
   const ordered = [...diagnostics].sort((a, b) => a.severity - b.severity);
   const sampleLines = ordered.slice(0, MAX_SAMPLE_LINES).map((d) => {
     const tag = d.severity === 1 ? "E" : d.severity === 2 ? "W" : "I";
@@ -338,7 +339,8 @@ export function renderCheckSummary(
     return `  • [${tag}] ${code} @ L${line}`;
   });
   const overflow = diagnostics.length - sampleLines.length;
-  const head = `❌ ${agentFile} — ${diagnostics.length} issue(s) (${sev1}E·${sev2}W), ${quickFixCount} fix(es) ready`;
+  const severitySummary = [`${sev1}E`, `${sev2}W`, ...(sev3 > 0 ? [`${sev3}I`] : [])].join("·");
+  const head = `❌ ${agentFile} — ${diagnostics.length} issue(s) (${severitySummary}), ${quickFixCount} fix(es) ready`;
   const lines = [head, ...sampleLines];
   if (overflow > 0) lines.push(`  …and ${overflow} more in details.diagnostics`);
   return lines.join("\n");

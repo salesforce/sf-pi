@@ -163,7 +163,8 @@ function renderDiagnosticLine(diagnostic: AgentScriptDiagnostic): string {
     normalizeWhitespace(diagnostic.message),
     MAX_SINGLE_DIAGNOSTIC_BYTES,
   );
-  const severityTag = diagnostic.severity === 2 ? " [warning]" : "";
+  const severityTag =
+    diagnostic.severity === 2 ? " [warning]" : diagnostic.severity === 3 ? " [info]" : "";
   return `- L${line}${severityTag}: ${body}`;
 }
 
