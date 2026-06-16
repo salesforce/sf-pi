@@ -198,6 +198,7 @@ extensions/sf-agentscript/
       minimal.ts            ← implementation module
     agent-api-auth.ts       ← implementation module
     agentforce-document.ts  ← implementation module
+    agentforce-navigation.ts← implementation module
     analysis-snapshot.ts    ← implementation module
     authoring-tool.ts       ← implementation module
     branch-state.ts         ← implementation module

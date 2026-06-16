@@ -18,7 +18,14 @@ import { loadAgentforceSDK, getSdkLoadError } from "./sdk.ts";
 import { invalidateAgentScriptAnalysis } from "./analysis-snapshot.ts";
 import { checkAgentScriptFile } from "./diagnostics.ts";
 import { buildQuickFixes } from "./code-actions.ts";
-import { processAgentforceDocument } from "./agentforce-document.ts";
+import {
+  findAgentforceReferenceEdits,
+  formatAgentforceSymbol,
+  isDeclarableNavigationNamespace,
+  parseAgentforceSymbol,
+  resolveAgentforceSymbol,
+  type AgentforceSymbol,
+} from "./agentforce-navigation.ts";
 import type { AgentScriptDiagnostic, AgentScriptQuickFix, AgentScriptRange } from "./types.ts";
 
 // -------------------------------------------------------------------------------------------------
@@ -535,10 +542,10 @@ async function applyAstRename(
   if (from.ok === false) return from.error;
   if (to.ok === false) return to.error;
 
-  if (!DECLARABLE_RENAME_NAMESPACES.has(from.symbol.namespace)) {
+  if (!isDeclarableNavigationNamespace(from.symbol.namespace)) {
     return unsupportedRename(`Namespace '${from.symbol.namespace}' is not renameable.`);
   }
-  if (!DECLARABLE_RENAME_NAMESPACES.has(to.symbol.namespace)) {
+  if (!isDeclarableNavigationNamespace(to.symbol.namespace)) {
     return unsupportedRename(`Namespace '${to.symbol.namespace}' is not renameable.`);
   }
 
@@ -576,33 +583,24 @@ async function applyAstRename(
 // Rename helpers
 // -------------------------------------------------------------------------------------------------
 
-interface RenameSymbol {
-  namespace: string;
-  name: string;
-}
-
-const DECLARABLE_RENAME_NAMESPACES = new Set(["topic", "subagent", "actions", "variables"]);
+type RenameSymbol = AgentforceSymbol;
 
 function normalizeRenameSymbol(
   raw: string,
 ): { ok: true; symbol: RenameSymbol } | { ok: false; error: MutateResult } {
-  const m = /^@?([\w-]+)\.([\w-]+)$/.exec(raw);
-  if (!m) {
-    return {
+  const parsed = parseAgentforceSymbol(raw);
+  if (parsed.ok) return parsed;
+  return {
+    ok: false,
+    error: {
       ok: false,
-      error: {
-        ok: false,
-        reason: "bad_symbol",
-        reason_detail: `Rename values must be '@<namespace>.<name>' or '<namespace>.<name>', got '${raw}'.`,
-      },
-    };
-  }
-  return { ok: true, symbol: { namespace: m[1], name: m[2] } };
+      reason: "bad_symbol",
+      reason_detail: `Rename values must be '@<namespace>.<name>' or '<namespace>.<name>', got '${raw}'.`,
+    },
+  };
 }
 
-function formatSymbol(symbol: RenameSymbol): string {
-  return `@${symbol.namespace}.${symbol.name}`;
-}
+const formatSymbol = formatAgentforceSymbol;
 
 function unsupportedRename(reason: string): MutateResult {
   return {
@@ -708,24 +706,22 @@ async function resolveSymbol(
   source: string,
   symbol: RenameSymbol,
 ): Promise<{ ok: true; definitionLine: number } | { ok: false; error: MutateResult }> {
-  const state = await processAgentforceDocument(source);
-  if (!state.ast) {
+  let definition: Awaited<ReturnType<typeof resolveAgentforceSymbol>>;
+  try {
+    definition = await resolveAgentforceSymbol(source, symbol);
+  } catch (err) {
     return {
       ok: false,
-      error: { ok: false, reason: "parse_failed", reason_detail: "Agent Script AST unavailable." },
+      error: {
+        ok: false,
+        reason: "parse_failed",
+        reason_detail: err instanceof Error ? err.message : String(err),
+      },
     };
   }
-  const { resolveReference } = await import("@sf-agentscript/language");
-  const definition = resolveReference(
-    state.ast,
-    symbol.namespace,
-    symbol.name,
-    state.service.schemaContext,
-    undefined,
-    state.service.getSymbols(),
-  );
-  const line = definition?.definitionRange?.start?.line;
-  if (!definition || typeof line !== "number") {
+
+  const line = definition?.definitionRange.start.line;
+  if (typeof line !== "number") {
     return {
       ok: false,
       error: {
@@ -765,22 +761,8 @@ async function findReferenceRenameEdits(
   const edits: AgentScriptQuickFix["edits"] = [];
   const seen = new Set<string>();
   try {
-    const state = await processAgentforceDocument(source);
-    if (state.ast) {
-      const { findAllReferences } = await import("@sf-agentscript/language");
-      const refs = findAllReferences(
-        state.ast,
-        from.namespace,
-        from.name,
-        state.service.schemaContext,
-        undefined,
-        true,
-        state.service.getSymbols(),
-      ) as Array<{ range: AgentScriptRange; isDefinition: boolean }>;
-      for (const ref of refs) {
-        if (ref.isDefinition) continue;
-        addRenameEdit(edits, seen, { range: ref.range, newText: formatSymbol(to) });
-      }
+    for (const edit of await findAgentforceReferenceEdits(source, from, formatSymbol(to))) {
+      addRenameEdit(edits, seen, edit);
     }
   } catch {
     // Exact token fallback below still handles common Agent Script reference

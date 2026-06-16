@@ -8,7 +8,12 @@
  */
 
 import fs from "node:fs/promises";
-import { processAgentforceDocument } from "./agentforce-document.ts";
+import {
+  findAgentforceReferences,
+  isDeclarableNavigationNamespace,
+  parseAgentforceSymbol,
+  resolveAgentforceSymbol,
+} from "./agentforce-navigation.ts";
 import { loadAgentforceSDK, getSdkLoadError } from "./sdk.ts";
 import { projectInspectStructure, type InspectResult } from "./inspect-structure.ts";
 
@@ -76,7 +81,7 @@ export async function inspectSource(source: string): Promise<InspectResult> {
   });
 }
 
-// findReferences — walk AST expressions, collect every `@<ns>.<prop>` matching the symbol
+// findReferences — upstream navigation adapter over explicit `@<ns>.<prop>` symbols
 // -------------------------------------------------------------------------------------------------
 
 export interface ReferenceHit {
@@ -105,26 +110,11 @@ export interface DefinitionResult {
   file?: string;
 }
 
-function parseSymbol(
-  symbol: string,
-): { ok: true; namespace: string; property: string } | { ok: false; reason: string } {
-  const m = /^@([\w-]+)\.([\w-]+)$/.exec(symbol);
-  if (!m) {
-    return {
-      ok: false,
-      reason: `Symbol must be of the form '@<namespace>.<property>', got '${symbol}'.`,
-    };
-  }
-  return { ok: true, namespace: m[1], property: m[2] };
-}
-
-const DEFINITION_NAMESPACES = new Set(["topic", "subagent", "actions", "variables"]);
-
 export async function findReferences(
   filePath: string,
   symbol: string,
 ): Promise<FindReferencesResult> {
-  const sym = parseSymbol(symbol);
+  const sym = parseAgentforceSymbol(symbol, { requireAt: true });
   if (sym.ok === false) return { ok: false, reason: "bad_symbol", reason_detail: sym.reason };
 
   let source: string;
@@ -138,9 +128,18 @@ export async function findReferences(
     };
   }
 
-  let state: Awaited<ReturnType<typeof processAgentforceDocument>>;
+  const lines = source.split("\n");
+  let refs: ReferenceHit[];
   try {
-    state = await processAgentforceDocument(source);
+    refs = (await findAgentforceReferences(source, sym.symbol, true)).map((ref) => {
+      const lineIdx = ref.range.start.line;
+      return {
+        line: lineIdx + 1,
+        character: ref.range.start.character,
+        context: (lines[lineIdx] ?? "").trim().slice(0, 120),
+        is_declaration: ref.isDefinition,
+      };
+    });
   } catch (err) {
     return {
       ok: false,
@@ -148,33 +147,6 @@ export async function findReferences(
       reason_detail: err instanceof Error ? err.message : String(err),
     };
   }
-
-  const lines = source.split("\n");
-  const { findAllReferences } = await import("@sf-agentscript/language");
-  const refs: ReferenceHit[] = state.ast
-    ? (
-        findAllReferences(
-          state.ast,
-          sym.namespace,
-          sym.property,
-          state.service.schemaContext,
-          undefined,
-          true,
-          state.service.getSymbols(),
-        ) as Array<{
-          range: { start: { line: number; character: number } };
-          isDefinition: boolean;
-        }>
-      ).map((ref) => {
-        const lineIdx = ref.range.start.line;
-        return {
-          line: lineIdx + 1,
-          character: ref.range.start.character,
-          context: (lines[lineIdx] ?? "").trim().slice(0, 120),
-          is_declaration: ref.isDefinition,
-        };
-      })
-    : [];
 
   refs.sort((a, b) => Number(b.is_declaration) - Number(a.is_declaration) || a.line - b.line);
 
@@ -182,14 +154,14 @@ export async function findReferences(
 }
 
 export async function findDefinition(filePath: string, symbol: string): Promise<DefinitionResult> {
-  const sym = parseSymbol(symbol);
+  const sym = parseAgentforceSymbol(symbol, { requireAt: true });
   if (sym.ok === false) return { ok: false, reason: "bad_symbol", reason_detail: sym.reason };
 
-  if (!DEFINITION_NAMESPACES.has(sym.namespace)) {
+  if (!isDeclarableNavigationNamespace(sym.symbol.namespace)) {
     return {
       ok: false,
       reason: "bad_symbol",
-      reason_detail: `Namespace '${sym.namespace}' is not declarable. Supported: @topic.X, @subagent.X, @actions.X, @variables.X.`,
+      reason_detail: `Namespace '${sym.symbol.namespace}' is not declarable. Supported: @topic.X, @subagent.X, @actions.X, @variables.X.`,
     };
   }
 
@@ -204,9 +176,9 @@ export async function findDefinition(filePath: string, symbol: string): Promise<
     };
   }
 
-  let state: Awaited<ReturnType<typeof processAgentforceDocument>>;
+  let definition: Awaited<ReturnType<typeof resolveAgentforceSymbol>>;
   try {
-    state = await processAgentforceDocument(source);
+    definition = await resolveAgentforceSymbol(source, sym.symbol);
   } catch (err) {
     return {
       ok: false,
@@ -215,21 +187,7 @@ export async function findDefinition(filePath: string, symbol: string): Promise<
     };
   }
 
-  if (!state.ast) {
-    return { ok: false, reason: "not_found", reason_detail: `${symbol} has no AST.` };
-  }
-
-  const { resolveReference } = await import("@sf-agentscript/language");
-  const definition = resolveReference(
-    state.ast,
-    sym.namespace,
-    sym.property,
-    state.service.schemaContext,
-    undefined,
-    state.service.getSymbols(),
-  ) as { definitionRange?: { start?: { line?: number; character?: number } } } | null;
-
-  const start = definition?.definitionRange?.start;
+  const start = definition?.definitionRange.start;
   if (typeof start?.line !== "number") {
     return { ok: false, reason: "not_found", reason_detail: `${symbol} is not declared.` };
   }
@@ -242,7 +200,6 @@ export async function findDefinition(filePath: string, symbol: string): Promise<
     file: filePath,
   };
 }
-
 function resolveDialectInfo(source: string, sdk: unknown): InspectResult["dialect"] | undefined {
   const s = sdk as {
     parseDialectAnnotation?: (src: string) => { name?: string; version?: string } | null;
