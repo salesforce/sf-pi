@@ -18,24 +18,24 @@ sync with `extensions/sf-agentscript/tests/diagnostic-parity.test.ts`.
 
 ## Current parity map
 
-| SF Pi diagnostic                         | Upstream diagnostic(s) on parity fixture             | Tier        | Current decision                                                                                       |
-| ---------------------------------------- | ---------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------ |
-| `unused-variable`                        | `unused-variable` + `removalRange`                   | Strict      | Upstream-owned. Local scanner removed.                                                                 |
-| `action-missing-outputs`                 | none                                                 | SF Pi-owned | Keep local. Publish/server contract hardening.                                                         |
-| `apex-target-method-suffix`              | none                                                 | SF Pi-owned | Keep local. Salesforce target hygiene.                                                                 |
-| `target-ref-looks-like-id`               | none                                                 | SF Pi-owned | Keep local. Stable metadata-name guidance.                                                             |
-| `complex-action-io`                      | `object-type-missing-schema`, `action-missing-input` | Moderate    | Review later. Upstream sees object contract hints, but SF Pi message carries publish-binding guidance. |
-| `numeric-action-io`                      | `action-missing-input`                               | SF Pi-owned | Keep local. Numeric Flow/Apex publish-binding guidance is Salesforce-specific.                         |
-| `connection-messaging-incomplete-route`  | none                                                 | SF Pi-owned | Keep local. Channel routing config hardening.                                                          |
-| `connection-messaging-route-name-prefix` | none                                                 | SF Pi-owned | Keep local. Channel routing target format hardening.                                                   |
-| `inputs-out-of-scope`                    | `action-missing-input`                               | SF Pi-owned | Keep local. Upstream misses the `@inputs` scope mistake.                                               |
-| `outputs-out-of-scope`                   | `action-missing-input`, `action-unknown-input`       | Moderate    | Review later. Upstream catches a related malformed binding, not the general `@outputs` scope rule.     |
-| `literal-mode-procedural-text`           | `unused-variable` on fixture setup                   | SF Pi-owned | Keep local. Upstream does not detect executable-looking text in literal mode.                          |
-| `run-in-after-reasoning`                 | none                                                 | SF Pi-owned | Keep local. Runtime behavior hardening.                                                                |
-| `prompt-template-output-flags`           | none                                                 | SF Pi-owned | Keep local. Planner/display behavior hardening.                                                        |
-| `employee-agent-default-user`            | `config-ignored-default-agent-user`                  | Moderate    | Review later. Upstream warns, but SF Pi treats this as blocking and provides a removal quick fix.      |
-| `employee-agent-connection-messaging`    | none                                                 | SF Pi-owned | Keep local. Employee-vs-Service Agent surface hardening.                                               |
-| `employee-agent-escalate`                | none                                                 | SF Pi-owned | Keep local. Employee-vs-Service Agent utility hardening.                                               |
+| SF Pi diagnostic                         | Upstream diagnostic(s) on parity fixture             | Tier             | Current decision                                                                                   |
+| ---------------------------------------- | ---------------------------------------------------- | ---------------- | -------------------------------------------------------------------------------------------------- |
+| `unused-variable`                        | `unused-variable` + `removalRange`                   | Strict           | Upstream-owned. Local scanner removed.                                                             |
+| `action-missing-outputs`                 | none                                                 | SF Pi-owned      | Keep local. Publish/server contract hardening.                                                     |
+| `apex-target-method-suffix`              | none                                                 | SF Pi-owned      | Keep local. Salesforce target hygiene.                                                             |
+| `target-ref-looks-like-id`               | none                                                 | SF Pi-owned      | Keep local. Stable metadata-name guidance.                                                         |
+| `complex-action-io`                      | `object-type-missing-schema`, `action-missing-input` | Strict by policy | Upstream-owned. Local diagnostic removed; publish-binding nuance remains documented here.          |
+| `numeric-action-io`                      | `action-missing-input`                               | SF Pi-owned      | Keep local. Numeric Flow/Apex publish-binding guidance is Salesforce-specific.                     |
+| `connection-messaging-incomplete-route`  | none                                                 | SF Pi-owned      | Keep local. Channel routing config hardening.                                                      |
+| `connection-messaging-route-name-prefix` | none                                                 | SF Pi-owned      | Keep local. Channel routing target format hardening.                                               |
+| `inputs-out-of-scope`                    | `action-missing-input`                               | SF Pi-owned      | Keep local. Upstream misses the `@inputs` scope mistake.                                           |
+| `outputs-out-of-scope`                   | `action-missing-input`, `action-unknown-input`       | Moderate         | Review later. Upstream catches a related malformed binding, not the general `@outputs` scope rule. |
+| `literal-mode-procedural-text`           | `unused-variable` on fixture setup                   | SF Pi-owned      | Keep local. Upstream does not detect executable-looking text in literal mode.                      |
+| `run-in-after-reasoning`                 | none                                                 | SF Pi-owned      | Keep local. Runtime behavior hardening.                                                            |
+| `prompt-template-output-flags`           | none                                                 | SF Pi-owned      | Keep local. Planner/display behavior hardening.                                                    |
+| `employee-agent-default-user`            | `config-ignored-default-agent-user`                  | Moderate         | Review later. Upstream warns, but SF Pi treats this as blocking and provides a removal quick fix.  |
+| `employee-agent-connection-messaging`    | none                                                 | SF Pi-owned      | Keep local. Employee-vs-Service Agent surface hardening.                                           |
+| `employee-agent-escalate`                | none                                                 | SF Pi-owned      | Keep local. Employee-vs-Service Agent utility hardening.                                           |
 
 ## Deletion rule
 

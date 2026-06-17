@@ -107,20 +107,95 @@ describe("applyMutation: set_field", () => {
     expect(after).toContain("updated demo description");
   });
 
-  test("upserts a schema-valid scalar field on config", async () => {
-    const filePath = await writeAgent("bot.agent", FULL_FIXTURE);
-    const result = await applyMutation({
+  test("upserts schema-valid scalar fields on existing singular blocks", async () => {
+    const filePath = await writeAgent(
+      "bot.agent",
+      [
+        "config:",
+        '    agent_name: "Test_Bot"',
+        "",
+        "model_config:",
+        '    model: "model://old"',
+        "",
+        "knowledge:",
+        '    citations_url: "https://old.example"',
+        "",
+        "system:",
+        '    instructions: "x"',
+        "",
+      ].join("\n"),
+    );
+
+    const config = await applyMutation({
       op: "set_field",
       path: filePath,
       component: "config",
-      field: "agent_type",
-      value: "AgentforceEmployeeAgent",
+      field: "temperature",
+      value: 0.2,
     });
-    if (!result.ok) {
-      throw new Error(`Expected success, got ${result.reason}: ${result.reason_detail}`);
-    }
+    expect(config.ok).toBe(true);
+
+    const model = await applyMutation({
+      op: "set_field",
+      path: filePath,
+      component: "model_config",
+      field: "model",
+      value: "model://new",
+    });
+    expect(model.ok).toBe(true);
+
+    const knowledge = await applyMutation({
+      op: "set_field",
+      path: filePath,
+      component: "knowledge",
+      field: "rag_feature_config_id",
+      value: "kb_1",
+    });
+    expect(knowledge.ok).toBe(true);
+
     const after = await readFile(filePath, "utf8");
-    expect(after).toContain('agent_type: "AgentforceEmployeeAgent"');
+    expect(after).toContain("temperature: 0.2");
+    expect(after).toContain('model: "model://new"');
+    expect(after).toContain('rag_feature_config_id: "kb_1"');
+  });
+
+  test("upserts schema-valid scalar fields on existing named entries", async () => {
+    const filePath = await writeAgent(
+      "bot.agent",
+      [
+        "system:",
+        '    instructions: "x"',
+        "",
+        "connection messaging:",
+        '    label: "Messaging"',
+        "",
+        "start_agent main:",
+        '    description: "entry"',
+        "",
+      ].join("\n"),
+    );
+
+    const connection = await applyMutation({
+      op: "set_field",
+      path: filePath,
+      component: "connection.messaging",
+      field: "description",
+      value: "Messaging connection",
+    });
+    expect(connection.ok).toBe(true);
+
+    const startAgent = await applyMutation({
+      op: "set_field",
+      path: filePath,
+      component: "start_agent.main",
+      field: "label",
+      value: "Main entry",
+    });
+    expect(startAgent.ok).toBe(true);
+
+    const after = await readFile(filePath, "utf8");
+    expect(after).toContain('description: "Messaging connection"');
+    expect(after).toContain('label: "Main entry"');
   });
 
   test("set_field rejects array values with a clear unsupported_value_type reason", async () => {

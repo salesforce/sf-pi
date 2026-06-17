@@ -16,7 +16,7 @@ interface ParityCase {
   source: string;
   localCodes: string[];
   upstreamCodes: string[];
-  classification: "sf-pi-owned" | "possible-future-deletion";
+  classification: "upstream-owned" | "sf-pi-owned" | "possible-future-deletion";
 }
 
 const baseHead = [
@@ -86,13 +86,13 @@ const cases: ParityCase[] = [
   },
   {
     name: "object action I/O without contract hints",
-    localCodes: ["complex-action-io"],
+    localCodes: [],
     upstreamCodes: [
       "object-type-missing-schema",
       "object-type-missing-schema",
       "action-missing-input",
     ],
-    classification: "possible-future-deletion",
+    classification: "upstream-owned",
     source: withStart(
       action("find_order", [
         "            inputs:",
@@ -288,7 +288,6 @@ describe("local hardening diagnostic parity", () => {
     expect([...covered].sort()).toEqual([
       "action-missing-outputs",
       "apex-target-method-suffix",
-      "complex-action-io",
       "connection-messaging-incomplete-route",
       "connection-messaging-route-name-prefix",
       "employee-agent-connection-messaging",

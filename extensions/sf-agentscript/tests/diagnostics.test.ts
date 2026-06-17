@@ -212,7 +212,7 @@ describe("checkAgentScriptFile (integration)", () => {
     expect(refs[0].severity).toBe(2);
   });
 
-  it("flags object action I/O without complex_data_type_name or schema", async () => {
+  it("surfaces upstream object action I/O contract diagnostics", async () => {
     const file = writeTempAgent(
       [
         "system:",
@@ -248,9 +248,10 @@ describe("checkAgentScriptFile (integration)", () => {
       log.mockRestore();
     }
     expect(result).toBeDefined();
-    const complex = result!.diagnostics.filter((d) => d.code === "complex-action-io");
-    expect(complex).toHaveLength(2);
-    expect(complex.every((d) => d.severity === 2)).toBe(true);
+    const objectType = result!.diagnostics.filter((d) => d.code === "object-type-missing-schema");
+    expect(objectType).toHaveLength(2);
+    expect(objectType.every((d) => d.severity === 2)).toBe(true);
+    expect(result!.diagnostics.filter((d) => d.code === "complex-action-io")).toHaveLength(0);
   });
 
   it("does not flag object action I/O when a contract hint is present", async () => {
@@ -283,7 +284,9 @@ describe("checkAgentScriptFile (integration)", () => {
     );
 
     const result = await checkAgentScriptFile(file);
-    expect(result.diagnostics.filter((d) => d.code === "complex-action-io")).toHaveLength(0);
+    expect(result.diagnostics.filter((d) => d.code === "object-type-missing-schema")).toHaveLength(
+      0,
+    );
   });
 
   it("flags bare numeric action inputs and outputs", async () => {

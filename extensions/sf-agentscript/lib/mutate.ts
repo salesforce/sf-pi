@@ -26,6 +26,11 @@ import {
   resolveAgentforceSymbol,
   type AgentforceSymbol,
 } from "./agentforce-navigation.ts";
+import {
+  isNamedComponentKind,
+  isSchemaScalarField,
+  parseComponentAddress,
+} from "./mutation-policy.ts";
 import type { AgentScriptDiagnostic, AgentScriptQuickFix, AgentScriptRange } from "./types.ts";
 
 // -------------------------------------------------------------------------------------------------
@@ -345,90 +350,48 @@ function resolveMutableComponent(
   ast: Record<string, unknown>,
   component: string,
 ): { ok: true; component: Record<string, unknown> } | { ok: false; error: MutateResult } {
-  const parts = component.split(".");
-  const head = parts[0];
-  if (head === "config" || head === "system") {
-    const block = ast[head];
+  const parsed = parseComponentAddress(component);
+  if (parsed.ok === false) return parsed;
+  const { kind, entryName } = parsed.address;
+
+  if (!isNamedComponentKind(kind)) {
+    const block = ast[kind];
     if (!block || typeof block !== "object") {
       return {
         ok: false,
         error: {
           ok: false,
           reason: "block_not_found",
-          reason_detail: `Block '${head}' not present in document.`,
+          reason_detail: `Block '${kind}' not present in document.`,
         },
       };
     }
     return { ok: true, component: block as Record<string, unknown> };
   }
 
-  if (head === "topic" || head === "subagent" || head === "actions" || head === "variables") {
-    const entryName = parts[1];
-    if (!entryName) {
-      return {
-        ok: false,
-        error: {
-          ok: false,
-          reason: "bad_component",
-          reason_detail: `Component '${component}' missing an entry name (e.g. 'subagent.billing').`,
-        },
-      };
-    }
-    const map = ast[head] as { get?: (n: string) => unknown } | undefined;
-    if (!map || typeof map.get !== "function") {
-      return {
-        ok: false,
-        error: {
-          ok: false,
-          reason: "block_not_found",
-          reason_detail: `Named-map block '${head}' is missing or not iterable.`,
-        },
-      };
-    }
-    const entry = map.get(entryName);
-    if (!entry || typeof entry !== "object") {
-      return {
-        ok: false,
-        error: {
-          ok: false,
-          reason: "entry_not_found",
-          reason_detail: `Entry '${component}' not found in '${head}' map.`,
-        },
-      };
-    }
-    return { ok: true, component: entry as Record<string, unknown> };
-  }
-
-  return {
-    ok: false,
-    error: {
+  const map = ast[kind] as { get?: (n: string) => unknown } | undefined;
+  if (!map || typeof map.get !== "function") {
+    return {
       ok: false,
-      reason: "unknown_component_kind",
-      reason_detail:
-        `Unknown component kind '${head}'. Supported: config, system, ` +
-        `topic.<name>, subagent.<name>, actions.<name>, variables.<name>.`,
-    },
-  };
-}
-
-const MISSING_SCALAR_FIELD_ALLOWLIST: Record<string, Set<string>> = {
-  config: new Set([
-    "agent_name",
-    "agent_type",
-    "description",
-    "default_agent_user",
-    "default_locale",
-  ]),
-  system: new Set(["instructions"]),
-  topic: new Set(["description"]),
-  subagent: new Set(["description"]),
-  actions: new Set(["description", "label", "target"]),
-  variables: new Set(["description", "default", "source", "visibility"]),
-};
-
-function canUpsertMissingScalarField(component: string, field: string): boolean {
-  const kind = component.split(".")[0];
-  return MISSING_SCALAR_FIELD_ALLOWLIST[kind]?.has(field) === true;
+      error: {
+        ok: false,
+        reason: "block_not_found",
+        reason_detail: `Named-map block '${kind}' is missing or not iterable.`,
+      },
+    };
+  }
+  const entry = map.get(entryName ?? "");
+  if (!entry || typeof entry !== "object") {
+    return {
+      ok: false,
+      error: {
+        ok: false,
+        reason: "entry_not_found",
+        reason_detail: `Entry '${component}' not found in '${kind}' map.`,
+      },
+    };
+  }
+  return { ok: true, component: entry as Record<string, unknown> };
 }
 
 function guidanceForGenericEdit(op: Extract<MutateOp, { op: "insert" | "delete" }>): MutateResult {
@@ -466,13 +429,13 @@ async function applyAstSetField(
     op.component,
   );
   if (beforeKeys.ok === false) return beforeKeys.error;
-  if (!beforeKeys.keys.includes(op.field) && !canUpsertMissingScalarField(op.component, op.field)) {
+  if (!isSchemaScalarField(op.component, op.field)) {
     return {
       ok: false,
       reason: "invalid_field",
       reason_detail:
-        `set_field may add missing fields only for known scalar Agent Script fields. ` +
-        `'${op.field}' is not present on '${op.component}'. Use the generic edit tool for ` +
+        `set_field supports first-level scalar fields on existing Agentforce schema components. ` +
+        `'${op.field}' is not a scalar field on '${op.component}'. Use the generic edit tool for ` +
         `broader source construction, then run agentscript_authoring compile/check.`,
     };
   }
@@ -952,68 +915,9 @@ export function getTargetFieldKeys(
   ast: Record<string, unknown>,
   component: string,
 ): { ok: true; keys: string[] } | { ok: false; error: MutateResult } {
-  const parts = component.split(".");
-  const head = parts[0];
-  if (head === "config" || head === "system") {
-    const block = ast[head];
-    if (!block || typeof block !== "object") {
-      return {
-        ok: false,
-        error: {
-          ok: false,
-          reason: "block_not_found",
-          reason_detail: `Block '${head}' not present in document.`,
-        },
-      };
-    }
-    return { ok: true, keys: keysExcludingCst(block as Record<string, unknown>) };
-  }
-  if (head === "topic" || head === "subagent" || head === "actions" || head === "variables") {
-    const entryName = parts[1];
-    if (!entryName) {
-      return {
-        ok: false,
-        error: {
-          ok: false,
-          reason: "bad_component",
-          reason_detail: `Component '${component}' missing an entry name (e.g. 'topic.billing').`,
-        },
-      };
-    }
-    const map = ast[head] as { get?: (n: string) => unknown } | undefined;
-    if (!map || typeof map.get !== "function") {
-      return {
-        ok: false,
-        error: {
-          ok: false,
-          reason: "block_not_found",
-          reason_detail: `Named-map block '${head}' is missing or not iterable.`,
-        },
-      };
-    }
-    const entry = map.get(entryName);
-    if (!entry || typeof entry !== "object") {
-      return {
-        ok: false,
-        error: {
-          ok: false,
-          reason: "entry_not_found",
-          reason_detail: `Entry '${component}' not found in '${head}' map.`,
-        },
-      };
-    }
-    return { ok: true, keys: keysExcludingCst(entry as Record<string, unknown>) };
-  }
-  return {
-    ok: false,
-    error: {
-      ok: false,
-      reason: "unknown_component_kind",
-      reason_detail:
-        `Unknown component kind '${head}'. Supported: config, system, ` +
-        `topic.<name>, subagent.<name>, actions.<name>, variables.<name>.`,
-    },
-  };
+  const resolved = resolveMutableComponent(ast, component);
+  if (resolved.ok === false) return resolved;
+  return { ok: true, keys: keysExcludingCst(resolved.component) };
 }
 
 function keysExcludingCst(obj: Record<string, unknown>): string[] {

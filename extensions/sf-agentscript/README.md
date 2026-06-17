@@ -30,7 +30,7 @@ Rules:
 - `verb="compile"` defaults `mode` to `check`; `mode="format"` writes canonical SDK formatting.
 - `verb="inspect"` defaults `mode` to `structure`; modes include `context_profile`, `find_references`, `definition`, `check_targets`, and `review`.
 - `verb="mutate"` requires `mode`; modes include `set_field`, `rename`, `insert`, `delete`, and `apply_quick_fix`.
-  - `set_field` is a structured scalar field update/upsert for targeted component fields.
+  - `set_field` is a structured scalar field update/upsert for existing top-level Agentforce schema components. It supports first-level scalar fields on singular blocks (for example `config`, `system`, `model_config`, `knowledge`) and named entries (for example `start_agent.main`, `subagent.billing`, `connection.messaging`, `variables.customer_id`, `actions.lookup`). It does not create missing blocks or nested paths.
   - `rename` is reference-safe for declarable symbols (`@subagent.X`, `@topic.X`, `@actions.X`, `@variables.X`) and accepts legacy component paths.
   - `insert` / `delete` intentionally guide callers to generic file edits followed by compile/check for broader source construction.
 - `agent_file` may be omitted only when exactly one current `.agent` file exists on the active Pi branch. Ambiguity is refused with structured candidates.
@@ -217,6 +217,7 @@ extensions/sf-agentscript/
     lifecycle.ts            ← implementation module
     local-lints.ts          ← implementation module
     mutate.ts               ← implementation module
+    mutation-policy.ts      ← implementation module
     preflight.ts            ← implementation module
     preview-tool.ts         ← implementation module
     sdk.ts                  ← implementation module

@@ -259,40 +259,6 @@ function collectNumericActionIo(
   return out;
 }
 
-function complexTypeOnLine(line: LineInfo): boolean {
-  return /^"?[A-Za-z_][\w:.-]*"?\s*:\s*(object|list\[object\])\b/.test(line.trimmed);
-}
-
-function hasComplexDataTypeChild(lines: readonly LineInfo[], index: number): boolean {
-  const parent = lines[index];
-  for (const line of lines.slice(index + 1)) {
-    if (line.trimmed.length > 0 && line.indent <= parent.indent) break;
-    if (/^complex_data_type_name\s*:/.test(line.trimmed) || /^schema\s*:/.test(line.trimmed)) {
-      return true;
-    }
-  }
-  return false;
-}
-
-function collectComplexActionIo(
-  action: ActionBlock,
-): Array<{ section: "inputs" | "outputs"; line: LineInfo }> {
-  const out: Array<{ section: "inputs" | "outputs"; line: LineInfo }> = [];
-  for (let i = 0; i < action.lines.length; i++) {
-    const section = isIoBlock(action.lines[i]);
-    if (!section) continue;
-    const sectionIndent = action.lines[i].indent;
-    for (let j = i + 1; j < action.lines.length; j++) {
-      const line = action.lines[j];
-      if (line.trimmed.length > 0 && line.indent <= sectionIndent) break;
-      if (complexTypeOnLine(line) && !hasComplexDataTypeChild(action.lines, j)) {
-        out.push({ section, line });
-      }
-    }
-  }
-  return out;
-}
-
 function numericMessage(scheme: string | undefined): string {
   if (scheme === "flow") {
     return 'Bare numeric action I/O can fail at publish for flow targets. Use object + complex_data_type_name: "lightning__numberType" for numeric Flow parameters.';
@@ -630,23 +596,6 @@ export function buildLocalDiagnostics(source: string): AgentScriptDiagnostic[] {
           section: item.section,
           scheme,
         }),
-      );
-    }
-    for (const item of collectComplexActionIo(action)) {
-      diagnostics.push(
-        diagnostic(
-          item.line,
-          "complex-action-io",
-          `Action ${item.section} has type object/list[object] but no complex_data_type_name or schema. Publish can fail because the platform cannot bind the target contract.`,
-          2,
-          "object",
-          {
-            action: action.name,
-            target: action.target,
-            section: item.section,
-            scheme,
-          },
-        ),
       );
     }
   }

@@ -38,6 +38,7 @@ const ACTIONABLE_WARNING_CODES = new Set<string>([
   "unknown-dialect",
   "invalid-modifier",
   "unknown-type",
+  "object-type-missing-schema",
 ]);
 
 /**
