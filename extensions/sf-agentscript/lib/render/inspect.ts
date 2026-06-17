@@ -50,6 +50,11 @@ interface ModalitySummary {
   fields?: Record<string, unknown>;
 }
 
+interface BlockSummary {
+  line?: number;
+  fields?: Record<string, unknown>;
+}
+
 export interface InspectStructureDetails {
   ok?: boolean;
   action?: string;
@@ -65,6 +70,9 @@ export interface InspectStructureDetails {
     actions: ComponentSummary[];
     connections?: ConnectionSummary[];
     modalities?: ModalitySummary[];
+    model_config?: BlockSummary;
+    security?: BlockSummary;
+    context?: BlockSummary;
   };
   stats?: {
     start_agents?: number;
@@ -74,6 +82,9 @@ export interface InspectStructureDetails {
     actions?: number;
     connections?: number;
     modalities?: number;
+    model_config?: number;
+    security?: number;
+    context?: number;
   };
   has_parse_errors?: boolean;
   parse_error_count?: number;
@@ -166,6 +177,15 @@ function formatStructureBody(
   }
   if (components.config && Object.keys(components.config).length > 0) {
     lines.push(`  ${accent("⚙ ")} ${bold("config")}`);
+  }
+  if (components.model_config) {
+    lines.push(blockSummaryLine("🧠", "model_config", components.model_config, code, dim, bold));
+  }
+  if (components.security) {
+    lines.push(blockSummaryLine("🔐", "security", components.security, code, dim, bold));
+  }
+  if (components.context) {
+    lines.push(blockSummaryLine("🧩", "context", components.context, code, dim, bold));
   }
 
   // Start agents
@@ -264,6 +284,9 @@ function formatStructureBody(
     `${stats.variables ?? 0} variables`,
     `${stats.connections ?? components.connections?.length ?? 0} connections`,
     `${stats.modalities ?? components.modalities?.length ?? 0} modalities`,
+    stats.model_config ? "model_config" : null,
+    stats.security ? "security" : null,
+    stats.context ? "context" : null,
     refTotals > 0 ? `${refTotals} @-refs` : null,
   ].filter(Boolean) as string[];
   lines.push(dim(footerBits.join(" · ")));
@@ -280,6 +303,32 @@ function formatStructureBody(
 
   void ansi;
   return lines.join("\n");
+}
+
+function blockSummaryLine(
+  icon: string,
+  name: string,
+  block: BlockSummary,
+  code: (s: string) => string,
+  dim: (s: string) => string,
+  bold: (s: string) => string,
+): string {
+  const ln = block.line !== undefined ? dim(` L${block.line}`) : "";
+  const fields = block.fields ? Object.entries(block.fields) : [];
+  const fieldSummary = fields.length
+    ? dim(
+        ` · ${fields
+          .slice(0, 4)
+          .map(([key, value]) => `${key}=${formatFieldValue(value)}`)
+          .join(", ")}`,
+      )
+    : "";
+  return `  ${icon} ${bold(name)}${ln}${fieldSummary ? ` ${fieldSummary}` : ""}`;
+}
+
+function formatFieldValue(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.join(",")}]`;
+  return JSON.stringify(value);
 }
 
 function totalRefs(topics: ComponentSummary[]): number {

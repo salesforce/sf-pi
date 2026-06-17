@@ -250,6 +250,57 @@ describe("inspectFile", () => {
     );
   });
 
+  test("surfaces model_config, security, and context blocks", async () => {
+    const filePath = await writeAgent(
+      "newer-blocks.agent",
+      [
+        "system:",
+        '    instructions: "hi"',
+        "",
+        "config:",
+        '    agent_name: "Block_Bot"',
+        "",
+        "model_config:",
+        '    model: "model://sfdc_ai__DefaultGPT4"',
+        "",
+        "security:",
+        "    sharing_policy:",
+        "        use_default_sharing_entities: True",
+        "        custom_sharing_entities:",
+        "            - Account",
+        "            - Contact",
+        "    verified_customer_record_access:",
+        "        use_default_objects: False",
+        "        additional_objects:",
+        "            - Case",
+        "",
+        "context:",
+        "    memory:",
+        "        enabled: True",
+        "",
+        "start_agent main:",
+        '    description: "entry"',
+        "",
+      ].join("\n"),
+    );
+
+    const result = await inspectFile(filePath);
+    expect(result.ok).toBe(true);
+    expect(result.components?.model_config).toMatchObject({
+      fields: { model: "model://sfdc_ai__DefaultGPT4" },
+    });
+    expect(result.components?.security?.fields).toMatchObject({
+      "sharing_policy.use_default_sharing_entities": true,
+      "sharing_policy.custom_sharing_entities": ["Account", "Contact"],
+      "verified_customer_record_access.use_default_objects": false,
+      "verified_customer_record_access.additional_objects": ["Case"],
+    });
+    expect(result.components?.context?.fields).toMatchObject({
+      "memory.enabled": true,
+    });
+    expect(result.stats).toMatchObject({ model_config: 1, security: 1, context: 1 });
+  });
+
   test("agent_type is surfaced on components.config (not components.system)", async () => {
     // Locks in the SDK schema: agent_type is a `config:` field. An
     // earlier inspect summary mirrored it onto `system` too, which was

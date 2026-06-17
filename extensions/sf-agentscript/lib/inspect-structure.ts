@@ -32,6 +32,9 @@ export interface InspectResult {
     actions: ComponentSummary[];
     connections?: ConnectionSummary[];
     modalities?: ModalitySummary[];
+    model_config?: BlockSummary;
+    security?: BlockSummary;
+    context?: BlockSummary;
   };
   stats?: {
     start_agents?: number;
@@ -41,6 +44,9 @@ export interface InspectResult {
     actions: number;
     connections?: number;
     modalities?: number;
+    model_config?: number;
+    security?: number;
+    context?: number;
   };
   /**
    * True when `parse()` produced severity-1 diagnostics. The structural
@@ -116,6 +122,11 @@ export interface ResponseFormatSummary {
 
 export interface ModalitySummary {
   name: string;
+  line?: number;
+  fields?: Record<string, unknown>;
+}
+
+export interface BlockSummary {
   line?: number;
   fields?: Record<string, unknown>;
 }
@@ -410,18 +421,79 @@ function summarizeResponseFormat(name: string, entry: unknown): ResponseFormatSu
 }
 
 function summarizeModality(name: string, entry: unknown): ModalitySummary {
-  const e = entry as Record<string, unknown>;
   const out: ModalitySummary = { name };
   const line = startLine(entry);
   if (typeof line === "number") out.line = line;
-  const fields: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(e)) {
-    if (key.startsWith("__")) continue;
-    const scalar = unwrapScalar(value);
-    if (scalar !== undefined) fields[key] = scalar;
-  }
+  const fields = summarizeBlockFields(entry);
   if (Object.keys(fields).length > 0) out.fields = fields;
   return out;
+}
+
+function summarizeBlock(entry: unknown): BlockSummary | undefined {
+  if (!entry || typeof entry !== "object") return undefined;
+  const out: BlockSummary = {};
+  const line = startLine(entry);
+  if (typeof line === "number") out.line = line;
+  const fields = summarizeBlockFields(entry);
+  if (Object.keys(fields).length > 0) out.fields = fields;
+  return out.line !== undefined || out.fields ? out : undefined;
+}
+
+function summarizeBlockFields(entry: unknown): Record<string, unknown> {
+  const fields: Record<string, unknown> = {};
+  collectSummaryFields(entry, "", fields, new Set(), 0);
+  return fields;
+}
+
+function collectSummaryFields(
+  value: unknown,
+  prefix: string,
+  out: Record<string, unknown>,
+  seen: Set<object>,
+  depth: number,
+): void {
+  if (!value || typeof value !== "object" || depth > 4) return;
+  if (seen.has(value)) return;
+  seen.add(value);
+
+  const sequence = scalarSequence(value);
+  if (sequence && prefix) {
+    out[prefix] = sequence;
+    return;
+  }
+
+  for (const [key, child] of Object.entries(value)) {
+    if (key.startsWith("__") || key === "properties") continue;
+    const path = prefix ? `${prefix}.${key}` : key;
+    const scalar = unwrapScalar(child);
+    if (scalar !== undefined) {
+      out[path] = scalar;
+      continue;
+    }
+    const childSequence = scalarSequence(child);
+    if (childSequence) {
+      out[path] = childSequence;
+      continue;
+    }
+    if (child && typeof child === "object" && !isNamedMap(child)) {
+      collectSummaryFields(child, path, out, seen, depth + 1);
+    }
+  }
+}
+
+function scalarSequence(value: unknown): Array<string | number | boolean> | undefined {
+  if ((value as { __kind?: unknown } | undefined)?.__kind !== "Sequence") return undefined;
+  const children = (value as { __children?: unknown } | undefined)?.__children;
+  if (!Array.isArray(children)) return undefined;
+  const out: Array<string | number | boolean> = [];
+  for (const item of children) {
+    const raw = (item as { value?: unknown } | undefined)?.value;
+    const scalar = unwrapScalar(raw) ?? expressionName(raw);
+    if (typeof scalar === "string" || typeof scalar === "number" || typeof scalar === "boolean") {
+      out.push(scalar);
+    }
+  }
+  return out.length > 0 ? out : undefined;
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -508,6 +580,9 @@ export function projectInspectStructure(input: {
     summarizeConnection(n, e, input.walkAstExpressions, input.decomposeAtMemberExpression),
   );
   const modalities = namedMapEntries(ast.modality).map(([n, e]) => summarizeModality(n, e));
+  const modelConfig = summarizeBlock(ast.model_config);
+  const security = summarizeBlock(ast.security);
+  const context = summarizeBlock(ast.context);
 
   const components = {
     ...(config !== undefined ? { config } : {}),
@@ -519,6 +594,9 @@ export function projectInspectStructure(input: {
     actions,
     ...(connections.length > 0 ? { connections } : {}),
     ...(modalities.length > 0 ? { modalities } : {}),
+    ...(modelConfig ? { model_config: modelConfig } : {}),
+    ...(security ? { security } : {}),
+    ...(context ? { context } : {}),
   };
 
   return {
@@ -533,6 +611,9 @@ export function projectInspectStructure(input: {
       actions: actions.length,
       connections: connections.length,
       modalities: modalities.length,
+      ...(modelConfig ? { model_config: 1 } : {}),
+      ...(security ? { security: 1 } : {}),
+      ...(context ? { context: 1 } : {}),
     },
     has_parse_errors: input.hasParseErrors,
     parse_error_count: input.parseErrorCount,

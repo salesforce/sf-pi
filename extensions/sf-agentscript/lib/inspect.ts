@@ -24,6 +24,7 @@ export type {
   ConnectionSummary,
   ResponseFormatSummary,
   ModalitySummary,
+  BlockSummary,
 } from "./inspect-structure.ts";
 
 // -------------------------------------------------------------------------------------------------
