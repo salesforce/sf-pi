@@ -8,6 +8,7 @@ import type { Theme } from "@earendil-works/pi-coding-agent";
 import { DEVBAR_COLOR_DESCRIPTORS } from "../lib/colors.ts";
 import {
   createConfigPanel,
+  normalizeTextInput,
   parseDevbarColorInput,
   parsePaletteInput,
 } from "../lib/config-panel.ts";
@@ -48,6 +49,10 @@ describe("DevBar config panel parsers", () => {
     expect(parsePaletteInput('["#123", "#456789"]')).toEqual(["#112233", "#456789"]);
     expect(parsePaletteInput("#123, nope")).toBeUndefined();
   });
+
+  it("strips terminal controls from text input", () => {
+    expect(normalizeTextInput("#123\u001b[200~#456\u001b[201~\u001b[B\n")).toBe("#123#456");
+  });
 });
 
 describe("DevBar config panel", () => {
@@ -62,7 +67,6 @@ describe("DevBar config panel", () => {
 
     panel.handleInput("enter");
     expect(panel.renderContent(100).join("\n")).toContain("Edit Folder path");
-    for (let i = 0; i < 7; i++) panel.handleInput("backspace");
     panel.handleInput("#abc");
     panel.handleInput("enter");
 
@@ -76,6 +80,27 @@ describe("DevBar config panel", () => {
     const raw = JSON.parse(readFileSync(join(cwd, ".pi", "settings.json"), "utf-8"));
     expect(raw.theme).toBe("dark");
     expect(raw.sfPi.devbar.colors).toEqual({ folderPath: "#aabbcc" });
+  });
+
+  it("starts default palette edits from an empty draft instead of appending to defaults", () => {
+    const cwd = makeTempDir("devbar-config-panel-");
+    let result: unknown;
+    const panel = makePanel(cwd, (value) => {
+      result = value;
+    });
+    const paletteIndex = DEVBAR_COLOR_DESCRIPTORS.findIndex(
+      (item) => item.key === "gatewayRainbow",
+    );
+    for (let i = 0; i < paletteIndex; i++) panel.handleInput("down");
+
+    panel.handleInput("enter");
+    panel.handleInput("#123, #456789");
+    panel.handleInput("enter");
+    panel.handleInput("s");
+
+    expect(result).toEqual({ needsReload: true });
+    const raw = JSON.parse(readFileSync(join(cwd, ".pi", "settings.json"), "utf-8"));
+    expect(raw.sfPi.devbar.colors.gatewayRainbow).toEqual(["#112233", "#456789"]);
   });
 
   it("keeps invalid edits on the edit page without writing settings", () => {

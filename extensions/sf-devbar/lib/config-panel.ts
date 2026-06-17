@@ -168,7 +168,7 @@ class SfDevbarConfigPanel implements Focusable {
     const effective = this.effectiveColors();
     const current = effective.colors[descriptor.key];
     const currentText = Array.isArray(current) ? formatPalette(current) : String(current);
-    const draft = `${this.draftText}${t.fg("accent", "█")}`;
+    const draft = this.renderDraftText(width);
     const lines: string[] = [
       ` ${t.fg("accent", themeBold(t, `SF Pi › SF DevBar › Settings › Edit ${descriptor.label}`))}`,
       "",
@@ -194,6 +194,9 @@ class SfDevbarConfigPanel implements Focusable {
     lines.push("");
     if (this.lastError) lines.push(` ${t.fg("warning", this.lastError)}`);
     lines.push(` ${t.fg("dim", "Enter accept · Esc cancel edit · Backspace delete")}`);
+    // Keep the edit panel height stable enough to overwrite old draft rows even
+    // when terminal input arrives faster than the host repaint cycle.
+    while (lines.length < 24) lines.push("");
     return lines.map(pad);
   }
 
@@ -226,9 +229,15 @@ class SfDevbarConfigPanel implements Focusable {
     this.editingKey = descriptor.key;
     this.lastError = "";
     this.lastMessage = "";
-    const current =
-      this.draftOverrides[descriptor.key] ?? this.effectiveColors().colors[descriptor.key];
-    this.draftText = Array.isArray(current) ? formatPalette(current) : String(current);
+    const scopedDraft = this.draftOverrides[descriptor.key];
+    this.draftText = scopedDraft === undefined ? "" : formatColorValue(scopedDraft);
+  }
+
+  private renderDraftText(width: number): string {
+    const cursor = this.theme.fg("accent", "█");
+    const maxDraftWidth = Math.max(8, Math.min(72, width - 8));
+    const visibleDraft = truncateToWidth(this.draftText, maxDraftWidth, "…");
+    return this.theme.fg("accent", `${visibleDraft}${cursor}`);
   }
 
   private commitEdit(): void {
@@ -351,7 +360,30 @@ export function normalizeTextInput(data: string): string {
     .split(BRACKETED_PASTE_END)
     .join("");
   if (isTerminalEscapeSequence(withoutPasteMarkers)) return "";
-  return withoutPasteMarkers.split("\r").join("").split("\n").join("");
+  return stripTerminalControls(withoutPasteMarkers).split("\r").join("").split("\n").join("");
+}
+
+function stripTerminalControls(value: string): string {
+  let out = "";
+  for (let i = 0; i < value.length; i++) {
+    const code = value.charCodeAt(i);
+    if (code === 27 && value[i + 1] === "[") {
+      i += 2;
+      while (i < value.length && !isCsiFinal(value.charCodeAt(i))) i++;
+      continue;
+    }
+    if (isControlCode(code)) continue;
+    out += value[i] ?? "";
+  }
+  return out;
+}
+
+function isControlCode(code: number): boolean {
+  return code === 127 || (code < 32 && code !== 9 && code !== 10 && code !== 13);
+}
+
+function isCsiFinal(code: number): boolean {
+  return (code >= 64 && code <= 90) || (code >= 97 && code <= 126);
 }
 
 function isTerminalEscapeSequence(value: string): boolean {
@@ -383,6 +415,10 @@ type PanelKey = "escape" | "up" | "down" | "enter" | "return" | "backspace" | "d
 
 function isKey(data: string, key: PanelKey): boolean {
   return data === key || matchesKey(data, key);
+}
+
+function formatColorValue(value: string | readonly string[]): string {
+  return typeof value === "string" ? value : formatPalette(value);
 }
 
 function cloneOverrides(overrides: DevbarColorOverrides): DevbarColorOverrides {
