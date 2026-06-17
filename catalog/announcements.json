@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.192.0-2026-06-17",
-  "latestVersion": "0.192.0",
+  "revision": "release-0.192.1-2026-06-17",
+  "latestVersion": "0.192.1",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.192.0",
+      "id": "release-0.192.1",
       "kind": "update",
-      "title": "sf-pi v0.192.0 — agentscript: inspect newer schema blocks",
+      "title": "sf-pi v0.192.1 — align pi runtime mode handling",
       "publishedAt": "2026-06-17T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.192.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.192.1",
       "severity": "info",
-      "body": "agentscript: inspect newer schema blocks"
+      "body": "align pi runtime mode handling"
     },
     {
       "id": "pi-0.73-required",
