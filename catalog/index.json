@@ -372,7 +372,7 @@
     "entry": "extensions/sf-devbar/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 2534
+    "srcLoc": 2533
   },
   {
     "id": "sf-feedback",
@@ -688,7 +688,7 @@
     "entry": "extensions/sf-pi-manager/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 3452
+    "srcLoc": 3455
   },
   {
     "id": "sf-skills",

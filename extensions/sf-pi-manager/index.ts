@@ -530,8 +530,9 @@ async function handleOverlay(
   scope: "global" | "project",
   initialRoute?: OverlayInitialRoute,
 ): Promise<void> {
-  if (!ctx.hasUI) {
-    // Fall back to list in non-interactive mode
+  if (ctx.mode !== "tui") {
+    // Custom overlay components require a real terminal UI. RPC has
+    // ctx.hasUI=true, so fall back to the text list outside TUI mode.
     await handleList(ctx, scope);
     return;
   }

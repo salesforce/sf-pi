@@ -129,7 +129,9 @@ async function handleOverlay(
   manifest: RecommendationsManifest,
   scope: InstallScope,
 ): Promise<void> {
-  if (!ctx.hasUI) {
+  if (ctx.mode !== "tui") {
+    // Custom overlay components require a real terminal UI. RPC has
+    // ctx.hasUI=true, so fall back to the text list outside TUI mode.
     handleList(ctx, manifest);
     return;
   }

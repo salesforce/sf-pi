@@ -134,27 +134,16 @@ describe("formatAgentContext", () => {
 
   // --- systemPromptOptions-aware context ---
 
-  it("omits tool/skill lines when no options provided", () => {
+  it("omits skill lines when no options provided", () => {
     const env = makeEnv({ projectDetected: true, projectName: "x" });
     const ctx = formatAgentContext(env)!;
-    expect(ctx).not.toContain("Active tools:");
     expect(ctx).not.toContain("Active SF skills:");
   });
 
-  it("omits tool/skill lines when options has empty arrays", () => {
+  it("omits skill lines when options has an empty skills array", () => {
     const env = makeEnv({ projectDetected: true, projectName: "x" });
-    const ctx = formatAgentContext(env, { activeTools: [], activeSkills: [] })!;
-    expect(ctx).not.toContain("Active tools:");
+    const ctx = formatAgentContext(env, { activeSkills: [] })!;
     expect(ctx).not.toContain("Active SF skills:");
-  });
-
-  it("does not include active tools when provided", () => {
-    const env = makeEnv({ projectDetected: true, projectName: "x" });
-    const ctx = formatAgentContext(env, {
-      activeTools: ["bash", "read", "sf-deploy", "slack"],
-    })!;
-    expect(ctx).not.toContain("Active tools:");
-    expect(ctx).not.toContain("sf-deploy");
   });
 
   it("includes active SF skills when provided", () => {
@@ -167,16 +156,6 @@ describe("formatAgentContext", () => {
     expect(ctx).toContain("sf-testing");
     // "visual-explainer" doesn't start with "sf-", so filtered out
     expect(ctx).not.toMatch(/Active SF skills:.*visual-explainer/);
-  });
-
-  it("keeps active tools out of the environment block when skills are provided", () => {
-    const env = makeEnv({ projectDetected: true, projectName: "x" });
-    const ctx = formatAgentContext(env, {
-      activeTools: ["bash", "edit"],
-      activeSkills: ["sf-apex"],
-    })!;
-    expect(ctx).not.toContain("Active tools:");
-    expect(ctx).toContain("Active SF skills:");
   });
 
   it("omits skills line when no skills pass the sf- prefix filter", () => {

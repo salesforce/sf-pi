@@ -518,8 +518,8 @@ export default function sfDevBar(pi: ExtensionAPI) {
   });
 
   // --- Before agent start: inject Salesforce environment context into system prompt ---
-  // Uses systemPromptOptions to inspect what tools/skills are active, so the
-  // injected context is tool-aware (e.g. richer metadata when SF tools are loaded).
+  // Uses systemPromptOptions to inspect active skills. Tool routing belongs in
+  // <sf_pi_extensions>, not in this Salesforce environment fact block.
   //
   // Inject-once-on-change semantics:
   //   - Inject when no live <sf_environment> entry exists (first turn / post-compaction).
@@ -539,7 +539,6 @@ export default function sfDevBar(pi: ExtensionAPI) {
 
     const { systemPromptOptions } = event;
     const context = formatAgentContext(env, {
-      activeTools: systemPromptOptions.selectedTools,
       activeSkills: systemPromptOptions.skills?.map((s) => s.name),
     });
     if (!context) return;

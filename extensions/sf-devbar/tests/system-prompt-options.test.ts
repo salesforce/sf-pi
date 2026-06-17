@@ -4,7 +4,7 @@
  *
  * Covers:
  * - before_agent_start handler reads event.systemPromptOptions
- * - Handler passes activeTools and activeSkills to formatAgentContext
+ * - Handler passes activeSkills to formatAgentContext
  * - Source-level contract: no use of _event (unused event param)
  *
  * Runtime behavior is covered by the formatAgentContext unit tests in
@@ -27,9 +27,9 @@ describe("sf-devbar systemPromptOptions wiring", () => {
     expect(devbarSource).toContain("{ systemPromptOptions }");
   });
 
-  it("passes activeTools from systemPromptOptions to formatAgentContext", () => {
-    expect(devbarSource).toContain("systemPromptOptions.selectedTools");
-    expect(devbarSource).toContain("activeTools:");
+  it("does not pass tool-routing facts into formatAgentContext", () => {
+    expect(devbarSource).not.toContain("systemPromptOptions.selectedTools");
+    expect(devbarSource).not.toContain("activeTools:");
   });
 
   it("passes activeSkills from systemPromptOptions to formatAgentContext", () => {

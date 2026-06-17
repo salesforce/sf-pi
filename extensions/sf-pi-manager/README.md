@@ -152,6 +152,7 @@ extensions/sf-pi-manager/
     extension-aliases.test.ts← unit / smoke test
     extension-details.test.ts← unit / smoke test
     extension-state.test.ts ← unit / smoke test
+    mode-behavior.test.ts   ← unit / smoke test
     package-detection.test.ts← unit / smoke test
     package-state.test.ts   ← unit / smoke test
     recommendations-command.test.ts← unit / smoke test

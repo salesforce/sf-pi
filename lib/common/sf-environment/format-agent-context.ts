@@ -11,12 +11,11 @@
 import type { SfEnvironment } from "./types.ts";
 
 /**
- * Optional hints from the system prompt options so the agent context
- * can adapt to what tools/skills are actually active.
+ * Optional hints from the system prompt options so the agent context can
+ * include Salesforce skill availability. Tool routing belongs in
+ * <sf_pi_extensions>, not in this Salesforce environment fact block.
  */
 export type AgentContextOptions = {
-  /** Tool names currently selected in the system prompt. */
-  activeTools?: string[];
   /** Skill names currently loaded. */
   activeSkills?: string[];
 };
@@ -25,9 +24,8 @@ export type AgentContextOptions = {
  * Build the context string injected into the system prompt so the agent
  * knows about the Salesforce environment.
  *
- * When activeTools/activeSkills are provided (from systemPromptOptions),
- * the context includes a hint about which Salesforce-specific tools and
- * skills are available, helping the agent choose the right approach.
+ * When activeSkills are provided (from systemPromptOptions), the context
+ * includes a hint about which Salesforce-specific skills are available.
  *
  * Returns undefined if there's nothing useful to inject (no CLI, no project, no org).
  */
