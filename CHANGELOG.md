@@ -517,6 +517,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.191.5](https://github.com/salesforce/sf-pi/compare/v0.191.4...v0.191.5) (2026-06-17)
+
+
+### Bug Fixes
+
+* **agentscript:** rely on upstream employee default-user lint ([5c7d8aa](https://github.com/salesforce/sf-pi/commit/5c7d8aa1592d0d79284556bfafb359a4f53b658e))
+
 ## [0.191.4](https://github.com/salesforce/sf-pi/compare/v0.191.3...v0.191.4) (2026-06-17)
 
 
