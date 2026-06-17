@@ -602,19 +602,20 @@ describe("checkAgentScriptFile (integration)", () => {
         '    description: "Entry topic."',
         "    reasoning:",
         "        actions:",
-        '            escalate: @utils.escalate description="Escalate to a human"',
+        "            escalate: @utils.escalate",
         "",
       ].join("\n"),
     );
 
     const result = await checkAgentScriptFile(file);
     const codes = new Set(result.diagnostics.map((d) => d.code));
-    expect(codes.has("employee-agent-default-user")).toBe(true);
+    expect(codes.has("config-ignored-default-agent-user")).toBe(true);
+    expect(codes.has("employee-agent-default-user")).toBe(false);
     expect(codes.has("employee-agent-connection-messaging")).toBe(true);
     expect(codes.has("employee-agent-escalate")).toBe(true);
 
     const defaultUserFix = result.quickFixes.find(
-      (f) => f.diagnosticCode === "employee-agent-default-user",
+      (f) => f.diagnosticCode === "config-ignored-default-agent-user",
     );
     expect(defaultUserFix?.title).toBe("Remove default_agent_user from Employee Agent config");
     expect(defaultUserFix?.edits[0].newText).toBe("");

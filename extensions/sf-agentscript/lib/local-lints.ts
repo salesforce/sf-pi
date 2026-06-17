@@ -132,16 +132,15 @@ function targetRefLooksLikeSalesforceId(target: string | undefined): boolean {
   );
 }
 
-function parseConfig(lines: LineInfo[]): { agentType?: string; defaultAgentUserLine?: LineInfo } {
+function parseConfig(lines: LineInfo[]): { agentType?: string } {
   const configLine = lines.find((l) => l.indent === 0 && l.trimmed === "config:");
   if (!configLine) return {};
 
-  const out: { agentType?: string; defaultAgentUserLine?: LineInfo } = {};
+  const out: { agentType?: string } = {};
   for (const line of lines.slice(configLine.line + 1)) {
     if (line.trimmed.length === 0) continue;
     if (line.indent <= configLine.indent) break;
     if (line.trimmed.startsWith("agent_type:")) out.agentType = scalarAfterColon(line.trimmed);
-    if (line.trimmed.startsWith("default_agent_user:")) out.defaultAgentUserLine = line;
   }
   return out;
 }
@@ -496,27 +495,6 @@ export function buildLocalDiagnostics(source: string): AgentScriptDiagnostic[] {
 
   const config = parseConfig(lines);
   if (config.agentType === "AgentforceEmployeeAgent") {
-    if (config.defaultAgentUserLine) {
-      diagnostics.push(
-        diagnostic(
-          config.defaultAgentUserLine,
-          "employee-agent-default-user",
-          "Employee Agents run as the logged-in user. Remove default_agent_user from config; it can cause publish/preview failures.",
-          1,
-          "default_agent_user",
-          {
-            removalRange: {
-              start: { line: config.defaultAgentUserLine.line, character: 0 },
-              end: {
-                line: config.defaultAgentUserLine.line,
-                character: config.defaultAgentUserLine.raw.length,
-              },
-            },
-          },
-        ),
-      );
-    }
-
     const connection = findConnectionMessaging(lines);
     if (connection) {
       diagnostics.push(

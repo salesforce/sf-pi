@@ -153,6 +153,38 @@ describe("buildQuickFixes", () => {
     });
   });
 
+  describe("config-ignored-default-agent-user", () => {
+    it("removes the default_agent_user line for Employee Agents", async () => {
+      const source = [
+        "config:",
+        '  agent_name: "EmployeeBot"',
+        '  agent_type: "AgentforceEmployeeAgent"',
+        '  default_agent_user: "service@example.com"',
+        "system:",
+        '  instructions: "hi"',
+        "",
+      ].join("\n");
+      const diagnostic = makeDiagnostic({
+        code: "config-ignored-default-agent-user",
+        severity: 2,
+        range: {
+          start: { line: 3, character: 2 },
+          end: { line: 3, character: 45 },
+        },
+      });
+
+      const [fix] = await buildQuickFixes(source, [diagnostic]);
+      expect(fix.title).toBe("Remove default_agent_user from Employee Agent config");
+      expect(fix.edits[0]).toEqual({
+        range: {
+          start: { line: 3, character: 0 },
+          end: { line: 4, character: 0 },
+        },
+        newText: "",
+      });
+    });
+  });
+
   describe("invalid-version", () => {
     it("produces one fix per suggested version", async () => {
       const source = "# @dialect: agentforce 99.9\n";

@@ -163,15 +163,17 @@ const cases: ParityCase[] = [
   {
     name: "@outputs reference outside post-action set/if statements",
     localCodes: ["outputs-out-of-scope"],
-    upstreamCodes: ["action-missing-input", "action-unknown-input"],
-    classification: "possible-future-deletion",
+    upstreamCodes: [],
+    classification: "sf-pi-owned",
     source: withStart([
       ...action("get_status", [
         "            inputs:",
         "                station_name: string",
+        "                previous_status: string",
         "            outputs:",
         "                status: string",
       ]),
+      "                with station_name = ...",
       "                with previous_status = @outputs.status",
       "                set @variables.status = @outputs.status",
     ]),
@@ -230,13 +232,9 @@ const cases: ParityCase[] = [
   },
   {
     name: "Employee Agent with Service-Agent-only wiring",
-    localCodes: [
-      "employee-agent-default-user",
-      "employee-agent-connection-messaging",
-      "employee-agent-escalate",
-    ],
+    localCodes: ["employee-agent-connection-messaging", "employee-agent-escalate"],
     upstreamCodes: ["config-ignored-default-agent-user"],
-    classification: "possible-future-deletion",
+    classification: "upstream-owned",
     source: agent([
       "system:",
       '    instructions: "You are helpful."',
@@ -291,7 +289,6 @@ describe("local hardening diagnostic parity", () => {
       "connection-messaging-incomplete-route",
       "connection-messaging-route-name-prefix",
       "employee-agent-connection-messaging",
-      "employee-agent-default-user",
       "employee-agent-escalate",
       "inputs-out-of-scope",
       "literal-mode-procedural-text",

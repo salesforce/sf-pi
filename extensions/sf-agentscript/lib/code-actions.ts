@@ -130,11 +130,44 @@ function buildEmployeeDefaultUserFix(
   source: string,
   diagnostic: AgentScriptDiagnostic,
 ): AgentScriptQuickFix | null {
-  return buildRemovalRangeFix(
-    source,
-    diagnostic,
-    "Remove default_agent_user from Employee Agent config",
+  return (
+    buildRemovalRangeFix(
+      source,
+      diagnostic,
+      "Remove default_agent_user from Employee Agent config",
+    ) ?? buildDefaultUserLineRemovalFix(source, diagnostic)
   );
+}
+
+function buildDefaultUserLineRemovalFix(
+  source: string,
+  diagnostic: AgentScriptDiagnostic,
+): AgentScriptQuickFix | null {
+  const lines = source.split("\n");
+  const diagnosticLine = diagnostic.range.start.line;
+  const lineIndex = /^\s*default_agent_user\s*:/.test(lines[diagnosticLine] ?? "")
+    ? diagnosticLine
+    : lines.findIndex((line) => /^\s*default_agent_user\s*:/.test(line));
+  if (lineIndex < 0) return null;
+
+  return {
+    title: "Remove default_agent_user from Employee Agent config",
+    preferred: true,
+    diagnosticLine,
+    diagnosticCode: diagnostic.code,
+    edits: [
+      {
+        range: {
+          start: { line: lineIndex, character: 0 },
+          end:
+            lineIndex + 1 < lines.length
+              ? { line: lineIndex + 1, character: 0 }
+              : { line: lineIndex, character: lines[lineIndex]?.length ?? 0 },
+        },
+        newText: "",
+      },
+    ],
+  };
 }
 
 /**
@@ -177,7 +210,7 @@ function localHardeningQuickFixes(
 
   for (const diagnostic of diagnostics) {
     switch (diagnostic.code) {
-      case "employee-agent-default-user": {
+      case "config-ignored-default-agent-user": {
         const fix = buildEmployeeDefaultUserFix(source, diagnostic);
         if (fix) fixes.push(fix);
         break;

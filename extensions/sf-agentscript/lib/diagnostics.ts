@@ -39,6 +39,7 @@ const ACTIONABLE_WARNING_CODES = new Set<string>([
   "invalid-modifier",
   "unknown-type",
   "object-type-missing-schema",
+  "config-ignored-default-agent-user",
 ]);
 
 /**
