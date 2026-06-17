@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.191.5-2026-06-17",
-  "latestVersion": "0.191.5",
+  "revision": "release-0.192.0-2026-06-17",
+  "latestVersion": "0.192.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.191.5",
+      "id": "release-0.192.0",
       "kind": "update",
-      "title": "sf-pi v0.191.5 — agentscript: rely on upstream employee default-user lint",
+      "title": "sf-pi v0.192.0 — agentscript: inspect newer schema blocks",
       "publishedAt": "2026-06-17T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.191.5",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.192.0",
       "severity": "info",
-      "body": "agentscript: rely on upstream employee default-user lint"
+      "body": "agentscript: inspect newer schema blocks"
     },
     {
       "id": "pi-0.73-required",
