@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.192.1-2026-06-17",
-  "latestVersion": "0.192.1",
+  "revision": "release-0.193.0-2026-06-18",
+  "latestVersion": "0.193.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.192.1",
+      "id": "release-0.193.0",
       "kind": "update",
-      "title": "sf-pi v0.192.1 — align pi runtime mode handling",
-      "publishedAt": "2026-06-17T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.192.1",
+      "title": "sf-pi v0.193.0 — sf-herdr: route command to manager surface",
+      "publishedAt": "2026-06-18T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.193.0",
       "severity": "info",
-      "body": "align pi runtime mode handling"
+      "body": "sf-herdr: route command to manager surface"
     },
     {
       "id": "pi-0.73-required",
