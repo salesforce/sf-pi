@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.194.3-2026-06-18",
-  "latestVersion": "0.194.3",
+  "revision": "release-0.194.4-2026-06-18",
+  "latestVersion": "0.194.4",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.194.3",
+      "id": "release-0.194.4",
       "kind": "update",
-      "title": "sf-pi v0.194.3 — sf-herdr: lazy load planner tool",
+      "title": "sf-pi v0.194.4 — sf-herdr: include extension in pi package",
       "publishedAt": "2026-06-18T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.194.3",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.194.4",
       "severity": "info",
-      "body": "sf-herdr: lazy load planner tool"
+      "body": "sf-herdr: include extension in pi package"
     },
     {
       "id": "pi-0.73-required",
