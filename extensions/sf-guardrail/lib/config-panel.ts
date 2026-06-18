@@ -6,7 +6,13 @@
  * `sfPi.guardrail`. Advanced custom rule overrides stay in the expert override
  * file and are rendered as rule definition sources, not edited as raw JSON.
  */
-import { type Focusable, matchesKey, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
+import {
+  Input,
+  type Focusable,
+  matchesKey,
+  truncateToWidth,
+  visibleWidth,
+} from "@earendil-works/pi-tui";
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import type { ConfigPanelFactory, ConfigPanelResult } from "../../../catalog/registry.ts";
 import { globalSettingsPath } from "../../../lib/common/sf-pi-settings.ts";
@@ -53,12 +59,21 @@ interface RuleRow {
 }
 
 class SfGuardrailConfigPanel implements Focusable {
-  focused = false;
+  private _focused = false;
   private page: SettingsPage = { kind: "home" };
   private selectedByPage: Record<string, number> = {};
   private lastSavedMessage = "";
   private config: GuardrailConfig;
   private source: string;
+  private aliasInput: Input | undefined;
+
+  get focused(): boolean {
+    return this._focused;
+  }
+  set focused(value: boolean) {
+    this._focused = value;
+    if (this.aliasInput) this.aliasInput.focused = value;
+  }
 
   constructor(
     private readonly theme: Theme,
@@ -259,11 +274,12 @@ class SfGuardrailConfigPanel implements Focusable {
     const t = this.theme;
     const current = productionAliasesText(this.config);
     if (this.page.kind === "aliases" && this.page.editing) {
+      const inputRows = this.aliasInput?.render(Math.max(20, width - 4)) ?? [this.page.draft];
       return [
         ` ${t.fg("accent", themeBold(t, "Edit aliases"))}`,
         `   ${t.fg("dim", "Comma-separated aliases to treat as production-level risk targets.")}`,
         "",
-        `   ${t.fg("muted", "Aliases:")} ${this.page.draft}`,
+        ...inputRows.map((line) => `   ${line}`),
       ];
     }
     return [
@@ -343,7 +359,7 @@ class SfGuardrailConfigPanel implements Focusable {
   private handleAliasesInput(data: string): void {
     if (this.page.kind !== "aliases") return;
     if (data === "e" || data === "E") {
-      this.page = { ...this.page, editing: true, draft: productionAliasesText(this.config) };
+      this.startAliasEdit();
     } else if (data === "c" || data === "C") {
       updateProductionAliasesFromText("");
       this.reload("Protected org aliases cleared.");
@@ -353,25 +369,34 @@ class SfGuardrailConfigPanel implements Focusable {
 
   private handleAliasEditInput(data: string): void {
     if (this.page.kind !== "aliases" || !this.page.editing) return;
-    if (matchesKey(data, "escape")) {
-      this.page = { ...this.page, editing: false, draft: productionAliasesText(this.config) };
-      return;
-    }
-    if (matchesKey(data, "return") || matchesKey(data, "enter")) {
-      const aliases = updateProductionAliasesFromText(this.page.draft);
-      this.reload(
-        aliases.length > 0
-          ? `Protected org aliases saved: ${aliases.join(", ")}`
-          : "Protected org aliases cleared.",
-      );
-      this.page = { kind: "aliases", editing: false, draft: productionAliasesText(this.config) };
-      return;
-    }
-    if (matchesKey(data, "backspace")) {
-      this.page = { ...this.page, draft: this.page.draft.slice(0, -1) };
-      return;
-    }
-    if (isPrintable(data)) this.page = { ...this.page, draft: this.page.draft + data };
+    this.aliasInput?.handleInput(data);
+  }
+
+  private startAliasEdit(): void {
+    const draft = productionAliasesText(this.config);
+    const input = new Input();
+    input.setValue(draft);
+    input.focused = this.focused;
+    input.onSubmit = (value) => this.saveAliasEdit(value);
+    input.onEscape = () => this.cancelAliasEdit();
+    this.aliasInput = input;
+    this.page = { kind: "aliases", editing: true, draft };
+  }
+
+  private saveAliasEdit(value: string): void {
+    const aliases = updateProductionAliasesFromText(value);
+    this.aliasInput = undefined;
+    this.reload(
+      aliases.length > 0
+        ? `Protected org aliases saved: ${aliases.join(", ")}`
+        : "Protected org aliases cleared.",
+    );
+    this.page = { kind: "aliases", editing: false, draft: productionAliasesText(this.config) };
+  }
+
+  private cancelAliasEdit(): void {
+    this.aliasInput = undefined;
+    this.page = { kind: "aliases", editing: false, draft: productionAliasesText(this.config) };
   }
 
   private handleRuleFilterInput(data: string): void {
@@ -536,7 +561,7 @@ class SfGuardrailConfigPanel implements Focusable {
     if (this.page.kind === "rule-detail") return "←/→ behavior · Esc back";
     if (this.page.kind === "aliases") {
       return this.page.editing
-        ? "type aliases · Enter save · Esc cancel"
+        ? "type aliases · Enter save aliases · Esc cancel"
         : "e edit · c clear · Esc back";
     }
     if (this.page.kind === "advanced") return "Esc back";

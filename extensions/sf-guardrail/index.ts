@@ -86,6 +86,10 @@ import { type GuardrailConfigSource, loadConfig } from "./lib/config.ts";
 import { confirmDecision } from "./lib/hitl.ts";
 import { loadPrompt } from "./lib/prompt-injection.ts";
 import { openProductionAliasesEditor } from "./lib/production-aliases-panel.ts";
+import {
+  createForgetApprovalsActionPanel,
+  createProtectedAliasesActionPanel,
+} from "./lib/manager-action-panels.ts";
 import { renderAudit, renderRules, renderStatus } from "./lib/status.ts";
 import { COMMAND_NAME, INJECTION_ENTRY_TYPE, type GuardrailConfig } from "./lib/types.ts";
 
@@ -258,12 +262,15 @@ function buildGuardrailManagerActions(pi: ExtensionAPI): ManagerDetailAction[] {
       label: "Forget approvals",
       description: "Clear session approvals and persisted project grants.",
       run: (ctx) => handleGuardrailCommand(pi, ctx, "forget", true),
+      createPanel: (theme, _cwd, _scope, done, ctx) =>
+        createForgetApprovalsActionPanel(pi, ctx, theme, done),
     },
     {
       id: "aliases",
       label: "Protected org aliases",
       description: "Treat aliases as production-level risk targets.",
       run: (ctx) => handleGuardrailCommand(pi, ctx, "aliases", true),
+      createPanel: (theme, _cwd, _scope, done) => createProtectedAliasesActionPanel(theme, done),
     },
     {
       id: "help",

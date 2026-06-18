@@ -586,6 +586,7 @@ export class SfPiOverlayComponent implements Focusable {
         }
         this.returnToDetail();
       },
+      this.tui,
     ) as ConfigPanel;
   }
 

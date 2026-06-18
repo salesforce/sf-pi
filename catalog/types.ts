@@ -4,7 +4,7 @@
  *
  * Hand-maintained. The generated registry.ts re-exports these types.
  */
-import type { Focusable } from "@earendil-works/pi-tui";
+import type { Focusable, TUI } from "@earendil-works/pi-tui";
 import type { Theme } from "@earendil-works/pi-coding-agent";
 
 // -------------------------------------------------------------------------------------------------
@@ -30,6 +30,7 @@ export type ConfigPanelFactory = (
   cwd: string,
   scope: "global" | "project",
   done: (result: ConfigPanelResult | undefined) => void,
+  tui?: TUI,
 ) => Focusable;
 
 // -------------------------------------------------------------------------------------------------

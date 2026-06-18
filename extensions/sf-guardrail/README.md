@@ -113,9 +113,12 @@ weakening remains deferred — see `ROADMAP.md`.
   SF Guardrail → Settings, where routine preferences are edited in focused
   nested pages
 - `/sf-guardrail aliases` → edit aliases that should receive production-level
-  guardrail prompts; saved to Pi settings
+  guardrail prompts; saved to Pi settings. From the Manager detail page this
+  opens an in-Manager native input page; direct command usage keeps the compact
+  prompt flow.
 - `/sf-guardrail forget` → revoke session allow-memory for this branch and clear
-  legacy persisted approval grants for the current project
+  legacy persisted approval grants for the current project. From the Manager
+  detail page this uses an in-page confirmation before mutating state.
 
 ## Architecture References
 
@@ -162,6 +165,8 @@ engine. The canonical terms live in `CONTEXT.md`; the redesign plan lives in
 | tool_call          | headless + no env opt-in                | `{ block }`, audit as headless_block             |
 | /sf-guardrail      | UI available                            | Open `SF Pi › SF Guardrail` in Manager Surface   |
 | /sf-guardrail      | no UI                                   | Show status summary                              |
+| Manager aliases    | detail action selected                  | Open native input action page                    |
+| Manager forget     | detail action selected                  | Confirm in-page before clearing approvals        |
 
 ## File Structure
 
@@ -185,6 +190,7 @@ extensions/sf-guardrail/
     guardrail-settings.ts   ← implementation module
     guidance.ts             ← implementation module
     hitl.ts                 ← implementation module
+    manager-action-panels.ts← implementation module
     org-aware-gate.ts       ← implementation module
     org-aware-risk-gate.ts  ← implementation module
     org-context.ts          ← implementation module
@@ -206,11 +212,13 @@ extensions/sf-guardrail/
     bash-ast.test.ts        ← unit / smoke test
     command-gate.test.ts    ← unit / smoke test
     command-risk-gate.test.ts← unit / smoke test
+    config-panel-ui.test.ts ← unit / smoke test
     config.test.ts          ← unit / smoke test
     file-policy-gate.test.ts← unit / smoke test
     guidance.test.ts        ← unit / smoke test
     hitl.test.ts            ← unit / smoke test
     hook-order.test.ts      ← unit / smoke test
+    manager-actions.test.ts ← unit / smoke test
     org-aware-risk-gate.test.ts← unit / smoke test
     org-context.test.ts     ← unit / smoke test
     policies.test.ts        ← unit / smoke test
