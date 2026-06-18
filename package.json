@@ -41,6 +41,7 @@
       "./extensions/sf-slack/index.ts",
       "./extensions/sf-data360/index.ts",
       "./extensions/sf-data-explorer/index.ts",
+      "./extensions/sf-herdr/index.ts",
       "./extensions/sf-lsp/index.ts",
       "./extensions/sf-agentscript/index.ts",
       "./extensions/sf-skills/index.ts",

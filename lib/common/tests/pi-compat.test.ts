@@ -48,6 +48,19 @@ describe("pi version floor", () => {
     }
   });
 
+  it("declares every bundled extension in package.json so Pi can load it", () => {
+    const pkg = JSON.parse(readFileSync(path.resolve("package.json"), "utf8")) as {
+      pi?: { extensions?: string[] };
+    };
+    const packageExtensions = new Set(
+      (pkg.pi?.extensions ?? []).map((entry) => entry.replace(/^\.\//, "")),
+    );
+
+    for (const extension of SF_PI_REGISTRY) {
+      expect(packageExtensions).toContain(extension.file);
+    }
+  });
+
   it("tracks the package peer dependency floor for every Pi package", () => {
     const pkg = JSON.parse(readFileSync(path.resolve("package.json"), "utf8")) as {
       peerDependencies?: Record<string, string>;
