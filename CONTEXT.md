@@ -80,6 +80,18 @@ _Avoid_: plugin, add-on, module
 The user-facing control surface for discovering, enabling, disabling, and configuring bundled extensions.
 _Avoid_: admin screen, settings page
 
+**User-First Extension Detail**:
+The **Manager Surface** page for one **Bundled Extension**, focused on purpose, state, settings, actions, and enablement controls rather than developer file paths or raw runtime inventories.
+_Avoid_: implementation inspector, catalog dump, bundle metadata page
+
+**Extension Settings Page**:
+The one-level-deeper **Manager Surface** page where a configurable **Bundled Extension** edits its preferences with explicit dirty, saved, and reload-required states.
+_Avoid_: inline detail settings, hidden save, auto-back settings
+
+**Runtime Reload Requirement**:
+A saved preference change that requires Pi to reload because it changes runtime registration or session-start state, such as commands, tools, providers, hooks, context injection, or extension enablement.
+_Avoid_: every settings save, visual dirty state, normal persisted preference
+
 **Runtime Surface**:
 A way an extension participates in pi during a session, such as a command, tool, provider, event hook, or UI element.
 _Avoid_: integration point, hook thing
