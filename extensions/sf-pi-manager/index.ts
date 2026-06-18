@@ -587,6 +587,11 @@ async function handleOverlay(
     return;
   }
 
+  if (result.runActionAfterClose) {
+    await result.runActionAfterClose.run(ctx);
+    return;
+  }
+
   if (result.changed || result.needsReload) {
     // Use the scope from the overlay result (user may have toggled it)
     const effectiveScope = result.scope ?? scope;

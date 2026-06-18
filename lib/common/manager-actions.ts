@@ -26,6 +26,8 @@ export interface ManagerDetailAction {
   run(ctx: ExtensionCommandContext): Promise<void> | void;
   /** Optional drill-down page for interactive actions that collect input. */
   createPanel?: ManagerDetailActionPanelFactory;
+  /** Close the Manager before running this action. Use for actions that open their own full-screen UI. */
+  closeBeforeRun?: boolean;
 }
 
 export interface ManagerDetailActionsRequest {

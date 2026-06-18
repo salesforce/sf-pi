@@ -34,7 +34,7 @@ Extension loads
 
 /sf-data-explorer
   ├─ UI available + no args → open SF Data Explorer in the SF Pi Manager
-  └─ selected Manager action / explicit subcommand
+  └─ selected Manager action closes the Manager, then opens the explorer UI
 
 /sf-data-explorer <mode> [object] [target-org]
   ├─ lazy-loads sf-pi shared Salesforce connection/REST helpers (connFromAlias,
@@ -61,6 +61,7 @@ Extension loads
 | `session_start`                         | extension enabled                    | Clear local explorer cache and transport cache                     |
 | `session_shutdown`                      | extension enabled                    | Clear local explorer cache and transport cache                     |
 | `/sf-data-explorer`                     | UI available + no args               | Open SF Data Explorer in the SF Pi Manager                         |
+| Manager open action                     | selected from extension detail       | Close Manager first, then open the screen-hungry explorer UI       |
 | `/sf-data-explorer`                     | direct internal fallback             | Open direct mode picker                                            |
 | `/sf-data-explorer soql [object] [org]` | explicit                             | Load SOQL catalog, optionally deep-link to object, open explorer   |
 | `/sf-data-explorer sosl [object] [org]` | explicit                             | Load SOSL searchable catalog, optionally deep-link, open explorer  |

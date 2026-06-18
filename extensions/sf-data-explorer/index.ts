@@ -135,6 +135,7 @@ function buildDataExplorerManagerActions(pi: ExtensionAPI): ManagerDetailAction[
     label: action.label,
     description: action.description,
     run: (ctx) => handleCommand(pi, ctx, action.args),
+    closeBeforeRun: action.id !== "help",
   }));
 }
 

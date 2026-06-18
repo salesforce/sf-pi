@@ -271,7 +271,7 @@
     "entry": "extensions/sf-data-explorer/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 2696
+    "srcLoc": 2697
   },
   {
     "id": "sf-data360",
@@ -688,7 +688,7 @@
     "entry": "extensions/sf-pi-manager/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 3457
+    "srcLoc": 3469
   },
   {
     "id": "sf-skills",

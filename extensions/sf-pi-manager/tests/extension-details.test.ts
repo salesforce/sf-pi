@@ -80,6 +80,40 @@ describe("extension detail helpers", () => {
     expect(rendered).not.toContain("sf_herdr_plan");
   });
 
+  it("returns close-before-run manager actions after closing the overlay", () => {
+    const states = buildExtensionStates(new Set());
+    let result: unknown;
+    const action = {
+      id: "open",
+      label: "Open",
+      description: "Open external UI",
+      closeBeforeRun: true,
+      run: () => undefined,
+    };
+
+    const overlay = new SfPiOverlayComponent(
+      stubTheme,
+      "0.0.0-test",
+      PACKAGE_ROOT,
+      "/tmp/project",
+      states,
+      states,
+      "global",
+      () => 40,
+      (value) => {
+        result = value;
+      },
+      {} as never,
+      () => [action],
+      () => undefined,
+      { extensionId: "sf-feedback", view: "detail" },
+    );
+
+    overlay.handleInput("\r");
+
+    expect(result).toMatchObject({ runActionAfterClose: action });
+  });
+
   it("closes direct deep-linked extension details on escape instead of returning to the list", () => {
     const states = buildExtensionStates(new Set());
     let closed = false;

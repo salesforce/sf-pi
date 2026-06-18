@@ -64,6 +64,7 @@ export type OverlayResult = {
   disabledFiles: Set<string>;
   needsReload?: boolean;
   scope: "global" | "project";
+  runActionAfterClose?: ManagerDetailAction;
 };
 
 export type OverlayInitialRoute = {
@@ -710,11 +711,19 @@ export class SfPiOverlayComponent implements Focusable {
           this.drillIntoManagerAction(ext.id, action.managerAction);
           return;
         }
+        if (action.managerAction?.closeBeforeRun) {
+          this.runManagerActionAfterClose(action.managerAction);
+          return;
+        }
         if (action.managerAction) {
           void this.runManagerActionInPlace(action.managerAction);
         }
         return;
     }
+  }
+
+  private runManagerActionAfterClose(action: ManagerDetailAction): void {
+    this.done({ ...this.buildResult(), runActionAfterClose: action });
   }
 
   private async runManagerActionInPlace(action: ManagerDetailAction): Promise<void> {

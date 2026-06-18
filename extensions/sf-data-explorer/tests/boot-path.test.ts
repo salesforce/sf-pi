@@ -6,6 +6,7 @@ import {
   SF_PI_MANAGER_OPEN_EVENT,
   type SfPiManagerOpenRequest,
 } from "../../../lib/common/manager-deep-link.ts";
+import { collectManagerDetailActions } from "../../../lib/common/manager-actions.ts";
 import sfDataExplorer from "../index.ts";
 
 type SessionHandler = () => unknown | Promise<unknown>;
@@ -62,6 +63,23 @@ describe("sf-data-explorer boot path", () => {
     }
 
     expect(pi.exec).not.toHaveBeenCalled();
+  });
+
+  it("marks explorer launch actions to close the Manager before opening the explorer UI", () => {
+    const pi = {
+      events: eventBus(),
+      on: vi.fn(),
+      registerCommand: vi.fn(),
+      exec: vi.fn(async () => ({ stdout: "", stderr: "", code: 0 })),
+    };
+
+    sfDataExplorer(pi as never);
+    const actions = collectManagerDetailActions(pi as never, "sf-data-explorer");
+
+    expect(actions.find((action) => action.id === "open.soql")?.closeBeforeRun).toBe(true);
+    expect(actions.find((action) => action.id === "open.sosl")?.closeBeforeRun).toBe(true);
+    expect(actions.find((action) => action.id === "open.sql")?.closeBeforeRun).toBe(true);
+    expect(actions.find((action) => action.id === "help")?.closeBeforeRun).toBe(false);
   });
 
   it("routes the no-args UI command to the SF Pi Manager detail page", async () => {
