@@ -271,7 +271,7 @@
     "entry": "extensions/sf-data-explorer/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 2697
+    "srcLoc": 2737
   },
   {
     "id": "sf-data360",

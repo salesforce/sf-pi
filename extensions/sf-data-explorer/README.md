@@ -34,7 +34,8 @@ Extension loads
 
 /sf-data-explorer
   ├─ UI available + no args → open SF Data Explorer in the SF Pi Manager
-  └─ selected Manager action closes the Manager, then opens the explorer UI
+  ├─ selected Manager open action closes the Manager, then opens the explorer UI
+  └─ selected Manager help action drills into a read-only help page
 
 /sf-data-explorer <mode> [object] [target-org]
   ├─ lazy-loads sf-pi shared Salesforce connection/REST helpers (connFromAlias,

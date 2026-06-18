@@ -80,6 +80,7 @@ describe("sf-data-explorer boot path", () => {
     expect(actions.find((action) => action.id === "open.sosl")?.closeBeforeRun).toBe(true);
     expect(actions.find((action) => action.id === "open.sql")?.closeBeforeRun).toBe(true);
     expect(actions.find((action) => action.id === "help")?.closeBeforeRun).toBe(false);
+    expect(typeof actions.find((action) => action.id === "help")?.createPanel).toBe("function");
   });
 
   it("routes the no-args UI command to the SF Pi Manager detail page", async () => {

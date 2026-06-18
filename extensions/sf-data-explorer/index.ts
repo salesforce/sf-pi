@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI, ExtensionCommandContext, Theme } from "@earendil-works/pi-coding-agent";
 import { BorderedLoader } from "@earendil-works/pi-coding-agent";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 import {
@@ -136,7 +136,48 @@ function buildDataExplorerManagerActions(pi: ExtensionAPI): ManagerDetailAction[
     description: action.description,
     run: (ctx) => handleCommand(pi, ctx, action.args),
     closeBeforeRun: action.id !== "help",
+    ...(action.id === "help"
+      ? {
+          createPanel: (theme, _cwd, _scope, done) => createDataExplorerHelpPanel(theme, done),
+        }
+      : {}),
   }));
+}
+
+function createDataExplorerHelpPanel(
+  theme: Theme,
+  done: (result: undefined) => void,
+): {
+  focused: boolean;
+  renderContent(width: number): string[];
+  render(width: number): string[];
+  handleInput(data: string): void;
+  invalidate(): void;
+} {
+  const renderHelp = (width: number): string[] => {
+    const maxWidth = Math.max(20, width - 4);
+    return [
+      ` ${theme.fg("accent", theme.bold("SF Data Explorer help"))}`,
+      ` ${theme.fg("dim", "Read-only SOQL, SOSL, and Data 360 SQL explorer.")}`,
+      "",
+      ...buildHelpText()
+        .split("\n")
+        .map((line) => ` ${line.slice(0, maxWidth)}`),
+      "",
+      ` ${theme.fg("dim", "Esc/Enter back")}`,
+    ];
+  };
+  return {
+    focused: false,
+    renderContent: renderHelp,
+    render: renderHelp,
+    handleInput(data: string) {
+      if (data === "\u001b" || data === "\r" || data === "\n" || data === "q") {
+        done(undefined);
+      }
+    },
+    invalidate() {},
+  };
 }
 
 async function openDataExplorerInManager(
