@@ -1,5 +1,8 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Smoke tests for sf-herdr command registration and Manager Surface routing. */
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import type { ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -30,10 +33,20 @@ function fakeCommandContext(): ExtensionCommandContext {
   } as unknown as ExtensionCommandContext;
 }
 
+const source = readFileSync(
+  path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../index.ts"),
+  "utf-8",
+);
+
 describe("sf-herdr", () => {
   it("exports a default extension factory", async () => {
     const mod = await import("../index.ts");
     expect(typeof mod.default).toBe("function");
+  });
+
+  it("does not statically import the planner tool before command registration", () => {
+    expect(source).not.toContain('from "./lib/sf_herdr_plan-tool.ts"');
+    expect(source).toContain('import("./lib/sf_herdr_plan-tool.ts")');
   });
 
   it("registers the slash command before lifecycle wiring", async () => {

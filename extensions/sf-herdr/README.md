@@ -14,8 +14,8 @@ how the agent should use that tool.
 
 ```
 Extension loads
-  ├─ registers /sf-herdr
-  ├─ contributes sf_herdr_plan after session_start
+  ├─ registers /sf-herdr before optional planner-tool wiring
+  ├─ lazily contributes sf_herdr_plan after session_start/resources_discover
   ├─ session_start/session_tree reconstruct branch workflow signals
   ├─ tool_execution_end/tool_result observe fresh workflow signals
   └─ /sf-herdr opens SF Herdr in the SF Pi Manager; subcommands stay direct
@@ -31,6 +31,7 @@ sf_herdr_plan
 
 - SF Herdr follows [ADR 0016](../../docs/adr/0016-dynamic-sf-herdr-lane-planning.md): hybrid orchestration with explicit upstream `herdr` calls.
 - `sf_herdr_plan` is non-mutating and never generates shell commands.
+- Planner-tool registration is lazy/fail-soft so `/sf-herdr` remains available even if optional tool wiring cannot load.
 - Dynamic lanes are command-scoped and activity-informed, not session-scoped. Workflow signals may select a profile, but they never justify opening panes by themselves.
 - Ephemeral lanes are created just in time for the command/tool being run and closed after successful watched completion.
 - Ephemeral lanes prefer split panes because the upstream `herdr` tool exposes pane close (`stop`) but not an explicit tab-close action; plans tell agents not to stack multiple splits off the main orchestrator pane.

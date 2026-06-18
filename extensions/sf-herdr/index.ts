@@ -30,7 +30,6 @@ import {
   writeSfHerdrPreferences,
 } from "../../lib/common/herdr-profile/store.ts";
 import { createHerdrSignalState } from "./lib/signal-state.ts";
-import { registerSfHerdrPlanTool } from "./lib/sf_herdr_plan-tool.ts";
 import { renderDoctor, renderStatus } from "./lib/status.ts";
 
 const EXTENSION_ID = "sf-herdr";
@@ -82,10 +81,16 @@ export default function sfHerdr(pi: ExtensionAPI): void {
   const signalState = createHerdrSignalState();
   let planToolRegistered = false;
 
-  function ensureToolRegistered(): void {
+  async function ensureToolRegistered(): Promise<void> {
     if (planToolRegistered) return;
-    registerSfHerdrPlanTool(pi, signalState);
-    planToolRegistered = true;
+    try {
+      const { registerSfHerdrPlanTool } = await import("./lib/sf_herdr_plan-tool.ts");
+      registerSfHerdrPlanTool(pi, signalState);
+      planToolRegistered = true;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.warn(`[sf-herdr] sf_herdr_plan tool registration skipped: ${message}`);
+    }
   }
 
   pi.registerCommand(COMMAND_NAME, {
@@ -137,7 +142,7 @@ export default function sfHerdr(pi: ExtensionAPI): void {
   pi.on("session_start", async (event, ctx) => {
     if (event.reason === "reload") planToolRegistered = false;
     signalState.reconstruct(ctx);
-    if (isSfPiExtensionEnabled(ctx.cwd, EXTENSION_ID)) ensureToolRegistered();
+    if (isSfPiExtensionEnabled(ctx.cwd, EXTENSION_ID)) await ensureToolRegistered();
   });
   pi.on("session_tree", async (_event, ctx) => {
     signalState.reconstruct(ctx);
@@ -159,7 +164,7 @@ export default function sfHerdr(pi: ExtensionAPI): void {
   pi.on("resources_discover", (event) => {
     if (!isSfPiExtensionEnabled(event.cwd, EXTENSION_ID)) return;
     if (event.reason === "reload") planToolRegistered = false;
-    ensureToolRegistered();
+    void ensureToolRegistered();
   });
 
   function buildHerdrManagerActions(): ManagerDetailAction[] {
