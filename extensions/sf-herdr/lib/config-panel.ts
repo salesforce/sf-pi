@@ -61,7 +61,7 @@ class SfHerdrConfigPanel implements Focusable {
     }
   }
 
-  renderContent(_width: number): string[] {
+  renderContent(): string[] {
     const t = this.theme;
     const dirty = this.isDirty();
     const status = dirty ? t.fg("warning", "Unsaved changes") : t.fg("success", "Saved");
@@ -96,8 +96,8 @@ class SfHerdrConfigPanel implements Focusable {
     ];
   }
 
-  render(width: number): string[] {
-    return this.renderContent(width);
+  render(): string[] {
+    return this.renderContent();
   }
 
   invalidate(): void {}
