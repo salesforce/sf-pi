@@ -24,16 +24,8 @@
  *   /sf-feedback diagnostics | any                       | Emit sanitized diagnostics
  */
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
-import { collectDiagnostics } from "./lib/diagnostics.ts";
 import { buildExecFn } from "../../lib/common/exec-adapter.ts";
 import type { ExecFn } from "../../lib/common/sf-environment/detect.ts";
-import { buildIssueUrl, createIssueWithGh, openUrl } from "./lib/github.ts";
-import {
-  buildDiagnosticsOnlyBody,
-  buildIssueBody,
-  labelForKind,
-  normalizeIssueTitle,
-} from "./lib/issue-template.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 import { withSafeCommandHandler } from "../../lib/common/safe-command-handler.ts";
 import {
@@ -60,8 +52,6 @@ const STATUS_KEY = "sf-feedback";
 export default function sfFeedback(pi: ExtensionAPI) {
   if (!requirePiVersion(pi, "sf-feedback")) return;
 
-  registerManagerDetailActions(pi, COMMAND_NAME, buildFeedbackManagerActions(pi));
-
   pi.registerCommand(COMMAND_NAME, {
     description: "Create sanitized SF Pi feedback or bug reports on GitHub",
     // Single source of truth: FEEDBACK_ACTIONS drives the panel rows, the
@@ -79,6 +69,8 @@ export default function sfFeedback(pi: ExtensionAPI) {
       });
     },
   });
+
+  registerManagerDetailActions(pi, COMMAND_NAME, buildFeedbackManagerActions(pi));
 }
 
 type FeedbackAction = "bug" | "feature" | "setup" | "feedback" | "diagnostics" | "help";
@@ -165,6 +157,15 @@ async function handleCommand(
     await emitCommandOutput(pi, ctx, "SF Feedback help", renderHelp(), "info");
     return;
   }
+
+  const [{ collectDiagnostics }, issueTemplate, github] = await Promise.all([
+    import("./lib/diagnostics.ts"),
+    import("./lib/issue-template.ts"),
+    import("./lib/github.ts"),
+  ]);
+  const { buildDiagnosticsOnlyBody, buildIssueBody, labelForKind, normalizeIssueTitle } =
+    issueTemplate;
+  const { buildIssueUrl, createIssueWithGh, openUrl } = github;
 
   ctx.ui.setStatus(STATUS_KEY, "Feedback: collecting diagnostics…");
   try {

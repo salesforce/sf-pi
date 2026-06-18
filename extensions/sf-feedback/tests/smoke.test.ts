@@ -1,5 +1,8 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Smoke tests for sf-feedback command registration and Manager Surface routing. */
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import type { ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -30,10 +33,39 @@ function fakeCommandContext(): ExtensionCommandContext {
   } as unknown as ExtensionCommandContext;
 }
 
+const source = readFileSync(
+  path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../index.ts"),
+  "utf-8",
+);
+
 describe("sf-feedback", () => {
   it("exports a default function", async () => {
     const mod = await import("../index.ts");
     expect(typeof mod.default).toBe("function");
+  });
+
+  it("does not statically import feedback-flow modules before command registration", () => {
+    expect(source).not.toContain('from "./lib/diagnostics.ts"');
+    expect(source).not.toContain('from "./lib/github.ts"');
+    expect(source).not.toContain('from "./lib/issue-template.ts"');
+    expect(source).toContain('import("./lib/diagnostics.ts")');
+    expect(source).toContain('import("./lib/github.ts")');
+    expect(source).toContain('import("./lib/issue-template.ts")');
+  });
+
+  it("registers the slash command before Manager action wiring", async () => {
+    const mod = await import("../index.ts");
+    const pi = {
+      events: {
+        on: vi.fn(() => {
+          throw new Error("manager action registration failed");
+        }),
+      },
+      registerCommand: vi.fn(),
+    };
+
+    expect(() => mod.default(pi as never)).toThrow("manager action registration failed");
+    expect(pi.registerCommand).toHaveBeenCalledWith("sf-feedback", expect.any(Object));
   });
 
   it("routes the no-args UI command to the SF Pi Manager detail page", async () => {

@@ -15,7 +15,8 @@ block without creating an issue.
 
 ```
 Extension loads
-  └─ registerCommand("sf-feedback")
+  ├─ registers /sf-feedback before Manager action wiring
+  └─ lazily loads diagnostics / GitHub helpers only after an explicit action
 
 /sf-feedback
   ├─ UI available + no args → open SF Feedback in the SF Pi Manager
@@ -58,6 +59,12 @@ summarizes sensitive state instead of including raw command output.
 
 Every diagnostic command may fail on some machines. Failures are summarized as
 `unavailable` or `unknown`; one missing tool should not block filing feedback.
+
+### 5. Command registration is resilient
+
+The slash command registers before Manager action wiring and before diagnostics
+or GitHub helpers are loaded. This keeps `/sf-feedback` discoverable even if an
+optional feedback-flow dependency has a load-time issue.
 
 ## Behavior Matrix
 
