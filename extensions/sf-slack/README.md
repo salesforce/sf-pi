@@ -64,6 +64,7 @@ Extension loads
              turn-to-turn and would invalidate prompt cache)
   /sf-slack
        ├─ UI available + no args → open SF Slack in the SF Pi Manager
+       ├─ Manager Connect        → paste token in an in-Manager action page, then refresh scopes
        └─ no UI + no args        → show auth status
   /sf-slack refresh
        ├─ If token resolves now but tools were not registered earlier

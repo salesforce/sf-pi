@@ -800,7 +800,7 @@
     "entry": "extensions/sf-slack/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 12363
+    "srcLoc": 12492
   },
   {
     "id": "sf-welcome",

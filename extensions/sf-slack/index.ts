@@ -50,6 +50,8 @@ import {
   WIDGET_KEY,
   ENV_TOKEN,
   SEND_ENTRY_TYPE,
+  MANUAL_REFRESH_SENTINEL,
+  LONG_LIVED_EXPIRY_MS,
   type SlackIdentity,
   type AuthTestResponse,
   type ApiErr,
@@ -120,6 +122,7 @@ import { withSafeCommandHandler } from "../../lib/common/safe-command-handler.ts
 import { openInfoPanel } from "../../lib/common/info-panel.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 import {
+  createSlackConnectPanel,
   createSlackDisconnectPanel,
   createSlackPreferencesPanel,
 } from "./lib/manager-action-panels.ts";
@@ -714,7 +717,16 @@ export default function sfSlack(pi: ExtensionAPI) {
       description: action.description,
       group: action.group,
       run: (ctx) => handleSlackCommand(action.value, ctx, true),
-      closeBeforeRun: action.value === "connect",
+      ...(action.value === "connect"
+        ? {
+            createPanel: (theme, _cwd, _scope, done, ctx) =>
+              createSlackConnectPanel({
+                theme,
+                done,
+                connect: (token) => connectSlackWithToken(ctx, token),
+              }),
+          }
+        : {}),
       ...(action.value === "disconnect"
         ? {
             createPanel: (theme, _cwd, _scope, done, ctx) =>
@@ -918,6 +930,39 @@ export default function sfSlack(pi: ExtensionAPI) {
       "warning",
       fromPanel,
     );
+  }
+
+  async function connectSlackWithToken(
+    ctx: ExtensionCommandContext,
+    token: string,
+  ): Promise<string> {
+    ctx.modelRegistry.authStorage.set("sf-slack", {
+      type: "oauth",
+      refresh: MANUAL_REFRESH_SENTINEL,
+      access: token,
+      expires: Date.now() + LONG_LIVED_EXPIRY_MS,
+    });
+
+    ensureSlackToolsRegistered();
+    const requestedScopes = oauthScopes()
+      .split(",")
+      .map((scope) => scope.trim())
+      .filter(Boolean);
+    requestedScopeCount = requestedScopes.length;
+    tokenType = detectTokenType(token);
+    const generation = activeSessionGeneration;
+    updateStatus(ctx, "loading", generation);
+    await refreshSlackIdentityAndScopes({
+      token,
+      requestedScopes,
+      generation,
+      ctx,
+      timingLabel: "sf-slack.connect-token",
+      notifyOnFailure: false,
+    });
+    return identity
+      ? `Connected as @${identity.userName} (${identity.teamId}). Slack tools refreshed for this session.`
+      : "Token saved. Run Refresh identity + scopes if status does not update.";
   }
 
   async function runSlackConnect(ctx: ExtensionCommandContext, fromPanel: boolean): Promise<void> {

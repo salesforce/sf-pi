@@ -92,8 +92,9 @@ describe("sf-slack", () => {
     expect(actions.find((action) => action.id === "settings")?.group).toBe("Settings");
     expect(actions.find((action) => action.id === "sent")?.group).toBe("Audit");
     expect(actions.find((action) => action.id === "help")?.group).toBe("Reference");
-    expect(actions.find((action) => action.id === "connect")?.closeBeforeRun).toBe(true);
-    expect(actions.find((action) => action.id === "settings")?.closeBeforeRun).toBe(false);
+    expect(actions.find((action) => action.id === "connect")?.closeBeforeRun).toBeUndefined();
+    expect(typeof actions.find((action) => action.id === "connect")?.createPanel).toBe("function");
+    expect(actions.find((action) => action.id === "settings")?.closeBeforeRun).toBeUndefined();
     expect(typeof actions.find((action) => action.id === "settings")?.createPanel).toBe("function");
     expect(typeof actions.find((action) => action.id === "disconnect")?.createPanel).toBe(
       "function",
