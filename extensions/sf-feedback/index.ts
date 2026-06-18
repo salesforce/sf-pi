@@ -35,14 +35,6 @@ import {
   normalizeIssueTitle,
 } from "./lib/issue-template.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
-import {
-  buildToggleExtensionAction,
-  isLifecycleToggleAction,
-  LIFECYCLE_GROUP,
-  performToggleExtension,
-  type LifecycleActionId,
-} from "../../lib/common/extension-toggle.ts";
-import { type CommandPanelState, openCommandPanel } from "../../lib/common/command-panel.ts";
 import { withSafeCommandHandler } from "../../lib/common/safe-command-handler.ts";
 import {
   type SfPiCommandAction,
@@ -51,6 +43,14 @@ import {
   resolveAction,
 } from "../../lib/common/command-actions.ts";
 import { openInfoPanel } from "../../lib/common/info-panel.ts";
+import {
+  openExtensionInManager,
+  type SfPiManagerOpenRoute,
+} from "../../lib/common/manager-deep-link.ts";
+import {
+  registerManagerDetailActions,
+  type ManagerDetailAction,
+} from "../../lib/common/manager-actions.ts";
 import { sanitizeText } from "./lib/sanitize.ts";
 import type { FeedbackDraft, IssueKind } from "./lib/types.ts";
 
@@ -60,19 +60,19 @@ const STATUS_KEY = "sf-feedback";
 export default function sfFeedback(pi: ExtensionAPI) {
   if (!requirePiVersion(pi, "sf-feedback")) return;
 
+  registerManagerDetailActions(pi, COMMAND_NAME, buildFeedbackManagerActions(pi));
+
   pi.registerCommand(COMMAND_NAME, {
     description: "Create sanitized SF Pi feedback or bug reports on GitHub",
     // Single source of truth: FEEDBACK_ACTIONS drives the panel rows, the
     // completions, and the auto-generated help text below.
     getArgumentCompletions: (prefix: string) =>
-      getCompletionsFromActions(FEEDBACK_ACTIONS, prefix.trim().split(/\s+/).at(-1) ?? "", {
-        excludeValues: ["close", "lifecycle.toggle"],
-      }),
+      getCompletionsFromActions(FEEDBACK_ACTIONS, prefix.trim().split(/\s+/).at(-1) ?? ""),
     handler: async (args, ctx) => {
       await withSafeCommandHandler(ctx, COMMAND_NAME, async () => {
         const exec = buildExecFn(pi, ctx.cwd);
         if (!(args || "").trim() && ctx.hasUI) {
-          await handleFeedbackPanel(pi, ctx, exec);
+          await openFeedbackInManager(pi, ctx, "detail");
           return;
         }
         await handleCommand(pi, ctx, exec, args || "");
@@ -81,15 +81,7 @@ export default function sfFeedback(pi: ExtensionAPI) {
   });
 }
 
-type FeedbackAction =
-  | "bug"
-  | "feature"
-  | "setup"
-  | "feedback"
-  | "diagnostics"
-  | "help"
-  | "close"
-  | LifecycleActionId;
+type FeedbackAction = "bug" | "feature" | "setup" | "feedback" | "diagnostics" | "help";
 
 const FEEDBACK_ACTIONS: SfPiCommandAction<FeedbackAction>[] = [
   {
@@ -129,43 +121,31 @@ const FEEDBACK_ACTIONS: SfPiCommandAction<FeedbackAction>[] = [
     description: "Print command usage and safety behavior.",
     group: "Reference",
   },
-  {
-    value: "close",
-    label: "Close",
-    description: "Dismiss this panel.",
-    group: LIFECYCLE_GROUP,
-  },
 ];
 
-// Compose the live action list so the lifecycle toggle row reflects the
-// current enablement state on every panel open.
-function buildFeedbackActions(cwd: string): SfPiCommandAction<FeedbackAction>[] {
-  const toggle = buildToggleExtensionAction({ extensionId: "sf-feedback", cwd });
-  return toggle ? [...FEEDBACK_ACTIONS, toggle] : FEEDBACK_ACTIONS;
+function buildFeedbackManagerActions(pi: ExtensionAPI): ManagerDetailAction[] {
+  return FEEDBACK_ACTIONS.map((action) => ({
+    id: action.value,
+    label: action.label,
+    description: action.description,
+    run: (ctx) => handleCommand(pi, ctx, buildExecFn(pi, ctx.cwd), action.value),
+  }));
 }
 
-async function handleFeedbackPanel(
+async function openFeedbackInManager(
   pi: ExtensionAPI,
   ctx: ExtensionCommandContext,
-  exec: ExecFn,
+  view: NonNullable<SfPiManagerOpenRoute["view"]>,
 ): Promise<void> {
-  const panelState: CommandPanelState<FeedbackAction> = {};
-  await openCommandPanel(ctx, {
-    title: "💬 SF Feedback — status & controls",
-    subtitle: "Create public-safe feedback issues with sanitized diagnostics.",
-    statusLines: [
-      "✓ Privacy       diagnostics are sanitized before preview/submission",
-      "✓ Confirmation  GitHub issue creation requires final approval",
-      "• Headless      emits draft + URL only; never submits",
-    ],
-    actions: () => buildFeedbackActions(ctx.cwd),
-    closeValue: "close",
-    state: panelState,
-    onAction: (action) => handleCommand(pi, ctx, exec, action),
-    // Lifecycle toggle calls ctx.reload() — must close panel first so the
-    // ctx.ui.custom() promise resolves before the runtime is invalidated.
-    closeBeforeAction: isLifecycleToggleAction,
+  const opened = await openExtensionInManager(pi, ctx, {
+    extensionId: COMMAND_NAME,
+    view,
+    actions: buildFeedbackManagerActions(pi),
   });
+
+  if (!opened) {
+    ctx.ui.notify("SF Pi Manager is unavailable. Try /sf-pi open sf-feedback.", "warning");
+  }
 }
 
 async function handleCommand(
@@ -180,11 +160,6 @@ async function handleCommand(
   const subcommand = args[0]
     ? (resolveAction(FEEDBACK_ACTIONS, args[0]) ?? args[0]?.toLowerCase())
     : undefined;
-
-  if (subcommand === "lifecycle.toggle") {
-    await performToggleExtension(ctx, "sf-feedback");
-    return;
-  }
 
   if (subcommand === "help") {
     await emitCommandOutput(pi, ctx, "SF Feedback help", renderHelp(), "info");
@@ -406,10 +381,7 @@ function renderManualIssueDraft(
 
 function renderHelp(): string {
   return [
-    formatHelpFromActions(
-      FEEDBACK_ACTIONS.filter((a) => a.value !== "close" && a.value !== "lifecycle.toggle"),
-      COMMAND_NAME,
-    ),
+    formatHelpFromActions(FEEDBACK_ACTIONS, COMMAND_NAME),
     "",
     "SF Feedback redacts org URLs, aliases, emails, tokens, home paths, and private remotes before previewing or submitting.",
   ].join("\n");

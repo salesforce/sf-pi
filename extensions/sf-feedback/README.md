@@ -18,8 +18,8 @@ Extension loads
   └─ registerCommand("sf-feedback")
 
 /sf-feedback
-  ├─ UI available + no args → open status & controls panel
-  └─ selected action / explicit subcommand
+  ├─ UI available + no args → open SF Feedback in the SF Pi Manager
+  └─ selected Manager action / explicit subcommand
      ├─ collectDiagnostics()
      ├─ package/runtime versions
      ├─ OS, shell, terminal, TTY/CI
@@ -63,7 +63,7 @@ Every diagnostic command may fail on some machines. Failures are summarized as
 
 | Event/Trigger                                | Condition                              | Result                                          |
 | -------------------------------------------- | -------------------------------------- | ----------------------------------------------- |
-| `/sf-feedback`                               | UI available + no args                 | Open status & controls panel                    |
+| `/sf-feedback`                               | UI available + no args                 | Open SF Feedback in the SF Pi Manager           |
 | `/sf-feedback`                               | no UI + no args                        | Emit generic feedback draft and fallback URL    |
 | `/sf-feedback bug\|feature\|setup\|feedback` | interactive + authenticated `gh`       | Prompt, preview, confirm, create GitHub issue   |
 | `/sf-feedback bug\|feature\|setup\|feedback` | interactive without authenticated `gh` | Prompt, preview, confirm, open prefilled URL    |
@@ -104,8 +104,8 @@ npx vitest run extensions/sf-feedback/tests
 ```
 
 Coverage focuses on the public-safety pieces: sanitization, issue-body
-construction, and fallback URL generation. Command UI behavior is manually QA'd
-inside pi.
+construction, fallback URL generation, and Manager Surface command routing.
+Interactive prompt behavior is manually QA'd inside pi.
 
 ## Troubleshooting
 
