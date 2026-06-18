@@ -81,10 +81,6 @@ export class FeedbackWizardPanel implements Focusable {
     if (this.mode === "preparing" || this.mode === "submitting") return;
 
     if (matchesKey(data, "escape") || data === "q") {
-      if (this.mode === "preview" || this.mode === "result") {
-        this.mode = "form";
-        return;
-      }
       this.done(undefined);
       return;
     }
@@ -192,7 +188,7 @@ export class FeedbackWizardPanel implements Focusable {
         ? ` ${t.fg("muted", `… ${previewLines.length - 18} more line(s)`)}`
         : "",
       "",
-      ` ${t.fg("dim", "Y/Enter submit · E edit · Esc back to form")}`,
+      ` ${t.fg("dim", "Y/Enter submit · E edit · Esc back")}`,
     ].filter((line) => line !== "");
   }
 

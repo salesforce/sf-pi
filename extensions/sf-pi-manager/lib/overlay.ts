@@ -145,6 +145,7 @@ export class SfPiOverlayComponent implements Focusable {
   private configPanelReloadNeeded = false;
   private scope: "global" | "project";
   private actionInFlight = false;
+  private closeDetailOnBack = false;
 
   // Resolved config panel factories keyed by extension id.
   // ConfigPanelFactory returns Focusable, but our panels also implement Component.
@@ -197,6 +198,7 @@ export class SfPiOverlayComponent implements Focusable {
     }
 
     if (initialRoute?.extensionId) {
+      this.closeDetailOnBack = true;
       this.applyInitialRoute(initialRoute);
     }
   }
@@ -619,6 +621,10 @@ export class SfPiOverlayComponent implements Focusable {
   private returnToList(): void {
     this.activePanel = null;
     this.activePanelExtId = null;
+    if (this.closeDetailOnBack) {
+      this.applyAndClose();
+      return;
+    }
     this.view = { kind: "list" };
   }
 

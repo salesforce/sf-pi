@@ -80,6 +80,33 @@ describe("extension detail helpers", () => {
     expect(rendered).not.toContain("sf_herdr_plan");
   });
 
+  it("closes direct deep-linked extension details on escape instead of returning to the list", () => {
+    const states = buildExtensionStates(new Set());
+    let closed = false;
+
+    const overlay = new SfPiOverlayComponent(
+      stubTheme,
+      "0.0.0-test",
+      PACKAGE_ROOT,
+      "/tmp/project",
+      states,
+      states,
+      "global",
+      () => 40,
+      () => {
+        closed = true;
+      },
+      {} as never,
+      () => [],
+      () => undefined,
+      { extensionId: "sf-feedback", view: "detail" },
+    );
+
+    overlay.handleInput("\u001b");
+
+    expect(closed).toBe(true);
+  });
+
   it("builds a detail summary with capabilities and availability flags", () => {
     const states = buildExtensionStates(new Set());
     const slack = states.find((state) => state.id === "sf-slack");
