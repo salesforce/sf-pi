@@ -22,7 +22,7 @@ Extension loads
   └─ contributes the sf-browser skill only while enabled
 
 /sf-browser
-  ├─ opens a cache-first status/actions panel
+  ├─ UI available + no args → open SF Browser in the SF Pi Manager
   └─ does not probe agent-browser until doctor or an explicit action runs
 
 sf_browser_open_org
@@ -63,7 +63,7 @@ sf_browser_capture_evidence
 | extension load           | pi version supported | Register `/sf-browser`; no browser probe                           |
 | `session_start`          | extension enabled    | Register SF Browser tools                                          |
 | `resources_discover`     | extension enabled    | Contribute `skills/sf-browser`                                     |
-| `/sf-browser`            | interactive          | Open cache-first command panel                                     |
+| `/sf-browser`            | interactive          | Open SF Browser in the SF Pi Manager                               |
 | `/sf-browser status`     | any                  | Print cached runtime status and artifact paths                     |
 | `/sf-browser doctor`     | explicit             | Run `agent-browser --version` and show install guidance if missing |
 | `/sf-browser open`       | explicit             | Open active target org home in `agent-browser`                     |
@@ -75,7 +75,7 @@ sf_browser_capture_evidence
 
 | Command                          | Description                                                                          |
 | -------------------------------- | ------------------------------------------------------------------------------------ |
-| `/sf-browser`                    | Open the status/actions panel.                                                       |
+| `/sf-browser`                    | Open SF Browser in the SF Pi Manager.                                                |
 | `/sf-browser status`             | Show cache-first SF Browser status without probing `agent-browser`.                  |
 | `/sf-browser doctor`             | Check whether `agent-browser` is installed.                                          |
 | `/sf-browser open [path\|setup]` | Open the active target org home, a provided Salesforce path, or a Setup Destination. |

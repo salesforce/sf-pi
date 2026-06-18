@@ -22,7 +22,6 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 
-import { type CommandPanelState, openCommandPanel } from "../../lib/common/command-panel.ts";
 import { withSafeCommandHandler } from "../../lib/common/safe-command-handler.ts";
 import {
   type SfPiCommandAction,
@@ -32,12 +31,13 @@ import {
 } from "../../lib/common/command-actions.ts";
 import { openInfoPanel, type InfoPanelSeverity } from "../../lib/common/info-panel.ts";
 import {
-  buildToggleExtensionAction,
-  isLifecycleToggleAction,
-  LIFECYCLE_GROUP,
-  performToggleExtension,
-  type LifecycleActionId,
-} from "../../lib/common/extension-toggle.ts";
+  openExtensionInManager,
+  type SfPiManagerOpenRoute,
+} from "../../lib/common/manager-deep-link.ts";
+import {
+  registerManagerDetailActions,
+  type ManagerDetailAction,
+} from "../../lib/common/manager-actions.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 import { isSfPiExtensionEnabled } from "../../lib/common/sf-pi-extension-state.ts";
 import { getCachedSfEnvironment } from "../../lib/common/sf-environment/shared-runtime.ts";
@@ -95,6 +95,8 @@ export default function sfBrowser(pi: ExtensionAPI): void {
   pi.on("session_shutdown", () => {
     toolsRegistered = false;
   });
+  registerManagerDetailActions(pi, EXTENSION_ID, buildSfBrowserManagerActions(pi));
+
   pi.on("resources_discover", (event) => {
     if (!isSfPiExtensionEnabled(event.cwd, EXTENSION_ID)) return;
     if (event.reason === "reload") {
@@ -124,9 +126,7 @@ type SfBrowserAction =
   | "evidence"
   | "doctor"
   | "guidance"
-  | "help"
-  | "close"
-  | LifecycleActionId;
+  | "help";
 
 const SF_BROWSER_ACTIONS: SfPiCommandAction<SfBrowserAction>[] = [
   {
@@ -182,17 +182,16 @@ const SF_BROWSER_ACTIONS: SfPiCommandAction<SfBrowserAction>[] = [
     description: "Print command usage and the SF Browser v1 scope.",
     group: "Reference",
   },
-  {
-    value: "close",
-    label: "Close",
-    description: "Dismiss this panel.",
-    group: LIFECYCLE_GROUP,
-  },
 ];
 
-function buildSfBrowserActions(cwd: string): SfPiCommandAction<SfBrowserAction>[] {
-  const toggle = buildToggleExtensionAction({ extensionId: EXTENSION_ID, cwd });
-  return toggle ? [...SF_BROWSER_ACTIONS, toggle] : SF_BROWSER_ACTIONS;
+function buildSfBrowserManagerActions(pi: ExtensionAPI): ManagerDetailAction[] {
+  return SF_BROWSER_ACTIONS.map((action) => ({
+    id: action.value,
+    label: action.label,
+    description: action.description,
+    group: action.group,
+    run: (ctx) => handleAction(pi, ctx, action.value, [], true),
+  }));
 }
 
 async function handleCommand(
@@ -202,7 +201,7 @@ async function handleCommand(
 ): Promise<void> {
   const args = rawArgs.trim().split(/\s+/).filter(Boolean);
   if (args.length === 0 && ctx.hasUI) {
-    await handlePanel(pi, ctx);
+    await openBrowserInManager(pi, ctx, "detail");
     return;
   }
 
@@ -211,18 +210,19 @@ async function handleCommand(
   await handleAction(pi, ctx, resolved, args.slice(1), false);
 }
 
-async function handlePanel(pi: ExtensionAPI, ctx: ExtensionCommandContext): Promise<void> {
-  const state: CommandPanelState<SfBrowserAction> = {};
-  await openCommandPanel(ctx, {
-    title: "🌐 SF Browser — status & controls",
-    subtitle: "Salesforce UI last-mile automation with agent-browser.",
-    statusLines: () => buildStatusLines(ctx),
-    actions: () => buildSfBrowserActions(ctx.cwd),
-    closeValue: "close",
-    state,
-    onAction: (action) => handleAction(pi, ctx, action, [], true),
-    closeBeforeAction: isLifecycleToggleAction,
+async function openBrowserInManager(
+  pi: ExtensionAPI,
+  ctx: ExtensionCommandContext,
+  view: NonNullable<SfPiManagerOpenRoute["view"]>,
+): Promise<void> {
+  const opened = await openExtensionInManager(pi, ctx, {
+    extensionId: EXTENSION_ID,
+    view,
+    actions: buildSfBrowserManagerActions(pi),
   });
+  if (!opened) {
+    ctx.ui.notify("SF Pi Manager is unavailable. Try /sf-pi open sf-browser.", "warning");
+  }
 }
 
 async function handleAction(
@@ -232,10 +232,6 @@ async function handleAction(
   args: string[],
   fromPanel: boolean,
 ): Promise<void> {
-  if (action === "lifecycle.toggle") {
-    await performToggleExtension(ctx, EXTENSION_ID);
-    return;
-  }
   if (action === "help") {
     await emitOutput(ctx, "SF Browser help", buildHelpText(), "info", fromPanel);
     return;
