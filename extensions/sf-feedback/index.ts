@@ -44,7 +44,11 @@ import {
   type ManagerDetailAction,
 } from "../../lib/common/manager-actions.ts";
 import { sanitizeText } from "./lib/sanitize.ts";
-import { createFeedbackWizardPanel } from "./lib/feedback-wizard-panel.ts";
+import {
+  createFeedbackWizardPanel,
+  type FeedbackSubmitResult,
+  type PreparedFeedbackPreview,
+} from "./lib/feedback-wizard-panel.ts";
 import type { Diagnostics, FeedbackDraft, IssueKind } from "./lib/types.ts";
 
 const COMMAND_NAME = "sf-feedback";
@@ -130,7 +134,8 @@ function buildFeedbackManagerActions(pi: ExtensionAPI): ManagerDetailAction[] {
               createFeedbackWizardPanel(
                 theme,
                 issueKind,
-                (draft) => submitFeedbackDraft(pi, ctx, buildExecFn(pi, ctx.cwd), draft),
+                (draft) => prepareFeedbackPreview(ctx, buildExecFn(pi, ctx.cwd), draft),
+                (preview) => submitPreparedFeedback(pi, ctx, buildExecFn(pi, ctx.cwd), preview),
                 done,
               ),
           }
@@ -209,6 +214,27 @@ async function handleCommand(
   }
 }
 
+async function prepareFeedbackPreview(
+  ctx: ExtensionCommandContext,
+  exec: ExecFn,
+  draft: FeedbackDraft,
+  existingDiagnostics?: Diagnostics,
+): Promise<PreparedFeedbackPreview & { fallbackUrl: string; diagnostics: Diagnostics }> {
+  const [{ collectDiagnostics }, issueTemplate, github] = await Promise.all([
+    import("./lib/diagnostics.ts"),
+    import("./lib/issue-template.ts"),
+    import("./lib/github.ts"),
+  ]);
+  const { buildIssueBody, labelForKind, normalizeIssueTitle } = issueTemplate;
+  const { buildIssueUrl } = github;
+  const diagnostics = existingDiagnostics ?? (await collectDiagnostics(exec, ctx.cwd));
+  const title = normalizeIssueTitle(draft.kind, draft.title);
+  const labels = labelForKind(draft.kind);
+  const body = buildIssueBody(draft, diagnostics);
+  const fallbackUrl = buildIssueUrl(title, body, labels);
+  return { title, labels, body, fallbackUrl, diagnostics };
+}
+
 async function submitFeedbackDraft(
   pi: ExtensionAPI,
   ctx: ExtensionCommandContext,
@@ -216,96 +242,91 @@ async function submitFeedbackDraft(
   draft: FeedbackDraft,
   existingDiagnostics?: Diagnostics,
 ): Promise<void> {
-  const [{ collectDiagnostics }, issueTemplate, github] = await Promise.all([
-    import("./lib/diagnostics.ts"),
-    import("./lib/issue-template.ts"),
-    import("./lib/github.ts"),
-  ]);
-  const { buildIssueBody, labelForKind, normalizeIssueTitle } = issueTemplate;
-  const { buildIssueUrl, createIssueWithGh, openUrl } = github;
-  const diagnostics = existingDiagnostics ?? (await collectDiagnostics(exec, ctx.cwd));
-  const title = normalizeIssueTitle(draft.kind, draft.title);
-  const labels = labelForKind(draft.kind);
-  const body = buildIssueBody(draft, diagnostics);
-  const fallbackUrl = buildIssueUrl(title, body, labels);
+  const preview = await prepareFeedbackPreview(ctx, exec, draft, existingDiagnostics);
 
   if (!ctx.hasUI) {
     await emitCommandOutput(
       pi,
       ctx,
       "SF Feedback issue draft",
-      `${body}\n\nOpen this URL to create the issue:\n${fallbackUrl}`,
+      `${preview.body}\n\nOpen this URL to create the issue:\n${preview.fallbackUrl}`,
       "info",
     );
     return;
   }
 
-  const preview = renderPreview(title, labels, body);
-  const confirmed = await ctx.ui.confirm("Create GitHub issue?", preview);
+  const bodyPreview = renderPreview(preview.title, preview.labels, preview.body);
+  const confirmed = await ctx.ui.confirm("Create GitHub issue?", bodyPreview);
   if (!confirmed) {
     await emitCommandOutput(
       pi,
       ctx,
       "SF Feedback cancelled.",
-      `No issue was created. You can still open this prefilled URL:\n${fallbackUrl}`,
+      `No issue was created. You can still open this prefilled URL:\n${preview.fallbackUrl}`,
       "info",
     );
     return;
   }
 
-  if (diagnostics.github.ghAvailable && diagnostics.github.authenticated) {
+  const result = await submitPreparedFeedback(pi, ctx, exec, preview);
+  await emitCommandOutput(pi, ctx, result.title, result.body, result.severity);
+}
+
+async function submitPreparedFeedback(
+  _pi: ExtensionAPI,
+  ctx: ExtensionCommandContext,
+  exec: ExecFn,
+  preview: PreparedFeedbackPreview & { fallbackUrl?: string; diagnostics?: Diagnostics },
+): Promise<FeedbackSubmitResult> {
+  const { createIssueWithGh, openUrl } = await import("./lib/github.ts");
+  const diagnostics = preview.diagnostics;
+  const fallbackUrl = preview.fallbackUrl ?? "";
+
+  if (diagnostics?.github.ghAvailable && diagnostics.github.authenticated) {
     ctx.ui.setStatus(STATUS_KEY, "Feedback: creating GitHub issue…");
-    const result = await createIssueWithGh(exec, title, body, labels);
+    const result = await createIssueWithGh(exec, preview.title, preview.body, preview.labels);
     if (result.ok) {
-      await emitCommandOutput(
-        pi,
-        ctx,
-        "SF Feedback issue created.",
-        result.url ? `Created: ${result.url}` : result.detail,
-        "info",
-      );
-      return;
+      return {
+        title: "SF Feedback issue created.",
+        body: result.url ? `Created: ${result.url}` : result.detail,
+        severity: "info",
+      };
     }
 
     if (!result.shouldOpenFallback) {
-      await emitCommandOutput(
-        pi,
-        ctx,
-        "GitHub account cannot create this issue.",
-        renderManualIssueDraft(result.detail, title, labels, body, result.fallbackUrl),
-        "warning",
-      );
-      return;
+      return {
+        title: "GitHub account cannot create this issue.",
+        body: renderManualIssueDraft(
+          result.detail,
+          preview.title,
+          preview.labels,
+          preview.body,
+          result.fallbackUrl,
+        ),
+        severity: "warning",
+      };
     }
 
-    await emitCommandOutput(
-      pi,
-      ctx,
-      "Could not create issue with gh CLI.",
-      `${result.detail}\n\nOpening a prefilled GitHub issue URL instead:\n${result.fallbackUrl}`,
-      "warning",
-    );
     await openUrl(exec, result.fallbackUrl);
-    return;
+    return {
+      title: "Could not create issue with gh CLI.",
+      body: `${result.detail}\n\nOpening a prefilled GitHub issue URL instead:\n${result.fallbackUrl}`,
+      severity: "warning",
+    };
   }
 
-  await emitCommandOutput(
-    pi,
-    ctx,
-    "Opening prefilled GitHub issue.",
-    "GitHub CLI is unavailable or not authenticated, so SF Feedback will open a browser URL instead.",
-    "info",
-  );
-  const opened = await openUrl(exec, fallbackUrl);
-  if (!opened) {
-    await emitCommandOutput(
-      pi,
-      ctx,
-      "Open this GitHub issue URL manually.",
-      fallbackUrl,
-      "warning",
-    );
-  }
+  const opened = fallbackUrl ? await openUrl(exec, fallbackUrl) : false;
+  return opened
+    ? {
+        title: "Opening prefilled GitHub issue.",
+        body: "GitHub CLI is unavailable or not authenticated, so SF Feedback opened a browser URL instead.",
+        severity: "info",
+      }
+    : {
+        title: "Open this GitHub issue URL manually.",
+        body: fallbackUrl,
+        severity: "warning",
+      };
 }
 
 function parseIssueKind(value: string | undefined): IssueKind {

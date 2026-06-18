@@ -407,7 +407,7 @@
     "entry": "extensions/sf-feedback/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 1165
+    "srcLoc": 1277
   },
   {
     "id": "sf-guardrail",
@@ -688,7 +688,7 @@
     "entry": "extensions/sf-pi-manager/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 3444
+    "srcLoc": 3451
   },
   {
     "id": "sf-skills",

@@ -89,7 +89,7 @@ The one-level-deeper **Manager Surface** page where a configurable **Bundled Ext
 _Avoid_: inline detail settings, hidden save, auto-back settings
 
 **Extension Action Page**:
-A one-level-deeper **Manager Surface** page for a selected extension action that needs additional user input, with each question or focused step presented inside the Manager navigation model.
+A one-level-deeper **Manager Surface** page for a selected extension action that needs additional user input, usually as a single form plus in-page preview/result states when the fields are related.
 _Avoid_: floating prompt stack, mixed overlay/input flow, action side quest
 
 **Runtime Reload Requirement**:

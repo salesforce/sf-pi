@@ -516,8 +516,16 @@ export class SfPiOverlayComponent implements Focusable {
       lines.push(row(` ${theme.fg("muted", "Settings panel unavailable.")}`));
     }
 
+    this.padPanelRows(lines, row);
     lines.push(theme.fg("border", `╰${"─".repeat(innerWidth)}╯`));
     return lines;
+  }
+
+  private padPanelRows(lines: string[], row: (content?: string) => string): void {
+    const targetRows = Math.max(lines.length + 1, Math.floor(this.getTerminalRows() * 0.85));
+    while (lines.length < targetRows - 1) {
+      lines.push(row(""));
+    }
   }
 
   // -------------------------------------------------------------------------------------------------

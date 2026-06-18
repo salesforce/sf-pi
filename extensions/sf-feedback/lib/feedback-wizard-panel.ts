@@ -1,86 +1,123 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/** In-Manager wizard page for SF Feedback issue drafts. */
+/** In-Manager form + preview page for SF Feedback issue drafts. */
 import type { Theme } from "@earendil-works/pi-coding-agent";
-import { type Focusable, matchesKey } from "@earendil-works/pi-tui";
+import { type Focusable, matchesKey, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import type { ConfigPanelResult } from "../../../catalog/registry.ts";
 import { sanitizeText } from "./sanitize.ts";
 import type { FeedbackDraft, IssueKind } from "./types.ts";
 
-interface WizardStep {
+export interface PreparedFeedbackPreview {
+  title: string;
+  labels: string[];
+  body: string;
+}
+
+export interface FeedbackSubmitResult {
+  title: string;
+  body: string;
+  severity: "info" | "warning" | "error";
+}
+
+interface FormField {
   key: "title" | "summary" | "expected" | "steps";
   label: string;
-  prompt: string;
+  help: string;
   placeholder: string;
 }
 
-const STEPS: WizardStep[] = [
+const FORM_FIELDS: FormField[] = [
   {
     key: "title",
     label: "Title",
-    prompt: "Short GitHub issue title",
+    help: "Short GitHub issue title",
     placeholder: "Briefly name the issue",
   },
   {
     key: "summary",
     label: "What happened",
-    prompt: "What happened? Include the important details.",
+    help: "Important details for maintainers",
     placeholder: "Describe the behavior or request",
   },
   {
     key: "expected",
     label: "Expected",
-    prompt: "What did you expect instead?",
+    help: "What should have happened instead",
     placeholder: "Describe the desired behavior",
   },
   {
     key: "steps",
-    label: "Steps",
-    prompt: "Steps to reproduce or context",
+    label: "Steps / context",
+    help: "Reproduction steps or useful context",
     placeholder: "1. Start here",
   },
 ];
 
+type Mode = "form" | "preparing" | "preview" | "submitting" | "result";
+
 export class FeedbackWizardPanel implements Focusable {
   focused = false;
 
-  private stepIndex = 0;
-  private fields: Record<WizardStep["key"], string> = {
+  private mode: Mode = "form";
+  private cursor = 0;
+  private fields: Record<FormField["key"], string> = {
     title: "",
     summary: "",
     expected: "",
     steps: "1. ",
   };
-  private submitting = false;
+  private preview: PreparedFeedbackPreview | undefined;
+  private result: FeedbackSubmitResult | undefined;
   private error: string | undefined;
 
   constructor(
     private readonly theme: Theme,
     private readonly kind: IssueKind,
-    private readonly submit: (draft: FeedbackDraft) => Promise<void>,
+    private readonly prepare: (draft: FeedbackDraft) => Promise<PreparedFeedbackPreview>,
+    private readonly submit: (preview: PreparedFeedbackPreview) => Promise<FeedbackSubmitResult>,
     private readonly done: (result: ConfigPanelResult | undefined) => void,
   ) {}
 
   handleInput(data: string): void {
-    if (this.submitting) return;
+    if (this.mode === "preparing" || this.mode === "submitting") return;
 
     if (matchesKey(data, "escape") || data === "q") {
+      if (this.mode === "preview" || this.mode === "result") {
+        this.mode = "form";
+        return;
+      }
       this.done(undefined);
       return;
     }
-    if (matchesKey(data, "up")) {
-      this.moveStep(-1);
+
+    if (this.mode === "preview") {
+      if (data === "y" || data === "Y" || matchesKey(data, "enter") || matchesKey(data, "return")) {
+        void this.submitPreview();
+        return;
+      }
+      if (data === "e" || data === "E") this.mode = "form";
       return;
     }
-    if (matchesKey(data, "down")) {
-      this.moveStep(1);
+
+    if (this.mode === "result") {
+      if (matchesKey(data, "enter") || matchesKey(data, "return")) this.done(undefined);
+      return;
+    }
+
+    if (matchesKey(data, "up")) {
+      this.moveCursor(-1);
+      return;
+    }
+    if (matchesKey(data, "down") || matchesKey(data, "tab")) {
+      this.moveCursor(1);
+      return;
+    }
+    if (data === "s" || data === "S") {
+      void this.preparePreview();
       return;
     }
     if (matchesKey(data, "enter") || matchesKey(data, "return")) {
-      if (this.stepIndex < STEPS.length - 1) {
-        this.moveStep(1);
-        return;
-      }
-      void this.submitDraft();
+      if (this.cursor < FORM_FIELDS.length - 1) this.moveCursor(1);
+      else void this.preparePreview();
       return;
     }
     if (matchesKey(data, "backspace") || data === "\u007f") {
@@ -93,24 +130,10 @@ export class FeedbackWizardPanel implements Focusable {
   }
 
   renderContent(width: number): string[] {
-    const t = this.theme;
-    const step = STEPS[this.stepIndex] ?? STEPS[0]!;
-    const value = this.fields[step.key];
-    const progress = `Step ${this.stepIndex + 1}/${STEPS.length}`;
-    const clippedValue = value || t.fg("muted", step.placeholder);
-    const promptWidth = Math.max(30, width - 4);
-    return [
-      ` ${t.fg("accent", t.bold(`${labelForKind(this.kind)} feedback`))}  ${t.fg("muted", progress)}`,
-      ` ${t.fg("dim", "Each answer lives on its own page. Enter advances; Esc cancels.")}`,
-      "",
-      ` ${t.fg("accent", step.label)}`,
-      ...wrap(step.prompt, promptWidth).map((line) => ` ${t.fg("dim", line)}`),
-      "",
-      ` ${t.fg("text", clippedValue)}`,
-      this.error ? ` ${t.fg("error", this.error)}` : "",
-      "",
-      ` ${t.fg("dim", this.submitting ? "Submitting…" : "Type to edit · Enter next/submit · ↑/↓ steps · Esc cancel")}`,
-    ];
+    if (this.mode === "preview") return this.renderPreview(width);
+    if (this.mode === "result") return this.renderResult(width);
+    if (this.mode === "preparing" || this.mode === "submitting") return this.renderBusy();
+    return this.renderForm(width);
   }
 
   render(width: number): string[] {
@@ -119,49 +142,147 @@ export class FeedbackWizardPanel implements Focusable {
 
   invalidate(): void {}
 
-  private moveStep(delta: -1 | 1): void {
+  private renderForm(width: number): string[] {
+    const t = this.theme;
+    const fieldWidth = Math.max(24, Math.floor(width * 0.22));
+    const valueWidth = Math.max(20, width - fieldWidth - 8);
+    const lines = [
+      ` ${t.fg("accent", t.bold(`${labelForKind(this.kind)} feedback`))}  ${t.fg("muted", "Form")}`,
+      ` ${t.fg("dim", "Fill the fields on this page, then press S to preview.")}`,
+      "",
+    ];
+
+    for (let i = 0; i < FORM_FIELDS.length; i++) {
+      const field = FORM_FIELDS[i]!;
+      const selected = i === this.cursor;
+      const value = this.fields[field.key] || t.fg("muted", field.placeholder);
+      const cursor = selected ? t.fg("accent", "›") : " ";
+      const label = selected ? t.fg("accent", field.label) : t.fg("text", field.label);
+      lines.push(` ${cursor} ${pad(label, fieldWidth)} ${truncateToWidth(value, valueWidth, "…")}`);
+      lines.push(`   ${t.fg("dim", field.help)}`);
+    }
+
+    if (this.error) {
+      lines.push("");
+      lines.push(` ${t.fg("error", this.error)}`);
+    }
+    lines.push("");
+    lines.push(` ${t.fg("dim", "↑/↓ fields · type to edit · Enter next · S preview · Esc back")}`);
+    return lines;
+  }
+
+  private renderPreview(width: number): string[] {
+    const t = this.theme;
+    const preview = this.preview;
+    if (!preview) return this.renderForm(width);
+    const previewLines = [
+      `Title: ${preview.title}`,
+      `Labels: ${preview.labels.join(", ") || "none"}`,
+      "",
+      ...preview.body.split("\n"),
+    ];
+    return [
+      ` ${t.fg("accent", t.bold(`${labelForKind(this.kind)} feedback`))}  ${t.fg("muted", "Preview")}`,
+      ` ${t.fg("dim", "Review the issue draft before submitting.")}`,
+      "",
+      ...previewLines
+        .slice(0, 18)
+        .map((line) => ` ${truncateToWidth(line, Math.max(20, width - 4), "…")}`),
+      previewLines.length > 18
+        ? ` ${t.fg("muted", `… ${previewLines.length - 18} more line(s)`)}`
+        : "",
+      "",
+      ` ${t.fg("dim", "Y/Enter submit · E edit · Esc back to form")}`,
+    ].filter((line) => line !== "");
+  }
+
+  private renderBusy(): string[] {
+    const message = this.mode === "preparing" ? "Preparing preview…" : "Submitting…";
+    return [
+      ` ${this.theme.fg("accent", this.theme.bold(`${labelForKind(this.kind)} feedback`))}`,
+      "",
+      ` ${this.theme.fg("dim", message)}`,
+    ];
+  }
+
+  private renderResult(width: number): string[] {
+    const t = this.theme;
+    const result = this.result;
+    if (!result) return this.renderForm(width);
+    return [
+      ` ${t.fg("accent", t.bold(`${labelForKind(this.kind)} feedback`))}  ${t.fg(result.severity === "warning" ? "warning" : "success", "Done")}`,
+      "",
+      ` ${t.fg(result.severity === "warning" ? "warning" : "text", result.title)}`,
+      "",
+      ...result.body
+        .split("\n")
+        .slice(0, 10)
+        .map((line) => ` ${truncateToWidth(line, Math.max(20, width - 4), "…")}`),
+      "",
+      ` ${t.fg("dim", "Enter/Esc back to SF Feedback")}`,
+    ];
+  }
+
+  private moveCursor(delta: -1 | 1): void {
     this.error = undefined;
-    this.stepIndex = Math.max(0, Math.min(STEPS.length - 1, this.stepIndex + delta));
+    this.cursor = (this.cursor + delta + FORM_FIELDS.length) % FORM_FIELDS.length;
   }
 
   private editCurrent(update: (value: string) => string): void {
-    const step = STEPS[this.stepIndex] ?? STEPS[0]!;
-    this.fields[step.key] = update(this.fields[step.key]);
+    const field = FORM_FIELDS[this.cursor] ?? FORM_FIELDS[0]!;
+    this.fields[field.key] = update(this.fields[field.key]);
     this.error = undefined;
   }
 
-  private async submitDraft(): Promise<void> {
-    const draft: FeedbackDraft = {
+  private async preparePreview(): Promise<void> {
+    const draft = this.buildDraft();
+    if (!draft.title.trim()) {
+      this.error = "Title is required before preview.";
+      this.cursor = 0;
+      return;
+    }
+
+    this.mode = "preparing";
+    try {
+      this.preview = await this.prepare(draft);
+      this.mode = "preview";
+    } catch (error) {
+      this.error = error instanceof Error ? error.message : String(error);
+      this.mode = "form";
+    }
+  }
+
+  private async submitPreview(): Promise<void> {
+    if (!this.preview) return;
+    this.mode = "submitting";
+    try {
+      this.result = await this.submit(this.preview);
+      this.mode = "result";
+    } catch (error) {
+      this.error = error instanceof Error ? error.message : String(error);
+      this.mode = "preview";
+    }
+  }
+
+  private buildDraft(): FeedbackDraft {
+    return {
       kind: this.kind,
       title: sanitizeText(this.fields.title),
       summary: sanitizeText(this.fields.summary),
       expected: sanitizeText(this.fields.expected),
       steps: sanitizeText(this.fields.steps),
     };
-    if (!draft.title.trim()) {
-      this.error = "Title is required before submitting.";
-      this.stepIndex = 0;
-      return;
-    }
-
-    this.submitting = true;
-    try {
-      await this.submit(draft);
-      this.done(undefined);
-    } catch (error) {
-      this.error = error instanceof Error ? error.message : String(error);
-      this.submitting = false;
-    }
   }
 }
 
 export function createFeedbackWizardPanel(
   theme: Theme,
   kind: IssueKind,
-  submit: (draft: FeedbackDraft) => Promise<void>,
+  prepare: (draft: FeedbackDraft) => Promise<PreparedFeedbackPreview>,
+  submit: (preview: PreparedFeedbackPreview) => Promise<FeedbackSubmitResult>,
   done: (result: ConfigPanelResult | undefined) => void,
 ): FeedbackWizardPanel {
-  return new FeedbackWizardPanel(theme, kind, submit, done);
+  return new FeedbackWizardPanel(theme, kind, prepare, submit, done);
 }
 
 function labelForKind(kind: IssueKind): string {
@@ -171,19 +292,6 @@ function labelForKind(kind: IssueKind): string {
   return "General";
 }
 
-function wrap(text: string, width: number): string[] {
-  const words = text.split(/\s+/).filter(Boolean);
-  const lines: string[] = [];
-  let current = "";
-  for (const word of words) {
-    const next = current ? `${current} ${word}` : word;
-    if (next.length <= width) {
-      current = next;
-      continue;
-    }
-    if (current) lines.push(current);
-    current = word;
-  }
-  if (current) lines.push(current);
-  return lines.length ? lines : [""];
+function pad(text: string, width: number): string {
+  return `${text}${" ".repeat(Math.max(0, width - visibleWidth(text)))}`;
 }
