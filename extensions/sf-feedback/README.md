@@ -21,6 +21,7 @@ Extension loads
 /sf-feedback
   ├─ UI available + no args → open SF Feedback in the SF Pi Manager
   └─ selected Manager action / explicit subcommand
+     ├─ Manager issue actions drill into a paged feedback wizard
      ├─ collectDiagnostics()
      ├─ package/runtime versions
      ├─ OS, shell, terminal, TTY/CI
@@ -66,6 +67,12 @@ The slash command registers before Manager action wiring and before diagnostics
 or GitHub helpers are loaded. This keeps `/sf-feedback` discoverable even if an
 optional feedback-flow dependency has a load-time issue.
 
+### 6. Manager actions drill into wizard pages
+
+Feedback actions launched from the SF Pi Manager use a paged in-Manager wizard
+for title, summary, expected behavior, and steps. They do not stack standalone
+input prompts above the Manager detail page.
+
 ## Behavior Matrix
 
 | Event/Trigger                                | Condition                              | Result                                          |
@@ -86,6 +93,7 @@ optional feedback-flow dependency has a load-time issue.
 extensions/sf-feedback/
   lib/
     diagnostics.ts          ← implementation module
+    feedback-wizard-panel.ts← implementation module
     github.ts               ← implementation module
     issue-template.ts       ← implementation module
     sanitize.ts             ← implementation module

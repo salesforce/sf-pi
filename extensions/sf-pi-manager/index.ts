@@ -564,6 +564,7 @@ async function handleOverlay(
           scope,
           () => tui.terminal.rows,
           done,
+          ctx,
           (extensionId) => collectOverlayActions(pi, extensionId, initialRoute),
           (action) => action.run(ctx),
           initialRoute,

@@ -88,6 +88,10 @@ _Avoid_: implementation inspector, catalog dump, bundle metadata page
 The one-level-deeper **Manager Surface** page where a configurable **Bundled Extension** edits its preferences with explicit dirty, saved, and reload-required states.
 _Avoid_: inline detail settings, hidden save, auto-back settings
 
+**Extension Action Page**:
+A one-level-deeper **Manager Surface** page for a selected extension action that needs additional user input, with each question or focused step presented inside the Manager navigation model.
+_Avoid_: floating prompt stack, mixed overlay/input flow, action side quest
+
 **Runtime Reload Requirement**:
 A saved preference change that requires Pi to reload because it changes runtime registration or session-start state, such as commands, tools, providers, hooks, context injection, or extension enablement.
 _Avoid_: every settings save, visual dirty state, normal persisted preference

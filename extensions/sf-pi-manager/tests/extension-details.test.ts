@@ -65,6 +65,7 @@ describe("extension detail helpers", () => {
       "global",
       () => 40,
       () => undefined,
+      {} as never,
       () => [],
       () => undefined,
       { extensionId: "sf-herdr", view: "detail" },

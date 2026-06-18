@@ -9,6 +9,10 @@ import {
   SF_PI_MANAGER_OPEN_EVENT,
   type SfPiManagerOpenRequest,
 } from "../../../lib/common/manager-deep-link.ts";
+import {
+  collectManagerDetailActions,
+  type ManagerDetailAction,
+} from "../../../lib/common/manager-actions.ts";
 
 function eventBus() {
   const listeners = new Map<string, Array<(payload: unknown) => void>>();
@@ -66,6 +70,29 @@ describe("sf-feedback", () => {
 
     expect(() => mod.default(pi as never)).toThrow("manager action registration failed");
     expect(pi.registerCommand).toHaveBeenCalledWith("sf-feedback", expect.any(Object));
+  });
+
+  it("uses Manager drill-down pages for feedback actions that collect input", async () => {
+    const mod = await import("../index.ts");
+    const events = eventBus();
+    const pi = {
+      events,
+      registerCommand: vi.fn(),
+    };
+
+    mod.default(pi as never);
+    const actions = collectManagerDetailActions(pi as never, "sf-feedback");
+    const issueActions = actions.filter((action: ManagerDetailAction) =>
+      ["bug", "feature", "setup", "feedback"].includes(action.id),
+    );
+
+    expect(issueActions.map((action) => action.id)).toEqual([
+      "bug",
+      "feature",
+      "setup",
+      "feedback",
+    ]);
+    expect(issueActions.every((action) => typeof action.createPanel === "function")).toBe(true);
   });
 
   it("routes the no-args UI command to the SF Pi Manager detail page", async () => {

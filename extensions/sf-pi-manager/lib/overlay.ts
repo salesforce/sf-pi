@@ -5,7 +5,7 @@
  * Three-level navigation:
  *   Level 0 (list)     — Extension list with enable/disable toggles and scope selector
  *   Level 1 (detail)   — Per-extension details and actions
- *   Level 2 (settings) — Config panel for configurable extensions
+ *   Level 2 (settings/action) — Config panels and extension-owned action pages
  *
  * The overlay is a composite router: one overlay stays open, and internal state
  * switches between the list view and a detail/config view. No screen flicker.
@@ -25,7 +25,7 @@ import {
   truncateToWidth,
   visibleWidth,
 } from "@earendil-works/pi-tui";
-import type { Theme } from "@earendil-works/pi-coding-agent";
+import type { ExtensionCommandContext, Theme } from "@earendil-works/pi-coding-agent";
 import type {
   SfPiExtension,
   ConfigPanelFactory,
@@ -75,7 +75,8 @@ export type OverlayInitialRoute = {
 type OverlayView =
   | { kind: "list" }
   | { kind: "detail"; extensionId: string; actionIndex: number }
-  | { kind: "settings"; extensionId: string };
+  | { kind: "settings"; extensionId: string }
+  | { kind: "managerAction"; extensionId: string; label: string };
 
 type DetailAction = "settings" | "toggle" | "back" | `manager:${string}`;
 
@@ -160,6 +161,7 @@ export class SfPiOverlayComponent implements Focusable {
     initialScope: "global" | "project",
     private readonly getTerminalRows: () => number,
     private readonly done: (result: OverlayResult | undefined) => void,
+    private readonly commandCtx: ExtensionCommandContext,
     private readonly getExtensionActions: (extensionId: string) => ManagerDetailAction[],
     private readonly runManagerAction: (action: ManagerDetailAction) => Promise<void> | void,
     initialRoute?: OverlayInitialRoute,
@@ -200,8 +202,8 @@ export class SfPiOverlayComponent implements Focusable {
   }
 
   handleInput(data: string): void {
-    // --- Settings view ---
-    if (this.view.kind === "settings") {
+    // --- Settings / extension action page ---
+    if (this.view.kind === "settings" || this.view.kind === "managerAction") {
       if (this.activePanel) {
         this.activePanel.focused = this.focused;
         this.activePanel.handleInput?.(data);
@@ -302,8 +304,8 @@ export class SfPiOverlayComponent implements Focusable {
       return this.renderDetailView(innerWidth, row);
     }
 
-    if (this.view.kind === "settings") {
-      return this.renderSettingsView(innerWidth, row);
+    if (this.view.kind === "settings" || this.view.kind === "managerAction") {
+      return this.renderPanelView(innerWidth, row);
     }
 
     return this.renderListView(innerWidth, row);
@@ -485,7 +487,7 @@ export class SfPiOverlayComponent implements Focusable {
     return lines;
   }
 
-  private renderSettingsView(innerWidth: number, row: (content?: string) => string): string[] {
+  private renderPanelView(innerWidth: number, row: (content?: string) => string): string[] {
     const lines: string[] = [];
     const theme = this.theme;
     const ext = this.getActiveExtension();
@@ -495,7 +497,8 @@ export class SfPiOverlayComponent implements Focusable {
     }
 
     lines.push(theme.fg("border", `╭${"─".repeat(innerWidth)}╮`));
-    const breadcrumb = `← Esc back  SF Pi › ${ext.name} › Settings`;
+    const panelLabel = this.view.kind === "managerAction" ? this.view.label : "Settings";
+    const breadcrumb = `← Esc back  SF Pi › ${ext.name} › ${panelLabel}`;
     lines.push(row(` ${theme.fg("accent", theme.bold(breadcrumb))}`));
     lines.push(row(""));
 
@@ -546,6 +549,13 @@ export class SfPiOverlayComponent implements Focusable {
     this.attachConfigPanel(extensionId);
   }
 
+  private drillIntoManagerAction(extensionId: string, action: ManagerDetailAction): void {
+    this.activePanelExtId = extensionId;
+    this.activePanel = null;
+    this.view = { kind: "managerAction", extensionId, label: action.label };
+    this.attachManagerActionPanel(extensionId, action);
+  }
+
   private attachConfigPanel(extensionId: string): void {
     const ext = this.extensions.find((entry) => entry.id === extensionId);
     const factory = this.configFactories.get(extensionId);
@@ -566,9 +576,29 @@ export class SfPiOverlayComponent implements Focusable {
     ) as ConfigPanel;
   }
 
+  private attachManagerActionPanel(extensionId: string, action: ManagerDetailAction): void {
+    if (!action.createPanel) return;
+
+    this.activePanel = action.createPanel(
+      this.theme,
+      this.cwd,
+      this.scope,
+      (result: ConfigPanelResult | undefined) => {
+        if (result?.needsReload) {
+          this.configPanelReloadNeeded = true;
+        }
+        this.returnToDetail();
+      },
+      this.commandCtx,
+    ) as ConfigPanel;
+    this.activePanelExtId = extensionId;
+  }
+
   private returnToDetail(): void {
     const extensionId =
-      this.view.kind === "settings" ? this.view.extensionId : this.activePanelExtId;
+      this.view.kind === "settings" || this.view.kind === "managerAction"
+        ? this.view.extensionId
+        : this.activePanelExtId;
     this.activePanel = null;
     this.activePanelExtId = null;
     if (extensionId) {
@@ -662,6 +692,10 @@ export class SfPiOverlayComponent implements Focusable {
         this.returnToList();
         return;
       default:
+        if (action.managerAction?.createPanel) {
+          this.drillIntoManagerAction(ext.id, action.managerAction);
+          return;
+        }
         if (action.managerAction) {
           void this.runManagerActionInPlace(action.managerAction);
         }
