@@ -101,6 +101,16 @@ describe("sf-code-analyzer smoke", () => {
       "apexguru-setup-start",
       "help",
     ]);
+    expect(actions.find((action) => action.id === "status")?.group).toBe("Diagnostics");
+    expect(actions.find((action) => action.id === "auto-scan-on")?.group).toBe(
+      "Automation — project",
+    );
+    expect(actions.find((action) => action.id === "auto-scan-global-on")?.group).toBe(
+      "Automation — global",
+    );
+    expect(actions.find((action) => action.id === "apexguru-setup-start")?.group).toBe(
+      "ApexGuru setup",
+    );
     expect(typeof actions.find((action) => action.id === "setup")?.createPanel).toBe("function");
     expect(typeof actions.find((action) => action.id === "apexguru-setup-start")?.createPanel).toBe(
       "function",

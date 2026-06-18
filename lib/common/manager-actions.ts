@@ -24,6 +24,8 @@ export interface ManagerDetailAction {
   id: string;
   label: string;
   description: string;
+  /** Optional display group for Manager detail action sections. */
+  group?: string;
   run(ctx: ExtensionCommandContext): Promise<void> | void;
   /** Optional drill-down page for interactive actions that collect input. */
   createPanel?: ManagerDetailActionPanelFactory;

@@ -86,6 +86,7 @@ interface DetailActionItem {
   value: DetailAction;
   label: string;
   description: string;
+  group?: string;
   managerAction?: ManagerDetailAction;
 }
 
@@ -477,9 +478,16 @@ export class SfPiOverlayComponent implements Focusable {
     lines.push(row(` ${theme.fg("accent", theme.bold("Actions"))}`));
     const actions = this.getDetailActions(ext);
     const actionIndex = this.view.kind === "detail" ? this.view.actionIndex : 0;
+    let currentGroup: string | undefined;
     for (let i = 0; i < actions.length; i++) {
       const action = actions[i];
       if (!action) continue;
+      const group = action.group ?? "Actions";
+      if (group !== currentGroup) {
+        if (currentGroup !== undefined) lines.push(row(""));
+        lines.push(row(` ${theme.fg("muted", theme.bold(group))}`));
+        currentGroup = group;
+      }
       const selected = i === actionIndex;
       const cursor = selected ? theme.fg("accent", "→") : " ";
       const label = selected ? theme.fg("accent", action.label) : theme.fg("text", action.label);
@@ -660,6 +668,7 @@ export class SfPiOverlayComponent implements Focusable {
         value: "settings",
         label: "Settings",
         description: "Open this extension's focused settings page.",
+        group: "Settings",
       });
     }
     actions.push(...this.extensionSpecificActions(ext));
@@ -667,12 +676,18 @@ export class SfPiOverlayComponent implements Focusable {
       actions.push({
         value: "toggle",
         label: ext.enabled ? "Disable extension" : "Enable extension",
+        group: "Lifecycle",
         description: ext.enabled
           ? "Add this extension to the disabled package filters."
           : "Remove this extension from the disabled package filters.",
       });
     }
-    actions.push({ value: "back", label: "Back", description: "Return to the extension list." });
+    actions.push({
+      value: "back",
+      label: "Back",
+      description: "Return to the extension list.",
+      group: "Lifecycle",
+    });
     return actions;
   }
 
@@ -681,6 +696,7 @@ export class SfPiOverlayComponent implements Focusable {
       value: `manager:${action.id}`,
       label: action.label,
       description: action.description,
+      group: action.group,
       managerAction: action,
     }));
   }

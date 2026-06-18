@@ -81,6 +81,47 @@ describe("extension detail helpers", () => {
     expect(rendered).not.toContain("sf_herdr_plan");
   });
 
+  it("renders Manager detail actions under group headings", () => {
+    const states = buildExtensionStates(new Set());
+    const overlay = new SfPiOverlayComponent(
+      stubTheme,
+      "0.0.0-test",
+      PACKAGE_ROOT,
+      "/tmp/project",
+      states,
+      states,
+      "global",
+      () => 40,
+      () => undefined,
+      {} as never,
+      {} as never,
+      () => [
+        {
+          id: "status",
+          label: "Status",
+          description: "Show status",
+          group: "Diagnostics",
+          run: () => undefined,
+        },
+        {
+          id: "setup",
+          label: "Setup",
+          description: "Install setup",
+          group: "Setup",
+          run: () => undefined,
+        },
+      ],
+      () => undefined,
+      { extensionId: "sf-feedback", view: "detail" },
+    );
+
+    const rendered = overlay.render(120).join("\n");
+
+    expect(rendered).toContain("Diagnostics");
+    expect(rendered).toContain("Setup");
+    expect(rendered).toContain("Lifecycle");
+  });
+
   it("returns close-before-run manager actions after closing the overlay", () => {
     const states = buildExtensionStates(new Set());
     let result: unknown;

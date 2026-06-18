@@ -253,6 +253,7 @@ function buildCodeAnalyzerManagerActions(pi: ExtensionAPI): ManagerDetailAction[
     id: action.value,
     label: action.label,
     description: action.description,
+    group: action.group,
     run: (ctx) => handleAction(pi, ctx, action.value, true),
     ...(action.value === "setup"
       ? {
