@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.194.4-2026-06-18",
-  "latestVersion": "0.194.4",
+  "revision": "release-0.194.5-2026-06-18",
+  "latestVersion": "0.194.5",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.194.4",
+      "id": "release-0.194.5",
       "kind": "update",
-      "title": "sf-pi v0.194.4 — sf-herdr: include extension in pi package",
+      "title": "sf-pi v0.194.5 — sf-feedback: lazy load feedback flow",
       "publishedAt": "2026-06-18T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.194.4",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.194.5",
       "severity": "info",
-      "body": "sf-herdr: include extension in pi package"
+      "body": "sf-feedback: lazy load feedback flow"
     },
     {
       "id": "pi-0.73-required",
