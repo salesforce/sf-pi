@@ -71,9 +71,10 @@ optional feedback-flow dependency has a load-time issue.
 
 Feedback actions launched from the SF Pi Manager use an in-Manager form overview
 for title, summary, expected behavior, and steps. Pressing Enter on a field opens
-a native Pi input/editor page with a real cursor; preview and submit states stay
-inside the same Manager flow. They do not stack standalone input or confirmation
-prompts above the Manager detail page.
+a native Pi input/editor page with a real cursor. Single-line fields save with
+Enter; multiline fields use Enter for new lines and Ctrl+S to save. Preview and
+submit states stay inside the same Manager flow. They do not stack standalone
+input or confirmation prompts above the Manager detail page.
 
 ## Behavior Matrix
 

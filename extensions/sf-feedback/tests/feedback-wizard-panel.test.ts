@@ -33,6 +33,24 @@ describe("FeedbackWizardPanel", () => {
     expect(overview).toContain("✓");
   });
 
+  it("saves multiline field edits with ctrl+s without closing the form", () => {
+    const summaryPanel = createFeedbackWizardPanel(theme, tui, "bug", vi.fn(), vi.fn(), vi.fn());
+    summaryPanel.handleInput("\u001b[B");
+    summaryPanel.handleInput("\r");
+    expect(summaryPanel.renderContent(120).join("\n")).toContain("Ctrl+S save field");
+
+    for (const char of "Line one") summaryPanel.handleInput(char);
+    summaryPanel.handleInput("\u001b[13;2u");
+    for (const char of "Line two") summaryPanel.handleInput(char);
+    summaryPanel.handleInput("\u0013");
+
+    const rows = summaryPanel.renderContent(120);
+    const overview = rows.join("\n");
+    expect(overview).toContain("Line one ↵ Line two");
+    expect(overview).toContain("✓");
+    expect(rows.every((row) => !row.includes("\n"))).toBe(true);
+  });
+
   it("previews from the overview after required title is filled", async () => {
     const prepare = vi.fn(async () => ({
       title: "[Bug] Broken help",

@@ -178,13 +178,14 @@ export class FeedbackWizardPanel implements Focusable {
       const field = FORM_FIELDS[i]!;
       const selected = i === this.cursor;
       const value = this.fields[field.key].trim();
+      const displayValue = summarizeFieldValue(value);
       const complete =
         field.key === "title" ? value.length > 0 : value.length > 0 && value !== "1.";
       const status = complete ? t.fg("success", "✓") : t.fg("muted", "○");
       const cursor = selected ? t.fg("accent", "›") : " ";
       const label = selected ? t.fg("accent", field.label) : t.fg("text", field.label);
-      const renderedValue = value
-        ? truncateToWidth(value, valueWidth, "…")
+      const renderedValue = displayValue
+        ? truncateToWidth(displayValue, valueWidth, "…")
         : t.fg("muted", field.placeholder);
       lines.push(` ${cursor} ${status} ${pad(label, fieldWidth)} ${renderedValue}`);
       if (selected) lines.push(`     ${t.fg("dim", field.help)}`);
@@ -211,7 +212,7 @@ export class FeedbackWizardPanel implements Focusable {
       "",
       ...editorRows.map((line) => ` ${line}`),
       "",
-      ` ${t.fg("dim", "Enter save field · Esc cancel field edit")}`,
+      ` ${t.fg("dim", field.multiline ? "Ctrl+S save field · Enter newline · Esc cancel" : "Enter save field · Esc cancel")}`,
     ];
   }
 
@@ -273,6 +274,10 @@ export class FeedbackWizardPanel implements Focusable {
       return;
     }
     const field = this.editingField;
+    if (matchesKey(data, "ctrl+s")) {
+      this.closeEditor(true);
+      return;
+    }
     if (field && !field.multiline && (matchesKey(data, "enter") || matchesKey(data, "return"))) {
       this.closeEditor(true);
       return;
@@ -286,11 +291,8 @@ export class FeedbackWizardPanel implements Focusable {
     this.error = undefined;
     if (field.multiline) {
       const editor = new Editor(this.tui, editorTheme(this.theme));
+      editor.disableSubmit = true;
       editor.setText(this.fields[field.key]);
-      editor.onSubmit = (value) => {
-        this.fields[field.key] = sanitizeText(value);
-        this.closeEditor(false);
-      };
       this.editor = editor;
     } else {
       const input = new Input();
@@ -391,6 +393,14 @@ function labelForKind(kind: IssueKind): string {
   if (kind === "feature") return "Feature request";
   if (kind === "setup") return "Setup issue";
   return "General";
+}
+
+function summarizeFieldValue(value: string): string {
+  return value
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .join(" ↵ ");
 }
 
 function pad(text: string, width: number): string {
