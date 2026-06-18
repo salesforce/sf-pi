@@ -21,7 +21,7 @@ Extension loads
 /sf-feedback
   ├─ UI available + no args → open SF Feedback in the SF Pi Manager
   └─ selected Manager action / explicit subcommand
-     ├─ Manager issue actions drill into a single-page form + preview flow
+     ├─ Manager issue actions drill into a form overview + native field editor flow
      ├─ collectDiagnostics()
      ├─ package/runtime versions
      ├─ OS, shell, terminal, TTY/CI
@@ -69,10 +69,11 @@ optional feedback-flow dependency has a load-time issue.
 
 ### 6. Manager actions drill into form pages
 
-Feedback actions launched from the SF Pi Manager use a single in-Manager form
-for title, summary, expected behavior, and steps, followed by an in-page preview
-and submit state. They do not stack standalone input or confirmation prompts
-above the Manager detail page.
+Feedback actions launched from the SF Pi Manager use an in-Manager form overview
+for title, summary, expected behavior, and steps. Pressing Enter on a field opens
+a native Pi input/editor page with a real cursor; preview and submit states stay
+inside the same Manager flow. They do not stack standalone input or confirmation
+prompts above the Manager detail page.
 
 ## Behavior Matrix
 
@@ -100,6 +101,7 @@ extensions/sf-feedback/
     sanitize.ts             ← implementation module
     types.ts                ← implementation module
   tests/
+    feedback-wizard-panel.test.ts← unit / smoke test
     github.test.ts          ← unit / smoke test
     issue-template.test.ts  ← unit / smoke test
     sanitize.test.ts        ← unit / smoke test

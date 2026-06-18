@@ -1,7 +1,17 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/** In-Manager form + preview page for SF Feedback issue drafts. */
+/** In-Manager form overview + native field editor for SF Feedback issue drafts. */
 import type { Theme } from "@earendil-works/pi-coding-agent";
-import { type Focusable, matchesKey, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
+import {
+  Editor,
+  Input,
+  type Component,
+  type EditorTheme,
+  type Focusable,
+  type TUI,
+  matchesKey,
+  truncateToWidth,
+  visibleWidth,
+} from "@earendil-works/pi-tui";
 import type { ConfigPanelResult } from "../../../catalog/registry.ts";
 import { sanitizeText } from "./sanitize.ts";
 import type { FeedbackDraft, IssueKind } from "./types.ts";
@@ -23,6 +33,7 @@ interface FormField {
   label: string;
   help: string;
   placeholder: string;
+  multiline: boolean;
 }
 
 const FORM_FIELDS: FormField[] = [
@@ -31,34 +42,41 @@ const FORM_FIELDS: FormField[] = [
     label: "Title",
     help: "Short GitHub issue title",
     placeholder: "Briefly name the issue",
+    multiline: false,
   },
   {
     key: "summary",
     label: "What happened",
     help: "Important details for maintainers",
     placeholder: "Describe the behavior or request",
+    multiline: true,
   },
   {
     key: "expected",
     label: "Expected",
     help: "What should have happened instead",
     placeholder: "Describe the desired behavior",
+    multiline: true,
   },
   {
     key: "steps",
     label: "Steps / context",
     help: "Reproduction steps or useful context",
     placeholder: "1. Start here",
+    multiline: true,
   },
 ];
 
-type Mode = "form" | "preparing" | "preview" | "submitting" | "result";
+type Mode = "form" | "edit" | "preparing" | "preview" | "submitting" | "result";
+type FieldEditor = Component &
+  Focusable & { getValue?: () => string; getExpandedText?: () => string };
 
 export class FeedbackWizardPanel implements Focusable {
-  focused = false;
-
+  private _focused = false;
   private mode: Mode = "form";
   private cursor = 0;
+  private editingField: FormField | undefined;
+  private editor: FieldEditor | undefined;
   private fields: Record<FormField["key"], string> = {
     title: "",
     summary: "",
@@ -69,8 +87,17 @@ export class FeedbackWizardPanel implements Focusable {
   private result: FeedbackSubmitResult | undefined;
   private error: string | undefined;
 
+  get focused(): boolean {
+    return this._focused;
+  }
+  set focused(value: boolean) {
+    this._focused = value;
+    if (this.editor) this.editor.focused = value;
+  }
+
   constructor(
     private readonly theme: Theme,
+    private readonly tui: TUI,
     private readonly kind: IssueKind,
     private readonly prepare: (draft: FeedbackDraft) => Promise<PreparedFeedbackPreview>,
     private readonly submit: (preview: PreparedFeedbackPreview) => Promise<FeedbackSubmitResult>,
@@ -79,6 +106,11 @@ export class FeedbackWizardPanel implements Focusable {
 
   handleInput(data: string): void {
     if (this.mode === "preparing" || this.mode === "submitting") return;
+
+    if (this.mode === "edit") {
+      this.handleEditInput(data);
+      return;
+    }
 
     if (matchesKey(data, "escape") || data === "q") {
       this.done(undefined);
@@ -107,25 +139,17 @@ export class FeedbackWizardPanel implements Focusable {
       this.moveCursor(1);
       return;
     }
-    if (data === "s" || data === "S") {
-      void this.preparePreview();
-      return;
-    }
     if (matchesKey(data, "enter") || matchesKey(data, "return")) {
-      if (this.cursor < FORM_FIELDS.length - 1) this.moveCursor(1);
-      else void this.preparePreview();
+      this.openFieldEditor();
       return;
     }
-    if (matchesKey(data, "backspace") || data === "\u007f") {
-      this.editCurrent((value) => value.slice(0, -1));
-      return;
-    }
-    if (data.length === 1 && data >= " " && data !== "\u007f") {
-      this.editCurrent((value) => `${value}${data}`);
+    if (data === "p" || data === "P" || data === "s" || data === "S") {
+      void this.preparePreview();
     }
   }
 
   renderContent(width: number): string[] {
+    if (this.mode === "edit") return this.renderEdit(width);
     if (this.mode === "preview") return this.renderPreview(width);
     if (this.mode === "result") return this.renderResult(width);
     if (this.mode === "preparing" || this.mode === "submitting") return this.renderBusy();
@@ -136,26 +160,34 @@ export class FeedbackWizardPanel implements Focusable {
     return this.renderContent(width);
   }
 
-  invalidate(): void {}
+  invalidate(): void {
+    this.editor?.invalidate?.();
+  }
 
   private renderForm(width: number): string[] {
     const t = this.theme;
     const fieldWidth = Math.max(24, Math.floor(width * 0.22));
-    const valueWidth = Math.max(20, width - fieldWidth - 8);
+    const valueWidth = Math.max(20, width - fieldWidth - 12);
     const lines = [
       ` ${t.fg("accent", t.bold(`${labelForKind(this.kind)} feedback`))}  ${t.fg("muted", "Form")}`,
-      ` ${t.fg("dim", "Fill the fields on this page, then press S to preview.")}`,
+      ` ${t.fg("dim", "Review all fields here. Press Enter to edit a field with a native editor.")}`,
       "",
     ];
 
     for (let i = 0; i < FORM_FIELDS.length; i++) {
       const field = FORM_FIELDS[i]!;
       const selected = i === this.cursor;
-      const value = this.fields[field.key] || t.fg("muted", field.placeholder);
+      const value = this.fields[field.key].trim();
+      const complete =
+        field.key === "title" ? value.length > 0 : value.length > 0 && value !== "1.";
+      const status = complete ? t.fg("success", "✓") : t.fg("muted", "○");
       const cursor = selected ? t.fg("accent", "›") : " ";
       const label = selected ? t.fg("accent", field.label) : t.fg("text", field.label);
-      lines.push(` ${cursor} ${pad(label, fieldWidth)} ${truncateToWidth(value, valueWidth, "…")}`);
-      lines.push(`   ${t.fg("dim", field.help)}`);
+      const renderedValue = value
+        ? truncateToWidth(value, valueWidth, "…")
+        : t.fg("muted", field.placeholder);
+      lines.push(` ${cursor} ${status} ${pad(label, fieldWidth)} ${renderedValue}`);
+      if (selected) lines.push(`     ${t.fg("dim", field.help)}`);
     }
 
     if (this.error) {
@@ -163,8 +195,24 @@ export class FeedbackWizardPanel implements Focusable {
       lines.push(` ${t.fg("error", this.error)}`);
     }
     lines.push("");
-    lines.push(` ${t.fg("dim", "↑/↓ fields · type to edit · Enter next · S preview · Esc back")}`);
+    lines.push(` ${t.fg("dim", "↑/↓ fields · Enter edit field · P preview · Esc back")}`);
     return lines;
+  }
+
+  private renderEdit(width: number): string[] {
+    const t = this.theme;
+    const field = this.editingField;
+    if (!field || !this.editor) return this.renderForm(width);
+    this.editor.focused = this.focused;
+    const editorRows = this.editor.render(Math.max(20, width - 4));
+    return [
+      ` ${t.fg("accent", t.bold(`${labelForKind(this.kind)} feedback`))}  ${t.fg("muted", field.label)}`,
+      ` ${t.fg("dim", field.help)}`,
+      "",
+      ...editorRows.map((line) => ` ${line}`),
+      "",
+      ` ${t.fg("dim", "Enter save field · Esc cancel field edit")}`,
+    ];
   }
 
   private renderPreview(width: number): string[] {
@@ -219,15 +267,58 @@ export class FeedbackWizardPanel implements Focusable {
     ];
   }
 
+  private handleEditInput(data: string): void {
+    if (matchesKey(data, "escape")) {
+      this.closeEditor(false);
+      return;
+    }
+    const field = this.editingField;
+    if (field && !field.multiline && (matchesKey(data, "enter") || matchesKey(data, "return"))) {
+      this.closeEditor(true);
+      return;
+    }
+    this.editor?.handleInput?.(data);
+  }
+
+  private openFieldEditor(): void {
+    const field = FORM_FIELDS[this.cursor] ?? FORM_FIELDS[0]!;
+    this.editingField = field;
+    this.error = undefined;
+    if (field.multiline) {
+      const editor = new Editor(this.tui, editorTheme(this.theme));
+      editor.setText(this.fields[field.key]);
+      editor.onSubmit = (value) => {
+        this.fields[field.key] = sanitizeText(value);
+        this.closeEditor(false);
+      };
+      this.editor = editor;
+    } else {
+      const input = new Input();
+      input.setValue(this.fields[field.key]);
+      input.onSubmit = (value) => {
+        this.fields[field.key] = sanitizeText(value);
+        this.closeEditor(false);
+      };
+      input.onEscape = () => this.closeEditor(false);
+      this.editor = input;
+    }
+    this.mode = "edit";
+    this.editor.focused = this.focused;
+  }
+
+  private closeEditor(save: boolean): void {
+    if (save && this.editingField && this.editor) {
+      const value = this.editor.getExpandedText?.() ?? this.editor.getValue?.() ?? "";
+      this.fields[this.editingField.key] = sanitizeText(value);
+    }
+    this.editor = undefined;
+    this.editingField = undefined;
+    this.mode = "form";
+  }
+
   private moveCursor(delta: -1 | 1): void {
     this.error = undefined;
     this.cursor = (this.cursor + delta + FORM_FIELDS.length) % FORM_FIELDS.length;
-  }
-
-  private editCurrent(update: (value: string) => string): void {
-    const field = FORM_FIELDS[this.cursor] ?? FORM_FIELDS[0]!;
-    this.fields[field.key] = update(this.fields[field.key]);
-    this.error = undefined;
   }
 
   private async preparePreview(): Promise<void> {
@@ -273,12 +364,26 @@ export class FeedbackWizardPanel implements Focusable {
 
 export function createFeedbackWizardPanel(
   theme: Theme,
+  tui: TUI,
   kind: IssueKind,
   prepare: (draft: FeedbackDraft) => Promise<PreparedFeedbackPreview>,
   submit: (preview: PreparedFeedbackPreview) => Promise<FeedbackSubmitResult>,
   done: (result: ConfigPanelResult | undefined) => void,
 ): FeedbackWizardPanel {
-  return new FeedbackWizardPanel(theme, kind, prepare, submit, done);
+  return new FeedbackWizardPanel(theme, tui, kind, prepare, submit, done);
+}
+
+function editorTheme(theme: Theme): EditorTheme {
+  return {
+    borderColor: (text) => theme.fg("accent", text),
+    selectList: {
+      selectedPrefix: (text) => theme.fg("accent", text),
+      selectedText: (text) => theme.fg("accent", text),
+      description: (text) => theme.fg("muted", text),
+      scrollInfo: (text) => theme.fg("dim", text),
+      noMatch: (text) => theme.fg("warning", text),
+    },
+  };
 }
 
 function labelForKind(kind: IssueKind): string {
