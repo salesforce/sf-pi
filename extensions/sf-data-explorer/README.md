@@ -33,9 +33,8 @@ Extension loads
   └─ does not call any Salesforce API on the boot path
 
 /sf-data-explorer
-  ├─ when sf-pi common helpers are available, opens the standard command panel
-  │   with Open SOQL / Open SOSL / Open Data 360 SQL / Help / Close
-  └─ otherwise falls back to a direct mode picker
+  ├─ UI available + no args → open SF Data Explorer in the SF Pi Manager
+  └─ selected Manager action / explicit subcommand
 
 /sf-data-explorer <mode> [object] [target-org]
   ├─ lazy-loads sf-pi shared Salesforce connection/REST helpers (connFromAlias,
@@ -56,21 +55,21 @@ Extension loads
 
 ## Behavior Matrix
 
-| Event/Trigger                           | Condition                            | Result                                                                  |
-| --------------------------------------- | ------------------------------------ | ----------------------------------------------------------------------- |
-| extension load                          | pi version supported                 | Register `/sf-data-explorer`; no Salesforce probe                       |
-| `session_start`                         | extension enabled                    | Clear local explorer cache and transport cache                          |
-| `session_shutdown`                      | extension enabled                    | Clear local explorer cache and transport cache                          |
-| `/sf-data-explorer`                     | sf-pi common helpers available       | Open standard command panel (Open SOQL / SOSL / SQL / Help / lifecycle) |
-| `/sf-data-explorer`                     | standalone                           | Open direct mode picker                                                 |
-| `/sf-data-explorer soql [object] [org]` | explicit                             | Load SOQL catalog, optionally deep-link to object, open explorer        |
-| `/sf-data-explorer sosl [object] [org]` | explicit                             | Load SOSL searchable catalog, optionally deep-link, open explorer       |
-| `/sf-data-explorer sql [entity] [org]`  | explicit                             | Load Data 360 DMO+DLO catalog, optionally deep-link, open explorer      |
-| `/sf-data-explorer <mode> refresh`      | explicit                             | Force-refresh the catalog past cache                                    |
-| `r` (run) in TUI                        | query text validated as read-only    | Execute query against `/query`, `/search`, or `/ssot/query-sql`         |
-| `r` (run) in TUI                        | query text fails read-only validator | Refuse to execute; show validator message                               |
-| `s` (save) in TUI                       | explicit                             | Save current result as JSON/CSV under `.sf-data-explorer/exports/`      |
-| `c` (copy) in TUI                       | explicit                             | Copy current query text into the host editor                            |
+| Event/Trigger                           | Condition                            | Result                                                             |
+| --------------------------------------- | ------------------------------------ | ------------------------------------------------------------------ |
+| extension load                          | pi version supported                 | Register `/sf-data-explorer`; no Salesforce probe                  |
+| `session_start`                         | extension enabled                    | Clear local explorer cache and transport cache                     |
+| `session_shutdown`                      | extension enabled                    | Clear local explorer cache and transport cache                     |
+| `/sf-data-explorer`                     | UI available + no args               | Open SF Data Explorer in the SF Pi Manager                         |
+| `/sf-data-explorer`                     | direct internal fallback             | Open direct mode picker                                            |
+| `/sf-data-explorer soql [object] [org]` | explicit                             | Load SOQL catalog, optionally deep-link to object, open explorer   |
+| `/sf-data-explorer sosl [object] [org]` | explicit                             | Load SOSL searchable catalog, optionally deep-link, open explorer  |
+| `/sf-data-explorer sql [entity] [org]`  | explicit                             | Load Data 360 DMO+DLO catalog, optionally deep-link, open explorer |
+| `/sf-data-explorer <mode> refresh`      | explicit                             | Force-refresh the catalog past cache                               |
+| `r` (run) in TUI                        | query text validated as read-only    | Execute query against `/query`, `/search`, or `/ssot/query-sql`    |
+| `r` (run) in TUI                        | query text fails read-only validator | Refuse to execute; show validator message                          |
+| `s` (save) in TUI                       | explicit                             | Save current result as JSON/CSV under `.sf-data-explorer/exports/` |
+| `c` (copy) in TUI                       | explicit                             | Copy current query text into the host editor                       |
 
 ## File Structure
 

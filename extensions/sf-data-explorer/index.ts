@@ -1,15 +1,15 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import { BorderedLoader } from "@earendil-works/pi-coding-agent";
-import { openCommandPanel } from "../../lib/common/command-panel.ts";
-import {
-  buildToggleExtensionAction,
-  isLifecycleToggleAction,
-  LIFECYCLE_GROUP,
-  performToggleExtension,
-} from "../../lib/common/extension-toggle.ts";
-import { openInfoPanel } from "../../lib/common/info-panel.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
+import {
+  openExtensionInManager,
+  type SfPiManagerOpenRoute,
+} from "../../lib/common/manager-deep-link.ts";
+import {
+  registerManagerDetailActions,
+  type ManagerDetailAction,
+} from "../../lib/common/manager-actions.ts";
 import { withSafeCommandHandler } from "../../lib/common/safe-command-handler.ts";
 import { clearExplorerCache, cacheStatus } from "./lib/cache.ts";
 import {
@@ -34,6 +34,8 @@ const COMMAND = "sf-data-explorer";
 export default function sfDataExplorer(pi: ExtensionAPI) {
   if (!requirePiVersion(pi, "sf-data-explorer")) return;
 
+  registerManagerDetailActions(pi, COMMAND, buildDataExplorerManagerActions(pi));
+
   pi.on("session_start", () => {
     clearExplorerCache();
     clearSfDataExplorerTransportCacheIfInitialized();
@@ -50,7 +52,13 @@ export default function sfDataExplorer(pi: ExtensionAPI) {
         .filter((v) => v.startsWith(prefix))
         .map((value) => ({ value, label: value })),
     handler: async (args, ctx) => {
-      await withSafeCommandHandler(ctx, COMMAND, () => handleCommand(pi, ctx, args || ""));
+      await withSafeCommandHandler(ctx, COMMAND, async () => {
+        if (!(args || "").trim() && ctx.hasUI) {
+          await openDataExplorerInManager(pi, ctx, "detail");
+          return;
+        }
+        await handleCommand(pi, ctx, args || "");
+      });
     },
   });
 }
@@ -73,9 +81,9 @@ async function handleCommand(
     return;
   }
   if (!parsed.mode && !args.trim()) {
-    const panelMode = await openSfDataExplorerPanel(pi, ctx, parsed.org);
-    if (!panelMode) return;
-    parsed.mode = panelMode;
+    const pickedMode = await pickMode(ctx);
+    if (!pickedMode) return;
+    parsed.mode = pickedMode;
   }
   const mode = parsed.mode ?? (await pickMode(ctx));
   if (!mode) return;
@@ -87,84 +95,62 @@ async function handleCommand(
   }
 }
 
-async function openSfDataExplorerPanel(
+type DataExplorerManagerActionId = "open.soql" | "open.sosl" | "open.sql" | "help";
+
+const DATA_EXPLORER_MANAGER_ACTIONS: Array<{
+  id: DataExplorerManagerActionId;
+  label: string;
+  description: string;
+  args: string;
+}> = [
+  {
+    id: "open.soql",
+    label: "Open SOQL Explorer",
+    description: "Browse queryable core Salesforce sObjects, select fields, edit/run SOQL.",
+    args: "soql",
+  },
+  {
+    id: "open.sosl",
+    label: "Open SOSL Explorer",
+    description: "Browse searchable sObjects, build/edit/run SOSL searches.",
+    args: "sosl",
+  },
+  {
+    id: "open.sql",
+    label: "Open Data 360 SQL Explorer",
+    description: "Browse Data 360 DMO/DLO metadata, select fields, edit/run Data 360 SQL.",
+    args: "sql",
+  },
+  {
+    id: "help",
+    label: "Show help",
+    description: "Show command examples, keybindings, and read-only safety notes.",
+    args: "help",
+  },
+];
+
+function buildDataExplorerManagerActions(pi: ExtensionAPI): ManagerDetailAction[] {
+  return DATA_EXPLORER_MANAGER_ACTIONS.map((action) => ({
+    id: action.id,
+    label: action.label,
+    description: action.description,
+    run: (ctx) => handleCommand(pi, ctx, action.args),
+  }));
+}
+
+async function openDataExplorerInManager(
   pi: ExtensionAPI,
   ctx: ExtensionCommandContext,
-  org: string,
-): Promise<ExplorerMode | undefined> {
-  const toggle = buildToggleExtensionAction({
-    extensionId: "sf-data-explorer",
-    cwd: ctx.cwd,
-  });
-  const actions = [
-    {
-      value: "open.soql",
-      label: "Open SOQL Explorer",
-      description: "Browse queryable core Salesforce sObjects, select fields, edit/run SOQL.",
-      group: "Open",
-    },
-    {
-      value: "open.sosl",
-      label: "Open SOSL Explorer",
-      description: "Browse searchable sObjects, build/edit/run SOSL searches.",
-      group: "Open",
-    },
-    {
-      value: "open.sql",
-      label: "Open Data 360 SQL Explorer",
-      description: "Browse Data 360 DMO/DLO metadata, select fields, edit/run Data 360 SQL.",
-      group: "Open",
-    },
-    {
-      value: "help",
-      label: "Show help",
-      description: "Show command examples, keybindings, and read-only safety notes.",
-      group: "Reference",
-    },
-    {
-      value: "close",
-      label: "Close",
-      description: "Dismiss this panel.",
-      group: LIFECYCLE_GROUP,
-    },
-    ...(toggle ? [toggle] : []),
-  ];
-
-  const action = await openCommandPanel(ctx, {
-    title: "SF Data Explorer",
-    subtitle: "Read-only SOQL, SOSL, and Data 360 SQL explorer.",
-    statusLines: [
-      `Target org: ${org}`,
-      "Read-only: describe, query, search, and Data 360 SELECT SQL only.",
-      "Tip: pass object/table deep links, e.g. /sf-data-explorer soql Account my-org",
-    ],
-    actions,
-    closeValue: "close",
-    // Lifecycle toggle calls ctx.reload() — must close panel first so the
-    // ctx.ui.custom() promise resolves before the runtime is invalidated.
-    closeBeforeAction: isLifecycleToggleAction,
-    helpText: "↑↓ move · type filter · Enter select · Esc / type 'exit' close",
+  view: NonNullable<SfPiManagerOpenRoute["view"]>,
+): Promise<void> {
+  const opened = await openExtensionInManager(pi, ctx, {
+    extensionId: COMMAND,
+    view,
+    actions: buildDataExplorerManagerActions(pi),
   });
 
-  switch (action) {
-    case "open.soql":
-      return "soql";
-    case "open.sosl":
-      return "sosl";
-    case "open.sql":
-      return "sql";
-    case "help":
-      await openInfoPanel(ctx, {
-        title: "SF Data Explorer help",
-        body: buildHelpText(),
-        severity: "info",
-      });
-      return openSfDataExplorerPanel(pi, ctx, org);
-    case "lifecycle.toggle":
-      await performToggleExtension(ctx, "sf-data-explorer");
-      return undefined;
-    default:
-      return undefined;
+  if (!opened) {
+    ctx.ui.notify("SF Pi Manager is unavailable. Try /sf-pi open sf-data-explorer.", "warning");
   }
 }
 
