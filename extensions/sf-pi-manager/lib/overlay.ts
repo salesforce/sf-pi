@@ -21,6 +21,7 @@
 import {
   type Component,
   type Focusable,
+  type TUI,
   matchesKey,
   truncateToWidth,
   visibleWidth,
@@ -164,6 +165,7 @@ export class SfPiOverlayComponent implements Focusable {
     private readonly getTerminalRows: () => number,
     private readonly done: (result: OverlayResult | undefined) => void,
     private readonly commandCtx: ExtensionCommandContext,
+    private readonly tui: TUI,
     private readonly getExtensionActions: (extensionId: string) => ManagerDetailAction[],
     private readonly runManagerAction: (action: ManagerDetailAction) => Promise<void> | void,
     initialRoute?: OverlayInitialRoute,
@@ -601,6 +603,7 @@ export class SfPiOverlayComponent implements Focusable {
         this.returnToDetail();
       },
       this.commandCtx,
+      this.tui,
     ) as ConfigPanel;
     this.activePanelExtId = extensionId;
   }

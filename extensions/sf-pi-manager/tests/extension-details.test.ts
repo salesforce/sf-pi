@@ -66,6 +66,7 @@ describe("extension detail helpers", () => {
       () => 40,
       () => undefined,
       {} as never,
+      {} as never,
       () => [],
       () => undefined,
       { extensionId: "sf-herdr", view: "detail" },
@@ -104,6 +105,7 @@ describe("extension detail helpers", () => {
         result = value;
       },
       {} as never,
+      {} as never,
       () => [action],
       () => undefined,
       { extensionId: "sf-feedback", view: "detail" },
@@ -132,6 +134,7 @@ describe("extension detail helpers", () => {
       () => {
         closed = true;
       },
+      {} as never,
       {} as never,
       () => [],
       () => undefined,

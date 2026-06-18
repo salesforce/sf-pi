@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Shared Manager Surface action discovery for extension-owned detail actions. */
 import type { ExtensionAPI, ExtensionCommandContext, Theme } from "@earendil-works/pi-coding-agent";
-import type { Component, Focusable } from "@earendil-works/pi-tui";
+import type { Component, Focusable, TUI } from "@earendil-works/pi-tui";
 import type { ConfigPanelResult } from "../../catalog/registry.ts";
 
 export const SF_PI_MANAGER_ACTIONS_EVENT = "sf-pi-manager:actions";
@@ -17,6 +17,7 @@ export type ManagerDetailActionPanelFactory = (
   scope: "global" | "project",
   done: (result: ConfigPanelResult | undefined) => void,
   ctx: ExtensionCommandContext,
+  tui: TUI,
 ) => ManagerDetailActionPanel;
 
 export interface ManagerDetailAction {
