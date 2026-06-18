@@ -92,8 +92,9 @@ Stored at:
 The file is managed through **SF Pi Manager → SF Herdr → Settings** or directly
 with `/sf-herdr settings` in TUI mode. The settings panel marks unsaved changes,
 uses a bullet beside changed fields, and writes only after `S` or `Enter`.
-`Esc` / `q` leaves the page without saving. The JSON file is recoverable, but
-not positioned as a primary hand-editable Pi setting.
+Saving stays on the settings page and changes the status back to `Saved`; `Esc`
+/ `q` leaves the page, discarding only unsaved drafts. The JSON file is
+recoverable, but not positioned as a primary hand-editable Pi setting.
 
 ## File Structure
 

@@ -88,6 +88,36 @@ export default function sfHerdr(pi: ExtensionAPI): void {
     planToolRegistered = true;
   }
 
+  pi.registerCommand(COMMAND_NAME, {
+    description: "SF Herdr — dynamic Herdr lane planning, profiles, and status",
+    getArgumentCompletions: (prefix) => {
+      const lower = prefix.toLowerCase();
+      const items = COMMAND_ACTIONS.filter((action) => action.value.startsWith(lower)).map(
+        (action) => ({
+          value: action.value,
+          label: action.value,
+          description: action.description,
+        }),
+      );
+      return items.length > 0 ? items : null;
+    },
+    handler: async (args, ctx) => {
+      await withSafeCommandHandler(ctx, COMMAND_NAME, async () => {
+        const tokens = args.trim().split(/\s+/).filter(Boolean);
+        if (tokens.length === 0 && ctx.hasUI) {
+          await openHerdrInManager(ctx, "detail");
+          return;
+        }
+        const action = (tokens[0] as SfHerdrAction | undefined) ?? "status";
+        if (action === "settings" && ctx.hasUI) {
+          await openHerdrInManager(ctx, "settings");
+          return;
+        }
+        await handleAction(ctx, action, false);
+      });
+    },
+  });
+
   registerExtensionDoctor(EXTENSION_ID, async () => ({
     extensionId: EXTENSION_ID,
     title: "SF Herdr",
@@ -130,36 +160,6 @@ export default function sfHerdr(pi: ExtensionAPI): void {
     if (!isSfPiExtensionEnabled(event.cwd, EXTENSION_ID)) return;
     if (event.reason === "reload") planToolRegistered = false;
     ensureToolRegistered();
-  });
-
-  pi.registerCommand(COMMAND_NAME, {
-    description: "SF Herdr — dynamic Herdr lane planning, profiles, and status",
-    getArgumentCompletions: (prefix) => {
-      const lower = prefix.toLowerCase();
-      const items = COMMAND_ACTIONS.filter((action) => action.value.startsWith(lower)).map(
-        (action) => ({
-          value: action.value,
-          label: action.value,
-          description: action.description,
-        }),
-      );
-      return items.length > 0 ? items : null;
-    },
-    handler: async (args, ctx) => {
-      await withSafeCommandHandler(ctx, COMMAND_NAME, async () => {
-        const tokens = args.trim().split(/\s+/).filter(Boolean);
-        if (tokens.length === 0 && ctx.hasUI) {
-          await openHerdrInManager(ctx, "detail");
-          return;
-        }
-        const action = (tokens[0] as SfHerdrAction | undefined) ?? "status";
-        if (action === "settings" && ctx.hasUI) {
-          await openHerdrInManager(ctx, "settings");
-          return;
-        }
-        await handleAction(ctx, action, false);
-      });
-    },
   });
 
   function buildHerdrManagerActions(): ManagerDetailAction[] {

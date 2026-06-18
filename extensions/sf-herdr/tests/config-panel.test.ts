@@ -36,8 +36,8 @@ function makePanel(onDone: (value: unknown) => void = () => undefined): TestPane
 }
 
 describe("SF Herdr config panel", () => {
-  it("marks changes as unsaved, saves explicitly, and writes preferences once", () => {
-    let result: unknown;
+  it("marks changes as unsaved, saves explicitly, and stays on the settings page", () => {
+    let result: unknown = "not-called";
     const panel = makePanel((value) => {
       result = value;
     });
@@ -47,11 +47,12 @@ describe("SF Herdr config panel", () => {
     panel.handleInput(" ");
     const dirty = panel.renderContent(100).join("\n");
     expect(dirty).toContain("Unsaved changes");
-    expect(result).toBeUndefined();
+    expect(result).toBe("not-called");
 
     panel.handleInput("s");
 
-    expect(result).toEqual({ needsReload: true });
+    expect(result).toBe("not-called");
+    expect(panel.renderContent(100).join("\n")).toContain("Saved");
     const raw = JSON.parse(
       readFileSync(path.join(tmpDir, "sf-pi", "herdr", "preferences.json"), "utf-8"),
     );

@@ -36,6 +36,20 @@ describe("sf-herdr", () => {
     expect(typeof mod.default).toBe("function");
   });
 
+  it("registers the slash command before lifecycle wiring", async () => {
+    const mod = await import("../index.ts");
+    const pi = {
+      events: eventBus(),
+      on: vi.fn(() => {
+        throw new Error("lifecycle registration failed");
+      }),
+      registerCommand: vi.fn(),
+    };
+
+    expect(() => mod.default(pi as never)).toThrow("lifecycle registration failed");
+    expect(pi.registerCommand).toHaveBeenCalledWith("sf-herdr", expect.any(Object));
+  });
+
   it("routes the no-args UI command to the SF Pi Manager detail page", async () => {
     const mod = await import("../index.ts");
     const events = eventBus();

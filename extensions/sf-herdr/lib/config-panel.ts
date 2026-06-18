@@ -120,7 +120,6 @@ class SfHerdrConfigPanel implements Focusable {
 
   private save(): void {
     if (!this.isDirty()) {
-      this.done(undefined);
       return;
     }
     const preferences = readSfHerdrPreferences();
@@ -134,7 +133,10 @@ class SfHerdrConfigPanel implements Focusable {
         preserveFocus: this.preserveFocus,
       },
     });
-    this.done({ needsReload: true });
+    this.savedWorkflowMode = this.workflowMode;
+    this.savedLaneStyle = this.laneStyle;
+    this.savedSplitDirection = this.splitDirection;
+    this.savedPreserveFocus = this.preserveFocus;
   }
 }
 

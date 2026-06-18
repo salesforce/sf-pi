@@ -518,7 +518,7 @@
     "entry": "extensions/sf-herdr/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 776
+    "srcLoc": 778
   },
   {
     "id": "sf-llm-gateway-internal",
