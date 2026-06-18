@@ -5,7 +5,7 @@
 SF Code Analyzer gives pi a Salesforce Code Analyzer workflow surface. It wraps
 the supported `sf code-analyzer` CLI commands with:
 
-- `/sf-code-analyzer` status, doctor, and help panel
+- `/sf-code-analyzer` shortcut into the SF Pi Manager detail page, with status, doctor, setup, automation, ApexGuru, recipes, and help actions
 - one `code_analyzer` LLM tool with `doctor`, `run`, `rules`, `config`,
   `apexguru`, and `last_report` actions
 - session-scoped report artifacts outside the project tree by default
@@ -183,7 +183,7 @@ than your global default.
 | extension load                | always            | Register `/sf-code-analyzer` and `/sf-pi doctor` provider.               |
 | session_start                 | extension enabled | Register the `code_analyzer` tool.                                       |
 | session_shutdown              | always            | Clear the tool-registration latch.                                       |
-| `/sf-code-analyzer`           | interactive       | Open the status & controls panel.                                        |
+| `/sf-code-analyzer`           | interactive       | Open SF Code Analyzer in the SF Pi Manager.                              |
 | `/sf-code-analyzer status`    | any mode          | Print extension and tool status.                                         |
 | `/sf-code-analyzer doctor`    | any mode          | Probe Salesforce CLI, Code Analyzer plugin, Java, and Python.            |
 | `code_analyzer` `doctor`      | agent tool        | Return setup readiness to the LLM.                                       |
@@ -197,7 +197,7 @@ than your global default.
 
 | Command                    | Description                                                                 |
 | -------------------------- | --------------------------------------------------------------------------- |
-| `/sf-code-analyzer`        | Open the status & controls panel.                                           |
+| `/sf-code-analyzer`        | Open SF Code Analyzer in the SF Pi Manager.                                 |
 | `/sf-code-analyzer status` | Print extension and tool status.                                            |
 | `/sf-code-analyzer doctor` | Check Salesforce CLI, Code Analyzer plugin, Java, and Python prerequisites. |
 | `/sf-code-analyzer help`   | Print command and tool usage.                                               |
@@ -239,6 +239,7 @@ extensions/sf-code-analyzer/
     display.ts              ← implementation module
     extension-doctor.ts     ← implementation module
     file-classify.ts        ← implementation module
+    manager-action-panels.ts← implementation module
     readiness.ts            ← implementation module
     recipes.ts              ← implementation module
     report-filter.ts        ← implementation module

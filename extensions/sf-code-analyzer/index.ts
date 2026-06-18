@@ -20,7 +20,6 @@
  *   code_analyzer action=run  | Run sf code-analyzer run, parse JSON artifact
  */
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
-import { type CommandPanelState, openCommandPanel } from "../../lib/common/command-panel.ts";
 import {
   type SfPiCommandAction,
   formatHelpFromActions,
@@ -30,12 +29,13 @@ import {
 import { openInfoPanel, type InfoPanelSeverity } from "../../lib/common/info-panel.ts";
 import { withSafeCommandHandler } from "../../lib/common/safe-command-handler.ts";
 import {
-  buildToggleExtensionAction,
-  isLifecycleToggleAction,
-  LIFECYCLE_GROUP,
-  performToggleExtension,
-  type LifecycleActionId,
-} from "../../lib/common/extension-toggle.ts";
+  openExtensionInManager,
+  type SfPiManagerOpenRoute,
+} from "../../lib/common/manager-deep-link.ts";
+import {
+  registerManagerDetailActions,
+  type ManagerDetailAction,
+} from "../../lib/common/manager-actions.ts";
 import { buildExecFn } from "../../lib/common/exec-adapter.ts";
 import { registerExtensionDoctor } from "../../lib/common/doctor/registry.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
@@ -61,6 +61,7 @@ import {
   type EffectiveCodeAnalyzerSettings,
 } from "./lib/settings.ts";
 import { registerCodeAnalyzerTranscriptRenderer } from "./lib/transcript.ts";
+import { createCodeAnalyzerConfirmPanel } from "./lib/manager-action-panels.ts";
 
 const COMMAND_NAME = "sf-code-analyzer";
 
@@ -81,9 +82,7 @@ type CodeAnalyzerPanelAction =
   | "apexguru-auto-global-off"
   | "apexguru-setup-help"
   | "apexguru-setup-start"
-  | "help"
-  | "close"
-  | LifecycleActionId;
+  | "help";
 
 const CODE_ANALYZER_ACTIONS: SfPiCommandAction<CodeAnalyzerPanelAction>[] = [
   {
@@ -197,12 +196,6 @@ const CODE_ANALYZER_ACTIONS: SfPiCommandAction<CodeAnalyzerPanelAction>[] = [
     description: "Print command usage and Code Analyzer workflow guidance.",
     group: "Reference",
   },
-  {
-    value: "close",
-    label: "Close",
-    description: "Dismiss this panel.",
-    group: LIFECYCLE_GROUP,
-  },
 ];
 
 export default function sfCodeAnalyzer(pi: ExtensionAPI) {
@@ -219,6 +212,7 @@ export default function sfCodeAnalyzer(pi: ExtensionAPI) {
 
   registerCodeAnalyzerTranscriptRenderer(pi);
   registerDeferredCodeAnalyzerAutoScan(pi, exec);
+  registerManagerDetailActions(pi, "sf-code-analyzer", buildCodeAnalyzerManagerActions(pi));
 
   pi.on("session_start", (event, ctx) => {
     if (event.reason === "reload") toolsRegistered = false;
@@ -254,9 +248,40 @@ export default function sfCodeAnalyzer(pi: ExtensionAPI) {
   });
 }
 
-function buildActions(cwd: string): SfPiCommandAction<CodeAnalyzerPanelAction>[] {
-  const toggle = buildToggleExtensionAction({ extensionId: "sf-code-analyzer", cwd });
-  return toggle ? [...CODE_ANALYZER_ACTIONS, toggle] : CODE_ANALYZER_ACTIONS;
+function buildCodeAnalyzerManagerActions(pi: ExtensionAPI): ManagerDetailAction[] {
+  return CODE_ANALYZER_ACTIONS.map((action) => ({
+    id: action.value,
+    label: action.label,
+    description: action.description,
+    run: (ctx) => handleAction(pi, ctx, action.value, true),
+    ...(action.value === "setup"
+      ? {
+          createPanel: (theme, _cwd, _scope, done, ctx) =>
+            createCodeAnalyzerConfirmPanel({
+              theme,
+              title: "Install/update Code Analyzer plugin",
+              detail:
+                "This runs `sf plugins install code-analyzer` and changes your local Salesforce CLI plugin state.",
+              confirmLabel: "Install/update plugin",
+              onConfirm: () => setupCodeAnalyzerPlugin(pi, ctx),
+              done,
+            }),
+        }
+      : {}),
+    ...(action.value === "apexguru-setup-start"
+      ? {
+          createPanel: (theme, _cwd, _scope, done) =>
+            createCodeAnalyzerConfirmPanel({
+              theme,
+              title: "Start ApexGuru setup check with SF Browser",
+              detail: `${formatApexGuruSetupRunbook()}\n\nThis queues a normal agent follow-up that uses sf_browser tools visibly. No Setup enable/accept/save click should happen without a second explicit approval.`,
+              confirmLabel: "Queue browser setup check",
+              onConfirm: () => queueApexGuruBrowserSetup(pi),
+              done,
+            }),
+        }
+      : {}),
+  }));
 }
 
 async function handleCommand(
@@ -266,7 +291,7 @@ async function handleCommand(
 ): Promise<void> {
   const subcommand = args.trim().split(/\s+/)[0] ?? "";
   if (subcommand === "" && ctx.hasUI) {
-    await openPanel(pi, ctx);
+    await openCodeAnalyzerInManager(pi, ctx, "detail");
     return;
   }
   const action =
@@ -274,18 +299,19 @@ async function handleCommand(
   await handleAction(pi, ctx, action, false);
 }
 
-async function openPanel(pi: ExtensionAPI, ctx: ExtensionCommandContext): Promise<void> {
-  const state: CommandPanelState<CodeAnalyzerPanelAction> = {};
-  await openCommandPanel(ctx, {
-    title: "🧪 SF Code Analyzer — status & controls",
-    subtitle: "Run Salesforce Code Analyzer scans and inspect setup readiness.",
-    statusLines: () => buildPanelStatus(ctx),
-    actions: () => buildActions(ctx.cwd),
-    closeValue: "close",
-    state,
-    onAction: (action) => handleAction(pi, ctx, action, true),
-    closeBeforeAction: isLifecycleToggleAction,
+async function openCodeAnalyzerInManager(
+  pi: ExtensionAPI,
+  ctx: ExtensionCommandContext,
+  view: NonNullable<SfPiManagerOpenRoute["view"]>,
+): Promise<void> {
+  const opened = await openExtensionInManager(pi, ctx, {
+    extensionId: "sf-code-analyzer",
+    view,
+    actions: buildCodeAnalyzerManagerActions(pi),
   });
+  if (!opened) {
+    ctx.ui.notify("SF Pi Manager is unavailable. Try /sf-pi open sf-code-analyzer.", "warning");
+  }
 }
 
 function buildPanelStatus(ctx: ExtensionCommandContext): string[] {
@@ -306,11 +332,6 @@ async function handleAction(
   action: CodeAnalyzerPanelAction | string,
   fromPanel: boolean,
 ): Promise<void> {
-  if (action === "lifecycle.toggle") {
-    await performToggleExtension(ctx, "sf-code-analyzer");
-    return;
-  }
-
   if (action === "auto-scan-on" || action === "auto-scan-off") {
     const enabled = action === "auto-scan-on";
     const settings = writeCodeAnalyzerSetting(ctx.cwd, "project", "autoScan", enabled);
@@ -484,6 +505,15 @@ async function runSetupAction(
     return;
   }
 
+  const body = await setupCodeAnalyzerPlugin(pi, ctx);
+  await emitOutput(ctx, "SF Code Analyzer setup complete", body, "success", fromPanel);
+}
+
+async function setupCodeAnalyzerPlugin(
+  pi: ExtensionAPI,
+  ctx: ExtensionCommandContext,
+): Promise<string> {
+  const command = "sf plugins install code-analyzer";
   ctx.ui.setStatus("sf-code-analyzer", "Code Analyzer setup: installing plugin…");
   try {
     const result = await pi.exec("sf", ["plugins", "install", "code-analyzer"], {
@@ -492,21 +522,15 @@ async function runSetupAction(
     });
     const exec = buildExecFn(pi, ctx.cwd);
     const readiness = await refreshCodeAnalyzerReadiness(exec).catch(() => undefined);
-    await emitOutput(
-      ctx,
-      "SF Code Analyzer setup complete",
-      [
-        `Command: ${command}`,
-        `Exit code: ${result.code}`,
-        readiness ? `Readiness: ${readiness.summary}` : undefined,
-        result.stdout?.trim() ? `stdout:\n${result.stdout.trim()}` : undefined,
-        result.stderr?.trim() ? `stderr:\n${result.stderr.trim()}` : undefined,
-      ]
-        .filter(Boolean)
-        .join("\n\n"),
-      result.code === 0 ? "success" : "warning",
-      fromPanel,
-    );
+    return [
+      `Command: ${command}`,
+      `Exit code: ${result.code}`,
+      readiness ? `Readiness: ${readiness.summary}` : undefined,
+      result.stdout?.trim() ? `stdout:\n${result.stdout.trim()}` : undefined,
+      result.stderr?.trim() ? `stderr:\n${result.stderr.trim()}` : undefined,
+    ]
+      .filter(Boolean)
+      .join("\n\n");
   } finally {
     ctx.ui.setStatus("sf-code-analyzer", undefined);
   }
@@ -536,14 +560,18 @@ async function startApexGuruBrowserSetup(
     );
     return;
   }
-  pi.sendUserMessage(buildApexGuruBrowserFollowUp(), { deliverAs: "followUp" });
   await emitOutput(
     ctx,
     "ApexGuru setup check queued",
-    "Queued a visible agent follow-up to use SF Browser according to the ApexGuru setup runbook.",
+    queueApexGuruBrowserSetup(pi),
     "success",
     fromPanel,
   );
+}
+
+function queueApexGuruBrowserSetup(pi: ExtensionAPI): string {
+  pi.sendUserMessage(buildApexGuruBrowserFollowUp(), { deliverAs: "followUp" });
+  return "Queued a visible agent follow-up to use SF Browser according to the ApexGuru setup runbook.";
 }
 
 function scopedSettingText(
