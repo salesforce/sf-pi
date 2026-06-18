@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.193.0-2026-06-18",
-  "latestVersion": "0.193.0",
+  "revision": "release-0.194.0-2026-06-18",
+  "latestVersion": "0.194.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.193.0",
+      "id": "release-0.194.0",
       "kind": "update",
-      "title": "sf-pi v0.193.0 — sf-herdr: route command to manager surface",
+      "title": "sf-pi v0.194.0 — sf-data-explorer: route command to manager surface",
       "publishedAt": "2026-06-18T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.193.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.194.0",
       "severity": "info",
-      "body": "sf-herdr: route command to manager surface"
+      "body": "sf-data-explorer: route command to manager surface"
     },
     {
       "id": "pi-0.73-required",
