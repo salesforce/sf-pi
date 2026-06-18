@@ -11,6 +11,11 @@ import {
 } from "../lib/extension-details.ts";
 import { buildExtensionStates } from "../index.ts";
 import { SfPiOverlayComponent } from "../lib/overlay.ts";
+import {
+  iconForCommandGroup,
+  iconForExtension,
+  resolveUiGlyphs,
+} from "../../../lib/common/ui-glyphs.ts";
 
 const PACKAGE_ROOT = path.resolve(import.meta.dirname, "../../..");
 const stubTheme: Theme = {
@@ -73,7 +78,9 @@ describe("extension detail helpers", () => {
     );
 
     const rendered = overlay.render(120).join("\n");
-    expect(rendered).toContain("SF Herdr");
+    expect(rendered).toContain(
+      `${iconForExtension("sf-herdr", resolveUiGlyphs("/tmp/project"))} SF Herdr`,
+    );
     expect(rendered).toContain("Actions");
     expect(rendered).not.toContain("Bundle");
     expect(rendered).not.toContain("Capabilities");
@@ -117,9 +124,10 @@ describe("extension detail helpers", () => {
 
     const rendered = overlay.render(120).join("\n");
 
-    expect(rendered).toContain("Diagnostics");
-    expect(rendered).toContain("Setup");
-    expect(rendered).toContain("Lifecycle");
+    const glyphs = resolveUiGlyphs("/tmp/project");
+    expect(rendered).toContain(`${iconForCommandGroup("Diagnostics", glyphs)} Diagnostics`);
+    expect(rendered).toContain(`${iconForCommandGroup("Setup", glyphs)} Setup`);
+    expect(rendered).toContain(`${iconForCommandGroup("Lifecycle", glyphs)} Lifecycle`);
   });
 
   it("returns close-before-run manager actions after closing the overlay", () => {

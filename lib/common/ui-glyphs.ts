@@ -23,6 +23,15 @@ export interface UiGlyphs {
   scope: string;
   links: string;
   feedback: string;
+  browser: string;
+  evidence: string;
+  automation: string;
+  safety: string;
+  data: string;
+  agent: string;
+  lifecycle: string;
+  settings: string;
+  codeAnalyzer: string;
   success: string;
   info: string;
   warning: string;
@@ -45,6 +54,15 @@ const RICH: Omit<UiGlyphs, "mode"> = {
   scope: "◈",
   links: "🔗",
   feedback: "✎",
+  browser: "🌐",
+  evidence: "📸",
+  automation: "◉",
+  safety: "🛡",
+  data: "🔎",
+  agent: "🤖",
+  lifecycle: "◇",
+  settings: "⚙",
+  codeAnalyzer: "🧪",
   success: "✓",
   info: "ⓘ",
   warning: "⚠",
@@ -67,6 +85,15 @@ const ASCII: Omit<UiGlyphs, "mode"> = {
   scope: "#",
   links: "@",
   feedback: "+",
+  browser: "@",
+  evidence: "#",
+  automation: "o",
+  safety: "!",
+  data: "?",
+  agent: "a",
+  lifecycle: "-",
+  settings: "*",
+  codeAnalyzer: "ca",
   success: "+",
   info: "i",
   warning: "!",
@@ -83,6 +110,25 @@ export function resolveUiGlyphs(cwd: string): UiGlyphs {
 export function iconForCommandGroup(group: string, glyphs: UiGlyphs): string {
   const normalized = group.trim().toLowerCase();
   if (normalized.includes("scope")) return glyphs.scope;
+  if (normalized.includes("lifecycle")) return glyphs.lifecycle;
+  if (normalized.includes("setting")) return glyphs.settings;
+  if (normalized.includes("automation")) return glyphs.automation;
+  if (normalized.includes("apexguru") || normalized.includes("agent")) return glyphs.agent;
+  if (normalized.includes("browser")) return glyphs.browser;
+  if (normalized.includes("evidence") || normalized.includes("screenshot")) return glyphs.evidence;
+  if (
+    normalized.includes("safety") ||
+    normalized.includes("guardrail") ||
+    normalized.includes("approval") ||
+    normalized.includes("rule")
+  )
+    return glyphs.safety;
+  if (
+    normalized.includes("data") ||
+    normalized.includes("query") ||
+    normalized.includes("explorer")
+  )
+    return glyphs.data;
   if (normalized.includes("setup")) return glyphs.setup;
   if (normalized.includes("control")) return glyphs.controls;
   if (normalized.includes("troubleshoot")) return glyphs.troubleshooting;
@@ -95,6 +141,51 @@ export function iconForCommandGroup(group: string, glyphs: UiGlyphs): string {
   if (normalized.includes("link")) return glyphs.links;
   if (normalized.includes("status")) return glyphs.status;
   return glyphs.actions;
+}
+
+const EXTENSION_RICH_ICONS: Record<string, string> = {
+  "sf-devbar": "📊",
+  "sf-feedback": "✎",
+  "sf-herdr": "🐑",
+  "sf-data-explorer": "🔎",
+  "sf-guardrail": "🛡",
+  "sf-code-analyzer": "🧪",
+  "sf-browser": "🌐",
+  "sf-agentscript": "🤖",
+  "sf-data360": "◈",
+  "sf-slack": "💬",
+  "sf-llm-gateway-internal": "🔗",
+  "sf-skills": "📚",
+  "sf-welcome": "✨",
+  "sf-lsp": "◌",
+  "sf-ohana-spinner": "◐",
+  "sf-brain": "π",
+  "sf-pi-manager": "📦",
+};
+
+const EXTENSION_ASCII_ICONS: Record<string, string> = {
+  "sf-devbar": "db",
+  "sf-feedback": "fb",
+  "sf-herdr": "hd",
+  "sf-data-explorer": "dx",
+  "sf-guardrail": "gr",
+  "sf-code-analyzer": "ca",
+  "sf-browser": "br",
+  "sf-agentscript": "as",
+  "sf-data360": "d3",
+  "sf-slack": "sl",
+  "sf-llm-gateway-internal": "gw",
+  "sf-skills": "sk",
+  "sf-welcome": "hi",
+  "sf-lsp": "ls",
+  "sf-ohana-spinner": "sp",
+  "sf-brain": "bn",
+  "sf-pi-manager": "pi",
+};
+
+export function iconForExtension(extensionId: string, glyphs: UiGlyphs): string {
+  const icons = glyphs.mode === "ascii" ? EXTENSION_ASCII_ICONS : EXTENSION_RICH_ICONS;
+  return icons[extensionId] ?? glyphs.actions;
 }
 
 export function iconForSeverity(

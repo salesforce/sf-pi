@@ -34,6 +34,11 @@ import type {
 } from "../../../catalog/registry.ts";
 import type { ManagerDetailAction } from "../../../lib/common/manager-actions.ts";
 import {
+  iconForCommandGroup,
+  iconForExtension,
+  resolveUiGlyphs,
+} from "../../../lib/common/ui-glyphs.ts";
+import {
   buildExtensionDetailSummary,
   getExtensionStatus,
   getExtensionStatusLabel,
@@ -446,8 +451,12 @@ export class SfPiOverlayComponent implements Focusable {
     }
 
     const detail = buildExtensionDetailSummary(ext, this.packageRoot);
+    const glyphs = resolveUiGlyphs(this.cwd);
     const backHint = theme.fg("dim", "← Esc back");
-    const titleText = theme.fg("accent", theme.bold(ext.name));
+    const titleText = theme.fg(
+      "accent",
+      theme.bold(`${iconForExtension(ext.id, glyphs)} ${ext.name}`),
+    );
     const stateTag = this.renderStateTag(detail.status);
     const categoryTag = theme.fg("muted", `[${ext.category}]`);
     const headerLeft = ` ${backHint}  ${titleText}`;
@@ -485,7 +494,11 @@ export class SfPiOverlayComponent implements Focusable {
       const group = action.group ?? "Actions";
       if (group !== currentGroup) {
         if (currentGroup !== undefined) lines.push(row(""));
-        lines.push(row(` ${theme.fg("muted", theme.bold(group))}`));
+        lines.push(
+          row(
+            ` ${theme.fg("muted", theme.bold(`${iconForCommandGroup(group, glyphs)} ${group}`))}`,
+          ),
+        );
         currentGroup = group;
       }
       const selected = i === actionIndex;
