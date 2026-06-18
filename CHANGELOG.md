@@ -517,6 +517,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.194.5](https://github.com/salesforce/sf-pi/compare/v0.194.4...v0.194.5) (2026-06-18)
+
+
+### Bug Fixes
+
+* **sf-feedback:** lazy load feedback flow ([34b626f](https://github.com/salesforce/sf-pi/commit/34b626f88f9cfe051bb150efdcc23d8829ddbfaa))
+
 ## [0.194.4](https://github.com/salesforce/sf-pi/compare/v0.194.3...v0.194.4) (2026-06-18)
 
 
