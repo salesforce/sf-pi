@@ -104,24 +104,22 @@ import { readSlackRuntimeCache, writeSlackRuntimeCache } from "./lib/runtime-cac
 import { classifySlackStatus, slackStatusLabel } from "./lib/status.ts";
 import { clearSlackStatus, setSlackStatus } from "../../lib/common/slack-status/store.ts";
 import {
-  buildToggleExtensionAction,
-  isLifecycleToggleAction,
-  LIFECYCLE_GROUP,
-  performToggleExtension,
-  type LifecycleActionId,
-} from "../../lib/common/extension-toggle.ts";
+  openExtensionInManager,
+  type SfPiManagerOpenRoute,
+} from "../../lib/common/manager-deep-link.ts";
+import {
+  registerManagerDetailActions,
+  type ManagerDetailAction,
+} from "../../lib/common/manager-actions.ts";
 import { registerExtensionDoctor } from "../../lib/common/doctor/registry.ts";
 import { markBootStep } from "../../lib/common/boot-timing.ts";
 import { shouldInjectOnce } from "../../lib/common/session/inject-once.ts";
 import { buildSlackDoctor } from "./lib/extension-doctor.ts";
-import {
-  type CommandPanelAction,
-  type CommandPanelState,
-  openCommandPanel,
-} from "../../lib/common/command-panel.ts";
+import { type SfPiCommandAction } from "../../lib/common/command-actions.ts";
 import { withSafeCommandHandler } from "../../lib/common/safe-command-handler.ts";
 import { openInfoPanel } from "../../lib/common/info-panel.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
+import { createSlackDisconnectPanel } from "./lib/manager-action-panels.ts";
 
 const RESEARCH_WIDGET_KEY = "sf-slack-research";
 const COMMAND_STATUS_KEY = `${COMMAND_NAME}-command`;
@@ -141,11 +139,9 @@ type SlackCommandAction =
   | "refresh"
   | "settings"
   | "sent"
-  | "help"
-  | "close"
-  | LifecycleActionId;
+  | "help";
 
-const SLACK_COMMAND_ACTIONS: CommandPanelAction<SlackCommandAction>[] = [
+const SLACK_COMMAND_ACTIONS: SfPiCommandAction<SlackCommandAction>[] = [
   // Connect group at the top of every panel render so users have a single,
   // obvious entry point for auth. ADR 0007 makes pi's native auth store the
   // only persistent credential path.
@@ -195,23 +191,7 @@ const SLACK_COMMAND_ACTIONS: CommandPanelAction<SlackCommandAction>[] = [
     description: "Print command usage and authentication setup options.",
     group: "Reference",
   },
-  {
-    value: "close",
-    label: "Close",
-    description: "Dismiss this panel.",
-    group: LIFECYCLE_GROUP,
-  },
 ];
-
-// Compose the live action list at panel-open time. The toggle action's
-// label depends on the current enablement state, so we cannot cache a
-// single static array. `null` from the helper means "alwaysActive — hide
-// the toggle row entirely" (sf-slack itself is not alwaysActive, but
-// sharing the helper with every other panel keeps the pattern uniform).
-function buildSlackActions(cwd: string): CommandPanelAction<SlackCommandAction>[] {
-  const toggle = buildToggleExtensionAction({ extensionId: "sf-slack", cwd });
-  return toggle ? [...SLACK_COMMAND_ACTIONS, toggle] : SLACK_COMMAND_ACTIONS;
-}
 
 // ─── Extension entry point ──────────────────────────────────────────────────────
 
@@ -259,6 +239,7 @@ export default function sfSlack(pi: ExtensionAPI) {
     "sf-slack",
     buildSlackDoctor({ getIdentity: () => identity ?? undefined }),
   );
+  registerManagerDetailActions(pi, "sf-slack", buildSlackManagerActions());
 
   // Guard async Slack callbacks against /reload, session switches, and shutdown.
   // Pi 0.70+ surfaces stale context usage more clearly, so every delayed UI
@@ -723,20 +704,40 @@ export default function sfSlack(pi: ExtensionAPI) {
     };
   });
 
-  async function handleSlackPanel(ctx: ExtensionCommandContext): Promise<void> {
-    const panelState: CommandPanelState<SlackCommandAction> = {};
-    await openCommandPanel(ctx, {
-      title: "💬 SF Slack — status & controls",
-      subtitle: "Inspect auth, refresh Slack's scope grant, and tune Slack result rendering.",
-      statusLines: () => buildSlackPanelStatus(),
-      actions: () => buildSlackActions(ctx.cwd),
-      closeValue: "close",
-      state: panelState,
-      onAction: (action) => handleSlackCommand(action, ctx, true),
-      // Lifecycle toggle calls ctx.reload() — must close panel first so the
-      // ctx.ui.custom() promise resolves before the runtime is invalidated.
-      closeBeforeAction: isLifecycleToggleAction,
+  function buildSlackManagerActions(): ManagerDetailAction[] {
+    return SLACK_COMMAND_ACTIONS.map((action) => ({
+      id: action.value,
+      label: action.label,
+      description: action.description,
+      group: action.group,
+      run: (ctx) => handleSlackCommand(action.value, ctx, true),
+      closeBeforeRun: action.value === "connect" || action.value === "settings",
+      ...(action.value === "disconnect"
+        ? {
+            createPanel: (theme, _cwd, _scope, done, ctx) =>
+              createSlackDisconnectPanel({
+                theme,
+                tokenSourceLabel: detectTokenSource(),
+                done,
+                disconnect: () => disconnectSlack(ctx),
+              }),
+          }
+        : {}),
+    }));
+  }
+
+  async function openSlackInManager(
+    ctx: ExtensionCommandContext,
+    view: NonNullable<SfPiManagerOpenRoute["view"]>,
+  ): Promise<void> {
+    const opened = await openExtensionInManager(pi, ctx, {
+      extensionId: "sf-slack",
+      view,
+      actions: buildSlackManagerActions(),
     });
+    if (!opened) {
+      ctx.ui.notify("SF Pi Manager is unavailable. Try /sf-pi open sf-slack.", "warning");
+    }
   }
 
   async function handleSlackCommand(
@@ -744,10 +745,6 @@ export default function sfSlack(pi: ExtensionAPI) {
     ctx: ExtensionCommandContext,
     fromPanel = false,
   ): Promise<void> {
-    if (sub === "lifecycle.toggle") {
-      await performToggleExtension(ctx, "sf-slack");
-      return;
-    }
     if (sub === "status") {
       await emitSlackOutput(
         ctx,
@@ -1016,6 +1013,12 @@ export default function sfSlack(pi: ExtensionAPI) {
       }
     }
 
+    const message = disconnectSlack(ctx);
+    await emitSlackOutput(ctx, "Slack disconnected", message, "success", fromPanel);
+  }
+
+  function disconnectSlack(ctx: ExtensionCommandContext): string {
+    const before = detectTokenSource();
     ctx.modelRegistry.authStorage.logout("sf-slack");
     deactivateSlackTools(pi);
     identity = null;
@@ -1027,14 +1030,7 @@ export default function sfSlack(pi: ExtensionAPI) {
     tokenType = "unknown";
     lastError = null;
     updateStatus(ctx, "disconnected");
-
-    await emitSlackOutput(
-      ctx,
-      "Slack disconnected",
-      `Cleared the saved Slack credential (was using \`${before}\`). Reconnect via the panel's Connect action.`,
-      "success",
-      fromPanel,
-    );
+    return `Cleared the saved Slack credential (was using \`${before}\`). Reconnect via the Connect action.`;
   }
 
   async function emitSlackOutput(
@@ -1049,28 +1045,6 @@ export default function sfSlack(pi: ExtensionAPI) {
       return;
     }
     ctx.ui.notify(body ? `${title}\n\n${body}` : title, level === "success" ? "info" : level);
-  }
-
-  function buildSlackPanelStatus(): string[] {
-    const kind = classifySlackStatus({
-      state: identity ? "connected" : "disconnected",
-      grantedScopeCount,
-      requestedScopeCount,
-      missingGrantedScopeCount,
-    });
-    const prefs = getPreferences();
-    const lines = [
-      `${identity ? "✓" : "○"} Identity      ${identity ? `@${identity.userName} (${identity.teamId})` : "not detected"}`,
-      `${slackToolsRegistered ? "✓" : "○"} Tools         ${slackToolsRegistered ? "registered" : "not registered"}`,
-      `${kind === "ready" || kind === "partial-grant" ? "✓" : "○"} Status        ${slackStatusLabel(kind)}`,
-      `• Scope grant   ${grantedScopeCount}/${requestedScopeCount || "?"} granted by Slack${missingGrantedScopeCount ? ` (${missingGrantedScopeCount} not included)` : ""}`,
-      `• Token         ${tokenType}`,
-      `• Preferences   fields=${prefs.defaultFields}, widget=${prefs.showWidget}`,
-    ];
-    if (lastError) {
-      lines.push(`✗ Last error    ${lastError.step}: ${lastError.message}`);
-    }
-    return lines;
   }
 
   function renderSlackHelp(): string {
@@ -1092,20 +1066,20 @@ export default function sfSlack(pi: ExtensionAPI) {
     description: "Show Slack integration status and auth info",
     getArgumentCompletions: (prefix) => {
       const lower = prefix.toLowerCase();
-      const items = SLACK_COMMAND_ACTIONS.filter((action) => action.value !== "close")
-        .filter((action) => action.value.startsWith(lower))
-        .map((action) => ({
+      const items = SLACK_COMMAND_ACTIONS.filter((action) => action.value.startsWith(lower)).map(
+        (action) => ({
           value: action.value,
           label: action.value,
           description: action.description,
-        }));
+        }),
+      );
       return items.length > 0 ? items : null;
     },
     handler: async (args, ctx) => {
       await withSafeCommandHandler(ctx, COMMAND_NAME, async () => {
         const sub = (args ?? "").trim().toLowerCase();
         if (sub === "" && ctx.hasUI) {
-          await handleSlackPanel(ctx);
+          await openSlackInManager(ctx, "detail");
           return;
         }
         await handleSlackCommand(sub === "" ? "status" : sub, ctx);

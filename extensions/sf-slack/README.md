@@ -63,7 +63,7 @@ Extension loads
             (cache sizes and gated counts are intentionally omitted — they drift
              turn-to-turn and would invalidate prompt cache)
   /sf-slack
-       ├─ UI available + no args → open status & controls panel
+       ├─ UI available + no args → open SF Slack in the SF Pi Manager
        └─ no UI + no args        → show auth status
   /sf-slack refresh
        ├─ If token resolves now but tools were not registered earlier
@@ -513,6 +513,7 @@ extensions/sf-slack/
     extension-doctor.ts     ← implementation module
     file-tool.ts            ← implementation module
     format.ts               ← implementation module
+    manager-action-panels.ts← implementation module
     preferences-panel.ts    ← implementation module
     preferences.ts          ← implementation module
     recipient-confirm.ts    ← implementation module
