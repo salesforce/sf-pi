@@ -1,8 +1,19 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Manager action pages for SF Slack detail actions. */
 import type { Theme } from "@earendil-works/pi-coding-agent";
-import { type Component, type Focusable, matchesKey } from "@earendil-works/pi-tui";
+import {
+  type Component,
+  type Focusable,
+  matchesKey,
+  truncateToWidth,
+} from "@earendil-works/pi-tui";
 import type { ConfigPanelResult } from "../../../catalog/registry.ts";
+import {
+  SLACK_PREFERENCE_DESCRIPTORS,
+  applyPreferenceValue,
+  type SlackPreferenceKey,
+  type SlackPreferences,
+} from "./preferences.ts";
 
 type Done = (result: ConfigPanelResult | undefined) => void;
 
@@ -13,6 +24,15 @@ export function createSlackDisconnectPanel(args: {
   disconnect: () => Promise<string> | string;
 }): Component & Focusable & { renderContent(width: number): string[] } {
   return new SlackDisconnectPanel(args);
+}
+
+export function createSlackPreferencesPanel(args: {
+  theme: Theme;
+  current: SlackPreferences;
+  done: Done;
+  onChange: (prefs: SlackPreferences) => void;
+}): Component & Focusable & { renderContent(width: number): string[] } {
+  return new SlackPreferencesActionPanel(args);
 }
 
 class SlackDisconnectPanel implements Focusable {
@@ -84,6 +104,103 @@ class SlackDisconnectPanel implements Focusable {
 
   private async confirm(): Promise<void> {
     this.result = await this.args.disconnect();
+  }
+}
+
+class SlackPreferencesActionPanel implements Focusable {
+  focused = false;
+  private selected = 0;
+  private working: SlackPreferences;
+  private savedMessage = "";
+
+  constructor(
+    private readonly args: {
+      theme: Theme;
+      current: SlackPreferences;
+      done: Done;
+      onChange: (prefs: SlackPreferences) => void;
+    },
+  ) {
+    this.working = { ...args.current };
+  }
+
+  handleInput(data: string): void {
+    if (matchesKey(data, "escape") || data === "q") {
+      this.args.done(undefined);
+      return;
+    }
+    if (matchesKey(data, "up")) {
+      this.move(-1);
+      return;
+    }
+    if (matchesKey(data, "down")) {
+      this.move(1);
+      return;
+    }
+    if (matchesKey(data, "left")) {
+      this.cycle(-1);
+      return;
+    }
+    if (matchesKey(data, "right") || matchesKey(data, "space") || matchesKey(data, "enter")) {
+      this.cycle(1);
+    }
+  }
+
+  renderContent(width: number): string[] {
+    const t = this.args.theme;
+    const lines = [
+      ` ${t.fg("accent", t.bold("SF Slack preferences"))}`,
+      ` ${t.fg("dim", "Adjust Slack result rendering and UI feedback. Changes save immediately.")}`,
+      "",
+    ];
+    for (let i = 0; i < SLACK_PREFERENCE_DESCRIPTORS.length; i++) {
+      const descriptor = SLACK_PREFERENCE_DESCRIPTORS[i]!;
+      const selected = i === this.selected;
+      const value = String(this.working[descriptor.key]);
+      const cursor = selected ? t.fg("accent", "→") : " ";
+      const label = selected ? t.fg("accent", descriptor.label) : t.fg("text", descriptor.label);
+      lines.push(` ${cursor} ${label.padEnd(28)} ${value}`);
+      if (selected) {
+        lines.push(
+          `    ${t.fg("dim", truncateToWidth(descriptor.description, Math.max(20, width - 6), "…"))}`,
+        );
+      }
+    }
+    if (this.savedMessage) {
+      lines.push("");
+      lines.push(` ${t.fg("success", this.savedMessage)}`);
+    }
+    lines.push("");
+    lines.push(` ${t.fg("dim", "↑/↓ move · ←/→/Enter change · Esc back")}`);
+    return lines;
+  }
+
+  render(width: number): string[] {
+    return this.renderContent(width);
+  }
+
+  invalidate(): void {}
+
+  private move(delta: -1 | 1): void {
+    this.selected =
+      (this.selected + delta + SLACK_PREFERENCE_DESCRIPTORS.length) %
+      SLACK_PREFERENCE_DESCRIPTORS.length;
+    this.savedMessage = "";
+  }
+
+  private cycle(delta: -1 | 1): void {
+    const descriptor = SLACK_PREFERENCE_DESCRIPTORS[this.selected];
+    if (!descriptor) return;
+    const values = descriptor.values.map(String);
+    const current = String(this.working[descriptor.key]);
+    const index = Math.max(0, values.indexOf(current));
+    const next = values[(index + delta + values.length) % values.length];
+    if (!next) return;
+    const updated = applyPreferenceValue(this.working, descriptor.key as SlackPreferenceKey, next);
+    if (!updated) return;
+    this.working = updated;
+    this.args.onChange({ ...this.working });
+    this.savedMessage = `${descriptor.label}: ${next}`;
   }
 }
 

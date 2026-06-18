@@ -119,7 +119,10 @@ import { type SfPiCommandAction } from "../../lib/common/command-actions.ts";
 import { withSafeCommandHandler } from "../../lib/common/safe-command-handler.ts";
 import { openInfoPanel } from "../../lib/common/info-panel.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
-import { createSlackDisconnectPanel } from "./lib/manager-action-panels.ts";
+import {
+  createSlackDisconnectPanel,
+  createSlackPreferencesPanel,
+} from "./lib/manager-action-panels.ts";
 
 const RESEARCH_WIDGET_KEY = "sf-slack-research";
 const COMMAND_STATUS_KEY = `${COMMAND_NAME}-command`;
@@ -711,7 +714,7 @@ export default function sfSlack(pi: ExtensionAPI) {
       description: action.description,
       group: action.group,
       run: (ctx) => handleSlackCommand(action.value, ctx, true),
-      closeBeforeRun: action.value === "connect" || action.value === "settings",
+      closeBeforeRun: action.value === "connect",
       ...(action.value === "disconnect"
         ? {
             createPanel: (theme, _cwd, _scope, done, ctx) =>
@@ -720,6 +723,17 @@ export default function sfSlack(pi: ExtensionAPI) {
                 tokenSourceLabel: detectTokenSource(),
                 done,
                 disconnect: () => disconnectSlack(ctx),
+              }),
+          }
+        : {}),
+      ...(action.value === "settings"
+        ? {
+            createPanel: (theme, _cwd, _scope, done) =>
+              createSlackPreferencesPanel({
+                theme,
+                current: { ...getPreferences() },
+                done,
+                onChange: (next) => persistPreferences(next),
               }),
           }
         : {}),
