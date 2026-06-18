@@ -10,19 +10,15 @@
  */
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 
-import {
-  type CommandPanelAction,
-  type CommandPanelState,
-  openCommandPanel,
-} from "../../lib/common/command-panel.ts";
-import {
-  buildToggleExtensionAction,
-  isLifecycleToggleAction,
-  LIFECYCLE_GROUP,
-  performToggleExtension,
-  type LifecycleActionId,
-} from "../../lib/common/extension-toggle.ts";
 import { openInfoPanel, type InfoPanelSeverity } from "../../lib/common/info-panel.ts";
+import {
+  openExtensionInManager,
+  type SfPiManagerOpenRoute,
+} from "../../lib/common/manager-deep-link.ts";
+import {
+  registerManagerDetailActions,
+  type ManagerDetailAction,
+} from "../../lib/common/manager-actions.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 import { isSfPiExtensionEnabled } from "../../lib/common/sf-pi-extension-state.ts";
 import { withSafeCommandHandler } from "../../lib/common/safe-command-handler.ts";
@@ -40,48 +36,44 @@ import { renderDoctor, renderStatus } from "./lib/status.ts";
 const EXTENSION_ID = "sf-herdr";
 const COMMAND_NAME = "sf-herdr";
 
-type SfHerdrAction =
-  | "status"
-  | "doctor"
-  | "profiles"
-  | "reset"
-  | "help"
-  | "close"
-  | LifecycleActionId;
+type SfHerdrAction = "status" | "doctor" | "profiles" | "reset" | "settings" | "help";
 
-const ACTIONS: CommandPanelAction<SfHerdrAction>[] = [
+const COMMAND_ACTIONS: Array<{
+  value: SfHerdrAction;
+  label: string;
+  description: string;
+}> = [
   {
     value: "status",
     label: "Show status",
     description: "Show Herdr runtime state, preferences path, and inferred workflow signals.",
-    group: "Status",
   },
   {
     value: "doctor",
     label: "Run doctor",
     description:
       "Show readiness notes for upstream Herdr control, passive bridge, and planner state.",
-    group: "Diagnostics",
   },
   {
     value: "profiles",
     label: "Show workflow profiles",
     description: "Print the effective managed workflow preferences used by sf_herdr_plan.",
-    group: "Profiles",
   },
   {
     value: "reset",
     label: "Reset profiles",
     description: "Reset managed Herdr workflow preferences to bundled defaults.",
-    group: "Profiles",
+  },
+  {
+    value: "settings",
+    label: "Open settings",
+    description: "Open the SF Herdr settings page in the SF Pi Manager.",
   },
   {
     value: "help",
     label: "Show help",
     description: "Print usage and v1 boundaries.",
-    group: "Reference",
   },
-  { value: "close", label: "Close", description: "Dismiss this panel.", group: LIFECYCLE_GROUP },
 ];
 
 export default function sfHerdr(pi: ExtensionAPI): void {
@@ -110,6 +102,7 @@ export default function sfHerdr(pi: ExtensionAPI): void {
         detail: line,
       })),
   }));
+  registerManagerDetailActions(pi, EXTENSION_ID, buildHerdrManagerActions());
 
   pi.on("session_start", async (event, ctx) => {
     if (event.reason === "reload") planToolRegistered = false;
@@ -143,39 +136,54 @@ export default function sfHerdr(pi: ExtensionAPI): void {
     description: "SF Herdr — dynamic Herdr lane planning, profiles, and status",
     getArgumentCompletions: (prefix) => {
       const lower = prefix.toLowerCase();
-      const items = ACTIONS.filter((action) => action.value !== "close")
-        .filter((action) => action.value.startsWith(lower))
-        .map((action) => ({
+      const items = COMMAND_ACTIONS.filter((action) => action.value.startsWith(lower)).map(
+        (action) => ({
           value: action.value,
           label: action.value,
           description: action.description,
-        }));
+        }),
+      );
       return items.length > 0 ? items : null;
     },
     handler: async (args, ctx) => {
       await withSafeCommandHandler(ctx, COMMAND_NAME, async () => {
         const tokens = args.trim().split(/\s+/).filter(Boolean);
         if (tokens.length === 0 && ctx.hasUI) {
-          await openPanel(ctx);
+          await openHerdrInManager(ctx, "detail");
           return;
         }
-        await handleAction(ctx, (tokens[0] as SfHerdrAction | undefined) ?? "status", false);
+        const action = (tokens[0] as SfHerdrAction | undefined) ?? "status";
+        if (action === "settings" && ctx.hasUI) {
+          await openHerdrInManager(ctx, "settings");
+          return;
+        }
+        await handleAction(ctx, action, false);
       });
     },
   });
 
-  async function openPanel(ctx: ExtensionCommandContext): Promise<void> {
-    const state: CommandPanelState<SfHerdrAction> = {};
-    await openCommandPanel(ctx, {
-      title: "🐑 SF Herdr — lane planning",
-      subtitle: "Dynamic Herdr profiles, signals, and non-mutating plans.",
-      statusLines: () => renderStatus(signalState).split("\n"),
-      actions: () => buildActions(ctx.cwd),
-      closeValue: "close",
-      state,
-      onAction: (action) => handleAction(ctx, action, true),
-      closeBeforeAction: isLifecycleToggleAction,
+  function buildHerdrManagerActions(): ManagerDetailAction[] {
+    return COMMAND_ACTIONS.filter((action) => action.value !== "settings").map((action) => ({
+      id: action.value,
+      label: action.label,
+      description: action.description,
+      run: (ctx) => handleAction(ctx, action.value, true),
+    }));
+  }
+
+  async function openHerdrInManager(
+    ctx: ExtensionCommandContext,
+    view: NonNullable<SfPiManagerOpenRoute["view"]>,
+  ): Promise<void> {
+    const opened = await openExtensionInManager(pi, ctx, {
+      extensionId: EXTENSION_ID,
+      view,
+      actions: buildHerdrManagerActions(),
     });
+
+    if (!opened) {
+      ctx.ui.notify("SF Pi Manager is unavailable. Try /sf-pi open sf-herdr.", "warning");
+    }
   }
 
   async function handleAction(
@@ -183,8 +191,14 @@ export default function sfHerdr(pi: ExtensionAPI): void {
     action: SfHerdrAction | string,
     fromPanel: boolean,
   ): Promise<void> {
-    if (action === "lifecycle.toggle") {
-      await performToggleExtension(ctx, EXTENSION_ID);
+    if (action === "settings") {
+      await emit(
+        ctx,
+        "SF Herdr settings",
+        "Open settings from the interactive manager: /sf-pi open sf-herdr settings",
+        "info",
+        fromPanel,
+      );
       return;
     }
     if (action === "status") {
@@ -212,11 +226,6 @@ export default function sfHerdr(pi: ExtensionAPI): void {
     }
     await emit(ctx, "SF Herdr help", renderHelp(), "info", fromPanel);
   }
-}
-
-function buildActions(cwd: string): CommandPanelAction<SfHerdrAction>[] {
-  const toggle = buildToggleExtensionAction({ extensionId: EXTENSION_ID, cwd });
-  return toggle ? [...ACTIONS, toggle] : ACTIONS;
 }
 
 async function emit(
@@ -260,7 +269,7 @@ function renderProfiles(): string {
 
 function renderHelp(): string {
   return [
-    "Usage: /sf-herdr [status|doctor|profiles|reset|help]",
+    "Usage: /sf-herdr [status|doctor|profiles|reset|settings|help]",
     "",
     "SF Herdr owns dynamic Herdr lane planning for Salesforce workflows.",
     "It does not call Herdr directly and does not generate shell commands.",

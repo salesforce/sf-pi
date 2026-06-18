@@ -18,7 +18,7 @@ Extension loads
   ├─ contributes sf_herdr_plan after session_start
   ├─ session_start/session_tree reconstruct branch workflow signals
   ├─ tool_execution_end/tool_result observe fresh workflow signals
-  └─ /sf-herdr shows status, doctor, profiles, and reset actions
+  └─ /sf-herdr opens SF Herdr in the SF Pi Manager; subcommands stay direct
 
 sf_herdr_plan
   ├─ reads managed workflow profiles from <globalAgentDir>/sf-pi/herdr/preferences.json
@@ -47,22 +47,24 @@ sf_herdr_plan
 | tool_execution_end | recognized SF Pi tool or Herdr command | Record workflow signal                                        |
 | tool_result        | write/edit or custom tool result       | Record workflow signal                                        |
 | session_shutdown   | —                                      | Clear in-memory signal state                                  |
-| /sf-herdr          | UI available                           | Open status/actions panel                                     |
+| /sf-herdr          | UI available                           | Open SF Herdr in the SF Pi Manager                            |
 | /sf-herdr status   | any                                    | Show Herdr runtime, profiles path, inferred workflow          |
 | /sf-herdr doctor   | any                                    | Show readiness notes                                          |
 | /sf-herdr profiles | any                                    | Print managed workflow profile summary                        |
 | /sf-herdr reset    | any                                    | Reset managed workflow profiles to bundled defaults           |
+| /sf-herdr settings | UI available                           | Open SF Herdr settings in the SF Pi Manager                   |
 | sf_herdr_plan      | intent provided                        | Return a non-mutating lane plan                               |
 
 ## Commands
 
 | Command              | Description                                                                          |
 | -------------------- | ------------------------------------------------------------------------------------ |
-| `/sf-herdr`          | Open the status/actions panel.                                                       |
+| `/sf-herdr`          | Open SF Herdr in the SF Pi Manager.                                                  |
 | `/sf-herdr status`   | Show runtime status, profile path, and inferred workflow signals.                    |
 | `/sf-herdr doctor`   | Show readiness notes for Herdr control, passive bridge, profiles, and planner state. |
 | `/sf-herdr profiles` | Print managed workflow profile summary.                                              |
 | `/sf-herdr reset`    | Reset workflow profiles to bundled defaults.                                         |
+| `/sf-herdr settings` | Open SF Herdr settings in the SF Pi Manager.                                         |
 | `/sf-herdr help`     | Print v1 usage and boundaries.                                                       |
 
 ## Agent Tool
@@ -87,8 +89,9 @@ Stored at:
 <globalAgentDir>/sf-pi/herdr/preferences.json
 ```
 
-The file is managed through `/sf-herdr` and the config panel. It is JSON and
-recoverable, but not positioned as a primary hand-editable Pi setting.
+The file is managed through **SF Pi Manager → SF Herdr → Settings** or directly
+with `/sf-herdr settings` in TUI mode. It is JSON and recoverable, but not
+positioned as a primary hand-editable Pi setting.
 
 ## File Structure
 
