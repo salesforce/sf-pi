@@ -250,7 +250,7 @@ separately via the monthly usage endpoint (`/user/info`).
 
 ## Command Surface
 
-`/sf-llm-gateway` with no args opens the status & controls panel. The first
+`/sf-llm-gateway` with no args opens SF LLM Gateway in the SF Pi Manager. The first
 group, **Connect**, exposes the full onboarding flow — enter URL+key, open
 the token page in a browser, or import from Claude Code. Subsequent groups
 cover post-connect tweaks (`on`, `off`, `set-default`), discovery and
@@ -261,13 +261,7 @@ The legacy `/sf-llm-gateway-internal` slash command was retired in v0.56.0
 The provider id is unchanged so pi-native model routing and `/login`
 resolution still work.
 
-The grouped panel extends the same Pi-native `ctx.ui.custom()` + `DynamicBorder`
-pattern used by `/sf-lsp`: compact status at the top, grouped actions in the
-middle, and a full-width description for the selected action so long help text is
-not clipped by a two-column list. Actions launched from the panel return to the
-panel after they complete, so users can run doctor, models, refresh, and
-follow-up setup without retyping the command. In headless/print/RPC mode, the
-no-args command falls back to the text status report.
+The Manager detail page preserves the grouped command surface from the legacy panel. Actions that launch their own setup overlay close the Manager first; read-only status, help, doctor, and report-style actions use the standard Manager info popup. In headless/print/RPC mode, the no-args command falls back to the text status report.
 
 Primary actions are grouped as:
 
@@ -380,6 +374,7 @@ extensions/sf-llm-gateway-internal/
     gpt55-live-regression.test.ts← unit / smoke test
     gpt55-responses.test.ts ← unit / smoke test
     latency-probe.test.ts   ← unit / smoke test
+    manager-actions.test.ts ← unit / smoke test
     migrate-unify-provider.test.ts← unit / smoke test
     model-group-drift.test.ts← unit / smoke test
     models.test.ts          ← unit / smoke test

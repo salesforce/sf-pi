@@ -7,6 +7,12 @@ import { describe, expect, it } from "vitest";
 import { GATEWAY_COMMAND_SURFACE, getGatewayArgumentCompletions } from "../lib/command-surface.ts";
 
 describe("gateway command surface", () => {
+  it("identifies scoped command-surface actions", () => {
+    expect(
+      GATEWAY_COMMAND_SURFACE.filter((item) => item.acceptsScope).map((item) => item.id),
+    ).toEqual(["setup", "import-claude", "onboard", "on", "off", "set-default"]);
+  });
+
   it("has descriptions for every surfaced command", () => {
     for (const item of GATEWAY_COMMAND_SURFACE) {
       expect(item.description.trim().length).toBeGreaterThan(20);

@@ -148,7 +148,8 @@ function isGatewayProvider(provider: string | undefined): boolean {
  * each one under the provider-level API; the custom streamSimple dispatcher
  * handles Claude-vs-OpenAI routing internally by model id.
  */
-function providerForModelId(_modelId: string): string {
+function providerForModelId(modelId: string): string {
+  void modelId;
   return PROVIDER_NAME;
 }
 
@@ -233,19 +234,24 @@ import {
   formatDiscoveredCaBundleSummary,
 } from "./lib/onboarding-sources.ts";
 import {
+  GATEWAY_COMMAND_SURFACE,
   getGatewayArgumentCompletions,
   formatGatewayAliasReference,
   formatGatewayCommandReference,
   type GatewayCommandId,
-  type GatewayPanelAction,
 } from "./lib/command-surface.ts";
-import { type CommandPanelState } from "../../lib/common/command-panel.ts";
 import { openInfoPanel } from "../../lib/common/info-panel.ts";
-import { performToggleExtension } from "../../lib/common/extension-toggle.ts";
+import {
+  openExtensionInManager,
+  type SfPiManagerOpenRoute,
+} from "../../lib/common/manager-deep-link.ts";
+import {
+  registerManagerDetailActions,
+  type ManagerDetailAction,
+} from "../../lib/common/manager-actions.ts";
 import { withSafeCommandHandler } from "../../lib/common/safe-command-handler.ts";
 import { registerExtensionDoctor } from "../../lib/common/doctor/registry.ts";
 import { runExtensionDoctor as runGatewayExtensionDoctor } from "./lib/doctor.ts";
-import { openGatewayPanel } from "./lib/command-panel.ts";
 import {
   getMonthlyUsageState,
   refreshMonthlyUsage,
@@ -380,6 +386,7 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
   // `/sf-llm-gateway-internal doctor` command keeps using
   // fetchGatewayDoctorReport directly for backwards-compat rendering.
   registerExtensionDoctor("sf-llm-gateway-internal", (cwd) => runGatewayExtensionDoctor(cwd));
+  registerManagerDetailActions(pi, "sf-llm-gateway-internal", buildGatewayManagerActions(pi));
 
   // Rendering hook for any sendMessage traffic the extension emits on behalf
   // of the gateway. Single registration now that the retired anthropic
@@ -613,13 +620,65 @@ export function __resetThinkingLevelStateForTests(): void {
 // Command flow
 // -------------------------------------------------------------------------------------------------
 
+type GatewayManagerActionId =
+  | GatewayCommandId
+  | `${Extract<GatewayCommandId, "setup" | "on" | "off" | "set-default" | "onboard" | "import-claude">}:global`
+  | `${Extract<GatewayCommandId, "setup" | "on" | "off" | "set-default" | "onboard" | "import-claude">}:project`;
+
+export function buildGatewayManagerActions(pi: ExtensionAPI): ManagerDetailAction[] {
+  return GATEWAY_COMMAND_SURFACE.flatMap((item): ManagerDetailAction[] => {
+    if (!item.acceptsScope) {
+      return [gatewayManagerAction(pi, item.id, item.label, item.description, item.section)];
+    }
+    return [
+      gatewayManagerAction(
+        pi,
+        `${item.id}:global` as GatewayManagerActionId,
+        `${item.label} [global]`,
+        `${item.description} Saves or applies global scope.`,
+        item.section,
+        item.id,
+        "global",
+      ),
+      gatewayManagerAction(
+        pi,
+        `${item.id}:project` as GatewayManagerActionId,
+        `${item.label} [project]`,
+        `${item.description} Saves or applies project scope.`,
+        item.section,
+        item.id,
+        "project",
+      ),
+    ];
+  });
+}
+
+function gatewayManagerAction(
+  pi: ExtensionAPI,
+  id: GatewayManagerActionId,
+  label: string,
+  description: string,
+  group: string,
+  command: GatewayCommandId = id as GatewayCommandId,
+  scope: "global" | "project" = "global",
+): ManagerDetailAction {
+  return {
+    id,
+    label,
+    description,
+    group,
+    run: (ctx) => handlePanelAction(pi, ctx, command, scope),
+    ...(command === "setup" ? { closeBeforeRun: true } : {}),
+  };
+}
+
 async function handleCommand(
   pi: ExtensionAPI,
   args: string,
   ctx: ExtensionCommandContext,
 ): Promise<void> {
   if (args.trim().length === 0 && ctx.hasUI) {
-    return handlePanelCommand(pi, ctx);
+    return openGatewayInManager(pi, ctx, "detail");
   }
 
   const parsed = parseCommandArgs(args);
@@ -666,34 +725,22 @@ async function handleCommand(
   }
 }
 
-async function handlePanelCommand(pi: ExtensionAPI, ctx: ExtensionCommandContext): Promise<void> {
-  let scope: "global" | "project" = "global";
-  const panelState: CommandPanelState<GatewayPanelAction> = {};
-
-  await openGatewayPanel(ctx, {
-    providerRegistered: getLastDiscovery()?.source !== "disabled",
-    runtimeState: getRuntimeStatusState(),
-    scope: () => scope,
-    state: panelState,
-    onAction: async (action) => {
-      if (action === "switch-scope") {
-        scope = scope === "global" ? "project" : "global";
-        return;
-      }
-      // "close" can't actually reach here — lib/common/command-panel.ts
-      // dismisses the panel directly on the closeValue row — but the
-      // GatewayPanelAction union still includes it, so we narrow it out
-      // here for TypeScript and as a defense-in-depth no-op.
-      if (action === "close") return;
-      // lifecycle.toggle is routed through closeBeforeAction so the panel
-      // closes BEFORE ctx.reload() runs. See lib/common/command-panel.ts.
-      if (action === "lifecycle.toggle") {
-        await performToggleExtension(ctx, "sf-llm-gateway-internal");
-        return;
-      }
-      await handlePanelAction(pi, ctx, action, scope);
-    },
+async function openGatewayInManager(
+  pi: ExtensionAPI,
+  ctx: ExtensionCommandContext,
+  view: NonNullable<SfPiManagerOpenRoute["view"]>,
+): Promise<void> {
+  const opened = await openExtensionInManager(pi, ctx, {
+    extensionId: "sf-llm-gateway-internal",
+    view,
+    actions: buildGatewayManagerActions(pi),
   });
+  if (!opened) {
+    ctx.ui.notify(
+      "SF Pi Manager is unavailable. Try /sf-pi open sf-llm-gateway-internal.",
+      "warning",
+    );
+  }
 }
 
 async function handlePanelAction(
