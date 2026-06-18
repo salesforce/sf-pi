@@ -517,6 +517,14 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.194.1](https://github.com/salesforce/sf-pi/compare/v0.194.0...v0.194.1) (2026-06-18)
+
+
+### Bug Fixes
+
+* **sf-herdr:** clarify settings save state ([fb490c8](https://github.com/salesforce/sf-pi/commit/fb490c8a42848170fef970225db53b3ddb67142e))
+* **sf-herdr:** remove unused config render width ([deeba47](https://github.com/salesforce/sf-pi/commit/deeba47f09cc3a4641c9f93c9a4f4ae556c22040))
+
 ## [0.194.0](https://github.com/salesforce/sf-pi/compare/v0.193.0...v0.194.0) (2026-06-18)
 
 
