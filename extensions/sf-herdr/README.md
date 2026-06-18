@@ -90,8 +90,10 @@ Stored at:
 ```
 
 The file is managed through **SF Pi Manager → SF Herdr → Settings** or directly
-with `/sf-herdr settings` in TUI mode. It is JSON and recoverable, but not
-positioned as a primary hand-editable Pi setting.
+with `/sf-herdr settings` in TUI mode. The settings panel marks unsaved changes,
+uses a bullet beside changed fields, and writes only after `S` or `Enter`.
+`Esc` / `q` leaves the page without saving. The JSON file is recoverable, but
+not positioned as a primary hand-editable Pi setting.
 
 ## File Structure
 
@@ -105,6 +107,7 @@ extensions/sf-herdr/
     signal-state.ts         ← implementation module
     status.ts               ← implementation module
   tests/
+    config-panel.test.ts    ← unit / smoke test
     signal-state.test.ts    ← unit / smoke test
     smoke.test.ts           ← unit / smoke test
   index.ts                  ← Pi extension entry point
@@ -124,6 +127,12 @@ npm run check -- --pretty false
 ```
 
 ## Troubleshooting
+
+**`/sf-herdr` is not available in the slash-command list:**
+Reload or restart Pi after updating SF Pi so the extension registry is rebuilt.
+You can still use the generic deep link `/sf-pi open sf-herdr` when the manager
+is available. If the command remains missing after reload, confirm SF Herdr is
+enabled in `/sf-pi` and not excluded by a package filter.
 
 **`sf_herdr_plan` says generic workflow:**
 The branch has few or no recent workflow signals. Pass `primaryWorkflow` explicitly or continue the workflow until SF Herdr observes more tool/file activity.

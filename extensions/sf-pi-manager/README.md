@@ -120,7 +120,7 @@ moved to `~/.pi/agent/skills-quarantine/` instead of being deleted.
 | /sf-pi telemetry      | no arg / `status`         | Show pi anonymous-telemetry posture   |
 | /sf-pi telemetry off  | —                         | Write `enableInstallTelemetry: false` |
 | /sf-pi telemetry on   | —                         | Write `enableInstallTelemetry: true`  |
-| TUI list → Enter      | —                         | Open extension detail/config view     |
+| TUI list → Enter      | —                         | Open user-first extension detail view |
 | TUI list → Esc        | changes pending           | Apply exclusions, reload if needed    |
 | TUI detail → Esc      | —                         | Return to extension list              |
 | session_start         | —                         | Update footer status                  |
@@ -183,7 +183,7 @@ extensions/sf-pi-manager/
 11. **Settings I/O** — `../../lib/common/sf-pi-settings.ts` (shared)
 12. **Package entry discovery** — `../../lib/common/sf-pi-package-state.ts` (shared)
 13. **Extension state read/write** — `../../lib/common/sf-pi-package-state.ts` (shared)
-14. **TUI Overlay** — `SfPiOverlayComponent` with list/detail navigation
+14. **TUI Overlay** — `SfPiOverlayComponent` with list/detail/settings navigation; detail pages stay user-first and omit developer file/capability metadata
 15. **Recommended extensions** — manifest/state in `recommendations*.ts`
 16. **External skill roots** — `/sf-pi skills` in `skill-sources*.ts`
 
@@ -191,9 +191,9 @@ extensions/sf-pi-manager/
 
 Tests cover exported pure helpers (package detection, extension state,
 project/global precedence, command parsing, detail metadata helpers,
-recommendation state/install helpers, announcement commands, and external
-skill-root settings writes). The TUI overlays and full command handlers are
-tested via manual QA.
+user-first detail rendering, recommendation state/install helpers, announcement
+commands, and external skill-root settings writes). The full command handlers
+are tested via manual QA.
 
 To run: `npm test`
 

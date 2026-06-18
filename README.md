@@ -631,6 +631,7 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 
 **[SF Herdr](./extensions/sf-herdr/#troubleshooting)**
 
+- `/sf-herdr` is not available in the slash-command list
 - `sf_herdr_plan` says generic workflow
 - Herdr is not available
 - A lane stayed open

@@ -18,6 +18,10 @@ class SfHerdrConfigPanel implements Focusable {
   private laneStyle: HerdrLaneStyle;
   private splitDirection: HerdrSplitDirection;
   private preserveFocus: boolean;
+  private savedWorkflowMode: HerdrWorkflowMode;
+  private savedLaneStyle: HerdrLaneStyle;
+  private savedSplitDirection: HerdrSplitDirection;
+  private savedPreserveFocus: boolean;
   private cursor = 0;
 
   constructor(
@@ -29,6 +33,10 @@ class SfHerdrConfigPanel implements Focusable {
     this.laneStyle = preferences.defaults.laneStyle ?? "split";
     this.splitDirection = preferences.defaults.splitDirection ?? "right";
     this.preserveFocus = preferences.defaults.preserveFocus ?? true;
+    this.savedWorkflowMode = this.workflowMode;
+    this.savedLaneStyle = this.laneStyle;
+    this.savedSplitDirection = this.splitDirection;
+    this.savedPreserveFocus = this.preserveFocus;
   }
 
   handleInput(data: string): void {
@@ -48,38 +56,43 @@ class SfHerdrConfigPanel implements Focusable {
       this.toggleCurrent();
       return;
     }
-    if (matchesKey(data, "enter") || matchesKey(data, "return")) {
-      const preferences = readSfHerdrPreferences();
-      writeSfHerdrPreferences({
-        ...preferences,
-        workflowMode: this.workflowMode,
-        defaults: {
-          ...preferences.defaults,
-          laneStyle: this.laneStyle,
-          splitDirection: this.splitDirection,
-          preserveFocus: this.preserveFocus,
-        },
-      });
-      this.done({ needsReload: true });
+    if (data === "s" || data === "S" || matchesKey(data, "enter") || matchesKey(data, "return")) {
+      this.save();
     }
   }
 
   renderContent(_width: number): string[] {
     const t = this.theme;
-    const row = (index: number, label: string, value: string) => {
+    const dirty = this.isDirty();
+    const status = dirty ? t.fg("warning", "Unsaved changes") : t.fg("success", "Saved");
+    const row = (index: number, label: string, value: string, changed: boolean) => {
       const selected = index === this.cursor;
-      return ` ${selected ? t.fg("accent", "›") : " "} ${t.fg("muted", label.padEnd(16))} ${selected ? t.fg("accent", value) : t.fg("text", value)}`;
+      const marker = changed ? t.fg("warning", "•") : " ";
+      const cursor = selected ? t.fg("accent", "›") : " ";
+      const renderedValue = selected ? t.fg("accent", value) : t.fg("text", value);
+      return ` ${cursor} ${marker} ${t.fg("muted", label.padEnd(16))} ${renderedValue}`;
     };
     return [
-      ` ${t.fg("muted", "SF Herdr — managed workflow preferences")}`,
+      ` ${t.fg("accent", t.bold("SF Herdr settings"))}  ${status}`,
+      ` ${t.fg("dim", "Tune how SF Pi plans Herdr panes. Changes stay local until you save.")}`,
       "",
-      row(0, "Workflow mode", this.workflowMode),
-      row(1, "Lane style", this.laneStyle),
-      row(2, "Split direction", this.splitDirection),
-      row(3, "Preserve focus", String(this.preserveFocus)),
+      row(0, "Workflow mode", this.workflowMode, this.workflowMode !== this.savedWorkflowMode),
+      row(1, "Lane style", this.laneStyle, this.laneStyle !== this.savedLaneStyle),
+      row(
+        2,
+        "Split direction",
+        this.splitDirection,
+        this.splitDirection !== this.savedSplitDirection,
+      ),
+      row(
+        3,
+        "Preserve focus",
+        String(this.preserveFocus),
+        this.preserveFocus !== this.savedPreserveFocus,
+      ),
       "",
-      ` ${t.fg("dim", "These defaults feed sf_herdr_plan. Per-workflow profiles use opinionated defaults in v1.")}`,
-      ` ${t.fg("dim", "↑/↓ select · ←/→/Space change · Enter save · Esc back")}`,
+      ` ${t.fg("dim", "Workflow-specific lane profiles remain opinionated in v1.")}`,
+      ` ${t.fg("dim", "↑/↓ select · ←/→/Space change · S/Enter save · Esc discard/back")}`,
     ];
   }
 
@@ -94,6 +107,34 @@ class SfHerdrConfigPanel implements Focusable {
     if (this.cursor === 1) this.laneStyle = this.laneStyle === "split" ? "tab" : "split";
     if (this.cursor === 2) this.splitDirection = this.splitDirection === "right" ? "down" : "right";
     if (this.cursor === 3) this.preserveFocus = !this.preserveFocus;
+  }
+
+  private isDirty(): boolean {
+    return (
+      this.workflowMode !== this.savedWorkflowMode ||
+      this.laneStyle !== this.savedLaneStyle ||
+      this.splitDirection !== this.savedSplitDirection ||
+      this.preserveFocus !== this.savedPreserveFocus
+    );
+  }
+
+  private save(): void {
+    if (!this.isDirty()) {
+      this.done(undefined);
+      return;
+    }
+    const preferences = readSfHerdrPreferences();
+    writeSfHerdrPreferences({
+      ...preferences,
+      workflowMode: this.workflowMode,
+      defaults: {
+        ...preferences.defaults,
+        laneStyle: this.laneStyle,
+        splitDirection: this.splitDirection,
+        preserveFocus: this.preserveFocus,
+      },
+    });
+    this.done({ needsReload: true });
   }
 }
 

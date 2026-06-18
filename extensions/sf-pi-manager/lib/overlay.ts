@@ -467,37 +467,6 @@ export class SfPiOverlayComponent implements Focusable {
     lines.push(row(`  Always active: ${theme.fg("dim", ext.alwaysActive ? "yes" : "no")}`));
     lines.push(row(""));
 
-    lines.push(row(` ${theme.fg("accent", theme.bold("Bundle"))}`));
-    lines.push(row(`  Entry: ${theme.fg("dim", ext.file)}`));
-    lines.push(
-      row(
-        `  README: ${theme.fg(detail.readmeAvailable ? "dim" : "muted", detail.readmeAvailable ? detail.readmePath : "Not provided")}`,
-      ),
-    );
-    lines.push(
-      row(
-        `  Tests: ${theme.fg(detail.testsAvailable ? "dim" : "muted", detail.testsAvailable ? `${detail.testsPath}/` : "Not provided")}`,
-      ),
-    );
-    lines.push(row(""));
-
-    lines.push(row(` ${theme.fg("accent", theme.bold("Capabilities"))}`));
-    this.pushCapabilityGroup(lines, row, "Commands", detail.commands);
-    this.pushCapabilityGroup(lines, row, "Providers", detail.providers);
-    this.pushCapabilityGroup(lines, row, "Tools", detail.tools);
-    this.pushCapabilityGroup(lines, row, "Events", detail.events);
-    if (
-      detail.commands.length === 0 &&
-      detail.providers.length === 0 &&
-      detail.tools.length === 0 &&
-      detail.events.length === 0
-    ) {
-      lines.push(
-        row(`  ${theme.fg("muted", "No commands, providers, tools, or events declared.")}`),
-      );
-    }
-
-    lines.push(row(""));
     lines.push(row(` ${theme.fg("accent", theme.bold("Actions"))}`));
     const actions = this.getDetailActions(ext);
     const actionIndex = this.view.kind === "detail" ? this.view.actionIndex : 0;
@@ -800,22 +769,6 @@ export class SfPiOverlayComponent implements Focusable {
   private renderStateValue(status: ReturnType<typeof getExtensionStatus>, label: string): string {
     const color = status === "locked" ? "accent" : status === "enabled" ? "success" : "error";
     return this.theme.fg(color, label);
-  }
-
-  private pushCapabilityGroup(
-    lines: string[],
-    row: (content?: string) => string,
-    label: string,
-    values: readonly string[],
-  ): void {
-    if (values.length === 0) {
-      return;
-    }
-
-    lines.push(row(`  ${this.theme.fg("muted", `${label}:`)}`));
-    for (const value of values) {
-      lines.push(row(`    ${this.theme.fg("dim", value)}`));
-    }
   }
 
   private moveCursor(direction: number): void {
