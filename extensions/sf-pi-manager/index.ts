@@ -588,7 +588,12 @@ async function handleOverlay(
   }
 
   if (result.runActionAfterClose) {
-    await result.runActionAfterClose.run(ctx);
+    const action = collectOverlayActions(
+      pi,
+      result.runActionAfterClose.extensionId,
+      initialRoute,
+    ).find((candidate) => candidate.id === result.runActionAfterClose?.actionId);
+    if (action) await action.run(ctx);
     return;
   }
 

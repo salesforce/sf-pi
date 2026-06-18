@@ -111,7 +111,9 @@ describe("extension detail helpers", () => {
 
     overlay.handleInput("\r");
 
-    expect(result).toMatchObject({ runActionAfterClose: action });
+    expect(result).toMatchObject({
+      runActionAfterClose: { extensionId: "sf-feedback", actionId: "open" },
+    });
   });
 
   it("closes direct deep-linked extension details on escape instead of returning to the list", () => {
