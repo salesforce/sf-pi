@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.194.1-2026-06-18",
-  "latestVersion": "0.194.1",
+  "revision": "release-0.194.2-2026-06-18",
+  "latestVersion": "0.194.2",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.194.1",
+      "id": "release-0.194.2",
       "kind": "update",
-      "title": "sf-pi v0.194.1 — sf-herdr: clarify settings save state",
+      "title": "sf-pi v0.194.2 — sf-herdr: keep settings save in place",
       "publishedAt": "2026-06-18T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.194.1",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.194.2",
       "severity": "info",
-      "body": "sf-herdr: clarify settings save state — sf-herdr: remove unused config render width"
+      "body": "sf-herdr: keep settings save in place"
     },
     {
       "id": "pi-0.73-required",
