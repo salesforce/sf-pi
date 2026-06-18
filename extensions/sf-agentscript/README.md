@@ -93,7 +93,7 @@ create/compile/inspect/mutate  ──▶  preview  ──▶  eval  ──▶  l
 ## Slash commands
 
 ```text
-/sf-agentscript                   Open status & controls panel
+/sf-agentscript                   Open SF Agent Script in the SF Pi Manager
 /sf-agentscript doctor            SDK + @salesforce/core + .sfdx/agents writability
 /sf-agentscript check <file>      Manually compile a `.agent` file
 /sf-agentscript eval <spec.json>  Run a multi-turn regression suite
@@ -216,6 +216,7 @@ extensions/sf-agentscript/
     lifecycle-tool.ts       ← implementation module
     lifecycle.ts            ← implementation module
     local-lints.ts          ← implementation module
+    manager-action-panels.ts← implementation module
     mutate.ts               ← implementation module
     mutation-policy.ts      ← implementation module
     preflight.ts            ← implementation module

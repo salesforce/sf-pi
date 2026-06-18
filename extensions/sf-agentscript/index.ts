@@ -49,20 +49,18 @@ import {
 import { probeDoctor, renderDoctorReport, runExtensionDoctor } from "./lib/doctor.ts";
 import { registerExtensionDoctor } from "../../lib/common/doctor/registry.ts";
 import {
-  buildToggleExtensionAction,
-  isLifecycleToggleAction,
-  LIFECYCLE_GROUP,
-  performToggleExtension,
-  type LifecycleActionId,
-} from "../../lib/common/extension-toggle.ts";
+  openExtensionInManager,
+  type SfPiManagerOpenRoute,
+} from "../../lib/common/manager-deep-link.ts";
 import {
-  type CommandPanelAction,
-  type CommandPanelState,
-  openCommandPanel,
-} from "../../lib/common/command-panel.ts";
+  registerManagerDetailActions,
+  type ManagerDetailAction,
+} from "../../lib/common/manager-actions.ts";
+import { type SfPiCommandAction } from "../../lib/common/command-actions.ts";
 import { withSafeCommandHandler } from "../../lib/common/safe-command-handler.ts";
 import { openInfoPanel } from "../../lib/common/info-panel.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
+import { createAgentScriptInputActionPanel } from "./lib/manager-action-panels.ts";
 
 import { registerAuthoringTool } from "./lib/authoring-tool.ts";
 import { registerEvalTool } from "./lib/eval-tool.ts";
@@ -91,6 +89,7 @@ export default function sfAgentScriptExtension(pi: ExtensionAPI): void {
   const state = createState();
 
   registerCommand(pi, state);
+  registerManagerDetailActions(pi, EXTENSION_ID, buildAgentScriptManagerActions(pi, state));
   registerSessionHooks(pi, state);
   registerToolResultHook(pi, state);
 
@@ -107,16 +106,9 @@ export default function sfAgentScriptExtension(pi: ExtensionAPI): void {
 // /sf-agentscript
 // -------------------------------------------------------------------------------------------------
 
-type AgentScriptAction =
-  | "doctor"
-  | "check"
-  | "eval"
-  | "report"
-  | "help"
-  | "close"
-  | LifecycleActionId;
+type AgentScriptAction = "doctor" | "check" | "eval" | "report" | "help";
 
-const AGENTSCRIPT_ACTIONS: CommandPanelAction<AgentScriptAction>[] = [
+const AGENTSCRIPT_ACTIONS: SfPiCommandAction<AgentScriptAction>[] = [
   {
     value: "doctor",
     label: "Run doctor",
@@ -150,27 +142,18 @@ const AGENTSCRIPT_ACTIONS: CommandPanelAction<AgentScriptAction>[] = [
     description: "Print command usage and explain when to use each subcommand.",
     group: "Reference",
   },
-  {
-    value: "close",
-    label: "Close",
-    description: "Dismiss this panel.",
-    group: LIFECYCLE_GROUP,
-  },
 ];
-
-function buildAgentScriptActions(cwd: string): CommandPanelAction<AgentScriptAction>[] {
-  const toggle = buildToggleExtensionAction({ extensionId: EXTENSION_ID, cwd });
-  return toggle ? [...AGENTSCRIPT_ACTIONS, toggle] : AGENTSCRIPT_ACTIONS;
-}
 
 function registerCommand(pi: ExtensionAPI, state: AgentScriptAssistState): void {
   pi.registerCommand(COMMAND_NAME, {
     description: "Agent Script lifecycle — compile-on-save diagnostics, eval, and tools",
     getArgumentCompletions: (prefix) => {
       const lower = prefix.toLowerCase();
-      const items = AGENTSCRIPT_ACTIONS.filter((a) => a.value !== "close")
-        .filter((a) => a.value.startsWith(lower))
-        .map((a) => ({ value: a.value, label: a.value, description: a.description }));
+      const items = AGENTSCRIPT_ACTIONS.filter((a) => a.value.startsWith(lower)).map((a) => ({
+        value: a.value,
+        label: a.value,
+        description: a.description,
+      }));
       return items.length > 0 ? items : null;
     },
     handler: async (args, ctx) => {
@@ -179,7 +162,7 @@ function registerCommand(pi: ExtensionAPI, state: AgentScriptAssistState): void 
         const subcommand = tokens[0] ?? "";
 
         if (subcommand === "" && ctx.hasUI) {
-          await handleAgentScriptPanel(pi, ctx, state);
+          await openAgentScriptInManager(pi, ctx, "detail", state);
           return;
         }
         await handleAgentScriptCommand(
@@ -194,27 +177,72 @@ function registerCommand(pi: ExtensionAPI, state: AgentScriptAssistState): void 
   });
 }
 
-async function handleAgentScriptPanel(
+function buildAgentScriptManagerActions(
+  pi: ExtensionAPI,
+  state: AgentScriptAssistState,
+): ManagerDetailAction[] {
+  return AGENTSCRIPT_ACTIONS.map((action) => ({
+    id: action.value,
+    label: action.label,
+    description: action.description,
+    group: action.group,
+    run: (ctx) => handleAgentScriptCommand(pi, ctx, state, action.value, [], true),
+    ...(action.value === "check"
+      ? {
+          createPanel: (theme, _cwd, _scope, done, ctx) =>
+            createAgentScriptInputActionPanel({
+              theme,
+              title: "Check Agent Script file",
+              help: "Enter a .agent file path to run one manual parse/compile diagnostic pass.",
+              placeholder: "path/to/file.agent",
+              done,
+              run: (filePath) => handleCheckSubcommand(filePath, ctx, state),
+            }),
+        }
+      : {}),
+    ...(action.value === "eval"
+      ? {
+          createPanel: (theme, _cwd, _scope, done, ctx) =>
+            createAgentScriptInputActionPanel({
+              theme,
+              title: "Run Agent Script eval suite",
+              help: "Enter an eval spec JSON path. Advanced flags remain available through the direct slash command.",
+              placeholder: "scripts/eval/spec.json",
+              done,
+              run: (specPath) => handleEvalAction(pi, ctx, [specPath]),
+            }),
+        }
+      : {}),
+    ...(action.value === "report"
+      ? {
+          createPanel: (theme, _cwd, _scope, done, ctx) =>
+            createAgentScriptInputActionPanel({
+              theme,
+              title: "Render Agent Script eval report",
+              help: "Enter an eval run id to render the saved Markdown report.",
+              placeholder: "<run_id>",
+              done,
+              run: (runId) => handleReportAction(ctx, ["eval", runId]),
+            }),
+        }
+      : {}),
+  }));
+}
+
+async function openAgentScriptInManager(
   pi: ExtensionAPI,
   ctx: ExtensionCommandContext,
+  view: NonNullable<SfPiManagerOpenRoute["view"]>,
   state: AgentScriptAssistState,
 ): Promise<void> {
-  const panelState: CommandPanelState<AgentScriptAction> = {};
-  const doctor = await probeDoctor(ctx.cwd);
-  await openCommandPanel(ctx, {
-    title: "🛠️ SF Agent Script — lifecycle controls",
-    subtitle: "Authoring assist, compile, and eval against the Salesforce Evaluation API.",
-    statusLines: () => [
-      `${doctor.sdkLoaded ? "✓" : "✗"} SDK           ${doctor.sdkLoaded ? "loaded" : "unavailable"}`,
-      `• SDK package ${doctor.upstreamNote}`,
-      `• Session files ${state.lastStatusByFile.size} tracked file(s)`,
-    ],
-    actions: () => buildAgentScriptActions(ctx.cwd),
-    closeValue: "close",
-    state: panelState,
-    onAction: (action) => handleAgentScriptCommand(pi, ctx, state, action, [], true),
-    closeBeforeAction: isLifecycleToggleAction,
+  const opened = await openExtensionInManager(pi, ctx, {
+    extensionId: EXTENSION_ID,
+    view,
+    actions: buildAgentScriptManagerActions(pi, state),
   });
+  if (!opened) {
+    ctx.ui.notify("SF Pi Manager is unavailable. Try /sf-pi open sf-agentscript.", "warning");
+  }
 }
 
 async function handleAgentScriptCommand(
@@ -225,10 +253,6 @@ async function handleAgentScriptCommand(
   args: string[],
   fromPanel = false,
 ): Promise<void> {
-  if (subcommand === "lifecycle.toggle") {
-    await performToggleExtension(ctx, EXTENSION_ID);
-    return;
-  }
   if (subcommand === "doctor") {
     const targetOrg = parseDoctorTargetOrg(args);
     const status = await probeDoctor(ctx.cwd, targetOrg, {

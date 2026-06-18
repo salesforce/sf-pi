@@ -22,7 +22,7 @@
  *   - sf-pi-manager itself (provides the overlay; not a per-extension panel)
  *   - sf-brain (alwaysActive; no command surface)
  *   - sf-ohana-spinner (no command surface)
- *   - sf-browser / sf-code-analyzer / sf-data-explorer / sf-feedback / sf-guardrail / sf-herdr (no-args command deep-links to the Manager Surface; see ADR 0051)
+ *   - sf-agentscript / sf-browser / sf-code-analyzer / sf-data-explorer / sf-feedback / sf-guardrail / sf-herdr (no-args command deep-links to the Manager Surface; see ADR 0051)
  */
 
 import { existsSync, readFileSync, readdirSync } from "node:fs";
@@ -39,6 +39,7 @@ const EXEMPT_EXTENSIONS = new Map([
   ["sf-pi-manager", "provides the package overlay; not a per-extension settings panel"],
   ["sf-brain", "alwaysActive; no command surface"],
   ["sf-ohana-spinner", "no command surface"],
+  ["sf-agentscript", "no-args command deep-links to the Manager Surface; see ADR 0051"],
   ["sf-browser", "no-args command deep-links to the Manager Surface; see ADR 0051"],
   ["sf-code-analyzer", "no-args command deep-links to the Manager Surface; see ADR 0051"],
   ["sf-data-explorer", "no-args command deep-links to the Manager Surface; see ADR 0051"],
