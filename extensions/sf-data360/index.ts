@@ -30,7 +30,6 @@
  */
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 
-import { type CommandPanelState, openCommandPanel } from "../../lib/common/command-panel.ts";
 import { withSafeCommandHandler } from "../../lib/common/safe-command-handler.ts";
 import {
   type SfPiCommandAction,
@@ -40,12 +39,13 @@ import {
 } from "../../lib/common/command-actions.ts";
 import { openInfoPanel, type InfoPanelSeverity } from "../../lib/common/info-panel.ts";
 import {
-  buildToggleExtensionAction,
-  isLifecycleToggleAction,
-  LIFECYCLE_GROUP,
-  performToggleExtension,
-  type LifecycleActionId,
-} from "../../lib/common/extension-toggle.ts";
+  openExtensionInManager,
+  type SfPiManagerOpenRoute,
+} from "../../lib/common/manager-deep-link.ts";
+import {
+  registerManagerDetailActions,
+  type ManagerDetailAction,
+} from "../../lib/common/manager-actions.ts";
 import { buildExecFn } from "../../lib/common/exec-adapter.ts";
 import {
   getCachedSfEnvironment,
@@ -88,6 +88,8 @@ export default function sfData360(pi: ExtensionAPI) {
     clearConnectionCache();
   });
 
+  registerManagerDetailActions(pi, "sf-data360", buildSfData360ManagerActions(pi));
+
   // Contribute a small org-connectivity + readiness probe to the
   // aggregated `/sf-pi doctor` view. Deep readiness remains available through
   // data360_discover readiness actions.
@@ -118,7 +120,7 @@ export default function sfData360(pi: ExtensionAPI) {
 // Action ids for the /sf-data360 settings panel. Mirrors the pattern used by
 // sf-slack, sf-agentscript, sf-guardrail, sf-llm-gateway-internal,
 // etc. so users get the same standardized command-panel UX everywhere.
-type SfData360Action = "status" | "help" | "close" | LifecycleActionId;
+type SfData360Action = "status" | "help";
 
 const SF_DATA360_ACTIONS: SfPiCommandAction<SfData360Action>[] = [
   {
@@ -134,20 +136,16 @@ const SF_DATA360_ACTIONS: SfPiCommandAction<SfData360Action>[] = [
     description: "Print command usage and the recommended Data 360 workflow.",
     group: "Reference",
   },
-  {
-    value: "close",
-    label: "Close",
-    description: "Dismiss this panel.",
-    group: LIFECYCLE_GROUP,
-  },
 ];
 
-// Compose the live action list so the lifecycle toggle row reflects the
-// current enablement state on every panel open. SfPiCommandAction is a
-// structural superset of CommandPanelAction so the panel accepts both.
-function buildSfData360Actions(cwd: string): SfPiCommandAction<SfData360Action>[] {
-  const toggle = buildToggleExtensionAction({ extensionId: "sf-data360", cwd });
-  return toggle ? [...SF_DATA360_ACTIONS, toggle] : SF_DATA360_ACTIONS;
+function buildSfData360ManagerActions(pi: ExtensionAPI): ManagerDetailAction[] {
+  return SF_DATA360_ACTIONS.map((action) => ({
+    id: action.value,
+    label: action.label,
+    description: action.description,
+    group: action.group,
+    run: (ctx) => handleSfData360Action(pi, ctx, action.value, true),
+  }));
 }
 
 async function handleCommand(
@@ -157,11 +155,8 @@ async function handleCommand(
 ): Promise<void> {
   const subcommand = args.trim().split(/\s+/)[0] ?? "";
 
-  // Empty command + interactive UI → open the standardized settings panel.
-  // Other subcommands stay as text-only output for headless callers and for
-  // users who already know the action they want.
   if (subcommand === "" && ctx.hasUI) {
-    await handleSfData360Panel(pi, ctx);
+    await openData360InManager(pi, ctx, "detail");
     return;
   }
 
@@ -170,20 +165,19 @@ async function handleCommand(
   await handleSfData360Action(pi, ctx, resolved, false);
 }
 
-async function handleSfData360Panel(pi: ExtensionAPI, ctx: ExtensionCommandContext): Promise<void> {
-  const panelState: CommandPanelState<SfData360Action> = {};
-  await openCommandPanel(ctx, {
-    title: "☁️  SF Data 360 — status & controls",
-    subtitle: "Inspect the Data 360 REST helper and review the recommended workflow.",
-    statusLines: () => buildPanelStatusLines(ctx),
-    actions: () => buildSfData360Actions(ctx.cwd),
-    closeValue: "close",
-    state: panelState,
-    onAction: (action) => handleSfData360Action(pi, ctx, action, true),
-    // Lifecycle toggle calls ctx.reload() — must close panel first so the
-    // ctx.ui.custom() promise resolves before the runtime is invalidated.
-    closeBeforeAction: isLifecycleToggleAction,
+async function openData360InManager(
+  pi: ExtensionAPI,
+  ctx: ExtensionCommandContext,
+  view: NonNullable<SfPiManagerOpenRoute["view"]>,
+): Promise<void> {
+  const opened = await openExtensionInManager(pi, ctx, {
+    extensionId: "sf-data360",
+    view,
+    actions: buildSfData360ManagerActions(pi),
   });
+  if (!opened) {
+    ctx.ui.notify("SF Pi Manager is unavailable. Try /sf-pi open sf-data360.", "warning");
+  }
 }
 
 async function handleSfData360Action(
@@ -192,13 +186,6 @@ async function handleSfData360Action(
   action: SfData360Action | string,
   fromPanel: boolean,
 ): Promise<void> {
-  // The shared command-panel guarantees the closeValue row never reaches
-  // here — see lib/common/command-panel.ts. No "close" branch needed.
-  if (action === "lifecycle.toggle") {
-    await performToggleExtension(ctx, "sf-data360");
-    return;
-  }
-
   const enabled = isSfPiExtensionEnabled(ctx.cwd, "sf-data360");
 
   if (action === "help") {
@@ -222,22 +209,6 @@ async function handleSfData360Action(
     "warning",
     fromPanel,
   );
-}
-
-// Build the compact status block shown at the top of the settings panel.
-// We deliberately use the cached environment (no fresh sf calls) here so
-// opening the panel never blocks on the network. The full "status" action
-// re-resolves the environment when the user explicitly asks for it.
-function buildPanelStatusLines(ctx: ExtensionCommandContext): string[] {
-  const enabled = isSfPiExtensionEnabled(ctx.cwd, "sf-data360");
-  const env = getCachedSfEnvironment(ctx.cwd);
-  return [
-    `${enabled ? "✓" : "✗"} Extension     ${enabled ? "enabled" : "disabled (use /sf-pi enable sf-data360)"}`,
-    `• Tools         ${enabled ? formatData360ToolNames() : "not registered"}`,
-    `• References    extensions/sf-data360/references/`,
-    `• Target org    ${env?.config.targetOrg ?? "not resolved (run Show status)"}`,
-    `• API version   ${env?.org.apiVersion ?? env?.project.sourceApiVersion ?? "66.0"}`,
-  ];
 }
 
 function formatData360ToolNames(): string {
@@ -288,10 +259,7 @@ function buildHelpText(enabled: boolean): string {
   return [
     "SF Data 360 — agent-first family tools",
     "",
-    formatHelpFromActions(
-      SF_DATA360_ACTIONS.filter((a) => a.value !== "close" && a.value !== "lifecycle.toggle"),
-      COMMAND_NAME,
-    ),
+    formatHelpFromActions(SF_DATA360_ACTIONS, COMMAND_NAME),
     "",
     "Enablement:",
     `  Default state: enabled`,
