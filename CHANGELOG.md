@@ -517,6 +517,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.194.0](https://github.com/salesforce/sf-pi/compare/v0.193.0...v0.194.0) (2026-06-18)
+
+
+### Features
+
+* **sf-data-explorer:** route command to manager surface ([7639aa7](https://github.com/salesforce/sf-pi/commit/7639aa7a7d0a313da5371f49dca5929946f641af))
+
 ## [0.193.0](https://github.com/salesforce/sf-pi/compare/v0.192.1...v0.193.0) (2026-06-18)
 
 
