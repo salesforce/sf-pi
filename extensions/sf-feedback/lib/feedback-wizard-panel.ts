@@ -175,7 +175,8 @@ export class FeedbackWizardPanel implements Focusable {
     ];
 
     for (let i = 0; i < FORM_FIELDS.length; i++) {
-      const field = FORM_FIELDS[i]!;
+      const field = FORM_FIELDS[i];
+      if (!field) continue;
       const selected = i === this.cursor;
       const value = this.fields[field.key].trim();
       const displayValue = summarizeFieldValue(value);
@@ -286,7 +287,8 @@ export class FeedbackWizardPanel implements Focusable {
   }
 
   private openFieldEditor(): void {
-    const field = FORM_FIELDS[this.cursor] ?? FORM_FIELDS[0]!;
+    const field = FORM_FIELDS[this.cursor] ?? FORM_FIELDS[0];
+    if (!field) return;
     this.editingField = field;
     this.error = undefined;
     if (field.multiline) {

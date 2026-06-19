@@ -319,7 +319,8 @@ function rainbowGradient(text: string, hexPalette: readonly string[]): string {
   // A single-color palette is a valid solid-color badge config. Duplicate it
   // locally so the interpolation math can keep using [current, next] stops.
   if (palette.length === 1) {
-    palette.push(palette[0]!);
+    const solidColor = palette[0];
+    if (solidColor) palette.push(solidColor);
   }
 
   // Spaces separate words but should not consume gradient steps. Brackets are

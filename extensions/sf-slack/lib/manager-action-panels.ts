@@ -249,7 +249,8 @@ class SlackPreferencesActionPanel implements Focusable {
       "",
     ];
     for (let i = 0; i < SLACK_PREFERENCE_DESCRIPTORS.length; i++) {
-      const descriptor = SLACK_PREFERENCE_DESCRIPTORS[i]!;
+      const descriptor = SLACK_PREFERENCE_DESCRIPTORS[i];
+      if (!descriptor) continue;
       const selected = i === this.selected;
       const value = String(this.working[descriptor.key]);
       const cursor = selected ? t.fg("accent", "→") : " ";
