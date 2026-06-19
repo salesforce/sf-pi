@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.194.5-2026-06-18",
-  "latestVersion": "0.194.5",
+  "revision": "release-0.195.0-2026-06-19",
+  "latestVersion": "0.195.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.194.5",
+      "id": "release-0.195.0",
       "kind": "update",
-      "title": "sf-pi v0.194.5 — sf-feedback: lazy load feedback flow",
-      "publishedAt": "2026-06-18T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.194.5",
+      "title": "sf-pi v0.195.0 — sf-agentscript: route command to manager",
+      "publishedAt": "2026-06-19T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.195.0",
       "severity": "info",
-      "body": "sf-feedback: lazy load feedback flow"
+      "body": "sf-agentscript: route command to manager — sf-browser: route command to manager"
     },
     {
       "id": "pi-0.73-required",
