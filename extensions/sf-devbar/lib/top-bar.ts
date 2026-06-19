@@ -316,8 +316,15 @@ function rainbowGradient(text: string, hexPalette: readonly string[]): string {
     hexToRgb,
   );
 
-  // Count color-cycling characters (skip brackets, spaces)
-  const skipChars = new Set([" ", "[", "]"]);
+  // A single-color palette is a valid solid-color badge config. Duplicate it
+  // locally so the interpolation math can keep using [current, next] stops.
+  if (palette.length === 1) {
+    palette.push(palette[0]!);
+  }
+
+  // Spaces separate words but should not consume gradient steps. Brackets are
+  // visual badge edges, so color them as part of the badge.
+  const skipChars = new Set([" "]);
   const colorChars = [...text].filter((c) => !skipChars.has(c)).length;
   if (colorChars === 0) return text;
 

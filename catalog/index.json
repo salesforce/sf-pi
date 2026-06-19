@@ -372,7 +372,7 @@
     "entry": "extensions/sf-devbar/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 2533
+    "srcLoc": 2539
   },
   {
     "id": "sf-feedback",

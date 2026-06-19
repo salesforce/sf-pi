@@ -247,6 +247,56 @@ describe("renderTopBar", () => {
     expect(line).toContain(ansiFg(1, 2, 3));
   });
 
+  it("colors gateway badge brackets as part of the gradient", () => {
+    const [line] = renderTopBar(
+      makeState({
+        modelProvider: "sf-llm-gateway-internal",
+        modelName: "Claude Opus 4.7",
+        colors: {
+          folderPath: "#00afaf",
+          modelName: "#d787af",
+          orgWarning: "#cc8866",
+          sandboxTrial: "#82aacc",
+          contextEmptyFg: "#3c3c4a",
+          contextEmptyBg: "#28282e",
+          gatewayRainbow: ["#010203", "#040506"],
+          thinkingRainbow: ["#b281d6", "#d787af"],
+        },
+      }),
+      stubTheme,
+    );
+
+    expect(line).toContain(`${ansiFg(1, 2, 3)}[`);
+    expect(line).toContain(`${ansiFg(4, 5, 6)}]`);
+  });
+
+  it("renders a single-color gateway palette as a solid badge", () => {
+    const solidColor = ansiFg(95, 166, 184);
+    const [line] = renderTopBar(
+      makeState({
+        modelProvider: "sf-llm-gateway-internal",
+        modelName: "Claude Opus 4.7",
+        colors: {
+          folderPath: "#00afaf",
+          modelName: "#d787af",
+          orgWarning: "#cc8866",
+          sandboxTrial: "#82aacc",
+          contextEmptyFg: "#3c3c4a",
+          contextEmptyBg: "#28282e",
+          gatewayRainbow: ["#5fa6b8"],
+          thinkingRainbow: ["#b281d6", "#d787af"],
+        },
+      }),
+      stubTheme,
+    );
+
+    expect(line).not.toContain("NaN");
+    expect(line).toContain(`${solidColor}[`);
+    expect(line).toContain(`${solidColor}]`);
+    // "[SF LLM Gateway]" has 14 non-space characters.
+    expect(line.split(solidColor).length - 1).toBe(14);
+  });
+
   it("uses custom context empty foreground and background colors", () => {
     const [line] = renderTopBar(
       makeState({
