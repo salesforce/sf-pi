@@ -104,7 +104,7 @@
     "@commitlint/cli": "^21.0.2",
     "@commitlint/config-conventional": "^21.0.2",
     "@earendil-works/pi-ai": "^0.79.4",
-    "@earendil-works/pi-coding-agent": "^0.79.4",
+    "@earendil-works/pi-coding-agent": "^0.79.8",
     "@earendil-works/pi-tui": "^0.79.4",
     "@eslint/js": "^10.0.1",
     "@types/node": "^25.9.3",
