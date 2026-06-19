@@ -35,6 +35,7 @@ import {
 import {
   registerManagerDetailActions,
   type ManagerDetailAction,
+  type ManagerScope,
 } from "../../lib/common/manager-actions.ts";
 import { buildExecFn } from "../../lib/common/exec-adapter.ts";
 import { registerExtensionDoctor } from "../../lib/common/doctor/registry.ts";
@@ -248,41 +249,89 @@ export default function sfCodeAnalyzer(pi: ExtensionAPI) {
   });
 }
 
+const CODE_ANALYZER_GLOBAL_DUPLICATE_ACTIONS = new Set<CodeAnalyzerPanelAction>([
+  "auto-scan-global-on",
+  "auto-scan-global-off",
+  "apexguru-auto-global-on",
+  "apexguru-auto-global-off",
+]);
+
+const CODE_ANALYZER_SCOPED_MANAGER_ACTIONS = new Set<CodeAnalyzerPanelAction>([
+  "auto-scan-on",
+  "auto-scan-off",
+  "apexguru-auto-on",
+  "apexguru-auto-off",
+]);
+
 function buildCodeAnalyzerManagerActions(pi: ExtensionAPI): ManagerDetailAction[] {
-  return CODE_ANALYZER_ACTIONS.map((action) => ({
-    id: action.value,
-    label: action.label,
-    description: action.description,
-    group: action.group,
-    run: (ctx) => handleAction(pi, ctx, action.value, true),
-    ...(action.value === "setup"
-      ? {
-          createPanel: (theme, _cwd, _scope, done, ctx) =>
-            createCodeAnalyzerConfirmPanel({
-              theme,
-              title: "Install/update Code Analyzer plugin",
-              detail:
-                "This runs `sf plugins install code-analyzer` and changes your local Salesforce CLI plugin state.",
-              confirmLabel: "Install/update plugin",
-              onConfirm: () => setupCodeAnalyzerPlugin(pi, ctx),
-              done,
-            }),
-        }
-      : {}),
-    ...(action.value === "apexguru-setup-start"
-      ? {
-          createPanel: (theme, _cwd, _scope, done) =>
-            createCodeAnalyzerConfirmPanel({
-              theme,
-              title: "Start ApexGuru setup check with SF Browser",
-              detail: `${formatApexGuruSetupRunbook()}\n\nThis queues a normal agent follow-up that uses sf_browser tools visibly. No Setup enable/accept/save click should happen without a second explicit approval.`,
-              confirmLabel: "Queue browser setup check",
-              onConfirm: () => queueApexGuruBrowserSetup(pi),
-              done,
-            }),
-        }
-      : {}),
-  }));
+  return CODE_ANALYZER_ACTIONS.filter(
+    (action) => !CODE_ANALYZER_GLOBAL_DUPLICATE_ACTIONS.has(action.value),
+  ).map((action) => {
+    const scoped = CODE_ANALYZER_SCOPED_MANAGER_ACTIONS.has(action.value);
+    return {
+      id: action.value,
+      label: managerActionLabel(action.value, action.label),
+      description: managerActionDescription(action.value, action.description),
+      group: scoped || action.group.startsWith("Automation") ? "Automation" : action.group,
+      acceptsScope: scoped,
+      run: (ctx, scope) => handleAction(pi, ctx, action.value, true, scope),
+      ...(action.value === "setup"
+        ? {
+            createPanel: (theme, _cwd, _scope, done, ctx) =>
+              createCodeAnalyzerConfirmPanel({
+                theme,
+                title: "Install/update Code Analyzer plugin",
+                detail:
+                  "This runs `sf plugins install code-analyzer` and changes your local Salesforce CLI plugin state.",
+                confirmLabel: "Install/update plugin",
+                onConfirm: () => setupCodeAnalyzerPlugin(pi, ctx),
+                done,
+              }),
+          }
+        : {}),
+      ...(action.value === "apexguru-setup-start"
+        ? {
+            createPanel: (theme, _cwd, _scope, done) =>
+              createCodeAnalyzerConfirmPanel({
+                theme,
+                title: "Start ApexGuru setup check with SF Browser",
+                detail: `${formatApexGuruSetupRunbook()}\n\nThis queues a normal agent follow-up that uses sf_browser tools visibly. No Setup enable/accept/save click should happen without a second explicit approval.`,
+                confirmLabel: "Queue browser setup check",
+                onConfirm: () => queueApexGuruBrowserSetup(pi),
+                done,
+              }),
+          }
+        : {}),
+    };
+  });
+}
+
+function managerActionLabel(action: CodeAnalyzerPanelAction, fallback: string): string {
+  switch (action) {
+    case "auto-scan-on":
+      return "Enable deferred auto-scan";
+    case "auto-scan-off":
+      return "Disable deferred auto-scan";
+    case "apexguru-auto-on":
+      return "Enable ApexGuru auto insights";
+    case "apexguru-auto-off":
+      return "Disable ApexGuru auto insights";
+    default:
+      return fallback;
+  }
+}
+
+function managerActionDescription(action: CodeAnalyzerPanelAction, fallback: string): string {
+  switch (action) {
+    case "auto-scan-on":
+    case "auto-scan-off":
+      return "Set the selected-scope preference for post-agent Code Analyzer scans.";
+    case "apexguru-auto-on":
+    case "apexguru-auto-off":
+      return "Set the selected-scope preference for automatic ApexGuru insights.";
+    default:
+      return fallback;
+  }
 }
 
 async function handleCommand(
@@ -332,10 +381,11 @@ async function handleAction(
   ctx: ExtensionCommandContext,
   action: CodeAnalyzerPanelAction | string,
   fromPanel: boolean,
+  scope: ManagerScope = "project",
 ): Promise<void> {
   if (action === "auto-scan-on" || action === "auto-scan-off") {
     const enabled = action === "auto-scan-on";
-    const settings = writeCodeAnalyzerSetting(ctx.cwd, "project", "autoScan", enabled);
+    const settings = writeCodeAnalyzerSetting(ctx.cwd, scope, "autoScan", enabled);
     await emitOutput(
       ctx,
       "SF Code Analyzer automation updated",
@@ -373,7 +423,7 @@ async function handleAction(
 
   if (action === "apexguru-auto-on" || action === "apexguru-auto-off") {
     const enabled = action === "apexguru-auto-on";
-    const settings = writeCodeAnalyzerSetting(ctx.cwd, "project", "apexGuruAuto", enabled);
+    const settings = writeCodeAnalyzerSetting(ctx.cwd, scope, "apexGuruAuto", enabled);
     await emitOutput(
       ctx,
       "SF Code Analyzer automation updated",

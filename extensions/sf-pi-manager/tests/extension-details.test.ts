@@ -130,6 +130,76 @@ describe("extension detail helpers", () => {
     expect(rendered).toContain(`${iconForCommandGroup("Lifecycle", glyphs)} Lifecycle`);
   });
 
+  it("renders scoped Manager actions once with the selected Manager scope", () => {
+    const states = buildExtensionStates(new Set());
+    const overlay = new SfPiOverlayComponent(
+      stubTheme,
+      "0.0.0-test",
+      PACKAGE_ROOT,
+      "/tmp/project",
+      states,
+      states,
+      "global",
+      () => 40,
+      () => undefined,
+      {} as never,
+      {} as never,
+      () => [
+        {
+          id: "setup",
+          label: "Setup gateway",
+          description: "Configure gateway credentials",
+          acceptsScope: true,
+          run: () => undefined,
+        },
+      ],
+      () => undefined,
+      { extensionId: "sf-feedback", view: "detail" },
+    );
+
+    expect(overlay.render(120).join("\n")).toContain("Setup gateway [global]");
+
+    overlay.handleInput("s");
+
+    expect(overlay.render(120).join("\n")).toContain("Setup gateway [project]");
+  });
+
+  it("passes the selected Manager scope to in-place actions", () => {
+    const states = buildExtensionStates(new Set());
+    const calls: string[] = [];
+    const overlay = new SfPiOverlayComponent(
+      stubTheme,
+      "0.0.0-test",
+      PACKAGE_ROOT,
+      "/tmp/project",
+      states,
+      states,
+      "global",
+      () => 40,
+      () => undefined,
+      {} as never,
+      {} as never,
+      () => [
+        {
+          id: "setup",
+          label: "Setup gateway",
+          description: "Configure gateway credentials",
+          acceptsScope: true,
+          run: () => undefined,
+        },
+      ],
+      (_action, scope) => {
+        calls.push(scope);
+      },
+      { extensionId: "sf-feedback", view: "detail" },
+    );
+
+    overlay.handleInput("s");
+    overlay.handleInput("\r");
+
+    expect(calls).toEqual(["project"]);
+  });
+
   it("returns close-before-run manager actions after closing the overlay", () => {
     const states = buildExtensionStates(new Set());
     let result: unknown;
@@ -160,9 +230,11 @@ describe("extension detail helpers", () => {
       { extensionId: "sf-feedback", view: "detail" },
     );
 
+    overlay.handleInput("s");
     overlay.handleInput("\r");
 
     expect(result).toMatchObject({
+      scope: "project",
       runActionAfterClose: { extensionId: "sf-feedback", actionId: "open" },
     });
   });

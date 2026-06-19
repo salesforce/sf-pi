@@ -620,54 +620,35 @@ export function __resetThinkingLevelStateForTests(): void {
 // Command flow
 // -------------------------------------------------------------------------------------------------
 
-type GatewayManagerActionId =
-  | GatewayCommandId
-  | `${Extract<GatewayCommandId, "setup" | "on" | "off" | "set-default" | "onboard" | "import-claude">}:global`
-  | `${Extract<GatewayCommandId, "setup" | "on" | "off" | "set-default" | "onboard" | "import-claude">}:project`;
-
 export function buildGatewayManagerActions(pi: ExtensionAPI): ManagerDetailAction[] {
-  return GATEWAY_COMMAND_SURFACE.flatMap((item): ManagerDetailAction[] => {
-    if (!item.acceptsScope) {
-      return [gatewayManagerAction(pi, item.id, item.label, item.description, item.section)];
-    }
-    return [
+  return GATEWAY_COMMAND_SURFACE.map(
+    (item): ManagerDetailAction =>
       gatewayManagerAction(
         pi,
-        `${item.id}:global` as GatewayManagerActionId,
-        `${item.label} [global]`,
-        `${item.description} Saves or applies global scope.`,
-        item.section,
         item.id,
-        "global",
-      ),
-      gatewayManagerAction(
-        pi,
-        `${item.id}:project` as GatewayManagerActionId,
-        `${item.label} [project]`,
-        `${item.description} Saves or applies project scope.`,
+        item.label,
+        item.description,
         item.section,
-        item.id,
-        "project",
+        Boolean(item.acceptsScope),
       ),
-    ];
-  });
+  );
 }
 
 function gatewayManagerAction(
   pi: ExtensionAPI,
-  id: GatewayManagerActionId,
+  command: GatewayCommandId,
   label: string,
   description: string,
   group: string,
-  command: GatewayCommandId = id as GatewayCommandId,
-  scope: "global" | "project" = "global",
+  acceptsScope: boolean,
 ): ManagerDetailAction {
   return {
-    id,
+    id: command,
     label,
     description,
     group,
-    run: (ctx) => handlePanelAction(pi, ctx, command, scope),
+    acceptsScope,
+    run: (ctx, scope) => handlePanelAction(pi, ctx, command, scope),
     ...(command === "setup" ? { closeBeforeRun: true } : {}),
   };
 }

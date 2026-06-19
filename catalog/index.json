@@ -228,7 +228,7 @@
     "entry": "extensions/sf-code-analyzer/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 3026
+    "srcLoc": 3072
   },
   {
     "id": "sf-data-explorer",
@@ -568,7 +568,7 @@
     "entry": "extensions/sf-llm-gateway-internal/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 11900
+    "srcLoc": 11882
   },
   {
     "id": "sf-lsp",
@@ -688,7 +688,7 @@
     "entry": "extensions/sf-pi-manager/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 3508
+    "srcLoc": 3525
   },
   {
     "id": "sf-skills",

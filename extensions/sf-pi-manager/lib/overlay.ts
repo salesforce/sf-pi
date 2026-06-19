@@ -32,7 +32,7 @@ import type {
   ConfigPanelFactory,
   ConfigPanelResult,
 } from "../../../catalog/registry.ts";
-import type { ManagerDetailAction } from "../../../lib/common/manager-actions.ts";
+import type { ManagerDetailAction, ManagerScope } from "../../../lib/common/manager-actions.ts";
 import {
   iconForCommandGroup,
   iconForExtension,
@@ -69,7 +69,7 @@ export type OverlayResult = {
   changed: boolean;
   disabledFiles: Set<string>;
   needsReload?: boolean;
-  scope: "global" | "project";
+  scope: ManagerScope;
   runActionAfterClose?: { extensionId: string; actionId: string };
 };
 
@@ -151,7 +151,7 @@ export class SfPiOverlayComponent implements Focusable {
   private activePanel: ConfigPanel | null = null;
   private activePanelExtId: string | null = null;
   private configPanelReloadNeeded = false;
-  private scope: "global" | "project";
+  private scope: ManagerScope;
   private actionInFlight = false;
   private closeDetailOnBack = false;
 
@@ -167,13 +167,16 @@ export class SfPiOverlayComponent implements Focusable {
     private readonly cwd: string,
     initialStates: ExtensionState[],
     private readonly registryEntries: readonly SfPiExtension[],
-    initialScope: "global" | "project",
+    initialScope: ManagerScope,
     private readonly getTerminalRows: () => number,
     private readonly done: (result: OverlayResult | undefined) => void,
     private readonly commandCtx: ExtensionCommandContext,
     private readonly tui: TUI,
     private readonly getExtensionActions: (extensionId: string) => ManagerDetailAction[],
-    private readonly runManagerAction: (action: ManagerDetailAction) => Promise<void> | void,
+    private readonly runManagerAction: (
+      action: ManagerDetailAction,
+      scope: ManagerScope,
+    ) => Promise<void> | void,
     initialRoute?: OverlayInitialRoute,
   ) {
     this.extensions = initialStates.map((e) => ({ ...e }));
@@ -245,6 +248,11 @@ export class SfPiOverlayComponent implements Focusable {
         return;
       }
 
+      if (data === "s" || data === "S") {
+        this.toggleScope();
+        return;
+      }
+
       if (matchesKey(data, "return") || matchesKey(data, "enter") || matchesKey(data, "space")) {
         this.runSelectedDetailAction();
       }
@@ -295,7 +303,7 @@ export class SfPiOverlayComponent implements Focusable {
     }
 
     if (data === "s" || data === "S") {
-      this.scope = this.scope === "global" ? "project" : "global";
+      this.toggleScope();
       return;
     }
   }
@@ -478,7 +486,7 @@ export class SfPiOverlayComponent implements Focusable {
 
     lines.push(row(` ${theme.fg("accent", theme.bold("State"))}`));
     lines.push(row(`  Status: ${this.renderStateValue(detail.status, detail.statusLabel)}`));
-    lines.push(row(`  Scope: ${theme.fg("dim", this.scope)}`));
+    lines.push(row(`  Scope: ${this.renderScopeValue()}`));
     lines.push(row(`  Default on install: ${theme.fg("dim", ext.defaultEnabled ? "yes" : "no")}`));
     lines.push(row(`  Configurable: ${theme.fg("dim", ext.configurable ? "yes" : "no")}`));
     lines.push(row(`  Always active: ${theme.fg("dim", ext.alwaysActive ? "yes" : "no")}`));
@@ -503,7 +511,8 @@ export class SfPiOverlayComponent implements Focusable {
       }
       const selected = i === actionIndex;
       const cursor = selected ? theme.fg("accent", "→") : " ";
-      const label = selected ? theme.fg("accent", action.label) : theme.fg("text", action.label);
+      const actionLabel = this.renderDetailActionLabel(action);
+      const label = selected ? theme.fg("accent", actionLabel) : theme.fg("text", actionLabel);
       lines.push(row(`  ${cursor} ${label}`));
       lines.push(row(`     ${theme.fg("dim", action.description)}`));
     }
@@ -714,6 +723,10 @@ export class SfPiOverlayComponent implements Focusable {
     }));
   }
 
+  private renderDetailActionLabel(action: DetailActionItem): string {
+    return action.managerAction?.acceptsScope ? `${action.label} [${this.scope}]` : action.label;
+  }
+
   private moveDetailAction(direction: -1 | 1): void {
     if (this.view.kind !== "detail") return;
     const ext = this.getActiveExtension();
@@ -763,7 +776,7 @@ export class SfPiOverlayComponent implements Focusable {
     if (this.actionInFlight) return;
     this.actionInFlight = true;
     try {
-      await this.runManagerAction(action);
+      await this.runManagerAction(action, this.scope);
     } finally {
       this.actionInFlight = false;
     }
@@ -861,6 +874,10 @@ export class SfPiOverlayComponent implements Focusable {
     return this.theme.fg(color, label);
   }
 
+  private renderScopeValue(): string {
+    return `${this.theme.fg(this.scope === "global" ? "accent" : "warning", this.scope)} ${this.theme.fg("dim", "· S switch")}`;
+  }
+
   private moveCursor(direction: number): void {
     const len = this.extensions.length;
     let next = this.selectedIndex + direction;
@@ -870,6 +887,10 @@ export class SfPiOverlayComponent implements Focusable {
 
     this.selectedIndex = next;
     this.ensureSelectionVisible();
+  }
+
+  private toggleScope(): void {
+    this.scope = this.scope === "global" ? "project" : "global";
   }
 
   private toggleSelected(): void {

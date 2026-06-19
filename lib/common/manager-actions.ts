@@ -6,6 +6,8 @@ import type { ConfigPanelResult } from "../../catalog/registry.ts";
 
 export const SF_PI_MANAGER_ACTIONS_EVENT = "sf-pi-manager:actions";
 
+export type ManagerScope = "global" | "project";
+
 export type ManagerDetailActionPanel = Component &
   Focusable & {
     renderContent?: (width: number) => string[];
@@ -14,7 +16,7 @@ export type ManagerDetailActionPanel = Component &
 export type ManagerDetailActionPanelFactory = (
   theme: Theme,
   cwd: string,
-  scope: "global" | "project",
+  scope: ManagerScope,
   done: (result: ConfigPanelResult | undefined) => void,
   ctx: ExtensionCommandContext,
   tui: TUI,
@@ -26,7 +28,9 @@ export interface ManagerDetailAction {
   description: string;
   /** Optional display group for Manager detail action sections. */
   group?: string;
-  run(ctx: ExtensionCommandContext): Promise<void> | void;
+  /** True when this action should run against the Manager's selected global/project scope. */
+  acceptsScope?: boolean;
+  run(ctx: ExtensionCommandContext, scope: ManagerScope): Promise<void> | void;
   /** Optional drill-down page for interactive actions that collect input. */
   createPanel?: ManagerDetailActionPanelFactory;
   /** Close the Manager before running this action. Use for actions that open their own full-screen UI. */
@@ -63,11 +67,12 @@ export async function runCollectedManagerDetailAction(
   extensionId: string,
   actionId: string,
   ctx: ExtensionCommandContext,
+  scope: ManagerScope = "global",
 ): Promise<boolean> {
   const action = collectManagerDetailActions(pi, extensionId).find(
     (candidate) => candidate.id === actionId,
   );
   if (!action) return false;
-  await action.run(ctx);
+  await action.run(ctx, scope);
   return true;
 }

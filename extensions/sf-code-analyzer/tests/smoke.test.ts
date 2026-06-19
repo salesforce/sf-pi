@@ -93,21 +93,14 @@ describe("sf-code-analyzer smoke", () => {
       "apexguru-auto-on",
       "apexguru-auto-off",
       "apexguru-auto-reset",
-      "auto-scan-global-on",
-      "auto-scan-global-off",
-      "apexguru-auto-global-on",
-      "apexguru-auto-global-off",
       "apexguru-setup-help",
       "apexguru-setup-start",
       "help",
     ]);
     expect(actions.find((action) => action.id === "status")?.group).toBe("Diagnostics");
-    expect(actions.find((action) => action.id === "auto-scan-on")?.group).toBe(
-      "Automation — project",
-    );
-    expect(actions.find((action) => action.id === "auto-scan-global-on")?.group).toBe(
-      "Automation — global",
-    );
+    expect(actions.find((action) => action.id === "auto-scan-on")?.group).toBe("Automation");
+    expect(actions.find((action) => action.id === "auto-scan-on")?.acceptsScope).toBe(true);
+    expect(actions.some((action) => action.id === "auto-scan-global-on")).toBe(false);
     expect(actions.find((action) => action.id === "apexguru-setup-start")?.group).toBe(
       "ApexGuru setup",
     );

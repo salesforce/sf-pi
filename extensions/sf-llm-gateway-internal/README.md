@@ -261,7 +261,7 @@ The legacy `/sf-llm-gateway-internal` slash command was retired in v0.56.0
 The provider id is unchanged so pi-native model routing and `/login`
 resolution still work.
 
-The Manager detail page preserves the grouped command surface from the legacy panel. Actions that launch their own setup overlay close the Manager first; read-only status, help, doctor, and report-style actions use the standard Manager info popup. In headless/print/RPC mode, the no-args command falls back to the text status report.
+The Manager detail page preserves the grouped command surface from the legacy panel. Press `S` on the detail page to switch the active Manager scope between global and project; scoped actions render once and run against the selected scope. Actions that launch their own setup overlay close the Manager first; read-only status, help, doctor, and report-style actions use the standard Manager info popup. In headless/print/RPC mode, the no-args command falls back to the text status report.
 
 Primary actions are grouped as:
 

@@ -35,7 +35,22 @@ describe("manager detail actions", () => {
     await expect(runCollectedManagerDetailAction(pi, "test-extension", "audit", ctx)).resolves.toBe(
       true,
     );
-    expect(run).toHaveBeenCalledWith(ctx);
+    expect(run).toHaveBeenCalledWith(ctx, "global");
+  });
+
+  it("passes an explicit selected scope to scoped actions", async () => {
+    const run = vi.fn();
+    const pi = { events: eventBus() };
+    const ctx = {} as never;
+
+    registerManagerDetailActions(pi, "test-extension", [
+      { id: "setup", label: "Setup", description: "Run setup", acceptsScope: true, run },
+    ]);
+
+    await expect(
+      runCollectedManagerDetailAction(pi, "test-extension", "setup", ctx, "project"),
+    ).resolves.toBe(true);
+    expect(run).toHaveBeenCalledWith(ctx, "project");
   });
 
   it("returns false for unknown actions", async () => {

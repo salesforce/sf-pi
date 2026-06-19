@@ -567,7 +567,7 @@ async function handleOverlay(
           ctx,
           tui,
           (extensionId) => collectOverlayActions(pi, extensionId, initialRoute),
-          (action) => action.run(ctx),
+          (action, scope) => action.run(ctx, scope),
           initialRoute,
         ),
       {
@@ -594,7 +594,7 @@ async function handleOverlay(
       result.runActionAfterClose.extensionId,
       initialRoute,
     ).find((candidate) => candidate.id === result.runActionAfterClose?.actionId);
-    if (action) await action.run(ctx);
+    if (action) await action.run(ctx, result.scope);
     return;
   }
 

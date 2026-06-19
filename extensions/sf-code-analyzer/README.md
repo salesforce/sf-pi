@@ -174,7 +174,9 @@ project tree. User-supplied `output_files` are passed directly to Code Analyzer.
 
 Project settings override global settings, which override extension defaults.
 Use project overrides when a repository needs stricter or quieter automation
-than your global default.
+than your global default. In the SF Pi Manager detail page, press `S` to switch
+the active Manager scope; scoped automation actions render once and apply to the
+selected global or project scope.
 
 ## Behavior Matrix
 
