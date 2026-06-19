@@ -372,7 +372,7 @@
     "entry": "extensions/sf-devbar/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 2539
+    "srcLoc": 2540
   },
   {
     "id": "sf-feedback",
@@ -407,7 +407,7 @@
     "entry": "extensions/sf-feedback/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 1383
+    "srcLoc": 1385
   },
   {
     "id": "sf-guardrail",
@@ -800,7 +800,7 @@
     "entry": "extensions/sf-slack/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 12492
+    "srcLoc": 12493
   },
   {
     "id": "sf-welcome",
