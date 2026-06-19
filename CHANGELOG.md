@@ -517,6 +517,38 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.195.0](https://github.com/salesforce/sf-pi/compare/v0.194.5...v0.195.0) (2026-06-19)
+
+
+### Features
+
+* **sf-agentscript:** route command to manager ([91c5b36](https://github.com/salesforce/sf-pi/commit/91c5b367144cb040d17c3afeeb4421ec77be6365))
+* **sf-browser:** route command to manager ([a433609](https://github.com/salesforce/sf-pi/commit/a43360949597efe5a006d486f39948834e9c2f9b))
+* **sf-code-analyzer:** route command to manager ([091c00f](https://github.com/salesforce/sf-pi/commit/091c00f2b752134653b95b0f7660b5b0e71c593b))
+* **sf-data360:** route command to manager ([0c14b18](https://github.com/salesforce/sf-pi/commit/0c14b18128ae7f4abbb1010956b2e431b89b961d))
+* **sf-feedback:** drill manager actions into wizard ([edc2442](https://github.com/salesforce/sf-pi/commit/edc24423d5e49b08873a354a6f734ef93a05b844))
+* **sf-feedback:** use native field editor ([44cfe37](https://github.com/salesforce/sf-pi/commit/44cfe377b7a91a5974639d0a1aa2f93c2add2a53))
+* **sf-llm-gateway:** route command to manager ([36273b1](https://github.com/salesforce/sf-pi/commit/36273b13678e0cc9ed73e494bd41891a3c7ece6d))
+* **sf-pi-manager:** add semantic detail icons ([88b829d](https://github.com/salesforce/sf-pi/commit/88b829d2af5347cd05d0e7aef277ca4af91a2396))
+* **sf-pi-manager:** group detail actions ([121a8d9](https://github.com/salesforce/sf-pi/commit/121a8d93bd2f36e32f0ef253ad67e3d3f71aa2bb))
+* **sf-pi-manager:** pass tui to action panels ([6180a88](https://github.com/salesforce/sf-pi/commit/6180a88ff4be152c5103ec7547cceb3cc0aa4d7e))
+* **sf-slack:** route command to manager ([9859c2e](https://github.com/salesforce/sf-pi/commit/9859c2eea9ba92cff60fe8c330b8a8901b391348))
+* **sf-slack:** route command to manager ([d925cd9](https://github.com/salesforce/sf-pi/commit/d925cd9ad5b1a278537cd18c019275412267b816))
+
+
+### Bug Fixes
+
+* **sf-data-explorer:** close manager before launch ([9ba1589](https://github.com/salesforce/sf-pi/commit/9ba15899a6367103bf82eb073e590448402862f2))
+* **sf-data-explorer:** show help in manager page ([2457fb9](https://github.com/salesforce/sf-pi/commit/2457fb9095eae5267749c0c8bd2ede64738f2380))
+* **sf-data-explorer:** use standard help popup ([c9e583d](https://github.com/salesforce/sf-pi/commit/c9e583d029e17c5c9f34a90d1631b182edb00ab4))
+* **sf-devbar:** support solid gateway badge palettes ([9758da1](https://github.com/salesforce/sf-pi/commit/9758da1ff251749626d410e2ec30446fe3e5b252))
+* **sf-feedback:** keep feedback flow in manager page ([b753188](https://github.com/salesforce/sf-pi/commit/b7531888c8e10e8c2fbcb97731b3cc705ee2b6d2))
+* **sf-feedback:** simplify manager escape flow ([13949b6](https://github.com/salesforce/sf-pi/commit/13949b60ea045e1a8ba2ff6ab9f4de1cae0d6fdd))
+* **sf-feedback:** summarize multiline form values ([d962292](https://github.com/salesforce/sf-pi/commit/d962292ce84718ed84cbe310a197f157d598846f))
+* **sf-guardrail:** use manager action pages ([ee14365](https://github.com/salesforce/sf-pi/commit/ee143650fd0b6b2454382d821477e7a6bd93dbb1))
+* **sf-pi-manager:** serialize post-close actions ([2012b8c](https://github.com/salesforce/sf-pi/commit/2012b8ce636ed0f27689e6595184a49ff411d844))
+* **sf-slack:** keep connect in manager ([a77d991](https://github.com/salesforce/sf-pi/commit/a77d991d0c1b49939b8ec73983903153a04209c0))
+
 ## [0.194.5](https://github.com/salesforce/sf-pi/compare/v0.194.4...v0.194.5) (2026-06-18)
 
 
