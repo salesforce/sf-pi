@@ -773,7 +773,7 @@ A model capability value, such as context window or max output tokens, that inte
 _Avoid_: stale copied metadata, optimistic context window, untested provider override
 
 **Gateway-Specific Model Adoption**:
-A model metadata or routing change in **SF Pi** for a model available through the SF LLM Gateway. It is justified by gateway behavior or stale gateway metadata, not by the existence of a **Pi Runtime** direct-provider model alias.
+A model metadata or routing change in **SF Pi** for a model available through the SF LLM Gateway. It is justified by gateway behavior or stale gateway metadata after the model appears in gateway discovery or explicit gateway configuration, not by the existence of a **Pi Runtime** direct-provider model alias.
 _Avoid_: copying Pi's direct-provider catalog, release-note-driven gateway preset, unvalidated model routing
 
 ## Relationships
