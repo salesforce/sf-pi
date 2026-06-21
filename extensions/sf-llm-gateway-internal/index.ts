@@ -356,11 +356,12 @@ function getRuntimeStatusState() {
 export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
   if (!requirePiVersion(pi, "sf-llm-gateway-internal")) return;
 
-  // Register the monthly-usage refresher into the shared store so UI
-  // extensions (sf-welcome, sf-devbar) can trigger refreshes and read state
-  // without importing from this extension. unregisterMonthlyUsage is called
-  // on session_shutdown to avoid leaking the refresher across reloads.
-  let unregisterMonthlyUsage: (() => void) | null = registerGatewayMonthlyUsageRefresher();
+  // Session-scoped monthly-usage refresher registration. UI extensions
+  // (sf-welcome, sf-devbar) trigger refreshes through the shared store instead
+  // of importing this extension. Pair session_start registration with
+  // session_shutdown cleanup so same-directory session switches get a fresh
+  // refresher without leaking stale callbacks across reloads/resumes.
+  let unregisterMonthlyUsage: (() => void) | null = null;
 
   // Opt-in wire-level trace. Activated by SF_LLM_GATEWAY_INTERNAL_TRACE=1.
   // Writes raw request/response bytes under Pi's global agent directory.
@@ -429,6 +430,9 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
   };
 
   pi.on("session_start", async (_event, ctx) => {
+    if (!unregisterMonthlyUsage) {
+      unregisterMonthlyUsage = registerGatewayMonthlyUsageRefresher();
+    }
     clearDeferredStartupTimers();
     // Capture cwd while the ctx is valid; deferred callbacks must not read
     // ctx.cwd later (the getter throws on a stale ctx).

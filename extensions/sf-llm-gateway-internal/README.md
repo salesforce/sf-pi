@@ -374,6 +374,7 @@ extensions/sf-llm-gateway-internal/
     gpt55-live-regression.test.ts← unit / smoke test
     gpt55-responses.test.ts ← unit / smoke test
     latency-probe.test.ts   ← unit / smoke test
+    lifecycle.test.ts       ← unit / smoke test
     manager-actions.test.ts ← unit / smoke test
     migrate-unify-provider.test.ts← unit / smoke test
     model-group-drift.test.ts← unit / smoke test
