@@ -16,6 +16,9 @@ import { loadAgentforceSDK } from "../sdk.ts";
 export interface AgentConfigSlice {
   ok: true;
   agent_type?: string;
+  /** When agent_type was inferred from another valid config field. */
+  agent_type_source?: "explicit" | "agent_template";
+  agent_template?: string;
   default_agent_user?: string;
   agent_name?: string;
 }
@@ -85,8 +88,19 @@ export async function readAgentConfigSliceFromSource(
     return { ok: true };
   }
   const out: AgentConfigSlice = { ok: true };
+  const agent_template = unwrapScalar(config.agent_template);
+  if (typeof agent_template === "string") out.agent_template = agent_template;
   const agent_type = unwrapScalar(config.agent_type);
-  if (typeof agent_type === "string") out.agent_type = agent_type;
+  if (typeof agent_type === "string") {
+    out.agent_type = agent_type;
+    out.agent_type_source = "explicit";
+  } else if (typeof agent_template === "string") {
+    const inferred = inferAgentTypeFromTemplate(agent_template);
+    if (inferred) {
+      out.agent_type = inferred;
+      out.agent_type_source = "agent_template";
+    }
+  }
   const default_agent_user = unwrapScalar(config.default_agent_user);
   if (typeof default_agent_user === "string") out.default_agent_user = default_agent_user;
   const agent_name = unwrapScalar(config.agent_name);
@@ -98,6 +112,18 @@ export async function readAgentConfigSliceFromSource(
  * The SDK wraps scalar field values in Literal nodes shaped like
  * `{ value: <real value>, __cst: ... }`. Unwrap to the raw scalar.
  */
+export function inferAgentTypeFromTemplate(
+  agentTemplate: string,
+): "AgentforceServiceAgent" | "AgentforceEmployeeAgent" | undefined {
+  if (agentTemplate === "SvcCopilotTmpl__AgentforceServiceAgent") {
+    return "AgentforceServiceAgent";
+  }
+  if (agentTemplate === "SvcCopilotTmpl__AgentforceEmployeeAgent") {
+    return "AgentforceEmployeeAgent";
+  }
+  return undefined;
+}
+
 function unwrapScalar(node: unknown): unknown {
   if (node == null) return undefined;
   // The `node == null` guard above already returned for both null and

@@ -201,6 +201,7 @@ extensions/sf-agentscript/
     agentforce-navigation.ts← implementation module
     analysis-snapshot.ts    ← implementation module
     authoring-tool.ts       ← implementation module
+    bounded-salesforce-transport.ts← implementation module
     branch-state.ts         ← implementation module
     code-actions.ts         ← implementation module
     create.ts               ← implementation module
@@ -233,10 +234,12 @@ extensions/sf-agentscript/
       resolvers.test.ts     ← unit / smoke test
     agent-api-auth.test.ts  ← unit / smoke test
     agent-api-error-map.test.ts← unit / smoke test
+    agent-config.test.ts    ← unit / smoke test
     agent-user-status.test.ts← unit / smoke test
     analysis-snapshot.test.ts← unit / smoke test
     authoring-review.test.ts← unit / smoke test
     authoring-tool.test.ts  ← unit / smoke test
+    bounded-salesforce-transport.test.ts← unit / smoke test
     code-actions.test.ts    ← unit / smoke test
     compile-summary.test.ts ← unit / smoke test
     create.test.ts          ← unit / smoke test
@@ -261,8 +264,10 @@ extensions/sf-agentscript/
     inspect-inline-actions.test.ts← unit / smoke test
     inspect-structure.test.ts← unit / smoke test
     inspect.test.ts         ← unit / smoke test
+    lifecycle-activation.test.ts← unit / smoke test
     lifecycle-divergence.test.ts← unit / smoke test
     lifecycle-error-classification.test.ts← unit / smoke test
+    lifecycle-list-versions.test.ts← unit / smoke test
     lifecycle-sdr-layout.test.ts← unit / smoke test
     mutate-dry-run.test.ts  ← unit / smoke test
     mutate-emit-regression.test.ts← unit / smoke test
@@ -340,7 +345,7 @@ npm run validate
 
 ## Authentication
 
-All Salesforce API calls use `@salesforce/core` `Connection` with the same auth files the Salesforce CLI writes. The Agent API bootstrap creates an isolated named-user JWT connection for `/einstein/ai-agent/*` calls so normal org REST/SOQL usage remains on the regular org token.
+Salesforce auth is resolved through `@salesforce/core` `Connection` using the same auth files the Salesforce CLI writes. Timeout-sensitive Agent Script API calls may use bounded native fetch with the resolved token so tool calls can fail or cancel cleanly; tokens stay in process and are never logged or persisted. The Agent API bootstrap creates an isolated named-user JWT connection for `/einstein/ai-agent/*` calls so normal org REST/SOQL usage remains on the regular org token.
 
 ## Troubleshooting
 

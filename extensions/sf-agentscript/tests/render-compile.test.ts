@@ -68,6 +68,29 @@ describe("compileResultMarkdown", () => {
     expect(md).toMatch(/L29/); // 28+1
   });
 
+  it("renders info-only diagnostics as a valid compile outcome with a warning note", () => {
+    const md = compileResultMarkdown({
+      ok: true,
+      action: "check",
+      path: "/x.agent",
+      diagnostic_count: 1,
+      quick_fix_count: 0,
+      dialect: { name: "agentforce" },
+      diagnostics: [
+        {
+          severity: 3,
+          code: "unused-variable",
+          message: "Variable 'case_id' is declared but never used",
+          range: { start: { line: 5 } },
+        },
+      ],
+    });
+    expect(md).toMatch(/✅/);
+    expect(md).toMatch(/compiles/);
+    expect(md).toMatch(/Informational diagnostics present; compile is valid/);
+    expect(md).not.toMatch(/❌/);
+  });
+
   it("emits a quick-fix recover_via hint", () => {
     const md = compileResultMarkdown({
       ok: true,

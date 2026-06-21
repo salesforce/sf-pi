@@ -293,14 +293,15 @@ export async function runExtensionDoctor(cwd: string): Promise<ExtensionDoctorRe
       id: "agentscript.salesforce-core",
       severity: "ok",
       title: `@salesforce/core resolved${status.salesforceCoreVersion ? ` (v${status.salesforceCoreVersion})` : ""}`,
-      detail: "Connection.request transport active.",
+      detail: "Salesforce auth context available for bounded Agent Script transports.",
     });
   } else {
     checks.push({
       id: "agentscript.salesforce-core",
       severity: "error",
       title: "@salesforce/core not resolvable",
-      detail: "Eval, trace, and preview tools require @salesforce/core.",
+      detail:
+        "Eval, trace, preview, and lifecycle tools require @salesforce/core for org auth resolution.",
       fix: "Run `npm install` at the repo root.",
     });
   }

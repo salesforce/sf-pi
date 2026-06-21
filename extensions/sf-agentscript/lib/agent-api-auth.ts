@@ -15,6 +15,7 @@
 
 import type { AuthInfo as AuthInfoType, Connection as ConnectionType } from "@salesforce/core";
 import { connFromAlias } from "../../../lib/common/sf-conn/connection.ts";
+import { DEFAULT_BOUNDED_LOOKUP_TIMEOUT_MS } from "./bounded-salesforce-transport.ts";
 
 let corePromise:
   | Promise<{
@@ -131,11 +132,17 @@ export function validateNamedUserJwt(token: string | undefined): JwtValidationRe
  */
 export async function upgradeConnectionToNamedUserJwt(
   conn: ConnectionType,
+  options?: { signal?: AbortSignal },
 ): Promise<ConnectionType> {
+  const opts = conn.getConnectionOptions() as { accessToken?: string; instanceUrl?: string };
+  let accessToken = (conn as unknown as { accessToken?: string }).accessToken ?? opts.accessToken;
   const authFields = conn.getAuthInfoFields?.() as { refreshToken?: string } | undefined;
-  if (authFields?.refreshToken) {
+  if (!accessToken && authFields?.refreshToken) {
     try {
       await conn.refreshAuth();
+      accessToken =
+        (conn as unknown as { accessToken?: string }).accessToken ??
+        (conn.getConnectionOptions() as { accessToken?: string }).accessToken;
     } catch (err) {
       throw new Error(
         `Agent API auth bootstrap failed while refreshing org auth: ${err instanceof Error ? err.message : String(err)}`,
@@ -144,35 +151,51 @@ export async function upgradeConnectionToNamedUserJwt(
     }
   }
 
-  const opts = conn.getConnectionOptions() as { accessToken?: string; instanceUrl?: string };
-  const accessToken = opts.accessToken;
   const instanceUrl = opts.instanceUrl;
   if (!instanceUrl) throw new Error("Agent API auth bootstrap failed: missing instanceUrl.");
   if (!accessToken) throw new Error("Agent API auth bootstrap failed: missing org access token.");
 
-  // The bootstrap endpoint authenticates with the org sid cookie, not the
-  // Authorization bearer header. Remove the bearer token before this one call
-  // so jsforce doesn't send two competing auth mechanisms.
-  delete (conn as unknown as { accessToken?: string }).accessToken;
-
   let response: BootstrapResponse;
+  const controller = new AbortController();
+  let timedOut = false;
+  const abortFromCaller = (): void => controller.abort();
+  if (options?.signal?.aborted) {
+    throw new Error("Agent API auth bootstrap aborted before it started.");
+  }
+  options?.signal?.addEventListener("abort", abortFromCaller, { once: true });
+  const timer = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, DEFAULT_BOUNDED_LOOKUP_TIMEOUT_MS);
   try {
-    response = await conn.request<BootstrapResponse>(
-      {
-        method: "GET",
-        url: `${instanceUrl}/agentforce/bootstrap/nameduser`,
-        headers: {
-          "Content-Type": "application/json",
-          Cookie: `sid=${accessToken}`,
-        },
-      } as Parameters<typeof conn.request>[0],
-      { retry: { maxRetries: 3 } } as Parameters<typeof conn.request>[1],
-    );
+    const resp = await fetch(`${instanceUrl}/agentforce/bootstrap/nameduser`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: `sid=${accessToken}`,
+      },
+      signal: controller.signal,
+    });
+    if (!resp.ok) {
+      throw new Error(`HTTP ${resp.status}`);
+    }
+    response = (await resp.json()) as BootstrapResponse;
   } catch (err) {
     throw new Error(
-      `Agent API auth bootstrap failed at /agentforce/bootstrap/nameduser: ${err instanceof Error ? err.message : String(err)}`,
+      `Agent API auth bootstrap failed at /agentforce/bootstrap/nameduser: ${
+        options?.signal?.aborted
+          ? "aborted"
+          : timedOut
+            ? `timed out after ${DEFAULT_BOUNDED_LOOKUP_TIMEOUT_MS}ms`
+            : err instanceof Error
+              ? err.message
+              : String(err)
+      }`,
       { cause: err },
     );
+  } finally {
+    clearTimeout(timer);
+    options?.signal?.removeEventListener("abort", abortFromCaller);
   }
 
   const jwt = response.access_token;
@@ -199,7 +222,10 @@ export async function upgradeConnectionToNamedUserJwt(
  * We intentionally do not mutate the cached normal org connection because the
  * same command may still need normal org REST/SOQL afterward.
  */
-export async function connForAgentApi(targetOrg?: string): Promise<AgentApiAuthResult> {
+export async function connForAgentApi(
+  targetOrg?: string,
+  opts?: { signal?: AbortSignal },
+): Promise<AgentApiAuthResult> {
   const baseConn = await connFromAlias(targetOrg);
   const username = baseConn.getUsername?.();
   if (!username) {
@@ -220,7 +246,7 @@ export async function connForAgentApi(targetOrg?: string): Promise<AgentApiAuthR
   }
 
   const entry: AgentApiAuthCacheEntry = {
-    promise: createAgentApiConnection(baseConn, username).catch((err) => {
+    promise: createAgentApiConnection(baseConn, username, opts).catch((err) => {
       agentApiAuthCache.delete(key);
       throw err;
     }),
@@ -234,6 +260,7 @@ export async function connForAgentApi(targetOrg?: string): Promise<AgentApiAuthR
 async function createAgentApiConnection(
   baseConn: ConnectionType,
   username: string,
+  opts?: { signal?: AbortSignal },
 ): Promise<AgentApiAuthResult> {
   const { AuthInfo, Connection } = await loadSfCore();
   const authInfo = await AuthInfo.create({ username });
@@ -243,7 +270,7 @@ async function createAgentApiConnection(
   } catch {
     /* best-effort: Connection defaults to the org/api default */
   }
-  await upgradeConnectionToNamedUserJwt(conn);
+  await upgradeConnectionToNamedUserJwt(conn, opts);
   return {
     conn,
     username,

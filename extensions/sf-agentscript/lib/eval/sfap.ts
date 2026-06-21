@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /**
- * SFAP-aware HTTP client built on `@salesforce/core` `Connection.request`.
+ * SFAP-aware HTTP client using @salesforce/core for auth and bounded native fetch for transport.
  *
  * Replaces the old subprocess path (`sf api request rest`). Same retry +
  * fallback policy:
@@ -12,7 +12,7 @@
  *    408/429) do NOT retry — the SFAP eval API has no published Retry-After
  *    contract and blind retries can amplify a server overload.
  *
- * Auth refresh is `Connection`'s job; we don't catch 401 specially.
+ * Auth resolution is `Connection`'s job; we don't catch 401 specially.
  *
  * Never throws on HTTP errors. The caller decides what to do with non-2xx.
  */
@@ -38,6 +38,8 @@ export interface SfapRequest {
   timeoutMs?: number;
   /** Max retries on 5xx + connection errors. Default 2. */
   maxRetries?: number;
+  /** Optional caller cancellation signal. */
+  signal?: AbortSignal;
   /** Toggle the api → test.api → dev.api walk on 404. Default true. */
   fallback?: boolean;
   /**
@@ -151,17 +153,87 @@ async function callOnce<T>(
   req: SfapRequest,
   timeoutMs: number,
 ): Promise<{ status: number; body: T }> {
+  const accessToken =
+    (conn as unknown as { accessToken?: string }).accessToken ??
+    (conn.getConnectionOptions?.() as { accessToken?: string } | undefined)?.accessToken;
+  if (!accessToken) {
+    // Unit tests and a few legacy fakes provide only `conn.request`. Real
+    // Salesforce connections should have an access token and take the bounded
+    // fetch path below.
+    try {
+      const body = await conn.request<T>({
+        method: req.method,
+        url,
+        headers: req.headers,
+        body: req.body !== undefined ? JSON.stringify(req.body) : undefined,
+        timeout: timeoutMs,
+      } as Parameters<typeof conn.request>[0]);
+      return { status: 200, body };
+    } catch (err) {
+      return { status: inferStatusFromError(err), body: errorAsBody(err) as T };
+    }
+  }
+  const controller = new AbortController();
+  let timedOut = false;
+  const abortFromCaller = (): void => controller.abort();
+  if (req.signal?.aborted) {
+    return {
+      status: 499,
+      body: { errorCode: "REQUEST_ABORTED", message: "Request aborted before it started." } as T,
+    };
+  }
+  req.signal?.addEventListener("abort", abortFromCaller, { once: true });
+  const timer = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeoutMs);
   try {
-    const body = await conn.request<T>({
+    const resp = await fetch(url, {
       method: req.method,
-      url,
-      headers: req.headers,
+      headers: {
+        ...(req.headers ?? {}),
+        Authorization: `Bearer ${accessToken}`,
+      },
       body: req.body !== undefined ? JSON.stringify(req.body) : undefined,
-      timeout: timeoutMs,
-    } as Parameters<typeof conn.request>[0]);
-    return { status: 200, body };
+      signal: controller.signal,
+    });
+    const text = await resp.text();
+    let body: unknown = text;
+    if (text.length > 0) {
+      try {
+        body = JSON.parse(text);
+      } catch {
+        body = text;
+      }
+    } else {
+      body = {};
+    }
+    return { status: resp.status, body: body as T };
   } catch (err) {
+    if (req.signal?.aborted) {
+      return {
+        status: 499,
+        body: {
+          errorCode: "REQUEST_ABORTED",
+          message: "Request aborted.",
+          name: "AbortError",
+        } as T,
+      };
+    }
+    if (timedOut) {
+      return {
+        status: 503,
+        body: {
+          errorCode: "REQUEST_TIMEOUT",
+          message: `Request timed out after ${timeoutMs}ms`,
+          name: "TimeoutError",
+        } as T,
+      };
+    }
     return { status: inferStatusFromError(err), body: errorAsBody(err) as T };
+  } finally {
+    clearTimeout(timer);
+    req.signal?.removeEventListener("abort", abortFromCaller);
   }
 }
 

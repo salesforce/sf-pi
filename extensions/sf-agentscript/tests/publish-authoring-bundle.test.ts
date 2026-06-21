@@ -55,6 +55,7 @@ const INITIAL_META = `<?xml version="1.0" encoding="UTF-8"?>
 let lastFromSourceArg: string | undefined;
 let lastDeployOptions: unknown;
 let nextDeployResponse: { success: boolean; problem?: string } = { success: true };
+let nextDeployPollNeverResolves = false;
 
 vi.mock("@salesforce/source-deploy-retrieve", () => ({
   ComponentSet: {
@@ -64,16 +65,19 @@ vi.mock("@salesforce/source-deploy-retrieve", () => ({
         deploy: async (options: unknown) => {
           lastDeployOptions = options;
           return {
-            pollStatus: async () => ({
-              response: nextDeployResponse.success
-                ? { success: true }
-                : {
-                    success: false,
-                    details: {
-                      componentFailures: [{ problem: nextDeployResponse.problem ?? "boom" }],
+            pollStatus: async () => {
+              if (nextDeployPollNeverResolves) return new Promise(() => {});
+              return {
+                response: nextDeployResponse.success
+                  ? { success: true }
+                  : {
+                      success: false,
+                      details: {
+                        componentFailures: [{ problem: nextDeployResponse.problem ?? "boom" }],
+                      },
                     },
-                  },
-            }),
+              };
+            },
           };
         },
       };
@@ -89,6 +93,7 @@ beforeEach(async () => {
   lastFromSourceArg = undefined;
   lastDeployOptions = undefined;
   nextDeployResponse = { success: true };
+  nextDeployPollNeverResolves = false;
   publishAgent = (await import("../lib/lifecycle.ts")).publishAgent;
 });
 
@@ -204,6 +209,29 @@ describe("publishAgent deploys AiAuthoringBundle via SDR", () => {
     expect(result.ok).toBe(true);
     expect(result.authoring_bundle?.created).toBe(false);
     expect(result.authoring_bundle?.error).toContain("FIELD_INTEGRITY_EXCEPTION");
+    const finalMeta = await readFile(metaPath, "utf8");
+    expect(finalMeta).toBe(INITIAL_META);
+  });
+
+  test("SDR poll timeout is captured and bundle meta is restored", async () => {
+    const { bundleDir, metaPath } = await setupBundleDir();
+    nextDeployPollNeverResolves = true;
+    const conn = fakeConnection({
+      publishResp: { status: 200, body: { botId: "0Xx", botVersionId: "0X9" } },
+      versionRow: { DeveloperName: "v1", VersionNumber: 1 },
+    });
+
+    const result = await publishAgent({
+      conn: conn as never,
+      agentApiName: "My_Agent",
+      agentSource: CLEAN_SOURCE,
+      bundleDir,
+      bundleDeployPollTimeoutMs: 1,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.authoring_bundle?.created).toBe(false);
+    expect(result.authoring_bundle?.error).toMatch(/deploy poll timed out after 1ms/);
     const finalMeta = await readFile(metaPath, "utf8");
     expect(finalMeta).toBe(INITIAL_META);
   });

@@ -81,6 +81,12 @@ const Params = Type.Object({
       description: "Optional for action='start' with agent_file. Default 'Mock'.",
     }),
   ),
+  version_developer_name: Type.Optional(
+    Type.String({
+      description:
+        "Optional for action='start' with agent_file. Pin agentVersion.developerName (for example 'v3' or 'v0') instead of resolving from bundle-meta / org lookup.",
+    }),
+  ),
   session_id: Type.Optional(
     Type.String({ description: "Required for send/end/trace. Returned by action='start'." }),
   ),
@@ -146,6 +152,7 @@ interface ParamsAny {
   agent_api_name?: string;
   agent_name?: string;
   mock_mode?: "Mock" | "Live Test";
+  version_developer_name?: string;
   session_id?: string;
   message?: string;
   apex_debug?: boolean;
@@ -200,10 +207,10 @@ export function registerPreviewTool(pi: ExtensionAPI): void {
       let result;
       switch (p.action) {
         case "start":
-          result = await actionStart(ctx, p, timings);
+          result = await actionStart(ctx, p, timings, _signal);
           break;
         case "send":
-          result = await actionSend(ctx, p, onUpdate, timings);
+          result = await actionSend(ctx, p, onUpdate, timings, _signal);
           break;
         case "end":
           result = await timings.time("preview.end", () => actionEnd(ctx, p));
@@ -212,7 +219,7 @@ export function registerPreviewTool(pi: ExtensionAPI): void {
           result = await timings.time("preview.end_all", () => actionEndAll(ctx, p));
           break;
         case "trace":
-          result = await actionTrace(p, timings);
+          result = await actionTrace(p, timings, _signal);
           break;
         case "cleanup":
           result = await timings.time("preview.cleanup", () => actionCleanup(ctx, p));
@@ -257,6 +264,7 @@ async function actionStart(
   ctx: ExtensionContext,
   input: ParamsAny,
   timings?: TimingCollector,
+  signal?: AbortSignal,
 ): Promise<{
   content: { type: "text"; text: string }[];
   details: Record<string, unknown> | ToolError;
@@ -283,10 +291,16 @@ async function actionStart(
         "Published-agent preview uses the production v1 session API and has no compiled AgentJSON payload to patch. Start from the local .agent file when testing linked VoiceCall/MessagingSession variables.",
       );
     }
+    if (input.version_developer_name) {
+      return toolError(
+        "version_developer_name on preview start is only supported with agent_file.",
+        "Published-agent preview resolves the active published version from the org. Use agent_file when you need to pin a local Agent Script preview to v0/vN.",
+      );
+    }
     const agentName = input.agent_name ?? input.agent_api_name;
     try {
       const authPhase = timings?.phase("agent_api_auth");
-      const auth = await connForAgentApi(input.target_org);
+      const auth = await connForAgentApi(input.target_org, { signal });
       authPhase?.end({ cache: auth.cache });
       const { conn } = auth;
       const result = await startPreviewByApiName({
@@ -386,7 +400,7 @@ async function actionStart(
 
   try {
     const authPhase = timings?.phase("agent_api_auth");
-    const auth = await connForAgentApi(input.target_org);
+    const auth = await connForAgentApi(input.target_org, { signal });
     authPhase?.end({ cache: auth.cache });
     const { conn } = auth;
     const result = await startPreview({
@@ -395,10 +409,12 @@ async function actionStart(
       agentName,
       agentSource: source,
       agentFilePath: filePath,
+      versionDeveloperName: input.version_developer_name,
       mockMode: input.mock_mode ?? "Mock",
       targetOrg: input.target_org,
       contextVariables: input.context_variables,
       timings,
+      signal,
       skipLocalValidation: true,
       // (agentFilePath above is also persisted to metadata.json by
       //  startPreview — used by `end` to suggest the next publish command.)
@@ -414,6 +430,8 @@ async function actionStart(
           agent_name: agentName,
           via: "agent_file" as const,
           context_patch: result.contextPatch,
+          version_resolution: result.versionResolution,
+          warnings: result.warnings,
         },
         previewSessionEvents({
           agentName,
@@ -428,9 +446,13 @@ async function actionStart(
       [
         `🎬 Preview started`,
         `session_id: ${result.sessionId}`,
+        result.versionResolution
+          ? `agent_version: ${result.versionResolution.developerName} (${result.versionResolution.source})`
+          : null,
         result.contextPatch && result.contextPatch.variables.length > 0
           ? `context_variables: ${result.contextPatch.variables.length} seeded · ${result.contextPatch.registeredStateVariables} state slot(s) · ${result.contextPatch.rewrittenBindings} binding rewrite(s)`
           : null,
+        ...(result.warnings ?? []).map((w) => `⚠ ${w}`),
         result.agentResponse,
       ]
         .filter(Boolean)
@@ -457,6 +479,7 @@ async function actionSend(
   input: ParamsAny,
   onUpdate?: OnUpdateFn,
   timings?: TimingCollector,
+  signal?: AbortSignal,
 ): Promise<{
   content: { type: "text"; text: string }[];
   details: Record<string, unknown> | ToolError;
@@ -498,7 +521,7 @@ async function actionSend(
 
   try {
     const authPhase = timings?.phase("agent_api_auth");
-    const auth = await connForAgentApi(orgResolution.targetOrg);
+    const auth = await connForAgentApi(orgResolution.targetOrg, { signal });
     authPhase?.end({ cache: auth.cache });
     const { conn } = auth;
     const result = await sendMessage({
@@ -510,6 +533,7 @@ async function actionSend(
       apexDebug: input.apex_debug,
       contextVariables: input.context_variables,
       timings,
+      signal,
     });
     stream("Trace captured");
 
@@ -848,19 +872,20 @@ async function actionEndAll(
 async function actionTrace(
   input: ParamsAny,
   timings?: TimingCollector,
+  signal?: AbortSignal,
 ): Promise<{
   content: { type: "text"; text: string }[];
   details: Record<string, unknown> | ToolError;
 }> {
   try {
     const authPhase = timings?.phase("agent_api_auth");
-    const auth = await connForAgentApi(input.target_org);
+    const auth = await connForAgentApi(input.target_org, { signal });
     authPhase?.end({ cache: auth.cache });
     const trace = timings
       ? await timings.time("trace_fetch", () =>
-          fetchTrace(auth.conn, input.session_id, input.plan_id),
+          fetchTrace(auth.conn, input.session_id, input.plan_id, { signal }),
         )
-      : await fetchTrace(auth.conn, input.session_id, input.plan_id);
+      : await fetchTrace(auth.conn, input.session_id, input.plan_id, { signal });
     if (trace == null) {
       return toolError(
         `Trace not found for session=${input.session_id} plan=${input.plan_id}.`,

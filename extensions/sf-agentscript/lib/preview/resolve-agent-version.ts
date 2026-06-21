@@ -26,6 +26,11 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type { Connection } from "@salesforce/core";
+import {
+  boundedSoqlQuery,
+  DEFAULT_BOUNDED_LOOKUP_TIMEOUT_MS,
+  type BoundedSoqlOptions,
+} from "../bounded-salesforce-transport.ts";
 
 // `<target>Hello_Bot.v3</target>` → `"v3"`
 // Tolerant of whitespace and either CLI or hand-written bundle-meta.xml.
@@ -52,12 +57,21 @@ export interface ResolveAgentVersionOptions {
    * for step 3. Usually `path.basename(agentFilePath, ".agent")`.
    */
   agentName?: string;
+  /** Timeout for bounded org lookups. Defaults to 10s. */
+  lookupTimeoutMs?: number;
+  /** Test hook for the bounded native-fetch transport. */
+  fetchImpl?: BoundedSoqlOptions["fetchImpl"];
+  /** Optional caller cancellation signal from the Pi tool runtime. */
+  signal?: AbortSignal;
 }
 
 export interface ResolveAgentVersionResult {
   developerName: string;
   /** Where the value came from, for diagnostics + tests. */
   source: "override" | "bundle-meta" | "soql" | "default";
+  /** Non-blocking lookup diagnostic when we had to fall back to default. */
+  lookup_warning?: string;
+  timed_out_after_ms?: number;
 }
 
 /**
@@ -79,24 +93,33 @@ export function parseTargetFromBundleMeta(meta: string): string | undefined {
 export async function findLatestBotVersionDeveloperName(
   conn: Connection,
   agentName: string,
-): Promise<string | undefined> {
-  try {
-    const safe = agentName.replace(/'/g, "''");
-    const r = await conn.query<{
-      BotVersions?: {
-        records?: Array<{ DeveloperName?: string | null }>;
-      } | null;
-    }>(
-      `SELECT Id, ` +
-        `(SELECT DeveloperName FROM BotVersions ORDER BY VersionNumber DESC LIMIT 1) ` +
-        `FROM BotDefinition WHERE DeveloperName='${safe}'`,
-    );
-    const dev = r.records[0]?.BotVersions?.records?.[0]?.DeveloperName;
-    if (typeof dev === "string" && VERSION_REGEX.test(dev)) return dev;
-  } catch {
-    /* org may not expose BotDefinition / BotVersions; non-fatal */
+  opts: BoundedSoqlOptions = {},
+): Promise<{ developerName?: string; warning?: string; timed_out_after_ms?: number }> {
+  const safe = agentName.replace(/'/g, "''");
+  const r = await boundedSoqlQuery<{
+    BotVersions?: {
+      records?: Array<{ DeveloperName?: string | null }>;
+    } | null;
+  }>(
+    conn,
+    `SELECT Id, ` +
+      `(SELECT DeveloperName FROM BotVersions ORDER BY VersionNumber DESC LIMIT 1) ` +
+      `FROM BotDefinition WHERE DeveloperName='${safe}'`,
+    {
+      timeoutMs: opts.timeoutMs ?? DEFAULT_BOUNDED_LOOKUP_TIMEOUT_MS,
+      fetchImpl: opts.fetchImpl,
+      signal: opts.signal,
+    },
+  );
+  if (r.ok === false) {
+    return {
+      warning: `Latest BotVersion lookup skipped: ${r.detail}`,
+      timed_out_after_ms: r.timed_out_after_ms,
+    };
   }
-  return undefined;
+  const dev = r.records[0]?.BotVersions?.records?.[0]?.DeveloperName;
+  if (typeof dev === "string" && VERSION_REGEX.test(dev)) return { developerName: dev };
+  return {};
 }
 
 /**
@@ -127,8 +150,20 @@ export async function resolveAgentVersionDeveloperName(
 
   // 3. SOQL latest BotVersion (re-preview already-published agent).
   if (opts.conn && opts.agentName) {
-    const v = await findLatestBotVersionDeveloperName(opts.conn, opts.agentName);
-    if (v) return { developerName: v, source: "soql" };
+    const latest = await findLatestBotVersionDeveloperName(opts.conn, opts.agentName, {
+      timeoutMs: opts.lookupTimeoutMs ?? DEFAULT_BOUNDED_LOOKUP_TIMEOUT_MS,
+      fetchImpl: opts.fetchImpl,
+      signal: opts.signal,
+    });
+    if (latest.developerName) return { developerName: latest.developerName, source: "soql" };
+    if (latest.warning) {
+      return {
+        developerName: "v0",
+        source: "default",
+        lookup_warning: latest.warning,
+        timed_out_after_ms: latest.timed_out_after_ms,
+      };
+    }
   }
 
   // 4. CLI default sentinel.

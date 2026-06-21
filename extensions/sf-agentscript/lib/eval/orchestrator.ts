@@ -12,10 +12,10 @@
  *   7. Persist the run to disk in the diff-friendly layout.
  *   8. Return a structured result for the caller.
  *
- * Transport: `@salesforce/core` `Connection.request` everywhere. No subprocess.
+ * Transport: @salesforce/core provides auth; timeout-sensitive HTTP uses bounded transport. No subprocess.
  *
  * Concurrency: bounded semaphore for batch POSTs and for trace GETs (same
- * default of 8). Each `conn.request` is a real HTTP call so this is actual
+ * default of 8). Each bounded transport call is a real HTTP call so this is actual
  * parallelism.
  */
 
@@ -101,6 +101,8 @@ export interface RunEvalOptions {
   log?: (msg: string) => void;
   /** Optional local operation timing collector owned by the tool wrapper. */
   timings?: TimingCollector;
+  /** Optional caller cancellation signal from the Pi tool runtime. */
+  signal?: AbortSignal;
   /** Optional override for which state-variable keys get surfaced. */
   interestingStateKeys?: readonly string[];
 }
@@ -143,15 +145,25 @@ async function resolveIdsForInjection(
     if (typeof opts.version !== "number") {
       throw new Error("version_resolution='version' requires version=<BotVersion.VersionNumber>.");
     }
-    return await resolveAgentIds(opts.conn, opts.agentApiName, { version: opts.version });
+    return await resolveAgentIds(opts.conn, opts.agentApiName, {
+      version: opts.version,
+      signal: opts.signal,
+    });
   }
   if (mode === "latest") {
     const ids =
-      latestIds ?? (await resolveAgentIds(opts.conn, opts.agentApiName, { status: "any" }));
+      latestIds ??
+      (await resolveAgentIds(opts.conn, opts.agentApiName, {
+        status: "any",
+        signal: opts.signal,
+      }));
     enforceLatestAcknowledgement(ids, opts);
     return ids;
   }
-  return activeIds ?? (await resolveAgentIds(opts.conn, opts.agentApiName, { status: "Active" }));
+  return (
+    activeIds ??
+    (await resolveAgentIds(opts.conn, opts.agentApiName, { status: "Active", signal: opts.signal }))
+  );
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -182,9 +194,15 @@ export async function runEval(opts: RunEvalOptions): Promise<RunEvalResult> {
     if (usage.active) {
       resolvedIds = opts.timings
         ? await opts.timings.time("resolve_active_agent_ids", () =>
-            resolveAgentIds(opts.conn, opts.agentApiName as string, { status: "Active" }),
+            resolveAgentIds(opts.conn, opts.agentApiName as string, {
+              status: "Active",
+              signal: opts.signal,
+            }),
           )
-        : await resolveAgentIds(opts.conn, opts.agentApiName, { status: "Active" });
+        : await resolveAgentIds(opts.conn, opts.agentApiName, {
+            status: "Active",
+            signal: opts.signal,
+          });
       log(
         `Active: ${opts.agentApiName} v${resolvedIds.version_number} ` +
           `(${resolvedIds.status})  botVersionId=${resolvedIds.bot_version_id}  ` +
@@ -194,9 +212,15 @@ export async function runEval(opts: RunEvalOptions): Promise<RunEvalResult> {
     if (usage.latest) {
       latestIds = opts.timings
         ? await opts.timings.time("resolve_latest_agent_ids", () =>
-            resolveAgentIds(opts.conn, opts.agentApiName as string, { status: "any" }),
+            resolveAgentIds(opts.conn, opts.agentApiName as string, {
+              status: "any",
+              signal: opts.signal,
+            }),
           )
-        : await resolveAgentIds(opts.conn, opts.agentApiName, { status: "any" });
+        : await resolveAgentIds(opts.conn, opts.agentApiName, {
+            status: "any",
+            signal: opts.signal,
+          });
       log(
         `Latest: ${opts.agentApiName} v${latestIds.version_number} ` +
           `(${latestIds.status})  botVersionId=${latestIds.bot_version_id}  ` +
@@ -277,7 +301,7 @@ export async function runEval(opts: RunEvalOptions): Promise<RunEvalResult> {
         Promise.all(
           batches.map((b, idx) =>
             sema(async () => {
-              const res = await callEval(opts.conn, b, headers);
+              const res = await callEval(opts.conn, b, headers, { signal: opts.signal });
               if (opts.timings) {
                 opts.timings.add("sfap_endpoint_cache", 0, {
                   cache: res.endpoint_cache,
@@ -304,7 +328,7 @@ export async function runEval(opts: RunEvalOptions): Promise<RunEvalResult> {
     : Promise.all(
         batches.map((b, idx) =>
           sema(async () => {
-            const res = await callEval(opts.conn, b, headers);
+            const res = await callEval(opts.conn, b, headers, { signal: opts.signal });
             if (res.status >= 200 && res.status < 300) {
               results[idx] = res.body.results ?? [];
               if (batches.length > 1) {
@@ -399,11 +423,13 @@ export async function runEval(opts: RunEvalOptions): Promise<RunEvalResult> {
             fetchTracesConcurrent(opts.traceConn ?? opts.conn, planKeys, {
               concurrency,
               log,
+              signal: opts.signal,
             }),
           )
         : await fetchTracesConcurrent(opts.traceConn ?? opts.conn, planKeys, {
             concurrency,
             log,
+            signal: opts.signal,
           });
       for (const [k, body] of live.entries()) {
         if (body != null) {

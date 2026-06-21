@@ -49,7 +49,7 @@ You can also manage this extension from the SF Pi home base:
 ## Safety notes
 
 - Compile-on-save stays silent on unsupported files and on failed write/edit results.
-- Eval, trace, and preview API calls go through @salesforce/core Connection so the active org's auth context is reused; no token leaves jsforce.
+- Eval, trace, preview, and lifecycle calls reuse @salesforce/core / SF CLI auth context; timeout-sensitive HTTP may use bounded native fetch and never logs or persists tokens.
 - Local-first: compile and validate run via official @sf-agentscript packages before any network call.
 - Trace fetches are idempotent GETs; failures are logged and never fail an eval run.
 - 5xx-only retry on POST avoids amplifying server-side overload (no Retry-After contract on the Eval API).

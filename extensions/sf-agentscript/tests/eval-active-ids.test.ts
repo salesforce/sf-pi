@@ -13,10 +13,11 @@
  *    when either family is referenced
  */
 
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import {
   detectPlaceholderUsage,
   injectResolvedAgentIds,
+  resolveAgentIds,
   shouldInjectResolvedAgentIds,
   specHasActivePlaceholders,
   substitutePlaceholders,
@@ -38,6 +39,49 @@ const LATEST: ResolvedAgentIds = {
   version_number: 12,
   status: "Inactive",
 };
+
+function jsonResponse(body: unknown): Response {
+  return new Response(JSON.stringify(body), { status: 200 });
+}
+
+describe("resolveAgentIds", () => {
+  test("uses bounded fetch SOQL for BotDefinition, BotVersion, and planner lookups", async () => {
+    const calls: string[] = [];
+    const responses = [
+      { records: [{ Id: "0XxBOT" }], totalSize: 1 },
+      { records: [{ Id: "0X9V3", VersionNumber: 3, Status: "Active" }], totalSize: 1 },
+      { records: [{ Id: "0YpPLAN" }], totalSize: 1 },
+    ];
+    const fetchImpl = vi.fn<typeof fetch>(async (url) => {
+      calls.push(String(url));
+      return jsonResponse(responses.shift());
+    });
+    vi.stubGlobal("fetch", fetchImpl);
+    const conn = {
+      accessToken: "JWT",
+      instanceUrl: "https://example.my.salesforce.com",
+      getApiVersion: () => "67.0",
+      getConnectionOptions: () => ({
+        accessToken: "JWT",
+        instanceUrl: "https://example.my.salesforce.com",
+      }),
+    };
+
+    const ids = await resolveAgentIds(conn as never, "My_Agent");
+
+    expect(ids).toEqual({
+      bot_id: "0XxBOT",
+      bot_version_id: "0X9V3",
+      planner_id: "0YpPLAN",
+      version_number: 3,
+      status: "Active",
+    });
+    expect(calls).toHaveLength(3);
+    expect(decodeURIComponent(calls[0])).toContain("FROM BotDefinition");
+    expect(decodeURIComponent(calls[1])).toContain("Status='Active'");
+    expect(decodeURIComponent(calls[2])).toContain("FROM GenAiPlannerDefinition");
+  });
+});
 
 describe("detectPlaceholderUsage", () => {
   test("active and latest are independent signals", () => {

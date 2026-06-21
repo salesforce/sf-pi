@@ -1,0 +1,5 @@
+# Agent Script Uses Bounded Salesforce Transport
+
+SF Agent Script keeps `@salesforce/core` and the Salesforce CLI auth files as the source of org identity and credentials, but it may use a bounded native-fetch transport for timeout-sensitive preview, eval, lifecycle, and read-only preflight calls. This avoids letting jsforce `Connection.request()` / `Connection.query()` become a single unbounded failure point while preserving the existing credential boundary: tokens stay in process, are never logged or persisted, and no new credential entry point is introduced.
+
+The first implementation slice applies this to local preview-start lookups that must work when client-retrieved authoring bundles omit optional metadata, such as resolving the latest BotVersion when `<target>` is absent and verifying `default_agent_user` for `bypassUser`. If a bounded lookup times out or fails, sf-agentscript falls back to a safe preview path and surfaces diagnostic metadata rather than hanging or asking users to edit valid platform-authored bundles.

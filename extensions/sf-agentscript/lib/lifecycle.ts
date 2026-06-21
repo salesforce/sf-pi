@@ -9,9 +9,9 @@
  *   POST  /connect/bot-versions/{botVersionId}/activation                                 (activate / deactivate; instance URL)
  *   SOQL  BotDefinition / BotVersion / GenAiPlannerDefinition                             (resolve, list)
  *
- * Auth: every call goes through `@salesforce/core` `Connection`. SFAP routes
- * use sfapRequest with the api → test.api → dev.api fallback. Instance-URL
- * routes use `Connection.request` directly.
+ * Auth: every call reuses `@salesforce/core` / SF CLI auth context. SFAP routes
+ * use sfapRequest with the api → test.api → dev.api fallback. Timeout-sensitive
+ * org REST/SOQL routes use bounded Salesforce transport.
  *
  * Local-first: publish always server-compiles first; if local SDK loads, we
  * pre-validate before burning a server call (matches preview's pattern).
@@ -22,6 +22,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import type { Connection } from "@salesforce/core";
 import type { ComponentSet as ComponentSetType } from "@salesforce/source-deploy-retrieve";
+import { boundedRestRequest, boundedSoqlQuery } from "./bounded-salesforce-transport.ts";
 import { sfap404Message } from "./errors/sfap-404.ts";
 import { isSfapRoutingFailure, sfapRequest } from "./eval/sfap.ts";
 import { inspectFile, type InspectResult } from "./inspect.ts";
@@ -35,6 +36,8 @@ import type { TimingCollector } from "./timings.ts";
 
 const COMPILE_URL = "https://api.salesforce.com/einstein/ai-agent/v1.1/authoring/scripts";
 const AGENTS_URL = "https://api.salesforce.com/einstein/ai-agent/v1.1/authoring/agents";
+const BUNDLE_DEPLOY_START_TIMEOUT_MS = 120_000;
+const BUNDLE_DEPLOY_POLL_TIMEOUT_MS = 600_000;
 
 let sdrPromise: Promise<{ ComponentSet: typeof ComponentSetType }> | undefined;
 async function loadSdr() {
@@ -42,6 +45,23 @@ async function loadSdr() {
     ComponentSet,
   }));
   return sdrPromise;
+}
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
+  let timer: NodeJS.Timeout | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_resolve, reject) => {
+        timer = setTimeout(
+          () => reject(new Error(`${label} timed out after ${timeoutMs}ms`)),
+          timeoutMs,
+        );
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -134,20 +154,31 @@ function soqlEscape(s: string): string {
   return s.replace(/'/g, "''");
 }
 
-async function findBotId(conn: Connection, agentApiName: string): Promise<string | undefined> {
-  const r = await conn.query<{ Id: string }>(
+async function findBotId(
+  conn: Connection,
+  agentApiName: string,
+  opts?: { signal?: AbortSignal },
+): Promise<string | undefined> {
+  const r = await boundedSoqlQuery<{ Id: string }>(
+    conn,
     `SELECT Id FROM BotDefinition WHERE DeveloperName='${soqlEscape(agentApiName)}'`,
+    { signal: opts?.signal },
   );
+  if (r.ok === false) throw new Error(`BotDefinition lookup failed: ${r.detail}`);
   return r.records[0]?.Id;
 }
 
 async function getVersionDetails(
   conn: Connection,
   botVersionId: string,
+  opts?: { signal?: AbortSignal },
 ): Promise<{ DeveloperName?: string; VersionNumber?: number } | undefined> {
-  const r = await conn.query<{ DeveloperName?: string; VersionNumber?: number }>(
+  const r = await boundedSoqlQuery<{ DeveloperName?: string; VersionNumber?: number }>(
+    conn,
     `SELECT DeveloperName, VersionNumber FROM BotVersion WHERE Id='${soqlEscape(botVersionId)}' LIMIT 1`,
+    { signal: opts?.signal },
   );
+  if (r.ok === false) throw new Error(`BotVersion detail lookup failed: ${r.detail}`);
   return r.records[0];
 }
 
@@ -158,6 +189,7 @@ async function getVersionDetails(
 export async function serverCompile(
   conn: Connection,
   agentSource: string,
+  opts?: { signal?: AbortSignal },
 ): Promise<{ ok: true; agentJson: AgentJsonShape } | { ok: false; status: number; body: unknown }> {
   const resp = await sfapRequest<CompileResponseBody>(conn, {
     url: COMPILE_URL,
@@ -167,6 +199,7 @@ export async function serverCompile(
       assets: [{ type: "AFScript", name: "AFScript", content: agentSource }],
       afScriptVersion: "2.0.0",
     },
+    signal: opts?.signal,
   });
   if (resp.status < 200 || resp.status >= 300 || resp.body.status !== "success") {
     return { ok: false, status: resp.status, body: resp.body };
@@ -206,6 +239,8 @@ export interface PublishOptions {
   log?: (msg: string) => void;
   /** Optional local operation timing collector owned by the tool wrapper. */
   timings?: TimingCollector;
+  /** Optional caller cancellation signal from the Pi tool runtime. */
+  signal?: AbortSignal;
   /** True when caller already performed an equivalent local compile/check. */
   localCompileChecked?: boolean;
   /** Stable structural inspection result from an Agent Script Analysis Snapshot. */
@@ -216,6 +251,10 @@ export interface PublishOptions {
    * Default false.
    */
   skipPreflight?: boolean;
+  /** Internal/test override for AiAuthoringBundle deploy start timeout. */
+  bundleDeployStartTimeoutMs?: number;
+  /** Internal/test override for AiAuthoringBundle deploy poll timeout. */
+  bundleDeployPollTimeoutMs?: number;
 }
 
 /** Thrown when a local pre-flight blocks the publish. Recoverable. */
@@ -445,8 +484,10 @@ export async function publishAgent(opts: PublishOptions): Promise<PublishResult>
 
   log("Server-compiling…");
   const compileResult = opts.timings
-    ? await opts.timings.time("server_compile", () => serverCompile(agentApiConn, opts.agentSource))
-    : await serverCompile(agentApiConn, opts.agentSource);
+    ? await opts.timings.time("server_compile", () =>
+        serverCompile(agentApiConn, opts.agentSource, { signal: opts.signal }),
+      )
+    : await serverCompile(agentApiConn, opts.agentSource, { signal: opts.signal });
   if (compileResult.ok === false) {
     if (
       isSfapRoutingFailure({ status: compileResult.status, body: compileResult.body, endpoint: "" })
@@ -462,9 +503,9 @@ export async function publishAgent(opts: PublishOptions): Promise<PublishResult>
   log("Looking up existing BotDefinition…");
   const existingBotId = opts.timings
     ? await opts.timings.time("bot_definition_lookup", () =>
-        findBotId(opts.conn, opts.agentApiName),
+        findBotId(opts.conn, opts.agentApiName, { signal: opts.signal }),
       )
-    : await findBotId(opts.conn, opts.agentApiName);
+    : await findBotId(opts.conn, opts.agentApiName, { signal: opts.signal });
   const url = existingBotId ? `${AGENTS_URL}/${existingBotId}/versions` : AGENTS_URL;
   log(
     existingBotId
@@ -482,6 +523,7 @@ export async function publishAgent(opts: PublishOptions): Promise<PublishResult>
             agentDefinition: agentJson,
             instanceConfig: { endpoint: opts.conn.instanceUrl },
           },
+          signal: opts.signal,
         }),
       )
     : await sfapRequest<PublishResponseBody>(agentApiConn, {
@@ -492,6 +534,7 @@ export async function publishAgent(opts: PublishOptions): Promise<PublishResult>
           agentDefinition: agentJson,
           instanceConfig: { endpoint: opts.conn.instanceUrl },
         },
+        signal: opts.signal,
       });
   if (opts.timings) {
     opts.timings.add("sfap_endpoint_cache", 0, {
@@ -514,9 +557,9 @@ export async function publishAgent(opts: PublishOptions): Promise<PublishResult>
 
   const versionDetails = opts.timings
     ? await opts.timings.time("bot_version_lookup", () =>
-        getVersionDetails(opts.conn, botVersionId),
+        getVersionDetails(opts.conn, botVersionId, { signal: opts.signal }),
       )
-    : await getVersionDetails(opts.conn, botVersionId);
+    : await getVersionDetails(opts.conn, botVersionId, { signal: opts.signal });
   const versionDeveloperName = versionDetails?.DeveloperName;
   const versionNumber = versionDetails?.VersionNumber;
 
@@ -578,14 +621,35 @@ export async function publishAgent(opts: PublishOptions): Promise<PublishResult>
           ? await opts.timings.time("load_sdr", () => loadSdr())
           : await loadSdr();
         const componentSet = ComponentSet.fromSource(deploySource.bundleDir);
+        const deployStartTimeout =
+          opts.bundleDeployStartTimeoutMs ?? BUNDLE_DEPLOY_START_TIMEOUT_MS;
+        const deployPollTimeout = opts.bundleDeployPollTimeoutMs ?? BUNDLE_DEPLOY_POLL_TIMEOUT_MS;
         const deployJob = await (opts.timings
           ? opts.timings.time("bundle_deploy_start", () =>
-              componentSet.deploy({ usernameOrConnection: opts.conn }),
+              withTimeout(
+                componentSet.deploy({ usernameOrConnection: opts.conn }),
+                deployStartTimeout,
+                "AiAuthoringBundle deploy start",
+              ),
             )
-          : componentSet.deploy({ usernameOrConnection: opts.conn }));
+          : withTimeout(
+              componentSet.deploy({ usernameOrConnection: opts.conn }),
+              deployStartTimeout,
+              "AiAuthoringBundle deploy start",
+            ));
         const deployResult = await (opts.timings
-          ? opts.timings.time("bundle_deploy_poll", () => deployJob.pollStatus())
-          : deployJob.pollStatus());
+          ? opts.timings.time("bundle_deploy_poll", () =>
+              withTimeout(
+                deployJob.pollStatus(),
+                deployPollTimeout,
+                "AiAuthoringBundle deploy poll",
+              ),
+            )
+          : withTimeout(
+              deployJob.pollStatus(),
+              deployPollTimeout,
+              "AiAuthoringBundle deploy poll",
+            ));
         const success = deployResult.response?.success === true;
         if (success) {
           authoringBundleResult = { full_name: bundleFullName, target, created: true };
@@ -637,9 +701,9 @@ export async function publishAgent(opts: PublishOptions): Promise<PublishResult>
     log(`Activating ${botVersionId}…`);
     await (opts.timings
       ? opts.timings.time("activate_version", () =>
-          setVersionStatus(opts.conn, botVersionId, "Active"),
+          setVersionStatus(opts.conn, botVersionId, "Active", { signal: opts.signal }),
         )
-      : setVersionStatus(opts.conn, botVersionId, "Active"));
+      : setVersionStatus(opts.conn, botVersionId, "Active", { signal: opts.signal }));
     activated = true;
   }
 
@@ -671,6 +735,8 @@ export interface ActivateOptions {
   agentApiName: string;
   /** Specific version number; default: latest. */
   version?: number;
+  /** Optional caller cancellation signal from the Pi tool runtime. */
+  signal?: AbortSignal;
 }
 
 export async function activateVersion(opts: ActivateOptions): Promise<BotVersionRow> {
@@ -685,7 +751,7 @@ async function setActivationByApiName(
   opts: ActivateOptions,
   desired: "Active" | "Inactive",
 ): Promise<BotVersionRow> {
-  const botId = await findBotId(opts.conn, opts.agentApiName);
+  const botId = await findBotId(opts.conn, opts.agentApiName, { signal: opts.signal });
   if (!botId) {
     throw new Error(
       `Agent '${opts.agentApiName}' not found. Verify the DeveloperName via ` +
@@ -695,11 +761,16 @@ async function setActivationByApiName(
 
   // Resolve the target BotVersion row.
   const versionFilter = opts.version ? `AND VersionNumber=${opts.version}` : "";
-  const versions = await opts.conn.query<BotVersionRow>(
+  const versions = await boundedSoqlQuery<BotVersionRow>(
+    opts.conn,
     `SELECT Id, VersionNumber, Status FROM BotVersion ` +
       `WHERE BotDefinitionId='${soqlEscape(botId)}' ${versionFilter} ` +
       `ORDER BY VersionNumber DESC LIMIT 1`,
+    { signal: opts.signal },
   );
+  if (versions.ok === false) {
+    throw new Error(`BotVersion lookup failed for '${opts.agentApiName}': ${versions.detail}`);
+  }
   if (versions.records.length === 0) {
     throw new Error(
       opts.version
@@ -711,7 +782,7 @@ async function setActivationByApiName(
   if (row.Status === desired) {
     return row; // already in desired state — idempotent
   }
-  await setVersionStatus(opts.conn, row.Id, desired);
+  await setVersionStatus(opts.conn, row.Id, desired, { signal: opts.signal });
   return { ...row, Status: desired };
 }
 
@@ -719,18 +790,20 @@ async function setVersionStatus(
   conn: Connection,
   botVersionId: string,
   desired: "Active" | "Inactive",
+  opts?: { signal?: AbortSignal },
 ): Promise<void> {
   const url = `/connect/bot-versions/${botVersionId}/activation`;
-  const resp = (await conn.request({
-    method: "POST",
-    url,
-    body: JSON.stringify({ status: desired }),
-    headers: { "Content-Type": "application/json" },
-  } as Parameters<typeof conn.request>[0])) as BotActivationResponseBody;
-  if (!resp.success) {
-    const msg = Array.isArray(resp.messages)
-      ? resp.messages.join("; ")
-      : (resp.messages ?? "unknown");
+  const resp = await boundedRestRequest<BotActivationResponseBody>(conn, url, "POST", {
+    body: { status: desired },
+    signal: opts?.signal,
+  });
+  if (resp.ok === false) {
+    throw new Error(`Activation request failed: ${resp.detail}`);
+  }
+  if (!resp.body.success) {
+    const msg = Array.isArray(resp.body.messages)
+      ? resp.body.messages.join("; ")
+      : (resp.body.messages ?? "unknown");
     throw new Error(`Activation request did not succeed: ${msg}`);
   }
 }
@@ -756,12 +829,21 @@ export interface ListVersionsResult {
 export async function listVersions(
   conn: Connection,
   agentApiName: string,
+  opts?: { signal?: AbortSignal },
 ): Promise<ListVersionsResult> {
-  const botId = await findBotId(conn, agentApiName);
+  const botLookup = await boundedSoqlQuery<{ Id: string }>(
+    conn,
+    `SELECT Id FROM BotDefinition WHERE DeveloperName='${soqlEscape(agentApiName)}'`,
+    { signal: opts?.signal },
+  );
+  if (botLookup.ok === false) {
+    throw new Error(`BotDefinition lookup failed for '${agentApiName}': ${botLookup.detail}`);
+  }
+  const botId = botLookup.records[0]?.Id;
   if (!botId) {
     throw new Error(`Agent '${agentApiName}' not found. Verify the DeveloperName.`);
   }
-  const r = await conn.query<{
+  const r = await boundedSoqlQuery<{
     Id: string;
     VersionNumber: number;
     DeveloperName: string;
@@ -769,9 +851,14 @@ export async function listVersions(
     CreatedDate: string;
     LastModifiedDate: string;
   }>(
+    conn,
     `SELECT Id, VersionNumber, DeveloperName, Status, CreatedDate, LastModifiedDate ` +
       `FROM BotVersion WHERE BotDefinitionId='${soqlEscape(botId)}' ORDER BY VersionNumber DESC`,
+    { signal: opts?.signal },
   );
+  if (r.ok === false) {
+    throw new Error(`BotVersion lookup failed for '${agentApiName}': ${r.detail}`);
+  }
   return {
     ok: true,
     agent_api_name: agentApiName,

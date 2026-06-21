@@ -8,7 +8,7 @@
  *    instance, app context, feature id) plus an x-sfdc-core-tenant-id derived
  *    from the org id. We resolve those once per run and reuse for all batches.
  *
- * Transport: `sfapRequest` over `@salesforce/core` `Connection.request`,
+ * Transport: `sfapRequest` reuses @salesforce/core auth and bounded native fetch,
  * with sandbox-safe SFAP host fallback (api → test.api → dev.api on 404).
  */
 
@@ -27,7 +27,7 @@ export interface EvalApiHeaders {
 
 /**
  * Build the custom-header set the eval API requires. The Authorization header
- * is supplied automatically by jsforce/Connection from the org's auth context.
+ * is supplied by the bounded transport from the org's resolved auth context.
  */
 export function buildEvalHeaders(h: EvalApiHeaders): Record<string, string> {
   return {
@@ -49,7 +49,7 @@ export async function callEval(
   conn: Connection,
   tests: EvalTest[],
   headers: EvalApiHeaders,
-  opts?: { timeoutMs?: number },
+  opts?: { timeoutMs?: number; signal?: AbortSignal },
 ): Promise<SfapResponse<EvalApiResponse>> {
   return sfapRequest<EvalApiResponse>(conn, {
     url: EVAL_URL,
@@ -58,6 +58,7 @@ export async function callEval(
     body: { tests },
     timeoutMs: opts?.timeoutMs ?? 300_000,
     maxRetries: 2,
+    signal: opts?.signal,
     fallback: true,
   });
 }

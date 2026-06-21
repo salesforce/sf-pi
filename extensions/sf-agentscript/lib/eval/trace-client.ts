@@ -14,7 +14,7 @@
  * pool. A trace failure is logged but never fails the run — the trace is a
  * debugging aid, not a correctness signal.
  *
- * Transport: `sfapRequest` over `@salesforce/core` `Connection.request`.
+ * Transport: `sfapRequest` reuses @salesforce/core auth and bounded native fetch.
  */
 
 import type { Connection } from "@salesforce/core";
@@ -34,6 +34,7 @@ export interface FetchTraceOpts {
   concurrency?: number;
   timeoutMs?: number;
   log?: (msg: string) => void;
+  signal?: AbortSignal;
 }
 
 export async function fetchTrace(
@@ -48,6 +49,7 @@ export async function fetchTrace(
      * before sticky-host pinning).
      */
     pinnedEndpoint?: "" | "test." | "dev.";
+    signal?: AbortSignal;
   },
 ): Promise<unknown | null> {
   const url = TRACE_URL_TPL.replace("{sid}", sessionId).replace("{pid}", planId);
@@ -59,6 +61,7 @@ export async function fetchTrace(
     maxRetries: 2,
     fallback: true,
     ...(opts?.pinnedEndpoint !== undefined ? { pinnedEndpoint: opts.pinnedEndpoint } : {}),
+    signal: opts?.signal,
   });
   if (res.status >= 200 && res.status < 300 && res.body && typeof res.body === "object") {
     return res.body;
@@ -96,6 +99,7 @@ export async function fetchTracesConcurrent(
       try {
         const trace = await fetchTrace(conn, job.sessionId, job.planId, {
           timeoutMs: opts?.timeoutMs,
+          signal: opts?.signal,
         });
         out.set(key, trace);
         if (trace === null) log(`  trace ${job.planId.slice(0, 8)}…: empty`);

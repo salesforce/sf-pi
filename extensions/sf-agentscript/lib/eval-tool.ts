@@ -33,7 +33,7 @@ import {
   readMetadata,
   type RunEvalResult,
 } from "./eval/orchestrator.ts";
-import { resolveActiveIds, resolveAgentIds, type StatusFilter } from "./eval/active-ids.ts";
+import { resolveAgentIds, type StatusFilter } from "./eval/active-ids.ts";
 import { fetchTrace } from "./eval/trace-client.ts";
 import { generateSpec } from "./eval/spec-generator.ts";
 import { inspectFile } from "./inspect.ts";
@@ -335,16 +335,16 @@ export function registerEvalTool(pi: ExtensionAPI): void {
       let result;
       switch (p.action) {
         case "run":
-          result = await actionRun(ctx, p, onUpdate, timings);
+          result = await actionRun(ctx, p, onUpdate, timings, _signal);
           break;
         case "get_failure":
           result = await timings.time("eval.get_failure", () => actionGetFailure(ctx, p));
           break;
         case "trace":
-          result = await actionTrace(p, timings);
+          result = await actionTrace(p, timings, _signal);
           break;
         case "resolve_active":
-          result = await timings.time("eval.resolve_active", () => actionResolveActive(p));
+          result = await timings.time("eval.resolve_active", () => actionResolveActive(p, _signal));
           break;
         case "generate_spec":
           result = await timings.time("eval.generate_spec", () => actionGenerateSpec(ctx, p));
@@ -366,6 +366,7 @@ async function actionRun(
   input: ParamsAny,
   onUpdate?: OnUpdateFn,
   timings?: TimingCollector,
+  signal?: AbortSignal,
 ): Promise<{
   content: { type: "text"; text: string }[];
   details: Record<string, unknown> | ToolError;
@@ -404,7 +405,7 @@ async function actionRun(
     if ((input.traces_mode ?? "failed") !== "off") {
       try {
         const authPhase = timings?.phase("agent_api_auth");
-        const auth = await connForAgentApi(input.target_org);
+        const auth = await connForAgentApi(input.target_org, { signal });
         authPhase?.end({ cache: auth.cache });
         traceConn = auth.conn;
       } catch {
@@ -429,6 +430,7 @@ async function actionRun(
       specPath: input.spec_path,
       log,
       timings,
+      signal,
     });
   } catch (err) {
     return classifyRunError(err, input);
@@ -651,22 +653,25 @@ async function actionGetFailure(
 async function actionTrace(
   input: ParamsAny,
   timings?: TimingCollector,
+  signal?: AbortSignal,
 ): Promise<{
   content: { type: "text"; text: string }[];
   details: Record<string, unknown> | ToolError;
 }> {
   try {
     const authPhase = timings?.phase("agent_api_auth");
-    const auth = await connForAgentApi(input.target_org);
+    const auth = await connForAgentApi(input.target_org, { signal });
     authPhase?.end({ cache: auth.cache });
     const trace = timings
       ? await timings.time("trace_fetch", () =>
           fetchTrace(auth.conn, input.session_id, input.plan_id, {
             timeoutMs: input.timeout_ms ?? 60_000,
+            signal,
           }),
         )
       : await fetchTrace(auth.conn, input.session_id, input.plan_id, {
           timeoutMs: input.timeout_ms ?? 60_000,
+          signal,
         });
     if (trace == null) {
       return toolError(
@@ -698,7 +703,10 @@ async function actionTrace(
 // action = resolve_active
 // -------------------------------------------------------------------------------------------------
 
-async function actionResolveActive(input: ParamsAny): Promise<{
+async function actionResolveActive(
+  input: ParamsAny,
+  signal?: AbortSignal,
+): Promise<{
   content: { type: "text"; text: string }[];
   details: Record<string, unknown> | ToolError;
 }> {
@@ -709,10 +717,10 @@ async function actionResolveActive(input: ParamsAny): Promise<{
     const status: StatusFilter = input.status ?? "Active";
     const ids =
       typeof input.version === "number"
-        ? await resolveAgentIds(conn, input.agent_api_name, { version: input.version })
+        ? await resolveAgentIds(conn, input.agent_api_name, { version: input.version, signal })
         : status === "Active"
-          ? await resolveActiveIds(conn, input.agent_api_name)
-          : await resolveAgentIds(conn, input.agent_api_name, { status: "any" });
+          ? await resolveAgentIds(conn, input.agent_api_name, { status: "Active", signal })
+          : await resolveAgentIds(conn, input.agent_api_name, { status: "any", signal });
 
     // The placeholder-shaped fields ($active_* / $latest_*) reflect the
     // resolution mode so an LLM consumer can copy-paste the right token

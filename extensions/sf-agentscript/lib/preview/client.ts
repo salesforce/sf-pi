@@ -34,7 +34,11 @@ import {
   type PreviewMetadata,
 } from "./session-store.ts";
 import { loadAgentforceSDK } from "../sdk.ts";
-import { resolveAgentVersionDeveloperName } from "./resolve-agent-version.ts";
+import {
+  resolveAgentVersionDeveloperName,
+  type ResolveAgentVersionResult,
+} from "./resolve-agent-version.ts";
+import { boundedSoqlQuery } from "../bounded-salesforce-transport.ts";
 import { mapPreviewError } from "./error-map.ts";
 import {
   applyPreviewContextPatch,
@@ -124,6 +128,8 @@ export interface PreviewStartOptions {
   contextVariables?: ContextVariable[];
   /** Optional local operation timing collector owned by the tool wrapper. */
   timings?: TimingCollector;
+  /** Optional caller cancellation signal from the Pi tool runtime. */
+  signal?: AbortSignal;
   /** True when caller already performed an equivalent local compile/check. */
   skipLocalValidation?: boolean;
 }
@@ -142,6 +148,10 @@ export interface PreviewStartResult {
   digest?: TraceDigest;
   /** Stats for start-time context injection, when context_variables were passed. */
   contextPatch?: PreviewContextPatchResult;
+  /** Agent version pin used for the preview session. */
+  versionResolution?: ResolveAgentVersionResult;
+  /** Non-blocking preview-start diagnostics. */
+  warnings?: string[];
 }
 
 export interface PreviewSendOptions {
@@ -166,6 +176,8 @@ export interface PreviewSendOptions {
   contextVariables?: ContextVariable[];
   /** Optional local operation timing collector owned by the tool wrapper. */
   timings?: TimingCollector;
+  /** Optional caller cancellation signal from the Pi tool runtime. */
+  signal?: AbortSignal;
 }
 
 /**
@@ -204,6 +216,8 @@ export interface PreviewStartByApiNameOptions {
   targetOrg?: string;
   /** Optional local operation timing collector owned by the tool wrapper. */
   timings?: TimingCollector;
+  /** Optional caller cancellation signal from the Pi tool runtime. */
+  signal?: AbortSignal;
 }
 
 export interface PreviewEndOptions {
@@ -266,6 +280,7 @@ export async function startPreview(opts: PreviewStartOptions): Promise<PreviewSt
             assets: [{ type: "AFScript", name: "AFScript", content: opts.agentSource }],
             afScriptVersion: "2.0.0",
           },
+          signal: opts.signal,
         }),
       )
     : await sfapRequest<CompileResponseBody>(opts.conn, {
@@ -276,6 +291,7 @@ export async function startPreview(opts: PreviewStartOptions): Promise<PreviewSt
           assets: [{ type: "AFScript", name: "AFScript", content: opts.agentSource }],
           afScriptVersion: "2.0.0",
         },
+        signal: opts.signal,
       });
   if (opts.timings) {
     opts.timings.add("sfap_endpoint_cache", 0, {
@@ -312,6 +328,7 @@ export async function startPreview(opts: PreviewStartOptions): Promise<PreviewSt
           agentFilePath: opts.agentFilePath,
           conn: opts.conn,
           agentName: opts.agentName,
+          signal: opts.signal,
         }),
       )
     : await resolveAgentVersionDeveloperName({
@@ -319,11 +336,14 @@ export async function startPreview(opts: PreviewStartOptions): Promise<PreviewSt
         agentFilePath: opts.agentFilePath,
         conn: opts.conn,
         agentName: opts.agentName,
+        signal: opts.signal,
       });
   agentJson.agentVersion = {
     ...((agentJson.agentVersion as Record<string, unknown> | undefined) ?? {}),
     developerName: versionResolution.developerName,
   } as AgentJson["agentVersion"];
+  const warnings: string[] = [];
+  if (versionResolution.lookup_warning) warnings.push(versionResolution.lookup_warning);
 
   const contextPatch = applyPreviewContextPatch(
     agentJson as unknown as Parameters<typeof applyPreviewContextPatch>[0],
@@ -336,14 +356,25 @@ export async function startPreview(opts: PreviewStartOptions): Promise<PreviewSt
   if (defaultAgentUser) {
     const r = opts.timings
       ? await opts.timings.time("bypass_user_lookup", () =>
-          opts.conn.query<{ Id: string }>(
+          boundedSoqlQuery<{ Id: string }>(
+            opts.conn,
             `SELECT Id FROM User WHERE Username='${soqlEscape(defaultAgentUser)}'`,
+            { signal: opts.signal },
           ),
         )
-      : await opts.conn.query<{ Id: string }>(
+      : await boundedSoqlQuery<{ Id: string }>(
+          opts.conn,
           `SELECT Id FROM User WHERE Username='${soqlEscape(defaultAgentUser)}'`,
+          { signal: opts.signal },
         );
-    bypassUser = r.totalSize === 1;
+    if (r.ok === true) {
+      bypassUser = r.totalSize === 1;
+    } else {
+      bypassUser = false;
+      warnings.push(
+        `default_agent_user lookup skipped; bypassUser=false (${r.reason}: ${r.detail})`,
+      );
+    }
   }
   if (bypassUser && agentJson.globalConfiguration?.agentType === "AgentforceEmployeeAgent") {
     bypassUser = false;
@@ -373,6 +404,7 @@ export async function startPreview(opts: PreviewStartOptions): Promise<PreviewSt
             executionHistory: [],
             conversationContext: [],
           },
+          signal: opts.signal,
         }),
       )
     : await sfapRequest<SessionStartBody>(opts.conn, {
@@ -484,6 +516,8 @@ export async function startPreview(opts: PreviewStartOptions): Promise<PreviewSt
     startedAt: startTime,
     sessionDir,
     contextPatch,
+    versionResolution,
+    warnings: warnings.length > 0 ? warnings : undefined,
   };
 }
 
@@ -544,6 +578,7 @@ export async function sendMessage(opts: PreviewSendOptions): Promise<PreviewSend
           // Falls back to the full host walk for legacy sessions written before
           // we persisted `endpoint` in metadata.
           ...(metadata.endpoint !== undefined ? { pinnedEndpoint: metadata.endpoint } : {}),
+          signal: opts.signal,
         }),
       )
     : await sfapRequest<SessionMessageBody>(opts.conn, {
@@ -559,6 +594,7 @@ export async function sendMessage(opts: PreviewSendOptions): Promise<PreviewSend
         // Falls back to the full host walk for legacy sessions written before
         // we persisted `endpoint` in metadata.
         ...(metadata.endpoint !== undefined ? { pinnedEndpoint: metadata.endpoint } : {}),
+        signal: opts.signal,
       });
   if (opts.timings) {
     opts.timings.add("sfap_endpoint_cache", 0, {
@@ -616,11 +652,13 @@ export async function sendMessage(opts: PreviewSendOptions): Promise<PreviewSend
             fetchTrace(opts.conn, opts.sessionId, planId, {
               timeoutMs: 60_000,
               pinnedEndpoint: metadata.endpoint,
+              signal: opts.signal,
             }),
           )
         : await fetchTrace(opts.conn, opts.sessionId, planId, {
             timeoutMs: 60_000,
             pinnedEndpoint: metadata.endpoint,
+            signal: opts.signal,
           });
       if (trace) {
         await (opts.timings
@@ -828,7 +866,7 @@ export async function startPreviewByApiName(
   // latest one — so the preflight should reflect that.
   const r = await (opts.timings
     ? opts.timings.time("published_agent_preflight", () =>
-        opts.conn.query<{
+        boundedSoqlQuery<{
           Id: string;
           AgentType?: string;
           BotUserId?: string | null;
@@ -841,13 +879,15 @@ export async function startPreviewByApiName(
             }>;
           } | null;
         }>(
+          opts.conn,
           `SELECT Id, AgentType, BotUserId, ` +
             `(SELECT Id, DeveloperName, Status, VersionNumber FROM BotVersions ` +
             `WHERE Status='Active' ORDER BY VersionNumber DESC LIMIT 1) ` +
             `FROM BotDefinition WHERE DeveloperName='${soqlEscape(opts.agentApiName)}'`,
+          { signal: opts.signal },
         ),
       )
-    : opts.conn.query<{
+    : boundedSoqlQuery<{
         Id: string;
         AgentType?: string;
         BotUserId?: string | null;
@@ -860,11 +900,14 @@ export async function startPreviewByApiName(
           }>;
         } | null;
       }>(
+        opts.conn,
         `SELECT Id, AgentType, BotUserId, ` +
           `(SELECT Id, DeveloperName, Status, VersionNumber FROM BotVersions ` +
           `WHERE Status='Active' ORDER BY VersionNumber DESC LIMIT 1) ` +
           `FROM BotDefinition WHERE DeveloperName='${soqlEscape(opts.agentApiName)}'`,
+        { signal: opts.signal },
       ));
+  if (r.ok === false) throw new Error(`Published agent preflight failed: ${r.detail}`);
   const bot = r.records[0];
   const botId = bot?.Id;
   if (!botId) {
@@ -882,21 +925,27 @@ export async function startPreviewByApiName(
     // bare "no Active version".
     const fallback = await (opts.timings
       ? opts.timings.time("published_agent_latest_version_lookup", () =>
-          opts.conn.query<{
+          boundedSoqlQuery<{
             VersionNumber: number;
             Status: string;
           }>(
+            opts.conn,
             `SELECT VersionNumber, Status FROM BotVersion ` +
               `WHERE BotDefinitionId='${botId}' ORDER BY VersionNumber DESC LIMIT 1`,
+            { signal: opts.signal },
           ),
         )
-      : opts.conn.query<{
+      : boundedSoqlQuery<{
           VersionNumber: number;
           Status: string;
         }>(
+          opts.conn,
           `SELECT VersionNumber, Status FROM BotVersion ` +
             `WHERE BotDefinitionId='${botId}' ORDER BY VersionNumber DESC LIMIT 1`,
+          { signal: opts.signal },
         ));
+    if (fallback.ok === false)
+      throw new Error(`Published agent latest-version lookup failed: ${fallback.detail}`);
     const latest = fallback.records[0];
     if (!latest) {
       throw new Error(
@@ -927,6 +976,7 @@ export async function startPreviewByApiName(
           method: "POST",
           headers: { "x-client-name": "sf-pi", "content-type": "application/json" },
           body: startBody(bypassUser),
+          signal: opts.signal,
         }),
       )
     : sfapRequest<SessionStartBody>(opts.conn, {
@@ -934,6 +984,7 @@ export async function startPreviewByApiName(
         method: "POST",
         headers: { "x-client-name": "sf-pi", "content-type": "application/json" },
         body: startBody(bypassUser),
+        signal: opts.signal,
       }));
   if (opts.timings) {
     opts.timings.add("sfap_endpoint_cache", 0, {
@@ -949,6 +1000,7 @@ export async function startPreviewByApiName(
             method: "POST",
             headers: { "x-client-name": "sf-pi", "content-type": "application/json" },
             body: startBody(false),
+            signal: opts.signal,
           }),
         )
       : sfapRequest<SessionStartBody>(opts.conn, {
@@ -956,6 +1008,7 @@ export async function startPreviewByApiName(
           method: "POST",
           headers: { "x-client-name": "sf-pi", "content-type": "application/json" },
           body: startBody(false),
+          signal: opts.signal,
         }));
   }
   if (sessionResp.status < 200 || sessionResp.status >= 300) {

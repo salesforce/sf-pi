@@ -26,14 +26,53 @@ import { startPreviewByApiName } from "../lib/preview/client.ts";
  * Pass `firstRecords` (BotDefinition rows) and optionally `fallbackRecords`
  * (the latest-of-any rows for the second hop).
  */
+const fetchCalls: string[] = [];
+
 function fakeConn(opts: {
   firstRecords: unknown[];
   fallbackRecords?: unknown[];
   onSessionStart?: () => unknown;
 }) {
   let queryCalls = 0;
+  fetchCalls.length = 0;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: string | URL | Request) => {
+      const u = String(url);
+      fetchCalls.push(u);
+      if (u.includes("/services/data/") && u.includes("/query?")) {
+        queryCalls++;
+        const soql = decodeURIComponent(u);
+        if (soql.includes("FROM BotDefinition")) {
+          return new Response(
+            JSON.stringify({ records: opts.firstRecords, totalSize: opts.firstRecords.length }),
+            { status: 200 },
+          );
+        }
+        if (soql.includes("FROM BotVersion") && opts.fallbackRecords !== undefined) {
+          return new Response(
+            JSON.stringify({
+              records: opts.fallbackRecords,
+              totalSize: opts.fallbackRecords.length,
+            }),
+            { status: 200 },
+          );
+        }
+      }
+      return new Response(
+        JSON.stringify(
+          opts.onSessionStart
+            ? opts.onSessionStart()
+            : { sessionId: "should-not-be-called", messages: [] },
+        ),
+        { status: 200 },
+      );
+    }),
+  );
   return {
+    accessToken: "JWT",
     instanceUrl: "https://example.my.salesforce.com",
+    getConnectionOptions: () => ({ accessToken: "JWT" }),
     query: vi.fn(async (soql: string) => {
       queryCalls++;
       if (soql.includes("FROM BotDefinition")) {
@@ -44,12 +83,9 @@ function fakeConn(opts: {
       }
       throw new Error(`unexpected SOQL: ${soql}`);
     }),
-    request: vi.fn(async () =>
-      opts.onSessionStart
-        ? opts.onSessionStart()
-        : { sessionId: "should-not-be-called", messages: [] },
-    ),
     queryCalls: () => queryCalls,
+    fetchCalls: () => [...fetchCalls],
+    sessionCalls: () => fetchCalls.filter((u) => u.includes("/einstein/ai-agent/")),
   };
 }
 
@@ -65,7 +101,7 @@ describe("startPreviewByApiName preflight", () => {
           agentApiName: "Nope",
         }),
       ).rejects.toThrow(/not found in the org/);
-      expect(conn.request).not.toHaveBeenCalled();
+      expect(conn.sessionCalls()).toHaveLength(0);
     } finally {
       await rm(cwd, { recursive: true, force: true });
     }
@@ -94,7 +130,7 @@ describe("startPreviewByApiName preflight", () => {
           agentApiName: "Empty",
         }),
       ).rejects.toThrow(/no BotVersions.*Publish first/i);
-      expect(conn.request).not.toHaveBeenCalled();
+      expect(conn.sessionCalls()).toHaveLength(0);
     } finally {
       await rm(cwd, { recursive: true, force: true });
     }
@@ -121,7 +157,7 @@ describe("startPreviewByApiName preflight", () => {
           agentApiName: "Stale_Bot",
         }),
       ).rejects.toThrow(/no Active BotVersion.*v3.*Inactive.*activate.*Stale_Bot.*version=3/is);
-      expect(conn.request).not.toHaveBeenCalled();
+      expect(conn.sessionCalls()).toHaveLength(0);
     } finally {
       await rm(cwd, { recursive: true, force: true });
     }
@@ -158,7 +194,7 @@ describe("startPreviewByApiName preflight", () => {
       expect(result.sessionId).toBe("sid-1");
       // Only one SOQL needed on the success path (no fallback).
       expect(conn.queryCalls()).toBe(1);
-      expect(conn.request).toHaveBeenCalledTimes(1);
+      expect(conn.sessionCalls()).toHaveLength(1);
     } finally {
       await rm(cwd, { recursive: true, force: true });
     }

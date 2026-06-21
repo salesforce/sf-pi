@@ -170,7 +170,7 @@ export function registerLifecycleTool(pi: ExtensionAPI): void {
       "action='diagnose_agent_user' — full read-only checklist (license, user existence + active state, system PS, per-apex-class access). Returns a structured report with per-check status + fix_hint. Use when agent_user_status returns not_ready and you want the full picture before fixing.",
       "action='provision_agent_user' — idempotent provisioner that brings the org into the 'ready' state. Defaults to dry_run=true (returns the plan + the rendered custom PS XML, no mutations). Pass dry_run=false to execute. Steps: create User if missing, assign AgentforceServiceAgentUser system PS, synthesize + deploy custom PS covering every apex:// target, assign custom PS. Skip-if-already-done at every step. License-missing aborts cleanly (admin-only fix).",
       "Errors carry recover_via where applicable (e.g. agent not found → list_versions hint, Service Agent missing user → diagnose_agent_user / provision_agent_user).",
-      "No sf CLI subprocess: every primitive runs through @salesforce/core Connection + @salesforce/source-deploy-retrieve. Safe in CI / programmatic contexts.",
+      "No sf CLI subprocess: org auth comes from @salesforce/core / SF CLI state, timeout-sensitive HTTP uses bounded transport, and AiAuthoringBundle deploy uses @salesforce/source-deploy-retrieve. Safe in CI / programmatic contexts.",
     ],
     parameters: Params,
     async execute(_id, params, _signal, onUpdate, ctx) {
@@ -193,16 +193,18 @@ export function registerLifecycleTool(pi: ExtensionAPI): void {
       let result;
       switch (p.action) {
         case "publish":
-          result = await actionPublish(ctx, p, stream, timings);
+          result = await actionPublish(ctx, p, stream, timings, _signal);
           break;
         case "activate":
-          result = await timings.time("lifecycle.activate", () => actionActivate(ctx, p));
+          result = await timings.time("lifecycle.activate", () => actionActivate(ctx, p, _signal));
           break;
         case "deactivate":
-          result = await timings.time("lifecycle.deactivate", () => actionDeactivate(p));
+          result = await timings.time("lifecycle.deactivate", () => actionDeactivate(p, _signal));
           break;
         case "list_versions":
-          result = await timings.time("lifecycle.list_versions", () => actionListVersions(p));
+          result = await timings.time("lifecycle.list_versions", () =>
+            actionListVersions(p, _signal),
+          );
           break;
         case "agent_user_status":
           result = await timings.time("lifecycle.agent_user_status", () =>
@@ -259,6 +261,7 @@ async function actionPublish(
   input: ParamsAny,
   stream: (msg: string) => void,
   timings?: TimingCollector,
+  signal?: AbortSignal,
 ): Promise<{
   content: { type: "text"; text: string }[];
   details: Record<string, unknown> | ToolError;
@@ -368,7 +371,7 @@ async function actionPublish(
       }
     }
     const authPhase = timings?.phase("agent_api_auth");
-    const auth = await connForAgentApi(input.target_org);
+    const auth = await connForAgentApi(input.target_org, { signal });
     authPhase?.end({ cache: auth.cache });
     const { conn: agentApiConn } = auth;
     const result = await publishAgent({
@@ -383,13 +386,14 @@ async function actionPublish(
       timings,
       localCompileChecked: true,
       inspectResult: await analysis.getInspect(),
+      signal,
     });
     const ab = result.authoring_bundle;
     const bundleLine = ab
       ? ab.error
-        ? `  ⚠️ AiAuthoringBundle deploy failed (Agent Script Studio will fall back to legacy builder): ${ab.error.slice(0, 200)}`
-        : `  • AiAuthoringBundle ${ab.full_name} deployed (target=${ab.target}, ${ab.created ? "created" : "updated"})`
-      : null;
+        ? `  ⚠️ AiAuthoringBundle deploy did not complete (Agent API publish still succeeded; Agent Script Studio may fall back to legacy builder): ${ab.error.slice(0, 200)}`
+        : `  • AiAuthoringBundle deploy succeeded: ${ab.full_name} (target=${ab.target}, ${ab.created ? "created" : "updated"})`
+      : `  • AiAuthoringBundle deploy skipped/not reported`;
     const missing = result.preflight?.missing_action_targets ?? [];
     const preflightLines: string[] = [];
     for (const risk of featureProfile?.publish_risks ?? []) {
@@ -437,7 +441,7 @@ async function actionPublish(
       [
         `📦 Published ${result.developer_name}`,
         result.was_new_agent ? "  • created new agent" : "  • new version of existing agent",
-        `  • bot_version_id: ${result.bot_version_id}`,
+        `  • Agent API publish succeeded: bot_version_id=${result.bot_version_id}`,
         bundleLine,
         result.activated ? "  • activated ✓" : "  • not activated (set activate=true to chain)",
         ...preflightLines,
@@ -497,6 +501,7 @@ async function actionPublish(
 async function actionActivate(
   ctx: ExtensionContext,
   input: ParamsAny,
+  signal?: AbortSignal,
 ): Promise<{
   content: { type: "text"; text: string }[];
   details: Record<string, unknown> | ToolError;
@@ -527,6 +532,7 @@ async function actionActivate(
       conn,
       agentApiName,
       version: input.version,
+      signal,
     });
     // The agent is now reachable by the Eval API. Surface the next-step
     // hint so the LLM (or the human) knows how to lock the baseline
@@ -564,7 +570,10 @@ async function actionActivate(
   }
 }
 
-async function actionDeactivate(input: ParamsAny): Promise<{
+async function actionDeactivate(
+  input: ParamsAny,
+  signal?: AbortSignal,
+): Promise<{
   content: { type: "text"; text: string }[];
   details: Record<string, unknown> | ToolError;
 }> {
@@ -575,6 +584,7 @@ async function actionDeactivate(input: ParamsAny): Promise<{
       conn,
       agentApiName,
       version: input.version,
+      signal,
     });
     return toolOk(
       withAgentScriptBranchState(
@@ -604,14 +614,17 @@ async function actionDeactivate(input: ParamsAny): Promise<{
 // action = list_versions
 // -------------------------------------------------------------------------------------------------
 
-async function actionListVersions(input: ParamsAny): Promise<{
+async function actionListVersions(
+  input: ParamsAny,
+  signal?: AbortSignal,
+): Promise<{
   content: { type: "text"; text: string }[];
   details: Record<string, unknown> | ToolError;
 }> {
   const agentApiName = input.agent_api_name as string;
   try {
     const conn = await connFromAlias(input.target_org);
-    const result = await listVersions(conn, agentApiName);
+    const result = await listVersions(conn, agentApiName, { signal });
     const lines = [
       `📋 Versions of ${result.agent_api_name} (bot_id ${result.bot_id})`,
       ...result.versions.map((v) => {

@@ -116,9 +116,12 @@ function formatCompileBody(details: CompileResultDetails, theme: Theme | undefin
   const sev3 = diagnostics.filter((d) => d.severity === 3).length;
   const fixCount = details.quick_fix_count ?? 0;
 
+  const icon = sev1 > 0 ? "❌" : sev2 > 0 ? "⚠️" : "✅";
   const headerBits = [
-    bold(`❌ ${path}`),
-    `${diagnostics.length} ${diagnostics.length === 1 ? "issue" : "issues"}`,
+    bold(`${icon} ${path}`),
+    sev1 === 0 && sev2 === 0
+      ? "compiles"
+      : `${diagnostics.length} ${diagnostics.length === 1 ? "issue" : "issues"}`,
   ];
   if (sev1 > 0) headerBits.push(err(`● ${sev1} error${sev1 === 1 ? "" : "s"}`));
   if (sev2 > 0) headerBits.push(warn(`⚠ ${sev2} warning${sev2 === 1 ? "" : "s"}`));
@@ -128,6 +131,9 @@ function formatCompileBody(details: CompileResultDetails, theme: Theme | undefin
   const lines: string[] = [];
   lines.push(headerBits.join("  "));
   lines.push(dim(dialectName));
+  if (sev1 === 0 && sev2 === 0 && sev3 > 0) {
+    lines.push(warn("⚠ Informational diagnostics present; compile is valid."));
+  }
   lines.push("");
 
   // Sort: errors first, then warnings/info, in original order within group.

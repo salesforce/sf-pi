@@ -39,51 +39,71 @@ describe("parseTargetFromBundleMeta", () => {
   });
 });
 
+function fakeConn() {
+  return {
+    instanceUrl: "https://example.my.salesforce.com",
+    accessToken: "00D.fake-token",
+    getApiVersion: () => "67.0",
+  };
+}
+
+function jsonResponse(body: unknown, init?: ResponseInit): Response {
+  return new Response(JSON.stringify(body), {
+    status: 200,
+    headers: { "content-type": "application/json" },
+    ...init,
+  });
+}
+
 describe("findLatestBotVersionDeveloperName", () => {
-  test("returns DeveloperName from the latest BotVersion", async () => {
-    const query = vi.fn<(soql: string) => Promise<unknown>>(async () => ({
-      records: [{ BotVersions: { records: [{ DeveloperName: "v4" }] } }],
-    }));
-    const conn = { query };
-    const v = await findLatestBotVersionDeveloperName(conn as never, "Hello_Bot");
-    expect(v).toBe("v4");
-    expect(query).toHaveBeenCalledTimes(1);
-    const soql = query.mock.calls[0][0];
-    expect(soql).toContain("BotVersions");
-    expect(soql).toContain("DeveloperName='Hello_Bot'");
+  test("returns DeveloperName from the latest BotVersion via bounded fetch", async () => {
+    const fetchImpl = vi.fn<typeof fetch>(async () =>
+      jsonResponse({ records: [{ BotVersions: { records: [{ DeveloperName: "v4" }] } }] }),
+    );
+    const r = await findLatestBotVersionDeveloperName(fakeConn() as never, "Hello_Bot", {
+      fetchImpl,
+    });
+    expect(r.developerName).toBe("v4");
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    const url = String(fetchImpl.mock.calls[0][0]);
+    expect(decodeURIComponent(url)).toContain("BotVersions");
+    expect(decodeURIComponent(url)).toContain("DeveloperName='Hello_Bot'");
   });
 
   test("escapes single quotes in the agent name", async () => {
-    const query = vi.fn<(soql: string) => Promise<unknown>>(async () => ({ records: [] }));
-    const conn = { query };
-    await findLatestBotVersionDeveloperName(conn as never, "weird'name");
-    const soql = query.mock.calls[0][0];
-    expect(soql).toContain("DeveloperName='weird''name'");
+    const fetchImpl = vi.fn<typeof fetch>(async () => jsonResponse({ records: [] }));
+    await findLatestBotVersionDeveloperName(fakeConn() as never, "weird'name", { fetchImpl });
+    const url = String(fetchImpl.mock.calls[0][0]);
+    expect(decodeURIComponent(url)).toContain("DeveloperName='weird''name'");
   });
 
-  test("returns undefined when the agent has no BotVersions yet", async () => {
-    const conn = {
-      query: vi.fn(async () => ({ records: [{ BotVersions: null }] })),
-    };
-    expect(await findLatestBotVersionDeveloperName(conn as never, "X")).toBeUndefined();
+  test("returns no developerName when the agent has no BotVersions yet", async () => {
+    const fetchImpl = vi.fn<typeof fetch>(async () =>
+      jsonResponse({ records: [{ BotVersions: null }] }),
+    );
+    expect(
+      (await findLatestBotVersionDeveloperName(fakeConn() as never, "X", { fetchImpl }))
+        .developerName,
+    ).toBeUndefined();
   });
 
-  test("never throws when SOQL fails (org may not expose BotDefinition)", async () => {
-    const conn = {
-      query: vi.fn(async () => {
-        throw new Error("INVALID_TYPE");
-      }),
-    };
-    expect(await findLatestBotVersionDeveloperName(conn as never, "X")).toBeUndefined();
+  test("returns a warning when bounded fetch fails", async () => {
+    const fetchImpl = vi.fn<typeof fetch>(async () =>
+      jsonResponse([{ message: "bad" }], { status: 500 }),
+    );
+    const r = await findLatestBotVersionDeveloperName(fakeConn() as never, "X", { fetchImpl });
+    expect(r.developerName).toBeUndefined();
+    expect(r.warning).toMatch(/HTTP 500/);
   });
 
   test("rejects non-vN DeveloperName values", async () => {
-    const conn = {
-      query: vi.fn(async () => ({
-        records: [{ BotVersions: { records: [{ DeveloperName: "draft-7" }] } }],
-      })),
-    };
-    expect(await findLatestBotVersionDeveloperName(conn as never, "X")).toBeUndefined();
+    const fetchImpl = vi.fn<typeof fetch>(async () =>
+      jsonResponse({ records: [{ BotVersions: { records: [{ DeveloperName: "draft-7" }] } }] }),
+    );
+    expect(
+      (await findLatestBotVersionDeveloperName(fakeConn() as never, "X", { fetchImpl }))
+        .developerName,
+    ).toBeUndefined();
   });
 });
 
@@ -99,21 +119,20 @@ describe("resolveAgentVersionDeveloperName", () => {
   });
 
   test("override beats every other source", async () => {
-    const conn = {
-      query: vi.fn(async () => ({
-        records: [{ BotVersions: { records: [{ DeveloperName: "v9" }] } }],
-      })),
-    };
+    const fetchImpl = vi.fn<typeof fetch>(async () =>
+      jsonResponse({ records: [{ BotVersions: { records: [{ DeveloperName: "v9" }] } }] }),
+    );
     await writeFile(path.join(dir, "X.bundle-meta.xml"), "<target>X.v3</target>");
     await writeFile(path.join(dir, "X.agent"), "");
     const r = await resolveAgentVersionDeveloperName({
       override: "v42",
       agentFilePath: path.join(dir, "X.agent"),
-      conn: conn as never,
+      conn: fakeConn() as never,
       agentName: "X",
+      fetchImpl,
     });
     expect(r).toEqual({ developerName: "v42", source: "override" });
-    expect(conn.query).not.toHaveBeenCalled();
+    expect(fetchImpl).not.toHaveBeenCalled();
   });
 
   test("ignores malformed override and falls through", async () => {
@@ -127,36 +146,49 @@ describe("resolveAgentVersionDeveloperName", () => {
   });
 
   test("bundle-meta beats SOQL", async () => {
-    const conn = {
-      query: vi.fn(async () => ({
-        records: [{ BotVersions: { records: [{ DeveloperName: "v9" }] } }],
-      })),
-    };
+    const fetchImpl = vi.fn<typeof fetch>(async () =>
+      jsonResponse({ records: [{ BotVersions: { records: [{ DeveloperName: "v9" }] } }] }),
+    );
     await writeFile(path.join(dir, "X.bundle-meta.xml"), "<target>X.v3</target>");
     await writeFile(path.join(dir, "X.agent"), "");
     const r = await resolveAgentVersionDeveloperName({
       agentFilePath: path.join(dir, "X.agent"),
-      conn: conn as never,
+      conn: fakeConn() as never,
       agentName: "X",
+      fetchImpl,
     });
     expect(r).toEqual({ developerName: "v3", source: "bundle-meta" });
-    expect(conn.query).not.toHaveBeenCalled();
+    expect(fetchImpl).not.toHaveBeenCalled();
   });
 
-  test("SOQL takes over when bundle-meta is missing or has no <target>", async () => {
-    const conn = {
-      query: vi.fn(async () => ({
-        records: [{ BotVersions: { records: [{ DeveloperName: "v5" }] } }],
-      })),
-    };
+  test("bounded SOQL takes over when bundle-meta is missing or has no <target>", async () => {
+    const fetchImpl = vi.fn<typeof fetch>(async () =>
+      jsonResponse({ records: [{ BotVersions: { records: [{ DeveloperName: "v5" }] } }] }),
+    );
     await writeFile(path.join(dir, "X.bundle-meta.xml"), "<bundleType>AGENT</bundleType>");
     await writeFile(path.join(dir, "X.agent"), "");
     const r = await resolveAgentVersionDeveloperName({
       agentFilePath: path.join(dir, "X.agent"),
-      conn: conn as never,
+      conn: fakeConn() as never,
       agentName: "X",
+      fetchImpl,
     });
     expect(r).toEqual({ developerName: "v5", source: "soql" });
+  });
+
+  test("defaults to v0 when bounded SOQL lookup fails", async () => {
+    const fetchImpl = vi.fn<typeof fetch>(async () => jsonResponse([], { status: 500 }));
+    await writeFile(path.join(dir, "X.bundle-meta.xml"), "<bundleType>AGENT</bundleType>");
+    await writeFile(path.join(dir, "X.agent"), "");
+    const r = await resolveAgentVersionDeveloperName({
+      agentFilePath: path.join(dir, "X.agent"),
+      conn: fakeConn() as never,
+      agentName: "X",
+      fetchImpl,
+    });
+    expect(r.developerName).toBe("v0");
+    expect(r.source).toBe("default");
+    expect(r.lookup_warning).toMatch(/HTTP 500/);
   });
 
   test("defaults to v0 when nothing else resolves", async () => {
@@ -165,11 +197,12 @@ describe("resolveAgentVersionDeveloperName", () => {
   });
 
   test("defaults to v0 when bundle-meta is unreadable AND SOQL returns nothing", async () => {
-    const conn = { query: vi.fn(async () => ({ records: [] })) };
+    const fetchImpl = vi.fn<typeof fetch>(async () => jsonResponse({ records: [] }));
     const r = await resolveAgentVersionDeveloperName({
       agentFilePath: path.join(dir, "missing.agent"),
-      conn: conn as never,
+      conn: fakeConn() as never,
       agentName: "Nope",
+      fetchImpl,
     });
     expect(r).toEqual({ developerName: "v0", source: "default" });
   });

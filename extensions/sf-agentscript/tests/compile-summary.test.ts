@@ -6,8 +6,9 @@
  *
  * Contract:
  *   - clean files emit a single `✓` line
- *   - dirty files emit `❌ <path> — N issue(s) (kE·mW[·nI]), F fix(es) ready`
+ *   - files with errors emit `❌ <path> — N issue(s) (kE·mW[·nI]), F fix(es) ready`
  *     followed by up to MAX_SAMPLE_LINES bullets, errors first
+ *   - files with only info diagnostics emit an overall ✅ plus a warning note
  *   - bullet shape is `  • [E|W|I] <code> @ L<1-based-line>`
  *   - excess diagnostics are summarized as `…and X more in details.diagnostics`
  */
@@ -50,13 +51,14 @@ describe("renderCheckSummary", () => {
     expect(lines[4]).toBe("  • [I] unused-variable @ L11");
   });
 
-  test("more than MAX_SAMPLE_LINES diagnostics emits an overflow summary", () => {
+  test("info-only diagnostics emit a valid compile outcome plus warning note", () => {
     const diags = Array.from({ length: 8 }, (_v, i) => makeDiag(3, "unused-variable", i + 1));
     const out = renderCheckSummary("/tmp/X.agent", diags, 8);
     const lines = out.split("\n");
-    expect(lines[0]).toContain("8 issue(s) (0E·0W·8I)");
-    expect(lines).toHaveLength(7); // header + 5 samples + overflow
-    expect(lines[6]).toBe("  …and 3 more in details.diagnostics");
+    expect(lines[0]).toContain("✅ /tmp/X.agent compiles (0E·0W·8I)");
+    expect(lines[1]).toBe("  ⚠ Informational diagnostics present; compile is valid.");
+    expect(lines).toHaveLength(8); // header + warning note + 5 samples + overflow
+    expect(lines[7]).toBe("  …and 3 more in details.diagnostics");
   });
 
   test("missing diagnostic code falls back to '(no-code)'", () => {

@@ -128,6 +128,10 @@ _Avoid_: private AgentScript fork, permanent compatibility layer, duplicate lang
 The thin SF Pi-owned layer that keeps Salesforce/pi-specific diagnostics, quick fixes, rendering, and workflow guardrails around the generic behavior supplied by Official AgentScript Package Dependencies.
 _Avoid_: forked AgentScript compiler, duplicate LSP implementation, replacement for upstream package behavior
 
+**Bounded Salesforce Transport**:
+The SF Pi-owned Agent Script network boundary that reuses Salesforce auth resolved by the standard org connection while enforcing explicit request time limits for preview, eval, lifecycle, and read-only preflight calls.
+_Avoid_: new credential store, raw token workflow, unbounded jsforce-only transport
+
 **Structural Agent Script Inspection**:
 The SF Pi-owned projection of parsed Agent Script into an agent-friendly summary of config, topics, subagents, variables, actions, references, targets, and readiness metadata.
 _Avoid_: generic LSP feature, full AST dump, replacement for official parser semantics

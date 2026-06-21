@@ -9,7 +9,7 @@
  */
 
 import type { Connection } from "@salesforce/core";
-import { connRequest } from "../../../../lib/common/sf-conn/request.ts";
+import { boundedSoqlQuery } from "../bounded-salesforce-transport.ts";
 
 export type QueryEndpoint = "/query" | "/tooling/query";
 
@@ -27,10 +27,11 @@ export async function safeQueryRecords<T extends Record<string, unknown>>(
   soql: string,
 ): Promise<T[] | null> {
   try {
-    const url = `${endpoint}?q=${encodeURIComponent(soql)}`;
-    const res = await connRequest<{ records?: T[] }>(conn, { method: "GET", url });
-    if (res.status >= 400) return null;
-    return res.body?.records ?? [];
+    const res = await boundedSoqlQuery<T>(conn, soql, {
+      api: endpoint === "/tooling/query" ? "tooling" : "data",
+    });
+    if (res.ok === false) return null;
+    return res.records;
   } catch {
     return null;
   }

@@ -2,6 +2,7 @@
 /** Target-org checks for deterministic Agent Script review. */
 
 import type { Connection } from "@salesforce/core";
+import { inferAgentTypeFromTemplate } from "../agent-user/agent-config.ts";
 import { checkAgentUserStatus } from "../agent-user/status.ts";
 import type { AgentFeatureProfile } from "../feature-profile.ts";
 import type { ComponentSummary } from "../inspect.ts";
@@ -22,8 +23,14 @@ export interface CollectOrgReviewFindingsInput {
 export async function collectOrgReviewFindings(
   input: CollectOrgReviewFindingsInput,
 ): Promise<ReviewFinding[]> {
+  const agentTemplate =
+    typeof input.config.agent_template === "string" ? input.config.agent_template : undefined;
   const agentType =
-    typeof input.config.agent_type === "string" ? input.config.agent_type : undefined;
+    typeof input.config.agent_type === "string"
+      ? input.config.agent_type
+      : agentTemplate
+        ? inferAgentTypeFromTemplate(agentTemplate)
+        : undefined;
   const defaultAgentUser =
     typeof input.config.default_agent_user === "string"
       ? input.config.default_agent_user

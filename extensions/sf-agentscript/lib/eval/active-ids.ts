@@ -26,6 +26,7 @@
  */
 
 import type { Connection } from "@salesforce/core";
+import { boundedSoqlQuery } from "../bounded-salesforce-transport.ts";
 
 export type StatusFilter = "Active" | "any";
 
@@ -67,6 +68,8 @@ export interface ResolveAgentIdsOptions {
    * over `status` and surfaces whatever Status that version has.
    */
   version?: number;
+  /** Optional caller cancellation signal from the Pi tool runtime. */
+  signal?: AbortSignal;
 }
 
 function soqlEscape(s: string): string {
@@ -85,9 +88,14 @@ export async function resolveAgentIds(
 ): Promise<ResolvedAgentIds> {
   const esc = soqlEscape(agentApiName);
 
-  const bots = await conn.query<{ Id: string }>(
+  const bots = await boundedSoqlQuery<{ Id: string }>(
+    conn,
     `SELECT Id FROM BotDefinition WHERE DeveloperName='${esc}'`,
+    { signal: opts.signal },
   );
+  if (bots.ok === false) {
+    throw new Error(`BotDefinition lookup failed for '${agentApiName}': ${bots.detail}`);
+  }
   if (bots.records.length === 0) {
     throw new Error(
       `Agent '${agentApiName}' not found in target org. ` +
@@ -111,10 +119,19 @@ export async function resolveAgentIds(
     mode = "Active";
   }
 
-  const versions = await conn.query<{ Id: string; VersionNumber: number; Status: string }>(
+  const versions = await boundedSoqlQuery<{
+    Id: string;
+    VersionNumber: number;
+    Status: string;
+  }>(
+    conn,
     `SELECT Id, VersionNumber, Status FROM BotVersion ` +
       `WHERE ${where} ORDER BY VersionNumber DESC LIMIT 1`,
+    { signal: opts.signal },
   );
+  if (versions.ok === false) {
+    throw new Error(`BotVersion lookup failed for '${agentApiName}': ${versions.detail}`);
+  }
   if (versions.records.length === 0) {
     if (mode === "specific") {
       throw new Error(
@@ -138,15 +155,17 @@ export async function resolveAgentIds(
   }
   const { Id: bot_version_id, VersionNumber: version_number, Status: status } = versions.records[0];
 
-  const planners = await conn.query<{ Id: string }>(
+  const planners = await boundedSoqlQuery<{ Id: string }>(
+    conn,
     `SELECT Id FROM GenAiPlannerDefinition ` +
       `WHERE DeveloperName='${esc}_v${version_number}' LIMIT 1`,
+    { signal: opts.signal },
   );
 
   return {
     bot_id,
     bot_version_id,
-    planner_id: planners.records[0]?.Id ?? null,
+    planner_id: planners.ok === true ? (planners.records[0]?.Id ?? null) : null,
     version_number,
     status,
   };

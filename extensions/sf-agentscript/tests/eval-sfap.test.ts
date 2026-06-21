@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /**
- * Tests for the SFAP host-fallback HTTP client built on Connection.request.
+ * Tests for the SFAP host-fallback HTTP client built on bounded native fetch.
  *
  * The contract these tests pin:
  *   - 200 succeeds and reports the prefix used.
@@ -22,23 +22,41 @@ interface RequestArg {
 }
 
 function fakeConn(handler: (i: number, req: RequestArg) => unknown | Promise<unknown>): {
-  conn: { request: <T>(req: RequestArg) => Promise<T>; instanceUrl: string };
+  conn: {
+    accessToken: string;
+    instanceUrl: string;
+    getConnectionOptions: () => { accessToken: string };
+  };
   calls: RequestArg[];
 } {
   const calls: RequestArg[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: string | URL | Request) => {
+      const req = { url: String(url) };
+      const idx = calls.length;
+      calls.push(req);
+      const result = await handler(idx, req);
+      if (result && typeof result === "object" && "throws" in (result as object)) {
+        const thrown = (
+          result as {
+            throws: { statusCode?: number; message?: string; errorCode?: string; name?: string };
+          }
+        ).throws;
+        if (typeof thrown.statusCode === "number") {
+          return new Response(JSON.stringify(thrown), { status: thrown.statusCode });
+        }
+        throw new Error(thrown.message || thrown.errorCode || thrown.name || "request failed");
+      }
+      return new Response(JSON.stringify(result), { status: 200 });
+    }),
+  );
   return {
     calls,
     conn: {
+      accessToken: "JWT",
       instanceUrl: "https://fake.my.salesforce.com",
-      request: (async <T>(req: RequestArg): Promise<T> => {
-        const idx = calls.length;
-        calls.push(req);
-        const result = await handler(idx, req);
-        if (result && typeof result === "object" && "throws" in (result as object)) {
-          throw (result as { throws: unknown }).throws;
-        }
-        return result as T;
-      }) as <T>(req: RequestArg) => Promise<T>,
+      getConnectionOptions: () => ({ accessToken: "JWT" }),
     },
   };
 }
@@ -53,6 +71,19 @@ afterEach(() => {
 });
 
 describe("sfapRequest", () => {
+  test("pre-aborted signal returns 499 without fetching", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const { conn, calls } = fakeConn(() => ({ ok: true }));
+    const result = await sfapRequest(conn as never, {
+      url: "https://api.salesforce.com/einstein/foo",
+      method: "GET",
+      signal: controller.signal,
+    });
+    expect(result.status).toBe(499);
+    expect(calls).toHaveLength(0);
+  });
+
   test("200 on the first endpoint succeeds with prefix=''", async () => {
     const { conn, calls } = fakeConn(() => ({ result: "yo" }));
     const result = await sfapRequest(conn as never, {

@@ -23,15 +23,34 @@ const JWT = makeJwt({
   scope: "chatbot_api sfap_api web",
 });
 
+const fetchCalls: Array<{ url: string; headers?: Record<string, string> }> = [];
+const bootstrapResponses = new Map<string, unknown>();
+
 beforeEach(() => {
   clearAgentApiAuthCache();
+  fetchCalls.length = 0;
+  bootstrapResponses.clear();
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      const headers = init?.headers as Record<string, string> | undefined;
+      fetchCalls.push({ url: String(url), headers });
+      const sid = headers?.Cookie?.replace(/^sid=/, "") ?? "";
+      const body = bootstrapResponses.get(sid) ?? { access_token: JWT };
+      return new Response(JSON.stringify(body), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }),
+  );
 });
 
 function fakeConn(opts?: { token?: string; instanceUrl?: string; response?: unknown }) {
+  const token = opts?.token ?? "00Dxx!opaque-org-token";
+  bootstrapResponses.set(token, opts?.response ?? { access_token: JWT });
   const conn = {
-    accessToken: opts?.token ?? "00Dxx!opaque-org-token",
+    accessToken: token,
     refreshed: false,
-    calls: [] as Array<{ url: string; headers?: Record<string, string> }>,
     getAuthInfoFields: () => ({ refreshToken: "refresh" }),
     refreshAuth: vi.fn(async () => {
       conn.refreshed = true;
@@ -39,10 +58,6 @@ function fakeConn(opts?: { token?: string; instanceUrl?: string; response?: unkn
     getConnectionOptions: () => ({
       accessToken: conn.accessToken,
       instanceUrl: opts?.instanceUrl ?? "https://example.my.salesforce.com",
-    }),
-    request: vi.fn(async (req: { url: string; headers?: Record<string, string> }) => {
-      conn.calls.push(req);
-      return opts?.response ?? { access_token: JWT };
     }),
   };
   return conn;
@@ -81,12 +96,12 @@ describe("upgradeConnectionToNamedUserJwt", () => {
     const conn = fakeConn();
     await upgradeConnectionToNamedUserJwt(conn as never);
 
-    expect(conn.refreshAuth).toHaveBeenCalledTimes(1);
-    expect(conn.calls).toHaveLength(1);
-    expect(conn.calls[0].url).toBe(
+    expect(conn.refreshAuth).not.toHaveBeenCalled();
+    expect(fetchCalls).toHaveLength(1);
+    expect(fetchCalls[0].url).toBe(
       "https://example.my.salesforce.com/agentforce/bootstrap/nameduser",
     );
-    expect(conn.calls[0].headers?.Cookie).toBe("sid=00Dxx!opaque-org-token");
+    expect(fetchCalls[0].headers?.Cookie).toBe("sid=00Dxx!opaque-org-token");
     expect(conn.accessToken).toBe(JWT);
   });
 

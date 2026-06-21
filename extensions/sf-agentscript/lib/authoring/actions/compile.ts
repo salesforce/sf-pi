@@ -340,8 +340,19 @@ export function renderCheckSummary(
   });
   const overflow = diagnostics.length - sampleLines.length;
   const severitySummary = [`${sev1}E`, `${sev2}W`, ...(sev3 > 0 ? [`${sev3}I`] : [])].join("·");
-  const head = `❌ ${agentFile} — ${diagnostics.length} issue(s) (${severitySummary}), ${quickFixCount} fix(es) ready`;
-  const lines = [head, ...sampleLines];
+  const hasBlocking = sev1 > 0;
+  const hasWarnings = sev2 > 0;
+  const icon = hasBlocking ? "❌" : hasWarnings ? "⚠️" : "✅";
+  const issueWord = diagnostics.length === 1 ? "diagnostic" : "diagnostics";
+  const head =
+    hasBlocking || hasWarnings
+      ? `${icon} ${agentFile} — ${diagnostics.length} issue(s) (${severitySummary}), ${quickFixCount} fix(es) ready`
+      : `${icon} ${agentFile} compiles (${severitySummary}) — ${diagnostics.length} info ${issueWord}, ${quickFixCount} fix(es) ready`;
+  const lines = [head];
+  if (!hasBlocking && !hasWarnings) {
+    lines.push("  ⚠ Informational diagnostics present; compile is valid.");
+  }
+  lines.push(...sampleLines);
   if (overflow > 0) lines.push(`  …and ${overflow} more in details.diagnostics`);
   return lines.join("\n");
 }
