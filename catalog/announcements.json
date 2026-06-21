@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.196.1-2026-06-21",
-  "latestVersion": "0.196.1",
+  "revision": "release-0.196.2-2026-06-21",
+  "latestVersion": "0.196.2",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.196.1",
+      "id": "release-0.196.2",
       "kind": "update",
-      "title": "sf-pi v0.196.1 — defer pi-ai base imports",
+      "title": "sf-pi v0.196.2 — sf-agentscript: harden Salesforce transport",
       "publishedAt": "2026-06-21T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.196.1",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.196.2",
       "severity": "info",
-      "body": "defer pi-ai base imports"
+      "body": "sf-agentscript: harden Salesforce transport"
     },
     {
       "id": "pi-0.73-required",
