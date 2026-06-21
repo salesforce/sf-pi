@@ -11,6 +11,7 @@ import { fileURLToPath } from "node:url";
 import { existsSync } from "node:fs";
 import { access, constants } from "node:fs/promises";
 import type { ExtensionDoctorReport } from "../../../lib/common/doctor/registry.ts";
+import { boundedPromise } from "./bounded-salesforce-transport.ts";
 import { AGENTFORCE_SDK_PACKAGE, loadAgentforceSDK } from "./sdk.ts";
 import { probeSfapReadiness, type SfapReadinessReport } from "./sfap-readiness.ts";
 
@@ -190,7 +191,10 @@ export function npmRegistryPackageUrl(packageName: string): string {
 async function fetchLatestNpmVersion(packageName: string): Promise<string | undefined> {
   try {
     const url = npmRegistryPackageUrl(packageName);
-    const response = await fetch(url, { headers: { accept: "application/json" } });
+    const response = await boundedPromise(
+      fetch(url, { headers: { accept: "application/json" } }),
+      `npm registry lookup for ${packageName}`,
+    );
     if (!response.ok) return undefined;
     const body = (await response.json()) as { "dist-tags"?: { latest?: unknown } };
     const latest = body["dist-tags"]?.latest;

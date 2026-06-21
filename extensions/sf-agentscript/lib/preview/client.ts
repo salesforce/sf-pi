@@ -38,7 +38,7 @@ import {
   resolveAgentVersionDeveloperName,
   type ResolveAgentVersionResult,
 } from "./resolve-agent-version.ts";
-import { boundedSoqlQuery } from "../bounded-salesforce-transport.ts";
+import { boundedRestRequest, boundedSoqlQuery } from "../bounded-salesforce-transport.ts";
 import { mapPreviewError } from "./error-map.ts";
 import {
   applyPreviewContextPatch,
@@ -758,18 +758,22 @@ async function fetchLatestApexDebugLog(
   sinceMs: number,
 ): Promise<string | undefined> {
   const sinceIso = new Date(sinceMs).toISOString();
-  const r = await conn.query<{ Id: string }>(
+  const r = await boundedSoqlQuery<{ Id: string }>(
+    conn,
     `SELECT Id FROM ApexLog ` +
       `WHERE LastModifiedDate >= ${sinceIso} ` +
       `ORDER BY LastModifiedDate DESC LIMIT 1`,
   );
+  if (r.ok === false) return undefined;
   const logId = r.records[0]?.Id;
   if (!logId) return undefined;
-  const body = (await conn.request({
-    method: "GET",
-    url: `/services/data/v${conn.getApiVersion()}/sobjects/ApexLog/${logId}/Body`,
-  } as Parameters<typeof conn.request>[0])) as string;
-  return typeof body === "string" ? body : undefined;
+  const body = await boundedRestRequest<string>(
+    conn,
+    `/services/data/v${conn.getApiVersion()}/sobjects/ApexLog/${logId}/Body`,
+    "GET",
+  );
+  if (body.ok === false) return undefined;
+  return typeof body.body === "string" ? body.body : undefined;
 }
 
 // -------------------------------------------------------------------------------------------------

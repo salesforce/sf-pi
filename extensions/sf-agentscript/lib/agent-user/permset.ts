@@ -206,15 +206,18 @@ export async function assignPermissionSet(
   }
 
   // Idempotency check.
-  const existing = await conn.query<{ Id: string }>(
-    `SELECT Id FROM PermissionSetAssignment ` +
-      `WHERE AssigneeId='${escapeSoql(input.user_id)}' ` +
-      `AND PermissionSetId='${escapeSoql(psId)}' LIMIT 1`,
-  );
-  if (existing.records.length > 0) {
+  const existing =
+    (await safeQueryRecords<{ Id: string }>(
+      conn,
+      "/query",
+      `SELECT Id FROM PermissionSetAssignment ` +
+        `WHERE AssigneeId='${escapeSoql(input.user_id)}' ` +
+        `AND PermissionSetId='${escapeSoql(psId)}' LIMIT 1`,
+    )) ?? [];
+  if (existing.length > 0) {
     return {
       ok: true,
-      assignment_id: existing.records[0].Id,
+      assignment_id: existing[0].Id,
       already_assigned: true,
     };
   }

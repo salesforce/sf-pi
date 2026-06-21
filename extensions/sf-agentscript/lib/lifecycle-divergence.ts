@@ -20,6 +20,7 @@
 
 import { stat } from "node:fs/promises";
 import type { Connection } from "@salesforce/core";
+import { boundedSoqlQuery } from "./bounded-salesforce-transport.ts";
 
 export interface DivergenceCheckResult {
   /** True when we successfully read both timestamps. */
@@ -57,9 +58,11 @@ export async function checkBundleVsBotDivergence(
     // Resolve bot id then pick the latest BotVersion. We don't filter
     // on Status; Active vs Inactive both count for "what's currently
     // in the org". The doc-correct field is BotVersion.CreatedDate.
-    const botResult = await conn.query<{ Id: string }>(
+    const botResult = await boundedSoqlQuery<{ Id: string }>(
+      conn,
       `SELECT Id FROM BotDefinition WHERE DeveloperName='${escapeSoql(agentApiName)}' LIMIT 1`,
     );
+    if (botResult.ok === false) throw new Error(botResult.detail);
     const botId = botResult.records[0]?.Id;
     if (!botId) {
       return {
@@ -67,14 +70,16 @@ export async function checkBundleVsBotDivergence(
         detail: `No BotDefinition for '${agentApiName}' in this org — skipping divergence check.`,
       };
     }
-    const versions = await conn.query<{
+    const versions = await boundedSoqlQuery<{
       VersionNumber: number;
       CreatedDate: string;
     }>(
+      conn,
       `SELECT VersionNumber, CreatedDate FROM BotVersion ` +
         `WHERE BotDefinitionId='${escapeSoql(botId)}' ` +
         `ORDER BY VersionNumber DESC LIMIT 1`,
     );
+    if (versions.ok === false) throw new Error(versions.detail);
     row = versions.records[0];
   } catch (err) {
     return {

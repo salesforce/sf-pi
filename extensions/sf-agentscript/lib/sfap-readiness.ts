@@ -3,6 +3,7 @@
 
 import type { Connection } from "@salesforce/core";
 import { connForAgentApi } from "./agent-api-auth.ts";
+import { boundedSoqlQuery } from "./bounded-salesforce-transport.ts";
 import { connFromAlias, resolveOrgIdentity } from "../../../lib/common/sf-conn/connection.ts";
 import { callEval, type EvalApiHeaders } from "./eval/eval-client.ts";
 import { isSfapRoutingFailure, sfapRequest } from "./eval/sfap.ts";
@@ -57,9 +58,11 @@ function classifyRoute(status: number, body: unknown): SfapProbeResult {
 }
 
 async function firstActiveBotId(conn: Connection): Promise<string | undefined> {
-  const r = await conn.query<{ BotDefinitionId: string }>(
+  const r = await boundedSoqlQuery<{ BotDefinitionId: string }>(
+    conn,
     "SELECT BotDefinitionId FROM BotVersion WHERE Status='Active' LIMIT 1",
   );
+  if (r.ok === false) return undefined;
   return r.records[0]?.BotDefinitionId;
 }
 
