@@ -13,6 +13,7 @@
  */
 
 import type { Connection } from "@salesforce/core";
+import { safeQueryRecords } from "../preflight/soql.ts";
 
 export interface AgentUserRow {
   Id: string;
@@ -27,17 +28,20 @@ export interface AgentUserRow {
  * when one exists).
  */
 export async function findEinsteinAgentUsers(conn: Connection): Promise<AgentUserRow[]> {
-  const r = await conn.query<{
-    Id: string;
-    Username: string;
-    IsActive: boolean;
-    Profile: { Name: string } | null;
-  }>(
-    `SELECT Id, Username, IsActive, Profile.Name FROM User ` +
-      `WHERE Profile.Name='Einstein Agent User' AND IsActive=true ` +
-      `ORDER BY Username`,
-  );
-  return r.records.map((row) => ({
+  const records =
+    (await safeQueryRecords<{
+      Id: string;
+      Username: string;
+      IsActive: boolean;
+      Profile: { Name: string } | null;
+    }>(
+      conn,
+      "/query",
+      `SELECT Id, Username, IsActive, Profile.Name FROM User ` +
+        `WHERE Profile.Name='Einstein Agent User' AND IsActive=true ` +
+        `ORDER BY Username`,
+    )) ?? [];
+  return records.map((row) => ({
     Id: row.Id,
     Username: row.Username,
     IsActive: row.IsActive,
@@ -54,16 +58,19 @@ export async function findUserByUsername(
   conn: Connection,
   username: string,
 ): Promise<AgentUserRow | undefined> {
-  const r = await conn.query<{
-    Id: string;
-    Username: string;
-    IsActive: boolean;
-    Profile: { Name: string } | null;
-  }>(
-    `SELECT Id, Username, IsActive, Profile.Name FROM User ` +
-      `WHERE Username='${escapeSoql(username)}' LIMIT 1`,
-  );
-  const row = r.records[0];
+  const records =
+    (await safeQueryRecords<{
+      Id: string;
+      Username: string;
+      IsActive: boolean;
+      Profile: { Name: string } | null;
+    }>(
+      conn,
+      "/query",
+      `SELECT Id, Username, IsActive, Profile.Name FROM User ` +
+        `WHERE Username='${escapeSoql(username)}' LIMIT 1`,
+    )) ?? [];
+  const row = records[0];
   if (!row) return undefined;
   return {
     Id: row.Id,
@@ -79,10 +86,13 @@ export async function findUserByUsername(
  * doesn't exist in the target org (rare; older orgs).
  */
 export async function getEinsteinAgentUserProfileId(conn: Connection): Promise<string | undefined> {
-  const r = await conn.query<{ Id: string }>(
-    `SELECT Id FROM Profile WHERE Name='Einstein Agent User' LIMIT 1`,
-  );
-  return r.records[0]?.Id;
+  const records =
+    (await safeQueryRecords<{ Id: string }>(
+      conn,
+      "/query",
+      `SELECT Id FROM Profile WHERE Name='Einstein Agent User' LIMIT 1`,
+    )) ?? [];
+  return records[0]?.Id;
 }
 
 function escapeSoql(s: string): string {

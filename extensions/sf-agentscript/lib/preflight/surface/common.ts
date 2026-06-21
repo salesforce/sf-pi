@@ -3,10 +3,7 @@
 
 import type { Connection } from "@salesforce/core";
 import type { AgentFeatureProfile } from "../../feature-profile.ts";
-
-export interface QueryResult<T> {
-  records?: T[];
-}
+import { safeQueryRecords } from "../soql.ts";
 
 export interface ChannelRecord {
   Id?: string;
@@ -33,13 +30,11 @@ export function needsMessagingReadiness(profile: AgentFeatureProfile): boolean {
   );
 }
 
-export async function queryOptional<T>(conn: Connection, soql: string): Promise<T[] | null> {
-  try {
-    const result = (await conn.query(soql)) as QueryResult<T>;
-    return result.records ?? [];
-  } catch {
-    return null;
-  }
+export async function queryOptional<T extends object>(
+  conn: Connection,
+  soql: string,
+): Promise<T[] | null> {
+  return safeQueryRecords<T>(conn, "/query", soql);
 }
 
 export async function queryChannels(

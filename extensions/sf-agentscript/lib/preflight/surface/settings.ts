@@ -2,6 +2,7 @@
 /** Read-only Agentforce settings readiness checks. */
 
 import type { Connection } from "@salesforce/core";
+import { boundedPromise } from "../../bounded-salesforce-transport.ts";
 import type { AgentFeatureProfile } from "../../feature-profile.ts";
 import { needsMessagingReadiness, needsVoiceReadiness } from "./common.ts";
 import type { SurfaceReadinessCheck } from "./types.ts";
@@ -75,7 +76,10 @@ async function readEinsteinGptSettings(
   ).metadata;
   if (!metadata?.read) return null;
   try {
-    const raw = await metadata.read("EinsteinGptSettings", ["EinsteinGpt"]);
+    const raw = await boundedPromise(
+      Promise.resolve(metadata.read("EinsteinGptSettings", ["EinsteinGpt"])),
+      "EinsteinGptSettings metadata read",
+    );
     const value = Array.isArray(raw) ? raw[0] : raw;
     if (!value || typeof value !== "object") return null;
     return value as EinsteinGptSettingsMetadata;

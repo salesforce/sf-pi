@@ -9,15 +9,13 @@
  */
 
 import type { Connection } from "@salesforce/core";
+import { boundedPromise } from "../../bounded-salesforce-transport.ts";
 import type { AgentFeatureProfile } from "../../feature-profile.ts";
+import { safeQueryRecords } from "../soql.ts";
 import type { SurfaceReadinessCheck } from "./types.ts";
 
 export interface PlannerReadinessContext {
   agentApiName?: string;
-}
-
-interface QueryResult<T> {
-  records?: T[];
 }
 
 interface BotDefinitionRow {
@@ -234,13 +232,11 @@ async function findActiveRoutingFlow(
   return rows[0];
 }
 
-async function queryOptional<T>(conn: Connection, soql: string): Promise<T[] | null> {
-  try {
-    const result = (await conn.query(soql)) as QueryResult<T>;
-    return result.records ?? [];
-  } catch {
-    return null;
-  }
+async function queryOptional<T extends object>(
+  conn: Connection,
+  soql: string,
+): Promise<T[] | null> {
+  return safeQueryRecords<T>(conn, "/query", soql);
 }
 
 async function readPlannerMetadata(
@@ -252,7 +248,10 @@ async function readPlannerMetadata(
   ).metadata;
   if (!metadata?.read) return null;
   try {
-    const raw = await metadata.read("GenAiPlannerBundle", [agentApiName]);
+    const raw = await boundedPromise(
+      Promise.resolve(metadata.read("GenAiPlannerBundle", [agentApiName])),
+      "GenAiPlannerBundle metadata read",
+    );
     const value = Array.isArray(raw) ? raw[0] : raw;
     if (!value || typeof value !== "object") return undefined;
     return value as PlannerMetadata;

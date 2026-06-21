@@ -16,6 +16,7 @@
  */
 
 import type { Connection } from "@salesforce/core";
+import { safeQueryRecords } from "../preflight/soql.ts";
 
 /** The PS that grants Service Agents permission to act in the org. */
 export const SYSTEM_AGENT_PS_NAME = "AgentforceServiceAgentUser";
@@ -48,15 +49,18 @@ export async function listPermissionSetAssignments(
   // parent field. Smoke-tested 2026-05-12 against an Agentforce-enabled
   // sandbox: ordering hid AgentforceServiceAgentUser entirely, producing
   // false-negative status/diagnose checks. Sort consumer-side if needed.
-  const r = await conn.query<{
-    Id: string;
-    PermissionSetId: string;
-    PermissionSet: { Name: string; Label?: string } | null;
-  }>(
-    `SELECT Id, PermissionSetId, PermissionSet.Name, PermissionSet.Label ` +
-      `FROM PermissionSetAssignment WHERE AssigneeId='${escapeSoql(userId)}'`,
-  );
-  const rows: PermissionSetAssignmentRow[] = r.records.map((row) => ({
+  const records =
+    (await safeQueryRecords<{
+      Id: string;
+      PermissionSetId: string;
+      PermissionSet: { Name: string; Label?: string } | null;
+    }>(
+      conn,
+      "/query",
+      `SELECT Id, PermissionSetId, PermissionSet.Name, PermissionSet.Label ` +
+        `FROM PermissionSetAssignment WHERE AssigneeId='${escapeSoql(userId)}'`,
+    )) ?? [];
+  const rows: PermissionSetAssignmentRow[] = records.map((row) => ({
     AssignmentId: row.Id,
     PermissionSetId: row.PermissionSetId,
     PermissionSetName: row.PermissionSet?.Name ?? "",
@@ -75,10 +79,13 @@ export async function findPermissionSetByName(
   conn: Connection,
   developerName: string,
 ): Promise<{ Id: string; Label?: string } | undefined> {
-  const r = await conn.query<{ Id: string; Label?: string }>(
-    `SELECT Id, Label FROM PermissionSet WHERE Name='${escapeSoql(developerName)}' LIMIT 1`,
-  );
-  const row = r.records[0];
+  const records =
+    (await safeQueryRecords<{ Id: string; Label?: string }>(
+      conn,
+      "/query",
+      `SELECT Id, Label FROM PermissionSet WHERE Name='${escapeSoql(developerName)}' LIMIT 1`,
+    )) ?? [];
+  const row = records[0];
   if (!row) return undefined;
   return { Id: row.Id, Label: row.Label };
 }
@@ -106,27 +113,33 @@ export async function listClassAccessForUser(
   const psIds = psRows.map((p) => `'${escapeSoql(p.PermissionSetId)}'`).join(",");
   const psNameById = new Map(psRows.map((p) => [p.PermissionSetId, p.PermissionSetName]));
 
-  const access = await conn.query<{
-    ParentId: string;
-    SetupEntityId: string;
-  }>(
-    `SELECT ParentId, SetupEntityId FROM SetupEntityAccess ` +
-      `WHERE SetupEntityType='ApexClass' AND ParentId IN (${psIds})`,
-  );
-  if (access.records.length === 0) return [];
+  const accessRecords =
+    (await safeQueryRecords<{
+      ParentId: string;
+      SetupEntityId: string;
+    }>(
+      conn,
+      "/query",
+      `SELECT ParentId, SetupEntityId FROM SetupEntityAccess ` +
+        `WHERE SetupEntityType='ApexClass' AND ParentId IN (${psIds})`,
+    )) ?? [];
+  if (accessRecords.length === 0) return [];
 
   // Resolve SetupEntityId → ApexClass.Name via a single ApexClass query.
-  const classIds = Array.from(new Set(access.records.map((a) => a.SetupEntityId)));
+  const classIds = Array.from(new Set(accessRecords.map((a) => a.SetupEntityId)));
   const classIdLiteral = classIds.map((id) => `'${escapeSoql(id)}'`).join(",");
-  const classes = await conn.query<{ Id: string; Name: string }>(
-    `SELECT Id, Name FROM ApexClass WHERE Id IN (${classIdLiteral})`,
-  );
-  const nameById = new Map(classes.records.map((c) => [c.Id, c.Name]));
+  const classRecords =
+    (await safeQueryRecords<{ Id: string; Name: string }>(
+      conn,
+      "/query",
+      `SELECT Id, Name FROM ApexClass WHERE Id IN (${classIdLiteral})`,
+    )) ?? [];
+  const nameById = new Map(classRecords.map((c) => [c.Id, c.Name]));
 
   const out: ClassAccessRow[] = [];
   // De-duplicate per (apex_class) pair, preferring the first PS we encountered.
   const seen = new Set<string>();
-  for (const a of access.records) {
+  for (const a of accessRecords) {
     const className = nameById.get(a.SetupEntityId);
     if (!className) continue;
     if (seen.has(className)) continue;

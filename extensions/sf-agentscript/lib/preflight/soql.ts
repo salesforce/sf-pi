@@ -21,7 +21,7 @@ export function soqlInList(names: readonly string[]): string {
   return unique.map((n) => `'${n.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'`).join(",");
 }
 
-export async function safeQueryRecords<T extends Record<string, unknown>>(
+export async function safeQueryRecords<T extends object>(
   conn: Connection,
   endpoint: QueryEndpoint,
   soql: string,

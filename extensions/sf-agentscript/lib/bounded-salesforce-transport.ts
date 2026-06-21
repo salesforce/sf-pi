@@ -11,6 +11,43 @@ import type { Connection } from "@salesforce/core";
 
 export const DEFAULT_BOUNDED_LOOKUP_TIMEOUT_MS = 10_000;
 
+export class BoundedOperationTimeoutError extends Error {
+  readonly timedOutAfterMs: number;
+
+  constructor(message: string, timedOutAfterMs: number) {
+    super(message);
+    this.name = "BoundedOperationTimeoutError";
+    this.timedOutAfterMs = timedOutAfterMs;
+  }
+}
+
+export async function boundedPromise<T>(
+  promise: Promise<T>,
+  label: string,
+  timeoutMs = DEFAULT_BOUNDED_LOOKUP_TIMEOUT_MS,
+): Promise<T> {
+  let timer: NodeJS.Timeout | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_resolve, reject) => {
+        timer = setTimeout(
+          () =>
+            reject(
+              new BoundedOperationTimeoutError(
+                `${label} timed out after ${timeoutMs}ms.`,
+                timeoutMs,
+              ),
+            ),
+          timeoutMs,
+        );
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 export type BoundedRequestFailureReason =
   | "missing_connection_fields"
   | "timeout"

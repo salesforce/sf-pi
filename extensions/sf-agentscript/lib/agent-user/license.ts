@@ -21,6 +21,7 @@
  */
 
 import type { Connection } from "@salesforce/core";
+import { safeQueryRecords } from "../preflight/soql.ts";
 
 export interface DigitalAgentLicenseCheck {
   /** True when the org has at least one active Agentforce-family PSL. */
@@ -49,8 +50,13 @@ export async function getDigitalAgentLicense(conn: Connection): Promise<DigitalA
     `SELECT DeveloperName, Status FROM PermissionSetLicense ` +
     `WHERE DeveloperName IN (${inClause}) AND Status='Active'`;
   try {
-    const r = await conn.query<{ DeveloperName: string; Status: string }>(soql);
-    if (r.records.length === 0) {
+    const records = await safeQueryRecords<{ DeveloperName: string; Status: string }>(
+      conn,
+      "/query",
+      soql,
+    );
+    if (records === null) throw new Error("PermissionSetLicense query failed");
+    if (records.length === 0) {
       return {
         ok: false,
         detail:
@@ -60,7 +66,7 @@ export async function getDigitalAgentLicense(conn: Connection): Promise<DigitalA
           `provision the license before any agent-user setup can proceed.`,
       };
     }
-    const names = r.records.map((row) => row.DeveloperName);
+    const names = records.map((row) => row.DeveloperName);
     return {
       ok: true,
       found_licenses: names,

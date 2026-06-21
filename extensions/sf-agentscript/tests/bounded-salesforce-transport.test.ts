@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 
 import { describe, expect, test, vi } from "vitest";
-import { boundedSoqlQuery } from "../lib/bounded-salesforce-transport.ts";
+import { boundedPromise, boundedSoqlQuery } from "../lib/bounded-salesforce-transport.ts";
 
 function fakeConn() {
   return {
@@ -14,6 +14,23 @@ function fakeConn() {
     }),
   };
 }
+
+describe("boundedPromise", () => {
+  test("rejects when an operation never settles", async () => {
+    vi.useFakeTimers();
+    try {
+      const result = boundedPromise(new Promise<unknown>(() => undefined), "metadata read", 5);
+      const assertion = expect(result).rejects.toMatchObject({
+        name: "BoundedOperationTimeoutError",
+        timedOutAfterMs: 5,
+      });
+      await vi.advanceTimersByTimeAsync(5);
+      await assertion;
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
 
 describe("boundedSoqlQuery cancellation", () => {
   test("pre-aborted signal returns an aborted result without fetching", async () => {

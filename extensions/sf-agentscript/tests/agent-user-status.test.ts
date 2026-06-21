@@ -10,7 +10,7 @@
  * user inactive, system PS missing, ready).
  */
 
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { checkAgentUserStatus } from "../lib/agent-user/status.ts";
 
 interface QueryFixture {
@@ -37,6 +37,65 @@ function fakeConn(fixtures: QueryFixture[]) {
 }
 
 describe("checkAgentUserStatus", () => {
+  test("uses bounded SOQL transport for authenticated Service Agent user probes", async () => {
+    const query = vi.fn(async () => {
+      throw new Error("raw conn.query should not be used for authenticated agent-user probes");
+    });
+    const fetchMock = vi.fn(async (input: string | URL | Request) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      const soql = decodeURIComponent(new URL(url).searchParams.get("q") ?? "");
+      const records = soql.includes("FROM PermissionSetLicense")
+        ? [{ DeveloperName: "EinsteinGPTCopilotPsl", Status: "Active" }]
+        : soql.includes("FROM User WHERE Username")
+          ? [
+              {
+                Id: "005000000000ABC",
+                Username: "agent@example.com",
+                IsActive: true,
+                Profile: { Name: "Einstein Agent User" },
+              },
+            ]
+          : soql.includes("FROM PermissionSetAssignment WHERE AssigneeId")
+            ? [
+                {
+                  Id: "0Pa000000000001",
+                  PermissionSetId: "0PS000000000001",
+                  PermissionSet: { Name: "AgentforceServiceAgentUser", Label: "Service" },
+                },
+              ]
+            : [];
+      return new Response(JSON.stringify({ records, totalSize: records.length }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    try {
+      const s = await checkAgentUserStatus(
+        {
+          accessToken: "JWT",
+          instanceUrl: "https://example.my.salesforce.com",
+          getApiVersion: () => "67.0",
+          getConnectionOptions: () => ({
+            accessToken: "JWT",
+            instanceUrl: "https://example.my.salesforce.com",
+          }),
+          query,
+        } as unknown as Parameters<typeof checkAgentUserStatus>[0],
+        {
+          agent_type: "AgentforceServiceAgent",
+          default_agent_user: "agent@example.com",
+        },
+      );
+
+      expect(s.ok).toBe(true);
+      expect(query).not.toHaveBeenCalled();
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   test("Employee Agent → status='n/a', ok=true (short-circuits before any SOQL)", async () => {
     const conn = fakeConn([]); // no fixtures; any query would throw
     const s = await checkAgentUserStatus(conn, {

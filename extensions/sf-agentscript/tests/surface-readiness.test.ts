@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import type { Connection } from "@salesforce/core";
 import { checkSurfaceReadiness } from "../lib/preflight/surface-readiness.ts";
 import type { AgentFeatureProfile } from "../lib/feature-profile.ts";
@@ -33,6 +33,42 @@ describe("checkSurfaceReadiness", () => {
   test("skips org checks when the agent has no voice signals", async () => {
     const checks = await checkSurfaceReadiness(connWith({}), profile());
     expect(checks).toEqual([]);
+  });
+
+  test("uses bounded SOQL transport for authenticated org surface probes", async () => {
+    const query = vi.fn(async () => {
+      throw new Error("raw conn.query should not be used for authenticated surface probes");
+    });
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ records: [], totalSize: 0 }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    try {
+      const checks = await checkSurfaceReadiness(
+        {
+          accessToken: "JWT",
+          instanceUrl: "https://example.my.salesforce.com",
+          getApiVersion: () => "67.0",
+          getConnectionOptions: () => ({
+            accessToken: "JWT",
+            instanceUrl: "https://example.my.salesforce.com",
+          }),
+          query,
+        } as unknown as Connection,
+        profile({ modalities: ["voice"] }),
+      );
+
+      expect(query).not.toHaveBeenCalled();
+      expect(fetchMock).toHaveBeenCalled();
+      expect(checks.map((check) => check.code)).toContain("voice-messaging-channel-missing");
+      expect(checks.map((check) => check.code)).toContain("voice-phone-number-missing");
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   test("warns when voice agent metadata has no voice channel records", async () => {
