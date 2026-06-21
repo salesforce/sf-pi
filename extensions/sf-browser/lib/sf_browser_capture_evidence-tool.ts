@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Browser Evidence capture tool for SF Browser. */
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { StringEnum } from "@earendil-works/pi-ai";
+import { StringEnum } from "@earendil-works/pi-ai/base";
 import { Type } from "typebox";
 import { captureEvidence } from "./operations.ts";
 

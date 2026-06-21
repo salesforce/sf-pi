@@ -10,7 +10,7 @@
  */
 import { existsSync, mkdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
-import type { ImageContent } from "@earendil-works/pi-ai";
+import type { ImageContent } from "@earendil-works/pi-ai/base";
 import { createStateStore } from "../../../lib/common/state-store.ts";
 import type { SetupAuditTrailSummary } from "./setup-audit-trail.ts";
 import { sanitizeLabel } from "./redaction.ts";

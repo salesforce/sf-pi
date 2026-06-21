@@ -7,7 +7,7 @@
  * - network helpers parse JSON once in api.ts
  * - the rest of the extension works with named interfaces instead of `any`
  */
-import { StringEnum } from "@earendil-works/pi-ai";
+import { StringEnum } from "@earendil-works/pi-ai/base";
 import { Type } from "typebox";
 
 // ─── Constants ──────────────────────────────────────────────────────────────────

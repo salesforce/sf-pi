@@ -256,6 +256,14 @@ _Avoid_: SF Pi, bundled extension, Salesforce runtime
 A release-adoption change set that aligns **SF Pi** with newer **Pi Runtime** behavior without raising the minimum supported **Pi Runtime** version. It may fix copy, tests, prompt ownership, or code that already uses existing runtime interfaces, but it does not import newer-only APIs or require compatibility shims.
 _Avoid_: runtime-floor bump, broad rewrite, opportunistic API adoption
 
+**Runtime Floor Adoption Slice**:
+A release-adoption change set that deliberately raises the minimum supported **Pi Runtime** version so **SF Pi** can use newer public runtime interfaces directly. It must update the runtime gate, package metadata, tests, and user-facing rationale together.
+_Avoid_: compatibility-preserving adoption, hidden floor bump, mixed feature sweep
+
+**Selective Provider Base Import**:
+The import posture where **SF Pi** modules that only need neutral `pi-ai` helpers or types use `@earendil-works/pi-ai/base`, while modules that register, stream, or adapt providers keep full or provider-specific imports. This avoids unnecessary provider transport loading without changing which models users can select.
+_Avoid_: disabling providers, blanket import rewrite, model catalog filtering
+
 **Pi Runtime Adoption Ledger**:
 A small decision record that maps a new **Pi Runtime** capability to the **SF Pi** response: adopt, defer, ignore, or delete overlapping **SF Pi** code, with an owning surface and expected behavior-test proof. It is a release-audit aid, not a runtime feature or separate roadmap.
 _Avoid_: feature backlog, compatibility matrix, migration framework, runtime adapter registry
@@ -763,6 +771,10 @@ _Avoid_: every available gateway model, benchmark target, broad live-test suite
 **Gateway-Specific Model Metadata**:
 A model capability value, such as context window or max output tokens, that intentionally differs from upstream **Pi Runtime** direct-provider metadata because the SF LLM Gateway route has separately verified limits. Larger-than-upstream values require focused tests and a docs note that explains the gateway-specific evidence.
 _Avoid_: stale copied metadata, optimistic context window, untested provider override
+
+**Gateway-Specific Model Adoption**:
+A model metadata or routing change in **SF Pi** for a model available through the SF LLM Gateway. It is justified by gateway behavior or stale gateway metadata, not by the existence of a **Pi Runtime** direct-provider model alias.
+_Avoid_: copying Pi's direct-provider catalog, release-note-driven gateway preset, unvalidated model routing
 
 ## Relationships
 

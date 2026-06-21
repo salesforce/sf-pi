@@ -96,16 +96,16 @@
   },
   "peerDependencies": {
     "@earendil-works/pi-ai": "*",
-    "@earendil-works/pi-coding-agent": ">=0.79.1",
+    "@earendil-works/pi-coding-agent": ">=0.79.9",
     "@earendil-works/pi-tui": "*",
     "typebox": "*"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.0.2",
     "@commitlint/config-conventional": "^21.0.2",
-    "@earendil-works/pi-ai": "^0.79.4",
-    "@earendil-works/pi-coding-agent": "^0.79.4",
-    "@earendil-works/pi-tui": "^0.79.4",
+    "@earendil-works/pi-ai": "^0.79.9",
+    "@earendil-works/pi-coding-agent": "^0.79.9",
+    "@earendil-works/pi-tui": "^0.79.9",
     "@eslint/js": "^10.0.1",
     "@types/node": "^25.9.3",
     "@vitest/coverage-v8": "^4.1.9",
@@ -132,7 +132,6 @@
   },
   "overridesNotes": {
     "fast-xml-parser": "Force >= 5.7.0 to clear GHSA-gh4j-gqv2-49f6 (XMLBuilder CDATA injection). Reaches sf-pi through pi-ai -> AWS SDK Bedrock client; remove once upstream AWS SDK resolves the advisory.",
-    "@mistralai/mistralai": "Hard-pin to 2.2.1, the last clean release before the npm-publish-account takeover (GHSA-3q49-cfcf-g5fm, published 2026-05-11). Versions 2.2.2/2.2.3/2.2.4 are flagged as malware by GitHub Advisory DB. Reaches sf-pi transitively through @earendil-works/pi-ai. Tarball verified: SRI integrity sha512-uKU8C... matches registry, hasInstallScript=false, no preinstall/postinstall hooks. Remove once upstream republishes a clean Mistral SDK and pi-ai bumps past it.",
     "vitepress": "VitePress 1.6.4 currently depends on Vite 5.x. Keep VitePress on the stable 1.x line for docs, but override its nested Vite/plugin-vue stack to patched versions that clear active Vite/esbuild advisories and still pass the docs build. Remove once VitePress 1.x or a stable 2.x release carries patched transitive dependencies.",
     "form-data": "Force >= 4.0.6 to clear GHSA-hmw2-7cc7-3qxx (CRLF injection in multipart field names/filenames). Reaches sf-pi through @salesforce/core -> @jsforce/jsforce-node; remove once upstream ranges naturally resolve to a patched version.",
     "vitest": "Vitest resolves Vite as a transitive test runner dependency. Force the patched Vite 7 line for tests until Vitest naturally resolves to a patched Vite release without overrides.",
@@ -143,7 +142,6 @@
   },
   "overrides": {
     "fast-xml-parser": "^5.7.0",
-    "@mistralai/mistralai": "2.2.1",
     "form-data": "^4.0.6",
     "vitepress": {
       "vite": "7.3.5",
