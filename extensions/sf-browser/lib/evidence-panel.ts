@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Visible Browser Evidence rendering for SF Browser command output. */
 import type { ExtensionCommandContext, Theme } from "@earendil-works/pi-coding-agent";
-import type { ImageContent, TextContent } from "@earendil-works/pi-ai/base";
+import type { ImageContent, TextContent } from "@earendil-works/pi-ai";
 import { Image, matchesKey, truncateToWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
 
 export interface SplitEvidenceContent {

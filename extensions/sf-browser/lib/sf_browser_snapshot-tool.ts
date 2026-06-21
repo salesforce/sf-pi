@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Compact accessibility snapshot tool for SF Browser. */
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { StringEnum } from "@earendil-works/pi-ai/base";
+import { StringEnum } from "@earendil-works/pi-ai";
 import { Type } from "typebox";
 import { runAgentBrowser } from "./agent-browser.ts";
 import { RAW_AGENT_BROWSER_ESCAPE_HATCH, STALE_REF_HINT } from "./guidance.ts";

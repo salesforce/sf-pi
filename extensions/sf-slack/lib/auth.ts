@@ -12,7 +12,7 @@
  *   2. Environment variable (SLACK_USER_TOKEN) — best for automation / CI.
  *
  */
-import type { OAuthCredentials, OAuthLoginCallbacks } from "@earendil-works/pi-ai/base";
+import type { OAuthCredentials, OAuthLoginCallbacks } from "@earendil-works/pi-ai";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { existsSync, readFileSync } from "node:fs";
 import { globalAgentPath } from "../../../lib/common/pi-paths.ts";
