@@ -8,6 +8,7 @@
  */
 
 import type { Connection } from "@salesforce/core";
+import { safeQueryRecords } from "./soql.ts";
 
 export type RuntimeSmokeSurface = "voice" | "messaging" | "unknown";
 export type RuntimeSmokeSeverity = "ok" | "warning" | "unverifiable";
@@ -28,10 +29,6 @@ export interface RuntimeSmokeResult {
     agent_work?: AgentWorkRow;
     messaging_session?: MessagingSessionRow;
   };
-}
-
-interface QueryResult<T> {
-  records?: T[];
 }
 
 export interface VoiceCallRow {
@@ -212,13 +209,11 @@ function latestMessagingSessions(conn: Connection): Promise<MessagingSessionRow[
   );
 }
 
-async function queryOptional<T>(conn: Connection, soql: string): Promise<T[] | null> {
-  try {
-    const result = (await conn.query(soql)) as QueryResult<T>;
-    return result.records ?? [];
-  } catch {
-    return null;
-  }
+async function queryOptional<T extends object>(
+  conn: Connection,
+  soql: string,
+): Promise<T[] | null> {
+  return safeQueryRecords<T>(conn, "/query", soql);
 }
 
 function formatVoiceCall(row: VoiceCallRow): string {

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import type { Connection } from "@salesforce/core";
 import { diagnoseRuntimeSmoke } from "../lib/preflight/runtime-smoke.ts";
 
@@ -15,6 +15,40 @@ function connWith(results: Record<string, unknown[]>): Connection {
 }
 
 describe("diagnoseRuntimeSmoke", () => {
+  test("uses bounded SOQL transport for authenticated runtime probes", async () => {
+    const query = vi.fn(async () => {
+      throw new Error("raw conn.query should not be used for authenticated runtime smoke probes");
+    });
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ records: [], totalSize: 0 }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    try {
+      const result = await diagnoseRuntimeSmoke({
+        accessToken: "JWT",
+        instanceUrl: "https://example.my.salesforce.com",
+        getApiVersion: () => "67.0",
+        getConnectionOptions: () => ({
+          accessToken: "JWT",
+          instanceUrl: "https://example.my.salesforce.com",
+        }),
+        query,
+      } as unknown as Connection);
+
+      expect(query).not.toHaveBeenCalled();
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+      expect(result.findings.map((finding) => finding.code)).toEqual([
+        "runtime-no-channel-records",
+      ]);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   test("diagnoses when no channel runtime records exist", async () => {
     const result = await diagnoseRuntimeSmoke(
       connWith({ VoiceCall: [], AgentWork: [], MessagingSession: [] }),
