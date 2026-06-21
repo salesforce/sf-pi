@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.195.0-2026-06-19",
-  "latestVersion": "0.195.0",
+  "revision": "release-0.196.0-2026-06-21",
+  "latestVersion": "0.196.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.195.0",
+      "id": "release-0.196.0",
       "kind": "update",
-      "title": "sf-pi v0.195.0 — sf-agentscript: route command to manager",
-      "publishedAt": "2026-06-19T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.195.0",
+      "title": "sf-pi v0.196.0 — require pi runtime 0.79.9",
+      "publishedAt": "2026-06-21T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.196.0",
       "severity": "info",
-      "body": "sf-agentscript: route command to manager — sf-browser: route command to manager"
+      "body": "require pi runtime 0.79.9 — sf-pi-manager: add scoped manager actions"
     },
     {
       "id": "pi-0.73-required",
