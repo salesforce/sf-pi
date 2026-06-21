@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.196.0-2026-06-21",
-  "latestVersion": "0.196.0",
+  "revision": "release-0.196.1-2026-06-21",
+  "latestVersion": "0.196.1",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.196.0",
+      "id": "release-0.196.1",
       "kind": "update",
-      "title": "sf-pi v0.196.0 — require pi runtime 0.79.9",
+      "title": "sf-pi v0.196.1 — defer pi-ai base imports",
       "publishedAt": "2026-06-21T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.196.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.196.1",
       "severity": "info",
-      "body": "require pi runtime 0.79.9 — sf-pi-manager: add scoped manager actions"
+      "body": "defer pi-ai base imports"
     },
     {
       "id": "pi-0.73-required",
