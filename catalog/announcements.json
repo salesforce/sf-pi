@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.204.0-2026-06-22",
-  "latestVersion": "0.204.0",
+  "revision": "release-0.204.1-2026-06-22",
+  "latestVersion": "0.204.1",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.204.0",
+      "id": "release-0.204.1",
       "kind": "update",
-      "title": "sf-pi v0.204.0 — settings: add agentscript brain and feedback preferences",
+      "title": "sf-pi v0.204.1 — ui: make manager and info panels scrollable",
       "publishedAt": "2026-06-22T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.204.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.204.1",
       "severity": "info",
-      "body": "settings: add agentscript brain and feedback preferences"
+      "body": "ui: make manager and info panels scrollable"
     },
     {
       "id": "pi-0.73-required",
