@@ -4,6 +4,7 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { StringEnum } from "@earendil-works/pi-ai";
 import { Type } from "typebox";
 import { captureEvidence } from "./operations.ts";
+import { readEffectiveSfBrowserSettings } from "./settings.ts";
 
 export const SF_BROWSER_CAPTURE_EVIDENCE_TOOL_NAME = "sf_browser_capture_evidence";
 
@@ -78,7 +79,18 @@ export function registerSfBrowserCaptureEvidenceTool(pi: ExtensionAPI): void {
       ),
     }),
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
-      return captureEvidence(pi, ctx, params, signal);
+      const settings = readEffectiveSfBrowserSettings(ctx.cwd);
+      return captureEvidence(
+        pi,
+        ctx,
+        {
+          imageMode: settings.evidenceImageMode,
+          dismissOverlays: settings.dismissOverlays,
+          includeSetupAuditTrail: settings.includeSetupAuditTrail,
+          ...(params as Record<string, unknown>),
+        },
+        signal,
+      );
     },
   });
 }

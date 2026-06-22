@@ -5,6 +5,7 @@
   "category": "ui",
   "maturity": "stable",
   "defaultEnabled": true,
+  "configurable": true,
   "commands": ["/sf-skills"],
   "events": [
     "session_start",
@@ -24,6 +25,8 @@
       "lib/funnel-view/index.ts",
       "lib/funnel-view/model.ts",
       "lib/settings-coverage.ts",
+      "lib/settings.ts",
+      "lib/config-panel.ts",
       "lib/hud-component.ts",
       "lib/skill-state.ts",
       "lib/defaults.ts",

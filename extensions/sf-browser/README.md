@@ -169,6 +169,16 @@ Runbooks document the preferred API or owning-extension path, the Browser Eviden
 - After opening a deep link or Setup Destination, prefer `sf_browser_wait` with `lightning: "navigation-ready"`, then snapshot. If `sf_browser_wait` reports an ambiguous wait, snapshot or verify through API before continuing.
 - Use direct `agent-browser` commands for scroll, hover, drag, upload, tabs, console, network, trace, video, HAR, eval, advanced CDP, or long-tail editor/shadow-DOM work outside `sf_browser_editor`.
 
+## Settings
+
+SF Browser has a Manager Settings page for Browser Evidence defaults stored under `sfPi.browser`:
+
+- **Evidence image mode** (`evidenceImageMode`) — `artifact`, `thumbnail` (default), or `full` when a command/tool omits `imageMode`.
+- **Dismiss overlays** (`dismissOverlays`) — defaults to `true` for known ambient Salesforce overlays.
+- **Setup Audit Trail** (`includeSetupAuditTrail`) — defaults to `false`; enable when after-capture evidence should include recent Setup Audit Trail context.
+
+Explicit tool arguments still win for a single capture.
+
 ## State and Artifacts
 
 Browser Evidence is stored outside the project by default and scoped by pi session:
@@ -209,6 +219,7 @@ extensions/sf-browser/
     browser-expression.ts   ← implementation module
     browser-launch-diagnostics.ts← implementation module
     classic-setup-submit.ts ← implementation module
+    config-panel.ts         ← implementation module
     constants.ts            ← implementation module
     data-cloud-pack.ts      ← implementation module
     editor-surfaces.ts      ← implementation module
@@ -228,6 +239,7 @@ extensions/sf-browser/
     salesforce-path-resolver.ts← implementation module
     salesforce-path-schema.ts← implementation module
     salesforce-route-verifier.ts← implementation module
+    settings.ts             ← implementation module
     setup-audit-trail.ts    ← implementation module
     setup-destinations.ts   ← implementation module
     sf_browser_capture_evidence-tool.ts← implementation module
@@ -248,6 +260,7 @@ extensions/sf-browser/
     artifacts.test.ts       ← unit / smoke test
     browser-expression.test.ts← unit / smoke test
     classic-setup-submit.test.ts← unit / smoke test
+    config-panel.test.ts    ← unit / smoke test
     data-cloud-pack.test.ts ← unit / smoke test
     editor-surfaces.test.ts ← unit / smoke test
     evidence-panel.test.ts  ← unit / smoke test
@@ -261,6 +274,7 @@ extensions/sf-browser/
     redaction.test.ts       ← unit / smoke test
     salesforce-path-resolver.test.ts← unit / smoke test
     salesforce-route-verifier.test.ts← unit / smoke test
+    settings.test.ts        ← unit / smoke test
     setup-audit-trail.test.ts← unit / smoke test
     setup-destinations.test.ts← unit / smoke test
     smoke.test.ts           ← unit / smoke test

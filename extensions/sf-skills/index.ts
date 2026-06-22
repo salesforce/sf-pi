@@ -59,6 +59,7 @@ import {
 import { openInfoPanel } from "../../lib/common/info-panel.ts";
 import { withSafeCommandHandler } from "../../lib/common/safe-command-handler.ts";
 import { handleDefaults, parseDefaultsArgs } from "./lib/skills-command.ts";
+import { readEffectiveSfSkillsSettings } from "./lib/settings.ts";
 import { updateSkillSources } from "../../lib/common/skill-sources/skill-sources.ts";
 import { setSourceGate, upsertSource } from "../../lib/common/skill-sources/source-registry.ts";
 import { loadUsageMap, recordSkillInvocation } from "./lib/usage-store.ts";
@@ -243,6 +244,10 @@ export default function sfSkills(pi: ExtensionAPI) {
   }
 
   function ensureHudMounted(ctx: ExtensionContext): void {
+    if (readEffectiveSfSkillsSettings(ctx.cwd).hudVisibility === "hidden") {
+      dismissOverlay();
+      return;
+    }
     if (ctx.mode !== "tui" || hudComponent || dismissHud) {
       return;
     }
@@ -360,7 +365,10 @@ export default function sfSkills(pi: ExtensionAPI) {
         const head = trimmed.split(/\s+/, 1)[0]?.toLowerCase() ?? "summary";
         if (head === "defaults") {
           const tail = trimmed.slice("defaults".length);
-          const parsed = parseDefaultsArgs(tail);
+          const parsed = parseDefaultsArgs(
+            tail,
+            readEffectiveSfSkillsSettings(ctx.cwd).defaultInstallScope,
+          );
           await handleDefaults(ctx, parsed, async (title, body, level) => {
             ctx.ui.notify(
               body ? `${title}\n\n${body}` : title,

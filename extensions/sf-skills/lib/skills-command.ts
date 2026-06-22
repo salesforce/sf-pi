@@ -52,7 +52,10 @@ export interface DefaultsArgs {
  *   "link ~/work/afv-library project"            → link, project, target
  *   "unlink ~/work/afv-library --delete"         → unlink, global, target, deleteOnDisk
  */
-export function parseDefaultsArgs(raw: string): DefaultsArgs {
+export function parseDefaultsArgs(
+  raw: string,
+  defaultScope: SkillSourceScope = "project",
+): DefaultsArgs {
   const tokens = raw.trim().split(/\s+/).filter(Boolean);
   const action = (tokens[0] ?? "status").toLowerCase() as DefaultsAction;
 
@@ -64,7 +67,7 @@ export function parseDefaultsArgs(raw: string): DefaultsArgs {
   // Default is "project" (local-first): `defaults install` wires the curated
   // skills into the current project; `defaults install global` is the explicit
   // opt-in for everywhere. The content is cloned once globally either way.
-  let scope: SkillSourceScope = "project";
+  let scope: SkillSourceScope = defaultScope;
   const scopeIndex = positional.findIndex(
     (t) => t.toLowerCase() === "project" || t.toLowerCase() === "global",
   );

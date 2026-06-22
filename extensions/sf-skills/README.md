@@ -96,6 +96,15 @@ Extension loads
       └─ dismiss HUD overlay
 ```
 
+## Settings
+
+SF Skills has a Manager Settings page for low-risk preferences stored under `sfPi.skills`:
+
+- **HUD visibility** (`hudVisibility`) — `auto` shows the passive HUD when skills are in active context; `hidden` suppresses the floating HUD while keeping `/sf-skills summary` and the Skill Funnel available.
+- **Default install scope** (`defaultInstallScope`) — `project` (default) or `global` for `/sf-skills defaults install/update` when the command omits an explicit scope.
+
+The full Skill Funnel remains an action page because it edits native `settings.skills[]` and may reload Pi after applying staged changes.
+
 ## Behavior Matrix
 
 | Event / Trigger              | Result                                                              |
@@ -125,6 +134,7 @@ extensions/sf-skills/
       types.ts              ← implementation module
       viewport.ts           ← implementation module
     catalog.ts              ← implementation module
+    config-panel.ts         ← implementation module
     conflict-actions.ts     ← implementation module
     defaults.ts             ← implementation module
     gather.ts               ← implementation module
@@ -132,12 +142,14 @@ extensions/sf-skills/
     prune.ts                ← implementation module
     resolution.ts           ← implementation module
     settings-coverage.ts    ← implementation module
+    settings.ts             ← implementation module
     skill-state.ts          ← implementation module
     skills-command.ts       ← implementation module
     usage-store.ts          ← implementation module
   tests/
     boot-path.test.ts       ← unit / smoke test
     catalog.test.ts         ← unit / smoke test
+    config-panel.test.ts    ← unit / smoke test
     conflict-actions.test.ts← unit / smoke test
     defaults.test.ts        ← unit / smoke test
     funnel-layout.test.ts   ← unit / smoke test
@@ -148,6 +160,7 @@ extensions/sf-skills/
     reload-safety.test.ts   ← unit / smoke test
     resolution.test.ts      ← unit / smoke test
     settings-coverage.test.ts← unit / smoke test
+    settings.test.ts        ← unit / smoke test
     skill-state.test.ts     ← unit / smoke test
     smoke.test.ts           ← unit / smoke test
     source-registry.test.ts ← unit / smoke test

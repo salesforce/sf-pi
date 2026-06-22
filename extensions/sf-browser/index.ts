@@ -54,6 +54,7 @@ import { COMMAND_NAME, EXTENSION_ID, SF_BROWSER_SESSION } from "./lib/constants.
 import { SALESFORCE_BROWSER_GUIDANCE } from "./lib/guidance.ts";
 import { formatKnownSetupDestinations, resolveSetupDestination } from "./lib/setup-destinations.ts";
 import { captureEvidence, openOrgInAgentBrowser } from "./lib/operations.ts";
+import { readEffectiveSfBrowserSettings } from "./lib/settings.ts";
 import { registerSfBrowserCaptureEvidenceTool } from "./lib/sf_browser_capture_evidence-tool.ts";
 import { registerSfBrowserClickTool } from "./lib/sf_browser_click-tool.ts";
 import { registerSfBrowserEditorTool } from "./lib/sf_browser_editor-tool.ts";
@@ -276,9 +277,12 @@ async function handleAction(
     return;
   }
   if (action === "screenshot") {
+    const settings = readEffectiveSfBrowserSettings(ctx.cwd);
     const result = await captureEvidence(pi, ctx, {
       label: args.join(" ") || "panel-capture",
-      imageMode: "thumbnail",
+      imageMode: settings.evidenceImageMode,
+      dismissOverlays: settings.dismissOverlays,
+      includeSetupAuditTrail: settings.includeSetupAuditTrail,
     });
     await emitEvidenceOutput(ctx, "SF Browser evidence", result.content, "success", fromPanel);
     return;
@@ -308,7 +312,7 @@ function buildStatusLines(ctx: ExtensionCommandContext): string[] {
     `• Browser       ${SF_BROWSER_SESSION}`,
     `• Pi session    ${sessionId}`,
     `• Target org     ${env?.config.targetOrg ?? env?.org.alias ?? "not cached"}`,
-    "• Evidence mode  thumbnail by default; use artifact for batches",
+    `• Evidence mode  ${readEffectiveSfBrowserSettings(ctx.cwd).evidenceImageMode} by default`,
     `• Artifacts      ${getEvidenceDir(sessionId)}`,
     `• Index          ${getEvidenceIndexPath(sessionId)}`,
     `• Latest pointer ${getLatestEvidencePointerPath()}`,

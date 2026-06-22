@@ -114,7 +114,7 @@
     "maturity": "experimental",
     "defaultEnabled": true,
     "alwaysActive": false,
-    "configurable": false,
+    "configurable": true,
     "commands": [
       "/sf-browser"
     ],
@@ -143,6 +143,8 @@
         "lib/agent-browser.ts",
         "lib/evidence-report.ts",
         "lib/operations.ts",
+        "lib/settings.ts",
+        "lib/config-panel.ts",
         "lib/failure-diagnostics.ts",
         "lib/editor-surfaces.ts",
         "lib/setup-destinations.ts",
@@ -174,7 +176,7 @@
     "entry": "extensions/sf-browser/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 5866
+    "srcLoc": 6081
   },
   {
     "id": "sf-code-analyzer",
@@ -702,7 +704,7 @@
     "maturity": "stable",
     "defaultEnabled": true,
     "alwaysActive": false,
-    "configurable": false,
+    "configurable": true,
     "commands": [
       "/sf-skills"
     ],
@@ -726,6 +728,8 @@
         "lib/funnel-view/index.ts",
         "lib/funnel-view/model.ts",
         "lib/settings-coverage.ts",
+        "lib/settings.ts",
+        "lib/config-panel.ts",
         "lib/hud-component.ts",
         "lib/skill-state.ts",
         "lib/defaults.ts",
@@ -737,7 +741,7 @@
     "entry": "extensions/sf-skills/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 4500
+    "srcLoc": 4698
   },
   {
     "id": "sf-slack",

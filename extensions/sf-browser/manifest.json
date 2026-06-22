@@ -5,6 +5,7 @@
   "category": "agent-tool",
   "maturity": "experimental",
   "defaultEnabled": true,
+  "configurable": true,
   "commands": ["/sf-browser"],
   "tools": [
     "sf_browser_open_org",
@@ -26,6 +27,8 @@
       "lib/agent-browser.ts",
       "lib/evidence-report.ts",
       "lib/operations.ts",
+      "lib/settings.ts",
+      "lib/config-panel.ts",
       "lib/failure-diagnostics.ts",
       "lib/editor-surfaces.ts",
       "lib/setup-destinations.ts",
