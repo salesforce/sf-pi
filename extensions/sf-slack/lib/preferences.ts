@@ -2,17 +2,18 @@
 /**
  * User preferences for sf-slack.
  *
- * Persisted via `pi.appendEntry(PREFS_ENTRY_TYPE, ...)` so they survive reloads
- * and respect branch navigation (same pattern as examples/tools.ts).
- *
- * Why in-memory plus entry-log?
- *   - renderCall / renderResult run outside the tool's execute() context and
- *     cannot await any async store. They need synchronous access.
- *   - Reading from the session branch on each render would be wasteful.
- *
- * So index.ts reconstructs prefs on session_start / session_tree and mutates
- * the single in-memory record exported here. All readers are sync.
+ * Routine preferences are stored in Pi settings under `sfPi.slack` so the SF Pi
+ * Manager Settings page can own the mutable surface. The in-memory singleton
+ * remains because renderCall / renderResult run outside a tool execute context
+ * and need synchronous access.
  */
+
+import {
+  globalSettingsPath,
+  projectSettingsPath,
+  readJsonFile,
+  writeJsonFile,
+} from "../../../lib/common/sf-pi-settings.ts";
 
 export type FieldsMode = "summary" | "preview" | "full";
 export type DefaultFieldsMode = "auto" | FieldsMode;
@@ -21,6 +22,7 @@ export type OnOff = "on" | "off";
 export type ThreadBodyMode = "full" | "preview";
 export type SlackPreferenceKey = keyof SlackPreferences;
 export type SlackPreferenceSection = "result" | "feedback" | "links";
+export type SlackPreferenceScope = "global" | "project";
 
 export interface SlackPreferenceDescriptor<K extends SlackPreferenceKey = SlackPreferenceKey> {
   key: K;
@@ -109,6 +111,99 @@ export const SLACK_PREFERENCE_DESCRIPTORS = [
     defaultValue: DEFAULT_PREFERENCES.compactPermalinks,
   },
 ] as const satisfies readonly SlackPreferenceDescriptor[];
+
+// ─── Pi settings persistence ───────────────────────────────────────────────────
+
+export interface ScopedSlackPreferences {
+  scope: SlackPreferenceScope;
+  path: string;
+  preferences: SlackPreferences;
+  exists: boolean;
+}
+
+export interface EffectiveSlackPreferences extends SlackPreferences {
+  source: SlackPreferenceScope | "default";
+  path?: string;
+}
+
+export function readScopedSlackPreferences(
+  cwd: string,
+  scope: SlackPreferenceScope,
+): ScopedSlackPreferences {
+  const filePath = settingsPathForScope(cwd, scope);
+  const root = readJsonFile(filePath);
+  const slack = slackSettingsFromRoot(root);
+  return {
+    scope,
+    path: filePath,
+    preferences: sanitize(slack),
+    exists: hasOwnSlackPreference(slack),
+  };
+}
+
+export function readEffectiveSlackPreferences(cwd: string): EffectiveSlackPreferences {
+  const project = readScopedSlackPreferences(cwd, "project");
+  if (project.exists) {
+    return { ...project.preferences, source: "project", path: project.path };
+  }
+
+  const global = readScopedSlackPreferences(cwd, "global");
+  if (global.exists) {
+    return { ...global.preferences, source: "global", path: global.path };
+  }
+
+  return { ...DEFAULT_PREFERENCES, source: "default" };
+}
+
+export function writeScopedSlackPreferences(
+  cwd: string,
+  scope: SlackPreferenceScope,
+  preferences: SlackPreferences,
+): ScopedSlackPreferences {
+  const filePath = settingsPathForScope(cwd, scope);
+  const root = readJsonFile(filePath);
+  const normalized = sanitize(preferences);
+  const nextRoot = writeSlackSettingsToRoot(root, normalized);
+  writeJsonFile(filePath, nextRoot);
+  return { scope, path: filePath, preferences: normalized, exists: true };
+}
+
+export function describeSlackPreferencesSource(preferences: EffectiveSlackPreferences): string {
+  if (preferences.source === "default") return "default";
+  return `${preferences.source} (${preferences.path})`;
+}
+
+function settingsPathForScope(cwd: string, scope: SlackPreferenceScope): string {
+  return scope === "project" ? projectSettingsPath(cwd) : globalSettingsPath();
+}
+
+function slackSettingsFromRoot(root: Record<string, unknown>): Partial<SlackPreferences> {
+  return nestedRecord(nestedRecord(root, "sfPi"), "slack") as Partial<SlackPreferences>;
+}
+
+function writeSlackSettingsToRoot(
+  root: Record<string, unknown>,
+  preferences: SlackPreferences,
+): Record<string, unknown> {
+  const nextRoot = { ...root };
+  const sfPi = { ...nestedRecord(nextRoot, "sfPi") };
+  sfPi.slack = preferences;
+  nextRoot.sfPi = sfPi;
+  return nextRoot;
+}
+
+function hasOwnSlackPreference(value: Partial<SlackPreferences>): boolean {
+  return SLACK_PREFERENCE_DESCRIPTORS.some((descriptor) =>
+    Object.prototype.hasOwnProperty.call(value, descriptor.key),
+  );
+}
+
+function nestedRecord(parent: Record<string, unknown>, key: string): Record<string, unknown> {
+  const value = parent[key];
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? { ...(value as Record<string, unknown>) }
+    : {};
+}
 
 // ─── In-memory singleton ────────────────────────────────────────────────────────
 

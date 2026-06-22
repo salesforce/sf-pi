@@ -449,12 +449,16 @@ visible to the LLM.
 
 | Command              | Description                                                        |
 | -------------------- | ------------------------------------------------------------------ |
-| `/sf-slack`          | Open status & controls panel in UI; show auth status in no-UI mode |
+| `/sf-slack`          | Open SF Slack in the SF Pi Manager; show auth status in no-UI mode |
 | `/sf-slack status`   | Show auth status and connection info                               |
 | `/sf-slack refresh`  | Re-detect identity, re-probe scopes, refresh cache                 |
-| `/sf-slack settings` | Open preferences (search detail, widget, permalinks)               |
+| `/sf-slack settings` | Open Manager Settings for search detail, widget, and permalinks    |
 | `/sf-slack sent`     | List `slack_send` activity in the current branch                   |
 | `/sf-slack help`     | Show command help                                                  |
+
+## Preferences
+
+Slack rendering preferences live in Pi settings under `sfPi.slack` and are edited from **SF Pi Manager → SF Slack → Settings** or via `/sf-slack settings` in an interactive session. Project settings override global settings. Legacy `sf-slack-prefs` session entries are read only as a fallback when no Pi setting exists.
 
 ## Display Profile Integration
 
@@ -543,6 +547,7 @@ extensions/sf-slack/
     canvas-preflight.test.ts← unit / smoke test
     channel-cache-from-search.test.ts← unit / smoke test
     channel-types-default.test.ts← unit / smoke test
+    config-panel.test.ts    ← unit / smoke test
     emoji.test.ts           ← unit / smoke test
     extra-format.test.ts    ← unit / smoke test
     field-modes.test.ts     ← unit / smoke test

@@ -1,15 +1,14 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /**
- * `/sf-slack settings` TUI — pi-native SettingsList (docs/tui.md Pattern 3).
+ * Legacy preferences dialog for non-Manager fallback paths.
  *
  * Naming convention (sf-pi standard):
  *   - `lib/command-panel.ts`     — the no-args slash-command status & actions panel
  *   - `lib/config-panel.ts`      — ConfigPanelFactory invoked by sf-pi-manager
- *   - `lib/preferences-panel.ts` — mutable user-preference editor (this file)
+ *   - `lib/preferences-panel.ts` — legacy fallback preference editor (this file)
  *
- * Renders from the descriptor seam in preferences.ts. This keeps the current
- * TUI/RPC adapters thin and gives a future Pi-native settings menu one place
- * to read labels, descriptions, allowed values, and defaults.
+ * Renders from the descriptor seam in preferences.ts. The primary mutable
+ * surface is now `lib/config-panel.ts` in the SF Pi Manager Settings page.
  *
  * This module only owns the UI adapters; persistence is handled by the caller
  * so the extension can stay the single source of truth for `pi.appendEntry`.
@@ -28,8 +27,7 @@ import {
 } from "./preferences.ts";
 
 export interface PreferencesPanelOptions {
-  /** Called when the user changes a row. The caller is responsible for
-   *  persisting via pi.appendEntry and updating in-memory preferences. */
+  /** Called when the user changes a row. The caller owns persistence. */
   onChange: (prefs: SlackPreferences) => void;
 }
 

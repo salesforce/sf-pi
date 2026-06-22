@@ -96,6 +96,7 @@ import {
   DEFAULT_PREFERENCES,
   PREFS_ENTRY_TYPE,
   getPreferences,
+  readEffectiveSlackPreferences,
   sanitize,
   setPreferences,
   type SlackPreferences,
@@ -124,7 +125,6 @@ import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 import {
   createSlackConnectPanel,
   createSlackDisconnectPanel,
-  createSlackPreferencesPanel,
 } from "./lib/manager-action-panels.ts";
 
 const RESEARCH_WIDGET_KEY = "sf-slack-research";
@@ -280,12 +280,17 @@ export default function sfSlack(pi: ExtensionAPI) {
 
   // ─── Preferences (P3) ───────────────────────────────────────────────
   //
-  // Prefs are persisted with pi.appendEntry so they survive reloads and
-  // follow branch navigation. Readers (render.ts, tools.ts, format.ts) access
-  // them through the in-memory singleton in preferences.ts, so we only need
-  // to repopulate that singleton on session_start / session_tree.
+  // Routine preferences live in Pi settings under `sfPi.slack`. Legacy
+  // `sf-slack-prefs` session entries are honored only when no Pi setting exists.
+  // Readers (render.ts, tools.ts, format.ts) access preferences through the
+  // in-memory singleton in preferences.ts.
 
   function restorePreferences(ctx: ExtensionContext): SlackPreferences {
+    const effective = readEffectiveSlackPreferences(ctx.cwd);
+    if (effective.source !== "default") {
+      return setPreferences(effective);
+    }
+
     let latest: SlackPreferences = { ...DEFAULT_PREFERENCES };
     for (const entry of ctx.sessionManager.getBranch()) {
       if (entry.type === "custom" && entry.customType === PREFS_ENTRY_TYPE) {
@@ -294,12 +299,6 @@ export default function sfSlack(pi: ExtensionAPI) {
       }
     }
     return setPreferences(latest);
-  }
-
-  function persistPreferences(next: SlackPreferences): void {
-    setPreferences(next);
-    pi.appendEntry<SlackPreferences>(PREFS_ENTRY_TYPE, next);
-    renderResearchWidget();
   }
 
   // ─── Research activity widget (P4) ──────────────────────────────────────
@@ -711,7 +710,7 @@ export default function sfSlack(pi: ExtensionAPI) {
   });
 
   function buildSlackManagerActions(): ManagerDetailAction[] {
-    return SLACK_COMMAND_ACTIONS.map((action) => ({
+    return SLACK_COMMAND_ACTIONS.filter((action) => action.value !== "settings").map((action) => ({
       id: action.value,
       label: action.label,
       description: action.description,
@@ -735,17 +734,6 @@ export default function sfSlack(pi: ExtensionAPI) {
                 tokenSourceLabel: detectTokenSource(),
                 done,
                 disconnect: () => disconnectSlack(ctx),
-              }),
-          }
-        : {}),
-      ...(action.value === "settings"
-        ? {
-            createPanel: (theme, _cwd, _scope, done) =>
-              createSlackPreferencesPanel({
-                theme,
-                current: { ...getPreferences() },
-                done,
-                onChange: (next) => persistPreferences(next),
               }),
           }
         : {}),
@@ -887,12 +875,14 @@ export default function sfSlack(pi: ExtensionAPI) {
     }
 
     if (sub === "settings") {
+      if (ctx.hasUI) {
+        await openSlackInManager(ctx, "settings");
+        return;
+      }
       await openPreferencesPanel(
         ctx,
         { ...getPreferences() },
-        {
-          onChange: (next) => persistPreferences(next),
-        },
+        { onChange: (next) => setPreferences(next) },
       );
       return;
     }

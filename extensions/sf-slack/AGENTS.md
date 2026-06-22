@@ -35,7 +35,7 @@ Tools and their supporting modules follow a **one-file-per-concern** split:
 | Footer + status report formatting    | `lib/status.ts`                      | —                                                   |
 | Truncation policy                    | `lib/truncation.ts`                  | —                                                   |
 | Emoji / reaction name normalization  | `lib/emoji.ts`                       | —                                                   |
-| Config panel                         | `lib/config-panel.ts`                | `lib/settings-panel.ts`                             |
+| Manager settings panel               | `lib/config-panel.ts`                | `lib/preferences.ts`                                |
 | Preferences / per-tool stats         | `lib/preferences.ts`, `lib/stats.ts` | —                                                   |
 
 ## Conventions

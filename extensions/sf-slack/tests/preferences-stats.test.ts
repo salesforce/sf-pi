@@ -2,18 +2,39 @@
 /**
  * Tests for the sf-slack preferences module (P3) and stats module (P4).
  */
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { afterEach, describe, it, expect, beforeEach, vi } from "vitest";
 import {
   DEFAULT_PREFERENCES,
   SLACK_PREFERENCE_DESCRIPTORS,
   applyPreferenceValue,
   getPreferences,
+  readEffectiveSlackPreferences,
+  readScopedSlackPreferences,
   resetPreferences,
   sanitize,
   setPreferences,
+  writeScopedSlackPreferences,
 } from "../lib/preferences.ts";
 import { openPreferencesPanel } from "../lib/preferences-panel.ts";
 import { getStats, recordSample, renderStatsLines, resetStats } from "../lib/stats.ts";
+
+const tempDirs = new Set<string>();
+
+function tempCwd(): string {
+  const dir = mkdtempSync(path.join(tmpdir(), "sf-slack-preferences-"));
+  tempDirs.add(dir);
+  return dir;
+}
+
+afterEach(() => {
+  for (const dir of tempDirs) {
+    rmSync(dir, { recursive: true, force: true });
+  }
+  tempDirs.clear();
+});
 
 describe("preferences", () => {
   beforeEach(() => resetPreferences());
@@ -57,6 +78,22 @@ describe("preferences", () => {
     const changed = applyPreferenceValue(DEFAULT_PREFERENCES, "threadBodies", "preview");
     expect(changed?.threadBodies).toBe("preview");
     expect(applyPreferenceValue(DEFAULT_PREFERENCES, "threadBodies", "fuller")).toBeNull();
+  });
+
+  it("writes and resolves project-scoped Pi settings", () => {
+    const cwd = tempCwd();
+    writeScopedSlackPreferences(cwd, "project", {
+      ...DEFAULT_PREFERENCES,
+      defaultFields: "summary",
+    });
+
+    const scoped = readScopedSlackPreferences(cwd, "project");
+    const effective = readEffectiveSlackPreferences(cwd);
+
+    expect(scoped.exists).toBe(true);
+    expect(scoped.preferences.defaultFields).toBe("summary");
+    expect(effective.defaultFields).toBe("summary");
+    expect(effective.source).toBe("project");
   });
 
   it("uses dialog UI instead of custom TUI in RPC mode", async () => {
