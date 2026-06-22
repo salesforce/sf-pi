@@ -51,6 +51,7 @@ import type { EvalSpec, FailureRecord, RunMetadata } from "./eval/types.ts";
 
 import { renderEvalCall, renderEvalRunResult, renderEvalGetFailureResult } from "./render/eval.ts";
 import { createTimingCollector, withTimings, type TimingCollector } from "./timings.ts";
+import { readEffectiveAgentScriptSettings } from "./settings.ts";
 
 export const EVAL_TOOL_NAME = "agentscript_eval";
 
@@ -411,7 +412,9 @@ async function actionRun(
       ? await timings.time("org_connection", () => connFromAlias(input.target_org))
       : await connFromAlias(input.target_org);
     let traceConn;
-    if ((input.traces_mode ?? "failed") !== "off") {
+    const settings = readEffectiveAgentScriptSettings(ctx.cwd);
+    const tracesMode = input.traces_mode ?? settings.evalTracesMode;
+    if (tracesMode !== "off") {
       try {
         const authPhase = timings?.phase("agent_api_auth");
         const auth = await connForAgentApi(input.target_org, { signal });
@@ -428,8 +431,8 @@ async function actionRun(
       targetOrg: input.target_org ?? conn.getUsername() ?? "<default>",
       spec,
       agentApiName: input.agent_api_name,
-      tracesMode: input.traces_mode ?? "failed",
-      concurrency: input.concurrency ?? 8,
+      tracesMode,
+      concurrency: input.concurrency ?? settings.evalConcurrency,
       promptChars: input.prompt_chars ?? 600,
       batchTimeoutMs: input.batch_timeout_ms,
       acknowledgeInactiveVersion: input.acknowledge_inactive_version,

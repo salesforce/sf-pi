@@ -76,6 +76,17 @@ Enter; multiline fields use Enter for new lines and Ctrl+S to save. Preview and
 submit states stay inside the same Manager flow. They do not stack standalone
 input or confirmation prompts above the Manager detail page.
 
+## Settings
+
+SF Feedback has a Manager Settings page for the default issue kind stored under `sfPi.feedback.defaultIssueKind`:
+
+- `bug`
+- `feature`
+- `setup`
+- `feedback` (default)
+
+The setting is used when no explicit `bug`, `feature`, `setup`, or `feedback` subcommand is provided. It never bypasses preview or final confirmation.
+
 ## Behavior Matrix
 
 | Event/Trigger                                | Condition                              | Result                                          |
@@ -95,17 +106,20 @@ input or confirmation prompts above the Manager detail page.
 ```
 extensions/sf-feedback/
   lib/
+    config-panel.ts         ← implementation module
     diagnostics.ts          ← implementation module
     feedback-wizard-panel.ts← implementation module
     github.ts               ← implementation module
     issue-template.ts       ← implementation module
     sanitize.ts             ← implementation module
+    settings.ts             ← implementation module
     types.ts                ← implementation module
   tests/
     feedback-wizard-panel.test.ts← unit / smoke test
     github.test.ts          ← unit / smoke test
     issue-template.test.ts  ← unit / smoke test
     sanitize.test.ts        ← unit / smoke test
+    settings.test.ts        ← unit / smoke test
     smoke.test.ts           ← unit / smoke test
   index.ts                  ← Pi extension entry point
   manifest.json             ← source-of-truth extension metadata

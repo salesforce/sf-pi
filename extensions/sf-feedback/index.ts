@@ -50,6 +50,7 @@ import {
   type PreparedFeedbackPreview,
 } from "./lib/feedback-wizard-panel.ts";
 import type { Diagnostics, FeedbackDraft, IssueKind } from "./lib/types.ts";
+import { readEffectiveFeedbackSettings } from "./lib/settings.ts";
 
 const COMMAND_NAME = "sf-feedback";
 const STATUS_KEY = "sf-feedback";
@@ -199,7 +200,10 @@ async function handleCommand(
       return;
     }
 
-    const requestedKind = parseIssueKind(subcommand);
+    const requestedKind = parseIssueKind(
+      subcommand,
+      readEffectiveFeedbackSettings(ctx.cwd).defaultIssueKind,
+    );
     const hasExplicitKind = isIssueKind(subcommand);
     const draft = ctx.hasUI
       ? await promptForDraft(ctx, requestedKind, hasExplicitKind)
@@ -330,8 +334,8 @@ async function submitPreparedFeedback(
       };
 }
 
-function parseIssueKind(value: string | undefined): IssueKind {
-  return isIssueKind(value) ? value : "feedback";
+function parseIssueKind(value: string | undefined, fallback: IssueKind = "feedback"): IssueKind {
+  return isIssueKind(value) ? value : fallback;
 }
 
 function isIssueKind(value: string | undefined): value is IssueKind {

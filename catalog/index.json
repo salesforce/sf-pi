@@ -7,7 +7,7 @@
     "maturity": "stable",
     "defaultEnabled": true,
     "alwaysActive": false,
-    "configurable": false,
+    "configurable": true,
     "commands": [
       "/sf-agentscript"
     ],
@@ -33,6 +33,8 @@
         "lib/inspect.ts",
         "lib/mutate.ts",
         "lib/tool-types.ts",
+        "lib/settings.ts",
+        "lib/config-panel.ts",
         "lib/authoring-tool.ts",
         "lib/branch-state.ts",
         "lib/authoring/params.ts",
@@ -67,7 +69,7 @@
     "entry": "extensions/sf-agentscript/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 25887
+    "srcLoc": 26098
   },
   {
     "id": "sf-brain",
@@ -77,7 +79,7 @@
     "maturity": "stable",
     "defaultEnabled": true,
     "alwaysActive": false,
-    "configurable": false,
+    "configurable": true,
     "commands": [],
     "providers": [],
     "tools": [],
@@ -90,6 +92,8 @@
         "index.ts",
         "lib/kernel.ts",
         "lib/extension-context.ts",
+        "lib/settings.ts",
+        "lib/config-panel.ts",
         "SF_KERNEL.md",
         "SF_REFERENCE_MAP.md"
       ],
@@ -97,14 +101,14 @@
         "<globalAgentDir>/sf-brain/SF_KERNEL.md"
       ],
       "safety": [
-        "Never registers tools or mutates settings; the kernel is delivered through the session entry log only.",
+        "Never registers tools; the kernel is delivered through the session entry log only.",
         "Honors a user override at <globalAgentDir>/sf-brain/SF_KERNEL.md."
       ]
     },
     "entry": "extensions/sf-brain/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 387
+    "srcLoc": 526
   },
   {
     "id": "sf-browser",
@@ -388,7 +392,7 @@
     "maturity": "stable",
     "defaultEnabled": true,
     "alwaysActive": false,
-    "configurable": false,
+    "configurable": true,
     "commands": [
       "/sf-feedback"
     ],
@@ -402,7 +406,9 @@
         "lib/diagnostics.ts",
         "lib/github.ts",
         "lib/sanitize.ts",
-        "lib/issue-template.ts"
+        "lib/issue-template.ts",
+        "lib/settings.ts",
+        "lib/config-panel.ts"
       ],
       "safety": [
         "Never submits a GitHub issue without user confirmation.",
@@ -413,7 +419,7 @@
     "entry": "extensions/sf-feedback/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 1385
+    "srcLoc": 1538
   },
   {
     "id": "sf-guardrail",

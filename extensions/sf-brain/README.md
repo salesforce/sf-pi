@@ -108,6 +108,15 @@ Subsequent turns in the same session
 | before_agent_start | Herdr pane env and `herdr` tool active  | include Herdr Workflow Mode guidance  |
 | before_agent_start | Herdr pane env or `herdr` tool inactive | omit Herdr guidance; normal fallback  |
 
+## Settings
+
+SF Brain has a Manager Settings page for the optional Herdr workflow guidance add-on stored under `sfPi.brain.herdrGuidance`:
+
+- `auto` — include compact Herdr workflow guidance only when the session is inside an active Herdr pane and the `herdr` tool is active.
+- `off` — omit the Herdr add-on from the injected extension context.
+
+The core Salesforce Operator Kernel remains enabled while the extension is enabled. Disable the extension itself from SF Pi Manager if you do not want the kernel injected.
+
 ## User Override
 
 Create `<globalAgentDir>/sf-brain/SF_KERNEL.md` (typically `~/.pi/agent/sf-brain/SF_KERNEL.md`)
@@ -123,13 +132,16 @@ to the bundled kernel silently.
 ```
 extensions/sf-brain/
   lib/
+    config-panel.ts         ← implementation module
     extension-context.ts    ← implementation module
     kernel.ts               ← implementation module
+    settings.ts             ← implementation module
   tests/
     extension-context.test.ts← unit / smoke test
     injection.test.ts       ← unit / smoke test
     kernel.test.ts          ← unit / smoke test
     reference-map.test.ts   ← unit / smoke test
+    settings.test.ts        ← unit / smoke test
     smoke.test.ts           ← unit / smoke test
   index.ts                  ← Pi extension entry point
   manifest.json             ← source-of-truth extension metadata

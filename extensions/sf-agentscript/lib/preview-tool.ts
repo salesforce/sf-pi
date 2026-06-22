@@ -37,6 +37,7 @@ import {
 } from "./render/timeline.ts";
 import { previewReportPath, reportHeader, writeMarkdownReport } from "./render/report-writer.ts";
 import { createTimingCollector, withTimings, type TimingCollector } from "./timings.ts";
+import { readEffectiveAgentScriptSettings } from "./settings.ts";
 
 export const PREVIEW_TOOL_NAME = "agentscript_preview";
 
@@ -411,7 +412,7 @@ async function actionStart(
       agentSource: source,
       agentFilePath: filePath,
       versionDeveloperName: input.version_developer_name,
-      mockMode: input.mock_mode ?? "Mock",
+      mockMode: input.mock_mode ?? readEffectiveAgentScriptSettings(ctx.cwd).previewMockMode,
       targetOrg: input.target_org,
       contextVariables: input.context_variables,
       timings,

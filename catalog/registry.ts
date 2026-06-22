@@ -18,6 +18,11 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
     commands: ["/sf-agentscript"],
     tools: ["agentscript_authoring","agentscript_preview","agentscript_eval","agentscript_lifecycle"],
     events: ["session_start","session_shutdown","tool_result"],
+    configurable: true,
+    getConfigPanel: async () => {
+      const mod = await import("../extensions/sf-agentscript/lib/config-panel.ts");
+      return mod.createConfigPanel;
+    },
   },
   {
     id: "sf-brain",
@@ -28,6 +33,11 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
     maturity: "stable",
     defaultEnabled: true,
     events: ["before_agent_start"],
+    configurable: true,
+    getConfigPanel: async () => {
+      const mod = await import("../extensions/sf-brain/lib/config-panel.ts");
+      return mod.createConfigPanel;
+    },
   },
   {
     id: "sf-browser",
@@ -121,6 +131,11 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
     maturity: "stable",
     defaultEnabled: true,
     commands: ["/sf-feedback"],
+    configurable: true,
+    getConfigPanel: async () => {
+      const mod = await import("../extensions/sf-feedback/lib/config-panel.ts");
+      return mod.createConfigPanel;
+    },
   },
   {
     id: "sf-guardrail",

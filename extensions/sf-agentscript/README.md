@@ -96,6 +96,16 @@ create/compile/inspect/mutate  ──▶  preview  ──▶  eval  ──▶  l
 | `agentscript_eval`                      | Generate/run regression specs and persist failure/trace artifacts.      |
 | `agentscript_lifecycle`                 | Publish, activate, list versions, and manage Service Agent users.       |
 
+## Settings
+
+SF Agent Script has a Manager Settings page for low-risk tool defaults stored under `sfPi.agentScript`:
+
+- **Preview mock mode** (`previewMockMode`) — default for `agentscript_preview` `start` when `mock_mode` is omitted: `Mock` or `Live Test`.
+- **Eval trace mode** (`evalTracesMode`) — default for `agentscript_eval` `run` when `traces_mode` is omitted: `failed`, `all`, or `off`.
+- **Eval concurrency** (`evalConcurrency`) — default concurrency for `agentscript_eval` `run` when omitted: `4`, `8`, or `16`.
+
+Explicit tool parameters still win for a single call.
+
 ## Slash commands
 
 ```text
@@ -210,6 +220,7 @@ extensions/sf-agentscript/
     bounded-salesforce-transport.ts← implementation module
     branch-state.ts         ← implementation module
     code-actions.ts         ← implementation module
+    config-panel.ts         ← implementation module
     create.ts               ← implementation module
     diagnostics.ts          ← implementation module
     doctor.ts               ← implementation module
@@ -229,6 +240,7 @@ extensions/sf-agentscript/
     preflight.ts            ← implementation module
     preview-tool.ts         ← implementation module
     sdk.ts                  ← implementation module
+    settings.ts             ← implementation module
     sfap-readiness.ts       ← implementation module
     timings.ts              ← implementation module
     tool-types.ts           ← implementation module
@@ -303,6 +315,7 @@ extensions/sf-agentscript/
     routing-flow-readiness.test.ts← unit / smoke test
     runtime-smoke.test.ts   ← unit / smoke test
     self-recovery.test.ts   ← unit / smoke test
+    settings.test.ts        ← unit / smoke test
     smoke.test.ts           ← unit / smoke test
     surface-readiness.test.ts← unit / smoke test
     template-scaffold-vars.test.ts← unit / smoke test

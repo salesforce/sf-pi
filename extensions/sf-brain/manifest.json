@@ -5,6 +5,7 @@
   "category": "assistive",
   "maturity": "stable",
   "defaultEnabled": true,
+  "configurable": true,
   "events": ["before_agent_start"],
   "docs": {
     "summary": "Injects the Salesforce Operator Kernel once per session plus a live bundled-extension context that prioritizes enabled SF Pi workflows before generic skills or raw CLI fallbacks.",
@@ -12,12 +13,14 @@
       "index.ts",
       "lib/kernel.ts",
       "lib/extension-context.ts",
+      "lib/settings.ts",
+      "lib/config-panel.ts",
       "SF_KERNEL.md",
       "SF_REFERENCE_MAP.md"
     ],
     "stateFiles": ["<globalAgentDir>/sf-brain/SF_KERNEL.md"],
     "safety": [
-      "Never registers tools or mutates settings; the kernel is delivered through the session entry log only.",
+      "Never registers tools; the kernel is delivered through the session entry log only.",
       "Honors a user override at <globalAgentDir>/sf-brain/SF_KERNEL.md."
     ]
   }

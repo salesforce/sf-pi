@@ -50,6 +50,7 @@ import {
   SF_PI_EXTENSIONS_ENTRY_TYPE,
   shouldInjectSfPiExtensionContext,
 } from "./lib/extension-context.ts";
+import { readEffectiveSfBrainSettings } from "./lib/settings.ts";
 
 export default function (pi: ExtensionAPI) {
   if (!requirePiVersion(pi, "sf-brain")) return;
@@ -83,7 +84,9 @@ export default function (pi: ExtensionAPI) {
     const context = formatSfPiExtensionContext(ctx.cwd, {
       activeTools,
       activeSkills: event.systemPromptOptions.skills?.map((skill) => skill.name),
-      herdrWorkflowMode: isHerdrWorkflowModeActive({ env: process.env, activeTools }),
+      herdrWorkflowMode:
+        readEffectiveSfBrainSettings(ctx.cwd).herdrGuidance === "auto" &&
+        isHerdrWorkflowModeActive({ env: process.env, activeTools }),
     });
     if (!shouldInjectSfPiExtensionContext(ctx.sessionManager.getEntries(), context)) return;
 

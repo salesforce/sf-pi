@@ -47,7 +47,7 @@ You can manage this extension from the SF Pi home base:
 
 ## Safety notes
 
-- Never registers tools or mutates settings; the kernel is delivered through the session entry log only.
+- Never registers tools; the kernel is delivered through the session entry log only.
 - Honors a user override at &lt;globalAgentDir&gt;/sf-brain/SF_KERNEL.md.
 
 ## Exact reference

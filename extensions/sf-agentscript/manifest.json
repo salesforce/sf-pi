@@ -5,7 +5,7 @@
   "category": "agent-tool",
   "maturity": "stable",
   "defaultEnabled": true,
-  "configurable": false,
+  "configurable": true,
   "commands": ["/sf-agentscript"],
   "tools": [
     "agentscript_authoring",
@@ -24,6 +24,8 @@
       "lib/inspect.ts",
       "lib/mutate.ts",
       "lib/tool-types.ts",
+      "lib/settings.ts",
+      "lib/config-panel.ts",
       "lib/authoring-tool.ts",
       "lib/branch-state.ts",
       "lib/authoring/params.ts",

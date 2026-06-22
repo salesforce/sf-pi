@@ -5,6 +5,7 @@
   "category": "assistive",
   "maturity": "stable",
   "defaultEnabled": true,
+  "configurable": true,
   "commands": ["/sf-feedback"],
   "docs": {
     "summary": "Guided GitHub feedback flow with sanitized diagnostics for SF Pi issues.",
@@ -13,7 +14,9 @@
       "lib/diagnostics.ts",
       "lib/github.ts",
       "lib/sanitize.ts",
-      "lib/issue-template.ts"
+      "lib/issue-template.ts",
+      "lib/settings.ts",
+      "lib/config-panel.ts"
     ],
     "safety": [
       "Never submits a GitHub issue without user confirmation.",

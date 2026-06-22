@@ -195,6 +195,7 @@ describe("extension detail helpers", () => {
     );
 
     overlay.handleInput("s");
+    overlay.handleInput("\x1b[B"); // Skip built-in Settings row on configurable extensions.
     overlay.handleInput("\r");
 
     expect(calls).toEqual(["project"]);
@@ -231,6 +232,7 @@ describe("extension detail helpers", () => {
     );
 
     overlay.handleInput("s");
+    overlay.handleInput("\x1b[B"); // Skip built-in Settings row on configurable extensions.
     overlay.handleInput("\r");
 
     expect(result).toMatchObject({
