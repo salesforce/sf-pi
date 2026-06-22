@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
- 
+
 // Scaffold a new sf-pi extension.
 //
 // Usage: node scripts/scaffold.mjs --id <extension-id> --category <ui|provider|agent-tool|safety|assistive|manager> [--name "Display Name"]

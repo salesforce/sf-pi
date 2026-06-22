@@ -241,6 +241,43 @@ describe("extension detail helpers", () => {
     });
   });
 
+  it("keeps long detail pages within the viewport while navigating actions", () => {
+    const states = buildExtensionStates(new Set());
+    const overlay = new SfPiOverlayComponent(
+      stubTheme,
+      "0.0.0-test",
+      PACKAGE_ROOT,
+      "/tmp/project",
+      states,
+      states,
+      "global",
+      () => 12,
+      () => undefined,
+      {} as never,
+      {} as never,
+      () =>
+        Array.from({ length: 12 }, (_, i) => ({
+          id: `action-${i}`,
+          label: `Action ${i}`,
+          description: `Description ${i}`,
+          group: "Many actions",
+          run: () => undefined,
+        })),
+      () => undefined,
+      { extensionId: "sf-feedback", view: "detail" },
+    );
+
+    const first = overlay.render(100);
+    expect(first.length).toBeLessThanOrEqual(12);
+    expect(first.join("\n")).toContain("10-15/48");
+    expect(first.join("\n")).toContain("Settings");
+
+    for (let i = 0; i < 9; i++) overlay.handleInput("\x1b[B");
+    const second = overlay.render(100).join("\n");
+    expect(second).toContain("Action 8");
+    expect(second).not.toContain("Settings");
+  });
+
   it("scrolls long settings pages with PageDown", async () => {
     const custom = {
       id: "sf-test",

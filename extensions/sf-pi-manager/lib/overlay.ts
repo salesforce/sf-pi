@@ -151,6 +151,7 @@ export class SfPiOverlayComponent implements Focusable {
   private activePanel: ConfigPanel | null = null;
   private activePanelExtId: string | null = null;
   private configPanelReloadNeeded = false;
+  private detailScrollOffset = 0;
   private panelScrollOffset = 0;
   private scope: ManagerScope;
   private actionInFlight = false;
@@ -453,7 +454,10 @@ export class SfPiOverlayComponent implements Focusable {
   // Detail view rendering
   // -------------------------------------------------------------------------------------------------
 
-  private renderDetailView(innerWidth: number, row: (content?: string) => string): string[] {
+  private renderDetailView(
+    innerWidth: number,
+    row: (content?: string, scrollBar?: string) => string,
+  ): string[] {
     const lines: string[] = [];
     const theme = this.theme;
     const ext = this.getActiveExtension();
@@ -480,23 +484,67 @@ export class SfPiOverlayComponent implements Focusable {
 
     lines.push(theme.fg("border", `╭${"─".repeat(innerWidth)}╮`));
     lines.push(row(`${headerLeft}${" ".repeat(headerGap)}${headerRight}`));
-    lines.push(row(""));
 
-    lines.push(row(` ${theme.fg("accent", theme.bold("About"))}`));
-    for (const descLine of wrapPlainText(ext.description, innerWidth - 3)) {
-      lines.push(row(`  ${theme.fg("dim", descLine)}`));
+    const { rows, selectedRowIndex } = this.detailContentRows(ext, detail, glyphs, innerWidth);
+    const maxRows = this.getPanelMaxRows();
+    const footerRows = 2;
+    const viewportRows = Math.max(1, maxRows - lines.length - footerRows);
+    const maxOffset = Math.max(0, rows.length - viewportRows);
+    this.detailScrollOffset = this.clampDetailScrollOffset(
+      this.detailScrollOffset,
+      selectedRowIndex,
+      viewportRows,
+      maxOffset,
+    );
+    const visibleRows = rows.slice(this.detailScrollOffset, this.detailScrollOffset + viewportRows);
+    const needsScrollbar = rows.length > viewportRows;
+    for (let i = 0; i < viewportRows; i++) {
+      lines.push(
+        row(
+          visibleRows[i] ?? "",
+          needsScrollbar ? this.renderDetailScrollbar(i, viewportRows, rows.length) : "",
+        ),
+      );
     }
-    lines.push(row(""));
 
-    lines.push(row(` ${theme.fg("accent", theme.bold("State"))}`));
-    lines.push(row(`  Status: ${this.renderStateValue(detail.status, detail.statusLabel)}`));
-    lines.push(row(`  Scope: ${this.renderScopeValue()}`));
-    lines.push(row(`  Default on install: ${theme.fg("dim", ext.defaultEnabled ? "yes" : "no")}`));
-    lines.push(row(`  Configurable: ${theme.fg("dim", ext.configurable ? "yes" : "no")}`));
-    lines.push(row(`  Always active: ${theme.fg("dim", ext.alwaysActive ? "yes" : "no")}`));
-    lines.push(row(""));
+    const scrollHint = needsScrollbar
+      ? `↑↓ move · S switch · ${this.detailScrollOffset + 1}-${Math.min(
+          this.detailScrollOffset + viewportRows,
+          rows.length,
+        )}/${rows.length} · Esc back`
+      : "↑↓ move · S switch · Esc back";
+    lines.push(row(` ${theme.fg("dim", scrollHint)}`));
+    lines.push(theme.fg("border", `╰${"─".repeat(innerWidth)}╯`));
 
-    lines.push(row(` ${theme.fg("accent", theme.bold("Actions"))}`));
+    return lines;
+  }
+
+  private detailContentRows(
+    ext: ExtensionState,
+    detail: ReturnType<typeof buildExtensionDetailSummary>,
+    glyphs: ReturnType<typeof resolveUiGlyphs>,
+    innerWidth: number,
+  ): { rows: string[]; selectedRowIndex: number } {
+    const theme = this.theme;
+    const rows: string[] = [];
+    let selectedRowIndex = 0;
+
+    rows.push("");
+    rows.push(` ${theme.fg("accent", theme.bold("About"))}`);
+    for (const descLine of wrapPlainText(ext.description, innerWidth - 3)) {
+      rows.push(`  ${theme.fg("dim", descLine)}`);
+    }
+    rows.push("");
+
+    rows.push(` ${theme.fg("accent", theme.bold("State"))}`);
+    rows.push(`  Status: ${this.renderStateValue(detail.status, detail.statusLabel)}`);
+    rows.push(`  Scope: ${this.renderScopeValue()}`);
+    rows.push(`  Default on install: ${theme.fg("dim", ext.defaultEnabled ? "yes" : "no")}`);
+    rows.push(`  Configurable: ${theme.fg("dim", ext.configurable ? "yes" : "no")}`);
+    rows.push(`  Always active: ${theme.fg("dim", ext.alwaysActive ? "yes" : "no")}`);
+    rows.push("");
+
+    rows.push(` ${theme.fg("accent", theme.bold("Actions"))}`);
     const actions = this.getDetailActions(ext);
     const actionIndex = this.view.kind === "detail" ? this.view.actionIndex : 0;
     let currentGroup: string | undefined;
@@ -505,11 +553,9 @@ export class SfPiOverlayComponent implements Focusable {
       if (!action) continue;
       const group = action.group ?? "Actions";
       if (group !== currentGroup) {
-        if (currentGroup !== undefined) lines.push(row(""));
-        lines.push(
-          row(
-            ` ${theme.fg("muted", theme.bold(`${iconForCommandGroup(group, glyphs)} ${group}`))}`,
-          ),
+        if (currentGroup !== undefined) rows.push("");
+        rows.push(
+          ` ${theme.fg("muted", theme.bold(`${iconForCommandGroup(group, glyphs)} ${group}`))}`,
         );
         currentGroup = group;
       }
@@ -517,13 +563,12 @@ export class SfPiOverlayComponent implements Focusable {
       const cursor = selected ? theme.fg("accent", "→") : " ";
       const actionLabel = this.renderDetailActionLabel(action);
       const label = selected ? theme.fg("accent", actionLabel) : theme.fg("text", actionLabel);
-      lines.push(row(`  ${cursor} ${label}`));
-      lines.push(row(`     ${theme.fg("dim", action.description)}`));
+      if (selected) selectedRowIndex = rows.length;
+      rows.push(`  ${cursor} ${label}`);
+      rows.push(`     ${theme.fg("dim", action.description)}`);
     }
 
-    lines.push(theme.fg("border", `╰${"─".repeat(innerWidth)}╯`));
-
-    return lines;
+    return { rows, selectedRowIndex };
   }
 
   private renderPanelView(
@@ -617,6 +662,7 @@ export class SfPiOverlayComponent implements Focusable {
   private drillIntoDetail(extensionId: string): void {
     this.activePanelExtId = null;
     this.activePanel = null;
+    this.detailScrollOffset = 0;
     this.view = { kind: "detail", extensionId, actionIndex: 0 };
   }
 
@@ -694,6 +740,7 @@ export class SfPiOverlayComponent implements Focusable {
   private returnToList(): void {
     this.activePanel = null;
     this.activePanelExtId = null;
+    this.detailScrollOffset = 0;
     if (this.closeDetailOnBack) {
       this.applyAndClose();
       return;
@@ -712,6 +759,32 @@ export class SfPiOverlayComponent implements Focusable {
   // -------------------------------------------------------------------------------------------------
   // Private helpers
   // -------------------------------------------------------------------------------------------------
+
+  private clampDetailScrollOffset(
+    offset: number,
+    selectedRowIndex: number,
+    viewportRows: number,
+    maxOffset: number,
+  ): number {
+    let next = Math.max(0, Math.min(offset, maxOffset));
+    if (selectedRowIndex < next) {
+      next = selectedRowIndex;
+    } else if (selectedRowIndex >= next + viewportRows) {
+      next = selectedRowIndex - viewportRows + 1;
+    }
+    return Math.max(0, Math.min(next, maxOffset));
+  }
+
+  private renderDetailScrollbar(rowIndex: number, viewportRows: number, totalRows: number): string {
+    if (totalRows <= viewportRows || viewportRows <= 0) return "";
+    const maxOffset = Math.max(1, totalRows - viewportRows);
+    const thumbRows = Math.max(1, Math.round((viewportRows / totalRows) * viewportRows));
+    const thumbStart = Math.round(
+      (this.detailScrollOffset / maxOffset) * (viewportRows - thumbRows),
+    );
+    const isThumb = rowIndex >= thumbStart && rowIndex < thumbStart + thumbRows;
+    return this.theme.fg(isThumb ? "accent" : "dim", isThumb ? "█" : "│");
+  }
 
   private handlePanelScrollInput(data: string): boolean {
     if (matchesKey(data, "pageUp")) {
