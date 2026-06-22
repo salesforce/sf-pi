@@ -22,6 +22,7 @@ class SfPiManagerConfigPanel implements Focusable {
   private profile: SfPiDisplayProfile;
   private savedProfile: SfPiDisplayProfile;
   private savedSource: string;
+  private savedMessage = "";
 
   constructor(
     private readonly theme: Theme,
@@ -54,7 +55,6 @@ class SfPiManagerConfigPanel implements Focusable {
 
     if (matchesKey(data, "enter") || matchesKey(data, "return")) {
       this.save();
-      this.done(undefined);
     }
   }
 
@@ -97,6 +97,7 @@ class SfPiManagerConfigPanel implements Focusable {
     lines.push(pad(`  ${t.fg("muted", "Scope:")} ${t.fg("text", this.scope)}`));
     lines.push(pad(`  ${t.fg("muted", "Current source:")} ${t.fg("dim", this.savedSource)}`));
     if (dirty) lines.push(pad(`  ${t.fg("warning", "Unsaved change — press Enter to save")}`));
+    else if (this.savedMessage) lines.push(pad(`  ${t.fg("success", this.savedMessage)}`));
     lines.push(pad(""));
     lines.push(pad(` ${t.fg("dim", "←/→ change · Enter save · Esc back")}`));
 
@@ -117,12 +118,18 @@ class SfPiManagerConfigPanel implements Focusable {
     // but TS needs help to prove it. Fall back to the current profile if
     // indexing ever returns undefined (should be unreachable).
     this.profile = SF_PI_DISPLAY_PROFILES[nextIndex] ?? this.profile;
+    this.savedMessage = "";
   }
 
   private save(): void {
+    if (this.profile === this.savedProfile) {
+      this.savedMessage = "No changes to save.";
+      return;
+    }
     const saved = writeScopedSfPiDisplaySettings(this.cwd, this.scope, { profile: this.profile });
     this.savedProfile = saved.settings.profile;
     this.savedSource = saved.path;
+    this.savedMessage = "Saved display profile.";
   }
 }
 

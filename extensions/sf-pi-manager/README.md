@@ -148,6 +148,7 @@ extensions/sf-pi-manager/
   tests/
     announcements-command.test.ts← unit / smoke test
     command-parsing.test.ts ← unit / smoke test
+    config-panel.test.ts    ← unit / smoke test
     doctor-command.test.ts  ← unit / smoke test
     extension-aliases.test.ts← unit / smoke test
     extension-details.test.ts← unit / smoke test
