@@ -681,8 +681,6 @@ export default function sfWelcome(pi: ExtensionAPI) {
     endActiveSession(ctx);
   });
 
-  registerManagerDetailActions(pi, COMMAND_NAME, buildWelcomeManagerActions());
-
   // --- /sf-welcome command ---
   pi.registerCommand(COMMAND_NAME, {
     description: "Show the sf-pi welcome splash summary, status, and controls",
@@ -749,6 +747,8 @@ export default function sfWelcome(pi: ExtensionAPI) {
       run: (ctx) => handleWelcomeAction(ctx, action.value),
     }));
   }
+
+  registerManagerDetailActions(pi, COMMAND_NAME, buildWelcomeManagerActions());
 
   async function openWelcomeInManager(
     ctx: ExtensionCommandContext,
