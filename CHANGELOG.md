@@ -517,6 +517,15 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.204.2](https://github.com/salesforce/sf-pi/compare/v0.204.1...v0.204.2) (2026-06-22)
+
+
+### Bug Fixes
+
+* **sf-lsp:** show doctor output in info panel ([3badbed](https://github.com/salesforce/sf-pi/commit/3badbed00224b18e000b5e590307f4f083a2c9cd))
+* **sf-welcome:** register manager actions after initialization ([8547994](https://github.com/salesforce/sf-pi/commit/85479947808fd1df3a337c81765457ed7834e32d))
+* **ui:** route legacy slash panels through manager ([d1b66da](https://github.com/salesforce/sf-pi/commit/d1b66da22c1039451194eee9cc0a85040571e08d))
+
 ## [0.204.1](https://github.com/salesforce/sf-pi/compare/v0.204.0...v0.204.1) (2026-06-22)
 
 
