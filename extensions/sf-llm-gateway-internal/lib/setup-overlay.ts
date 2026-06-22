@@ -6,7 +6,7 @@
  *   1. Draws the border box (╭─╮ │ │ ╰─╯)
  *   2. Delegates content rendering and input to GatewayConfigPanelComponent
  *
- * The standalone overlay is opened by `/sf-llm-gateway-internal setup`.
+ * The standalone overlay is opened by `/sf-llm-gateway setup`.
  * The same config panel is also hosted inside the sf-pi Extension Manager overlay.
  */
 
@@ -119,7 +119,7 @@ function padAnsi(text: string, width: number): string {
 // -------------------------------------------------------------------------------------------------
 
 /**
- * Standalone overlay wrapper for `/sf-llm-gateway-internal setup`.
+ * Standalone overlay wrapper for `/sf-llm-gateway setup`.
  *
  * Draws the border box and title, then delegates all content rendering
  * and input handling to GatewayConfigPanelComponent.
@@ -172,7 +172,7 @@ export class GatewaySetupOverlayComponent implements Focusable {
         const saved = readGatewaySavedConfig(configPath);
         this.done({ action: saved.enabled === false ? "disable" : "save-enable" });
       },
-      { externalActions: true },
+      { externalActions: true, lifecycleActions: true, closeOnSave: true },
     );
   }
 

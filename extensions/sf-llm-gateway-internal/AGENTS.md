@@ -30,13 +30,12 @@ Repo-level rules still apply; see root `AGENTS.md`.
 | Legacy provider-id settings migration          | `lib/migrate-unify-provider.ts` |
 | Footer + status report formatting              | `lib/status.ts`                 |
 | Standard command metadata + completions        | `lib/command-surface.ts`        |
-| No-args grouped status & controls panel        | `lib/command-panel.ts`          |
-| TUI setup wizard component                     | `lib/setup-overlay.ts`          |
-| Config panel (advanced form)                   | `lib/config-panel.ts`           |
+| Standalone slash-command setup overlay         | `lib/setup-overlay.ts`          |
+| Manager settings/setup action panel content    | `lib/config-panel.ts`           |
 | Transform debug probe                          | `lib/debug.ts`                  |
-| `/sf-llm-gateway-internal doctor` diagnostics  | `lib/doctor.ts`                 |
-| `/sf-llm-gateway-internal tokens` counter      | `lib/token-counter.ts`          |
-| `/sf-llm-gateway-internal onboard` SSO link    | `lib/onboarding.ts`             |
+| `/sf-llm-gateway doctor` diagnostics           | `lib/doctor.ts`                 |
+| `/sf-llm-gateway tokens` counter               | `lib/token-counter.ts`          |
+| `/sf-llm-gateway onboard` SSO link             | `lib/onboarding.ts`             |
 | Existing setup discovery (Claude/DevBar/CA)    | `lib/onboarding-sources.ts`     |
 | Provider-telemetry (429/5xx footer badge)      | `lib/provider-telemetry.ts`     |
 | Transparent inner-stream retry telemetry       | `lib/retry-telemetry.ts`        |
@@ -81,13 +80,13 @@ Repo-level rules still apply; see root `AGENTS.md`.
 All subcommands route through `handleCommand` in `index.ts`:
 
 ```
-/sf-llm-gateway-internal <sub> [scope]
-                        ↓
-                  parseCommandArgs
-                        ↓
-                   handleCommand
-                        ↓
-       handleSetupCommand / handleRefreshCommand / enableGateway / …
+/sf-llm-gateway <sub> [scope]
+            ↓
+      parseCommandArgs
+            ↓
+       handleCommand
+            ↓
+runSetupWizard / handleRefreshCommand / enableGateway / …
 ```
 
 When adding a subcommand:

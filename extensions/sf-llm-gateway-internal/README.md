@@ -177,7 +177,7 @@ Adjacent **Connect** group rows make the rest of the onboarding self-service:
   in one shot. Adopts an existing PEM found in saved candidates, shell exports,
   or bounded Claude Code / DevBar / AI Suite locations such as
   `~/.claude/*.pem`, `~/.devbar/*.pem`, and `~/.aisuite/conf/*.pem`; falls
-  back to downloading from `sfPi.gateway.caBundleSource` (or
+  back to downloading from saved `caBundleSource` (or
   `SF_LLM_GATEWAY_INTERNAL_CA_BUNDLE_SOURCE`) when the bundle source is
   configured. Public sf-pi ships no default download URL on purpose — the
   source is organization-specific.
@@ -261,7 +261,7 @@ The legacy `/sf-llm-gateway-internal` slash command was retired in v0.56.0
 The provider id is unchanged so pi-native model routing and `/login`
 resolution still work.
 
-The Manager detail page preserves the grouped command surface from the legacy panel. Press `S` on the detail page to switch the active Manager scope between global and project; scoped actions render once and run against the selected scope. Actions that launch their own setup overlay close the Manager first; read-only status, help, doctor, and report-style actions use the standard Manager info popup. In headless/print/RPC mode, the no-args command falls back to the text status report.
+The Manager detail page preserves the grouped command surface from the legacy panel. Press `S` on the detail page to switch the active Manager scope between global and project; scoped actions render once and run against the selected scope. The primary `setup` action now opens a Manager action page for saved URL/key edits plus save/enable/disable actions; read-only status, help, doctor, and report-style actions use the standard Manager info popup. In headless/print/RPC mode, the no-args command falls back to the text status report.
 
 Primary actions are grouped as:
 
@@ -291,7 +291,7 @@ such as `tokens`, `onboard`, `open-token`, `import-claude`, `doctor`, `debug`,
 | after_provider_response      | gateway model + 429                   | Record throttle signal, footer shows ⚠ badge for 60s                                                                                           |
 | after_provider_response      | gateway model + >=500                 | Record upstream signal, footer shows ⚠ badge for 60s                                                                                           |
 | session_shutdown             | —                                     | Clear footer status + provider signal                                                                                                          |
-| /command (no args)           | interactive UI                        | Open status & controls panel                                                                                                                   |
+| /command (no args)           | interactive UI                        | Open the SF Pi Manager detail page                                                                                                             |
 | /command (no args)           | no UI                                 | Print text status report                                                                                                                       |
 | /command on                  | missing credentials                   | Prompt for credentials first                                                                                                                   |
 | /command on                  | credentials present                   | Save config, set default gateway model, register, discover                                                                                     |
@@ -326,7 +326,6 @@ extensions/sf-llm-gateway-internal/
     ca-bundle-fixer.ts      ← implementation module
     ca-probe-state.ts       ← implementation module
     claude-code-import.ts   ← implementation module
-    command-panel.ts        ← implementation module
     command-surface.ts      ← implementation module
     config-panel.ts         ← implementation module
     config.ts               ← implementation module
@@ -357,10 +356,10 @@ extensions/sf-llm-gateway-internal/
     ca-probe-state.test.ts  ← unit / smoke test
     claude-code-import.test.ts← unit / smoke test
     codex-regression.test.ts← unit / smoke test
-    command-panel.test.ts   ← unit / smoke test
     command-parsing.test.ts ← unit / smoke test
     command-surface.test.ts ← unit / smoke test
     compaction-routes-through-gateway.test.ts← unit / smoke test
+    config-panel-manager.test.ts← unit / smoke test
     config-panel-paste.test.ts← unit / smoke test
     config.test.ts          ← unit / smoke test
     cwd-migration.test.ts   ← unit / smoke test
@@ -429,17 +428,17 @@ Optional env vars:
 
 Exported helpers are marked with `// Exported for unit tests.` in the source.
 
-## Doctor: `/sf-llm-gateway-internal doctor`
+## Doctor: `/sf-llm-gateway doctor`
 
-Run `/sf-llm-gateway-internal doctor` when the gateway appears connected but
+Run `/sf-llm-gateway doctor` when the gateway appears connected but
 requests fail. It is read-only and checks the configured URL, the normalized
 OpenAI-compatible route, the Claude/admin root route, API key presence, model
 discovery, and gateway health. It interprets common failures such as 401 auth
 errors, SSO/browser redirects, and `model=v1` routing mistakes.
 
-## Usage probe: `/sf-llm-gateway-internal usage-probe`
+## Usage probe: `/sf-llm-gateway usage-probe`
 
-Run `/sf-llm-gateway-internal usage-probe` after key rotation or when usage
+Run `/sf-llm-gateway usage-probe` after key rotation or when usage
 numbers look surprising. It forces a read-only `/user/info` + `/key/info` refresh,
 reports the live gateway connection classification, shows monthly/user spend and
 current-key spend separately, and explicitly explains whether the available data
@@ -447,28 +446,28 @@ proves a true lifetime user counter. The welcome splash does not render a Lifeti
 Usage line because the currently available gateway endpoints do not prove true
 user-lifetime spend.
 
-## Debugging: `/sf-llm-gateway-internal debug`
+## Debugging: `/sf-llm-gateway debug`
 
 The gateway exposes `POST /utils/transform_request`, which echoes the exact
 upstream URL, headers, and body LiteLLM would send for a given request. The
 extension wraps that as a first-class command:
 
 ```
-/sf-llm-gateway-internal debug <modelId> [reasoning=<level>] [tool] [adaptive]
+/sf-llm-gateway debug <modelId> [reasoning=<level>] [tool] [adaptive]
 ```
 
 Examples:
 
 ```text
-/sf-llm-gateway-internal debug claude-opus-4-8 adaptive reasoning=xhigh
+/sf-llm-gateway debug claude-opus-4-8 adaptive reasoning=xhigh
   → Upstream: https://api.anthropic.com/v1/messages
     Body:     { thinking: { type: "adaptive" }, output_config: { effort: "max" }, max_tokens: 128000, ... }
     Note:     pi `xhigh` maps to `max` for Opus 4.7+.
 
-/sf-llm-gateway-internal debug gpt-5 reasoning=high
+/sf-llm-gateway debug gpt-5 reasoning=high
   → Body:     { reasoning_effort: "high", allowed_openai_params: ["reasoning_effort"], ... }
 
-/sf-llm-gateway-internal debug gpt-5.3-codex reasoning=medium tool
+/sf-llm-gateway debug gpt-5.3-codex reasoning=medium tool
   → Upstream: https://api.openai.com/v1/responses
     Body:     { reasoning: { effort: "medium", summary: "auto" }, tools: [...], ... }
 ```
@@ -476,13 +475,13 @@ Examples:
 This is the fastest way to verify that the shims are producing a payload shape
 the gateway will accept, without burning tokens on a real completion.
 
-## Latency probe: `/sf-llm-gateway-internal latency-probe`
+## Latency probe: `/sf-llm-gateway latency-probe`
 
 `latency-probe` runs direct gateway timing checks so you can separate provider /
 gateway latency from pi's local transport overhead:
 
 ```text
-/sf-llm-gateway-internal latency-probe [modelId] [--large] [--beta-compare] [--bedrock]
+/sf-llm-gateway latency-probe [modelId] [--large] [--beta-compare] [--bedrock]
 ```
 
 Default mode performs metadata probes plus one tiny streamed generation with
@@ -506,7 +505,7 @@ line per request, response header block, and SSE chunk to
 each pi launch and filtered by the gateway base URL, so other providers'
 requests pass through untouched.
 
-The `/sf-llm-gateway-internal` status report shows a `Wire trace: ON` line
+The `/sf-llm-gateway status` report shows a `Wire trace: ON` line
 with the file path while tracing is active; the line is omitted when the
 env var is not `1`.
 
@@ -605,11 +604,11 @@ and `~/.zshenv` (Terminal launches) in one shot. The fix probes
 well-known paths in Claude Code, DevBar, and AI Suite config folders, adopts
 valid PEM paths already referenced by `NODE_EXTRA_CA_CERTS` in `~/.zshrc`,
 `~/.zprofile`, `~/.zshenv`, or the sf-pi LaunchAgent, and includes any extras
-saved under `sfPi.gateway.caBundleCandidates`. If `NODE_EXTRA_CA_CERTS` is only
+saved under `caBundleCandidates` in the gateway saved config. If `NODE_EXTRA_CA_CERTS` is only
 in `~/.zshrc` or `~/.zprofile`, doctor calls that out because pi may not see it
 for every launch path; `fix-ca-bundle` mirrors the valid bundle into
 `~/.zshenv` and the LaunchAgent. When no candidate is found and
-`sfPi.gateway.caBundleSource` (or `SF_LLM_GATEWAY_INTERNAL_CA_BUNDLE_SOURCE`)
+saved `caBundleSource` (or `SF_LLM_GATEWAY_INTERNAL_CA_BUNDLE_SOURCE`)
 is set, the action downloads the bundle into
 `~/.pi/agent/sf-llm-gateway-internal/ca-bundle.pem` after explicit
 confirmation. Each disk-mutating step is HITL-gated; a sentinel-guarded

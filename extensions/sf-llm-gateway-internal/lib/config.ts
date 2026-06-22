@@ -59,7 +59,7 @@ export const HELP_URL_ENV = "SF_LLM_GATEWAY_INTERNAL_HELP_URL";
  */
 export const CA_BUNDLE_SOURCE_ENV = "SF_LLM_GATEWAY_INTERNAL_CA_BUNDLE_SOURCE";
 // The gateway endpoint is a Salesforce-internal URL and is intentionally not
-// hardcoded here. Users should configure it via `/sf-llm-gateway-internal setup`.
+// hardcoded here. Users should configure it via `/sf-llm-gateway setup`.
 // Env vars are still accepted as an automation fallback when no saved config exists.
 export const DEFAULT_BASE_URL = "";
 

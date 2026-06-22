@@ -268,7 +268,7 @@ function unifiedStream(
  * gateway API keys that the user copies from the gateway's UI.
  *
  * The block writes the pasted token to the GLOBAL saved config file, which
- * is the same file `/sf-llm-gateway-internal setup global` writes to. That
+ * is the same file `/sf-llm-gateway setup global` writes to. That
  * makes `/login` the key-rotation path for normal users. Saved config is
  * intentionally primary over env vars so stale shell/Keychain exports cannot
  * shadow a freshly pasted token.
@@ -297,7 +297,7 @@ function buildOAuthBlock(
 
       // Persist to the global saved config so both interactive and
       // non-interactive commands pick it up. No cwd required — project
-      // scoping is handled by `/sf-llm-gateway-internal setup project`.
+      // scoping is handled by `/sf-llm-gateway setup project`.
       const cfgPath = globalGatewayConfigPath();
       const saved = readGatewaySavedConfig(cfgPath);
       saved.apiKey = trimmed;
@@ -318,7 +318,7 @@ function buildOAuthBlock(
       return credentials;
     },
 
-    getApiKey(_credentials: OAuthCredentials): string {
+    getApiKey(): string {
       // Always re-read from the extension's config so /login and later setup
       // updates take effect immediately without a shell restart.
       return getGlobalOnlyGatewayConfig().apiKey ?? "";

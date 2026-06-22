@@ -307,17 +307,17 @@ export function getApiKeyGuidanceLines(cwd: string, state: GatewayRuntimeStatusS
 
   if (state.connectionStatus?.kind === "auth-failed") {
     lines.push(
-      "Active gateway key was rejected. Run /login to paste a new key, then rerun /sf-llm-gateway-internal doctor.",
+      "Active gateway key was rejected. Run /login to paste a new key, then rerun /sf-llm-gateway doctor.",
     );
   }
 
   if (savedKey && envKey && savedKey !== envKey) {
     lines.push(
-      `${API_KEY_ENV} is also set but ignored because a saved key wins. If the env key is newer, run /login or /sf-llm-gateway-internal setup to save it; otherwise remove the stale env var from your shell or Keychain setup.`,
+      `${API_KEY_ENV} is also set but ignored because a saved key wins. If the env key is newer, run /login or /sf-llm-gateway setup to save it; otherwise remove the stale env var from your shell or Keychain setup.`,
     );
   } else if (config.apiKeySource === "env") {
     lines.push(
-      `Using ${API_KEY_ENV} as an automation fallback. For interactive use, run /login or /sf-llm-gateway-internal setup so pi keeps using the intended key across shells.`,
+      `Using ${API_KEY_ENV} as an automation fallback. For interactive use, run /login or /sf-llm-gateway setup so pi keeps using the intended key across shells.`,
     );
   }
 

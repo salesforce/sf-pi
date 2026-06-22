@@ -86,7 +86,7 @@ describe("formatAnthropicStreamError", () => {
 
     expect(formatted).toContain("Invalid model name passed in model=v1");
     expect(formatted).toContain("base URL includes an OpenAI deployment path");
-    expect(formatted).toContain("/sf-llm-gateway-internal setup");
+    expect(formatted).toContain("/sf-llm-gateway setup");
   });
 });
 

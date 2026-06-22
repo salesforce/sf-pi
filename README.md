@@ -412,14 +412,14 @@ organization's gateway root URL plus API key:
 Run `/sf-llm-gateway` with no args to open the setup/settings page. From there
 you can enter the gateway root URL, paste a token, open the gateway in your
 browser to create a token, or import a cleansed URL/token from local Claude Code
-settings. `/sf-llm-gateway-internal` remains as a backward-compatible status and
-controls alias.
+settings. The retired `/sf-llm-gateway-internal` slash command is no longer
+registered; `/sf-llm-gateway` is the single command entry point.
 
 For headless or copy-paste use, the canonical subcommands are:
 
 ```text
 # Setup
-/sf-llm-gateway setup                        # Single overlay setup form
+/sf-llm-gateway setup                        # Setup form (Manager action page in UI)
 /sf-llm-gateway open-token                   # Open gateway root in browser for token creation
 /sf-llm-gateway import-claude                # Import cleansed URL + token from Claude Code settings
 /sf-llm-gateway on                           # Enable provider + set default model

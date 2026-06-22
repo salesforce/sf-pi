@@ -99,7 +99,8 @@ export const OPUS_47_MODEL_MAX_TOKENS = 128_000;
  * @deprecated The level-scaled floor is no longer needed. Returns 128_000
  * unconditionally. Kept for backwards-compatible imports.
  */
-export function resolveOpus47MaxTokensFloor(_level?: PiReasoningLevel | undefined): number {
+export function resolveOpus47MaxTokensFloor(level?: PiReasoningLevel | undefined): number {
+  void level;
   return OPUS_47_MODEL_MAX_TOKENS;
 }
 
@@ -244,7 +245,7 @@ export function formatAnthropicStreamError(message: string): string {
     if (/Invalid model name passed in model=v1/i.test(message)) {
       return [
         message,
-        "This usually means the gateway base URL includes an OpenAI deployment path (for example /bedrock) while Claude is using the native Anthropic /v1/messages route. Re-run /sf-llm-gateway-internal setup and use the gateway root URL, then /sf-llm-gateway-internal refresh.",
+        "This usually means the gateway base URL includes an OpenAI deployment path (for example /bedrock) while Claude is using the native Anthropic /v1/messages route. Re-run /sf-llm-gateway setup and use the gateway root URL, then /sf-llm-gateway refresh.",
       ].join("\n");
     }
     return message;

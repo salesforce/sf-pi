@@ -42,21 +42,21 @@
  *                                       active. When unset, model defaults apply.
  *
  * Commands:
- * - /sf-llm-gateway-internal                     open status & controls panel (UI) or text status (headless)
- * - /sf-llm-gateway-internal status              show text status
- * - /sf-llm-gateway-internal setup [global|project]
- * - /sf-llm-gateway-internal on [global|project]   enable provider + set gateway default
- * - /sf-llm-gateway-internal off [global|project]  disable provider + set off-default
- * - /sf-llm-gateway-internal refresh               refresh models + monthly usage
- * - /sf-llm-gateway-internal set-default [global|project]
- * - /sf-llm-gateway-internal beta                  show beta header state
- * - /sf-llm-gateway-internal beta <name> on|off    toggle a beta header at runtime
- * - /sf-llm-gateway-internal models                list discovered models
- * - /sf-llm-gateway-internal usage-probe [--trace] classify user/key usage scope (--trace prints per-endpoint timings)
- * - /sf-llm-gateway-internal tokens <modelId> [prompt]
- * - /sf-llm-gateway-internal onboard
- * - /sf-llm-gateway-internal debug <modelId> [reasoning=<level>] [tool] [adaptive]
- * - /sf-llm-gateway-internal latency-probe [modelId] [--large] [--beta-compare] [--bedrock]
+ * - /sf-llm-gateway                     open Manager detail page (UI) or text status (headless)
+ * - /sf-llm-gateway status              show text status
+ * - /sf-llm-gateway setup [global|project]
+ * - /sf-llm-gateway on [global|project]   enable provider + set gateway default
+ * - /sf-llm-gateway off [global|project]  disable provider + set off-default
+ * - /sf-llm-gateway refresh               refresh models + monthly usage
+ * - /sf-llm-gateway set-default [global|project]
+ * - /sf-llm-gateway beta                  show beta header state
+ * - /sf-llm-gateway beta <name> on|off    toggle a beta header at runtime
+ * - /sf-llm-gateway models                list discovered models
+ * - /sf-llm-gateway usage-probe [--trace] classify user/key usage scope (--trace prints per-endpoint timings)
+ * - /sf-llm-gateway tokens <modelId> [prompt]
+ * - /sf-llm-gateway onboard
+ * - /sf-llm-gateway debug <modelId> [reasoning=<level>] [tool] [adaptive]
+ * - /sf-llm-gateway latency-probe [modelId] [--large] [--beta-compare] [--bedrock]
  *
  * Behavior matrix:
  *
@@ -72,7 +72,7 @@
  *   after_provider_response     | model is gateway model + 429       | Record throttle signal, footer shows ⚠ badge for 60s
  *   after_provider_response     | model is gateway model + 5xx       | Record upstream signal, footer shows ⚠ badge for 60s
  *   session_shutdown            | —                                  | Clear footer status + provider signal
- *   /command (no args)          | interactive UI                     | Open status & controls panel
+ *   /command (no args)          | interactive UI                     | Open Manager detail page
  *   /command (no args)          | no UI                              | Print text status report
  *   /command on                 | missing credentials                | Prompt for credentials first
  *   /command on                 | credentials present                | Save config, set default, register, discover
@@ -91,15 +91,16 @@
  * - Monthly usage caching lives in lib/monthly-usage.ts
  * - Pi settings mutations live in lib/pi-settings.ts
  * - Footer/status formatting lives in lib/status.ts
- * - The TUI setup overlay is in lib/setup-overlay.ts
+ * - The standalone TUI setup overlay is in lib/setup-overlay.ts; Manager setup reuses lib/config-panel.ts
  */
 
-import { Text } from "@earendil-works/pi-tui";
+import { Text, matchesKey, type Focusable } from "@earendil-works/pi-tui";
 import type {
   ExtensionAPI,
   ExtensionCommandContext,
   ExtensionContext,
   MessageRenderer,
+  Theme,
 } from "@earendil-works/pi-coding-agent";
 
 // --- Lib imports ---
@@ -171,6 +172,7 @@ import {
 } from "./lib/beta-controls.ts";
 
 import { GatewaySetupOverlayComponent, type SetupOverlayResult } from "./lib/setup-overlay.ts";
+import { GatewayConfigPanelComponent } from "./lib/config-panel.ts";
 import { buildFooterStatus, buildStatusReport } from "./lib/status.ts";
 import {
   applyGatewayModelScope,
@@ -240,6 +242,7 @@ import {
   formatGatewayCommandReference,
   type GatewayCommandId,
 } from "./lib/command-surface.ts";
+import type { ConfigPanelResult } from "../../catalog/registry.ts";
 import { openInfoPanel } from "../../lib/common/info-panel.ts";
 import {
   openExtensionInManager,
@@ -384,7 +387,7 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
   registerCachedDiscoveryIfAvailable(pi, getBetaOverrides(), getBetaExtras());
 
   // Contribute to the aggregated `/sf-pi doctor` view. The standalone
-  // `/sf-llm-gateway-internal doctor` command keeps using
+  // `/sf-llm-gateway doctor` command keeps using
   // fetchGatewayDoctorReport directly for backwards-compat rendering.
   registerExtensionDoctor("sf-llm-gateway-internal", (cwd) => runGatewayExtensionDoctor(cwd));
   registerManagerDetailActions(pi, "sf-llm-gateway-internal", buildGatewayManagerActions(pi));
@@ -653,8 +656,118 @@ function gatewayManagerAction(
     group,
     acceptsScope,
     run: (ctx, scope) => handlePanelAction(pi, ctx, command, scope),
-    ...(command === "setup" ? { closeBeforeRun: true } : {}),
+    ...(command === "setup"
+      ? {
+          createPanel: (theme, cwd, scope, done, ctx) =>
+            new GatewaySetupManagerActionPanel(pi, theme, cwd, scope, done, ctx),
+        }
+      : {}),
   };
+}
+
+type GatewaySetupPanelResult = ConfigPanelResult & {
+  gatewayAction?: "save-enable" | "save" | "disable";
+};
+
+class GatewaySetupManagerActionPanel implements Focusable {
+  focused = false;
+  private readonly panel: GatewayConfigPanelComponent;
+  private busy = false;
+  private output: GatewayCommandOutput | undefined;
+
+  constructor(
+    private readonly pi: ExtensionAPI,
+    private readonly theme: Theme,
+    _cwd: string,
+    private readonly scope: "global" | "project",
+    private readonly done: (result: ConfigPanelResult | undefined) => void,
+    private readonly ctx: ExtensionCommandContext,
+  ) {
+    void _cwd;
+    this.panel = new GatewayConfigPanelComponent(
+      theme,
+      scope,
+      ctx.cwd,
+      (result) => {
+        void this.handlePanelResult(result as GatewaySetupPanelResult | undefined);
+      },
+      { lifecycleActions: true, closeOnSave: true },
+    );
+  }
+
+  handleInput(data: string): void {
+    if (this.busy) return;
+    if (this.output) {
+      if (matchesKey(data, "escape") || matchesKey(data, "enter") || matchesKey(data, "return")) {
+        this.done(undefined);
+      }
+      return;
+    }
+    this.panel.focused = this.focused;
+    this.panel.handleInput(data);
+  }
+
+  renderContent(width: number): string[] {
+    const t = this.theme;
+    if (this.busy) {
+      return [
+        ` ${t.fg("accent", t.bold("SF LLM Gateway setup"))}`,
+        "",
+        ` ${t.fg("dim", "Applying gateway setup…")}`,
+      ];
+    }
+    if (this.output) {
+      const color =
+        this.output.level === "error"
+          ? "error"
+          : this.output.level === "warning"
+            ? "warning"
+            : "text";
+      return [
+        ` ${t.fg("accent", t.bold(this.output.summary))}`,
+        "",
+        ...this.output.details.split("\n").map((line) => ` ${t.fg(color, line)}`),
+        "",
+        ` ${t.fg("dim", "Enter/Esc back")}`,
+      ];
+    }
+    this.panel.focused = this.focused;
+    return this.panel.renderContent(width);
+  }
+
+  render(width: number): string[] {
+    return this.renderContent(width);
+  }
+
+  invalidate(): void {
+    this.panel.invalidate();
+  }
+
+  private async handlePanelResult(result: GatewaySetupPanelResult | undefined): Promise<void> {
+    if (!result) {
+      this.done(undefined);
+      return;
+    }
+
+    this.busy = true;
+    try {
+      if (result.gatewayAction === "save-enable") {
+        this.output = await enableGatewayOperation(this.pi, this.ctx, this.scope, false);
+      } else if (result.gatewayAction === "disable") {
+        this.output = await disableGatewayOperation(this.pi, this.ctx, this.scope);
+      } else {
+        this.output = await saveGatewaySetupOperation(this.pi, this.ctx, this.scope);
+      }
+    } catch (error) {
+      this.output = {
+        summary: "SF LLM Gateway setup failed.",
+        details: error instanceof Error ? error.message : String(error),
+        level: "error",
+      };
+    } finally {
+      this.busy = false;
+    }
+  }
 }
 
 async function handleCommand(
@@ -988,16 +1101,16 @@ function pad(value: string, width: number): string {
 }
 
 /**
- * `/sf-llm-gateway-internal tokens <modelId> [prompt]` — count tokens for a
+ * `/sf-llm-gateway tokens <modelId> [prompt]` — count tokens for a
  * prompt on a specific model and show the gateway’s USD cost estimate. The
  * gateway tokenizer + pricing are used server-side so callers avoid shipping
  * a local tokenizer that drifts from upstream.
  *
  * When no prompt is provided we use a short canned probe so users get a sane
- * sanity check by typing just `/sf-llm-gateway-internal tokens gpt-5`.
+ * sanity check by typing just `/sf-llm-gateway tokens gpt-5`.
  */
 /**
- * `/sf-llm-gateway-internal onboard` — one-shot onboarding chain.
+ * `/sf-llm-gateway onboard` — one-shot onboarding chain.
  *
  * Chains: Claude Code import → register provider → gateway doctor → set
  * default model. Stops short on errors and surfaces the next action
@@ -1180,8 +1293,8 @@ async function handleFixCaBundleCommand(
           ...summaryLines,
           "No valid PEM bundle was found at the well-known paths and no caBundleSource",
           "is configured. Either:",
-          "  - save your bundle's absolute path into sfPi.gateway.caBundleCandidates and rerun, or",
-          "  - set sfPi.gateway.caBundleSource (or SF_LLM_GATEWAY_INTERNAL_CA_BUNDLE_SOURCE) to a",
+          "  - save your bundle's absolute path into saved caBundleCandidates and rerun, or",
+          "  - set saved caBundleSource (or SF_LLM_GATEWAY_INTERNAL_CA_BUNDLE_SOURCE) to a",
           "    download URL the agent can fetch the PEM from, then rerun.",
           "",
           "Public sf-pi ships no default download URL on purpose: the bundle source is",
@@ -1574,7 +1687,7 @@ async function handleTokensCommand(
 /**
  * Render the gateway's view of a request for a given model.
  *
- * Usage: `/sf-llm-gateway-internal debug <modelId> [reasoning=<level>] [tool] [adaptive]`
+ * Usage: `/sf-llm-gateway debug <modelId> [reasoning=<level>] [tool] [adaptive]`
  *
  * The gateway's /utils/transform_request endpoint echoes the upstream URL,
  * headers, and body LiteLLM would send. That makes this the fastest way to
@@ -1940,27 +2053,41 @@ async function runSetupWizard(
       return;
     }
 
-    const config = getGatewayConfig(ctx.cwd);
-    await discoverAndRegister(pi, getBetaOverrides(), getBetaExtras(), ctx.cwd);
-    await updateFooterStatus(ctx, false);
-
-    const report = [
-      `Saved ${scope} gateway fallback settings.`,
-      `- Base URL: ${describeConfigValue(config.baseUrl, config.baseUrlSource)}`,
-      `- API key: ${describeApiKey(config.apiKey, config.apiKeySource)}`,
-      `- Scoped model mode: ${config.exclusiveScope ? "exclusive" : "additive"}`,
-      `- Effective enabled: ${config.enabled ? "yes" : "no"}`,
-      `- Save file: ${scope === "project" ? projectGatewayConfigPath(ctx.cwd) : globalGatewayConfigPath()}`,
-    ].join("\n");
-
-    await emitCommandOutput(pi, ctx, "SF LLM Gateway Internal setup saved.", report, "info");
+    await emitGatewayCommandOutput(pi, ctx, await saveGatewaySetupOperation(pi, ctx, scope));
     return;
   }
+}
+
+async function saveGatewaySetupOperation(
+  pi: ExtensionAPI,
+  ctx: ExtensionCommandContext,
+  scope: "global" | "project",
+): Promise<GatewayCommandOutput> {
+  const config = getGatewayConfig(ctx.cwd);
+  await discoverAndRegister(pi, getBetaOverrides(), getBetaExtras(), ctx.cwd);
+  await updateFooterStatus(ctx, false);
+
+  const report = [
+    `Saved ${scope} gateway fallback settings.`,
+    `- Base URL: ${describeConfigValue(config.baseUrl, config.baseUrlSource)}`,
+    `- API key: ${describeApiKey(config.apiKey, config.apiKeySource)}`,
+    `- Scoped model mode: ${config.exclusiveScope ? "exclusive" : "additive"}`,
+    `- Effective enabled: ${config.enabled ? "yes" : "no"}`,
+    `- Save file: ${scope === "project" ? projectGatewayConfigPath(ctx.cwd) : globalGatewayConfigPath()}`,
+  ].join("\n");
+
+  return { summary: "SF LLM Gateway Internal setup saved.", details: report, level: "info" };
 }
 
 // -------------------------------------------------------------------------------------------------
 // Enable / disable gateway
 // -------------------------------------------------------------------------------------------------
+
+type GatewayCommandOutput = {
+  summary: string;
+  details: string;
+  level: "info" | "warning" | "error";
+};
 
 async function enableGateway(
   pi: ExtensionAPI,
@@ -1968,6 +2095,17 @@ async function enableGateway(
   scope: "global" | "project",
   promptForMissingCredentials: boolean,
 ): Promise<void> {
+  const output = await enableGatewayOperation(pi, ctx, scope, promptForMissingCredentials);
+  if (!output) return;
+  await emitGatewayCommandOutput(pi, ctx, output);
+}
+
+async function enableGatewayOperation(
+  pi: ExtensionAPI,
+  ctx: ExtensionCommandContext,
+  scope: "global" | "project",
+  promptForMissingCredentials: boolean,
+): Promise<GatewayCommandOutput | undefined> {
   const settingsPath = scope === "project" ? projectSettingsPath(ctx.cwd) : globalSettingsPath();
   const configPath =
     scope === "project" ? projectGatewayConfigPath(ctx.cwd) : globalGatewayConfigPath();
@@ -1977,7 +2115,7 @@ async function enableGateway(
   if (promptForMissingCredentials) {
     const configured = await ensureGatewayCredentialsConfigured(pi, ctx, scope);
     if (!configured) {
-      return;
+      return undefined;
     }
   }
 
@@ -2003,18 +2141,15 @@ async function enableGateway(
 
   const config = getGatewayConfig(ctx.cwd);
   if (!config.baseUrl || !config.apiKey) {
-    await emitCommandOutput(
-      pi,
-      ctx,
-      "SF LLM Gateway Internal is still missing configuration.",
-      [
+    return {
+      summary: "SF LLM Gateway Internal is still missing configuration.",
+      details: [
         `Base URL: ${describeConfigValue(config.baseUrl, config.baseUrlSource)}`,
         `API key: ${describeApiKey(config.apiKey, config.apiKeySource)}`,
         `Use /${FRIENDLY_COMMAND_NAME} setup ${scope} or set ${BASE_URL_ENV} / ${API_KEY_ENV}.`,
       ].join("\n"),
-      "warning",
-    );
-    return;
+      level: "warning",
+    };
   }
 
   const state = await discoverAndRegister(pi, getBetaOverrides(), getBetaExtras(), ctx.cwd);
@@ -2054,13 +2189,11 @@ async function enableGateway(
     `- Discovery source: ${state.source}${state.error ? ` (${state.error})` : ""}`,
   ].join("\n");
 
-  await emitCommandOutput(
-    pi,
-    ctx,
-    "SF LLM Gateway Internal enabled.",
-    report,
-    state.error ? "warning" : "info",
-  );
+  return {
+    summary: "SF LLM Gateway Internal enabled.",
+    details: report,
+    level: state.error ? "warning" : "info",
+  };
 }
 
 async function disableGateway(
@@ -2068,6 +2201,14 @@ async function disableGateway(
   ctx: ExtensionCommandContext,
   scope: "global" | "project",
 ): Promise<void> {
+  await emitGatewayCommandOutput(pi, ctx, await disableGatewayOperation(pi, ctx, scope));
+}
+
+async function disableGatewayOperation(
+  pi: ExtensionAPI,
+  ctx: ExtensionCommandContext,
+  scope: "global" | "project",
+): Promise<GatewayCommandOutput> {
   const settingsPath = scope === "project" ? projectSettingsPath(ctx.cwd) : globalSettingsPath();
   const configPath =
     scope === "project" ? projectGatewayConfigPath(ctx.cwd) : globalGatewayConfigPath();
@@ -2114,7 +2255,11 @@ async function disableGateway(
     `- Saved credentials remain in ${scope === "project" ? projectGatewayConfigPath(ctx.cwd) : globalGatewayConfigPath()}`,
   ].join("\n");
 
-  await emitCommandOutput(pi, ctx, "SF LLM Gateway Internal disabled.", report, "info");
+  return {
+    summary: "SF LLM Gateway Internal disabled.",
+    details: report,
+    level: "info",
+  };
 }
 
 async function ensureGatewayCredentialsConfigured(
@@ -2287,6 +2432,14 @@ async function promptAndSaveApiKey(
 // In headless mode we still surface the summary via notify and push the
 // detailed report into the transcript via sendMessage so it shows up in
 // session logs / non-TUI transports.
+async function emitGatewayCommandOutput(
+  pi: ExtensionAPI,
+  ctx: ExtensionCommandContext,
+  output: GatewayCommandOutput,
+): Promise<void> {
+  await emitCommandOutput(pi, ctx, output.summary, output.details, output.level);
+}
+
 async function emitCommandOutput(
   pi: ExtensionAPI,
   ctx: ExtensionCommandContext,

@@ -2,7 +2,7 @@
 /**
  * Anthropic beta header controls for the gateway.
  *
- * State layer for `/sf-llm-gateway-internal beta …`. Owns:
+ * State layer for `/sf-llm-gateway beta …`. Owns:
  *   - `defaultBetas` — runtime override for the model-default Anthropic betas
  *     (null = follow model defaults, non-null Set = explicit allowlist).
  *   - `extraBetas`   — extra betas injected on top of model defaults.
@@ -88,7 +88,7 @@ function getCustomInjectedBetas(): string[] {
 }
 
 /**
- * Handle `/sf-llm-gateway-internal beta [args…]`.
+ * Handle `/sf-llm-gateway beta [args…]`.
  *
  * `emitOutput` is passed in so we reuse the shared notify/sendMessage
  * helper from the entry point without creating a circular import.

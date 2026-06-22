@@ -93,7 +93,7 @@ export const GATEWAY_COMMAND_SURFACE: readonly GatewayCommandSurfaceItem[] = [
     label: "Fix corporate CA (macOS)",
     usage: "fix-ca-bundle",
     description:
-      "Wire NODE_EXTRA_CA_CERTS into both the LaunchAgent (Dock/Spotlight launches) and ~/.zshenv (Terminal launches). Adopts an existing PEM from saved candidates, shell exports, or bounded Claude Code / DevBar / AI Suite locations; otherwise downloads from sfPi.gateway.caBundleSource (or the matching env var) when set. Each disk-mutating step requires explicit confirmation.",
+      "Wire NODE_EXTRA_CA_CERTS into both the LaunchAgent (Dock/Spotlight launches) and ~/.zshenv (Terminal launches). Adopts an existing PEM from saved candidates, shell exports, or bounded Claude Code / DevBar / AI Suite locations; otherwise downloads from saved caBundleSource (or the matching env var) when set. Each disk-mutating step requires explicit confirmation.",
     section: "Connect",
     aliases: ["fix-ca", "ca-bundle"],
   },

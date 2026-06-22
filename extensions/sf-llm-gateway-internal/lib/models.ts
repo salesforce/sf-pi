@@ -42,7 +42,7 @@ import {
 // Anthropic beta headers
 // -------------------------------------------------------------------------------------------------
 //
-// These are still exposed so the `/sf-llm-gateway-internal beta` command and
+// These are still exposed so the `/sf-llm-gateway beta` command and
 // the status report keep working. The values are forwarded as an
 // `anthropic-beta` request header on Claude models. Pi-ai passes custom
 // model.headers through to the Anthropic SDK, so this keeps working under the

@@ -42,7 +42,7 @@ You can also manage this extension from the SF Pi home base:
 ## What you get
 
 - A pi provider registration for Salesforce LLM Gateway.
-- Model discovery and command-panel diagnostics.
+- Model discovery and Manager-surfaced diagnostics.
 - Footer status for model and usage context.
 
 ## Safety notes

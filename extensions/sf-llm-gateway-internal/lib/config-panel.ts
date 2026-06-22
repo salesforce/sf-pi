@@ -2,10 +2,10 @@
 /**
  * Extracted config panel for the SF LLM Gateway provider.
  *
- * This is the inner content of the gateway setup overlay, refactored to be
+ * This is the inner content of the gateway setup UI, refactored to be
  * hostable by either:
- *   1. The standalone overlay (`/sf-llm-gateway-internal setup`)
- *   2. The sf-pi Extension Manager drill-down
+ *   1. The standalone slash-command overlay (`/sf-llm-gateway setup`)
+ *   2. The sf-pi Extension Manager settings/setup drill-down
  *
  * The panel does NOT draw its own border box — the host is responsible for
  * framing. It renders content rows and handles keyboard input when focused.
@@ -55,7 +55,12 @@ type GatewayConfigPanelResult = ConfigPanelResult & {
 type ExclusiveScopeMode = "inherit" | "exclusive" | "additive";
 
 type ConfigPanelOptions = {
+  /** Show token-page / Claude Code import buttons. Used by the standalone setup overlay. */
   externalActions?: boolean;
+  /** Show enable/disable actions. These require entry-point orchestration after the panel closes. */
+  lifecycleActions?: boolean;
+  /** Close after save and return a gatewayAction to the host. Manager-hosted settings save in place. */
+  closeOnSave?: boolean;
 };
 
 // -------------------------------------------------------------------------------------------------
@@ -73,15 +78,45 @@ function maskApiKeyForDisplay(value: string): string {
   return `${value.slice(0, 4)}…${value.slice(-4)}`;
 }
 
+const ESC = String.fromCharCode(27);
+const CSI = `${ESC}[`;
+const SS3 = `${ESC}O`;
+
 export function normalizePastedTextFieldInput(data: string): string {
   if (isBareCsiSequence(data)) return "";
-  return data
-    .replace(/\x1b\[200~/g, "")
-    .replace(/\x1b\[201~/g, "")
-    .replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, "")
-    .replace(/\x1bO[A-D]/g, "")
-    .replace(/[\r\n\t]/g, "")
-    .replace(/[\x00-\x1f\x7f]/g, "");
+
+  let output = "";
+  for (let i = 0; i < data.length; i++) {
+    const nextIndex = consumeTerminalControl(data, i);
+    if (nextIndex !== i) {
+      i = nextIndex - 1;
+      continue;
+    }
+
+    const code = data.charCodeAt(i);
+    if (code < 32 || code === 127) continue;
+    output += data[i] ?? "";
+  }
+  return output;
+}
+
+function consumeTerminalControl(data: string, index: number): number {
+  if (data.startsWith(CSI, index)) {
+    return consumeCsi(data, index);
+  }
+  if (data.startsWith(SS3, index) && isArrowFinal(data[index + 2])) {
+    return index + 3;
+  }
+  return index;
+}
+
+function consumeCsi(data: string, index: number): number {
+  for (let i = index + CSI.length; i < data.length; i++) {
+    const code = data.charCodeAt(i);
+    // CSI final bytes are in the ASCII @ through ~ range.
+    if (code >= 64 && code <= 126) return i + 1;
+  }
+  return data.length;
 }
 
 function isBareCsiSequence(data: string): boolean {
@@ -89,19 +124,29 @@ function isBareCsiSequence(data: string): boolean {
 }
 
 function isUpKey(data: string): boolean {
-  return matchesKey(data, "up") || data === "\x1bOA" || /^\x1b\[(?:1;\d+)?A$/.test(data);
+  return matchesKey(data, "up") || data === `${SS3}A` || isCsiArrow(data, "A");
 }
 
 function isDownKey(data: string): boolean {
-  return matchesKey(data, "down") || data === "\x1bOB" || /^\x1b\[(?:1;\d+)?B$/.test(data);
+  return matchesKey(data, "down") || data === `${SS3}B` || isCsiArrow(data, "B");
 }
 
 function isLeftKey(data: string): boolean {
-  return matchesKey(data, "left") || data === "\x1bOD" || /^\x1b\[(?:1;\d+)?D$/.test(data);
+  return matchesKey(data, "left") || data === `${SS3}D` || isCsiArrow(data, "D");
 }
 
 function isRightKey(data: string): boolean {
-  return matchesKey(data, "right") || data === "\x1bOC" || /^\x1b\[(?:1;\d+)?C$/.test(data);
+  return matchesKey(data, "right") || data === `${SS3}C` || isCsiArrow(data, "C");
+}
+
+function isCsiArrow(data: string, final: "A" | "B" | "C" | "D"): boolean {
+  if (!data.startsWith(CSI) || !data.endsWith(final)) return false;
+  const params = data.slice(CSI.length, -1);
+  return params === "" || /^(?:\d+(?:;\d+)*)$/.test(params);
+}
+
+function isArrowFinal(value: string | undefined): boolean {
+  return value === "A" || value === "B" || value === "C" || value === "D";
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -116,9 +161,14 @@ export class GatewayConfigPanelComponent implements Focusable {
   private savedBaseUrl: string;
   private savedApiKey: string;
   private savedExclusiveScopeMode: ExclusiveScopeMode;
+  private persistedBaseUrl: string;
+  private persistedApiKey: string;
+  private persistedExclusiveScopeMode: ExclusiveScopeMode;
   private baseUrlCursor: number;
   private apiKeyCursor: number;
   private errorMessage: string | null = null;
+  private savedMessage: string | null = null;
+  private reloadRequired = false;
   private state: SetupOverlayState;
   private readonly cwd: string;
 
@@ -130,28 +180,25 @@ export class GatewayConfigPanelComponent implements Focusable {
     private readonly options: ConfigPanelOptions = {},
   ) {
     this.cwd = cwd;
-    this.focusOrder = options.externalActions
-      ? [
-          "baseUrl",
-          "apiKey",
-          "exclusiveScope",
-          "open-token",
-          "import-claude",
-          "save-enable",
-          "save",
-          "disable",
-          "cancel",
-        ]
-      : ["baseUrl", "apiKey", "exclusiveScope", "save-enable", "save", "disable", "cancel"];
+    this.focusOrder = [
+      "baseUrl",
+      "apiKey",
+      "exclusiveScope",
+      ...(options.externalActions ? (["open-token", "import-claude"] as const) : []),
+      ...(options.lifecycleActions ? (["save-enable"] as const) : []),
+      "save",
+      ...(options.lifecycleActions ? (["disable"] as const) : []),
+      "cancel",
+    ];
     this.state = getSetupOverlayState(cwd, scope);
     this.savedBaseUrl = this.state.scopeSaved.baseUrl ?? "";
     this.savedApiKey = this.state.scopeSaved.apiKey ?? "";
-    this.savedExclusiveScopeMode =
-      this.state.scopeSaved.exclusiveScope === true
-        ? "exclusive"
-        : this.state.scopeSaved.exclusiveScope === false
-          ? "additive"
-          : "inherit";
+    this.savedExclusiveScopeMode = this.modeFromSavedExclusiveScope(
+      this.state.scopeSaved.exclusiveScope,
+    );
+    this.persistedBaseUrl = this.savedBaseUrl;
+    this.persistedApiKey = this.savedApiKey;
+    this.persistedExclusiveScopeMode = this.savedExclusiveScopeMode;
     this.baseUrlCursor = this.savedBaseUrl.length;
     this.apiKeyCursor = this.savedApiKey.length;
   }
@@ -159,7 +206,7 @@ export class GatewayConfigPanelComponent implements Focusable {
   handleInput(data: string): void {
     // Escape goes back (host handles this for drill-down; standalone handles close)
     if (matchesKey(data, "escape")) {
-      this.done(undefined);
+      this.closePanel();
       return;
     }
 
@@ -217,9 +264,9 @@ export class GatewayConfigPanelComponent implements Focusable {
     const lines: string[] = [];
     const theme = this.theme;
     const effective = this.resolveEffectivePreview();
-    const helpText = this.options.externalActions
+    const helpText = this.options.closeOnSave
       ? "Tab/↑↓ move · type/paste to edit · Enter action · token/import buttons return here"
-      : "Tab/↑↓ move · type to edit · Enter next/apply · Esc back";
+      : "Tab/↑↓ move · type/paste to edit · Enter save · Esc back/discard";
     const saveTarget =
       this.scope === "project" ? projectGatewayConfigPath(this.cwd) : globalGatewayConfigPath();
 
@@ -233,7 +280,12 @@ export class GatewayConfigPanelComponent implements Focusable {
     );
     lines.push(
       pad(
-        ` ${theme.fg("dim", `Enable sets ${PROVIDER_NAME}/${DEFAULT_MODEL_ID} with thinking ${DEFAULT_THINKING_LEVEL}.`)}`,
+        ` ${theme.fg(
+          "dim",
+          this.options.lifecycleActions
+            ? `Enable sets ${PROVIDER_NAME}/${DEFAULT_MODEL_ID} with thinking ${DEFAULT_THINKING_LEVEL}.`
+            : `Use the detail-page Enable action to set ${PROVIDER_NAME}/${DEFAULT_MODEL_ID} with thinking ${DEFAULT_THINKING_LEVEL}.`,
+        )}`,
       ),
     );
     lines.push(
@@ -318,13 +370,23 @@ export class GatewayConfigPanelComponent implements Focusable {
     if (this.savedExclusiveScopeMode === "exclusive") {
       lines.push(
         pad(
-          `   ${theme.fg("dim", "Save + enable writes gateway-only scoped models and restores the previous scope on disable.")}`,
+          `   ${theme.fg(
+            "dim",
+            this.options.lifecycleActions
+              ? "Save + enable writes gateway-only scoped models and restores the previous scope on disable."
+              : "The detail-page Enable action will write gateway-only scoped models and restore the previous scope on disable.",
+          )}`,
         ),
       );
     } else if (this.savedExclusiveScopeMode === "additive") {
       lines.push(
         pad(
-          `   ${theme.fg("dim", `Save + enable prepends ${PROVIDER_NAME}/* while preserving other scoped models.`)}`,
+          `   ${theme.fg(
+            "dim",
+            this.options.lifecycleActions
+              ? `Save + enable prepends ${PROVIDER_NAME}/* while preserving other scoped models.`
+              : `The detail-page Enable action will prepend ${PROVIDER_NAME}/* while preserving other scoped models.`,
+          )}`,
         ),
       );
     } else if (this.scope === "project" && this.state.lowerSavedExclusiveScope !== undefined) {
@@ -355,23 +417,38 @@ export class GatewayConfigPanelComponent implements Focusable {
         ),
       );
     }
-    lines.push(
-      pad(
-        `   ${this.renderButton("save-enable", "Save + enable default model")}  ${this.renderButton("save", "Save only")}`,
-      ),
-    );
-    lines.push(
-      pad(
-        `   ${this.renderButton("disable", "Disable")}  ${this.renderButton("cancel", "Cancel")}`,
-      ),
-    );
+    if (this.options.lifecycleActions) {
+      lines.push(
+        pad(
+          `   ${this.renderButton("save-enable", "Save + enable default model")}  ${this.renderButton("save", "Save only")}`,
+        ),
+      );
+      lines.push(
+        pad(
+          `   ${this.renderButton("disable", "Disable")}  ${this.renderButton("cancel", "Cancel")}`,
+        ),
+      );
+    } else {
+      lines.push(
+        pad(`   ${this.renderButton("save", "Save")}  ${this.renderButton("cancel", "Cancel")}`),
+      );
+    }
     lines.push(pad(""));
 
     // Status / error line
     if (this.errorMessage) {
       lines.push(pad(` ${theme.fg("error", `⚠ ${this.errorMessage}`)}`));
+    } else if (this.savedMessage) {
+      lines.push(pad(` ${theme.fg("success", this.savedMessage)}`));
     } else {
       lines.push(pad(` ${theme.fg("dim", helpText)}`));
+    }
+    if (this.reloadRequired) {
+      lines.push(
+        pad(
+          ` ${theme.fg("warning", "Reload required — Esc back, then close the Manager to apply.")}`,
+        ),
+      );
     }
     lines.push(pad(` ${theme.fg("dim", `Save target: ${saveTarget}`)}`));
 
@@ -601,7 +678,7 @@ export class GatewayConfigPanelComponent implements Focusable {
       return;
     }
     if (focus === "cancel") {
-      this.done(undefined);
+      this.closePanel();
       return;
     }
 
@@ -677,11 +754,28 @@ export class GatewayConfigPanelComponent implements Focusable {
       saved.enabled = false;
     }
 
-    writeGatewaySavedConfig(configPath, saved);
-
-    // Signal reload needed for enable/disable actions
+    const changed = this.isDirty(normalizedSavedBaseUrl);
     const needsReload = focus === "save-enable" || focus === "disable";
-    this.done({ needsReload, gatewayAction: focus } as GatewayConfigPanelResult);
+
+    if (!changed && !needsReload && !this.options.closeOnSave) {
+      this.savedMessage = "No changes to save.";
+      this.errorMessage = null;
+      return;
+    }
+
+    writeGatewaySavedConfig(configPath, saved);
+    this.markSaved(normalizedSavedBaseUrl, trimmedApiKey, savedExclusiveScope);
+
+    // Signal reload needed for enable/disable actions. Manager-hosted settings
+    // save in place and report the reload requirement when the user backs out.
+    if (this.options.closeOnSave) {
+      this.done({ needsReload, gatewayAction: focus } as GatewayConfigPanelResult);
+      return;
+    }
+
+    this.reloadRequired = true;
+    this.savedMessage = "Saved gateway settings.";
+    this.errorMessage = null;
   }
 
   private normalizeSavedBaseUrl(): string | undefined {
@@ -695,6 +789,42 @@ export class GatewayConfigPanelComponent implements Focusable {
       return undefined;
     }
     return this.savedExclusiveScopeMode === "exclusive";
+  }
+
+  private closePanel(): void {
+    this.done(this.reloadRequired ? ({ needsReload: true } as ConfigPanelResult) : undefined);
+  }
+
+  private isDirty(normalizedSavedBaseUrl: string | undefined): boolean {
+    const draftBaseUrl = normalizedSavedBaseUrl ?? "";
+    const draftApiKey = this.savedApiKey.trim();
+    return (
+      draftBaseUrl !== (normalizeBaseUrl(this.persistedBaseUrl) ?? "") ||
+      draftApiKey !== this.persistedApiKey.trim() ||
+      this.savedExclusiveScopeMode !== this.persistedExclusiveScopeMode
+    );
+  }
+
+  private markSaved(
+    normalizedSavedBaseUrl: string | undefined,
+    trimmedApiKey: string | undefined,
+    exclusiveScope: boolean | undefined,
+  ): void {
+    this.savedBaseUrl = normalizedSavedBaseUrl ?? "";
+    this.savedApiKey = trimmedApiKey ?? "";
+    this.savedExclusiveScopeMode = this.modeFromSavedExclusiveScope(exclusiveScope);
+    this.persistedBaseUrl = this.savedBaseUrl;
+    this.persistedApiKey = this.savedApiKey;
+    this.persistedExclusiveScopeMode = this.savedExclusiveScopeMode;
+    this.baseUrlCursor = Math.min(this.baseUrlCursor, this.savedBaseUrl.length);
+    this.apiKeyCursor = Math.min(this.apiKeyCursor, this.savedApiKey.length);
+    this.state = getSetupOverlayState(this.cwd, this.scope);
+  }
+
+  private modeFromSavedExclusiveScope(value: boolean | undefined): ExclusiveScopeMode {
+    if (value === true) return "exclusive";
+    if (value === false) return "additive";
+    return "inherit";
   }
 
   private resolveEffectivePreview(

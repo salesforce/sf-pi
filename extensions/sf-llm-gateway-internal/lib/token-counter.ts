@@ -9,7 +9,7 @@
  * Neither invokes a real completion, so probes are free. Both accept the
  * same `{ model, messages | prompt }` shape and route internally based on
  * which field is present. This module exposes them as small pure async
- * helpers that the `/sf-llm-gateway-internal tokens` command composes into
+ * helpers that the `/sf-llm-gateway tokens` command composes into
  * a single report.
  *
  * Pure functions, no runtime state. All failures are encoded in the
@@ -194,7 +194,7 @@ export async function estimateSpend(
 
 /**
  * Render a combined token-count + spend-estimate report for the
- * `/sf-llm-gateway-internal tokens` command. Kept as a pure formatter so
+ * `/sf-llm-gateway tokens` command. Kept as a pure formatter so
  * the command handler can stay thin and tests can assert exact text.
  */
 export function formatTokenReport(tokens: TokenCountResult, spend: SpendEstimateResult): string {

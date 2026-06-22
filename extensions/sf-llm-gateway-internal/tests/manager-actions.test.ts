@@ -32,10 +32,12 @@ describe("gateway Manager actions", () => {
     }
   });
 
-  it("closes the Manager before launching the setup overlay", () => {
+  it("hosts setup as an in-Manager action page", () => {
     const actions = buildGatewayManagerActions({} as never);
 
-    expect(actions.find((action) => action.id === "setup")?.closeBeforeRun).toBe(true);
+    const setup = actions.find((action) => action.id === "setup");
+    expect(setup?.closeBeforeRun).toBeUndefined();
+    expect(typeof setup?.createPanel).toBe("function");
     expect(actions.find((action) => action.id === "doctor")?.closeBeforeRun).toBeUndefined();
   });
 

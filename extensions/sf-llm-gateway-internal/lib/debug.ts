@@ -10,7 +10,7 @@
  * being dropped, and so on.
  *
  * This module exposes that as a pure async fetcher plus a small formatter
- * so the `/sf-llm-gateway-internal debug <model>` command can render a
+ * so the `/sf-llm-gateway debug <model>` command can render a
  * readable report in the TUI.
  *
  * Pure functions, no runtime state. All failures are encoded in the returned
@@ -75,7 +75,7 @@ export function buildProbeBody(probe: TransformProbe): Record<string, unknown> {
     // gpt-5.5 is a hard exception: the gateway rejects reasoning_effort +
     // function tools on /v1/chat/completions for this model, and the
     // extension transport strips the field for every gpt-5.5 request. The
-    // probe mirrors that behavior so `/sf-llm-gateway-internal debug
+    // probe mirrors that behavior so `/sf-llm-gateway debug
     // gpt-5.5 reasoning=xhigh tool` shows the payload the extension would
     // actually send (without reasoning_effort) instead of a shape the
     // gateway would reject.

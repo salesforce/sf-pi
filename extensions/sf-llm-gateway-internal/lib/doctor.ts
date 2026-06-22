@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/** Read-only gateway preflight diagnostics for `/sf-llm-gateway-internal doctor`. */
+/** Read-only gateway preflight diagnostics for `/sf-llm-gateway doctor`. */
 import type { ExtensionDoctorReport } from "../../../lib/common/doctor/registry.ts";
 import {
   API_KEY_ENV,
@@ -203,7 +203,7 @@ export async function fetchGatewayDoctorReport(cwd: string): Promise<GatewayDoct
 
   const recommendations: string[] = [];
   if (!config.baseUrl) {
-    recommendations.push(`Run /sf-llm-gateway-internal setup and enter the gateway base URL.`);
+    recommendations.push(`Run /sf-llm-gateway setup and enter the gateway base URL.`);
   }
   if (!config.apiKey) {
     recommendations.push(
@@ -294,13 +294,13 @@ function buildDoctorKeySourceRecommendations(cwd: string): string[] {
 
   if (savedKey && envKey && savedKey !== envKey) {
     return [
-      `${API_KEY_ENV} is set but ignored because a saved key wins. If the env key is newer, run /login or /sf-llm-gateway-internal setup to save it; otherwise remove the stale env var from your shell or Keychain setup.`,
+      `${API_KEY_ENV} is set but ignored because a saved key wins. If the env key is newer, run /login or /sf-llm-gateway setup to save it; otherwise remove the stale env var from your shell or Keychain setup.`,
     ];
   }
 
   if (config.apiKeySource === "env") {
     return [
-      `Using ${API_KEY_ENV} as an automation fallback. For interactive use, run /login or /sf-llm-gateway-internal setup so pi keeps using the intended key across shells.`,
+      `Using ${API_KEY_ENV} as an automation fallback. For interactive use, run /login or /sf-llm-gateway setup so pi keeps using the intended key across shells.`,
     ];
   }
 
@@ -428,7 +428,7 @@ export function formatGatewayDoctorReport(report: GatewayDoctorReport): string {
 
 /**
  * Adapter for the shared `/sf-pi doctor` aggregator. Returns the same
- * underlying probe as the standalone `/sf-llm-gateway-internal doctor`
+ * underlying probe as the standalone `/sf-llm-gateway doctor`
  * view, shaped into per-check rows so the manager can render them next
  * to other extensions' diagnostics.
  */
@@ -441,7 +441,7 @@ export async function runExtensionDoctor(cwd: string): Promise<ExtensionDoctorRe
       id: "gateway.disabled",
       severity: "info",
       title: "Gateway is disabled",
-      detail: "Saved config has enabled=false; run /sf-llm-gateway-internal setup to turn it on.",
+      detail: "Saved config has enabled=false; run /sf-llm-gateway setup to turn it on.",
     });
   }
 
@@ -450,9 +450,7 @@ export async function runExtensionDoctor(cwd: string): Promise<ExtensionDoctorRe
     severity: report.baseUrl ? "ok" : "warn",
     title: report.baseUrl ? `Base URL configured (${report.baseUrl})` : "Base URL not configured",
     detail: `source: ${report.baseUrlSource}`,
-    fix: report.baseUrl
-      ? undefined
-      : "Run /sf-llm-gateway-internal setup and enter the gateway base URL.",
+    fix: report.baseUrl ? undefined : "Run /sf-llm-gateway setup and enter the gateway base URL.",
   });
 
   checks.push({
