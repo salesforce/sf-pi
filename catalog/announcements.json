@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.196.6-2026-06-22",
-  "latestVersion": "0.196.6",
+  "revision": "release-0.196.7-2026-06-22",
+  "latestVersion": "0.196.7",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.196.6",
+      "id": "release-0.196.7",
       "kind": "update",
-      "title": "sf-pi v0.196.6 — sf-agentscript: bound eval identity and batch timeouts",
+      "title": "sf-pi v0.196.7 — sf-agentscript: bound lifecycle deploy operations",
       "publishedAt": "2026-06-22T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.196.6",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.196.7",
       "severity": "info",
-      "body": "sf-agentscript: bound eval identity and batch timeouts"
+      "body": "sf-agentscript: bound lifecycle deploy operations"
     },
     {
       "id": "pi-0.73-required",
