@@ -26,7 +26,7 @@ describe("detectPiReleaseStatus", () => {
 
     expect(status.freshness).toBe("update-available");
     expect(status.latestVersion).toBe("999.0.0");
-    expect(status.updateCommand).toBe("pi update --self");
+    expect(status.updateCommand).toBe("pi update --self --force");
   });
 
   it("respects Pi offline/version-check flags", async () => {

@@ -66,8 +66,8 @@ describe("pi version floor", () => {
       peerDependencies?: Record<string, string>;
     };
 
-    expect(MIN_PI_VERSION).toBe("0.79.9");
-    expect(pkg.peerDependencies?.["@earendil-works/pi-coding-agent"]).toBe(">=0.79.9");
+    expect(MIN_PI_VERSION).toBe("0.79.10");
+    expect(pkg.peerDependencies?.["@earendil-works/pi-coding-agent"]).toBe(">=0.79.10");
     expect(pkg.peerDependencies?.["@earendil-works/pi-ai"]).toBe("*");
     expect(pkg.peerDependencies?.["@earendil-works/pi-tui"]).toBe("*");
   });
@@ -101,7 +101,7 @@ describe("requirePiVersion", () => {
     expect(warn).toHaveBeenCalledTimes(1);
     expect(warn.mock.calls[0][0]).toMatch(/sf-pi-compat-once/);
     expect(warn.mock.calls[0][0]).toMatch(/9999\.0\.0/);
-    expect(warn.mock.calls[0][0]).toMatch(/pi update --self/);
+    expect(warn.mock.calls[0][0]).toMatch(/pi update --self --force/);
   });
 
   it("older Pi degrades by skipping the extension instead of throwing", () => {
@@ -111,6 +111,6 @@ describe("requirePiVersion", () => {
 
     expect(ok).toBe(false);
     expect(warn.mock.calls[0][0]).toContain('Skipping "sf-old-pi-skip"');
-    expect(warn.mock.calls[0][0]).toContain("Run `pi update --self`");
+    expect(warn.mock.calls[0][0]).toContain("Run `pi update --self --force`");
   });
 });

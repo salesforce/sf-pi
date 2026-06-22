@@ -130,10 +130,10 @@ macOS, Linux, and WSL are the primary targets. Native Windows works on
 x64 and ARM64 once the `sf` CLI is installed, but WSL is recommended for
 parity with Linux/macOS shell tooling. The minimum pi version tracks the
 `peerDependencies` range in [`package.json`](./package.json) (currently
-`>=0.79.9`). Older pi runtimes are not supported; the shims in
+`>=0.79.10`). Older pi runtimes are not supported; the shims in
 [`lib/common/pi-compat.ts`](./lib/common/pi-compat.ts) fail gracefully with
-a one-line "run `pi update`" warning instead of letting extensions crash on
-missing runtime APIs.
+a one-line "run `pi update --self --force`" warning instead of letting
+extensions crash on missing runtime APIs.
 
 ## Telemetry and aggregate metrics
 
@@ -305,7 +305,7 @@ scope) by default.
 | **[`pi-interview`](https://github.com/nicobailon/pi-interview-tool)**   | Gives pi a structured `interview` tool for multi-question requirement gathering and trade-off exploration. Pairs naturally with `sf-agentscript` and other sf-pi scaffolding workflows.               |
 | **[`glimpseui`](https://github.com/hazat/glimpse)**                     | Cross-platform micro-UI for scripts and agents — native WebView windows for rich visual explainers, charts, and HTML previews without launching a full browser. Used by the `visual-explainer` skill. |
 | **[`pi-tool-display`](https://github.com/MasuRii/pi-tool-display)**     | Compact tool-call rendering, diff visualization, and output truncation. Significant quality-of-life boost for Salesforce workflows that inspect large metadata or log files.                          |
-| **[`pi-updater`](https://github.com/tonze/pi-updater)**                 | Keeps pi itself current without manual `pi update --self` calls. Low-friction way to stay on the latest runtime sf-pi targets.                                                                        |
+| **[`pi-updater`](https://github.com/tonze/pi-updater)**                 | Keeps pi itself current without manual `pi update --self --force` calls. Low-friction way to stay on the latest runtime sf-pi targets.                                                                |
 | **[`pi-subagents`](https://github.com/nicobailon/pi-subagents)**        | Delegates work to single, chained, parallel, async, and forked-context subagents. Useful for advisory review, implementation handoffs, and larger planning flows.                                     |
 | **[`pi-herdr`](https://github.com/ogulcancelik/pi-extensions)** / Herdr | Alpha workspace, tab, and pane orchestration for pi. Enables command-scoped Salesforce workflow lanes for tests, log tails, previews, evals, servers, and cleanup.                                    |
 
@@ -465,7 +465,7 @@ invocation and is picked up by all sf-pi commands without any sf-pi change.
 export PI_CODING_AGENT_SESSION_DIR="$HOME/.pi-sessions"
 ```
 
-sf-pi requires pi `>=0.79.9`, so supported installations honor the env
+sf-pi requires pi `>=0.79.10`, so supported installations honor the env
 var; older pi releases should be updated before running current sf-pi.
 
 ## Adding a New Extension
@@ -581,7 +581,7 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 **[SF Pi Manager](./extensions/sf-pi-manager/#troubleshooting)**
 
 - `/sf-pi` says "package not found in settings"
-- `pi update` completes but `pi --version` is still old
+- `pi update --self --force` completes but `pi --version` is still old
 - Disabling an extension through the manager doesn't take effect
 - `/sf-pi enable-all` still leaves some extensions disabled
 - Project-scoped changes aren't sticking

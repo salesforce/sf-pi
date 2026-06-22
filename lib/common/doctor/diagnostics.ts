@@ -81,7 +81,7 @@ export function runDoctorDiagnostics(
       severity: "error",
       title: `Pi runtime is older than ${MIN_PI_VERSION}`,
       detail: `Detected pi ${piVersion}. sf-pi targets pi ${MIN_PI_VERSION} or newer.`,
-      fix: "Update pi with `npm install -g --ignore-scripts @earendil-works/pi-coding-agent@latest` or `pi update --self`.",
+      fix: "Update pi with `pi update --self --force`. If the version still looks old, run `/sf-pi doctor runtime` for install-specific repair guidance.",
     });
   }
 
@@ -783,13 +783,31 @@ export function buildRuntimeUpdateAdvice(input: {
   const installCommand = hasReleaseAgePolicy
     ? `npm install -g --ignore-scripts @earendil-works/pi-coding-agent@latest --force ${bypassFlags}`
     : "npm install -g --ignore-scripts @earendil-works/pi-coding-agent@latest --force";
+  const needsAdvancedFallback =
+    hasReleaseAgePolicy ||
+    input.allPiPaths.length > 1 ||
+    !!(
+      input.installedPiPackageVersion &&
+      input.piVersion &&
+      input.installedPiPackageVersion !== input.piVersion
+    );
   const lines = [
-    "nvm use <node-version-if-applicable>",
-    "npm uninstall -g @earendil-works/pi-coding-agent",
-    installCommand,
+    "pi update --self --force",
     "hash -r",
     "pi --version",
+    "If pi --version still looks old, review the diagnostics above for PATH, npm, or release-age policy issues.",
   ];
+
+  if (needsAdvancedFallback) {
+    lines.push(
+      "Advanced fallback if the Pi-native update still fails:",
+      "nvm use <node-version-if-applicable>",
+      "npm uninstall -g @earendil-works/pi-coding-agent",
+      installCommand,
+      "hash -r",
+      "pi --version",
+    );
+  }
 
   if (hasReleaseAgePolicy) {
     const policyParts = [

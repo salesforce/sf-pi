@@ -290,20 +290,10 @@ export default function sfSkills(pi: ExtensionAPI) {
     refreshHud(ctx);
   }
 
-  pi.on("session_start", async (event, ctx) => {
+  pi.on("session_start", async (_event, ctx) => {
     dismissOverlay();
     hudState = EMPTY_STATE;
     if (ctx.mode !== "tui") {
-      return;
-    }
-    if (event.reason === "reload") {
-      // reload() emits session_start while it is still unwinding the previous
-      // runtime. Mounting a ctx.ui.custom overlay synchronously here strands
-      // the overlay promise and freezes all input (the same failure mode the
-      // command panel guards against). Defer the HUD mount until reload() has
-      // fully returned and the event loop turns.
-      const timer = setTimeout(() => rebuildAndRender(ctx), 0);
-      timer.unref?.();
       return;
     }
     rebuildAndRender(ctx);

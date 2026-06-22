@@ -2,11 +2,9 @@
 /**
  * Reload-safety guard.
  *
- * Applying funnel changes calls ctx.reload(), which re-emits session_start
- * with reason "reload" while the previous runtime is still unwinding. Mounting
- * the HUD overlay (ctx.ui.custom) synchronously there strands the overlay
- * promise and freezes all input until Ctrl+C. The HUD mount must be deferred
- * on reload, but stay synchronous on a normal startup.
+ * Pi 0.79.10 keeps reload input blocked until reload completes, so SF Skills
+ * should not need a local next-tick HUD remount workaround. The HUD can mount
+ * consistently for normal startup and reload; Pi owns the reload lifecycle.
  */
 import { describe, expect, it, vi } from "vitest";
 
@@ -56,20 +54,11 @@ describe("sf-skills reload safety", () => {
     expect(ctx.ui.custom).toHaveBeenCalledTimes(1);
   });
 
-  it("does NOT mount the HUD overlay synchronously during a reload", async () => {
-    vi.useFakeTimers();
-    try {
-      const { handlers, pi } = buildExtension();
-      (await import("../index.ts")).default(pi as never);
-      const ctx = fakeUiCtx();
-      await fire(handlers, "session_start", { reason: "reload" }, ctx);
-      // The whole point: nothing mounted while reload() is still unwinding.
-      expect(ctx.ui.custom).not.toHaveBeenCalled();
-      // It lands on the next tick, once reload() has returned.
-      vi.runAllTimers();
-      expect(ctx.ui.custom).toHaveBeenCalledTimes(1);
-    } finally {
-      vi.useRealTimers();
-    }
+  it("mounts the HUD overlay synchronously during a reload", async () => {
+    const { handlers, pi } = buildExtension();
+    (await import("../index.ts")).default(pi as never);
+    const ctx = fakeUiCtx();
+    await fire(handlers, "session_start", { reason: "reload" }, ctx);
+    expect(ctx.ui.custom).toHaveBeenCalledTimes(1);
   });
 });

@@ -27,7 +27,7 @@ import * as PiRuntime from "@earendil-works/pi-coding-agent";
  * package.json. Bump this whenever sf-pi starts depending on an API added
  * in a newer pi release.
  */
-export const MIN_PI_VERSION = "0.79.9";
+export const MIN_PI_VERSION = "0.79.10";
 
 /**
  * Cached pi-coding-agent version exported by the host Pi Runtime. Cached
@@ -112,7 +112,7 @@ export function requirePiVersion(
     console.warn(
       [
         `[sf-pi] Skipping "${extensionName}": requires pi-coding-agent >= ${minVersion}, found ${installed}.`,
-        "Run `pi update --self`. If `pi --version` still reports the old version, run `npm install -g --ignore-scripts @earendil-works/pi-coding-agent@latest --force --before=null --min-release-age=0`, then `hash -r` and `pi --version`.",
+        "Run `pi update --self --force`. If `pi --version` still reports the old version, run `/sf-pi doctor` for install-specific repair guidance.",
       ].join(" "),
     );
   }

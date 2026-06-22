@@ -372,6 +372,10 @@ _Avoid_: extension-only auto-splitting, duplicate Herdr runtime, compound tool h
 A non-mutating, phased plan returned by SF Herdr that maps a workflow intent and inferred workflow context to recommended Herdr actions, aliases, lifecycle, watch/read strategy, and cleanup rules without creating, running, or closing panes itself. Its phases are discover/reuse, create, run, observe, and cleanup.
 _Avoid_: hidden execution, compound mutation, transcript-free cleanup, fixed recipe detached from user preferences, shell command generation
 
+**Workflow-Local Plan Tracking**:
+Visible step/progress tracking embedded in a specific SF Pi workflow that already has ordered work, rather than a package-wide plan mode or second planning runtime.
+_Avoid_: global Salesforce plan mode, hidden task list, generic planner clone, replacing Pi tool selection
+
 **Herdr Workflow Signal**:
 A lightweight observation from recent tool calls, tool results, file edits, or Herdr pane commands that helps SF Herdr infer the current workflow context for planning without forcing a single session-wide mode. Signals are kept in a branch-scoped in-memory index reconstructed from session history, not in global preferences.
 _Avoid_: permanent mode switch, hidden pane mutation trigger, full transcript analytics, replacing extension-first routing, persisted global activity log
@@ -387,6 +391,10 @@ _Avoid_: changelog panel, release-note digest, SF Pi update manager
 **Pi Runtime Release Notes Surface**:
 A user-facing summary of upstream **Pi Runtime** release-note bullets, changelog highlights, or version-diff prose. This belongs to the **Pi Runtime**, not to **SF Pi** startup surfaces.
 _Avoid_: SF Pi What's New panel for Pi runtime, Salesforce workflow status, release freshness
+
+**Pi Runtime Update Happy Path**:
+The SF Pi support posture where normal user-facing Pi Runtime update guidance has one simple Pi-native path, while install-specific repair details stay behind diagnostic surfaces.
+_Avoid_: first-line npm reinstall command, scattered update recipes, SF Pi-owned updater
 
 **Policy-Visible Latest**:
 The newest release that the user's configured package-manager policy would currently allow SF Pi or the Pi Runtime to install.

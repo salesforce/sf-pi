@@ -4,7 +4,21 @@ import { describe, expect, it } from "vitest";
 import { buildRuntimeUpdateAdvice } from "../doctor/diagnostics.ts";
 
 describe("buildRuntimeUpdateAdvice", () => {
-  it("includes --min-release-age=0 when npm release-age gating is configured", () => {
+  it("leads with the Pi-native forced self-update happy path", () => {
+    const advice = buildRuntimeUpdateAdvice({
+      piVersion: "0.70.5",
+      installedPiPackageVersion: "0.70.5",
+      allPiPaths: ["/tmp/bin/pi"],
+    });
+
+    expect(advice).toContain("pi update --self --force");
+    expect(advice.join("\n")).toContain(
+      "If pi --version still looks old, review the diagnostics above",
+    );
+    expect(advice.join("\n")).not.toContain("npm install -g --ignore-scripts");
+  });
+
+  it("keeps npm release-age policy repair details behind the Pi-native happy path", () => {
     const advice = buildRuntimeUpdateAdvice({
       piVersion: "0.70.5",
       installedPiPackageVersion: "0.70.5",
@@ -14,12 +28,17 @@ describe("buildRuntimeUpdateAdvice", () => {
 
     expect(advice.join("\n")).toContain("npm release-age policy detected");
     expect(advice.join("\n")).toContain("min-release-age=1440");
+    expect(advice[0]).toContain("Detected pi 0.70.5");
+    expect(advice).toContain("pi update --self --force");
+    expect(advice.indexOf("pi update --self --force")).toBeLessThan(
+      advice.findIndex((line) => line.includes("npm install -g --ignore-scripts")),
+    );
     expect(advice).toContain(
       "npm install -g --ignore-scripts @earendil-works/pi-coding-agent@latest --force --min-release-age=0",
     );
   });
 
-  it("includes --before=null when npm before gating is configured", () => {
+  it("keeps npm before policy repair details behind the Pi-native happy path", () => {
     const advice = buildRuntimeUpdateAdvice({
       piVersion: "0.70.5",
       installedPiPackageVersion: "0.70.5",
@@ -28,21 +47,9 @@ describe("buildRuntimeUpdateAdvice", () => {
     });
 
     expect(advice.join("\n")).toContain("before=2026-05-18T00:00:00.000Z");
+    expect(advice).toContain("pi update --self --force");
     expect(advice).toContain(
       "npm install -g --ignore-scripts @earendil-works/pi-coding-agent@latest --force --before=null --min-release-age=0",
     );
-  });
-
-  it("keeps the normal install command when npm release-age gating is not configured", () => {
-    const advice = buildRuntimeUpdateAdvice({
-      piVersion: "0.70.5",
-      installedPiPackageVersion: "0.70.5",
-      allPiPaths: ["/tmp/bin/pi"],
-    });
-
-    expect(advice).toContain(
-      "npm install -g --ignore-scripts @earendil-works/pi-coding-agent@latest --force",
-    );
-    expect(advice.join("\n")).not.toContain("--min-release-age=0");
   });
 });

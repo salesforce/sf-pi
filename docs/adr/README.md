@@ -56,3 +56,4 @@ or accidentally contradicted in extension READMEs.
 - [0052: SF Guardrail Is Rule-Behavior Only](./0052-sf-guardrail-is-rule-behavior-only.md)
 - [0053: Agent Script Uses a Language Override Canary](./0053-agentscript-language-override-canary.md)
 - [0054: Pi Runtime Adoption Ledger](./0054-pi-runtime-adoption-ledger.md)
+- [0059: Pi 0.79.10 Runtime Floor](./0059-pi-07910-runtime-floor.md)

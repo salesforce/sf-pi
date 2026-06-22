@@ -120,7 +120,7 @@ export function collectInitialPiReleaseStatus(): ReleaseStatusInfo {
     installedVersion,
     freshness: "checking",
     loading: true,
-    updateCommand: "pi update --self",
+    updateCommand: "pi update --self --force",
   };
 }
 
@@ -165,7 +165,7 @@ export async function detectPiReleaseStatus(
   options: PiReleaseStatusOptions = {},
 ): Promise<ReleaseStatusInfo> {
   const installedVersion = getInstalledPiVersion();
-  const updateCommand = "pi update --self";
+  const updateCommand = "pi update --self --force";
 
   if (env.PI_OFFLINE) {
     return {

@@ -44,7 +44,7 @@ function baseData(overrides: Partial<SplashData> = {}): SplashData {
       latestVersion: "0.75.4",
       freshness: "latest",
       loading: false,
-      updateCommand: "pi update --self",
+      updateCommand: "pi update --self --force",
     },
     ...overrides,
   };
@@ -91,7 +91,7 @@ describe("release freshness splash rows", () => {
       installedVersion: "0.75.4",
       freshness: "checking",
       loading: true,
-      updateCommand: "pi update --self",
+      updateCommand: "pi update --self --force",
     };
     const rendered = await render(
       baseData({
@@ -121,7 +121,7 @@ describe("release freshness splash rows", () => {
           latestVersion: "0.75.4",
           freshness: "update-available",
           loading: false,
-          updateCommand: "pi update --self",
+          updateCommand: "pi update --self --force",
         },
       }),
     );
@@ -129,7 +129,7 @@ describe("release freshness splash rows", () => {
     expect(findStatusLine(rendered, "sf-pi")).toContain("update available");
     expect(rendered).toContain("→ pi update git:github.com/salesforce/sf-pi");
     expect(findStatusLine(rendered, "Pi")).toContain("update available");
-    expect(rendered).toContain("→ pi update --self");
+    expect(rendered).toContain("→ pi update --self --force");
   });
 
   it("shows latest allowed wording when npm cooldown filters a newer Pi release", async () => {
@@ -143,7 +143,7 @@ describe("release freshness splash rows", () => {
           cooldownActive: true,
           freshness: "latest",
           loading: false,
-          updateCommand: "pi update --self",
+          updateCommand: "pi update --self --force",
         },
       }),
     );
@@ -151,7 +151,7 @@ describe("release freshness splash rows", () => {
     const pi = findStatusLine(rendered, "Pi");
     expect(pi).toContain("latest allowed [cooldown active]");
     expect(pi).toContain("v0.75.1");
-    expect(rendered).not.toContain("→ pi update --self");
+    expect(rendered).not.toContain("→ pi update --self --force");
   });
 
   it("treats skipped Pi checks as informational rather than update warnings", async () => {
@@ -163,7 +163,7 @@ describe("release freshness splash rows", () => {
           loading: false,
           checkSkipped: true,
           skipReason: "offline",
-          updateCommand: "pi update --self",
+          updateCommand: "pi update --self --force",
         },
       }),
     );

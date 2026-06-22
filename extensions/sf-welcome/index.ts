@@ -869,7 +869,7 @@ export default function sfWelcome(pi: ExtensionAPI) {
       data.piRelease ??= {
         freshness: "unknown",
         loading: false,
-        updateCommand: "pi update --self",
+        updateCommand: "pi update --self --force",
       };
     }
     const healthLines = data.extensionHealth.map((ext) => {
