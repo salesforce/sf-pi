@@ -13,7 +13,7 @@ Use this skill whenever the user is editing `.agent` files, debugging an Agentfo
 | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `agentscript_authoring` | Create bundles, compile/check or format `.agent` files, inspect structure/references/targets, run deterministic review, and mutate source. Uses `verb` + `mode`.                             |
 | `agentscript_preview`   | Start/send/end live preview sessions, fetch planner traces, bulk-end sessions, clean stale preview artifacts, render rich human Preview Trace Reports, and return compact LLM trace digests. |
-| `agentscript_eval`      | Generate starter eval specs, run regression suites, drill into failures, fetch traces, and resolve active/latest version ids.                                                                |
+| `agentscript_eval`      | Generate starter eval specs, run regression suites, drill into failures, synthesize trace artifacts, fetch explicit live traces, and resolve active/latest version ids.                      |
 | `agentscript_lifecycle` | Publish, activate/deactivate, list versions, and diagnose/provision Service Agent users.                                                                                                     |
 
 ## Authoring contract
@@ -62,7 +62,7 @@ It will not guess when multiple candidates exist. Pass explicit ids when ambiguo
 Heavy artifacts remain on disk:
 
 - preview sessions/traces under `.sfdx/agents/**`
-- eval runs/failures/traces under `.pi/state/sf-agentscript/**`
+- eval run status/failures/synthesized traces under `.pi/state/sf-agentscript/**`
 - optional review reports at `output_path`
 
 ## Authoring modes
@@ -128,9 +128,13 @@ Preview send output uses two surfaces: the human renderer shows a rich Preview T
 
 Use `generate_spec` to bootstrap a starter regression spec from a `.agent` file. Use `run` with `agent_api_name` so the runner resolves/injects Active BotVersion ids safely by default.
 
+For long or exploratory local runs, pass `batch_timeout_ms` to cap each Evaluation API batch POST. The default remains 300000ms, and client-side timeouts are not retried. During a run, inspect `.pi/state/sf-agentscript/runs/<run_id>/status.json` for the current phase when persistence is enabled.
+
+Eval runs synthesize trace artifacts from inline Evaluation API data by default. Use `agentscript_eval action="trace"` only when you explicitly need a live planner trace and have a known resident `session_id`/`plan_id`.
+
 Use `$latest_*` placeholders or `version_resolution="latest"` only for the publish → eval → activate loop, and pass `acknowledge_inactive_version=true` when deliberately testing a non-Active version.
 
-Use `get_failure` after large runs. If exactly one failed run exists on the current branch, `run_id` may be omitted; otherwise pass it explicitly.
+Use `get_failure` after large runs. If exactly one failed completed run exists on the current branch, `run_id` may be omitted; otherwise pass it explicitly.
 
 ## Lifecycle
 

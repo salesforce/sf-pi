@@ -27,6 +27,7 @@ import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-a
 import { connForAgentApi } from "./agent-api-auth.ts";
 import { connFromAlias } from "../../../lib/common/sf-conn/connection.ts";
 import {
+  EvalRunCancelledError,
   runEval,
   recordRunInIndex,
   readFailures,
@@ -121,6 +122,13 @@ const Params = Type.Object({
       minimum: 100,
       maximum: 4000,
       description: "Optional for action='run'. Max chars of llmEvents.prompt_content per turn.",
+    }),
+  ),
+  batch_timeout_ms: Type.Optional(
+    Type.Number({
+      minimum: 1000,
+      description:
+        "Optional for action='run'. Per Evaluation API batch POST timeout. Default 300000. Client-side timeouts are not retried.",
     }),
   ),
   inline_threshold: Type.Optional(
@@ -238,6 +246,7 @@ interface ParamsAny {
   traces_mode?: "failed" | "all" | "off";
   concurrency?: number;
   prompt_chars?: number;
+  batch_timeout_ms?: number;
   inline_threshold?: number;
   acknowledge_inactive_version?: boolean;
   version_resolution?: "active" | "latest" | "version";
@@ -422,6 +431,7 @@ async function actionRun(
       tracesMode: input.traces_mode ?? "failed",
       concurrency: input.concurrency ?? 8,
       promptChars: input.prompt_chars ?? 600,
+      batchTimeoutMs: input.batch_timeout_ms,
       acknowledgeInactiveVersion: input.acknowledge_inactive_version,
       versionResolution: input.version_resolution,
       version: input.version,
@@ -502,6 +512,12 @@ function classifyRunError(
   input: ParamsAny,
 ): { content: { type: "text"; text: string }[]; details: ToolError } {
   const msg = err instanceof Error ? err.message : String(err);
+  if (err instanceof EvalRunCancelledError) {
+    return toolError(
+      "Eval run cancelled.",
+      "The partial run status is available on disk when persistence was enabled.",
+    );
+  }
   // If the error is "spec uses $active_* / $latest_* but no agent_api_name",
   // point the LLM at resolve_active so it can bake values directly.
   if ((msg.includes("$active_") || msg.includes("$latest_")) && !input.agent_api_name) {

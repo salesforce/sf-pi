@@ -94,17 +94,122 @@ export interface OrgIdentity {
   user_id: string;
 }
 
+export interface ResolveOrgIdentityOptions {
+  timeoutMs?: number;
+  signal?: AbortSignal;
+  fetchImpl?: typeof fetch;
+}
+
+export const DEFAULT_ORG_IDENTITY_TIMEOUT_MS = 10_000;
+
+export class OrgIdentityTimeoutError extends Error {
+  readonly timedOutAfterMs: number;
+
+  constructor(timeoutMs: number) {
+    super(`conn.identity() timed out after ${timeoutMs}ms.`);
+    this.name = "OrgIdentityTimeoutError";
+    this.timedOutAfterMs = timeoutMs;
+  }
+}
+
+export class OrgIdentityAbortedError extends Error {
+  constructor() {
+    super("conn.identity() aborted.");
+    this.name = "OrgIdentityAbortedError";
+  }
+}
+
+function getAccessToken(conn: Connection): string | undefined {
+  return (
+    (conn as unknown as { accessToken?: string }).accessToken ??
+    (conn.getConnectionOptions?.() as { accessToken?: string } | undefined)?.accessToken
+  );
+}
+
+async function boundedOrgIdentity<T>(
+  promise: Promise<T>,
+  opts: ResolveOrgIdentityOptions = {},
+): Promise<T> {
+  const timeoutMs = opts.timeoutMs ?? DEFAULT_ORG_IDENTITY_TIMEOUT_MS;
+  if (opts.signal?.aborted) throw new OrgIdentityAbortedError();
+
+  let timer: NodeJS.Timeout | undefined;
+  let abortHandler: (() => void) | undefined;
+  const timeout = new Promise<T>((_resolve, reject) => {
+    timer = setTimeout(() => reject(new OrgIdentityTimeoutError(timeoutMs)), timeoutMs);
+  });
+  const abort = opts.signal
+    ? new Promise<T>((_resolve, reject) => {
+        abortHandler = () => reject(new OrgIdentityAbortedError());
+        opts.signal?.addEventListener("abort", abortHandler, { once: true });
+      })
+    : undefined;
+
+  try {
+    return await Promise.race(abort ? [promise, timeout, abort] : [promise, timeout]);
+  } finally {
+    if (timer) clearTimeout(timer);
+    if (abortHandler) opts.signal?.removeEventListener("abort", abortHandler);
+  }
+}
+
+async function fetchOrgIdentity(
+  conn: Connection,
+  opts: ResolveOrgIdentityOptions,
+): Promise<{ user_id?: string; organization_id?: string }> {
+  const accessToken = getAccessToken(conn);
+  if (!accessToken) throw new Error("Connection has no access token for bounded userinfo fetch.");
+  if (!conn.instanceUrl)
+    throw new Error("Connection has no instanceUrl for bounded userinfo fetch.");
+  if (opts.signal?.aborted) throw new OrgIdentityAbortedError();
+
+  const timeoutMs = opts.timeoutMs ?? DEFAULT_ORG_IDENTITY_TIMEOUT_MS;
+  const fetchImpl = opts.fetchImpl ?? fetch;
+  const controller = new AbortController();
+  let timedOut = false;
+  const abortFromCaller = (): void => controller.abort();
+  opts.signal?.addEventListener("abort", abortFromCaller, { once: true });
+  const timer = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeoutMs);
+
+  try {
+    const resp = await fetchImpl(`${conn.instanceUrl}/services/oauth2/userinfo`, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${accessToken}` },
+      signal: controller.signal,
+    });
+    if (!resp.ok) throw new Error(`userinfo request failed with HTTP ${resp.status}.`);
+    return (await resp.json()) as { user_id?: string; organization_id?: string };
+  } catch (err) {
+    if (opts.signal?.aborted) throw new OrgIdentityAbortedError();
+    if (timedOut) throw new OrgIdentityTimeoutError(timeoutMs);
+    throw err;
+  } finally {
+    clearTimeout(timer);
+    opts.signal?.removeEventListener("abort", abortFromCaller);
+  }
+}
+
 /**
  * Resolve org_id + user_id once per run for SFAP headers.
  *
  * Uses `conn.identity()` which hits `/services/oauth2/userinfo` under the
- * hood. Connection handles caching/refresh.
+ * hood. The call is bounded so a slow auth/userinfo request cannot block
+ * long-running Agent Script eval workflows forever.
  */
-export async function resolveOrgIdentity(conn: Connection): Promise<OrgIdentity> {
-  const userInfo = (await conn.identity()) as {
-    user_id?: string;
-    organization_id?: string;
-  };
+export async function resolveOrgIdentity(
+  conn: Connection,
+  opts: ResolveOrgIdentityOptions = {},
+): Promise<OrgIdentity> {
+  if (opts.signal?.aborted) throw new OrgIdentityAbortedError();
+  const userInfo = getAccessToken(conn)
+    ? await fetchOrgIdentity(conn, opts)
+    : ((await boundedOrgIdentity(conn.identity(), opts)) as {
+        user_id?: string;
+        organization_id?: string;
+      });
   if (!userInfo.user_id || !userInfo.organization_id) {
     throw new Error(
       "conn.identity() returned no user_id/organization_id. " +

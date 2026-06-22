@@ -152,6 +152,10 @@ _Avoid_: human report, raw trace JSON, full action I/O dump, branch state
 Phase-duration measurements recorded inside SF Pi tool results and existing local artifacts so users can understand where time was spent during a workflow. They are local diagnostic facts, not external analytics or telemetry.
 _Avoid_: external telemetry, usage analytics, monitoring beacon, performance tracking service
 
+**Eval Run Status Artifact**:
+A lightweight local Agent Script eval artifact that records an in-progress run's status, phase, and pointer-sized context before full eval results are available. It is not branch state and does not contain raw eval responses, traces, prompts, transcripts, or failure payloads.
+_Avoid_: branch-durable state, raw eval artifact, progress log, external telemetry
+
 **Action I/O Appendix**:
 The screenshot-friendly section of a **Preview Trace Report** that summarizes called action inputs and outputs with display budgets, redaction, field/path coverage, and raw-trace pointers so humans can debug tool behavior without making the default report an unbounded data dump.
 _Avoid_: raw JSON wall, complete artifact copy, LLM context payload, hidden-only action details

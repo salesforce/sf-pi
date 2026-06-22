@@ -150,6 +150,45 @@ describe("sfapRequest", () => {
     expect(calls).toHaveLength(1);
   });
 
+  test("client-side timeout can terminate without retry", async () => {
+    const calls: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string | URL | Request, init?: RequestInit) => {
+        calls.push(String(url));
+        return new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener(
+            "abort",
+            () => reject(Object.assign(new Error("aborted"), { name: "AbortError" })),
+            { once: true },
+          );
+        });
+      }),
+    );
+    const promise = sfapRequest(
+      {
+        accessToken: "JWT",
+        instanceUrl: "https://fake.my.salesforce.com",
+        getConnectionOptions: () => ({ accessToken: "JWT" }),
+      } as never,
+      {
+        url: "https://api.salesforce.com/x",
+        method: "POST",
+        timeoutMs: 1000,
+        maxRetries: 2,
+        retryOnTimeout: false,
+        fallback: false,
+      },
+    );
+
+    await vi.advanceTimersByTimeAsync(1000);
+    const result = await promise;
+
+    expect(result.status).toBe(503);
+    expect(result.body).toMatchObject({ errorCode: "REQUEST_TIMEOUT" });
+    expect(calls).toHaveLength(1);
+  });
+
   test("connection-level error is treated as retryable 503", async () => {
     let callCount = 0;
     const { conn, calls } = fakeConn(() => {

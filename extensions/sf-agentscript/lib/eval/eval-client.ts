@@ -58,6 +58,7 @@ export async function callEval(
     body: { tests },
     timeoutMs: opts?.timeoutMs ?? 300_000,
     maxRetries: 2,
+    retryOnTimeout: false,
     signal: opts?.signal,
     fallback: true,
   });

@@ -13,7 +13,7 @@ multi-turn evals, and publish/activation workflows. Salesforce calls use
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `agentscript_authoring` | Local `.agent` authoring: create bundles, compile/check or format, inspect structure/references/targets, deterministic readiness review, and structural mutations. Uses `verb` + `mode`.                                                                |
 | `agentscript_preview`   | Live-org preview: start/send/end sessions, fetch traces, bulk end sessions, and clean stale preview artifacts. Send renders a rich human Preview Trace Report while keeping the LLM payload compact through a structured digest and raw-trace pointers. |
-| `agentscript_eval`      | Regression workflow: generate starter specs, run evals, drill into failures, fetch traces, and resolve active/latest BotVersion ids.                                                                                                                    |
+| `agentscript_eval`      | Regression workflow: generate starter specs, run evals, drill into failures, synthesize trace artifacts, fetch explicit live traces, and resolve active/latest BotVersion ids.                                                                          |
 | `agentscript_lifecycle` | Publish/activation workflow: publish versions, activate/deactivate, list versions, and diagnose/provision Service Agent users.                                                                                                                          |
 
 ## Authoring API
@@ -42,7 +42,7 @@ Successful tool results may include `details.sf_agentscript_branch_state`, an ar
 Branch state stores only lightweight pointers such as file paths, session ids, run ids, plan ids, and readiness summaries. Heavy evidence remains on disk:
 
 - preview traces/transcripts and compact per-turn reports under `.sfdx/agents/**`
-- eval runs, raw responses, failures, and traces under `.pi/state/sf-agentscript/**`
+- eval run status, raw responses, failures, and synthesized traces under `.pi/state/sf-agentscript/**`
 - optional review reports at the caller-provided `output_path`
 
 Auto-resolution validates referenced disk artifacts before use and proceeds only when exactly one candidate exists.
@@ -70,6 +70,12 @@ Use `agentscript_authoring { "verb": "inspect", "mode": "runtime_smoke", "target
 - The LLM-facing text remains compact: a response, short summary, counts, and pointers. Structured details live in `details.digest`; raw prompts, full state, and full action payloads stay in persisted trace artifacts.
 - Internal planner variable spam is hidden from the human timeline by default, while user-visible state changes show previous → new previews when available.
 - Action input/output previews are screenshot-friendly and bounded/redacted; use `agentscript_preview trace` with the returned `plan_id` for the full raw trace.
+
+## Eval Run Hardening
+
+`agentscript_eval action="run"` creates a lightweight `status.json` in the run directory before it posts Evaluation API batches. The status artifact records pointer-sized local facts such as status, phase, spec path, org, test count, batch count, and timeout; it does not contain raw eval responses, prompts, traces, transcripts, or failure payloads.
+
+Eval batches keep the compatibility default timeout of 300 seconds, but callers can pass `batch_timeout_ms` for shorter local runs. Client-side request timeouts are terminal for a batch instead of being retried three times. Eval-created sessions usually disappear before the live planner trace endpoint can read them, so eval runs synthesize trace artifacts from inline Evaluation API data by default; use `agentscript_eval action="trace"` for explicit live trace drill-down when the session is known to be resident.
 
 ## Runtime Flow
 
@@ -251,6 +257,7 @@ extensions/sf-agentscript/
     eval-active-ids.test.ts ← unit / smoke test
     eval-agent-id-injection.test.ts← unit / smoke test
     eval-normalize.test.ts  ← unit / smoke test
+    eval-persist-status.test.ts← unit / smoke test
     eval-plan-id-path.test.ts← unit / smoke test
     eval-sfap.test.ts       ← unit / smoke test
     eval-spec-generator.test.ts← unit / smoke test
@@ -351,5 +358,6 @@ Salesforce auth is resolved through `@salesforce/core` `Connection` using the sa
 
 - **Agent Script SDK unavailable:** run `/sf-agentscript doctor` to inspect the official SDK package resolution.
 - **Preview session not found:** confirm `target_org` matches the org used at preview start, or start a fresh preview session.
+- **Eval run appears stuck:** inspect `.pi/state/sf-agentscript/runs/<run_id>/status.json` for the current phase. Pass `batch_timeout_ms` for shorter local probes.
 - **Eval trace fetch returns null:** eval-created sessions may be closed by the service before live trace fetch succeeds; synthesized traces and failure records remain in the run directory.
 - **Service Agent publish/activation fails:** run `agentscript_lifecycle action="diagnose_agent_user"`, then `provision_agent_user` in dry-run mode before executing changes.

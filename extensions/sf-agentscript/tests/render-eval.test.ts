@@ -1,6 +1,11 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 import { describe, expect, it } from "vitest";
-import { evalRunMarkdown, evalFailureMarkdown } from "../lib/render/eval.ts";
+import { evalRunMarkdown, evalFailureMarkdown, renderEvalRunResult } from "../lib/render/eval.ts";
+
+const plainTheme = {
+  fg: (_name: string, text: string) => text,
+  bold: (text: string) => text,
+} as never;
 
 describe("evalRunMarkdown", () => {
   it("renders all-passing run with green badges and latency histogram", () => {
@@ -88,6 +93,16 @@ describe("evalRunMarkdown", () => {
     expect(md).toMatch(/test_topic_routing/);
     expect(md).toMatch(/topic_match/);
     expect(md).toMatch(/agentscript_eval get_failure/);
+  });
+
+  it("renders partial progress text when provided", () => {
+    const rendered = renderEvalRunResult(
+      { content: [{ type: "text", text: "Running 18 tests across 4 batch(es)" }] },
+      { isPartial: true },
+      plainTheme,
+    ) as unknown as { text: string };
+
+    expect(rendered.text).toContain("Running 18 tests across 4 batch(es)");
   });
 
   it("collapses passing tests into a count when none failed", () => {

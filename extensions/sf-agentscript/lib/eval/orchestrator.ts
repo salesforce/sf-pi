@@ -27,7 +27,13 @@ import { collectPlanKeys, fetchTracesConcurrent, type PlanKey } from "./trace-cl
 import { synthesizeTracesFromMerged } from "./synthesize-trace.ts";
 import { deepDecode } from "./decode.ts";
 import { latencySummary, summarize, type BuildOptions } from "./render.ts";
-import { newRunId, resolveRunDir, writeRun } from "./persist.ts";
+import {
+  newRunId,
+  resolveRunDir,
+  writeRun,
+  writeRunStatus,
+  type EvalRunStatus,
+} from "./persist.ts";
 import { normalizeSpec } from "./normalize.ts";
 import {
   detectPlaceholderUsage,
@@ -85,6 +91,10 @@ export interface RunEvalOptions {
   acknowledgeInactiveVersion?: boolean;
   /** Max parallel batch POSTs and trace GETs. Default 8. */
   concurrency?: number;
+  /** Per Evaluation API batch POST timeout. Default 300_000. */
+  batchTimeoutMs?: number;
+  /** Whether to attempt live trace fetch after synthesizing inline traces. Default false. */
+  liveTraceFetch?: boolean;
   /** Max chars of llmEvents.prompt_content shown per turn. Default 600. */
   promptChars?: number;
   /** Optional explicit run id. Default: auto-generated timestamped id. */
@@ -132,6 +142,22 @@ function enforceLatestAcknowledgement(ids: ResolvedAgentIds, opts: RunEvalOption
   );
 }
 
+export class EvalRunCancelledError extends Error {
+  constructor(message = "Eval run cancelled.") {
+    super(message);
+    this.name = "EvalRunCancelledError";
+  }
+}
+
+function throwIfAborted(signal?: AbortSignal): void {
+  if (signal?.aborted) throw new EvalRunCancelledError();
+}
+
+function errorPayload(err: unknown): { name?: string; message: string } {
+  if (err instanceof Error) return { name: err.name, message: err.message };
+  return { message: String(err) };
+}
+
 async function resolveIdsForInjection(
   opts: RunEvalOptions,
   mode: AgentVersionResolutionMode,
@@ -176,138 +202,225 @@ export async function runEval(opts: RunEvalOptions): Promise<RunEvalResult> {
   const concurrency = Math.max(1, opts.concurrency ?? 8);
   const tracesMode: TracesMode = opts.tracesMode ?? "failed";
   const runId = opts.runId ?? newRunId(startedAt);
+  const runDir = !opts.noPersist ? resolveRunDir(opts.cwd, runId, opts.runBase) : undefined;
+  let statusPhase = "starting";
+  let terminalStatusWritten = false;
+  const writeStatus = async (
+    status: EvalRunStatus,
+    phase: string,
+    extras: {
+      testsCount?: number;
+      batches?: number;
+      error?: unknown;
+      completed?: Date;
+    } = {},
+  ): Promise<void> => {
+    if (!runDir) return;
+    statusPhase = phase;
+    await writeRunStatus(runDir, {
+      schema_version: 1,
+      run_id: runId,
+      status,
+      phase,
+      started: startedAt.toISOString(),
+      updated: new Date().toISOString(),
+      ...(extras.completed ? { completed: extras.completed.toISOString() } : {}),
+      spec_path: opts.specPath,
+      org: opts.targetOrg,
+      agent_api_name: opts.agentApiName,
+      tests_count: extras.testsCount,
+      batches: extras.batches,
+      concurrency,
+      traces_mode: tracesMode,
+      batch_timeout_ms: opts.batchTimeoutMs ?? 300_000,
+      ...(extras.error ? { error: errorPayload(extras.error) } : {}),
+    });
+  };
+  await writeStatus("running", "starting", {
+    testsCount: opts.spec.tests?.length ?? 0,
+  });
 
-  // 1. Resolve $active_* / $latest_* placeholders + apply spec normalization
-  let spec = opts.spec;
-  let resolvedIds: ResolvedAgentIds | null = null;
-  let latestIds: ResolvedAgentIds | null = null;
-  let injectedIds: ResolvedAgentIds | null = null;
-  let injectionStats: AgentIdInjectionStats | undefined;
-  const usage = detectPlaceholderUsage(spec);
-  if (usage.active || usage.latest) {
-    if (!opts.agentApiName) {
-      throw new Error(
-        `Spec uses $active_* / $latest_* placeholders but no agentApiName was provided. ` +
-          `Suggested fix: pass agentApiName, or substitute the placeholders in the spec.`,
-      );
-    }
-    if (usage.active) {
-      resolvedIds = opts.timings
-        ? await opts.timings.time("resolve_active_agent_ids", () =>
-            resolveAgentIds(opts.conn, opts.agentApiName as string, {
+  try {
+    throwIfAborted(opts.signal);
+
+    // 1. Resolve $active_* / $latest_* placeholders + apply spec normalization
+    let spec = opts.spec;
+    let resolvedIds: ResolvedAgentIds | null = null;
+    let latestIds: ResolvedAgentIds | null = null;
+    let injectedIds: ResolvedAgentIds | null = null;
+    let injectionStats: AgentIdInjectionStats | undefined;
+    const usage = detectPlaceholderUsage(spec);
+    if (usage.active || usage.latest) {
+      await writeStatus("running", "resolving_agent_ids", {
+        testsCount: spec.tests?.length ?? 0,
+      });
+      if (!opts.agentApiName) {
+        throw new Error(
+          `Spec uses $active_* / $latest_* placeholders but no agentApiName was provided. ` +
+            `Suggested fix: pass agentApiName, or substitute the placeholders in the spec.`,
+        );
+      }
+      if (usage.active) {
+        resolvedIds = opts.timings
+          ? await opts.timings.time("resolve_active_agent_ids", () =>
+              resolveAgentIds(opts.conn, opts.agentApiName as string, {
+                status: "Active",
+                signal: opts.signal,
+              }),
+            )
+          : await resolveAgentIds(opts.conn, opts.agentApiName, {
               status: "Active",
               signal: opts.signal,
-            }),
-          )
-        : await resolveAgentIds(opts.conn, opts.agentApiName, {
-            status: "Active",
-            signal: opts.signal,
-          });
-      log(
-        `Active: ${opts.agentApiName} v${resolvedIds.version_number} ` +
-          `(${resolvedIds.status})  botVersionId=${resolvedIds.bot_version_id}  ` +
-          `plannerId=${resolvedIds.planner_id}`,
-      );
-    }
-    if (usage.latest) {
-      latestIds = opts.timings
-        ? await opts.timings.time("resolve_latest_agent_ids", () =>
-            resolveAgentIds(opts.conn, opts.agentApiName as string, {
+            });
+        log(
+          `Active: ${opts.agentApiName} v${resolvedIds.version_number} ` +
+            `(${resolvedIds.status})  botVersionId=${resolvedIds.bot_version_id}  ` +
+            `plannerId=${resolvedIds.planner_id}`,
+        );
+      }
+      if (usage.latest) {
+        latestIds = opts.timings
+          ? await opts.timings.time("resolve_latest_agent_ids", () =>
+              resolveAgentIds(opts.conn, opts.agentApiName as string, {
+                status: "any",
+                signal: opts.signal,
+              }),
+            )
+          : await resolveAgentIds(opts.conn, opts.agentApiName, {
               status: "any",
               signal: opts.signal,
-            }),
+            });
+        log(
+          `Latest: ${opts.agentApiName} v${latestIds.version_number} ` +
+            `(${latestIds.status})  botVersionId=${latestIds.bot_version_id}  ` +
+            `plannerId=${latestIds.planner_id}`,
+        );
+        enforceLatestAcknowledgement(latestIds, opts);
+      }
+      spec = substitutePlaceholders(spec, {
+        active: resolvedIds ?? undefined,
+        latest: latestIds ?? undefined,
+      });
+    }
+
+    const wantsInjection =
+      Boolean(opts.agentApiName) &&
+      shouldInjectResolvedAgentIds(spec, opts.overwriteAgentIds ?? false);
+    if (wantsInjection) {
+      if (usage.active && usage.latest && !opts.versionResolution) {
+        throw new Error(
+          `Spec mixes $active_* and $latest_* placeholders and also has create_session steps ` +
+            `missing agent ids. Pass version_resolution='active' or 'latest', or make every ` +
+            `agent.create_session step explicit.`,
+        );
+      }
+      const mode: AgentVersionResolutionMode =
+        opts.versionResolution ?? (usage.latest && !usage.active ? "latest" : "active");
+      injectedIds = opts.timings
+        ? await opts.timings.time("resolve_injected_agent_ids", () =>
+            resolveIdsForInjection(opts, mode, resolvedIds, latestIds),
           )
-        : await resolveAgentIds(opts.conn, opts.agentApiName, {
-            status: "any",
-            signal: opts.signal,
-          });
+        : await resolveIdsForInjection(opts, mode, resolvedIds, latestIds);
+      const injected = injectResolvedAgentIds(spec, injectedIds, {
+        overwrite: opts.overwriteAgentIds ?? false,
+      });
+      spec = injected.spec;
+      injectionStats = {
+        create_session_steps: injected.create_session_steps,
+        injected_create_session_steps: injected.injected_create_session_steps,
+        explicit_create_session_steps: injected.explicit_create_session_steps,
+      };
       log(
-        `Latest: ${opts.agentApiName} v${latestIds.version_number} ` +
-          `(${latestIds.status})  botVersionId=${latestIds.bot_version_id}  ` +
-          `plannerId=${latestIds.planner_id}`,
+        `Injected ${injectionStats.injected_create_session_steps}/${injectionStats.create_session_steps} ` +
+          `create_session step(s) from ${opts.agentApiName} v${injectedIds.version_number} ` +
+          `(${injectedIds.status}).`,
       );
-      enforceLatestAcknowledgement(latestIds, opts);
     }
-    spec = substitutePlaceholders(spec, {
-      active: resolvedIds ?? undefined,
-      latest: latestIds ?? undefined,
-    });
-  }
 
-  const wantsInjection =
-    Boolean(opts.agentApiName) &&
-    shouldInjectResolvedAgentIds(spec, opts.overwriteAgentIds ?? false);
-  if (wantsInjection) {
-    if (usage.active && usage.latest && !opts.versionResolution) {
-      throw new Error(
-        `Spec mixes $active_* and $latest_* placeholders and also has create_session steps ` +
-          `missing agent ids. Pass version_resolution='active' or 'latest', or make every ` +
-          `agent.create_session step explicit.`,
-      );
-    }
-    const mode: AgentVersionResolutionMode =
-      opts.versionResolution ?? (usage.latest && !usage.active ? "latest" : "active");
-    injectedIds = opts.timings
-      ? await opts.timings.time("resolve_injected_agent_ids", () =>
-          resolveIdsForInjection(opts, mode, resolvedIds, latestIds),
+    throwIfAborted(opts.signal);
+    spec = opts.timings
+      ? await opts.timings.time("normalize_eval_spec", () => normalizeSpec(spec))
+      : normalizeSpec(spec);
+
+    // 2. Resolve org identity for SFAP headers
+    await writeStatus("running", "resolving_org_identity", {
+      testsCount: spec.tests?.length ?? 0,
+    });
+    const ident = opts.timings
+      ? await opts.timings.time("org_identity", () =>
+          resolveOrgIdentity(opts.conn, { signal: opts.signal }),
         )
-      : await resolveIdsForInjection(opts, mode, resolvedIds, latestIds);
-    const injected = injectResolvedAgentIds(spec, injectedIds, {
-      overwrite: opts.overwriteAgentIds ?? false,
-    });
-    spec = injected.spec;
-    injectionStats = {
-      create_session_steps: injected.create_session_steps,
-      injected_create_session_steps: injected.injected_create_session_steps,
-      explicit_create_session_steps: injected.explicit_create_session_steps,
+      : await resolveOrgIdentity(opts.conn, { signal: opts.signal });
+    const headers: EvalApiHeaders = {
+      orgId: ident.org_id,
+      userId: ident.user_id,
+      instanceUrl: ident.instance_url,
     };
+    throwIfAborted(opts.signal);
+
+    // 3. Batch + fan out
+    const tests = spec.tests ?? [];
+    if (tests.length === 0) {
+      throw new Error("Spec contains no tests; nothing to do.");
+    }
+    const batches = splitIntoBatches(tests);
+    await writeStatus("running", "running_batches", {
+      testsCount: tests.length,
+      batches: batches.length,
+    });
     log(
-      `Injected ${injectionStats.injected_create_session_steps}/${injectionStats.create_session_steps} ` +
-        `create_session step(s) from ${opts.agentApiName} v${injectedIds.version_number} ` +
-        `(${injectedIds.status}).`,
+      `Running ${tests.length} tests across ${batches.length} batch(es) ` +
+        `(concurrency=${Math.min(batches.length, concurrency)}, batch_timeout_ms=${opts.batchTimeoutMs ?? 300_000})`,
     );
-  }
 
-  spec = opts.timings
-    ? await opts.timings.time("normalize_eval_spec", () => normalizeSpec(spec))
-    : normalizeSpec(spec);
-
-  // 2. Resolve org identity for SFAP headers
-  const ident = opts.timings
-    ? await opts.timings.time("org_identity", () => resolveOrgIdentity(opts.conn))
-    : await resolveOrgIdentity(opts.conn);
-  const headers: EvalApiHeaders = {
-    orgId: ident.org_id,
-    userId: ident.user_id,
-    instanceUrl: ident.instance_url,
-  };
-
-  // 3. Batch + fan out
-  const tests = spec.tests ?? [];
-  if (tests.length === 0) {
-    throw new Error("Spec contains no tests; nothing to do.");
-  }
-  const batches = splitIntoBatches(tests);
-  log(
-    `Running ${tests.length} tests across ${batches.length} batch(es) ` +
-      `(concurrency=${Math.min(batches.length, concurrency)})`,
-  );
-
-  const results: Array<EvalApiResponse["results"]> = new Array(batches.length).fill(null);
-  let failedBatches = 0;
-  const sema = makeSemaphore(concurrency);
-  await (opts.timings
-    ? opts.timings.time("eval_batches", () =>
-        Promise.all(
+    const results: Array<EvalApiResponse["results"]> = new Array(batches.length).fill(null);
+    let failedBatches = 0;
+    const sema = makeSemaphore(concurrency);
+    await (opts.timings
+      ? opts.timings.time("eval_batches", () =>
+          Promise.all(
+            batches.map((b, idx) =>
+              sema(async () => {
+                log(`  batch ${idx + 1}/${batches.length}: started (${b.length} test(s))`);
+                throwIfAborted(opts.signal);
+                const res = await callEval(opts.conn, b, headers, {
+                  timeoutMs: opts.batchTimeoutMs,
+                  signal: opts.signal,
+                });
+                if (res.status === 499) throw new EvalRunCancelledError();
+                if (opts.timings) {
+                  opts.timings.add("sfap_endpoint_cache", 0, {
+                    cache: res.endpoint_cache,
+                    endpoint: res.endpoint,
+                  });
+                }
+                if (res.status >= 200 && res.status < 300) {
+                  results[idx] = res.body.results ?? [];
+                  if (batches.length > 1) {
+                    log(
+                      `  batch ${idx + 1}/${batches.length}: ${(results[idx] ?? []).length} tests complete`,
+                    );
+                  }
+                } else {
+                  failedBatches++;
+                  const snippet = JSON.stringify(res.body).slice(0, 1500);
+                  log(`  batch ${idx + 1}/${batches.length}: HTTP ${res.status}  ${snippet}`);
+                  results[idx] = [];
+                }
+              }),
+            ),
+          ),
+        )
+      : Promise.all(
           batches.map((b, idx) =>
             sema(async () => {
-              const res = await callEval(opts.conn, b, headers, { signal: opts.signal });
-              if (opts.timings) {
-                opts.timings.add("sfap_endpoint_cache", 0, {
-                  cache: res.endpoint_cache,
-                  endpoint: res.endpoint,
-                });
-              }
+              log(`  batch ${idx + 1}/${batches.length}: started (${b.length} test(s))`);
+              throwIfAborted(opts.signal);
+              const res = await callEval(opts.conn, b, headers, {
+                timeoutMs: opts.batchTimeoutMs,
+                signal: opts.signal,
+              });
+              if (res.status === 499) throw new EvalRunCancelledError();
               if (res.status >= 200 && res.status < 300) {
                 results[idx] = res.body.results ?? [];
                 if (batches.length > 1) {
@@ -323,55 +436,114 @@ export async function runEval(opts: RunEvalOptions): Promise<RunEvalResult> {
               }
             }),
           ),
-        ),
-      )
-    : Promise.all(
-        batches.map((b, idx) =>
-          sema(async () => {
-            const res = await callEval(opts.conn, b, headers, { signal: opts.signal });
-            if (res.status >= 200 && res.status < 300) {
-              results[idx] = res.body.results ?? [];
-              if (batches.length > 1) {
-                log(
-                  `  batch ${idx + 1}/${batches.length}: ${(results[idx] ?? []).length} tests complete`,
-                );
-              }
-            } else {
-              failedBatches++;
-              const snippet = JSON.stringify(res.body).slice(0, 1500);
-              log(`  batch ${idx + 1}/${batches.length}: HTTP ${res.status}  ${snippet}`);
-              results[idx] = [];
+        ));
+
+    // 4. Merge + HTML-decode
+    const mergedRaw: EvalApiResponse = { results: results.flatMap((r) => r ?? []) };
+    const merged = opts.timings
+      ? await opts.timings.time("decode_eval_response", () => deepDecode(mergedRaw))
+      : deepDecode(mergedRaw);
+
+    // 5. Trace surface — synthesize-then-merge.
+    //
+    // The eval API closes its sessions immediately, so the live
+    // `/v1.1/preview/sessions/{sid}/plans/{pid}` endpoint 404s with
+    // `Session not found` for every (sid, pid) the eval API spawns.
+    // BUT: the eval response already contains the trace data inline
+    // (llmEvents + invokedActions + errors + sessionContext +
+    // sessionProperties). We synthesize per-turn trace docs from that
+    // inline data unconditionally. Live trace fetch remains opt-in because
+    // eval-created sessions usually disappear before the planner endpoint can
+    // read them, and waiting on those 404s delays artifact persistence.
+    const traces = new Map<string, unknown | null>();
+    let liveFetchedCount = 0;
+    let synthesizedCount = 0;
+    if (tracesMode !== "off") {
+      // Build the spec utterance index up-front so synthesized UserInputSteps
+      // carry the user's actual input. The persistence step builds the same
+      // index later for transcript.jsonl; we duplicate the cheap walk here
+      // rather than restructure ordering.
+      const utteranceIndex = new Map<string, string>();
+      for (const test of spec.tests ?? []) {
+        const tid = String(test.id ?? "?");
+        for (const step of test.steps ?? []) {
+          if (step.type === "agent.send_message" && typeof step.utterance === "string") {
+            utteranceIndex.set(`${tid}::${step.id}`, step.utterance);
+          }
+        }
+      }
+
+      // Synthesize for every test in scope, applying the same
+      // failed-only filter as the live fetch when traces_mode='failed'.
+      const inScopeIds = new Set<string>();
+      for (const test of merged.results ?? []) {
+        if (tracesMode === "failed") {
+          const evals = test.evaluation_results ?? [];
+          const errs = test.errors ?? [];
+          const anyFail = evals.some((e) => e.is_pass === false) || errs.length > 0;
+          if (!anyFail) continue;
+        }
+        if (test.id !== undefined) inScopeIds.add(String(test.id));
+      }
+      if (inScopeIds.size > 0) {
+        const filtered = {
+          results: (merged.results ?? []).filter((t) => inScopeIds.has(String(t.id ?? ""))),
+        };
+        const synthesized = opts.timings
+          ? await opts.timings.time("synthesize_eval_traces", () =>
+              synthesizeTracesFromMerged(filtered, { utteranceIndex }),
+            )
+          : synthesizeTracesFromMerged(filtered, { utteranceIndex });
+        synthesizedCount = synthesized.size;
+        for (const [k, v] of synthesized.entries()) traces.set(k, v);
+        log(`Synthesized ${synthesizedCount} trace(s) from inline eval data (mode=${tracesMode}).`);
+      }
+
+      // Live trace fetch is opt-in for eval runs. The eval API usually closes
+      // sessions before the planner trace endpoint can read them, while the
+      // inline eval response already contains enough data to synthesize useful
+      // trace docs. Keep the explicit trace action for live drill-downs.
+      if (opts.liveTraceFetch) {
+        const planKeys: PlanKey[] = collectPlanKeys(merged, {
+          onlyFailed: tracesMode === "failed",
+        });
+        const unique = new Set(planKeys.map((k) => `${k.sessionId}::${k.planId}`)).size;
+        if (planKeys.length > 0) {
+          log(
+            `Attempting ${unique} live trace fetch(es) (best-effort — eval sessions are typically GC'd by the time we get here)…`,
+          );
+          const live = opts.timings
+            ? await opts.timings.time("live_trace_fetch", () =>
+                fetchTracesConcurrent(opts.traceConn ?? opts.conn, planKeys, {
+                  concurrency,
+                  log,
+                  signal: opts.signal,
+                }),
+              )
+            : await fetchTracesConcurrent(opts.traceConn ?? opts.conn, planKeys, {
+                concurrency,
+                log,
+                signal: opts.signal,
+              });
+          for (const [k, body] of live.entries()) {
+            if (body != null) {
+              traces.set(k, body);
+              liveFetchedCount++;
             }
-          }),
-        ),
-      ));
+          }
+          if (liveFetchedCount > 0) {
+            log(
+              `  live fetch: ${liveFetchedCount}/${unique} succeeded; merged with synthesized data.`,
+            );
+          }
+        }
+      }
+    }
 
-  // 4. Merge + HTML-decode
-  const mergedRaw: EvalApiResponse = { results: results.flatMap((r) => r ?? []) };
-  const merged = opts.timings
-    ? await opts.timings.time("decode_eval_response", () => deepDecode(mergedRaw))
-    : deepDecode(mergedRaw);
-
-  // 5. Trace surface — synthesize-then-merge.
-  //
-  // The eval API closes its sessions immediately, so the live
-  // `/v1.1/preview/sessions/{sid}/plans/{pid}` endpoint 404s with
-  // `Session not found` for every (sid, pid) the eval API spawns.
-  // BUT: the eval response already contains the trace data inline
-  // (llmEvents + invokedActions + errors + sessionContext +
-  // sessionProperties). We synthesize per-turn trace docs from that
-  // inline data unconditionally, then attempt the live fetch on top —
-  // when a live trace is reachable (rare in practice, but valuable
-  // when sessions happen to outlive the request), it overwrites the
-  // synthesized entry.
-  const traces = new Map<string, unknown | null>();
-  let liveFetchedCount = 0;
-  let synthesizedCount = 0;
-  if (tracesMode !== "off") {
-    // Build the spec utterance index up-front so synthesized UserInputSteps
-    // carry the user's actual input. The persistence step builds the same
-    // index later for transcript.jsonl; we duplicate the cheap walk here
-    // rather than restructure ordering.
+    // 6. Build summary + failure records
+    // Cross-reference user utterances from the spec, so transcript +
+    // FailureRecord both carry the actual user input (the eval API doesn't
+    // echo it back in EvalOutput.utterance).
     const utteranceIndex = new Map<string, string>();
     for (const test of spec.tests ?? []) {
       const tid = String(test.id ?? "?");
@@ -381,174 +553,113 @@ export async function runEval(opts: RunEvalOptions): Promise<RunEvalResult> {
         }
       }
     }
+    const buildOpts: BuildOptions = {
+      promptChars: opts.promptChars,
+      interestingStateKeys: opts.interestingStateKeys,
+      tracesDir:
+        runDir && tracesMode !== "off" && traces.size > 0 ? path.join(runDir, "traces") : undefined,
+      utteranceIndex,
+    };
+    const { totals, failures } = opts.timings
+      ? await opts.timings.time("summarize_eval_results", () => summarize(merged, buildOpts))
+      : summarize(merged, buildOpts);
+    const lat = latencySummary(totals.latencies);
 
-    // Synthesize for every test in scope, applying the same
-    // failed-only filter as the live fetch when traces_mode='failed'.
-    const inScopeIds = new Set<string>();
-    for (const test of merged.results ?? []) {
-      if (tracesMode === "failed") {
-        const evals = test.evaluation_results ?? [];
-        const errs = test.errors ?? [];
-        const anyFail = evals.some((e) => e.is_pass === false) || errs.length > 0;
-        if (!anyFail) continue;
-      }
-      if (test.id !== undefined) inScopeIds.add(String(test.id));
-    }
-    if (inScopeIds.size > 0) {
-      const filtered = {
-        results: (merged.results ?? []).filter((t) => inScopeIds.has(String(t.id ?? ""))),
-      };
-      const synthesized = opts.timings
-        ? await opts.timings.time("synthesize_eval_traces", () =>
-            synthesizeTracesFromMerged(filtered, { utteranceIndex }),
-          )
-        : synthesizeTracesFromMerged(filtered, { utteranceIndex });
-      synthesizedCount = synthesized.size;
-      for (const [k, v] of synthesized.entries()) traces.set(k, v);
-      log(`Synthesized ${synthesizedCount} trace(s) from inline eval data (mode=${tracesMode}).`);
-    }
-
-    // Best-effort live fetch — overwrites synthesized when the planner
-    // actually returns data. Almost always 404s for eval-spawned sessions,
-    // but harmless and cheap; preserves the original code path for users
-    // running against orgs where sessions outlive the request.
-    const planKeys: PlanKey[] = collectPlanKeys(merged, { onlyFailed: tracesMode === "failed" });
-    const unique = new Set(planKeys.map((k) => `${k.sessionId}::${k.planId}`)).size;
-    if (planKeys.length > 0) {
-      log(
-        `Attempting ${unique} live trace fetch(es) (best-effort — eval sessions are typically GC'd by the time we get here)…`,
-      );
-      const live = opts.timings
-        ? await opts.timings.time("live_trace_fetch", () =>
-            fetchTracesConcurrent(opts.traceConn ?? opts.conn, planKeys, {
-              concurrency,
-              log,
-              signal: opts.signal,
+    // 7. Build metadata
+    const completedAt = new Date();
+    const metadata: RunMetadata = {
+      run_id: runId,
+      spec_path: opts.specPath,
+      org: opts.targetOrg,
+      agent_api_name: opts.agentApiName,
+      // When both $active_* and $latest_* resolve to the same version, the
+      // active record is the canonical source. When only $latest_* is in use
+      // (e.g. testing a freshly-published-but-Inactive version), we record
+      // the latest record so the run is auditable against the actual
+      // BotVersion that was exercised.
+      bot_id: injectedIds?.bot_id ?? resolvedIds?.bot_id ?? latestIds?.bot_id,
+      bot_version_id:
+        resolvedIds?.bot_version_id ?? latestIds?.bot_version_id ?? injectedIds?.bot_version_id,
+      planner_id:
+        resolvedIds?.planner_id ?? latestIds?.planner_id ?? injectedIds?.planner_id ?? null,
+      bot_version_number:
+        resolvedIds?.version_number ?? latestIds?.version_number ?? injectedIds?.version_number,
+      bot_version_status: resolvedIds?.status ?? latestIds?.status ?? injectedIds?.status,
+      agent_id_resolution: injectedIds
+        ? {
+            mode: opts.versionResolution ?? (usage.latest && !usage.active ? "latest" : "active"),
+            agent_api_name: opts.agentApiName,
+            bot_id: injectedIds.bot_id,
+            bot_version_id: injectedIds.bot_version_id,
+            bot_version_number: injectedIds.version_number,
+            bot_version_status: injectedIds.status,
+            planner_id: injectedIds.planner_id,
+            ...(injectionStats ?? {
+              create_session_steps: 0,
+              injected_create_session_steps: 0,
+              explicit_create_session_steps: 0,
             }),
-          )
-        : await fetchTracesConcurrent(opts.traceConn ?? opts.conn, planKeys, {
-            concurrency,
-            log,
-            signal: opts.signal,
-          });
-      for (const [k, body] of live.entries()) {
-        if (body != null) {
-          traces.set(k, body);
-          liveFetchedCount++;
-        }
-      }
-      if (liveFetchedCount > 0) {
-        log(`  live fetch: ${liveFetchedCount}/${unique} succeeded; merged with synthesized data.`);
-      }
-    }
-  }
-
-  // 6. Build summary + failure records
-  // Cross-reference user utterances from the spec, so transcript +
-  // FailureRecord both carry the actual user input (the eval API doesn't
-  // echo it back in EvalOutput.utterance).
-  const utteranceIndex = new Map<string, string>();
-  for (const test of spec.tests ?? []) {
-    const tid = String(test.id ?? "?");
-    for (const step of test.steps ?? []) {
-      if (step.type === "agent.send_message" && typeof step.utterance === "string") {
-        utteranceIndex.set(`${tid}::${step.id}`, step.utterance);
-      }
-    }
-  }
-  const buildOpts: BuildOptions = {
-    promptChars: opts.promptChars,
-    interestingStateKeys: opts.interestingStateKeys,
-    tracesDir:
-      !opts.noPersist && tracesMode !== "off" && traces.size > 0
-        ? path.join(resolveRunDir(opts.cwd, runId, opts.runBase), "traces")
+          }
         : undefined,
-    utteranceIndex,
-  };
-  const { totals, failures } = opts.timings
-    ? await opts.timings.time("summarize_eval_results", () => summarize(merged, buildOpts))
-    : summarize(merged, buildOpts);
-  const lat = latencySummary(totals.latencies);
+      started: startedAt.toISOString(),
+      completed: completedAt.toISOString(),
+      duration_ms: completedAt.getTime() - startedAt.getTime(),
+      tests_count: tests.length,
+      batches: batches.length,
+      concurrency,
+      traces_mode: tracesMode,
+      traces_fetched: Array.from(traces.values()).filter((v) => v != null).length,
+      traces_synthesized: synthesizedCount,
+      traces_live_fetched: liveFetchedCount,
+      totals: {
+        tests: totals.tests,
+        test_pass: totals.test_pass,
+        test_fail: totals.test_fail,
+        evals: totals.evals,
+        ev_pass: totals.ev_pass,
+        ev_fail: totals.ev_fail,
+        errors: totals.errors,
+      },
+      latency_summary: lat,
+    };
 
-  // 7. Build metadata
-  const completedAt = new Date();
-  const metadata: RunMetadata = {
-    run_id: runId,
-    spec_path: opts.specPath,
-    org: opts.targetOrg,
-    agent_api_name: opts.agentApiName,
-    // When both $active_* and $latest_* resolve to the same version, the
-    // active record is the canonical source. When only $latest_* is in use
-    // (e.g. testing a freshly-published-but-Inactive version), we record
-    // the latest record so the run is auditable against the actual
-    // BotVersion that was exercised.
-    bot_id: injectedIds?.bot_id ?? resolvedIds?.bot_id ?? latestIds?.bot_id,
-    bot_version_id:
-      resolvedIds?.bot_version_id ?? latestIds?.bot_version_id ?? injectedIds?.bot_version_id,
-    planner_id: resolvedIds?.planner_id ?? latestIds?.planner_id ?? injectedIds?.planner_id ?? null,
-    bot_version_number:
-      resolvedIds?.version_number ?? latestIds?.version_number ?? injectedIds?.version_number,
-    bot_version_status: resolvedIds?.status ?? latestIds?.status ?? injectedIds?.status,
-    agent_id_resolution: injectedIds
-      ? {
-          mode: opts.versionResolution ?? (usage.latest && !usage.active ? "latest" : "active"),
-          agent_api_name: opts.agentApiName,
-          bot_id: injectedIds.bot_id,
-          bot_version_id: injectedIds.bot_version_id,
-          bot_version_number: injectedIds.version_number,
-          bot_version_status: injectedIds.status,
-          planner_id: injectedIds.planner_id,
-          ...(injectionStats ?? {
-            create_session_steps: 0,
-            injected_create_session_steps: 0,
-            explicit_create_session_steps: 0,
-          }),
-        }
-      : undefined,
-    started: startedAt.toISOString(),
-    completed: completedAt.toISOString(),
-    duration_ms: completedAt.getTime() - startedAt.getTime(),
-    tests_count: tests.length,
-    batches: batches.length,
-    concurrency,
-    traces_mode: tracesMode,
-    traces_fetched: Array.from(traces.values()).filter((v) => v != null).length,
-    traces_synthesized: synthesizedCount,
-    traces_live_fetched: liveFetchedCount,
-    totals: {
-      tests: totals.tests,
-      test_pass: totals.test_pass,
-      test_fail: totals.test_fail,
-      evals: totals.evals,
-      ev_pass: totals.ev_pass,
-      ev_fail: totals.ev_fail,
-      errors: totals.errors,
-    },
-    latency_summary: lat,
-  };
+    // 8. Persist (unless disabled)
+    if (runDir) {
+      await (opts.timings
+        ? opts.timings.time("persist_eval_run", () =>
+            writeRun({ runDir, merged, traces, metadata, failures, spec }),
+          )
+        : writeRun({ runDir, merged, traces, metadata, failures, spec }));
+      await writeStatus("completed", "completed", {
+        testsCount: tests.length,
+        batches: batches.length,
+        completed: completedAt,
+      });
+      terminalStatusWritten = true;
+      log(`Artifacts: ${runDir}/`);
+    }
 
-  // 8. Persist (unless disabled)
-  let runDir: string | undefined;
-  if (!opts.noPersist) {
-    runDir = resolveRunDir(opts.cwd, runId, opts.runBase);
-    await (opts.timings
-      ? opts.timings.time("persist_eval_run", () =>
-          writeRun({ runDir, merged, traces, metadata, failures, spec }),
-        )
-      : writeRun({ runDir, merged, traces, metadata, failures, spec }));
-    log(`Artifacts: ${runDir}/`);
+    return {
+      run_id: runId,
+      run_dir: runDir,
+      totals,
+      latency: lat,
+      failures,
+      merged,
+      metadata,
+      failed_batches: failedBatches,
+    };
+  } catch (err) {
+    if (!terminalStatusWritten) {
+      const cancelled = err instanceof EvalRunCancelledError || opts.signal?.aborted;
+      await writeStatus(cancelled ? "cancelled" : "failed", statusPhase, {
+        testsCount: opts.spec.tests?.length ?? 0,
+        error: err,
+        completed: new Date(),
+      });
+    }
+    throw err;
   }
-
-  return {
-    run_id: runId,
-    run_dir: runDir,
-    totals,
-    latency: lat,
-    failures,
-    merged,
-    metadata,
-    failed_batches: failedBatches,
-  };
 }
 
 /** Tiny semaphore for bounded concurrency. */

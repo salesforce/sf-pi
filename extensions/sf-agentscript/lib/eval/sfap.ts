@@ -38,6 +38,8 @@ export interface SfapRequest {
   timeoutMs?: number;
   /** Max retries on 5xx + connection errors. Default 2. */
   maxRetries?: number;
+  /** Retry client-side request timeouts. Default true for backwards compatibility. */
+  retryOnTimeout?: boolean;
   /** Optional caller cancellation signal. */
   signal?: AbortSignal;
   /** Toggle the api → test.api → dev.api walk on 404. Default true. */
@@ -241,6 +243,12 @@ function isRetryable(status: number): boolean {
   return status >= 500 && status < 600;
 }
 
+function isRequestTimeoutBody(body: unknown): boolean {
+  if (!body || typeof body !== "object") return false;
+  const code = (body as { errorCode?: unknown }).errorCode;
+  return code === "REQUEST_TIMEOUT";
+}
+
 // -------------------------------------------------------------------------------------------------
 // Public API
 // -------------------------------------------------------------------------------------------------
@@ -268,6 +276,7 @@ export async function sfapRequest<T = unknown>(
           ? [cachedEndpoint, ...PREFIXES.filter((prefix) => prefix !== cachedEndpoint)]
           : (PREFIXES as readonly string[]);
   const maxRetries = req.maxRetries ?? 2;
+  const retryOnTimeout = req.retryOnTimeout ?? true;
   const timeoutMs = req.timeoutMs ?? (req.method === "POST" ? 300_000 : 60_000);
 
   let lastStatus = 0;
@@ -303,6 +312,17 @@ export async function sfapRequest<T = unknown>(
 
       // 404 → walk to next endpoint variant (sandbox-safe SFAP routing).
       if (result.status === 404 && !isLastEndpoint) break;
+
+      // Client-side timeouts are represented as 503 for older callers, but
+      // timeout-sensitive workflows can opt out of retrying a known local timeout.
+      if (!retryOnTimeout && isRequestTimeoutBody(result.body)) {
+        return {
+          status: result.status,
+          body: result.body,
+          endpoint: prefix,
+          endpoint_cache: cacheState(prefix),
+        };
+      }
 
       // 5xx + connection-level errors → retry on the same endpoint.
       if (isRetryable(result.status) && attempt < maxRetries) {

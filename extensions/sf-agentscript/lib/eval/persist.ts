@@ -57,6 +57,38 @@ export interface PersistInput {
   spec?: EvalSpec;
 }
 
+export type EvalRunStatus = "running" | "completed" | "failed" | "cancelled";
+
+export interface EvalRunStatusArtifact {
+  schema_version: 1;
+  run_id: string;
+  status: EvalRunStatus;
+  phase: string;
+  started: string;
+  updated: string;
+  completed?: string;
+  spec_path?: string;
+  org?: string;
+  agent_api_name?: string;
+  tests_count?: number;
+  batches?: number;
+  concurrency?: number;
+  traces_mode?: string;
+  batch_timeout_ms?: number;
+  error?: {
+    name?: string;
+    message: string;
+  };
+}
+
+export async function writeRunStatus(
+  runDir: string,
+  artifact: EvalRunStatusArtifact,
+): Promise<void> {
+  await mkdir(runDir, { recursive: true });
+  await writeFile(path.join(runDir, "status.json"), JSON.stringify(artifact, null, 2), "utf-8");
+}
+
 /**
  * Build a map of `${test_id}::${step_id}` → utterance from the spec, so the
  * transcript writer can fill in the user input when the API response omits

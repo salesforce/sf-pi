@@ -121,7 +121,13 @@ export function renderEvalRunResult(
   opts: { isPartial?: boolean; expanded?: boolean },
   theme: Theme,
 ): Text {
-  if (opts.isPartial) return new Text(theme.fg("warning", "🧪 eval · running…"), 0, 0);
+  if (opts.isPartial) {
+    return new Text(
+      theme.fg("warning", getFirstText(result.content) || "🧪 eval · running…"),
+      0,
+      0,
+    );
+  }
   const details = (result.details ?? {}) as EvalRunDetails;
   if (!details.run_id) {
     return new Text(

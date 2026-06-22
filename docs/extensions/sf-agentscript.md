@@ -51,8 +51,8 @@ You can also manage this extension from the SF Pi home base:
 - Compile-on-save stays silent on unsupported files and on failed write/edit results.
 - Eval, trace, preview, and lifecycle calls reuse @salesforce/core / SF CLI auth context; timeout-sensitive HTTP may use bounded native fetch and never logs or persists tokens.
 - Local-first: compile and validate run via official @sf-agentscript packages before any network call.
-- Trace fetches are idempotent GETs; failures are logged and never fail an eval run.
-- 5xx-only retry on POST avoids amplifying server-side overload (no Retry-After contract on the Eval API).
+- Eval runs synthesize trace artifacts from inline Evaluation API data by default; explicit trace fetches are idempotent GETs.
+- 5xx-only retry on POST avoids amplifying server-side overload (no Retry-After contract on the Eval API); client-side Eval API batch timeouts are terminal and configurable through batch_timeout_ms.
 - Preview sessions land under .sfdx/agents/** (sf-guardrail carve-out); rest of .sfdx/** stays blocked.
 
 ## Exact reference
