@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.196.5-2026-06-21",
-  "latestVersion": "0.196.5",
+  "revision": "release-0.196.6-2026-06-22",
+  "latestVersion": "0.196.6",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.196.5",
+      "id": "release-0.196.6",
       "kind": "update",
-      "title": "sf-pi v0.196.5 — sf-agentscript: bound remaining org readiness probes",
-      "publishedAt": "2026-06-21T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.196.5",
+      "title": "sf-pi v0.196.6 — sf-agentscript: bound eval identity and batch timeouts",
+      "publishedAt": "2026-06-22T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.196.6",
       "severity": "info",
-      "body": "sf-agentscript: bound remaining org readiness probes"
+      "body": "sf-agentscript: bound eval identity and batch timeouts"
     },
     {
       "id": "pi-0.73-required",
