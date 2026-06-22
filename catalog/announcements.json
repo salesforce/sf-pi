@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.204.3-2026-06-22",
-  "latestVersion": "0.204.3",
+  "revision": "release-0.204.4-2026-06-22",
+  "latestVersion": "0.204.4",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.204.3",
+      "id": "release-0.204.4",
       "kind": "update",
-      "title": "sf-pi v0.204.3 — ui: keep manager detail actions in viewport",
+      "title": "sf-pi v0.204.4 — ui: keep manager overlay anchor stable",
       "publishedAt": "2026-06-22T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.204.3",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.204.4",
       "severity": "info",
-      "body": "ui: keep manager detail actions in viewport"
+      "body": "ui: keep manager overlay anchor stable"
     },
     {
       "id": "pi-0.73-required",
