@@ -50,8 +50,14 @@ export async function openInfoPanel(
   }
 
   await ctx.ui.custom<void>(
-    (_tui, theme, _keybindings, done) => {
-      const panel = new InfoPanelComponent(theme, glyphs, { ...safeOptions, body, severity }, done);
+    (tui, theme, _keybindings, done) => {
+      const panel = new InfoPanelComponent(
+        theme,
+        glyphs,
+        { ...safeOptions, body, severity },
+        done,
+        () => Math.max(8, Math.floor(tui.terminal.rows * 0.75)),
+      );
       return {
         render: (width: number) => panel.render(width),
         invalidate: () => panel.invalidate(),
@@ -82,6 +88,7 @@ class InfoPanelComponent {
   // keywords (`exit`, `quit`). Reset by Enter/Esc/q so partial matches do not
   // survive across panels.
   private closeKeywordBuffer = "";
+  private scrollOffset = 0;
 
   constructor(
     private readonly theme: Theme,
@@ -89,6 +96,7 @@ class InfoPanelComponent {
     private readonly options: Required<Pick<InfoPanelOptions, "title" | "body" | "severity">> &
       Pick<InfoPanelOptions, "footer">,
     private readonly done: () => void,
+    private readonly getMaxRows: () => number,
   ) {}
 
   handleInput(data: string): void {
@@ -100,6 +108,30 @@ class InfoPanelComponent {
     ) {
       this.closeKeywordBuffer = "";
       this.done();
+      return;
+    }
+    if (matchesKey(data, "up")) {
+      this.scrollOffset = Math.max(0, this.scrollOffset - 1);
+      return;
+    }
+    if (matchesKey(data, "down")) {
+      this.scrollOffset += 1;
+      return;
+    }
+    if (matchesKey(data, "pageUp")) {
+      this.scrollOffset = Math.max(0, this.scrollOffset - this.pageStep());
+      return;
+    }
+    if (matchesKey(data, "pageDown")) {
+      this.scrollOffset += this.pageStep();
+      return;
+    }
+    if (matchesKey(data, "home")) {
+      this.scrollOffset = 0;
+      return;
+    }
+    if (matchesKey(data, "end")) {
+      this.scrollOffset = Number.MAX_SAFE_INTEGER;
       return;
     }
     // Detect typed `exit` / `quit` so users who reach for those keywords by
@@ -137,14 +169,15 @@ class InfoPanelComponent {
       ),
     );
 
-    for (const rawLine of this.options.body.split(/\r?\n/)) {
-      if (!rawLine.trim()) {
-        lines.push(this.contentLine("", width));
-        continue;
-      }
-      for (const wrapped of wrapTextWithAnsi(rawLine, innerWidth)) {
-        lines.push(this.contentLine(`  ${this.theme.fg("text", wrapped)}`, width));
-      }
+    const bodyRows = this.bodyRows(innerWidth);
+    const maxRows = this.getMaxRows();
+    const fixedRows = 6;
+    const bodyViewportRows = Math.max(1, maxRows - fixedRows);
+    const maxOffset = Math.max(0, bodyRows.length - bodyViewportRows);
+    this.scrollOffset = Math.max(0, Math.min(this.scrollOffset, maxOffset));
+    const visibleRows = bodyRows.slice(this.scrollOffset, this.scrollOffset + bodyViewportRows);
+    for (const bodyRow of visibleRows) {
+      lines.push(this.contentLine(bodyRow, width));
     }
 
     lines.push(
@@ -157,10 +190,7 @@ class InfoPanelComponent {
     );
     lines.push(
       this.contentLine(
-        ` ${this.theme.fg(
-          "dim",
-          this.options.footer ?? "Enter/Esc / type 'exit' return to the previous panel",
-        )}`,
+        ` ${this.theme.fg("dim", this.footerText(bodyRows.length, bodyViewportRows))}`,
         width,
       ),
     );
@@ -176,6 +206,35 @@ class InfoPanelComponent {
   }
 
   invalidate(): void {}
+
+  private bodyRows(innerWidth: number): string[] {
+    const rows: string[] = [];
+    for (const rawLine of this.options.body.split(/\r?\n/)) {
+      if (!rawLine.trim()) {
+        rows.push("");
+        continue;
+      }
+      for (const wrapped of wrapTextWithAnsi(rawLine, innerWidth)) {
+        rows.push(`  ${this.theme.fg("text", wrapped)}`);
+      }
+    }
+    return rows;
+  }
+
+  private pageStep(): number {
+    return Math.max(1, this.getMaxRows() - 7);
+  }
+
+  private footerText(totalRows: number, viewportRows: number): string {
+    if (this.options.footer) return this.options.footer;
+    if (totalRows > viewportRows) {
+      return `↑↓/PgUp/PgDn scroll · ${this.scrollOffset + 1}-${Math.min(
+        this.scrollOffset + viewportRows,
+        totalRows,
+      )}/${totalRows} · Enter/Esc back`;
+    }
+    return "Enter/Esc / type 'exit' return to the previous panel";
+  }
 
   private borderChars(): {
     topLeft: string;

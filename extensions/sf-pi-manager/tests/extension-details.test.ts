@@ -241,6 +241,54 @@ describe("extension detail helpers", () => {
     });
   });
 
+  it("scrolls long settings pages with PageDown", async () => {
+    const custom = {
+      id: "sf-test",
+      name: "SF Test",
+      description: "Test extension",
+      file: "extensions/sf-test/index.ts",
+      category: "assistive",
+      defaultEnabled: true,
+      enabled: true,
+      configurable: true,
+      getConfigPanel: async () =>
+        (() => ({
+          focused: false,
+          handleInput: () => undefined,
+          invalidate: () => undefined,
+          render: () => [],
+          renderContent: () => Array.from({ length: 24 }, (_, i) => ` row ${i + 1}`),
+        })) as never,
+    } as never;
+    const overlay = new SfPiOverlayComponent(
+      stubTheme,
+      "0.0.0-test",
+      PACKAGE_ROOT,
+      "/tmp/project",
+      [custom],
+      [custom],
+      "global",
+      () => 12,
+      () => undefined,
+      {} as never,
+      {} as never,
+      () => [],
+      () => undefined,
+      { extensionId: "sf-test", view: "settings" },
+    );
+
+    await Promise.resolve();
+    const first = overlay.render(100).join("\n");
+    expect(first).toContain("row 1");
+    expect(first).toContain("PageUp/PageDown scroll");
+    expect(first).not.toContain("row 20");
+
+    overlay.handleInput("\x1b[6~");
+    const second = overlay.render(100).join("\n");
+    expect(second).toContain("row 5");
+    expect(second).not.toContain("row 1");
+  });
+
   it("closes direct deep-linked extension details on escape instead of returning to the list", () => {
     const states = buildExtensionStates(new Set());
     let closed = false;

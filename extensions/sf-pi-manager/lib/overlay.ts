@@ -151,6 +151,7 @@ export class SfPiOverlayComponent implements Focusable {
   private activePanel: ConfigPanel | null = null;
   private activePanelExtId: string | null = null;
   private configPanelReloadNeeded = false;
+  private panelScrollOffset = 0;
   private scope: ManagerScope;
   private actionInFlight = false;
   private closeDetailOnBack = false;
@@ -218,6 +219,9 @@ export class SfPiOverlayComponent implements Focusable {
   handleInput(data: string): void {
     // --- Settings / extension action page ---
     if (this.view.kind === "settings" || this.view.kind === "managerAction") {
+      if (this.handlePanelScrollInput(data)) {
+        return;
+      }
       if (this.activePanel) {
         this.activePanel.focused = this.focused;
         this.activePanel.handleInput?.(data);
@@ -522,7 +526,10 @@ export class SfPiOverlayComponent implements Focusable {
     return lines;
   }
 
-  private renderPanelView(innerWidth: number, row: (content?: string) => string): string[] {
+  private renderPanelView(
+    innerWidth: number,
+    row: (content?: string, scrollBar?: string) => string,
+  ): string[] {
     const lines: string[] = [];
     const theme = this.theme;
     const ext = this.getActiveExtension();
@@ -537,30 +544,58 @@ export class SfPiOverlayComponent implements Focusable {
     lines.push(row(` ${theme.fg("accent", theme.bold(breadcrumb))}`));
     lines.push(row(""));
 
-    if (this.activePanel) {
-      this.activePanel.focused = this.focused;
-      const contentRows = this.activePanel.renderContent
-        ? this.activePanel.renderContent(innerWidth)
-        : this.activePanel.render(innerWidth);
-      for (const contentRow of contentRows) {
-        lines.push(row(contentRow));
-      }
-    } else if (this.pendingFactories.has(ext.id)) {
-      lines.push(row(` ${theme.fg("dim", "Loading settings panel…")}`));
-    } else {
-      lines.push(row(` ${theme.fg("muted", "Settings panel unavailable.")}`));
+    const contentRows = this.panelContentRows(innerWidth);
+    const maxRows = this.getPanelMaxRows();
+    const footerRows = 2;
+    const viewportRows = Math.max(1, maxRows - lines.length - footerRows);
+    const maxOffset = Math.max(0, contentRows.length - viewportRows);
+    this.panelScrollOffset = Math.max(0, Math.min(this.panelScrollOffset, maxOffset));
+    const visibleRows = contentRows.slice(
+      this.panelScrollOffset,
+      this.panelScrollOffset + viewportRows,
+    );
+    const needsScrollbar = contentRows.length > viewportRows;
+    for (let i = 0; i < viewportRows; i++) {
+      lines.push(
+        row(
+          visibleRows[i] ?? "",
+          needsScrollbar ? this.renderPanelScrollbar(i, viewportRows, contentRows.length) : "",
+        ),
+      );
     }
 
-    this.padPanelRows(lines, row);
+    const scrollHint = needsScrollbar
+      ? `PageUp/PageDown scroll · ${this.panelScrollOffset + 1}-${Math.min(
+          this.panelScrollOffset + viewportRows,
+          contentRows.length,
+        )}/${contentRows.length} · Esc back`
+      : "Esc back";
+    lines.push(row(` ${theme.fg("dim", scrollHint)}`));
     lines.push(theme.fg("border", `╰${"─".repeat(innerWidth)}╯`));
     return lines;
   }
 
-  private padPanelRows(lines: string[], row: (content?: string) => string): void {
-    const targetRows = Math.max(lines.length + 1, Math.floor(this.getTerminalRows() * 0.85));
-    while (lines.length < targetRows - 1) {
-      lines.push(row(""));
+  private panelContentRows(innerWidth: number): string[] {
+    const ext = this.getActiveExtension();
+    if (!ext) return [];
+    if (this.activePanel) {
+      this.activePanel.focused = this.focused;
+      return this.activePanel.renderContent
+        ? this.activePanel.renderContent(innerWidth)
+        : this.activePanel.render(innerWidth);
     }
+    if (this.pendingFactories.has(ext.id)) {
+      return [` ${this.theme.fg("dim", "Loading settings panel…")}`];
+    }
+    return [` ${this.theme.fg("muted", "Settings panel unavailable.")}`];
+  }
+
+  private getPanelMaxRows(): number {
+    return Math.max(8, Math.floor(this.getTerminalRows() * 0.85));
+  }
+
+  private panelPageStep(): number {
+    return Math.max(1, this.getPanelMaxRows() - 6);
   }
 
   // -------------------------------------------------------------------------------------------------
@@ -588,6 +623,7 @@ export class SfPiOverlayComponent implements Focusable {
   private drillIntoSettings(extensionId: string): void {
     this.activePanelExtId = extensionId;
     this.activePanel = null;
+    this.panelScrollOffset = 0;
     this.view = { kind: "settings", extensionId };
     this.attachConfigPanel(extensionId);
   }
@@ -595,6 +631,7 @@ export class SfPiOverlayComponent implements Focusable {
   private drillIntoManagerAction(extensionId: string, action: ManagerDetailAction): void {
     this.activePanelExtId = extensionId;
     this.activePanel = null;
+    this.panelScrollOffset = 0;
     this.view = { kind: "managerAction", extensionId, label: action.label };
     this.attachManagerActionPanel(extensionId, action);
   }
@@ -646,6 +683,7 @@ export class SfPiOverlayComponent implements Focusable {
         : this.activePanelExtId;
     this.activePanel = null;
     this.activePanelExtId = null;
+    this.panelScrollOffset = 0;
     if (extensionId) {
       this.view = { kind: "detail", extensionId, actionIndex: 0 };
       return;
@@ -674,6 +712,37 @@ export class SfPiOverlayComponent implements Focusable {
   // -------------------------------------------------------------------------------------------------
   // Private helpers
   // -------------------------------------------------------------------------------------------------
+
+  private handlePanelScrollInput(data: string): boolean {
+    if (matchesKey(data, "pageUp")) {
+      this.panelScrollOffset = Math.max(0, this.panelScrollOffset - this.panelPageStep());
+      return true;
+    }
+    if (matchesKey(data, "pageDown")) {
+      this.panelScrollOffset += this.panelPageStep();
+      return true;
+    }
+    if (matchesKey(data, "home")) {
+      this.panelScrollOffset = 0;
+      return true;
+    }
+    if (matchesKey(data, "end")) {
+      this.panelScrollOffset = Number.MAX_SAFE_INTEGER;
+      return true;
+    }
+    return false;
+  }
+
+  private renderPanelScrollbar(rowIndex: number, viewportRows: number, totalRows: number): string {
+    if (totalRows <= viewportRows || viewportRows <= 0) return "";
+    const maxOffset = Math.max(1, totalRows - viewportRows);
+    const thumbRows = Math.max(1, Math.round((viewportRows / totalRows) * viewportRows));
+    const thumbStart = Math.round(
+      (this.panelScrollOffset / maxOffset) * (viewportRows - thumbRows),
+    );
+    const isThumb = rowIndex >= thumbStart && rowIndex < thumbStart + thumbRows;
+    return this.theme.fg(isThumb ? "accent" : "dim", isThumb ? "█" : "│");
+  }
 
   private getActiveExtension(): ExtensionState | undefined {
     const view = this.view;
