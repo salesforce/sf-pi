@@ -517,6 +517,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.201.0](https://github.com/salesforce/sf-pi/compare/v0.200.0...v0.201.0) (2026-06-22)
+
+
+### Features
+
+* **settings:** add data360 and herdr manager preferences ([c925c09](https://github.com/salesforce/sf-pi/commit/c925c090217db98321506437b94886ceeae3f45b))
+
 ## [0.200.0](https://github.com/salesforce/sf-pi/compare/v0.199.0...v0.200.0) (2026-06-22)
 
 
