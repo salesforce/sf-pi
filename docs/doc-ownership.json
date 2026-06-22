@@ -41,6 +41,10 @@
     "generated": true,
     "checks": ["npm run generate-catalog:check", "npm run docs:build"]
   },
+  "docs/settings-surfaces.md": {
+    "source": ["extension settings behavior", "extensions/*/manifest.json"],
+    "checks": ["npm run docs:health:check", "npm run docs:build"]
+  },
   "docs/agent-orientation.md": {
     "source": ["extensions/*/manifest.json", "catalog/index.json"],
     "generated": true,

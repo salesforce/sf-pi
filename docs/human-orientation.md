@@ -15,7 +15,8 @@ under `lib/common/`.
 1. Read [`README.md`](https://github.com/salesforce/sf-pi/blob/main/README.md) for install and user-facing behavior.
 2. Read [`ARCHITECTURE.md`](https://github.com/salesforce/sf-pi/blob/main/ARCHITECTURE.md) for repo structure and source of truth.
 3. Open [`docs/agent-orientation.md`](./agent-orientation.md) for the generated inventory.
-4. For a specific extension, read:
+4. For settings work, read [`docs/settings-surfaces.md`](./settings-surfaces.md) for the current Manager Settings audit.
+5. For a specific extension, read:
    - `extensions/<id>/README.md`
    - `extensions/<id>/AGENTS.md` if present
    - `extensions/<id>/index.ts`
@@ -24,14 +25,15 @@ under `lib/common/`.
 
 ## Common change paths
 
-| Change                          | Start here                                           | Then run                                                         |
-| ------------------------------- | ---------------------------------------------------- | ---------------------------------------------------------------- |
-| Add/change command metadata     | `extensions/<id>/manifest.json`                      | `npm run generate-catalog`                                       |
-| Change extension behavior       | `extensions/<id>/index.ts` or `lib/*.ts`             | tests for that extension, then `npm run validate`                |
-| Add a new extension             | `npm run scaffold -- --id sf-my-ext --category core` | fill README, tests, `npm run validate`                           |
-| Change recommendation bundle    | `catalog/recommendations.json`                       | `npm run generate-catalog`, `npm run docs:health:check`          |
-| Change release-visible behavior | `CHANGELOG.md`                                       | `npm run generate-catalog` to refresh announcements              |
-| Change CI/scripts               | `.github/workflows/`, `scripts/`                     | update `CONTRIBUTING.md` / `ARCHITECTURE.md` if behavior changed |
+| Change                          | Start here                                                         | Then run                                                                     |
+| ------------------------------- | ------------------------------------------------------------------ | ---------------------------------------------------------------------------- |
+| Add/change command metadata     | `extensions/<id>/manifest.json`                                    | `npm run generate-catalog`                                                   |
+| Change extension behavior       | `extensions/<id>/index.ts` or `lib/*.ts`                           | tests for that extension, then `npm run validate`                            |
+| Add/change Manager Settings     | `docs/settings-surfaces.md`, `extensions/<id>/lib/config-panel.ts` | targeted settings tests, `npm run generate-catalog`, then `npm run validate` |
+| Add a new extension             | `npm run scaffold -- --id sf-my-ext --category core`               | fill README, tests, `npm run validate`                                       |
+| Change recommendation bundle    | `catalog/recommendations.json`                                     | `npm run generate-catalog`, `npm run docs:health:check`                      |
+| Change release-visible behavior | `CHANGELOG.md`                                                     | `npm run generate-catalog` to refresh announcements                          |
+| Change CI/scripts               | `.github/workflows/`, `scripts/`                                   | update `CONTRIBUTING.md` / `ARCHITECTURE.md` if behavior changed             |
 
 ## Validation commands
 
