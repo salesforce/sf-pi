@@ -517,6 +517,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.196.6](https://github.com/salesforce/sf-pi/compare/v0.196.5...v0.196.6) (2026-06-22)
+
+
+### Bug Fixes
+
+* **sf-agentscript:** bound eval identity and batch timeouts ([a4210b1](https://github.com/salesforce/sf-pi/commit/a4210b1345e128a7d3b35e489c0b6b92d49d33b9))
+
 ## [0.196.5](https://github.com/salesforce/sf-pi/compare/v0.196.4...v0.196.5) (2026-06-21)
 
 
