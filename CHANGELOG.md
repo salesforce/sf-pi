@@ -517,6 +517,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.202.0](https://github.com/salesforce/sf-pi/compare/v0.201.0...v0.202.0) (2026-06-22)
+
+
+### Features
+
+* **settings:** add lsp welcome and explorer manager preferences ([cc00082](https://github.com/salesforce/sf-pi/commit/cc000827695c77ab0519769fb3b917b728465dce))
+
 ## [0.201.0](https://github.com/salesforce/sf-pi/compare/v0.200.0...v0.201.0) (2026-06-22)
 
 
