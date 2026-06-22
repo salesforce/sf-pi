@@ -517,6 +517,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.199.0](https://github.com/salesforce/sf-pi/compare/v0.198.2...v0.199.0) (2026-06-22)
+
+
+### Features
+
+* **sf-slack:** move preferences into manager settings ([c00e8f9](https://github.com/salesforce/sf-pi/commit/c00e8f947462bfbf5dfe14e401db120680976eea))
+
 ## [0.198.2](https://github.com/salesforce/sf-pi/compare/v0.198.1...v0.198.2) (2026-06-22)
 
 
