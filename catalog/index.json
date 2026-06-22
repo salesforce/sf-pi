@@ -382,7 +382,7 @@
     "entry": "extensions/sf-devbar/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 2544
+    "srcLoc": 2509
   },
   {
     "id": "sf-feedback",
@@ -620,7 +620,7 @@
     "entry": "extensions/sf-lsp/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 3982
+    "srcLoc": 4055
   },
   {
     "id": "sf-ohana-spinner",
@@ -747,7 +747,7 @@
     "entry": "extensions/sf-skills/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 4698
+    "srcLoc": 4675
   },
   {
     "id": "sf-slack",
@@ -860,6 +860,6 @@
     "entry": "extensions/sf-welcome/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 5413
+    "srcLoc": 5379
   }
 ]

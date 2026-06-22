@@ -35,20 +35,18 @@ import type {
   ExtensionCommandContext,
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
-import {
-  type CommandPanelAction,
-  type CommandPanelState,
-  openCommandPanel,
-} from "../../lib/common/command-panel.ts";
+
 import { openInfoPanel, type InfoPanelSeverity } from "../../lib/common/info-panel.ts";
 import { withSafeCommandHandler } from "../../lib/common/safe-command-handler.ts";
 import {
-  buildToggleExtensionAction,
-  isLifecycleToggleAction,
-  LIFECYCLE_GROUP,
-  performToggleExtension,
-  type LifecycleActionId,
-} from "../../lib/common/extension-toggle.ts";
+  openExtensionInManager,
+  type SfPiManagerOpenRoute,
+} from "../../lib/common/manager-deep-link.ts";
+import {
+  registerManagerDetailActions,
+  type ManagerDetailAction,
+} from "../../lib/common/manager-actions.ts";
+
 import type { SplashData } from "./lib/types.ts";
 import { matchesKey } from "@earendil-works/pi-tui";
 import {
@@ -683,6 +681,8 @@ export default function sfWelcome(pi: ExtensionAPI) {
     endActiveSession(ctx);
   });
 
+  registerManagerDetailActions(pi, COMMAND_NAME, buildWelcomeManagerActions());
+
   // --- /sf-welcome command ---
   pi.registerCommand(COMMAND_NAME, {
     description: "Show the sf-pi welcome splash summary, status, and controls",
@@ -690,7 +690,7 @@ export default function sfWelcome(pi: ExtensionAPI) {
       await withSafeCommandHandler(ctx, COMMAND_NAME, async () => {
         const sub = (args ?? "").trim().toLowerCase();
         if (sub === "" && ctx.hasUI) {
-          await handleWelcomePanel(ctx);
+          await openWelcomeInManager(ctx, "detail");
           return;
         }
         // Direct subcommand or headless invocation — emit the summary as plain
@@ -709,9 +709,14 @@ export default function sfWelcome(pi: ExtensionAPI) {
   // /sf-welcome panel actions and helpers
   // ---------------------------------------------------------------------------
 
-  type WelcomeAction = "summary" | "fonts" | "help" | "close" | LifecycleActionId;
+  type WelcomeAction = "summary" | "fonts" | "help";
 
-  const WELCOME_ACTIONS: CommandPanelAction<WelcomeAction>[] = [
+  const WELCOME_ACTIONS: Array<{
+    value: WelcomeAction;
+    label: string;
+    description: string;
+    group: string;
+  }> = [
     {
       value: "summary",
       label: "Show splash summary",
@@ -733,61 +738,36 @@ export default function sfWelcome(pi: ExtensionAPI) {
         "Print /sf-welcome usage, including how to re-run the splash and trigger the font installer.",
       group: "Reference",
     },
-    {
-      value: "close",
-      label: "Close",
-      description: "Dismiss this panel.",
-      group: LIFECYCLE_GROUP,
-    },
   ];
 
-  function buildWelcomeActions(cwd: string): CommandPanelAction<WelcomeAction>[] {
-    const toggle = buildToggleExtensionAction({ extensionId: "sf-welcome", cwd });
-    return toggle ? [...WELCOME_ACTIONS, toggle] : WELCOME_ACTIONS;
+  function buildWelcomeManagerActions(): ManagerDetailAction[] {
+    return WELCOME_ACTIONS.map((action) => ({
+      id: action.value,
+      label: action.label,
+      description: action.description,
+      group: action.group,
+      run: (ctx) => handleWelcomeAction(ctx, action.value),
+    }));
   }
 
-  async function handleWelcomePanel(ctx: ExtensionCommandContext): Promise<void> {
-    const panelState: CommandPanelState<WelcomeAction> = {};
-    await openCommandPanel(ctx, {
-      title: "👋 SF Welcome — status & controls",
-      subtitle:
-        "Re-display the splash summary, install bundled fonts, or toggle the splash itself.",
-      statusLines: () => buildWelcomePanelStatusLines(ctx),
-      actions: () => buildWelcomeActions(ctx.cwd),
-      closeValue: "close",
-      state: panelState,
-      onAction: (action) => handleWelcomeAction(ctx, action),
-      // Lifecycle toggle calls ctx.reload() — must close panel first so the
-      // ctx.ui.custom() promise resolves before the runtime is invalidated.
-      closeBeforeAction: isLifecycleToggleAction,
+  async function openWelcomeInManager(
+    ctx: ExtensionCommandContext,
+    view: NonNullable<SfPiManagerOpenRoute["view"]>,
+  ): Promise<void> {
+    const opened = await openExtensionInManager(pi, ctx, {
+      extensionId: COMMAND_NAME,
+      view,
+      actions: buildWelcomeManagerActions(),
     });
-  }
-
-  function buildWelcomePanelStatusLines(ctx: ExtensionCommandContext): string[] {
-    const enabled = isSfPiExtensionEnabled(ctx.cwd, "sf-welcome");
-    // isFontFamilyInstalled takes the platform; we pass nothing so it uses
-    // the current process.platform default. The font name is purely
-    // descriptive on the status line.
-    const fontsInstalled = isFontFamilyInstalled();
-    const decision = readWelcomeState().fontInstallDecision ?? "never asked";
-    return [
-      `${enabled ? "✓" : "✗"} Extension     ${enabled ? "enabled" : "disabled"}`,
-      `• Bundled font  ${fontsInstalled ? "installed" : "not installed"} (${FONT_FAMILY_NAME})`,
-      `• Font prompt   ${decision}`,
-    ];
+    if (!opened) {
+      ctx.ui.notify("SF Pi Manager is unavailable. Try /sf-pi open sf-welcome.", "warning");
+    }
   }
 
   async function handleWelcomeAction(
     ctx: ExtensionCommandContext,
     action: WelcomeAction,
   ): Promise<void> {
-    // The shared command-panel guarantees the closeValue row never reaches
-    // here — see lib/common/command-panel.ts. No "close" branch needed.
-    if (action === "lifecycle.toggle") {
-      await performToggleExtension(ctx, "sf-welcome");
-      return;
-    }
-
     if (action === "summary") {
       const summary = await buildWelcomeSummary(ctx);
       await emitWelcomeOutput(ctx, "sf-pi welcome summary", summary, "info");
@@ -951,9 +931,14 @@ export default function sfWelcome(pi: ExtensionAPI) {
   // Delegates to runFontInstall() for the actual install — the splash
   // prompt and this panel emit the exact same install output.
 
-  type SfSetupFontsAction = "status" | "install" | "reset" | "help" | "close";
+  type SfSetupFontsAction = "status" | "install" | "reset" | "help";
 
-  const SF_SETUP_FONTS_ACTIONS: CommandPanelAction<SfSetupFontsAction>[] = [
+  const SF_SETUP_FONTS_ACTIONS: Array<{
+    value: SfSetupFontsAction;
+    label: string;
+    description: string;
+    group?: string;
+  }> = [
     {
       value: "status",
       label: "Show font installation status",
@@ -979,12 +964,6 @@ export default function sfWelcome(pi: ExtensionAPI) {
       description: "Print commands and platform support reference.",
       group: "Reference",
     },
-    {
-      value: "close",
-      label: "Close",
-      description: "Dismiss this panel.",
-      group: "Lifecycle",
-    },
   ];
 
   function buildSfSetupFontsStatusLines(): string[] {
@@ -997,19 +976,6 @@ export default function sfWelcome(pi: ExtensionAPI) {
       `• Decision       ${decision}`,
       `${supported ? "✓" : "⚠"} Platform       ${platform} ${supported ? "" : "(manual install only)"}`.trim(),
     ];
-  }
-
-  async function handleSfSetupFontsPanel(ctx: ExtensionCommandContext): Promise<void> {
-    const panelState: CommandPanelState<SfSetupFontsAction> = {};
-    await openCommandPanel(ctx, {
-      title: "🔤 SF Fonts — bundled Nerd Font installer",
-      subtitle: "Install the Nerd Font used by the sf-pi splash, or review the install state.",
-      statusLines: () => buildSfSetupFontsStatusLines(),
-      actions: () => SF_SETUP_FONTS_ACTIONS,
-      closeValue: "close",
-      state: panelState,
-      onAction: (action) => handleSfSetupFontsAction(ctx, action, true),
-    });
   }
 
   async function handleSfSetupFontsAction(
@@ -1101,20 +1067,20 @@ export default function sfWelcome(pi: ExtensionAPI) {
     description: "Install the bundled Nerd Font used by the sf-pi splash",
     getArgumentCompletions: (prefix) => {
       const lower = prefix.toLowerCase();
-      const items = SF_SETUP_FONTS_ACTIONS.filter((action) => action.value !== "close")
-        .filter((action) => action.value.startsWith(lower))
-        .map((action) => ({
+      const items = SF_SETUP_FONTS_ACTIONS.filter((action) => action.value.startsWith(lower)).map(
+        (action) => ({
           value: action.value,
           label: action.value,
           description: action.description,
-        }));
+        }),
+      );
       return items.length > 0 ? items : null;
     },
     handler: async (args, ctx) => {
       await withSafeCommandHandler(ctx, FONTS_COMMAND_NAME, async () => {
         const sub = (args ?? "").trim().toLowerCase();
         if (sub === "" && ctx.hasUI) {
-          await handleSfSetupFontsPanel(ctx);
+          await openWelcomeInManager(ctx, "detail");
           return;
         }
         // Map empty/no-UI to install for backwards compatibility (the original

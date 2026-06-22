@@ -64,11 +64,7 @@ import { buildExecFn } from "../../lib/common/exec-adapter.ts";
 import { basename } from "node:path";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 import { filterEnabledExtensionStatuses } from "../../lib/common/sf-pi-extension-state.ts";
-import {
-  type CommandPanelAction,
-  type CommandPanelState,
-  openCommandPanel,
-} from "../../lib/common/command-panel.ts";
+
 import { withSafeCommandHandler } from "../../lib/common/safe-command-handler.ts";
 import { openInfoPanel } from "../../lib/common/info-panel.ts";
 import { openExtensionInManager } from "../../lib/common/manager-deep-link.ts";
@@ -864,7 +860,12 @@ export default function sfDevBar(pi: ExtensionAPI) {
 
   type SfOrgAction = "status" | "refresh" | "open-setup" | "help" | "close";
 
-  const SF_ORG_ACTIONS: CommandPanelAction<SfOrgAction>[] = [
+  const SF_ORG_ACTIONS: Array<{
+    value: SfOrgAction;
+    label: string;
+    description: string;
+    group: string;
+  }> = [
     {
       value: "status",
       label: "Show current status",
@@ -896,43 +897,6 @@ export default function sfDevBar(pi: ExtensionAPI) {
       group: "Lifecycle",
     },
   ];
-
-  function buildSfOrgStatusLines(): string[] {
-    if (!env) {
-      return ["◐ Environment    detecting…"];
-    }
-    const cli = env.cli.installed
-      ? `✓ SF CLI         v${env.cli.version ?? "unknown"}`
-      : "✗ SF CLI         not installed";
-    const project = env.project.detected
-      ? `✓ Project        ${env.project.name ?? "detected"}`
-      : "⚠ Project        not an SFDX project";
-    const orgLabel = env.org.alias ?? env.config.targetOrg ?? env.org.username ?? "—";
-    const orgType = env.org.orgType && env.org.orgType !== "unknown" ? ` (${env.org.orgType})` : "";
-    const org = env.org.detected
-      ? `✓ Org            ${orgLabel}${orgType}`
-      : `⚠ Org            no default${orgLabel !== "—" ? ` — ${orgLabel}` : ""}`;
-    const apiVersion = env.project.sourceApiVersion
-      ? `• API version    ${env.project.sourceApiVersion}`
-      : "• API version    —";
-    return [cli, project, org, apiVersion];
-  }
-
-  async function handleSfOrgPanel(ctx: ExtensionCommandContext): Promise<void> {
-    const panelState: CommandPanelState<SfOrgAction> = {};
-    await openCommandPanel(ctx, {
-      title: "🌐 SF Org — Salesforce environment",
-      subtitle: "Inspect the active Salesforce CLI / project / org and refresh detection.",
-      statusLines: () => buildSfOrgStatusLines(),
-      actions: () => SF_ORG_ACTIONS,
-      closeValue: "close",
-      state: panelState,
-      onAction: (action) => handleSfOrgAction(ctx, action, true),
-      // /sf-org doesn't currently route lifecycle.toggle (sf-devbar's panel
-      // owns that toggle for the underlying extension), so closeBeforeAction
-      // is intentionally omitted.
-    });
-  }
 
   async function handleSfOrgAction(
     ctx: ExtensionCommandContext,
@@ -1059,7 +1023,7 @@ export default function sfDevBar(pi: ExtensionAPI) {
       await withSafeCommandHandler(ctx, "sf-org", async () => {
         const sub = (args ?? "").trim().toLowerCase();
         if (sub === "" && ctx.hasUI) {
-          await handleSfOrgPanel(ctx);
+          await openDevbarInManager(ctx, "detail");
           return;
         }
         // Map legacy `open` shorthand to the panel action id so headless

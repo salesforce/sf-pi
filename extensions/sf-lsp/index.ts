@@ -67,6 +67,14 @@ import {
 } from "./lib/transcript.ts";
 import { openSfLspPanel, type SfLspPanelAction } from "./lib/command-panel.ts";
 import { openInfoPanel, type InfoPanelSeverity } from "../../lib/common/info-panel.ts";
+import {
+  openExtensionInManager,
+  type SfPiManagerOpenRoute,
+} from "../../lib/common/manager-deep-link.ts";
+import {
+  registerManagerDetailActions,
+  type ManagerDetailAction,
+} from "../../lib/common/manager-actions.ts";
 import { isSfPiExtensionEnabled } from "../../lib/common/sf-pi-extension-state.ts";
 import { performToggleExtension } from "../../lib/common/extension-toggle.ts";
 import { withSafeCommandHandler } from "../../lib/common/safe-command-handler.ts";
@@ -124,6 +132,7 @@ export default function sfLspExtension(pi: ExtensionAPI) {
 
   // --- Core hooks -----------------------------------------------------------------------------
   registerMainCommand(pi);
+  if (pi.events?.on) registerManagerDetailActions(pi, "sf-lsp", buildSfLspManagerActions());
   registerSessionHooks(pi);
   registerToolResultHook(pi);
 
@@ -451,7 +460,12 @@ export default function sfLspExtension(pi: ExtensionAPI) {
     const tokens = args.trim().split(/\s+/).filter(Boolean);
     const subcommand = (tokens[0] ?? "").toLowerCase();
 
-    if (subcommand === "" || subcommand === "panel") {
+    if (subcommand === "" && ctx.hasUI) {
+      await openSfLspInManager(ctx, "detail");
+      return;
+    }
+
+    if (subcommand === "panel") {
       const statuses = await doctorLsp(ctx.cwd);
       seedFromDoctor(activity, statuses);
       setSfLspHealthFromDoctor(statuses);
@@ -530,6 +544,68 @@ export default function sfLspExtension(pi: ExtensionAPI) {
         ].join("\n"),
         "warning",
       );
+    }
+  }
+
+  function buildSfLspManagerActions(): ManagerDetailAction[] {
+    return [
+      {
+        id: "doctor",
+        label: "Run doctor",
+        description: "Refresh LSP availability and show the compact doctor report.",
+        group: "Diagnostics",
+        run: (ctx) => runSfLspHandler("doctor", ctx),
+      },
+      {
+        id: "panel",
+        label: "Open rich diagnostics panel",
+        description: "Open the legacy rich Doctor + Recent activity panel.",
+        group: "Diagnostics",
+        run: (ctx) => runSfLspHandler("panel", ctx),
+        closeBeforeRun: true,
+      },
+      {
+        id: "install",
+        label: "Install/update LSP servers",
+        description: "Run the LSP installer flow for missing or outdated bundled servers.",
+        group: "Setup",
+        run: (ctx) => runSfLspHandler("install", ctx),
+      },
+      {
+        id: "install-status",
+        label: "Show install status",
+        description: "Show installed and upstream LSP server versions.",
+        group: "Setup",
+        run: (ctx) => runSfLspHandler("install status", ctx),
+      },
+      {
+        id: "toggle-verbose",
+        label: "Toggle verbose transcript",
+        description: "Toggle user-visible transcript rows for every LSP check.",
+        group: "Settings",
+        run: (ctx) => handlePanelAction("toggle-verbose", ctx),
+      },
+      {
+        id: "shutdown-servers",
+        label: "Shut down LSP servers",
+        description: "Stop all LSP child processes; they restart lazily on the next check.",
+        group: "Lifecycle",
+        run: (ctx) => handlePanelAction("shutdown-servers", ctx),
+      },
+    ];
+  }
+
+  async function openSfLspInManager(
+    ctx: ExtensionCommandContext,
+    view: NonNullable<SfPiManagerOpenRoute["view"]>,
+  ): Promise<void> {
+    const opened = await openExtensionInManager(pi, ctx, {
+      extensionId: "sf-lsp",
+      view,
+      actions: buildSfLspManagerActions(),
+    });
+    if (!opened) {
+      ctx.ui.notify("SF Pi Manager is unavailable. Try /sf-pi open sf-lsp.", "warning");
     }
   }
 

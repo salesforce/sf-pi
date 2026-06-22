@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 /* SPDX-License-Identifier: Apache-2.0 */
+ 
 /**
  * check-panel-consistency.mjs
  *
@@ -22,7 +23,7 @@
  *   - sf-pi-manager itself (provides the overlay; not a per-extension panel)
  *   - sf-brain (alwaysActive; no command surface)
  *   - sf-ohana-spinner (no command surface)
- *   - sf-agentscript / sf-browser / sf-code-analyzer / sf-data360 / sf-data-explorer / sf-feedback / sf-guardrail / sf-herdr / sf-llm-gateway-internal / sf-slack (no-args command deep-links to the Manager Surface; see ADR 0051)
+ *   - sf-* command surfaces whose no-args command deep-links to the Manager Surface (see ADR 0051)
  */
 
 import { existsSync, readFileSync, readdirSync } from "node:fs";
@@ -43,16 +44,16 @@ const EXEMPT_EXTENSIONS = new Map([
   ["sf-browser", "no-args command deep-links to the Manager Surface; see ADR 0051"],
   ["sf-code-analyzer", "no-args command deep-links to the Manager Surface; see ADR 0051"],
   ["sf-data360", "no-args command deep-links to the Manager Surface; see ADR 0051"],
+  ["sf-devbar", "no-args command deep-links to the Manager Surface; see ADR 0051"],
   ["sf-data-explorer", "no-args command deep-links to the Manager Surface; see ADR 0051"],
   ["sf-feedback", "no-args command deep-links to the Manager Surface; see ADR 0051"],
   ["sf-guardrail", "no-args command deep-links to the Manager Surface; see ADR 0051"],
   ["sf-herdr", "no-args command deep-links to the Manager Surface; see ADR 0051"],
   ["sf-llm-gateway-internal", "no-args command deep-links to the Manager Surface; see ADR 0051"],
+  ["sf-lsp", "no-args command deep-links to the Manager Surface; see ADR 0051"],
+  ["sf-skills", "no-args command deep-links to the Manager Surface; see ADR 0051"],
   ["sf-slack", "no-args command deep-links to the Manager Surface; see ADR 0051"],
-  [
-    "sf-lsp",
-    "renders rich Doctor + Recent activity sections in its own ctx.ui.custom layout; still uses openInfoPanel for action results and the shared lifecycle toggle",
-  ],
+  ["sf-welcome", "no-args command deep-links to the Manager Surface; see ADR 0051"],
 ]);
 
 const REQUIRED_IMPORTS = [

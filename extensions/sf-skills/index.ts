@@ -45,19 +45,20 @@ import {
 } from "./lib/skill-state.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 import {
-  buildToggleExtensionAction,
-  isLifecycleToggleAction,
-  LIFECYCLE_GROUP,
   performToggleExtension,
   type LifecycleActionId,
 } from "../../lib/common/extension-toggle.ts";
-import {
-  type CommandPanelAction,
-  type CommandPanelState,
-  openCommandPanel,
-} from "../../lib/common/command-panel.ts";
+import { type CommandPanelAction } from "../../lib/common/command-panel.ts";
 import { openInfoPanel } from "../../lib/common/info-panel.ts";
 import { withSafeCommandHandler } from "../../lib/common/safe-command-handler.ts";
+import {
+  openExtensionInManager,
+  type SfPiManagerOpenRoute,
+} from "../../lib/common/manager-deep-link.ts";
+import {
+  registerManagerDetailActions,
+  type ManagerDetailAction,
+} from "../../lib/common/manager-actions.ts";
 import { handleDefaults, parseDefaultsArgs } from "./lib/skills-command.ts";
 import { readEffectiveSfSkillsSettings } from "./lib/settings.ts";
 import { updateSkillSources } from "../../lib/common/skill-sources/skill-sources.ts";
@@ -93,14 +94,7 @@ const EMPTY_STATE: SkillsHudState = {
   usedCount: 0,
 };
 
-type SkillsAction =
-  | "summary"
-  | "funnel"
-  | "metrics"
-  | "prune"
-  | "help"
-  | "close"
-  | LifecycleActionId;
+type SkillsAction = "summary" | "funnel" | "metrics" | "prune" | "help" | LifecycleActionId;
 
 const SKILLS_ACTIONS: CommandPanelAction<SkillsAction>[] = [
   {
@@ -136,20 +130,7 @@ const SKILLS_ACTIONS: CommandPanelAction<SkillsAction>[] = [
       "Explain what In context and Earlier in session mean and how the passive HUD behaves.",
     group: "Reference",
   },
-  {
-    value: "close",
-    label: "Close",
-    description: "Dismiss this panel.",
-    group: LIFECYCLE_GROUP,
-  },
 ];
-
-// Compose the live action list so the lifecycle toggle row reflects the
-// current enablement state on every panel open.
-function buildSkillsActions(cwd: string): CommandPanelAction<SkillsAction>[] {
-  const toggle = buildToggleExtensionAction({ extensionId: "sf-skills", cwd });
-  return toggle ? [...SKILLS_ACTIONS, toggle] : SKILLS_ACTIONS;
-}
 
 function renderMetrics(cwd: string): string {
   const global = loadUsageMap("global", cwd);
@@ -331,6 +312,8 @@ export default function sfSkills(pi: ExtensionAPI) {
     }
   });
 
+  if (pi.events?.on) registerManagerDetailActions(pi, COMMAND_NAME, buildSkillsManagerActions());
+
   pi.on("session_shutdown", async (event) => {
     dismissOverlay();
     // Preserve in-memory state on reload — session_start will rebuild it anyway.
@@ -344,20 +327,20 @@ export default function sfSkills(pi: ExtensionAPI) {
     description: "Show the current SF Skills HUD summary",
     getArgumentCompletions: (prefix) => {
       const lower = prefix.toLowerCase();
-      const items = SKILLS_ACTIONS.filter((action) => action.value !== "close")
-        .filter((action) => action.value.startsWith(lower))
-        .map((action) => ({
+      const items = SKILLS_ACTIONS.filter((action) => action.value.startsWith(lower)).map(
+        (action) => ({
           value: action.value,
           label: action.value,
           description: action.description,
-        }));
+        }),
+      );
       return items.length > 0 ? items : null;
     },
     handler: async (args, ctx) => {
       await withSafeCommandHandler(ctx, COMMAND_NAME, async () => {
         const trimmed = args.trim();
         if (trimmed === "" && ctx.hasUI) {
-          await handleSkillsPanel(ctx);
+          await openSkillsInManager(ctx, "detail");
           return;
         }
         // Top-level subcommand: route `defaults ...` into the management
@@ -386,34 +369,29 @@ export default function sfSkills(pi: ExtensionAPI) {
     },
   });
 
-  async function handleSkillsPanel(ctx: ExtensionCommandContext): Promise<void> {
-    const panelState: CommandPanelState<SkillsAction> = {};
-    await openCommandPanel(ctx, {
-      title: "🎯 SF Skills HUD — status & controls",
-      subtitle: "Review skill activity surfaced in the floating HUD.",
-      statusLines: () => {
-        refreshHud(ctx);
-        return [
-          `${hudState.hasAny ? "✓" : "○"} Usage detected ${hudState.hasAny ? "yes" : "no"}`,
-          `• In context         ${hudState.live.length}`,
-          `• Earlier in session ${hudState.earlier.length}`,
-          `• Discovered     ${hudState.discoveredCount}`,
-        ];
-      },
-      actions: () => buildSkillsActions(ctx.cwd),
-      closeValue: "close",
-      state: panelState,
-      onAction: (action) => handleSkillsCommand(ctx, action, true),
-      // Close the panel BEFORE actions that open their own overlay or call
-      // ctx.reload(): the lifecycle toggle (reload) and the funnel (a nested
-      // capturing overlay that itself reloads on apply). Otherwise reload tears
-      // the runtime down while this panel's ctx.ui.custom() promise is still
-      // mounted, stranding it — pi never calls its done(), and all input
-      // freezes until Ctrl+C. This is the lifecycle shorthand
-      // (`closeBeforeAction: isLifecycleToggleAction`) plus the nested funnel
-      // overlay case. See lib/common/command-panel.ts.
-      closeBeforeAction: (action) => isLifecycleToggleAction(action) || action === "funnel",
+  function buildSkillsManagerActions(): ManagerDetailAction[] {
+    return SKILLS_ACTIONS.filter((action) => action.value !== "lifecycle.toggle").map((action) => ({
+      id: action.value,
+      label: action.label,
+      description: action.description,
+      group: action.group,
+      run: (ctx) => handleSkillsCommand(ctx, action.value, true),
+      ...(action.value === "funnel" ? { closeBeforeRun: true } : {}),
+    }));
+  }
+
+  async function openSkillsInManager(
+    ctx: ExtensionCommandContext,
+    view: NonNullable<SfPiManagerOpenRoute["view"]>,
+  ): Promise<void> {
+    const opened = await openExtensionInManager(pi, ctx, {
+      extensionId: COMMAND_NAME,
+      view,
+      actions: buildSkillsManagerActions(),
     });
+    if (!opened) {
+      ctx.ui.notify("SF Pi Manager is unavailable. Try /sf-pi open sf-skills.", "warning");
+    }
   }
 
   async function handleSkillsCommand(
