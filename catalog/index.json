@@ -184,7 +184,7 @@
     "maturity": "experimental",
     "defaultEnabled": true,
     "alwaysActive": false,
-    "configurable": false,
+    "configurable": true,
     "commands": [
       "/sf-code-analyzer"
     ],
@@ -212,6 +212,7 @@
         "lib/recipes.ts",
         "lib/report-filter.ts",
         "lib/settings.ts",
+        "lib/config-panel.ts",
         "lib/types.ts",
         "lib/extension-doctor.ts"
       ],
@@ -228,7 +229,7 @@
     "entry": "extensions/sf-code-analyzer/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 3072
+    "srcLoc": 3216
   },
   {
     "id": "sf-data-explorer",
@@ -641,7 +642,7 @@
     "entry": "extensions/sf-ohana-spinner/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 447
+    "srcLoc": 459
   },
   {
     "id": "sf-pi-manager",

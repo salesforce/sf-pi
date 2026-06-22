@@ -174,9 +174,16 @@ project tree. User-supplied `output_files` are passed directly to Code Analyzer.
 
 Project settings override global settings, which override extension defaults.
 Use project overrides when a repository needs stricter or quieter automation
-than your global default. In the SF Pi Manager detail page, press `S` to switch
-the active Manager scope; scoped automation actions render once and apply to the
-selected global or project scope.
+than your global default. These two low-friction settings are editable from
+**SF Pi Manager → SF Code Analyzer → Settings**:
+
+- **Deferred auto-scan** (`sfPi.codeAnalyzer.autoScan`) — runs readiness-gated local scans after agent edits.
+- **ApexGuru auto insights** (`sfPi.codeAnalyzer.apexGuruAuto`) — suggests ApexGuru insights automatically when cached org readiness allows it.
+
+The same preferences remain available as quick Manager detail actions. In the
+SF Pi Manager detail page, press `S` to switch the active Manager scope; scoped
+automation actions render once and apply to the selected global or project
+scope.
 
 ## Behavior Matrix
 
@@ -238,6 +245,7 @@ extensions/sf-code-analyzer/
     auto-scan.ts            ← implementation module
     cli.ts                  ← implementation module
     code_analyzer-tool.ts   ← implementation module
+    config-panel.ts         ← implementation module
     display.ts              ← implementation module
     extension-doctor.ts     ← implementation module
     file-classify.ts        ← implementation module
@@ -254,6 +262,7 @@ extensions/sf-code-analyzer/
     auto-scan-orchestration.test.ts← unit / smoke test
     auto-scan-plan.test.ts  ← unit / smoke test
     auto-scan-transcript.test.ts← unit / smoke test
+    config-panel.test.ts    ← unit / smoke test
     display.test.ts         ← unit / smoke test
     recipes.test.ts         ← unit / smoke test
     report-filter.test.ts   ← unit / smoke test

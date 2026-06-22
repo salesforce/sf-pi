@@ -51,7 +51,9 @@ product/platform-oriented lines only.
 
 The only preference is `sfPi.ohanaSpinner.mode` with `ohana` as the default and
 `calm` as the quieter option. More knobs would make the spinner harder to
-understand than the problem requires.
+understand than the problem requires. The Manager settings page saves in place,
+then shows a reload-required hint because the active working indicator is
+installed during `session_start`.
 
 ## Behavior Matrix
 
@@ -75,6 +77,7 @@ extensions/sf-ohana-spinner/
     rainbow.ts              ← implementation module
     settings.ts             ← implementation module
   tests/
+    config-panel.test.ts    ← unit / smoke test
     lifecycle.test.ts       ← unit / smoke test
     settings.test.ts        ← unit / smoke test
   CREDITS.md                ← extension attribution

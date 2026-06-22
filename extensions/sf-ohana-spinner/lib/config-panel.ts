@@ -19,6 +19,8 @@ class OhanaSpinnerConfigPanel implements Focusable {
   private mode: OhanaSpinnerMode;
   private savedMode: OhanaSpinnerMode;
   private savedSource: string;
+  private savedMessage = "";
+  private reloadRequired = false;
 
   constructor(
     private readonly theme: Theme,
@@ -35,7 +37,7 @@ class OhanaSpinnerConfigPanel implements Focusable {
 
   handleInput(data: string): void {
     if (matchesKey(data, "escape") || matchesKey(data, "q")) {
-      this.done(undefined);
+      this.done(this.reloadRequired ? { needsReload: true } : undefined);
       return;
     }
 
@@ -50,17 +52,11 @@ class OhanaSpinnerConfigPanel implements Focusable {
     }
 
     if (matchesKey(data, "enter") || matchesKey(data, "return")) {
-      const changed = this.mode !== this.savedMode;
-      if (changed) {
-        const saved = writeScopedOhanaSpinnerSettings(this.cwd, this.scope, { mode: this.mode });
-        this.savedMode = saved.settings.mode;
-        this.savedSource = saved.path;
-      }
-      this.done(changed ? { needsReload: true } : undefined);
+      this.save();
     }
   }
 
-  renderContent(_width: number): string[] {
+  renderContent(): string[] {
     const t = this.theme;
     const dirty = this.mode !== this.savedMode;
     const modeLine = OHANA_SPINNER_MODES.map((mode) => {
@@ -82,14 +78,18 @@ class OhanaSpinnerConfigPanel implements Focusable {
       "",
       `  ${t.fg("muted", "Scope:")} ${t.fg("text", this.scope)}`,
       `  ${t.fg("muted", "Current source:")} ${t.fg("dim", this.savedSource)}`,
-      ...(dirty ? [`  ${t.fg("warning", "Unsaved change — press Enter to save and reload")}`] : []),
+      ...(dirty ? [`  ${t.fg("warning", "Unsaved change — press Enter to save")}`] : []),
+      ...(!dirty && this.savedMessage ? [`  ${t.fg("success", this.savedMessage)}`] : []),
+      ...(this.reloadRequired
+        ? [`  ${t.fg("warning", "Reload required — Esc back, then close the Manager to apply.")}`]
+        : []),
       "",
       ` ${t.fg("dim", "←/→ change · Enter save · Esc back")}`,
     ];
   }
 
-  render(width: number): string[] {
-    return this.renderContent(width);
+  render(): string[] {
+    return this.renderContent();
   }
 
   invalidate(): void {}
@@ -99,6 +99,19 @@ class OhanaSpinnerConfigPanel implements Focusable {
     const nextIndex =
       (currentIndex + direction + OHANA_SPINNER_MODES.length) % OHANA_SPINNER_MODES.length;
     this.mode = OHANA_SPINNER_MODES[nextIndex] ?? this.mode;
+    this.savedMessage = "";
+  }
+
+  private save(): void {
+    if (this.mode === this.savedMode) {
+      this.savedMessage = "No changes to save.";
+      return;
+    }
+    const saved = writeScopedOhanaSpinnerSettings(this.cwd, this.scope, { mode: this.mode });
+    this.savedMode = saved.settings.mode;
+    this.savedSource = saved.path;
+    this.reloadRequired = true;
+    this.savedMessage = "Saved spinner mode.";
   }
 }
 
