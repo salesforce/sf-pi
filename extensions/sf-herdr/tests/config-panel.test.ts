@@ -36,7 +36,7 @@ function makePanel(onDone: (value: unknown) => void = () => undefined): TestPane
 }
 
 describe("SF Herdr config panel", () => {
-  it("marks changes as unsaved, saves explicitly, and stays on the settings page", () => {
+  it("marks default changes as unsaved, saves explicitly, and stays on the settings page", () => {
     let result: unknown = "not-called";
     const panel = makePanel((value) => {
       result = value;
@@ -57,6 +57,23 @@ describe("SF Herdr config panel", () => {
       readFileSync(path.join(tmpDir, "sf-pi", "herdr", "preferences.json"), "utf-8"),
     );
     expect(raw.state.workflowMode).toBe("off");
+  });
+
+  it("edits workflow lane enabled state and lifecycle", () => {
+    const panel = makePanel();
+
+    // Move to Lane enabled (default selected workflow=generic, lane=tests).
+    for (let i = 0; i < 6; i++) panel.handleInput("\x1b[B");
+    panel.handleInput(" ");
+    panel.handleInput("\x1b[B");
+    panel.handleInput(" ");
+    panel.handleInput("s");
+
+    const raw = JSON.parse(
+      readFileSync(path.join(tmpDir, "sf-pi", "herdr", "preferences.json"), "utf-8"),
+    );
+    expect(raw.state.workflows.generic.lanes.tests.enabled).toBe(false);
+    expect(raw.state.workflows.generic.lanes.tests.lifecycle).toBe("sticky");
   });
 
   it("leaves without writing when escape is pressed with unsaved changes", () => {

@@ -11,6 +11,7 @@ import {
 } from "../../../../lib/common/sf-environment/shared-runtime.ts";
 import type { SfEnvironment } from "../../../../lib/common/sf-environment/types.ts";
 import { buildD360Envelope, formatD360Output, type D360OutputMode } from "../truncation.ts";
+import { readEffectiveData360Settings } from "../settings.ts";
 import { runData360V2Action } from "./dispatcher.ts";
 import type { Data360V2Input, Data360V2ToolName } from "./action-types.ts";
 
@@ -157,9 +158,10 @@ export function registerData360V2Tools(pi: ExtensionAPI): void {
       parameters: Params,
       async execute(_toolCallId, params, signal, _onUpdate, ctx) {
         const env = await resolveEnvironment(exec, ctx.cwd);
+        const settings = readEffectiveData360Settings(ctx.cwd);
         const input = { ...(params as Omit<Data360V2Input, "tool">), tool: tool.name };
         const result = await runData360V2Action(input, env, ctx, signal);
-        return buildToolResult(result, input.output_mode ?? "summary");
+        return buildToolResult(result, input.output_mode ?? settings.defaultOutputMode);
       },
     });
   }

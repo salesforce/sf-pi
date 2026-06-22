@@ -317,6 +317,7 @@
         "lib/api-tool.ts",
         "lib/path.ts",
         "lib/safety.ts",
+        "lib/settings.ts",
         "lib/config-panel.ts",
         "references/README.md"
       ],
@@ -330,7 +331,7 @@
     "entry": "extensions/sf-data360/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 9414
+    "srcLoc": 9574
   },
   {
     "id": "sf-devbar",
@@ -519,7 +520,7 @@
     "entry": "extensions/sf-herdr/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 783
+    "srcLoc": 876
   },
   {
     "id": "sf-llm-gateway-internal",

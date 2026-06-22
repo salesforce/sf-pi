@@ -1,11 +1,10 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /**
- * Read-only settings/status panel for sf-data360.
+ * Settings/status panel for sf-data360.
  *
- * The extension intentionally has no persistent preferences in v1. This panel
- * exists so the sf-pi manager gives users the same standardized drill-down
- * experience as other bundled extensions: current enablement, tools, runtime,
- * safety behavior, and where to find progressive-disclosure references.
+ * Keeps the standardized Manager drill-down experience while exposing one
+ * low-risk preference: default output mode for data360_* tool calls when the
+ * caller omits output_mode.
  */
 import { type Focusable, matchesKey, visibleWidth } from "@earendil-works/pi-tui";
 import type { Theme } from "@earendil-works/pi-coding-agent";
@@ -13,6 +12,15 @@ import type { ConfigPanelFactory, ConfigPanelResult } from "../../../catalog/reg
 import { isSfPiExtensionEnabled } from "../../../lib/common/sf-pi-extension-state.ts";
 import { HEADLESS_WRITE_ENV } from "./api-tool.ts";
 import { DATA360_V2_TOOL_DEFS } from "./v2/tools.ts";
+import {
+  DATA360_OUTPUT_MODES,
+  describeData360SettingsSource,
+  readEffectiveData360Settings,
+  readScopedData360Settings,
+  writeScopedData360Settings,
+  type Data360OutputModeSetting,
+  type Data360SettingsScope,
+} from "./settings.ts";
 
 function padAnsi(text: string, width: number): string {
   return `${text}${" ".repeat(Math.max(0, width - visibleWidth(text)))}`;
@@ -21,16 +29,41 @@ function padAnsi(text: string, width: number): string {
 class SfData360ConfigPanel implements Focusable {
   focused = false;
 
+  private outputMode: Data360OutputModeSetting;
+  private savedOutputMode: Data360OutputModeSetting;
+  private savedSource: string;
+  private message = "";
+
   constructor(
     private readonly theme: Theme,
     private readonly cwd: string,
-    private readonly scope: "global" | "project",
+    private readonly scope: Data360SettingsScope,
     private readonly done: (result: ConfigPanelResult | undefined) => void,
-  ) {}
+  ) {
+    const scoped = readScopedData360Settings(cwd, scope);
+    const effective = readEffectiveData360Settings(cwd);
+    this.outputMode = scoped.exists
+      ? scoped.settings.defaultOutputMode
+      : effective.defaultOutputMode;
+    this.savedOutputMode = this.outputMode;
+    this.savedSource = scoped.exists ? scoped.path : describeData360SettingsSource(effective);
+  }
 
   handleInput(data: string): void {
     if (matchesKey(data, "escape") || matchesKey(data, "q")) {
       this.done(undefined);
+      return;
+    }
+    if (matchesKey(data, "left") || matchesKey(data, "up")) {
+      this.cycleOutputMode(-1);
+      return;
+    }
+    if (matchesKey(data, "right") || matchesKey(data, "down") || matchesKey(data, "space")) {
+      this.cycleOutputMode(1);
+      return;
+    }
+    if (matchesKey(data, "enter") || matchesKey(data, "return") || data === "s") {
+      this.save();
     }
   }
 
@@ -52,6 +85,17 @@ class SfData360ConfigPanel implements Focusable {
         )}`,
       ),
     );
+    lines.push(pad(""));
+
+    lines.push(pad(` ${t.fg("muted", "Preferences:")}`));
+    lines.push(
+      pad(
+        `   ${t.fg("text", "Default output mode")} ${t.fg("muted", this.outputMode)}${this.outputMode !== this.savedOutputMode ? t.fg("warning", "  unsaved") : ""}`,
+      ),
+    );
+    lines.push(pad(`   ${t.fg("muted", "Current source:")} ${t.fg("dim", this.savedSource)}`));
+    if (this.message) lines.push(pad(`   ${t.fg("success", this.message)}`));
+    lines.push(pad(`   ${t.fg("dim", "←/→ change · S/Enter save")}`));
     lines.push(pad(""));
 
     lines.push(pad(` ${t.fg("muted", "Runtime:")}`));
@@ -98,6 +142,27 @@ class SfData360ConfigPanel implements Focusable {
     );
 
     return lines;
+  }
+
+  private cycleOutputMode(direction: -1 | 1): void {
+    const currentIndex = DATA360_OUTPUT_MODES.indexOf(this.outputMode);
+    const nextIndex =
+      (currentIndex + direction + DATA360_OUTPUT_MODES.length) % DATA360_OUTPUT_MODES.length;
+    this.outputMode = DATA360_OUTPUT_MODES[nextIndex] ?? this.outputMode;
+    this.message = "";
+  }
+
+  private save(): void {
+    if (this.outputMode === this.savedOutputMode) {
+      this.message = "No changes to save.";
+      return;
+    }
+    const saved = writeScopedData360Settings(this.cwd, this.scope, {
+      defaultOutputMode: this.outputMode,
+    });
+    this.savedOutputMode = saved.settings.defaultOutputMode;
+    this.savedSource = saved.path;
+    this.message = "Saved Data 360 settings.";
   }
 }
 

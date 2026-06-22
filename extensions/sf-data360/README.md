@@ -185,7 +185,11 @@ behind file references so the agent loads it only when needed.
 
 ## Settings Panel
 
-`sf-data360` is enabled by default and marked configurable so it appears with a standardized drill-down panel in the `/sf-pi` extension manager. The v1 panel is read-only by design: it shows enablement, runtime backend, tools, safety behavior, and reference paths. There are no persistent preferences yet.
+`sf-data360` is enabled by default and marked configurable so it appears with a standardized drill-down panel in the `/sf-pi` extension manager. The Manager Settings page shows enablement, runtime backend, tools, safety behavior, reference paths, and one low-risk preference stored in Pi settings under `sfPi.data360`:
+
+- **Default output mode** (`defaultOutputMode`) — used by `data360_*` family tools when the caller omits `output_mode`. Values: `summary` (default), `inline`, or `file_only`.
+
+Explicit tool arguments still win. For example, passing `output_mode: "inline"` overrides the saved default for that call.
 
 ## Commands
 
@@ -236,6 +240,7 @@ extensions/sf-data360/
     path.ts                 ← implementation module
     probe-tool.ts           ← implementation module
     safety.ts               ← implementation module
+    settings.ts             ← implementation module
     target-org.ts           ← implementation module
     truncation.ts           ← implementation module
     v2-tool-names.ts        ← implementation module
@@ -244,6 +249,7 @@ extensions/sf-data360/
     api-card.test.ts        ← unit / smoke test
     api-tool.test.ts        ← unit / smoke test
     capability-sweep.test.ts← unit / smoke test
+    config-panel.test.ts    ← unit / smoke test
     display-card.test.ts    ← unit / smoke test
     facade-capabilities.test.ts← unit / smoke test
     facade-card.test.ts     ← unit / smoke test
@@ -260,6 +266,7 @@ extensions/sf-data360/
     probe-tool.test.ts      ← unit / smoke test
     render-snapshot.test.ts ← unit / smoke test
     safety.test.ts          ← unit / smoke test
+    settings.test.ts        ← unit / smoke test
     smoke.test.ts           ← unit / smoke test
     target-org.test.ts      ← unit / smoke test
     truncation.test.ts      ← unit / smoke test

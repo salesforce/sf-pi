@@ -33,6 +33,7 @@
       "lib/api-tool.ts",
       "lib/path.ts",
       "lib/safety.ts",
+      "lib/settings.ts",
       "lib/config-panel.ts",
       "references/README.md"
     ],

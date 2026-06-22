@@ -94,8 +94,11 @@ The file is managed through **SF Pi Manager → SF Herdr → Settings** or direc
 with `/sf-herdr settings` in TUI mode. The settings panel marks unsaved changes,
 uses a bullet beside changed fields, and writes only after `S` or `Enter`.
 Saving stays on the settings page and changes the status back to `Saved`; `Esc`
-/ `q` leaves the page, discarding only unsaved drafts. The JSON file is
-recoverable, but not positioned as a primary hand-editable Pi setting.
+/ `q` leaves the page, discarding only unsaved drafts. The panel exposes both
+baseline placement defaults and the lowest-friction workflow lane controls:
+workflow, lane, lane enabled, and lane lifecycle (`ephemeral`, `sticky`, or
+`manual`). The JSON file is recoverable, but not positioned as a primary
+hand-editable Pi setting.
 
 ## File Structure
 
