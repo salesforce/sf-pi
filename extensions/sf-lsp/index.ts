@@ -504,7 +504,7 @@ export default function sfLspExtension(pi: ExtensionAPI) {
       setSfLspHealthFromDoctor(statuses);
       const hasUnavailable = statuses.some((status) => !status.available);
       const severity = hasUnavailable ? "warning" : "info";
-      if (ctx.hasUI) ctx.ui.notify(renderDoctorReport(statuses), severity);
+      await emitLspOutput(ctx, "Salesforce LSP doctor", renderDoctorReport(statuses), severity);
       return;
     }
 
@@ -524,27 +524,28 @@ export default function sfLspExtension(pi: ExtensionAPI) {
         }
         return;
       }
-      if (ctx.hasUI) ctx.ui.notify("Usage: /sf-lsp verbose [on|off|toggle]", "warning");
+      await emitLspOutput(ctx, "sf-lsp usage", "Usage: /sf-lsp verbose [on|off|toggle]", "warning");
       return;
     }
 
-    if (ctx.hasUI) {
-      ctx.ui.notify(
-        [
-          "sf-lsp — Salesforce LSP diagnostics",
-          "",
-          "Commands:",
-          "  /sf-lsp                Open the rich status/controls panel",
-          "  /sf-lsp doctor         Show a compact doctor report",
-          "  /sf-lsp install        Install or update bundled LSP servers",
-          "  /sf-lsp install status Show per-component install state",
-          "  /sf-lsp verbose on|off Toggle transcript row for every check",
-          "",
-          "Top-bar LSP status is always visible in the sf-devbar top bar.",
-        ].join("\n"),
-        "warning",
-      );
-    }
+    await emitLspOutput(
+      ctx,
+      "sf-lsp help",
+      [
+        "sf-lsp — Salesforce LSP diagnostics",
+        "",
+        "Commands:",
+        "  /sf-lsp                Open SF LSP in the SF Pi Manager",
+        "  /sf-lsp panel          Open the rich Doctor + Recent activity panel",
+        "  /sf-lsp doctor         Show a compact doctor report",
+        "  /sf-lsp install        Install or update bundled LSP servers",
+        "  /sf-lsp install status Show per-component install state",
+        "  /sf-lsp verbose on|off Toggle transcript row for every check",
+        "",
+        "Top-bar LSP status is always visible in the sf-devbar top bar.",
+      ].join("\n"),
+      "warning",
+    );
   }
 
   function buildSfLspManagerActions(): ManagerDetailAction[] {
@@ -613,7 +614,7 @@ export default function sfLspExtension(pi: ExtensionAPI) {
   // /sf-lsp install subcommand
   // ==========================================================================================
 
-  async function runInstallSubcommand(ctx: ExtensionContext, mode?: string): Promise<void> {
+  async function runInstallSubcommand(ctx: ExtensionCommandContext, mode?: string): Promise<void> {
     if (!ctx.hasUI) return;
 
     if (mode === "status") {
@@ -631,7 +632,7 @@ export default function sfLspExtension(pi: ExtensionAPI) {
       } else {
         lines.push("", "Run /sf-lsp install to update.");
       }
-      ctx.ui.notify(lines.join("\n"), "info");
+      await emitLspOutput(ctx, "sf-lsp install status", lines.join("\n"), "info");
       return;
     }
 
@@ -643,7 +644,9 @@ export default function sfLspExtension(pi: ExtensionAPI) {
     const doctor = await doctorLsp(ctx.cwd).catch(() => undefined);
     const report = await detectInstallReport(exec, { doctor });
     if (!report.hasActionable) {
-      ctx.ui.notify(
+      await emitLspOutput(
+        ctx,
+        "sf-lsp install",
         [
           "sf-lsp: nothing to install or update.",
           "",
