@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.199.0-2026-06-22",
-  "latestVersion": "0.199.0",
+  "revision": "release-0.200.0-2026-06-22",
+  "latestVersion": "0.200.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.199.0",
+      "id": "release-0.200.0",
       "kind": "update",
-      "title": "sf-pi v0.199.0 — sf-slack: move preferences into manager settings",
+      "title": "sf-pi v0.200.0 — settings: add analyzer and spinner manager preferences",
       "publishedAt": "2026-06-22T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.199.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.200.0",
       "severity": "info",
-      "body": "sf-slack: move preferences into manager settings"
+      "body": "settings: add analyzer and spinner manager preferences"
     },
     {
       "id": "pi-0.73-required",
