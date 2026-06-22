@@ -700,7 +700,7 @@
     "entry": "extensions/sf-pi-manager/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 3665
+    "srcLoc": 3671
   },
   {
     "id": "sf-skills",

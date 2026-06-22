@@ -574,9 +574,15 @@ async function handleOverlay(
         overlay: true,
         // Use function form for responsive sizing on terminal resize
         overlayOptions: () => ({
-          anchor: "center" as const,
+          // Top-center keeps the overlay origin stable when detail/settings
+          // content switches between short and scrollable states. Centering a
+          // shorter re-render can leave stale rows above the new frame on some
+          // terminals until a full redraw.
+          anchor: "top-center" as const,
           width: "78%",
           minWidth: 70,
+          maxHeight: "85%" as const,
+          margin: { top: 1 },
         }),
       },
     );
