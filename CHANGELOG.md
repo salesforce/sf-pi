@@ -517,6 +517,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.198.0](https://github.com/salesforce/sf-pi/compare/v0.197.0...v0.198.0) (2026-06-22)
+
+
+### Features
+
+* **sf-llm-gateway:** standardize manager setup settings ([366066b](https://github.com/salesforce/sf-pi/commit/366066b724c9f600d2d0d4d3e5d0c90244fbbe69))
+
 ## [0.197.0](https://github.com/salesforce/sf-pi/compare/v0.196.7...v0.197.0) (2026-06-22)
 
 
