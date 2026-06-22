@@ -517,6 +517,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.204.4](https://github.com/salesforce/sf-pi/compare/v0.204.3...v0.204.4) (2026-06-22)
+
+
+### Bug Fixes
+
+* **ui:** keep manager overlay anchor stable ([02995ed](https://github.com/salesforce/sf-pi/commit/02995ed1802ede921e3af316394892f951fbeaa1))
+
 ## [0.204.3](https://github.com/salesforce/sf-pi/compare/v0.204.2...v0.204.3) (2026-06-22)
 
 
