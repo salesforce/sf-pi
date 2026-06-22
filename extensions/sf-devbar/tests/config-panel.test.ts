@@ -56,7 +56,7 @@ describe("DevBar config panel parsers", () => {
 });
 
 describe("DevBar config panel", () => {
-  it("opens a dedicated edit page, buffers valid edits, and saves once", () => {
+  it("opens a dedicated edit page, buffers valid edits, and saves in place", () => {
     const cwd = makeTempDir("devbar-config-panel-");
     mkdirSync(join(cwd, ".pi"), { recursive: true });
     writeFileSync(join(cwd, ".pi", "settings.json"), JSON.stringify({ theme: "dark" }), "utf-8");
@@ -76,7 +76,8 @@ describe("DevBar config panel", () => {
 
     panel.handleInput("s");
 
-    expect(result).toEqual({ needsReload: true });
+    expect(result).toBeUndefined();
+    expect(panel.renderContent(100).join("\n")).toContain("Saved DevBar color settings.");
     const raw = JSON.parse(readFileSync(join(cwd, ".pi", "settings.json"), "utf-8"));
     expect(raw.theme).toBe("dark");
     expect(raw.sfPi.devbar.colors).toEqual({ folderPath: "#aabbcc" });
@@ -98,9 +99,22 @@ describe("DevBar config panel", () => {
     panel.handleInput("enter");
     panel.handleInput("s");
 
-    expect(result).toEqual({ needsReload: true });
+    expect(result).toBeUndefined();
     const raw = JSON.parse(readFileSync(join(cwd, ".pi", "settings.json"), "utf-8"));
     expect(raw.sfPi.devbar.colors.gatewayRainbow).toEqual(["#112233", "#456789"]);
+  });
+
+  it("stays open on no-op save", () => {
+    const cwd = makeTempDir("devbar-config-panel-");
+    let result: unknown;
+    const panel = makePanel(cwd, (value) => {
+      result = value;
+    });
+
+    panel.handleInput("s");
+
+    expect(result).toBeUndefined();
+    expect(panel.renderContent(100).join("\n")).toContain("No changes to save.");
   });
 
   it("keeps invalid edits on the edit page without writing settings", () => {

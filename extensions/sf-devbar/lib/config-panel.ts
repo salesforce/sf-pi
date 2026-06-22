@@ -278,12 +278,14 @@ class SfDevbarConfigPanel implements Focusable {
 
   private save(): void {
     if (!this.isDirty()) {
-      this.done(undefined);
+      this.lastMessage = "No changes to save.";
+      this.lastError = "";
       return;
     }
     writeScopedDevbarColorOverrides(this.cwd, this.scope, this.draftOverrides);
     this.savedOverrides = cloneOverrides(this.draftOverrides);
-    this.done({ needsReload: true });
+    this.lastError = "";
+    this.lastMessage = "Saved DevBar color settings.";
   }
 
   private currentDescriptor(): DevbarColorDescriptor {

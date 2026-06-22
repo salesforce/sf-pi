@@ -160,7 +160,8 @@ Accepted color formats are `#RGB` and `#RRGGBB`; the settings panel normalizes
 values to lowercase `#rrggbb`. Palette fields accept comma-separated colors in
 the panel, or JSON arrays in settings files. Press `Enter` on a color row to open
 a focused edit page with a visible draft cursor; `Esc` cancels that field edit
-and returns to the settings list.
+and returns to the settings list. Press `s` from the settings list to save in
+place without reloading Pi.
 
 Only DevBar-owned hardcoded true-color accents are configurable. Semantic theme
 colors such as production warnings, LSP success/error states, and git status

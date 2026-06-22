@@ -177,6 +177,7 @@ export default function sfDevBar(pi: ExtensionAPI) {
 
   // --- Helper: collect top-bar state from current data ---
   function buildTopBarState(ctx: ExtensionContext): TopBarState {
+    refreshDevbarSettings(ctx.cwd);
     const model = ctx.model;
     const thinkingLevel = pi.getThinkingLevel();
     const contextUsage = ctx.getContextUsage();
@@ -208,11 +209,11 @@ export default function sfDevBar(pi: ExtensionAPI) {
   }
 
   /**
-   * Re-read Pi settings used by the DevBar and cache them outside render paths.
+   * Re-read Pi settings used by the DevBar and cache them for this render/update.
    *
-   * Pi does not emit a dedicated settings_change event today, so we refresh
-   * on session_start plus explicit toggle/refresh paths. Reads are cheap
-   * (<1ms) and any failure silently falls back to default settings.
+   * Reads are cheap (<1ms) and any failure silently falls back to default settings.
+   * Render-state builders call this so Manager settings saves take effect without
+   * requiring a reload.
    */
   function refreshDevbarSettings(cwd: string): void {
     const settings = readDevbarRuntimeSettings(cwd);
@@ -221,7 +222,8 @@ export default function sfDevBar(pi: ExtensionAPI) {
   }
 
   // --- Helper: collect bottom-bar state ---
-  function buildBottomBarState(): BottomBarState {
+  function buildBottomBarState(ctx: ExtensionContext): BottomBarState {
+    refreshDevbarSettings(ctx.cwd);
     return {
       orgName: env?.org?.alias ?? env?.org?.username ?? env?.config?.targetOrg,
       orgType: env?.org?.orgType,
@@ -438,7 +440,7 @@ export default function sfDevBar(pi: ExtensionAPI) {
         render(width: number): string[] {
           if (!enabled || !isActiveSession(ctx, generation)) return [];
 
-          const state = buildBottomBarState();
+          const state = buildBottomBarState(ctx);
           const statuses = footerData.getExtensionStatuses();
           state.extensionStatuses = filterEnabledExtensionStatuses(ctx.cwd, statuses);
 
