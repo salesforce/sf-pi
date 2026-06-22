@@ -14,7 +14,7 @@
  *   extension load         | Register /sf-browser; tool registration is lazy by enablement
  *   session_start/reload   | Register hot-path tools when enabled
  *   resources_discover     | Contribute progressive sf-browser skill when enabled
- *   /sf-browser (no args)  | Open cache-first command panel; no runtime probes
+ *   /sf-browser (no args)  | Open SF Browser in the SF Pi Manager; no runtime probes
  *   /sf-browser doctor     | Explicitly check agent-browser installation
  *   sf_browser_* tools     | Invoke agent-browser only after explicit tool intent
  */

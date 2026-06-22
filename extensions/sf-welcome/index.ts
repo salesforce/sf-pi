@@ -801,7 +801,7 @@ export default function sfWelcome(pi: ExtensionAPI) {
           "sf-welcome — splash summary, font installer, and lifecycle toggle.",
           "",
           "Commands:",
-          "  /sf-welcome          Open the status & controls panel.",
+          "  /sf-welcome          Open SF Welcome in the SF Pi Manager.",
           "  /sf-welcome summary  Print the splash summary as text.",
           "  /sf-setup-fonts      Install the bundled Nerd Font (alias of the panel action).",
           "",
@@ -815,7 +815,7 @@ export default function sfWelcome(pi: ExtensionAPI) {
   }
 
   // Build the splash summary text used by both the panel "Show summary"
-  // action and the legacy /sf-welcome (no panel) plain-text fallback.
+  // action and direct /sf-welcome summary fallback.
   // Pulled out of the command handler so both call sites stay in sync.
   async function buildWelcomeSummary(ctx: ExtensionContext): Promise<string> {
     const modelName = ctx.model?.name || ctx.model?.id || "No model";
@@ -926,9 +926,8 @@ export default function sfWelcome(pi: ExtensionAPI) {
   // --- /sf-setup-fonts command ---
   //
   // Manual entry point for installing the bundled MesloLGM Nerd Font
-  // Mono TTFs. Wrapped in the standard /sf-* status & controls panel so
-  // the surface stays consistent with /sf-devbar, /sf-data360, etc.
-  // Delegates to runFontInstall() for the actual install — the splash
+  // Mono TTFs. No-args /sf-setup-fonts opens SF Welcome in the SF Pi Manager;
+  // direct subcommands delegate to runFontInstall() for the actual install — the splash
   // prompt and this panel emit the exact same install output.
 
   type SfSetupFontsAction = "status" | "install" | "reset" | "help";
@@ -988,7 +987,7 @@ export default function sfWelcome(pi: ExtensionAPI) {
         "sf-setup-fonts — install the bundled Nerd Font",
         "",
         "Commands:",
-        "  /sf-setup-fonts          Open status & controls panel",
+        "  /sf-setup-fonts          Open SF Welcome in the SF Pi Manager",
         "  /sf-setup-fonts install  Install (records decision = yes)",
         "  /sf-setup-fonts status   Show install state",
         "  /sf-setup-fonts reset    Clear recorded yes/no answer",

@@ -559,8 +559,8 @@ export default function sfLspExtension(pi: ExtensionAPI) {
       },
       {
         id: "panel",
-        label: "Open rich diagnostics panel",
-        description: "Open the legacy rich Doctor + Recent activity panel.",
+        label: "Open detailed diagnostics panel",
+        description: "Open the detailed Doctor + Recent activity panel.",
         group: "Diagnostics",
         run: (ctx) => runSfLspHandler("panel", ctx),
         closeBeforeRun: true,

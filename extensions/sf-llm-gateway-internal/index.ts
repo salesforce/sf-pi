@@ -1816,8 +1816,8 @@ async function handleSetDefaultCommand(
 
 async function handleHelpCommand(pi: ExtensionAPI, ctx: ExtensionCommandContext): Promise<void> {
   const help = [
-    `/${FRIENDLY_COMMAND_NAME} with no args opens the setup/settings page.`,
-    `/${COMMAND_NAME} remains as a backward-compatible status/controls alias.`,
+    `/${FRIENDLY_COMMAND_NAME} with no args opens SF LLM Gateway in the SF Pi Manager.`,
+    `The provider id remains ${COMMAND_NAME}; the retired slash command is no longer registered.`,
     "",
     ...formatGatewayCommandReference(FRIENDLY_COMMAND_NAME),
     "",

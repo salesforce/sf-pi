@@ -483,7 +483,7 @@ returns full bodies regardless of the shared display profile.
 | `session_shutdown`   | —                               | Clear footer status                                                            |
 | `before_agent_start` | identity + at least one slack\* | Inject minimal workspace context (User + Team only)                            |
 | `before_agent_start` | no identity / no slack tools    | Skip injection                                                                 |
-| `/sf-slack`          | UI available                    | Open status & controls panel                                                   |
+| `/sf-slack`          | UI available                    | Open SF Slack in the SF Pi Manager                                             |
 | `/sf-slack`          | no UI                           | Show auth status                                                               |
 | `/sf-slack refresh`  | token resolves now              | Register tools if needed, re-probe scopes, refresh cache                       |
 | any tool call        | no auth                         | Return setup instructions (defensive; normally unreachable)                    |

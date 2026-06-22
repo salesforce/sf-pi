@@ -14,7 +14,7 @@
  *   extension load            | Register /sf-code-analyzer and doctor provider
  *   session_start             | Register code_analyzer tool when enabled
  *   session_shutdown          | Clear tool registration latch
- *   /sf-code-analyzer         | Open standardized command panel
+ *   /sf-code-analyzer         | Open SF Code Analyzer in the SF Pi Manager
  *   /sf-code-analyzer status  | Print readiness and tool status
  *   /sf-code-analyzer doctor  | Probe sf/plugin/Java/Python setup
  *   code_analyzer action=run  | Run sf code-analyzer run, parse JSON artifact

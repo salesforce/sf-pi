@@ -21,7 +21,7 @@
  *   session_start          | Re-register tools if enabled; clear cached @salesforce/core Org
  *   session_shutdown       | Clear cached @salesforce/core Org so resume re-auths cleanly
  *   resources_discover     | Re-register tools on reload; no skill contribution
- *   /sf-data360 (no args)  | Open standardized command panel (status/help/close)
+ *   /sf-data360 (no args)  | Open SF Data 360 in the SF Pi Manager
  *   /sf-data360 status     | Print enablement, tools, target org, and API version
  *   /sf-data360 help       | Print command usage
  *   data360_* dry_run      | Resolve action/org/safety without calling Salesforce

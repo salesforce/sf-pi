@@ -86,7 +86,7 @@ Extension loads
   ├─ before_agent_start
   │   └─ /skill:<name> in prompt → bump usage counters
   ├─ /sf-skills
-  │   ├─ no args, hasUI → status & controls panel
+  │   ├─ no args, hasUI → SF Pi Manager detail page
   │   ├─ funnel        → gather → buildSkillCatalog → Funnel view overlay
   │   │                  → stage actions → resolution → settings write → reload
   │   ├─ summary | metrics | help → text output
@@ -112,7 +112,7 @@ The full Skill Funnel remains an action page because it edits native `settings.s
 | `session_start` (UI)         | Mount passive HUD; rebuild in-memory state (no catalog work)        |
 | `message_end` / `session_*`  | Refresh HUD from in-memory branch/context                           |
 | `before_agent_start`         | Bump usage counters on `/skill:<name>`                              |
-| `/sf-skills` (no args, UI)   | Open status & controls panel                                        |
+| `/sf-skills` (no args, UI)   | Open SF Skills in the SF Pi Manager                                 |
 | `/sf-skills funnel`          | Gather catalog, open the five-tab Funnel view, apply staged changes |
 | `/sf-skills summary`         | HUD summary text                                                    |
 | `/sf-skills metrics`         | Top-N usage counters (global + project)                             |

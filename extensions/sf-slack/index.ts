@@ -1101,7 +1101,7 @@ export default function sfSlack(pi: ExtensionAPI) {
       "sf-slack — Slack integration status",
       "",
       "Commands:",
-      `  /${COMMAND_NAME}            Open status & controls panel`,
+      `  /${COMMAND_NAME}            Open SF Slack in the SF Pi Manager`,
       `  /${COMMAND_NAME} status     Show current auth status`,
       `  /${COMMAND_NAME} refresh    Re-detect identity, re-probe scopes, refresh cache`,
       `  /${COMMAND_NAME} settings   Open preferences (search detail, widget, permalinks)`,

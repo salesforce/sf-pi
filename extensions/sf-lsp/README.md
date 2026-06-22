@@ -110,7 +110,7 @@ Requires Node.js 18+.
 
 | Command                           | Description                                                                            |
 | --------------------------------- | -------------------------------------------------------------------------------------- |
-| `/sf-lsp`                         | Open the rich status & controls panel (doctor, recent activity, actions)               |
+| `/sf-lsp`                         | Open SF LSP in the SF Pi Manager                                                       |
 | `/sf-lsp doctor`                  | Compact doctor report via `ui.notify`                                                  |
 | `/sf-lsp install`                 | Re-run the first-boot installer — detects + installs/updates bundled LSP servers       |
 | `/sf-lsp install status`          | Show current install state per component (installed version vs. upstream latest)       |
@@ -145,7 +145,7 @@ verbosity; diagnostic feedback sent to the agent is unchanged.
 | sf-devbar top-bar LSP     | session_start doctor probe / `/sf-lsp doctor`    | Green dot for available language, red for unavailable, dim for unknown |
 | Transcript row (balanced) | error, error→clean transition, first unavailable | Emit one `sf-lsp` custom message                                       |
 | Transcript row (verbose)  | every check                                      | Emit one `sf-lsp` custom message                                       |
-| `/sf-lsp`                 | no args                                          | Open rich panel (doctor + recent + actions)                            |
+| `/sf-lsp`                 | no args                                          | Open SF LSP in the SF Pi Manager                                       |
 | `/sf-lsp doctor`          | —                                                | `ui.notify` with availability report                                   |
 
 ## File Structure

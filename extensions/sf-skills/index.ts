@@ -184,7 +184,7 @@ function renderSkillsHelp(): string {
     "  • /sf-skills defaults unlink <path> [project|global] [--delete]",
     "",
     "Commands:",
-    "  /sf-skills           Open status & controls panel",
+    "  /sf-skills           Open SF Skills in the SF Pi Manager",
     "  /sf-skills summary   HUD summary text",
     "  /sf-skills funnel    Open the skill funnel",
     "  /sf-skills defaults  Manage afv-library installs (see above)",

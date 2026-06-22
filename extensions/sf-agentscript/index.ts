@@ -12,7 +12,7 @@
  *   session_start             | Reset assist state
  *   session_shutdown          | Reset assist state
  *   tool_result (write/edit)  | Compile `.agent` files in-process; append LSP feedback
- *   /sf-agentscript           | Open status & controls panel (or run subcommand)
+ *   /sf-agentscript           | Open SF Agent Script in the SF Pi Manager (or run subcommand)
  *   /sf-agentscript doctor    | Show official SDK package status + readiness
  *   /sf-agentscript check     | Manually compile a `.agent` file
  *   /sf-agentscript eval      | Run a multi-turn regression spec
@@ -345,7 +345,7 @@ function renderHelp(): string {
     "sf-agentscript — Agent Script lifecycle (authoring + compile + eval)",
     "",
     "Commands:",
-    "  /sf-agentscript                  Open status & controls panel",
+    "  /sf-agentscript                  Open SF Agent Script in the SF Pi Manager",
     "  /sf-agentscript doctor [--org A] [--freshness] Show SDK status + optional SFAP/package freshness",
     "  /sf-agentscript check <file>     Run one manual compile diagnostic pass",
     "  /sf-agentscript eval <spec.json> [--org A] [--agent N] [--traces failed|all|off]",

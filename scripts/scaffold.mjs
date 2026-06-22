@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
+ 
 // Scaffold a new sf-pi extension.
 //
 // Usage: node scripts/scaffold.mjs --id <extension-id> --category <ui|provider|agent-tool|safety|assistive|manager> [--name "Display Name"]
@@ -71,7 +72,7 @@ function indexTs(id, name) {
  *   Event/Trigger          | Result
  *   -----------------------|--------------------------------------------
  *   session_start          | TODO
- *   /${id} (no args)       | Open standardized command panel
+ *   /${id} (no args)       | Open the extension in the SF Pi Manager
  *   /${id} status          | Print status as plain text (headless-safe)
  *   /${id} help            | Print command usage as plain text
  */

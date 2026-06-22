@@ -908,7 +908,7 @@ export default function sfDevBar(pi: ExtensionAPI) {
         "sf-org — Salesforce environment status",
         "",
         "Commands:",
-        "  /sf-org            Open status & controls panel",
+        "  /sf-org            Open SF DevBar in the SF Pi Manager",
         "  /sf-org status     Show current environment status",
         "  /sf-org refresh    Re-detect environment",
         "  /sf-org open       Open org Setup in browser",
