@@ -250,6 +250,7 @@ extensions/sf-agentscript/
     compile-summary.test.ts ← unit / smoke test
     create.test.ts          ← unit / smoke test
     custom-ps.test.ts       ← unit / smoke test
+    deploy-permission-set.test.ts← unit / smoke test
     diagnose-agent-user.test.ts← unit / smoke test
     diagnostic-parity.test.ts← unit / smoke test
     diagnostics.test.ts     ← unit / smoke test
@@ -361,3 +362,4 @@ Salesforce auth is resolved through `@salesforce/core` `Connection` using the sa
 - **Eval run appears stuck:** inspect `.pi/state/sf-agentscript/runs/<run_id>/status.json` for the current phase. Pass `batch_timeout_ms` for shorter local probes.
 - **Eval trace fetch returns null:** eval-created sessions may be closed by the service before live trace fetch succeeds; synthesized traces and failure records remain in the run directory.
 - **Service Agent publish/activation fails:** run `agentscript_lifecycle action="diagnose_agent_user"`, then `provision_agent_user` in dry-run mode before executing changes.
+- **Service Agent provisioning appears stuck:** the live provisioner deploys a synthesized Permission Set through Metadata API. That deploy is bounded by sf-pi timeouts and should return a timeout diagnostic instead of inheriting SDR's 60-minute default poll window.

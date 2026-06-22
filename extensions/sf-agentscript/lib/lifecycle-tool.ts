@@ -218,7 +218,7 @@ export function registerLifecycleTool(pi: ExtensionAPI): void {
           break;
         case "provision_agent_user":
           result = await timings.time("lifecycle.provision_agent_user", () =>
-            actionProvisionAgentUser(ctx, p, stream),
+            actionProvisionAgentUser(ctx, p, stream, _signal),
           );
           break;
       }
@@ -951,6 +951,7 @@ async function actionProvisionAgentUser(
   ctx: ExtensionContext,
   input: ParamsAny,
   stream: (msg: string) => void,
+  signal?: AbortSignal,
 ): Promise<{
   content: { type: "text"; text: string }[];
   details: Record<string, unknown> | ToolError;
@@ -1014,6 +1015,7 @@ async function actionProvisionAgentUser(
       agent_file: filePath,
       agent_api_name: agentApiName,
       dry_run: dryRun,
+      signal,
       ...(input.username_override ? { username_override: input.username_override } : {}),
     });
     return toolOk(

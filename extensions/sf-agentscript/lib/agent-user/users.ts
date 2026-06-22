@@ -13,6 +13,7 @@
  */
 
 import type { Connection } from "@salesforce/core";
+import { boundedRestRequest } from "../bounded-salesforce-transport.ts";
 import { safeQueryRecords } from "../preflight/soql.ts";
 
 export interface AgentUserRow {
@@ -127,6 +128,11 @@ export interface CreateAgentUserResult {
   error?: string;
 }
 
+export interface CreateAgentUserOptions {
+  signal?: AbortSignal;
+  timeoutMs?: number;
+}
+
 /**
  * Insert a new User row tagged with the Einstein Agent User profile.
  *
@@ -138,6 +144,7 @@ export interface CreateAgentUserResult {
 export async function createAgentUser(
   conn: Connection,
   input: CreateAgentUserInput,
+  options: CreateAgentUserOptions = {},
 ): Promise<CreateAgentUserResult> {
   // Defaults come from the agent-user-setup doc's reference user definition.
   const last = input.last_name ?? "Agent";
@@ -154,23 +161,23 @@ export async function createAgentUser(
     EmailEncodingKey: input.email_encoding ?? "UTF-8",
     LanguageLocaleKey: input.language ?? "en_US",
   };
-  try {
-    const result = (await conn.sobject("User").create(body)) as {
-      success?: boolean;
-      id?: string;
-      errors?: Array<{ message?: string }>;
-    };
-    if (!result.success || !result.id) {
-      const detail = result.errors?.[0]?.message ?? "unknown error";
-      return { ok: false, error: detail };
-    }
-    return { ok: true, user_id: result.id };
-  } catch (err) {
-    return {
-      ok: false,
-      error: err instanceof Error ? err.message : String(err),
-    };
+  const result = await boundedRestRequest<{
+    success?: boolean;
+    id?: string;
+    errors?: Array<{ message?: string }>;
+  }>(conn, "/sobjects/User", "POST", {
+    body,
+    signal: options.signal,
+    ...(options.timeoutMs ? { timeoutMs: options.timeoutMs } : {}),
+  });
+  if (result.ok === false) {
+    return { ok: false, error: result.detail };
   }
+  if (!result.body.success || !result.body.id) {
+    const detail = result.body.errors?.[0]?.message ?? "unknown error";
+    return { ok: false, error: detail };
+  }
+  return { ok: true, user_id: result.body.id };
 }
 
 /** Derive an 8-character alias from the username's local part. */

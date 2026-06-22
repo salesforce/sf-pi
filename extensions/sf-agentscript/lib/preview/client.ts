@@ -225,6 +225,8 @@ export interface PreviewEndOptions {
   cwd: string;
   agentName: string;
   sessionId: string;
+  /** Optional caller cancellation signal from the Pi tool runtime. */
+  signal?: AbortSignal;
 }
 
 export interface PreviewEndResult {
@@ -796,6 +798,7 @@ export async function endPreview(opts: PreviewEndOptions): Promise<PreviewEndRes
       method: "DELETE",
       headers: { "x-session-end-reason": "UserRequest" },
       timeoutMs: 30_000,
+      signal: opts.signal,
       // Pin to the host that served `start`.
       ...(beforeEnd.endpoint !== undefined ? { pinnedEndpoint: beforeEnd.endpoint } : {}),
     });

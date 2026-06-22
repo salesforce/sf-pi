@@ -140,7 +140,7 @@ Use `get_failure` after large runs. If exactly one failed completed run exists o
 
 Use `publish` to ship a new agent/version. Set `activate=true` only when you intend to immediately serve the new version.
 
-Use `agent_user_status`, `diagnose_agent_user`, and `provision_agent_user` for Service Agent user wiring. Provision defaults to `dry_run=true`; pass `dry_run=false` only after reviewing the plan.
+Use `agent_user_status`, `diagnose_agent_user`, and `provision_agent_user` for Service Agent user wiring. Provision defaults to `dry_run=true`; pass `dry_run=false` only after reviewing the plan. Live provisioning deploys a synthesized Permission Set for Apex action access with bounded Metadata API start/poll timeouts so stalled deploys return diagnostics instead of waiting on SDR's long default poll window.
 
 Do not infer activation/deactivation targets from branch state. Pass `agent_api_name` explicitly for `activate`, `deactivate`, and `list_versions`.
 

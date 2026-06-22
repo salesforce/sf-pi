@@ -32,6 +32,15 @@ export interface DeployPermissionSetInput {
   xml: string;
 }
 
+export interface DeployPermissionSetOptions {
+  /** Bound SDR deploy start; default intentionally shorter than SDR's 60-minute poll. */
+  deployStartTimeoutMs?: number;
+  /** Bound SDR deploy poll; default intentionally shorter than SDR's 60-minute poll. */
+  deployPollTimeoutMs?: number;
+  /** Caller cancellation signal from the Pi tool runtime. */
+  signal?: AbortSignal;
+}
+
 export interface DeployPermissionSetResult {
   ok: boolean;
   /** Deploy job Id from SDR (mirrors the metadata-deploy id). */
@@ -42,6 +51,48 @@ export interface DeployPermissionSetResult {
   first_problem?: string;
 }
 
+const PERMISSION_SET_DEPLOY_START_TIMEOUT_MS = 120_000;
+const PERMISSION_SET_DEPLOY_POLL_TIMEOUT_MS = 120_000;
+const PERMISSION_SET_DEPLOY_POLL_FREQUENCY_MS = 1_000;
+
+async function withTimeout<T>(
+  factory: () => Promise<T>,
+  timeoutMs: number,
+  label: string,
+  signal?: AbortSignal,
+  onStop?: () => void | Promise<void>,
+): Promise<T> {
+  if (signal?.aborted) throw new Error(`${label} aborted before it started`);
+
+  let timer: NodeJS.Timeout | undefined;
+  let abortHandler: (() => void) | undefined;
+  let stopped = false;
+  const stop = (reject: (reason?: unknown) => void, error: Error): void => {
+    if (stopped) return;
+    stopped = true;
+    void onStop?.();
+    reject(error);
+  };
+  try {
+    return await Promise.race([
+      factory(),
+      new Promise<T>((_resolve, reject) => {
+        timer = setTimeout(
+          () => stop(reject, new Error(`${label} timed out after ${timeoutMs}ms`)),
+          timeoutMs,
+        );
+        if (signal) {
+          abortHandler = () => stop(reject, new Error(`${label} aborted`));
+          signal.addEventListener("abort", abortHandler, { once: true });
+        }
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+    if (signal && abortHandler) signal.removeEventListener("abort", abortHandler);
+  }
+}
+
 /**
  * Stage `xml` to a temp directory, deploy via SDR, clean up on the way out.
  * Idempotent at the platform level: PermissionSet deploys overwrite the
@@ -50,6 +101,7 @@ export interface DeployPermissionSetResult {
 export async function deployPermissionSet(
   conn: Connection,
   input: DeployPermissionSetInput,
+  options: DeployPermissionSetOptions = {},
 ): Promise<DeployPermissionSetResult> {
   const tmpRoot = await mkdtemp(path.join(tmpdir(), "sf-agentscript-ps-"));
   const psDir = path.join(tmpRoot, "permissionsets");
@@ -60,8 +112,27 @@ export async function deployPermissionSet(
     await writeFile(filePath, input.xml, "utf8");
     const { ComponentSet } = await loadSdr();
     const componentSet = ComponentSet.fromSource(tmpRoot);
-    const deployJob = await componentSet.deploy({ usernameOrConnection: conn });
-    const deployResult = await deployJob.pollStatus();
+    const deployStartTimeoutMs =
+      options.deployStartTimeoutMs ?? PERMISSION_SET_DEPLOY_START_TIMEOUT_MS;
+    const deployPollTimeoutMs =
+      options.deployPollTimeoutMs ?? PERMISSION_SET_DEPLOY_POLL_TIMEOUT_MS;
+    const deployJob = await withTimeout(
+      () => componentSet.deploy({ usernameOrConnection: conn }),
+      deployStartTimeoutMs,
+      "PermissionSet deploy start",
+      options.signal,
+    );
+    const deployResult = await withTimeout(
+      () =>
+        deployJob.pollStatus(
+          PERMISSION_SET_DEPLOY_POLL_FREQUENCY_MS,
+          Math.ceil(deployPollTimeoutMs / 1000),
+        ),
+      deployPollTimeoutMs,
+      "PermissionSet deploy poll",
+      options.signal,
+      () => deployJob.cancel?.(),
+    );
     const success = deployResult.response?.success === true;
     if (success) {
       return { ok: true, job_id: deployResult.response?.id };

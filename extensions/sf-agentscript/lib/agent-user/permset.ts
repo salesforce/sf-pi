@@ -16,6 +16,7 @@
  */
 
 import type { Connection } from "@salesforce/core";
+import { boundedRestRequest } from "../bounded-salesforce-transport.ts";
 import { safeQueryRecords } from "../preflight/soql.ts";
 
 /** The PS that grants Service Agents permission to act in the org. */
@@ -179,6 +180,11 @@ export interface AssignPermissionSetResult {
   error?: string;
 }
 
+export interface AssignPermissionSetOptions {
+  signal?: AbortSignal;
+  timeoutMs?: number;
+}
+
 /**
  * Idempotently assign a Permission Set to a user. If the assignment
  * already exists, returns ok=true with already_assigned=true and no
@@ -188,6 +194,7 @@ export interface AssignPermissionSetResult {
 export async function assignPermissionSet(
   conn: Connection,
   input: AssignPermissionSetInput,
+  options: AssignPermissionSetOptions = {},
 ): Promise<AssignPermissionSetResult> {
   let psId = input.permission_set_id;
   const psName = input.permission_set_name;
@@ -222,21 +229,24 @@ export async function assignPermissionSet(
     };
   }
 
-  try {
-    const result = (await conn.sobject("PermissionSetAssignment").create({
+  const result = await boundedRestRequest<{
+    success?: boolean;
+    id?: string;
+    errors?: Array<{ message?: string }>;
+  }>(conn, "/sobjects/PermissionSetAssignment", "POST", {
+    body: {
       AssigneeId: input.user_id,
       PermissionSetId: psId,
-    })) as {
-      success?: boolean;
-      id?: string;
-      errors?: Array<{ message?: string }>;
-    };
-    if (!result.success || !result.id) {
-      const detail = result.errors?.[0]?.message ?? "unknown error";
-      return { ok: false, error: detail };
-    }
-    return { ok: true, assignment_id: result.id, already_assigned: false };
-  } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+    },
+    signal: options.signal,
+    ...(options.timeoutMs ? { timeoutMs: options.timeoutMs } : {}),
+  });
+  if (result.ok === false) {
+    return { ok: false, error: result.detail };
   }
+  if (!result.body.success || !result.body.id) {
+    const detail = result.body.errors?.[0]?.message ?? "unknown error";
+    return { ok: false, error: detail };
+  }
+  return { ok: true, assignment_id: result.body.id, already_assigned: false };
 }

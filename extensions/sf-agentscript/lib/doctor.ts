@@ -191,14 +191,19 @@ export function npmRegistryPackageUrl(packageName: string): string {
 async function fetchLatestNpmVersion(packageName: string): Promise<string | undefined> {
   try {
     const url = npmRegistryPackageUrl(packageName);
-    const response = await boundedPromise(
-      fetch(url, { headers: { accept: "application/json" } }),
-      `npm registry lookup for ${packageName}`,
-    );
-    if (!response.ok) return undefined;
-    const body = (await response.json()) as { "dist-tags"?: { latest?: unknown } };
-    const latest = body["dist-tags"]?.latest;
-    return typeof latest === "string" ? latest : undefined;
+    const controller = new AbortController();
+    try {
+      const response = await boundedPromise(
+        fetch(url, { headers: { accept: "application/json" }, signal: controller.signal }),
+        `npm registry lookup for ${packageName}`,
+      );
+      if (!response.ok) return undefined;
+      const body = (await response.json()) as { "dist-tags"?: { latest?: unknown } };
+      const latest = body["dist-tags"]?.latest;
+      return typeof latest === "string" ? latest : undefined;
+    } finally {
+      controller.abort();
+    }
   } catch {
     return undefined;
   }

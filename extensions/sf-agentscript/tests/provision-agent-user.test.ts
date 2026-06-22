@@ -4,8 +4,8 @@
  *
  * Drives the function with a fake Connection that:
  *   - returns scripted SOQL responses (substring-keyed), and
- *   - records every sobject().create() call so we can assert mutations
- *     happened (or didn't) per dry_run mode.
+ *   - records every REST create call so we can assert mutations happened
+ *     (or didn't) per dry_run mode.
  *
  * No live Salesforce. The fake Connection covers every documented
  * branch: license short-circuit, dry-run plan, idempotency (skip-if-
@@ -39,18 +39,21 @@ function fakeConn(opts: {
       }
       return { records: [] as T[] };
     },
-    sobject: (name: string) => ({
-      create: async (body: Record<string, unknown>) => {
-        opts.creates?.push({ sobject: name, body });
-        const r = opts.createResults?.get(name);
+    request: async (request: { method?: string; url?: string; body?: string }) => {
+      if (request.method === "POST" && request.url?.includes("/sobjects/")) {
+        const sobject = request.url.split("/sobjects/")[1] ?? "Unknown";
+        const body = JSON.parse(request.body ?? "{}") as Record<string, unknown>;
+        opts.creates?.push({ sobject, body });
+        const r = opts.createResults?.get(sobject);
         return (
           r ?? {
             success: true,
-            id: `${name.slice(0, 3).toUpperCase()}_FAKEID${(opts.creates?.length ?? 0).toString().padStart(3, "0")}`,
+            id: `${sobject.slice(0, 3).toUpperCase()}_FAKEID${(opts.creates?.length ?? 0).toString().padStart(3, "0")}`,
           }
         );
-      },
-    }),
+      }
+      return { records: [] };
+    },
   } as unknown as Parameters<typeof runProvision>[0];
 }
 

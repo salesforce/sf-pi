@@ -38,6 +38,7 @@ const COMPILE_URL = "https://api.salesforce.com/einstein/ai-agent/v1.1/authoring
 const AGENTS_URL = "https://api.salesforce.com/einstein/ai-agent/v1.1/authoring/agents";
 const BUNDLE_DEPLOY_START_TIMEOUT_MS = 120_000;
 const BUNDLE_DEPLOY_POLL_TIMEOUT_MS = 600_000;
+const BUNDLE_DEPLOY_POLL_FREQUENCY_MS = 1_000;
 
 let sdrPromise: Promise<{ ComponentSet: typeof ComponentSetType }> | undefined;
 async function loadSdr() {
@@ -47,20 +48,41 @@ async function loadSdr() {
   return sdrPromise;
 }
 
-async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
+async function withTimeout<T>(
+  factory: () => Promise<T>,
+  timeoutMs: number,
+  label: string,
+  signal?: AbortSignal,
+  onStop?: () => void | Promise<void>,
+): Promise<T> {
+  if (signal?.aborted) throw new Error(`${label} aborted before it started`);
+
   let timer: NodeJS.Timeout | undefined;
+  let abortHandler: (() => void) | undefined;
+  let stopped = false;
+  const stop = (reject: (reason?: unknown) => void, error: Error): void => {
+    if (stopped) return;
+    stopped = true;
+    void onStop?.();
+    reject(error);
+  };
   try {
     return await Promise.race([
-      promise,
+      factory(),
       new Promise<T>((_resolve, reject) => {
         timer = setTimeout(
-          () => reject(new Error(`${label} timed out after ${timeoutMs}ms`)),
+          () => stop(reject, new Error(`${label} timed out after ${timeoutMs}ms`)),
           timeoutMs,
         );
+        if (signal) {
+          abortHandler = () => stop(reject, new Error(`${label} aborted`));
+          signal.addEventListener("abort", abortHandler, { once: true });
+        }
       }),
     ]);
   } finally {
     if (timer) clearTimeout(timer);
+    if (signal && abortHandler) signal.removeEventListener("abort", abortHandler);
   }
 }
 
@@ -627,28 +649,42 @@ export async function publishAgent(opts: PublishOptions): Promise<PublishResult>
         const deployJob = await (opts.timings
           ? opts.timings.time("bundle_deploy_start", () =>
               withTimeout(
-                componentSet.deploy({ usernameOrConnection: opts.conn }),
+                () => componentSet.deploy({ usernameOrConnection: opts.conn }),
                 deployStartTimeout,
                 "AiAuthoringBundle deploy start",
+                opts.signal,
               ),
             )
           : withTimeout(
-              componentSet.deploy({ usernameOrConnection: opts.conn }),
+              () => componentSet.deploy({ usernameOrConnection: opts.conn }),
               deployStartTimeout,
               "AiAuthoringBundle deploy start",
+              opts.signal,
             ));
         const deployResult = await (opts.timings
           ? opts.timings.time("bundle_deploy_poll", () =>
               withTimeout(
-                deployJob.pollStatus(),
+                () =>
+                  deployJob.pollStatus(
+                    BUNDLE_DEPLOY_POLL_FREQUENCY_MS,
+                    Math.ceil(deployPollTimeout / 1000),
+                  ),
                 deployPollTimeout,
                 "AiAuthoringBundle deploy poll",
+                opts.signal,
+                () => deployJob.cancel?.(),
               ),
             )
           : withTimeout(
-              deployJob.pollStatus(),
+              () =>
+                deployJob.pollStatus(
+                  BUNDLE_DEPLOY_POLL_FREQUENCY_MS,
+                  Math.ceil(deployPollTimeout / 1000),
+                ),
               deployPollTimeout,
               "AiAuthoringBundle deploy poll",
+              opts.signal,
+              () => deployJob.cancel?.(),
             ));
         const success = deployResult.response?.success === true;
         if (success) {

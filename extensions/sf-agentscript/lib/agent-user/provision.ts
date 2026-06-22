@@ -15,9 +15,9 @@
  * read-only diagnose phase and emits a "would_execute" plan instead of
  * mutating.
  *
- * No sf CLI subprocess. User CRUD via Connection.sobject('User').create();
- * PSA via Connection.sobject('PermissionSetAssignment').create();
- * custom PS deploy via @salesforce/source-deploy-retrieve.
+ * No sf CLI subprocess. User CRUD and PermissionSetAssignment inserts
+ * use bounded Salesforce REST calls; custom PS deploy uses
+ * @salesforce/source-deploy-retrieve with local timeout/abort guards.
  */
 
 import type { Connection } from "@salesforce/core";
@@ -88,6 +88,8 @@ export interface RunProvisionInput {
    * caller must explicitly pass `false` to actually execute.
    */
   dry_run?: boolean;
+  /** Caller cancellation signal from the Pi tool runtime. */
+  signal?: AbortSignal;
 }
 
 export async function runProvision(
@@ -207,10 +209,14 @@ export async function runProvision(
       // Surface the remaining steps as 'would_execute' summaries.
       return finalize(addRemainingDryRunSteps(steps, before, input, dryRun), before, dryRun);
     }
-    const created = await createAgentUser(conn, {
-      username: desiredUsername,
-      profile_id: profileId,
-    });
+    const created = await createAgentUser(
+      conn,
+      {
+        username: desiredUsername,
+        profile_id: profileId,
+      },
+      { signal: input.signal },
+    );
     if (!created.ok || !created.user_id) {
       steps.push({
         id: "create_user",
@@ -244,10 +250,14 @@ export async function runProvision(
       detail: `Would insert PermissionSetAssignment(AssigneeId='${userId}', PermissionSet.Name='${SYSTEM_AGENT_PS_NAME}').`,
     });
   } else {
-    const sysAssign = await assignPermissionSet(conn, {
-      user_id: userId,
-      permission_set_name: SYSTEM_AGENT_PS_NAME,
-    });
+    const sysAssign = await assignPermissionSet(
+      conn,
+      {
+        user_id: userId,
+        permission_set_name: SYSTEM_AGENT_PS_NAME,
+      },
+      { signal: input.signal },
+    );
     if (sysAssign.ok) {
       steps.push({
         id: "assign_system_ps",
@@ -326,10 +336,14 @@ export async function runProvision(
       detail: `Would insert PermissionSetAssignment(AssigneeId='${userId}', PermissionSet.Name='${synthesized.developer_name}').`,
     });
   } else {
-    const deployed = await deployPermissionSet(conn, {
-      developer_name: synthesized.developer_name,
-      xml: synthesized.xml,
-    });
+    const deployed = await deployPermissionSet(
+      conn,
+      {
+        developer_name: synthesized.developer_name,
+        xml: synthesized.xml,
+      },
+      { signal: input.signal },
+    );
     if (!deployed.ok) {
       steps.push({
         id: "deploy_custom_ps",
@@ -361,10 +375,14 @@ export async function runProvision(
       });
       return finalize(steps, before, dryRun, synthesized.xml);
     }
-    const assigned = await assignPermissionSet(conn, {
-      user_id: userId,
-      permission_set_id: psRow.Id,
-    });
+    const assigned = await assignPermissionSet(
+      conn,
+      {
+        user_id: userId,
+        permission_set_id: psRow.Id,
+      },
+      { signal: input.signal },
+    );
     if (!assigned.ok) {
       steps.push({
         id: "assign_custom_ps",

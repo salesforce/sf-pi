@@ -54,6 +54,7 @@ const INITIAL_META = `<?xml version="1.0" encoding="UTF-8"?>
 // the deploy outcome (success/failure).
 let lastFromSourceArg: string | undefined;
 let lastDeployOptions: unknown;
+let lastPollArgs: unknown[] = [];
 let nextDeployResponse: { success: boolean; problem?: string } = { success: true };
 let nextDeployPollNeverResolves = false;
 
@@ -65,7 +66,8 @@ vi.mock("@salesforce/source-deploy-retrieve", () => ({
         deploy: async (options: unknown) => {
           lastDeployOptions = options;
           return {
-            pollStatus: async () => {
+            pollStatus: async (...args: unknown[]) => {
+              lastPollArgs = args;
               if (nextDeployPollNeverResolves) return new Promise(() => {});
               return {
                 response: nextDeployResponse.success
@@ -92,6 +94,7 @@ beforeEach(async () => {
   // to import it here.
   lastFromSourceArg = undefined;
   lastDeployOptions = undefined;
+  lastPollArgs = [];
   nextDeployResponse = { success: true };
   nextDeployPollNeverResolves = false;
   publishAgent = (await import("../lib/lifecycle.ts")).publishAgent;
@@ -180,6 +183,7 @@ describe("publishAgent deploys AiAuthoringBundle via SDR", () => {
 
     expect(lastFromSourceArg).toBe(bundleDir);
     expect(lastDeployOptions).toMatchObject({ usernameOrConnection: conn });
+    expect(lastPollArgs).toEqual([1000, 600]);
     expect(result.authoring_bundle).toEqual({
       full_name: "My_Agent_3",
       target: "My_Agent.v3",

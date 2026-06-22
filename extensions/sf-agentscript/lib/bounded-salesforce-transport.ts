@@ -48,6 +48,42 @@ export async function boundedPromise<T>(
   }
 }
 
+async function boundedLegacyPromise<T>(
+  factory: () => Promise<T>,
+  label: string,
+  timeoutMs: number,
+  signal?: AbortSignal,
+): Promise<T> {
+  if (signal?.aborted) throw new Error(`${label} aborted before it started.`);
+
+  let timer: NodeJS.Timeout | undefined;
+  let abortHandler: (() => void) | undefined;
+  try {
+    return await Promise.race([
+      factory(),
+      new Promise<T>((_resolve, reject) => {
+        timer = setTimeout(
+          () =>
+            reject(
+              new BoundedOperationTimeoutError(
+                `${label} timed out after ${timeoutMs}ms.`,
+                timeoutMs,
+              ),
+            ),
+          timeoutMs,
+        );
+        if (signal) {
+          abortHandler = () => reject(new Error(`${label} aborted.`));
+          signal.addEventListener("abort", abortHandler, { once: true });
+        }
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+    if (signal && abortHandler) signal.removeEventListener("abort", abortHandler);
+  }
+}
+
 export type BoundedRequestFailureReason =
   | "missing_connection_fields"
   | "timeout"
@@ -134,16 +170,41 @@ export async function boundedRestRequest<T>(
   opts: BoundedRequestOptions = {},
 ): Promise<BoundedRestResult<T>> {
   const { instanceUrl, accessToken, apiVersion } = getConnectionAuthShape(conn);
+  const timeoutMs = opts.timeoutMs ?? DEFAULT_BOUNDED_LOOKUP_TIMEOUT_MS;
   if (!accessToken) {
+    if (opts.signal?.aborted) {
+      return {
+        ok: false,
+        reason: "aborted",
+        detail: "Salesforce request aborted before it started.",
+      };
+    }
     try {
-      const body = (await conn.request({
-        method,
-        url: pathOrUrl,
-        headers: opts.headers,
-        body: serializeBody(opts.body),
-      } as Parameters<typeof conn.request>[0])) as T;
+      const body = (await boundedLegacyPromise(
+        () =>
+          conn.request({
+            method,
+            url: pathOrUrl,
+            headers: opts.headers,
+            body: serializeBody(opts.body),
+          } as Parameters<typeof conn.request>[0]) as Promise<T>,
+        "Salesforce request",
+        timeoutMs,
+        opts.signal,
+      )) as T;
       return { ok: true, status: 200, body };
     } catch (err) {
+      if (opts.signal?.aborted) {
+        return { ok: false, reason: "aborted", detail: "Salesforce request aborted." };
+      }
+      if (err instanceof BoundedOperationTimeoutError) {
+        return {
+          ok: false,
+          reason: "timeout",
+          timed_out_after_ms: err.timedOutAfterMs,
+          detail: err.message,
+        };
+      }
       return {
         ok: false,
         reason: "request_failed",
@@ -159,7 +220,6 @@ export async function boundedRestRequest<T>(
     };
   }
 
-  const timeoutMs = opts.timeoutMs ?? DEFAULT_BOUNDED_LOOKUP_TIMEOUT_MS;
   const fetchImpl = opts.fetchImpl ?? fetch;
   const controller = new AbortController();
   let timedOut = false;
@@ -243,20 +303,32 @@ export async function boundedSoqlQuery<T>(
 ): Promise<BoundedSoqlResult<T>> {
   const { instanceUrl, accessToken, apiVersion } = getConnectionAuthShape(conn);
   const apiPath = opts.api === "tooling" ? "tooling/query" : "query";
+  const timeoutMs = opts.timeoutMs ?? DEFAULT_BOUNDED_LOOKUP_TIMEOUT_MS;
   if (!accessToken) {
     // Legacy unit-test seam: older tests provide tokenless fake Connections
     // that implement query() or request(). Real org connections should take
     // the bounded fetch path below.
+    if (opts.signal?.aborted) {
+      return {
+        ok: false,
+        reason: "aborted",
+        detail: "Salesforce query aborted before it started.",
+      };
+    }
     try {
       const query = (conn as unknown as { query?: (q: string) => Promise<unknown> }).query;
-      const body = (
-        query
-          ? await query(soql)
-          : await conn.request({
-              method: "GET",
-              url: `/${apiPath}?q=${encodeURIComponent(soql)}`,
-            } as Parameters<typeof conn.request>[0])
-      ) as { records?: T[]; totalSize?: number };
+      const body = (await boundedLegacyPromise(
+        () =>
+          query
+            ? query(soql)
+            : (conn.request({
+                method: "GET",
+                url: `/${apiPath}?q=${encodeURIComponent(soql)}`,
+              } as Parameters<typeof conn.request>[0]) as Promise<unknown>),
+        "Salesforce query",
+        timeoutMs,
+        opts.signal,
+      )) as { records?: T[]; totalSize?: number };
       return {
         ok: true,
         records: body.records ?? [],
@@ -264,6 +336,17 @@ export async function boundedSoqlQuery<T>(
           typeof body.totalSize === "number" ? body.totalSize : (body.records ?? []).length,
       };
     } catch (err) {
+      if (opts.signal?.aborted) {
+        return { ok: false, reason: "aborted", detail: "Salesforce query aborted." };
+      }
+      if (err instanceof BoundedOperationTimeoutError) {
+        return {
+          ok: false,
+          reason: "timeout",
+          timed_out_after_ms: err.timedOutAfterMs,
+          detail: err.message,
+        };
+      }
       return {
         ok: false,
         reason: "request_failed",
@@ -279,7 +362,6 @@ export async function boundedSoqlQuery<T>(
     };
   }
 
-  const timeoutMs = opts.timeoutMs ?? DEFAULT_BOUNDED_LOOKUP_TIMEOUT_MS;
   const fetchImpl = opts.fetchImpl ?? fetch;
   const controller = new AbortController();
   let timedOut = false;

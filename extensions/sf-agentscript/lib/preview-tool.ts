@@ -213,10 +213,10 @@ export function registerPreviewTool(pi: ExtensionAPI): void {
           result = await actionSend(ctx, p, onUpdate, timings, _signal);
           break;
         case "end":
-          result = await timings.time("preview.end", () => actionEnd(ctx, p));
+          result = await timings.time("preview.end", () => actionEnd(ctx, p, _signal));
           break;
         case "end_all":
-          result = await timings.time("preview.end_all", () => actionEndAll(ctx, p));
+          result = await timings.time("preview.end_all", () => actionEndAll(ctx, p, _signal));
           break;
         case "trace":
           result = await actionTrace(p, timings, _signal);
@@ -309,6 +309,7 @@ async function actionStart(
         agentApiName: input.agent_api_name,
         targetOrg: input.target_org,
         timings,
+        signal,
       });
       return toolOk(
         withAgentScriptBranchState(
@@ -635,6 +636,7 @@ async function actionSend(
 async function actionEnd(
   ctx: ExtensionContext,
   input: ParamsAny,
+  signal?: AbortSignal,
 ): Promise<{
   content: { type: "text"; text: string }[];
   details: Record<string, unknown> | ToolError;
@@ -673,6 +675,7 @@ async function actionEnd(
       cwd: ctx.cwd,
       agentName: input.agent_name,
       sessionId: input.session_id,
+      signal,
     });
     // Suggest the obvious next lifecycle step. We only nudge for sessions
     // that have an agent_file on disk — api_name sessions are already
@@ -726,6 +729,7 @@ async function actionEnd(
 async function actionEndAll(
   ctx: ExtensionContext,
   input: ParamsAny,
+  signal?: AbortSignal,
 ): Promise<{
   content: { type: "text"; text: string }[];
   details: Record<string, unknown> | ToolError;
@@ -809,6 +813,7 @@ async function actionEndAll(
             cwd: ctx.cwd,
             agentName: s.agent,
             sessionId: s.session_id,
+            signal,
           });
           const row = {
             agent: s.agent,
@@ -828,6 +833,7 @@ async function actionEndAll(
             cwd: ctx.cwd,
             agentName: s.agent,
             sessionId: s.session_id,
+            signal,
           });
           localFinalized.push({
             agent: s.agent,
