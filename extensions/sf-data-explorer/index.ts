@@ -13,12 +13,8 @@ import {
 import { openInfoPanel } from "../../lib/common/info-panel.ts";
 import { withSafeCommandHandler } from "../../lib/common/safe-command-handler.ts";
 import { clearExplorerCache, cacheStatus } from "./lib/cache.ts";
-import {
-  buildHelpText,
-  DEFAULT_ORG,
-  parseCommandArgs,
-  type ParsedCommandArgs,
-} from "./lib/command.ts";
+import { buildHelpText, parseCommandArgs, type ParsedCommandArgs } from "./lib/command.ts";
+import { readEffectiveDataExplorerSettings } from "./lib/settings.ts";
 import { createData360SqlStrategy, type Data360ObjectMeta } from "./lib/modes/data360-sql.ts";
 import { createSoqlStrategy, type CoreSObjectMeta } from "./lib/modes/soql.ts";
 import { createSoslStrategy } from "./lib/modes/sosl.ts";
@@ -49,7 +45,7 @@ export default function sfDataExplorer(pi: ExtensionAPI) {
   pi.registerCommand(COMMAND, {
     description: "Read-only interactive SOQL, SOSL, and Data 360 SQL explorer",
     getArgumentCompletions: (prefix: string) =>
-      ["soql", "sosl", "sql", DEFAULT_ORG, "refresh", "soql refresh", "sosl refresh", "sql refresh"]
+      ["soql", "sosl", "sql", "default", "refresh", "soql refresh", "sosl refresh", "sql refresh"]
         .filter((v) => v.startsWith(prefix))
         .map((value) => ({ value, label: value })),
     handler: async (args, ctx) => {
@@ -69,7 +65,8 @@ async function handleCommand(
   ctx: ExtensionCommandContext,
   args: string,
 ): Promise<void> {
-  const parsed = parseCommandArgs(args);
+  const settings = readEffectiveDataExplorerSettings(ctx.cwd);
+  const parsed = parseCommandArgs(args, settings.defaultOrg);
   if (parsed.help) {
     ctx.ui.setEditorText(buildHelpText());
     ctx.ui.notify("SF Data Explorer help copied to editor.", "info");
@@ -86,7 +83,7 @@ async function handleCommand(
     if (!pickedMode) return;
     parsed.mode = pickedMode;
   }
-  const mode = parsed.mode ?? (await pickMode(ctx));
+  const mode = parsed.mode ?? settings.defaultMode ?? (await pickMode(ctx));
   if (!mode) return;
   let current: ParsedCommandArgs & { mode: ExplorerMode } = { ...parsed, mode };
   for (;;) {

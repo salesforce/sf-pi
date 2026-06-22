@@ -5,6 +5,7 @@
   "category": "assistive",
   "maturity": "stable",
   "defaultEnabled": true,
+  "configurable": true,
   "commands": ["/sf-lsp"],
   "events": ["session_start", "session_shutdown", "tool_result"],
   "docs": {
@@ -16,7 +17,8 @@
       "lib/file-classify.ts",
       "lib/activity.ts",
       "lib/working-indicator.ts",
-      "lib/command-panel.ts"
+      "lib/command-panel.ts",
+      "lib/config-panel.ts"
     ],
     "safety": [
       "Never overrides the built-in write/edit tools (pi cross-extension conflict guard).",

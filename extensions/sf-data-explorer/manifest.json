@@ -5,7 +5,7 @@
   "category": "ui",
   "maturity": "experimental",
   "defaultEnabled": true,
-  "configurable": false,
+  "configurable": true,
   "commands": ["/sf-data-explorer"],
   "events": ["session_start", "session_shutdown"],
   "docs": {
@@ -14,6 +14,8 @@
       "index.ts",
       "lib/transport.ts",
       "lib/command.ts",
+      "lib/settings.ts",
+      "lib/config-panel.ts",
       "lib/ui/explorer-spa.ts",
       "lib/modes/soql.ts",
       "lib/modes/sosl.ts",

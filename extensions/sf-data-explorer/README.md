@@ -88,8 +88,10 @@ extensions/sf-data-explorer/
       explorer-spa.ts       ← implementation module
     cache.ts                ← implementation module
     command.ts              ← implementation module
+    config-panel.ts         ← implementation module
     export.ts               ← implementation module
     result-normalize.ts     ← implementation module
+    settings.ts             ← implementation module
     text.ts                 ← implementation module
     transport.ts            ← implementation module
     types.ts                ← implementation module
@@ -98,9 +100,11 @@ extensions/sf-data-explorer/
     boot-path.test.ts       ← unit / smoke test
     builders.test.ts        ← unit / smoke test
     command.test.ts         ← unit / smoke test
+    config-panel.test.ts    ← unit / smoke test
     data360-metadata.test.ts← unit / smoke test
     export.test.ts          ← unit / smoke test
     result-normalize.test.ts← unit / smoke test
+    settings.test.ts        ← unit / smoke test
     strategies-transport.test.ts← unit / smoke test
     validators.test.ts      ← unit / smoke test
   AGENTS.md                 ← extension-specific agent editing rules
@@ -110,6 +114,15 @@ extensions/sf-data-explorer/
 ```
 
 <!-- GENERATED:file-structure:end -->
+
+## Settings
+
+The Manager Settings page exposes low-risk defaults for direct command usage:
+
+- **Default mode** (`sfPi.dataExplorer.defaultMode`) — `soql`, `sosl`, or `sql`.
+- **Default org** (`sfPi.dataExplorer.defaultOrg`) — target org alias used when a command omits one.
+
+Explicit command arguments still win. For example, `/sf-data-explorer sql my-org` uses `sql` and `my-org` regardless of saved defaults.
 
 ## Safety
 

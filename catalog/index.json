@@ -239,7 +239,7 @@
     "maturity": "experimental",
     "defaultEnabled": true,
     "alwaysActive": false,
-    "configurable": false,
+    "configurable": true,
     "commands": [
       "/sf-data-explorer"
     ],
@@ -255,6 +255,8 @@
         "index.ts",
         "lib/transport.ts",
         "lib/command.ts",
+        "lib/settings.ts",
+        "lib/config-panel.ts",
         "lib/ui/explorer-spa.ts",
         "lib/modes/soql.ts",
         "lib/modes/sosl.ts",
@@ -272,7 +274,7 @@
     "entry": "extensions/sf-data-explorer/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 2706
+    "srcLoc": 2927
   },
   {
     "id": "sf-data360",
@@ -579,7 +581,7 @@
     "maturity": "stable",
     "defaultEnabled": true,
     "alwaysActive": false,
-    "configurable": false,
+    "configurable": true,
     "commands": [
       "/sf-lsp"
     ],
@@ -599,7 +601,8 @@
         "lib/file-classify.ts",
         "lib/activity.ts",
         "lib/working-indicator.ts",
-        "lib/command-panel.ts"
+        "lib/command-panel.ts",
+        "lib/config-panel.ts"
       ],
       "safety": [
         "Never overrides the built-in write/edit tools (pi cross-extension conflict guard).",
@@ -609,7 +612,7 @@
     "entry": "extensions/sf-lsp/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 3899
+    "srcLoc": 3982
   },
   {
     "id": "sf-ohana-spinner",
@@ -811,7 +814,7 @@
     "maturity": "stable",
     "defaultEnabled": true,
     "alwaysActive": false,
-    "configurable": false,
+    "configurable": true,
     "commands": [
       "/sf-welcome",
       "/sf-setup-fonts"
@@ -835,7 +838,9 @@
         "lib/sf-cli-status.ts",
         "lib/sf-skills-status.ts",
         "lib/extension-health.ts",
-        "lib/font-installer.ts"
+        "lib/font-installer.ts",
+        "lib/welcome-settings.ts",
+        "lib/config-panel.ts"
       ],
       "stateFiles": [
         "~/.pi/agent/sf-welcome-state.json",
@@ -845,6 +850,6 @@
     "entry": "extensions/sf-welcome/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 5286
+    "srcLoc": 5413
   }
 ]

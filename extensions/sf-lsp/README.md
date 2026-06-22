@@ -117,7 +117,9 @@ Requires Node.js 18+.
 | `/sf-lsp verbose on\|off\|toggle` | Flip transcript rows between balanced (errors + transitions) and verbose (every check) |
 
 No keyboard shortcut, no CLI flag, no overlay toggle — the LSP segment is
-always-on in the sf-devbar top bar and requires no configuration.
+always-on in the sf-devbar top bar. The Manager Settings page exposes the
+low-risk `sfPi.sfLsp.verbose` preference for user-visible transcript row
+verbosity; diagnostic feedback sent to the agent is unchanged.
 
 ## Behavior Matrix
 
@@ -163,6 +165,7 @@ extensions/sf-lsp/
       versioning.ts         ← implementation module
     activity.ts             ← implementation module
     command-panel.ts        ← implementation module
+    config-panel.ts         ← implementation module
     extension-doctor.ts     ← implementation module
     feedback.ts             ← implementation module
     file-classify.ts        ← implementation module
@@ -173,6 +176,7 @@ extensions/sf-lsp/
     working-indicator.ts    ← implementation module
   tests/
     activity.test.ts        ← unit / smoke test
+    config-panel.test.ts    ← unit / smoke test
     feedback.test.ts        ← unit / smoke test
     file-classify.test.ts   ← unit / smoke test
     install-detect.test.ts  ← unit / smoke test
@@ -311,7 +315,7 @@ sf-devbar isn't subscribed (check `/sf-devbar` is enabled and loaded)
 Default mode is balanced: transcript row only on errors, red-to-green
 transitions, and the first unavailable per language per session. Use
 `/sf-lsp verbose on` to emit one row per check, or `/sf-lsp verbose off`
-to go back to balanced. Setting persists to global Pi settings.
+to go back to balanced. You can also edit this from **SF Pi Manager → SF LSP → Settings**. The setting persists to Pi settings under `sfPi.sfLsp.verbose`.
 
 **Working indicator keeps saying `LSP Apex…` after the turn ends:**
 The indicator is reference-counted around every `getLspDiagnosticsForFile`

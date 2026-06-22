@@ -5,6 +5,7 @@
   "category": "ui",
   "maturity": "stable",
   "defaultEnabled": true,
+  "configurable": true,
   "commands": ["/sf-welcome", "/sf-setup-fonts"],
   "events": ["session_start", "agent_start", "tool_call", "session_shutdown"],
   "docs": {
@@ -18,7 +19,9 @@
       "lib/sf-cli-status.ts",
       "lib/sf-skills-status.ts",
       "lib/extension-health.ts",
-      "lib/font-installer.ts"
+      "lib/font-installer.ts",
+      "lib/welcome-settings.ts",
+      "lib/config-panel.ts"
     ],
     "stateFiles": [
       "~/.pi/agent/sf-welcome-state.json",

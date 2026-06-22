@@ -171,6 +171,7 @@ extensions/sf-welcome/
       SOURCE.md             ← bundled asset metadata
   lib/
     ca-bundle-nudge.ts      ← implementation module
+    config-panel.ts         ← implementation module
     extension-health.ts     ← implementation module
     font-installer.ts       ← implementation module
     font-status.ts          ← implementation module
@@ -186,6 +187,7 @@ extensions/sf-welcome/
     startup-mode.ts         ← implementation module
     state-store.ts          ← implementation module
     types.ts                ← implementation module
+    welcome-settings.ts     ← implementation module
   tests/
     announcements-filter.test.ts← unit / smoke test
     announcements-manifest.test.ts← unit / smoke test
@@ -193,6 +195,7 @@ extensions/sf-welcome/
     announcements-state.test.ts← unit / smoke test
     announcements-update.test.ts← unit / smoke test
     ca-bundle-nudge.test.ts ← unit / smoke test
+    config-panel.test.ts    ← unit / smoke test
     extension-health.test.ts← unit / smoke test
     font-installer.test.ts  ← unit / smoke test
     node-cert-status.test.ts← unit / smoke test
@@ -270,9 +273,12 @@ Terminal.app and some Powerlevel10k setups. Fixes:
 
 **Splash feels too busy, stuck, or setup warnings are noisy:**
 Startup now uses the compact non-blocking header by default. Press Esc to
-dismiss it, or set `sfPi.welcome.mode` to `off` in settings to hide it.
-For recovery launch, `SF_PI_SAFE_START=1 pi` still resolves to the same
-non-blocking header so users can repair the harness from inside pi.
+dismiss it, or switch **SF Pi Manager → SF Welcome → Settings** to `overlay`
+when you prefer the full splash. The setting writes Pi's existing
+`quietStartup` preference (`header` = `quietStartup:true`, `overlay` =
+`quietStartup:false`). For recovery launch, `SF_PI_SAFE_START=1 pi` still
+resolves to the same non-blocking header so users can repair the harness from
+inside pi.
 
 **Splash content gets truncated in a narrow terminal:**
 Fixed — below ~100 columns the splash now stacks to a single column instead

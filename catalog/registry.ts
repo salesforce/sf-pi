@@ -68,6 +68,11 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
     defaultEnabled: true,
     commands: ["/sf-data-explorer"],
     events: ["session_start","session_shutdown"],
+    configurable: true,
+    getConfigPanel: async () => {
+      const mod = await import("../extensions/sf-data-explorer/lib/config-panel.ts");
+      return mod.createConfigPanel;
+    },
   },
   {
     id: "sf-data360",
@@ -172,6 +177,11 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
     defaultEnabled: true,
     commands: ["/sf-lsp"],
     events: ["session_start","session_shutdown","tool_result"],
+    configurable: true,
+    getConfigPanel: async () => {
+      const mod = await import("../extensions/sf-lsp/lib/config-panel.ts");
+      return mod.createConfigPanel;
+    },
   },
   {
     id: "sf-ohana-spinner",
@@ -244,5 +254,10 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
     defaultEnabled: true,
     commands: ["/sf-welcome","/sf-setup-fonts"],
     events: ["session_start","agent_start","tool_call","session_shutdown"],
+    configurable: true,
+    getConfigPanel: async () => {
+      const mod = await import("../extensions/sf-welcome/lib/config-panel.ts");
+      return mod.createConfigPanel;
+    },
   },
 ];
