@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.197.0-2026-06-22",
-  "latestVersion": "0.197.0",
+  "revision": "release-0.198.0-2026-06-22",
+  "latestVersion": "0.198.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.197.0",
+      "id": "release-0.198.0",
       "kind": "update",
-      "title": "sf-pi v0.197.0 — require pi 0.79.10 runtime",
+      "title": "sf-pi v0.198.0 — sf-llm-gateway: standardize manager setup settings",
       "publishedAt": "2026-06-22T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.197.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.198.0",
       "severity": "info",
-      "body": "require pi 0.79.10 runtime"
+      "body": "sf-llm-gateway: standardize manager setup settings"
     },
     {
       "id": "pi-0.73-required",
