@@ -120,7 +120,11 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
       const auth = await getDocsToken(ctx);
       if (auth.ok === false) return fail(input.action, auth.message, { reason: "missing_auth" });
       const endpoint = resolveEndpoint();
-      const client = new DocsClient({ endpoint: endpoint.endpoint, token: auth.token });
+      const client = new DocsClient({
+        endpoint: endpoint.endpoint,
+        token: auth.token,
+        timeoutMs: timeoutForAction(input.action),
+      });
       const slice = {
         collection: input.collection ?? prefs.defaultCollection,
         version: input.version ?? prefs.defaultVersion,
@@ -158,7 +162,7 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
           };
           if (input.format) args.format = input.format;
           const response = asSearchResponse(await client.callTool("search", args, signal));
-          const text = `SF Docs search returned ${(response.results ?? []).length} result(s) for ${input.query}. Fetch promising ids before implementation-sensitive answers.`;
+          const text = formatSearchToolText(input.query, response);
           return ok("search", text, { ...slice, query: input.query, ...response });
         }
 
@@ -258,6 +262,42 @@ function formatAnswerText(response: AnswerResponse): string {
     .map((citation, i) => `${i + 1}. ${citation.title ?? "Untitled"}\n   ${citation.url ?? ""}`)
     .join("\n");
   return citationText ? `${answer}\n\nCitations:\n${citationText}` : answer;
+}
+
+export function formatSearchToolText(query: string, response: SearchResponse): string {
+  const results = response.results ?? [];
+  const total = typeof response.totalCount === "number" ? response.totalCount : results.length;
+  const lines = [
+    `SF Docs search returned ${results.length}${total !== results.length ? ` of ${total}` : ""} result(s) for ${query}.`,
+  ];
+
+  if (!results.length) {
+    lines.push(
+      "Try fewer terms, exact Salesforce product names, or sf_docs collections for valid slices.",
+    );
+    return lines.join("\n");
+  }
+
+  lines.push("", "Results:");
+  for (const [index, result] of results.slice(0, 10).entries()) {
+    lines.push(`${index + 1}. ${result.title ?? "Untitled"}`);
+    if (result.id) lines.push(`   id: ${result.id}`);
+    if (result.url) lines.push(`   url: ${result.url}`);
+    const snippet = searchSnippet(result);
+    if (snippet) lines.push(`   snippet: ${snippet}`);
+  }
+  lines.push("", "Next: fetch promising ids or urls before implementation-sensitive answers.");
+  return clipText(lines.join("\n"), 12000);
+}
+
+function searchSnippet(result: DocsSearchResult): string {
+  const raw = result.content;
+  if (typeof raw !== "string") return "";
+  return raw.replace(/\s+/g, " ").trim().slice(0, 300);
+}
+
+function timeoutForAction(action: string): number {
+  return action === "answer" || action === "explain" ? 60000 : 30000;
 }
 
 function asSearchResponse(value: unknown): SearchResponse {

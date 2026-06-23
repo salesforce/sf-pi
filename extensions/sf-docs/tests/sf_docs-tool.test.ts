@@ -32,6 +32,27 @@ describe("sf_docs tool", () => {
     expect(tool.promptGuidelines.join("\n")).toMatch(/search.*fetch/i);
   });
 
+  it("includes search result ids and URLs in tool content", async () => {
+    vi.resetModules();
+    const { formatSearchToolText } = await import("../lib/sf_docs-tool.ts");
+    const text = formatSearchToolText("Named Credentials", {
+      totalCount: 1,
+      results: [
+        {
+          id: "developer-current-en-us-named-credentials",
+          title: "Use the Named Credential in a Callout",
+          url: "https://developer.salesforce.com/docs/example",
+          content: "Use a named credential to authenticate an Apex callout.",
+        },
+      ],
+    });
+
+    expect(text).toContain("Use the Named Credential in a Callout");
+    expect(text).toContain("developer-current-en-us-named-credentials");
+    expect(text).toContain("https://developer.salesforce.com/docs/example");
+    expect(text).toMatch(/fetch promising ids or urls/i);
+  });
+
   it("returns setup guidance when auth is missing", async () => {
     const old = process.env.SF_DOCS_MCP_TOKEN;
     delete process.env.SF_DOCS_MCP_TOKEN;
