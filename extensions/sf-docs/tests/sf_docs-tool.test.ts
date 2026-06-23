@@ -175,6 +175,69 @@ describe("sf_docs tool", () => {
     expect(JSON.stringify(result.details)).not.toContain("UNIQUE_DETAILS_BODY_TAIL");
   });
 
+  it("normalizes html headings and previews for fetch details", async () => {
+    const oldToken = process.env.SF_DOCS_MCP_TOKEN;
+    const oldEndpoint = process.env.SF_DOCS_MCP_ENDPOINT;
+    process.env.SF_DOCS_MCP_TOKEN = "test-token";
+    process.env.SF_DOCS_MCP_ENDPOINT = "https://example.test/";
+    const htmlBody = `<div><h1>The WITH SECURITY_ENFORCED SOQL Clause is Removed&nbsp;</h1><p>Use <code>WITH USER_MODE</code> &amp; explicit access modes.</p></div>`;
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(
+          `event: message\ndata: ${JSON.stringify({
+            result: {
+              content: [
+                {
+                  type: "text",
+                  text: JSON.stringify({
+                    documents: [
+                      {
+                        id: "doc-html",
+                        title: "HTML Doc",
+                        url: "https://help.salesforce.com/docs/html",
+                        content: htmlBody,
+                      },
+                    ],
+                  }),
+                },
+              ],
+            },
+            jsonrpc: "2.0",
+            id: 1,
+          })}\n\n`,
+          { status: 200, headers: { "content-type": "text/event-stream" } },
+        ),
+    ) as unknown as typeof fetch;
+    vi.stubGlobal("fetch", fetchMock);
+
+    vi.resetModules();
+    const { registerSfDocsTool } = await import("../lib/sf_docs-tool.ts");
+    const registerTool = vi.fn();
+    registerSfDocsTool({ registerTool } as unknown as ExtensionAPI);
+    const tool = registerTool.mock.calls[0]?.[0];
+    const result = await tool.execute(
+      "id",
+      { action: "fetch", ids: ["doc-html"], format: "html" },
+      undefined,
+      undefined,
+      {
+        cwd: process.cwd(),
+        modelRegistry: { getApiKeyForProvider: vi.fn(async () => undefined) },
+      },
+    );
+
+    if (oldToken === undefined) delete process.env.SF_DOCS_MCP_TOKEN;
+    else process.env.SF_DOCS_MCP_TOKEN = oldToken;
+    if (oldEndpoint === undefined) delete process.env.SF_DOCS_MCP_ENDPOINT;
+    else process.env.SF_DOCS_MCP_ENDPOINT = oldEndpoint;
+    vi.unstubAllGlobals();
+
+    const documents = result.details.documents as Array<Record<string, unknown>>;
+    expect(documents[0]?.headings).toEqual(["The WITH SECURITY_ENFORCED SOQL Clause is Removed"]);
+    expect(documents[0]?.humanPreview).toContain("Use WITH USER_MODE & explicit access modes.");
+    expect(String(documents[0]?.humanPreview)).not.toContain("<code>");
+  });
+
   it("returns setup guidance when auth is missing", async () => {
     const old = process.env.SF_DOCS_MCP_TOKEN;
     delete process.env.SF_DOCS_MCP_TOKEN;

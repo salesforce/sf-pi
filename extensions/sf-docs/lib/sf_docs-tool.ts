@@ -436,17 +436,36 @@ function buildFetchEvidencePacket(
 }
 
 function extractHeadings(value: string): string[] {
-  return value
+  const markdownHeadings = value
     .split("\n")
     .map((line) => line.trim())
     .filter((line) => /^#{1,4}\s+\S/.test(line))
-    .map((line) => line.replace(/^#{1,4}\s+/, "").trim())
-    .filter(Boolean)
-    .slice(0, 5);
+    .map((line) => line.replace(/^#{1,4}\s+/, "").trim());
+  const htmlHeadings = Array.from(value.matchAll(/<h[1-4][^>]*>([\s\S]*?)<\/h[1-4]>/giu)).map(
+    (match) => stripHtml(String(match[1] ?? "")).trim(),
+  );
+  return [...markdownHeadings, ...htmlHeadings].filter(Boolean).slice(0, 5);
 }
 
 function previewText(value: string, max: number): string {
-  return value.replace(/\s+/g, " ").trim().slice(0, max);
+  return stripHtml(value).replace(/\s+/g, " ").trim().slice(0, max);
+}
+
+function stripHtml(value: string): string {
+  const withoutBlocks = value
+    .replace(/<script[\s\S]*?<\/script>/giu, " ")
+    .replace(/<style[\s\S]*?<\/style>/giu, " ");
+  return decodeHtmlEntities(withoutBlocks.replace(/<[^>]+>/gu, " "));
+}
+
+function decodeHtmlEntities(value: string): string {
+  return value
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'");
 }
 
 function escapeAttribute(value: string): string {
