@@ -48,6 +48,10 @@ const EXTENSION_INTENTS: Record<string, ExtensionIntent> = {
     intent:
       "Data Cloud / Data 360 discovery, metadata, SQL, DLO/DMO schemas, segments, activations, and Agentforce observability data",
   },
+  "sf-docs": {
+    intent:
+      "official Salesforce documentation and product/reference research; use sf_docs before web_search or code_search when official docs should ground the answer",
+  },
   "sf-slack": {
     intent:
       "Slack research, thread/history lookup, user/channel/file/canvas lookup, and confirmed Slack sending",

@@ -17,6 +17,7 @@ import {
   type DocsCollection,
   type DocsDocument,
   type DocsSearchResult,
+  type SfDocsDisplayDensity,
   type ToolResultShape,
 } from "./types.ts";
 
@@ -37,6 +38,10 @@ interface AnswerResponse {
   citations?: DocsCitation[];
   [key: string]: unknown;
 }
+
+const FETCH_PER_DOCUMENT_CHAR_LIMIT = 12000;
+const FETCH_TOTAL_CHAR_LIMIT = 48000;
+const FETCH_DETAILS_PREVIEW_CHAR_LIMIT = 1600;
 
 const Params = Type.Object({
   action: StringEnum(
@@ -113,12 +118,20 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
       const input = params as Params;
       const prefs = readEffectiveDocsPreferences(ctx.cwd);
       if (input.action === "status") {
-        return ok("status", buildStatus(ctx.cwd), { status: buildStatus(ctx.cwd) });
+        return ok("status", buildStatus(ctx.cwd), {
+          status: buildStatus(ctx.cwd),
+          displayDensity: prefs.displayDensity,
+        });
       }
-      if (input.action === "cheatsheet") return cheatsheetResult();
+      if (input.action === "cheatsheet") return cheatsheetResult(prefs.displayDensity);
 
       const auth = await getDocsToken(ctx);
-      if (auth.ok === false) return fail(input.action, auth.message, { reason: "missing_auth" });
+      if (auth.ok === false) {
+        return fail(input.action, auth.message, {
+          reason: "missing_auth",
+          recover_via: { command: "/sf-docs connect", action: "status" },
+        });
+      }
       const endpoint = resolveEndpoint();
       const client = new DocsClient({
         endpoint: endpoint.endpoint,
@@ -141,18 +154,31 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
             !cache.stale &&
             cache.collections
           ) {
-            return collectionsResult(cache.collections, `hit · ${formatCacheAge(cache.fetchedAt)}`);
+            return collectionsResult(
+              cache.collections,
+              `hit · ${formatCacheAge(cache.fetchedAt)}`,
+              prefs.displayDensity,
+            );
           }
           const response = (await client.callTool("list", {}, signal)) as {
             collections?: DocsCollection[];
           };
           const collections = response.collections ?? [];
           if (prefs.cacheCatalog) writeCatalogCache(collections);
-          return collectionsResult(collections, input.refresh ? "refreshed" : "miss/refreshed");
+          return collectionsResult(
+            collections,
+            input.refresh ? "refreshed" : "miss/refreshed",
+            prefs.displayDensity,
+          );
         }
 
         if (input.action === "search") {
-          if (!input.query?.trim()) return fail("search", "sf_docs search requires query.");
+          if (!input.query?.trim()) {
+            return fail("search", "sf_docs search requires query.", {
+              reason: "missing_query",
+              recover_via: { ask: "Provide a concise Salesforce documentation search query." },
+            });
+          }
           const pageSize = clamp(input.pageSize ?? prefs.defaultPageSize, 1, 60);
           const args: Record<string, unknown> = {
             ...slice,
@@ -163,35 +189,60 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
           if (input.format) args.format = input.format;
           const response = asSearchResponse(await client.callTool("search", args, signal));
           const text = formatSearchToolText(input.query, response);
-          return ok("search", text, { ...slice, query: input.query, ...response });
+          return ok("search", text, {
+            ...slice,
+            query: input.query,
+            ...response,
+            displayDensity: prefs.displayDensity,
+          });
         }
 
         if (input.action === "fetch") {
+          const format = input.format ?? prefs.defaultFetchFormat;
           const args: Record<string, unknown> = {
             ...slice,
-            format: input.format ?? prefs.defaultFetchFormat,
+            format,
           };
-          if (input.ids?.length) args.ids = input.ids.slice(0, 12);
-          else if (input.urls?.length) args.urls = input.urls.slice(0, 12);
-          else return fail("fetch", "sf_docs fetch requires ids or urls.");
+          const requested: {
+            ids?: string[];
+            urls?: string[];
+            format: "text" | "markdown" | "html";
+          } = {
+            format,
+          };
+          if (input.ids?.length) {
+            requested.ids = input.ids.slice(0, 12);
+            args.ids = requested.ids;
+          } else if (input.urls?.length) {
+            requested.urls = input.urls.slice(0, 12);
+            args.urls = requested.urls;
+          } else {
+            return fail("fetch", "sf_docs fetch requires ids or urls.", {
+              reason: "missing_ids_or_urls",
+              recover_via: { action: "search", required: ["query"] },
+            });
+          }
           const response = asFetchResponse(await client.callTool("fetch", args, signal));
           const docs = response.documents ?? [];
-          const text = docs
-            .map((doc) =>
-              [
-                `# ${doc.title ?? doc.id ?? doc.url ?? "Document"}`,
-                doc.url,
-                clipText(doc.content ?? doc.error ?? "", 12000),
-              ]
-                .filter(Boolean)
-                .join("\n\n"),
-            )
-            .join("\n\n---\n\n");
-          return ok("fetch", text || "No documents returned.", { ...slice, ...response });
+          const packet = buildFetchEvidencePacket(docs, slice);
+          return ok("fetch", packet.text || "No documents returned.", {
+            ...slice,
+            requested,
+            displayDensity: prefs.displayDensity,
+            documents: packet.documents,
+            totalDocuments: packet.documents.length,
+            totalContentChars: packet.totalContentChars,
+            llmBudget: packet.llmBudget,
+          });
         }
 
         if (input.action === "answer") {
-          if (!input.query?.trim()) return fail("answer", "sf_docs answer requires query.");
+          if (!input.query?.trim()) {
+            return fail("answer", "sf_docs answer requires query.", {
+              reason: "missing_query",
+              recover_via: { ask: "Provide a concise Salesforce documentation question." },
+            });
+          }
           const response = asAnswerResponse(
             await client.callTool(
               "answer",
@@ -199,7 +250,13 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
               signal,
             ),
           );
-          return ok("answer", formatAnswerText(response), { ...slice, ...response });
+          const answer = response.answer ?? response.explanation ?? "";
+          return ok("answer", formatAnswerText(response), {
+            ...slice,
+            ...response,
+            displayDensity: prefs.displayDensity,
+            answerChars: answer.length,
+          });
         }
 
         if (input.action === "explain") {
@@ -211,14 +268,25 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
           else if (input.url) args.url = input.url;
           else return fail("explain", "sf_docs explain requires id or url.");
           const response = asAnswerResponse(await client.callTool("explain", args, signal));
-          return ok("explain", formatAnswerText(response), { ...slice, ...response });
+          const answer = response.answer ?? response.explanation ?? "";
+          return ok("explain", formatAnswerText(response), {
+            ...slice,
+            ...response,
+            displayDensity: prefs.displayDensity,
+            answerChars: answer.length,
+          });
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         return fail(input.action, message);
       }
 
-      return fail(input.action, `Unsupported sf_docs action: ${input.action}`);
+      return fail(input.action, `Unsupported sf_docs action: ${input.action}`, {
+        reason: "unsupported_action",
+        recover_via: {
+          actions: ["status", "collections", "search", "fetch", "answer", "explain", "cheatsheet"],
+        },
+      });
     },
   });
 }
@@ -235,7 +303,11 @@ function fail(
   return { content: [{ type: "text", text }], details: { ok: false, action, ...details } };
 }
 
-function collectionsResult(collections: DocsCollection[], cache: string): ToolResultShape {
+function collectionsResult(
+  collections: DocsCollection[],
+  cache: string,
+  displayDensity: SfDocsDisplayDensity,
+): ToolResultShape {
   return ok(
     "collections",
     collections
@@ -244,14 +316,138 @@ function collectionsResult(collections: DocsCollection[], cache: string): ToolRe
           `${c.collection}: versions=${(c.versions ?? []).join(",") || "-"}; locales=${(c.locales ?? []).join(",") || "-"}; formats=${(c.formats ?? []).join(",") || "-"}`,
       )
       .join("\n"),
-    { collections, cache },
+    { collections, cache, displayDensity },
   );
 }
 
-function cheatsheetResult(): ToolResultShape {
+function cheatsheetResult(displayDensity: SfDocsDisplayDensity): ToolResultShape {
   const file = path.join(import.meta.dirname, "..", "docs", "cheatsheet.md");
   const text = readFileSync(file, "utf8");
-  return ok("cheatsheet", clipText(text, 16000), { path: file });
+  return ok("cheatsheet", clipText(text, 16000), { path: file, displayDensity });
+}
+
+interface FetchEvidenceDocument {
+  id?: string;
+  url?: string;
+  title: string;
+  product?: string;
+  products?: string;
+  guides?: string;
+  filename?: string;
+  status: "ok" | "error";
+  error?: string;
+  contentChars: number;
+  llmReturnedChars: number;
+  llmTruncated: boolean;
+  metadataOnly: boolean;
+  headings: string[];
+  humanPreview: string;
+}
+
+function buildFetchEvidencePacket(
+  docs: DocsDocument[],
+  slice: { collection: string; version: string; locale: string },
+): {
+  text: string;
+  documents: FetchEvidenceDocument[];
+  totalContentChars: number;
+  llmBudget: {
+    perDocumentChars: number;
+    maxTotalChars: number;
+    returnedChars: number;
+    truncatedDocuments: number;
+    metadataOnlyDocuments: number;
+  };
+} {
+  let remaining = FETCH_TOTAL_CHAR_LIMIT;
+  let returnedChars = 0;
+  const documents: FetchEvidenceDocument[] = [];
+  const bodyLines = [
+    `SF Docs fetch returned ${docs.length} document(s) for ${slice.collection}/${slice.version}/${slice.locale}.`,
+    `LLM source budget: ${FETCH_PER_DOCUMENT_CHAR_LIMIT} chars per document; ${FETCH_TOTAL_CHAR_LIMIT} chars total.`,
+    "",
+  ];
+
+  docs.forEach((doc, index) => {
+    const title = doc.title ?? doc.id ?? doc.url ?? "Document";
+    const source = doc.content ?? "";
+    const contentChars = source.length;
+    const allowed = doc.error ? 0 : Math.max(0, Math.min(remaining, FETCH_PER_DOCUMENT_CHAR_LIMIT));
+    const body = allowed > 0 ? source.slice(0, allowed) : "";
+    const metadataOnly = !doc.error && contentChars > 0 && body.length === 0;
+    const llmTruncated = !doc.error && body.length < contentChars;
+    remaining -= body.length;
+    returnedChars += body.length;
+
+    documents.push({
+      id: doc.id,
+      url: doc.url,
+      title,
+      product: typeof doc.product === "string" ? doc.product : undefined,
+      products: typeof doc.products === "string" ? doc.products : undefined,
+      guides: typeof doc.guides === "string" ? doc.guides : undefined,
+      filename: typeof doc.filename === "string" ? doc.filename : undefined,
+      status: doc.error ? "error" : "ok",
+      error: doc.error,
+      contentChars,
+      llmReturnedChars: body.length,
+      llmTruncated,
+      metadataOnly,
+      headings: extractHeadings(source),
+      humanPreview: previewText(source, FETCH_DETAILS_PREVIEW_CHAR_LIMIT),
+    });
+
+    bodyLines.push(
+      `<document index="${index + 1}" id="${escapeAttribute(doc.id ?? "")}" title="${escapeAttribute(title)}" url="${escapeAttribute(doc.url ?? "")}" contentChars="${contentChars}" returnedChars="${body.length}" truncated="${llmTruncated}" metadataOnly="${metadataOnly}" status="${doc.error ? "error" : "ok"}">`,
+    );
+    if (doc.error) {
+      bodyLines.push(`Error: ${doc.error}`);
+    } else if (body) {
+      bodyLines.push(body);
+    } else if (metadataOnly) {
+      bodyLines.push(
+        "[No body text included because the global Docs Evidence Packet budget was exhausted.]",
+      );
+    }
+    bodyLines.push("</document>", "");
+  });
+
+  const truncatedDocuments = documents.filter((doc) => doc.llmTruncated).length;
+  const metadataOnlyDocuments = documents.filter((doc) => doc.metadataOnly).length;
+  return {
+    text: bodyLines.join("\n").trimEnd(),
+    documents,
+    totalContentChars: documents.reduce((sum, doc) => sum + doc.contentChars, 0),
+    llmBudget: {
+      perDocumentChars: FETCH_PER_DOCUMENT_CHAR_LIMIT,
+      maxTotalChars: FETCH_TOTAL_CHAR_LIMIT,
+      returnedChars,
+      truncatedDocuments,
+      metadataOnlyDocuments,
+    },
+  };
+}
+
+function extractHeadings(value: string): string[] {
+  return value
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => /^#{1,4}\s+\S/.test(line))
+    .map((line) => line.replace(/^#{1,4}\s+/, "").trim())
+    .filter(Boolean)
+    .slice(0, 5);
+}
+
+function previewText(value: string, max: number): string {
+  return value.replace(/\s+/g, " ").trim().slice(0, max);
+}
+
+function escapeAttribute(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 }
 
 function formatAnswerText(response: AnswerResponse): string {

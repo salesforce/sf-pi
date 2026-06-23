@@ -39,6 +39,14 @@ CLI.
   `extensions/sf-data360/skills/sf-data360/SKILL.md` when guidance is needed,
   then use `d360`, `d360_api`, `d360_metadata`, or `d360_probe` instead of
   hand-written curl.
+- Salesforce documentation or official product/reference research: use
+  `sf-docs` first. Prefer `sf_docs action='search'` then
+  `sf_docs action='fetch'` for implementation-sensitive guidance; use
+  `action='answer'` for quick cited synthesis. For broad docs research, run 2–4
+  independent `sf_docs` searches in parallel with page size 5, then fetch only
+  the strongest 3–4 source candidates. Fall back to `web_search` or
+  `code_search` only when official docs are missing, weak, or the user asks for
+  broader sources or examples.
 - Salesforce Setup / Lightning UI last-mile work: use `sf-browser` tools before
   generic browser automation. Open the org with `sf_browser_open_org`, snapshot,
   then act on refs.

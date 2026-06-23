@@ -15,6 +15,7 @@ export const DEFAULT_DOCS_PREFERENCES: SfDocsPreferences = {
   defaultFetchFormat: "markdown",
   defaultPageSize: 5,
   includeCitations: true,
+  displayDensity: "balanced",
   cacheCatalog: true,
 };
 
@@ -108,6 +109,13 @@ function sanitizePreferences(value: unknown): Partial<SfDocsPreferences> {
     out.defaultPageSize = Math.min(60, Math.max(1, Math.round(input.defaultPageSize)));
   }
   if (typeof input.includeCitations === "boolean") out.includeCitations = input.includeCitations;
+  if (
+    input.displayDensity === "compact" ||
+    input.displayDensity === "balanced" ||
+    input.displayDensity === "verbose"
+  ) {
+    out.displayDensity = input.displayDensity;
+  }
   if (typeof input.cacheCatalog === "boolean") out.cacheCatalog = input.cacheCatalog;
   return out;
 }

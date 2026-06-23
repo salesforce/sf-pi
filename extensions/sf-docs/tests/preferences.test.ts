@@ -32,7 +32,11 @@ describe("sf-docs preferences", () => {
   it("resolves project > global > default", () => {
     expect(prefs.readEffectiveDocsPreferences(cwd)).toMatchObject({
       defaultCollection: "developer",
-      sources: { defaultCollection: { scope: "default" } },
+      displayDensity: "balanced",
+      sources: {
+        defaultCollection: { scope: "default" },
+        displayDensity: { scope: "default" },
+      },
     });
 
     prefs.writeDocsPreference(cwd, "global", "defaultCollection", "admin");
@@ -42,9 +46,14 @@ describe("sf-docs preferences", () => {
     });
 
     prefs.writeDocsPreference(cwd, "project", "defaultCollection", "tableau");
+    prefs.writeDocsPreference(cwd, "project", "displayDensity", "verbose");
     expect(prefs.readEffectiveDocsPreferences(cwd)).toMatchObject({
       defaultCollection: "tableau",
-      sources: { defaultCollection: { scope: "project" } },
+      displayDensity: "verbose",
+      sources: {
+        defaultCollection: { scope: "project" },
+        displayDensity: { scope: "project" },
+      },
     });
   });
 });

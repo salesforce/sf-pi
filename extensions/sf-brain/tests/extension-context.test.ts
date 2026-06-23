@@ -69,6 +69,9 @@ describe("formatSfPiExtensionContext", () => {
     expect(context).toContain("Agentforce Agent Script authoring");
     expect(context).toContain("active tools: agentscript_authoring, agentscript_preview");
     expect(context).toContain("- sf-data360 (enabled)");
+    expect(context).toContain("- sf-docs (enabled)");
+    expect(context).toContain("official Salesforce documentation and product/reference research");
+    expect(context).toContain("before web_search or code_search");
     expect(context).toContain("- sf-herdr (enabled)");
     expect(context).toContain("- sf-pi-manager (always-on)");
   });

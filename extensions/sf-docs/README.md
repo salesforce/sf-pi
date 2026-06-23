@@ -30,7 +30,7 @@ Agent asks for official docs
 - **Tool shape:** `sf_docs` is one family tool instead of one public tool per remote action.
 - **Cache boundary:** `lib/catalog-cache.ts` stores only the collection catalog. Search results, answers, and document bodies are never cached.
 - **Evidence workflow:** For implementation-sensitive answers, agents should search, fetch source documents, and then answer from inspected evidence. The `answer` action remains available for quick cited synthesis.
-- **Human output:** The tool returns compact text to the model and uses custom renderers for icon-rich TUI summaries with visible citations.
+- **Human output:** The tool separates compact Docs Result Cards from bounded Docs Evidence Packets, so humans see scan-friendly citations, counts, previews, and source URLs while the model still receives official source evidence.
 
 ## Behavior Matrix
 
@@ -61,6 +61,10 @@ The Manager settings page stores only non-secret preferences:
 - cache catalog
 
 Preferences are scoped as project > global > extension default. The token is not a setting; use Connect or `SF_DOCS_MCP_TOKEN`.
+
+## Result Mocks
+
+See [`docs/result-mocks.md`](./docs/result-mocks.md) for lightweight examples of what humans see in the TUI versus what the LLM receives for each `sf_docs` action.
 
 ## Cheatsheet
 

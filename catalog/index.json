@@ -108,7 +108,7 @@
     "entry": "extensions/sf-brain/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 526
+    "srcLoc": 530
   },
   {
     "id": "sf-browser",
@@ -438,7 +438,7 @@
     "entry": "extensions/sf-docs/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 1711
+    "srcLoc": 2112
   },
   {
     "id": "sf-feedback",

@@ -433,7 +433,7 @@ An experimental UI Bundled Extension for keyboard-first, read-only human explora
 _Avoid_: Data 360 capability, agent query tool, write-capable data manager, replacement for SF Data 360
 
 **SF Docs**:
-A planned Bundled Extension that gives agents and users a first-class Salesforce documentation lookup surface inside SF Pi, backed by a docs service while presenting an SF Pi-native tool, command, settings, and reference workflow.
+A Bundled Extension that gives agents and users a first-class Salesforce documentation lookup surface inside SF Pi, backed by a docs service while presenting an SF Pi-native tool, command, settings, and reference workflow.
 _Avoid_: MCP server integration, generic web search, docs scraper, skill pack
 
 **SF Docs Credential**:
@@ -449,8 +449,12 @@ The single LLM-callable family tool for Salesforce documentation workflows, usin
 _Avoid_: separate docs tools per action, raw MCP tool exposure, browser search replacement
 
 **SF Docs Settings**:
-The Manager Surface settings page for durable non-secret SF Docs preferences such as default collection, locale, fetch format, page size, citation behavior, and catalog caching.
+The Manager Surface settings page for durable non-secret SF Docs preferences such as default collection, locale, fetch format, page size, citation behavior, display density, and catalog caching.
 _Avoid_: token storage, action runner, docs browser
+
+**SF Docs Display Density**:
+A non-secret **SF Docs Settings** preference that controls how much preview detail **Docs Result Cards** show to humans across SF Docs actions. It changes visible rendering density for variable-length text, not the **Docs Evidence Packet** budget, documentation source fetched, or whether full document bodies are displayed.
+_Avoid_: LLM context budget, fetch format, source caching, full-body display toggle
 
 **SF Docs Cheatsheet**:
 The extension-owned Markdown reference that teaches agents and humans how to use **SF Docs** actions, collections, citation workflows, and troubleshooting paths. It is loaded only when the user or workflow needs SF Docs guidance and is not registered as a Pi skill.
@@ -472,9 +476,21 @@ _Avoid_: credential scope, auth profile, docs workspace
 The bounded output shape for **SF Docs** actions: a concise text summary for agents, structured details with sanitized request/result metadata, and a separate human renderer with icons, sections, tables, and visible citation links. URLs and citations are shown in the visible summary whenever available.
 _Avoid_: raw MCP payload dump, hidden-only citations, unbounded docs body, plain JSON wall
 
+**Docs Result Card**:
+The compact human-facing render of an **SF Docs** tool result, optimized for scanning citations, source identity, counts, headings, short previews, status, packet summaries, and next steps without dumping fetched source bodies into the transcript. Expanded cards may show richer bounded previews and outlines, but not full fetched document bodies; full official source URLs remain visible for trust and copyability, and full human source access remains the official documentation URL or a narrower follow-up.
+_Avoid_: full docs body, raw fetch output, LLM evidence packet, terminal flood
+
+**Docs Evidence Packet**:
+The globally bounded model-facing source text returned by **SF Docs** so the agent can reason from official documentation without requiring the same volume of text to be visible in the **Docs Result Card**. Full fetched source bodies belong in this structured source packet, while tool `details` keep only renderer-safe metadata, counts, flags, and bounded previews.
+_Avoid_: human preview, cached docs corpus, raw MCP payload, citation-free summary
+
 **SF Docs Evidence Workflow**:
-The preferred agent workflow for implementation-sensitive documentation work: search the relevant collection, fetch the most relevant source documents, then answer from inspected source. The `answer` action remains available for quick cited synthesis.
-_Avoid_: answer-first coding guidance, memory-only Salesforce docs, citation-free summary
+The preferred agent workflow for implementation-sensitive official Salesforce documentation, product, or reference research: search the relevant collection, fetch the most relevant source documents, then answer from inspected source. The `answer` action remains available for quick cited synthesis, while broader web, workspace, or source-example research remains a fallback or separate workflow when official docs are missing or insufficient.
+_Avoid_: answer-first coding guidance, memory-only Salesforce docs, citation-free summary, generic Salesforce web research
+
+**SF Docs Search Fanout**:
+The agent behavior of running a small number of independent **SF Docs Tool** search actions in parallel with varied official-docs queries, then fetching only the strongest source candidates. It is guidance for tool use, not a separate batch action or orchestrated research tool.
+_Avoid_: batch search API, automatic web search, broad crawl, fetch-before-search
 
 **SF Docs Endpoint**:
 The configured backing URL for the Salesforce documentation service, defaulting to `https://mcp.docs.salesforce.com/` with only an environment-variable override for advanced testing or automation.

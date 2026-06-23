@@ -21,6 +21,7 @@ export type DocsAction =
 export type TokenSource = "pi-auth" | "env" | "none";
 export type EndpointSource = "default" | "env";
 export type DocsScope = "global" | "project";
+export type SfDocsDisplayDensity = "compact" | "balanced" | "verbose";
 
 export interface TokenResolution {
   source: Exclude<TokenSource, "none">;
@@ -40,6 +41,7 @@ export interface SfDocsPreferences {
   defaultFetchFormat: "text" | "markdown" | "html";
   defaultPageSize: number;
   includeCitations: boolean;
+  displayDensity: SfDocsDisplayDensity;
   cacheCatalog: boolean;
 }
 

@@ -28,6 +28,7 @@ export function buildStatus(cwd: string): string {
   lines.push(`- fetch format: ${prefs.defaultFetchFormat}`);
   lines.push(`- page size: ${prefs.defaultPageSize}`);
   lines.push(`- citations: ${prefs.includeCitations ? "on" : "off"}`);
+  lines.push(`- display density: ${prefs.displayDensity}`);
   lines.push(`- catalog cache: ${prefs.cacheCatalog ? "on" : "off"}`);
   return lines.join("\n");
 }

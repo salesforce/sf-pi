@@ -57,6 +57,12 @@ const SETTING_ROWS: readonly SettingRow[] = [
     values: [true, false],
   },
   {
+    key: "displayDensity",
+    label: "Display density",
+    description: "Controls human-visible SF Docs result card previews, not LLM evidence text.",
+    values: ["compact", "balanced", "verbose"],
+  },
+  {
     key: "cacheCatalog",
     label: "Cache catalog",
     description: "Cache only the collection catalog; never cache docs bodies.",

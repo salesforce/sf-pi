@@ -98,6 +98,79 @@ describe("sf_docs tool", () => {
     expect(result.content[0].text).toContain("Summary");
   });
 
+  it("builds a bounded fetch evidence packet without duplicating bodies in details", async () => {
+    const oldToken = process.env.SF_DOCS_MCP_TOKEN;
+    const oldEndpoint = process.env.SF_DOCS_MCP_ENDPOINT;
+    process.env.SF_DOCS_MCP_TOKEN = "test-token";
+    process.env.SF_DOCS_MCP_ENDPOINT = "https://example.test/";
+    const longBody = `# Apex\n\n${"Source text. ".repeat(2000)}UNIQUE_DETAILS_BODY_TAIL`;
+    const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(String(init.body));
+      expect(body.params.name).toBe("fetch");
+      expect(body.params.arguments).toMatchObject({ ids: ["doc-1"], format: "markdown" });
+      return new Response(
+        `event: message\ndata: ${JSON.stringify({
+          result: {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify({
+                  documents: [
+                    {
+                      id: "doc-1",
+                      title: "Apex",
+                      url: "https://help.salesforce.com/docs/apex",
+                      content: longBody,
+                    },
+                  ],
+                }),
+              },
+            ],
+          },
+          jsonrpc: "2.0",
+          id: 1,
+        })}\n\n`,
+        { status: 200, headers: { "content-type": "text/event-stream" } },
+      );
+    }) as unknown as typeof fetch;
+    vi.stubGlobal("fetch", fetchMock);
+
+    vi.resetModules();
+    const { registerSfDocsTool } = await import("../lib/sf_docs-tool.ts");
+    const registerTool = vi.fn();
+    registerSfDocsTool({ registerTool } as unknown as ExtensionAPI);
+    const tool = registerTool.mock.calls[0]?.[0];
+    const result = await tool.execute(
+      "id",
+      { action: "fetch", ids: ["doc-1"] },
+      undefined,
+      undefined,
+      {
+        cwd: process.cwd(),
+        modelRegistry: { getApiKeyForProvider: vi.fn(async () => undefined) },
+      },
+    );
+
+    if (oldToken === undefined) delete process.env.SF_DOCS_MCP_TOKEN;
+    else process.env.SF_DOCS_MCP_TOKEN = oldToken;
+    if (oldEndpoint === undefined) delete process.env.SF_DOCS_MCP_ENDPOINT;
+    else process.env.SF_DOCS_MCP_ENDPOINT = oldEndpoint;
+    vi.unstubAllGlobals();
+
+    expect(result.content[0].text).toContain('<document index="1"');
+    expect(result.content[0].text).toContain("# Apex");
+    expect(result.details).toMatchObject({
+      ok: true,
+      action: "fetch",
+      displayDensity: "balanced",
+      llmBudget: { perDocumentChars: 12000, maxTotalChars: 48000 },
+    });
+    const documents = result.details.documents as Array<Record<string, unknown>>;
+    expect(documents[0]?.content).toBeUndefined();
+    expect(documents[0]?.humanPreview).toContain("Apex");
+    expect(JSON.stringify(result.details)).not.toContain("UNIQUE_DETAILS_BODY_TAIL");
+  });
+
   it("returns setup guidance when auth is missing", async () => {
     const old = process.env.SF_DOCS_MCP_TOKEN;
     delete process.env.SF_DOCS_MCP_TOKEN;
@@ -116,6 +189,7 @@ describe("sf_docs tool", () => {
       ok: false,
       action: "collections",
       reason: "missing_auth",
+      recover_via: { command: "/sf-docs connect", action: "status" },
     });
     expect(result.content[0].text).toMatch(/not connected/i);
   });

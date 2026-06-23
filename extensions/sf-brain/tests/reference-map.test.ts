@@ -30,6 +30,11 @@ describe("sf-brain reference map", () => {
     expect(map).toContain("docs/agent-orientation.md");
     expect(map).toContain("extensions/sf-agentscript/skills/sf-agentscript/SKILL.md");
     expect(map).toContain("extensions/sf-data360/skills/sf-data360/SKILL.md");
+    expect(map).toContain("sf-docs");
+    expect(map).toContain("sf_docs action='search'");
+    expect(map).toContain("sf_docs action='fetch'");
+    expect(map).toContain("web_search");
+    expect(map).toContain("code_search");
     expect(map).toContain("<sf_pi_extensions>");
     expect(map).toContain("/sf-pi enable <id>");
     expect(map).toContain("active skill");

@@ -8,6 +8,13 @@ Use SF Docs when you need official Salesforce documentation inside pi. SF Docs i
 2. For implementation-sensitive work, prefer `sf_docs action="search"` then `sf_docs action="fetch"` for the most relevant IDs.
 3. Use `sf_docs action="answer"` for quick cited synthesis or broad explanatory questions.
 4. Include visible citation URLs in final answers when SF Docs returns them.
+5. For broad official-docs research, run 2–4 independent `search` calls in parallel with varied exact phrases, then fetch only the strongest 3–4 source candidates.
+
+## Human vs LLM output
+
+SF Docs separates human **Docs Result Cards** from model-facing **Docs Evidence Packets**. Result cards stay compact and show source URLs, counts, headings, bounded previews, and packet summaries. Evidence packets carry globally bounded source text for grounding model answers.
+
+See [`result-mocks.md`](./result-mocks.md) for simple examples of what humans see versus what the LLM sees.
 
 ## Actions
 
@@ -45,6 +52,7 @@ Known collections include `developer`, `admin`, `architect`, `legacydeveloper`, 
 ## Fetch tips
 
 - Fetch IDs from the same `collection`, `version`, and `locale` that produced them.
+- Prefer fetching the strongest 3–4 source candidates; `fetch` accepts more for compatibility, but the Docs Evidence Packet is globally bounded.
 - Use `markdown` when headings, code blocks, lists, or tables matter.
 - Use `text` for compact triage.
 - Avoid caching fetched docs in project files unless the user explicitly asks.
