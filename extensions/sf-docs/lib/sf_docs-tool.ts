@@ -203,9 +203,8 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
         }
 
         if (input.action === "explain") {
-          if (!input.query?.trim()) return fail("explain", "sf_docs explain requires query.");
           const args: Record<string, unknown> = {
-            query: input.query,
+            query: input.query?.trim() || "Summarize this document.",
             cite: input.cite ?? prefs.includeCitations,
           };
           if (input.id) args.id = input.id;

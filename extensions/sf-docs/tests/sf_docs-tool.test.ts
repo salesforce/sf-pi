@@ -53,6 +53,51 @@ describe("sf_docs tool", () => {
     expect(text).toMatch(/fetch promising ids or urls/i);
   });
 
+  it("uses a default summary query for explain by URL", async () => {
+    const oldToken = process.env.SF_DOCS_MCP_TOKEN;
+    const oldEndpoint = process.env.SF_DOCS_MCP_ENDPOINT;
+    process.env.SF_DOCS_MCP_TOKEN = "test-token";
+    process.env.SF_DOCS_MCP_ENDPOINT = "https://example.test/";
+    const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(String(init.body));
+      expect(body.params.name).toBe("explain");
+      expect(body.params.arguments).toMatchObject({
+        query: "Summarize this document.",
+        url: "https://developer.salesforce.com/docs/example",
+      });
+      return new Response(
+        'event: message\ndata: {"result":{"content":[{"type":"text","text":"{\\"answer\\":\\"Summary\\"}"}]},"jsonrpc":"2.0","id":1}\n\n',
+        { status: 200, headers: { "content-type": "text/event-stream" } },
+      );
+    }) as unknown as typeof fetch;
+    vi.stubGlobal("fetch", fetchMock);
+
+    vi.resetModules();
+    const { registerSfDocsTool } = await import("../lib/sf_docs-tool.ts");
+    const registerTool = vi.fn();
+    registerSfDocsTool({ registerTool } as unknown as ExtensionAPI);
+    const tool = registerTool.mock.calls[0]?.[0];
+    const result = await tool.execute(
+      "id",
+      { action: "explain", url: "https://developer.salesforce.com/docs/example" },
+      undefined,
+      undefined,
+      {
+        cwd: process.cwd(),
+        modelRegistry: { getApiKeyForProvider: vi.fn(async () => undefined) },
+      },
+    );
+
+    if (oldToken === undefined) delete process.env.SF_DOCS_MCP_TOKEN;
+    else process.env.SF_DOCS_MCP_TOKEN = oldToken;
+    if (oldEndpoint === undefined) delete process.env.SF_DOCS_MCP_ENDPOINT;
+    else process.env.SF_DOCS_MCP_ENDPOINT = oldEndpoint;
+    vi.unstubAllGlobals();
+
+    expect(result.details).toMatchObject({ ok: true, action: "explain" });
+    expect(result.content[0].text).toContain("Summary");
+  });
+
   it("returns setup guidance when auth is missing", async () => {
     const old = process.env.SF_DOCS_MCP_TOKEN;
     delete process.env.SF_DOCS_MCP_TOKEN;
