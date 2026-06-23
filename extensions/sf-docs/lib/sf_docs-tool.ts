@@ -261,12 +261,18 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
 
         if (input.action === "explain") {
           const args: Record<string, unknown> = {
+            ...slice,
             query: input.query?.trim() || "Summarize this document.",
             cite: input.cite ?? prefs.includeCitations,
           };
           if (input.id) args.id = input.id;
           else if (input.url) args.url = input.url;
-          else return fail("explain", "sf_docs explain requires id or url.");
+          else {
+            return fail("explain", "sf_docs explain requires id or url.", {
+              reason: "missing_id_or_url",
+              recover_via: { action: "search", then: "explain", required: ["id", "url"] },
+            });
+          }
           const response = asAnswerResponse(await client.callTool("explain", args, signal));
           const answer = response.answer ?? response.explanation ?? "";
           return ok("explain", formatAnswerText(response), {
@@ -400,6 +406,7 @@ function buildFetchEvidencePacket(
     bodyLines.push(
       `<document index="${index + 1}" id="${escapeAttribute(doc.id ?? "")}" title="${escapeAttribute(title)}" url="${escapeAttribute(doc.url ?? "")}" contentChars="${contentChars}" returnedChars="${body.length}" truncated="${llmTruncated}" metadataOnly="${metadataOnly}" status="${doc.error ? "error" : "ok"}">`,
     );
+    if (doc.url) bodyLines.push(`Source URL: ${doc.url}`);
     if (doc.error) {
       bodyLines.push(`Error: ${doc.error}`);
     } else if (body) {

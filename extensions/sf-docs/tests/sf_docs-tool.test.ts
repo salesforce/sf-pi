@@ -62,6 +62,9 @@ describe("sf_docs tool", () => {
       const body = JSON.parse(String(init.body));
       expect(body.params.name).toBe("explain");
       expect(body.params.arguments).toMatchObject({
+        collection: "developer",
+        version: "current",
+        locale: "en-us",
         query: "Summarize this document.",
         url: "https://developer.salesforce.com/docs/example",
       });
@@ -158,6 +161,7 @@ describe("sf_docs tool", () => {
     vi.unstubAllGlobals();
 
     expect(result.content[0].text).toContain('<document index="1"');
+    expect(result.content[0].text).toContain("Source URL: https://help.salesforce.com/docs/apex");
     expect(result.content[0].text).toContain("# Apex");
     expect(result.details).toMatchObject({
       ok: true,
