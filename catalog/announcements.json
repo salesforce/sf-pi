@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.205.0-2026-06-23",
-  "latestVersion": "0.205.0",
+  "revision": "release-0.205.1-2026-06-23",
+  "latestVersion": "0.205.1",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.205.0",
+      "id": "release-0.205.1",
       "kind": "update",
-      "title": "sf-pi v0.205.0 — add sf-docs extension",
+      "title": "sf-pi v0.205.1 — sf-docs: allow explain by document only",
       "publishedAt": "2026-06-23T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.205.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.205.1",
       "severity": "info",
-      "body": "add sf-docs extension"
+      "body": "sf-docs: allow explain by document only — sf-docs: include search results in tool content"
     },
     {
       "id": "pi-0.73-required",
