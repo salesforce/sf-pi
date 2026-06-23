@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.206.0-2026-06-23",
-  "latestVersion": "0.206.0",
+  "revision": "release-0.206.1-2026-06-23",
+  "latestVersion": "0.206.1",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.206.0",
+      "id": "release-0.206.1",
       "kind": "update",
-      "title": "sf-pi v0.206.0 — sf-docs: improve docs result rendering",
+      "title": "sf-pi v0.206.1 — sf-docs: normalize html fetch previews",
       "publishedAt": "2026-06-23T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.206.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.206.1",
       "severity": "info",
-      "body": "sf-docs: improve docs result rendering — sf-docs: harden explain and evidence URLs"
+      "body": "sf-docs: normalize html fetch previews"
     },
     {
       "id": "pi-0.73-required",
