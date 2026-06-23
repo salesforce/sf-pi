@@ -29,6 +29,7 @@ sf-pi/
 │   ├── sf-data-explorer/
 │   ├── sf-data360/
 │   ├── sf-devbar/
+│   ├── sf-docs/
 │   ├── sf-feedback/
 │   ├── sf-guardrail/
 │   ├── sf-herdr/

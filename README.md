@@ -225,6 +225,7 @@ Every slash command exposed by a bundled extension. See each extension README fo
 | `/sf-browser`       | [SF Browser](./extensions/sf-browser/)                           | agent-tool |
 | `/sf-code-analyzer` | [SF Code Analyzer](./extensions/sf-code-analyzer/)               | agent-tool |
 | `/sf-data360`       | [SF Data 360](./extensions/sf-data360/)                          | agent-tool |
+| `/sf-docs`          | [SF Docs](./extensions/sf-docs/)                                 | agent-tool |
 | `/sf-herdr`         | [SF Herdr](./extensions/sf-herdr/)                               | agent-tool |
 | `/sf-slack`         | [SF Slack](./extensions/sf-slack/)                               | agent-tool |
 | `/sf-guardrail`     | [SF Guardrail](./extensions/sf-guardrail/)                       | safety     |
@@ -384,6 +385,7 @@ For the canonical machine-readable bundle list, see [`catalog/index.json`](./cat
 | [SF Browser](./extensions/sf-browser/)                           | agent-tool | on        | Salesforce-aware browser automation for last-mile UI work using agent-browser.                                                                                                                                                                                                                                                         |
 | [SF Code Analyzer](./extensions/sf-code-analyzer/)               | agent-tool | on        | Salesforce Code Analyzer workflows for pi: setup readiness, explicit scans, rule discovery, config generation, report artifacts, deferred agent quality passes, and ApexGuru analysis.                                                                                                                                                 |
 | [SF Data 360](./extensions/sf-data360/)                          | agent-tool | on        | Data Cloud/Data 360 v2 family tools — discover, connect, prepare, harmonize, segment, activate, query, semantic, observe, orchestrate, and raw API escape hatch                                                                                                                                                                        |
+| [SF Docs](./extensions/sf-docs/)                                 | agent-tool | on        | Salesforce documentation lookup for agents and humans, with local credential storage, cited results, and a Manager settings surface.                                                                                                                                                                                                   |
 | [SF Herdr](./extensions/sf-herdr/)                               | agent-tool | on        | Dynamic Herdr lane planning for Salesforce workflows without replacing the upstream Herdr tool.                                                                                                                                                                                                                                        |
 | [SF Slack](./extensions/sf-slack/)                               | agent-tool | on        | Slack integration — search messages, read threads, browse channel history                                                                                                                                                                                                                                                              |
 | [SF Guardrail](./extensions/sf-guardrail/)                       | safety     | on        | Salesforce-aware safety hooks — file protection policies, dangerous-command gating, and org-aware confirmation for production deploys, apex runs, and data mutations                                                                                                                                                                   |
@@ -628,6 +630,12 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 - `data360_*` tools are missing
 - A mutating call is blocked in headless mode
 - The wrong API version appears in my path
+
+**[SF Docs](./extensions/sf-docs/#troubleshooting)**
+
+- SF Docs says it is not connected
+- Collections look stale
+- A fetch returned the wrong locale or version
 
 **[SF Herdr](./extensions/sf-herdr/#troubleshooting)**
 

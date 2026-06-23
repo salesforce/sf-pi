@@ -46,6 +46,7 @@ const EXEMPT_EXTENSIONS = new Map([
   ["sf-data360", "no-args command deep-links to the Manager Surface; see ADR 0051"],
   ["sf-devbar", "no-args command deep-links to the Manager Surface; see ADR 0051"],
   ["sf-data-explorer", "no-args command deep-links to the Manager Surface; see ADR 0051"],
+  ["sf-docs", "no-args command deep-links to the Manager Surface; see ADR 0051"],
   ["sf-feedback", "no-args command deep-links to the Manager Surface; see ADR 0051"],
   ["sf-guardrail", "no-args command deep-links to the Manager Surface; see ADR 0051"],
   ["sf-herdr", "no-args command deep-links to the Manager Surface; see ADR 0051"],

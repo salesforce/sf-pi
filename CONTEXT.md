@@ -432,6 +432,54 @@ _Avoid_: plugin, MCP wrapper, endpoint dump
 An experimental UI Bundled Extension for keyboard-first, read-only human exploration of Salesforce data through SOQL, SOSL, and Data 360 SQL. It is a TUI explorer, not an LLM tool and not a replacement for **SF Data 360** capabilities.
 _Avoid_: Data 360 capability, agent query tool, write-capable data manager, replacement for SF Data 360
 
+**SF Docs**:
+A planned Bundled Extension that gives agents and users a first-class Salesforce documentation lookup surface inside SF Pi, backed by a docs service while presenting an SF Pi-native tool, command, settings, and reference workflow.
+_Avoid_: MCP server integration, generic web search, docs scraper, skill pack
+
+**SF Docs Credential**:
+The local bearer credential used by **SF Docs** to access its backing docs service. Its canonical persisted source is Pi's central auth store under `sf-docs`, with an environment-variable fallback for automation.
+_Avoid_: project setting, checked-in token, MCP config file, extension state blob
+
+**SF Docs Transport**:
+The internal HTTP JSON-RPC/SSE client used by **SF Docs** to call the Salesforce documentation service. It is an implementation detail behind the SF Pi-native `sf_docs` tool and `/sf-docs` surfaces.
+_Avoid_: local MCP server, REST API, generic web fetcher, backend plugin system
+
+**SF Docs Tool**:
+The single LLM-callable family tool for Salesforce documentation workflows, using action names such as `collections`, `search`, `fetch`, `answer`, `explain`, and `status`.
+_Avoid_: separate docs tools per action, raw MCP tool exposure, browser search replacement
+
+**SF Docs Settings**:
+The Manager Surface settings page for durable non-secret SF Docs preferences such as default collection, locale, fetch format, page size, citation behavior, and catalog caching.
+_Avoid_: token storage, action runner, docs browser
+
+**SF Docs Cheatsheet**:
+The extension-owned Markdown reference that teaches agents and humans how to use **SF Docs** actions, collections, citation workflows, and troubleshooting paths. It is loaded only when the user or workflow needs SF Docs guidance and is not registered as a Pi skill.
+_Avoid_: skill, generated docs page, README replacement, hidden prompt injection, always-on context
+
+**SF Docs Catalog Cache**:
+A local, non-secret cache of the docs-service collection catalog used to avoid repeated `list` calls. It never stores searched document bodies, answer text, or fetched documentation content.
+_Avoid_: docs cache, search cache, offline index, transcript store
+
+**SF Docs Command Surface**:
+The human-facing `/sf-docs` and Manager detail action set for setup, status, collection discovery, catalog refresh, cheatsheet access, and help. It does not try to become an interactive documentation browser in the first version.
+_Avoid_: docs browser, search UI, hidden MCP console, duplicate tool surface
+
+**SF Docs Preference Scope**:
+The global-or-project scope for non-secret SF Docs defaults, resolved as project preference over global preference over extension default. It never changes where the **SF Docs Credential** is stored.
+_Avoid_: credential scope, auth profile, docs workspace
+
+**SF Docs Result Contract**:
+The bounded output shape for **SF Docs** actions: a concise text summary for agents, structured details with sanitized request/result metadata, and a separate human renderer with icons, sections, tables, and visible citation links. URLs and citations are shown in the visible summary whenever available.
+_Avoid_: raw MCP payload dump, hidden-only citations, unbounded docs body, plain JSON wall
+
+**SF Docs Evidence Workflow**:
+The preferred agent workflow for implementation-sensitive documentation work: search the relevant collection, fetch the most relevant source documents, then answer from inspected source. The `answer` action remains available for quick cited synthesis.
+_Avoid_: answer-first coding guidance, memory-only Salesforce docs, citation-free summary
+
+**SF Docs Endpoint**:
+The configured backing URL for the Salesforce documentation service, defaulting to `https://mcp.docs.salesforce.com/` with only an environment-variable override for advanced testing or automation.
+_Avoid_: user-facing MCP server URL, arbitrary backend registry, project docs endpoint
+
 **SF Code Analyzer**:
 A planned SF Pi **Bundled Extension** for Salesforce Code Analyzer workflows inside pi, using the canonical extension id `sf-code-analyzer` and command `/sf-code-analyzer`.
 _Avoid_: sf-codeanalyzer, Code Analyzer plugin, scanner extension

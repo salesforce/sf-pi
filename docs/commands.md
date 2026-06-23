@@ -66,6 +66,15 @@ _Data Cloud/Data 360 v2 family tools — discover, connect, prepare, harmonize, 
 - Commands: `/sf-data360`
 - Tools: `data360_discover`, `data360_connect`, `data360_prepare`, `data360_harmonize`, `data360_segment`, `data360_activate`, `data360_query`, `data360_semantic`, `data360_observe`, `data360_orchestrate`, `data360_api`
 
+### [SF Docs](./extensions/sf-docs)
+
+_Salesforce documentation lookup for agents and humans, with local credential storage, cited results, and a Manager settings surface._
+
+- Default: **on**
+- Commands: `/sf-docs`
+- Tools: `sf_docs`
+- Providers: `sf-docs`
+
 ### [SF Herdr](./extensions/sf-herdr)
 
 _Dynamic Herdr lane planning for Salesforce workflows without replacing the upstream Herdr tool._

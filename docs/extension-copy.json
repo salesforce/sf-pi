@@ -9,7 +9,10 @@
       "Inspect topics, actions, variables, and references quickly.",
       "Preview and regression-test agent conversations from the same workflow."
     ],
-    "tryFirst": { "label": "Open the Agent Script panel", "code": "/sf-agentscript" },
+    "tryFirst": {
+      "label": "Open the Agent Script panel",
+      "code": "/sf-agentscript"
+    },
     "useCases": [
       "Create a new `.agent` bundle from a scaffold.",
       "Compile and format Agent Script while editing.",
@@ -32,7 +35,10 @@
       "Routes agents to the right SF Pi surface when deeper help is needed.",
       "Encourages retrieve-before-edit and describe-before-query behavior."
     ],
-    "tryFirst": { "label": "No command needed", "code": "Install SF Pi and start a pi session." },
+    "tryFirst": {
+      "label": "No command needed",
+      "code": "Install SF Pi and start a pi session."
+    },
     "useCases": [
       "Help an agent decide between Metadata API, Tooling API, REST, SOQL, or anonymous Apex.",
       "Keep org-safety conventions present across Salesforce work.",
@@ -54,7 +60,10 @@
       "Inspect Lightning and Setup screens with compact, agent-friendly snapshots.",
       "Capture browser evidence when a UI step needs visual proof."
     ],
-    "tryFirst": { "label": "Open the browser panel", "code": "/sf-browser" },
+    "tryFirst": {
+      "label": "Open the browser panel",
+      "code": "/sf-browser"
+    },
     "useCases": [
       "Verify a Setup screen after an API or metadata change.",
       "Navigate Salesforce UI when there is no stable API for the task.",
@@ -78,7 +87,10 @@
       "Adds readiness-gated deferred scans after agent edit passes.",
       "Keeps full reports as artifacts while giving agents actionable summaries."
     ],
-    "tryFirst": { "label": "Open Code Analyzer status", "code": "/sf-code-analyzer" },
+    "tryFirst": {
+      "label": "Open Code Analyzer status",
+      "code": "/sf-code-analyzer"
+    },
     "useCases": [
       "Verify Code Analyzer plugin and engine prerequisites.",
       "Run recommended, security, AppExchange, or custom rule-selector scans.",
@@ -102,7 +114,10 @@
       "Keep exploration read-only by design.",
       "Switch between SOQL, SOSL, and Data 360 SQL workflows from one UI."
     ],
-    "tryFirst": { "label": "Open the explorer", "code": "/sf-data-explorer" },
+    "tryFirst": {
+      "label": "Open the explorer",
+      "code": "/sf-data-explorer"
+    },
     "useCases": [
       "Inspect object fields before writing a query.",
       "Run small read-only SOQL or SOSL checks.",
@@ -125,7 +140,10 @@
       "Use dry-runs and compact summaries before broad or mutating calls.",
       "Inspect DMO/DLO metadata without dumping large catalogs into context."
     ],
-    "tryFirst": { "label": "Open the Data 360 panel", "code": "/sf-data360" },
+    "tryFirst": {
+      "label": "Open the Data 360 panel",
+      "code": "/sf-data360"
+    },
     "useCases": [
       "Probe whether an org has Data 360 surfaces available.",
       "List or describe DMO and DLO schemas.",
@@ -148,7 +166,10 @@
       "Keep model and context status visible at a glance.",
       "Use quick status commands when something feels off."
     ],
-    "tryFirst": { "label": "Inspect dev status", "code": "/sf-devbar" },
+    "tryFirst": {
+      "label": "Inspect dev status",
+      "code": "/sf-devbar"
+    },
     "useCases": [
       "Confirm which Salesforce org pi is pointed at.",
       "Check whether SF Pi status surfaces are active.",
@@ -158,6 +179,32 @@
       "Top and footer status surfaces for pi sessions.",
       "Project-scoped Salesforce org information.",
       "Quick commands for org and DevBar status."
+    ]
+  },
+  "sf-docs": {
+    "shortName": "Docs",
+    "intentGroup": "Build agents",
+    "promise": "Search and fetch official Salesforce documentation from pi with cited, agent-friendly results.",
+    "bestFor": "Official Salesforce documentation lookup",
+    "benefits": [
+      "Gives agents a first-class docs tool instead of generic web search.",
+      "Keeps credentials local in Pi auth with an env-var automation fallback.",
+      "Shows citations and URLs visibly while keeping tool context compact."
+    ],
+    "tryFirst": {
+      "label": "Open Docs setup/status",
+      "code": "/sf-docs"
+    },
+    "useCases": [
+      "Find official Salesforce docs for Apex, LWC, Agentforce, Data Cloud, Tableau, MuleSoft, and admin topics.",
+      "Search docs, fetch source pages, and answer from cited evidence.",
+      "Discover valid documentation collections, versions, locales, and formats.",
+      "Configure project-specific docs defaults without storing secrets in project files."
+    ],
+    "whatYouGet": [
+      "One `sf_docs` family tool for status, collections, search, fetch, answer, explain, and cheatsheet actions.",
+      "A Manager settings page for non-secret defaults and connection status.",
+      "A local catalog cache that stores collection metadata only, never document bodies."
     ]
   },
   "sf-feedback": {
@@ -170,7 +217,10 @@
       "Keeps users in control before anything is submitted.",
       "Makes bug reports easier for maintainers to act on."
     ],
-    "tryFirst": { "label": "Open feedback flow", "code": "/sf-feedback" },
+    "tryFirst": {
+      "label": "Open feedback flow",
+      "code": "/sf-feedback"
+    },
     "useCases": [
       "File a bug with environment and extension status context.",
       "Draft a feature request from inside pi.",
@@ -192,7 +242,10 @@
       "Prompts before dangerous shell and production org operations.",
       "Teaches the agent the active safety categories each session."
     ],
-    "tryFirst": { "label": "Review guardrail status", "code": "/sf-guardrail" },
+    "tryFirst": {
+      "label": "Review guardrail status",
+      "code": "/sf-guardrail"
+    },
     "useCases": [
       "Prevent accidental edits to Salesforce CLI state or secret-like files.",
       "Require confirmation before production deploys or data mutations.",
@@ -214,7 +267,10 @@
       "Keeps actual pane mutations visible through the upstream Herdr tool.",
       "Uses workflow profiles and recent activity signals instead of fixed permanent panes."
     ],
-    "tryFirst": { "label": "Open Herdr planning status", "code": "/sf-herdr" },
+    "tryFirst": {
+      "label": "Open Herdr planning status",
+      "code": "/sf-herdr"
+    },
     "useCases": [
       "Plan an ephemeral test lane that closes on success and stays open on failure.",
       "Coordinate Agent Script preview or eval work with related Apex log lanes.",
@@ -237,7 +293,10 @@
       "Shows provider and usage status in SF Pi surfaces.",
       "Keeps provider setup separate from other bundled extensions."
     ],
-    "tryFirst": { "label": "Open gateway panel", "code": "/sf-llm-gateway" },
+    "tryFirst": {
+      "label": "Open gateway panel",
+      "code": "/sf-llm-gateway"
+    },
     "useCases": [
       "Configure Salesforce LLM Gateway access for pi.",
       "Inspect available models and provider health.",
@@ -259,7 +318,10 @@
       "See LSP health without leaving pi.",
       "Keep diagnostics advisory so they help without blocking every workflow."
     ],
-    "tryFirst": { "label": "Open LSP status", "code": "/sf-lsp" },
+    "tryFirst": {
+      "label": "Open LSP status",
+      "code": "/sf-lsp"
+    },
     "useCases": [
       "Check Apex, LWC, or Agent Script diagnostics after editing.",
       "Run a doctor command when language tooling is not responding.",
@@ -281,7 +343,10 @@
       "Keeps waiting-state behavior lightweight and configurable.",
       "Works passively once enabled."
     ],
-    "tryFirst": { "label": "Manage from SF Pi", "code": "/sf-pi" },
+    "tryFirst": {
+      "label": "Manage from SF Pi",
+      "code": "/sf-pi"
+    },
     "useCases": [
       "Add a branded working indicator to pi sessions.",
       "Switch between calm and Ohana-style spinner modes.",
@@ -303,7 +368,10 @@
       "Lets users enable or disable optional surfaces by scope.",
       "Provides status, recommendations, announcements, and doctor checks."
     ],
-    "tryFirst": { "label": "Open the SF Pi home base", "code": "/sf-pi" },
+    "tryFirst": {
+      "label": "Open the SF Pi home base",
+      "code": "/sf-pi"
+    },
     "useCases": [
       "See which extensions are enabled.",
       "Turn optional extensions on or off.",
@@ -326,7 +394,10 @@
       "Helps install and manage curated Salesforce skill libraries.",
       "Uses native pi settings instead of shadow state."
     ],
-    "tryFirst": { "label": "Open skills manager", "code": "/sf-skills" },
+    "tryFirst": {
+      "label": "Open skills manager",
+      "code": "/sf-skills"
+    },
     "useCases": [
       "Check what Salesforce guidance the agent can currently see.",
       "Install or prune managed Salesforce skills.",
@@ -348,7 +419,10 @@
       "Resolve fuzzy Slack references before searching.",
       "Keeps sends human-in-the-loop."
     ],
-    "tryFirst": { "label": "Open Slack setup/status", "code": "/sf-slack" },
+    "tryFirst": {
+      "label": "Open Slack setup/status",
+      "code": "/sf-slack"
+    },
     "useCases": [
       "Find prior discussions related to a bug or feature.",
       "Summarize threads without leaving pi.",
@@ -371,7 +445,10 @@
       "Surfaces recommendations and announcements without forcing a command.",
       "Makes new SF Pi sessions feel intentional and discoverable."
     ],
-    "tryFirst": { "label": "Open welcome surface", "code": "/sf-welcome" },
+    "tryFirst": {
+      "label": "Open welcome surface",
+      "code": "/sf-welcome"
+    },
     "useCases": [
       "Review setup status at the start of a session.",
       "Install fonts when glyphs do not render correctly.",

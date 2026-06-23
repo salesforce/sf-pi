@@ -24,6 +24,12 @@ SF Pi is useful because it is a bundle: each extension adds a focused Salesforce
   <span>Run Salesforce Code Analyzer scans and setup checks from pi with agent-friendly report summaries and deferred quality feedback.</span>
   <span class="sfpi-card-meta"><code class="sfpi-code-chip">/sf-code-analyzer</code></span>
 </a>
+<a class="sfpi-extension-card" href="./extensions/sf-docs">
+  <span class="sfpi-card-kicker">Official Salesforce documentation lookup</span>
+  <strong>Docs</strong>
+  <span>Search and fetch official Salesforce documentation from pi with cited, agent-friendly results.</span>
+  <span class="sfpi-card-meta"><code class="sfpi-code-chip">/sf-docs</code></span>
+</a>
 <a class="sfpi-extension-card" href="./extensions/sf-lsp">
   <span class="sfpi-card-kicker">Code diagnostics</span>
   <strong>LSP</strong>

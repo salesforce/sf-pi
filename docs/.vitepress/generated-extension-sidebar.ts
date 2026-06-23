@@ -5,6 +5,7 @@
 export const extensionSidebarItems = [
   { text: "Agent Script", link: "/extensions/sf-agentscript" },
   { text: "Code Analyzer", link: "/extensions/sf-code-analyzer" },
+  { text: "Docs", link: "/extensions/sf-docs" },
   { text: "LSP", link: "/extensions/sf-lsp" },
   { text: "Browser", link: "/extensions/sf-browser" },
   { text: "Data Explorer", link: "/extensions/sf-data-explorer" },

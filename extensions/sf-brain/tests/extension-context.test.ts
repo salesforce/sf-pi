@@ -63,7 +63,7 @@ describe("formatSfPiExtensionContext", () => {
     expect(context.endsWith(SF_PI_EXTENSIONS_CLOSE_TAG)).toBe(true);
     expect(context).toContain("SF Pi bundled-extension routing priority");
     expect(context).toContain("follow the latest one");
-    expect(context).toContain("Status: 17/17 bundled extensions enabled.");
+    expect(context).toContain("Status: 18/18 bundled extensions enabled.");
     expect(context).toContain("Active SF skills remain fallback/workflow guidance: sf-data360");
     expect(context).toContain("- sf-agentscript (enabled)");
     expect(context).toContain("Agentforce Agent Script authoring");
