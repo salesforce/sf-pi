@@ -10,9 +10,11 @@ import {
   getSharedSfEnvironment,
 } from "../../../../lib/common/sf-environment/shared-runtime.ts";
 import type { SfEnvironment } from "../../../../lib/common/sf-environment/types.ts";
-import { buildD360Envelope, formatD360Output, type D360OutputMode } from "../truncation.ts";
+import type { D360OutputMode } from "../truncation.ts";
 import { readEffectiveData360Settings } from "../settings.ts";
-import { runData360V2Action } from "./dispatcher.ts";
+import { runData360V2Action, type Data360ProgressEvent } from "./dispatcher.ts";
+import { presentData360Result } from "./result-presenter.ts";
+import { renderData360V2Call, renderData360V2Result } from "./render.ts";
 import type { Data360V2Input, Data360V2ToolName } from "./action-types.ts";
 
 const OutputMode = StringEnum(["inline", "summary", "file_only"] as const, {
@@ -181,17 +183,41 @@ export function registerData360V2Tools(pi: ExtensionAPI): void {
       promptSnippet: tool.description,
       promptGuidelines: tool.guidelines,
       parameters: Params,
-      async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+      renderCall: (args, theme) =>
+        renderData360V2Call(tool.name, args as Record<string, unknown>, theme),
+      renderResult: renderData360V2Result,
+      async execute(_toolCallId, params, signal, onUpdate, ctx) {
         const settings = readEffectiveData360Settings(ctx.cwd);
         const input = { ...(params as Omit<Data360V2Input, "tool">), tool: tool.name };
         const env = inputRequiresEnvironment(input)
           ? await resolveEnvironment(exec, ctx.cwd)
           : LOCAL_ACTION_ENV;
-        const result = await runData360V2Action(input, env, ctx, signal);
-        return buildToolResult(result, input.output_mode ?? settings.defaultOutputMode);
+        const result = await runData360V2Action(input, env, ctx, signal, (event) =>
+          emitProgressUpdate(event, onUpdate),
+        );
+        return buildToolResult(input, result, input.output_mode ?? settings.defaultOutputMode);
       },
     });
   }
+}
+
+type ToolOnUpdate = (partial: {
+  content: Array<{ type: "text"; text: string }>;
+  details: never;
+}) => void;
+
+function emitProgressUpdate(event: Data360ProgressEvent, onUpdate: unknown): void {
+  if (typeof onUpdate !== "function") return;
+  const glyph = event.status === "error" ? "❌" : event.status === "warning" ? "⚠️" : "☁️";
+  (onUpdate as ToolOnUpdate)({
+    content: [
+      {
+        type: "text",
+        text: `${glyph} Data 360 ${event.stage}: ${event.message}`,
+      },
+    ],
+    details: undefined as never,
+  });
 }
 
 async function resolveEnvironment(
@@ -202,22 +228,9 @@ async function resolveEnvironment(
 }
 
 async function buildToolResult(
+  input: Data360V2Input,
   result: Record<string, unknown>,
   outputMode: D360OutputMode,
 ): Promise<{ content: Array<{ type: "text"; text: string }>; details: Record<string, unknown> }> {
-  const text = JSON.stringify(result, null, 2);
-  const output = await formatD360Output(text, outputMode);
-  return {
-    content: [{ type: "text", text: output.text }],
-    details: {
-      ...result,
-      sfPi: buildD360Envelope(
-        typeof result.action === "string" ? result.action : "data360",
-        result.ok !== false,
-        output.text,
-        result,
-        output,
-      ),
-    },
-  };
+  return presentData360Result(input, result, outputMode);
 }

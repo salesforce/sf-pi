@@ -289,6 +289,34 @@ describe("Data 360 v2 dispatcher", () => {
     expect(orgCreateMock).not.toHaveBeenCalled();
   });
 
+  it("emits lightweight progress for runbook-backed observe actions", async () => {
+    requestMock.mockResolvedValue({
+      metadata: [{ name: "ssot__Id__c" }],
+      data: [["span-1"]],
+    });
+    const progress: Array<{ stage: string; status: string }> = [];
+
+    await runData360V2Action(
+      {
+        tool: "data360_observe",
+        action: "trace.error_traces",
+        target_org: "AgentforceSTDM",
+        params: { since: "2026-06-23", limit: 1 },
+      },
+      env,
+      ctx,
+      undefined,
+      (event) => progress.push(event),
+    );
+
+    expect(progress).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ stage: "execute", status: "running" }),
+        expect.objectContaining({ stage: "summarize", status: "success" }),
+      ]),
+    );
+  });
+
   it("finds STDM sessions through a runbook-backed observe action", async () => {
     requestMock.mockResolvedValue({
       metadata: [

@@ -9,11 +9,33 @@ vi.mock("@salesforce/core", () => ({
 
 import { registerData360V2Tools } from "../lib/v2/tools.ts";
 
+type RenderHook = (...args: unknown[]) => unknown;
+
 type RegisteredTool = {
+  renderCall?: RenderHook;
+  renderResult?: RenderHook;
   execute: (...args: unknown[]) => Promise<{ details: Record<string, unknown> }>;
 };
 
 describe("Data 360 v2 tool registration", () => {
+  it("registers human render hooks for every v2 family tool", () => {
+    const registered: Record<string, RegisteredTool> = {};
+    const pi = {
+      exec: vi.fn(),
+      registerTool: vi.fn((tool: { name: string } & RegisteredTool) => {
+        registered[tool.name] = tool;
+      }),
+    };
+
+    registerData360V2Tools(pi as never);
+
+    expect(Object.values(registered)).toHaveLength(11);
+    for (const tool of Object.values(registered)) {
+      expect(tool.renderCall).toEqual(expect.any(Function));
+      expect(tool.renderResult).toEqual(expect.any(Function));
+    }
+  });
+
   it("runs local action descriptions without resolving the Salesforce environment", async () => {
     const registered: Record<string, RegisteredTool> = {};
     const exec = vi.fn();

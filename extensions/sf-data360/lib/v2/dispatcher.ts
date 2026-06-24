@@ -47,14 +47,25 @@ import type {
   Data360V2ToolName,
 } from "./action-types.ts";
 
+export interface Data360ProgressEvent {
+  stage: "discover" | "resolve" | "execute" | "summarize";
+  status: "running" | "success" | "warning" | "error";
+  tool: Data360V2ToolName;
+  action: string;
+  message: string;
+}
+
+export type Data360ProgressSink = (event: Data360ProgressEvent) => void;
+
 export async function runData360V2Action(
   input: Data360V2Input,
   env: SfEnvironment,
   ctx: ExtensionContext,
   signal: AbortSignal | undefined,
+  progress?: Data360ProgressSink,
 ): Promise<Record<string, unknown>> {
   if (input.tool === "data360_discover") {
-    const discovery = await runDiscoveryAction(input, env, ctx, signal);
+    const discovery = await runDiscoveryAction(input, env, ctx, signal, progress);
     if (discovery) return discovery;
   }
   if (input.tool === "data360_api") {
@@ -74,7 +85,7 @@ export async function runData360V2Action(
     case "examples.get":
       return runExamplesGet(input, env, ctx, signal);
     default:
-      return runMappedAction(input, env, ctx, signal);
+      return runMappedAction(input, env, ctx, signal, progress);
   }
 }
 
@@ -83,10 +94,11 @@ async function runDiscoveryAction(
   env: SfEnvironment,
   ctx: ExtensionContext,
   signal: AbortSignal | undefined,
+  progress?: Data360ProgressSink,
 ): Promise<Record<string, unknown> | undefined> {
   switch (input.action) {
     case "readiness.probe":
-      return runReadinessProbe(input, env, signal);
+      return runReadinessProbe(input, env, signal, progress);
     case "catalog.search":
       return runCatalogSearch(input);
     case "catalog.action":
@@ -199,10 +211,21 @@ function probeFailure(name: string, path: string, err: unknown): ProbeResult {
   };
 }
 
+function emitProgress(
+  progress: Data360ProgressSink | undefined,
+  input: Data360V2Input,
+  stage: Data360ProgressEvent["stage"],
+  status: Data360ProgressEvent["status"],
+  message: string,
+): void {
+  progress?.({ stage, status, tool: input.tool, action: input.action, message });
+}
+
 async function runReadinessProbe(
   input: Data360V2Input,
   env: SfEnvironment,
   signal: AbortSignal | undefined,
+  progress?: Data360ProgressSink,
 ): Promise<Record<string, unknown>> {
   const { targetOrg, apiVersion } = await resolveTargetOrgContext(input.target_org, env);
   if (!targetOrg) throw new Error("No Salesforce target org is configured.");
@@ -221,6 +244,7 @@ async function runReadinessProbe(
       summary: `Resolved ${PROBES.length} read-only Data 360 readiness probes`,
     };
   }
+  emitProgress(progress, input, "execute", "running", `Running ${PROBES.length} readiness probes`);
   const conn = await connFromAlias(targetOrg, connectionOptions(input, signal));
   const timeoutMs = typeof input.timeout_ms === "number" ? input.timeout_ms : 15_000;
   const probes: ProbeResult[] = await Promise.all(
@@ -241,6 +265,13 @@ async function runReadinessProbe(
     }),
   );
   const summary = summarizeReadiness(probes);
+  emitProgress(
+    progress,
+    input,
+    "summarize",
+    summary.state === "blocked" ? "error" : "success",
+    `Data 360 readiness: ${summary.state}`,
+  );
   return {
     ok: summary.state !== "blocked",
     tool: input.tool,
@@ -420,14 +451,25 @@ async function runMappedAction(
   env: SfEnvironment,
   ctx: ExtensionContext,
   signal: AbortSignal | undefined,
+  progress?: Data360ProgressSink,
 ): Promise<Record<string, unknown>> {
   const match = findData360Action(input.tool, input.action);
   if (!match) return unknownAction(input, input.action);
   const metadataResult = await runCompactMetadataAction(input, match, env, signal);
   if (metadataResult) return metadataResult;
   if (match.implementation?.kind === "local") return runLocalAction(input, match, env, signal);
-  if (match.implementation?.kind === "journey")
-    return runJourneyAction(input, match, env, ctx, signal);
+  if (match.implementation?.kind === "journey") {
+    emitProgress(progress, input, "execute", "running", `Running journey ${match.action}`);
+    const result = await runJourneyAction(input, match, env, ctx, signal);
+    emitProgress(
+      progress,
+      input,
+      "summarize",
+      result.ok === false ? "error" : "success",
+      typeof result.summary === "string" ? result.summary : `${match.action} completed`,
+    );
+    return result;
+  }
   if (match.implementation?.kind === "tenant_ingest")
     return runTenantIngestAction(input, match, env);
   if (match.implementation?.kind === "tenant_ingest_auth")
@@ -442,6 +484,13 @@ async function runMappedAction(
       suggestion: "Use action.describe or actions.search to choose a capability-backed action.",
     };
   }
+  emitProgress(
+    progress,
+    input,
+    "execute",
+    "running",
+    `Executing ${match.capability}${match.safety ? ` (${match.safety})` : ""}`,
+  );
   const result = await runFacade(
     {
       action: "execute",
@@ -457,7 +506,15 @@ async function runMappedAction(
     ctx,
     signal,
   );
-  return decorateResult(input, match, result);
+  const decorated = decorateResult(input, match, result);
+  emitProgress(
+    progress,
+    input,
+    "summarize",
+    decorated.ok === false ? "error" : "success",
+    typeof decorated.summary === "string" ? decorated.summary : `${input.action} completed`,
+  );
+  return decorated;
 }
 
 async function runCompactMetadataAction(

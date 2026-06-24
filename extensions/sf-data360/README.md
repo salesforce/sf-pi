@@ -231,6 +231,8 @@ extensions/sf-data360/
       dispatcher.ts         ← implementation module
       journey-catalog.ts    ← implementation module
       manifest.ts           ← implementation module
+      render.ts             ← implementation module
+      result-presenter.ts   ← implementation module
       tools.ts              ← implementation module
     api-tool.ts             ← implementation module
     config-panel.ts         ← implementation module
@@ -289,6 +291,7 @@ extensions/sf-data360/
     v2-legacy-compatibility.test.ts← unit / smoke test
     v2-make-data-usable-run.test.ts← unit / smoke test
     v2-orchestrate-manifest.test.ts← unit / smoke test
+    v2-result-presenter.test.ts← unit / smoke test
     v2-result-ux.test.ts    ← unit / smoke test
     v2-segment-activate-plan.test.ts← unit / smoke test
     v2-semantic-retrieval-plan.test.ts← unit / smoke test
