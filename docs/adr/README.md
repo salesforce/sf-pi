@@ -69,3 +69,5 @@ or accidentally contradicted in extension READMEs.
 - [0064: SF Docs Adds No MCP or SSE Runtime Dependencies](./0064-sf-docs-adds-no-mcp-or-sse-runtime-dependencies.md)
 - [0065: SF Docs Separates Result Cards from Evidence Packets](./0065-sf-docs-separates-result-cards-from-evidence-packets.md)
 - [0066: Pi 0.80.2 Runtime Floor](./0066-pi-0802-runtime-floor.md)
+- [0067: Data 360 Run Digest Presentation](./0067-data-360-run-digest-presentation.md)
+- [0068: Fresh Ephemeral Herdr Lanes](./0068-fresh-ephemeral-herdr-lanes.md)

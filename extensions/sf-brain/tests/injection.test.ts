@@ -52,7 +52,7 @@ describe("sf-brain before_agent_start handler", () => {
     expect(brainSource).toContain("shouldInjectSfPiExtensionContext");
   });
 
-  it("passes strict Herdr Workflow Mode activation into the extension context", () => {
+  it("passes strict Proactive Herdr Guidance activation into the extension context", () => {
     expect(brainSource).toContain("isHerdrWorkflowModeActive");
     expect(brainSource).toContain("env: process.env");
     expect(brainSource).toContain("herdrWorkflowMode:");

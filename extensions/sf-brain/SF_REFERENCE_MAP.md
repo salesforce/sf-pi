@@ -88,18 +88,22 @@ API, pin the org API version, and verify with the smallest safe live-org check.
 
 ### Use Herdr workflow lanes when active
 
-When `<sf_pi_extensions>` says Herdr Workflow Mode is active, use Herdr as the
-visible pane orchestration layer around SF Pi workflows:
+When `<sf_pi_extensions>` says Proactive Herdr Guidance is active, use Herdr as
+the visible pane orchestration layer around SF Pi workflows:
 
 1. If `sf_herdr_plan` is active, call it for dynamic Salesforce workflow lanes
    before creating panes. The plan is non-mutating.
 2. Execute the returned phases explicitly with the upstream `herdr` tool:
-   discover/reuse → create → run → observe → cleanup.
+   discover alias collisions → create fresh lane → run → observe → cleanup.
 3. Let the owning SF Pi extension or Salesforce skill choose the actual command;
    `sf_herdr_plan` only plans lane placement/lifecycle.
-4. Close ephemeral split panes only after successful watched completion. Preserve
-   failures/timeouts for inspection.
-5. Prefer sticky/manual lanes for servers, log tails, and reviewer agents.
+4. For command-scoped work, create a fresh ephemeral split pane with a suffixed
+   alias; do not reuse old ephemeral panes.
+5. Stop/close fresh ephemeral panes only after the workflow success condition.
+   On failure or timeout, read recent output, summarize, leave the lane open,
+   and ask before cleanup.
+6. Prefer sticky/manual lanes for servers and reviewer agents. Log tails default
+   to ephemeral unless the user explicitly asks for persistent monitoring.
 
 Common intents:
 

@@ -3,8 +3,8 @@
  * Shared Herdr workflow-profile store and lane planner.
  *
  * This module is intentionally under lib/common because SF Herdr owns editing
- * the managed preferences while SF Brain may read effective profile summaries
- * for conditional guidance. The persisted file is SF Pi-managed state, not a
+ * the managed preferences while other extensions may emit plan-focused handoffs
+ * without importing sf-herdr. The persisted file is SF Pi-managed state, not a
  * hand-edited Pi setting:
  *   <globalAgentDir>/sf-pi/herdr/preferences.json
  */
@@ -47,46 +47,39 @@ export const HERDR_PLAN_INTENTS = [
 ] as const;
 export type HerdrPlanIntent = (typeof HERDR_PLAN_INTENTS)[number];
 
-export type HerdrWorkflowMode = "auto" | "off";
-export type HerdrLaneStyle = "split" | "tab";
 export type HerdrSplitDirection = "right" | "down";
 export type HerdrLaneLifecycle = "ephemeral" | "sticky" | "manual";
+export type HerdrExpectedDuration = "short" | "long" | "unknown";
 
 export interface HerdrLanePreference {
-  enabled?: boolean;
   alias?: string;
   label?: string;
   lifecycle?: HerdrLaneLifecycle;
 }
 
-export interface HerdrWorkflowProfile {
-  laneStyle?: HerdrLaneStyle;
-  splitDirection?: HerdrSplitDirection;
-  preserveFocus?: boolean;
+export interface HerdrWorkflowLanePreferences {
   lanes?: Partial<Record<HerdrLaneId, HerdrLanePreference>>;
 }
 
 export interface SfHerdrPreferences {
-  workflowMode: HerdrWorkflowMode;
-  defaults: HerdrWorkflowProfile;
-  workflows: Partial<Record<HerdrWorkflowKey, HerdrWorkflowProfile>>;
+  defaults: {
+    splitDirection?: HerdrSplitDirection;
+    lanes?: Partial<Record<HerdrLaneId, HerdrLanePreference>>;
+  };
+  workflows: Partial<Record<HerdrWorkflowKey, HerdrWorkflowLanePreferences>>;
 }
 
 export interface EffectiveHerdrLane {
   id: HerdrLaneId;
-  enabled: boolean;
-  alias: string;
+  baseAlias: string;
   label: string;
   lifecycle: HerdrLaneLifecycle;
 }
 
 export interface EffectiveHerdrProfile {
-  workflowMode: HerdrWorkflowMode;
   workflow: HerdrWorkflowKey;
   relatedWorkflows: HerdrWorkflowKey[];
-  laneStyle: HerdrLaneStyle;
   splitDirection: HerdrSplitDirection;
-  preserveFocus: boolean;
   lanes: Record<HerdrLaneId, EffectiveHerdrLane>;
 }
 
@@ -99,7 +92,24 @@ export interface HerdrPlanWorkflowContext {
 
 export interface HerdrLanePlanInput extends HerdrPlanWorkflowContext {
   intent: HerdrPlanIntent;
-  expectedDuration?: "short" | "long" | "unknown";
+  expectedDuration?: HerdrExpectedDuration;
+}
+
+export type HerdrRecommendedActionName = "list" | "pane_split" | "run" | "watch" | "read" | "stop";
+export type HerdrAdvancedActionName = "send" | "wait_agent";
+
+export interface HerdrActionHint {
+  phase: "discover" | "create" | "run" | "observe" | "cleanup";
+  action: HerdrRecommendedActionName;
+  targetAlias?: string;
+  purpose: string;
+  paramsHint?: Record<string, unknown>;
+  condition?: string;
+}
+
+export interface HerdrAdvancedActionHint {
+  action: HerdrAdvancedActionName;
+  useWhen: string;
 }
 
 export interface HerdrLanePlan {
@@ -111,10 +121,16 @@ export interface HerdrLanePlan {
   };
   intent: HerdrPlanIntent;
   lane: EffectiveHerdrLane;
+  alias: {
+    baseAlias: string;
+    targetAliasHint: string;
+    pattern?: string;
+    selection: string;
+  };
   placement: {
-    prefer: "reuse" | "split" | "tab";
-    splitDirection?: HerdrSplitDirection;
-    preserveFocus: boolean;
+    prefer: "split";
+    splitDirection: HerdrSplitDirection;
+    focus: false;
   };
   phases: {
     discover: string;
@@ -123,94 +139,71 @@ export interface HerdrLanePlan {
     observe: string;
     cleanup: string;
   };
+  successCondition: string;
+  cleanupPolicy: {
+    onSuccess: {
+      action: "stop" | "none";
+      requires: "workflow-success-condition" | "explicit-user-cleanup";
+    };
+    onFailureOrTimeout: {
+      action: "read-summarize-ask";
+      readSource: "recent-unwrapped";
+    };
+  };
+  recommendedActions: HerdrActionHint[];
+  advancedActions: HerdrAdvancedActionHint[];
   notes: string[];
 }
 
 const DEFAULT_LANES: Record<HerdrLaneId, EffectiveHerdrLane> = {
-  tests: { id: "tests", enabled: true, alias: "tests", label: "Tests", lifecycle: "ephemeral" },
-  logs: { id: "logs", enabled: false, alias: "logs", label: "Logs", lifecycle: "ephemeral" },
-  server: { id: "server", enabled: false, alias: "server", label: "Server", lifecycle: "sticky" },
-  preview: {
-    id: "preview",
-    enabled: false,
-    alias: "preview",
-    label: "Preview",
-    lifecycle: "ephemeral",
-  },
-  eval: { id: "eval", enabled: false, alias: "eval", label: "Eval", lifecycle: "ephemeral" },
-  deploy: {
-    id: "deploy",
-    enabled: false,
-    alias: "deploy",
-    label: "Deploy / verify",
-    lifecycle: "ephemeral",
-  },
-  reviewer: {
-    id: "reviewer",
-    enabled: false,
-    alias: "reviewer",
-    label: "Reviewer",
-    lifecycle: "manual",
-  },
+  tests: { id: "tests", baseAlias: "tests", label: "Tests", lifecycle: "ephemeral" },
+  logs: { id: "logs", baseAlias: "logs", label: "Logs", lifecycle: "ephemeral" },
+  server: { id: "server", baseAlias: "server", label: "Server", lifecycle: "sticky" },
+  preview: { id: "preview", baseAlias: "preview", label: "Preview", lifecycle: "ephemeral" },
+  eval: { id: "eval", baseAlias: "eval", label: "Eval", lifecycle: "ephemeral" },
+  deploy: { id: "deploy", baseAlias: "deploy", label: "Deploy / verify", lifecycle: "ephemeral" },
+  reviewer: { id: "reviewer", baseAlias: "reviewer", label: "Reviewer", lifecycle: "manual" },
 };
 
 export const DEFAULT_SF_HERDR_PREFERENCES: SfHerdrPreferences = {
-  workflowMode: "auto",
   defaults: {
-    laneStyle: "split",
     splitDirection: "right",
-    preserveFocus: true,
     lanes: fromEffectiveLanes(DEFAULT_LANES),
   },
   workflows: {
     generic: {
       lanes: {
-        tests: { enabled: true, alias: "tests", lifecycle: "ephemeral" },
+        tests: { alias: "tests", lifecycle: "ephemeral" },
       },
     },
     apex: {
       lanes: {
-        tests: { enabled: true, alias: "apex_tests", label: "Apex tests", lifecycle: "ephemeral" },
-        logs: { enabled: true, alias: "apex_logs", label: "Apex logs", lifecycle: "ephemeral" },
+        tests: { alias: "apex_tests", label: "Apex tests", lifecycle: "ephemeral" },
+        logs: { alias: "apex_logs", label: "Apex logs", lifecycle: "ephemeral" },
       },
     },
     agentscript: {
       lanes: {
-        preview: {
-          enabled: true,
-          alias: "agent_preview",
-          label: "Agent preview",
-          lifecycle: "ephemeral",
-        },
-        eval: { enabled: true, alias: "agent_eval", label: "Agent eval", lifecycle: "ephemeral" },
-        logs: { enabled: true, alias: "agent_logs", label: "Agent logs", lifecycle: "ephemeral" },
+        preview: { alias: "agent_preview", label: "Agent preview", lifecycle: "ephemeral" },
+        eval: { alias: "agent_eval", label: "Agent eval", lifecycle: "ephemeral" },
+        logs: { alias: "agent_logs", label: "Agent logs", lifecycle: "ephemeral" },
       },
     },
     data360: {
       lanes: {
-        eval: {
-          enabled: true,
-          alias: "d360_sweep",
-          label: "Data 360 sweep",
-          lifecycle: "ephemeral",
-        },
+        eval: { alias: "d360_sweep", label: "Data 360 sweep", lifecycle: "ephemeral" },
       },
     },
     browser: {
       lanes: {
-        logs: {
-          enabled: true,
-          alias: "browser_logs",
-          label: "Browser-adjacent logs",
-          lifecycle: "ephemeral",
-        },
-        deploy: { enabled: true, alias: "verify", label: "Verification", lifecycle: "ephemeral" },
+        logs: { alias: "browser_logs", label: "Browser-adjacent logs", lifecycle: "ephemeral" },
+        deploy: { alias: "verify", label: "Verification", lifecycle: "ephemeral" },
       },
     },
     uiBundle: {
       lanes: {
-        server: { enabled: true, alias: "server", label: "Dev server", lifecycle: "sticky" },
-        tests: { enabled: true, alias: "ui_tests", label: "UI tests", lifecycle: "ephemeral" },
+        server: { alias: "server", label: "Dev server", lifecycle: "sticky" },
+        tests: { alias: "ui_tests", label: "UI tests", lifecycle: "ephemeral" },
       },
     },
   },
@@ -240,22 +233,20 @@ export function resolveHerdrProfile(
   relatedWorkflows: readonly HerdrWorkflowKey[] = [],
 ): EffectiveHerdrProfile {
   const normalized = normalizePreferences(preferences);
-  const base = profileFromDefaults(normalized);
-  applyProfile(base, normalized.workflows.generic);
-  if (workflow !== "generic") applyProfile(base, normalized.workflows[workflow]);
+  const lanes = cloneEffectiveLanes(DEFAULT_LANES);
+  applyLanePreferences(lanes, normalized.defaults.lanes);
+  applyLanePreferences(lanes, normalized.workflows.generic?.lanes);
+  if (workflow !== "generic") applyLanePreferences(lanes, normalized.workflows[workflow]?.lanes);
   for (const related of relatedWorkflows) {
     if (related === workflow) continue;
-    applyRelatedProfile(base, normalized.workflows[related]);
+    applyLanePreferences(lanes, normalized.workflows[related]?.lanes);
   }
 
   return {
-    workflowMode: normalized.workflowMode,
     workflow,
     relatedWorkflows: relatedWorkflows.filter((item) => item !== workflow),
-    laneStyle: base.laneStyle,
-    splitDirection: base.splitDirection,
-    preserveFocus: base.preserveFocus,
-    lanes: base.lanes,
+    splitDirection: normalized.defaults.splitDirection ?? "right",
+    lanes,
   };
 }
 
@@ -267,13 +258,15 @@ export function buildHerdrLanePlan(
   const related = input.relatedWorkflows ?? [];
   const profile = resolveHerdrProfile(preferences, primary, related);
   const laneId = laneForIntent(input.intent);
-  const lane = ensureEnabledLane(profile.lanes[laneId], laneId);
-  const prefer = lane.lifecycle === "ephemeral" ? "split" : profile.laneStyle;
+  const lane = profile.lanes[laneId];
+  const alias = buildAliasPlan(lane);
   const placement = {
-    prefer,
-    ...(prefer === "split" ? { splitDirection: profile.splitDirection } : {}),
-    preserveFocus: profile.preserveFocus,
+    prefer: "split",
+    splitDirection: profile.splitDirection,
+    focus: false,
   } satisfies HerdrLanePlan["placement"];
+  const successCondition = successConditionForIntent(input.intent);
+  const cleanupPolicy = cleanupPolicyForLane(lane);
 
   return {
     workflow: {
@@ -284,9 +277,20 @@ export function buildHerdrLanePlan(
     },
     intent: input.intent,
     lane,
+    alias,
     placement,
-    phases: buildPhases(lane, placement, input.intent),
-    notes: buildPlanNotes(profile, lane, input),
+    phases: buildPhases(lane, alias, placement, input.intent, successCondition),
+    successCondition,
+    cleanupPolicy,
+    recommendedActions: buildRecommendedActions(
+      lane,
+      alias,
+      placement,
+      input.intent,
+      successCondition,
+    ),
+    advancedActions: buildAdvancedActions(),
+    notes: buildPlanNotes(lane, input),
   };
 }
 
@@ -311,6 +315,28 @@ export function laneForIntent(intent: HerdrPlanIntent): HerdrLaneId {
   }
 }
 
+export function successConditionForIntent(intent: HerdrPlanIntent): string {
+  switch (intent) {
+    case "tail-logs":
+      return "Expected log marker observed.";
+    case "deploy-validate":
+      return "Deploy validation reports success.";
+    case "verify":
+      return "Verification command reports success.";
+    case "preview":
+      return "Preview or health check succeeds.";
+    case "eval":
+      return "Eval completes successfully.";
+    case "server":
+      return "Readiness marker observed; sticky lanes are not auto-closed.";
+    case "review":
+      return "Manual reviewer completion; manual lanes are not auto-closed.";
+    case "run-tests":
+    default:
+      return "Test command reports success and passing tests.";
+  }
+}
+
 function store() {
   return createStateStore<SfHerdrPreferences>({
     namespace: HERDR_PROFILE_NAMESPACE,
@@ -328,8 +354,7 @@ function fromEffectiveLanes(
     Object.values(lanes).map((lane) => [
       lane.id,
       {
-        enabled: lane.enabled,
-        alias: lane.alias,
+        alias: lane.baseAlias,
         label: lane.label,
         lifecycle: lane.lifecycle,
       },
@@ -339,41 +364,50 @@ function fromEffectiveLanes(
 
 function normalizePreferences(raw: unknown): SfHerdrPreferences {
   const source = isObject(raw) ? raw : {};
-  const defaults = isObject(source.defaults) ? normalizeProfile(source.defaults) : {};
-  const workflows: Partial<Record<HerdrWorkflowKey, HerdrWorkflowProfile>> = {};
+  const defaults = isObject(source.defaults) ? normalizeDefaults(source.defaults) : {};
+  const workflows: Partial<Record<HerdrWorkflowKey, HerdrWorkflowLanePreferences>> = {};
   const rawWorkflows = isObject(source.workflows) ? source.workflows : {};
   for (const workflow of WORKFLOW_KEYS) {
-    const profile = rawWorkflows[workflow];
-    if (isObject(profile)) workflows[workflow] = normalizeProfile(profile);
+    const preference = rawWorkflows[workflow];
+    if (isObject(preference)) workflows[workflow] = normalizeWorkflowLanePreferences(preference);
   }
   return {
-    workflowMode: source.workflowMode === "off" ? "off" : "auto",
-    defaults: mergeProfiles(DEFAULT_SF_HERDR_PREFERENCES.defaults, defaults),
-    workflows: mergeWorkflowProfiles(DEFAULT_SF_HERDR_PREFERENCES.workflows, workflows),
+    defaults: mergeDefaults(DEFAULT_SF_HERDR_PREFERENCES.defaults, defaults),
+    workflows: mergeWorkflowLanePreferences(DEFAULT_SF_HERDR_PREFERENCES.workflows, workflows),
   };
 }
 
-function normalizeProfile(raw: Record<string, unknown>): HerdrWorkflowProfile {
-  const profile: HerdrWorkflowProfile = {};
-  if (raw.laneStyle === "split" || raw.laneStyle === "tab") profile.laneStyle = raw.laneStyle;
+function normalizeDefaults(raw: Record<string, unknown>): SfHerdrPreferences["defaults"] {
+  const defaults: SfHerdrPreferences["defaults"] = {};
   if (raw.splitDirection === "right" || raw.splitDirection === "down") {
-    profile.splitDirection = raw.splitDirection;
+    defaults.splitDirection = raw.splitDirection;
   }
-  if (typeof raw.preserveFocus === "boolean") profile.preserveFocus = raw.preserveFocus;
-  if (isObject(raw.lanes)) {
-    profile.lanes = {};
-    for (const laneId of LANE_IDS) {
-      const rawLane = raw.lanes[laneId];
-      if (!isObject(rawLane)) continue;
-      profile.lanes[laneId] = normalizeLane(rawLane);
-    }
+  if (isObject(raw.lanes)) defaults.lanes = normalizeLanes(raw.lanes);
+  return defaults;
+}
+
+function normalizeWorkflowLanePreferences(
+  raw: Record<string, unknown>,
+): HerdrWorkflowLanePreferences {
+  const preferences: HerdrWorkflowLanePreferences = {};
+  if (isObject(raw.lanes)) preferences.lanes = normalizeLanes(raw.lanes);
+  return preferences;
+}
+
+function normalizeLanes(
+  raw: Record<string, unknown>,
+): Partial<Record<HerdrLaneId, HerdrLanePreference>> {
+  const lanes: Partial<Record<HerdrLaneId, HerdrLanePreference>> = {};
+  for (const laneId of LANE_IDS) {
+    const rawLane = raw[laneId];
+    if (!isObject(rawLane)) continue;
+    lanes[laneId] = normalizeLane(rawLane);
   }
-  return profile;
+  return lanes;
 }
 
 function normalizeLane(raw: Record<string, unknown>): HerdrLanePreference {
   const lane: HerdrLanePreference = {};
-  if (typeof raw.enabled === "boolean") lane.enabled = raw.enabled;
   if (typeof raw.alias === "string" && raw.alias.trim()) lane.alias = raw.alias.trim();
   if (typeof raw.label === "string" && raw.label.trim()) lane.label = raw.label.trim();
   if (raw.lifecycle === "ephemeral" || raw.lifecycle === "sticky" || raw.lifecycle === "manual") {
@@ -382,33 +416,33 @@ function normalizeLane(raw: Record<string, unknown>): HerdrLanePreference {
   return lane;
 }
 
-function mergeWorkflowProfiles(
+function mergeDefaults(
+  base: SfHerdrPreferences["defaults"],
+  override: SfHerdrPreferences["defaults"],
+): SfHerdrPreferences["defaults"] {
+  return {
+    splitDirection: override.splitDirection ?? base.splitDirection,
+    lanes: mergeLanePreferences(base.lanes, override.lanes),
+  };
+}
+
+function mergeWorkflowLanePreferences(
   base: SfHerdrPreferences["workflows"],
   overrides: SfHerdrPreferences["workflows"],
 ): SfHerdrPreferences["workflows"] {
   const result: SfHerdrPreferences["workflows"] = {};
   for (const workflow of WORKFLOW_KEYS) {
-    result[workflow] = mergeProfiles(base[workflow], overrides[workflow]);
+    result[workflow] = {
+      lanes: mergeLanePreferences(base[workflow]?.lanes, overrides[workflow]?.lanes),
+    };
   }
   return result;
 }
 
-function mergeProfiles(
-  base?: HerdrWorkflowProfile,
-  override?: HerdrWorkflowProfile,
-): HerdrWorkflowProfile {
-  return {
-    laneStyle: override?.laneStyle ?? base?.laneStyle,
-    splitDirection: override?.splitDirection ?? base?.splitDirection,
-    preserveFocus: override?.preserveFocus ?? base?.preserveFocus,
-    lanes: mergeLanePreferences(base?.lanes, override?.lanes),
-  };
-}
-
 function mergeLanePreferences(
-  base?: HerdrWorkflowProfile["lanes"],
-  override?: HerdrWorkflowProfile["lanes"],
-): HerdrWorkflowProfile["lanes"] {
+  base?: Partial<Record<HerdrLaneId, HerdrLanePreference>>,
+  override?: Partial<Record<HerdrLaneId, HerdrLanePreference>>,
+): Partial<Record<HerdrLaneId, HerdrLanePreference>> {
   const lanes: Partial<Record<HerdrLaneId, HerdrLanePreference>> = {};
   for (const laneId of LANE_IDS) {
     lanes[laneId] = { ...(base?.[laneId] ?? {}), ...(override?.[laneId] ?? {}) };
@@ -416,49 +450,9 @@ function mergeLanePreferences(
   return lanes;
 }
 
-function profileFromDefaults(preferences: SfHerdrPreferences): {
-  laneStyle: HerdrLaneStyle;
-  splitDirection: HerdrSplitDirection;
-  preserveFocus: boolean;
-  lanes: Record<HerdrLaneId, EffectiveHerdrLane>;
-} {
-  const base = {
-    laneStyle: preferences.defaults.laneStyle ?? "split",
-    splitDirection: preferences.defaults.splitDirection ?? "right",
-    preserveFocus: preferences.defaults.preserveFocus ?? true,
-    lanes: cloneEffectiveLanes(DEFAULT_LANES),
-  };
-  applyProfile(base, preferences.defaults);
-  return base;
-}
-
-function applyProfile(
-  target: {
-    laneStyle: HerdrLaneStyle;
-    splitDirection: HerdrSplitDirection;
-    preserveFocus: boolean;
-    lanes: Record<HerdrLaneId, EffectiveHerdrLane>;
-  },
-  profile?: HerdrWorkflowProfile,
-): void {
-  if (!profile) return;
-  if (profile.laneStyle) target.laneStyle = profile.laneStyle;
-  if (profile.splitDirection) target.splitDirection = profile.splitDirection;
-  if (typeof profile.preserveFocus === "boolean") target.preserveFocus = profile.preserveFocus;
-  applyLanePreferences(target.lanes, profile.lanes);
-}
-
-function applyRelatedProfile(
-  target: { lanes: Record<HerdrLaneId, EffectiveHerdrLane> },
-  profile?: HerdrWorkflowProfile,
-): void {
-  if (!profile) return;
-  applyLanePreferences(target.lanes, profile.lanes);
-}
-
 function applyLanePreferences(
   lanes: Record<HerdrLaneId, EffectiveHerdrLane>,
-  preferences?: HerdrWorkflowProfile["lanes"],
+  preferences?: Partial<Record<HerdrLaneId, HerdrLanePreference>>,
 ): void {
   if (!preferences) return;
   for (const laneId of LANE_IDS) {
@@ -466,42 +460,64 @@ function applyLanePreferences(
     if (!pref) continue;
     lanes[laneId] = {
       ...lanes[laneId],
-      enabled: pref.enabled ?? lanes[laneId].enabled,
-      alias: pref.alias ?? lanes[laneId].alias,
+      baseAlias: pref.alias ?? lanes[laneId].baseAlias,
       label: pref.label ?? lanes[laneId].label,
       lifecycle: pref.lifecycle ?? lanes[laneId].lifecycle,
     };
   }
 }
 
-function ensureEnabledLane(lane: EffectiveHerdrLane, laneId: HerdrLaneId): EffectiveHerdrLane {
-  if (lane.enabled) return lane;
-  return { ...lane, enabled: true, label: lane.label || DEFAULT_LANES[laneId].label };
+function buildAliasPlan(lane: EffectiveHerdrLane): HerdrLanePlan["alias"] {
+  if (lane.lifecycle === "ephemeral") {
+    return {
+      baseAlias: lane.baseAlias,
+      targetAliasHint: `${lane.baseAlias}_<n>`,
+      pattern: `${lane.baseAlias}_<n>`,
+      selection: "Call herdr.list and choose the lowest unused numeric suffix for this fresh lane.",
+    };
+  }
+  return {
+    baseAlias: lane.baseAlias,
+    targetAliasHint: lane.baseAlias,
+    selection: "Use the base alias for this sticky/manual lane unless the user asks otherwise.",
+  };
+}
+
+function cleanupPolicyForLane(lane: EffectiveHerdrLane): HerdrLanePlan["cleanupPolicy"] {
+  if (lane.lifecycle === "ephemeral") {
+    return {
+      onSuccess: { action: "stop", requires: "workflow-success-condition" },
+      onFailureOrTimeout: { action: "read-summarize-ask", readSource: "recent-unwrapped" },
+    };
+  }
+  return {
+    onSuccess: { action: "none", requires: "explicit-user-cleanup" },
+    onFailureOrTimeout: { action: "read-summarize-ask", readSource: "recent-unwrapped" },
+  };
 }
 
 function buildPhases(
   lane: EffectiveHerdrLane,
+  alias: HerdrLanePlan["alias"],
   placement: HerdrLanePlan["placement"],
   intent: HerdrPlanIntent,
+  successCondition: string,
 ): HerdrLanePlan["phases"] {
-  const createAction =
-    placement.prefer === "tab"
-      ? `Create alias '${lane.alias}' just in time with herdr.tab_create only when the command is ready to run.`
-      : `Create alias '${lane.alias}' just in time with herdr.pane_split only when the command is ready to run; avoid splitting the orchestrator pane more than once or shrinking it below roughly half the tab, and prefer reusing an existing worker pane when one is available${placement.splitDirection ? `; requested split direction is '${placement.splitDirection}'` : ""}.`;
+  const createAction = `Create ${lane.lifecycle === "ephemeral" ? "a fresh" : "the"} split-pane alias '${alias.targetAliasHint}' just in time with herdr.pane_split; use focus=false and direction='${placement.splitDirection}'. Avoid stacking multiple splits off the orchestrator pane.`;
   const cleanup =
     lane.lifecycle === "ephemeral"
-      ? `On successful watched completion, call herdr.stop for '${lane.alias}'. On failure or timeout, keep the lane open only long enough to read recent output, then ask before further cleanup.`
-      : `Do not auto-close '${lane.alias}' because lifecycle is ${lane.lifecycle}; leave it for reuse or explicit cleanup.`;
+      ? `After the Workflow Success Condition is observed (${successCondition}), call herdr.stop for '${alias.targetAliasHint}' to stop/close it. On failure, timeout, or ambiguity, read recent-unwrapped output, summarize, leave the lane open, and ask before cleanup.`
+      : `Do not auto-close '${alias.targetAliasHint}' because lifecycle is ${lane.lifecycle}; stop/close only on explicit user cleanup.`;
   const run =
     intent === "tail-logs"
       ? `Start the tail/log command only after the just-in-time lane exists; do not pre-open this lane from session or workflow inference alone.`
-      : `Caller supplies the shell command; call herdr.run with pane '${lane.alias}' after just-in-time lane creation or reuse.`;
+      : `Caller supplies the shell command; call herdr.run with pane '${alias.targetAliasHint}' after lane creation.`;
   const observe =
     intent === "tail-logs"
-      ? `Use herdr.watch/read for the expected log marker, then interrupt/stop the tail and close the ephemeral lane on success.`
-      : `Use herdr.watch for readiness/completion and herdr.read with recent-unwrapped output when inspection is needed.`;
+      ? `Use herdr.watch/read for the expected log marker, then stop/close the ephemeral lane on success.`
+      : `Use herdr.watch for readiness/completion and herdr.read with source='recent-unwrapped' when inspection is needed.`;
   return {
-    discover: `Call herdr.list first and reuse live alias '${lane.alias}' if present; do not create lanes during session setup or because a workflow was merely inferred.`,
+    discover: `Call herdr.list first to detect alias collisions; do not reuse existing ephemeral panes. ${alias.selection}`,
     create: createAction,
     run,
     observe,
@@ -509,29 +525,105 @@ function buildPhases(
   };
 }
 
-function buildPlanNotes(
-  profile: EffectiveHerdrProfile,
+function buildRecommendedActions(
   lane: EffectiveHerdrLane,
-  input: HerdrLanePlanInput,
-): string[] {
+  alias: HerdrLanePlan["alias"],
+  placement: HerdrLanePlan["placement"],
+  intent: HerdrPlanIntent,
+  successCondition: string,
+): HerdrActionHint[] {
+  const targetAlias = alias.targetAliasHint;
+  const actions: HerdrActionHint[] = [
+    {
+      phase: "discover",
+      action: "list",
+      purpose: "Detect alias collisions; do not reuse existing ephemeral panes.",
+    },
+    {
+      phase: "create",
+      action: "pane_split",
+      targetAlias,
+      purpose: `Create ${lane.lifecycle === "ephemeral" ? "a fresh" : "the"} split pane just in time.`,
+      paramsHint: {
+        newPane: targetAlias,
+        direction: placement.splitDirection,
+        focus: false,
+      },
+    },
+    {
+      phase: "run",
+      action: "run",
+      targetAlias,
+      purpose: "Submit the caller-owned command atomically.",
+      paramsHint: { pane: targetAlias, command: "<caller supplies>" },
+    },
+    {
+      phase: "observe",
+      action: "watch",
+      targetAlias,
+      purpose:
+        intent === "server" ? "Wait for readiness." : "Wait for completion or success marker.",
+      paramsHint: {
+        pane: targetAlias,
+        match: "<workflow success marker>",
+        timeout: "<caller chooses>",
+      },
+    },
+    {
+      phase: "observe",
+      action: "read",
+      targetAlias,
+      purpose: "Inspect output when needed, especially on failure, timeout, or ambiguity.",
+      paramsHint: { pane: targetAlias, source: "recent-unwrapped" },
+    },
+  ];
+  if (lane.lifecycle === "ephemeral") {
+    actions.push({
+      phase: "cleanup",
+      action: "stop",
+      targetAlias,
+      purpose: "Stop/close the fresh lane after successful completion.",
+      condition: `Only after Workflow Success Condition: ${successCondition}`,
+      paramsHint: { pane: targetAlias },
+    });
+  }
+  return actions;
+}
+
+function buildAdvancedActions(): HerdrAdvancedActionHint[] {
+  return [
+    {
+      action: "send",
+      useWhen:
+        "Advanced interactive text/key input is required in an existing lane; do not use for command submission.",
+    },
+    {
+      action: "wait_agent",
+      useWhen: "The lane is running a recognized agent process and agent status is the signal.",
+    },
+  ];
+}
+
+function buildPlanNotes(lane: EffectiveHerdrLane, input: HerdrLanePlanInput): string[] {
   const notes = [
     "Plan is non-mutating; perform each Herdr action explicitly.",
     "SF Guardrail mediates the eventual herdr.run command when safety rules match.",
   ];
-  if (profile.workflowMode === "off") {
-    notes.push(
-      "Herdr workflow mode is off in preferences; use this plan only if the user explicitly wants Herdr.",
-    );
-  }
   if (lane.lifecycle === "ephemeral") {
     notes.push(
-      "Ephemeral lanes are command-scoped: create just in time, close after success, and avoid stacking multiple splits off the orchestrator pane.",
+      "Fresh Ephemeral Lanes are command-scoped split panes: create with a fresh suffixed alias, stop/close after success, and avoid stacking splits off the orchestrator pane.",
     );
   }
   if (input.expectedDuration === "long" && lane.lifecycle === "ephemeral") {
     notes.push(
-      "Expected duration is long; consider preserving the lane if the user may want to monitor it.",
+      "Expected duration is long; use watch/read for progress, but cleanup still depends on the Workflow Success Condition.",
     );
+  }
+  if (lane.lifecycle === "sticky") {
+    notes.push("Sticky lanes stay open for reuse; do not auto-close on readiness.");
+  }
+  if (lane.lifecycle === "manual") {
+    notes.push("Manual lanes stay open until explicit user cleanup.");
   }
   return notes;
 }

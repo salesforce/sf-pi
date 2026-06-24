@@ -89,7 +89,7 @@ describe("formatSfPiExtensionContext", () => {
     expect(context).toContain("Suggest: /sf-pi enable sf-slack.");
   });
 
-  it("renders Herdr Workflow Mode only when requested", () => {
+  it("renders Proactive Herdr Guidance only when requested", () => {
     const inactiveContext = formatSfPiExtensionContext(makeCwd(), {
       activeTools: ["read", "bash", "herdr"],
     });
@@ -98,10 +98,11 @@ describe("formatSfPiExtensionContext", () => {
       herdrWorkflowMode: true,
     });
 
-    expect(inactiveContext).not.toContain("Herdr Workflow Mode");
-    expect(activeContext).toContain("Herdr Workflow Mode: active.");
+    expect(inactiveContext).not.toContain("Proactive Herdr Guidance");
+    expect(activeContext).toContain("Proactive Herdr Guidance: active.");
     expect(activeContext).toContain("Use the `herdr` tool for long-running");
-    expect(activeContext).toContain("Prefer reusing existing panes/tabs");
+    expect(activeContext).toContain("fresh ephemeral split pane");
+    expect(activeContext).toContain("alias collision detection");
     expect(activeContext).toContain("Create panes just in time");
     expect(activeContext).toContain("Protect the main orchestrator pane");
     expect(activeContext).toContain("fall back to normal SF Pi operation");
@@ -156,7 +157,7 @@ describe("shouldInjectSfPiExtensionContext", () => {
     expect(shouldInjectSfPiExtensionContext(entries as never, context)).toBe(false);
   });
 
-  it("injects again when Herdr Workflow Mode is no longer active", () => {
+  it("injects again when Proactive Herdr Guidance is no longer active", () => {
     const cwd = makeCwd();
     const herdrContext = formatSfPiExtensionContext(cwd, {
       activeTools: ["read", "herdr"],

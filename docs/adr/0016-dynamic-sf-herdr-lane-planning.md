@@ -187,3 +187,10 @@ Rejected. SF Herdr should not invent Salesforce commands. Existing SF Pi
 extensions, Salesforce skills, and the agent's local reasoning remain
 responsible for choosing commands; SF Herdr only plans where and how to run,
 observe, and clean up the lane.
+
+## Follow-up decisions
+
+ADR 0068 amends ephemeral lane behavior. Ephemeral lanes are fresh split panes,
+existing panes are not reused for command-scoped jobs, and SF Herdr no longer
+owns duplicate workflow-mode, lane-enabled, lane-style, or preserve-focus
+preferences.

@@ -80,17 +80,23 @@ export default function sfHerdr(pi: ExtensionAPI): void {
 
   const signalState = createHerdrSignalState();
   let planToolRegistered = false;
+  let planToolRegistration: Promise<void> | undefined;
 
   async function ensureToolRegistered(): Promise<void> {
     if (planToolRegistered) return;
-    try {
-      const { registerSfHerdrPlanTool } = await import("./lib/sf_herdr_plan-tool.ts");
-      registerSfHerdrPlanTool(pi, signalState);
-      planToolRegistered = true;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      console.warn(`[sf-herdr] sf_herdr_plan tool registration skipped: ${message}`);
-    }
+    planToolRegistration ??= (async () => {
+      try {
+        const { registerSfHerdrPlanTool } = await import("./lib/sf_herdr_plan-tool.ts");
+        registerSfHerdrPlanTool(pi, signalState);
+        planToolRegistered = true;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.warn(`[sf-herdr] sf_herdr_plan tool registration skipped: ${message}`);
+      } finally {
+        planToolRegistration = undefined;
+      }
+    })();
+    await planToolRegistration;
   }
 
   pi.registerCommand(COMMAND_NAME, {
@@ -140,7 +146,10 @@ export default function sfHerdr(pi: ExtensionAPI): void {
   registerManagerDetailActions(pi, EXTENSION_ID, buildHerdrManagerActions());
 
   pi.on("session_start", async (event, ctx) => {
-    if (event.reason === "reload") planToolRegistered = false;
+    if (event.reason === "reload") {
+      planToolRegistered = false;
+      planToolRegistration = undefined;
+    }
     signalState.reconstruct(ctx);
     if (isSfPiExtensionEnabled(ctx.cwd, EXTENSION_ID)) await ensureToolRegistered();
   });
@@ -150,6 +159,7 @@ export default function sfHerdr(pi: ExtensionAPI): void {
   pi.on("session_shutdown", async () => {
     signalState.reset();
     planToolRegistered = false;
+    planToolRegistration = undefined;
   });
   pi.on("tool_execution_end", async (event) => {
     signalState.observeToolExecutionEnd({
@@ -163,7 +173,10 @@ export default function sfHerdr(pi: ExtensionAPI): void {
   });
   pi.on("resources_discover", (event) => {
     if (!isSfPiExtensionEnabled(event.cwd, EXTENSION_ID)) return;
-    if (event.reason === "reload") planToolRegistered = false;
+    if (event.reason === "reload") {
+      planToolRegistered = false;
+      planToolRegistration = undefined;
+    }
     void ensureToolRegistered();
   });
 
@@ -256,16 +269,16 @@ function renderProfiles(): string {
   return [
     "SF Herdr workflow profiles",
     `Path: ${herdrPreferencesPath()}`,
-    `Mode: ${preferences.workflowMode}`,
-    `Default lane style: ${preferences.defaults.laneStyle ?? "split"}`,
     `Default split direction: ${preferences.defaults.splitDirection ?? "right"}`,
-    `Preserve focus: ${preferences.defaults.preserveFocus ?? true}`,
+    "Proactive Herdr guidance is controlled by SF Brain settings; SF Herdr handles explicit lane planning.",
     "",
-    "Workflow overrides:",
+    "Workflow lane preferences:",
     ...Object.entries(preferences.workflows).map(([workflow, profile]) => {
       const laneNames = Object.entries(profile?.lanes ?? {})
-        .filter(([, lane]) => lane?.enabled !== false)
-        .map(([laneId, lane]) => `${laneId}=${lane?.alias ?? laneId}`)
+        .map(
+          ([laneId, lane]) =>
+            `${laneId}=${lane?.alias ?? laneId}:${lane?.lifecycle ?? "ephemeral"}`,
+        )
         .join(", ");
       return `- ${workflow}: ${laneNames || "inherits defaults"}`;
     }),

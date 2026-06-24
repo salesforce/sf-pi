@@ -121,24 +121,24 @@ export function formatSfPiExtensionContext(
   }
   if (options.herdrWorkflowMode) {
     lines.push("");
-    lines.push("Herdr Workflow Mode: active.");
+    lines.push("Proactive Herdr Guidance: active.");
     lines.push(
       "- Use the `herdr` tool for long-running, parallel, or command-scoped pane workflows: servers, tests, log tails, previews, evals, and multi-pane monitoring.",
     );
     lines.push(
-      "- Prefer reusing existing panes/tabs before creating new ones; use stable aliases like `server`, `tests`, `logs`, `preview`, or `eval`.",
+      "- For command-scoped jobs, create a fresh ephemeral split pane with a suffixed alias; use `herdr.list` for alias collision detection, not to reuse old ephemeral panes.",
     );
     lines.push(
       "- Create panes just in time for the command/tool being run; never pre-open log/tail panes from session or workflow inference alone.",
     );
     lines.push(
-      "- Protect the main orchestrator pane: do not stack multiple splits directly off it or shrink it below roughly half the tab; reuse a worker pane or choose a tab when a second simultaneous lane is unavoidable.",
+      "- Protect the main orchestrator pane: do not stack multiple splits directly off it or shrink it below roughly half the tab; split from a worker pane or choose a tab only when that is less disruptive.",
     );
     lines.push(
-      "- Preserve current UI focus unless the user asks otherwise or visible interaction is required.",
+      "- Use `herdr.run` for command-style submission, `herdr.watch`/`herdr.read` for output and readiness, `herdr.send` only for advanced interactive input, and `herdr.wait_agent` only for recognized agent panes.",
     );
     lines.push(
-      "- Use `herdr.run` for command-style submission, `herdr.watch`/`herdr.read` for output and readiness, and `herdr.wait_agent` only for recognized agent panes.",
+      "- Stop/close fresh ephemeral lanes after the workflow success condition; on failure or timeout, read recent output, summarize, leave the lane open, and ask before cleanup.",
     );
     if (activeTools.has("sf_herdr_plan")) {
       lines.push(

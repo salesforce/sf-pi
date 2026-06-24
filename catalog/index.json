@@ -235,7 +235,7 @@
     "entry": "extensions/sf-code-analyzer/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 3216
+    "srcLoc": 3214
   },
   {
     "id": "sf-data-explorer",
@@ -586,7 +586,7 @@
     "entry": "extensions/sf-herdr/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 876
+    "srcLoc": 870
   },
   {
     "id": "sf-llm-gateway-internal",

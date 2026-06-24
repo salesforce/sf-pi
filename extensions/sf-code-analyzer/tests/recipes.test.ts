@@ -111,10 +111,20 @@ describe("Code Analyzer recipes", () => {
     expect(rendered).toContain("sfge");
   });
 
-  it("builds structured Herdr handoff metadata", () => {
+  it("builds plan-focused Herdr workflow handoff metadata", () => {
     const [handoff] = herdrHandoffsForRecipes(["appexchange"]);
-    expect(handoff.intent).toContain("AppExchange");
-    expect(handoff.suggestedCommand).toContain("sf code-analyzer run");
-    expect(handoff.suggestedCommand).toContain("--rule-selector AppExchange");
+    expect(handoff).toMatchObject({
+      recipeId: "appexchange",
+      label: "Plan a Herdr lane for AppExchange security review scan",
+      commandSource: "owning-extension",
+      plan: { intent: "verify", primaryWorkflow: "generic", expectedDuration: "long" },
+    });
+    expect(JSON.stringify(handoff)).not.toContain("suggestedCommand");
+  });
+
+  it("infers Apex workflow for Apex-specific Herdr handoffs", () => {
+    const [handoff] = herdrHandoffsForRecipes(["sfge"]);
+    expect(handoff.plan.primaryWorkflow).toBe("apex");
+    expect(handoff.plan.intent).toBe("verify");
   });
 });

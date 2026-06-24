@@ -10,13 +10,13 @@ import {
   writeSfHerdrPreferences,
   type HerdrLaneId,
   type HerdrLaneLifecycle,
-  type HerdrLaneStyle,
   type HerdrSplitDirection,
   type HerdrWorkflowKey,
   type SfHerdrPreferences,
 } from "../../../lib/common/herdr-profile/store.ts";
 
 const LIFECYCLES: readonly HerdrLaneLifecycle[] = ["ephemeral", "sticky", "manual"];
+const ROW_COUNT = 4;
 
 class SfHerdrConfigPanel implements Focusable {
   focused = false;
@@ -69,6 +69,7 @@ class SfHerdrConfigPanel implements Focusable {
     const workflow = this.selectedWorkflow();
     const lane = this.selectedLane();
     const lanePrefs = this.currentLanePreferences();
+    const saved = JSON.parse(this.savedSnapshot) as SfHerdrPreferences;
     const row = (index: number, label: string, value: string, changed: boolean) => {
       const selected = index === this.cursor;
       const marker = changed ? t.fg("warning", "•") : " ";
@@ -78,33 +79,19 @@ class SfHerdrConfigPanel implements Focusable {
     };
     const lines = [
       ` ${t.fg("accent", t.bold("SF Herdr settings"))}  ${status}`,
-      ` ${t.fg("dim", "Tune how SF Pi plans Herdr panes. Changes stay local until you save.")}`,
+      ` ${t.fg("dim", "Tune Herdr lane planning. Ephemeral lanes are fresh split panes and auto-clean on success.")}`,
       "",
-      row(0, "Workflow mode", this.preferences.workflowMode, this.changed("workflowMode")),
       row(
-        1,
-        "Lane style",
-        String(this.preferences.defaults.laneStyle ?? "split"),
-        this.changed("laneStyle"),
-      ),
-      row(
-        2,
+        0,
         "Split direction",
-        String(this.preferences.defaults.splitDirection ?? "right"),
-        this.changed("splitDirection"),
-      ),
-      row(
-        3,
-        "Preserve focus",
-        String(this.preferences.defaults.preserveFocus ?? true),
-        this.changed("preserveFocus"),
+        this.currentSplitDirection(),
+        this.currentSplitDirection() !== (saved.defaults.splitDirection ?? "right"),
       ),
       "",
-      ` ${t.fg("muted", t.bold("Workflow lane profile"))}`,
-      row(4, "Workflow", workflow, false),
-      row(5, "Lane", lane, false),
-      row(6, "Lane enabled", String(lanePrefs.enabled ?? true), this.currentLaneChanged()),
-      row(7, "Lane lifecycle", lanePrefs.lifecycle ?? "ephemeral", this.currentLaneChanged()),
+      ` ${t.fg("muted", t.bold("Workflow lane lifecycle"))}`,
+      row(1, "Workflow", workflow, false),
+      row(2, "Lane", lane, false),
+      row(3, "Lane lifecycle", lanePrefs.lifecycle ?? "ephemeral", this.currentLaneChanged(saved)),
       "",
     ];
     if (this.savedMessage) lines.push(` ${t.fg("success", this.savedMessage)}`);
@@ -121,35 +108,23 @@ class SfHerdrConfigPanel implements Focusable {
   invalidate(): void {}
 
   private moveCursor(delta: -1 | 1): void {
-    this.cursor = (this.cursor + delta + 8) % 8;
+    this.cursor = (this.cursor + delta + ROW_COUNT) % ROW_COUNT;
     this.savedMessage = "";
   }
 
   private changeCurrent(delta: -1 | 1): void {
     switch (this.cursor) {
       case 0:
-        this.preferences.workflowMode = this.preferences.workflowMode === "auto" ? "off" : "auto";
-        break;
-      case 1:
-        this.preferences.defaults.laneStyle = this.currentLaneStyle() === "split" ? "tab" : "split";
-        break;
-      case 2:
         this.preferences.defaults.splitDirection =
           this.currentSplitDirection() === "right" ? "down" : "right";
         break;
-      case 3:
-        this.preferences.defaults.preserveFocus = !this.currentPreserveFocus();
-        break;
-      case 4:
+      case 1:
         this.workflowIndex = cycleIndex(this.workflowIndex, WORKFLOW_KEYS.length, delta);
         break;
-      case 5:
+      case 2:
         this.laneIndex = cycleIndex(this.laneIndex, LANE_IDS.length, delta);
         break;
-      case 6:
-        this.currentLanePreferences().enabled = !(this.currentLanePreferences().enabled ?? true);
-        break;
-      case 7:
+      case 3:
         this.currentLanePreferences().lifecycle = cycleValue(
           LIFECYCLES,
           this.currentLanePreferences().lifecycle ?? "ephemeral",
@@ -164,27 +139,7 @@ class SfHerdrConfigPanel implements Focusable {
     return snapshot(this.preferences) !== this.savedSnapshot;
   }
 
-  private changed(key: "workflowMode" | "laneStyle" | "splitDirection" | "preserveFocus"): boolean {
-    const saved = JSON.parse(this.savedSnapshot) as SfHerdrPreferences;
-    if (key === "workflowMode") return this.preferences.workflowMode !== saved.workflowMode;
-    if (key === "laneStyle") {
-      return (
-        (this.preferences.defaults.laneStyle ?? "split") !== (saved.defaults.laneStyle ?? "split")
-      );
-    }
-    if (key === "splitDirection") {
-      return (
-        (this.preferences.defaults.splitDirection ?? "right") !==
-        (saved.defaults.splitDirection ?? "right")
-      );
-    }
-    return (
-      (this.preferences.defaults.preserveFocus ?? true) !== (saved.defaults.preserveFocus ?? true)
-    );
-  }
-
-  private currentLaneChanged(): boolean {
-    const saved = JSON.parse(this.savedSnapshot) as SfHerdrPreferences;
+  private currentLaneChanged(saved: SfHerdrPreferences): boolean {
     const workflow = this.selectedWorkflow();
     const lane = this.selectedLane();
     const current = this.preferences.workflows[workflow]?.lanes?.[lane] ?? {};
@@ -203,16 +158,8 @@ class SfHerdrConfigPanel implements Focusable {
     this.savedMessage = "Saved SF Herdr settings.";
   }
 
-  private currentLaneStyle(): HerdrLaneStyle {
-    return this.preferences.defaults.laneStyle ?? "split";
-  }
-
   private currentSplitDirection(): HerdrSplitDirection {
     return this.preferences.defaults.splitDirection ?? "right";
-  }
-
-  private currentPreserveFocus(): boolean {
-    return this.preferences.defaults.preserveFocus ?? true;
   }
 
   private selectedWorkflow(): HerdrWorkflowKey {

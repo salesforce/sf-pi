@@ -36,7 +36,21 @@ function makePanel(onDone: (value: unknown) => void = () => undefined): TestPane
 }
 
 describe("SF Herdr config panel", () => {
-  it("marks default changes as unsaved, saves explicitly, and stays on the settings page", () => {
+  it("shows only split direction and workflow lane lifecycle controls", () => {
+    const panel = makePanel();
+    const rendered = panel.renderContent(100).join("\n");
+
+    expect(rendered).toContain("Split direction");
+    expect(rendered).toContain("Workflow");
+    expect(rendered).toContain("Lane");
+    expect(rendered).toContain("Lane lifecycle");
+    expect(rendered).not.toContain("Workflow mode");
+    expect(rendered).not.toContain("Lane style");
+    expect(rendered).not.toContain("Preserve focus");
+    expect(rendered).not.toContain("Lane enabled");
+  });
+
+  it("marks split-direction changes as unsaved, saves explicitly, and stays on settings", () => {
     let result: unknown = "not-called";
     const panel = makePanel((value) => {
       result = value;
@@ -56,24 +70,25 @@ describe("SF Herdr config panel", () => {
     const raw = JSON.parse(
       readFileSync(path.join(tmpDir, "sf-pi", "herdr", "preferences.json"), "utf-8"),
     );
-    expect(raw.state.workflowMode).toBe("off");
+    expect(raw.state.defaults.splitDirection).toBe("down");
+    expect(raw.state.workflowMode).toBeUndefined();
+    expect(raw.state.defaults.laneStyle).toBeUndefined();
+    expect(raw.state.defaults.preserveFocus).toBeUndefined();
   });
 
-  it("edits workflow lane enabled state and lifecycle", () => {
+  it("edits workflow lane lifecycle", () => {
     const panel = makePanel();
 
-    // Move to Lane enabled (default selected workflow=generic, lane=tests).
-    for (let i = 0; i < 6; i++) panel.handleInput("\x1b[B");
-    panel.handleInput(" ");
-    panel.handleInput("\x1b[B");
+    // Move to Lane lifecycle (default selected workflow=generic, lane=tests).
+    for (let i = 0; i < 3; i++) panel.handleInput("\x1b[B");
     panel.handleInput(" ");
     panel.handleInput("s");
 
     const raw = JSON.parse(
       readFileSync(path.join(tmpDir, "sf-pi", "herdr", "preferences.json"), "utf-8"),
     );
-    expect(raw.state.workflows.generic.lanes.tests.enabled).toBe(false);
     expect(raw.state.workflows.generic.lanes.tests.lifecycle).toBe("sticky");
+    expect(raw.state.workflows.generic.lanes.tests.enabled).toBeUndefined();
   });
 
   it("leaves without writing when escape is pressed with unsaved changes", () => {

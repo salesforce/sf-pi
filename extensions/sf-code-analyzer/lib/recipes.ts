@@ -1,6 +1,8 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Static, public-safe scan recipe catalog for SF Code Analyzer. */
 import { existsSync, readFileSync } from "node:fs";
+import type { HerdrWorkflowHandoff } from "../../../lib/common/herdr-profile/handoff.ts";
+import type { HerdrWorkflowKey } from "../../../lib/common/herdr-profile/store.ts";
 
 export interface CodeAnalyzerRecipe {
   id: string;
@@ -15,11 +17,8 @@ export interface CodeAnalyzerRecipe {
   herdrReason?: string;
 }
 
-export interface CodeAnalyzerHerdrHandoff {
+export interface CodeAnalyzerHerdrHandoff extends HerdrWorkflowHandoff {
   recipeId: string;
-  intent: string;
-  suggestedCommand: string;
-  reason: string;
 }
 
 export interface ScanRecipeGuidanceInput {
@@ -228,10 +227,23 @@ export function herdrHandoffsForRecipes(recipeIds: string[]): CodeAnalyzerHerdrH
     .filter((recipe): recipe is CodeAnalyzerRecipe => Boolean(recipe?.herdrRecommended))
     .map((recipe) => ({
       recipeId: recipe.id,
-      intent: `Plan a Herdr lane for Salesforce Code Analyzer recipe '${recipe.id}' (${recipe.label}).`,
-      suggestedCommand: commandForRecipe(recipe),
+      label: `Plan a Herdr lane for ${recipe.label}`,
       reason: recipe.herdrReason ?? "This scan can be long-running.",
+      commandSource: "owning-extension" as const,
+      plan: {
+        intent: "verify" as const,
+        primaryWorkflow: primaryWorkflowForRecipe(recipe),
+        expectedDuration: "long" as const,
+      },
     }));
+}
+
+function primaryWorkflowForRecipe(recipe: CodeAnalyzerRecipe): HerdrWorkflowKey {
+  if (recipe.id === "sfge" || recipe.id === "apex-performance") return "apex";
+  if (recipe.id === "auto-apex-default") return "apex";
+  if (recipe.id === "auto-js-default") return "generic";
+  if (recipe.id === "auto-flow-default") return "generic";
+  return "generic";
 }
 
 function sniffChangedContent(targets: string[]): { security: boolean; dataFlow: boolean } {
@@ -255,19 +267,4 @@ function sniffChangedContent(targets: string[]): { security: boolean; dataFlow: 
       );
   }
   return { security, dataFlow };
-}
-
-function commandForRecipe(recipe: CodeAnalyzerRecipe): string {
-  const args = [
-    "sf code-analyzer run",
-    ...recipe.ruleSelector.map((selector) => `--rule-selector ${quote(selector)}`),
-    ...recipe.workspace.map((workspace) => `--workspace ${quote(workspace)}`),
-    ...(recipe.target ?? []).map((target) => `--target ${quote(target)}`),
-    ...(recipe.outputFiles ?? []).map((file) => `--output-file ${quote(file)}`),
-  ];
-  return args.join(" ");
-}
-
-function quote(value: string): string {
-  return /\s/.test(value) ? JSON.stringify(value) : value;
 }

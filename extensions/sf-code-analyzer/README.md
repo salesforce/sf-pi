@@ -126,11 +126,12 @@ automatically.
 
 ### Herdr handoff
 
-Long-running recipes include Herdr handoff metadata and text guidance. If a
-recipe says Herdr is recommended and `sf_herdr_plan` is available, the agent
-should call `sf_herdr_plan` visibly before running the broad scan. The Code
-Analyzer extension does not invoke Herdr internally and does not create panes on
-its own.
+Long-running recipes include plan-focused Herdr Workflow Handoff metadata and
+text guidance. If a recipe says Herdr is recommended and `sf_herdr_plan` is
+available, the agent should call `sf_herdr_plan` visibly before running the
+broad scan. The handoff carries plan intent and workflow context, not shell
+commands. The Code Analyzer extension does not invoke Herdr internally and does
+not create panes on its own.
 
 ### ApexGuru
 

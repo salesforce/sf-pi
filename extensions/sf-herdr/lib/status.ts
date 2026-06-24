@@ -35,7 +35,8 @@ export function renderStatus(signalState: HerdrSignalState): string {
   lines.push(`Passive status bridge: ${runtime.passiveStatusBridge ? "ready" : "not detected"}`);
   if (runtime.paneId) lines.push(`Pane: ${runtime.paneId}`);
   lines.push(`Preferences: ${herdrPreferencesPath()}`);
-  lines.push(`Workflow mode: ${preferences.workflowMode}`);
+  lines.push(`Default split direction: ${preferences.defaults.splitDirection ?? "right"}`);
+  lines.push("Proactive Herdr guidance: controlled by SF Brain settings");
   lines.push(
     `Inferred workflow: ${inferred.primaryWorkflow} (${Math.round(inferred.confidence * 100)}%) — ${inferred.reason}`,
   );
@@ -69,6 +70,7 @@ export function renderDoctor(signalState: HerdrSignalState): string {
     "Notes:",
     "- The upstream npm:@ogulcancelik/pi-herdr package provides the actual herdr tool.",
     "- sf-herdr plans lanes only; it does not mutate panes or generate shell commands.",
+    "- Proactive Herdr guidance is controlled by SF Brain settings; SF Herdr handles explicit lane planning.",
     "- sf-guardrail mediates herdr.run commands when configured safety rules match.",
   ].join("\n");
 }

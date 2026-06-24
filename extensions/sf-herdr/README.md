@@ -24,7 +24,7 @@ sf_herdr_plan
   ├─ reads managed workflow profiles from <globalAgentDir>/sf-pi/herdr/preferences.json
   ├─ infers primary + related workflow from recent branch signals when omitted
   ├─ maps intent to a Dynamic Herdr Lane
-  └─ returns discover/create/run/observe/cleanup guidance without mutating panes
+  └─ returns alias/action/cleanup guidance without mutating panes
 ```
 
 ## Key Architecture Decisions
@@ -33,8 +33,9 @@ sf_herdr_plan
 - `sf_herdr_plan` is non-mutating and never generates shell commands.
 - Planner-tool registration is lazy/fail-soft so `/sf-herdr` remains available even if optional tool wiring cannot load.
 - Dynamic lanes are command-scoped and activity-informed, not session-scoped. Workflow signals may select a profile, but they never justify opening panes by themselves.
-- Ephemeral lanes are created just in time for the command/tool being run and closed after successful watched completion.
-- Ephemeral lanes prefer split panes because the upstream `herdr` tool exposes pane close (`stop`) but not an explicit tab-close action; plans tell agents not to stack multiple splits off the main orchestrator pane.
+- Fresh Ephemeral Lanes are created just in time as split panes with suffixed aliases and stop/close after the workflow success condition.
+- Existing ephemeral panes are not reused; `herdr.list` is used for alias collision detection, not reuse.
+- Failed, timed out, or ambiguous Fresh Ephemeral Lanes stay open after recent-output summarization until the user chooses cleanup.
 - Managed preferences live in the shared profile store at `lib/common/herdr-profile/store.ts` so SF Brain can later read compact profile summaries without importing this extension.
 - `sf-guardrail` mediates `herdr.run.command` through the same safety gates as `bash.command`.
 
@@ -54,7 +55,7 @@ sf_herdr_plan
 | /sf-herdr profiles | any                                    | Print managed workflow profile summary                        |
 | /sf-herdr reset    | any                                    | Reset managed workflow profiles to bundled defaults           |
 | /sf-herdr settings | UI available                           | Open SF Herdr settings in the SF Pi Manager                   |
-| sf_herdr_plan      | intent provided                        | Return a non-mutating lane plan                               |
+| sf_herdr_plan      | intent provided                        | Return a non-mutating lane plan with action hints             |
 
 ## Commands
 
@@ -70,17 +71,17 @@ sf_herdr_plan
 
 ## Agent Tool
 
-| Tool            | Purpose                                                                                                 |
-| --------------- | ------------------------------------------------------------------------------------------------------- |
-| `sf_herdr_plan` | Plan a Dynamic Herdr Lane for a Salesforce workflow intent. Non-mutating; returns phased guidance only. |
+| Tool            | Purpose                                                                                                                                   |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `sf_herdr_plan` | Plan a Dynamic Herdr Lane for a Salesforce workflow intent. Non-mutating; returns phased guidance, action hints, and cleanup policy only. |
 
 ## Dynamic Lane Lifecycle
 
-- `ephemeral`: create just in time immediately before `herdr.run`; close with `herdr.stop` after successful watched completion; preserve on failure or timeout only long enough for inspection.
+- `ephemeral`: create a fresh split pane immediately before `herdr.run`; choose the lowest unused suffixed alias after `herdr.list`; stop/close with `herdr.stop` only after the workflow success condition.
 - `sticky`: keep open for reuse, such as dev servers. Do not use sticky lanes as a reason to pre-open panes.
 - `manual`: never auto-close unless the user asks.
 
-Apex log tails use an ephemeral `apex_logs` lane by default: open the lane only when starting the tail/log command, watch/read the expected marker, then interrupt/stop the tail and close the lane on success. Avoid splitting the main orchestrator pane more than once or shrinking it below roughly half the tab; reuse an existing worker lane or choose a tab when a second simultaneous lane is unavoidable.
+Apex log tails use a Fresh Ephemeral Lane derived from the `apex_logs` base alias by default: open the lane only when starting the tail/log command, watch/read the expected marker, then stop/close the lane on success. Avoid splitting the main orchestrator pane more than once or shrinking it below roughly half the tab; split from an existing worker lane when a second simultaneous split is unavoidable.
 
 ## Managed Preferences
 
@@ -94,11 +95,10 @@ The file is managed through **SF Pi Manager → SF Herdr → Settings** or direc
 with `/sf-herdr settings` in TUI mode. The settings panel marks unsaved changes,
 uses a bullet beside changed fields, and writes only after `S` or `Enter`.
 Saving stays on the settings page and changes the status back to `Saved`; `Esc`
-/ `q` leaves the page, discarding only unsaved drafts. The panel exposes both
-baseline placement defaults and the lowest-friction workflow lane controls:
-workflow, lane, lane enabled, and lane lifecycle (`ephemeral`, `sticky`, or
-`manual`). The JSON file is recoverable, but not positioned as a primary
-hand-editable Pi setting.
+/ `q` leaves the page, discarding only unsaved drafts. The panel exposes the
+minimal workflow lane controls: split direction, workflow, lane, and lane
+lifecycle (`ephemeral`, `sticky`, or `manual`). The JSON file is recoverable,
+but not positioned as a primary hand-editable Pi setting.
 
 ## File Structure
 
