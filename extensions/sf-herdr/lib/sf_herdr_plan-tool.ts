@@ -55,7 +55,7 @@ export function registerSfHerdrPlanTool(pi: ExtensionAPI, signalState: HerdrSign
       "Use sf_herdr_plan before creating dynamic Herdr lanes for Salesforce workflow work.",
       "Do not treat the plan as execution: call herdr.list, pane_split, run, watch/read, and stop explicitly.",
       "Create fresh ephemeral split panes just in time for command-scoped jobs; never reuse old ephemeral panes.",
-      "Use herdr.list for alias collision detection and choose the lowest unused suffixed alias for fresh ephemeral lanes.",
+      "Use herdr.list for live alias collision detection and choose a short-id suffixed alias that has not already been used in the session.",
       "Avoid shrinking the main orchestrator pane below roughly half the tab; do not stack multiple splits directly off the orchestrator pane.",
       "The planner never generates shell commands; choose commands through the owning SF Pi extension or Salesforce workflow guidance.",
       "Stop/close fresh ephemeral lanes only after the Workflow Success Condition; preserve failures and timeouts for inspection and ask before cleanup.",

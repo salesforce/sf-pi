@@ -73,8 +73,8 @@ describe("herdr-profile store contract", () => {
     expect(plan.lane.lifecycle).toBe("ephemeral");
     expect(plan.alias).toMatchObject({
       baseAlias: "agent_preview",
-      targetAliasHint: "agent_preview_<n>",
-      pattern: "agent_preview_<n>",
+      targetAliasHint: "agent_preview_<shortid>",
+      pattern: "agent_preview_<shortid>",
     });
     expect(plan.placement).toEqual({ prefer: "split", splitDirection: "right", focus: false });
     expect(plan.recommendedActions.map((action) => action.action)).toEqual([
@@ -86,7 +86,7 @@ describe("herdr-profile store contract", () => {
       "stop",
     ]);
     expect(plan.recommendedActions[1]?.paramsHint).toMatchObject({
-      newPane: "agent_preview_<n>",
+      newPane: "agent_preview_<shortid>",
       direction: "right",
       focus: false,
     });
@@ -98,7 +98,7 @@ describe("herdr-profile store contract", () => {
       action: "read-summarize-ask",
       readSource: "recent-unwrapped",
     });
-    expect(plan.phases.discover).toContain("do not reuse existing ephemeral panes");
+    expect(plan.phases.discover).toContain("previously closed ephemeral pane aliases");
     expect(plan.phases.cleanup).toContain("Workflow Success Condition");
   });
 
@@ -112,7 +112,7 @@ describe("herdr-profile store contract", () => {
     expect(plan.lane.id).toBe("logs");
     expect(plan.lane.baseAlias).toBe("apex_logs");
     expect(plan.lane.lifecycle).toBe("ephemeral");
-    expect(plan.alias.pattern).toBe("apex_logs_<n>");
+    expect(plan.alias.pattern).toBe("apex_logs_<shortid>");
     expect(plan.phases.run).toContain(
       "do not pre-open this lane from session or workflow inference alone",
     );

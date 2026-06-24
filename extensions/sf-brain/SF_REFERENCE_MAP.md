@@ -97,8 +97,8 @@ the visible pane orchestration layer around SF Pi workflows:
    discover alias collisions → create fresh lane → run → observe → cleanup.
 3. Let the owning SF Pi extension or Salesforce skill choose the actual command;
    `sf_herdr_plan` only plans lane placement/lifecycle.
-4. For command-scoped work, create a fresh ephemeral split pane with a suffixed
-   alias; do not reuse old ephemeral panes.
+4. For command-scoped work, create a fresh ephemeral split pane with a short-id
+   suffixed alias; do not reuse old or previously closed ephemeral pane aliases.
 5. Stop/close fresh ephemeral panes only after the workflow success condition.
    On failure or timeout, read recent output, summarize, leave the lane open,
    and ask before cleanup.

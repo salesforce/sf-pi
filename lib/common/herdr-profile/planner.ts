@@ -147,9 +147,10 @@ function buildAliasPlan(lane: EffectiveHerdrLane): HerdrLanePlan["alias"] {
   if (lane.lifecycle === "ephemeral") {
     return {
       baseAlias: lane.baseAlias,
-      targetAliasHint: `${lane.baseAlias}_<n>`,
-      pattern: `${lane.baseAlias}_<n>`,
-      selection: "Call herdr.list and choose the lowest unused numeric suffix for this fresh lane.",
+      targetAliasHint: `${lane.baseAlias}_<shortid>`,
+      pattern: `${lane.baseAlias}_<shortid>`,
+      selection:
+        "Call herdr.list to avoid live collisions, then choose a fresh short-id suffix that has not already been used in this session.",
     };
   }
   return {
@@ -193,7 +194,7 @@ function buildPhases(
       ? `Use herdr.watch/read for the expected log marker, then stop/close the ephemeral lane on success.`
       : `Use herdr.watch for readiness/completion and herdr.read with source='recent-unwrapped' when inspection is needed.`;
   return {
-    discover: `Call herdr.list first to detect alias collisions; do not reuse existing ephemeral panes. ${alias.selection}`,
+    discover: `Call herdr.list first to detect live alias collisions; do not reuse existing or previously closed ephemeral pane aliases. ${alias.selection}`,
     create: createAction,
     run,
     observe,
@@ -213,7 +214,8 @@ function buildRecommendedActions(
     {
       phase: "discover",
       action: "list",
-      purpose: "Detect alias collisions; do not reuse existing ephemeral panes.",
+      purpose:
+        "Detect live alias collisions; do not reuse existing or previously closed ephemeral pane aliases.",
     },
     {
       phase: "create",
@@ -287,7 +289,7 @@ function buildPlanNotes(lane: EffectiveHerdrLane, input: HerdrLanePlanInput): st
   ];
   if (lane.lifecycle === "ephemeral") {
     notes.push(
-      "Fresh Ephemeral Lanes are command-scoped split panes: create with a fresh suffixed alias, stop/close after success, and avoid stacking splits off the orchestrator pane.",
+      "Fresh Ephemeral Lanes are command-scoped split panes: create with a fresh short-id alias, stop/close after success, and avoid stacking splits off the orchestrator pane.",
     );
   }
   if (input.expectedDuration === "long" && lane.lifecycle === "ephemeral") {

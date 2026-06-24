@@ -77,7 +77,7 @@ sf_herdr_plan
 
 ## Dynamic Lane Lifecycle
 
-- `ephemeral`: create a fresh split pane immediately before `herdr.run`; choose the lowest unused suffixed alias after `herdr.list`; stop/close with `herdr.stop` only after the workflow success condition.
+- `ephemeral`: create a fresh split pane immediately before `herdr.run`; choose a short-id suffixed alias that has not already been used in the session after checking `herdr.list` for live collisions; stop/close with `herdr.stop` only after the workflow success condition.
 - `sticky`: keep open for reuse, such as dev servers. Do not use sticky lanes as a reason to pre-open panes.
 - `manual`: never auto-close unless the user asks.
 

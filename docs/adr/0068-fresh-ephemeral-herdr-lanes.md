@@ -10,7 +10,7 @@ ADR 0016 established Dynamic Herdr Lane planning with a reuse-friendly posture: 
 
 ## Decision
 
-SF Herdr treats ephemeral lanes as **Fresh Ephemeral Lanes**: command-scoped split panes created just in time for one job. Existing panes are not reused for ephemeral jobs; `herdr.list` is used to detect alias collisions and choose a suffixed fresh alias such as `apex_tests_1`, not to select a pane for reuse.
+SF Herdr treats ephemeral lanes as **Fresh Ephemeral Lanes**: command-scoped split panes created just in time for one job. Existing panes are not reused for ephemeral jobs; `herdr.list` is used to detect live alias collisions, and agents choose a short-id suffixed fresh alias such as `apex_tests_k7f3`. Closed ephemeral aliases are not recycled within the same session, even when `herdr.list` no longer shows them.
 
 A Fresh Ephemeral Lane closes via an explicit visible `herdr.stop` call only after the agent observes the workflow's success condition. On failure, timeout, or ambiguous output, the agent reads recent unwrapped output, summarizes the issue, leaves the lane open for inspection, and asks the user whether to close it.
 

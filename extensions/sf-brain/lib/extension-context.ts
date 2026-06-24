@@ -126,7 +126,7 @@ export function formatSfPiExtensionContext(
       "- Use the `herdr` tool for long-running, parallel, or command-scoped pane workflows: servers, tests, log tails, previews, evals, and multi-pane monitoring.",
     );
     lines.push(
-      "- For command-scoped jobs, create a fresh ephemeral split pane with a suffixed alias; use `herdr.list` for alias collision detection, not to reuse old ephemeral panes.",
+      "- For command-scoped jobs, create a fresh ephemeral split pane with a short-id suffixed alias; use `herdr.list` for live alias collision detection, and do not reuse old or closed ephemeral pane aliases.",
     );
     lines.push(
       "- Create panes just in time for the command/tool being run; never pre-open log/tail panes from session or workflow inference alone.",

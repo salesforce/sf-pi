@@ -57,8 +57,8 @@ The stable alias name stored in SF Herdr preferences and used as the root for la
 _Avoid_: resolved alias, target pane alias
 
 **Fresh Lane Alias**:
-A suffixed Herdr pane alias for a **Fresh Ephemeral Lane**, chosen from a **Base Lane Alias** and the lowest unused numeric suffix after inspecting current panes. For example, `apex_tests_1` and `apex_tests_2` are fresh aliases derived from `apex_tests`.
-_Avoid_: stable ephemeral alias, reused alias, persisted counter
+A suffixed Herdr pane alias for a **Fresh Ephemeral Lane**, chosen from a **Base Lane Alias** plus a short unique suffix that has not already been used in the session. For example, `apex_tests_k7f3` is a fresh alias derived from `apex_tests`.
+_Avoid_: stable ephemeral alias, reused alias, recycled numeric suffix, persisted counter
 
 ## Example dialogue
 
