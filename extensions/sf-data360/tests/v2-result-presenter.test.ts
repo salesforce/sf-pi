@@ -16,6 +16,63 @@ const baseInput = {
 };
 
 describe("Data 360 v2 result presenter", () => {
+  it("builds readiness summaries with surface counts and key probe states", async () => {
+    const presented = await presentData360Result(
+      {
+        tool: "data360_discover",
+        action: "readiness.probe",
+        target_org: "AgentforceSTDM",
+      },
+      {
+        ok: true,
+        tool: "data360_discover",
+        action: "readiness.probe",
+        targetOrg: "AgentforceSTDM",
+        apiVersion: "67.0",
+        state: "partial",
+        guidance:
+          "Core Data 360 surfaces are reachable, but some optional surfaces are unavailable.",
+        probes: [
+          { name: "data_spaces", path: "/ssot/data-spaces", state: "enabled_populated", count: 1 },
+          {
+            name: "dmo_catalog",
+            path: "/ssot/data-model-objects?limit=1",
+            state: "enabled_populated",
+            count: 1,
+          },
+          {
+            name: "agent_platform_tracing_dlo",
+            path: "/ssot/data-lake-objects/ObservabilitySpans__dll",
+            state: "feature_gated",
+            message: "This feature is not currently enabled.",
+          },
+        ],
+        summary: "Data 360 readiness: partial",
+      },
+      "summary",
+    );
+
+    expect(presented.content[0]?.text).toContain("Data 360 readiness: partial");
+    expect(presented.content[0]?.text).toContain("Ready surfaces: 2");
+    expect(presented.content[0]?.text).toContain("Problem surfaces: 1");
+    expect(presented.content[0]?.text).not.toContain("OTel resource spans: 2");
+    expect(presented.content[0]?.text).not.toContain("Failures: 1");
+    expect(presented.content[0]?.text).toContain("Core Data 360: 2/2 ready");
+    expect(presented.content[0]?.text).toContain("Observe: 0/1 ready");
+    expect(presented.content[0]?.text).toContain("Agent Platform Tracing: feature_gated");
+    expect(presented.content[0]?.text).toContain(
+      "Enable or grant access to Agent Platform Tracing",
+    );
+    const details = presented.details as PresentedDetails;
+    expect(details.digest).toMatchObject({
+      source: "readiness",
+      stats: { steps: 3, failed: 1, warnings: 1 },
+    });
+    expect(details.digest.artifacts.map((artifact) => artifact.path)).toEqual(
+      expect.arrayContaining([expect.stringContaining("readiness.json")]),
+    );
+  });
+
   it("builds a semantic Run Digest and Result Card for STDM session search", async () => {
     const presented = await presentData360Result(
       {

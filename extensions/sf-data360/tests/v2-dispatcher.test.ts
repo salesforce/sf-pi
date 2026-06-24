@@ -352,6 +352,41 @@ describe("Data 360 v2 dispatcher", () => {
     });
   });
 
+  it("emits per-probe readiness progress", async () => {
+    requestMock.mockResolvedValue({ totalSize: 1, data: [{ id: "ok" }] });
+    const progress: Array<{ stage: string; status: string; message: string }> = [];
+
+    await runData360V2Action(
+      {
+        tool: "data360_discover",
+        action: "readiness.probe",
+        target_org: "AgentforceSTDM",
+        timeout_ms: 10,
+      },
+      env,
+      ctx,
+      undefined,
+      (event) => progress.push(event),
+    );
+
+    expect(progress).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ stage: "execute", status: "running" }),
+        expect.objectContaining({
+          stage: "execute",
+          status: "success",
+          message: expect.stringContaining("data_spaces"),
+        }),
+        expect.objectContaining({
+          stage: "execute",
+          status: "success",
+          message: expect.stringContaining("agent_platform_tracing_dlo"),
+        }),
+        expect.objectContaining({ stage: "summarize", status: "success" }),
+      ]),
+    );
+  });
+
   it("returns partial readiness when one probe times out", async () => {
     let call = 0;
     requestMock.mockImplementation(async () => {
@@ -385,6 +420,49 @@ describe("Data 360 v2 dispatcher", () => {
           name: "data_spaces",
           state: "cli_error",
           message: expect.stringContaining("timed out"),
+        }),
+      ]),
+    );
+  });
+
+  it("emits per-step progress for journey runs", async () => {
+    requestMock.mockResolvedValue({ id: "ok", name: "ok" });
+    const progress: Array<{ stage: string; status: string; message: string }> = [];
+
+    const result = await runData360V2Action(
+      {
+        tool: "data360_orchestrate",
+        action: "semantic_retrieval.run",
+        target_org: "AgentforceSTDM",
+        allow_confirmed: true,
+        params: {
+          searchIndexBody: { name: "DemoIndex" },
+          retrieverBody: { name: "DemoRetriever" },
+        },
+      },
+      env,
+      ctx,
+      undefined,
+      (event) => progress.push(event),
+    );
+
+    expect(result).toMatchObject({ ok: true, action: "semantic_retrieval.run" });
+    expect(progress).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          stage: "execute",
+          status: "running",
+          message: expect.stringContaining("Step 1/2 data360_semantic search_index.create"),
+        }),
+        expect.objectContaining({
+          stage: "execute",
+          status: "success",
+          message: expect.stringContaining("Step 1/2 data360_semantic search_index.create"),
+        }),
+        expect.objectContaining({
+          stage: "execute",
+          status: "running",
+          message: expect.stringContaining("Step 2/2 data360_semantic retriever.create"),
         }),
       ]),
     );

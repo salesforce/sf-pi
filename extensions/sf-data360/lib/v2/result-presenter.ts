@@ -287,6 +287,16 @@ function statsFor(
       bytes: Buffer.byteLength(rawText, "utf8"),
     };
   }
+  if (input.action === "readiness.probe") {
+    const readiness = summarizeReadinessProbes(result);
+    return {
+      steps: readiness.total,
+      failed: readiness.problem,
+      warnings: readiness.problem,
+      resources: readiness.ready,
+      bytes: Buffer.byteLength(rawText, "utf8"),
+    };
+  }
 
   const rows = rowsFromResult(result);
   const traceStats = traceStatsFor(input, result);
@@ -304,6 +314,7 @@ function statsFor(
 }
 
 function previewFor(input: Data360V2Input, result: Record<string, unknown>): string[] {
+  if (input.action === "readiness.probe") return readinessPreview(result);
   if (input.action === "stdm.find_sessions") return stdmSessionPreview(result);
   if (input.action === "stdm.session_otel") return otelPreview(result);
   if (input.action === "trace.trace_tree") return traceTreePreview(result);
@@ -317,6 +328,30 @@ function previewFor(input: Data360V2Input, result: Record<string, unknown>): str
   if (markdown) return markdown.split("\n").slice(0, 8);
   const summary = stringValue(result.summary);
   return summary ? [summary] : [];
+}
+
+function readinessPreview(result: Record<string, unknown>): string[] {
+  const summary = summarizeReadinessProbes(result);
+  const lines = [
+    `Data 360 readiness: ${stringValue(result.state) ?? "unknown"}`,
+    `Ready surfaces: ${summary.ready}`,
+    `Empty surfaces: ${summary.empty}`,
+    `Problem surfaces: ${summary.problem}`,
+  ];
+  for (const group of readinessGroups(summary.probes)) {
+    lines.push(`${group.label}: ${group.ready}/${group.total} ready`);
+  }
+  const agentTracing = summary.probes.find((probe) => probe.name === "agent_platform_tracing_dlo");
+  if (agentTracing) lines.push(`Agent Platform Tracing: ${agentTracing.state}`);
+  const problems = summary.probes.filter((probe) => !isReadyProbeState(probe.state)).slice(0, 5);
+  for (const problem of problems) {
+    lines.push(
+      `${problem.name}: ${problem.state}${problem.message ? ` · ${clipOneLine(problem.message, 120)}` : ""}`,
+    );
+  }
+  const guidance = stringValue(result.guidance);
+  if (guidance) lines.push(`Guidance: ${clipOneLine(guidance, 180)}`);
+  return lines;
 }
 
 function stdmSessionPreview(result: Record<string, unknown>): string[] {
@@ -441,11 +476,17 @@ function renderDigestForLlm(digest: Data360RunDigest, outputMode: D360OutputMode
   if (digest.dataspaceName) lines.push(`Data space: ${digest.dataspaceName}`);
   if (digest.stats.rows !== undefined) lines.push(`Rows: ${digest.stats.rows}`);
   if (digest.action.startsWith("trace.")) lines.push(`Spans: ${digest.stats.steps}`);
-  if (digest.stats.resources !== undefined)
+  if (digest.source === "readiness" && digest.stats.resources !== undefined) {
+    lines.push(`Ready surfaces: ${digest.stats.resources}`);
+  } else if (digest.stats.resources !== undefined) {
     lines.push(`OTel resource spans: ${digest.stats.resources}`);
+  }
   if (digest.action === "stdm.session_otel") {
     lines.push(`OTel spans: ${digest.stats.steps}`);
     lines.push(`Errors: ${digest.stats.failed}`);
+  } else if (digest.source === "readiness") {
+    lines.push(`Total surfaces: ${digest.stats.steps}`);
+    if (digest.stats.failed > 0) lines.push(`Problem surfaces: ${digest.stats.failed}`);
   } else if (!digest.action.startsWith("trace.")) {
     lines.push(`Steps: ${digest.stats.steps}`);
     if (digest.stats.failed > 0) lines.push(`Failures: ${digest.stats.failed}`);
@@ -453,7 +494,14 @@ function renderDigestForLlm(digest: Data360RunDigest, outputMode: D360OutputMode
     lines.push(`Errors: ${digest.stats.failed}`);
   }
 
-  const previewLimit = outputMode === "inline" ? 8 : outputMode === "file_only" ? 0 : 5;
+  const previewLimit =
+    outputMode === "inline"
+      ? 8
+      : outputMode === "file_only"
+        ? 0
+        : digest.source === "readiness"
+          ? 9
+          : 5;
   if (previewLimit > 0 && digest.preview.length) {
     lines.push("", "Preview:", ...digest.preview.slice(0, previewLimit).map((line) => `- ${line}`));
   }
@@ -549,6 +597,7 @@ function lineageLines(digest: Data360RunDigest, result: Record<string, unknown>)
 }
 
 function defaultNextSteps(digest: Data360RunDigest): string[] | undefined {
+  if (digest.source === "readiness") return readinessNextSteps(digest);
   if (digest.action === "stdm.find_sessions") {
     return [
       "Pick a session_id and run data360_observe stdm.session_otel for a full OTel export.",
@@ -564,6 +613,7 @@ function defaultNextSteps(digest: Data360RunDigest): string[] | undefined {
 }
 
 function nextActionsFor(result: Record<string, unknown>): string[] {
+  if (result.action === "readiness.probe") return readinessNextActions(result);
   return arrayValue(result.next_actions)
     .map((entry) => {
       const action = objectValue(entry);
@@ -573,6 +623,22 @@ function nextActionsFor(result: Record<string, unknown>): string[] {
       return [tool, actionName].filter(Boolean).join(" ");
     })
     .filter((entry): entry is string => Boolean(entry));
+}
+
+function readinessNextActions(result: Record<string, unknown>): string[] {
+  const summary = summarizeReadinessProbes(result);
+  if (summary.problem === 0)
+    return ["Proceed with the intended Data 360 workflow; core readiness is healthy."];
+  const actions = ["Inspect readiness.json for per-surface errors before running broad workflows."];
+  const agentTracing = summary.probes.find((probe) => probe.name === "agent_platform_tracing_dlo");
+  if (agentTracing && !isReadyProbeState(agentTracing.state)) {
+    actions.push("Enable or grant access to Agent Platform Tracing before trace-tree workflows.");
+  }
+  const core = readinessGroups(summary.probes).find((group) => group.label === "Core Data 360");
+  if (core && core.ready < core.total) {
+    actions.push("Resolve Data 360 provisioning or permissions before querying DMOs/DLOs.");
+  }
+  return actions;
 }
 
 function notesFor(input: Data360V2Input, result: Record<string, unknown>): string[] {
@@ -588,10 +654,76 @@ function warningsFor(result: Record<string, unknown>): string[] {
   return arrayValue(result.warnings).map(String);
 }
 
+function readinessNextSteps(digest: Data360RunDigest): string[] | undefined {
+  if (digest.stats.failed === 0) {
+    return ["Proceed with the intended Data 360 workflow; core readiness is healthy."];
+  }
+  const steps = ["Inspect readiness.json for per-surface errors before running broad workflows."];
+  if (digest.preview.some((line) => line.includes("Agent Platform Tracing: feature_gated"))) {
+    steps.push("Enable or grant access to Agent Platform Tracing before trace-tree workflows.");
+  }
+  if (digest.preview.some((line) => /Core Data 360: [01]\//.test(line))) {
+    steps.push("Resolve Data 360 provisioning or permissions before querying DMOs/DLOs.");
+  }
+  return steps;
+}
+
+function readinessGroups(probes: Array<{ name: string; state: string }>): Array<{
+  label: string;
+  total: number;
+  ready: number;
+}> {
+  const groups = [
+    { label: "Core Data 360", names: ["data_spaces", "dmo_catalog"] },
+    { label: "Observe", names: ["agent_platform_tracing_dlo"] },
+    {
+      label: "Query metadata",
+      names: ["dlo_catalog", "metadata_entities_dmo", "profile_metadata"],
+    },
+    { label: "Delivery", names: ["segments", "activations", "data_actions"] },
+  ];
+  return groups.map((group) => {
+    const selected = probes.filter((probe) => group.names.includes(probe.name));
+    return {
+      label: group.label,
+      total: selected.length,
+      ready: selected.filter((probe) => isReadyProbeState(probe.state)).length,
+    };
+  });
+}
+
+function summarizeReadinessProbes(result: Record<string, unknown>): {
+  total: number;
+  ready: number;
+  empty: number;
+  problem: number;
+  probes: Array<{ name: string; state: string; message?: string }>;
+} {
+  const probes = arrayValue(result.probes).map((probe) => {
+    const row = objectValue(probe);
+    return {
+      name: stringValue(row.name) ?? "unknown_probe",
+      state: stringValue(row.state) ?? "unknown",
+      message: stringValue(row.message),
+    };
+  });
+  return {
+    total: probes.length,
+    ready: probes.filter((probe) => isReadyProbeState(probe.state)).length,
+    empty: probes.filter((probe) => probe.state === "enabled_empty").length,
+    problem: probes.filter((probe) => !isReadyProbeState(probe.state)).length,
+    probes,
+  };
+}
+
+function isReadyProbeState(state: string | undefined): boolean {
+  return state === "enabled_populated" || state === "enabled_empty" || state === "ok";
+}
+
 function countFailed(result: Record<string, unknown>): number {
   const probes = arrayValue(result.probes).map(objectValue);
   if (probes.length)
-    return probes.filter((probe) => stringValue(probe.state)?.includes("error")).length;
+    return probes.filter((probe) => !isReadyProbeState(stringValue(probe.state))).length;
   const steps = arrayValue(result.steps).map(objectValue);
   if (steps.length) return steps.filter((step) => step.ok === false).length;
   return result.ok === false ? 1 : 0;

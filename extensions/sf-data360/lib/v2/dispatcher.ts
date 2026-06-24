@@ -221,6 +221,12 @@ function emitProgress(
   progress?.({ stage, status, tool: input.tool, action: input.action, message });
 }
 
+function progressStatusForProbe(probe: ProbeResult): Data360ProgressEvent["status"] {
+  if (["enabled_populated", "enabled_empty", "ok"].includes(probe.state)) return "success";
+  if (["feature_gated", "tenant_missing", "not_found"].includes(probe.state)) return "warning";
+  return "error";
+}
+
 async function runReadinessProbe(
   input: Data360V2Input,
   env: SfEnvironment,
@@ -258,9 +264,24 @@ async function runReadinessProbe(
           timeoutMs,
           signal,
         });
-        return classifyConnectionProbeResult(probe.name, probe.path, resp.status, resp.body);
+        const result = classifyConnectionProbeResult(
+          probe.name,
+          probe.path,
+          resp.status,
+          resp.body,
+        );
+        emitProgress(
+          progress,
+          input,
+          "execute",
+          progressStatusForProbe(result),
+          `${probe.name}: ${result.state}`,
+        );
+        return result;
       } catch (err) {
-        return probeFailure(probe.name, probe.path, err);
+        const result = probeFailure(probe.name, probe.path, err);
+        emitProgress(progress, input, "execute", "error", `${probe.name}: ${result.state}`);
+        return result;
       }
     }),
   );
@@ -460,7 +481,7 @@ async function runMappedAction(
   if (match.implementation?.kind === "local") return runLocalAction(input, match, env, signal);
   if (match.implementation?.kind === "journey") {
     emitProgress(progress, input, "execute", "running", `Running journey ${match.action}`);
-    const result = await runJourneyAction(input, match, env, ctx, signal);
+    const result = await runJourneyAction(input, match, env, ctx, signal, progress);
     emitProgress(
       progress,
       input,
@@ -1242,22 +1263,49 @@ async function runSemanticRetrieval(
   env: SfEnvironment,
   ctx: ExtensionContext,
   signal: AbortSignal | undefined,
+  progress?: Data360ProgressSink,
 ): Promise<Record<string, unknown>> {
   const gate = requireConfirmedRun(input, "semantic_retrieval.run");
   if (gate) return gate;
+  const plannedSteps = [
+    input.params?.searchIndexBody ? "search_index.create" : undefined,
+    input.params?.retrieverBody ? "retriever.create" : undefined,
+    input.params?.retrieverConfigBody ? "retriever.config.create" : undefined,
+    typeof input.params?.semanticModelName === "string" ? "semantic_model.validate" : undefined,
+  ].filter(Boolean);
   const steps = [];
   if (input.params?.searchIndexBody) {
     steps.push(
-      await executeJourneyStep(input, env, ctx, signal, "data360_semantic", "search_index.create", {
-        body: input.params.searchIndexBody,
-      }),
+      await executeJourneyStep(
+        input,
+        env,
+        ctx,
+        signal,
+        "data360_semantic",
+        "search_index.create",
+        {
+          body: input.params.searchIndexBody,
+        },
+        progress,
+        { index: steps.length + 1, total: plannedSteps.length },
+      ),
     );
   }
   if (input.params?.retrieverBody) {
     steps.push(
-      await executeJourneyStep(input, env, ctx, signal, "data360_semantic", "retriever.create", {
-        body: input.params.retrieverBody,
-      }),
+      await executeJourneyStep(
+        input,
+        env,
+        ctx,
+        signal,
+        "data360_semantic",
+        "retriever.create",
+        {
+          body: input.params.retrieverBody,
+        },
+        progress,
+        { index: steps.length + 1, total: plannedSteps.length },
+      ),
     );
   }
   if (input.params?.retrieverConfigBody) {
@@ -1273,6 +1321,8 @@ async function runSemanticRetrieval(
           retrieverIdOrName: input.params.retrieverIdOrName,
           body: input.params.retrieverConfigBody,
         },
+        progress,
+        { index: steps.length + 1, total: plannedSteps.length },
       ),
     );
   }
@@ -1288,6 +1338,8 @@ async function runSemanticRetrieval(
         {
           semanticModelName: input.params.semanticModelName,
         },
+        progress,
+        { index: steps.length + 1, total: plannedSteps.length },
       ),
     );
   }
@@ -1416,14 +1468,28 @@ async function executeJourneyStep(
   tool: Data360V2ToolName,
   action: string,
   params: Record<string, unknown>,
+  progress?: Data360ProgressSink,
+  position?: { index: number; total: number },
 ): Promise<Record<string, unknown>> {
+  const label = position
+    ? `Step ${position.index}/${position.total} ${tool} ${action}`
+    : `${tool} ${action}`;
+  emitProgress(progress, input, "execute", "running", `${label} running`);
   const result = await runData360V2Action(
     { tool, action, target_org: input.target_org, allow_confirmed: true, params },
     env,
     ctx,
     signal,
   );
-  return { tool, action, ok: result.ok !== false, summary: result.summary, result };
+  const ok = result.ok !== false;
+  emitProgress(
+    progress,
+    input,
+    "execute",
+    ok ? "success" : "error",
+    `${label} ${ok ? "complete" : "failed"}`,
+  );
+  return { tool, action, ok, summary: result.summary, result };
 }
 
 function journeyRunResult(
@@ -2095,6 +2161,7 @@ async function runJourneyAction(
   env: SfEnvironment,
   ctx: ExtensionContext,
   signal: AbortSignal | undefined,
+  progress?: Data360ProgressSink,
 ): Promise<Record<string, unknown>> {
   if (action.implementation?.name === "journey.list") {
     return {
@@ -2165,7 +2232,7 @@ async function runJourneyAction(
     return runMakeDataUsable(input, env, ctx, signal);
   }
   if (action.implementation?.name === "semantic_retrieval.run") {
-    return runSemanticRetrieval(input, env, ctx, signal);
+    return runSemanticRetrieval(input, env, ctx, signal, progress);
   }
   if (action.implementation?.name === "build_segment.run") {
     return runBuildSegment(input, env, ctx, signal);
