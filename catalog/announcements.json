@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.206.2-2026-06-24",
-  "latestVersion": "0.206.2",
+  "revision": "release-0.206.3-2026-06-24",
+  "latestVersion": "0.206.3",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.206.2",
+      "id": "release-0.206.3",
       "kind": "update",
-      "title": "sf-pi v0.206.2 — require pi 0.80.2 runtime",
+      "title": "sf-pi v0.206.3 — harden sf-data360 observability tools",
       "publishedAt": "2026-06-24T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.206.2",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.206.3",
       "severity": "info",
-      "body": "require pi 0.80.2 runtime"
+      "body": "harden sf-data360 observability tools"
     },
     {
       "id": "pi-0.73-required",
