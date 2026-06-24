@@ -39,8 +39,10 @@ export interface ConnRequest {
   body?: unknown;
   /** Custom headers. Defaults to `Content-Type: application/json` + `Accept: application/json`. */
   headers?: Record<string, string>;
-  /** Per-call timeout in ms. Default 120_000. */
+  /** Per-call timeout in ms. Default 120_000. Enforced by this wrapper. */
   timeoutMs?: number;
+  /** Optional caller cancellation signal. */
+  signal?: AbortSignal;
 }
 
 export interface ConnResponse<T> {
@@ -68,16 +70,160 @@ export async function connRequest<T = unknown>(
   const timeout = req.timeoutMs ?? 120_000;
 
   try {
-    const body = await conn.request<T>({
+    if (req.signal?.aborted) throw new ConnRequestAbortedError();
+    const body = serializeBody(req.body);
+    const nativeFetch = nativeFetchRequest<T>(conn, {
       method: req.method,
       url: req.url,
       headers,
-      body: serializeBody(req.body),
+      body,
+      timeoutMs: timeout,
+      signal: req.signal,
+    });
+    if (nativeFetch) return await nativeFetch;
+
+    const request = conn.request<T>({
+      method: req.method,
+      url: req.url,
+      headers,
+      body,
       timeout,
     } as Parameters<typeof conn.request>[0]);
-    return { status: 200, body };
+    const responseBody = await boundedConnRequest(request, timeout, req.signal);
+    return { status: 200, body: responseBody };
   } catch (err) {
     return { status: inferStatus(err), body: errorAsBody(err) as T };
+  }
+}
+
+interface NativeFetchRequest {
+  method: HttpMethod;
+  url: string;
+  headers: Record<string, string>;
+  body?: string;
+  timeoutMs: number;
+  signal?: AbortSignal;
+}
+
+function nativeFetchRequest<T>(
+  conn: Connection,
+  req: NativeFetchRequest,
+): Promise<ConnResponse<T>> | undefined {
+  const accessToken = getAccessToken(conn);
+  const instanceUrl = conn.instanceUrl;
+  if (!accessToken || !instanceUrl) return undefined;
+
+  return boundedNativeFetch<T>(absoluteUrl(instanceUrl, req.url), {
+    ...req,
+    headers: { ...req.headers, Authorization: `Bearer ${accessToken}` },
+  });
+}
+
+function getAccessToken(conn: Connection): string | undefined {
+  return (
+    (conn as unknown as { accessToken?: string }).accessToken ??
+    (conn.getConnectionOptions?.() as { accessToken?: string } | undefined)?.accessToken
+  );
+}
+
+function absoluteUrl(instanceUrl: string, url: string): string {
+  if (/^https?:\/\//i.test(url)) return url;
+  return `${instanceUrl.replace(/\/$/, "")}/${url.replace(/^\//, "")}`;
+}
+
+async function boundedNativeFetch<T>(
+  url: string,
+  req: NativeFetchRequest,
+): Promise<ConnResponse<T>> {
+  if (req.signal?.aborted) throw new ConnRequestAbortedError();
+
+  const controller = new AbortController();
+  let timedOut = false;
+  const abortFromCaller = (): void => controller.abort();
+  req.signal?.addEventListener("abort", abortFromCaller, { once: true });
+  const timer = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, req.timeoutMs);
+
+  try {
+    const resp = await fetch(url, {
+      method: req.method,
+      headers: req.headers,
+      body: req.body,
+      signal: controller.signal,
+    });
+    return { status: resp.status, body: (await parseFetchBody(resp)) as T };
+  } catch (err) {
+    if (req.signal?.aborted) throw new ConnRequestAbortedError();
+    if (timedOut) throw new ConnRequestTimeoutError(req.timeoutMs);
+    throw err;
+  } finally {
+    clearTimeout(timer);
+    req.signal?.removeEventListener("abort", abortFromCaller);
+  }
+}
+
+async function parseFetchBody(resp: Response): Promise<unknown> {
+  const text = await resp.text();
+  if (!text) return undefined;
+  const contentType = resp.headers.get("content-type") ?? "";
+  if (contentType.includes("json") || /^[[{]/.test(text.trim())) {
+    try {
+      return JSON.parse(text);
+    } catch {
+      return text;
+    }
+  }
+  return text;
+}
+
+export class ConnRequestTimeoutError extends Error {
+  readonly statusCode = 408;
+  readonly errorCode = "REQUEST_TIMEOUT";
+  readonly timedOutAfterMs: number;
+
+  constructor(timeoutMs: number) {
+    super(`conn.request timed out after ${timeoutMs}ms.`);
+    this.name = "ConnRequestTimeoutError";
+    this.timedOutAfterMs = timeoutMs;
+  }
+}
+
+export class ConnRequestAbortedError extends Error {
+  readonly statusCode = 499;
+  readonly errorCode = "REQUEST_ABORTED";
+
+  constructor() {
+    super("conn.request aborted.");
+    this.name = "ConnRequestAbortedError";
+  }
+}
+
+async function boundedConnRequest<T>(
+  request: Promise<T>,
+  timeoutMs: number,
+  signal: AbortSignal | undefined,
+): Promise<T> {
+  if (signal?.aborted) throw new ConnRequestAbortedError();
+
+  let timer: NodeJS.Timeout | undefined;
+  let abortHandler: (() => void) | undefined;
+  const timeout = new Promise<T>((_resolve, reject) => {
+    timer = setTimeout(() => reject(new ConnRequestTimeoutError(timeoutMs)), timeoutMs);
+  });
+  const abort = signal
+    ? new Promise<T>((_resolve, reject) => {
+        abortHandler = () => reject(new ConnRequestAbortedError());
+        signal.addEventListener("abort", abortHandler, { once: true });
+      })
+    : undefined;
+
+  try {
+    return await Promise.race(abort ? [request, timeout, abort] : [request, timeout]);
+  } finally {
+    if (timer) clearTimeout(timer);
+    if (abortHandler) signal?.removeEventListener("abort", abortHandler);
   }
 }
 
@@ -167,5 +313,6 @@ function errorAsBody(err: unknown): unknown {
     errorCode: e.errorCode,
     message: e.message,
     name: e.name,
+    statusCode: e.statusCode,
   };
 }

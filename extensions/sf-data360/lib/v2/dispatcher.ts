@@ -150,12 +150,13 @@ async function runApiAction(
     };
   }
   if (signal?.aborted) throw new Error("data360_api rest.request cancelled before request.");
-  const conn = await connFromAlias(resolved.targetOrg);
+  const conn = await connFromAlias(resolved.targetOrg, connectionOptions(input, signal));
   const resp = await connRequest<unknown>(conn, {
     method: resolved.method,
     url: resolved.apiPath,
     body: resolved.method === "GET" ? undefined : body,
     timeoutMs: input.timeout_ms ?? 120_000,
+    signal,
   });
   const responseText = stringify(resp.body);
   const ok = resp.status >= 200 && resp.status < 300 && !responseLooksLikeError(responseText);
@@ -170,6 +171,31 @@ async function runApiAction(
     request: { method: resolved.method, path: resolved.apiPath, body: body ?? null },
     response: resp.body,
     summary: `Raw Data 360 REST ${resolved.method} ${resolved.apiPath} HTTP ${resp.status}`,
+  };
+}
+
+const DEFAULT_CONNECTION_TIMEOUT_MS = 15_000;
+const MAX_CONNECTION_TIMEOUT_MS = 30_000;
+
+function connectionOptions(
+  input: Pick<Data360V2Input, "timeout_ms">,
+  signal: AbortSignal | undefined,
+): { timeoutMs: number; signal: AbortSignal | undefined } {
+  const requested =
+    typeof input.timeout_ms === "number" ? input.timeout_ms : DEFAULT_CONNECTION_TIMEOUT_MS;
+  return {
+    timeoutMs: Math.max(1, Math.min(requested, MAX_CONNECTION_TIMEOUT_MS)),
+    signal,
+  };
+}
+
+function probeFailure(name: string, path: string, err: unknown): ProbeResult {
+  return {
+    name,
+    path,
+    state: "cli_error",
+    message: err instanceof Error ? err.message : String(err),
+    exitCode: 1,
   };
 }
 
@@ -195,14 +221,23 @@ async function runReadinessProbe(
       summary: `Resolved ${PROBES.length} read-only Data 360 readiness probes`,
     };
   }
-  const conn = await connFromAlias(targetOrg);
-  const timeoutMs = typeof input.timeout_ms === "number" ? input.timeout_ms : 45_000;
+  const conn = await connFromAlias(targetOrg, connectionOptions(input, signal));
+  const timeoutMs = typeof input.timeout_ms === "number" ? input.timeout_ms : 15_000;
   const probes: ProbeResult[] = await Promise.all(
     PROBES.map(async (probe) => {
       if (signal?.aborted) throw new Error("Data 360 readiness probe cancelled.");
       const apiPath = buildApiPath(probe.path, apiVersion);
-      const resp = await connRequest<unknown>(conn, { method: "GET", url: apiPath, timeoutMs });
-      return classifyConnectionProbeResult(probe.name, probe.path, resp.status, resp.body);
+      try {
+        const resp = await connRequest<unknown>(conn, {
+          method: "GET",
+          url: apiPath,
+          timeoutMs,
+          signal,
+        });
+        return classifyConnectionProbeResult(probe.name, probe.path, resp.status, resp.body);
+      } catch (err) {
+        return probeFailure(probe.name, probe.path, err);
+      }
     }),
   );
   const summary = summarizeReadiness(probes);
@@ -388,9 +423,9 @@ async function runMappedAction(
 ): Promise<Record<string, unknown>> {
   const match = findData360Action(input.tool, input.action);
   if (!match) return unknownAction(input, input.action);
-  const metadataResult = await runCompactMetadataAction(input, match, env);
+  const metadataResult = await runCompactMetadataAction(input, match, env, signal);
   if (metadataResult) return metadataResult;
-  if (match.implementation?.kind === "local") return runLocalAction(input, match, env);
+  if (match.implementation?.kind === "local") return runLocalAction(input, match, env, signal);
   if (match.implementation?.kind === "journey")
     return runJourneyAction(input, match, env, ctx, signal);
   if (match.implementation?.kind === "tenant_ingest")
@@ -429,6 +464,7 @@ async function runCompactMetadataAction(
   input: Data360V2Input,
   action: Data360V2ActionDefinition,
   env: SfEnvironment,
+  signal: AbortSignal | undefined,
 ): Promise<Record<string, unknown> | undefined> {
   const metadataInput = metadataInputFor(input, action.action);
   if (!metadataInput) return undefined;
@@ -448,11 +484,12 @@ async function runCompactMetadataAction(
       summary: `Resolved compact metadata ${input.action}`,
     };
   }
-  const conn = await connFromAlias(targetOrg);
+  const conn = await connFromAlias(targetOrg, connectionOptions(input, signal));
   const resp = await connRequest<unknown>(conn, {
     method: "GET",
     url: apiPath,
     timeoutMs: input.timeout_ms ?? 120_000,
+    signal,
   });
   const raw = stringify(resp.body);
   const ok = resp.status >= 200 && resp.status < 300 && !responseLooksLikeError(raw);
@@ -1869,6 +1906,7 @@ async function runLocalAction(
   input: Data360V2Input,
   action: Data360V2ActionDefinition,
   env: SfEnvironment,
+  signal: AbortSignal | undefined,
 ): Promise<Record<string, unknown>> {
   if (action.implementation?.name === "csv_schema.infer") {
     const inferred = await inferCsvSchema(input.params ?? {});
@@ -1879,6 +1917,9 @@ async function runLocalAction(
       ...inferred,
       summary: `Inferred ${inferred.schema.fields.length} field(s) for ${inferred.schema.name}`,
     };
+  }
+  if (action.implementation?.name === "stdm.session_otel") {
+    return runStdmSessionOtelAction(input, action, env, signal);
   }
   if (action.implementation?.name !== "sql.verify_rows") {
     return {
@@ -1914,12 +1955,13 @@ async function runLocalAction(
       next_actions: nextActionsFor(action),
     };
   }
-  const conn = await connFromAlias(targetOrg);
+  const conn = await connFromAlias(targetOrg, connectionOptions(input, signal));
   const resp = await connRequest<unknown>(conn, {
     method: request.method,
     url: request.path,
     body: request.body,
     timeoutMs: input.timeout_ms ?? 120_000,
+    signal,
   });
   const responseText = stringify(resp.body);
   const ok = resp.status >= 200 && resp.status < 300 && !responseLooksLikeError(responseText);
@@ -1936,6 +1978,56 @@ async function runLocalAction(
     response: resp.body,
     summary: `Verified row count for ${dloName} HTTP ${resp.status}`,
     report: `Row count for ${dloName}: ${rowCountFromResult({ response: resp.body }, 0)}`,
+    next_actions: nextActionsFor(action),
+  };
+}
+
+async function runStdmSessionOtelAction(
+  input: Data360V2Input,
+  action: Data360V2ActionDefinition,
+  env: SfEnvironment,
+  signal: AbortSignal | undefined,
+): Promise<Record<string, unknown>> {
+  const { targetOrg, apiVersion } = await resolveTargetOrgContext(input.target_org, env);
+  if (!targetOrg) throw new Error("No Salesforce target org is configured.");
+  const sessionId = requiredStringParam(input.params, "session_id");
+  const apiPath = buildApiPath(`/einstein/audit/otel/${encodeURIComponent(sessionId)}`, apiVersion);
+  const request = { method: "GET" as const, path: apiPath };
+  if (input.dry_run) {
+    return {
+      ok: true,
+      tool: input.tool,
+      action: input.action,
+      dryRun: true,
+      targetOrg,
+      apiVersion,
+      safety: action.safety,
+      request,
+      summary: "Resolved Agentforce Session Trace OTel export",
+      next_actions: nextActionsFor(action),
+    };
+  }
+
+  const conn = await connFromAlias(targetOrg, connectionOptions(input, signal));
+  const resp = await connRequest<unknown>(conn, {
+    method: request.method,
+    url: request.path,
+    timeoutMs: input.timeout_ms ?? 45_000,
+    signal,
+  });
+  const responseText = stringify(resp.body);
+  const ok = resp.status >= 200 && resp.status < 300 && !responseLooksLikeError(responseText);
+  return {
+    ok,
+    tool: input.tool,
+    action: input.action,
+    targetOrg,
+    apiVersion,
+    status: resp.status,
+    safety: action.safety,
+    request,
+    response: resp.body,
+    summary: `Agentforce Session Trace OTel export HTTP ${resp.status}`,
     next_actions: nextActionsFor(action),
   };
 }

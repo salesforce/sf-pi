@@ -85,6 +85,36 @@ describe("orgFromAlias", () => {
     expect(second).toEqual({ id: "ok" });
     expect(createMock).toHaveBeenCalledTimes(2);
   });
+
+  test("bounded Org.create times out and clears the cache for retry", async () => {
+    vi.useFakeTimers();
+    createMock.mockImplementationOnce(() => new Promise(() => undefined));
+
+    const mod = await import("../sf-conn/connection.ts");
+    mod.clearConnectionCache();
+
+    const pending = mod.orgFromAlias("slow", { timeoutMs: 25 }).catch((err: unknown) => err);
+    await vi.advanceTimersByTimeAsync(25);
+
+    await expect(pending).resolves.toMatchObject({
+      name: "OrgConnectionTimeoutError",
+      timedOutAfterMs: 25,
+    });
+    expect(mod.cacheSize()).toBe(0);
+  });
+
+  test("bounded Org.create respects pre-aborted signals", async () => {
+    const mod = await import("../sf-conn/connection.ts");
+    mod.clearConnectionCache();
+    const controller = new AbortController();
+    controller.abort();
+
+    await expect(mod.orgFromAlias("aborted", { signal: controller.signal })).rejects.toMatchObject({
+      name: "OrgConnectionAbortedError",
+    });
+    expect(createMock).not.toHaveBeenCalled();
+    expect(mod.cacheSize()).toBe(0);
+  });
 });
 
 describe("resolveOrgIdentity", () => {

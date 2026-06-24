@@ -146,6 +146,31 @@ export const DATA360_V2_TOOL_DEFS: Data360ToolDef[] = [
   },
 ];
 
+const LOCAL_ACTION_ENV: SfEnvironment = {
+  cli: { installed: false },
+  project: { detected: false, sourceApiVersion: "67.0" },
+  config: { hasTargetOrg: false },
+  org: { detected: false, orgType: "unknown", apiVersion: "67.0" },
+  detectedAt: 0,
+};
+
+const ENV_FREE_ACTIONS = new Set([
+  "help",
+  "actions.list",
+  "actions.search",
+  "action.describe",
+  "examples.get",
+]);
+const ENV_FREE_DISCOVER_ACTIONS = new Set(["catalog.search", "catalog.action"]);
+
+function inputRequiresEnvironment(input: Data360V2Input): boolean {
+  if (ENV_FREE_ACTIONS.has(input.action)) return false;
+  if (input.tool === "data360_discover" && ENV_FREE_DISCOVER_ACTIONS.has(input.action)) {
+    return false;
+  }
+  return true;
+}
+
 export function registerData360V2Tools(pi: ExtensionAPI): void {
   const exec = buildExecFn(pi);
   for (const tool of DATA360_V2_TOOL_DEFS) {
@@ -157,9 +182,11 @@ export function registerData360V2Tools(pi: ExtensionAPI): void {
       promptGuidelines: tool.guidelines,
       parameters: Params,
       async execute(_toolCallId, params, signal, _onUpdate, ctx) {
-        const env = await resolveEnvironment(exec, ctx.cwd);
         const settings = readEffectiveData360Settings(ctx.cwd);
         const input = { ...(params as Omit<Data360V2Input, "tool">), tool: tool.name };
+        const env = inputRequiresEnvironment(input)
+          ? await resolveEnvironment(exec, ctx.cwd)
+          : LOCAL_ACTION_ENV;
         const result = await runData360V2Action(input, env, ctx, signal);
         return buildToolResult(result, input.output_mode ?? settings.defaultOutputMode);
       },

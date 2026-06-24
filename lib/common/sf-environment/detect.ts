@@ -33,6 +33,8 @@ import path from "node:path";
 import type { ConfigAggregator as ConfigAggregatorClass, Org as SfOrg } from "@salesforce/core";
 import { orgFromAlias } from "../sf-conn/connection.ts";
 
+const DETECT_ORG_TIMEOUT_MS = 10_000;
+
 let configAggregatorCtor: typeof ConfigAggregatorClass | undefined;
 async function getConfigAggregatorCtor(): Promise<typeof ConfigAggregatorClass> {
   if (configAggregatorCtor) return configAggregatorCtor;
@@ -210,7 +212,7 @@ export async function detectConfig(): Promise<ConfigInfo> {
  */
 export async function detectOrg(targetOrg: string): Promise<OrgInfo> {
   try {
-    const org = await orgFromAlias(targetOrg);
+    const org = await orgFromAlias(targetOrg, { timeoutMs: DETECT_ORG_TIMEOUT_MS });
     return readOrgInfo(org, targetOrg);
   } catch (err) {
     return {

@@ -231,6 +231,137 @@ describe("Data 360 v2 dispatcher", () => {
     expect(orgCreateMock).not.toHaveBeenCalled();
   });
 
+  it("exports a known Agentforce session through the OTel API", async () => {
+    requestMock.mockResolvedValue({ resourceSpans: [{ scopeSpans: [] }] });
+
+    const result = await runData360V2Action(
+      {
+        tool: "data360_observe",
+        action: "stdm.session_otel",
+        target_org: "AgentforceSTDM",
+        params: { session_id: "session-1" },
+      },
+      env,
+      ctx,
+      undefined,
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      tool: "data360_observe",
+      action: "stdm.session_otel",
+      status: 200,
+      response: { resourceSpans: expect.any(Array) },
+      summary: "Agentforce Session Trace OTel export HTTP 200",
+    });
+    expect(requestMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        method: "GET",
+        url: "/services/data/v67.0/einstein/audit/otel/session-1",
+      }),
+    );
+  });
+
+  it("dry-runs Agentforce Session Trace OTel export", async () => {
+    const result = await runData360V2Action(
+      {
+        tool: "data360_observe",
+        action: "stdm.session_otel",
+        target_org: "AgentforceSTDM",
+        dry_run: true,
+        params: { session_id: "session/with space" },
+      },
+      env,
+      ctx,
+      undefined,
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      tool: "data360_observe",
+      action: "stdm.session_otel",
+      dryRun: true,
+      request: {
+        method: "GET",
+        path: "/services/data/v67.0/einstein/audit/otel/session%2Fwith%20space",
+      },
+    });
+    expect(orgCreateMock).not.toHaveBeenCalled();
+  });
+
+  it("finds STDM sessions through a runbook-backed observe action", async () => {
+    requestMock.mockResolvedValue({
+      metadata: [
+        { name: "session_id" },
+        { name: "started" },
+        { name: "ended" },
+        { name: "channel" },
+        { name: "end_type" },
+        { name: "agent_api_name" },
+        { name: "interaction_count" },
+      ],
+      data: [["session-1", "start", "end", "Web", "USER_ENDED", "DemoAgent", 2]],
+    });
+
+    const result = await runData360V2Action(
+      {
+        tool: "data360_observe",
+        action: "stdm.find_sessions",
+        target_org: "AgentforceSTDM",
+        params: { agent_api_name: "DemoAgent", since: "2026-06-23", limit: 5 },
+      },
+      env,
+      ctx,
+      undefined,
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      tool: "data360_observe",
+      action: "stdm.find_sessions",
+      capability: "agent_observability.stdm_find_sessions",
+      summary: "🔎 STDM sessions: 1",
+    });
+  });
+
+  it("returns partial readiness when one probe times out", async () => {
+    let call = 0;
+    requestMock.mockImplementation(async () => {
+      call += 1;
+      if (call === 1) return new Promise(() => undefined);
+      return { totalSize: 1, data: [{ id: "ok" }] };
+    });
+
+    const result = await runData360V2Action(
+      {
+        tool: "data360_discover",
+        action: "readiness.probe",
+        target_org: "AgentforceSTDM",
+        timeout_ms: 1,
+      },
+      env,
+      ctx,
+      undefined,
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      tool: "data360_discover",
+      action: "readiness.probe",
+      targetOrg: "AgentforceSTDM",
+      state: "partial",
+    });
+    expect(result.probes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "data_spaces",
+          state: "cli_error",
+          message: expect.stringContaining("timed out"),
+        }),
+      ]),
+    );
+  });
+
   it("executes sql.verify_rows through Data 360 Query SQL", async () => {
     requestMock.mockResolvedValue({
       data: [[3]],

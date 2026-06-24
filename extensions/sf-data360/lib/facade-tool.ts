@@ -216,6 +216,21 @@ function asRecord(value: unknown): Record<string, unknown> | undefined {
     : undefined;
 }
 
+const DEFAULT_CONNECTION_TIMEOUT_MS = 15_000;
+const MAX_CONNECTION_TIMEOUT_MS = 30_000;
+
+function connectionOptions(
+  input: Pick<D360FacadeInput, "timeout_ms">,
+  signal: AbortSignal | undefined,
+): { timeoutMs: number; signal: AbortSignal | undefined } {
+  const requested =
+    typeof input.timeout_ms === "number" ? input.timeout_ms : DEFAULT_CONNECTION_TIMEOUT_MS;
+  return {
+    timeoutMs: Math.max(1, Math.min(requested, MAX_CONNECTION_TIMEOUT_MS)),
+    signal,
+  };
+}
+
 async function runExecute(
   input: D360FacadeInput,
   env: SfEnvironment,
@@ -318,7 +333,7 @@ async function runExecute(
     };
   }
 
-  const conn = await connFromAlias(targetOrg);
+  const conn = await connFromAlias(targetOrg, connectionOptions(input, signal));
   const preflight = resolveDestructivePreflightRequest(operation.name, params);
   if (preflight) {
     if (signal?.aborted) throw new Error("d360 execute cancelled before destructive preflight.");
@@ -326,6 +341,7 @@ async function runExecute(
       method: "GET",
       url: buildApiPath(preflight.path, apiVersion, preflight.query),
       timeoutMs: input.timeout_ms ?? 120_000,
+      signal,
     });
     const preflightText = stringify(preflightResp.body);
     if (
@@ -360,6 +376,7 @@ async function runExecute(
     url: apiPath,
     body,
     timeoutMs: input.timeout_ms ?? 120_000,
+    signal,
   });
   const responseText = stringify(resp.body);
   const ok = resp.status >= 200 && resp.status < 300 && !responseLooksLikeError(responseText);
@@ -407,7 +424,7 @@ async function runRunbook(
     throw new Error(`Unknown Data 360 runbook '${runbookName}'. Use d360 search first.`);
   const { targetOrg, apiVersion } = await resolveTargetOrgContext(input.target_org, env);
   if (!targetOrg) throw new Error("No Salesforce target org is configured.");
-  const conn = await connFromAlias(targetOrg);
+  const conn = await connFromAlias(targetOrg, connectionOptions(input, signal));
   const params = input.params ?? {};
   const dataspaceName = typeof params.dataspaceName === "string" ? params.dataspaceName : "default";
 
@@ -418,7 +435,8 @@ async function runRunbook(
         method: "POST",
         url: buildApiPath("/ssot/query-sql", apiVersion, { dataspaceName }),
         body: { sql },
-        timeoutMs: input.timeout_ms ?? 120_000,
+        timeoutMs: input.timeout_ms ?? 45_000,
+        signal,
       });
       if (resp.status < 200 || resp.status >= 300 || responseLooksLikeError(stringify(resp.body))) {
         throw new Error(`Query failed (${resp.status}): ${stringify(resp.body).slice(0, 1000)}`);

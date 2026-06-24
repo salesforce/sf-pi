@@ -980,6 +980,30 @@
   },
   {
     "tool": "data360_observe",
+    "action": "stdm.find_sessions",
+    "phase": "observe",
+    "family": "Agent Observability",
+    "capability": "agent_observability.stdm_find_sessions",
+    "description": "Find recent Agentforce STDM sessions by optional agent API name and time window.",
+    "safety": "read",
+    "requiredParams": [],
+    "optionalParams": ["agent_api_name", "since", "limit"],
+    "aliases": ["agent_observability.stdm_find_sessions"]
+  },
+  {
+    "tool": "data360_observe",
+    "action": "stdm.session_otel",
+    "phase": "observe",
+    "family": "Agent Observability",
+    "description": "Export one recent Agentforce session as pre-joined OpenTelemetry JSON.",
+    "safety": "read",
+    "requiredParams": ["session_id"],
+    "optionalParams": [],
+    "implementation": { "kind": "local", "name": "stdm.session_otel" },
+    "aliases": ["agent_observability.stdm_session_otel", "stdm.otel"]
+  },
+  {
+    "tool": "data360_observe",
     "action": "stdm.session_timeline",
     "phase": "observe",
     "family": "Agent Observability",

@@ -23,16 +23,18 @@ Data 360 Observe phase. Use when analyzing Agentforce STDM sessions, conversatio
 
 - Cross-phase orchestration reference. Use the phase map below to route work.
 
-- Capabilities: 5 (5 runbook-backed)
+- Capabilities: 6 (6 runbook-backed)
 - Safety mix: read=0, safe_post=0, confirmed=0, destructive=0
 
 ## Data 360 family actions
 
+- `data360_observe` `stdm.find_sessions` (runbook, read) — Find recent Agentforce STDM sessions by optional agent API name and time window.
 - `data360_observe` `stdm.session_timeline` (runbook, read) — Fetch an STDM conversation timeline for a session id.
 - `data360_observe` `trace.error_traces` (runbook, read) — Find recent Agent Platform Tracing ERROR spans.
 - `data360_observe` `trace.join_interaction_trace` (runbook, read) — Join one STDM interaction to messages, steps, and Platform Tracing spans.
 - `data360_observe` `trace.operation_latency_summary` (runbook, read) — Aggregate Platform Tracing duration by operation name.
 - `data360_observe` `trace.trace_tree` (runbook, read) — Fetch and reconstruct a Platform Tracing span tree by trace id.
+- `data360_observe` `stdm.session_otel` (local, read) — Export one recent Agentforce session as pre-joined OpenTelemetry JSON.
 
 ## Cross-phase routing
 

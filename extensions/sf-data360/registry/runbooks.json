@@ -18,6 +18,12 @@
     "requiredParams": ["interaction_id"]
   },
   {
+    "name": "agent_observability.stdm_find_sessions",
+    "family": "Agent Observability",
+    "description": "Find recent Agentforce STDM sessions by optional agent API name and time window.",
+    "optionalParams": ["agent_api_name", "since", "limit"]
+  },
+  {
     "name": "agent_observability.stdm_session_timeline",
     "family": "Agent Observability",
     "description": "Fetch an STDM conversation timeline for a session id.",

@@ -2,6 +2,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildFindSessionsSql,
   buildInteractionContextSql,
   buildSessionTimelineSql,
   runAgentObservabilityRunbook,
@@ -23,6 +24,20 @@ describe("Agent observability runbooks", () => {
 
     expect(sql).toContain("WHERE i.ssot__Id__c = 'interaction''1'");
     expect(sql).toContain("ssot__TelemetryTraceId__c AS trace_id");
+  });
+
+  it("builds bounded STDM session discovery SQL", () => {
+    const sql = buildFindSessionsSql({
+      agent_api_name: "Service Agent's API",
+      since: "2026-06-23",
+      limit: 9999,
+    });
+
+    expect(sql).toContain('FROM "ssot__AiAgentSession__dlm" s');
+    expect(sql).toContain('JOIN "ssot__AiAgentSessionParticipant__dlm" p');
+    expect(sql).toContain("p.ssot__AiAgentApiName__c = 'Service Agent''s API'");
+    expect(sql).toContain("s.ssot__StartTimestamp__c >= TIMESTAMP '2026-06-23 00:00:00'");
+    expect(sql).toContain("LIMIT 100");
   });
 
   it("reconstructs a platform trace tree from query rows", async () => {
@@ -57,6 +72,30 @@ describe("Agent observability runbooks", () => {
     expect(result.markdown).toContain("run.retriever.Knowledge");
   });
 
+  it("runs STDM session discovery", async () => {
+    const result = await runAgentObservabilityRunbook(
+      "agent_observability.stdm_find_sessions",
+      { agent_api_name: "DemoAgent", since: "2026-06-23", limit: 5 },
+      async () =>
+        queryRows(
+          [
+            "session_id",
+            "started",
+            "ended",
+            "channel",
+            "end_type",
+            "agent_api_name",
+            "interaction_count",
+          ],
+          [["session-1", "start", "end", "Web", "USER_ENDED", "DemoAgent", 2]],
+        ),
+    );
+
+    expect(result.markdown).toContain("🔎 STDM sessions: 1");
+    expect(result.markdown).toContain("session-1");
+    expect(result.data).toMatchObject({ rowCount: 1 });
+  });
+
   it("returns STDM context with a warning when Platform Tracing is unavailable", async () => {
     const result = await runAgentObservabilityRunbook(
       "agent_observability.join_interaction_trace",
@@ -74,6 +113,10 @@ describe("Agent observability runbooks", () => {
     expect(result.data).toMatchObject({ traceAvailable: false });
   });
 });
+
+function queryRows(metadata: string[], data: unknown[][]): QuerySqlResponse {
+  return { metadata: metadata.map((name) => ({ name })), data };
+}
 
 function spanRows(): QuerySqlResponse {
   return {

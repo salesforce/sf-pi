@@ -49,7 +49,35 @@ const DEFAULT_KEY = "<default>";
  * Pass `undefined` to use the default org chain (project default → global
  * default), matching `sf` CLI behavior.
  */
-export async function orgFromAlias(targetOrg?: string): Promise<OrgType> {
+export interface OrgFromAliasOptions {
+  /** Optional timeout for resolving the Salesforce Org from local auth state. */
+  timeoutMs?: number;
+  /** Optional caller cancellation signal. */
+  signal?: AbortSignal;
+}
+
+export class OrgConnectionTimeoutError extends Error {
+  readonly timedOutAfterMs: number;
+
+  constructor(timeoutMs: number) {
+    super(`Org.create() timed out after ${timeoutMs}ms.`);
+    this.name = "OrgConnectionTimeoutError";
+    this.timedOutAfterMs = timeoutMs;
+  }
+}
+
+export class OrgConnectionAbortedError extends Error {
+  constructor() {
+    super("Org.create() aborted.");
+    this.name = "OrgConnectionAbortedError";
+  }
+}
+
+export async function orgFromAlias(
+  targetOrg?: string,
+  options: OrgFromAliasOptions = {},
+): Promise<OrgType> {
+  if (options.signal?.aborted) throw new OrgConnectionAbortedError();
   const key = targetOrg ?? DEFAULT_KEY;
   let pending = orgCache.get(key);
   if (!pending) {
@@ -62,12 +90,57 @@ export async function orgFromAlias(targetOrg?: string): Promise<OrgType> {
     });
     orgCache.set(key, pending);
   }
-  return pending;
+
+  if (!options.timeoutMs && !options.signal) return pending;
+  try {
+    return await boundOrgCreate(pending, options);
+  } catch (err) {
+    orgCache.delete(key);
+    throw err;
+  }
 }
 
 /** Convenience: `orgFromAlias().getConnection()`. */
-export async function connFromAlias(targetOrg?: string): Promise<Connection> {
-  return (await orgFromAlias(targetOrg)).getConnection();
+export async function connFromAlias(
+  targetOrg?: string,
+  options: OrgFromAliasOptions = {},
+): Promise<Connection> {
+  return (await orgFromAlias(targetOrg, options)).getConnection();
+}
+
+async function boundOrgCreate<T>(promise: Promise<T>, options: OrgFromAliasOptions): Promise<T> {
+  if (options.signal?.aborted) throw new OrgConnectionAbortedError();
+
+  const races: Promise<T>[] = [promise];
+  let timer: NodeJS.Timeout | undefined;
+  let abortHandler: (() => void) | undefined;
+
+  if (options.timeoutMs) {
+    races.push(
+      new Promise<T>((_resolve, reject) => {
+        timer = setTimeout(
+          () => reject(new OrgConnectionTimeoutError(options.timeoutMs as number)),
+          options.timeoutMs,
+        );
+      }),
+    );
+  }
+
+  if (options.signal) {
+    races.push(
+      new Promise<T>((_resolve, reject) => {
+        abortHandler = () => reject(new OrgConnectionAbortedError());
+        options.signal?.addEventListener("abort", abortHandler, { once: true });
+      }),
+    );
+  }
+
+  try {
+    return await Promise.race(races);
+  } finally {
+    if (timer) clearTimeout(timer);
+    if (abortHandler) options.signal?.removeEventListener("abort", abortHandler);
+  }
 }
 
 /**

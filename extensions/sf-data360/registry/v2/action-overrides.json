@@ -473,6 +473,21 @@
         "name": "auth.clear"
       },
       "aliases": ["ingest_auth.clear"]
+    },
+    {
+      "tool": "data360_observe",
+      "phase": "observe",
+      "family": "Agent Observability",
+      "action": "stdm.session_otel",
+      "description": "Export one recent Agentforce session as pre-joined OpenTelemetry JSON.",
+      "safety": "read",
+      "requiredParams": ["session_id"],
+      "optionalParams": [],
+      "implementation": {
+        "kind": "local",
+        "name": "stdm.session_otel"
+      },
+      "aliases": ["agent_observability.stdm_session_otel", "stdm.otel"]
     }
   ]
 }

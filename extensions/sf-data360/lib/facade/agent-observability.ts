@@ -21,6 +21,8 @@ import {
   type QuerySqlResponse,
 } from "./sql.ts";
 
+export const STDM_SESSION_DMO = "ssot__AiAgentSession__dlm";
+export const STDM_PARTICIPANT_DMO = "ssot__AiAgentSessionParticipant__dlm";
 export const STDM_INTERACTION_DMO = "ssot__AiAgentInteraction__dlm";
 export const STDM_MESSAGE_DMO = "ssot__AiAgentInteractionMessage__dlm";
 export const STDM_STEP_DMO = "ssot__AiAgentInteractionStep__dlm";
@@ -48,6 +50,8 @@ export async function runAgentObservabilityRunbook(
       return runPlatformTraceTree(params, query);
     case "agent_observability.join_interaction_trace":
       return runJoinInteractionTrace(params, query);
+    case "agent_observability.stdm_find_sessions":
+      return runStdmFindSessions(params, query);
     case "agent_observability.stdm_session_timeline":
       return runStdmSessionTimeline(params, query);
     case "agent_observability.operation_latency_summary":
@@ -55,6 +59,38 @@ export async function runAgentObservabilityRunbook(
     default:
       throw new Error(`Unknown runbook: ${name}`);
   }
+}
+
+export function buildFindSessionsSql(params: Record<string, unknown>): string {
+  const predicates = sinceTimestampPredicate(
+    "s.ssot__StartTimestamp__c",
+    params.since ?? defaultSinceTimestamp(),
+  );
+  const agentApiName = params.agent_api_name ?? params.agentApiName;
+  if (typeof agentApiName === "string" && agentApiName.trim()) {
+    predicates.push(`p.ssot__AiAgentApiName__c = ${sqlString(agentApiName.trim())}`);
+  } else {
+    predicates.push("p.ssot__AiAgentApiName__c <> 'NOT_SET'");
+  }
+
+  return [
+    "SELECT s.ssot__Id__c AS session_id,",
+    "       s.ssot__StartTimestamp__c AS started,",
+    "       s.ssot__EndTimestamp__c AS ended,",
+    "       s.ssot__AiAgentChannelType__c AS channel,",
+    "       s.ssot__AiAgentSessionEndType__c AS end_type,",
+    "       p.ssot__AiAgentApiName__c AS agent_api_name,",
+    "       COUNT(i.ssot__Id__c) AS interaction_count",
+    `FROM "${STDM_SESSION_DMO}" s`,
+    `JOIN "${STDM_PARTICIPANT_DMO}" p`,
+    "  ON p.ssot__AiAgentSessionId__c = s.ssot__Id__c",
+    `LEFT JOIN "${STDM_INTERACTION_DMO}" i`,
+    "  ON i.ssot__AiAgentSessionId__c = s.ssot__Id__c",
+    `WHERE ${predicates.join(" AND ")}`,
+    "GROUP BY s.ssot__Id__c, s.ssot__StartTimestamp__c, s.ssot__EndTimestamp__c, s.ssot__AiAgentChannelType__c, s.ssot__AiAgentSessionEndType__c, p.ssot__AiAgentApiName__c",
+    "ORDER BY s.ssot__StartTimestamp__c DESC",
+    `LIMIT ${boundedLimit(params.limit, 20, 100)}`,
+  ].join("\n");
 }
 
 export function buildSessionTimelineSql(sessionId: string, limit?: unknown): string {
@@ -211,6 +247,20 @@ async function runJoinInteractionTrace(
   }
 }
 
+async function runStdmFindSessions(
+  params: Record<string, unknown>,
+  query: QueryRunner,
+): Promise<RunbookResult> {
+  const sql = buildFindSessionsSql(params);
+  const rows = rowsFromQuery(await query(sql));
+  return {
+    name: "agent_observability.stdm_find_sessions",
+    sql,
+    data: { rows, rowCount: rows.length },
+    markdown: [`🔎 STDM sessions: ${rows.length}`, ...rows.map(renderSessionRow)].join("\n"),
+  };
+}
+
 async function runStdmSessionTimeline(
   params: Record<string, unknown>,
   query: QueryRunner,
@@ -303,12 +353,21 @@ function renderTimelineRow(row: Record<string, unknown>): string {
   return `   ${row.who === "Input" ? "👤" : "🤖"} [${String(row.topic ?? "?")}] ${clip(String(row.text ?? ""), 140)}`;
 }
 
+function renderSessionRow(row: Record<string, unknown>): string {
+  const interactions = String(row.interaction_count ?? "?");
+  return `   ${String(row.session_id ?? "?")} agent=${String(row.agent_api_name ?? "?")} started=${String(row.started ?? "?")} channel=${String(row.channel ?? "?")} interactions=${interactions}`;
+}
+
 function renderErrorRow(row: Record<string, unknown>): string {
   return `   🔴 ${String(row.ssot__OperationName__c ?? row.operation_name ?? "?")} trace=${String(row.ssot__TelemetryTrace__c ?? "?")} span=${String(row.ssot__Id__c ?? "?")}`;
 }
 
 function renderLatencyRow(row: Record<string, unknown>): string {
   return `   ⏱️ ${String(row.operation_name ?? row.ssot__OperationName__c ?? "?")} count=${String(row.span_count ?? "?")} avgNanos=${String(row.avg_duration_nanos ?? "?")}`;
+}
+
+function defaultSinceTimestamp(): string {
+  return new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().replace("T", " ").slice(0, 19);
 }
 
 function clip(value: string, max: number): string {

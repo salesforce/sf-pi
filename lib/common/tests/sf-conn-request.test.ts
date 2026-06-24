@@ -26,6 +26,12 @@ function throwingConn(err: unknown) {
   } as unknown as Parameters<typeof connRequest>[0];
 }
 
+function fakeConn(spy: (req: { body?: unknown }) => unknown) {
+  return {
+    request: vi.fn(async (req: { body?: unknown }) => spy(req)),
+  } as unknown as Parameters<typeof connRequest>[0];
+}
+
 describe("serializeBody", () => {
   test("returns undefined for undefined", () => {
     expect(serializeBody(undefined)).toBeUndefined();
@@ -45,12 +51,6 @@ describe("serializeBody", () => {
 });
 
 describe("connRequest body handling", () => {
-  function fakeConn(spy: (req: { body?: unknown }) => unknown) {
-    return {
-      request: vi.fn(async (req: { body?: unknown }) => spy(req)),
-    } as unknown as Parameters<typeof connRequest>[0];
-  }
-
   test("forwards object bodies as a JSON string (not re-stringified)", async () => {
     const captured: Array<unknown> = [];
     const conn = fakeConn((req) => {
@@ -98,6 +98,37 @@ describe("connRequest body handling", () => {
 
     expect(captured).toEqual([undefined]);
   });
+
+  test("prefers bounded native fetch when the connection exposes token and instance URL", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ totalSize: 1 }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const conn = {
+      accessToken: "JWT",
+      instanceUrl: "https://example.my.salesforce.com",
+      request: vi.fn(),
+    } as unknown as Parameters<typeof connRequest>[0];
+
+    const response = await connRequest(conn, {
+      method: "GET",
+      url: "/services/data/v67.0/ssot/data-spaces",
+    });
+
+    expect(response).toEqual({ status: 200, body: { totalSize: 1 } });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://example.my.salesforce.com/services/data/v67.0/ssot/data-spaces",
+      expect.objectContaining({
+        method: "GET",
+        headers: expect.objectContaining({ Authorization: "Bearer JWT" }),
+      }),
+    );
+    expect(conn.request).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
 });
 
 describe("connRequest error → status mapping", () => {
@@ -136,5 +167,57 @@ describe("connRequest error → status mapping", () => {
     const conn = throwingConn({ message: "random failure" });
     const r = await connRequest(conn, { method: "GET", url: "/x" });
     expect(r.status).toBe(500);
+  });
+
+  test("enforces a wrapper timeout when conn.request never settles", async () => {
+    vi.useFakeTimers();
+    const conn = fakeConn(() => new Promise(() => undefined));
+
+    const pending = connRequest(conn, { method: "GET", url: "/x", timeoutMs: 25 });
+    await vi.advanceTimersByTimeAsync(25);
+
+    await expect(pending).resolves.toMatchObject({
+      status: 408,
+      body: {
+        errorCode: "REQUEST_TIMEOUT",
+        name: "ConnRequestTimeoutError",
+      },
+    });
+    vi.useRealTimers();
+  });
+
+  test("returns promptly when the caller aborts an in-flight request", async () => {
+    const conn = fakeConn(() => new Promise(() => undefined));
+    const controller = new AbortController();
+
+    const pending = connRequest(conn, {
+      method: "GET",
+      url: "/x",
+      timeoutMs: 120_000,
+      signal: controller.signal,
+    });
+    controller.abort();
+
+    await expect(pending).resolves.toMatchObject({
+      status: 499,
+      body: {
+        errorCode: "REQUEST_ABORTED",
+        name: "ConnRequestAbortedError",
+      },
+    });
+  });
+
+  test("does not start conn.request for pre-aborted calls", async () => {
+    const conn = fakeConn(() => ({ ok: true }));
+    const controller = new AbortController();
+    controller.abort();
+
+    await expect(
+      connRequest(conn, { method: "GET", url: "/x", signal: controller.signal }),
+    ).resolves.toMatchObject({
+      status: 499,
+      body: { errorCode: "REQUEST_ABORTED" },
+    });
+    expect(conn.request).not.toHaveBeenCalled();
   });
 });
