@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.209.1-2026-06-24",
-  "latestVersion": "0.209.1",
+  "revision": "release-0.210.0-2026-06-24",
+  "latestVersion": "0.210.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.209.1",
+      "id": "release-0.210.0",
       "kind": "update",
-      "title": "sf-pi v0.209.1 — avoid recycled herdr lane aliases",
+      "title": "sf-pi v0.210.0 — improve sf-herdr plan rendering",
       "publishedAt": "2026-06-24T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.209.1",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.210.0",
       "severity": "info",
-      "body": "avoid recycled herdr lane aliases"
+      "body": "improve sf-herdr plan rendering"
     },
     {
       "id": "pi-0.73-required",
