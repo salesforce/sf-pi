@@ -517,6 +517,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.208.0](https://github.com/salesforce/sf-pi/compare/v0.207.0...v0.208.0) (2026-06-24)
+
+
+### Features
+
+* improve Data 360 readiness and journey progress ([50ded1f](https://github.com/salesforce/sf-pi/commit/50ded1f63d4439a1878c92036c6b1fd480068d2e))
+
 ## [0.207.0](https://github.com/salesforce/sf-pi/compare/v0.206.3...v0.207.0) (2026-06-24)
 
 
