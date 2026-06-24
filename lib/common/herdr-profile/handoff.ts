@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Cross-extension Herdr handoff contract. */
-import type { HerdrExpectedDuration, HerdrPlanIntent, HerdrWorkflowKey } from "./store.ts";
+import type { HerdrExpectedDuration, HerdrPlanIntent, HerdrWorkflowKey } from "./types.ts";
 
 export interface HerdrWorkflowHandoff {
   label: string;

@@ -24,8 +24,13 @@
       "lib/signal-state.ts",
       "lib/status.ts",
       "lib/config-panel.ts",
+      "../../lib/common/herdr-profile/types.ts",
+      "../../lib/common/herdr-profile/defaults.ts",
       "../../lib/common/herdr-profile/store.ts",
-      "../../docs/adr/0016-dynamic-sf-herdr-lane-planning.md"
+      "../../lib/common/herdr-profile/planner.ts",
+      "../../lib/common/herdr-profile/handoff.ts",
+      "../../docs/adr/0016-dynamic-sf-herdr-lane-planning.md",
+      "../../docs/adr/0068-fresh-ephemeral-herdr-lanes.md"
     ],
     "stateFiles": ["<globalAgentDir>/sf-pi/herdr/preferences.json"],
     "safety": [
