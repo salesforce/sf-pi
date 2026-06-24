@@ -113,6 +113,7 @@ extensions/sf-herdr/
     status.ts               ← implementation module
   tests/
     config-panel.test.ts    ← unit / smoke test
+    plan-render.test.ts     ← unit / smoke test
     signal-state.test.ts    ← unit / smoke test
     smoke.test.ts           ← unit / smoke test
   index.ts                  ← Pi extension entry point

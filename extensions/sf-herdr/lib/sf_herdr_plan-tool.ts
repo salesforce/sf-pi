@@ -79,7 +79,9 @@ export function registerSfHerdrPlanTool(pi: ExtensionAPI, signalState: HerdrSign
       const runtime = getHerdrRuntimeStatus();
 
       return {
-        content: [{ type: "text", text: renderPlan(plan, runtime.inHerdrPane) }],
+        content: [
+          { type: "text", text: renderHerdrLanePlan(plan, { inHerdrPane: runtime.inHerdrPane }) },
+        ],
         details: { plan, herdrRuntime: runtime },
       };
     },
@@ -88,52 +90,73 @@ export function registerSfHerdrPlanTool(pi: ExtensionAPI, signalState: HerdrSign
 
 type Plan = ReturnType<typeof buildHerdrLanePlan>;
 
-function renderPlan(plan: Plan, inHerdrPane: boolean): string {
+export function renderHerdrLanePlan(plan: Plan, options: { inHerdrPane?: boolean } = {}): string {
+  const lifecycleLabel = lifecycleName(plan.lane.lifecycle);
+  const lines = [
+    `🐑 SF Herdr plan  ${plan.lane.id} · ${plan.intent} · ${lifecycleLabel}`,
+    options.inHerdrPane === false
+      ? "  ⚠ Herdr pane environment not detected — advisory until upstream herdr is active."
+      : undefined,
+    `  Workflow  ${plan.workflow.primary} (${Math.round(plan.workflow.confidence * 100)}%)${formatRelated(plan)}`,
+    `  Lane      ${plan.lane.id} · base ${plan.lane.baseAlias} · target ${plan.alias.targetAliasHint}`,
+    `  Place     split ${plan.placement.splitDirection} · focus=${plan.placement.focus}`,
+    `  Success   ${plan.successCondition}`,
+    "",
+    "  Action path",
+    ...formatActionPath(plan),
+    "",
+    "  Cleanup",
+    ...formatCleanup(plan),
+    "",
+    `  Advanced  herdr.send for interactive text/keys · herdr.wait_agent for recognized agent panes`,
+    "",
+    "  Notes",
+    `  · Non-mutating plan — execute upstream herdr actions visibly.`,
+    `  · Caller supplies the shell command; SF Guardrail mediates herdr.run when rules match.`,
+    plan.workflow.reason ? `  · ${clip(plan.workflow.reason, 120)}` : undefined,
+  ];
+  return lines.filter((line): line is string => typeof line === "string").join("\n");
+}
+
+function lifecycleName(lifecycle: Plan["lane"]["lifecycle"]): string {
+  if (lifecycle === "ephemeral") return "fresh ephemeral";
+  return lifecycle;
+}
+
+function formatRelated(plan: Plan): string {
+  return plan.workflow.related.length ? ` · related ${plan.workflow.related.join(", ")}` : "";
+}
+
+function formatActionPath(plan: Plan): string[] {
+  const create = plan.recommendedActions.find((action) => action.action === "pane_split");
+  const run = plan.recommendedActions.find((action) => action.action === "run");
+  const hasStop = plan.recommendedActions.some((action) => action.action === "stop");
+  const rows = [
+    ["1", "herdr.list", "detect live alias collisions"],
+    ["2", "herdr.pane_split", `create ${create?.targetAlias ?? plan.alias.targetAliasHint}`],
+    ["3", "herdr.run", run?.purpose ?? "submit caller-owned command"],
+    ["4", "herdr.watch/read", "observe success marker; inspect recent-unwrapped when needed"],
+    ["5", hasStop ? "herdr.stop" : "manual cleanup", formatSuccessCleanup(plan)],
+  ];
+  return rows.map(([index, action, detail]) => `    ${index}. ${action.padEnd(16)} ${detail}`);
+}
+
+function formatCleanup(plan: Plan): string[] {
+  const failure = plan.cleanupPolicy.onFailureOrTimeout;
   return [
-    "SF Herdr lane plan (non-mutating)",
-    inHerdrPane
-      ? undefined
-      : "Advisory: Herdr pane environment not detected; use this plan only when the upstream herdr tool is active.",
-    `Workflow: ${plan.workflow.primary} (${Math.round(plan.workflow.confidence * 100)}%)`,
-    plan.workflow.related.length > 0 ? `Related: ${plan.workflow.related.join(", ")}` : undefined,
-    `Reason: ${plan.workflow.reason}`,
-    `Intent: ${plan.intent}`,
-    `Lane: ${plan.lane.id} → base alias '${plan.lane.baseAlias}' (${plan.lane.lifecycle})`,
-    `Alias: ${plan.alias.targetAliasHint}; ${plan.alias.selection}`,
-    `Placement: split ${plan.placement.splitDirection}; focus=${plan.placement.focus}`,
-    `Success condition: ${plan.successCondition}`,
-    "",
-    "Phases:",
-    `1. Discover: ${plan.phases.discover}`,
-    `2. Create: ${plan.phases.create}`,
-    `3. Run: ${plan.phases.run}`,
-    `4. Observe: ${plan.phases.observe}`,
-    `5. Cleanup: ${plan.phases.cleanup}`,
-    "",
-    "Recommended Herdr actions:",
-    ...plan.recommendedActions.map((action) => {
-      const target = action.targetAlias ? ` → ${action.targetAlias}` : "";
-      const condition = action.condition ? ` (${action.condition})` : "";
-      return `- ${action.phase}: herdr.${action.action}${target} — ${action.purpose}${condition}`;
-    }),
-    "",
-    "Advanced actions:",
-    ...plan.advancedActions.map((action) => `- herdr.${action.action}: ${action.useWhen}`),
-    "",
-    "Cleanup policy:",
-    `- Success: ${formatSuccessCleanup(plan)}`,
-    `- Failure/timeout: ${plan.cleanupPolicy.onFailureOrTimeout.action}; read source=${plan.cleanupPolicy.onFailureOrTimeout.readSource}`,
-    "",
-    "Notes:",
-    ...plan.notes.map((note) => `- ${note}`),
-  ]
-    .filter((line): line is string => typeof line === "string")
-    .join("\n");
+    `    ✓ success   ${formatSuccessCleanup(plan)}`,
+    `    ⚠ failure   ${failure.action}; read ${failure.readSource}; ask before cleanup`,
+  ];
 }
 
 function formatSuccessCleanup(plan: Plan): string {
   if (plan.cleanupPolicy.onSuccess.action === "none") {
     return "no automatic cleanup; explicit user cleanup required";
   }
-  return `${plan.cleanupPolicy.onSuccess.action} after ${plan.cleanupPolicy.onSuccess.requires}`;
+  return `stop/close after Workflow Success Condition`;
+}
+
+function clip(value: string, max: number): string {
+  const clean = value.replace(/\s+/g, " ").trim();
+  return clean.length > max ? `${clean.slice(0, Math.max(0, max - 1))}…` : clean;
 }
