@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.208.0-2026-06-24",
-  "latestVersion": "0.208.0",
+  "revision": "release-0.209.0-2026-06-24",
+  "latestVersion": "0.209.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.208.0",
+      "id": "release-0.209.0",
       "kind": "update",
-      "title": "sf-pi v0.208.0 — improve Data 360 readiness and journey progress",
+      "title": "sf-pi v0.209.0 — refine sf-herdr fresh lane planning",
       "publishedAt": "2026-06-24T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.208.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.209.0",
       "severity": "info",
-      "body": "improve Data 360 readiness and journey progress"
+      "body": "refine sf-herdr fresh lane planning"
     },
     {
       "id": "pi-0.73-required",
