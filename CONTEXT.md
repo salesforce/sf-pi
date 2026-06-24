@@ -268,9 +268,9 @@ _Avoid_: runtime-floor bump, broad rewrite, opportunistic API adoption
 A release-adoption change set that deliberately raises the minimum supported **Pi Runtime** version so **SF Pi** can use newer public runtime interfaces directly. It must update the runtime gate, package metadata, tests, and user-facing rationale together.
 _Avoid_: compatibility-preserving adoption, hidden floor bump, mixed feature sweep
 
-**Selective Provider Base Import**:
-The import posture where **SF Pi** modules that only need neutral `pi-ai` helpers or types use `@earendil-works/pi-ai/base`, while modules that register, stream, or adapt providers keep full or provider-specific imports. This avoids unnecessary provider transport loading without changing which models users can select.
-_Avoid_: disabling providers, blanket import rewrite, model catalog filtering
+**Pi AI Compatibility Entrypoint**:
+The import posture where **SF Pi** modules that still use Pi's legacy `pi-ai` streaming/catalog functions import them from `@earendil-works/pi-ai/compat`, while neutral schema/type modules keep root package imports. This relies on Pi's documented migration bridge instead of local shims or removed base entrypoints.
+_Avoid_: local compatibility shims, removed base entrypoints, disabled providers, blanket import rewrite, model catalog filtering
 
 **Pi Runtime Adoption Ledger**:
 A small decision record that maps a new **Pi Runtime** capability to the **SF Pi** response: adopt, defer, ignore, or delete overlapping **SF Pi** code, with an owning surface and expected behavior-test proof. It is a release-audit aid, not a runtime feature or separate roadmap.

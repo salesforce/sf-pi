@@ -15,12 +15,12 @@
  * Non-OpenAI-family models pass through untouched.
  */
 import {
-  streamSimpleOpenAICompletions,
   type AssistantMessageEventStream,
   type Context,
   type Model,
   type SimpleStreamOptions,
 } from "@earendil-works/pi-ai";
+import { streamSimpleOpenAICompletions } from "@earendil-works/pi-ai/compat";
 import {
   injectCodexGatewayParams,
   injectOpenAiReasoningEffort,

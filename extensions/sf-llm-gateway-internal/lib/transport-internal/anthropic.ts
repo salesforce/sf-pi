@@ -15,12 +15,12 @@
  * provider retry budget Pi passes through `options.maxRetries`.
  */
 import {
-  streamSimpleAnthropic,
   type AssistantMessageEventStream,
   type Context,
   type Model,
   type SimpleStreamOptions,
 } from "@earendil-works/pi-ai";
+import { streamSimpleAnthropic } from "@earendil-works/pi-ai/compat";
 import { streamAnthropicWithRobustRetry, withGatewayProviderRetryDefaults } from "./shared.ts";
 
 export function streamSfGatewayAnthropic(

@@ -27,7 +27,7 @@ import * as PiRuntime from "@earendil-works/pi-coding-agent";
  * package.json. Bump this whenever sf-pi starts depending on an API added
  * in a newer pi release.
  */
-export const MIN_PI_VERSION = "0.79.10";
+export const MIN_PI_VERSION = "0.80.2";
 
 /**
  * Cached pi-coding-agent version exported by the host Pi Runtime. Cached

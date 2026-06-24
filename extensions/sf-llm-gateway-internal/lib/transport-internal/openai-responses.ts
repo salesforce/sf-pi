@@ -15,12 +15,12 @@
  */
 import {
   createAssistantMessageEventStream,
-  streamSimpleOpenAIResponses,
   type AssistantMessageEventStream,
   type Context,
   type Model,
   type SimpleStreamOptions,
 } from "@earendil-works/pi-ai";
+import { streamSimpleOpenAIResponses } from "@earendil-works/pi-ai/compat";
 import { streamSfGatewayOpenAI } from "./openai-chat.ts";
 import { injectOpenAiServiceTier } from "./payloads.ts";
 import { withGatewayProviderRetryDefaults } from "./shared.ts";
