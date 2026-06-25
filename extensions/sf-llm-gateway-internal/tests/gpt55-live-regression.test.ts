@@ -1,16 +1,19 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /**
- * Live GPT 5.5 regression checks against a real SF LLM Gateway instance.
+ * Live GPT-5 Responses regression checks against a real SF LLM Gateway instance.
  *
  * This suite is intentionally opt-in:
  * - it only runs when SF_LLM_GATEWAY_INTERNAL_BASE_URL and
  *   SF_LLM_GATEWAY_INTERNAL_API_KEY are set
  * - it talks to the real gateway over the network
  *
- * Goal: verify the actual sf-pi transport path for the critical-path GPT 5.5
- * model. The model must route through `POST <gateway-root>/responses`, keep
- * tool-shaped agentic requests accepted, and avoid the chat-completions
+ * Goal: verify the actual sf-pi transport path for critical-path GPT-5
+ * Responses models. The model must route through `POST <gateway-root>/responses`,
+ * keep tool-shaped agentic requests accepted, and avoid the chat-completions
  * fallback unless the explicit kill switch is set.
+ *
+ * Set SF_LLM_GATEWAY_INTERNAL_GPT55_TEST_MODEL to probe a specific discovered
+ * Responses model, such as gpt-5.4-bedrock or gpt-5.5-bedrock.
  */
 import { describe, expect, it } from "vitest";
 import type {
@@ -37,7 +40,7 @@ const timeoutMs = Number(process.env[LIVE_TIMEOUT_ENV] || DEFAULT_TIMEOUT_MS);
 const hasLiveGatewayConfig = !!baseUrl && !!apiKey;
 const describeLive = hasLiveGatewayConfig ? describe : describe.skip;
 
-describeLive("sf-llm-gateway-internal GPT 5.5 live regression", () => {
+describeLive("sf-llm-gateway-internal GPT-5 Responses live regression", () => {
   it(
     "streams through the OpenAI Responses transport with an agentic tool-shaped request",
     async () => {

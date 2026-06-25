@@ -33,6 +33,7 @@ export {
   formatAnthropicStreamError,
   isCodexModelId,
   isGpt55ModelId,
+  isGpt5BedrockResponsesModelId,
   isGpt5FamilyResponsesModelId,
   isOpenAiModelId,
   isOpenAiReasoningModelId,
@@ -60,6 +61,7 @@ export {
 export { streamSfGatewayAnthropic } from "./transport-internal/anthropic.ts";
 export { streamSfGatewayOpenAI } from "./transport-internal/openai-chat.ts";
 export {
+  GPT5_BEDROCK_EARLY_DONE_GRACE_MS,
   GPT5_FORCE_CHAT_ENV,
   GPT55_FORCE_CHAT_ENV,
   streamSfGatewayResponses,

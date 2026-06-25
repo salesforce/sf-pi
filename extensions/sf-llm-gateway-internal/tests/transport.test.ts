@@ -210,6 +210,12 @@ describe("injectOpenAiServiceTier", () => {
     expect(payload.service_tier).toBe("flex");
   });
 
+  it("does not default priority for GPT-5 Bedrock Responses model IDs", () => {
+    const payload: Record<string, unknown> = {};
+    injectOpenAiServiceTier(payload, "gpt-5.5-bedrock");
+    expect(payload.service_tier).toBeUndefined();
+  });
+
   it("overwrites blank / non-string service_tier with the default", () => {
     for (const bogus of ["", "   ", null, 0, {}]) {
       const payload: Record<string, unknown> = { service_tier: bogus };

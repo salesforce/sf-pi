@@ -32,6 +32,7 @@ import { DEFAULT_MODEL_ID, FALLBACK_MODEL_ID, PREVIOUS_DEFAULT_MODEL_ID } from "
 
 import {
   ANTHROPIC_FINE_GRAINED_TOOL_STREAMING_BETA,
+  isGpt5BedrockResponsesModelId,
   isGpt5FamilyResponsesModelId,
   isGpt55ModelId,
   isOpus46OrNewerModelId,
@@ -290,6 +291,20 @@ export const GPT5_RESPONSES_THINKING_LEVEL_MAP: ProviderModelConfig["thinkingLev
 };
 
 /**
+ * Conservative map for GPT-5 Bedrock Responses model IDs. Live probes show
+ * `high` is the stable common effort tier for these routes, while lower
+ * efforts can fail before the model responds. Keep this strict until the
+ * gateway advertises or proves broader support.
+ */
+export const GPT5_BEDROCK_RESPONSES_THINKING_LEVEL_MAP: ProviderModelConfig["thinkingLevelMap"] = {
+  minimal: "high",
+  low: "high",
+  medium: "high",
+  high: "high",
+  xhigh: "high",
+};
+
+/**
  * Build the startup bootstrap catalog only.
  *
  * These IDs are local fallback presets so Pi can resolve gateway defaults
@@ -419,12 +434,13 @@ export function toProviderModelConfig(
   const isGpt5Family = isGpt5FamilyResponsesModelId(def.id);
   const compat = isCodex ? CODEX_OPENAI_COMPAT : COMMON_OPENAI_COMPAT;
 
-  // gpt-5, gpt-5-mini, gpt-5.5 all route through the OpenAI Responses API
+  // Non-Codex gpt-5 family models route through the OpenAI Responses API
   // (`POST /responses` on this gateway; `/v1/responses` is SSO-only). The
   // working reasoning.effort window is model-specific:
   //   - gpt-5 / gpt-5-mini: minimal | low | medium | high  (xhigh → high)
   //   - gpt-5.5:            low | medium | high            (minimal → low,
   //                                                        xhigh  → high)
+  //   - gpt-5.*-bedrock:    high only                      (all levels → high)
   // The internal api tag is stripped before pi registers the model so pi
   // still calls the provider-level `streamSimple` hook; the dispatcher
   // reads the id to pick the right shim.
@@ -439,9 +455,11 @@ export function toProviderModelConfig(
       contextWindow: def.contextWindow,
       maxTokens: def.maxTokens,
       compat,
-      thinkingLevelMap: isGpt55
-        ? GPT55_RESPONSES_THINKING_LEVEL_MAP
-        : GPT5_RESPONSES_THINKING_LEVEL_MAP,
+      thinkingLevelMap: isGpt5BedrockResponsesModelId(def.id)
+        ? GPT5_BEDROCK_RESPONSES_THINKING_LEVEL_MAP
+        : isGpt55
+          ? GPT55_RESPONSES_THINKING_LEVEL_MAP
+          : GPT5_RESPONSES_THINKING_LEVEL_MAP,
     };
   }
 

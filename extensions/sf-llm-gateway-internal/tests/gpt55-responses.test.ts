@@ -22,9 +22,11 @@ import {
 import {
   toProviderModelConfig,
   GPT55_RESPONSES_THINKING_LEVEL_MAP,
+  GPT5_BEDROCK_RESPONSES_THINKING_LEVEL_MAP,
   GPT5_RESPONSES_THINKING_LEVEL_MAP,
 } from "../lib/models.ts";
 import {
+  GPT5_BEDROCK_EARLY_DONE_GRACE_MS,
   GPT5_FORCE_CHAT_ENV,
   GPT55_FORCE_CHAT_ENV,
   isGpt5FamilyResponsesModelId,
@@ -67,11 +69,19 @@ describe("gpt-5.5 model registration", () => {
     expect(map.xhigh).toBe("high");
   });
 
-  it("also tags gpt-5 and gpt-5-mini as openai-responses with the native clamp", () => {
-    for (const id of ["gpt-5", "gpt-5-mini"]) {
+  it("also tags gpt-5, gpt-5-mini, and versioned non-Bedrock IDs with the native clamp", () => {
+    for (const id of ["gpt-5", "gpt-5-mini", "gpt-5.4"]) {
       const cfg = toProviderModelConfig(id, null, new Set());
       expect(cfg.api).toBe("openai-responses");
       expect(cfg.thinkingLevelMap).toEqual(GPT5_RESPONSES_THINKING_LEVEL_MAP);
+    }
+  });
+
+  it("tags GPT-5 Bedrock Responses models with the conservative high-only clamp", () => {
+    for (const id of ["gpt-5.4-bedrock", "gpt-5.5-bedrock"]) {
+      const cfg = toProviderModelConfig(id, null, new Set());
+      expect(cfg.api).toBe("openai-responses");
+      expect(cfg.thinkingLevelMap).toEqual(GPT5_BEDROCK_RESPONSES_THINKING_LEVEL_MAP);
     }
   });
 
@@ -83,14 +93,18 @@ describe("gpt-5.5 model registration", () => {
 });
 
 describe("isGpt5FamilyResponsesModelId", () => {
-  it("matches gpt-5, gpt-5-mini, gpt-5.5 plus the openai/ prefix form", () => {
+  it("matches non-Codex GPT-5 Responses IDs plus the openai/ prefix form", () => {
     for (const id of [
       "gpt-5",
       "gpt-5-mini",
       "gpt-5.5",
+      "gpt-5.4",
+      "gpt-5.4-bedrock",
+      "gpt-5.5-bedrock",
       "openai/gpt-5",
       "openai/gpt-5-mini",
       "openai/gpt-5.5",
+      "openai/gpt-5.4-bedrock",
       "GPT-5",
     ]) {
       expect(isGpt5FamilyResponsesModelId(id)).toBe(true);
@@ -245,6 +259,109 @@ describe("streamSfGatewayResponses", () => {
 
     expect(observedTier).toBe("flex");
   });
+
+  it("does not inject service_tier: priority for GPT-5 Bedrock Responses models", async () => {
+    let observedTier: unknown = "unset";
+    const bedrockResponsesModel = {
+      ...responsesModel,
+      id: "gpt-5.5-bedrock",
+    } as Model<"openai-responses">;
+    const bedrockChatModel = {
+      ...chatModel,
+      id: "gpt-5.5-bedrock",
+    } as Model<"openai-completions">;
+    const hooks: Gpt55ResponsesTestHooks = {
+      responsesStreamer: (_model, _ctx, options) => {
+        const payload: Record<string, unknown> = { model: "gpt-5.5-bedrock", input: "hi" };
+        void Promise.resolve(options?.onPayload?.(payload, bedrockResponsesModel)).then(() => {
+          observedTier = payload.service_tier;
+        });
+        return happyResponsesStreamer();
+      },
+      chatStreamer: emptyChatStreamer,
+    };
+
+    await collect(
+      streamSfGatewayResponses(
+        bedrockResponsesModel,
+        context,
+        undefined,
+        { chatModel: bedrockChatModel },
+        hooks,
+      ),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(observedTier).toBeUndefined();
+  });
+
+  it("finishes GPT-5 Bedrock Responses turns after visible output instead of waiting for a delayed terminal event", async () => {
+    const bedrockResponsesModel = {
+      ...responsesModel,
+      id: "gpt-5.5-bedrock",
+    } as Model<"openai-responses">;
+    const bedrockChatModel = {
+      ...chatModel,
+      id: "gpt-5.5-bedrock",
+    } as Model<"openai-completions">;
+    const hooks: Gpt55ResponsesTestHooks = {
+      responsesStreamer: () => delayedDoneStreamer("gpt-5.5-bedrock"),
+      chatStreamer: emptyChatStreamer,
+    };
+
+    const started = Date.now();
+    const events = await collect(
+      streamSfGatewayResponses(
+        bedrockResponsesModel,
+        context,
+        undefined,
+        { chatModel: bedrockChatModel },
+        hooks,
+      ),
+    );
+
+    expect(Date.now() - started).toBeLessThan(GPT5_BEDROCK_EARLY_DONE_GRACE_MS * 3);
+    expect(responsesCalls).toBe(1);
+    expect(chatCalls).toBe(0);
+    expect(events).toEqual(["start", "text_start", "text_end", "done"]);
+  });
+
+  it("does not early-finish non-Bedrock Responses turns before the upstream terminal event", async () => {
+    const hooks: Gpt55ResponsesTestHooks = {
+      responsesStreamer: () => delayedDoneStreamer("gpt-5.5"),
+      chatStreamer: emptyChatStreamer,
+    };
+
+    const started = Date.now();
+    const events = await collect(
+      streamSfGatewayResponses(responsesModel, context, undefined, { chatModel }, hooks),
+    );
+
+    expect(Date.now() - started).toBeGreaterThanOrEqual(GPT5_BEDROCK_EARLY_DONE_GRACE_MS * 3);
+    expect(responsesCalls).toBe(1);
+    expect(chatCalls).toBe(0);
+    expect(events).toEqual(["start", "text_start", "text_end", "done"]);
+  });
+
+  function delayedDoneStreamer(modelId: string): AssistantMessageEventStream {
+    responsesCalls++;
+    const stream = createAssistantMessageEventStream();
+    setTimeout(() => {
+      const partial = {
+        ...dummyMessage(),
+        model: modelId,
+        content: [{ type: "text" as const, text: "ok" }],
+      };
+      stream.push({ type: "start", partial: dummyMessage() });
+      stream.push({ type: "text_start", contentIndex: 0, partial: dummyMessage() });
+      stream.push({ type: "text_end", contentIndex: 0, content: "ok", partial });
+    }, 0);
+    setTimeout(() => {
+      stream.push({ type: "done", reason: "stop", message: dummyMessage() });
+      stream.end();
+    }, GPT5_BEDROCK_EARLY_DONE_GRACE_MS * 4);
+    return stream;
+  }
 
   it("passes the Gateway default provider retry budget to Responses", async () => {
     let observedMaxRetries: number | undefined;

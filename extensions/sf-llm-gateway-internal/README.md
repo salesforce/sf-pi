@@ -89,13 +89,15 @@ short-circuits subsequent sessions. Users see no prompt and no manual step.
    `{low,medium,high,max}`; raw `xhigh` returns HTTP 400
    `reasoning_effort=xhigh is not supported for this model`.
 
-   Also: **gpt-5 family Responses routing**. gpt-5, gpt-5-mini, and
-   gpt-5.5 route through `POST <gateway-root>/responses` instead of
+   Also: **gpt-5 family Responses routing**. gpt-5, gpt-5-mini, gpt-5.5,
+   and versioned non-Codex GPT-5 IDs such as `gpt-5.4-bedrock` and
+   `gpt-5.5-bedrock` route through `POST <gateway-root>/responses` instead of
    `/v1/chat/completions`. The chat path rejects gpt-5.5 agentic turns when
    `reasoning_effort` and function tools appear together; the root Responses
-   endpoint accepts the tool-shaped request and is the preferred path. A
-   `SF_LLM_GATEWAY_INTERNAL_GPT5_FORCE_CHAT` kill switch remains available for
-   emergency rollback.
+   endpoint accepts the tool-shaped request and is the preferred path. Versioned
+   Bedrock GPT-5 IDs deliberately omit `service_tier: priority` because that
+   tier is rejected for those model groups. A `SF_LLM_GATEWAY_INTERNAL_GPT5_FORCE_CHAT`
+   kill switch remains available for emergency rollback.
 
 2. **Anthropic stream errors** (`streamSfGatewayAnthropic`). Uses Pi's
    provider retry budget (`retry.provider.maxRetries`, Gateway default: 3) when
@@ -484,11 +486,13 @@ gateway latency from pi's local transport overhead:
 /sf-llm-gateway latency-probe [modelId] [--large] [--beta-compare] [--bedrock]
 ```
 
-Default mode performs metadata probes plus one tiny streamed generation with
-`max_tokens` / `max_output_tokens` set to 1. `--large` adds a large filler
-prompt and should be used sparingly because it still consumes gateway quota.
-For Opus 4.7, `--beta-compare` compares no-beta vs `context-1m-2025-08-07`,
-and `--bedrock` measures the Bedrock compatibility stream's first chunk.
+Default mode performs metadata probes plus one tiny streamed generation. Claude
+and Chat Completions probes use `max_tokens: 1`; Responses probes use
+`max_output_tokens: 16` because some GPT-5-family routes reject smaller values
+before a latency measurement can be taken. `--large` adds a large filler prompt
+and should be used sparingly because it still consumes gateway quota. For Opus
+4.7, `--beta-compare` compares no-beta vs `context-1m-2025-08-07`, and
+`--bedrock` measures the Bedrock compatibility stream's first chunk.
 
 ## Debugging: wire trace
 
@@ -552,12 +556,17 @@ the transport no longer applies level-scaled output-token floors.
 
 **gpt-5.5 fails with `Function tools with reasoning_effort are not supported for gpt-5.5 in /v1/chat/completions. Please use /v1/responses instead.`:**
 Handled by the transport shim as of this extension version: gpt-5.5 and
-other gpt-5-family non-Codex models route through `POST <gateway-root>/responses`
-instead of `/v1/chat/completions`. The Responses path accepts tool-shaped
-agentic requests and uses the model's thinking-level map to keep effort values
-inside the gateway-safe window. If the Responses path is unavailable, the
-`SF_LLM_GATEWAY_INTERNAL_GPT5_FORCE_CHAT=1` kill switch forces the older chat
-path for emergency rollback.
+other gpt-5-family non-Codex models, including versioned Bedrock IDs such as
+`gpt-5.4-bedrock` and `gpt-5.5-bedrock`, route through
+`POST <gateway-root>/responses` instead of `/v1/chat/completions`. The
+Responses path accepts tool-shaped agentic requests and uses the model's
+thinking-level map to keep effort values inside the gateway-safe window.
+Versioned Bedrock GPT-5 IDs use the upstream default service tier because
+`priority` is rejected for those model groups. They also finish the local pi
+turn shortly after the last visible output block because their streamed terminal
+`response.completed` event can lag behind visible text. If the Responses path is
+unavailable, the `SF_LLM_GATEWAY_INTERNAL_GPT5_FORCE_CHAT=1` kill switch forces
+the older chat path for emergency rollback.
 
 **Footer shows `⚠` badge after a 429 or 5xx:**
 `provider-telemetry.ts` parses retry-after headers and surfaces a 60s

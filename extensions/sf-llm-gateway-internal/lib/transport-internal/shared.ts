@@ -136,12 +136,30 @@ export function isOpenAiReasoningModelId(modelId: string): boolean {
 }
 
 /**
- * True for any gpt-5 family model the extension routes through
+ * True for GPT-5 Bedrock model IDs that should stay on the Responses path
+ * but need a more conservative thinking-level map than direct OpenAI GPT-5.
+ */
+export function isGpt5BedrockResponsesModelId(modelId: string): boolean {
+  const lower = modelId.trim().toLowerCase();
+  if (lower.includes("codex")) return false;
+  const unprefixed = lower.startsWith("openai/") ? lower.slice("openai/".length) : lower;
+  return /^gpt-5\.\d+-bedrock$/.test(unprefixed);
+}
+
+/**
+ * True for any non-Codex gpt-5 family model the extension routes through
  * `POST /responses` instead of `/v1/chat/completions`.
  */
 export function isGpt5FamilyResponsesModelId(modelId: string): boolean {
-  if (modelId.toLowerCase().includes("codex")) return false;
-  return /^(?:openai\/)?gpt-5(?:-mini|\.5)?$/i.test(modelId.trim());
+  const lower = modelId.trim().toLowerCase();
+  if (lower.includes("codex")) return false;
+
+  const unprefixed = lower.startsWith("openai/") ? lower.slice("openai/".length) : lower;
+  return (
+    unprefixed === "gpt-5" ||
+    unprefixed === "gpt-5-mini" ||
+    /^gpt-5\.\d+(?:-bedrock)?$/.test(unprefixed)
+  );
 }
 
 export function isGpt55ModelId(modelId: string): boolean {

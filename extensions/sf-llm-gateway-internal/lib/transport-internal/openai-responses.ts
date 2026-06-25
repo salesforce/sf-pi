@@ -15,6 +15,8 @@
  */
 import {
   createAssistantMessageEventStream,
+  type AssistantMessage,
+  type AssistantMessageEvent,
   type AssistantMessageEventStream,
   type Context,
   type Model,
@@ -23,21 +25,27 @@ import {
 import { streamSimpleOpenAIResponses } from "@earendil-works/pi-ai/compat";
 import { streamSfGatewayOpenAI } from "./openai-chat.ts";
 import { injectOpenAiServiceTier } from "./payloads.ts";
-import { withGatewayProviderRetryDefaults } from "./shared.ts";
+import { isGpt5BedrockResponsesModelId, withGatewayProviderRetryDefaults } from "./shared.ts";
 
 /**
  * Wrap stream options with an `onPayload` hook that sets the gateway's
- * priority service tier on the Responses request body.
+ * priority service tier on the Responses request body when the selected model
+ * accepts it.
  *
  * The chat transport (`streamSfGatewayOpenAI`) already injects
- * `service_tier` for every OpenAI-family model, but gpt-5 family models
- * route through `/responses` and bypassed that injection entirely — live
- * probes confirmed those requests ran at `service_tier: default` instead of
- * `priority`. Applying the same idempotent injection here closes that gap.
- * `injectOpenAiServiceTier` leaves any caller-provided value untouched, so
- * the chat fallback path can reuse these options without double-setting.
+ * `service_tier` for every compatible OpenAI-family model, but gpt-5 family
+ * models route through `/responses` and bypassed that injection entirely —
+ * live probes confirmed direct OpenAI requests ran at `service_tier: default`
+ * instead of `priority`. Applying the same idempotent injection here closes
+ * that gap. GPT-5 Bedrock model groups reject `service_tier: priority`, so
+ * `injectOpenAiServiceTier` leaves those payloads unchanged. Caller-provided
+ * values still win, so the chat fallback path can reuse these options without
+ * double-setting.
  */
-function withPriorityServiceTier(options: SimpleStreamOptions): SimpleStreamOptions {
+function withPriorityServiceTier(
+  options: SimpleStreamOptions,
+  modelId: string,
+): SimpleStreamOptions {
   const existingOnPayload = options.onPayload;
   return {
     ...options,
@@ -45,7 +53,7 @@ function withPriorityServiceTier(options: SimpleStreamOptions): SimpleStreamOpti
       let nextPayload = payload;
       if (payload && typeof payload === "object" && !Array.isArray(payload)) {
         const objectPayload = payload as Record<string, unknown>;
-        injectOpenAiServiceTier(objectPayload);
+        injectOpenAiServiceTier(objectPayload, modelId);
         nextPayload = objectPayload;
       }
       return existingOnPayload ? existingOnPayload(nextPayload, payloadModel) : nextPayload;
@@ -55,6 +63,11 @@ function withPriorityServiceTier(options: SimpleStreamOptions): SimpleStreamOpti
 
 export const GPT5_FORCE_CHAT_ENV = "SF_LLM_GATEWAY_INTERNAL_GPT5_FORCE_CHAT";
 export const GPT55_FORCE_CHAT_ENV = "SF_LLM_GATEWAY_INTERNAL_GPT55_FORCE_CHAT";
+
+// Exported for unit tests. Some GPT-5 Bedrock Responses streams delay the
+// final `response.completed` event long after the last visible block is done;
+// this keeps pi from showing an active thinking state for that idle tail.
+export const GPT5_BEDROCK_EARLY_DONE_GRACE_MS = 50;
 
 function isTruthyEnv(value: string | undefined): boolean {
   if (!value) return false;
@@ -95,7 +108,10 @@ export function streamSfGatewayResponses(
   },
   hooks?: Gpt55ResponsesTestHooks,
 ): AssistantMessageEventStream {
-  const gatewayOptions = withPriorityServiceTier(withGatewayProviderRetryDefaults(options));
+  const gatewayOptions = withPriorityServiceTier(
+    withGatewayProviderRetryDefaults(options),
+    model.id,
+  );
   const responsesStreamer = hooks?.responsesStreamer ?? streamSimpleOpenAIResponses;
   const chatStreamer = hooks?.chatStreamer ?? ((m, c, o) => streamSfGatewayOpenAI(m, c, o));
 
@@ -109,11 +125,122 @@ export function streamSfGatewayResponses(
     }
   }
 
-  const upstream = responsesStreamer(model, context, gatewayOptions);
+  const rawUpstream = responsesStreamer(model, context, gatewayOptions);
+  const upstream = isGpt5BedrockResponsesModelId(model.id)
+    ? finishBedrockResponsesAfterVisibleOutput(rawUpstream)
+    : rawUpstream;
 
   if (!fallback) return upstream;
 
   return wrapWithChatFallback(upstream, context, gatewayOptions, fallback, chatStreamer);
+}
+
+function finishBedrockResponsesAfterVisibleOutput(
+  upstream: AssistantMessageEventStream,
+): AssistantMessageEventStream {
+  const wrapped = createAssistantMessageEventStream();
+  let latestPartial: AssistantMessage | undefined;
+  let doneTimer: NodeJS.Timeout | undefined;
+  let ended = false;
+
+  const clearDoneTimer = () => {
+    if (doneTimer) {
+      clearTimeout(doneTimer);
+      doneTimer = undefined;
+    }
+  };
+
+  const finishEarly = () => {
+    if (ended || !latestPartial) return;
+    ended = true;
+    const message = cloneAssistantMessage(latestPartial);
+    const hasToolCall = message.content.some((block) => block.type === "toolCall");
+    wrapped.push({
+      type: "done",
+      reason: hasToolCall ? "toolUse" : message.stopReason === "length" ? "length" : "stop",
+      message,
+    });
+    wrapped.end();
+  };
+
+  const scheduleDone = (partial: AssistantMessage) => {
+    latestPartial = partial;
+    clearDoneTimer();
+    doneTimer = setTimeout(finishEarly, GPT5_BEDROCK_EARLY_DONE_GRACE_MS);
+  };
+
+  (async () => {
+    try {
+      for await (const event of upstream) {
+        if (ended) return;
+        if (event.type === "done" || event.type === "error") {
+          clearDoneTimer();
+          ended = true;
+          wrapped.push(event);
+          wrapped.end();
+          return;
+        }
+
+        if (isProgressEvent(event)) {
+          latestPartial = event.partial;
+        }
+        if (event.type === "text_end" || event.type === "toolcall_end") {
+          scheduleDone(event.partial);
+        } else if (event.type.endsWith("_start") || event.type.endsWith("_delta")) {
+          clearDoneTimer();
+        }
+        wrapped.push(event);
+      }
+      clearDoneTimer();
+      if (!ended) wrapped.end();
+    } catch (error) {
+      clearDoneTimer();
+      if (ended) return;
+      ended = true;
+      wrapped.push({
+        type: "error",
+        reason: "error",
+        error: {
+          ...(latestPartial ?? emptyErrorMessage()),
+          stopReason: "error",
+          errorMessage: error instanceof Error ? error.message : String(error),
+        },
+      });
+      wrapped.end();
+    }
+  })();
+
+  return wrapped;
+}
+
+function isProgressEvent(
+  event: AssistantMessageEvent,
+): event is Exclude<AssistantMessageEvent, { type: "done" } | { type: "error" }> {
+  return "partial" in event;
+}
+
+function cloneAssistantMessage(message: AssistantMessage): AssistantMessage {
+  return structuredClone(message) as AssistantMessage;
+}
+
+function emptyErrorMessage(): AssistantMessage {
+  return {
+    role: "assistant",
+    content: [],
+    api: "openai-responses" as const,
+    provider: "sf-llm-gateway-internal",
+    model: "gpt-5-bedrock",
+    usage: {
+      input: 0,
+      output: 0,
+      cacheRead: 0,
+      cacheWrite: 0,
+      totalTokens: 0,
+      cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+    },
+    stopReason: "error",
+    timestamp: Date.now(),
+  };
 }
 
 function wrapWithChatFallback(

@@ -14,6 +14,7 @@
 import {
   DEFAULT_CODEX_REASONING_EFFORT,
   DEFAULT_OPENAI_SERVICE_TIER,
+  isGpt5BedrockResponsesModelId,
   isGpt55ModelId,
   resolveOpenAiReasoningEffort,
   type PiReasoningLevel,
@@ -53,11 +54,15 @@ export function normalizeCodexReasoningEffort(value: unknown): string {
 /**
  * Set OpenAI-compat `service_tier` on the payload when the caller did not
  * already specify one. Leaves an existing value alone so future overrides
- * stay intact.
+ * stay intact. GPT-5 Bedrock Responses routes reject `priority`, so they
+ * deliberately keep the gateway/upstream default service tier.
  */
-export function injectOpenAiServiceTier(payload: Record<string, unknown>): void {
+export function injectOpenAiServiceTier(payload: Record<string, unknown>, modelId?: string): void {
   const existing = payload.service_tier;
   if (typeof existing === "string" && existing.trim().length > 0) {
+    return;
+  }
+  if (modelId && isGpt5BedrockResponsesModelId(modelId)) {
     return;
   }
   payload.service_tier = DEFAULT_OPENAI_SERVICE_TIER;
@@ -148,8 +153,10 @@ export function injectOpenAiReasoningEffort(
  * New code should not call it.
  */
 export function applyOpus47MaxThinking(
-  _payload: Record<string, unknown>,
-  _level?: PiReasoningLevel,
+  payload: Record<string, unknown>,
+  level?: PiReasoningLevel,
 ): void {
+  void payload;
+  void level;
   // No-op: gateway restrictions that motivated this function have been lifted.
 }

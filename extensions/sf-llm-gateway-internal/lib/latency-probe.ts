@@ -19,6 +19,11 @@ const SMALL_FILLER_WORDS = 0;
 const LARGE_FILLER_WORDS = 90_000;
 const OPUS_47_CONTEXT_BETA = "context-1m-2025-08-07";
 
+// Exported for unit tests. Some GPT-5-family Responses routes reject
+// max_output_tokens=1 before a latency measurement can be taken, so the
+// "tiny" Responses probe uses the smallest verified accepted value.
+export const RESPONSES_LATENCY_PROBE_MAX_OUTPUT_TOKENS = 16;
+
 export interface GatewayLatencyProbeOptions {
   modelId: string;
   includeLarge: boolean;
@@ -291,10 +296,14 @@ function buildAnthropicBody(modelId: string, fillerWords: number): Record<string
   };
 }
 
-function buildOpenAiResponsesBody(modelId: string, fillerWords: number): Record<string, unknown> {
+// Exported for unit tests.
+export function buildOpenAiResponsesBody(
+  modelId: string,
+  fillerWords: number,
+): Record<string, unknown> {
   return {
     model: modelId,
-    max_output_tokens: 1,
+    max_output_tokens: RESPONSES_LATENCY_PROBE_MAX_OUTPUT_TOKENS,
     input: [{ role: "user", content: [{ type: "input_text", text: buildPrompt(fillerWords) }] }],
     stream: true,
     store: false,

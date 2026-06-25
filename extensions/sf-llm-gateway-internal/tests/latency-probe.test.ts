@@ -1,7 +1,12 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Unit tests for latency-probe argument parsing and report formatting. */
 import { describe, expect, it } from "vitest";
-import { formatGatewayLatencyProbe, parseLatencyProbeArgs } from "../lib/latency-probe.ts";
+import {
+  RESPONSES_LATENCY_PROBE_MAX_OUTPUT_TOKENS,
+  buildOpenAiResponsesBody,
+  formatGatewayLatencyProbe,
+  parseLatencyProbeArgs,
+} from "../lib/latency-probe.ts";
 
 describe("parseLatencyProbeArgs", () => {
   it("defaults to the current/default model", () => {
@@ -22,6 +27,14 @@ describe("parseLatencyProbeArgs", () => {
       includeBetaCompare: true,
       includeBedrock: true,
     });
+  });
+});
+
+describe("buildOpenAiResponsesBody", () => {
+  it("uses the smallest Responses max_output_tokens value accepted by GPT-5 routes", () => {
+    const body = buildOpenAiResponsesBody("gpt-5.4-bedrock", 0);
+    expect(body.max_output_tokens).toBe(RESPONSES_LATENCY_PROBE_MAX_OUTPUT_TOKENS);
+    expect(body.max_output_tokens).toBe(16);
   });
 });
 

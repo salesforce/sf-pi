@@ -54,12 +54,12 @@ export function streamSfGatewayOpenAI(
           // Codex is an OpenAI-family model — honor the gateway's priority
           // tier the same way gpt-5 does, even though Codex's Responses
           // response shape does not echo `service_tier` back.
-          injectOpenAiServiceTier(objectPayload);
+          injectOpenAiServiceTier(objectPayload, model.id);
         } else if (isOpenAiModelId(model.id)) {
           // GPT-5 reasoning models get the strongest safe effort by default
           // and LiteLLM needs the param allow-listed when it is present.
           injectOpenAiReasoningEffort(objectPayload, model.id);
-          injectOpenAiServiceTier(objectPayload);
+          injectOpenAiServiceTier(objectPayload, model.id);
         }
 
         nextPayload = objectPayload;
