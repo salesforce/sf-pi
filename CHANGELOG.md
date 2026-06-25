@@ -517,6 +517,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.210.1](https://github.com/salesforce/sf-pi/compare/v0.210.0...v0.210.1) (2026-06-25)
+
+
+### Bug Fixes
+
+* **sf-llm-gateway:** handle GPT-5 Bedrock responses ([5384d2a](https://github.com/salesforce/sf-pi/commit/5384d2a093b6ed1744207485fce214b0b72d10b7))
+
 ## [0.210.0](https://github.com/salesforce/sf-pi/compare/v0.209.1...v0.210.0) (2026-06-24)
 
 
