@@ -76,7 +76,12 @@ describe("herdr-profile store contract", () => {
       targetAliasHint: "agent_preview_<shortid>",
       pattern: "agent_preview_<shortid>",
     });
-    expect(plan.placement).toEqual({ prefer: "split", splitDirection: "right", focus: false });
+    expect(plan.placement).toMatchObject({
+      prefer: "split",
+      splitDirection: "right",
+      focus: false,
+      sourcePane: { default: "current_agent_pane", paneParam: "omit" },
+    });
     expect(plan.recommendedActions.map((action) => action.action)).toEqual([
       "list",
       "pane_split",
@@ -86,6 +91,7 @@ describe("herdr-profile store contract", () => {
       "stop",
     ]);
     expect(plan.recommendedActions[1]?.paramsHint).toMatchObject({
+      pane: "<omit for current agent/orchestrator pane>",
       newPane: "agent_preview_<shortid>",
       direction: "right",
       focus: false,
@@ -141,7 +147,12 @@ describe("herdr-profile store contract", () => {
 
     expect(plan.lane.baseAlias).toBe("ui_server");
     expect(plan.lane.lifecycle).toBe("sticky");
-    expect(plan.placement).toEqual({ prefer: "split", splitDirection: "down", focus: false });
+    expect(plan.placement).toMatchObject({
+      prefer: "split",
+      splitDirection: "down",
+      focus: false,
+      sourcePane: { default: "current_agent_pane", paneParam: "omit" },
+    });
     expect(plan.alias.targetAliasHint).toBe("ui_server");
     expect(plan.recommendedActions.map((action) => action.action)).not.toContain("stop");
     expect(plan.cleanupPolicy.onSuccess).toEqual({

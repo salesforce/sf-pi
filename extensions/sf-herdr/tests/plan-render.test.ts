@@ -22,8 +22,10 @@ describe("renderHerdrLanePlan", () => {
     expect(rendered).toContain("🐑 SF Herdr plan  deploy · verify · fresh ephemeral");
     expect(rendered).toContain("Workflow  generic (100%)");
     expect(rendered).toContain("target deploy_<shortid>");
+    expect(rendered).toContain("source=current agent pane");
     expect(rendered).toContain("Action path");
     expect(rendered).toContain("herdr.pane_split");
+    expect(rendered).toContain("from current agent pane");
     expect(rendered).toContain("herdr.watch/read");
     expect(rendered).toContain("stop/close after Workflow Success Condition");
     expect(rendered).not.toContain("Recommended Herdr actions:");

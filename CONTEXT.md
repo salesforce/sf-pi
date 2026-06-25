@@ -25,7 +25,7 @@ A Salesforce workflow lane planned by SF Pi for Herdr-backed work such as tests,
 _Avoid_: generic pane, terminal slot
 
 **Fresh Ephemeral Lane**:
-A command-scoped **Dynamic Herdr Lane** created as a split pane for one job and discarded after successful completion. Ephemeral lanes are always fresh: they are not reused for later jobs; failures and timeouts are summarized, left open for inspection, and closed only after a user cleanup decision.
+A command-scoped **Dynamic Herdr Lane** created as a split pane from the current agent/orchestrator pane for one job and discarded after successful completion. Ephemeral lanes are always fresh: they are not reused for later jobs; failures and timeouts are summarized, left open for inspection, and closed only after a user cleanup decision.
 _Avoid_: reused lane, permanent pane, sticky lane, ephemeral tab
 
 **Sticky Lane**:

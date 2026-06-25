@@ -126,13 +126,13 @@ export function formatSfPiExtensionContext(
       "- Use the `herdr` tool for long-running, parallel, or command-scoped pane workflows: servers, tests, log tails, previews, evals, and multi-pane monitoring.",
     );
     lines.push(
-      "- For command-scoped jobs, create a fresh ephemeral split pane with a short-id suffixed alias; use `herdr.list` for live alias collision detection, and do not reuse old or closed ephemeral pane aliases.",
+      "- For command-scoped jobs, create a fresh ephemeral split pane from the current agent/orchestrator pane with a short-id suffixed alias; use `herdr.list` for live alias collision detection, and do not reuse old or closed ephemeral pane aliases.",
     );
     lines.push(
       "- Create panes just in time for the command/tool being run; never pre-open log/tail panes from session or workflow inference alone.",
     );
     lines.push(
-      "- Protect the main orchestrator pane: do not stack multiple splits directly off it or shrink it below roughly half the tab; split from a worker pane or choose a tab only when that is less disruptive.",
+      "- For `herdr.pane_split`, omit `pane` to split the current agent/orchestrator pane. Pass `pane` only when the user asks for a source pane or a simultaneous lane must split from a worker pane to protect layout.",
     );
     lines.push(
       "- Use `herdr.run` for command-style submission, `herdr.watch`/`herdr.read` for output and readiness, `herdr.send` only for advanced interactive input, and `herdr.wait_agent` only for recognized agent panes.",

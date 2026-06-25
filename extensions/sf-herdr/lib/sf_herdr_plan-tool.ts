@@ -99,7 +99,7 @@ export function renderHerdrLanePlan(plan: Plan, options: { inHerdrPane?: boolean
       : undefined,
     `  Workflow  ${plan.workflow.primary} (${Math.round(plan.workflow.confidence * 100)}%)${formatRelated(plan)}`,
     `  Lane      ${plan.lane.id} · base ${plan.lane.baseAlias} · target ${plan.alias.targetAliasHint}`,
-    `  Place     split ${plan.placement.splitDirection} · focus=${plan.placement.focus}`,
+    `  Place     split ${plan.placement.splitDirection} · source=current agent pane · focus=${plan.placement.focus}`,
     `  Success   ${plan.successCondition}`,
     "",
     "  Action path",
@@ -133,7 +133,11 @@ function formatActionPath(plan: Plan): string[] {
   const hasStop = plan.recommendedActions.some((action) => action.action === "stop");
   const rows = [
     ["1", "herdr.list", "detect live alias collisions"],
-    ["2", "herdr.pane_split", `create ${create?.targetAlias ?? plan.alias.targetAliasHint}`],
+    [
+      "2",
+      "herdr.pane_split",
+      `create ${create?.targetAlias ?? plan.alias.targetAliasHint} from current agent pane`,
+    ],
     ["3", "herdr.run", run?.purpose ?? "submit caller-owned command"],
     ["4", "herdr.watch/read", "observe success marker; inspect recent-unwrapped when needed"],
     ["5", hasStop ? "herdr.stop" : "manual cleanup", formatSuccessCleanup(plan)],

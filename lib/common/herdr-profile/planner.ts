@@ -53,6 +53,11 @@ export function buildHerdrLanePlan(
     prefer: "split",
     splitDirection: profile.splitDirection,
     focus: false,
+    sourcePane: {
+      default: "current_agent_pane",
+      paneParam: "omit",
+      note: "Omit pane to split the current agent/orchestrator pane. Pass pane only when the user asks for a specific source or a simultaneous lane must split from a worker pane to protect layout.",
+    },
   } satisfies HerdrLanePlan["placement"];
   const successCondition = successConditionForIntent(input.intent);
   const cleanupPolicy = cleanupPolicyForLane(lane);
@@ -180,7 +185,7 @@ function buildPhases(
   intent: HerdrPlanIntent,
   successCondition: string,
 ): HerdrLanePlan["phases"] {
-  const createAction = `Create ${lane.lifecycle === "ephemeral" ? "a fresh" : "the"} split-pane alias '${alias.targetAliasHint}' just in time with herdr.pane_split; use focus=false and direction='${placement.splitDirection}'. Avoid stacking multiple splits off the orchestrator pane.`;
+  const createAction = `Create ${lane.lifecycle === "ephemeral" ? "a fresh" : "the"} split-pane alias '${alias.targetAliasHint}' just in time with herdr.pane_split; omit pane to split the current agent/orchestrator pane, use focus=false and direction='${placement.splitDirection}'. Pass pane only for an explicit user-selected source or when a simultaneous lane must split from a worker pane to protect layout.`;
   const cleanup =
     lane.lifecycle === "ephemeral"
       ? `After the Workflow Success Condition is observed (${successCondition}), call herdr.stop for '${alias.targetAliasHint}' to stop/close it. On failure, timeout, or ambiguity, read recent-unwrapped output, summarize, leave the lane open, and ask before cleanup.`
@@ -221,8 +226,9 @@ function buildRecommendedActions(
       phase: "create",
       action: "pane_split",
       targetAlias,
-      purpose: `Create ${lane.lifecycle === "ephemeral" ? "a fresh" : "the"} split pane just in time.`,
+      purpose: `Create ${lane.lifecycle === "ephemeral" ? "a fresh" : "the"} split pane from the current agent/orchestrator pane just in time.`,
       paramsHint: {
+        pane: "<omit for current agent/orchestrator pane>",
         newPane: targetAlias,
         direction: placement.splitDirection,
         focus: false,

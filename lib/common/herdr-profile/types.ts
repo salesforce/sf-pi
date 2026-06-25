@@ -118,6 +118,11 @@ export interface HerdrLanePlan {
     prefer: "split";
     splitDirection: HerdrSplitDirection;
     focus: false;
+    sourcePane: {
+      default: "current_agent_pane";
+      paneParam: "omit";
+      note: string;
+    };
   };
   phases: {
     discover: string;

@@ -104,7 +104,7 @@ describe("formatSfPiExtensionContext", () => {
     expect(activeContext).toContain("fresh ephemeral split pane");
     expect(activeContext).toContain("alias collision detection");
     expect(activeContext).toContain("Create panes just in time");
-    expect(activeContext).toContain("Protect the main orchestrator pane");
+    expect(activeContext).toContain("omit `pane` to split the current agent/orchestrator pane");
     expect(activeContext).toContain("fall back to normal SF Pi operation");
   });
 });
