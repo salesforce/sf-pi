@@ -486,5 +486,32 @@
       "Release freshness, environment, privacy, and recommendation rows.",
       "Font setup helper."
     ]
+  },
+  "sf-soql": {
+    "shortName": "SOQL",
+    "intentGroup": "Query data",
+    "promise": "Search schema, draft, validate, explain, sample, run/export SOQL and SOSL from pi with schema-aware native REST/Tooling workflows.",
+    "bestFor": "SOQL query lifecycle workflows",
+    "benefits": [
+      "Verifies objects, fields, relationship names, field capabilities, literals, and query shape before agents run queries.",
+      "Uses Salesforce Core plus native REST/Tooling endpoints for describe, search, query, queryAll, SOSL search, query plan, and artifact export workflows.",
+      "Keeps humans in the loop with SOQL Result Cards, API Call Rails, safety gates, compact samples, query export, file diagnostics, and artifact-backed evidence."
+    ],
+    "tryFirst": {
+      "label": "Open the SOQL panel",
+      "code": "/sf-soql"
+    },
+    "useCases": [
+      "Search for the right object and describe it before writing a query.",
+      "Find relationship names for child-to-parent and parent-to-child SOQL.",
+      "Draft, validate, and explain a query before running it.",
+      "Run bounded SOQL samples, counts, REST queries, Tooling queries, queryAll queries, and SOSL searches.",
+      "Diagnose .soql files or embedded SOQL in Apex, then export the latest query artifact."
+    ],
+    "whatYouGet": [
+      "One sf_soql family tool for schema search/describe, relationship discovery, draft, validation, query plans, bounded execution, queryAll, SOSL, export, file diagnostics, and rerun.",
+      "Human-friendly SOQL Result Cards with API Call Rails, validation findings, query-plan signals, safety gates, full-query visibility, and compact sample tables.",
+      "SOQL Artifacts under the global agent directory for raw results, flattened JSON, flattened CSV, summaries, plans, schema evidence, SOSL results, and exports."
+    ]
   }
 }

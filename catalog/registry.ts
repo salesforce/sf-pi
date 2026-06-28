@@ -299,6 +299,18 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
     },
   },
   {
+    id: "sf-soql",
+    name: "SF SOQL",
+    description: "API-native SOQL lifecycle workflows for pi: schema search/describe, relationship discovery, query drafting, validation, query plans, bounded query/SOSL execution, exports, file diagnostics, and artifacts.",
+    file: "extensions/sf-soql/index.ts",
+    category: "agent-tool",
+    maturity: "experimental",
+    defaultEnabled: true,
+    commands: ["/sf-soql"],
+    tools: ["sf_soql"],
+    events: ["session_start","session_shutdown"],
+  },
+  {
     id: "sf-welcome",
     name: "SF Welcome",
     description: "Salesforce-branded splash screen with environment status, release freshness, and community info",

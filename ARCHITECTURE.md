@@ -40,6 +40,7 @@ sf-pi/
 │   ├── sf-pi-manager/
 │   ├── sf-skills/
 │   ├── sf-slack/
+│   ├── sf-soql/
 │   ├── sf-welcome/
 ├── lib/
 │   └── common/                 ← Shared helpers (see lib/common/README.md)

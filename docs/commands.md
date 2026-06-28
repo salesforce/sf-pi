@@ -100,6 +100,14 @@ _Slack integration — search messages, read threads, browse channel history_
 - Tools: `slack`, `slack_time_range`, `slack_resolve`, `slack_research`, `slack_channel`, `slack_user`, `slack_file`, `slack_canvas`, `slack_send`, `slack_schedule`
 - Providers: `sf-slack`
 
+### [SF SOQL](./extensions/sf-soql)
+
+_API-native SOQL lifecycle workflows for pi: schema search/describe, relationship discovery, query drafting, validation, query plans, bounded query/SOSL execution, exports, file diagnostics, and artifacts._
+
+- Default: **on**
+- Commands: `/sf-soql`
+- Tools: `sf_soql`
+
 ## Safety
 
 ### [SF Guardrail](./extensions/sf-guardrail)

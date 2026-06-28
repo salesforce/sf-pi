@@ -934,6 +934,66 @@
     "srcLoc": 12543
   },
   {
+    "id": "sf-soql",
+    "name": "SF SOQL",
+    "description": "API-native SOQL lifecycle workflows for pi: schema search/describe, relationship discovery, query drafting, validation, query plans, bounded query/SOSL execution, exports, file diagnostics, and artifacts.",
+    "category": "agent-tool",
+    "maturity": "experimental",
+    "defaultEnabled": true,
+    "alwaysActive": false,
+    "configurable": false,
+    "commands": [
+      "/sf-soql"
+    ],
+    "providers": [],
+    "tools": [
+      "sf_soql"
+    ],
+    "events": [
+      "session_start",
+      "session_shutdown"
+    ],
+    "docs": {
+      "summary": "Owns the schema-aware SOQL query loop in pi: native org preflight, sObject search/describe, relationship discovery, query drafting, validation, query explain, bounded sample/run/count/queryAll, SOSL run, query export, file diagnostics, history rerun, compact SOQL Run Digests, human SOQL Result Cards, and persisted SOQL Artifacts. Broad data exploration remains with sf-data-explorer; data mutation remains out of scope.",
+      "primaryFiles": [
+        "index.ts",
+        "lib/sf-soql-tool.ts",
+        "lib/operations.ts",
+        "lib/api.ts",
+        "lib/parser.ts",
+        "lib/schema.ts",
+        "lib/search.ts",
+        "lib/draft.ts",
+        "lib/file.ts",
+        "lib/export.ts",
+        "lib/sosl.ts",
+        "lib/lsp.ts",
+        "lib/validator.ts",
+        "lib/runner.ts",
+        "lib/flattener.ts",
+        "lib/artifacts.ts",
+        "lib/render.ts",
+        "docs/adr/0070-sf-soql-api-native-query-lifecycle-extension.md"
+      ],
+      "stateFiles": [
+        "<globalAgentDir>/sf-pi/sf-soql/runs/*",
+        "<globalAgentDir>/sf-pi/sf-soql/plans/*",
+        "<globalAgentDir>/sf-pi/sf-soql/schema/*"
+      ],
+      "safety": [
+        "No startup org probes; Salesforce connections are resolved only during explicit sf_soql tool actions.",
+        "Lifecycle actions use @salesforce/core / REST and Tooling APIs as the fast native path; missing recurring capabilities should become small native actions instead of subprocess fallbacks.",
+        "query.sample defaults to a small safe limit. query.run without LIMIT returns a review card unless max_rows or allow_unbounded is explicit.",
+        "query.queryAll and ALL ROWS are explicit and rendered as deleted/archived-row scope warnings.",
+        "SOQL results are read-only and artifact-first; sf-soql is not a data mutation or bulk export surface."
+      ]
+    },
+    "entry": "extensions/sf-soql/index.ts",
+    "hasReadme": true,
+    "hasTests": true,
+    "srcLoc": 2920
+  },
+  {
     "id": "sf-welcome",
     "name": "SF Welcome",
     "description": "Salesforce-branded splash screen with environment status, release freshness, and community info",

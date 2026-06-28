@@ -37,6 +37,7 @@
       "./extensions/sf-guardrail/index.ts",
       "./extensions/sf-brain/index.ts",
       "./extensions/sf-apex/index.ts",
+      "./extensions/sf-soql/index.ts",
       "./extensions/sf-browser/index.ts",
       "./extensions/sf-code-analyzer/index.ts",
       "./extensions/sf-slack/index.ts",
@@ -95,7 +96,8 @@
     "generate-d360-parity:check": "node scripts/generate-d360-parity.mjs --check",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
-    "docs:preview": "vitepress preview docs"
+    "docs:preview": "vitepress preview docs",
+    "e2e:sf-soql": "node --experimental-strip-types scripts/e2e/sf-soql-e2e.ts"
   },
   "peerDependencies": {
     "@earendil-works/pi-ai": "*",
@@ -126,6 +128,8 @@
   },
   "dependencies": {
     "@salesforce/core": "^8.31.2",
+    "@salesforce/soql-common": "^2.0.0",
+    "@salesforce/soql-language-server": "^1.1.0",
     "@salesforce/source-deploy-retrieve": "^12.36.4",
     "@sf-agentscript/agentforce": "2.5.34",
     "@sf-agentscript/language": "2.9.0",

@@ -60,6 +60,34 @@ _Avoid_: generic transport label, full request dump, hidden native calls
 A native Apex test execution scoped to explicitly named test classes or methods, with polling, failure digestion, rerun support, and **Apex Artifacts**.
 _Avoid_: test explorer, org-wide dashboard, suite manager
 
+**SOQL Lifecycle Extension**:
+A bundled SF Pi extension that owns the schema-aware SOQL query lifecycle: discover object shape, validate fields and relationships, explain selectivity, run bounded read-only queries, summarize results, persist artifacts, and help agents iterate. It does not own record CRUD, bulk data operations, report building, or Data Cloud SQL.
+_Avoid_: SOQL explorer, record browser, data export tool, report builder, CLI wrapper
+
+**SOQL Query Loop**:
+The agentic SOQL workflow coordinated by a **SOQL Lifecycle Extension**: describe schema, validate query shape, explain selectivity when useful, run bounded samples or counts, summarize readable results, persist evidence, and iterate.
+_Avoid_: raw data query, ad hoc CLI query, data browsing session
+
+**SOQL Run**:
+One API-native `sf_soql` tool action in the **SOQL Query Loop**, such as describing schema, validating a query, retrieving a query plan, running a bounded sample, counting rows, or executing an explicit query.
+_Avoid_: SOQL CLI wrapper, data export job, record operation
+
+**SOQL Run Digest**:
+A normalized structured summary of a **SOQL Run** that carries status, org, query shape, validation findings, query plan signals, bounded result samples, API calls, and artifacts for both LLM context and **SOQL Result Card** rendering.
+_Avoid_: raw query response, action-specific JSON blob, table-only output
+
+**SOQL Result Card**:
+The human-facing structured render of a **SOQL Run**, optimized for safe query iteration with clear status, scope, validation findings, selectivity signals, compact sample rows, and a **SOQL API Call Rail** while pointing to **SOQL Artifacts** for full evidence.
+_Avoid_: raw JSON, full result dump in chat, output-channel table
+
+**SOQL API Call Rail**:
+A compact, human-facing rail directly under a **SOQL Result Card** title that lists the native REST or Tooling API endpoints and high-signal request parameters used by a **SOQL Run**.
+_Avoid_: generic transport label, hidden query endpoint, full request dump
+
+**SOQL Artifact**:
+Persisted evidence from a **SOQL Run**, such as the normalized query, raw result JSON, flattened result JSON, flattened CSV, query plan, schema describe response, or summary digest.
+_Avoid_: context dump, temporary table output, bulk export product
+
 **Data 360 Run**:
 One invocation of a `data360_*` tool action, including local catalog actions, dry runs, readiness probes, runbooks, journeys, raw REST calls, and OTel exports.
 _Avoid_: Data 360 trace, Data 360 action
