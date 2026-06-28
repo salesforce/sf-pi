@@ -517,6 +517,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.212.0](https://github.com/salesforce/sf-pi/compare/v0.211.0...v0.212.0) (2026-06-28)
+
+
+### Features
+
+* **sf-soql:** add native query lifecycle extension ([b7ed748](https://github.com/salesforce/sf-pi/commit/b7ed7487d5309bd4a87307f968b2af80d5bfcc4d))
+
 ## [0.211.0](https://github.com/salesforce/sf-pi/compare/v0.210.2...v0.211.0) (2026-06-28)
 
 
