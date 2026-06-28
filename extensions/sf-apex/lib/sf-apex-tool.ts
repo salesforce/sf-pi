@@ -6,6 +6,7 @@ import type { ExtensionAPI, Theme } from "@earendil-works/pi-coding-agent";
 import { StringEnum } from "@earendil-works/pi-ai";
 import { Type } from "typebox";
 import { apexConnection } from "./api.ts";
+import { apexErrorResult } from "./errors.ts";
 import { renderApexResultMarkdown } from "./render.ts";
 import type { SfApexParams, SfApexSessionState, ToolResult } from "./types.ts";
 import {
@@ -88,6 +89,20 @@ const Params = Type.Object({
   allow_mutation: Type.Optional(
     Type.Boolean({ description: "Required for mutation-like Anonymous Apex." }),
   ),
+  include_coverage: Type.Optional(
+    Type.Boolean({ description: "Collect Apex coverage evidence with test.run/test.result." }),
+  ),
+  include_uncovered_lines: Type.Optional(
+    Type.Boolean({
+      description: "Include covered/uncovered line arrays in coverage.summary artifacts.",
+    }),
+  ),
+  org_wide: Type.Optional(
+    Type.Boolean({ description: "Include org-wide Apex coverage in coverage.summary." }),
+  ),
+  threshold_percent: Type.Optional(
+    Type.Number({ description: "Coverage threshold signal only; does not fail runs." }),
+  ),
   tests: Type.Optional(
     Type.Array(Type.String(), {
       description: "Targeted tests as ClassName or ClassName.methodName.",
@@ -127,49 +142,53 @@ export function registerSfApexTool(pi: ExtensionAPI): void {
     renderResult: (result, opts, theme) => renderResult(result as ToolResult, opts, theme),
     async execute(_id, rawParams, signal, _onUpdate, ctx) {
       const params = rawParams as SfApexParams;
-      if (params.action === "author.plan") return authorPlan(params);
-      if (params.action === "diagnose.file") return diagnoseFile(params, ctx.cwd);
-      if (params.action === "log.analyze") return analyzeLog(params);
+      try {
+        if (params.action === "author.plan") return authorPlan(params);
+        if (params.action === "diagnose.file") return diagnoseFile(params, ctx.cwd);
+        if (params.action === "log.analyze") return analyzeLog(params);
 
-      const conn = await apexConnection(params.target_org, signal);
-      switch (params.action) {
-        case "status":
-          return status(conn, params);
-        case "org.preflight":
-          return orgPreflight(conn, params);
-        case "apex.search":
-          return apexSearch(conn, params);
-        case "test.discover":
-          return testDiscover(conn, params);
-        case "test.plan":
-          return testPlan(conn, params);
-        case "coverage.summary":
-          return coverageSummary(conn, params);
-        case "trace.start":
-          return startTrace(conn, params, state);
-        case "trace.stop":
-          return stopTrace(conn, params, state);
-        case "trace.status":
-          return traceStatus(conn, params);
-        case "log.latest":
-          return latestLog(conn, params, state);
-        case "log.get":
-          return getLog(conn, params, state);
-        case "log.watch":
-          return watchLog(conn, params, state);
-        case "anon.run":
-          return runAnonymous(conn, params, state);
-        case "test.run":
-          return runTest(conn, params, state);
-        case "test.result":
-          return testResult(conn, params, state);
-        case "test.rerun":
-          return rerunTest(conn, params, state);
-        default:
-          return {
-            content: [{ type: "text", text: `Unsupported sf_apex action: ${params.action}` }],
-            details: { ok: false, action: params.action },
-          };
+        const conn = await apexConnection(params.target_org, signal);
+        switch (params.action) {
+          case "status":
+            return status(conn, params);
+          case "org.preflight":
+            return orgPreflight(conn, params);
+          case "apex.search":
+            return apexSearch(conn, params);
+          case "test.discover":
+            return testDiscover(conn, params);
+          case "test.plan":
+            return testPlan(conn, params);
+          case "coverage.summary":
+            return coverageSummary(conn, params);
+          case "trace.start":
+            return startTrace(conn, params, state);
+          case "trace.stop":
+            return stopTrace(conn, params, state);
+          case "trace.status":
+            return traceStatus(conn, params);
+          case "log.latest":
+            return latestLog(conn, params, state);
+          case "log.get":
+            return getLog(conn, params, state);
+          case "log.watch":
+            return watchLog(conn, params, state);
+          case "anon.run":
+            return runAnonymous(conn, params);
+          case "test.run":
+            return runTest(conn, params, state);
+          case "test.result":
+            return testResult(conn, params, state);
+          case "test.rerun":
+            return rerunTest(conn, params, state);
+          default:
+            return {
+              content: [{ type: "text", text: `Unsupported sf_apex action: ${params.action}` }],
+              details: { ok: false, action: params.action },
+            };
+        }
+      } catch (error) {
+        return apexErrorResult(params, error);
       }
     },
   });

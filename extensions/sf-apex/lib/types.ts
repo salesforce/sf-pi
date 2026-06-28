@@ -25,7 +25,12 @@ export type SfApexAction =
 export interface SfApexSessionState {
   lastLogId?: string;
   lastTestRunId?: string;
-  lastTestSpec?: { tests?: string[]; class_names?: string[]; target_org?: string };
+  lastTestSpec?: {
+    tests?: string[];
+    class_names?: string[];
+    include_coverage?: boolean;
+    target_org?: string;
+  };
   lastTraceFlagIds?: string[];
 }
 
@@ -46,6 +51,10 @@ export interface SfApexParams {
   wait_seconds?: number;
   poll_interval_seconds?: number;
   allow_mutation?: boolean;
+  include_coverage?: boolean;
+  include_uncovered_lines?: boolean;
+  org_wide?: boolean;
+  threshold_percent?: number;
   tests?: string[];
   class_names?: string[];
   run_id?: string;

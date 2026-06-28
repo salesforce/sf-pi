@@ -3,7 +3,8 @@
 
 export { authorPlan } from "./author.ts";
 export { diagnoseFile, diagnoseApexFile, isApexFile, resolveToolPath } from "./diagnostics.ts";
-export { apexSearch, coverageSummary, orgPreflight, testDiscover, testPlan } from "./discovery.ts";
+export { coverageSummary, normalizeCoverageRows } from "./coverage.ts";
+export { apexSearch, orgPreflight, testDiscover, testPlan } from "./discovery.ts";
 export { analyzeLog, getLog, latestLog, watchLog } from "./logs.ts";
 export { classifyAnonymousApex, runAnonymous } from "./anonymous.ts";
 export { rerunTest, runTest, summarizeTestResults, testResult } from "./tests.ts";

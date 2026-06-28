@@ -127,7 +127,9 @@
     "vitest": "^4.1.9"
   },
   "dependencies": {
+    "@salesforce/apex-node": "^8.4.32",
     "@salesforce/core": "^8.31.2",
+    "@salesforce/kit": "^3.2.6",
     "@salesforce/soql-common": "^2.0.0",
     "@salesforce/soql-language-server": "^1.1.0",
     "@salesforce/source-deploy-retrieve": "^12.36.4",

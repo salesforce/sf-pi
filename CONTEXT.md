@@ -40,6 +40,10 @@ _Avoid_: CLI tail wrapper, unbounded log stream
 A human-readable sequence of high-signal events extracted from an Apex debug log, such as start, debug markers, exceptions, fatal errors, and completion. It explains what happened inside the execution; it is different from an **Apex Trace Session**, which only controls log capture.
 _Avoid_: trace flag summary, raw log dump
 
+**Anonymous Apex Probe**:
+An explicit **Apex Run** that executes a bounded Anonymous Apex snippet to verify behavior, capture runtime evidence, and preserve the result as **Apex Artifacts** while respecting mutation guardrails.
+_Avoid_: unguarded script execution, CLI exec wrapper, permanent org change
+
 **Apex Artifact**:
 Persisted evidence from an **Apex Run**, such as a raw debug log, parsed log digest, Anonymous Apex body/result, or native test result.
 _Avoid_: terminal output, scratch dump
@@ -59,6 +63,10 @@ _Avoid_: generic transport label, full request dump, hidden native calls
 **Targeted Apex Test Run**:
 A native Apex test execution scoped to explicitly named test classes or methods, with polling, failure digestion, rerun support, and **Apex Artifacts**.
 _Avoid_: test explorer, org-wide dashboard, suite manager
+
+**Apex Coverage Evidence**:
+Read-only coverage data gathered by an **Apex Lifecycle Extension** to explain target and org-wide Apex coverage after tests or during planning. It is summarized in an **Apex Result Card** and persisted as **Apex Artifacts**; it is not a CI gate, dashboard, or deployment policy engine.
+_Avoid_: coverage dashboard, deployment gate, CI policy engine
 
 **SOQL Lifecycle Extension**:
 A bundled SF Pi extension that owns the schema-aware SOQL query lifecycle: discover object shape, validate fields and relationships, explain selectivity, run bounded read-only queries, summarize results, persist artifacts, and help agents iterate. It does not own record CRUD, bulk data operations, report building, or Data Cloud SQL.

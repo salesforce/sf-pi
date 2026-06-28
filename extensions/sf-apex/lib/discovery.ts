@@ -3,7 +3,7 @@
 
 import path from "node:path";
 import type { Connection } from "@salesforce/core";
-import { apiVersion, currentUserId, toolingQuery } from "./api.ts";
+import { apiVersion, currentUserId, requestJson, toolingQuery } from "./api.ts";
 import { buildApexDigest } from "./digest.ts";
 import { ok } from "./result.ts";
 import { escapeSoql, quoteSoql } from "./soql.ts";
@@ -22,6 +22,24 @@ interface ApexTriggerRow extends Record<string, unknown> {
   Name: string;
   Status?: string;
   TableEnumOrId?: string;
+}
+
+interface ToolingTestMethod {
+  name: string;
+  line?: number;
+  column?: number;
+}
+
+interface ToolingTestClass {
+  id: string;
+  name: string;
+  namespacePrefix?: string;
+  testMethods?: ToolingTestMethod[];
+}
+
+interface TestDiscoveryPage {
+  apexTestClasses?: ToolingTestClass[];
+  nextRecordsUrl?: string | null;
 }
 
 const DEFAULT_LIMIT = 25;
@@ -172,14 +190,15 @@ export async function apexSearch(conn: Connection, params: SfApexParams): Promis
 export async function testDiscover(conn: Connection, params: SfApexParams): Promise<ToolResult> {
   const limit = boundedLimit(params.limit);
   const hints = testNameHints(params);
-  const candidates = hints.length
-    ? await queryClassesByNamesOrLike(conn, hints, limit, true)
-    : await queryApexClasses(conn, params.query ?? "Test", limit, true);
+  const discovery = await discoverApexTests(conn, params, limit, hints);
+  const candidates = discovery.classes;
 
   return ok(`Discovered ${candidates.length} Apex test candidate(s).`, {
     kind: "test_discover",
     hints,
     candidates,
+    flow_tests_omitted: discovery.flowTestsOmitted,
+    discovery_mode: discovery.mode,
     digest: buildApexDigest({
       action: params.action,
       kind: "test_discover",
@@ -189,13 +208,19 @@ export async function testDiscover(conn: Connection, params: SfApexParams): Prom
       orgAlias: params.target_org,
       apiVersion: apiVersion(conn),
       apiCalls: [
-        {
-          method: "GET",
-          path: "/tooling/query ApexClass",
-          detail: hints.length
-            ? `Name IN/LIKE ${compactList(hints)} · testOnly · limit=${limit}`
-            : `Name LIKE '%Test%' · limit=${limit}`,
-        },
+        discovery.mode === "tooling_tests"
+          ? {
+              method: "GET",
+              path: "/tooling/tests",
+              detail: `showAllMethods=true · Apex only · limit=${limit}`,
+            }
+          : {
+              method: "GET",
+              path: "/tooling/query ApexClass",
+              detail: hints.length
+                ? `Name IN/LIKE ${compactList(hints)} · testOnly · limit=${limit}`
+                : `Name LIKE '%Test%' · limit=${limit}`,
+            },
       ],
       sections: [
         {
@@ -209,7 +234,14 @@ export async function testDiscover(conn: Connection, params: SfApexParams): Prom
             },
             { icon: "🧪", label: "Hints", value: compactList(hints) || "workspace test classes" },
             { icon: "📊", label: "Found", value: `${candidates.length} candidate(s)` },
-          ],
+            discovery.flowTestsOmitted
+              ? {
+                  icon: "🌊",
+                  label: "Omitted",
+                  value: `${discovery.flowTestsOmitted} Flow test(s)`,
+                }
+              : undefined,
+          ].filter((row): row is { icon: string; label: string; value: string } => Boolean(row)),
         },
         {
           icon: "🧪",
@@ -228,12 +260,91 @@ export async function testDiscover(conn: Connection, params: SfApexParams): Prom
   });
 }
 
+async function discoverApexTests(
+  conn: Connection,
+  params: SfApexParams,
+  limit: number,
+  hints: string[],
+): Promise<{
+  classes: Array<ApexClassRow & { testMethods?: ToolingTestMethod[] }>;
+  flowTestsOmitted: number;
+  mode: "tooling_tests" | "heuristic";
+}> {
+  try {
+    const classes: Array<ApexClassRow & { testMethods?: ToolingTestMethod[] }> = [];
+    let flowTestsOmitted = 0;
+    let nextUrl: string | undefined =
+      `/services/data/v${Math.max(Number(apiVersion(conn)), 65).toFixed(1)}/tooling/tests?showAllMethods=true`;
+    let pages = 0;
+    while (nextUrl && pages < 25) {
+      pages += 1;
+      const page = await requestJson<TestDiscoveryPage>(conn, "GET", nextUrl, undefined, {
+        Accept: "application/json",
+        "X-Chatter-Entity-Encoding": "false",
+      });
+      for (const item of page.apexTestClasses ?? []) {
+        if (isFlowTestClass(item)) {
+          flowTestsOmitted += 1;
+          continue;
+        }
+        const candidate = normalizeTestClass(item);
+        if (!matchesTestDiscoveryFilters(candidate, params, hints)) continue;
+        classes.push(candidate);
+        if (classes.length >= limit) break;
+      }
+      if (classes.length >= limit) break;
+      nextUrl = page.nextRecordsUrl ?? undefined;
+    }
+    return { classes, flowTestsOmitted, mode: "tooling_tests" };
+  } catch {
+    const classes = hints.length
+      ? await queryClassesByNamesOrLike(conn, hints, limit, true)
+      : await queryApexClasses(conn, params.query ?? "Test", limit, true);
+    return { classes, flowTestsOmitted: 0, mode: "heuristic" };
+  }
+}
+
+function normalizeTestClass(
+  item: ToolingTestClass,
+): ApexClassRow & { testMethods?: ToolingTestMethod[] } {
+  return {
+    Id: item.id,
+    Name: item.name,
+    NamespacePrefix: item.namespacePrefix || undefined,
+    Status: "Active",
+    testMethods: item.testMethods ?? [],
+  };
+}
+
+function isFlowTestClass(item: ToolingTestClass): boolean {
+  return (
+    item.namespacePrefix?.startsWith("FlowTesting") === true || item.name.startsWith("FlowTesting.")
+  );
+}
+
+function matchesTestDiscoveryFilters(
+  candidate: ApexClassRow & { testMethods?: ToolingTestMethod[] },
+  params: SfApexParams,
+  hints: string[],
+): boolean {
+  const haystack = [
+    candidate.Name,
+    candidate.NamespacePrefix,
+    ...(candidate.testMethods?.map((method) => method.name) ?? []),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  if (hints.length > 0) return hints.some((hint) => haystack.includes(hint.toLowerCase()));
+  const query = (params.query ?? "").trim().toLowerCase();
+  return !query || haystack.includes(query);
+}
+
 export async function testPlan(conn: Connection, params: SfApexParams): Promise<ToolResult> {
   const limit = boundedLimit(params.limit ?? 10);
   const hints = testNameHints(params);
-  const candidates = hints.length
-    ? await queryClassesByNamesOrLike(conn, hints, limit, true)
-    : await queryApexClasses(conn, params.query ?? "Test", limit, true);
+  const discovery = await discoverApexTests(conn, params, limit, hints);
+  const candidates = discovery.classes;
   const primary = candidates[0];
 
   return ok(
@@ -254,13 +365,19 @@ export async function testPlan(conn: Connection, params: SfApexParams): Promise<
         orgAlias: params.target_org,
         apiVersion: apiVersion(conn),
         apiCalls: [
-          {
-            method: "GET",
-            path: "/tooling/query ApexClass",
-            detail: hints.length
-              ? `Name IN/LIKE ${compactList(hints)} · rank candidates`
-              : "test candidates · rank candidates",
-          },
+          discovery.mode === "tooling_tests"
+            ? {
+                method: "GET",
+                path: "/tooling/tests",
+                detail: `showAllMethods=true · rank Apex candidates · limit=${limit}`,
+              }
+            : {
+                method: "GET",
+                path: "/tooling/query ApexClass",
+                detail: hints.length
+                  ? `Name IN/LIKE ${compactList(hints)} · rank candidates`
+                  : "test candidates · rank candidates",
+              },
         ],
         sections: [
           {
@@ -300,91 +417,6 @@ export async function testPlan(conn: Connection, params: SfApexParams): Promise<
   );
 }
 
-export async function coverageSummary(conn: Connection, params: SfApexParams): Promise<ToolResult> {
-  const names = coverageTargetNames(params);
-  const classes = names.length ? await queryClassesByExactNames(conn, names) : [];
-  const coverage = classes.length
-    ? await queryCoverage(
-        conn,
-        classes.map((klass) => klass.Id),
-      )
-    : [];
-  const classById = new Map(classes.map((klass) => [klass.Id, klass]));
-  const rows = coverage.map((item) => {
-    const covered = Number(item.NumLinesCovered ?? 0);
-    const uncovered = Number(item.NumLinesUncovered ?? 0);
-    const total = covered + uncovered;
-    const pct = total > 0 ? Math.round((covered / total) * 100) : 0;
-    return {
-      ...item,
-      name: classById.get(String(item.ApexClassOrTriggerId))?.Name,
-      covered,
-      uncovered,
-      total,
-      pct,
-    };
-  });
-
-  return ok(`Apex coverage summary: ${rows.length} class(es).`, {
-    kind: "coverage_summary",
-    targets: names,
-    coverage: rows,
-    digest: buildApexDigest({
-      action: params.action,
-      kind: "coverage_summary",
-      status: rows.length ? "pass" : "warning",
-      icon: "📈",
-      title: "Apex Coverage Summary",
-      orgAlias: params.target_org,
-      apiVersion: apiVersion(conn),
-      apiCalls: [
-        {
-          method: "GET",
-          path: "/tooling/query ApexClass",
-          detail: `Name IN ${compactList(names) || "[]"}`,
-        },
-        {
-          method: "GET",
-          path: "/tooling/query ApexCodeCoverageAggregate",
-          detail: `classes=${classes.length}`,
-        },
-      ],
-      sections: [
-        {
-          icon: "🎯",
-          title: "Scope",
-          rows: [
-            { icon: "📄", label: "Targets", value: compactList(names) || "not specified" },
-            { icon: "📊", label: "Found", value: `${rows.length} coverage record(s)` },
-          ],
-        },
-        {
-          icon: "📈",
-          title: "Coverage",
-          rows: rows.length
-            ? rows.slice(0, 10).map((row) => ({
-                icon: row.pct >= 75 ? "🟢" : "🟡",
-                label:
-                  row.name ??
-                  shortId(String((row as { ApexClassOrTriggerId?: unknown }).ApexClassOrTriggerId)),
-                value: `${row.pct}% · ${row.covered}/${row.total} covered`,
-              }))
-            : [{ icon: "⚠️", label: "Coverage", value: "no coverage records found for targets" }],
-        },
-      ],
-      nextRows: [
-        {
-          icon: "🧭",
-          label: "Recommend",
-          value: rows.length
-            ? "review low coverage before widening tests"
-            : "run targeted tests, then rerun coverage.summary",
-        },
-      ],
-    }),
-  });
-}
-
 async function queryApexClasses(
   conn: Connection,
   term: string,
@@ -417,19 +449,6 @@ async function queryApexTriggers(
   ).records;
 }
 
-async function queryClassesByExactNames(
-  conn: Connection,
-  names: string[],
-): Promise<ApexClassRow[]> {
-  if (names.length === 0) return [];
-  return (
-    await toolingQuery<ApexClassRow>(
-      conn,
-      `SELECT Id, Name, NamespacePrefix, Status FROM ApexClass WHERE Name IN (${names.map(quoteSoql).join(",")}) AND Status = 'Active' ORDER BY Name`,
-    )
-  ).records;
-}
-
 async function queryClassesByNamesOrLike(
   conn: Connection,
   names: string[],
@@ -445,15 +464,6 @@ async function queryClassesByNamesOrLike(
     await toolingQuery<ApexClassRow>(
       conn,
       `SELECT Id, Name, NamespacePrefix, Status FROM ApexClass WHERE ${filters.join(" AND ")} ORDER BY Name LIMIT ${limit}`,
-    )
-  ).records;
-}
-
-async function queryCoverage(conn: Connection, classIds: string[]) {
-  return (
-    await toolingQuery<Record<string, unknown>>(
-      conn,
-      `SELECT ApexClassOrTriggerId, NumLinesCovered, NumLinesUncovered FROM ApexCodeCoverageAggregate WHERE ApexClassOrTriggerId IN (${classIds.map(quoteSoql).join(",")})`,
     )
   ).records;
 }
@@ -480,13 +490,6 @@ function testNameHints(params: SfApexParams): string[] {
   return [...new Set(names)];
 }
 
-function coverageTargetNames(params: SfApexParams): string[] {
-  const names = [...(params.class_names ?? []), ...targetInputs(params)].map((target) =>
-    path.basename(target).replace(/\.(cls|trigger)$/i, ""),
-  );
-  return [...new Set(names.filter(Boolean))];
-}
-
 function matchRows(classes: ApexClassRow[], triggers: ApexTriggerRow[]) {
   const rows = [
     ...classes.slice(0, 8).map((klass) => ({
@@ -503,13 +506,19 @@ function matchRows(classes: ApexClassRow[], triggers: ApexTriggerRow[]) {
   return rows.length ? rows : [{ icon: "⚪", label: "Matches", value: "none" }];
 }
 
-function classRows(classes: ApexClassRow[]) {
+function classRows(classes: Array<ApexClassRow & { testMethods?: ToolingTestMethod[] }>) {
   return classes.length
-    ? classes.slice(0, 10).map((klass, index) => ({
-        icon: index === 0 ? "✅" : "🧪",
-        label: index === 0 ? "Primary" : `${index + 1}.`,
-        value: klass.Name,
-      }))
+    ? classes.slice(0, 10).map((klass, index) => {
+        const methods = klass.testMethods ?? [];
+        const methodSummary = methods.length
+          ? ` · ${methods.length} method(s)${methods[0]?.name ? ` · first=${methods[0].name}` : ""}`
+          : "";
+        return {
+          icon: index === 0 ? "✅" : "🧪",
+          label: index === 0 ? "Primary" : `${index + 1}.`,
+          value: `${klass.NamespacePrefix ? `${klass.NamespacePrefix}.` : ""}${klass.Name}${methodSummary}`,
+        };
+      })
     : [{ icon: "⚠️", label: "Candidates", value: "none found" }];
 }
 
@@ -517,8 +526,4 @@ function compactList(values: string[]): string {
   if (values.length === 0) return "";
   const visible = values.slice(0, 3).join(", ");
   return values.length > 3 ? `${visible}, +${values.length - 3} more` : visible;
-}
-
-function shortId(value: string): string {
-  return value.length > 10 ? `${value.slice(0, 3)}…${value.slice(-4)}` : value;
 }

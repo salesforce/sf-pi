@@ -27,8 +27,9 @@ export async function requestJson<T>(
   method: HttpMethod,
   url: string,
   body?: unknown,
+  headers?: Record<string, string>,
 ): Promise<T> {
-  const response = await connRequest<T>(conn, { method, url, body, timeoutMs: 120_000 });
+  const response = await connRequest<T>(conn, { method, url, body, headers, timeoutMs: 120_000 });
   if (response.status >= 400) {
     throw new Error(
       `Salesforce API ${method} ${url} failed (${response.status}): ${JSON.stringify(response.body)}`,
@@ -41,11 +42,14 @@ export async function requestText(
   conn: Connection,
   method: HttpMethod,
   url: string,
+  body?: unknown,
+  headers: Record<string, string> = { Accept: "text/plain" },
 ): Promise<string> {
   const response = await connRequest<string>(conn, {
     method,
     url,
-    headers: { Accept: "text/plain" },
+    body,
+    headers,
     timeoutMs: 120_000,
   });
   if (response.status >= 400) {
@@ -59,15 +63,34 @@ export async function requestText(
 export async function toolingQuery<T extends Record<string, unknown>>(
   conn: Connection,
   soql: string,
-): Promise<{ totalSize: number; records: T[] }> {
+): Promise<{ totalSize: number; records: T[]; done?: boolean; nextRecordsUrl?: string }> {
   const v = apiVersion(conn);
   const encoded = encodeURIComponent(soql);
-  const result = await requestJson<{ totalSize: number; records: T[] }>(
-    conn,
-    "GET",
-    `/services/data/v${v}/tooling/query/?q=${encoded}`,
-  );
+  const result = await requestJson<{
+    totalSize: number;
+    records: T[];
+    done?: boolean;
+    nextRecordsUrl?: string;
+  }>(conn, "GET", `/services/data/v${v}/tooling/query/?q=${encoded}`);
   return result;
+}
+
+export async function toolingQueryAll<T extends Record<string, unknown>>(
+  conn: Connection,
+  soql: string,
+): Promise<{ totalSize: number; records: T[] }> {
+  let page = await toolingQuery<T>(conn, soql);
+  const records = [...page.records];
+  while (page.done === false && page.nextRecordsUrl) {
+    page = await requestJson<{
+      totalSize: number;
+      records: T[];
+      done?: boolean;
+      nextRecordsUrl?: string;
+    }>(conn, "GET", page.nextRecordsUrl);
+    records.push(...page.records);
+  }
+  return { totalSize: records.length, records };
 }
 
 export async function currentUserId(conn: Connection): Promise<string> {

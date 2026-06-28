@@ -26,7 +26,6 @@ import {
   apexSearch,
   coverageSummary,
   diagnoseFile,
-  getLog,
   orgPreflight,
   runAnonymous,
   runTest,
@@ -89,6 +88,25 @@ function expectOk(name: string, result: ToolResult) {
   else ok(name, firstLine(result.content[0]?.text ?? "ok"));
 }
 
+function expectAnonymousSoapEvidence(name: string, result: ToolResult) {
+  const digest = result.details?.digest as { api_calls?: Array<{ path?: string }> } | undefined;
+  const logDigest = result.details?.log_digest as { timeline?: unknown[] } | undefined;
+  const paths = digest?.api_calls?.map((call) => call.path ?? "") ?? [];
+  if (!paths.some((path) => path.includes("/services/Soap/s/"))) {
+    fail(name, `missing SOAP API rail: ${JSON.stringify(paths)}`);
+    return;
+  }
+  if (paths.some((path) => path.includes("TraceFlag") || path.includes("ApexLog"))) {
+    fail(name, `anon.run should not include trace/log polling rail: ${JSON.stringify(paths)}`);
+    return;
+  }
+  if (!logDigest?.timeline?.length) {
+    fail(name, "missing parsed inline debug-log timeline");
+    return;
+  }
+  ok(name, `SOAP rail · ${logDigest.timeline.length} timeline event(s)`);
+}
+
 async function main() {
   clearConnectionCache();
   section("1. Resolve native connection");
@@ -143,23 +161,19 @@ async function main() {
   );
   expectText(
     "test.run harness suite",
-    await runTest(
-      conn,
-      {
-        action: "test.run",
-        target_org: ORG,
-        class_names: [
-          "SfApexHarnessServiceTest",
-          "SfApexHarnessTriggerHandlerTest",
-          "SfApexHarnessQueueableTest",
-          "SfApexHarnessBatchTest",
-          "SfApexHarnessSchedulableTest",
-          "SfApexHarnessInvocableTest",
-        ],
-        wait_seconds: 240,
-      },
-      state,
-    ),
+    await runTest(conn, {
+      action: "test.run",
+      target_org: ORG,
+      class_names: [
+        "SfApexHarnessServiceTest",
+        "SfApexHarnessTriggerHandlerTest",
+        "SfApexHarnessQueueableTest",
+        "SfApexHarnessBatchTest",
+        "SfApexHarnessSchedulableTest",
+        "SfApexHarnessInvocableTest",
+      ],
+      wait_seconds: 240,
+    }),
     /Apex tests passed: \d+\/\d+ passing\./,
   );
   expectText(
@@ -176,64 +190,47 @@ async function main() {
         "SfApexHarnessInvocable",
       ],
     }),
-    /Apex coverage summary: \d+ class\(es\)\./,
+    /Apex coverage summary: \d+ target\(s\)\./,
   );
 
-  section("4. Trace, Anonymous Apex, and log timeline");
+  section("4. Trace lifecycle and SOAP Anonymous Apex probes");
   expectOk(
     "trace.start",
     await startTrace(conn, { action: "trace.start", target_org: ORG, duration_minutes: 10 }, state),
   );
   traceStarted = true;
+  expectText(
+    "trace.status active",
+    await traceStatus(conn, { action: "trace.status", target_org: ORG }),
+    "Active Apex trace flags:",
+  );
 
   const smoke = await readFile(
     path.join(HARNESS_CWD, "scripts/apex/sfApexHarnessSmoke.apex"),
     "utf8",
   );
-  expectText(
-    "anon.run smoke",
-    await runAnonymous(
-      conn,
-      { action: "anon.run", target_org: ORG, body: smoke, wait_seconds: 60 },
-      state,
-    ),
-    "Anonymous Apex succeeded.",
-  );
-  const smokeLogId = state.lastLogId;
-  if (smokeLogId)
-    expectOk(
-      "log.get smoke",
-      await getLog(conn, { action: "log.get", target_org: ORG, log_id: smokeLogId }, state),
-    );
-  else fail("log.get smoke", "no lastLogId recorded");
+  const smokeResult = await runAnonymous(conn, {
+    action: "anon.run",
+    target_org: ORG,
+    body: smoke,
+    wait_seconds: 60,
+  });
+  expectText("anon.run smoke", smokeResult, "Anonymous Apex succeeded.");
+  expectAnonymousSoapEvidence("anon.run smoke SOAP evidence", smokeResult);
 
   const rollback = await readFile(
     path.join(HARNESS_CWD, "scripts/apex/sfApexHarnessMutationRollback.apex"),
     "utf8",
   );
-  expectText(
-    "anon.run rollback mutation",
-    await runAnonymous(
-      conn,
-      {
-        action: "anon.run",
-        target_org: ORG,
-        body: rollback,
-        allow_mutation: true,
-        wait_seconds: 60,
-      },
-      state,
-    ),
-    "Anonymous Apex succeeded.",
-  );
-  const rollbackLogId = state.lastLogId;
-  if (rollbackLogId)
-    expectText(
-      "log.get rollback timeline",
-      await getLog(conn, { action: "log.get", target_org: ORG, log_id: rollbackLogId }, state),
-      /SOQL \d+ · DML \d+/,
-    );
-  else fail("log.get rollback timeline", "no lastLogId recorded");
+  const rollbackResult = await runAnonymous(conn, {
+    action: "anon.run",
+    target_org: ORG,
+    body: rollback,
+    allow_mutation: true,
+    wait_seconds: 60,
+  });
+  expectText("anon.run rollback mutation", rollbackResult, "Anonymous Apex succeeded.");
+  expectAnonymousSoapEvidence("anon.run rollback SOAP evidence", rollbackResult);
 
   if (!SKIP_FAILURES) await runFailureProbes(conn);
   if (FLOW) await runFlowSmoke(conn, FLOW);
@@ -253,50 +250,32 @@ async function runFailureProbes(conn: Awaited<ReturnType<typeof apexConnection>>
   section("4b. Controlled failure probes");
   expectText(
     "anon.run compile failure",
-    await runAnonymous(
-      conn,
-      {
-        action: "anon.run",
-        target_org: ORG,
-        body: "System.debug('SF_APEX_E2E_COMPILE_FAILURE'); SfApexHarnessService.methodThatDoesNotExist();",
-        wait_seconds: 30,
-      },
-      state,
-    ),
+    await runAnonymous(conn, {
+      action: "anon.run",
+      target_org: ORG,
+      body: "System.debug('SF_APEX_E2E_COMPILE_FAILURE'); SfApexHarnessService.methodThatDoesNotExist();",
+      wait_seconds: 30,
+    }),
     "Compile problem:",
   );
 
-  const runtimeFailure = await runAnonymous(
-    conn,
-    {
-      action: "anon.run",
-      target_org: ORG,
-      body: "System.debug('SF_APEX_E2E_RUNTIME_FAILURE start'); throw new SfApexHarnessService.HarnessProcessingException('SF_APEX_E2E_CONTROLLED_FAILURE');",
-      wait_seconds: 60,
-    },
-    state,
-  );
+  const runtimeFailure = await runAnonymous(conn, {
+    action: "anon.run",
+    target_org: ORG,
+    body: "System.debug('SF_APEX_E2E_RUNTIME_FAILURE start'); throw new SfApexHarnessService.HarnessProcessingException('SF_APEX_E2E_CONTROLLED_FAILURE');",
+    wait_seconds: 60,
+  });
   expectText("anon.run runtime failure", runtimeFailure, "SF_APEX_E2E_CONTROLLED_FAILURE");
-  const runtimeLogId = state.lastLogId;
-  if (runtimeLogId)
-    expectText(
-      "log.get runtime root cause",
-      await getLog(conn, { action: "log.get", target_org: ORG, log_id: runtimeLogId }, state),
-      "SF_APEX_E2E_CONTROLLED_FAILURE",
-    );
+  expectAnonymousSoapEvidence("anon.run runtime SOAP evidence", runtimeFailure);
 
   expectText(
     "anon.run mutation guard",
-    await runAnonymous(
-      conn,
-      {
-        action: "anon.run",
-        target_org: ORG,
-        body: "insert new SfApexHarness__c(Status__c = SfApexHarnessService.STATUS_NEW);",
-        wait_seconds: 30,
-      },
-      state,
-    ),
+    await runAnonymous(conn, {
+      action: "anon.run",
+      target_org: ORG,
+      body: "insert new SfApexHarness__c(Status__c = SfApexHarnessService.STATUS_NEW);",
+      wait_seconds: 30,
+    }),
     "appears mutating",
   );
 }
@@ -310,11 +289,12 @@ async function runFlowSmoke(conn: Awaited<ReturnType<typeof apexConnection>>, fl
     "interview.start();",
     "System.debug('SF_APEX_E2E_FLOW finished');",
   ].join("\n");
-  const result = await runAnonymous(
-    conn,
-    { action: "anon.run", target_org: ORG, body, wait_seconds: 60 },
-    state,
-  );
+  const result = await runAnonymous(conn, {
+    action: "anon.run",
+    target_org: ORG,
+    body,
+    wait_seconds: 60,
+  });
   const text = result.content[0]?.text ?? "";
   if (/Anonymous Apex succeeded/.test(text)) ok("flow observation", flowName);
   else if (REQUIRE_FLOW) fail("flow observation", clip(text));

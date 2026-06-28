@@ -1,13 +1,25 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/** Native targeted Apex test execution and result summarization. */
+/** Targeted Apex test execution through the public @salesforce/apex-node TestService. */
 
 import type { Connection } from "@salesforce/core";
-import { apiVersion, requestJson, toolingQuery } from "./api.ts";
+import { Duration } from "@salesforce/kit";
+import { TestLevel, TestService } from "@salesforce/apex-node";
+import { apiVersion, toolingQuery } from "./api.ts";
 import { artifactTimestamp, writeApexArtifact } from "./artifacts.ts";
 import { buildApexDigest, formatMs, plural } from "./digest.ts";
 import { fail, ok } from "./result.ts";
-import { escapeSoql, quoteSoql } from "./soql.ts";
-import type { SfApexParams, SfApexSessionState, ToolResult } from "./types.ts";
+import { escapeSoql } from "./soql.ts";
+import { buildApexTestPayloadItems } from "./test-targets.ts";
+import type { ApexArtifact, SfApexParams, SfApexSessionState, ToolResult } from "./types.ts";
+
+type ApexNodePayload = Record<string, unknown>;
+type ApexNodeTestResult = {
+  summary?: Record<string, unknown>;
+  tests?: Array<Record<string, unknown>>;
+  setup?: Array<Record<string, unknown>>;
+  codecoverage?: Array<Record<string, unknown>>;
+};
+type ApexNodeRunIdResult = { testRunId: string };
 
 export async function runTest(
   conn: Connection,
@@ -15,66 +27,40 @@ export async function runTest(
   state: SfApexSessionState,
 ): Promise<ToolResult> {
   const tests = params.tests ?? [];
-  const classNames = params.class_names ?? tests.map((test) => test.split(".")[0]);
-  if (classNames.length === 0)
+  const classNames = params.class_names ?? [];
+  if (tests.length === 0 && classNames.length === 0)
     return fail("Provide tests or class_names for test.run.", { kind: "apex_test" });
-  const classRows = await resolveApexClasses(conn, [...new Set(classNames)]);
-  const payload = {
-    tests: classRows.map((klass) => {
-      const methods = tests
-        .filter((test) => test.startsWith(`${klass.Name}.`) && test.split(".")[1])
-        .map((test) => test.split(".")[1]);
-      return methods.length > 0
-        ? { classId: klass.Id, testMethods: methods }
-        : { classId: klass.Id };
-    }),
-  };
-  const v = apiVersion(conn);
-  const jobId = await requestJson<string>(
-    conn,
-    "POST",
-    `/services/data/v${v}/tooling/runTestsAsynchronous`,
-    payload,
-  );
-  state.lastTestRunId = jobId;
+
+  const includeCoverage = params.include_coverage === true;
+  const waitSeconds = params.wait_seconds ?? 60;
+  const service = new TestService(conn);
+  const payload = await buildApexNodePayload(conn, service, tests, classNames, includeCoverage);
   state.lastTestSpec = {
     tests: params.tests,
     class_names: params.class_names,
+    include_coverage: params.include_coverage,
     target_org: params.target_org,
   };
 
-  const waitSeconds = params.wait_seconds ?? 60;
-  if (waitSeconds <= 0) {
-    return ok(`Apex test run queued: ${jobId}.`, {
-      kind: "apex_test",
-      async_job_id: jobId,
-      payload,
-      digest: buildApexDigest({
-        action: params.action,
-        kind: "apex_test",
-        status: "info",
-        icon: "🧪",
-        title: "Apex Test Report · queued",
-        orgAlias: params.target_org,
-        apiVersion: v,
-        meta: [`run=${jobId.slice(0, 8)}…`],
-        apiCalls: [
-          {
-            method: "POST",
-            path: "/tooling/runTestsAsynchronous",
-            detail: `tests[{classId}] · classes=${classRows.length}`,
-          },
-        ],
-        summaryRows: [
-          { icon: "🔄", label: "Outcome", value: "test run queued" },
-          { icon: "📦", label: "Scope", value: `${plural(classRows.length, "class", "classes")}` },
-        ],
-        evidenceRows: [{ icon: "🧾", label: "Run Id", value: jobId }],
-        nextRows: [{ icon: "🧭", label: "Recommend", value: "poll with sf_apex test.result" }],
-      }),
-    });
+  const result = (await service.runTestAsynchronous(
+    payload as Parameters<TestService["runTestAsynchronous"]>[0],
+    includeCoverage,
+    waitSeconds <= 0,
+    undefined,
+    undefined,
+    waitSeconds > 0 ? Duration.seconds(waitSeconds) : undefined,
+  )) as ApexNodeTestResult | ApexNodeRunIdResult | null;
+
+  if (!result)
+    return fail("Apex test run was cancelled before producing a result.", { kind: "apex_test" });
+  if (isRunIdResult(result)) {
+    state.lastTestRunId = result.testRunId;
+    return queuedTestResult(params, result.testRunId, payload, includeCoverage, apiVersion(conn));
   }
-  return testResult(conn, { ...params, run_id: jobId }, state);
+
+  const runId = testRunIdFromResult(result) ?? "unknown";
+  if (runId !== "unknown") state.lastTestRunId = runId;
+  return formatApexNodeTestResult(conn, params, runId, payload, result, includeCoverage, true);
 }
 
 export async function testResult(
@@ -84,74 +70,42 @@ export async function testResult(
 ): Promise<ToolResult> {
   const runId = params.run_id ?? state?.lastTestRunId;
   if (!runId) return fail("run_id is required for test.result.", { kind: "apex_test" });
-  const waitSeconds = params.wait_seconds ?? 60;
-  const deadline = Date.now() + waitSeconds * 1000;
-  let job: Record<string, unknown> | undefined;
-  do {
-    job = (
-      await toolingQuery<Record<string, unknown>>(
-        conn,
-        `SELECT Id, Status, JobType, CreatedDate, CompletedDate, NumberOfErrors, JobItemsProcessed, TotalJobItems, ExtendedStatus FROM AsyncApexJob WHERE Id = '${escapeSoql(runId)}' LIMIT 1`,
-      )
-    ).records[0];
-    const status = String(job?.Status ?? "");
-    if (["Completed", "Failed", "Aborted"].includes(status)) break;
-    await new Promise((resolve) => setTimeout(resolve, 2_000));
-  } while (Date.now() < deadline);
 
-  const queueItems = (
-    await toolingQuery<Record<string, unknown>>(
-      conn,
-      `SELECT Id, ApexClassId, Status, ExtendedStatus, ParentJobId, TestRunResultId FROM ApexTestQueueItem WHERE ParentJobId = '${escapeSoql(runId)}' ORDER BY CreatedDate DESC LIMIT 50`,
-    )
-  ).records;
-  const testRunIds = [...new Set(queueItems.map((item) => item.TestRunResultId).filter(Boolean))];
-  const runResults = testRunIds.length
-    ? (
-        await toolingQuery<Record<string, unknown>>(
-          conn,
-          `SELECT Id, AsyncApexJobId, UserId, JobName, StartTime, EndTime, TestTime, Status, ClassesEnqueued, ClassesCompleted, MethodsEnqueued, MethodsCompleted, MethodsFailed FROM ApexTestRunResult WHERE Id IN (${testRunIds.map((id) => quoteSoql(String(id))).join(",")})`,
-        )
-      ).records
-    : [];
-  const methodResults = testRunIds.length
-    ? (
-        await toolingQuery<Record<string, unknown>>(
-          conn,
-          `SELECT Id, Outcome, ApexClassId, MethodName, TestName, Message, StackTrace, RunTime, QueueItemId, ApexLogId FROM ApexTestResult WHERE ApexTestRunResultId IN (${testRunIds.map((id) => quoteSoql(String(id))).join(",")}) ORDER BY TestTimestamp DESC LIMIT 200`,
-        )
-      ).records
-    : [];
-  const summary = summarizeTestResults(methodResults);
-  const stamp = artifactTimestamp();
-  const artifact = await writeApexArtifact("tests", `${stamp}-${runId}.json`, {
-    job,
-    queueItems,
-    runResults,
-    methodResults,
-  });
-  const text = renderTestSummary(summary, methodResults);
-  return ok(text, {
-    kind: "apex_test",
-    async_job_id: runId,
-    job,
-    queue_items: queueItems,
-    run_results: runResults,
-    method_results: methodResults,
-    summary,
-    artifacts: [artifact],
-    digest: buildTestRunDigest(
+  const waitSeconds = params.wait_seconds ?? 60;
+  const job = await waitForTestJob(conn, runId, waitSeconds);
+  const status = String(job?.Status ?? "");
+  if (!isFinishedStatus(status)) {
+    return queuedTestResult(
       params,
       runId,
-      job,
-      queueItems,
-      runResults,
-      methodResults,
-      summary,
-      [artifact],
+      { run_id: runId },
+      params.include_coverage === true,
       apiVersion(conn),
-    ),
-  });
+      {
+        job,
+        timed_out: true,
+        wait_seconds: waitSeconds,
+      },
+    );
+  }
+
+  const includeCoverage = params.include_coverage === true;
+  const service = new TestService(conn);
+  const result = (await service.reportAsyncResults(
+    runId,
+    includeCoverage,
+  )) as ApexNodeTestResult | null;
+  if (!result)
+    return fail(`No Apex test result available for run_id ${runId}.`, { kind: "apex_test" });
+  return formatApexNodeTestResult(
+    conn,
+    params,
+    runId,
+    { run_id: runId },
+    result,
+    includeCoverage,
+    false,
+  );
 }
 
 export async function rerunTest(
@@ -163,23 +117,147 @@ export async function rerunTest(
   return runTest(conn, { ...params, ...state.lastTestSpec, action: "test.rerun" }, state);
 }
 
+async function buildApexNodePayload(
+  conn: Connection,
+  service: TestService,
+  tests: string[],
+  classNames: string[],
+  includeCoverage: boolean,
+): Promise<ApexNodePayload> {
+  const skipCodeCoverage = !includeCoverage;
+  if (tests.length > 0 && classNames.length > 0) {
+    return {
+      tests: await buildApexTestPayloadItems(conn, tests, classNames),
+      testLevel: TestLevel.RunSpecifiedTests,
+      skipCodeCoverage,
+    };
+  }
+  return (await service.buildAsyncPayload(
+    TestLevel.RunSpecifiedTests,
+    tests.length ? tests.join(",") : undefined,
+    classNames.length ? classNames.join(",") : undefined,
+    undefined,
+    undefined,
+    skipCodeCoverage,
+  )) as ApexNodePayload;
+}
+
+async function formatApexNodeTestResult(
+  conn: Connection,
+  params: SfApexParams,
+  runId: string,
+  payload: ApexNodePayload,
+  result: ApexNodeTestResult,
+  includeCoverage: boolean,
+  includesStartCall: boolean,
+): Promise<ToolResult> {
+  const summary = summarizeTestResults(result.tests ?? [], result.summary);
+  const stamp = artifactTimestamp();
+  const artifact = await writeApexArtifact("tests", `${stamp}-${runId}.json`, {
+    payload,
+    result,
+  });
+  const text = renderTestSummary(summary, result.tests ?? []);
+  return ok(text, {
+    kind: "apex_test",
+    async_job_id: runId,
+    test_result_summary: result.summary,
+    tests_sample: (result.tests ?? []).slice(0, 25),
+    setup_sample: (result.setup ?? []).slice(0, 10),
+    codecoverage_sample: (result.codecoverage ?? []).slice(0, 10),
+    counts: {
+      tests: result.tests?.length ?? 0,
+      setup: result.setup?.length ?? 0,
+      codecoverage: result.codecoverage?.length ?? 0,
+    },
+    summary,
+    include_coverage: includeCoverage,
+    artifacts: [artifact],
+    digest: buildTestRunDigest(
+      params,
+      runId,
+      result,
+      summary,
+      [artifact],
+      apiVersion(conn),
+      includeCoverage,
+      includesStartCall,
+    ),
+  });
+}
+
+function queuedTestResult(
+  params: SfApexParams,
+  runId: string,
+  payload: ApexNodePayload,
+  includeCoverage: boolean,
+  version: string,
+  extra: Record<string, unknown> = {},
+): ToolResult {
+  return ok(`Apex test run queued: ${runId}.`, {
+    kind: "apex_test",
+    async_job_id: runId,
+    payload,
+    include_coverage: includeCoverage,
+    ...extra,
+    digest: buildApexDigest({
+      action: params.action,
+      kind: "apex_test",
+      status: extra.timed_out ? "warning" : "info",
+      icon: "🧪",
+      title: extra.timed_out ? "Apex Test Report · still running" : "Apex Test Report · queued",
+      orgAlias: params.target_org,
+      apiVersion: version,
+      meta: [`run=${shortId(runId)}`],
+      apiCalls: [
+        {
+          method: params.action === "test.result" ? "GET" : "POST",
+          path:
+            params.action === "test.result"
+              ? "/tooling/query AsyncApexJob"
+              : "/tooling/runTestsAsynchronous",
+          detail: `@salesforce/apex-node TestService · coverage=${includeCoverage ? "yes" : "no"}`,
+        },
+      ],
+      summaryRows: [
+        {
+          icon: extra.timed_out ? "⏳" : "🔄",
+          label: "Outcome",
+          value: extra.timed_out ? "still running" : "test run queued",
+        },
+        { icon: "📦", label: "Scope", value: payloadScope(payload) },
+        {
+          icon: includeCoverage ? "📈" : "⚪",
+          label: "Coverage",
+          value: includeCoverage ? "requested" : "not requested",
+        },
+      ],
+      evidenceRows: [{ icon: "🧾", label: "Run Id", value: runId }],
+      nextRows: [{ icon: "🧭", label: "Recommend", value: "poll with sf_apex test.result" }],
+    }),
+  });
+}
+
 function buildTestRunDigest(
   params: SfApexParams,
   runId: string,
-  job: Record<string, unknown> | undefined,
-  queueItems: Record<string, unknown>[],
-  runResults: Record<string, unknown>[],
-  methodResults: Record<string, unknown>[],
+  result: ApexNodeTestResult,
   summary: { total: number; passing: number; failing: number },
-  artifacts: Array<{ path: string; kind: string }>,
+  artifacts: ApexArtifact[],
   version: string,
+  includeCoverage: boolean,
+  includesStartCall: boolean,
 ) {
-  const failed = methodResults.filter((result) => result.Outcome !== "Pass");
-  const classes = new Set(methodResults.map((result) => result.TestName).filter(Boolean));
-  const runTimeMs = runResults
-    .map((result) => (typeof result.TestTime === "number" ? result.TestTime : undefined))
-    .find((value) => value !== undefined);
-  const jobStatus = typeof job?.Status === "string" ? job.Status : "unknown";
+  const tests = result.tests ?? [];
+  const failed = failedTests(tests);
+  const classes = new Set(
+    tests.map((test) => apexClassName(test)).filter((name): name is string => Boolean(name)),
+  );
+  const runTimeMs =
+    numberValue(result.summary?.testTotalTimeInMs) ??
+    numberValue(result.summary?.testExecutionTimeInMs);
+  const outcome =
+    stringValue(result.summary?.outcome) ?? (summary.failing === 0 ? "Passed" : "Failed");
   return buildApexDigest({
     action: params.action,
     kind: "apex_test",
@@ -188,10 +266,11 @@ function buildTestRunDigest(
     title: `Apex Test Run · ${summary.failing === 0 ? "passed" : "failed"}`,
     orgAlias: params.target_org,
     apiVersion: version,
-    meta: [`run=${runId.slice(0, 8)}…`, formatMs(runTimeMs)].filter((item): item is string =>
+    mode: "API-native · @salesforce/apex-node TestService",
+    meta: [`run=${shortId(runId)}`, formatMs(runTimeMs)].filter((item): item is string =>
       Boolean(item),
     ),
-    apiCalls: testResultApiCalls(params, runId, methodResults.length),
+    apiCalls: testResultApiCalls(params, runId, tests.length, includeCoverage, includesStartCall),
     sections: [
       {
         icon: "🧾",
@@ -208,10 +287,11 @@ function buildTestRunDigest(
           {
             icon: "📦",
             label: "Scope",
-            value: `${plural(classes.size || queueItems.length, "class", "classes")} · ${plural(summary.total, "method")}`,
+            value: `${plural(classes.size || 1, "class", "classes")} · ${plural(summary.total, "method")}`,
           },
-          { icon: "🧭", label: "Job", value: jobStatus },
-        ],
+          { icon: "🧭", label: "Job", value: outcome },
+          coverageSummaryRow(result, includeCoverage),
+        ].filter((row): row is { icon: string; label: string; value: string } => Boolean(row)),
       },
       {
         icon: "🧯",
@@ -219,17 +299,18 @@ function buildTestRunDigest(
         rows:
           failed.length === 0
             ? [{ icon: "✅", label: "None", value: "all methods passed" }]
-            : failed.slice(0, 5).map((result) => ({
+            : failed.slice(0, 5).map((test) => ({
                 icon: "🔥",
-                label: String(result.MethodName ?? result.TestName ?? "method"),
-                value: String(result.Message ?? result.StackTrace ?? "failed"),
+                label: stringValue(test.methodName) ?? stringValue(test.fullName) ?? "method",
+                value: stringValue(test.message) ?? stringValue(test.stackTrace) ?? "failed",
               })),
       },
       {
         icon: "🐢",
         title: "Slowest Methods",
-        rows: slowestMethodRows(methodResults),
+        rows: slowestMethodRows(tests),
       },
+      ...(includeCoverage ? coverageSections(result) : []),
     ],
     evidenceRows: [
       { icon: "🧾", label: "Run Id", value: runId },
@@ -241,7 +322,9 @@ function buildTestRunDigest(
         label: "Recommend",
         value:
           summary.failing === 0
-            ? "widen related tests or stop trace"
+            ? includeCoverage
+              ? "review coverage evidence or widen related tests"
+              : "widen related tests or request coverage evidence when useful"
             : "inspect failures, fix, and rerun focused tests",
       },
     ],
@@ -249,98 +332,206 @@ function buildTestRunDigest(
   });
 }
 
-function testResultApiCalls(params: SfApexParams, runId: string, methodCount: number) {
+function testResultApiCalls(
+  params: SfApexParams,
+  runId: string,
+  methodCount: number,
+  includeCoverage: boolean,
+  includesStartCall: boolean,
+) {
   const startCall =
-    params.action === "test.result"
-      ? []
-      : [
+    includesStartCall && params.action !== "test.result"
+      ? [
           {
             method: "POST",
             path: "/tooling/runTestsAsynchronous",
-            detail: params.action === "test.rerun" ? "previous spec" : "tests[{classId}]",
+            detail: `@salesforce/apex-node TestService · coverage=${includeCoverage ? "yes" : "no"}`,
           },
-        ];
+        ]
+      : [];
   return [
     ...startCall,
-    { method: "GET", path: "/tooling/query AsyncApexJob", detail: `WHERE Id=${shortId(runId)}` },
-    {
-      method: "GET",
-      path: "/tooling/query ApexTestQueueItem",
-      detail: `ParentJobId=${shortId(runId)}`,
-    },
-    { method: "GET", path: "/tooling/query ApexTestRunResult", detail: "run summary" },
+    { method: "GET", path: "/tooling/query ApexTestRunResult", detail: `run=${shortId(runId)}` },
     {
       method: "GET",
       path: "/tooling/query ApexTestResult",
-      detail: `fields=Outcome,MethodName,Message · methods=${methodCount}`,
+      detail: `methods=${methodCount}`,
     },
+    ...(includeCoverage
+      ? [
+          {
+            method: "GET",
+            path: "/tooling/query ApexCodeCoverage*",
+            detail: "coverage evidence",
+          },
+        ]
+      : []),
   ];
+}
+
+async function waitForTestJob(
+  conn: Connection,
+  runId: string,
+  waitSeconds: number,
+): Promise<Record<string, unknown> | undefined> {
+  const deadline = Date.now() + waitSeconds * 1000;
+  let job: Record<string, unknown> | undefined;
+  do {
+    job = (
+      await toolingQuery<Record<string, unknown>>(
+        conn,
+        `SELECT Id, Status, JobType, CreatedDate, CompletedDate, NumberOfErrors, JobItemsProcessed, TotalJobItems, ExtendedStatus FROM AsyncApexJob WHERE Id = '${escapeSoql(runId)}' LIMIT 1`,
+      )
+    ).records[0];
+    if (isFinishedStatus(String(job?.Status ?? ""))) return job;
+    await new Promise((resolve) => setTimeout(resolve, 2_000));
+  } while (Date.now() < deadline);
+  return job;
+}
+
+function isFinishedStatus(status: string): boolean {
+  return ["Completed", "Failed", "Aborted"].includes(status);
+}
+
+function isRunIdResult(
+  value: ApexNodeTestResult | ApexNodeRunIdResult,
+): value is ApexNodeRunIdResult {
+  return typeof (value as ApexNodeRunIdResult).testRunId === "string" && !("summary" in value);
+}
+
+function testRunIdFromResult(result: ApexNodeTestResult): string | undefined {
+  return stringValue(result.summary?.testRunId);
 }
 
 function shortId(value: string): string {
   return value.length > 10 ? `${value.slice(0, 3)}…${value.slice(-4)}` : value;
 }
 
-function slowestMethodRows(methodResults: Record<string, unknown>[]) {
-  const rows = [...methodResults]
-    .filter((result) => typeof result.RunTime === "number")
-    .sort((a, b) => Number(b.RunTime) - Number(a.RunTime))
+function slowestMethodRows(tests: Record<string, unknown>[]) {
+  const rows = [...tests]
+    .filter((test) => typeof test.runTime === "number")
+    .sort((a, b) => Number(b.runTime) - Number(a.runTime))
     .slice(0, 3)
-    .map((result, index) => ({
+    .map((test, index) => ({
       icon: index === 0 ? "🐢" : "⏱️",
       label: `${index + 1}.`,
-      value: `${result.MethodName ?? result.TestName ?? "method"} · ${formatMs(Number(result.RunTime))}`,
+      value: `${stringValue(test.methodName) ?? stringValue(test.fullName) ?? "method"} · ${formatMs(Number(test.runTime))}`,
     }));
   return rows.length > 0
     ? rows
     : [{ icon: "⚪", label: "None", value: "method runtime unavailable" }];
 }
 
-function artifactSummary(artifacts: Array<{ path: string; kind: string }>): string {
+function coverageSummaryRow(result: ApexNodeTestResult, includeCoverage: boolean) {
+  if (!includeCoverage) return { icon: "⚪", label: "Coverage", value: "not requested" };
+  const testRunCoverage = stringValue(result.summary?.testRunCoverage);
+  const orgWideCoverage = stringValue(result.summary?.orgWideCoverage);
+  return {
+    icon: "📈",
+    label: "Coverage",
+    value:
+      [
+        testRunCoverage ? `run ${testRunCoverage}` : undefined,
+        orgWideCoverage ? `org ${orgWideCoverage}` : undefined,
+      ]
+        .filter(Boolean)
+        .join(" · ") || "requested",
+  };
+}
+
+function coverageSections(result: ApexNodeTestResult) {
+  const coverage = result.codecoverage ?? [];
+  if (!coverage.length) {
+    return [
+      {
+        icon: "📈",
+        title: "Coverage Evidence",
+        rows: [{ icon: "⚪", label: "Coverage", value: "no coverage rows returned" }],
+      },
+    ];
+  }
+  const rows = [...coverage]
+    .sort((a, b) => percentageNumber(a.percentage) - percentageNumber(b.percentage))
+    .slice(0, 5)
+    .map((item) => ({
+      icon: percentageNumber(item.percentage) >= 75 ? "🟢" : "🟡",
+      label: stringValue(item.name) ?? shortId(String(item.apexId ?? "class")),
+      value: `${item.percentage ?? "?"} · ${item.numLinesCovered ?? 0}/${Number(item.numLinesCovered ?? 0) + Number(item.numLinesUncovered ?? 0)} covered`,
+    }));
+  return [{ icon: "📈", title: "Coverage Evidence", rows }];
+}
+
+function artifactSummary(artifacts: ApexArtifact[]): string {
   if (artifacts.length === 0) return "none";
   const kinds = [...new Set(artifacts.map((artifact) => artifact.kind))];
   return `${artifacts.length} artifact${artifacts.length === 1 ? "" : "s"} · ${kinds.join(" + ")}`;
 }
 
-export function summarizeTestResults(methodResults: Record<string, unknown>[]): {
-  total: number;
-  passing: number;
-  failing: number;
-} {
-  const failed = methodResults.filter((result) => result.Outcome !== "Pass");
+export function summarizeTestResults(
+  tests: Record<string, unknown>[],
+  summary?: Record<string, unknown>,
+): { total: number; passing: number; failing: number } {
+  const summaryTotal = numberValue(summary?.testsRan);
+  const summaryPassing = numberValue(summary?.passing);
+  const summaryFailing = numberValue(summary?.failing);
+  if (summaryTotal !== undefined && summaryPassing !== undefined && summaryFailing !== undefined) {
+    return { total: summaryTotal, passing: summaryPassing, failing: summaryFailing };
+  }
+  const failed = failedTests(tests);
   return {
-    total: methodResults.length,
-    passing: methodResults.length - failed.length,
+    total: tests.length,
+    passing: tests.length - failed.length,
     failing: failed.length,
   };
 }
 
 function renderTestSummary(
   summary: { total: number; passing: number; failing: number },
-  methodResults: Record<string, unknown>[],
+  tests: Record<string, unknown>[],
 ): string {
-  const failed = methodResults.filter((result) => result.Outcome !== "Pass");
+  const failed = failedTests(tests);
   return [
     `Apex tests ${summary.failing === 0 ? "passed" : "failed"}: ${summary.passing}/${summary.total} passing.`,
     ...failed
       .slice(0, 5)
-      .map((item) => `${item.MethodName}: ${item.Message ?? item.StackTrace ?? "failed"}`),
+      .map(
+        (item) =>
+          `${stringValue(item.methodName) ?? stringValue(item.fullName) ?? "method"}: ${stringValue(item.message) ?? stringValue(item.stackTrace) ?? "failed"}`,
+      ),
   ].join("\n");
 }
 
-async function resolveApexClasses(
-  conn: Connection,
-  classNames: string[],
-): Promise<Array<{ Id: string; Name: string }>> {
-  const quoted = classNames.map(quoteSoql).join(",");
-  const records = (
-    await toolingQuery<{ Id: string; Name: string }>(
-      conn,
-      `SELECT Id, Name FROM ApexClass WHERE Name IN (${quoted}) AND Status = 'Active'`,
-    )
-  ).records;
-  const found = new Set(records.map((record) => record.Name));
-  const missing = classNames.filter((name) => !found.has(name));
-  if (missing.length > 0) throw new Error(`Apex test class(es) not found: ${missing.join(", ")}`);
-  return records;
+function failedTests(tests: Record<string, unknown>[]): Record<string, unknown>[] {
+  return tests.filter((test) => {
+    const outcome = stringValue(test.outcome) ?? stringValue(test.Outcome);
+    return outcome !== "Pass";
+  });
+}
+
+function apexClassName(test: Record<string, unknown>): string | undefined {
+  const apexClass = test.apexClass;
+  if (!apexClass || typeof apexClass !== "object") return stringValue(test.TestName);
+  return (
+    stringValue((apexClass as Record<string, unknown>).fullName) ??
+    stringValue((apexClass as Record<string, unknown>).name)
+  );
+}
+
+function payloadScope(payload: ApexNodePayload): string {
+  const tests = Array.isArray(payload.tests) ? payload.tests : [];
+  return tests.length ? `${plural(tests.length, "class", "classes")}` : "specified tests";
+}
+
+function percentageNumber(value: unknown): number {
+  const text = String(value ?? "0").replace("%", "");
+  const parsed = Number(text);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function numberValue(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function stringValue(value: unknown): string | undefined {
+  return typeof value === "string" && value.length > 0 ? value : undefined;
 }

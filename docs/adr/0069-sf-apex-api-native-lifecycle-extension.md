@@ -24,3 +24,13 @@ SF Pi needs a first-party Apex workflow that supports the full author → diagno
 - The boundary is lifecycle relevance: discovery is in scope only when it directly decides what to diagnose, what to trace, what to run, what failed, what coverage changed, or what to do next. `sf-apex` does not become a general Tooling API, metadata browser, SOQL explorer, setup explorer, or record browser.
 - Agent routing guidance should prefer `sf_apex` over raw Salesforce CLI whenever `sf_apex` exposes the lifecycle step. Raw CLI remains acceptable only for capabilities not yet exposed by `sf_apex`; recurring CLI drift should become a small native action rather than fallback machinery.
 - The extension stores full evidence as Apex Artifacts and keeps LLM-facing output compact. It does not add branch-durable state in v1.
+
+## Hardening addendum
+
+A follow-on hardening pass keeps the same lifecycle boundary while adopting durable lessons from Salesforce's public Apex tooling. `anon.run` should become a SOAP-backed **Anonymous Apex Probe** after a live proof matrix and unit tests demonstrate that the path reliably returns compile/runtime status and debug-log evidence in one native call. If that proof passes, `sf-apex` should ship the simpler SOAP-only path rather than a permanent REST Tooling fallback state machine.
+
+Apex test discovery should use the native Tooling Test Discovery endpoint for Apex tests and methods, with the existing name-heuristic discovery as a compatibility fallback. Flow tests returned by that endpoint remain outside this extension's first hardening scope and may be counted as omitted for transparency.
+
+`Targeted Apex Test Run` inputs should support common Apex target forms such as class names, namespaced class names, class IDs, class-method pairs, and namespaced class-method pairs. Ambiguous targets should fail with structured guidance instead of guessing. Test result cards remain compact, but persisted **Apex Artifacts** should be complete and paged so evidence is not silently truncated.
+
+A focused spike showed that `@salesforce/apex-node` earns partial adoption for **Targeted Apex Test Run** internals because its public `TestService` standardizes payload construction, async execution, timeout/run-id behavior, normalized results, and test-run coverage evidence while preserving the SF Pi card/artifact contract. SF Pi still owns the **Apex Result Card**, **Apex Run Digest**, bounded details, and artifact persistence. Reporter output from `@salesforce/apex-node` may be useful as private artifacts later, but it must not replace SF Pi cards or expand chat output. Standalone **Apex Coverage Evidence** remains native Tooling API work because the package's `CodeCoverage` class is not a stable root export.
