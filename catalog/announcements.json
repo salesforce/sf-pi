@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.210.2-2026-06-25",
-  "latestVersion": "0.210.2",
+  "revision": "release-0.211.0-2026-06-28",
+  "latestVersion": "0.211.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.210.2",
+      "id": "release-0.211.0",
       "kind": "update",
-      "title": "sf-pi v0.210.2 — default herdr splits to current pane",
-      "publishedAt": "2026-06-25T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.210.2",
+      "title": "sf-pi v0.211.0 — sf-apex: add native Apex lifecycle extension",
+      "publishedAt": "2026-06-28T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.211.0",
       "severity": "info",
-      "body": "default herdr splits to current pane"
+      "body": "sf-apex: add native Apex lifecycle extension"
     },
     {
       "id": "pi-0.73-required",
