@@ -8,6 +8,12 @@ import type { ApexArtifact } from "./types.ts";
 
 const ROOT = globalAgentPath("sf-pi", "sf-apex");
 
+export async function apexArtifactDir(kind: string, child?: string): Promise<string> {
+  const dir = path.join(ROOT, kind, ...(child ? [child.replace(/[^a-zA-Z0-9._-]/g, "_")] : []));
+  await mkdir(dir, { recursive: true });
+  return dir;
+}
+
 export async function writeApexArtifact(
   kind: string,
   filename: string,

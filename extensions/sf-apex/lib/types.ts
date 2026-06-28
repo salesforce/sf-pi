@@ -7,9 +7,11 @@ export type SfApexAction =
   | "apex.search"
   | "test.discover"
   | "test.plan"
+  | "test.suites"
   | "coverage.summary"
   | "author.plan"
   | "diagnose.file"
+  | "apex.source.get"
   | "trace.start"
   | "trace.stop"
   | "trace.status"
@@ -29,6 +31,8 @@ export interface SfApexSessionState {
     tests?: string[];
     class_names?: string[];
     include_coverage?: boolean;
+    suite_names?: string[];
+    report_formats?: string[];
     target_org?: string;
   };
   lastTraceFlagIds?: string[];
@@ -53,10 +57,14 @@ export interface SfApexParams {
   allow_mutation?: boolean;
   include_coverage?: boolean;
   include_uncovered_lines?: boolean;
+  include_members?: boolean;
   org_wide?: boolean;
   threshold_percent?: number;
   tests?: string[];
   class_names?: string[];
+  suite_names?: string[];
+  apex_ids?: string[];
+  report_formats?: string[];
   run_id?: string;
   output_mode?: "summary" | "inline" | "file_only";
 }

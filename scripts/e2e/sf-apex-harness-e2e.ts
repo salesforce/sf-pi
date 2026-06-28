@@ -26,6 +26,7 @@ import {
   apexSearch,
   coverageSummary,
   diagnoseFile,
+  getApexSource,
   orgPreflight,
   runAnonymous,
   runTest,
@@ -33,6 +34,7 @@ import {
   stopTrace,
   testDiscover,
   testPlan,
+  testSuites,
   traceStatus,
 } from "../../extensions/sf-apex/lib/operations.ts";
 import type { SfApexSessionState, ToolResult } from "../../extensions/sf-apex/lib/types.ts";
@@ -86,6 +88,25 @@ function expectText(name: string, result: ToolResult, pattern: RegExp | string) 
 function expectOk(name: string, result: ToolResult) {
   if (result.details?.ok === false) fail(name, firstLine(result.content[0]?.text ?? "failed"));
   else ok(name, firstLine(result.content[0]?.text ?? "ok"));
+}
+
+function expectReportArtifacts(name: string, result: ToolResult, minimum: number) {
+  const reports = result.details?.report_artifacts as unknown[] | undefined;
+  if ((reports?.length ?? 0) >= minimum) ok(name, `${reports?.length ?? 0} report artifact(s)`);
+  else fail(name, `expected at least ${minimum} report artifact(s), got ${reports?.length ?? 0}`);
+}
+
+function expectSourceArtifacts(name: string, result: ToolResult, minimum: number) {
+  const sources = result.details?.sources as unknown[] | undefined;
+  const artifacts = result.details?.artifacts as unknown[] | undefined;
+  if ((sources?.length ?? 0) >= minimum && (artifacts?.length ?? 0) >= minimum) {
+    ok(name, `${sources?.length ?? 0} source item(s), ${artifacts?.length ?? 0} artifact(s)`);
+  } else {
+    fail(
+      name,
+      `expected ${minimum} source/artifact item(s), got sources=${sources?.length ?? 0} artifacts=${artifacts?.length ?? 0}`,
+    );
+  }
 }
 
 function expectAnonymousSoapEvidence(name: string, result: ToolResult) {
@@ -145,8 +166,13 @@ async function main() {
     }),
     "SfApexHarnessServiceTest",
   );
+  expectText(
+    "test.suites read-only",
+    await testSuites(conn, { action: "test.suites", target_org: ORG, include_members: true }),
+    /Apex test suites: \d+\./,
+  );
 
-  section("3. Local diagnostics and native tests");
+  section("3. Local diagnostics, source evidence, and native tests");
   expectText(
     "diagnose.file service",
     await diagnoseFile(
@@ -159,23 +185,31 @@ async function main() {
     ),
     /Apex diagnostics (clean|unavailable)/,
   );
-  expectText(
-    "test.run harness suite",
-    await runTest(conn, {
-      action: "test.run",
-      target_org: ORG,
-      class_names: [
-        "SfApexHarnessServiceTest",
-        "SfApexHarnessTriggerHandlerTest",
-        "SfApexHarnessQueueableTest",
-        "SfApexHarnessBatchTest",
-        "SfApexHarnessSchedulableTest",
-        "SfApexHarnessInvocableTest",
-      ],
-      wait_seconds: 240,
-    }),
-    /Apex tests passed: \d+\/\d+ passing\./,
-  );
+  const sourceEvidence = await getApexSource(conn, {
+    action: "apex.source.get",
+    target_org: ORG,
+    class_names: ["SfApexHarnessService"],
+    targets: ["SfApexHarnessTrigger.trigger"],
+  });
+  expectText("apex.source.get harness", sourceEvidence, /Apex source evidence: \d+ item\(s\)\./);
+  expectSourceArtifacts("apex.source.get artifacts", sourceEvidence, 2);
+
+  const harnessTestRun = await runTest(conn, {
+    action: "test.run",
+    target_org: ORG,
+    class_names: [
+      "SfApexHarnessServiceTest",
+      "SfApexHarnessTriggerHandlerTest",
+      "SfApexHarnessQueueableTest",
+      "SfApexHarnessBatchTest",
+      "SfApexHarnessSchedulableTest",
+      "SfApexHarnessInvocableTest",
+    ],
+    report_formats: ["markdown", "junit", "tap", "text", "json"],
+    wait_seconds: 240,
+  });
+  expectText("test.run harness suite", harnessTestRun, /Apex tests passed: \d+\/\d+ passing\./);
+  expectReportArtifacts("test.run report artifacts", harnessTestRun, 5);
   expectText(
     "coverage.summary harness",
     await coverageSummary(conn, {
@@ -278,6 +312,22 @@ async function runFailureProbes(conn: Awaited<ReturnType<typeof apexConnection>>
     }),
     "appears mutating",
   );
+
+  try {
+    await runTest(
+      conn,
+      {
+        action: "test.run",
+        target_org: ORG,
+        suite_names: ["SF_PI_DOES_NOT_EXIST"],
+        wait_seconds: 30,
+      },
+      {},
+    );
+    fail("test.run missing suite", "unexpected success");
+  } catch (err) {
+    ok("test.run missing suite", err instanceof Error ? firstLine(err.message) : String(err));
+  }
 }
 
 async function runFlowSmoke(conn: Awaited<ReturnType<typeof apexConnection>>, flowName: string) {

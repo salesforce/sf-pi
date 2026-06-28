@@ -179,6 +179,8 @@ extensions/sf-apex/
     result.ts               ← implementation module
     sf-apex-tool.ts         ← implementation module
     soql.ts                 ← implementation module
+    source.ts               ← implementation module
+    suites.ts               ← implementation module
     test-targets.ts         ← implementation module
     tests.ts                ← implementation module
     trace.ts                ← implementation module
@@ -191,6 +193,8 @@ extensions/sf-apex/
     log-parser.test.ts      ← unit / smoke test
     render.test.ts          ← unit / smoke test
     smoke.test.ts           ← unit / smoke test
+    source.test.ts          ← unit / smoke test
+    suites.test.ts          ← unit / smoke test
     test-targets.test.ts    ← unit / smoke test
     tests.test.ts           ← unit / smoke test
     trace.test.ts           ← unit / smoke test

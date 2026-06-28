@@ -15,6 +15,7 @@ import {
   authorPlan,
   coverageSummary,
   diagnoseFile,
+  getApexSource,
   getLog,
   latestLog,
   orgPreflight,
@@ -26,6 +27,7 @@ import {
   stopTrace,
   testDiscover,
   testPlan,
+  testSuites,
   testResult,
   traceStatus,
   watchLog,
@@ -40,9 +42,11 @@ const Action = StringEnum(
     "apex.search",
     "test.discover",
     "test.plan",
+    "test.suites",
     "coverage.summary",
     "author.plan",
     "diagnose.file",
+    "apex.source.get",
     "trace.start",
     "trace.stop",
     "trace.status",
@@ -97,6 +101,9 @@ const Params = Type.Object({
       description: "Include covered/uncovered line arrays in coverage.summary artifacts.",
     }),
   ),
+  include_members: Type.Optional(
+    Type.Boolean({ description: "Include suite membership rows in test.suites." }),
+  ),
   org_wide: Type.Optional(
     Type.Boolean({ description: "Include org-wide Apex coverage in coverage.summary." }),
   ),
@@ -110,6 +117,17 @@ const Params = Type.Object({
   ),
   class_names: Type.Optional(
     Type.Array(Type.String(), { description: "Targeted Apex test class names." }),
+  ),
+  suite_names: Type.Optional(
+    Type.Array(Type.String(), { description: "Existing Apex test suite names to run." }),
+  ),
+  apex_ids: Type.Optional(
+    Type.Array(Type.String(), { description: "ApexClass/ApexTrigger ids for apex.source.get." }),
+  ),
+  report_formats: Type.Optional(
+    Type.Array(StringEnum(["markdown", "junit", "tap", "text", "json"] as const), {
+      description: "Optional Apex test report artifact formats.",
+    }),
   ),
   run_id: Type.Optional(Type.String({ description: "AsyncApexJob id from test.run." })),
   output_mode: Type.Optional(
@@ -159,8 +177,12 @@ export function registerSfApexTool(pi: ExtensionAPI): void {
             return testDiscover(conn, params);
           case "test.plan":
             return testPlan(conn, params);
+          case "test.suites":
+            return testSuites(conn, params);
           case "coverage.summary":
             return coverageSummary(conn, params);
+          case "apex.source.get":
+            return getApexSource(conn, params);
           case "trace.start":
             return startTrace(conn, params, state);
           case "trace.stop":

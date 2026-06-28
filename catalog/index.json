@@ -125,7 +125,7 @@
     "entry": "extensions/sf-apex/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 4029
+    "srcLoc": 4514
   },
   {
     "id": "sf-brain",

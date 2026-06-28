@@ -29,7 +29,10 @@ export async function requestJson<T>(
   body?: unknown,
   headers?: Record<string, string>,
 ): Promise<T> {
-  const response = await connRequest<T>(conn, { method, url, body, headers, timeoutMs: 120_000 });
+  let response = await connRequest<T>(conn, { method, url, body, headers, timeoutMs: 120_000 });
+  if ([401, 403].includes(response.status) && (await refreshConnection(conn))) {
+    response = await connRequest<T>(conn, { method, url, body, headers, timeoutMs: 120_000 });
+  }
   if (response.status >= 400) {
     throw new Error(
       `Salesforce API ${method} ${url} failed (${response.status}): ${JSON.stringify(response.body)}`,
@@ -45,13 +48,22 @@ export async function requestText(
   body?: unknown,
   headers: Record<string, string> = { Accept: "text/plain" },
 ): Promise<string> {
-  const response = await connRequest<string>(conn, {
+  let response = await connRequest<string>(conn, {
     method,
     url,
     body,
     headers,
     timeoutMs: 120_000,
   });
+  if ([401, 403].includes(response.status) && (await refreshConnection(conn))) {
+    response = await connRequest<string>(conn, {
+      method,
+      url,
+      body,
+      headers,
+      timeoutMs: 120_000,
+    });
+  }
   if (response.status >= 400) {
     throw new Error(
       `Salesforce API ${method} ${url} failed (${response.status}): ${String(response.body)}`,
@@ -91,6 +103,13 @@ export async function toolingQueryAll<T extends Record<string, unknown>>(
     records.push(...page.records);
   }
   return { totalSize: records.length, records };
+}
+
+async function refreshConnection(conn: Connection): Promise<boolean> {
+  const refreshAuth = (conn as unknown as { refreshAuth?: () => Promise<unknown> }).refreshAuth;
+  if (typeof refreshAuth !== "function") return false;
+  await refreshAuth.call(conn);
+  return true;
 }
 
 export async function currentUserId(conn: Connection): Promise<string> {

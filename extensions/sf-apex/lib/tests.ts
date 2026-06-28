@@ -3,9 +3,9 @@
 
 import type { Connection } from "@salesforce/core";
 import { Duration } from "@salesforce/kit";
-import { TestLevel, TestService } from "@salesforce/apex-node";
+import { ResultFormat, TestLevel, TestService } from "@salesforce/apex-node";
 import { apiVersion, toolingQuery } from "./api.ts";
-import { artifactTimestamp, writeApexArtifact } from "./artifacts.ts";
+import { apexArtifactDir, artifactTimestamp, writeApexArtifact } from "./artifacts.ts";
 import { buildApexDigest, formatMs, plural } from "./digest.ts";
 import { fail, ok } from "./result.ts";
 import { escapeSoql } from "./soql.ts";
@@ -24,23 +24,39 @@ type ApexNodeRunIdResult = { testRunId: string };
 export async function runTest(
   conn: Connection,
   params: SfApexParams,
-  state: SfApexSessionState,
+  state?: SfApexSessionState,
 ): Promise<ToolResult> {
   const tests = params.tests ?? [];
   const classNames = params.class_names ?? [];
-  if (tests.length === 0 && classNames.length === 0)
-    return fail("Provide tests or class_names for test.run.", { kind: "apex_test" });
+  const suiteNames = params.suite_names ?? [];
+  if (tests.length === 0 && classNames.length === 0 && suiteNames.length === 0)
+    return fail("Provide tests, class_names, or suite_names for test.run.", { kind: "apex_test" });
+  if (suiteNames.length > 0 && (tests.length > 0 || classNames.length > 0)) {
+    return fail("suite_names cannot be combined with tests or class_names in this batch.", {
+      kind: "apex_test",
+    });
+  }
 
   const includeCoverage = params.include_coverage === true;
   const waitSeconds = params.wait_seconds ?? 60;
   const service = new TestService(conn);
-  const payload = await buildApexNodePayload(conn, service, tests, classNames, includeCoverage);
-  state.lastTestSpec = {
-    tests: params.tests,
-    class_names: params.class_names,
-    include_coverage: params.include_coverage,
-    target_org: params.target_org,
-  };
+  const payload = await buildApexNodePayload(
+    conn,
+    service,
+    tests,
+    classNames,
+    suiteNames,
+    includeCoverage,
+  );
+  if (state)
+    state.lastTestSpec = {
+      tests: params.tests,
+      class_names: params.class_names,
+      include_coverage: params.include_coverage,
+      suite_names: params.suite_names,
+      report_formats: params.report_formats,
+      target_org: params.target_org,
+    };
 
   const result = (await service.runTestAsynchronous(
     payload as Parameters<TestService["runTestAsynchronous"]>[0],
@@ -54,13 +70,22 @@ export async function runTest(
   if (!result)
     return fail("Apex test run was cancelled before producing a result.", { kind: "apex_test" });
   if (isRunIdResult(result)) {
-    state.lastTestRunId = result.testRunId;
+    if (state) state.lastTestRunId = result.testRunId;
     return queuedTestResult(params, result.testRunId, payload, includeCoverage, apiVersion(conn));
   }
 
   const runId = testRunIdFromResult(result) ?? "unknown";
-  if (runId !== "unknown") state.lastTestRunId = runId;
-  return formatApexNodeTestResult(conn, params, runId, payload, result, includeCoverage, true);
+  if (runId !== "unknown" && state) state.lastTestRunId = runId;
+  return formatApexNodeTestResult(
+    conn,
+    service,
+    params,
+    runId,
+    payload,
+    result,
+    includeCoverage,
+    true,
+  );
 }
 
 export async function testResult(
@@ -99,6 +124,7 @@ export async function testResult(
     return fail(`No Apex test result available for run_id ${runId}.`, { kind: "apex_test" });
   return formatApexNodeTestResult(
     conn,
+    service,
     params,
     runId,
     { run_id: runId },
@@ -122,9 +148,20 @@ async function buildApexNodePayload(
   service: TestService,
   tests: string[],
   classNames: string[],
+  suiteNames: string[],
   includeCoverage: boolean,
 ): Promise<ApexNodePayload> {
   const skipCodeCoverage = !includeCoverage;
+  if (suiteNames.length > 0) {
+    return (await service.buildAsyncPayload(
+      TestLevel.RunSpecifiedTests,
+      undefined,
+      undefined,
+      suiteNames.join(","),
+      undefined,
+      skipCodeCoverage,
+    )) as ApexNodePayload;
+  }
   if (tests.length > 0 && classNames.length > 0) {
     return {
       tests: await buildApexTestPayloadItems(conn, tests, classNames),
@@ -144,6 +181,7 @@ async function buildApexNodePayload(
 
 async function formatApexNodeTestResult(
   conn: Connection,
+  service: TestService,
   params: SfApexParams,
   runId: string,
   payload: ApexNodePayload,
@@ -157,6 +195,14 @@ async function formatApexNodeTestResult(
     payload,
     result,
   });
+  const reportArtifacts = await writeReporterArtifacts(
+    service,
+    runId,
+    result,
+    params.report_formats,
+    includeCoverage,
+  );
+  const artifacts = [artifact, ...reportArtifacts];
   const text = renderTestSummary(summary, result.tests ?? []);
   return ok(text, {
     kind: "apex_test",
@@ -172,13 +218,14 @@ async function formatApexNodeTestResult(
     },
     summary,
     include_coverage: includeCoverage,
-    artifacts: [artifact],
+    report_artifacts: reportArtifacts,
+    artifacts,
     digest: buildTestRunDigest(
       params,
       runId,
       result,
       summary,
-      [artifact],
+      artifacts,
       apiVersion(conn),
       includeCoverage,
       includesStartCall,
@@ -236,6 +283,37 @@ function queuedTestResult(
       nextRows: [{ icon: "🧭", label: "Recommend", value: "poll with sf_apex test.result" }],
     }),
   });
+}
+
+async function writeReporterArtifacts(
+  service: TestService,
+  runId: string,
+  result: ApexNodeTestResult,
+  formats: string[] | undefined,
+  includeCoverage: boolean,
+): Promise<ApexArtifact[]> {
+  const resultFormats = normalizeReportFormats(formats);
+  if (!resultFormats.length) return [];
+  const dir = await apexArtifactDir("test-reports", `${artifactTimestamp()}-${runId}`);
+  const files = await service.writeResultFiles(
+    result as Parameters<TestService["writeResultFiles"]>[0],
+    { dirPath: dir, resultFormats },
+    includeCoverage,
+  );
+  return files.map((file) => ({ path: file, kind: "test_report" }));
+}
+
+export function normalizeReportFormats(formats: string[] | undefined): ResultFormat[] {
+  const allowed = new Map<string, ResultFormat>([
+    ["markdown", ResultFormat.markdown],
+    ["junit", ResultFormat.junit],
+    ["tap", ResultFormat.tap],
+    ["text", ResultFormat.text],
+    ["json", ResultFormat.json],
+  ]);
+  return [
+    ...new Set((formats ?? []).map((format) => allowed.get(format)).filter(Boolean)),
+  ] as ResultFormat[];
 }
 
 function buildTestRunDigest(

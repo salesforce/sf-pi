@@ -64,6 +64,18 @@ _Avoid_: generic transport label, full request dump, hidden native calls
 A native Apex test execution scoped to explicitly named test classes or methods, with polling, failure digestion, rerun support, and **Apex Artifacts**.
 _Avoid_: test explorer, org-wide dashboard, suite manager
 
+**Apex Suite Test Run**:
+A native Apex test execution scoped to an existing Apex test suite, used as lifecycle evidence without creating or managing suites.
+_Avoid_: suite manager, suite editor, test explorer
+
+**Org Apex Source Evidence**:
+Read-only Apex class or trigger source fetched from the org through Tooling API when local source is missing, stale, or needs comparison. It is stored as an **Apex Artifact** and does not replace metadata retrieve or source editing.
+_Avoid_: retrieve replacement, metadata browser, source edit
+
+**Apex Test Report Artifact**:
+Optional reporter-format output, such as markdown, JUnit, TAP, text, or JSON, generated from a **Targeted Apex Test Run** or **Apex Suite Test Run** and stored as an **Apex Artifact** without replacing the **Apex Result Card**.
+_Avoid_: chat report, output-channel table, CI product
+
 **Apex Coverage Evidence**:
 Read-only coverage data gathered by an **Apex Lifecycle Extension** to explain target and org-wide Apex coverage after tests or during planning. It is summarized in an **Apex Result Card** and persisted as **Apex Artifacts**; it is not a CI gate, dashboard, or deployment policy engine.
 _Avoid_: coverage dashboard, deployment gate, CI policy engine

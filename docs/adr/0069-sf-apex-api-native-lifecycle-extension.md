@@ -34,3 +34,13 @@ Apex test discovery should use the native Tooling Test Discovery endpoint for Ap
 `Targeted Apex Test Run` inputs should support common Apex target forms such as class names, namespaced class names, class IDs, class-method pairs, and namespaced class-method pairs. Ambiguous targets should fail with structured guidance instead of guessing. Test result cards remain compact, but persisted **Apex Artifacts** should be complete and paged so evidence is not silently truncated.
 
 A focused spike showed that `@salesforce/apex-node` earns partial adoption for **Targeted Apex Test Run** internals because its public `TestService` standardizes payload construction, async execution, timeout/run-id behavior, normalized results, and test-run coverage evidence while preserving the SF Pi card/artifact contract. SF Pi still owns the **Apex Result Card**, **Apex Run Digest**, bounded details, and artifact persistence. Reporter output from `@salesforce/apex-node` may be useful as private artifacts later, but it must not replace SF Pi cards or expand chat output. Standalone **Apex Coverage Evidence** remains native Tooling API work because the package's `CodeCoverage` class is not a stable root export.
+
+## Roadmap expansion addendum
+
+The next roadmap expansion can broaden the Apex lifecycle without changing the boundary. `sf-apex` may add **Apex Suite Test Run** support for listing existing Apex test suites and running existing suites by name, but it must not become a suite manager: suite creation, membership mutation, rename, and delete are out of scope for this batch.
+
+`sf-apex` may add **Org Apex Source Evidence** through a read-only `apex.source.get` action that fetches Apex class or trigger source through Tooling API and persists full bodies as artifacts. This is useful when tests or classes exist in the org but are missing or stale locally, but it is not a Metadata API retrieve replacement and must not edit source.
+
+`sf-apex` may add optional **Apex Test Report Artifact** generation for formats such as markdown, JUnit, TAP, text, and JSON. These reports are artifact-only outputs produced on request from targeted or suite test runs. They must not replace the **Apex Result Card** or expand `content[0].text` with reporter tables.
+
+A future `apex.rest.inspect` action should be designed separately. Its preferred path is the **Managed Apex LSP** OpenAPI/OAS eligibility and context requests, with only a low-confidence annotation-scan fallback when the LSP path is unavailable. Generating OpenAPI documents with an LLM, editing Apex, or becoming a REST documentation product remains out of scope for this roadmap batch.

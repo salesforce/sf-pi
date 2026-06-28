@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 import { describe, expect, it } from "vitest";
-import { summarizeTestResults } from "../lib/tests.ts";
+import { normalizeReportFormats, summarizeTestResults } from "../lib/tests.ts";
 
 describe("summarizeTestResults", () => {
   it("counts passing and failing targeted test methods", () => {
@@ -21,5 +21,13 @@ describe("summarizeTestResults", () => {
         failing: 1,
       }),
     ).toEqual({ total: 4, passing: 3, failing: 1 });
+  });
+});
+
+describe("normalizeReportFormats", () => {
+  it("keeps supported artifact formats in first-seen order", () => {
+    expect(
+      normalizeReportFormats(["markdown", "junit", "tap", "text", "json", "markdown", "bad"]),
+    ).toEqual(["markdown", "junit", "tap", "text", "json"]);
   });
 });
