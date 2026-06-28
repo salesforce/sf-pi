@@ -25,6 +25,33 @@
       "Planner traces and compact failure summaries for debugging conversations."
     ]
   },
+  "sf-apex": {
+    "shortName": "Apex",
+    "intentGroup": "Build apps",
+    "promise": "Author, discover, diagnose, trace, probe, and run targeted Apex tests from pi with API-native workflows.",
+    "bestFor": "Apex lifecycle workflows",
+    "benefits": [
+      "Keeps Apex authoring, native discovery, diagnostics, logs, Anonymous Apex, coverage, and targeted tests in one lean workflow.",
+      "Uses Salesforce Core plus native Tooling/REST calls as the fast path instead of subprocess stacks.",
+      "Renders human-friendly cards with API Call Rails, log timelines, root-cause summaries, and compact agent-facing digests."
+    ],
+    "tryFirst": {
+      "label": "Open the Apex panel",
+      "code": "/sf-apex"
+    },
+    "useCases": [
+      "Plan an Apex change and identify likely targeted tests.",
+      "Search Apex classes, discover candidate tests, and summarize coverage natively.",
+      "Start a bounded trace and watch for the next Apex log.",
+      "Run Anonymous Apex probes and analyze the resulting log.",
+      "Run specified Apex test classes or methods and inspect failures."
+    ],
+    "whatYouGet": [
+      "One sf_apex family tool for discovery, authoring guidance, trace/log workflows, Anonymous Apex, coverage, and targeted tests.",
+      "Human-friendly Apex Result Cards with API Call Rails, Apex Log Timelines, Root Cause sections, File Gates, and Test Run summaries.",
+      "Apex Artifacts under the global agent directory for raw logs, digests, Anonymous Apex bodies/results, and test results."
+    ]
+  },
   "sf-brain": {
     "shortName": "Brain",
     "intentGroup": "Work safely",

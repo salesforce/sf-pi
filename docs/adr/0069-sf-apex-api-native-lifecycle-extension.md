@@ -1,0 +1,26 @@
+# ADR 0069: SF Apex is an API-native Apex Lifecycle Extension
+
+## Status
+
+Accepted
+
+## Context
+
+SF Pi needs a first-party Apex workflow that supports the full author → diagnose → trace/log → run/probe → test → fix loop without turning into a mini IDE or a wrapper around Salesforce CLI commands. Existing surfaces already cover generic file edits, broader static analysis, Herdr lanes, and shared LSP diagnostics, so `sf-apex` must own only the Apex-specific lifecycle primitives that make agents faster and more reliable.
+
+## Decision
+
+`sf-apex` will be a lean **Apex Lifecycle Extension** with one `/sf-apex` command and one `sf_apex` family tool. The tool uses dotted lifecycle actions such as `author.plan`, `diagnose.file`, `trace.start`, `log.latest`, `anon.run`, and later `test.run`. Source changes remain normal Pi `read`/`write`/`edit` operations; `sf-apex` provides planning hints, bounded diagnostics, native trace/log/Anonymous Apex/test execution, compact LLM summaries, human-facing Apex Result Cards, and persisted Apex Artifacts. Apex Result Cards should be expanded structured visual reports by default, not plain text wrappers: they use icons, spacing, section headers, and contextual rows to show status, scope, and high-signal metrics without dumping raw logs. Log cards should lead with an **Apex Log Timeline** plus signal rails so users understand what happened inside the execution, not just that a trace flag existed. Simple successful actions still get the same expanded frame, just with fewer rows. Each card includes a compact **Apex API Call Rail** directly under the title instead of a generic native-mode row. The rail lists the native endpoints and high-signal payload parameters used by the action, with enough lines to explain composite operations, usually capped around five or six lines. Full raw payloads stay in `details.digest`, artifacts, or future drill-down surfaces. The rendering contract is a shared **Apex Run Digest**: every action returns a normalized digest, and one unified renderer frames it with action-specific sections rather than each action inventing a separate card shape. LLM-facing `content[0].text` stays compact and stable, while `details.digest` carries rich structured data for the renderer and future automation; if a digest is absent, the renderer falls back to the compact text.
+
+`sf-apex` hot paths are API-native through Salesforce connections and Tooling/REST APIs. API-native means the default path resolves credentials through Salesforce Core/CLI auth state but performs lifecycle work in-process through Salesforce APIs, so actions feel fast and native. `sf-apex` should not grow a complex CLI fallback state machine; if a native capability is missing, the preferred fix is to add a small native lifecycle action rather than route the tool through subprocess stacks. Common lifecycle discovery must also stay native: agents should not need raw Salesforce CLI calls to find Apex test classes, candidate methods, active classes, coverage records, or Apex org readiness before they can invoke `sf_apex` execution actions. A bounded **Apex Log Watch** can provide the `sf apex tail log` experience natively by observing new ApexLog records under an Apex Trace Session, persisting them as artifacts, and analyzing their high-signal evidence. Apex diagnostics may use a lazy, reused **Managed Apex LSP** process because that is a language-server dependency, not a per-action Salesforce CLI wrapper.
+
+## Consequences
+
+- `sf-apex` owns Apex diagnostics through a **Diagnostics Handoff**: when `sf-apex` is enabled and stable for Apex files, `sf-lsp` yields Apex diagnostics while continuing to cover any remaining domains until their lifecycle extensions exist.
+- `sf-apex` does not ship an extra skill or auto-load skills. It can provide tool-level cheatsheet guidance and `recommended_skills` hints that point agents toward existing Apex skills when useful.
+- Automatic behavior is limited to bounded local Apex diagnostics after Apex file edits. Org execution actions such as trace setup, Anonymous Apex, and tests remain explicit.
+- V1 includes the full lean lifecycle action set: `author.plan`, `diagnose.file`, trace/log workflows including bounded `log.watch`, `anon.run`, and native targeted test actions. Test support stays narrow: specified classes/methods, result polling, failure summaries, and artifacts only.
+- `sf-apex` owns bounded **Apex Discovery Actions** required for the lifecycle loop. V1 discovery actions are `org.preflight`, `apex.search`, `test.discover`, `test.plan`, and `coverage.summary`.
+- The boundary is lifecycle relevance: discovery is in scope only when it directly decides what to diagnose, what to trace, what to run, what failed, what coverage changed, or what to do next. `sf-apex` does not become a general Tooling API, metadata browser, SOQL explorer, setup explorer, or record browser.
+- Agent routing guidance should prefer `sf_apex` over raw Salesforce CLI whenever `sf_apex` exposes the lifecycle step. Raw CLI remains acceptable only for capabilities not yet exposed by `sf_apex`; recurring CLI drift should become a small native action rather than fallback machinery.
+- The extension stores full evidence as Apex Artifacts and keeps LLM-facing output compact. It does not add branch-durable state in v1.

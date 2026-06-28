@@ -258,6 +258,12 @@ export default function sfLspExtension(pi: ExtensionAPI) {
     const language = getSfLspLanguageForFile(filePath);
     if (!language) return undefined;
 
+    // SF Apex owns Apex diagnostics during the Apex Lifecycle Extension
+    // handoff. Avoid duplicate diagnostic feedback when it is enabled.
+    if (language === "apex" && isSfPiExtensionEnabled(ctx.cwd, "sf-apex")) {
+      return undefined;
+    }
+
     // When sf-agentscript is loaded it handles `.agent` files. We mirror the
     // metadata it stamps onto `event.details` so the transcript stays
     // accurate for `.agent` edits. Load order is alphabetical, so the

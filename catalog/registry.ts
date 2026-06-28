@@ -25,6 +25,18 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
     },
   },
   {
+    id: "sf-apex",
+    name: "SF Apex",
+    description: "API-native Apex lifecycle workflows for pi: authoring guidance, diagnostics, trace/log/watch, Anonymous Apex, and targeted tests.",
+    file: "extensions/sf-apex/index.ts",
+    category: "agent-tool",
+    maturity: "experimental",
+    defaultEnabled: true,
+    commands: ["/sf-apex"],
+    tools: ["sf_apex"],
+    events: ["session_start","session_shutdown","tool_result"],
+  },
+  {
     id: "sf-brain",
     name: "SF Brain",
     description: "High-density Salesforce operator kernel injected once per session — describe-before-query rules, API picker, anonymous Apex verification loop, and CLI power moves",

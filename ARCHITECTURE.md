@@ -23,6 +23,7 @@ sf-pi/
 ├── CHANGELOG.md                ← Release history (managed by release-please)
 ├── extensions/                 ← All extensions live here (self-contained)
 │   ├── sf-agentscript/
+│   ├── sf-apex/
 │   ├── sf-brain/
 │   ├── sf-browser/
 │   ├── sf-code-analyzer/

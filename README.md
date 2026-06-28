@@ -222,6 +222,7 @@ Every slash command exposed by a bundled extension. See each extension README fo
 | `/sf-pi`            | [SF Pi Manager](./extensions/sf-pi-manager/)                     | manager    |
 | `/sf-llm-gateway`   | [SF LLM Gateway Internal](./extensions/sf-llm-gateway-internal/) | provider   |
 | `/sf-agentscript`   | [SF Agent Script](./extensions/sf-agentscript/)                  | agent-tool |
+| `/sf-apex`          | [SF Apex](./extensions/sf-apex/)                                 | agent-tool |
 | `/sf-browser`       | [SF Browser](./extensions/sf-browser/)                           | agent-tool |
 | `/sf-code-analyzer` | [SF Code Analyzer](./extensions/sf-code-analyzer/)               | agent-tool |
 | `/sf-data360`       | [SF Data 360](./extensions/sf-data360/)                          | agent-tool |
@@ -382,6 +383,7 @@ For the canonical machine-readable bundle list, see [`catalog/index.json`](./cat
 | [SF Pi Manager](./extensions/sf-pi-manager/)                     | manager    | always-on | Core manager — provides /sf-pi commands (always active)                                                                                                                                                                                                                                                                                |
 | [SF LLM Gateway Internal](./extensions/sf-llm-gateway-internal/) | provider   | on        | Salesforce LLM Gateway provider with model discovery                                                                                                                                                                                                                                                                                   |
 | [SF Agent Script](./extensions/sf-agentscript/)                  | agent-tool | on        | Single-plugin lifecycle for `.agent` files: in-process compile-on-save diagnostics, an LLM-callable compile tool, multi-turn eval/regression testing against the Salesforce Evaluation API, and a placeholder for the future Agent Script LSP.                                                                                         |
+| [SF Apex](./extensions/sf-apex/)                                 | agent-tool | on        | API-native Apex lifecycle workflows for pi: authoring guidance, diagnostics, trace/log/watch, Anonymous Apex, and targeted tests.                                                                                                                                                                                                      |
 | [SF Browser](./extensions/sf-browser/)                           | agent-tool | on        | Salesforce-aware browser automation for last-mile UI work using agent-browser.                                                                                                                                                                                                                                                         |
 | [SF Code Analyzer](./extensions/sf-code-analyzer/)               | agent-tool | on        | Salesforce Code Analyzer workflows for pi: setup readiness, explicit scans, rule discovery, config generation, report artifacts, deferred agent quality passes, and ApexGuru analysis.                                                                                                                                                 |
 | [SF Data 360](./extensions/sf-data360/)                          | agent-tool | on        | Data Cloud/Data 360 v2 family tools — discover, connect, prepare, harmonize, segment, activate, query, semantic, observe, orchestrate, and raw API escape hatch                                                                                                                                                                        |
@@ -606,6 +608,12 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 - Old and new gateway keys are confusing status or tests
 - Doctor reports `WARN: fetch failed` on macOS even though `curl` works
 - `/sf-llm-gateway onboard` says `not configured`
+
+**[SF Apex](./extensions/sf-apex/#troubleshooting)**
+
+- `sf_apex` cannot resolve the org
+- No log appears during `log.watch`
+- Anonymous Apex is refused as mutating
 
 **[SF Browser](./extensions/sf-browser/#troubleshooting)**
 

@@ -42,6 +42,14 @@ _Single-plugin lifecycle for `.agent` files: in-process compile-on-save diagnost
 - Commands: `/sf-agentscript`
 - Tools: `agentscript_authoring`, `agentscript_preview`, `agentscript_eval`, `agentscript_lifecycle`
 
+### [SF Apex](./extensions/sf-apex)
+
+_API-native Apex lifecycle workflows for pi: authoring guidance, diagnostics, trace/log/watch, Anonymous Apex, and targeted tests._
+
+- Default: **on**
+- Commands: `/sf-apex`
+- Tools: `sf_apex`
+
 ### [SF Browser](./extensions/sf-browser)
 
 _Salesforce-aware browser automation for last-mile UI work using agent-browser._

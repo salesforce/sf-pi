@@ -150,6 +150,47 @@ describe("resolveOrgIdentity", () => {
     expect(conn.identity).not.toHaveBeenCalled();
   });
 
+  test("refreshes auth once when bounded userinfo returns 401/403", async () => {
+    const mod = await import("../sf-conn/connection.ts");
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(new Response("", { status: 403 }))
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            user_id: "005000000000001",
+            organization_id: "00D000000000001",
+          }),
+          { status: 200 },
+        ),
+      );
+    const conn = {
+      accessToken: "OLD",
+      instanceUrl: "https://example.my.salesforce.com",
+      refreshAuth: vi.fn().mockImplementation(function (this: { accessToken: string }) {
+        this.accessToken = "NEW";
+        return Promise.resolve();
+      }),
+      identity: vi.fn().mockResolvedValue({}),
+    } as unknown as Connection;
+
+    await expect(mod.resolveOrgIdentity(conn, { fetchImpl })).resolves.toEqual({
+      org_id: "00D000000000001",
+      instance_url: "https://example.my.salesforce.com",
+      user_id: "005000000000001",
+    });
+    expect(
+      (conn as unknown as { refreshAuth: ReturnType<typeof vi.fn> }).refreshAuth,
+    ).toHaveBeenCalledTimes(1);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(fetchImpl.mock.calls[0][1]).toEqual(
+      expect.objectContaining({ headers: { Authorization: "Bearer OLD" } }),
+    );
+    expect(fetchImpl.mock.calls[1][1]).toEqual(
+      expect.objectContaining({ headers: { Authorization: "Bearer NEW" } }),
+    );
+  });
+
   test("falls back to bounded conn.identity when no access token is available", async () => {
     const mod = await import("../sf-conn/connection.ts");
     const conn = {

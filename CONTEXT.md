@@ -4,6 +4,62 @@ SF Pi is the bundled Salesforce-focused extension suite for pi. It gives agents 
 
 ## Language
 
+**Apex Lifecycle Extension**:
+A bundled SF Pi extension that owns the Apex author → diagnose → trace/log → run/probe → test → fix loop while leaving source edits to normal Pi file tools.
+_Avoid_: Apex IDE, code generator, debugger suite
+
+**Apex Lifecycle Loop**:
+The agentic Apex development cycle coordinated by an **Apex Lifecycle Extension**: plan the change, edit files, diagnose locally, observe runtime behavior, run targeted tests, and repeat until verified.
+_Avoid_: test runner only, log viewer only
+
+**Diagnostics Handoff**:
+A temporary ownership transition where a lifecycle-specific extension takes over diagnostics for its domain while the older shared diagnostics extension yields that domain when both are enabled.
+_Avoid_: duplicate diagnostics, immediate deprecation
+
+**Apex Run**:
+One API-native `sf_apex` tool action in the Apex lifecycle, such as diagnosing a file, starting trace, fetching a log, running Anonymous Apex, or running targeted tests.
+_Avoid_: Apex CLI wrapper, shell command
+
+**Apex Discovery Action**:
+A bounded API-native `sf_apex` action that finds Apex lifecycle targets, such as active classes, test classes, candidate test methods, coverage records, or org Apex readiness. It exists to keep agents inside the **Apex Lifecycle Loop** instead of dropping to generic Salesforce CLI discovery.
+_Avoid_: SOQL explorer, metadata browser, CLI pre-step
+
+**Managed Apex LSP**:
+A lazy, reused Apex language-server process owned by an **Apex Lifecycle Extension** for local Apex diagnostics; it is not a per-action Salesforce CLI subprocess.
+_Avoid_: CLI fallback, startup LSP probe
+
+**Apex Trace Session**:
+A temporary, SF Pi-managed Tooling API trace setup for one user, one log type, and a bounded expiration window used to capture Apex runtime evidence.
+_Avoid_: permanent trace flag, all-org tracing
+
+**Apex Log Watch**:
+A bounded, API-native observation window that waits for new Apex logs under an **Apex Trace Session**, persists them as **Apex Artifacts**, and analyzes their high-signal evidence.
+_Avoid_: CLI tail wrapper, unbounded log stream
+
+**Apex Log Timeline**:
+A human-readable sequence of high-signal events extracted from an Apex debug log, such as start, debug markers, exceptions, fatal errors, and completion. It explains what happened inside the execution; it is different from an **Apex Trace Session**, which only controls log capture.
+_Avoid_: trace flag summary, raw log dump
+
+**Apex Artifact**:
+Persisted evidence from an **Apex Run**, such as a raw debug log, parsed log digest, Anonymous Apex body/result, or native test result.
+_Avoid_: terminal output, scratch dump
+
+**Apex Run Digest**:
+A normalized structured summary of an **Apex Run** that carries status, action, org, scope, evidence, signals, and next-step guidance for both LLM context and **Apex Result Card** rendering.
+_Avoid_: action-specific JSON blob, renderer-only text, fallback state machine
+
+**Apex Result Card**:
+The human-facing structured render of an **Apex Run**, optimized for quick diagnosis with clear status, scope, signals, and a compact **Apex API Call Rail** while pointing to **Apex Artifacts** for full evidence.
+_Avoid_: raw JSON, full log in chat, plain text summary
+
+**Apex API Call Rail**:
+A compact, human-facing rail directly under an **Apex Result Card** title that lists the native API endpoints and high-signal payload parameters used by an **Apex Run**. It shows enough of composite operations to explain what happened, usually capped around five or six lines, while full raw payloads stay in structured details/artifacts.
+_Avoid_: generic transport label, full request dump, hidden native calls
+
+**Targeted Apex Test Run**:
+A native Apex test execution scoped to explicitly named test classes or methods, with polling, failure digestion, rerun support, and **Apex Artifacts**.
+_Avoid_: test explorer, org-wide dashboard, suite manager
+
 **Data 360 Run**:
 One invocation of a `data360_*` tool action, including local catalog actions, dry runs, readiness probes, runbooks, journeys, raw REST calls, and OTel exports.
 _Avoid_: Data 360 trace, Data 360 action

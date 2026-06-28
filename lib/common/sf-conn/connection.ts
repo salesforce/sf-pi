@@ -192,6 +192,16 @@ export class OrgIdentityAbortedError extends Error {
   }
 }
 
+export class OrgIdentityHttpError extends Error {
+  readonly status: number;
+
+  constructor(status: number) {
+    super(`userinfo request failed with HTTP ${status}.`);
+    this.name = "OrgIdentityHttpError";
+    this.status = status;
+  }
+}
+
 function getAccessToken(conn: Connection): string | undefined {
   return (
     (conn as unknown as { accessToken?: string }).accessToken ??
@@ -253,7 +263,7 @@ async function fetchOrgIdentity(
       headers: { Authorization: `Bearer ${accessToken}` },
       signal: controller.signal,
     });
-    if (!resp.ok) throw new Error(`userinfo request failed with HTTP ${resp.status}.`);
+    if (!resp.ok) throw new OrgIdentityHttpError(resp.status);
     return (await resp.json()) as { user_id?: string; organization_id?: string };
   } catch (err) {
     if (opts.signal?.aborted) throw new OrgIdentityAbortedError();
@@ -278,7 +288,7 @@ export async function resolveOrgIdentity(
 ): Promise<OrgIdentity> {
   if (opts.signal?.aborted) throw new OrgIdentityAbortedError();
   const userInfo = getAccessToken(conn)
-    ? await fetchOrgIdentity(conn, opts)
+    ? await fetchOrgIdentityWithRefresh(conn, opts)
     : ((await boundedOrgIdentity(conn.identity(), opts)) as {
         user_id?: string;
         organization_id?: string;
@@ -294,4 +304,19 @@ export async function resolveOrgIdentity(
     instance_url: conn.instanceUrl,
     user_id: userInfo.user_id,
   };
+}
+
+async function fetchOrgIdentityWithRefresh(
+  conn: Connection,
+  opts: ResolveOrgIdentityOptions,
+): Promise<{ user_id?: string; organization_id?: string }> {
+  try {
+    return await fetchOrgIdentity(conn, opts);
+  } catch (err) {
+    if (!(err instanceof OrgIdentityHttpError) || ![401, 403].includes(err.status)) throw err;
+    const refreshAuth = (conn as unknown as { refreshAuth?: () => Promise<unknown> }).refreshAuth;
+    if (typeof refreshAuth !== "function") throw err;
+    await boundedOrgIdentity(refreshAuth.call(conn), opts);
+    return fetchOrgIdentity(conn, opts);
+  }
 }

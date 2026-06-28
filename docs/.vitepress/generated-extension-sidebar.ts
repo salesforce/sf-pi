@@ -3,6 +3,7 @@
 // Regenerate: npm run generate-catalog
 
 export const extensionSidebarItems = [
+  { text: "Apex", link: "/extensions/sf-apex" },
   { text: "Agent Script", link: "/extensions/sf-agentscript" },
   { text: "Code Analyzer", link: "/extensions/sf-code-analyzer" },
   { text: "Docs", link: "/extensions/sf-docs" },

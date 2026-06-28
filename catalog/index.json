@@ -72,6 +72,62 @@
     "srcLoc": 26098
   },
   {
+    "id": "sf-apex",
+    "name": "SF Apex",
+    "description": "API-native Apex lifecycle workflows for pi: authoring guidance, diagnostics, trace/log/watch, Anonymous Apex, and targeted tests.",
+    "category": "agent-tool",
+    "maturity": "experimental",
+    "defaultEnabled": true,
+    "alwaysActive": false,
+    "configurable": false,
+    "commands": [
+      "/sf-apex"
+    ],
+    "providers": [],
+    "tools": [
+      "sf_apex"
+    ],
+    "events": [
+      "session_start",
+      "session_shutdown",
+      "tool_result"
+    ],
+    "docs": {
+      "summary": "Owns the lean Apex lifecycle loop in pi: native Apex discovery/preflight, authoring plan hints, Apex-owned diagnostics handoff, API-native trace flags, log fetch/watch/analyze, Anonymous Apex probes, coverage summaries, and targeted test runs. Source edits remain normal Pi file operations; full evidence is persisted as Apex Artifacts while tool output stays compact.",
+      "primaryFiles": [
+        "index.ts",
+        "lib/sf-apex-tool.ts",
+        "lib/operations.ts",
+        "lib/api.ts",
+        "lib/author.ts",
+        "lib/diagnostics.ts",
+        "lib/trace.ts",
+        "lib/logs.ts",
+        "lib/anonymous.ts",
+        "lib/tests.ts",
+        "lib/log-parser.ts",
+        "lib/artifacts.ts",
+        "docs/adr/0069-sf-apex-api-native-lifecycle-extension.md"
+      ],
+      "stateFiles": [
+        "<globalAgentDir>/sf-pi/sf-apex/logs/*",
+        "<globalAgentDir>/sf-pi/sf-apex/anonymous/*",
+        "<globalAgentDir>/sf-pi/sf-apex/tests/*"
+      ],
+      "safety": [
+        "No startup org probes; Salesforce connections are resolved only during explicit sf_apex tool actions.",
+        "Lifecycle actions use @salesforce/core / Tooling REST APIs as the fast native path; missing lifecycle capabilities should become small native actions instead of subprocess fallbacks.",
+        "Trace flags are bounded by a default TTL and can be stopped explicitly.",
+        "Anonymous Apex bodies are classified for mutation-like tokens and require allow_mutation=true when risky.",
+        "Targeted tests are scoped to explicit classes or methods; v1 does not provide an org-wide test dashboard."
+      ]
+    },
+    "entry": "extensions/sf-apex/index.ts",
+    "hasReadme": true,
+    "hasTests": true,
+    "srcLoc": 3082
+  },
+  {
     "id": "sf-brain",
     "name": "SF Brain",
     "description": "High-density Salesforce operator kernel injected once per session — describe-before-query rules, API picker, anonymous Apex verification loop, and CLI power moves",
@@ -681,7 +737,7 @@
     "entry": "extensions/sf-lsp/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 4058
+    "srcLoc": 4063
   },
   {
     "id": "sf-ohana-spinner",
