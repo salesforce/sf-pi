@@ -517,6 +517,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.213.0](https://github.com/salesforce/sf-pi/compare/v0.212.0...v0.213.0) (2026-06-28)
+
+
+### Features
+
+* **sf-apex:** harden Apex lifecycle evidence ([cbaf618](https://github.com/salesforce/sf-pi/commit/cbaf6189315515d6db93de6a64d0a078f583ad57))
+
 ## [0.212.0](https://github.com/salesforce/sf-pi/compare/v0.211.0...v0.212.0) (2026-06-28)
 
 
