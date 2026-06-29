@@ -120,14 +120,7 @@ export default function sfBrowser(pi: ExtensionAPI): void {
 }
 
 type SfBrowserAction =
-  | "status"
-  | "open"
-  | "open-setup"
-  | "screenshot"
-  | "evidence"
-  | "doctor"
-  | "guidance"
-  | "help";
+  "status" | "open" | "open-setup" | "screenshot" | "evidence" | "doctor" | "guidance" | "help";
 
 const SF_BROWSER_ACTIONS: SfPiCommandAction<SfBrowserAction>[] = [
   {

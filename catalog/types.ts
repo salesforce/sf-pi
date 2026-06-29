@@ -52,12 +52,7 @@ export type ConfigPanelFactory = (
  * was introduced via ADR 0006 — see docs/adr/0006-extension-consistency-baseline.md.
  */
 export type ExtensionCategory =
-  | "manager"
-  | "provider"
-  | "agent-tool"
-  | "safety"
-  | "assistive"
-  | "ui";
+  "manager" | "provider" | "agent-tool" | "safety" | "assistive" | "ui";
 
 /**
  * Stability label surfaced in the manager and agent-orientation. Defaults

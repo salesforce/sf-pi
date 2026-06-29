@@ -77,12 +77,7 @@ export interface OrgAwareMatch {
 }
 
 export type OrgTypeFilter =
-  | "production"
-  | "sandbox"
-  | "scratch"
-  | "developer"
-  | "trial"
-  | "unknown";
+  "production" | "sandbox" | "scratch" | "developer" | "trial" | "unknown";
 
 export interface OrgAwareRule {
   id: string;

@@ -10,13 +10,7 @@ export const LONG_LIVED_EXPIRY_MS = 1000 * 60 * 60 * 24 * 365 * 10;
 export const MANUAL_REFRESH_SENTINEL = "manual-token";
 
 export type DocsAction =
-  | "status"
-  | "collections"
-  | "search"
-  | "fetch"
-  | "answer"
-  | "explain"
-  | "cheatsheet";
+  "status" | "collections" | "search" | "fetch" | "answer" | "explain" | "cheatsheet";
 
 export type TokenSource = "pi-auth" | "env" | "none";
 export type EndpointSource = "default" | "env";

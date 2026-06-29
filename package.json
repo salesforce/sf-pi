@@ -106,35 +106,35 @@
     "typebox": "*"
   },
   "devDependencies": {
-    "@commitlint/cli": "^21.0.2",
+    "@commitlint/cli": "^21.1.0",
     "@commitlint/config-conventional": "^21.0.2",
     "@earendil-works/pi-ai": "^0.80.2",
     "@earendil-works/pi-coding-agent": "^0.80.2",
     "@earendil-works/pi-tui": "^0.80.2",
     "@eslint/js": "^10.0.1",
-    "@types/node": "^26.0.0",
+    "@types/node": "^26.0.1",
     "@vitest/coverage-v8": "^4.1.9",
-    "eslint": "^10.5.0",
-    "globals": "^17.6.0",
+    "eslint": "^10.6.0",
+    "globals": "^17.7.0",
     "husky": "^9.1.7",
     "lint-staged": "^17.0.8",
-    "prettier": "^3.8.4",
-    "typebox": "^1.3.0",
+    "prettier": "^3.9.3",
+    "typebox": "^1.3.2",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.61.1",
-    "vite": "7.3.5",
+    "typescript-eslint": "^8.62.0",
+    "vite": "7.3.6",
     "vitepress": "^1.6.4",
     "vitest": "^4.1.9"
   },
   "dependencies": {
-    "@salesforce/apex-node": "^8.4.32",
+    "@salesforce/apex-node": "^8.4.33",
     "@salesforce/core": "^8.31.2",
     "@salesforce/kit": "^3.2.6",
     "@salesforce/soql-common": "^2.0.0",
     "@salesforce/soql-language-server": "^1.1.0",
-    "@salesforce/source-deploy-retrieve": "^12.36.4",
+    "@salesforce/source-deploy-retrieve": "^12.36.8",
     "@sf-agentscript/agentforce": "2.5.34",
-    "@sf-agentscript/language": "2.9.0",
+    "@sf-agentscript/language": "2.15.0",
     "@sf-agentscript/lsp": "2.3.8",
     "node-emoji": "^2.2.0",
     "vscode-languageserver-protocol": "^3.18.1"
@@ -163,7 +163,7 @@
       "vite": "7.3.5"
     },
     "esbuild": "^0.28.1",
-    "@sf-agentscript/language": "2.9.0",
+    "@sf-agentscript/language": "2.15.0",
     "@sf-agentscript/types": "0.2.3"
   }
 }

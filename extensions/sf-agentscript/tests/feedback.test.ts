@@ -161,8 +161,7 @@ describe("buildToolResultUpdate", () => {
     expect(text).toContain("Agent Script dialect: agentforce 2.5");
     const details = update?.details as Record<string, unknown> | undefined;
     const metadata = details?.[SF_PI_DIAGNOSTICS_DETAILS_KEY] as
-      | { fileName?: string; source?: string; status?: string }
-      | undefined;
+      { fileName?: string; source?: string; status?: string } | undefined;
     expect(metadata?.fileName).toBe("billing.agent");
     expect(metadata?.source).toBe("sf-agentscript");
     expect(metadata?.status).toBe("error");
