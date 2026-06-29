@@ -127,14 +127,14 @@
     "vitest": "^4.1.9"
   },
   "dependencies": {
-    "@salesforce/apex-node": "^8.4.32",
+    "@salesforce/apex-node": "^8.4.33",
     "@salesforce/core": "^8.31.2",
     "@salesforce/kit": "^3.2.6",
     "@salesforce/soql-common": "^2.0.0",
     "@salesforce/soql-language-server": "^1.1.0",
-    "@salesforce/source-deploy-retrieve": "^12.36.4",
+    "@salesforce/source-deploy-retrieve": "^12.36.8",
     "@sf-agentscript/agentforce": "2.5.34",
-    "@sf-agentscript/language": "2.9.0",
+    "@sf-agentscript/language": "2.15.0",
     "@sf-agentscript/lsp": "2.3.8",
     "node-emoji": "^2.2.0",
     "vscode-languageserver-protocol": "^3.18.1"
@@ -163,7 +163,7 @@
       "vite": "7.3.5"
     },
     "esbuild": "^0.28.1",
-    "@sf-agentscript/language": "2.9.0",
+    "@sf-agentscript/language": "2.15.0",
     "@sf-agentscript/types": "0.2.3"
   }
 }
