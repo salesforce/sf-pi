@@ -19,13 +19,7 @@ import type { D360ArtifactKind, D360ResultCard, D360ResultFact } from "../displa
 import type { Data360V2Input, Data360V2ToolName } from "./action-types.ts";
 
 export type Data360RunSource =
-  | "meta"
-  | "rest"
-  | "runbook"
-  | "journey"
-  | "readiness"
-  | "local"
-  | "tenant_ingest";
+  "meta" | "rest" | "runbook" | "journey" | "readiness" | "local" | "tenant_ingest";
 
 export interface Data360Artifact {
   label: string;

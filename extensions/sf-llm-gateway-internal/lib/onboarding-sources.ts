@@ -23,12 +23,7 @@ import {
 } from "./ca-bundle-fixer.ts";
 
 export type OnboardingSourceId =
-  | "env"
-  | "claude-code"
-  | "devbar"
-  | "aisuite"
-  | "shell"
-  | "launch-agent";
+  "env" | "claude-code" | "devbar" | "aisuite" | "shell" | "launch-agent";
 
 export type Confidence = "high" | "medium" | "low";
 

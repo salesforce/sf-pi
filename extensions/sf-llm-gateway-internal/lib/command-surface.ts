@@ -37,11 +37,7 @@ export type GatewayCommandId =
 export type GatewayPanelAction = GatewayCommandId | "switch-scope" | "close" | "lifecycle.toggle";
 
 export type GatewayCommandSection =
-  | "Connect"
-  | "Setup"
-  | "Discovery & diagnostics"
-  | "Utilities"
-  | "Reference";
+  "Connect" | "Setup" | "Discovery & diagnostics" | "Utilities" | "Reference";
 
 export interface GatewayCommandSurfaceItem {
   id: GatewayCommandId;

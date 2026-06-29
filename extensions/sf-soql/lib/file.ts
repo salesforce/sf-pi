@@ -30,8 +30,7 @@ export async function diagnoseFile(
       include_plan: params.include_plan,
     });
     const digest = validation.details.digest as
-      | { status?: string; validation?: { findings?: SoqlFinding[] } }
-      | undefined;
+      { status?: string; validation?: { findings?: SoqlFinding[] } } | undefined;
     const queryFindings =
       digest?.validation?.findings?.filter((item) => item.severity !== "info") ?? [];
     findings.push(

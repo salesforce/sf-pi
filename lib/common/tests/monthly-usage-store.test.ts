@@ -127,8 +127,7 @@ describe("monthly-usage store", () => {
     // same snapshot + listeners + refresher.
     const globalObj = globalThis as unknown as Record<string, unknown>;
     const slot = globalObj["__sfPiMonthlyUsageStore"] as
-      | { snapshot: unknown; listeners: Set<unknown>; refresher: unknown }
-      | undefined;
+      { snapshot: unknown; listeners: Set<unknown>; refresher: unknown } | undefined;
     expect(slot).toBeDefined();
 
     const listener = vi.fn();
