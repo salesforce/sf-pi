@@ -4,7 +4,12 @@ import { SETUP_DESTINATIONS } from "./setup-destinations.ts";
 import { redactUrl } from "./redaction.ts";
 
 export type LightningSurface =
-  "record-page" | "object-list" | "object-new" | "setup-page" | "home" | "unknown";
+  | "record-page"
+  | "object-list"
+  | "object-new"
+  | "setup-page"
+  | "home"
+  | "unknown";
 
 export interface LightningState {
   surface: LightningSurface;

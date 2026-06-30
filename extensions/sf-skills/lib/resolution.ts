@@ -29,7 +29,11 @@ import type { SkillSourceScope } from "../../../lib/common/skill-sources/skill-s
 // -------------------------------------------------------------------------------------------------
 
 export type BlockedReason =
-  "locked-by-global" | "auto-default" | "report-only-conflict" | "not-wired" | "already-enabled";
+  | "locked-by-global"
+  | "auto-default"
+  | "report-only-conflict"
+  | "not-wired"
+  | "already-enabled";
 
 export interface ScopeOps {
   scope: SkillSourceScope;

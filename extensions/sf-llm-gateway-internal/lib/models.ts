@@ -150,7 +150,12 @@ const CODEX_THINKING_LEVEL_MAP: ProviderModelConfig["thinkingLevelMap"] = {
 // -------------------------------------------------------------------------------------------------
 
 export type GatewayModelFamily =
-  "anthropic" | "google" | "openai" | "codex" | "deepseek" | "unknown";
+  | "anthropic"
+  | "google"
+  | "openai"
+  | "codex"
+  | "deepseek"
+  | "unknown";
 
 export type GatewayModelDefinition = {
   id: string;

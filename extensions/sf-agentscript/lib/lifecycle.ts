@@ -691,7 +691,8 @@ export async function publishAgent(opts: PublishOptions): Promise<PublishResult>
           authoringBundleResult = { full_name: bundleFullName, target, created: true };
         } else {
           const failures = (deployResult.response?.details?.componentFailures ?? []) as
-            unknown | unknown[];
+            | unknown
+            | unknown[];
           const failArr = Array.isArray(failures) ? failures : [failures];
           const firstProblem =
             (failArr[0] as { problem?: string } | undefined)?.problem ?? "unknown";

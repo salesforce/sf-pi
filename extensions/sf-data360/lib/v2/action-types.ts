@@ -16,7 +16,10 @@ export type Data360V2ToolName =
   | "data360_api";
 
 export type Data360V2ImplementationKind =
-  "local" | "journey" | "tenant_ingest" | "tenant_ingest_auth";
+  | "local"
+  | "journey"
+  | "tenant_ingest"
+  | "tenant_ingest_auth";
 
 export interface Data360V2Endpoint {
   method: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";

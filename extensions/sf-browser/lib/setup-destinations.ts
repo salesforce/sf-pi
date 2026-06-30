@@ -8,7 +8,10 @@
  */
 
 export type SetupDestinationExpectedSurface =
-  "Lightning Setup page" | "Classic Setup Surface" | "Builder surface" | "Unknown Salesforce page";
+  | "Lightning Setup page"
+  | "Classic Setup Surface"
+  | "Builder surface"
+  | "Unknown Salesforce page";
 
 export type SetupDestinationSuggestedWait = {
   lightning: "navigation-ready" | "app-ready";

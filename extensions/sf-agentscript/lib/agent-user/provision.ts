@@ -30,7 +30,10 @@ import { assignPermissionSet, findPermissionSetByName, SYSTEM_AGENT_PS_NAME } fr
 import { createAgentUser, findUserByUsername, getEinsteinAgentUserProfileId } from "./users.ts";
 
 export type ProvisionStepId =
-  "create_user" | "assign_system_ps" | "deploy_custom_ps" | "assign_custom_ps";
+  | "create_user"
+  | "assign_system_ps"
+  | "deploy_custom_ps"
+  | "assign_custom_ps";
 
 export type ProvisionStepAction = "skipped" | "executed" | "would_execute" | "failed";
 

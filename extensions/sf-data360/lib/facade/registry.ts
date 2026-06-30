@@ -206,30 +206,34 @@ function buildCapabilities(
   }
 
   return [
-    ...operations.map((operation): D360Capability => ({
-      name: operation.name,
-      kind: operation.path.startsWith("/local/") ? "local_helper" : "rest_operation",
-      family: operation.family,
-      phase: phaseByOperation.get(operation.name) ?? phaseByFamily.get(operation.family),
-      description: operation.description,
-      safety: operation.safety,
-      requiredParams: operation.requiredParams,
-      optionalParams: operation.optionalParams,
-      tips: operation.tips,
-      operation,
-    })),
-    ...runbooks.map((runbook): D360Capability => ({
-      name: runbook.name,
-      kind: "runbook",
-      family: runbook.family,
-      phase: phaseByFamily.get(runbook.family),
-      description: runbook.description,
-      safety: "read",
-      requiredParams: runbook.requiredParams,
-      optionalParams: runbook.optionalParams,
-      tips: runbook.tips,
-      runbook,
-    })),
+    ...operations.map(
+      (operation): D360Capability => ({
+        name: operation.name,
+        kind: operation.path.startsWith("/local/") ? "local_helper" : "rest_operation",
+        family: operation.family,
+        phase: phaseByOperation.get(operation.name) ?? phaseByFamily.get(operation.family),
+        description: operation.description,
+        safety: operation.safety,
+        requiredParams: operation.requiredParams,
+        optionalParams: operation.optionalParams,
+        tips: operation.tips,
+        operation,
+      }),
+    ),
+    ...runbooks.map(
+      (runbook): D360Capability => ({
+        name: runbook.name,
+        kind: "runbook",
+        family: runbook.family,
+        phase: phaseByFamily.get(runbook.family),
+        description: runbook.description,
+        safety: "read",
+        requiredParams: runbook.requiredParams,
+        optionalParams: runbook.optionalParams,
+        tips: runbook.tips,
+        runbook,
+      }),
+    ),
   ];
 }
 

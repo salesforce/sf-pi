@@ -98,10 +98,21 @@ export interface SfSkillsStatusInfo {
 
 /** Startup-safe status for Node's custom CA bundle wiring. */
 export type NodeCertStatusKind =
-  "checking" | "verified" | "installed" | "found" | "not-configured" | "invalid" | "unknown";
+  | "checking"
+  | "verified"
+  | "installed"
+  | "found"
+  | "not-configured"
+  | "invalid"
+  | "unknown";
 
 export type NodeCertStatusSource =
-  "env" | "launch-agent" | "shell" | "fixer" | "candidate" | "probe";
+  | "env"
+  | "launch-agent"
+  | "shell"
+  | "fixer"
+  | "candidate"
+  | "probe";
 
 export interface NodeCertStatusInfo {
   kind: NodeCertStatusKind;

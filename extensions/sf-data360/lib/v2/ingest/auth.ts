@@ -5,7 +5,10 @@ import { createHash, randomBytes } from "node:crypto";
 import type { TenantIngestAuthStatus } from "./types.ts";
 
 export type TenantIngestAuthStrategy =
-  "pkce" | "refresh_token" | "jwt_bearer" | "client_credentials";
+  | "pkce"
+  | "refresh_token"
+  | "jwt_bearer"
+  | "client_credentials";
 
 export interface TenantIngestAuthPlanStep {
   label: string;

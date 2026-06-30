@@ -41,7 +41,8 @@ const USE_AS_IS_PREFIX = "\u2192 Use ";
 /** A single confirmed recipient (channel or user). The shape is a superset
  *  of the resolver return so callers don't need a separate type. */
 export type ConfirmedRecipient =
-  { type: "channel"; channel: ResolvedChannel } | { type: "user"; user: ResolvedUser };
+  | { type: "channel"; channel: ResolvedChannel }
+  | { type: "user"; user: ResolvedUser };
 
 export type ConfirmResult =
   | { ok: true; recipient: ConfirmedRecipient }

@@ -194,7 +194,7 @@ describe("d360 capability sweep planning", () => {
     const plan = buildCapabilitySweepPlan(
       [listCapability, destructiveCapability, safePostCapability],
       {
-        targetOrg: "AgentforceSTDM",
+        targetOrg: "Data360ReadOnlySandbox",
         live: true,
       },
     );
@@ -218,7 +218,7 @@ describe("d360 capability sweep planning", () => {
         streamDetailCapability,
       ],
       {
-        targetOrg: "AgentforceSTDM",
+        targetOrg: "Data360ReadOnlySandbox",
         live: true,
       },
     );
@@ -962,30 +962,37 @@ describe("d360 capability sweep planning", () => {
   });
 
   it("requires explicit mutation gate for sweep-owned destructive lifecycle checks", () => {
-    expect(
-      canRunMutationLifecycle({
-        mutate: true,
-        targetOrg: "AgentforceSTDM",
-        runId: "20260519010101",
-        destructiveEnvValue: "AgentforceSTDM",
-      }),
-    ).toEqual({ ok: true });
+    const previousTarget = process.env.SF_PI_D360_SWEEP_MUTATION_TARGET_ORG;
+    process.env.SF_PI_D360_SWEEP_MUTATION_TARGET_ORG = "Data360MutationSandbox";
+    try {
+      expect(
+        canRunMutationLifecycle({
+          mutate: true,
+          targetOrg: "Data360MutationSandbox",
+          runId: "20260519010101",
+          destructiveEnvValue: "Data360MutationSandbox",
+        }),
+      ).toEqual({ ok: true });
 
-    expect(
-      canRunMutationLifecycle({
-        mutate: true,
-        targetOrg: "OtherOrg",
-        runId: "20260519010101",
-        destructiveEnvValue: "AgentforceSTDM",
-      }).ok,
-    ).toBe(false);
-    expect(
-      canRunMutationLifecycle({
-        mutate: true,
-        targetOrg: "AgentforceSTDM",
-        runId: "20260519010101",
-      }).ok,
-    ).toBe(false);
+      expect(
+        canRunMutationLifecycle({
+          mutate: true,
+          targetOrg: "OtherOrg",
+          runId: "20260519010101",
+          destructiveEnvValue: "Data360MutationSandbox",
+        }).ok,
+      ).toBe(false);
+      expect(
+        canRunMutationLifecycle({
+          mutate: true,
+          targetOrg: "Data360MutationSandbox",
+          runId: "20260519010101",
+        }).ok,
+      ).toBe(false);
+    } finally {
+      if (previousTarget === undefined) delete process.env.SF_PI_D360_SWEEP_MUTATION_TARGET_ORG;
+      else process.env.SF_PI_D360_SWEEP_MUTATION_TARGET_ORG = previousTarget;
+    }
   });
 
   it("classifies mutation outcomes separately from read reachability", () => {

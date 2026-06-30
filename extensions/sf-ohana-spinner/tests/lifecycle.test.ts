@@ -71,7 +71,8 @@ async function runSessionShutdown(
 
 function latestIndicatorFrames(ctx: ReturnType<typeof createCtx>): string[] {
   const lastCall = ctx.ui.setWorkingIndicator.mock.calls.at(-1)?.[0] as
-    { frames?: unknown } | undefined;
+    | { frames?: unknown }
+    | undefined;
   expect(Array.isArray(lastCall?.frames)).toBe(true);
   return lastCall?.frames as string[];
 }

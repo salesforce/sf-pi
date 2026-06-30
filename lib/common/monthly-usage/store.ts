@@ -103,7 +103,13 @@ export interface GatewayConnectionStatus {
   detail?: string;
   checkedAt?: string;
   source?:
-    "user-info" | "key-info" | "models" | "health" | "config" | "daily-activity" | "key-list";
+    | "user-info"
+    | "key-info"
+    | "models"
+    | "health"
+    | "config"
+    | "daily-activity"
+    | "key-list";
   /** True when every primary-probe failure was an AbortError (timeout).
    *
    * UIs can render "Slow" instead of "Unreachable" so users know the

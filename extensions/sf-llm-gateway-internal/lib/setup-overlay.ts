@@ -29,7 +29,11 @@ import { GatewayConfigPanelComponent } from "./config-panel.ts";
 // -------------------------------------------------------------------------------------------------
 
 export type SetupOverlayAction =
-  "open-token" | "import-claude" | "save-enable" | "save" | "disable";
+  | "open-token"
+  | "import-claude"
+  | "save-enable"
+  | "save"
+  | "disable";
 
 export type SetupOverlayResult = {
   action: SetupOverlayAction;

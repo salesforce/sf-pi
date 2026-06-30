@@ -21,7 +21,14 @@ export interface SkillLocation {
 }
 
 export type SkillRootKind =
-  "pi" | "agents" | "claude" | "codex" | "cursor" | "project-pi" | "project-agents" | "settings";
+  | "pi"
+  | "agents"
+  | "claude"
+  | "codex"
+  | "cursor"
+  | "project-pi"
+  | "project-agents"
+  | "settings";
 
 export interface SkillCollision {
   name: string;

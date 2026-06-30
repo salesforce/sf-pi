@@ -628,15 +628,16 @@ export function __resetThinkingLevelStateForTests(): void {
 // -------------------------------------------------------------------------------------------------
 
 export function buildGatewayManagerActions(pi: ExtensionAPI): ManagerDetailAction[] {
-  return GATEWAY_COMMAND_SURFACE.map((item): ManagerDetailAction =>
-    gatewayManagerAction(
-      pi,
-      item.id,
-      item.label,
-      item.description,
-      item.section,
-      Boolean(item.acceptsScope),
-    ),
+  return GATEWAY_COMMAND_SURFACE.map(
+    (item): ManagerDetailAction =>
+      gatewayManagerAction(
+        pi,
+        item.id,
+        item.label,
+        item.description,
+        item.section,
+        Boolean(item.acceptsScope),
+      ),
   );
 }
 

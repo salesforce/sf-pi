@@ -324,7 +324,8 @@ function findLatestReport(ctx: ExtensionContext): CodeAnalyzerReportSummary | un
     if (message.role !== "toolResult" || message.toolName !== CODE_ANALYZER_TOOL_NAME) continue;
     const details = message.details as Record<string, unknown> | undefined;
     const envelope = details?.[CODE_ANALYZER_DETAILS_KEY] as
-      { report?: CodeAnalyzerReportSummary } | undefined;
+      | { report?: CodeAnalyzerReportSummary }
+      | undefined;
     if (envelope?.report?.reportFile) return envelope.report;
   }
   return undefined;

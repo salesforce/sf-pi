@@ -334,7 +334,8 @@ function catalogSearchReport(query: string, results: ReturnType<typeof summarize
 
 function runCatalogAction(input: Data360V2Input): Record<string, unknown> {
   const requestedTool = stringParam(input.params, "tool", "" as Data360V2ToolName) as
-    Data360V2ToolName | "";
+    | Data360V2ToolName
+    | "";
   const requestedAction = requiredStringParam(input.params, "action");
   const matches = requestedTool
     ? [findData360Action(requestedTool, requestedAction)].filter(Boolean)

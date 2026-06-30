@@ -32,7 +32,8 @@ export interface AgentforceDefinition {
 }
 
 export type ParsedAgentforceSymbol =
-  { ok: true; symbol: AgentforceSymbol } | { ok: false; reason: string };
+  | { ok: true; symbol: AgentforceSymbol }
+  | { ok: false; reason: string };
 
 export const DECLARABLE_NAVIGATION_NAMESPACES = new Set([
   "topic",

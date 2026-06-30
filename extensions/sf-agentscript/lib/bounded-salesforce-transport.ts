@@ -124,7 +124,8 @@ interface ConnectionAuthShape {
 
 function getConnectionAuthShape(conn: Connection): ConnectionAuthShape {
   const opts = conn.getConnectionOptions?.() as
-    { instanceUrl?: string; accessToken?: string } | undefined;
+    | { instanceUrl?: string; accessToken?: string }
+    | undefined;
   let apiVersion = "67.0";
   try {
     apiVersion = conn.getApiVersion?.() ?? apiVersion;

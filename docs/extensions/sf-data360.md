@@ -49,7 +49,7 @@ You can also manage this extension from the SF Pi home base:
 ## Safety notes
 
 - No MCP runtime or Java subprocess is used.
-- The v2 data360_* tools route through the shared action registry and existing safety gates.
+- The v2 data360\_\* tools route through the shared action registry and existing safety gates.
 - Mutating calls are classified by method/path and confirmed when required.
 - The extension uses plain reference docs instead of contributing Agent Skills.
 

@@ -6,8 +6,8 @@
  * Phase 2: bounded live checks for read and safe POST capabilities where the
  * required params can be supplied without mutating org state.
  *
- *   node --experimental-strip-types scripts/e2e/d360-capability-sweep.ts AgentforceSTDM
- *   node --experimental-strip-types scripts/e2e/d360-capability-sweep.ts --target-org AgentforceSTDM --family Query
+ *   node --experimental-strip-types scripts/e2e/d360-capability-sweep.ts <target-org>
+ *   node --experimental-strip-types scripts/e2e/d360-capability-sweep.ts --target-org <target-org> --family Query
  */
 
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
@@ -187,10 +187,12 @@ export function canRunMutationLifecycle(
   options: MutationGateOptions,
 ): { ok: true } | { ok: false; reason: string } {
   if (!options.mutate) return { ok: false, reason: "Pass --mutate to run lifecycle checks." };
-  if (options.targetOrg !== SWEEP_MUTATION_TARGET_ORG) {
+  const mutationTargetOrg = sweepMutationTargetOrg();
+  if (!mutationTargetOrg || options.targetOrg !== mutationTargetOrg) {
     return {
       ok: false,
-      reason: `Mutation lifecycle requires --target-org ${SWEEP_MUTATION_TARGET_ORG}.`,
+      reason:
+        "Mutation lifecycle requires SF_PI_D360_SWEEP_MUTATION_TARGET_ORG to match --target-org.",
     };
   }
   if (options.destructiveEnvValue !== options.targetOrg) {
@@ -1484,78 +1486,96 @@ export function buildCleanupLifecyclePlan(runId: string): DmoLifecyclePlan {
   return {
     resourceName: `PiSweepCleanup_${runId}`,
     steps: [
-      ...activationNames.map((activationId): SweepCheck => ({
-        stage: "mutate",
-        capability: "d360_activation_delete",
-        family: "Activation",
-        safety: "destructive",
-        params: { activationId },
-        sourceCapability: "cleanup_activation",
-      })),
-      ...segmentNames.map((segmentApiName): SweepCheck => ({
-        stage: "mutate",
-        capability: "d360_segment_delete",
-        family: "Segment",
-        safety: "destructive",
-        params: { segmentApiName },
-        sourceCapability: "cleanup_segment",
-      })),
-      ...calculatedInsightNames.map((ciName): SweepCheck => ({
-        stage: "mutate",
-        capability: "d360_ci_delete",
-        family: "Calculated Insights",
-        safety: "destructive",
-        params: { ciName },
-        sourceCapability: "cleanup_ci",
-      })),
-      ...dataActionNames.map((dataActionId): SweepCheck => ({
-        stage: "mutate",
-        capability: "d360_dataaction_delete",
-        family: "DataAction",
-        safety: "destructive",
-        params: { dataActionId },
-        sourceCapability: "cleanup_dataaction",
-      })),
-      ...dataActionTargetNames.map((dataActionTargetId): SweepCheck => ({
-        stage: "mutate",
-        capability: "d360_dataaction_target_delete",
-        family: "DataAction",
-        safety: "destructive",
-        params: { dataActionTargetId },
-        sourceCapability: "cleanup_dataaction_target",
-      })),
-      ...transformNames.map((transformId): SweepCheck => ({
-        stage: "mutate",
-        capability: "d360_transform_delete",
-        family: "DataTransform",
-        safety: "destructive",
-        params: { transformId },
-        sourceCapability: "cleanup_transform",
-      })),
-      ...modelNames.map((modelApiNameOrId): SweepCheck => ({
-        stage: "mutate",
-        capability: "d360_sdm_delete",
-        family: "Semantic Retrieval",
-        safety: "destructive",
-        params: { modelApiNameOrId },
-        sourceCapability: "cleanup_sdm",
-      })),
-      ...dmoNames.map((dmoName): SweepCheck => ({
-        stage: "mutate",
-        capability: "d360_dmo_delete",
-        family: "DMO",
-        safety: "destructive",
-        params: { dmoName },
-        sourceCapability: "cleanup_dmo",
-      })),
-      ...dloNames.map((dloName): SweepCheck => ({
-        stage: "mutate",
-        capability: "d360_dlo_delete",
-        family: "DLO",
-        safety: "destructive",
-        params: { dloName },
-        sourceCapability: "cleanup_dlo",
-      })),
+      ...activationNames.map(
+        (activationId): SweepCheck => ({
+          stage: "mutate",
+          capability: "d360_activation_delete",
+          family: "Activation",
+          safety: "destructive",
+          params: { activationId },
+          sourceCapability: "cleanup_activation",
+        }),
+      ),
+      ...segmentNames.map(
+        (segmentApiName): SweepCheck => ({
+          stage: "mutate",
+          capability: "d360_segment_delete",
+          family: "Segment",
+          safety: "destructive",
+          params: { segmentApiName },
+          sourceCapability: "cleanup_segment",
+        }),
+      ),
+      ...calculatedInsightNames.map(
+        (ciName): SweepCheck => ({
+          stage: "mutate",
+          capability: "d360_ci_delete",
+          family: "Calculated Insights",
+          safety: "destructive",
+          params: { ciName },
+          sourceCapability: "cleanup_ci",
+        }),
+      ),
+      ...dataActionNames.map(
+        (dataActionId): SweepCheck => ({
+          stage: "mutate",
+          capability: "d360_dataaction_delete",
+          family: "DataAction",
+          safety: "destructive",
+          params: { dataActionId },
+          sourceCapability: "cleanup_dataaction",
+        }),
+      ),
+      ...dataActionTargetNames.map(
+        (dataActionTargetId): SweepCheck => ({
+          stage: "mutate",
+          capability: "d360_dataaction_target_delete",
+          family: "DataAction",
+          safety: "destructive",
+          params: { dataActionTargetId },
+          sourceCapability: "cleanup_dataaction_target",
+        }),
+      ),
+      ...transformNames.map(
+        (transformId): SweepCheck => ({
+          stage: "mutate",
+          capability: "d360_transform_delete",
+          family: "DataTransform",
+          safety: "destructive",
+          params: { transformId },
+          sourceCapability: "cleanup_transform",
+        }),
+      ),
+      ...modelNames.map(
+        (modelApiNameOrId): SweepCheck => ({
+          stage: "mutate",
+          capability: "d360_sdm_delete",
+          family: "Semantic Retrieval",
+          safety: "destructive",
+          params: { modelApiNameOrId },
+          sourceCapability: "cleanup_sdm",
+        }),
+      ),
+      ...dmoNames.map(
+        (dmoName): SweepCheck => ({
+          stage: "mutate",
+          capability: "d360_dmo_delete",
+          family: "DMO",
+          safety: "destructive",
+          params: { dmoName },
+          sourceCapability: "cleanup_dmo",
+        }),
+      ),
+      ...dloNames.map(
+        (dloName): SweepCheck => ({
+          stage: "mutate",
+          capability: "d360_dlo_delete",
+          family: "DLO",
+          safety: "destructive",
+          params: { dloName },
+          sourceCapability: "cleanup_dlo",
+        }),
+      ),
     ],
   };
 }
@@ -2298,7 +2318,9 @@ interface DynamicFollowUp {
   constantParams?: Record<string, unknown>;
 }
 
-const SWEEP_MUTATION_TARGET_ORG = "AgentforceSTDM";
+function sweepMutationTargetOrg(): string | undefined {
+  return process.env.SF_PI_D360_SWEEP_MUTATION_TARGET_ORG;
+}
 
 const idOrNameCandidates = [
   "id",

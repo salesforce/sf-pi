@@ -2,7 +2,13 @@
 import type { SfPiCommandAction } from "../../../lib/common/command-actions.ts";
 
 export type SfDocsCommandAction =
-  "connect" | "disconnect" | "status" | "collections" | "refresh" | "cheatsheet" | "help";
+  | "connect"
+  | "disconnect"
+  | "status"
+  | "collections"
+  | "refresh"
+  | "cheatsheet"
+  | "help";
 
 export const SF_DOCS_ACTIONS: SfPiCommandAction<SfDocsCommandAction>[] = [
   {

@@ -15,7 +15,8 @@ import { detectSafeTempCleanup } from "./temp-cleanup.ts";
 import type { ClassifiedDecision, GuardrailConfig, ShellCommandSafetySubject } from "./types.ts";
 
 export type CommandRiskResult =
-  { kind: "decision"; decision: ClassifiedDecision } | { kind: "allowListed" };
+  | { kind: "decision"; decision: ClassifiedDecision }
+  | { kind: "allowListed" };
 
 export function evaluateCommandRisk(
   subject: ShellCommandSafetySubject,

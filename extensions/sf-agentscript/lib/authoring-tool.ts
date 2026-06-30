@@ -270,7 +270,8 @@ function adaptCompileResult(result: unknown): {
   const row = result as { details?: Record<string, unknown>; content?: unknown[] };
   const details = row.details ?? {};
   const action = String(details.action ?? "compile.check").replace(/^compile\./, "") as
-    "check" | "format";
+    | "check"
+    | "format";
   return { ...row, details: { ...details, action, path: details.path ?? details.agent_file } };
 }
 

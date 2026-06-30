@@ -34,7 +34,8 @@ export type ClaudeCodeGatewayImportFailure = {
 };
 
 export type ClaudeCodeGatewayImportResult =
-  ClaudeCodeGatewayImportSuccess | ClaudeCodeGatewayImportFailure;
+  | ClaudeCodeGatewayImportSuccess
+  | ClaudeCodeGatewayImportFailure;
 
 type StringEntry = {
   path: string;

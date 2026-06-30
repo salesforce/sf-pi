@@ -139,7 +139,13 @@ const COMMAND_STATUS_KEY = `${COMMAND_NAME}-command`;
 export const SLACK_CONTEXT_ENTRY_TYPE = "sf-slack-context";
 
 type SlackCommandAction =
-  "connect" | "disconnect" | "status" | "refresh" | "settings" | "sent" | "help";
+  | "connect"
+  | "disconnect"
+  | "status"
+  | "refresh"
+  | "settings"
+  | "sent"
+  | "help";
 
 const SLACK_COMMAND_ACTIONS: SfPiCommandAction<SlackCommandAction>[] = [
   // Connect group at the top of every panel render so users have a single,

@@ -8,12 +8,25 @@
  */
 
 export type CodeAnalyzerAction =
-  "doctor" | "run" | "rules" | "config" | "apexguru" | "apexguru_setup_help" | "last_report";
+  | "doctor"
+  | "run"
+  | "rules"
+  | "config"
+  | "apexguru"
+  | "apexguru_setup_help"
+  | "last_report";
 
 export type CodeAnalyzerOutputMode = "summary" | "inline" | "file_only";
 
 export type CodeAnalyzerEngine =
-  "cpd" | "eslint" | "flow" | "pmd" | "regex" | "retire-js" | "sfge" | "apexguru";
+  | "cpd"
+  | "eslint"
+  | "flow"
+  | "pmd"
+  | "regex"
+  | "retire-js"
+  | "sfge"
+  | "apexguru";
 
 export interface CodeAnalyzerLocation {
   file?: string;
