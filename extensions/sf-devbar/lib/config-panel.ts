@@ -399,13 +399,11 @@ function isTerminalEscapeSequence(value: string): boolean {
   const finalChar = csi[csi.length - 1];
   if (!finalChar) return false;
   const finalCode = finalChar.charCodeAt(0);
-  if (
-    !(
-      (finalCode >= 65 && finalCode <= 90) ||
-      (finalCode >= 97 && finalCode <= 122) ||
-      finalChar === "~"
-    )
-  )
+  if (!(
+    (finalCode >= 65 && finalCode <= 90) ||
+    (finalCode >= 97 && finalCode <= 122) ||
+    finalChar === "~"
+  ))
     return false;
   return [...csi.slice(0, -1)].every((char) => {
     const code = char.charCodeAt(0);

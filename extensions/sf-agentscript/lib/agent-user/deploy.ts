@@ -138,8 +138,7 @@ export async function deployPermissionSet(
       return { ok: true, job_id: deployResult.response?.id };
     }
     const failures = (deployResult.response?.details?.componentFailures ?? []) as
-      | unknown
-      | unknown[];
+      unknown | unknown[];
     const failArr = Array.isArray(failures) ? failures : [failures];
     const firstProblem = (failArr[0] as { problem?: string } | undefined)?.problem ?? "unknown";
     return {
