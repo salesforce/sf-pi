@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.214.0-2026-06-28",
-  "latestVersion": "0.214.0",
+  "revision": "release-0.215.0-2026-06-30",
+  "latestVersion": "0.215.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.214.0",
+      "id": "release-0.215.0",
       "kind": "update",
-      "title": "sf-pi v0.214.0 — sf-apex: expand Apex lifecycle evidence workflows",
-      "publishedAt": "2026-06-28T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.214.0",
+      "title": "sf-pi v0.215.0 — sf-lwc: add local LWC lifecycle extension",
+      "publishedAt": "2026-06-30T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.215.0",
       "severity": "info",
-      "body": "sf-apex: expand Apex lifecycle evidence workflows"
+      "body": "sf-lwc: add local LWC lifecycle extension"
     },
     {
       "id": "pi-0.73-required",
