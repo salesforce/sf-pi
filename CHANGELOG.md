@@ -517,6 +517,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.215.1](https://github.com/salesforce/sf-pi/compare/v0.215.0...v0.215.1) (2026-06-30)
+
+
+### Bug Fixes
+
+* **sf-lwc:** harden bundle health and Jest setup cards ([83e28a4](https://github.com/salesforce/sf-pi/commit/83e28a4cef9e6feed77fe74263ffa1c5781366c4))
+
 ## [0.215.0](https://github.com/salesforce/sf-pi/compare/v0.214.0...v0.215.0) (2026-06-30)
 
 
