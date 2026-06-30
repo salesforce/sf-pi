@@ -25,8 +25,7 @@ export interface RecommendationRow {
 }
 
 export type RecommendationsOverlayResult =
-  | { kind: "cancel" }
-  | { kind: "apply"; rows: RecommendationRow[] };
+  { kind: "cancel" } | { kind: "apply"; rows: RecommendationRow[] };
 
 function padAnsi(text: string, width: number): string {
   return `${text}${" ".repeat(Math.max(0, width - visibleWidth(text)))}`;

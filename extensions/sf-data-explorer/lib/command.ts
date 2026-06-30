@@ -25,8 +25,7 @@ export function parseCommandArgs(args: string, defaultOrg = DEFAULT_ORG): Parsed
   const help = parts.some((p) => HELP_FLAGS.has(p.toLowerCase()));
   const forceRefresh = parts.some((p) => REFRESH_FLAGS.has(p.toLowerCase()));
   const modeToken = parts.find((p) => isExplorerMode(p.toLowerCase()))?.toLowerCase() as
-    | ExplorerMode
-    | undefined;
+    ExplorerMode | undefined;
   const positional = parts.filter((p) => {
     const lower = p.toLowerCase();
     return !isExplorerMode(lower) && !REFRESH_FLAGS.has(lower) && !HELP_FLAGS.has(lower);

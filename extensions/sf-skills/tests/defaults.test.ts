@@ -76,8 +76,7 @@ function fakeGit(_command: string, args: readonly string[], opts: { cwd: string 
     }
     void opts;
     const closeHandlers = handlers["close"] as unknown as
-      | Array<(code: number | null) => void>
-      | undefined;
+      Array<(code: number | null) => void> | undefined;
     closeHandlers?.forEach((cb) => cb(0));
   });
   return child as unknown as ReturnType<Parameters<typeof installDefaults>[0]["spawn"] & object>;

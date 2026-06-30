@@ -72,8 +72,7 @@ interface CanvasLookupCriteria {
 }
 
 type CanvasCriteriaValidation =
-  | { ok: true; criteria: CanvasLookupCriteria }
-  | { ok: false; message: string; reason: string };
+  { ok: true; criteria: CanvasLookupCriteria } | { ok: false; message: string; reason: string };
 
 const VALID_CANVAS_SECTION_TYPES = new Set<string>(["h1", "h2", "h3", "any_header"]);
 

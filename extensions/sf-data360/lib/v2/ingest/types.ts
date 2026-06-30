@@ -1,10 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 
 export type TenantIngestActionName =
-  | "ingest_job.create"
-  | "ingest_job.upload_csv"
-  | "ingest_job.close"
-  | "ingest_job.poll";
+  "ingest_job.create" | "ingest_job.upload_csv" | "ingest_job.close" | "ingest_job.poll";
 
 export type TenantIngestMethod = "GET" | "POST" | "PATCH" | "PUT";
 

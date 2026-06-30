@@ -23,11 +23,11 @@ tools (`d360_probe`, `d360_metadata`, `d360_api`) instead of one tool per
 endpoint. Upstream MCP solves the same problem with three facade tools
 (`search`, `payload_examples`, `execute`); the equivalents here are:
 
-| Upstream                  | sf-data360 equivalent                                                       |
+| Upstream | sf-data360 equivalent |
 | ------------------------- | --------------------------------------------------------------------------- | --------- | ------------ | -------------- |
-| `search`                  | Read `endpoint-families.md`, `workflows.md`, upstream `FamilyCatalog.java`. |
-| `payload_examples`        | Read `data-shapes.md`, `examples.md`, upstream `payload-examples.json`.     |
-| `execute`                 | `d360_api` (with `dry_run: true` first for any mutation).                   |
+| `search` | Read `endpoint-families.md`, `workflows.md`, upstream `FamilyCatalog.java`. |
+| `payload_examples` | Read `data-shapes.md`, `examples.md`, upstream `payload-examples.json`. |
+| `execute` | `d360_api` (with `dry_run: true` first for any mutation). |
 | facade-discovered DMO/DLO | `d360_metadata list_dmos                                                    | list_dlos | describe_dmo | describe_dlo`. |
 
 ## Recursive validation recipe

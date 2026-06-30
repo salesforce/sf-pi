@@ -26,12 +26,7 @@ import type { LspDiagnostic, LspDoctorStatus, SupportedLanguage } from "./types.
 
 /** Latest known status for one LSP language. */
 export type LspActivityStatus =
-  | "idle"
-  | "checking"
-  | "clean"
-  | "error"
-  | "unavailable"
-  | "transition-clean";
+  "idle" | "checking" | "clean" | "error" | "unavailable" | "transition-clean";
 
 export interface LspActivityEntry {
   language: SupportedLanguage;
