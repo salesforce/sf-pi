@@ -108,6 +108,46 @@ _Avoid_: generic transport label, hidden query endpoint, full request dump
 Persisted evidence from a **SOQL Run**, such as the normalized query, raw result JSON, flattened result JSON, flattened CSV, query plan, schema describe response, or summary digest.
 _Avoid_: context dump, temporary table output, bulk export product
 
+**LWC Lifecycle Extension**:
+A bundled SF Pi extension that owns the local Lightning Web Component loop: scan project bundles, inspect component shape, diagnose LWC files, run targeted Jest tests, summarize evidence, and iterate. It does not own source deployment, org source synchronization, visual building, broad static analysis, Apex/server verification, or background LSP feedback.
+_Avoid_: LWC IDE, UI builder, frontend app generator, Jest wrapper, CLI wrapper
+
+**LWC Lifecycle Loop**:
+The agentic Lightning Web Component workflow coordinated by an **LWC Lifecycle Extension**: scan bundles, inspect one component, diagnose focused files, run the smallest useful local Jest test, persist artifacts, and repeat until verified.
+_Avoid_: test runner only, visual preview, deploy loop, org retrieve loop
+
+**LWC Run**:
+One local-native `sf_lwc` tool action in the **LWC Lifecycle Loop**, such as scanning the project, listing bundles, inspecting a component, diagnosing a file, discovering tests, planning a test, or running a bounded local Jest test.
+_Avoid_: Salesforce CLI command, deploy action, browser preview, generic npm script
+
+**Local LWC Test Run**:
+A bounded **LWC Run** that executes the local project's LWC Jest runner for an explicit file, component, or test name and stores full Jest output as **LWC Artifacts**. It is local component evidence, not a Salesforce CLI fallback, org-backed Apex test, dependency install, arbitrary package script, or unbounded watch session.
+_Avoid_: Apex test run, Jest watch, CI job, package install, npm script wrapper
+
+**LWC Artifact**:
+Persisted evidence from an **LWC Run**, such as a project scan, component inspection, diagnostics JSON, Jest result JSON, stdout/stderr capture, or compact summary.
+_Avoid_: chat dump, terminal scrollback, source deployment bundle
+
+**LWC Run Digest**:
+A normalized structured summary of an **LWC Run** that carries status, workspace, scope, bundle signals, diagnostics, test outcomes, local execution rail entries, artifacts, and next-step guidance for both LLM context and **LWC Result Card** rendering.
+_Avoid_: raw Jest response, action-specific JSON blob, renderer-only text
+
+**LWC Result Card**:
+The human-facing structured render of an **LWC Run**, optimized for quick local component diagnosis with clear scope, bundle signals, diagnostics, test results, root-cause hints, and artifact pointers.
+_Avoid_: raw Jest JSON, plain terminal output, full source dump
+
+**LWC Local Rail**:
+A compact, human-facing rail directly under an **LWC Result Card** title that lists the local package, file, compiler, test runner, or bounded execution parameters used by an **LWC Run**.
+_Avoid_: generic native-mode label, hidden test command, full stdout dump
+
+**LWC Component Inspection**:
+An **LWC Run** that summarizes one component bundle's local shape, including files, metadata exposure, public API surface, template usage, Salesforce module imports, child component references, style signals, and tests. It extracts cross-extension and skill handoff hints but does not deeply validate Apex methods, schema fields, SLDS rules, or security rules itself.
+_Avoid_: Apex validation, schema validation, SLDS2 uplift product, security scan, dependency product
+
+**LWC Project Scan**:
+An **LWC Run** that inventories Lightning Web Component bundles only inside package directories registered by an SFDX project. It is not a workspace-wide glob, stale retrieve scan, or generic frontend project scan.
+_Avoid_: whole-repo scan, generated-output scan, non-SFDX scan
+
 **Data 360 Run**:
 One invocation of a `data360_*` tool action, including local catalog actions, dry runs, readiness probes, runbooks, journeys, raw REST calls, and OTel exports.
 _Avoid_: Data 360 trace, Data 360 action
@@ -165,6 +205,12 @@ A suffixed Herdr pane alias for a **Fresh Ephemeral Lane**, chosen from a **Base
 _Avoid_: stable ephemeral alias, reused alias, recycled numeric suffix, persisted counter
 
 ## Example dialogue
+
+Dev: "Inspect this Lightning Web Component before I change it."
+Agent: "I will run an **LWC Component Inspection** as part of the **LWC Lifecycle Loop**. The **LWC Result Card** will summarize the bundle, imports, public API, and tests, while full evidence is saved as **LWC Artifacts**."
+
+Dev: "Run the related LWC test, but don't start a watcher."
+Agent: "I will run a bounded **Local LWC Test Run** for the smallest useful test scope. It can execute the local LWC Jest runner, but it will not call Salesforce CLI, install dependencies, or start watch mode."
 
 Dev: "Run `data360_observe stdm.find_sessions` and show me what happened."
 Agent: "That created a **Data 360 Run**. I will return a **Data 360 Run Digest** in context, render a **Data 360 Result Card** for the human, and save the raw SQL/JSON as **Data 360 Artifacts**."

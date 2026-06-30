@@ -233,6 +233,18 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
     },
   },
   {
+    id: "sf-lwc",
+    name: "SF LWC",
+    description: "Local-native Lightning Web Component lifecycle workflows for pi: project scan, component inspection, focused diagnostics, targeted Jest tests, and artifacts.",
+    file: "extensions/sf-lwc/index.ts",
+    category: "agent-tool",
+    maturity: "experimental",
+    defaultEnabled: true,
+    commands: ["/sf-lwc"],
+    tools: ["sf_lwc"],
+    events: ["session_start"],
+  },
+  {
     id: "sf-ohana-spinner",
     name: "SF Ohana Spinner",
     description: "Salesforce-themed rainbow spinner during LLM thinking",

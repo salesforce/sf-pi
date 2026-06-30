@@ -36,6 +36,7 @@ sf-pi/
 │   ├── sf-herdr/
 │   ├── sf-llm-gateway-internal/
 │   ├── sf-lsp/
+│   ├── sf-lwc/
 │   ├── sf-ohana-spinner/
 │   ├── sf-pi-manager/
 │   ├── sf-skills/

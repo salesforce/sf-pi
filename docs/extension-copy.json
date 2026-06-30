@@ -487,6 +487,32 @@
       "Font setup helper."
     ]
   },
+  "sf-lwc": {
+    "shortName": "LWC",
+    "intentGroup": "Build apps",
+    "promise": "Scan, inspect, diagnose, and locally test Lightning Web Components from pi with compact cards and artifact-backed evidence.",
+    "bestFor": "Lightning Web Component lifecycle workflows",
+    "benefits": [
+      "Keeps local LWC bundle inventory, component inspection, focused diagnostics, and targeted Jest tests in one lean workflow.",
+      "Uses local SFDX project structure plus public LWC compiler packages instead of Salesforce CLI fallback machinery.",
+      "Renders human-friendly LWC Result Cards with Local Rails, diagnostics, test summaries, recommended skill hints, and full artifacts for scans and Jest output."
+    ],
+    "tryFirst": {
+      "label": "Open the LWC panel",
+      "code": "/sf-lwc"
+    },
+    "useCases": [
+      "Scan registered SFDX package directories for Lightning Web Component bundles.",
+      "Inspect a component's files, metadata exposure, public API surface, imports, child tags, style/SLDS signals, and test coverage signals.",
+      "Diagnose LWC HTML, JavaScript, TypeScript, and metadata files before or after edits.",
+      "Discover, plan, and run the smallest useful local LWC Jest test without starting watch mode."
+    ],
+    "whatYouGet": [
+      "One sf_lwc family tool for local project scans, component listing/inspection, file diagnostics, test discovery/planning/runs, and rerun history.",
+      "Human-friendly LWC Result Cards with Local Rails, bundle signals, diagnostic summaries, root-cause hints, and next-step guidance.",
+      "LWC Artifacts under the global agent directory for project scans, component inspections, diagnostics JSON, Jest JSON, stdout/stderr, and markdown summaries."
+    ]
+  },
   "sf-soql": {
     "shortName": "SOQL",
     "intentGroup": "Query data",

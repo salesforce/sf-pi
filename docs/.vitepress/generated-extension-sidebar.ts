@@ -4,6 +4,7 @@
 
 export const extensionSidebarItems = [
   { text: "Apex", link: "/extensions/sf-apex" },
+  { text: "LWC", link: "/extensions/sf-lwc" },
   { text: "SOQL", link: "/extensions/sf-soql" },
   { text: "Agent Script", link: "/extensions/sf-agentscript" },
   { text: "Code Analyzer", link: "/extensions/sf-code-analyzer" },

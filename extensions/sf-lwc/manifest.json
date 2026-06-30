@@ -1,0 +1,40 @@
+{
+  "id": "sf-lwc",
+  "name": "SF LWC",
+  "description": "Local-native Lightning Web Component lifecycle workflows for pi: project scan, component inspection, focused diagnostics, targeted Jest tests, and artifacts.",
+  "category": "agent-tool",
+  "maturity": "experimental",
+  "defaultEnabled": true,
+  "commands": ["/sf-lwc"],
+  "tools": ["sf_lwc"],
+  "events": ["session_start"],
+  "docs": {
+    "summary": "Owns the lean local Lightning Web Component lifecycle loop in pi: SFDX package-directory scans, component inventory and inspection, focused LWC compiler/template diagnostics, style/SLDS signal detection, local Jest discovery/planning/runs, compact LWC Result Cards, recommended skill hints, and persisted LWC Artifacts. Source edits remain normal Pi file operations; deployment, org source synchronization, visual preview, broad static/security scans, and SLDS2 uplift execution remain with other SF Pi surfaces.",
+    "primaryFiles": [
+      "index.ts",
+      "lib/sf-lwc-tool.ts",
+      "lib/operations.ts",
+      "lib/project.ts",
+      "lib/component.ts",
+      "lib/diagnostics.ts",
+      "lib/tests.ts",
+      "lib/artifacts.ts",
+      "lib/render.ts",
+      "docs/adr/0071-sf-lwc-local-native-lifecycle-extension.md"
+    ],
+    "stateFiles": [
+      "<globalAgentDir>/sf-pi/sf-lwc/scans/*",
+      "<globalAgentDir>/sf-pi/sf-lwc/components/*",
+      "<globalAgentDir>/sf-pi/sf-lwc/diagnostics/*",
+      "<globalAgentDir>/sf-pi/sf-lwc/tests/*"
+    ],
+    "safety": [
+      "No startup project scans or org probes; local project work runs only during explicit sf_lwc tool actions.",
+      "V1 is local-only: no deploy/retrieve, org source evidence, component creation, component rename, or visual preview.",
+      "project.scan only scans package directories registered in sfdx-project.json; non-SFDX and workspace-wide scans are unsupported in V1.",
+      "test.run may execute node_modules/.bin/lwc-jest with bounded args/timeouts, but never installs dependencies, starts watch mode, updates snapshots by default, calls Salesforce CLI, or runs arbitrary package scripts as the primary path.",
+      "Full scan, diagnostic, and Jest evidence is stored as LWC Artifacts while LLM-facing output remains compact.",
+      "SLDS/style signals only recommend uplifting-components-to-slds2 and Code Analyzer/future sf-slds2 handoffs; sf-lwc does not own SLDS2 lint execution or autofix."
+    ]
+  }
+}

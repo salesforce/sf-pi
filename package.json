@@ -38,6 +38,7 @@
       "./extensions/sf-brain/index.ts",
       "./extensions/sf-apex/index.ts",
       "./extensions/sf-soql/index.ts",
+      "./extensions/sf-lwc/index.ts",
       "./extensions/sf-browser/index.ts",
       "./extensions/sf-code-analyzer/index.ts",
       "./extensions/sf-slack/index.ts",
@@ -97,7 +98,8 @@
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs",
-    "e2e:sf-soql": "node --experimental-strip-types scripts/e2e/sf-soql-e2e.ts"
+    "e2e:sf-soql": "node --experimental-strip-types scripts/e2e/sf-soql-e2e.ts",
+    "e2e:sf-lwc": "node --experimental-strip-types scripts/e2e/sf-lwc-e2e.ts"
   },
   "peerDependencies": {
     "@earendil-works/pi-ai": "*",
@@ -127,6 +129,8 @@
     "vitest": "^4.1.9"
   },
   "dependencies": {
+    "@lwc/compiler": "^9.3.4",
+    "@lwc/template-compiler": "^9.3.4",
     "@salesforce/apex-node": "^8.4.33",
     "@salesforce/core": "^8.31.2",
     "@salesforce/kit": "^3.2.6",

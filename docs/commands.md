@@ -91,6 +91,14 @@ _Dynamic Herdr lane planning for Salesforce workflows without replacing the upst
 - Commands: `/sf-herdr`
 - Tools: `sf_herdr_plan`
 
+### [SF LWC](./extensions/sf-lwc)
+
+_Local-native Lightning Web Component lifecycle workflows for pi: project scan, component inspection, focused diagnostics, targeted Jest tests, and artifacts._
+
+- Default: **on**
+- Commands: `/sf-lwc`
+- Tools: `sf_lwc`
+
 ### [SF Slack](./extensions/sf-slack)
 
 _Slack integration — search messages, read threads, browse channel history_
