@@ -26,6 +26,7 @@ export function buildDigest(
     local_rail: input.local_rail,
     sections: input.sections ?? [],
     artifacts: input.artifacts,
+    primary_reason: input.primary_reason,
     next_step: input.next_step,
     recommended_tools: input.recommended_tools,
     recommended_skills: input.recommended_skills,

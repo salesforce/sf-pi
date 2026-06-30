@@ -790,7 +790,7 @@
     "entry": "extensions/sf-lwc/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 2133
+    "srcLoc": 2467
   },
   {
     "id": "sf-ohana-spinner",

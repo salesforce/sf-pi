@@ -82,6 +82,7 @@ export interface LwcRunDigest {
   local_rail?: LwcLocalRailItem[];
   sections: LwcRunSection[];
   artifacts?: LwcArtifact[];
+  primary_reason?: string;
   next_step?: string;
   recommended_tools?: string[];
   recommended_skills?: string[];

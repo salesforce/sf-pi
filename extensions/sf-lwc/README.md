@@ -119,6 +119,7 @@ extensions/sf-lwc/
     diagnostics.ts          ← implementation module
     digest.ts               ← implementation module
     errors.ts               ← implementation module
+    health.ts               ← implementation module
     operations.ts           ← implementation module
     project.ts              ← implementation module
     render.ts               ← implementation module

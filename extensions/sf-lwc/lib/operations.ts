@@ -1,11 +1,30 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** High-level sf-lwc lifecycle operations. */
 
+import { access, readFile } from "node:fs/promises";
 import path from "node:path";
 import { writeLwcArtifact, writeLwcBundle } from "./artifacts.ts";
 import { inspectComponent } from "./component.ts";
 import { diagnoseLocalFile } from "./diagnostics.ts";
 import { buildDigest, row, section } from "./digest.ts";
+import {
+  analyzeBundleHealth,
+  hasHealthWarnings,
+  healthRows,
+  healthSummary,
+  primaryHealthReason,
+  type LwcBundleHealthFinding,
+} from "./health.ts";
+
+interface LwcJestSetupGuidance {
+  projectRoot: string;
+  checked: string[];
+  dependency: string;
+  script: string;
+  installCommand: string;
+  copyPasteCommand: string;
+  retryCommand: string;
+}
 import { scanProject, relativeToProject } from "./project.ts";
 import { toolResultFromDigest } from "./result.ts";
 import {
@@ -64,9 +83,11 @@ export async function projectScan(params: SfLwcParams, cwd: string): Promise<Too
   const limit = params.limit ?? 20;
   const artifacts = [await writeLwcArtifact("scans", "project-scan.json", scanForArtifact(scan))];
   const displayed = scan.bundles.slice(0, limit);
+  const bundleHealth = await healthForBundles(scan.bundles, scan.project.projectRoot);
+  const healthWarnings = bundleHealth.filter(({ health }) => hasHealthWarnings(health));
   const digest = buildDigest({
     action: "project.scan",
-    status: "pass",
+    status: healthWarnings.length ? "warning" : "pass",
     icon: "🔎",
     title: "LWC Project Scan",
     workspace: {
@@ -88,7 +109,9 @@ export async function projectScan(params: SfLwcParams, cwd: string): Promise<Too
           scan.bundles.filter((bundle) => bundle.testFiles.length > 0).length,
         ),
         row("🌐", "Exposed", scan.bundles.filter((bundle) => bundle.metadata?.isExposed).length),
+        row("🛡️", "Health warnings", healthWarnings.length),
       ]),
+      section("🛡️", "Bundle Health", bundleHealthRows(bundleHealth)),
       section(
         "🧩",
         "Components",
@@ -102,6 +125,9 @@ export async function projectScan(params: SfLwcParams, cwd: string): Promise<Too
       ),
     ],
     artifacts,
+    primary_reason: healthWarnings[0]
+      ? `${healthWarnings[0].bundle.name}: ${primaryHealthReason(healthWarnings[0].health)}`
+      : undefined,
     next_step: scan.bundles.length
       ? "Use component.inspect for a focused bundle."
       : "No LWC bundles found in registered package directories.",
@@ -117,9 +143,11 @@ export async function componentList(params: SfLwcParams, cwd: string): Promise<T
     ? scan.bundles.filter((bundle) => bundle.name.toLowerCase().includes(query))
     : scan.bundles;
   const limit = params.limit ?? 25;
+  const bundleHealth = await healthForBundles(filtered, scan.project.projectRoot);
+  const healthWarnings = bundleHealth.filter(({ health }) => hasHealthWarnings(health));
   const digest = buildDigest({
     action: "component.list",
-    status: "pass",
+    status: healthWarnings.length ? "warning" : "pass",
     icon: "🧩",
     title: "LWC Components",
     workspace: {
@@ -136,7 +164,9 @@ export async function componentList(params: SfLwcParams, cwd: string): Promise<T
         row("🧩", "Matched", filtered.length),
         row("🧪", "With tests", filtered.filter((bundle) => bundle.testFiles.length > 0).length),
         row("🌐", "Exposed", filtered.filter((bundle) => bundle.metadata?.isExposed).length),
+        row("🛡️", "Health warnings", healthWarnings.length),
       ]),
+      section("🛡️", "Bundle Health", bundleHealthRows(bundleHealth)),
       section(
         "🧩",
         "Matches",
@@ -151,6 +181,9 @@ export async function componentList(params: SfLwcParams, cwd: string): Promise<T
           ),
       ),
     ],
+    primary_reason: healthWarnings[0]
+      ? `${healthWarnings[0].bundle.name}: ${primaryHealthReason(healthWarnings[0].health)}`
+      : undefined,
     next_step: filtered.length
       ? "Use component.inspect for a focused bundle."
       : "Adjust component filter or run project.scan.",
@@ -171,10 +204,14 @@ export async function componentInspect(params: SfLwcParams, cwd: string): Promis
     { filename: "inspection.json", kind: "inspection", content: inspection },
     { filename: "dependencies.json", kind: "dependencies", content: dependencySummary(inspection) },
   ]);
-  const failures = inspection.diagnostics.filter((diag) => diag.severity === "error");
+  const health = await analyzeBundleHealth(
+    inspection.bundle,
+    scan.project.projectRoot,
+    inspection.diagnostics,
+  );
   const digest = buildDigest({
     action: "component.inspect",
-    status: failures.length ? "warning" : "pass",
+    status: hasHealthWarnings(health) ? "warning" : "pass",
     icon: "🧩",
     title: `LWC Component · ${inspection.bundle.name}`,
     workspace: {
@@ -208,10 +245,12 @@ export async function componentInspect(params: SfLwcParams, cwd: string): Promis
         row("🏷️", "Labels", inspection.labelImports.join(", ") || "—"),
         row("🧩", "Child tags", inspection.childComponents.join(", ") || "—"),
       ]),
+      section("🛡️", "Bundle Health", healthRows(health)),
       section("🎨", "Style Signals", styleSignalRows(inspection.styleSignals)),
       section("🩺", "Diagnostics", diagnosticsRows(inspection.diagnostics)),
     ],
     artifacts,
+    primary_reason: primaryHealthReason(health),
     recommended_tools: recommendedTools(
       inspection.apexImports,
       inspection.schemaImports,
@@ -247,6 +286,7 @@ export async function fileDiagnose(params: SfLwcParams, cwd: string): Promise<To
     local_rail: files.map((file) => ({ kind: "file", target: file })),
     sections: [section("🩺", "Diagnostics", diagnosticsRows(diagnostics))],
     artifacts,
+    primary_reason: diagnostics.find((diag) => diag.severity === "error")?.message,
     recommended_skills: recommendedSkillsForAction(
       params.action,
       styleSignalsForFiles(files, diagnostics),
@@ -312,6 +352,7 @@ export async function testDiscover(params: SfLwcParams, cwd: string): Promise<To
       ),
     ],
     artifacts,
+    primary_reason: discovery.runnable ? undefined : "no local lwc-jest runner",
     recommended_skills: recommendedSkillsForAction(params.action),
     next_step: discovery.runnable
       ? "Use test.plan or test.run for the changed component."
@@ -354,6 +395,7 @@ export async function testPlan(params: SfLwcParams, cwd: string): Promise<ToolRe
         row("🧪", "Test cases", plan.selected?.tests.length ?? 0),
       ]),
     ],
+    primary_reason: plan.selected ? undefined : plan.reason,
     recommended_skills: recommendedSkillsForAction(params.action),
     next_step: plan.selected
       ? "Run sf_lwc test.run with this component or test_file."
@@ -368,8 +410,11 @@ export async function testRun(
   state: SfLwcSessionState,
 ): Promise<ToolResult> {
   const workspace = resolveWorkspace(params, cwd);
-  const run = await runLocalJest(params, workspace);
-  state.lastRunnable = { ...params, action: "test.run" };
+  const run = await runLocalJest(params, workspace).catch(async (error: unknown) => {
+    if (isMissingRunnerError(error)) return blockedLocalJestRun(params, workspace, error);
+    throw error;
+  });
+  if (run.selected) state.lastRunnable = { ...params, action: "test.run" };
   const summary = run.summary;
   const digest = buildDigest({
     action: "test.run",
@@ -410,12 +455,20 @@ export async function testRun(
           .slice(0, 5)
           .map((failure) => row("🔥", failure.title, firstLine(failure.message))),
       ),
+      section(
+        "🛠️",
+        "Setup Guidance",
+        "setupGuidance" in run ? setupGuidanceRows(run.setupGuidance) : [],
+      ),
     ],
     artifacts: run.artifacts,
+    primary_reason: "primaryReason" in run ? run.primaryReason : undefined,
     recommended_skills: recommendedSkillsForAction(params.action),
     next_step: summary?.success
       ? "Continue the LWC edit loop or inspect another component."
-      : "Open the Jest JSON/stdout artifacts, fix the first failing test, and rerun test.run.",
+      : "setupGuidance" in run
+        ? "Run the Copy/paste command in Setup Guidance, then retry test.run."
+        : "Open the Jest JSON/stdout artifacts, fix the first failing test, and rerun test.run.",
   });
   state.lastDigest = digest;
   return toolResultFromDigest(digest, {
@@ -451,6 +504,151 @@ export async function historyRerun(
   return testRun({ ...state.lastRunnable, ...params, action: "test.run" }, cwd, state);
 }
 
+async function blockedLocalJestRun(
+  params: SfLwcParams,
+  workspace: string,
+  error: unknown,
+): Promise<{
+  discovery: Awaited<ReturnType<typeof planTest>>["discovery"];
+  selected?: Awaited<ReturnType<typeof planTest>>["selected"];
+  summary: {
+    success: boolean;
+    totalTests: number;
+    passedTests: number;
+    failedTests: number;
+    pendingTests: number;
+    totalSuites: number;
+    passedSuites: number;
+    failedSuites: number;
+    failures: Array<{ title: string; message: string }>;
+  };
+  artifacts: [];
+  stdout: string;
+  stderr: string;
+  exitCode?: number;
+  primaryReason: string;
+  setupGuidance: LwcJestSetupGuidance;
+}> {
+  const plan = await planTest(params, workspace);
+  const setupGuidance = await buildJestSetupGuidance(plan.discovery.project.projectRoot, params);
+  const reason = "local lwc-jest runner not found";
+  const message = error instanceof Error ? error.message : String(error);
+  return {
+    discovery: plan.discovery,
+    selected: plan.selected,
+    summary: {
+      success: false,
+      totalTests: 0,
+      passedTests: 0,
+      failedTests: 1,
+      pendingTests: 0,
+      totalSuites: 0,
+      passedSuites: 0,
+      failedSuites: 1,
+      failures: [
+        {
+          title: "LWC Jest runner",
+          message,
+        },
+      ],
+    },
+    artifacts: [],
+    stdout: "",
+    stderr: message,
+    primaryReason: reason,
+    setupGuidance,
+  };
+}
+
+function isMissingRunnerError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /lwc[- ]jest runner not found/i.test(message);
+}
+
+async function buildJestSetupGuidance(
+  projectRoot: string,
+  params: SfLwcParams,
+): Promise<LwcJestSetupGuidance> {
+  const checked = ["node_modules/.bin/lwc-jest", "node_modules/.bin/sfdx-lwc-jest"];
+  const packageInfo = await readPackageInfo(projectRoot);
+  const installCommand = await recommendedInstallCommand(projectRoot);
+  return {
+    projectRoot,
+    checked,
+    dependency: packageInfo.declaresJest
+      ? "@salesforce/sfdx-lwc-jest declared"
+      : "@salesforce/sfdx-lwc-jest not declared",
+    script: packageInfo.testScript
+      ? `test:unit=${packageInfo.testScript}`
+      : "test:unit script not found",
+    installCommand,
+    copyPasteCommand: `cd ${bashQuote(projectRoot)} && ${installCommand}`,
+    retryCommand: retryCommandFor(params),
+  };
+}
+
+function setupGuidanceRows(guidance: LwcJestSetupGuidance) {
+  return [
+    row("📁", "Run from", guidance.projectRoot),
+    row("🔎", "Checked", guidance.checked.join(", ")),
+    row("📦", "Dependency", guidance.dependency),
+    row("🧪", "Script", guidance.script),
+    row("💻", "Copy/paste", guidance.copyPasteCommand),
+    row("➡️", "Retry", guidance.retryCommand),
+  ];
+}
+
+async function readPackageInfo(
+  projectRoot: string,
+): Promise<{ declaresJest: boolean; testScript?: string }> {
+  try {
+    const raw = await readFile(path.join(projectRoot, "package.json"), "utf8");
+    const pkg = JSON.parse(raw) as {
+      scripts?: Record<string, string>;
+      dependencies?: Record<string, string>;
+      devDependencies?: Record<string, string>;
+    };
+    return {
+      declaresJest: Boolean(
+        pkg.dependencies?.["@salesforce/sfdx-lwc-jest"] ??
+        pkg.devDependencies?.["@salesforce/sfdx-lwc-jest"],
+      ),
+      testScript: pkg.scripts?.["test:unit"],
+    };
+  } catch {
+    return { declaresJest: false };
+  }
+}
+
+async function recommendedInstallCommand(projectRoot: string): Promise<string> {
+  if (await fileExists(path.join(projectRoot, "package-lock.json"))) return "npm ci";
+  if (await fileExists(path.join(projectRoot, "pnpm-lock.yaml"))) return "pnpm install";
+  if (await fileExists(path.join(projectRoot, "yarn.lock"))) return "yarn install";
+  return "npm install";
+}
+
+async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    await access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function retryCommandFor(params: SfLwcParams): string {
+  const target = params.component
+    ? ` component=${params.component}`
+    : params.test_file
+      ? ` test_file=${params.test_file}`
+      : "";
+  return `sf_lwc test.discover, then sf_lwc test.run${target}`;
+}
+
+function bashQuote(value: string): string {
+  return `'${value.replaceAll("'", "'\\''")}'`;
+}
+
 function resolveWorkspace(params: SfLwcParams, cwd: string): string {
   return path.resolve(params.workspace ?? cwd);
 }
@@ -465,6 +663,30 @@ function scanForArtifact(scan: Awaited<ReturnType<typeof scanProject>>): unknown
     })),
     omitted: scan.omitted.map((file) => relativeToProject(scan.project.projectRoot, file)),
   };
+}
+
+async function healthForBundles(
+  bundles: LwcBundleInfo[],
+  projectRoot: string,
+): Promise<Array<{ bundle: LwcBundleInfo; health: LwcBundleHealthFinding[] }>> {
+  return Promise.all(
+    bundles.map(async (bundle) => ({
+      bundle,
+      health: await analyzeBundleHealth(bundle, projectRoot),
+    })),
+  );
+}
+
+function bundleHealthRows(
+  bundleHealth: Array<{ bundle: LwcBundleInfo; health: LwcBundleHealthFinding[] }>,
+) {
+  const warnings = bundleHealth.filter(({ health }) => hasHealthWarnings(health));
+  if (!warnings.length) return [row("✅", "Status", "healthy")];
+  return warnings
+    .slice(0, 8)
+    .map(({ bundle, health }) =>
+      row("⚠️", bundle.name, `${healthSummary(health)} · ${primaryHealthReason(health)}`),
+    );
 }
 
 function bundleSummary(bundle: LwcBundleInfo, projectRoot: string): string {

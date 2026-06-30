@@ -33,6 +33,16 @@ describe("sf-lwc diagnostics", () => {
     expect(diagnostics[0].severity).toBe("error");
   });
 
+  it("removes absolute paths from JavaScript compiler diagnostic messages", () => {
+    const diagnostics = diagnoseScript(
+      "cmp/cmp.js",
+      "/tmp/example-project/cmp.js",
+      "export default class Cmp { broken( }",
+    );
+
+    expect(diagnostics[0].message).not.toContain("/tmp/example-project");
+  });
+
   it("warns when metadata apiVersion is missing", () => {
     const diagnostics = diagnoseMetadata(
       "cmp/cmp.js-meta.xml",

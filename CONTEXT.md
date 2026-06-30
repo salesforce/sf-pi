@@ -148,6 +148,18 @@ _Avoid_: Apex validation, schema validation, SLDS2 uplift product, security scan
 An **LWC Run** that inventories Lightning Web Component bundles only inside package directories registered by an SFDX project. It is not a workspace-wide glob, stale retrieve scan, or generic frontend project scan.
 _Avoid_: whole-repo scan, generated-output scan, non-SFDX scan
 
+**LWC Bundle Health Warning**:
+A structural or diagnostic signal that a Lightning Web Component bundle is likely incomplete or locally invalid, such as missing required bundle files, missing template markup for a likely UI component, or file diagnostics with errors. It should affect **LWC Result Card** status for scan, list, inspect, or diagnose actions. Missing tests are not bundle health warnings by themselves.
+_Avoid_: test coverage gap, style advisory, deployment result
+
+**LWC Advisory Signal**:
+A helpful follow-up signal from an **LWC Run** that does not make the bundle locally invalid by itself, such as missing colocated Jest tests, style uplift hints, exposure state, or cross-extension handoff hints.
+_Avoid_: error, health failure, validation blocker
+
+**Compact LWC Tool Text**:
+The short LLM-facing summary of an **LWC Run**, optimized for low prompt footprint. It should preserve concise status while including the primary warning or failure reason when one exists; detailed evidence belongs in the **LWC Run Digest**, **LWC Result Card**, and **LWC Artifacts**.
+_Avoid_: full card render, raw artifact dump, hidden failure reason
+
 **Data 360 Run**:
 One invocation of a `data360_*` tool action, including local catalog actions, dry runs, readiness probes, runbooks, journeys, raw REST calls, and OTel exports.
 _Avoid_: Data 360 trace, Data 360 action

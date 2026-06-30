@@ -3,9 +3,29 @@
 import { describe, expect, it } from "vitest";
 import { buildDigest, row, section } from "../lib/digest.ts";
 import { renderLwcResultMarkdown } from "../lib/render.ts";
-import { toolResultFromDigest } from "../lib/result.ts";
+import { compactText, toolResultFromDigest } from "../lib/result.ts";
 
 describe("sf-lwc renderer", () => {
+  it("keeps compact text concise while preserving warning reasons", () => {
+    const warning = buildDigest({
+      action: "test.discover",
+      status: "warning",
+      icon: "🧪",
+      title: "LWC Test Discovery",
+      primary_reason: "no local lwc-jest runner",
+    });
+    const pass = buildDigest({
+      action: "component.inspect",
+      status: "pass",
+      icon: "🧩",
+      title: "LWC Component · helloWorld",
+      primary_reason: "hidden reason",
+    });
+
+    expect(compactText(warning)).toBe("LWC Test Discovery — warning: no local lwc-jest runner.");
+    expect(compactText(pass)).toBe("LWC Component · helloWorld — passed.");
+  });
+
   it("renders LWC result cards with local rails", () => {
     const result = toolResultFromDigest(
       buildDigest({

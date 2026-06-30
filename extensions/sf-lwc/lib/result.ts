@@ -33,5 +33,7 @@ export function compactText(digest: LwcRunDigest): string {
   const scope = digest.scope ? `: ${digest.scope}` : "";
   const suffix =
     digest.status === "pass" ? "passed" : digest.status === "fail" ? "failed" : digest.status;
-  return `${digest.title}${scope ? ` ${scope}` : ""} — ${suffix}.`;
+  const reason =
+    digest.status === "pass" || !digest.primary_reason ? "" : `: ${digest.primary_reason}`;
+  return `${digest.title}${scope ? ` ${scope}` : ""} — ${suffix}${reason}.`;
 }
