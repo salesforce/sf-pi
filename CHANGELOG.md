@@ -517,6 +517,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.215.0](https://github.com/salesforce/sf-pi/compare/v0.214.0...v0.215.0) (2026-06-30)
+
+
+### Features
+
+* **sf-lwc:** add local LWC lifecycle extension ([def4beb](https://github.com/salesforce/sf-pi/commit/def4beb56865dbd989abf6b0193fe646028d27fa))
+
 ## [0.214.0](https://github.com/salesforce/sf-pi/compare/v0.213.0...v0.214.0) (2026-06-28)
 
 
