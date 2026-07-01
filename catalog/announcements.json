@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.215.1-2026-06-30",
-  "latestVersion": "0.215.1",
+  "revision": "release-0.215.2-2026-07-01",
+  "latestVersion": "0.215.2",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.215.1",
+      "id": "release-0.215.2",
       "kind": "update",
-      "title": "sf-pi v0.215.1 — sf-lwc: harden bundle health and Jest setup cards",
-      "publishedAt": "2026-06-30T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.215.1",
+      "title": "sf-pi v0.215.2 — sf-devbar: prefer last-known footer status",
+      "publishedAt": "2026-07-01T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.215.2",
       "severity": "info",
-      "body": "sf-lwc: harden bundle health and Jest setup cards"
+      "body": "sf-devbar: prefer last-known footer status"
     },
     {
       "id": "pi-0.73-required",
