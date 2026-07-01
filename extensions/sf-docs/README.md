@@ -30,23 +30,24 @@ Agent asks for official docs
 - **Tool shape:** `sf_docs` is one family tool instead of one public tool per remote action.
 - **Cache boundary:** `lib/catalog-cache.ts` stores only the collection catalog. Search results, answers, and document bodies are never cached.
 - **Evidence workflow:** For implementation-sensitive answers, agents should search, fetch source documents, and then answer from inspected evidence. The `answer` action remains available for quick cited synthesis.
+- **Docs Query Distillation:** Salesforce-owned docs URLs and article-like locators are turned into compact search variants before `search`, and failed URL `fetch` calls can recover by fetching the strongest indexed result ID.
 - **Human output:** The tool separates compact Docs Result Cards from bounded Docs Evidence Packets, so humans see scan-friendly citations, counts, previews, and source URLs while the model still receives official source evidence.
 
 ## Behavior Matrix
 
-| Event/Trigger          | Condition            | Result                                                       |
-| ---------------------- | -------------------- | ------------------------------------------------------------ |
-| extension load         | always               | Registers auth provider, command, tool, and Manager actions. |
-| `/sf-docs`             | interactive, no args | Opens SF Pi Manager at SF Docs detail page.                  |
-| `/sf-docs status`      | any                  | Shows auth source, endpoint, defaults, and cache status.     |
-| `/sf-docs connect`     | interactive          | Prompts for token and stores it in Pi auth.                  |
-| `/sf-docs disconnect`  | any                  | Clears saved Pi auth credential; env vars are untouched.     |
-| `/sf-docs collections` | connected            | Lists docs collections, using the catalog cache when valid.  |
-| `/sf-docs refresh`     | connected            | Refetches and caches the collection catalog.                 |
-| `/sf-docs cheatsheet`  | any                  | Shows the lazy extension-owned usage guide.                  |
-| `sf_docs search`       | connected            | Searches one collection/version/locale slice.                |
-| `sf_docs fetch`        | connected            | Fetches source text by IDs or URLs.                          |
-| `sf_docs answer`       | connected            | Returns a cited synthesized answer.                          |
+| Event/Trigger          | Condition            | Result                                                                                                                             |
+| ---------------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| extension load         | always               | Registers auth provider, command, tool, and Manager actions.                                                                       |
+| `/sf-docs`             | interactive, no args | Opens SF Pi Manager at SF Docs detail page.                                                                                        |
+| `/sf-docs status`      | any                  | Shows auth source, endpoint, defaults, and cache status.                                                                           |
+| `/sf-docs connect`     | interactive          | Prompts for token and stores it in Pi auth.                                                                                        |
+| `/sf-docs disconnect`  | any                  | Clears saved Pi auth credential; env vars are untouched.                                                                           |
+| `/sf-docs collections` | connected            | Lists docs collections, using the catalog cache when valid.                                                                        |
+| `/sf-docs refresh`     | connected            | Refetches and caches the collection catalog.                                                                                       |
+| `/sf-docs cheatsheet`  | any                  | Shows the lazy extension-owned usage guide.                                                                                        |
+| `sf_docs search`       | connected            | Searches one collection/version/locale slice; Salesforce-owned docs locators are distilled into high-signal search variants.       |
+| `sf_docs fetch`        | connected            | Fetches source text by IDs or URLs; failed Salesforce-owned docs URL fetches can recover through distilled search and indexed IDs. |
+| `sf_docs answer`       | connected            | Returns a cited synthesized answer.                                                                                                |
 
 ## Settings
 
@@ -84,6 +85,7 @@ extensions/sf-docs/
     config-panel.ts         ← implementation module
     manager-action-panels.ts← implementation module
     preferences.ts          ← implementation module
+    query-distillation.ts   ← implementation module
     render.ts               ← implementation module
     sf_docs-tool.ts         ← implementation module
     sse.ts                  ← implementation module
@@ -94,6 +96,7 @@ extensions/sf-docs/
     catalog-cache.test.ts   ← unit / smoke test
     client.test.ts          ← unit / smoke test
     preferences.test.ts     ← unit / smoke test
+    query-distillation.test.ts← unit / smoke test
     render.test.ts          ← unit / smoke test
     sf_docs-tool.test.ts    ← unit / smoke test
     smoke.test.ts           ← unit / smoke test

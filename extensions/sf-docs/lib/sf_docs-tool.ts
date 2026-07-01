@@ -12,6 +12,16 @@ import { readEffectiveDocsPreferences } from "./preferences.ts";
 import { buildStatus } from "./status.ts";
 import { renderToolCall, renderToolResult, clipText } from "./render.ts";
 import {
+  buildDistilledSearchRequests,
+  distillDocsQuery,
+  isHighConfidenceDistilledResult,
+  rankDistilledResults,
+  type DistilledSearchBatch,
+  type DistilledSearchRequest,
+  type DocsQueryDistillationPlan,
+  type RankedDistilledResult,
+} from "./query-distillation.ts";
+import {
   TOOL_NAME,
   type DocsCitation,
   type DocsCollection,
@@ -42,6 +52,21 @@ interface AnswerResponse {
 const FETCH_PER_DOCUMENT_CHAR_LIMIT = 12000;
 const FETCH_TOTAL_CHAR_LIMIT = 48000;
 const FETCH_DETAILS_PREVIEW_CHAR_LIMIT = 1600;
+
+interface DistilledSearchRun {
+  requests: DistilledSearchRequest[];
+  batches: DistilledSearchBatch[];
+  ranked: RankedDistilledResult[];
+}
+
+interface FetchRecoveryResult {
+  recovered: boolean;
+  search: DistilledSearchRun;
+  docs: DocsDocument[];
+  slice: { collection: string; version: string; locale: string };
+  recoveredRequest?: { ids?: string[]; urls?: string[]; format: "text" | "markdown" | "html" };
+  resolved?: RankedDistilledResult;
+}
 
 const Params = Type.Object({
   action: StringEnum(
@@ -180,6 +205,42 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
             });
           }
           const pageSize = clamp(input.pageSize ?? prefs.defaultPageSize, 1, 60);
+          const distilled = distillDocsQuery(input.query, {
+            defaultCollection: slice.collection,
+            explicitCollection: input.collection,
+          });
+          if (distilled) {
+            const distilledSearch = await runDistilledSearch(
+              client,
+              distilled,
+              {
+                version: slice.version,
+                locale: slice.locale,
+                page: input.page ?? 1,
+                pageSize,
+                format: input.format,
+              },
+              signal,
+            );
+            const response = {
+              results: distilledSearch.ranked.slice(0, pageSize),
+              totalCount: distilledSearch.ranked.length,
+            };
+            const text = [
+              `Distilled docs locator query: ${distilled.semanticQuery}`,
+              "",
+              formatSearchToolText(input.query, response),
+            ].join("\n");
+            return ok("search", text, {
+              ...slice,
+              collection: distilled.collectionCandidates[0] ?? slice.collection,
+              query: input.query,
+              ...response,
+              displayDensity: prefs.displayDensity,
+              resolution: buildDistillationResolution(distilled, distilledSearch),
+            });
+          }
+
           const args: Record<string, unknown> = {
             ...slice,
             query: input.query,
@@ -224,6 +285,68 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
           }
           const response = asFetchResponse(await client.callTool("fetch", args, signal));
           const docs = response.documents ?? [];
+          const recoveryPlan =
+            requested.urls?.length === 1
+              ? distillDocsQuery(requested.urls[0], {
+                  defaultCollection: slice.collection,
+                  explicitCollection: input.collection,
+                })
+              : undefined;
+          if (recoveryPlan && fetchLooksRecoverable(docs)) {
+            const recovery = await recoverFetchByDistilledSearch(
+              client,
+              recoveryPlan,
+              {
+                version: slice.version,
+                locale: slice.locale,
+                format,
+              },
+              signal,
+            );
+            if (recovery.recovered) {
+              const packet = buildFetchEvidencePacket(recovery.docs, recovery.slice);
+              const note = `Recovered by searching distilled docs locator: ${recoveryPlan.semanticQuery}`;
+              return ok("fetch", `${note}\n\n${packet.text || "No documents returned."}`, {
+                ...recovery.slice,
+                requested,
+                recoveredRequest: recovery.recoveredRequest,
+                displayDensity: prefs.displayDensity,
+                documents: packet.documents,
+                totalDocuments: packet.documents.length,
+                totalContentChars: packet.totalContentChars,
+                llmBudget: packet.llmBudget,
+                resolution: buildDistillationResolution(recoveryPlan, recovery.search, {
+                  status: "recovered",
+                  resolvedId: recovery.resolved?.id,
+                  resolvedUrl: recovery.resolved?.url,
+                  score: recovery.resolved?.score,
+                }),
+              });
+            }
+
+            const packet = buildFetchEvidencePacket(docs, slice);
+            const text = [
+              `Direct URL fetch was not usable. Distilled docs locator query was ambiguous: ${recoveryPlan.semanticQuery}`,
+              formatRecoveryCandidates(recovery.search.ranked),
+              "",
+              packet.text || "No documents returned.",
+            ]
+              .filter(Boolean)
+              .join("\n");
+            return ok("fetch", text, {
+              ...slice,
+              requested,
+              displayDensity: prefs.displayDensity,
+              documents: packet.documents,
+              totalDocuments: packet.documents.length,
+              totalContentChars: packet.totalContentChars,
+              llmBudget: packet.llmBudget,
+              resolution: buildDistillationResolution(recoveryPlan, recovery.search, {
+                status: "ambiguous",
+              }),
+            });
+          }
+
           const packet = buildFetchEvidencePacket(docs, slice);
           return ok("fetch", packet.text || "No documents returned.", {
             ...slice,
@@ -295,6 +418,134 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
       });
     },
   });
+}
+
+async function runDistilledSearch(
+  client: DocsClient,
+  plan: DocsQueryDistillationPlan,
+  base: {
+    version: string;
+    locale: string;
+    page?: number;
+    pageSize: number;
+    format?: "text" | "markdown" | "html";
+  },
+  signal?: AbortSignal,
+): Promise<DistilledSearchRun> {
+  const requests = buildDistilledSearchRequests(plan);
+  const batches = await Promise.all(
+    requests.map(async (request) => {
+      const args: Record<string, unknown> = {
+        collection: request.collection,
+        version: base.version,
+        locale: base.locale,
+        query: request.query,
+        page: base.page ?? 1,
+        pageSize: base.pageSize,
+      };
+      if (base.format) args.format = base.format;
+      const response = asSearchResponse(await client.callTool("search", args, signal));
+      return {
+        request,
+        results: response.results ?? [],
+        totalCount: response.totalCount,
+      };
+    }),
+  );
+  return { requests, batches, ranked: rankDistilledResults(plan, batches) };
+}
+
+async function recoverFetchByDistilledSearch(
+  client: DocsClient,
+  plan: DocsQueryDistillationPlan,
+  base: { version: string; locale: string; format: "text" | "markdown" | "html" },
+  signal?: AbortSignal,
+): Promise<FetchRecoveryResult> {
+  const search = await runDistilledSearch(
+    client,
+    plan,
+    { version: base.version, locale: base.locale, pageSize: 5 },
+    signal,
+  );
+  const best = search.ranked[0];
+  if (!best?.id || !isHighConfidenceDistilledResult(best)) {
+    return {
+      recovered: false,
+      search,
+      docs: [],
+      slice: {
+        collection: best?.collection ?? plan.collectionCandidates[0] ?? "developer",
+        version: best?.version ?? base.version,
+        locale: best?.locale ?? base.locale,
+      },
+    };
+  }
+
+  const recoverySlice = {
+    collection: best.collection,
+    version: best.version ?? base.version,
+    locale: best.locale ?? base.locale,
+  };
+  const recoveredRequest = { ids: [best.id], format: base.format };
+  const response = asFetchResponse(
+    await client.callTool(
+      "fetch",
+      {
+        ...recoverySlice,
+        ...recoveredRequest,
+      },
+      signal,
+    ),
+  );
+  return {
+    recovered: true,
+    search,
+    docs: response.documents ?? [],
+    slice: recoverySlice,
+    recoveredRequest,
+    resolved: best,
+  };
+}
+
+function fetchLooksRecoverable(docs: DocsDocument[]): boolean {
+  return docs.length === 0 || docs.every((doc) => Boolean(doc.error) || !doc.content?.trim());
+}
+
+function buildDistillationResolution(
+  plan: DocsQueryDistillationPlan,
+  search: DistilledSearchRun,
+  extra: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return {
+    kind: "docs_query_distillation",
+    original: plan.original,
+    source: plan.source,
+    host: plan.host,
+    locator: plan.locator,
+    semanticQuery: plan.semanticQuery,
+    variantsTried: search.requests.map((request) => request.query),
+    collectionsTried: [...new Set(search.requests.map((request) => request.collection))],
+    topCandidates: search.ranked.slice(0, 5).map((result) => ({
+      id: result.id,
+      title: result.title,
+      url: result.url,
+      collection: result.collection,
+      score: result.score,
+      matchedByUrl: result.matchedByUrl,
+    })),
+    ...extra,
+  };
+}
+
+function formatRecoveryCandidates(ranked: RankedDistilledResult[]): string {
+  if (!ranked.length) return "No recovery candidates found.";
+  const lines = ["Recovery candidates:"];
+  ranked.slice(0, 3).forEach((result, index) => {
+    lines.push(`${index + 1}. ${result.title ?? "Untitled"}`);
+    if (result.id) lines.push(`   id: ${result.id}`);
+    if (result.url) lines.push(`   url: ${result.url}`);
+  });
+  return lines.join("\n");
 }
 
 function ok(action: string, text: string, details: Record<string, unknown>): ToolResultShape {

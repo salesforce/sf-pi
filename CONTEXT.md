@@ -4,6 +4,10 @@ SF Pi is the bundled Salesforce-focused extension suite for pi. It gives agents 
 
 ## Language
 
+**Docs Query Distillation**:
+The SF Docs behavior of turning locator-like documentation input, such as a Salesforce Help article URL or article ID, into compact meaningful search language before documentation lookup. It keeps the user's intent anchored to official documentation while avoiding brittle literal URL search when the locator already contains better search terms.
+_Avoid_: URL canonicalization system, docs crawler, local documentation index, cached search corpus
+
 **Last-Known Usable Status**:
 The most recent successful status snapshot that is still useful for human orientation, even when the **Current Probe Status** is failed or stale. It must be scoped to the same logical target, such as the same Salesforce project and target org or the same gateway usage account.
 _Avoid_: stale failure, optimistic status, cached truth
