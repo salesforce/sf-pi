@@ -49,6 +49,7 @@ import {
   bindPiForSessionPersistence,
   restoreFromSessionEntries,
 } from "../../lib/common/sf-environment/shared-runtime.ts";
+import { readPersistedSfEnvironment } from "../../lib/common/sf-environment/persisted-cache.ts";
 import { getSfLspHealth, onSfLspHealthChange } from "../../lib/common/sf-lsp-health/index.ts";
 import type { SfEnvironment } from "../../lib/common/sf-environment/types.ts";
 import {
@@ -57,6 +58,7 @@ import {
 } from "../../lib/common/sf-environment/format-agent-context.ts";
 import { renderTopBarLine, type TopBarState } from "./lib/top-bar.ts";
 import { renderBottomBarParts, type BottomBarState } from "./lib/bottom-bar.ts";
+import { extractSfEnvironmentEntries, selectDisplayOrgEnvironment } from "./lib/org-display.ts";
 import { getGitChanges, type GitChanges } from "./lib/git-changes.ts";
 import { formatImageWidthPill, readDevbarRuntimeSettings } from "./lib/settings-reader.ts";
 import { DEFAULT_DEVBAR_COLORS, type DevbarColors } from "./lib/colors.ts";
@@ -104,6 +106,8 @@ export default function sfDevBar(pi: ExtensionAPI) {
   // --- Shared mutable state ---
   let enabled = true;
   let env: SfEnvironment | null = null;
+  let displayEnv: SfEnvironment | null = null;
+  let displayOrgStale = false;
   let gitChanges: GitChanges | null = null;
   let isThinking = false;
   /** Pre-formatted inline-image-width pill (e.g. "img:120c"). Empty string
@@ -171,6 +175,14 @@ export default function sfDevBar(pi: ExtensionAPI) {
     return generation === activeSessionGeneration && activeSessionKey === sessionKey(ctx);
   }
 
+  function refreshDisplayOrgEnvironment(ctx: ExtensionContext): void {
+    const branchEnvironments = extractSfEnvironmentEntries(ctx.sessionManager.getBranch());
+    const persisted = readPersistedSfEnvironment(ctx.cwd);
+    const selection = selectDisplayOrgEnvironment(env, branchEnvironments, persisted);
+    displayEnv = selection.env;
+    displayOrgStale = selection.stale;
+  }
+
   // --- Helper: collect top-bar state from current data ---
   function buildTopBarState(ctx: ExtensionContext): TopBarState {
     refreshDevbarSettings(ctx.cwd);
@@ -220,11 +232,13 @@ export default function sfDevBar(pi: ExtensionAPI) {
   // --- Helper: collect bottom-bar state ---
   function buildBottomBarState(ctx: ExtensionContext): BottomBarState {
     refreshDevbarSettings(ctx.cwd);
+    const orgEnv = displayEnv ?? env;
     return {
-      orgName: env?.org?.alias ?? env?.org?.username ?? env?.config?.targetOrg,
-      orgType: env?.org?.orgType,
-      projectDetected: env?.project?.detected,
-      orgDetected: env?.org?.detected,
+      orgName: orgEnv?.org?.alias ?? orgEnv?.org?.username ?? orgEnv?.config?.targetOrg,
+      orgType: orgEnv?.org?.orgType,
+      projectDetected: orgEnv?.project?.detected,
+      orgDetected: orgEnv?.org?.detected,
+      orgStale: displayOrgStale,
       colors: devbarColors,
     };
   }
@@ -341,6 +355,7 @@ export default function sfDevBar(pi: ExtensionAPI) {
     // then fall back to the cross-session persisted disk cache.
     restoreFromSessionEntries(ctx, ctx.cwd);
     env = getCachedSfEnvironment(ctx.cwd);
+    refreshDisplayOrgEnvironment(ctx);
 
     // Phase-2-followup: don't fire a forced fresh detection at session_start.
     // The disk cache + session-restored snapshot is good enough for the
@@ -371,6 +386,7 @@ export default function sfDevBar(pi: ExtensionAPI) {
           .then((freshEnv) => {
             if (!isActiveSession(ctx, generation)) return;
             env = freshEnv;
+            refreshDisplayOrgEnvironment(ctx);
             updateTitle(ctx);
             updateTopBar(ctx);
             requestFooterRender?.();
@@ -469,6 +485,8 @@ export default function sfDevBar(pi: ExtensionAPI) {
   pi.on("session_shutdown", async (_event, ctx) => {
     endActiveSession(ctx);
     if (!ctx.hasUI) return;
+    displayEnv = null;
+    displayOrgStale = false;
     ctx.ui.setFooter(undefined);
     ctx.ui.setWidget(WIDGET_KEY, undefined);
   });
@@ -661,6 +679,7 @@ export default function sfDevBar(pi: ExtensionAPI) {
 
     if (enabled) {
       env = getCachedSfEnvironment(ctx.cwd);
+      refreshDisplayOrgEnvironment(ctx);
       refreshDevbarSettings(ctx.cwd);
       updateTitle(ctx);
       updateTopBar(ctx);
@@ -695,6 +714,7 @@ export default function sfDevBar(pi: ExtensionAPI) {
       try {
         refreshDevbarSettings(ctx.cwd);
         env = await getSharedSfEnvironment(exec, ctx.cwd, force ? { force: true } : undefined);
+        refreshDisplayOrgEnvironment(ctx);
         updateTitle(ctx);
         updateTopBar(ctx);
         requestFooterRender?.();
@@ -836,6 +856,7 @@ export default function sfDevBar(pi: ExtensionAPI) {
 
       if (enabled) {
         env = getCachedSfEnvironment(ctx.cwd);
+        refreshDisplayOrgEnvironment(ctx);
         refreshDevbarSettings(ctx.cwd);
         updateTitle(ctx);
         updateTopBar(ctx);
@@ -922,6 +943,7 @@ export default function sfDevBar(pi: ExtensionAPI) {
       ctx.ui.setStatus("sf-org-command", "Detecting Salesforce environment…");
       try {
         env = await getSharedSfEnvironment(exec, ctx.cwd, { force: true });
+        refreshDisplayOrgEnvironment(ctx);
         updateTitle(ctx);
         updateTopBar(ctx);
         requestFooterRender?.();
@@ -979,6 +1001,7 @@ export default function sfDevBar(pi: ExtensionAPI) {
       ctx.ui.setStatus("sf-org-command", "Detecting Salesforce environment…");
       try {
         env = await getSharedSfEnvironment(exec, ctx.cwd);
+        refreshDisplayOrgEnvironment(ctx);
         updateTitle(ctx);
         updateTopBar(ctx);
         requestFooterRender?.();

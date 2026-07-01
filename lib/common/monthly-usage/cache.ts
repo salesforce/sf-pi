@@ -164,11 +164,13 @@ function parseSnapshot(value: unknown): MonthlyUsageSnapshot | null {
   const record = value as Partial<MonthlyUsageSnapshot>;
   const connectionStatus = parseConnectionStatus(record.connectionStatus);
   const monthlyUsage = parseMonthlyUsage(record.monthlyUsage);
-  if (!connectionStatus && !monthlyUsage) return null;
+  const lastKnownMonthlyUsage = parseMonthlyUsage(record.lastKnownMonthlyUsage) ?? monthlyUsage;
+  if (!connectionStatus && !monthlyUsage && !lastKnownMonthlyUsage) return null;
 
   return {
     monthlyUsage,
     monthlyUsageError: parseString(record.monthlyUsageError) ?? null,
+    lastKnownMonthlyUsage,
     keyInfo: parseKeyInfo(record.keyInfo),
     keyInfoError: parseString(record.keyInfoError) ?? null,
     health: parseHealth(record.health),

@@ -31,6 +31,7 @@ function createEnv(version: string = "2.130.9"): SfEnvironment {
     org: {
       detected: true,
       alias: "DemoOrg",
+      orgId: "00D000000000001AAA",
       orgType: "sandbox",
       connectedStatus: "Connected",
       instanceUrl: "https://demo.sandbox.my.salesforce.com",
@@ -77,6 +78,22 @@ describe("persisted Salesforce environment cache", () => {
     );
 
     expect(getEnvironmentCacheKey(nested)).toBe(projectRoot);
+  });
+
+  it("preserves a successful environment when a later matching detection fails", () => {
+    process.env.HOME = createTempDir("sf-org-cache-home-");
+    const cwd = createTempDir("sf-org-cache-cwd-");
+    const success = createEnv("2.140.6");
+    const failed: SfEnvironment = {
+      ...success,
+      org: { detected: false, orgType: "unknown", error: "The org cannot be found" },
+      detectedAt: success.detectedAt + 1,
+    };
+
+    writePersistedSfEnvironment(cwd, success);
+    writePersistedSfEnvironment(cwd, failed);
+
+    expect(readPersistedSfEnvironment(cwd)).toEqual(success);
   });
 
   it("clears a single cached environment without removing others", () => {

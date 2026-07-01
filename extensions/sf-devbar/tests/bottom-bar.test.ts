@@ -66,6 +66,22 @@ describe("renderBottomBarParts", () => {
     expect(left).not.toContain("sandbox");
   });
 
+  it("shows stale suffix when displaying a last-known usable org", () => {
+    const { left } = renderBottomBarParts(
+      makeState({
+        orgName: "Example-Dev",
+        orgType: "sandbox",
+        orgDetected: true,
+        orgStale: true,
+        projectDetected: true,
+      }),
+      stubTheme,
+    );
+    expect(left).toContain("Example-Dev");
+    expect(left).toContain("stale");
+    expect(left).toContain("warning");
+  });
+
   it("shows production warning with error color", () => {
     const { left } = renderBottomBarParts(
       makeState({

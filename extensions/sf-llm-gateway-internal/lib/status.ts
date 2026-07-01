@@ -50,6 +50,7 @@ export interface GatewayRuntimeStatusState {
   discovery: GatewayDiscoveryState | null;
   monthlyUsage: GatewayMonthlyUsage | null;
   monthlyUsageError: string | null;
+  lastKnownMonthlyUsage?: GatewayMonthlyUsage | null;
   keyInfo: GatewayKeyInfo | null;
   keyInfoError: string | null;
   health: GatewayHealth | null;
@@ -66,7 +67,13 @@ export interface GatewayRuntimeStatusState {
 export function buildFooterStatus(state: GatewayRuntimeStatusState): string {
   // Footer = monthly budget + (optional) live provider-health badge.
   // Model/context info is already in the devbar top bar, so we stay minimal.
-  const parts = [formatMonthlyUsagePart(state.monthlyUsage, state.monthlyUsageError)];
+  const parts = [
+    formatMonthlyUsagePart(
+      state.monthlyUsage,
+      state.monthlyUsageError,
+      state.lastKnownMonthlyUsage,
+    ),
+  ];
   const signalBadge = formatProviderSignalBadge(getActiveProviderSignal());
   if (signalBadge) {
     parts.push(signalBadge);
@@ -174,6 +181,7 @@ function buildWireTraceReport(): string[] {
 function formatMonthlyUsagePart(
   monthlyUsage: GatewayMonthlyUsage | null,
   monthlyUsageError: string | null,
+  lastKnownMonthlyUsage: GatewayMonthlyUsage | null | undefined,
 ): string {
   // Resolve glyph mode per call so a runtime settings flip is reflected on
   // the next status refresh without a restart. This value bubbles up into
@@ -189,6 +197,9 @@ function formatMonthlyUsagePart(
   }
 
   if (monthlyUsageError) {
+    if (lastKnownMonthlyUsage) {
+      return `${prefix}${formatUsd(lastKnownMonthlyUsage.spend)}/∞ ${glyph("warn", mode)} stale`;
+    }
     return `${prefix}unavailable`;
   }
 

@@ -50,6 +50,8 @@ export type BottomBarState = {
   projectDetected?: boolean;
   /** Whether the org was detected at all. */
   orgDetected?: boolean;
+  /** Whether the displayed org is a last-known usable fallback. */
+  orgStale?: boolean;
   /** Extension statuses from other extensions (from footerData). */
   extensionStatuses?: ReadonlyMap<string, string>;
   /** Optional glyph mode override (test hook). Production leaves this
@@ -146,8 +148,9 @@ function formatProjectOrgSegment(
 
   if (state.orgDetected && state.orgName) {
     const badge = formatOrgTypeBadge(state.orgType, theme, mode, colors);
+    const stale = state.orgStale ? ` ${theme.fg("warning", `${glyph("warn", mode)} stale`)}` : "";
     const orgLabel = badge ? `${state.orgName} [${badge}]` : state.orgName;
-    return `${prefix} ${theme.bold(theme.fg(isProd ? "error" : "accent", orgLabel))}`;
+    return `${prefix} ${theme.bold(theme.fg(isProd ? "error" : "accent", orgLabel))}${stale}`;
   }
 
   if (state.orgName) {

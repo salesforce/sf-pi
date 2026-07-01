@@ -41,8 +41,12 @@ export function writePersistedSfEnvironment(cwd: string, env: SfEnvironment): vo
   const key = getEnvironmentCacheKey(cwd);
   const cache = readCacheFile() ?? { version: CACHE_VERSION, entries: [] };
 
+  const previous = cache.entries.find((entry) => entry.key === key);
+  const envToPersist =
+    shouldPreservePreviousSuccessfulEnv(previous?.env, env) && previous ? previous.env : env;
+
   const entries = cache.entries.filter((entry) => entry.key !== key);
-  entries.unshift({ key, savedAt: Date.now(), env });
+  entries.unshift({ key, savedAt: Date.now(), env: envToPersist });
 
   const nextCache: PersistedCacheFile = {
     version: CACHE_VERSION,
@@ -87,6 +91,18 @@ export function getEnvironmentCacheKey(cwd: string): string {
   // Salesforce project reuse one last-known snapshot.
   const project = detectProject(cwd);
   return path.resolve(project.projectRoot ?? cwd);
+}
+
+function shouldPreservePreviousSuccessfulEnv(
+  previous: SfEnvironment | undefined,
+  next: SfEnvironment,
+): boolean {
+  if (!previous?.org?.detected) return false;
+  if (next?.org?.detected) return false;
+  return (
+    previous.project?.projectRoot === next.project?.projectRoot &&
+    previous.config?.targetOrg === next.config?.targetOrg
+  );
 }
 
 function readCacheFile(): PersistedCacheFile | null {

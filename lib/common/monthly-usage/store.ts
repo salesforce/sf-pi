@@ -178,6 +178,8 @@ export interface GatewayProbeTrace {
 export interface MonthlyUsageSnapshot {
   monthlyUsage: GatewayMonthlyUsage | null;
   monthlyUsageError: string | null;
+  /** Last successful monthly usage payload, used only by compact stale-status presentation. */
+  lastKnownMonthlyUsage?: GatewayMonthlyUsage | null;
   keyInfo: GatewayKeyInfo | null;
   keyInfoError: string | null;
   health: GatewayHealth | null;
@@ -210,6 +212,7 @@ export type MonthlyUsageListener = (snapshot: MonthlyUsageSnapshot) => void;
 const EMPTY_SNAPSHOT: MonthlyUsageSnapshot = {
   monthlyUsage: null,
   monthlyUsageError: null,
+  lastKnownMonthlyUsage: null,
   keyInfo: null,
   keyInfoError: null,
   health: null,

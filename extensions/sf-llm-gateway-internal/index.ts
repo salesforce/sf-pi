@@ -324,6 +324,7 @@ function getRuntimeStatusState() {
   const {
     monthlyUsage,
     monthlyUsageError,
+    lastKnownMonthlyUsage,
     keyInfo,
     keyInfoError,
     health,
@@ -338,6 +339,7 @@ function getRuntimeStatusState() {
     discovery: getLastDiscovery(),
     monthlyUsage,
     monthlyUsageError,
+    lastKnownMonthlyUsage,
     keyInfo,
     keyInfoError,
     health,

@@ -77,6 +77,32 @@ describe("gateway monthly usage refresh", () => {
     }
   });
 
+  it("preserves last-known monthly usage when a later probe fails", async () => {
+    process.env[BASE_URL_ENV] = "https://gateway.example.test";
+    process.env[API_KEY_ENV] = "test-key";
+    mockGatewayFetch({ userStatus: 200, keyStatus: 200, healthStatus: 200 });
+    const unregister = registerGatewayMonthlyUsageRefresher();
+    const cwd = createProjectConfig({
+      baseUrl: "https://gateway.example.test",
+      apiKey: "test-key",
+    });
+
+    try {
+      await getMonthlyUsageStateRefresh(true, cwd);
+      expect(getMonthlyUsageState().monthlyUsage?.spend).toBe(42);
+      expect(getMonthlyUsageState().lastKnownMonthlyUsage?.spend).toBe(42);
+
+      mockGatewayFetch({ userStatus: 500, keyStatus: 500, healthStatus: 200 });
+      await getMonthlyUsageStateRefresh(true, cwd);
+
+      expect(getMonthlyUsageState().monthlyUsage).toBeNull();
+      expect(getMonthlyUsageState().monthlyUsageError).toContain("Monthly usage");
+      expect(getMonthlyUsageState().lastKnownMonthlyUsage?.spend).toBe(42);
+    } finally {
+      unregister();
+    }
+  });
+
   it("does not treat readiness success alone as connected when auth-gated probes fail", async () => {
     process.env[BASE_URL_ENV] = "https://gateway.example.test";
     process.env[API_KEY_ENV] = "bad-key";

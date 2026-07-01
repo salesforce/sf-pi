@@ -155,6 +155,28 @@ describe("buildFooterStatus", () => {
 
     expect(text).toBe("💰 unavailable");
   });
+
+  it("returns stale last-known usage when the latest monthly usage fetch failed", () => {
+    const text = buildFooterStatus(
+      withDefaults({
+        discovery: null,
+        monthlyUsage: null,
+        monthlyUsageError: "fetch failed",
+        lastKnownMonthlyUsage: {
+          maxBudget: 100,
+          spend: 12.5,
+          remaining: 87.5,
+          budgetResetAt: "2026-05-01",
+          budgetDuration: "month",
+          fetchedAt: new Date().toISOString(),
+        },
+        runtimeBetaOverrides: null,
+        runtimeExtraBetas: new Set(),
+      }),
+    );
+
+    expect(text).toBe("💰 $12.50/∞ ⚠️ stale");
+  });
 });
 
 describe("buildStatusReport", () => {

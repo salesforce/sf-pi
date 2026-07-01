@@ -202,6 +202,7 @@ export async function refreshMonthlyUsage(force: boolean, cwd: string): Promise<
   refreshInFlight = (async () => {
     const config = getGatewayConfig(cwd);
     const keyConflict = computeKeyConflict(cwd);
+    const previousLastKnownMonthlyUsage = getLastKnownMonthlyUsage();
 
     if (!config.baseUrl) {
       publishError(
@@ -281,6 +282,7 @@ export async function refreshMonthlyUsage(force: boolean, cwd: string): Promise<
     const snapshot: MonthlyUsageSnapshot = {
       monthlyUsage: null,
       monthlyUsageError: null,
+      lastKnownMonthlyUsage: previousLastKnownMonthlyUsage,
       keyInfo: null,
       keyInfoError: null,
       health: null,
@@ -298,6 +300,7 @@ export async function refreshMonthlyUsage(force: boolean, cwd: string): Promise<
 
     if (attempt.usageResult.status === "fulfilled") {
       snapshot.monthlyUsage = { ...attempt.usageResult.value, error: undefined };
+      snapshot.lastKnownMonthlyUsage = snapshot.monthlyUsage;
     } else {
       snapshot.monthlyUsageError = formatErrorMessage(attempt.usageResult.reason);
     }
@@ -410,6 +413,7 @@ function publishError(
   const snapshot: MonthlyUsageSnapshot = {
     monthlyUsage: null,
     monthlyUsageError: message,
+    lastKnownMonthlyUsage: getLastKnownMonthlyUsage(),
     keyInfo: null,
     keyInfoError: message,
     health: null,
@@ -427,6 +431,11 @@ function publishError(
  * data fields from the previous snapshot so a transient re-probe doesn't
  * flash empty values onto the splash.
  */
+function getLastKnownMonthlyUsage(): GatewayMonthlyUsage | null {
+  const previous = getMonthlyUsageState();
+  return previous.monthlyUsage ?? previous.lastKnownMonthlyUsage ?? null;
+}
+
 function publishChecking(keyConflict: KeyConflictWarning | null): void {
   const previous = getMonthlyUsageState();
   setMonthlyUsageState({

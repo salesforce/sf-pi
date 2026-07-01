@@ -4,6 +4,30 @@ SF Pi is the bundled Salesforce-focused extension suite for pi. It gives agents 
 
 ## Language
 
+**Last-Known Usable Status**:
+The most recent successful status snapshot that is still useful for human orientation, even when the **Current Probe Status** is failed or stale. It must be scoped to the same logical target, such as the same Salesforce project and target org or the same gateway usage account.
+_Avoid_: stale failure, optimistic status, cached truth
+
+**Current Probe Status**:
+The latest attempt to refresh a status surface from a live or configured source. It can fail independently of whether a **Last-Known Usable Status** exists.
+_Avoid_: source of truth, cached status, displayed status
+
+**Stale Status Indicator**:
+A compact human-facing suffix marker, rendered as `⚠ stale`, that says the displayed **Last-Known Usable Status** is not freshly confirmed. It belongs in compact status surfaces while detailed commands or panels show the **Current Probe Status** failure.
+_Avoid_: error badge, unavailable state, hidden failure
+
+**Org Status Fallback Boundary**:
+The identity boundary for reusing a Salesforce org **Last-Known Usable Status**. The fallback is valid only when the Salesforce project root and configured target org string match, and the reusable snapshot came from a successful org detection with an org ID. When the current org probe fails, compact status surfaces should prefer the current successful status, then the last successful status on the current session branch, then the successful disk cache, and only then the failed current status.
+_Avoid_: alias-only fallback, cross-project org cache, silent healthy org state
+
+**Gateway Usage Fallback Boundary**:
+The identity boundary for reusing a gateway usage **Last-Known Usable Status**. The fallback is valid for the existing gateway usage cache window and is treated as orientation-only spend, not a fresh billing assertion.
+_Avoid_: billing truth, key identity guarantee, unavailable-first footer
+
+**Status Presentation Fallback**:
+A presentation-layer decision that chooses a **Last-Known Usable Status** plus **Stale Status Indicator** for compact surfaces while preserving the raw **Current Probe Status** for diagnostics. It should be centralized in helper functions rather than embedded ad hoc in renderers.
+_Avoid_: store rewrite, hidden probe failure, duplicated fallback logic
+
 **Apex Lifecycle Extension**:
 A bundled SF Pi extension that owns the Apex author → diagnose → trace/log → run/probe → test → fix loop while leaving source edits to normal Pi file tools.
 _Avoid_: Apex IDE, code generator, debugger suite
