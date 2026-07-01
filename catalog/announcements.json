@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.215.2-2026-07-01",
-  "latestVersion": "0.215.2",
+  "revision": "release-0.216.0-2026-07-01",
+  "latestVersion": "0.216.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.215.2",
+      "id": "release-0.216.0",
       "kind": "update",
-      "title": "sf-pi v0.215.2 — sf-devbar: prefer last-known footer status",
+      "title": "sf-pi v0.216.0 — sf-docs: distill docs locator searches",
       "publishedAt": "2026-07-01T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.215.2",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.216.0",
       "severity": "info",
-      "body": "sf-devbar: prefer last-known footer status"
+      "body": "sf-docs: distill docs locator searches"
     },
     {
       "id": "pi-0.73-required",
