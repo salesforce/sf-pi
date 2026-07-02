@@ -517,6 +517,18 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.217.0](https://github.com/salesforce/sf-pi/compare/v0.216.0...v0.217.0) (2026-07-02)
+
+
+### Features
+
+* improve SF Pi tool discovery previews ([dffa736](https://github.com/salesforce/sf-pi/commit/dffa73665a2ff00d2e64f09958c4af921153096a))
+
+
+### Bug Fixes
+
+* remove release query lint warning ([675fe8f](https://github.com/salesforce/sf-pi/commit/675fe8f364479f9279eb5678dce69a5328905a3d))
+
 ## [0.216.0](https://github.com/salesforce/sf-pi/compare/v0.215.2...v0.216.0) (2026-07-01)
 
 
