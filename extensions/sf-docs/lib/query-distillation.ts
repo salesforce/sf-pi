@@ -399,7 +399,7 @@ function seasonYearFromReleaseNumber(
 
 function canonicalSeasonalReleaseQuery(hint: SeasonalReleaseHint): string {
   if (!hint.season || !hint.year) return "";
-  const season = hint.season[0]!.toUpperCase() + hint.season.slice(1);
+  const season = hint.season.charAt(0).toUpperCase() + hint.season.slice(1);
   return `Salesforce ${season} ${String(hint.year).slice(-2)} Release Notes`;
 }
 
