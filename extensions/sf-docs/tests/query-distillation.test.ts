@@ -76,6 +76,114 @@ describe("Docs Query Distillation", () => {
     expect(plan?.variants).toContain("lwc reference wire adapters record");
   });
 
+  it("detects seasonal release-note queries without a public release parameter", () => {
+    const plan = distillDocsQuery("Whats new with Spring '26 release notes", {
+      defaultCollection: "developer",
+    });
+
+    expect(plan).toMatchObject({
+      source: "query",
+      collectionCandidates: ["admin"],
+      releaseHint: { season: "spring", year: 2026, release: "260" },
+      releaseNoteIntent: true,
+    });
+    expect(plan?.variants).toEqual([
+      "Whats new with Spring '26 release notes",
+      "Salesforce Spring 26 Release Notes",
+    ]);
+    expect(buildDistilledSearchRequests(plan!).map((request) => request.collection)).toEqual([
+      "admin",
+      "admin",
+    ]);
+  });
+
+  it("keeps plain product release-note queries on the normal search path", () => {
+    expect(
+      distillDocsQuery("Apex release notes", { defaultCollection: "developer" }),
+    ).toBeUndefined();
+  });
+
+  it("detects release hints from Salesforce Help release parameters", () => {
+    const plan = distillDocsQuery(
+      "https://help.salesforce.com/s/articleView?id=release-notes.salesforce_release_notes.htm&release=260&type=5",
+      { defaultCollection: "developer" },
+    );
+
+    expect(plan).toMatchObject({
+      host: "help.salesforce.com",
+      collectionCandidates: ["admin"],
+      releaseHint: { season: "spring", year: 2026, release: "260" },
+      releaseNoteIntent: true,
+    });
+  });
+
+  it("prefers exact seasonal release results and avoids patch pages unless requested", () => {
+    const plan = distillDocsQuery("Spring 2026 release notes", {
+      defaultCollection: "developer",
+    })!;
+    const request = buildDistilledSearchRequests(plan)[0]!;
+    const ranked = rankDistilledResults(plan, [
+      {
+        request,
+        results: [
+          {
+            id: "summer-current",
+            title: "Spring ’26 Release Notes",
+            url: "https://help.salesforce.com/s/articleView?id=xcloud.starter_prosuite_rn_2026_spring_release.htm&release=262.0.0&type=5",
+            release: "262",
+            content: "Explore what’s new in Salesforce Suites for Spring ’26.",
+          },
+          {
+            id: "patch",
+            title: "Patch Releases Spring `26",
+            url: "https://help.salesforce.com/s/articleView?id=ind.comms_patch_releases_spring_26.htm&release=260&type=5",
+            release: "260",
+            content: "Information on each Spring `26 patch release.",
+          },
+          {
+            id: "main",
+            title: "Salesforce Spring ’26 Release Notes",
+            url: "https://help.salesforce.com/s/articleView?id=release-notes.salesforce_release_notes.htm&release=260&type=5",
+            release: "260",
+            content: "The Spring ’26 release helps companies become an Agentic Enterprise.",
+          },
+        ],
+      },
+    ]);
+
+    expect(ranked.map((result) => result.id)).toEqual(["main", "patch", "summer-current"]);
+  });
+
+  it("keeps patch release pages competitive for patch queries", () => {
+    const plan = distillDocsQuery("Spring 2026 patch release notes", {
+      defaultCollection: "developer",
+    })!;
+    const request = buildDistilledSearchRequests(plan)[0]!;
+    const ranked = rankDistilledResults(plan, [
+      {
+        request,
+        results: [
+          {
+            id: "patch",
+            title: "Patch Releases Spring `26",
+            url: "https://help.salesforce.com/s/articleView?id=ind.comms_patch_releases_spring_26.htm&release=260&type=5",
+            release: "260",
+          },
+          {
+            id: "main",
+            title: "Salesforce Spring ’26 Release Notes",
+            url: "https://help.salesforce.com/s/articleView?id=release-notes.salesforce_release_notes.htm&release=260&type=5",
+            release: "260",
+          },
+        ],
+      },
+    ]);
+
+    expect(ranked.find((result) => result.id === "patch")?.score).toBeGreaterThanOrEqual(
+      ranked.find((result) => result.id === "main")!.score - 25,
+    );
+  });
+
   it("scores exact locator URL matches as high confidence", () => {
     const plan = distillDocsQuery(
       "https://help.salesforce.com/s/articleView?id=ai.agent_connect_rep_other_voice_calls_sample.htm&type=5",

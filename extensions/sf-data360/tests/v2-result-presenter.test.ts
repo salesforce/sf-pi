@@ -263,6 +263,84 @@ describe("Data 360 v2 result presenter", () => {
     );
   });
 
+  it("renders action search previews with cross-family suggestions", async () => {
+    const presented = await presentData360Result(
+      {
+        tool: "data360_query",
+        action: "actions.search",
+        params: { query: "session" },
+      },
+      {
+        ok: true,
+        tool: "data360_query",
+        action: "actions.search",
+        query: "session",
+        summary: "1 matching data360_query action(s)",
+        results: [
+          {
+            tool: "data360_query",
+            action: "sql.run",
+            description: "Execute a Data 360 SQL query through /ssot/query-sql.",
+            requiredParams: ["sql"],
+            optionalParams: ["dataspaceName"],
+          },
+        ],
+        crossFamilySuggestions: [
+          {
+            tool: "data360_observe",
+            action: "stdm.find_sessions",
+            description:
+              "Find recent Agentforce STDM sessions by optional agent API name and time window.",
+            requiredParams: [],
+            optionalParams: ["agent_api_name", "since", "limit"],
+          },
+        ],
+      },
+      "summary",
+    );
+
+    expect(presented.content[0]?.text).toContain("data360_query sql.run");
+    expect(presented.content[0]?.text).toContain("Required: sql");
+    expect(presented.content[0]?.text).toContain("Other matching Data 360 actions");
+    expect(presented.content[0]?.text).toContain("data360_observe stdm.find_sessions");
+  });
+
+  it("renders unknown action recovery hints", async () => {
+    const presented = await presentData360Result(
+      {
+        tool: "data360_observe",
+        action: "observe.sessions.find",
+      },
+      {
+        ok: false,
+        tool: "data360_observe",
+        action: "observe.sessions.find",
+        requestedAction: "observe.sessions.find",
+        error: "UNKNOWN_ACTION",
+        summary: "Unknown data360_observe action 'observe.sessions.find'.",
+        did_you_mean: [
+          {
+            tool: "data360_observe",
+            action: "stdm.find_sessions",
+            description:
+              "Find recent Agentforce STDM sessions by optional agent API name and time window.",
+          },
+        ],
+        recover_via: {
+          tool: "data360_observe",
+          action: "actions.search",
+          params: { query: "observe sessions find" },
+        },
+      },
+      "summary",
+    );
+
+    expect(presented.content[0]?.text).toContain("Unknown action: observe.sessions.find");
+    expect(presented.content[0]?.text).toContain("Did you mean");
+    expect(presented.content[0]?.text).toContain("stdm.find_sessions");
+    expect(presented.content[0]?.text).toContain("Recover via: data360_observe actions.search");
+  });
+
   it("keeps small local catalog actions artifact-free", async () => {
     const presented = await presentData360Result(
       {

@@ -395,7 +395,7 @@
     "entry": "extensions/sf-data360/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 10739
+    "srcLoc": 10914
   },
   {
     "id": "sf-devbar",
@@ -494,7 +494,7 @@
     "entry": "extensions/sf-docs/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 2671
+    "srcLoc": 2824
   },
   {
     "id": "sf-feedback",
@@ -1044,7 +1044,7 @@
     "entry": "extensions/sf-soql/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 2919
+    "srcLoc": 3097
   },
   {
     "id": "sf-welcome",

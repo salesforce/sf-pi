@@ -25,12 +25,24 @@ The outcome of evaluating a risky agent action: allow, block, or ask for **Human
 _Avoid_: policy result, security verdict, scan finding
 
 **Safety Subject**:
-The thing being attempted by an agent action, such as file access, a shell command, or a Salesforce org-sensitive operation.
+The thing being attempted by an agent action, such as file access, a shell command, a native SF Pi tool operation, or a Salesforce org-sensitive operation.
 _Avoid_: raw tool call, command blob, policy input
+
+**Native Tool Safety Subject**:
+A **Safety Subject** normalized from an LLM-callable SF Pi tool rather than from a shell command or file path. It captures the attempted operation, target org or external destination when relevant, operation family, risk-relevant target details, and an input fingerprint so the **Safety Kernel** can return a normal **Guardrail Decision**.
+_Avoid_: per-extension approval system, model approval flag, native policy layer, tool self-approval
 
 **Risk Gate**:
 A narrow safety check that explains why a **Safety Subject** is risky, such as protected file access, a dangerous local command, or a production-sensitive Salesforce operation.
 _Avoid_: rule engine, detector, scanner
+
+**Native Tool Risk Registry**:
+The SF Guardrail-owned registry of classifiers for bundled SF Pi native tools. Each classifier normalizes a high-value LLM-callable tool operation into a **Native Tool Safety Subject** so the existing **Safety Kernel**, **Safety Envelope**, **Approval Ledger**, and **Human-in-the-Loop Approval** flow can handle it consistently. Its first boundary is high-value durable mutations only, not every local edit or read-like tool action.
+_Avoid_: per-extension approval helper, policy marketplace, tool-specific HITL layer, agent-callable approval API
+
+**Committing UI Gesture**:
+A browser action that attempts to persist or submit Salesforce UI state, such as Save, Apply, Submit, Activate, Assign, Delete, or an Enter key that submits a form. SF Guardrail should mediate committing gestures rather than every pre-commit fill, select, or editor write.
+_Avoid_: any browser interaction, field edit, visual navigation, snapshot
 
 **Safety Envelope**:
 The exact scope covered by an allow decision, such as the risk gate, project, verified org identity, operation family, session path, and safety-relevant target details.
@@ -55,6 +67,10 @@ _Avoid_: arbitrary command prefix, broad tool permission, workflow
 **Human-in-the-Loop Approval**:
 The explicit user confirmation step used when a **Guardrail Decision** cannot be safely allowed or hard-blocked. The approval asks the user to accept a **Safety Envelope**, not to grant general trust.
 _Avoid_: silent approval, background prompt, exception
+
+**Execution Intent Flag**:
+A model- or tool-supplied parameter that declares the requested operation is intentionally live or mutating, such as `allow_mutation`, `allow_confirmed`, `mutation`, or `dry_run=false`. It helps classify risk and reject accidental mutation, but it is not approval. Approval comes from **Human-in-the-Loop Approval**, an existing **Session Approval**, or explicit operator-approved headless mode.
+_Avoid_: approval flag, self-approval, bypass flag, trust parameter
 
 **Approval Ledger**:
 The seam that records **Guardrail Decisions** and manages **Session Approvals**, **Persisted Approval Grants**, revocations, and recent decision reads for **Safety Envelopes**.

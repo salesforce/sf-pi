@@ -42,6 +42,87 @@ describe("sf-soql renderer", () => {
     expect(rendered).toContain("SELECT Id FROM Account LIMIT 5\n  ALL ROWS");
   });
 
+  it("includes bounded row previews and artifact paths in tool text", () => {
+    const result = toolResultFromDigest(
+      buildDigest({
+        action: "query.run",
+        status: "pass",
+        icon: "⚡",
+        title: "SOQL Run · MessagingSession",
+        query: { normalized: "SELECT Id, Name FROM MessagingSession LIMIT 2" },
+        result: {
+          rows_returned: 2,
+          columns: ["Id", "Name"],
+          sample_rows: [
+            { Id: "0Mw1", Name: "MS-1" },
+            { Id: "0Mw2", Name: "MS-2" },
+          ],
+        },
+        artifacts: [{ kind: "raw", path: "/tmp/result.raw.json" }],
+        sections: [],
+      }),
+    );
+
+    expect(result.content[0]?.text).toContain("Row Preview:");
+    expect(result.content[0]?.text).toContain("| Id | Name |");
+    expect(result.content[0]?.text).toContain("MS-1");
+    expect(result.content[0]?.text).toContain("Artifacts:");
+    expect(result.content[0]?.text).toContain("/tmp/result.raw.json");
+  });
+
+  it("includes schema field previews in tool text", () => {
+    const result = toolResultFromDigest(
+      buildDigest({
+        action: "schema.describe",
+        status: "pass",
+        icon: "🧬",
+        title: "SOQL Schema · ConversationEntry",
+        schema_preview: {
+          total_fields: 11,
+          fields: [
+            { name: "Id", type: "id", filterable: true, sortable: true },
+            { name: "Message", type: "textarea", filterable: false, sortable: false },
+          ],
+        },
+        artifacts: [{ kind: "schema-describe", path: "/tmp/schema.json" }],
+        sections: [],
+      }),
+    );
+
+    expect(result.content[0]?.text).toContain("Field Preview:");
+    expect(result.content[0]?.text).toContain("| Id | id | yes | yes |");
+    expect(result.content[0]?.text).toContain("+9 more fields in artifacts/details.");
+    expect(result.content[0]?.text).toContain("Schema Describe: /tmp/schema.json");
+  });
+
+  it("includes bounded validation findings in tool text", () => {
+    const result = toolResultFromDigest(
+      buildDigest({
+        action: "query.validate",
+        status: "fail",
+        icon: "🛡️",
+        title: "SOQL Validation · ConversationEntry",
+        validation: {
+          verdict: "invalid",
+          findings: [
+            {
+              severity: "error",
+              icon: "❌",
+              label: "Field",
+              message: "Message is not filterable.",
+            },
+            { severity: "info", icon: "ℹ️", label: "Parser", message: "Parsed successfully." },
+          ],
+        },
+        sections: [],
+      }),
+    );
+
+    expect(result.content[0]?.text).toContain("Findings:");
+    expect(result.content[0]?.text).toContain("[error] Field: Message is not filterable.");
+    expect(result.content[0]?.text).not.toContain("Parsed successfully");
+  });
+
   it("wraps long row labels for relationship-heavy cards", () => {
     const result = toolResultFromDigest(
       buildDigest({

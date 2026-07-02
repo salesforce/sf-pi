@@ -3,6 +3,7 @@
 
 import type { Connection } from "@salesforce/core";
 import { apiCall, apiVersion, describeSObject } from "./api.ts";
+import { writeSoqlArtifact } from "./artifacts.ts";
 import { buildDigest, finding, row, section, toolResultFromDigest } from "./digest.ts";
 import { validateWithSoqlLsp } from "./lsp.ts";
 import { isAggregateOrCount, parseSoql } from "./parser.ts";
@@ -110,6 +111,11 @@ export async function validateQuery(conn: Connection, params: SfSoqlParams): Pro
     );
 
   const verdict = verdictFor(findings);
+  const artifact = await writeSoqlArtifact(
+    "validation",
+    `${shape.primary_object ?? "query"}-${Date.now()}.json`,
+    { query: shape.normalized ?? rawQuery, findings, plan },
+  );
   const digest = buildDigest({
     action: "query.validate",
     status: verdict === "invalid" ? "fail" : verdict === "safe" ? "pass" : "warning",
@@ -120,6 +126,7 @@ export async function validateQuery(conn: Connection, params: SfSoqlParams): Pro
     validation: { verdict, findings },
     plan,
     api_calls: apiCalls,
+    output_mode: params.output_mode,
     sections: [
       section("🧾", "Query Shape", [
         row("🧾", "Object", shape.primary_object),
@@ -153,6 +160,7 @@ export async function validateQuery(conn: Connection, params: SfSoqlParams): Pro
           ]
         : []),
     ],
+    artifacts: [artifact],
   });
   return toolResultFromDigest(digest);
 }

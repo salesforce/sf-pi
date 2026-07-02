@@ -366,19 +366,46 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
               recover_via: { ask: "Provide a concise Salesforce documentation question." },
             });
           }
+          const distilled = distillDocsQuery(input.query, {
+            defaultCollection: slice.collection,
+            explicitCollection: input.collection,
+          });
+          const answerBias = distilled?.releaseHint && distilled.releaseNoteIntent;
+          const answerSlice = answerBias
+            ? { ...slice, collection: distilled.collectionCandidates[0] ?? slice.collection }
+            : slice;
+          const answerQuery = answerBias
+            ? uniqueAnswerQuery(input.query, distilled.variants)
+            : input.query;
           const response = asAnswerResponse(
             await client.callTool(
               "answer",
-              { ...slice, query: input.query, cite: input.cite ?? prefs.includeCitations },
+              {
+                ...answerSlice,
+                query: answerQuery,
+                cite: input.cite ?? prefs.includeCitations,
+              },
               signal,
             ),
           );
           const answer = response.answer ?? response.explanation ?? "";
           return ok("answer", formatAnswerText(response), {
-            ...slice,
+            ...answerSlice,
             ...response,
             displayDensity: prefs.displayDensity,
             answerChars: answer.length,
+            resolution: answerBias
+              ? {
+                  kind: "docs_query_distillation",
+                  original: distilled.original,
+                  source: distilled.source,
+                  semanticQuery: distilled.semanticQuery,
+                  variantsTried: distilled.variants,
+                  collectionsTried: [answerSlice.collection],
+                  releaseHint: distilled.releaseHint,
+                  status: "answer_biased",
+                }
+              : undefined,
           });
         }
 
@@ -766,6 +793,14 @@ function searchSnippet(result: DocsSearchResult): string {
   const raw = result.content;
   if (typeof raw !== "string") return "";
   return raw.replace(/\s+/g, " ").trim().slice(0, 300);
+}
+
+function uniqueAnswerQuery(original: string, variants: string[]): string {
+  const canonical = variants.find((variant) =>
+    /^Salesforce\s+\w+\s+\d{2}\s+Release Notes$/iu.test(variant),
+  );
+  if (!canonical || original.toLowerCase().includes(canonical.toLowerCase())) return original;
+  return `${original} ${canonical}`;
 }
 
 function timeoutForAction(action: string): number {

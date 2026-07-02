@@ -49,6 +49,7 @@ Known collections include `developer`, `admin`, `architect`, `legacydeveloper`, 
 - Use collection hints from `collections` before guessing `+guides:` filters.
 - Retry with fewer terms or a different phrase when top results are weak.
 - You can pass Salesforce-owned docs URLs directly to `search`; SF Docs distills supported docs locators into high-signal search terms before querying.
+- Seasonal release-note queries such as `Spring '26 release notes` are distilled toward the matching Salesforce Help release notes in the admin collection.
 
 ## Fetch tips
 

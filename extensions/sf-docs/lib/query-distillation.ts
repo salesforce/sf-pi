@@ -37,10 +37,16 @@ const GENERIC_PATH_SEGMENTS = new Set([
   "s",
 ]);
 
+export interface SeasonalReleaseHint {
+  season?: "spring" | "summer" | "winter";
+  year?: number;
+  release: string;
+}
+
 export interface DocsQueryDistillationPlan {
   kind: "docs_locator";
   original: string;
-  source: "url" | "identifier";
+  source: "url" | "identifier" | "query";
   host?: string;
   locator: string;
   locatorAliases: string[];
@@ -48,6 +54,8 @@ export interface DocsQueryDistillationPlan {
   semanticTokens: string[];
   variants: string[];
   collectionCandidates: string[];
+  releaseHint?: SeasonalReleaseHint;
+  releaseNoteIntent?: boolean;
 }
 
 export interface DistilledSearchRequest {
@@ -82,6 +90,9 @@ export function distillDocsQuery(
   const original = input.trim();
   if (!original) return undefined;
 
+  const releaseHint = detectSeasonalReleaseHint(original);
+  const releaseNoteIntent = detectReleaseNoteIntent(original);
+
   const docsUrl = parseSupportedDocsUrl(original);
   if (docsUrl) {
     const extracted = extractLocatorFromUrl(docsUrl);
@@ -96,17 +107,31 @@ export function distillDocsQuery(
         HOST_COLLECTIONS[docsUrl.hostname.toLowerCase()] ?? [],
         options.explicitCollection,
       ),
+      releaseHint,
+      releaseNoteIntent,
     });
   }
 
   const identifier = detectArticleLikeIdentifier(original);
-  if (!identifier) return undefined;
-  return buildPlan({
-    original,
-    source: "identifier",
-    locator: identifier,
-    collectionCandidates: mergeCollections([options.defaultCollection], options.explicitCollection),
-  });
+  if (identifier) {
+    return buildPlan({
+      original,
+      source: "identifier",
+      locator: identifier,
+      collectionCandidates: mergeCollections(
+        [options.defaultCollection],
+        options.explicitCollection,
+      ),
+      releaseHint,
+      releaseNoteIntent,
+    });
+  }
+
+  if (releaseHint && releaseNoteIntent) {
+    return buildSeasonalReleasePlan(original, releaseHint, options.explicitCollection);
+  }
+
+  return undefined;
 }
 
 export function buildDistilledSearchRequests(
@@ -179,6 +204,8 @@ function buildPlan(input: {
   locator: string;
   contextLocator?: string;
   collectionCandidates: string[];
+  releaseHint?: SeasonalReleaseHint;
+  releaseNoteIntent?: boolean;
 }): DocsQueryDistillationPlan | undefined {
   const locator = stripLocatorExtension(input.locator);
   const slug = lastSlugPart(locator);
@@ -199,6 +226,9 @@ function buildPlan(input: {
       ? `${contextSemantic} ${semanticQuery}`.trim()
       : reduced,
     reduced,
+    input.releaseHint && input.releaseNoteIntent
+      ? canonicalSeasonalReleaseQuery(input.releaseHint)
+      : "",
   ])
     .filter(Boolean)
     .slice(0, 3);
@@ -214,6 +244,31 @@ function buildPlan(input: {
     semanticTokens: tokenize(semanticQuery),
     variants,
     collectionCandidates: unique(input.collectionCandidates.filter(Boolean)),
+    releaseHint: input.releaseHint,
+    releaseNoteIntent: input.releaseNoteIntent || undefined,
+  };
+}
+
+function buildSeasonalReleasePlan(
+  original: string,
+  releaseHint: SeasonalReleaseHint,
+  explicitCollection?: string,
+): DocsQueryDistillationPlan | undefined {
+  const semanticQuery = semanticize(original);
+  if (!semanticQuery) return undefined;
+  const canonical = canonicalSeasonalReleaseQuery(releaseHint);
+  return {
+    kind: "docs_locator",
+    original,
+    source: "query",
+    locator: semanticQuery,
+    locatorAliases: unique([original, semanticQuery, canonical]),
+    semanticQuery,
+    semanticTokens: tokenize(semanticQuery),
+    variants: unique([original, canonical]).filter(Boolean).slice(0, 3),
+    collectionCandidates: mergeCollections(["admin"], explicitCollection),
+    releaseHint,
+    releaseNoteIntent: true,
   };
 }
 
@@ -273,7 +328,85 @@ function scoreResult(
   else if (snippetOverlap >= 0.5) score += 10;
   if (zeroBasedRank === 0) score += 10;
   if (fallbackCollection) score -= 5;
+  score += releaseAwareScore(plan, result);
   return score;
+}
+
+function releaseAwareScore(plan: DocsQueryDistillationPlan, result: DocsSearchResult): number {
+  if (!plan.releaseHint || !plan.releaseNoteIntent) return 0;
+  let score = 0;
+  const release = plan.releaseHint.release;
+  if (normalizeReleaseValue(result.release) === release) score += 100;
+  if (result.url?.includes(`release=${release}`)) score += 100;
+  const wantsPatch = /\bpatch(?:es)?\b/iu.test(plan.original);
+  if (!wantsPatch && /\bpatch releases?\b/iu.test(result.title ?? "")) score -= 50;
+  return score;
+}
+
+function detectSeasonalReleaseHint(input: string): SeasonalReleaseHint | undefined {
+  const urlRelease = detectReleaseParam(input);
+  if (urlRelease) return urlRelease;
+
+  const match = input.match(/\b(spring|summer|winter)\s*(?:['’]\s*)?(20\d{2}|\d{2})\b/iu);
+  if (!match) return undefined;
+  const season = match[1]?.toLowerCase() as SeasonalReleaseHint["season"] | undefined;
+  const rawYear = match[2];
+  if (!season || !rawYear) return undefined;
+  const year = rawYear.length === 2 ? 2000 + Number(rawYear) : Number(rawYear);
+  if (!Number.isInteger(year) || year < 2000 || year > 2099) return undefined;
+  return { season, year, release: seasonalReleaseNumber(season, year) };
+}
+
+function detectReleaseParam(input: string): SeasonalReleaseHint | undefined {
+  try {
+    const url = new URL(input);
+    const release = url.searchParams.get("release")?.match(/^\d+/u)?.[0];
+    if (!release) return undefined;
+    const seasonYear = seasonYearFromReleaseNumber(release);
+    return { ...seasonYear, release };
+  } catch {
+    return undefined;
+  }
+}
+
+function detectReleaseNoteIntent(input: string): boolean {
+  const normalized = semanticize(input);
+  if (/\brelease\s+notes?\b/iu.test(normalized)) return true;
+  if (/\bwhat(?:'|’| i)?s\s+new\b/iu.test(normalized)) return true;
+  return normalizeComparable(input).includes("releasenotes");
+}
+
+function seasonalReleaseNumber(
+  season: NonNullable<SeasonalReleaseHint["season"]>,
+  year: number,
+): string {
+  const offset = season === "winter" ? 0 : season === "spring" ? 2 : 4;
+  return String(258 + (year - 2026) * 6 + offset);
+}
+
+function seasonYearFromReleaseNumber(
+  release: string,
+): Pick<SeasonalReleaseHint, "season" | "year"> {
+  const value = Number(release);
+  if (!Number.isInteger(value)) return {};
+  for (let year = 2000; year <= 2099; year += 1) {
+    for (const season of ["winter", "spring", "summer"] as const) {
+      if (seasonalReleaseNumber(season, year) === release) return { season, year };
+    }
+  }
+  return {};
+}
+
+function canonicalSeasonalReleaseQuery(hint: SeasonalReleaseHint): string {
+  if (!hint.season || !hint.year) return "";
+  const season = hint.season[0]!.toUpperCase() + hint.season.slice(1);
+  return `Salesforce ${season} ${String(hint.year).slice(-2)} Release Notes`;
+}
+
+function normalizeReleaseValue(value: unknown): string | undefined {
+  if (typeof value === "number") return String(Math.trunc(value));
+  if (typeof value !== "string") return undefined;
+  return value.match(/^\d+/u)?.[0];
 }
 
 function locatorIsInUrl(plan: DocsQueryDistillationPlan, url?: string): boolean {

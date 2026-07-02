@@ -3,6 +3,7 @@
 
 import type { Connection } from "@salesforce/core";
 import { apiCall, apiVersion, describeSObject } from "./api.ts";
+import { writeSoqlArtifact } from "./artifacts.ts";
 import { buildDigest, row, section, toolResultFromDigest } from "./digest.ts";
 import type { SfSoqlParams, SObjectDescribe, SObjectFieldDescribe, ToolResult } from "./types.ts";
 
@@ -13,6 +14,13 @@ export async function schemaDescribe(conn: Connection, params: SfSoqlParams): Pr
     .map((field) => field.name)
     .filter((name) => ["Id", "Name", "OwnerId", "CreatedDate", "LastModifiedDate"].includes(name))
     .slice(0, 6);
+  const fieldPreviewLimit =
+    params.output_mode === "inline" ? 80 : params.output_mode === "file_only" ? 0 : 10;
+  const artifact = await writeSoqlArtifact(
+    "schema-describe",
+    `${describe.name}-${Date.now()}.json`,
+    describe,
+  );
   const digest = buildDigest({
     action: "schema.describe",
     status: describe.queryable ? "pass" : "warning",
@@ -26,6 +34,20 @@ export async function schemaDescribe(conn: Connection, params: SfSoqlParams): Pr
     api_calls: [
       apiCall("GET", `/sobjects/${describe.name}/describe`, `fields=${describe.fields.length}`),
     ],
+    output_mode: params.output_mode,
+    schema_preview: {
+      total_fields: describe.fields.length,
+      fields: describe.fields.slice(0, fieldPreviewLimit).map((field) => ({
+        name: field.name,
+        type: field.type,
+        filterable: field.filterable,
+        sortable: field.sortable,
+        relationshipName: field.relationshipName,
+        referenceTo: field.referenceTo,
+        nillable: field.nillable,
+        custom: field.custom,
+      })),
+    },
     sections: [
       section("🧾", "Object Shape", [
         row("🧾", "Object", describe.name),
@@ -43,6 +65,7 @@ export async function schemaDescribe(conn: Connection, params: SfSoqlParams): Pr
         ),
       ]),
     ],
+    artifacts: [artifact],
   });
   return toolResultFromDigest(digest);
 }

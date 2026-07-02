@@ -308,6 +308,9 @@ function statsFor(
 }
 
 function previewFor(input: Data360V2Input, result: Record<string, unknown>): string[] {
+  if (result.error === "UNKNOWN_ACTION") return unknownActionPreview(result);
+  if (input.action === "actions.search") return actionSearchPreview(result);
+  if (input.action === "action.describe") return actionDescribePreview(result);
   if (input.action === "readiness.probe") return readinessPreview(result);
   if (input.action === "stdm.find_sessions") return stdmSessionPreview(result);
   if (input.action === "stdm.session_otel") return otelPreview(result);
@@ -322,6 +325,74 @@ function previewFor(input: Data360V2Input, result: Record<string, unknown>): str
   if (markdown) return markdown.split("\n").slice(0, 8);
   const summary = stringValue(result.summary);
   return summary ? [summary] : [];
+}
+
+function actionSearchPreview(result: Record<string, unknown>): string[] {
+  const rows = arrayValue(result.results).map(objectValue).slice(0, 10);
+  const lines = rows.map(actionSummaryLine);
+  const other = arrayValue(result.crossFamilySuggestions).map(objectValue).slice(0, 5);
+  if (other.length) {
+    lines.push("Other matching Data 360 actions:");
+    lines.push(...other.map(actionSummaryLine));
+  }
+  return lines.length ? lines : ["No matching actions found. Try broader action keywords."];
+}
+
+function actionDescribePreview(result: Record<string, unknown>): string[] {
+  const match = objectValue(result.match);
+  if (!Object.keys(match).length) return [];
+  const lines = [actionSummaryLine(match)];
+  const aliases = arrayValue(match.aliases).map(String).filter(Boolean);
+  if (aliases.length) lines.push(`Aliases: ${aliases.join(", ")}`);
+  const endpoint = objectValue(match.endpoint);
+  const method = stringValue(endpoint.method);
+  const path = stringValue(endpoint.path);
+  if (method || path) lines.push(`Endpoint: ${[method, path].filter(Boolean).join(" ")}`);
+  const tips = stringValue(match.tips);
+  if (tips) lines.push(`Tips: ${clipOneLine(tips, 180)}`);
+  const example = objectValue(result.example);
+  const metaExample = objectValue(match.example);
+  const chosenExample = Object.keys(example).length ? example : metaExample;
+  if (Object.keys(chosenExample).length) {
+    lines.push(`Example: ${clipOneLine(JSON.stringify(chosenExample), 220)}`);
+  } else {
+    const note = stringValue(result.exampleNote);
+    if (note) lines.push(note);
+  }
+  return lines;
+}
+
+function unknownActionPreview(result: Record<string, unknown>): string[] {
+  const requested = stringValue(result.requestedAction) ?? stringValue(result.action) ?? "unknown";
+  const suggestions = arrayValue(result.did_you_mean).map(objectValue).slice(0, 5);
+  const lines = [`Unknown action: ${requested}`];
+  if (suggestions.length) {
+    lines.push("Did you mean:");
+    lines.push(...suggestions.map(actionSummaryLine));
+  }
+  const recover = objectValue(result.recover_via);
+  const recoverTool = stringValue(recover.tool);
+  const recoverAction = stringValue(recover.action);
+  if (recoverTool || recoverAction) {
+    const params = objectValue(recover.params);
+    lines.push(
+      `Recover via: ${[recoverTool, recoverAction].filter(Boolean).join(" ")}${Object.keys(params).length ? ` ${JSON.stringify(params)}` : ""}`,
+    );
+  }
+  return lines;
+}
+
+function actionSummaryLine(row: Record<string, unknown>): string {
+  const tool = stringValue(row.tool);
+  const action = stringValue(row.action) ?? "?";
+  const description = clipOneLine(
+    (stringValue(row.description) ?? "No description.").replace(/[.。]+$/, ""),
+    120,
+  );
+  const required = arrayValue(row.requiredParams).map(String).filter(Boolean);
+  const optional = arrayValue(row.optionalParams).map(String).filter(Boolean);
+  const prefix = tool ? `${tool} ${action}` : action;
+  return `${prefix} — ${description}. Required: ${required.join(", ") || "none"}. Optional: ${optional.join(", ") || "none"}.`;
 }
 
 function readinessPreview(result: Record<string, unknown>): string[] {
@@ -495,7 +566,9 @@ function renderDigestForLlm(digest: Data360RunDigest, outputMode: D360OutputMode
         ? 0
         : digest.source === "readiness"
           ? 9
-          : 5;
+          : digest.summaryLine.startsWith("Unknown ")
+            ? 8
+            : 5;
   if (previewLimit > 0 && digest.preview.length) {
     lines.push("", "Preview:", ...digest.preview.slice(0, previewLimit).map((line) => `- ${line}`));
   }

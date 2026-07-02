@@ -394,23 +394,43 @@ function runActionsList(tool: Data360V2ToolName): Record<string, unknown> {
 
 function runActionsSearch(input: Data360V2Input): Record<string, unknown> {
   const query = stringParam(input.params, "query", "");
-  const results = searchData360Actions(query, { tool: input.tool }).map(summarizeAction);
+  const familyMatches = searchData360Actions(query, { tool: input.tool }).map(summarizeAction);
+  const crossFamilySuggestions =
+    familyMatches.length < 3
+      ? searchData360Actions(query, { limit: 8 })
+          .filter((action) => action.tool !== input.tool)
+          .slice(0, 5)
+          .map(summarizeAction)
+      : [];
   return {
     ok: true,
     tool: input.tool,
     action: "actions.search",
     query,
-    summary: `${results.length} matching ${input.tool} action(s)`,
-    results,
+    summary: `${familyMatches.length} matching ${input.tool} action(s)`,
+    results: familyMatches,
+    crossFamilySuggestions,
   };
 }
 
 function runActionDescribe(input: Data360V2Input): Record<string, unknown> {
   const requestedAction = requiredStringParam(input.params, "action");
+  const meta = metaActionSummary(input.tool, requestedAction);
+  if (meta) {
+    return {
+      ok: true,
+      tool: input.tool,
+      action: "action.describe",
+      requestedAction,
+      summary: `${input.tool} ${meta.action}: ${meta.description}`,
+      match: meta,
+    };
+  }
   const match = findData360Action(input.tool, requestedAction);
   if (!match) {
     return unknownAction(input, requestedAction);
   }
+  const example = curatedExampleFor(match);
   return {
     ok: true,
     tool: input.tool,
@@ -418,6 +438,9 @@ function runActionDescribe(input: Data360V2Input): Record<string, unknown> {
     requestedAction,
     summary: `${input.tool} ${match.action}: ${match.description}`,
     match: summarizeAction(match),
+    ...(example
+      ? { example }
+      : { exampleNote: "No curated example is available for this action." }),
     next_actions: nextActionsFor(match),
   };
 }
@@ -2517,27 +2540,112 @@ function decorateResult(
   };
 }
 
+function metaActionSummary(
+  tool: Data360V2ToolName,
+  actionName: string,
+): Record<string, unknown> | undefined {
+  const metaActions: Record<string, Record<string, unknown>> = {
+    help: {
+      tool,
+      action: "help",
+      phase: "discover",
+      family: "Meta",
+      safety: "read",
+      description: `Show concise help for ${tool}.`,
+      requiredParams: [],
+      optionalParams: [],
+    },
+    "actions.list": {
+      tool,
+      action: "actions.list",
+      phase: "discover",
+      family: "Meta",
+      safety: "read",
+      description: `List actions owned by ${tool}.`,
+      requiredParams: [],
+      optionalParams: [],
+    },
+    "actions.search": {
+      tool,
+      action: "actions.search",
+      phase: "discover",
+      family: "Meta",
+      safety: "read",
+      description: `Search ${tool} actions by keyword, with cross-family suggestions when sparse.`,
+      requiredParams: [],
+      optionalParams: ["query"],
+      example: { params: { query: "session" } },
+    },
+    "action.describe": {
+      tool,
+      action: "action.describe",
+      phase: "discover",
+      family: "Meta",
+      safety: "read",
+      description: `Describe one ${tool} action, including exact params and curated examples when available.`,
+      requiredParams: ["action"],
+      optionalParams: [],
+      example: { params: { action: "actions.search" } },
+    },
+    "examples.get": {
+      tool,
+      action: "examples.get",
+      phase: "discover",
+      family: "Meta",
+      safety: "read",
+      description: `Fetch curated examples for one ${tool} action when available.`,
+      requiredParams: ["action"],
+      optionalParams: ["variant"],
+    },
+  };
+  return metaActions[actionName.trim()];
+}
+
+function curatedExampleFor(action: Data360V2ActionDefinition): Record<string, unknown> | undefined {
+  if (action.tool === "data360_query" && action.action === "metadata.search") {
+    return { params: { body: { query: "AiAgent Session Agentforce STDM" } } };
+  }
+  if (action.action === "sql.run") {
+    return {
+      params: {
+        dataspaceName: "default",
+        sql: 'SELECT ssot__Id__c FROM "ssot__AiAgentSession__dlm" LIMIT 10',
+      },
+    };
+  }
+  if (action.action === "stdm.find_sessions") {
+    return {
+      params: { agent_api_name: "Example_Agent", since: "2026-06-30T00:00:00Z", limit: 20 },
+    };
+  }
+  if (action.action === "stdm.session_timeline") {
+    return { params: { session_id: "<session_id>" } };
+  }
+  return undefined;
+}
+
 function unknownAction(input: Data360V2Input, actionName: string): Record<string, unknown> {
-  const suggestions = searchData360Actions(actionName, { tool: input.tool, limit: 5 }).map(
-    (action) => ({ tool: action.tool, action: action.action, description: action.description }),
-  );
+  const familySuggestions = searchData360Actions(actionName, { tool: input.tool, limit: 5 });
+  const suggestions = (
+    familySuggestions.length ? familySuggestions : searchData360Actions(actionName, { limit: 5 })
+  ).map(summarizeAction);
   return {
     ok: false,
     tool: input.tool,
     action: input.action,
+    requestedAction: actionName,
     error: "UNKNOWN_ACTION",
     summary: `Unknown ${input.tool} action '${actionName}'.`,
     suggestion: suggestions.length
       ? "Use one of the suggested actions or call actions.search."
       : "Call actions.list or actions.search to discover available actions.",
+    did_you_mean: suggestions,
     suggestions,
-    recover_via: suggestions[0]
-      ? {
-          tool: suggestions[0].tool,
-          action: "action.describe",
-          params: { action: suggestions[0].action },
-        }
-      : { tool: input.tool, action: "actions.list" },
+    recover_via: {
+      tool: input.tool,
+      action: "actions.search",
+      params: { query: actionName.replace(/[._-]+/g, " ") },
+    },
   };
 }
 

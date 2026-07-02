@@ -41,7 +41,8 @@ sf_soql action
 - **Explicit REST vs Tooling** — pass `api: "tooling"` for Tooling objects such as
   `ApexClass`, `ApexLog`, and `ApexTestResult`.
 - **Artifact-first evidence** — full raw/flattened results are persisted; LLM output
-  stays compact.
+  stays compact while still showing bounded field, finding, row, and artifact previews
+  needed for the next likely agent decision.
 - **SOQL API Call Rail** — cards show concrete native endpoints and high-signal
   request parameters.
 - **Full query visibility** — every query-shaped card includes a dedicated SOQL
@@ -53,22 +54,22 @@ sf_soql action
 
 ## Behavior Matrix
 
-| Event/Trigger             | Condition                       | Result                                          |
-| ------------------------- | ------------------------------- | ----------------------------------------------- |
-| extension load            | always                          | Register `/sf-soql` command.                    |
-| session_start             | extension enabled               | Register `sf_soql` tool and clear connections.  |
-| session_shutdown          | always                          | Clear cached Salesforce connections.            |
-| `/sf-soql`                | interactive                     | Open the SF SOQL panel.                         |
-| `/sf-soql status`         | any mode                        | Print concise extension status.                 |
-| `sf_soql org.preflight`   | explicit tool call              | Check native query readiness.                   |
-| `sf_soql schema.describe` | object provided                 | Describe object fields and relationships.       |
-| `sf_soql query.validate`  | query provided                  | Parse and describe-validate query shape.        |
-| `sf_soql query.explain`   | query provided                  | Retrieve the native query plan.                 |
-| `sf_soql query.sample`    | query provided                  | Run a small bounded sample.                     |
-| `sf_soql query.run`       | bounded query or explicit cap   | Run a read-only query and write artifacts.      |
-| `sf_soql query.run`       | no LIMIT and no explicit cap    | Return a safety review card instead of running. |
-| `sf_soql query.queryAll`  | explicit tool call              | Run queryAll and show a scope warning.          |
-| `sf_soql history.rerun`   | previous runnable action exists | Rerun the previous SOQL action.                 |
+| Event/Trigger             | Condition                       | Result                                                                  |
+| ------------------------- | ------------------------------- | ----------------------------------------------------------------------- |
+| extension load            | always                          | Register `/sf-soql` command.                                            |
+| session_start             | extension enabled               | Register `sf_soql` tool and clear connections.                          |
+| session_shutdown          | always                          | Clear cached Salesforce connections.                                    |
+| `/sf-soql`                | interactive                     | Open the SF SOQL panel.                                                 |
+| `/sf-soql status`         | any mode                        | Print concise extension status.                                         |
+| `sf_soql org.preflight`   | explicit tool call              | Check native query readiness.                                           |
+| `sf_soql schema.describe` | object provided                 | Describe object fields and relationships.                               |
+| `sf_soql query.validate`  | query provided                  | Parse and describe-validate query shape.                                |
+| `sf_soql query.explain`   | query provided                  | Retrieve the native query plan.                                         |
+| `sf_soql query.sample`    | query provided                  | Run a small bounded sample.                                             |
+| `sf_soql query.run`       | bounded query or explicit cap   | Run a read-only query, show a bounded row preview, and write artifacts. |
+| `sf_soql query.run`       | no LIMIT and no explicit cap    | Return a safety review card instead of running.                         |
+| `sf_soql query.queryAll`  | explicit tool call              | Run queryAll and show a scope warning.                                  |
+| `sf_soql history.rerun`   | previous runnable action exists | Rerun the previous SOQL action.                                         |
 
 ## Commands
 
@@ -177,10 +178,10 @@ npm run e2e:sf-soql -- --org <alias> --harness-data
 
 ## Troubleshooting
 
-| Symptom                             | Likely cause                                            | Fix                                                                      |
-| ----------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------ |
-| `query.run` returns a safety review | Query has no top-level `LIMIT` and no explicit row cap. | Use `query.sample`, `query.count`, or pass `max_rows`.                   |
-| `INVALID_TYPE` or invalid object    | The object name is wrong or belongs to Tooling API.     | Use `schema.describe`, or run with `api: "tooling"` for Tooling objects. |
-| `INVALID_FIELD`                     | Field or relationship name was guessed.                 | Use `schema.describe` / `schema.relationships` before running.           |
-| Query plan unavailable              | Salesforce did not return a plan for that query shape.  | Run `query.validate`, `query.count`, or a bounded `query.sample`.        |
-| Large result not visible in chat    | Full evidence is artifact-first by design.              | Open the SOQL Artifact paths from the result card.                       |
+| Symptom                             | Likely cause                                                                 | Fix                                                                      |
+| ----------------------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `query.run` returns a safety review | Query has no top-level `LIMIT` and no explicit row cap.                      | Use `query.sample`, `query.count`, or pass `max_rows`.                   |
+| `INVALID_TYPE` or invalid object    | The object name is wrong or belongs to Tooling API.                          | Use `schema.describe`, or run with `api: "tooling"` for Tooling objects. |
+| `INVALID_FIELD`                     | Field or relationship name was guessed.                                      | Use `schema.describe` / `schema.relationships` before running.           |
+| Query plan unavailable              | Salesforce did not return a plan for that query shape.                       | Run `query.validate`, `query.count`, or a bounded `query.sample`.        |
+| Large result not visible in chat    | Full evidence is artifact-first by design; chat shows only bounded previews. | Open the SOQL Artifact paths from the result card.                       |

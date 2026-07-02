@@ -47,7 +47,9 @@ The intended balance is:
   not raw endpoint families.
 - **Context-efficient:** each tool has a compact schema; action catalogs and
   examples are disclosed on demand through `actions.search`, `action.describe`,
-  and `examples.get`.
+  and `examples.get`. Discovery results include bounded action previews and
+  recovery hints so agents can choose the next action without loading the full
+  catalog.
 - **Composable:** agents can still chain family actions, journeys, pagination,
   and JSON transforms without loading the full 200+ operation catalog into the
   prompt.
@@ -190,6 +192,8 @@ behind file references so the agent loads it only when needed.
 - **Default output mode** (`defaultOutputMode`) — used by `data360_*` family tools when the caller omits `output_mode`. Values: `summary` (default), `inline`, or `file_only`.
 
 Explicit tool arguments still win. For example, passing `output_mode: "inline"` overrides the saved default for that call.
+
+Result digests remain artifact-first, but discovery actions include bounded previews: `actions.search` shows matching action names and parameters, `action.describe` shows exact required/optional parameters plus curated examples when available, and unknown actions return fuzzy suggestions without auto-routing.
 
 ## Commands
 

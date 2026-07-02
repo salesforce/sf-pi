@@ -78,6 +78,17 @@ export interface SoqlArtifact {
   kind: string;
 }
 
+export interface SoqlFieldPreview {
+  name: string;
+  type?: string;
+  filterable?: boolean;
+  sortable?: boolean;
+  relationshipName?: string | null;
+  referenceTo?: string[];
+  nillable?: boolean;
+  custom?: boolean;
+}
+
 export interface SoqlFinding {
   severity: "info" | "warning" | "error";
   icon: string;
@@ -154,6 +165,11 @@ export interface SoqlRunDigest {
   sections: SoqlRunSection[];
   artifacts?: SoqlArtifact[];
   recommended_skills?: string[];
+  output_mode?: SfSoqlParams["output_mode"];
+  schema_preview?: {
+    total_fields: number;
+    fields: SoqlFieldPreview[];
+  };
 }
 
 export interface SObjectDescribe {
@@ -176,6 +192,7 @@ export interface SObjectFieldDescribe {
   sortable?: boolean;
   aggregatable?: boolean;
   nillable?: boolean;
+  custom?: boolean;
   picklistValues?: Array<{ active?: boolean; value?: string; label?: string }>;
 }
 

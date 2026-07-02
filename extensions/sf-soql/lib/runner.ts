@@ -235,6 +235,7 @@ export async function runQuery(
         ],
       },
       api_calls: [apiCall("PARSE", "SOQL", "safety_gate=no_limit")],
+      output_mode: params.output_mode,
       sections: [
         section("🛡️", "Safety Gate", [
           row("⚠️", "Reason", "Query has no top-level LIMIT."),
@@ -304,7 +305,7 @@ async function executeQuery(
         : await restQuery(conn, query, apiMode, maxRows);
     const durationMs = Date.now() - started;
     const flattened = flattenRecords(result.records);
-    const sampleRows = flattened.rows.slice(0, 5);
+    const sampleRows = flattened.rows.slice(0, sampleRowLimit(params.output_mode));
     const summary = {
       action,
       operation,
@@ -358,10 +359,11 @@ async function executeQuery(
         section(
           "🧾",
           "Sample Table",
-          sampleTableRows(flattened.columns, sampleRows, flattened.rows.length),
+          sampleTableRows(flattened.columns, sampleRows, flattened.rows.length, params.output_mode),
         ),
       ],
       artifacts,
+      output_mode: params.output_mode,
     });
     state.lastRunnable = params;
     state.lastDigest = digest;
@@ -393,12 +395,16 @@ function sampleTableRows(
   columns: string[],
   sampleRows: Record<string, string>[],
   totalRows: number,
+  outputMode: SfSoqlParams["output_mode"],
 ) {
-  const visibleColumns = columns.slice(0, 5);
-  if (!visibleColumns.length || !sampleRows.length) return [row("ℹ️", "Rows", "No rows returned.")];
+  const visibleColumns = columns.slice(0, outputMode === "inline" ? 8 : 5);
+  if (!visibleColumns.length || (!sampleRows.length && totalRows === 0)) {
+    return [row("ℹ️", "Rows", "No rows returned.")];
+  }
+  if (!sampleRows.length) return [row("📁", "Preview", "Suppressed; inspect artifacts.")];
   const widths = visibleColumns.map((column) =>
     Math.min(
-      24,
+      outputMode === "inline" ? 40 : 24,
       Math.max(column.length, ...sampleRows.map((sample) => displayCell(sample[column]).length)),
     ),
   );
@@ -424,6 +430,11 @@ function sampleTableRows(
     );
   }
   return rows;
+}
+
+function sampleRowLimit(outputMode: SfSoqlParams["output_mode"]): number {
+  if (outputMode === "file_only") return 0;
+  return outputMode === "inline" ? 20 : 5;
 }
 
 function displayCell(value: string | undefined): string {

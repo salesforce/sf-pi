@@ -220,6 +220,58 @@ describe("sf_docs tool", () => {
     });
   });
 
+  it("biases seasonal release-note answers to the admin collection", async () => {
+    const oldToken = process.env.SF_DOCS_MCP_TOKEN;
+    const oldEndpoint = process.env.SF_DOCS_MCP_ENDPOINT;
+    process.env.SF_DOCS_MCP_TOKEN = "test-token";
+    process.env.SF_DOCS_MCP_ENDPOINT = "https://example.test/";
+    const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(String(init.body));
+      expect(body.params.name).toBe("answer");
+      expect(body.params.arguments).toMatchObject({
+        collection: "admin",
+        version: "current",
+        locale: "en-us",
+      });
+      expect(String(body.params.arguments.query)).toContain(
+        "Whats new with Spring '26 release notes",
+      );
+      expect(String(body.params.arguments.query)).toContain("Salesforce Spring 26 Release Notes");
+      return docsResponse({ answer: "Spring summary", citations: [] });
+    }) as unknown as typeof fetch;
+    vi.stubGlobal("fetch", fetchMock);
+
+    vi.resetModules();
+    const { registerSfDocsTool } = await import("../lib/sf_docs-tool.ts");
+    const registerTool = vi.fn();
+    registerSfDocsTool({ registerTool } as unknown as ExtensionAPI);
+    const tool = registerTool.mock.calls[0]?.[0];
+    const result = await tool.execute(
+      "id",
+      { action: "answer", query: "Whats new with Spring '26 release notes" },
+      undefined,
+      undefined,
+      {
+        cwd: process.cwd(),
+        modelRegistry: { getApiKeyForProvider: vi.fn(async () => undefined) },
+      },
+    );
+
+    if (oldToken === undefined) delete process.env.SF_DOCS_MCP_TOKEN;
+    else process.env.SF_DOCS_MCP_TOKEN = oldToken;
+    if (oldEndpoint === undefined) delete process.env.SF_DOCS_MCP_ENDPOINT;
+    else process.env.SF_DOCS_MCP_ENDPOINT = oldEndpoint;
+    vi.unstubAllGlobals();
+
+    expect(result.content[0].text).toContain("Spring summary");
+    expect(result.details).toMatchObject({
+      ok: true,
+      action: "answer",
+      collection: "admin",
+      resolution: { status: "answer_biased", releaseHint: { release: "260" } },
+    });
+  });
+
   it("uses a default summary query for explain by URL", async () => {
     const oldToken = process.env.SF_DOCS_MCP_TOKEN;
     const oldEndpoint = process.env.SF_DOCS_MCP_ENDPOINT;

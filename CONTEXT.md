@@ -8,6 +8,14 @@ SF Pi is the bundled Salesforce-focused extension suite for pi. It gives agents 
 The SF Docs behavior of turning locator-like documentation input, such as a Salesforce Help article URL or article ID, into compact meaningful search language before documentation lookup. It keeps the user's intent anchored to official documentation while avoiding brittle literal URL search when the locator already contains better search terms.
 _Avoid_: URL canonicalization system, docs crawler, local documentation index, cached search corpus
 
+**Seasonal Release Hint**:
+A high-confidence cue extracted during **Docs Query Distillation** from phrases such as `Spring '26`, `Spring 2026`, or a Salesforce Help release parameter. It helps SF Docs prefer the matching Salesforce seasonal release note family without adding a separate release-notes subsystem or changing the public tool API.
+_Avoid_: release filter API, release resolver, release notes crawler, docs version
+
+**Release-Note Intent**:
+A lightweight cue that the user is looking for Salesforce release-note documentation, such as `release notes`, `what's new`, or a Help article ID under `release-notes.`. It can shape documentation lookup only when paired with stronger context, such as a **Seasonal Release Hint**, a Salesforce Help locator, or explicit release-note wording; plain product release-note queries should remain normal documentation searches.
+_Avoid_: release-note mode, release-note resolver, product release override
+
 **Last-Known Usable Status**:
 The most recent successful status snapshot that is still useful for human orientation, even when the **Current Probe Status** is failed or stale. It must be scoped to the same logical target, such as the same Salesforce project and target org or the same gateway usage account.
 _Avoid_: stale failure, optimistic status, cached truth
