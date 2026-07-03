@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.217.1-2026-07-03",
-  "latestVersion": "0.217.1",
+  "revision": "release-0.217.2-2026-07-03",
+  "latestVersion": "0.217.2",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.217.1",
+      "id": "release-0.217.2",
       "kind": "update",
-      "title": "sf-pi v0.217.1 — refresh native Salesforce requests on stale session",
+      "title": "sf-pi v0.217.2 — sf-docs: harden release-note retrieval evidence",
       "publishedAt": "2026-07-03T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.217.1",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.217.2",
       "severity": "info",
-      "body": "refresh native Salesforce requests on stale session"
+      "body": "sf-docs: harden release-note retrieval evidence"
     },
     {
       "id": "pi-0.73-required",
