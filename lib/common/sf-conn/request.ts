@@ -72,7 +72,7 @@ export async function connRequest<T = unknown>(
   try {
     if (req.signal?.aborted) throw new ConnRequestAbortedError();
     const body = serializeBody(req.body);
-    const nativeFetch = nativeFetchRequest<T>(conn, {
+    const nativeFetch = await nativeFetchRequest<T>(conn, {
       method: req.method,
       url: req.url,
       headers,
@@ -80,7 +80,7 @@ export async function connRequest<T = unknown>(
       timeoutMs: timeout,
       signal: req.signal,
     });
-    if (nativeFetch) return await nativeFetch;
+    if (nativeFetch) return nativeFetch;
 
     const request = conn.request<T>({
       method: req.method,
@@ -105,18 +105,41 @@ interface NativeFetchRequest {
   signal?: AbortSignal;
 }
 
-function nativeFetchRequest<T>(
+async function nativeFetchRequest<T>(
   conn: Connection,
   req: NativeFetchRequest,
-): Promise<ConnResponse<T>> | undefined {
-  const accessToken = getAccessToken(conn);
+): Promise<ConnResponse<T> | undefined> {
   const instanceUrl = conn.instanceUrl;
+  const accessToken = getAccessToken(conn);
   if (!accessToken || !instanceUrl) return undefined;
 
-  return boundedNativeFetch<T>(absoluteUrl(instanceUrl, req.url), {
+  const url = absoluteUrl(instanceUrl, req.url);
+  const first = await boundedNativeFetch<T>(url, withAuthHeader(req, accessToken));
+  if (![401, 403].includes(first.status)) return first;
+
+  const refreshed = await refreshConnectionAuth(conn, req);
+  if (!refreshed) return first;
+
+  const refreshedToken = getAccessToken(conn);
+  if (!refreshedToken) return first;
+  return boundedNativeFetch<T>(url, withAuthHeader(req, refreshedToken));
+}
+
+function withAuthHeader(req: NativeFetchRequest, accessToken: string): NativeFetchRequest {
+  return {
     ...req,
     headers: { ...req.headers, Authorization: `Bearer ${accessToken}` },
-  });
+  };
+}
+
+async function refreshConnectionAuth(
+  conn: Connection,
+  req: Pick<NativeFetchRequest, "timeoutMs" | "signal">,
+): Promise<boolean> {
+  const refreshAuth = (conn as unknown as { refreshAuth?: () => Promise<unknown> }).refreshAuth;
+  if (typeof refreshAuth !== "function") return false;
+  await boundedConnRequest(refreshAuth.call(conn), req.timeoutMs, req.signal);
+  return true;
 }
 
 function getAccessToken(conn: Connection): string | undefined {

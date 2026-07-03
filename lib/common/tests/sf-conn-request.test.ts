@@ -129,6 +129,58 @@ describe("connRequest body handling", () => {
     expect(conn.request).not.toHaveBeenCalled();
     vi.unstubAllGlobals();
   });
+
+  test("refreshes auth and retries native fetch once after INVALID_SESSION_ID", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify([{ errorCode: "INVALID_SESSION_ID" }]), {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ totalSize: 1 }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+    const conn = {
+      accessToken: "OLD",
+      instanceUrl: "https://example.my.salesforce.com",
+      refreshAuth: vi.fn().mockImplementation(function (this: { accessToken: string }) {
+        this.accessToken = "NEW";
+        return Promise.resolve();
+      }),
+      request: vi.fn(),
+    } as unknown as Parameters<typeof connRequest>[0];
+
+    const response = await connRequest(conn, {
+      method: "GET",
+      url: "/services/data/v67.0/ssot/data-spaces",
+    });
+
+    expect(response).toEqual({ status: 200, body: { totalSize: 1 } });
+    expect(conn.refreshAuth).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      "https://example.my.salesforce.com/services/data/v67.0/ssot/data-spaces",
+      expect.objectContaining({
+        headers: expect.objectContaining({ Authorization: "Bearer OLD" }),
+      }),
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "https://example.my.salesforce.com/services/data/v67.0/ssot/data-spaces",
+      expect.objectContaining({
+        headers: expect.objectContaining({ Authorization: "Bearer NEW" }),
+      }),
+    );
+    expect(conn.request).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
 });
 
 describe("connRequest error → status mapping", () => {
