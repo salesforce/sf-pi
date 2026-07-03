@@ -6,6 +6,7 @@
  * This is the starting point for TDD — add specific tests as you build features.
  */
 import { describe, it, expect, vi } from "vitest";
+import { DocsClient } from "../lib/client.ts";
 import { collectManagerDetailActions } from "../../../lib/common/manager-actions.ts";
 
 describe("sf-docs", () => {
@@ -37,5 +38,30 @@ describe("sf-docs", () => {
     expect(typeof actions.find((action) => action.id === "disconnect")?.createPanel).toBe(
       "function",
     );
+  });
+
+  const liveIt = process.env.SF_DOCS_LIVE_SMOKE && process.env.SF_DOCS_MCP_TOKEN ? it : it.skip;
+  liveIt("live MCP exposes admin release filters and searchable release-note docs", async () => {
+    const client = new DocsClient({
+      endpoint: process.env.SF_DOCS_MCP_ENDPOINT || "https://mcp.docs.salesforce.com/",
+      token: process.env.SF_DOCS_MCP_TOKEN!,
+      timeoutMs: 30000,
+    });
+    const catalog = (await client.callTool("list", {})) as {
+      collections?: Array<Record<string, unknown>>;
+    };
+    const admin = catalog.collections?.find((collection) => collection.collection === "admin");
+    expect(String(admin?.retrievalHints)).toContain("+release:<n>");
+
+    const search = (await client.callTool("search", {
+      collection: "admin",
+      query: "+release:258 sales cloud",
+      pageSize: 3,
+    })) as { results?: Array<{ url?: string; release?: string }> };
+    expect(
+      search.results?.some(
+        (result) => result.release === "258" || result.url?.includes("release=258"),
+      ),
+    ).toBe(true);
   });
 });

@@ -54,6 +54,8 @@ export interface DocsQueryDistillationPlan {
   semanticTokens: string[];
   variants: string[];
   collectionCandidates: string[];
+  retrievalFilters: string[];
+  retrievalBoosts: string[];
   releaseHint?: SeasonalReleaseHint;
   releaseNoteIntent?: boolean;
 }
@@ -233,6 +235,8 @@ function buildPlan(input: {
     .filter(Boolean)
     .slice(0, 3);
 
+  const retrievalFilters = releaseFilter(input.releaseHint, input.releaseNoteIntent);
+  const retrievalBoosts = guideBoostsFor(input.original, semanticQuery);
   return {
     kind: "docs_locator",
     original: input.original,
@@ -242,8 +246,10 @@ function buildPlan(input: {
     locatorAliases: unique([input.locator, locator, slug, semanticQuery]),
     semanticQuery,
     semanticTokens: tokenize(semanticQuery),
-    variants,
+    variants: withRetrievalLanguage(variants, retrievalFilters, retrievalBoosts),
     collectionCandidates: unique(input.collectionCandidates.filter(Boolean)),
+    retrievalFilters,
+    retrievalBoosts,
     releaseHint: input.releaseHint,
     releaseNoteIntent: input.releaseNoteIntent || undefined,
   };
@@ -257,6 +263,11 @@ function buildSeasonalReleasePlan(
   const semanticQuery = semanticize(original);
   if (!semanticQuery) return undefined;
   const canonical = canonicalSeasonalReleaseQuery(releaseHint);
+  const retrievalFilters = releaseFilter(releaseHint, true);
+  const retrievalBoosts = guideBoostsFor(original, semanticQuery);
+  const baseVariants = unique([stripSeasonalWords(semanticQuery), original, canonical]).filter(
+    Boolean,
+  );
   return {
     kind: "docs_locator",
     original,
@@ -265,8 +276,10 @@ function buildSeasonalReleasePlan(
     locatorAliases: unique([original, semanticQuery, canonical]),
     semanticQuery,
     semanticTokens: tokenize(semanticQuery),
-    variants: unique([original, canonical]).filter(Boolean).slice(0, 3),
+    variants: withRetrievalLanguage(baseVariants, retrievalFilters, retrievalBoosts).slice(0, 3),
     collectionCandidates: mergeCollections(["admin"], explicitCollection),
+    retrievalFilters,
+    retrievalBoosts,
     releaseHint,
     releaseNoteIntent: true,
   };
@@ -341,6 +354,39 @@ function releaseAwareScore(plan: DocsQueryDistillationPlan, result: DocsSearchRe
   const wantsPatch = /\bpatch(?:es)?\b/iu.test(plan.original);
   if (!wantsPatch && /\bpatch releases?\b/iu.test(result.title ?? "")) score -= 50;
   return score;
+}
+
+function releaseFilter(
+  releaseHint: SeasonalReleaseHint | undefined,
+  releaseNoteIntent: boolean | undefined,
+): string[] {
+  return releaseHint?.release && releaseNoteIntent ? [`+release:${releaseHint.release}`] : [];
+}
+
+function guideBoostsFor(original: string, semanticQuery: string): string[] {
+  const normalized = `${semanticQuery} ${semanticize(original)}`;
+  const boosts: string[] = [];
+  if (/\bsales(?:\s+cloud)?\b/iu.test(normalized)) boosts.push("guides:sales");
+  if (/\bservice(?:\s+cloud)?\b/iu.test(normalized)) boosts.push("guides:service");
+  if (/\bmarketing(?:\s+cloud)?\b/iu.test(normalized)) boosts.push("guides:marketing");
+  if (/\bcommerce(?:\s+cloud)?\b/iu.test(normalized)) boosts.push("guides:commerce");
+  if (/\bdata\s+(?:cloud|360)\b/iu.test(normalized)) boosts.push("guides:data_360");
+  if (/\bagentforce\b/iu.test(normalized)) boosts.push("guides:agentforce");
+  return unique(boosts);
+}
+
+function withRetrievalLanguage(variants: string[], filters: string[], boosts: string[]): string[] {
+  const prefix = [...filters, ...boosts].join(" ").trim();
+  const compiled = variants.map((variant) => [prefix, variant].filter(Boolean).join(" ").trim());
+  return unique([...compiled, ...variants]).filter(Boolean);
+}
+
+function stripSeasonalWords(value: string): string {
+  return value
+    .replace(/\b(?:spring|summer|winter)\s*(?:['’]\s*)?(?:20\d{2}|\d{2})\b/giu, " ")
+    .replace(/\bsalesforce\b/giu, " ")
+    .replace(/\s+/gu, " ")
+    .trim();
 }
 
 function detectSeasonalReleaseHint(input: string): SeasonalReleaseHint | undefined {

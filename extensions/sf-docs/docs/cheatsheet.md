@@ -46,15 +46,16 @@ Known collections include `developer`, `admin`, `architect`, `legacydeveloper`, 
 
 - Quote exact phrases: `"Named Credentials"`.
 - Include product names, API names, class names, error codes, and config keys verbatim.
-- Use collection hints from `collections` before guessing `+guides:` filters.
+- Use collection hints from `collections` before guessing `+guides:` filters or `+release:<n>` release filters.
 - Retry with fewer terms or a different phrase when top results are weak.
 - You can pass Salesforce-owned docs URLs directly to `search`; SF Docs distills supported docs locators into high-signal search terms before querying.
-- Seasonal release-note queries such as `Spring '26 release notes` are distilled toward the matching Salesforce Help release notes in the admin collection.
+- Seasonal release-note queries such as `Spring '26 release notes` are distilled toward the matching Salesforce Help release notes in the admin collection using MCP-native `+release:<n>` filters. If the docs service has no matching release slice, SF Docs reports the coverage gap instead of broadening to unrelated docs.
+- For product scoping, prefer bare `guides:<slug>` boosts unless you explicitly need to restrict to one product area. Hard `+guides:<slug>` can exclude broad release-note overview pages.
 
 ## Fetch tips
 
 - Fetch IDs from the same `collection`, `version`, and `locale` that produced them.
-- If a supported Salesforce-owned docs URL fetch returns no usable body, SF Docs can recover by distilled search and then fetch the strongest indexed document ID.
+- If a supported Salesforce-owned docs URL fetch returns no usable body, SF Docs can recover by distilled search and then fetch the strongest indexed document ID. Release-note URL recovery preserves the URL's `release=` parameter as an MCP-native `+release:<n>` filter.
 - Prefer fetching the strongest 3–4 source candidates; `fetch` accepts more for compatibility, but the Docs Evidence Packet is globally bounded.
 - Use `markdown` when headings, code blocks, lists, or tables matter.
 - Use `text` for compact triage.

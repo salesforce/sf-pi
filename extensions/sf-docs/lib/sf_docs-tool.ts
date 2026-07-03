@@ -59,6 +59,25 @@ interface DistilledSearchRun {
   ranked: RankedDistilledResult[];
 }
 
+type DocsEvidenceStatus = "ok" | "no_matches" | "wrong_release" | "insufficient" | "not_checked";
+
+interface DocsQueryPlanSummary {
+  original: string;
+  compiledQuery: string;
+  collection: string;
+  version: string;
+  locale: string;
+  filters: string[];
+  boosts: string[];
+  evidenceStatus: DocsEvidenceStatus;
+  evidenceMessage?: string;
+}
+
+interface DocsEvidenceEvaluation {
+  status: DocsEvidenceStatus;
+  message?: string;
+}
+
 interface FetchRecoveryResult {
   recovered: boolean;
   search: DistilledSearchRun;
@@ -163,11 +182,28 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
         token: auth.token,
         timeoutMs: timeoutForAction(input.action),
       });
+      const collectionResolution = resolveCollectionName(
+        input.collection ?? prefs.defaultCollection,
+      );
       const slice = {
-        collection: input.collection ?? prefs.defaultCollection,
+        collection: collectionResolution.collection,
         version: input.version ?? prefs.defaultVersion,
         locale: input.locale ?? prefs.defaultLocale,
       };
+      if (versionLooksLikeSalesforceRelease(slice.version)) {
+        return fail(
+          input.action,
+          `SF Docs collection version '${slice.version}' is not a docs collection version. Use version='current' and put Salesforce seasonal releases in the query, for example '+release:${normalizeReleaseValue(slice.version)}'.`,
+          {
+            ...slice,
+            reason: "invalid_docs_version",
+            recover_via: {
+              version: "current",
+              query_filter: `+release:${normalizeReleaseValue(slice.version)}`,
+            },
+          },
+        );
+      }
 
       try {
         if (input.action === "collections") {
@@ -179,21 +215,28 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
             !cache.stale &&
             cache.collections
           ) {
+            const collections = input.collection
+              ? cache.collections.filter((collection) => collection.collection === slice.collection)
+              : cache.collections;
             return collectionsResult(
-              cache.collections,
+              collections,
               `hit · ${formatCacheAge(cache.fetchedAt)}`,
               prefs.displayDensity,
+              collectionResolution.alias,
             );
           }
-          const response = (await client.callTool("list", {}, signal)) as {
+          const listArgs: Record<string, unknown> = {};
+          if (input.collection) listArgs.collections = [slice.collection];
+          const response = (await client.callTool("list", listArgs, signal)) as {
             collections?: DocsCollection[];
           };
           const collections = response.collections ?? [];
-          if (prefs.cacheCatalog) writeCatalogCache(collections);
+          if (prefs.cacheCatalog && !input.collection) writeCatalogCache(collections);
           return collectionsResult(
             collections,
             input.refresh ? "refreshed" : "miss/refreshed",
             prefs.displayDensity,
+            collectionResolution.alias,
           );
         }
 
@@ -207,7 +250,7 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
           const pageSize = clamp(input.pageSize ?? prefs.defaultPageSize, 1, 60);
           const distilled = distillDocsQuery(input.query, {
             defaultCollection: slice.collection,
-            explicitCollection: input.collection,
+            explicitCollection: input.collection ? slice.collection : undefined,
           });
           if (distilled) {
             const distilledSearch = await runDistilledSearch(
@@ -226,8 +269,12 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
               results: distilledSearch.ranked.slice(0, pageSize),
               totalCount: distilledSearch.ranked.length,
             };
+            const queryPlan = buildQueryPlanSummary(distilled, distilledSearch, {
+              version: slice.version,
+              locale: slice.locale,
+            });
             const text = [
-              `Distilled docs locator query: ${distilled.semanticQuery}`,
+              formatQueryPlanText(queryPlan),
               "",
               formatSearchToolText(input.query, response),
             ].join("\n");
@@ -236,8 +283,12 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
               collection: distilled.collectionCandidates[0] ?? slice.collection,
               query: input.query,
               ...response,
+              retrieval_status: queryPlan.evidenceStatus,
+              queryPlan,
               displayDensity: prefs.displayDensity,
-              resolution: buildDistillationResolution(distilled, distilledSearch),
+              resolution: buildDistillationResolution(distilled, distilledSearch, {
+                evidenceStatus: queryPlan.evidenceStatus,
+              }),
             });
           }
 
@@ -249,6 +300,14 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
           };
           if (input.format) args.format = input.format;
           const response = asSearchResponse(await client.callTool("search", args, signal));
+          const serviceError = docsServiceError(response);
+          if (serviceError) {
+            return fail("search", serviceError, {
+              ...slice,
+              query: input.query,
+              reason: "docs_service_error",
+            });
+          }
           const text = formatSearchToolText(input.query, response);
           return ok("search", text, {
             ...slice,
@@ -284,12 +343,20 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
             });
           }
           const response = asFetchResponse(await client.callTool("fetch", args, signal));
+          const serviceError = docsServiceError(response);
+          if (serviceError) {
+            return fail("fetch", serviceError, {
+              ...slice,
+              requested,
+              reason: "docs_service_error",
+            });
+          }
           const docs = response.documents ?? [];
           const recoveryPlan =
             requested.urls?.length === 1
               ? distillDocsQuery(requested.urls[0], {
                   defaultCollection: slice.collection,
-                  explicitCollection: input.collection,
+                  explicitCollection: input.collection ? slice.collection : undefined,
                 })
               : undefined;
           if (recoveryPlan && fetchLooksRecoverable(docs)) {
@@ -305,27 +372,41 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
             );
             if (recovery.recovered) {
               const packet = buildFetchEvidencePacket(recovery.docs, recovery.slice);
-              const note = `Recovered by searching distilled docs locator: ${recoveryPlan.semanticQuery}`;
-              return ok("fetch", `${note}\n\n${packet.text || "No documents returned."}`, {
-                ...recovery.slice,
-                requested,
-                recoveredRequest: recovery.recoveredRequest,
-                displayDensity: prefs.displayDensity,
-                documents: packet.documents,
-                totalDocuments: packet.documents.length,
-                totalContentChars: packet.totalContentChars,
-                llmBudget: packet.llmBudget,
-                resolution: buildDistillationResolution(recoveryPlan, recovery.search, {
-                  status: "recovered",
-                  resolvedId: recovery.resolved?.id,
-                  resolvedUrl: recovery.resolved?.url,
-                  score: recovery.resolved?.score,
-                }),
+              const queryPlan = buildQueryPlanSummary(recoveryPlan, recovery.search, {
+                version: slice.version,
+                locale: slice.locale,
               });
+              const note = `Recovered by searching distilled docs locator: ${recoveryPlan.semanticQuery}`;
+              return ok(
+                "fetch",
+                `${formatQueryPlanText(queryPlan)}\n\n${note}\n\n${packet.text || "No documents returned."}`,
+                {
+                  ...recovery.slice,
+                  requested,
+                  recoveredRequest: recovery.recoveredRequest,
+                  displayDensity: prefs.displayDensity,
+                  queryPlan,
+                  documents: packet.documents,
+                  totalDocuments: packet.documents.length,
+                  totalContentChars: packet.totalContentChars,
+                  llmBudget: packet.llmBudget,
+                  resolution: buildDistillationResolution(recoveryPlan, recovery.search, {
+                    status: "recovered",
+                    resolvedId: recovery.resolved?.id,
+                    resolvedUrl: recovery.resolved?.url,
+                    score: recovery.resolved?.score,
+                  }),
+                },
+              );
             }
 
             const packet = buildFetchEvidencePacket(docs, slice);
+            const queryPlan = buildQueryPlanSummary(recoveryPlan, recovery.search, {
+              version: slice.version,
+              locale: slice.locale,
+            });
             const text = [
+              formatQueryPlanText(queryPlan),
               `Direct URL fetch was not usable. Distilled docs locator query was ambiguous: ${recoveryPlan.semanticQuery}`,
               formatRecoveryCandidates(recovery.search.ranked),
               "",
@@ -333,18 +414,29 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
             ]
               .filter(Boolean)
               .join("\n");
-            return ok("fetch", text, {
+            const details = {
               ...slice,
               requested,
               displayDensity: prefs.displayDensity,
+              queryPlan,
               documents: packet.documents,
               totalDocuments: packet.documents.length,
               totalContentChars: packet.totalContentChars,
               llmBudget: packet.llmBudget,
               resolution: buildDistillationResolution(recoveryPlan, recovery.search, {
                 status: "ambiguous",
+                evidenceStatus: queryPlan.evidenceStatus,
               }),
-            });
+            };
+            if (recoveryPlan.releaseHint && recoveryPlan.releaseNoteIntent) {
+              return fail("fetch", text, {
+                ...details,
+                reason: "insufficient_docs_evidence",
+                retrieval_status: queryPlan.evidenceStatus,
+                recover_via: { action: "search", query: queryPlan.compiledQuery },
+              });
+            }
+            return ok("fetch", text, details);
           }
 
           const packet = buildFetchEvidencePacket(docs, slice);
@@ -368,14 +460,45 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
           }
           const distilled = distillDocsQuery(input.query, {
             defaultCollection: slice.collection,
-            explicitCollection: input.collection,
+            explicitCollection: input.collection ? slice.collection : undefined,
           });
           const answerBias = distilled?.releaseHint && distilled.releaseNoteIntent;
+          let queryPlan: DocsQueryPlanSummary | undefined;
+          if (answerBias) {
+            const preflight = await runDistilledSearch(
+              client,
+              distilled,
+              { version: slice.version, locale: slice.locale, pageSize: 5 },
+              signal,
+            );
+            queryPlan = buildQueryPlanSummary(distilled, preflight, {
+              version: slice.version,
+              locale: slice.locale,
+            });
+            if (queryPlan.evidenceStatus !== "ok") {
+              return fail(
+                "answer",
+                `${formatQueryPlanText(queryPlan)}\n\nSF Docs could not find sufficient official documentation evidence for this release-specific question.`,
+                {
+                  ...slice,
+                  collection: distilled.collectionCandidates[0] ?? slice.collection,
+                  query: input.query,
+                  reason: "insufficient_docs_evidence",
+                  retrieval_status: queryPlan.evidenceStatus,
+                  queryPlan,
+                  resolution: buildDistillationResolution(distilled, preflight, {
+                    evidenceStatus: queryPlan.evidenceStatus,
+                  }),
+                  recover_via: { action: "search", query: queryPlan.compiledQuery },
+                },
+              );
+            }
+          }
           const answerSlice = answerBias
             ? { ...slice, collection: distilled.collectionCandidates[0] ?? slice.collection }
             : slice;
           const answerQuery = answerBias
-            ? uniqueAnswerQuery(input.query, distilled.variants)
+            ? (queryPlan?.compiledQuery ?? uniqueAnswerQuery(input.query, distilled.variants))
             : input.query;
           const response = asAnswerResponse(
             await client.callTool(
@@ -388,25 +511,60 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
               signal,
             ),
           );
+          const serviceError = docsServiceError(response);
+          if (serviceError)
+            return fail("answer", serviceError, { ...answerSlice, reason: "docs_service_error" });
+          if (answerBias && queryPlan) {
+            const citationEvidence = evaluateAnswerCitationEvidence(
+              distilled,
+              response.citations ?? [],
+            );
+            if (citationEvidence.status !== "ok") {
+              const failedPlan = {
+                ...queryPlan,
+                evidenceStatus: citationEvidence.status,
+                evidenceMessage: citationEvidence.message,
+              };
+              return fail(
+                "answer",
+                `${formatQueryPlanText(failedPlan)}\n\nSF Docs answer citations did not satisfy the release-specific evidence gate.`,
+                {
+                  ...answerSlice,
+                  query: input.query,
+                  reason: "insufficient_docs_evidence",
+                  retrieval_status: citationEvidence.status,
+                  queryPlan: failedPlan,
+                  citations: response.citations,
+                },
+              );
+            }
+          }
           const answer = response.answer ?? response.explanation ?? "";
-          return ok("answer", formatAnswerText(response), {
-            ...answerSlice,
-            ...response,
-            displayDensity: prefs.displayDensity,
-            answerChars: answer.length,
-            resolution: answerBias
-              ? {
-                  kind: "docs_query_distillation",
-                  original: distilled.original,
-                  source: distilled.source,
-                  semanticQuery: distilled.semanticQuery,
-                  variantsTried: distilled.variants,
-                  collectionsTried: [answerSlice.collection],
-                  releaseHint: distilled.releaseHint,
-                  status: "answer_biased",
-                }
-              : undefined,
-          });
+          return ok(
+            "answer",
+            `${queryPlan ? `${formatQueryPlanText(queryPlan)}\n\n` : ""}${formatAnswerText(response)}`,
+            {
+              ...answerSlice,
+              ...response,
+              retrieval_status: queryPlan?.evidenceStatus,
+              queryPlan,
+              displayDensity: prefs.displayDensity,
+              answerChars: answer.length,
+              resolution: answerBias
+                ? {
+                    kind: "docs_query_distillation",
+                    original: distilled.original,
+                    source: distilled.source,
+                    semanticQuery: distilled.semanticQuery,
+                    variantsTried: distilled.variants,
+                    collectionsTried: [answerSlice.collection],
+                    releaseHint: distilled.releaseHint,
+                    status: "answer_biased",
+                    evidenceStatus: queryPlan?.evidenceStatus,
+                  }
+                : undefined,
+            },
+          );
         }
 
         if (input.action === "explain") {
@@ -424,6 +582,9 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
             });
           }
           const response = asAnswerResponse(await client.callTool("explain", args, signal));
+          const serviceError = docsServiceError(response);
+          if (serviceError)
+            return fail("explain", serviceError, { ...slice, reason: "docs_service_error" });
           const answer = response.answer ?? response.explanation ?? "";
           return ok("explain", formatAnswerText(response), {
             ...slice,
@@ -445,6 +606,14 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
       });
     },
   });
+}
+
+function resolveCollectionName(collection: string): { collection: string; alias?: string } {
+  const normalized = collection.trim().toLowerCase();
+  if (normalized === "help" || normalized === "salesforce_help") {
+    return { collection: "admin", alias: `${collection} → admin` };
+  }
+  return { collection };
 }
 
 async function runDistilledSearch(
@@ -472,9 +641,10 @@ async function runDistilledSearch(
       };
       if (base.format) args.format = base.format;
       const response = asSearchResponse(await client.callTool("search", args, signal));
+      const error = docsServiceError(response);
       return {
         request,
-        results: response.results ?? [],
+        results: error ? [] : (response.results ?? []),
         totalCount: response.totalCount,
       };
     }),
@@ -538,6 +708,127 @@ function fetchLooksRecoverable(docs: DocsDocument[]): boolean {
   return docs.length === 0 || docs.every((doc) => Boolean(doc.error) || !doc.content?.trim());
 }
 
+function buildQueryPlanSummary(
+  plan: DocsQueryDistillationPlan,
+  search: DistilledSearchRun,
+  slice: { version: string; locale: string },
+): DocsQueryPlanSummary {
+  const evidence = evaluateEvidence(plan, search.ranked);
+  const firstRequest = search.requests[0];
+  return {
+    original: plan.original,
+    compiledQuery: firstRequest?.query ?? plan.variants[0] ?? plan.semanticQuery,
+    collection: firstRequest?.collection ?? plan.collectionCandidates[0] ?? "developer",
+    version: slice.version,
+    locale: slice.locale,
+    filters: plan.retrievalFilters,
+    boosts: plan.retrievalBoosts,
+    evidenceStatus: evidence.status,
+    evidenceMessage: evidence.message,
+  };
+}
+
+function evaluateEvidence(
+  plan: DocsQueryDistillationPlan,
+  results: DocsSearchResult[],
+): DocsEvidenceEvaluation {
+  if (!plan.releaseHint?.release || !plan.releaseNoteIntent) {
+    return { status: "not_checked" };
+  }
+  if (!results.length) {
+    return {
+      status: "no_matches",
+      message: `No documents matched release ${plan.releaseHint.release}.`,
+    };
+  }
+  const release = plan.releaseHint.release;
+  const hasReleaseMatch = results.some((result) => resultMatchesRelease(result, release));
+  if (!hasReleaseMatch) {
+    return {
+      status: "wrong_release",
+      message: `Returned documents did not match release ${plan.releaseHint.release}.`,
+    };
+  }
+  return { status: "ok" };
+}
+
+function evaluateAnswerCitationEvidence(
+  plan: DocsQueryDistillationPlan,
+  citations: DocsCitation[],
+): DocsEvidenceEvaluation {
+  const releaseEvidence = evaluateEvidence(plan, citations);
+  if (releaseEvidence.status !== "ok") return releaseEvidence;
+  if (!plan.retrievalBoosts.length) return { status: "ok" };
+
+  const visibleCitations = citations.slice(0, Math.min(5, citations.length));
+  const matches = visibleCitations.filter((citation) =>
+    plan.retrievalBoosts.some((boost) => resultMatchesGuideBoost(citation, boost)),
+  ).length;
+  const required = Math.max(1, Math.ceil(visibleCitations.length / 2));
+  if (matches < required) {
+    return {
+      status: "insufficient",
+      message: `Only ${matches} of the first ${visibleCitations.length} citations matched product boosts (${plan.retrievalBoosts.join(" ")}).`,
+    };
+  }
+  return { status: "ok" };
+}
+
+function versionLooksLikeSalesforceRelease(version: string): boolean {
+  const release = normalizeReleaseValue(version);
+  return Boolean(
+    release && /^\d{3}$/u.test(release) && version !== "current" && version !== "next",
+  );
+}
+
+function resultMatchesRelease(result: DocsSearchResult, release: string): boolean {
+  return (
+    normalizeReleaseValue(result.release) === release ||
+    Boolean(result.url?.includes(`release=${release}`))
+  );
+}
+
+function resultMatchesGuideBoost(result: DocsSearchResult, boost: string): boolean {
+  const slug = boost
+    .replace(/^\+?guides:/u, "")
+    .trim()
+    .toLowerCase();
+  if (!slug) return false;
+  const compactSlug = slug.replace(/_/gu, " ");
+  const haystack = [
+    result.guides,
+    result.product,
+    result.products,
+    result.title,
+    typeof result.url === "string" ? result.url.replace(/^https?:\/\/[^/]+/iu, "") : "",
+    result.filename,
+  ]
+    .map((value) => (typeof value === "string" ? value.toLowerCase().replace(/[_-]/gu, " ") : ""))
+    .join(" ");
+  return haystack.includes(slug.replace(/_/gu, " ")) || haystack.includes(compactSlug);
+}
+
+function normalizeReleaseValue(value: unknown): string | undefined {
+  if (typeof value === "number") return String(Math.trunc(value));
+  if (typeof value !== "string") return undefined;
+  return value.match(/^\d+/u)?.[0];
+}
+
+function formatQueryPlanText(plan: DocsQueryPlanSummary): string {
+  const lines = [
+    "Docs Query Plan:",
+    `- original: ${plan.original}`,
+    `- compiled: ${plan.compiledQuery}`,
+    `- slice: ${plan.collection}/${plan.version}/${plan.locale}`,
+  ];
+  const filters = [...plan.filters, ...plan.boosts];
+  if (filters.length) lines.push(`- filters/boosts: ${filters.join(" ")}`);
+  lines.push(
+    `- evidence: ${plan.evidenceStatus}${plan.evidenceMessage ? ` — ${plan.evidenceMessage}` : ""}`,
+  );
+  return lines.join("\n");
+}
+
 function buildDistillationResolution(
   plan: DocsQueryDistillationPlan,
   search: DistilledSearchRun,
@@ -552,6 +843,8 @@ function buildDistillationResolution(
     semanticQuery: plan.semanticQuery,
     variantsTried: search.requests.map((request) => request.query),
     collectionsTried: [...new Set(search.requests.map((request) => request.collection))],
+    retrievalFilters: plan.retrievalFilters,
+    retrievalBoosts: plan.retrievalBoosts,
     topCandidates: search.ranked.slice(0, 5).map((result) => ({
       id: result.id,
       title: result.title,
@@ -591,17 +884,50 @@ function collectionsResult(
   collections: DocsCollection[],
   cache: string,
   displayDensity: SfDocsDisplayDensity,
+  collectionAlias?: string,
 ): ToolResultShape {
-  return ok(
-    "collections",
-    collections
-      .map(
-        (c) =>
-          `${c.collection}: versions=${(c.versions ?? []).join(",") || "-"}; locales=${(c.locales ?? []).join(",") || "-"}; formats=${(c.formats ?? []).join(",") || "-"}`,
-      )
-      .join("\n"),
-    { collections, cache, displayDensity },
-  );
+  const summaries = collections.map(summarizeCollectionCapabilities);
+  const lines: string[] = [];
+  if (collectionAlias) lines.push(`Collection alias: ${collectionAlias}`, "");
+  for (const summary of summaries) {
+    lines.push(
+      `${summary.collection}: versions=${summary.versions || "-"}; locales=${summary.locales || "-"}; formats=${summary.formats || "-"}`,
+    );
+    if (summary.extraFields) lines.push(`  extraFields: ${summary.extraFields}`);
+    if (summary.keyFilters) lines.push(`  key filters: ${summary.keyFilters}`);
+    if (summary.landmarks) lines.push(`  landmarks: ${summary.landmarks}`);
+    if (summary.hintsPreview) lines.push(`  hints: ${summary.hintsPreview}`);
+  }
+  return ok("collections", lines.join("\n"), {
+    collections,
+    capabilitySummaries: summaries,
+    cache,
+    collectionAlias,
+    displayDensity,
+  });
+}
+
+function summarizeCollectionCapabilities(collection: DocsCollection): Record<string, string> {
+  const hints = collection.retrievalHints ?? "";
+  const keyFilters = [
+    hints.includes("+release:") ? "+release:<n>" : "",
+    hints.includes("guides:") ? "guides:<slug>" : "",
+    hints.includes("+taxonomyIds:") ? "+taxonomyIds:<guid>" : "",
+  ].filter(Boolean);
+  return {
+    collection: collection.collection,
+    versions: (collection.versions ?? []).join(","),
+    locales: (collection.locales ?? []).join(","),
+    formats: (collection.formats ?? []).join(","),
+    extraFields: (collection.extraFields ?? []).slice(0, 12).join(","),
+    keyFilters: keyFilters.join(", "),
+    landmarks: (collection.landmarks ?? [])
+      .slice(0, 12)
+      .map((landmark) => landmark.slug)
+      .filter((slug): slug is string => Boolean(slug))
+      .join(", "),
+    hintsPreview: previewPlainText(hints, collection.collection === "admin" ? 700 : 420),
+  };
 }
 
 function cheatsheetResult(displayDensity: SfDocsDisplayDensity): ToolResultShape {
@@ -729,6 +1055,10 @@ function previewText(value: string, max: number): string {
   return stripHtml(value).replace(/\s+/g, " ").trim().slice(0, max);
 }
 
+function previewPlainText(value: string, max: number): string {
+  return value.replace(/\s+/g, " ").trim().slice(0, max);
+}
+
 function stripHtml(value: string): string {
   const withoutBlocks = value
     .replace(/<script[\s\S]*?<\/script>/giu, " ")
@@ -805,6 +1135,15 @@ function uniqueAnswerQuery(original: string, variants: string[]): string {
 
 function timeoutForAction(action: string): number {
   return action === "answer" || action === "explain" ? 60000 : 30000;
+}
+
+function docsServiceError(value: unknown): string | undefined {
+  if (!isRecord(value) || typeof value.error !== "string") return undefined;
+  const requested = isRecord(value.requested) ? value.requested : undefined;
+  const slice = requested
+    ? ` (${requested.collection ?? "?"}/${requested.version ?? "?"}/${requested.locale ?? "?"})`
+    : "";
+  return `Docs service error: ${value.error}${slice}`;
 }
 
 function asSearchResponse(value: unknown): SearchResponse {

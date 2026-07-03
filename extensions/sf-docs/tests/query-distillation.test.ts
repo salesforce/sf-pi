@@ -88,13 +88,32 @@ describe("Docs Query Distillation", () => {
       releaseNoteIntent: true,
     });
     expect(plan?.variants).toEqual([
-      "Whats new with Spring '26 release notes",
-      "Salesforce Spring 26 Release Notes",
+      "+release:260 whats new with release notes",
+      "+release:260 Whats new with Spring '26 release notes",
+      "+release:260 Salesforce Spring 26 Release Notes",
     ]);
+    expect(plan?.retrievalFilters).toEqual(["+release:260"]);
     expect(buildDistilledSearchRequests(plan!).map((request) => request.collection)).toEqual([
       "admin",
       "admin",
+      "admin",
     ]);
+  });
+
+  it("compiles product seasonal release-note queries to MCP-native filters and boosts", () => {
+    const plan = distillDocsQuery("Sales Cloud Winter '25 release notes", {
+      defaultCollection: "developer",
+    });
+
+    expect(plan).toMatchObject({
+      source: "query",
+      collectionCandidates: ["admin"],
+      releaseHint: { season: "winter", year: 2025, release: "252" },
+      releaseNoteIntent: true,
+      retrievalFilters: ["+release:252"],
+      retrievalBoosts: ["guides:sales"],
+    });
+    expect(plan?.variants[0]).toBe("+release:252 guides:sales sales cloud release notes");
   });
 
   it("keeps plain product release-note queries on the normal search path", () => {

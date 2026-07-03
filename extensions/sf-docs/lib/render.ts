@@ -124,8 +124,8 @@ export function formatSearch(
       theme,
     ),
     row("👁", "Density", density, theme),
-    "",
   ];
+  lines.push(...queryPlanRows(details, theme), "");
   results.slice(0, 10).forEach((result, index) => {
     lines.push(
       `  ${index + 1}. ${strong(result.title ?? "Untitled", theme)} ${dim(result.product ? `· ${result.product}` : "", theme)}`,
@@ -163,10 +163,13 @@ export function formatAnswer(
     ),
     row("✅", "Sources", `${citations.length} citation${citations.length === 1 ? "" : "s"}`, theme),
     row("👁", "Density", density, theme),
+  ];
+  lines.push(
+    ...queryPlanRows(details, theme),
     "",
     section("🧾", opts.expanded ? "Answer" : "Answer preview", theme),
     visibleAnswer,
-  ];
+  );
   if (!opts.expanded && answer.length > visibleAnswer.length) {
     lines.push(dim("…answer truncated in human view; expand for full bounded answer.", theme));
   }
@@ -209,6 +212,7 @@ export function formatFetch(
     ),
     row("👁", "Density", density, theme),
   ];
+  lines.push(...queryPlanRows(details, theme));
   if (totalContentChars)
     lines.push(row("📚", "Source", `${formatChars(totalContentChars)} fetched`, theme));
   if (truncatedDocuments || metadataOnlyDocuments) {
@@ -271,8 +275,11 @@ export function formatFetch(
 
 export function formatCollections(details: Record<string, unknown>, theme?: Theme): string {
   const collections = asArray<DocsCollection>(details.collections);
+  const summaries = asArray<Record<string, string>>(details.capabilitySummaries);
   const lines = [header("📚", "SF Docs collections", theme)];
   if (details.cache) lines.push(row("🗄", "Cache", String(details.cache), theme));
+  if (details.collectionAlias)
+    lines.push(row("↪", "Alias", String(details.collectionAlias), theme));
   if (details.displayDensity) lines.push(row("👁", "Density", displayDensity(details), theme));
   lines.push("");
   const nameW = Math.max(10, ...collections.map((c) => visibleWidth(c.collection)));
@@ -283,6 +290,10 @@ export function formatCollections(details: Record<string, unknown>, theme?: Them
     lines.push(
       `  ${code(pad(c.collection, nameW), theme)}  ${dim((c.versions ?? []).join(",") || "-", theme)}  ${dim(formatCount(c.locales), theme)}  ${dim((c.formats ?? []).join(",") || "-", theme)}`,
     );
+    const summary = summaries.find((item) => item.collection === c.collection);
+    if (summary?.keyFilters) lines.push(`     ${dim(`filters: ${summary.keyFilters}`, theme)}`);
+    if (summary?.landmarks) lines.push(`     ${dim(`landmarks: ${summary.landmarks}`, theme)}`);
+    if (summary?.extraFields) lines.push(`     ${dim(`extra: ${summary.extraFields}`, theme)}`);
   }
   return lines.join("\n");
 }
@@ -349,6 +360,25 @@ function formatCount(values?: unknown[]): string {
   return values.length <= 3
     ? values.join(",")
     : `${values.slice(0, 3).join(",")} +${values.length - 3}`;
+}
+
+function queryPlanRows(details: Record<string, unknown>, theme?: Theme): string[] {
+  const plan = isRecord(details.queryPlan) ? details.queryPlan : undefined;
+  if (!plan) return [];
+  const rows = [row("🧭", "Compiled", String(plan.compiledQuery ?? ""), theme)];
+  const filters = [asArray<string>(plan.filters), asArray<string>(plan.boosts)].flat();
+  if (filters.length) rows.push(row("🎚", "Filters", filters.join(" "), theme));
+  if (plan.evidenceStatus) {
+    rows.push(
+      row(
+        "🧪",
+        "Evidence",
+        `${plan.evidenceStatus}${plan.evidenceMessage ? ` — ${plan.evidenceMessage}` : ""}`,
+        theme,
+      ),
+    );
+  }
+  return rows;
 }
 
 function slice(details: Record<string, unknown>): string {
