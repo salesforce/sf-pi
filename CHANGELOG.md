@@ -517,6 +517,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.217.1](https://github.com/salesforce/sf-pi/compare/v0.217.0...v0.217.1) (2026-07-03)
+
+
+### Bug Fixes
+
+* refresh native Salesforce requests on stale session ([d263862](https://github.com/salesforce/sf-pi/commit/d263862f84fd406d7b4144c6b88860b0007af28e))
+
 ## [0.217.0](https://github.com/salesforce/sf-pi/compare/v0.216.0...v0.217.0) (2026-07-02)
 
 
