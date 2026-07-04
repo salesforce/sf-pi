@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.217.2-2026-07-03",
-  "latestVersion": "0.217.2",
+  "revision": "release-0.218.0-2026-07-04",
+  "latestVersion": "0.218.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.217.2",
+      "id": "release-0.218.0",
       "kind": "update",
-      "title": "sf-pi v0.217.2 — sf-docs: harden release-note retrieval evidence",
-      "publishedAt": "2026-07-03T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.217.2",
+      "title": "sf-pi v0.218.0 — sf-docs: harden docs retrieval cards",
+      "publishedAt": "2026-07-04T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.218.0",
       "severity": "info",
-      "body": "sf-docs: harden release-note retrieval evidence"
+      "body": "sf-docs: harden docs retrieval cards"
     },
     {
       "id": "pi-0.73-required",
