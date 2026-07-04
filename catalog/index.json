@@ -472,6 +472,9 @@
         "lib/manager-action-panels.ts",
         "lib/preferences.ts",
         "lib/catalog-cache.ts",
+        "lib/collection-profiles.ts",
+        "lib/developer-reference.ts",
+        "lib/release-notes.ts",
         "lib/render.ts",
         "lib/types.ts"
       ],
@@ -494,7 +497,7 @@
     "entry": "extensions/sf-docs/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 3218
+    "srcLoc": 4120
   },
   {
     "id": "sf-feedback",

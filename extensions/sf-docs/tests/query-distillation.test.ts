@@ -76,6 +76,19 @@ describe("Docs Query Distillation", () => {
     expect(plan?.variants).toContain("lwc reference wire adapters record");
   });
 
+  it("routes Atlas developer reference URLs to legacydeveloper first", () => {
+    const plan = distillDocsQuery(
+      "https://developer.salesforce.com/docs/atlas.en-us.api_meta.meta/api_meta/customobject.htm",
+      { defaultCollection: "developer" },
+    );
+
+    expect(plan).toMatchObject({
+      host: "developer.salesforce.com",
+      collectionCandidates: ["legacydeveloper", "developer"],
+      semanticQuery: "customobject",
+    });
+  });
+
   it("detects seasonal release-note queries without a public release parameter", () => {
     const plan = distillDocsQuery("Whats new with Spring '26 release notes", {
       defaultCollection: "developer",
@@ -201,6 +214,36 @@ describe("Docs Query Distillation", () => {
     expect(ranked.find((result) => result.id === "patch")?.score).toBeGreaterThanOrEqual(
       ranked.find((result) => result.id === "main")!.score - 25,
     );
+  });
+
+  it("ranks exact original URL matches above neighboring docs with the same locator", () => {
+    const plan = distillDocsQuery(
+      "https://developer.salesforce.com/docs/atlas.en-us.api_meta.meta/api_meta/customobject.htm",
+      { defaultCollection: "developer" },
+    )!;
+    const request = buildDistilledSearchRequests(plan)[0]!;
+    const ranked = rankDistilledResults(plan, [
+      {
+        request,
+        results: [
+          {
+            id: "tooling-custom-object",
+            title: "CustomObject",
+            url: "https://developer.salesforce.com/docs/atlas.en-us.api_tooling.meta/api_tooling/tooling_api_objects_customobject.htm",
+          },
+          {
+            id: "metadata-custom-object",
+            title: "CustomObject",
+            url: "https://developer.salesforce.com/docs/atlas.en-us.api_meta.meta/api_meta/customobject.htm",
+          },
+        ],
+      },
+    ]);
+
+    expect(ranked.map((result) => result.id)).toEqual([
+      "metadata-custom-object",
+      "tooling-custom-object",
+    ]);
   });
 
   it("scores exact locator URL matches as high confidence", () => {

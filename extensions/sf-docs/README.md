@@ -31,9 +31,10 @@ Agent asks for official docs
 - **Cache boundary:** `lib/catalog-cache.ts` stores only the collection catalog. Search results, answers, and document bodies are never cached.
 - **Evidence workflow:** For implementation-sensitive answers, agents should search, fetch source documents, and then answer from inspected evidence. The `answer` action remains available for quick cited synthesis.
 - **Docs Query Distillation:** Salesforce-owned docs URLs, article-like locators, and seasonal release-note requests are turned into compact MCP-native search variants before `search`; failed URL `fetch` calls can recover by fetching the strongest indexed result ID.
+- **Docs Collection Profiles:** Static, public-safe collection profiles explain collection ownership, URL traits, coverage boundaries, and routing guidance alongside the live service catalog.
 - **MCP-native retrieval:** The wrapper uses documented service retrieval language such as `+release:<n>` and bare `guides:<slug>` boosts instead of maintaining a local docs index or release-note resolver.
 - **Evidence gates:** Release-specific answer paths must find matching official evidence before synthesis; if the docs service has no matching release slice, SF Docs reports the coverage gap instead of silently broadening to unrelated docs.
-- **Human output:** The tool separates compact Docs Result Cards from bounded Docs Evidence Packets, and compiled lookups include a visible query plan so humans can catch retrieval drift.
+- **Human output:** The tool separates compact Docs Result Cards from bounded Docs Evidence Packets, and compiled lookups include a visible query plan so humans can catch retrieval drift. Fetch packets include safe source metadata such as filename, source path, product, guide, locale, and release while keeping opaque content hashes in structured details / expanded human render only.
 
 ## Behavior Matrix
 
@@ -50,6 +51,19 @@ Agent asks for official docs
 | `sf_docs search`       | connected            | Searches one collection/version/locale slice; Salesforce-owned docs locators and seasonal release-note requests are distilled into high-signal MCP-native search variants. |
 | `sf_docs fetch`        | connected            | Fetches source text by IDs or URLs; failed Salesforce-owned docs URL fetches can recover through distilled search and indexed IDs while preserving release filters.        |
 | `sf_docs answer`       | connected            | Returns a cited synthesized answer; release-specific answers first pass an evidence gate.                                                                                  |
+
+## Collection Coverage
+
+SF Docs exposes the backing docs service through collection slices. Collection versions such as `current` are service slices, not Salesforce seasonal releases. Put seasonal release-note filters in the query, for example `+release:260`, rather than in the `version` parameter.
+
+Key routing guidance:
+
+- `admin` covers Salesforce Help/Admin docs, including latest product documentation and a bounded window of the latest three Salesforce release-note releases.
+- `developer` covers current developer guides on `developer.salesforce.com` that are not Atlas/reference pages.
+- `legacydeveloper` covers Atlas-backed developer reference and legacy developer documentation, including Apex Reference, Metadata API, Tooling API, Object Reference, Visualforce, and similar references.
+- `architect`, `tableau`, and `mulesoft` cover their respective documentation sites and have collection-specific versioning and guide semantics.
+
+SF Docs uses the Salesforce Docs service as its retrieval surface. It does not scrape Salesforce websites, download documentation bundles, build a local search index, or cache fetched document bodies.
 
 ## Settings
 
@@ -83,11 +97,14 @@ extensions/sf-docs/
     auth.ts                 ← implementation module
     catalog-cache.ts        ← implementation module
     client.ts               ← implementation module
+    collection-profiles.ts  ← implementation module
     command-surface.ts      ← implementation module
     config-panel.ts         ← implementation module
+    developer-reference.ts  ← implementation module
     manager-action-panels.ts← implementation module
     preferences.ts          ← implementation module
     query-distillation.ts   ← implementation module
+    release-notes.ts        ← implementation module
     render.ts               ← implementation module
     sf_docs-tool.ts         ← implementation module
     sse.ts                  ← implementation module
@@ -97,8 +114,11 @@ extensions/sf-docs/
     auth.test.ts            ← unit / smoke test
     catalog-cache.test.ts   ← unit / smoke test
     client.test.ts          ← unit / smoke test
+    collection-profiles.test.ts← unit / smoke test
+    developer-reference.test.ts← unit / smoke test
     preferences.test.ts     ← unit / smoke test
     query-distillation.test.ts← unit / smoke test
+    release-notes.test.ts   ← unit / smoke test
     render.test.ts          ← unit / smoke test
     sf_docs-tool.test.ts    ← unit / smoke test
     smoke.test.ts           ← unit / smoke test

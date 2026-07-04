@@ -42,6 +42,17 @@ pageSize: 5
 
 Known collections include `developer`, `admin`, `architect`, `legacydeveloper`, `mulesoft`, and `tableau`.
 
+Collection versions such as `current` are docs-service slices, not Salesforce seasonal releases. For Salesforce release-note lookups, keep `version="current"` and put seasonal releases in the query with retrieval language such as `+release:260`.
+
+Collection routing quick guide:
+
+- `admin` — Salesforce Help/Admin docs, latest product docs, and the latest three Salesforce release-note releases.
+- `developer` — current developer guides that do not use Atlas/reference URLs.
+- `legacydeveloper` — Atlas-backed developer references such as Apex Reference, Metadata API, Tooling API, Object Reference, Visualforce, and Chatter REST.
+- `architect` — architecture guidance and reference diagrams.
+- `tableau` — Tableau product and API docs.
+- `mulesoft` — MuleSoft and Anypoint Platform docs.
+
 ## Search tips
 
 - Quote exact phrases: `"Named Credentials"`.
@@ -57,6 +68,7 @@ Known collections include `developer`, `admin`, `architect`, `legacydeveloper`, 
 - Fetch IDs from the same `collection`, `version`, and `locale` that produced them.
 - If a supported Salesforce-owned docs URL fetch returns no usable body, SF Docs can recover by distilled search and then fetch the strongest indexed document ID. Release-note URL recovery preserves the URL's `release=` parameter as an MCP-native `+release:<n>` filter.
 - Prefer fetching the strongest 3–4 source candidates; `fetch` accepts more for compatibility, but the Docs Evidence Packet is globally bounded.
+- Fetch packets include safe source metadata such as filename, source path, base URL, product, guide, locale, and release. Opaque content hashes stay in structured details / expanded human render, not the default LLM packet text.
 - Use `markdown` when headings, code blocks, lists, or tables matter.
 - Use `text` for compact triage.
 - Avoid caching fetched docs in project files unless the user explicitly asks.
@@ -88,4 +100,5 @@ SF_DOCS_MCP_ENDPOINT=https://mcp.docs.salesforce.com/
 - Tokens are never stored in project settings.
 - Settings are non-secret preferences only.
 - The catalog cache stores only collection metadata, never search results, answer text, or fetched document bodies.
+- SF Docs uses the Salesforce Docs service as its retrieval surface; it does not scrape Salesforce websites, download documentation bundles, or build a local search index.
 - The extension uses native HTTP fetch plus a small local SSE parser; no MCP package is required.

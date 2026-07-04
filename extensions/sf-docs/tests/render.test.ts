@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 import { describe, expect, it } from "vitest";
-import { formatAnswer, formatFetch, formatSearch } from "../lib/render.ts";
+import { formatAnswer, formatCollections, formatFetch, formatSearch } from "../lib/render.ts";
 
 describe("sf-docs render", () => {
   it("renders visible search URLs and ids", () => {
@@ -42,6 +42,27 @@ describe("sf-docs render", () => {
     expect(formatSearch(details)).not.toContain("Snippet:");
     expect(formatSearch(details, undefined, { expanded: true })).toContain("Snippet:");
     expect(formatSearch({ ...details, displayDensity: "verbose" })).toContain("Snippet:");
+  });
+
+  it("renders collection profile summaries", () => {
+    const text = formatCollections({
+      collections: [{ collection: "admin", versions: ["current"], locales: ["en-us"] }],
+      capabilitySummaries: [{ collection: "admin", keyFilters: "+release:<n>" }],
+      collectionProfiles: [
+        {
+          collection: "admin",
+          coverage: "Latest Salesforce product documentation plus a bounded release-note window.",
+          releaseNotes:
+            "Salesforce release notes are available for the latest three release-note releases.",
+          references: "End-user and administrator help.",
+        },
+      ],
+    });
+
+    expect(text).toContain("2. Collection capabilities");
+    expect(text).toContain("owns Latest Salesforce product documentation");
+    expect(text).toContain("release notes Salesforce release notes are available");
+    expect(text).toContain("filters +release:<n>");
   });
 
   it("renders visible answer citations", () => {
@@ -99,6 +120,11 @@ describe("sf-docs render", () => {
           contentChars: 15000,
           llmReturnedChars: 12000,
           llmTruncated: true,
+          release: "260",
+          product: "Platform",
+          guides: "salesforce_platform",
+          filename: "release-notes/rn_apex.htm",
+          contentHash: "abcdef1234567890fedcba",
           headings: ["Apex", "Database Operations Run in User Mode by Default"],
           humanPreview: `Short preview. ${"B".repeat(300)} UNIQUE_FETCH_TAIL`,
         },
@@ -110,7 +136,10 @@ describe("sf-docs render", () => {
     );
     expect(text).toContain("abcdef12…");
     expect(text).toContain("LLM packet");
+    expect(text).toContain("🏷 release 260 · product Platform");
     expect(text).toContain("Headings: Apex");
+    expect(text).not.toContain("contentHash");
+    expect(text).not.toContain("fedcba");
     expect(text).not.toContain("UNIQUE_FETCH_TAIL");
   });
 
@@ -128,6 +157,7 @@ describe("sf-docs render", () => {
             contentChars: 20000,
             llmReturnedChars: 12000,
             llmTruncated: true,
+            contentHash: "abcdef1234567890fedcba",
             headings: ["Apex"],
             humanPreview: `${"C".repeat(1200)} UNIQUE_EXPANDED_TAIL`,
           },
@@ -139,6 +169,7 @@ describe("sf-docs render", () => {
 
     expect(text).toContain("Preview:");
     expect(text).toContain("truncated");
+    expect(text).toContain("contentHash abcdef12…");
     expect(text).not.toContain("UNIQUE_EXPANDED_TAIL");
   });
 });

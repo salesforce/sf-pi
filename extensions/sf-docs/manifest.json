@@ -22,6 +22,9 @@
       "lib/manager-action-panels.ts",
       "lib/preferences.ts",
       "lib/catalog-cache.ts",
+      "lib/collection-profiles.ts",
+      "lib/developer-reference.ts",
+      "lib/release-notes.ts",
       "lib/render.ts",
       "lib/types.ts"
     ],

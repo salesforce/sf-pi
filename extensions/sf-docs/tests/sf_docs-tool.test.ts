@@ -161,6 +161,112 @@ describe("sf_docs tool", () => {
     });
   });
 
+  it("routes high-confidence developer reference searches to legacydeveloper", async () => {
+    const oldToken = process.env.SF_DOCS_MCP_TOKEN;
+    const oldEndpoint = process.env.SF_DOCS_MCP_ENDPOINT;
+    process.env.SF_DOCS_MCP_TOKEN = "test-token";
+    process.env.SF_DOCS_MCP_ENDPOINT = "https://example.test/";
+    const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(String(init.body));
+      expect(body.params.name).toBe("search");
+      expect(body.params.arguments).toMatchObject({
+        collection: "legacydeveloper",
+        query: "guides:api_meta Metadata API CustomObject reference",
+      });
+      return docsResponse({
+        results: [
+          {
+            id: "custom-object",
+            title: "CustomObject",
+            url: "https://developer.salesforce.com/docs/atlas.en-us.api_meta.meta/api_meta/customobject.htm",
+          },
+        ],
+        totalCount: 1,
+      });
+    }) as unknown as typeof fetch;
+    vi.stubGlobal("fetch", fetchMock);
+
+    vi.resetModules();
+    const { registerSfDocsTool } = await import("../lib/sf_docs-tool.ts");
+    const registerTool = vi.fn();
+    registerSfDocsTool({ registerTool } as unknown as ExtensionAPI);
+    const tool = registerTool.mock.calls[0]?.[0];
+    const result = await tool.execute(
+      "id",
+      { action: "search", collection: "developer", query: "Metadata API CustomObject reference" },
+      undefined,
+      undefined,
+      {
+        cwd: process.cwd(),
+        modelRegistry: { getApiKeyForProvider: vi.fn(async () => undefined) },
+      },
+    );
+
+    if (oldToken === undefined) delete process.env.SF_DOCS_MCP_TOKEN;
+    else process.env.SF_DOCS_MCP_TOKEN = oldToken;
+    if (oldEndpoint === undefined) delete process.env.SF_DOCS_MCP_ENDPOINT;
+    else process.env.SF_DOCS_MCP_ENDPOINT = oldEndpoint;
+    vi.unstubAllGlobals();
+
+    expect(result.content[0].text).toContain("intent: developer_reference");
+    expect(result.content[0].text).toContain(
+      "collection override: developer → legacydeveloper (developer_reference_coverage)",
+    );
+    expect(result.details).toMatchObject({
+      ok: true,
+      action: "search",
+      collection: "legacydeveloper",
+      compiledQuery: "guides:api_meta Metadata API CustomObject reference",
+      collectionOverride: {
+        from: "developer",
+        to: "legacydeveloper",
+        reason: "developer_reference_coverage",
+      },
+    });
+  });
+
+  it("keeps weak modern developer searches in developer", async () => {
+    const oldToken = process.env.SF_DOCS_MCP_TOKEN;
+    const oldEndpoint = process.env.SF_DOCS_MCP_ENDPOINT;
+    process.env.SF_DOCS_MCP_TOKEN = "test-token";
+    process.env.SF_DOCS_MCP_ENDPOINT = "https://example.test/";
+    const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(String(init.body));
+      expect(body.params.name).toBe("search");
+      expect(body.params.arguments).toMatchObject({
+        collection: "developer",
+        query: "LWC wire adapters record",
+      });
+      return docsResponse({ results: [], totalCount: 0 });
+    }) as unknown as typeof fetch;
+    vi.stubGlobal("fetch", fetchMock);
+
+    vi.resetModules();
+    const { registerSfDocsTool } = await import("../lib/sf_docs-tool.ts");
+    const registerTool = vi.fn();
+    registerSfDocsTool({ registerTool } as unknown as ExtensionAPI);
+    const tool = registerTool.mock.calls[0]?.[0];
+    const result = await tool.execute(
+      "id",
+      { action: "search", collection: "developer", query: "LWC wire adapters record" },
+      undefined,
+      undefined,
+      {
+        cwd: process.cwd(),
+        modelRegistry: { getApiKeyForProvider: vi.fn(async () => undefined) },
+      },
+    );
+
+    if (oldToken === undefined) delete process.env.SF_DOCS_MCP_TOKEN;
+    else process.env.SF_DOCS_MCP_TOKEN = oldToken;
+    if (oldEndpoint === undefined) delete process.env.SF_DOCS_MCP_ENDPOINT;
+    else process.env.SF_DOCS_MCP_ENDPOINT = oldEndpoint;
+    vi.unstubAllGlobals();
+
+    expect(result.details).toMatchObject({ ok: true, action: "search", collection: "developer" });
+    expect(result.details.collectionOverride).toBeUndefined();
+  });
+
   it("returns balanced MCP capability summaries for collections", async () => {
     const oldToken = process.env.SF_DOCS_MCP_TOKEN;
     const oldEndpoint = process.env.SF_DOCS_MCP_ENDPOINT;
@@ -209,6 +315,10 @@ describe("sf_docs tool", () => {
     vi.unstubAllGlobals();
 
     expect(result.content[0].text).toContain("Collection alias: help → admin");
+    expect(result.content[0].text).toContain("coverage: Latest Salesforce product documentation");
+    expect(result.content[0].text).toContain(
+      "release notes: Salesforce release notes are available for the latest three release-note releases.",
+    );
     expect(result.content[0].text).toContain(
       "key filters: +release:<n>, guides:<slug>, +taxonomyIds:<guid>",
     );
@@ -219,6 +329,13 @@ describe("sf_docs tool", () => {
       ok: true,
       action: "collections",
       collectionAlias: "help → admin",
+      collectionProfiles: [
+        {
+          collection: "admin",
+          releaseNotes:
+            "Salesforce release notes are available for the latest three release-note releases.",
+        },
+      ],
     });
   });
 
@@ -378,14 +495,146 @@ describe("sf_docs tool", () => {
     vi.unstubAllGlobals();
 
     expect(searchQueries[0]).toContain("+release:252");
-    expect(result.content[0].text).toContain("evidence: no_matches");
+    expect(result.content[0].text).toContain("evidence: coverage_gap");
     expect(result.details).toMatchObject({
       ok: false,
       action: "fetch",
       reason: "insufficient_docs_evidence",
-      retrieval_status: "no_matches",
-      queryPlan: { evidenceStatus: "no_matches" },
+      retrieval_status: "coverage_gap",
+      queryPlan: { evidenceStatus: "coverage_gap" },
     });
+  });
+
+  it("keeps release-note searches as discovery when only current docs match release metadata", async () => {
+    const oldToken = process.env.SF_DOCS_MCP_TOKEN;
+    const oldEndpoint = process.env.SF_DOCS_MCP_ENDPOINT;
+    process.env.SF_DOCS_MCP_TOKEN = "test-token";
+    process.env.SF_DOCS_MCP_ENDPOINT = "https://example.test/";
+    const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(String(init.body));
+      expect(body.params.name).toBe("search");
+      return docsResponse({
+        results: [
+          {
+            id: "current-product-doc",
+            title: "Lightning Sales Console",
+            url: "https://help.salesforce.com/s/articleView?id=service.console_lex_sales_intro.htm&release=260&type=5",
+            release: "260",
+          },
+        ],
+        totalCount: 1,
+      });
+    }) as unknown as typeof fetch;
+    vi.stubGlobal("fetch", fetchMock);
+
+    vi.resetModules();
+    const { registerSfDocsTool } = await import("../lib/sf_docs-tool.ts");
+    const registerTool = vi.fn();
+    registerSfDocsTool({ registerTool } as unknown as ExtensionAPI);
+    const tool = registerTool.mock.calls[0]?.[0];
+    const result = await tool.execute(
+      "id",
+      { action: "search", query: "Sales Cloud Spring '26 release notes" },
+      undefined,
+      undefined,
+      {
+        cwd: process.cwd(),
+        modelRegistry: { getApiKeyForProvider: vi.fn(async () => undefined) },
+      },
+    );
+
+    if (oldToken === undefined) delete process.env.SF_DOCS_MCP_TOKEN;
+    else process.env.SF_DOCS_MCP_TOKEN = oldToken;
+    if (oldEndpoint === undefined) delete process.env.SF_DOCS_MCP_ENDPOINT;
+    else process.env.SF_DOCS_MCP_ENDPOINT = oldEndpoint;
+    vi.unstubAllGlobals();
+
+    expect(result.content[0].text).toContain("evidence: not_release_note_evidence");
+    expect(result.content[0].text).toContain("Lightning Sales Console");
+    expect(result.details).toMatchObject({
+      ok: true,
+      action: "search",
+      retrieval_status: "not_release_note_evidence",
+      queryPlan: { evidenceStatus: "not_release_note_evidence" },
+    });
+  });
+
+  it("fails release-note answers when citations are mostly current docs, not release-note evidence", async () => {
+    const oldToken = process.env.SF_DOCS_MCP_TOKEN;
+    const oldEndpoint = process.env.SF_DOCS_MCP_ENDPOINT;
+    process.env.SF_DOCS_MCP_TOKEN = "test-token";
+    process.env.SF_DOCS_MCP_ENDPOINT = "https://example.test/";
+    const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(String(init.body));
+      if (body.params.name === "search") {
+        return docsResponse({
+          results: [
+            {
+              id: "summer-release",
+              title: "Summer '26 Release Notes",
+              url: "https://help.salesforce.com/s/articleView?id=release-notes.salesforce_release_notes.htm&release=262&type=5",
+              release: "262",
+            },
+          ],
+          totalCount: 1,
+        });
+      }
+      expect(body.params.name).toBe("answer");
+      return docsResponse({
+        answer: "Noisy answer",
+        citations: [
+          {
+            title: "Salesforce Spiff Release Notes",
+            url: "https://help.salesforce.com/s/articleView?id=sales.rn_spiff.htm&release=262&type=5",
+            release: "262",
+            guides: "sales",
+          },
+          {
+            title: "Create a Release in Trailmaker Release",
+            url: "https://help.salesforce.com/s/articleView?id=sales.mth_create_release_in_tm_release.htm&release=262&type=5",
+            release: "262",
+            guides: "sales",
+          },
+          {
+            title: "Preview a Release in Trailmaker Release",
+            url: "https://help.salesforce.com/s/articleView?id=sales.mth_preview_content_on_mytrailhead.htm&release=262&type=5",
+            release: "262",
+            guides: "sales",
+          },
+        ],
+      });
+    }) as unknown as typeof fetch;
+    vi.stubGlobal("fetch", fetchMock);
+
+    vi.resetModules();
+    const { registerSfDocsTool } = await import("../lib/sf_docs-tool.ts");
+    const registerTool = vi.fn();
+    registerSfDocsTool({ registerTool } as unknown as ExtensionAPI);
+    const tool = registerTool.mock.calls[0]?.[0];
+    const result = await tool.execute(
+      "id",
+      { action: "answer", query: "Sales Cloud Summer '26 release notes" },
+      undefined,
+      undefined,
+      {
+        cwd: process.cwd(),
+        modelRegistry: { getApiKeyForProvider: vi.fn(async () => undefined) },
+      },
+    );
+
+    if (oldToken === undefined) delete process.env.SF_DOCS_MCP_TOKEN;
+    else process.env.SF_DOCS_MCP_TOKEN = oldToken;
+    if (oldEndpoint === undefined) delete process.env.SF_DOCS_MCP_ENDPOINT;
+    else process.env.SF_DOCS_MCP_ENDPOINT = oldEndpoint;
+    vi.unstubAllGlobals();
+
+    expect(result.details).toMatchObject({
+      ok: false,
+      action: "answer",
+      reason: "insufficient_docs_evidence",
+      retrieval_status: "not_release_note_evidence",
+    });
+    expect(result.content[0].text).toContain("did not satisfy the release-specific evidence gate");
   });
 
   it("biases seasonal release-note answers to the admin collection", async () => {
@@ -589,7 +838,7 @@ describe("sf_docs tool", () => {
       ok: false,
       action: "answer",
       reason: "insufficient_docs_evidence",
-      retrieval_status: "no_matches",
+      retrieval_status: "coverage_gap",
     });
     expect(result.content[0].text).toContain("Docs Query Plan:");
     expect(result.content[0].text).toContain("+release:252");
@@ -664,7 +913,18 @@ describe("sf_docs tool", () => {
                     {
                       id: "doc-1",
                       title: "Apex",
+                      description: "Apex metadata description for the evidence packet.",
                       url: "https://help.salesforce.com/docs/apex",
+                      filename: "release-notes/rn_apex.htm",
+                      sourcePath: "release-notes",
+                      baseUrl: "help.salesforce.com/s/articleView",
+                      locale: "en-us",
+                      product: "Platform",
+                      products: "Platform",
+                      guides: "salesforce_platform",
+                      release: "260",
+                      taxonomyIds: ["tax-1", "tax-2"],
+                      contentHash: "abcdef1234567890fedcba",
                       content: longBody,
                     },
                   ],
@@ -704,6 +964,16 @@ describe("sf_docs tool", () => {
 
     expect(result.content[0].text).toContain('<document index="1"');
     expect(result.content[0].text).toContain("Source URL: https://help.salesforce.com/docs/apex");
+    expect(result.content[0].text).toContain('filename="release-notes/rn_apex.htm"');
+    expect(result.content[0].text).toContain('sourcePath="release-notes"');
+    expect(result.content[0].text).toContain('baseUrl="help.salesforce.com/s/articleView"');
+    expect(result.content[0].text).toContain('product="Platform"');
+    expect(result.content[0].text).toContain('guides="salesforce_platform"');
+    expect(result.content[0].text).toContain('release="260"');
+    expect(result.content[0].text).toContain(
+      "Description: Apex metadata description for the evidence packet.",
+    );
+    expect(result.content[0].text).not.toContain("abcdef1234567890fedcba");
     expect(result.content[0].text).toContain("# Apex");
     expect(result.details).toMatchObject({
       ok: true,
@@ -713,6 +983,14 @@ describe("sf_docs tool", () => {
     });
     const documents = result.details.documents as Array<Record<string, unknown>>;
     expect(documents[0]?.content).toBeUndefined();
+    expect(documents[0]).toMatchObject({
+      filename: "release-notes/rn_apex.htm",
+      sourcePath: "release-notes",
+      baseUrl: "help.salesforce.com/s/articleView",
+      release: "260",
+      contentHash: "abcdef1234567890fedcba",
+      taxonomyIds: ["tax-1", "tax-2"],
+    });
     expect(documents[0]?.humanPreview).toContain("Apex");
     expect(JSON.stringify(result.details)).not.toContain("UNIQUE_DETAILS_BODY_TAIL");
   });

@@ -64,6 +64,7 @@ export interface DocsSearchResult {
   id?: string;
   url?: string;
   title?: string;
+  description?: string;
   collection?: string;
   version?: string;
   locale?: string;
@@ -71,6 +72,11 @@ export interface DocsSearchResult {
   products?: string;
   guides?: string;
   filename?: string;
+  sourcePath?: string;
+  baseUrl?: string;
+  release?: string | number;
+  taxonomyIds?: string | string[];
+  contentHash?: string;
   content?: string;
   [key: string]: unknown;
 }

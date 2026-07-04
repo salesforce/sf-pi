@@ -8,6 +8,14 @@ import path from "node:path";
 import { getDocsToken, resolveEndpoint } from "./auth.ts";
 import { DocsClient } from "./client.ts";
 import { formatCacheAge, readCatalogCache, writeCatalogCache } from "./catalog-cache.ts";
+import {
+  docsCollectionProfilesFor,
+  summarizeDocsCollectionProfile,
+} from "./collection-profiles.ts";
+import {
+  planDeveloperReferenceRouting,
+  type DeveloperReferenceRoutingPlan,
+} from "./developer-reference.ts";
 import { readEffectiveDocsPreferences } from "./preferences.ts";
 import { buildStatus } from "./status.ts";
 import { renderToolCall, renderToolResult, clipText } from "./render.ts";
@@ -30,6 +38,12 @@ import {
   type SfDocsDisplayDensity,
   type ToolResultShape,
 } from "./types.ts";
+import {
+  evaluateReleaseNoteEvidence,
+  normalizeReleaseValue,
+  resultHasReleaseNoteMarkers,
+  resultMatchesRelease,
+} from "./release-notes.ts";
 
 interface SearchResponse {
   results?: DocsSearchResult[];
@@ -59,7 +73,14 @@ interface DistilledSearchRun {
   ranked: RankedDistilledResult[];
 }
 
-type DocsEvidenceStatus = "ok" | "no_matches" | "wrong_release" | "insufficient" | "not_checked";
+type DocsEvidenceStatus =
+  | "ok"
+  | "no_matches"
+  | "wrong_release"
+  | "not_release_note_evidence"
+  | "insufficient"
+  | "coverage_gap"
+  | "not_checked";
 
 interface DocsQueryPlanSummary {
   original: string;
@@ -70,6 +91,9 @@ interface DocsQueryPlanSummary {
   filters: string[];
   boosts: string[];
   evidenceStatus: DocsEvidenceStatus;
+  intent?: string;
+  reason?: string;
+  collectionOverride?: { from: string; to: string; reason: string };
   evidenceMessage?: string;
 }
 
@@ -248,17 +272,26 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
             });
           }
           const pageSize = clamp(input.pageSize ?? prefs.defaultPageSize, 1, 60);
-          const distilled = distillDocsQuery(input.query, {
-            defaultCollection: slice.collection,
-            explicitCollection: input.collection ? slice.collection : undefined,
+          const referencePlan = planDeveloperReferenceRouting({
+            collection: slice.collection,
+            query: input.query,
+          });
+          const actionSlice = applyDeveloperReferenceRouting(slice, referencePlan);
+          const actionQuery = referencePlan?.compiledQuery ?? input.query;
+          const referenceQueryPlan = referencePlan
+            ? buildDeveloperReferenceQueryPlan(input.query, actionQuery, actionSlice, referencePlan)
+            : undefined;
+          const distilled = distillDocsQuery(actionQuery, {
+            defaultCollection: actionSlice.collection,
+            explicitCollection: input.collection ? actionSlice.collection : undefined,
           });
           if (distilled) {
             const distilledSearch = await runDistilledSearch(
               client,
               distilled,
               {
-                version: slice.version,
-                locale: slice.locale,
+                version: actionSlice.version,
+                locale: actionSlice.locale,
                 page: input.page ?? 1,
                 pageSize,
                 format: input.format,
@@ -270,21 +303,23 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
               totalCount: distilledSearch.ranked.length,
             };
             const queryPlan = buildQueryPlanSummary(distilled, distilledSearch, {
-              version: slice.version,
-              locale: slice.locale,
+              version: actionSlice.version,
+              locale: actionSlice.locale,
             });
+            if (referencePlan) applyDeveloperReferencePlanToQueryPlan(queryPlan, referencePlan);
             const text = [
               formatQueryPlanText(queryPlan),
               "",
               formatSearchToolText(input.query, response),
             ].join("\n");
             return ok("search", text, {
-              ...slice,
-              collection: distilled.collectionCandidates[0] ?? slice.collection,
+              ...actionSlice,
+              collection: distilled.collectionCandidates[0] ?? actionSlice.collection,
               query: input.query,
               ...response,
               retrieval_status: queryPlan.evidenceStatus,
               queryPlan,
+              collectionOverride: referencePlan?.collectionOverride,
               displayDensity: prefs.displayDensity,
               resolution: buildDistillationResolution(distilled, distilledSearch, {
                 evidenceStatus: queryPlan.evidenceStatus,
@@ -293,8 +328,8 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
           }
 
           const args: Record<string, unknown> = {
-            ...slice,
-            query: input.query,
+            ...actionSlice,
+            query: actionQuery,
             page: input.page ?? 1,
             pageSize,
           };
@@ -303,26 +338,30 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
           const serviceError = docsServiceError(response);
           if (serviceError) {
             return fail("search", serviceError, {
-              ...slice,
+              ...actionSlice,
               query: input.query,
               reason: "docs_service_error",
             });
           }
-          const text = formatSearchToolText(input.query, response);
+          const text = [
+            referenceQueryPlan ? formatQueryPlanText(referenceQueryPlan) : "",
+            formatSearchToolText(input.query, response),
+          ]
+            .filter(Boolean)
+            .join("\n\n");
           return ok("search", text, {
-            ...slice,
+            ...actionSlice,
             query: input.query,
+            compiledQuery: actionQuery !== input.query ? actionQuery : undefined,
             ...response,
+            queryPlan: referenceQueryPlan,
+            collectionOverride: referencePlan?.collectionOverride,
             displayDensity: prefs.displayDensity,
           });
         }
 
         if (input.action === "fetch") {
           const format = input.format ?? prefs.defaultFetchFormat;
-          const args: Record<string, unknown> = {
-            ...slice,
-            format,
-          };
           const requested: {
             ids?: string[];
             urls?: string[];
@@ -332,21 +371,38 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
           };
           if (input.ids?.length) {
             requested.ids = input.ids.slice(0, 12);
-            args.ids = requested.ids;
           } else if (input.urls?.length) {
             requested.urls = input.urls.slice(0, 12);
-            args.urls = requested.urls;
           } else {
             return fail("fetch", "sf_docs fetch requires ids or urls.", {
               reason: "missing_ids_or_urls",
               recover_via: { action: "search", required: ["query"] },
             });
           }
+          const referencePlan = planDeveloperReferenceRouting({
+            collection: slice.collection,
+            urls: requested.urls,
+          });
+          const actionSlice = applyDeveloperReferenceRouting(slice, referencePlan);
+          const referenceQueryPlan = referencePlan
+            ? buildDeveloperReferenceQueryPlan(
+                requested.urls?.[0] ?? requested.ids?.[0] ?? "fetch",
+                requested.urls?.[0] ?? requested.ids?.[0] ?? "fetch",
+                actionSlice,
+                referencePlan,
+              )
+            : undefined;
+          const args: Record<string, unknown> = {
+            ...actionSlice,
+            format,
+          };
+          if (requested.ids) args.ids = requested.ids;
+          if (requested.urls) args.urls = requested.urls;
           const response = asFetchResponse(await client.callTool("fetch", args, signal));
           const serviceError = docsServiceError(response);
           if (serviceError) {
             return fail("fetch", serviceError, {
-              ...slice,
+              ...actionSlice,
               requested,
               reason: "docs_service_error",
             });
@@ -355,8 +411,8 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
           const recoveryPlan =
             requested.urls?.length === 1
               ? distillDocsQuery(requested.urls[0], {
-                  defaultCollection: slice.collection,
-                  explicitCollection: input.collection ? slice.collection : undefined,
+                  defaultCollection: actionSlice.collection,
+                  explicitCollection: input.collection ? actionSlice.collection : undefined,
                 })
               : undefined;
           if (recoveryPlan && fetchLooksRecoverable(docs)) {
@@ -364,8 +420,8 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
               client,
               recoveryPlan,
               {
-                version: slice.version,
-                locale: slice.locale,
+                version: actionSlice.version,
+                locale: actionSlice.locale,
                 format,
               },
               signal,
@@ -373,8 +429,8 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
             if (recovery.recovered) {
               const packet = buildFetchEvidencePacket(recovery.docs, recovery.slice);
               const queryPlan = buildQueryPlanSummary(recoveryPlan, recovery.search, {
-                version: slice.version,
-                locale: slice.locale,
+                version: actionSlice.version,
+                locale: actionSlice.locale,
               });
               const note = `Recovered by searching distilled docs locator: ${recoveryPlan.semanticQuery}`;
               return ok(
@@ -400,10 +456,10 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
               );
             }
 
-            const packet = buildFetchEvidencePacket(docs, slice);
+            const packet = buildFetchEvidencePacket(docs, actionSlice);
             const queryPlan = buildQueryPlanSummary(recoveryPlan, recovery.search, {
-              version: slice.version,
-              locale: slice.locale,
+              version: actionSlice.version,
+              locale: actionSlice.locale,
             });
             const text = [
               formatQueryPlanText(queryPlan),
@@ -439,10 +495,18 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
             return ok("fetch", text, details);
           }
 
-          const packet = buildFetchEvidencePacket(docs, slice);
-          return ok("fetch", packet.text || "No documents returned.", {
-            ...slice,
+          const packet = buildFetchEvidencePacket(docs, actionSlice);
+          const text = [
+            referenceQueryPlan ? formatQueryPlanText(referenceQueryPlan) : "",
+            packet.text || "No documents returned.",
+          ]
+            .filter(Boolean)
+            .join("\n\n");
+          return ok("fetch", text, {
+            ...actionSlice,
             requested,
+            queryPlan: referenceQueryPlan,
+            collectionOverride: referencePlan?.collectionOverride,
             displayDensity: prefs.displayDensity,
             documents: packet.documents,
             totalDocuments: packet.documents.length,
@@ -458,9 +522,18 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
               recover_via: { ask: "Provide a concise Salesforce documentation question." },
             });
           }
-          const distilled = distillDocsQuery(input.query, {
-            defaultCollection: slice.collection,
-            explicitCollection: input.collection ? slice.collection : undefined,
+          const referencePlan = planDeveloperReferenceRouting({
+            collection: slice.collection,
+            query: input.query,
+          });
+          const actionSlice = applyDeveloperReferenceRouting(slice, referencePlan);
+          const actionQuery = referencePlan?.compiledQuery ?? input.query;
+          const referenceQueryPlan = referencePlan
+            ? buildDeveloperReferenceQueryPlan(input.query, actionQuery, actionSlice, referencePlan)
+            : undefined;
+          const distilled = distillDocsQuery(actionQuery, {
+            defaultCollection: actionSlice.collection,
+            explicitCollection: input.collection ? actionSlice.collection : undefined,
           });
           const answerBias = distilled?.releaseHint && distilled.releaseNoteIntent;
           let queryPlan: DocsQueryPlanSummary | undefined;
@@ -468,20 +541,20 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
             const preflight = await runDistilledSearch(
               client,
               distilled,
-              { version: slice.version, locale: slice.locale, pageSize: 5 },
+              { version: actionSlice.version, locale: actionSlice.locale, pageSize: 5 },
               signal,
             );
             queryPlan = buildQueryPlanSummary(distilled, preflight, {
-              version: slice.version,
-              locale: slice.locale,
+              version: actionSlice.version,
+              locale: actionSlice.locale,
             });
             if (queryPlan.evidenceStatus !== "ok") {
               return fail(
                 "answer",
                 `${formatQueryPlanText(queryPlan)}\n\nSF Docs could not find sufficient official documentation evidence for this release-specific question.`,
                 {
-                  ...slice,
-                  collection: distilled.collectionCandidates[0] ?? slice.collection,
+                  ...actionSlice,
+                  collection: distilled.collectionCandidates[0] ?? actionSlice.collection,
                   query: input.query,
                   reason: "insufficient_docs_evidence",
                   retrieval_status: queryPlan.evidenceStatus,
@@ -495,11 +568,15 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
             }
           }
           const answerSlice = answerBias
-            ? { ...slice, collection: distilled.collectionCandidates[0] ?? slice.collection }
-            : slice;
+            ? {
+                ...actionSlice,
+                collection: distilled.collectionCandidates[0] ?? actionSlice.collection,
+              }
+            : actionSlice;
+          if (!queryPlan && referenceQueryPlan) queryPlan = referenceQueryPlan;
           const answerQuery = answerBias
-            ? (queryPlan?.compiledQuery ?? uniqueAnswerQuery(input.query, distilled.variants))
-            : input.query;
+            ? (queryPlan?.compiledQuery ?? uniqueAnswerQuery(actionQuery, distilled.variants))
+            : actionQuery;
           const response = asAnswerResponse(
             await client.callTool(
               "answer",
@@ -548,6 +625,7 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
               ...response,
               retrieval_status: queryPlan?.evidenceStatus,
               queryPlan,
+              collectionOverride: referencePlan?.collectionOverride,
               displayDensity: prefs.displayDensity,
               answerChars: answer.length,
               resolution: answerBias
@@ -568,8 +646,22 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
         }
 
         if (input.action === "explain") {
+          const referencePlan = planDeveloperReferenceRouting({
+            collection: slice.collection,
+            query: input.query,
+            url: input.url,
+          });
+          const actionSlice = applyDeveloperReferenceRouting(slice, referencePlan);
+          const referenceQueryPlan = referencePlan
+            ? buildDeveloperReferenceQueryPlan(
+                input.url ?? input.id ?? input.query ?? "explain",
+                input.query?.trim() || "Summarize this document.",
+                actionSlice,
+                referencePlan,
+              )
+            : undefined;
           const args: Record<string, unknown> = {
-            ...slice,
+            ...actionSlice,
             query: input.query?.trim() || "Summarize this document.",
             cite: input.cite ?? prefs.includeCitations,
           };
@@ -584,14 +676,20 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
           const response = asAnswerResponse(await client.callTool("explain", args, signal));
           const serviceError = docsServiceError(response);
           if (serviceError)
-            return fail("explain", serviceError, { ...slice, reason: "docs_service_error" });
+            return fail("explain", serviceError, { ...actionSlice, reason: "docs_service_error" });
           const answer = response.answer ?? response.explanation ?? "";
-          return ok("explain", formatAnswerText(response), {
-            ...slice,
-            ...response,
-            displayDensity: prefs.displayDensity,
-            answerChars: answer.length,
-          });
+          return ok(
+            "explain",
+            `${referenceQueryPlan ? `${formatQueryPlanText(referenceQueryPlan)}\n\n` : ""}${formatAnswerText(response)}`,
+            {
+              ...actionSlice,
+              ...response,
+              queryPlan: referenceQueryPlan,
+              collectionOverride: referencePlan?.collectionOverride,
+              displayDensity: prefs.displayDensity,
+              answerChars: answer.length,
+            },
+          );
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
@@ -614,6 +712,44 @@ function resolveCollectionName(collection: string): { collection: string; alias?
     return { collection: "admin", alias: `${collection} → admin` };
   }
   return { collection };
+}
+
+function applyDeveloperReferenceRouting(
+  slice: { collection: string; version: string; locale: string },
+  plan: DeveloperReferenceRoutingPlan | undefined,
+): { collection: string; version: string; locale: string } {
+  return plan ? { ...slice, collection: plan.collection } : slice;
+}
+
+function applyDeveloperReferencePlanToQueryPlan(
+  queryPlan: DocsQueryPlanSummary,
+  plan: DeveloperReferenceRoutingPlan,
+): void {
+  queryPlan.intent = plan.intent;
+  queryPlan.reason = plan.reason;
+  queryPlan.collectionOverride = plan.collectionOverride;
+}
+
+function buildDeveloperReferenceQueryPlan(
+  original: string,
+  compiledQuery: string,
+  slice: { collection: string; version: string; locale: string },
+  plan: DeveloperReferenceRoutingPlan,
+): DocsQueryPlanSummary {
+  const guideBoost = compiledQuery.match(/\bguides:[a-z0-9_]+\b/iu)?.[0];
+  return {
+    original,
+    compiledQuery,
+    collection: slice.collection,
+    version: slice.version,
+    locale: slice.locale,
+    filters: [],
+    boosts: guideBoost ? [guideBoost] : [],
+    evidenceStatus: "not_checked",
+    intent: plan.intent,
+    reason: plan.reason,
+    collectionOverride: plan.collectionOverride,
+  };
 }
 
 async function runDistilledSearch(
@@ -713,8 +849,8 @@ function buildQueryPlanSummary(
   search: DistilledSearchRun,
   slice: { version: string; locale: string },
 ): DocsQueryPlanSummary {
-  const evidence = evaluateEvidence(plan, search.ranked);
   const firstRequest = search.requests[0];
+  const evidence = evaluateEvidence(plan, search.ranked, firstRequest?.collection);
   return {
     original: plan.original,
     compiledQuery: firstRequest?.query ?? plan.variants[0] ?? plan.semanticQuery,
@@ -731,36 +867,51 @@ function buildQueryPlanSummary(
 function evaluateEvidence(
   plan: DocsQueryDistillationPlan,
   results: DocsSearchResult[],
+  collection?: string,
 ): DocsEvidenceEvaluation {
-  if (!plan.releaseHint?.release || !plan.releaseNoteIntent) {
-    return { status: "not_checked" };
-  }
-  if (!results.length) {
-    return {
-      status: "no_matches",
-      message: `No documents matched release ${plan.releaseHint.release}.`,
-    };
-  }
-  const release = plan.releaseHint.release;
-  const hasReleaseMatch = results.some((result) => resultMatchesRelease(result, release));
-  if (!hasReleaseMatch) {
-    return {
-      status: "wrong_release",
-      message: `Returned documents did not match release ${plan.releaseHint.release}.`,
-    };
-  }
-  return { status: "ok" };
+  return evaluateReleaseNoteEvidence({
+    release: plan.releaseHint?.release,
+    releaseNoteIntent: plan.releaseNoteIntent,
+    collection,
+    results,
+  });
 }
 
 function evaluateAnswerCitationEvidence(
   plan: DocsQueryDistillationPlan,
   citations: DocsCitation[],
 ): DocsEvidenceEvaluation {
-  const releaseEvidence = evaluateEvidence(plan, citations);
+  const releaseEvidence = evaluateEvidence(
+    plan,
+    citations,
+    citations[0]?.collection ?? plan.collectionCandidates[0],
+  );
   if (releaseEvidence.status !== "ok") return releaseEvidence;
-  if (!plan.retrievalBoosts.length) return { status: "ok" };
 
   const visibleCitations = citations.slice(0, Math.min(5, citations.length));
+  if (plan.releaseHint?.release && plan.releaseNoteIntent && visibleCitations.length) {
+    const release = plan.releaseHint.release;
+    const releaseNoteMatches = visibleCitations.filter(
+      (citation) =>
+        resultMatchesRelease(citation, release) && resultHasReleaseNoteMarkers(citation),
+    ).length;
+    const requiredReleaseNotes = Math.max(1, Math.ceil(visibleCitations.length / 2));
+    const firstCitation = visibleCitations[0];
+    const firstIsReleaseNoteEvidence = Boolean(
+      firstCitation &&
+      resultMatchesRelease(firstCitation, release) &&
+      resultHasReleaseNoteMarkers(firstCitation),
+    );
+    if (!firstIsReleaseNoteEvidence || releaseNoteMatches < requiredReleaseNotes) {
+      return {
+        status: "not_release_note_evidence",
+        message: `Only ${releaseNoteMatches} of the first ${visibleCitations.length} citations were release-note evidence for release ${release}.`,
+      };
+    }
+  }
+
+  if (!plan.retrievalBoosts.length) return { status: "ok" };
+
   const matches = visibleCitations.filter((citation) =>
     plan.retrievalBoosts.some((boost) => resultMatchesGuideBoost(citation, boost)),
   ).length;
@@ -778,13 +929,6 @@ function versionLooksLikeSalesforceRelease(version: string): boolean {
   const release = normalizeReleaseValue(version);
   return Boolean(
     release && /^\d{3}$/u.test(release) && version !== "current" && version !== "next",
-  );
-}
-
-function resultMatchesRelease(result: DocsSearchResult, release: string): boolean {
-  return (
-    normalizeReleaseValue(result.release) === release ||
-    Boolean(result.url?.includes(`release=${release}`))
   );
 }
 
@@ -808,19 +952,19 @@ function resultMatchesGuideBoost(result: DocsSearchResult, boost: string): boole
   return haystack.includes(slug.replace(/_/gu, " ")) || haystack.includes(compactSlug);
 }
 
-function normalizeReleaseValue(value: unknown): string | undefined {
-  if (typeof value === "number") return String(Math.trunc(value));
-  if (typeof value !== "string") return undefined;
-  return value.match(/^\d+/u)?.[0];
-}
-
 function formatQueryPlanText(plan: DocsQueryPlanSummary): string {
-  const lines = [
-    "Docs Query Plan:",
-    `- original: ${plan.original}`,
+  const lines = ["Docs Query Plan:", `- original: ${plan.original}`];
+  if (plan.intent) lines.push(`- intent: ${plan.intent}`);
+  if (plan.collectionOverride) {
+    lines.push(
+      `- collection override: ${plan.collectionOverride.from} → ${plan.collectionOverride.to} (${plan.collectionOverride.reason})`,
+    );
+  }
+  if (plan.reason) lines.push(`- reason: ${plan.reason}`);
+  lines.push(
     `- compiled: ${plan.compiledQuery}`,
     `- slice: ${plan.collection}/${plan.version}/${plan.locale}`,
-  ];
+  );
   const filters = [...plan.filters, ...plan.boosts];
   if (filters.length) lines.push(`- filters/boosts: ${filters.join(" ")}`);
   lines.push(
@@ -887,12 +1031,22 @@ function collectionsResult(
   collectionAlias?: string,
 ): ToolResultShape {
   const summaries = collections.map(summarizeCollectionCapabilities);
+  const collectionProfiles = docsCollectionProfilesFor(
+    collections.map((collection) => collection.collection),
+  ).map(summarizeDocsCollectionProfile);
+  const profileByCollection = new Map(
+    collectionProfiles.map((profile) => [profile.collection, profile]),
+  );
   const lines: string[] = [];
   if (collectionAlias) lines.push(`Collection alias: ${collectionAlias}`, "");
   for (const summary of summaries) {
     lines.push(
       `${summary.collection}: versions=${summary.versions || "-"}; locales=${summary.locales || "-"}; formats=${summary.formats || "-"}`,
     );
+    const profile = profileByCollection.get(summary.collection);
+    if (profile?.coverage) lines.push(`  coverage: ${profile.coverage}`);
+    if (profile?.releaseNotes) lines.push(`  release notes: ${profile.releaseNotes}`);
+    if (profile?.references) lines.push(`  references: ${profile.references}`);
     if (summary.extraFields) lines.push(`  extraFields: ${summary.extraFields}`);
     if (summary.keyFilters) lines.push(`  key filters: ${summary.keyFilters}`);
     if (summary.landmarks) lines.push(`  landmarks: ${summary.landmarks}`);
@@ -901,6 +1055,7 @@ function collectionsResult(
   return ok("collections", lines.join("\n"), {
     collections,
     capabilitySummaries: summaries,
+    collectionProfiles,
     cache,
     collectionAlias,
     displayDensity,
@@ -940,10 +1095,16 @@ interface FetchEvidenceDocument {
   id?: string;
   url?: string;
   title: string;
+  description?: string;
   product?: string;
   products?: string;
   guides?: string;
   filename?: string;
+  sourcePath?: string;
+  baseUrl?: string;
+  release?: string | number;
+  taxonomyIds?: string | string[];
+  contentHash?: string;
   status: "ok" | "error";
   error?: string;
   contentChars: number;
@@ -993,10 +1154,19 @@ function buildFetchEvidencePacket(
       id: doc.id,
       url: doc.url,
       title,
+      description: typeof doc.description === "string" ? doc.description : undefined,
       product: typeof doc.product === "string" ? doc.product : undefined,
       products: typeof doc.products === "string" ? doc.products : undefined,
       guides: typeof doc.guides === "string" ? doc.guides : undefined,
       filename: typeof doc.filename === "string" ? doc.filename : undefined,
+      sourcePath: typeof doc.sourcePath === "string" ? doc.sourcePath : undefined,
+      baseUrl: typeof doc.baseUrl === "string" ? doc.baseUrl : undefined,
+      release:
+        typeof doc.release === "string" || typeof doc.release === "number"
+          ? doc.release
+          : undefined,
+      taxonomyIds: normalizeTaxonomyIds(doc.taxonomyIds),
+      contentHash: typeof doc.contentHash === "string" ? doc.contentHash : undefined,
       status: doc.error ? "error" : "ok",
       error: doc.error,
       contentChars,
@@ -1008,9 +1178,23 @@ function buildFetchEvidencePacket(
     });
 
     bodyLines.push(
-      `<document index="${index + 1}" id="${escapeAttribute(doc.id ?? "")}" title="${escapeAttribute(title)}" url="${escapeAttribute(doc.url ?? "")}" contentChars="${contentChars}" returnedChars="${body.length}" truncated="${llmTruncated}" metadataOnly="${metadataOnly}" status="${doc.error ? "error" : "ok"}">`,
+      `<document ${documentAttributes(doc, {
+        index: index + 1,
+        title,
+        contentChars,
+        returnedChars: body.length,
+        truncated: llmTruncated,
+        metadataOnly,
+        status: doc.error ? "error" : "ok",
+        locale: slice.locale,
+      })}>`,
     );
     if (doc.url) bodyLines.push(`Source URL: ${doc.url}`);
+    const description = previewPlainText(
+      typeof doc.description === "string" ? doc.description : "",
+      500,
+    );
+    if (description) bodyLines.push(`Description: ${description}`);
     if (doc.error) {
       bodyLines.push(`Error: ${doc.error}`);
     } else if (body) {
@@ -1074,6 +1258,50 @@ function decodeHtmlEntities(value: string): string {
     .replace(/&gt;/gi, ">")
     .replace(/&quot;/gi, '"')
     .replace(/&#39;/gi, "'");
+}
+
+function documentAttributes(
+  doc: DocsDocument,
+  base: {
+    index: number;
+    title: string;
+    contentChars: number;
+    returnedChars: number;
+    truncated: boolean;
+    metadataOnly: boolean;
+    status: "ok" | "error";
+    locale: string;
+  },
+): string {
+  const attributes: Array<[string, string | number | boolean | undefined]> = [
+    ["index", base.index],
+    ["id", doc.id],
+    ["title", base.title],
+    ["url", doc.url],
+    ["filename", doc.filename],
+    ["sourcePath", doc.sourcePath],
+    ["baseUrl", doc.baseUrl],
+    ["locale", doc.locale ?? base.locale],
+    ["product", doc.product],
+    ["products", doc.products],
+    ["guides", doc.guides],
+    ["release", doc.release],
+    ["contentChars", base.contentChars],
+    ["returnedChars", base.returnedChars],
+    ["truncated", base.truncated],
+    ["metadataOnly", base.metadataOnly],
+    ["status", base.status],
+  ];
+  return attributes
+    .filter(([, value]) => value !== undefined && value !== "")
+    .map(([key, value]) => `${key}="${escapeAttribute(String(value))}"`)
+    .join(" ");
+}
+
+function normalizeTaxonomyIds(value: unknown): string | string[] | undefined {
+  if (typeof value === "string") return value;
+  if (Array.isArray(value) && value.every((item) => typeof item === "string")) return value;
+  return undefined;
 }
 
 function escapeAttribute(value: string): string {

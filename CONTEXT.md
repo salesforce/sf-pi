@@ -16,17 +16,25 @@ _Avoid_: release filter API, release resolver, release notes crawler, docs versi
 A lightweight cue that the user is looking for Salesforce release-note documentation, such as `release notes`, `what's new`, or a Help article ID under `release-notes.`. It can shape documentation lookup only when paired with stronger context, such as a **Seasonal Release Hint**, a Salesforce Help locator, or explicit release-note wording; plain product release-note queries should remain normal documentation searches.
 _Avoid_: release-note mode, release-note resolver, product release override
 
+**Release-Note Evidence**:
+Official documentation evidence that satisfies a release-note lookup by matching the requested Salesforce seasonal release and carrying release-note markers such as release-note URL paths, article IDs, filenames, titles, or collection metadata. It prevents current product docs with matching release metadata from being treated as release-note grounding by themselves.
+_Avoid_: release-note-shaped result, release-note mode, release page guess, current-doc fallback
+
 **MCP-Native Query Compilation**:
 The SF Docs behavior of turning a user's documentation intent into the smallest useful query that uses documented Salesforce Docs MCP retrieval language, such as collection filters, guide boosts, or seasonal release filters, before requesting documents. It improves use of the backing docs service without creating a separate docs search product.
 _Avoid_: custom search engine, release-note resolver, local release index, web fallback
 
 **Docs Evidence Gate**:
-A lightweight SF Docs check that official documentation results satisfy the user's explicit constraints, such as requested product, locale, or seasonal release, before treating them as sufficient grounding evidence. It should report an evidence gap when the docs service returns only unrelated or wrong-slice documents.
+A lightweight SF Docs check that official documentation results satisfy the user's explicit constraints, such as requested product, locale, or seasonal release, before treating them as sufficient grounding evidence. It should report an evidence gap when the docs service returns only unrelated or wrong-slice documents; for release-note lookups, it distinguishes unavailable collection coverage from documents that merely share current-release metadata but are not **Release-Note Evidence**.
 _Avoid_: answer grader, semantic verifier, hidden fallback search, confidence score product
 
 **Docs Capability Summary**:
 A balanced SF Docs presentation of the backing documentation service's collection capabilities, showing enough retrieval filters, landmarks, extra fields, and fetch hints for humans and agents to understand why a lookup path was chosen without dumping the full service catalog every time.
 _Avoid_: raw MCP catalog dump, hidden retrieval hints, static cheatsheet substitute, verbose schema browser
+
+**Docs Collection Profile**:
+A small SF Docs description of one backing documentation collection's ownership, URL traits, coverage boundaries, and preferred retrieval hints. It helps SF Docs route and validate documentation lookup without creating a local documentation index or exposing upstream ingestion details.
+_Avoid_: upstream ingestion profile, source crawler, local docs index, ingestion manifest
 
 **Docs Query Plan**:
 A compact, visible explanation of a compiled SF Docs lookup, including the original user wording, the MCP-native query sent to the docs service, the collection slice, the retrieval filters or boosts used, and the resulting evidence status.

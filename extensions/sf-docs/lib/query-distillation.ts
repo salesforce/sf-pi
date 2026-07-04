@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Deterministic docs-locator query distillation for Salesforce-owned docs URLs. */
+import { isAtlasDeveloperReferenceLocator } from "./developer-reference.ts";
 import type { DocsSearchResult } from "./types.ts";
 
 const HOST_COLLECTIONS: Record<string, string[]> = {
@@ -106,7 +107,7 @@ export function distillDocsQuery(
       locator: extracted.locator,
       contextLocator: extracted.contextLocator,
       collectionCandidates: mergeCollections(
-        HOST_COLLECTIONS[docsUrl.hostname.toLowerCase()] ?? [],
+        collectionsForDocsUrl(docsUrl, options.defaultCollection),
         options.explicitCollection,
       ),
       releaseHint,
@@ -285,6 +286,14 @@ function buildSeasonalReleasePlan(
   };
 }
 
+function collectionsForDocsUrl(url: URL, defaultCollection: string): string[] {
+  const hostCollections = HOST_COLLECTIONS[url.hostname.toLowerCase()] ?? [defaultCollection];
+  if (isAtlasDeveloperReferenceLocator(url.href)) {
+    return unique(["legacydeveloper", ...hostCollections]);
+  }
+  return hostCollections;
+}
+
 function parseSupportedDocsUrl(input: string): URL | undefined {
   let url: URL;
   try {
@@ -332,6 +341,7 @@ function scoreResult(
   fallbackCollection: boolean,
 ): number {
   let score = 0;
+  if (originalUrlMatchesResult(plan, result.url)) score += 250;
   if (locatorIsInUrl(plan, result.url)) score += 100;
   const titleOverlap = overlapRatio(plan.semanticTokens, result.title ?? "");
   const snippetOverlap = overlapRatio(plan.semanticTokens, result.content ?? "");
@@ -453,6 +463,20 @@ function normalizeReleaseValue(value: unknown): string | undefined {
   if (typeof value === "number") return String(Math.trunc(value));
   if (typeof value !== "string") return undefined;
   return value.match(/^\d+/u)?.[0];
+}
+
+function originalUrlMatchesResult(plan: DocsQueryDistillationPlan, resultUrl?: string): boolean {
+  if (plan.source !== "url" || !resultUrl) return false;
+  try {
+    const original = new URL(plan.original);
+    const result = new URL(resultUrl);
+    return (
+      original.hostname.toLowerCase() === result.hostname.toLowerCase() &&
+      normalizeComparable(original.pathname) === normalizeComparable(result.pathname)
+    );
+  } catch {
+    return false;
+  }
 }
 
 function locatorIsInUrl(plan: DocsQueryDistillationPlan, url?: string): boolean {

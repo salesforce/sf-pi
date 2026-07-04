@@ -71,3 +71,8 @@ or accidentally contradicted in extension READMEs.
 - [0066: Pi 0.80.2 Runtime Floor](./0066-pi-0802-runtime-floor.md)
 - [0067: Data 360 Run Digest Presentation](./0067-data-360-run-digest-presentation.md)
 - [0068: Fresh Ephemeral Herdr Lanes](./0068-fresh-ephemeral-herdr-lanes.md)
+- [0069: SF Apex is an API-native Apex Lifecycle Extension](./0069-sf-apex-api-native-lifecycle-extension.md)
+- [0070: SF SOQL is an API-native Query Lifecycle Extension](./0070-sf-soql-api-native-query-lifecycle-extension.md)
+- [0071: SF LWC is a local-native LWC Lifecycle Extension](./0071-sf-lwc-local-native-lifecycle-extension.md)
+- [0072: Status Footer Prefers Last-Known Usable Status](./0072-status-footer-prefers-last-known-usable-status.md)
+- [0073: SF Docs Routes Developer Reference Lookups to LegacyDeveloper](./0073-sf-docs-routes-developer-reference-lookups-to-legacydeveloper.md)
