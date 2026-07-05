@@ -30,16 +30,17 @@
  * - Keeps the runtime spine in this file while pushing settings/status helpers to lib/
  *
  * Configuration:
- * - SF_LLM_GATEWAY_INTERNAL_BASE_URL   optional automation fallback. Normal users
+ * - SF_LLM_GATEWAY_BASE_URL            optional automation fallback. Normal users
  *                                       should configure the endpoint via setup.
  *                                       Saved config wins over env vars to avoid
  *                                       stale shell/Keychain exports shadowing new
  *                                       pasted values.
- * - SF_LLM_GATEWAY_INTERNAL_API_KEY    optional automation fallback. Normal users
+ * - SF_LLM_GATEWAY_API_KEY             optional automation fallback. Normal users
  *                                       should paste/rotate keys with /login or setup.
- * - SF_LLM_GATEWAY_INTERNAL_BETAS      optional — comma-separated Anthropic beta
+ * - SF_LLM_GATEWAY_BETAS               optional — comma-separated Anthropic beta
  *                                       header values. When set, only listed values are
  *                                       active. When unset, model defaults apply.
+ *                                       Legacy SF_LLM_GATEWAY_INTERNAL_* aliases still work.
  *
  * Commands:
  * - /sf-llm-gateway                     open Manager detail page (UI) or text status (headless)
@@ -1295,7 +1296,7 @@ async function handleFixCaBundleCommand(
           "No valid PEM bundle was found at the well-known paths and no caBundleSource",
           "is configured. Either:",
           "  - save your bundle's absolute path into saved caBundleCandidates and rerun, or",
-          "  - set saved caBundleSource (or SF_LLM_GATEWAY_INTERNAL_CA_BUNDLE_SOURCE) to a",
+          "  - set saved caBundleSource (or SF_LLM_GATEWAY_CA_BUNDLE_SOURCE) to a",
           "    download URL the agent can fetch the PEM from, then rerun.",
           "",
           "Public sf-pi ships no default download URL on purpose: the bundle source is",

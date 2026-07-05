@@ -24,7 +24,7 @@ _Core manager — provides /sf-pi commands_
 
 ## Provider
 
-### [SF LLM Gateway Internal](./extensions/sf-llm-gateway-internal)
+### [SF LLM Gateway](./extensions/sf-llm-gateway-internal)
 
 _Salesforce LLM Gateway provider with model discovery_
 

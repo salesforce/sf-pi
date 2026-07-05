@@ -4,11 +4,13 @@ import type { ExtensionDoctorReport } from "../../../lib/common/doctor/registry.
 import {
   API_KEY_ENV,
   CA_BUNDLE_SOURCE_ENV,
+  LEGACY_API_KEY_ENV,
   describeApiKey,
   describeConfigValue,
   FRIENDLY_COMMAND_NAME,
   getGatewayConfig,
   getMergedSavedGatewayConfig,
+  readGatewayEnv,
   type ConfigSource,
 } from "./config.ts";
 import { toGatewayOpenAiBaseUrl, toGatewayRootBaseUrl } from "./gateway-url.ts";
@@ -290,7 +292,7 @@ function buildTlsHintRecommendations(
 function buildDoctorKeySourceRecommendations(cwd: string): string[] {
   const config = getGatewayConfig(cwd);
   const savedKey = getMergedSavedGatewayConfig(cwd).apiKey?.trim();
-  const envKey = process.env[API_KEY_ENV]?.trim();
+  const envKey = readGatewayEnv(API_KEY_ENV, LEGACY_API_KEY_ENV)?.trim();
 
   if (savedKey && envKey && savedKey !== envKey) {
     return [

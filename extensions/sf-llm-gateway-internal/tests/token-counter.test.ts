@@ -4,7 +4,12 @@ import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { API_KEY_ENV, BASE_URL_ENV } from "../lib/config.ts";
+import {
+  API_KEY_ENV,
+  BASE_URL_ENV,
+  LEGACY_API_KEY_ENV,
+  LEGACY_BASE_URL_ENV,
+} from "../lib/config.ts";
 import {
   countTokens,
   estimateSpend,
@@ -15,18 +20,24 @@ import {
 const originalFetch = globalThis.fetch;
 const originalBaseUrl = process.env[BASE_URL_ENV];
 const originalApiKey = process.env[API_KEY_ENV];
+const originalLegacyBaseUrl = process.env[LEGACY_BASE_URL_ENV];
+const originalLegacyApiKey = process.env[LEGACY_API_KEY_ENV];
 
 describe("countTokens", () => {
   afterEach(() => {
     globalThis.fetch = originalFetch;
     restoreEnv(BASE_URL_ENV, originalBaseUrl);
     restoreEnv(API_KEY_ENV, originalApiKey);
+    restoreEnv(LEGACY_BASE_URL_ENV, originalLegacyBaseUrl);
+    restoreEnv(LEGACY_API_KEY_ENV, originalLegacyApiKey);
     vi.restoreAllMocks();
   });
 
   it("returns an error when base URL is missing", async () => {
     delete process.env[BASE_URL_ENV];
     delete process.env[API_KEY_ENV];
+    delete process.env[LEGACY_BASE_URL_ENV];
+    delete process.env[LEGACY_API_KEY_ENV];
     const cwd = createProjectConfig({ baseUrl: "", apiKey: "" });
     const result = await countTokens(cwd, { model: "gpt-5", prompt: "hello" });
     expect(result.ok).toBe(false);

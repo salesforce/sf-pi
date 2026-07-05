@@ -657,7 +657,7 @@
   },
   {
     "id": "sf-llm-gateway-internal",
-    "name": "SF LLM Gateway Internal",
+    "name": "SF LLM Gateway",
     "description": "Salesforce LLM Gateway provider with model discovery",
     "category": "provider",
     "maturity": "stable",
@@ -702,7 +702,7 @@
     "entry": "extensions/sf-llm-gateway-internal/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 12094
+    "srcLoc": 12114
   },
   {
     "id": "sf-lsp",

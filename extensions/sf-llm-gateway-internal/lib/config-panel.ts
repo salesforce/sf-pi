@@ -21,8 +21,11 @@ import {
   DEFAULT_THINKING_LEVEL,
   BASE_URL_ENV,
   API_KEY_ENV,
+  LEGACY_API_KEY_ENV,
+  LEGACY_BASE_URL_ENV,
   DEFAULT_BASE_URL,
   normalizeBaseUrl,
+  readGatewayEnv,
   describeConfigValue,
   describeApiKey,
   readGatewaySavedConfig,
@@ -837,10 +840,10 @@ export class GatewayConfigPanelComponent implements Focusable {
     exclusiveScope: boolean;
     exclusiveScopeSource: Extract<ConfigSource, "saved" | "default">;
   } {
-    const envBaseUrl = normalizeBaseUrl(process.env[BASE_URL_ENV]);
+    const envBaseUrl = normalizeBaseUrl(readGatewayEnv(BASE_URL_ENV, LEGACY_BASE_URL_ENV));
     const savedBaseUrl =
       this.state.higherSavedBaseUrl ?? normalizedSavedBaseUrl ?? this.state.lowerSavedBaseUrl;
-    const envApiKey = process.env[API_KEY_ENV]?.trim() || undefined;
+    const envApiKey = readGatewayEnv(API_KEY_ENV, LEGACY_API_KEY_ENV)?.trim() || undefined;
     const savedApiKey = this.savedApiKey.trim() || undefined;
     const savedExclusiveScope =
       this.state.higherSavedExclusiveScope ??

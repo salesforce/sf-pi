@@ -1,15 +1,13 @@
 # sf-llm-gateway-internal — Code Walkthrough
 
-> **⚠️ Internal-only extension.** This extension targets a
-> Salesforce-internal gateway endpoint that is **not publicly reachable**.
-> External users cannot use this extension. It is included in the public
-> repo because the sf-pi manager expects a known set of bundled extensions,
-> but you must either (a) provide your own compatible gateway via
-> `/sf-llm-gateway` (or env vars for automation), or (b) disable
-> this extension via `/sf-pi disable sf-llm-gateway-internal`.
+> **Optional gateway provider.** This extension ships with no default endpoint
+> or credentials. To use it, configure a compatible gateway root URL and API key
+> through `/sf-llm-gateway` or automation environment variables. If you do not
+> use a compatible gateway, disable it with
+> `/sf-pi disable sf-llm-gateway-internal`.
 
-This document explains the design and runtime flow of the Salesforce LLM Gateway
-provider extension. Read this before making changes.
+This document explains the design and runtime flow of the LLM Gateway provider
+extension. Read this before making changes.
 
 ## What It Does
 
@@ -23,7 +21,7 @@ usage probe, and a backward-compatible in-app token paste flow under `/login`.
 ## Key Architecture: One Provider, Two Transports
 
 Since R1·Unify the extension registers a single Pi provider (`sf-llm-gateway-
-internal`) with a friendly display label `SF LLM Gateway (Salesforce Internal)`.
+internal`) with a friendly display label `SF LLM Gateway`.
 Every model is registered under the provider-level `openai-completions` API so
 pi always invokes the provider's custom `streamSimple` dispatcher. Claude models
 also carry a per-model `baseUrl` pinned to the gateway root, so the
@@ -180,7 +178,7 @@ Adjacent **Connect** group rows make the rest of the onboarding self-service:
   or bounded Claude Code / DevBar / AI Suite locations such as
   `~/.claude/*.pem`, `~/.devbar/*.pem`, and `~/.aisuite/conf/*.pem`; falls
   back to downloading from saved `caBundleSource` (or
-  `SF_LLM_GATEWAY_INTERNAL_CA_BUNDLE_SOURCE`) when the bundle source is
+  `SF_LLM_GATEWAY_CA_BUNDLE_SOURCE`) when the bundle source is
   configured. Public sf-pi ships no default download URL on purpose — the
   source is organization-specific.
 
@@ -200,16 +198,16 @@ Configuration follows a three-tier cascade:
 saved config  →  env var fallback  →  built-in default/missing
 ```
 
-- **Base URL**: saved > `SF_LLM_GATEWAY_INTERNAL_BASE_URL` > built-in default
-- **API key**: saved > `SF_LLM_GATEWAY_INTERNAL_API_KEY` > missing
-- **Help URL**: saved.helpUrl > `SF_LLM_GATEWAY_INTERNAL_HELP_URL` > unset.
+- **Base URL**: saved > `SF_LLM_GATEWAY_BASE_URL` > legacy env alias > built-in default
+- **API key**: saved > `SF_LLM_GATEWAY_API_KEY` > legacy env alias > missing
+- **Help URL**: saved.helpUrl > `SF_LLM_GATEWAY_HELP_URL` > legacy env alias > unset.
   Optional. When set, the doctor appends a trailing `More info: <url>`
-  recommendation. Empty in the public repo so no internal help-canvas link
-  is committed; internal distributions can wire it via env or saved config.
+  recommendation. Empty by default; organizations can wire it via env or saved
+  config.
 - **CA bundle download URL**: saved.caBundleSource >
-  `SF_LLM_GATEWAY_INTERNAL_CA_BUNDLE_SOURCE` > unset. Used by `fix-ca-bundle`
-  when no local PEM is found. Empty default — set this to opt into the
-  bootstrap path.
+  `SF_LLM_GATEWAY_CA_BUNDLE_SOURCE` > legacy env alias > unset. Used by
+  `fix-ca-bundle` when no local PEM is found. Empty default — set this to opt
+  into the bootstrap path.
 - **CA bundle candidate paths**: saved.caBundleCandidates (string[]).
   Extra absolute paths the `fix-ca-bundle` probe scans before the
   built-in well-known list (`~/.aisuite/conf/*.pem`).
@@ -228,8 +226,9 @@ cannot shadow a freshly pasted key.
 The panel writes the same files that env vars and direct edits would touch,
 so these alternative paths still work for power users and CI:
 
-- **Env vars**: `SF_LLM_GATEWAY_INTERNAL_BASE_URL` + `SF_LLM_GATEWAY_INTERNAL_API_KEY`
-  for shell-driven automation.
+- **Env vars**: `SF_LLM_GATEWAY_BASE_URL` + `SF_LLM_GATEWAY_API_KEY`
+  for shell-driven automation. The older `SF_LLM_GATEWAY_INTERNAL_*` names
+  remain supported as legacy aliases.
 - **Direct edit**: `~/.pi/agent/sf-llm-gateway-internal.json` (global) or
   `<project>/.pi/sf-llm-gateway-internal.json` (project).
 
@@ -420,8 +419,8 @@ npm run test:sf-llm-gateway-internal:codex
 
 Required env vars for the live regression:
 
-- `SF_LLM_GATEWAY_INTERNAL_BASE_URL`
-- `SF_LLM_GATEWAY_INTERNAL_API_KEY`
+- `SF_LLM_GATEWAY_BASE_URL`
+- `SF_LLM_GATEWAY_API_KEY`
 
 Optional env vars:
 
@@ -595,7 +594,7 @@ consumers, they read from the shared store in `lib/common/monthly-usage/`
 — the gateway must be registered and have succeeded at least once.
 
 **Old and new gateway keys are confusing status or tests:**
-Saved pi config wins over `SF_LLM_GATEWAY_INTERNAL_API_KEY`. If both are set
+Saved pi config wins over `SF_LLM_GATEWAY_API_KEY`. If both are set
 and differ, `/sf-llm-gateway status` and `doctor` warn that the env var is
 ignored. If the env key is newer, run `/sf-llm-gateway` to save it; otherwise
 remove the stale env var from your shell or Keychain setup. If the gateway
@@ -617,7 +616,7 @@ saved under `caBundleCandidates` in the gateway saved config. If `NODE_EXTRA_CA_
 in `~/.zshrc` or `~/.zprofile`, doctor calls that out because pi may not see it
 for every launch path; `fix-ca-bundle` mirrors the valid bundle into
 `~/.zshenv` and the LaunchAgent. When no candidate is found and
-saved `caBundleSource` (or `SF_LLM_GATEWAY_INTERNAL_CA_BUNDLE_SOURCE`)
+saved `caBundleSource` (or `SF_LLM_GATEWAY_CA_BUNDLE_SOURCE`)
 is set, the action downloads the bundle into
 `~/.pi/agent/sf-llm-gateway-internal/ca-bundle.pem` after explicit
 confirmation. Each disk-mutating step is HITL-gated; a sentinel-guarded

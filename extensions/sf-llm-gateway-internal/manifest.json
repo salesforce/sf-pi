@@ -1,6 +1,6 @@
 {
   "id": "sf-llm-gateway-internal",
-  "name": "SF LLM Gateway Internal",
+  "name": "SF LLM Gateway",
   "description": "Salesforce LLM Gateway provider with model discovery",
   "category": "provider",
   "maturity": "stable",

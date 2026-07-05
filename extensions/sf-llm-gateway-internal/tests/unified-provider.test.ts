@@ -13,7 +13,7 @@
 import { describe, expect, it } from "vitest";
 import type { ProviderModelConfig } from "@earendil-works/pi-coding-agent";
 import { registerProviderIfConfigured } from "../lib/discovery.ts";
-import { PROVIDER_NAME } from "../lib/config.ts";
+import { API_KEY_ENV, BASE_URL_ENV, PROVIDER_NAME } from "../lib/config.ts";
 
 interface CapturedRegistration {
   name: string;
@@ -32,7 +32,7 @@ function makeFakePi(captured: CapturedRegistration[]) {
     registerProvider(name: string, config: CapturedRegistration["config"]) {
       captured.push({ name, config });
     },
-    unregisterProvider(_name: string) {
+    unregisterProvider() {
       // no-op
     },
   };
@@ -40,41 +40,41 @@ function makeFakePi(captured: CapturedRegistration[]) {
 
 describe("unified gateway provider", () => {
   it("registers exactly one provider with friendly name and oauth block", () => {
-    const originalBaseUrl = process.env.SF_LLM_GATEWAY_INTERNAL_BASE_URL;
-    const originalApiKey = process.env.SF_LLM_GATEWAY_INTERNAL_API_KEY;
-    process.env.SF_LLM_GATEWAY_INTERNAL_BASE_URL = "https://gateway.test";
-    process.env.SF_LLM_GATEWAY_INTERNAL_API_KEY = "test-key";
+    const originalBaseUrl = process.env[BASE_URL_ENV];
+    const originalApiKey = process.env[API_KEY_ENV];
+    process.env[BASE_URL_ENV] = "https://gateway.test";
+    process.env[API_KEY_ENV] = "test-key";
 
     try {
       const captured: CapturedRegistration[] = [];
 
-      registerProviderIfConfigured(makeFakePi(captured) as any, null, new Set());
+      registerProviderIfConfigured(makeFakePi(captured) as never, null, new Set());
 
       expect(captured).toHaveLength(1);
       const only = captured[0];
       expect(only.name).toBe(PROVIDER_NAME);
-      expect(only.config.name).toBe("SF LLM Gateway (Salesforce Internal)");
+      expect(only.config.name).toBe("SF LLM Gateway");
       expect(only.config.api).toBe("openai-completions");
       expect(only.config.oauth).toBeDefined();
-      expect(only.config.oauth?.name).toBe("SF LLM Gateway (Salesforce Internal)");
+      expect(only.config.oauth?.name).toBe("SF LLM Gateway");
       expect(typeof only.config.streamSimple).toBe("function");
     } finally {
       // Restore original env state so other suites are not affected.
-      restoreEnv("SF_LLM_GATEWAY_INTERNAL_BASE_URL", originalBaseUrl);
-      restoreEnv("SF_LLM_GATEWAY_INTERNAL_API_KEY", originalApiKey);
+      restoreEnv(BASE_URL_ENV, originalBaseUrl);
+      restoreEnv(API_KEY_ENV, originalApiKey);
     }
   });
 
   it("keeps model api overrides out of Pi's registry so streamSimple handles every model", () => {
-    const originalBaseUrl = process.env.SF_LLM_GATEWAY_INTERNAL_BASE_URL;
-    const originalApiKey = process.env.SF_LLM_GATEWAY_INTERNAL_API_KEY;
-    process.env.SF_LLM_GATEWAY_INTERNAL_BASE_URL = "https://gateway.test";
-    process.env.SF_LLM_GATEWAY_INTERNAL_API_KEY = "test-key";
+    const originalBaseUrl = process.env[BASE_URL_ENV];
+    const originalApiKey = process.env[API_KEY_ENV];
+    process.env[BASE_URL_ENV] = "https://gateway.test";
+    process.env[API_KEY_ENV] = "test-key";
 
     try {
       const captured: CapturedRegistration[] = [];
 
-      registerProviderIfConfigured(makeFakePi(captured) as any, null, new Set());
+      registerProviderIfConfigured(makeFakePi(captured) as never, null, new Set());
 
       const models = captured[0]?.config.models ?? [];
       expect(models.length).toBeGreaterThan(0);
@@ -84,8 +84,8 @@ describe("unified gateway provider", () => {
       expect(claude?.api).toBeUndefined();
       expect(models.every((model) => model.api === undefined)).toBe(true);
     } finally {
-      restoreEnv("SF_LLM_GATEWAY_INTERNAL_BASE_URL", originalBaseUrl);
-      restoreEnv("SF_LLM_GATEWAY_INTERNAL_API_KEY", originalApiKey);
+      restoreEnv(BASE_URL_ENV, originalBaseUrl);
+      restoreEnv(API_KEY_ENV, originalApiKey);
     }
   });
 });

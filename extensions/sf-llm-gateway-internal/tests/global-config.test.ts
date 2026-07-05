@@ -22,6 +22,8 @@ import {
   DEFAULT_BASE_URL,
   BASE_URL_ENV,
   API_KEY_ENV,
+  LEGACY_API_KEY_ENV,
+  LEGACY_BASE_URL_ENV,
 } from "../lib/config.ts";
 
 // -------------------------------------------------------------------------------------------------
@@ -63,6 +65,8 @@ beforeEach(() => {
   // Clear gateway env vars for a clean baseline.
   setEnv(BASE_URL_ENV, undefined);
   setEnv(API_KEY_ENV, undefined);
+  setEnv(LEGACY_BASE_URL_ENV, undefined);
+  setEnv(LEGACY_API_KEY_ENV, undefined);
 });
 
 afterEach(() => {

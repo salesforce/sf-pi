@@ -12,6 +12,8 @@ import {
   DEFAULT_MODEL_ID,
   DEFAULT_THINKING_LEVEL,
   FALLBACK_MODEL_ID,
+  LEGACY_API_KEY_ENV,
+  LEGACY_BETAS_ENV,
   describeApiKey,
   describeConfigValue,
   getGatewayConfig,
@@ -19,6 +21,7 @@ import {
   getSavedExclusiveScopeStatus,
   globalGatewayConfigPath,
   projectGatewayConfigPath,
+  readGatewayEnv,
 } from "./config.ts";
 import {
   KNOWN_BETAS,
@@ -313,7 +316,7 @@ export function formatKeyListReportLine(
 export function getApiKeyGuidanceLines(cwd: string, state: GatewayRuntimeStatusState): string[] {
   const config = getGatewayConfig(cwd);
   const savedKey = getMergedSavedGatewayConfig(cwd).apiKey?.trim();
-  const envKey = process.env[API_KEY_ENV]?.trim();
+  const envKey = readGatewayEnv(API_KEY_ENV, LEGACY_API_KEY_ENV)?.trim();
   const lines: string[] = [];
 
   if (state.connectionStatus?.kind === "auth-failed") {
@@ -400,7 +403,7 @@ function isKnownBetaActive(value: string, state: GatewayRuntimeStatusState): boo
 }
 
 function getBetaSource(state: GatewayRuntimeStatusState): string {
-  if (process.env[BETAS_ENV] !== undefined) {
+  if (readGatewayEnv(BETAS_ENV, LEGACY_BETAS_ENV) !== undefined) {
     return "env override";
   }
   if (state.runtimeBetaOverrides !== null || state.runtimeExtraBetas.size > 0) {

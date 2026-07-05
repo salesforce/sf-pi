@@ -7,7 +7,8 @@
  *     (null = follow model defaults, non-null Set = explicit allowlist).
  *   - `extraBetas`   — extra betas injected on top of model defaults.
  *
- * The state is seeded at module load from `SF_LLM_GATEWAY_INTERNAL_BETAS`.
+ * The state is seeded at module load from `SF_LLM_GATEWAY_BETAS` (legacy
+ * `SF_LLM_GATEWAY_INTERNAL_BETAS` remains supported).
  * Command handlers mutate it via `getBetaState()` + `setBetaState()`; the
  * extension entry point reads it when building discovery/status calls.
  *
@@ -16,7 +17,7 @@
  * `index.ts` and `lib/status.ts`.
  */
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
-import { BETAS_ENV, COMMAND_NAME } from "./config.ts";
+import { BETAS_ENV, COMMAND_NAME, LEGACY_BETAS_ENV, readGatewayEnv } from "./config.ts";
 import { discoverAndRegister } from "./discovery.ts";
 import {
   DEFAULT_ANTHROPIC_BETA_HEADERS,
@@ -47,7 +48,7 @@ export function getBetaExtras(): Set<string> {
 }
 
 export function initBetaStateFromEnv(): BetaRuntimeState {
-  const raw = process.env[BETAS_ENV];
+  const raw = readGatewayEnv(BETAS_ENV, LEGACY_BETAS_ENV);
   if (raw === undefined) {
     return { defaultBetas: null, extraBetas: new Set() };
   }
@@ -68,7 +69,7 @@ function hasRuntimeBetaOverrides(): boolean {
 }
 
 export function getRuntimeBetaSource(): string {
-  if (process.env[BETAS_ENV] !== undefined) {
+  if (readGatewayEnv(BETAS_ENV, LEGACY_BETAS_ENV) !== undefined) {
     return "env override";
   }
   return hasRuntimeBetaOverrides() ? "command override" : "model defaults";
@@ -130,7 +131,7 @@ export async function handleBetaCommand(
     await discoverAndRegister(pi, current.defaultBetas, current.extraBetas, ctx.cwd);
     await emitOutput(
       "Beta overrides reset.",
-      process.env[BETAS_ENV] === undefined
+      readGatewayEnv(BETAS_ENV, LEGACY_BETAS_ENV) === undefined
         ? "Anthropic beta headers now follow model defaults."
         : `Anthropic beta headers now follow ${BETAS_ENV}.`,
       "info",

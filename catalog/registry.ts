@@ -201,7 +201,7 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
   },
   {
     id: "sf-llm-gateway-internal",
-    name: "SF LLM Gateway Internal",
+    name: "SF LLM Gateway",
     description: "Salesforce LLM Gateway provider with model discovery",
     file: "extensions/sf-llm-gateway-internal/index.ts",
     category: "provider",

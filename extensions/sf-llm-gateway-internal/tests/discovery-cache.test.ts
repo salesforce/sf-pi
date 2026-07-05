@@ -6,9 +6,10 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ProviderModelConfig } from "@earendil-works/pi-coding-agent";
+import { API_KEY_ENV, BASE_URL_ENV } from "../lib/config.ts";
 
-const ORIGINAL_BASE_URL = process.env.SF_LLM_GATEWAY_INTERNAL_BASE_URL;
-const ORIGINAL_API_KEY = process.env.SF_LLM_GATEWAY_INTERNAL_API_KEY;
+const ORIGINAL_BASE_URL = process.env[BASE_URL_ENV];
+const ORIGINAL_API_KEY = process.env[API_KEY_ENV];
 const ORIGINAL_AGENT_DIR = process.env.PI_CODING_AGENT_DIR;
 
 interface CapturedRegistration {
@@ -21,7 +22,7 @@ function makeFakePi(captured: CapturedRegistration[]) {
     registerProvider(name: string, config: CapturedRegistration["config"]) {
       captured.push({ name, config });
     },
-    unregisterProvider(_name: string) {
+    unregisterProvider() {
       // no-op
     },
   };
@@ -61,8 +62,8 @@ function seedDiscoveryCache(agentDir: string, modelIds: string[]): void {
 
 describe("cached gateway discovery", () => {
   afterEach(() => {
-    restoreEnv("SF_LLM_GATEWAY_INTERNAL_BASE_URL", ORIGINAL_BASE_URL);
-    restoreEnv("SF_LLM_GATEWAY_INTERNAL_API_KEY", ORIGINAL_API_KEY);
+    restoreEnv(BASE_URL_ENV, ORIGINAL_BASE_URL);
+    restoreEnv(API_KEY_ENV, ORIGINAL_API_KEY);
     restoreEnv("PI_CODING_AGENT_DIR", ORIGINAL_AGENT_DIR);
     vi.resetModules();
   });
@@ -70,8 +71,8 @@ describe("cached gateway discovery", () => {
   it("registers the cached discovered model list before live discovery", async () => {
     const agentDir = mkdtempSync(join(tmpdir(), "sf-pi-gateway-discovery-cache-"));
     process.env.PI_CODING_AGENT_DIR = agentDir;
-    process.env.SF_LLM_GATEWAY_INTERNAL_BASE_URL = "https://gateway.example.test";
-    process.env.SF_LLM_GATEWAY_INTERNAL_API_KEY = "test-key";
+    process.env[BASE_URL_ENV] = "https://gateway.example.test";
+    process.env[API_KEY_ENV] = "test-key";
 
     seedDiscoveryCache(agentDir, ["claude-opus-4-7", "gpt-5.5"]);
 
@@ -99,8 +100,8 @@ describe("cached gateway discovery", () => {
   it("can register the cache during factory startup without a session cwd", async () => {
     const agentDir = mkdtempSync(join(tmpdir(), "sf-pi-gateway-discovery-cache-"));
     process.env.PI_CODING_AGENT_DIR = agentDir;
-    process.env.SF_LLM_GATEWAY_INTERNAL_BASE_URL = "https://gateway.example.test";
-    process.env.SF_LLM_GATEWAY_INTERNAL_API_KEY = "test-key";
+    process.env[BASE_URL_ENV] = "https://gateway.example.test";
+    process.env[API_KEY_ENV] = "test-key";
     seedDiscoveryCache(agentDir, ["gemini-3-pro-preview"]);
 
     const { registerCachedDiscoveryIfAvailable } = await import("../lib/discovery.ts");

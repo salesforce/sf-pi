@@ -15,6 +15,8 @@ import { describe, it, expect } from "vitest";
 import {
   API_KEY_ENV,
   BASE_URL_ENV,
+  LEGACY_API_KEY_ENV,
+  LEGACY_BASE_URL_ENV,
   OFF_DEFAULT_MODEL_ID,
   getGatewayConfig,
   normalizeBaseUrl,
@@ -110,6 +112,64 @@ describe("normalizeBaseUrl", () => {
 // -------------------------------------------------------------------------------------------------
 
 describe("getGatewayConfig precedence", () => {
+  it("accepts public-safe env vars for automation fallback", () => {
+    const cwd = mkdtempSync(path.join(tmpdir(), "sf-pi-gateway-config-"));
+    const previousBaseUrl = process.env[BASE_URL_ENV];
+    const previousApiKey = process.env[API_KEY_ENV];
+
+    try {
+      process.env[BASE_URL_ENV] = "https://env.example.com/v1";
+      process.env[API_KEY_ENV] = "env-key";
+      writeGatewaySavedConfig(projectGatewayConfigPath(cwd), { baseUrl: "", apiKey: "" });
+
+      const config = getGatewayConfig(cwd);
+
+      expect(config.baseUrl).toBe("https://env.example.com");
+      expect(config.baseUrlSource).toBe("env");
+      expect(config.apiKey).toBe("env-key");
+      expect(config.apiKeySource).toBe("env");
+    } finally {
+      if (previousBaseUrl === undefined) delete process.env[BASE_URL_ENV];
+      else process.env[BASE_URL_ENV] = previousBaseUrl;
+      if (previousApiKey === undefined) delete process.env[API_KEY_ENV];
+      else process.env[API_KEY_ENV] = previousApiKey;
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps legacy env aliases working for compatibility", () => {
+    const cwd = mkdtempSync(path.join(tmpdir(), "sf-pi-gateway-config-"));
+    const previousBaseUrl = process.env[LEGACY_BASE_URL_ENV];
+    const previousApiKey = process.env[LEGACY_API_KEY_ENV];
+    const previousPrimaryBaseUrl = process.env[BASE_URL_ENV];
+    const previousPrimaryApiKey = process.env[API_KEY_ENV];
+
+    try {
+      delete process.env[BASE_URL_ENV];
+      delete process.env[API_KEY_ENV];
+      process.env[LEGACY_BASE_URL_ENV] = "https://legacy.example.com/v1";
+      process.env[LEGACY_API_KEY_ENV] = "legacy-key";
+      writeGatewaySavedConfig(projectGatewayConfigPath(cwd), { baseUrl: "", apiKey: "" });
+
+      const config = getGatewayConfig(cwd);
+
+      expect(config.baseUrl).toBe("https://legacy.example.com");
+      expect(config.baseUrlSource).toBe("env");
+      expect(config.apiKey).toBe("legacy-key");
+      expect(config.apiKeySource).toBe("env");
+    } finally {
+      if (previousBaseUrl === undefined) delete process.env[LEGACY_BASE_URL_ENV];
+      else process.env[LEGACY_BASE_URL_ENV] = previousBaseUrl;
+      if (previousApiKey === undefined) delete process.env[LEGACY_API_KEY_ENV];
+      else process.env[LEGACY_API_KEY_ENV] = previousApiKey;
+      if (previousPrimaryBaseUrl === undefined) delete process.env[BASE_URL_ENV];
+      else process.env[BASE_URL_ENV] = previousPrimaryBaseUrl;
+      if (previousPrimaryApiKey === undefined) delete process.env[API_KEY_ENV];
+      else process.env[API_KEY_ENV] = previousPrimaryApiKey;
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
   it("prefers saved config over env vars so stale shell exports cannot shadow setup", () => {
     const cwd = mkdtempSync(path.join(tmpdir(), "sf-pi-gateway-config-"));
     const previousBaseUrl = process.env[BASE_URL_ENV];

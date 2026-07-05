@@ -17,13 +17,10 @@ import { toGatewayRootBaseUrl } from "./gateway-url.ts";
 
 export const PROVIDER_NAME = "sf-llm-gateway-internal";
 // Friendly display name surfaced in pi's `/login` listing. pi >= 0.71 shows
-// this as the provider label; older pi releases ignore the field.
-//
-// The "Salesforce Internal" suffix matches the README's "Internal-only
-// extension" wording and makes it unambiguous for end users browsing
-// `/login`: this gateway requires a Salesforce-issued token. External users
-// should pick a different provider row.
-export const PROVIDER_DISPLAY_NAME = "SF LLM Gateway (Salesforce Internal)";
+// this as the provider label; older pi releases ignore the field. Keep the
+// label source-agnostic: access is determined by the user's configured gateway
+// endpoint and credentials, not by a public default endpoint in this repo.
+export const PROVIDER_DISPLAY_NAME = "SF LLM Gateway";
 export const COMMAND_NAME = "sf-llm-gateway-internal";
 export const FRIENDLY_COMMAND_NAME = "sf-llm-gateway";
 export const STATUS_KEY = "sf-llm-gateway-internal";
@@ -41,26 +38,21 @@ export const ENABLED_MODEL_PATTERN = `${PROVIDER_NAME}/*`;
 export const LEGACY_PROVIDER_NAME_ANTHROPIC = "sf-llm-gateway-internal-anthropic";
 export const LEGACY_ENABLED_MODEL_PATTERN_ANTHROPIC = `${LEGACY_PROVIDER_NAME_ANTHROPIC}/*`;
 
-export const BASE_URL_ENV = "SF_LLM_GATEWAY_INTERNAL_BASE_URL";
-export const API_KEY_ENV = "SF_LLM_GATEWAY_INTERNAL_API_KEY";
-/**
- * Optional internal-only env var. When set, the doctor surfaces a
- * trailing "More info: <url>" recommendation. The public repo ships no
- * default so no Salesforce-internal channel/canvas link is committed.
- * Internal distributions can wire this via shell config or saved config.
- */
-export const HELP_URL_ENV = "SF_LLM_GATEWAY_INTERNAL_HELP_URL";
-/**
- * Optional env var pointing at a corporate CA bundle URL the
- * `/sf-llm-gateway fix-ca-bundle` action can download when no local
- * bundle is detected. Empty default in the public repo — internal users
- * opt in via env or saved config so no Salesforce-PKI hostname is baked
- * into the public source.
- */
-export const CA_BUNDLE_SOURCE_ENV = "SF_LLM_GATEWAY_INTERNAL_CA_BUNDLE_SOURCE";
-// The gateway endpoint is a Salesforce-internal URL and is intentionally not
-// hardcoded here. Users should configure it via `/sf-llm-gateway setup`.
-// Env vars are still accepted as an automation fallback when no saved config exists.
+export const BASE_URL_ENV = "SF_LLM_GATEWAY_BASE_URL";
+export const API_KEY_ENV = "SF_LLM_GATEWAY_API_KEY";
+export const HELP_URL_ENV = "SF_LLM_GATEWAY_HELP_URL";
+export const CA_BUNDLE_SOURCE_ENV = "SF_LLM_GATEWAY_CA_BUNDLE_SOURCE";
+
+// Legacy aliases remain supported so existing automation keeps working while
+// public docs and setup copy move to source-agnostic names.
+export const LEGACY_BASE_URL_ENV = "SF_LLM_GATEWAY_INTERNAL_BASE_URL";
+export const LEGACY_API_KEY_ENV = "SF_LLM_GATEWAY_INTERNAL_API_KEY";
+export const LEGACY_HELP_URL_ENV = "SF_LLM_GATEWAY_INTERNAL_HELP_URL";
+export const LEGACY_CA_BUNDLE_SOURCE_ENV = "SF_LLM_GATEWAY_INTERNAL_CA_BUNDLE_SOURCE";
+
+// No default endpoint is shipped. Users configure their own compatible gateway
+// root URL via `/sf-llm-gateway setup`; env vars are automation fallbacks when
+// no saved config exists.
 export const DEFAULT_BASE_URL = "";
 
 export const DEFAULT_MODEL_ID = "claude-opus-4-8";
@@ -77,7 +69,8 @@ export const OFF_DEFAULT_PROVIDER = "openai";
 export const OFF_DEFAULT_MODEL_ID = "gpt-5";
 export const OFF_DEFAULT_THINKING_LEVEL = "xhigh" as const;
 
-export const BETAS_ENV = "SF_LLM_GATEWAY_INTERNAL_BETAS";
+export const BETAS_ENV = "SF_LLM_GATEWAY_BETAS";
+export const LEGACY_BETAS_ENV = "SF_LLM_GATEWAY_INTERNAL_BETAS";
 export const SAVED_CONFIG_FILE = `${PROVIDER_NAME}.json`;
 
 /**
@@ -107,14 +100,14 @@ export type SavedGatewayConfig = {
   previousThinkingLevel?: string;
   /**
    * Optional URL surfaced by the doctor as a trailing "More info" link.
-   * Empty / undefined in the public repo; internal users may set this so
-   * doctor output points at their own help canvas.
+   * Empty / undefined by default; users may set this to point at their own
+   * gateway setup documentation.
    */
   helpUrl?: string;
   /**
    * Optional URL the `/sf-llm-gateway fix-ca-bundle` action downloads
    * from when no local CA bundle candidate is found. Saved-config wins
-   * over the matching env var. Empty default — internal users opt in.
+   * over the matching env var. Empty default — users opt in.
    */
   caBundleSource?: string;
   /**
@@ -162,9 +155,9 @@ export type SavedExclusiveScopeStatus = {
 export function getGatewayConfig(cwd: string): GatewayConfig {
   const saved = getMergedSavedGatewayConfig(cwd);
 
-  const envBaseUrl = normalizeBaseUrl(process.env[BASE_URL_ENV]);
+  const envBaseUrl = normalizeBaseUrl(readGatewayEnv(BASE_URL_ENV, LEGACY_BASE_URL_ENV));
   const savedBaseUrl = normalizeBaseUrl(saved.baseUrl);
-  const envApiKey = process.env[API_KEY_ENV]?.trim() || undefined;
+  const envApiKey = readGatewayEnv(API_KEY_ENV, LEGACY_API_KEY_ENV)?.trim() || undefined;
   const savedApiKey = saved.apiKey?.trim() || undefined;
   const savedExclusiveScope = asOptionalBoolean(saved.exclusiveScope);
   const baseUrl = savedBaseUrl ?? envBaseUrl ?? DEFAULT_BASE_URL;
@@ -203,9 +196,10 @@ function resolveOptionalEnvBackedValues(saved: SavedGatewayConfig): {
   caBundleCandidates: string[];
 } {
   const savedHelpUrl = asOptionalString(saved.helpUrl);
-  const envHelpUrl = process.env[HELP_URL_ENV]?.trim() || undefined;
+  const envHelpUrl = readGatewayEnv(HELP_URL_ENV, LEGACY_HELP_URL_ENV)?.trim() || undefined;
   const savedCaSource = asOptionalString(saved.caBundleSource);
-  const envCaSource = process.env[CA_BUNDLE_SOURCE_ENV]?.trim() || undefined;
+  const envCaSource =
+    readGatewayEnv(CA_BUNDLE_SOURCE_ENV, LEGACY_CA_BUNDLE_SOURCE_ENV)?.trim() || undefined;
   const candidates = Array.isArray(saved.caBundleCandidates)
     ? saved.caBundleCandidates.filter(
         (entry): entry is string => typeof entry === "string" && entry.trim().length > 0,
@@ -228,9 +222,9 @@ function resolveOptionalEnvBackedValues(saved: SavedGatewayConfig): {
 export function getGlobalOnlyGatewayConfig(): GatewayConfig {
   const saved = readGatewaySavedConfig(globalGatewayConfigPath());
 
-  const envBaseUrl = normalizeBaseUrl(process.env[BASE_URL_ENV]);
+  const envBaseUrl = normalizeBaseUrl(readGatewayEnv(BASE_URL_ENV, LEGACY_BASE_URL_ENV));
   const savedBaseUrl = normalizeBaseUrl(saved.baseUrl);
-  const envApiKey = process.env[API_KEY_ENV]?.trim() || undefined;
+  const envApiKey = readGatewayEnv(API_KEY_ENV, LEGACY_API_KEY_ENV)?.trim() || undefined;
   const savedApiKey = saved.apiKey?.trim() || undefined;
   const savedExclusiveScope = asOptionalBoolean(saved.exclusiveScope);
   const baseUrl = savedBaseUrl ?? envBaseUrl ?? DEFAULT_BASE_URL;
@@ -253,6 +247,12 @@ export function getGlobalOnlyGatewayConfig(): GatewayConfig {
     caBundleSourceSource: optional.caBundleSourceSource,
     caBundleCandidates: optional.caBundleCandidates,
   };
+}
+
+export function readGatewayEnv(primaryName: string, legacyName?: string): string | undefined {
+  const primary = process.env[primaryName];
+  if (primary !== undefined) return primary;
+  return legacyName ? process.env[legacyName] : undefined;
 }
 
 export function getMergedSavedGatewayConfig(cwd: string): SavedGatewayConfig {

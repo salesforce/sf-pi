@@ -9,7 +9,12 @@ import {
   __resetMonthlyUsageStoreForTests,
   getMonthlyUsageState,
 } from "../../../lib/common/monthly-usage/store.ts";
-import { API_KEY_ENV, BASE_URL_ENV } from "../lib/config.ts";
+import {
+  API_KEY_ENV,
+  BASE_URL_ENV,
+  LEGACY_API_KEY_ENV,
+  LEGACY_BASE_URL_ENV,
+} from "../lib/config.ts";
 import {
   computeKeyConflict,
   fetchDailyActivity,
@@ -21,11 +26,17 @@ import {
 const originalFetch = globalThis.fetch;
 const originalBaseUrl = process.env[BASE_URL_ENV];
 const originalApiKey = process.env[API_KEY_ENV];
+const originalLegacyBaseUrl = process.env[LEGACY_BASE_URL_ENV];
+const originalLegacyApiKey = process.env[LEGACY_API_KEY_ENV];
 
 describe("gateway monthly usage refresh", () => {
   beforeEach(() => {
     __resetMonthlyUsageStoreForTests();
     __resetMonthlyUsageCacheForTests();
+    delete process.env[BASE_URL_ENV];
+    delete process.env[API_KEY_ENV];
+    delete process.env[LEGACY_BASE_URL_ENV];
+    delete process.env[LEGACY_API_KEY_ENV];
   });
 
   afterEach(() => {
@@ -34,6 +45,8 @@ describe("gateway monthly usage refresh", () => {
     globalThis.fetch = originalFetch;
     restoreEnv(BASE_URL_ENV, originalBaseUrl);
     restoreEnv(API_KEY_ENV, originalApiKey);
+    restoreEnv(LEGACY_BASE_URL_ENV, originalLegacyBaseUrl);
+    restoreEnv(LEGACY_API_KEY_ENV, originalLegacyApiKey);
     vi.restoreAllMocks();
   });
 
@@ -411,8 +424,14 @@ describe("gateway monthly usage refresh", () => {
 
 // Phase 1.6: cross-source key-conflict detection.
 describe("computeKeyConflict", () => {
+  beforeEach(() => {
+    delete process.env[API_KEY_ENV];
+    delete process.env[LEGACY_API_KEY_ENV];
+  });
+
   afterEach(() => {
     restoreEnv(API_KEY_ENV, originalApiKey);
+    restoreEnv(LEGACY_API_KEY_ENV, originalLegacyApiKey);
   });
 
   it("returns null when keys match", () => {

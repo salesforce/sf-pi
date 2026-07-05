@@ -3,9 +3,8 @@
 Agent rules for editing this extension. Read this before any change.
 Repo-level rules still apply; see root `AGENTS.md`.
 
-> ⚠️ **Internal-only.** Do not introduce Salesforce-internal hostnames,
-> keys, or other confidential endpoints into source. See root `ROADMAP.md`
-> non-goals.
+> ⚠️ **No bundled endpoint.** Do not introduce private hostnames, keys, or
+> other confidential endpoints into source. See root `ROADMAP.md` non-goals.
 
 ## Read first
 
@@ -108,13 +107,13 @@ When adding a subcommand:
 - `tests/models.test.ts` — family inference / new presets / beta resolution
 - `tests/robust-retry.test.ts` — Anthropic early-stream retry behavior
 - `tests/codex-regression.test.ts` — gated live test; runs only when
-  `SF_LLM_GATEWAY_INTERNAL_*` env vars are present
+  `SF_LLM_GATEWAY_*` env vars are present (legacy internal aliases still work)
 
 ## Non-goals
 
 - No default base URL in source. Base URL ships empty; users should provide
-  one via the setup wizard. `SF_LLM_GATEWAY_INTERNAL_BASE_URL` remains an
-  automation fallback when saved config is blank.
+  one via the setup wizard. `SF_LLM_GATEWAY_BASE_URL` remains an automation
+  fallback when saved config is blank; legacy aliases continue to work.
 - No secret materials in source, config, or tests.
 - No OpenAI-compat path for Claude — it has known truncation issues,
   documented in the README's "Key Architecture" section.

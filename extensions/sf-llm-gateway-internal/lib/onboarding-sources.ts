@@ -10,7 +10,14 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
-import { API_KEY_ENV, BASE_URL_ENV, normalizeBaseUrl } from "./config.ts";
+import {
+  API_KEY_ENV,
+  BASE_URL_ENV,
+  LEGACY_API_KEY_ENV,
+  LEGACY_BASE_URL_ENV,
+  normalizeBaseUrl,
+  readGatewayEnv,
+} from "./config.ts";
 import {
   findClaudeCodeGatewayConfig,
   getClaudeCodeSettingsPath,
@@ -97,8 +104,8 @@ export function discoverGatewayOnboardingSources(
   const credentialCandidates: CredentialCandidate[] = [];
   const nodeExtraCaCertsFindings: NodeExtraCaCertsFinding[] = [];
 
-  const envBaseUrl = normalizeBaseUrl(process.env[BASE_URL_ENV]);
-  const envApiKey = process.env[API_KEY_ENV]?.trim();
+  const envBaseUrl = normalizeBaseUrl(readGatewayEnv(BASE_URL_ENV, LEGACY_BASE_URL_ENV));
+  const envApiKey = readGatewayEnv(API_KEY_ENV, LEGACY_API_KEY_ENV)?.trim();
   if (envBaseUrl || envApiKey) {
     credentialCandidates.push({
       sourceId: "env",

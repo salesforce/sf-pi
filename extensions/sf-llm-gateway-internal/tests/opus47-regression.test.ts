@@ -3,8 +3,7 @@
  * Live Opus 4.7 regression checks against a real SF LLM Gateway instance.
  *
  * This suite is intentionally opt-in:
- * - it only runs when SF_LLM_GATEWAY_INTERNAL_BASE_URL and
- *   SF_LLM_GATEWAY_INTERNAL_API_KEY are set
+ * - it only runs when SF_LLM_GATEWAY_BASE_URL and SF_LLM_GATEWAY_API_KEY are set
  * - it talks to the real gateway over the network
  *
  * Goal: verify the actual sf-pi transport path for the critical-path Opus 4.7

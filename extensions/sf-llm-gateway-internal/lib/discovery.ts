@@ -8,7 +8,7 @@
  *     top-level api:  "openai-completions"            (covers GPT / Gemini / Codex)
  *     baseUrl:        <gateway>/v1
  *     apiKey:         saved token | env var
- *     name:           "SF LLM Gateway (Salesforce Internal)"
+ *     name:           "SF LLM Gateway"
  *     oauth:          paste-token flow via `onPrompt`
  *
  *   All models are registered under the provider-level api so pi always

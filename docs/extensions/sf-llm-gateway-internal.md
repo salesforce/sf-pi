@@ -1,9 +1,9 @@
 ---
-title: "SF LLM Gateway Internal"
+title: "SF LLM Gateway"
 description: "Connect pi to Salesforce LLM Gateway models when your environment supports that provider."
 ---
 
-# SF LLM Gateway Internal
+# SF LLM Gateway
 
 <p class="sfpi-page-lead">Connect pi to Salesforce LLM Gateway models when your environment supports that provider.</p>
 

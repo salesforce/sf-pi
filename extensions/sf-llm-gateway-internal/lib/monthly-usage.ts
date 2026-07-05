@@ -40,7 +40,13 @@ import {
   readCachedMonthlyUsageSnapshot,
   writeCachedMonthlyUsageSnapshot,
 } from "../../../lib/common/monthly-usage/cache.ts";
-import { API_KEY_ENV, getGatewayConfig, getMergedSavedGatewayConfig } from "./config.ts";
+import {
+  API_KEY_ENV,
+  LEGACY_API_KEY_ENV,
+  getGatewayConfig,
+  getMergedSavedGatewayConfig,
+  readGatewayEnv,
+} from "./config.ts";
 import { toGatewayRootBaseUrl } from "./gateway-url.ts";
 import { fetchWithTimeout } from "./models.ts";
 
@@ -460,7 +466,7 @@ function publishChecking(keyConflict: KeyConflictWarning | null): void {
  */
 export function computeKeyConflict(cwd: string): KeyConflictWarning | null {
   const saved = getMergedSavedGatewayConfig(cwd).apiKey?.trim();
-  const env = process.env[API_KEY_ENV]?.trim();
+  const env = readGatewayEnv(API_KEY_ENV, LEGACY_API_KEY_ENV)?.trim();
   if (!saved || !env) return null;
   if (saved === env) return null;
 
