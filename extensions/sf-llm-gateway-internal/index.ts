@@ -57,7 +57,7 @@
  * - /sf-llm-gateway tokens <modelId> [prompt]
  * - /sf-llm-gateway onboard
  * - /sf-llm-gateway debug <modelId> [reasoning=<level>] [tool] [adaptive]
- * - /sf-llm-gateway latency-probe [modelId] [--large] [--beta-compare] [--bedrock]
+ * - /sf-llm-gateway latency-probe [modelId] [--large] [--beta-compare]
  *
  * Behavior matrix:
  *
@@ -1691,8 +1691,8 @@ async function handleTokensCommand(
  *
  * Usage: `/sf-llm-gateway debug <modelId> [reasoning=<level>] [tool] [adaptive]`
  *
- * The gateway's /utils/transform_request endpoint echoes the upstream URL,
- * headers, and body LiteLLM would send. That makes this the fastest way to
+ * The gateway's /utils/transform_request endpoint echoes the provider-bound URL,
+ * headers, and body the gateway would send. That makes this the fastest way to
  * verify whether our shims are producing a payload shape the gateway will
  * accept, without actually running a completion and burning tokens.
  */

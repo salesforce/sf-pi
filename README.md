@@ -94,9 +94,9 @@ Restart pi or run `/reload`. Every extension ships enabled by default
 — see the **Default** column in the [Bundled Extensions](#bundled-extensions)
 table for exact per-extension defaults.
 
-External users without access to the Salesforce-internal LLM gateway can disable
-that provider with `/sf-pi disable sf-llm-gateway-internal`; all other bundled
-extensions continue to work independently.
+Users who do not use a compatible LLM gateway can disable that provider with
+`/sf-pi disable sf-llm-gateway-internal`; all other bundled extensions continue
+to work independently.
 
 ### Step 4 — Set up the terminal font (one-time)
 
@@ -406,13 +406,12 @@ For the canonical machine-readable bundle list, see [`catalog/index.json`](./cat
 
 <!-- GENERATED:bundled-extensions:end -->
 
-> **Note on `sf-llm-gateway-internal`:** this extension targets a
-> Salesforce-internal gateway endpoint and is not usable by external
-> developers. If you are not on the Salesforce corporate network, disable
-> it with `/sf-pi disable sf-llm-gateway-internal` or supply your own
-> OpenAI-compatible gateway with `/sf-llm-gateway`.
+> **Note on `sf-llm-gateway-internal`:** this optional provider ships with no
+> default endpoint or credentials. If you do not use a compatible LLM gateway,
+> disable it with `/sf-pi disable sf-llm-gateway-internal`; otherwise configure
+> your gateway with `/sf-llm-gateway`.
 
-## SF LLM Gateway Internal Quick Start
+## SF LLM Gateway Quick Start
 
 The normal setup path is inside pi. Run the built-in setup wizard and paste your
 organization's gateway root URL plus API key:
@@ -458,8 +457,8 @@ section for the canonical grouping with descriptions.
 The extension stores setup in pi's saved config. Env vars are still supported as
 an automation fallback when saved config is blank, but they are no longer the
 recommended onboarding path and cannot override a saved key. Known pasted URL
-suffixes such as `/bedrock`, `/v1`, and `/bedrock/v1` are canonicalized to the
-gateway root automatically.
+suffixes such as `/v1` or model-specific route suffixes are canonicalized to
+the gateway root automatically.
 
 ### Session storage location
 
@@ -604,7 +603,7 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 - Gateway fails on startup or tool calls error out immediately
 - Claude responses appear to truncate and the agent asks you to type "continue"
 - Opus 4.7/4.8 returns `api_error: Internal server error` on heavy turns
-- gpt-5.5 fails with `Function tools with reasoning_effort are not supported for gpt-5.5 in /v1/chat/completions. Please use /v1/responses instead.`
+- gpt-5.5 fails with a message asking to use `/v1/responses`
 - Footer shows `⚠` badge after a 429 or 5xx
 - I set `/thinking` to a different level but subsequent model switches reset it to `xhigh`
 - Beta headers aren't taking effect

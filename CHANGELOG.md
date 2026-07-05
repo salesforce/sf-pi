@@ -47,7 +47,7 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ### Changed
 
-- **Sanitized SF LLM Gateway public setup surface.** The gateway display name is now source-agnostic (`SF LLM Gateway`), public setup docs use `SF_LLM_GATEWAY_*` env vars, and the older `SF_LLM_GATEWAY_INTERNAL_*` names remain supported as legacy aliases for existing automation.
+- **Sanitized SF LLM Gateway public setup surface.** The gateway display name is now source-agnostic (`SF LLM Gateway`), public setup docs use `SF_LLM_GATEWAY_*` env vars, and older legacy env names remain supported for existing automation.
 - **Added first-slice native-tool mediation to SF Guardrail.** Guardrail now normalizes representative high-value native tool mutations (`agentscript_lifecycle` publish/activation/provisioning, Data 360 confirmed execution, `sf_apex` mutating `anon.run`, `slack_canvas` writes, and SF Browser committing click/press gestures) into the existing Safety Kernel, Safety Envelope, Approval Ledger, HITL, and headless fail-closed path. Added ADR 0074 and a security remediation plan to capture the narrower known-surface mediation model.
 - **Raised pi-coding-agent peerDependency floor to `>=0.74.1`.** Pi 0.74.1
   (2026-05-16) ships three fixes that affect sf-pi extensions directly:
@@ -84,7 +84,7 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
   live on `CODEX_OPENAI_COMPAT.reasoningEffortMap` is now emitted as
   `thinkingLevelMap` in `buildProviderModel`. Without this migration,
   Codex on pi ≥ 0.72 would silently drop the pi-level → provider-effort
-  mapping and hit LiteLLM 400s for `minimal`/`xhigh`.
+  mapping and hit gateway 400s for `minimal`/`xhigh`.
 - **Expose `xhigh` thinking for Opus 4.7 on the SF LLM Gateway.** Pi 0.72
   treats `xhigh` as opt-in via `thinkingLevelMap.xhigh`
   (`getSupportedThinkingLevels` requires `mapped !== undefined`).
@@ -127,7 +127,7 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
   `sf-llm-gateway-internal-anthropic` for Claude) so pi's `/login` menu
   showed two rows for the same gateway and the same token, which was
   confusing. Now there is a single provider `sf-llm-gateway-internal`
-  displayed as "SF LLM Gateway (Salesforce Internal)". All models inherit
+  displayed with one gateway-specific label. All models inherit
   the provider-level `openai-completions` API so pi always invokes the
   provider's custom `streamSimple`; the dispatcher detects Claude model ids
   and forwards them to the native Anthropic transport (same streamer as
@@ -141,8 +141,8 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
   id in the user's global and project pi `settings.json`
   (`defaultProvider`, `defaultModel`, `enabledModels`). Idempotent via a
   `sfPi.gatewayUnifyMigrated` sentinel, so the migrator runs at most once
-  per settings file. Env-var users (`SF_LLM_GATEWAY_INTERNAL_API_KEY`) and
-  existing saved-config users are not affected. Current sf-pi builds require
+  per settings file. Legacy gateway env-var users and existing saved-config
+  users are not affected. Current sf-pi builds require
   pi `>=0.73.0`; see the breaking-change note above.
 
 - **sf-devbar: instant thinking-badge repaint on `thinking_level_select`

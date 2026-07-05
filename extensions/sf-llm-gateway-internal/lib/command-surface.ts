@@ -175,9 +175,9 @@ export const GATEWAY_COMMAND_SURFACE: readonly GatewayCommandSurfaceItem[] = [
   {
     id: "latency-probe",
     label: "Latency probe",
-    usage: "latency-probe [modelId] [--large] [--beta-compare] [--bedrock]",
+    usage: "latency-probe [modelId] [--large] [--beta-compare]",
     description:
-      "Run read-only gateway timing probes for discovery, a tiny streamed generation, and optional Opus beta / Bedrock comparisons.",
+      "Run read-only gateway timing probes for discovery, a tiny streamed generation, and optional Opus beta comparisons.",
     section: "Discovery & diagnostics",
     aliases: ["latency"],
   },

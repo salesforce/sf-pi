@@ -33,13 +33,12 @@ and forward to the matching shim:
 | Gemini / GPT / Codex     | `openai-completions` | `streamSfGatewayOpenAI`    | `<gateway>/v1`                                     |
 | Claude (Opus/Sonnet/...) | `openai-completions` | `streamSfGatewayAnthropic` | `<gateway>` (Anthropic SDK appends `/v1/messages`) |
 
-Claude runs on the native Anthropic Messages path because LiteLLM's
-OpenAI-compat translator splits Claude thinking + text across multiple
-choices and intermittently drops the final text delta on `choices[0]`,
-producing an empty assistant turn that required users to type "continue"
-to unstick the agent loop. Native Anthropic streaming avoids that entire
-class of failure. Non-Claude families behave correctly on OpenAI-compat
-and stay there.
+Claude runs on the native Anthropic Messages path because the OpenAI-compatible
+translator can split Claude thinking + text across multiple choices and
+intermittently drop the final text delta on `choices[0]`, producing an empty
+assistant turn that required users to type "continue" to unstick the agent loop.
+Native Anthropic streaming avoids that class of failure. Non-Claude families
+behave correctly on OpenAI-compatible routing and stay there.
 
 ### Why one provider?
 
@@ -74,28 +73,21 @@ short-circuits subsequent sessions. Users see no prompt and no manual step.
    `{ type: "function", function: {...} }` shape.
 
    _Historical note:_ an earlier revision flattened Chat Completions tools
-   into the Responses-API tool shape because the gateway used to require
-   it on `/v1/chat/completions`. The gateway has since been fixed to
-   handle the Chat Completions shape correctly, and the flattened shape
-   now triggers HTTP 500 (`'NoneType' object is not subscriptable`). The
-   `flattenCodexTools` shim was removed in v0.71.x. Live probe evidence
-   lives in the `tests/codex-regression.test.ts` suite.
+   into the Responses-API tool shape because one gateway route used to require
+   it on `/v1/chat/completions`. The gateway has since been fixed to handle the
+   Chat Completions shape correctly, and the flattened shape is no longer used.
+   Live probe evidence lives in the `tests/codex-regression.test.ts` suite.
 
    For non-Codex GPT-5+ models, the strongest auto-injected
-   `reasoning_effort` is `max` (was `xhigh` until v0.71.x). The gateway
-   tightened its OpenAI reasoning_effort validator to
-   `{low,medium,high,max}`; raw `xhigh` returns HTTP 400
-   `reasoning_effort=xhigh is not supported for this model`.
+   `reasoning_effort` is `max` (was `xhigh` until v0.71.x). The gateway's
+   OpenAI reasoning-effort window is `{low,medium,high,max}`, so raw `xhigh`
+   is normalized before sending.
 
-   Also: **gpt-5 family Responses routing**. gpt-5, gpt-5-mini, gpt-5.5,
-   and versioned non-Codex GPT-5 IDs such as `gpt-5.4-bedrock` and
-   `gpt-5.5-bedrock` route through `POST <gateway-root>/responses` instead of
-   `/v1/chat/completions`. The chat path rejects gpt-5.5 agentic turns when
-   `reasoning_effort` and function tools appear together; the root Responses
-   endpoint accepts the tool-shaped request and is the preferred path. Versioned
-   Bedrock GPT-5 IDs deliberately omit `service_tier: priority` because that
-   tier is rejected for those model groups. A `SF_LLM_GATEWAY_INTERNAL_GPT5_FORCE_CHAT`
-   kill switch remains available for emergency rollback.
+   Also: **gpt-5 family Responses routing**. GPT-5-family non-Codex models
+   route through `POST <gateway-root>/responses` instead of
+   `/v1/chat/completions` when that route is required for tool-shaped agentic
+   requests. Some provider-backed model groups use the gateway default service
+   tier rather than forcing `priority`.
 
 2. **Anthropic stream errors** (`streamSfGatewayAnthropic`). Uses Pi's
    provider retry budget (`retry.provider.maxRetries`, Gateway default: 3) when
@@ -227,8 +219,8 @@ The panel writes the same files that env vars and direct edits would touch,
 so these alternative paths still work for power users and CI:
 
 - **Env vars**: `SF_LLM_GATEWAY_BASE_URL` + `SF_LLM_GATEWAY_API_KEY`
-  for shell-driven automation. The older `SF_LLM_GATEWAY_INTERNAL_*` names
-  remain supported as legacy aliases.
+  for shell-driven automation. Older legacy aliases remain supported for
+  existing automation.
 - **Direct edit**: `~/.pi/agent/sf-llm-gateway-internal.json` (global) or
   `<project>/.pi/sf-llm-gateway-internal.json` (project).
 
@@ -237,8 +229,8 @@ path in v0.56.0 — use the panel instead. The provider id stays the same so
 pi's auth resolution and model routing continue to work.
 
 Configure the base URL as your organization's gateway **root URL**, for
-example `https://your-internal-gateway.example.com`. If a user pastes a known
-route suffix such as `/bedrock`, `/v1`, or `/bedrock/v1`, the config layer
+example `https://your-gateway.example.com`. If a user pastes a known route
+suffix such as `/v1` or a model-specific route suffix, the config layer
 canonicalizes it back to the root. Runtime endpoint helpers then derive the
 correct routes: OpenAI-compatible chat/model discovery uses the gateway's `/v1`
 route, Anthropic Messages uses the gateway root because the SDK appends
@@ -424,8 +416,8 @@ Required env vars for the live regression:
 
 Optional env vars:
 
-- `SF_LLM_GATEWAY_INTERNAL_CODEX_TEST_MODEL` — defaults to `gpt-5.3-codex`
-- `SF_LLM_GATEWAY_INTERNAL_CODEX_TEST_TIMEOUT_MS` — request timeout override
+- `SF_LLM_GATEWAY_CODEX_TEST_MODEL` — defaults to the current Codex smoke-test model
+- `SF_LLM_GATEWAY_CODEX_TEST_TIMEOUT_MS` — request timeout override
 
 Exported helpers are marked with `// Exported for unit tests.` in the source.
 
@@ -450,8 +442,8 @@ user-lifetime spend.
 ## Debugging: `/sf-llm-gateway debug`
 
 The gateway exposes `POST /utils/transform_request`, which echoes the exact
-upstream URL, headers, and body LiteLLM would send for a given request. The
-extension wraps that as a first-class command:
+provider-bound URL, headers, and body the gateway would send for a given
+request. The extension wraps that as a first-class command:
 
 ```
 /sf-llm-gateway debug <modelId> [reasoning=<level>] [tool] [adaptive]
@@ -482,7 +474,7 @@ the gateway will accept, without burning tokens on a real completion.
 gateway latency from pi's local transport overhead:
 
 ```text
-/sf-llm-gateway latency-probe [modelId] [--large] [--beta-compare] [--bedrock]
+/sf-llm-gateway latency-probe [modelId] [--large] [--beta-compare]
 ```
 
 Default mode performs metadata probes plus one tiny streamed generation. Claude
@@ -490,8 +482,7 @@ and Chat Completions probes use `max_tokens: 1`; Responses probes use
 `max_output_tokens: 16` because some GPT-5-family routes reject smaller values
 before a latency measurement can be taken. `--large` adds a large filler prompt
 and should be used sparingly because it still consumes gateway quota. For Opus
-4.7, `--beta-compare` compares no-beta vs `context-1m-2025-08-07`, and
-`--bedrock` measures the Bedrock compatibility stream's first chunk.
+4.7, `--beta-compare` compares no-beta vs `context-1m-2025-08-07`.
 
 ## Debugging: wire trace
 
@@ -499,7 +490,7 @@ When the gateway returns empty or unexpected responses, enable the opt-in
 wire trace to capture raw request/response bytes on disk:
 
 ```bash
-SF_LLM_GATEWAY_INTERNAL_TRACE=1 pi
+SF_LLM_GATEWAY_TRACE=1 pi
 ```
 
 On activation, `lib/wire-trace.ts` wraps `globalThis.fetch` and logs one JSON
@@ -529,12 +520,12 @@ Run `/sf-llm-gateway` for first-time onboarding. The setup page lets users paste
 the gateway root URL and token, open the browser token-generation page, or import
 a cleansed URL/token from local Claude Code settings. Env vars are only a
 fallback when saved config is blank. The base URL should be the gateway root, for
-example `https://your-internal-gateway.example.com`. If a user pastes a route
-with a known suffix such as `/bedrock`, `/v1`, or `/bedrock/v1`, the extension
+example `https://your-gateway.example.com`. If a user pastes a route with a
+known suffix such as `/v1` or a model-specific route suffix, the extension
 canonicalizes it back to the gateway root before building OpenAI, Claude, and
 admin endpoints. Run `/sf-llm-gateway doctor` for endpoint/key preflight checks,
-or `/sf-llm-gateway debug <model>` to inspect the exact upstream payload LiteLLM
-would send.
+or `/sf-llm-gateway debug <model>` to inspect the exact provider-bound payload
+the gateway would send.
 
 **Claude responses appear to truncate and the agent asks you to type "continue":**
 This is the pi-ai OpenAI-compat translator splitting Claude thinking + text
@@ -549,23 +540,18 @@ Transient mid-stream failures use Pi's provider retry budget
 (`retry.provider.maxRetries`, Gateway default: 3) with exponential backoff
 before bubbling. If the retry exhausts, the final error includes an inline
 `Tip:` footer with next steps. For deeper inspection, enable wire tracing
-(`SF_LLM_GATEWAY_INTERNAL_TRACE=1`). Note: the earlier instability at
+(`SF_LLM_GATEWAY_TRACE=1`). Note: the earlier instability at
 `max_tokens=128000 + effort=max` has been resolved upstream (May 2026);
 the transport no longer applies level-scaled output-token floors.
 
-**gpt-5.5 fails with `Function tools with reasoning_effort are not supported for gpt-5.5 in /v1/chat/completions. Please use /v1/responses instead.`:**
-Handled by the transport shim as of this extension version: gpt-5.5 and
-other gpt-5-family non-Codex models, including versioned Bedrock IDs such as
-`gpt-5.4-bedrock` and `gpt-5.5-bedrock`, route through
-`POST <gateway-root>/responses` instead of `/v1/chat/completions`. The
-Responses path accepts tool-shaped agentic requests and uses the model's
-thinking-level map to keep effort values inside the gateway-safe window.
-Versioned Bedrock GPT-5 IDs use the upstream default service tier because
-`priority` is rejected for those model groups. They also finish the local pi
-turn shortly after the last visible output block because their streamed terminal
-`response.completed` event can lag behind visible text. If the Responses path is
-unavailable, the `SF_LLM_GATEWAY_INTERNAL_GPT5_FORCE_CHAT=1` kill switch forces
-the older chat path for emergency rollback.
+**gpt-5.5 fails with a message asking to use `/v1/responses`:**
+Handled by the transport shim as of this extension version: GPT-5-family
+non-Codex models route through `POST <gateway-root>/responses` instead of
+`/v1/chat/completions` when the Responses path is required for tool-shaped
+agentic requests. The Responses path accepts tool-shaped requests and uses the
+model's thinking-level map to keep effort values inside the gateway-safe window.
+Some provider-backed GPT-5 model groups use the gateway default service tier
+because `priority` is not valid for those routes.
 
 **Footer shows `⚠` badge after a 429 or 5xx:**
 `provider-telemetry.ts` parses retry-after headers and surfaces a 60s
