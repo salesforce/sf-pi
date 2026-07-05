@@ -6,6 +6,7 @@
  * gates. It is intentionally narrow: only file-path tools, bash commands, and
  * `herdr.run.command` are safety subjects today.
  */
+import { classifyNativeToolRisk } from "./native-tool-risk-registry.ts";
 import type { SafetySubject } from "./types.ts";
 
 const FILE_PATH_TOOLS = new Set(["read", "write", "edit", "grep", "find", "ls"]);
@@ -26,5 +27,5 @@ export function normalizeSafetySubject(
     return { kind: "shellCommand", toolName, command: input.command };
   }
 
-  return undefined;
+  return classifyNativeToolRisk(toolName, input);
 }

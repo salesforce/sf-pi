@@ -13,6 +13,7 @@
 import { evaluateCommandRiskWithOrgLookup } from "./command-risk-gate.ts";
 import { evaluateFilePolicy } from "./file-policy-gate.ts";
 import { evaluateOrgAwareRiskWithOrgLookup } from "./org-aware-risk-gate.ts";
+import { evaluateNativeToolRiskWithOrgLookup } from "./native-tool-risk-gate.ts";
 import { normalizeSafetySubject } from "./safety-subject.ts";
 import type { ClassifiedDecision, GuardrailConfig } from "./types.ts";
 
@@ -32,6 +33,10 @@ export async function evaluateSafety(
 
   if (subject.kind === "file") {
     return evaluateFilePolicy(subject, input.cwd, input.config);
+  }
+
+  if (subject.kind === "nativeTool") {
+    return evaluateNativeToolRiskWithOrgLookup(subject, input.cwd, input.config);
   }
 
   const commandRisk = await evaluateCommandRiskWithOrgLookup(subject, input.cwd, input.config);

@@ -39,6 +39,8 @@ function riskGateLabel(decision: ClassifiedDecision): string {
       return `Dangerous command (${decision.ruleId})`;
     case "orgAwareGate":
       return `Org-aware operation (${decision.ruleId})`;
+    case "nativeToolGate":
+      return `Native tool operation (${decision.ruleId})`;
   }
 }
 

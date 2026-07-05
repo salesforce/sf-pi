@@ -12,6 +12,10 @@ _Avoid_: generic guardrails, policy platform, security scanner, Salesforce org p
 The product posture where **SF Guardrail** evaluates risky agent actions and returns a clear allow, block, or human-approval decision. It is opinionated and narrow rather than a configurable policy platform.
 _Avoid_: policy engine, governance framework, rule marketplace, shell sandbox
 
+**Known-Surface Mediation**:
+The safety posture where **SF Guardrail** mediates risky action surfaces that SF Pi owns, observes, and can classify in the **Pi Runtime**, without claiming to sandbox every possible local, shell, external, manual, or future mutation path. SF Pi should not add first-party semantic write surfaces that bypass this mediation.
+_Avoid_: complete mutation sandbox, universal write prevention, guaranteed no mutation
+
 **Rule Behavior**:
 The per-rule setting that decides whether a risk is off, human-confirmable, or a non-overridable hard block. The settings UI presents these as Off, Ask me, and Block.
 _Avoid_: enabled flag, theme, policy mode
@@ -32,13 +36,17 @@ _Avoid_: raw tool call, command blob, policy input
 A **Safety Subject** normalized from an LLM-callable SF Pi tool rather than from a shell command or file path. It captures the attempted operation, target org or external destination when relevant, operation family, risk-relevant target details, and an input fingerprint so the **Safety Kernel** can return a normal **Guardrail Decision**.
 _Avoid_: per-extension approval system, model approval flag, native policy layer, tool self-approval
 
+**High-Value Durable Mutation**:
+A first-party, LLM-callable operation that can persistently change Salesforce org state, Data 360 resources, externally visible collaboration content, or another durable system of record under the user's authority. Mutation alone is not the risk; the risk is a native semantic write path where the model could otherwise self-approve a specific durable change. Ordinary local source edits are not high-value durable mutations; they become externally durable only when a separate deploy, publish, save, or execute operation applies them to a system of record.
+_Avoid_: all mutation, local edit, browser draft state, read-only probe, dry run
+
 **Risk Gate**:
 A narrow safety check that explains why a **Safety Subject** is risky, such as protected file access, a dangerous local command, or a production-sensitive Salesforce operation.
 _Avoid_: rule engine, detector, scanner
 
 **Native Tool Risk Registry**:
-The SF Guardrail-owned registry of classifiers for bundled SF Pi native tools. Each classifier normalizes a high-value LLM-callable tool operation into a **Native Tool Safety Subject** so the existing **Safety Kernel**, **Safety Envelope**, **Approval Ledger**, and **Human-in-the-Loop Approval** flow can handle it consistently. Its first boundary is high-value durable mutations only, not every local edit or read-like tool action.
-_Avoid_: per-extension approval helper, policy marketplace, tool-specific HITL layer, agent-callable approval API
+The SF Guardrail-owned registry of classifiers for bundled SF Pi native tools. Each classifier normalizes a known **High-Value Durable Mutation** into a **Native Tool Safety Subject** so the existing **Safety Kernel**, **Safety Envelope**, **Approval Ledger**, and **Human-in-the-Loop Approval** flow can handle it consistently. Native tools are not risky by default; classifiers should ignore read-only actions, dry runs, local diagnostics, local tests, and pre-commit browser draft state.
+_Avoid_: per-extension approval helper, policy marketplace, tool-specific HITL layer, agent-callable approval API, all-native-tool gating
 
 **Committing UI Gesture**:
 A browser action that attempts to persist or submit Salesforce UI state, such as Save, Apply, Submit, Activate, Assign, Delete, or an Enter key that submits a form. SF Guardrail should mediate committing gestures rather than every pre-commit fill, select, or editor write.
@@ -68,6 +76,10 @@ _Avoid_: arbitrary command prefix, broad tool permission, workflow
 The explicit user confirmation step used when a **Guardrail Decision** cannot be safely allowed or hard-blocked. The approval asks the user to accept a **Safety Envelope**, not to grant general trust.
 _Avoid_: silent approval, background prompt, exception
 
+**User Intent Boundary**:
+The point where a human or configured operator authority accepts a specific **Safety Envelope** before an AI-mediated **High-Value Durable Mutation** proceeds. It complements Salesforce, Slack, Data 360, and operating-system authorization; it does not replace those systems.
+_Avoid_: permission check, authz replacement, user authentication, blanket consent
+
 **Execution Intent Flag**:
 A model- or tool-supplied parameter that declares the requested operation is intentionally live or mutating, such as `allow_mutation`, `allow_confirmed`, `mutation`, or `dry_run=false`. It helps classify risk and reject accidental mutation, but it is not approval. Approval comes from **Human-in-the-Loop Approval**, an existing **Session Approval**, or explicit operator-approved headless mode.
 _Avoid_: approval flag, self-approval, bypass flag, trust parameter
@@ -77,8 +89,12 @@ The seam that records **Guardrail Decisions** and manages **Session Approvals**,
 _Avoid_: audit helper, allowlist, approval store, grant manager
 
 **Session Approval**:
-A branch/session-scoped approval that suppresses repeated prompts for the same **Safety Envelope** during the current Pi session path.
+A branch/session-scoped approval that suppresses repeated prompts for the same **Safety Envelope** during the current Pi session path. It is appropriate only when the envelope describes a stable bounded operation; arbitrary-code, raw-REST, UI-ref-based, external-content, destructive, production, or unknown-org operations should stay exact or allow-once.
 _Avoid_: timed grant, permanent allow, global trust, hidden bypass
+
+**Stable Bounded Operation**:
+A risky action whose **Safety Envelope** can be described in durable domain terms, such as the same verified org, project, agent, operation family, and resource identity, without depending primarily on arbitrary payload text or short-lived UI references.
+_Avoid_: broad workflow, arbitrary payload approval, blanket session trust
 
 **Session-Scoped Approval Envelope**:
 A **Safety Envelope** that has been accepted by the human for the current Pi session path only. It replaces wall-clock approval grants as the preferred way to reduce prompt fatigue.
@@ -91,6 +107,10 @@ _Avoid_: permanent allowlist, trust mode, project policy
 **Fail-Closed Outcome**:
 The safety posture where ambiguity resolves to block or human approval rather than silent allow.
 _Avoid_: best-effort allow, convenience-first safety, optimistic pass
+
+**Operator-Approved Headless Mode**:
+A non-interactive execution mode where confirm-class **Guardrail Decisions** may pass only because a human or operator configured an explicit environment-level opt-in before the run, currently `SF_GUARDRAIL_ALLOW_HEADLESS=1`. It is not settable by the model or tool input, is recorded in the **Guardrail Audit Trail**, and does not weaken **Hard Blocks**.
+_Avoid_: tool-specific headless write flag, model-approved headless, CI trust mode, silent bypass
 
 **Guardrail Audit Trail**:
 The session-local record of **Guardrail Decisions** and approval outcomes.

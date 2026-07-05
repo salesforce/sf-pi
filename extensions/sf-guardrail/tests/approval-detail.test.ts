@@ -85,4 +85,29 @@ describe("renderApprovalDetail", () => {
       "- Exact subject fingerprint: org=00DPROD|type=production|family=sf project deploy",
     );
   });
+
+  it("renders native tool Safety Envelope details", () => {
+    const detail = renderApprovalDetail({
+      ruleId: "native-slack-canvas-write",
+      feature: "nativeToolGate",
+      action: "confirm",
+      reason: "Slack canvas create writes externally visible collaboration content.",
+      promptTitle: "Slack canvas write",
+      fingerprint: "slack_canvas|create|abc123",
+      subject: "slack_canvas create Release checklist",
+      approvalScope: {
+        fingerprint: "family=slack canvas write|native=slack_canvas|create|abc123",
+        label: "Slack canvas create Release checklist",
+        detail: "title=Release checklist; content=abc123",
+        riskTier: "external_content_write_exact",
+        operationFamily: "slack canvas write",
+      },
+    });
+
+    expect(detail).toContain("Risk gate:\n- Native tool operation (native-slack-canvas-write)");
+    expect(detail).toContain("Subject:\n- slack_canvas create Release checklist");
+    expect(detail).toContain("- Slack canvas create Release checklist");
+    expect(detail).toContain("- Operation family: slack canvas write");
+    expect(detail).toContain("- Risk tier: external_content_write_exact");
+  });
 });

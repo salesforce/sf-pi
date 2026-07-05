@@ -50,11 +50,19 @@ export function resolveOrgContext(
 ): OrgContext {
   const tokens = tokenize(command);
   const explicit = tokens ? extractTargetOrg(tokens) : undefined;
+  return resolveOrgContextForTarget(explicit, cwd, productionAliases);
+}
+
+export function resolveOrgContextForTarget(
+  targetOrg: string | undefined,
+  cwd: string,
+  productionAliases: string[],
+): OrgContext {
   const env = getCachedSfEnvironment(cwd);
 
   const defaultAlias = env?.org?.alias ?? env?.config?.targetOrg;
-  const alias = explicit ?? defaultAlias;
-  const isExplicit = explicit !== undefined;
+  const alias = targetOrg ?? defaultAlias;
+  const isExplicit = targetOrg !== undefined;
 
   if (!alias) {
     return guessedProduction(undefined, isExplicit);
@@ -82,7 +90,17 @@ export async function resolveOrgContextWithLookup(
   cwd: string,
   productionAliases: string[],
 ): Promise<OrgContext> {
-  const fast = resolveOrgContext(command, cwd, productionAliases);
+  const tokens = tokenize(command);
+  const explicit = tokens ? extractTargetOrg(tokens) : undefined;
+  return resolveOrgContextForTargetWithLookup(explicit, cwd, productionAliases);
+}
+
+export async function resolveOrgContextForTargetWithLookup(
+  targetOrg: string | undefined,
+  cwd: string,
+  productionAliases: string[],
+): Promise<OrgContext> {
+  const fast = resolveOrgContextForTarget(targetOrg, cwd, productionAliases);
   if (!fast.guessed || !fast.explicit || !fast.alias) return fast;
 
   const cached = lookupCache.get(fast.alias);

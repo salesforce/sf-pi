@@ -3,7 +3,9 @@
 ## What It Does
 
 A Salesforce-aware safety layer on top of pi's `tool_call` hook. Three rule
-families, each controlled by per-rule behavior (`off`, `confirm`, or `block`):
+families plus one known-surface native-tool registry feed the same Safety Kernel,
+HITL, headless fail-closed, session approval, and audit path. Rule families are
+controlled by per-rule behavior (`off`, `confirm`, or `block`):
 
 1. **policies** — file-protection rules with three levels:
    - `noAccess` blocks `read`, `write`, `edit`, `bash`, `grep`, `find`, `ls`
@@ -45,6 +47,12 @@ families, each controlled by per-rule behavior (`off`, `confirm`, or `block`):
    - `sf agent activate | deactivate`
    - `sf agent publish authoring-bundle`
 
+4. **nativeToolGate** — a Guardrail-owned registry for known high-value durable
+   mutations exposed through bundled SF Pi native tools. The first slice covers
+   mutating `sf_apex anon.run`, `slack_canvas create/edit`, and SF Browser
+   committing click/press gestures. Tool intent flags such as `allow_mutation`,
+   `mutation`, and `dry_run=false` classify intent; they are not approval.
+
 Plus:
 
 - **Rule-derived guidance** — once-per-session sf-brain-style kernel telling
@@ -79,7 +87,8 @@ Extension loads
        ├─ commandGate hit (safe temp cleanup)             → pass through, audit as allow_auto
        ├─ commandGate hit (allow)                         → pass through
        ├─ commandGate hit (autoDeny)                      → { block }, audit
-       ├─ commandGate hit (confirm) OR orgAwareGate hit   →
+       ├─ commandGate hit (confirm) OR orgAwareGate hit
+       │  OR nativeToolGate hit                           →
        │      previously granted for this session         → pass through, audit as allow_session
        │      interactive                                 → ctx.ui.select (Allow once / Allow for session / Block)
        │      headless + env opt-in                       → pass through, audit as headless_pass
@@ -145,6 +154,7 @@ engine. The canonical terms live in `CONTEXT.md`; the redesign plan lives in
 - ADR 0050 — configurable extension settings use Manager Surface drill-in
 - ADR 0051 — extension commands deep-link to the Manager Surface
 - ADR 0052 — rule behavior is the only safety model
+- ADR 0074 — native high-value durable mutation mediation
 
 ## Behavior Matrix
 
@@ -159,6 +169,7 @@ engine. The canonical terms live in `CONTEXT.md`; the redesign plan lives in
 | tool_call          | commandGate allowedPatterns             | Pass through                                     |
 | tool_call          | commandGate autoDenyPatterns            | `{ block }`, audit                               |
 | tool_call          | `herdr.run` command matches a gate      | same confirmation path as `bash`                 |
+| tool_call          | native high-value mutation matches      | same confirmation path as other confirm gates    |
 | tool_call          | previously allowed (session memory)     | Pass through, audit as allow_session             |
 | tool_call          | interactive confirmation                | `ctx.ui.select`, status/notify, audit per choice |
 | tool_call          | headless + env opt-in                   | Pass through, audit as headless_pass             |
@@ -191,6 +202,8 @@ extensions/sf-guardrail/
     guidance.ts             ← implementation module
     hitl.ts                 ← implementation module
     manager-action-panels.ts← implementation module
+    native-tool-risk-gate.ts← implementation module
+    native-tool-risk-registry.ts← implementation module
     org-aware-gate.ts       ← implementation module
     org-aware-risk-gate.ts  ← implementation module
     org-context.ts          ← implementation module

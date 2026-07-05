@@ -187,4 +187,122 @@ describe("Safety Kernel", () => {
       rmSync(tempDir, { recursive: true, force: true });
     }
   });
+
+  it("confirms mutating sf_apex anon.run as a native tool safety subject", async () => {
+    mockedEnv = env("DevInt", "sandbox");
+
+    const decision = await evaluateSafety({
+      toolName: "sf_apex",
+      input: {
+        action: "anon.run",
+        body: "Account a = new Account(Name = 'Acme'); insert a;",
+        allow_mutation: true,
+      },
+      cwd: "/project",
+      config: readBundledConfig(),
+    });
+
+    expect(decision).toMatchObject({
+      action: "confirm",
+      feature: "nativeToolGate",
+      ruleId: "native-sf-apex-anon-mutating",
+      orgAlias: "DevInt",
+      orgType: "sandbox",
+    });
+    expect(decision?.approvalScope).toMatchObject({
+      operationFamily: "anonymous apex",
+      riskTier: "org_mutation_exact",
+      label: "this exact Anonymous Apex body",
+    });
+    expect(decision?.approvalScope?.fingerprint).toContain("org=00DDevInt");
+    expect(decision?.approvalScope?.fingerprint).toContain("family=anonymous apex");
+  });
+
+  it("does not mediate sf_apex anon.run when the mutating intent flag is absent", async () => {
+    const decision = await evaluateSafety({
+      toolName: "sf_apex",
+      input: {
+        action: "anon.run",
+        body: "Account a = new Account(Name = 'Acme'); insert a;",
+      },
+      cwd: "/project",
+      config: readBundledConfig(),
+    });
+
+    expect(decision).toBeUndefined();
+  });
+
+  it("confirms slack_canvas create/edit as native external content writes", async () => {
+    const decision = await evaluateSafety({
+      toolName: "slack_canvas",
+      input: {
+        action: "create",
+        title: "Release checklist",
+        markdown: "# Checklist\n- Review\n- Ship",
+        channel_id: "C01ABCEXAMPLE",
+      },
+      cwd: "/project",
+      config: readBundledConfig(),
+    });
+
+    expect(decision).toMatchObject({
+      action: "confirm",
+      feature: "nativeToolGate",
+      ruleId: "native-slack-canvas-write",
+      subject: "slack_canvas create Release checklist",
+    });
+    expect(decision?.approvalScope).toMatchObject({
+      operationFamily: "slack canvas write",
+      riskTier: "external_content_write_exact",
+    });
+  });
+
+  it("does not mediate slack_canvas reads", async () => {
+    const decision = await evaluateSafety({
+      toolName: "slack_canvas",
+      input: { action: "read", canvas_id: "F0123456789" },
+      cwd: "/project",
+      config: readBundledConfig(),
+    });
+
+    expect(decision).toBeUndefined();
+  });
+
+  it("confirms Salesforce browser committing gestures", async () => {
+    const decision = await evaluateSafety({
+      toolName: "sf_browser_click",
+      input: { ref: "@e12", reason: "Click Save", mutation: true },
+      cwd: "/project",
+      config: readBundledConfig(),
+    });
+
+    expect(decision).toMatchObject({
+      action: "confirm",
+      feature: "nativeToolGate",
+      ruleId: "native-sf-browser-commit",
+      subject: "sf_browser_click @e12",
+    });
+    expect(decision?.approvalScope).toMatchObject({
+      operationFamily: "browser commit",
+      riskTier: "browser_commit_exact",
+    });
+  });
+
+  it("infers Salesforce browser commits from the reason without prompting all clicks", async () => {
+    const saveDecision = await evaluateSafety({
+      toolName: "sf_browser_press",
+      input: { key: "Enter", reason: "submit form" },
+      cwd: "/project",
+      config: readBundledConfig(),
+    });
+    expect(saveDecision?.ruleId).toBe("native-sf-browser-commit");
+
+    const navigateDecision = await evaluateSafety({
+      toolName: "sf_browser_click",
+      input: { ref: "@e2", reason: "open Details tab" },
+      cwd: "/project",
+      config: readBundledConfig(),
+    });
+    expect(navigateDecision).toBeUndefined();
+  });
 });

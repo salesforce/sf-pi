@@ -539,7 +539,7 @@
   {
     "id": "sf-guardrail",
     "name": "SF Guardrail",
-    "description": "Salesforce-aware safety hooks — file protection policies, dangerous-command gating, and org-aware confirmation for production deploys, apex runs, and data mutations",
+    "description": "Salesforce-aware safety hooks — file protection policies, dangerous-command gating, org-aware confirmation, and native high-value mutation mediation",
     "category": "safety",
     "maturity": "stable",
     "defaultEnabled": true,
@@ -557,12 +557,14 @@
       "tool_call"
     ],
     "docs": {
-      "summary": "Salesforce-aware safety layer for pi: file-protection policies, AST-matched command gating, org-aware confirmation on production deploys/Apex/DML/destructive REST, plus a once-per-session prompt-injection that teaches the LLM the gating categories and validate-first workflow.",
+      "summary": "Salesforce-aware safety layer for pi: file-protection policies, AST-matched command gating, org-aware confirmation on production deploys/Apex/DML/destructive REST, native high-value mutation mediation, plus a once-per-session prompt-injection that teaches the LLM the gating categories and validate-first workflow.",
       "primaryFiles": [
         "index.ts",
         "lib/safety-kernel.ts",
         "lib/safety-subject.ts",
         "lib/safety-envelope.ts",
+        "lib/native-tool-risk-registry.ts",
+        "lib/native-tool-risk-gate.ts",
         "lib/rule-behavior.ts",
         "lib/file-policy-gate.ts",
         "lib/policies.ts",
@@ -590,13 +592,14 @@
       "safety": [
         "Fail-closed in headless mode unless SF_GUARDRAIL_ALLOW_HEADLESS=1.",
         "Every block / allow / confirm decision is persisted as an audit entry.",
+        "Known high-value native tool mutations are mediated before execution through the same Safety Kernel and HITL path.",
         "alwaysActive=false but disabling removes the safety layer entirely; the manager surfaces this clearly."
       ]
     },
     "entry": "extensions/sf-guardrail/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 4344
+    "srcLoc": 4609
   },
   {
     "id": "sf-herdr",

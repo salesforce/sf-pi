@@ -120,7 +120,7 @@ _API-native SOQL lifecycle workflows for pi: schema search/describe, relationshi
 
 ### [SF Guardrail](./extensions/sf-guardrail)
 
-_Salesforce-aware safety hooks — file protection policies, dangerous-command gating, and org-aware confirmation for production deploys, apex runs, and data mutations_
+_Salesforce-aware safety hooks — file protection policies, dangerous-command gating, org-aware confirmation, and native high-value mutation mediation_
 
 - Default: **on**
 - Commands: `/sf-guardrail`

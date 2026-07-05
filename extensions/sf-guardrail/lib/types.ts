@@ -116,7 +116,7 @@ export interface GuardrailConfig {
 
 // ─── Safety subject model ───────────────────────────────────────────────────────
 
-export type SafetySubject = FileSafetySubject | ShellCommandSafetySubject;
+export type SafetySubject = FileSafetySubject | ShellCommandSafetySubject | NativeToolSafetySubject;
 
 export interface FileSafetySubject {
   kind: "file";
@@ -128,6 +128,29 @@ export interface ShellCommandSafetySubject {
   kind: "shellCommand";
   toolName: "bash" | "herdr";
   command: string;
+}
+
+export interface NativeToolSafetySubject {
+  kind: "nativeTool";
+  toolName: string;
+  action?: string;
+  ruleId: string;
+  /** Compact display subject for prompts/audit; never a full raw payload. */
+  subject: string;
+  reason: string;
+  promptTitle?: string;
+  operationFamily: string;
+  riskTier: string;
+  /** Stable, already-sanitized fingerprint for the operation payload/target details. */
+  fingerprint: string;
+  approvalLabel: string;
+  approvalDetail?: string;
+  /** True when the native operation targets a Salesforce org. */
+  usesSalesforceOrg?: boolean;
+  /** Alias / username / org id from target_org, when the tool supplied one. */
+  targetOrg?: string;
+  /** True when targetOrg came explicitly from tool input instead of the active default. */
+  targetOrgExplicit?: boolean;
 }
 
 // ─── Decision model ─────────────────────────────────────────────────────────────
@@ -168,7 +191,7 @@ export type SafetyEnvelope = ApprovalScope;
 
 export interface ClassifiedDecision {
   ruleId: string;
-  feature: "policies" | "commandGate" | "orgAwareGate";
+  feature: "policies" | "commandGate" | "orgAwareGate" | "nativeToolGate";
   action: "allow" | "block" | "confirm";
   /** Human-readable reason surfaced back to the LLM on block. */
   reason: string;
@@ -176,7 +199,7 @@ export interface ClassifiedDecision {
   promptTitle?: string;
   /** Stable fingerprint for session allow-memory dedup. */
   fingerprint: string;
-  /** File path (policies) or shell command (commandGate / orgAwareGate). */
+  /** File path, shell command, or compact native tool operation subject. */
   subject: string;
   /** Human-readable Safety Envelope metadata. Kept as approvalScope for compatibility. */
   approvalScope?: SafetyEnvelope;
@@ -208,7 +231,7 @@ export const INJECTION_ENTRY_TYPE = "sf-guardrail-prompt";
 export interface DecisionEntryData {
   timestamp: number;
   ruleId: string;
-  feature: "policies" | "commandGate" | "orgAwareGate";
+  feature: "policies" | "commandGate" | "orgAwareGate" | "nativeToolGate";
   outcome: DecisionOutcome;
   toolName: string;
   subject: string;
