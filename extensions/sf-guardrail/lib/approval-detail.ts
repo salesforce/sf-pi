@@ -71,7 +71,11 @@ function renderEnvelopeLines(decision: ClassifiedDecision): string[] {
   if (envelope.detail) lines.push(`- Detail: ${envelope.detail}`);
   if (envelope.operationFamily) lines.push(`- Operation family: ${envelope.operationFamily}`);
   if (envelope.riskTier) lines.push(`- Risk tier: ${envelope.riskTier}`);
-  lines.push("- Approval duration: current session");
+  lines.push(
+    envelope.allowSession === false
+      ? "- Approval duration: this attempt only"
+      : "- Approval duration: current session",
+  );
   return lines;
 }
 

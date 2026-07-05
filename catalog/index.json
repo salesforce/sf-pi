@@ -592,14 +592,14 @@
       "safety": [
         "Fail-closed in headless mode unless SF_GUARDRAIL_ALLOW_HEADLESS=1.",
         "Every block / allow / confirm decision is persisted as an audit entry.",
-        "Known high-value native tool mutations are mediated before execution through the same Safety Kernel and HITL path.",
+        "Known high-value native tool mutations are mediated before execution through the same Safety Kernel and HITL path, including first-slice AgentScript lifecycle, Apex, Slack Canvas, and SF Browser commit surfaces.",
         "alwaysActive=false but disabling removes the safety layer entirely; the manager surfaces this clearly."
       ]
     },
     "entry": "extensions/sf-guardrail/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 4609
+    "srcLoc": 4740
   },
   {
     "id": "sf-herdr",

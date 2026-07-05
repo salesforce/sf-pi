@@ -80,5 +80,6 @@ function nativeToolSafetyEnvelope(subject: NativeToolSafetySubject, org: OrgCont
     detail: subject.approvalDetail,
     riskTier: subject.riskTier,
     operationFamily: subject.operationFamily,
+    allowSession: subject.allowSession !== false && org?.type !== "production" && !org?.guessed,
   };
 }

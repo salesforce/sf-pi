@@ -18,6 +18,7 @@ export function classifyNativeToolRisk(
 ): NativeToolSafetySubject | undefined {
   return (
     classifySfApex(toolName, input) ??
+    classifyAgentScriptLifecycle(toolName, input) ??
     classifySlackCanvas(toolName, input) ??
     classifySfBrowserCommit(toolName, input)
   );
@@ -51,6 +52,124 @@ function classifySfApex(
     usesSalesforceOrg: true,
     targetOrg,
     targetOrgExplicit: targetOrg !== undefined,
+  };
+}
+
+function classifyAgentScriptLifecycle(
+  toolName: string,
+  input: Record<string, unknown>,
+): NativeToolSafetySubject | undefined {
+  if (toolName !== "agentscript_lifecycle") return undefined;
+  const action = input.action;
+  if (action === "publish") return agentScriptPublishSubject(toolName, input);
+  if (action === "activate" || action === "deactivate") {
+    return agentScriptActivationSubject(toolName, input, action);
+  }
+  if (action === "provision_agent_user" && input.dry_run === false) {
+    return agentScriptProvisionSubject(toolName, input);
+  }
+  return undefined;
+}
+
+function agentScriptPublishSubject(
+  toolName: string,
+  input: Record<string, unknown>,
+): NativeToolSafetySubject | undefined {
+  const agentFile = stringValue(input.agent_file);
+  if (!agentFile) return undefined;
+  const agentApiName = stringValue(input.agent_api_name) ?? agentNameFromFile(agentFile);
+  const targetOrg = stringValue(input.target_org);
+  const activates = input.activate === true;
+  const operationFamily = activates ? "agent publish+activate" : "agent publish";
+  const fingerprint = fingerprintText(JSON.stringify({ operationFamily, agentApiName, agentFile }));
+  return {
+    kind: "nativeTool",
+    toolName,
+    action: "publish",
+    ruleId: "native-agentscript-lifecycle",
+    subject: `agentscript_lifecycle publish ${agentApiName}`,
+    reason: activates
+      ? `Agent Script publish requested with immediate activation for ${agentApiName}.`
+      : `Agent Script publish requested for ${agentApiName}.`,
+    promptTitle: activates ? "⚠ Agent publish + activate" : "⚠ Agent publish",
+    operationFamily,
+    riskTier: "agent_lifecycle_mutation",
+    fingerprint: `agentscript|publish|activate=${activates}|${fingerprint}`,
+    approvalLabel: activates
+      ? `publish and activate agent ${agentApiName}`
+      : `publish agent ${agentApiName}`,
+    approvalDetail: `agent=${agentApiName}; file=${agentFile}; activate=${activates}`,
+    usesSalesforceOrg: true,
+    targetOrg,
+    targetOrgExplicit: targetOrg !== undefined,
+  };
+}
+
+function agentScriptActivationSubject(
+  toolName: string,
+  input: Record<string, unknown>,
+  action: "activate" | "deactivate",
+): NativeToolSafetySubject | undefined {
+  const agentApiName = stringValue(input.agent_api_name);
+  if (!agentApiName) return undefined;
+  const targetOrg = stringValue(input.target_org);
+  const version = typeof input.version === "number" ? String(input.version) : "latest";
+  const fingerprint = fingerprintText(JSON.stringify({ action, agentApiName, version }));
+  return {
+    kind: "nativeTool",
+    toolName,
+    action,
+    ruleId: "native-agentscript-lifecycle",
+    subject: `agentscript_lifecycle ${action} ${agentApiName} v${version}`,
+    reason: `Agent Script ${action} requested for ${agentApiName} (${version}).`,
+    promptTitle: `⚠ Agent ${action}`,
+    operationFamily: "agent activation",
+    riskTier: "agent_lifecycle_activation",
+    fingerprint: `agentscript|${action}|${fingerprint}`,
+    approvalLabel: `${action} agent ${agentApiName}`,
+    approvalDetail: `agent=${agentApiName}; version=${version}`,
+    usesSalesforceOrg: true,
+    targetOrg,
+    targetOrgExplicit: targetOrg !== undefined,
+  };
+}
+
+function agentScriptProvisionSubject(
+  toolName: string,
+  input: Record<string, unknown>,
+): NativeToolSafetySubject | undefined {
+  const agentFile = stringValue(input.agent_file);
+  if (!agentFile) return undefined;
+  const agentApiName = stringValue(input.agent_api_name) ?? agentNameFromFile(agentFile);
+  const targetOrg = stringValue(input.target_org);
+  const usernameOverride = stringValue(input.username_override);
+  const fingerprint = fingerprintText(
+    JSON.stringify({ agentApiName, agentFile, usernameOverride, permissionImpact: "unresolved" }),
+  );
+  return {
+    kind: "nativeTool",
+    toolName,
+    action: "provision_agent_user",
+    ruleId: "native-agentscript-lifecycle",
+    subject: `agentscript_lifecycle provision_agent_user ${agentApiName}`,
+    reason: `Agent Script Service Agent user provisioning requested for ${agentApiName}.`,
+    promptTitle: "⚠ Agent user provisioning",
+    operationFamily: "agent user provisioning",
+    riskTier: "agent_user_provisioning_exact",
+    fingerprint: `agentscript|provision_agent_user|${fingerprint}`,
+    approvalLabel: `provision agent user for ${agentApiName}`,
+    approvalDetail: [
+      `agent=${agentApiName}`,
+      `file=${agentFile}`,
+      usernameOverride ? `username_override=${usernameOverride}` : undefined,
+      "permission-impact fingerprint unavailable pre-execution",
+    ]
+      .filter(Boolean)
+      .join("; "),
+    usesSalesforceOrg: true,
+    targetOrg,
+    targetOrgExplicit: targetOrg !== undefined,
+    allowSession: false,
   };
 }
 
@@ -128,6 +247,7 @@ function classifySfBrowserCommit(
     approvalDetail: [reason ? `reason=${reason}` : undefined, `source=${source}`]
       .filter(Boolean)
       .join("; "),
+    allowSession: false,
   };
 }
 
@@ -148,4 +268,9 @@ function normalizeApexBody(body: string): string {
 
 function stringValue(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function agentNameFromFile(agentFile: string): string {
+  const basename = agentFile.split(/[\\/]/).pop() ?? agentFile;
+  return basename.endsWith(".agent") ? basename.slice(0, -".agent".length) : basename;
 }

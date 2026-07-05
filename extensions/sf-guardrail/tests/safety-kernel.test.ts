@@ -232,6 +232,135 @@ describe("Safety Kernel", () => {
     expect(decision).toBeUndefined();
   });
 
+  it("confirms AgentScript lifecycle publish+activate as a distinct native operation family", async () => {
+    mockedEnv = env("DevInt", "sandbox");
+
+    const decision = await evaluateSafety({
+      toolName: "agentscript_lifecycle",
+      input: {
+        action: "publish",
+        agent_file: "agents/MyAgent/MyAgent.agent",
+        agent_api_name: "MyAgent",
+        activate: true,
+      },
+      cwd: "/project",
+      config: readBundledConfig(),
+    });
+
+    expect(decision).toMatchObject({
+      action: "confirm",
+      feature: "nativeToolGate",
+      ruleId: "native-agentscript-lifecycle",
+      subject: "agentscript_lifecycle publish MyAgent",
+      orgAlias: "DevInt",
+      orgType: "sandbox",
+    });
+    expect(decision?.approvalScope).toMatchObject({
+      operationFamily: "agent publish+activate",
+      riskTier: "agent_lifecycle_mutation",
+      label: "publish and activate agent MyAgent",
+      allowSession: true,
+    });
+  });
+
+  it("keeps AgentScript publish and publish+activate Safety Envelopes separate", async () => {
+    mockedEnv = env("DevInt", "sandbox");
+
+    const baseInput = {
+      action: "publish",
+      agent_file: "agents/MyAgent/MyAgent.agent",
+      agent_api_name: "MyAgent",
+    };
+    const publish = await evaluateSafety({
+      toolName: "agentscript_lifecycle",
+      input: baseInput,
+      cwd: "/project",
+      config: readBundledConfig(),
+    });
+    const publishActivate = await evaluateSafety({
+      toolName: "agentscript_lifecycle",
+      input: { ...baseInput, activate: true },
+      cwd: "/project",
+      config: readBundledConfig(),
+    });
+
+    expect(publish?.approvalScope?.operationFamily).toBe("agent publish");
+    expect(publishActivate?.approvalScope?.operationFamily).toBe("agent publish+activate");
+    expect(publish?.fingerprint).not.toBe(publishActivate?.fingerprint);
+  });
+
+  it("confirms AgentScript activate/deactivate with action-specific fingerprints", async () => {
+    mockedEnv = env("DevInt", "sandbox");
+
+    const activate = await evaluateSafety({
+      toolName: "agentscript_lifecycle",
+      input: { action: "activate", agent_api_name: "MyAgent", version: 3 },
+      cwd: "/project",
+      config: readBundledConfig(),
+    });
+    const deactivate = await evaluateSafety({
+      toolName: "agentscript_lifecycle",
+      input: { action: "deactivate", agent_api_name: "MyAgent", version: 3 },
+      cwd: "/project",
+      config: readBundledConfig(),
+    });
+
+    expect(activate?.approvalScope).toMatchObject({ operationFamily: "agent activation" });
+    expect(deactivate?.approvalScope).toMatchObject({ operationFamily: "agent activation" });
+    expect(activate?.fingerprint).not.toBe(deactivate?.fingerprint);
+  });
+
+  it("confirms live AgentScript Service Agent provisioning as allow-once when permission impact is unresolved", async () => {
+    mockedEnv = env("DevInt", "sandbox");
+
+    const decision = await evaluateSafety({
+      toolName: "agentscript_lifecycle",
+      input: {
+        action: "provision_agent_user",
+        agent_file: "agents/MyAgent/MyAgent.agent",
+        username_override: "agent.user@example.test",
+        dry_run: false,
+      },
+      cwd: "/project",
+      config: readBundledConfig(),
+    });
+
+    expect(decision).toMatchObject({
+      action: "confirm",
+      feature: "nativeToolGate",
+      ruleId: "native-agentscript-lifecycle",
+    });
+    expect(decision?.approvalScope).toMatchObject({
+      operationFamily: "agent user provisioning",
+      riskTier: "agent_user_provisioning_exact",
+      allowSession: false,
+    });
+    expect(decision?.approvalScope?.detail).toContain("permission-impact fingerprint unavailable");
+  });
+
+  it("does not mediate AgentScript read-only or dry-run lifecycle actions", async () => {
+    await expect(
+      evaluateSafety({
+        toolName: "agentscript_lifecycle",
+        input: { action: "list_versions", agent_api_name: "MyAgent" },
+        cwd: "/project",
+        config: readBundledConfig(),
+      }),
+    ).resolves.toBeUndefined();
+    await expect(
+      evaluateSafety({
+        toolName: "agentscript_lifecycle",
+        input: {
+          action: "provision_agent_user",
+          agent_file: "agents/MyAgent/MyAgent.agent",
+          dry_run: true,
+        },
+        cwd: "/project",
+        config: readBundledConfig(),
+      }),
+    ).resolves.toBeUndefined();
+  });
+
   it("confirms slack_canvas create/edit as native external content writes", async () => {
     const decision = await evaluateSafety({
       toolName: "slack_canvas",
@@ -285,6 +414,7 @@ describe("Safety Kernel", () => {
     expect(decision?.approvalScope).toMatchObject({
       operationFamily: "browser commit",
       riskTier: "browser_commit_exact",
+      allowSession: false,
     });
   });
 

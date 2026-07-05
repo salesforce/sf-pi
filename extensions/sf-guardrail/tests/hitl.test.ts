@@ -4,11 +4,18 @@ import { confirmDecision } from "../lib/hitl.ts";
 
 type ConfirmContext = Parameters<typeof confirmDecision>[0];
 
-function ctxWithSelection(selection: string | undefined, hasUI = true): ConfirmContext {
+function ctxWithSelection(
+  selection: string | undefined,
+  hasUI = true,
+  onChoices?: (choices: string[]) => void,
+): ConfirmContext {
   return {
     hasUI,
     ui: {
-      select: async () => selection,
+      select: async (_title: string, choices: string[]) => {
+        onChoices?.(choices);
+        return selection;
+      },
       notify: () => undefined,
       setStatus: () => undefined,
     },
@@ -41,6 +48,18 @@ describe("confirmDecision", () => {
       expect(result.reason).toContain("Test gate");
       expect(result.reason).toContain("/sf-guardrail audit");
     }
+  });
+
+  it("omits the session approval option when the envelope is allow-once only", async () => {
+    let renderedChoices: string[] = [];
+    await confirmDecision(
+      ctxWithSelection("Allow once", true, (choices) => (renderedChoices = choices)),
+      {
+        ...base,
+        allowSession: false,
+      },
+    );
+    expect(renderedChoices).toEqual(["Allow once", "Block"]);
   });
 
   it("headless blocks without escape hatch", async () => {

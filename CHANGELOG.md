@@ -47,7 +47,7 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ### Changed
 
-- **Added first-slice native-tool mediation to SF Guardrail.** Guardrail now normalizes representative high-value native tool mutations (`sf_apex` mutating `anon.run`, `slack_canvas` writes, and SF Browser committing click/press gestures) into the existing Safety Kernel, Safety Envelope, Approval Ledger, HITL, and headless fail-closed path. Added ADR 0074 and a security remediation plan to capture the narrower known-surface mediation model.
+- **Added first-slice native-tool mediation to SF Guardrail.** Guardrail now normalizes representative high-value native tool mutations (`agentscript_lifecycle` publish/activation/provisioning, `sf_apex` mutating `anon.run`, `slack_canvas` writes, and SF Browser committing click/press gestures) into the existing Safety Kernel, Safety Envelope, Approval Ledger, HITL, and headless fail-closed path. Added ADR 0074 and a security remediation plan to capture the narrower known-surface mediation model.
 - **Raised pi-coding-agent peerDependency floor to `>=0.74.1`.** Pi 0.74.1
   (2026-05-16) ships three fixes that affect sf-pi extensions directly:
   Node 26 OpenAI-compatible streams no longer time out after five idle

@@ -181,6 +181,7 @@ export default function sfGuardrail(pi: ExtensionAPI) {
       timeoutMs: config.confirmTimeoutMs,
       escapeHatchEnv: config.headlessEscapeHatchEnv,
       signal: ctx.signal,
+      allowSession: decision.approvalScope?.allowSession !== false,
     });
 
     switch (result.outcome) {

@@ -151,6 +151,8 @@ export interface NativeToolSafetySubject {
   targetOrg?: string;
   /** True when targetOrg came explicitly from tool input instead of the active default. */
   targetOrgExplicit?: boolean;
+  /** False for native operations that should not create session approvals. */
+  allowSession?: boolean;
 }
 
 // ─── Decision model ─────────────────────────────────────────────────────────────
@@ -179,6 +181,8 @@ export interface ApprovalScope {
   detail?: string;
   riskTier?: string;
   operationFamily?: string;
+  /** When false, the HIL dialog offers only allow-once or block. */
+  allowSession?: boolean;
   /** Legacy compatibility only. New approvals are session-scoped. */
   persistedGrant?: {
     label: string;

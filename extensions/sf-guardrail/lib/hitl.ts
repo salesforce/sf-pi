@@ -3,9 +3,9 @@
  * Human-in-the-loop confirmation for sf-guardrail.
  *
  * Single shared primitive modeled on sf-slack/recipient-confirm.ts:
- *   - Interactive mode → ctx.ui.select with three options:
+ *   - Interactive mode → ctx.ui.select with two or three options:
  *       • Allow once
- *       • Allow for this session  (persisted via pi.appendEntry)
+ *       • Allow for this session  (persisted via pi.appendEntry, when allowed)
  *       • Block
  *     Timeout equals block.
  *   - Headless mode → env escape hatch allows pass-through with an audit
@@ -28,6 +28,7 @@ export interface ConfirmOptions {
   timeoutMs: number;
   escapeHatchEnv: string;
   signal?: AbortSignal;
+  allowSession?: boolean;
 }
 
 const ALLOW_ONCE_LABEL = "Allow once";
@@ -58,14 +59,14 @@ export async function confirmDecision(
   ctx.ui.notify?.(`sf-guardrail approval required: ${options.title}`, "warning");
 
   try {
-    const picked = await ctx.ui.select(
-      header,
-      [ALLOW_ONCE_LABEL, ALLOW_SESSION_LABEL, BLOCK_LABEL],
-      {
-        timeout: options.timeoutMs,
-        signal: options.signal,
-      },
-    );
+    const choices =
+      options.allowSession === false
+        ? [ALLOW_ONCE_LABEL, BLOCK_LABEL]
+        : [ALLOW_ONCE_LABEL, ALLOW_SESSION_LABEL, BLOCK_LABEL];
+    const picked = await ctx.ui.select(header, choices, {
+      timeout: options.timeoutMs,
+      signal: options.signal,
+    });
 
     if (picked === ALLOW_ONCE_LABEL) return { outcome: "allow_once" };
     if (picked === ALLOW_SESSION_LABEL) return { outcome: "allow_session" };
