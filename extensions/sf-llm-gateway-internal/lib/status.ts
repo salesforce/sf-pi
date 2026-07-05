@@ -173,7 +173,7 @@ function buildProviderTelemetryReport(): string[] {
 /**
  * Surface whether the opt-in wire trace is active. The trace captures raw
  * request/response bytes under Pi's global agent directory when
- * `SF_LLM_GATEWAY_INTERNAL_TRACE=1`. When inactive we stay silent to keep the
+ * `SF_LLM_GATEWAY_TRACE=1`. When inactive we stay silent to keep the
  * report tidy.
  */
 function buildWireTraceReport(): string[] {

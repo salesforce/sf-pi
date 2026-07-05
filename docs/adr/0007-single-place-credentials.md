@@ -48,13 +48,13 @@ fallbacks kept available for automation but not surfaced to new users.
 
 #### SF LLM Gateway
 
-| #   | Where                                                                           | Purpose                                      | Audience             |
-| --- | ------------------------------------------------------------------------------- | -------------------------------------------- | -------------------- |
-| 1   | `/sf-llm-gateway` panel → **Open setup / settings**                             | URL + token form, writes saved config JSON   | All users            |
-| 2   | `/sf-llm-gateway-internal` slash command                                        | Backward-compatible alias of #1              | Legacy muscle memory |
-| 3   | `/login sf-llm-gateway-internal`                                                | pi's standard provider login (OAuth/API key) | Standardized pi flow |
-| 4   | `SF_LLM_GATEWAY_INTERNAL_BASE_URL` / `SF_LLM_GATEWAY_INTERNAL_API_KEY` env vars | Per-shell automation override                | Automation / CI      |
-| 5   | Direct edit of saved JSON (global or project)                                   | Provisioning by config management            | Power users          |
+| #   | Where                                                         | Purpose                                      | Audience             |
+| --- | ------------------------------------------------------------- | -------------------------------------------- | -------------------- |
+| 1   | `/sf-llm-gateway` panel → **Open setup / settings**           | URL + token form, writes saved config JSON   | All users            |
+| 2   | `/sf-llm-gateway-internal` slash command                      | Backward-compatible alias of #1              | Legacy muscle memory |
+| 3   | `/login sf-llm-gateway-internal`                              | pi's standard provider login (OAuth/API key) | Standardized pi flow |
+| 4   | `SF_LLM_GATEWAY_BASE_URL` / `SF_LLM_GATEWAY_API_KEY` env vars | Per-shell automation override                | Automation / CI      |
+| 5   | Direct edit of saved JSON (global or project)                 | Provisioning by config management            | Power users          |
 
 Storage on disk:
 

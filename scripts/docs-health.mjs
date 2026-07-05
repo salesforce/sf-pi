@@ -67,6 +67,18 @@ const PUBLIC_SAFETY_PATTERNS = [
     regex: /\bVivint\b/i,
     message: "Customer-specific names must not appear in public docs.",
   },
+  {
+    id: "gateway-internal-classification-copy",
+    regex:
+      /(?:SF LLM Gateway \(Salesforce Internal\)|Internal-only extension|not publicly reachable|Salesforce-internal gateway endpoint)/i,
+    message: "LLM Gateway public docs must use source-agnostic setup language.",
+  },
+  {
+    id: "gateway-legacy-internal-env-doc",
+    regex: /SF_LLM_GATEWAY_INTERNAL_(?:BASE_URL|API_KEY|HELP_URL|CA_BUNDLE_SOURCE|BETAS)\b/,
+    message:
+      "Public docs must prefer SF_LLM_GATEWAY_* env vars; legacy internal aliases belong only in source-level compatibility code.",
+  },
 ];
 
 const ALLOWED_PUBLIC_SAFETY_MATCHES = new Set([

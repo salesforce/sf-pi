@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /**
- * Opt-in wire-level trace for the SF LLM Gateway Internal extension.
+ * Opt-in wire-level trace for the SF LLM Gateway extension.
  *
  * Why a fetch wrapper instead of onPayload/onChunk?
  * - onPayload shows only what we send.
@@ -10,7 +10,7 @@
  *
  * The raw fetch response body gives us ground-truth from the gateway.
  *
- * Activation: set `SF_LLM_GATEWAY_INTERNAL_TRACE=1`.
+ * Activation: set `SF_LLM_GATEWAY_TRACE=1` (legacy alias still works).
  * Output file: under Pi's global agent directory as `sf-llm-gateway-internal.trace.jsonl`
  * Non-destructive: one-line JSON per request/chunk, append-only.
  * No-op unless the URL matches the configured gateway baseUrl, so other
@@ -21,7 +21,8 @@ import { appendFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { globalAgentPath } from "../../../lib/common/pi-paths.ts";
 
-const TRACE_ENV = "SF_LLM_GATEWAY_INTERNAL_TRACE";
+const TRACE_ENV = "SF_LLM_GATEWAY_TRACE";
+const LEGACY_TRACE_ENV = "SF_LLM_GATEWAY_INTERNAL_TRACE";
 
 let installed = false;
 
@@ -57,7 +58,7 @@ function writeLine(p: string, line: unknown): void {
  * Returns true if tracing is now active, false otherwise.
  */
 export function installWireTrace(baseUrlHint?: string): boolean {
-  if (process.env[TRACE_ENV] !== "1") return false;
+  if (!traceEnabled()) return false;
   if (installed) return true;
 
   const filterHost = (() => {
@@ -212,7 +213,11 @@ export function installWireTrace(baseUrlHint?: string): boolean {
 }
 
 export function isWireTraceEnabled(): boolean {
-  return process.env[TRACE_ENV] === "1";
+  return traceEnabled();
+}
+
+function traceEnabled(): boolean {
+  return process.env[TRACE_ENV] === "1" || process.env[LEGACY_TRACE_ENV] === "1";
 }
 
 export function getWireTraceFile(): string {

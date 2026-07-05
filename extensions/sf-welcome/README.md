@@ -93,8 +93,8 @@ session_shutdown
 
 7. **Optional integration rows stay quiet** — Slack and LLM Gateway rows are
    hidden unless their bundled extensions are enabled and have meaningful live
-   status. This keeps public/external installs from seeing Salesforce-internal or
-   unconfigured integrations as startup noise.
+   status. This keeps installs from seeing unavailable or unconfigured
+   integrations as startup noise.
 
 8. **Background loading** — CLI status, release freshness, Node CA certificate
    status, monthly usage, and remote announcements refresh asynchronously after
