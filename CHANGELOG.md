@@ -518,6 +518,15 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.219.0](https://github.com/salesforce/sf-pi/compare/v0.218.0...v0.219.0) (2026-07-05)
+
+
+### Features
+
+* **sf-guardrail:** mediate AgentScript lifecycle mutations ([de44aa4](https://github.com/salesforce/sf-pi/commit/de44aa463361951c3c47d8e2c5df12744d12b93a))
+* **sf-guardrail:** mediate Data 360 confirmed execution ([46a4fcf](https://github.com/salesforce/sf-pi/commit/46a4fcf67e9dcedbd9a53f2e5f9415dd84c07e1f))
+* **sf-guardrail:** mediate native high-value mutations ([ef928f5](https://github.com/salesforce/sf-pi/commit/ef928f5dae6a09b67f994192f9523ed25eda02f9))
+
 ## [0.218.0](https://github.com/salesforce/sf-pi/compare/v0.217.2...v0.218.0) (2026-07-04)
 
 
