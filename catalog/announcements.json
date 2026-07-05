@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.218.0-2026-07-04",
-  "latestVersion": "0.218.0",
+  "revision": "release-0.219.0-2026-07-05",
+  "latestVersion": "0.219.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.218.0",
+      "id": "release-0.219.0",
       "kind": "update",
-      "title": "sf-pi v0.218.0 — sf-docs: harden docs retrieval cards",
-      "publishedAt": "2026-07-04T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.218.0",
+      "title": "sf-pi v0.219.0 — sf-guardrail: mediate AgentScript lifecycle mutations",
+      "publishedAt": "2026-07-05T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.219.0",
       "severity": "info",
-      "body": "sf-docs: harden docs retrieval cards"
+      "body": "sf-guardrail: mediate AgentScript lifecycle mutations — sf-guardrail: mediate Data 360 confirmed execution"
     },
     {
       "id": "pi-0.73-required",
