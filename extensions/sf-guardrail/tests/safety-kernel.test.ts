@@ -361,6 +361,79 @@ describe("Safety Kernel", () => {
     ).resolves.toBeUndefined();
   });
 
+  it("confirms Data 360 allow_confirmed execution paths without mediating dry-runs", async () => {
+    mockedEnv = env("DevInt", "sandbox");
+
+    const decision = await evaluateSafety({
+      toolName: "data360_orchestrate",
+      input: {
+        action: "manifest.run",
+        allow_confirmed: true,
+        params: { manifestPath: "data/manifest.json" },
+      },
+      cwd: "/project",
+      config: readBundledConfig(),
+    });
+
+    expect(decision).toMatchObject({
+      action: "confirm",
+      feature: "nativeToolGate",
+      ruleId: "native-data360-confirmed-execute",
+      subject: "data360_orchestrate manifest.run",
+      orgAlias: "DevInt",
+      orgType: "sandbox",
+    });
+    expect(decision?.approvalScope).toMatchObject({
+      operationFamily: "data360 manifest",
+      riskTier: "data360_confirmed_execution_exact",
+    });
+
+    await expect(
+      evaluateSafety({
+        toolName: "data360_orchestrate",
+        input: {
+          action: "manifest.run",
+          allow_confirmed: true,
+          dry_run: true,
+          params: { manifestPath: "data/manifest.json" },
+        },
+        cwd: "/project",
+        config: readBundledConfig(),
+      }),
+    ).resolves.toBeUndefined();
+  });
+
+  it("does not mediate Data 360 read-like actions even when allow_confirmed is present", async () => {
+    const decision = await evaluateSafety({
+      toolName: "data360_discover",
+      input: { action: "actions.search", allow_confirmed: true, params: { query: "stream" } },
+      cwd: "/project",
+      config: readBundledConfig(),
+    });
+
+    expect(decision).toBeUndefined();
+  });
+
+  it("confirms Data 360 raw REST escape hatch execution", async () => {
+    mockedEnv = env("DevInt", "sandbox");
+
+    const decision = await evaluateSafety({
+      toolName: "data360_api",
+      input: {
+        action: "rest.request",
+        allow_confirmed: true,
+        params: { method: "DELETE", path: "/ssot/data-lake-objects/Test__dlm" },
+      },
+      cwd: "/project",
+      config: readBundledConfig(),
+    });
+
+    expect(decision?.approvalScope).toMatchObject({
+      operationFamily: "data360 raw rest",
+      riskTier: "data360_confirmed_execution_exact",
+    });
+  });
+
   it("confirms slack_canvas create/edit as native external content writes", async () => {
     const decision = await evaluateSafety({
       toolName: "slack_canvas",

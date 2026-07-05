@@ -49,7 +49,7 @@ You can also manage this extension from the SF Pi home base:
 
 - Fail-closed in headless mode unless SF_GUARDRAIL_ALLOW_HEADLESS=1.
 - Every block / allow / confirm decision is persisted as an audit entry.
-- Known high-value native tool mutations are mediated before execution through the same Safety Kernel and HITL path, including first-slice AgentScript lifecycle, Apex, Slack Canvas, and SF Browser commit surfaces.
+- Known high-value native tool mutations are mediated before execution through the same Safety Kernel and HITL path, including first-slice AgentScript lifecycle, Data 360, Apex, Slack Canvas, and SF Browser commit surfaces.
 - alwaysActive=false but disabling removes the safety layer entirely; the manager surfaces this clearly.
 
 ## Exact reference

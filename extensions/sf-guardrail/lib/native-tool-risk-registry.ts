@@ -19,6 +19,7 @@ export function classifyNativeToolRisk(
   return (
     classifySfApex(toolName, input) ??
     classifyAgentScriptLifecycle(toolName, input) ??
+    classifyData360(toolName, input) ??
     classifySlackCanvas(toolName, input) ??
     classifySfBrowserCommit(toolName, input)
   );
@@ -173,6 +174,62 @@ function agentScriptProvisionSubject(
   };
 }
 
+const DATA360_TOOL_NAMES = new Set([
+  "data360_discover",
+  "data360_connect",
+  "data360_prepare",
+  "data360_harmonize",
+  "data360_segment",
+  "data360_activate",
+  "data360_query",
+  "data360_semantic",
+  "data360_observe",
+  "data360_orchestrate",
+  "data360_api",
+]);
+
+const DATA360_READ_PREFIXES = [
+  "actions.",
+  "action.",
+  "examples.",
+  "readiness.",
+  "metadata.",
+] as const;
+
+function classifyData360(
+  toolName: string,
+  input: Record<string, unknown>,
+): NativeToolSafetySubject | undefined {
+  if (!DATA360_TOOL_NAMES.has(toolName)) return undefined;
+  if (input.dry_run === true || input.allow_confirmed !== true) return undefined;
+  const action = stringValue(input.action);
+  if (!action || isData360ReadLikeAction(action)) return undefined;
+
+  const targetOrg = stringValue(input.target_org);
+  const params = input.params && typeof input.params === "object" ? input.params : undefined;
+  const paramsFingerprint = fingerprintText(JSON.stringify({ toolName, action, params }));
+  const family =
+    toolName === "data360_api" ? "data360 raw rest" : `data360 ${actionFamily(action)}`;
+
+  return {
+    kind: "nativeTool",
+    toolName,
+    action,
+    ruleId: "native-data360-confirmed-execute",
+    subject: `${toolName} ${action}`,
+    reason: `Data 360 confirmed execution requested for ${toolName} ${action}.`,
+    promptTitle: "⚠ Data 360 execution",
+    operationFamily: family,
+    riskTier: "data360_confirmed_execution_exact",
+    fingerprint: `data360|${toolName}|${action}|${paramsFingerprint}`,
+    approvalLabel: `Data 360 ${toolName} ${action}`,
+    approvalDetail: `tool=${toolName}; action=${action}; params=${paramsFingerprint}`,
+    usesSalesforceOrg: true,
+    targetOrg,
+    targetOrgExplicit: targetOrg !== undefined,
+  };
+}
+
 function classifySlackCanvas(
   toolName: string,
   input: Record<string, unknown>,
@@ -264,6 +321,27 @@ function classifyAnonymousApex(body: string): { mutating: boolean; reasons: stri
 
 function normalizeApexBody(body: string): string {
   return body.trim().replace(/\s+/g, " ");
+}
+
+function isData360ReadLikeAction(action: string): boolean {
+  return (
+    DATA360_READ_PREFIXES.some((prefix) => action.startsWith(prefix)) ||
+    action.endsWith(".plan") ||
+    action.endsWith(".get") ||
+    action.endsWith(".list") ||
+    action.endsWith(".describe") ||
+    action.endsWith(".status") ||
+    action.endsWith(".sample") ||
+    action.endsWith(".count") ||
+    action.endsWith(".validate") ||
+    action === "help" ||
+    action === "status"
+  );
+}
+
+function actionFamily(action: string): string {
+  const parts = action.split(".").filter(Boolean);
+  return parts.length >= 2 ? parts.slice(0, -1).join(".") : action;
 }
 
 function stringValue(value: unknown): string | undefined {
