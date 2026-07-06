@@ -47,6 +47,7 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ### Changed
 
+- **Added public threat model and secure-design review evidence.** Added `docs/threat-model.md` and linked it from security docs as the public evidence packet for trust boundaries, mitigations, validation, and residual governance risks.
 - **Added prompt-injection control mapping.** Added `docs/prompt-injection-controls.md` and linked it from the security model/docs surfaces to document SF Pi's impact-mediation approach for SFSS-SSD-004 section 5.4.
 - **Documented and audited Data 360 journey child mutations.** Guardrail approval details for mutating Data 360 journeys now list declared child mutation families, and Data 360 records the actual executed child chain as a session audit entry.
 - **Added SF Guardrail Power Tool Mode.** Advanced users can persistently auto-approve Native-tool or All confirm-class Guardrail decisions, select native tool families, and separately opt into production/unknown-org auto-approval. Process-scoped `SF_GUARDRAIL_OPERATOR_AUTO_APPROVE=allow-confirm-actions-for-this-process` remains available; all auto-approvals are audited and hard blocks still apply.

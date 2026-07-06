@@ -7,6 +7,8 @@ description: Security-relevant development practices, checks, and review evidenc
 
 This page summarizes the secure-development practices used by SF Pi. It is a
 public, source-agnostic reference for maintainers, contributors, and reviewers.
+The public threat model and secure-design remediation evidence are recorded in
+[Threat model and secure-design review](./threat-model.md).
 
 ## Review posture
 

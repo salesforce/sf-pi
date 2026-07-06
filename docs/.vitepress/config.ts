@@ -36,6 +36,7 @@ export default defineConfig({
           { text: "Privacy & Telemetry", link: "/privacy" },
           { text: "Security Model", link: "/security-model" },
           { text: "Prompt-Injection Controls", link: "/prompt-injection-controls" },
+          { text: "Threat Model", link: "/threat-model" },
           { text: "Public Sanitization", link: "/public-sanitization" },
           { text: "Settings Surfaces", link: "/settings-surfaces" },
           { text: "Troubleshooting", link: "/troubleshooting" },

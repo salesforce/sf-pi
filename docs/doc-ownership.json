@@ -65,6 +65,15 @@
     ],
     "checks": ["npm run docs:health:check", "npm run docs:build"]
   },
+  "docs/threat-model.md": {
+    "source": [
+      "docs/security-model.md",
+      "docs/prompt-injection-controls.md",
+      "docs/secure-development.md",
+      "security remediation commits"
+    ],
+    "checks": ["npm run docs:health:check", "npm run docs:build"]
+  },
   "docs/public-sanitization.md": {
     "source": ["public repository safety policy", "scripts/docs-health.mjs", "SECURITY.md"],
     "checks": ["npm run docs:health:check", "npm run docs:build"]

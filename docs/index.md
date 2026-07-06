@@ -79,4 +79,5 @@ more discoverable way to work with Salesforce projects from one terminal UI.
 - [Troubleshooting](./troubleshooting.md) — recover from install, org, font, or auth issues.
 - [Security model](./security-model.md) — understand Guardrail mediation, high-value mutations, and headless behavior.
 - [Prompt-injection controls](./prompt-injection-controls.md) — map prompt-injection risk to SF Pi's mediation and audit controls.
+- [Threat model](./threat-model.md) — review trust boundaries, mitigations, evidence, and residual risks.
 - [Public sanitization](./public-sanitization.md) — keep public docs, examples, tests, and diagnostics source-agnostic.

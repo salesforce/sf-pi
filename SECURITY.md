@@ -36,7 +36,9 @@ See [Security model](./docs/security-model.md) for:
 ## Secure development practices
 
 See [Secure development](./docs/secure-development.md) for the repository's
-validation, scanning, dependency, and review practices.
+validation, scanning, dependency, and review practices. See
+[Threat model and secure-design review](./docs/threat-model.md) for the public
+threat model and remediation evidence packet.
 
 Security-relevant checks include:
 
