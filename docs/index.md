@@ -77,3 +77,5 @@ more discoverable way to work with Salesforce projects from one terminal UI.
 - [Quickstart](./quickstart.md) — verify SF Pi and try your first commands.
 - [Browse extensions](./extensions.md) — choose a workflow by intent.
 - [Troubleshooting](./troubleshooting.md) — recover from install, org, font, or auth issues.
+- [Security model](./security-model.md) — understand Guardrail mediation, high-value mutations, and headless behavior.
+- [Public sanitization](./public-sanitization.md) — keep public docs, examples, tests, and diagnostics source-agnostic.

@@ -45,6 +45,22 @@
     "source": ["extension settings behavior", "extensions/*/manifest.json"],
     "checks": ["npm run docs:health:check", "npm run docs:build"]
   },
+  "docs/security-model.md": {
+    "source": [
+      "SF Guardrail behavior",
+      "extensions/sf-guardrail/CONTEXT.md",
+      "docs/adr/*guardrail*.md"
+    ],
+    "checks": ["npm run docs:health:check", "npm run docs:build"]
+  },
+  "docs/secure-development.md": {
+    "source": [".github/workflows/*", "package.json scripts", "scripts/*", "SECURITY.md"],
+    "checks": ["npm run docs:health:check", "npm run docs:build"]
+  },
+  "docs/public-sanitization.md": {
+    "source": ["public repository safety policy", "scripts/docs-health.mjs", "SECURITY.md"],
+    "checks": ["npm run docs:health:check", "npm run docs:build"]
+  },
   "docs/agent-orientation.md": {
     "source": ["extensions/*/manifest.json", "catalog/index.json"],
     "generated": true,
