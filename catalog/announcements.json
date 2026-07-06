@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.223.3-2026-07-06",
-  "latestVersion": "0.223.3",
+  "revision": "release-0.223.4-2026-07-06",
+  "latestVersion": "0.223.4",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.223.3",
+      "id": "release-0.223.4",
       "kind": "update",
-      "title": "sf-pi v0.223.3 — security: address follow-up CodeQL alerts",
+      "title": "sf-pi v0.223.4 — sf-guardrail: fail closed browser commit paths",
       "publishedAt": "2026-07-06T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.223.3",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.223.4",
       "severity": "info",
-      "body": "security: address follow-up CodeQL alerts"
+      "body": "sf-guardrail: fail closed browser commit paths"
     },
     {
       "id": "pi-0.73-required",
