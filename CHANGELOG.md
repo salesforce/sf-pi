@@ -47,6 +47,7 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ### Changed
 
+- **Hardened Data 360 tenant ingest execution.** Tenant ingest create/upload/close now require `allow_confirmed=true` before auth-session lookup, local CSV reads, or network execution; dry-runs remain non-mutating and do not read CSV contents.
 - **Added public security and governance documentation.** Added security model, secure-development, and public-sanitization docs; expanded SECURITY.md; and updated the PR template with high-value mutation, headless, and public-surface checklist items.
 - **Sanitized SF LLM Gateway public setup surface.** The gateway display name is now source-agnostic (`SF LLM Gateway`), public setup docs use `SF_LLM_GATEWAY_*` env vars, and older legacy env names remain supported for existing automation.
 - **Added first-slice native-tool mediation to SF Guardrail.** Guardrail now normalizes representative high-value native tool mutations (`agentscript_lifecycle` publish/activation/provisioning, Data 360 confirmed execution, `sf_apex` mutating `anon.run`, `slack_canvas` writes, and SF Browser committing click/press gestures) into the existing Safety Kernel, Safety Envelope, Approval Ledger, HITL, and headless fail-closed path. Added ADR 0074 and a security remediation plan to capture the narrower known-surface mediation model.

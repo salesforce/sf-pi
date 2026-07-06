@@ -135,19 +135,20 @@ a small number of verified non-sensitive fields.
 
 ## Safety Model
 
-| Request shape                                                                  | Behavior                                         |
-| ------------------------------------------------------------------------------ | ------------------------------------------------ |
-| `GET`                                                                          | Allowed as read-only.                            |
-| Safe `POST` paths such as metadata search, query, validate, or connection test | Allowed.                                         |
-| `POST` run/publish/deploy/undeploy action paths                                | Confirmed.                                       |
-| `PATCH` / `PUT`                                                                | Confirmed for production or unresolved orgs.     |
-| `DELETE`                                                                       | Always confirmed.                                |
-| Headless mutating call requiring confirmation                                  | Blocked unless `SF_D360_ALLOW_HEADLESS_WRITE=1`. |
+| Request shape                                                                  | Behavior                                                                  |
+| ------------------------------------------------------------------------------ | ------------------------------------------------------------------------- |
+| `GET`                                                                          | Allowed as read-only.                                                     |
+| Safe `POST` paths such as metadata search, query, validate, or connection test | Allowed.                                                                  |
+| `POST` run/publish/deploy/undeploy action paths                                | Confirmed.                                                                |
+| `PATCH` / `PUT`                                                                | Confirmed for production or unresolved orgs.                              |
+| `DELETE`                                                                       | Always confirmed.                                                         |
+| Headless mutating call requiring confirmation                                  | Blocked unless the central Guardrail headless override is explicitly set. |
 
 Use `dry_run: true` before mutating calls to inspect the exact action, method,
 path, target org, org type, and safety decision. For v2 family actions with
 `safety: "confirmed"`, actual execution also requires `allow_confirmed: true`;
-dry-run is the default review step, not the approval.
+dry-run and `allow_confirmed` express execution intent, while SF Guardrail owns
+the approval boundary for high-value mutations.
 
 ## V2 Action Coverage
 

@@ -23,7 +23,7 @@ import { planInteractivePkceAuth, runInteractivePkceAuth } from "./ingest/intera
 import { findData360Journey, getData360Journeys, planData360Intent } from "./journey-catalog.ts";
 import { loadManifest, planManifest } from "./manifest.ts";
 import { executeTenantIngestRequest, planTenantIngestRequest } from "./ingest/tenant-client.ts";
-import type { TenantIngestActionName } from "./ingest/types.ts";
+import type { TenantIngestActionName, TenantIngestPlan } from "./ingest/types.ts";
 import { responseLooksLikeError, resolveRequestForExecution } from "../api-tool.ts";
 import { summarizeMetadataOutput, type D360MetadataInput } from "../metadata-tool.ts";
 import { runFacade } from "../facade-tool.ts";
@@ -811,6 +811,9 @@ async function runTenantIngestAction(
   const { targetOrg, apiVersion } = await resolveTargetOrgContext(input.target_org, env);
   if (!targetOrg) throw new Error("No Salesforce target org is configured.");
   const plan = planTenantIngestRequest(action.action as TenantIngestActionName, input.params ?? {});
+  if (!input.dry_run && plan.request.method !== "GET" && input.allow_confirmed !== true) {
+    return tenantIngestConfirmationRequired(input, action, targetOrg, apiVersion, plan);
+  }
   if (!input.dry_run) {
     const authSessionId =
       typeof input.params?.authSessionId === "string" ? input.params.authSessionId : undefined;
@@ -863,6 +866,34 @@ async function runTenantIngestAction(
     request: plan.request,
     summary: `Resolved tenant ingest ${action.action}`,
     next_actions: nextActionsFor(action),
+  };
+}
+
+function tenantIngestConfirmationRequired(
+  input: Data360V2Input,
+  action: Data360V2ActionDefinition,
+  targetOrg: string,
+  apiVersion: string,
+  plan: TenantIngestPlan,
+): Record<string, unknown> {
+  const uploadWarning =
+    plan.action === "ingest_job.upload_csv"
+      ? " Upload actions can read a local file path and send its bytes to the tenant."
+      : "";
+  return {
+    ok: false,
+    tool: input.tool,
+    action: input.action,
+    targetOrg,
+    apiVersion,
+    safety: action.safety,
+    auth: plan.auth,
+    request: plan.request,
+    error: "CONFIRMATION_REQUIRED",
+    summary: `${input.action} requires allow_confirmed=true after reviewing dry_run output.`,
+    guidance:
+      "Tenant ingest can create jobs, upload local file bytes to Data 360, or close ingest jobs." +
+      `${uploadWarning} Run the same action with dry_run=true first, then retry with allow_confirmed=true only after review.`,
   };
 }
 
@@ -1803,6 +1834,7 @@ async function runManifest(
         tool: "data360_prepare",
         action: "ingest_job.upload_csv",
         target_org: input.target_org,
+        allow_confirmed: true,
         params: { authSessionId, jobId, csvPath: dataset.csvPath },
       },
       env,
@@ -1814,6 +1846,7 @@ async function runManifest(
         tool: "data360_prepare",
         action: "ingest_job.close",
         target_org: input.target_org,
+        allow_confirmed: true,
         params: { authSessionId, jobId },
       },
       env,
@@ -1979,6 +2012,7 @@ async function createManifestIngestJob(
         tool: "data360_prepare",
         action: "ingest_job.create",
         target_org: input.target_org,
+        allow_confirmed: true,
         params,
       },
       env,

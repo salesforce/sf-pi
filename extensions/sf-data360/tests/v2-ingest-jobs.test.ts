@@ -129,6 +129,39 @@ describe("Data 360 v2 tenant ingest job actions", () => {
     });
   });
 
+  it("requires allow_confirmed before tenant ingest create/upload/close execution", async () => {
+    const fetchMock = vi.fn(async () => jsonResponse({ unexpected: true }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    for (const [action, params] of [
+      ["ingest_job.create", { sourceName: "DemoSource", object: "DemoObject" }],
+      ["ingest_job.upload_csv", { jobId: "job-123", csvPath: "/tmp/must-not-be-read.csv" }],
+      ["ingest_job.close", { jobId: "job-123" }],
+    ] as const) {
+      const result = await runData360V2Action(
+        {
+          tool: "data360_prepare",
+          action,
+          target_org: "AgentforceSTDM",
+          params,
+        },
+        env,
+        ctx,
+        undefined,
+      );
+
+      expect(result).toMatchObject({
+        ok: false,
+        action,
+        error: "CONFIRMATION_REQUIRED",
+        summary: `${action} requires allow_confirmed=true after reviewing dry_run output.`,
+      });
+      expect(String(result.guidance)).toContain("Tenant ingest can create jobs");
+    }
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("executes tenant ingest job creation with an in-memory auth session without leaking tokens", async () => {
     const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
       if (url.endsWith("/services/oauth2/token")) {
@@ -181,6 +214,7 @@ describe("Data 360 v2 tenant ingest job actions", () => {
         tool: "data360_prepare",
         action: "ingest_job.create",
         target_org: "AgentforceSTDM",
+        allow_confirmed: true,
         params: { authSessionId, sourceName: "DemoSource", object: "DemoObject" },
       },
       env,
@@ -273,6 +307,7 @@ describe("Data 360 v2 tenant ingest job actions", () => {
           tool: "data360_prepare",
           action: "ingest_job.upload_csv",
           target_org: "AgentforceSTDM",
+          allow_confirmed: true,
           params: { authSessionId, jobId: "job-123", csvPath },
         },
         env,
@@ -287,6 +322,7 @@ describe("Data 360 v2 tenant ingest job actions", () => {
           tool: "data360_prepare",
           action: "ingest_job.close",
           target_org: "AgentforceSTDM",
+          allow_confirmed: true,
           params: { authSessionId, jobId: "job-123" },
         },
         env,
@@ -312,12 +348,13 @@ describe("Data 360 v2 tenant ingest job actions", () => {
     await rm(tempDir, { recursive: true, force: true });
   });
 
-  it("returns an auth recovery path instead of executing tenant ingest without auth", async () => {
+  it("returns an auth recovery path instead of executing tenant ingest without auth after confirmation intent", async () => {
     const result = await runData360V2Action(
       {
         tool: "data360_prepare",
         action: "ingest_job.create",
         target_org: "AgentforceSTDM",
+        allow_confirmed: true,
         params: { sourceName: "DemoSource", object: "DemoObject" },
       },
       env,

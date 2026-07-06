@@ -236,6 +236,10 @@ _Avoid_: generic JSON summary
 Persisted raw or expanded evidence produced by a **Data 360 Run**, such as raw JSON, SQL, Markdown, CSV, or trace export files.
 _Avoid_: dump, temp output
 
+**Tenant Ingest Run**:
+A **Data 360 Run** that uses a tenant ingest auth session to create, upload to, or close a Data Cloud ingest job. It can move local file bytes into a tenant, so it is both a **High-Value Durable Mutation** and a data movement surface, not only a REST write.
+_Avoid_: ordinary Data 360 write, CSV helper, upload convenience, safe ingest
+
 **Dynamic Herdr Lane**:
 A Salesforce workflow lane planned by SF Pi for Herdr-backed work such as tests, logs, previews, evals, deploy checks, servers, or reviewers. A lane has an explicit lifecycle: **Fresh Ephemeral Lane**, sticky lane, or manual lane.
 _Avoid_: generic pane, terminal slot
