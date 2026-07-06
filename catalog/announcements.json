@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.223.5-2026-07-06",
-  "latestVersion": "0.223.5",
+  "revision": "release-0.223.6-2026-07-06",
+  "latestVersion": "0.223.6",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.223.5",
+      "id": "release-0.223.6",
       "kind": "update",
-      "title": "sf-pi v0.223.5 — security: harden Data 360 auth and SOQL replay",
+      "title": "sf-pi v0.223.6 — sf-guardrail: tighten power tool mode scope",
       "publishedAt": "2026-07-06T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.223.5",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.223.6",
       "severity": "info",
-      "body": "security: harden Data 360 auth and SOQL replay"
+      "body": "sf-guardrail: tighten power tool mode scope"
     },
     {
       "id": "pi-0.73-required",
