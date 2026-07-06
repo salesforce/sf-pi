@@ -3,6 +3,7 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { StringEnum } from "@earendil-works/pi-ai";
 import { Type } from "typebox";
+import { writeLatestBrowserSnapshotRefs } from "../../../lib/common/sf-browser-snapshot-state.ts";
 import { runAgentBrowser } from "./agent-browser.ts";
 import { RAW_AGENT_BROWSER_ESCAPE_HATCH, STALE_REF_HINT } from "./guidance.ts";
 import { snapshotOutputModeFromUnknown, summarizeSnapshot } from "./snapshot-summary.ts";
@@ -61,6 +62,12 @@ export function registerSfBrowserSnapshotTool(pi: ExtensionAPI): void {
         label: "snapshot",
         extension: "txt",
         sessionId,
+      });
+      writeLatestBrowserSnapshotRefs({
+        sessionId,
+        snapshot: rawSnapshot,
+        url: currentUrl,
+        fullSnapshotPath,
       });
       const outputMode = snapshotOutputModeFromUnknown(params.outputMode);
       const focus = Array.isArray(params.focus) ? params.focus : [];

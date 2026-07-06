@@ -50,6 +50,7 @@ You can also manage this extension from the SF Pi home base:
 
 - No startup probes; agent-browser is detected only from /sf-browser doctor or explicit tool/command actions.
 - Browser Evidence is artifact-first and stored outside the project by default.
+- Snapshots publish compact ref metadata so SF Guardrail can classify committing click refs from the latest accessible label.
 - Session-bearing Salesforce org-open URLs are passed to agent-browser but not echoed in tool results.
 
 ## Exact reference

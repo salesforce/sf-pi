@@ -52,7 +52,8 @@ controlled by per-rule behavior (`off`, `confirm`, or `block`):
    AgentScript lifecycle publish/activation/provisioning, Data 360 confirmed
    execution paths, SOQL artifact export / broad reads, `sf_apex anon.run`,
    `slack_canvas create/edit`, and SF Browser committing click/press gestures.
-   Tool intent flags such as `allow_mutation`, `mutation`,
+   Browser click mediation can use the latest snapshot label for refs such as
+   Save/Delete/Activate even when the model omits `mutation=true`. Tool intent flags such as `allow_mutation`, `mutation`,
    and `dry_run=false` classify intent; they are not approval.
 
 Plus:

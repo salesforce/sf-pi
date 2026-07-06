@@ -22,13 +22,16 @@ export interface SafetyKernelInput {
   input: Record<string, unknown>;
   cwd: string;
   config: GuardrailConfig;
+  sessionId?: string;
 }
 export type GuardrailDecision = ClassifiedDecision;
 
 export async function evaluateSafety(
   input: SafetyKernelInput,
 ): Promise<GuardrailDecision | undefined> {
-  const subject = normalizeSafetySubject(input.toolName, input.input);
+  const subject = normalizeSafetySubject(input.toolName, input.input, {
+    sessionId: input.sessionId,
+  });
   if (!subject) return undefined;
 
   if (subject.kind === "file") {

@@ -152,6 +152,7 @@ export default function sfGuardrail(pi: ExtensionAPI) {
       input: (event.input ?? {}) as Record<string, unknown>,
       cwd: ctx.cwd,
       config,
+      sessionId: ctx.sessionManager.getSessionId(),
     });
     if (!decision) return undefined;
 

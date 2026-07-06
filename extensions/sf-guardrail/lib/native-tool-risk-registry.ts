@@ -6,15 +6,20 @@
  * native SF Pi tool mutations into Safety Subjects. It must not call
  * Salesforce, Slack, Data 360, browser, or filesystem APIs.
  */
+import { findLatestBrowserSnapshotRef } from "../../../lib/common/sf-browser-snapshot-state.ts";
 import { fingerprintText } from "./fingerprint.ts";
+import type { SafetySubjectContext } from "./safety-subject.ts";
 import type { NativeToolSafetySubject } from "./types.ts";
 
 const COMMITTING_UI_REASON_PATTERN =
   /\b(save|apply|deploy|enable|disable|delete|remove|assign|create|update|submit|activate|deactivate)\b/i;
+const COMMITTING_UI_LABEL_PATTERN =
+  /\b(save|apply|deploy|enable|disable|delete|remove|assign|update|submit|activate|deactivate|finish)\b/i;
 
 export function classifyNativeToolRisk(
   toolName: string,
   input: Record<string, unknown>,
+  context: SafetySubjectContext = {},
 ): NativeToolSafetySubject | undefined {
   return (
     classifySfApex(toolName, input) ??
@@ -22,7 +27,7 @@ export function classifyNativeToolRisk(
     classifyData360(toolName, input) ??
     classifySfSoql(toolName, input) ??
     classifySlackCanvas(toolName, input) ??
-    classifySfBrowserCommit(toolName, input)
+    classifySfBrowserCommit(toolName, input, context)
   );
 }
 
@@ -365,18 +370,30 @@ function classifySlackCanvas(
 function classifySfBrowserCommit(
   toolName: string,
   input: Record<string, unknown>,
+  context: SafetySubjectContext,
 ): NativeToolSafetySubject | undefined {
   if (toolName !== "sf_browser_click" && toolName !== "sf_browser_press") return undefined;
   const reason = stringValue(input.reason);
   const mutation = input.mutation === true;
   const reasonLooksCommitting = COMMITTING_UI_REASON_PATTERN.test(reason ?? "");
-  if (!mutation && !reasonLooksCommitting) return undefined;
+  const snapshotRef =
+    toolName === "sf_browser_click"
+      ? findLatestBrowserSnapshotRef(context.sessionId, stringValue(input.ref))
+      : undefined;
+  const snapshotLooksCommitting = snapshotLineLooksCommitting(snapshotRef);
+  if (!mutation && !reasonLooksCommitting && !snapshotLooksCommitting) return undefined;
 
   const action = toolName === "sf_browser_click" ? "click" : "press";
   const target = toolName === "sf_browser_click" ? stringValue(input.ref) : stringValue(input.key);
   const targetLabel = target ?? "<unknown>";
-  const source = mutation ? "mutation flag" : "commit-like reason";
-  const payloadFingerprint = fingerprintText(JSON.stringify({ toolName, action, target, reason }));
+  const source = mutation
+    ? "mutation flag"
+    : reasonLooksCommitting
+      ? "commit-like reason"
+      : "snapshot label";
+  const payloadFingerprint = fingerprintText(
+    JSON.stringify({ toolName, action, target, reason, snapshot: snapshotRef?.line }),
+  );
 
   return {
     kind: "nativeTool",
@@ -390,11 +407,24 @@ function classifySfBrowserCommit(
     riskTier: "browser_commit_exact",
     fingerprint: `${toolName}|${action}|${payloadFingerprint}`,
     approvalLabel: `Salesforce browser ${action} ${targetLabel}`,
-    approvalDetail: [reason ? `reason=${reason}` : undefined, `source=${source}`]
+    approvalDetail: [
+      reason ? `reason=${reason}` : undefined,
+      snapshotRef?.label ? `snapshot_label=${snapshotRef.label}` : undefined,
+      snapshotRef?.role ? `snapshot_role=${snapshotRef.role}` : undefined,
+      `source=${source}`,
+    ]
       .filter(Boolean)
       .join("; "),
     allowSession: false,
   };
+}
+
+function snapshotLineLooksCommitting(
+  ref: ReturnType<typeof findLatestBrowserSnapshotRef>,
+): boolean {
+  if (!ref) return false;
+  const haystack = [ref.role, ref.label, ref.line].filter(Boolean).join(" ");
+  return COMMITTING_UI_LABEL_PATTERN.test(haystack);
 }
 
 function classifyAnonymousApex(body: string): { mutating: boolean; reasons: string[] } {

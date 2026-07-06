@@ -11,9 +11,14 @@ import type { SafetySubject } from "./types.ts";
 
 const FILE_PATH_TOOLS = new Set(["read", "write", "edit", "grep", "find", "ls"]);
 
+export interface SafetySubjectContext {
+  sessionId?: string;
+}
+
 export function normalizeSafetySubject(
   toolName: string,
   input: Record<string, unknown>,
+  context: SafetySubjectContext = {},
 ): SafetySubject | undefined {
   if (FILE_PATH_TOOLS.has(toolName) && typeof input.path === "string") {
     return { kind: "file", toolName, path: input.path };
@@ -27,5 +32,5 @@ export function normalizeSafetySubject(
     return { kind: "shellCommand", toolName, command: input.command };
   }
 
-  return classifyNativeToolRisk(toolName, input);
+  return classifyNativeToolRisk(toolName, input, context);
 }

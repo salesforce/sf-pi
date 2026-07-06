@@ -11,6 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { writeLatestBrowserSnapshotRefs } from "../../../lib/common/sf-browser-snapshot-state.ts";
 import type { OrgInfo, SfEnvironment } from "../../../lib/common/sf-environment/types.ts";
 
 let mockedEnv: SfEnvironment | null = null;
@@ -564,6 +565,52 @@ describe("Safety Kernel", () => {
     });
 
     expect(decision).toBeUndefined();
+  });
+
+  it("confirms Salesforce browser clicks using latest snapshot labels", async () => {
+    writeLatestBrowserSnapshotRefs({
+      sessionId: "guardrail-browser-snapshot-test",
+      snapshot: [
+        '- button "Save" [ref=e12]',
+        '- button "Cancel" [ref=e13]',
+        '- button "Delete" [ref=e14]',
+        '- button "New" [ref=e15]',
+      ].join("\n"),
+    });
+
+    const saveDecision = await evaluateSafety({
+      toolName: "sf_browser_click",
+      input: { ref: "@e12", reason: "click primary button" },
+      cwd: "/project",
+      config: readBundledConfig(),
+      sessionId: "guardrail-browser-snapshot-test",
+    });
+    expect(saveDecision).toMatchObject({
+      action: "confirm",
+      feature: "nativeToolGate",
+      ruleId: "native-sf-browser-commit",
+      subject: "sf_browser_click @e12",
+    });
+    expect(saveDecision?.approvalScope?.detail).toContain("snapshot_label=Save");
+    expect(saveDecision?.approvalScope?.detail).toContain("source=snapshot label");
+
+    const deleteDecision = await evaluateSafety({
+      toolName: "sf_browser_click",
+      input: { ref: "e14", reason: "open row action" },
+      cwd: "/project",
+      config: readBundledConfig(),
+      sessionId: "guardrail-browser-snapshot-test",
+    });
+    expect(deleteDecision?.ruleId).toBe("native-sf-browser-commit");
+
+    const newDecision = await evaluateSafety({
+      toolName: "sf_browser_click",
+      input: { ref: "@e15", reason: "open dialog" },
+      cwd: "/project",
+      config: readBundledConfig(),
+      sessionId: "guardrail-browser-snapshot-test",
+    });
+    expect(newDecision).toBeUndefined();
   });
 
   it("confirms Salesforce browser committing gestures", async () => {
