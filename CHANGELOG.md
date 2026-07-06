@@ -522,6 +522,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.219.3](https://github.com/salesforce/sf-pi/compare/v0.219.2...v0.219.3) (2026-07-06)
+
+
+### Bug Fixes
+
+* **sf-soql:** confine artifact exports ([18fed02](https://github.com/salesforce/sf-pi/commit/18fed02d9eb2f54894657aff7775811fb296f4db))
+
 ## [0.219.2](https://github.com/salesforce/sf-pi/compare/v0.219.1...v0.219.2) (2026-07-06)
 
 
