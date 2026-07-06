@@ -22,6 +22,19 @@ import {
   type DecisionOutcome,
 } from "./types.ts";
 
+export const DATA360_EXECUTION_CHAIN_ENTRY_TYPE = "sf-data360-execution-chain";
+
+export interface Data360ExecutionChainEntryData {
+  timestamp: number;
+  sessionId?: string;
+  parentTool?: string;
+  parentAction?: string;
+  targetOrg?: string;
+  journey_fingerprint?: unknown;
+  ok?: boolean;
+  executionChain: Array<Record<string, unknown>>;
+}
+
 interface ApprovalGrantState {
   grants: PersistedApprovalGrant[];
 }
@@ -104,6 +117,19 @@ export function readRecentDecisions(ctx: ExtensionContext, limit = 50): Decision
   for (let i = entries.length - 1; i >= 0 && out.length < limit; i--) {
     const entry = entries[i];
     if (isDecisionEntry(entry)) out.push(entry.data);
+  }
+  return out;
+}
+
+export function readRecentData360ExecutionChains(
+  ctx: ExtensionContext,
+  limit = 10,
+): Data360ExecutionChainEntryData[] {
+  const out: Data360ExecutionChainEntryData[] = [];
+  const entries = ctx.sessionManager.getEntries();
+  for (let i = entries.length - 1; i >= 0 && out.length < limit; i--) {
+    const entry = entries[i];
+    if (isData360ExecutionChainEntry(entry)) out.push(entry.data);
   }
   return out;
 }
@@ -242,5 +268,17 @@ function isAllowRevokeEntry(entry: unknown): entry is CustomEntry<AllowRevokeEnt
     c.type === "custom" &&
     c.customType === ALLOW_REVOKE_ENTRY_TYPE &&
     typeof c.data?.revokedAt === "number"
+  );
+}
+
+function isData360ExecutionChainEntry(
+  entry: unknown,
+): entry is CustomEntry<Data360ExecutionChainEntryData> {
+  if (!entry || typeof entry !== "object") return false;
+  const c = entry as { type?: string; customType?: string; data?: { executionChain?: unknown } };
+  return (
+    c.type === "custom" &&
+    c.customType === DATA360_EXECUTION_CHAIN_ENTRY_TYPE &&
+    Array.isArray(c.data?.executionChain)
   );
 }

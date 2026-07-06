@@ -56,6 +56,7 @@ Examples:
 - Agent publish+activate: distinct operation family from publish alone.
 - Agent user provisioning: target user plus permission-impacting input fingerprint.
 - Data 360 raw REST: method, normalized path, target org, and body fingerprint.
+- Data 360 mutating journeys: one Guardrail approval records the declared child mutation families; actual child execution is recorded as `sf-data360-execution-chain` and surfaced beside `/sf-guardrail audit` rather than merged into the approval ledger.
 - Browser commits: allow-once by default because refs and UI state are short-lived.
 - Slack canvas writes: operation, canvas/title/channel identifiers when available, and content fingerprint.
 

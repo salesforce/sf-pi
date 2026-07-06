@@ -75,6 +75,7 @@ import {
   forgetSessionApprovals,
   grantSessionApproval,
   hasSessionApproval,
+  readRecentData360ExecutionChains,
   readRecentDecisions,
   recordDecision,
   renderProjectApprovals,
@@ -346,6 +347,7 @@ async function handleGuardrailCommand(
             config,
             configSource: source,
             recent: readRecentDecisions(ctx, 5),
+            data360ExecutionChains: readRecentData360ExecutionChains(ctx, 3),
             hasUI: ctx.hasUI,
             headlessEnabled: !!process.env[config.headlessEscapeHatchEnv],
             operatorAutoApproveEnabled: isOperatorAutoApproveEnabled(),
@@ -370,7 +372,7 @@ async function handleGuardrailCommand(
     await emitGuardrailOutput(
       ctx,
       "SF Guardrail audit",
-      renderAudit(readRecentDecisions(ctx, 50)),
+      renderAudit(readRecentDecisions(ctx, 50), readRecentData360ExecutionChains(ctx, 20)),
       "info",
       fromPanel,
     );

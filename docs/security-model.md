@@ -62,6 +62,13 @@ Guardrail evaluates these surfaces before execution through Pi's `tool_call`
 mediator. Confirm-class decisions route through the same approval, session
 approval, headless, and audit path.
 
+Data 360 mutating journeys have two related audit streams. The Guardrail
+approval/block decision is recorded as `sf-guardrail-decision`. The actual child
+steps that ran inside the approved journey are recorded separately as
+`sf-data360-execution-chain` and surfaced alongside `/sf-guardrail audit` output.
+Keeping these streams distinct preserves the approval ledger while still making
+journey execution reviewable.
+
 ## Execution intent flags are not approval
 
 Some tool schemas include intent flags such as:

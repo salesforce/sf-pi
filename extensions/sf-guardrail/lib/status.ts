@@ -10,12 +10,14 @@ import { enabledNativeFamilies, powerToolModeLabel } from "./power-tool-mode.ts"
 import { labelForRuleBehavior, resolveRuleBehavior } from "./rule-behavior.ts";
 import type { GuardrailConfigSource } from "./config.ts";
 import type { GuardrailPowerToolSettings } from "./power-tool-mode.ts";
+import type { Data360ExecutionChainEntryData } from "./approval-ledger.ts";
 import type { DecisionEntryData, GuardrailConfig } from "./types.ts";
 
 export interface StatusInput {
   config: GuardrailConfig;
   configSource: GuardrailConfigSource;
   recent: DecisionEntryData[];
+  data360ExecutionChains?: Data360ExecutionChainEntryData[];
   hasUI: boolean;
   headlessEnabled: boolean;
   operatorAutoApproveEnabled: boolean;
@@ -27,6 +29,7 @@ export function renderStatus(input: StatusInput): string {
     config,
     configSource,
     recent,
+    data360ExecutionChains = [],
     hasUI,
     headlessEnabled,
     operatorAutoApproveEnabled,
@@ -66,6 +69,7 @@ export function renderStatus(input: StatusInput): string {
       lines.push(`    ${formatEntry(entry)}`);
     }
   }
+  appendData360ExecutionChains(lines, data360ExecutionChains, 3, "  ");
   return lines.join("\n");
 }
 
@@ -120,9 +124,59 @@ export function renderRules(config: GuardrailConfig): string {
   return lines.join("\n");
 }
 
-export function renderAudit(recent: DecisionEntryData[]): string {
-  if (recent.length === 0) return "No guardrail decisions recorded this session.";
-  const lines: string[] = [`Guardrail decisions (${recent.length}):`];
-  for (const entry of recent) lines.push(`  ${formatEntry(entry)}`);
+export function renderAudit(
+  recent: DecisionEntryData[],
+  data360ExecutionChains: Data360ExecutionChainEntryData[] = [],
+): string {
+  const lines: string[] = [];
+  if (recent.length === 0) {
+    lines.push("No guardrail decisions recorded this session.");
+  } else {
+    lines.push(`Guardrail decisions (${recent.length}):`);
+    for (const entry of recent) lines.push(`  ${formatEntry(entry)}`);
+  }
+  appendData360ExecutionChains(lines, data360ExecutionChains, data360ExecutionChains.length, "");
   return lines.join("\n");
+}
+
+function appendData360ExecutionChains(
+  lines: string[],
+  chains: Data360ExecutionChainEntryData[],
+  limit: number,
+  indent: string,
+): void {
+  if (!chains.length) return;
+  lines.push("");
+  lines.push(`${indent}related Data 360 execution chains (${chains.length}):`);
+  for (const entry of chains.slice(0, limit)) {
+    lines.push(`${indent}  ${formatData360ExecutionChain(entry)}`);
+  }
+  if (chains.length > limit) {
+    lines.push(`${indent}  +${chains.length - limit} more execution chain(s)`);
+  }
+}
+
+function formatData360ExecutionChain(entry: Data360ExecutionChainEntryData): string {
+  const when = new Date(entry.timestamp).toISOString().slice(11, 19);
+  const parent = [entry.parentTool, entry.parentAction].filter(Boolean).join(" ") || "Data 360";
+  const target = entry.targetOrg ? ` org=${entry.targetOrg}` : "";
+  const status = entry.ok === false ? "failed" : "ok";
+  const childActions = entry.executionChain
+    .slice(0, 5)
+    .map((step) => [stringValue(step.tool), stringValue(step.action)].filter(Boolean).join(" "))
+    .filter(Boolean);
+  const childText = childActions.length ? childActions.join(" → ") : "no child actions recorded";
+  const more =
+    entry.executionChain.length > childActions.length
+      ? ` (+${entry.executionChain.length - childActions.length} more)`
+      : "";
+  const fingerprint =
+    typeof entry.journey_fingerprint === "string"
+      ? ` fingerprint=${entry.journey_fingerprint}`
+      : "";
+  return `${when}  ${status}  ${parent}${target}${fingerprint}  ${childText}${more}`;
+}
+
+function stringValue(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }

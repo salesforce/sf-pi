@@ -150,7 +150,9 @@ path, target org, org type, and safety decision. For v2 family actions with
 dry-run and `allow_confirmed` express execution intent, while SF Guardrail owns
 the approval boundary for high-value mutations. Mutating journeys disclose the
 child mutation families covered in the Guardrail approval detail and record the
-executed child chain as a session audit entry.
+executed child chain as a `sf-data360-execution-chain` session entry. That chain
+is intentionally separate from the `sf-guardrail-decision` approval ledger and is
+surfaced alongside `/sf-guardrail audit` output for review.
 
 ## V2 Action Coverage
 

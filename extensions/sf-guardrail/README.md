@@ -258,6 +258,7 @@ extensions/sf-guardrail/
     safety-kernel.test.ts   ← unit / smoke test
     safety-subject.test.ts  ← unit / smoke test
     smoke.test.ts           ← unit / smoke test
+    status.test.ts          ← unit / smoke test
   AGENTS.md                 ← extension-specific agent editing rules
   index.ts                  ← Pi extension entry point
   manifest.json             ← source-of-truth extension metadata
