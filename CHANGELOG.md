@@ -529,6 +529,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.223.8](https://github.com/salesforce/sf-pi/compare/v0.223.7...v0.223.8) (2026-07-06)
+
+
+### Bug Fixes
+
+* harden gateway model discovery fallback ([d936ee2](https://github.com/salesforce/sf-pi/commit/d936ee29f0f29e5a25c40c3d28cf346a5317c962))
+
 ## [0.223.7](https://github.com/salesforce/sf-pi/compare/v0.223.6...v0.223.7) (2026-07-06)
 
 
