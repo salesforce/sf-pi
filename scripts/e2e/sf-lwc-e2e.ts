@@ -1,10 +1,9 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Local-only E2E harness for sf-lwc. No Salesforce org required. */
 
-import { mkdir, writeFile, chmod } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { randomUUID } from "node:crypto";
 import {
   componentInspect,
   componentList,
@@ -102,7 +101,7 @@ async function expectText(label: string, promise: Promise<ToolResult>, expected:
 }
 
 async function makeFixture(): Promise<string> {
-  const root = path.join(tmpdir(), `sf-lwc-e2e-${randomUUID()}`);
+  const root = await mkdtemp(path.join(tmpdir(), "sf-lwc-e2e-"));
   const bundle = path.join(root, "force-app", "main", "default", "lwc", "helloWorld");
   const tests = path.join(bundle, "__tests__");
   const bin = path.join(root, "node_modules", ".bin");

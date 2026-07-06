@@ -1,12 +1,11 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 
-import { chmod, mkdir, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { randomUUID } from "node:crypto";
 
 export async function makeLwcFixture(options: { withRunner?: boolean } = {}): Promise<string> {
-  const root = path.join(tmpdir(), `sf-lwc-fixture-${randomUUID()}`);
+  const root = await mkdtemp(path.join(tmpdir(), "sf-lwc-fixture-"));
   const bundle = path.join(root, "force-app", "main", "default", "lwc", "helloWorld");
   const tests = path.join(bundle, "__tests__");
   await mkdir(tests, { recursive: true });

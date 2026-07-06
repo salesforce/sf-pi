@@ -200,7 +200,7 @@ async function callOnce<T>(
       signal: controller.signal,
     });
     const text = await resp.text();
-    let body: unknown = text;
+    let body: unknown;
     if (text.length > 0) {
       try {
         body = JSON.parse(text);

@@ -1245,19 +1245,19 @@ function previewPlainText(value: string, max: number): string {
 
 function stripHtml(value: string): string {
   const withoutBlocks = value
-    .replace(/<script[\s\S]*?<\/script>/giu, " ")
-    .replace(/<style[\s\S]*?<\/style>/giu, " ");
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/giu, " ")
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style\s*>/giu, " ");
   return decodeHtmlEntities(withoutBlocks.replace(/<[^>]+>/gu, " "));
 }
 
 function decodeHtmlEntities(value: string): string {
   return value
     .replace(/&nbsp;/gi, " ")
-    .replace(/&amp;/gi, "&")
     .replace(/&lt;/gi, "<")
     .replace(/&gt;/gi, ">")
     .replace(/&quot;/gi, '"')
-    .replace(/&#39;/gi, "'");
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&amp;/gi, "&");
 }
 
 function documentAttributes(
