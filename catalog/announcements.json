@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.223.8-2026-07-06",
-  "latestVersion": "0.223.8",
+  "revision": "release-0.223.9-2026-07-06",
+  "latestVersion": "0.223.9",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.223.8",
+      "id": "release-0.223.9",
       "kind": "update",
-      "title": "sf-pi v0.223.8 — harden gateway model discovery fallback",
+      "title": "sf-pi v0.223.9 — sf-guardrail: close browser edge cases",
       "publishedAt": "2026-07-06T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.223.8",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.223.9",
       "severity": "info",
-      "body": "harden gateway model discovery fallback"
+      "body": "sf-guardrail: close browser edge cases"
     },
     {
       "id": "pi-0.73-required",
