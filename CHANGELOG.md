@@ -529,6 +529,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.223.9](https://github.com/salesforce/sf-pi/compare/v0.223.8...v0.223.9) (2026-07-06)
+
+
+### Bug Fixes
+
+* **sf-guardrail:** close browser edge cases ([45fe9d0](https://github.com/salesforce/sf-pi/commit/45fe9d0230922895efd732768e39db9eb77ce8fb))
+
 ## [0.223.8](https://github.com/salesforce/sf-pi/compare/v0.223.7...v0.223.8) (2026-07-06)
 
 
