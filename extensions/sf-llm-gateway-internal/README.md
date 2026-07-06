@@ -306,6 +306,7 @@ such as `tokens`, `onboard`, `open-token`, `import-claude`, `doctor`, `debug`,
 extensions/sf-llm-gateway-internal/
   lib/
     models-internal/
+      discovery-sentinels.ts← implementation module
       fetchers.ts           ← implementation module
       presets.ts            ← implementation module
     transport-internal/
@@ -360,6 +361,7 @@ extensions/sf-llm-gateway-internal/
     discovery-cache.test.ts ← unit / smoke test
     doctor-tls-state.test.ts← unit / smoke test
     doctor.test.ts          ← unit / smoke test
+    fetchers.test.ts        ← unit / smoke test
     formatting.test.ts      ← unit / smoke test
     gateway-url.test.ts     ← unit / smoke test
     global-config.test.ts   ← unit / smoke test
@@ -511,9 +513,18 @@ wouldn't show it. The raw body is ground truth from the gateway.
 
 **Startup warning `No models match pattern "sf-llm-gateway-internal/*"`:**
 Your credentials aren't configured yet, or the async model discovery hasn't
-finished on this first run. The bootstrap catalog now seeds both Claude and
-`gpt-5` synchronously, so this warning should not appear on a configured
-gateway. If it persists, run `/sf-llm-gateway refresh`.
+finished on this first run. The bootstrap catalog now seeds the curated static
+gateway model set synchronously, so this warning should not appear on a
+configured gateway. If it persists, run `/sf-llm-gateway refresh`.
+
+**Model discovery only returns `no-default-models`:**
+Some LiteLLM configurations use `no-default-models` as an access-control
+sentinel rather than a callable model id. The extension filters that sentinel
+from `/v1/models` and falls back to the static bootstrap catalog when the
+sentinel is the only returned entry. Verify the gateway with
+`/sf-llm-gateway latency-probe <modelId>` or `/sf-llm-gateway debug <modelId>`;
+those commands exercise the inference routes instead of relying only on model
+listing metadata.
 
 **Gateway fails on startup or tool calls error out immediately:**
 Run `/sf-llm-gateway` for first-time onboarding. The setup page lets users paste

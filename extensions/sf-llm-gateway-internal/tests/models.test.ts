@@ -151,12 +151,14 @@ describe("inferModelDefinition", () => {
 // -------------------------------------------------------------------------------------------------
 
 describe("buildBootstrapModelList", () => {
-  it("includes the default, previous default, and fallback model IDs", () => {
+  it("includes the default, previous default, fallback, and curated static model IDs", () => {
     const models = buildBootstrapModelList(null, new Set());
     const ids = models.map((model) => model.id);
     expect(ids).toContain("claude-opus-4-8");
     expect(ids).toContain("claude-opus-4-7");
     expect(ids).toContain("claude-sonnet-4-6");
+    expect(ids).toContain("claude-sonnet-5");
+    expect(ids).toContain("gpt-5.5");
   });
 
   it("puts the default model first", () => {
@@ -300,7 +302,12 @@ describe("toProviderModelConfig", () => {
     // Claude runs on pi-ai's native Anthropic transport. Adaptive Claude ids
     // use compat.forceAdaptiveThinking so pi-ai owns the generic adaptive
     // payload shape; Haiku 4.5 has a separate eager-streaming override below.
-    for (const id of ["claude-opus-4-6-v1", "claude-opus-4-7-v1", "claude-sonnet-4-6"]) {
+    for (const id of [
+      "claude-opus-4-6-v1",
+      "claude-opus-4-7-v1",
+      "claude-sonnet-4-6",
+      "claude-sonnet-5",
+    ]) {
       const config = toProviderModelConfig(id, null, new Set());
       expect(config.api).toBe("anthropic-messages");
       expect(config.compat).toMatchObject({ forceAdaptiveThinking: true });
@@ -364,6 +371,7 @@ describe("toProviderModelConfig", () => {
         "claude-opus-4.7",
         "claude-opus-4-6-v1",
         "claude-sonnet-4-6",
+        "claude-sonnet-5",
       ]) {
         expect(shouldForceAdaptiveThinking(id)).toBe(true);
       }

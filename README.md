@@ -600,6 +600,7 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 **[SF LLM Gateway](./extensions/sf-llm-gateway-internal/#troubleshooting)**
 
 - Startup warning `No models match pattern "sf-llm-gateway-internal/*"`
+- Model discovery only returns `no-default-models`
 - Gateway fails on startup or tool calls error out immediately
 - Claude responses appear to truncate and the agent asks you to type "continue"
 - Opus 4.7/4.8 returns `api_error: Internal server error` on heavy turns

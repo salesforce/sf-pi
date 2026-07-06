@@ -157,8 +157,8 @@ function providerForModelId(modelId: string): string {
 
 import {
   KNOWN_BETAS,
-  ALWAYS_INCLUDE_MODEL_IDS,
   MODEL_PRESETS,
+  getStaticGatewayModelIds,
   resolveEffectiveBetas,
   inferModelDefinition,
   isAnthropicModelId,
@@ -919,7 +919,7 @@ async function handleModelsCommand(pi: ExtensionAPI, ctx: ExtensionCommandContex
     `Discovered at: ${state?.discoveredAt ?? "never"}`,
     "",
     "Registered models:",
-    ...(state?.modelIds ?? ALWAYS_INCLUDE_MODEL_IDS).map((id) => {
+    ...(state?.modelIds ?? getStaticGatewayModelIds()).map((id) => {
       const preset = MODEL_PRESETS[id];
       const inferred = preset ? { id, ...preset } : inferModelDefinition(id);
       const betas = isAnthropicModelId(id)
@@ -1930,7 +1930,7 @@ function setEnabledModelsSetting(
 
 function getAvailableGatewayModelIds(): string[] {
   const discoveredIds = getLastDiscovery()?.modelIds;
-  return discoveredIds && discoveredIds.length > 0 ? discoveredIds : ALWAYS_INCLUDE_MODEL_IDS;
+  return discoveredIds && discoveredIds.length > 0 ? discoveredIds : getStaticGatewayModelIds();
 }
 
 function resolveGatewayDefaultModelId(preferredIds: Array<string | undefined>): string {

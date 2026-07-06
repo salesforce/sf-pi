@@ -65,18 +65,22 @@ import {
 } from "./config.ts";
 import { toGatewayOpenAiBaseUrl, toGatewayRootBaseUrl } from "./gateway-url.ts";
 import {
-  ALWAYS_INCLUDE_MODEL_IDS,
   buildBootstrapModelList,
   buildDiscoveredModelList,
   diffModelGroupProviders,
   fetchGatewayModelGroupInfo,
-  fetchGatewayModelIds,
+  fetchGatewayModelIdDiscovery,
   fetchGatewayModelInfoMap,
+  getStaticGatewayModelIds,
   isAnthropicModelId,
   type GatewayModelGroupInfoMap,
   type ModelGroupDrift,
   type TaggedGatewayModel,
 } from "./models.ts";
+import {
+  filterCallableDiscoveredModelIds,
+  hasNonCallableDiscoveredModelIds,
+} from "./models-internal/discovery-sentinels.ts";
 import { isGpt5FamilyResponsesModelId } from "./transport.ts";
 import {
   streamSfGatewayAnthropic,
@@ -119,9 +123,12 @@ function readDiscoveryCache(
   try {
     const cache = discoveryCacheStore.read();
     if (!Array.isArray(cache.modelIds) || cache.modelIds.length === 0) return null;
+    if (hasNonCallableDiscoveredModelIds(cache.modelIds)) return null;
+    const modelIds = filterCallableDiscoveredModelIds(cache.modelIds);
+    if (modelIds.length === 0) return null;
     if (typeof cache.savedAt !== "number") return null;
     if (Date.now() - cache.savedAt > maxAgeMs) return null;
-    return cache;
+    return { ...cache, modelIds };
   } catch {
     return null;
   }
@@ -437,7 +444,7 @@ export async function discoverAndRegister(
     if (!config.baseUrl || !config.apiKey) {
       registerProviderIfConfigured(pi, runtimeBetaOverrides, runtimeExtraBetas, cwd);
       const state: GatewayDiscoveryState = {
-        modelIds: ALWAYS_INCLUDE_MODEL_IDS,
+        modelIds: getStaticGatewayModelIds(),
         source: config.baseUrl ? "static" : "disabled",
         error: !config.baseUrl
           ? "Missing base URL configuration."
@@ -455,8 +462,8 @@ export async function discoverAndRegister(
       // `/model_group/info` powers provider-drift detection in status.ts;
       // its result is compared to the previous session's snapshot so a
       // silent admin reroute surfaces as a warning line.
-      const [allIds, modelInfoMap, modelGroupInfo] = await Promise.all([
-        fetchGatewayModelIds(config.baseUrl, config.apiKey),
+      const [modelIdDiscovery, modelInfoMap, modelGroupInfo] = await Promise.all([
+        fetchGatewayModelIdDiscovery(config.baseUrl, config.apiKey),
         fetchGatewayModelInfoMap(config.baseUrl, config.apiKey),
         fetchGatewayModelGroupInfo(config.baseUrl, config.apiKey),
       ]);
@@ -469,12 +476,15 @@ export async function discoverAndRegister(
         : [];
       lastModelGroupInfo = modelGroupInfo;
 
-      if (allIds.length === 0) {
+      if (modelIdDiscovery.ids.length === 0 || modelIdDiscovery.filteredIds.length > 0) {
         registerProviderIfConfigured(pi, runtimeBetaOverrides, runtimeExtraBetas, cwd);
         const state: GatewayDiscoveryState = {
-          modelIds: ALWAYS_INCLUDE_MODEL_IDS,
+          modelIds: getStaticGatewayModelIds(),
           source: "static",
-          error: "Gateway returned zero valid models; using static catalog.",
+          error:
+            modelIdDiscovery.filteredIds.length > 0
+              ? `Gateway returned non-callable model id(s): ${modelIdDiscovery.filteredIds.join(", ")}; using static catalog.`
+              : "Gateway returned zero valid models; using static catalog.",
           discoveredAt: new Date().toISOString(),
         };
         lastDiscovery = state;
@@ -482,7 +492,7 @@ export async function discoverAndRegister(
       }
 
       const models = buildDiscoveredModelList(
-        allIds,
+        modelIdDiscovery.ids,
         runtimeBetaOverrides,
         runtimeExtraBetas,
         modelInfoMap,
@@ -501,7 +511,7 @@ export async function discoverAndRegister(
     } catch (error) {
       registerProviderIfConfigured(pi, runtimeBetaOverrides, runtimeExtraBetas, cwd);
       const state: GatewayDiscoveryState = {
-        modelIds: ALWAYS_INCLUDE_MODEL_IDS,
+        modelIds: getStaticGatewayModelIds(),
         source: "static",
         error: error instanceof Error ? error.message : String(error),
         discoveredAt: new Date().toISOString(),

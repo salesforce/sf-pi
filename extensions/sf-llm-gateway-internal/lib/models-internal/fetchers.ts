@@ -14,12 +14,21 @@
  */
 import type { GatewayModelGroupInfoMap, GatewayModelInfoMap } from "../models.ts";
 import { toGatewayOpenAiBaseUrl, toGatewayRootBaseUrl } from "../gateway-url.ts";
+import { isCallableDiscoveredModelId } from "./discovery-sentinels.ts";
 
 const MODEL_FETCH_TIMEOUT_MS = 10_000;
 const MODEL_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$/;
 const MAX_DISCOVERED_MODELS = 64;
 
-export async function fetchGatewayModelIds(baseUrl: string, apiKey: string): Promise<string[]> {
+export interface GatewayModelIdDiscovery {
+  ids: string[];
+  filteredIds: string[];
+}
+
+export async function fetchGatewayModelIdDiscovery(
+  baseUrl: string,
+  apiKey: string,
+): Promise<GatewayModelIdDiscovery> {
   const response = await fetchWithTimeout(
     `${toGatewayOpenAiBaseUrl(baseUrl)}/models`,
     {
@@ -44,16 +53,29 @@ export async function fetchGatewayModelIds(baseUrl: string, apiKey: string): Pro
   }
 
   const ids: string[] = [];
+  const filteredIds: string[] = [];
   const seen = new Set<string>();
+  const seenFiltered = new Set<string>();
   for (const entry of json.data || []) {
     const id = (entry.id || "").trim();
     if (!MODEL_ID_PATTERN.test(id)) continue;
+    if (!isCallableDiscoveredModelId(id)) {
+      if (!seenFiltered.has(id)) {
+        seenFiltered.add(id);
+        filteredIds.push(id);
+      }
+      continue;
+    }
     if (seen.has(id)) continue;
     seen.add(id);
     ids.push(id);
     if (ids.length >= MAX_DISCOVERED_MODELS) break;
   }
-  return ids;
+  return { ids, filteredIds };
+}
+
+export async function fetchGatewayModelIds(baseUrl: string, apiKey: string): Promise<string[]> {
+  return (await fetchGatewayModelIdDiscovery(baseUrl, apiKey)).ids;
 }
 
 /**
@@ -95,6 +117,7 @@ export async function fetchGatewayModelInfoMap(
     for (const entry of json.data || []) {
       const id = typeof entry.model_name === "string" ? entry.model_name.trim() : "";
       if (!id || !MODEL_ID_PATTERN.test(id)) continue;
+      if (!isCallableDiscoveredModelId(id)) continue;
       const mi = entry.model_info ?? {};
       map[id] = {
         id,

@@ -11,6 +11,7 @@ import { API_KEY_ENV, BASE_URL_ENV } from "../lib/config.ts";
 const ORIGINAL_BASE_URL = process.env[BASE_URL_ENV];
 const ORIGINAL_API_KEY = process.env[API_KEY_ENV];
 const ORIGINAL_AGENT_DIR = process.env.PI_CODING_AGENT_DIR;
+const ORIGINAL_FETCH = globalThis.fetch;
 
 interface CapturedRegistration {
   name: string;
@@ -65,6 +66,7 @@ describe("cached gateway discovery", () => {
     restoreEnv(BASE_URL_ENV, ORIGINAL_BASE_URL);
     restoreEnv(API_KEY_ENV, ORIGINAL_API_KEY);
     restoreEnv("PI_CODING_AGENT_DIR", ORIGINAL_AGENT_DIR);
+    globalThis.fetch = ORIGINAL_FETCH;
     vi.resetModules();
   });
 
@@ -116,5 +118,69 @@ describe("cached gateway discovery", () => {
     expect(registered).toBe(true);
     expect(captured).toHaveLength(1);
     expect(captured[0].config.models?.map((model) => model.id)).toEqual(["gemini-3-pro-preview"]);
+  });
+
+  it("ignores cached LiteLLM non-callable sentinel model IDs", async () => {
+    const agentDir = mkdtempSync(join(tmpdir(), "sf-pi-gateway-discovery-cache-"));
+    process.env.PI_CODING_AGENT_DIR = agentDir;
+    process.env[BASE_URL_ENV] = "https://gateway.example.test";
+    process.env[API_KEY_ENV] = "test-key";
+    seedDiscoveryCache(agentDir, ["no-default-models", "gpt-5"]);
+
+    const { registerCachedDiscoveryIfAvailable } = await import("../lib/discovery.ts");
+    const captured: CapturedRegistration[] = [];
+
+    const registered = registerCachedDiscoveryIfAvailable(
+      makeFakePi(captured) as never,
+      null,
+      new Set(),
+    );
+
+    expect(registered).toBe(false);
+    expect(captured).toHaveLength(0);
+  });
+
+  it("records the full static catalog when live discovery returns sentinels", async () => {
+    const agentDir = mkdtempSync(join(tmpdir(), "sf-pi-gateway-discovery-cache-"));
+    process.env.PI_CODING_AGENT_DIR = agentDir;
+    process.env[BASE_URL_ENV] = "https://gateway.example.test";
+    process.env[API_KEY_ENV] = "test-key";
+    globalThis.fetch = vi.fn(async (input) => {
+      const url = String(input);
+      if (url.includes("/models")) {
+        return new Response(
+          JSON.stringify({ data: [{ id: "no-default-models" }, { id: "gpt-5" }] }),
+          {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          },
+        );
+      }
+      if (url.includes("/model/info") || url.includes("/model_group/info")) {
+        return new Response(JSON.stringify({ data: [] }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify({ error: "unexpected test URL" }), { status: 500 });
+    }) as typeof fetch;
+
+    const { discoverAndRegister } = await import("../lib/discovery.ts");
+    const captured: CapturedRegistration[] = [];
+
+    const state = await discoverAndRegister(
+      makeFakePi(captured) as never,
+      null,
+      new Set(),
+      agentDir,
+    );
+
+    expect(state).toMatchObject({
+      source: "static",
+      error: expect.stringContaining("no-default-models"),
+    });
+    expect(state.modelIds).toContain("gpt-5.5");
+    expect(state.modelIds).toContain("claude-sonnet-5");
+    expect(captured.at(-1)?.config.models?.map((model) => model.id)).toEqual(state.modelIds);
   });
 });

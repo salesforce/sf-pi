@@ -179,6 +179,16 @@ export const MODEL_PRESETS: Record<string, Omit<GatewayModelDefinition, "id">> =
     maxTokens: 64_000,
     betaHeaders: [INTERLEAVED_THINKING_BETA],
   },
+  "claude-sonnet-5": {
+    family: "anthropic",
+    name: "[SF LLM Gateway] Claude Sonnet 5",
+    reasoning: true,
+    input: ["text", "image"],
+    contextWindow: 200_000,
+    maxTokens: 64_000,
+    betaHeaders: [],
+    thinkingLevelMap: OPUS_47_THINKING_LEVEL_MAP,
+  },
   "claude-haiku-4-5-20251001": {
     family: "anthropic",
     name: "[SF LLM Gateway] Claude Haiku 4.5",

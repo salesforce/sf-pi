@@ -96,6 +96,10 @@ export const KNOWN_BETAS: ReadonlyArray<{ value: string; aliases: string[] }> = 
 import { ALWAYS_INCLUDE_MODEL_IDS, MODEL_PRESETS } from "./models-internal/presets.ts";
 export { ALWAYS_INCLUDE_MODEL_IDS, MODEL_PRESETS };
 
+export function getStaticGatewayModelIds(): string[] {
+  return sortModelIds([...new Set([...ALWAYS_INCLUDE_MODEL_IDS, ...Object.keys(MODEL_PRESETS)])]);
+}
+
 const ZERO_COST = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 } as const;
 
 // -------------------------------------------------------------------------------------------------
@@ -251,7 +255,10 @@ export type TaggedGatewayModel = ProviderModelConfig & {
 export function shouldForceAdaptiveThinking(modelId: string): boolean {
   const lower = modelId.toLowerCase();
   return (
-    isOpus46OrNewerModelId(modelId) || lower.includes("sonnet-4-6") || lower.includes("sonnet-4.6")
+    isOpus46OrNewerModelId(modelId) ||
+    lower.includes("sonnet-4-6") ||
+    lower.includes("sonnet-4.6") ||
+    lower.includes("sonnet-5")
   );
 }
 
@@ -302,15 +309,16 @@ export const GPT5_BEDROCK_RESPONSES_THINKING_LEVEL_MAP: ProviderModelConfig["thi
 /**
  * Build the startup bootstrap catalog only.
  *
- * These IDs are local fallback presets so Pi can resolve gateway defaults
- * before async discovery completes. Once discovery succeeds, the provider is
+ * These IDs are local fallback presets so Pi can resolve gateway defaults and
+ * keep curated models selectable when live discovery is unavailable or returns
+ * only non-callable sentinels. Once discovery succeeds, the provider is
  * re-registered with the exact gateway model IDs instead of this bootstrap.
  */
 export function buildBootstrapModelList(
   runtimeBetaOverrides: Set<string> | null,
   runtimeExtraBetas: Set<string>,
 ): TaggedGatewayModel[] {
-  return sortModelIds(ALWAYS_INCLUDE_MODEL_IDS).map((id) =>
+  return getStaticGatewayModelIds().map((id) =>
     toProviderModelConfig(id, runtimeBetaOverrides, runtimeExtraBetas),
   );
 }
@@ -747,10 +755,12 @@ export function getActiveModelDefinition(
 
 export {
   fetchGatewayModelGroupInfo,
+  fetchGatewayModelIdDiscovery,
   fetchGatewayModelIds,
   fetchGatewayModelInfoMap,
   fetchWithTimeout,
   diffModelGroupProviders,
+  type GatewayModelIdDiscovery,
   type ModelGroupDrift,
 } from "./models-internal/fetchers.ts";
 
