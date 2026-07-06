@@ -1,6 +1,11 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 import { describe, expect, it } from "vitest";
-import { confirmDecision } from "../lib/hitl.ts";
+import {
+  OPERATOR_AUTO_APPROVE_ENV,
+  OPERATOR_AUTO_APPROVE_VALUE,
+  confirmDecision,
+  isOperatorAutoApproveEnabled,
+} from "../lib/hitl.ts";
 
 type ConfirmContext = Parameters<typeof confirmDecision>[0];
 
@@ -60,6 +65,31 @@ describe("confirmDecision", () => {
       },
     );
     expect(renderedChoices).toEqual(["Allow once", "Block"]);
+  });
+
+  it("operator auto-approve bypasses interactive prompts with an audited outcome", async () => {
+    process.env[OPERATOR_AUTO_APPROVE_ENV] = OPERATOR_AUTO_APPROVE_VALUE;
+    try {
+      let renderedChoices: string[] | undefined;
+      const result = await confirmDecision(
+        ctxWithSelection("Block", true, (choices) => (renderedChoices = choices)),
+        base,
+      );
+      expect(result.outcome).toBe("operator_auto_approve");
+      expect(renderedChoices).toBeUndefined();
+      expect(isOperatorAutoApproveEnabled()).toBe(true);
+    } finally {
+      delete process.env[OPERATOR_AUTO_APPROVE_ENV];
+    }
+  });
+
+  it("operator auto-approve requires the exact opt-in value", () => {
+    process.env[OPERATOR_AUTO_APPROVE_ENV] = "1";
+    try {
+      expect(isOperatorAutoApproveEnabled()).toBe(false);
+    } finally {
+      delete process.env[OPERATOR_AUTO_APPROVE_ENV];
+    }
   });
 
   it("headless blocks without escape hatch", async () => {

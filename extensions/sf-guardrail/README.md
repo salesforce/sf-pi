@@ -74,6 +74,10 @@ Plus:
 - **Headless mode** — fail-closed by default; set
   `SF_GUARDRAIL_ALLOW_HEADLESS=1` to let gated calls through with an
   audit warning when there is no TUI.
+- **Operator auto-approve mode** — explicit power-user override for the current
+  process. Set
+  `SF_GUARDRAIL_OPERATOR_AUTO_APPROVE=allow-confirm-actions-for-this-process`
+  to auto-allow confirm-class decisions with audit. Hard blocks still apply.
 
 ## Runtime Flow
 
@@ -94,6 +98,7 @@ Extension loads
        │  OR nativeToolGate hit                           →
        │      previously granted for this session         → pass through, audit as allow_session
        │      interactive                                 → ctx.ui.select (Allow once / Allow for session / Block)
+       │      operator auto-approve env set               → pass through, audit as operator_auto_approve
        │      headless + env opt-in                       → pass through, audit as headless_pass
        │      headless + no opt-in                        → { block }, audit as headless_block
        └─ no rule matched                                 → pass through
@@ -175,6 +180,7 @@ engine. The canonical terms live in `CONTEXT.md`; the redesign plan lives in
 | tool_call          | native high-value mutation matches      | same confirmation path as other confirm gates    |
 | tool_call          | previously allowed (session memory)     | Pass through, audit as allow_session             |
 | tool_call          | interactive confirmation                | `ctx.ui.select`, status/notify, audit per choice |
+| tool_call          | operator auto-approve env set           | Pass through, audit as operator_auto_approve     |
 | tool_call          | headless + env opt-in                   | Pass through, audit as headless_pass             |
 | tool_call          | headless + no env opt-in                | `{ block }`, audit as headless_block             |
 | /sf-guardrail      | UI available                            | Open `SF Pi › SF Guardrail` in Manager Surface   |

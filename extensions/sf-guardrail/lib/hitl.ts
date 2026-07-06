@@ -8,6 +8,8 @@
  *       • Allow for this session  (persisted via pi.appendEntry, when allowed)
  *       • Block
  *     Timeout equals block.
+ *   - Operator auto-approve mode → env-only process opt-in allows confirm-class
+ *     decisions with audit in both interactive and headless sessions.
  *   - Headless mode → env escape hatch allows pass-through with an audit
  *     warning; otherwise block. Never fail-open silently.
  */
@@ -16,6 +18,7 @@ import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 export type ConfirmResult =
   | { outcome: "allow_once" }
   | { outcome: "allow_session" }
+  | { outcome: "operator_auto_approve" }
   | { outcome: "block"; reason: string }
   | { outcome: "timeout"; reason: string }
   | { outcome: "cancel"; reason: string }
@@ -31,6 +34,9 @@ export interface ConfirmOptions {
   allowSession?: boolean;
 }
 
+export const OPERATOR_AUTO_APPROVE_ENV = "SF_GUARDRAIL_OPERATOR_AUTO_APPROVE";
+export const OPERATOR_AUTO_APPROVE_VALUE = "allow-confirm-actions-for-this-process";
+
 const ALLOW_ONCE_LABEL = "Allow once";
 const ALLOW_SESSION_LABEL = "Allow for this session";
 const BLOCK_LABEL = "Block";
@@ -39,6 +45,10 @@ export async function confirmDecision(
   ctx: ExtensionContext,
   options: ConfirmOptions,
 ): Promise<ConfirmResult> {
+  if (isOperatorAutoApproveEnabled()) {
+    return { outcome: "operator_auto_approve" };
+  }
+
   if (!ctx.hasUI) {
     const envValue = process.env[options.escapeHatchEnv];
     if (envValue && envValue !== "0" && envValue.toLowerCase() !== "false") {
@@ -91,6 +101,10 @@ export async function confirmDecision(
   } finally {
     ctx.ui.setStatus?.("sf-guardrail", undefined);
   }
+}
+
+export function isOperatorAutoApproveEnabled(): boolean {
+  return process.env[OPERATOR_AUTO_APPROVE_ENV] === OPERATOR_AUTO_APPROVE_VALUE;
 }
 
 function detailedBlockReason(summary: string, options: ConfirmOptions): string {

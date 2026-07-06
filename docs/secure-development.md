@@ -110,7 +110,8 @@ New bundled LLM-callable write surfaces must be reviewed against the
 2. Is it mediated by SF Guardrail before execution?
 3. Are execution intent flags treated as intent, not approval?
 4. Does headless mode fail closed unless explicitly operator-approved?
-5. Is the Safety Envelope narrow enough for any session approval offered?
+5. If operator auto-approve mode applies, is it env-only, process-scoped, audited, and unable to bypass hard blocks?
+6. Is the Safety Envelope narrow enough for any session approval offered?
 
 If the answer is unclear, document the decision in an ADR before merging the
 feature.

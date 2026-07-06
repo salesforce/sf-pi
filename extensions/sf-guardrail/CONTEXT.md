@@ -112,6 +112,10 @@ _Avoid_: best-effort allow, convenience-first safety, optimistic pass
 A non-interactive execution mode where confirm-class **Guardrail Decisions** may pass only because a human or operator configured an explicit environment-level opt-in before the run, currently `SF_GUARDRAIL_ALLOW_HEADLESS=1`. It is not settable by the model or tool input, is recorded in the **Guardrail Audit Trail**, and does not weaken **Hard Blocks**.
 _Avoid_: tool-specific headless write flag, model-approved headless, CI trust mode, silent bypass
 
+**Operator Auto-Approve Mode**:
+An explicit process-scoped power-user mode where confirm-class **Guardrail Decisions** are automatically allowed because an operator set `SF_GUARDRAIL_OPERATOR_AUTO_APPROVE=allow-confirm-actions-for-this-process` before launch. It is audited, does not create **Session Approvals**, and never weakens **Hard Blocks**.
+_Avoid_: model-set approval, permanent trust mode, hard-block bypass, silent bypass
+
 **Guardrail Audit Trail**:
 The session-local record of **Guardrail Decisions** and approval outcomes.
 _Avoid_: telemetry, analytics, external logging

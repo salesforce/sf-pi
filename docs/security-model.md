@@ -90,7 +90,7 @@ Session approval is not appropriate for broad trust. Arbitrary-code, raw-REST,
 short-lived browser-reference, external-content, destructive, production, or
 unknown-org operations stay exact or allow-once.
 
-## Headless mode
+## Headless and operator auto-approve modes
 
 Confirm-class actions fail closed when there is no interactive UI. Operators can
 explicitly opt into headless execution by setting:
@@ -99,13 +99,20 @@ explicitly opt into headless execution by setting:
 SF_GUARDRAIL_ALLOW_HEADLESS=1
 ```
 
-This opt-in:
+Power users can also opt into process-scoped auto-approval for confirm-class
+Guardrail decisions:
 
-- is configured outside the model/tool call
-- is recorded in the Guardrail audit trail
-- does not weaken hard blocks
-- should be used only in automation environments where the operator has reviewed
-  the workflow and target context
+```bash
+SF_GUARDRAIL_OPERATOR_AUTO_APPROVE=allow-confirm-actions-for-this-process
+```
+
+These opt-ins:
+
+- are configured outside the model/tool call
+- are recorded in the Guardrail audit trail
+- do not weaken hard blocks
+- should be used only in environments where the operator has reviewed the
+  workflow and target context
 
 ## What SF Pi does not claim
 

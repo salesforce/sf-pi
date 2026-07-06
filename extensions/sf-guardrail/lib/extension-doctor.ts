@@ -10,6 +10,11 @@
  */
 import type { ExtensionDoctorReport } from "../../../lib/common/doctor/registry.ts";
 import { loadConfig } from "./config.ts";
+import {
+  OPERATOR_AUTO_APPROVE_ENV,
+  OPERATOR_AUTO_APPROVE_VALUE,
+  isOperatorAutoApproveEnabled,
+} from "./hitl.ts";
 import { resolveRuleBehavior } from "./rule-behavior.ts";
 
 const HEADLESS_ALLOW_ENV = "SF_GUARDRAIL_ALLOW_HEADLESS";
@@ -66,6 +71,21 @@ export async function runExtensionDoctor(): Promise<ExtensionDoctorReport> {
       : "Default behavior — every confirm-class call fails closed without an interactive UI.",
     fix: headlessAllow
       ? `Unset ${HEADLESS_ALLOW_ENV} for production runs unless you explicitly want bypass.`
+      : undefined,
+  });
+
+  const operatorAutoApprove = isOperatorAutoApproveEnabled();
+  checks.push({
+    id: "guardrail.operator-auto-approve",
+    severity: operatorAutoApprove ? "warn" : "ok",
+    title: operatorAutoApprove
+      ? `${OPERATOR_AUTO_APPROVE_ENV} enabled — confirm-class actions auto-approve`
+      : "Operator auto-approve is off",
+    detail: operatorAutoApprove
+      ? "Confirm-class Guardrail decisions pass automatically in this process and are audited. Hard blocks still apply."
+      : "Default behavior — confirm-class decisions require HITL or headless opt-in.",
+    fix: operatorAutoApprove
+      ? `Unset ${OPERATOR_AUTO_APPROVE_ENV} or use any value other than ${OPERATOR_AUTO_APPROVE_VALUE}.`
       : undefined,
   });
 

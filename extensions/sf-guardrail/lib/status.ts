@@ -16,10 +16,12 @@ export interface StatusInput {
   recent: DecisionEntryData[];
   hasUI: boolean;
   headlessEnabled: boolean;
+  operatorAutoApproveEnabled: boolean;
 }
 
 export function renderStatus(input: StatusInput): string {
-  const { config, configSource, recent, hasUI, headlessEnabled } = input;
+  const { config, configSource, recent, hasUI, headlessEnabled, operatorAutoApproveEnabled } =
+    input;
   const lines: string[] = [];
   lines.push(`sf-guardrail: extension-enabled (source: ${configSource})`);
 
@@ -39,6 +41,9 @@ export function renderStatus(input: StatusInput): string {
 
   if (!hasUI) {
     lines.push(`  headless mode: ${headlessEnabled ? "opt-in pass" : "fail-closed"}`);
+  }
+  if (operatorAutoApproveEnabled) {
+    lines.push("  operator auto-approve: enabled for confirm-class decisions");
   }
 
   lines.push("");

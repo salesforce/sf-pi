@@ -83,7 +83,7 @@ import {
 import { renderApprovalDetail } from "./lib/approval-detail.ts";
 import { evaluateSafety } from "./lib/safety-kernel.ts";
 import { type GuardrailConfigSource, loadConfig } from "./lib/config.ts";
-import { confirmDecision } from "./lib/hitl.ts";
+import { confirmDecision, isOperatorAutoApproveEnabled } from "./lib/hitl.ts";
 import { loadPrompt } from "./lib/prompt-injection.ts";
 import { openProductionAliasesEditor } from "./lib/production-aliases-panel.ts";
 import {
@@ -192,6 +192,9 @@ export default function sfGuardrail(pi: ExtensionAPI) {
       case "allow_session":
         grantSessionApproval(pi, decision);
         recordDecision(pi, decision, "allow_session", event.toolName);
+        return undefined;
+      case "operator_auto_approve":
+        recordDecision(pi, decision, "operator_auto_approve", event.toolName);
         return undefined;
       case "headless_pass":
         recordDecision(pi, decision, "headless_pass", event.toolName);
@@ -332,6 +335,7 @@ async function handleGuardrailCommand(
             recent: readRecentDecisions(ctx, 5),
             hasUI: ctx.hasUI,
             headlessEnabled: !!process.env[config.headlessEscapeHatchEnv],
+            operatorAutoApproveEnabled: isOperatorAutoApproveEnabled(),
           });
     await emitGuardrailOutput(
       ctx,

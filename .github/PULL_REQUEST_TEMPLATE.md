@@ -30,6 +30,7 @@ Closes #
 - [ ] Any high-value mutation is mediated by SF Guardrail, explicitly out of scope, or documented in an ADR/security note
 - [ ] Execution intent flags (for example `allow_mutation`, `allow_confirmed`, `mutation`, or `dry_run=false`) are not treated as approval
 - [ ] Headless execution for confirm-class operations fails closed unless explicitly operator-approved
+- [ ] Any operator auto-approve behavior is env-only, process-scoped, audited, and does not bypass hard blocks
 - [ ] Public docs, examples, tests, comments, and diagnostics do not include secrets, customer names, real org/workspace identifiers, private hostnames, internal links, or copied private-source wording
 - [ ] New env vars, settings, provider labels, and examples use public-safe names and generic placeholders
 

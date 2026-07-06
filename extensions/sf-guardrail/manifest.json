@@ -38,10 +38,11 @@
       "lib/config.ts"
     ],
     "stateFiles": ["session entries: SF_GUARDRAIL_DEFAULTS allow/deny memory and audit decisions"],
-    "env": ["SF_GUARDRAIL_ALLOW_HEADLESS"],
+    "env": ["SF_GUARDRAIL_ALLOW_HEADLESS", "SF_GUARDRAIL_OPERATOR_AUTO_APPROVE"],
     "safety": [
       "Fail-closed in headless mode unless SF_GUARDRAIL_ALLOW_HEADLESS=1.",
       "Every block / allow / confirm decision is persisted as an audit entry.",
+      "Operator auto-approve mode is process-scoped, env-only, audited, and does not bypass hard blocks.",
       "Known high-value native tool mutations are mediated before execution through the same Safety Kernel and HITL path, including first-slice AgentScript lifecycle, Data 360, Apex, Slack Canvas, and SF Browser commit surfaces.",
       "alwaysActive=false but disabling removes the safety layer entirely; the manager surfaces this clearly."
     ]

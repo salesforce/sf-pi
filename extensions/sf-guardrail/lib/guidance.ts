@@ -7,6 +7,7 @@
  * and compact so rule changes update agent guidance without maintaining a
  * second policy prompt by hand.
  */
+import { OPERATOR_AUTO_APPROVE_ENV, OPERATOR_AUTO_APPROVE_VALUE } from "./hitl.ts";
 import { labelForRuleBehavior, resolveRuleBehavior } from "./rule-behavior.ts";
 import type { GuardrailConfig, OrgAwareRule, ShellAstMatch } from "./types.ts";
 
@@ -79,6 +80,7 @@ export function renderGuardrailGuidance(config: GuardrailConfig): string {
     "- Prefer `sf project deploy validate` and `--check-only` on production.",
     "- Prefer `Savepoint sp = Database.setSavepoint(); ... Database.rollback(sp);` for anonymous-apex DML rehearsals on production.",
     `- In headless / non-interactive mode, gated calls fail closed unless ${config.headlessEscapeHatchEnv}=1 is set.`,
+    `- Operator auto-approve mode is env-only: ${OPERATOR_AUTO_APPROVE_ENV}=${OPERATOR_AUTO_APPROVE_VALUE}. It auto-approves confirm-class decisions but never hard blocks, and every pass is audited.`,
     "",
     "Override: `/sf-guardrail` shows active rules, recent decisions, and active approval state.",
     "Users may choose a scoped allow at the confirmation dialog; session approvals persist via pi's session entries and can be revoked with `/sf-guardrail forget`.",

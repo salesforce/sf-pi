@@ -162,6 +162,7 @@ export type DecisionOutcome =
   | "allow_session"
   | "allow_persisted"
   | "allow_auto"
+  | "operator_auto_approve"
   | "block"
   | "timeout"
   | "cancel"
