@@ -42,7 +42,8 @@ sf_soql action
   `ApexClass`, `ApexLog`, and `ApexTestResult`.
 - **Artifact-first evidence** — full raw/flattened results are persisted; LLM output
   stays compact while still showing bounded field, finding, row, and artifact previews
-  needed for the next likely agent decision.
+  needed for the next likely agent decision. Explicit exports are confined to
+  `.sf-pi/exports/soql/` under the workspace.
 - **SOQL API Call Rail** — cards show concrete native endpoints and high-signal
   request parameters.
 - **Full query visibility** — every query-shaped card includes a dedicated SOQL
@@ -97,7 +98,7 @@ sf_soql action
 | `query.run`            | Run a bounded explicit query. Broad queries without `LIMIT` are safety-gated.                       |
 | `query.count`          | Convert a query shape to `SELECT COUNT()` and run it.                                               |
 | `query.queryAll`       | Explicit queryAll / deleted-row-aware execution.                                                    |
-| `query.export`         | Export the latest query artifact to a workspace file.                                               |
+| `query.export`         | Export the latest query artifact to `.sf-pi/exports/soql/` under the workspace.                     |
 | `sosl.run`             | Run a bounded native SOSL search via `/search`.                                                     |
 | `file.diagnose`        | Diagnose `.soql` files and embedded Apex `[SELECT ...]` queries.                                    |
 | `lsp.status`           | Report current parser/describe diagnostics mode and managed LSP readiness.                          |
@@ -134,6 +135,7 @@ extensions/sf-soql/
     validator.ts            ← implementation module
   tests/
     errors.test.ts          ← unit / smoke test
+    export.test.ts          ← unit / smoke test
     flattener.test.ts       ← unit / smoke test
     parser.test.ts          ← unit / smoke test
     render.test.ts          ← unit / smoke test
@@ -185,3 +187,4 @@ npm run e2e:sf-soql -- --org <alias> --harness-data
 | `INVALID_FIELD`                     | Field or relationship name was guessed.                                      | Use `schema.describe` / `schema.relationships` before running.           |
 | Query plan unavailable              | Salesforce did not return a plan for that query shape.                       | Run `query.validate`, `query.count`, or a bounded `query.sample`.        |
 | Large result not visible in chat    | Full evidence is artifact-first by design; chat shows only bounded previews. | Open the SOQL Artifact paths from the result card.                       |
+| `query.export` rejects a path       | Exports are confined to `.sf-pi/exports/soql/` under the workspace.          | Use a relative filename or subpath without absolute paths or `..`.       |

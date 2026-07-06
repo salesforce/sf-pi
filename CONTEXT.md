@@ -168,6 +168,10 @@ _Avoid_: generic transport label, hidden query endpoint, full request dump
 Persisted evidence from a **SOQL Run**, such as the normalized query, raw result JSON, flattened result JSON, flattened CSV, query plan, schema describe response, or summary digest.
 _Avoid_: context dump, temporary table output, bulk export product
 
+**SOQL Artifact Export**:
+A SOQL lifecycle action that copies an existing **SOQL Artifact** to a user-visible workspace export location. It does not query Salesforce, but it can disclose previously queried data or write outside the intended project area if the output path is not confined.
+_Avoid_: query run, data mutation, bulk export product, arbitrary file copy
+
 **LWC Lifecycle Extension**:
 A bundled SF Pi extension that owns the local Lightning Web Component loop: scan project bundles, inspect component shape, diagnose LWC files, run targeted Jest tests, summarize evidence, and iterate. It does not own source deployment, org source synchronization, visual building, broad static analysis, Apex/server verification, or background LSP feedback.
 _Avoid_: LWC IDE, UI builder, frontend app generator, Jest wrapper, CLI wrapper

@@ -47,6 +47,7 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ### Changed
 
+- **Confined SOQL artifact exports.** `sf_soql query.export` now rejects absolute, parent-traversal, empty, or dot path segments and writes only under `.sf-pi/exports/soql/` in the workspace.
 - **Hardened Data 360 tenant ingest execution.** Tenant ingest create/upload/close now require `allow_confirmed=true` before auth-session lookup, local CSV reads, or network execution; dry-runs remain non-mutating and do not read CSV contents.
 - **Added public security and governance documentation.** Added security model, secure-development, and public-sanitization docs; expanded SECURITY.md; and updated the PR template with high-value mutation, headless, and public-surface checklist items.
 - **Sanitized SF LLM Gateway public setup surface.** The gateway display name is now source-agnostic (`SF LLM Gateway`), public setup docs use `SF_LLM_GATEWAY_*` env vars, and older legacy env names remain supported for existing automation.

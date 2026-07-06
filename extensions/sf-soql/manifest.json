@@ -40,6 +40,7 @@
       "Lifecycle actions use @salesforce/core / REST and Tooling APIs as the fast native path; missing recurring capabilities should become small native actions instead of subprocess fallbacks.",
       "query.sample defaults to a small safe limit. query.run without LIMIT returns a review card unless max_rows or allow_unbounded is explicit.",
       "query.queryAll and ALL ROWS are explicit and rendered as deleted/archived-row scope warnings.",
+      "query.export is confined to .sf-pi/exports/soql/ under the workspace.",
       "SOQL results are read-only and artifact-first; sf-soql is not a data mutation or bulk export surface."
     ]
   }
