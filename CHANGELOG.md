@@ -525,6 +525,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.220.0](https://github.com/salesforce/sf-pi/compare/v0.219.4...v0.220.0) (2026-07-06)
+
+
+### Features
+
+* **sf-guardrail:** classify browser commits from snapshots ([0ec9ea2](https://github.com/salesforce/sf-pi/commit/0ec9ea2ba62f273e7559be1935f80fd735b12d71))
+
 ## [0.219.4](https://github.com/salesforce/sf-pi/compare/v0.219.3...v0.219.4) (2026-07-06)
 
 
