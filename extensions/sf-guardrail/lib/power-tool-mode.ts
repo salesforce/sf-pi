@@ -63,9 +63,7 @@ export function powerToolModeLabel(mode: GuardrailPowerToolMode | undefined): st
 export function enabledNativeFamilies(
   settings: GuardrailPowerToolSettings | undefined,
 ): Set<GuardrailNativeToolFamily> {
-  const families = settings?.nativeFamilies?.length
-    ? settings.nativeFamilies
-    : defaultNativeFamilies();
+  const families = settings?.nativeFamilies ?? defaultNativeFamilies();
   return new Set(families);
 }
 
@@ -97,7 +95,17 @@ export function nativeToolFamilyForDecision(
 }
 
 function isProductionLikeDecision(decision: ClassifiedDecision): boolean {
-  return decision.orgType === "production" || decision.orgResolutionGuessed === true;
+  if (decision.orgType === "production" || decision.orgResolutionGuessed === true) return true;
+  if (decision.orgType !== undefined) return false;
+
+  // Browser commits happen inside an authenticated Salesforce UI session, but
+  // their native-tool subjects do not always carry resolvable org metadata.
+  // SOQL exports/history reruns can also disclose prior org data without a
+  // target_org on the replay/export call. Treat those missing-org native
+  // decisions as Unknown Org for Power Tool Mode so the separate
+  // productionUnknown opt-in remains meaningful.
+  const family = nativeToolFamilyForDecision(decision);
+  return family === "browser" || family === "soql";
 }
 
 function isPowerToolMode(value: unknown): value is GuardrailPowerToolMode {

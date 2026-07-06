@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   defaultNativeFamilies,
+  enabledNativeFamilies,
   shouldPowerToolAutoApprove,
   type GuardrailPowerToolSettings,
 } from "../lib/power-tool-mode.ts";
@@ -36,7 +37,7 @@ describe("Power Tool Mode", () => {
 
   it("auto-approves selected native families in native mode", () => {
     const settings: GuardrailPowerToolSettings = { mode: "native", nativeFamilies: ["browser"] };
-    expect(shouldPowerToolAutoApprove(decision(), settings)).toBe(true);
+    expect(shouldPowerToolAutoApprove(decision({ orgType: "sandbox" }), settings)).toBe(true);
     expect(
       shouldPowerToolAutoApprove(
         decision({
@@ -49,14 +50,31 @@ describe("Power Tool Mode", () => {
 
   it("defaults native mode to every native family when no family list is saved", () => {
     expect(defaultNativeFamilies()).toContain("soql");
+    expect(enabledNativeFamilies({ mode: "native" })).toEqual(new Set(defaultNativeFamilies()));
     expect(
       shouldPowerToolAutoApprove(
         decision({
-          approvalScope: { ...decision().approvalScope!, operationFamily: "soql queryAll" },
+          approvalScope: { ...decision().approvalScope!, operationFamily: "anonymous apex" },
+          orgType: "sandbox",
         }),
         { mode: "native" },
       ),
     ).toBe(true);
+  });
+
+  it("treats an empty native family list as no enabled native families", () => {
+    const settings: GuardrailPowerToolSettings = { mode: "native", nativeFamilies: [] };
+    expect(enabledNativeFamilies(settings)).toEqual(new Set());
+    expect(shouldPowerToolAutoApprove(decision({ orgType: "sandbox" }), settings)).toBe(false);
+    expect(
+      shouldPowerToolAutoApprove(
+        decision({
+          approvalScope: { ...decision().approvalScope!, operationFamily: "soql queryAll" },
+          orgType: "sandbox",
+        }),
+        settings,
+      ),
+    ).toBe(false);
   });
 
   it("auto-approves non-native confirm decisions only in all mode", () => {
@@ -76,6 +94,50 @@ describe("Power Tool Mode", () => {
     expect(shouldPowerToolAutoApprove(guessed, { mode: "all" })).toBe(false);
     expect(shouldPowerToolAutoApprove(prod, { mode: "all", productionUnknown: true })).toBe(true);
     expect(shouldPowerToolAutoApprove(guessed, { mode: "all", productionUnknown: true })).toBe(
+      true,
+    );
+  });
+
+  it("treats browser and SOQL native decisions without org context as Unknown Org", () => {
+    const browser = decision();
+    const soqlExport = decision({
+      approvalScope: {
+        ...decision().approvalScope!,
+        operationFamily: "soql artifact export",
+        riskTier: "soql_artifact_export_exact",
+      },
+    });
+    const slack = decision({
+      approvalScope: {
+        ...decision().approvalScope!,
+        operationFamily: "slack canvas write",
+        riskTier: "external_content_write_exact",
+      },
+    });
+
+    expect(
+      shouldPowerToolAutoApprove(browser, { mode: "native", nativeFamilies: ["browser"] }),
+    ).toBe(false);
+    expect(
+      shouldPowerToolAutoApprove(soqlExport, { mode: "native", nativeFamilies: ["soql"] }),
+    ).toBe(false);
+    expect(shouldPowerToolAutoApprove(browser, { mode: "all" })).toBe(false);
+    expect(shouldPowerToolAutoApprove(soqlExport, { mode: "all" })).toBe(false);
+    expect(
+      shouldPowerToolAutoApprove(browser, {
+        mode: "native",
+        nativeFamilies: ["browser"],
+        productionUnknown: true,
+      }),
+    ).toBe(true);
+    expect(
+      shouldPowerToolAutoApprove(soqlExport, {
+        mode: "native",
+        nativeFamilies: ["soql"],
+        productionUnknown: true,
+      }),
+    ).toBe(true);
+    expect(shouldPowerToolAutoApprove(slack, { mode: "native", nativeFamilies: ["slack"] })).toBe(
       true,
     );
   });
