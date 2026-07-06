@@ -400,6 +400,11 @@
         "id": "sf-temp-show-secrets",
         "pattern": "SF_TEMP_SHOW_SECRETS=true",
         "description": "temporarily restore legacy Salesforce CLI secret output"
+      },
+      {
+        "id": "agent-browser-direct",
+        "pattern": "agent-browser",
+        "description": "direct agent-browser browser automation command"
       }
     ],
     "allowedPatterns": [],

@@ -249,6 +249,8 @@ describe("Safety Kernel — commandGate (Tier 2)", () => {
       ["find build -delete", "find-delete"],
       ["find build -exec rm -rf {} ;", "find-exec-rm"],
       ["printf '%s\\n' build | xargs rm -rf", "rm-rf"],
+      ["agent-browser --session sf-pi click @e7", "agent-browser-direct"],
+      ["npx agent-browser click @e7", "agent-browser-direct"],
     ] as const) {
       const decision = await evaluateSafety({
         toolName: "bash",

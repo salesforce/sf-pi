@@ -21,7 +21,19 @@ export interface BrowserSnapshotSessionState {
   capturedAt: string;
   url?: string;
   fullSnapshotPath?: string;
+  invalidatedAt?: string;
+  invalidationReason?: string;
   refs: BrowserSnapshotRefEntry[];
+}
+
+export type BrowserSnapshotRefLookupStatus = "fresh" | "stale" | "missing-session" | "missing-ref";
+
+export interface BrowserSnapshotRefLookup {
+  status: BrowserSnapshotRefLookupStatus;
+  ref?: BrowserSnapshotRefEntry;
+  session?: BrowserSnapshotSessionState;
+  ageMs?: number;
+  url?: string;
 }
 
 interface BrowserSnapshotState {
@@ -29,6 +41,7 @@ interface BrowserSnapshotState {
 }
 
 const MAX_SESSIONS = 25;
+export const BROWSER_SNAPSHOT_REF_MAX_AGE_MS = 120_000;
 
 const store = createStateStore<BrowserSnapshotState>({
   namespace: "sf-browser/snapshots",
@@ -64,11 +77,45 @@ export function findLatestBrowserSnapshotRef(
   sessionId: string | undefined,
   ref: string | undefined,
 ): BrowserSnapshotRefEntry | undefined {
-  if (!sessionId || !ref) return undefined;
+  const lookup = findLatestBrowserSnapshotRefLookup(sessionId, ref);
+  return lookup.status === "fresh" ? lookup.ref : undefined;
+}
+
+export function findLatestBrowserSnapshotRefLookup(
+  sessionId: string | undefined,
+  ref: string | undefined,
+  now = Date.now(),
+): BrowserSnapshotRefLookup {
+  if (!sessionId) return { status: "missing-session" };
   const normalized = normalizeBrowserRef(ref);
-  if (!normalized) return undefined;
+  if (!normalized) return { status: "missing-ref" };
   const session = store.read().sessions.find((entry) => entry.sessionId === sessionId);
-  return session?.refs.find((entry) => normalizeBrowserRef(entry.ref) === normalized);
+  if (!session) return { status: "missing-session" };
+  const capturedAtMs = Date.parse(session.capturedAt);
+  const ageMs = Number.isFinite(capturedAtMs)
+    ? Math.max(0, now - capturedAtMs)
+    : Number.POSITIVE_INFINITY;
+  const entry = session.refs.find((candidate) => normalizeBrowserRef(candidate.ref) === normalized);
+  if (!entry) return { status: "missing-ref", session, ageMs, url: session.url };
+  if (session.invalidatedAt || ageMs > BROWSER_SNAPSHOT_REF_MAX_AGE_MS) {
+    return { status: "stale", ref: entry, session, ageMs, url: session.url };
+  }
+  return { status: "fresh", ref: entry, session, ageMs, url: session.url };
+}
+
+export function markLatestBrowserSnapshotStale(
+  sessionId: string | undefined,
+  reason: string,
+): void {
+  if (!sessionId) return;
+  const invalidatedAt = new Date().toISOString();
+  store.update((current) => ({
+    sessions: current.sessions.map((session) =>
+      session.sessionId === sessionId
+        ? { ...session, invalidatedAt, invalidationReason: reason }
+        : session,
+    ),
+  }));
 }
 
 export function extractBrowserSnapshotRefs(snapshot: string): BrowserSnapshotRefEntry[] {

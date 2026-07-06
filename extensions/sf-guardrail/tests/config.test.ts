@@ -48,6 +48,7 @@ describe("bundled defaults", () => {
         "sf-org-auth-show-user-password",
         "sf-temp-show-secrets",
         "git-force-push",
+        "agent-browser-direct",
       ]),
     );
     expect(config.confirmTimeoutMs).toBe(120000);

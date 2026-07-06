@@ -2,6 +2,7 @@
 /** Keyboard press tool for SF Browser's hot path. */
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
+import { markLatestBrowserSnapshotStale } from "../../../lib/common/sf-browser-snapshot-state.ts";
 import { runAgentBrowser } from "./agent-browser.ts";
 import { evidenceLabelForMutationBefore, shouldCaptureMutationBefore } from "./evidence-policy.ts";
 import { throwWithFailureDiagnostics } from "./failure-diagnostics.ts";
@@ -65,6 +66,10 @@ export function registerSfBrowserPressTool(pi: ExtensionAPI): void {
           signal,
         );
       }
+      markLatestBrowserSnapshotStale(
+        ctx.sessionManager.getSessionId(),
+        `sf_browser_press ${params.key}`,
+      );
       const duration = stopTimer();
       return {
         content: [

@@ -11,7 +11,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { writeLatestBrowserSnapshotRefs } from "../../../lib/common/sf-browser-snapshot-state.ts";
+import {
+  markLatestBrowserSnapshotStale,
+  writeLatestBrowserSnapshotRefs,
+} from "../../../lib/common/sf-browser-snapshot-state.ts";
 import type { OrgInfo, SfEnvironment } from "../../../lib/common/sf-environment/types.ts";
 
 let mockedEnv: SfEnvironment | null = null;
@@ -594,7 +597,11 @@ describe("Safety Kernel", () => {
         '- button "Cancel" [ref=e13]',
         '- button "Delete" [ref=e14]',
         '- button "New" [ref=e15]',
+        "- button [ref=e16]",
+        '- link "Details" [ref=e17]',
+        '- button "Continue" [ref=e18]',
       ].join("\n"),
+      url: "https://example.my.salesforce.com/lightning/setup/Test/home",
     });
 
     const saveDecision = await evaluateSafety({
@@ -630,6 +637,64 @@ describe("Safety Kernel", () => {
       sessionId: "guardrail-browser-snapshot-test",
     });
     expect(newDecision).toBeUndefined();
+
+    const unlabeledButtonDecision = await evaluateSafety({
+      toolName: "sf_browser_click",
+      input: { ref: "@e16", reason: "click unlabeled button" },
+      cwd: "/project",
+      config: readBundledConfig(),
+      sessionId: "guardrail-browser-snapshot-test",
+    });
+    expect(unlabeledButtonDecision?.ruleId).toBe("native-sf-browser-commit");
+    expect(unlabeledButtonDecision?.approvalScope?.detail).toContain(
+      "source=button-like snapshot ref",
+    );
+
+    const detailsDecision = await evaluateSafety({
+      toolName: "sf_browser_click",
+      input: { ref: "@e17", reason: "open Details tab" },
+      cwd: "/project",
+      config: readBundledConfig(),
+      sessionId: "guardrail-browser-snapshot-test",
+    });
+    expect(detailsDecision).toBeUndefined();
+
+    const continueDecision = await evaluateSafety({
+      toolName: "sf_browser_click",
+      input: { ref: "@e18", reason: "move through wizard" },
+      cwd: "/project",
+      config: readBundledConfig(),
+      sessionId: "guardrail-browser-snapshot-test",
+    });
+    expect(continueDecision?.ruleId).toBe("native-sf-browser-commit");
+  });
+
+  it("fails closed for stale or missing Salesforce browser snapshots", async () => {
+    writeLatestBrowserSnapshotRefs({
+      sessionId: "guardrail-browser-stale-snapshot-test",
+      snapshot: ['- link "Details" [ref=e21]'].join("\n"),
+    });
+    markLatestBrowserSnapshotStale("guardrail-browser-stale-snapshot-test", "test page change");
+
+    const staleDecision = await evaluateSafety({
+      toolName: "sf_browser_click",
+      input: { ref: "@e21", reason: "open Details tab" },
+      cwd: "/project",
+      config: readBundledConfig(),
+      sessionId: "guardrail-browser-stale-snapshot-test",
+    });
+    expect(staleDecision?.ruleId).toBe("native-sf-browser-commit");
+    expect(staleDecision?.approvalScope?.detail).toContain("snapshot_status=stale");
+
+    const missingDecision = await evaluateSafety({
+      toolName: "sf_browser_click",
+      input: { ref: "@e99", reason: "click old ref" },
+      cwd: "/project",
+      config: readBundledConfig(),
+      sessionId: "guardrail-browser-missing-snapshot-test",
+    });
+    expect(missingDecision?.ruleId).toBe("native-sf-browser-commit");
+    expect(missingDecision?.approvalScope?.detail).toContain("snapshot_status=missing-session");
   });
 
   it("confirms Salesforce browser committing gestures", async () => {
@@ -653,21 +718,38 @@ describe("Safety Kernel", () => {
     });
   });
 
-  it("infers Salesforce browser commits from the reason without prompting all clicks", async () => {
-    const saveDecision = await evaluateSafety({
+  it("infers Salesforce browser commits from commit-like keys and reasons", async () => {
+    const enterDecision = await evaluateSafety({
       toolName: "sf_browser_press",
-      input: { key: "Enter", reason: "submit form" },
+      input: { key: "Enter", reason: "keyboard" },
       cwd: "/project",
       config: readBundledConfig(),
     });
-    expect(saveDecision?.ruleId).toBe("native-sf-browser-commit");
+    expect(enterDecision?.ruleId).toBe("native-sf-browser-commit");
+    expect(enterDecision?.approvalScope?.detail).toContain("source=commit-like key");
 
-    const navigateDecision = await evaluateSafety({
-      toolName: "sf_browser_click",
-      input: { ref: "@e2", reason: "open Details tab" },
+    const ctrlEnterDecision = await evaluateSafety({
+      toolName: "sf_browser_press",
+      input: { key: "Control+Enter", reason: "keyboard" },
       cwd: "/project",
       config: readBundledConfig(),
     });
-    expect(navigateDecision).toBeUndefined();
+    expect(ctrlEnterDecision?.ruleId).toBe("native-sf-browser-commit");
+
+    const escapeDecision = await evaluateSafety({
+      toolName: "sf_browser_press",
+      input: { key: "Escape", reason: "close modal" },
+      cwd: "/project",
+      config: readBundledConfig(),
+    });
+    expect(escapeDecision).toBeUndefined();
+
+    const reasonDecision = await evaluateSafety({
+      toolName: "sf_browser_press",
+      input: { key: "Escape", reason: "submit form" },
+      cwd: "/project",
+      config: readBundledConfig(),
+    });
+    expect(reasonDecision?.ruleId).toBe("native-sf-browser-commit");
   });
 });

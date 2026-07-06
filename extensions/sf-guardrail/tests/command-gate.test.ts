@@ -24,6 +24,7 @@ const gate: CommandGateConfig = {
     { id: "remote-script-to-shell", pattern: "remote-script-to-shell" },
     { id: "base64-decode-to-shell", pattern: "base64-decode-to-shell" },
     { id: "xargs-rm-rf", pattern: "rm -rf" },
+    { id: "agent-browser-direct", pattern: "agent-browser" },
   ],
   allowedPatterns: [{ id: "npm-test", pattern: "npm test" }],
   autoDenyPatterns: [{ id: "rm-root", pattern: "rm -rf /" }],
@@ -133,5 +134,15 @@ describe("evaluateCommand", () => {
 
   it("confirms xargs rm -rf", () => {
     expect(evaluateCommand("printf '%s\\n' build | xargs rm -rf", gate)?.matched.id).toBe("rm-rf");
+  });
+
+  it("confirms direct agent-browser commands without matching quoted guidance", () => {
+    expect(evaluateCommand("agent-browser --session sf-pi click @e7", gate)?.matched.id).toBe(
+      "agent-browser-direct",
+    );
+    expect(evaluateCommand("npx agent-browser click @e7", gate)?.matched.id).toBe(
+      "agent-browser-direct",
+    );
+    expect(evaluateCommand('echo "agent-browser click @e7"', gate)).toBeUndefined();
   });
 });

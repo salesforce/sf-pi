@@ -6,15 +6,20 @@
  * native SF Pi tool mutations into Safety Subjects. It must not call
  * Salesforce, Slack, Data 360, browser, or filesystem APIs.
  */
-import { findLatestBrowserSnapshotRef } from "../../../lib/common/sf-browser-snapshot-state.ts";
+import {
+  findLatestBrowserSnapshotRefLookup,
+  type BrowserSnapshotRefLookup,
+} from "../../../lib/common/sf-browser-snapshot-state.ts";
 import { fingerprintText } from "./fingerprint.ts";
 import type { SafetySubjectContext } from "./safety-subject.ts";
 import type { NativeToolSafetySubject } from "./types.ts";
 
 const COMMITTING_UI_REASON_PATTERN =
-  /\b(save|apply|deploy|enable|disable|delete|remove|assign|create|update|submit|activate|deactivate)\b/i;
+  /\b(save|apply|deploy|enable|disable|delete|remove|assign|create|update|submit|activate|deactivate|publish|install|upgrade|upload|import|sync|connect|authorize|confirm|continue|finish|next)\b/i;
 const COMMITTING_UI_LABEL_PATTERN =
-  /\b(save|apply|deploy|enable|disable|delete|remove|assign|update|submit|activate|deactivate|finish)\b/i;
+  /\b(save|save\s*&\s*new|apply|deploy|enable|disable|delete|remove|assign|unassign|revoke|create|update|submit|activate|deactivate|publish|install|upgrade|upload|import|export|sync|connect|authorize|confirm|continue|finish|next|ok|done)\b/i;
+const SAFE_NON_COMMITTING_UI_LABEL_PATTERN =
+  /\b(cancel|close|dismiss|back|previous|details|view|search|filter)\b/i;
 
 export function classifyNativeToolRisk(
   toolName: string,
@@ -380,23 +385,40 @@ function classifySfBrowserCommit(
   const reason = stringValue(input.reason);
   const mutation = input.mutation === true;
   const reasonLooksCommitting = COMMITTING_UI_REASON_PATTERN.test(reason ?? "");
-  const snapshotRef =
-    toolName === "sf_browser_click"
-      ? findLatestBrowserSnapshotRef(context.sessionId, stringValue(input.ref))
-      : undefined;
-  const snapshotLooksCommitting = snapshotLineLooksCommitting(snapshotRef);
-  if (!mutation && !reasonLooksCommitting && !snapshotLooksCommitting) return undefined;
-
   const action = toolName === "sf_browser_click" ? "click" : "press";
   const target = toolName === "sf_browser_click" ? stringValue(input.ref) : stringValue(input.key);
+  const snapshotLookup =
+    toolName === "sf_browser_click"
+      ? findLatestBrowserSnapshotRefLookup(context.sessionId, stringValue(input.ref))
+      : undefined;
+  const snapshotSignal = snapshotCommitSignal(snapshotLookup);
+  const keyLooksCommitting =
+    toolName === "sf_browser_press"
+      ? browserPressKeyLooksCommitting(stringValue(input.key))
+      : false;
+  if (!mutation && !reasonLooksCommitting && !snapshotSignal.committing && !keyLooksCommitting) {
+    return undefined;
+  }
+
   const targetLabel = target ?? "<unknown>";
   const source = mutation
     ? "mutation flag"
     : reasonLooksCommitting
       ? "commit-like reason"
-      : "snapshot label";
+      : keyLooksCommitting
+        ? "commit-like key"
+        : snapshotSignal.source;
+  const snapshotRef = snapshotLookup?.ref;
   const payloadFingerprint = fingerprintText(
-    JSON.stringify({ toolName, action, target, reason, snapshot: snapshotRef?.line }),
+    JSON.stringify({
+      toolName,
+      action,
+      target,
+      reason,
+      keyLooksCommitting,
+      snapshotStatus: snapshotLookup?.status,
+      snapshot: snapshotRef?.line,
+    }),
   );
 
   return {
@@ -415,6 +437,11 @@ function classifySfBrowserCommit(
       reason ? `reason=${reason}` : undefined,
       snapshotRef?.label ? `snapshot_label=${snapshotRef.label}` : undefined,
       snapshotRef?.role ? `snapshot_role=${snapshotRef.role}` : undefined,
+      snapshotLookup?.status ? `snapshot_status=${snapshotLookup.status}` : undefined,
+      snapshotLookup?.ageMs !== undefined
+        ? `snapshot_age_ms=${Math.round(snapshotLookup.ageMs)}`
+        : undefined,
+      snapshotLookup?.url ? `snapshot_url=${snapshotLookup.url}` : undefined,
       `source=${source}`,
     ]
       .filter(Boolean)
@@ -423,12 +450,47 @@ function classifySfBrowserCommit(
   };
 }
 
-function snapshotLineLooksCommitting(
-  ref: ReturnType<typeof findLatestBrowserSnapshotRef>,
-): boolean {
-  if (!ref) return false;
+function snapshotCommitSignal(lookup: BrowserSnapshotRefLookup | undefined): {
+  committing: boolean;
+  source: string;
+} {
+  if (!lookup) return { committing: false, source: "snapshot unavailable" };
+  if (lookup.status === "missing-session" || lookup.status === "missing-ref") {
+    return { committing: true, source: lookup.status };
+  }
+  if (lookup.status === "stale") return { committing: true, source: "stale snapshot" };
+  const ref = lookup.ref;
+  if (!ref) return { committing: true, source: "snapshot unavailable" };
   const haystack = [ref.role, ref.label, ref.line].filter(Boolean).join(" ");
-  return COMMITTING_UI_LABEL_PATTERN.test(haystack);
+  if (COMMITTING_UI_LABEL_PATTERN.test(haystack))
+    return { committing: true, source: "snapshot label" };
+  if (isCommitCapableSnapshotRef(ref) && !SAFE_NON_COMMITTING_UI_LABEL_PATTERN.test(haystack)) {
+    return { committing: true, source: "button-like snapshot ref" };
+  }
+  return { committing: false, source: "snapshot label" };
+}
+
+function isCommitCapableSnapshotRef(ref: {
+  role?: string;
+  label?: string;
+  line?: string;
+}): boolean {
+  const haystack = [ref.role, ref.line].filter(Boolean).join(" ").toLowerCase();
+  return /\b(button|menuitem|checkbox|radio|switch)\b/.test(haystack) && !ref.label;
+}
+
+function browserPressKeyLooksCommitting(key: string | undefined): boolean {
+  const normalized = key?.toLowerCase().replace(/\s+/g, "");
+  return (
+    normalized === "enter" ||
+    normalized === "numpadenter" ||
+    normalized === "space" ||
+    normalized === "control+enter" ||
+    normalized === "ctrl+enter" ||
+    normalized === "meta+enter" ||
+    normalized === "command+enter" ||
+    normalized === "cmd+enter"
+  );
 }
 
 function classifyAnonymousApex(body: string): { mutating: boolean; reasons: string[] } {

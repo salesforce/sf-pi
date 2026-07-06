@@ -2,6 +2,7 @@
 /** Ref-first click tool for SF Browser's hot path. */
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
+import { markLatestBrowserSnapshotStale } from "../../../lib/common/sf-browser-snapshot-state.ts";
 import { runAgentBrowser } from "./agent-browser.ts";
 import {
   type AcceptedBrowserDialog,
@@ -91,6 +92,10 @@ export function registerSfBrowserClickTool(pi: ExtensionAPI): void {
           );
         }
       }
+      markLatestBrowserSnapshotStale(
+        ctx.sessionManager.getSessionId(),
+        `sf_browser_click ${params.ref}`,
+      );
       const duration = stopTimer();
       return {
         content: [
