@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.223.6-2026-07-06",
-  "latestVersion": "0.223.6",
+  "revision": "release-0.223.7-2026-07-06",
+  "latestVersion": "0.223.7",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.223.6",
+      "id": "release-0.223.7",
       "kind": "update",
-      "title": "sf-pi v0.223.6 — sf-guardrail: tighten power tool mode scope",
+      "title": "sf-pi v0.223.7 — sf-guardrail: surface Data 360 execution chains",
       "publishedAt": "2026-07-06T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.223.6",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.223.7",
       "severity": "info",
-      "body": "sf-guardrail: tighten power tool mode scope"
+      "body": "sf-guardrail: surface Data 360 execution chains"
     },
     {
       "id": "pi-0.73-required",

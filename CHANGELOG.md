@@ -529,6 +529,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.223.7](https://github.com/salesforce/sf-pi/compare/v0.223.6...v0.223.7) (2026-07-06)
+
+
+### Bug Fixes
+
+* **sf-guardrail:** surface Data 360 execution chains ([486adfb](https://github.com/salesforce/sf-pi/commit/486adfb77d052aabb3b73c98de0966a3ab7479b5))
+
 ## [0.223.6](https://github.com/salesforce/sf-pi/compare/v0.223.5...v0.223.6) (2026-07-06)
 
 
