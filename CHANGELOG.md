@@ -529,6 +529,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.223.6](https://github.com/salesforce/sf-pi/compare/v0.223.5...v0.223.6) (2026-07-06)
+
+
+### Bug Fixes
+
+* **sf-guardrail:** tighten power tool mode scope ([72a89d5](https://github.com/salesforce/sf-pi/commit/72a89d57f2a9917d9ed81456fbac420fe1eb471f))
+
 ## [0.223.5](https://github.com/salesforce/sf-pi/compare/v0.223.4...v0.223.5) (2026-07-06)
 
 
