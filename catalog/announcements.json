@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.223.7-2026-07-06",
-  "latestVersion": "0.223.7",
+  "revision": "release-0.223.8-2026-07-06",
+  "latestVersion": "0.223.8",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.223.7",
+      "id": "release-0.223.8",
       "kind": "update",
-      "title": "sf-pi v0.223.7 — sf-guardrail: surface Data 360 execution chains",
+      "title": "sf-pi v0.223.8 — harden gateway model discovery fallback",
       "publishedAt": "2026-07-06T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.223.7",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.223.8",
       "severity": "info",
-      "body": "sf-guardrail: surface Data 360 execution chains"
+      "body": "harden gateway model discovery fallback"
     },
     {
       "id": "pi-0.73-required",
