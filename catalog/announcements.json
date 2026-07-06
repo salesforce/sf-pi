@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.221.0-2026-07-06",
-  "latestVersion": "0.221.0",
+  "revision": "release-0.222.0-2026-07-06",
+  "latestVersion": "0.222.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.221.0",
+      "id": "release-0.222.0",
       "kind": "update",
-      "title": "sf-pi v0.221.0 — sf-guardrail: add operator auto approve mode",
+      "title": "sf-pi v0.222.0 — sf-guardrail: expose persisted power tool mode",
       "publishedAt": "2026-07-06T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.221.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.222.0",
       "severity": "info",
-      "body": "sf-guardrail: add operator auto approve mode"
+      "body": "sf-guardrail: expose persisted power tool mode"
     },
     {
       "id": "pi-0.73-required",
