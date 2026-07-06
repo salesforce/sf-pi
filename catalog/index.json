@@ -1056,7 +1056,7 @@
     "entry": "extensions/sf-soql/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 3117
+    "srcLoc": 3118
   },
   {
     "id": "sf-welcome",

@@ -207,7 +207,7 @@ function cleanMessage(message: string): string {
   const ansiEscape = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g");
   return message
     .replaceAll(ansiEscape, "")
-    .replace(/(?:[A-Za-z]:)?(?:\/[^:\n]+)+\/([^/\s:]+\.(?:js|ts|html|css|xml))/g, "$1")
+    .replace(/(?:[A-Za-z]:)?\/[^\s:\n]*\/([^/\s:]+\.(?:js|ts|html|css|xml))/g, "$1")
     .split("\n")
     .slice(0, 4)
     .join("\n")

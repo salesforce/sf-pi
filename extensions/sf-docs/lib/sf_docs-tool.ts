@@ -1245,8 +1245,8 @@ function previewPlainText(value: string, max: number): string {
 
 function stripHtml(value: string): string {
   const withoutBlocks = value
-    .replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/giu, " ")
-    .replace(/<style\b[^>]*>[\s\S]*?<\/style\s*>/giu, " ");
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script\b[^>]*>/giu, " ")
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style\b[^>]*>/giu, " ");
   return decodeHtmlEntities(withoutBlocks.replace(/<[^>]+>/gu, " "));
 }
 

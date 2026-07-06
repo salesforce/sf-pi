@@ -1000,7 +1000,7 @@ describe("sf_docs tool", () => {
     const oldEndpoint = process.env.SF_DOCS_MCP_ENDPOINT;
     process.env.SF_DOCS_MCP_TOKEN = "test-token";
     process.env.SF_DOCS_MCP_ENDPOINT = "https://example.test/";
-    const htmlBody = `<div><h1>The WITH SECURITY_ENFORCED SOQL Clause is Removed&nbsp;</h1><script >window.bad = true;</script ><p>Use <code>WITH USER_MODE</code> &amp; explicit access modes.</p><p>Escaped &amp;lt;script&amp;gt; stays text.</p></div>`;
+    const htmlBody = `<div><h1>The WITH SECURITY_ENFORCED SOQL Clause is Removed&nbsp;</h1><script >window.bad = true;</script\t\n bar><p>Use <code>WITH USER_MODE</code> &amp; explicit access modes.</p><p>Escaped &amp;lt;script&amp;gt; stays text.</p></div>`;
     const fetchMock = vi.fn(
       async () =>
         new Response(

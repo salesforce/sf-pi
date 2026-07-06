@@ -188,6 +188,7 @@ function clipCell(value: unknown, max: number): string {
 
 function escapeTableCell(value: unknown): string {
   return String(value ?? "—")
+    .replace(/\\/g, "\\\\")
     .replace(/\r?\n/g, " ")
     .replace(/\|/g, "\\|");
 }
