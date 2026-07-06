@@ -47,6 +47,7 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ### Changed
 
+- **Added Guardrail mediation for broad SOQL disclosure paths.** SF Guardrail now prompts for `sf_soql query.export`, `query.queryAll` / `ALL ROWS`, and `query.run allow_unbounded=true` using exact query/output fingerprints.
 - **Hardened Anonymous Apex mediation.** SF Guardrail now mediates every `sf_apex anon.run` body by exact org + body fingerprint; the regex mutation classifier is used only as risk-labeling copy, not as the security boundary.
 - **Confined SOQL artifact exports.** `sf_soql query.export` now rejects absolute, parent-traversal, empty, or dot path segments and writes only under `.sf-pi/exports/soql/` in the workspace.
 - **Hardened Data 360 tenant ingest execution.** Tenant ingest create/upload/close now require `allow_confirmed=true` before auth-session lookup, local CSV reads, or network execution; dry-runs remain non-mutating and do not read CSV contents.

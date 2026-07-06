@@ -448,6 +448,88 @@ describe("Safety Kernel", () => {
     });
   });
 
+  it("confirms SOQL artifact exports as disclosure-sensitive native actions", async () => {
+    const decision = await evaluateSafety({
+      toolName: "sf_soql",
+      input: { action: "query.export", output_file: "reports/accounts.csv", format: "csv" },
+      cwd: "/project",
+      config: readBundledConfig(),
+    });
+
+    expect(decision).toMatchObject({
+      action: "confirm",
+      feature: "nativeToolGate",
+      ruleId: "native-sf-soql-disclosure",
+      subject: "sf_soql query.export reports/accounts.csv",
+    });
+    expect(decision?.approvalScope).toMatchObject({
+      operationFamily: "soql artifact export",
+      riskTier: "soql_artifact_export_exact",
+      allowSession: false,
+    });
+  });
+
+  it("confirms SOQL QueryAll and unbounded reads without prompting bounded reads", async () => {
+    mockedEnv = env("DevInt", "sandbox");
+
+    const queryAll = await evaluateSafety({
+      toolName: "sf_soql",
+      input: { action: "query.queryAll", target_org: "DevInt", query: "SELECT Id FROM Account" },
+      cwd: "/project",
+      config: readBundledConfig(),
+    });
+    expect(queryAll?.approvalScope).toMatchObject({
+      operationFamily: "soql queryAll",
+      riskTier: "soql_deleted_row_read_exact",
+      allowSession: false,
+    });
+
+    const unbounded = await evaluateSafety({
+      toolName: "sf_soql",
+      input: {
+        action: "query.run",
+        target_org: "DevInt",
+        query: "SELECT Id, Email FROM Contact",
+        allow_unbounded: true,
+      },
+      cwd: "/project",
+      config: readBundledConfig(),
+    });
+    expect(unbounded?.approvalScope).toMatchObject({
+      operationFamily: "soql broad read",
+      riskTier: "soql_unbounded_read_exact",
+      allowSession: false,
+    });
+
+    const bounded = await evaluateSafety({
+      toolName: "sf_soql",
+      input: { action: "query.run", target_org: "DevInt", query: "SELECT Id FROM Account LIMIT 5" },
+      cwd: "/project",
+      config: readBundledConfig(),
+    });
+    expect(bounded).toBeUndefined();
+  });
+
+  it("confirms query.run with ALL ROWS as QueryAll-style disclosure", async () => {
+    mockedEnv = env("DevInt", "sandbox");
+
+    const decision = await evaluateSafety({
+      toolName: "sf_soql",
+      input: {
+        action: "query.run",
+        target_org: "DevInt",
+        query: "SELECT Id FROM Account ALL ROWS",
+      },
+      cwd: "/project",
+      config: readBundledConfig(),
+    });
+
+    expect(decision?.approvalScope).toMatchObject({
+      operationFamily: "soql queryAll",
+      riskTier: "soql_deleted_row_read_exact",
+    });
+  });
+
   it("confirms slack_canvas create/edit as native external content writes", async () => {
     const decision = await evaluateSafety({
       toolName: "slack_canvas",

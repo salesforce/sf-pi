@@ -42,6 +42,7 @@ P1 focuses on unmediated or model-self-approved high-value durable mutations:
 - Data 360 raw REST and journey/run paths where `allow_confirmed=true` moves from plan or dry-run into execution.
 - `sf_browser_click` and `sf_browser_press` committing UI gestures, starting with `mutation=true` and commit-oriented reasons; snapshot-label classification is preferred hardening when available.
 - `slack_canvas create` and `slack_canvas edit`.
+- `sf_soql` artifact export, QueryAll / ALL ROWS, and unbounded read overrides.
 
 P1 intentionally excludes read-only actions, dry runs, local diagnostics, local tests, normal local source edits, and pre-commit browser draft state.
 

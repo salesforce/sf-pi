@@ -39,6 +39,7 @@ authority. Examples include:
 - Salesforce Browser committing gestures such as save, submit, activate, assign,
   delete, or deploy
 - Slack Canvas create and edit operations
+- SOQL artifact exports, QueryAll / ALL ROWS, and unbounded read overrides
 
 Ordinary local source edits are not high-value durable mutations. Local edits
 become externally durable only when a separate deploy, publish, save, or execute

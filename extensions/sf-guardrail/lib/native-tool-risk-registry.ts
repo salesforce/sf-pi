@@ -20,6 +20,7 @@ export function classifyNativeToolRisk(
     classifySfApex(toolName, input) ??
     classifyAgentScriptLifecycle(toolName, input) ??
     classifyData360(toolName, input) ??
+    classifySfSoql(toolName, input) ??
     classifySlackCanvas(toolName, input) ??
     classifySfBrowserCommit(toolName, input)
   );
@@ -235,6 +236,89 @@ function classifyData360(
   };
 }
 
+function classifySfSoql(
+  toolName: string,
+  input: Record<string, unknown>,
+): NativeToolSafetySubject | undefined {
+  if (toolName !== "sf_soql") return undefined;
+  const action = input.action;
+  if (action === "query.export") return soqlExportSubject(toolName, input);
+  if (action === "query.queryAll") return soqlBroadReadSubject(toolName, input, "queryAll");
+  if (action === "query.run" && (input.allow_unbounded === true || queryUsesAllRows(input.query))) {
+    return soqlBroadReadSubject(
+      toolName,
+      input,
+      queryUsesAllRows(input.query) ? "queryAll" : "unbounded",
+    );
+  }
+  return undefined;
+}
+
+function soqlExportSubject(
+  toolName: string,
+  input: Record<string, unknown>,
+): NativeToolSafetySubject {
+  const outputFile = stringValue(input.output_file) ?? "<missing output_file>";
+  const format = stringValue(input.format) ?? "csv";
+  const fingerprint = fingerprintText(JSON.stringify({ outputFile, format }));
+  return {
+    kind: "nativeTool",
+    toolName,
+    action: "query.export",
+    ruleId: "native-sf-soql-disclosure",
+    subject: `sf_soql query.export ${outputFile}`,
+    reason:
+      "SOQL artifact export copies previously queried data into a workspace-visible export file.",
+    promptTitle: "⚠ SOQL artifact export",
+    operationFamily: "soql artifact export",
+    riskTier: "soql_artifact_export_exact",
+    fingerprint: `sf_soql|query.export|${fingerprint}`,
+    approvalLabel: `export SOQL artifact to ${outputFile}`,
+    approvalDetail: `output_file=${outputFile}; format=${format}`,
+    allowSession: false,
+  };
+}
+
+function soqlBroadReadSubject(
+  toolName: string,
+  input: Record<string, unknown>,
+  kind: "queryAll" | "unbounded",
+): NativeToolSafetySubject | undefined {
+  const query = stringValue(input.query);
+  if (!query) return undefined;
+  const normalizedQuery = normalizeSoql(query);
+  const queryFingerprint = fingerprintText(normalizedQuery);
+  const targetOrg = stringValue(input.target_org);
+  const objectName = primaryObjectFromSoql(normalizedQuery) ?? "unknown object";
+  const operationFamily = kind === "queryAll" ? "soql queryAll" : "soql broad read";
+  return {
+    kind: "nativeTool",
+    toolName,
+    action: kind === "queryAll" ? "query.queryAll" : "query.run",
+    ruleId: "native-sf-soql-disclosure",
+    subject: `sf_soql ${operationFamily} ${objectName}`,
+    reason:
+      kind === "queryAll"
+        ? "SOQL QueryAll / ALL ROWS can include deleted or archived records where supported."
+        : "SOQL query.run requested an unbounded read override.",
+    promptTitle: kind === "queryAll" ? "⚠ SOQL QueryAll" : "⚠ SOQL broad read",
+    operationFamily,
+    riskTier: kind === "queryAll" ? "soql_deleted_row_read_exact" : "soql_unbounded_read_exact",
+    fingerprint: `sf_soql|${operationFamily}|query=${queryFingerprint}`,
+    approvalLabel: `${operationFamily} on ${objectName}`,
+    approvalDetail: [
+      `object=${objectName}`,
+      `query=${queryFingerprint}`,
+      `max_rows=${typeof input.max_rows === "number" ? input.max_rows : "default"}`,
+      `limit=${typeof input.limit === "number" ? input.limit : "default"}`,
+    ].join("; "),
+    usesSalesforceOrg: true,
+    targetOrg,
+    targetOrgExplicit: targetOrg !== undefined,
+    allowSession: false,
+  };
+}
+
 function classifySlackCanvas(
   toolName: string,
   input: Record<string, unknown>,
@@ -347,6 +431,18 @@ function isData360ReadLikeAction(action: string): boolean {
 function actionFamily(action: string): string {
   const parts = action.split(".").filter(Boolean);
   return parts.length >= 2 ? parts.slice(0, -1).join(".") : action;
+}
+
+function queryUsesAllRows(value: unknown): boolean {
+  return typeof value === "string" && /\bALL\s+ROWS\b/i.test(value);
+}
+
+function normalizeSoql(query: string): string {
+  return query.trim().replace(/\s+/g, " ");
+}
+
+function primaryObjectFromSoql(query: string): string | undefined {
+  return query.match(/\bFROM\s+([a-zA-Z0-9_]+)\b/i)?.[1];
 }
 
 function stringValue(value: unknown): string | undefined {
