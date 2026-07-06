@@ -78,4 +78,5 @@ more discoverable way to work with Salesforce projects from one terminal UI.
 - [Browse extensions](./extensions.md) — choose a workflow by intent.
 - [Troubleshooting](./troubleshooting.md) — recover from install, org, font, or auth issues.
 - [Security model](./security-model.md) — understand Guardrail mediation, high-value mutations, and headless behavior.
+- [Prompt-injection controls](./prompt-injection-controls.md) — map prompt-injection risk to SF Pi's mediation and audit controls.
 - [Public sanitization](./public-sanitization.md) — keep public docs, examples, tests, and diagnostics source-agnostic.

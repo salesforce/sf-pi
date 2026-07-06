@@ -118,6 +118,17 @@ These opt-ins:
 - should be used only in environments where the operator has reviewed the
   workflow and target context
 
+## Prompt-injection posture
+
+SF Pi treats prompt injection as an action-integrity risk. It does not claim to
+scan or classify every malicious instruction in untrusted text. Instead, it
+reduces prompt-injection blast radius by mediating known high-value actions
+before execution, requiring Safety Envelope approval by default, failing closed in
+headless mode, and auditing approvals/blocks.
+
+See [Prompt-injection controls](./prompt-injection-controls.md) for the detailed
+control mapping, including SFSS-SSD-004 section 5.4.
+
 ## What SF Pi does not claim
 
 SF Pi does not claim to:
@@ -137,3 +148,4 @@ Guardrail or explicitly documented as out of scope with a separate design review
 - [Security remediation plan](./security-remediation-plan.md)
 - [Public sanitization](./public-sanitization.md)
 - [Secure development](./secure-development.md)
+- [Prompt-injection controls](./prompt-injection-controls.md)

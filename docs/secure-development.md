@@ -50,6 +50,9 @@ The GitHub workflows provide these security-relevant checks:
 - **CI**: generated catalog check, docs health, docs build, SPDX headers,
   formatting, ESLint, TypeScript, lifecycle script allowlist, tests, npm audit,
   and LLM artifact checks.
+- **Prompt-injection impact controls**: Guardrail mediation, Safety Envelopes,
+  default HITL, headless fail-closed behavior, and auditability reduce the impact
+  of prompt injection against known high-value surfaces.
 - **Secret scanning**: Gitleaks and TruffleHog run on pushes, pull requests, and
   scheduled scans.
 - **Dependency review**: PR dependency changes are checked for high-severity
@@ -110,8 +113,9 @@ New bundled LLM-callable write surfaces must be reviewed against the
 2. Is it mediated by SF Guardrail before execution?
 3. Are execution intent flags treated as intent, not approval?
 4. Does headless mode fail closed unless explicitly operator-approved?
-5. If operator auto-approve mode applies, is it env-only, process-scoped, audited, and unable to bypass hard blocks?
-6. Is the Safety Envelope narrow enough for any session approval offered?
+5. Could untrusted content steer the model to this surface, and is the prompt-injection impact mitigated before execution?
+6. If operator auto-approve mode applies, is it env-only or explicitly configured by the user, audited, and unable to bypass hard blocks?
+7. Is the Safety Envelope narrow enough for any session approval offered?
 
 If the answer is unclear, document the decision in an ADR before merging the
 feature.

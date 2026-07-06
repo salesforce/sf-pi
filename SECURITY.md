@@ -30,6 +30,7 @@ See [Security model](./docs/security-model.md) for:
 - high-value durable mutation handling
 - SF Guardrail Safety Envelopes and session approvals
 - operator-approved headless mode
+- prompt-injection control mapping
 - what SF Pi does and does not claim to sandbox
 
 ## Secure development practices

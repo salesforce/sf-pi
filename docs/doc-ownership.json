@@ -57,6 +57,14 @@
     "source": [".github/workflows/*", "package.json scripts", "scripts/*", "SECURITY.md"],
     "checks": ["npm run docs:health:check", "npm run docs:build"]
   },
+  "docs/prompt-injection-controls.md": {
+    "source": [
+      "SF Guardrail behavior",
+      "docs/security-model.md",
+      "extensions/sf-guardrail/CONTEXT.md"
+    ],
+    "checks": ["npm run docs:health:check", "npm run docs:build"]
+  },
   "docs/public-sanitization.md": {
     "source": ["public repository safety policy", "scripts/docs-health.mjs", "SECURITY.md"],
     "checks": ["npm run docs:health:check", "npm run docs:build"]
