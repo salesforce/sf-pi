@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.222.0-2026-07-06",
-  "latestVersion": "0.222.0",
+  "revision": "release-0.223.0-2026-07-06",
+  "latestVersion": "0.223.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.222.0",
+      "id": "release-0.223.0",
       "kind": "update",
-      "title": "sf-pi v0.222.0 — sf-guardrail: expose persisted power tool mode",
+      "title": "sf-pi v0.223.0 — sf-data360: audit journey child mutations",
       "publishedAt": "2026-07-06T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.222.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.223.0",
       "severity": "info",
-      "body": "sf-guardrail: expose persisted power tool mode"
+      "body": "sf-data360: audit journey child mutations"
     },
     {
       "id": "pi-0.73-required",
