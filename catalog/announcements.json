@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.219.1-2026-07-05",
-  "latestVersion": "0.219.1",
+  "revision": "release-0.219.2-2026-07-06",
+  "latestVersion": "0.219.2",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.219.1",
+      "id": "release-0.219.2",
       "kind": "update",
-      "title": "sf-pi v0.219.1 — sf-llm-gateway: add public-safe env aliases",
-      "publishedAt": "2026-07-05T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.219.1",
+      "title": "sf-pi v0.219.2 — sf-data360: require confirmation intent for tenant ingest",
+      "publishedAt": "2026-07-06T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.219.2",
       "severity": "info",
-      "body": "sf-llm-gateway: add public-safe env aliases"
+      "body": "sf-data360: require confirmation intent for tenant ingest"
     },
     {
       "id": "pi-0.73-required",
