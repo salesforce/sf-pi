@@ -238,7 +238,7 @@
     "entry": "extensions/sf-browser/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 6083
+    "srcLoc": 6088
   },
   {
     "id": "sf-code-analyzer",
@@ -604,7 +604,7 @@
     "entry": "extensions/sf-guardrail/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 5527
+    "srcLoc": 5530
   },
   {
     "id": "sf-herdr",

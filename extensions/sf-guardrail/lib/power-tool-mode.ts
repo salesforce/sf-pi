@@ -97,6 +97,9 @@ export function nativeToolFamilyForDecision(
 function isProductionLikeDecision(decision: ClassifiedDecision): boolean {
   if (decision.orgType === "production" || decision.orgResolutionGuessed === true) return true;
   if (decision.orgType !== undefined) return false;
+  if (decision.feature === "commandGate" && decision.ruleId === "agent-browser-direct") {
+    return true;
+  }
 
   // Browser commits happen inside an authenticated Salesforce UI session, but
   // their native-tool subjects do not always carry resolvable org metadata.

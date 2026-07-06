@@ -270,6 +270,7 @@ extensions/sf-browser/
     evidence-target.test.ts ← unit / smoke test
     failure-diagnostics.test.ts← unit / smoke test
     in-frame-actions.test.ts← unit / smoke test
+    open-org-invalidation.test.ts← unit / smoke test
     operations.test.ts      ← unit / smoke test
     overlay-dismissal.test.ts← unit / smoke test
     redaction.test.ts       ← unit / smoke test

@@ -87,6 +87,23 @@ describe("Power Tool Mode", () => {
     expect(shouldPowerToolAutoApprove(shellDecision, { mode: "all" })).toBe(true);
   });
 
+  it("treats direct agent-browser shell commands as Unknown Org in all mode", () => {
+    const agentBrowser = decision({
+      feature: "commandGate",
+      ruleId: "agent-browser-direct",
+      approvalScope: {
+        fingerprint: "agent-browser",
+        label: "agent-browser",
+        operationFamily: "agent-browser direct",
+      },
+    });
+
+    expect(shouldPowerToolAutoApprove(agentBrowser, { mode: "all" })).toBe(false);
+    expect(shouldPowerToolAutoApprove(agentBrowser, { mode: "all", productionUnknown: true })).toBe(
+      true,
+    );
+  });
+
   it("does not auto-approve production or guessed org decisions unless separately enabled", () => {
     const prod = decision({ orgType: "production" });
     const guessed = decision({ orgType: "production", orgResolutionGuessed: true });

@@ -647,6 +647,7 @@ describe("Safety Kernel", () => {
         "- button [ref=e16]",
         '- link "Details" [ref=e17]',
         '- button "Continue" [ref=e18]',
+        '- button "Finalize" [ref=e19]',
       ].join("\n"),
       url: "https://example.my.salesforce.com/lightning/setup/Test/home",
     });
@@ -683,7 +684,8 @@ describe("Safety Kernel", () => {
       config: readBundledConfig(),
       sessionId: "guardrail-browser-snapshot-test",
     });
-    expect(newDecision).toBeUndefined();
+    expect(newDecision?.ruleId).toBe("native-sf-browser-commit");
+    expect(newDecision?.approvalScope?.detail).toContain("source=button-like snapshot ref");
 
     const unlabeledButtonDecision = await evaluateSafety({
       toolName: "sf_browser_click",
@@ -714,6 +716,17 @@ describe("Safety Kernel", () => {
       sessionId: "guardrail-browser-snapshot-test",
     });
     expect(continueDecision?.ruleId).toBe("native-sf-browser-commit");
+
+    const finalizeDecision = await evaluateSafety({
+      toolName: "sf_browser_click",
+      input: { ref: "@e19", reason: "click control" },
+      cwd: "/project",
+      config: readBundledConfig(),
+      sessionId: "guardrail-browser-snapshot-test",
+    });
+    expect(finalizeDecision?.ruleId).toBe("native-sf-browser-commit");
+    expect(finalizeDecision?.approvalScope?.detail).toContain("snapshot_label=Finalize");
+    expect(finalizeDecision?.approvalScope?.detail).toContain("source=button-like snapshot ref");
   });
 
   it("fails closed for stale or missing Salesforce browser snapshots", async () => {

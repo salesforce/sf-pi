@@ -504,7 +504,7 @@ function isCommitCapableSnapshotRef(ref: {
   line?: string;
 }): boolean {
   const haystack = [ref.role, ref.line].filter(Boolean).join(" ").toLowerCase();
-  return /\b(button|menuitem|checkbox|radio|switch)\b/.test(haystack) && !ref.label;
+  return /\b(button|menuitem|checkbox|radio|switch|option|combobox)\b/.test(haystack);
 }
 
 function browserPressKeyLooksCommitting(key: string | undefined): boolean {
