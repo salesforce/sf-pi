@@ -47,7 +47,7 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ### Changed
 
-- **Added SF Guardrail operator auto-approve mode.** Operators can set `SF_GUARDRAIL_OPERATOR_AUTO_APPROVE=allow-confirm-actions-for-this-process` to auto-allow confirm-class decisions for the current process with audit; hard blocks still apply.
+- **Added SF Guardrail Power Tool Mode.** Advanced users can persistently auto-approve Native-tool or All confirm-class Guardrail decisions, select native tool families, and separately opt into production/unknown-org auto-approval. Process-scoped `SF_GUARDRAIL_OPERATOR_AUTO_APPROVE=allow-confirm-actions-for-this-process` remains available; all auto-approvals are audited and hard blocks still apply.
 - **Hardened Browser commit classification.** SF Browser snapshots now publish compact ref metadata for Guardrail, and SF Guardrail can classify committing click refs such as Save/Delete/Activate from the latest snapshot label even when `mutation=true` is omitted.
 - **Added Guardrail mediation for broad SOQL disclosure paths.** SF Guardrail now prompts for `sf_soql query.export`, `query.queryAll` / `ALL ROWS`, and `query.run allow_unbounded=true` using exact query/output fingerprints.
 - **Hardened Anonymous Apex mediation.** SF Guardrail now mediates every `sf_apex anon.run` body by exact org + body fingerprint; the regex mutation classifier is used only as risk-labeling copy, not as the security boundary.

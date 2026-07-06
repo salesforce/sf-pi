@@ -6,8 +6,10 @@
  * current config and the recent audit entries; this module returns the
  * string shown via ctx.ui.notify.
  */
+import { enabledNativeFamilies, powerToolModeLabel } from "./power-tool-mode.ts";
 import { labelForRuleBehavior, resolveRuleBehavior } from "./rule-behavior.ts";
 import type { GuardrailConfigSource } from "./config.ts";
+import type { GuardrailPowerToolSettings } from "./power-tool-mode.ts";
 import type { DecisionEntryData, GuardrailConfig } from "./types.ts";
 
 export interface StatusInput {
@@ -17,11 +19,19 @@ export interface StatusInput {
   hasUI: boolean;
   headlessEnabled: boolean;
   operatorAutoApproveEnabled: boolean;
+  powerTool?: GuardrailPowerToolSettings;
 }
 
 export function renderStatus(input: StatusInput): string {
-  const { config, configSource, recent, hasUI, headlessEnabled, operatorAutoApproveEnabled } =
-    input;
+  const {
+    config,
+    configSource,
+    recent,
+    hasUI,
+    headlessEnabled,
+    operatorAutoApproveEnabled,
+    powerTool,
+  } = input;
   const lines: string[] = [];
   lines.push(`sf-guardrail: extension-enabled (source: ${configSource})`);
 
@@ -42,8 +52,9 @@ export function renderStatus(input: StatusInput): string {
   if (!hasUI) {
     lines.push(`  headless mode: ${headlessEnabled ? "opt-in pass" : "fail-closed"}`);
   }
+  lines.push(`  power tool mode: ${powerToolStatus(powerTool)}`);
   if (operatorAutoApproveEnabled) {
-    lines.push("  operator auto-approve: enabled for confirm-class decisions");
+    lines.push("  operator auto-approve env: enabled for confirm-class decisions");
   }
 
   lines.push("");
@@ -60,6 +71,15 @@ export function renderStatus(input: StatusInput): string {
 
 function count<T>(xs: T[], pred: (x: T) => boolean): number {
   return xs.filter(pred).length;
+}
+
+function powerToolStatus(powerTool: GuardrailPowerToolSettings | undefined): string {
+  const mode = powerTool?.mode ?? "off";
+  if (mode === "off") return "Off";
+  const prod = powerTool?.productionUnknown ? "prod/unknown auto-approve on" : "prod/unknown off";
+  if (mode === "all") return `${powerToolModeLabel(mode)} (${prod})`;
+  const families = [...enabledNativeFamilies(powerTool)].join(", ");
+  return `${powerToolModeLabel(mode)} (${families}; ${prod})`;
 }
 
 function formatEntry(e: DecisionEntryData): string {

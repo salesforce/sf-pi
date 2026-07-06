@@ -84,6 +84,8 @@ import { renderApprovalDetail } from "./lib/approval-detail.ts";
 import { evaluateSafety } from "./lib/safety-kernel.ts";
 import { type GuardrailConfigSource, loadConfig } from "./lib/config.ts";
 import { confirmDecision, isOperatorAutoApproveEnabled } from "./lib/hitl.ts";
+import { readGuardrailPiSettings } from "./lib/guardrail-settings.ts";
+import { shouldPowerToolAutoApprove } from "./lib/power-tool-mode.ts";
 import { loadPrompt } from "./lib/prompt-injection.ts";
 import { openProductionAliasesEditor } from "./lib/production-aliases-panel.ts";
 import {
@@ -172,6 +174,11 @@ export default function sfGuardrail(pi: ExtensionAPI) {
     // Previously granted for this session?
     if (hasSessionApproval(decision)) {
       recordDecision(pi, decision, "allow_session", event.toolName);
+      return undefined;
+    }
+
+    if (shouldPowerToolAutoApprove(decision, readGuardrailPiSettings().powerTool)) {
+      recordDecision(pi, decision, "operator_auto_approve", event.toolName);
       return undefined;
     }
 
@@ -278,6 +285,12 @@ function buildGuardrailManagerActions(pi: ExtensionAPI): ManagerDetailAction[] {
       createPanel: (theme, _cwd, _scope, done) => createProtectedAliasesActionPanel(theme, done),
     },
     {
+      id: "power-tool-mode",
+      label: "Power Tool Mode",
+      description: "Configure persisted auto-approval for advanced users.",
+      run: (ctx) => openGuardrailInManager(pi, ctx, "settings"),
+    },
+    {
       id: "help",
       label: "Help",
       description: "Show the sf-guardrail command reference.",
@@ -336,6 +349,7 @@ async function handleGuardrailCommand(
             hasUI: ctx.hasUI,
             headlessEnabled: !!process.env[config.headlessEscapeHatchEnv],
             operatorAutoApproveEnabled: isOperatorAutoApproveEnabled(),
+            powerTool: readGuardrailPiSettings().powerTool,
           });
     await emitGuardrailOutput(
       ctx,

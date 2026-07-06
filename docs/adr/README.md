@@ -77,3 +77,4 @@ or accidentally contradicted in extension READMEs.
 - [0072: Status Footer Prefers Last-Known Usable Status](./0072-status-footer-prefers-last-known-usable-status.md)
 - [0073: SF Docs Routes Developer Reference Lookups to LegacyDeveloper](./0073-sf-docs-routes-developer-reference-lookups-to-legacydeveloper.md)
 - [0074: SF Guardrail Mediates Native High-Value Durable Mutations](./0074-sf-guardrail-mediates-native-high-value-mutations.md)
+- [0075: SF Guardrail Adds Persisted Power Tool Mode](./0075-sf-guardrail-adds-persisted-power-tool-mode.md)

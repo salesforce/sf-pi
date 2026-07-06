@@ -99,8 +99,12 @@ explicitly opt into headless execution by setting:
 SF_GUARDRAIL_ALLOW_HEADLESS=1
 ```
 
-Power users can also opt into process-scoped auto-approval for confirm-class
-Guardrail decisions:
+Power users can also opt into persisted Power Tool Mode from `/sf-guardrail` or
+`/sf-pi → SF Guardrail → Settings`. It can auto-approve selected native tool
+families or all confirm-class decisions, with a separate production/unknown-org
+opt-in that defaults off.
+
+For temporary process-scoped automation, operators can also set:
 
 ```bash
 SF_GUARDRAIL_OPERATOR_AUTO_APPROVE=allow-confirm-actions-for-this-process

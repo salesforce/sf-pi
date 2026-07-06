@@ -10,6 +10,7 @@
  */
 import type { ExtensionDoctorReport } from "../../../lib/common/doctor/registry.ts";
 import { loadConfig } from "./config.ts";
+import { readGuardrailPiSettings } from "./guardrail-settings.ts";
 import {
   OPERATOR_AUTO_APPROVE_ENV,
   OPERATOR_AUTO_APPROVE_VALUE,
@@ -72,6 +73,24 @@ export async function runExtensionDoctor(): Promise<ExtensionDoctorReport> {
     fix: headlessAllow
       ? `Unset ${HEADLESS_ALLOW_ENV} for production runs unless you explicitly want bypass.`
       : undefined,
+  });
+
+  const powerTool = readGuardrailPiSettings().powerTool;
+  checks.push({
+    id: "guardrail.power-tool-mode",
+    severity: powerTool?.mode && powerTool.mode !== "off" ? "warn" : "ok",
+    title:
+      powerTool?.mode && powerTool.mode !== "off"
+        ? `Persisted Power Tool Mode: ${powerTool.mode}`
+        : "Persisted Power Tool Mode is off",
+    detail:
+      powerTool?.mode && powerTool.mode !== "off"
+        ? `Confirm-class decisions may auto-approve according to persisted mode. Production/Unknown auto-approve: ${powerTool.productionUnknown ? "on" : "off"}.`
+        : "Default behavior — persisted auto-approval is disabled.",
+    fix:
+      powerTool?.mode && powerTool.mode !== "off"
+        ? "Set Power Tool Mode to Off in /sf-pi → SF Guardrail → Settings unless this is intentional."
+        : undefined,
   });
 
   const operatorAutoApprove = isOperatorAutoApproveEnabled();

@@ -74,8 +74,12 @@ Plus:
 - **Headless mode** — fail-closed by default; set
   `SF_GUARDRAIL_ALLOW_HEADLESS=1` to let gated calls through with an
   audit warning when there is no TUI.
-- **Operator auto-approve mode** — explicit power-user override for the current
-  process. Set
+- **Power Tool Mode** — persisted advanced-user setting for auto-approving
+  confirm-class decisions. It supports Native tools only or All confirm-class
+  decisions, per-native-family selection, and a separate production/unknown-org
+  opt-in. It is off by default, visible in `/sf-guardrail` and Manager settings,
+  audited on every auto-approval, and never bypasses hard blocks.
+- **Operator auto-approve env mode** — process-scoped override. Set
   `SF_GUARDRAIL_OPERATOR_AUTO_APPROVE=allow-confirm-actions-for-this-process`
   to auto-allow confirm-class decisions with audit. Hard blocks still apply.
 
@@ -217,6 +221,7 @@ extensions/sf-guardrail/
     org-aware-risk-gate.ts  ← implementation module
     org-context.ts          ← implementation module
     policies.ts             ← implementation module
+    power-tool-mode.ts      ← implementation module
     preferences.ts          ← implementation module
     production-aliases-panel.ts← implementation module
     prompt-injection.ts     ← implementation module
@@ -244,6 +249,7 @@ extensions/sf-guardrail/
     org-aware-risk-gate.test.ts← unit / smoke test
     org-context.test.ts     ← unit / smoke test
     policies.test.ts        ← unit / smoke test
+    power-tool-mode.test.ts ← unit / smoke test
     preferences.test.ts     ← unit / smoke test
     prompt-injection.test.ts← unit / smoke test
     rule-behavior.test.ts   ← unit / smoke test

@@ -595,7 +595,8 @@
       "safety": [
         "Fail-closed in headless mode unless SF_GUARDRAIL_ALLOW_HEADLESS=1.",
         "Every block / allow / confirm decision is persisted as an audit entry.",
-        "Operator auto-approve mode is process-scoped, env-only, audited, and does not bypass hard blocks.",
+        "Power Tool Mode can persistently auto-approve selected confirm-class decisions; production/unknown org auto-approve is a separate opt-in and hard blocks are never bypassed.",
+        "Operator auto-approve env mode is process-scoped, audited, and does not bypass hard blocks.",
         "Known high-value native tool mutations are mediated before execution through the same Safety Kernel and HITL path, including first-slice AgentScript lifecycle, Data 360, Apex, Slack Canvas, and SF Browser commit surfaces.",
         "alwaysActive=false but disabling removes the safety layer entirely; the manager surfaces this clearly."
       ]
@@ -603,7 +604,7 @@
     "entry": "extensions/sf-guardrail/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 4986
+    "srcLoc": 5318
   },
   {
     "id": "sf-herdr",

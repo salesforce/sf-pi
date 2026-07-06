@@ -17,6 +17,14 @@ import type { Theme } from "@earendil-works/pi-coding-agent";
 import type { ConfigPanelFactory, ConfigPanelResult } from "../../../catalog/registry.ts";
 import { globalSettingsPath } from "../../../lib/common/sf-pi-settings.ts";
 import { loadConfig, userConfigPath } from "./config.ts";
+import { readGuardrailPiSettings, setGuardrailPowerToolSettings } from "./guardrail-settings.ts";
+import {
+  NATIVE_TOOL_FAMILIES,
+  defaultNativeFamilies,
+  enabledNativeFamilies,
+  powerToolModeLabel,
+  type GuardrailPowerToolSettings,
+} from "./power-tool-mode.ts";
 import {
   GUARDRAIL_PREFERENCE_DESCRIPTORS,
   buildGuardrailPreferenceDescriptors,
@@ -48,6 +56,8 @@ type SettingsPage =
   | { kind: "rules"; section: RulePanelSection; filter: string; filtering: boolean }
   | { kind: "rule-detail"; section: RulePanelSection; ruleId: string }
   | { kind: "aliases"; editing: boolean; draft: string }
+  | { kind: "power" }
+  | { kind: "confirm-power"; next: GuardrailPowerToolSettings; message: string }
   | { kind: "advanced" };
 
 interface RuleRow {
@@ -119,6 +129,12 @@ class SfGuardrailConfigPanel implements Focusable {
       case "aliases":
         this.handleAliasesInput(data);
         return;
+      case "power":
+        this.handlePowerInput(data);
+        return;
+      case "confirm-power":
+        this.handleConfirmPowerInput(data);
+        return;
       case "advanced":
         return;
     }
@@ -148,6 +164,12 @@ class SfGuardrailConfigPanel implements Focusable {
         break;
       case "aliases":
         lines.push(...this.renderAliases(width));
+        break;
+      case "power":
+        lines.push(...this.renderPower(width));
+        break;
+      case "confirm-power":
+        lines.push(...this.renderConfirmPower(width));
         break;
       case "advanced":
         lines.push(...this.renderAdvanced(width));
@@ -296,6 +318,56 @@ class SfGuardrailConfigPanel implements Focusable {
     ];
   }
 
+  private renderPower(width: number): string[] {
+    const t = this.theme;
+    const settings = readGuardrailPiSettings().powerTool;
+    const mode = settings?.mode ?? "off";
+    const enabled = enabledNativeFamilies(settings);
+    const lines = [
+      ` ${t.fg("warning", themeBold(t, "Power Tool Mode"))}`,
+      ...wrapLines(
+        "Persistent power-user mode. Auto-approves matching confirm-class Guardrail decisions. Hard blocks still apply and every auto-approval is audited.",
+        width - 3,
+      ).map((line) => ` ${t.fg("dim", line)}`),
+      "",
+      ` ${t.fg("muted", "Mode:")} ${t.fg(mode === "off" ? "text" : "warning", powerToolModeLabel(mode))}`,
+      ` ${t.fg("muted", "Production/Unknown:")} ${settings?.productionUnknown ? t.fg("warning", "auto-approve on") : t.fg("text", "off")}`,
+      "",
+      ` ${t.fg("accent", "o")} ${t.fg("text", "Off")}`,
+      ` ${t.fg("accent", "n")} ${t.fg("text", "Native tools only")}`,
+      ` ${t.fg("accent", "a")} ${t.fg("text", "All confirm-class decisions")}`,
+      ` ${t.fg("accent", "p")} ${t.fg("text", "Toggle production/unknown org auto-approve")}`,
+      "",
+      ` ${t.fg("accent", themeBold(t, "Native families"))}`,
+    ];
+    for (let i = 0; i < NATIVE_TOOL_FAMILIES.length; i++) {
+      const family = NATIVE_TOOL_FAMILIES[i];
+      if (!family) continue;
+      const key = String(i + 1);
+      const mark = enabled.has(family.id) ? "☑" : "☐";
+      lines.push(
+        ` ${t.fg("accent", key)} ${t.fg(enabled.has(family.id) ? "text" : "dim", `${mark} ${family.label}`)} ${t.fg("dim", `— ${family.description}`)}`,
+      );
+    }
+    return lines;
+  }
+
+  private renderConfirmPower(width: number): string[] {
+    if (this.page.kind !== "confirm-power") return [];
+    const t = this.theme;
+    return [
+      ` ${t.fg("warning", themeBold(t, "Confirm Power Tool Mode"))}`,
+      "",
+      ...wrapLines(this.page.message, width - 3).map((line) => ` ${t.fg("dim", line)}`),
+      "",
+      ` ${t.fg("warning", "This setting persists across Pi restarts.")}`,
+      ` ${t.fg("dim", "It auto-approves matching confirm-class Guardrail decisions. Hard blocks still apply. Every auto-approval is audited.")}`,
+      "",
+      ` ${t.fg("accent", "Enter")} ${t.fg("text", "enable")}`,
+      ` ${t.fg("accent", "Esc")} ${t.fg("text", "cancel")}`,
+    ];
+  }
+
   private renderAdvanced(width: number): string[] {
     const t = this.theme;
     return [
@@ -321,6 +393,8 @@ class SfGuardrailConfigPanel implements Focusable {
         this.page = { kind: "rules", section: item.value, filter: "", filtering: false };
       } else if (item.value === "aliases") {
         this.page = { kind: "aliases", editing: false, draft: productionAliasesText(this.config) };
+      } else if (item.value === "power") {
+        this.page = { kind: "power" };
       } else if (item.value === "advanced") {
         this.page = { kind: "advanced" };
       }
@@ -370,6 +444,89 @@ class SfGuardrailConfigPanel implements Focusable {
   private handleAliasEditInput(data: string): void {
     if (this.page.kind !== "aliases" || !this.page.editing) return;
     this.aliasInput?.handleInput(data);
+  }
+
+  private handlePowerInput(data: string): void {
+    if (this.page.kind !== "power") return;
+    const current = readGuardrailPiSettings().powerTool ?? { mode: "off" as const };
+    if (data === "o" || data === "O") {
+      this.savePowerTool({ ...current, mode: "off" }, "Power Tool Mode disabled.");
+      return;
+    }
+    if (data === "n" || data === "N") {
+      this.confirmPowerTool(
+        {
+          ...current,
+          mode: "native",
+          nativeFamilies: current.nativeFamilies ?? defaultNativeFamilies(),
+        },
+        "Enable Power Tool Mode for selected native SF Pi tool families?",
+      );
+      return;
+    }
+    if (data === "a" || data === "A") {
+      this.confirmPowerTool(
+        {
+          ...current,
+          mode: "all",
+          nativeFamilies: current.nativeFamilies ?? defaultNativeFamilies(),
+        },
+        "Enable Power Tool Mode for all confirm-class Guardrail decisions?",
+      );
+      return;
+    }
+    if (data === "p" || data === "P") {
+      const next = { ...current, productionUnknown: current.productionUnknown !== true };
+      this.confirmPowerTool(
+        next,
+        next.productionUnknown
+          ? "Enable Power Tool Mode auto-approval for Production and Unknown Org decisions?"
+          : "Disable Production and Unknown Org auto-approval?",
+      );
+      return;
+    }
+    const index = Number(data) - 1;
+    if (Number.isInteger(index) && index >= 0 && index < NATIVE_TOOL_FAMILIES.length) {
+      const family = NATIVE_TOOL_FAMILIES[index];
+      if (!family) return;
+      const currentFamilies = enabledNativeFamilies(current);
+      if (currentFamilies.has(family.id)) currentFamilies.delete(family.id);
+      else currentFamilies.add(family.id);
+      this.savePowerTool(
+        { ...current, nativeFamilies: [...currentFamilies] },
+        `${family.label}: ${currentFamilies.has(family.id) ? "enabled" : "disabled"}.`,
+      );
+    }
+  }
+
+  private handleConfirmPowerInput(data: string): void {
+    if (this.page.kind !== "confirm-power") return;
+    if (matchesKey(data, "return") || matchesKey(data, "enter")) {
+      this.savePowerTool(this.page.next, "Power Tool Mode saved.");
+      return;
+    }
+    if (matchesKey(data, "escape") || data === "q") {
+      this.page = { kind: "power" };
+    }
+  }
+
+  private confirmPowerTool(next: GuardrailPowerToolSettings, message: string): void {
+    const current = readGuardrailPiSettings().powerTool;
+    const currentMode = current?.mode ?? "off";
+    const nextMode = next.mode ?? "off";
+    const enabling = currentMode === "off" && nextMode !== "off";
+    const enablingProd = current?.productionUnknown !== true && next.productionUnknown === true;
+    if (enabling || enablingProd || nextMode === "all") {
+      this.page = { kind: "confirm-power", next, message };
+      return;
+    }
+    this.savePowerTool(next, "Power Tool Mode saved.");
+  }
+
+  private savePowerTool(next: GuardrailPowerToolSettings, message: string): void {
+    setGuardrailPowerToolSettings(next);
+    this.reload(message);
+    this.page = { kind: "power" };
   }
 
   private startAliasEdit(): void {
@@ -423,6 +580,10 @@ class SfGuardrailConfigPanel implements Focusable {
     }
     if (this.page.kind === "rule-detail") {
       this.page = { kind: "rules", section: this.page.section, filter: "", filtering: false };
+      return;
+    }
+    if (this.page.kind === "confirm-power") {
+      this.page = { kind: "power" };
       return;
     }
     this.page = { kind: "home" };
@@ -546,6 +707,10 @@ class SfGuardrailConfigPanel implements Focusable {
         return `${rulesTitle(this.page.section)} › ${this.page.ruleId}`;
       case "aliases":
         return "Protected org aliases";
+      case "power":
+        return "Power Tool Mode";
+      case "confirm-power":
+        return "Power Tool Mode › Confirm";
       case "advanced":
         return "Advanced Rule Overrides";
     }
@@ -564,6 +729,9 @@ class SfGuardrailConfigPanel implements Focusable {
         ? "type aliases · Enter save aliases · Esc cancel"
         : "e edit · c clear · Esc back";
     }
+    if (this.page.kind === "power")
+      return "o off · n native · a all · p prod/unknown · 1-6 families · Esc back";
+    if (this.page.kind === "confirm-power") return "Enter enable · Esc cancel";
     if (this.page.kind === "advanced") return "Esc back";
     return "↑↓ move · ←/→ change · saved immediately · Esc back";
   }

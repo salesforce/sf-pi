@@ -11,6 +11,7 @@ import {
   readJsonFile,
   writeJsonFile,
 } from "../../../lib/common/sf-pi-settings.ts";
+import { normalizePowerToolSettings, type GuardrailPowerToolSettings } from "./power-tool-mode.ts";
 import type { GuardrailConfig, RuleBehavior } from "./types.ts";
 import { behaviorEnabled } from "./rule-behavior.ts";
 
@@ -24,6 +25,7 @@ export interface GuardrailPiSettings {
   confirmTimeoutMs?: number;
   productionAliases?: string[];
   ruleBehaviors?: GuardrailSettingsRuleBehaviors;
+  powerTool?: GuardrailPowerToolSettings;
 }
 
 const SF_PI_KEY = "sfPi";
@@ -54,7 +56,8 @@ export function hasGuardrailPiSettings(settings: GuardrailPiSettings): boolean {
   return (
     typeof settings.confirmTimeoutMs === "number" ||
     settings.productionAliases !== undefined ||
-    settings.ruleBehaviors !== undefined
+    settings.ruleBehaviors !== undefined ||
+    settings.powerTool !== undefined
   );
 }
 
@@ -83,6 +86,12 @@ export function setGuardrailTimeoutPreference(confirmTimeoutMs: number): Guardra
 
 export function setGuardrailProductionAliases(aliases: string[]): GuardrailPiSettings {
   return updateGuardrailPiSettings((settings) => ({ ...settings, productionAliases: aliases }));
+}
+
+export function setGuardrailPowerToolSettings(
+  powerTool: GuardrailPowerToolSettings,
+): GuardrailPiSettings {
+  return updateGuardrailPiSettings((settings) => ({ ...settings, powerTool }));
 }
 
 export function setGuardrailRuleBehaviorPreference(
@@ -144,6 +153,8 @@ function normalizeGuardrailPiSettings(input: unknown): GuardrailPiSettings {
   }
   const ruleBehaviors = normalizeRuleBehaviors(raw.ruleBehaviors);
   if (ruleBehaviors) next.ruleBehaviors = ruleBehaviors;
+  const powerTool = normalizePowerToolSettings(raw.powerTool);
+  if (powerTool) next.powerTool = powerTool;
 
   return next;
 }
@@ -175,6 +186,9 @@ function pruneEmptyGuardrailSettings(settings: GuardrailPiSettings): GuardrailPi
   if (settings.productionAliases) next.productionAliases = settings.productionAliases;
   if (settings.ruleBehaviors && Object.keys(settings.ruleBehaviors).length > 0) {
     next.ruleBehaviors = settings.ruleBehaviors;
+  }
+  if (settings.powerTool && Object.keys(settings.powerTool).length > 0) {
+    next.powerTool = settings.powerTool;
   }
   return next;
 }

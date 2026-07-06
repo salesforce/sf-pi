@@ -10,7 +10,11 @@ export type RuleBehaviorSource = "settings" | "override" | "definition";
 export type RulePanelSection = "files" | "commands" | "orgs";
 
 export interface SettingsSectionItem {
-  value: Exclude<GuardrailSettingsSection, "aliases" | "advanced"> | "aliases" | "advanced";
+  value:
+    | Exclude<GuardrailSettingsSection, "aliases" | "advanced" | "power">
+    | "aliases"
+    | "advanced"
+    | "power";
   label: string;
   description: string;
 }
@@ -35,6 +39,11 @@ export const SECTION_ITEMS: SettingsSectionItem[] = [
     value: "aliases",
     label: "Protected org aliases",
     description: "Treat aliases as production-level risk targets.",
+  },
+  {
+    value: "power",
+    label: "Power Tool Mode",
+    description: "Persisted auto-approval scope for advanced users.",
   },
   {
     value: "advanced",
