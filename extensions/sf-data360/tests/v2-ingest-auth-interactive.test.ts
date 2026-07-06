@@ -60,6 +60,40 @@ describe("Data 360 interactive PKCE auth orchestration", () => {
     });
   });
 
+  it("requires confirmation before opening the interactive auth listener", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await runData360V2Action(
+      {
+        tool: "data360_orchestrate",
+        action: "ingest_auth.pkce_interactive",
+        target_org: "AgentforceSTDM",
+        params: {
+          loginUrl: "https://test.salesforce.com",
+          clientId: "public-client-id",
+          redirectUri: "http://localhost:1717/OauthRedirect",
+        },
+      },
+      env,
+      ctx,
+      undefined,
+    );
+
+    expect(result).toMatchObject({
+      ok: false,
+      tool: "data360_orchestrate",
+      action: "ingest_auth.pkce_interactive",
+      targetOrg: "AgentforceSTDM",
+      error: "CONFIRMATION_REQUIRED",
+      opensBrowser: true,
+      listensOn: "http://localhost:1717/OauthRedirect",
+      summary:
+        "ingest_auth.pkce_interactive requires allow_confirmed=true after reviewing dry_run output.",
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("captures the callback, exchanges tokens, and returns only sanitized auth session metadata", async () => {
     const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
       if (url.endsWith("/services/oauth2/token")) {

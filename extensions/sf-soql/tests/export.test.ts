@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Tests for SOQL Artifact Export path confinement. */
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -36,6 +36,49 @@ describe("resolveExportTarget", () => {
 });
 
 describe("exportQueryResult", () => {
+  it("rejects symlink targets and symlink parent directories", async () => {
+    const cwd = await mkdtemp(path.join(tmpdir(), "sf-soql-export-symlink-test-"));
+    const source = path.join(cwd, "source.csv");
+    await writeFile(source, "Id,Name\n001,Acme\n", "utf8");
+    const state: SfSoqlSessionState = {
+      lastDigest: {
+        artifacts: [{ path: source, kind: "flattened-csv" }],
+      } as NonNullable<SfSoqlSessionState["lastDigest"]>,
+    };
+
+    try {
+      const exportRoot = path.join(cwd, ".sf-pi", "exports", "soql");
+      await mkdir(path.join(exportRoot, "reports"), { recursive: true });
+      const outsideTarget = path.join(cwd, "outside.csv");
+      await writeFile(outsideTarget, "outside", "utf8");
+      await symlink(outsideTarget, path.join(exportRoot, "reports", "accounts.csv"));
+
+      await expect(
+        exportQueryResult(
+          { action: "query.export", output_file: "reports/accounts.csv", format: "csv" },
+          state,
+          cwd,
+        ),
+      ).rejects.toThrow(/symlink/);
+      await expect(readFile(outsideTarget, "utf8")).resolves.toBe("outside");
+
+      await rm(path.join(exportRoot, "reports"), { recursive: true, force: true });
+      const outsideDir = path.join(cwd, "outside-dir");
+      await mkdir(outsideDir);
+      await symlink(outsideDir, path.join(exportRoot, "reports"), "dir");
+
+      await expect(
+        exportQueryResult(
+          { action: "query.export", output_file: "reports/accounts.csv", format: "csv" },
+          state,
+          cwd,
+        ),
+      ).rejects.toThrow(/symlinks/);
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
+  });
+
   it("copies the selected artifact only into the confined export directory", async () => {
     const cwd = await mkdtemp(path.join(tmpdir(), "sf-soql-export-test-"));
     const source = path.join(cwd, "source.csv");

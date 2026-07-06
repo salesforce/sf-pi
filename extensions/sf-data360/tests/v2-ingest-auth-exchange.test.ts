@@ -114,6 +114,43 @@ describe("Data 360 v2 PKCE ingest auth exchange", () => {
     expect(text).not.toContain("secret-code-verifier");
   });
 
+  it("requires confirmation before exchanging PKCE credentials", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await runData360V2Action(
+      {
+        tool: "data360_connect",
+        action: "auth.exchange",
+        target_org: "AgentforceSTDM",
+        params: {
+          strategy: "pkce",
+          loginUrl: "https://test.salesforce.com",
+          clientId: "public-client-id",
+          redirectUri: "http://localhost:1717/OauthRedirect",
+          authorizationCode: "secret-auth-code",
+          codeVerifier: "secret-code-verifier",
+        },
+      },
+      env,
+      ctx,
+      undefined,
+    );
+
+    expect(result).toMatchObject({
+      ok: false,
+      tool: "data360_connect",
+      action: "auth.exchange",
+      targetOrg: "AgentforceSTDM",
+      error: "CONFIRMATION_REQUIRED",
+      summary: "auth.exchange requires allow_confirmed=true after reviewing dry_run output.",
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+    const text = JSON.stringify(result).toLowerCase();
+    expect(text).not.toContain("secret-auth-code");
+    expect(text).not.toContain("secret-code-verifier");
+  });
+
   it("exchanges a started PKCE flow by state without the caller passing a code verifier", async () => {
     const start = await runData360V2Action(
       {
@@ -158,6 +195,7 @@ describe("Data 360 v2 PKCE ingest auth exchange", () => {
         tool: "data360_connect",
         action: "auth.exchange",
         target_org: "AgentforceSTDM",
+        allow_confirmed: true,
         params: {
           strategy: "pkce",
           authorizationCode: "secret-auth-code",
@@ -213,6 +251,7 @@ describe("Data 360 v2 PKCE ingest auth exchange", () => {
         tool: "data360_connect",
         action: "auth.exchange",
         target_org: "AgentforceSTDM",
+        allow_confirmed: true,
         params: {
           strategy: "pkce",
           loginUrl: "https://test.salesforce.com",

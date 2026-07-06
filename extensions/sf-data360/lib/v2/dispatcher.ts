@@ -765,8 +765,8 @@ async function runTenantIngestAuthAction(
     };
   }
   if (action.action === "auth.exchange") {
+    const plan = planTenantIngestExchange(params);
     if (input.dry_run) {
-      const plan = planTenantIngestExchange(params);
       return {
         ok: true,
         tool: input.tool,
@@ -779,6 +779,13 @@ async function runTenantIngestAuthAction(
         executesNetworkCalls: plan.executesNetworkCalls,
         summary: "Data Cloud ingest auth exchange dry-run",
       };
+    }
+    if (input.allow_confirmed !== true) {
+      return tenantIngestAuthConfirmationRequired(input, action, targetOrg, apiVersion, {
+        steps: plan.steps,
+        storesSecrets: plan.storesSecrets,
+        executesNetworkCalls: plan.executesNetworkCalls,
+      });
     }
     const result = await exchangePkceForTenantIngestAuth(params);
     return {
@@ -895,6 +902,28 @@ function tenantIngestConfirmationRequired(
     guidance:
       "Tenant ingest can create jobs, upload local file bytes to Data 360, or close ingest jobs." +
       `${uploadWarning} Run the same action with dry_run=true first, then retry with allow_confirmed=true only after review.`,
+  };
+}
+
+function tenantIngestAuthConfirmationRequired(
+  input: Data360V2Input,
+  action: Data360V2ActionDefinition,
+  targetOrg: string,
+  apiVersion: string,
+  plan: { steps?: unknown[]; storesSecrets?: boolean; executesNetworkCalls?: boolean },
+): Record<string, unknown> {
+  return {
+    ok: false,
+    tool: input.tool,
+    action: input.action,
+    targetOrg,
+    apiVersion,
+    safety: action.safety,
+    ...plan,
+    error: "CONFIRMATION_REQUIRED",
+    summary: `${input.action} requires allow_confirmed=true after reviewing dry_run output.`,
+    guidance:
+      "Data Cloud ingest auth can exchange OAuth credentials, open a local callback listener, or store an in-memory tenant ingest session. Run with dry_run=true first, then retry with allow_confirmed=true only after review.",
   };
 }
 
@@ -2510,6 +2539,7 @@ async function runJourneyAction(
   if (action.implementation?.name === "ingest_auth.pkce_interactive") {
     const { targetOrg, apiVersion } = await resolveTargetOrgContext(input.target_org, env);
     if (!targetOrg) throw new Error("No Salesforce target org is configured.");
+    const plan = planInteractivePkceAuth(input.params ?? {});
     if (input.dry_run) {
       return {
         ok: true,
@@ -2518,9 +2548,12 @@ async function runJourneyAction(
         dryRun: true,
         targetOrg,
         apiVersion,
-        ...planInteractivePkceAuth(input.params ?? {}),
+        ...plan,
         summary: "Data Cloud ingest interactive PKCE auth plan",
       };
+    }
+    if (input.allow_confirmed !== true) {
+      return tenantIngestAuthConfirmationRequired(input, action, targetOrg, apiVersion, plan);
     }
     const result = await runInteractivePkceAuth(input.params ?? {});
     return {

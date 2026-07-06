@@ -1,7 +1,8 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Export latest SOQL artifact to a workspace file. */
 
-import { copyFile, mkdir } from "node:fs/promises";
+import { copyFile, lstat, mkdir, realpath, rename, rm } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { buildDigest, row, section, toolResultFromDigest } from "./digest.ts";
 import type { SfSoqlParams, SfSoqlSessionState, SoqlArtifact, ToolResult } from "./types.ts";
@@ -17,8 +18,7 @@ export async function exportQueryResult(
   const artifact = findArtifact(state, params.format ?? "csv");
   if (!artifact)
     throw new Error("No matching SOQL artifact found. Run query.sample/query.run first.");
-  await mkdir(path.dirname(target), { recursive: true });
-  await copyFile(artifact.path, target);
+  await copyArtifactSafely(cwd, artifact.path, target);
   const digest = buildDigest({
     action: "query.export",
     status: "pass",
@@ -52,6 +52,84 @@ export function resolveExportTarget(cwd: string, outputFile: string): string {
 
   const safeSegments = rawSegments.map(safeExportSegment);
   return path.join(cwd, ".sf-pi", "exports", "soql", ...safeSegments);
+}
+
+async function copyArtifactSafely(cwd: string, source: string, target: string): Promise<void> {
+  const exportRoot = path.join(cwd, ".sf-pi", "exports", "soql");
+  const parent = path.dirname(target);
+  await ensureSafeDirectory(exportRoot, cwd);
+  await ensureSafeDirectory(parent, exportRoot);
+  await assertPathInsideRealRoot(exportRoot, parent);
+  await assertSafeExistingTarget(target);
+
+  const temp = path.join(parent, `.tmp-${path.basename(target)}-${process.pid}-${randomUUID()}`);
+  try {
+    await copyFile(source, temp);
+    await assertSafeExistingTarget(target);
+    await rename(temp, target);
+  } catch (error) {
+    await rm(temp, { force: true }).catch(() => undefined);
+    throw error;
+  }
+}
+
+async function ensureSafeDirectory(dir: string, stopAt?: string): Promise<void> {
+  const resolved = path.resolve(dir);
+  const stop = stopAt ? path.resolve(stopAt) : path.parse(resolved).root;
+  const relative = path.relative(stop, resolved);
+  if (relative.startsWith("..") || path.isAbsolute(relative)) {
+    throw new Error("query.export output_file escaped the SOQL export directory.");
+  }
+
+  const segments = relative ? relative.split(path.sep).filter(Boolean) : [];
+  let current = stop;
+  await ensureDirectorySegment(current);
+  for (const segment of segments) {
+    current = path.join(current, segment);
+    await ensureDirectorySegment(current);
+  }
+}
+
+async function ensureDirectorySegment(dir: string): Promise<void> {
+  try {
+    const stat = await lstat(dir);
+    if (stat.isSymbolicLink()) {
+      throw new Error("query.export output_file must not traverse symlinks.");
+    }
+    if (!stat.isDirectory()) {
+      throw new Error("query.export output_file parent path is not a directory.");
+    }
+  } catch (error) {
+    if (!isNodeErrorCode(error, "ENOENT")) throw error;
+    await mkdir(dir);
+  }
+}
+
+async function assertPathInsideRealRoot(exportRoot: string, candidate: string): Promise<void> {
+  const realRoot = await realpath(exportRoot);
+  const realCandidate = await realpath(candidate);
+  const relative = path.relative(realRoot, realCandidate);
+  if (relative.startsWith("..") || path.isAbsolute(relative)) {
+    throw new Error("query.export output_file escaped the SOQL export directory.");
+  }
+}
+
+async function assertSafeExistingTarget(target: string): Promise<void> {
+  try {
+    const stat = await lstat(target);
+    if (stat.isSymbolicLink()) {
+      throw new Error("query.export output_file must not target a symlink.");
+    }
+    if (!stat.isFile()) {
+      throw new Error("query.export output_file target must be a file.");
+    }
+  } catch (error) {
+    if (!isNodeErrorCode(error, "ENOENT")) throw error;
+  }
+}
+
+function isNodeErrorCode(error: unknown, code: string): boolean {
+  return typeof error === "object" && error !== null && (error as { code?: unknown }).code === code;
 }
 
 function safeExportSegment(segment: string): string {

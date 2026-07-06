@@ -217,6 +217,7 @@ describe("Data 360 v2 CSV manifest orchestration", () => {
         tool: "data360_connect",
         action: "auth.exchange",
         target_org: "AgentforceSTDM",
+        allow_confirmed: true,
         params: {
           strategy: "pkce",
           loginUrl: "https://test.salesforce.com",

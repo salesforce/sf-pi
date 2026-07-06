@@ -397,7 +397,7 @@
     "entry": "extensions/sf-data360/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 11028
+    "srcLoc": 11060
   },
   {
     "id": "sf-devbar",
@@ -604,7 +604,7 @@
     "entry": "extensions/sf-guardrail/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 5406
+    "srcLoc": 5433
   },
   {
     "id": "sf-herdr",
@@ -1056,7 +1056,7 @@
     "entry": "extensions/sf-soql/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 3118
+    "srcLoc": 3188
   },
   {
     "id": "sf-welcome",

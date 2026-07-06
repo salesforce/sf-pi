@@ -411,6 +411,32 @@ describe("Safety Kernel", () => {
 
     await expect(
       evaluateSafety({
+        toolName: "data360_connect",
+        input: { action: "auth.exchange", allow_confirmed: true, params: { strategy: "pkce" } },
+        cwd: "/project",
+        config: readBundledConfig(),
+      }),
+    ).resolves.toMatchObject({
+      action: "confirm",
+      ruleId: "native-data360-confirmed-execute",
+      subject: "data360_connect auth.exchange",
+    });
+
+    await expect(
+      evaluateSafety({
+        toolName: "data360_orchestrate",
+        input: { action: "ingest_auth.pkce_interactive", allow_confirmed: true },
+        cwd: "/project",
+        config: readBundledConfig(),
+      }),
+    ).resolves.toMatchObject({
+      action: "confirm",
+      ruleId: "native-data360-confirmed-execute",
+      subject: "data360_orchestrate ingest_auth.pkce_interactive",
+    });
+
+    await expect(
+      evaluateSafety({
         toolName: "data360_orchestrate",
         input: {
           action: "manifest.run",
@@ -488,6 +514,27 @@ describe("Safety Kernel", () => {
     expect(decision?.approvalScope).toMatchObject({
       operationFamily: "soql artifact export",
       riskTier: "soql_artifact_export_exact",
+      allowSession: false,
+    });
+  });
+
+  it("confirms SOQL history reruns as disclosure-sensitive native actions", async () => {
+    const decision = await evaluateSafety({
+      toolName: "sf_soql",
+      input: { action: "history.rerun", target_org: "DevInt" },
+      cwd: "/project",
+      config: readBundledConfig(),
+    });
+
+    expect(decision).toMatchObject({
+      action: "confirm",
+      feature: "nativeToolGate",
+      ruleId: "native-sf-soql-disclosure",
+      subject: "sf_soql history.rerun",
+    });
+    expect(decision?.approvalScope).toMatchObject({
+      operationFamily: "soql history rerun",
+      riskTier: "soql_history_replay_exact",
       allowSession: false,
     });
   });

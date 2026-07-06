@@ -257,6 +257,7 @@ function classifySfSoql(
   if (toolName !== "sf_soql") return undefined;
   const action = input.action;
   if (action === "query.export") return soqlExportSubject(toolName, input);
+  if (action === "history.rerun") return soqlHistoryRerunSubject(toolName, input);
   if (action === "query.queryAll") return soqlBroadReadSubject(toolName, input, "queryAll");
   if (action === "query.run" && (input.allow_unbounded === true || queryUsesAllRows(input.query))) {
     return soqlBroadReadSubject(
@@ -289,6 +290,33 @@ function soqlExportSubject(
     fingerprint: `sf_soql|query.export|${fingerprint}`,
     approvalLabel: `export SOQL artifact to ${outputFile}`,
     approvalDetail: `output_file=${outputFile}; format=${format}`,
+    allowSession: false,
+  };
+}
+
+function soqlHistoryRerunSubject(
+  toolName: string,
+  input: Record<string, unknown>,
+): NativeToolSafetySubject {
+  const targetOrg = stringValue(input.target_org);
+  const fingerprint = fingerprintText(JSON.stringify({ targetOrg }));
+  return {
+    kind: "nativeTool",
+    toolName,
+    action: "history.rerun",
+    ruleId: "native-sf-soql-disclosure",
+    subject: "sf_soql history.rerun",
+    reason:
+      "SOQL history.rerun replays a previous query action, which may disclose broad or deleted-row data.",
+    promptTitle: "⚠ SOQL history rerun",
+    operationFamily: "soql history rerun",
+    riskTier: "soql_history_replay_exact",
+    fingerprint: `sf_soql|history.rerun|${fingerprint}`,
+    approvalLabel: "rerun the previous SOQL action",
+    approvalDetail: `target_org=${targetOrg ?? "default"}; prior action is resolved at execution time`,
+    usesSalesforceOrg: true,
+    targetOrg,
+    targetOrgExplicit: targetOrg !== undefined,
     allowSession: false,
   };
 }
