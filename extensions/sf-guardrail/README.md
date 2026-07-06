@@ -50,7 +50,7 @@ controlled by per-rule behavior (`off`, `confirm`, or `block`):
 4. **nativeToolGate** — a Guardrail-owned registry for known high-value durable
    mutations exposed through bundled SF Pi native tools. The first slices cover
    AgentScript lifecycle publish/activation/provisioning, Data 360 confirmed
-   execution paths, mutating `sf_apex anon.run`, `slack_canvas create/edit`, and SF Browser committing
+   execution paths, `sf_apex anon.run`, `slack_canvas create/edit`, and SF Browser committing
    click/press gestures. Tool intent flags such as `allow_mutation`, `mutation`,
    and `dry_run=false` classify intent; they are not approval.
 

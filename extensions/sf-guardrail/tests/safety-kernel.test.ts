@@ -205,7 +205,7 @@ describe("Safety Kernel", () => {
     expect(decision).toMatchObject({
       action: "confirm",
       feature: "nativeToolGate",
-      ruleId: "native-sf-apex-anon-mutating",
+      ruleId: "native-sf-apex-anon-run",
       orgAlias: "DevInt",
       orgType: "sandbox",
     });
@@ -218,18 +218,32 @@ describe("Safety Kernel", () => {
     expect(decision?.approvalScope?.fingerprint).toContain("family=anonymous apex");
   });
 
-  it("does not mediate sf_apex anon.run when the mutating intent flag is absent", async () => {
+  it("mediates sf_apex anon.run even when direct mutation signals are absent", async () => {
+    mockedEnv = env("DevInt", "sandbox");
+
     const decision = await evaluateSafety({
       toolName: "sf_apex",
       input: {
         action: "anon.run",
-        body: "Account a = new Account(Name = 'Acme'); insert a;",
+        body: "SomeExistingMutator.run();",
       },
       cwd: "/project",
       config: readBundledConfig(),
     });
 
-    expect(decision).toBeUndefined();
+    expect(decision).toMatchObject({
+      action: "confirm",
+      feature: "nativeToolGate",
+      ruleId: "native-sf-apex-anon-run",
+      orgAlias: "DevInt",
+      orgType: "sandbox",
+    });
+    expect(decision?.approvalScope).toMatchObject({
+      operationFamily: "anonymous apex",
+      riskTier: "apex_execution_exact",
+      label: "this exact Anonymous Apex body",
+    });
+    expect(decision?.approvalScope?.detail).toContain("mutation signals: none detected");
   });
 
   it("confirms AgentScript lifecycle publish+activate as a distinct native operation family", async () => {

@@ -30,26 +30,31 @@ function classifySfApex(
   input: Record<string, unknown>,
 ): NativeToolSafetySubject | undefined {
   if (toolName !== "sf_apex" || input.action !== "anon.run") return undefined;
-  if (input.allow_mutation !== true || typeof input.body !== "string") return undefined;
+  if (typeof input.body !== "string") return undefined;
 
   const risk = classifyAnonymousApex(input.body);
-  if (!risk.mutating) return undefined;
-
   const bodyFingerprint = fingerprintText(normalizeApexBody(input.body));
   const targetOrg = typeof input.target_org === "string" ? input.target_org : undefined;
+  const mutating = risk.mutating;
   return {
     kind: "nativeTool",
     toolName,
     action: "anon.run",
-    ruleId: "native-sf-apex-anon-mutating",
-    subject: `sf_apex anon.run mutating body ${bodyFingerprint}`,
-    reason: `Mutating Anonymous Apex requested (${risk.reasons.join(", ")}).`,
-    promptTitle: "⚠ Mutating Anonymous Apex",
+    ruleId: "native-sf-apex-anon-run",
+    subject: `sf_apex anon.run body ${bodyFingerprint}`,
+    reason: mutating
+      ? `Anonymous Apex requested with mutation signals (${risk.reasons.join(", ")}).`
+      : "Anonymous Apex can call org code and may have side effects even when direct DML is not visible in the submitted body.",
+    promptTitle: mutating ? "⚠ Anonymous Apex with mutation signals" : "⚠ Anonymous Apex execution",
     operationFamily: "anonymous apex",
-    riskTier: "org_mutation_exact",
+    riskTier: mutating ? "org_mutation_exact" : "apex_execution_exact",
     fingerprint: `sf_apex|anon.run|body=${bodyFingerprint}`,
     approvalLabel: "this exact Anonymous Apex body",
-    approvalDetail: `Body fingerprint ${bodyFingerprint}; reasons: ${risk.reasons.join(", ")}.`,
+    approvalDetail: [
+      `Body fingerprint ${bodyFingerprint}`,
+      mutating ? `mutation signals: ${risk.reasons.join(", ")}` : "mutation signals: none detected",
+      `allow_mutation=${input.allow_mutation === true}`,
+    ].join("; "),
     usesSalesforceOrg: true,
     targetOrg,
     targetOrgExplicit: targetOrg !== undefined,

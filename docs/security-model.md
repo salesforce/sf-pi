@@ -33,7 +33,7 @@ A high-value durable mutation is a bundled first-party, LLM-callable operation
 that can persistently change a durable system of record under the user's
 authority. Examples include:
 
-- mutating Anonymous Apex
+- Anonymous Apex execution, because submitted code can call existing mutating org logic
 - AgentScript publish, activation, deactivation, and live agent-user provisioning
 - Data 360 confirmed execution and raw REST mutations
 - Salesforce Browser committing gestures such as save, submit, activate, assign,
