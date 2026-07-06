@@ -131,17 +131,17 @@
   "dependencies": {
     "@lwc/compiler": "^9.3.4",
     "@lwc/template-compiler": "^9.3.4",
-    "@salesforce/apex-node": "^8.4.33",
+    "@salesforce/apex-node": "^8.4.34",
     "@salesforce/core": "^8.31.2",
     "@salesforce/kit": "^3.2.6",
     "@salesforce/soql-common": "^2.0.0",
     "@salesforce/soql-language-server": "^1.1.0",
-    "@salesforce/source-deploy-retrieve": "^12.36.8",
+    "@salesforce/source-deploy-retrieve": "^12.37.1",
     "@sf-agentscript/agentforce": "2.5.34",
-    "@sf-agentscript/language": "2.15.0",
+    "@sf-agentscript/language": "2.18.0",
     "@sf-agentscript/lsp": "2.3.8",
     "node-emoji": "^2.2.0",
-    "vscode-languageserver-protocol": "^3.18.1"
+    "vscode-languageserver-protocol": "^3.18.2"
   },
   "overridesNotes": {
     "fast-xml-parser": "Force >= 5.7.0 to clear GHSA-gh4j-gqv2-49f6 (XMLBuilder CDATA injection). Reaches sf-pi through pi-ai -> AWS SDK Bedrock client; remove once upstream AWS SDK resolves the advisory.",
@@ -167,7 +167,7 @@
       "vite": "7.3.5"
     },
     "esbuild": "^0.28.1",
-    "@sf-agentscript/language": "2.15.0",
+    "@sf-agentscript/language": "2.18.0",
     "@sf-agentscript/types": "0.2.3"
   }
 }
