@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Shared dispatcher for the Data 360 v2 family tools. */
+import { createHash } from "node:crypto";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 
 import type { SfEnvironment } from "../../../../lib/common/sf-environment/types.ts";
@@ -1550,12 +1551,15 @@ function journeyRunResult(
   journey: string,
   steps: Array<Record<string, unknown>>,
 ): Record<string, unknown> {
+  const executionChain = executionChainFromSteps(input, steps);
   return {
     ok: steps.every((step) => step.ok !== false),
     tool: input.tool,
     action: input.action,
     journey,
+    journey_fingerprint: journeyFingerprint(input),
     steps,
+    executionChain,
     summary: `${journey} run completed ${steps.length} step(s)`,
     report: [
       `✅ ${journey} run complete`,
@@ -1590,11 +1594,52 @@ async function runMakeDataUsable(
     action: input.action,
     journey: "make_data_usable",
     ingestion,
+    executionChain: Array.isArray(ingestion.executionChain) ? ingestion.executionChain : undefined,
+    journey_fingerprint: journeyFingerprint(input),
     harmonizationPlan,
     report: makeDataUsableReport(ingestion, harmonizationPlan),
     summary: "make_data_usable.run completed ingestion and prepared harmonization next steps",
     next_actions: harmonizationPlan.slice(0, 3),
   };
+}
+
+function executionChainFromSteps(
+  parent: Data360V2Input,
+  steps: Array<Record<string, unknown>>,
+): Array<Record<string, unknown>> {
+  return steps.map((step) =>
+    executionChainEntry(
+      parent,
+      String(step.tool ?? "unknown"),
+      String(step.action ?? "unknown"),
+      asRecord(step.result) ?? step,
+    ),
+  );
+}
+
+function executionChainEntry(
+  parent: Data360V2Input,
+  tool: string,
+  action: string,
+  result: Record<string, unknown>,
+): Record<string, unknown> {
+  return {
+    parentTool: parent.tool,
+    parentAction: parent.action,
+    journey_fingerprint: journeyFingerprint(parent),
+    tool,
+    action,
+    ok: result.ok !== false,
+    summary: typeof result.summary === "string" ? result.summary : "complete",
+    safety: typeof result.safety === "string" ? result.safety : undefined,
+  };
+}
+
+function journeyFingerprint(input: Data360V2Input): string {
+  return createHash("sha256")
+    .update(JSON.stringify({ toolName: input.tool, action: input.action, params: input.params }))
+    .digest("hex")
+    .slice(0, 16);
 }
 
 function buildPostIngestHarmonizationPlan(
@@ -1781,6 +1826,9 @@ async function runManifest(
     signal,
   );
   if (schemaPut.ok === false) return { ...schemaPut, summary: "manifest.run schema upload failed" };
+  const executionChain: Array<Record<string, unknown>> = [
+    executionChainEntry(input, "data360_connect", "source_schema.put", schemaPut),
+  ];
 
   const connectorName = await resolveIngestApiConnectorName(
     input,
@@ -1802,6 +1850,9 @@ async function runManifest(
       env,
       ctx,
       signal,
+    );
+    executionChain.push(
+      executionChainEntry(input, "data360_prepare", "stream.create_ingest_api", stream),
     );
     if (stream.ok === false) {
       return manifestFailure(input, "stream.create_ingest_api", dataset.schemaName, stream);
@@ -1825,11 +1876,12 @@ async function runManifest(
       sourceName: plan.manifest.source.name,
       object: dataset.schemaName,
     });
+    executionChain.push(executionChainEntry(input, "data360_prepare", "ingest_job.create", job));
     if (job.ok === false) {
       return manifestFailure(input, "ingest_job.create", dataset.schemaName, job);
     }
     const jobId = stringFromPath(job, ["response", "id"]);
-    await runData360V2Action(
+    const upload = await runData360V2Action(
       {
         tool: "data360_prepare",
         action: "ingest_job.upload_csv",
@@ -1840,6 +1892,9 @@ async function runManifest(
       env,
       ctx,
       signal,
+    );
+    executionChain.push(
+      executionChainEntry(input, "data360_prepare", "ingest_job.upload_csv", upload),
     );
     const close = await runData360V2Action(
       {
@@ -1853,6 +1908,7 @@ async function runManifest(
       ctx,
       signal,
     );
+    executionChain.push(executionChainEntry(input, "data360_prepare", "ingest_job.close", close));
     if (close.ok === false) {
       return manifestFailure(input, "ingest_job.close", dataset.schemaName, close);
     }
@@ -1883,6 +1939,8 @@ async function runManifest(
     ok: true,
     tool: input.tool,
     action: input.action,
+    journey_fingerprint: journeyFingerprint(input),
+    executionChain,
     results,
     report: manifestRunReport(results),
     summary: `Manifest run complete for ${results.length} dataset(s)`,
@@ -2407,6 +2465,7 @@ async function runJourneyAction(
     }
     if (action.implementation?.name === "cleanup.run") {
       const results = [];
+      const executionChain: Array<Record<string, unknown>> = [];
       for (const resource of cleanup.resources) {
         if (resource.type !== "data_stream") continue;
         const deleted = await runData360V2Action(
@@ -2424,6 +2483,8 @@ async function runJourneyAction(
           ctx,
           signal,
         );
+        const entry = executionChainEntry(input, "data360_prepare", "stream.delete", deleted);
+        executionChain.push({ ...entry, resourceId: resource.id });
         results.push({ id: resource.id, ok: deleted.ok !== false, result: deleted });
       }
       return {
@@ -2432,6 +2493,8 @@ async function runJourneyAction(
         action: input.action,
         resources: cleanup.resources,
         results,
+        journey_fingerprint: journeyFingerprint(input),
+        executionChain,
         summary: `cleanup.run processed ${results.length} resource(s)`,
       };
     }

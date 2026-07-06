@@ -47,6 +47,7 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ### Changed
 
+- **Documented and audited Data 360 journey child mutations.** Guardrail approval details for mutating Data 360 journeys now list declared child mutation families, and Data 360 records the actual executed child chain as a session audit entry.
 - **Added SF Guardrail Power Tool Mode.** Advanced users can persistently auto-approve Native-tool or All confirm-class Guardrail decisions, select native tool families, and separately opt into production/unknown-org auto-approval. Process-scoped `SF_GUARDRAIL_OPERATOR_AUTO_APPROVE=allow-confirm-actions-for-this-process` remains available; all auto-approvals are audited and hard blocks still apply.
 - **Hardened Browser commit classification.** SF Browser snapshots now publish compact ref metadata for Guardrail, and SF Guardrail can classify committing click refs such as Save/Delete/Activate from the latest snapshot label even when `mutation=true` is omitted.
 - **Added Guardrail mediation for broad SOQL disclosure paths.** SF Guardrail now prompts for `sf_soql query.export`, `query.queryAll` / `ALL ROWS`, and `query.run allow_unbounded=true` using exact query/output fingerprints.

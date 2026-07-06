@@ -148,7 +148,9 @@ Use `dry_run: true` before mutating calls to inspect the exact action, method,
 path, target org, org type, and safety decision. For v2 family actions with
 `safety: "confirmed"`, actual execution also requires `allow_confirmed: true`;
 dry-run and `allow_confirmed` express execution intent, while SF Guardrail owns
-the approval boundary for high-value mutations.
+the approval boundary for high-value mutations. Mutating journeys disclose the
+child mutation families covered in the Guardrail approval detail and record the
+executed child chain as a session audit entry.
 
 ## V2 Action Coverage
 

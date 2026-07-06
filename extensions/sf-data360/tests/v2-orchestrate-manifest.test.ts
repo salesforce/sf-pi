@@ -256,6 +256,22 @@ describe("Data 360 v2 CSV manifest orchestration", () => {
     expect(result).toMatchObject({
       ok: true,
       action: "manifest.run",
+      journey_fingerprint: expect.any(String),
+      executionChain: expect.arrayContaining([
+        expect.objectContaining({ tool: "data360_connect", action: "source_schema.put", ok: true }),
+        expect.objectContaining({
+          tool: "data360_prepare",
+          action: "stream.create_ingest_api",
+          ok: true,
+        }),
+        expect.objectContaining({ tool: "data360_prepare", action: "ingest_job.create", ok: true }),
+        expect.objectContaining({
+          tool: "data360_prepare",
+          action: "ingest_job.upload_csv",
+          ok: true,
+        }),
+        expect.objectContaining({ tool: "data360_prepare", action: "ingest_job.close", ok: true }),
+      ]),
       results: [
         expect.objectContaining({
           schemaName: "GPSProviders",

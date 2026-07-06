@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Pi tool registration for the Data 360 v2 family surface. */
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { StringEnum } from "@earendil-works/pi-ai";
 import { Type } from "typebox";
 
@@ -195,10 +195,33 @@ export function registerData360V2Tools(pi: ExtensionAPI): void {
         const result = await runData360V2Action(input, env, ctx, signal, (event) =>
           emitProgressUpdate(event, onUpdate),
         );
+        appendExecutionChainAudit(pi, ctx, input, result);
         return buildToolResult(input, result, input.output_mode ?? settings.defaultOutputMode);
       },
     });
   }
+}
+
+export const DATA360_EXECUTION_CHAIN_ENTRY_TYPE = "sf-data360-execution-chain";
+
+export function appendExecutionChainAudit(
+  pi: ExtensionAPI,
+  ctx: ExtensionContext,
+  input: Data360V2Input,
+  result: Record<string, unknown>,
+): void {
+  const executionChain = Array.isArray(result.executionChain) ? result.executionChain : undefined;
+  if (!executionChain?.length) return;
+  pi.appendEntry(DATA360_EXECUTION_CHAIN_ENTRY_TYPE, {
+    timestamp: Date.now(),
+    sessionId: ctx.sessionManager.getSessionId(),
+    parentTool: input.tool,
+    parentAction: input.action,
+    targetOrg: input.target_org,
+    journey_fingerprint: result.journey_fingerprint,
+    ok: result.ok !== false,
+    executionChain,
+  });
 }
 
 type ToolOnUpdate = (partial: {

@@ -221,6 +221,10 @@ function classifyData360(
   const paramsFingerprint = fingerprintText(JSON.stringify({ toolName, action, params }));
   const family =
     toolName === "data360_api" ? "data360 raw rest" : `data360 ${actionFamily(action)}`;
+  const childMutations = declaredData360ChildMutations(action);
+  const childDetail = childMutations.length
+    ? `; journey_fingerprint=${paramsFingerprint}; declared child mutations may include: ${childMutations.join(", ")}; read/validation/status steps may also run`
+    : "";
 
   return {
     kind: "nativeTool",
@@ -234,7 +238,7 @@ function classifyData360(
     riskTier: "data360_confirmed_execution_exact",
     fingerprint: `data360|${toolName}|${action}|${paramsFingerprint}`,
     approvalLabel: `Data 360 ${toolName} ${action}`,
-    approvalDetail: `tool=${toolName}; action=${action}; params=${paramsFingerprint}`,
+    approvalDetail: `tool=${toolName}; action=${action}; params=${paramsFingerprint}${childDetail}`,
     usesSalesforceOrg: true,
     targetOrg,
     targetOrgExplicit: targetOrg !== undefined,
@@ -440,6 +444,31 @@ function classifyAnonymousApex(body: string): { mutating: boolean; reasons: stri
 
 function normalizeApexBody(body: string): string {
   return body.trim().replace(/\s+/g, " ");
+}
+
+function declaredData360ChildMutations(action: string): string[] {
+  switch (action) {
+    case "manifest.run":
+    case "ingest_csv.run":
+    case "make_data_usable.run":
+      return [
+        "source_schema.put",
+        "stream.create_ingest_api",
+        "ingest_job.create",
+        "ingest_job.upload_csv",
+        "ingest_job.close",
+      ];
+    case "build_segment.run":
+      return ["ci.create", "ci.run", "segment.create", "segment.publish"];
+    case "activate_segment.run":
+      return ["activation_target.create", "activation.create"];
+    case "semantic_retrieval.run":
+      return ["search_index.create", "retriever.create", "retriever_config.create"];
+    case "cleanup.run":
+      return ["cleanup resource deletes from cleanup plan"];
+    default:
+      return [];
+  }
 }
 
 function isData360ReadLikeAction(action: string): boolean {

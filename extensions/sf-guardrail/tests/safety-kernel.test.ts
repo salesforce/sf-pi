@@ -402,6 +402,9 @@ describe("Safety Kernel", () => {
       operationFamily: "data360 manifest",
       riskTier: "data360_confirmed_execution_exact",
     });
+    expect(decision?.approvalScope?.detail).toContain("journey_fingerprint=");
+    expect(decision?.approvalScope?.detail).toContain("ingest_job.upload_csv");
+    expect(decision?.approvalScope?.detail).toContain("read/validation/status steps may also run");
 
     await expect(
       evaluateSafety({
@@ -416,6 +419,22 @@ describe("Safety Kernel", () => {
         config: readBundledConfig(),
       }),
     ).resolves.toBeUndefined();
+  });
+
+  it("lists declared child mutations for segment publishing journeys", async () => {
+    const decision = await evaluateSafety({
+      toolName: "data360_orchestrate",
+      input: {
+        action: "build_segment.run",
+        allow_confirmed: true,
+        params: { segmentId: "Segment_A" },
+      },
+      cwd: "/project",
+      config: readBundledConfig(),
+    });
+
+    expect(decision?.approvalScope?.detail).toContain("segment.publish");
+    expect(decision?.approvalScope?.detail).toContain("ci.create");
   });
 
   it("does not mediate Data 360 read-like actions even when allow_confirmed is present", async () => {
