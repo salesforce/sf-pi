@@ -529,6 +529,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.223.5](https://github.com/salesforce/sf-pi/compare/v0.223.4...v0.223.5) (2026-07-06)
+
+
+### Bug Fixes
+
+* **security:** harden Data 360 auth and SOQL replay ([6b6c0dd](https://github.com/salesforce/sf-pi/commit/6b6c0dd6bf958508ca0a4247adab372189f37876))
+
 ## [0.223.4](https://github.com/salesforce/sf-pi/compare/v0.223.3...v0.223.4) (2026-07-06)
 
 
