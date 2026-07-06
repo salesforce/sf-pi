@@ -529,6 +529,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.223.3](https://github.com/salesforce/sf-pi/compare/v0.223.2...v0.223.3) (2026-07-06)
+
+
+### Bug Fixes
+
+* **security:** address follow-up CodeQL alerts ([40eee38](https://github.com/salesforce/sf-pi/commit/40eee38eb9c4f34178c7c7f683feb26782dcc4b6))
+
 ## [0.223.2](https://github.com/salesforce/sf-pi/compare/v0.223.1...v0.223.2) (2026-07-06)
 
 
