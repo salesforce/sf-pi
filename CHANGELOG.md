@@ -526,6 +526,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.221.0](https://github.com/salesforce/sf-pi/compare/v0.220.0...v0.221.0) (2026-07-06)
+
+
+### Features
+
+* **sf-guardrail:** add operator auto approve mode ([7a84b05](https://github.com/salesforce/sf-pi/commit/7a84b053345d59e65aa1c7ae6d0166e813776095))
+
 ## [0.220.0](https://github.com/salesforce/sf-pi/compare/v0.219.4...v0.220.0) (2026-07-06)
 
 
