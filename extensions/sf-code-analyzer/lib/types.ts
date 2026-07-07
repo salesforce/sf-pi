@@ -61,6 +61,39 @@ export interface CodeAnalyzerRunJson {
   violations?: CodeAnalyzerViolation[];
 }
 
+export interface CodeAnalyzerFactViolation {
+  engine: string;
+  rule: string;
+  severity: number;
+  file?: string;
+  line?: number;
+  column?: number;
+  message: string;
+}
+
+export interface CodeAnalyzerFactCount {
+  label: string;
+  count: number;
+  engine?: string;
+  severity?: number;
+}
+
+export interface CodeAnalyzerFacts {
+  total: number;
+  maxSeverity?: number;
+  severity: {
+    sev1: number;
+    sev2: number;
+    sev3: number;
+    sev4: number;
+    sev5: number;
+  };
+  topViolations: CodeAnalyzerFactViolation[];
+  topRules: CodeAnalyzerFactCount[];
+  topFiles: CodeAnalyzerFactCount[];
+  fixable: number;
+}
+
 export interface CodeAnalyzerRuleJson {
   rules?: Array<{
     name: string;

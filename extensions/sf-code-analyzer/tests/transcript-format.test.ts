@@ -6,6 +6,12 @@ import {
   formatApexGuruTranscript,
   formatLocalScanTranscript,
 } from "../lib/auto-scan-transcript.ts";
+import { renderCodeAnalyzerTranscript } from "../lib/transcript.ts";
+
+const theme = {
+  fg: (color: string, text: string) => `[${color}]${text}[/]`,
+  bold: (text: string) => `**${text}**`,
+} as never;
 
 describe("sf-code-analyzer auto-scan transcript", () => {
   it("renders friendly local CLI scan rows", () => {
@@ -19,6 +25,23 @@ describe("sf-code-analyzer auto-scan transcript", () => {
     expect(text).toContain("Engines:");
     expect(text).toContain("Targets:");
     expect(text).toContain("Duration:");
+  });
+
+  it("renders foreground-colored auto-scan transcript rows", () => {
+    const text = formatLocalScanTranscript("clean", {
+      selectors: ["eslint:Recommended"],
+      targetCount: 6,
+      durationMs: 8100,
+      reportFile: "/tmp/report.json",
+    });
+
+    const rendered = renderCodeAnalyzerTranscript(text, { status: "clean" }, theme);
+
+    expect(rendered).toContain(
+      "[success]✅ 🧪 [/][toolTitle]**Code Analyzer**[/][success] auto-scan clean[/]",
+    );
+    expect(rendered).toContain("[muted]Engines:[/] [accent]**eslint:Recommended**[/]");
+    expect(rendered).toContain("[muted]Report:[/] [dim]/tmp/report.json[/]");
   });
 
   it("renders friendly ApexGuru scan rows", () => {

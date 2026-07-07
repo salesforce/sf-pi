@@ -2,10 +2,9 @@
 /**
  * sf-code-analyzer behavior contract
  *
- * Salesforce Code Analyzer workflow surface for pi. V1 exposes a standard
- * command panel, a single `code_analyzer` family tool, report artifacts, and a
- * `/sf-pi doctor` contribution. Automatic deferred scans and ApexGuru auto
- * insights are planned next and documented in ADRs 0021/0026.
+ * Salesforce Code Analyzer workflow surface for pi. It exposes a Manager-backed
+ * command surface, a single `code_analyzer` family tool, report artifacts,
+ * deferred scans, ApexGuru guidance, and a `/sf-pi doctor` contribution.
  *
  * Behavior matrix:
  *

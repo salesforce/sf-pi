@@ -224,6 +224,14 @@ _Avoid_: error, health failure, validation blocker
 The short LLM-facing summary of an **LWC Run**, optimized for low prompt footprint. It should preserve concise status while including the primary warning or failure reason when one exists; detailed evidence belongs in the **LWC Run Digest**, **LWC Result Card**, and **LWC Artifacts**.
 _Avoid_: full card render, raw artifact dump, hidden failure reason
 
+**Code Analyzer Result Card**:
+The human-facing structured render of a Salesforce Code Analyzer report, optimized for quick quality triage with clear status, severity, hotspots, fixability, lineage, and artifact pointers. It is a presentation over the existing Code Analyzer report summary, not a separate run digest or rule configuration model.
+_Avoid_: Code Analyzer Run Digest, shadow scan model, rule dashboard, raw report dump
+
+**Code Analyzer Facts**:
+A compact derived view of a Salesforce Code Analyzer report that names severity counts, highest-risk findings, top rules, top files, and fixable finding count. It gives agents stable audit handles without replacing the sibling report summary or full report artifact.
+_Avoid_: report copy, hidden reasoning, persisted rule config, complete violation table
+
 **Data 360 Run**:
 One invocation of a `data360_*` tool action, including local catalog actions, dry runs, readiness probes, runbooks, journeys, raw REST calls, and OTel exports.
 _Avoid_: Data 360 trace, Data 360 action

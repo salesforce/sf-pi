@@ -152,7 +152,16 @@ To see the HIL-gated browser setup runbook:
 { "action": "apexguru_setup_help" }
 ```
 
-### Output modes and artifacts
+### Result cards, facts, and artifacts
+
+`code_analyzer` renders its own foreground-color result cards instead of using
+Pi's default success/error tool background shell. The card is presentation only:
+execution still flows through `CodeAnalyzerReportSummary`, and full evidence stays
+in report artifacts. Report-shaped actions also expose a compact
+`details.sfCodeAnalyzer.facts` object with severity counts, top findings, top
+rules, top files, and fixable count so agents can audit and iterate without
+parsing prose. The sibling `details.sfCodeAnalyzer.report` summary carries the
+command and report path.
 
 For `run`, `rules`, `config`, and `last_report`, use:
 

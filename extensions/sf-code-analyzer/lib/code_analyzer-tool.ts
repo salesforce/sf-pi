@@ -2,8 +2,9 @@
 /**
  * LLM-facing Code Analyzer family tool.
  */
-import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI, ExtensionContext, Theme } from "@earendil-works/pi-coding-agent";
 import { StringEnum } from "@earendil-works/pi-ai";
+import { Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 import { buildExecFn } from "../../../lib/common/exec-adapter.ts";
 import { nextReportPath } from "./artifacts.ts";
@@ -19,10 +20,19 @@ import {
   runCodeAnalyzerDoctor,
   runCodeAnalyzerRules,
 } from "./cli.ts";
-import { renderDoctor, renderToolSummary } from "./display.ts";
+import {
+  buildCodeAnalyzerFacts,
+  renderCodeAnalyzerCallLine,
+  renderCodeAnalyzerDoctorCard,
+  renderCodeAnalyzerPlainCard,
+  renderCodeAnalyzerRecipesCard,
+  renderCodeAnalyzerReportCard,
+  renderDoctor,
+  renderToolSummary,
+} from "./display.ts";
 import { buildScanRecipeGuidance } from "./recipes.ts";
 import { applyReportFilters, summaryFromReportFile } from "./report-filter.ts";
-import type { CodeAnalyzerReportSummary } from "./types.ts";
+import type { CodeAnalyzerDoctorReport, CodeAnalyzerReportSummary } from "./types.ts";
 
 export const CODE_ANALYZER_TOOL_NAME = "code_analyzer";
 export const CODE_ANALYZER_DETAILS_KEY = "sfCodeAnalyzer";
@@ -152,6 +162,10 @@ export function registerCodeAnalyzerTool(pi: ExtensionAPI): void {
       "Use code_analyzer action='last_report' to recover the latest Code Analyzer report from the current session branch.",
     ],
     parameters: CodeAnalyzerParams,
+    renderShell: "self",
+    renderCall: (args, theme) =>
+      new Text(renderCodeAnalyzerCallLine(args as CodeAnalyzerToolInput, theme), 0, 0),
+    renderResult: (result, opts, theme) => renderResult(result, opts, theme),
     async execute(_toolCallId, params, _signal, onUpdate, ctx) {
       const input = params as CodeAnalyzerToolInput;
       onUpdate?.({
@@ -178,7 +192,13 @@ export function registerCodeAnalyzerTool(pi: ExtensionAPI): void {
                 : "No Code Analyzer report found on this branch.",
             },
           ],
-          details: { [CODE_ANALYZER_DETAILS_KEY]: { action: "last_report", report: latest } },
+          details: {
+            [CODE_ANALYZER_DETAILS_KEY]: {
+              action: "last_report",
+              report: latest,
+              facts: latest?.run ? buildCodeAnalyzerFacts(latest.run) : undefined,
+            },
+          },
         };
       }
 
@@ -225,10 +245,109 @@ export function registerCodeAnalyzerTool(pi: ExtensionAPI): void {
         content: [
           { type: "text", text: renderToolSummary(summary, input.output_mode ?? "summary") },
         ],
-        details: { [CODE_ANALYZER_DETAILS_KEY]: { action: input.action, report: summary } },
+        details: {
+          [CODE_ANALYZER_DETAILS_KEY]: {
+            action: input.action,
+            report: summary,
+            facts: summary.run ? buildCodeAnalyzerFacts(summary.run) : undefined,
+          },
+        },
       };
     },
   });
+}
+
+function renderResult(
+  result: { content?: unknown; details?: unknown },
+  opts: { isPartial?: boolean; expanded?: boolean },
+  theme: Theme,
+): Text {
+  if (opts.isPartial) return new Text(theme.fg("warning", "⏳ Code Analyzer running…"), 0, 0);
+
+  const details = asRecord(result.details);
+  const envelope = details?.[CODE_ANALYZER_DETAILS_KEY] as
+    | {
+        action?: string;
+        report?: CodeAnalyzerReportSummary;
+        doctor?: CodeAnalyzerDoctorReport;
+        recipes?: unknown[];
+        suggestions?: unknown[];
+      }
+    | undefined;
+  if (envelope?.report) {
+    return new Text(renderCodeAnalyzerReportCard(envelope.report, opts, theme), 0, 0);
+  }
+  if (envelope?.doctor) {
+    return new Text(renderCodeAnalyzerDoctorCard(envelope.doctor, theme), 0, 0);
+  }
+  if (envelope?.action === "recipes") {
+    return new Text(
+      renderCodeAnalyzerRecipesCard(
+        {
+          recipes: asRecipeItems(envelope.recipes),
+          suggestions: asRecipeItems(envelope.suggestions),
+        },
+        opts,
+        theme,
+      ),
+      0,
+      0,
+    );
+  }
+  return new Text(
+    renderCodeAnalyzerPlainCard(
+      "Code Analyzer",
+      firstText(result) || "Code Analyzer completed.",
+      theme,
+    ),
+    0,
+    0,
+  );
+}
+
+function asRecipeItems(value: unknown): Array<{
+  id?: string;
+  kind?: string;
+  label?: string;
+  when?: string;
+  ruleSelector?: string[];
+  herdrRecommended?: boolean;
+}> {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) =>
+      item && typeof item === "object" ? (item as Record<string, unknown>) : undefined,
+    )
+    .filter((item): item is Record<string, unknown> => Boolean(item))
+    .map((item) => ({
+      id: typeof item.id === "string" ? item.id : undefined,
+      kind: typeof item.kind === "string" ? item.kind : undefined,
+      label: typeof item.label === "string" ? item.label : undefined,
+      when: typeof item.when === "string" ? item.when : undefined,
+      ruleSelector: Array.isArray(item.ruleSelector)
+        ? item.ruleSelector.filter((selector): selector is string => typeof selector === "string")
+        : undefined,
+      herdrRecommended:
+        typeof item.herdrRecommended === "boolean" ? item.herdrRecommended : undefined,
+    }));
+}
+
+function firstText(result: { content?: unknown }): string {
+  if (!Array.isArray(result.content)) return "";
+  return (
+    result.content.find((item): item is { type: string; text: string } =>
+      Boolean(
+        item &&
+        typeof item === "object" &&
+        (item as { type?: unknown }).type === "text" &&
+        typeof (item as { text?: unknown }).text === "string",
+      ),
+    )?.text ?? ""
+  );
+}
+
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+  return value && typeof value === "object" ? (value as Record<string, unknown>) : undefined;
 }
 
 async function executeReportAction(

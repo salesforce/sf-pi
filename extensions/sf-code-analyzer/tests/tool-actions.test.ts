@@ -40,6 +40,14 @@ function ctx(branch: unknown[] = [], hasUI = false, confirm = vi.fn()): Extensio
 }
 
 describe("code_analyzer tool actions", () => {
+  it("uses a self-rendered shell so Code Analyzer cards can avoid default status backgrounds", () => {
+    const tool = captureTool();
+
+    expect(tool.renderShell).toBe("self");
+    expect(tool.renderCall).toBeTypeOf("function");
+    expect(tool.renderResult).toBeTypeOf("function");
+  });
+
   it("returns scan recipes with structured suggestions and Herdr handoff details", async () => {
     const tool = captureTool();
     const result = await tool.execute(
@@ -114,11 +122,14 @@ describe("code_analyzer tool actions", () => {
     const text = result.content[0]?.type === "text" ? result.content[0].text : "";
     const envelope = (result.details as Record<string, unknown>)[CODE_ANALYZER_DETAILS_KEY] as {
       report: { run: { violations: Array<{ rule: string }> } };
+      facts: { total: number; topRules: Array<{ label: string }> };
     };
     expect(text).toContain("Violations: 1");
     expect(text).toContain(report);
     expect(envelope.report.run.violations).toHaveLength(1);
     expect(envelope.report.run.violations[0].rule).toBe("ApexCRUDViolation");
+    expect(envelope.facts.total).toBe(1);
+    expect(envelope.facts.topRules[0].label).toBe("ApexCRUDViolation");
   });
 
   it("does not queue ApexGuru browser setup follow-up when confirmation is declined", async () => {

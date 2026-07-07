@@ -1,8 +1,18 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 import { describe, expect, it } from "vitest";
 
-import { renderToolSummary, selectFindings } from "../lib/display.ts";
+import {
+  buildCodeAnalyzerFacts,
+  renderCodeAnalyzerReportCard,
+  renderToolSummary,
+  selectFindings,
+} from "../lib/display.ts";
 import type { CodeAnalyzerReportSummary, CodeAnalyzerViolation } from "../lib/types.ts";
+
+const theme = {
+  fg: (color: string, text: string) => `[${color}]${text}[/]`,
+  bold: (text: string) => `**${text}**`,
+} as never;
 
 function violation(rule: string, severity: number): CodeAnalyzerViolation {
   return {
@@ -30,6 +40,48 @@ describe("sf-code-analyzer display", () => {
     expect(selected.filter((v) => v.severity <= 2)).toHaveLength(5);
     expect(selected.filter((v) => v.severity === 3)).toHaveLength(10);
     expect(selected.filter((v) => v.severity >= 4)).toHaveLength(5);
+  });
+
+  it("builds stable facts for agent audit and TUI cards", () => {
+    const facts = buildCodeAnalyzerFacts({
+      violations: [
+        { ...violation("ApexCRUDViolation", 2), fixes: [{ location: {}, fixedCode: "fixed" }] },
+        violation("ApexCRUDViolation", 2),
+        violation("no-var", 4),
+      ],
+    });
+
+    expect(facts.total).toBe(3);
+    expect(facts.maxSeverity).toBe(2);
+    expect(facts.severity).toMatchObject({ sev2: 2, sev4: 1 });
+    expect(facts.topRules[0]).toMatchObject({ label: "ApexCRUDViolation", count: 2 });
+    expect(facts.fixable).toBe(1);
+  });
+
+  it("renders a colored foreground card without relying on the default tool shell", () => {
+    const summary: CodeAnalyzerReportSummary = {
+      kind: "run",
+      ok: true,
+      source: "code-analyzer-cli",
+      command: "sf code-analyzer run --rule-selector Recommended",
+      durationMs: 1234,
+      reportFile: "/tmp/report.json",
+      outputFiles: ["/tmp/report.json"],
+      selectors: ["Recommended"],
+      targets: ["force-app/main/default/classes/Foo.cls"],
+      exitCode: 0,
+      run: {
+        violationCounts: { total: 1, sev1: 0, sev2: 1, sev3: 0, sev4: 0, sev5: 0 },
+        violations: [violation("ApexCRUDViolation", 2)],
+      },
+    };
+
+    const rendered = renderCodeAnalyzerReportCard(summary, {}, theme);
+
+    expect(rendered).toContain("[toolTitle]**🧪 Code Analyzer**[/]");
+    expect(rendered).toContain("[warning]⚠️ findings[/]");
+    expect(rendered).toContain("[accent]Recommended[/]");
+    expect(rendered).toContain("[dim]/tmp/report.json[/]");
   });
 
   it("renders report path and actionable findings", () => {
