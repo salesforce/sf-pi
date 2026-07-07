@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.223.9-2026-07-06",
-  "latestVersion": "0.223.9",
+  "revision": "release-0.224.0-2026-07-07",
+  "latestVersion": "0.224.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.223.9",
+      "id": "release-0.224.0",
       "kind": "update",
-      "title": "sf-pi v0.223.9 — sf-guardrail: close browser edge cases",
-      "publishedAt": "2026-07-06T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.223.9",
+      "title": "sf-pi v0.224.0 — sf-code-analyzer: improve result cards",
+      "publishedAt": "2026-07-07T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.224.0",
       "severity": "info",
-      "body": "sf-guardrail: close browser edge cases"
+      "body": "sf-code-analyzer: improve result cards"
     },
     {
       "id": "pi-0.73-required",
