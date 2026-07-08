@@ -90,6 +90,70 @@ describe("gateway monthly usage refresh", () => {
     }
   });
 
+  it("falls back to v2 user-info when the legacy user-info route is not allow-listed", async () => {
+    process.env[BASE_URL_ENV] = "https://gateway.example.test";
+    process.env[API_KEY_ENV] = "test-key";
+    const calls: string[] = [];
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      calls.push(url);
+      if (url.endsWith("/user/info")) {
+        return jsonResponse(403, {
+          detail:
+            "Virtual key is not allowed to call this route. Only allowed to call routes: ['llm_api_routes', '/v2/user/info', '/key/info']. Tried to call route: /user/info",
+        });
+      }
+      if (url.endsWith("/key/info")) {
+        return jsonResponse(200, {
+          info: {
+            spend: 72.88,
+            key_name: "sk-...test",
+            rpm_limit: 100,
+            user_id: "john.hill@salesforce.com",
+          },
+        });
+      }
+      if (url.endsWith("/health/readiness")) return jsonResponse(200, { status: "connected" });
+      if (url.includes("/v2/user/info")) {
+        expect(new URL(url).searchParams.get("user_id")).toBe("john.hill@salesforce.com");
+        return jsonResponse(200, {
+          user_id: "john.hill@salesforce.com",
+          spend: 158.17,
+          max_budget: 50000,
+          budget_duration: "1mo",
+          budget_reset_at: "2026-08-01T00:00:00Z",
+        });
+      }
+      return jsonResponse(404, { error: "not found" });
+    }) as typeof fetch;
+    const unregister = registerGatewayMonthlyUsageRefresher();
+    const cwd = createProjectConfig({
+      baseUrl: "https://gateway.example.test",
+      apiKey: "test-key",
+    });
+
+    try {
+      await getMonthlyUsageStateRefresh(true, cwd);
+
+      const snapshot = getMonthlyUsageState();
+      expect(snapshot.connectionStatus).toMatchObject({ kind: "connected", source: "user-info" });
+      expect(snapshot.monthlyUsageError).toBeNull();
+      expect(snapshot.monthlyUsage).toMatchObject({
+        spend: 158.17,
+        maxBudget: 50000,
+        budgetResetAt: "2026-08-01T00:00:00Z",
+      });
+      expect(snapshot.keyInfo).toMatchObject({ spend: 72.88, keyName: "sk-...test" });
+      expect(snapshot.keyInfo).not.toHaveProperty("userId");
+      expect(calls.some((url) => url.includes("/v2/user/info"))).toBe(true);
+      expect(snapshot.lastProbeTrace?.entries.map((entry) => entry.path)).toContain(
+        "/v2/user/info?user_id=<current-user>",
+      );
+    } finally {
+      unregister();
+    }
+  });
+
   it("preserves last-known monthly usage when a later probe fails", async () => {
     process.env[BASE_URL_ENV] = "https://gateway.example.test";
     process.env[API_KEY_ENV] = "test-key";
@@ -590,7 +654,13 @@ function mockGatewayFetch(options: {
         options.keyStatus === 401 && options.authBody
           ? options.authBody
           : {
-              info: { spend: 7, key_name: "sk-...test", rpm_limit: 100, tpm_limit: 1000 },
+              info: {
+                spend: 7,
+                key_name: "sk-...test",
+                rpm_limit: 100,
+                tpm_limit: 1000,
+                user_id: "test-user@example.com",
+              },
             },
       );
     }

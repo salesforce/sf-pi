@@ -234,12 +234,14 @@ suffix such as `/v1` or a model-specific route suffix, the config layer
 canonicalizes it back to the root. Runtime endpoint helpers then derive the
 correct routes: OpenAI-compatible chat/model discovery uses the gateway's `/v1`
 route, Anthropic Messages uses the gateway root because the SDK appends
-`/v1/messages`, and admin calls such as `/user/info` use the gateway root.
+`/v1/messages`, and admin calls such as `/user/info`, `/v2/user/info`,
+and `/key/info` use the gateway root.
 
 ## Zero-cost gateway billing
 
 All models report `cost: 0` because the gateway is pre-paid. Billing is tracked
-separately via the monthly usage endpoint (`/user/info`).
+separately via the monthly usage endpoint (`/user/info`, or
+`/v2/user/info?user_id=...` for scoped keys).
 
 ## Command Surface
 
@@ -296,7 +298,7 @@ such as `tokens`, `onboard`, `open-token`, `import-claude`, `doctor`, `debug`,
 | /command usage-probe --trace | —                                     | Render the per-endpoint trace (timings + status) from the last refresh, plus any active key-conflict warning                                   |
 | /command beta \<name\> on    | —                                     | Toggle beta, re-register provider                                                                                                              |
 | Monthly usage fetch          | cached < 60 s old                     | Use cache                                                                                                                                      |
-| Monthly usage fetch          | stale or forced                       | Fetch from gateway /user/info                                                                                                                  |
+| Monthly usage fetch          | stale or forced                       | Fetch from gateway `/user/info`; fallback to `/v2/user/info?user_id=...` when scoped keys allow only v2.                                       |
 
 ## File Structure
 
@@ -434,7 +436,7 @@ errors, SSO/browser redirects, and `model=v1` routing mistakes.
 ## Usage probe: `/sf-llm-gateway usage-probe`
 
 Run `/sf-llm-gateway usage-probe` after key rotation or when usage
-numbers look surprising. It forces a read-only `/user/info` + `/key/info` refresh,
+numbers look surprising. It forces a read-only user-info + `/key/info` refresh,
 reports the live gateway connection classification, shows monthly/user spend and
 current-key spend separately, and explicitly explains whether the available data
 proves a true lifetime user counter. The welcome splash does not render a Lifetime
@@ -585,10 +587,14 @@ pi-ai's `Object.assign` header merge cannot silently drop it.
 
 **Monthly-usage footer is stale or missing:**
 Usage is cached for 60 seconds and refreshes automatically on every
-`turn_end`; run `/sf-llm-gateway refresh` to force a `/user/info`
-fetch immediately. If you're using sf-welcome or sf-devbar as
-consumers, they read from the shared store in `lib/common/monthly-usage/`
-— the gateway must be registered and have succeeded at least once.
+`turn_end`; run `/sf-llm-gateway refresh` to force a usage probe
+immediately. The extension first tries the historical `/user/info` route;
+when the gateway reports a scoped key that is only allowed to call
+`/v2/user/info`, it derives the current `user_id` from `/key/info` and
+falls back to `/v2/user/info?user_id=...`. If you're using sf-welcome or
+sf-devbar as consumers, they read from the shared store in
+`lib/common/monthly-usage/` — the gateway must be registered and have
+succeeded at least once.
 
 **Old and new gateway keys are confusing status or tests:**
 Saved pi config wins over `SF_LLM_GATEWAY_API_KEY`. If both are set

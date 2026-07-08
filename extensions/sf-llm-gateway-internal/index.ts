@@ -83,7 +83,7 @@
  *   /command usage-probe        | —                                  | Force read-only usage probe
  *   /command beta <name> on     | —                                  | Toggle beta, re-register provider
  *   Monthly usage fetch         | cached < 60 s old                  | Use cache
- *   Monthly usage fetch         | stale or forced                    | Fetch from gateway /user/info
+ *   Monthly usage fetch         | stale or forced                    | Fetch from gateway /user/info, fallback to /v2/user/info when allow-listed
  *
  * Reader guide:
  * - Start at the extension entry point to see the runtime spine
@@ -1026,8 +1026,8 @@ async function handleUsageProbeCommand(
     "Conclusion:",
     "- /key/info is key-scoped and can reset when keys rotate.",
     monthlyUsage?.budgetResetAt || monthlyUsage?.budgetDuration
-      ? "- /user/info appears user-scoped but budget-windowed, so it is not a lifetime counter."
-      : "- /user/info did not prove a true lifetime user counter.",
+      ? "- The user-info endpoint appears user-scoped but budget-windowed, so it is not a lifetime counter."
+      : "- The user-info endpoint did not prove a true lifetime user counter.",
     "- /user/daily/activity adds per-day granularity including failed_requests (early-warning signal).",
     "- The welcome splash does not show Lifetime Usage unless a true user-lifetime endpoint exists.",
   );

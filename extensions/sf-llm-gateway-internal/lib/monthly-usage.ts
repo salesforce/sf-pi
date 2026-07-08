@@ -2,8 +2,9 @@
 /**
  * Monthly usage + per-key + gateway health fetcher.
  *
- * The gateway exposes three complementary endpoints:
- *   - `/user/info`        → monthly budget + spend for the whole user
+ * The gateway exposes three complementary endpoint families:
+ *   - `/user/info` or `/v2/user/info?user_id=...`
+ *                         → monthly budget + spend for the whole user
  *   - `/key/info`         → per-key spend + rpm/tpm limits for *this* API key
  *   - `/health/readiness` → gateway version and last upstream probe time
  *
@@ -116,6 +117,15 @@ class GatewayRequestError extends Error {
     this.name = "GatewayRequestError";
   }
 }
+
+type GatewayKeyInfoWithUserId = GatewayKeyInfo & { userId?: string };
+
+type GatewayUserInfoPayload = {
+  max_budget?: number;
+  spend?: number;
+  budget_reset_at?: string;
+  budget_duration?: string;
+};
 
 /**
  * Recorded per-probe trace context. Local to this module — we expose only
@@ -312,7 +322,7 @@ export async function refreshMonthlyUsage(force: boolean, cwd: string): Promise<
     }
 
     if (attempt.keyResult.status === "fulfilled") {
-      snapshot.keyInfo = attempt.keyResult.value;
+      snapshot.keyInfo = toPublicKeyInfo(attempt.keyResult.value);
     } else {
       snapshot.keyInfoError = formatErrorMessage(attempt.keyResult.reason);
     }
@@ -345,15 +355,63 @@ async function runPrimaryProbes(
   trace: GatewayProbeTraceEntry[],
 ): Promise<{
   usageResult: PromiseSettledResult<GatewayMonthlyUsage>;
-  keyResult: PromiseSettledResult<GatewayKeyInfo>;
+  keyResult: PromiseSettledResult<GatewayKeyInfoWithUserId>;
   healthResult: PromiseSettledResult<GatewayHealth>;
 }> {
-  const [usageResult, keyResult, healthResult] = await Promise.allSettled([
+  let [usageResult, keyResult, healthResult] = await Promise.allSettled([
     tracedProbe("user-info", "/user/info", () => fetchMonthlyUsage(baseUrl, apiKey), trace),
     tracedProbe("key-info", "/key/info", () => fetchKeyInfo(baseUrl, apiKey), trace),
     tracedProbe("health", "/health/readiness", () => fetchHealth(baseUrl, apiKey), trace),
-  ]);
+  ] as const);
+
+  // Some gateway keys are now scoped to `/v2/user/info` instead of the
+  // historical `/user/info`. `/key/info` carries the current user id, so when
+  // the legacy route is explicitly not allow-listed we can recover without a
+  // second credential source or a user-visible stale footer.
+  if (shouldTryV2UserInfoFallback(usageResult, keyResult)) {
+    usageResult = await settle(
+      tracedProbe(
+        "user-info",
+        "/v2/user/info?user_id=<current-user>",
+        () => fetchMonthlyUsageV2(baseUrl, apiKey, keyResult.value.userId!),
+        trace,
+      ),
+    );
+  }
+
   return { usageResult, keyResult, healthResult };
+}
+
+async function settle<T>(promise: Promise<T>): Promise<PromiseSettledResult<T>> {
+  try {
+    return { status: "fulfilled", value: await promise };
+  } catch (reason) {
+    return { status: "rejected", reason };
+  }
+}
+
+function shouldTryV2UserInfoFallback(
+  usageResult: PromiseSettledResult<GatewayMonthlyUsage>,
+  keyResult: PromiseSettledResult<GatewayKeyInfoWithUserId>,
+): keyResult is PromiseFulfilledResult<GatewayKeyInfoWithUserId> {
+  if (usageResult.status === "fulfilled" || keyResult.status !== "fulfilled") return false;
+  if (!keyResult.value.userId) return false;
+  const reason = usageResult.reason;
+  if (!(reason instanceof GatewayRequestError)) return false;
+  if (reason.status !== 403 && reason.status !== 404) return false;
+  return /\/v2\/user\/info|not allowed to call this route/i.test(
+    `${reason.bodyPreview}\n${reason.message}`,
+  );
+}
+
+function toPublicKeyInfo(keyInfo: GatewayKeyInfoWithUserId): GatewayKeyInfo {
+  return {
+    spend: keyInfo.spend,
+    rpmLimit: keyInfo.rpmLimit,
+    tpmLimit: keyInfo.tpmLimit,
+    keyName: keyInfo.keyName,
+    fetchedAt: keyInfo.fetchedAt,
+  };
 }
 
 function delay(ms: number): Promise<void> {
@@ -649,31 +707,70 @@ async function fetchMonthlyUsage(baseUrl: string, apiKey: string): Promise<Gatew
     throw await gatewayRequestError("Monthly usage", "user-info", response);
   }
 
-  const json = (await response.json()) as {
-    user_info?: {
-      max_budget?: number;
-      spend?: number;
-      budget_reset_at?: string;
-      budget_duration?: string;
-    };
-  };
-
-  const info = json.user_info;
-  if (!info || typeof info.max_budget !== "number" || typeof info.spend !== "number") {
+  const json = await response.json();
+  const info = parseUserInfoPayload(json, "legacy");
+  if (!info) {
     throw new Error("Monthly usage response is missing required fields.");
   }
 
+  return monthlyUsageFromPayload(info);
+}
+
+async function fetchMonthlyUsageV2(
+  baseUrl: string,
+  apiKey: string,
+  userId: string,
+): Promise<GatewayMonthlyUsage> {
+  const url = new URL(`${toGatewayRootBaseUrl(baseUrl)}/v2/user/info`);
+  url.searchParams.set("user_id", userId);
+  const response = await fetchWithTimeout(
+    url.toString(),
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+    },
+    FETCH_TIMEOUT_MS,
+  );
+
+  if (!response.ok) {
+    throw await gatewayRequestError("Monthly usage v2", "user-info", response);
+  }
+
+  const json = await response.json();
+  const info = parseUserInfoPayload(json, "v2");
+  if (!info) {
+    throw new Error("Monthly usage v2 response is missing required fields.");
+  }
+
+  return monthlyUsageFromPayload(info);
+}
+
+function parseUserInfoPayload(raw: unknown, shape: "legacy" | "v2"): GatewayUserInfoPayload | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const record = raw as Record<string, unknown>;
+  const candidate = shape === "legacy" ? record.user_info : record;
+  if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) return null;
+  const info = candidate as GatewayUserInfoPayload;
+  return typeof info.max_budget === "number" && typeof info.spend === "number" ? info : null;
+}
+
+function monthlyUsageFromPayload(info: GatewayUserInfoPayload): GatewayMonthlyUsage {
+  const maxBudget = info.max_budget!;
+  const spend = info.spend!;
   return {
-    maxBudget: info.max_budget,
-    spend: info.spend,
-    remaining: info.max_budget - info.spend,
+    maxBudget,
+    spend,
+    remaining: maxBudget - spend,
     budgetResetAt: info.budget_reset_at ?? "",
     budgetDuration: info.budget_duration ?? "",
     fetchedAt: new Date().toISOString(),
   };
 }
 
-async function fetchKeyInfo(baseUrl: string, apiKey: string): Promise<GatewayKeyInfo> {
+async function fetchKeyInfo(baseUrl: string, apiKey: string): Promise<GatewayKeyInfoWithUserId> {
   const response = await fetchWithTimeout(
     `${toGatewayRootBaseUrl(baseUrl)}/key/info`,
     {
@@ -696,6 +793,7 @@ async function fetchKeyInfo(baseUrl: string, apiKey: string): Promise<GatewayKey
       rpm_limit?: number | null;
       tpm_limit?: number | null;
       key_name?: string | null;
+      user_id?: string | null;
     };
   };
 
@@ -710,6 +808,7 @@ async function fetchKeyInfo(baseUrl: string, apiKey: string): Promise<GatewayKey
     tpmLimit: typeof info.tpm_limit === "number" ? info.tpm_limit : undefined,
     keyName: typeof info.key_name === "string" ? info.key_name : undefined,
     fetchedAt: new Date().toISOString(),
+    userId: typeof info.user_id === "string" && info.user_id.trim() ? info.user_id : undefined,
   };
 }
 
