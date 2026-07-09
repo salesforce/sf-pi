@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.224.0-2026-07-07",
-  "latestVersion": "0.224.0",
+  "revision": "release-0.224.1-2026-07-09",
+  "latestVersion": "0.224.1",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.224.0",
+      "id": "release-0.224.1",
       "kind": "update",
-      "title": "sf-pi v0.224.0 — sf-code-analyzer: improve result cards",
-      "publishedAt": "2026-07-07T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.224.0",
+      "title": "sf-pi v0.224.1 — sf-llm-gateway: prefer v2 user usage lookup, closes #478",
+      "publishedAt": "2026-07-09T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.224.1",
       "severity": "info",
-      "body": "sf-code-analyzer: improve result cards"
+      "body": "sf-llm-gateway: prefer v2 user usage lookup, closes #478"
     },
     {
       "id": "pi-0.73-required",
