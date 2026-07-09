@@ -83,7 +83,7 @@
  *   /command usage-probe        | —                                  | Force read-only usage probe
  *   /command beta <name> on     | —                                  | Toggle beta, re-register provider
  *   Monthly usage fetch         | cached < 60 s old                  | Use cache
- *   Monthly usage fetch         | stale or forced                    | Fetch from gateway /user/info
+ *   Monthly usage fetch         | stale or forced                    | Fetch /v2/user/info, retry with key user_id if needed, fallback /user/info
  *
  * Reader guide:
  * - Start at the extension entry point to see the runtime spine
@@ -569,7 +569,7 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
   });
 
   // Capture gateway-side throttle/upstream signals so the footer can render
-  // a live ⚠ badge without waiting for the 60-second /user/info refresh.
+  // a live ⚠ badge without waiting for the 60-second user-info refresh.
   // Only records when the active model is a gateway model so non-gateway
   // traffic never populates the badge. See lib/provider-telemetry.ts.
   pi.on("after_provider_response", async (event, ctx) => {
@@ -1026,8 +1026,8 @@ async function handleUsageProbeCommand(
     "Conclusion:",
     "- /key/info is key-scoped and can reset when keys rotate.",
     monthlyUsage?.budgetResetAt || monthlyUsage?.budgetDuration
-      ? "- /user/info appears user-scoped but budget-windowed, so it is not a lifetime counter."
-      : "- /user/info did not prove a true lifetime user counter.",
+      ? "- The user-info endpoint appears user-scoped but budget-windowed, so it is not a lifetime counter."
+      : "- The user-info endpoint did not prove a true lifetime user counter.",
     "- /user/daily/activity adds per-day granularity including failed_requests (early-warning signal).",
     "- The welcome splash does not show Lifetime Usage unless a true user-lifetime endpoint exists.",
   );

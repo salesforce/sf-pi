@@ -2,8 +2,9 @@
 /**
  * Monthly usage + per-key + gateway health fetcher.
  *
- * The gateway exposes three complementary endpoints:
- *   - `/user/info`        → monthly budget + spend for the whole user
+ * The gateway exposes three complementary endpoint families:
+ *   - `/v2/user/info`     → lightweight monthly budget + spend for the current user
+ *   - `/user/info`        → legacy monthly budget + spend fallback for older gateways
  *   - `/key/info`         → per-key spend + rpm/tpm limits for *this* API key
  *   - `/health/readiness` → gateway version and last upstream probe time
  *
@@ -104,6 +105,13 @@ let lastDetailsFetchAt = 0;
 let detailsRefreshInFlight: Promise<void> | null = null;
 
 type GatewayProbeSource = NonNullable<GatewayConnectionStatus["source"]>;
+type GatewayKeyInfoWithUserId = GatewayKeyInfo & { userId?: string };
+type ParsedGatewayUserInfoPayload = {
+  max_budget?: number | null;
+  spend: number;
+  budget_reset_at?: string | null;
+  budget_duration?: string | null;
+};
 
 class GatewayRequestError extends Error {
   constructor(
@@ -312,7 +320,7 @@ export async function refreshMonthlyUsage(force: boolean, cwd: string): Promise<
     }
 
     if (attempt.keyResult.status === "fulfilled") {
-      snapshot.keyInfo = attempt.keyResult.value;
+      snapshot.keyInfo = toPublicKeyInfo(attempt.keyResult.value);
     } else {
       snapshot.keyInfoError = formatErrorMessage(attempt.keyResult.reason);
     }
@@ -336,8 +344,10 @@ export async function refreshMonthlyUsage(force: boolean, cwd: string): Promise<
 }
 
 /**
- * Run only the primary three probes and update the trace array.
- * Extracted so the retry path runs the exact same code without copy/paste.
+ * Run the primary probes and update the trace array. User spend prefers the
+ * lightweight v2 self-lookup, then falls back to legacy `/user/info` only for
+ * compatibility with older or v2-denying gateways. Key and health probes still
+ * start immediately so the footer keeps its per-key and readiness signals.
  */
 async function runPrimaryProbes(
   baseUrl: string,
@@ -345,15 +355,122 @@ async function runPrimaryProbes(
   trace: GatewayProbeTraceEntry[],
 ): Promise<{
   usageResult: PromiseSettledResult<GatewayMonthlyUsage>;
-  keyResult: PromiseSettledResult<GatewayKeyInfo>;
+  keyResult: PromiseSettledResult<GatewayKeyInfoWithUserId>;
   healthResult: PromiseSettledResult<GatewayHealth>;
 }> {
-  const [usageResult, keyResult, healthResult] = await Promise.allSettled([
-    tracedProbe("user-info", "/user/info", () => fetchMonthlyUsage(baseUrl, apiKey), trace),
+  const keyResultPromise = settle(
     tracedProbe("key-info", "/key/info", () => fetchKeyInfo(baseUrl, apiKey), trace),
+  );
+  const healthResultPromise = settle(
     tracedProbe("health", "/health/readiness", () => fetchHealth(baseUrl, apiKey), trace),
-  ]);
+  );
+  const usageResultPromise = settle(
+    fetchMonthlyUsageWithFallback(baseUrl, apiKey, keyResultPromise, trace),
+  );
+
+  const [usageResult, keyResult, healthResult] = await Promise.all([
+    usageResultPromise,
+    keyResultPromise,
+    healthResultPromise,
+  ] as const);
   return { usageResult, keyResult, healthResult };
+}
+
+async function fetchMonthlyUsageWithFallback(
+  baseUrl: string,
+  apiKey: string,
+  keyResultPromise: Promise<PromiseSettledResult<GatewayKeyInfoWithUserId>>,
+  trace: GatewayProbeTraceEntry[],
+): Promise<GatewayMonthlyUsage> {
+  const v2SelfResult = await settle(
+    tracedProbe("user-info", "/v2/user/info", () => fetchMonthlyUsageV2(baseUrl, apiKey), trace),
+  );
+  if (v2SelfResult.status === "fulfilled") {
+    return v2SelfResult.value;
+  }
+
+  const keyBoundFallback = await tryV2UserInfoWithKeyUserId(
+    baseUrl,
+    apiKey,
+    keyResultPromise,
+    v2SelfResult.reason,
+    trace,
+  );
+  if (keyBoundFallback.status === "fulfilled") {
+    return keyBoundFallback.value;
+  }
+  if (keyBoundFallback.reason !== v2SelfResult.reason) {
+    throw keyBoundFallback.reason;
+  }
+
+  if (shouldTryLegacyUserInfoFallback(v2SelfResult.reason)) {
+    return tracedProbe(
+      "user-info",
+      "/user/info",
+      () => fetchMonthlyUsageLegacy(baseUrl, apiKey),
+      trace,
+    );
+  }
+
+  throw v2SelfResult.reason;
+}
+
+async function tryV2UserInfoWithKeyUserId(
+  baseUrl: string,
+  apiKey: string,
+  keyResultPromise: Promise<PromiseSettledResult<GatewayKeyInfoWithUserId>>,
+  v2SelfReason: unknown,
+  trace: GatewayProbeTraceEntry[],
+): Promise<PromiseSettledResult<GatewayMonthlyUsage>> {
+  if (!shouldTryKeyBoundV2UserInfo(v2SelfReason)) {
+    return { status: "rejected", reason: v2SelfReason };
+  }
+
+  const keyInfoResult = await keyResultPromise;
+  if (keyInfoResult.status === "rejected" || !keyInfoResult.value.userId) {
+    return { status: "rejected", reason: v2SelfReason };
+  }
+
+  return settle(
+    tracedProbe(
+      "user-info",
+      "/v2/user/info?user_id=<current-user>",
+      () => fetchMonthlyUsageV2(baseUrl, apiKey, keyInfoResult.value.userId),
+      trace,
+    ),
+  );
+}
+
+async function settle<T>(promise: Promise<T>): Promise<PromiseSettledResult<T>> {
+  try {
+    return { status: "fulfilled", value: await promise };
+  } catch (reason) {
+    return { status: "rejected", reason };
+  }
+}
+
+function shouldTryKeyBoundV2UserInfo(reason: unknown): boolean {
+  if (!(reason instanceof GatewayRequestError)) return false;
+  return reason.status === 400 && /user_id is required|user-bound key/i.test(reason.bodyPreview);
+}
+
+function shouldTryLegacyUserInfoFallback(reason: unknown): boolean {
+  if (!(reason instanceof GatewayRequestError)) return false;
+  if (reason.status === 401) return false;
+  if (reason.status === 403)
+    return /not allowed to call this route|allowed_routes/i.test(reason.bodyPreview);
+  if (reason.status === 404) return true;
+  return typeof reason.status === "number" && reason.status >= 500;
+}
+
+function toPublicKeyInfo(keyInfo: GatewayKeyInfoWithUserId): GatewayKeyInfo {
+  return {
+    spend: keyInfo.spend,
+    rpmLimit: keyInfo.rpmLimit,
+    tpmLimit: keyInfo.tpmLimit,
+    keyName: keyInfo.keyName,
+    fetchedAt: keyInfo.fetchedAt,
+  };
 }
 
 function delay(ms: number): Promise<void> {
@@ -632,7 +749,10 @@ async function gatewayRequestError(
   );
 }
 
-async function fetchMonthlyUsage(baseUrl: string, apiKey: string): Promise<GatewayMonthlyUsage> {
+async function fetchMonthlyUsageLegacy(
+  baseUrl: string,
+  apiKey: string,
+): Promise<GatewayMonthlyUsage> {
   const response = await fetchWithTimeout(
     `${toGatewayRootBaseUrl(baseUrl)}/user/info`,
     {
@@ -649,31 +769,90 @@ async function fetchMonthlyUsage(baseUrl: string, apiKey: string): Promise<Gatew
     throw await gatewayRequestError("Monthly usage", "user-info", response);
   }
 
-  const json = (await response.json()) as {
-    user_info?: {
-      max_budget?: number;
-      spend?: number;
-      budget_reset_at?: string;
-      budget_duration?: string;
-    };
-  };
-
-  const info = json.user_info;
-  if (!info || typeof info.max_budget !== "number" || typeof info.spend !== "number") {
+  const info = parseUserInfoPayload(await response.json(), "legacy");
+  if (!info) {
     throw new Error("Monthly usage response is missing required fields.");
   }
 
+  return monthlyUsageFromPayload(info);
+}
+
+async function fetchMonthlyUsageV2(
+  baseUrl: string,
+  apiKey: string,
+  userId?: string,
+): Promise<GatewayMonthlyUsage> {
+  const url = new URL(`${toGatewayRootBaseUrl(baseUrl)}/v2/user/info`);
+  if (userId) {
+    url.searchParams.set("user_id", userId);
+  }
+
+  const response = await fetchWithTimeout(
+    url.toString(),
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+    },
+    FETCH_TIMEOUT_MS,
+  );
+
+  if (!response.ok) {
+    throw await gatewayRequestError("Monthly usage v2", "user-info", response);
+  }
+
+  const info = parseUserInfoPayload(await response.json(), "v2");
+  if (!info) {
+    throw new Error("Monthly usage v2 response is missing required fields.");
+  }
+
+  return monthlyUsageFromPayload(info);
+}
+
+function parseUserInfoPayload(
+  raw: unknown,
+  shape: "legacy" | "v2",
+): ParsedGatewayUserInfoPayload | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const record = raw as Record<string, unknown>;
+  const candidate = shape === "legacy" ? record.user_info : record;
+  if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) return null;
+
+  const info = candidate as Record<string, unknown>;
+  if (typeof info.spend !== "number") return null;
+  if (
+    info.max_budget !== undefined &&
+    info.max_budget !== null &&
+    typeof info.max_budget !== "number"
+  ) {
+    return null;
+  }
+
+  const maxBudget = typeof info.max_budget === "number" ? info.max_budget : null;
   return {
-    maxBudget: info.max_budget,
     spend: info.spend,
-    remaining: info.max_budget - info.spend,
+    max_budget: maxBudget,
+    budget_reset_at: typeof info.budget_reset_at === "string" ? info.budget_reset_at : undefined,
+    budget_duration: typeof info.budget_duration === "string" ? info.budget_duration : undefined,
+  };
+}
+
+function monthlyUsageFromPayload(info: ParsedGatewayUserInfoPayload): GatewayMonthlyUsage {
+  const maxBudget =
+    typeof info.max_budget === "number" ? info.max_budget : Number.POSITIVE_INFINITY;
+  return {
+    maxBudget,
+    spend: info.spend,
+    remaining: Number.isFinite(maxBudget) ? maxBudget - info.spend : Number.POSITIVE_INFINITY,
     budgetResetAt: info.budget_reset_at ?? "",
     budgetDuration: info.budget_duration ?? "",
     fetchedAt: new Date().toISOString(),
   };
 }
 
-async function fetchKeyInfo(baseUrl: string, apiKey: string): Promise<GatewayKeyInfo> {
+async function fetchKeyInfo(baseUrl: string, apiKey: string): Promise<GatewayKeyInfoWithUserId> {
   const response = await fetchWithTimeout(
     `${toGatewayRootBaseUrl(baseUrl)}/key/info`,
     {
@@ -696,6 +875,7 @@ async function fetchKeyInfo(baseUrl: string, apiKey: string): Promise<GatewayKey
       rpm_limit?: number | null;
       tpm_limit?: number | null;
       key_name?: string | null;
+      user_id?: string | null;
     };
   };
 
@@ -710,6 +890,7 @@ async function fetchKeyInfo(baseUrl: string, apiKey: string): Promise<GatewayKey
     tpmLimit: typeof info.tpm_limit === "number" ? info.tpm_limit : undefined,
     keyName: typeof info.key_name === "string" ? info.key_name : undefined,
     fetchedAt: new Date().toISOString(),
+    userId: typeof info.user_id === "string" && info.user_id.trim() ? info.user_id : undefined,
   };
 }
 

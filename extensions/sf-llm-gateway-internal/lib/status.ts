@@ -215,7 +215,10 @@ function formatMonthlyUsageReportLine(
 ): string {
   if (monthlyUsage) {
     const resetPart = monthlyUsage.budgetResetAt ? `, resets ${monthlyUsage.budgetResetAt}` : "";
-    return `${formatUsd(monthlyUsage.spend)} spent of ${formatUsd(monthlyUsage.maxBudget)}${resetPart}`;
+    const budget = Number.isFinite(monthlyUsage.maxBudget)
+      ? formatUsd(monthlyUsage.maxBudget)
+      : "∞";
+    return `${formatUsd(monthlyUsage.spend)} spent of ${budget}${resetPart}`;
   }
 
   return monthlyUsageError ?? "not loaded yet";

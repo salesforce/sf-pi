@@ -90,6 +90,184 @@ describe("gateway monthly usage refresh", () => {
     }
   });
 
+  it("prefers the lightweight v2 self user-info endpoint", async () => {
+    process.env[BASE_URL_ENV] = "https://gateway.example.test";
+    process.env[API_KEY_ENV] = "test-key";
+    const calls: string[] = [];
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      calls.push(url);
+      if (url.endsWith("/v2/user/info")) {
+        return jsonResponse(200, {
+          spend: 84.25,
+          max_budget: 50000,
+          budget_duration: "1mo",
+          budget_reset_at: "2026-08-01T00:00:00Z",
+        });
+      }
+      if (url.endsWith("/key/info")) {
+        return jsonResponse(200, {
+          info: { spend: 7, key_name: "sk-...test", rpm_limit: 100, tpm_limit: 1000 },
+        });
+      }
+      if (url.endsWith("/health/readiness")) return jsonResponse(200, { status: "connected" });
+      if (url.endsWith("/user/info")) return jsonResponse(500, { error: "legacy should not run" });
+      return jsonResponse(404, { error: "not found" });
+    }) as typeof fetch;
+    const unregister = registerGatewayMonthlyUsageRefresher();
+    const cwd = createProjectConfig({
+      baseUrl: "https://gateway.example.test",
+      apiKey: "test-key",
+    });
+
+    try {
+      await getMonthlyUsageStateRefresh(true, cwd);
+
+      const snapshot = getMonthlyUsageState();
+      expect(snapshot.monthlyUsage).toMatchObject({ spend: 84.25, maxBudget: 50000 });
+      expect(snapshot.connectionStatus).toMatchObject({ kind: "connected", source: "user-info" });
+      expect(calls.some((url) => new URL(url).pathname === "/v2/user/info")).toBe(true);
+      expect(calls.some((url) => new URL(url).pathname === "/user/info")).toBe(false);
+    } finally {
+      unregister();
+    }
+  });
+
+  it("uses key-info user id only when v2 self lookup requires an explicit user_id", async () => {
+    process.env[BASE_URL_ENV] = "https://gateway.example.test";
+    process.env[API_KEY_ENV] = "test-key";
+    const calls: string[] = [];
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      calls.push(url);
+      if (url.endsWith("/v2/user/info")) {
+        return jsonResponse(400, {
+          detail:
+            "user_id is required. Either pass it as a query parameter or authenticate with a user-bound key.",
+        });
+      }
+      if (url.includes("/v2/user/info?")) {
+        expect(new URL(url).searchParams.get("user_id")).toBe("current-user@example.test");
+        return jsonResponse(200, {
+          user_id: "current-user@example.test",
+          spend: 158.17,
+          max_budget: 50000,
+          budget_duration: "1mo",
+          budget_reset_at: "2026-08-01T00:00:00Z",
+        });
+      }
+      if (url.endsWith("/key/info")) {
+        return jsonResponse(200, {
+          info: {
+            spend: 72.88,
+            key_name: "sk-...test",
+            rpm_limit: 100,
+            user_id: "current-user@example.test",
+          },
+        });
+      }
+      if (url.endsWith("/health/readiness")) return jsonResponse(200, { status: "connected" });
+      if (url.endsWith("/user/info")) return jsonResponse(500, { error: "legacy should not run" });
+      return jsonResponse(404, { error: "not found" });
+    }) as typeof fetch;
+    const unregister = registerGatewayMonthlyUsageRefresher();
+    const cwd = createProjectConfig({
+      baseUrl: "https://gateway.example.test",
+      apiKey: "test-key",
+    });
+
+    try {
+      await getMonthlyUsageStateRefresh(true, cwd);
+
+      const snapshot = getMonthlyUsageState();
+      expect(snapshot.monthlyUsage).toMatchObject({ spend: 158.17, maxBudget: 50000 });
+      expect(snapshot.keyInfo).toMatchObject({ spend: 72.88, keyName: "sk-...test" });
+      expect(snapshot.keyInfo).not.toHaveProperty("userId");
+      expect(calls.some((url) => url.includes("/v2/user/info?"))).toBe(true);
+      expect(snapshot.lastProbeTrace?.entries.map((entry) => entry.path)).toContain(
+        "/v2/user/info?user_id=<current-user>",
+      );
+    } finally {
+      unregister();
+    }
+  });
+
+  it("falls back to legacy user-info when v2 user-info is not available", async () => {
+    process.env[BASE_URL_ENV] = "https://gateway.example.test";
+    process.env[API_KEY_ENV] = "test-key";
+    const calls: string[] = [];
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      calls.push(url);
+      if (url.endsWith("/v2/user/info")) {
+        return jsonResponse(403, {
+          detail:
+            "Virtual key is not allowed to call this route. Only allowed to call routes: ['/user/info', '/key/info'].",
+        });
+      }
+      if (url.endsWith("/user/info")) {
+        return jsonResponse(200, {
+          user_info: {
+            max_budget: 3000,
+            spend: 42,
+            budget_reset_at: "2026-06-01",
+            budget_duration: "1mo",
+          },
+        });
+      }
+      if (url.endsWith("/key/info")) {
+        return jsonResponse(200, {
+          info: { spend: 7, key_name: "sk-...test", rpm_limit: 100, tpm_limit: 1000 },
+        });
+      }
+      if (url.endsWith("/health/readiness")) return jsonResponse(200, { status: "connected" });
+      return jsonResponse(404, { error: "not found" });
+    }) as typeof fetch;
+    const unregister = registerGatewayMonthlyUsageRefresher();
+    const cwd = createProjectConfig({
+      baseUrl: "https://gateway.example.test",
+      apiKey: "test-key",
+    });
+
+    try {
+      await getMonthlyUsageStateRefresh(true, cwd);
+
+      expect(getMonthlyUsageState().monthlyUsage).toMatchObject({ spend: 42, maxBudget: 3000 });
+      expect(calls.some((url) => new URL(url).pathname === "/v2/user/info")).toBe(true);
+      expect(calls.some((url) => new URL(url).pathname === "/user/info")).toBe(true);
+    } finally {
+      unregister();
+    }
+  });
+
+  it("treats missing v2 max_budget as unbounded usage", async () => {
+    process.env[BASE_URL_ENV] = "https://gateway.example.test";
+    process.env[API_KEY_ENV] = "test-key";
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/v2/user/info")) return jsonResponse(200, { spend: 21 });
+      if (url.endsWith("/key/info")) return jsonResponse(200, { info: { spend: 7 } });
+      if (url.endsWith("/health/readiness")) return jsonResponse(200, { status: "connected" });
+      return jsonResponse(404, { error: "not found" });
+    }) as typeof fetch;
+    const unregister = registerGatewayMonthlyUsageRefresher();
+    const cwd = createProjectConfig({
+      baseUrl: "https://gateway.example.test",
+      apiKey: "test-key",
+    });
+
+    try {
+      await getMonthlyUsageStateRefresh(true, cwd);
+
+      const monthlyUsage = getMonthlyUsageState().monthlyUsage;
+      expect(monthlyUsage?.spend).toBe(21);
+      expect(monthlyUsage?.maxBudget).toBe(Number.POSITIVE_INFINITY);
+      expect(monthlyUsage?.remaining).toBe(Number.POSITIVE_INFINITY);
+    } finally {
+      unregister();
+    }
+  });
+
   it("preserves last-known monthly usage when a later probe fails", async () => {
     process.env[BASE_URL_ENV] = "https://gateway.example.test";
     process.env[API_KEY_ENV] = "test-key";
@@ -413,9 +591,15 @@ describe("gateway monthly usage refresh", () => {
       const trace = getMonthlyUsageState().lastProbeTrace;
       expect(trace).toBeDefined();
       expect(trace?.wasRetry).toBe(false);
-      const sources = trace!.entries.map((e) => e.source).sort();
-      expect(sources).toEqual(["health", "key-info", "user-info"]);
-      expect(trace!.entries.every((e) => e.ok)).toBe(true);
+      expect(trace!.entries.map((e) => e.path).sort()).toEqual([
+        "/health/readiness",
+        "/key/info",
+        "/user/info",
+        "/v2/user/info",
+      ]);
+      expect(trace!.entries.filter((e) => e.source === "user-info")).toHaveLength(2);
+      expect(trace!.entries.some((e) => e.path === "/v2/user/info" && !e.ok)).toBe(true);
+      expect(trace!.entries.some((e) => e.path === "/user/info" && e.ok)).toBe(true);
     } finally {
       unregister();
     }
@@ -569,7 +753,11 @@ function mockGatewayFetch(options: {
 }): void {
   globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
     const url = String(input);
-    if (url.endsWith("/user/info")) {
+    const pathname = new URL(url).pathname;
+    if (pathname === "/v2/user/info") {
+      return jsonResponse(404, { error: "v2 user-info is unavailable in this test" });
+    }
+    if (pathname === "/user/info") {
       return jsonResponse(
         options.userStatus,
         options.userStatus === 401 && options.authBody
@@ -584,7 +772,7 @@ function mockGatewayFetch(options: {
             },
       );
     }
-    if (url.endsWith("/key/info")) {
+    if (pathname === "/key/info") {
       return jsonResponse(
         options.keyStatus,
         options.keyStatus === 401 && options.authBody
@@ -594,10 +782,10 @@ function mockGatewayFetch(options: {
             },
       );
     }
-    if (url.endsWith("/health/readiness")) {
+    if (pathname === "/health/readiness") {
       return jsonResponse(options.healthStatus, { status: "connected" });
     }
-    if (url.endsWith("/key/list")) {
+    if (pathname === "/key/list") {
       return jsonResponse(options.keyListStatus ?? 200, {
         keys: ["h1", "h2", "h3", "h4"],
         total_count: 4,
