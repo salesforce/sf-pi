@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.225.1-2026-07-12",
-  "latestVersion": "0.225.1",
+  "revision": "release-0.226.0-2026-07-12",
+  "latestVersion": "0.226.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.225.1",
+      "id": "release-0.226.0",
       "kind": "update",
-      "title": "sf-pi v0.225.1 — auto-refresh stale gateway usage",
+      "title": "sf-pi v0.226.0 — sf-data360: refresh upstream parity surface",
       "publishedAt": "2026-07-12T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.225.1",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.226.0",
       "severity": "info",
-      "body": "auto-refresh stale gateway usage"
+      "body": "sf-data360: refresh upstream parity surface"
     },
     {
       "id": "pi-0.73-required",
