@@ -348,6 +348,7 @@ extensions/sf-llm-gateway-internal/
     provider-telemetry.ts   ← implementation module
     retry-telemetry.ts      ← implementation module
     setup-overlay.ts        ← implementation module
+    stale-usage-refresh.ts  ← implementation module
     status.ts               ← implementation module
     token-counter.ts        ← implementation module
     transport.ts            ← implementation module
@@ -392,6 +393,7 @@ extensions/sf-llm-gateway-internal/
     retry-telemetry.test.ts ← unit / smoke test
     robust-retry.test.ts    ← unit / smoke test
     setup-overlay-single-write.test.ts← unit / smoke test
+    stale-usage-refresh.test.ts← unit / smoke test
     status.test.ts          ← unit / smoke test
     thinking-level.test.ts  ← unit / smoke test
     token-counter.test.ts   ← unit / smoke test

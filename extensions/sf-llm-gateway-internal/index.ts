@@ -255,6 +255,10 @@ import {
 } from "./lib/monthly-usage.ts";
 import { clearProviderSignal, recordProviderResponse } from "./lib/provider-telemetry.ts";
 import {
+  createStaleUsageRefreshState,
+  maybeAutoRefreshStaleUsage,
+} from "./lib/stale-usage-refresh.ts";
+import {
   clearRetryEventListener,
   formatRetryEventNotification,
   setRetryEventListener,
@@ -311,6 +315,7 @@ type CommandArgs = {
  * Reset to undefined on session_shutdown so each new session starts fresh.
  */
 let lastAppliedThinkingLevel: string | undefined;
+const staleUsageRefresh = createStaleUsageRefreshState();
 
 function getRuntimeStatusState() {
   const {
@@ -2548,7 +2553,25 @@ async function updateFooterStatus(
   }
 
   await refreshMonthlyUsage(forceRefreshUsage, ctx.cwd);
-  ctx.ui.setStatus(STATUS_KEY, buildFooterStatus(getRuntimeStatusState()));
+  const state = getRuntimeStatusState();
+  ctx.ui.setStatus(STATUS_KEY, buildFooterStatus(state));
+
+  if (!forceRefreshUsage) {
+    maybeAutoRefreshStaleUsage({
+      state,
+      refreshState: staleUsageRefresh,
+      cwd: ctx.cwd,
+      refresh: refreshMonthlyUsage,
+      repaint: () => {
+        try {
+          ctx.ui.setStatus(STATUS_KEY, buildFooterStatus(getRuntimeStatusState()));
+        } catch {
+          // The refresh may finish after reload/session switch invalidates ctx.
+          // Keep the refreshed shared state and skip repaint in that stale UI.
+        }
+      },
+    });
+  }
 }
 
 // Exported for unit tests.
