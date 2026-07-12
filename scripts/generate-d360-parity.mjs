@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /* SPDX-License-Identifier: Apache-2.0 */
 /**
- * Generate a parity report between the upstream Data 360 MCP tool catalog and
+ * Generate a parity report between the upstream Data 360 reference catalog and
  * sf-pi's d360 facade registry.
  */
 import { readFileSync, writeFileSync } from "node:fs";
@@ -121,7 +121,7 @@ function buildReport(upstream, facadeOperations, facadeExamples, upstreamPayload
   const payloadExamples = buildPayloadExampleSummary(upstreamPayloadExamples, facadeExamples);
 
   return {
-    generatedAt: "2026-05-18",
+    generatedAt: upstream.capturedAt,
     upstream: {
       source: upstream.source,
       capturedAt: upstream.capturedAt,
@@ -180,10 +180,18 @@ function asRecord(value) {
 function classifyKind(operation, upstreamTool) {
   if (operation.path.startsWith("/local/")) return "local_helper";
   if (operation.safety === "destructive") return "destructive_rest";
-  if (operation.path !== upstreamTool.path || operation.method !== upstreamTool.method) {
+  if (
+    normalizePath(operation.path) !== normalizePath(upstreamTool.path) ||
+    operation.method !== upstreamTool.method
+  ) {
     return "rest_adjusted";
   }
   return "rest";
+}
+
+function normalizePath(pathText) {
+  if (pathText === null || pathText === undefined) return pathText;
+  return String(pathText).replaceAll(/\{[^}]+\}/g, "{}");
 }
 
 function classifyExtra(operation) {
@@ -230,7 +238,7 @@ function buildMarkdown(report) {
   const lines = [
     "# Data 360 Upstream Parity",
     "",
-    "This generated report compares the public upstream Data 360 MCP tool catalog to the sf-pi `d360` facade registry.",
+    "This generated report compares the public upstream Data 360 reference catalog to the sf-pi `d360` facade registry.",
     "",
     `Generated from upstream snapshot: ${report.upstream.source}`,
     `Snapshot date: ${report.upstream.capturedAt}`,
@@ -278,30 +286,21 @@ function buildMarkdown(report) {
           .map((entry) => `- ${entry.upstreamName}`)
           .join("\n"),
     "",
+    "## Changed or adjusted REST shapes",
+    "",
+    renderAdjustedEntries(report.entries),
+    "",
+    "## Local compatibility / extension entries",
+    "",
+    renderExtras(report.extras),
+    "",
     "## Notes",
     "",
-    "- `rest_adjusted` means sf-pi intentionally uses the live REST shape implemented by its facade, which can differ from a path string in the upstream catalog snapshot.",
+    "- `rest_adjusted` means sf-pi intentionally uses a REST shape that differs from the imported upstream catalog snapshot. Review adjusted entries before assuming upstream parity.",
     "- `local_helper` means the operation is deterministic local logic, not a Salesforce REST call.",
-    '- `destructive_rest` operations require `target_org: "AgentforceSTDM"`, `allow_confirmed: true`, and an interactive Pi confirmation prompt.',
+    "- `destructive_rest` operations require dry-run review, `allow_confirmed: true`, and Guardrail mediation before execution.",
     "- Facade extras include compatibility aliases and sf-pi-specific convenience entries; this is why facade operation count can exceed upstream tool count.",
-    "",
-    "## Upstream support table",
-    "",
-    "| Upstream tool | Family | Facade kind | Safety | Facade operation |",
-    "| --- | --- | --- | --- | --- |",
-    ...report.entries.map((entry) =>
-      [
-        entry.upstreamName,
-        entry.upstreamFamily,
-        entry.kind ?? entry.status,
-        entry.safety ?? "—",
-        entry.facadeOperation ?? "—",
-      ]
-        .map(escapeCell)
-        .join(" | ")
-        .replace(/^/, "| ")
-        .replace(/$/, " |"),
-    ),
+    "- Full operation-level detail is stored in `extensions/sf-data360/registry/upstream-parity.json`.",
     "",
   ];
   return lines.join("\n");
@@ -316,6 +315,39 @@ function markdownCountTable(counts, order) {
   return ["| Kind | Count |", "| --- | ---: |", ...rows, ...extras].join("\n");
 }
 
+function renderAdjustedEntries(entries) {
+  const adjusted = entries.filter((entry) => entry.kind === "rest_adjusted");
+  if (!adjusted.length)
+    return "No upstream-supported operations currently use adjusted REST shapes.";
+  return [
+    "| Upstream tool | Upstream | Facade | Safety |",
+    "| --- | --- | --- | --- |",
+    ...adjusted.map((entry) =>
+      row([
+        entry.upstreamName,
+        `${entry.upstreamMethod} ${entry.upstreamPath}`,
+        `${entry.facadeMethod} ${entry.facadePath}`,
+        entry.safety,
+      ]),
+    ),
+  ].join("\n");
+}
+
+function renderExtras(extras) {
+  if (!extras.length) return "No local compatibility or extension entries.";
+  return [
+    "| Facade operation | Family | Kind | Safety |",
+    "| --- | --- | --- | --- |",
+    ...extras.map((entry) =>
+      row([entry.facadeOperation, entry.facadeFamily, entry.kind, entry.safety]),
+    ),
+  ].join("\n");
+}
+
+function row(values) {
+  return `| ${values.map(escapeCell).join(" | ")} |`;
+}
+
 function escapeCell(value) {
-  return String(value).replaceAll("|", "\\|");
+  return String(value ?? "—").replaceAll("|", "\\|");
 }

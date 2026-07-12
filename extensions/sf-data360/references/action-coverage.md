@@ -7,28 +7,26 @@ shipping plugin/safety changes.
 ## Source order
 
 1. Local `sf-data360` references in this directory.
-2. Public upstream repo: <https://github.com/forcedotcom/d360-mcp-server>
-   — `README.md` for facade rationale, `runtime/FamilyCatalog.java` for
-   action families, `metadata/payload-examples.json` for payload source
-   material.
+2. Public upstream reference repo: <https://github.com/forcedotcom/d360-mcp-server>
+   — `runtime/FamilyCatalog.java` for action families and
+   `metadata/payload-examples.json` for payload source material.
 3. Official Salesforce docs or web search only after local + upstream
    don't answer the question.
 
-Do not run or embed the upstream Java MCP server from this extension.
+Do not run or embed upstream server/runtime code from this extension.
 
 ## Design target
 
-Data 360 exposes ~180 REST operations. `sf-data360` keeps three native
-tools (`d360_probe`, `d360_metadata`, `d360_api`) instead of one tool per
-endpoint. Upstream MCP solves the same problem with three facade tools
-(`search`, `payload_examples`, `execute`); the equivalents here are:
+Data 360 exposes hundreds of REST operations. `sf-data360` keeps the Pi-native
+`data360_*` family tools as the public surface instead of one tool per endpoint.
+Use this discovery flow:
 
-| Upstream | sf-data360 equivalent |
-| ------------------------- | --------------------------------------------------------------------------- | --------- | ------------ | -------------- |
-| `search` | Read `endpoint-families.md`, `workflows.md`, upstream `FamilyCatalog.java`. |
-| `payload_examples` | Read `data-shapes.md`, `examples.md`, upstream `payload-examples.json`. |
-| `execute` | `d360_api` (with `dry_run: true` first for any mutation). |
-| facade-discovered DMO/DLO | `d360_metadata list_dmos                                                    | list_dlos | describe_dmo | describe_dlo`. |
+1. `data360_discover` or the matching family tool with `actions.search`.
+2. `action.describe` to inspect required/optional params and safety.
+3. `examples.get` for curated public-safe payloads.
+4. The family action itself, using `dry_run: true` before confirmed or
+   destructive execution.
+5. `data360_api rest.request` only when no family action exists yet.
 
 ## Recursive validation recipe
 

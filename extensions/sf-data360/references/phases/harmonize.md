@@ -33,28 +33,29 @@ Data 360 Harmonize phase. Use when managing DMOs, mappings, standard mappings, i
 
 ## Data 360 family actions
 
-- `data360_harmonize` `dmo_mapping.get` (rest_operation, read) — Get one DLO-to-DMO mapping configuration.
-- `data360_harmonize` `dmo_mapping.list` (rest_operation, read) — List DLO-to-DMO mappings. Prefer filtering by DMO or source object.
-- `data360_harmonize` `dmo.get` (rest_operation, read) — Get one Data Model Object schema.
-- `data360_harmonize` `dmo.list` (rest_operation, read) — List Data Model Objects.
+- `data360_harmonize` `dmo_mapping.get` (rest_operation, read) — Get mapping configuration.
+- `data360_harmonize` `dmo_mapping.list` (rest_operation, read) — List mappings by DMO name or CRM source.
+- `data360_harmonize` `dmo.get` (rest_operation, read) — Get full DMO schema including all fields.
+- `data360_harmonize` `dmo.list` (rest_operation, read) — List all Data Model Objects. Filter by category.
 - `data360_harmonize` `identity.list` (rest_operation, read) — List identity resolution rulesets.
-- `data360_harmonize` `ir.get` (rest_operation, read) — Get one identity resolution ruleset by id.
+- `data360_harmonize` `ir.get` (rest_operation, read) — Get ruleset details.
 - `data360_harmonize` `ir.list` (rest_operation, read) — List identity resolution rulesets.
-- `data360_harmonize` `event_date_recommend` (rest_operation, safe_post) — Recommend the best event date field for engagement streams.
+- `data360_harmonize` `event_date_recommend` (rest_operation, safe_post) — Show mutable vs immutable date field scores.
 
 ## Cross-phase routing
 
-| Phase       | Reference                          | Summary                                                      |
-| ----------- | ---------------------------------- | ------------------------------------------------------------ |
-| Connect     | `references/phases/connect.md`     | Set up and inspect Data 360 source connectivity.             |
-| Prepare     | `references/phases/prepare.md`     | Prepare raw data structures and ingestion pipelines.         |
-| Harmonize   | `references/phases/harmonize.md`   | Model, map, and unify data into harmonized entities.         |
-| Segment     | `references/phases/segment.md`     | Build and inspect audience segments and calculated insights. |
-| Act         | `references/phases/act.md`         | Deliver audiences and data-triggered actions downstream.     |
-| Retrieve    | `references/phases/retrieve.md`    | Query, search, and inspect Data 360 data and metadata.       |
-| Observe     | `references/phases/observe.md`     | Analyze Agentforce sessions and platform traces in Data 360. |
-| Orchestrate | `references/phases/orchestrate.md` | Plan and troubleshoot cross-phase Data 360 workflows.        |
+| Phase       | Reference                          | Summary                                                                               |
+| ----------- | ---------------------------------- | ------------------------------------------------------------------------------------- |
+| Connect     | `references/phases/connect.md`     | Set up and inspect Data 360 source connectivity.                                      |
+| Prepare     | `references/phases/prepare.md`     | Prepare raw data structures and ingestion pipelines.                                  |
+| Harmonize   | `references/phases/harmonize.md`   | Model, map, and unify data into harmonized entities.                                  |
+| Segment     | `references/phases/segment.md`     | Build and inspect audience segments and calculated insights.                          |
+| Act         | `references/phases/act.md`         | Deliver audiences and data-triggered actions downstream.                              |
+| Retrieve    | `references/phases/retrieve.md`    | Query, search, and inspect Data 360 data and metadata.                                |
+| Semantic    | `references/phases/semantic.md`    | Manage semantic models, search indexes, retrievers, and ML/prediction model surfaces. |
+| Observe     | `references/phases/observe.md`     | Analyze Agentforce sessions and platform traces in Data 360.                          |
+| Orchestrate | `references/phases/orchestrate.md` | Plan and troubleshoot cross-phase Data 360 workflows.                                 |
 
 ## Upstream reference fallback
 
-If this generated reference and the local sf-data360 references are insufficient, inspect the public upstream Data 360 MCP server repository for reference material. Do not run or embed the upstream Java MCP server from this extension.
+If this generated reference and the local sf-data360 references are insufficient, inspect the public upstream Data 360 reference repository for operation and payload-shape metadata, then curate findings into Pi-native `data360_*` family actions.

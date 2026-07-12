@@ -2,1471 +2,2233 @@
   {
     "name": "d360_query_sql",
     "family": "Query",
-    "description": "Execute a Data 360 SQL query through /ssot/query-sql.",
+    "description": "Execute SQL query. Preferred over V1/V2. Supports parameterized queries.",
     "method": "POST",
-    "path": "/ssot/query-sql"
-  },
-  {
-    "name": "d360_data_spaces_list",
-    "family": "Metadata",
-    "description": "List Data 360 data spaces.",
-    "method": "GET",
-    "path": "/ssot/data-spaces"
-  },
-  {
-    "name": "d360_dmo_describe",
-    "family": "Metadata",
-    "description": "Describe one Data Model Object by API name.",
-    "method": "GET",
-    "path": "/ssot/data-model-objects/{dmoName}"
-  },
-  {
-    "name": "d360_dlo_describe",
-    "family": "Metadata",
-    "description": "Describe one Data Lake Object by API name.",
-    "method": "GET",
-    "path": "/ssot/data-lake-objects/{dloName}"
-  },
-  {
-    "name": "d360_segments_list",
-    "family": "Segment",
-    "description": "List segments with optional pagination.",
-    "method": "GET",
-    "path": "/ssot/segments"
-  },
-  {
-    "name": "d360_activations_list",
-    "family": "Activation",
-    "description": "List activations with optional pagination.",
-    "method": "GET",
-    "path": "/ssot/activations"
-  },
-  {
-    "name": "d360_calculated_insights_list",
-    "family": "Calculated Insights",
-    "description": "List calculated insights.",
-    "method": "GET",
-    "path": "/ssot/calculated-insights"
-  },
-  {
-    "name": "d360_connectors_list",
-    "family": "Ingestion",
-    "description": "List connector catalog entries supported by the org.",
-    "method": "GET",
-    "path": "/ssot/connectors"
-  },
-  {
-    "name": "d360_connections_sfdc_list",
-    "family": "Ingestion",
-    "description": "List Salesforce CRM connections.",
-    "method": "GET",
-    "path": "/ssot/connections?connectorType=SalesforceDotCom"
-  },
-  {
-    "name": "d360_data_streams_list",
-    "family": "Ingestion",
-    "description": "List data streams with optional pagination.",
-    "method": "GET",
-    "path": "/ssot/data-streams"
-  },
-  {
-    "name": "d360_data_transforms_list",
-    "family": "Transforms and Actions",
-    "description": "List Data 360 SQL/data transforms.",
-    "method": "GET",
-    "path": "/ssot/data-transforms"
-  },
-  {
-    "name": "d360_data_actions_list",
-    "family": "Transforms and Actions",
-    "description": "List Data 360 data actions.",
-    "method": "GET",
-    "path": "/ssot/data-actions"
-  },
-  {
-    "name": "d360_identity_resolutions_list",
-    "family": "Identity Resolution",
-    "description": "List identity resolution rulesets.",
-    "method": "GET",
-    "path": "/ssot/identity-resolutions"
-  },
-  {
-    "name": "d360_semantic_models_list",
-    "family": "Semantic Retrieval",
-    "description": "List semantic data models.",
-    "method": "GET",
-    "path": "/ssot/semantic/models"
-  },
-  {
-    "name": "d360_search_indexes_list",
-    "family": "Semantic Retrieval",
-    "description": "List search indexes when the org exposes the search-index surface.",
-    "method": "GET",
-    "path": "/ssot/search-index"
-  },
-  {
-    "name": "d360_retrievers_list",
-    "family": "Semantic Retrieval",
-    "description": "List machine-learning retrievers when retriever APIs are provisioned.",
-    "method": "GET",
-    "path": "/ssot/machine-learning/retrievers"
-  },
-  {
-    "name": "d360_datakits_list",
-    "family": "DataKit",
-    "description": "List available DataKits.",
-    "method": "GET",
-    "path": "/ssot/data-kits"
+    "path": "/ssot/query-sql",
+    "origin": "upstream"
   },
   {
     "name": "d360_query_sql_status",
     "family": "Query",
-    "description": "Poll a Data 360 SQL query status.",
+    "description": "Poll for long-running query status.",
     "method": "GET",
-    "path": "/ssot/query-sql/{queryId}"
+    "path": "/ssot/query-sql/{queryId}",
+    "origin": "upstream"
   },
   {
     "name": "d360_query_sql_rows",
     "family": "Query",
-    "description": "Fetch rows for a completed Data 360 SQL query.",
+    "description": "Fetch paginated rows from completed query.",
     "method": "GET",
-    "path": "/ssot/query-sql/{queryId}/rows"
+    "path": "/ssot/query-sql/{queryId}/rows",
+    "origin": "upstream"
   },
   {
-    "name": "d360_metadata_entities",
-    "family": "Metadata",
-    "description": "List metadata entities by entity type.",
-    "method": "GET",
-    "path": "/ssot/metadata-entities"
-  },
-  {
-    "name": "d360_metadata_get",
-    "family": "Metadata",
-    "description": "Fetch metadata for a specific entity name.",
-    "method": "GET",
-    "path": "/ssot/metadata"
-  },
-  {
-    "name": "d360_model_artifact_list",
-    "family": "Semantic Retrieval",
-    "description": "List machine-learning model artifacts, including embedding models required by search indexes.",
-    "method": "GET",
-    "path": "/ssot/machine-learning/model-artifacts"
-  },
-  {
-    "name": "d360_dmo_list",
-    "family": "DMO",
-    "description": "List Data Model Objects.",
-    "method": "GET",
-    "path": "/ssot/data-model-objects"
-  },
-  {
-    "name": "d360_dmo_get",
-    "family": "DMO",
-    "description": "Get one Data Model Object schema.",
-    "method": "GET",
-    "path": "/ssot/data-model-objects/{dmoName}"
-  },
-  {
-    "name": "d360_dlo_list",
-    "family": "DLO",
-    "description": "List Data Lake Objects.",
-    "method": "GET",
-    "path": "/ssot/data-lake-objects"
-  },
-  {
-    "name": "d360_dlo_get",
-    "family": "DLO",
-    "description": "Get one Data Lake Object schema.",
-    "method": "GET",
-    "path": "/ssot/data-lake-objects/{dloName}"
-  },
-  {
-    "name": "d360_dmo_mapping_list",
-    "family": "Mappings",
-    "description": "List DLO-to-DMO mappings. Prefer filtering by DMO or source object.",
-    "method": "GET",
-    "path": "/ssot/data-model-object-mappings"
-  },
-  {
-    "name": "d360_dmo_mapping_get",
-    "family": "Mappings",
-    "description": "Get one DLO-to-DMO mapping configuration.",
-    "method": "GET",
-    "path": "/ssot/data-model-object-mappings/{mappingName}"
-  },
-  {
-    "name": "d360_datastream_list",
-    "family": "DataStreams",
-    "description": "List data streams.",
-    "method": "GET",
-    "path": "/ssot/data-streams"
-  },
-  {
-    "name": "d360_datastream_get",
-    "family": "DataStreams",
-    "description": "Get one data stream configuration.",
-    "method": "GET",
-    "path": "/ssot/data-streams/{dataStreamId}"
-  },
-  {
-    "name": "d360_connection_list",
-    "family": "Connection",
-    "description": "List connections for a connector type.",
-    "method": "GET",
-    "path": "/ssot/connections"
-  },
-  {
-    "name": "d360_connection_get",
-    "family": "Connection",
-    "description": "Get one connection by id.",
-    "method": "GET",
-    "path": "/ssot/connections/{connectionId}"
-  },
-  {
-    "name": "d360_connector_list",
-    "family": "Connection",
-    "description": "List supported connector types.",
-    "method": "GET",
-    "path": "/ssot/connectors"
-  },
-  {
-    "name": "d360_connector_metadata",
-    "family": "Connection",
-    "description": "Get connector metadata by connector catalog name.",
-    "method": "GET",
-    "path": "/ssot/connectors/{connectorName}"
-  },
-  {
-    "name": "d360_connection_endpoints",
-    "family": "Connection",
-    "description": "List pre-configured connection endpoints.",
-    "method": "GET",
-    "path": "/ssot/connection-endpoints"
-  },
-  {
-    "name": "d360_segment_get",
-    "family": "Segment",
-    "description": "Get one segment by id.",
-    "method": "GET",
-    "path": "/ssot/segments/{segmentId}"
-  },
-  {
-    "name": "d360_activation_get",
-    "family": "Activation",
-    "description": "Get one activation by id.",
-    "method": "GET",
-    "path": "/ssot/activations/{activationId}"
-  },
-  {
-    "name": "d360_activation_target_list",
-    "family": "Activation",
-    "description": "List activation targets.",
-    "method": "GET",
-    "path": "/ssot/activation-targets"
-  },
-  {
-    "name": "d360_activation_target_get",
-    "family": "Activation",
-    "description": "Get one activation target by id.",
-    "method": "GET",
-    "path": "/ssot/activation-targets/{activationTargetId}"
-  },
-  {
-    "name": "d360_ci_get",
-    "family": "Calculated Insights",
-    "description": "Get one calculated insight by API name.",
-    "method": "GET",
-    "path": "/ssot/calculated-insights/{ciName}"
-  },
-  {
-    "name": "d360_ci_run_status",
-    "family": "Calculated Insights",
-    "description": "Get calculated insight run status.",
-    "method": "GET",
-    "path": "/ssot/calculated-insights/{ciName}/actions/run"
-  },
-  {
-    "name": "d360_ir_get",
-    "family": "Identity Resolution",
-    "description": "Get one identity resolution ruleset by id.",
-    "method": "GET",
-    "path": "/ssot/identity-resolutions/{identityResolutionId}"
-  },
-  {
-    "name": "d360_transform_list",
-    "family": "DataTransform",
-    "description": "List data transforms.",
-    "method": "GET",
-    "path": "/ssot/data-transforms"
-  },
-  {
-    "name": "d360_transform_get",
-    "family": "DataTransform",
-    "description": "Get one data transform.",
-    "method": "GET",
-    "path": "/ssot/data-transforms/{transformId}"
-  },
-  {
-    "name": "d360_transform_schedule_get",
-    "family": "DataTransform",
-    "description": "Get one data transform schedule.",
-    "method": "GET",
-    "path": "/ssot/data-transforms/{transformId}/schedule"
-  },
-  {
-    "name": "d360_dataaction_list",
-    "family": "DataAction",
-    "description": "List data actions.",
-    "method": "GET",
-    "path": "/ssot/data-actions"
-  },
-  {
-    "name": "d360_dataaction_get",
-    "family": "DataAction",
-    "description": "Get one data action.",
-    "method": "GET",
-    "path": "/ssot/data-actions/{dataActionId}"
-  },
-  {
-    "name": "d360_dataaction_delete",
-    "family": "DataAction",
-    "description": "Delete a data action.",
+    "name": "d360_query_sql_cancel",
+    "family": "Query",
+    "description": "Cancel a running query.",
     "method": "DELETE",
-    "path": "/ssot/data-actions/{dataActionId}"
-  },
-  {
-    "name": "d360_dataaction_target_list",
-    "family": "DataAction",
-    "description": "List data action targets.",
-    "method": "GET",
-    "path": "/ssot/data-action-targets"
-  },
-  {
-    "name": "d360_dataaction_target_get",
-    "family": "DataAction",
-    "description": "Get one data action target.",
-    "method": "GET",
-    "path": "/ssot/data-action-targets/{dataActionTargetId}"
-  },
-  {
-    "name": "d360_semantic_model_get",
-    "family": "Semantic Retrieval",
-    "description": "Get one semantic data model.",
-    "method": "GET",
-    "path": "/ssot/semantic/models/{semanticModelName}"
-  },
-  {
-    "name": "d360_semantic_model_validate",
-    "family": "Semantic Retrieval",
-    "description": "Validate one semantic data model.",
-    "method": "GET",
-    "path": "/ssot/semantic/models/{semanticModelName}/validate"
-  },
-  {
-    "name": "d360_search_index_list",
-    "family": "Semantic Retrieval",
-    "description": "List search indexes.",
-    "method": "GET",
-    "path": "/ssot/search-index"
-  },
-  {
-    "name": "d360_search_index_get",
-    "family": "Semantic Retrieval",
-    "description": "Get one search index by API name or id.",
-    "method": "GET",
-    "path": "/ssot/search-index/{searchIndexApiNameOrId}"
-  },
-  {
-    "name": "d360_retriever_get",
-    "family": "Semantic Retrieval",
-    "description": "Get one machine-learning retriever by id or name.",
-    "method": "GET",
-    "path": "/ssot/machine-learning/retrievers/{retrieverId}"
-  },
-  {
-    "name": "d360_datakit_get",
-    "family": "DataKit",
-    "description": "Get one DataKit by id.",
-    "method": "GET",
-    "path": "/ssot/data-kits/{dataKitId}"
-  },
-  {
-    "name": "d360_datakit_manifest",
-    "family": "DataKit",
-    "description": "Get DataKit manifest by id.",
-    "method": "GET",
-    "path": "/ssot/data-kits/{dataKitId}/manifest"
-  },
-  {
-    "name": "d360_datakit_deploy_status",
-    "family": "DataKit",
-    "description": "Get DataKit deployment job status.",
-    "method": "GET",
-    "path": "/ssot/data-kits/deployment-jobs/{jobId}"
-  },
-  {
-    "name": "d360_datakit_components",
-    "family": "DataKit",
-    "description": "List components for one DataKit.",
-    "method": "GET",
-    "path": "/ssot/data-kits/{dataKitId}/components"
-  },
-  {
-    "name": "d360_datakit_component_status",
-    "family": "DataKit",
-    "description": "Get component deployment status for one DataKit component.",
-    "method": "GET",
-    "path": "/ssot/data-kits/{dataKitId}/components/{componentId}/deployment-status"
-  },
-  {
-    "name": "d360_datakit_component_deps",
-    "family": "DataKit",
-    "description": "Get dependencies for one DataKit component.",
-    "method": "GET",
-    "path": "/ssot/data-kits/{dataKitId}/components/{componentId}/dependencies"
-  },
-  {
-    "name": "d360_profile_metadata",
-    "family": "Profile and Data Graph",
-    "description": "Discover profile schema.",
-    "method": "GET",
-    "path": "/ssot/profile/metadata"
-  },
-  {
-    "name": "d360_profile_metadata_model",
-    "family": "Profile and Data Graph",
-    "description": "Discover one profile DMO schema and relationships.",
-    "method": "GET",
-    "path": "/ssot/profile/metadata/{dataModelName}"
-  },
-  {
-    "name": "d360_profile_query",
-    "family": "Profile and Data Graph",
-    "description": "Query profile records for a data model. Requires profile filter params.",
-    "method": "GET",
-    "path": "/ssot/profile/{dataModelName}"
-  },
-  {
-    "name": "d360_insights_metadata",
-    "family": "Profile and Data Graph",
-    "description": "Discover calculated insight metadata.",
-    "method": "GET",
-    "path": "/ssot/insight/metadata"
-  },
-  {
-    "name": "d360_insights_metadata_get",
-    "family": "Profile and Data Graph",
-    "description": "Discover one calculated insight metadata definition.",
-    "method": "GET",
-    "path": "/ssot/insight/metadata/{ciName}"
-  },
-  {
-    "name": "d360_insights_query",
-    "family": "Profile and Data Graph",
-    "description": "Query calculated insight rows.",
-    "method": "GET",
-    "path": "/ssot/insight/calculated-insights/{ciName}"
-  },
-  {
-    "name": "d360_datagraph_metadata",
-    "family": "Profile and Data Graph",
-    "description": "List data graph metadata.",
-    "method": "GET",
-    "path": "/ssot/data-graphs/metadata"
-  },
-  {
-    "name": "d360_datagraph_query",
-    "family": "Profile and Data Graph",
-    "description": "Query data graph records for an entity.",
-    "method": "GET",
-    "path": "/ssot/data-graphs/data/{dataGraphEntityName}"
-  },
-  {
-    "name": "d360_metadata_search",
-    "family": "Metadata",
-    "description": "Search Data 360 metadata using natural language.",
-    "method": "POST",
-    "path": "/connect/search/metadata/results"
-  },
-  {
-    "name": "d360_ci_validate",
-    "family": "Calculated Insights",
-    "description": "Validate calculated insight SQL before create/update.",
-    "method": "POST",
-    "path": "/ssot/calculated-insights/actions/validate"
-  },
-  {
-    "name": "d360_transform_validate",
-    "family": "DataTransform",
-    "description": "Validate Data Transform configuration before create/update.",
-    "method": "POST",
-    "path": "/ssot/data-transforms-validation"
-  },
-  {
-    "name": "d360_connection_test",
-    "family": "Connection",
-    "description": "Test connection configuration without saving it.",
-    "method": "POST",
-    "path": "/ssot/connections/actions/test"
-  },
-  {
-    "name": "d360_semantic_query",
-    "family": "Semantic Retrieval",
-    "description": "Execute a semantic data model query.",
-    "method": "POST",
-    "path": "/semantic-engine/gateway"
-  },
-  {
-    "name": "d360_ci_create",
-    "family": "Calculated Insights",
-    "description": "Create a calculated insight. Validate the payload before create.",
-    "method": "POST",
-    "path": "/ssot/calculated-insights"
-  },
-  {
-    "name": "d360_ci_update",
-    "family": "Calculated Insights",
-    "description": "Update a calculated insight by API name.",
-    "method": "PATCH",
-    "path": "/ssot/calculated-insights/{ciName}"
-  },
-  {
-    "name": "d360_ci_run",
-    "family": "Calculated Insights",
-    "description": "Run a calculated insight calculation.",
-    "method": "POST",
-    "path": "/ssot/calculated-insights/{ciName}/actions/run"
-  },
-  {
-    "name": "d360_ci_enable",
-    "family": "Calculated Insights",
-    "description": "Enable a calculated insight.",
-    "method": "POST",
-    "path": "/ssot/calculated-insights/{ciName}/actions/enable"
-  },
-  {
-    "name": "d360_ci_disable",
-    "family": "Calculated Insights",
-    "description": "Disable a calculated insight.",
-    "method": "POST",
-    "path": "/ssot/calculated-insights/{ciName}/actions/disable"
-  },
-  {
-    "name": "d360_segment_create",
-    "family": "Segment",
-    "description": "Create a segment. Validate DMO/CI fields and payload shape before create.",
-    "method": "POST",
-    "path": "/ssot/segments"
-  },
-  {
-    "name": "d360_segment_update",
-    "family": "Segment",
-    "description": "Update a segment by id.",
-    "method": "PATCH",
-    "path": "/ssot/segments/{segmentId}"
-  },
-  {
-    "name": "d360_segment_publish",
-    "family": "Segment",
-    "description": "Publish/calculate segment membership by id.",
-    "method": "POST",
-    "path": "/ssot/segments/{segmentId}/actions/publish"
-  },
-  {
-    "name": "d360_segment_deactivate",
-    "family": "Segment",
-    "description": "Deactivate a segment by API name.",
-    "method": "POST",
-    "path": "/ssot/segments/{segmentApiName}/actions/deactivate"
-  },
-  {
-    "name": "d360_activation_create",
-    "family": "Activation",
-    "description": "Create an activation. Requires an active segment and an activation target.",
-    "method": "POST",
-    "path": "/ssot/activations"
-  },
-  {
-    "name": "d360_activation_update",
-    "family": "Activation",
-    "description": "Update an activation by id.",
-    "method": "PATCH",
-    "path": "/ssot/activations/{activationId}"
-  },
-  {
-    "name": "d360_activation_target_create",
-    "family": "Activation",
-    "description": "Create an activation target. Must reference a valid destination/connection shape.",
-    "method": "POST",
-    "path": "/ssot/activation-targets"
-  },
-  {
-    "name": "d360_activation_target_update",
-    "family": "Activation",
-    "description": "Update an activation target by id.",
-    "method": "PUT",
-    "path": "/ssot/activation-targets/{activationTargetId}"
-  },
-  {
-    "name": "d360_transform_create",
-    "family": "DataTransform",
-    "description": "Create a data transform. Schedule runs separately.",
-    "method": "POST",
-    "path": "/ssot/data-transforms"
-  },
-  {
-    "name": "d360_transform_update",
-    "family": "DataTransform",
-    "description": "Update a data transform by id.",
-    "method": "PATCH",
-    "path": "/ssot/data-transforms/{transformId}"
-  },
-  {
-    "name": "d360_transform_run",
-    "family": "DataTransform",
-    "description": "Run a data transform manually.",
-    "method": "POST",
-    "path": "/ssot/data-transforms/{transformId}/actions/run"
-  },
-  {
-    "name": "d360_transform_schedule_set",
-    "family": "DataTransform",
-    "description": "Set or update the schedule for a data transform.",
-    "method": "PUT",
-    "path": "/ssot/data-transforms/{transformId}/schedule"
-  },
-  {
-    "name": "d360_dataaction_create",
-    "family": "DataAction",
-    "description": "Create a data action. Requires a configured data action target.",
-    "method": "POST",
-    "path": "/ssot/data-actions"
-  },
-  {
-    "name": "d360_dataaction_target_create",
-    "family": "DataAction",
-    "description": "Create a data action target for event-triggered payload delivery.",
-    "method": "POST",
-    "path": "/ssot/data-action-targets"
-  },
-  {
-    "name": "d360_dataaction_target_update",
-    "family": "DataAction",
-    "description": "Update a data action target by id.",
-    "method": "PATCH",
-    "path": "/ssot/data-action-targets/{dataActionTargetId}"
-  },
-  {
-    "name": "d360_retriever_list",
-    "family": "Semantic Retrieval",
-    "description": "List RAG retrievers with optional filters.",
-    "method": "GET",
-    "path": "/ssot/machine-learning/retrievers"
-  },
-  {
-    "name": "d360_retriever_create",
-    "family": "Semantic Retrieval",
-    "description": "Create a RAG retriever.",
-    "method": "POST",
-    "path": "/ssot/machine-learning/retrievers"
-  },
-  {
-    "name": "d360_retriever_update",
-    "family": "Semantic Retrieval",
-    "description": "Update a RAG retriever label or description.",
-    "method": "PATCH",
-    "path": "/ssot/machine-learning/retrievers/{retrieverIdOrName}"
-  },
-  {
-    "name": "d360_retriever_config_list",
-    "family": "Semantic Retrieval",
-    "description": "List configurations for a retriever.",
-    "method": "GET",
-    "path": "/ssot/machine-learning/retrievers/{retrieverIdOrName}/configurations"
-  },
-  {
-    "name": "d360_retriever_config_get",
-    "family": "Semantic Retrieval",
-    "description": "Get a retriever configuration by id or name.",
-    "method": "GET",
-    "path": "/ssot/machine-learning/retrievers/{retrieverIdOrName}/configurations/{configurationIdOrName}"
-  },
-  {
-    "name": "d360_retriever_config_create",
-    "family": "Semantic Retrieval",
-    "description": "Create a new retriever configuration version.",
-    "method": "POST",
-    "path": "/ssot/machine-learning/retrievers/{retrieverIdOrName}/configurations"
-  },
-  {
-    "name": "d360_retriever_config_update",
-    "family": "Semantic Retrieval",
-    "description": "Update a retriever configuration, such as active status.",
-    "method": "PATCH",
-    "path": "/ssot/machine-learning/retrievers/{retrieverIdOrName}/configurations/{configurationIdOrName}"
-  },
-  {
-    "name": "d360_search_index_config",
-    "family": "Semantic Retrieval",
-    "description": "Get valid search index configuration options.",
-    "method": "GET",
-    "path": "/ssot/search-index/config"
-  },
-  {
-    "name": "d360_search_index_process_history",
-    "family": "Semantic Retrieval",
-    "description": "Get process run history for a search index.",
-    "method": "GET",
-    "path": "/ssot/search-index/{searchIndexApiNameOrId}/process-history"
-  },
-  {
-    "name": "d360_search_index_create",
-    "family": "Semantic Retrieval",
-    "description": "Create a semantic search index for RAG/vector search.",
-    "method": "POST",
-    "path": "/ssot/search-index"
-  },
-  {
-    "name": "d360_search_index_update",
-    "family": "Semantic Retrieval",
-    "description": "Update a semantic search index by API name or id.",
-    "method": "PATCH",
-    "path": "/ssot/search-index/{searchIndexApiNameOrId}"
-  },
-  {
-    "name": "d360_datastream_create",
-    "family": "DataStreams",
-    "description": "Create a generic data stream. Connector-specific create operations provide safer payload templates.",
-    "method": "POST",
-    "path": "/ssot/data-streams"
-  },
-  {
-    "name": "d360_datastream_update",
-    "family": "DataStreams",
-    "description": "Update a data stream by id or name.",
-    "method": "PATCH",
-    "path": "/ssot/data-streams/{dataStreamId}"
-  },
-  {
-    "name": "d360_datastream_run",
-    "family": "DataStreams",
-    "description": "Trigger a manual ingestion run for a data stream.",
-    "method": "POST",
-    "path": "/ssot/data-streams/{dataStreamId}/actions/run"
-  },
-  {
-    "name": "d360_datastream_create_sfdc",
-    "family": "DataStreams",
-    "description": "Create a Salesforce CRM data stream payload against /ssot/data-streams.",
-    "method": "POST",
-    "path": "/ssot/data-streams"
-  },
-  {
-    "name": "d360_datastream_create_aws_s3",
-    "family": "DataStreams",
-    "description": "Create an AWS S3 data stream payload against /ssot/data-streams.",
-    "method": "POST",
-    "path": "/ssot/data-streams"
-  },
-  {
-    "name": "d360_datastream_create_snowflake",
-    "family": "DataStreams",
-    "description": "Create a Snowflake-backed data stream payload against /ssot/data-streams.",
-    "method": "POST",
-    "path": "/ssot/data-streams"
-  },
-  {
-    "name": "d360_dmo_create",
-    "family": "DMO",
-    "description": "Create a Data Model Object. Do not include the __dlm suffix in the name.",
-    "method": "POST",
-    "path": "/ssot/data-model-objects"
-  },
-  {
-    "name": "d360_dmo_update",
-    "family": "DMO",
-    "description": "Update a Data Model Object by API name.",
-    "method": "PATCH",
-    "path": "/ssot/data-model-objects/{dmoName}"
-  },
-  {
-    "name": "d360_dlo_create",
-    "family": "DLO",
-    "description": "Create a Data Lake Object.",
-    "method": "POST",
-    "path": "/ssot/data-lake-objects"
-  },
-  {
-    "name": "d360_dlo_update",
-    "family": "DLO",
-    "description": "Update a Data Lake Object by API name.",
-    "method": "PATCH",
-    "path": "/ssot/data-lake-objects/{dloName}"
-  },
-  {
-    "name": "d360_dmo_mapping_create",
-    "family": "Mappings",
-    "description": "Create a DLO-to-DMO mapping.",
-    "method": "POST",
-    "path": "/ssot/data-model-object-mappings"
-  },
-  {
-    "name": "d360_dmo_mapping_update",
-    "family": "Mappings",
-    "description": "Update a DLO-to-DMO mapping by developer name.",
-    "method": "PATCH",
-    "path": "/ssot/data-model-object-mappings/{mappingName}"
-  },
-  {
-    "name": "d360_dmo_field_mapping_add",
-    "family": "Mappings",
-    "description": "Add field mappings to an existing DLO-to-DMO object mapping.",
-    "method": "PATCH",
-    "path": "/ssot/data-model-object-mappings/{mappingName}/field-mappings"
-  },
-  {
-    "name": "d360_connection_create",
-    "family": "Connection",
-    "description": "Create a data connection. Test the connection configuration before saving.",
-    "method": "POST",
-    "path": "/ssot/connections"
-  },
-  {
-    "name": "d360_connection_update",
-    "family": "Connection",
-    "description": "Update a data connection by id.",
-    "method": "PATCH",
-    "path": "/ssot/connections/{connectionId}"
-  },
-  {
-    "name": "d360_snowflake_connection_list",
-    "family": "Connection",
-    "description": "List Data 360 connections for a connector type, commonly SNOWFLAKE.",
-    "method": "GET",
-    "path": "/ssot/connections"
-  },
-  {
-    "name": "d360_connection_create_snowflake",
-    "family": "Connection",
-    "description": "Create a Snowflake connection with key-pair authentication.",
-    "method": "POST",
-    "path": "/ssot/connections"
-  },
-  {
-    "name": "d360_ir_list",
-    "family": "Identity Resolution",
-    "description": "List identity resolution rulesets.",
-    "method": "GET",
-    "path": "/ssot/identity-resolutions"
-  },
-  {
-    "name": "d360_ir_create",
-    "family": "Identity Resolution",
-    "description": "Create an identity resolution ruleset.",
-    "method": "POST",
-    "path": "/ssot/identity-resolutions"
-  },
-  {
-    "name": "d360_ir_update",
-    "family": "Identity Resolution",
-    "description": "Patch an identity resolution ruleset.",
-    "method": "PATCH",
-    "path": "/ssot/identity-resolutions/{identityResolutionId}"
-  },
-  {
-    "name": "d360_ir_full_update",
-    "family": "Identity Resolution",
-    "description": "Fully replace an identity resolution ruleset.",
-    "method": "PUT",
-    "path": "/ssot/identity-resolutions/{identityResolutionId}"
-  },
-  {
-    "name": "d360_ir_publish",
-    "family": "Identity Resolution",
-    "description": "Publish an identity resolution ruleset.",
-    "method": "POST",
-    "path": "/ssot/identity-resolutions/{identityResolutionId}/actions/publish"
-  },
-  {
-    "name": "d360_ir_run",
-    "family": "Identity Resolution",
-    "description": "Run identity resolution now.",
-    "method": "POST",
-    "path": "/ssot/identity-resolutions/{identityResolutionId}/actions/run-now"
-  },
-  {
-    "name": "d360_dataspace_list",
-    "family": "Dataspace",
-    "description": "List data spaces.",
-    "method": "GET",
-    "path": "/ssot/data-spaces"
-  },
-  {
-    "name": "d360_dataspace_get",
-    "family": "Dataspace",
-    "description": "Get a data space by name.",
-    "method": "GET",
-    "path": "/ssot/data-spaces/{dataSpaceName}"
-  },
-  {
-    "name": "d360_dataspace_create",
-    "family": "Dataspace",
-    "description": "Create a data space.",
-    "method": "POST",
-    "path": "/ssot/data-spaces"
-  },
-  {
-    "name": "d360_dataspace_update",
-    "family": "Dataspace",
-    "description": "Update a data space by name.",
-    "method": "PATCH",
-    "path": "/ssot/data-spaces/{dataSpaceName}"
-  },
-  {
-    "name": "d360_dataspace_member_list",
-    "family": "Dataspace",
-    "description": "List data space members.",
-    "method": "GET",
-    "path": "/ssot/data-spaces/{dataSpaceName}/members"
-  },
-  {
-    "name": "d360_dataspace_member_add",
-    "family": "Dataspace",
-    "description": "Add members to a data space.",
-    "method": "PUT",
-    "path": "/ssot/data-spaces/{dataSpaceName}/members"
-  },
-  {
-    "name": "d360_sdm_list",
-    "family": "Semantic Retrieval",
-    "description": "List semantic data models.",
-    "method": "GET",
-    "path": "/ssot/semantic/models"
-  },
-  {
-    "name": "d360_sdm_get",
-    "family": "Semantic Retrieval",
-    "description": "Get a semantic data model by API name or id.",
-    "method": "GET",
-    "path": "/ssot/semantic/models/{modelApiNameOrId}"
-  },
-  {
-    "name": "d360_sdm_dependencies",
-    "family": "Semantic Retrieval",
-    "description": "Get dependencies of a semantic data model.",
-    "method": "GET",
-    "path": "/ssot/semantic/models/{modelApiNameOrId}/dependencies"
-  },
-  {
-    "name": "d360_sdm_data_objects_list",
-    "family": "Semantic Retrieval",
-    "description": "List data objects in a semantic data model.",
-    "method": "GET",
-    "path": "/ssot/semantic/models/{modelApiNameOrId}/data-objects"
-  },
-  {
-    "name": "d360_sdm_data_object_get",
-    "family": "Semantic Retrieval",
-    "description": "Get a data object from a semantic data model.",
-    "method": "GET",
-    "path": "/ssot/semantic/models/{modelApiNameOrId}/data-objects/{dataObjectNameOrId}"
-  },
-  {
-    "name": "d360_sdm_dimensions_list",
-    "family": "Semantic Retrieval",
-    "description": "List dimensions for a semantic data object.",
-    "method": "GET",
-    "path": "/ssot/semantic/models/{modelApiNameOrId}/data-objects/{dataObjectNameOrId}/dimensions"
-  },
-  {
-    "name": "d360_sdm_measurements_list",
-    "family": "Semantic Retrieval",
-    "description": "List measurements for a semantic data object.",
-    "method": "GET",
-    "path": "/ssot/semantic/models/{modelApiNameOrId}/data-objects/{dataObjectNameOrId}/measurements"
-  },
-  {
-    "name": "d360_sdm_calc_dims_list",
-    "family": "Semantic Retrieval",
-    "description": "List calculated dimensions in a semantic data model.",
-    "method": "GET",
-    "path": "/ssot/semantic/models/{modelApiNameOrId}/calculated-dimensions"
-  },
-  {
-    "name": "d360_sdm_calc_dim_get",
-    "family": "Semantic Retrieval",
-    "description": "Get a calculated dimension from a semantic data model.",
-    "method": "GET",
-    "path": "/ssot/semantic/models/{modelApiNameOrId}/calculated-dimensions/{calculatedDimensionId}"
-  },
-  {
-    "name": "d360_sdm_calc_measures_list",
-    "family": "Semantic Retrieval",
-    "description": "List calculated measurements in a semantic data model.",
-    "method": "GET",
-    "path": "/ssot/semantic/models/{modelApiNameOrId}/calculated-measurements"
-  },
-  {
-    "name": "d360_sdm_calc_measure_get",
-    "family": "Semantic Retrieval",
-    "description": "Get a calculated measurement from a semantic data model.",
-    "method": "GET",
-    "path": "/ssot/semantic/models/{modelApiNameOrId}/calculated-measurements/{calculatedMeasureId}"
-  },
-  {
-    "name": "d360_sdm_metrics_list",
-    "family": "Semantic Retrieval",
-    "description": "List metrics in a semantic data model.",
-    "method": "GET",
-    "path": "/ssot/semantic/models/{modelApiNameOrId}/metrics"
-  },
-  {
-    "name": "d360_sdm_metric_get",
-    "family": "Semantic Retrieval",
-    "description": "Get a metric from a semantic data model.",
-    "method": "GET",
-    "path": "/ssot/semantic/models/{modelApiNameOrId}/metrics/{metricNameOrId}"
-  },
-  {
-    "name": "d360_sdm_relationships_list",
-    "family": "Semantic Retrieval",
-    "description": "List relationships in a semantic data model.",
-    "method": "GET",
-    "path": "/ssot/semantic/models/{modelApiNameOrId}/relationships"
-  },
-  {
-    "name": "d360_sdm_relationship_get",
-    "family": "Semantic Retrieval",
-    "description": "Get a relationship from a semantic data model.",
-    "method": "GET",
-    "path": "/ssot/semantic/models/{modelApiNameOrId}/relationships/{relationshipId}"
-  },
-  {
-    "name": "d360_sdm_formula_metadata",
-    "family": "Semantic Retrieval",
-    "description": "Get supported formula metadata for semantic data models.",
-    "method": "GET",
-    "path": "/ssot/semantic/models/formula-metadata"
-  },
-  {
-    "name": "d360_sdm_permissions",
-    "family": "Semantic Retrieval",
-    "description": "Get semantic data model permissions.",
-    "method": "GET",
-    "path": "/ssot/semantic/permissions"
-  },
-  {
-    "name": "d360_sdm_validate",
-    "family": "Semantic Retrieval",
-    "description": "Validate a semantic data model.",
-    "method": "POST",
-    "path": "/ssot/semantic/models/{modelApiNameOrId}/validate"
-  },
-  {
-    "name": "d360_sdm_query",
-    "family": "Semantic Retrieval",
-    "description": "Execute a semantic query through the semantic engine gateway.",
-    "method": "POST",
-    "path": "/semantic-engine/gateway"
-  },
-  {
-    "name": "d360_sdm_create",
-    "family": "Semantic Retrieval",
-    "description": "Create a semantic data model shell.",
-    "method": "POST",
-    "path": "/ssot/semantic/models"
-  },
-  {
-    "name": "d360_sdm_update",
-    "family": "Semantic Retrieval",
-    "description": "Update a semantic data model.",
-    "method": "PATCH",
-    "path": "/ssot/semantic/models/{modelApiNameOrId}"
-  },
-  {
-    "name": "d360_sdm_clone",
-    "family": "Semantic Retrieval",
-    "description": "Clone a semantic data model.",
-    "method": "POST",
-    "path": "/ssot/semantic/models/{modelApiNameOrId}/clone"
-  },
-  {
-    "name": "d360_sdm_data_object_create",
-    "family": "Semantic Retrieval",
-    "description": "Add a data object to a semantic data model.",
-    "method": "POST",
-    "path": "/ssot/semantic/models/{modelApiNameOrId}/data-objects"
-  },
-  {
-    "name": "d360_sdm_data_object_update",
-    "family": "Semantic Retrieval",
-    "description": "Update a data object in a semantic data model.",
-    "method": "PATCH",
-    "path": "/ssot/semantic/models/{modelApiNameOrId}/data-objects/{dataObjectNameOrId}"
-  },
-  {
-    "name": "d360_sdm_calc_dim_create",
-    "family": "Semantic Retrieval",
-    "description": "Create a calculated dimension in a semantic data model.",
-    "method": "POST",
-    "path": "/ssot/semantic/models/{modelApiNameOrId}/calculated-dimensions"
-  },
-  {
-    "name": "d360_sdm_calc_dim_update",
-    "family": "Semantic Retrieval",
-    "description": "Update a calculated dimension in a semantic data model.",
-    "method": "PATCH",
-    "path": "/ssot/semantic/models/{modelApiNameOrId}/calculated-dimensions/{calculatedDimensionId}"
-  },
-  {
-    "name": "d360_sdm_calc_measure_create",
-    "family": "Semantic Retrieval",
-    "description": "Create a calculated measurement in a semantic data model.",
-    "method": "POST",
-    "path": "/ssot/semantic/models/{modelApiNameOrId}/calculated-measurements"
-  },
-  {
-    "name": "d360_sdm_calc_measure_update",
-    "family": "Semantic Retrieval",
-    "description": "Update a calculated measurement in a semantic data model.",
-    "method": "PATCH",
-    "path": "/ssot/semantic/models/{modelApiNameOrId}/calculated-measurements/{calculatedMeasureId}"
-  },
-  {
-    "name": "d360_sdm_metric_create",
-    "family": "Semantic Retrieval",
-    "description": "Create a metric in a semantic data model.",
-    "method": "POST",
-    "path": "/ssot/semantic/models/{modelApiNameOrId}/metrics"
-  },
-  {
-    "name": "d360_sdm_metric_update",
-    "family": "Semantic Retrieval",
-    "description": "Update a metric in a semantic data model.",
-    "method": "PATCH",
-    "path": "/ssot/semantic/models/{modelApiNameOrId}/metrics/{metricNameOrId}"
-  },
-  {
-    "name": "d360_sdm_relationship_create",
-    "family": "Semantic Retrieval",
-    "description": "Create a relationship between semantic data objects.",
-    "method": "POST",
-    "path": "/ssot/semantic/models/{modelApiNameOrId}/relationships"
-  },
-  {
-    "name": "d360_sdm_relationship_update",
-    "family": "Semantic Retrieval",
-    "description": "Update a relationship in a semantic data model.",
-    "method": "PATCH",
-    "path": "/ssot/semantic/models/{modelApiNameOrId}/relationships/{relationshipId}"
-  },
-  {
-    "name": "d360_datakit_list",
-    "family": "DataKit",
-    "description": "List all data kits.",
-    "method": "GET",
-    "path": "/ssot/data-kits"
-  },
-  {
-    "name": "d360_datakit_deploy",
-    "family": "DataKit",
-    "description": "Deploy or update data kit components.",
-    "method": "POST",
-    "path": "/ssot/data-kits/update-components"
+    "path": "/ssot/query-sql/{queryId}",
+    "origin": "upstream"
   },
   {
     "name": "d360_metadata",
     "family": "Query",
-    "description": "Get metadata for one entity. Prefer entityName filters.",
+    "description": "Get metadata for entity. ALWAYS use entityName filter.",
     "method": "GET",
-    "path": "/ssot/metadata"
+    "path": "/ssot/metadata",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_metadata_search",
+    "family": "Query",
+    "description": "Search metadata using natural language. Preferred for discovery.",
+    "method": "POST",
+    "path": "/connect/search/metadata/results",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_metadata_entities",
+    "family": "Query",
+    "description": "List paginated metadata entities. entityType required.",
+    "method": "GET",
+    "path": "/ssot/metadata-entities",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_profile_query",
+    "family": "Query",
+    "description": "Query Individual, Account, or custom profile models.",
+    "method": "GET",
+    "path": "/ssot/profile/{dataModelName}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_profile_metadata",
+    "family": "Query",
+    "description": "Discover profile schema.",
+    "method": "GET",
+    "path": "/ssot/profile/metadata",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_insights_query",
+    "family": "Query",
+    "description": "Query calculated insights with dimensions and measures.",
+    "method": "GET",
+    "path": "/ssot/insight/calculated-insights/{ciName}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_insights_metadata",
+    "family": "Query",
+    "description": "Discover CI names and available dimensions/measures.",
+    "method": "GET",
+    "path": "/ssot/insight/metadata",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_datagraph_query",
+    "family": "Query",
+    "description": "Query data graphs. Set live=true for real-time.",
+    "method": "GET",
+    "path": "/ssot/data-graphs/data/{entity}/{id}",
+    "origin": "upstream"
   },
   {
     "name": "d360_datagraph_lookup",
-    "family": "Profile and Data Graph",
-    "description": "Lookup data graph records by natural key.",
+    "family": "Query",
+    "description": "Lookup by natural key.",
     "method": "GET",
-    "path": "/ssot/data-graphs/data/{entity}"
+    "path": "/ssot/data-graphs/data/{entity}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_datagraph_metadata",
+    "family": "Query",
+    "description": "List data graph entities or get schema.",
+    "method": "GET",
+    "path": "/ssot/data-graphs/metadata",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_dmo_list",
+    "family": "DMO",
+    "description": "List all Data Model Objects. Filter by category.",
+    "method": "GET",
+    "path": "/ssot/data-model-objects",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_dmo_get",
+    "family": "DMO",
+    "description": "Get full DMO schema including all fields.",
+    "method": "GET",
+    "path": "/ssot/data-model-objects/{dmoName}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_dmo_create",
+    "family": "DMO",
+    "description": "Create DMO. API name must end with __dlm.",
+    "method": "POST",
+    "path": "/ssot/data-model-objects",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_dmo_update",
+    "family": "DMO",
+    "description": "Update DMO. Partial updates supported.",
+    "method": "PATCH",
+    "path": "/ssot/data-model-objects/{dmoName}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_dmo_delete",
+    "family": "DMO",
+    "description": "Delete DMO. Cascades to dependent objects.",
+    "method": "DELETE",
+    "path": "/ssot/data-model-objects/{dmoName}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_dlo_list",
+    "family": "DLO",
+    "description": "List all Data Lake Objects.",
+    "method": "GET",
+    "path": "/ssot/data-lake-objects",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_dlo_get",
+    "family": "DLO",
+    "description": "Get DLO fields and metadata.",
+    "method": "GET",
+    "path": "/ssot/data-lake-objects/{dloName}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_dlo_create",
+    "family": "DLO",
+    "description": "Create a new DLO.",
+    "method": "POST",
+    "path": "/ssot/data-lake-objects",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_dlo_update",
+    "family": "DLO",
+    "description": "Update DLO metadata.",
+    "method": "PATCH",
+    "path": "/ssot/data-lake-objects/{dloName}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_dlo_delete",
+    "family": "DLO",
+    "description": "Remove DLO.",
+    "method": "DELETE",
+    "path": "/ssot/data-lake-objects/{dloName}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_dmo_mapping_list",
+    "family": "Mappings",
+    "description": "List mappings by DMO name or CRM source.",
+    "method": "GET",
+    "path": "/ssot/data-model-object-mappings",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_dmo_mapping_get",
+    "family": "Mappings",
+    "description": "Get mapping configuration.",
+    "method": "GET",
+    "path": "/ssot/data-model-object-mappings/{mappingName}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_dmo_mapping_create",
+    "family": "Mappings",
+    "description": "Create a single DLO-to-DMO mapping.",
+    "method": "POST",
+    "path": "/ssot/data-model-object-mappings",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_dmo_mapping_delete",
+    "family": "Mappings",
+    "description": "Delete mapping.",
+    "method": "DELETE",
+    "path": "/ssot/data-model-object-mappings/{mappingName}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_dmo_field_mapping_add",
+    "family": "Mappings",
+    "description": "Add field mappings to an existing object mapping.",
+    "method": "PATCH",
+    "path": "/ssot/data-model-object-mappings/{mappingName}/field-mappings",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_dmo_field_mapping_delete",
+    "family": "Mappings",
+    "description": "Delete a single field mapping.",
+    "method": "DELETE",
+    "path": "/ssot/data-model-object-mappings/{mappingName}/field-mappings/{fieldMappingName}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_datastream_list",
+    "family": "DataStreams",
+    "description": "List data streams. Filter by category.",
+    "method": "GET",
+    "path": "/ssot/data-streams",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_datastream_get",
+    "family": "DataStreams",
+    "description": "Get full stream configuration.",
+    "method": "GET",
+    "path": "/ssot/data-streams/{dataStreamId}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_datastream_create",
+    "family": "DataStreams",
+    "description": "Create data stream. Requires Connection and DMO Mapping.",
+    "method": "POST",
+    "path": "/ssot/data-streams",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_datastream_update",
+    "family": "DataStreams",
+    "description": "Update stream. Changes apply to future runs.",
+    "method": "PATCH",
+    "path": "/ssot/data-streams/{dataStreamId}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_datastream_delete",
+    "family": "DataStreams",
+    "description": "Delete stream. Does not delete existing data.",
+    "method": "DELETE",
+    "path": "/ssot/data-streams/{dataStreamId}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_datastream_run",
+    "family": "DataStreams",
+    "description": "Manually trigger ingestion.",
+    "method": "POST",
+    "path": "/ssot/data-streams/{dataStreamId}/actions/run",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_datastream_create_sfdc",
+    "family": "DataStreams",
+    "description": "Create Salesforce CRM data stream. Auto-populates source fields.",
+    "method": "POST",
+    "path": "/ssot/data-streams",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_datastream_create_aws_s3",
+    "family": "DataStreams",
+    "description": "Create AWS S3 data stream.",
+    "method": "POST",
+    "path": "/ssot/data-streams",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_datastream_create_snowflake",
+    "family": "DataStreams",
+    "description": "Create Snowflake-backed data stream. Builds sourceFields, mappings, and advancedAttributes (database/schema/object) from field definitions.",
+    "method": "POST",
+    "path": "/ssot/data-streams",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_datastream_create_third_party_connectors",
+    "family": "DataStreams",
+    "description": "Create data stream for third-party connectors (Airtable, HubSpot, Marketo, Google Ads, etc). Builds full payload from simple field definitions.",
+    "method": "POST",
+    "path": "/ssot/data-streams",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_connection_list",
+    "family": "Connection",
+    "description": "List connections. connectorType REQUIRED.",
+    "method": "GET",
+    "path": "/ssot/connections",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_connection_get",
+    "family": "Connection",
+    "description": "Get connection details. connectorType REQUIRED.",
+    "method": "GET",
+    "path": "/ssot/connections/{connectionId}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_connection_create",
+    "family": "Connection",
+    "description": "Create connection. connectorType REQUIRED. Test first.",
+    "method": "POST",
+    "path": "/ssot/connections",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_connection_update",
+    "family": "Connection",
+    "description": "Update connection. Can break dependent streams.",
+    "method": "PATCH",
+    "path": "/ssot/connections/{connectionId}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_connection_delete",
+    "family": "Connection",
+    "description": "Delete connection. Breaks dependent streams.",
+    "method": "DELETE",
+    "path": "/ssot/connections/{connectionId}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_connection_test",
+    "family": "Connection",
+    "description": "Validate connection before saving. Does NOT create.",
+    "method": "POST",
+    "path": "/ssot/connections/actions/test",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_connector_list",
+    "family": "Connection",
+    "description": "Discover supported connector types.",
+    "method": "GET",
+    "path": "/ssot/connectors",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_connector_metadata",
+    "family": "Connection",
+    "description": "Get required/optional fields for connector type.",
+    "method": "GET",
+    "path": "/ssot/connectors/{connectorName}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_snowflake_connection_list",
+    "family": "Connection",
+    "description": "List Data 360 connections for a connector type. Use connectorType=SNOWFLAKE for Snowflake.",
+    "method": "GET",
+    "path": "/ssot/connections",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_connection_create_snowflake",
+    "family": "Connection",
+    "description": "Create a Snowflake connection with KeyPair auth. Provide private key content directly.",
+    "method": "POST",
+    "path": "/ssot/connections",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_connection_db_schemas_list",
+    "family": "Connection",
+    "description": "List database schemas available in a connection (e.g., Snowflake schemas). Pass database name in advancedAttributes.",
+    "method": "POST",
+    "path": "/ssot/connections/{id}/database-schemas",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_connection_objects_list",
+    "family": "Connection",
+    "description": "List objects/tables available in a connection. Use database/schema in advancedAttributes for DB connections.",
+    "method": "POST",
+    "path": "/ssot/connections/{id}/objects",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_connection_object_fields_describe",
+    "family": "Connection",
+    "description": "Describe field-level schema (names, types, primary keys) of an object in a connection.",
+    "method": "POST",
+    "path": "/ssot/connections/{id}/objects/{resourceName}/fields",
+    "origin": "upstream"
   },
   {
     "name": "d360_segment_list",
     "family": "Segment",
     "description": "List all segments.",
     "method": "GET",
-    "path": "/ssot/segments"
+    "path": "/ssot/segments",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_segment_get",
+    "family": "Segment",
+    "description": "Get segment by record ID or API name. Check segmentStatus for ACTIVE.",
+    "method": "GET",
+    "path": "/ssot/segments/{segmentId}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_segment_create",
+    "family": "Segment",
+    "description": "Create segment. Requires ACTIVE CIs first.",
+    "method": "POST",
+    "path": "/ssot/segments",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_segment_update",
+    "family": "Segment",
+    "description": "Update segment metadata by API name. Cannot change SQL via PATCH.",
+    "method": "PATCH",
+    "path": "/ssot/segments/{segmentId}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_segment_delete",
+    "family": "Segment",
+    "description": "Delete segment by API name (developer name). Irreversible.",
+    "method": "DELETE",
+    "path": "/ssot/segments/{segmentApiName}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_segment_publish",
+    "family": "Segment",
+    "description": "Trigger segment calculation.",
+    "method": "POST",
+    "path": "/ssot/segments/{segmentId}/actions/publish",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_segment_deactivate",
+    "family": "Segment",
+    "description": "Deactivate a segment by API name (developer name). Inverse of publish.",
+    "method": "POST",
+    "path": "/ssot/segments/{segmentApiName}/actions/deactivate",
+    "origin": "upstream"
   },
   {
     "name": "d360_ci_list",
     "family": "Calculated Insights",
-    "description": "List all calculated insights.",
+    "description": "List all CIs. Check status for ACTIVE.",
     "method": "GET",
-    "path": "/ssot/calculated-insights"
+    "path": "/ssot/calculated-insights",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_ci_get",
+    "family": "Calculated Insights",
+    "description": "Get CI details.",
+    "method": "GET",
+    "path": "/ssot/calculated-insights/{ciName}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_ci_create",
+    "family": "Calculated Insights",
+    "description": "Create CI. apiName must end with __cio. No COUNT(DISTINCT).",
+    "method": "POST",
+    "path": "/ssot/calculated-insights",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_ci_update",
+    "family": "Calculated Insights",
+    "description": "Update CI. Triggers recompilation.",
+    "method": "PATCH",
+    "path": "/ssot/calculated-insights/{ciName}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_ci_delete",
+    "family": "Calculated Insights",
+    "description": "Delete CI. Breaks dependent segments.",
+    "method": "DELETE",
+    "path": "/ssot/calculated-insights/{ciName}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_ci_enable",
+    "family": "Calculated Insights",
+    "description": "Enable CI.",
+    "method": "POST",
+    "path": "/ssot/calculated-insights/{ciName}/actions/enable",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_ci_disable",
+    "family": "Calculated Insights",
+    "description": "Disable CI.",
+    "method": "POST",
+    "path": "/ssot/calculated-insights/{ciName}/actions/disable",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_ci_run",
+    "family": "Calculated Insights",
+    "description": "Execute CI calculation.",
+    "method": "POST",
+    "path": "/ssot/calculated-insights/{ciName}/actions/run",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_ci_run_status",
+    "family": "Calculated Insights",
+    "description": "Get CI run status.",
+    "method": "POST",
+    "path": "/ssot/calculated-insights/{ciName}/actions/refresh-status",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_ci_validate",
+    "family": "Calculated Insights",
+    "description": "Validate CI before creation.",
+    "method": "POST",
+    "path": "/ssot/calculated-insights/actions/validate",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_ir_list",
+    "family": "Identity Resolution",
+    "description": "List identity resolution rulesets.",
+    "method": "GET",
+    "path": "/ssot/identity-resolutions",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_ir_get",
+    "family": "Identity Resolution",
+    "description": "Get ruleset details.",
+    "method": "GET",
+    "path": "/ssot/identity-resolutions/{identityResolutionId}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_ir_create",
+    "family": "Identity Resolution",
+    "description": "Create ruleset. Rules execute in priority order.",
+    "method": "POST",
+    "path": "/ssot/identity-resolutions",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_ir_update",
+    "family": "Identity Resolution",
+    "description": "Update ruleset. Changes apply after republish.",
+    "method": "PATCH",
+    "path": "/ssot/identity-resolutions/{identityResolutionId}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_ir_full_update",
+    "family": "Identity Resolution",
+    "description": "Update ruleset.",
+    "method": "PATCH",
+    "path": "/ssot/identity-resolutions/{identityResolutionId}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_ir_delete",
+    "family": "Identity Resolution",
+    "description": "Delete ruleset.",
+    "method": "DELETE",
+    "path": "/ssot/identity-resolutions/{identityResolutionId}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_ir_publish",
+    "family": "Identity Resolution",
+    "description": "Publish ruleset.",
+    "method": "POST",
+    "path": "/ssot/identity-resolutions/{identityResolutionId}/actions/publish",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_ir_run",
+    "family": "Identity Resolution",
+    "description": "Execute ruleset.",
+    "method": "POST",
+    "path": "/ssot/identity-resolutions/{identityResolutionId}/actions/run-now",
+    "origin": "upstream"
   },
   {
     "name": "d360_activation_list",
     "family": "Activation",
     "description": "List activations.",
     "method": "GET",
-    "path": "/ssot/activations"
+    "path": "/ssot/activations",
+    "origin": "upstream"
   },
   {
-    "name": "d360_standard_mapping_create",
-    "family": "StandardMappings",
-    "description": "Create standard DLO-to-DMO mappings using reviewed mapping payloads.",
+    "name": "d360_activation_get",
+    "family": "Activation",
+    "description": "Get activation details.",
+    "method": "GET",
+    "path": "/ssot/activations/{activationId}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_activation_create",
+    "family": "Activation",
+    "description": "Create activation. Requires active segment + target.",
     "method": "POST",
-    "path": "/ssot/data-model-object-mappings"
+    "path": "/ssot/activations",
+    "origin": "upstream"
   },
   {
-    "name": "d360_query_sql_cancel",
-    "family": "Query",
-    "description": "Cancel a running SQL query.",
-    "method": "DELETE",
-    "path": "/ssot/query-sql/{queryId}"
-  },
-  {
-    "name": "d360_dmo_delete",
-    "family": "DMO",
-    "description": "Delete a Data Model Object.",
-    "method": "DELETE",
-    "path": "/ssot/data-model-objects/{dmoName}"
-  },
-  {
-    "name": "d360_dlo_delete",
-    "family": "DLO",
-    "description": "Delete a Data Lake Object.",
-    "method": "DELETE",
-    "path": "/ssot/data-lake-objects/{dloName}"
-  },
-  {
-    "name": "d360_dmo_mapping_delete",
-    "family": "Mappings",
-    "description": "Delete a DLO-to-DMO mapping.",
-    "method": "DELETE",
-    "path": "/ssot/data-model-object-mappings/{mappingName}"
-  },
-  {
-    "name": "d360_dmo_field_mapping_delete",
-    "family": "Mappings",
-    "description": "Delete one field mapping from an object mapping.",
-    "method": "DELETE",
-    "path": "/ssot/data-model-object-mappings/{mappingName}/field-mappings/{fieldMappingName}"
-  },
-  {
-    "name": "d360_datastream_delete",
-    "family": "DataStreams",
-    "description": "Delete a data stream.",
-    "method": "DELETE",
-    "path": "/ssot/data-streams/{dataStreamId}"
-  },
-  {
-    "name": "d360_connection_delete",
-    "family": "Connection",
-    "description": "Delete a data connection.",
-    "method": "DELETE",
-    "path": "/ssot/connections/{connectionId}"
-  },
-  {
-    "name": "d360_segment_delete",
-    "family": "Segment",
-    "description": "Delete a segment by API name.",
-    "method": "DELETE",
-    "path": "/ssot/segments/{segmentApiName}"
-  },
-  {
-    "name": "d360_ci_delete",
-    "family": "Calculated Insights",
-    "description": "Delete a calculated insight.",
-    "method": "DELETE",
-    "path": "/ssot/calculated-insights/{ciName}"
-  },
-  {
-    "name": "d360_ir_delete",
-    "family": "Identity Resolution",
-    "description": "Delete an identity resolution ruleset.",
-    "method": "DELETE",
-    "path": "/ssot/identity-resolutions/{identityResolutionId}"
+    "name": "d360_activation_update",
+    "family": "Activation",
+    "description": "Update activation.",
+    "method": "PUT",
+    "path": "/ssot/activations/{activationId}",
+    "origin": "upstream"
   },
   {
     "name": "d360_activation_delete",
     "family": "Activation",
-    "description": "Delete an activation.",
+    "description": "Delete activation.",
     "method": "DELETE",
-    "path": "/ssot/activations/{activationId}"
+    "path": "/ssot/activations/{activationId}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_activation_target_list",
+    "family": "Activation",
+    "description": "List activation targets.",
+    "method": "GET",
+    "path": "/ssot/activation-targets",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_activation_target_get",
+    "family": "Activation",
+    "description": "Get target details.",
+    "method": "GET",
+    "path": "/ssot/activation-targets/{activationTargetId}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_activation_target_create",
+    "family": "Activation",
+    "description": "Create target. Must reference existing Connection.",
+    "method": "POST",
+    "path": "/ssot/activation-targets",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_activation_target_update",
+    "family": "Activation",
+    "description": "Update target.",
+    "method": "PATCH",
+    "path": "/ssot/activation-targets/{activationTargetId}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_dataspace_list",
+    "family": "Dataspace",
+    "description": "List data spaces.",
+    "method": "GET",
+    "path": "/ssot/data-spaces",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_dataspace_get",
+    "family": "Dataspace",
+    "description": "Get data space details.",
+    "method": "GET",
+    "path": "/ssot/data-spaces/{dataSpaceName}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_dataspace_create",
+    "family": "Dataspace",
+    "description": "Create isolated workspace.",
+    "method": "POST",
+    "path": "/ssot/data-spaces",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_dataspace_update",
+    "family": "Dataspace",
+    "description": "Update data space.",
+    "method": "PATCH",
+    "path": "/ssot/data-spaces/{dataSpaceName}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_dataspace_member_list",
+    "family": "Dataspace",
+    "description": "List data space members.",
+    "method": "GET",
+    "path": "/ssot/data-spaces/{dataSpaceName}/members",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_dataspace_member_add",
+    "family": "Dataspace",
+    "description": "Add member to data space.",
+    "method": "PUT",
+    "path": "/ssot/data-spaces/{dataSpaceName}/members",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_dataspace_member_remove",
+    "family": "Dataspace",
+    "description": "Remove members from a data space (max 10).",
+    "method": "DELETE",
+    "path": "/ssot/data-spaces/{name}/members",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_transform_list",
+    "family": "DataTransform",
+    "description": "List data transforms.",
+    "method": "GET",
+    "path": "/ssot/data-transforms",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_transform_get",
+    "family": "DataTransform",
+    "description": "Get transform details.",
+    "method": "GET",
+    "path": "/ssot/data-transforms/{transformId}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_transform_create",
+    "family": "DataTransform",
+    "description": "Create transform. Schedule runs separately.",
+    "method": "POST",
+    "path": "/ssot/data-transforms",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_transform_update",
+    "family": "DataTransform",
+    "description": "Update transform.",
+    "method": "PUT",
+    "path": "/ssot/data-transforms/{transformId}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_transform_prepare",
+    "family": "DataTransform",
+    "description": "Validate + enrich with output schema. RECOMMENDED before create.",
+    "method": "POST",
+    "path": "/ssot/data-transforms-validation",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_transform_delete",
+    "family": "DataTransform",
+    "description": "Delete transform.",
+    "method": "DELETE",
+    "path": "/ssot/data-transforms/{transformId}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_transform_run",
+    "family": "DataTransform",
+    "description": "Execute transform manually.",
+    "method": "POST",
+    "path": "/ssot/data-transforms/{transformId}/actions/run",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_transform_validate",
+    "family": "DataTransform",
+    "description": "Quick SQL validation (simple). Use prepare for full validation.",
+    "method": "POST",
+    "path": "/ssot/data-transforms-validation",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_transform_schedule_get",
+    "family": "DataTransform",
+    "description": "Get transform schedule.",
+    "method": "GET",
+    "path": "/ssot/data-transforms/{transformId}/schedule",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_transform_schedule_set",
+    "family": "DataTransform",
+    "description": "Set transform schedule.",
+    "method": "PUT",
+    "path": "/ssot/data-transforms/{transformId}/schedule",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_datakit_list",
+    "family": "DataKit",
+    "description": "List available DataKits.",
+    "method": "GET",
+    "path": "/ssot/data-kits",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_datakit_get",
+    "family": "DataKit",
+    "description": "Get DataKit details.",
+    "method": "GET",
+    "path": "/ssot/data-kits/{dataKitId}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_datakit_manifest",
+    "family": "DataKit",
+    "description": "Get DataKit manifest.",
+    "method": "GET",
+    "path": "/ssot/datakit/{dataKitId}/manifest",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_datakit_deploy",
+    "family": "DataKit",
+    "description": "Deploy a data kit.",
+    "method": "POST",
+    "path": "/ssot/data-kits/{dataKitDevName}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_datakit_undeploy",
+    "family": "DataKit",
+    "description": "Undeploy components.",
+    "method": "POST",
+    "path": "/ssot/data-kits/{dataKitId}/undeploy",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_datakit_deploy_status",
+    "family": "DataKit",
+    "description": "Get deployment job status.",
+    "method": "GET",
+    "path": "/ssot/data-kits/deployment-jobs/{jobId}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_datakit_component_status",
+    "family": "DataKit",
+    "description": "Get component deployment status.",
+    "method": "GET",
+    "path": "/ssot/data-kits/{dataKitId}/components/{componentId}/deployment-status",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_datakit_component_deps",
+    "family": "DataKit",
+    "description": "Get component dependencies.",
+    "method": "GET",
+    "path": "/ssot/data-kits/{dataKitId}/components/{componentId}/dependencies",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_datakit_components",
+    "family": "DataKit",
+    "description": "List org components available for inclusion in data kits.",
+    "method": "GET",
+    "path": "/ssot/data-kits/available-components",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_dataaction_list",
+    "family": "DataAction",
+    "description": "List data actions.",
+    "method": "GET",
+    "path": "/ssot/data-actions",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_dataaction_get",
+    "family": "DataAction",
+    "description": "Get action details.",
+    "method": "GET",
+    "path": "/ssot/data-actions/{dataActionId}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_dataaction_create",
+    "family": "DataAction",
+    "description": "Create action. Must have target configured.",
+    "method": "POST",
+    "path": "/ssot/data-actions",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_dataaction_target_list",
+    "family": "DataAction",
+    "description": "List action targets.",
+    "method": "GET",
+    "path": "/ssot/data-action-targets",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_dataaction_target_get",
+    "family": "DataAction",
+    "description": "Get target details.",
+    "method": "GET",
+    "path": "/ssot/data-action-targets/{dataActionTargetId}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_dataaction_target_create",
+    "family": "DataAction",
+    "description": "Create target.",
+    "method": "POST",
+    "path": "/ssot/data-action-targets",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_dataaction_target_update",
+    "family": "DataAction",
+    "description": "Update target.",
+    "method": "PATCH",
+    "path": "/ssot/data-action-targets/{dataActionTargetId}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_dataaction_target_delete",
+    "family": "DataAction",
+    "description": "Delete target.",
+    "method": "DELETE",
+    "path": "/ssot/data-action-targets/{dataActionTargetId}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_sdm_list",
+    "family": "Semantic Retrieval",
+    "description": "List semantic models.",
+    "method": "GET",
+    "path": "/ssot/semantic/models",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_sdm_get",
+    "family": "Semantic Retrieval",
+    "description": "Get semantic model.",
+    "method": "GET",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_sdm_create",
+    "family": "Semantic Retrieval",
+    "description": "Create empty model. Add objects separately. dataspace REQUIRED.",
+    "method": "POST",
+    "path": "/ssot/semantic/models",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_sdm_update",
+    "family": "Semantic Retrieval",
+    "description": "Update model metadata only.",
+    "method": "PATCH",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_sdm_delete",
+    "family": "Semantic Retrieval",
+    "description": "Delete model and all sub-components.",
+    "method": "DELETE",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_sdm_clone",
+    "family": "Semantic Retrieval",
+    "description": "Clone semantic model.",
+    "method": "POST",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}/clone",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_sdm_validate",
+    "family": "Semantic Retrieval",
+    "description": "Validate model before querying.",
+    "method": "GET",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}/validate",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_sdm_dependencies",
+    "family": "Semantic Retrieval",
+    "description": "Get model external dependencies.",
+    "method": "GET",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}/external-dependencies",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_sdm_data_object_create",
+    "family": "Semantic Retrieval",
+    "description": "Add data object. Type: Dmo, Dlo, or Cio.",
+    "method": "POST",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}/data-objects",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_sdm_data_objects_list",
+    "family": "Semantic Retrieval",
+    "description": "List data objects in model.",
+    "method": "GET",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}/data-objects",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_sdm_data_object_get",
+    "family": "Semantic Retrieval",
+    "description": "Get data object.",
+    "method": "GET",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}/data-objects/{dataObjectNameOrId}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_sdm_data_object_update",
+    "family": "Semantic Retrieval",
+    "description": "Update data object.",
+    "method": "PUT",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}/data-objects/{dataObjectNameOrId}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_sdm_data_object_delete",
+    "family": "Semantic Retrieval",
+    "description": "Delete data object. Breaks relationships.",
+    "method": "DELETE",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}/data-objects/{dataObjectNameOrId}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_sdm_dimensions_list",
+    "family": "Semantic Retrieval",
+    "description": "List dimensions.",
+    "method": "GET",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}/data-objects/{dataObjectNameOrId}/dimensions",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_sdm_measurements_list",
+    "family": "Semantic Retrieval",
+    "description": "List measurements.",
+    "method": "GET",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}/data-objects/{dataObjectNameOrId}/measurements",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_sdm_calc_dims_list",
+    "family": "Semantic Retrieval",
+    "description": "List calculated dimensions.",
+    "method": "GET",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}/calculated-dimensions",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_sdm_calc_dim_create",
+    "family": "Semantic Retrieval",
+    "description": "Create calculated dimension. Use [DataObject].[Field] syntax.",
+    "method": "POST",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}/calculated-dimensions",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_sdm_calc_dim_get",
+    "family": "Semantic Retrieval",
+    "description": "Get calculated dimension.",
+    "method": "GET",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}/calculated-dimensions/{calculatedDimensionId}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_sdm_calc_dim_update",
+    "family": "Semantic Retrieval",
+    "description": "Update calculated dimension.",
+    "method": "PUT",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}/calculated-dimensions/{calculatedDimensionId}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_sdm_calc_dim_delete",
+    "family": "Semantic Retrieval",
+    "description": "Delete calculated dimension.",
+    "method": "DELETE",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}/calculated-dimensions/{calculatedDimensionId}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_sdm_calc_measures_list",
+    "family": "Semantic Retrieval",
+    "description": "List calculated measurements.",
+    "method": "GET",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}/calculated-measurements",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_sdm_calc_measure_create",
+    "family": "Semantic Retrieval",
+    "description": "Create calculated measurement. aggregationType UserAgg required.",
+    "method": "POST",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}/calculated-measurements",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_sdm_calc_measure_get",
+    "family": "Semantic Retrieval",
+    "description": "Get calculated measurement.",
+    "method": "GET",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}/calculated-measurements/{calculatedMeasureId}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_sdm_calc_measure_update",
+    "family": "Semantic Retrieval",
+    "description": "Update calculated measurement.",
+    "method": "PUT",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}/calculated-measurements/{calculatedMeasureId}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_sdm_calc_measure_delete",
+    "family": "Semantic Retrieval",
+    "description": "Delete calculated measurement.",
+    "method": "DELETE",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}/calculated-measurements/{calculatedMeasureId}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_sdm_metrics_list",
+    "family": "Semantic Retrieval",
+    "description": "List metrics.",
+    "method": "GET",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}/metrics",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_sdm_metric_create",
+    "family": "Semantic Retrieval",
+    "description": "Create named metric for BI tools.",
+    "method": "POST",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}/metrics",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_sdm_metric_get",
+    "family": "Semantic Retrieval",
+    "description": "Get metric.",
+    "method": "GET",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}/metrics/{metricNameOrId}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_sdm_metric_update",
+    "family": "Semantic Retrieval",
+    "description": "Update metric.",
+    "method": "PUT",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}/metrics/{metricNameOrId}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_sdm_metric_delete",
+    "family": "Semantic Retrieval",
+    "description": "Delete metric.",
+    "method": "DELETE",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}/metrics/{metricNameOrId}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_sdm_relationships_list",
+    "family": "Semantic Retrieval",
+    "description": "List relationships.",
+    "method": "GET",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}/relationships",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_sdm_relationship_create",
+    "family": "Semantic Retrieval",
+    "description": "Create relationship. Use semantic field names, not DMO names.",
+    "method": "POST",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}/relationships",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_sdm_relationship_get",
+    "family": "Semantic Retrieval",
+    "description": "Get relationship.",
+    "method": "GET",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}/relationships/{relationshipId}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_sdm_relationship_update",
+    "family": "Semantic Retrieval",
+    "description": "Update relationship.",
+    "method": "PUT",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}/relationships/{relationshipId}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_sdm_relationship_delete",
+    "family": "Semantic Retrieval",
+    "description": "Delete relationship. Breaks queries.",
+    "method": "DELETE",
+    "path": "/ssot/semantic/models/{modelApiNameOrId}/relationships/{relationshipId}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_sdm_formula_metadata",
+    "family": "Semantic Retrieval",
+    "description": "Reference available functions for calc dims/measures.",
+    "method": "GET",
+    "path": "/ssot/semantic/models/formula-metadata",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_sdm_permissions",
+    "family": "Semantic Retrieval",
+    "description": "Get SDM permissions.",
+    "method": "GET",
+    "path": "/ssot/semantic/permissions",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_sdm_query",
+    "family": "Semantic Retrieval",
+    "description": "Query semantic model. Use semanticModelId not apiName.",
+    "method": "POST",
+    "path": "/semantic-engine/gateway",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_smart_mapping_suggest",
+    "family": "Smart",
+    "description": "Auto-generate field mappings using similarity.",
+    "method": "POST",
+    "path": "/local/smart-mapping-suggest",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_preview_field_matches",
+    "family": "Smart",
+    "description": "Dry-run field matching with confidence scores.",
+    "method": "POST",
+    "path": "/local/preview-field-matches",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_smart_datastream_create",
+    "family": "Smart",
+    "description": "Auto-select immutable event date for Engagement streams.",
+    "method": "POST",
+    "path": "/local/smart-datastream-create",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_event_date_recommend",
+    "family": "Smart",
+    "description": "Show mutable vs immutable date field scores.",
+    "method": "POST",
+    "path": "/local/event-date-recommend",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_standard_mapping_preview",
+    "family": "StandardMappings",
+    "description": "Preview standard DLO-to-DMO mappings from 500+ definitions.",
+    "method": "GET",
+    "path": "/local/standard-mapping-preview",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_standard_mapping_create",
+    "family": "StandardMappings",
+    "description": "Create ALL standard mappings for a source object in one call.",
+    "method": "POST",
+    "path": "/ssot/data-model-object-mappings",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_search_index_list",
+    "family": "Semantic Retrieval",
+    "description": "List search indexes.",
+    "method": "GET",
+    "path": "/ssot/search-index",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_search_index_get",
+    "family": "Semantic Retrieval",
+    "description": "Get search index details.",
+    "method": "GET",
+    "path": "/ssot/search-index/{searchIndexApiNameOrId}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_search_index_create",
+    "family": "Semantic Retrieval",
+    "description": "Create search index.",
+    "method": "POST",
+    "path": "/ssot/search-index",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_search_index_update",
+    "family": "Semantic Retrieval",
+    "description": "Update search index.",
+    "method": "PATCH",
+    "path": "/ssot/search-index/{searchIndexApiNameOrId}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_search_index_delete",
+    "family": "Semantic Retrieval",
+    "description": "Delete search index.",
+    "method": "DELETE",
+    "path": "/ssot/search-index/{searchIndexApiNameOrId}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_search_index_config",
+    "family": "Semantic Retrieval",
+    "description": "Get search index configuration.",
+    "method": "GET",
+    "path": "/ssot/search-index/config",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_search_index_process_history",
+    "family": "Semantic Retrieval",
+    "description": "Get search index processing history.",
+    "method": "GET",
+    "path": "/ssot/search-index/{searchIndexApiNameOrId}/process-history",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_p13n_engagement_signals_list",
+    "family": "Personalization",
+    "description": "List engagement signals for a data graph. Required for recommender attribution setup.",
+    "method": "GET",
+    "path": "/personalization/engagement-signals",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_p13n_org_info_get",
+    "family": "Personalization",
+    "description": "Get org info (Data Cloud TSE endpoint).",
+    "method": "GET",
+    "path": "/personalization/external-apps/org",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_p13n_mobile_preview_create",
+    "family": "Personalization",
+    "description": "Generate mobile live preview link.",
+    "method": "POST",
+    "path": "/personalization/external-apps/mobile/live-preview-link",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_p13n_experience_config_list",
+    "family": "Personalization",
+    "description": "List experience configs for a data connector.",
+    "method": "GET",
+    "path": "/personalization/external-apps/{id}/personalization-experience-configs",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_p13n_experience_config_get",
+    "family": "Personalization",
+    "description": "Get specific experience config.",
+    "method": "GET",
+    "path": "/personalization/external-apps/{id}/personalization-experience-configs/{name}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_p13n_experience_config_create",
+    "family": "Personalization",
+    "description": "Create experience config.",
+    "method": "POST",
+    "path": "/personalization/external-apps/{id}/personalization-experience-configs",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_p13n_experience_config_update",
+    "family": "Personalization",
+    "description": "Update experience config.",
+    "method": "PUT",
+    "path": "/personalization/external-apps/{id}/personalization-experience-configs/{name}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_p13n_experience_config_delete",
+    "family": "Personalization",
+    "description": "Delete experience config.",
+    "method": "DELETE",
+    "path": "/personalization/external-apps/{id}/personalization-experience-configs/{name}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_p13n_transformer_list",
+    "family": "Personalization",
+    "description": "List transformers with filtering.",
+    "method": "GET",
+    "path": "/personalization/external-apps/transformers",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_p13n_transformer_get",
+    "family": "Personalization",
+    "description": "Get specific transformer.",
+    "method": "GET",
+    "path": "/personalization/external-apps/transformer",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_p13n_transformer_create",
+    "family": "Personalization",
+    "description": "Create transformer.",
+    "method": "POST",
+    "path": "/personalization/external-apps/transformers",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_p13n_transformer_update",
+    "family": "Personalization",
+    "description": "Update transformer.",
+    "method": "PUT",
+    "path": "/personalization/external-apps/transformer",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_p13n_transformer_delete",
+    "family": "Personalization",
+    "description": "Delete transformer.",
+    "method": "DELETE",
+    "path": "/personalization/external-apps/transformer",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_p13n_schema_create",
+    "family": "Personalization",
+    "description": "Create personalization schema.",
+    "method": "POST",
+    "path": "/personalization/personalization-schemas",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_p13n_schema_get",
+    "family": "Personalization",
+    "description": "Get specific personalization schema.",
+    "method": "GET",
+    "path": "/personalization/personalization-schemas/{idOrName}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_p13n_schema_update",
+    "family": "Personalization",
+    "description": "Update personalization schema.",
+    "method": "PATCH",
+    "path": "/personalization/personalization-schemas/{idOrName}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_p13n_schema_delete",
+    "family": "Personalization",
+    "description": "Delete personalization schema.",
+    "method": "DELETE",
+    "path": "/personalization/personalization-schemas/{idOrName}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_p13n_point_create",
+    "family": "Personalization",
+    "description": "Create personalization point.",
+    "method": "POST",
+    "path": "/personalization/personalization-points",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_p13n_point_get",
+    "family": "Personalization",
+    "description": "Get specific personalization point.",
+    "method": "GET",
+    "path": "/personalization/personalization-points/{idOrName}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_p13n_point_update",
+    "family": "Personalization",
+    "description": "Update personalization point.",
+    "method": "PUT",
+    "path": "/personalization/personalization-points/{idOrName}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_p13n_point_delete",
+    "family": "Personalization",
+    "description": "Delete personalization point.",
+    "method": "DELETE",
+    "path": "/personalization/personalization-points/{idOrName}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_retriever_list",
+    "family": "Semantic Retrieval",
+    "description": "List retrievers.",
+    "method": "GET",
+    "path": "/ssot/machine-learning/retrievers",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_retriever_get",
+    "family": "Semantic Retrieval",
+    "description": "Get retriever.",
+    "method": "GET",
+    "path": "/ssot/machine-learning/retrievers/{retrieverId}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_retriever_create",
+    "family": "Semantic Retrieval",
+    "description": "Create retriever.",
+    "method": "POST",
+    "path": "/ssot/machine-learning/retrievers",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_retriever_update",
+    "family": "Semantic Retrieval",
+    "description": "Update retriever.",
+    "method": "PATCH",
+    "path": "/ssot/machine-learning/retrievers/{retrieverIdOrName}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_retriever_delete",
+    "family": "Semantic Retrieval",
+    "description": "Delete retriever.",
+    "method": "DELETE",
+    "path": "/ssot/machine-learning/retrievers/{retrieverIdOrName}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_retriever_config_list",
+    "family": "Semantic Retrieval",
+    "description": "List retriever configurations.",
+    "method": "GET",
+    "path": "/ssot/machine-learning/retrievers/{retrieverIdOrName}/configurations",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_retriever_config_get",
+    "family": "Semantic Retrieval",
+    "description": "Get retriever configuration.",
+    "method": "GET",
+    "path": "/ssot/machine-learning/retrievers/{retrieverIdOrName}/configurations/{configurationIdOrName}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_retriever_config_create",
+    "family": "Semantic Retrieval",
+    "description": "Create retriever configuration.",
+    "method": "POST",
+    "path": "/ssot/machine-learning/retrievers/{retrieverIdOrName}/configurations",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_retriever_config_update",
+    "family": "Semantic Retrieval",
+    "description": "Update retriever configuration.",
+    "method": "PATCH",
+    "path": "/ssot/machine-learning/retrievers/{retrieverIdOrName}/configurations/{configurationIdOrName}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_retriever_config_delete",
+    "family": "Semantic Retrieval",
+    "description": "Delete retriever configuration.",
+    "method": "DELETE",
+    "path": "/ssot/machine-learning/retrievers/{retrieverIdOrName}/configurations/{configurationIdOrName}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_prediction_job_def_list",
+    "family": "MachineLearning",
+    "description": "List prediction job definitions. Optional modelId filter.",
+    "method": "GET",
+    "path": "/ssot/machine-learning/prediction-job-definitions",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_prediction_job_def_get",
+    "family": "MachineLearning",
+    "description": "Get a prediction job definition by id or developer name.",
+    "method": "GET",
+    "path": "/ssot/machine-learning/prediction-job-definitions/{idOrName}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_prediction_job_def_create",
+    "family": "MachineLearning",
+    "description": "Generic create — prefer the type-specific tools (regression, binary, multiclass, sentiment, topic, clustering) which pre-shape the payload and validate locally.",
+    "method": "POST",
+    "path": "/ssot/machine-learning/prediction-job-definitions",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_prediction_job_def_create_regression",
+    "family": "MachineLearning",
+    "description": "Create a Regression prediction job definition. Pre-shapes payload, validates settings ranges (maxTopContributors 0-3, maxPrescriptions 0-3, prescriptionThreshold 0-100).",
+    "method": "POST",
+    "path": "/ssot/machine-learning/prediction-job-definitions",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_prediction_job_def_create_binary_classification",
+    "family": "MachineLearning",
+    "description": "Create a BinaryClassification prediction job definition. showClassProbabilities defaults to true.",
+    "method": "POST",
+    "path": "/ssot/machine-learning/prediction-job-definitions",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_prediction_job_def_create_multiclass_classification",
+    "family": "MachineLearning",
+    "description": "Create a MulticlassClassification prediction job definition. numberOfClasses ≥ 1, default = all classes.",
+    "method": "POST",
+    "path": "/ssot/machine-learning/prediction-job-definitions",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_prediction_job_def_create_sentiment_detection",
+    "family": "MachineLearning",
+    "description": "Create a SentimentDetection prediction job definition. Defaults model to sfdc_ai__DefaultSalesforceSentimentAnalysis.",
+    "method": "POST",
+    "path": "/ssot/machine-learning/prediction-job-definitions",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_prediction_job_def_create_topic_classification",
+    "family": "MachineLearning",
+    "description": "Create a TopicClassification prediction job definition. 2-5 distinct topic labels, each ≤ 100 chars; up to 3 text fields. Defaults model to sfdc_ai__DefaultSalesforceTopicClassification.",
+    "method": "POST",
+    "path": "/ssot/machine-learning/prediction-job-definitions",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_prediction_job_def_create_clustering",
+    "family": "MachineLearning",
+    "description": "Create a Clustering prediction job definition. clusterIdFieldLabel and clusterLabelFieldLabel are required.",
+    "method": "POST",
+    "path": "/ssot/machine-learning/prediction-job-definitions",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_prediction_job_def_update",
+    "family": "MachineLearning",
+    "description": "Update a prediction job definition. Partial-update; for activation toggle prefer the activate/deactivate tools.",
+    "method": "PATCH",
+    "path": "/ssot/machine-learning/prediction-job-definitions/{idOrName}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_prediction_job_def_activate",
+    "family": "MachineLearning",
+    "description": "Activate a prediction job definition (sets activationStatus=Active). Required before running.",
+    "method": "PATCH",
+    "path": "/ssot/machine-learning/prediction-job-definitions/{idOrName}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_prediction_job_def_deactivate",
+    "family": "MachineLearning",
+    "description": "Deactivate a prediction job definition (sets activationStatus=Inactive). Inactive defs cannot be run.",
+    "method": "PATCH",
+    "path": "/ssot/machine-learning/prediction-job-definitions/{idOrName}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_prediction_job_def_delete",
+    "family": "MachineLearning",
+    "description": "Delete a prediction job definition. Irreversible.",
+    "method": "DELETE",
+    "path": "/ssot/machine-learning/prediction-job-definitions/{idOrName}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_prediction_job_run",
+    "family": "MachineLearning",
+    "description": "Submit a prediction job for execution. Async — response carries job id and initial status. PREREQUISITE: definition must be Active.",
+    "method": "POST",
+    "path": "/ssot/machine-learning/jobs",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_ml_predict",
+    "family": "MachineLearning",
+    "description": "Run synchronous prediction against a configured model — submits raw feature rows and returns per-row Success/Error results with factors, prescriptions, and warnings.",
+    "method": "POST",
+    "path": "/ssot/machine-learning/predict",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_ml_setup_version_inspector_metrics_get",
+    "family": "MachineLearning",
+    "description": "Training-time inspector metrics for a setup version (AUC, RMSE, confusion matrices, gain table, outcome distribution). gauges defaults to 'Overview'; use 'All' for the full payload.",
+    "method": "GET",
+    "path": "/ssot/machine-learning/model-setups/{idOrName}/setup-versions/{versionId}/inspector/metrics",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_ml_alerts_query",
+    "family": "MachineLearning",
+    "description": "Query training-time and runtime data alerts for a model artifact. Returns alerts with structured directives[] for auto-remediation on retrain.",
+    "method": "POST",
+    "path": "/ssot/machine-learning/alerts",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_ml_alert_update",
+    "family": "MachineLearning",
+    "description": "Triage an alert: accept (directives auto-apply on next setup-version) or dismiss.",
+    "method": "PATCH",
+    "path": "/ssot/machine-learning/alerts/{alertId}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_ml_model_artifact_list",
+    "family": "MachineLearning",
+    "description": "List trained model artifacts. Filter by modelType, sourceType, dataCloudOneVisibility.",
+    "method": "GET",
+    "path": "/ssot/machine-learning/model-artifacts",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_ml_model_artifact_get",
+    "family": "MachineLearning",
+    "description": "Get a trained model artifact. Carries the parameters, inputFields, outputFields, source/setupContainer back-links.",
+    "method": "GET",
+    "path": "/ssot/machine-learning/model-artifacts/{idOrName}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_ml_model_artifact_update",
+    "family": "MachineLearning",
+    "description": "Update a model artifact (label, description, status, output-field overrides). Status writable values are Enabled/Disabled only.",
+    "method": "PATCH",
+    "path": "/ssot/machine-learning/model-artifacts/{idOrName}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_ml_model_artifact_delete",
+    "family": "MachineLearning",
+    "description": "Delete a model artifact. Predictive deletes do not cascade — referencing configured models become orphaned.",
+    "method": "DELETE",
+    "path": "/ssot/machine-learning/model-artifacts/{idOrName}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_ml_configured_model_list",
+    "family": "MachineLearning",
+    "description": "List configured models. Filter by assetIdOrName + assetType (ModelArtifact|ModelSetup) to find configured models bound to a specific artifact or setup.",
+    "method": "GET",
+    "path": "/ssot/machine-learning/configured-models",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_ml_configured_model_get",
+    "family": "MachineLearning",
+    "description": "Get a configured model by id or developer name.",
+    "method": "GET",
+    "path": "/ssot/machine-learning/configured-models/{idOrName}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_ml_configured_model_create",
+    "family": "MachineLearning",
+    "description": "Create a configured model wrapping a model artifact. artifact reference is required. Status defaults to Disabled unless explicitly Enabled.",
+    "method": "POST",
+    "path": "/ssot/machine-learning/configured-models",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_ml_configured_model_update",
+    "family": "MachineLearning",
+    "description": "Update a configured model.",
+    "method": "PATCH",
+    "path": "/ssot/machine-learning/configured-models/{idOrName}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_ml_configured_model_delete",
+    "family": "MachineLearning",
+    "description": "Delete a configured model.",
+    "method": "DELETE",
+    "path": "/ssot/machine-learning/configured-models/{idOrName}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_ml_configured_model_activate",
+    "family": "MachineLearning",
+    "description": "Activate a configured model (status=Enabled). Required before the model can be deployed.",
+    "method": "PATCH",
+    "path": "/ssot/machine-learning/configured-models/{idOrName}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_ml_configured_model_history_list",
+    "family": "MachineLearning",
+    "description": "List history snapshots for a configured model.",
+    "method": "GET",
+    "path": "/ssot/machine-learning/configured-models/{idOrName}/histories",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_ml_configured_model_history_get",
+    "family": "MachineLearning",
+    "description": "Get one configured-model history snapshot.",
+    "method": "GET",
+    "path": "/ssot/machine-learning/configured-models/{idOrName}/histories/{historyId}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_ml_query_setup_fields",
+    "family": "MachineLearning",
+    "description": "Enumerate fields and applicable transformations for a data source. First call when authoring a model setup.",
+    "method": "POST",
+    "path": "/ssot/machine-learning/query-setup-fields",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_ml_query_data_profile",
+    "family": "MachineLearning",
+    "description": "Profile values on a data source — cardinality, null counts, distribution stats. Use to decide which fields are usable as features.",
+    "method": "POST",
+    "path": "/ssot/machine-learning/query-data-profile",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_ml_query_outcome",
+    "family": "MachineLearning",
+    "description": "List candidate outcome columns (Binary, Discrete, Continuous, Clustering) the data source can support. Optional predictionType narrows results.",
+    "method": "POST",
+    "path": "/ssot/machine-learning/query-outcome",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_ml_query_row_count",
+    "family": "MachineLearning",
+    "description": "Row count for the data source after filters and joins are applied. Used to gate whether there is enough data to train.",
+    "method": "POST",
+    "path": "/ssot/machine-learning/query-row-count",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_ml_model_setup_list",
+    "family": "MachineLearning",
+    "description": "List model-setup containers. Filters: search, modelType, modelCapability, setupType, connectorType. Pagination via limit/offset.",
+    "method": "GET",
+    "path": "/ssot/machine-learning/model-setups",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_ml_model_setup_get",
+    "family": "MachineLearning",
+    "description": "Get a model-setup container by id or developer name.",
+    "method": "GET",
+    "path": "/ssot/machine-learning/model-setups/{idOrName}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_ml_model_setup_create",
+    "family": "MachineLearning",
+    "description": "Create a model-setup container (parent record). Does not start training; follow up with d360_ml_setup_version_create.",
+    "method": "POST",
+    "path": "/ssot/machine-learning/model-setups",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_ml_model_setup_update",
+    "family": "MachineLearning",
+    "description": "Update a model-setup container (label, description, modelCapability, outcomeDefinition).",
+    "method": "PATCH",
+    "path": "/ssot/machine-learning/model-setups/{idOrName}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_ml_model_setup_delete",
+    "family": "MachineLearning",
+    "description": "Delete a model-setup container. Cascades to all versions. Irreversible.",
+    "method": "DELETE",
+    "path": "/ssot/machine-learning/model-setups/{idOrName}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_ml_setup_version_list",
+    "family": "MachineLearning",
+    "description": "List versions of a model-setup container.",
+    "method": "GET",
+    "path": "/ssot/machine-learning/model-setups/{idOrName}/setup-versions",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_ml_setup_version_get",
+    "family": "MachineLearning",
+    "description": "Get one setup version with its full setup body. Use to poll status during training.",
+    "method": "GET",
+    "path": "/ssot/machine-learning/model-setups/{idOrName}/setup-versions/{versionId}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_ml_setup_version_create",
+    "family": "MachineLearning",
+    "description": "Create a new EdcNoCode setup version — kicks off training. Algorithm defaulted by outcome type if omitted.",
+    "method": "POST",
+    "path": "/ssot/machine-learning/model-setups/{idOrName}/setup-versions",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_ml_setup_version_update",
+    "family": "MachineLearning",
+    "description": "Update setup version description or status (only mutable fields). Send status='Training' to start training on a Draft version.",
+    "method": "PATCH",
+    "path": "/ssot/machine-learning/model-setups/{idOrName}/setup-versions/{versionId}",
+    "origin": "upstream"
+  },
+  {
+    "name": "d360_data_spaces_list",
+    "family": "Metadata",
+    "description": "List Data 360 data spaces.",
+    "method": "GET",
+    "path": "/ssot/data-spaces",
+    "origin": "local_compatibility"
+  },
+  {
+    "name": "d360_dmo_describe",
+    "family": "Metadata",
+    "description": "Describe one Data Model Object by API name.",
+    "method": "GET",
+    "path": "/ssot/data-model-objects/{dmoName}",
+    "origin": "local_compatibility"
+  },
+  {
+    "name": "d360_dlo_describe",
+    "family": "Metadata",
+    "description": "Describe one Data Lake Object by API name.",
+    "method": "GET",
+    "path": "/ssot/data-lake-objects/{dloName}",
+    "origin": "local_compatibility"
+  },
+  {
+    "name": "d360_segments_list",
+    "family": "Segment",
+    "description": "List segments with optional pagination.",
+    "method": "GET",
+    "path": "/ssot/segments",
+    "origin": "local_compatibility"
+  },
+  {
+    "name": "d360_activations_list",
+    "family": "Activation",
+    "description": "List activations with optional pagination.",
+    "method": "GET",
+    "path": "/ssot/activations",
+    "origin": "local_compatibility"
+  },
+  {
+    "name": "d360_calculated_insights_list",
+    "family": "Calculated Insights",
+    "description": "List calculated insights.",
+    "method": "GET",
+    "path": "/ssot/calculated-insights",
+    "origin": "local_compatibility"
+  },
+  {
+    "name": "d360_connectors_list",
+    "family": "Ingestion",
+    "description": "List connector catalog entries supported by the org.",
+    "method": "GET",
+    "path": "/ssot/connectors",
+    "origin": "local_compatibility"
+  },
+  {
+    "name": "d360_connections_sfdc_list",
+    "family": "Ingestion",
+    "description": "List Salesforce CRM connections.",
+    "method": "GET",
+    "path": "/ssot/connections?connectorType=SalesforceDotCom",
+    "origin": "local_compatibility"
+  },
+  {
+    "name": "d360_data_streams_list",
+    "family": "Ingestion",
+    "description": "List data streams with optional pagination.",
+    "method": "GET",
+    "path": "/ssot/data-streams",
+    "origin": "local_compatibility"
+  },
+  {
+    "name": "d360_data_transforms_list",
+    "family": "Transforms and Actions",
+    "description": "List Data 360 SQL/data transforms.",
+    "method": "GET",
+    "path": "/ssot/data-transforms",
+    "origin": "local_compatibility"
+  },
+  {
+    "name": "d360_data_actions_list",
+    "family": "Transforms and Actions",
+    "description": "List Data 360 data actions.",
+    "method": "GET",
+    "path": "/ssot/data-actions",
+    "origin": "local_compatibility"
+  },
+  {
+    "name": "d360_identity_resolutions_list",
+    "family": "Identity Resolution",
+    "description": "List identity resolution rulesets.",
+    "method": "GET",
+    "path": "/ssot/identity-resolutions",
+    "origin": "local_compatibility"
+  },
+  {
+    "name": "d360_semantic_models_list",
+    "family": "Semantic Retrieval",
+    "description": "List semantic data models.",
+    "method": "GET",
+    "path": "/ssot/semantic/models",
+    "origin": "local_compatibility"
+  },
+  {
+    "name": "d360_search_indexes_list",
+    "family": "Semantic Retrieval",
+    "description": "List search indexes when the org exposes the search-index surface.",
+    "method": "GET",
+    "path": "/ssot/search-index",
+    "origin": "local_compatibility"
+  },
+  {
+    "name": "d360_retrievers_list",
+    "family": "Semantic Retrieval",
+    "description": "List machine-learning retrievers when retriever APIs are provisioned.",
+    "method": "GET",
+    "path": "/ssot/machine-learning/retrievers",
+    "origin": "local_compatibility"
+  },
+  {
+    "name": "d360_datakits_list",
+    "family": "DataKit",
+    "description": "List available DataKits.",
+    "method": "GET",
+    "path": "/ssot/data-kits",
+    "origin": "local_compatibility"
+  },
+  {
+    "name": "d360_metadata_get",
+    "family": "Metadata",
+    "description": "Fetch metadata for a specific entity name.",
+    "method": "GET",
+    "path": "/ssot/metadata",
+    "origin": "local_compatibility"
+  },
+  {
+    "name": "d360_model_artifact_list",
+    "family": "Semantic Retrieval",
+    "description": "List machine-learning model artifacts, including embedding models required by search indexes.",
+    "method": "GET",
+    "path": "/ssot/machine-learning/model-artifacts",
+    "origin": "local_compatibility"
+  },
+  {
+    "name": "d360_connection_endpoints",
+    "family": "Connection",
+    "description": "List pre-configured connection endpoints.",
+    "method": "GET",
+    "path": "/ssot/connection-endpoints",
+    "origin": "local_compatibility"
+  },
+  {
+    "name": "d360_dataaction_delete",
+    "family": "DataAction",
+    "description": "Delete a data action.",
+    "method": "DELETE",
+    "path": "/ssot/data-actions/{dataActionId}",
+    "origin": "local_compatibility"
+  },
+  {
+    "name": "d360_semantic_model_get",
+    "family": "Semantic Retrieval",
+    "description": "Get one semantic data model.",
+    "method": "GET",
+    "path": "/ssot/semantic/models/{semanticModelName}",
+    "origin": "local_compatibility"
+  },
+  {
+    "name": "d360_semantic_model_validate",
+    "family": "Semantic Retrieval",
+    "description": "Validate one semantic data model.",
+    "method": "GET",
+    "path": "/ssot/semantic/models/{semanticModelName}/validate",
+    "origin": "local_compatibility"
+  },
+  {
+    "name": "d360_profile_metadata_model",
+    "family": "Profile and Data Graph",
+    "description": "Discover one profile DMO schema and relationships.",
+    "method": "GET",
+    "path": "/ssot/profile/metadata/{dataModelName}",
+    "origin": "local_compatibility"
+  },
+  {
+    "name": "d360_insights_metadata_get",
+    "family": "Profile and Data Graph",
+    "description": "Discover one calculated insight metadata definition.",
+    "method": "GET",
+    "path": "/ssot/insight/metadata/{ciName}",
+    "origin": "local_compatibility"
+  },
+  {
+    "name": "d360_semantic_query",
+    "family": "Semantic Retrieval",
+    "description": "Execute a semantic data model query.",
+    "method": "POST",
+    "path": "/semantic-engine/gateway",
+    "origin": "local_compatibility"
+  },
+  {
+    "name": "d360_dmo_mapping_update",
+    "family": "Mappings",
+    "description": "Update a DLO-to-DMO mapping by developer name.",
+    "method": "PATCH",
+    "path": "/ssot/data-model-object-mappings/{mappingName}",
+    "origin": "local_compatibility"
   },
   {
     "name": "d360_activation_target_delete",
     "family": "Activation",
     "description": "Delete an activation target.",
     "method": "DELETE",
-    "path": "/ssot/activation-targets/{activationTargetId}"
+    "path": "/ssot/activation-targets/{activationTargetId}",
+    "origin": "local_compatibility"
   },
   {
     "name": "d360_dataspace_delete",
     "family": "Dataspace",
     "description": "Delete a data space and its contents.",
     "method": "DELETE",
-    "path": "/ssot/data-spaces/{dataSpaceName}"
-  },
-  {
-    "name": "d360_dataspace_member_remove",
-    "family": "Dataspace",
-    "description": "Remove a member from a data space.",
-    "method": "DELETE",
-    "path": "/ssot/data-spaces/{dataSpaceName}/members/{memberId}"
-  },
-  {
-    "name": "d360_transform_delete",
-    "family": "DataTransform",
-    "description": "Delete a data transform.",
-    "method": "DELETE",
-    "path": "/ssot/data-transforms/{transformId}"
-  },
-  {
-    "name": "d360_datakit_undeploy",
-    "family": "DataKit",
-    "description": "Undeploy data kit components.",
-    "method": "POST",
-    "path": "/ssot/data-kits/{dataKitId}/undeploy"
-  },
-  {
-    "name": "d360_dataaction_target_delete",
-    "family": "DataAction",
-    "description": "Delete a data action target.",
-    "method": "DELETE",
-    "path": "/ssot/data-action-targets/{dataActionTargetId}"
-  },
-  {
-    "name": "d360_sdm_delete",
-    "family": "Semantic Retrieval",
-    "description": "Delete a semantic data model.",
-    "method": "DELETE",
-    "path": "/ssot/semantic/models/{modelApiNameOrId}"
-  },
-  {
-    "name": "d360_sdm_data_object_delete",
-    "family": "Semantic Retrieval",
-    "description": "Delete a data object from a semantic data model.",
-    "method": "DELETE",
-    "path": "/ssot/semantic/models/{modelApiNameOrId}/data-objects/{dataObjectNameOrId}"
-  },
-  {
-    "name": "d360_sdm_calc_dim_delete",
-    "family": "Semantic Retrieval",
-    "description": "Delete a calculated dimension from a semantic data model.",
-    "method": "DELETE",
-    "path": "/ssot/semantic/models/{modelApiNameOrId}/calculated-dimensions/{calculatedDimensionId}"
-  },
-  {
-    "name": "d360_sdm_calc_measure_delete",
-    "family": "Semantic Retrieval",
-    "description": "Delete a calculated measurement from a semantic data model.",
-    "method": "DELETE",
-    "path": "/ssot/semantic/models/{modelApiNameOrId}/calculated-measurements/{calculatedMeasureId}"
-  },
-  {
-    "name": "d360_sdm_metric_delete",
-    "family": "Semantic Retrieval",
-    "description": "Delete a metric from a semantic data model.",
-    "method": "DELETE",
-    "path": "/ssot/semantic/models/{modelApiNameOrId}/metrics/{metricNameOrId}"
-  },
-  {
-    "name": "d360_sdm_relationship_delete",
-    "family": "Semantic Retrieval",
-    "description": "Delete a relationship from a semantic data model.",
-    "method": "DELETE",
-    "path": "/ssot/semantic/models/{modelApiNameOrId}/relationships/{relationshipId}"
-  },
-  {
-    "name": "d360_search_index_delete",
-    "family": "Semantic Retrieval",
-    "description": "Delete a search index definition.",
-    "method": "DELETE",
-    "path": "/ssot/search-index/{searchIndexApiNameOrId}"
-  },
-  {
-    "name": "d360_retriever_delete",
-    "family": "Semantic Retrieval",
-    "description": "Delete a RAG retriever and all configurations.",
-    "method": "DELETE",
-    "path": "/ssot/machine-learning/retrievers/{retrieverIdOrName}"
-  },
-  {
-    "name": "d360_retriever_config_delete",
-    "family": "Semantic Retrieval",
-    "description": "Delete one retriever configuration.",
-    "method": "DELETE",
-    "path": "/ssot/machine-learning/retrievers/{retrieverIdOrName}/configurations/{configurationIdOrName}"
-  },
-  {
-    "name": "d360_standard_mapping_preview",
-    "family": "StandardMappings",
-    "description": "Preview bundled standard DLO-to-DMO mappings for a source object.",
-    "method": "POST",
-    "path": "/local/standard-mapping-preview"
-  },
-  {
-    "name": "d360_preview_field_matches",
-    "family": "Smart",
-    "description": "Preview DLO-to-DMO field matches with confidence scores.",
-    "method": "POST",
-    "path": "/local/preview-field-matches"
-  },
-  {
-    "name": "d360_smart_mapping_suggest",
-    "family": "Smart",
-    "description": "Suggest DLO-to-DMO field mappings and produce a mapping create payload.",
-    "method": "POST",
-    "path": "/local/smart-mapping-suggest"
-  },
-  {
-    "name": "d360_event_date_recommend",
-    "family": "Smart",
-    "description": "Recommend the best event date field for engagement streams.",
-    "method": "POST",
-    "path": "/local/event-date-recommend"
-  },
-  {
-    "name": "d360_smart_datastream_create",
-    "family": "Smart",
-    "description": "Enhance a data stream create body with smart event date selection.",
-    "method": "POST",
-    "path": "/local/smart-datastream-create"
+    "path": "/ssot/data-spaces/{dataSpaceName}",
+    "origin": "local_compatibility"
   },
   {
     "name": "d360_ingest_api_connections_list",
     "family": "Connection",
     "description": "List Ingestion API source connections.",
     "method": "GET",
-    "path": "/ssot/connections?connectorType=IngestApi"
+    "path": "/ssot/connections?connectorType=IngestApi",
+    "origin": "local_compatibility"
   },
   {
     "name": "d360_ingest_api_schema_get",
     "family": "Connection",
     "description": "Get the registered schema for an Ingestion API source connection.",
     "method": "GET",
-    "path": "/ssot/connections/{connectionId}/schema"
+    "path": "/ssot/connections/{connectionId}/schema",
+    "origin": "local_compatibility"
   },
   {
     "name": "d360_ingest_api_schema_test",
     "family": "Connection",
     "description": "Validate an Ingestion API source schema payload before upload.",
     "method": "POST",
-    "path": "/ssot/connections/{connectionId}/schema/actions/test"
+    "path": "/ssot/connections/{connectionId}/schema/actions/test",
+    "origin": "local_compatibility"
   },
   {
     "name": "d360_ingest_api_schema_put",
     "family": "Connection",
     "description": "Upload or replace the registered schema for an Ingestion API source connection.",
     "method": "PUT",
-    "path": "/ssot/connections/{connectionId}/schema"
+    "path": "/ssot/connections/{connectionId}/schema",
+    "origin": "local_compatibility"
   },
   {
     "name": "d360_datastream_create_ingest_api",
     "family": "DataStreams",
     "description": "Create an Ingestion API data stream from a registered source schema object.",
     "method": "POST",
-    "path": "/ssot/data-streams"
+    "path": "/ssot/data-streams",
+    "origin": "local_compatibility"
   }
 ]

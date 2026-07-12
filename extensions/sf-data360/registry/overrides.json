@@ -174,7 +174,8 @@
   },
   "d360_ci_run_status": {
     "requiredParams": ["ciName"],
-    "safety": "read"
+    "safety": "safe_post",
+    "tips": "Refreshes and returns calculated insight run status; use after ci.run."
   },
   "d360_ir_get": {
     "requiredParams": ["identityResolutionId"],
@@ -235,9 +236,10 @@
     "optionalParams": ["dataspace"]
   },
   "d360_datakit_manifest": {
-    "requiredParams": ["dataKitId"],
+    "requiredParams": ["dataKitDevName"],
     "safety": "read",
-    "optionalParams": ["dataspace"]
+    "optionalParams": ["dataspace"],
+    "path": "/ssot/datakit/{dataKitDevName}/manifest"
   },
   "d360_datakit_deploy_status": {
     "requiredParams": ["jobId"],
@@ -245,9 +247,10 @@
     "optionalParams": ["dataspace"]
   },
   "d360_datakit_components": {
-    "requiredParams": ["dataKitId"],
+    "requiredParams": [],
     "safety": "read",
-    "optionalParams": ["dataspace"]
+    "optionalParams": ["componentType", "dataKitDevName", "limit", "offset"],
+    "path": "/ssot/data-kits/available-components"
   },
   "d360_datakit_component_status": {
     "requiredParams": ["dataKitId", "componentId"],
@@ -827,8 +830,8 @@
     "tips": "Use this to discover dataKitId values before component, manifest, or deployment-status operations."
   },
   "d360_datakit_deploy": {
-    "requiredParams": ["body"],
-    "optionalParams": ["dataspace"],
+    "requiredParams": ["dataKitDevName", "body"],
+    "optionalParams": ["dataspace", "asyncMode", "fbdkAccessibleInLob"],
     "safety": "confirmed",
     "tips": "Review the manifest, component dependencies, and target dataspace before deployment. Use dry_run before execution."
   },
@@ -936,9 +939,10 @@
     "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
   },
   "d360_dataspace_member_remove": {
-    "requiredParams": ["dataSpaceName", "memberId"],
+    "requiredParams": ["dataSpaceName", "memberNames"],
     "safety": "destructive",
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output.",
+    "path": "/ssot/data-spaces/{dataSpaceName}/members"
   },
   "d360_transform_delete": {
     "requiredParams": ["transformId"],
@@ -1062,5 +1066,371 @@
     "safety": "confirmed",
     "requiredParams": ["body"],
     "tips": "Use connectorInfo.connectorType=IngestApi and connectorDetails.events=[schemaObjectName]."
+  },
+  "d360_connection_db_schemas_list": {
+    "path": "/ssot/connections/{connectionId}/database-schemas",
+    "safety": "safe_post",
+    "requiredParams": ["connectionId", "body"],
+    "tips": "Read-only schema discovery POST. Pass connector-specific request fields in body."
+  },
+  "d360_connection_objects_list": {
+    "path": "/ssot/connections/{connectionId}/objects",
+    "safety": "safe_post",
+    "requiredParams": ["connectionId", "body"],
+    "tips": "Read-only source object discovery POST. Scope database connectors with body.advancedAttributes when available."
+  },
+  "d360_connection_object_fields_describe": {
+    "path": "/ssot/connections/{connectionId}/objects/{resourceName}/fields",
+    "safety": "safe_post",
+    "requiredParams": ["connectionId", "resourceName", "body"],
+    "tips": "Read-only source field discovery POST. Use connection.objects.list first to verify resourceName."
+  },
+  "d360_datastream_create_third_party_connectors": {
+    "safety": "confirmed",
+    "requiredParams": ["body"],
+    "tips": "Use connector metadata and source object field discovery first; dry-run the generated stream payload before creation."
+  },
+  "d360_transform_prepare": {
+    "safety": "safe_post",
+    "requiredParams": ["body"],
+    "tips": "Validate and enrich transform SQL before transform.create; does not create the transform."
+  },
+  "d360_prediction_job_def_list": {
+    "safety": "read",
+    "optionalParams": ["limit", "offset", "search"]
+  },
+  "d360_ml_model_artifact_list": {
+    "safety": "read",
+    "optionalParams": ["limit", "offset", "search"]
+  },
+  "d360_ml_configured_model_list": {
+    "safety": "read",
+    "optionalParams": ["limit", "offset", "search"]
+  },
+  "d360_ml_model_setup_list": {
+    "safety": "read",
+    "optionalParams": ["limit", "offset", "search"]
+  },
+  "d360_prediction_job_def_get": {
+    "safety": "read",
+    "requiredParams": ["idOrName"]
+  },
+  "d360_ml_model_artifact_get": {
+    "safety": "read",
+    "requiredParams": ["idOrName"]
+  },
+  "d360_ml_configured_model_get": {
+    "safety": "read",
+    "requiredParams": ["idOrName"]
+  },
+  "d360_ml_model_setup_get": {
+    "safety": "read",
+    "requiredParams": ["idOrName"]
+  },
+  "d360_ml_configured_model_history_list": {
+    "safety": "read",
+    "requiredParams": ["idOrName"]
+  },
+  "d360_ml_setup_version_list": {
+    "safety": "read",
+    "requiredParams": ["idOrName"]
+  },
+  "d360_ml_configured_model_history_get": {
+    "safety": "read",
+    "requiredParams": ["idOrName", "historyId"]
+  },
+  "d360_ml_setup_version_get": {
+    "safety": "read",
+    "requiredParams": ["idOrName", "versionId"],
+    "optionalParams": []
+  },
+  "d360_ml_setup_version_inspector_metrics_get": {
+    "safety": "read",
+    "requiredParams": ["idOrName", "versionId"],
+    "optionalParams": ["gauges"]
+  },
+  "d360_ml_predict": {
+    "safety": "safe_post",
+    "requiredParams": ["body"],
+    "tips": "Read/query-style Machine Learning POST. Inspect inputs and keep result sizes bounded."
+  },
+  "d360_ml_alerts_query": {
+    "safety": "safe_post",
+    "requiredParams": ["body"],
+    "tips": "Read/query-style Machine Learning POST. Inspect inputs and keep result sizes bounded."
+  },
+  "d360_ml_query_setup_fields": {
+    "safety": "safe_post",
+    "requiredParams": ["body"],
+    "tips": "Read/query-style Machine Learning POST. Inspect inputs and keep result sizes bounded."
+  },
+  "d360_ml_query_data_profile": {
+    "safety": "safe_post",
+    "requiredParams": ["body"],
+    "tips": "Read/query-style Machine Learning POST. Inspect inputs and keep result sizes bounded."
+  },
+  "d360_ml_query_outcome": {
+    "safety": "safe_post",
+    "requiredParams": ["body"],
+    "tips": "Read/query-style Machine Learning POST. Inspect inputs and keep result sizes bounded."
+  },
+  "d360_ml_query_row_count": {
+    "safety": "safe_post",
+    "requiredParams": ["body"],
+    "tips": "Read/query-style Machine Learning POST. Inspect inputs and keep result sizes bounded."
+  },
+  "d360_prediction_job_def_create": {
+    "safety": "confirmed",
+    "requiredParams": ["body"],
+    "tips": "Use dry_run first; actual execution requires allow_confirmed=true after reviewing the resolved request."
+  },
+  "d360_prediction_job_def_create_regression": {
+    "safety": "confirmed",
+    "requiredParams": ["body"],
+    "tips": "Use dry_run first; actual execution requires allow_confirmed=true after reviewing the resolved request."
+  },
+  "d360_prediction_job_def_create_binary_classification": {
+    "safety": "confirmed",
+    "requiredParams": ["body"],
+    "tips": "Use dry_run first; actual execution requires allow_confirmed=true after reviewing the resolved request."
+  },
+  "d360_prediction_job_def_create_multiclass_classification": {
+    "safety": "confirmed",
+    "requiredParams": ["body"],
+    "tips": "Use dry_run first; actual execution requires allow_confirmed=true after reviewing the resolved request."
+  },
+  "d360_prediction_job_def_create_sentiment_detection": {
+    "safety": "confirmed",
+    "requiredParams": ["body"],
+    "tips": "Use dry_run first; actual execution requires allow_confirmed=true after reviewing the resolved request."
+  },
+  "d360_prediction_job_def_create_topic_classification": {
+    "safety": "confirmed",
+    "requiredParams": ["body"],
+    "tips": "Use dry_run first; actual execution requires allow_confirmed=true after reviewing the resolved request."
+  },
+  "d360_prediction_job_def_create_clustering": {
+    "safety": "confirmed",
+    "requiredParams": ["body"],
+    "tips": "Use dry_run first; actual execution requires allow_confirmed=true after reviewing the resolved request."
+  },
+  "d360_ml_configured_model_create": {
+    "safety": "confirmed",
+    "requiredParams": ["body"],
+    "tips": "Use dry_run first; actual execution requires allow_confirmed=true after reviewing the resolved request."
+  },
+  "d360_ml_model_setup_create": {
+    "safety": "confirmed",
+    "requiredParams": ["body"],
+    "tips": "Use dry_run first; actual execution requires allow_confirmed=true after reviewing the resolved request."
+  },
+  "d360_prediction_job_def_update": {
+    "safety": "confirmed",
+    "requiredParams": ["idOrName", "body"],
+    "tips": "Use dry_run first; actual execution requires allow_confirmed=true after reviewing the resolved request."
+  },
+  "d360_prediction_job_def_activate": {
+    "safety": "confirmed",
+    "requiredParams": ["idOrName", "body"],
+    "tips": "Use dry_run first; actual execution requires allow_confirmed=true after reviewing the resolved request."
+  },
+  "d360_prediction_job_def_deactivate": {
+    "safety": "confirmed",
+    "requiredParams": ["idOrName", "body"],
+    "tips": "Use dry_run first; actual execution requires allow_confirmed=true after reviewing the resolved request."
+  },
+  "d360_ml_model_artifact_update": {
+    "safety": "confirmed",
+    "requiredParams": ["idOrName", "body"],
+    "tips": "Use dry_run first; actual execution requires allow_confirmed=true after reviewing the resolved request."
+  },
+  "d360_ml_configured_model_update": {
+    "safety": "confirmed",
+    "requiredParams": ["idOrName", "body"],
+    "tips": "Use dry_run first; actual execution requires allow_confirmed=true after reviewing the resolved request."
+  },
+  "d360_ml_configured_model_activate": {
+    "safety": "confirmed",
+    "requiredParams": ["idOrName", "body"],
+    "tips": "Use dry_run first; actual execution requires allow_confirmed=true after reviewing the resolved request."
+  },
+  "d360_ml_model_setup_update": {
+    "safety": "confirmed",
+    "requiredParams": ["idOrName", "body"],
+    "tips": "Use dry_run first; actual execution requires allow_confirmed=true after reviewing the resolved request."
+  },
+  "d360_prediction_job_run": {
+    "safety": "confirmed",
+    "requiredParams": ["body"],
+    "tips": "Use dry_run first; running a prediction job can consume compute and requires an active prediction definition."
+  },
+  "d360_ml_alert_update": {
+    "safety": "confirmed",
+    "requiredParams": ["alertId", "body"],
+    "tips": "Use dry_run first; actual execution requires allow_confirmed=true after reviewing the resolved request."
+  },
+  "d360_ml_setup_version_create": {
+    "safety": "confirmed",
+    "requiredParams": ["idOrName", "body"],
+    "tips": "Use dry_run first; creating a setup version can start or prepare model training."
+  },
+  "d360_ml_setup_version_update": {
+    "safety": "confirmed",
+    "requiredParams": ["idOrName", "versionId", "body"],
+    "tips": "Use dry_run first; actual execution requires allow_confirmed=true after reviewing the resolved request."
+  },
+  "d360_prediction_job_def_delete": {
+    "safety": "destructive",
+    "requiredParams": ["idOrName"],
+    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+  },
+  "d360_ml_model_artifact_delete": {
+    "safety": "destructive",
+    "requiredParams": ["idOrName"],
+    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+  },
+  "d360_ml_configured_model_delete": {
+    "safety": "destructive",
+    "requiredParams": ["idOrName"],
+    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+  },
+  "d360_ml_model_setup_delete": {
+    "safety": "destructive",
+    "requiredParams": ["idOrName"],
+    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+  },
+  "d360_p13n_experience_config_list": {
+    "path": "/personalization/external-apps/{idOrAppSourceIdOrName}/personalization-experience-configs",
+    "requiredParams": ["idOrAppSourceIdOrName"],
+    "optionalParams": [
+      "limit",
+      "offset",
+      "personalizationPointNameOrId",
+      "transformerNameOrId",
+      "dataSpaceIdOrName",
+      "isWpmUrlRequired",
+      "disableRelatedExperiences"
+    ],
+    "safety": "read"
+  },
+  "d360_p13n_experience_config_create": {
+    "path": "/personalization/external-apps/{idOrAppSourceIdOrName}/personalization-experience-configs",
+    "requiredParams": ["idOrAppSourceIdOrName", "body"],
+    "optionalParams": [
+      "limit",
+      "offset",
+      "personalizationPointNameOrId",
+      "transformerNameOrId",
+      "dataSpaceIdOrName",
+      "isWpmUrlRequired",
+      "disableRelatedExperiences"
+    ],
+    "safety": "confirmed",
+    "tips": "Use dry_run first; actual execution requires allow_confirmed=true after reviewing the resolved request."
+  },
+  "d360_p13n_experience_config_get": {
+    "path": "/personalization/external-apps/{idOrAppSourceIdOrName}/personalization-experience-configs/{nameParam}",
+    "requiredParams": ["idOrAppSourceIdOrName", "nameParam"],
+    "optionalParams": ["isWpmUrlRequired", "disableRelatedExperiences"],
+    "safety": "read"
+  },
+  "d360_p13n_experience_config_update": {
+    "path": "/personalization/external-apps/{idOrAppSourceIdOrName}/personalization-experience-configs/{nameParam}",
+    "requiredParams": ["idOrAppSourceIdOrName", "nameParam", "body"],
+    "optionalParams": ["isWpmUrlRequired", "disableRelatedExperiences"],
+    "safety": "confirmed",
+    "tips": "Use dry_run first; actual execution requires allow_confirmed=true after reviewing the resolved request."
+  },
+  "d360_p13n_experience_config_delete": {
+    "path": "/personalization/external-apps/{idOrAppSourceIdOrName}/personalization-experience-configs/{nameParam}",
+    "requiredParams": ["idOrAppSourceIdOrName", "nameParam"],
+    "optionalParams": ["isWpmUrlRequired", "disableRelatedExperiences"],
+    "safety": "destructive",
+    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+  },
+  "d360_p13n_mobile_preview_create": {
+    "safety": "confirmed",
+    "requiredParams": ["body"],
+    "tips": "Use dry_run first; mobile preview link creation is treated as confirmed until verified as ephemeral."
+  },
+  "d360_p13n_engagement_signals_list": {
+    "safety": "read",
+    "optionalParams": ["dataGraphId", "dataSpaceId", "limit", "offset"]
+  },
+  "d360_p13n_org_info_get": {
+    "safety": "read"
+  },
+  "d360_p13n_transformer_get": {
+    "requiredParams": ["idOrName"],
+    "safety": "read"
+  },
+  "d360_p13n_transformer_update": {
+    "requiredParams": ["idOrName", "body"],
+    "safety": "confirmed",
+    "tips": "Use dry_run first; actual execution requires allow_confirmed=true after reviewing the resolved request."
+  },
+  "d360_p13n_transformer_delete": {
+    "requiredParams": ["idOrName"],
+    "safety": "destructive",
+    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+  },
+  "d360_p13n_transformer_list": {
+    "safety": "read",
+    "optionalParams": [
+      "limit",
+      "offset",
+      "source",
+      "schemaReference",
+      "transformerCategory",
+      "channelType",
+      "transformerType",
+      "isEnabled",
+      "connectorNameOrId",
+      "dataSpaceIdOrName",
+      "isDataConnectorAttached"
+    ]
+  },
+  "d360_p13n_transformer_create": {
+    "safety": "confirmed",
+    "requiredParams": ["body"],
+    "tips": "Use dry_run first; actual execution requires allow_confirmed=true after reviewing the resolved request."
+  },
+  "d360_p13n_schema_create": {
+    "safety": "confirmed",
+    "requiredParams": ["body"],
+    "tips": "Use dry_run first; actual execution requires allow_confirmed=true after reviewing the resolved request."
+  },
+  "d360_p13n_schema_get": {
+    "safety": "read",
+    "requiredParams": ["idOrName"]
+  },
+  "d360_p13n_schema_update": {
+    "safety": "confirmed",
+    "requiredParams": ["idOrName", "body"],
+    "tips": "Use dry_run first; actual execution requires allow_confirmed=true after reviewing the resolved request."
+  },
+  "d360_p13n_schema_delete": {
+    "safety": "destructive",
+    "requiredParams": ["idOrName"],
+    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+  },
+  "d360_p13n_point_create": {
+    "safety": "confirmed",
+    "requiredParams": ["body"],
+    "tips": "Use dry_run first; actual execution requires allow_confirmed=true after reviewing the resolved request."
+  },
+  "d360_p13n_point_get": {
+    "safety": "read",
+    "requiredParams": ["idOrName"]
+  },
+  "d360_p13n_point_update": {
+    "safety": "confirmed",
+    "requiredParams": ["idOrName", "body"],
+    "tips": "Use dry_run first; actual execution requires allow_confirmed=true after reviewing the resolved request."
+  },
+  "d360_p13n_point_delete": {
+    "safety": "destructive",
+    "requiredParams": ["idOrName"],
+    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
   }
 }

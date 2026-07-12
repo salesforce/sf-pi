@@ -9,7 +9,7 @@ Conventions used in this file:
 
 - "API name" segments shown in URLs are the post-create suffixed form
   (for example `MyDmo__dlm`).
-- Bodies use the Connect REST DTO names. Upstream MCP examples sometimes
+- Bodies use the Connect REST DTO names. Upstream reference examples sometimes
   use older or service-layer DTO names; prefer Swagger names when they
   conflict.
 
@@ -440,7 +440,7 @@ Add data object body:
 
 - Required: `definition`, `label`, `name`, `type` (`BATCH` | `STREAMING`).
 - The Connect REST request takes an STL graph in `definition.nodes`,
-  not the upstream MCP `targetDmo` + `sql` shape. Each node has
+  not the older upstream reference `targetDmo` + `sql` shape. Each node has
   `action`, `parameters`, and `sources[]`.
 - Output target DLOs must exist (or be auto-creatable). Validate first:
   `POST /ssot/data-transforms-validation` returns precise issues such

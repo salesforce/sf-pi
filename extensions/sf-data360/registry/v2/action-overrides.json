@@ -284,6 +284,248 @@
     },
     "d360_model_artifact_list": {
       "action": "model_artifact.list"
+    },
+    "d360_connection_db_schemas_list": {
+      "tool": "data360_connect",
+      "phase": "connect",
+      "action": "connection.db_schemas.list",
+      "aliases": ["connection.database_schemas.list"]
+    },
+    "d360_connection_objects_list": {
+      "tool": "data360_connect",
+      "phase": "connect",
+      "action": "connection.objects.list"
+    },
+    "d360_connection_object_fields_describe": {
+      "tool": "data360_connect",
+      "phase": "connect",
+      "action": "connection.object_fields.describe",
+      "aliases": ["connection.objects.fields.describe"]
+    },
+    "d360_datastream_create_third_party_connectors": {
+      "tool": "data360_prepare",
+      "phase": "prepare",
+      "action": "stream.create_third_party_connector",
+      "aliases": ["data_stream.create_third_party_connector"]
+    },
+    "d360_transform_prepare": {
+      "tool": "data360_prepare",
+      "phase": "prepare",
+      "action": "transform.prepare",
+      "aliases": ["transform.validate_prepare"]
+    },
+    "d360_prediction_job_def_list": {
+      "action": "ml.prediction_job_def.list"
+    },
+    "d360_prediction_job_def_get": {
+      "action": "ml.prediction_job_def.get"
+    },
+    "d360_prediction_job_def_create": {
+      "action": "ml.prediction_job_def.create"
+    },
+    "d360_prediction_job_def_create_regression": {
+      "action": "ml.prediction_job_def.create_regression"
+    },
+    "d360_prediction_job_def_create_binary_classification": {
+      "action": "ml.prediction_job_def.create_binary_classification"
+    },
+    "d360_prediction_job_def_create_multiclass_classification": {
+      "action": "ml.prediction_job_def.create_multiclass_classification"
+    },
+    "d360_prediction_job_def_create_sentiment_detection": {
+      "action": "ml.prediction_job_def.create_sentiment_detection"
+    },
+    "d360_prediction_job_def_create_topic_classification": {
+      "action": "ml.prediction_job_def.create_topic_classification"
+    },
+    "d360_prediction_job_def_create_clustering": {
+      "action": "ml.prediction_job_def.create_clustering"
+    },
+    "d360_prediction_job_def_update": {
+      "action": "ml.prediction_job_def.update"
+    },
+    "d360_prediction_job_def_activate": {
+      "action": "ml.prediction_job_def.activate"
+    },
+    "d360_prediction_job_def_deactivate": {
+      "action": "ml.prediction_job_def.deactivate"
+    },
+    "d360_prediction_job_def_delete": {
+      "action": "ml.prediction_job_def.delete"
+    },
+    "d360_prediction_job_run": {
+      "action": "ml.prediction_job.run"
+    },
+    "d360_ml_predict": {
+      "action": "ml.predict"
+    },
+    "d360_ml_setup_version_inspector_metrics_get": {
+      "action": "ml.setup_version.inspector_metrics.get"
+    },
+    "d360_ml_alerts_query": {
+      "action": "ml.alerts.query"
+    },
+    "d360_ml_alert_update": {
+      "action": "ml.alert.update"
+    },
+    "d360_ml_model_artifact_list": {
+      "action": "ml.model_artifact.list"
+    },
+    "d360_ml_model_artifact_get": {
+      "action": "ml.model_artifact.get"
+    },
+    "d360_ml_model_artifact_update": {
+      "action": "ml.model_artifact.update"
+    },
+    "d360_ml_model_artifact_delete": {
+      "action": "ml.model_artifact.delete"
+    },
+    "d360_ml_configured_model_list": {
+      "action": "ml.configured_model.list"
+    },
+    "d360_ml_configured_model_get": {
+      "action": "ml.configured_model.get"
+    },
+    "d360_ml_configured_model_create": {
+      "action": "ml.configured_model.create"
+    },
+    "d360_ml_configured_model_update": {
+      "action": "ml.configured_model.update"
+    },
+    "d360_ml_configured_model_delete": {
+      "action": "ml.configured_model.delete"
+    },
+    "d360_ml_configured_model_activate": {
+      "action": "ml.configured_model.activate"
+    },
+    "d360_ml_configured_model_history_list": {
+      "action": "ml.configured_model.history.list"
+    },
+    "d360_ml_configured_model_history_get": {
+      "action": "ml.configured_model.history.get"
+    },
+    "d360_ml_query_setup_fields": {
+      "action": "ml.query_setup_fields"
+    },
+    "d360_ml_query_data_profile": {
+      "action": "ml.query_data_profile"
+    },
+    "d360_ml_query_outcome": {
+      "action": "ml.query_outcome"
+    },
+    "d360_ml_query_row_count": {
+      "action": "ml.query_row_count"
+    },
+    "d360_ml_model_setup_list": {
+      "action": "ml.model_setup.list"
+    },
+    "d360_ml_model_setup_get": {
+      "action": "ml.model_setup.get"
+    },
+    "d360_ml_model_setup_create": {
+      "action": "ml.model_setup.create"
+    },
+    "d360_ml_model_setup_update": {
+      "action": "ml.model_setup.update"
+    },
+    "d360_ml_model_setup_delete": {
+      "action": "ml.model_setup.delete"
+    },
+    "d360_ml_setup_version_list": {
+      "action": "ml.setup_version.list"
+    },
+    "d360_ml_setup_version_get": {
+      "action": "ml.setup_version.get"
+    },
+    "d360_ml_setup_version_create": {
+      "action": "ml.setup_version.create"
+    },
+    "d360_ml_setup_version_update": {
+      "action": "ml.setup_version.update"
+    },
+    "d360_p13n_engagement_signals_list": {
+      "action": "personalization.engagement_signals.list",
+      "aliases": ["p13n.engagement_signals.list"]
+    },
+    "d360_p13n_org_info_get": {
+      "action": "personalization.org_info.get",
+      "aliases": ["p13n.org_info.get"]
+    },
+    "d360_p13n_mobile_preview_create": {
+      "action": "personalization.mobile_preview.create",
+      "aliases": ["p13n.mobile_preview.create"]
+    },
+    "d360_p13n_experience_config_list": {
+      "action": "personalization.experience_config.list",
+      "aliases": ["p13n.experience_config.list"]
+    },
+    "d360_p13n_experience_config_get": {
+      "action": "personalization.experience_config.get",
+      "aliases": ["p13n.experience_config.get"]
+    },
+    "d360_p13n_experience_config_create": {
+      "action": "personalization.experience_config.create",
+      "aliases": ["p13n.experience_config.create"]
+    },
+    "d360_p13n_experience_config_update": {
+      "action": "personalization.experience_config.update",
+      "aliases": ["p13n.experience_config.update"]
+    },
+    "d360_p13n_experience_config_delete": {
+      "action": "personalization.experience_config.delete",
+      "aliases": ["p13n.experience_config.delete"]
+    },
+    "d360_p13n_transformer_list": {
+      "action": "personalization.transformer.list",
+      "aliases": ["p13n.transformer.list"]
+    },
+    "d360_p13n_transformer_get": {
+      "action": "personalization.transformer.get",
+      "aliases": ["p13n.transformer.get"]
+    },
+    "d360_p13n_transformer_create": {
+      "action": "personalization.transformer.create",
+      "aliases": ["p13n.transformer.create"]
+    },
+    "d360_p13n_transformer_update": {
+      "action": "personalization.transformer.update",
+      "aliases": ["p13n.transformer.update"]
+    },
+    "d360_p13n_transformer_delete": {
+      "action": "personalization.transformer.delete",
+      "aliases": ["p13n.transformer.delete"]
+    },
+    "d360_p13n_schema_create": {
+      "action": "personalization.schema.create",
+      "aliases": ["p13n.schema.create"]
+    },
+    "d360_p13n_schema_get": {
+      "action": "personalization.schema.get",
+      "aliases": ["p13n.schema.get"]
+    },
+    "d360_p13n_schema_update": {
+      "action": "personalization.schema.update",
+      "aliases": ["p13n.schema.update"]
+    },
+    "d360_p13n_schema_delete": {
+      "action": "personalization.schema.delete",
+      "aliases": ["p13n.schema.delete"]
+    },
+    "d360_p13n_point_create": {
+      "action": "personalization.point.create",
+      "aliases": ["p13n.point.create"]
+    },
+    "d360_p13n_point_get": {
+      "action": "personalization.point.get",
+      "aliases": ["p13n.point.get"]
+    },
+    "d360_p13n_point_update": {
+      "action": "personalization.point.update",
+      "aliases": ["p13n.point.update"]
+    },
+    "d360_p13n_point_delete": {
+      "action": "personalization.point.delete",
+      "aliases": ["p13n.point.delete"]
     }
   },
   "localActions": [

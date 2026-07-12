@@ -1,1274 +1,2222 @@
 {
   "source": "https://github.com/forcedotcom/d360-mcp-server/src/main/java/com/salesforce/data360/mcp/runtime/FamilyCatalog.java",
-  "capturedAt": "2026-05-18",
-  "count": 181,
+  "capturedAt": "2026-07-02",
+  "commit": "c02edabceb024b9abef5f123943d5b09eafa6e72",
+  "count": 246,
   "tools": [
     {
       "name": "d360_query_sql",
       "family": "Query",
-      "description": "Execute SQL query. Supports parameterized queries.",
+      "description": "Execute SQL query. Preferred over V1/V2. Supports parameterized queries.",
       "method": "POST",
-      "path": "/ssot/query-sql"
+      "path": "/ssot/query-sql",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_query_sql_status",
       "family": "Query",
       "description": "Poll for long-running query status.",
       "method": "GET",
-      "path": "/ssot/query-sql/{queryId}"
+      "path": "/ssot/query-sql/{queryId}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_query_sql_rows",
       "family": "Query",
       "description": "Fetch paginated rows from completed query.",
       "method": "GET",
-      "path": "/ssot/query-sql/{queryId}/rows"
+      "path": "/ssot/query-sql/{queryId}/rows",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_query_sql_cancel",
       "family": "Query",
       "description": "Cancel a running query.",
       "method": "DELETE",
-      "path": "/ssot/query-sql/{queryId}"
+      "path": "/ssot/query-sql/{queryId}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_metadata",
       "family": "Query",
       "description": "Get metadata for entity. ALWAYS use entityName filter.",
       "method": "GET",
-      "path": "/ssot/metadata"
+      "path": "/ssot/metadata",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_metadata_search",
       "family": "Query",
       "description": "Search metadata using natural language. Preferred for discovery.",
       "method": "POST",
-      "path": "/connect/search/metadata/results"
+      "path": "/connect/search/metadata/results",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_metadata_entities",
       "family": "Query",
       "description": "List paginated metadata entities. entityType required.",
       "method": "GET",
-      "path": "/ssot/metadata-entities"
+      "path": "/ssot/metadata-entities",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_profile_query",
       "family": "Query",
       "description": "Query Individual, Account, or custom profile models.",
       "method": "GET",
-      "path": "/ssot/profile/{dataModelName}"
+      "path": "/ssot/profile/{dataModelName}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_profile_metadata",
       "family": "Query",
       "description": "Discover profile schema.",
       "method": "GET",
-      "path": "/ssot/profile/metadata"
+      "path": "/ssot/profile/metadata",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_insights_query",
       "family": "Query",
       "description": "Query calculated insights with dimensions and measures.",
       "method": "GET",
-      "path": "/ssot/insight/calculated-insights/{ciName}"
+      "path": "/ssot/insight/calculated-insights/{ciName}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_insights_metadata",
       "family": "Query",
       "description": "Discover CI names and available dimensions/measures.",
       "method": "GET",
-      "path": "/ssot/insight/metadata"
+      "path": "/ssot/insight/metadata",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_datagraph_query",
       "family": "Query",
       "description": "Query data graphs. Set live=true for real-time.",
       "method": "GET",
-      "path": "/ssot/data-graphs/data/{entity}/{id}"
+      "path": "/ssot/data-graphs/data/{entity}/{id}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_datagraph_lookup",
       "family": "Query",
       "description": "Lookup by natural key.",
       "method": "GET",
-      "path": "/ssot/data-graphs/data/{entity}"
+      "path": "/ssot/data-graphs/data/{entity}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_datagraph_metadata",
       "family": "Query",
       "description": "List data graph entities or get schema.",
       "method": "GET",
-      "path": "/ssot/data-graphs/metadata"
+      "path": "/ssot/data-graphs/metadata",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_dmo_list",
       "family": "DMO",
       "description": "List all Data Model Objects. Filter by category.",
       "method": "GET",
-      "path": "/ssot/data-model-objects"
+      "path": "/ssot/data-model-objects",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_dmo_get",
       "family": "DMO",
       "description": "Get full DMO schema including all fields.",
       "method": "GET",
-      "path": "/ssot/data-model-objects/{dmoName}"
+      "path": "/ssot/data-model-objects/{dmoName}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_dmo_create",
       "family": "DMO",
       "description": "Create DMO. API name must end with __dlm.",
       "method": "POST",
-      "path": "/ssot/data-model-objects"
+      "path": "/ssot/data-model-objects",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_dmo_update",
       "family": "DMO",
       "description": "Update DMO. Partial updates supported.",
       "method": "PATCH",
-      "path": "/ssot/data-model-objects/{dmoName}"
+      "path": "/ssot/data-model-objects/{dmoName}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_dmo_delete",
       "family": "DMO",
       "description": "Delete DMO. Cascades to dependent objects.",
       "method": "DELETE",
-      "path": "/ssot/data-model-objects/{dmoName}"
+      "path": "/ssot/data-model-objects/{dmoName}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_dlo_list",
       "family": "DLO",
       "description": "List all Data Lake Objects.",
       "method": "GET",
-      "path": "/ssot/data-lake-objects"
+      "path": "/ssot/data-lake-objects",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_dlo_get",
       "family": "DLO",
       "description": "Get DLO fields and metadata.",
       "method": "GET",
-      "path": "/ssot/data-lake-objects/{dloName}"
+      "path": "/ssot/data-lake-objects/{dloName}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_dlo_create",
       "family": "DLO",
       "description": "Create a new DLO.",
       "method": "POST",
-      "path": "/ssot/data-lake-objects"
+      "path": "/ssot/data-lake-objects",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_dlo_update",
       "family": "DLO",
       "description": "Update DLO metadata.",
       "method": "PATCH",
-      "path": "/ssot/data-lake-objects/{dloName}"
+      "path": "/ssot/data-lake-objects/{dloName}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_dlo_delete",
       "family": "DLO",
       "description": "Remove DLO.",
       "method": "DELETE",
-      "path": "/ssot/data-lake-objects/{dloName}"
+      "path": "/ssot/data-lake-objects/{dloName}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_dmo_mapping_list",
       "family": "Mappings",
       "description": "List mappings by DMO name or CRM source.",
       "method": "GET",
-      "path": "/ssot/data-model-object-mappings"
+      "path": "/ssot/data-model-object-mappings",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_dmo_mapping_get",
       "family": "Mappings",
       "description": "Get mapping configuration.",
       "method": "GET",
-      "path": "/ssot/data-model-object-mappings/{mappingName}"
+      "path": "/ssot/data-model-object-mappings/{mappingName}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_dmo_mapping_create",
       "family": "Mappings",
       "description": "Create a single DLO-to-DMO mapping.",
       "method": "POST",
-      "path": "/ssot/data-model-object-mappings"
-    },
-    {
-      "name": "d360_dmo_mapping_update",
-      "family": "Mappings",
-      "description": "Update mapping. Changes affect future ingestion.",
-      "method": "PATCH",
-      "path": "/ssot/data-model-object-mappings/{mappingName}"
+      "path": "/ssot/data-model-object-mappings",
+      "implementationFound": true,
+      "hasPayloadExample": true
     },
     {
       "name": "d360_dmo_mapping_delete",
       "family": "Mappings",
       "description": "Delete mapping.",
       "method": "DELETE",
-      "path": "/ssot/data-model-object-mappings/{mappingName}"
+      "path": "/ssot/data-model-object-mappings/{mappingName}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_dmo_field_mapping_add",
       "family": "Mappings",
       "description": "Add field mappings to an existing object mapping.",
       "method": "PATCH",
-      "path": "/ssot/data-model-object-mappings/{mappingName}/field-mappings"
+      "path": "/ssot/data-model-object-mappings/{mappingName}/field-mappings",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_dmo_field_mapping_delete",
       "family": "Mappings",
       "description": "Delete a single field mapping.",
       "method": "DELETE",
-      "path": "/ssot/data-model-object-mappings/{mappingName}/field-mappings/{fieldMappingName}"
+      "path": "/ssot/data-model-object-mappings/{mappingName}/field-mappings/{fieldMappingName}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_datastream_list",
       "family": "DataStreams",
       "description": "List data streams. Filter by category.",
       "method": "GET",
-      "path": "/ssot/data-streams"
+      "path": "/ssot/data-streams",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_datastream_get",
       "family": "DataStreams",
       "description": "Get full stream configuration.",
       "method": "GET",
-      "path": "/ssot/data-streams/{id}"
+      "path": "/ssot/data-streams/{id}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_datastream_create",
       "family": "DataStreams",
       "description": "Create data stream. Requires Connection and DMO Mapping.",
       "method": "POST",
-      "path": "/ssot/data-streams"
+      "path": "/ssot/data-streams",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_datastream_update",
       "family": "DataStreams",
       "description": "Update stream. Changes apply to future runs.",
       "method": "PATCH",
-      "path": "/ssot/data-streams/{id}"
+      "path": "/ssot/data-streams/{id}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_datastream_delete",
       "family": "DataStreams",
       "description": "Delete stream. Does not delete existing data.",
       "method": "DELETE",
-      "path": "/ssot/data-streams/{id}"
+      "path": "/ssot/data-streams/{id}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_datastream_run",
       "family": "DataStreams",
       "description": "Manually trigger ingestion.",
       "method": "POST",
-      "path": "/ssot/data-streams/{id}/run"
+      "path": "/ssot/data-streams/{id}/actions/run",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_datastream_create_sfdc",
       "family": "DataStreams",
       "description": "Create Salesforce CRM data stream. Auto-populates source fields.",
       "method": "POST",
-      "path": "/ssot/data-streams"
+      "path": "/ssot/data-streams",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_datastream_create_aws_s3",
       "family": "DataStreams",
       "description": "Create AWS S3 data stream.",
       "method": "POST",
-      "path": "/ssot/data-streams"
+      "path": "/ssot/data-streams",
+      "implementationFound": true,
+      "hasPayloadExample": true
     },
     {
       "name": "d360_datastream_create_snowflake",
       "family": "DataStreams",
       "description": "Create Snowflake-backed data stream. Builds sourceFields, mappings, and advancedAttributes (database/schema/object) from field definitions.",
       "method": "POST",
-      "path": "/ssot/data-streams"
+      "path": "/ssot/data-streams",
+      "implementationFound": true,
+      "hasPayloadExample": false
+    },
+    {
+      "name": "d360_datastream_create_third_party_connectors",
+      "family": "DataStreams",
+      "description": "Create data stream for third-party connectors (Airtable, HubSpot, Marketo, Google Ads, etc). Builds full payload from simple field definitions.",
+      "method": "POST",
+      "path": "/ssot/data-streams",
+      "implementationFound": true,
+      "hasPayloadExample": true
     },
     {
       "name": "d360_connection_list",
       "family": "Connection",
       "description": "List connections. connectorType REQUIRED.",
       "method": "GET",
-      "path": "/ssot/connections"
+      "path": "/ssot/connections",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_connection_get",
       "family": "Connection",
       "description": "Get connection details. connectorType REQUIRED.",
       "method": "GET",
-      "path": "/ssot/connections/{id}"
+      "path": "/ssot/connections/{id}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_connection_create",
       "family": "Connection",
       "description": "Create connection. connectorType REQUIRED. Test first.",
       "method": "POST",
-      "path": "/ssot/connections"
+      "path": "/ssot/connections",
+      "implementationFound": true,
+      "hasPayloadExample": true
     },
     {
       "name": "d360_connection_update",
       "family": "Connection",
       "description": "Update connection. Can break dependent streams.",
       "method": "PATCH",
-      "path": "/ssot/connections/{id}"
+      "path": "/ssot/connections/{id}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_connection_delete",
       "family": "Connection",
       "description": "Delete connection. Breaks dependent streams.",
       "method": "DELETE",
-      "path": "/ssot/connections/{id}"
+      "path": "/ssot/connections/{id}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_connection_test",
       "family": "Connection",
       "description": "Validate connection before saving. Does NOT create.",
       "method": "POST",
-      "path": "/ssot/connections/actions/test"
+      "path": "/ssot/connections/actions/test",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_connector_list",
       "family": "Connection",
       "description": "Discover supported connector types.",
       "method": "GET",
-      "path": "/ssot/connectors"
+      "path": "/ssot/connectors",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_connector_metadata",
       "family": "Connection",
       "description": "Get required/optional fields for connector type.",
       "method": "GET",
-      "path": "/ssot/connectors/{type}"
-    },
-    {
-      "name": "d360_connection_endpoints",
-      "family": "Connection",
-      "description": "List pre-configured endpoints.",
-      "method": "GET",
-      "path": "/ssot/connection-endpoints"
+      "path": "/ssot/connectors/{type}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_snowflake_connection_list",
       "family": "Connection",
       "description": "List Data 360 connections for a connector type. Use connectorType=SNOWFLAKE for Snowflake.",
       "method": "GET",
-      "path": "/connections"
+      "path": "/ssot/connections",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_connection_create_snowflake",
       "family": "Connection",
       "description": "Create a Snowflake connection with KeyPair auth. Provide private key content directly.",
       "method": "POST",
-      "path": "/connections"
+      "path": "/ssot/connections",
+      "implementationFound": true,
+      "hasPayloadExample": false
+    },
+    {
+      "name": "d360_connection_db_schemas_list",
+      "family": "Connection",
+      "description": "List database schemas available in a connection (e.g., Snowflake schemas). Pass database name in advancedAttributes.",
+      "method": "POST",
+      "path": "/ssot/connections/{id}/database-schemas",
+      "implementationFound": true,
+      "hasPayloadExample": true
+    },
+    {
+      "name": "d360_connection_objects_list",
+      "family": "Connection",
+      "description": "List objects/tables available in a connection. Use database/schema in advancedAttributes for DB connections.",
+      "method": "POST",
+      "path": "/ssot/connections/{id}/objects",
+      "implementationFound": true,
+      "hasPayloadExample": true
+    },
+    {
+      "name": "d360_connection_object_fields_describe",
+      "family": "Connection",
+      "description": "Describe field-level schema (names, types, primary keys) of an object in a connection.",
+      "method": "POST",
+      "path": "/ssot/connections/{id}/objects/{resourceName}/fields",
+      "implementationFound": true,
+      "hasPayloadExample": true
     },
     {
       "name": "d360_segment_list",
       "family": "Segment",
       "description": "List all segments.",
       "method": "GET",
-      "path": "/ssot/segments"
+      "path": "/ssot/segments",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_segment_get",
       "family": "Segment",
-      "description": "Get segment by ID. Check segmentStatus for ACTIVE.",
+      "description": "Get segment by record ID or API name. Check segmentStatus for ACTIVE.",
       "method": "GET",
-      "path": "/ssot/segments/{id}"
+      "path": "/ssot/segments/{id}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_segment_create",
       "family": "Segment",
       "description": "Create segment. Requires ACTIVE CIs first.",
       "method": "POST",
-      "path": "/ssot/segments"
+      "path": "/ssot/segments",
+      "implementationFound": true,
+      "hasPayloadExample": true
     },
     {
       "name": "d360_segment_update",
       "family": "Segment",
-      "description": "Update segment metadata. Cannot change SQL via PATCH.",
+      "description": "Update segment metadata by API name. Cannot change SQL via PATCH.",
       "method": "PATCH",
-      "path": "/ssot/segments/{id}"
+      "path": "/ssot/segments/{segmentApiName}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_segment_delete",
       "family": "Segment",
       "description": "Delete segment by API name (developer name). Irreversible.",
       "method": "DELETE",
-      "path": "/ssot/segments/{apiName}"
+      "path": "/ssot/segments/{segmentApiName}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_segment_publish",
       "family": "Segment",
       "description": "Trigger segment calculation.",
       "method": "POST",
-      "path": "/ssot/segments/{id}/actions/publish"
+      "path": "/ssot/segments/{id}/actions/publish",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_segment_deactivate",
       "family": "Segment",
       "description": "Deactivate a segment by API name (developer name). Inverse of publish.",
       "method": "POST",
-      "path": "/ssot/segments/{apiName}/actions/deactivate"
+      "path": "/ssot/segments/{apiName}/actions/deactivate",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_ci_list",
       "family": "CalculatedInsights",
       "description": "List all CIs. Check status for ACTIVE.",
       "method": "GET",
-      "path": "/ssot/calculated-insights"
+      "path": "/ssot/calculated-insights",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_ci_get",
       "family": "CalculatedInsights",
       "description": "Get CI details.",
       "method": "GET",
-      "path": "/ssot/calculated-insights/{ciName}"
+      "path": "/ssot/calculated-insights/{ciName}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_ci_create",
       "family": "CalculatedInsights",
       "description": "Create CI. apiName must end with __cio. No COUNT(DISTINCT).",
       "method": "POST",
-      "path": "/ssot/calculated-insights"
+      "path": "/ssot/calculated-insights",
+      "implementationFound": true,
+      "hasPayloadExample": true
     },
     {
       "name": "d360_ci_update",
       "family": "CalculatedInsights",
       "description": "Update CI. Triggers recompilation.",
       "method": "PATCH",
-      "path": "/ssot/calculated-insights/{ciName}"
+      "path": "/ssot/calculated-insights/{ciName}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_ci_delete",
       "family": "CalculatedInsights",
       "description": "Delete CI. Breaks dependent segments.",
       "method": "DELETE",
-      "path": "/ssot/calculated-insights/{ciName}"
+      "path": "/ssot/calculated-insights/{ciName}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_ci_enable",
       "family": "CalculatedInsights",
       "description": "Enable CI.",
       "method": "POST",
-      "path": "/ssot/calculated-insights/{ciName}/actions/enable"
+      "path": "/ssot/calculated-insights/{ciName}/actions/enable",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_ci_disable",
       "family": "CalculatedInsights",
       "description": "Disable CI.",
       "method": "POST",
-      "path": "/ssot/calculated-insights/{ciName}/actions/disable"
+      "path": "/ssot/calculated-insights/{ciName}/actions/disable",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_ci_run",
       "family": "CalculatedInsights",
       "description": "Execute CI calculation.",
       "method": "POST",
-      "path": "/ssot/calculated-insights/{ciName}/actions/run"
+      "path": "/ssot/calculated-insights/{ciName}/actions/run",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_ci_run_status",
       "family": "CalculatedInsights",
       "description": "Get CI run status.",
-      "method": "GET",
-      "path": "/ssot/calculated-insights/{ciName}/actions/run"
+      "method": "POST",
+      "path": "/ssot/calculated-insights/{ciName}/actions/refresh-status",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_ci_validate",
       "family": "CalculatedInsights",
       "description": "Validate CI before creation.",
       "method": "POST",
-      "path": "/ssot/calculated-insights/actions/validate"
+      "path": "/ssot/calculated-insights/actions/validate",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_ir_list",
       "family": "IdentityResolution",
       "description": "List identity resolution rulesets.",
       "method": "GET",
-      "path": "/ssot/identity-resolutions"
+      "path": "/ssot/identity-resolutions",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_ir_get",
       "family": "IdentityResolution",
       "description": "Get ruleset details.",
       "method": "GET",
-      "path": "/ssot/identity-resolutions/{id}"
+      "path": "/ssot/identity-resolutions/{id}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_ir_create",
       "family": "IdentityResolution",
       "description": "Create ruleset. Rules execute in priority order.",
       "method": "POST",
-      "path": "/ssot/identity-resolutions"
+      "path": "/ssot/identity-resolutions",
+      "implementationFound": true,
+      "hasPayloadExample": true
     },
     {
       "name": "d360_ir_update",
       "family": "IdentityResolution",
       "description": "Update ruleset. Changes apply after republish.",
       "method": "PATCH",
-      "path": "/ssot/identity-resolutions/{id}"
+      "path": "/ssot/identity-resolutions/{id}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_ir_full_update",
       "family": "IdentityResolution",
-      "description": "Full replacement of ruleset.",
-      "method": "PUT",
-      "path": "/ssot/identity-resolutions/{id}"
+      "description": "Update ruleset.",
+      "method": "PATCH",
+      "path": "/ssot/identity-resolutions/{id}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_ir_delete",
       "family": "IdentityResolution",
       "description": "Delete ruleset.",
       "method": "DELETE",
-      "path": "/ssot/identity-resolutions/{id}"
+      "path": "/ssot/identity-resolutions/{id}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_ir_publish",
       "family": "IdentityResolution",
       "description": "Publish ruleset.",
       "method": "POST",
-      "path": "/ssot/identity-resolutions/{id}/actions/publish"
+      "path": "/ssot/identity-resolutions/{id}/actions/publish",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_ir_run",
       "family": "IdentityResolution",
       "description": "Execute ruleset.",
       "method": "POST",
-      "path": "/ssot/identity-resolutions/{id}/actions/run-now"
+      "path": "/ssot/identity-resolutions/{id}/actions/run-now",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_activation_list",
       "family": "Activation",
       "description": "List activations.",
       "method": "GET",
-      "path": "/ssot/activations"
+      "path": "/ssot/activations",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_activation_get",
       "family": "Activation",
       "description": "Get activation details.",
       "method": "GET",
-      "path": "/ssot/activations/{id}"
+      "path": "/ssot/activations/{id}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_activation_create",
       "family": "Activation",
       "description": "Create activation. Requires active segment + target.",
       "method": "POST",
-      "path": "/ssot/activations"
+      "path": "/ssot/activations",
+      "implementationFound": true,
+      "hasPayloadExample": true
     },
     {
       "name": "d360_activation_update",
       "family": "Activation",
       "description": "Update activation.",
-      "method": "PATCH",
-      "path": "/ssot/activations/{id}"
+      "method": "PUT",
+      "path": "/ssot/activations/{id}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_activation_delete",
       "family": "Activation",
       "description": "Delete activation.",
       "method": "DELETE",
-      "path": "/ssot/activations/{id}"
+      "path": "/ssot/activations/{id}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_activation_target_list",
       "family": "Activation",
       "description": "List activation targets.",
       "method": "GET",
-      "path": "/ssot/activation-targets"
+      "path": "/ssot/activation-targets",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_activation_target_get",
       "family": "Activation",
       "description": "Get target details.",
       "method": "GET",
-      "path": "/ssot/activation-targets/{id}"
+      "path": "/ssot/activation-targets/{id}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_activation_target_create",
       "family": "Activation",
       "description": "Create target. Must reference existing Connection.",
       "method": "POST",
-      "path": "/ssot/activation-targets"
+      "path": "/ssot/activation-targets",
+      "implementationFound": true,
+      "hasPayloadExample": true
     },
     {
       "name": "d360_activation_target_update",
       "family": "Activation",
       "description": "Update target.",
-      "method": "PUT",
-      "path": "/ssot/activation-targets/{id}"
-    },
-    {
-      "name": "d360_activation_target_delete",
-      "family": "Activation",
-      "description": "Delete target.",
-      "method": "DELETE",
-      "path": "/ssot/activation-targets/{id}"
+      "method": "PATCH",
+      "path": "/ssot/activation-targets/{id}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_dataspace_list",
       "family": "Dataspace",
       "description": "List data spaces.",
       "method": "GET",
-      "path": "/ssot/data-spaces"
+      "path": "/ssot/data-spaces",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_dataspace_get",
       "family": "Dataspace",
       "description": "Get data space details.",
       "method": "GET",
-      "path": "/ssot/data-spaces/{name}"
+      "path": "/ssot/data-spaces/{name}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_dataspace_create",
       "family": "Dataspace",
       "description": "Create isolated workspace.",
       "method": "POST",
-      "path": "/ssot/data-spaces"
+      "path": "/ssot/data-spaces",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_dataspace_update",
       "family": "Dataspace",
       "description": "Update data space.",
       "method": "PATCH",
-      "path": "/ssot/data-spaces/{name}"
-    },
-    {
-      "name": "d360_dataspace_delete",
-      "family": "Dataspace",
-      "description": "Delete data space and all contents.",
-      "method": "DELETE",
-      "path": "/ssot/data-spaces/{name}"
+      "path": "/ssot/data-spaces/{name}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_dataspace_member_list",
       "family": "Dataspace",
       "description": "List data space members.",
       "method": "GET",
-      "path": "/ssot/data-spaces/{name}/members"
+      "path": "/ssot/data-spaces/{name}/members",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_dataspace_member_add",
       "family": "Dataspace",
       "description": "Add member to data space.",
-      "method": "POST",
-      "path": "/ssot/data-spaces/{name}/members"
+      "method": "PUT",
+      "path": "/ssot/data-spaces/{name}/members",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_dataspace_member_remove",
       "family": "Dataspace",
-      "description": "Remove member from data space.",
+      "description": "Remove members from a data space (max 10).",
       "method": "DELETE",
-      "path": "/ssot/data-spaces/{name}/members/{memberId}"
+      "path": "/ssot/data-spaces/{name}/members",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_transform_list",
       "family": "DataTransform",
       "description": "List data transforms.",
       "method": "GET",
-      "path": "/ssot/data-transforms"
+      "path": "/ssot/data-transforms",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_transform_get",
       "family": "DataTransform",
       "description": "Get transform details.",
       "method": "GET",
-      "path": "/ssot/data-transforms/{id}"
+      "path": "/ssot/data-transforms/{id}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_transform_create",
       "family": "DataTransform",
       "description": "Create transform. Schedule runs separately.",
       "method": "POST",
-      "path": "/ssot/data-transforms"
+      "path": "/ssot/data-transforms",
+      "implementationFound": true,
+      "hasPayloadExample": true
     },
     {
       "name": "d360_transform_update",
       "family": "DataTransform",
       "description": "Update transform.",
-      "method": "PATCH",
-      "path": "/ssot/data-transforms/{id}"
+      "method": "PUT",
+      "path": "/ssot/data-transforms/{id}",
+      "implementationFound": true,
+      "hasPayloadExample": false
+    },
+    {
+      "name": "d360_transform_prepare",
+      "family": "DataTransform",
+      "description": "Validate + enrich with output schema. RECOMMENDED before create.",
+      "method": "POST",
+      "path": "/ssot/data-transforms-validation",
+      "implementationFound": true,
+      "hasPayloadExample": true
     },
     {
       "name": "d360_transform_delete",
       "family": "DataTransform",
       "description": "Delete transform.",
       "method": "DELETE",
-      "path": "/ssot/data-transforms/{id}"
+      "path": "/ssot/data-transforms/{id}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_transform_run",
       "family": "DataTransform",
       "description": "Execute transform manually.",
       "method": "POST",
-      "path": "/ssot/data-transforms/{id}/actions/run"
+      "path": "/ssot/data-transforms/{id}/actions/run",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_transform_validate",
       "family": "DataTransform",
-      "description": "Validate SQL syntax/semantics.",
+      "description": "Quick SQL validation (simple). Use prepare for full validation.",
       "method": "POST",
-      "path": "/ssot/data-transforms-validation"
+      "path": "/ssot/data-transforms-validation",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_transform_schedule_get",
       "family": "DataTransform",
       "description": "Get transform schedule.",
       "method": "GET",
-      "path": "/ssot/data-transforms/{id}/schedule"
+      "path": "/ssot/data-transforms/{id}/schedule",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_transform_schedule_set",
       "family": "DataTransform",
       "description": "Set transform schedule.",
       "method": "PUT",
-      "path": "/ssot/data-transforms/{id}/schedule"
+      "path": "/ssot/data-transforms/{id}/schedule",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_datakit_list",
       "family": "DataKit",
       "description": "List available DataKits.",
       "method": "GET",
-      "path": "/ssot/data-kits"
+      "path": "/ssot/data-kits",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_datakit_get",
       "family": "DataKit",
       "description": "Get DataKit details.",
       "method": "GET",
-      "path": "/ssot/data-kits/{id}"
+      "path": "/ssot/data-kits/{id}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_datakit_manifest",
       "family": "DataKit",
       "description": "Get DataKit manifest.",
       "method": "GET",
-      "path": "/ssot/data-kits/{id}/manifest"
+      "path": "/ssot/datakit/{id}/manifest",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_datakit_deploy",
       "family": "DataKit",
-      "description": "Deploy/update components.",
+      "description": "Deploy a data kit.",
       "method": "POST",
-      "path": "/ssot/data-kits/update-components"
+      "path": "/ssot/data-kits/{dataKitDevName}",
+      "implementationFound": true,
+      "hasPayloadExample": true
     },
     {
       "name": "d360_datakit_undeploy",
       "family": "DataKit",
       "description": "Undeploy components.",
       "method": "POST",
-      "path": "/ssot/data-kits/{id}/undeploy"
+      "path": "/ssot/data-kits/{id}/undeploy",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_datakit_deploy_status",
       "family": "DataKit",
       "description": "Get deployment job status.",
       "method": "GET",
-      "path": "/ssot/data-kits/deployment-jobs/{jobId}"
+      "path": "/ssot/data-kits/deployment-jobs/{jobId}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_datakit_component_status",
       "family": "DataKit",
       "description": "Get component deployment status.",
       "method": "GET",
-      "path": "/ssot/data-kits/{id}/components/{cid}/deployment-status"
+      "path": "/ssot/data-kits/{id}/components/{cid}/deployment-status",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_datakit_component_deps",
       "family": "DataKit",
       "description": "Get component dependencies.",
       "method": "GET",
-      "path": "/ssot/data-kits/{id}/components/{cid}/dependencies"
+      "path": "/ssot/data-kits/{id}/components/{cid}/dependencies",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_datakit_components",
       "family": "DataKit",
-      "description": "List DataKit components.",
+      "description": "List org components available for inclusion in data kits.",
       "method": "GET",
-      "path": "/ssot/data-kits/{id}/components"
+      "path": "/ssot/data-kits/available-components",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_dataaction_list",
       "family": "DataAction",
       "description": "List data actions.",
       "method": "GET",
-      "path": "/ssot/data-actions"
+      "path": "/ssot/data-actions",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_dataaction_get",
       "family": "DataAction",
       "description": "Get action details.",
       "method": "GET",
-      "path": "/ssot/data-actions/{id}"
+      "path": "/ssot/data-actions/{id}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_dataaction_create",
       "family": "DataAction",
       "description": "Create action. Must have target configured.",
       "method": "POST",
-      "path": "/ssot/data-actions"
+      "path": "/ssot/data-actions",
+      "implementationFound": true,
+      "hasPayloadExample": true
     },
     {
       "name": "d360_dataaction_target_list",
       "family": "DataAction",
       "description": "List action targets.",
       "method": "GET",
-      "path": "/ssot/data-action-targets"
+      "path": "/ssot/data-action-targets",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_dataaction_target_get",
       "family": "DataAction",
       "description": "Get target details.",
       "method": "GET",
-      "path": "/ssot/data-action-targets/{id}"
+      "path": "/ssot/data-action-targets/{id}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_dataaction_target_create",
       "family": "DataAction",
       "description": "Create target.",
       "method": "POST",
-      "path": "/ssot/data-action-targets"
+      "path": "/ssot/data-action-targets",
+      "implementationFound": true,
+      "hasPayloadExample": true
     },
     {
       "name": "d360_dataaction_target_update",
       "family": "DataAction",
       "description": "Update target.",
       "method": "PATCH",
-      "path": "/ssot/data-action-targets/{id}"
+      "path": "/ssot/data-action-targets/{id}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_dataaction_target_delete",
       "family": "DataAction",
       "description": "Delete target.",
       "method": "DELETE",
-      "path": "/ssot/data-action-targets/{id}"
+      "path": "/ssot/data-action-targets/{id}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_sdm_list",
       "family": "SDM",
       "description": "List semantic models.",
       "method": "GET",
-      "path": "/ssot/semantic/models"
+      "path": "/ssot/semantic/models",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_sdm_get",
       "family": "SDM",
       "description": "Get semantic model.",
       "method": "GET",
-      "path": "/ssot/semantic/models/{id}"
+      "path": "/ssot/semantic/models/{id}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_sdm_create",
       "family": "SDM",
       "description": "Create empty model. Add objects separately. dataspace REQUIRED.",
       "method": "POST",
-      "path": "/ssot/semantic/models"
+      "path": "/ssot/semantic/models",
+      "implementationFound": true,
+      "hasPayloadExample": true
     },
     {
       "name": "d360_sdm_update",
       "family": "SDM",
       "description": "Update model metadata only.",
       "method": "PATCH",
-      "path": "/ssot/semantic/models/{id}"
+      "path": "/ssot/semantic/models/{id}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_sdm_delete",
       "family": "SDM",
       "description": "Delete model and all sub-components.",
       "method": "DELETE",
-      "path": "/ssot/semantic/models/{id}"
+      "path": "/ssot/semantic/models/{id}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_sdm_clone",
       "family": "SDM",
       "description": "Clone semantic model.",
       "method": "POST",
-      "path": "/ssot/semantic/models/{id}/clone"
+      "path": "/ssot/semantic/models/{id}/clone",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_sdm_validate",
       "family": "SDM",
       "description": "Validate model before querying.",
-      "method": "POST",
-      "path": "/ssot/semantic/models/{id}/validate"
+      "method": "GET",
+      "path": "/ssot/semantic/models/{id}/validate",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_sdm_dependencies",
       "family": "SDM",
-      "description": "Get model dependencies.",
+      "description": "Get model external dependencies.",
       "method": "GET",
-      "path": "/ssot/semantic/models/{id}/dependencies"
+      "path": "/ssot/semantic/models/{id}/external-dependencies",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_sdm_data_object_create",
       "family": "SDM",
       "description": "Add data object. Type: Dmo, Dlo, or Cio.",
       "method": "POST",
-      "path": "/ssot/semantic/models/{id}/data-objects"
+      "path": "/ssot/semantic/models/{id}/data-objects",
+      "implementationFound": true,
+      "hasPayloadExample": true
     },
     {
       "name": "d360_sdm_data_objects_list",
       "family": "SDM",
       "description": "List data objects in model.",
       "method": "GET",
-      "path": "/ssot/semantic/models/{id}/data-objects"
+      "path": "/ssot/semantic/models/{id}/data-objects",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_sdm_data_object_get",
       "family": "SDM",
       "description": "Get data object.",
       "method": "GET",
-      "path": "/ssot/semantic/models/{id}/data-objects/{oid}"
+      "path": "/ssot/semantic/models/{id}/data-objects/{oid}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_sdm_data_object_update",
       "family": "SDM",
       "description": "Update data object.",
-      "method": "PATCH",
-      "path": "/ssot/semantic/models/{id}/data-objects/{oid}"
+      "method": "PUT",
+      "path": "/ssot/semantic/models/{id}/data-objects/{oid}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_sdm_data_object_delete",
       "family": "SDM",
       "description": "Delete data object. Breaks relationships.",
       "method": "DELETE",
-      "path": "/ssot/semantic/models/{id}/data-objects/{oid}"
+      "path": "/ssot/semantic/models/{id}/data-objects/{oid}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_sdm_dimensions_list",
       "family": "SDM",
       "description": "List dimensions.",
       "method": "GET",
-      "path": "/ssot/semantic/models/{id}/data-objects/{oid}/dimensions"
+      "path": "/ssot/semantic/models/{id}/data-objects/{oid}/dimensions",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_sdm_measurements_list",
       "family": "SDM",
       "description": "List measurements.",
       "method": "GET",
-      "path": "/ssot/semantic/models/{id}/data-objects/{oid}/measurements"
+      "path": "/ssot/semantic/models/{id}/data-objects/{oid}/measurements",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_sdm_calc_dims_list",
       "family": "SDM",
       "description": "List calculated dimensions.",
       "method": "GET",
-      "path": "/ssot/semantic/models/{id}/calculated-dimensions"
+      "path": "/ssot/semantic/models/{id}/calculated-dimensions",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_sdm_calc_dim_create",
       "family": "SDM",
       "description": "Create calculated dimension. Use [DataObject].[Field] syntax.",
       "method": "POST",
-      "path": "/ssot/semantic/models/{id}/calculated-dimensions"
+      "path": "/ssot/semantic/models/{id}/calculated-dimensions",
+      "implementationFound": true,
+      "hasPayloadExample": true
     },
     {
       "name": "d360_sdm_calc_dim_get",
       "family": "SDM",
       "description": "Get calculated dimension.",
       "method": "GET",
-      "path": "/ssot/semantic/models/{id}/calculated-dimensions/{dimId}"
+      "path": "/ssot/semantic/models/{id}/calculated-dimensions/{dimId}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_sdm_calc_dim_update",
       "family": "SDM",
       "description": "Update calculated dimension.",
-      "method": "PATCH",
-      "path": "/ssot/semantic/models/{id}/calculated-dimensions/{dimId}"
+      "method": "PUT",
+      "path": "/ssot/semantic/models/{id}/calculated-dimensions/{dimId}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_sdm_calc_dim_delete",
       "family": "SDM",
       "description": "Delete calculated dimension.",
       "method": "DELETE",
-      "path": "/ssot/semantic/models/{id}/calculated-dimensions/{dimId}"
+      "path": "/ssot/semantic/models/{id}/calculated-dimensions/{dimId}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_sdm_calc_measures_list",
       "family": "SDM",
       "description": "List calculated measurements.",
       "method": "GET",
-      "path": "/ssot/semantic/models/{id}/calculated-measurements"
+      "path": "/ssot/semantic/models/{id}/calculated-measurements",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_sdm_calc_measure_create",
       "family": "SDM",
       "description": "Create calculated measurement. aggregationType UserAgg required.",
       "method": "POST",
-      "path": "/ssot/semantic/models/{id}/calculated-measurements"
+      "path": "/ssot/semantic/models/{id}/calculated-measurements",
+      "implementationFound": true,
+      "hasPayloadExample": true
     },
     {
       "name": "d360_sdm_calc_measure_get",
       "family": "SDM",
       "description": "Get calculated measurement.",
       "method": "GET",
-      "path": "/ssot/semantic/models/{id}/calculated-measurements/{mid}"
+      "path": "/ssot/semantic/models/{id}/calculated-measurements/{mid}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_sdm_calc_measure_update",
       "family": "SDM",
       "description": "Update calculated measurement.",
-      "method": "PATCH",
-      "path": "/ssot/semantic/models/{id}/calculated-measurements/{mid}"
+      "method": "PUT",
+      "path": "/ssot/semantic/models/{id}/calculated-measurements/{mid}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_sdm_calc_measure_delete",
       "family": "SDM",
       "description": "Delete calculated measurement.",
       "method": "DELETE",
-      "path": "/ssot/semantic/models/{id}/calculated-measurements/{mid}"
+      "path": "/ssot/semantic/models/{id}/calculated-measurements/{mid}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_sdm_metrics_list",
       "family": "SDM",
       "description": "List metrics.",
       "method": "GET",
-      "path": "/ssot/semantic/models/{id}/metrics"
+      "path": "/ssot/semantic/models/{id}/metrics",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_sdm_metric_create",
       "family": "SDM",
       "description": "Create named metric for BI tools.",
       "method": "POST",
-      "path": "/ssot/semantic/models/{id}/metrics"
+      "path": "/ssot/semantic/models/{id}/metrics",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_sdm_metric_get",
       "family": "SDM",
       "description": "Get metric.",
       "method": "GET",
-      "path": "/ssot/semantic/models/{id}/metrics/{mid}"
+      "path": "/ssot/semantic/models/{id}/metrics/{mid}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_sdm_metric_update",
       "family": "SDM",
       "description": "Update metric.",
-      "method": "PATCH",
-      "path": "/ssot/semantic/models/{id}/metrics/{mid}"
+      "method": "PUT",
+      "path": "/ssot/semantic/models/{id}/metrics/{mid}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_sdm_metric_delete",
       "family": "SDM",
       "description": "Delete metric.",
       "method": "DELETE",
-      "path": "/ssot/semantic/models/{id}/metrics/{mid}"
+      "path": "/ssot/semantic/models/{id}/metrics/{mid}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_sdm_relationships_list",
       "family": "SDM",
       "description": "List relationships.",
       "method": "GET",
-      "path": "/ssot/semantic/models/{id}/relationships"
+      "path": "/ssot/semantic/models/{id}/relationships",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_sdm_relationship_create",
       "family": "SDM",
       "description": "Create relationship. Use semantic field names, not DMO names.",
       "method": "POST",
-      "path": "/ssot/semantic/models/{id}/relationships"
+      "path": "/ssot/semantic/models/{id}/relationships",
+      "implementationFound": true,
+      "hasPayloadExample": true
     },
     {
       "name": "d360_sdm_relationship_get",
       "family": "SDM",
       "description": "Get relationship.",
       "method": "GET",
-      "path": "/ssot/semantic/models/{id}/relationships/{rid}"
+      "path": "/ssot/semantic/models/{id}/relationships/{rid}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_sdm_relationship_update",
       "family": "SDM",
       "description": "Update relationship.",
-      "method": "PATCH",
-      "path": "/ssot/semantic/models/{id}/relationships/{rid}"
+      "method": "PUT",
+      "path": "/ssot/semantic/models/{id}/relationships/{rid}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_sdm_relationship_delete",
       "family": "SDM",
       "description": "Delete relationship. Breaks queries.",
       "method": "DELETE",
-      "path": "/ssot/semantic/models/{id}/relationships/{rid}"
+      "path": "/ssot/semantic/models/{id}/relationships/{rid}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_sdm_formula_metadata",
       "family": "SDM",
       "description": "Reference available functions for calc dims/measures.",
       "method": "GET",
-      "path": "/ssot/semantic/models/formula-metadata"
+      "path": "/ssot/semantic/models/formula-metadata",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_sdm_permissions",
       "family": "SDM",
       "description": "Get SDM permissions.",
       "method": "GET",
-      "path": "/ssot/semantic/permissions"
+      "path": "/ssot/semantic/permissions",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_sdm_query",
       "family": "SDM",
       "description": "Query semantic model. Use semanticModelId not apiName.",
       "method": "POST",
-      "path": "/semantic-engine/gateway"
+      "path": "/semantic-engine/gateway",
+      "implementationFound": true,
+      "hasPayloadExample": true
     },
     {
       "name": "d360_smart_mapping_suggest",
       "family": "Smart",
       "description": "Auto-generate field mappings using similarity.",
       "method": null,
-      "path": null
+      "path": null,
+      "implementationFound": true,
+      "hasPayloadExample": true
     },
     {
       "name": "d360_preview_field_matches",
       "family": "Smart",
       "description": "Dry-run field matching with confidence scores.",
       "method": null,
-      "path": null
+      "path": null,
+      "implementationFound": true,
+      "hasPayloadExample": true
     },
     {
       "name": "d360_smart_datastream_create",
       "family": "Smart",
       "description": "Auto-select immutable event date for Engagement streams.",
       "method": null,
-      "path": null
+      "path": null,
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_event_date_recommend",
       "family": "Smart",
       "description": "Show mutable vs immutable date field scores.",
       "method": null,
-      "path": null
+      "path": null,
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_standard_mapping_preview",
       "family": "StandardMappings",
       "description": "Preview standard DLO-to-DMO mappings from 500+ definitions.",
       "method": "GET",
-      "path": null
+      "path": null,
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_standard_mapping_create",
       "family": "StandardMappings",
       "description": "Create ALL standard mappings for a source object in one call.",
       "method": "POST",
-      "path": "/ssot/data-model-object-mappings"
+      "path": "/ssot/data-model-object-mappings",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_search_index_list",
       "family": "SearchIndex",
       "description": "List search indexes.",
       "method": "GET",
-      "path": "/ssot/search-indexes"
+      "path": "/ssot/search-index",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_search_index_get",
       "family": "SearchIndex",
       "description": "Get search index details.",
       "method": "GET",
-      "path": "/ssot/search-indexes/{id}"
+      "path": "/ssot/search-index/{id}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_search_index_create",
       "family": "SearchIndex",
       "description": "Create search index.",
       "method": "POST",
-      "path": "/ssot/search-indexes"
+      "path": "/ssot/search-index",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_search_index_update",
       "family": "SearchIndex",
       "description": "Update search index.",
       "method": "PATCH",
-      "path": "/ssot/search-indexes/{id}"
+      "path": "/ssot/search-index/{id}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_search_index_delete",
       "family": "SearchIndex",
       "description": "Delete search index.",
       "method": "DELETE",
-      "path": "/ssot/search-indexes/{id}"
+      "path": "/ssot/search-index/{id}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_search_index_config",
       "family": "SearchIndex",
       "description": "Get search index configuration.",
       "method": "GET",
-      "path": "/ssot/search-indexes/{id}/config"
+      "path": "/ssot/search-index/config",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_search_index_process_history",
       "family": "SearchIndex",
       "description": "Get search index processing history.",
       "method": "GET",
-      "path": "/ssot/search-indexes/{id}/process-history"
+      "path": "/ssot/search-index/{id}/process-history",
+      "implementationFound": true,
+      "hasPayloadExample": false
+    },
+    {
+      "name": "d360_p13n_engagement_signals_list",
+      "family": "Personalization",
+      "description": "List engagement signals for a data graph. Required for recommender attribution setup.",
+      "method": "GET",
+      "path": "/personalization/engagement-signals",
+      "implementationFound": true,
+      "hasPayloadExample": true
+    },
+    {
+      "name": "d360_p13n_org_info_get",
+      "family": "Personalization",
+      "description": "Get org info (Data Cloud TSE endpoint).",
+      "method": "GET",
+      "path": "/personalization/external-apps/org",
+      "implementationFound": true,
+      "hasPayloadExample": true
+    },
+    {
+      "name": "d360_p13n_mobile_preview_create",
+      "family": "Personalization",
+      "description": "Generate mobile live preview link.",
+      "method": "POST",
+      "path": "/personalization/external-apps/mobile/live-preview-link",
+      "implementationFound": true,
+      "hasPayloadExample": true
+    },
+    {
+      "name": "d360_p13n_experience_config_list",
+      "family": "Personalization",
+      "description": "List experience configs for a data connector.",
+      "method": "GET",
+      "path": "/personalization/external-apps/{id}/personalization-experience-configs",
+      "implementationFound": true,
+      "hasPayloadExample": true
+    },
+    {
+      "name": "d360_p13n_experience_config_get",
+      "family": "Personalization",
+      "description": "Get specific experience config.",
+      "method": "GET",
+      "path": "/personalization/external-apps/{id}/personalization-experience-configs/{name}",
+      "implementationFound": true,
+      "hasPayloadExample": true
+    },
+    {
+      "name": "d360_p13n_experience_config_create",
+      "family": "Personalization",
+      "description": "Create experience config.",
+      "method": "POST",
+      "path": "/personalization/external-apps/{id}/personalization-experience-configs",
+      "implementationFound": true,
+      "hasPayloadExample": true
+    },
+    {
+      "name": "d360_p13n_experience_config_update",
+      "family": "Personalization",
+      "description": "Update experience config.",
+      "method": "PUT",
+      "path": "/personalization/external-apps/{id}/personalization-experience-configs/{name}",
+      "implementationFound": true,
+      "hasPayloadExample": true
+    },
+    {
+      "name": "d360_p13n_experience_config_delete",
+      "family": "Personalization",
+      "description": "Delete experience config.",
+      "method": "DELETE",
+      "path": "/personalization/external-apps/{id}/personalization-experience-configs/{name}",
+      "implementationFound": true,
+      "hasPayloadExample": true
+    },
+    {
+      "name": "d360_p13n_transformer_list",
+      "family": "Personalization",
+      "description": "List transformers with filtering.",
+      "method": "GET",
+      "path": "/personalization/external-apps/transformers",
+      "implementationFound": true,
+      "hasPayloadExample": true
+    },
+    {
+      "name": "d360_p13n_transformer_get",
+      "family": "Personalization",
+      "description": "Get specific transformer.",
+      "method": "GET",
+      "path": "/personalization/external-apps/transformer",
+      "implementationFound": true,
+      "hasPayloadExample": true
+    },
+    {
+      "name": "d360_p13n_transformer_create",
+      "family": "Personalization",
+      "description": "Create transformer.",
+      "method": "POST",
+      "path": "/personalization/external-apps/transformers",
+      "implementationFound": true,
+      "hasPayloadExample": true
+    },
+    {
+      "name": "d360_p13n_transformer_update",
+      "family": "Personalization",
+      "description": "Update transformer.",
+      "method": "PUT",
+      "path": "/personalization/external-apps/transformer",
+      "implementationFound": true,
+      "hasPayloadExample": true
+    },
+    {
+      "name": "d360_p13n_transformer_delete",
+      "family": "Personalization",
+      "description": "Delete transformer.",
+      "method": "DELETE",
+      "path": "/personalization/external-apps/transformer",
+      "implementationFound": true,
+      "hasPayloadExample": true
+    },
+    {
+      "name": "d360_p13n_schema_create",
+      "family": "Personalization",
+      "description": "Create personalization schema.",
+      "method": "POST",
+      "path": "/personalization/personalization-schemas",
+      "implementationFound": true,
+      "hasPayloadExample": true
+    },
+    {
+      "name": "d360_p13n_schema_get",
+      "family": "Personalization",
+      "description": "Get specific personalization schema.",
+      "method": "GET",
+      "path": "/personalization/personalization-schemas/{idOrName}",
+      "implementationFound": true,
+      "hasPayloadExample": true
+    },
+    {
+      "name": "d360_p13n_schema_update",
+      "family": "Personalization",
+      "description": "Update personalization schema.",
+      "method": "PATCH",
+      "path": "/personalization/personalization-schemas/{idOrName}",
+      "implementationFound": true,
+      "hasPayloadExample": true
+    },
+    {
+      "name": "d360_p13n_schema_delete",
+      "family": "Personalization",
+      "description": "Delete personalization schema.",
+      "method": "DELETE",
+      "path": "/personalization/personalization-schemas/{idOrName}",
+      "implementationFound": true,
+      "hasPayloadExample": true
+    },
+    {
+      "name": "d360_p13n_point_create",
+      "family": "Personalization",
+      "description": "Create personalization point.",
+      "method": "POST",
+      "path": "/personalization/personalization-points",
+      "implementationFound": true,
+      "hasPayloadExample": true
+    },
+    {
+      "name": "d360_p13n_point_get",
+      "family": "Personalization",
+      "description": "Get specific personalization point.",
+      "method": "GET",
+      "path": "/personalization/personalization-points/{idOrName}",
+      "implementationFound": true,
+      "hasPayloadExample": true
+    },
+    {
+      "name": "d360_p13n_point_update",
+      "family": "Personalization",
+      "description": "Update personalization point.",
+      "method": "PUT",
+      "path": "/personalization/personalization-points/{idOrName}",
+      "implementationFound": true,
+      "hasPayloadExample": true
+    },
+    {
+      "name": "d360_p13n_point_delete",
+      "family": "Personalization",
+      "description": "Delete personalization point.",
+      "method": "DELETE",
+      "path": "/personalization/personalization-points/{idOrName}",
+      "implementationFound": true,
+      "hasPayloadExample": true
     },
     {
       "name": "d360_retriever_list",
       "family": "Retriever",
       "description": "List retrievers.",
       "method": "GET",
-      "path": "/machine-learning/retrievers"
+      "path": "/ssot/machine-learning/retrievers",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_retriever_get",
       "family": "Retriever",
       "description": "Get retriever.",
       "method": "GET",
-      "path": "/machine-learning/retrievers/{id}"
+      "path": "/ssot/machine-learning/retrievers/{id}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_retriever_create",
       "family": "Retriever",
       "description": "Create retriever.",
       "method": "POST",
-      "path": "/machine-learning/retrievers"
+      "path": "/ssot/machine-learning/retrievers",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_retriever_update",
       "family": "Retriever",
       "description": "Update retriever.",
       "method": "PATCH",
-      "path": "/machine-learning/retrievers/{id}"
+      "path": "/ssot/machine-learning/retrievers/{id}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_retriever_delete",
       "family": "Retriever",
       "description": "Delete retriever.",
       "method": "DELETE",
-      "path": "/machine-learning/retrievers/{id}"
+      "path": "/ssot/machine-learning/retrievers/{id}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_retriever_config_list",
       "family": "Retriever",
       "description": "List retriever configurations.",
       "method": "GET",
-      "path": "/machine-learning/retrievers/{id}/configs"
+      "path": "/ssot/machine-learning/retrievers/{id}/configurations",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_retriever_config_get",
       "family": "Retriever",
       "description": "Get retriever configuration.",
       "method": "GET",
-      "path": "/machine-learning/retrievers/{id}/configs/{configId}"
+      "path": "/ssot/machine-learning/retrievers/{id}/configurations/{configurationId}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_retriever_config_create",
       "family": "Retriever",
       "description": "Create retriever configuration.",
       "method": "POST",
-      "path": "/machine-learning/retrievers/{id}/configs"
+      "path": "/ssot/machine-learning/retrievers/{id}/configurations",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_retriever_config_update",
       "family": "Retriever",
       "description": "Update retriever configuration.",
       "method": "PATCH",
-      "path": "/machine-learning/retrievers/{id}/configs/{configId}"
+      "path": "/ssot/machine-learning/retrievers/{id}/configurations/{configurationId}",
+      "implementationFound": true,
+      "hasPayloadExample": false
     },
     {
       "name": "d360_retriever_config_delete",
       "family": "Retriever",
       "description": "Delete retriever configuration.",
       "method": "DELETE",
-      "path": "/machine-learning/retrievers/{id}/configs/{configId}"
+      "path": "/ssot/machine-learning/retrievers/{id}/configurations/{configurationId}",
+      "implementationFound": true,
+      "hasPayloadExample": false
+    },
+    {
+      "name": "d360_prediction_job_def_list",
+      "family": "MachineLearning",
+      "description": "List prediction job definitions. Optional modelId filter.",
+      "method": "GET",
+      "path": "/ssot/machine-learning/prediction-job-definitions",
+      "implementationFound": true,
+      "hasPayloadExample": false
+    },
+    {
+      "name": "d360_prediction_job_def_get",
+      "family": "MachineLearning",
+      "description": "Get a prediction job definition by id or developer name.",
+      "method": "GET",
+      "path": "/ssot/machine-learning/prediction-job-definitions/{idOrName}",
+      "implementationFound": true,
+      "hasPayloadExample": false
+    },
+    {
+      "name": "d360_prediction_job_def_create",
+      "family": "MachineLearning",
+      "description": "Generic create — prefer the type-specific tools (regression, binary, multiclass, sentiment, topic, clustering) which pre-shape the payload and validate locally.",
+      "method": "POST",
+      "path": "/ssot/machine-learning/prediction-job-definitions",
+      "implementationFound": true,
+      "hasPayloadExample": true
+    },
+    {
+      "name": "d360_prediction_job_def_create_regression",
+      "family": "MachineLearning",
+      "description": "Create a Regression prediction job definition. Pre-shapes payload, validates settings ranges (maxTopContributors 0-3, maxPrescriptions 0-3, prescriptionThreshold 0-100).",
+      "method": "POST",
+      "path": "/ssot/machine-learning/prediction-job-definitions",
+      "implementationFound": true,
+      "hasPayloadExample": true
+    },
+    {
+      "name": "d360_prediction_job_def_create_binary_classification",
+      "family": "MachineLearning",
+      "description": "Create a BinaryClassification prediction job definition. showClassProbabilities defaults to true.",
+      "method": "POST",
+      "path": "/ssot/machine-learning/prediction-job-definitions",
+      "implementationFound": true,
+      "hasPayloadExample": true
+    },
+    {
+      "name": "d360_prediction_job_def_create_multiclass_classification",
+      "family": "MachineLearning",
+      "description": "Create a MulticlassClassification prediction job definition. numberOfClasses ≥ 1, default = all classes.",
+      "method": "POST",
+      "path": "/ssot/machine-learning/prediction-job-definitions",
+      "implementationFound": true,
+      "hasPayloadExample": true
+    },
+    {
+      "name": "d360_prediction_job_def_create_sentiment_detection",
+      "family": "MachineLearning",
+      "description": "Create a SentimentDetection prediction job definition. Defaults model to sfdc_ai__DefaultSalesforceSentimentAnalysis.",
+      "method": "POST",
+      "path": "/ssot/machine-learning/prediction-job-definitions",
+      "implementationFound": true,
+      "hasPayloadExample": true
+    },
+    {
+      "name": "d360_prediction_job_def_create_topic_classification",
+      "family": "MachineLearning",
+      "description": "Create a TopicClassification prediction job definition. 2-5 distinct topic labels, each ≤ 100 chars; up to 3 text fields. Defaults model to sfdc_ai__DefaultSalesforceTopicClassification.",
+      "method": "POST",
+      "path": "/ssot/machine-learning/prediction-job-definitions",
+      "implementationFound": true,
+      "hasPayloadExample": true
+    },
+    {
+      "name": "d360_prediction_job_def_create_clustering",
+      "family": "MachineLearning",
+      "description": "Create a Clustering prediction job definition. clusterIdFieldLabel and clusterLabelFieldLabel are required.",
+      "method": "POST",
+      "path": "/ssot/machine-learning/prediction-job-definitions",
+      "implementationFound": true,
+      "hasPayloadExample": true
+    },
+    {
+      "name": "d360_prediction_job_def_update",
+      "family": "MachineLearning",
+      "description": "Update a prediction job definition. Partial-update; for activation toggle prefer the activate/deactivate tools.",
+      "method": "PATCH",
+      "path": "/ssot/machine-learning/prediction-job-definitions/{idOrName}",
+      "implementationFound": true,
+      "hasPayloadExample": true
+    },
+    {
+      "name": "d360_prediction_job_def_activate",
+      "family": "MachineLearning",
+      "description": "Activate a prediction job definition (sets activationStatus=Active). Required before running.",
+      "method": "PATCH",
+      "path": "/ssot/machine-learning/prediction-job-definitions/{idOrName}",
+      "implementationFound": true,
+      "hasPayloadExample": true
+    },
+    {
+      "name": "d360_prediction_job_def_deactivate",
+      "family": "MachineLearning",
+      "description": "Deactivate a prediction job definition (sets activationStatus=Inactive). Inactive defs cannot be run.",
+      "method": "PATCH",
+      "path": "/ssot/machine-learning/prediction-job-definitions/{idOrName}",
+      "implementationFound": true,
+      "hasPayloadExample": true
+    },
+    {
+      "name": "d360_prediction_job_def_delete",
+      "family": "MachineLearning",
+      "description": "Delete a prediction job definition. Irreversible.",
+      "method": "DELETE",
+      "path": "/ssot/machine-learning/prediction-job-definitions/{idOrName}",
+      "implementationFound": true,
+      "hasPayloadExample": false
+    },
+    {
+      "name": "d360_prediction_job_run",
+      "family": "MachineLearning",
+      "description": "Submit a prediction job for execution. Async — response carries job id and initial status. PREREQUISITE: definition must be Active.",
+      "method": "POST",
+      "path": "/ssot/machine-learning/jobs",
+      "implementationFound": true,
+      "hasPayloadExample": true
+    },
+    {
+      "name": "d360_ml_predict",
+      "family": "MachineLearning",
+      "description": "Run synchronous prediction against a configured model — submits raw feature rows and returns per-row Success/Error results with factors, prescriptions, and warnings.",
+      "method": "POST",
+      "path": "/ssot/machine-learning/predict",
+      "implementationFound": true,
+      "hasPayloadExample": true
+    },
+    {
+      "name": "d360_ml_setup_version_inspector_metrics_get",
+      "family": "MachineLearning",
+      "description": "Training-time inspector metrics for a setup version (AUC, RMSE, confusion matrices, gain table, outcome distribution). gauges defaults to 'Overview'; use 'All' for the full payload.",
+      "method": "GET",
+      "path": "/ssot/machine-learning/model-setups/{idOrName}/setup-versions/{versionId}/inspector/metrics",
+      "implementationFound": true,
+      "hasPayloadExample": true
+    },
+    {
+      "name": "d360_ml_alerts_query",
+      "family": "MachineLearning",
+      "description": "Query training-time and runtime data alerts for a model artifact. Returns alerts with structured directives[] for auto-remediation on retrain.",
+      "method": "POST",
+      "path": "/ssot/machine-learning/alerts",
+      "implementationFound": true,
+      "hasPayloadExample": true
+    },
+    {
+      "name": "d360_ml_alert_update",
+      "family": "MachineLearning",
+      "description": "Triage an alert: accept (directives auto-apply on next setup-version) or dismiss.",
+      "method": "PATCH",
+      "path": "/ssot/machine-learning/alerts/{alertId}",
+      "implementationFound": true,
+      "hasPayloadExample": true
+    },
+    {
+      "name": "d360_ml_model_artifact_list",
+      "family": "MachineLearning",
+      "description": "List trained model artifacts. Filter by modelType, sourceType, dataCloudOneVisibility.",
+      "method": "GET",
+      "path": "/ssot/machine-learning/model-artifacts",
+      "implementationFound": true,
+      "hasPayloadExample": false
+    },
+    {
+      "name": "d360_ml_model_artifact_get",
+      "family": "MachineLearning",
+      "description": "Get a trained model artifact. Carries the parameters, inputFields, outputFields, source/setupContainer back-links.",
+      "method": "GET",
+      "path": "/ssot/machine-learning/model-artifacts/{idOrName}",
+      "implementationFound": true,
+      "hasPayloadExample": false
+    },
+    {
+      "name": "d360_ml_model_artifact_update",
+      "family": "MachineLearning",
+      "description": "Update a model artifact (label, description, status, output-field overrides). Status writable values are Enabled/Disabled only.",
+      "method": "PATCH",
+      "path": "/ssot/machine-learning/model-artifacts/{idOrName}",
+      "implementationFound": true,
+      "hasPayloadExample": true
+    },
+    {
+      "name": "d360_ml_model_artifact_delete",
+      "family": "MachineLearning",
+      "description": "Delete a model artifact. Predictive deletes do not cascade — referencing configured models become orphaned.",
+      "method": "DELETE",
+      "path": "/ssot/machine-learning/model-artifacts/{idOrName}",
+      "implementationFound": true,
+      "hasPayloadExample": false
+    },
+    {
+      "name": "d360_ml_configured_model_list",
+      "family": "MachineLearning",
+      "description": "List configured models. Filter by assetIdOrName + assetType (ModelArtifact|ModelSetup) to find configured models bound to a specific artifact or setup.",
+      "method": "GET",
+      "path": "/ssot/machine-learning/configured-models",
+      "implementationFound": true,
+      "hasPayloadExample": false
+    },
+    {
+      "name": "d360_ml_configured_model_get",
+      "family": "MachineLearning",
+      "description": "Get a configured model by id or developer name.",
+      "method": "GET",
+      "path": "/ssot/machine-learning/configured-models/{idOrName}",
+      "implementationFound": true,
+      "hasPayloadExample": false
+    },
+    {
+      "name": "d360_ml_configured_model_create",
+      "family": "MachineLearning",
+      "description": "Create a configured model wrapping a model artifact. artifact reference is required. Status defaults to Disabled unless explicitly Enabled.",
+      "method": "POST",
+      "path": "/ssot/machine-learning/configured-models",
+      "implementationFound": true,
+      "hasPayloadExample": true
+    },
+    {
+      "name": "d360_ml_configured_model_update",
+      "family": "MachineLearning",
+      "description": "Update a configured model.",
+      "method": "PATCH",
+      "path": "/ssot/machine-learning/configured-models/{idOrName}",
+      "implementationFound": true,
+      "hasPayloadExample": true
+    },
+    {
+      "name": "d360_ml_configured_model_delete",
+      "family": "MachineLearning",
+      "description": "Delete a configured model.",
+      "method": "DELETE",
+      "path": "/ssot/machine-learning/configured-models/{idOrName}",
+      "implementationFound": true,
+      "hasPayloadExample": false
+    },
+    {
+      "name": "d360_ml_configured_model_activate",
+      "family": "MachineLearning",
+      "description": "Activate a configured model (status=Enabled). Required before the model can be deployed.",
+      "method": "PATCH",
+      "path": "/ssot/machine-learning/configured-models/{idOrName}",
+      "implementationFound": true,
+      "hasPayloadExample": true
+    },
+    {
+      "name": "d360_ml_configured_model_history_list",
+      "family": "MachineLearning",
+      "description": "List history snapshots for a configured model.",
+      "method": "GET",
+      "path": "/ssot/machine-learning/configured-models/{idOrName}/histories",
+      "implementationFound": true,
+      "hasPayloadExample": true
+    },
+    {
+      "name": "d360_ml_configured_model_history_get",
+      "family": "MachineLearning",
+      "description": "Get one configured-model history snapshot.",
+      "method": "GET",
+      "path": "/ssot/machine-learning/configured-models/{idOrName}/histories/{historyId}",
+      "implementationFound": true,
+      "hasPayloadExample": false
+    },
+    {
+      "name": "d360_ml_query_setup_fields",
+      "family": "MachineLearning",
+      "description": "Enumerate fields and applicable transformations for a data source. First call when authoring a model setup.",
+      "method": "POST",
+      "path": "/ssot/machine-learning/query-setup-fields",
+      "implementationFound": true,
+      "hasPayloadExample": true
+    },
+    {
+      "name": "d360_ml_query_data_profile",
+      "family": "MachineLearning",
+      "description": "Profile values on a data source — cardinality, null counts, distribution stats. Use to decide which fields are usable as features.",
+      "method": "POST",
+      "path": "/ssot/machine-learning/query-data-profile",
+      "implementationFound": true,
+      "hasPayloadExample": true
+    },
+    {
+      "name": "d360_ml_query_outcome",
+      "family": "MachineLearning",
+      "description": "List candidate outcome columns (Binary, Discrete, Continuous, Clustering) the data source can support. Optional predictionType narrows results.",
+      "method": "POST",
+      "path": "/ssot/machine-learning/query-outcome",
+      "implementationFound": true,
+      "hasPayloadExample": true
+    },
+    {
+      "name": "d360_ml_query_row_count",
+      "family": "MachineLearning",
+      "description": "Row count for the data source after filters and joins are applied. Used to gate whether there is enough data to train.",
+      "method": "POST",
+      "path": "/ssot/machine-learning/query-row-count",
+      "implementationFound": true,
+      "hasPayloadExample": true
+    },
+    {
+      "name": "d360_ml_model_setup_list",
+      "family": "MachineLearning",
+      "description": "List model-setup containers. Filters: search, modelType, modelCapability, setupType, connectorType. Pagination via limit/offset.",
+      "method": "GET",
+      "path": "/ssot/machine-learning/model-setups",
+      "implementationFound": true,
+      "hasPayloadExample": false
+    },
+    {
+      "name": "d360_ml_model_setup_get",
+      "family": "MachineLearning",
+      "description": "Get a model-setup container by id or developer name.",
+      "method": "GET",
+      "path": "/ssot/machine-learning/model-setups/{idOrName}",
+      "implementationFound": true,
+      "hasPayloadExample": false
+    },
+    {
+      "name": "d360_ml_model_setup_create",
+      "family": "MachineLearning",
+      "description": "Create a model-setup container (parent record). Does not start training; follow up with d360_ml_setup_version_create.",
+      "method": "POST",
+      "path": "/ssot/machine-learning/model-setups",
+      "implementationFound": true,
+      "hasPayloadExample": true
+    },
+    {
+      "name": "d360_ml_model_setup_update",
+      "family": "MachineLearning",
+      "description": "Update a model-setup container (label, description, modelCapability, outcomeDefinition).",
+      "method": "PATCH",
+      "path": "/ssot/machine-learning/model-setups/{idOrName}",
+      "implementationFound": true,
+      "hasPayloadExample": true
+    },
+    {
+      "name": "d360_ml_model_setup_delete",
+      "family": "MachineLearning",
+      "description": "Delete a model-setup container. Cascades to all versions. Irreversible.",
+      "method": "DELETE",
+      "path": "/ssot/machine-learning/model-setups/{idOrName}",
+      "implementationFound": true,
+      "hasPayloadExample": false
+    },
+    {
+      "name": "d360_ml_setup_version_list",
+      "family": "MachineLearning",
+      "description": "List versions of a model-setup container.",
+      "method": "GET",
+      "path": "/ssot/machine-learning/model-setups/{idOrName}/setup-versions",
+      "implementationFound": true,
+      "hasPayloadExample": false
+    },
+    {
+      "name": "d360_ml_setup_version_get",
+      "family": "MachineLearning",
+      "description": "Get one setup version with its full setup body. Use to poll status during training.",
+      "method": "GET",
+      "path": "/ssot/machine-learning/model-setups/{idOrName}/setup-versions/{versionId}",
+      "implementationFound": true,
+      "hasPayloadExample": false
+    },
+    {
+      "name": "d360_ml_setup_version_create",
+      "family": "MachineLearning",
+      "description": "Create a new EdcNoCode setup version — kicks off training. Algorithm defaulted by outcome type if omitted.",
+      "method": "POST",
+      "path": "/ssot/machine-learning/model-setups/{idOrName}/setup-versions",
+      "implementationFound": true,
+      "hasPayloadExample": true
+    },
+    {
+      "name": "d360_ml_setup_version_update",
+      "family": "MachineLearning",
+      "description": "Update setup version description or status (only mutable fields). Send status='Training' to start training on a Draft version.",
+      "method": "PATCH",
+      "path": "/ssot/machine-learning/model-setups/{idOrName}/setup-versions/{versionId}",
+      "implementationFound": true,
+      "hasPayloadExample": true
     }
   ]
 }

@@ -1,24 +1,24 @@
 {
-  "generatedAt": "2026-05-18",
+  "generatedAt": "2026-07-02",
   "upstream": {
     "source": "https://github.com/forcedotcom/d360-mcp-server/src/main/java/com/salesforce/data360/mcp/runtime/FamilyCatalog.java",
-    "capturedAt": "2026-05-18",
-    "count": 181
+    "capturedAt": "2026-07-02",
+    "count": 246
   },
   "summary": {
-    "upstreamTools": 181,
-    "supportedUpstreamTools": 181,
+    "upstreamTools": 246,
+    "supportedUpstreamTools": 246,
     "missingUpstreamTools": 0,
-    "facadeOperations": 210,
-    "facadeExtras": 29,
-    "byStatus": { "supported": 181 },
-    "byKind": { "rest": 70, "destructive_rest": 26, "rest_adjusted": 80, "local_helper": 5 },
-    "bySafety": { "safe_post": 11, "read": 79, "destructive": 26, "confirmed": 65 },
-    "extrasByKind": { "alias": 16, "facade_extension": 12, "destructive_rest": 1 },
+    "facadeOperations": 279,
+    "facadeExtras": 33,
+    "byStatus": { "supported": 246 },
+    "byKind": { "rest": 209, "destructive_rest": 32, "local_helper": 5 },
+    "bySafety": { "safe_post": 22, "read": 98, "destructive": 32, "confirmed": 94 },
+    "extrasByKind": { "alias": 16, "facade_extension": 14, "destructive_rest": 3 },
     "payloadExamples": {
-      "upstreamPayloadExamples": 31,
-      "exactPayloadExamples": 20,
-      "variantPayloadExamples": 11,
+      "upstreamPayloadExamples": 89,
+      "exactPayloadExamples": 74,
+      "variantPayloadExamples": 15,
       "missingPayloadExamples": 0,
       "missing": []
     }
@@ -105,7 +105,7 @@
       "upstreamMethod": "POST",
       "upstreamPath": "/connect/search/metadata/results",
       "facadeOperation": "d360_metadata_search",
-      "facadeFamily": "Metadata",
+      "facadeFamily": "Query",
       "facadeMethod": "POST",
       "facadePath": "/connect/search/metadata/results",
       "safety": "safe_post",
@@ -120,7 +120,7 @@
       "upstreamMethod": "GET",
       "upstreamPath": "/ssot/metadata-entities",
       "facadeOperation": "d360_metadata_entities",
-      "facadeFamily": "Metadata",
+      "facadeFamily": "Query",
       "facadeMethod": "GET",
       "facadePath": "/ssot/metadata-entities",
       "safety": "read",
@@ -135,7 +135,7 @@
       "upstreamMethod": "GET",
       "upstreamPath": "/ssot/profile/{dataModelName}",
       "facadeOperation": "d360_profile_query",
-      "facadeFamily": "Profile and Data Graph",
+      "facadeFamily": "Query",
       "facadeMethod": "GET",
       "facadePath": "/ssot/profile/{dataModelName}",
       "safety": "read",
@@ -150,7 +150,7 @@
       "upstreamMethod": "GET",
       "upstreamPath": "/ssot/profile/metadata",
       "facadeOperation": "d360_profile_metadata",
-      "facadeFamily": "Profile and Data Graph",
+      "facadeFamily": "Query",
       "facadeMethod": "GET",
       "facadePath": "/ssot/profile/metadata",
       "safety": "read",
@@ -165,7 +165,7 @@
       "upstreamMethod": "GET",
       "upstreamPath": "/ssot/insight/calculated-insights/{ciName}",
       "facadeOperation": "d360_insights_query",
-      "facadeFamily": "Profile and Data Graph",
+      "facadeFamily": "Query",
       "facadeMethod": "GET",
       "facadePath": "/ssot/insight/calculated-insights/{ciName}",
       "safety": "read",
@@ -180,7 +180,7 @@
       "upstreamMethod": "GET",
       "upstreamPath": "/ssot/insight/metadata",
       "facadeOperation": "d360_insights_metadata",
-      "facadeFamily": "Profile and Data Graph",
+      "facadeFamily": "Query",
       "facadeMethod": "GET",
       "facadePath": "/ssot/insight/metadata",
       "safety": "read",
@@ -195,14 +195,14 @@
       "upstreamMethod": "GET",
       "upstreamPath": "/ssot/data-graphs/data/{entity}/{id}",
       "facadeOperation": "d360_datagraph_query",
-      "facadeFamily": "Profile and Data Graph",
+      "facadeFamily": "Query",
       "facadeMethod": "GET",
-      "facadePath": "/ssot/data-graphs/data/{dataGraphEntityName}",
+      "facadePath": "/ssot/data-graphs/data/{entity}/{id}",
       "safety": "read",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": false,
-      "notes": ["Facade REST shape differs from upstream catalog snapshot; see facadePath."]
+      "notes": []
     },
     {
       "upstreamName": "d360_datagraph_lookup",
@@ -210,7 +210,7 @@
       "upstreamMethod": "GET",
       "upstreamPath": "/ssot/data-graphs/data/{entity}",
       "facadeOperation": "d360_datagraph_lookup",
-      "facadeFamily": "Profile and Data Graph",
+      "facadeFamily": "Query",
       "facadeMethod": "GET",
       "facadePath": "/ssot/data-graphs/data/{entity}",
       "safety": "read",
@@ -225,7 +225,7 @@
       "upstreamMethod": "GET",
       "upstreamPath": "/ssot/data-graphs/metadata",
       "facadeOperation": "d360_datagraph_metadata",
-      "facadeFamily": "Profile and Data Graph",
+      "facadeFamily": "Query",
       "facadeMethod": "GET",
       "facadePath": "/ssot/data-graphs/metadata",
       "safety": "read",
@@ -430,21 +430,6 @@
       "notes": ["Requires dry-run review before allow_confirmed execution."]
     },
     {
-      "upstreamName": "d360_dmo_mapping_update",
-      "upstreamFamily": "Mappings",
-      "upstreamMethod": "PATCH",
-      "upstreamPath": "/ssot/data-model-object-mappings/{mappingName}",
-      "facadeOperation": "d360_dmo_mapping_update",
-      "facadeFamily": "Mappings",
-      "facadeMethod": "PATCH",
-      "facadePath": "/ssot/data-model-object-mappings/{mappingName}",
-      "safety": "confirmed",
-      "kind": "rest",
-      "status": "supported",
-      "hasExample": true,
-      "notes": ["Requires dry-run review before allow_confirmed execution."]
-    },
-    {
       "upstreamName": "d360_dmo_mapping_delete",
       "upstreamFamily": "Mappings",
       "upstreamMethod": "DELETE",
@@ -514,10 +499,10 @@
       "facadeMethod": "GET",
       "facadePath": "/ssot/data-streams/{dataStreamId}",
       "safety": "read",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": false,
-      "notes": ["Facade REST shape differs from upstream catalog snapshot; see facadePath."]
+      "notes": []
     },
     {
       "upstreamName": "d360_datastream_create",
@@ -544,13 +529,10 @@
       "facadeMethod": "PATCH",
       "facadePath": "/ssot/data-streams/{dataStreamId}",
       "safety": "confirmed",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": true,
-      "notes": [
-        "Facade REST shape differs from upstream catalog snapshot; see facadePath.",
-        "Requires dry-run review before allow_confirmed execution."
-      ]
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
     },
     {
       "upstreamName": "d360_datastream_delete",
@@ -571,19 +553,16 @@
       "upstreamName": "d360_datastream_run",
       "upstreamFamily": "DataStreams",
       "upstreamMethod": "POST",
-      "upstreamPath": "/ssot/data-streams/{id}/run",
+      "upstreamPath": "/ssot/data-streams/{id}/actions/run",
       "facadeOperation": "d360_datastream_run",
       "facadeFamily": "DataStreams",
       "facadeMethod": "POST",
       "facadePath": "/ssot/data-streams/{dataStreamId}/actions/run",
       "safety": "confirmed",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": true,
-      "notes": [
-        "Facade REST shape differs from upstream catalog snapshot; see facadePath.",
-        "Requires dry-run review before allow_confirmed execution."
-      ]
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
     },
     {
       "upstreamName": "d360_datastream_create_sfdc",
@@ -631,6 +610,21 @@
       "notes": ["Requires dry-run review before allow_confirmed execution."]
     },
     {
+      "upstreamName": "d360_datastream_create_third_party_connectors",
+      "upstreamFamily": "DataStreams",
+      "upstreamMethod": "POST",
+      "upstreamPath": "/ssot/data-streams",
+      "facadeOperation": "d360_datastream_create_third_party_connectors",
+      "facadeFamily": "DataStreams",
+      "facadeMethod": "POST",
+      "facadePath": "/ssot/data-streams",
+      "safety": "confirmed",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
+    },
+    {
       "upstreamName": "d360_connection_list",
       "upstreamFamily": "Connection",
       "upstreamMethod": "GET",
@@ -655,10 +649,10 @@
       "facadeMethod": "GET",
       "facadePath": "/ssot/connections/{connectionId}",
       "safety": "read",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": false,
-      "notes": ["Facade REST shape differs from upstream catalog snapshot; see facadePath."]
+      "notes": []
     },
     {
       "upstreamName": "d360_connection_create",
@@ -685,13 +679,10 @@
       "facadeMethod": "PATCH",
       "facadePath": "/ssot/connections/{connectionId}",
       "safety": "confirmed",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": true,
-      "notes": [
-        "Facade REST shape differs from upstream catalog snapshot; see facadePath.",
-        "Requires dry-run review before allow_confirmed execution."
-      ]
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
     },
     {
       "upstreamName": "d360_connection_delete",
@@ -748,21 +739,6 @@
       "facadeMethod": "GET",
       "facadePath": "/ssot/connectors/{connectorName}",
       "safety": "read",
-      "kind": "rest_adjusted",
-      "status": "supported",
-      "hasExample": false,
-      "notes": ["Facade REST shape differs from upstream catalog snapshot; see facadePath."]
-    },
-    {
-      "upstreamName": "d360_connection_endpoints",
-      "upstreamFamily": "Connection",
-      "upstreamMethod": "GET",
-      "upstreamPath": "/ssot/connection-endpoints",
-      "facadeOperation": "d360_connection_endpoints",
-      "facadeFamily": "Connection",
-      "facadeMethod": "GET",
-      "facadePath": "/ssot/connection-endpoints",
-      "safety": "read",
       "kind": "rest",
       "status": "supported",
       "hasExample": false,
@@ -772,34 +748,76 @@
       "upstreamName": "d360_snowflake_connection_list",
       "upstreamFamily": "Connection",
       "upstreamMethod": "GET",
-      "upstreamPath": "/connections",
+      "upstreamPath": "/ssot/connections",
       "facadeOperation": "d360_snowflake_connection_list",
       "facadeFamily": "Connection",
       "facadeMethod": "GET",
       "facadePath": "/ssot/connections",
       "safety": "read",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": true,
-      "notes": ["Facade REST shape differs from upstream catalog snapshot; see facadePath."]
+      "notes": []
     },
     {
       "upstreamName": "d360_connection_create_snowflake",
       "upstreamFamily": "Connection",
       "upstreamMethod": "POST",
-      "upstreamPath": "/connections",
+      "upstreamPath": "/ssot/connections",
       "facadeOperation": "d360_connection_create_snowflake",
       "facadeFamily": "Connection",
       "facadeMethod": "POST",
       "facadePath": "/ssot/connections",
       "safety": "confirmed",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": true,
-      "notes": [
-        "Facade REST shape differs from upstream catalog snapshot; see facadePath.",
-        "Requires dry-run review before allow_confirmed execution."
-      ]
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
+    },
+    {
+      "upstreamName": "d360_connection_db_schemas_list",
+      "upstreamFamily": "Connection",
+      "upstreamMethod": "POST",
+      "upstreamPath": "/ssot/connections/{id}/database-schemas",
+      "facadeOperation": "d360_connection_db_schemas_list",
+      "facadeFamily": "Connection",
+      "facadeMethod": "POST",
+      "facadePath": "/ssot/connections/{connectionId}/database-schemas",
+      "safety": "safe_post",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": []
+    },
+    {
+      "upstreamName": "d360_connection_objects_list",
+      "upstreamFamily": "Connection",
+      "upstreamMethod": "POST",
+      "upstreamPath": "/ssot/connections/{id}/objects",
+      "facadeOperation": "d360_connection_objects_list",
+      "facadeFamily": "Connection",
+      "facadeMethod": "POST",
+      "facadePath": "/ssot/connections/{connectionId}/objects",
+      "safety": "safe_post",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": []
+    },
+    {
+      "upstreamName": "d360_connection_object_fields_describe",
+      "upstreamFamily": "Connection",
+      "upstreamMethod": "POST",
+      "upstreamPath": "/ssot/connections/{id}/objects/{resourceName}/fields",
+      "facadeOperation": "d360_connection_object_fields_describe",
+      "facadeFamily": "Connection",
+      "facadeMethod": "POST",
+      "facadePath": "/ssot/connections/{connectionId}/objects/{resourceName}/fields",
+      "safety": "safe_post",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": []
     },
     {
       "upstreamName": "d360_segment_list",
@@ -826,10 +844,10 @@
       "facadeMethod": "GET",
       "facadePath": "/ssot/segments/{segmentId}",
       "safety": "read",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": false,
-      "notes": ["Facade REST shape differs from upstream catalog snapshot; see facadePath."]
+      "notes": []
     },
     {
       "upstreamName": "d360_segment_create",
@@ -850,25 +868,22 @@
       "upstreamName": "d360_segment_update",
       "upstreamFamily": "Segment",
       "upstreamMethod": "PATCH",
-      "upstreamPath": "/ssot/segments/{id}",
+      "upstreamPath": "/ssot/segments/{segmentApiName}",
       "facadeOperation": "d360_segment_update",
       "facadeFamily": "Segment",
       "facadeMethod": "PATCH",
       "facadePath": "/ssot/segments/{segmentId}",
       "safety": "confirmed",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": true,
-      "notes": [
-        "Facade REST shape differs from upstream catalog snapshot; see facadePath.",
-        "Requires dry-run review before allow_confirmed execution."
-      ]
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
     },
     {
       "upstreamName": "d360_segment_delete",
       "upstreamFamily": "Segment",
       "upstreamMethod": "DELETE",
-      "upstreamPath": "/ssot/segments/{apiName}",
+      "upstreamPath": "/ssot/segments/{segmentApiName}",
       "facadeOperation": "d360_segment_delete",
       "facadeFamily": "Segment",
       "facadeMethod": "DELETE",
@@ -889,13 +904,10 @@
       "facadeMethod": "POST",
       "facadePath": "/ssot/segments/{segmentId}/actions/publish",
       "safety": "confirmed",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": true,
-      "notes": [
-        "Facade REST shape differs from upstream catalog snapshot; see facadePath.",
-        "Requires dry-run review before allow_confirmed execution."
-      ]
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
     },
     {
       "upstreamName": "d360_segment_deactivate",
@@ -907,13 +919,10 @@
       "facadeMethod": "POST",
       "facadePath": "/ssot/segments/{segmentApiName}/actions/deactivate",
       "safety": "confirmed",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": true,
-      "notes": [
-        "Facade REST shape differs from upstream catalog snapshot; see facadePath.",
-        "Requires dry-run review before allow_confirmed execution."
-      ]
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
     },
     {
       "upstreamName": "d360_ci_list",
@@ -1038,13 +1047,13 @@
     {
       "upstreamName": "d360_ci_run_status",
       "upstreamFamily": "CalculatedInsights",
-      "upstreamMethod": "GET",
-      "upstreamPath": "/ssot/calculated-insights/{ciName}/actions/run",
+      "upstreamMethod": "POST",
+      "upstreamPath": "/ssot/calculated-insights/{ciName}/actions/refresh-status",
       "facadeOperation": "d360_ci_run_status",
       "facadeFamily": "Calculated Insights",
-      "facadeMethod": "GET",
-      "facadePath": "/ssot/calculated-insights/{ciName}/actions/run",
-      "safety": "read",
+      "facadeMethod": "POST",
+      "facadePath": "/ssot/calculated-insights/{ciName}/actions/refresh-status",
+      "safety": "safe_post",
       "kind": "rest",
       "status": "supported",
       "hasExample": false,
@@ -1090,10 +1099,10 @@
       "facadeMethod": "GET",
       "facadePath": "/ssot/identity-resolutions/{identityResolutionId}",
       "safety": "read",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": false,
-      "notes": ["Facade REST shape differs from upstream catalog snapshot; see facadePath."]
+      "notes": []
     },
     {
       "upstreamName": "d360_ir_create",
@@ -1120,31 +1129,25 @@
       "facadeMethod": "PATCH",
       "facadePath": "/ssot/identity-resolutions/{identityResolutionId}",
       "safety": "confirmed",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": true,
-      "notes": [
-        "Facade REST shape differs from upstream catalog snapshot; see facadePath.",
-        "Requires dry-run review before allow_confirmed execution."
-      ]
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
     },
     {
       "upstreamName": "d360_ir_full_update",
       "upstreamFamily": "IdentityResolution",
-      "upstreamMethod": "PUT",
+      "upstreamMethod": "PATCH",
       "upstreamPath": "/ssot/identity-resolutions/{id}",
       "facadeOperation": "d360_ir_full_update",
       "facadeFamily": "Identity Resolution",
-      "facadeMethod": "PUT",
+      "facadeMethod": "PATCH",
       "facadePath": "/ssot/identity-resolutions/{identityResolutionId}",
       "safety": "confirmed",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": true,
-      "notes": [
-        "Facade REST shape differs from upstream catalog snapshot; see facadePath.",
-        "Requires dry-run review before allow_confirmed execution."
-      ]
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
     },
     {
       "upstreamName": "d360_ir_delete",
@@ -1171,13 +1174,10 @@
       "facadeMethod": "POST",
       "facadePath": "/ssot/identity-resolutions/{identityResolutionId}/actions/publish",
       "safety": "confirmed",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": true,
-      "notes": [
-        "Facade REST shape differs from upstream catalog snapshot; see facadePath.",
-        "Requires dry-run review before allow_confirmed execution."
-      ]
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
     },
     {
       "upstreamName": "d360_ir_run",
@@ -1189,13 +1189,10 @@
       "facadeMethod": "POST",
       "facadePath": "/ssot/identity-resolutions/{identityResolutionId}/actions/run-now",
       "safety": "confirmed",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": true,
-      "notes": [
-        "Facade REST shape differs from upstream catalog snapshot; see facadePath.",
-        "Requires dry-run review before allow_confirmed execution."
-      ]
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
     },
     {
       "upstreamName": "d360_activation_list",
@@ -1222,10 +1219,10 @@
       "facadeMethod": "GET",
       "facadePath": "/ssot/activations/{activationId}",
       "safety": "read",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": false,
-      "notes": ["Facade REST shape differs from upstream catalog snapshot; see facadePath."]
+      "notes": []
     },
     {
       "upstreamName": "d360_activation_create",
@@ -1245,20 +1242,17 @@
     {
       "upstreamName": "d360_activation_update",
       "upstreamFamily": "Activation",
-      "upstreamMethod": "PATCH",
+      "upstreamMethod": "PUT",
       "upstreamPath": "/ssot/activations/{id}",
       "facadeOperation": "d360_activation_update",
       "facadeFamily": "Activation",
-      "facadeMethod": "PATCH",
+      "facadeMethod": "PUT",
       "facadePath": "/ssot/activations/{activationId}",
       "safety": "confirmed",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": true,
-      "notes": [
-        "Facade REST shape differs from upstream catalog snapshot; see facadePath.",
-        "Requires dry-run review before allow_confirmed execution."
-      ]
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
     },
     {
       "upstreamName": "d360_activation_delete",
@@ -1300,10 +1294,10 @@
       "facadeMethod": "GET",
       "facadePath": "/ssot/activation-targets/{activationTargetId}",
       "safety": "read",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": false,
-      "notes": ["Facade REST shape differs from upstream catalog snapshot; see facadePath."]
+      "notes": []
     },
     {
       "upstreamName": "d360_activation_target_create",
@@ -1323,35 +1317,17 @@
     {
       "upstreamName": "d360_activation_target_update",
       "upstreamFamily": "Activation",
-      "upstreamMethod": "PUT",
+      "upstreamMethod": "PATCH",
       "upstreamPath": "/ssot/activation-targets/{id}",
       "facadeOperation": "d360_activation_target_update",
       "facadeFamily": "Activation",
       "facadeMethod": "PATCH",
       "facadePath": "/ssot/activation-targets/{activationTargetId}",
       "safety": "confirmed",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": true,
-      "notes": [
-        "Facade REST shape differs from upstream catalog snapshot; see facadePath.",
-        "Requires dry-run review before allow_confirmed execution."
-      ]
-    },
-    {
-      "upstreamName": "d360_activation_target_delete",
-      "upstreamFamily": "Activation",
-      "upstreamMethod": "DELETE",
-      "upstreamPath": "/ssot/activation-targets/{id}",
-      "facadeOperation": "d360_activation_target_delete",
-      "facadeFamily": "Activation",
-      "facadeMethod": "DELETE",
-      "facadePath": "/ssot/activation-targets/{activationTargetId}",
-      "safety": "destructive",
-      "kind": "destructive_rest",
-      "status": "supported",
-      "hasExample": true,
-      "notes": ["Requires AgentforceSTDM target, allow_confirmed, and interactive Pi confirmation."]
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
     },
     {
       "upstreamName": "d360_dataspace_list",
@@ -1378,10 +1354,10 @@
       "facadeMethod": "GET",
       "facadePath": "/ssot/data-spaces/{dataSpaceName}",
       "safety": "read",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": false,
-      "notes": ["Facade REST shape differs from upstream catalog snapshot; see facadePath."]
+      "notes": []
     },
     {
       "upstreamName": "d360_dataspace_create",
@@ -1408,28 +1384,10 @@
       "facadeMethod": "PATCH",
       "facadePath": "/ssot/data-spaces/{dataSpaceName}",
       "safety": "confirmed",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": true,
-      "notes": [
-        "Facade REST shape differs from upstream catalog snapshot; see facadePath.",
-        "Requires dry-run review before allow_confirmed execution."
-      ]
-    },
-    {
-      "upstreamName": "d360_dataspace_delete",
-      "upstreamFamily": "Dataspace",
-      "upstreamMethod": "DELETE",
-      "upstreamPath": "/ssot/data-spaces/{name}",
-      "facadeOperation": "d360_dataspace_delete",
-      "facadeFamily": "Dataspace",
-      "facadeMethod": "DELETE",
-      "facadePath": "/ssot/data-spaces/{dataSpaceName}",
-      "safety": "destructive",
-      "kind": "destructive_rest",
-      "status": "supported",
-      "hasExample": true,
-      "notes": ["Requires AgentforceSTDM target, allow_confirmed, and interactive Pi confirmation."]
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
     },
     {
       "upstreamName": "d360_dataspace_member_list",
@@ -1441,38 +1399,35 @@
       "facadeMethod": "GET",
       "facadePath": "/ssot/data-spaces/{dataSpaceName}/members",
       "safety": "read",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": false,
-      "notes": ["Facade REST shape differs from upstream catalog snapshot; see facadePath."]
+      "notes": []
     },
     {
       "upstreamName": "d360_dataspace_member_add",
       "upstreamFamily": "Dataspace",
-      "upstreamMethod": "POST",
+      "upstreamMethod": "PUT",
       "upstreamPath": "/ssot/data-spaces/{name}/members",
       "facadeOperation": "d360_dataspace_member_add",
       "facadeFamily": "Dataspace",
       "facadeMethod": "PUT",
       "facadePath": "/ssot/data-spaces/{dataSpaceName}/members",
       "safety": "confirmed",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": true,
-      "notes": [
-        "Facade REST shape differs from upstream catalog snapshot; see facadePath.",
-        "Requires dry-run review before allow_confirmed execution."
-      ]
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
     },
     {
       "upstreamName": "d360_dataspace_member_remove",
       "upstreamFamily": "Dataspace",
       "upstreamMethod": "DELETE",
-      "upstreamPath": "/ssot/data-spaces/{name}/members/{memberId}",
+      "upstreamPath": "/ssot/data-spaces/{name}/members",
       "facadeOperation": "d360_dataspace_member_remove",
       "facadeFamily": "Dataspace",
       "facadeMethod": "DELETE",
-      "facadePath": "/ssot/data-spaces/{dataSpaceName}/members/{memberId}",
+      "facadePath": "/ssot/data-spaces/{dataSpaceName}/members",
       "safety": "destructive",
       "kind": "destructive_rest",
       "status": "supported",
@@ -1504,10 +1459,10 @@
       "facadeMethod": "GET",
       "facadePath": "/ssot/data-transforms/{transformId}",
       "safety": "read",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": false,
-      "notes": ["Facade REST shape differs from upstream catalog snapshot; see facadePath."]
+      "notes": []
     },
     {
       "upstreamName": "d360_transform_create",
@@ -1527,20 +1482,32 @@
     {
       "upstreamName": "d360_transform_update",
       "upstreamFamily": "DataTransform",
-      "upstreamMethod": "PATCH",
+      "upstreamMethod": "PUT",
       "upstreamPath": "/ssot/data-transforms/{id}",
       "facadeOperation": "d360_transform_update",
       "facadeFamily": "DataTransform",
       "facadeMethod": "PUT",
       "facadePath": "/ssot/data-transforms/{transformId}",
       "safety": "confirmed",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": true,
-      "notes": [
-        "Facade REST shape differs from upstream catalog snapshot; see facadePath.",
-        "Requires dry-run review before allow_confirmed execution."
-      ]
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
+    },
+    {
+      "upstreamName": "d360_transform_prepare",
+      "upstreamFamily": "DataTransform",
+      "upstreamMethod": "POST",
+      "upstreamPath": "/ssot/data-transforms-validation",
+      "facadeOperation": "d360_transform_prepare",
+      "facadeFamily": "DataTransform",
+      "facadeMethod": "POST",
+      "facadePath": "/ssot/data-transforms-validation",
+      "safety": "safe_post",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": []
     },
     {
       "upstreamName": "d360_transform_delete",
@@ -1567,13 +1534,10 @@
       "facadeMethod": "POST",
       "facadePath": "/ssot/data-transforms/{transformId}/actions/run",
       "safety": "confirmed",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": true,
-      "notes": [
-        "Facade REST shape differs from upstream catalog snapshot; see facadePath.",
-        "Requires dry-run review before allow_confirmed execution."
-      ]
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
     },
     {
       "upstreamName": "d360_transform_validate",
@@ -1600,10 +1564,10 @@
       "facadeMethod": "GET",
       "facadePath": "/ssot/data-transforms/{transformId}/schedule",
       "safety": "read",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": false,
-      "notes": ["Facade REST shape differs from upstream catalog snapshot; see facadePath."]
+      "notes": []
     },
     {
       "upstreamName": "d360_transform_schedule_set",
@@ -1615,13 +1579,10 @@
       "facadeMethod": "PUT",
       "facadePath": "/ssot/data-transforms/{transformId}/schedule",
       "safety": "confirmed",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": true,
-      "notes": [
-        "Facade REST shape differs from upstream catalog snapshot; see facadePath.",
-        "Requires dry-run review before allow_confirmed execution."
-      ]
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
     },
     {
       "upstreamName": "d360_datakit_list",
@@ -1648,35 +1609,35 @@
       "facadeMethod": "GET",
       "facadePath": "/ssot/data-kits/{dataKitId}",
       "safety": "read",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": false,
-      "notes": ["Facade REST shape differs from upstream catalog snapshot; see facadePath."]
+      "notes": []
     },
     {
       "upstreamName": "d360_datakit_manifest",
       "upstreamFamily": "DataKit",
       "upstreamMethod": "GET",
-      "upstreamPath": "/ssot/data-kits/{id}/manifest",
+      "upstreamPath": "/ssot/datakit/{id}/manifest",
       "facadeOperation": "d360_datakit_manifest",
       "facadeFamily": "DataKit",
       "facadeMethod": "GET",
-      "facadePath": "/ssot/data-kits/{dataKitId}/manifest",
+      "facadePath": "/ssot/datakit/{dataKitDevName}/manifest",
       "safety": "read",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": false,
-      "notes": ["Facade REST shape differs from upstream catalog snapshot; see facadePath."]
+      "notes": []
     },
     {
       "upstreamName": "d360_datakit_deploy",
       "upstreamFamily": "DataKit",
       "upstreamMethod": "POST",
-      "upstreamPath": "/ssot/data-kits/update-components",
+      "upstreamPath": "/ssot/data-kits/{dataKitDevName}",
       "facadeOperation": "d360_datakit_deploy",
       "facadeFamily": "DataKit",
       "facadeMethod": "POST",
-      "facadePath": "/ssot/data-kits/update-components",
+      "facadePath": "/ssot/data-kits/{dataKitDevName}",
       "safety": "confirmed",
       "kind": "rest",
       "status": "supported",
@@ -1723,10 +1684,10 @@
       "facadeMethod": "GET",
       "facadePath": "/ssot/data-kits/{dataKitId}/components/{componentId}/deployment-status",
       "safety": "read",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": false,
-      "notes": ["Facade REST shape differs from upstream catalog snapshot; see facadePath."]
+      "notes": []
     },
     {
       "upstreamName": "d360_datakit_component_deps",
@@ -1738,25 +1699,25 @@
       "facadeMethod": "GET",
       "facadePath": "/ssot/data-kits/{dataKitId}/components/{componentId}/dependencies",
       "safety": "read",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": false,
-      "notes": ["Facade REST shape differs from upstream catalog snapshot; see facadePath."]
+      "notes": []
     },
     {
       "upstreamName": "d360_datakit_components",
       "upstreamFamily": "DataKit",
       "upstreamMethod": "GET",
-      "upstreamPath": "/ssot/data-kits/{id}/components",
+      "upstreamPath": "/ssot/data-kits/available-components",
       "facadeOperation": "d360_datakit_components",
       "facadeFamily": "DataKit",
       "facadeMethod": "GET",
-      "facadePath": "/ssot/data-kits/{dataKitId}/components",
+      "facadePath": "/ssot/data-kits/available-components",
       "safety": "read",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": false,
-      "notes": ["Facade REST shape differs from upstream catalog snapshot; see facadePath."]
+      "notes": []
     },
     {
       "upstreamName": "d360_dataaction_list",
@@ -1783,10 +1744,10 @@
       "facadeMethod": "GET",
       "facadePath": "/ssot/data-actions/{dataActionId}",
       "safety": "read",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": false,
-      "notes": ["Facade REST shape differs from upstream catalog snapshot; see facadePath."]
+      "notes": []
     },
     {
       "upstreamName": "d360_dataaction_create",
@@ -1828,10 +1789,10 @@
       "facadeMethod": "GET",
       "facadePath": "/ssot/data-action-targets/{dataActionTargetId}",
       "safety": "read",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": false,
-      "notes": ["Facade REST shape differs from upstream catalog snapshot; see facadePath."]
+      "notes": []
     },
     {
       "upstreamName": "d360_dataaction_target_create",
@@ -1858,13 +1819,10 @@
       "facadeMethod": "PATCH",
       "facadePath": "/ssot/data-action-targets/{dataActionTargetId}",
       "safety": "confirmed",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": true,
-      "notes": [
-        "Facade REST shape differs from upstream catalog snapshot; see facadePath.",
-        "Requires dry-run review before allow_confirmed execution."
-      ]
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
     },
     {
       "upstreamName": "d360_dataaction_target_delete",
@@ -1906,10 +1864,10 @@
       "facadeMethod": "GET",
       "facadePath": "/ssot/semantic/models/{modelApiNameOrId}",
       "safety": "read",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": false,
-      "notes": ["Facade REST shape differs from upstream catalog snapshot; see facadePath."]
+      "notes": []
     },
     {
       "upstreamName": "d360_sdm_create",
@@ -1936,13 +1894,10 @@
       "facadeMethod": "PATCH",
       "facadePath": "/ssot/semantic/models/{modelApiNameOrId}",
       "safety": "confirmed",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": true,
-      "notes": [
-        "Facade REST shape differs from upstream catalog snapshot; see facadePath.",
-        "Requires dry-run review before allow_confirmed execution."
-      ]
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
     },
     {
       "upstreamName": "d360_sdm_delete",
@@ -1969,43 +1924,40 @@
       "facadeMethod": "POST",
       "facadePath": "/ssot/semantic/models/{modelApiNameOrId}/clone",
       "safety": "confirmed",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": true,
-      "notes": [
-        "Facade REST shape differs from upstream catalog snapshot; see facadePath.",
-        "Requires dry-run review before allow_confirmed execution."
-      ]
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
     },
     {
       "upstreamName": "d360_sdm_validate",
       "upstreamFamily": "SDM",
-      "upstreamMethod": "POST",
+      "upstreamMethod": "GET",
       "upstreamPath": "/ssot/semantic/models/{id}/validate",
       "facadeOperation": "d360_sdm_validate",
       "facadeFamily": "Semantic Retrieval",
       "facadeMethod": "GET",
       "facadePath": "/ssot/semantic/models/{modelApiNameOrId}/validate",
       "safety": "read",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": false,
-      "notes": ["Facade REST shape differs from upstream catalog snapshot; see facadePath."]
+      "notes": []
     },
     {
       "upstreamName": "d360_sdm_dependencies",
       "upstreamFamily": "SDM",
       "upstreamMethod": "GET",
-      "upstreamPath": "/ssot/semantic/models/{id}/dependencies",
+      "upstreamPath": "/ssot/semantic/models/{id}/external-dependencies",
       "facadeOperation": "d360_sdm_dependencies",
       "facadeFamily": "Semantic Retrieval",
       "facadeMethod": "GET",
-      "facadePath": "/ssot/semantic/models/{modelApiNameOrId}/dependencies",
+      "facadePath": "/ssot/semantic/models/{modelApiNameOrId}/external-dependencies",
       "safety": "read",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": false,
-      "notes": ["Facade REST shape differs from upstream catalog snapshot; see facadePath."]
+      "notes": []
     },
     {
       "upstreamName": "d360_sdm_data_object_create",
@@ -2017,13 +1969,10 @@
       "facadeMethod": "POST",
       "facadePath": "/ssot/semantic/models/{modelApiNameOrId}/data-objects",
       "safety": "confirmed",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": true,
-      "notes": [
-        "Facade REST shape differs from upstream catalog snapshot; see facadePath.",
-        "Requires dry-run review before allow_confirmed execution."
-      ]
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
     },
     {
       "upstreamName": "d360_sdm_data_objects_list",
@@ -2035,10 +1984,10 @@
       "facadeMethod": "GET",
       "facadePath": "/ssot/semantic/models/{modelApiNameOrId}/data-objects",
       "safety": "read",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": false,
-      "notes": ["Facade REST shape differs from upstream catalog snapshot; see facadePath."]
+      "notes": []
     },
     {
       "upstreamName": "d360_sdm_data_object_get",
@@ -2050,28 +1999,25 @@
       "facadeMethod": "GET",
       "facadePath": "/ssot/semantic/models/{modelApiNameOrId}/data-objects/{dataObjectNameOrId}",
       "safety": "read",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": false,
-      "notes": ["Facade REST shape differs from upstream catalog snapshot; see facadePath."]
+      "notes": []
     },
     {
       "upstreamName": "d360_sdm_data_object_update",
       "upstreamFamily": "SDM",
-      "upstreamMethod": "PATCH",
+      "upstreamMethod": "PUT",
       "upstreamPath": "/ssot/semantic/models/{id}/data-objects/{oid}",
       "facadeOperation": "d360_sdm_data_object_update",
       "facadeFamily": "Semantic Retrieval",
-      "facadeMethod": "PATCH",
+      "facadeMethod": "PUT",
       "facadePath": "/ssot/semantic/models/{modelApiNameOrId}/data-objects/{dataObjectNameOrId}",
       "safety": "confirmed",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": true,
-      "notes": [
-        "Facade REST shape differs from upstream catalog snapshot; see facadePath.",
-        "Requires dry-run review before allow_confirmed execution."
-      ]
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
     },
     {
       "upstreamName": "d360_sdm_data_object_delete",
@@ -2098,10 +2044,10 @@
       "facadeMethod": "GET",
       "facadePath": "/ssot/semantic/models/{modelApiNameOrId}/data-objects/{dataObjectNameOrId}/dimensions",
       "safety": "read",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": false,
-      "notes": ["Facade REST shape differs from upstream catalog snapshot; see facadePath."]
+      "notes": []
     },
     {
       "upstreamName": "d360_sdm_measurements_list",
@@ -2113,10 +2059,10 @@
       "facadeMethod": "GET",
       "facadePath": "/ssot/semantic/models/{modelApiNameOrId}/data-objects/{dataObjectNameOrId}/measurements",
       "safety": "read",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": false,
-      "notes": ["Facade REST shape differs from upstream catalog snapshot; see facadePath."]
+      "notes": []
     },
     {
       "upstreamName": "d360_sdm_calc_dims_list",
@@ -2128,10 +2074,10 @@
       "facadeMethod": "GET",
       "facadePath": "/ssot/semantic/models/{modelApiNameOrId}/calculated-dimensions",
       "safety": "read",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": false,
-      "notes": ["Facade REST shape differs from upstream catalog snapshot; see facadePath."]
+      "notes": []
     },
     {
       "upstreamName": "d360_sdm_calc_dim_create",
@@ -2143,13 +2089,10 @@
       "facadeMethod": "POST",
       "facadePath": "/ssot/semantic/models/{modelApiNameOrId}/calculated-dimensions",
       "safety": "confirmed",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": true,
-      "notes": [
-        "Facade REST shape differs from upstream catalog snapshot; see facadePath.",
-        "Requires dry-run review before allow_confirmed execution."
-      ]
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
     },
     {
       "upstreamName": "d360_sdm_calc_dim_get",
@@ -2161,28 +2104,25 @@
       "facadeMethod": "GET",
       "facadePath": "/ssot/semantic/models/{modelApiNameOrId}/calculated-dimensions/{calculatedDimensionId}",
       "safety": "read",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": false,
-      "notes": ["Facade REST shape differs from upstream catalog snapshot; see facadePath."]
+      "notes": []
     },
     {
       "upstreamName": "d360_sdm_calc_dim_update",
       "upstreamFamily": "SDM",
-      "upstreamMethod": "PATCH",
+      "upstreamMethod": "PUT",
       "upstreamPath": "/ssot/semantic/models/{id}/calculated-dimensions/{dimId}",
       "facadeOperation": "d360_sdm_calc_dim_update",
       "facadeFamily": "Semantic Retrieval",
-      "facadeMethod": "PATCH",
+      "facadeMethod": "PUT",
       "facadePath": "/ssot/semantic/models/{modelApiNameOrId}/calculated-dimensions/{calculatedDimensionId}",
       "safety": "confirmed",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": true,
-      "notes": [
-        "Facade REST shape differs from upstream catalog snapshot; see facadePath.",
-        "Requires dry-run review before allow_confirmed execution."
-      ]
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
     },
     {
       "upstreamName": "d360_sdm_calc_dim_delete",
@@ -2209,10 +2149,10 @@
       "facadeMethod": "GET",
       "facadePath": "/ssot/semantic/models/{modelApiNameOrId}/calculated-measurements",
       "safety": "read",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": false,
-      "notes": ["Facade REST shape differs from upstream catalog snapshot; see facadePath."]
+      "notes": []
     },
     {
       "upstreamName": "d360_sdm_calc_measure_create",
@@ -2224,13 +2164,10 @@
       "facadeMethod": "POST",
       "facadePath": "/ssot/semantic/models/{modelApiNameOrId}/calculated-measurements",
       "safety": "confirmed",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": true,
-      "notes": [
-        "Facade REST shape differs from upstream catalog snapshot; see facadePath.",
-        "Requires dry-run review before allow_confirmed execution."
-      ]
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
     },
     {
       "upstreamName": "d360_sdm_calc_measure_get",
@@ -2242,28 +2179,25 @@
       "facadeMethod": "GET",
       "facadePath": "/ssot/semantic/models/{modelApiNameOrId}/calculated-measurements/{calculatedMeasureId}",
       "safety": "read",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": false,
-      "notes": ["Facade REST shape differs from upstream catalog snapshot; see facadePath."]
+      "notes": []
     },
     {
       "upstreamName": "d360_sdm_calc_measure_update",
       "upstreamFamily": "SDM",
-      "upstreamMethod": "PATCH",
+      "upstreamMethod": "PUT",
       "upstreamPath": "/ssot/semantic/models/{id}/calculated-measurements/{mid}",
       "facadeOperation": "d360_sdm_calc_measure_update",
       "facadeFamily": "Semantic Retrieval",
-      "facadeMethod": "PATCH",
+      "facadeMethod": "PUT",
       "facadePath": "/ssot/semantic/models/{modelApiNameOrId}/calculated-measurements/{calculatedMeasureId}",
       "safety": "confirmed",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": true,
-      "notes": [
-        "Facade REST shape differs from upstream catalog snapshot; see facadePath.",
-        "Requires dry-run review before allow_confirmed execution."
-      ]
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
     },
     {
       "upstreamName": "d360_sdm_calc_measure_delete",
@@ -2290,10 +2224,10 @@
       "facadeMethod": "GET",
       "facadePath": "/ssot/semantic/models/{modelApiNameOrId}/metrics",
       "safety": "read",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": false,
-      "notes": ["Facade REST shape differs from upstream catalog snapshot; see facadePath."]
+      "notes": []
     },
     {
       "upstreamName": "d360_sdm_metric_create",
@@ -2305,13 +2239,10 @@
       "facadeMethod": "POST",
       "facadePath": "/ssot/semantic/models/{modelApiNameOrId}/metrics",
       "safety": "confirmed",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": true,
-      "notes": [
-        "Facade REST shape differs from upstream catalog snapshot; see facadePath.",
-        "Requires dry-run review before allow_confirmed execution."
-      ]
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
     },
     {
       "upstreamName": "d360_sdm_metric_get",
@@ -2323,28 +2254,25 @@
       "facadeMethod": "GET",
       "facadePath": "/ssot/semantic/models/{modelApiNameOrId}/metrics/{metricNameOrId}",
       "safety": "read",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": false,
-      "notes": ["Facade REST shape differs from upstream catalog snapshot; see facadePath."]
+      "notes": []
     },
     {
       "upstreamName": "d360_sdm_metric_update",
       "upstreamFamily": "SDM",
-      "upstreamMethod": "PATCH",
+      "upstreamMethod": "PUT",
       "upstreamPath": "/ssot/semantic/models/{id}/metrics/{mid}",
       "facadeOperation": "d360_sdm_metric_update",
       "facadeFamily": "Semantic Retrieval",
       "facadeMethod": "PUT",
       "facadePath": "/ssot/semantic/models/{modelApiNameOrId}/metrics/{metricNameOrId}",
       "safety": "confirmed",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": true,
-      "notes": [
-        "Facade REST shape differs from upstream catalog snapshot; see facadePath.",
-        "Requires dry-run review before allow_confirmed execution."
-      ]
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
     },
     {
       "upstreamName": "d360_sdm_metric_delete",
@@ -2371,10 +2299,10 @@
       "facadeMethod": "GET",
       "facadePath": "/ssot/semantic/models/{modelApiNameOrId}/relationships",
       "safety": "read",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": false,
-      "notes": ["Facade REST shape differs from upstream catalog snapshot; see facadePath."]
+      "notes": []
     },
     {
       "upstreamName": "d360_sdm_relationship_create",
@@ -2386,13 +2314,10 @@
       "facadeMethod": "POST",
       "facadePath": "/ssot/semantic/models/{modelApiNameOrId}/relationships",
       "safety": "confirmed",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": true,
-      "notes": [
-        "Facade REST shape differs from upstream catalog snapshot; see facadePath.",
-        "Requires dry-run review before allow_confirmed execution."
-      ]
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
     },
     {
       "upstreamName": "d360_sdm_relationship_get",
@@ -2404,28 +2329,25 @@
       "facadeMethod": "GET",
       "facadePath": "/ssot/semantic/models/{modelApiNameOrId}/relationships/{relationshipId}",
       "safety": "read",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": false,
-      "notes": ["Facade REST shape differs from upstream catalog snapshot; see facadePath."]
+      "notes": []
     },
     {
       "upstreamName": "d360_sdm_relationship_update",
       "upstreamFamily": "SDM",
-      "upstreamMethod": "PATCH",
+      "upstreamMethod": "PUT",
       "upstreamPath": "/ssot/semantic/models/{id}/relationships/{rid}",
       "facadeOperation": "d360_sdm_relationship_update",
       "facadeFamily": "Semantic Retrieval",
-      "facadeMethod": "PATCH",
+      "facadeMethod": "PUT",
       "facadePath": "/ssot/semantic/models/{modelApiNameOrId}/relationships/{relationshipId}",
       "safety": "confirmed",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": true,
-      "notes": [
-        "Facade REST shape differs from upstream catalog snapshot; see facadePath.",
-        "Requires dry-run review before allow_confirmed execution."
-      ]
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
     },
     {
       "upstreamName": "d360_sdm_relationship_delete",
@@ -2566,7 +2488,7 @@
       "upstreamPath": null,
       "facadeOperation": "d360_standard_mapping_preview",
       "facadeFamily": "StandardMappings",
-      "facadeMethod": "POST",
+      "facadeMethod": "GET",
       "facadePath": "/local/standard-mapping-preview",
       "safety": "safe_post",
       "kind": "local_helper",
@@ -2593,73 +2515,67 @@
       "upstreamName": "d360_search_index_list",
       "upstreamFamily": "SearchIndex",
       "upstreamMethod": "GET",
-      "upstreamPath": "/ssot/search-indexes",
+      "upstreamPath": "/ssot/search-index",
       "facadeOperation": "d360_search_index_list",
       "facadeFamily": "Semantic Retrieval",
       "facadeMethod": "GET",
       "facadePath": "/ssot/search-index",
       "safety": "read",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": false,
-      "notes": ["Facade REST shape differs from upstream catalog snapshot; see facadePath."]
+      "notes": []
     },
     {
       "upstreamName": "d360_search_index_get",
       "upstreamFamily": "SearchIndex",
       "upstreamMethod": "GET",
-      "upstreamPath": "/ssot/search-indexes/{id}",
+      "upstreamPath": "/ssot/search-index/{id}",
       "facadeOperation": "d360_search_index_get",
       "facadeFamily": "Semantic Retrieval",
       "facadeMethod": "GET",
       "facadePath": "/ssot/search-index/{searchIndexApiNameOrId}",
       "safety": "read",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": false,
-      "notes": ["Facade REST shape differs from upstream catalog snapshot; see facadePath."]
+      "notes": []
     },
     {
       "upstreamName": "d360_search_index_create",
       "upstreamFamily": "SearchIndex",
       "upstreamMethod": "POST",
-      "upstreamPath": "/ssot/search-indexes",
+      "upstreamPath": "/ssot/search-index",
       "facadeOperation": "d360_search_index_create",
       "facadeFamily": "Semantic Retrieval",
       "facadeMethod": "POST",
       "facadePath": "/ssot/search-index",
       "safety": "confirmed",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": true,
-      "notes": [
-        "Facade REST shape differs from upstream catalog snapshot; see facadePath.",
-        "Requires dry-run review before allow_confirmed execution."
-      ]
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
     },
     {
       "upstreamName": "d360_search_index_update",
       "upstreamFamily": "SearchIndex",
       "upstreamMethod": "PATCH",
-      "upstreamPath": "/ssot/search-indexes/{id}",
+      "upstreamPath": "/ssot/search-index/{id}",
       "facadeOperation": "d360_search_index_update",
       "facadeFamily": "Semantic Retrieval",
       "facadeMethod": "PATCH",
       "facadePath": "/ssot/search-index/{searchIndexApiNameOrId}",
       "safety": "confirmed",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": true,
-      "notes": [
-        "Facade REST shape differs from upstream catalog snapshot; see facadePath.",
-        "Requires dry-run review before allow_confirmed execution."
-      ]
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
     },
     {
       "upstreamName": "d360_search_index_delete",
       "upstreamFamily": "SearchIndex",
       "upstreamMethod": "DELETE",
-      "upstreamPath": "/ssot/search-indexes/{id}",
+      "upstreamPath": "/ssot/search-index/{id}",
       "facadeOperation": "d360_search_index_delete",
       "facadeFamily": "Semantic Retrieval",
       "facadeMethod": "DELETE",
@@ -2674,103 +2590,412 @@
       "upstreamName": "d360_search_index_config",
       "upstreamFamily": "SearchIndex",
       "upstreamMethod": "GET",
-      "upstreamPath": "/ssot/search-indexes/{id}/config",
+      "upstreamPath": "/ssot/search-index/config",
       "facadeOperation": "d360_search_index_config",
       "facadeFamily": "Semantic Retrieval",
       "facadeMethod": "GET",
       "facadePath": "/ssot/search-index/config",
       "safety": "read",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": false,
-      "notes": ["Facade REST shape differs from upstream catalog snapshot; see facadePath."]
+      "notes": []
     },
     {
       "upstreamName": "d360_search_index_process_history",
       "upstreamFamily": "SearchIndex",
       "upstreamMethod": "GET",
-      "upstreamPath": "/ssot/search-indexes/{id}/process-history",
+      "upstreamPath": "/ssot/search-index/{id}/process-history",
       "facadeOperation": "d360_search_index_process_history",
       "facadeFamily": "Semantic Retrieval",
       "facadeMethod": "GET",
       "facadePath": "/ssot/search-index/{searchIndexApiNameOrId}/process-history",
       "safety": "read",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": false,
-      "notes": ["Facade REST shape differs from upstream catalog snapshot; see facadePath."]
+      "notes": []
+    },
+    {
+      "upstreamName": "d360_p13n_engagement_signals_list",
+      "upstreamFamily": "Personalization",
+      "upstreamMethod": "GET",
+      "upstreamPath": "/personalization/engagement-signals",
+      "facadeOperation": "d360_p13n_engagement_signals_list",
+      "facadeFamily": "Personalization",
+      "facadeMethod": "GET",
+      "facadePath": "/personalization/engagement-signals",
+      "safety": "read",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": []
+    },
+    {
+      "upstreamName": "d360_p13n_org_info_get",
+      "upstreamFamily": "Personalization",
+      "upstreamMethod": "GET",
+      "upstreamPath": "/personalization/external-apps/org",
+      "facadeOperation": "d360_p13n_org_info_get",
+      "facadeFamily": "Personalization",
+      "facadeMethod": "GET",
+      "facadePath": "/personalization/external-apps/org",
+      "safety": "read",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": []
+    },
+    {
+      "upstreamName": "d360_p13n_mobile_preview_create",
+      "upstreamFamily": "Personalization",
+      "upstreamMethod": "POST",
+      "upstreamPath": "/personalization/external-apps/mobile/live-preview-link",
+      "facadeOperation": "d360_p13n_mobile_preview_create",
+      "facadeFamily": "Personalization",
+      "facadeMethod": "POST",
+      "facadePath": "/personalization/external-apps/mobile/live-preview-link",
+      "safety": "confirmed",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
+    },
+    {
+      "upstreamName": "d360_p13n_experience_config_list",
+      "upstreamFamily": "Personalization",
+      "upstreamMethod": "GET",
+      "upstreamPath": "/personalization/external-apps/{id}/personalization-experience-configs",
+      "facadeOperation": "d360_p13n_experience_config_list",
+      "facadeFamily": "Personalization",
+      "facadeMethod": "GET",
+      "facadePath": "/personalization/external-apps/{idOrAppSourceIdOrName}/personalization-experience-configs",
+      "safety": "read",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": []
+    },
+    {
+      "upstreamName": "d360_p13n_experience_config_get",
+      "upstreamFamily": "Personalization",
+      "upstreamMethod": "GET",
+      "upstreamPath": "/personalization/external-apps/{id}/personalization-experience-configs/{name}",
+      "facadeOperation": "d360_p13n_experience_config_get",
+      "facadeFamily": "Personalization",
+      "facadeMethod": "GET",
+      "facadePath": "/personalization/external-apps/{idOrAppSourceIdOrName}/personalization-experience-configs/{nameParam}",
+      "safety": "read",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": []
+    },
+    {
+      "upstreamName": "d360_p13n_experience_config_create",
+      "upstreamFamily": "Personalization",
+      "upstreamMethod": "POST",
+      "upstreamPath": "/personalization/external-apps/{id}/personalization-experience-configs",
+      "facadeOperation": "d360_p13n_experience_config_create",
+      "facadeFamily": "Personalization",
+      "facadeMethod": "POST",
+      "facadePath": "/personalization/external-apps/{idOrAppSourceIdOrName}/personalization-experience-configs",
+      "safety": "confirmed",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
+    },
+    {
+      "upstreamName": "d360_p13n_experience_config_update",
+      "upstreamFamily": "Personalization",
+      "upstreamMethod": "PUT",
+      "upstreamPath": "/personalization/external-apps/{id}/personalization-experience-configs/{name}",
+      "facadeOperation": "d360_p13n_experience_config_update",
+      "facadeFamily": "Personalization",
+      "facadeMethod": "PUT",
+      "facadePath": "/personalization/external-apps/{idOrAppSourceIdOrName}/personalization-experience-configs/{nameParam}",
+      "safety": "confirmed",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
+    },
+    {
+      "upstreamName": "d360_p13n_experience_config_delete",
+      "upstreamFamily": "Personalization",
+      "upstreamMethod": "DELETE",
+      "upstreamPath": "/personalization/external-apps/{id}/personalization-experience-configs/{name}",
+      "facadeOperation": "d360_p13n_experience_config_delete",
+      "facadeFamily": "Personalization",
+      "facadeMethod": "DELETE",
+      "facadePath": "/personalization/external-apps/{idOrAppSourceIdOrName}/personalization-experience-configs/{nameParam}",
+      "safety": "destructive",
+      "kind": "destructive_rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": ["Requires AgentforceSTDM target, allow_confirmed, and interactive Pi confirmation."]
+    },
+    {
+      "upstreamName": "d360_p13n_transformer_list",
+      "upstreamFamily": "Personalization",
+      "upstreamMethod": "GET",
+      "upstreamPath": "/personalization/external-apps/transformers",
+      "facadeOperation": "d360_p13n_transformer_list",
+      "facadeFamily": "Personalization",
+      "facadeMethod": "GET",
+      "facadePath": "/personalization/external-apps/transformers",
+      "safety": "read",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": []
+    },
+    {
+      "upstreamName": "d360_p13n_transformer_get",
+      "upstreamFamily": "Personalization",
+      "upstreamMethod": "GET",
+      "upstreamPath": "/personalization/external-apps/transformer",
+      "facadeOperation": "d360_p13n_transformer_get",
+      "facadeFamily": "Personalization",
+      "facadeMethod": "GET",
+      "facadePath": "/personalization/external-apps/transformer",
+      "safety": "read",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": []
+    },
+    {
+      "upstreamName": "d360_p13n_transformer_create",
+      "upstreamFamily": "Personalization",
+      "upstreamMethod": "POST",
+      "upstreamPath": "/personalization/external-apps/transformers",
+      "facadeOperation": "d360_p13n_transformer_create",
+      "facadeFamily": "Personalization",
+      "facadeMethod": "POST",
+      "facadePath": "/personalization/external-apps/transformers",
+      "safety": "confirmed",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
+    },
+    {
+      "upstreamName": "d360_p13n_transformer_update",
+      "upstreamFamily": "Personalization",
+      "upstreamMethod": "PUT",
+      "upstreamPath": "/personalization/external-apps/transformer",
+      "facadeOperation": "d360_p13n_transformer_update",
+      "facadeFamily": "Personalization",
+      "facadeMethod": "PUT",
+      "facadePath": "/personalization/external-apps/transformer",
+      "safety": "confirmed",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
+    },
+    {
+      "upstreamName": "d360_p13n_transformer_delete",
+      "upstreamFamily": "Personalization",
+      "upstreamMethod": "DELETE",
+      "upstreamPath": "/personalization/external-apps/transformer",
+      "facadeOperation": "d360_p13n_transformer_delete",
+      "facadeFamily": "Personalization",
+      "facadeMethod": "DELETE",
+      "facadePath": "/personalization/external-apps/transformer",
+      "safety": "destructive",
+      "kind": "destructive_rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": ["Requires AgentforceSTDM target, allow_confirmed, and interactive Pi confirmation."]
+    },
+    {
+      "upstreamName": "d360_p13n_schema_create",
+      "upstreamFamily": "Personalization",
+      "upstreamMethod": "POST",
+      "upstreamPath": "/personalization/personalization-schemas",
+      "facadeOperation": "d360_p13n_schema_create",
+      "facadeFamily": "Personalization",
+      "facadeMethod": "POST",
+      "facadePath": "/personalization/personalization-schemas",
+      "safety": "confirmed",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
+    },
+    {
+      "upstreamName": "d360_p13n_schema_get",
+      "upstreamFamily": "Personalization",
+      "upstreamMethod": "GET",
+      "upstreamPath": "/personalization/personalization-schemas/{idOrName}",
+      "facadeOperation": "d360_p13n_schema_get",
+      "facadeFamily": "Personalization",
+      "facadeMethod": "GET",
+      "facadePath": "/personalization/personalization-schemas/{idOrName}",
+      "safety": "read",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": []
+    },
+    {
+      "upstreamName": "d360_p13n_schema_update",
+      "upstreamFamily": "Personalization",
+      "upstreamMethod": "PATCH",
+      "upstreamPath": "/personalization/personalization-schemas/{idOrName}",
+      "facadeOperation": "d360_p13n_schema_update",
+      "facadeFamily": "Personalization",
+      "facadeMethod": "PATCH",
+      "facadePath": "/personalization/personalization-schemas/{idOrName}",
+      "safety": "confirmed",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
+    },
+    {
+      "upstreamName": "d360_p13n_schema_delete",
+      "upstreamFamily": "Personalization",
+      "upstreamMethod": "DELETE",
+      "upstreamPath": "/personalization/personalization-schemas/{idOrName}",
+      "facadeOperation": "d360_p13n_schema_delete",
+      "facadeFamily": "Personalization",
+      "facadeMethod": "DELETE",
+      "facadePath": "/personalization/personalization-schemas/{idOrName}",
+      "safety": "destructive",
+      "kind": "destructive_rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": ["Requires AgentforceSTDM target, allow_confirmed, and interactive Pi confirmation."]
+    },
+    {
+      "upstreamName": "d360_p13n_point_create",
+      "upstreamFamily": "Personalization",
+      "upstreamMethod": "POST",
+      "upstreamPath": "/personalization/personalization-points",
+      "facadeOperation": "d360_p13n_point_create",
+      "facadeFamily": "Personalization",
+      "facadeMethod": "POST",
+      "facadePath": "/personalization/personalization-points",
+      "safety": "confirmed",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
+    },
+    {
+      "upstreamName": "d360_p13n_point_get",
+      "upstreamFamily": "Personalization",
+      "upstreamMethod": "GET",
+      "upstreamPath": "/personalization/personalization-points/{idOrName}",
+      "facadeOperation": "d360_p13n_point_get",
+      "facadeFamily": "Personalization",
+      "facadeMethod": "GET",
+      "facadePath": "/personalization/personalization-points/{idOrName}",
+      "safety": "read",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": []
+    },
+    {
+      "upstreamName": "d360_p13n_point_update",
+      "upstreamFamily": "Personalization",
+      "upstreamMethod": "PUT",
+      "upstreamPath": "/personalization/personalization-points/{idOrName}",
+      "facadeOperation": "d360_p13n_point_update",
+      "facadeFamily": "Personalization",
+      "facadeMethod": "PUT",
+      "facadePath": "/personalization/personalization-points/{idOrName}",
+      "safety": "confirmed",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
+    },
+    {
+      "upstreamName": "d360_p13n_point_delete",
+      "upstreamFamily": "Personalization",
+      "upstreamMethod": "DELETE",
+      "upstreamPath": "/personalization/personalization-points/{idOrName}",
+      "facadeOperation": "d360_p13n_point_delete",
+      "facadeFamily": "Personalization",
+      "facadeMethod": "DELETE",
+      "facadePath": "/personalization/personalization-points/{idOrName}",
+      "safety": "destructive",
+      "kind": "destructive_rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": ["Requires AgentforceSTDM target, allow_confirmed, and interactive Pi confirmation."]
     },
     {
       "upstreamName": "d360_retriever_list",
       "upstreamFamily": "Retriever",
       "upstreamMethod": "GET",
-      "upstreamPath": "/machine-learning/retrievers",
+      "upstreamPath": "/ssot/machine-learning/retrievers",
       "facadeOperation": "d360_retriever_list",
       "facadeFamily": "Semantic Retrieval",
       "facadeMethod": "GET",
       "facadePath": "/ssot/machine-learning/retrievers",
       "safety": "read",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": false,
-      "notes": ["Facade REST shape differs from upstream catalog snapshot; see facadePath."]
+      "notes": []
     },
     {
       "upstreamName": "d360_retriever_get",
       "upstreamFamily": "Retriever",
       "upstreamMethod": "GET",
-      "upstreamPath": "/machine-learning/retrievers/{id}",
+      "upstreamPath": "/ssot/machine-learning/retrievers/{id}",
       "facadeOperation": "d360_retriever_get",
       "facadeFamily": "Semantic Retrieval",
       "facadeMethod": "GET",
       "facadePath": "/ssot/machine-learning/retrievers/{retrieverId}",
       "safety": "read",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": false,
-      "notes": ["Facade REST shape differs from upstream catalog snapshot; see facadePath."]
+      "notes": []
     },
     {
       "upstreamName": "d360_retriever_create",
       "upstreamFamily": "Retriever",
       "upstreamMethod": "POST",
-      "upstreamPath": "/machine-learning/retrievers",
+      "upstreamPath": "/ssot/machine-learning/retrievers",
       "facadeOperation": "d360_retriever_create",
       "facadeFamily": "Semantic Retrieval",
       "facadeMethod": "POST",
       "facadePath": "/ssot/machine-learning/retrievers",
       "safety": "confirmed",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": true,
-      "notes": [
-        "Facade REST shape differs from upstream catalog snapshot; see facadePath.",
-        "Requires dry-run review before allow_confirmed execution."
-      ]
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
     },
     {
       "upstreamName": "d360_retriever_update",
       "upstreamFamily": "Retriever",
       "upstreamMethod": "PATCH",
-      "upstreamPath": "/machine-learning/retrievers/{id}",
+      "upstreamPath": "/ssot/machine-learning/retrievers/{id}",
       "facadeOperation": "d360_retriever_update",
       "facadeFamily": "Semantic Retrieval",
       "facadeMethod": "PATCH",
       "facadePath": "/ssot/machine-learning/retrievers/{retrieverIdOrName}",
       "safety": "confirmed",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": true,
-      "notes": [
-        "Facade REST shape differs from upstream catalog snapshot; see facadePath.",
-        "Requires dry-run review before allow_confirmed execution."
-      ]
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
     },
     {
       "upstreamName": "d360_retriever_delete",
       "upstreamFamily": "Retriever",
       "upstreamMethod": "DELETE",
-      "upstreamPath": "/machine-learning/retrievers/{id}",
+      "upstreamPath": "/ssot/machine-learning/retrievers/{id}",
       "facadeOperation": "d360_retriever_delete",
       "facadeFamily": "Semantic Retrieval",
       "facadeMethod": "DELETE",
@@ -2785,73 +3010,67 @@
       "upstreamName": "d360_retriever_config_list",
       "upstreamFamily": "Retriever",
       "upstreamMethod": "GET",
-      "upstreamPath": "/machine-learning/retrievers/{id}/configs",
+      "upstreamPath": "/ssot/machine-learning/retrievers/{id}/configurations",
       "facadeOperation": "d360_retriever_config_list",
       "facadeFamily": "Semantic Retrieval",
       "facadeMethod": "GET",
       "facadePath": "/ssot/machine-learning/retrievers/{retrieverIdOrName}/configurations",
       "safety": "read",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": false,
-      "notes": ["Facade REST shape differs from upstream catalog snapshot; see facadePath."]
+      "notes": []
     },
     {
       "upstreamName": "d360_retriever_config_get",
       "upstreamFamily": "Retriever",
       "upstreamMethod": "GET",
-      "upstreamPath": "/machine-learning/retrievers/{id}/configs/{configId}",
+      "upstreamPath": "/ssot/machine-learning/retrievers/{id}/configurations/{configurationId}",
       "facadeOperation": "d360_retriever_config_get",
       "facadeFamily": "Semantic Retrieval",
       "facadeMethod": "GET",
       "facadePath": "/ssot/machine-learning/retrievers/{retrieverIdOrName}/configurations/{configurationIdOrName}",
       "safety": "read",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": false,
-      "notes": ["Facade REST shape differs from upstream catalog snapshot; see facadePath."]
+      "notes": []
     },
     {
       "upstreamName": "d360_retriever_config_create",
       "upstreamFamily": "Retriever",
       "upstreamMethod": "POST",
-      "upstreamPath": "/machine-learning/retrievers/{id}/configs",
+      "upstreamPath": "/ssot/machine-learning/retrievers/{id}/configurations",
       "facadeOperation": "d360_retriever_config_create",
       "facadeFamily": "Semantic Retrieval",
       "facadeMethod": "POST",
       "facadePath": "/ssot/machine-learning/retrievers/{retrieverIdOrName}/configurations",
       "safety": "confirmed",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": true,
-      "notes": [
-        "Facade REST shape differs from upstream catalog snapshot; see facadePath.",
-        "Requires dry-run review before allow_confirmed execution."
-      ]
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
     },
     {
       "upstreamName": "d360_retriever_config_update",
       "upstreamFamily": "Retriever",
       "upstreamMethod": "PATCH",
-      "upstreamPath": "/machine-learning/retrievers/{id}/configs/{configId}",
+      "upstreamPath": "/ssot/machine-learning/retrievers/{id}/configurations/{configurationId}",
       "facadeOperation": "d360_retriever_config_update",
       "facadeFamily": "Semantic Retrieval",
       "facadeMethod": "PATCH",
       "facadePath": "/ssot/machine-learning/retrievers/{retrieverIdOrName}/configurations/{configurationIdOrName}",
       "safety": "confirmed",
-      "kind": "rest_adjusted",
+      "kind": "rest",
       "status": "supported",
       "hasExample": true,
-      "notes": [
-        "Facade REST shape differs from upstream catalog snapshot; see facadePath.",
-        "Requires dry-run review before allow_confirmed execution."
-      ]
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
     },
     {
       "upstreamName": "d360_retriever_config_delete",
       "upstreamFamily": "Retriever",
       "upstreamMethod": "DELETE",
-      "upstreamPath": "/machine-learning/retrievers/{id}/configs/{configId}",
+      "upstreamPath": "/ssot/machine-learning/retrievers/{id}/configurations/{configurationId}",
       "facadeOperation": "d360_retriever_config_delete",
       "facadeFamily": "Semantic Retrieval",
       "facadeMethod": "DELETE",
@@ -2861,6 +3080,651 @@
       "status": "supported",
       "hasExample": true,
       "notes": ["Requires AgentforceSTDM target, allow_confirmed, and interactive Pi confirmation."]
+    },
+    {
+      "upstreamName": "d360_prediction_job_def_list",
+      "upstreamFamily": "MachineLearning",
+      "upstreamMethod": "GET",
+      "upstreamPath": "/ssot/machine-learning/prediction-job-definitions",
+      "facadeOperation": "d360_prediction_job_def_list",
+      "facadeFamily": "MachineLearning",
+      "facadeMethod": "GET",
+      "facadePath": "/ssot/machine-learning/prediction-job-definitions",
+      "safety": "read",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": false,
+      "notes": []
+    },
+    {
+      "upstreamName": "d360_prediction_job_def_get",
+      "upstreamFamily": "MachineLearning",
+      "upstreamMethod": "GET",
+      "upstreamPath": "/ssot/machine-learning/prediction-job-definitions/{idOrName}",
+      "facadeOperation": "d360_prediction_job_def_get",
+      "facadeFamily": "MachineLearning",
+      "facadeMethod": "GET",
+      "facadePath": "/ssot/machine-learning/prediction-job-definitions/{idOrName}",
+      "safety": "read",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": false,
+      "notes": []
+    },
+    {
+      "upstreamName": "d360_prediction_job_def_create",
+      "upstreamFamily": "MachineLearning",
+      "upstreamMethod": "POST",
+      "upstreamPath": "/ssot/machine-learning/prediction-job-definitions",
+      "facadeOperation": "d360_prediction_job_def_create",
+      "facadeFamily": "MachineLearning",
+      "facadeMethod": "POST",
+      "facadePath": "/ssot/machine-learning/prediction-job-definitions",
+      "safety": "confirmed",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
+    },
+    {
+      "upstreamName": "d360_prediction_job_def_create_regression",
+      "upstreamFamily": "MachineLearning",
+      "upstreamMethod": "POST",
+      "upstreamPath": "/ssot/machine-learning/prediction-job-definitions",
+      "facadeOperation": "d360_prediction_job_def_create_regression",
+      "facadeFamily": "MachineLearning",
+      "facadeMethod": "POST",
+      "facadePath": "/ssot/machine-learning/prediction-job-definitions",
+      "safety": "confirmed",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
+    },
+    {
+      "upstreamName": "d360_prediction_job_def_create_binary_classification",
+      "upstreamFamily": "MachineLearning",
+      "upstreamMethod": "POST",
+      "upstreamPath": "/ssot/machine-learning/prediction-job-definitions",
+      "facadeOperation": "d360_prediction_job_def_create_binary_classification",
+      "facadeFamily": "MachineLearning",
+      "facadeMethod": "POST",
+      "facadePath": "/ssot/machine-learning/prediction-job-definitions",
+      "safety": "confirmed",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
+    },
+    {
+      "upstreamName": "d360_prediction_job_def_create_multiclass_classification",
+      "upstreamFamily": "MachineLearning",
+      "upstreamMethod": "POST",
+      "upstreamPath": "/ssot/machine-learning/prediction-job-definitions",
+      "facadeOperation": "d360_prediction_job_def_create_multiclass_classification",
+      "facadeFamily": "MachineLearning",
+      "facadeMethod": "POST",
+      "facadePath": "/ssot/machine-learning/prediction-job-definitions",
+      "safety": "confirmed",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
+    },
+    {
+      "upstreamName": "d360_prediction_job_def_create_sentiment_detection",
+      "upstreamFamily": "MachineLearning",
+      "upstreamMethod": "POST",
+      "upstreamPath": "/ssot/machine-learning/prediction-job-definitions",
+      "facadeOperation": "d360_prediction_job_def_create_sentiment_detection",
+      "facadeFamily": "MachineLearning",
+      "facadeMethod": "POST",
+      "facadePath": "/ssot/machine-learning/prediction-job-definitions",
+      "safety": "confirmed",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
+    },
+    {
+      "upstreamName": "d360_prediction_job_def_create_topic_classification",
+      "upstreamFamily": "MachineLearning",
+      "upstreamMethod": "POST",
+      "upstreamPath": "/ssot/machine-learning/prediction-job-definitions",
+      "facadeOperation": "d360_prediction_job_def_create_topic_classification",
+      "facadeFamily": "MachineLearning",
+      "facadeMethod": "POST",
+      "facadePath": "/ssot/machine-learning/prediction-job-definitions",
+      "safety": "confirmed",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
+    },
+    {
+      "upstreamName": "d360_prediction_job_def_create_clustering",
+      "upstreamFamily": "MachineLearning",
+      "upstreamMethod": "POST",
+      "upstreamPath": "/ssot/machine-learning/prediction-job-definitions",
+      "facadeOperation": "d360_prediction_job_def_create_clustering",
+      "facadeFamily": "MachineLearning",
+      "facadeMethod": "POST",
+      "facadePath": "/ssot/machine-learning/prediction-job-definitions",
+      "safety": "confirmed",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
+    },
+    {
+      "upstreamName": "d360_prediction_job_def_update",
+      "upstreamFamily": "MachineLearning",
+      "upstreamMethod": "PATCH",
+      "upstreamPath": "/ssot/machine-learning/prediction-job-definitions/{idOrName}",
+      "facadeOperation": "d360_prediction_job_def_update",
+      "facadeFamily": "MachineLearning",
+      "facadeMethod": "PATCH",
+      "facadePath": "/ssot/machine-learning/prediction-job-definitions/{idOrName}",
+      "safety": "confirmed",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
+    },
+    {
+      "upstreamName": "d360_prediction_job_def_activate",
+      "upstreamFamily": "MachineLearning",
+      "upstreamMethod": "PATCH",
+      "upstreamPath": "/ssot/machine-learning/prediction-job-definitions/{idOrName}",
+      "facadeOperation": "d360_prediction_job_def_activate",
+      "facadeFamily": "MachineLearning",
+      "facadeMethod": "PATCH",
+      "facadePath": "/ssot/machine-learning/prediction-job-definitions/{idOrName}",
+      "safety": "confirmed",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
+    },
+    {
+      "upstreamName": "d360_prediction_job_def_deactivate",
+      "upstreamFamily": "MachineLearning",
+      "upstreamMethod": "PATCH",
+      "upstreamPath": "/ssot/machine-learning/prediction-job-definitions/{idOrName}",
+      "facadeOperation": "d360_prediction_job_def_deactivate",
+      "facadeFamily": "MachineLearning",
+      "facadeMethod": "PATCH",
+      "facadePath": "/ssot/machine-learning/prediction-job-definitions/{idOrName}",
+      "safety": "confirmed",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
+    },
+    {
+      "upstreamName": "d360_prediction_job_def_delete",
+      "upstreamFamily": "MachineLearning",
+      "upstreamMethod": "DELETE",
+      "upstreamPath": "/ssot/machine-learning/prediction-job-definitions/{idOrName}",
+      "facadeOperation": "d360_prediction_job_def_delete",
+      "facadeFamily": "MachineLearning",
+      "facadeMethod": "DELETE",
+      "facadePath": "/ssot/machine-learning/prediction-job-definitions/{idOrName}",
+      "safety": "destructive",
+      "kind": "destructive_rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": ["Requires AgentforceSTDM target, allow_confirmed, and interactive Pi confirmation."]
+    },
+    {
+      "upstreamName": "d360_prediction_job_run",
+      "upstreamFamily": "MachineLearning",
+      "upstreamMethod": "POST",
+      "upstreamPath": "/ssot/machine-learning/jobs",
+      "facadeOperation": "d360_prediction_job_run",
+      "facadeFamily": "MachineLearning",
+      "facadeMethod": "POST",
+      "facadePath": "/ssot/machine-learning/jobs",
+      "safety": "confirmed",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
+    },
+    {
+      "upstreamName": "d360_ml_predict",
+      "upstreamFamily": "MachineLearning",
+      "upstreamMethod": "POST",
+      "upstreamPath": "/ssot/machine-learning/predict",
+      "facadeOperation": "d360_ml_predict",
+      "facadeFamily": "MachineLearning",
+      "facadeMethod": "POST",
+      "facadePath": "/ssot/machine-learning/predict",
+      "safety": "safe_post",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": []
+    },
+    {
+      "upstreamName": "d360_ml_setup_version_inspector_metrics_get",
+      "upstreamFamily": "MachineLearning",
+      "upstreamMethod": "GET",
+      "upstreamPath": "/ssot/machine-learning/model-setups/{idOrName}/setup-versions/{versionId}/inspector/metrics",
+      "facadeOperation": "d360_ml_setup_version_inspector_metrics_get",
+      "facadeFamily": "MachineLearning",
+      "facadeMethod": "GET",
+      "facadePath": "/ssot/machine-learning/model-setups/{idOrName}/setup-versions/{versionId}/inspector/metrics",
+      "safety": "read",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": []
+    },
+    {
+      "upstreamName": "d360_ml_alerts_query",
+      "upstreamFamily": "MachineLearning",
+      "upstreamMethod": "POST",
+      "upstreamPath": "/ssot/machine-learning/alerts",
+      "facadeOperation": "d360_ml_alerts_query",
+      "facadeFamily": "MachineLearning",
+      "facadeMethod": "POST",
+      "facadePath": "/ssot/machine-learning/alerts",
+      "safety": "safe_post",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": []
+    },
+    {
+      "upstreamName": "d360_ml_alert_update",
+      "upstreamFamily": "MachineLearning",
+      "upstreamMethod": "PATCH",
+      "upstreamPath": "/ssot/machine-learning/alerts/{alertId}",
+      "facadeOperation": "d360_ml_alert_update",
+      "facadeFamily": "MachineLearning",
+      "facadeMethod": "PATCH",
+      "facadePath": "/ssot/machine-learning/alerts/{alertId}",
+      "safety": "confirmed",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
+    },
+    {
+      "upstreamName": "d360_ml_model_artifact_list",
+      "upstreamFamily": "MachineLearning",
+      "upstreamMethod": "GET",
+      "upstreamPath": "/ssot/machine-learning/model-artifacts",
+      "facadeOperation": "d360_ml_model_artifact_list",
+      "facadeFamily": "MachineLearning",
+      "facadeMethod": "GET",
+      "facadePath": "/ssot/machine-learning/model-artifacts",
+      "safety": "read",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": false,
+      "notes": []
+    },
+    {
+      "upstreamName": "d360_ml_model_artifact_get",
+      "upstreamFamily": "MachineLearning",
+      "upstreamMethod": "GET",
+      "upstreamPath": "/ssot/machine-learning/model-artifacts/{idOrName}",
+      "facadeOperation": "d360_ml_model_artifact_get",
+      "facadeFamily": "MachineLearning",
+      "facadeMethod": "GET",
+      "facadePath": "/ssot/machine-learning/model-artifacts/{idOrName}",
+      "safety": "read",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": false,
+      "notes": []
+    },
+    {
+      "upstreamName": "d360_ml_model_artifact_update",
+      "upstreamFamily": "MachineLearning",
+      "upstreamMethod": "PATCH",
+      "upstreamPath": "/ssot/machine-learning/model-artifacts/{idOrName}",
+      "facadeOperation": "d360_ml_model_artifact_update",
+      "facadeFamily": "MachineLearning",
+      "facadeMethod": "PATCH",
+      "facadePath": "/ssot/machine-learning/model-artifacts/{idOrName}",
+      "safety": "confirmed",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
+    },
+    {
+      "upstreamName": "d360_ml_model_artifact_delete",
+      "upstreamFamily": "MachineLearning",
+      "upstreamMethod": "DELETE",
+      "upstreamPath": "/ssot/machine-learning/model-artifacts/{idOrName}",
+      "facadeOperation": "d360_ml_model_artifact_delete",
+      "facadeFamily": "MachineLearning",
+      "facadeMethod": "DELETE",
+      "facadePath": "/ssot/machine-learning/model-artifacts/{idOrName}",
+      "safety": "destructive",
+      "kind": "destructive_rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": ["Requires AgentforceSTDM target, allow_confirmed, and interactive Pi confirmation."]
+    },
+    {
+      "upstreamName": "d360_ml_configured_model_list",
+      "upstreamFamily": "MachineLearning",
+      "upstreamMethod": "GET",
+      "upstreamPath": "/ssot/machine-learning/configured-models",
+      "facadeOperation": "d360_ml_configured_model_list",
+      "facadeFamily": "MachineLearning",
+      "facadeMethod": "GET",
+      "facadePath": "/ssot/machine-learning/configured-models",
+      "safety": "read",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": false,
+      "notes": []
+    },
+    {
+      "upstreamName": "d360_ml_configured_model_get",
+      "upstreamFamily": "MachineLearning",
+      "upstreamMethod": "GET",
+      "upstreamPath": "/ssot/machine-learning/configured-models/{idOrName}",
+      "facadeOperation": "d360_ml_configured_model_get",
+      "facadeFamily": "MachineLearning",
+      "facadeMethod": "GET",
+      "facadePath": "/ssot/machine-learning/configured-models/{idOrName}",
+      "safety": "read",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": false,
+      "notes": []
+    },
+    {
+      "upstreamName": "d360_ml_configured_model_create",
+      "upstreamFamily": "MachineLearning",
+      "upstreamMethod": "POST",
+      "upstreamPath": "/ssot/machine-learning/configured-models",
+      "facadeOperation": "d360_ml_configured_model_create",
+      "facadeFamily": "MachineLearning",
+      "facadeMethod": "POST",
+      "facadePath": "/ssot/machine-learning/configured-models",
+      "safety": "confirmed",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
+    },
+    {
+      "upstreamName": "d360_ml_configured_model_update",
+      "upstreamFamily": "MachineLearning",
+      "upstreamMethod": "PATCH",
+      "upstreamPath": "/ssot/machine-learning/configured-models/{idOrName}",
+      "facadeOperation": "d360_ml_configured_model_update",
+      "facadeFamily": "MachineLearning",
+      "facadeMethod": "PATCH",
+      "facadePath": "/ssot/machine-learning/configured-models/{idOrName}",
+      "safety": "confirmed",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
+    },
+    {
+      "upstreamName": "d360_ml_configured_model_delete",
+      "upstreamFamily": "MachineLearning",
+      "upstreamMethod": "DELETE",
+      "upstreamPath": "/ssot/machine-learning/configured-models/{idOrName}",
+      "facadeOperation": "d360_ml_configured_model_delete",
+      "facadeFamily": "MachineLearning",
+      "facadeMethod": "DELETE",
+      "facadePath": "/ssot/machine-learning/configured-models/{idOrName}",
+      "safety": "destructive",
+      "kind": "destructive_rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": ["Requires AgentforceSTDM target, allow_confirmed, and interactive Pi confirmation."]
+    },
+    {
+      "upstreamName": "d360_ml_configured_model_activate",
+      "upstreamFamily": "MachineLearning",
+      "upstreamMethod": "PATCH",
+      "upstreamPath": "/ssot/machine-learning/configured-models/{idOrName}",
+      "facadeOperation": "d360_ml_configured_model_activate",
+      "facadeFamily": "MachineLearning",
+      "facadeMethod": "PATCH",
+      "facadePath": "/ssot/machine-learning/configured-models/{idOrName}",
+      "safety": "confirmed",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
+    },
+    {
+      "upstreamName": "d360_ml_configured_model_history_list",
+      "upstreamFamily": "MachineLearning",
+      "upstreamMethod": "GET",
+      "upstreamPath": "/ssot/machine-learning/configured-models/{idOrName}/histories",
+      "facadeOperation": "d360_ml_configured_model_history_list",
+      "facadeFamily": "MachineLearning",
+      "facadeMethod": "GET",
+      "facadePath": "/ssot/machine-learning/configured-models/{idOrName}/histories",
+      "safety": "read",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": []
+    },
+    {
+      "upstreamName": "d360_ml_configured_model_history_get",
+      "upstreamFamily": "MachineLearning",
+      "upstreamMethod": "GET",
+      "upstreamPath": "/ssot/machine-learning/configured-models/{idOrName}/histories/{historyId}",
+      "facadeOperation": "d360_ml_configured_model_history_get",
+      "facadeFamily": "MachineLearning",
+      "facadeMethod": "GET",
+      "facadePath": "/ssot/machine-learning/configured-models/{idOrName}/histories/{historyId}",
+      "safety": "read",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": false,
+      "notes": []
+    },
+    {
+      "upstreamName": "d360_ml_query_setup_fields",
+      "upstreamFamily": "MachineLearning",
+      "upstreamMethod": "POST",
+      "upstreamPath": "/ssot/machine-learning/query-setup-fields",
+      "facadeOperation": "d360_ml_query_setup_fields",
+      "facadeFamily": "MachineLearning",
+      "facadeMethod": "POST",
+      "facadePath": "/ssot/machine-learning/query-setup-fields",
+      "safety": "safe_post",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": []
+    },
+    {
+      "upstreamName": "d360_ml_query_data_profile",
+      "upstreamFamily": "MachineLearning",
+      "upstreamMethod": "POST",
+      "upstreamPath": "/ssot/machine-learning/query-data-profile",
+      "facadeOperation": "d360_ml_query_data_profile",
+      "facadeFamily": "MachineLearning",
+      "facadeMethod": "POST",
+      "facadePath": "/ssot/machine-learning/query-data-profile",
+      "safety": "safe_post",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": []
+    },
+    {
+      "upstreamName": "d360_ml_query_outcome",
+      "upstreamFamily": "MachineLearning",
+      "upstreamMethod": "POST",
+      "upstreamPath": "/ssot/machine-learning/query-outcome",
+      "facadeOperation": "d360_ml_query_outcome",
+      "facadeFamily": "MachineLearning",
+      "facadeMethod": "POST",
+      "facadePath": "/ssot/machine-learning/query-outcome",
+      "safety": "safe_post",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": []
+    },
+    {
+      "upstreamName": "d360_ml_query_row_count",
+      "upstreamFamily": "MachineLearning",
+      "upstreamMethod": "POST",
+      "upstreamPath": "/ssot/machine-learning/query-row-count",
+      "facadeOperation": "d360_ml_query_row_count",
+      "facadeFamily": "MachineLearning",
+      "facadeMethod": "POST",
+      "facadePath": "/ssot/machine-learning/query-row-count",
+      "safety": "safe_post",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": []
+    },
+    {
+      "upstreamName": "d360_ml_model_setup_list",
+      "upstreamFamily": "MachineLearning",
+      "upstreamMethod": "GET",
+      "upstreamPath": "/ssot/machine-learning/model-setups",
+      "facadeOperation": "d360_ml_model_setup_list",
+      "facadeFamily": "MachineLearning",
+      "facadeMethod": "GET",
+      "facadePath": "/ssot/machine-learning/model-setups",
+      "safety": "read",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": false,
+      "notes": []
+    },
+    {
+      "upstreamName": "d360_ml_model_setup_get",
+      "upstreamFamily": "MachineLearning",
+      "upstreamMethod": "GET",
+      "upstreamPath": "/ssot/machine-learning/model-setups/{idOrName}",
+      "facadeOperation": "d360_ml_model_setup_get",
+      "facadeFamily": "MachineLearning",
+      "facadeMethod": "GET",
+      "facadePath": "/ssot/machine-learning/model-setups/{idOrName}",
+      "safety": "read",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": false,
+      "notes": []
+    },
+    {
+      "upstreamName": "d360_ml_model_setup_create",
+      "upstreamFamily": "MachineLearning",
+      "upstreamMethod": "POST",
+      "upstreamPath": "/ssot/machine-learning/model-setups",
+      "facadeOperation": "d360_ml_model_setup_create",
+      "facadeFamily": "MachineLearning",
+      "facadeMethod": "POST",
+      "facadePath": "/ssot/machine-learning/model-setups",
+      "safety": "confirmed",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
+    },
+    {
+      "upstreamName": "d360_ml_model_setup_update",
+      "upstreamFamily": "MachineLearning",
+      "upstreamMethod": "PATCH",
+      "upstreamPath": "/ssot/machine-learning/model-setups/{idOrName}",
+      "facadeOperation": "d360_ml_model_setup_update",
+      "facadeFamily": "MachineLearning",
+      "facadeMethod": "PATCH",
+      "facadePath": "/ssot/machine-learning/model-setups/{idOrName}",
+      "safety": "confirmed",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
+    },
+    {
+      "upstreamName": "d360_ml_model_setup_delete",
+      "upstreamFamily": "MachineLearning",
+      "upstreamMethod": "DELETE",
+      "upstreamPath": "/ssot/machine-learning/model-setups/{idOrName}",
+      "facadeOperation": "d360_ml_model_setup_delete",
+      "facadeFamily": "MachineLearning",
+      "facadeMethod": "DELETE",
+      "facadePath": "/ssot/machine-learning/model-setups/{idOrName}",
+      "safety": "destructive",
+      "kind": "destructive_rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": ["Requires AgentforceSTDM target, allow_confirmed, and interactive Pi confirmation."]
+    },
+    {
+      "upstreamName": "d360_ml_setup_version_list",
+      "upstreamFamily": "MachineLearning",
+      "upstreamMethod": "GET",
+      "upstreamPath": "/ssot/machine-learning/model-setups/{idOrName}/setup-versions",
+      "facadeOperation": "d360_ml_setup_version_list",
+      "facadeFamily": "MachineLearning",
+      "facadeMethod": "GET",
+      "facadePath": "/ssot/machine-learning/model-setups/{idOrName}/setup-versions",
+      "safety": "read",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": false,
+      "notes": []
+    },
+    {
+      "upstreamName": "d360_ml_setup_version_get",
+      "upstreamFamily": "MachineLearning",
+      "upstreamMethod": "GET",
+      "upstreamPath": "/ssot/machine-learning/model-setups/{idOrName}/setup-versions/{versionId}",
+      "facadeOperation": "d360_ml_setup_version_get",
+      "facadeFamily": "MachineLearning",
+      "facadeMethod": "GET",
+      "facadePath": "/ssot/machine-learning/model-setups/{idOrName}/setup-versions/{versionId}",
+      "safety": "read",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": false,
+      "notes": []
+    },
+    {
+      "upstreamName": "d360_ml_setup_version_create",
+      "upstreamFamily": "MachineLearning",
+      "upstreamMethod": "POST",
+      "upstreamPath": "/ssot/machine-learning/model-setups/{idOrName}/setup-versions",
+      "facadeOperation": "d360_ml_setup_version_create",
+      "facadeFamily": "MachineLearning",
+      "facadeMethod": "POST",
+      "facadePath": "/ssot/machine-learning/model-setups/{idOrName}/setup-versions",
+      "safety": "confirmed",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
+    },
+    {
+      "upstreamName": "d360_ml_setup_version_update",
+      "upstreamFamily": "MachineLearning",
+      "upstreamMethod": "PATCH",
+      "upstreamPath": "/ssot/machine-learning/model-setups/{idOrName}/setup-versions/{versionId}",
+      "facadeOperation": "d360_ml_setup_version_update",
+      "facadeFamily": "MachineLearning",
+      "facadeMethod": "PATCH",
+      "facadePath": "/ssot/machine-learning/model-setups/{idOrName}/setup-versions/{versionId}",
+      "safety": "confirmed",
+      "kind": "rest",
+      "status": "supported",
+      "hasExample": true,
+      "notes": ["Requires dry-run review before allow_confirmed execution."]
     }
   ],
   "extras": [
@@ -3045,6 +3909,16 @@
       "notes": ["Facade-specific compatibility or observability operation."]
     },
     {
+      "facadeOperation": "d360_connection_endpoints",
+      "facadeFamily": "Connection",
+      "facadeMethod": "GET",
+      "facadePath": "/ssot/connection-endpoints",
+      "safety": "read",
+      "kind": "facade_extension",
+      "hasExample": false,
+      "notes": ["Facade-specific compatibility or observability operation."]
+    },
+    {
       "facadeOperation": "d360_dataaction_delete",
       "facadeFamily": "DataAction",
       "facadeMethod": "DELETE",
@@ -3103,6 +3977,36 @@
       "kind": "facade_extension",
       "hasExample": true,
       "notes": ["Facade-specific compatibility or observability operation."]
+    },
+    {
+      "facadeOperation": "d360_dmo_mapping_update",
+      "facadeFamily": "Mappings",
+      "facadeMethod": "PATCH",
+      "facadePath": "/ssot/data-model-object-mappings/{mappingName}",
+      "safety": "confirmed",
+      "kind": "facade_extension",
+      "hasExample": true,
+      "notes": ["Facade-specific compatibility or observability operation."]
+    },
+    {
+      "facadeOperation": "d360_activation_target_delete",
+      "facadeFamily": "Activation",
+      "facadeMethod": "DELETE",
+      "facadePath": "/ssot/activation-targets/{activationTargetId}",
+      "safety": "destructive",
+      "kind": "destructive_rest",
+      "hasExample": true,
+      "notes": ["Destructive facade operation with AgentforceSTDM + HIL guardrails."]
+    },
+    {
+      "facadeOperation": "d360_dataspace_delete",
+      "facadeFamily": "Dataspace",
+      "facadeMethod": "DELETE",
+      "facadePath": "/ssot/data-spaces/{dataSpaceName}",
+      "safety": "destructive",
+      "kind": "destructive_rest",
+      "hasExample": true,
+      "notes": ["Destructive facade operation with AgentforceSTDM + HIL guardrails."]
     },
     {
       "facadeOperation": "d360_ingest_api_connections_list",

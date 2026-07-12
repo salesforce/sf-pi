@@ -1,4 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
+import { readFileSync } from "node:fs";
+
 import { describe, expect, it } from "vitest";
 
 import { getD360Operations } from "../lib/facade/registry.ts";
@@ -63,6 +65,45 @@ describe("Data 360 v2 action registry", () => {
       phase: "orchestrate",
       safety: "read",
     });
+  });
+
+  it("maps current upstream ML and personalization surfaces to curated v2 families", () => {
+    expect(findData360Action("data360_connect", "connection.db_schemas.list")).toMatchObject({
+      capability: "d360_connection_db_schemas_list",
+      safety: "safe_post",
+    });
+    expect(findData360Action("data360_prepare", "transform.prepare")).toMatchObject({
+      capability: "d360_transform_prepare",
+      safety: "safe_post",
+    });
+    expect(
+      findData360Action("data360_prepare", "stream.create_third_party_connector"),
+    ).toMatchObject({
+      capability: "d360_datastream_create_third_party_connectors",
+      safety: "confirmed",
+    });
+    expect(
+      findData360Action("data360_semantic", "ml.prediction_job_def.create_regression"),
+    ).toMatchObject({ capability: "d360_prediction_job_def_create_regression" });
+    expect(findData360Action("data360_semantic", "ml.predict")).toMatchObject({
+      capability: "d360_ml_predict",
+      safety: "safe_post",
+    });
+    expect(
+      findData360Action("data360_activate", "personalization.experience_config.create"),
+    ).toMatchObject({ capability: "d360_p13n_experience_config_create" });
+  });
+
+  it("uses only canonical phase ids in generated v2 actions", () => {
+    const phases = JSON.parse(
+      readFileSync("extensions/sf-data360/registry/phases.json", "utf8"),
+    ) as Array<{
+      id: string;
+    }>;
+    const phaseIds = new Set(phases.map((phase) => phase.id));
+    for (const action of getData360Actions()) {
+      expect(phaseIds.has(action.phase), `${action.tool}:${action.action}`).toBe(true);
+    }
   });
 
   it("searches actions without loading the full catalog into tool schemas", () => {

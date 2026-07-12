@@ -62,7 +62,7 @@ Each entry: symptom → cause → fix. Lifecycle-shape gotchas live in
 
 ## Schema-shape gotchas
 
-- **`POST /ssot/data-model-objects` rejects `objectType` or `Profile` (titlecase).** Connect REST takes uppercase enum (`PROFILE|ENGAGEMENT|OTHER`) and uses `dataType` per field. Drop `objectType`/`objectCategory` from upstream MCP examples.
+- **`POST /ssot/data-model-objects` rejects `objectType` or `Profile` (titlecase).** Connect REST takes uppercase enum (`PROFILE|ENGAGEMENT|OTHER`) and uses `dataType` per field. Drop `objectType`/`objectCategory` from older upstream reference examples.
 - **DMO PATCH does not remove omitted fields.** PATCH is additive. Recreate the DMO to drop a field.
 - **Segment `segmentType: "Ui"` rejected.** Use the current enum: `Dbt|Dynamic|EinsteinGptSegmentsUI|Lookalike|Realtimez|Waterfall`.
 - **Segment `includeDbt.models[]` flat array rejected with `unexpected array`.** Wrap in `includeDbt.models.models[]`.

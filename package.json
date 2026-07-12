@@ -58,6 +58,8 @@
   "scripts": {
     "generate-catalog": "node scripts/generate-catalog.mjs",
     "generate-catalog:check": "node scripts/generate-catalog.mjs --check",
+    "import-d360-upstream": "node scripts/import-d360-upstream.mjs",
+    "import-d360-upstream:check": "node scripts/import-d360-upstream.mjs --check",
     "generate-d360-registry": "node scripts/generate-d360-registry.mjs",
     "generate-d360-registry:check": "node scripts/generate-d360-registry.mjs --check",
     "generate-d360-references": "node scripts/generate-d360-references.mjs",

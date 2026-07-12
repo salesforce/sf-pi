@@ -61,7 +61,7 @@
     "skillName": "sf-data360-act",
     "summary": "Deliver audiences and data-triggered actions downstream.",
     "description": "Data 360 Act phase. Use when managing activations, activation targets, downstream delivery, data actions, or action targets with sf-data360 tools.",
-    "familyDefaults": ["Activation", "DataAction"],
+    "familyDefaults": ["Activation", "DataAction", "Personalization"],
     "operationOverrides": ["d360_data_actions_list"]
   },
   {
@@ -70,7 +70,16 @@
     "skillName": "sf-data360-retrieve",
     "summary": "Query, search, and inspect Data 360 data and metadata.",
     "description": "Data 360 Retrieve phase. Use when running Data 360 SQL, metadata search, profile or data graph queries, semantic queries, retriever inspection, or search-index work with sf-data360 tools.",
-    "familyDefaults": ["Query", "Metadata", "Profile and Data Graph", "Semantic Retrieval"],
+    "familyDefaults": ["Query", "Metadata", "Profile and Data Graph"],
+    "operationOverrides": []
+  },
+  {
+    "id": "semantic",
+    "label": "Semantic",
+    "skillName": "sf-data360-semantic",
+    "summary": "Manage semantic models, search indexes, retrievers, and ML/prediction model surfaces.",
+    "description": "Data 360 Semantic phase. Use when managing semantic models, search indexes, retrievers, model artifacts, configured models, model setups, prediction jobs, setup versions, or prediction helper actions with sf-data360 tools.",
+    "familyDefaults": ["Semantic Retrieval", "MachineLearning"],
     "operationOverrides": []
   },
   {

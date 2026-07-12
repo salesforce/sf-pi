@@ -39,6 +39,91 @@ steps that do not warrant a full data-shape entry.
 }
 ```
 
+## Connection source schema discovery
+
+Use these read-style POST actions before creating streams for database or
+third-party connectors. Keep connector-specific metadata in `body` and verify the
+object name before describing fields.
+
+```json
+{
+  "tool": "data360_connect",
+  "action": "connection.db_schemas.list",
+  "params": {
+    "connectionId": "example-connection-id",
+    "body": { "advancedAttributes": "{\"database\":\"EXAMPLE_DB\"}" }
+  }
+}
+```
+
+```json
+{
+  "tool": "data360_connect",
+  "action": "connection.object_fields.describe",
+  "params": {
+    "connectionId": "example-connection-id",
+    "resourceName": "CUSTOMER",
+    "body": { "advancedAttributes": "{\"database\":\"EXAMPLE_DB\",\"schema\":\"PUBLIC\"}" }
+  }
+}
+```
+
+## Transform prepare before create
+
+```json
+{
+  "tool": "data360_prepare",
+  "action": "transform.prepare",
+  "params": {
+    "body": {
+      "name": "SfPiParity_ExampleTransform",
+      "definition": {
+        "query": "SELECT Id__c FROM Example_Source__dll",
+        "outputObjectName": "Example_Output__dll"
+      }
+    }
+  }
+}
+```
+
+## Machine Learning discovery and helper query
+
+```json
+{
+  "tool": "data360_semantic",
+  "action": "ml.model_artifact.list",
+  "params": { "limit": 10 }
+}
+```
+
+```json
+{
+  "tool": "data360_semantic",
+  "action": "ml.predict",
+  "params": {
+    "body": {
+      "model": { "name": "Example_Configured_Model" },
+      "fieldNames": ["feature_one", "feature_two"],
+      "rows": [["A", "10"]]
+    }
+  }
+}
+```
+
+## Personalization config discovery
+
+```json
+{
+  "tool": "data360_activate",
+  "action": "personalization.experience_config.list",
+  "params": {
+    "idOrAppSourceIdOrName": "ExampleConnector",
+    "limit": 10,
+    "isWpmUrlRequired": false
+  }
+}
+```
+
 ## Profile read with filters
 
 `profile.query` maps to `GET /ssot/profile/{dataModelName}`. Use the bracketed

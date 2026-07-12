@@ -3,8 +3,8 @@
 ## What It Does
 
 `sf-data360` gives agents a pi-native, workflow-oriented way to work with
-Salesforce Data Cloud / Data 360 without adding MCP support and without exposing
-hundreds of endpoint-specific tools.
+Salesforce Data Cloud / Data 360 without exposing hundreds of endpoint-specific
+tools.
 
 It registers the v2 `data360_*` family tool surface:
 
@@ -18,12 +18,12 @@ It registers the v2 `data360_*` family tool surface:
   identity resolution.
 - `data360_segment` — calculated insights, segment definitions, publish, and
   status.
-- `data360_activate` — activations, activation targets, data actions, and action
-  targets.
+- `data360_activate` — activations, activation targets, data actions, action
+  targets, and personalization delivery/configuration.
 - `data360_query` — SQL, metadata search/get, profile query, data graph,
   rows/count/sample, and verification.
 - `data360_semantic` — semantic models, semantic objects, metrics, search
-  indexes, and retrievers.
+  indexes, retrievers, and ML/prediction model surfaces.
 - `data360_observe` — Agentforce STDM sessions, platform tracing spans, trace
   trees, action failures, and latency analysis.
 - `data360_orchestrate` — journeys, manifests, plans, multi-step workflows,
@@ -56,7 +56,7 @@ The intended balance is:
 - **Deterministic:** actions route through the generated registry, pin the API
   version, resolve the target org, build query strings, handle JSON bodies,
   truncate large output, and gate risky writes.
-- **Pi-native:** no MCP runtime or Java subprocess is used; the v2 tools run
+- **Pi-native:** no external server or Java subprocess is used; the v2 tools run
   through the existing `@salesforce/core` connection and SF Pi safety/rendering
   modules.
 
@@ -181,11 +181,10 @@ The phase reference pages under `references/phases/` are generated from
 `npm run generate-d360-references` after changing phase mappings or capability
 coverage.
 
-When local references are not enough, use the public upstream Data 360 MCP server
-repo before broad web search: <https://github.com/forcedotcom/d360-mcp-server>.
-It is reference material for the broad Data 360 capability surface, facade workflow,
-action families, and public payload examples. This extension still does not run
-or embed the Java MCP server.
+When local references are not enough, use the public upstream Data 360 reference
+repository before broad web search: <https://github.com/forcedotcom/d360-mcp-server>.
+SF Data360 periodically imports public operation and payload-shape metadata from
+that repository, then curates it into Pi-native `data360_*` family actions.
 
 Do not duplicate large endpoint catalogs in prompt injection. Keep large content
 behind file references so the agent loads it only when needed.

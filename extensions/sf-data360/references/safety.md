@@ -12,7 +12,10 @@ action.
 - `data360_query sql.run` for bounded `/ssot/query-sql` queries.
 - Metadata search and metadata entity reads.
 - Validation/test actions such as `source_schema.test`, CI validation, transform
-  validation, connection tests, and local preview helpers.
+  validation/prepare, connection tests, and local preview helpers.
+- Read-style POST discovery/helper actions such as connection database-schema,
+  object, and field discovery plus ML helper queries (`ml.predict`,
+  `ml.alerts.query`, and `ml.query_*`).
 - `data360_orchestrate *.plan` actions.
 
 ## Requires confirmation
@@ -22,6 +25,9 @@ action.
 - `POST` action paths that create, run, publish, deploy, undeploy, deactivate,
   cancel, retry, enable, disable, refresh, or invoke arbitrary connection
   actions.
+- Personalization create/update actions and mobile preview link creation.
+- Machine Learning creates, updates, activations/deactivations, prediction-job
+  runs, setup-version mutations, and alert triage updates.
 - `data360_orchestrate *.run` actions that perform mutations.
 - Raw `data360_api rest.request` calls when the resolved safety decision requires
   confirmation.

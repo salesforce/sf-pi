@@ -12,5 +12,7 @@ Start here:
 - `query-patterns.md` — Data 360 SQL and profile/data graph patterns.
 - `data-shapes.md` — create/update payload shapes and lifecycle gotchas.
 - `workflows.md` — smoke workflows and validation recipes.
+- `live-verification.md` — public-safe live verification summary for recent
+  parity refreshes.
 - `phases/` — generated phase reference pages for Connect, Prepare, Harmonize,
-  Segment, Act, Retrieve, Observe, and Orchestrate.
+  Segment, Act, Retrieve, Semantic, Observe, and Orchestrate.

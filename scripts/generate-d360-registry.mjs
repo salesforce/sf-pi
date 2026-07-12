@@ -13,6 +13,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { isDeepStrictEqual } from "node:util";
 
+import { format, resolveConfig } from "prettier";
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ROOT = path.resolve(__dirname, "..");
@@ -32,10 +34,16 @@ const generated = generateOperations(upstream, overrides);
 validateRegistry({ operations: generated, families, runbooks, examples });
 
 const targetPath = path.join(REGISTRY_DIR, "operations.json");
-const current = readJson("operations.json");
+const currentText = readFileSync(targetPath, "utf8");
+const current = JSON.parse(currentText);
+const prettierOptions = {
+  printWidth: 100,
+  ...((await resolveConfig(path.join(ROOT, "package.json"))) ?? {}),
+};
+const output = await format(JSON.stringify(generated), { ...prettierOptions, parser: "json" });
 
 if (CHECK) {
-  if (!isDeepStrictEqual(current, generated)) {
+  if (!isDeepStrictEqual(current, generated) || currentText !== output) {
     console.error(
       "❌ extensions/sf-data360/registry/operations.json is out of date. Run: npm run generate-d360-registry",
     );
@@ -43,7 +51,7 @@ if (CHECK) {
   }
   console.log(`✅ d360 operations registry is up to date (${generated.length} operation(s))`);
 } else {
-  writeFileSync(targetPath, `${JSON.stringify(generated, null, 2)}\n`, "utf8");
+  writeFileSync(targetPath, output, "utf8");
   console.log(`✅ d360 operations registry generated (${generated.length} operation(s))`);
 }
 
@@ -59,15 +67,54 @@ function generateOperations(upstreamOps, overrideMap) {
 
   return upstreamOps.map((source) => {
     const override = overrideMap[source.name] ?? {};
-    const safety = override.safety ?? inferSafety(source);
+    const safety = override.safety ?? source.safety ?? inferSafety(source);
     if (!safety) {
       throw new Error(
         `Operation ${source.name} has no safety override and safety could not be inferred.`,
       );
     }
     const merged = stripUndefined({ ...source, ...override, safety });
-    return merged;
+    return withOperationalDefaults(merged);
   });
+}
+
+function withOperationalDefaults(operation) {
+  const required = new Set(operation.requiredParams ?? []);
+  for (const param of pathParams(operation.path)) required.add(param);
+
+  if (operation.method !== "GET" && operation.method !== "DELETE" && needsBody(operation)) {
+    required.add("body");
+  }
+
+  const tips = operation.tips ?? defaultTips(operation);
+  return stripUndefined({
+    ...operation,
+    ...(required.size ? { requiredParams: [...required] } : {}),
+    ...(tips ? { tips } : {}),
+  });
+}
+
+function needsBody(operation) {
+  if (operation.name === "d360_query_sql") return false;
+  if (
+    /\/actions\/(?:run|publish|enable|disable|deactivate|refresh-status|run-now)\b/i.test(
+      operation.path,
+    )
+  ) {
+    return false;
+  }
+  if (operation.path.startsWith("/local/")) return false;
+  return operation.safety !== "read";
+}
+
+function defaultTips(operation) {
+  if (operation.safety === "destructive") {
+    return "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output.";
+  }
+  if (operation.safety === "confirmed") {
+    return "Use dry_run first; actual execution requires allow_confirmed=true after reviewing the resolved request.";
+  }
+  return undefined;
 }
 
 function inferSafety(op) {
@@ -82,7 +129,14 @@ function inferSafety(op) {
     pathText.includes("/connect/search/metadata/results") ||
     pathText.includes("/actions/validate") ||
     pathText.includes("/actions/test") ||
-    pathText.includes("data-transforms-validation")
+    pathText.includes("data-transforms-validation") ||
+    /\/connections\/\{[^}]+\}\/(?:database-schemas|objects)(?:$|\/\{[^}]+\}\/fields$)/.test(
+      pathText,
+    ) ||
+    /\/connections\/[^/]+\/(?:database-schemas|objects)(?:$|\/[^/]+\/fields$)/.test(pathText) ||
+    /\/machine-learning\/(?:predict|alerts|query-setup-fields|query-data-profile|query-outcome|query-row-count)$/.test(
+      pathText,
+    )
   ) {
     return "safe_post";
   }
@@ -95,7 +149,7 @@ function inferSafety(op) {
   ) {
     return "confirmed";
   }
-  return undefined;
+  return "confirmed";
 }
 
 function validateRegistry({ operations, families, runbooks, examples }) {

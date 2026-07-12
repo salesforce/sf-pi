@@ -47,6 +47,32 @@ describe("Data 360 v2 curated action names", () => {
     );
   });
 
+  it("uses ML-prefixed action names for Machine Learning surfaces", () => {
+    expect(
+      findData360Action("data360_semantic", "ml.prediction_job_def.create_regression"),
+    ).toMatchObject({
+      capability: "d360_prediction_job_def_create_regression",
+    });
+    expect(findData360Action("data360_semantic", "ml.configured_model.activate")).toMatchObject({
+      capability: "d360_ml_configured_model_activate",
+    });
+    expect(findData360Action("data360_semantic", "ml.alerts.query")).toMatchObject({
+      capability: "d360_ml_alerts_query",
+    });
+  });
+
+  it("uses full personalization action names with p13n aliases", () => {
+    expect(
+      findData360Action("data360_activate", "personalization.experience_config.create"),
+    ).toMatchObject({
+      capability: "d360_p13n_experience_config_create",
+      aliases: expect.arrayContaining(["p13n.experience_config.create"]),
+    });
+    expect(findData360Action("data360_activate", "p13n.transformer.delete")).toMatchObject({
+      capability: "d360_p13n_transformer_delete",
+    });
+  });
+
   it("uses readable retriever and search index subresource names", () => {
     expect(findData360Action("data360_semantic", "retriever.config.create")).toMatchObject({
       capability: "d360_retriever_config_create",

@@ -116,7 +116,204 @@
         }
       }
     },
-    "capability": "d360_transform_create"
+    "capability": "d360_transform_create",
+    "variants": {
+      "dcsql_batch": {
+        "params": {
+          "body": {
+            "name": "customer_360_enrichment",
+            "label": "Customer 360 Enrichment",
+            "type": "batch",
+            "definition": {
+              "type": "DCSQL",
+              "version": "1.0",
+              "manifest": {
+                "nodes": {
+                  "account_base": {
+                    "name": "account_base",
+                    "compiled_code": "SELECT \"Id__c\", \"Name__c\", \"Industry__c\", \"AnnualRevenue__c\", \"CreatedDate__c\" FROM \"Account__dlm\"",
+                    "config": { "materialized": "ephemeral" }
+                  },
+                  "opportunity_metrics": {
+                    "name": "opportunity_metrics",
+                    "compiled_code": "SELECT \"AccountId__c\", COUNT(*) as \"OpportunityCount__c\", SUM(\"Amount__c\") as \"TotalPipeline__c\", AVG(\"Amount__c\") as \"AvgDealSize__c\", MAX(\"CloseDate__c\") as \"LastOpportunityDate__c\" FROM \"Opportunity__dlm\" WHERE \"IsClosed__c\" = false GROUP BY \"AccountId__c\"",
+                    "config": { "materialized": "ephemeral" }
+                  },
+                  "case_metrics": {
+                    "name": "case_metrics",
+                    "compiled_code": "SELECT \"AccountId__c\", COUNT(*) as \"OpenCaseCount__c\", COUNT(CASE WHEN \"Priority__c\" = 'High' THEN 1 END) as \"HighPriorityCases__c\", AVG(DATEDIFF(day, \"CreatedDate__c\", COALESCE(\"ClosedDate__c\", CURRENT_DATE))) as \"AvgCaseResolutionDays__c\" FROM \"Case__dlm\" GROUP BY \"AccountId__c\"",
+                    "config": { "materialized": "ephemeral" }
+                  },
+                  "activity_summary": {
+                    "name": "activity_summary",
+                    "compiled_code": "SELECT \"AccountId__c\", COUNT(*) as \"ActivityCount__c\", MAX(\"ActivityDate__c\") as \"LastActivityDate__c\", COUNT(CASE WHEN \"ActivityType__c\" = 'Email' THEN 1 END) as \"EmailCount__c\", COUNT(CASE WHEN \"ActivityType__c\" = 'Meeting' THEN 1 END) as \"MeetingCount__c\" FROM \"Activity__dlm\" WHERE \"ActivityDate__c\" >= DATEADD(month, -6, CURRENT_DATE) GROUP BY \"AccountId__c\"",
+                    "config": { "materialized": "ephemeral" }
+                  },
+                  "customer_360_enriched": {
+                    "name": "customer_360_enriched",
+                    "relation_name": "Customer_360_Enriched__dll",
+                    "config": { "materialized": "table", "writeMode": "OVERWRITE" },
+                    "compiled_code": "SELECT a.\"Id__c\", a.\"Name__c\", a.\"Industry__c\", a.\"AnnualRevenue__c\", COALESCE(o.\"OpportunityCount__c\", 0) as \"OpportunityCount__c\", COALESCE(o.\"TotalPipeline__c\", 0) as \"TotalPipeline__c\", COALESCE(o.\"AvgDealSize__c\", 0) as \"AvgDealSize__c\", o.\"LastOpportunityDate__c\", COALESCE(c.\"OpenCaseCount__c\", 0) as \"OpenCaseCount__c\", COALESCE(c.\"HighPriorityCases__c\", 0) as \"HighPriorityCases__c\", c.\"AvgCaseResolutionDays__c\", COALESCE(act.\"ActivityCount__c\", 0) as \"RecentActivityCount__c\", act.\"LastActivityDate__c\", COALESCE(act.\"EmailCount__c\", 0) as \"EmailCount__c\", COALESCE(act.\"MeetingCount__c\", 0) as \"MeetingCount__c\", CASE WHEN COALESCE(act.\"ActivityCount__c\", 0) >= 10 AND COALESCE(o.\"TotalPipeline__c\", 0) > 100000 THEN 'High' WHEN COALESCE(act.\"ActivityCount__c\", 0) >= 5 OR COALESCE(o.\"TotalPipeline__c\", 0) > 50000 THEN 'Medium' ELSE 'Low' END as \"EngagementScore__c\", CURRENT_TIMESTAMP as \"EnrichmentTimestamp__c\" FROM account_base a LEFT JOIN opportunity_metrics o ON a.\"Id__c\" = o.\"AccountId__c\" LEFT JOIN case_metrics c ON a.\"Id__c\" = c.\"AccountId__c\" LEFT JOIN activity_summary act ON a.\"Id__c\" = act.\"AccountId__c\"",
+                    "depends_on": {
+                      "nodes": [
+                        "account_base",
+                        "opportunity_metrics",
+                        "case_metrics",
+                        "activity_summary"
+                      ]
+                    }
+                  }
+                }
+              },
+              "outputDataObjects": [
+                {
+                  "name": "Customer_360_Enriched__dll",
+                  "label": "Customer 360 Enriched",
+                  "category": "Profile",
+                  "type": "dataLakeObject",
+                  "fields": [
+                    {
+                      "name": "Id__c",
+                      "label": "Account ID",
+                      "type": "Text",
+                      "isPrimaryKey": true
+                    },
+                    {
+                      "name": "Name__c",
+                      "label": "Account Name",
+                      "type": "Text",
+                      "isPrimaryKey": false
+                    },
+                    {
+                      "name": "Industry__c",
+                      "label": "Industry",
+                      "type": "Text",
+                      "isPrimaryKey": false
+                    },
+                    {
+                      "name": "AnnualRevenue__c",
+                      "label": "Annual Revenue",
+                      "type": "Number",
+                      "isPrimaryKey": false
+                    },
+                    {
+                      "name": "OpportunityCount__c",
+                      "label": "Opportunity Count",
+                      "type": "Number",
+                      "isPrimaryKey": false
+                    },
+                    {
+                      "name": "TotalPipeline__c",
+                      "label": "Total Pipeline",
+                      "type": "Number",
+                      "isPrimaryKey": false
+                    },
+                    {
+                      "name": "AvgDealSize__c",
+                      "label": "Average Deal Size",
+                      "type": "Number",
+                      "isPrimaryKey": false
+                    },
+                    {
+                      "name": "LastOpportunityDate__c",
+                      "label": "Last Opportunity Date",
+                      "type": "DateTime",
+                      "isPrimaryKey": false
+                    },
+                    {
+                      "name": "OpenCaseCount__c",
+                      "label": "Open Case Count",
+                      "type": "Number",
+                      "isPrimaryKey": false
+                    },
+                    {
+                      "name": "HighPriorityCases__c",
+                      "label": "High Priority Cases",
+                      "type": "Number",
+                      "isPrimaryKey": false
+                    },
+                    {
+                      "name": "AvgCaseResolutionDays__c",
+                      "label": "Avg Case Resolution Days",
+                      "type": "Number",
+                      "isPrimaryKey": false
+                    },
+                    {
+                      "name": "RecentActivityCount__c",
+                      "label": "Recent Activity Count",
+                      "type": "Number",
+                      "isPrimaryKey": false
+                    },
+                    {
+                      "name": "LastActivityDate__c",
+                      "label": "Last Activity Date",
+                      "type": "DateTime",
+                      "isPrimaryKey": false
+                    },
+                    {
+                      "name": "EmailCount__c",
+                      "label": "Email Count",
+                      "type": "Number",
+                      "isPrimaryKey": false
+                    },
+                    {
+                      "name": "MeetingCount__c",
+                      "label": "Meeting Count",
+                      "type": "Number",
+                      "isPrimaryKey": false
+                    },
+                    {
+                      "name": "EngagementScore__c",
+                      "label": "Engagement Score",
+                      "type": "Text",
+                      "isPrimaryKey": false
+                    },
+                    {
+                      "name": "EnrichmentTimestamp__c",
+                      "label": "Enrichment Timestamp",
+                      "type": "DateTime",
+                      "isPrimaryKey": false
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        "capability": "d360_transform_create",
+        "variant": "dcsql_batch",
+        "sourceExample": "d360_transform_create_dcsql_batch"
+      },
+      "sql_streaming": {
+        "params": {
+          "body": {
+            "name": "streaming_transform",
+            "label": "streaming transform",
+            "type": "streaming",
+            "definition": {
+              "type": "SQL",
+              "version": "63.0",
+              "expression": "SELECT Account_Home__dll.Id__c as Id__c FROM Account_Home__dll",
+              "targetDlo": "Account_Home_Target__dll",
+              "outputDataObjects": [
+                {
+                  "category": "Profile",
+                  "fields": [
+                    { "isPrimaryKey": true, "label": "ID", "name": "Id__c", "type": "Text" }
+                  ],
+                  "label": "Account Home Target",
+                  "name": "Account_Home_Target__dll",
+                  "type": "dataLakeObject"
+                }
+              ]
+            }
+          }
+        },
+        "capability": "d360_transform_create",
+        "variant": "sql_streaming",
+        "sourceExample": "d360_transform_create_sql_streaming"
+      }
+    }
   },
   "d360_transform_schedule_set": {
     "params": {
@@ -1516,7 +1713,7 @@
     "capability": "d360_dataspace_delete"
   },
   "d360_dataspace_member_remove": {
-    "params": { "dataSpaceName": "Example_Data_Space", "memberId": "ExampleMemberId" },
+    "params": { "dataSpaceName": "Example_Data_Space", "memberNames": "ExampleMember" },
     "capability": "d360_dataspace_member_remove"
   },
   "d360_transform_delete": {
@@ -1737,5 +1934,964 @@
         }
       }
     }
+  },
+  "d360_transform_prepare": {
+    "params": {
+      "body": {
+        "name": "account_summary",
+        "label": "Account Summary",
+        "type": "batch",
+        "definition": {
+          "type": "DCSQL",
+          "version": "1.0",
+          "manifest": {
+            "nodes": {
+              "account_summary_output": {
+                "name": "account_summary_output",
+                "relation_name": "Account_Summary__dll",
+                "config": { "materialized": "table", "writeMode": "OVERWRITE" },
+                "compiled_code": "SELECT \"Id__c\", \"Name__c\", \"Industry__c\", \"AnnualRevenue__c\", \"NumberOfEmployees__c\", \"Type__c\", \"Rating__c\", \"CreatedDate__c\" FROM \"Account__dlm\" WHERE \"AnnualRevenue__c\" > 1000000"
+              }
+            }
+          }
+        }
+      }
+    },
+    "capability": "d360_transform_prepare",
+    "variants": {
+      "dcsql_batch": {
+        "params": {
+          "body": {
+            "name": "top_sales_performers",
+            "label": "Top Sales Performers by Region",
+            "type": "batch",
+            "definition": {
+              "type": "DCSQL",
+              "version": "1.0",
+              "manifest": {
+                "nodes": {
+                  "sales_with_metrics": {
+                    "name": "sales_with_metrics",
+                    "compiled_code": "SELECT \"OwnerId__c\", \"Owner_Region__c\", COUNT(*) as \"DealCount__c\", SUM(\"Amount__c\") as \"TotalRevenue__c\", AVG(\"Amount__c\") as \"AvgDealSize__c\", MAX(\"CloseDate__c\") as \"LastWinDate__c\" FROM \"Opportunity__dlm\" WHERE \"IsWon__c\" = true AND \"CloseDate__c\" >= DATEADD(quarter, -1, CURRENT_DATE) GROUP BY \"OwnerId__c\", \"Owner_Region__c\"",
+                    "config": { "materialized": "ephemeral" }
+                  },
+                  "ranked_performers": {
+                    "name": "ranked_performers",
+                    "relation_name": "Top_Sales_Performers__dll",
+                    "config": { "materialized": "table", "writeMode": "OVERWRITE" },
+                    "compiled_code": "SELECT \"OwnerId__c\", \"Owner_Region__c\", \"DealCount__c\", \"TotalRevenue__c\", \"AvgDealSize__c\", \"LastWinDate__c\", ROW_NUMBER() OVER (PARTITION BY \"Owner_Region__c\" ORDER BY \"TotalRevenue__c\" DESC) as \"RegionRank__c\", PERCENT_RANK() OVER (PARTITION BY \"Owner_Region__c\" ORDER BY \"TotalRevenue__c\") as \"RegionPercentile__c\", ROW_NUMBER() OVER (ORDER BY \"TotalRevenue__c\" DESC) as \"GlobalRank__c\", CASE WHEN PERCENT_RANK() OVER (PARTITION BY \"Owner_Region__c\" ORDER BY \"TotalRevenue__c\") >= 0.9 THEN 'Top 10%' WHEN PERCENT_RANK() OVER (PARTITION BY \"Owner_Region__c\" ORDER BY \"TotalRevenue__c\") >= 0.75 THEN 'Top 25%' WHEN PERCENT_RANK() OVER (PARTITION BY \"Owner_Region__c\" ORDER BY \"TotalRevenue__c\") >= 0.50 THEN 'Top 50%' ELSE 'Below Average' END as \"PerformanceTier__c\" FROM sales_with_metrics WHERE \"DealCount__c\" >= 3",
+                    "depends_on": { "nodes": ["sales_with_metrics"] }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "capability": "d360_transform_prepare",
+        "variant": "dcsql_batch",
+        "sourceExample": "d360_transform_prepare_dcsql_batch"
+      },
+      "sql_streaming": {
+        "params": {
+          "body": {
+            "name": "realtime_lead_account_enrichment",
+            "label": "Real-Time Lead with Account Enrichment",
+            "type": "streaming",
+            "definition": {
+              "type": "SQL",
+              "version": "63.0",
+              "expression": "SELECT l.\"Id__c\", l.\"Email__c\", l.\"FirstName__c\", l.\"LastName__c\", l.\"Company__c\", l.\"Title__c\", l.\"LeadSource__c\", l.\"Phone__c\", l.\"CreatedDate__c\", a.\"Id__c\" as \"AccountId__c\", a.\"Name__c\" as \"AccountName__c\", a.\"Industry__c\" as \"AccountIndustry__c\", a.\"AnnualRevenue__c\" as \"AccountRevenue__c\", a.\"NumberOfEmployees__c\" as \"AccountEmployees__c\", a.\"Type__c\" as \"AccountType__c\", a.\"Rating__c\" as \"AccountRating__c\", CASE WHEN l.\"Title__c\" ILIKE '%VP%' OR l.\"Title__c\" ILIKE '%Vice President%' THEN 'VP' WHEN l.\"Title__c\" ILIKE '%Director%' THEN 'Director' WHEN l.\"Title__c\" ILIKE '%Manager%' THEN 'Manager' WHEN l.\"Title__c\" ILIKE '%CEO%' OR l.\"Title__c\" ILIKE '%Chief%' OR l.\"Title__c\" ILIKE '%President%' THEN 'C-Level' ELSE 'Individual Contributor' END as \"Seniority__c\", CASE WHEN l.\"Title__c\" ILIKE '%VP%' OR l.\"Title__c\" ILIKE '%Chief%' OR l.\"Title__c\" ILIKE '%President%' OR l.\"Title__c\" ILIKE '%Director%' THEN 30 WHEN l.\"Title__c\" ILIKE '%Manager%' THEN 20 ELSE 10 END + CASE WHEN a.\"AnnualRevenue__c\" > 50000000 THEN 25 WHEN a.\"AnnualRevenue__c\" > 10000000 THEN 20 WHEN a.\"AnnualRevenue__c\" > 1000000 THEN 10 ELSE 5 END + CASE WHEN a.\"NumberOfEmployees__c\" > 1000 THEN 20 WHEN a.\"NumberOfEmployees__c\" > 500 THEN 15 WHEN a.\"NumberOfEmployees__c\" > 100 THEN 10 ELSE 5 END + CASE WHEN l.\"LeadSource__c\" = 'Referral' THEN 20 WHEN l.\"LeadSource__c\" = 'Partner' THEN 15 WHEN l.\"LeadSource__c\" = 'Event' THEN 10 WHEN l.\"LeadSource__c\" = 'Web' THEN 5 ELSE 0 END + CASE WHEN a.\"Rating__c\" = 'Hot' THEN 15 WHEN a.\"Rating__c\" = 'Warm' THEN 10 ELSE 5 END as \"CompositeScore__c\", CASE WHEN (CASE WHEN l.\"Title__c\" ILIKE '%VP%' OR l.\"Title__c\" ILIKE '%Chief%' OR l.\"Title__c\" ILIKE '%President%' OR l.\"Title__c\" ILIKE '%Director%' THEN 30 WHEN l.\"Title__c\" ILIKE '%Manager%' THEN 20 ELSE 10 END + CASE WHEN a.\"AnnualRevenue__c\" > 50000000 THEN 25 WHEN a.\"AnnualRevenue__c\" > 10000000 THEN 20 WHEN a.\"AnnualRevenue__c\" > 1000000 THEN 10 ELSE 5 END + CASE WHEN a.\"NumberOfEmployees__c\" > 1000 THEN 20 WHEN a.\"NumberOfEmployees__c\" > 500 THEN 15 WHEN a.\"NumberOfEmployees__c\" > 100 THEN 10 ELSE 5 END + CASE WHEN l.\"LeadSource__c\" = 'Referral' THEN 20 WHEN l.\"LeadSource__c\" = 'Partner' THEN 15 WHEN l.\"LeadSource__c\" = 'Event' THEN 10 WHEN l.\"LeadSource__c\" = 'Web' THEN 5 ELSE 0 END + CASE WHEN a.\"Rating__c\" = 'Hot' THEN 15 WHEN a.\"Rating__c\" = 'Warm' THEN 10 ELSE 5 END) >= 80 THEN 'Hot' WHEN (CASE WHEN l.\"Title__c\" ILIKE '%VP%' OR l.\"Title__c\" ILIKE '%Chief%' OR l.\"Title__c\" ILIKE '%President%' OR l.\"Title__c\" ILIKE '%Director%' THEN 30 WHEN l.\"Title__c\" ILIKE '%Manager%' THEN 20 ELSE 10 END + CASE WHEN a.\"AnnualRevenue__c\" > 50000000 THEN 25 WHEN a.\"AnnualRevenue__c\" > 10000000 THEN 20 WHEN a.\"AnnualRevenue__c\" > 1000000 THEN 10 ELSE 5 END + CASE WHEN a.\"NumberOfEmployees__c\" > 1000 THEN 20 WHEN a.\"NumberOfEmployees__c\" > 500 THEN 15 WHEN a.\"NumberOfEmployees__c\" > 100 THEN 10 ELSE 5 END + CASE WHEN l.\"LeadSource__c\" = 'Referral' THEN 20 WHEN l.\"LeadSource__c\" = 'Partner' THEN 15 WHEN l.\"LeadSource__c\" = 'Event' THEN 10 WHEN l.\"LeadSource__c\" = 'Web' THEN 5 ELSE 0 END + CASE WHEN a.\"Rating__c\" = 'Hot' THEN 15 WHEN a.\"Rating__c\" = 'Warm' THEN 10 ELSE 5 END) >= 60 THEN 'Warm' ELSE 'Cold' END as \"Priority__c\", CASE WHEN a.\"AnnualRevenue__c\" > 100000000 AND (l.\"Title__c\" ILIKE '%VP%' OR l.\"Title__c\" ILIKE '%Chief%' OR l.\"Title__c\" ILIKE '%President%') THEN 'Strategic_Accounts' WHEN a.\"AnnualRevenue__c\" > 50000000 OR a.\"NumberOfEmployees__c\" > 1000 THEN 'Enterprise_Sales' WHEN a.\"AnnualRevenue__c\" > 10000000 OR a.\"NumberOfEmployees__c\" > 500 THEN 'Commercial_Sales' WHEN a.\"AnnualRevenue__c\" > 1000000 OR a.\"NumberOfEmployees__c\" > 50 THEN 'Mid_Market_Sales' ELSE 'SMB_Sales' END as \"OwnerQueue__c\", CASE WHEN a.\"Type__c\" = 'Customer' THEN 'Existing_Customer_Expansion' WHEN a.\"Type__c\" = 'Partner' THEN 'Partner_Led_Opportunity' WHEN a.\"Type__c\" = 'Competitor' THEN 'Competitive_Displacement' ELSE 'New_Business' END as \"OpportunityType__c\", CASE WHEN l.\"Email__c\" IS NOT NULL AND l.\"Phone__c\" IS NOT NULL AND a.\"Industry__c\" IS NOT NULL THEN 'Complete' WHEN l.\"Email__c\" IS NULL OR l.\"Phone__c\" IS NULL THEN 'Missing_Contact_Info' WHEN a.\"Industry__c\" IS NULL THEN 'Missing_Firmographic' ELSE 'Partial' END as \"DataQuality__c\", COALESCE(a.\"Name__c\", l.\"Company__c\", 'Unknown') as \"CompanyNormalized__c\", UPPER(CONCAT(LEFT(l.\"FirstName__c\", 1), LEFT(l.\"LastName__c\", 1))) as \"Initials__c\", CURRENT_TIMESTAMP as \"EnrichedTimestamp__c\" FROM \"Lead__dll\" l INNER JOIN \"Account__dlm\" a ON LOWER(TRIM(l.\"Company__c\")) = LOWER(TRIM(a.\"Name__c\"))",
+              "targetDlo": "Lead_Account_Enriched__dll"
+            }
+          }
+        },
+        "capability": "d360_transform_prepare",
+        "variant": "sql_streaming",
+        "sourceExample": "d360_transform_prepare_sql_streaming"
+      }
+    }
+  },
+  "d360_datastream_create_third_party_connectors": {
+    "params": {
+      "body": {
+        "connectionName": "airtable_dev_account_conn",
+        "datasource": "Airtable_airtable_dev_account_conn",
+        "objectName": "Tasks",
+        "fields": [
+          { "name": "Internal_Id", "dataType": "Text", "isPrimaryKey": true },
+          {
+            "name": "CreatedTime",
+            "dataType": "DateTime",
+            "isPrimaryKey": false,
+            "format": "MM/dd/yyyy HH:mm:ss.SSS"
+          },
+          { "name": "Task", "dataType": "Text", "isPrimaryKey": false },
+          { "name": "Status", "dataType": "Text", "isPrimaryKey": false },
+          { "name": "Duration", "dataType": "Number", "isPrimaryKey": false }
+        ],
+        "category": "Profile"
+      }
+    },
+    "capability": "d360_datastream_create_third_party_connectors"
+  },
+  "d360_connection_db_schemas_list": {
+    "params": {
+      "connectionId": "example-id",
+      "body": { "advancedAttributes": "{\"database\":\"SNOWFLAKE_SAMPLE_DATA\"}" }
+    },
+    "capability": "d360_connection_db_schemas_list"
+  },
+  "d360_connection_objects_list": {
+    "params": {
+      "connectionId": "example-id",
+      "body": {
+        "advancedAttributes": "{\"database\":\"SNOWFLAKE_SAMPLE_DATA\",\"schema\":\"TPCH_SF1\"}"
+      }
+    },
+    "capability": "d360_connection_objects_list"
+  },
+  "d360_connection_object_fields_describe": {
+    "params": {
+      "connectionId": "example-id",
+      "resourceName": "CUSTOMER",
+      "body": {
+        "advancedAttributes": "{\"database\":\"SNOWFLAKE_SAMPLE_DATA\",\"schema\":\"TPCH_SF1\"}"
+      }
+    },
+    "capability": "d360_connection_object_fields_describe"
+  },
+  "d360_prediction_job_def_create": {
+    "params": {
+      "body": {
+        "type": "Regression",
+        "apiName": "pred_job_test",
+        "label": "pred_job_test",
+        "model": { "name": "ChurnRiskRegressionModel" },
+        "inputConfig": {
+          "dataObject": { "name": "Customer__dlm" },
+          "fields": [
+            {
+              "modelField": { "name": "AnnualRevenue" },
+              "mappedField": {
+                "name": "AnnualRevenue__c",
+                "dataObject": { "name": "Customer__dlm" },
+                "relationshipPath": []
+              },
+              "updateScore": false
+            }
+          ]
+        },
+        "outputConfig": { "objectName": "regression_job", "objectLabel": "Regression Job" },
+        "regressionSettings": {
+          "maxPrescriptions": 1,
+          "maxTopContributors": 1,
+          "prescriptionThreshold": 0
+        },
+        "scoringMode": "Batch"
+      }
+    },
+    "capability": "d360_prediction_job_def_create"
+  },
+  "d360_prediction_job_def_create_regression": {
+    "params": {
+      "body": {
+        "apiName": "pred_job_test",
+        "model": { "name": "ChurnRiskRegressionModel" },
+        "inputDataObject": { "name": "Customer__dlm" },
+        "fields": [
+          {
+            "modelField": { "name": "AnnualRevenue" },
+            "mappedField": {
+              "name": "AnnualRevenue__c",
+              "dataObject": { "name": "Customer__dlm" },
+              "relationshipPath": []
+            },
+            "updateScore": false
+          }
+        ],
+        "outputObjectName": "regression_job",
+        "outputObjectLabel": "Regression Job",
+        "outputDescription": "My Regression Job",
+        "regressionSettings": {
+          "maxPrescriptions": 1,
+          "maxTopContributors": 1,
+          "prescriptionThreshold": 0
+        }
+      }
+    },
+    "capability": "d360_prediction_job_def_create_regression"
+  },
+  "d360_prediction_job_def_create_binary_classification": {
+    "params": {
+      "body": {
+        "apiName": "churn_risk_pred",
+        "model": { "name": "ChurnRiskBinaryModel" },
+        "inputDataObject": { "name": "Customer__dlm" },
+        "fields": [
+          {
+            "modelField": { "name": "ChurnFeature" },
+            "mappedField": {
+              "name": "AnnualRevenue__c",
+              "dataObject": { "name": "Customer__dlm" },
+              "relationshipPath": []
+            },
+            "updateScore": false
+          }
+        ],
+        "outputObjectName": "churn_risk_predictions",
+        "outputObjectLabel": "Churn Risk Predictions",
+        "binaryClassificationSettings": {
+          "maxTopContributors": 2,
+          "maxPrescriptions": 1,
+          "prescriptionThreshold": 50,
+          "showClassProbabilities": true
+        }
+      }
+    },
+    "capability": "d360_prediction_job_def_create_binary_classification"
+  },
+  "d360_prediction_job_def_create_multiclass_classification": {
+    "params": {
+      "body": {
+        "apiName": "tier_pred",
+        "model": { "name": "TierClassifierModel" },
+        "inputDataObject": { "name": "Customer__dlm" },
+        "fields": [
+          {
+            "modelField": { "name": "TierFeature" },
+            "mappedField": {
+              "name": "AnnualRevenue__c",
+              "dataObject": { "name": "Customer__dlm" },
+              "relationshipPath": []
+            },
+            "updateScore": false
+          }
+        ],
+        "outputObjectName": "tier_predictions",
+        "multiclassClassificationSettings": { "maxTopContributors": 2, "numberOfClasses": 3 }
+      }
+    },
+    "capability": "d360_prediction_job_def_create_multiclass_classification"
+  },
+  "d360_prediction_job_def_create_sentiment_detection": {
+    "params": {
+      "body": {
+        "apiName": "review_sentiment",
+        "inputDataObject": { "name": "Review__dlm" },
+        "textFields": [
+          {
+            "mappedField": {
+              "name": "ReviewText__c",
+              "dataObject": { "name": "Review__dlm" },
+              "relationshipPath": []
+            },
+            "updateScore": false
+          }
+        ],
+        "outputObjectName": "sentiment_detection_job",
+        "outputObjectLabel": "Sentiment Detection Job",
+        "outputDescription": "My Sentiment Detection Job"
+      }
+    },
+    "capability": "d360_prediction_job_def_create_sentiment_detection"
+  },
+  "d360_prediction_job_def_create_topic_classification": {
+    "params": {
+      "body": {
+        "apiName": "case_topic_classifier",
+        "inputDataObject": { "name": "Case__dlm" },
+        "textFields": [
+          {
+            "mappedField": {
+              "name": "Description__c",
+              "dataObject": { "name": "Case__dlm" },
+              "relationshipPath": []
+            },
+            "updateScore": false
+          }
+        ],
+        "topicLabels": ["billing", "tech_support", "sales"],
+        "outputObjectName": "topic_classification_job",
+        "outputObjectLabel": "Topic Classification Job",
+        "outputDescription": "My Topic Classification Job"
+      }
+    },
+    "capability": "d360_prediction_job_def_create_topic_classification"
+  },
+  "d360_prediction_job_def_create_clustering": {
+    "params": {
+      "body": {
+        "apiName": "customer_segments",
+        "model": { "name": "example-id" },
+        "inputDataObject": { "name": "Customer__dlm" },
+        "fields": [
+          {
+            "modelField": { "name": "SegmentFeature" },
+            "mappedField": {
+              "name": "AnnualRevenue__c",
+              "dataObject": { "name": "Customer__dlm" },
+              "relationshipPath": []
+            },
+            "updateScore": false
+          }
+        ],
+        "outputObjectName": "customer_clusters",
+        "clusteringSettings": {
+          "clusterIdFieldLabel": "Cluster Id",
+          "clusterLabelFieldLabel": "Cluster Label",
+          "maxTopContributors": 2
+        }
+      }
+    },
+    "capability": "d360_prediction_job_def_create_clustering"
+  },
+  "d360_prediction_job_def_update": {
+    "params": {
+      "idOrName": "example-idOrName",
+      "body": {
+        "predictionJobDefIdOrName": "pred_job_test",
+        "request": { "activationStatus": "Active" }
+      }
+    },
+    "capability": "d360_prediction_job_def_update"
+  },
+  "d360_prediction_job_def_activate": {
+    "params": {
+      "idOrName": "example-idOrName",
+      "body": { "predictionJobDefIdOrName": "pred_job_test" }
+    },
+    "capability": "d360_prediction_job_def_activate"
+  },
+  "d360_prediction_job_def_deactivate": {
+    "params": {
+      "idOrName": "example-idOrName",
+      "body": { "predictionJobDefIdOrName": "pred_job_test" }
+    },
+    "capability": "d360_prediction_job_def_deactivate"
+  },
+  "d360_prediction_job_run": {
+    "params": { "body": { "predictionJobDef": { "name": "pred_job_test" } } },
+    "capability": "d360_prediction_job_run"
+  },
+  "d360_ml_predict": {
+    "params": {
+      "body": {
+        "model": { "name": "Attrition_Predictor_Catboost" },
+        "fieldNames": ["age", "income", "tenure_months"],
+        "rows": [
+          ["25", "50000", "12"],
+          ["54", "120000", "240"]
+        ],
+        "settings": { "maxTopFactors": 3, "maxPrescriptions": 5 }
+      }
+    },
+    "capability": "d360_ml_predict"
+  },
+  "d360_ml_setup_version_inspector_metrics_get": {
+    "params": {
+      "idOrName": "example-idOrName",
+      "versionId": "example-id",
+      "modelSetupIdOrName": "Attrition_Risk_Predictor",
+      "gauges": "All"
+    },
+    "capability": "d360_ml_setup_version_inspector_metrics_get"
+  },
+  "d360_ml_alerts_query": {
+    "params": {
+      "body": {
+        "asset": "Attrition_Risk_Predictor_v1__mla",
+        "assetType": "ModelArtifact",
+        "sourceTypes": ["ModelTraining"]
+      }
+    },
+    "capability": "d360_ml_alerts_query"
+  },
+  "d360_ml_alert_update": {
+    "params": { "alertId": "example-id", "body": { "accepted": true } },
+    "capability": "d360_ml_alert_update"
+  },
+  "d360_ml_model_artifact_update": {
+    "params": {
+      "idOrName": "example-idOrName",
+      "body": {
+        "modelArtifactIdOrName": "Attrition_Risk_Predictor_v1__mla",
+        "request": {
+          "label": "Attrition Risk Predictor (v1)",
+          "outputFields": [
+            {
+              "id": "0jrSB00000ABC123YAA",
+              "featureOverrideValues": [
+                { "sourceValue": "Cluster 0", "overrideValue": "High-Risk Segment" },
+                { "sourceValue": "Cluster 1", "overrideValue": "Stable Segment" }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "capability": "d360_ml_model_artifact_update"
+  },
+  "d360_ml_configured_model_create": {
+    "params": {
+      "body": {
+        "label": "Attrition Predictor (Catboost)",
+        "artifact": { "name": "Attrition_Risk_Predictor_v1__mla" },
+        "capability": "BinaryClassification",
+        "visibility": "Shown",
+        "parameterOverrides": [{ "parameterName": "example-id", "continuousValue": 0.5 }],
+        "actionableFields": [
+          { "name": "Over_Time__c", "type": "example-id" },
+          { "name": "Monthly_Income__c", "type": "TopFactor" }
+        ]
+      }
+    },
+    "capability": "d360_ml_configured_model_create"
+  },
+  "d360_ml_configured_model_update": {
+    "params": {
+      "idOrName": "example-idOrName",
+      "body": {
+        "configuredModelIdOrName": "Attrition_Predictor_Catboost",
+        "request": { "status": "Disabled" }
+      }
+    },
+    "capability": "d360_ml_configured_model_update"
+  },
+  "d360_ml_configured_model_activate": {
+    "params": {
+      "idOrName": "example-idOrName",
+      "body": { "configuredModelIdOrName": "Attrition_Predictor_Catboost" }
+    },
+    "capability": "d360_ml_configured_model_activate"
+  },
+  "d360_ml_configured_model_history_list": {
+    "params": {
+      "idOrName": "example-idOrName",
+      "configuredModelIdOrName": "Attrition_Predictor_Catboost",
+      "limit": 10
+    },
+    "capability": "d360_ml_configured_model_history_list"
+  },
+  "d360_ml_query_setup_fields": {
+    "params": {
+      "body": {
+        "input": {
+          "type": "example-id",
+          "source": { "name": "Sales__dlm" },
+          "dataSpace": { "name": "default" }
+        },
+        "filterFields": false
+      }
+    },
+    "capability": "d360_ml_query_setup_fields"
+  },
+  "d360_ml_query_data_profile": {
+    "params": {
+      "body": {
+        "input": {
+          "type": "example-id",
+          "source": { "name": "Sales__dlm" },
+          "dataSpace": { "name": "default" }
+        },
+        "profileFieldNames": [
+          { "name": "Amount__c", "source": "Sales__dlm", "type": "example-id" },
+          { "name": "CloseDate__c", "source": "Sales__dlm", "type": "example-id" }
+        ]
+      }
+    },
+    "capability": "d360_ml_query_data_profile"
+  },
+  "d360_ml_query_outcome": {
+    "params": {
+      "body": {
+        "input": {
+          "type": "example-id",
+          "source": { "name": "Sales__dlm" },
+          "dataSpace": { "name": "default" }
+        },
+        "predictionType": "BinaryClassification"
+      }
+    },
+    "capability": "d360_ml_query_outcome"
+  },
+  "d360_ml_query_row_count": {
+    "params": {
+      "body": {
+        "input": {
+          "type": "example-id",
+          "source": { "name": "Sales__dlm" },
+          "dataSpace": { "name": "default" }
+        },
+        "filter": {
+          "criteria": [
+            {
+              "filterField": { "name": "Amount__c", "source": "Sales__dlm", "type": "example-id" },
+              "operator": "GreaterThan",
+              "values": [{ "value": "1000", "type": "Constant" }]
+            }
+          ],
+          "conjunctiveOperator": "And"
+        }
+      }
+    },
+    "capability": "d360_ml_query_row_count"
+  },
+  "d360_ml_model_setup_create": {
+    "params": {
+      "body": {
+        "label": "Attrition Risk Predictor",
+        "modelType": "Predictive",
+        "modelCapability": "BinaryClassification",
+        "setupType": "EdcNoCode",
+        "outcomeDefinition": { "goal": "Minimize", "fieldNames": ["Attrition__c"] }
+      }
+    },
+    "capability": "d360_ml_model_setup_create"
+  },
+  "d360_ml_model_setup_update": {
+    "params": {
+      "idOrName": "example-idOrName",
+      "body": { "modelSetupIdOrName": "Attrition_Risk_Predictor", "request": {} }
+    },
+    "capability": "d360_ml_model_setup_update"
+  },
+  "d360_ml_setup_version_create": {
+    "params": {
+      "idOrName": "example-idOrName",
+      "body": {
+        "modelSetupIdOrName": "Attrition_Risk_Predictor",
+        "request": {
+          "input": {
+            "type": "example-id",
+            "source": { "name": "Attrition__dlm" },
+            "dataSpace": { "name": "default" }
+          },
+          "outcomes": [
+            {
+              "type": "Binary",
+              "name": "Attrition__c",
+              "label": "Attrition",
+              "goal": "Minimize",
+              "successValue": "Yes",
+              "failureValue": "No"
+            }
+          ],
+          "fields": [
+            {
+              "type": "Number",
+              "name": "Age__c",
+              "label": "Age",
+              "min": 18,
+              "max": 60,
+              "bucketingStrategy": { "type": "Percentile", "numberOfBuckets": 10 }
+            },
+            {
+              "type": "Number",
+              "name": "Monthly_Income__c",
+              "label": "Monthly Income",
+              "min": 1009,
+              "max": 19999,
+              "bucketingStrategy": { "type": "Percentile", "numberOfBuckets": 10 }
+            },
+            {
+              "type": "Number",
+              "name": "Years_At_Company__c",
+              "label": "Years At Company",
+              "min": 0,
+              "max": 40,
+              "bucketingStrategy": { "type": "Percentile", "numberOfBuckets": 10 }
+            },
+            {
+              "type": "Text",
+              "name": "Department__c",
+              "label": "Department",
+              "dataType": "Categorical",
+              "ordering": "Occurrence",
+              "includeOther": true,
+              "balanced": false,
+              "values": [
+                {
+                  "name": "Research &amp; Development",
+                  "label": "Research &amp; Development",
+                  "count": 961,
+                  "ignored": false
+                },
+                { "name": "Sales", "label": "Sales", "count": 446, "ignored": false },
+                {
+                  "name": "Human Resources",
+                  "label": "Human Resources",
+                  "count": 63,
+                  "ignored": false
+                }
+              ]
+            },
+            {
+              "type": "Text",
+              "name": "Over_Time__c",
+              "label": "Over Time",
+              "dataType": "Categorical",
+              "ordering": "Occurrence",
+              "includeOther": true,
+              "balanced": false,
+              "values": [
+                { "name": "No", "label": "No", "count": 1054, "ignored": false },
+                { "name": "Yes", "label": "Yes", "count": 416, "ignored": false }
+              ]
+            }
+          ],
+          "fieldSelection": "Manual",
+          "sourceSetupVersionNumber": 0
+        }
+      }
+    },
+    "capability": "d360_ml_setup_version_create"
+  },
+  "d360_ml_setup_version_update": {
+    "params": {
+      "idOrName": "example-idOrName",
+      "versionId": "example-id",
+      "body": { "modelSetupIdOrName": "Attrition_Risk_Predictor", "status": "Training" }
+    },
+    "capability": "d360_ml_setup_version_update"
+  },
+  "d360_p13n_transformer_create": {
+    "params": {
+      "body": {
+        "name": "promo_banner_transformer",
+        "label": "Promotional Banner Transformer",
+        "channel": "WebApp",
+        "transformerType": "Handlebars",
+        "isEnabled": true,
+        "dataConnectors": ["my_website_connector"],
+        "dataSpace": "default",
+        "substitutionDefinitions": {
+          "bannerTitle": {
+            "label": "Banner Title",
+            "configType": "SchemaPath",
+            "defaultValue": "{{recommendation.title}}",
+            "overridable": true,
+            "required": true
+          },
+          "bannerImage": {
+            "label": "Banner Image URL",
+            "configType": "SchemaPath",
+            "defaultValue": "{{recommendation.imageUrl}}",
+            "overridable": true,
+            "required": false
+          },
+          "ctaText": {
+            "label": "Call to Action Text",
+            "configType": "Static",
+            "defaultValue": "Shop Now",
+            "overridable": true,
+            "required": true
+          }
+        },
+        "transformerTypeDetails": {
+          "html": "<div class=\"promo-banner\" style=\"background-image: url('{{bannerImage}}');\"><h2>{{bannerTitle}}</h2><button class=\"cta-button\">{{ctaText}}</button></div>",
+          "disableAutoInjectionOfEngagementAttributes": false
+        }
+      }
+    },
+    "capability": "d360_p13n_transformer_create"
+  },
+  "d360_p13n_experience_config_create": {
+    "params": {
+      "idOrAppSourceIdOrName": "ExampleConnector",
+      "body": {
+        "name": "homepage_hero_banner",
+        "label": "Homepage Hero Banner Personalization",
+        "isEnabled": true,
+        "dataProvider": {
+          "type": "PersonalizationPoint",
+          "referenceType": "ApiName",
+          "value": "hero_banner_recommendations",
+          "dataSpaceReferenceType": "ApiName",
+          "dataSpaceValue": "default",
+          "groupByType": "DataGraph",
+          "groupByReferenceType": "ApiName",
+          "groupByValue": "user_profile_graph"
+        },
+        "sourceMatchers": [
+          { "type": "PageUrlMatcher", "value": "/home" },
+          { "type": "ContentZone", "value": "hero_section" }
+        ],
+        "transformationConfig": {
+          "renderIfEmpty": false,
+          "when": "Immediately",
+          "method": "ReplaceContentZoneContent",
+          "engagementDestination": "banner_click_destination",
+          "transformations": [
+            {
+              "transformerName": "promo_banner_transformer",
+              "substitutions": {
+                "bannerTitle": "{{data.title}}",
+                "bannerImage": "{{data.image}}",
+                "ctaText": "Learn More"
+              }
+            }
+          ]
+        },
+        "displayUrl": "/home"
+      }
+    },
+    "capability": "d360_p13n_experience_config_create"
+  },
+  "d360_p13n_mobile_preview_create": {
+    "params": {
+      "body": {
+        "dataConnectorId": "mobile_app_connector_123",
+        "experienceConfig": {
+          "name": "test_experience",
+          "label": "Test Experience",
+          "dataProvider": {
+            "type": "PersonalizationPoint",
+            "referenceType": "ApiName",
+            "value": "product_recs"
+          },
+          "sourceMatchers": [{ "type": "ContentZone", "value": "product_list" }],
+          "transformationConfig": {
+            "when": "Immediately",
+            "method": "ReplaceContentZoneContent",
+            "transformations": [{ "transformerName": "product_card_transformer" }]
+          }
+        },
+        "decisionRequestBody": {
+          "p": {
+            "decisionId": "rec_decision_001",
+            "cohortId": "cohort_A",
+            "experimentId": "exp_123"
+          },
+          "c": { "individualId": "ind_456", "anchorId": "anchor_789" }
+        }
+      }
+    },
+    "capability": "d360_p13n_mobile_preview_create"
+  },
+  "d360_p13n_experience_config_update": {
+    "params": {
+      "idOrAppSourceIdOrName": "ExampleConnector",
+      "nameParam": "ExampleExperienceConfig",
+      "body": { "isEnabled": false }
+    },
+    "capability": "d360_p13n_experience_config_update"
+  },
+  "d360_p13n_transformer_update": {
+    "params": {
+      "idOrName": "example-idOrName",
+      "body": {
+        "isEnabled": true,
+        "label": "Updated Banner Transformer",
+        "transformerTypeDetails": { "html": "<div class=\"updated-banner\">{{bannerTitle}}</div>" }
+      }
+    },
+    "capability": "d360_p13n_transformer_update"
+  },
+  "d360_p13n_schema_create": {
+    "params": {
+      "body": {
+        "name": "product_recommendations_schema",
+        "label": "Product Recommendations Schema",
+        "dataSpaceName": "default",
+        "personalizationType": "example-id",
+        "attributes": [
+          {
+            "name": "recommendation_type",
+            "label": "Recommendation Type",
+            "defaultValue": "similar_items"
+          },
+          { "name": "priority_score", "label": "Priority Score" }
+        ],
+        "contentObject": {
+          "name": "Product__dll",
+          "fieldNames": ["name", "description", "price", "image_url", "category"]
+        },
+        "relatedContentObjects": [
+          {
+            "contentObjectName": "ProductReviews__dll",
+            "fieldNames": ["rating", "review_count"],
+            "relatedContentObjects": [
+              {
+                "contentObjectName": "ReviewDetails__dll",
+                "fieldNames": ["reviewer_name", "comment"]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "capability": "d360_p13n_schema_create"
+  },
+  "d360_p13n_schema_update": {
+    "params": {
+      "idOrName": "example-idOrName",
+      "body": {
+        "label": "Updated Product Recommendations",
+        "attributes": [
+          { "name": "new_attribute", "label": "New Attribute", "defaultValue": "default_value" }
+        ]
+      }
+    },
+    "capability": "d360_p13n_schema_update"
+  },
+  "d360_p13n_point_create": {
+    "params": {
+      "body": {
+        "name": "home_page_experience",
+        "label": "Home Page Experience Point",
+        "dataSpaceName": "default",
+        "profileDataGraphName": "individual_profile",
+        "source": "example-id",
+        "isAuthenticationRequired": true,
+        "schemaName": "product_recommendations_schema",
+        "maxItemsCount": 10,
+        "decisions": [
+          {
+            "name": "premium_decision",
+            "label": "Premium User Decision",
+            "criteria": "{\"type\":\"Criteria\",\"operator\":\"AND\",\"filters\":[{\"type\":\"Filter\",\"operator\":\"EQUALS\",\"subject\":{\"fieldApiName\":\"Segment__c\",\"objectApiName\":\"Individual__dll\"},\"values\":[\"Premium\"]}]}",
+            "attributeValues": [
+              { "attributeName": "recommendation_type", "value": "premium_products" }
+            ],
+            "personalizerName": "premium_recommender",
+            "state": "Live"
+          },
+          {
+            "name": "default_decision",
+            "label": "Default Decision",
+            "criteria": "{\"type\":\"Criteria\",\"operator\":\"AND\",\"filters\":[]}",
+            "attributeValues": [
+              { "attributeName": "recommendation_type", "value": "popular_items" }
+            ],
+            "personalizerName": "default_recommender",
+            "state": "Live"
+          }
+        ]
+      }
+    },
+    "capability": "d360_p13n_point_create"
+  },
+  "d360_p13n_point_update": {
+    "params": {
+      "idOrName": "example-idOrName",
+      "body": {
+        "name": "home_page_experience",
+        "label": "Updated Home Page Experience",
+        "dataSpaceName": "default",
+        "profileDataGraphName": "individual_profile",
+        "source": "example-id",
+        "isAuthenticationRequired": false,
+        "schemaName": "product_recommendations_schema",
+        "maxItemsCount": 15,
+        "decisions": [
+          {
+            "name": "vip_decision",
+            "label": "VIP User Decision",
+            "criteria": "{\"type\":\"Criteria\",\"operator\":\"AND\",\"filters\":[{\"type\":\"Filter\",\"operator\":\"EQUALS\",\"subject\":{\"fieldApiName\":\"VIPStatus__c\",\"objectApiName\":\"Individual__dll\"},\"values\":[\"Gold\"]}]}",
+            "attributeValues": [
+              { "attributeName": "recommendation_type", "value": "vip_exclusive" }
+            ],
+            "personalizerName": "vip_recommender",
+            "state": "Live"
+          },
+          {
+            "name": "default_decision",
+            "label": "Default Decision",
+            "criteria": "{\"type\":\"Criteria\",\"operator\":\"AND\",\"filters\":[]}",
+            "attributeValues": [],
+            "personalizerName": "default_recommender",
+            "state": "Live"
+          }
+        ]
+      }
+    },
+    "capability": "d360_p13n_point_update"
+  },
+  "d360_p13n_engagement_signals_list": {
+    "params": { "dataSpaceId": "default", "dataGraphId": "user_profile_graph" },
+    "capability": "d360_p13n_engagement_signals_list"
+  },
+  "d360_p13n_org_info_get": { "params": {}, "capability": "d360_p13n_org_info_get" },
+  "d360_p13n_experience_config_list": {
+    "params": {
+      "idOrAppSourceIdOrName": "my_website_connector",
+      "limit": 50,
+      "offset": 0,
+      "personalizationPointNameOrId": "hero_banner_point",
+      "transformerNameOrId": "promo_banner_transformer",
+      "dataSpaceIdOrName": "default",
+      "isWpmUrlRequired": false
+    },
+    "capability": "d360_p13n_experience_config_list"
+  },
+  "d360_p13n_experience_config_get": {
+    "params": {
+      "idOrAppSourceIdOrName": "my_website_connector",
+      "nameParam": "homepage_hero_banner",
+      "isWpmUrlRequired": false
+    },
+    "capability": "d360_p13n_experience_config_get"
+  },
+  "d360_p13n_experience_config_delete": {
+    "params": {
+      "idOrAppSourceIdOrName": "my_website_connector",
+      "nameParam": "homepage_hero_banner"
+    },
+    "capability": "d360_p13n_experience_config_delete"
+  },
+  "d360_p13n_transformer_list": {
+    "params": {
+      "limit": 50,
+      "offset": 0,
+      "source": "Organization",
+      "transformerCategory": "example-id",
+      "channelType": "WebApp",
+      "transformerType": "Handlebars",
+      "isEnabled": true,
+      "connectorNameOrId": "my_website_connector",
+      "dataSpaceIdOrName": "default",
+      "isDataConnectorAttached": true
+    },
+    "capability": "d360_p13n_transformer_list"
+  },
+  "d360_p13n_transformer_get": {
+    "params": { "idOrName": "promo_banner_transformer" },
+    "capability": "d360_p13n_transformer_get"
+  },
+  "d360_p13n_transformer_delete": {
+    "params": { "idOrName": "promo_banner_transformer" },
+    "capability": "d360_p13n_transformer_delete"
+  },
+  "d360_p13n_schema_get": {
+    "params": { "idOrName": "product_recommendation_schema" },
+    "capability": "d360_p13n_schema_get"
+  },
+  "d360_p13n_schema_delete": {
+    "params": { "idOrName": "product_recommendation_schema" },
+    "capability": "d360_p13n_schema_delete"
+  },
+  "d360_p13n_point_get": {
+    "params": { "idOrName": "hero_banner_point" },
+    "capability": "d360_p13n_point_get"
+  },
+  "d360_p13n_point_delete": {
+    "params": { "idOrName": "hero_banner_point" },
+    "capability": "d360_p13n_point_delete"
+  },
+  "d360_prediction_job_def_delete": {
+    "params": { "idOrName": "example-idOrName" },
+    "capability": "d360_prediction_job_def_delete"
+  },
+  "d360_ml_model_artifact_delete": {
+    "params": { "idOrName": "example-idOrName" },
+    "capability": "d360_ml_model_artifact_delete"
+  },
+  "d360_ml_configured_model_delete": {
+    "params": { "idOrName": "example-idOrName" },
+    "capability": "d360_ml_configured_model_delete"
+  },
+  "d360_ml_model_setup_delete": {
+    "params": { "idOrName": "example-idOrName" },
+    "capability": "d360_ml_model_setup_delete"
   }
 }

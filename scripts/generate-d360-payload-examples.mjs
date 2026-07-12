@@ -3,7 +3,7 @@
 /**
  * Normalize and validate Data 360 payload example parity.
  *
- * The upstream MCP server keeps curated payloads in
+ * The upstream reference repository keeps curated payloads in
  * src/main/resources/metadata/payload-examples.json. sf-pi stores a public-safe
  * snapshot of that file plus capability-oriented examples. Upstream example
  * keys that are variants (for example d360_dmo_create_profile) should map to

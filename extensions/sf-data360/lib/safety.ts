@@ -41,6 +41,7 @@ const SAFE_POST_PATTERNS = [
   /\/connections\/[^/]+\/(?:database-schemas|databases|objects)$/i,
   /\/connections\/[^/]+\/objects\/[^/]+\/(?:fields|preview)$/i,
   /\/machine-learning\/predict$/i,
+  /\/machine-learning\/(?:alerts|query-setup-fields|query-data-profile|query-outcome|query-row-count)$/i,
 ];
 
 const ALWAYS_CONFIRM_POST_PATTERNS: Array<{ pattern: RegExp; level: D360SafetyLevel }> = [

@@ -101,8 +101,10 @@ export const DATA360_V2_TOOL_DEFS: Data360ToolDef[] = [
     name: "data360_activate",
     label: "Data 360 activate",
     description:
-      "Deliver downstream with activations, activation targets, data actions, and action targets.",
-    guidelines: ["Create or inspect targets before creating activations or data actions."],
+      "Deliver downstream with activations, activation targets, data actions, action targets, and personalization configuration.",
+    guidelines: [
+      "Create or inspect targets before creating activations, data actions, or personalization configs.",
+    ],
   },
   {
     name: "data360_query",
@@ -115,9 +117,9 @@ export const DATA360_V2_TOOL_DEFS: Data360ToolDef[] = [
     name: "data360_semantic",
     label: "Data 360 semantic",
     description:
-      "Manage semantic models, semantic objects, metrics, search indexes, and retrievers.",
+      "Manage semantic models, semantic objects, metrics, search indexes, retrievers, and ML/prediction model surfaces.",
     guidelines: [
-      "Use action.describe for semantic subresources; this family is intentionally broad.",
+      "Use action.describe for semantic and ML subresources; this family is intentionally broad.",
     ],
   },
   {

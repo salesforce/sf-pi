@@ -1,13 +1,13 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- Generated from extensions/sf-data360/registry/phases.json and registry operation data. Do not edit by hand. -->
 
-# Data 360 Connect Reference
+# Data 360 Semantic Reference
 
-Set up and inspect Data 360 source connectivity.
+Manage semantic models, search indexes, retrievers, and ML/prediction model surfaces.
 
 ## Use this reference when
 
-Data 360 Connect phase. Use when managing connections, connectors, source systems, source metadata, connection tests, or source endpoints with sf-data360 tools.
+Data 360 Semantic phase. Use when managing semantic models, search indexes, retrievers, model artifacts, configured models, model setups, prediction jobs, setup versions, or prediction helper actions with sf-data360 tools.
 
 ## Tool discipline
 
@@ -21,22 +21,22 @@ Data 360 Connect phase. Use when managing connections, connectors, source system
 
 ## Phase coverage
 
-- **Connection** — Inspect connectors, connections, endpoints, and source metadata.
-- **Ingestion** — Discover connectors, connections, data streams, and ingestion health surfaces.
+- **MachineLearning** — Inspect and manage Data 360 machine learning models, prediction jobs, model setups, configured models, alerts, and prediction helpers.
+- **Semantic Retrieval** — Inspect retrievers, search indexes, and semantic data models for RAG and BI.
 
-- Capabilities: 20 (0 runbook-backed)
-- Safety mix: read=10, safe_post=5, confirmed=4, destructive=1
+- Capabilities: 86 (0 runbook-backed)
+- Safety mix: read=45, safe_post=8, confirmed=26, destructive=7
 
 ## Data 360 family actions
 
-- `data360_connect` `auth.clear` (tenant_ingest_auth, read) — Clear one or all in-memory Data Cloud ingest auth sessions.
-- `data360_connect` `auth.pkce_start` (tenant_ingest_auth, read) — Start a PKCE authorization flow for Data Cloud ingest auth and keep the code verifier in memory only.
-- `data360_connect` `auth.plan` (tenant_ingest_auth, read) — Plan a headless-safe Data Cloud tenant ingest auth setup path without persisting credentials.
-- `data360_connect` `auth.sessions` (tenant_ingest_auth, read) — List in-memory Data Cloud ingest auth sessions without tokens.
-- `data360_connect` `auth.status` (tenant_ingest_auth, read) — Inspect whether Data Cloud tenant ingest auth is configured for Ingestion API jobs.
-- `data360_connect` `connection_endpoints` (rest_operation, read) — List pre-configured connection endpoints.
-- `data360_connect` `connection.get` (rest_operation, read) — Get connection details. connectorType REQUIRED.
-- `data360_connect` `connection.list` (rest_operation, read) — List connections. connectorType REQUIRED.
+- `data360_semantic` `ml.configured_model.get` (rest_operation, read) — Get a configured model by id or developer name.
+- `data360_semantic` `ml.configured_model.history.get` (rest_operation, read) — Get one configured-model history snapshot.
+- `data360_semantic` `ml.configured_model.history.list` (rest_operation, read) — List history snapshots for a configured model.
+- `data360_semantic` `ml.configured_model.list` (rest_operation, read) — List configured models. Filter by assetIdOrName + assetType (ModelArtifact|ModelSetup) to find configured models bound to a specific artifact or setup.
+- `data360_semantic` `ml.model_artifact.get` (rest_operation, read) — Get a trained model artifact. Carries the parameters, inputFields, outputFields, source/setupContainer back-links.
+- `data360_semantic` `ml.model_artifact.list` (rest_operation, read) — List trained model artifacts. Filter by modelType, sourceType, dataCloudOneVisibility.
+- `data360_semantic` `ml.model_setup.get` (rest_operation, read) — Get a model-setup container by id or developer name.
+- `data360_semantic` `ml.model_setup.list` (rest_operation, read) — List model-setup containers. Filters: search, modelType, modelCapability, setupType, connectorType. Pagination via limit/offset.
 
 ## Cross-phase routing
 

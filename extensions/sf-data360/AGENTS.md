@@ -29,14 +29,16 @@ Agent rules for editing this extension. Repo-level rules still apply.
 
 ## Conventions
 
-- Do not add MCP support here.
+- Do not add upstream server/runtime support here.
 - Do not add hundreds of always-on endpoint-specific tools. Prefer extending
   the `d360` registry facade with verified D360 capabilities.
 - Do not add extension-owned Agent Skills for Data 360. Put guidance in
   `references/` files and rely on the `data360_*` tools for agent routing.
-- Use the public upstream repo, <https://github.com/forcedotcom/d360-mcp-server>,
-  as the first external reference for action-family and payload-shape questions
-  before broad web search.
+- Use the public upstream Data 360 reference repo,
+  <https://github.com/forcedotcom/d360-mcp-server>, as the first external
+  reference for action-family and payload-shape questions before broad web
+  search. Curate findings into Pi-native `data360_*` actions; do not document
+  upstream setup/auth flows in SF Data360 user docs.
 - If new mutating paths are added, update `lib/safety.ts` and tests.
 - Keep examples generic and public-safe; do not include real org aliases,
   instance URLs, customer data, internal links, or secrets.
@@ -44,5 +46,5 @@ Agent rules for editing this extension. Repo-level rules still apply.
 ## Non-goals
 
 - Full typed client generation for every Data 360 endpoint.
-- Running or embedding the upstream Java MCP server.
+- Running or embedding the upstream Java server/runtime.
 - Replacing official Salesforce documentation as the canonical source.

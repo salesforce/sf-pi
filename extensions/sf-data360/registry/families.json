@@ -122,5 +122,34 @@
       "mapping",
       "datastream"
     ]
+  },
+  {
+    "name": "MachineLearning",
+    "summary": "Inspect and manage Data 360 machine learning models, prediction jobs, model setups, configured models, alerts, and prediction helpers.",
+    "keywords": [
+      "machine learning",
+      "ml",
+      "prediction",
+      "predict",
+      "model setup",
+      "configured model",
+      "model artifact",
+      "alert",
+      "inference"
+    ]
+  },
+  {
+    "name": "Personalization",
+    "summary": "Configure downstream personalization experiences, transformers, schemas, points, mobile previews, and engagement signals.",
+    "keywords": [
+      "personalization",
+      "experience config",
+      "transformer",
+      "mobile preview",
+      "engagement signals",
+      "schema",
+      "point",
+      "p13n"
+    ]
   }
 ]

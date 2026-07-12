@@ -1,23 +1,62 @@
 {
   "d360_segment_create": {
-    "displayName": "High Value Customers",
-    "segmentOnApiName": "UnifiedIndividual__dlm",
-    "segmentType": "Ui",
-    "segmentCreationFlow": "Datakit",
-    "publishSchedule": "TwentyFour",
-    "publishScheduleStartDateTime": "2026-03-28T00:00:00.000Z",
-    "publishScheduleEndDate": "2027-03-28T00:00:00.000Z",
+    "displayName": "Individuals with any high-value order",
+    "segmentOnApiName": "Individuals__dlm",
+    "segmentType": "Dbt",
+    "publishSchedule": "NoRefresh",
     "includeDbt": {
       "models": {
         "models": [
           {
-            "sql": "SELECT DISTINCT\n  individual.ssot__Id__c as individual_id\nFROM UnifiedIndividual__dlm as individual\nWHERE individual.AnnualRevenue__c > 100000\n  AND individual.Industry__c IN ('Technology', 'Finance')\nORDER BY individual.AnnualRevenue__c DESC\n",
-            "name": "high_value_segment"
+            "name": "individuals_any_high_value_order",
+            "sql": "SELECT DISTINCT Individuals__dlm.IndividualId__c, Individuals__dlm.KQ_IndividualId__c FROM Individuals__dlm JOIN SalesOrders__dlm ON Individuals__dlm.IndividualId__c = SalesOrders__dlm.IndividualId__c WHERE (Individuals__dlm.KQ_IndividualId__c = SalesOrders__dlm.KQ_IndividualId__c OR (Individuals__dlm.KQ_IndividualId__c IS NULL AND SalesOrders__dlm.KQ_IndividualId__c IS NULL)) AND trim(cast(Individuals__dlm.IndividualId__c as varchar(255))) <> '' AND SalesOrders__dlm.TotalAmount__c IS NOT NULL AND SalesOrders__dlm.TotalAmount__c > 5000"
           }
         ]
       }
     },
-    "description": "Customers with annual revenue > $100k in Technology or Finance"
+    "description": "Top-level keys form a valid request body for the ANY-MATCH pattern. additionalExamples shows other canonical SQL shapes — copy a model.sql into the body above to reuse them. Always project PK + KQ of segmentOnApiName; join ON-clauses must be a single EQUALS between two qualified identifiers (no extra ANDed predicates). INNER joins should reproduce the engine's defensive PK+KQ join semantics in WHERE: (a) NULL-safe KQ equality '(t1.KQ_x = t2.KQ_x OR (t1.KQ_x IS NULL AND t2.KQ_x IS NULL))', (b) empty-string PK guard 'trim(cast(t1.PK as varchar(N))) <> ''', (c) IS NOT NULL on filter fields before value comparisons. EXCEPTION — anti-match (LEFT JOIN + HAVING SUM(CASE)=0): do NOT add KQ-parity, trim, or IS NOT NULL clauses to WHERE. Any predicate referencing the right side in WHERE collapses LEFT JOIN to INNER and breaks 'no related row' semantics; the trim/IS NOT NULL guards belong in the CASE expression, not WHERE.",
+    "additionalExamples": [
+      {
+        "name": "simple-attribute-equality",
+        "intent": "Filter the segment-on entity directly by a column value (no joins). Add the empty-string PK guard for parity with engine output.",
+        "model": {
+          "name": "individuals_first_name_equals",
+          "sql": "SELECT Individuals__dlm.IndividualId__c, Individuals__dlm.KQ_IndividualId__c FROM Individuals__dlm WHERE Individuals__dlm.FirstName__c = 'Robot' AND trim(cast(Individuals__dlm.IndividualId__c as varchar(255))) <> ''"
+        }
+      },
+      {
+        "name": "any-match-related",
+        "intent": "Include individuals who have at least one related row matching a predicate (existence check). DISTINCT is needed because INNER JOIN can multiply rows. INNER JOIN — include all three engine-parity guards in WHERE: (a) NULL-safe KQ equality, (b) empty-string PK guard, (c) IS NOT NULL on the filter field before the value comparison.",
+        "model": {
+          "name": "individuals_any_high_value_order",
+          "sql": "SELECT DISTINCT Individuals__dlm.IndividualId__c, Individuals__dlm.KQ_IndividualId__c FROM Individuals__dlm JOIN SalesOrders__dlm ON Individuals__dlm.IndividualId__c = SalesOrders__dlm.IndividualId__c WHERE (Individuals__dlm.KQ_IndividualId__c = SalesOrders__dlm.KQ_IndividualId__c OR (Individuals__dlm.KQ_IndividualId__c IS NULL AND SalesOrders__dlm.KQ_IndividualId__c IS NULL)) AND trim(cast(Individuals__dlm.IndividualId__c as varchar(255))) <> '' AND SalesOrders__dlm.TotalAmount__c IS NOT NULL AND SalesOrders__dlm.TotalAmount__c > 5000"
+        }
+      },
+      {
+        "name": "aggregate-sum-threshold",
+        "intent": "Include individuals whose aggregate over related rows passes a threshold (e.g. lifetime spend > 1000). GROUP BY the projected PK + KQ; put the aggregate test in HAVING. INNER JOIN — include the engine-parity WHERE guards (KQ-parity, empty-PK trim, IS NOT NULL on the aggregated field).",
+        "model": {
+          "name": "individuals_total_spend_over_1000",
+          "sql": "SELECT Individuals__dlm.IndividualId__c, Individuals__dlm.KQ_IndividualId__c FROM Individuals__dlm JOIN SalesOrders__dlm ON Individuals__dlm.IndividualId__c = SalesOrders__dlm.IndividualId__c WHERE (Individuals__dlm.KQ_IndividualId__c = SalesOrders__dlm.KQ_IndividualId__c OR (Individuals__dlm.KQ_IndividualId__c IS NULL AND SalesOrders__dlm.KQ_IndividualId__c IS NULL)) AND trim(cast(Individuals__dlm.IndividualId__c as varchar(255))) <> '' AND SalesOrders__dlm.TotalAmount__c IS NOT NULL GROUP BY Individuals__dlm.IndividualId__c, Individuals__dlm.KQ_IndividualId__c HAVING SUM(SalesOrders__dlm.TotalAmount__c) > 1000"
+        }
+      },
+      {
+        "name": "aggregate-count-threshold",
+        "intent": "Include individuals with COUNT of qualifying related rows above a threshold (e.g. more than one large order). Filter qualifying rows in WHERE alongside the engine-parity guards; put the count test in HAVING.",
+        "model": {
+          "name": "individuals_more_than_one_large_order",
+          "sql": "SELECT Individuals__dlm.IndividualId__c, Individuals__dlm.KQ_IndividualId__c FROM Individuals__dlm JOIN SalesOrders__dlm ON Individuals__dlm.IndividualId__c = SalesOrders__dlm.IndividualId__c WHERE (Individuals__dlm.KQ_IndividualId__c = SalesOrders__dlm.KQ_IndividualId__c OR (Individuals__dlm.KQ_IndividualId__c IS NULL AND SalesOrders__dlm.KQ_IndividualId__c IS NULL)) AND trim(cast(Individuals__dlm.IndividualId__c as varchar(255))) <> '' AND SalesOrders__dlm.TotalAmount__c IS NOT NULL AND SalesOrders__dlm.TotalAmount__c > 10000 GROUP BY Individuals__dlm.IndividualId__c, Individuals__dlm.KQ_IndividualId__c HAVING COUNT(SalesOrders__dlm.SalesOrderId__c) > 1"
+        }
+      },
+      {
+        "name": "anti-match-no-related-row",
+        "intent": "Include individuals who have NO related row matching a predicate (e.g. no order over 10000). The natural 'LEFT JOIN ... ON pk=fk AND P WHERE id IS NULL' shape is rejected because the ON-clause must be a single EQUALS. Use HAVING SUM(CASE WHEN P THEN 1 ELSE 0 END) = 0 instead — LEFT JOIN preserves individuals with zero related rows (CASE = 0 over the synthesized NULL row), and any matching row forces SUM > 0 so the individual is dropped. ENGINE-PARITY DIVERGENCE: do NOT add KQ-parity, empty-PK trim, or IS NOT NULL clauses to WHERE here. The engine puts these guards in the ON-clause of its emitted LEFT JOIN, but rule (4) forbids compound ON. Putting them in WHERE would collapse the LEFT JOIN to INNER (predicates referencing the right side eliminate rows with NULL right) and drop individuals with zero matches, defeating the anti-match. The KQ-parity check is also unneeded here: any individual whose KQ differs from the FK side simply doesn't match the predicate, contributing 0 to SUM, and is correctly kept.",
+        "model": {
+          "name": "individuals_no_order_over_10000",
+          "sql": "SELECT Individuals__dlm.IndividualId__c, Individuals__dlm.KQ_IndividualId__c FROM Individuals__dlm LEFT JOIN SalesOrders__dlm ON Individuals__dlm.IndividualId__c = SalesOrders__dlm.IndividualId__c GROUP BY Individuals__dlm.IndividualId__c, Individuals__dlm.KQ_IndividualId__c HAVING SUM(CASE WHEN SalesOrders__dlm.TotalAmount__c IS NOT NULL AND SalesOrders__dlm.TotalAmount__c > 10000 THEN 1 ELSE 0 END) = 0"
+        }
+      }
+    ]
   },
   "d360_ci_create": {
     "apiName": "Revenue_By_Region__cio",
@@ -160,11 +199,287 @@
     "_note": "configurationType REQUIRED: 'individual' or 'account'. matchMethodType values: exact, exactnormalized, fuzzy, fuzzyhigh, fuzzylow. reconciliationRules ruleType values: lastupdated (requires LastModifiedDate mapped), mostfrequent, sourcesequence. IMPORTANT: every reconciliationRule MUST include ruleType — omitting it causes a server 500. For lastupdated, the DMO must have ssot__LastModifiedDate__c mapped; use sourcesequence if not.",
     "label": "Email and Name Matching"
   },
+  "d360_transform_prepare": {
+    "_note": "Simple DCSQL batch transform for validation (single node). For complex multi-node examples, see d360_transform_prepare_dcsql_batch. For streaming, see d360_transform_prepare_sql_streaming.",
+    "name": "account_summary",
+    "label": "Account Summary",
+    "description": "Simple single-node batch transform that filters and enriches account data",
+    "type": "batch",
+    "definition": {
+      "type": "DCSQL",
+      "version": "1.0",
+      "manifest": {
+        "nodes": {
+          "account_summary_output": {
+            "name": "account_summary_output",
+            "relation_name": "Account_Summary__dll",
+            "config": { "materialized": "table", "writeMode": "OVERWRITE" },
+            "compiled_code": "SELECT \"Id__c\", \"Name__c\", \"Industry__c\", \"AnnualRevenue__c\", \"NumberOfEmployees__c\", \"Type__c\", \"Rating__c\", \"CreatedDate__c\" FROM \"Account__dlm\" WHERE \"AnnualRevenue__c\" > 1000000"
+          }
+        }
+      }
+    }
+  },
+  "d360_transform_prepare_dcsql_batch": {
+    "_note": "Advanced DCSQL with window functions and rank-based filtering for top performers analysis",
+    "name": "top_sales_performers",
+    "label": "Top Sales Performers by Region",
+    "description": "Identifies top-performing sales reps with rankings and percentile calculations",
+    "type": "batch",
+    "definition": {
+      "type": "DCSQL",
+      "version": "1.0",
+      "manifest": {
+        "nodes": {
+          "sales_with_metrics": {
+            "name": "sales_with_metrics",
+            "compiled_code": "SELECT \"OwnerId__c\", \"Owner_Region__c\", COUNT(*) as \"DealCount__c\", SUM(\"Amount__c\") as \"TotalRevenue__c\", AVG(\"Amount__c\") as \"AvgDealSize__c\", MAX(\"CloseDate__c\") as \"LastWinDate__c\" FROM \"Opportunity__dlm\" WHERE \"IsWon__c\" = true AND \"CloseDate__c\" >= DATEADD(quarter, -1, CURRENT_DATE) GROUP BY \"OwnerId__c\", \"Owner_Region__c\"",
+            "config": { "materialized": "ephemeral" }
+          },
+          "ranked_performers": {
+            "name": "ranked_performers",
+            "relation_name": "Top_Sales_Performers__dll",
+            "config": { "materialized": "table", "writeMode": "OVERWRITE" },
+            "compiled_code": "SELECT \"OwnerId__c\", \"Owner_Region__c\", \"DealCount__c\", \"TotalRevenue__c\", \"AvgDealSize__c\", \"LastWinDate__c\", ROW_NUMBER() OVER (PARTITION BY \"Owner_Region__c\" ORDER BY \"TotalRevenue__c\" DESC) as \"RegionRank__c\", PERCENT_RANK() OVER (PARTITION BY \"Owner_Region__c\" ORDER BY \"TotalRevenue__c\") as \"RegionPercentile__c\", ROW_NUMBER() OVER (ORDER BY \"TotalRevenue__c\" DESC) as \"GlobalRank__c\", CASE WHEN PERCENT_RANK() OVER (PARTITION BY \"Owner_Region__c\" ORDER BY \"TotalRevenue__c\") >= 0.9 THEN 'Top 10%' WHEN PERCENT_RANK() OVER (PARTITION BY \"Owner_Region__c\" ORDER BY \"TotalRevenue__c\") >= 0.75 THEN 'Top 25%' WHEN PERCENT_RANK() OVER (PARTITION BY \"Owner_Region__c\" ORDER BY \"TotalRevenue__c\") >= 0.50 THEN 'Top 50%' ELSE 'Below Average' END as \"PerformanceTier__c\" FROM sales_with_metrics WHERE \"DealCount__c\" >= 3",
+            "depends_on": { "nodes": ["sales_with_metrics"] }
+          }
+        }
+      }
+    }
+  },
+  "d360_transform_prepare_sql_streaming": {
+    "_note": "Real-time lead enrichment with INNER JOIN. Streaming SQL supports: INNER JOIN, CASE/COALESCE, string/date functions, row-by-row transformations. Does NOT support: LEFT/RIGHT/FULL OUTER JOIN, aggregations (COUNT, SUM, AVG), window functions (ROW_NUMBER, RANK), GROUP BY, subqueries.",
+    "name": "realtime_lead_account_enrichment",
+    "label": "Real-Time Lead with Account Enrichment",
+    "description": "Enriches incoming leads with account data via INNER JOIN plus calculated scores and routing",
+    "type": "streaming",
+    "definition": {
+      "type": "SQL",
+      "version": "63.0",
+      "expression": "SELECT l.\"Id__c\", l.\"Email__c\", l.\"FirstName__c\", l.\"LastName__c\", l.\"Company__c\", l.\"Title__c\", l.\"LeadSource__c\", l.\"Phone__c\", l.\"CreatedDate__c\", a.\"Id__c\" as \"AccountId__c\", a.\"Name__c\" as \"AccountName__c\", a.\"Industry__c\" as \"AccountIndustry__c\", a.\"AnnualRevenue__c\" as \"AccountRevenue__c\", a.\"NumberOfEmployees__c\" as \"AccountEmployees__c\", a.\"Type__c\" as \"AccountType__c\", a.\"Rating__c\" as \"AccountRating__c\", CASE WHEN l.\"Title__c\" ILIKE '%VP%' OR l.\"Title__c\" ILIKE '%Vice President%' THEN 'VP' WHEN l.\"Title__c\" ILIKE '%Director%' THEN 'Director' WHEN l.\"Title__c\" ILIKE '%Manager%' THEN 'Manager' WHEN l.\"Title__c\" ILIKE '%CEO%' OR l.\"Title__c\" ILIKE '%Chief%' OR l.\"Title__c\" ILIKE '%President%' THEN 'C-Level' ELSE 'Individual Contributor' END as \"Seniority__c\", CASE WHEN l.\"Title__c\" ILIKE '%VP%' OR l.\"Title__c\" ILIKE '%Chief%' OR l.\"Title__c\" ILIKE '%President%' OR l.\"Title__c\" ILIKE '%Director%' THEN 30 WHEN l.\"Title__c\" ILIKE '%Manager%' THEN 20 ELSE 10 END + CASE WHEN a.\"AnnualRevenue__c\" > 50000000 THEN 25 WHEN a.\"AnnualRevenue__c\" > 10000000 THEN 20 WHEN a.\"AnnualRevenue__c\" > 1000000 THEN 10 ELSE 5 END + CASE WHEN a.\"NumberOfEmployees__c\" > 1000 THEN 20 WHEN a.\"NumberOfEmployees__c\" > 500 THEN 15 WHEN a.\"NumberOfEmployees__c\" > 100 THEN 10 ELSE 5 END + CASE WHEN l.\"LeadSource__c\" = 'Referral' THEN 20 WHEN l.\"LeadSource__c\" = 'Partner' THEN 15 WHEN l.\"LeadSource__c\" = 'Event' THEN 10 WHEN l.\"LeadSource__c\" = 'Web' THEN 5 ELSE 0 END + CASE WHEN a.\"Rating__c\" = 'Hot' THEN 15 WHEN a.\"Rating__c\" = 'Warm' THEN 10 ELSE 5 END as \"CompositeScore__c\", CASE WHEN (CASE WHEN l.\"Title__c\" ILIKE '%VP%' OR l.\"Title__c\" ILIKE '%Chief%' OR l.\"Title__c\" ILIKE '%President%' OR l.\"Title__c\" ILIKE '%Director%' THEN 30 WHEN l.\"Title__c\" ILIKE '%Manager%' THEN 20 ELSE 10 END + CASE WHEN a.\"AnnualRevenue__c\" > 50000000 THEN 25 WHEN a.\"AnnualRevenue__c\" > 10000000 THEN 20 WHEN a.\"AnnualRevenue__c\" > 1000000 THEN 10 ELSE 5 END + CASE WHEN a.\"NumberOfEmployees__c\" > 1000 THEN 20 WHEN a.\"NumberOfEmployees__c\" > 500 THEN 15 WHEN a.\"NumberOfEmployees__c\" > 100 THEN 10 ELSE 5 END + CASE WHEN l.\"LeadSource__c\" = 'Referral' THEN 20 WHEN l.\"LeadSource__c\" = 'Partner' THEN 15 WHEN l.\"LeadSource__c\" = 'Event' THEN 10 WHEN l.\"LeadSource__c\" = 'Web' THEN 5 ELSE 0 END + CASE WHEN a.\"Rating__c\" = 'Hot' THEN 15 WHEN a.\"Rating__c\" = 'Warm' THEN 10 ELSE 5 END) >= 80 THEN 'Hot' WHEN (CASE WHEN l.\"Title__c\" ILIKE '%VP%' OR l.\"Title__c\" ILIKE '%Chief%' OR l.\"Title__c\" ILIKE '%President%' OR l.\"Title__c\" ILIKE '%Director%' THEN 30 WHEN l.\"Title__c\" ILIKE '%Manager%' THEN 20 ELSE 10 END + CASE WHEN a.\"AnnualRevenue__c\" > 50000000 THEN 25 WHEN a.\"AnnualRevenue__c\" > 10000000 THEN 20 WHEN a.\"AnnualRevenue__c\" > 1000000 THEN 10 ELSE 5 END + CASE WHEN a.\"NumberOfEmployees__c\" > 1000 THEN 20 WHEN a.\"NumberOfEmployees__c\" > 500 THEN 15 WHEN a.\"NumberOfEmployees__c\" > 100 THEN 10 ELSE 5 END + CASE WHEN l.\"LeadSource__c\" = 'Referral' THEN 20 WHEN l.\"LeadSource__c\" = 'Partner' THEN 15 WHEN l.\"LeadSource__c\" = 'Event' THEN 10 WHEN l.\"LeadSource__c\" = 'Web' THEN 5 ELSE 0 END + CASE WHEN a.\"Rating__c\" = 'Hot' THEN 15 WHEN a.\"Rating__c\" = 'Warm' THEN 10 ELSE 5 END) >= 60 THEN 'Warm' ELSE 'Cold' END as \"Priority__c\", CASE WHEN a.\"AnnualRevenue__c\" > 100000000 AND (l.\"Title__c\" ILIKE '%VP%' OR l.\"Title__c\" ILIKE '%Chief%' OR l.\"Title__c\" ILIKE '%President%') THEN 'Strategic_Accounts' WHEN a.\"AnnualRevenue__c\" > 50000000 OR a.\"NumberOfEmployees__c\" > 1000 THEN 'Enterprise_Sales' WHEN a.\"AnnualRevenue__c\" > 10000000 OR a.\"NumberOfEmployees__c\" > 500 THEN 'Commercial_Sales' WHEN a.\"AnnualRevenue__c\" > 1000000 OR a.\"NumberOfEmployees__c\" > 50 THEN 'Mid_Market_Sales' ELSE 'SMB_Sales' END as \"OwnerQueue__c\", CASE WHEN a.\"Type__c\" = 'Customer' THEN 'Existing_Customer_Expansion' WHEN a.\"Type__c\" = 'Partner' THEN 'Partner_Led_Opportunity' WHEN a.\"Type__c\" = 'Competitor' THEN 'Competitive_Displacement' ELSE 'New_Business' END as \"OpportunityType__c\", CASE WHEN l.\"Email__c\" IS NOT NULL AND l.\"Phone__c\" IS NOT NULL AND a.\"Industry__c\" IS NOT NULL THEN 'Complete' WHEN l.\"Email__c\" IS NULL OR l.\"Phone__c\" IS NULL THEN 'Missing_Contact_Info' WHEN a.\"Industry__c\" IS NULL THEN 'Missing_Firmographic' ELSE 'Partial' END as \"DataQuality__c\", COALESCE(a.\"Name__c\", l.\"Company__c\", 'Unknown') as \"CompanyNormalized__c\", UPPER(CONCAT(LEFT(l.\"FirstName__c\", 1), LEFT(l.\"LastName__c\", 1))) as \"Initials__c\", CURRENT_TIMESTAMP as \"EnrichedTimestamp__c\" FROM \"Lead__dll\" l INNER JOIN \"Account__dlm\" a ON LOWER(TRIM(l.\"Company__c\")) = LOWER(TRIM(a.\"Name__c\"))",
+      "targetDlo": "Lead_Account_Enriched__dll"
+    }
+  },
+  "d360_transform_create_dcsql_batch": {
+    "_note": "Complete create payload with enriched outputDataObjects (after running d360_transform_prepare). Shows isPrimaryKey designation and full field metadata.",
+    "name": "customer_360_enrichment",
+    "label": "Customer 360 Enrichment",
+    "description": "Aggregates customer data from accounts, opportunities, cases, and activities into a unified view",
+    "type": "batch",
+    "definition": {
+      "type": "DCSQL",
+      "version": "1.0",
+      "manifest": {
+        "nodes": {
+          "account_base": {
+            "name": "account_base",
+            "compiled_code": "SELECT \"Id__c\", \"Name__c\", \"Industry__c\", \"AnnualRevenue__c\", \"CreatedDate__c\" FROM \"Account__dlm\"",
+            "config": { "materialized": "ephemeral" }
+          },
+          "opportunity_metrics": {
+            "name": "opportunity_metrics",
+            "compiled_code": "SELECT \"AccountId__c\", COUNT(*) as \"OpportunityCount__c\", SUM(\"Amount__c\") as \"TotalPipeline__c\", AVG(\"Amount__c\") as \"AvgDealSize__c\", MAX(\"CloseDate__c\") as \"LastOpportunityDate__c\" FROM \"Opportunity__dlm\" WHERE \"IsClosed__c\" = false GROUP BY \"AccountId__c\"",
+            "config": { "materialized": "ephemeral" }
+          },
+          "case_metrics": {
+            "name": "case_metrics",
+            "compiled_code": "SELECT \"AccountId__c\", COUNT(*) as \"OpenCaseCount__c\", COUNT(CASE WHEN \"Priority__c\" = 'High' THEN 1 END) as \"HighPriorityCases__c\", AVG(DATEDIFF(day, \"CreatedDate__c\", COALESCE(\"ClosedDate__c\", CURRENT_DATE))) as \"AvgCaseResolutionDays__c\" FROM \"Case__dlm\" GROUP BY \"AccountId__c\"",
+            "config": { "materialized": "ephemeral" }
+          },
+          "activity_summary": {
+            "name": "activity_summary",
+            "compiled_code": "SELECT \"AccountId__c\", COUNT(*) as \"ActivityCount__c\", MAX(\"ActivityDate__c\") as \"LastActivityDate__c\", COUNT(CASE WHEN \"ActivityType__c\" = 'Email' THEN 1 END) as \"EmailCount__c\", COUNT(CASE WHEN \"ActivityType__c\" = 'Meeting' THEN 1 END) as \"MeetingCount__c\" FROM \"Activity__dlm\" WHERE \"ActivityDate__c\" >= DATEADD(month, -6, CURRENT_DATE) GROUP BY \"AccountId__c\"",
+            "config": { "materialized": "ephemeral" }
+          },
+          "customer_360_enriched": {
+            "name": "customer_360_enriched",
+            "relation_name": "Customer_360_Enriched__dll",
+            "config": { "materialized": "table", "writeMode": "OVERWRITE" },
+            "compiled_code": "SELECT a.\"Id__c\", a.\"Name__c\", a.\"Industry__c\", a.\"AnnualRevenue__c\", COALESCE(o.\"OpportunityCount__c\", 0) as \"OpportunityCount__c\", COALESCE(o.\"TotalPipeline__c\", 0) as \"TotalPipeline__c\", COALESCE(o.\"AvgDealSize__c\", 0) as \"AvgDealSize__c\", o.\"LastOpportunityDate__c\", COALESCE(c.\"OpenCaseCount__c\", 0) as \"OpenCaseCount__c\", COALESCE(c.\"HighPriorityCases__c\", 0) as \"HighPriorityCases__c\", c.\"AvgCaseResolutionDays__c\", COALESCE(act.\"ActivityCount__c\", 0) as \"RecentActivityCount__c\", act.\"LastActivityDate__c\", COALESCE(act.\"EmailCount__c\", 0) as \"EmailCount__c\", COALESCE(act.\"MeetingCount__c\", 0) as \"MeetingCount__c\", CASE WHEN COALESCE(act.\"ActivityCount__c\", 0) >= 10 AND COALESCE(o.\"TotalPipeline__c\", 0) > 100000 THEN 'High' WHEN COALESCE(act.\"ActivityCount__c\", 0) >= 5 OR COALESCE(o.\"TotalPipeline__c\", 0) > 50000 THEN 'Medium' ELSE 'Low' END as \"EngagementScore__c\", CURRENT_TIMESTAMP as \"EnrichmentTimestamp__c\" FROM account_base a LEFT JOIN opportunity_metrics o ON a.\"Id__c\" = o.\"AccountId__c\" LEFT JOIN case_metrics c ON a.\"Id__c\" = c.\"AccountId__c\" LEFT JOIN activity_summary act ON a.\"Id__c\" = act.\"AccountId__c\"",
+            "depends_on": {
+              "nodes": ["account_base", "opportunity_metrics", "case_metrics", "activity_summary"]
+            }
+          }
+        }
+      },
+      "outputDataObjects": [
+        {
+          "name": "Customer_360_Enriched__dll",
+          "label": "Customer 360 Enriched",
+          "category": "Profile",
+          "type": "dataLakeObject",
+          "fields": [
+            { "name": "Id__c", "label": "Account ID", "type": "Text", "isPrimaryKey": true },
+            { "name": "Name__c", "label": "Account Name", "type": "Text", "isPrimaryKey": false },
+            { "name": "Industry__c", "label": "Industry", "type": "Text", "isPrimaryKey": false },
+            {
+              "name": "AnnualRevenue__c",
+              "label": "Annual Revenue",
+              "type": "Number",
+              "isPrimaryKey": false
+            },
+            {
+              "name": "OpportunityCount__c",
+              "label": "Opportunity Count",
+              "type": "Number",
+              "isPrimaryKey": false
+            },
+            {
+              "name": "TotalPipeline__c",
+              "label": "Total Pipeline",
+              "type": "Number",
+              "isPrimaryKey": false
+            },
+            {
+              "name": "AvgDealSize__c",
+              "label": "Average Deal Size",
+              "type": "Number",
+              "isPrimaryKey": false
+            },
+            {
+              "name": "LastOpportunityDate__c",
+              "label": "Last Opportunity Date",
+              "type": "DateTime",
+              "isPrimaryKey": false
+            },
+            {
+              "name": "OpenCaseCount__c",
+              "label": "Open Case Count",
+              "type": "Number",
+              "isPrimaryKey": false
+            },
+            {
+              "name": "HighPriorityCases__c",
+              "label": "High Priority Cases",
+              "type": "Number",
+              "isPrimaryKey": false
+            },
+            {
+              "name": "AvgCaseResolutionDays__c",
+              "label": "Avg Case Resolution Days",
+              "type": "Number",
+              "isPrimaryKey": false
+            },
+            {
+              "name": "RecentActivityCount__c",
+              "label": "Recent Activity Count",
+              "type": "Number",
+              "isPrimaryKey": false
+            },
+            {
+              "name": "LastActivityDate__c",
+              "label": "Last Activity Date",
+              "type": "DateTime",
+              "isPrimaryKey": false
+            },
+            {
+              "name": "EmailCount__c",
+              "label": "Email Count",
+              "type": "Number",
+              "isPrimaryKey": false
+            },
+            {
+              "name": "MeetingCount__c",
+              "label": "Meeting Count",
+              "type": "Number",
+              "isPrimaryKey": false
+            },
+            {
+              "name": "EngagementScore__c",
+              "label": "Engagement Score",
+              "type": "Text",
+              "isPrimaryKey": false
+            },
+            {
+              "name": "EnrichmentTimestamp__c",
+              "label": "Enrichment Timestamp",
+              "type": "DateTime",
+              "isPrimaryKey": false
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "d360_transform_create_sql_streaming": {
+    "name": "streaming_transform",
+    "label": "streaming transform",
+    "type": "streaming",
+    "definition": {
+      "type": "SQL",
+      "version": "63.0",
+      "expression": "SELECT Account_Home__dll.Id__c as Id__c FROM Account_Home__dll",
+      "targetDlo": "Account_Home_Target__dll",
+      "outputDataObjects": [
+        {
+          "category": "Profile",
+          "fields": [{ "isPrimaryKey": true, "label": "ID", "name": "Id__c", "type": "Text" }],
+          "label": "Account Home Target",
+          "name": "Account_Home_Target__dll",
+          "type": "dataLakeObject"
+        }
+      ]
+    },
+    "_note": "Streaming SQL transform with outputDataObjects. Use for real-time row-by-row transformations."
+  },
   "d360_transform_create": {
-    "name": "Account Enrichment",
-    "description": "Enrich account data with aggregated pipeline and customer counts",
-    "targetDmo": "Account__dlm",
-    "sql": "SELECT\n  Account__dlm.ssot__Id__c,\n  Account__dlm.Name__c,\n  Account__dlm.Industry__c,\n  SUM(Opportunity__dlm.Amount__c) as total_pipeline,\n  COUNT(DISTINCT Opportunity__dlm.ssot__Id__c) as open_opportunities,\n  COUNT(DISTINCT Contact__dlm.ssot__Id__c) as contact_count,\n  MAX(Activity__dlm.LastActivityDate__c) as last_activity_date\nFROM Account__dlm\nLEFT JOIN Opportunity__dlm\n  ON Account__dlm.ssot__Id__c = Opportunity__dlm.AccountId__c\n  AND Opportunity__dlm.IsClosed__c = false\nLEFT JOIN Contact__dlm\n  ON Account__dlm.ssot__Id__c = Contact__dlm.AccountId__c\nLEFT JOIN Activity__dlm\n  ON Account__dlm.ssot__Id__c = Activity__dlm.AccountId__c\nGROUP BY\n  Account__dlm.ssot__Id__c,\n  Account__dlm.Name__c,\n  Account__dlm.Industry__c\n"
+    "_note": "Simple DCSQL batch transform (single node). For complex multi-node examples, see d360_transform_create_dcsql_batch. For streaming, see d360_transform_create_sql_streaming.",
+    "name": "account_summary",
+    "label": "Account Summary",
+    "description": "Simple single-node batch transform that filters and enriches account data",
+    "type": "batch",
+    "definition": {
+      "type": "DCSQL",
+      "version": "1.0",
+      "manifest": {
+        "nodes": {
+          "account_summary_output": {
+            "name": "account_summary_output",
+            "relation_name": "Account_Summary__dll",
+            "config": { "materialized": "table", "writeMode": "OVERWRITE" },
+            "compiled_code": "SELECT \"Id__c\", \"Name__c\", \"Industry__c\", \"AnnualRevenue__c\", \"NumberOfEmployees__c\", \"Type__c\", \"Rating__c\", \"CreatedDate__c\" FROM \"Account__dlm\" WHERE \"AnnualRevenue__c\" > 1000000"
+          }
+        }
+      },
+      "outputDataObjects": [
+        {
+          "name": "Account_Summary__dll",
+          "label": "Account Summary",
+          "category": "Profile",
+          "type": "dataLakeObject",
+          "fields": [
+            { "name": "Id__c", "label": "Account ID", "type": "Text", "isPrimaryKey": true },
+            { "name": "Name__c", "label": "Account Name", "type": "Text", "isPrimaryKey": false },
+            { "name": "Industry__c", "label": "Industry", "type": "Text", "isPrimaryKey": false },
+            {
+              "name": "AnnualRevenue__c",
+              "label": "Annual Revenue",
+              "type": "Number",
+              "isPrimaryKey": false
+            },
+            {
+              "name": "NumberOfEmployees__c",
+              "label": "Number of Employees",
+              "type": "Number",
+              "isPrimaryKey": false
+            },
+            { "name": "Type__c", "label": "Account Type", "type": "Text", "isPrimaryKey": false },
+            {
+              "name": "Rating__c",
+              "label": "Account Rating",
+              "type": "Text",
+              "isPrimaryKey": false
+            },
+            {
+              "name": "CreatedDate__c",
+              "label": "Created Date",
+              "type": "DateTime",
+              "isPrimaryKey": false
+            }
+          ]
+        }
+      ]
+    }
   },
   "d360_activation_create": {
     "name": "Send High Value Customers to Salesforce",
@@ -739,5 +1054,732 @@
       { "name": "Segment_VIP_Customers", "action": "CREATE", "type": "SEGMENT" },
       { "name": "AccountRevenue", "action": "CREATE", "type": "SDM" }
     ]
+  },
+  "d360_datastream_create_third_party_connectors": {
+    "connectionName": "airtable_dev_account_conn",
+    "datasource": "Airtable_airtable_dev_account_conn",
+    "objectName": "Tasks",
+    "fields": [
+      { "name": "Internal_Id", "dataType": "Text", "isPrimaryKey": true },
+      {
+        "name": "CreatedTime",
+        "dataType": "DateTime",
+        "isPrimaryKey": false,
+        "format": "MM/dd/yyyy HH:mm:ss.SSS"
+      },
+      { "name": "Task", "dataType": "Text", "isPrimaryKey": false },
+      { "name": "Status", "dataType": "Text", "isPrimaryKey": false },
+      { "name": "Duration", "dataType": "Number", "isPrimaryKey": false }
+    ],
+    "category": "Profile",
+    "_note": "Third-party connectors (Airtable, HubSpot, Marketo, Google Ads, etc.) use datastreamType CONNECTORSFRAMEWORK and connectorType DataConnector. The tool auto-generates data stream name as '{objectName}_{connectionName}', DLO name with __dll suffix, sourceFields, mappings, and dataLakeObjectInfo from the field definitions. Field dataType values from d360_connection_object_fields_describe (VARCHAR→Text, FLOAT→Number, TIMESTAMP→DateTime) are normalized automatically. Use the 'format' property on fields when d360_connection_object_fields_describe returns a format (e.g. DateTime fields)."
+  },
+  "d360_connection_db_schemas_list": {
+    "connectionId": "9cgaj0000012O5hAAE",
+    "advancedAttributes": "{\"database\":\"SNOWFLAKE_SAMPLE_DATA\"}",
+    "_note": "advancedAttributes is a JSON string; for Snowflake pass the database name. Returns schemas under that database. Use d360_snowflake_connection_list (or d360_connection_list) to find the connectionId."
+  },
+  "d360_connection_objects_list": {
+    "connectionId": "9cgaj0000012O5hAAE",
+    "advancedAttributes": "{\"database\":\"SNOWFLAKE_SAMPLE_DATA\",\"schema\":\"TPCH_SF1\"}",
+    "_note": "Lists tables/objects in a connection. For DB connectors (e.g., Snowflake) scope by database+schema in advancedAttributes — omitting them can return very large result sets. Omit advancedAttributes for non-DB connectors (e.g., Salesforce)."
+  },
+  "d360_connection_object_fields_describe": {
+    "connectionId": "9cgaj0000012O5hAAE",
+    "resourceName": "CUSTOMER",
+    "advancedAttributes": "{\"database\":\"SNOWFLAKE_SAMPLE_DATA\",\"schema\":\"TPCH_SF1\"}",
+    "_note": "Describes column-level schema (names, types, primary keys) of a single object. Discover resourceName via d360_connection_objects_list first."
+  },
+  "d360_prediction_job_def_create": {
+    "type": "Regression",
+    "apiName": "pred_job_test",
+    "label": "pred_job_test",
+    "model": { "name": "ChurnRiskRegressionModel" },
+    "inputConfig": {
+      "dataObject": { "name": "Customer__dlm" },
+      "fields": [
+        {
+          "modelField": { "name": "AnnualRevenue" },
+          "mappedField": {
+            "name": "AnnualRevenue__c",
+            "dataObject": { "name": "Customer__dlm" },
+            "relationshipPath": []
+          },
+          "updateScore": false
+        }
+      ]
+    },
+    "outputConfig": {
+      "objectName": "regression_job",
+      "objectLabel": "Regression Job",
+      "description": "My Regression Job"
+    },
+    "regressionSettings": {
+      "maxPrescriptions": 1,
+      "maxTopContributors": 1,
+      "prescriptionThreshold": 0
+    },
+    "scoringMode": "Batch",
+    "_note": "Generic create accepts any of the six type discriminators. Prefer the type-specific tools (d360_prediction_job_def_create_regression, _binary_classification, _multiclass_classification, _sentiment_detection, _topic_classification, _clustering) when possible — they pre-shape the payload and run pre-flight validation. References (model, dataObject, modelField, mappedField) accept either { name } or { id }; this example uses names."
+  },
+  "d360_prediction_job_def_create_regression": {
+    "apiName": "pred_job_test",
+    "model": { "name": "ChurnRiskRegressionModel" },
+    "inputDataObject": { "name": "Customer__dlm" },
+    "fields": [
+      {
+        "modelField": { "name": "AnnualRevenue" },
+        "mappedField": {
+          "name": "AnnualRevenue__c",
+          "dataObject": { "name": "Customer__dlm" },
+          "relationshipPath": []
+        },
+        "updateScore": false
+      }
+    ],
+    "outputObjectName": "regression_job",
+    "outputObjectLabel": "Regression Job",
+    "outputDescription": "My Regression Job",
+    "regressionSettings": {
+      "maxPrescriptions": 1,
+      "maxTopContributors": 1,
+      "prescriptionThreshold": 0
+    }
+  },
+  "d360_prediction_job_def_create_binary_classification": {
+    "apiName": "churn_risk_pred",
+    "model": { "name": "ChurnRiskBinaryModel" },
+    "inputDataObject": { "name": "Customer__dlm" },
+    "fields": [
+      {
+        "modelField": { "name": "ChurnFeature" },
+        "mappedField": {
+          "name": "AnnualRevenue__c",
+          "dataObject": { "name": "Customer__dlm" },
+          "relationshipPath": []
+        },
+        "updateScore": false
+      }
+    ],
+    "outputObjectName": "churn_risk_predictions",
+    "outputObjectLabel": "Churn Risk Predictions",
+    "binaryClassificationSettings": {
+      "maxTopContributors": 2,
+      "maxPrescriptions": 1,
+      "prescriptionThreshold": 50,
+      "showClassProbabilities": true
+    }
+  },
+  "d360_prediction_job_def_create_multiclass_classification": {
+    "apiName": "tier_pred",
+    "model": { "name": "TierClassifierModel" },
+    "inputDataObject": { "name": "Customer__dlm" },
+    "fields": [
+      {
+        "modelField": { "name": "TierFeature" },
+        "mappedField": {
+          "name": "AnnualRevenue__c",
+          "dataObject": { "name": "Customer__dlm" },
+          "relationshipPath": []
+        },
+        "updateScore": false
+      }
+    ],
+    "outputObjectName": "tier_predictions",
+    "multiclassClassificationSettings": { "maxTopContributors": 2, "numberOfClasses": 3 }
+  },
+  "d360_prediction_job_def_create_sentiment_detection": {
+    "apiName": "review_sentiment",
+    "inputDataObject": { "name": "Review__dlm" },
+    "textFields": [
+      {
+        "mappedField": {
+          "name": "ReviewText__c",
+          "dataObject": { "name": "Review__dlm" },
+          "relationshipPath": []
+        },
+        "updateScore": false
+      }
+    ],
+    "outputObjectName": "sentiment_detection_job",
+    "outputObjectLabel": "Sentiment Detection Job",
+    "outputDescription": "My Sentiment Detection Job",
+    "_note": "model defaults to a reference by name to sfdc_ai__DefaultSalesforceSentimentAnalysis when omitted."
+  },
+  "d360_prediction_job_def_create_topic_classification": {
+    "apiName": "case_topic_classifier",
+    "inputDataObject": { "name": "Case__dlm" },
+    "textFields": [
+      {
+        "mappedField": {
+          "name": "Description__c",
+          "dataObject": { "name": "Case__dlm" },
+          "relationshipPath": []
+        },
+        "updateScore": false
+      }
+    ],
+    "topicLabels": ["billing", "tech_support", "sales"],
+    "outputObjectName": "topic_classification_job",
+    "outputObjectLabel": "Topic Classification Job",
+    "outputDescription": "My Topic Classification Job",
+    "_note": "topicLabels: 2-5 distinct entries, each ≤ 100 characters. Up to 3 textFields. model defaults to a reference by name to sfdc_ai__DefaultSalesforceTopicClassification when omitted. Only Static labels are supported today."
+  },
+  "d360_prediction_job_def_create_clustering": {
+    "apiName": "customer_segments",
+    "model": { "name": "SegmentationModel" },
+    "inputDataObject": { "name": "Customer__dlm" },
+    "fields": [
+      {
+        "modelField": { "name": "SegmentFeature" },
+        "mappedField": {
+          "name": "AnnualRevenue__c",
+          "dataObject": { "name": "Customer__dlm" },
+          "relationshipPath": []
+        },
+        "updateScore": false
+      }
+    ],
+    "outputObjectName": "customer_clusters",
+    "clusteringSettings": {
+      "clusterIdFieldLabel": "Cluster Id",
+      "clusterLabelFieldLabel": "Cluster Label",
+      "maxTopContributors": 2
+    }
+  },
+  "d360_prediction_job_def_update": {
+    "predictionJobDefIdOrName": "pred_job_test",
+    "request": { "description": "Updated description", "activationStatus": "Active" },
+    "_note": "Partial-update — only fields set in `request` are changed. For activation toggling alone, prefer d360_prediction_job_def_activate / _deactivate."
+  },
+  "d360_prediction_job_def_activate": {
+    "predictionJobDefIdOrName": "pred_job_test",
+    "_note": "Sends PATCH with body { activationStatus: 'Active' }. Required before the definition can be submitted via d360_prediction_job_run."
+  },
+  "d360_prediction_job_def_deactivate": {
+    "predictionJobDefIdOrName": "pred_job_test",
+    "_note": "Sends PATCH with body { activationStatus: 'Inactive' }. Inactive definitions cannot be run."
+  },
+  "d360_prediction_job_run": {
+    "predictionJobDef": { "name": "pred_job_test" },
+    "_note": "Provide either { name: \"...\" } or { id: \"...\" }. Definition must be in Active status — call d360_prediction_job_def_activate first if needed. Response carries an initial status (Submited, Pending, NotStarted, or InProgress); poll d360_prediction_job_def_get to see lastRunStatus update."
+  },
+  "d360_ml_predict": {
+    "request": {
+      "model": { "name": "Attrition_Predictor_Catboost" },
+      "fieldNames": ["age", "income", "tenure_months"],
+      "rows": [
+        ["25", "50000", "12"],
+        ["54", "120000", "240"]
+      ],
+      "settings": { "maxTopFactors": 3, "maxPrescriptions": 5 }
+    },
+    "_note": "Synchronous inference. model is a configured model ref (id or developer name) — NOT a model artifact. Discover candidate models from d360_ml_configured_model_list."
+  },
+  "d360_ml_setup_version_inspector_metrics_get": {
+    "modelSetupIdOrName": "Attrition_Risk_Predictor",
+    "versionId": "14kSB0000005d8nYAA",
+    "gauges": "All",
+    "_note": "Returns inspectorResponses with overview (auc/gini/mcc/mse/rmse + 100-threshold confusionMatrices), outcomeDistribution.training, and gainTable.{training,validation}."
+  },
+  "d360_ml_alerts_query": {
+    "request": {
+      "asset": "Attrition_Risk_Predictor_v1__mla",
+      "assetType": "ModelArtifact",
+      "sourceTypes": ["ModelTraining"]
+    }
+  },
+  "d360_ml_alert_update": {
+    "alertId": "24pSB0000005W0rYAE",
+    "accepted": true,
+    "_note": "accepted=true flags the alert for directive auto-application when the next setup-version is created with sourceSetupVersionNumber set to the current version. Use dismissed=true to suppress without applying."
+  },
+  "d360_ml_model_artifact_update": {
+    "modelArtifactIdOrName": "Attrition_Risk_Predictor_v1__mla",
+    "request": {
+      "label": "Attrition Risk Predictor (v1)",
+      "description": "Superseded by Attrition_Risk_Predictor_v2__mla — kept for audit.",
+      "outputFields": [
+        {
+          "id": "0jrSB00000ABC123YAA",
+          "featureOverrideValues": [
+            { "sourceValue": "Cluster 0", "overrideValue": "High-Risk Segment" },
+            { "sourceValue": "Cluster 1", "overrideValue": "Stable Segment" }
+          ]
+        }
+      ]
+    },
+    "_note": "Partial update. PATCH blocked on OOTB. Status (not shown) accepts only Enabled/Disabled — Draft/Deprecated/Rerouted are rejected by the server. featureOverrideValues are upsert-by-sourceValue: existing matched, new inserted, omitted ones removed."
+  },
+  "d360_ml_configured_model_create": {
+    "request": {
+      "label": "Attrition Predictor (Catboost)",
+      "description": "Production-grade configured model wrapping the trained Attrition artifact.",
+      "artifact": { "name": "Attrition_Risk_Predictor_v1__mla" },
+      "capability": "BinaryClassification",
+      "visibility": "Shown",
+      "parameterOverrides": [{ "parameterName": "decisionThreshold", "continuousValue": 0.5 }],
+      "actionableFields": [
+        { "name": "Over_Time__c", "type": "ActionableVariable" },
+        { "name": "Monthly_Income__c", "type": "TopFactor" }
+      ]
+    },
+    "_note": "artifact is required. Discover the artifact name from the published setup-version's modelArtifact field, or from d360_ml_configured_model_list with assetType=ModelArtifact. Status defaults to Disabled — call d360_ml_configured_model_activate after create. Notable response fields: status, lastActivatedDate, modelDisabledReasons, parameters, inputFields, outputFields."
+  },
+  "d360_ml_configured_model_update": {
+    "configuredModelIdOrName": "Attrition_Predictor_Catboost",
+    "request": { "description": "Updated production description.", "status": "Disabled" },
+    "_note": "Partial update. parameterOverrides has full-replace semantics — pass the complete desired list. PATCH on OOTB (Salesforce-provided) models requires visibility."
+  },
+  "d360_ml_configured_model_activate": {
+    "configuredModelIdOrName": "Attrition_Predictor_Catboost",
+    "_note": "Sets status=Enabled. Required before any prediction-job definition referencing this model can run. Response includes lastActivatedBy and lastActivatedDate populated by the platform."
+  },
+  "d360_ml_configured_model_history_list": {
+    "configuredModelIdOrName": "Attrition_Predictor_Catboost",
+    "limit": 10,
+    "_note": "Snapshots are content-based — no entry for no-op edits. OOTB models have no history."
+  },
+  "d360_ml_query_setup_fields": {
+    "request": {
+      "input": {
+        "type": "DataModelObject",
+        "source": { "name": "Sales__dlm" },
+        "dataSpace": { "name": "default" }
+      },
+      "filterFields": false
+    }
+  },
+  "d360_ml_query_data_profile": {
+    "request": {
+      "input": {
+        "type": "DataModelObject",
+        "source": { "name": "Sales__dlm" },
+        "dataSpace": { "name": "default" }
+      },
+      "profileFieldNames": [
+        { "name": "Amount__c", "source": "Sales__dlm", "type": "DataModelObject" },
+        { "name": "CloseDate__c", "source": "Sales__dlm", "type": "DataModelObject" }
+      ]
+    }
+  },
+  "d360_ml_query_outcome": {
+    "request": {
+      "input": {
+        "type": "DataModelObject",
+        "source": { "name": "Sales__dlm" },
+        "dataSpace": { "name": "default" }
+      },
+      "predictionType": "BinaryClassification"
+    },
+    "_note": "Omit predictionType to return all supervised candidates."
+  },
+  "d360_ml_query_row_count": {
+    "request": {
+      "input": {
+        "type": "DataModelObject",
+        "source": { "name": "Sales__dlm" },
+        "dataSpace": { "name": "default" }
+      },
+      "filter": {
+        "criteria": [
+          {
+            "filterField": {
+              "name": "Amount__c",
+              "source": "Sales__dlm",
+              "type": "DataModelObject"
+            },
+            "operator": "GreaterThan",
+            "values": [{ "value": "1000", "type": "Constant" }]
+          }
+        ],
+        "conjunctiveOperator": "And"
+      }
+    },
+    "_note": "conjunctiveOperator is required with 2+ criteria."
+  },
+  "d360_ml_model_setup_create": {
+    "request": {
+      "label": "Attrition Risk Predictor",
+      "description": "Predict whether an employee will leave the company.",
+      "modelType": "Predictive",
+      "modelCapability": "BinaryClassification",
+      "setupType": "EdcNoCode",
+      "outcomeDefinition": { "goal": "Minimize", "fieldNames": ["Attrition__c"] }
+    },
+    "_note": "outcomeDefinition is immutable after creation. goal is Minimize or Maximize; fieldNames lists the outcome field(s)."
+  },
+  "d360_ml_model_setup_update": {
+    "modelSetupIdOrName": "Attrition_Risk_Predictor",
+    "request": { "description": "Updated description for the attrition predictor." },
+    "_note": "Partial update. Settable fields: label, description, modelCapability, outcomeDefinition."
+  },
+  "d360_ml_setup_version_create": {
+    "modelSetupIdOrName": "Attrition_Risk_Predictor",
+    "request": {
+      "input": {
+        "type": "DataModelObject",
+        "source": { "name": "Attrition__dlm" },
+        "dataSpace": { "name": "default" }
+      },
+      "outcomes": [
+        {
+          "type": "Binary",
+          "name": "Attrition__c",
+          "label": "Attrition",
+          "goal": "Minimize",
+          "successValue": "Yes",
+          "failureValue": "No"
+        }
+      ],
+      "fields": [
+        {
+          "type": "Number",
+          "name": "Age__c",
+          "label": "Age",
+          "min": 18,
+          "max": 60,
+          "bucketingStrategy": { "type": "Percentile", "numberOfBuckets": 10 }
+        },
+        {
+          "type": "Number",
+          "name": "Monthly_Income__c",
+          "label": "Monthly Income",
+          "min": 1009,
+          "max": 19999,
+          "bucketingStrategy": { "type": "Percentile", "numberOfBuckets": 10 }
+        },
+        {
+          "type": "Number",
+          "name": "Years_At_Company__c",
+          "label": "Years At Company",
+          "min": 0,
+          "max": 40,
+          "bucketingStrategy": { "type": "Percentile", "numberOfBuckets": 10 }
+        },
+        {
+          "type": "Text",
+          "name": "Department__c",
+          "label": "Department",
+          "dataType": "Categorical",
+          "ordering": "Occurrence",
+          "includeOther": true,
+          "balanced": false,
+          "values": [
+            {
+              "name": "Research &amp; Development",
+              "label": "Research &amp; Development",
+              "count": 961,
+              "ignored": false
+            },
+            { "name": "Sales", "label": "Sales", "count": 446, "ignored": false },
+            { "name": "Human Resources", "label": "Human Resources", "count": 63, "ignored": false }
+          ]
+        },
+        {
+          "type": "Text",
+          "name": "Over_Time__c",
+          "label": "Over Time",
+          "dataType": "Categorical",
+          "ordering": "Occurrence",
+          "includeOther": true,
+          "balanced": false,
+          "values": [
+            { "name": "No", "label": "No", "count": 1054, "ignored": false },
+            { "name": "Yes", "label": "Yes", "count": 416, "ignored": false }
+          ]
+        }
+      ],
+      "fieldSelection": "Manual",
+      "sourceSetupVersionNumber": 0
+    },
+    "_note": "Pass each field configuration as returned by d360_ml_query_setup_fields."
+  },
+  "d360_ml_setup_version_update": {
+    "modelSetupIdOrName": "Attrition_Risk_Predictor",
+    "versionId": "14kSB0000005d8nYAA",
+    "status": "Training",
+    "_note": "Container can be referenced by api name (e.g. Attrition_Risk_Predictor) or id. versionId must always be an id. Get the id from d360_ml_setup_version_list or the response of d360_ml_setup_version_create."
+  },
+  "d360_p13n_transformer_create": {
+    "name": "promo_banner_transformer",
+    "label": "Promotional Banner Transformer",
+    "description": "Renders personalized promotional banners with dynamic content",
+    "channel": "WebApp",
+    "transformerType": "Handlebars",
+    "isEnabled": true,
+    "dataConnectors": ["my_website_connector"],
+    "dataSpace": "default",
+    "substitutionDefinitions": {
+      "bannerTitle": {
+        "label": "Banner Title",
+        "description": "Main heading text for the banner",
+        "configType": "SchemaPath",
+        "defaultValue": "{{recommendation.title}}",
+        "overridable": true,
+        "required": true
+      },
+      "bannerImage": {
+        "label": "Banner Image URL",
+        "description": "URL to the banner background image",
+        "configType": "SchemaPath",
+        "defaultValue": "{{recommendation.imageUrl}}",
+        "overridable": true,
+        "required": false
+      },
+      "ctaText": {
+        "label": "Call to Action Text",
+        "description": "Text for the CTA button",
+        "configType": "Static",
+        "defaultValue": "Shop Now",
+        "overridable": true,
+        "required": true
+      }
+    },
+    "transformerTypeDetails": {
+      "html": "<div class=\"promo-banner\" style=\"background-image: url('{{bannerImage}}');\"><h2>{{bannerTitle}}</h2><button class=\"cta-button\">{{ctaText}}</button></div>",
+      "disableAutoInjectionOfEngagementAttributes": false
+    },
+    "_note": "Substitution definitions are map-based: key = variable name, value = SubstitutionInputDetails. ConfigType values: SchemaPath (data from personalization point), Static (hardcoded value). TransformerType values: Handlebars (HTML template), HtmlElementModifier (DOM manipulation), AgentScript (script-based), Component (mobile component name)."
+  },
+  "d360_p13n_experience_config_create": {
+    "name": "homepage_hero_banner",
+    "label": "Homepage Hero Banner Personalization",
+    "description": "Shows personalized hero banner on homepage based on user preferences",
+    "isEnabled": true,
+    "dataProvider": {
+      "type": "PersonalizationPoint",
+      "referenceType": "ApiName",
+      "value": "hero_banner_recommendations",
+      "dataSpaceReferenceType": "ApiName",
+      "dataSpaceValue": "default",
+      "groupByType": "DataGraph",
+      "groupByReferenceType": "ApiName",
+      "groupByValue": "user_profile_graph"
+    },
+    "sourceMatchers": [
+      { "type": "PageUrlMatcher", "value": "/home" },
+      { "type": "ContentZone", "value": "hero_section" }
+    ],
+    "transformationConfig": {
+      "renderIfEmpty": false,
+      "when": "Immediately",
+      "method": "ReplaceContentZoneContent",
+      "engagementDestination": "banner_click_destination",
+      "transformations": [
+        {
+          "transformerName": "promo_banner_transformer",
+          "substitutions": {
+            "bannerTitle": "{{data.title}}",
+            "bannerImage": "{{data.image}}",
+            "ctaText": "Learn More"
+          }
+        }
+      ]
+    },
+    "displayUrl": "/home",
+    "_note": "Complete experience config structure. DataProvider links to a personalization point (recommendation engine output). SourceMatchers define where to apply (URL patterns, content zones). TransformationConfig defines rendering: 'when' values (Immediately, ExitIntent, ElementClick, ScrollPercent), 'method' values (ReplaceContentZoneContent, ReplaceElementContent, AddAfterElement, AddBeforeElement, AddOverlay, ContentZoneHandler). Transformations array applies one or more transformers with specific substitution values. Use disableRelatedExperiences=true query param to disable other experiences in same content zone."
+  },
+  "d360_p13n_mobile_preview_create": {
+    "dataConnectorId": "mobile_app_connector_123",
+    "experienceConfig": {
+      "name": "test_experience",
+      "label": "Test Experience",
+      "dataProvider": {
+        "type": "PersonalizationPoint",
+        "referenceType": "ApiName",
+        "value": "product_recs"
+      },
+      "sourceMatchers": [{ "type": "ContentZone", "value": "product_list" }],
+      "transformationConfig": {
+        "when": "Immediately",
+        "method": "ReplaceContentZoneContent",
+        "transformations": [{ "transformerName": "product_card_transformer" }]
+      }
+    },
+    "decisionRequestBody": {
+      "p": { "decisionId": "rec_decision_001", "cohortId": "cohort_A", "experimentId": "exp_123" },
+      "c": { "individualId": "ind_456", "anchorId": "anchor_789" }
+    },
+    "_note": "Generate mobile preview link for testing. Include either 'experienceConfig' or 'transformer' (not both). DecisionRequestBody provides test context: 'p' contains decision/cohort/experiment IDs for A/B testing, 'c' contains individual/anchor IDs for personalization. Response includes previewUrl (time-limited) and expiresAt timestamp."
+  },
+  "d360_p13n_experience_config_update": {
+    "isEnabled": false,
+    "description": "Updated description for the experience config",
+    "_note": "Partial update — only include fields to change. All fields are optional. Common updates: isEnabled (enable/disable), description, sourceMatchers, transformationConfig. Use disableRelatedExperiences=true query param to disable other experiences in same content zone."
+  },
+  "d360_p13n_transformer_update": {
+    "isEnabled": true,
+    "label": "Updated Banner Transformer",
+    "transformerTypeDetails": { "html": "<div class=\"updated-banner\">{{bannerTitle}}</div>" },
+    "_note": "Partial update — only include fields to change. All fields are optional. Note: Changing transformerType may require updating transformerTypeDetails to match the new type."
+  },
+  "d360_p13n_schema_create": {
+    "name": "product_recommendations_schema",
+    "label": "Product Recommendations Schema",
+    "description": "Schema for product recommendation content with custom attributes",
+    "dataSpaceName": "default",
+    "personalizationType": "Recommendations",
+    "attributes": [
+      {
+        "name": "recommendation_type",
+        "label": "Recommendation Type",
+        "defaultValue": "similar_items"
+      },
+      { "name": "priority_score", "label": "Priority Score" }
+    ],
+    "contentObject": {
+      "name": "Product__dll",
+      "fieldNames": ["name", "description", "price", "image_url", "category"]
+    },
+    "relatedContentObjects": [
+      {
+        "contentObjectName": "ProductReviews__dll",
+        "fieldNames": ["rating", "review_count"],
+        "relatedContentObjects": [
+          { "contentObjectName": "ReviewDetails__dll", "fieldNames": ["reviewer_name", "comment"] }
+        ]
+      }
+    ],
+    "_note": "Creates a personalization schema that defines content structure. personalizationType values: ExperienceVariation (A/B test variations), FlowPath (flow branches), ManualContent (manually curated), Recommendations (ML-driven). contentObject specifies the main DMO and its fields. attributes define custom variables for decisions. relatedContentObjects enable nested data access. Prerequisites: dataSpace and contentObject DMO must exist."
+  },
+  "d360_p13n_schema_update": {
+    "label": "Updated Product Recommendations",
+    "description": "Updated schema description",
+    "attributes": [
+      { "name": "new_attribute", "label": "New Attribute", "defaultValue": "default_value" }
+    ],
+    "_note": "Partial update — only include fields to change. All fields are optional. Can add new attributes, update contentObject fields, or modify relatedContentObjects. Changes affect existing personalization points using this schema."
+  },
+  "d360_p13n_point_create": {
+    "name": "home_page_experience",
+    "label": "Home Page Experience Point",
+    "description": "Personalization point for customizing home page experience based on user segment",
+    "dataSpaceName": "default",
+    "profileDataGraphName": "individual_profile",
+    "source": "PersonalizationApp",
+    "isAuthenticationRequired": true,
+    "schemaName": "product_recommendations_schema",
+    "maxItemsCount": 10,
+    "decisions": [
+      {
+        "name": "premium_decision",
+        "label": "Premium User Decision",
+        "description": "Decision for premium segment users",
+        "criteria": "{\"type\":\"Criteria\",\"operator\":\"AND\",\"filters\":[{\"type\":\"Filter\",\"operator\":\"EQUALS\",\"subject\":{\"fieldApiName\":\"Segment__c\",\"objectApiName\":\"Individual__dll\"},\"values\":[\"Premium\"]}]}",
+        "attributeValues": [
+          { "attributeName": "recommendation_type", "value": "premium_products" }
+        ],
+        "personalizerName": "premium_recommender",
+        "state": "Live"
+      },
+      {
+        "name": "default_decision",
+        "label": "Default Decision",
+        "description": "Fallback decision for all other users",
+        "criteria": "{\"type\":\"Criteria\",\"operator\":\"AND\",\"filters\":[]}",
+        "attributeValues": [{ "attributeName": "recommendation_type", "value": "popular_items" }],
+        "personalizerName": "default_recommender",
+        "state": "Live"
+      }
+    ],
+    "_note": "Creates a personalization point that determines which experience/content to show. source values: BlockBuilder (Email Builder blocks), ExperienceBuilder (Digital Experiences), FlowBuilder (Flow decisions), PersonalizationApp (Data Cloud P13N UI). schemaName references a custom schema; use schemaEnum for standard schemas (DecisionDefined, ExperienceVariation, FlowPath). decisions array defines prioritized rules with criteria (JSON filter syntax) and attributeValues for personalization variables. isAuthenticationRequired controls whether API calls require user authentication. Prerequisites: dataSpace, profileDataGraph, and schema must exist."
+  },
+  "d360_p13n_point_update": {
+    "name": "home_page_experience",
+    "label": "Updated Home Page Experience",
+    "description": "Updated personalization logic",
+    "dataSpaceName": "default",
+    "profileDataGraphName": "individual_profile",
+    "source": "PersonalizationApp",
+    "isAuthenticationRequired": false,
+    "schemaName": "product_recommendations_schema",
+    "maxItemsCount": 15,
+    "decisions": [
+      {
+        "name": "vip_decision",
+        "label": "VIP User Decision",
+        "description": "High-priority decision for VIP users",
+        "criteria": "{\"type\":\"Criteria\",\"operator\":\"AND\",\"filters\":[{\"type\":\"Filter\",\"operator\":\"EQUALS\",\"subject\":{\"fieldApiName\":\"VIPStatus__c\",\"objectApiName\":\"Individual__dll\"},\"values\":[\"Gold\"]}]}",
+        "attributeValues": [{ "attributeName": "recommendation_type", "value": "vip_exclusive" }],
+        "personalizerName": "vip_recommender",
+        "state": "Live"
+      },
+      {
+        "name": "default_decision",
+        "label": "Default Decision",
+        "criteria": "{\"type\":\"Criteria\",\"operator\":\"AND\",\"filters\":[]}",
+        "attributeValues": [],
+        "personalizerName": "default_recommender",
+        "state": "Live"
+      }
+    ],
+    "_note": "Full replacement (PUT) — must provide all required fields. Cannot change name after creation. Use to modify decision logic, update authentication requirements, change schema associations, or adjust maxItemsCount. Changes take effect immediately for runtime execution. Decision order matters: first matching criteria wins."
+  },
+  "d360_p13n_engagement_signals_list": {
+    "dataSpaceId": "default",
+    "dataGraphId": "user_profile_graph",
+    "_note": "Both parameters are required. dataSpaceId is the isolated workspace (use 'default' unless you have multiple spaces). dataGraphId is the profile or item data graph to query engagement signals for."
+  },
+  "d360_p13n_org_info_get": {
+    "_note": "No parameters required. Returns the Data Cloud Tenant Specific Endpoint (dcTse) for your organization. Use this first to confirm the correct Data Cloud endpoint before configuring personalization tools."
+  },
+  "d360_p13n_experience_config_list": {
+    "idOrAppSourceIdOrName": "my_website_connector",
+    "limit": 50,
+    "offset": 0,
+    "personalizationPointNameOrId": "hero_banner_point",
+    "transformerNameOrId": "promo_banner_transformer",
+    "dataSpaceIdOrName": "default",
+    "isWpmUrlRequired": false,
+    "_note": "Only idOrAppSourceIdOrName is required. Use personalizationPointNameOrId or transformerNameOrId to filter results. Set isWpmUrlRequired=true to get Web Personalization Manager edit URLs in the response."
+  },
+  "d360_p13n_experience_config_get": {
+    "idOrAppSourceIdOrName": "my_website_connector",
+    "nameParam": "homepage_hero_banner",
+    "isWpmUrlRequired": false,
+    "_note": "Both idOrAppSourceIdOrName (data connector) and nameParam (experience config name) are required. Set isWpmUrlRequired=true to include a Web Personalization Manager edit URL in the response."
+  },
+  "d360_p13n_experience_config_delete": {
+    "idOrAppSourceIdOrName": "my_website_connector",
+    "nameParam": "homepage_hero_banner",
+    "_note": "WARNING: Cannot be undone. Provide the data connector ID/name and the exact experience config name. This removes the personalization configuration and stops delivery to the application."
+  },
+  "d360_p13n_transformer_list": {
+    "limit": 50,
+    "offset": 0,
+    "source": "Organization",
+    "transformerCategory": "EmbeddedContent",
+    "channelType": "WebApp",
+    "transformerType": "Handlebars",
+    "isEnabled": true,
+    "connectorNameOrId": "my_website_connector",
+    "dataSpaceIdOrName": "default",
+    "isDataConnectorAttached": true,
+    "_note": "All parameters are optional. source values: Global, Organization (default). channelType values: MobileApp, WebApp. transformerType values: Handlebars, HtmlElementModifier, AgentScript, Component. transformerCategory values: EmbeddedContent, Agent. Set isDataConnectorAttached=false to find unattached transformers."
+  },
+  "d360_p13n_transformer_get": {
+    "idOrName": "promo_banner_transformer",
+    "_note": "Provide the transformer name or ID. Returns complete transformer including substitution definitions, type details, and associated data connectors."
+  },
+  "d360_p13n_transformer_delete": {
+    "idOrName": "promo_banner_transformer",
+    "_note": "WARNING: Cannot be undone. Breaking change — any experience configs referencing this transformer will stop working. Verify no active experiences are using this transformer before deleting."
+  },
+  "d360_p13n_schema_get": {
+    "idOrName": "product_recommendation_schema",
+    "_note": "Provide the schema name or ID. Returns complete schema including all attributes, content object configuration, and related content objects."
+  },
+  "d360_p13n_schema_delete": {
+    "idOrName": "product_recommendation_schema",
+    "_note": "WARNING: Cannot be undone. Any personalization points referencing this schema will break. Verify no active personalization points use this schema before deleting."
+  },
+  "d360_p13n_point_get": {
+    "idOrName": "hero_banner_point",
+    "_note": "Provide the personalization point name or ID. Returns complete point including all decisions with attribute values and criteria, schema configuration, authentication settings, and current sync status."
+  },
+  "d360_p13n_point_delete": {
+    "idOrName": "hero_banner_point",
+    "_note": "WARNING: Cannot be undone. Immediately stops personalization at this point. Any references from experiments or batch decisions will break. Verify no active usage before deleting."
   }
 }

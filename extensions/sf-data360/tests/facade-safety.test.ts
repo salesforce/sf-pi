@@ -99,6 +99,35 @@ describe("d360 facade confirmed-operation guard", () => {
     ).toEqual({ blocked: false });
   });
 
+  it("resolves read preflights for new ML and personalization destructive operations", () => {
+    expect(
+      resolveDestructivePreflightRequest("d360_prediction_job_def_delete", {
+        idOrName: "ExamplePrediction",
+      }),
+    ).toEqual({ path: "/ssot/machine-learning/prediction-job-definitions/ExamplePrediction" });
+    expect(
+      resolveDestructivePreflightRequest("d360_ml_configured_model_delete", {
+        idOrName: "ExampleConfiguredModel",
+      }),
+    ).toEqual({ path: "/ssot/machine-learning/configured-models/ExampleConfiguredModel" });
+    expect(
+      resolveDestructivePreflightRequest("d360_p13n_experience_config_delete", {
+        idOrAppSourceIdOrName: "ExampleConnector",
+        nameParam: "ExampleExperience",
+      }),
+    ).toEqual({
+      path: "/personalization/external-apps/ExampleConnector/personalization-experience-configs/ExampleExperience",
+    });
+    expect(
+      resolveDestructivePreflightRequest("d360_p13n_transformer_delete", {
+        idOrName: "ExampleTransformer",
+      }),
+    ).toEqual({
+      path: "/personalization/external-apps/transformer",
+      query: { idOrName: "ExampleTransformer" },
+    });
+  });
+
   it("resolves read preflights for destructive operations with clear GET counterparts", () => {
     expect(
       resolveDestructivePreflightRequest("d360_dmo_delete", { dmoName: "Example__dlm" }),

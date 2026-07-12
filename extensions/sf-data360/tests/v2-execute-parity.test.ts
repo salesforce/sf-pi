@@ -53,7 +53,7 @@ describe("Data 360 v2 execute parity across action kinds", () => {
     expect(result).toMatchObject({
       ok: true,
       action: "stream.list",
-      capability: "d360_data_streams_list",
+      capability: "d360_datastream_list",
     });
     expect(requestMock).toHaveBeenCalledWith(
       expect.objectContaining({ method: "GET", url: "/services/data/v67.0/ssot/data-streams" }),
@@ -81,6 +81,39 @@ describe("Data 360 v2 execute parity across action kinds", () => {
     );
   });
 
+  it("executes newly imported safe_post helper actions", async () => {
+    requestMock.mockResolvedValue({ fields: [] });
+
+    const result = await runData360V2Action(
+      {
+        tool: "data360_connect",
+        action: "connection.object_fields.describe",
+        target_org: "AgentforceSTDM",
+        params: {
+          connectionId: "example-connection-id",
+          resourceName: "CUSTOMER",
+          body: { advancedAttributes: '{"database":"EXAMPLE_DB"}' },
+        },
+      },
+      env,
+      ctx,
+      undefined,
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      action: "connection.object_fields.describe",
+      capability: "d360_connection_object_fields_describe",
+      safety: "safe_post",
+    });
+    expect(requestMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        method: "POST",
+        url: "/services/data/v67.0/ssot/connections/example-connection-id/objects/CUSTOMER/fields",
+      }),
+    );
+  });
+
   it("dry-runs representative confirmed REST actions", async () => {
     const result = await runData360V2Action(
       {
@@ -103,6 +136,57 @@ describe("Data 360 v2 execute parity across action kinds", () => {
       request: { method: "POST", path: "/services/data/v67.0/ssot/data-streams" },
     });
     expect(orgCreateMock).not.toHaveBeenCalled();
+  });
+
+  it("dry-runs newly imported ML and personalization actions", async () => {
+    await expect(
+      runData360V2Action(
+        {
+          tool: "data360_semantic",
+          action: "ml.prediction_job_def.create_regression",
+          target_org: "AgentforceSTDM",
+          dry_run: true,
+          params: { body: { name: "SfPiParity_Regression" } },
+        },
+        env,
+        ctx,
+        undefined,
+      ),
+    ).resolves.toMatchObject({
+      ok: true,
+      action: "ml.prediction_job_def.create_regression",
+      safety: "confirmed",
+      request: {
+        method: "POST",
+        path: "/services/data/v67.0/ssot/machine-learning/prediction-job-definitions",
+      },
+    });
+
+    await expect(
+      runData360V2Action(
+        {
+          tool: "data360_activate",
+          action: "personalization.experience_config.create",
+          target_org: "AgentforceSTDM",
+          dry_run: true,
+          params: {
+            idOrAppSourceIdOrName: "ExampleConnector",
+            body: { name: "SfPiParity_Experience" },
+          },
+        },
+        env,
+        ctx,
+        undefined,
+      ),
+    ).resolves.toMatchObject({
+      ok: true,
+      action: "personalization.experience_config.create",
+      safety: "confirmed",
+      request: {
+        method: "POST",
+        path: "/services/data/v67.0/personalization/external-apps/ExampleConnector/personalization-experience-configs",
+      },
+    });
   });
 
   it("dry-runs representative destructive REST actions", async () => {

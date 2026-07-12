@@ -35,6 +35,11 @@ describe("sf-data360 safety classifier", () => {
       "/ssot/connections/abc/schema/actions/test",
       "/ssot/segments/MySegment/actions/count",
       "/ssot/machine-learning/predict",
+      "/ssot/machine-learning/alerts",
+      "/ssot/machine-learning/query-setup-fields",
+      "/ssot/machine-learning/query-data-profile",
+      "/ssot/machine-learning/query-outcome",
+      "/ssot/machine-learning/query-row-count",
     ];
 
     for (const path of safePostPaths) {

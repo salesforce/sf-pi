@@ -82,6 +82,7 @@ function validatePhases(phaseEntries, familyEntries, operationEntries) {
     "segment",
     "act",
     "retrieve",
+    "semantic",
     "observe",
     "orchestrate",
   ];
@@ -228,7 +229,7 @@ ${renderPhaseMap(phases)}
 
 ## Upstream reference fallback
 
-If this generated reference and the local sf-data360 references are insufficient, inspect the public upstream Data 360 MCP server repository for reference material. Do not run or embed the upstream Java MCP server from this extension.
+If this generated reference and the local sf-data360 references are insufficient, inspect the public upstream Data 360 reference repository for operation and payload-shape metadata, then curate findings into Pi-native \`data360_*\` family actions.
 `;
 }
 

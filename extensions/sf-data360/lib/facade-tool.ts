@@ -634,6 +634,39 @@ export function resolveDestructivePreflightRequest(
       return {
         path: `/ssot/machine-learning/retrievers/${encodePathParam(params.retrieverIdOrName, "retrieverIdOrName")}/configurations/${encodePathParam(params.configurationIdOrName, "configurationIdOrName")}`,
       };
+    case "d360_prediction_job_def_delete":
+      return {
+        path: `/ssot/machine-learning/prediction-job-definitions/${encodePathParam(params.idOrName, "idOrName")}`,
+      };
+    case "d360_ml_model_artifact_delete":
+      return {
+        path: `/ssot/machine-learning/model-artifacts/${encodePathParam(params.idOrName, "idOrName")}`,
+      };
+    case "d360_ml_configured_model_delete":
+      return {
+        path: `/ssot/machine-learning/configured-models/${encodePathParam(params.idOrName, "idOrName")}`,
+      };
+    case "d360_ml_model_setup_delete":
+      return {
+        path: `/ssot/machine-learning/model-setups/${encodePathParam(params.idOrName, "idOrName")}`,
+      };
+    case "d360_p13n_experience_config_delete":
+      return {
+        path: `/personalization/external-apps/${encodePathParam(params.idOrAppSourceIdOrName, "idOrAppSourceIdOrName")}/personalization-experience-configs/${encodePathParam(params.nameParam, "nameParam")}`,
+      };
+    case "d360_p13n_transformer_delete":
+      return {
+        path: "/personalization/external-apps/transformer",
+        query: { idOrName: encodePathParam(params.idOrName, "idOrName") },
+      };
+    case "d360_p13n_schema_delete":
+      return {
+        path: `/personalization/personalization-schemas/${encodePathParam(params.idOrName, "idOrName")}`,
+      };
+    case "d360_p13n_point_delete":
+      return {
+        path: `/personalization/personalization-points/${encodePathParam(params.idOrName, "idOrName")}`,
+      };
     default:
       return undefined;
   }

@@ -11,6 +11,7 @@ const PHASE_REFERENCES = [
   "segment.md",
   "act.md",
   "retrieve.md",
+  "semantic.md",
   "observe.md",
   "orchestrate.md",
 ] as const;
