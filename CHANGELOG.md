@@ -529,6 +529,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.226.0](https://github.com/salesforce/sf-pi/compare/v0.225.1...v0.226.0) (2026-07-12)
+
+
+### Features
+
+* **sf-data360:** refresh upstream parity surface ([c18262b](https://github.com/salesforce/sf-pi/commit/c18262b3cb5c2d7891e3f68011645d2e4c9cf453))
+
 ## [0.225.1](https://github.com/salesforce/sf-pi/compare/v0.225.0...v0.225.1) (2026-07-12)
 
 
