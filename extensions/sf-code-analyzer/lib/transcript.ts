@@ -82,11 +82,13 @@ function transcriptNotice(
 
   const labels = parseLabelRows(content);
   const status = cardStatus(details?.status);
-  const targetCount = details?.targetCount ?? numberFromText(labels.get("targets"));
+  const targetLabel = labels.get("targets");
+  const engineLabel = labels.get("engines");
+  const targetCount = details?.targetCount ?? numberFromText(targetLabel);
   const violationCount = details?.violationCount ?? numberFromText(content);
   const reportFile = reportFromContent(content) ?? labels.get("report") ?? details?.reportFile;
   const duration = labels.get("duration") ?? formatMs(details?.durationMs);
-  const selectors = details?.selectors ?? (labels.get("engines") ? [labels.get("engines")!] : []);
+  const selectors = details?.selectors ?? (engineLabel ? [engineLabel] : []);
   const targetFiles = details?.targetFiles ?? targetFilesFromContent(content);
   const groups: SfPiNoticeCard["groups"] = [
     {
@@ -94,8 +96,8 @@ function transcriptNotice(
       rows: [
         { label: "Tool", value: labels.get("tool") ?? "Local Salesforce Code Analyzer CLI" },
         { label: "Engines", value: selectors.join(", ") || "Code Analyzer", tone: "info" },
-        ...(labels.get("targets")
-          ? [{ label: "Targets", value: labels.get("targets")! }]
+        ...(targetLabel
+          ? [{ label: "Targets", value: targetLabel }]
           : targetCount !== undefined
             ? [
                 {
@@ -179,8 +181,11 @@ function localAutoScanCard(
   const artifacts: SfPiArtifact[] = reportFile
     ? [{ label: "report", path: reportFile, kind: "json" }]
     : [];
+  const engineLabel = labels.get("engines");
+  const durationLabel = labels.get("duration");
+  const targetLabel = labels.get("targets");
   const chips: SfPiChip[] = [
-    ...(labels.get("engines") ? [{ label: labels.get("engines")!, tone: "info" as const }] : []),
+    ...(engineLabel ? [{ label: engineLabel, tone: "info" as const }] : []),
     ...(targetCount !== undefined
       ? [
           {
@@ -189,23 +194,21 @@ function localAutoScanCard(
           },
         ]
       : []),
-    ...(labels.get("duration") ? [{ label: labels.get("duration")!, tone: "muted" as const }] : []),
+    ...(durationLabel ? [{ label: durationLabel, tone: "muted" as const }] : []),
   ];
   const scope: SfPiFact[] = [
     { label: "tool", value: labels.get("tool") ?? "Local Salesforce Code Analyzer CLI" },
-    ...(labels.get("engines")
-      ? [{ label: "engines", value: labels.get("engines")!, tone: "info" as const }]
-      : []),
-    ...(labels.get("targets")
+    ...(engineLabel ? [{ label: "engines", value: engineLabel, tone: "info" as const }] : []),
+    ...(targetLabel
       ? [
           {
             label: "targets",
-            value: labels.get("targets")!,
+            value: targetLabel,
             tone: status === "running" ? ("info" as const) : ("muted" as const),
           },
         ]
       : []),
-    ...(labels.get("duration") ? [{ label: "duration", value: labels.get("duration")! }] : []),
+    ...(durationLabel ? [{ label: "duration", value: durationLabel }] : []),
   ];
   return {
     tool: { id: "sf-code-analyzer", label: "Code Analyzer", icon: "🧪" },
@@ -240,9 +243,11 @@ function apexGuruAutoInsightCard(
   details: CodeAnalyzerTranscriptDetails | undefined,
 ): SfPiResultCard {
   const reportFile = details?.reportFile ?? labels.get("report");
+  const targetLabel = labels.get("target");
+  const durationLabel = labels.get("duration");
   const chips: SfPiChip[] = [
-    ...(labels.get("target") ? [{ label: labels.get("target")!, tone: "info" as const }] : []),
-    ...(labels.get("duration") ? [{ label: labels.get("duration")!, tone: "muted" as const }] : []),
+    ...(targetLabel ? [{ label: targetLabel, tone: "info" as const }] : []),
+    ...(durationLabel ? [{ label: durationLabel, tone: "muted" as const }] : []),
   ];
   return {
     tool: { id: "sf-code-analyzer", label: "ApexGuru", icon: "✨" },
@@ -343,14 +348,14 @@ function parseLabelRows(content: string): Map<string, string> {
   const labels = new Map<string, string>();
   for (const line of content.split(/\r?\n/)) {
     const groupedMatch = line.match(/^\s*(?:│\s*)?([A-Za-z][A-Za-z ]+?)\s{2,}(.*)$/u);
-    if (groupedMatch) {
-      labels.set(groupedMatch[1]!.trim().toLowerCase(), groupedMatch[2]!.trim());
+    if (groupedMatch?.[1] !== undefined && groupedMatch[2] !== undefined) {
+      labels.set(groupedMatch[1].trim().toLowerCase(), groupedMatch[2].trim());
       continue;
     }
 
     const colonMatch = line.match(/^\s*(?:[│├╰]\s*)?([A-Za-z][A-Za-z ]+):\s*(.*)$/u);
-    if (!colonMatch) continue;
-    labels.set(colonMatch[1]!.trim().toLowerCase(), colonMatch[2]!.trim());
+    if (colonMatch?.[1] === undefined || colonMatch[2] === undefined) continue;
+    labels.set(colonMatch[1].trim().toLowerCase(), colonMatch[2].trim());
   }
   return labels;
 }
