@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.224.1-2026-07-09",
-  "latestVersion": "0.224.1",
+  "revision": "release-0.225.0-2026-07-12",
+  "latestVersion": "0.225.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.224.1",
+      "id": "release-0.225.0",
       "kind": "update",
-      "title": "sf-pi v0.224.1 — sf-llm-gateway: prefer v2 user usage lookup, closes #478",
-      "publishedAt": "2026-07-09T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.224.1",
+      "title": "sf-pi v0.225.0 — adopt pi 0.80.6 runtime delegation",
+      "publishedAt": "2026-07-12T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.225.0",
       "severity": "info",
-      "body": "sf-llm-gateway: prefer v2 user usage lookup, closes #478"
+      "body": "adopt pi 0.80.6 runtime delegation — remove code analyzer lint warnings"
     },
     {
       "id": "pi-0.73-required",
