@@ -24,12 +24,12 @@ transcript row and the permanent sf-devbar top-bar LSP segment.
 
 ## TUI Surfaces
 
-| Surface                 | What it shows                                                                                                                                                                           | Pi primitive                                                                      |
-| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| Working indicator       | `⠋ LSP Apex…` spinner while diagnostics are being fetched (≤6s)                                                                                                                         | `ctx.ui.setWorkingIndicator`                                                      |
-| **Top-bar LSP segment** | Permanent right-aligned `LSP[Apex: ✓ \| LWC: ◐ \| AgentScript: ●]` inside sf-devbar. The `LSP[…]` wrapper disambiguates the dots from "feature enabled" indicators; glyph legend below. | `lib/common/sf-lsp-health` shared registry → sf-devbar top-bar widget             |
-| Inline transcript row   | `[sf-lsp] Apex · Foo.cls · clean · 312ms` — user-only, **never** reaches the LLM                                                                                                        | `pi.sendMessage({customType:"sf-lsp", display:true})` + `registerMessageRenderer` |
-| Rich `/sf-lsp` panel    | Doctor + recent activity ring + actions (refresh, verbose toggle, shut down servers)                                                                                                    | `ctx.ui.custom` overlay with `DynamicBorder` + `SelectList`                       |
+| Surface                 | What it shows                                                                                                                                                                           | Pi primitive                                                          |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| Working indicator       | `⠋ LSP Apex…` spinner while diagnostics are being fetched (≤6s)                                                                                                                         | `ctx.ui.setWorkingIndicator`                                          |
+| **Top-bar LSP segment** | Permanent right-aligned `LSP[Apex: ✓ \| LWC: ◐ \| AgentScript: ●]` inside sf-devbar. The `LSP[…]` wrapper disambiguates the dots from "feature enabled" indicators; glyph legend below. | `lib/common/sf-lsp-health` shared registry → sf-devbar top-bar widget |
+| Inline transcript row   | `[sf-lsp] Apex · Foo.cls · clean · 312ms` — user-only, **never** reaches the LLM                                                                                                        | `pi.appendEntry("sf-lsp", data)` + `registerEntryRenderer`            |
+| Rich `/sf-lsp` panel    | Doctor + recent activity ring + actions (refresh, verbose toggle, shut down servers)                                                                                                    | `ctx.ui.custom` overlay with `DynamicBorder` + `SelectList`           |
 
 **Agent Script note:** when the `sf-agentscript` extension is loaded,
 sf-lsp yields `.agent` files to it. That extension handles the same diagnostic
@@ -143,8 +143,8 @@ verbosity; diagnostic feedback sent to the agent is unchanged.
 | ------------------------- | ------------------------------------------------ | ---------------------------------------------------------------------- |
 | Working indicator         | check started / finished                         | Push `⠋ LSP <Lang>…` / restore default                                 |
 | sf-devbar top-bar LSP     | session_start doctor probe / `/sf-lsp doctor`    | Green dot for available language, red for unavailable, dim for unknown |
-| Transcript row (balanced) | error, error→clean transition, first unavailable | Emit one `sf-lsp` custom message                                       |
-| Transcript row (verbose)  | every check                                      | Emit one `sf-lsp` custom message                                       |
+| Transcript row (balanced) | error, error→clean transition, first unavailable | Emit one `sf-lsp` custom entry                                         |
+| Transcript row (verbose)  | every check                                      | Emit one `sf-lsp` custom entry                                         |
 | `/sf-lsp`                 | no args                                          | Open SF LSP in the SF Pi Manager                                       |
 | `/sf-lsp doctor`          | —                                                | `ui.notify` with availability report                                   |
 

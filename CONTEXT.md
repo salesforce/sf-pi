@@ -4,6 +4,50 @@ SF Pi is the bundled Salesforce-focused extension suite for pi. It gives agents 
 
 ## Language
 
+**Pi Runtime Floor**:
+The minimum Pi Runtime version that SF Pi intentionally supports for loaded bundled extensions. It is a product support boundary, not a per-feature compatibility shim.
+_Avoid_: soft minimum, optional runtime, best-effort compatibility version
+
+**Runtime Floor Adoption Slice**:
+A narrow SF Pi change that raises the **Pi Runtime Floor** and updates package metadata, runtime checks, documentation, tests, and the **Pi Runtime Adoption Ledger** together. It should not bundle unrelated product behavior into the same change.
+_Avoid_: release-note migration, compatibility patch, opportunistic upgrade
+
+**Human-Only Transcript Row**:
+An SF Pi status or evidence row shown to the human during a session without becoming agent context. It is for awareness and auditability, not agent steering.
+_Avoid_: custom message, hidden prompt, diagnostic injection, model feedback row
+
+**Agent-Settled Quality Gate**:
+A post-agent SF Pi check that runs only after Pi has no automatic retry, compaction retry, or queued follow-up left. It is for workflow completion evidence, not per-run streaming feedback.
+_Avoid_: agent_end hook, background scan, immediate lint pass, always-on watcher
+
+**Gateway Thinking Capability**:
+A model-specific SF LLM Gateway fact that says which Pi thinking levels a gateway model can safely expose. It must be proven by preset metadata, gateway discovery, or live behavior evidence before SF Pi offers the level to users.
+_Avoid_: global thinking level, default reasoning level, universal max support, silent remap
+
+**Gateway Spend Authority**:
+The SF LLM Gateway source that SF Pi treats as authoritative for gateway usage and cost presentation. Pi model pricing metadata can supplement it only when gateway-provided pricing data is explicit and trustworthy.
+_Avoid_: local pricing estimate, synthesized tier pricing, direct-provider cost copy, billing truth from presets
+
+**Native Resource Delegation**:
+The SF Pi practice of letting Pi own generic global and project-local resource mechanics while SF Pi keeps curated Salesforce workflow guidance. It is a deprecation path for duplicate mechanics, not a reason to remove Salesforce-specific UX.
+_Avoid_: custom project config, duplicate package manager, raw Pi config replacement, safety weakening
+
+**Gateway Header Proof Spike**:
+A narrow behavior test and implementation spike that proves Pi's provider-header hook can preserve SF LLM Gateway routing, model defaults, beta headers, and secret redaction. If it proves simpler and equivalent, SF Pi should replace the older header path promptly instead of keeping both.
+_Avoid_: speculative header rewrite, dual header system, silent beta migration, provider re-registration workaround
+
+**Model Resolution Delegation**:
+The SF Pi practice of using Pi's native model and scoped-model resolution when behavior parity is proven for SF LLM Gateway. It is allowed to be a riskier simplification slice, but only when tests prove gateway defaults, discovered models, diagnostics, and thinking shorthand still work.
+_Avoid_: custom model parser, gateway-only selector, untested resolver swap, duplicate model resolution
+
+**Runtime Delegation Program**:
+A coordinated SF Pi effort to delete duplicate runtime mechanics when Pi provides a proven native extension surface. It should produce simpler SF Pi code and behavior tests, not broad new product features.
+_Avoid_: feature expansion, compatibility layer, local runtime framework, release-note implementation project
+
+**Behavior Proof**:
+A test or verified workflow that exercises an SF Pi capability through the same public seam an agent or human uses. It should prove the observable contract before risky runtime delegation or deletion lands.
+_Avoid_: compile-only check, private helper assertion, implementation-detail test, hopeful migration
+
 **Docs Query Distillation**:
 The SF Docs behavior of turning locator-like documentation input, such as a Salesforce Help article URL or article ID, into compact meaningful search language before documentation lookup. It keeps the user's intent anchored to official documentation while avoiding brittle literal URL search when the locator already contains better search terms.
 _Avoid_: URL canonicalization system, docs crawler, local documentation index, cached search corpus

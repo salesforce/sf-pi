@@ -12,7 +12,7 @@
  *   -----------------------|----------------------------------------|--------------------
  *   Working indicator      | ctx.ui.setWorkingIndicator             | streaming window
  *   Top-bar LSP segment    | sf-lsp-health registry -> sf-devbar    | permanent
- *   Transcript row         | pi.sendMessage + registerMessageRenderer| per event
+ *   Transcript row         | pi.appendEntry + registerEntryRenderer  | per event
  *   Rich /sf-lsp panel     | ctx.ui.custom overlay + SelectList     | on-demand
  *
  * Earlier revisions shipped a separate HUD overlay; it was removed in
@@ -124,11 +124,8 @@ export default function sfLspExtension(pi: ExtensionAPI) {
   let uiSettings: SfLspUiSettings = { verbose: false };
   const unavailableSeenByLanguage = new Set<SupportedLanguage>();
 
-  // --- Register transcript message renderer -------------------------------------------------
-  pi.registerMessageRenderer<LspTranscriptDetails>(
-    LSP_TRANSCRIPT_CUSTOM_TYPE,
-    createTranscriptRenderer(),
-  );
+  // --- Register human-only transcript entry renderer ----------------------------------------
+  pi.registerEntryRenderer(LSP_TRANSCRIPT_CUSTOM_TYPE, createTranscriptRenderer());
 
   // --- Core hooks -----------------------------------------------------------------------------
   registerMainCommand(pi);

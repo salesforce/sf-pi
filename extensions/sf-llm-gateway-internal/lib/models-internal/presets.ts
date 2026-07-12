@@ -28,13 +28,21 @@ const DEFAULT_ANTHROPIC_BETA_HEADERS = [
 ] as const;
 
 /**
- * Opus 4.7+ thinking-level map. Pi's user-facing `xhigh` selector maps to
- * Anthropic's native `max` effort tier on the wire. The gateway now accepts
- * `{low, medium, high, max}` for all Opus 4.7+ models (verified via live
- * probes May 2026). Previous restriction to `high` only has been lifted.
+ * Opus 4.7+ thinking-level map. Pi's user-facing `xhigh` and `max`
+ * selectors both map to Anthropic's native `max` effort tier on the wire.
+ * The gateway accepts `{low, medium, high, max}` for Opus 4.7+ models
+ * (verified via live probes May 2026). Previous restriction to `high` only
+ * has been lifted.
  */
 const OPUS_47_THINKING_LEVEL_MAP: ProviderModelConfig["thinkingLevelMap"] = {
   xhigh: "max",
+  max: "max",
+};
+
+/** Live-proven on 2026-07-12 for Opus 4.6 and Sonnet 4.6/5. */
+const CLAUDE_MAX_THINKING_LEVEL_MAP: ProviderModelConfig["thinkingLevelMap"] = {
+  xhigh: "max",
+  max: "max",
 };
 
 /**
@@ -124,6 +132,7 @@ export const MODEL_PRESETS: Record<string, Omit<GatewayModelDefinition, "id">> =
     contextWindow: 1_000_000,
     maxTokens: 128_000,
     betaHeaders: [...DEFAULT_ANTHROPIC_BETA_HEADERS],
+    thinkingLevelMap: CLAUDE_MAX_THINKING_LEVEL_MAP,
   },
   "us.anthropic.claude-opus-4-6-v1": {
     family: "anthropic",
@@ -133,6 +142,7 @@ export const MODEL_PRESETS: Record<string, Omit<GatewayModelDefinition, "id">> =
     contextWindow: 1_000_000,
     maxTokens: 128_000,
     betaHeaders: [...DEFAULT_ANTHROPIC_BETA_HEADERS],
+    thinkingLevelMap: CLAUDE_MAX_THINKING_LEVEL_MAP,
   },
   [FALLBACK_MODEL_ID]: {
     family: "anthropic",
@@ -142,6 +152,7 @@ export const MODEL_PRESETS: Record<string, Omit<GatewayModelDefinition, "id">> =
     contextWindow: 200_000,
     maxTokens: 64_000,
     betaHeaders: [INTERLEAVED_THINKING_BETA],
+    thinkingLevelMap: CLAUDE_MAX_THINKING_LEVEL_MAP,
   },
   "claude-opus-4-5-20251101": {
     family: "anthropic",
@@ -187,7 +198,7 @@ export const MODEL_PRESETS: Record<string, Omit<GatewayModelDefinition, "id">> =
     contextWindow: 200_000,
     maxTokens: 64_000,
     betaHeaders: [],
-    thinkingLevelMap: OPUS_47_THINKING_LEVEL_MAP,
+    thinkingLevelMap: CLAUDE_MAX_THINKING_LEVEL_MAP,
   },
   "claude-haiku-4-5-20251001": {
     family: "anthropic",

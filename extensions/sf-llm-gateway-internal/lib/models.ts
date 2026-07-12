@@ -132,18 +132,20 @@ const CODEX_OPENAI_COMPAT: ProviderModelConfig["compat"] = {
  *
  * Moved from `compat.reasoningEffortMap` to model-level `thinkingLevelMap`
  * for pi >= 0.72 (pi-mono #3208). LiteLLM's Codex path only accepts
- * low/medium/high, so we collapse the two pi levels the gateway rejects
- * (`minimal` and `xhigh`) onto the nearest supported value. Every level is a
- * string (not null) because we still want all five pi levels to appear in
- * the selector and cycle — they just all resolve to one of three gateway
- * values.
+ * low/medium/high, so we collapse the older pi levels the gateway rejects
+ * (`minimal` and `xhigh`) onto the nearest supported value. Every mapped
+ * level is a string (not null) because we still want those selector levels
+ * to appear and cycle — they just all resolve to one of three gateway
+ * values. Live probe on 2026-07-12 proved Codex accepts `max`, so `xhigh`
+ * and `max` map to the gateway's strongest supported tier.
  */
 const CODEX_THINKING_LEVEL_MAP: ProviderModelConfig["thinkingLevelMap"] = {
   minimal: "low",
   low: "low",
   medium: "medium",
   high: "high",
-  xhigh: "high",
+  xhigh: "max",
+  max: "max",
 };
 
 // Opus 4.7 thinking-level map lives in `./models-internal/presets.ts` next
@@ -169,9 +171,10 @@ export type GatewayModelDefinition = {
    * Optional thinking-level map forwarded to the registered pi model.
    *
    * Use cases:
-   *  - Expose `xhigh` on a reasoning model that supports it (pi hides
-   *    `xhigh` unless an explicit mapping is present; see `getSupportedThinkingLevels`
-   *    in pi-ai which uses `mapped !== undefined` as the opt-in check).
+   *  - Expose `xhigh` or `max` on a reasoning model that supports it (pi hides
+   *    advanced levels unless an explicit mapping is present; see
+   *    `getSupportedThinkingLevels` in pi-ai which uses `mapped !== undefined`
+   *    as the opt-in check).
    *  - Collapse unsupported levels onto a gateway-accepted value with a
    *    string mapping, or hide/skip them entirely with `null`.
    *
@@ -263,22 +266,22 @@ export function shouldForceAdaptiveThinking(modelId: string): boolean {
 }
 
 /**
- * Clamp pi's 5-level thinking scale to the 3-level window that works on
- * `POST /responses` for gpt-5.5. The boundary values (`minimal`, `xhigh`)
- * are rejected by either LiteLLM's Pydantic validator (`xhigh`) or the
- * upstream OpenAI Responses API (`minimal`), so neither end of pi's scale
- * is reachable on this path. Evidence is recorded in the local PLAN doc.
+ * Map pi's thinking scale to the live-proven GPT-5.5 Responses window.
+ * Live probe on 2026-07-12 showed this route rejects wire `max` but accepts
+ * wire `xhigh`, so Pi's `max` and `xhigh` both map to `xhigh`. `minimal`
+ * still clamps upward because the upstream Responses API rejects it here.
  */
 export const GPT55_RESPONSES_THINKING_LEVEL_MAP: ProviderModelConfig["thinkingLevelMap"] = {
   minimal: "low",
   low: "low",
   medium: "medium",
   high: "high",
-  xhigh: "high",
+  xhigh: "xhigh",
+  max: "xhigh",
 };
 
 /**
- * Clamp pi's 5-level thinking scale for gpt-5 / gpt-5-mini on the Responses
+ * Clamp pi's thinking scale for gpt-5 / gpt-5-mini on the Responses
  * API. Upstream OpenAI supports `minimal | low | medium | high` here but
  * rejects `xhigh` (verified live) — so pi's `xhigh` must clamp to `high`.
  * `minimal` passes straight through, unlike gpt-5.5 which requires clamping
@@ -424,9 +427,8 @@ export function toProviderModelConfig(
       contextWindow: def.contextWindow,
       maxTokens: def.maxTokens,
       ...(mergedBetas.length > 0 ? { headers: { "anthropic-beta": mergedBetas.join(",") } } : {}),
-      // Forward Opus 4.7's xhigh opt-in so pi's `/thinking` selector
-      // actually exposes the level that the DEFAULT_THINKING_LEVEL
-      // constant wants to ride on.
+      // Forward model-specific thinking opt-ins so Pi's `/thinking`
+      // selector exposes only gateway-proven levels.
       ...(def.thinkingLevelMap ? { thinkingLevelMap: def.thinkingLevelMap } : {}),
       ...(Object.keys(compat).length > 0 ? { compat } : {}),
     };

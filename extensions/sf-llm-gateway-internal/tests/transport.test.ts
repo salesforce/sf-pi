@@ -10,7 +10,7 @@
  *   GPT-5 + reasoning_effort without allow-list returns 400 | "allow-lists reasoning_effort on GPT-5"
  *   Codex without reasoning_effort returns 400              | "defaults missing values to high"
  *   Codex with nested tool shape returns 400                | "flattens Chat Completions..."
- *   Codex with minimal/xhigh is rejected                    | "clamps minimal and xhigh"
+ *   Codex with minimal/xhigh is normalized                  | "clamps minimal and maps advanced levels"
  *   Opus 4.7 accepts adaptive + effort + max_tokens          | live transport regression tests
  *   Opus 4.7 rejects max_tokens > 128000                     | "OPUS_47_MODEL_MAX_TOKENS is exactly 128000"
  *   Opus 4.7 + max_tokens:128000 + effort:max intermittently | default max_tokens lowered to OPUS_47_DEFAULT_MAX_TOKENS
@@ -105,11 +105,12 @@ describe("normalizeCodexReasoningEffort", () => {
     expect(normalizeCodexReasoningEffort(null)).toBe("high");
   });
 
-  it("clamps minimal and xhigh to gateway-safe values", () => {
-    // Live gateway: reasoning.effort must be one of minimal|low|medium|high
-    // and LiteLLM's Codex path specifically rejects 'minimal' and 'xhigh'.
+  it("clamps minimal and maps advanced levels to gateway-safe values", () => {
+    // Live gateway probe on 2026-07-12: Codex accepts reasoning_effort=max.
+    // Keep minimal clamped upward, and map xhigh to max for compatibility.
     expect(normalizeCodexReasoningEffort("minimal")).toBe("low");
-    expect(normalizeCodexReasoningEffort("xhigh")).toBe("high");
+    expect(normalizeCodexReasoningEffort("xhigh")).toBe("max");
+    expect(normalizeCodexReasoningEffort("max")).toBe("max");
   });
 
   it("passes through low/medium/high unchanged", () => {

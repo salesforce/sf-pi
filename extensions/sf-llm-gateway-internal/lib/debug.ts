@@ -40,7 +40,7 @@ export interface TransformProbe {
   /** Model to probe. Must be a string the gateway knows about. */
   model: string;
   /** Thinking level to request (mapped to reasoning_effort for OpenAI-family). */
-  reasoning?: "minimal" | "low" | "medium" | "high" | "xhigh";
+  reasoning?: "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
   /** Set true to also include a sample function tool. */
   withTool?: boolean;
   /** Claude-only adaptive thinking toggle. */
@@ -82,11 +82,13 @@ export function buildProbeBody(probe: TransformProbe): Record<string, unknown> {
     const isGpt55 = /(^|\/)gpt-5\.5(?!\d)/.test(probe.model.toLowerCase());
     if (probe.reasoning && !isGpt55) {
       body.reasoning_effort =
-        probe.reasoning === "xhigh" || probe.reasoning === "high"
-          ? "high"
-          : probe.reasoning === "medium"
-            ? "medium"
-            : "low";
+        probe.reasoning === "max"
+          ? "max"
+          : probe.reasoning === "xhigh" || probe.reasoning === "high"
+            ? "high"
+            : probe.reasoning === "medium"
+              ? "medium"
+              : "low";
       body.allowed_openai_params = ["reasoning_effort"];
     }
   }

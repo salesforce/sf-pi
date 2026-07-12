@@ -29,7 +29,7 @@ Extension loads
        ├─ schedule deferred readiness-cache refresh
        └─ collect changed write/edit targets for post-agent scans
 
-agent_end
+agent_settled
   ├─ if changed supported files exist and cached readiness is ready
   ├─ run one bounded local Code Analyzer scan
   ├─ emit human-visible transcript row
@@ -53,8 +53,9 @@ code_analyzer action='run'
   truth for rule and engine configuration. See ADR 0025.
 - **Default-enabled, readiness-gated** — setup recommendations are cache-first;
   scans run only when prerequisites are ready. See ADR 0024.
-- **Deferred quality pass** — automatic local scans wait until the agent finishes
-  an edit response. See ADR 0021.
+- **Deferred quality pass** — automatic local scans wait until Pi reports the
+  agent has settled after any automatic retry, compaction retry, or queued
+  follow-up. See ADR 0021.
 - **ApexGuru boundary** — explicit ApexGuru is available now; automatic ApexGuru
   is cache-first and default-on when cached availability is enabled. When ApexGuru
   is unavailable, SF Pi suggests checking Setup with SF Browser but does not
@@ -66,7 +67,7 @@ code_analyzer action='run'
 
 `sf-code-analyzer` watches successful pi `write` and `edit` tool results for
 supported files. It does **not** watch arbitrary editor saves or shell-created
-files. After the agent finishes its current response, the extension runs a
+files. After Pi reports the agent has settled, the extension runs a
 readiness-gated deferred scan for changed files:
 
 | Changed file type                     | Automatic selector   |

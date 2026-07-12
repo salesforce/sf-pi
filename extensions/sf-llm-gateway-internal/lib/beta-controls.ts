@@ -18,12 +18,13 @@
  */
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import { BETAS_ENV, COMMAND_NAME, LEGACY_BETAS_ENV, readGatewayEnv } from "./config.ts";
-import { discoverAndRegister } from "./discovery.ts";
 import {
   DEFAULT_ANTHROPIC_BETA_HEADERS,
   KNOWN_BETAS,
+  isAnthropicModelId,
   isDefaultAnthropicBeta,
   normalizeBetaValue,
+  toProviderModelConfig,
 } from "./models.ts";
 
 export interface BetaRuntimeState {
@@ -89,6 +90,27 @@ function getCustomInjectedBetas(): string[] {
 }
 
 /**
+ * Apply the current runtime beta state to one outgoing provider request.
+ *
+ * Provider registration may carry stale model headers when the user toggles
+ * `/sf-llm-gateway beta ...` during a session. Pi's before_provider_headers
+ * hook is the request-time source of truth: compute the beta header for the
+ * active model and either replace or delete the assembled `anthropic-beta`
+ * header. Non-Anthropic gateway models are left untouched.
+ */
+export function applyRuntimeBetaHeader(
+  headers: Record<string, string | null | undefined>,
+  modelId: string | undefined,
+  state: BetaRuntimeState = current,
+): boolean {
+  if (!modelId || !isAnthropicModelId(modelId)) return false;
+  const config = toProviderModelConfig(modelId, state.defaultBetas, state.extraBetas);
+  const betaHeader = config.headers?.["anthropic-beta"];
+  headers["anthropic-beta"] = betaHeader && betaHeader.trim() ? betaHeader : null;
+  return true;
+}
+
+/**
  * Handle `/sf-llm-gateway beta [args…]`.
  *
  * `emitOutput` is passed in so we reuse the shared notify/sendMessage
@@ -127,8 +149,9 @@ export async function handleBetaCommand(
   }
 
   if (args[0]?.toLowerCase() === "reset") {
+    void pi;
+    void ctx;
     current = initBetaStateFromEnv();
-    await discoverAndRegister(pi, current.defaultBetas, current.extraBetas, ctx.cwd);
     await emitOutput(
       "Beta overrides reset.",
       readGatewayEnv(BETAS_ENV, LEGACY_BETAS_ENV) === undefined
@@ -174,7 +197,8 @@ export async function handleBetaCommand(
     else current.extraBetas.delete(normalized);
   }
 
-  await discoverAndRegister(pi, current.defaultBetas, current.extraBetas, ctx.cwd);
+  void pi;
+  void ctx;
 
   const alias = KNOWN_BETAS.find((beta) => beta.value === normalized)?.aliases[0] ?? normalized;
   const detail = isDefaultBeta

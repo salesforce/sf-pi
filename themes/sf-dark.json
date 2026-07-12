@@ -74,6 +74,7 @@
     "thinkingMedium": "#81a2be",
     "thinkingHigh": "#8abeb7",
     "thinkingXhigh": "#00d7ff",
+    "thinkingMax": "#00ffff",
 
     "bashMode": "green"
   },

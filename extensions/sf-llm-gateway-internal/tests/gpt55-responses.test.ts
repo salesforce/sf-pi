@@ -57,16 +57,17 @@ describe("gpt-5.5 model registration", () => {
     expect(cfg.thinkingLevelMap).toEqual(GPT55_RESPONSES_THINKING_LEVEL_MAP);
   });
 
-  it("clamps every pi thinking level to low|medium|high", () => {
+  it("maps Pi max to the live-proven GPT-5.5 xhigh effort", () => {
     const map = GPT55_RESPONSES_THINKING_LEVEL_MAP!;
-    // Overlap between LiteLLM's Pydantic validator (minimal|low|medium|high)
-    // and upstream OpenAI Responses (none|low|medium|high|xhigh) is
-    // low|medium|high. Both ends of pi's scale clamp inward.
+    // Live probe on 2026-07-12: gpt-5.5 rejects `max` but accepts `xhigh`
+    // on the Responses route. Pi's user-facing max therefore maps to the
+    // strongest wire value this gateway route accepts.
     expect(map.minimal).toBe("low");
     expect(map.low).toBe("low");
     expect(map.medium).toBe("medium");
     expect(map.high).toBe("high");
-    expect(map.xhigh).toBe("high");
+    expect(map.xhigh).toBe("xhigh");
+    expect(map.max).toBe("xhigh");
   });
 
   it("also tags gpt-5, gpt-5-mini, and versioned non-Bedrock IDs with the native clamp", () => {

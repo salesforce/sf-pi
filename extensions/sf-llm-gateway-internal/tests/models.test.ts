@@ -421,7 +421,7 @@ describe("toProviderModelConfig", () => {
     // preset rounds the context window to 1M so the selector math is clean.
     // Phase 3: the model is tagged `openai-responses` internally so the
     // dispatcher in lib/discovery.ts routes it through `POST /responses`.
-    // `thinkingLevelMap` clamps pi's 5-level scale to the {low, medium,
+    // `thinkingLevelMap` clamps pi's thinking scale to the {low, medium,
     // high} window — the only values that both LiteLLM's Pydantic validator
     // and upstream OpenAI accept on the Responses path for this model.
     const cfg = toProviderModelConfig("gpt-5.5", null, new Set());
@@ -434,7 +434,8 @@ describe("toProviderModelConfig", () => {
       low: "low",
       medium: "medium",
       high: "high",
-      xhigh: "high",
+      xhigh: "xhigh",
+      max: "xhigh",
     });
   });
 
@@ -489,35 +490,50 @@ describe("toProviderModelConfig", () => {
     // Migrated from compat.reasoningEffortMap to model-level
     // thinkingLevelMap in pi >= 0.72 (pi-mono #3208).
     expect(config.thinkingLevelMap?.minimal).toBe("low");
-    expect(config.thinkingLevelMap?.xhigh).toBe("high");
+    expect(config.thinkingLevelMap?.xhigh).toBe("max");
     expect(config.thinkingLevelMap?.high).toBe("high");
+    expect(config.thinkingLevelMap?.max).toBe("max");
   });
 
-  it("opts Opus 4.7+ into the pi xhigh thinking level via thinkingLevelMap (mapped to max)", () => {
-    // pi 0.72 hides `xhigh` from the /thinking selector unless the model's
-    // thinkingLevelMap.xhigh is explicitly set. The gateway now accepts
-    // `max` for Opus 4.7+ (verified May 2026). Pi's user-facing `xhigh`
-    // maps to Anthropic's native `max` effort tier.
+  it("opts live-proven max-capable gateway models into max via thinkingLevelMap", () => {
+    // Live probes on 2026-07-12 verified these gateway routes accept max.
+    // Pi hides advanced thinking levels from the /thinking selector unless
+    // the model's thinkingLevelMap explicitly opts into them, so both Pi's
+    // `xhigh` and `max` selectors map to each model's native max tier.
     for (const id of [
+      "claude-opus-4-8",
       "claude-opus-4-7",
       "claude-opus-4-7-v1",
       "claude-opus-4-7-20250416",
       "us.anthropic.claude-opus-4-7-v1",
-      "claude-opus-4-8",
+      "claude-opus-4-6-v1",
+      "claude-sonnet-4-6",
+      "claude-sonnet-5",
+      "gpt-5.3-codex",
     ]) {
       const config = toProviderModelConfig(id, null, new Set());
       expect(config.thinkingLevelMap?.xhigh, `${id} should opt into xhigh→max`).toBe("max");
-      expect(config.compat, `${id} should use Pi-native adaptive thinking`).toMatchObject({
-        forceAdaptiveThinking: true,
-      });
+      expect(config.thinkingLevelMap?.max, `${id} should opt into max→max`).toBe("max");
+      if (id.includes("codex")) {
+        expect(gatewayCompat(config)?.supportsReasoningEffort).toBe(true);
+      } else {
+        expect(config.compat, `${id} should use Pi-native adaptive thinking`).toMatchObject({
+          forceAdaptiveThinking: true,
+        });
+      }
     }
   });
 
-  it("uses Pi-native adaptive thinking for Opus 4.6 without leaking the Opus 4.7+ xhigh opt-in", () => {
-    // Opus 4.6 needs adaptive thinking too, but it does not use the Opus 4.7+
-    // xhigh→max mapping. Pi owns the adaptive payload via compat.
+  it("does not expose max on gateway models whose ceiling is high", () => {
+    for (const id of ["gpt-5", "gpt-5-mini"]) {
+      const config = toProviderModelConfig(id, null, new Set());
+      expect(config.thinkingLevelMap?.max, `${id} should not expose max`).toBeUndefined();
+    }
+  });
+
+  it("uses Pi-native adaptive thinking for Opus 4.6 with live-proven max support", () => {
     const config = toProviderModelConfig("claude-opus-4-6-v1", null, new Set());
-    expect(config.thinkingLevelMap).toBeUndefined();
+    expect(config.thinkingLevelMap).toMatchObject({ xhigh: "max", max: "max" });
     expect(config.compat).toMatchObject({ forceAdaptiveThinking: true });
   });
 

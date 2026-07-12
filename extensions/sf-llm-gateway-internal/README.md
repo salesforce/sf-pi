@@ -78,10 +78,11 @@ short-circuits subsequent sessions. Users see no prompt and no manual step.
    Chat Completions shape correctly, and the flattened shape is no longer used.
    Live probe evidence lives in the `tests/codex-regression.test.ts` suite.
 
-   For non-Codex GPT-5+ models, the strongest auto-injected
-   `reasoning_effort` is `max` (was `xhigh` until v0.71.x). The gateway's
-   OpenAI reasoning-effort window is `{low,medium,high,max}`, so raw `xhigh`
-   is normalized before sending.
+   For GPT-family models, the usable reasoning effort window is route-specific.
+   Live probes on 2026-07-12 showed Codex accepts wire `max`, `gpt-5.5`
+   accepts wire `xhigh` as its strongest tier, and `gpt-5`/`gpt-5-mini` top
+   out at `high`. SF Pi exposes Pi `max` only when it can map to the strongest
+   live-proven wire value for that route.
 
    Also: **gpt-5 family Responses routing**. GPT-5-family non-Codex models
    route through `POST <gateway-root>/responses` instead of
@@ -101,8 +102,9 @@ short-circuits subsequent sessions. Users see no prompt and no manual step.
    unified path for all Claude models:
    - Opus 4.7+ presets set `compat.forceAdaptiveThinking: true`, so pi-ai sends
      `thinking: { type: "adaptive" }` and `output_config.effort`.
-   - Opus 4.7+ presets map pi's user-facing `xhigh` thinking level to `max`
-     (the gateway now accepts `effort=max` for all Opus 4.7+ models).
+   - Opus 4.7+ presets expose pi's user-facing `xhigh` and `max` thinking
+     levels as Anthropic `effort=max`. Other gateway models expose `max` only
+     after model-specific evidence exists.
    - `max_tokens` is set to 128K by the model preset. Live probes (May 2026)
      confirmed `max_tokens: 128000 + effort: max` works reliably on both
      Opus 4.7 and 4.8 without the earlier intermittent `api_error`.
@@ -135,7 +137,8 @@ Extension loads
   │                                       one-time key-conflict notify
   ├─ on("turn_end")                    → update footer status; first turn_end also
   │                                       kicks refreshUsageDetails (daily activity, key list)
-  ├─ on("model_select")                → set thinking to xhigh (gateway provider)
+  ├─ on("model_select")                → set thinking to max (gateway provider default)
+  ├─ on("before_provider_headers")     → apply live Anthropic beta header state per request
   ├─ on("after_provider_response")     → record throttle/upstream signal (gateway provider)
   └─ on("session_shutdown")            → clear footer status + provider signal
 ```
@@ -282,7 +285,8 @@ such as `tokens`, `onboard`, `open-token`, `import-claude`, `doctor`, `debug`,
 | session_start                | —                                     | Sync session defaults (awaited, local-only); fire-and-forget model discovery; emit one-time key-conflict notify when env and saved keys differ |
 | turn_end                     | model is on gateway provider          | Update footer (context + monthly usage); first turn_end also kicks refreshUsageDetails (daily activity, key list)                              |
 | turn_end                     | model is not on gateway provider      | Clear footer status                                                                                                                            |
-| model_select                 | selected model is on gateway provider | Set thinking to xhigh                                                                                                                          |
+| model_select                 | selected model is on gateway provider | Set thinking to max when the model supports it                                                                                                 |
+| before_provider_headers      | gateway Anthropic model request       | Apply current `/sf-llm-gateway beta` state to the outgoing `anthropic-beta` header                                                             |
 | after_provider_response      | gateway model + 2xx/3xx               | Clear any live throttle/upstream badge                                                                                                         |
 | after_provider_response      | gateway model + 429                   | Record throttle signal, footer shows ⚠ badge for 60s                                                                                           |
 | after_provider_response      | gateway model + >=500                 | Record upstream signal, footer shows ⚠ badge for 60s                                                                                           |
@@ -332,6 +336,7 @@ extensions/sf-llm-gateway-internal/
     gateway-url.ts          ← implementation module
     latency-probe.ts        ← implementation module
     migrate-unify-provider.ts← implementation module
+    model-resolution.ts     ← implementation module
     models.ts               ← implementation module
     monthly-usage.ts        ← implementation module
     onboard-action.ts       ← implementation module
@@ -375,6 +380,7 @@ extensions/sf-llm-gateway-internal/
     manager-actions.test.ts ← unit / smoke test
     migrate-unify-provider.test.ts← unit / smoke test
     model-group-drift.test.ts← unit / smoke test
+    model-resolution.test.ts← unit / smoke test
     models.test.ts          ← unit / smoke test
     monthly-usage.test.ts   ← unit / smoke test
     onboard-action.test.ts  ← unit / smoke test
@@ -457,10 +463,10 @@ request. The extension wraps that as a first-class command:
 Examples:
 
 ```text
-/sf-llm-gateway debug claude-opus-4-8 adaptive reasoning=xhigh
+/sf-llm-gateway debug claude-opus-4-8 adaptive reasoning=max
   → Upstream: https://api.anthropic.com/v1/messages
     Body:     { thinking: { type: "adaptive" }, output_config: { effort: "max" }, max_tokens: 128000, ... }
-    Note:     pi `xhigh` maps to `max` for Opus 4.7+.
+    Note:     pi `max` is exposed only for gateway models with explicit support.
 
 /sf-llm-gateway debug gpt-5 reasoning=high
   → Body:     { reasoning_effort: "high", allowed_openai_params: ["reasoning_effort"], ... }
@@ -572,11 +578,11 @@ because `priority` is not valid for those routes.
 badge. The next successful 2xx/3xx clears it. If the badge sticks, check
 `/sf-llm-gateway status` for the live throttle/upstream signal.
 
-**I set `/thinking` to a different level but subsequent model switches reset it to `xhigh`:**
-Fixed: `model_select` no longer silently forces `thinkingLevel: xhigh` on
-every switch. `xhigh` is still the default for fresh sessions, but user
-overrides stick. If you still see a reset, check your settings for an
-explicit default that could be winning.
+**I set `/thinking` to a different level but subsequent model switches reset it:**
+Fixed: `model_select` no longer silently forces the gateway default on every
+switch. `max` is the default for fresh gateway sessions when the selected model
+supports it, but user overrides stick. If you still see a reset, check your
+settings for an explicit default that could be winning.
 
 **Beta headers aren't taking effect:**
 Check the active betas with `/sf-llm-gateway beta`. Opus 4.7 sends no

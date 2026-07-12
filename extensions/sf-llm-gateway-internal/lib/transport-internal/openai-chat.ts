@@ -5,7 +5,7 @@
  * Wraps pi-ai's `streamSimpleOpenAICompletions` with the gateway's quirks:
  *
  *   - Codex tools must be flattened to Responses-flat shape.
- *   - Codex `reasoning_effort` must be in `low|medium|high`.
+ *   - Codex `reasoning_effort` must be in `low|medium|high|max`.
  *   - Any OpenAI-family model with `reasoning_effort` set needs it
  *     allow-listed via `allowed_openai_params`.
  *   - If gpt-5.5 is forced onto this fallback chat path, strip

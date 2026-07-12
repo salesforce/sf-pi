@@ -19,8 +19,8 @@ growing `index.ts`.
 
 ## ✅ Phase 2 — continuous visibility (shipped)
 
-- [x] **Inline transcript row** — `pi.sendMessage({customType:"sf-lsp"})` +
-      `registerMessageRenderer`. Balanced default (error + transition +
+- [x] **Inline transcript row** — `pi.appendEntry("sf-lsp", data)` +
+      `registerEntryRenderer`. Balanced default (error + transition +
       first unavailable); verbose mode emits every check. User-only, never
       enters LLM context.
 - [~] ~~HUD overlay~~ / ~~below-editor widget~~ / ~~footer pill~~ replaced

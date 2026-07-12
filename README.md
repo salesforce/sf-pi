@@ -130,7 +130,7 @@ macOS, Linux, and WSL are the primary targets. Native Windows works on
 x64 and ARM64 once the `sf` CLI is installed, but WSL is recommended for
 parity with Linux/macOS shell tooling. The minimum pi version tracks the
 `peerDependencies` range in [`package.json`](./package.json) (currently
-`>=0.80.2`). Older pi runtimes are not supported; the shims in
+`>=0.80.6`). Older pi runtimes are not supported; the shims in
 [`lib/common/pi-compat.ts`](./lib/common/pi-compat.ts) fail gracefully with
 a one-line "run `pi update --self --force`" warning instead of letting
 extensions crash on missing runtime APIs.
@@ -472,7 +472,7 @@ invocation and is picked up by all sf-pi commands without any sf-pi change.
 export PI_CODING_AGENT_SESSION_DIR="$HOME/.pi-sessions"
 ```
 
-sf-pi requires pi `>=0.80.2`, so supported installations honor the env
+sf-pi requires pi `>=0.80.6`, so supported installations honor the env
 var; older pi releases should be updated before running current sf-pi.
 
 ## Adding a New Extension
@@ -606,7 +606,7 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 - Opus 4.7/4.8 returns `api_error: Internal server error` on heavy turns
 - gpt-5.5 fails with a message asking to use `/v1/responses`
 - Footer shows `⚠` badge after a 429 or 5xx
-- I set `/thinking` to a different level but subsequent model switches reset it to `xhigh`
+- I set `/thinking` to a different level but subsequent model switches reset it
 - Beta headers aren't taking effect
 - Monthly-usage footer is stale or missing
 - Old and new gateway keys are confusing status or tests

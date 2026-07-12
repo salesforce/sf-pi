@@ -44,8 +44,10 @@ export function normalizeCodexReasoningEffort(value: unknown): string {
     case "medium":
       return "medium";
     case "high":
-    case "xhigh":
       return "high";
+    case "xhigh":
+    case "max":
+      return "max";
     default:
       return DEFAULT_CODEX_REASONING_EFFORT;
   }

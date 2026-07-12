@@ -65,6 +65,24 @@ function readyDeps(overrides: Record<string, unknown> = {}) {
 }
 
 describe("deferred Code Analyzer auto-scan orchestration", () => {
+  it("waits for agent_settled instead of scanning at agent_end", async () => {
+    const { pi, handlers } = harness();
+    const runCodeAnalyzer = vi.fn();
+
+    registerDeferredCodeAnalyzerAutoScan(
+      pi as never,
+      vi.fn() as never,
+      readyDeps({ runCodeAnalyzer }),
+    );
+
+    await handlers.get("tool_result")?.[0]?.(writeResult("src/foo.ts"), ctx());
+    expect(handlers.get("agent_end")).toBeUndefined();
+
+    await handlers.get("agent_settled")?.[0]?.({}, ctx());
+
+    expect(runCodeAnalyzer).toHaveBeenCalledOnce();
+  });
+
   it("skips pending files without running scans when readiness is not ready", async () => {
     const { pi, handlers } = harness();
     const runCodeAnalyzer = vi.fn();
@@ -81,7 +99,7 @@ describe("deferred Code Analyzer auto-scan orchestration", () => {
     });
 
     await handlers.get("tool_result")?.[0]?.(writeResult("src/foo.ts"), ctx());
-    await handlers.get("agent_end")?.[0]?.({}, ctx());
+    await handlers.get("agent_settled")?.[0]?.({}, ctx());
 
     expect(runCodeAnalyzer).not.toHaveBeenCalled();
     expect(pi.sendUserMessage).not.toHaveBeenCalled();
@@ -113,7 +131,7 @@ describe("deferred Code Analyzer auto-scan orchestration", () => {
     );
 
     await handlers.get("tool_result")?.[0]?.(writeResult("src/foo.ts"), ctx());
-    await handlers.get("agent_end")?.[0]?.({}, ctx());
+    await handlers.get("agent_settled")?.[0]?.({}, ctx());
 
     expect(runCodeAnalyzer).toHaveBeenCalledOnce();
     expect(runCodeAnalyzer.mock.calls[0][2]).toMatchObject({
@@ -123,7 +141,12 @@ describe("deferred Code Analyzer auto-scan orchestration", () => {
     expect(pi.sendUserMessage).not.toHaveBeenCalled();
     expect(pi.sendMessage).toHaveBeenCalledWith(
       expect.objectContaining({
-        content: expect.stringContaining("Code Analyzer auto-scan clean"),
+        content: expect.stringContaining("Code Analyzer Auto-scan"),
+      }),
+    );
+    expect(pi.sendMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: expect.stringContaining("✓ Clean"),
       }),
     );
   });
@@ -167,7 +190,7 @@ describe("deferred Code Analyzer auto-scan orchestration", () => {
     );
 
     await handlers.get("tool_result")?.[0]?.(writeResult("classes/Foo.cls"), ctx());
-    await handlers.get("agent_end")?.[0]?.({}, ctx());
+    await handlers.get("agent_settled")?.[0]?.({}, ctx());
 
     expect(pi.sendUserMessage).toHaveBeenCalledOnce();
     expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("ApexCRUDViolation"), {

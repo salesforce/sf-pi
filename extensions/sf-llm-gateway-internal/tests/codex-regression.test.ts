@@ -89,7 +89,7 @@ describeLive("sf-llm-gateway-internal Codex regression", () => {
   );
 
   it(
-    "clamps xhigh reasoning to a gateway-safe value before sending",
+    "maps xhigh reasoning to gateway-supported max before sending",
     async () => {
       const payload: Record<string, unknown> = {
         model: codexModel,
@@ -102,7 +102,7 @@ describeLive("sf-llm-gateway-internal Codex regression", () => {
       const response = await postGatewayChatCompletions(payload);
       const content = response.choices?.[0]?.message?.content;
 
-      expect(payload.reasoning_effort).toBe("high");
+      expect(payload.reasoning_effort).toBe("max");
       expect(typeof content).toBe("string");
       expect(content.length).toBeGreaterThan(0);
     },

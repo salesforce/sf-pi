@@ -78,10 +78,11 @@ describe("sf-code-analyzer display", () => {
 
     const rendered = renderCodeAnalyzerReportCard(summary, {}, theme);
 
-    expect(rendered).toContain("[toolTitle]**🧪 Code Analyzer**[/]");
-    expect(rendered).toContain("[warning]⚠️ findings[/]");
+    expect(rendered).toContain("[toolTitle]**🧪 Code Analyzer Scan**[/]");
+    expect(rendered).toContain("[warning]⚠ review[/]");
     expect(rendered).toContain("[accent]Recommended[/]");
-    expect(rendered).toContain("[dim]/tmp/report.json[/]");
+    expect(rendered).toContain("[accent]**🔥 Top findings**[/]");
+    expect(rendered).toContain("[muted]/tmp/report.json[/]");
   });
 
   it("renders report path and actionable findings", () => {

@@ -36,6 +36,15 @@ describe("buildProbeBody", () => {
     expect(body.output_config).toEqual({ effort: "xhigh" });
   });
 
+  it("accepts max for Claude adaptive debug probes", () => {
+    const probe: TransformProbe = {
+      model: "claude-opus-4-7",
+      adaptive: true,
+      reasoning: "max",
+    };
+    expect(buildProbeBody(probe).output_config).toEqual({ effort: "max" });
+  });
+
   it("defaults Claude adaptive probes to high instead of the retired max effort", () => {
     const body = buildProbeBody({ model: "claude-opus-4-7", adaptive: true });
     expect(body.output_config).toEqual({ effort: "high" });

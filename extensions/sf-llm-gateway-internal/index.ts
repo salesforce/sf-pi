@@ -24,7 +24,7 @@
  * - Uses Pi's built-in custom-provider support instead of models.json hacks
  * - Shows an explicit SF LLM Gateway footer status when one of these models is active
  * - Footer status includes chosen model, current context usage, and monthly gateway usage
- * - Defaults gateway sessions to Pi thinking level xhigh
+ * - Defaults gateway sessions to Pi thinking level max when the model supports it
  * - Repairs retired gateway enabledModels entries before startup validation
  * - Runtime beta header toggles with env var initial defaults
  * - Keeps the runtime spine in this file while pushing settings/status helpers to lib/
@@ -68,7 +68,7 @@
  *   session_start               | —                                  | Sync defaults (sync), fire-and-forget discovery, one-time key-conflict notify
  *   turn_end                    | model is gateway model             | Update footer (context + monthly usage); first turn_end also kicks refreshUsageDetails
  *   turn_end                    | model is NOT gateway model         | Clear footer status
- *   model_select                | selected model is gateway          | Set thinking to xhigh
+ *   model_select                | selected model is gateway          | Set thinking to the gateway default
  *   after_provider_response     | model is gateway model + 2xx       | Clear any live throttle/upstream warning
  *   after_provider_response     | model is gateway model + 429       | Record throttle signal, footer shows ⚠ badge for 60s
  *   after_provider_response     | model is gateway model + 5xx       | Record upstream signal, footer shows ⚠ badge for 60s
@@ -81,7 +81,7 @@
  *   /command refresh            | —                                  | Re-discover, refresh monthly usage
  *   /command latency-probe      | —                                  | Run read-only gateway timing probes
  *   /command usage-probe        | —                                  | Force read-only usage probe
- *   /command beta <name> on     | —                                  | Toggle beta, re-register provider
+ *   /command beta <name> on     | —                                  | Toggle beta for the next matching provider request
  *   Monthly usage fetch         | cached < 60 s old                  | Use cache
  *   Monthly usage fetch         | stale or forced                    | Fetch /v2/user/info, retry with key user_id if needed, fallback /user/info
  *
@@ -145,16 +145,6 @@ function isGatewayProvider(provider: string | undefined): boolean {
   return provider === PROVIDER_NAME;
 }
 
-/**
- * Every discovered model is hosted by the single unified provider. Pi sees
- * each one under the provider-level API; the custom streamSimple dispatcher
- * handles Claude-vs-OpenAI routing internally by model id.
- */
-function providerForModelId(modelId: string): string {
-  void modelId;
-  return PROVIDER_NAME;
-}
-
 import {
   KNOWN_BETAS,
   MODEL_PRESETS,
@@ -164,9 +154,10 @@ import {
   isAnthropicModelId,
   getModelFamily,
   findMatchingModelId,
-  resolvePreferredModelId,
 } from "./lib/models.ts";
+import { resolveGatewayDefaultModelWithPi } from "./lib/model-resolution.ts";
 import {
+  applyRuntimeBetaHeader,
   getBetaExtras,
   getBetaOverrides,
   handleBetaCommand as handleBetaCommandImpl,
@@ -548,21 +539,26 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
     }
   });
 
+  pi.on("before_provider_headers", (event, ctx) => {
+    if (!ctx.model || !isGatewayProvider(ctx.model.provider)) return;
+    applyRuntimeBetaHeader(event.headers, ctx.model.id);
+  });
+
   pi.on("model_select", async (event, ctx) => {
     if (isGatewayProvider(event.model.provider)) {
-      // xhigh is still the extension's *recommended* default on gateway
-      // models, but we no longer force it on every model_select — that
-      // overwrote user-initiated level changes and silently inflated every
-      // turn into a heavy-workload request profile (adaptive + effort=xhigh
-      // + 64K max_tokens), which correlates with Anthropic's intermittent
-      // `api_error: Internal server error` on long streaming turns.
+      // DEFAULT_THINKING_LEVEL is still the extension's recommended default
+      // on gateway models, but we no longer force it on every model_select —
+      // that overwrote user-initiated level changes and silently inflated every
+      // turn into a heavy-workload request profile, which correlated with
+      // Anthropic's intermittent `api_error: Internal server error` on long
+      // streaming turns.
       //
       // Re-apply the default only when the current level still matches what
       // we last set (i.e. nobody has touched it since). That way:
-      //   - fresh session or first gateway switch: user gets xhigh
+      //   - fresh session or first gateway switch: user gets the default
       //   - user runs /thinking medium, then switches models: stays medium
       //   - user runs /thinking medium, switches off gateway and back on:
-      //     stays medium (we do not re-force xhigh)
+      //     stays medium (we do not re-force the default)
       applyGatewayDefaultThinkingLevel(pi);
     }
     await updateFooterStatus(ctx, false);
@@ -1710,7 +1706,7 @@ async function handleDebugCommand(
         `Usage: /${FRIENDLY_COMMAND_NAME} debug <modelId> [reasoning=<level>] [tool] [adaptive]`,
         "",
         "Examples:",
-        `  /${FRIENDLY_COMMAND_NAME} debug claude-opus-4-7 adaptive reasoning=xhigh`,
+        `  /${FRIENDLY_COMMAND_NAME} debug claude-opus-4-7 adaptive reasoning=max`,
         `  /${FRIENDLY_COMMAND_NAME} debug gpt-5 reasoning=high`,
         `  /${FRIENDLY_COMMAND_NAME} debug gpt-5.3-codex reasoning=medium tool`,
       ].join("\n"),
@@ -1741,7 +1737,7 @@ async function handleDebugCommand(
       probe.adaptive = true;
       continue;
     }
-    const reasoningMatch = lower.match(/^reasoning=(minimal|low|medium|high|xhigh)$/);
+    const reasoningMatch = lower.match(/^reasoning=(minimal|low|medium|high|xhigh|max)$/);
     if (reasoningMatch) {
       probe.reasoning = reasoningMatch[1] as TransformProbe["reasoning"];
       continue;
@@ -1769,29 +1765,32 @@ async function applyGatewayDefault(
 
   await discoverAndRegister(pi, getBetaOverrides(), getBetaExtras(), ctx.cwd);
 
-  const effectiveModelId = resolveGatewayDefaultModelId([
+  const resolvedDefault = resolveGatewayDefaultModel(ctx, [
     DEFAULT_MODEL_ID,
     PREVIOUS_DEFAULT_MODEL_ID,
     FALLBACK_MODEL_ID,
   ]);
+  const effectiveModelId = resolvedDefault.modelId;
   const effectivePreset = MODEL_PRESETS[effectiveModelId];
   const effectiveModel = effectivePreset
     ? { id: effectiveModelId, ...effectivePreset }
     : inferModelDefinition(effectiveModelId);
-  const effectiveProviderName = providerForModelId(effectiveModelId);
+  const effectiveProviderName = resolvedDefault.provider;
+  const effectiveThinkingLevel = resolvedDefault.thinkingLevel;
 
   const settings = readSettings(settingsPath);
   settings.defaultProvider = effectiveProviderName;
   settings.defaultModel = effectiveModelId;
-  settings.defaultThinkingLevel = DEFAULT_THINKING_LEVEL;
+  settings.defaultThinkingLevel = effectiveThinkingLevel;
   writeSettings(settingsPath, settings);
 
-  const model = ctx.modelRegistry.find(effectiveProviderName, effectiveModelId);
+  const model =
+    resolvedDefault.model ?? ctx.modelRegistry.find(effectiveProviderName, effectiveModelId);
   if (model) {
     await pi.setModel(model);
     // Explicit user command — always apply the recommended default here.
-    pi.setThinkingLevel(DEFAULT_THINKING_LEVEL);
-    lastAppliedThinkingLevel = DEFAULT_THINKING_LEVEL;
+    pi.setThinkingLevel(effectiveThinkingLevel);
+    lastAppliedThinkingLevel = effectiveThinkingLevel;
   }
 
   await updateFooterStatus(ctx, true);
@@ -1800,7 +1799,7 @@ async function applyGatewayDefault(
     `Default updated in ${scope} settings.`,
     `- Provider: ${effectiveProviderName}`,
     `- Model: ${effectiveModelId}${effectiveModelId !== DEFAULT_MODEL_ID ? ` (resolved from ${DEFAULT_MODEL_ID})` : ""}`,
-    `- Thinking: ${DEFAULT_THINKING_LEVEL}`,
+    `- Thinking: ${effectiveThinkingLevel}`,
     `- Context: ${effectiveModel.contextWindow.toLocaleString()} tokens`,
     `- Max output: ${effectiveModel.maxTokens.toLocaleString()} tokens`,
     `- Route: Global`,
@@ -1933,8 +1932,18 @@ function getAvailableGatewayModelIds(): string[] {
   return discoveredIds && discoveredIds.length > 0 ? discoveredIds : getStaticGatewayModelIds();
 }
 
-function resolveGatewayDefaultModelId(preferredIds: Array<string | undefined>): string {
-  return resolvePreferredModelId(getAvailableGatewayModelIds(), preferredIds) ?? DEFAULT_MODEL_ID;
+function resolveGatewayDefaultModel(
+  ctx: ExtensionContext,
+  preferredIds: Array<string | undefined>,
+) {
+  return resolveGatewayDefaultModelWithPi({
+    modelRegistry: ctx.modelRegistry,
+    providerName: PROVIDER_NAME,
+    availableModelIds: getAvailableGatewayModelIds(),
+    preferredModelIds: preferredIds,
+    fallbackModelId: DEFAULT_MODEL_ID,
+    defaultThinkingLevel: DEFAULT_THINKING_LEVEL,
+  });
 }
 
 function repairGatewayEnabledModelSettings(cwd: string): void {
@@ -2155,26 +2164,29 @@ async function enableGatewayOperation(
   }
 
   const state = await discoverAndRegister(pi, getBetaOverrides(), getBetaExtras(), ctx.cwd);
-  const effectiveDefaultModelId = resolveGatewayDefaultModelId([
+  const resolvedDefault = resolveGatewayDefaultModel(ctx, [
     DEFAULT_MODEL_ID,
     PREVIOUS_DEFAULT_MODEL_ID,
     FALLBACK_MODEL_ID,
   ]);
-  const effectiveProviderName = providerForModelId(effectiveDefaultModelId);
+  const effectiveDefaultModelId = resolvedDefault.modelId;
+  const effectiveProviderName = resolvedDefault.provider;
+  const effectiveThinkingLevel = resolvedDefault.thinkingLevel;
 
   settings.defaultProvider = effectiveProviderName;
   settings.defaultModel = effectiveDefaultModelId;
-  settings.defaultThinkingLevel = DEFAULT_THINKING_LEVEL;
+  settings.defaultThinkingLevel = effectiveThinkingLevel;
   setEnabledModelsSetting(settings, applyGatewayModelScope(settings.enabledModels, exclusiveScope));
   writeSettings(settingsPath, settings);
 
-  const model = ctx.modelRegistry.find(effectiveProviderName, effectiveDefaultModelId);
+  const model =
+    resolvedDefault.model ?? ctx.modelRegistry.find(effectiveProviderName, effectiveDefaultModelId);
   if (model) {
     const changed = await pi.setModel(model);
     if (changed) {
       // Explicit enable command — always apply the recommended default here.
-      pi.setThinkingLevel(DEFAULT_THINKING_LEVEL);
-      lastAppliedThinkingLevel = DEFAULT_THINKING_LEVEL;
+      pi.setThinkingLevel(effectiveThinkingLevel);
+      lastAppliedThinkingLevel = effectiveThinkingLevel;
     }
   }
 
@@ -2184,7 +2196,7 @@ async function enableGatewayOperation(
     `Enabled in ${scope} settings.`,
     `- Provider: ${effectiveProviderName}`,
     `- Model: ${effectiveDefaultModelId}${effectiveDefaultModelId !== DEFAULT_MODEL_ID ? ` (resolved from ${DEFAULT_MODEL_ID})` : ""}`,
-    `- Thinking: ${DEFAULT_THINKING_LEVEL}`,
+    `- Thinking: ${effectiveThinkingLevel}`,
     `- Scoped model mode: ${exclusiveScope ? `exclusive (gateway-only: ${ENABLED_MODEL_PATTERN})` : `additive (prepended ${ENABLED_MODEL_PATTERN})`}`,
     `- Base URL: ${describeConfigValue(config.baseUrl, config.baseUrlSource)}`,
     `- API key: ${describeApiKey(config.apiKey, config.apiKeySource)}`,
@@ -2479,18 +2491,20 @@ async function syncGatewaySessionDefaults(
   const startupDefault = getEffectiveDefaultModelSetting(ctx.cwd);
   const startupDefaultIsGateway = isGatewayProvider(startupDefault.provider);
   if (startupDefaultIsGateway) {
-    const desiredModelId = resolveGatewayDefaultModelId([
+    const resolvedDefault = resolveGatewayDefaultModel(ctx, [
       startupDefault.modelId,
       DEFAULT_MODEL_ID,
       PREVIOUS_DEFAULT_MODEL_ID,
       FALLBACK_MODEL_ID,
     ]);
+    const desiredModelId = resolvedDefault.modelId;
+    const desiredProvider = resolvedDefault.provider;
     repairGatewayDefaultModelSettings(ctx.cwd, desiredModelId);
 
     if (options.allowModelSwitch !== false) {
-      const desiredProvider = providerForModelId(desiredModelId);
       if (ctx.model?.provider !== desiredProvider || ctx.model.id !== desiredModelId) {
-        const desiredModel = ctx.modelRegistry.find(desiredProvider, desiredModelId);
+        const desiredModel =
+          resolvedDefault.model ?? ctx.modelRegistry.find(desiredProvider, desiredModelId);
         if (desiredModel) {
           await pi.setModel(desiredModel);
         }
@@ -2502,7 +2516,7 @@ async function syncGatewaySessionDefaults(
   const mayHaveSwitchedToGateway = options.allowModelSwitch !== false && startupDefaultIsGateway;
   if (currentModelIsGateway || mayHaveSwitchedToGateway) {
     // At session startup the current thinking level is pi's resolved default
-    // (settings or xhigh from our `on` command). Apply through the
+    // (settings or DEFAULT_THINKING_LEVEL from our `on` command). Apply through the
     // user-respecting helper so users who edited settings to a different
     // default do not get overridden by the extension. When startup model
     // switching is disabled, don't mutate thinking for a non-gateway model.

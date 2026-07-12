@@ -2,8 +2,81 @@
 /**
  * Tests for the transcript emission policy.
  */
-import { describe, it, expect } from "vitest";
-import { shouldEmitTranscriptRow } from "../lib/transcript.ts";
+import { describe, it, expect, vi } from "vitest";
+import type { ExtensionAPI, Theme } from "@earendil-works/pi-coding-agent";
+import {
+  createTranscriptRenderer,
+  emitTranscriptRow,
+  shouldEmitTranscriptRow,
+  LSP_TRANSCRIPT_CUSTOM_TYPE,
+  type LspTranscriptEntry,
+} from "../lib/transcript.ts";
+
+describe("emitTranscriptRow", () => {
+  it("persists a human-only transcript entry instead of sending a model-visible custom message", () => {
+    const pi = {
+      appendEntry: vi.fn(),
+      sendMessage: vi.fn(),
+    } as unknown as ExtensionAPI;
+
+    emitTranscriptRow(pi, {
+      language: "apex",
+      fileName: "MyClass.cls",
+      status: "error",
+      diagnosticCount: 2,
+      durationMs: 42,
+    });
+
+    expect(pi.appendEntry).toHaveBeenCalledWith(LSP_TRANSCRIPT_CUSTOM_TYPE, {
+      content: "Apex · MyClass.cls · 2 errors",
+      details: {
+        language: "apex",
+        fileName: "MyClass.cls",
+        status: "error",
+        diagnosticCount: 2,
+        durationMs: 42,
+      },
+    });
+    expect(pi.sendMessage).not.toHaveBeenCalled();
+  });
+});
+
+describe("createTranscriptRenderer", () => {
+  it("renders the persisted human-only entry", () => {
+    const renderer = createTranscriptRenderer();
+    const component = renderer(
+      {
+        type: "custom",
+        id: "entry-1",
+        parentId: null,
+        timestamp: new Date(0).toISOString(),
+        customType: LSP_TRANSCRIPT_CUSTOM_TYPE,
+        data: {
+          content: "Apex · MyClass.cls · 1 error",
+          details: {
+            language: "apex",
+            fileName: "MyClass.cls",
+            status: "error",
+            diagnosticCount: 1,
+            previewLines: ["L3: Unexpected token"],
+          },
+        } satisfies LspTranscriptEntry,
+      },
+      { expanded: true },
+      passthroughTheme,
+    );
+
+    const rendered = component?.render(120).join("\n") ?? "";
+    expect(rendered).toContain("[sf-lsp]");
+    expect(rendered).toContain("Apex · MyClass.cls · 1 error");
+    expect(rendered).toContain("L3: Unexpected token");
+  });
+});
+
+const passthroughTheme = {
+  fg: (_color: string, value: string) => value,
+  bg: (_color: string, value: string) => value,
+} as Theme;
 
 describe("shouldEmitTranscriptRow", () => {
   it("balanced: emits on error", () => {

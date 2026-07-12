@@ -78,3 +78,4 @@ or accidentally contradicted in extension READMEs.
 - [0073: SF Docs Routes Developer Reference Lookups to LegacyDeveloper](./0073-sf-docs-routes-developer-reference-lookups-to-legacydeveloper.md)
 - [0074: SF Guardrail Mediates Native High-Value Durable Mutations](./0074-sf-guardrail-mediates-native-high-value-mutations.md)
 - [0075: SF Guardrail Adds Persisted Power Tool Mode](./0075-sf-guardrail-adds-persisted-power-tool-mode.md)
+- [0076: Pi 0.80.6 Runtime Delegation](./0076-pi-0806-runtime-delegation.md)

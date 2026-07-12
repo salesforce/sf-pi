@@ -4,7 +4,8 @@
  */
 import type { ExtensionAPI, ExtensionContext, Theme } from "@earendil-works/pi-coding-agent";
 import { StringEnum } from "@earendil-works/pi-ai";
-import { Text } from "@earendil-works/pi-tui";
+import { Text, type Component } from "@earendil-works/pi-tui";
+import { renderSfPiProgressText } from "../../../lib/common/display/result-card.ts";
 import { Type } from "typebox";
 import { buildExecFn } from "../../../lib/common/exec-adapter.ts";
 import { nextReportPath } from "./artifacts.ts";
@@ -23,10 +24,10 @@ import {
 import {
   buildCodeAnalyzerFacts,
   renderCodeAnalyzerCallLine,
-  renderCodeAnalyzerDoctorCard,
-  renderCodeAnalyzerPlainCard,
-  renderCodeAnalyzerRecipesCard,
-  renderCodeAnalyzerReportCard,
+  renderCodeAnalyzerDoctorPanel,
+  renderCodeAnalyzerPlainPanel,
+  renderCodeAnalyzerRecipesPanel,
+  renderCodeAnalyzerReportPanel,
   renderDoctor,
   renderToolSummary,
 } from "./display.ts";
@@ -261,8 +262,17 @@ function renderResult(
   result: { content?: unknown; details?: unknown },
   opts: { isPartial?: boolean; expanded?: boolean },
   theme: Theme,
-): Text {
-  if (opts.isPartial) return new Text(theme.fg("warning", "⏳ Code Analyzer running…"), 0, 0);
+): Component {
+  if (opts.isPartial) {
+    return new Text(
+      renderSfPiProgressText(
+        { phase: "Code Analyzer running", current: firstText(result) || undefined },
+        theme,
+      ),
+      0,
+      0,
+    );
+  }
 
   const details = asRecord(result.details);
   const envelope = details?.[CODE_ANALYZER_DETAILS_KEY] as
@@ -275,33 +285,25 @@ function renderResult(
       }
     | undefined;
   if (envelope?.report) {
-    return new Text(renderCodeAnalyzerReportCard(envelope.report, opts, theme), 0, 0);
+    return renderCodeAnalyzerReportPanel(envelope.report, opts, theme);
   }
   if (envelope?.doctor) {
-    return new Text(renderCodeAnalyzerDoctorCard(envelope.doctor, theme), 0, 0);
+    return renderCodeAnalyzerDoctorPanel(envelope.doctor, theme);
   }
   if (envelope?.action === "recipes") {
-    return new Text(
-      renderCodeAnalyzerRecipesCard(
-        {
-          recipes: asRecipeItems(envelope.recipes),
-          suggestions: asRecipeItems(envelope.suggestions),
-        },
-        opts,
-        theme,
-      ),
-      0,
-      0,
+    return renderCodeAnalyzerRecipesPanel(
+      {
+        recipes: asRecipeItems(envelope.recipes),
+        suggestions: asRecipeItems(envelope.suggestions),
+      },
+      opts,
+      theme,
     );
   }
-  return new Text(
-    renderCodeAnalyzerPlainCard(
-      "Code Analyzer",
-      firstText(result) || "Code Analyzer completed.",
-      theme,
-    ),
-    0,
-    0,
+  return renderCodeAnalyzerPlainPanel(
+    "Code Analyzer",
+    firstText(result) || "Code Analyzer completed.",
+    theme,
   );
 }
 

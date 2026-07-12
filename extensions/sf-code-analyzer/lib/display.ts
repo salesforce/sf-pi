@@ -5,6 +5,14 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import type { Theme } from "@earendil-works/pi-coding-agent";
+import type { Component } from "@earendil-works/pi-tui";
+import {
+  renderSfPiResultCardPanel,
+  renderSfPiResultCardText,
+  type SfPiArtifact,
+  type SfPiResultCard,
+  type SfPiSection,
+} from "../../../lib/common/display/result-card.ts";
 import type {
   CodeAnalyzerDoctorReport,
   CodeAnalyzerFactCount,
@@ -93,11 +101,15 @@ export function renderCodeAnalyzerReportCard(
   opts: { expanded?: boolean } = {},
   theme: Theme,
 ): string {
-  if (summary.kind === "rules") return renderRulesCard(summary, theme);
-  if (summary.kind === "config") return renderConfigCard(summary, theme);
-  return opts.expanded
-    ? renderRunCardExpanded(summary, theme)
-    : renderRunCardCollapsed(summary, theme);
+  return renderSfPiResultCardText(codeAnalyzerReportCard(summary), opts, theme);
+}
+
+export function renderCodeAnalyzerReportPanel(
+  summary: CodeAnalyzerReportSummary,
+  opts: { expanded?: boolean } = {},
+  theme: Theme,
+): Component {
+  return renderSfPiResultCardPanel(codeAnalyzerReportCard(summary), opts, theme);
 }
 
 export interface CodeAnalyzerRecipeCardItem {
@@ -113,26 +125,14 @@ export function renderCodeAnalyzerDoctorCard(
   report: CodeAnalyzerDoctorReport,
   theme: Theme,
 ): string {
-  const overall = report.sf.ok && report.plugin.ok && report.java.ok && report.python.ok;
-  const partial = report.sf.ok && report.plugin.ok && (!report.java.ok || !report.python.ok);
-  const statusLabel = overall
-    ? theme.fg("success", "✅ ready")
-    : partial
-      ? theme.fg("warning", "⚠️ partial readiness")
-      : theme.fg("error", "❌ blocked");
-  const lines = [
-    titleLine(theme, "🧪 Code Analyzer Doctor", statusLabel),
-    row(theme, "sf", compactStatus(report.sf)),
-    row(theme, "plugin", compactStatus(report.plugin)),
-    row(theme, "java", compactStatus(report.java)),
-    row(theme, "python", compactStatus(report.python)),
-    lastRow(
-      theme,
-      "next",
-      report.plugin.ok ? "run scan or inspect recipes" : "install/update Code Analyzer plugin",
-    ),
-  ];
-  return lines.join("\n");
+  return renderSfPiResultCardText(codeAnalyzerDoctorCard(report), {}, theme);
+}
+
+export function renderCodeAnalyzerDoctorPanel(
+  report: CodeAnalyzerDoctorReport,
+  theme: Theme,
+): Component {
+  return renderSfPiResultCardPanel(codeAnalyzerDoctorCard(report), {}, theme);
 }
 
 export function renderCodeAnalyzerRecipesCard(
@@ -143,56 +143,390 @@ export function renderCodeAnalyzerRecipesCard(
   opts: { expanded?: boolean } = {},
   theme: Theme,
 ): string {
+  return renderSfPiResultCardText(codeAnalyzerRecipesCard(input), opts, theme);
+}
+
+export function renderCodeAnalyzerRecipesPanel(
+  input: {
+    recipes?: CodeAnalyzerRecipeCardItem[];
+    suggestions?: CodeAnalyzerRecipeCardItem[];
+  },
+  opts: { expanded?: boolean } = {},
+  theme: Theme,
+): Component {
+  return renderSfPiResultCardPanel(codeAnalyzerRecipesCard(input), opts, theme);
+}
+
+export function renderCodeAnalyzerPlainCard(title: string, body: string, theme: Theme): string {
+  return renderSfPiResultCardText(codeAnalyzerPlainCard(title, body), { expanded: true }, theme);
+}
+
+export function renderCodeAnalyzerPlainPanel(title: string, body: string, theme: Theme): Component {
+  return renderSfPiResultCardPanel(codeAnalyzerPlainCard(title, body), { expanded: true }, theme);
+}
+
+function codeAnalyzerPlainCard(title: string, body: string): SfPiResultCard {
+  return {
+    tool: codeAnalyzerToolChrome(),
+    title,
+    status: "info",
+    summary: firstLine(body),
+    sections: [
+      {
+        title: "Details",
+        icon: "🧾",
+        rows: body
+          .split("\n")
+          .filter((line) => line.trim())
+          .slice(1)
+          .map((line, index) => ({ label: index === 0 ? "detail" : "", value: line })),
+        collapsedLimit: 4,
+      },
+    ],
+  };
+}
+
+function codeAnalyzerToolChrome(): SfPiResultCard["tool"] {
+  return { id: "sf-code-analyzer", label: "Code Analyzer", icon: "🧪" };
+}
+
+function codeAnalyzerDoctorCard(report: CodeAnalyzerDoctorReport): SfPiResultCard {
+  const overall = report.sf.ok && report.plugin.ok && report.java.ok && report.python.ok;
+  const partial = report.sf.ok && report.plugin.ok && (!report.java.ok || !report.python.ok);
+  return {
+    tool: codeAnalyzerToolChrome(),
+    title: "Code Analyzer Doctor",
+    status: overall ? "success" : partial ? "warning" : "error",
+    summary: report.summary,
+    chips: [
+      {
+        label: overall ? "ready" : partial ? "partial" : "blocked",
+        tone: overall ? "success" : partial ? "warning" : "error",
+      },
+    ],
+    scope: [{ label: "surface", value: "local setup readiness" }],
+    sections: [
+      {
+        title: "Prerequisites",
+        icon: "🩺",
+        rows: [
+          probeRow("sf", report.sf),
+          probeRow("plugin", report.plugin),
+          probeRow("java", report.java),
+          probeRow("python", report.python),
+        ],
+      },
+    ],
+    next: [
+      report.plugin.ok ? "run scan or inspect recipes" : "install/update Code Analyzer plugin",
+    ],
+  };
+}
+
+function codeAnalyzerRecipesCard(input: {
+  recipes?: CodeAnalyzerRecipeCardItem[];
+  suggestions?: CodeAnalyzerRecipeCardItem[];
+}): SfPiResultCard {
   const recipes = input.recipes ?? [];
   const suggestions = input.suggestions ?? [];
   const automatic = recipes.filter((recipe) => recipe.kind === "automatic");
   const explicit = recipes.filter((recipe) => recipe.kind !== "automatic");
-  const lines = [
-    titleLine(theme, "📋 Code Analyzer Recipes", theme.fg("accent", `${recipes.length} recipes`)),
-    row(
-      theme,
-      "profiles",
-      `${automatic.length} automatic · ${explicit.length} explicit · ${recipes.filter((recipe) => recipe.herdrRecommended).length} Herdr-friendly`,
-    ),
+  const herdr = recipes.filter((recipe) => recipe.herdrRecommended);
+  const sections: SfPiSection[] = [];
+  if (automatic.length) {
+    sections.push({
+      title: "Automatic profiles",
+      icon: "◉",
+      rows: automatic.map((recipe) => ({
+        label: recipe.id ?? "auto",
+        value: recipeDetail(recipe),
+      })),
+      collapsedLimit: 3,
+    });
+  }
+  sections.push({
+    title: suggestions.length ? "Recommended next scans" : "Suggestions",
+    icon: suggestions.length ? "💡" : "ⓘ",
+    rows: suggestions.length
+      ? suggestions.map((recipe) => ({
+          label: recipe.id ?? "scan",
+          value: recipeDetail(recipe),
+          tone: recipe.herdrRecommended ? "warning" : "muted",
+        }))
+      : [{ label: "current", value: "no broader suggestion for current target/selector" }],
+    collapsedLimit: 3,
+  });
+  if (explicit.length) {
+    sections.push({
+      title: "Explicit recipes",
+      icon: "📋",
+      rows: explicit.map((recipe) => ({
+        label: recipe.id ?? "recipe",
+        value: recipeDetail(recipe),
+        tone: recipe.herdrRecommended ? "warning" : "muted",
+      })),
+      collapsedLimit: 4,
+    });
+  }
+  return {
+    tool: codeAnalyzerToolChrome(),
+    title: "Scan Recipes",
+    status: "info",
+    summary: "Choose the narrowest scan that answers the question; use Herdr for broad scans.",
+    chips: [
+      { label: `${recipes.length} recipes`, tone: "info" },
+      { label: `${automatic.length} automatic`, tone: "muted" },
+      { label: `${herdr.length} Herdr-friendly`, tone: herdr.length ? "warning" : "muted" },
+    ],
+    scope: [
+      { label: "profiles", value: `${automatic.length} automatic · ${explicit.length} explicit` },
+    ],
+    sections,
+    next: ["choose recipe → run scan; use Herdr for broad scans"],
+  };
+}
+
+function codeAnalyzerReportCard(summary: CodeAnalyzerReportSummary): SfPiResultCard {
+  if (summary.kind === "rules") return rulesReportCard(summary);
+  if (summary.kind === "config") return configReportCard(summary);
+  return runReportCard(summary);
+}
+
+function runReportCard(summary: CodeAnalyzerReportSummary): SfPiResultCard {
+  const facts = buildCodeAnalyzerFacts(summary.run);
+  const status = !summary.ok ? "error" : facts.total > 0 ? "warning" : "success";
+  const source = sourceText(summary);
+  const chips: NonNullable<SfPiResultCard["chips"]> = [
+    {
+      label: `${facts.total} finding${facts.total === 1 ? "" : "s"}`,
+      tone: facts.total ? "warning" : "success",
+    },
+    ...(facts.maxSeverity
+      ? [{ label: `max sev${facts.maxSeverity}`, tone: severityTone(facts.maxSeverity) }]
+      : []),
+    { label: formatMs(summary.durationMs), tone: "muted" },
+  ];
+  return {
+    tool: codeAnalyzerToolChrome(),
+    title: summary.source === "apexguru" ? "ApexGuru Analysis" : "Code Analyzer Scan",
+    status,
+    summary: runSummarySentence(summary, facts),
+    chips,
+    scope: [
+      { label: "selector", value: selectorPlain(summary), tone: "info" },
+      { label: "target", value: targetText(summary) },
+      { label: "source", value: source },
+      { label: "why", value: lineageText(summary) },
+    ],
+    rails: [
+      {
+        label: summary.source === "apexguru" ? "API" : "CLI",
+        items: [
+          { verb: summary.kind, target: summary.command, detail: `exit=${summary.exitCode}` },
+        ],
+      },
+    ],
+    sections: runSections(summary, facts),
+    artifacts: reportArtifacts(summary),
+    next: nextSteps(summary, facts),
+    renderHints: { collapsedLines: 20, expandedMaxLines: 120 },
+  };
+}
+
+function rulesReportCard(summary: CodeAnalyzerReportSummary): SfPiResultCard {
+  const rules = summary.rules?.rules ?? [];
+  return {
+    tool: codeAnalyzerToolChrome(),
+    title: "Rules Discovery",
+    status: summary.ok ? "success" : "error",
+    summary: summary.ok
+      ? `Discovered ${rules.length} Code Analyzer rule${rules.length === 1 ? "" : "s"}.`
+      : `Rule discovery failed with exit ${summary.exitCode}.`,
+    chips: [
+      { label: `${rules.length} rules`, tone: summary.ok ? "success" : "error" },
+      { label: formatMs(summary.durationMs), tone: "muted" },
+    ],
+    scope: [
+      { label: "selector", value: selectorPlain(summary) },
+      { label: "why", value: lineageText(summary) },
+    ],
+    rails: [
+      {
+        label: "CLI",
+        items: [{ verb: "rules", target: summary.command, detail: `exit=${summary.exitCode}` }],
+      },
+    ],
+    sections: [
+      {
+        title: "Rule catalog",
+        icon: "📚",
+        rows: rules.slice(0, 20).map((rule) => ({
+          label: `sev${rule.severity ?? "?"}`,
+          value: `${rule.engine}/${rule.name}${rule.tags?.length ? ` · ${rule.tags.slice(0, 4).join(",")}` : ""}`,
+          tone: typeof rule.severity === "number" ? severityTone(rule.severity) : "muted",
+        })),
+        collapsedLimit: 4,
+      },
+      ...stderrSection(summary),
+    ],
+    artifacts: reportArtifacts(summary),
+    next: [summary.ok ? "choose selector → run scan" : "review stderr and retry"],
+  };
+}
+
+function configReportCard(summary: CodeAnalyzerReportSummary): SfPiResultCard {
+  return {
+    tool: codeAnalyzerToolChrome(),
+    title: "Config Export",
+    status: summary.ok ? "success" : "error",
+    summary: summary.ok
+      ? "Effective Code Analyzer configuration was written."
+      : `Config export failed with exit ${summary.exitCode}.`,
+    chips: [
+      { label: summary.ok ? "written" : "failed", tone: summary.ok ? "success" : "error" },
+      { label: formatMs(summary.durationMs), tone: "muted" },
+    ],
+    scope: [
+      { label: "selector", value: selectorPlain(summary) },
+      { label: "file", value: summary.reportFile ?? "none" },
+    ],
+    rails: [
+      {
+        label: "CLI",
+        items: [{ verb: "config", target: summary.command, detail: `exit=${summary.exitCode}` }],
+      },
+    ],
+    sections: stderrSection(summary),
+    artifacts: reportArtifacts(summary),
+    next: [summary.ok ? "inspect config or run scan" : "review stderr and retry"],
+  };
+}
+
+function probeRow(label: string, value: { ok: boolean; detail: string }) {
+  return {
+    label,
+    value: compactStatus(value),
+    icon: value.ok ? "✓" : "✗",
+    tone: value.ok ? ("success" as const) : ("error" as const),
+  };
+}
+
+function runSummarySentence(summary: CodeAnalyzerReportSummary, facts: CodeAnalyzerFacts): string {
+  if (!summary.ok)
+    return `Scan failed with exit ${summary.exitCode}; inspect diagnostics before retrying.`;
+  if (facts.total === 0) return "Scan completed cleanly with no findings.";
+  return `Scan completed with ${facts.total} finding${facts.total === 1 ? "" : "s"}; prioritize the highest severity items first.`;
+}
+
+function selectorPlain(summary: CodeAnalyzerReportSummary): string {
+  return summary.selectors?.join(", ") || (summary.kind === "config" ? "all" : "Recommended");
+}
+
+function severityTone(severity: number): "error" | "warning" | "muted" {
+  if (severity <= 2) return "error";
+  if (severity === 3) return "warning";
+  return "muted";
+}
+
+function runSections(summary: CodeAnalyzerReportSummary, facts: CodeAnalyzerFacts): SfPiSection[] {
+  const sections: SfPiSection[] = [
+    {
+      title: "Scan summary",
+      icon: "📊",
+      rows: [
+        {
+          label: "severity",
+          value: severityText(facts),
+          tone: facts.total ? "warning" : "success",
+        },
+        { label: "exit", value: String(summary.exitCode), tone: summary.ok ? "muted" : "error" },
+        ...(facts.fixable > 0
+          ? [
+              {
+                label: "fixable",
+                value: `${facts.fixable} engine-provided fix${facts.fixable === 1 ? "" : "es"}`,
+                tone: "warning" as const,
+              },
+            ]
+          : []),
+      ],
+      collapsedLimit: 3,
+    },
   ];
 
-  if (automatic.length) {
-    lines.push(row(theme, "auto", automatic.slice(0, 3).map(recipeChip).join(" · ")));
-  }
-  if (suggestions.length) {
-    lines.push(row(theme, "suggest", suggestions.slice(0, 3).map(recipeChip).join(" · ")));
-  } else {
-    lines.push(row(theme, "suggest", "none for current target/selector"));
-  }
-
-  if (opts.expanded) {
-    lines.push("", section(theme, "Explicit recipes"));
-    for (const recipe of explicit.slice(0, 8)) {
-      lines.push(row(theme, recipe.id ?? "recipe", recipeDetail(recipe)));
-    }
-    const omitted = explicit.length - Math.min(explicit.length, 8);
-    if (omitted > 0) lines.push(row(theme, "omitted", `${omitted} more recipe(s)`));
-  } else {
-    const broad = explicit.filter((recipe) => recipe.herdrRecommended).slice(0, 4);
-    if (broad.length) lines.push(row(theme, "broad", broad.map(recipeChip).join(" · ")));
+  if (facts.topViolations.length) {
+    sections.push({
+      title: "Top findings",
+      icon: "🔥",
+      rows: facts.topViolations.slice(0, 10).map((violation) => ({
+        label: `sev${violation.severity}`,
+        value: `${violation.engine}/${violation.rule} ${locationText(violation.file, violation.line)}`,
+        tone: severityTone(violation.severity),
+      })),
+      collapsedLimit: 3,
+    });
   }
 
-  lines.push(lastRow(theme, "next", "choose recipe → run scan; use Herdr for broad scans"));
-  return lines.join("\n");
+  if (facts.topRules.length || facts.topFiles.length) {
+    sections.push({
+      title: "Hotspots",
+      icon: "🎯",
+      rows: [
+        ...facts.topRules.slice(0, 5).map((item) => ({ label: "rule", value: countText(item) })),
+        ...facts.topFiles.slice(0, 5).map((item) => ({ label: "file", value: countText(item) })),
+      ],
+      collapsedLimit: 3,
+    });
+  }
+
+  sections.push(...stderrSection(summary));
+  return sections;
 }
 
-export function renderCodeAnalyzerPlainCard(title: string, body: string, theme: Theme): string {
-  return [
-    titleLine(theme, `🧪 ${title}`, theme.fg("accent", "info")),
-    ...body
-      .split("\n")
-      .map((line) => (line ? `${theme.fg("border", "│  ")}${line}` : theme.fg("border", "│"))),
-    theme.fg("border", "╰─"),
-  ].join("\n");
+function stderrSection(summary: CodeAnalyzerReportSummary): SfPiSection[] {
+  if (summary.ok) return [];
+  const rows = [
+    summary.stderrPreview
+      ? {
+          label: "stderr",
+          value: diagnosticPreview(summary.stderrPreview),
+          tone: "error" as const,
+        }
+      : undefined,
+    summary.stdoutPreview
+      ? { label: "stdout", value: diagnosticPreview(summary.stdoutPreview) }
+      : undefined,
+  ].filter((row): row is NonNullable<typeof row> => Boolean(row));
+  return rows.length ? [{ title: "Diagnostics", icon: "🧯", rows, collapsedLimit: 2 }] : [];
 }
 
-function recipeChip(recipe: CodeAnalyzerRecipeCardItem): string {
-  return `${recipe.id ?? recipe.label ?? "recipe"}${recipe.ruleSelector?.length ? ` (${recipe.ruleSelector.join(", ")})` : ""}`;
+function diagnosticPreview(value: string): string {
+  const line = firstLine(value).replace(/\s+/gu, " ").trim();
+  return line.length > 180 ? `${line.slice(0, 179)}…` : line;
+}
+
+function reportArtifacts(summary: CodeAnalyzerReportSummary): SfPiArtifact[] {
+  const artifacts: SfPiArtifact[] = [];
+  if (summary.reportFile)
+    artifacts.push({
+      label: summary.kind === "config" ? "config" : "report",
+      path: summary.reportFile,
+      kind: summary.kind === "config" ? "text" : "json",
+    });
+  for (const outputFile of summary.outputFiles ?? []) {
+    if (outputFile === summary.reportFile) continue;
+    artifacts.push({ label: "output", path: outputFile, kind: artifactKindFromPath(outputFile) });
+  }
+  return artifacts;
+}
+
+function artifactKindFromPath(file: string): SfPiArtifact["kind"] {
+  if (/\.html?$/i.test(file)) return "html";
+  if (/\.csv$/i.test(file)) return "csv";
+  if (/\.md$/i.test(file)) return "markdown";
+  if (/\.log$/i.test(file)) return "log";
+  if (/\.json$/i.test(file) || /\.sarif$/i.test(file)) return "json";
+  return "text";
 }
 
 function recipeDetail(recipe: CodeAnalyzerRecipeCardItem): string {
@@ -207,116 +541,6 @@ function recipeDetail(recipe: CodeAnalyzerRecipeCardItem): string {
 
 function compactStatus(value: { ok: boolean; detail: string }): string {
   return `${value.ok ? "✓" : "✗"} ${firstLine(value.detail)}`;
-}
-
-function renderRunCardCollapsed(summary: CodeAnalyzerReportSummary, theme: Theme): string {
-  const facts = buildCodeAnalyzerFacts(summary.run);
-  const lines = [runTitle(summary, facts, theme), scanRow(summary, theme), whyRow(summary, theme)];
-  if (facts.total > 0) lines.push(row(theme, "severity", severityText(facts)));
-  for (const violation of facts.topViolations.slice(0, 3)) {
-    lines.push(row(theme, "finding", formatFactViolation(violation, theme)));
-  }
-  const focus = focusText(facts);
-  if (focus) lines.push(row(theme, "focus", focus));
-  if (facts.fixable > 0) {
-    lines.push(
-      row(
-        theme,
-        "fixable",
-        `${theme.fg("warning", String(facts.fixable))} engine-provided fixes available`,
-      ),
-    );
-  }
-  lines.push(row(theme, "report", theme.fg("dim", summary.reportFile ?? "none")));
-  lines.push(lastRow(theme, "next", nextText(summary, facts)));
-  return lines.join("\n");
-}
-
-function renderRunCardExpanded(summary: CodeAnalyzerReportSummary, theme: Theme): string {
-  const facts = buildCodeAnalyzerFacts(summary.run);
-  const lines = [
-    runTitle(summary, facts, theme),
-    scanRow(summary, theme),
-    row(theme, "source", sourceText(summary)),
-    row(theme, "report", theme.fg("dim", summary.reportFile ?? "none")),
-    "",
-    section(theme, "Summary"),
-    row(theme, "severity", severityText(facts)),
-    row(theme, "selector", selectorText(summary, theme)),
-    row(theme, "targets", targetText(summary)),
-    row(theme, "exit", String(summary.exitCode)),
-    "",
-    section(theme, "Why this scan"),
-    whyRow(summary, theme),
-    row(theme, "storage", "report kept outside repo by default unless output_files were supplied"),
-  ];
-
-  const selected = selectFindings(summary.run?.violations ?? []);
-  if (selected.length) {
-    lines.push("", section(theme, "Top findings"));
-    for (const violation of selected) {
-      lines.push(row(theme, `sev${violation.severity}`, formatViolationCompact(violation, theme)));
-    }
-    const omitted = (summary.run?.violations?.length ?? 0) - selected.length;
-    if (omitted > 0) lines.push(row(theme, "omitted", `${omitted} more in report`));
-  }
-
-  if (facts.topRules.length || facts.topFiles.length) {
-    lines.push("", section(theme, "Hotspots"));
-    for (const item of facts.topRules.slice(0, 5)) lines.push(row(theme, "rule", countText(item)));
-    for (const item of facts.topFiles.slice(0, 5)) lines.push(row(theme, "file", countText(item)));
-  }
-
-  if (facts.fixable > 0) {
-    lines.push("", section(theme, "Fixability"));
-    lines.push(row(theme, "fixes", `${facts.fixable} deterministic engine fixes`));
-    lines.push(row(theme, "note", "not applied automatically"));
-  }
-
-  lines.push("", section(theme, "Audit"));
-  lines.push(row(theme, "cli", theme.fg("dim", summary.command)));
-  if (summary.stdoutPreview)
-    lines.push(row(theme, "stdout", theme.fg("dim", firstLine(summary.stdoutPreview))));
-  if (summary.stderrPreview)
-    lines.push(
-      row(
-        theme,
-        "stderr",
-        theme.fg(summary.ok ? "dim" : "error", firstLine(summary.stderrPreview)),
-      ),
-    );
-  lines.push("", lastSection(theme, "Next"));
-  for (const next of nextSteps(summary, facts))
-    lines.push(`${theme.fg("border", "   ")}${theme.fg("accent", "→")} ${next}`);
-  return lines.join("\n");
-}
-
-function renderRulesCard(summary: CodeAnalyzerReportSummary, theme: Theme): string {
-  const count = summary.rules?.rules?.length ?? 0;
-  const statusLabel = summary.ok
-    ? theme.fg("success", `✅ ${count} rules`)
-    : theme.fg("error", `❌ failed · exit ${summary.exitCode}`);
-  const lines = [
-    titleLine(theme, "📚 Code Analyzer Rules", statusLabel),
-    row(theme, "selector", selectorText(summary, theme)),
-    row(theme, "duration", formatMs(summary.durationMs)),
-    row(theme, "report", theme.fg("dim", summary.reportFile ?? "none")),
-    lastRow(theme, "next", summary.ok ? "choose selector → run scan" : "review stderr and retry"),
-  ];
-  return lines.join("\n");
-}
-
-function renderConfigCard(summary: CodeAnalyzerReportSummary, theme: Theme): string {
-  const statusLabel = summary.ok
-    ? theme.fg("success", "✅ written")
-    : theme.fg("error", `❌ failed · exit ${summary.exitCode}`);
-  return [
-    titleLine(theme, "⚙️ Code Analyzer Config", statusLabel),
-    row(theme, "selector", selectorText(summary, theme)),
-    row(theme, "duration", formatMs(summary.durationMs)),
-    row(theme, "file", theme.fg("dim", summary.reportFile ?? "none")),
-    lastRow(theme, "next", summary.ok ? "inspect config or run scan" : "review stderr and retry"),
-  ].join("\n");
 }
 
 function renderFileOnlySummary(summary: CodeAnalyzerReportSummary): string {
@@ -500,54 +724,6 @@ function factViolation(violation: CodeAnalyzerViolation): CodeAnalyzerFactViolat
   };
 }
 
-function runTitle(
-  summary: CodeAnalyzerReportSummary,
-  facts: CodeAnalyzerFacts,
-  theme: Theme,
-): string {
-  const title = summary.source === "apexguru" ? "✨ ApexGuru" : "🧪 Code Analyzer";
-  const statusLabel = runStatusLabel(summary, facts, theme);
-  const suffix = summary.ok
-    ? facts.total > 0
-      ? ` · ${facts.total} total${facts.maxSeverity ? ` · ${theme.fg(severityColor(facts.maxSeverity), `max sev${facts.maxSeverity}`)}` : ""}`
-      : " · 0 findings"
-    : ` · exit ${summary.exitCode}`;
-  return titleLine(theme, title, `${statusLabel}${suffix}`);
-}
-
-function runStatusLabel(
-  summary: CodeAnalyzerReportSummary,
-  facts: CodeAnalyzerFacts,
-  theme: Theme,
-): string {
-  if (!summary.ok) return theme.fg("error", "❌ failed");
-  if (facts.total > 0) return theme.fg("warning", "⚠️ findings");
-  return theme.fg("success", "✅ clean");
-}
-
-function titleLine(theme: Theme, title: string, statusLabel: string): string {
-  return `${theme.fg("border", "╭─ ")}${theme.fg("toolTitle", theme.bold(title))}  ${statusLabel}`;
-}
-
-function scanRow(summary: CodeAnalyzerReportSummary, theme: Theme): string {
-  return row(
-    theme,
-    "scan",
-    `${selectorText(summary, theme)} · ${targetText(summary)} · ${formatMs(summary.durationMs)}`,
-  );
-}
-
-function whyRow(summary: CodeAnalyzerReportSummary, theme: Theme): string {
-  return row(theme, "why", lineageText(summary));
-}
-
-function selectorText(summary: CodeAnalyzerReportSummary, theme: Theme): string {
-  return theme.fg(
-    "accent",
-    summary.selectors?.join(", ") || (summary.kind === "config" ? "all" : "Recommended"),
-  );
-}
-
 function targetText(summary: CodeAnalyzerReportSummary): string {
   const count = summary.targets?.length ?? 0;
   if (count > 0) return `${count} target${count === 1 ? "" : "s"}`;
@@ -576,24 +752,6 @@ function severityText(facts: CodeAnalyzerFacts): string {
   return `sev1=${s.sev1} · sev2=${s.sev2} · sev3=${s.sev3} · sev4=${s.sev4} · sev5=${s.sev5}`;
 }
 
-function focusText(facts: CodeAnalyzerFacts): string | undefined {
-  const rule = facts.topRules[0];
-  const file = facts.topFiles[0];
-  if (!rule && !file) return undefined;
-  return [
-    rule ? `${rule.engine}/${rule.label} ×${rule.count}` : undefined,
-    file ? `${shortPath(file.label)} ×${file.count}` : undefined,
-  ]
-    .filter(Boolean)
-    .join(" · ");
-}
-
-function nextText(summary: CodeAnalyzerReportSummary, facts: CodeAnalyzerFacts): string {
-  if (!summary.ok) return "review stderr → fix selector/setup → rerun";
-  if (facts.total > 0) return "fix sev1–2 first → rerun same selector";
-  return "continue · broader recipe only for release/security work";
-}
-
 function nextSteps(summary: CodeAnalyzerReportSummary, facts: CodeAnalyzerFacts): string[] {
   if (!summary.ok)
     return [
@@ -611,31 +769,6 @@ function nextSteps(summary: CodeAnalyzerReportSummary, facts: CodeAnalyzerFacts)
   return ["continue", "run security/AppExchange recipe only if the change warrants it"];
 }
 
-function section(theme: Theme, title: string): string {
-  return `${theme.fg("border", "├─ ")}${theme.fg("accent", theme.bold(title))}`;
-}
-
-function lastSection(theme: Theme, title: string): string {
-  return `${theme.fg("border", "╰─ ")}${theme.fg("accent", theme.bold(title))}`;
-}
-
-function row(theme: Theme, label: string, value: string): string {
-  return `${theme.fg("border", "│  ")}${theme.fg("muted", label.padEnd(10))}${value}`;
-}
-
-function lastRow(theme: Theme, label: string, value: string): string {
-  return `${theme.fg("border", "╰─ ")}${theme.fg("accent", label.padEnd(10))}${value}`;
-}
-
-function formatFactViolation(violation: CodeAnalyzerFactViolation, theme: Theme): string {
-  return `${theme.fg(severityColor(violation.severity), `sev${violation.severity}`)} ${violation.engine}/${violation.rule} ${locationText(violation.file, violation.line)}`;
-}
-
-function formatViolationCompact(violation: CodeAnalyzerViolation, theme: Theme): string {
-  const loc = primaryLocation(violation);
-  return `${theme.fg(severityColor(violation.severity), `${violation.engine}/${violation.rule}`)} ${locationText(loc.file, loc.startLine)}`;
-}
-
 function countText(item: CodeAnalyzerFactCount): string {
   const prefix = item.engine ? `${item.engine}/` : "";
   return `${prefix}${shortPath(item.label)} ×${item.count}`;
@@ -651,12 +784,6 @@ function shortPath(file: string): string {
   const parts = normalized.split(path.sep).filter(Boolean);
   if (parts.length <= 3) return normalized;
   return `…/${parts.slice(-3).join("/")}`;
-}
-
-function severityColor(severity: number): "error" | "warning" | "muted" {
-  if (severity <= 2) return "error";
-  if (severity === 3) return "warning";
-  return "muted";
 }
 
 function maxSeverityFromCounts(counts: CodeAnalyzerFacts["severity"]): number | undefined {

@@ -20,11 +20,12 @@ describe("sf-code-analyzer auto-scan transcript", () => {
       targetCount: 2,
       durationMs: 1200,
     });
-    expect(text).toContain("✅ 🧪 Code Analyzer auto-scan clean");
-    expect(text).toContain("Tool: Local Salesforce Code Analyzer CLI");
-    expect(text).toContain("Engines:");
-    expect(text).toContain("Targets:");
-    expect(text).toContain("Duration:");
+    expect(text).toContain("🧪 Code Analyzer Auto-scan");
+    expect(text).toContain("✓ Clean");
+    expect(text).toContain("Tool     Local Salesforce Code Analyzer CLI");
+    expect(text).toContain("Engines  eslint:Recommended");
+    expect(text).toContain("Targets  2 changed files");
+    expect(text).toContain("Duration 1.2s");
   });
 
   it("renders foreground-colored auto-scan transcript rows", () => {
@@ -37,11 +38,14 @@ describe("sf-code-analyzer auto-scan transcript", () => {
 
     const rendered = renderCodeAnalyzerTranscript(text, { status: "clean" }, theme);
 
-    expect(rendered).toContain(
-      "[success]✅ 🧪 [/][toolTitle]**Code Analyzer**[/][success] auto-scan clean[/]",
-    );
-    expect(rendered).toContain("[muted]Engines:[/] [accent]**eslint:Recommended**[/]");
-    expect(rendered).toContain("[muted]Report:[/] [dim]/tmp/report.json[/]");
+    expect(rendered).toContain("[toolTitle]**🧪 Code Analyzer Auto-scan**[/]");
+    expect(rendered).toContain("[success]✓[/] [success]**Clean**[/]");
+    expect(rendered).toContain("[accent]**Scope**[/]");
+    expect(rendered).toContain("[muted]Engines    [/][accent]eslint:Recommended[/]");
+    expect(rendered).toContain("[accent]**Reasoning**[/]");
+    expect(rendered).toContain("JS/TS changed file → eslint:Recommended");
+    expect(rendered).toContain("[accent]**Evidence**[/]");
+    expect(rendered).toContain("[muted]/tmp/report.json[/]");
   });
 
   it("renders friendly ApexGuru scan rows", () => {

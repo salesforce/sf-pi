@@ -27,11 +27,11 @@ import { formatRetryGuidanceFooter } from "../retry-telemetry.ts";
 
 export const DEFAULT_CODEX_REASONING_EFFORT = "high";
 export const DEFAULT_OPENAI_REASONING_EFFORT = "high";
-// The gateway's LiteLLM tightened its OpenAI reasoning_effort validator to
-// {low,medium,high,max}; "xhigh" is now rejected with HTTP 400
-// (`reasoning_effort=xhigh is not supported for this model`). "max" is
-// accepted on every reasoning-capable family probed (gpt-5.x, codex). Keep
-// the constant name for callers that want "strongest safe effort" semantics.
+// The gateway's LiteLLM tightened some OpenAI reasoning_effort validators to
+// reject raw "xhigh" with HTTP 400. The strongest safe effort is
+// route-specific: Codex live probes accept "max", while gpt-5/gpt-5.5
+// Responses probes reject it. Keep the constant name for callers that already
+// know their route accepts the strongest tier.
 export const MAX_OPENAI_REASONING_EFFORT = "max";
 
 /**
@@ -66,6 +66,7 @@ export const OPUS_47_MAX_TOKENS_FLOOR_BY_LEVEL: Record<PiReasoningLevel, number>
   medium: 128_000,
   high: 128_000,
   xhigh: 128_000,
+  max: 128_000,
 };
 
 /**
@@ -82,7 +83,7 @@ export const DEFAULT_OPENAI_SERVICE_TIER = "priority";
  * Duplicated here instead of importing because pi-ai only exports it as a
  * type, and we need the literal set at runtime for validation.
  */
-export type PiReasoningLevel = "minimal" | "low" | "medium" | "high" | "xhigh";
+export type PiReasoningLevel = "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
 
 /**
  * @deprecated Use the model preset's maxTokens (128_000) directly.

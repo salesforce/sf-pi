@@ -5,7 +5,8 @@
  * Beta header logic determines which Anthropic features are enabled by model
  * defaults and which ones are injected explicitly at runtime.
  */
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { applyRuntimeBetaHeader, handleBetaCommand } from "../lib/beta-controls.ts";
 import { normalizeBetaValue, resolveBetaAlias, resolveEffectiveBetas } from "../lib/models.ts";
 
 // -------------------------------------------------------------------------------------------------
@@ -39,6 +40,84 @@ describe("normalizeBetaValue", () => {
 // -------------------------------------------------------------------------------------------------
 // resolveEffectiveBetas
 // -------------------------------------------------------------------------------------------------
+
+describe("handleBetaCommand", () => {
+  it("updates the next request header without re-registering the provider", async () => {
+    const pi = {
+      registerProvider: vi.fn(),
+      unregisterProvider: vi.fn(),
+    };
+    const emitOutput = vi.fn(async () => undefined);
+
+    await handleBetaCommand(
+      pi as never,
+      { cwd: "/tmp/project" } as never,
+      ["context-1m", "off"],
+      emitOutput,
+    );
+
+    const headers: Record<string, string | null> = {
+      "anthropic-beta":
+        "context-1m-2025-08-07,output-128k-2025-02-19,interleaved-thinking-2025-05-14",
+    };
+    applyRuntimeBetaHeader(headers, "claude-opus-4-6-v1");
+
+    expect(headers["anthropic-beta"]).toBe(
+      "output-128k-2025-02-19,interleaved-thinking-2025-05-14,fine-grained-tool-streaming-2025-05-14",
+    );
+    expect(pi.registerProvider).not.toHaveBeenCalled();
+    expect(pi.unregisterProvider).not.toHaveBeenCalled();
+
+    await handleBetaCommand(pi as never, { cwd: "/tmp/project" } as never, ["reset"], emitOutput);
+  });
+});
+
+describe("applyRuntimeBetaHeader", () => {
+  it("overrides stale registered model headers when runtime disables a default beta", () => {
+    const headers: Record<string, string | null> = {
+      "anthropic-beta":
+        "context-1m-2025-08-07,output-128k-2025-02-19,interleaved-thinking-2025-05-14",
+    };
+
+    applyRuntimeBetaHeader(headers, "claude-opus-4-6-v1", {
+      defaultBetas: new Set(["context-1m-2025-08-07"]),
+      extraBetas: new Set(),
+    });
+
+    expect(headers["anthropic-beta"]).toBe(
+      "context-1m-2025-08-07,fine-grained-tool-streaming-2025-05-14",
+    );
+  });
+
+  it("deletes stale registered model headers when no beta remains effective", () => {
+    const headers: Record<string, string | null> = {
+      "anthropic-beta": "interleaved-thinking-2025-05-14",
+    };
+
+    applyRuntimeBetaHeader(headers, "claude-sonnet-4-6", {
+      defaultBetas: new Set(),
+      extraBetas: new Set(),
+    });
+
+    expect(headers["anthropic-beta"]).toBeNull();
+  });
+
+  it("injects runtime extras without touching non-Anthropic gateway models", () => {
+    const anthropicHeaders: Record<string, string | null> = {};
+    applyRuntimeBetaHeader(anthropicHeaders, "claude-opus-4-7", {
+      defaultBetas: null,
+      extraBetas: new Set(["prompt-caching-2024-07-31"]),
+    });
+    expect(anthropicHeaders["anthropic-beta"]).toBe("prompt-caching-2024-07-31");
+
+    const openAiHeaders: Record<string, string | null> = {};
+    applyRuntimeBetaHeader(openAiHeaders, "gpt-5", {
+      defaultBetas: null,
+      extraBetas: new Set(["prompt-caching-2024-07-31"]),
+    });
+    expect(openAiHeaders).toEqual({});
+  });
+});
 
 describe("resolveEffectiveBetas", () => {
   it("returns model defaults when no overrides are active", () => {

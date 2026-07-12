@@ -3,7 +3,7 @@
  * Tests for the user-respecting thinking-level helper.
  *
  * Before this fix, `model_select` unconditionally called
- * `pi.setThinkingLevel("xhigh")` every time the active model was a gateway
+ * `pi.setThinkingLevel(DEFAULT_THINKING_LEVEL)` every time the active model was a gateway
  * model. That silently overwrote user-initiated level changes (e.g. after
  * a /thinking medium command) and silently inflated every turn into the
  * heavy-workload profile that correlates with Anthropic's intermittent
@@ -23,7 +23,7 @@ import {
 } from "../index.ts";
 import { DEFAULT_THINKING_LEVEL } from "../lib/config.ts";
 
-type Level = "off" | "minimal" | "low" | "medium" | "high" | "xhigh";
+type Level = "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
 
 /** Minimal fake ExtensionAPI that records setThinkingLevel calls. */
 function makeFakePi(initialLevel: Level) {
@@ -59,10 +59,10 @@ describe("applyGatewayDefaultThinkingLevel", () => {
     expect(__getLastAppliedThinkingLevelForTests()).toBe(DEFAULT_THINKING_LEVEL);
   });
 
-  it("respects a user override: does not re-apply xhigh when the user lowered it", () => {
+  it("respects a user override: does not re-apply the default when the user lowered it", () => {
     const fake = makeFakePi("off");
 
-    // First call: fresh session, we set xhigh.
+    // First call: fresh session, we set the gateway default.
     applyGatewayDefaultThinkingLevel(fake.pi);
     expect(fake.level).toBe(DEFAULT_THINKING_LEVEL);
 
@@ -98,7 +98,7 @@ describe("applyGatewayDefaultThinkingLevel", () => {
     (fake1.pi as unknown as { setThinkingLevel: (l: Level) => void }).setThinkingLevel("low");
     __resetThinkingLevelStateForTests();
 
-    // A new session starts with its own initial level. Helper should set xhigh again.
+    // A new session starts with its own initial level. Helper should set the default again.
     const fake2 = makeFakePi("medium");
     const applied = applyGatewayDefaultThinkingLevel(fake2.pi);
     expect(applied).toBe(true);

@@ -3,8 +3,9 @@
  * Deferred post-agent Code Analyzer quality pass.
  *
  * The hook records files changed by successful write/edit tool results and waits
- * until `agent_end` before running Code Analyzer. This lets the model complete a
- * coherent edit pass before quality feedback steers any repair loop.
+ * until `agent_settled` before running Code Analyzer. This lets Pi finish any
+ * automatic retry, compaction retry, or queued follow-up before quality feedback
+ * steers a repair loop.
  */
 import path from "node:path";
 import type {
@@ -73,7 +74,7 @@ export function registerDeferredCodeAnalyzerAutoScan(
     collectChangedFile(event, ctx, pendingFiles);
   });
 
-  pi.on("agent_end", async (_event, ctx) => {
+  pi.on("agent_settled", async (_event, ctx) => {
     if (running || pendingFiles.size === 0) return;
     const settings = readSettings(ctx.cwd);
     if (!settings.autoScan) {
@@ -181,8 +182,14 @@ async function runLocalScanGroup(
     formatLocalScanTranscript("running", {
       selectors: [group.selector],
       targetCount: group.targets.length,
+      targetFiles: group.targets,
     }),
-    { status: "running", targetCount: group.targets.length },
+    {
+      status: "running",
+      targetCount: group.targets.length,
+      selectors: [group.selector],
+      targetFiles: group.targets,
+    },
   );
   try {
     const targetPaths = group.targets;
@@ -203,6 +210,7 @@ async function runLocalScanGroup(
         durationMs: summary.durationMs,
         violationCount: count,
         reportFile: summary.reportFile,
+        targetFiles: group.targets,
       }),
       {
         status: count === 0 ? "clean" : "findings",
@@ -210,6 +218,8 @@ async function runLocalScanGroup(
         targetCount: group.targets.length,
         violationCount: count,
         durationMs: summary.durationMs,
+        selectors: [group.selector],
+        targetFiles: group.targets,
       },
     );
     const guidance = buildGuidance({

@@ -293,7 +293,7 @@
     "entry": "extensions/sf-code-analyzer/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 3886
+    "srcLoc": 4410
   },
   {
     "id": "sf-data-explorer",
@@ -680,16 +680,18 @@
       "session_start",
       "turn_end",
       "model_select",
+      "before_provider_headers",
       "after_provider_response",
       "session_shutdown"
     ],
     "docs": {
-      "summary": "Single pi-native provider for the Salesforce LLM Gateway. Static bootstrap catalog plus dynamic /v1/models discovery, family-aware presets, OpenAI-compat dispatcher that delegates Claude ids to the native Anthropic transport, and footer status with model + context + monthly usage.",
+      "summary": "Single pi-native provider for the Salesforce LLM Gateway. Static bootstrap catalog plus dynamic /v1/models discovery, family-aware presets, request-time Anthropic beta headers, OpenAI-compat dispatcher that delegates Claude ids to the native Anthropic transport, and footer status with model + context + monthly usage.",
       "primaryFiles": [
         "index.ts",
         "lib/discovery.ts",
         "lib/transport.ts",
         "lib/models.ts",
+        "lib/model-resolution.ts",
         "lib/config.ts",
         "lib/config-panel.ts",
         "lib/monthly-usage.ts",
@@ -707,7 +709,7 @@
     "entry": "extensions/sf-llm-gateway-internal/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 12351
+    "srcLoc": 12489
   },
   {
     "id": "sf-lsp",
@@ -748,7 +750,7 @@
     "entry": "extensions/sf-lsp/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 4058
+    "srcLoc": 4048
   },
   {
     "id": "sf-lwc",

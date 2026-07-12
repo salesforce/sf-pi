@@ -2,16 +2,16 @@
 /**
  * Inline transcript row for sf-lsp checks.
  *
- * Uses `pi.sendMessage({customType:"sf-lsp", display:true, details})` so
- * the row appears in the TUI chat stream but stays OUT of the LLM context
- * (Pi's custom messages with `display:true` are renderer-only — see
- * examples/extensions/message-renderer.ts).
+ * Uses `pi.appendEntry("sf-lsp", data)` plus `registerEntryRenderer()` so
+ * the row appears in the TUI chat stream while staying OUT of the LLM
+ * context. Pi custom messages are model-visible; custom entries are the
+ * human-only transcript path.
  *
  * Two responsibilities:
  *   1. Decide whether to emit a row for a given sample (balanced vs verbose)
  *   2. Render the row when Pi calls our message renderer back
  */
-import type { ExtensionAPI, MessageRenderer, Theme } from "@earendil-works/pi-coding-agent";
+import type { EntryRenderer, ExtensionAPI, Theme } from "@earendil-works/pi-coding-agent";
 import { Box, Text } from "@earendil-works/pi-tui";
 import { languageLongLabel, statusColor, type LspActivityStatus } from "./activity.ts";
 import type { SupportedLanguage } from "./types.ts";
@@ -26,6 +26,11 @@ export interface LspTranscriptDetails {
   durationMs?: number;
   unavailableReason?: string;
   previewLines?: string[];
+}
+
+export interface LspTranscriptEntry {
+  content: string;
+  details: LspTranscriptDetails;
 }
 
 export type VerbosityMode = "balanced" | "verbose";
@@ -50,11 +55,8 @@ export function shouldEmitTranscriptRow(
 }
 
 export function emitTranscriptRow(pi: ExtensionAPI, details: LspTranscriptDetails): void {
-  const content = buildPlainContent(details);
-  pi.sendMessage({
-    customType: LSP_TRANSCRIPT_CUSTOM_TYPE,
-    content,
-    display: true,
+  pi.appendEntry<LspTranscriptEntry>(LSP_TRANSCRIPT_CUSTOM_TYPE, {
+    content: buildPlainContent(details),
     details,
   });
 }
@@ -84,21 +86,12 @@ function buildPlainContent(details: LspTranscriptDetails): string {
  * colors are reapplied via `theme.fg` at render time so theme changes pick
  * up correctly (see tui.md "Invalidation and Theme Changes").
  */
-export function createTranscriptRenderer(): MessageRenderer<LspTranscriptDetails> {
-  return (message, options, theme) => {
-    const details = message.details;
+export function createTranscriptRenderer(): EntryRenderer<LspTranscriptEntry> {
+  return (entry, options, theme) => {
+    const details = entry.data?.details;
     const status = details?.status ?? "idle";
     const color = statusColor(status);
-
-    const plainContent =
-      typeof message.content === "string"
-        ? message.content
-        : message.content
-            .map((c) =>
-              c && (c as { type?: string }).type === "text" ? (c as { text: string }).text : "",
-            )
-            .filter(Boolean)
-            .join(" ") || "";
+    const plainContent = entry.data?.content ?? "";
 
     const parts: string[] = [];
     parts.push(theme.fg(color, "[sf-lsp]"));

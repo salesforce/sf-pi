@@ -60,7 +60,7 @@ export const FALLBACK_MODEL_ID = "claude-sonnet-4-6";
 
 /** Previous default kept as a named constant for backward compatibility in presets. */
 export const PREVIOUS_DEFAULT_MODEL_ID = "claude-opus-4-7";
-export const DEFAULT_THINKING_LEVEL = "xhigh" as const;
+export const DEFAULT_THINKING_LEVEL = "max" as const;
 // When the user turns the gateway off, switch them to a model that actually
 // exists on the gateway. `openai-codex/gpt-5.5` used to be here but is not
 // a published model id on the gateway; use the real GPT-5 on the openai
