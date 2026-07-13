@@ -529,6 +529,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.226.1](https://github.com/salesforce/sf-pi/compare/v0.226.0...v0.226.1) (2026-07-13)
+
+
+### Bug Fixes
+
+* **sf-llm-gateway:** remove obsolete beta header path ([f13cf3b](https://github.com/salesforce/sf-pi/commit/f13cf3bdff6fefd41f81d385400ff600eb522e74))
+
 ## [0.226.0](https://github.com/salesforce/sf-pi/compare/v0.225.1...v0.226.0) (2026-07-12)
 
 
