@@ -133,7 +133,7 @@
   "dependencies": {
     "@lwc/compiler": "^9.3.4",
     "@lwc/template-compiler": "^9.3.4",
-    "@salesforce/apex-node": "^8.4.34",
+    "@salesforce/apex-node": "^8.4.35",
     "@salesforce/core": "^8.31.2",
     "@salesforce/kit": "^3.2.6",
     "@salesforce/soql-common": "^2.0.0",
