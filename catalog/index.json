@@ -499,7 +499,7 @@
     "entry": "extensions/sf-docs/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 4120
+    "srcLoc": 4106
   },
   {
     "id": "sf-feedback",
@@ -709,7 +709,7 @@
     "entry": "extensions/sf-llm-gateway-internal/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 12038
+    "srcLoc": 12028
   },
   {
     "id": "sf-lsp",
@@ -997,7 +997,7 @@
     "entry": "extensions/sf-slack/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 12535
+    "srcLoc": 12504
   },
   {
     "id": "sf-soql",

@@ -137,7 +137,7 @@ class SlackConfigPanelComponent implements Focusable {
     lines.push(pad(` ${t.fg("muted", "SF Slack Connection Status")}`));
     lines.push(pad(""));
 
-    if (configuredToken) {
+    if (source !== "none") {
       const sourceLabels: Record<TokenSource, string> = {
         env: `Environment (${ENV_TOKEN})`,
         "pi-auth": "Pi auth store (/login) ★ recommended",
@@ -147,9 +147,11 @@ class SlackConfigPanelComponent implements Focusable {
       lines.push(
         pad(`   ${t.fg("muted", "Token source:")}  ${t.fg("text", sourceLabels[source])}`),
       );
-      lines.push(
-        pad(`   ${t.fg("muted", "Token:")}         ${t.fg("dim", maskToken(configuredToken))}`),
-      );
+      if (configuredToken) {
+        lines.push(
+          pad(`   ${t.fg("muted", "Token:")}         ${t.fg("dim", maskToken(configuredToken))}`),
+        );
+      }
       if (teamId) lines.push(pad(`   ${t.fg("muted", "Team ID:")}       ${t.fg("dim", teamId)}`));
       const granted = getGrantedScopes();
       const scopeLabel = granted ? "Granted:" : "Requested:";

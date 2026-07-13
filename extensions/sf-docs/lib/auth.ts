@@ -2,8 +2,7 @@
 /** Credential and endpoint resolution for SF Docs. */
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import type { OAuthCredentials, OAuthLoginCallbacks } from "@earendil-works/pi-ai";
-import { existsSync, readFileSync } from "node:fs";
-import { globalAgentPath } from "../../../lib/common/pi-paths.ts";
+import { readPiAuthProviderStatus } from "../../../lib/common/pi-auth-status.ts";
 import {
   DEFAULT_ENDPOINT,
   ENV_ENDPOINT,
@@ -21,24 +20,6 @@ function getEnv(name: string): string | undefined {
   return value ? value : undefined;
 }
 
-function authStorePath(): string {
-  return globalAgentPath("auth.json");
-}
-
-export function readPiAuthToken(path = authStorePath()): string | null {
-  if (!existsSync(path)) return null;
-  try {
-    const parsed = JSON.parse(readFileSync(path, "utf8")) as Record<
-      string,
-      { access?: string; token?: string }
-    >;
-    const token = parsed?.[PROVIDER_NAME]?.access || parsed?.[PROVIDER_NAME]?.token;
-    return typeof token === "string" && token.trim() ? token.trim() : null;
-  } catch {
-    return null;
-  }
-}
-
 export function resolveTokenCandidates(candidates: {
   piAuthToken?: string | null;
   envToken?: string | null;
@@ -51,10 +32,11 @@ export function resolveTokenCandidates(candidates: {
 }
 
 export function resolveConfiguredToken(): TokenResolution | null {
-  return resolveTokenCandidates({ piAuthToken: readPiAuthToken(), envToken: getEnv(ENV_TOKEN) });
+  return resolveTokenCandidates({ envToken: getEnv(ENV_TOKEN) });
 }
 
 export function detectTokenSource(): TokenSource {
+  if (readPiAuthProviderStatus(PROVIDER_NAME).configured) return "pi-auth";
   return resolveConfiguredToken()?.source ?? "none";
 }
 
@@ -63,11 +45,11 @@ export async function getDocsToken(
 ): Promise<
   { ok: true; token: string; source: Exclude<TokenSource, "none"> } | { ok: false; message: string }
 > {
-  const configured = resolveConfiguredToken();
-  if (configured) return { ok: true, token: configured.token, source: configured.source };
-
   const token = await ctx.modelRegistry.getApiKeyForProvider(PROVIDER_NAME);
   if (token?.trim()) return { ok: true, token: token.trim(), source: "pi-auth" };
+
+  const configured = resolveConfiguredToken();
+  if (configured) return { ok: true, token: configured.token, source: configured.source };
 
   return {
     ok: false,

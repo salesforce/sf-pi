@@ -110,13 +110,14 @@ class SfDocsConfigPanel implements Focusable {
     const t = this.theme;
     const pad = (line = "") => padAnsi(line, width);
     const token = resolveConfiguredToken();
+    const tokenSource = detectTokenSource();
     const endpoint = resolveEndpoint();
     const lines: string[] = [
       ` ${t.fg("accent", t.bold("📚 SF Docs Settings"))}`,
       ` ${t.fg("dim", "Configure non-secret defaults. Use Connect on the detail page for the token.")}`,
       "",
-      ` ${token ? t.fg("success", "● Connected") : t.fg("error", "● Not configured")}`,
-      `   ${t.fg("muted", "Token source:")} ${t.fg("text", detectTokenSource())}`,
+      ` ${tokenSource !== "none" ? t.fg("success", "● Connected") : t.fg("error", "● Not configured")}`,
+      `   ${t.fg("muted", "Token source:")} ${t.fg("text", tokenSource)}`,
     ];
     if (token) lines.push(`   ${t.fg("muted", "Token:")} ${t.fg("dim", maskToken(token.token))}`);
     lines.push(

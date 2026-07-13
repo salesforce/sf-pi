@@ -19,14 +19,7 @@ import {
   type StructuredUser,
   type StructuredFile,
 } from "./types.ts";
-import {
-  type TokenSource,
-  detectTokenSource,
-  getSlackToken,
-  resolveTokenFromConfiguredSources,
-  maskToken,
-  oauthScopes,
-} from "./auth.ts";
+import { type TokenSource, getSlackToken, maskToken, oauthScopes } from "./auth.ts";
 import {
   tsToLabel,
   relativeTime,
@@ -354,9 +347,7 @@ function formatCanvasCapability(
 }
 
 export async function buildAuthStatus(ctx: ExtensionContext): Promise<string> {
-  const configuredToken = resolveTokenFromConfiguredSources();
   const auth = await getSlackToken(ctx);
-  const source = detectTokenSource();
 
   const lines: string[] = [];
   lines.push(`Provider: ${PROVIDER_NAME}`);
@@ -378,7 +369,6 @@ export async function buildAuthStatus(ctx: ExtensionContext): Promise<string> {
     "pi-auth": "✓ Pi auth store (via /login) ★ recommended",
     none: "✓ Configured",
   };
-  const effectiveSource: TokenSource = configuredToken ? source : "pi-auth";
   const tokenType = detectTokenType(auth.token);
   const tokenTypeLabel =
     tokenType === "user"
@@ -389,7 +379,7 @@ export async function buildAuthStatus(ctx: ExtensionContext): Promise<string> {
           ? "app-level token"
           : "unknown token type";
 
-  lines.push(`Auth method: ${sourceLabel[effectiveSource]}`);
+  lines.push(`Auth method: ${sourceLabel[auth.source]}`);
   lines.push(`Token: ${maskToken(auth.token)}  [${tokenTypeLabel}]`);
   lines.push("Status: ✅ Connected");
 

@@ -2,74 +2,12 @@
 /**
  * Tests for sf-slack auth module.
  *
- * Tests local auth-file parsing, precedence helpers, and display helpers.
+ * Tests token precedence helpers and display helpers.
  */
-import { afterEach, describe, it, expect } from "vitest";
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import path from "node:path";
-import { maskToken, formatExpiry, readPiAuthToken, resolveTokenCandidates } from "../lib/auth.ts";
-
-const tempDirs: string[] = [];
-
-function makeTempDir(prefix: string): string {
-  const dir = mkdtempSync(path.join(tmpdir(), prefix));
-  tempDirs.push(dir);
-  return dir;
-}
-
-afterEach(() => {
-  for (const dir of tempDirs.splice(0)) {
-    rmSync(dir, { recursive: true, force: true });
-  }
-});
+import { describe, it, expect } from "vitest";
+import { maskToken, formatExpiry, resolveTokenCandidates } from "../lib/auth.ts";
 
 describe("auth", () => {
-  describe("readPiAuthToken", () => {
-    it("reads the sf-slack token from pi auth storage", () => {
-      const homeDir = makeTempDir("sf-slack-auth-");
-      const authPath = path.join(homeDir, ".pi", "agent", "auth.json");
-      mkdirSync(path.dirname(authPath), { recursive: true });
-      writeFileSync(
-        authPath,
-        `${JSON.stringify(
-          {
-            "sf-slack": {
-              access: "xoxp-test-token",
-              refresh: "manual-token",
-            },
-          },
-          null,
-          2,
-        )}\n`,
-        "utf8",
-      );
-
-      expect(readPiAuthToken(authPath)).toBe("xoxp-test-token");
-    });
-
-    it("returns null when the sf-slack provider entry is missing", () => {
-      const homeDir = makeTempDir("sf-slack-auth-");
-      const authPath = path.join(homeDir, ".pi", "agent", "auth.json");
-      mkdirSync(path.dirname(authPath), { recursive: true });
-      writeFileSync(
-        authPath,
-        `${JSON.stringify(
-          {
-            other: {
-              access: "xoxp-other-token",
-            },
-          },
-          null,
-          2,
-        )}\n`,
-        "utf8",
-      );
-
-      expect(readPiAuthToken(authPath)).toBeNull();
-    });
-  });
-
   describe("resolveTokenCandidates", () => {
     it("prefers Pi auth over environment variable", () => {
       expect(

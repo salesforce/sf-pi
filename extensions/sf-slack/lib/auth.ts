@@ -5,17 +5,17 @@
  * ADR 0007 made the `/sf-slack` panel the single primary entry point for
  * authentication. Resolution precedence is now:
  *
- *   1. Pi auth store (~/.pi/agent/auth.json) — written by the panel's
- *      Connect action via `ctx.modelRegistry.authStorage.login(...)`. This
- *      is also where pi's own `/login` flow writes, so existing users see
- *      no change.
+ *   1. Pi auth storage through `ctx.modelRegistry.getApiKeyForProvider()` —
+ *      written by the panel's Connect action and pi's own `/login` flow.
  *   2. Environment variable (SLACK_USER_TOKEN) — best for automation / CI.
+ *
+ * Config/status surfaces without ExtensionContext use a shared status-only
+ * auth-store adapter that never returns token values.
  *
  */
 import type { OAuthCredentials, OAuthLoginCallbacks } from "@earendil-works/pi-ai";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { existsSync, readFileSync } from "node:fs";
-import { globalAgentPath } from "../../../lib/common/pi-paths.ts";
+import { readPiAuthProviderStatus } from "../../../lib/common/pi-auth-status.ts";
 import {
   PROVIDER_NAME,
   SLACK_API_BASE,
@@ -61,33 +61,6 @@ export interface TokenResolution {
   token: string;
 }
 
-function getPiAuthStorePath(): string {
-  return globalAgentPath("auth.json");
-}
-
-export function readPiAuthToken(authPath: string): string | null {
-  if (!existsSync(authPath)) return null;
-
-  try {
-    const authData = JSON.parse(readFileSync(authPath, "utf-8")) as Record<
-      string,
-      {
-        access?: string;
-        token?: string;
-      }
-    >;
-    const entry = authData?.[PROVIDER_NAME];
-    const token = entry?.access || entry?.token;
-    return typeof token === "string" && token.trim() ? token.trim() : null;
-  } catch {
-    return null;
-  }
-}
-
-export function getTokenFromPiAuthStore(): string | null {
-  return readPiAuthToken(getPiAuthStorePath());
-}
-
 export function resolveTokenCandidates(candidates: {
   piAuthToken?: string | null;
   envToken?: string | null;
@@ -110,44 +83,44 @@ export function resolveTokenCandidates(candidates: {
 }
 
 export function resolveConfiguredToken(): TokenResolution | null {
-  return resolveTokenCandidates({
-    piAuthToken: getTokenFromPiAuthStore(),
-    envToken: getEnv(ENV_TOKEN),
-  });
+  return resolveTokenCandidates({ envToken: getEnv(ENV_TOKEN) });
 }
 
 export function detectTokenSource(): TokenSource {
+  if (readPiAuthProviderStatus(PROVIDER_NAME).configured) return "pi-auth";
   return resolveConfiguredToken()?.source || "none";
 }
 
-/** Resolve token from local, status-friendly sources without needing an extension ctx. */
+/** Resolve display-safe local token sources without needing an extension ctx. */
 export function resolveTokenFromConfiguredSources(): string | null {
   return resolveConfiguredToken()?.token || null;
 }
 
-/** Full token resolution: local sources first, then model-registry fallback. */
+/** Full token resolution: Pi auth storage first, then automation env fallback. */
 export async function getSlackToken(
   ctx: ExtensionContext,
-): Promise<{ ok: true; token: string } | { ok: false; message: string }> {
+): Promise<
+  { ok: true; token: string; source: Exclude<TokenSource, "none"> } | { ok: false; message: string }
+> {
+  const token = await ctx.modelRegistry.getApiKeyForProvider(PROVIDER_NAME);
+  if (token?.trim()) {
+    return { ok: true, token: token.trim(), source: "pi-auth" };
+  }
+
   const configuredToken = resolveConfiguredToken();
   if (configuredToken) {
-    return { ok: true, token: configuredToken.token };
+    return { ok: true, token: configuredToken.token, source: configuredToken.source };
   }
 
-  const token = await ctx.modelRegistry.getApiKeyForProvider(PROVIDER_NAME);
-  if (!token) {
-    return {
-      ok: false,
-      message: [
-        "Slack auth is not configured.",
-        "Recommended setup:",
-        `1. Run /login ${PROVIDER_NAME}`,
-        `2. Or set ${ENV_TOKEN}=xoxp-... for automation`,
-      ].join("\n"),
-    };
-  }
-
-  return { ok: true, token };
+  return {
+    ok: false,
+    message: [
+      "Slack auth is not configured.",
+      "Recommended setup:",
+      `1. Run /login ${PROVIDER_NAME}`,
+      `2. Or set ${ENV_TOKEN}=xoxp-... for automation`,
+    ].join("\n"),
+  };
 }
 
 /** Auth guard helper for tool execute functions. */

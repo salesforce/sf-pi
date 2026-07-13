@@ -1,15 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 import { describe, expect, it } from "vitest";
-import {
-  maskToken,
-  normalizeEndpoint,
-  readPiAuthToken,
-  resolveTokenCandidates,
-} from "../lib/auth.ts";
-import { writeFileSync } from "node:fs";
-import { mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
-import path from "node:path";
+import { maskToken, normalizeEndpoint, resolveTokenCandidates } from "../lib/auth.ts";
 
 describe("sf-docs auth", () => {
   it("resolves pi auth before env", () => {
@@ -24,13 +15,6 @@ describe("sf-docs auth", () => {
       source: "env",
       token: "env",
     });
-  });
-
-  it("reads the sf-docs token from Pi auth json", () => {
-    const dir = mkdtempSync(path.join(tmpdir(), "sf-docs-auth-"));
-    const file = path.join(dir, "auth.json");
-    writeFileSync(file, JSON.stringify({ "sf-docs": { access: "saved-token" } }));
-    expect(readPiAuthToken(file)).toBe("saved-token");
   });
 
   it("masks tokens", () => {

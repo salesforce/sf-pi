@@ -5,14 +5,15 @@ import { readEffectiveDocsPreferences } from "./preferences.ts";
 
 export function buildStatus(cwd: string): string {
   const token = resolveConfiguredToken();
+  const tokenSource = detectTokenSource();
   const endpoint = resolveEndpoint();
   const cache = readCatalogCache();
   const prefs = readEffectiveDocsPreferences(cwd);
   const lines = [
     "📚 SF Docs status",
     "",
-    `Connection: ${token ? "connected" : "not configured"}`,
-    `Token source: ${detectTokenSource()}`,
+    `Connection: ${tokenSource !== "none" ? "connected" : "not configured"}`,
+    `Token source: ${tokenSource}`,
   ];
   if (token) lines.push(`Token: ${maskToken(token.token)}`);
   lines.push(`Endpoint: ${endpoint.endpoint} (${endpoint.source})`);

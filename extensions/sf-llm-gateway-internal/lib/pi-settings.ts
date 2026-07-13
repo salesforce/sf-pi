@@ -16,12 +16,12 @@
  * Until then, this is the accepted pattern for provider extensions that
  * need to persist defaultProvider/defaultModel.
  */
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import path from "node:path";
 import {
   globalSettingsPath as resolveGlobalSettingsPath,
   projectSettingsPath as resolveProjectSettingsPath,
-} from "../../../lib/common/pi-paths.ts";
+  readJsonFile,
+  writeJsonFile,
+} from "../../../lib/common/sf-pi-settings.ts";
 import {
   ENABLED_MODEL_PATTERN,
   LEGACY_ENABLED_MODEL_PATTERN_ANTHROPIC,
@@ -60,22 +60,11 @@ export function projectSettingsPath(cwd: string): string {
  * stay linear and user-friendly.
  */
 export function readSettings(filePath: string): Record<string, unknown> {
-  if (!existsSync(filePath)) {
-    return {};
-  }
-
-  try {
-    const raw = readFileSync(filePath, "utf8");
-    const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : {};
-  } catch {
-    return {};
-  }
+  return readJsonFile(filePath);
 }
 
 export function writeSettings(filePath: string, settings: Record<string, unknown>): void {
-  mkdirSync(path.dirname(filePath), { recursive: true });
-  writeFileSync(filePath, `${JSON.stringify(settings, null, 2)}\n`, "utf8");
+  writeJsonFile(filePath, settings);
 }
 
 function toStringArray(value: unknown): string[] {

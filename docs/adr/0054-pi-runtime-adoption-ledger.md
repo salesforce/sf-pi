@@ -47,8 +47,8 @@ This keeps SF Pi simple and Pi-native: Pi owns runtime concerns such as trust, t
 
 1. **Code Analyzer human-only transcript rows** — landed. Use `appendEntry()` and `registerEntryRenderer()` for auto-scan status rows; keep agent-visible follow-ups as messages.
 2. **Gateway Header Proof Spike** — landed. SF Pi no longer owns Anthropic beta-header toggles or model-level beta headers; live no-beta probes remain as regression evidence.
-3. **Slack/SF Docs auth status delegation** — remove extension-local raw `auth.json` parsing. Use Pi auth storage through `ctx` where possible, or a shared status-only fallback adapter where `ctx` is unavailable.
-4. **Gateway settings I/O reuse** — delegate tolerant Pi settings file I/O to `lib/common/sf-pi-settings.ts` while keeping gateway-specific config logic local.
+3. **Slack/SF Docs auth status delegation** — landed. Execution paths use Pi auth storage through `ctx`; status-only surfaces share a tokenless `lib/common/pi-auth-status.ts` fallback.
+4. **Gateway settings I/O reuse** — landed. Gateway Pi settings mutations delegate tolerant JSON file I/O to `lib/common/sf-pi-settings.ts` while keeping gateway-specific config logic local.
 5. **Apex/SOQL Salesforce REST adapter consolidation** — move generic REST/Tooling transport helpers behind `lib/common/sf-conn` / `lib/common/sf-rest`; keep lifecycle semantics local.
 6. **Lifecycle shell cleanup** — split into command shell catalog reuse, common artifact writer, then result-card adapter.
 7. **Package filter/package-root consolidation** — first consolidate SF Pi's duplicated package matching/root logic, then delegate to Pi package helpers after behavior proof.
