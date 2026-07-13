@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.226.0-2026-07-12",
-  "latestVersion": "0.226.0",
+  "revision": "release-0.226.1-2026-07-13",
+  "latestVersion": "0.226.1",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.226.0",
+      "id": "release-0.226.1",
       "kind": "update",
-      "title": "sf-pi v0.226.0 — sf-data360: refresh upstream parity surface",
-      "publishedAt": "2026-07-12T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.226.0",
+      "title": "sf-pi v0.226.1 — sf-llm-gateway: remove obsolete beta header path",
+      "publishedAt": "2026-07-13T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.226.1",
       "severity": "info",
-      "body": "sf-data360: refresh upstream parity surface"
+      "body": "sf-llm-gateway: remove obsolete beta header path"
     },
     {
       "id": "pi-0.73-required",
