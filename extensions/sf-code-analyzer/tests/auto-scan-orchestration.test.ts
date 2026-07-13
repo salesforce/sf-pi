@@ -27,6 +27,7 @@ function harness() {
       list.push(handler);
       handlers.set(event, list);
     },
+    appendEntry: vi.fn(),
     sendMessage: vi.fn(),
     sendUserMessage: vi.fn(),
   };
@@ -103,12 +104,13 @@ describe("deferred Code Analyzer auto-scan orchestration", () => {
 
     expect(runCodeAnalyzer).not.toHaveBeenCalled();
     expect(pi.sendUserMessage).not.toHaveBeenCalled();
-    expect(pi.sendMessage).toHaveBeenCalledWith(
+    expect(pi.appendEntry).toHaveBeenCalledWith(
+      "sf-code-analyzer",
       expect.objectContaining({
-        customType: "sf-code-analyzer",
         content: expect.stringContaining("deferred scan skipped"),
       }),
     );
+    expect(pi.sendMessage).not.toHaveBeenCalled();
   });
 
   it("runs ready local scan groups and sends no follow-up when clean", async () => {
@@ -139,16 +141,19 @@ describe("deferred Code Analyzer auto-scan orchestration", () => {
       target: [path.join(cwd, "src/foo.ts")],
     });
     expect(pi.sendUserMessage).not.toHaveBeenCalled();
-    expect(pi.sendMessage).toHaveBeenCalledWith(
+    expect(pi.appendEntry).toHaveBeenCalledWith(
+      "sf-code-analyzer",
       expect.objectContaining({
         content: expect.stringContaining("Code Analyzer Auto-scan"),
       }),
     );
-    expect(pi.sendMessage).toHaveBeenCalledWith(
+    expect(pi.appendEntry).toHaveBeenCalledWith(
+      "sf-code-analyzer",
       expect.objectContaining({
         content: expect.stringContaining("✓ Clean"),
       }),
     );
+    expect(pi.sendMessage).not.toHaveBeenCalled();
   });
 
   it("sends one follow-up when a ready local scan finds violations", async () => {
@@ -196,5 +201,6 @@ describe("deferred Code Analyzer auto-scan orchestration", () => {
     expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("ApexCRUDViolation"), {
       deliverAs: "followUp",
     });
+    expect(pi.sendMessage).not.toHaveBeenCalled();
   });
 });

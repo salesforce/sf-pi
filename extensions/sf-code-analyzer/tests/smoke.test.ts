@@ -49,7 +49,7 @@ describe("sf-code-analyzer smoke", () => {
       events,
       on: vi.fn(),
       registerCommand: vi.fn(),
-      registerMessageRenderer: vi.fn(),
+      registerEntryRenderer: vi.fn(),
     };
     let request: SfPiManagerOpenRequest | undefined;
     events.on(SF_PI_MANAGER_OPEN_EVENT, (payload) => {
@@ -76,7 +76,7 @@ describe("sf-code-analyzer smoke", () => {
       events: eventBus(),
       on: vi.fn(),
       registerCommand: vi.fn(),
-      registerMessageRenderer: vi.fn(),
+      registerEntryRenderer: vi.fn(),
     };
 
     mod.default(pi as never);

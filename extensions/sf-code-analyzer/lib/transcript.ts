@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** User-visible transcript rows for automatic Code Analyzer work. */
 import path from "node:path";
-import type { ExtensionAPI, Theme } from "@earendil-works/pi-coding-agent";
+import type { EntryRenderer, ExtensionAPI, Theme } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import {
   renderSfPiNoticeCardText,
@@ -27,16 +27,26 @@ export interface CodeAnalyzerTranscriptDetails {
   targetFiles?: string[];
 }
 
+export interface CodeAnalyzerTranscriptEntry {
+  content: string;
+  details: CodeAnalyzerTranscriptDetails;
+}
+
 export function registerCodeAnalyzerTranscriptRenderer(pi: ExtensionAPI): void {
-  pi.registerMessageRenderer<CodeAnalyzerTranscriptDetails>(
+  pi.registerEntryRenderer<CodeAnalyzerTranscriptEntry>(
     CODE_ANALYZER_TRANSCRIPT_TYPE,
-    (message, _options, theme) => {
-      const content = typeof message.content === "string" ? message.content : "[sf-code-analyzer]";
-      const notice = transcriptNotice(content, message.details);
-      if (notice) return renderSfPiNoticePanel(notice, theme);
-      return new Text(renderCodeAnalyzerTranscript(content, message.details, theme), 0, 0);
-    },
+    createCodeAnalyzerTranscriptRenderer(),
   );
+}
+
+export function createCodeAnalyzerTranscriptRenderer(): EntryRenderer<CodeAnalyzerTranscriptEntry> {
+  return (entry, _options, theme) => {
+    const content = entry.data?.content ?? "[sf-code-analyzer]";
+    const details = entry.data?.details;
+    const notice = transcriptNotice(content, details);
+    if (notice) return renderSfPiNoticePanel(notice, theme);
+    return new Text(renderCodeAnalyzerTranscript(content, details, theme), 0, 0);
+  };
 }
 
 export function renderCodeAnalyzerTranscript(
@@ -60,12 +70,7 @@ export function emitCodeAnalyzerTranscript(
   content: string,
   details: CodeAnalyzerTranscriptDetails,
 ): void {
-  pi.sendMessage({
-    customType: CODE_ANALYZER_TRANSCRIPT_TYPE,
-    content,
-    display: true,
-    details,
-  });
+  pi.appendEntry<CodeAnalyzerTranscriptEntry>(CODE_ANALYZER_TRANSCRIPT_TYPE, { content, details });
 }
 
 function transcriptNotice(

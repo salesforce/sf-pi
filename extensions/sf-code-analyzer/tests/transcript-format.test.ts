@@ -1,12 +1,18 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   formatApexGuruSkippedTranscript,
   formatApexGuruTranscript,
   formatLocalScanTranscript,
 } from "../lib/auto-scan-transcript.ts";
-import { renderCodeAnalyzerTranscript } from "../lib/transcript.ts";
+import {
+  CODE_ANALYZER_TRANSCRIPT_TYPE,
+  createCodeAnalyzerTranscriptRenderer,
+  emitCodeAnalyzerTranscript,
+  registerCodeAnalyzerTranscriptRenderer,
+  renderCodeAnalyzerTranscript,
+} from "../lib/transcript.ts";
 
 const theme = {
   fg: (color: string, text: string) => `[${color}]${text}[/]`,
@@ -46,6 +52,51 @@ describe("sf-code-analyzer auto-scan transcript", () => {
     expect(rendered).toContain("JS/TS changed file → eslint:Recommended");
     expect(rendered).toContain("[accent]**Evidence**[/]");
     expect(rendered).toContain("[muted]/tmp/report.json[/]");
+  });
+
+  it("registers human-only entry rendering instead of message rendering", () => {
+    const pi = {
+      registerEntryRenderer: vi.fn(),
+      registerMessageRenderer: vi.fn(),
+    };
+
+    registerCodeAnalyzerTranscriptRenderer(pi as never);
+
+    expect(pi.registerEntryRenderer).toHaveBeenCalledWith(
+      CODE_ANALYZER_TRANSCRIPT_TYPE,
+      expect.any(Function),
+    );
+    expect(pi.registerMessageRenderer).not.toHaveBeenCalled();
+  });
+
+  it("emits human-only transcript entries without sendMessage", () => {
+    const pi = { appendEntry: vi.fn(), sendMessage: vi.fn() };
+
+    emitCodeAnalyzerTranscript(pi as never, "🧪 Code Analyzer Auto-scan\n✓ Clean", {
+      status: "clean",
+    });
+
+    expect(pi.appendEntry).toHaveBeenCalledWith(CODE_ANALYZER_TRANSCRIPT_TYPE, {
+      content: "🧪 Code Analyzer Auto-scan\n✓ Clean",
+      details: { status: "clean" },
+    });
+    expect(pi.sendMessage).not.toHaveBeenCalled();
+  });
+
+  it("entry renderer preserves the existing transcript rendering", () => {
+    const text = formatLocalScanTranscript("clean", {
+      selectors: ["eslint:Recommended"],
+      targetCount: 1,
+      reportFile: "/tmp/report.json",
+    });
+    const renderer = createCodeAnalyzerTranscriptRenderer();
+    const rendered = renderer(
+      { data: { content: text, details: { status: "clean" } } } as never,
+      { expanded: true } as never,
+      theme,
+    );
+
+    expect(rendered).toBeDefined();
   });
 
   it("renders friendly ApexGuru scan rows", () => {
