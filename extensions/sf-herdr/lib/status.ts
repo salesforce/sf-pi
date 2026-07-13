@@ -14,10 +14,15 @@ export interface HerdrRuntimeStatus {
 }
 
 export function getHerdrRuntimeStatus(env: NodeJS.ProcessEnv = process.env): HerdrRuntimeStatus {
+  // Mirror upstream @ogulcancelik/pi-herdr, which activates on any truthy
+  // HERDR_ENV plus a present HERDR_PANE_ID. Requiring the literal "1" here
+  // caused live panes to be reported as "not detected" whenever the herdr
+  // runtime set HERDR_ENV to a non-"1" value.
+  const herdrEnvActive = !!env.HERDR_ENV && !!env.HERDR_PANE_ID;
   return {
-    inHerdrPane: env.HERDR_ENV === "1" && !!env.HERDR_PANE_ID,
-    activeControlEnv: env.HERDR_ENV === "1" && !!env.HERDR_PANE_ID,
-    passiveStatusBridge: env.HERDR_ENV === "1" && !!env.HERDR_SOCKET_PATH && !!env.HERDR_PANE_ID,
+    inHerdrPane: herdrEnvActive,
+    activeControlEnv: herdrEnvActive,
+    passiveStatusBridge: herdrEnvActive && !!env.HERDR_SOCKET_PATH,
     paneId: env.HERDR_PANE_ID,
   };
 }
