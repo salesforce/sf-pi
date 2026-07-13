@@ -150,6 +150,44 @@ describe("gateway extension lifecycle", () => {
     vi.restoreAllMocks();
   });
 
+  it("applies runtime beta headers through Pi's before_provider_headers hook", async () => {
+    const { default: extension } = await import("../index.ts");
+    const pi = makeFakePi();
+
+    extension(pi as never);
+
+    const handler = pi.handlers.before_provider_headers?.[0];
+    expect(handler).toBeDefined();
+
+    const headers: Record<string, string | null | undefined> = {
+      "x-existing-route": "preserve-me",
+    };
+    handler?.({ headers }, {
+      ...makeCtx("/tmp/project"),
+      model: { provider: "sf-llm-gateway-internal", id: "claude-opus-4-6-v1" },
+    } as never);
+
+    expect(headers["x-existing-route"]).toBe("preserve-me");
+    expect(headers["anthropic-beta"]).toEqual(expect.stringContaining("fine-grained"));
+  });
+
+  it("leaves non-gateway provider headers untouched", async () => {
+    const { default: extension } = await import("../index.ts");
+    const pi = makeFakePi();
+
+    extension(pi as never);
+
+    const headers: Record<string, string | null | undefined> = {
+      "anthropic-beta": "upstream-provider-owned",
+    };
+    pi.handlers.before_provider_headers?.[0]?.({ headers }, {
+      ...makeCtx("/tmp/project"),
+      model: { provider: "anthropic", id: "claude-opus-4-6-v1" },
+    } as never);
+
+    expect(headers["anthropic-beta"]).toBe("upstream-provider-owned");
+  });
+
   it("registers the monthly usage refresher for each session and unregisters it on shutdown", async () => {
     const { default: extension } = await import("../index.ts");
     const pi = makeFakePi();

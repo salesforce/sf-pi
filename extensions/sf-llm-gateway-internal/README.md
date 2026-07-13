@@ -372,6 +372,7 @@ extensions/sf-llm-gateway-internal/
     doctor.test.ts          ← unit / smoke test
     fetchers.test.ts        ← unit / smoke test
     formatting.test.ts      ← unit / smoke test
+    gateway-header-proof-live.test.ts← unit / smoke test
     gateway-url.test.ts     ← unit / smoke test
     global-config.test.ts   ← unit / smoke test
     gpt55-live-regression.test.ts← unit / smoke test
