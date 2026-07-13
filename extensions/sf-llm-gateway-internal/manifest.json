@@ -12,12 +12,11 @@
     "session_start",
     "turn_end",
     "model_select",
-    "before_provider_headers",
     "after_provider_response",
     "session_shutdown"
   ],
   "docs": {
-    "summary": "Single pi-native provider for the Salesforce LLM Gateway. Static bootstrap catalog plus dynamic /v1/models discovery, family-aware presets, request-time Anthropic beta headers, stale-usage auto-refresh, OpenAI-compat dispatcher that delegates Claude ids to the native Anthropic transport, and footer status with model + context + monthly usage.",
+    "summary": "Single pi-native provider for the Salesforce LLM Gateway. Static bootstrap catalog plus dynamic /v1/models discovery, family-aware presets, stale-usage auto-refresh, OpenAI-compat dispatcher that delegates Claude ids to the native Anthropic transport, and footer status with model + context + monthly usage.",
     "primaryFiles": [
       "index.ts",
       "lib/discovery.ts",

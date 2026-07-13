@@ -19,7 +19,6 @@
  */
 import { describe, expect, it } from "vitest";
 import {
-  ANTHROPIC_FINE_GRAINED_TOOL_STREAMING_BETA,
   GATEWAY_PROVIDER_DEFAULT_MAX_RETRIES,
   OPUS_47_DEFAULT_MAX_TOKENS,
   OPUS_47_MODEL_MAX_TOKENS,
@@ -435,13 +434,5 @@ describe("applyOpus47GatewayPolicy", () => {
     expect(resolveOpus47MaxTokensFloor("high")).toBe(128_000);
     expect(resolveOpus47MaxTokensFloor("xhigh")).toBe(128_000);
     expect(resolveOpus47MaxTokensFloor(undefined)).toBe(128_000);
-  });
-
-  it("exposes ANTHROPIC_FINE_GRAINED_TOOL_STREAMING_BETA so lib/models.ts can merge it", () => {
-    // This constant is consumed by lib/models.ts to work around a beta-merge
-    // bug in pi-ai's header handling — keep it stable.
-    expect(ANTHROPIC_FINE_GRAINED_TOOL_STREAMING_BETA).toBe(
-      "fine-grained-tool-streaming-2025-05-14",
-    );
   });
 });

@@ -31,55 +31,12 @@ import type { ProviderModelConfig } from "@earendil-works/pi-coding-agent";
 import { DEFAULT_MODEL_ID, FALLBACK_MODEL_ID, PREVIOUS_DEFAULT_MODEL_ID } from "./config.ts";
 
 import {
-  ANTHROPIC_FINE_GRAINED_TOOL_STREAMING_BETA,
   isGpt5BedrockResponsesModelId,
   isGpt5FamilyResponsesModelId,
   isGpt55ModelId,
   isOpus46OrNewerModelId,
   isOpus47OrNewerModelId,
 } from "./transport.ts";
-
-// -------------------------------------------------------------------------------------------------
-// Anthropic beta headers
-// -------------------------------------------------------------------------------------------------
-//
-// These are still exposed so the `/sf-llm-gateway beta` command and
-// the status report keep working. The values are forwarded as an
-// `anthropic-beta` request header on Claude models. Pi-ai passes custom
-// model.headers through to the Anthropic SDK, so this keeps working under the
-// native Anthropic Messages path.
-
-export const ONE_M_CONTEXT_BETA = "context-1m-2025-08-07";
-export const OUTPUT_128K_BETA = "output-128k-2025-02-19";
-export const INTERLEAVED_THINKING_BETA = "interleaved-thinking-2025-05-14";
-export const PROMPT_CACHING_BETA = "prompt-caching-2024-07-31";
-export const CONTEXT_MANAGEMENT_BETA = "context-management-2025-06-27";
-export const EFFORT_BETA = "effort-2025-11-24";
-export const PROMPT_CACHING_SCOPE_BETA = "prompt-caching-scope-2026-01-05";
-export const COMPACT_BETA = "compact-2026-01-12";
-
-/**
- * Anthropic betas that are part of the extension's model-default behavior.
- * Opus 4.7 is GA and needs none; older reasoning Claudes still benefit from
- * interleaved-thinking. Runtime commands/env can inject more on top.
- */
-export const DEFAULT_ANTHROPIC_BETA_HEADERS = [
-  ONE_M_CONTEXT_BETA,
-  OUTPUT_128K_BETA,
-  INTERLEAVED_THINKING_BETA,
-] as const;
-
-/** All known beta headers with short aliases for the toggle command. */
-export const KNOWN_BETAS: ReadonlyArray<{ value: string; aliases: string[] }> = [
-  { value: ONE_M_CONTEXT_BETA, aliases: ["context-1m", "1m"] },
-  { value: OUTPUT_128K_BETA, aliases: ["output-128k", "128k"] },
-  { value: INTERLEAVED_THINKING_BETA, aliases: ["interleaved-thinking", "interleaved"] },
-  { value: PROMPT_CACHING_BETA, aliases: ["prompt-caching", "cache"] },
-  { value: CONTEXT_MANAGEMENT_BETA, aliases: ["context-management"] },
-  { value: EFFORT_BETA, aliases: ["effort"] },
-  { value: PROMPT_CACHING_SCOPE_BETA, aliases: ["prompt-caching-scope", "cache-scope"] },
-  { value: COMPACT_BETA, aliases: ["compact"] },
-];
 
 // -------------------------------------------------------------------------------------------------
 // Constants
@@ -166,7 +123,6 @@ export type GatewayModelDefinition = {
   input: Array<"text" | "image">;
   contextWindow: number;
   maxTokens: number;
-  betaHeaders?: string[];
   /**
    * Optional thinking-level map forwarded to the registered pi model.
    *
@@ -317,13 +273,8 @@ export const GPT5_BEDROCK_RESPONSES_THINKING_LEVEL_MAP: ProviderModelConfig["thi
  * only non-callable sentinels. Once discovery succeeds, the provider is
  * re-registered with the exact gateway model IDs instead of this bootstrap.
  */
-export function buildBootstrapModelList(
-  runtimeBetaOverrides: Set<string> | null,
-  runtimeExtraBetas: Set<string>,
-): TaggedGatewayModel[] {
-  return getStaticGatewayModelIds().map((id) =>
-    toProviderModelConfig(id, runtimeBetaOverrides, runtimeExtraBetas),
-  );
+export function buildBootstrapModelList(): TaggedGatewayModel[] {
+  return getStaticGatewayModelIds().map((id) => toProviderModelConfig(id));
 }
 
 /**
@@ -339,22 +290,15 @@ export function buildBootstrapModelList(
  */
 export function buildDiscoveredModelList(
   discoveredIds: string[],
-  runtimeBetaOverrides: Set<string> | null,
-  runtimeExtraBetas: Set<string>,
   modelInfoMap?: GatewayModelInfoMap,
 ): TaggedGatewayModel[] {
   const uniqueDiscoveredIds = [...new Set(discoveredIds)];
   return sortModelIds(uniqueDiscoveredIds).map((id) =>
-    toProviderModelConfig(id, runtimeBetaOverrides, runtimeExtraBetas, modelInfoMap?.[id]),
+    toProviderModelConfig(id, modelInfoMap?.[id]),
   );
 }
 
-export function toProviderModelConfig(
-  id: string,
-  runtimeBetaOverrides: Set<string> | null,
-  runtimeExtraBetas: Set<string>,
-  info?: GatewayModelInfo,
-): TaggedGatewayModel {
+export function toProviderModelConfig(id: string, info?: GatewayModelInfo): TaggedGatewayModel {
   const preset = MODEL_PRESETS[id];
   const hasPreset = Boolean(preset);
   const def = preset ? { id, ...preset } : inferModelDefinition(id);
@@ -381,30 +325,10 @@ export function toProviderModelConfig(
 
   if (def.family === "anthropic") {
     // Native Anthropic Messages path — pi-ai handles adaptive thinking,
-    // prompt caching, and multi-block streaming natively. We only attach
-    // `anthropic-beta` when the model / runtime asks for it.
-    //
-    // Opus 4.7 is the first model where the gateway advertises 1M input and
-    // 128K output natively, and live probes confirm >200K-token requests work
-    // without `context-1m-2025-08-07`. Keep its default header set empty so
-    // the normal path uses no deprecated beta flags; runtime beta toggles can
-    // still add explicit headers when someone wants to probe a gateway change.
-    //
-    // IMPORTANT — beta-merge shim for older Claude defaults:
-    //   pi-ai merges Anthropic headers with Object.assign. If this extension
-    //   sets any model-level `anthropic-beta`, that value replaces pi-ai's
-    //   default rather than comma-merging. For older models where we still
-    //   send default betas, include fine-grained-tool-streaming too so tool
-    //   argument streaming stays on the Gateway transport path. Do not add it to Opus
-    //   4.7's no-beta default.
-    const effectiveBetas = resolveEffectiveBetas(
-      def.betaHeaders ?? [],
-      runtimeBetaOverrides,
-      runtimeExtraBetas,
-    );
-    const mergedBetas = shouldIncludeFineGrainedToolStreamingBeta(def.id, effectiveBetas)
-      ? [...new Set([...effectiveBetas, ANTHROPIC_FINE_GRAINED_TOOL_STREAMING_BETA])]
-      : effectiveBetas;
+    // prompt caching, tool-input streaming compatibility, and multi-block
+    // streaming natively. SF Pi no longer sends Gateway-owned Anthropic beta
+    // headers; live probes showed current Gateway Claude routes work without
+    // them for small prompts, max thinking, and tool calls.
     const compat: NonNullable<ProviderModelConfig["compat"]> = {
       ...(shouldForceAdaptiveThinking(def.id) ? { forceAdaptiveThinking: true } : {}),
       // Haiku 4.5 rejects per-tool `eager_input_streaming`. Setting this
@@ -426,7 +350,6 @@ export function toProviderModelConfig(
       cost: { ...ZERO_COST },
       contextWindow: def.contextWindow,
       maxTokens: def.maxTokens,
-      ...(mergedBetas.length > 0 ? { headers: { "anthropic-beta": mergedBetas.join(",") } } : {}),
       // Forward model-specific thinking opt-ins so Pi's `/thinking`
       // selector exposes only gateway-proven levels.
       ...(def.thinkingLevelMap ? { thinkingLevelMap: def.thinkingLevelMap } : {}),
@@ -482,58 +405,6 @@ export function toProviderModelConfig(
     // compat.reasoningEffortMap that was silently dropped in 0.72.
     ...(isCodex ? { thinkingLevelMap: CODEX_THINKING_LEVEL_MAP } : {}),
   };
-}
-
-// -------------------------------------------------------------------------------------------------
-// Beta header resolution
-// -------------------------------------------------------------------------------------------------
-
-/**
- * Given a model's default beta list, return the effective list after applying
- * optional allow-list overrides for default betas plus any always-add extras.
- */
-export function resolveEffectiveBetas(
-  modelDefaults: string[],
-  runtimeOverrides: Set<string> | null,
-  runtimeExtraBetas: Set<string>,
-): string[] {
-  const defaults =
-    runtimeOverrides === null
-      ? modelDefaults
-      : modelDefaults.filter((beta) => runtimeOverrides.has(beta));
-  return [...new Set([...defaults, ...runtimeExtraBetas])];
-}
-
-function shouldIncludeFineGrainedToolStreamingBeta(
-  modelId: string,
-  effectiveBetas: readonly string[],
-): boolean {
-  if (effectiveBetas.length === 0) return false;
-  return !isOpus47OrNewerModelId(modelId);
-}
-
-/** Resolve a short alias to the full beta value. */
-export function resolveBetaAlias(input: string): string | undefined {
-  const lower = input.toLowerCase().trim();
-  if (!lower) return undefined;
-  for (const known of KNOWN_BETAS) {
-    if (known.value === lower || known.aliases.some((alias) => alias === lower)) {
-      return known.value;
-    }
-  }
-  return undefined;
-}
-
-export function normalizeBetaValue(input: string): string | undefined {
-  const lower = input.toLowerCase().trim();
-  if (!lower) return undefined;
-  return resolveBetaAlias(lower) ?? lower;
-}
-
-export function isDefaultAnthropicBeta(value: string): boolean {
-  return DEFAULT_ANTHROPIC_BETA_HEADERS.includes(
-    value as (typeof DEFAULT_ANTHROPIC_BETA_HEADERS)[number],
-  );
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -604,8 +475,8 @@ export function isAnthropicModelId(id: string): boolean {
  * True for Claude Haiku 4.5 variants. Haiku 4.5 rejects the per-tool
  * `eager_input_streaming` field that pi-ai's Anthropic transport emits
  * by default; matching this id pattern lets us flip the AnthropicMessagesCompat
- * override that switches pi-ai onto the legacy `fine-grained-tool-streaming-2025-05-14`
- * beta path. Opus / Sonnet still accept eager streaming, so the override
+ * override that switches pi-ai onto the legacy tool-streaming compatibility
+ * path. Opus / Sonnet still accept eager streaming, so the override
  * stays scoped to Haiku 4.5.
  *
  * Matches both dash and dot spellings, dated suffixes, and Bedrock-prefixed
@@ -690,21 +561,6 @@ export function inferModelDefinition(id: string): GatewayModelDefinition {
         lower.includes("3-7-sonnet") ||
         is46OrNewer);
 
-    // Beta headers:
-    //  - Opus 4.7+: gateway metadata now advertises 1M natively and live
-    //    probes confirm large-context calls work without context-1m, so the
-    //    default path sends no beta headers.
-    //  - Opus 4.6: carries the default beta stack (1m + output-128k +
-    //    interleaved-thinking) that unlocked its 1M window pre-GA.
-    //  - Older reasoning models: interleaved-thinking only.
-    const betaHeaders = is47OrNewer
-      ? []
-      : has1m
-        ? [...DEFAULT_ANTHROPIC_BETA_HEADERS]
-        : reasoning
-          ? [INTERLEAVED_THINKING_BETA]
-          : [];
-
     // Opus 4.7+ output: 128K confirmed stable via live probes (May 2026).
     // Older Opus with 1M context (4.6) also gets 128K. Others get 32K/64K.
     const maxTokens = isHaiku
@@ -725,7 +581,6 @@ export function inferModelDefinition(id: string): GatewayModelDefinition {
       input: ["text", "image"],
       contextWindow: has1m ? 1_000_000 : 200_000,
       maxTokens,
-      betaHeaders,
     };
   }
 

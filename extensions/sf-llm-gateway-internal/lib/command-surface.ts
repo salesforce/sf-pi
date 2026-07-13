@@ -12,7 +12,6 @@
  * token counting).
  */
 import type { AutocompleteItem } from "@earendil-works/pi-tui";
-import { KNOWN_BETAS } from "./models.ts";
 
 export type GatewayCommandId =
   | "status"
@@ -31,7 +30,6 @@ export type GatewayCommandId =
   | "import-claude"
   | "fix-ca-bundle"
   | "debug"
-  | "beta"
   | "help";
 
 export type GatewayPanelAction = GatewayCommandId | "switch-scope" | "close" | "lifecycle.toggle";
@@ -175,9 +173,9 @@ export const GATEWAY_COMMAND_SURFACE: readonly GatewayCommandSurfaceItem[] = [
   {
     id: "latency-probe",
     label: "Latency probe",
-    usage: "latency-probe [modelId] [--large] [--beta-compare]",
+    usage: "latency-probe [modelId] [--large]",
     description:
-      "Run read-only gateway timing probes for discovery, a tiny streamed generation, and optional Opus beta comparisons.",
+      "Run read-only gateway timing probes for discovery and a tiny streamed generation.",
     section: "Discovery & diagnostics",
     aliases: ["latency"],
   },
@@ -191,19 +189,12 @@ export const GATEWAY_COMMAND_SURFACE: readonly GatewayCommandSurfaceItem[] = [
     section: "Utilities",
     aliases: ["count"],
   },
-  {
-    id: "beta",
-    label: "Beta headers",
-    usage: "beta [name on|off|reset]",
-    description: "View or toggle runtime Anthropic beta header overrides.",
-    section: "Utilities",
-  },
   // ─── Reference ──────────────────────────────────────────────────────────────────────────────────────────────────
   {
     id: "status",
     label: "Show text status",
     usage: "status",
-    description: "Print the complete provider, config, usage, health, and beta status report.",
+    description: "Print the complete provider, config, usage, and health status report.",
     section: "Reference",
   },
   {
@@ -238,28 +229,6 @@ export function getGatewayArgumentCompletions(prefix: string): AutocompleteItem[
   }
 
   const sub = tokens[0]?.toLowerCase();
-
-  if (sub === "beta" && tokenIndex === 1) {
-    const betaItems: AutocompleteItem[] = [
-      ...KNOWN_BETAS.map((beta) => ({
-        value: beta.aliases[0] ?? beta.value,
-        label: beta.aliases[0] ?? beta.value,
-        description: beta.value,
-      })),
-      { value: "reset", label: "reset", description: "Clear runtime beta overrides" },
-    ];
-    return matches(betaItems, current);
-  }
-
-  if (sub === "beta" && tokenIndex === 2) {
-    return matches(
-      [
-        { value: "on", label: "on", description: "Enable the beta header override" },
-        { value: "off", label: "off", description: "Disable the beta header override" },
-      ],
-      current,
-    );
-  }
 
   const surface = GATEWAY_COMMAND_SURFACE.find((item) => item.id === sub);
   if (surface?.acceptsScope && tokenIndex === 1) {

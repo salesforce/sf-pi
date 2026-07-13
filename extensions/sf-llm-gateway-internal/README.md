@@ -13,8 +13,8 @@ extension. Read this before making changes.
 
 Registers the gateway as a single unified Pi-native provider and routes
 Claude vs non-Claude traffic to the transport each family was designed for.
-Supports dynamic model discovery, monthly budget tracking, runtime beta
-header toggling, additive vs exclusive scoped-model behavior, a TUI setup
+Supports dynamic model discovery, monthly budget tracking, additive vs
+exclusive scoped-model behavior, a TUI setup
 wizard with browser token-generation and Claude Code import actions, a read-only
 usage probe, and a backward-compatible in-app token paste flow under `/login`.
 
@@ -138,7 +138,6 @@ Extension loads
   ├─ on("turn_end")                    → update footer status; first turn_end also
   │                                       kicks refreshUsageDetails (daily activity, key list)
   ├─ on("model_select")                → set thinking to max (gateway provider default)
-  ├─ on("before_provider_headers")     → apply live Anthropic beta header state per request
   ├─ on("after_provider_response")     → record throttle/upstream signal (gateway provider)
   └─ on("session_shutdown")            → clear footer status + provider signal
 ```
@@ -269,7 +268,7 @@ Primary actions are grouped as:
 | Connect                 | `setup`, `import-claude`, `open-token`, `onboard`                      | Single onboarding surface: enter credentials, import from Claude Code, open the token page, copy the root link. |
 | Setup                   | `on`, `off`, `set-default`                                             | Post-connect tweaks: enable/disable gateway routing, control gateway defaults.                                  |
 | Discovery & diagnostics | `refresh`, `models`, `doctor`, `usage-probe`, `debug`, `latency-probe` | Re-probe model discovery, health, usage scope, latency, and transformed upstream payloads.                      |
-| Utilities               | `tokens`, `beta`                                                       | Count prompt tokens/cost and manage runtime beta headers.                                                       |
+| Utilities               | `tokens`                                                               | Count prompt tokens/cost.                                                                                       |
 | Reference               | `status`, `help`                                                       | Print complete text reports for copying or headless use.                                                        |
 
 Slash completions use the same command metadata as the panel, so subcommands
@@ -286,7 +285,6 @@ such as `tokens`, `onboard`, `open-token`, `import-claude`, `doctor`, `debug`,
 | turn_end                     | model is on gateway provider          | Update footer (context + monthly usage); first turn_end also kicks refreshUsageDetails (daily activity, key list)                              |
 | turn_end                     | model is not on gateway provider      | Clear footer status                                                                                                                            |
 | model_select                 | selected model is on gateway provider | Set thinking to max when the model supports it                                                                                                 |
-| before_provider_headers      | gateway Anthropic model request       | Apply current `/sf-llm-gateway beta` state to the outgoing `anthropic-beta` header                                                             |
 | after_provider_response      | gateway model + 2xx/3xx               | Clear any live throttle/upstream badge                                                                                                         |
 | after_provider_response      | gateway model + 429                   | Record throttle signal, footer shows ⚠ badge for 60s                                                                                           |
 | after_provider_response      | gateway model + >=500                 | Record upstream signal, footer shows ⚠ badge for 60s                                                                                           |
@@ -301,7 +299,6 @@ such as `tokens`, `onboard`, `open-token`, `import-claude`, `doctor`, `debug`,
 | /command usage-probe         | —                                     | Force a read-only usage probe and classify key/user spend scope                                                                                |
 | /command latency-probe       | —                                     | Run read-only timing probes for discovery and a tiny streamed generation                                                                       |
 | /command usage-probe --trace | —                                     | Render the per-endpoint trace (timings + status) from the last refresh, plus any active key-conflict warning                                   |
-| /command beta \<name\> on    | —                                     | Toggle beta, re-register provider                                                                                                              |
 | Monthly usage fetch          | cached < 60 s old                     | Use cache                                                                                                                                      |
 | Monthly usage fetch          | stale or forced                       | Fetch gateway `/v2/user/info`; retry with the `/key/info` user id only when required; fallback to legacy `/user/info` for older gateways.      |
 
@@ -322,7 +319,6 @@ extensions/sf-llm-gateway-internal/
       openai-responses.ts   ← implementation module
       payloads.ts           ← implementation module
       shared.ts             ← implementation module
-    beta-controls.ts        ← implementation module
     ca-bundle-fixer-state.ts← implementation module
     ca-bundle-fixer.ts      ← implementation module
     ca-probe-state.ts       ← implementation module
@@ -354,7 +350,6 @@ extensions/sf-llm-gateway-internal/
     transport.ts            ← implementation module
     wire-trace.ts           ← implementation module
   tests/
-    betas.test.ts           ← unit / smoke test
     ca-bundle-fixer.test.ts ← unit / smoke test
     ca-probe-state.test.ts  ← unit / smoke test
     claude-code-import.test.ts← unit / smoke test
@@ -488,15 +483,14 @@ the gateway will accept, without burning tokens on a real completion.
 gateway latency from pi's local transport overhead:
 
 ```text
-/sf-llm-gateway latency-probe [modelId] [--large] [--beta-compare]
+/sf-llm-gateway latency-probe [modelId] [--large]
 ```
 
 Default mode performs metadata probes plus one tiny streamed generation. Claude
 and Chat Completions probes use `max_tokens: 1`; Responses probes use
 `max_output_tokens: 16` because some GPT-5-family routes reject smaller values
 before a latency measurement can be taken. `--large` adds a large filler prompt
-and should be used sparingly because it still consumes gateway quota. For Opus
-4.7, `--beta-compare` compares no-beta vs `context-1m-2025-08-07`.
+and should be used sparingly because it still consumes gateway quota.
 
 ## Debugging: wire trace
 
@@ -586,14 +580,6 @@ Fixed: `model_select` no longer silently forces the gateway default on every
 switch. `max` is the default for fresh gateway sessions when the selected model
 supports it, but user overrides stick. If you still see a reset, check your
 settings for an explicit default that could be winning.
-
-**Beta headers aren't taking effect:**
-Check the active betas with `/sf-llm-gateway beta`. Opus 4.7 sends no
-Anthropic beta headers by default because the gateway now advertises 1M
-context natively and live probes accept >200K-token prompts without
-`context-1m-2025-08-07`. Older Claude presets that still need model-level
-betas include `fine-grained-tool-streaming-2025-05-14` in the same header so
-pi-ai's `Object.assign` header merge cannot silently drop it.
 
 **Monthly-usage footer is stale or missing:**
 Usage is cached for 60 seconds and refreshes automatically on every

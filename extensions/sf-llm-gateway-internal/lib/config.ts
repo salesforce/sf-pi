@@ -69,8 +69,6 @@ export const OFF_DEFAULT_PROVIDER = "openai";
 export const OFF_DEFAULT_MODEL_ID = "gpt-5";
 export const OFF_DEFAULT_THINKING_LEVEL = "xhigh" as const;
 
-export const BETAS_ENV = "SF_LLM_GATEWAY_BETAS";
-export const LEGACY_BETAS_ENV = "SF_LLM_GATEWAY_INTERNAL_BETAS";
 export const SAVED_CONFIG_FILE = `${PROVIDER_NAME}.json`;
 
 /**

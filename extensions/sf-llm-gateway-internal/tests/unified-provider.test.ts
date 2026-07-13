@@ -48,7 +48,7 @@ describe("unified gateway provider", () => {
     try {
       const captured: CapturedRegistration[] = [];
 
-      registerProviderIfConfigured(makeFakePi(captured) as never, null, new Set());
+      registerProviderIfConfigured(makeFakePi(captured) as never);
 
       expect(captured).toHaveLength(1);
       const only = captured[0];
@@ -74,7 +74,7 @@ describe("unified gateway provider", () => {
     try {
       const captured: CapturedRegistration[] = [];
 
-      registerProviderIfConfigured(makeFakePi(captured) as never, null, new Set());
+      registerProviderIfConfigured(makeFakePi(captured) as never);
 
       const models = captured[0]?.config.models ?? [];
       expect(models.length).toBeGreaterThan(0);

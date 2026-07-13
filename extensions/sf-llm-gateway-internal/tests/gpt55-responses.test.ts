@@ -52,7 +52,7 @@ afterEach(() => {
 
 describe("gpt-5.5 model registration", () => {
   it("tags the model as openai-responses with the clamped thinkingLevelMap", () => {
-    const cfg = toProviderModelConfig("gpt-5.5", null, new Set());
+    const cfg = toProviderModelConfig("gpt-5.5");
     expect(cfg.api).toBe("openai-responses");
     expect(cfg.thinkingLevelMap).toEqual(GPT55_RESPONSES_THINKING_LEVEL_MAP);
   });
@@ -72,7 +72,7 @@ describe("gpt-5.5 model registration", () => {
 
   it("also tags gpt-5, gpt-5-mini, and versioned non-Bedrock IDs with the native clamp", () => {
     for (const id of ["gpt-5", "gpt-5-mini", "gpt-5.4"]) {
-      const cfg = toProviderModelConfig(id, null, new Set());
+      const cfg = toProviderModelConfig(id);
       expect(cfg.api).toBe("openai-responses");
       expect(cfg.thinkingLevelMap).toEqual(GPT5_RESPONSES_THINKING_LEVEL_MAP);
     }
@@ -80,7 +80,7 @@ describe("gpt-5.5 model registration", () => {
 
   it("tags GPT-5 Bedrock Responses models with the conservative high-only clamp", () => {
     for (const id of ["gpt-5.4-bedrock", "gpt-5.5-bedrock"]) {
-      const cfg = toProviderModelConfig(id, null, new Set());
+      const cfg = toProviderModelConfig(id);
       expect(cfg.api).toBe("openai-responses");
       expect(cfg.thinkingLevelMap).toEqual(GPT5_BEDROCK_RESPONSES_THINKING_LEVEL_MAP);
     }
@@ -88,7 +88,7 @@ describe("gpt-5.5 model registration", () => {
 
   it("keeps codex, gpt-4o, and non-gpt-5 models on openai-completions", () => {
     for (const id of ["gpt-5.2-codex", "gpt-5.3-codex", "gpt-4o", "gpt-4o-mini"]) {
-      expect(toProviderModelConfig(id, null, new Set()).api).toBe("openai-completions");
+      expect(toProviderModelConfig(id).api).toBe("openai-completions");
     }
   });
 });

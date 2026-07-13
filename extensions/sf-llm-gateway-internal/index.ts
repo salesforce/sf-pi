@@ -26,7 +26,7 @@
  * - Footer status includes chosen model, current context usage, and monthly gateway usage
  * - Defaults gateway sessions to Pi thinking level max when the model supports it
  * - Repairs retired gateway enabledModels entries before startup validation
- * - Runtime beta header toggles with env var initial defaults
+ * - No SF Pi-owned Anthropic beta headers; current gateway routes are GA/live-proven
  * - Keeps the runtime spine in this file while pushing settings/status helpers to lib/
  *
  * Configuration:
@@ -37,10 +37,7 @@
  *                                       pasted values.
  * - SF_LLM_GATEWAY_API_KEY             optional automation fallback. Normal users
  *                                       should paste/rotate keys with /login or setup.
- * - SF_LLM_GATEWAY_BETAS               optional — comma-separated Anthropic beta
- *                                       header values. When set, only listed values are
- *                                       active. When unset, model defaults apply.
- *                                       Legacy SF_LLM_GATEWAY_INTERNAL_* aliases still work.
+ * - Legacy SF_LLM_GATEWAY_INTERNAL_* aliases still work for base URL / API key.
  *
  * Commands:
  * - /sf-llm-gateway                     open Manager detail page (UI) or text status (headless)
@@ -50,14 +47,12 @@
  * - /sf-llm-gateway off [global|project]  disable provider + set off-default
  * - /sf-llm-gateway refresh               refresh models + monthly usage
  * - /sf-llm-gateway set-default [global|project]
- * - /sf-llm-gateway beta                  show beta header state
- * - /sf-llm-gateway beta <name> on|off    toggle a beta header at runtime
  * - /sf-llm-gateway models                list discovered models
  * - /sf-llm-gateway usage-probe [--trace] classify user/key usage scope (--trace prints per-endpoint timings)
  * - /sf-llm-gateway tokens <modelId> [prompt]
  * - /sf-llm-gateway onboard
  * - /sf-llm-gateway debug <modelId> [reasoning=<level>] [tool] [adaptive]
- * - /sf-llm-gateway latency-probe [modelId] [--large] [--beta-compare]
+ * - /sf-llm-gateway latency-probe [modelId] [--large]
  *
  * Behavior matrix:
  *
@@ -81,7 +76,6 @@
  *   /command refresh            | —                                  | Re-discover, refresh monthly usage
  *   /command latency-probe      | —                                  | Run read-only gateway timing probes
  *   /command usage-probe        | —                                  | Force read-only usage probe
- *   /command beta <name> on     | —                                  | Toggle beta for the next matching provider request
  *   Monthly usage fetch         | cached < 60 s old                  | Use cache
  *   Monthly usage fetch         | stale or forced                    | Fetch /v2/user/info, retry with key user_id if needed, fallback /user/info
  *
@@ -122,7 +116,6 @@ import {
   OFF_DEFAULT_PROVIDER,
   OFF_DEFAULT_MODEL_ID,
   OFF_DEFAULT_THINKING_LEVEL,
-  BETAS_ENV,
   getGatewayConfig,
   readGatewaySavedConfig,
   writeGatewaySavedConfig,
@@ -146,23 +139,13 @@ function isGatewayProvider(provider: string | undefined): boolean {
 }
 
 import {
-  KNOWN_BETAS,
   MODEL_PRESETS,
   getStaticGatewayModelIds,
-  resolveEffectiveBetas,
   inferModelDefinition,
-  isAnthropicModelId,
   getModelFamily,
   findMatchingModelId,
 } from "./lib/models.ts";
 import { resolveGatewayDefaultModelWithPi } from "./lib/model-resolution.ts";
-import {
-  applyRuntimeBetaHeader,
-  getBetaExtras,
-  getBetaOverrides,
-  handleBetaCommand as handleBetaCommandImpl,
-} from "./lib/beta-controls.ts";
-
 import { GatewaySetupOverlayComponent, type SetupOverlayResult } from "./lib/setup-overlay.ts";
 import { GatewayConfigPanelComponent } from "./lib/config-panel.ts";
 import { buildFooterStatus, buildStatusReport } from "./lib/status.ts";
@@ -279,7 +262,6 @@ type CommandArgs = {
     | "refresh"
     | "set-default"
     | "help"
-    | "beta"
     | "models"
     | "debug"
     | "latency-probe"
@@ -294,7 +276,6 @@ type CommandArgs = {
     | "off"
     | "setup";
   scope: "global" | "project";
-  betaArgs?: string[];
   /** Positional args for subcommands that take them (e.g. debug). */
   positional?: string[];
 };
@@ -346,8 +327,6 @@ function getRuntimeStatusState() {
     dailyActivityError: dailyActivityError ?? null,
     keyList: keyList ?? null,
     keyListError: keyListError ?? null,
-    runtimeBetaOverrides: getBetaOverrides(),
-    runtimeExtraBetas: getBetaExtras(),
   };
 }
 
@@ -377,13 +356,13 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
   // defaultProvider/defaultModel and enabledModels patterns immediately.
   // Uses a minimal registration that does not need cwd — the config layer
   // reads global saved config first, then env vars as automation fallback.
-  registerProviderIfConfigured(pi, getBetaOverrides(), getBetaExtras());
+  registerProviderIfConfigured(pi);
 
   // If a prior session discovered additional gateway models, register that
   // local cache now too. Pi resolves scoped model patterns before
   // session_start, so waiting until session_start would leave explicit model
   // allow-lists stuck on the smaller bootstrap catalog for this session.
-  registerCachedDiscoveryIfAvailable(pi, getBetaOverrides(), getBetaExtras());
+  registerCachedDiscoveryIfAvailable(pi);
 
   // Contribute to the aggregated `/sf-pi doctor` view. The standalone
   // `/sf-llm-gateway doctor` command keeps using
@@ -475,7 +454,7 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
     // setup in the awaited startup path. Footer usage refresh is display
     // state, and active-model correction is not startup's job — pi's own
     // settings resolver is the source of truth for the initial model.
-    registerCachedDiscoveryIfAvailable(pi, getBetaOverrides(), getBetaExtras(), ctx.cwd);
+    registerCachedDiscoveryIfAvailable(pi, ctx.cwd);
 
     await markBootStep("sf-llm-gateway.sync-defaults", () =>
       syncGatewaySessionDefaults(pi, ctx, false, {
@@ -490,7 +469,7 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
     // /sf-llm-gateway refresh still awaits discoverAndRegister immediately.
     const discoveryTimer = setTimeout(() => {
       void markBootStep("sf-llm-gateway.discover (deferred)", () =>
-        discoverAndRegister(pi, getBetaOverrides(), getBetaExtras(), startupCwd),
+        discoverAndRegister(pi, startupCwd),
       ).catch(() => undefined);
     }, 2_500);
     discoveryTimer.unref?.();
@@ -542,11 +521,6 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
       detailsKickedOff = true;
       void refreshUsageDetails(false, ctx.cwd).catch(() => undefined);
     }
-  });
-
-  pi.on("before_provider_headers", (event, ctx) => {
-    if (!ctx.model || !isGatewayProvider(ctx.model.provider)) return;
-    applyRuntimeBetaHeader(event.headers, ctx.model.id);
   });
 
   pi.on("model_select", async (event, ctx) => {
@@ -813,10 +787,6 @@ async function handleCommand(
       return handleImportClaudeCommand(pi, ctx, parsed.scope);
     case "fix-ca-bundle":
       return handleFixCaBundleCommand(pi, ctx);
-    case "beta":
-      return handleBetaCommandImpl(pi, ctx, parsed.betaArgs ?? [], (summary, details, level) =>
-        emitCommandOutput(pi, ctx, summary, details, level),
-      );
     case "set-default":
       return handleSetDefaultCommand(pi, ctx, parsed.scope);
     case "help":
@@ -881,10 +851,6 @@ async function handlePanelAction(
       return handleImportClaudeCommand(pi, ctx, scope);
     case "fix-ca-bundle":
       return handleFixCaBundleCommand(pi, ctx);
-    case "beta":
-      return handleBetaCommandImpl(pi, ctx, [], (summary, details, level) =>
-        emitCommandOutput(pi, ctx, summary, details, level),
-      );
     case "help":
       return handleHelpCommand(pi, ctx);
     case "status":
@@ -901,7 +867,7 @@ function getPanelDefaultModelId(ctx: ExtensionCommandContext): string {
 }
 
 async function handleRefreshCommand(pi: ExtensionAPI, ctx: ExtensionCommandContext): Promise<void> {
-  const state = await discoverAndRegister(pi, getBetaOverrides(), getBetaExtras(), ctx.cwd);
+  const state = await discoverAndRegister(pi, ctx.cwd);
   await syncGatewaySessionDefaults(pi, ctx, true);
   const report = buildStatusReport(ctx, state.source !== "disabled", getRuntimeStatusState());
   await emitCommandOutput(
@@ -923,10 +889,7 @@ async function handleModelsCommand(pi: ExtensionAPI, ctx: ExtensionCommandContex
     ...(state?.modelIds ?? getStaticGatewayModelIds()).map((id) => {
       const preset = MODEL_PRESETS[id];
       const inferred = preset ? { id, ...preset } : inferModelDefinition(id);
-      const betas = isAnthropicModelId(id)
-        ? resolveEffectiveBetas(inferred.betaHeaders ?? [], getBetaOverrides(), getBetaExtras())
-        : [];
-      return `- ${id}  ::  family=${getModelFamily(id)}  ::  ${inferred.name}  ::  betas=${betas.length > 0 ? betas.join(", ") : "none"}`;
+      return `- ${id}  ::  family=${getModelFamily(id)}  ::  ${inferred.name}`;
     }),
   ];
   await emitCommandOutput(pi, ctx, "SF LLM Gateway Internal models.", lines.join("\n"), "info");
@@ -1205,7 +1168,7 @@ async function executeOnboardChain(
       };
     },
     registerProvider: async () => {
-      await discoverAndRegister(pi, getBetaOverrides(), getBetaExtras(), ctx.cwd);
+      await discoverAndRegister(pi, ctx.cwd);
     },
     runDoctor: async () => {
       const report = await fetchGatewayDoctorReport(ctx.cwd);
@@ -1577,7 +1540,7 @@ async function importClaudeCodeGatewayConfig(
   }
 
   writeGatewaySavedConfig(configPath, saved);
-  await discoverAndRegister(pi, getBetaOverrides(), getBetaExtras(), ctx.cwd);
+  await discoverAndRegister(pi, ctx.cwd);
   await updateFooterStatus(ctx, false);
   const config = getGatewayConfig(ctx.cwd);
   const doctor = await fetchGatewayDoctorReport(ctx.cwd);
@@ -1768,7 +1731,7 @@ async function applyGatewayDefault(
 ): Promise<string[]> {
   const settingsPath = scope === "project" ? projectSettingsPath(ctx.cwd) : globalSettingsPath();
 
-  await discoverAndRegister(pi, getBetaOverrides(), getBetaExtras(), ctx.cwd);
+  await discoverAndRegister(pi, ctx.cwd);
 
   const resolvedDefault = resolveGatewayDefaultModel(ctx, [
     DEFAULT_MODEL_ID,
@@ -1829,14 +1792,9 @@ async function handleHelpCommand(pi: ExtensionAPI, ctx: ExtensionCommandContext)
     "",
     ...formatGatewayAliasReference(),
     "",
-    "Beta aliases:",
-    ...KNOWN_BETAS.map((b) => `- ${b.aliases[0]} → ${b.value}`),
-    "",
     "Built-in default base URL: (none — set via setup wizard)",
     `Automation fallback env vars (used only when saved config is blank): ${BASE_URL_ENV}, ${API_KEY_ENV}`,
-    `Optional env: ${BETAS_ENV} (comma-separated Anthropic betas; unset = model defaults)`,
     `Setup also supports browser token generation, Claude Code import, and additive vs exclusive scoped model behavior.`,
-    `Beta command accepts either a known alias or a raw Anthropic beta value.`,
     `Saved config file: ${globalGatewayConfigPath()} or ${projectGatewayConfigPath(process.cwd())}`,
     `Disable fallback default: ${OFF_DEFAULT_PROVIDER}/${OFF_DEFAULT_MODEL_ID}`,
   ].join("\n");
@@ -1884,9 +1842,6 @@ export function parseCommandArgs(args: string): CommandArgs {
   }
   if (sub === "off" || sub === "disable") {
     return { subcommand: "off", scope };
-  }
-  if (sub === "beta") {
-    return { subcommand: "beta", scope, betaArgs: tokens.slice(1) };
   }
   if (sub === "models") {
     return { subcommand: "models", scope };
@@ -2080,7 +2035,7 @@ async function saveGatewaySetupOperation(
   scope: "global" | "project",
 ): Promise<GatewayCommandOutput> {
   const config = getGatewayConfig(ctx.cwd);
-  await discoverAndRegister(pi, getBetaOverrides(), getBetaExtras(), ctx.cwd);
+  await discoverAndRegister(pi, ctx.cwd);
   await updateFooterStatus(ctx, false);
 
   const report = [
@@ -2168,7 +2123,7 @@ async function enableGatewayOperation(
     };
   }
 
-  const state = await discoverAndRegister(pi, getBetaOverrides(), getBetaExtras(), ctx.cwd);
+  const state = await discoverAndRegister(pi, ctx.cwd);
   const resolvedDefault = resolveGatewayDefaultModel(ctx, [
     DEFAULT_MODEL_ID,
     PREVIOUS_DEFAULT_MODEL_ID,
@@ -2262,7 +2217,7 @@ async function disableGatewayOperation(
     }
   }
 
-  await discoverAndRegister(pi, getBetaOverrides(), getBetaExtras(), ctx.cwd);
+  await discoverAndRegister(pi, ctx.cwd);
   await updateFooterStatus(ctx, false);
 
   const report = [
@@ -2379,7 +2334,7 @@ async function promptAndSaveBaseUrl(
   }
 
   writeGatewaySavedConfig(configPath, saved);
-  await discoverAndRegister(pi, getBetaOverrides(), getBetaExtras(), ctx.cwd);
+  await discoverAndRegister(pi, ctx.cwd);
   await updateFooterStatus(ctx, false);
 
   if (!options?.quiet) {
@@ -2424,7 +2379,7 @@ async function promptAndSaveApiKey(
   }
 
   writeGatewaySavedConfig(configPath, saved);
-  await discoverAndRegister(pi, getBetaOverrides(), getBetaExtras(), ctx.cwd);
+  await discoverAndRegister(pi, ctx.cwd);
   await updateFooterStatus(ctx, false);
 
   if (!options?.quiet) {

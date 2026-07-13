@@ -13,18 +13,14 @@ describe("parseLatencyProbeArgs", () => {
     expect(parseLatencyProbeArgs([], "claude-opus-4-7")).toEqual({
       modelId: "claude-opus-4-7",
       includeLarge: false,
-      includeBetaCompare: false,
       includeBedrock: false,
     });
   });
 
   it("parses model and flags", () => {
-    expect(
-      parseLatencyProbeArgs(["gpt-5.5", "--large", "--beta-compare", "--bedrock"], "gpt-5"),
-    ).toEqual({
+    expect(parseLatencyProbeArgs(["gpt-5.5", "--large", "--bedrock"], "gpt-5")).toEqual({
       modelId: "gpt-5.5",
       includeLarge: true,
-      includeBetaCompare: true,
       includeBedrock: true,
     });
   });

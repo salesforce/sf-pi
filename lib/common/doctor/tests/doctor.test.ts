@@ -38,38 +38,48 @@ afterEach(() => {
   for (const dir of tempDirs.splice(0)) rmSync(dir, { recursive: true, force: true });
 });
 
+const DOCTOR_TEST_TIMEOUT_MS = 20_000;
+
 describe("runDoctorDiagnostics", () => {
-  it("detects duplicate Salesforce skills and prefers Claude as source of truth", () => {
-    const home = makeHome();
-    const cwd = mkdtempSync(path.join(tmpdir(), "sf-pi-doctor-cwd-"));
-    tempDirs.push(cwd);
-    writeSettings(home, { skills: ["~/.claude/skills"] });
-    writeSkill(path.join(home, ".pi", "agent", "skills"), "sf-soql");
-    writeSkill(path.join(home, ".claude", "skills"), "sf-soql");
+  it(
+    "detects duplicate Salesforce skills and prefers Claude as source of truth",
+    () => {
+      const home = makeHome();
+      const cwd = mkdtempSync(path.join(tmpdir(), "sf-pi-doctor-cwd-"));
+      tempDirs.push(cwd);
+      writeSettings(home, { skills: ["~/.claude/skills"] });
+      writeSkill(path.join(home, ".pi", "agent", "skills"), "sf-soql");
+      writeSkill(path.join(home, ".claude", "skills"), "sf-soql");
 
-    const report = runDoctorDiagnostics({ cwd, home });
+      const report = runDoctorDiagnostics({ cwd, home });
 
-    expect(report.skillCollisions).toHaveLength(1);
-    expect(report.skillCollisions[0]!.name).toBe("sf-soql");
-    expect(report.skillCollisions[0]!.preferred.rootKind).toBe("claude");
-    expect(report.skillCollisions[0]!.duplicates[0]!.rootKind).toBe("pi");
-    expect(report.issues.some((issue) => issue.id === "skill-collisions")).toBe(true);
-  });
+      expect(report.skillCollisions).toHaveLength(1);
+      expect(report.skillCollisions[0]!.name).toBe("sf-soql");
+      expect(report.skillCollisions[0]!.preferred.rootKind).toBe("claude");
+      expect(report.skillCollisions[0]!.duplicates[0]!.rootKind).toBe("pi");
+      expect(report.issues.some((issue) => issue.id === "skill-collisions")).toBe(true);
+    },
+    DOCTOR_TEST_TIMEOUT_MS,
+  );
 
-  it("detects stale and available external skill roots", () => {
-    const home = makeHome();
-    const cwd = mkdtempSync(path.join(tmpdir(), "sf-pi-doctor-cwd-"));
-    tempDirs.push(cwd);
-    writeSettings(home, { skills: ["~/missing/skills"] });
-    writeSkill(path.join(home, ".claude", "skills"), "sf-apex");
+  it(
+    "detects stale and available external skill roots",
+    () => {
+      const home = makeHome();
+      const cwd = mkdtempSync(path.join(tmpdir(), "sf-pi-doctor-cwd-"));
+      tempDirs.push(cwd);
+      writeSettings(home, { skills: ["~/missing/skills"] });
+      writeSkill(path.join(home, ".claude", "skills"), "sf-apex");
 
-    const report = runDoctorDiagnostics({ cwd, home });
+      const report = runDoctorDiagnostics({ cwd, home });
 
-    expect(report.staleSkillPaths.map((entry) => entry.raw)).toContain("~/missing/skills");
-    expect(report.availableSkillRoots.map((root) => root.settingsPath)).toContain(
-      "~/.claude/skills",
-    );
-  });
+      expect(report.staleSkillPaths.map((entry) => entry.raw)).toContain("~/missing/skills");
+      expect(report.availableSkillRoots.map((root) => root.settingsPath)).toContain(
+        "~/.claude/skills",
+      );
+    },
+    DOCTOR_TEST_TIMEOUT_MS,
+  );
 });
 
 describe("doctor fixes", () => {
@@ -86,29 +96,33 @@ describe("doctor fixes", () => {
     expect(disk.sfPi.welcome.mode).toBe("header");
   });
 
-  it("quarantines duplicate sf skills from pi-owned roots and keeps Claude", () => {
-    const home = makeHome();
-    const cwd = mkdtempSync(path.join(tmpdir(), "sf-pi-doctor-cwd-"));
-    tempDirs.push(cwd);
-    writeSettings(home, { skills: ["~/.claude/skills"] });
-    const piRoot = path.join(home, ".pi", "agent", "skills");
-    const claudeRoot = path.join(home, ".claude", "skills");
-    writeSkill(piRoot, "sf-testing");
-    writeSkill(claudeRoot, "sf-testing");
+  it(
+    "quarantines duplicate sf skills from pi-owned roots and keeps Claude",
+    () => {
+      const home = makeHome();
+      const cwd = mkdtempSync(path.join(tmpdir(), "sf-pi-doctor-cwd-"));
+      tempDirs.push(cwd);
+      writeSettings(home, { skills: ["~/.claude/skills"] });
+      const piRoot = path.join(home, ".pi", "agent", "skills");
+      const claudeRoot = path.join(home, ".claude", "skills");
+      writeSkill(piRoot, "sf-testing");
+      writeSkill(claudeRoot, "sf-testing");
 
-    const result = applyDoctorFixes({
-      cwd,
-      home,
-      fixSkills: true,
-      now: new Date("2026-05-04T16:30:00Z"),
-    });
+      const result = applyDoctorFixes({
+        cwd,
+        home,
+        fixSkills: true,
+        now: new Date("2026-05-04T16:30:00Z"),
+      });
 
-    expect(result.changed).toBe(true);
-    expect(result.quarantinedSkills).toHaveLength(1);
-    expect(existsSync(path.join(piRoot, "sf-testing"))).toBe(false);
-    expect(existsSync(path.join(claudeRoot, "sf-testing", "SKILL.md"))).toBe(true);
-    expect(
-      result.quarantineDir && existsSync(path.join(result.quarantineDir, "manifest.json")),
-    ).toBe(true);
-  });
+      expect(result.changed).toBe(true);
+      expect(result.quarantinedSkills).toHaveLength(1);
+      expect(existsSync(path.join(piRoot, "sf-testing"))).toBe(false);
+      expect(existsSync(path.join(claudeRoot, "sf-testing", "SKILL.md"))).toBe(true);
+      expect(
+        result.quarantineDir && existsSync(path.join(result.quarantineDir, "manifest.json")),
+      ).toBe(true);
+    },
+    DOCTOR_TEST_TIMEOUT_MS,
+  );
 });

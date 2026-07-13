@@ -17,7 +17,6 @@ const METADATA_TIMEOUT_MS = 15_000;
 const GENERATION_TIMEOUT_MS = 180_000;
 const SMALL_FILLER_WORDS = 0;
 const LARGE_FILLER_WORDS = 90_000;
-const OPUS_47_CONTEXT_BETA = "context-1m-2025-08-07";
 
 // Exported for unit tests. Some GPT-5-family Responses routes reject
 // max_output_tokens=1 before a latency measurement can be taken, so the
@@ -27,7 +26,6 @@ export const RESPONSES_LATENCY_PROBE_MAX_OUTPUT_TOKENS = 16;
 export interface GatewayLatencyProbeOptions {
   modelId: string;
   includeLarge: boolean;
-  includeBetaCompare: boolean;
   includeBedrock: boolean;
 }
 
@@ -64,7 +62,6 @@ export function parseLatencyProbeArgs(
   return {
     modelId,
     includeLarge: flags.has("--large") || flags.has("-l"),
-    includeBetaCompare: flags.has("--beta-compare") || flags.has("--betas"),
     includeBedrock: flags.has("--bedrock"),
   };
 }
@@ -121,34 +118,6 @@ export async function fetchGatewayLatencyProbe(
         fillerWords: LARGE_FILLER_WORDS,
       }),
     );
-  }
-
-  if (options.includeBetaCompare) {
-    if (isOpus47OrNewerModelId(options.modelId)) {
-      const fillerWords = options.includeLarge ? LARGE_FILLER_WORDS : SMALL_FILLER_WORDS;
-      probes.push(
-        await generationProbe({
-          label: `${options.modelId} beta compare: no anthropic-beta`,
-          rootUrl,
-          openAiBaseUrl,
-          modelId: options.modelId,
-          authHeaders,
-          fillerWords,
-          anthropicBeta: null,
-        }),
-        await generationProbe({
-          label: `${options.modelId} beta compare: ${OPUS_47_CONTEXT_BETA}`,
-          rootUrl,
-          openAiBaseUrl,
-          modelId: options.modelId,
-          authHeaders,
-          fillerWords,
-          anthropicBeta: OPUS_47_CONTEXT_BETA,
-        }),
-      );
-    } else {
-      notes.push("--beta-compare currently runs only for Opus 4.7 model IDs.");
-    }
   }
 
   if (options.includeBedrock) {
@@ -241,7 +210,6 @@ async function generationProbe(input: {
   modelId: string;
   authHeaders: Record<string, string>;
   fillerWords: number;
-  anthropicBeta?: string | null;
 }): Promise<GatewayLatencyProbeEntry> {
   if (isAnthropicModelId(input.modelId)) {
     return sseProbe(
@@ -251,7 +219,6 @@ async function generationProbe(input: {
       {
         ...input.authHeaders,
         "anthropic-version": "2023-06-01",
-        ...(input.anthropicBeta ? { "anthropic-beta": input.anthropicBeta } : {}),
       },
     );
   }

@@ -62,7 +62,7 @@ You can also manage this extension from the SF Pi home base:
 - **Commands:** `/sf-llm-gateway`
 - **LLM tools:** _none_
 - **Providers:** `sf-llm-gateway-internal`
-- **Events/hooks:** `session_start`, `turn_end`, `model_select`, `before_provider_headers`, `after_provider_response`, `session_shutdown`
+- **Events/hooks:** `session_start`, `turn_end`, `model_select`, `after_provider_response`, `session_shutdown`
 
 </details>
 

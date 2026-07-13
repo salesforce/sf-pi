@@ -11,7 +11,7 @@ Repo-level rules still apply; see root `AGENTS.md`.
 1. `extensions/sf-llm-gateway-internal/README.md` — unified-provider architecture + two-transport routing
 2. `extensions/sf-llm-gateway-internal/index.ts` header comment — configuration + behavior matrix
 3. `extensions/sf-llm-gateway-internal/lib/config.ts` — env vars, constants, saved-config schema
-4. `extensions/sf-llm-gateway-internal/lib/models.ts` — model presets, family inference, beta definitions
+4. `extensions/sf-llm-gateway-internal/lib/models.ts` — model presets and family inference
 
 ## File map (what lives where)
 
@@ -20,8 +20,7 @@ Repo-level rules still apply; see root `AGENTS.md`.
 | Extension entry, lifecycle, command dispatch   | `index.ts`                      |
 | Env vars, constants, saved-config I/O          | `lib/config.ts`                 |
 | Gateway URL normalization                      | `lib/gateway-url.ts`            |
-| Model presets + family inference + betas       | `lib/models.ts`                 |
-| Anthropic beta header runtime controls         | `lib/beta-controls.ts`          |
+| Model presets + family inference               | `lib/models.ts`                 |
 | Provider registration + model discovery        | `lib/discovery.ts`              |
 | HTTP transport (OpenAI-compat + Anthropic)     | `lib/transport.ts`              |
 | Monthly usage / key info / health fetcher      | `lib/monthly-usage.ts`          |
@@ -67,9 +66,9 @@ Repo-level rules still apply; see root `AGENTS.md`.
 2. **Static catalog first, discovery second.** The factory registers a
    bootstrap catalog synchronously so Pi startup resolves defaults before
    async discovery completes. Don't move registration out of the factory.
-3. **Respect user overrides.** Thinking level, betas, enabledModels: the
-   user always wins. See the `lastAppliedThinkingLevel` block comment in
-   `index.ts` for the exact contract.
+3. **Respect user overrides.** Thinking level and enabledModels: the user
+   always wins. See the `lastAppliedThinkingLevel` block comment in `index.ts`
+   for the exact contract.
 4. **Settings mutations go through `lib/pi-settings.ts`.** Don't write
    JSON from ad-hoc call sites. The helpers handle global vs project
    scope, additive vs exclusive mode, and legacy-entry migration.
@@ -104,7 +103,7 @@ When adding a subcommand:
 
 - `tests/command-parsing.test.ts` — every new subcommand needs a parse case
 - `tests/config.test.ts` — settings mutations covered by the `apply*` / `restore*` helpers
-- `tests/models.test.ts` — family inference / new presets / beta resolution
+- `tests/models.test.ts` — family inference / new presets
 - `tests/robust-retry.test.ts` — Anthropic early-stream retry behavior
 - `tests/codex-regression.test.ts` — gated live test; runs only when
   `SF_LLM_GATEWAY_*` env vars are present (legacy internal aliases still work)

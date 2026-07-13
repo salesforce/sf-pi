@@ -49,11 +49,7 @@ describe("extension factory body", () => {
     const factoryBody = source.slice(factoryStart, firstEventHandler);
 
     // The factory call should NOT pass process.cwd() as the cwd argument.
-    // Beta state now lives in lib/beta-controls.ts so the factory reads it via
-    // getBetaOverrides()/getBetaExtras() instead of in-file `runtime*` variables.
-    expect(factoryBody).toContain(
-      "registerProviderIfConfigured(pi, getBetaOverrides(), getBetaExtras())",
-    );
+    expect(factoryBody).toContain("registerProviderIfConfigured(pi)");
   });
 
   it("uses cached discovery without cwd in the factory", () => {
@@ -61,9 +57,7 @@ describe("extension factory body", () => {
     const firstEventHandler = source.indexOf('pi.on("session_start"');
     const factoryBody = source.slice(factoryStart, firstEventHandler);
 
-    expect(factoryBody).toContain(
-      "registerCachedDiscoveryIfAvailable(pi, getBetaOverrides(), getBetaExtras())",
-    );
+    expect(factoryBody).toContain("registerCachedDiscoveryIfAvailable(pi)");
   });
 });
 
@@ -88,9 +82,7 @@ describe("session_start handler", () => {
   });
 
   it("re-registers cached discovery with ctx.cwd", () => {
-    expect(source).toContain(
-      "registerCachedDiscoveryIfAvailable(pi, getBetaOverrides(), getBetaExtras(), ctx.cwd)",
-    );
+    expect(source).toContain("registerCachedDiscoveryIfAvailable(pi, ctx.cwd)");
   });
 });
 

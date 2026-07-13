@@ -78,18 +78,6 @@ describe("parseCommandArgs", () => {
     expect(result.scope).toBe("project");
   });
 
-  it("parses 'beta' with remaining args", () => {
-    const result = parseCommandArgs("beta context-1m on");
-    expect(result.subcommand).toBe("beta");
-    expect(result.betaArgs).toEqual(["context-1m", "on"]);
-  });
-
-  it("parses 'beta' with no extra args", () => {
-    const result = parseCommandArgs("beta");
-    expect(result.subcommand).toBe("beta");
-    expect(result.betaArgs).toEqual([]);
-  });
-
   it("parses 'models'", () => {
     const result = parseCommandArgs("models");
     expect(result.subcommand).toBe("models");
@@ -158,9 +146,9 @@ describe("parseCommandArgs", () => {
   });
 
   it("parses 'latency-probe' with positional args", () => {
-    const result = parseCommandArgs("latency-probe claude-opus-4-7 --large --beta-compare");
+    const result = parseCommandArgs("latency-probe claude-opus-4-7 --large");
     expect(result.subcommand).toBe("latency-probe");
-    expect(result.positional).toEqual(["claude-opus-4-7", "--large", "--beta-compare"]);
+    expect(result.positional).toEqual(["claude-opus-4-7", "--large"]);
   });
 
   it("parses 'latency' as latency-probe alias", () => {

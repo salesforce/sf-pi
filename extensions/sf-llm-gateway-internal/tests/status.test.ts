@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { API_KEY_ENV, BETAS_ENV, SAVED_CONFIG_FILE } from "../lib/config.ts";
+import { API_KEY_ENV, SAVED_CONFIG_FILE } from "../lib/config.ts";
 
 const originalHomeEnv = process.env.HOME;
 const originalAsciiIconsEnv = process.env.SF_PI_ASCII_ICONS;
@@ -19,9 +19,6 @@ import {
   getApiKeyGuidanceLines,
   summarizeApiKeyGuidance,
 } from "../lib/status.ts";
-import { KNOWN_BETAS } from "../lib/models.ts";
-
-const originalBetasEnv = process.env[BETAS_ENV];
 const originalApiKeyEnv = process.env[API_KEY_ENV];
 const tempDirs: string[] = [];
 
@@ -32,12 +29,6 @@ function makeTempDir(prefix: string): string {
 }
 
 afterEach(() => {
-  if (originalBetasEnv === undefined) {
-    delete process.env[BETAS_ENV];
-  } else {
-    process.env[BETAS_ENV] = originalBetasEnv;
-  }
-
   if (originalApiKeyEnv === undefined) {
     delete process.env[API_KEY_ENV];
   } else {
@@ -93,8 +84,6 @@ describe("buildFooterStatus", () => {
           fetchedAt: new Date().toISOString(),
         },
         monthlyUsageError: null,
-        runtimeBetaOverrides: null,
-        runtimeExtraBetas: new Set(),
       }),
     );
 
@@ -120,8 +109,6 @@ describe("buildFooterStatus", () => {
           fetchedAt: new Date().toISOString(),
         },
         monthlyUsageError: null,
-        runtimeBetaOverrides: null,
-        runtimeExtraBetas: new Set(),
       }),
     );
 
@@ -134,8 +121,6 @@ describe("buildFooterStatus", () => {
         discovery: null,
         monthlyUsage: null,
         monthlyUsageError: null,
-        runtimeBetaOverrides: null,
-        runtimeExtraBetas: new Set(),
       }),
     );
 
@@ -148,8 +133,6 @@ describe("buildFooterStatus", () => {
         discovery: null,
         monthlyUsage: null,
         monthlyUsageError: "fetch failed",
-        runtimeBetaOverrides: null,
-        runtimeExtraBetas: new Set(),
       }),
     );
 
@@ -170,8 +153,6 @@ describe("buildFooterStatus", () => {
           budgetDuration: "month",
           fetchedAt: new Date().toISOString(),
         },
-        runtimeBetaOverrides: null,
-        runtimeExtraBetas: new Set(),
       }),
     );
 
@@ -180,8 +161,7 @@ describe("buildFooterStatus", () => {
 });
 
 describe("buildStatusReport", () => {
-  it("shows discovery details and env-based beta source", () => {
-    process.env[BETAS_ENV] = KNOWN_BETAS[0].value;
+  it("shows discovery details", () => {
     process.env.HOME = makeTempDir("gateway-home-");
 
     const ctx = {
@@ -201,8 +181,6 @@ describe("buildStatusReport", () => {
         },
         monthlyUsage: null,
         monthlyUsageError: "not loaded yet",
-        runtimeBetaOverrides: new Set([KNOWN_BETAS[0].value]),
-        runtimeExtraBetas: new Set(),
       }),
     );
 
@@ -215,33 +193,6 @@ describe("buildStatusReport", () => {
     );
     expect(report).toContain("Model discovery: gateway");
     expect(report).toContain("Discovered models: 2");
-    expect(report).toContain("Beta source: env override");
-  });
-
-  it("shows custom injected beta headers when present", () => {
-    process.env.HOME = makeTempDir("gateway-home-");
-
-    const ctx = {
-      cwd: makeTempDir("gateway-status-"),
-      model: { provider: "sf-llm-gateway-internal", id: "claude-opus-4-6-v1" },
-      getContextUsage: () => null,
-    } as any;
-
-    const report = buildStatusReport(
-      ctx,
-      true,
-      withDefaults({
-        discovery: null,
-        monthlyUsage: null,
-        monthlyUsageError: null,
-        runtimeBetaOverrides: null,
-        runtimeExtraBetas: new Set(["my-custom-beta-2099-01-01"]),
-      }),
-    );
-
-    expect(report).toContain("Custom injected betas:");
-    expect(report).toContain("my-custom-beta-2099-01-01");
-    expect(report).toContain("Beta source: command override");
   });
 });
 
@@ -280,8 +231,6 @@ describe("API key guidance", () => {
         discovery: null,
         monthlyUsage: null,
         monthlyUsageError: null,
-        runtimeBetaOverrides: null,
-        runtimeExtraBetas: new Set(),
       }),
     );
 
@@ -302,8 +251,6 @@ describe("API key guidance", () => {
         connectionStatus: { kind: "auth-failed", source: "user-info" },
         keyInfo: { spend: 1, keyName: "sk-...active", fetchedAt: new Date().toISOString() },
         keyList: { count: 3, fetchedAt: new Date().toISOString() },
-        runtimeBetaOverrides: null,
-        runtimeExtraBetas: new Set(),
       }),
     );
 

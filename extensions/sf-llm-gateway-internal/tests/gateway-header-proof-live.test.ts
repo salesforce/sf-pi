@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /**
- * Opt-in live proof that Pi's before_provider_headers seam is enough for
- * Gateway beta headers.
+ * Opt-in live proof that current Gateway routes do not need SF Pi-owned
+ * Anthropic beta headers.
  *
  * Enable with SF_LLM_GATEWAY_HEADER_PROOF_LIVE=1 plus a configured gateway
  * base URL and API key. The temporary proof extension records only sanitized
@@ -22,10 +22,13 @@ import {
 } from "../lib/config.ts";
 
 const LIVE_PROOF_ENV = "SF_LLM_GATEWAY_HEADER_PROOF_LIVE";
-const ANTHROPIC_WITH_DEFAULT_BETA_MODEL =
-  process.env.SF_LLM_GATEWAY_HEADER_PROOF_ANTHROPIC_MODEL || "claude-opus-4-6-v1";
-const ANTHROPIC_NO_DEFAULT_BETA_MODEL =
-  process.env.SF_LLM_GATEWAY_HEADER_PROOF_NO_BETA_MODEL || "claude-opus-4-7";
+const ANTHROPIC_MODELS = (
+  process.env.SF_LLM_GATEWAY_HEADER_PROOF_ANTHROPIC_MODELS ||
+  "claude-opus-4-7,claude-opus-4-8,claude-sonnet-5,claude-opus-4-6-v1"
+)
+  .split(",")
+  .map((model) => model.trim())
+  .filter(Boolean);
 const NON_ANTHROPIC_MODEL =
   process.env.SF_LLM_GATEWAY_HEADER_PROOF_NON_ANTHROPIC_MODEL || "gpt-5.5";
 const TIMEOUT_MS = Number(process.env.SF_LLM_GATEWAY_HEADER_PROOF_TIMEOUT_MS || 180_000);
@@ -43,39 +46,27 @@ interface ProofRecord {
   betaTokenCount: number;
 }
 
-describeLive("sf-llm-gateway runtime beta header live proof", () => {
+describeLive("sf-llm-gateway no-beta live proof", () => {
   it(
-    "observes request-time beta headers on Anthropic and non-Anthropic Gateway paths",
+    "runs current Gateway routes without SF Pi-owned Anthropic beta headers",
     () => {
-      const withDefaultBeta = runPiProof(ANTHROPIC_WITH_DEFAULT_BETA_MODEL);
-      expect(withDefaultBeta.output.toLowerCase()).toContain("ok");
-      expect(withDefaultBeta.record).toMatchObject({
-        provider: "sf-llm-gateway-internal",
-        model: ANTHROPIC_WITH_DEFAULT_BETA_MODEL,
-        hasAnthropicBeta: true,
-      });
-      expect(withDefaultBeta.record.betaTokenCount).toBeGreaterThan(0);
+      for (const modelId of ANTHROPIC_MODELS) {
+        const small = runPiProof(modelId, {
+          prompt: "Reply with exactly: ok",
+          thinking: "minimal",
+        });
+        expect(small.output.toLowerCase()).toContain("ok");
+        expectNoBeta(small.record, modelId);
 
-      const noDefaultBeta = runPiProof(ANTHROPIC_NO_DEFAULT_BETA_MODEL);
-      expect(noDefaultBeta.output.toLowerCase()).toContain("ok");
-      expect(noDefaultBeta.record).toMatchObject({
-        provider: "sf-llm-gateway-internal",
-        model: ANTHROPIC_NO_DEFAULT_BETA_MODEL,
-        hasAnthropicBeta: false,
-      });
+        const thinking = runPiProof(modelId, { prompt: "Reply with exactly: ok", thinking: "max" });
+        expect(thinking.output.toLowerCase()).toContain("ok");
+        expectNoBeta(thinking.record, modelId);
+      }
 
-      const injectedBeta = runPiProof(ANTHROPIC_NO_DEFAULT_BETA_MODEL, {
-        SF_LLM_GATEWAY_BETAS: "prompt-caching-2024-07-31",
+      const nonAnthropic = runPiProof(NON_ANTHROPIC_MODEL, {
+        prompt: "Reply with exactly: ok",
+        thinking: "low",
       });
-      expect(injectedBeta.output.toLowerCase()).toContain("ok");
-      expect(injectedBeta.record).toMatchObject({
-        provider: "sf-llm-gateway-internal",
-        model: ANTHROPIC_NO_DEFAULT_BETA_MODEL,
-        hasAnthropicBeta: true,
-        betaTokenCount: 1,
-      });
-
-      const nonAnthropic = runPiProof(NON_ANTHROPIC_MODEL);
       expect(nonAnthropic.output.toLowerCase()).toContain("ok");
       expect(nonAnthropic.record).toMatchObject({
         provider: "sf-llm-gateway-internal",
@@ -84,13 +75,22 @@ describeLive("sf-llm-gateway runtime beta header live proof", () => {
         betaTokenCount: 0,
       });
     },
-    TIMEOUT_MS * 4,
+    TIMEOUT_MS * (ANTHROPIC_MODELS.length * 2 + 1),
   );
 });
 
+function expectNoBeta(record: ProofRecord, modelId: string): void {
+  expect(record).toMatchObject({
+    provider: "sf-llm-gateway-internal",
+    model: modelId,
+    hasAnthropicBeta: false,
+    betaTokenCount: 0,
+  });
+}
+
 function runPiProof(
   modelId: string,
-  extraEnv: Record<string, string> = {},
+  options: { prompt: string; thinking: string },
 ): { output: string; record: ProofRecord } {
   const dir = mkdtempSync(path.join(tmpdir(), "sf-pi-gateway-header-proof-"));
   const proofFile = path.join(dir, "proof.jsonl");
@@ -108,11 +108,11 @@ function runPiProof(
       "--model",
       `sf-llm-gateway-internal/${modelId}`,
       "--thinking",
-      "minimal",
+      options.thinking,
       "--no-tools",
       "--no-session",
       "-p",
-      "Reply with exactly: ok",
+      options.prompt,
     ],
     {
       cwd: process.cwd(),
@@ -120,7 +120,6 @@ function runPiProof(
       timeout: TIMEOUT_MS,
       env: {
         ...process.env,
-        ...extraEnv,
         SF_PI_GATEWAY_HEADER_PROOF_FILE: proofFile,
       },
     },

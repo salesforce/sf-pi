@@ -69,12 +69,6 @@ export const OPUS_47_MAX_TOKENS_FLOOR_BY_LEVEL: Record<PiReasoningLevel, number>
   max: 128_000,
 };
 
-/**
- * Anthropic beta header pi-ai sets by default on the Anthropic Messages path.
- * Re-exported from `lib/models.ts` via resolveEffectiveBetas().
- */
-export const ANTHROPIC_FINE_GRAINED_TOOL_STREAMING_BETA = "fine-grained-tool-streaming-2025-05-14";
-
 /** Default OpenAI service tier for gateway requests. */
 export const DEFAULT_OPENAI_SERVICE_TIER = "priority";
 
@@ -210,7 +204,7 @@ export function isOpus46OrNewerModelId(modelId: string): boolean {
   return v !== null && v >= 6;
 }
 
-/** True for Claude Opus 4.7+ (1M context, native gateway support, no beta headers needed). */
+/** True for Claude Opus 4.7+ (1M context with native gateway support). */
 export function isOpus47OrNewerModelId(modelId: string): boolean {
   const v = extractOpusMinorVersion(modelId);
   return v !== null && v >= 7;

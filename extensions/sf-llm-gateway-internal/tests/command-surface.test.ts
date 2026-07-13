@@ -46,12 +46,6 @@ describe("gateway command surface", () => {
     );
   });
 
-  it("completes beta aliases after a trailing space", () => {
-    const completions = getGatewayArgumentCompletions("beta ") ?? [];
-    expect(completions.map((item) => item.value)).toContain("reset");
-    expect(completions.length).toBeGreaterThan(1);
-  });
-
   it("completes scoped command targets after a trailing space", () => {
     expect(getGatewayArgumentCompletions("setup ")?.map((item) => item.value)).toEqual([
       "global",

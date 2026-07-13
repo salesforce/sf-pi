@@ -71,7 +71,7 @@ describeLive("sf-llm-gateway-internal Opus 4.7 live regression", () => {
 });
 
 function makeOpusModel(): Model<"anthropic-messages"> {
-  const cfg = toProviderModelConfig(opusModel, null, new Set());
+  const cfg = toProviderModelConfig(opusModel);
   return {
     ...cfg,
     api: "anthropic-messages",

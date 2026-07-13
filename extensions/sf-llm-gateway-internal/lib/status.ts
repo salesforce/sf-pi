@@ -8,12 +8,10 @@
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import {
   API_KEY_ENV,
-  BETAS_ENV,
   DEFAULT_MODEL_ID,
   DEFAULT_THINKING_LEVEL,
   FALLBACK_MODEL_ID,
   LEGACY_API_KEY_ENV,
-  LEGACY_BETAS_ENV,
   describeApiKey,
   describeConfigValue,
   getGatewayConfig,
@@ -23,13 +21,7 @@ import {
   projectGatewayConfigPath,
   readGatewayEnv,
 } from "./config.ts";
-import {
-  KNOWN_BETAS,
-  formatTokens,
-  formatUsd,
-  getActiveModelDefinition,
-  isDefaultAnthropicBeta,
-} from "./models.ts";
+import { formatTokens, formatUsd, getActiveModelDefinition } from "./models.ts";
 import { getLastModelGroupDrift, type GatewayDiscoveryState } from "./discovery.ts";
 import type { ModelGroupDrift } from "./models.ts";
 import type {
@@ -63,8 +55,6 @@ export interface GatewayRuntimeStatusState {
   dailyActivityError?: string | null;
   keyList?: GatewayKeyList | null;
   keyListError?: string | null;
-  runtimeBetaOverrides: Set<string> | null;
-  runtimeExtraBetas: Set<string>;
 }
 
 export function buildFooterStatus(state: GatewayRuntimeStatusState): string {
@@ -94,9 +84,6 @@ export function buildStatusReport(
   const activeModel = getActiveModelDefinition(ctx.model?.id, state.discovery?.modelIds);
   const contextUsage = ctx.getContextUsage();
   const discovery = state.discovery;
-  const customBetas = [...state.runtimeExtraBetas]
-    .filter((value) => !KNOWN_BETAS.some((beta) => beta.value === value))
-    .sort();
 
   return [
     "SF LLM Gateway Internal",
@@ -123,16 +110,6 @@ export function buildStatusReport(
     `Model discovery: ${discovery?.source ?? "not run"}${discovery?.error ? ` ⚠ ${discovery.error}` : ""}`,
     `Discovered models: ${discovery?.modelIds.length ?? 0}`,
     ...formatModelGroupDriftLines(getLastModelGroupDrift()),
-    "",
-    "Anthropic beta headers:",
-    ...KNOWN_BETAS.map((beta) => {
-      const active = isKnownBetaActive(beta.value, state);
-      return `- ${beta.aliases[0]}: ${active ? "on" : "off"} (${beta.value})`;
-    }),
-    ...(customBetas.length > 0
-      ? ["", "Custom injected betas:", ...customBetas.map((value) => `- ${value}`)]
-      : []),
-    `Beta source: ${getBetaSource(state)}`,
     "",
     ...buildProviderTelemetryReport(),
     ...buildWireTraceReport(),
@@ -396,21 +373,4 @@ export function formatSparkline(values: number[]): string {
       return bars[idx];
     })
     .join("");
-}
-
-function isKnownBetaActive(value: string, state: GatewayRuntimeStatusState): boolean {
-  if (isDefaultAnthropicBeta(value)) {
-    return state.runtimeBetaOverrides === null ? true : state.runtimeBetaOverrides.has(value);
-  }
-  return state.runtimeExtraBetas.has(value);
-}
-
-function getBetaSource(state: GatewayRuntimeStatusState): string {
-  if (readGatewayEnv(BETAS_ENV, LEGACY_BETAS_ENV) !== undefined) {
-    return "env override";
-  }
-  if (state.runtimeBetaOverrides !== null || state.runtimeExtraBetas.size > 0) {
-    return "command override";
-  }
-  return "model defaults";
 }

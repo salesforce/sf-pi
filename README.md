@@ -607,7 +607,6 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 - gpt-5.5 fails with a message asking to use `/v1/responses`
 - Footer shows `⚠` badge after a 429 or 5xx
 - I set `/thinking` to a different level but subsequent model switches reset it
-- Beta headers aren't taking effect
 - Monthly-usage footer is stale or missing
 - Old and new gateway keys are confusing status or tests
 - Doctor reports `WARN: fetch failed` on macOS even though `curl` works

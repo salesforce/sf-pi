@@ -84,8 +84,6 @@ describe("cached gateway discovery", () => {
 
     const registered = registerCachedDiscoveryIfAvailable(
       makeFakePi(captured) as never,
-      null,
-      new Set(),
       process.cwd(),
     );
 
@@ -109,11 +107,7 @@ describe("cached gateway discovery", () => {
     const { registerCachedDiscoveryIfAvailable } = await import("../lib/discovery.ts");
     const captured: CapturedRegistration[] = [];
 
-    const registered = registerCachedDiscoveryIfAvailable(
-      makeFakePi(captured) as never,
-      null,
-      new Set(),
-    );
+    const registered = registerCachedDiscoveryIfAvailable(makeFakePi(captured) as never);
 
     expect(registered).toBe(true);
     expect(captured).toHaveLength(1);
@@ -130,11 +124,7 @@ describe("cached gateway discovery", () => {
     const { registerCachedDiscoveryIfAvailable } = await import("../lib/discovery.ts");
     const captured: CapturedRegistration[] = [];
 
-    const registered = registerCachedDiscoveryIfAvailable(
-      makeFakePi(captured) as never,
-      null,
-      new Set(),
-    );
+    const registered = registerCachedDiscoveryIfAvailable(makeFakePi(captured) as never);
 
     expect(registered).toBe(false);
     expect(captured).toHaveLength(0);
@@ -168,12 +158,7 @@ describe("cached gateway discovery", () => {
     const { discoverAndRegister } = await import("../lib/discovery.ts");
     const captured: CapturedRegistration[] = [];
 
-    const state = await discoverAndRegister(
-      makeFakePi(captured) as never,
-      null,
-      new Set(),
-      agentDir,
-    );
+    const state = await discoverAndRegister(makeFakePi(captured) as never, agentDir);
 
     expect(state).toMatchObject({
       source: "static",

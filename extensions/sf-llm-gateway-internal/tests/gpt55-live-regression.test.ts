@@ -85,7 +85,7 @@ describeLive("sf-llm-gateway-internal GPT-5 Responses live regression", () => {
 });
 
 function makeGpt55ResponsesModel(): Model<"openai-responses"> {
-  const cfg = toProviderModelConfig(gpt55Model, null, new Set());
+  const cfg = toProviderModelConfig(gpt55Model);
   return {
     ...cfg,
     api: "openai-responses",
@@ -95,7 +95,7 @@ function makeGpt55ResponsesModel(): Model<"openai-responses"> {
 }
 
 function makeGpt55ChatModel(): Model<"openai-completions"> {
-  const cfg = toProviderModelConfig(gpt55Model, null, new Set());
+  const cfg = toProviderModelConfig(gpt55Model);
   return {
     ...cfg,
     api: "openai-completions",

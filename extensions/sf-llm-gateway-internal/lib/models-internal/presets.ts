@@ -15,18 +15,6 @@ import type { ProviderModelConfig } from "@earendil-works/pi-coding-agent";
 import { DEFAULT_MODEL_ID, FALLBACK_MODEL_ID, PREVIOUS_DEFAULT_MODEL_ID } from "../config.ts";
 import type { GatewayModelDefinition } from "../models.ts";
 
-// Re-imported here so presets stay self-contained; mirrors the source-of-truth
-// values exported from `lib/models.ts` (the public barrel).
-const ONE_M_CONTEXT_BETA = "context-1m-2025-08-07";
-const OUTPUT_128K_BETA = "output-128k-2025-02-19";
-const INTERLEAVED_THINKING_BETA = "interleaved-thinking-2025-05-14";
-
-const DEFAULT_ANTHROPIC_BETA_HEADERS = [
-  ONE_M_CONTEXT_BETA,
-  OUTPUT_128K_BETA,
-  INTERLEAVED_THINKING_BETA,
-] as const;
-
 /**
  * Opus 4.7+ thinking-level map. Pi's user-facing `xhigh` and `max`
  * selectors both map to Anthropic's native `max` effort tier on the wire.
@@ -70,15 +58,13 @@ export const MODEL_PRESETS: Record<string, Omit<GatewayModelDefinition, "id">> =
     input: ["text", "image"],
     contextWindow: 1_000_000,
     maxTokens: 128_000,
-    betaHeaders: [],
     thinkingLevelMap: OPUS_47_THINKING_LEVEL_MAP,
   },
   // --- Opus 4.7 (previous default) ---
   //
   // contextWindow is 1M: live probes confirmed the upstream accepts >200K
-  // input tokens without the context-1m beta header, and gateway metadata
-  // now advertises 1M natively. Keep default betaHeaders empty so the
-  // default Opus 4.7 path avoids deprecated / unnecessary beta flags.
+  // input tokens without Gateway-owned beta headers, and gateway metadata
+  // now advertises 1M natively.
   //
   // maxTokens is 128_000. Live probes (May 2026) confirmed
   // `max_tokens: 128000 + effort: "max"` works reliably — the earlier
@@ -90,7 +76,6 @@ export const MODEL_PRESETS: Record<string, Omit<GatewayModelDefinition, "id">> =
     input: ["text", "image"],
     contextWindow: 1_000_000,
     maxTokens: 128_000,
-    betaHeaders: [],
     thinkingLevelMap: OPUS_47_THINKING_LEVEL_MAP,
   },
   "claude-opus-4-7-v1": {
@@ -100,7 +85,6 @@ export const MODEL_PRESETS: Record<string, Omit<GatewayModelDefinition, "id">> =
     input: ["text", "image"],
     contextWindow: 1_000_000,
     maxTokens: 128_000,
-    betaHeaders: [],
     thinkingLevelMap: OPUS_47_THINKING_LEVEL_MAP,
   },
   "claude-opus-4-7-20250416": {
@@ -110,7 +94,6 @@ export const MODEL_PRESETS: Record<string, Omit<GatewayModelDefinition, "id">> =
     input: ["text", "image"],
     contextWindow: 1_000_000,
     maxTokens: 128_000,
-    betaHeaders: [],
     thinkingLevelMap: OPUS_47_THINKING_LEVEL_MAP,
   },
   "us.anthropic.claude-opus-4-7-v1": {
@@ -120,7 +103,6 @@ export const MODEL_PRESETS: Record<string, Omit<GatewayModelDefinition, "id">> =
     input: ["text", "image"],
     contextWindow: 1_000_000,
     maxTokens: 128_000,
-    betaHeaders: [],
     thinkingLevelMap: OPUS_47_THINKING_LEVEL_MAP,
   },
   // --- Opus 4.6 ---
@@ -131,7 +113,6 @@ export const MODEL_PRESETS: Record<string, Omit<GatewayModelDefinition, "id">> =
     input: ["text", "image"],
     contextWindow: 1_000_000,
     maxTokens: 128_000,
-    betaHeaders: [...DEFAULT_ANTHROPIC_BETA_HEADERS],
     thinkingLevelMap: CLAUDE_MAX_THINKING_LEVEL_MAP,
   },
   "us.anthropic.claude-opus-4-6-v1": {
@@ -141,7 +122,6 @@ export const MODEL_PRESETS: Record<string, Omit<GatewayModelDefinition, "id">> =
     input: ["text", "image"],
     contextWindow: 1_000_000,
     maxTokens: 128_000,
-    betaHeaders: [...DEFAULT_ANTHROPIC_BETA_HEADERS],
     thinkingLevelMap: CLAUDE_MAX_THINKING_LEVEL_MAP,
   },
   [FALLBACK_MODEL_ID]: {
@@ -151,7 +131,6 @@ export const MODEL_PRESETS: Record<string, Omit<GatewayModelDefinition, "id">> =
     input: ["text", "image"],
     contextWindow: 200_000,
     maxTokens: 64_000,
-    betaHeaders: [INTERLEAVED_THINKING_BETA],
     thinkingLevelMap: CLAUDE_MAX_THINKING_LEVEL_MAP,
   },
   "claude-opus-4-5-20251101": {
@@ -161,7 +140,6 @@ export const MODEL_PRESETS: Record<string, Omit<GatewayModelDefinition, "id">> =
     input: ["text", "image"],
     contextWindow: 200_000,
     maxTokens: 32_768,
-    betaHeaders: [INTERLEAVED_THINKING_BETA],
   },
   "claude-opus-4-20250514": {
     family: "anthropic",
@@ -170,7 +148,6 @@ export const MODEL_PRESETS: Record<string, Omit<GatewayModelDefinition, "id">> =
     input: ["text", "image"],
     contextWindow: 200_000,
     maxTokens: 32_768,
-    betaHeaders: [INTERLEAVED_THINKING_BETA],
   },
   "claude-sonnet-4-20250514": {
     family: "anthropic",
@@ -179,7 +156,6 @@ export const MODEL_PRESETS: Record<string, Omit<GatewayModelDefinition, "id">> =
     input: ["text", "image"],
     contextWindow: 200_000,
     maxTokens: 64_000,
-    betaHeaders: [INTERLEAVED_THINKING_BETA],
   },
   "claude-sonnet-4-5-20250514": {
     family: "anthropic",
@@ -188,7 +164,6 @@ export const MODEL_PRESETS: Record<string, Omit<GatewayModelDefinition, "id">> =
     input: ["text", "image"],
     contextWindow: 200_000,
     maxTokens: 64_000,
-    betaHeaders: [INTERLEAVED_THINKING_BETA],
   },
   "claude-sonnet-5": {
     family: "anthropic",
@@ -197,7 +172,6 @@ export const MODEL_PRESETS: Record<string, Omit<GatewayModelDefinition, "id">> =
     input: ["text", "image"],
     contextWindow: 200_000,
     maxTokens: 64_000,
-    betaHeaders: [],
     thinkingLevelMap: CLAUDE_MAX_THINKING_LEVEL_MAP,
   },
   "claude-haiku-4-5-20251001": {
@@ -207,7 +181,6 @@ export const MODEL_PRESETS: Record<string, Omit<GatewayModelDefinition, "id">> =
     input: ["text", "image"],
     contextWindow: 200_000,
     maxTokens: 8_192,
-    betaHeaders: [],
   },
   "claude-3-7-sonnet-20250219": {
     family: "anthropic",
@@ -216,7 +189,6 @@ export const MODEL_PRESETS: Record<string, Omit<GatewayModelDefinition, "id">> =
     input: ["text", "image"],
     contextWindow: 200_000,
     maxTokens: 64_000,
-    betaHeaders: [INTERLEAVED_THINKING_BETA],
   },
   "gemini-3.1-pro-preview": {
     family: "google",

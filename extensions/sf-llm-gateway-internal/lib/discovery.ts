@@ -177,25 +177,15 @@ export function getLastDiscovery(): GatewayDiscoveryState | null {
  * fire-and-forget `discoverAndRegister` refreshes this cache and corrects any
  * drift. Explicit `/sf-llm-gateway refresh` remains live/awaited.
  */
-export function registerCachedDiscoveryIfAvailable(
-  pi: ExtensionAPI,
-  runtimeBetaOverrides: Set<string> | null,
-  runtimeExtraBetas: Set<string>,
-  cwd?: string,
-): boolean {
+export function registerCachedDiscoveryIfAvailable(pi: ExtensionAPI, cwd?: string): boolean {
   const config = cwd ? getGatewayConfig(cwd) : getGlobalOnlyGatewayConfig();
   if (!config.enabled || !config.baseUrl) return false;
 
   const cache = readDiscoveryCache();
   if (!cache?.modelIds?.length) return false;
 
-  const models = buildDiscoveredModelList(
-    cache.modelIds,
-    runtimeBetaOverrides,
-    runtimeExtraBetas,
-    cache.modelInfoMap,
-  );
-  registerProviders(pi, models, runtimeBetaOverrides, runtimeExtraBetas, cwd);
+  const models = buildDiscoveredModelList(cache.modelIds, cache.modelInfoMap);
+  registerProviders(pi, models, cwd);
 
   if (cache.modelGroupInfo) {
     lastModelGroupInfo = cache.modelGroupInfo;
@@ -280,11 +270,7 @@ function unifiedStream(
  * intentionally primary over env vars so stale shell/Keychain exports cannot
  * shadow a freshly pasted token.
  */
-function buildOAuthBlock(
-  pi: ExtensionAPI,
-  runtimeBetaOverrides: Set<string> | null,
-  runtimeExtraBetas: Set<string>,
-): {
+function buildOAuthBlock(pi: ExtensionAPI): {
   name: string;
   login(callbacks: OAuthLoginCallbacks): Promise<OAuthCredentials>;
   refreshToken(credentials: OAuthCredentials): Promise<OAuthCredentials>;
@@ -312,7 +298,7 @@ function buildOAuthBlock(
 
       // Re-register the provider so the new key takes effect immediately.
       // No reload required — pi's registerProvider is idempotent.
-      registerProviderIfConfigured(pi, runtimeBetaOverrides, runtimeExtraBetas);
+      registerProviderIfConfigured(pi);
 
       // Return a minimal credential. pi persists it in ~/.pi/agent/auth.json
       // as a "yes, logged in" marker. getApiKey below always reads from the
@@ -333,13 +319,7 @@ function buildOAuthBlock(
   };
 }
 
-function registerProviders(
-  pi: ExtensionAPI,
-  models: TaggedGatewayModel[],
-  runtimeBetaOverrides: Set<string> | null,
-  runtimeExtraBetas: Set<string>,
-  cwd?: string,
-): boolean {
+function registerProviders(pi: ExtensionAPI, models: TaggedGatewayModel[], cwd?: string): boolean {
   // When called from the factory before session_start, cwd is undefined.
   // Fall back to global-only config (global saved config, then env fallback).
   const config = cwd ? getGatewayConfig(cwd) : getGlobalOnlyGatewayConfig();
@@ -388,7 +368,7 @@ function registerProviders(
     api: "openai-completions",
     models: providerModels,
     streamSimple: unifiedStream,
-    oauth: buildOAuthBlock(pi, runtimeBetaOverrides, runtimeExtraBetas),
+    oauth: buildOAuthBlock(pi),
   };
   pi.registerProvider(PROVIDER_NAME, providerConfig);
 
@@ -396,19 +376,8 @@ function registerProviders(
 }
 
 /** Register the static bootstrap catalog only — no network calls. */
-export function registerProviderIfConfigured(
-  pi: ExtensionAPI,
-  runtimeBetaOverrides: Set<string> | null,
-  runtimeExtraBetas: Set<string>,
-  cwd?: string,
-): boolean {
-  return registerProviders(
-    pi,
-    buildBootstrapModelList(runtimeBetaOverrides, runtimeExtraBetas),
-    runtimeBetaOverrides,
-    runtimeExtraBetas,
-    cwd,
-  );
+export function registerProviderIfConfigured(pi: ExtensionAPI, cwd?: string): boolean {
+  return registerProviders(pi, buildBootstrapModelList(), cwd);
 }
 
 /**
@@ -418,8 +387,6 @@ export function registerProviderIfConfigured(
  */
 export async function discoverAndRegister(
   pi: ExtensionAPI,
-  runtimeBetaOverrides: Set<string> | null,
-  runtimeExtraBetas: Set<string>,
   cwd: string,
 ): Promise<GatewayDiscoveryState> {
   if (discoveryInFlight) {
@@ -442,7 +409,7 @@ export async function discoverAndRegister(
     }
 
     if (!config.baseUrl || !config.apiKey) {
-      registerProviderIfConfigured(pi, runtimeBetaOverrides, runtimeExtraBetas, cwd);
+      registerProviderIfConfigured(pi, cwd);
       const state: GatewayDiscoveryState = {
         modelIds: getStaticGatewayModelIds(),
         source: config.baseUrl ? "static" : "disabled",
@@ -477,7 +444,7 @@ export async function discoverAndRegister(
       lastModelGroupInfo = modelGroupInfo;
 
       if (modelIdDiscovery.ids.length === 0 || modelIdDiscovery.filteredIds.length > 0) {
-        registerProviderIfConfigured(pi, runtimeBetaOverrides, runtimeExtraBetas, cwd);
+        registerProviderIfConfigured(pi, cwd);
         const state: GatewayDiscoveryState = {
           modelIds: getStaticGatewayModelIds(),
           source: "static",
@@ -491,13 +458,8 @@ export async function discoverAndRegister(
         return state;
       }
 
-      const models = buildDiscoveredModelList(
-        modelIdDiscovery.ids,
-        runtimeBetaOverrides,
-        runtimeExtraBetas,
-        modelInfoMap,
-      );
-      registerProviders(pi, models, runtimeBetaOverrides, runtimeExtraBetas, cwd);
+      const models = buildDiscoveredModelList(modelIdDiscovery.ids, modelInfoMap);
+      registerProviders(pi, models, cwd);
       const discoveredAt = new Date().toISOString();
       const discoveredModelIds = models.map((model) => model.id);
       writeDiscoveryCache(discoveredModelIds, modelInfoMap, modelGroupInfo, discoveredAt);
@@ -509,7 +471,7 @@ export async function discoverAndRegister(
       lastDiscovery = state;
       return state;
     } catch (error) {
-      registerProviderIfConfigured(pi, runtimeBetaOverrides, runtimeExtraBetas, cwd);
+      registerProviderIfConfigured(pi, cwd);
       const state: GatewayDiscoveryState = {
         modelIds: getStaticGatewayModelIds(),
         source: "static",

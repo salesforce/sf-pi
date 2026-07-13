@@ -152,7 +152,7 @@ describe("inferModelDefinition", () => {
 
 describe("buildBootstrapModelList", () => {
   it("includes the default, previous default, fallback, and curated static model IDs", () => {
-    const models = buildBootstrapModelList(null, new Set());
+    const models = buildBootstrapModelList();
     const ids = models.map((model) => model.id);
     expect(ids).toContain("claude-opus-4-8");
     expect(ids).toContain("claude-opus-4-7");
@@ -162,7 +162,7 @@ describe("buildBootstrapModelList", () => {
   });
 
   it("puts the default model first", () => {
-    const models = buildBootstrapModelList(null, new Set());
+    const models = buildBootstrapModelList();
     expect(models[0]?.id).toBe("claude-opus-4-8");
   });
 
@@ -171,7 +171,7 @@ describe("buildBootstrapModelList", () => {
   // in Pi's enabledModels resolves to something non-empty and does not emit
   // `Warning: No models match pattern "sf-llm-gateway-internal/*"`.
   it("includes at least one OpenAI-compat model so both provider wildcards resolve at startup", () => {
-    const models = buildBootstrapModelList(null, new Set());
+    const models = buildBootstrapModelList();
     const openAiCompat = models.filter((model) => model.api !== "anthropic-messages");
     const anthropic = models.filter((model) => model.api === "anthropic-messages");
     expect(openAiCompat.length).toBeGreaterThan(0);
@@ -181,7 +181,7 @@ describe("buildBootstrapModelList", () => {
 
 describe("buildDiscoveredModelList", () => {
   it("keeps only the model IDs returned by the gateway", () => {
-    const models = buildDiscoveredModelList(["gemini-2.5-pro", "gpt-5"], null, new Set());
+    const models = buildDiscoveredModelList(["gemini-2.5-pro", "gpt-5"]);
     const ids = models.map((model) => model.id);
     expect(ids).toEqual(["gemini-2.5-pro", "gpt-5"]);
     expect(ids).not.toContain("claude-opus-4-7");
@@ -189,20 +189,16 @@ describe("buildDiscoveredModelList", () => {
   });
 
   it("deduplicates discovered IDs", () => {
-    const models = buildDiscoveredModelList(
-      ["claude-opus-4-7", "claude-opus-4-7", "claude-sonnet-4-6"],
-      null,
-      new Set(),
-    );
+    const models = buildDiscoveredModelList([
+      "claude-opus-4-7",
+      "claude-opus-4-7",
+      "claude-sonnet-4-6",
+    ]);
     expect(models.filter((model) => model.id === "claude-opus-4-7")).toHaveLength(1);
   });
 
   it("keeps the fallback model ahead of later discovered families when both are returned", () => {
-    const models = buildDiscoveredModelList(
-      ["gemini-2.5-pro", "gpt-5", "claude-sonnet-4-6"],
-      null,
-      new Set(),
-    );
+    const models = buildDiscoveredModelList(["gemini-2.5-pro", "gpt-5", "claude-sonnet-4-6"]);
     const ids = models.map((model) => model.id);
     expect(ids.indexOf("claude-sonnet-4-6")).toBeLessThan(ids.indexOf("gemini-2.5-pro"));
   });
@@ -239,7 +235,7 @@ describe("resolvePreferredModelId", () => {
 
 describe("toProviderModelConfig", () => {
   it("returns a valid config for a known preset model", () => {
-    const config = toProviderModelConfig("claude-opus-4-6-v1", null, new Set());
+    const config = toProviderModelConfig("claude-opus-4-6-v1");
     expect(config.id).toBe("claude-opus-4-6-v1");
     expect(config.reasoning).toBe(true);
     expect(config.contextWindow).toBe(1_000_000);
@@ -247,12 +243,11 @@ describe("toProviderModelConfig", () => {
     expect(config.cost.input).toBe(0);
   });
 
-  it("returns 1M context / 64K max for Opus 4.7 without default beta headers", () => {
+  it("returns 1M context / 64K max for Opus 4.7 without Gateway-owned beta headers", () => {
     // Opus 4.7 now advertises 1M input natively through the gateway, and live
-    // probes confirm >200K-token requests work without context-1m. Keep the
-    // default route free of deprecated / unnecessary beta flags. maxTokens is
+    // probes confirm >200K-token requests work without Gateway-owned beta headers. maxTokens is
     // 128K confirmed stable via live probes (May 2026).
-    const config = toProviderModelConfig("claude-opus-4-7", null, new Set());
+    const config = toProviderModelConfig("claude-opus-4-7");
     expect(config.id).toBe("claude-opus-4-7");
     expect(config.reasoning).toBe(true);
     expect(config.contextWindow).toBe(1_000_000);
@@ -260,38 +255,21 @@ describe("toProviderModelConfig", () => {
     expect(config.headers).toBeUndefined();
   });
 
-  it("uses the same no-beta preset for unknown Opus 4.7 model IDs via inference", () => {
-    const config = toProviderModelConfig("claude-opus-4-7-preview", null, new Set());
+  it("uses the same no-beta-header preset for unknown Opus 4.7 model IDs via inference", () => {
+    const config = toProviderModelConfig("claude-opus-4-7-preview");
     expect(config.contextWindow).toBe(1_000_000);
     expect(config.maxTokens).toBe(128_000);
     expect(config.headers).toBeUndefined();
   });
 
-  it("sends the full beta stack for Opus 4.6 but no default betas for Opus 4.7", () => {
-    const opus46 = toProviderModelConfig("claude-opus-4-6-v1", null, new Set());
-    const opus47 = toProviderModelConfig("claude-opus-4-7", null, new Set());
-    expect(opus46.headers?.["anthropic-beta"]).toContain("context-1m-2025-08-07");
-    expect(opus46.headers?.["anthropic-beta"]).toContain("interleaved-thinking-2025-05-14");
-    expect(opus46.headers?.["anthropic-beta"]).toContain("fine-grained-tool-streaming-2025-05-14");
-    expect(opus47.headers).toBeUndefined();
-  });
-
-  it("merges fine-grained-tool-streaming into non-Opus-4.7 beta lists", () => {
-    // When this extension sets model-level beta headers for older models,
-    // include fine-grained-tool-streaming in the same header value so pi-ai's
-    // Object.assign-based merge cannot drop it. Opus 4.7 has no default beta
-    // list, so it should not receive the workaround header by default.
-    for (const id of ["claude-opus-4-6-v1", "claude-sonnet-4-6"]) {
-      const beta = toProviderModelConfig(id, null, new Set()).headers?.["anthropic-beta"] ?? "";
-      const parts = beta.split(",").filter(Boolean);
-      expect(parts).toContain("fine-grained-tool-streaming-2025-05-14");
-      expect(new Set(parts).size).toBe(parts.length);
+  it("does not attach Gateway-owned Anthropic beta headers to model configs", () => {
+    for (const id of ["claude-opus-4-6-v1", "claude-opus-4-7", "claude-sonnet-5"]) {
+      expect(toProviderModelConfig(id).headers).toBeUndefined();
     }
-    expect(toProviderModelConfig("claude-opus-4-7", null, new Set()).headers).toBeUndefined();
   });
 
   it("returns a valid config for a generic Gemini model", () => {
-    const config = toProviderModelConfig("gemini-2.5-pro", null, new Set());
+    const config = toProviderModelConfig("gemini-2.5-pro");
     expect(config.id).toBe("gemini-2.5-pro");
     expect(config.reasoning).toBe(true);
     expect(config.input).toEqual(["text", "image"]);
@@ -308,7 +286,7 @@ describe("toProviderModelConfig", () => {
       "claude-sonnet-4-6",
       "claude-sonnet-5",
     ]) {
-      const config = toProviderModelConfig(id, null, new Set());
+      const config = toProviderModelConfig(id);
       expect(config.api).toBe("anthropic-messages");
       expect(config.compat).toMatchObject({ forceAdaptiveThinking: true });
     }
@@ -317,9 +295,9 @@ describe("toProviderModelConfig", () => {
   it("disables per-tool eager_input_streaming for Haiku 4.5 (gateway issue #166)", () => {
     // Haiku 4.5 rejects per-tool `eager_input_streaming`. Setting
     // `supportsEagerToolInputStreaming: false` makes pi-ai's Anthropic
-    // transport drop the field and auto-attach the legacy
-    // `fine-grained-tool-streaming-2025-05-14` beta header for tool-enabled
-    // requests. Opus / Sonnet keep the default fast path.
+    // transport drop the field and switch to pi-ai's legacy tool-streaming
+    // compatibility path for tool-enabled requests. Opus / Sonnet keep the
+    // default fast path.
     for (const id of [
       "claude-haiku-4-5-20251001",
       "claude-haiku-4-5",
@@ -327,7 +305,7 @@ describe("toProviderModelConfig", () => {
       "anthropic.claude-haiku-4.5",
       "us.anthropic.claude-haiku-4-5-v1",
     ]) {
-      const config = toProviderModelConfig(id, null, new Set());
+      const config = toProviderModelConfig(id);
       expect(config.api).toBe("anthropic-messages");
       expect(
         (config.compat as { supportsEagerToolInputStreaming?: boolean } | undefined)
@@ -338,7 +316,7 @@ describe("toProviderModelConfig", () => {
 
   it("does not set the eager-streaming override on Opus/Sonnet", () => {
     for (const id of ["claude-opus-4-7-20250416", "claude-sonnet-4-6", "claude-opus-4-6-v1"]) {
-      const config = toProviderModelConfig(id, null, new Set());
+      const config = toProviderModelConfig(id);
       expect(
         (config.compat as { supportsEagerToolInputStreaming?: boolean } | undefined)
           ?.supportsEagerToolInputStreaming,
@@ -385,9 +363,9 @@ describe("toProviderModelConfig", () => {
   });
 
   it("tags non-Claude, non-gpt-5-family models with openai-completions", () => {
-    expect(toProviderModelConfig("gemini-2.5-pro", null, new Set()).api).toBe("openai-completions");
-    expect(toProviderModelConfig("gpt-4o", null, new Set()).api).toBe("openai-completions");
-    expect(toProviderModelConfig("gpt-5.3-codex", null, new Set()).api).toBe("openai-completions");
+    expect(toProviderModelConfig("gemini-2.5-pro").api).toBe("openai-completions");
+    expect(toProviderModelConfig("gpt-4o").api).toBe("openai-completions");
+    expect(toProviderModelConfig("gpt-5.3-codex").api).toBe("openai-completions");
   });
 
   it("routes gpt-5 and gpt-5-mini through openai-responses with the native clamp", () => {
@@ -395,7 +373,7 @@ describe("toProviderModelConfig", () => {
     // Responses path but reject `xhigh` upstream. Map passes `minimal`
     // through (unlike gpt-5.5, which rejects it) and clamps `xhigh → high`.
     for (const id of ["gpt-5", "gpt-5-mini"]) {
-      const cfg = toProviderModelConfig(id, null, new Set());
+      const cfg = toProviderModelConfig(id);
       expect(cfg.api).toBe("openai-responses");
       expect(cfg.thinkingLevelMap).toEqual({
         minimal: "minimal",
@@ -408,10 +386,10 @@ describe("toProviderModelConfig", () => {
   });
 
   it("uses the updated GPT-5 272K/128K preset", () => {
-    const gpt5 = toProviderModelConfig("gpt-5", null, new Set());
+    const gpt5 = toProviderModelConfig("gpt-5");
     expect(gpt5.contextWindow).toBe(272_000);
     expect(gpt5.maxTokens).toBe(128_000);
-    const gpt5Mini = toProviderModelConfig("gpt-5-mini", null, new Set());
+    const gpt5Mini = toProviderModelConfig("gpt-5-mini");
     expect(gpt5Mini.contextWindow).toBe(272_000);
     expect(gpt5Mini.maxTokens).toBe(128_000);
   });
@@ -424,7 +402,7 @@ describe("toProviderModelConfig", () => {
     // `thinkingLevelMap` clamps pi's thinking scale to the {low, medium,
     // high} window — the only values that both LiteLLM's Pydantic validator
     // and upstream OpenAI accept on the Responses path for this model.
-    const cfg = toProviderModelConfig("gpt-5.5", null, new Set());
+    const cfg = toProviderModelConfig("gpt-5.5");
     expect(cfg.contextWindow).toBe(1_000_000);
     expect(cfg.maxTokens).toBe(128_000);
     expect(cfg.reasoning).toBe(true);
@@ -440,8 +418,8 @@ describe("toProviderModelConfig", () => {
   });
 
   it("keeps gateway-specific gpt-5.5 context larger than Codex while Codex stays capped", () => {
-    const gpt55 = toProviderModelConfig("gpt-5.5", null, new Set());
-    const codex = toProviderModelConfig("gpt-5.3-codex", null, new Set());
+    const gpt55 = toProviderModelConfig("gpt-5.5");
+    const codex = toProviderModelConfig("gpt-5.3-codex");
 
     expect(gpt55.contextWindow).toBe(1_000_000);
     expect(gpt55.maxTokens).toBe(128_000);
@@ -450,7 +428,7 @@ describe("toProviderModelConfig", () => {
   });
 
   it("uses the updated Codex 272K/128K preset", () => {
-    const codex = toProviderModelConfig("gpt-5.3-codex", null, new Set());
+    const codex = toProviderModelConfig("gpt-5.3-codex");
     expect(codex.contextWindow).toBe(272_000);
     expect(codex.maxTokens).toBe(128_000);
   });
@@ -459,7 +437,7 @@ describe("toProviderModelConfig", () => {
     // Some LiteLLM metadata snapshots reported max_input_tokens=200000 for
     // Opus 4.7 even though the current gateway serves 1M natively. The
     // preset must win so pi-ai does not silently treat 4.7 as a 200K model.
-    const cfg = toProviderModelConfig("claude-opus-4-7", null, new Set(), {
+    const cfg = toProviderModelConfig("claude-opus-4-7", {
       id: "claude-opus-4-7",
       maxInputTokens: 200_000,
       maxOutputTokens: 64_000,
@@ -471,7 +449,7 @@ describe("toProviderModelConfig", () => {
   });
 
   it("applies /v1/model/info to non-preset discovered models", () => {
-    const cfg = toProviderModelConfig("unknown-new-model-v42", null, new Set(), {
+    const cfg = toProviderModelConfig("unknown-new-model-v42", {
       id: "unknown-new-model-v42",
       maxInputTokens: 500_000,
       maxOutputTokens: 40_000,
@@ -485,7 +463,7 @@ describe("toProviderModelConfig", () => {
   });
 
   it("enables Codex reasoning effort with gateway-safe clamping", () => {
-    const config = toProviderModelConfig("gpt-5.3-codex", null, new Set());
+    const config = toProviderModelConfig("gpt-5.3-codex");
     expect(gatewayCompat(config)?.supportsReasoningEffort).toBe(true);
     // Migrated from compat.reasoningEffortMap to model-level
     // thinkingLevelMap in pi >= 0.72 (pi-mono #3208).
@@ -511,7 +489,7 @@ describe("toProviderModelConfig", () => {
       "claude-sonnet-5",
       "gpt-5.3-codex",
     ]) {
-      const config = toProviderModelConfig(id, null, new Set());
+      const config = toProviderModelConfig(id);
       expect(config.thinkingLevelMap?.xhigh, `${id} should opt into xhigh→max`).toBe("max");
       expect(config.thinkingLevelMap?.max, `${id} should opt into max→max`).toBe("max");
       if (id.includes("codex")) {
@@ -526,54 +504,21 @@ describe("toProviderModelConfig", () => {
 
   it("does not expose max on gateway models whose ceiling is high", () => {
     for (const id of ["gpt-5", "gpt-5-mini"]) {
-      const config = toProviderModelConfig(id, null, new Set());
+      const config = toProviderModelConfig(id);
       expect(config.thinkingLevelMap?.max, `${id} should not expose max`).toBeUndefined();
     }
   });
 
   it("uses Pi-native adaptive thinking for Opus 4.6 with live-proven max support", () => {
-    const config = toProviderModelConfig("claude-opus-4-6-v1", null, new Set());
+    const config = toProviderModelConfig("claude-opus-4-6-v1");
     expect(config.thinkingLevelMap).toMatchObject({ xhigh: "max", max: "max" });
     expect(config.compat).toMatchObject({ forceAdaptiveThinking: true });
   });
 
   it("does not enable reasoning effort for non-reasoning providers like Gemini or OpenAI", () => {
-    const gemini = toProviderModelConfig("gemini-2.5-pro", null, new Set());
-    const openai = toProviderModelConfig("gpt-4o", null, new Set());
+    const gemini = toProviderModelConfig("gemini-2.5-pro");
+    const openai = toProviderModelConfig("gpt-4o");
     expect(gatewayCompat(gemini)?.supportsReasoningEffort).toBe(false);
     expect(gatewayCompat(openai)?.supportsReasoningEffort).toBe(false);
-  });
-
-  it("adds Anthropic beta headers only for Anthropic models", () => {
-    const anthropic = toProviderModelConfig("claude-opus-4-6-v1", null, new Set());
-    const gemini = toProviderModelConfig(
-      "gemini-2.5-pro",
-      null,
-      new Set(["prompt-caching-2024-07-31"]),
-    );
-
-    expect(anthropic.headers?.["anthropic-beta"]).toBeDefined();
-    expect(gemini.headers).toBeUndefined();
-  });
-
-  it("can inject extra Anthropic betas on top of defaults", () => {
-    const config = toProviderModelConfig(
-      "claude-sonnet-4-6",
-      null,
-      new Set(["prompt-caching-2024-07-31"]),
-    );
-
-    expect(config.headers?.["anthropic-beta"]).toContain("interleaved-thinking-2025-05-14");
-    expect(config.headers?.["anthropic-beta"]).toContain("prompt-caching-2024-07-31");
-  });
-
-  it("can explicitly inject a runtime beta for Opus 4.7 without default betas", () => {
-    const config = toProviderModelConfig(
-      "claude-opus-4-7",
-      null,
-      new Set(["context-1m-2025-08-07"]),
-    );
-
-    expect(config.headers?.["anthropic-beta"]).toBe("context-1m-2025-08-07");
   });
 });
