@@ -178,7 +178,6 @@ extensions/sf-devbar/
     colors.ts               ← implementation module
     config-panel.ts         ← implementation module
     git-changes.ts          ← implementation module
-    org-display.ts          ← implementation module
     settings-reader.ts      ← implementation module
     settings.ts             ← implementation module
     top-bar.ts              ← implementation module
@@ -187,7 +186,6 @@ extensions/sf-devbar/
     colors.test.ts          ← unit / smoke test
     config-panel.test.ts    ← unit / smoke test
     git-changes.test.ts     ← unit / smoke test
-    org-display.test.ts     ← unit / smoke test
     settings-reader.test.ts ← unit / smoke test
     settings.test.ts        ← unit / smoke test
     shutdown-reason.test.ts ← unit / smoke test

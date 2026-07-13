@@ -58,7 +58,10 @@ import {
 } from "../../lib/common/sf-environment/format-agent-context.ts";
 import { renderTopBarLine, type TopBarState } from "./lib/top-bar.ts";
 import { renderBottomBarParts, type BottomBarState } from "./lib/bottom-bar.ts";
-import { extractSfEnvironmentEntries, selectDisplayOrgEnvironment } from "./lib/org-display.ts";
+import {
+  extractSfEnvironmentEntries,
+  selectDisplayOrgEnvironment,
+} from "../../lib/common/sf-environment/display-fallback.ts";
 import { getGitChanges, type GitChanges } from "./lib/git-changes.ts";
 import { formatImageWidthPill, readDevbarRuntimeSettings } from "./lib/settings-reader.ts";
 import { DEFAULT_DEVBAR_COLORS, type DevbarColors } from "./lib/colors.ts";

@@ -1,7 +1,10 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 import { describe, expect, it } from "vitest";
-import { extractSfEnvironmentEntries, selectDisplayOrgEnvironment } from "../lib/org-display.ts";
-import type { SfEnvironment } from "../../../lib/common/sf-environment/types.ts";
+import {
+  extractSfEnvironmentEntries,
+  selectDisplayOrgEnvironment,
+} from "../sf-environment/display-fallback.ts";
+import type { SfEnvironment } from "../sf-environment/types.ts";
 
 function env(overrides: Partial<SfEnvironment> = {}): SfEnvironment {
   return {

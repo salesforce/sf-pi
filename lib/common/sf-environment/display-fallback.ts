@@ -1,13 +1,14 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /**
- * Presentation helper for compact org status surfaces.
+ * Shared Salesforce org status fallback selection.
  *
- * The current probe can fail while an older successful org identity is still
- * useful for orientation. This module keeps that fallback logic out of the
- * bottom-bar renderer so detailed diagnostics can continue to report the raw
- * current probe result.
+ * Compact status surfaces can show a Last-Known Usable Status with a stale
+ * marker when the Current Probe Status failed. The fallback is intentionally
+ * identity-scoped: the successful snapshot must be for the same Salesforce
+ * project root and configured target org, and it must include an org id.
+ * Detailed diagnostics should still surface the raw current probe failure.
  */
-import type { SfEnvironment } from "../../../lib/common/sf-environment/types.ts";
+import type { SfEnvironment } from "./types.ts";
 
 const SF_ENVIRONMENT_ENTRY_TYPE = "sf-environment";
 
