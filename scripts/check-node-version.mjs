@@ -1,16 +1,40 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-const REQUIRED = { major: 22, minor: 19, patch: 0 };
-const current = process.versions.node.split(".").map((part) => Number.parseInt(part, 10));
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
-function isTooOld([major = 0, minor = 0, patch = 0]) {
-  if (major !== REQUIRED.major) return major < REQUIRED.major;
-  if (minor !== REQUIRED.minor) return minor < REQUIRED.minor;
-  return patch < REQUIRED.patch;
+const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)));
+const packageJson = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8"));
+const requiredVersion = extractNodeRuntimeFloor(packageJson.engines?.node) ?? "22.19.0";
+const required = parseVersion(requiredVersion);
+const current = parseVersion(process.versions.node);
+
+function parseVersion(value) {
+  const match = /^v?(\d+)(?:\.(\d+))?(?:\.(\d+))?/.exec(String(value));
+  return {
+    major: Number.parseInt(match?.[1] ?? "0", 10),
+    minor: Number.parseInt(match?.[2] ?? "0", 10),
+    patch: Number.parseInt(match?.[3] ?? "0", 10),
+  };
 }
 
-if (isTooOld(current)) {
+function extractNodeRuntimeFloor(range) {
+  const match = />=\s*v?(\d+(?:\.\d+){0,2})/.exec(String(range ?? ""));
+  if (!match) return undefined;
+  const parsed = parseVersion(match[1]);
+  return `${parsed.major}.${parsed.minor}.${parsed.patch}`;
+}
+
+function isTooOld(left, right) {
+  for (const key of ["major", "minor", "patch"]) {
+    if (left[key] !== right[key]) return left[key] < right[key];
+  }
+  return false;
+}
+
+if (isTooOld(current, required)) {
   console.error(`
-sf-pi requires Node.js >=${REQUIRED.major}.${REQUIRED.minor}.${REQUIRED.patch}.
+sf-pi requires Node.js >=${requiredVersion}.
 Detected Node.js ${process.version}.
 
 Install or switch to Node 22, then reinstall pi and sf-pi:

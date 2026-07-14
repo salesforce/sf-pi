@@ -8,6 +8,10 @@ SF Pi is the bundled Salesforce-focused extension suite for pi. It gives agents 
 The minimum Pi Runtime version that SF Pi intentionally supports for loaded bundled extensions. It is a product support boundary, not a per-feature compatibility shim.
 _Avoid_: soft minimum, optional runtime, best-effort compatibility version
 
+**Node Runtime Floor**:
+The minimum Node.js runtime version that SF Pi intentionally supports for installation and loaded bundled extensions. It should be defined once and reused by package metadata, preinstall checks, doctor diagnostics, and startup status surfaces.
+_Avoid_: Node prerequisite, local Node check, doctor-only Node warning, splash-only Node status
+
 **Runtime Floor Adoption Slice**:
 A narrow SF Pi change that raises the **Pi Runtime Floor** and updates package metadata, runtime checks, documentation, tests, and the **Pi Runtime Adoption Ledger** together. It should not bundle unrelated product behavior into the same change.
 _Avoid_: release-note migration, compatibility patch, opportunistic upgrade
@@ -107,6 +111,14 @@ _Avoid_: billing truth, key identity guarantee, unavailable-first footer
 **Status Presentation Fallback**:
 A presentation-layer decision that chooses a **Last-Known Usable Status** plus **Stale Status Indicator** for compact surfaces while preserving the raw **Current Probe Status** for diagnostics. It should be centralized in helper functions rather than embedded ad hoc in renderers.
 _Avoid_: store rewrite, hidden probe failure, duplicated fallback logic
+
+**Browser Runtime Readiness**:
+The SF Browser status of the external browser automation runtime based on cached or explicit checks. It describes whether the runtime appears installed and usable enough to attempt browser work; it is not proof that a browser session has launched or that a Salesforce page is reachable.
+_Avoid_: browser ready, Salesforce UI ready, CDP proof, startup browser launch
+
+**Review Tool Readiness**:
+The startup status of an optional local diff-review tool such as Hunk. It is a setup and adoption nudge only; it does not imply SF Pi opens the review UI, posts annotations, or owns review workflow integration.
+_Avoid_: code-review integration, Hunk extension, automatic review session, agent annotation bridge
 
 **Apex Lifecycle Extension**:
 A bundled SF Pi extension that owns the Apex author → diagnose → trace/log → run/probe → test → fix loop while leaving source edits to normal Pi file tools.
@@ -331,6 +343,10 @@ _Avoid_: workflow type, lane trigger, pane-opening signal
 **Proactive Herdr Guidance**:
 SF Brain prompt guidance that nudges agents to use Herdr lanes when the upstream Herdr tool is active. It is separate from explicit SF Herdr lane planning, which remains available when requested.
 _Avoid_: planner mode, Herdr workflow mode
+
+**Herdr Runtime Readiness**:
+The status of the upstream Herdr pane-control runtime available to the current Pi process. It is distinct from the SF Herdr extension being enabled; SF Herdr can plan lanes without proving the current session can control panes.
+_Avoid_: SF Herdr enabled, multiplexing enabled, pane proof from planning
 
 **Base Lane Alias**:
 The stable alias name stored in SF Herdr preferences and used as the root for lane naming. For sticky and manual lanes it can be the actual pane alias; for **Fresh Ephemeral Lanes** it is only the root used to choose a **Fresh Lane Alias**.

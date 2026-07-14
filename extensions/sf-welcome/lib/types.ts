@@ -12,6 +12,8 @@ import type {
 } from "../../../lib/common/monthly-usage/store.ts";
 import type { SlackStatusSnapshot } from "../../../lib/common/slack-status/store.ts";
 import type { CodeAnalyzerReadinessState } from "../../../lib/common/code-analyzer-status/store.ts";
+import type { BrowserRuntimeStatusInfo } from "../../../lib/common/browser-runtime-status/store.ts";
+import type { GlyphMode } from "../../../lib/common/glyph-policy.ts";
 
 export interface RecentSession {
   name: string;
@@ -112,6 +114,59 @@ export interface NodeCertStatusInfo {
   /** Short reason for invalid / unknown states. */
   reason?: string;
   loading: boolean;
+}
+
+export type NodeRuntimeStatusKind = "supported" | "unsupported" | "unknown";
+
+export interface NodeRuntimeStatusInfo {
+  kind: NodeRuntimeStatusKind;
+  version: string;
+  requiredVersion: string;
+  loading: boolean;
+}
+
+export type HerdrRuntimeStatusKind = "ready" | "tool-only" | "missing" | "disabled";
+
+export interface HerdrRuntimeStatusInfo {
+  kind: HerdrRuntimeStatusKind;
+  extensionEnabled: boolean;
+  toolActive: boolean;
+  activeControlEnv: boolean;
+  passiveStatusBridge: boolean;
+  paneId?: string;
+  loading: boolean;
+}
+
+export type FontRuntimeStatusKind =
+  "checking" | "installed" | "missing" | "unsupported" | "unknown";
+
+export interface FontRuntimeStatusInfo {
+  kind: FontRuntimeStatusKind;
+  fontFamily: string;
+  glyphMode: GlyphMode;
+  supportedPlatform: boolean;
+  installed: boolean;
+  loading: boolean;
+  checkedAt?: string;
+}
+
+export interface HunkStatusInfo {
+  installed: boolean;
+  command?: "hunk" | "hunkdiff";
+  installedVersion?: string;
+  loading: boolean;
+  checkedAt?: string;
+}
+
+export type HomebrewStatusKind = "checking" | "installed" | "missing" | "unknown";
+
+export interface HomebrewStatusInfo {
+  kind: HomebrewStatusKind;
+  version?: string;
+  prefix?: string;
+  loading: boolean;
+  checkedAt?: string;
+  platform?: string;
 }
 
 /** Install status shown in the splash's Recommendations block. */
@@ -236,6 +291,18 @@ export interface SplashData {
   recentSessionsLoading?: boolean;
   /** Lightweight SF CLI install/latest status populated asynchronously after initial render. */
   sfCli?: SfCliStatusInfo;
+  /** Current Node.js runtime support status. Pure process-local read. */
+  nodeRuntime?: NodeRuntimeStatusInfo;
+  /** Upstream Herdr pane-control runtime status; distinct from sf-herdr being enabled. */
+  herdrRuntime?: HerdrRuntimeStatusInfo;
+  /** Bundled Nerd Font / glyph fallback status. Cache-first then local-only refresh. */
+  fontRuntime?: FontRuntimeStatusInfo;
+  /** Optional Hunk diff-review tool readiness. Cache-first; no integration implied. */
+  hunk?: HunkStatusInfo;
+  /** Optional Homebrew package-manager readiness. Cache-first; no update/doctor runs. */
+  homebrew?: HomebrewStatusInfo;
+  /** External agent-browser runtime install/freshness status used by SF Browser. */
+  browserRuntime?: BrowserRuntimeStatusInfo;
   /** Lightweight forcedotcom/afv-library install + freshness status
    *  populated asynchronously after initial render. Mirrors the sfCli
    *  cache-first → deferred-refresh pattern; never blocks startup. */

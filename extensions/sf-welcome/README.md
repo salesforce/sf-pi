@@ -10,7 +10,10 @@ Salesforce-branded splash screen that displays on startup with an animated Pi + 
 - Active model name and provider
 - Monthly cost usage line with color-coded progress (green → orange → red)
 - Optional Slack and auth-gated LLM Gateway status only when enabled/configured,
-  plus lightweight SF CLI install/latest and Node CA certificate status
+  plus lightweight SF CLI install/latest, Node.js runtime floor, Homebrew
+  status, Herdr multiplexer readiness, bundled font status, Hunk code-review
+  readiness, SF Browser `agent-browser` runtime status, and Node CA certificate
+  status
 - **Privacy row** showing pi's anonymous-telemetry posture
   (`telemetry off (sf-pi default)` / `(user override)` / `telemetry on (user
 override)`). Driven by `lib/common/privacy/state.ts` — see
@@ -96,11 +99,16 @@ session_shutdown
    status. This keeps installs from seeing unavailable or unconfigured
    integrations as startup noise.
 
-8. **Background loading** — CLI status, release freshness, Node CA certificate
-   status, monthly usage, and remote announcements refresh asynchronously after
-   the splash appears, so startup remains responsive while the visible rows
-   update in place. Node CA
-   detection is local-only and cache-first: first paint reads
+8. **Background loading** — CLI status, release freshness, font readiness,
+   Hunk code-review readiness, Homebrew status, SF Browser `agent-browser`
+   runtime status, Node CA certificate status, monthly usage, and remote
+   announcements refresh asynchronously after the splash appears, so startup
+   remains responsive while the visible rows update in place. Node.js and Herdr
+   runtime readiness are process-local reads only. Font detection is local-only
+   and cache-first; Hunk, Homebrew, and `agent-browser` use deferred bounded
+   version/prefix probes and never open a review UI, browser, Chrome/CDP
+   session, Herdr pane, or package-manager update from the splash. Node
+   CA detection is local-only and cache-first: first paint reads
    `sf-welcome/node-cert-status.json`, then a deferred detector checks
    `NODE_EXTRA_CA_CERTS`, the sf-pi CA fixer state, LaunchAgent/shell exports,
    and bounded known PEM candidates without network calls, subprocesses, or
@@ -174,7 +182,11 @@ extensions/sf-welcome/
     config-panel.ts         ← implementation module
     extension-health.ts     ← implementation module
     font-installer.ts       ← implementation module
+    font-status-cache.ts    ← implementation module
     font-status.ts          ← implementation module
+    herdr-runtime-status.ts ← implementation module
+    homebrew-status.ts      ← implementation module
+    hunk-status.ts          ← implementation module
     node-cert-cache.ts      ← implementation module
     node-cert-status.ts     ← implementation module
     recommendations-status.ts← implementation module
@@ -198,6 +210,10 @@ extensions/sf-welcome/
     config-panel.test.ts    ← unit / smoke test
     extension-health.test.ts← unit / smoke test
     font-installer.test.ts  ← unit / smoke test
+    font-status-cache.test.ts← unit / smoke test
+    herdr-runtime-status.test.ts← unit / smoke test
+    homebrew-status.test.ts ← unit / smoke test
+    hunk-status.test.ts     ← unit / smoke test
     node-cert-status.test.ts← unit / smoke test
     recommendations-status.test.ts← unit / smoke test
     release-status.test.ts  ← unit / smoke test
@@ -242,8 +258,15 @@ legacy `lastSeenPiVersion` key; SF Welcome preserves it on write but no longer
 uses it because upstream Pi owns Pi Runtime release-note surfaces.
 
 `<globalAgentDir>/sf-pi/sf-welcome/pi-release-status.json` caches the Pi
-runtime latest-version result for 24 hours. sf-pi release freshness reuses the
-announcements state/cache under `<globalAgentDir>/state/sf-pi/announcements.json`.
+runtime latest-version result for 24 hours. The splash also caches font, Hunk,
+and Homebrew readiness under `<globalAgentDir>/sf-pi/sf-welcome/font-status.json`,
+`<globalAgentDir>/sf-pi/sf-welcome/hunk-status.json`, and
+`<globalAgentDir>/sf-pi/sf-welcome/homebrew-status.json`. SF Browser owns the
+shared `agent-browser` runtime cache at
+`<globalAgentDir>/sf-pi/sf-browser/agent-browser-status.json`; SF Welcome only
+reads it cache-first and refreshes it with a deferred version probe. sf-pi
+release freshness reuses the announcements state/cache under
+`<globalAgentDir>/state/sf-pi/announcements.json`.
 
 ## Testing Strategy
 

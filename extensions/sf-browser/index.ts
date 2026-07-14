@@ -41,6 +41,7 @@ import {
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 import { isSfPiExtensionEnabled } from "../../lib/common/sf-pi-extension-state.ts";
 import { getCachedSfEnvironment } from "../../lib/common/sf-environment/shared-runtime.ts";
+import { readCachedBrowserRuntimeStatus } from "../../lib/common/browser-runtime-status/store.ts";
 import { checkAgentBrowser } from "./lib/agent-browser.ts";
 import {
   getEvidenceDir,
@@ -300,8 +301,12 @@ function buildStatusLines(ctx: ExtensionCommandContext): string[] {
   const env = getCachedSfEnvironment(ctx.cwd);
   const sessionId = ctx.sessionManager.getSessionId();
   const recent = latestEvidenceCaptures(3, sessionId);
+  const runtime = readCachedBrowserRuntimeStatus();
+  const runtimeLine = runtime
+    ? `agent-browser ${runtime.installed ? (runtime.installedVersion ? `v${runtime.installedVersion}` : "installed") : "missing"}${runtime.freshness === "latest" ? " · latest" : runtime.freshness === "update-available" && runtime.latestVersion ? ` · update available v${runtime.latestVersion}` : ""}${runtime.installSource ? ` · ${runtime.installSource}` : ""}`
+    : "agent-browser not checked (run doctor to probe)";
   return [
-    "• Runtime        agent-browser not checked (run doctor to probe)",
+    `• Runtime        ${runtimeLine}`,
     `• Browser       ${SF_BROWSER_SESSION}`,
     `• Pi session    ${sessionId}`,
     `• Target org     ${env?.config.targetOrg ?? env?.org.alias ?? "not cached"}`,

@@ -25,6 +25,7 @@
     "primaryFiles": [
       "index.ts",
       "lib/agent-browser.ts",
+      "../../lib/common/browser-runtime-status/store.ts",
       "lib/evidence-report.ts",
       "lib/operations.ts",
       "lib/settings.ts",
@@ -50,7 +51,8 @@
       "<globalAgentDir>/sf-pi/browser-artifacts/sessions/<session-id>/*.png",
       "<globalAgentDir>/sf-pi/browser-artifacts/sessions/<session-id>/*.jpg",
       "<globalAgentDir>/sf-pi/browser-artifacts/latest/pointer.json",
-      "<globalAgentDir>/sf-pi/sf-browser/snapshots/latest-refs.json"
+      "<globalAgentDir>/sf-pi/sf-browser/snapshots/latest-refs.json",
+      "<globalAgentDir>/sf-pi/sf-browser/agent-browser-status.json"
     ],
     "safety": [
       "No startup probes; agent-browser is detected only from /sf-browser doctor or explicit tool/command actions.",

@@ -283,7 +283,7 @@ function formatBudget(budget: number | null): string {
 }
 
 const ICON_COL_WIDTH = 2;
-const LABEL_COL_WIDTH = "Monthly Usage".length;
+const LABEL_COL_WIDTH = "Herdr (Multiplexer)".length;
 
 type SplashGlyphKey = Parameters<typeof glyph>[0];
 
@@ -480,6 +480,138 @@ function formatSfCliStatusValue(data: SplashData, mode: GlyphMode): string {
 
   const suffix = version ? ` ${MUTED(`(${version})`)}` : "";
   return `${SF_GREEN("✓")} ${SF_GREEN("Installed")}${suffix}`;
+}
+
+function formatNodeRuntimeStatusValue(data: SplashData): string {
+  const node = data.nodeRuntime;
+  if (!node || node.loading) return MUTED("Checking");
+  if (node.kind === "supported") {
+    return `${SF_GREEN("✓")} ${SF_GREEN(node.version)} ${MUTED("· supported")}`;
+  }
+  if (node.kind === "unsupported") {
+    return `${SF_RED("✗")} ${SF_RED(node.version)} ${MUTED(`· requires >=${node.requiredVersion}`)}`;
+  }
+  return `${SF_ORANGE("?")} ${SF_ORANGE("Unknown")}`;
+}
+
+function formatHerdrRuntimeStatusValue(data: SplashData): string {
+  const herdr = data.herdrRuntime;
+  if (!herdr || herdr.loading) return MUTED("Checking");
+  if (herdr.kind === "ready") {
+    return `${SF_GREEN("✓")} ${SF_GREEN("tool active")} ${MUTED("· pane control ready")}`;
+  }
+  if (herdr.kind === "tool-only") {
+    return `${SF_ORANGE("!")} ${SF_ORANGE("tool active")} ${MUTED("· not inside Herdr")}`;
+  }
+  if (herdr.kind === "disabled") {
+    return `${MUTED("○")} ${MUTED("sf-herdr disabled")}`;
+  }
+  return `${SF_ORANGE("!")} ${SF_ORANGE("sf-herdr enabled")} ${MUTED("· upstream Herdr not active")}`;
+}
+
+function herdrActionHint(data: SplashData): string | null {
+  const herdr = data.herdrRuntime;
+  if (!herdr || herdr.kind === "ready" || herdr.kind === "disabled") return null;
+  if (herdr.kind === "missing") return "pi install npm:@ogulcancelik/pi-herdr";
+  if (herdr.kind === "tool-only") return "run pi inside Herdr for pane multiplexing";
+  return null;
+}
+
+function formatFontRuntimeStatusValue(data: SplashData, mode: GlyphMode): string {
+  const font = data.fontRuntime;
+  if (!font || font.loading || font.kind === "checking") {
+    return MUTED(`${glyph("hourglass", mode)} Checking`);
+  }
+  if (font.kind === "installed") {
+    return `${SF_GREEN("✓")} ${SF_GREEN("MesloLGM Nerd Font installed")}`;
+  }
+  if (font.kind === "missing") {
+    if (font.glyphMode === "ascii") {
+      return `${SF_ORANGE("!")} ${SF_ORANGE("Glyph fallback active")} ${MUTED("· bundled font missing")}`;
+    }
+    return `${SF_GREEN("✓")} ${SF_GREEN("System glyph fallback")} ${MUTED("· bundled font optional")}`;
+  }
+  if (font.kind === "unsupported") {
+    return `${MUTED("○")} ${MUTED("Manual install")}`;
+  }
+  return `${SF_ORANGE("?")} ${SF_ORANGE("Unknown")}`;
+}
+
+function fontActionHint(data: SplashData): string | null {
+  const font = data.fontRuntime;
+  if (!font || font.loading || font.kind !== "missing" || font.glyphMode !== "ascii") return null;
+  return "/sf-setup-fonts install";
+}
+
+function formatHunkStatusValue(data: SplashData, mode: GlyphMode): string {
+  const hunk = data.hunk;
+  if (!hunk || hunk.loading) return MUTED(`${glyph("hourglass", mode)} Checking`);
+  if (hunk.installed) {
+    const version = hunk.installedVersion ? ` ${MUTED(`(v${hunk.installedVersion})`)}` : "";
+    const command = hunk.command ? ` ${MUTED(`· ${hunk.command} diff`)}` : "";
+    return `${SF_GREEN("✓")} ${SF_GREEN("Installed")}${version}${command}`;
+  }
+  return `${SF_ORANGE("↑")} ${SF_ORANGE("Install recommended")}`;
+}
+
+function hunkActionHint(data: SplashData): string | null {
+  const hunk = data.hunk;
+  if (!hunk || hunk.loading || hunk.installed) return null;
+  return "npm i -g hunkdiff";
+}
+
+function shouldRenderHomebrewStatus(data: SplashData): boolean {
+  const homebrew = data.homebrew;
+  if (!homebrew) return false;
+  if (homebrew.kind === "installed" || homebrew.loading || homebrew.kind === "checking")
+    return true;
+  return homebrew.platform === "darwin";
+}
+
+function formatHomebrewStatusValue(data: SplashData, mode: GlyphMode): string {
+  const homebrew = data.homebrew;
+  if (!homebrew || homebrew.loading || homebrew.kind === "checking") {
+    return MUTED(`${glyph("hourglass", mode)} Checking`);
+  }
+  if (homebrew.kind === "installed") {
+    const version = homebrew.version ? ` ${MUTED(`(v${homebrew.version})`)}` : "";
+    return `${SF_GREEN("✓")} ${SF_GREEN("Installed")}${version}`;
+  }
+  if (homebrew.kind === "missing") {
+    return `${MUTED("○")} ${MUTED("Not installed · optional")}`;
+  }
+  return `${SF_ORANGE("?")} ${SF_ORANGE("Unknown")}`;
+}
+
+function formatBrowserRuntimeStatusValue(data: SplashData, mode: GlyphMode): string {
+  const browser = data.browserRuntime;
+  if (!browser || browser.loading || browser.freshness === "checking") {
+    return MUTED(`${glyph("hourglass", mode)} Checking`);
+  }
+  if (!browser.installed) {
+    return `${SF_ORANGE("!")} ${SF_ORANGE("agent-browser missing")}`;
+  }
+  const version = browser.installedVersion ? ` ${MUTED(`(v${browser.installedVersion})`)}` : "";
+  if (browser.freshness === "latest") {
+    return `${SF_GREEN("✓")} ${SF_GREEN("agent-browser installed")} ${MUTED("· latest")}${version}`;
+  }
+  if (browser.freshness === "update-available") {
+    const latest = browser.latestVersion ? `v${browser.latestVersion}` : "latest";
+    return `${SF_ORANGE("↑")} ${SF_ORANGE("agent-browser update")}${version} ${MUTED(`→ ${latest}`)}`;
+  }
+  return `${SF_GREEN("✓")} ${SF_GREEN("agent-browser installed")}${version}`;
+}
+
+function browserRuntimeActionHint(data: SplashData): string | null {
+  const browser = data.browserRuntime;
+  if (!browser || browser.loading) return null;
+  if (!browser.installed) return "npm i -g agent-browser && agent-browser install";
+  if (browser.freshness === "update-available") {
+    if (browser.installSource === "homebrew") return "brew upgrade agent-browser";
+    if (browser.installSource === "npm") return "npm update -g agent-browser";
+    return "update agent-browser with its original installer";
+  }
+  return null;
 }
 
 function formatVersion(version: string | undefined): string {
@@ -720,6 +852,50 @@ function buildLeftColumn(
   // the welcome splash. Keep this directly under the gateway row so both
   // environment statuses read as one aligned block.
   lines.push(formatGlyphInfoRow("cli", mode, "SF CLI", formatSfCliStatusValue(data, mode)));
+
+  lines.push(
+    formatGlyphInfoRow("nodeRuntime", mode, "Node.js", formatNodeRuntimeStatusValue(data)),
+  );
+
+  if (shouldRenderHomebrewStatus(data)) {
+    lines.push(
+      formatGlyphInfoRow("homebrew", mode, "Homebrew", formatHomebrewStatusValue(data, mode)),
+    );
+  }
+
+  lines.push(
+    formatGlyphInfoRow("herdr", mode, "Herdr (Multiplexer)", formatHerdrRuntimeStatusValue(data)),
+  );
+  const herdrHint = herdrActionHint(data);
+  if (herdrHint) {
+    const truncated = truncateToWidth(herdrHint, Math.max(10, colWidth - 4), "…");
+    lines.push(`   ${MUTED(`→ ${truncated}`)}`);
+  }
+
+  lines.push(formatGlyphInfoRow("fonts", mode, "Fonts", formatFontRuntimeStatusValue(data, mode)));
+  const fontHint = fontActionHint(data);
+  if (fontHint) {
+    const truncated = truncateToWidth(fontHint, Math.max(10, colWidth - 4), "…");
+    lines.push(`   ${MUTED(`→ ${truncated}`)}`);
+  }
+
+  lines.push(
+    formatGlyphInfoRow("hunk", mode, "Hunk (Code Review)", formatHunkStatusValue(data, mode)),
+  );
+  const hunkHint = hunkActionHint(data);
+  if (hunkHint) {
+    const truncated = truncateToWidth(hunkHint, Math.max(10, colWidth - 4), "…");
+    lines.push(`   ${MUTED(`→ ${truncated}`)}`);
+  }
+
+  lines.push(
+    formatGlyphInfoRow("browser", mode, "SF Browser", formatBrowserRuntimeStatusValue(data, mode)),
+  );
+  const browserHint = browserRuntimeActionHint(data);
+  if (browserHint) {
+    const truncated = truncateToWidth(browserHint, Math.max(10, colWidth - 4), "…");
+    lines.push(`   ${MUTED(`→ ${truncated}`)}`);
+  }
 
   if (data.codeAnalyzer) {
     lines.push(

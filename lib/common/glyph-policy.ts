@@ -160,6 +160,12 @@ export const GLYPH_TABLE = {
   cli: { emoji: "🧰", ascii: ">" },
   codeAnalyzer: { emoji: "🧪", ascii: "ca" },
   nodeCert: { emoji: "🔐", ascii: "#" },
+  nodeRuntime: { emoji: "🟩", ascii: "n" },
+  herdr: { emoji: "🪟", ascii: "mx" },
+  fonts: { emoji: "🔤", ascii: "Aa" },
+  hunk: { emoji: "📝", ascii: "+-" },
+  homebrew: { emoji: "🍺", ascii: "bw" },
+  browser: { emoji: "🌐", ascii: "br" },
   cloud: { emoji: "☁", ascii: "*" }, // Salesforce Environment / Salesforce AI
   loaded: { emoji: "📦", ascii: "[]" },
   recent: { emoji: "🕐", ascii: "o" },

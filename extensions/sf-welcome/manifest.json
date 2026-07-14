@@ -20,12 +20,20 @@
       "lib/sf-skills-status.ts",
       "lib/extension-health.ts",
       "lib/font-installer.ts",
+      "lib/font-status.ts",
+      "lib/font-status-cache.ts",
+      "lib/hunk-status.ts",
+      "lib/homebrew-status.ts",
+      "lib/herdr-runtime-status.ts",
       "lib/welcome-settings.ts",
       "lib/config-panel.ts"
     ],
     "stateFiles": [
       "~/.pi/agent/sf-welcome-state.json",
-      "<globalAgentDir>/sf-pi/sf-welcome/pi-release-status.json"
+      "<globalAgentDir>/sf-pi/sf-welcome/pi-release-status.json",
+      "<globalAgentDir>/sf-pi/sf-welcome/font-status.json",
+      "<globalAgentDir>/sf-pi/sf-welcome/hunk-status.json",
+      "<globalAgentDir>/sf-pi/sf-welcome/homebrew-status.json"
     ]
   }
 }

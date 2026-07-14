@@ -13,6 +13,10 @@ import {
   INSTALL_GUIDANCE,
   SF_BROWSER_SESSION,
 } from "./constants.ts";
+import {
+  detectBrowserRuntimeStatus,
+  writeCachedBrowserRuntimeStatus,
+} from "../../../lib/common/browser-runtime-status/store.ts";
 import { redactText } from "./redaction.ts";
 import { startTimer } from "./timing.ts";
 
@@ -69,24 +73,28 @@ export async function runAgentBrowser(
 }
 
 export async function checkAgentBrowser(pi: ExtensionAPI, cwd: string): Promise<string> {
-  let result: Awaited<ReturnType<ExtensionAPI["exec"]>>;
-  try {
-    result = await pi.exec("agent-browser", ["--version"], {
+  const status = await detectBrowserRuntimeStatus(async (command, args, options) => {
+    const result = await pi.exec(command, args, {
       cwd,
-      timeout: 15_000,
+      timeout: options?.timeout ?? 15_000,
     });
-  } catch (error) {
-    return ["agent-browser: missing or not ready", errorMessage(error), "", INSTALL_GUIDANCE]
-      .filter(Boolean)
-      .join("\n");
+    return { stdout: result.stdout, stderr: result.stderr, code: result.code };
+  });
+  writeCachedBrowserRuntimeStatus(status);
+
+  if (!status.installed) {
+    return ["agent-browser: missing or not ready", "", INSTALL_GUIDANCE].filter(Boolean).join("\n");
   }
-  if (result.code !== 0) {
-    const details = redactText([result.stderr, result.stdout].filter(Boolean).join("\n").trim());
-    return [`agent-browser: missing or not ready`, details, "", INSTALL_GUIDANCE]
-      .filter(Boolean)
-      .join("\n");
-  }
-  return `agent-browser: ${redactText(result.stdout.trim() || "installed")}`;
+
+  const version = status.installedVersion ? `v${status.installedVersion}` : "installed";
+  const freshness =
+    status.freshness === "latest"
+      ? " · latest"
+      : status.freshness === "update-available" && status.latestVersion
+        ? ` · update available (v${status.latestVersion})`
+        : "";
+  const source = status.installSource ? ` · ${status.installSource}` : "";
+  return `agent-browser: ${redactText(version)}${freshness}${source}`;
 }
 
 function errorMessage(error: unknown): string {

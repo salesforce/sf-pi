@@ -32,6 +32,15 @@ import { collectInitialPiReleaseStatus, detectSfPiReleaseStatus } from "./releas
 import { summarizeAvailableSkillSources } from "../../../lib/common/skill-sources/skill-sources.ts";
 import { readCodeAnalyzerReadiness } from "../../../lib/common/code-analyzer-status/store.ts";
 import { getTelemetryState } from "../../../lib/common/privacy/state.ts";
+import { isNodeRuntimeSupported, NODE_RUNTIME_FLOOR } from "../../../lib/common/runtime-floor.ts";
+import {
+  defaultBrowserRuntimeStatus,
+  readCachedBrowserRuntimeStatus,
+} from "../../../lib/common/browser-runtime-status/store.ts";
+import { defaultFontRuntimeStatus, readCachedFontRuntimeStatus } from "./font-status-cache.ts";
+import { defaultHunkStatus, readCachedHunkStatus } from "./hunk-status.ts";
+import { defaultHomebrewStatus, readCachedHomebrewStatus } from "./homebrew-status.ts";
+import { collectHerdrRuntimeStatus } from "./herdr-runtime-status.ts";
 import {
   runDoctorDiagnostics,
   summarizeStartupDoctorNudge,
@@ -43,6 +52,7 @@ import type {
   AnnouncementsSummary,
   DoctorNudgeSummary,
   LoadedCounts,
+  NodeRuntimeStatusInfo,
   PrivacyStatusSummary,
   SplashData,
 } from "./types.ts";
@@ -60,6 +70,11 @@ export type {
   NodeCertStatusInfo,
   NodeCertStatusKind,
   NodeCertStatusSource,
+  NodeRuntimeStatusInfo,
+  HerdrRuntimeStatusInfo,
+  FontRuntimeStatusInfo,
+  HunkStatusInfo,
+  HomebrewStatusInfo,
   SplashData,
   RecentSession,
   ExtensionHealthItem,
@@ -319,12 +334,18 @@ export function resolveMonthlyUsage(
   };
 }
 
+interface SplashRuntimeOptions {
+  doctor?: DoctorNudgeSummary;
+  activeToolNames?: string[];
+  allToolNames?: string[];
+}
+
 export function collectInitialSplashData(
   modelName: string,
   providerName: string,
   monthlyBudgetFallback: number = 3000,
   cwd?: string,
-  options: { doctor?: DoctorNudgeSummary } = {},
+  options: SplashRuntimeOptions = {},
 ): SplashData {
   const gatewayState = getMonthlyUsageState();
   const gatewayUsage = gatewayState.monthlyUsage;
@@ -357,6 +378,15 @@ export function collectInitialSplashData(
     loadedCountsLoading: true,
     recentSessionsLoading: true,
     sfCli: { installed: false, freshness: "checking", loading: true },
+    nodeRuntime: collectNodeRuntimeStatus(),
+    herdrRuntime: collectHerdrRuntimeStatus(cwd, {
+      activeToolNames: options.activeToolNames,
+      allToolNames: options.allToolNames,
+    }),
+    fontRuntime: readCachedFontRuntimeStatus() ?? defaultFontRuntimeStatus(),
+    hunk: readCachedHunkStatus() ?? defaultHunkStatus(),
+    homebrew: readCachedHomebrewStatus() ?? defaultHomebrewStatus(),
+    browserRuntime: readCachedBrowserRuntimeStatus() ?? defaultBrowserRuntimeStatus(),
     sfPiRelease: detectSfPiReleaseStatus(cwd),
     piRelease: collectInitialPiReleaseStatus(),
     codeAnalyzer:
@@ -381,6 +411,8 @@ export function collectSplashData(
     includeLoadedCounts?: boolean;
     includeSessionCostFallback?: boolean;
     doctor?: DoctorNudgeSummary;
+    activeToolNames?: string[];
+    allToolNames?: string[];
   } = {},
 ): SplashData {
   const includeLoadedCounts = options.includeLoadedCounts !== false;
@@ -450,6 +482,15 @@ export function collectSplashData(
     caBundleNudge,
     privacy,
     sfCli: undefined,
+    nodeRuntime: collectNodeRuntimeStatus(),
+    herdrRuntime: collectHerdrRuntimeStatus(cwd, {
+      activeToolNames: options.activeToolNames,
+      allToolNames: options.allToolNames,
+    }),
+    fontRuntime: readCachedFontRuntimeStatus() ?? defaultFontRuntimeStatus(),
+    hunk: readCachedHunkStatus() ?? defaultHunkStatus(),
+    homebrew: readCachedHomebrewStatus() ?? defaultHomebrewStatus(),
+    browserRuntime: readCachedBrowserRuntimeStatus() ?? defaultBrowserRuntimeStatus(),
     sfPiRelease: detectSfPiReleaseStatus(cwd),
     piRelease: collectInitialPiReleaseStatus(),
     codeAnalyzer: isSfPiExtensionEnabled(cwd, "sf-code-analyzer")
@@ -505,5 +546,15 @@ export function collectPrivacyStatus(): PrivacyStatusSummary {
   return {
     telemetryEnabled: state.effectivelyEnabled,
     source: state.source,
+  };
+}
+
+export function collectNodeRuntimeStatus(version: string = process.version): NodeRuntimeStatusInfo {
+  const parsed = /^v?\d+(?:\.\d+){0,2}/.test(version);
+  return {
+    kind: parsed ? (isNodeRuntimeSupported(version) ? "supported" : "unsupported") : "unknown",
+    version,
+    requiredVersion: NODE_RUNTIME_FLOOR,
+    loading: false,
   };
 }

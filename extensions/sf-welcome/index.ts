@@ -66,6 +66,13 @@ import {
   writeCachedSfSkillsStatus,
 } from "./lib/splash-data.ts";
 import { readCachedNodeCertStatus, writeCachedNodeCertStatus } from "./lib/node-cert-cache.ts";
+import { writeCachedFontRuntimeStatus } from "./lib/font-status-cache.ts";
+import { detectHunkStatus, writeCachedHunkStatus } from "./lib/hunk-status.ts";
+import { detectHomebrewStatus, writeCachedHomebrewStatus } from "./lib/homebrew-status.ts";
+import {
+  detectBrowserRuntimeStatus,
+  writeCachedBrowserRuntimeStatus,
+} from "../../lib/common/browser-runtime-status/store.ts";
 import { acknowledgeAnnouncementsRevision } from "../../lib/common/catalog-state/announcements-state.ts";
 import { SfWelcomeHeader } from "./lib/splash-component.ts";
 import {
@@ -162,6 +169,18 @@ export default function sfWelcome(pi: ExtensionAPI) {
 
   function isActiveSession(ctx: ExtensionContext, generation = activeSessionGeneration): boolean {
     return generation === activeSessionGeneration && activeSessionKey === sessionKey(ctx);
+  }
+
+  function runtimeToolNames(): { activeToolNames: string[]; allToolNames: string[] } {
+    try {
+      return {
+        activeToolNames: typeof pi.getActiveTools === "function" ? pi.getActiveTools() : [],
+        allToolNames:
+          typeof pi.getAllTools === "function" ? pi.getAllTools().map((tool) => tool.name) : [],
+      };
+    } catch {
+      return { activeToolNames: [], allToolNames: [] };
+    }
   }
 
   /**
@@ -315,7 +334,7 @@ export default function sfWelcome(pi: ExtensionAPI) {
       providerName,
       MONTHLY_BUDGET_FALLBACK,
       ctx.cwd,
-      { doctor: startupDoctorNudge },
+      { doctor: startupDoctorNudge, ...runtimeToolNames() },
     );
     const cachedSfCli = readCachedSfCliStatus();
     if (cachedSfCli) {
@@ -374,6 +393,7 @@ export default function sfWelcome(pi: ExtensionAPI) {
             doctor: data.doctor,
             includeLoadedCounts: false,
             includeSessionCostFallback: false,
+            ...runtimeToolNames(),
           }),
         );
         // collectSplashData is sync — markBootStep returns the sync result
@@ -534,6 +554,107 @@ export default function sfWelcome(pi: ExtensionAPI) {
       }
     }, 3_500);
     nodeCertTimer.unref?.();
+
+    // Background font status: cache-first, then a local-only user font
+    // directory check. No subprocess here; /sf-setup-fonts owns install and
+    // font-cache refresh.
+    const fontStatusTimer = setTimeout(() => {
+      if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
+      try {
+        const font = markBootStep("sf-welcome.font-status-detect", async () => {
+          const { detectFontRuntimeStatus } = await import("./lib/font-status.ts");
+          return detectFontRuntimeStatus({ cwd: ctx.cwd });
+        });
+        void font
+          .then((status) => {
+            writeCachedFontRuntimeStatus(status);
+            if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
+            data.fontRuntime = status;
+            scheduleSplashRepaint(ctx, generation);
+          })
+          .catch(() => {
+            if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
+            data.fontRuntime = {
+              fontFamily: FONT_FAMILY_NAME,
+              glyphMode: data.fontRuntime?.glyphMode ?? "emoji",
+              supportedPlatform: process.platform === "darwin" || process.platform === "linux",
+              installed: data.fontRuntime?.installed ?? false,
+              kind: "unknown",
+              loading: false,
+            };
+            scheduleSplashRepaint(ctx, generation);
+          });
+      } catch {
+        if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
+        data.fontRuntime = {
+          fontFamily: FONT_FAMILY_NAME,
+          glyphMode: data.fontRuntime?.glyphMode ?? "emoji",
+          supportedPlatform: process.platform === "darwin" || process.platform === "linux",
+          installed: data.fontRuntime?.installed ?? false,
+          kind: "unknown",
+          loading: false,
+        };
+        scheduleSplashRepaint(ctx, generation);
+      }
+    }, 4_000);
+    fontStatusTimer.unref?.();
+
+    // Background Hunk readiness: optional review-tool nudge only. This does
+    // not open Hunk or create review annotations.
+    const hunkTimer = setTimeout(() => {
+      if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
+      void markBootStep("sf-welcome.hunk-detect", () => detectHunkStatus(exec))
+        .then((status) => {
+          writeCachedHunkStatus(status);
+          if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
+          data.hunk = status;
+          scheduleSplashRepaint(ctx, generation);
+        })
+        .catch(() => {
+          if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
+          data.hunk = { installed: false, loading: false };
+          scheduleSplashRepaint(ctx, generation);
+        });
+    }, 4_500);
+    hunkTimer.unref?.();
+
+    // Background Homebrew readiness: bounded local package-manager status only.
+    // Do not run brew update/outdated/doctor from the splash.
+    const homebrewTimer = setTimeout(() => {
+      if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
+      void markBootStep("sf-welcome.homebrew-detect", () => detectHomebrewStatus(exec))
+        .then((status) => {
+          writeCachedHomebrewStatus(status);
+          if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
+          data.homebrew = status;
+          scheduleSplashRepaint(ctx, generation);
+        })
+        .catch(() => {
+          if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
+          data.homebrew = { kind: "unknown", loading: false, platform: process.platform };
+          scheduleSplashRepaint(ctx, generation);
+        });
+    }, 5_000);
+    homebrewTimer.unref?.();
+
+    // Background agent-browser install/freshness check. This preserves the SF
+    // Browser lazy-runtime boundary: version probe only, no Chrome/CDP launch.
+    const browserRuntimeTimer = setTimeout(() => {
+      if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
+      void markBootStep("sf-welcome.agent-browser-detect", () => detectBrowserRuntimeStatus(exec))
+        .then((status) => {
+          writeCachedBrowserRuntimeStatus(status);
+          if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
+          data.browserRuntime = status;
+          scheduleSplashRepaint(ctx, generation);
+        })
+        .catch(() => {
+          if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
+          data.browserRuntime = { installed: false, freshness: "unknown", loading: false };
+          scheduleSplashRepaint(ctx, generation);
+        });
+    }, 5_500);
+    browserRuntimeTimer.unref?.();
 
     // Subscribe to the gateway usage store so any time the provider publishes
     // a new snapshot (first populate, periodic refresh, /sf-llm-gateway-internal
@@ -777,6 +898,8 @@ export default function sfWelcome(pi: ExtensionAPI) {
     if (action === "fonts") {
       const { runFontInstall } = await import("./lib/font-installer.ts");
       const result = await runFontInstall(exec);
+      const { detectFontRuntimeStatus } = await import("./lib/font-status.ts");
+      writeCachedFontRuntimeStatus(detectFontRuntimeStatus({ cwd: ctx.cwd }));
       // Record that the user explicitly opted in so the one-time startup
       // splash prompt does not ask again. Mirrors the /sf-setup-fonts
       // command behavior.
@@ -831,7 +954,9 @@ export default function sfWelcome(pi: ExtensionAPI) {
       // the cache and surfaces it through the "local estimate" suffix.
     }
 
-    const data = collectSplashData(modelName, providerName, ctx.cwd, MONTHLY_BUDGET_FALLBACK);
+    const data = collectSplashData(modelName, providerName, ctx.cwd, MONTHLY_BUDGET_FALLBACK, {
+      ...runtimeToolNames(),
+    });
     try {
       const { detectNodeCertStatus } = await import("./lib/node-cert-status.ts");
       const nodeCert = detectNodeCertStatus(ctx.cwd);
@@ -867,6 +992,26 @@ export default function sfWelcome(pi: ExtensionAPI) {
       : "hidden";
     const slackStatus = data.slackVisible ? (data.slackStatus?.kind ?? "not checked") : "hidden";
     const nodeCertStatus = data.nodeCert?.kind ?? "not checked";
+    const nodeRuntimeStatus = data.nodeRuntime
+      ? `${data.nodeRuntime.version} (${data.nodeRuntime.kind}, requires >=${data.nodeRuntime.requiredVersion})`
+      : "not checked";
+    const herdrRuntimeStatus = data.herdrRuntime?.kind ?? "not checked";
+    const fontRuntimeStatus = data.fontRuntime?.kind ?? "not checked";
+    const hunkStatus = data.hunk?.installed
+      ? `installed${data.hunk.installedVersion ? ` v${data.hunk.installedVersion}` : ""}`
+      : data.hunk?.loading
+        ? "checking"
+        : "install recommended";
+    const homebrewStatus = data.homebrew
+      ? data.homebrew.kind === "installed"
+        ? `installed${data.homebrew.version ? ` v${data.homebrew.version}` : ""}`
+        : data.homebrew.kind
+      : "not checked";
+    const browserRuntimeStatus = data.browserRuntime?.installed
+      ? `installed${data.browserRuntime.installedVersion ? ` v${data.browserRuntime.installedVersion}` : ""} (${data.browserRuntime.freshness})`
+      : data.browserRuntime?.loading
+        ? "checking"
+        : "missing";
     const activeExtensionCount = data.extensionHealth.filter(
       (ext) => ext.status === "active" || ext.status === "locked",
     ).length;
@@ -881,6 +1026,12 @@ export default function sfWelcome(pi: ExtensionAPI) {
       `Monthly cost: $${data.monthlyCost.toFixed(2)} / ${budgetLabel}${costPercent}${sourceSuffix}`,
       `Gateway: ${gatewayStatus}`,
       `Slack: ${slackStatus}`,
+      `Node.js: ${nodeRuntimeStatus}`,
+      `Herdr (Multiplexer): ${herdrRuntimeStatus}`,
+      `Fonts: ${fontRuntimeStatus}`,
+      `Hunk (Code Review): ${hunkStatus}`,
+      `Homebrew: ${homebrewStatus}`,
+      `SF Browser: ${browserRuntimeStatus}`,
       `Node CA Certs: ${nodeCertStatus}`,
       `sf-pi: ${formatPlainReleaseStatus(data.sfPiRelease)} (${activeExtensionCount}/${totalExtensionCount} extensions active)`,
       `Pi: ${formatPlainReleaseStatus(data.piRelease)}`,
@@ -1005,6 +1156,8 @@ export default function sfWelcome(pi: ExtensionAPI) {
       try {
         const { runFontInstall } = await import("./lib/font-installer.ts");
         const result = await runFontInstall(exec);
+        const { detectFontRuntimeStatus } = await import("./lib/font-status.ts");
+        writeCachedFontRuntimeStatus(detectFontRuntimeStatus({ cwd: ctx.cwd }));
         // Record decision so the splash won't re-ask.
         writeWelcomeState({
           fontInstallDecision: "yes",
@@ -1151,6 +1304,8 @@ export default function sfWelcome(pi: ExtensionAPI) {
 
     const { runFontInstall } = await import("./lib/font-installer.ts");
     const result = await runFontInstall(exec, platform);
+    const { detectFontRuntimeStatus } = await import("./lib/font-status.ts");
+    writeCachedFontRuntimeStatus(detectFontRuntimeStatus({ cwd: ctx.cwd, platform }));
     if (!isActiveSession(ctx, generation)) return;
     ctx.ui.notify(result.summary, result.severity);
   }

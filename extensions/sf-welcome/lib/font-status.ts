@@ -3,6 +3,8 @@
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
+import { resolveGlyphMode, type GlyphMode } from "../../../lib/common/glyph-policy.ts";
+import type { FontRuntimeStatusInfo } from "./types.ts";
 
 export const FONT_FAMILY_NAME = "MesloLGM Nerd Font Mono";
 
@@ -46,4 +48,29 @@ export function isFontFamilyInstalled(
   } catch {
     return false;
   }
+}
+
+export function detectFontRuntimeStatus(
+  options: {
+    cwd?: string;
+    platform?: NodeJS.Platform;
+    home?: string;
+    glyphMode?: GlyphMode;
+  } = {},
+): FontRuntimeStatusInfo {
+  const platform = options.platform ?? process.platform;
+  const home = options.home ?? homedir();
+  const supportedPlatform = platform === "darwin" || platform === "linux";
+  const glyphMode = options.glyphMode ?? resolveGlyphMode({ cwd: options.cwd });
+  const installed = isFontFamilyInstalled(platform, home);
+
+  return {
+    kind: installed ? "installed" : supportedPlatform ? "missing" : "unsupported",
+    fontFamily: FONT_FAMILY_NAME,
+    glyphMode,
+    supportedPlatform,
+    installed,
+    loading: false,
+    checkedAt: new Date().toISOString(),
+  };
 }

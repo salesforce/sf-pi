@@ -201,6 +201,7 @@
       "primaryFiles": [
         "index.ts",
         "lib/agent-browser.ts",
+        "../../lib/common/browser-runtime-status/store.ts",
         "lib/evidence-report.ts",
         "lib/operations.ts",
         "lib/settings.ts",
@@ -226,7 +227,8 @@
         "<globalAgentDir>/sf-pi/browser-artifacts/sessions/<session-id>/*.png",
         "<globalAgentDir>/sf-pi/browser-artifacts/sessions/<session-id>/*.jpg",
         "<globalAgentDir>/sf-pi/browser-artifacts/latest/pointer.json",
-        "<globalAgentDir>/sf-pi/sf-browser/snapshots/latest-refs.json"
+        "<globalAgentDir>/sf-pi/sf-browser/snapshots/latest-refs.json",
+        "<globalAgentDir>/sf-pi/sf-browser/agent-browser-status.json"
       ],
       "safety": [
         "No startup probes; agent-browser is detected only from /sf-browser doctor or explicit tool/command actions.",
@@ -238,7 +240,7 @@
     "entry": "extensions/sf-browser/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 6088
+    "srcLoc": 6099
   },
   {
     "id": "sf-code-analyzer",
@@ -1093,17 +1095,25 @@
         "lib/sf-skills-status.ts",
         "lib/extension-health.ts",
         "lib/font-installer.ts",
+        "lib/font-status.ts",
+        "lib/font-status-cache.ts",
+        "lib/hunk-status.ts",
+        "lib/homebrew-status.ts",
+        "lib/herdr-runtime-status.ts",
         "lib/welcome-settings.ts",
         "lib/config-panel.ts"
       ],
       "stateFiles": [
         "~/.pi/agent/sf-welcome-state.json",
-        "<globalAgentDir>/sf-pi/sf-welcome/pi-release-status.json"
+        "<globalAgentDir>/sf-pi/sf-welcome/pi-release-status.json",
+        "<globalAgentDir>/sf-pi/sf-welcome/font-status.json",
+        "<globalAgentDir>/sf-pi/sf-welcome/hunk-status.json",
+        "<globalAgentDir>/sf-pi/sf-welcome/homebrew-status.json"
       ]
     },
     "entry": "extensions/sf-welcome/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 5367
+    "srcLoc": 6147
   }
 ]

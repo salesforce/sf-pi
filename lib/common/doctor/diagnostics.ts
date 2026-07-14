@@ -11,6 +11,7 @@ import os from "node:os";
 import path from "node:path";
 import { loadSkills } from "@earendil-works/pi-coding-agent";
 import { getInstalledPiVersion, MIN_PI_VERSION } from "../pi-compat.ts";
+import { isNodeRuntimeSupported, NODE_RUNTIME_FLOOR } from "../runtime-floor.ts";
 import { normalizeNpmConfigValue, readConfiguredNpmCommand } from "../npm-release-age-policy.ts";
 import { globalAgentPath, globalSettingsPath, projectSettingsPath } from "../pi-paths.ts";
 import { readCachedRuntimeDiagnostics, writeCachedRuntimeDiagnostics } from "./runtime-cache.ts";
@@ -26,8 +27,6 @@ import type {
   StaleSkillPath,
   StartupDoctorNudge,
 } from "./types.ts";
-
-const MIN_NODE_MAJOR = 20;
 
 interface SkillRootCandidate {
   root: string;
@@ -85,13 +84,12 @@ export function runDoctorDiagnostics(
     });
   }
 
-  const nodeMajor = Number(/^v?(\d+)/.exec(nodeVersion)?.[1] ?? "0");
-  if (nodeMajor < MIN_NODE_MAJOR) {
+  if (!isNodeRuntimeSupported(nodeVersion)) {
     issues.push({
       id: "node-version-old",
       severity: "error",
-      title: `Node.js is older than ${MIN_NODE_MAJOR}`,
-      detail: `Detected ${nodeVersion}. sf-pi requires Node.js ${MIN_NODE_MAJOR} or newer.`,
+      title: `Node.js is older than ${NODE_RUNTIME_FLOOR}`,
+      detail: `Detected ${nodeVersion}. sf-pi requires Node.js ${NODE_RUNTIME_FLOOR} or newer.`,
       fix: "Install a current Node.js release, then reinstall sf-pi.",
     });
   }
