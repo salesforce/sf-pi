@@ -12,6 +12,7 @@ import {
   writeAutoUpdateEnabled,
   writeAutoUpdateStatus,
   autoUpdateStatusPath,
+  shouldClearRestartRecommended,
 } from "../auto-update/store.ts";
 
 const PI_AGENT_ENV = "PI_CODING_AGENT_DIR";
@@ -59,6 +60,21 @@ describe("Native Auto Update store", () => {
       message: "done",
       restartRecommended: true,
     });
+  });
+
+  it("clears restart recommendation after a later process restart", () => {
+    expect(
+      shouldClearRestartRecommended(
+        { lastRunAt: "2026-07-14T00:00:00Z", restartRecommended: true },
+        Date.parse("2026-07-14T00:01:00Z"),
+      ),
+    ).toBe(true);
+    expect(
+      shouldClearRestartRecommended(
+        { lastRunAt: "2026-07-14T00:02:00Z", restartRecommended: true },
+        Date.parse("2026-07-14T00:01:00Z"),
+      ),
+    ).toBe(false);
   });
 
   it("runs only when enabled and cadence elapsed", () => {

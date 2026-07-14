@@ -61,7 +61,12 @@ export function writeAutoUpdateEnabled(enabled: boolean): void {
 }
 
 export function readAutoUpdateStatus(): AutoUpdateStatus {
-  return normalizeStatus(getStatusStore().read().status);
+  const status = normalizeStatus(getStatusStore().read().status);
+  if (!shouldClearRestartRecommended(status)) return status;
+
+  const cleared = { ...status, restartRecommended: false };
+  getStatusStore().write({ status: cleared });
+  return cleared;
 }
 
 export function writeAutoUpdateStatus(status: AutoUpdateStatus): AutoUpdateStatus {
@@ -118,6 +123,16 @@ export function isAutoUpdateRunningFresh(
 
 export function autoUpdateStatusPath(): string {
   return getStatusStore().path;
+}
+
+export function shouldClearRestartRecommended(
+  status: AutoUpdateStatus,
+  processStartedAtMs: number = Date.now() - process.uptime() * 1000,
+): boolean {
+  if (!status.restartRecommended || !status.lastRunAt) return false;
+  const lastRunAt = Date.parse(status.lastRunAt);
+  if (!Number.isFinite(lastRunAt)) return false;
+  return lastRunAt < processStartedAtMs;
 }
 
 function normalizeStatus(value: unknown): AutoUpdateStatus {
