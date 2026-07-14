@@ -4,7 +4,7 @@
  *
  * Layout modes (driven by terminal width):
  *   - Two-column (default, termWidth ≥ SINGLE_COL_THRESHOLD):
- *       Left:  Gradient Pi logo, model info, monthly cost, optional integrations,
+ *       Left:  Gradient Pi logo, model info, optional gateway usage,
  *              environment checks, and release freshness rows
  *       Right: Announcements, loaded counts, recent sessions,
  *              recommended extensions, attribution
@@ -260,6 +260,18 @@ function fitToWidth(str: string, width: number): string {
   return str + " ".repeat(width - visLen);
 }
 
+const ANSI_ESCAPE_RE = /\x1b\[[0-9;]*m/g;
+
+function isBlankLine(line: string): boolean {
+  return line.replace(ANSI_ESCAPE_RE, "").trim().length === 0;
+}
+
+function trimTrailingBlankLines(lines: string[]): string[] {
+  let end = lines.length;
+  while (end > 0 && isBlankLine(lines[end - 1])) end--;
+  return lines.slice(0, end);
+}
+
 function padVisible(str: string, width: number): string {
   return str + " ".repeat(Math.max(0, width - visibleWidth(str)));
 }
@@ -280,6 +292,16 @@ function formatCost(cost: number): string {
 function formatBudget(budget: number | null): string {
   if (budget === null) return "∞";
   return formatCost(budget);
+}
+
+function isGatewayBackedModel(data: SplashData): boolean {
+  const providerName = data.providerName.toLowerCase();
+  const modelName = data.modelName.toLowerCase();
+  return providerName.includes("gateway") || modelName.includes("gateway");
+}
+
+function shouldRenderMonthlyUsage(data: SplashData): boolean {
+  return isGatewayBackedModel(data) && data.monthlyUsageSource === "gateway";
 }
 
 const ICON_COL_WIDTH = 2;
@@ -849,25 +871,25 @@ function buildLeftColumn(
   }
   lines.push("");
 
-  // Monthly cost (single line, no bar)
-  // When the gateway supplies a real budget we color by utilization; with
-  // an infinite budget (null) we keep the value accent-colored because
-  // there is no threshold to exceed.
-  lines.push(horizontalRule(colWidth));
-  const budget = data.monthlyBudget;
-  const ratio = typeof budget === "number" && budget > 0 ? data.monthlyCost / budget : 0;
-  const costColor =
-    budget === null ? SF_CYAN : ratio < 0.5 ? SF_GREEN : ratio < 0.8 ? SF_ORANGE : SF_RED;
-  const sourceHint = data.monthlyUsageSource === "sessions" ? ` ${MUTED("(local estimate)")}` : "";
-  lines.push(
-    formatGlyphInfoRow(
-      "monthly",
-      mode,
-      "Monthly Usage",
-      `${costColor(formatCost(data.monthlyCost))} ${MUTED("/")} ${MUTED(formatBudget(budget))}${sourceHint}`,
-    ),
-  );
-  lines.push("");
+  // Monthly usage is meaningful only when the active model is using the
+  // SF LLM Gateway and the gateway has published real usage. Non-gateway
+  // users get the space back instead of seeing a local session estimate.
+  if (shouldRenderMonthlyUsage(data)) {
+    lines.push(horizontalRule(colWidth));
+    const budget = data.monthlyBudget;
+    const ratio = typeof budget === "number" && budget > 0 ? data.monthlyCost / budget : 0;
+    const costColor =
+      budget === null ? SF_CYAN : ratio < 0.5 ? SF_GREEN : ratio < 0.8 ? SF_ORANGE : SF_RED;
+    lines.push(
+      formatGlyphInfoRow(
+        "monthly",
+        mode,
+        "Monthly Usage",
+        `${costColor(formatCost(data.monthlyCost))} ${MUTED("/")} ${MUTED(formatBudget(budget))}`,
+      ),
+    );
+    lines.push("");
+  }
 
   // Optional integration and environment statuses.
   lines.push(horizontalRule(colWidth));
@@ -1166,14 +1188,6 @@ function buildRightColumn(data: SplashData, colWidth: number, mode: GlyphMode): 
     lines.push(horizontalRule(colWidth));
   }
 
-  // --- Tips ---
-  lines.push(` ${BOLD}${SF_BLUE(`${glyph("whatsNew", mode)} Tips`)}${RESET}`);
-  lines.push(` ${MUTED("•")} ${SF_CYAN("/sf-pi")} ${MUTED("manage extensions")}`);
-  lines.push(` ${MUTED("•")} ${SF_CYAN("/sf-pi recommended")} ${MUTED("install extras")}`);
-  lines.push(` ${MUTED("•")} ${SF_CYAN("/sf-pi announcements")} ${MUTED("read updates")}`);
-  lines.push(` ${MUTED("•")} ${SF_CYAN("/sf-pi help")} ${MUTED("show all commands")}`);
-  lines.push(horizontalRule(colWidth));
-
   // --- External skill sources (Claude Code / Codex / Cursor interop) ---
   //
   // Surfaces a single-line nudge when pi's skill-discovery would pick up
@@ -1300,19 +1314,19 @@ function renderSplashBox(
     // the full inner width (boxWidth - 2) for both blocks and insert a thin
     // separator rule between them so the split is still visually clear.
     const innerWidth = boxWidth - 2;
-    const stackedLines = [
-      ...buildLeftColumn(data, innerWidth, mode, headerOffset),
+    const stackedLines = trimTrailingBlankLines([
+      ...trimTrailingBlankLines(buildLeftColumn(data, innerWidth, mode, headerOffset)),
       horizontalRule(innerWidth),
-      ...buildRightColumn(data, innerWidth, mode),
-    ];
+      ...trimTrailingBlankLines(buildRightColumn(data, innerWidth, mode)),
+    ]);
     for (const line of stackedLines) {
       lines.push(v + fitToWidth(line, innerWidth) + v);
     }
   } else {
     // Two-column layout.
     const { leftCol, rightCol } = getColumnWidths(boxWidth);
-    const leftLines = buildLeftColumn(data, leftCol, mode, headerOffset);
-    const rightLines = buildRightColumn(data, rightCol, mode);
+    const leftLines = trimTrailingBlankLines(buildLeftColumn(data, leftCol, mode, headerOffset));
+    const rightLines = trimTrailingBlankLines(buildRightColumn(data, rightCol, mode));
     const maxRows = Math.max(leftLines.length, rightLines.length);
     for (let i = 0; i < maxRows; i++) {
       const left = fitToWidth(leftLines[i] ?? "", leftCol);
@@ -1406,10 +1420,6 @@ export class SfWelcomeHeader implements Component {
       footerStyled +
       MUTED(hChar.repeat(Math.max(0, rightPad)));
 
-    const lines = renderSplashBox(this.data, termWidth, bottomLine, this.headerOffset);
-    if (lines.length > 0) {
-      lines.push(""); // spacing below header
-    }
-    return lines;
+    return renderSplashBox(this.data, termWidth, bottomLine, this.headerOffset);
   }
 }

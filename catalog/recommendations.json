@@ -14,7 +14,6 @@
         "pi-interview",
         "glimpseui",
         "pi-tool-display",
-        "pi-updater",
         "pi-subagents",
         "pi-herdr"
       ]
@@ -81,16 +80,6 @@
       "rationale": "Keeps long bash/grep/read outputs legible in the TUI \u2014 a significant quality-of-life boost for Salesforce workflows that inspect large metadata or log files.",
       "scope": "global"
     },
-    "pi-updater": {
-      "id": "pi-updater",
-      "name": "pi-updater",
-      "description": "Codex-style auto-updater for pi \u2014 checks for new versions on startup and prompts to install.",
-      "source": "npm:pi-updater",
-      "homepage": "https://github.com/tonze/pi-updater",
-      "license": "MIT",
-      "rationale": "Keeps pi itself current without manual `pi update --self` calls. Low-friction way to stay on the latest runtime sf-pi targets.",
-      "scope": "global"
-    },
     "pi-subagents": {
       "id": "pi-subagents",
       "name": "pi-subagents",
@@ -98,7 +87,7 @@
       "source": "npm:pi-subagents",
       "homepage": "https://github.com/nicobailon/pi-subagents",
       "license": "MIT",
-      "rationale": "Unlocks multi-agent workflows — advisory review, implementation handoffs, and parallel fan-out — that pair naturally with the sf-pi planning and skill surface.",
+      "rationale": "Unlocks multi-agent workflows \u2014 advisory review, implementation handoffs, and parallel fan-out \u2014 that pair naturally with the sf-pi planning and skill surface.",
       "scope": "global"
     },
     "pi-herdr": {

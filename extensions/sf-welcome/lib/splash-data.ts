@@ -303,8 +303,9 @@ function shouldShowGatewayStatus(cwd: string, modelName: string, providerName: s
  * Compute the monthly-usage payload shown on the splash.
  *
  * Prefers the gateway's live numbers (same source as the bottom bar) so the
- * splash and footer never disagree. Falls back to a best-effort estimate
- * from local session files when the gateway hasn't populated its cache.
+ * splash and footer never disagree. Local session estimates are opt-in for
+ * callers that explicitly need them; the splash hides usage for non-gateway
+ * users to keep the startup surface compact.
  */
 export function resolveMonthlyUsage(
   monthlyBudgetFallback: number = 3000,
@@ -427,7 +428,7 @@ export function collectSplashData(
   // extensionHealth is still surfaced in the splash header counter; no other
   // consumer needs the derived list anymore now that Tips is gone.
   const usage = resolveMonthlyUsage(monthlyBudgetFallback, {
-    includeSessionFallback: options.includeSessionCostFallback !== false,
+    includeSessionFallback: options.includeSessionCostFallback === true,
   });
   const gatewayState = getMonthlyUsageState();
   const slackStatus = getSlackStatus();

@@ -298,7 +298,7 @@ Or cherry-pick individual packages with `/sf-pi recommended install <id>`.
 
 ### The default bundle
 
-All nine packages are **MIT**-licensed and install per-user (global
+All eight packages are **MIT**-licensed and install per-user (global
 scope) by default.
 
 | Extension                                                               | Why install it                                                                                                                                                                                        |
@@ -309,7 +309,6 @@ scope) by default.
 | **[`pi-interview`](https://github.com/nicobailon/pi-interview-tool)**   | Gives pi a structured `interview` tool for multi-question requirement gathering and trade-off exploration. Pairs naturally with `sf-agentscript` and other sf-pi scaffolding workflows.               |
 | **[`glimpseui`](https://github.com/hazat/glimpse)**                     | Cross-platform micro-UI for scripts and agents — native WebView windows for rich visual explainers, charts, and HTML previews without launching a full browser. Used by the `visual-explainer` skill. |
 | **[`pi-tool-display`](https://github.com/MasuRii/pi-tool-display)**     | Compact tool-call rendering, diff visualization, and output truncation. Significant quality-of-life boost for Salesforce workflows that inspect large metadata or log files.                          |
-| **[`pi-updater`](https://github.com/tonze/pi-updater)**                 | Keeps pi itself current without manual `pi update --self --force` calls. Low-friction way to stay on the latest runtime sf-pi targets.                                                                |
 | **[`pi-subagents`](https://github.com/nicobailon/pi-subagents)**        | Delegates work to single, chained, parallel, async, and forked-context subagents. Useful for advisory review, implementation handoffs, and larger planning flows.                                     |
 | **[`pi-herdr`](https://github.com/ogulcancelik/pi-extensions)** / Herdr | Alpha workspace, tab, and pane orchestration for pi. Enables command-scoped Salesforce workflow lanes for tests, log tails, previews, evals, servers, and cleanup.                                    |
 

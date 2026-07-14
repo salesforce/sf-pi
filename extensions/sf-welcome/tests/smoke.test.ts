@@ -94,6 +94,25 @@ describe("sf-welcome", () => {
     expect(mod.SfWelcomeHeader).toBeDefined();
   });
 
+  it("SfWelcomeHeader does not append a blank line below the box", async () => {
+    const { SfWelcomeHeader } = await import("../lib/splash-component.ts");
+    const data = {
+      modelName: "Claude Sonnet 4",
+      providerName: "anthropic",
+      loadedCounts: { extensions: 0, skills: 0, promptTemplates: 0 },
+      recentSessions: [],
+      extensionHealth: [],
+      slackConnected: false,
+      monthlyCost: 0,
+      monthlyBudget: 3000,
+      monthlyUsageSource: "sessions" as const,
+    };
+
+    const lines = new SfWelcomeHeader(data).render(140);
+    expect(lines.length).toBeGreaterThan(0);
+    expect(stripAnsi(lines.at(-1) ?? "").trim()).not.toBe("");
+  });
+
   it("SfWelcomeOverlay renders without crashing", async () => {
     const { SfWelcomeOverlay } = await import("../lib/splash-component.ts");
     const data = {
@@ -418,7 +437,7 @@ describe("sf-welcome", () => {
     expect(plain).not.toContain("local estimate");
   });
 
-  it("labels session-derived monthly usage as a local estimate", async () => {
+  it("hides monthly usage for non-gateway providers", async () => {
     const { SfWelcomeOverlay } = await import("../lib/splash-component.ts");
     const data = {
       modelName: "Claude Sonnet 4",
@@ -434,7 +453,9 @@ describe("sf-welcome", () => {
 
     const overlay = new SfWelcomeOverlay(data);
     const plain = stripAnsi(overlay.render(140).join("\n"));
-    expect(plain).toContain("local estimate");
+    expect(plain).not.toContain("Monthly Usage");
+    expect(plain).not.toContain("local estimate");
+    expect(plain).not.toContain("$186");
   });
 
   it("renders only the top four pending recommendations with the install shortcut", async () => {
@@ -480,7 +501,7 @@ describe("sf-welcome", () => {
     expect(plain).toContain("(+4 more)");
   });
 
-  it("renders sf-pi shortcut tips without generic pi key hints", async () => {
+  it("omits the shortcut Tips section", async () => {
     const { SfWelcomeOverlay } = await import("../lib/splash-component.ts");
     const data = {
       modelName: "Claude Opus 4.7",
@@ -497,11 +518,9 @@ describe("sf-welcome", () => {
     const overlay = new SfWelcomeOverlay(data);
     const plain = stripAnsi(overlay.render(140).join("\n"));
 
-    expect(plain).toMatch(/\bTips\b/);
-    expect(plain).toContain("/sf-pi");
-    expect(plain).toContain("/sf-pi recommended");
-    expect(plain).toContain("/sf-pi announcements");
-    expect(plain).toContain("/sf-pi help");
+    expect(plain).not.toMatch(/\bTips\b/);
+    expect(plain).not.toContain("manage extensions");
+    expect(plain).not.toContain("show all commands");
     expect(plain).not.toMatch(/^\s*\/\s+for commands/m);
     expect(plain).not.toMatch(/^\s*!\s+to run bash/m);
     expect(plain).not.toContain("Shift+Tab");

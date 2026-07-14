@@ -47,6 +47,7 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ### Changed
 
+- **Reduced SF Welcome splash clutter.** Removed `pi-updater` from the recommended package set, hid monthly usage for non-gateway providers, removed the Tips block, and tightened trailing splash/header spacing.
 - **Added public threat model and secure-design review evidence.** Added `docs/threat-model.md` and linked it from security docs as the public evidence packet for trust boundaries, mitigations, validation, and residual governance risks.
 - **Added prompt-injection control mapping.** Added `docs/prompt-injection-controls.md` and linked it from the security model/docs surfaces to document SF Pi's impact-mediation approach for SFSS-SSD-004 section 5.4.
 - **Documented and audited Data 360 journey child mutations.** Guardrail approval details for mutating Data 360 journeys now list declared child mutation families, and Data 360 records the actual executed child chain as a session audit entry.

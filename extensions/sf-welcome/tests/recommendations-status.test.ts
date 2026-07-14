@@ -54,7 +54,8 @@ describe("collectRecommendationsStatus", () => {
     });
 
     const summary = collectRecommendationsStatus(projectDir);
-    expect(summary.total).toBeGreaterThan(0);
+    expect(summary.total).toBe(8);
+    expect(summary.items.map((item) => item.id)).not.toContain("pi-updater");
 
     const installed = summary.items.filter((item) => item.status === "installed").map((i) => i.id);
     expect(installed).toContain("pi-web-access");

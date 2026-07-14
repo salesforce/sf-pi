@@ -8,7 +8,7 @@ Salesforce-branded splash screen that displays on startup with an animated Pi + 
 
 - Animated Pi + SALESFORCE wordmark with Salesforce-blue and pastel-rainbow palettes
 - Active model name and provider
-- Monthly cost usage line with color-coded progress (green → orange → red)
+- Gateway-sourced monthly usage line when the active provider is SF LLM Gateway
 - Optional Slack and auth-gated LLM Gateway status only when enabled/configured,
   plus lightweight SF CLI install/latest, Node.js runtime floor, Homebrew
   status, Herdr multiplexer readiness, bundled font status, Hunk code-review
@@ -35,7 +35,7 @@ override)`). Driven by `lib/common/privacy/state.ts` — see
   `SF_PI_ANNOUNCEMENTS=off` or `{ "sfPi": { "announcements": false } }`.
 - Loaded counts (extensions, skills, prompt templates)
 - Recent sessions with relative timestamps
-- Recommended external pi packages (top 4 pending items), sf-pi shortcut tips, and skill-source nudges
+- Recommended external pi packages (top 4 pending items) and skill-source nudges
 - Community attribution
 
 ## Runtime Flow
@@ -104,8 +104,8 @@ session_shutdown
 
 8. **Background loading** — CLI status, release freshness, font readiness,
    Hunk code-review readiness, Homebrew status, SF Browser `agent-browser`
-   runtime status, Native Auto Update status, Node CA certificate status, monthly usage, and remote
-   announcements refresh asynchronously after the splash appears, so startup
+   runtime status, Native Auto Update status, Node CA certificate status,
+   gateway usage, and remote announcements refresh asynchronously after the splash appears, so startup
    remains responsive while the visible rows update in place. Node.js and Herdr
    readiness stays startup-safe: process-local pane-control env plus a small
    settings.json package check for `npm:@ogulcancelik/pi-herdr` and a bounded

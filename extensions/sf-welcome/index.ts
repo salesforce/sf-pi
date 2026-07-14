@@ -3,7 +3,7 @@
  * sf-welcome — Salesforce-branded splash screen for sf-pi.
  *
  * Displays a two-column overlay on startup with:
- *   Left column:  Gradient Pi logo, model info, monthly cost, optional integrations,
+ *   Left column:  Gradient Pi logo, model info, optional gateway usage,
  *                 environment checks, and release freshness rows
  *   Right column: Announcements, loaded counts, recent sessions,
  *                  recommended extensions, attribution
@@ -951,7 +951,7 @@ export default function sfWelcome(pi: ExtensionAPI) {
       await refreshMonthlyUsage(true, ctx.cwd);
     } catch {
       // Best-effort — refreshMonthlyUsage already captures the error on
-      // the cache and surfaces it through the "local estimate" suffix.
+      // the shared usage/status cache.
     }
 
     const data = collectSplashData(modelName, providerName, ctx.cwd, MONTHLY_BUDGET_FALLBACK, {
@@ -986,7 +986,13 @@ export default function sfWelcome(pi: ExtensionAPI) {
       typeof data.monthlyBudget === "number" && data.monthlyBudget > 0
         ? ` (${((data.monthlyCost / data.monthlyBudget) * 100).toFixed(1)}%)`
         : "";
-    const sourceSuffix = data.monthlyUsageSource === "sessions" ? " (local estimate)" : "";
+    const usingGatewayModel =
+      data.providerName.toLowerCase().includes("gateway") ||
+      data.modelName.toLowerCase().includes("gateway");
+    const monthlyUsageLines =
+      usingGatewayModel && data.monthlyUsageSource === "gateway"
+        ? [`Monthly usage: $${data.monthlyCost.toFixed(2)} / ${budgetLabel}${costPercent}`]
+        : [];
     const gatewayStatus = data.gatewayVisible
       ? (data.gatewayStatus?.kind ?? "not checked")
       : "hidden";
@@ -1022,7 +1028,7 @@ export default function sfWelcome(pi: ExtensionAPI) {
       `Model: ${data.modelName}`,
       `Provider: ${data.providerName}`,
       "",
-      `Monthly cost: $${data.monthlyCost.toFixed(2)} / ${budgetLabel}${costPercent}${sourceSuffix}`,
+      ...monthlyUsageLines,
       `Gateway: ${gatewayStatus}`,
       `Slack: ${slackStatus}`,
       `Node.js: ${nodeRuntimeStatus}`,
