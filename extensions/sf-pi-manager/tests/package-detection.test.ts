@@ -50,6 +50,10 @@ describe("matchesPackageSource", () => {
   it("rejects unrelated git URLs", () => {
     expect(matchesPackageSource("git:github.com/other/package", settingsDir)).toBe(false);
   });
+
+  it("matches the current local repo path", () => {
+    expect(matchesPackageSource(process.cwd(), settingsDir)).toBe(true);
+  });
 });
 
 // -------------------------------------------------------------------------------------------------

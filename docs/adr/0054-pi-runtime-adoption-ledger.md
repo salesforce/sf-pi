@@ -51,7 +51,7 @@ This keeps SF Pi simple and Pi-native: Pi owns runtime concerns such as trust, t
 4. **Gateway settings I/O reuse** — landed. Gateway Pi settings mutations delegate tolerant JSON file I/O to `lib/common/sf-pi-settings.ts` while keeping gateway-specific config logic local.
 5. **Apex/SOQL Salesforce REST adapter consolidation** — move generic REST/Tooling transport helpers behind `lib/common/sf-conn` / `lib/common/sf-rest`; keep lifecycle semantics local.
 6. **Lifecycle shell cleanup** — split into command shell catalog reuse, common artifact writer, then result-card adapter.
-7. **Package filter/package-root consolidation** — first consolidate SF Pi's duplicated package matching/root logic, then delegate to Pi package helpers after behavior proof.
+7. **Package filter/package-root consolidation** — 7A landed: package source matching and extension filter interpretation now live in `lib/common/sf-pi-package-resolution.ts`. 7B remains: delegate package-root/asset lookup to Pi helpers after behavior proof.
 8. **Org Status Fallback helper** — landed. Fallback selection lives in `lib/common/sf-environment/display-fallback.ts`; DevBar rendering remains local.
 
 ## Consequences

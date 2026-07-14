@@ -9,16 +9,14 @@
  * before surfacing status UI, so this module centralizes Pi's project-over-global
  * precedence and package-source matching rules.
  */
-import { existsSync, readFileSync, realpathSync } from "node:fs";
-import { homedir } from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { SF_PI_REGISTRY } from "../../catalog/registry.ts";
-import { globalSettingsPath, projectSettingsPath } from "./pi-paths.ts";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const PACKAGE_ROOT = path.resolve(__dirname, "../..");
+import { globalSettingsPath, projectSettingsPath, readJsonFile } from "./sf-pi-settings.ts";
+import {
+  findSfPiPackageEntry,
+  getDisabledExtensionFiles,
+  getExplicitlyEnabledExtensionFiles,
+} from "./sf-pi-package-resolution.ts";
 
 export type SfPiExtensionId = (typeof SF_PI_REGISTRY)[number]["id"];
 
@@ -33,13 +31,13 @@ export function getDisabledExtensionFilesForCwd(cwd: string): Set<string> {
   const projectSettings = readJsonFile(projectPath);
   const projectEntry = findSfPiPackageEntry(projectSettings, path.dirname(projectPath));
   if (projectEntry) {
-    return getDisabledExtensions(projectSettings, projectEntry.index);
+    return getDisabledExtensionFiles(projectSettings, projectEntry.index);
   }
 
   const globalPath = globalSettingsPath();
   const globalSettings = readJsonFile(globalPath);
   const globalEntry = findSfPiPackageEntry(globalSettings, path.dirname(globalPath));
-  return globalEntry ? getDisabledExtensions(globalSettings, globalEntry.index) : new Set();
+  return globalEntry ? getDisabledExtensionFiles(globalSettings, globalEntry.index) : new Set();
 }
 
 export function isSfPiExtensionEnabled(cwd: string, extensionId: SfPiExtensionId): boolean {
@@ -72,126 +70,13 @@ function getEnabledExtensionFilesForCwd(cwd: string): Set<string> {
   const projectSettings = readJsonFile(projectPath);
   const projectEntry = findSfPiPackageEntry(projectSettings, path.dirname(projectPath));
   if (projectEntry) {
-    return getExplicitlyEnabledExtensions(projectSettings, projectEntry.index);
+    return getExplicitlyEnabledExtensionFiles(projectSettings, projectEntry.index);
   }
 
   const globalPath = globalSettingsPath();
   const globalSettings = readJsonFile(globalPath);
   const globalEntry = findSfPiPackageEntry(globalSettings, path.dirname(globalPath));
   return globalEntry
-    ? getExplicitlyEnabledExtensions(globalSettings, globalEntry.index)
+    ? getExplicitlyEnabledExtensionFiles(globalSettings, globalEntry.index)
     : new Set();
-}
-
-function getDisabledExtensions(
-  settings: Record<string, unknown>,
-  packageIndex: number,
-): Set<string> {
-  const packages = Array.isArray(settings.packages) ? settings.packages : [];
-  const pkg = packages[packageIndex];
-  if (!pkg || typeof pkg !== "object") return new Set(getDefaultDisabledFiles());
-
-  const extensions = Array.isArray((pkg as Record<string, unknown>).extensions)
-    ? ((pkg as Record<string, unknown>).extensions as unknown[])
-    : [];
-  const explicitlyEnabled = getExplicitlyEnabledExtensions(settings, packageIndex);
-
-  const disabled = new Set<string>();
-  for (const file of getDefaultDisabledFiles()) {
-    if (!explicitlyEnabled.has(file)) disabled.add(file);
-  }
-  for (const pattern of extensions) {
-    if (typeof pattern === "string" && pattern.startsWith("!")) {
-      disabled.add(pattern.slice(1));
-    }
-  }
-  return disabled;
-}
-
-function getExplicitlyEnabledExtensions(
-  settings: Record<string, unknown>,
-  packageIndex: number,
-): Set<string> {
-  const packages = Array.isArray(settings.packages) ? settings.packages : [];
-  const pkg = packages[packageIndex];
-  if (!pkg || typeof pkg !== "object") return new Set();
-  const enabledExtensions = Array.isArray((pkg as Record<string, unknown>).enabledExtensions)
-    ? ((pkg as Record<string, unknown>).enabledExtensions as unknown[])
-    : [];
-  return new Set(enabledExtensions.filter((entry): entry is string => typeof entry === "string"));
-}
-
-function getDefaultDisabledFiles(): string[] {
-  return SF_PI_REGISTRY.filter((entry) => !entry.defaultEnabled && !entry.alwaysActive).map(
-    (entry) => entry.file,
-  );
-}
-
-function findSfPiPackageEntry(
-  settings: Record<string, unknown>,
-  settingsDir: string,
-): { index: number; source: string; isObject: boolean } | null {
-  const packages = Array.isArray(settings.packages) ? settings.packages : [];
-
-  for (let index = 0; index < packages.length; index++) {
-    const entry = packages[index];
-    let source: string;
-    let isObject: boolean;
-
-    if (typeof entry === "string") {
-      source = entry;
-      isObject = false;
-    } else if (
-      entry &&
-      typeof entry === "object" &&
-      typeof (entry as Record<string, unknown>).source === "string"
-    ) {
-      source = (entry as Record<string, unknown>).source as string;
-      isObject = true;
-    } else {
-      continue;
-    }
-
-    if (matchesPackageSource(source, settingsDir)) {
-      return { index, source, isObject };
-    }
-  }
-
-  return null;
-}
-
-function matchesPackageSource(source: string, settingsDir: string): boolean {
-  const normalizedSource = source.toLowerCase();
-
-  if (normalizedSource.includes("sf-pi")) return true;
-  if (normalizedSource.includes("jag-pi-extensions")) return true;
-
-  const looksLikeLocalPath =
-    source.startsWith("/") ||
-    source.startsWith("./") ||
-    source.startsWith("../") ||
-    source.startsWith("~");
-
-  if (!looksLikeLocalPath) return false;
-
-  const expandedSource = source.startsWith("~") ? path.join(homedir(), source.slice(1)) : source;
-  const resolved = path.resolve(settingsDir, expandedSource);
-
-  if (resolved === PACKAGE_ROOT) return true;
-
-  try {
-    return realpathSync(resolved) === realpathSync(PACKAGE_ROOT);
-  } catch {
-    return false;
-  }
-}
-
-function readJsonFile(filePath: string): Record<string, unknown> {
-  if (!existsSync(filePath)) return {};
-  try {
-    const parsed = JSON.parse(readFileSync(filePath, "utf8"));
-    return parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : {};
-  } catch {
-    return {};
-  }
 }
