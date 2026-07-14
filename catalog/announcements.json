@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.228.3-2026-07-14",
-  "latestVersion": "0.228.3",
+  "revision": "release-0.228.4-2026-07-14",
+  "latestVersion": "0.228.4",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.228.3",
+      "id": "release-0.228.4",
       "kind": "update",
-      "title": "sf-pi v0.228.3 — harden sf-welcome preflight status UX",
+      "title": "sf-pi v0.228.4 — sf-welcome: reduce startup splash clutter",
       "publishedAt": "2026-07-14T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.228.3",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.228.4",
       "severity": "info",
-      "body": "harden sf-welcome preflight status UX"
+      "body": "sf-welcome: reduce startup splash clutter"
     },
     {
       "id": "pi-0.73-required",
