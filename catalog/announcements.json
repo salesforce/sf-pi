@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.228.2-2026-07-14",
-  "latestVersion": "0.228.2",
+  "revision": "release-0.228.3-2026-07-14",
+  "latestVersion": "0.228.3",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.228.2",
+      "id": "release-0.228.3",
       "kind": "update",
-      "title": "sf-pi v0.228.2 — improve Herdr readiness and gateway usage label",
+      "title": "sf-pi v0.228.3 — harden sf-welcome preflight status UX",
       "publishedAt": "2026-07-14T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.228.2",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.228.3",
       "severity": "info",
-      "body": "improve Herdr readiness and gateway usage label"
+      "body": "harden sf-welcome preflight status UX"
     },
     {
       "id": "pi-0.73-required",
