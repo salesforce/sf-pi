@@ -529,6 +529,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.228.1](https://github.com/salesforce/sf-pi/compare/v0.228.0...v0.228.1) (2026-07-14)
+
+
+### Bug Fixes
+
+* clear auto update restart notice after restart ([6358453](https://github.com/salesforce/sf-pi/commit/6358453ff0129b0891e38f85b0501cbb6e2945c8))
+
 ## [0.228.0](https://github.com/salesforce/sf-pi/compare/v0.227.0...v0.228.0) (2026-07-14)
 
 
