@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -25,6 +25,22 @@ afterEach(() => {
   rmSync(tmpDir, { recursive: true, force: true });
 });
 
+function writeGlobalSettings(settings: unknown): void {
+  writeFileSync(path.join(tmpDir, "settings.json"), JSON.stringify(settings, null, 2));
+}
+
+function writeProjectSettings(settings: unknown): void {
+  const settingsDir = path.join(cwd, ".pi");
+  mkdirSync(settingsDir, { recursive: true });
+  writeFileSync(path.join(settingsDir, "settings.json"), JSON.stringify(settings, null, 2));
+}
+
+function writePiIntegration(contents: string): void {
+  const extensionsDir = path.join(tmpDir, "extensions");
+  mkdirSync(extensionsDir, { recursive: true });
+  writeFileSync(path.join(extensionsDir, "herdr-agent-state.ts"), contents);
+}
+
 describe("Herdr Runtime Readiness", () => {
   it("reports ready only with the upstream tool and active pane-control env", () => {
     const status = collectHerdrRuntimeStatus(cwd, {
@@ -49,8 +65,50 @@ describe("Herdr Runtime Readiness", () => {
     expect(status).toMatchObject({ kind: "tool-only", toolActive: true, activeControlEnv: false });
   });
 
-  it("reports missing when sf-herdr is enabled but the upstream tool is absent", () => {
+  it("reports installed-not-active when the upstream package is configured but the tool is absent", () => {
+    writeGlobalSettings({ packages: ["npm:@ogulcancelik/pi-herdr@0.2.5"] });
+
     const status = collectHerdrRuntimeStatus(cwd, { activeToolNames: [], allToolNames: [] });
-    expect(status.kind).toBe("missing");
+
+    expect(status).toMatchObject({
+      kind: "installed-not-active",
+      packageInstalled: true,
+      toolActive: false,
+    });
+  });
+
+  it("detects the upstream package from project object-form package settings", () => {
+    writeProjectSettings({ packages: [{ source: "npm:@ogulcancelik/pi-herdr@0.2.5" }] });
+
+    const status = collectHerdrRuntimeStatus(cwd, { activeToolNames: [], allToolNames: [] });
+
+    expect(status).toMatchObject({
+      kind: "installed-not-active",
+      packageInstalled: true,
+    });
+  });
+
+  it("detects the Herdr-installed Pi state integration version", () => {
+    writePiIntegration(
+      [
+        "// installed by herdr",
+        "// HERDR_INTEGRATION_ID=pi",
+        "// HERDR_INTEGRATION_VERSION=4",
+      ].join("\n"),
+    );
+
+    const status = collectHerdrRuntimeStatus(cwd, { activeToolNames: [], allToolNames: [] });
+
+    expect(status.piIntegration).toMatchObject({ kind: "installed", version: 4 });
+  });
+
+  it("reports a missing Pi state integration when Herdr has not installed it", () => {
+    const status = collectHerdrRuntimeStatus(cwd, { activeToolNames: [], allToolNames: [] });
+    expect(status.piIntegration).toMatchObject({ kind: "missing" });
+  });
+
+  it("reports missing when sf-herdr is enabled but the upstream package and tool are absent", () => {
+    const status = collectHerdrRuntimeStatus(cwd, { activeToolNames: [], allToolNames: [] });
+    expect(status).toMatchObject({ kind: "missing", packageInstalled: false });
   });
 });

@@ -178,7 +178,7 @@ function formatMonthlyUsagePart(
 
   if (monthlyUsageError) {
     if (lastKnownMonthlyUsage) {
-      return `${prefix}${formatUsd(lastKnownMonthlyUsage.spend)}/∞ ${glyph("warn", mode)} stale`;
+      return `${prefix}${formatUsd(lastKnownMonthlyUsage.spend)}/∞ ${glyph("lastKnown", mode)} last known`;
     }
     return `${prefix}unavailable`;
   }

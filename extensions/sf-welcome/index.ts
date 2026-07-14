@@ -995,7 +995,7 @@ export default function sfWelcome(pi: ExtensionAPI) {
     const nodeRuntimeStatus = data.nodeRuntime
       ? `${data.nodeRuntime.version} (${data.nodeRuntime.kind}, requires >=${data.nodeRuntime.requiredVersion})`
       : "not checked";
-    const herdrRuntimeStatus = data.herdrRuntime?.kind ?? "not checked";
+    const herdrRuntimeStatus = formatPlainHerdrRuntimeStatus(data.herdrRuntime);
     const fontRuntimeStatus = data.fontRuntime?.kind ?? "not checked";
     const hunkStatus = data.hunk?.installed
       ? `installed${data.hunk.installedVersion ? ` v${data.hunk.installedVersion}` : ""}`
@@ -1048,6 +1048,30 @@ export default function sfWelcome(pi: ExtensionAPI) {
       "Recent Sessions:",
       ...data.recentSessions.map((s) => `  • ${s.name} (${s.timeAgo})`),
     ].join("\n");
+  }
+
+  function formatPlainHerdrPiIntegration(status: SplashData["herdrRuntime"]): string {
+    const pi = status?.piIntegration;
+    if (!pi) return "Pi state not checked";
+    if (pi.kind === "installed") {
+      return `Pi state${typeof pi.version === "number" ? ` v${pi.version}` : " installed"}`;
+    }
+    if (pi.kind === "missing") return "Pi state not installed";
+    return "Pi state unknown";
+  }
+
+  function formatPlainHerdrRuntimeStatus(status: SplashData["herdrRuntime"]): string {
+    if (!status) return "not checked";
+    const piState = formatPlainHerdrPiIntegration(status);
+    if (status.kind === "ready") return `tool active · pane control ready · ${piState}`;
+    if (status.kind === "tool-only") return `tool active · not inside Herdr · ${piState}`;
+    if (status.kind === "installed-not-active") {
+      return status.activeControlEnv
+        ? `package installed · tool inactive · ${piState}`
+        : `package installed · not inside Herdr · ${piState}`;
+    }
+    if (status.kind === "disabled") return "sf-herdr disabled";
+    return `package not installed · ${piState}`;
   }
 
   function formatPlainReleaseStatus(

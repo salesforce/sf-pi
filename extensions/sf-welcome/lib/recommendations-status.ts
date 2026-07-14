@@ -132,6 +132,10 @@ function isItemInstalled(
   return false;
 }
 
+export function isRecommendedPackageSourceInstalled(cwd: string, source: string): boolean {
+  return collectInstalledPackageSources(cwd).has(normalizeSource(source));
+}
+
 function normalizeSource(source: string): string {
   const trimmed = source.trim().toLowerCase();
   if (trimmed.startsWith("npm:")) {

@@ -126,14 +126,27 @@ export interface NodeRuntimeStatusInfo {
   loading: boolean;
 }
 
-export type HerdrRuntimeStatusKind = "ready" | "tool-only" | "missing" | "disabled";
+export type HerdrRuntimeStatusKind =
+  "ready" | "tool-only" | "installed-not-active" | "missing" | "disabled";
+
+export type HerdrPiIntegrationStatusKind = "installed" | "missing" | "unknown";
+
+export interface HerdrPiIntegrationStatusInfo {
+  kind: HerdrPiIntegrationStatusKind;
+  path: string;
+  version?: number;
+  reason?: string;
+  loading: boolean;
+}
 
 export interface HerdrRuntimeStatusInfo {
   kind: HerdrRuntimeStatusKind;
   extensionEnabled: boolean;
   toolActive: boolean;
+  packageInstalled: boolean;
   activeControlEnv: boolean;
   passiveStatusBridge: boolean;
+  piIntegration: HerdrPiIntegrationStatusInfo;
   paneId?: string;
   loading: boolean;
 }

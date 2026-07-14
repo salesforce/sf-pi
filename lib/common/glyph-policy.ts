@@ -153,6 +153,7 @@ export function resolveGlyphMode(options: ResolveGlyphModeOptions = {}): GlyphMo
 export const GLYPH_TABLE = {
   // Section markers
   monthly: { emoji: "💰", ascii: "$" },
+  lastKnown: { emoji: "↺", ascii: "~" },
   lifetime: { emoji: "🌐", ascii: "@" },
   extensions: { emoji: "🧩", ascii: "+" },
   slack: { emoji: "💬", ascii: ">" },

@@ -139,7 +139,7 @@ describe("buildFooterStatus", () => {
     expect(text).toBe("💰 unavailable");
   });
 
-  it("returns stale last-known usage when the latest monthly usage fetch failed", () => {
+  it("returns calm last-known usage when the latest monthly usage fetch failed", () => {
     const text = buildFooterStatus(
       withDefaults({
         discovery: null,
@@ -156,7 +156,7 @@ describe("buildFooterStatus", () => {
       }),
     );
 
-    expect(text).toBe("💰 $12.50/∞ ⚠️ stale");
+    expect(text).toBe("💰 $12.50/∞ ↺ last known");
   });
 });
 

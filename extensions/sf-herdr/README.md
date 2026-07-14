@@ -150,7 +150,12 @@ Install and run Pi inside Herdr with the upstream package:
 pi install npm:@ogulcancelik/pi-herdr
 ```
 
-SF Herdr can still show status and preferences outside Herdr, but actual pane orchestration requires the upstream `herdr` tool to be active.
+The upstream package is a Pi extension that contributes the `herdr` tool; it
+currently does not require a separate Pi skill. For richer Pi lifecycle/session
+state in Herdr, also run `herdr integration install pi`; Herdr writes its
+managed `herdr-agent-state.ts` extension into Pi's global extensions directory.
+SF Herdr can still show status and preferences outside Herdr, but actual pane
+orchestration requires the upstream `herdr` tool to be active.
 
 **A lane stayed open:**
 Ephemeral lanes intentionally stay open on failure or timeout for inspection, then require an explicit cleanup decision. Sticky and manual lanes are not auto-closed by plan guidance.

@@ -104,7 +104,9 @@ session_shutdown
    runtime status, Native Auto Update status, Node CA certificate status, monthly usage, and remote
    announcements refresh asynchronously after the splash appears, so startup
    remains responsive while the visible rows update in place. Node.js and Herdr
-   runtime readiness are process-local reads only. Font detection is local-only
+   readiness stays startup-safe: process-local pane-control env plus a small
+   settings.json package check for `npm:@ogulcancelik/pi-herdr` and a bounded
+   header read of Herdr's managed Pi state extension. Font detection is local-only
    and cache-first; Hunk, Homebrew, and `agent-browser` use deferred bounded
    version/prefix probes and never open a review UI, browser, Chrome/CDP
    session, Herdr pane, or package-manager update from the splash. Node
@@ -294,6 +296,17 @@ Terminal.app and some Powerlevel10k setups. Fixes:
   ```
 - iTerm2 / Ghostty / WezTerm / VS Code terminals don't need any of the
   above — they fall back to the color emoji font on their own.
+
+**Herdr says the upstream package or Pi state integration is missing:**
+The actual `herdr` tool comes from the upstream Pi package
+`npm:@ogulcancelik/pi-herdr`; SF Herdr only plans Salesforce workflow lanes.
+There is no separate Herdr skill to install. Run
+`pi install npm:@ogulcancelik/pi-herdr`, then start Pi from inside a Herdr pane
+so `HERDR_ENV`, `HERDR_PANE_ID`, and the upstream tool are active. For richer
+Pi lifecycle/session state in Herdr, also run `herdr integration install pi`.
+Herdr writes `herdr-agent-state.ts` into Pi's global extensions directory. If
+the package is already configured but the tool is still inactive inside Herdr,
+run `/reload` and check package filters in Pi settings.
 
 **Splash feels too busy, stuck, or setup warnings are noisy:**
 Startup now uses the compact non-blocking header by default. Press Esc to

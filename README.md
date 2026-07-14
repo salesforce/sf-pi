@@ -736,6 +736,7 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 **[SF Welcome](./extensions/sf-welcome/#troubleshooting)**
 
 - Splash shows `?` boxes (tofu) where glyphs should be
+- Herdr says the upstream package or Pi state integration is missing
 - Splash feels too busy, stuck, or setup warnings are noisy
 - Splash content gets truncated in a narrow terminal
 - `/sf-setup-fonts` says everything is already installed but the splash still shows ASCII

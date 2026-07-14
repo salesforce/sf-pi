@@ -494,25 +494,52 @@ function formatNodeRuntimeStatusValue(data: SplashData): string {
   return `${SF_ORANGE("?")} ${SF_ORANGE("Unknown")}`;
 }
 
+function formatHerdrPiIntegrationSuffix(herdr: NonNullable<SplashData["herdrRuntime"]>): string {
+  const pi = herdr.piIntegration;
+  if (pi.kind === "installed") {
+    const version = typeof pi.version === "number" ? ` v${pi.version}` : " installed";
+    return ` ${MUTED(`· Pi state${version}`)}`;
+  }
+  if (pi.kind === "missing") {
+    return ` ${MUTED("· Pi state not installed")}`;
+  }
+  return ` ${MUTED("· Pi state unknown")}`;
+}
+
 function formatHerdrRuntimeStatusValue(data: SplashData): string {
   const herdr = data.herdrRuntime;
   if (!herdr || herdr.loading) return MUTED("Checking");
   if (herdr.kind === "ready") {
-    return `${SF_GREEN("✓")} ${SF_GREEN("tool active")} ${MUTED("· pane control ready")}`;
+    return `${SF_GREEN("✓")} ${SF_GREEN("tool active")} ${MUTED("· pane control ready")}${formatHerdrPiIntegrationSuffix(herdr)}`;
   }
   if (herdr.kind === "tool-only") {
     return `${SF_ORANGE("!")} ${SF_ORANGE("tool active")} ${MUTED("· not inside Herdr")}`;
   }
+  if (herdr.kind === "installed-not-active") {
+    const detail = herdr.activeControlEnv
+      ? "· reload or check package filters"
+      : "· start pi inside Herdr";
+    return `${SF_ORANGE("!")} ${SF_ORANGE("package installed")} ${MUTED(detail)}`;
+  }
   if (herdr.kind === "disabled") {
     return `${MUTED("○")} ${MUTED("sf-herdr disabled")}`;
   }
-  return `${SF_ORANGE("!")} ${SF_ORANGE("sf-herdr enabled")} ${MUTED("· upstream Herdr not active")}`;
+  return `${SF_ORANGE("!")} ${SF_ORANGE("package not installed")} ${MUTED("· upstream Herdr inactive")}`;
 }
 
 function herdrActionHint(data: SplashData): string | null {
   const herdr = data.herdrRuntime;
-  if (!herdr || herdr.kind === "ready" || herdr.kind === "disabled") return null;
+  if (!herdr || herdr.kind === "disabled") return null;
   if (herdr.kind === "missing") return "pi install npm:@ogulcancelik/pi-herdr";
+  if (herdr.kind === "installed-not-active") {
+    return herdr.activeControlEnv
+      ? "/reload, or check pi package filters"
+      : "run pi inside Herdr for pane multiplexing";
+  }
+  if (herdr.piIntegration.kind !== "installed" && herdr.packageInstalled) {
+    return "herdr integration install pi";
+  }
+  if (herdr.kind === "ready") return null;
   if (herdr.kind === "tool-only") return "run pi inside Herdr for pane multiplexing";
   return null;
 }
