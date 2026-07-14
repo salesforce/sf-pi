@@ -1,9 +1,9 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 import fs from "node:fs/promises";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { connFromAlias, clearConnectionCache } from "../../../lib/common/sf-conn/connection.ts";
+import { resolveSfPiPackageRootPath } from "../../../lib/common/sf-pi-package-root.ts";
 import { connRequest } from "../../../lib/common/sf-conn/request.ts";
 import { detectEnvironment } from "../../../lib/common/sf-environment/detect.ts";
 import type { SfEnvironment } from "../../../lib/common/sf-environment/types.ts";
@@ -201,19 +201,7 @@ async function initialize(pi: ExtensionAPI): Promise<SfDataExplorerTransport> {
 }
 
 async function resolveBundledSfPiPath(): Promise<string> {
-  let cur = path.dirname(fileURLToPath(import.meta.url));
-  for (let i = 0; i < 10; i += 1) {
-    try {
-      const stat = await fs.stat(path.join(cur, "package.json"));
-      if (stat.isFile()) return cur;
-    } catch {
-      // continue walking up
-    }
-    const next = path.dirname(cur);
-    if (next === cur) break;
-    cur = next;
-  }
-  return process.cwd();
+  return resolveSfPiPackageRootPath({ from: import.meta.url }) ?? process.cwd();
 }
 
 async function tryReadCommit(sfPiPath: string): Promise<string | undefined> {

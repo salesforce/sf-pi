@@ -12,8 +12,8 @@
  * same shape.
  */
 import { existsSync, readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
+import { resolveSfPiPackageRootPath } from "../sf-pi-package-root.ts";
 import type { AnnouncementItem, AnnouncementsManifest } from "../../../catalog/types.ts";
 
 const EMPTY_MANIFEST: AnnouncementsManifest = {
@@ -36,24 +36,7 @@ export function announcementsManifestPath(packageRoot: string): string {
  * up from this file to the nearest `package.json`.
  */
 export function resolveDefaultPackageRoot(): string | undefined {
-  try {
-    const here = dirname(fileURLToPath(import.meta.url));
-    let current = here;
-    // Walk up looking for the repo root (package.json + catalog/ sibling).
-    // The sibling check prevents us stopping at a nested package.json inside
-    // node_modules when sf-pi is installed as a linked dep.
-    for (let i = 0; i < 8; i++) {
-      if (existsSync(join(current, "package.json")) && existsSync(join(current, "catalog"))) {
-        return current;
-      }
-      const parent = dirname(current);
-      if (parent === current) break;
-      current = parent;
-    }
-    return undefined;
-  } catch {
-    return undefined;
-  }
+  return resolveSfPiPackageRootPath({ from: import.meta.url });
 }
 
 /**
