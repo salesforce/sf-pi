@@ -24,9 +24,12 @@ describe("renderHerdrLanePlan", () => {
     expect(rendered).toContain("target deploy_<shortid>");
     expect(rendered).toContain("source=current agent pane");
     expect(rendered).toContain("Action path");
-    expect(rendered).toContain("herdr.pane_split");
-    expect(rendered).toContain("from current agent pane");
-    expect(rendered).toContain("herdr.watch/read");
+    expect(rendered).toContain(
+      'herdr(action="pane_split", newPane="deploy_<shortid>", direction="right", focus=false)',
+    );
+    expect(rendered).toContain("create fresh lane");
+    expect(rendered).toContain('herdr(action="watch", pane="deploy_<shortid>"');
+    expect(rendered).toContain('herdr(action="read", pane="deploy_<shortid>"');
     expect(rendered).toContain("stop/close after Workflow Success Condition");
     expect(rendered).not.toContain("Recommended Herdr actions:");
     expect(rendered).not.toContain("Phases:");
@@ -43,6 +46,9 @@ describe("renderHerdrLanePlan", () => {
 
     expect(rendered).toContain("server · server · sticky");
     expect(rendered).toContain("Herdr pane environment not detected");
+    expect(rendered).toContain('herdr(action="list")');
+    expect(rendered).toContain("find/reuse server if present");
+    expect(rendered).toContain("create only when alias is absent");
     expect(rendered).toContain("manual cleanup");
     expect(rendered).toContain("no automatic cleanup; explicit user cleanup required");
   });

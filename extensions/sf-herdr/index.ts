@@ -253,7 +253,7 @@ async function emit(
   severity: InfoPanelSeverity,
   fromPanel: boolean,
 ): Promise<void> {
-  if (fromPanel && ctx.hasUI) {
+  if (ctx.hasUI && (fromPanel || body.includes("\n"))) {
     await openInfoPanel(ctx, { title, body, severity });
     return;
   }

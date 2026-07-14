@@ -93,19 +93,21 @@ the visible pane orchestration layer around SF Pi workflows:
 
 1. If `sf_herdr_plan` is active, call it for dynamic Salesforce workflow lanes
    before creating panes. The plan is non-mutating.
-2. Execute the returned phases explicitly with the upstream `herdr` tool:
-   discover alias collisions → create fresh lane → run → observe → cleanup.
+2. Execute pane work explicitly with the upstream `herdr` tool using action-shaped
+   calls: `herdr(action="list")` → `herdr(action="pane_split")` →
+   `herdr(action="run")` → `herdr(action="watch"|"read")` →
+   `herdr(action="stop")` when cleanup is allowed.
 3. Let the owning SF Pi extension or Salesforce skill choose the actual command;
    `sf_herdr_plan` only plans lane placement/lifecycle.
-4. For command-scoped work, create a fresh ephemeral split pane from the current
-   agent/orchestrator pane with a short-id suffixed alias; do not reuse old or
-   previously closed ephemeral pane aliases.
-5. For `herdr.pane_split`, omit `pane` to split the current agent/orchestrator
-   pane. Pass `pane` only when the user asks for a source pane or a simultaneous
-   lane must split from a worker pane to protect layout.
-6. Stop/close fresh ephemeral panes only after the workflow success condition.
+4. Follow the lifecycle in the plan: Fresh Ephemeral Lanes use a new short-id
+   alias for one command-scoped job, while sticky/manual lanes reuse the base
+   alias when it already exists and create it only when absent.
+5. Omit `pane` on `herdr(action="pane_split")` to split the current
+   agent/orchestrator pane. Pass `pane` only when the user asks for a source pane
+   or a simultaneous lane must split from a worker pane to protect layout.
+6. Stop/close Fresh Ephemeral Lanes only after the workflow success condition.
    On failure or timeout, read recent output, summarize, leave the lane open,
-   and ask before cleanup.
+   and ask before cleanup. Sticky/manual lanes require explicit user cleanup.
 7. Prefer sticky/manual lanes for servers and reviewer agents. Log tails default
    to ephemeral unless the user explicitly asks for persistent monitoring.
 

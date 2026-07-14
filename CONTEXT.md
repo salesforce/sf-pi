@@ -324,6 +324,10 @@ _Avoid_: generated command, hidden automation, workflow executor
 A cross-extension hint that points an agent to a Herdr lane plan for a workflow. It carries plan intent and workflow context, but not shell commands or pane mutations.
 _Avoid_: suggested command, pane handoff, workflow executor
 
+**Herdr Workflow Signal**:
+A branch-scoped observation from tool calls, command text, or file edits that helps SF Herdr choose an existing Herdr workflow profile. A signal is planning context only; it does not create panes or define a new workflow by itself.
+_Avoid_: workflow type, lane trigger, pane-opening signal
+
 **Proactive Herdr Guidance**:
 SF Brain prompt guidance that nudges agents to use Herdr lanes when the upstream Herdr tool is active. It is separate from explicit SF Herdr lane planning, which remains available when requested.
 _Avoid_: planner mode, Herdr workflow mode

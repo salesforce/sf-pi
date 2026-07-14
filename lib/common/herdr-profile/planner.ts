@@ -23,17 +23,17 @@ export function resolveHerdrProfile(
 ): EffectiveHerdrProfile {
   const normalized = normalizePreferences(preferences);
   const lanes = cloneEffectiveLanes(DEFAULT_LANES);
+  const effectiveRelatedWorkflows = uniqueRelatedWorkflows(workflow, relatedWorkflows);
   applyLanePreferences(lanes, normalized.defaults.lanes);
   applyLanePreferences(lanes, normalized.workflows.generic?.lanes);
   if (workflow !== "generic") applyLanePreferences(lanes, normalized.workflows[workflow]?.lanes);
-  for (const related of relatedWorkflows) {
-    if (related === workflow) continue;
+  for (const related of effectiveRelatedWorkflows) {
     applyLanePreferences(lanes, normalized.workflows[related]?.lanes);
   }
 
   return {
     workflow,
-    relatedWorkflows: relatedWorkflows.filter((item) => item !== workflow),
+    relatedWorkflows: effectiveRelatedWorkflows,
     splitDirection: normalized.defaults.splitDirection ?? "right",
     lanes,
   };
@@ -61,6 +61,14 @@ export function buildHerdrLanePlan(
   } satisfies HerdrLanePlan["placement"];
   const successCondition = successConditionForIntent(input.intent);
   const cleanupPolicy = cleanupPolicyForLane(lane);
+  const recommendedActions = buildRecommendedActions(
+    lane,
+    alias,
+    placement,
+    input.intent,
+    successCondition,
+  );
+  const advancedActions = buildAdvancedActions();
 
   return {
     workflow: {
@@ -73,18 +81,12 @@ export function buildHerdrLanePlan(
     lane,
     alias,
     placement,
-    phases: buildPhases(lane, alias, placement, input.intent, successCondition),
+    phases: buildPhasesFromActions(recommendedActions, cleanupPolicy, successCondition),
     successCondition,
     cleanupPolicy,
-    recommendedActions: buildRecommendedActions(
-      lane,
-      alias,
-      placement,
-      input.intent,
-      successCondition,
-    ),
-    advancedActions: buildAdvancedActions(),
-    notes: buildPlanNotes(lane, input),
+    recommendedActions,
+    advancedActions,
+    notes: buildPlanNotesFromActions(recommendedActions, cleanupPolicy),
   };
 }
 
@@ -131,6 +133,20 @@ export function successConditionForIntent(intent: HerdrPlanIntent): string {
   }
 }
 
+function uniqueRelatedWorkflows(
+  workflow: HerdrWorkflowKey,
+  relatedWorkflows: readonly HerdrWorkflowKey[],
+): HerdrWorkflowKey[] {
+  const seen = new Set<HerdrWorkflowKey>();
+  const result: HerdrWorkflowKey[] = [];
+  for (const related of relatedWorkflows) {
+    if (related === "generic" || related === workflow || seen.has(related)) continue;
+    seen.add(related);
+    result.push(related);
+  }
+  return result;
+}
+
 function applyLanePreferences(
   lanes: Record<HerdrLaneId, EffectiveHerdrLane>,
   preferences?: Partial<Record<HerdrLaneId, HerdrLanePreference>>,
@@ -155,13 +171,14 @@ function buildAliasPlan(lane: EffectiveHerdrLane): HerdrLanePlan["alias"] {
       targetAliasHint: `${lane.baseAlias}_<shortid>`,
       pattern: `${lane.baseAlias}_<shortid>`,
       selection:
-        "Call herdr.list to avoid live collisions, then choose a fresh short-id suffix that has not already been used in this session.",
+        'Call herdr(action="list") to avoid live collisions, then choose a fresh short-id suffix that has not already been used in this session.',
     };
   }
   return {
     baseAlias: lane.baseAlias,
     targetAliasHint: lane.baseAlias,
-    selection: "Use the base alias for this sticky/manual lane unless the user asks otherwise.",
+    selection:
+      'Call herdr(action="list") and reuse the base alias when present; create it only when absent.',
   };
 }
 
@@ -178,33 +195,40 @@ function cleanupPolicyForLane(lane: EffectiveHerdrLane): HerdrLanePlan["cleanupP
   };
 }
 
-function buildPhases(
-  lane: EffectiveHerdrLane,
-  alias: HerdrLanePlan["alias"],
-  placement: HerdrLanePlan["placement"],
-  intent: HerdrPlanIntent,
+function buildPhasesFromActions(
+  actions: readonly HerdrActionHint[],
+  cleanupPolicy: HerdrLanePlan["cleanupPolicy"],
   successCondition: string,
 ): HerdrLanePlan["phases"] {
-  const createAction = `Create ${lane.lifecycle === "ephemeral" ? "a fresh" : "the"} split-pane alias '${alias.targetAliasHint}' just in time with herdr.pane_split; omit pane to split the current agent/orchestrator pane, use focus=false and direction='${placement.splitDirection}'. Pass pane only for an explicit user-selected source or when a simultaneous lane must split from a worker pane to protect layout.`;
-  const cleanup =
-    lane.lifecycle === "ephemeral"
-      ? `After the Workflow Success Condition is observed (${successCondition}), call herdr.stop for '${alias.targetAliasHint}' to stop/close it. On failure, timeout, or ambiguity, read recent-unwrapped output, summarize, leave the lane open, and ask before cleanup.`
-      : `Do not auto-close '${alias.targetAliasHint}' because lifecycle is ${lane.lifecycle}; stop/close only on explicit user cleanup.`;
-  const run =
-    intent === "tail-logs"
-      ? `Start the tail/log command only after the just-in-time lane exists; do not pre-open this lane from session or workflow inference alone.`
-      : `Caller supplies the shell command; call herdr.run with pane '${alias.targetAliasHint}' after lane creation.`;
-  const observe =
-    intent === "tail-logs"
-      ? `Use herdr.watch/read for the expected log marker, then stop/close the ephemeral lane on success.`
-      : `Use herdr.watch for readiness/completion and herdr.read with source='recent-unwrapped' when inspection is needed.`;
+  const list = requiredAction(actions, "list");
+  const create = requiredAction(actions, "pane_split");
+  const run = requiredAction(actions, "run");
+  const watch = requiredAction(actions, "watch");
+  const read = requiredAction(actions, "read");
+  const stop = actions.find((action) => action.action === "stop");
+
   return {
-    discover: `Call herdr.list first to detect live alias collisions; do not reuse existing or previously closed ephemeral pane aliases. ${alias.selection}`,
-    create: createAction,
-    run,
-    observe,
-    cleanup,
+    discover: `Call ${formatHerdrActionCall(list)} first. ${list.purpose}`,
+    create: create.condition
+      ? `${create.condition} If needed, call ${formatHerdrActionCall(create)}. ${create.purpose}`
+      : `Call ${formatHerdrActionCall(create)}. ${create.purpose}`,
+    run: `After the lane exists, call ${formatHerdrActionCall(run)}. ${run.purpose}`,
+    observe: `Use ${formatHerdrActionCall(watch)}. ${watch.purpose} Use ${formatHerdrActionCall(read)}. ${read.purpose}`,
+    cleanup: buildCleanupPhase(cleanupPolicy, stop, successCondition),
   };
+}
+
+function buildCleanupPhase(
+  cleanupPolicy: HerdrLanePlan["cleanupPolicy"],
+  stop: HerdrActionHint | undefined,
+  successCondition: string,
+): string {
+  const failure = cleanupPolicy.onFailureOrTimeout;
+  const failureText = `On failure, timeout, or ambiguity, read ${failure.readSource} output, summarize, leave the lane open, and ask before cleanup.`;
+  if (cleanupPolicy.onSuccess.action === "stop" && stop) {
+    return `After the Workflow Success Condition is observed (${successCondition}), call ${formatHerdrActionCall(stop)}. ${failureText}`;
+  }
+  return `Do not auto-close; cleanup requires explicit user action. ${failureText}`;
 }
 
 function buildRecommendedActions(
@@ -215,18 +239,23 @@ function buildRecommendedActions(
   successCondition: string,
 ): HerdrActionHint[] {
   const targetAlias = alias.targetAliasHint;
+  const isEphemeral = lane.lifecycle === "ephemeral";
   const actions: HerdrActionHint[] = [
     {
       phase: "discover",
       action: "list",
-      purpose:
-        "Detect live alias collisions; do not reuse existing or previously closed ephemeral pane aliases.",
+      purpose: isEphemeral
+        ? "Detect live alias collisions; do not reuse existing or previously closed ephemeral pane aliases."
+        : "Find an existing sticky/manual base alias; reuse it when present and create it only when absent.",
     },
     {
       phase: "create",
       action: "pane_split",
       targetAlias,
-      purpose: `Create ${lane.lifecycle === "ephemeral" ? "a fresh" : "the"} split pane from the current agent/orchestrator pane just in time.`,
+      purpose: isEphemeral
+        ? "Create a fresh split pane from the current agent/orchestrator pane just in time."
+        : 'Create the split pane only when herdr(action="list") does not show the base alias.',
+      condition: isEphemeral ? undefined : "Only when the sticky/manual base alias is absent.",
       paramsHint: {
         pane: "<omit for current agent/orchestrator pane>",
         newPane: targetAlias,
@@ -238,7 +267,10 @@ function buildRecommendedActions(
       phase: "run",
       action: "run",
       targetAlias,
-      purpose: "Submit the caller-owned command atomically.",
+      purpose:
+        intent === "tail-logs"
+          ? "Start the tail/log command only after the lane exists; do not pre-open this lane from session or workflow inference alone."
+          : "Submit the caller-owned command atomically.",
       paramsHint: { pane: targetAlias, command: "<caller supplies>" },
     },
     {
@@ -246,7 +278,11 @@ function buildRecommendedActions(
       action: "watch",
       targetAlias,
       purpose:
-        intent === "server" ? "Wait for readiness." : "Wait for completion or success marker.",
+        intent === "tail-logs"
+          ? "Wait for expected log marker."
+          : intent === "server"
+            ? "Wait for readiness."
+            : "Wait for completion or success marker.",
       paramsHint: {
         pane: targetAlias,
         match: "<workflow success marker>",
@@ -261,7 +297,7 @@ function buildRecommendedActions(
       paramsHint: { pane: targetAlias, source: "recent-unwrapped" },
     },
   ];
-  if (lane.lifecycle === "ephemeral") {
+  if (isEphemeral) {
     actions.push({
       phase: "cleanup",
       action: "stop",
@@ -288,28 +324,60 @@ function buildAdvancedActions(): HerdrAdvancedActionHint[] {
   ];
 }
 
-function buildPlanNotes(lane: EffectiveHerdrLane, input: HerdrLanePlanInput): string[] {
+export function formatHerdrActionCall(action: HerdrActionHint): string {
+  const params = action.paramsHint ?? {};
+  const args = [`action="${action.action}"`];
+  for (const key of [
+    "newPane",
+    "pane",
+    "direction",
+    "focus",
+    "command",
+    "match",
+    "timeout",
+    "source",
+  ]) {
+    const value = params[key];
+    if (typeof value !== "string" && typeof value !== "boolean") continue;
+    if (key === "pane" && value === "<omit for current agent/orchestrator pane>") continue;
+    args.push(`${key}=${formatHerdrArgument(value)}`);
+  }
+  return `herdr(${args.join(", ")})`;
+}
+
+function formatHerdrArgument(value: string | boolean): string {
+  if (typeof value === "boolean") return String(value);
+  return `"${value}"`;
+}
+
+function buildPlanNotesFromActions(
+  actions: readonly HerdrActionHint[],
+  cleanupPolicy: HerdrLanePlan["cleanupPolicy"],
+): string[] {
   const notes = [
     "Plan is non-mutating; perform each Herdr action explicitly.",
-    "SF Guardrail mediates the eventual herdr.run command when safety rules match.",
+    'SF Guardrail mediates the eventual herdr(action="run") command when safety rules match.',
   ];
-  if (lane.lifecycle === "ephemeral") {
+  if (cleanupPolicy.onSuccess.action === "stop") {
     notes.push(
       "Fresh Ephemeral Lanes are command-scoped split panes: create with a fresh short-id alias, stop/close after success, and avoid stacking splits off the orchestrator pane.",
     );
-  }
-  if (input.expectedDuration === "long" && lane.lifecycle === "ephemeral") {
+  } else {
+    const create = actions.find((action) => action.action === "pane_split");
     notes.push(
-      "Expected duration is long; use watch/read for progress, but cleanup still depends on the Workflow Success Condition.",
+      `Sticky/manual lanes reuse an existing base alias when present; ${create?.condition ?? "create only when absent"}.`,
     );
   }
-  if (lane.lifecycle === "sticky") {
-    notes.push("Sticky lanes stay open for reuse; do not auto-close on readiness.");
-  }
-  if (lane.lifecycle === "manual") {
-    notes.push("Manual lanes stay open until explicit user cleanup.");
-  }
   return notes;
+}
+
+function requiredAction(
+  actions: readonly HerdrActionHint[],
+  actionName: HerdrActionHint["action"],
+): HerdrActionHint {
+  const action = actions.find((candidate) => candidate.action === actionName);
+  if (!action) throw new Error(`Missing Herdr action hint: ${actionName}`);
+  return action;
 }
 
 function clampConfidence(value: number | undefined): number {

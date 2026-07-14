@@ -34,7 +34,7 @@ sf_herdr_plan
 - Planner-tool registration is lazy/fail-soft so `/sf-herdr` remains available even if optional tool wiring cannot load.
 - Dynamic lanes are command-scoped and activity-informed, not session-scoped. Workflow signals may select a profile, but they never justify opening panes by themselves.
 - Fresh Ephemeral Lanes are created just in time as split panes from the current agent/orchestrator pane with suffixed aliases and stop/close after the workflow success condition.
-- Existing ephemeral panes are not reused; `herdr.list` is used for alias collision detection, not reuse.
+- Existing ephemeral panes are not reused; `herdr(action="list")` is used for alias collision detection, not reuse.
 - Failed, timed out, or ambiguous Fresh Ephemeral Lanes stay open after recent-output summarization until the user chooses cleanup.
 - Managed preferences live in the shared profile store at `lib/common/herdr-profile/store.ts` so SF Brain can later read compact profile summaries without importing this extension.
 - `sf-guardrail` mediates `herdr.run.command` through the same safety gates as `bash.command`.
@@ -77,11 +77,11 @@ sf_herdr_plan
 
 ## Dynamic Lane Lifecycle
 
-- `ephemeral`: create a fresh split pane from the current agent/orchestrator pane immediately before `herdr.run`; choose a short-id suffixed alias that has not already been used in the session after checking `herdr.list` for live collisions; stop/close with `herdr.stop` only after the workflow success condition.
-- `sticky`: keep open for reuse, such as dev servers. Do not use sticky lanes as a reason to pre-open panes.
-- `manual`: never auto-close unless the user asks.
+- `ephemeral`: create a fresh split pane from the current agent/orchestrator pane immediately before `herdr(action="run")`; choose a short-id suffixed alias that has not already been used in the session after checking `herdr(action="list")` for live collisions; stop/close with `herdr(action="stop")` only after the workflow success condition.
+- `sticky`: reuse the base alias when it already exists, or create it just in time when absent, such as dev servers. Do not use sticky lanes as a reason to pre-open panes.
+- `manual`: reuse the base alias when it already exists, or create it just in time when absent; never auto-close unless the user asks.
 
-Apex log tails use a Fresh Ephemeral Lane derived from the `apex_logs` base alias by default: open the lane only when starting the tail/log command, watch/read the expected marker, then stop/close the lane on success. Omit `pane` on `herdr.pane_split` to split the current agent/orchestrator pane; pass `pane` only when the user asks for a source pane or a simultaneous lane must split from a worker pane to protect layout.
+Apex log tails use a Fresh Ephemeral Lane derived from the `apex_logs` base alias by default: open the lane only when starting the tail/log command, watch/read the expected marker, then stop/close the lane on success. Omit `pane` on `herdr(action="pane_split")` to split the current agent/orchestrator pane; pass `pane` only when the user asks for a source pane or a simultaneous lane must split from a worker pane to protect layout.
 
 ## Managed Preferences
 

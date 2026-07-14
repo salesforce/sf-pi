@@ -164,7 +164,7 @@
     "entry": "extensions/sf-brain/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 530
+    "srcLoc": 521
   },
   {
     "id": "sf-browser",
@@ -658,7 +658,7 @@
     "entry": "extensions/sf-herdr/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 892
+    "srcLoc": 928
   },
   {
     "id": "sf-llm-gateway-internal",

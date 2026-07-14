@@ -159,8 +159,19 @@ function signalsFromToolCall(toolName: string, input: unknown): HerdrWorkflowSig
   if (toolName.startsWith("agentscript_")) {
     return [signal("agentscript", toolName, `${toolName} tool used`, 2.5, now)];
   }
-  if (toolName === "d360" || toolName.startsWith("d360_")) {
+  if (
+    toolName === "d360" ||
+    toolName.startsWith("d360_") ||
+    toolName === "data360" ||
+    toolName.startsWith("data360_")
+  ) {
     return [signal("data360", toolName, `${toolName} tool used`, 2.5, now)];
+  }
+  if (toolName === "sf_apex") {
+    return [signal("apex", toolName, `${toolName} tool used`, 2.3, now)];
+  }
+  if (toolName === "sf_lwc") {
+    return [signal("uiBundle", toolName, `${toolName} tool used`, 2.0, now)];
   }
   if (toolName.startsWith("sf_browser_")) {
     return [signal("browser", toolName, `${toolName} tool used`, 2.2, now)];

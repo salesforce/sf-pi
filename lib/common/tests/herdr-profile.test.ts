@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   DEFAULT_SF_HERDR_PREFERENCES,
   buildHerdrLanePlan,
+  formatHerdrActionCall,
   herdrPreferencesPath,
   readSfHerdrPreferences,
   resolveHerdrProfile,
@@ -56,6 +57,18 @@ describe("herdr-profile store contract", () => {
     expect(profile.lanes.logs.baseAlias).toBe("apex_logs");
   });
 
+  it("treats generic as the base profile, not a related workflow override", () => {
+    const profile = resolveHerdrProfile(DEFAULT_SF_HERDR_PREFERENCES, "apex", [
+      "generic",
+      "apex",
+      "generic",
+    ]);
+
+    expect(profile.relatedWorkflows).toEqual([]);
+    expect(profile.lanes.tests.baseAlias).toBe("apex_tests");
+    expect(profile.lanes.logs.baseAlias).toBe("apex_logs");
+  });
+
   it("builds fresh ephemeral lane plans with action hints and cleanup policy", () => {
     const plan = buildHerdrLanePlan(DEFAULT_SF_HERDR_PREFERENCES, {
       primaryWorkflow: "agentscript",
@@ -96,6 +109,7 @@ describe("herdr-profile store contract", () => {
       direction: "right",
       focus: false,
     });
+    expect(plan.phases.create).toContain(formatHerdrActionCall(plan.recommendedActions[1]!));
     expect(plan.cleanupPolicy.onSuccess).toEqual({
       action: "stop",
       requires: "workflow-success-condition",
@@ -105,6 +119,8 @@ describe("herdr-profile store contract", () => {
       readSource: "recent-unwrapped",
     });
     expect(plan.phases.discover).toContain("previously closed ephemeral pane aliases");
+    expect(plan.phases.create).toContain('herdr(action="pane_split"');
+    expect(plan.phases.cleanup).toContain('herdr(action="stop"');
     expect(plan.phases.cleanup).toContain("Workflow Success Condition");
   });
 
@@ -155,6 +171,12 @@ describe("herdr-profile store contract", () => {
     });
     expect(plan.alias.targetAliasHint).toBe("ui_server");
     expect(plan.recommendedActions.map((action) => action.action)).not.toContain("stop");
+    expect(plan.recommendedActions[1]).toMatchObject({
+      action: "pane_split",
+      condition: "Only when the sticky/manual base alias is absent.",
+    });
+    expect(plan.phases.discover).toContain("reuse it when present and create it only when absent");
+    expect(plan.phases.create).toContain("base alias is absent");
     expect(plan.cleanupPolicy.onSuccess).toEqual({
       action: "none",
       requires: "explicit-user-cleanup",

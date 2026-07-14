@@ -36,7 +36,9 @@ export function renderStatus(signalState: HerdrSignalState): string {
   if (runtime.paneId) lines.push(`Pane: ${runtime.paneId}`);
   lines.push(`Preferences: ${herdrPreferencesPath()}`);
   lines.push(`Default split direction: ${preferences.defaults.splitDirection ?? "right"}`);
-  lines.push("Proactive Herdr guidance: controlled by SF Brain settings");
+  lines.push(
+    "Proactive Herdr guidance: controlled by SF Brain settings; injected only when HERDR_ENV=1, HERDR_PANE_ID is set, and the upstream herdr tool is active this turn.",
+  );
   lines.push(
     `Inferred workflow: ${inferred.primaryWorkflow} (${Math.round(inferred.confidence * 100)}%) — ${inferred.reason}`,
   );
@@ -70,7 +72,8 @@ export function renderDoctor(signalState: HerdrSignalState): string {
     "Notes:",
     "- The upstream npm:@ogulcancelik/pi-herdr package provides the actual herdr tool.",
     "- sf-herdr plans lanes only; it does not mutate panes or generate shell commands.",
-    "- Proactive Herdr guidance is controlled by SF Brain settings; SF Herdr handles explicit lane planning.",
-    "- sf-guardrail mediates herdr.run commands when configured safety rules match.",
+    "- Proactive Herdr guidance is controlled by SF Brain settings and requires HERDR_ENV=1, HERDR_PANE_ID, and the upstream herdr tool active this turn.",
+    "- SF Herdr handles explicit lane planning.",
+    '- sf-guardrail mediates herdr(action="run") commands when configured safety rules match.',
   ].join("\n");
 }

@@ -50,6 +50,28 @@ describe("createHerdrSignalState", () => {
     expect(inferred.relatedWorkflows).toContain("apex");
   });
 
+  it("infers workflows from current SF Pi lifecycle tools", () => {
+    const cases = [
+      ["data360_query", "data360"],
+      ["sf_apex", "apex"],
+      ["sf_lwc", "uiBundle"],
+    ] as const;
+
+    for (const [toolName, workflow] of cases) {
+      const state = createHerdrSignalState();
+      state.observeToolExecutionEnd({
+        type: "tool_execution_end",
+        toolCallId: toolName,
+        toolName,
+        args: {},
+        result: {},
+        isError: false,
+      } satisfies HerdrToolExecutionEndEvent);
+
+      expect(state.infer().primaryWorkflow).toBe(workflow);
+    }
+  });
+
   it("observes Herdr pane commands without mutating panes", () => {
     const state = createHerdrSignalState();
     state.observeToolExecutionEnd({

@@ -103,10 +103,10 @@ describe("formatSfPiExtensionContext", () => {
     expect(inactiveContext).not.toContain("Proactive Herdr Guidance");
     expect(activeContext).toContain("Proactive Herdr Guidance: active.");
     expect(activeContext).toContain("Use the `herdr` tool for long-running");
-    expect(activeContext).toContain("fresh ephemeral split pane");
-    expect(activeContext).toContain("alias collision detection");
-    expect(activeContext).toContain("Create panes just in time");
-    expect(activeContext).toContain("omit `pane` to split the current agent/orchestrator pane");
+    expect(activeContext).toContain('herdr(action="list")');
+    expect(activeContext).toContain('herdr(action="pane_split")');
+    expect(activeContext).toContain('herdr(action="run")');
+    expect(activeContext).toContain("SF Herdr plans lane placement and lifecycle only");
     expect(activeContext).toContain("fall back to normal SF Pi operation");
   });
 });

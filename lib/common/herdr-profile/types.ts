@@ -124,6 +124,7 @@ export interface HerdrLanePlan {
       note: string;
     };
   };
+  /** Human-readable compatibility prose derived from recommendedActions and cleanupPolicy. */
   phases: {
     discover: string;
     create: string;
@@ -142,7 +143,9 @@ export interface HerdrLanePlan {
       readSource: "recent-unwrapped";
     };
   };
+  /** Source of truth for visible upstream Herdr calls the agent should execute. */
   recommendedActions: HerdrActionHint[];
   advancedActions: HerdrAdvancedActionHint[];
+  /** Human-readable compatibility notes derived from recommendedActions and cleanupPolicy. */
   notes: string[];
 }

@@ -125,26 +125,17 @@ export function formatSfPiExtensionContext(
     lines.push(
       "- Use the `herdr` tool for long-running, parallel, or command-scoped pane workflows: servers, tests, log tails, previews, evals, and multi-pane monitoring.",
     );
-    lines.push(
-      "- For command-scoped jobs, create a fresh ephemeral split pane from the current agent/orchestrator pane with a short-id suffixed alias; use `herdr.list` for live alias collision detection, and do not reuse old or closed ephemeral pane aliases.",
-    );
-    lines.push(
-      "- Create panes just in time for the command/tool being run; never pre-open log/tail panes from session or workflow inference alone.",
-    );
-    lines.push(
-      "- For `herdr.pane_split`, omit `pane` to split the current agent/orchestrator pane. Pass `pane` only when the user asks for a source pane or a simultaneous lane must split from a worker pane to protect layout.",
-    );
-    lines.push(
-      "- Use `herdr.run` for command-style submission, `herdr.watch`/`herdr.read` for output and readiness, `herdr.send` only for advanced interactive input, and `herdr.wait_agent` only for recognized agent panes.",
-    );
-    lines.push(
-      "- Stop/close fresh ephemeral lanes after the workflow success condition; on failure or timeout, read recent output, summarize, leave the lane open, and ask before cleanup.",
-    );
     if (activeTools.has("sf_herdr_plan")) {
       lines.push(
-        "- Use `sf_herdr_plan` before creating dynamic Salesforce workflow lanes; it is non-mutating and actual pane actions must remain explicit `herdr` calls.",
+        "- Use `sf_herdr_plan` before creating dynamic Salesforce workflow lanes; it is non-mutating and owns detailed lane lifecycle guidance.",
       );
     }
+    lines.push(
+      '- Execute pane work through visible upstream `herdr(action="...")` calls such as `herdr(action="list")`, `herdr(action="pane_split")`, `herdr(action="run")`, `herdr(action="watch"|"read")`, and `herdr(action="stop")`.',
+    );
+    lines.push(
+      "- Let the owning SF Pi extension or Salesforce skill choose the actual command; SF Herdr plans lane placement and lifecycle only.",
+    );
     lines.push("- Keep quick one-shot commands and normal file edits on the ordinary tool path.");
     lines.push(
       "- If Herdr is unavailable or a Herdr action fails, fall back to normal SF Pi operation without blocking the task.",
