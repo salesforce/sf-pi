@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.228.0-2026-07-14",
-  "latestVersion": "0.228.0",
+  "revision": "release-0.228.1-2026-07-14",
+  "latestVersion": "0.228.1",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.228.0",
+      "id": "release-0.228.1",
       "kind": "update",
-      "title": "sf-pi v0.228.0 — add native auto update",
+      "title": "sf-pi v0.228.1 — clear auto update restart notice after restart",
       "publishedAt": "2026-07-14T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.228.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.228.1",
       "severity": "info",
-      "body": "add native auto update"
+      "body": "clear auto update restart notice after restart"
     },
     {
       "id": "pi-0.73-required",
