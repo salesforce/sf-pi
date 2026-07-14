@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.226.2-2026-07-14",
-  "latestVersion": "0.226.2",
+  "revision": "release-0.227.0-2026-07-14",
+  "latestVersion": "0.227.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.226.2",
+      "id": "release-0.227.0",
       "kind": "update",
-      "title": "sf-pi v0.226.2 — sf-herdr: improve lane planning signals and guidance",
+      "title": "sf-pi v0.227.0 — expand welcome splash readiness checks",
       "publishedAt": "2026-07-14T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.226.2",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.227.0",
       "severity": "info",
-      "body": "sf-herdr: improve lane planning signals and guidance"
+      "body": "expand welcome splash readiness checks"
     },
     {
       "id": "pi-0.73-required",
