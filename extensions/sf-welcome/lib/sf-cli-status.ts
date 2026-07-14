@@ -65,6 +65,11 @@ function parseCachedStatus(value: unknown): SfCliStatusInfo | null {
     freshness: record.freshness,
     // Cached values are display-ready; a background refresh may update them.
     loading: false,
+    checkSkipped: record.checkSkipped === true,
+    skipReason:
+      record.skipReason === "offline" || record.skipReason === "version-check-disabled"
+        ? record.skipReason
+        : undefined,
   };
 }
 
@@ -138,9 +143,18 @@ export async function fetchLatestSfCliVersion(signal?: AbortSignal): Promise<str
   }
 }
 
+function versionCheckSkipReason(
+  env: NodeJS.ProcessEnv = process.env,
+): "offline" | "version-check-disabled" | undefined {
+  if (env.PI_OFFLINE) return "offline";
+  if (env.PI_SKIP_VERSION_CHECK) return "version-check-disabled";
+  return undefined;
+}
+
 export async function detectSfCliStatus(
   exec: SfCliExecFn,
   fetchLatest: SfCliFetchLatestFn = fetchLatestSfCliVersion,
+  env: NodeJS.ProcessEnv = process.env,
 ): Promise<SfCliStatusInfo> {
   let installedVersion: string | undefined;
 
@@ -152,6 +166,18 @@ export async function detectSfCliStatus(
     installedVersion = parseSfCliVersion(versionResult.stdout);
   } catch {
     return { installed: false, freshness: "unknown", loading: false };
+  }
+
+  const skipReason = versionCheckSkipReason(env);
+  if (skipReason) {
+    return {
+      installed: true,
+      installedVersion,
+      freshness: "unknown",
+      loading: false,
+      checkSkipped: true,
+      skipReason,
+    };
   }
 
   const latestVersion = await fetchLatest();

@@ -41,6 +41,8 @@ export interface SfCliStatusInfo {
   latestVersion?: string;
   freshness: SfCliFreshness;
   loading: boolean;
+  checkSkipped?: boolean;
+  skipReason?: "offline" | "version-check-disabled";
 }
 
 export type ReleaseFreshness = "checking" | "latest" | "update-available" | "unknown";
@@ -97,6 +99,8 @@ export interface SfSkillsStatusInfo {
   skillCount?: number;
   freshness: SfSkillsFreshness;
   loading: boolean;
+  checkSkipped?: boolean;
+  skipReason?: "offline" | "version-check-disabled";
 }
 
 /** Startup-safe status for Node's custom CA bundle wiring. */

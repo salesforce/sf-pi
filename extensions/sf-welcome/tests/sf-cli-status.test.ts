@@ -104,6 +104,53 @@ describe("detectSfCliStatus", () => {
     expect(fetchCalls).toBe(0);
   });
 
+  it("skips latest check when Pi offline mode is set", async () => {
+    let fetchCalls = 0;
+    const status = await detectSfCliStatus(
+      createExec({
+        "sf --version": { stdout: "@salesforce/cli/2.132.14 darwin-arm64\n" },
+      }),
+      async () => {
+        fetchCalls += 1;
+        return "2.133.0";
+      },
+      { PI_OFFLINE: "1" },
+    );
+
+    expect(status).toMatchObject({
+      installed: true,
+      installedVersion: "2.132.14",
+      freshness: "unknown",
+      checkSkipped: true,
+      skipReason: "offline",
+      loading: false,
+    });
+    expect(fetchCalls).toBe(0);
+  });
+
+  it("skips latest check when Pi version checks are disabled", async () => {
+    let fetchCalls = 0;
+    const status = await detectSfCliStatus(
+      createExec({
+        "sf --version": { stdout: "@salesforce/cli/2.132.14 darwin-arm64\n" },
+      }),
+      async () => {
+        fetchCalls += 1;
+        return "2.133.0";
+      },
+      { PI_SKIP_VERSION_CHECK: "1" },
+    );
+
+    expect(status).toMatchObject({
+      installed: true,
+      freshness: "unknown",
+      checkSkipped: true,
+      skipReason: "version-check-disabled",
+      loading: false,
+    });
+    expect(fetchCalls).toBe(0);
+  });
+
   it("keeps installed status when the registry lookup fails", async () => {
     const status = await detectSfCliStatus(
       createExec({

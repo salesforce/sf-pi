@@ -81,10 +81,10 @@ session_shutdown
 
 6. **Release freshness is cache-first** — sf-pi release freshness reads the
    local package version and the bundled/cached announcements feed on first
-   paint, then piggybacks on the deferred announcements refresh. Pi runtime
-   freshness reads the installed pi version locally, then runs a deferred
-   bounded `pi.dev` latest-version fetch that respects `PI_OFFLINE` and
-   `PI_SKIP_VERSION_CHECK`. The SF Skills row separates **Managed Source
+   paint, then piggybacks on the deferred announcements refresh. Pi runtime,
+   SF CLI, SF Skills, and SF Browser freshness checks respect `PI_OFFLINE` and
+   `PI_SKIP_VERSION_CHECK`; skipped checks render as calm "latest check skipped"
+   labels instead of warnings. The SF Skills row separates **Managed Source
    Availability** from current-project **Skill Gate** wiring: the orange
    `Install official skills` nudge appears only when no sentinel-managed
    `afv-library` checkout exists, while an unwired local checkout renders as
@@ -96,8 +96,11 @@ session_shutdown
 
 7. **Optional integration rows stay quiet** — Slack and LLM Gateway rows are
    hidden unless their bundled extensions are enabled and have meaningful live
-   status. This keeps installs from seeing unavailable or unconfigured
-   integrations as startup noise.
+   status. Optional local tools such as Hunk, Code Analyzer, and Native Auto
+   Update render with calm optional labels when absent or off, and become
+   warning-colored only when an enabled or installed setup is degraded. This
+   keeps installs from seeing unavailable or unconfigured integrations as
+   startup noise.
 
 8. **Background loading** — CLI status, release freshness, font readiness,
    Hunk code-review readiness, Homebrew status, SF Browser `agent-browser`

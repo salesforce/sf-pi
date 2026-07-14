@@ -307,6 +307,95 @@ describe("sf-welcome", () => {
     expect(cliIndex).toBe(gatewayIndex + 1);
   });
 
+  it("renders skipped SF CLI freshness without an update warning", async () => {
+    const { SfWelcomeOverlay } = await import("../lib/splash-component.ts");
+    const data = {
+      modelName: "Claude Sonnet 4 Gateway",
+      providerName: "sf-llm-gateway-internal",
+      loadedCounts: { extensions: 3, skills: 1, promptTemplates: 0 },
+      recentSessions: [],
+      extensionHealth: [],
+      slackConnected: false,
+      monthlyCost: 0,
+      monthlyBudget: 3000,
+      sfCli: {
+        installed: true,
+        installedVersion: "2.130.9",
+        freshness: "unknown" as const,
+        loading: false,
+        checkSkipped: true,
+        skipReason: "offline" as const,
+      },
+    };
+
+    const plain = stripAnsi(new SfWelcomeOverlay(data).render(120).join("\n"));
+
+    expect(plain).toContain("SF CLI");
+    expect(plain).toContain("latest check skipped");
+    expect(plain).not.toContain("Update available");
+  });
+
+  it("keeps optional setup rows calm when disabled or missing", async () => {
+    const { SfWelcomeOverlay } = await import("../lib/splash-component.ts");
+    const data = {
+      modelName: "Claude Sonnet 4",
+      providerName: "anthropic",
+      loadedCounts: { extensions: 3, skills: 1, promptTemplates: 0 },
+      recentSessions: [],
+      extensionHealth: [],
+      slackConnected: false,
+      monthlyCost: 0,
+      monthlyBudget: 3000,
+      hunk: { installed: false, loading: false },
+      autoUpdate: {
+        enabled: false,
+        status: { running: false },
+      },
+      codeAnalyzer: { status: "unknown" as const, summary: "not checked" },
+    };
+
+    const plain = stripAnsi(new SfWelcomeOverlay(data).render(140).join("\n"));
+
+    expect(plain).toContain("Hunk (Code Review)");
+    expect(plain).toContain("Optional · not installed");
+    expect(plain).toContain("Auto Update");
+    expect(plain).toContain("Off · optional");
+    expect(plain).toContain("Code Analyzer");
+    expect(plain).toContain("Optional · not checked");
+    expect(plain).not.toContain("Install recommended");
+    expect(plain).not.toContain("/sf-pi auto-update on");
+    expect(plain).not.toContain("/sf-code-analyzer doctor");
+  });
+
+  it("renders skipped SF Browser freshness without an update warning", async () => {
+    const { SfWelcomeOverlay } = await import("../lib/splash-component.ts");
+    const data = {
+      modelName: "Claude Sonnet 4",
+      providerName: "anthropic",
+      loadedCounts: { extensions: 3, skills: 1, promptTemplates: 0 },
+      recentSessions: [],
+      extensionHealth: [],
+      slackConnected: false,
+      monthlyCost: 0,
+      monthlyBudget: 3000,
+      browserRuntime: {
+        installed: true,
+        installedVersion: "1.2.3",
+        freshness: "unknown" as const,
+        loading: false,
+        checkSkipped: true,
+        skipReason: "offline" as const,
+      },
+    };
+
+    const plain = stripAnsi(new SfWelcomeOverlay(data).render(220).join("\n"));
+
+    expect(plain).toContain("SF Browser");
+    expect(plain).toContain("agent-browser installed");
+    expect(plain).toContain("latest check skipped");
+    expect(plain).not.toContain("agent-browser update");
+  });
+
   it("renders an infinite monthly budget when the gateway reports no ceiling", async () => {
     const { SfWelcomeOverlay } = await import("../lib/splash-component.ts");
     const data = {

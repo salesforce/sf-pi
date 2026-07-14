@@ -408,9 +408,11 @@ function formatSfSkillsStatusValue(data: SplashData, mode: GlyphMode): string {
   }
 
   // freshness === "unknown" — we know the managed source is available; the
-  // network probe either hasn't run yet or failed. Render green to avoid a
-  // false install alarm when the current project deliberately hasn't wired it.
-  return `${SF_GREEN("✓")} ${SF_GREEN(managedLabel)}${skillCountSuffix}`;
+  // network probe either hasn't run yet, was skipped, or failed. Render green
+  // to avoid a false install alarm when the current project deliberately
+  // hasn't wired it.
+  const skippedSuffix = skills.checkSkipped ? ` ${MUTED("· latest check skipped")}` : "";
+  return `${SF_GREEN("✓")} ${SF_GREEN(managedLabel)}${skippedSuffix}${skillCountSuffix}`;
 }
 
 /** Suggested follow-up command for the current sf-skills state, or null when
@@ -437,7 +439,7 @@ function sfSkillsActionHint(skills: SplashData["sfSkills"]): string | null {
 function formatCodeAnalyzerStatusValue(data: SplashData): string {
   const status = data.codeAnalyzer;
   if (!status || status.status === "unknown") {
-    return `${SF_ORANGE("○")} ${SF_ORANGE("Install recommended")}`;
+    return `${MUTED("○")} ${MUTED("Optional · not checked")}`;
   }
   if (status.status === "ready") {
     const suffix = status.pluginVersion ? ` ${MUTED(`(${status.pluginVersion})`)}` : "";
@@ -446,12 +448,12 @@ function formatCodeAnalyzerStatusValue(data: SplashData): string {
   if (status.status === "partial") {
     return `${SF_ORANGE("!")} ${SF_ORANGE("Partial setup")} ${MUTED("· /sf-code-analyzer doctor")}`;
   }
-  return `${SF_ORANGE("↑")} ${SF_ORANGE("Install recommended")}`;
+  return `${MUTED("○")} ${MUTED("Optional · install available")}`;
 }
 
 function codeAnalyzerActionHint(data: SplashData): string | null {
   if (!data.codeAnalyzer) return null;
-  if (data.codeAnalyzer.status === "ready") return null;
+  if (data.codeAnalyzer.status === "ready" || data.codeAnalyzer.status === "unknown") return null;
   return "/sf-code-analyzer doctor";
 }
 
@@ -470,6 +472,11 @@ function formatSfCliStatusValue(data: SplashData, mode: GlyphMode): string {
   if (cli.freshness === "latest") {
     const suffix = version ? ` ${MUTED(`(${version})`)}` : "";
     return `${SF_GREEN("✓")} ${SF_GREEN("Installed")} ${MUTED("· latest")}${suffix}`;
+  }
+
+  if (cli.checkSkipped) {
+    const suffix = version ? ` ${MUTED(`(${version})`)}` : "";
+    return `${SF_GREEN("✓")} ${SF_GREEN("Installed")} ${MUTED("· latest check skipped")}${suffix}`;
   }
 
   if (cli.freshness === "update-available") {
@@ -578,13 +585,7 @@ function formatHunkStatusValue(data: SplashData, mode: GlyphMode): string {
     const command = hunk.command ? ` ${MUTED(`· ${hunk.command} diff`)}` : "";
     return `${SF_GREEN("✓")} ${SF_GREEN("Installed")}${version}${command}`;
   }
-  return `${SF_ORANGE("↑")} ${SF_ORANGE("Install recommended")}`;
-}
-
-function hunkActionHint(data: SplashData): string | null {
-  const hunk = data.hunk;
-  if (!hunk || hunk.loading || hunk.installed) return null;
-  return "npm i -g hunkdiff";
+  return `${MUTED("○")} ${MUTED("Optional · not installed")}`;
 }
 
 function shouldRenderHomebrewStatus(data: SplashData): boolean {
@@ -617,7 +618,7 @@ function formatAutoUpdateStatusValue(data: SplashData, mode: GlyphMode): string 
     const target = auto.status.currentTarget === "sf-cli" ? "SF CLI" : "Pi/SF Pi";
     return MUTED(`${glyph("hourglass", mode)} Updating ${target}`);
   }
-  if (!auto.enabled) return `${MUTED("○")} ${MUTED("Off")}`;
+  if (!auto.enabled) return `${MUTED("○")} ${MUTED("Off · optional")}`;
   if (auto.status.lastResult === "failed") {
     return `${SF_ORANGE("!")} ${SF_ORANGE("On · last run failed")}`;
   }
@@ -630,7 +631,7 @@ function formatAutoUpdateStatusValue(data: SplashData, mode: GlyphMode): string 
 
 function autoUpdateActionHint(data: SplashData): string | null {
   const auto = data.autoUpdate;
-  if (!auto || !auto.enabled) return "/sf-pi auto-update on";
+  if (!auto || !auto.enabled) return null;
   if (auto.status.lastResult === "failed") return "/sf-pi auto-update status";
   if (auto.status.restartRecommended) return "restart pi to use updated runtime/extensions";
   return null;
@@ -647,6 +648,9 @@ function formatBrowserRuntimeStatusValue(data: SplashData, mode: GlyphMode): str
   const version = browser.installedVersion ? ` ${MUTED(`(v${browser.installedVersion})`)}` : "";
   if (browser.freshness === "latest") {
     return `${SF_GREEN("✓")} ${SF_GREEN("agent-browser installed")} ${MUTED("· latest")}${version}`;
+  }
+  if (browser.checkSkipped) {
+    return `${SF_GREEN("✓")} ${SF_GREEN("agent-browser installed")} ${MUTED("· latest check skipped")}${version}`;
   }
   if (browser.freshness === "update-available") {
     const latest = browser.latestVersion ? `v${browser.latestVersion}` : "latest";
@@ -935,11 +939,6 @@ function buildLeftColumn(
   lines.push(
     formatGlyphInfoRow("hunk", mode, "Hunk (Code Review)", formatHunkStatusValue(data, mode)),
   );
-  const hunkHint = hunkActionHint(data);
-  if (hunkHint) {
-    const truncated = truncateToWidth(hunkHint, Math.max(10, colWidth - 4), "…");
-    lines.push(`   ${MUTED(`→ ${truncated}`)}`);
-  }
 
   lines.push(
     formatGlyphInfoRow("browser", mode, "SF Browser", formatBrowserRuntimeStatusValue(data, mode)),

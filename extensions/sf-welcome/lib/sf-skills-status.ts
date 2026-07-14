@@ -124,6 +124,11 @@ function parseCachedStatus(value: unknown): SfSkillsStatusInfo | null {
     freshness: record.freshness,
     // Cached values are display-ready; a background refresh may update them.
     loading: false,
+    checkSkipped: record.checkSkipped === true,
+    skipReason:
+      record.skipReason === "offline" || record.skipReason === "version-check-disabled"
+        ? record.skipReason
+        : undefined,
   };
 }
 
@@ -531,9 +536,18 @@ export async function fetchUpstreamCompare(
  * Always resolves; never throws. Returns the input local status verbatim
  * with `freshness` filled in when the comparison succeeded.
  */
+function versionCheckSkipReason(
+  env: NodeJS.ProcessEnv = process.env,
+): "offline" | "version-check-disabled" | undefined {
+  if (env.PI_OFFLINE) return "offline";
+  if (env.PI_SKIP_VERSION_CHECK) return "version-check-disabled";
+  return undefined;
+}
+
 export async function detectSfSkillsStatus(
   cwd: string,
   fetchCompare: SfSkillsFetchCompareFn = fetchUpstreamCompare,
+  env: NodeJS.ProcessEnv = process.env,
 ): Promise<SfSkillsStatusInfo> {
   const local = detectInstallStateLocal(cwd);
   if (local.installKind === "not-installed" || local.installKind === "linked") {
@@ -543,6 +557,16 @@ export async function detectSfSkillsStatus(
   }
   if (!local.localSha) {
     return { ...local, freshness: "unknown" };
+  }
+
+  const skipReason = versionCheckSkipReason(env);
+  if (skipReason) {
+    return {
+      ...local,
+      freshness: "unknown",
+      checkSkipped: true,
+      skipReason,
+    };
   }
 
   const compare = await fetchCompare(local.localSha);

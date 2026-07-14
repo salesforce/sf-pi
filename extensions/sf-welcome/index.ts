@@ -1001,19 +1001,15 @@ export default function sfWelcome(pi: ExtensionAPI) {
       ? `installed${data.hunk.installedVersion ? ` v${data.hunk.installedVersion}` : ""}`
       : data.hunk?.loading
         ? "checking"
-        : "install recommended";
+        : "optional · not installed";
     const homebrewStatus = data.homebrew
       ? data.homebrew.kind === "installed"
         ? `installed${data.homebrew.version ? ` v${data.homebrew.version}` : ""}`
         : data.homebrew.kind
       : "not checked";
-    const browserRuntimeStatus = data.browserRuntime?.installed
-      ? `installed${data.browserRuntime.installedVersion ? ` v${data.browserRuntime.installedVersion}` : ""} (${data.browserRuntime.freshness})`
-      : data.browserRuntime?.loading
-        ? "checking"
-        : "missing";
+    const browserRuntimeStatus = formatPlainBrowserRuntimeStatus(data.browserRuntime);
     const autoUpdateStatus = data.autoUpdate
-      ? `${data.autoUpdate.enabled ? "on" : "off"}${data.autoUpdate.status.lastResult ? ` (${data.autoUpdate.status.lastResult})` : ""}`
+      ? `${data.autoUpdate.enabled ? "on" : "off · optional"}${data.autoUpdate.status.lastResult ? ` (${data.autoUpdate.status.lastResult})` : ""}`
       : "not checked";
     const activeExtensionCount = data.extensionHealth.filter(
       (ext) => ext.status === "active" || ext.status === "locked",
@@ -1048,6 +1044,15 @@ export default function sfWelcome(pi: ExtensionAPI) {
       "Recent Sessions:",
       ...data.recentSessions.map((s) => `  • ${s.name} (${s.timeAgo})`),
     ].join("\n");
+  }
+
+  function formatPlainBrowserRuntimeStatus(status: SplashData["browserRuntime"]): string {
+    if (!status) return "not checked";
+    if (status.loading) return "checking";
+    if (!status.installed) return "missing";
+    const version = status.installedVersion ? ` v${status.installedVersion}` : "";
+    const freshness = status.checkSkipped ? "latest check skipped" : status.freshness;
+    return `installed${version} (${freshness})`;
   }
 
   function formatPlainHerdrPiIntegration(status: SplashData["herdrRuntime"]): string {

@@ -357,6 +357,44 @@ describe("detectSfSkillsStatus", () => {
     expect(status.commitsBehind).toBe(7);
   });
 
+  it("skips the compare API when Pi offline mode is set", async () => {
+    setupManagedGlobal("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+    let calls = 0;
+    const status = await detectSfSkillsStatus(
+      homeDir,
+      async () => {
+        calls += 1;
+        return { remoteSha: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", behindBy: 7 };
+      },
+      { PI_OFFLINE: "1" },
+    );
+
+    expect(status.installKind).toBe("managed");
+    expect(status.freshness).toBe("unknown");
+    expect(status.checkSkipped).toBe(true);
+    expect(status.skipReason).toBe("offline");
+    expect(calls).toBe(0);
+  });
+
+  it("skips the compare API when Pi version checks are disabled", async () => {
+    setupManagedGlobal("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+    let calls = 0;
+    const status = await detectSfSkillsStatus(
+      homeDir,
+      async () => {
+        calls += 1;
+        return { remoteSha: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", behindBy: 7 };
+      },
+      { PI_SKIP_VERSION_CHECK: "1" },
+    );
+
+    expect(status.installKind).toBe("managed");
+    expect(status.freshness).toBe("unknown");
+    expect(status.checkSkipped).toBe(true);
+    expect(status.skipReason).toBe("version-check-disabled");
+    expect(calls).toBe(0);
+  });
+
   it("degrades to freshness=unknown when the compare API fails", async () => {
     setupManagedGlobal("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
     const status = await detectSfSkillsStatus(homeDir, async () => undefined);

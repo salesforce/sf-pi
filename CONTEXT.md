@@ -100,9 +100,9 @@ _Avoid_: stale failure, optimistic status, cached truth
 The latest attempt to refresh a status surface from a live or configured source. It can fail independently of whether a **Last-Known Usable Status** exists.
 _Avoid_: source of truth, cached status, displayed status
 
-**Stale Status Indicator**:
-A compact human-facing suffix marker, rendered as `⚠ stale`, that says the displayed **Last-Known Usable Status** is not freshly confirmed. It belongs in compact status surfaces while detailed commands or panels show the **Current Probe Status** failure.
-_Avoid_: error badge, unavailable state, hidden failure
+**Last-Known Status Indicator**:
+A compact, non-alarming human-facing suffix marker that says the displayed **Last-Known Usable Status** is orientation-only and not freshly confirmed. It should render calmly, for example `↺ last known`, while detailed commands or panels show the **Current Probe Status** failure.
+_Avoid_: warning badge, stale error, unavailable state, hidden probe failure
 
 **Org Status Fallback Boundary**:
 The identity boundary for reusing a Salesforce org **Last-Known Usable Status**. The fallback is valid only when the Salesforce project root and configured target org string match, and the reusable snapshot came from a successful org detection with an org ID. When the current org probe fails, compact status surfaces should prefer the current successful status, then the last successful status on the current session branch, then the successful disk cache, and only then the failed current status.
@@ -113,7 +113,7 @@ The identity boundary for reusing a gateway usage **Last-Known Usable Status**. 
 _Avoid_: billing truth, key identity guarantee, unavailable-first footer
 
 **Status Presentation Fallback**:
-A presentation-layer decision that chooses a **Last-Known Usable Status** plus **Stale Status Indicator** for compact surfaces while preserving the raw **Current Probe Status** for diagnostics. It should be centralized in helper functions rather than embedded ad hoc in renderers.
+A presentation-layer decision that chooses a **Last-Known Usable Status** plus **Last-Known Status Indicator** for compact surfaces while preserving the raw **Current Probe Status** for diagnostics. It should be centralized in helper functions rather than embedded ad hoc in renderers.
 _Avoid_: store rewrite, hidden probe failure, duplicated fallback logic
 
 **Browser Runtime Readiness**:
