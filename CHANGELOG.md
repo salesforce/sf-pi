@@ -529,6 +529,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.226.2](https://github.com/salesforce/sf-pi/compare/v0.226.1...v0.226.2) (2026-07-14)
+
+
+### Bug Fixes
+
+* **sf-herdr:** improve lane planning signals and guidance ([e573146](https://github.com/salesforce/sf-pi/commit/e573146c70825c306d43b8e96709fe11cc4a8f8a))
+
 ## [0.226.1](https://github.com/salesforce/sf-pi/compare/v0.226.0...v0.226.1) (2026-07-13)
 
 

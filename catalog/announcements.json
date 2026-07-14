@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.226.1-2026-07-13",
-  "latestVersion": "0.226.1",
+  "revision": "release-0.226.2-2026-07-14",
+  "latestVersion": "0.226.2",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.226.1",
+      "id": "release-0.226.2",
       "kind": "update",
-      "title": "sf-pi v0.226.1 — sf-llm-gateway: remove obsolete beta header path",
-      "publishedAt": "2026-07-13T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.226.1",
+      "title": "sf-pi v0.226.2 — sf-herdr: improve lane planning signals and guidance",
+      "publishedAt": "2026-07-14T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.226.2",
       "severity": "info",
-      "body": "sf-llm-gateway: remove obsolete beta header path"
+      "body": "sf-herdr: improve lane planning signals and guidance"
     },
     {
       "id": "pi-0.73-required",
