@@ -12,8 +12,8 @@ Salesforce-branded splash screen that displays on startup with an animated Pi + 
 - Optional Slack and auth-gated LLM Gateway status only when enabled/configured,
   plus lightweight SF CLI install/latest, Node.js runtime floor, Homebrew
   status, Herdr multiplexer readiness, bundled font status, Hunk code-review
-  readiness, SF Browser `agent-browser` runtime status, and Node CA certificate
-  status
+  readiness, SF Browser `agent-browser` runtime status, Native Auto Update
+  status, and Node CA certificate status
 - **Privacy row** showing pi's anonymous-telemetry posture
   (`telemetry off (sf-pi default)` / `(user override)` / `telemetry on (user
 override)`). Driven by `lib/common/privacy/state.ts` — see
@@ -101,7 +101,7 @@ session_shutdown
 
 8. **Background loading** — CLI status, release freshness, font readiness,
    Hunk code-review readiness, Homebrew status, SF Browser `agent-browser`
-   runtime status, Node CA certificate status, monthly usage, and remote
+   runtime status, Native Auto Update status, Node CA certificate status, monthly usage, and remote
    announcements refresh asynchronously after the splash appears, so startup
    remains responsive while the visible rows update in place. Node.js and Herdr
    runtime readiness are process-local reads only. Font detection is local-only
@@ -264,7 +264,8 @@ and Homebrew readiness under `<globalAgentDir>/sf-pi/sf-welcome/font-status.json
 `<globalAgentDir>/sf-pi/sf-welcome/homebrew-status.json`. SF Browser owns the
 shared `agent-browser` runtime cache at
 `<globalAgentDir>/sf-pi/sf-browser/agent-browser-status.json`; SF Welcome only
-reads it cache-first and refreshes it with a deferred version probe. sf-pi
+reads it cache-first and refreshes it with a deferred version probe. Native Auto
+Update status lives at `<globalAgentDir>/sf-pi/auto-update/status.json`. sf-pi
 release freshness reuses the announcements state/cache under
 `<globalAgentDir>/state/sf-pi/announcements.json`.
 

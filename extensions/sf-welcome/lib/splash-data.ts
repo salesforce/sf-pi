@@ -34,6 +34,10 @@ import { readCodeAnalyzerReadiness } from "../../../lib/common/code-analyzer-sta
 import { getTelemetryState } from "../../../lib/common/privacy/state.ts";
 import { isNodeRuntimeSupported, NODE_RUNTIME_FLOOR } from "../../../lib/common/runtime-floor.ts";
 import {
+  readAutoUpdateEnabled,
+  readAutoUpdateStatus,
+} from "../../../lib/common/auto-update/store.ts";
+import {
   defaultBrowserRuntimeStatus,
   readCachedBrowserRuntimeStatus,
 } from "../../../lib/common/browser-runtime-status/store.ts";
@@ -53,6 +57,7 @@ import type {
   DoctorNudgeSummary,
   LoadedCounts,
   NodeRuntimeStatusInfo,
+  AutoUpdateStatusInfo,
   PrivacyStatusSummary,
   SplashData,
 } from "./types.ts";
@@ -75,6 +80,7 @@ export type {
   FontRuntimeStatusInfo,
   HunkStatusInfo,
   HomebrewStatusInfo,
+  AutoUpdateStatusInfo,
   SplashData,
   RecentSession,
   ExtensionHealthItem,
@@ -386,6 +392,7 @@ export function collectInitialSplashData(
     fontRuntime: readCachedFontRuntimeStatus() ?? defaultFontRuntimeStatus(),
     hunk: readCachedHunkStatus() ?? defaultHunkStatus(),
     homebrew: readCachedHomebrewStatus() ?? defaultHomebrewStatus(),
+    autoUpdate: collectAutoUpdateStatus(),
     browserRuntime: readCachedBrowserRuntimeStatus() ?? defaultBrowserRuntimeStatus(),
     sfPiRelease: detectSfPiReleaseStatus(cwd),
     piRelease: collectInitialPiReleaseStatus(),
@@ -490,6 +497,7 @@ export function collectSplashData(
     fontRuntime: readCachedFontRuntimeStatus() ?? defaultFontRuntimeStatus(),
     hunk: readCachedHunkStatus() ?? defaultHunkStatus(),
     homebrew: readCachedHomebrewStatus() ?? defaultHomebrewStatus(),
+    autoUpdate: collectAutoUpdateStatus(),
     browserRuntime: readCachedBrowserRuntimeStatus() ?? defaultBrowserRuntimeStatus(),
     sfPiRelease: detectSfPiReleaseStatus(cwd),
     piRelease: collectInitialPiReleaseStatus(),
@@ -556,5 +564,12 @@ export function collectNodeRuntimeStatus(version: string = process.version): Nod
     version,
     requiredVersion: NODE_RUNTIME_FLOOR,
     loading: false,
+  };
+}
+
+export function collectAutoUpdateStatus(): AutoUpdateStatusInfo {
+  return {
+    enabled: readAutoUpdateEnabled(),
+    status: readAutoUpdateStatus(),
   };
 }

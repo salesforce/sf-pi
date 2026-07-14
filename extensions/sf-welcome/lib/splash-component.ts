@@ -583,6 +583,32 @@ function formatHomebrewStatusValue(data: SplashData, mode: GlyphMode): string {
   return `${SF_ORANGE("?")} ${SF_ORANGE("Unknown")}`;
 }
 
+function formatAutoUpdateStatusValue(data: SplashData, mode: GlyphMode): string {
+  const auto = data.autoUpdate;
+  if (!auto) return MUTED("○ Off");
+  if (auto.status.running) {
+    const target = auto.status.currentTarget === "sf-cli" ? "SF CLI" : "Pi/SF Pi";
+    return MUTED(`${glyph("hourglass", mode)} Updating ${target}`);
+  }
+  if (!auto.enabled) return `${MUTED("○")} ${MUTED("Off")}`;
+  if (auto.status.lastResult === "failed") {
+    return `${SF_ORANGE("!")} ${SF_ORANGE("On · last run failed")}`;
+  }
+  if (auto.status.lastRunAt) {
+    const suffix = auto.status.restartRecommended ? " · restart recommended" : "";
+    return `${SF_GREEN("✓")} ${SF_GREEN("On")} ${MUTED(`· daily${suffix}`)}`;
+  }
+  return `${SF_GREEN("✓")} ${SF_GREEN("On")} ${MUTED("· daily")}`;
+}
+
+function autoUpdateActionHint(data: SplashData): string | null {
+  const auto = data.autoUpdate;
+  if (!auto || !auto.enabled) return "/sf-pi auto-update on";
+  if (auto.status.lastResult === "failed") return "/sf-pi auto-update status";
+  if (auto.status.restartRecommended) return "restart pi to use updated runtime/extensions";
+  return null;
+}
+
 function formatBrowserRuntimeStatusValue(data: SplashData, mode: GlyphMode): string {
   const browser = data.browserRuntime;
   if (!browser || browser.loading || browser.freshness === "checking") {
@@ -933,6 +959,15 @@ function buildLeftColumn(
     lines.push(
       formatGlyphInfoRow("privacy", mode, "Privacy", formatPrivacyStatusValue(data.privacy)),
     );
+  }
+
+  lines.push(
+    formatGlyphInfoRow("autoUpdate", mode, "Auto Update", formatAutoUpdateStatusValue(data, mode)),
+  );
+  const autoUpdateHint = autoUpdateActionHint(data);
+  if (autoUpdateHint) {
+    const truncated = truncateToWidth(autoUpdateHint, Math.max(10, colWidth - 4), "…");
+    lines.push(`   ${MUTED(`→ ${truncated}`)}`);
   }
 
   // SF Skills (forcedotcom/afv-library) install + freshness. Always

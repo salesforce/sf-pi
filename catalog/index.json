@@ -860,7 +860,7 @@
       "session_shutdown"
     ],
     "docs": {
-      "summary": "Core manager for the sf-pi package. Provides /sf-pi list/enable/disable/status/display/recommended/announcements/skills/doctor commands plus the interactive TUI overlay. alwaysActive: enable/disable is mediated through this extension only.",
+      "summary": "Core manager for the sf-pi package. Provides /sf-pi list/enable/disable/status/display/recommended/announcements/skills/doctor/auto-update commands plus the interactive TUI overlay and settings panel. alwaysActive: enable/disable is mediated through this extension only.",
       "primaryFiles": [
         "index.ts",
         "lib/overlay.ts",
@@ -870,12 +870,15 @@
         "lib/recommendations.ts",
         "lib/doctor-command.ts",
         "lib/skill-sources-command.ts",
-        "lib/config-panel.ts"
+        "lib/auto-update-command.ts",
+        "lib/config-panel.ts",
+        "../../lib/common/auto-update/store.ts"
       ],
       "stateFiles": [
         "~/.pi/agent/settings.json (sf-pi package filter list)",
         "<globalAgentDir>/state/sf-pi/recommendations.json",
-        "<globalAgentDir>/state/sf-pi/announcements.json"
+        "<globalAgentDir>/state/sf-pi/announcements.json",
+        "<globalAgentDir>/sf-pi/auto-update/status.json"
       ],
       "safety": [
         "Owns the WRITE side of pi's package filter list via lib/common/sf-pi-package-state.ts.",
@@ -885,7 +888,7 @@
     "entry": "extensions/sf-pi-manager/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 3670
+    "srcLoc": 3928
   },
   {
     "id": "sf-skills",
@@ -1100,6 +1103,7 @@
         "lib/hunk-status.ts",
         "lib/homebrew-status.ts",
         "lib/herdr-runtime-status.ts",
+        "../../lib/common/auto-update/store.ts",
         "lib/welcome-settings.ts",
         "lib/config-panel.ts"
       ],
@@ -1108,12 +1112,13 @@
         "<globalAgentDir>/sf-pi/sf-welcome/pi-release-status.json",
         "<globalAgentDir>/sf-pi/sf-welcome/font-status.json",
         "<globalAgentDir>/sf-pi/sf-welcome/hunk-status.json",
-        "<globalAgentDir>/sf-pi/sf-welcome/homebrew-status.json"
+        "<globalAgentDir>/sf-pi/sf-welcome/homebrew-status.json",
+        "<globalAgentDir>/sf-pi/auto-update/status.json"
       ]
     },
     "entry": "extensions/sf-welcome/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 6147
+    "srcLoc": 6204
   }
 ]

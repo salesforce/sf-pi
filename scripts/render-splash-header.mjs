@@ -60,6 +60,10 @@ const data = {
     freshness: "latest",
     loading: false,
   },
+  autoUpdate: {
+    enabled: false,
+    status: {},
+  },
   lifetimeCost: 6872,
   lifetimeUsageSource: "gateway",
   sfEnvironment: {

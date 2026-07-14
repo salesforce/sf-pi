@@ -158,6 +158,12 @@ describe("parseCommandArgs", () => {
     expect(result.subcommand).toBe("doctor");
     expect(result.rest).toBe("fix skills");
   });
+
+  it("routes 'auto-update' to the native auto-update subcommand", () => {
+    const result = parseCommandArgs("auto-update run");
+    expect(result.subcommand).toBe("auto-update");
+    expect(result.rest).toBe("run");
+  });
 });
 
 describe("parseDoctorArgs", () => {

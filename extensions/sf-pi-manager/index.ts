@@ -27,6 +27,7 @@
  * - /sf-pi announcements [...] list/dismiss/reset sf-pi announcements
  * - /sf-pi skills [...]       read-only skill-source summary (manage in /sf-skills)
  * - /sf-pi doctor [fix ...]   diagnose and repair startup/skill setup
+ * - /sf-pi auto-update [...]  manage native auto-update
  * - /sf-pi help               show available commands
  *
  * Behavior matrix:
@@ -99,6 +100,11 @@ import {
 import { handleSkills, parseSkillsArgs } from "./lib/skill-sources-command.ts";
 import { handleDoctor, parseDoctorArgs } from "./lib/doctor-command.ts";
 import { handleTelemetry, parseTelemetryArgs } from "./lib/telemetry-command.ts";
+import {
+  handleAutoUpdate,
+  parseAutoUpdateArgs,
+  scheduleNativeAutoUpdate,
+} from "./lib/auto-update-command.ts";
 import { assertTelemetryDefault } from "../../lib/common/privacy/assert-default.ts";
 import { getTelemetryState } from "../../lib/common/privacy/state.ts";
 import {
@@ -172,6 +178,7 @@ type CommandArgs = {
     | "skills"
     | "doctor"
     | "telemetry"
+    | "auto-update"
     | "help";
   /**
    * Explicit scope from the command tokens, or `undefined` to mean
@@ -218,6 +225,7 @@ export default function sfPiManagerExtension(pi: ExtensionAPI) {
         "skills",
         "doctor",
         "telemetry",
+        "auto-update",
         "help",
       ];
       const tokens = prefix.trim().split(/\s+/);
@@ -236,6 +244,15 @@ export default function sfPiManagerExtension(pi: ExtensionAPI) {
       // Second token for telemetry: status / on / off
       if (sub === "telemetry" && tokens.length <= 2) {
         const subActions = ["status", "on", "off"];
+        const matches = subActions
+          .filter((s) => s.startsWith(current.toLowerCase()))
+          .map((s) => ({ value: s, label: s }));
+        return matches.length > 0 ? matches : null;
+      }
+
+      // Second token for auto-update: status / on / off / run
+      if (sub === "auto-update" && tokens.length <= 2) {
+        const subActions = ["status", "on", "off", "run"];
         const matches = subActions
           .filter((s) => s.startsWith(current.toLowerCase()))
           .map((s) => ({ value: s, label: s }));
@@ -298,6 +315,7 @@ export default function sfPiManagerExtension(pi: ExtensionAPI) {
   // before the runtime is torn down — otherwise a reload within the timer
   // window fires it against a stale ctx and crashes pi.
   let doctorRefreshTimer: ReturnType<typeof setTimeout> | undefined;
+  let autoUpdateTimer: ReturnType<typeof setTimeout> | undefined;
   const isAbortedSafe = (ctx: ExtensionContext): boolean => {
     try {
       return ctx.signal?.aborted ?? false;
@@ -306,7 +324,7 @@ export default function sfPiManagerExtension(pi: ExtensionAPI) {
     }
   };
 
-  pi.on("session_start", async (_event, ctx) => {
+  pi.on("session_start", async (event, ctx) => {
     // Idempotent: writes pi setting + audit record only when the key is
     // currently undefined. Respects an explicit `true` user opt-in.
     // Emits a one-time pi.appendEntry notice on the session that flips it.
@@ -351,15 +369,23 @@ export default function sfPiManagerExtension(pi: ExtensionAPI) {
         .catch(() => undefined);
     }, 2_500);
     doctorRefreshTimer.unref?.();
+
+    if (autoUpdateTimer) clearTimeout(autoUpdateTimer);
+    if (event.reason === "startup") {
+      autoUpdateTimer = scheduleNativeAutoUpdate(pi, ctx);
+    }
   });
 
   pi.on("session_shutdown", async (_event, ctx) => {
     if (doctorRefreshTimer) clearTimeout(doctorRefreshTimer);
     doctorRefreshTimer = undefined;
+    if (autoUpdateTimer) clearTimeout(autoUpdateTimer);
+    autoUpdateTimer = undefined;
     ctx.ui.setStatus(STATUS_KEY, undefined);
     ctx.ui.setStatus(RECOMMENDATIONS_STATUS_KEY, undefined);
     ctx.ui.setStatus(ANNOUNCEMENTS_STATUS_KEY, undefined);
     ctx.ui.setStatus(DOCTOR_STATUS_KEY, undefined);
+    ctx.ui.setStatus("sf-pi-auto-update", undefined);
   });
 }
 
@@ -402,6 +428,10 @@ export function parseCommandArgs(raw: string): CommandArgs {
   if (sub === "telemetry" || sub === "tel") {
     const rest = tokens.slice(1).join(" ");
     return { subcommand: "telemetry", scope, rest };
+  }
+  if (sub === "auto-update" || sub === "autoupdate" || sub === "update-auto") {
+    const rest = tokens.slice(1).join(" ");
+    return { subcommand: "auto-update", scope, rest };
   }
   if (sub === "display") {
     const target =
@@ -512,6 +542,10 @@ async function handleCommand(
     case "telemetry": {
       const telArgs = parseTelemetryArgs(args.rest ?? "");
       await handleTelemetry(ctx, telArgs, PACKAGE_VERSION);
+      break;
+    }
+    case "auto-update": {
+      await handleAutoUpdate(pi, ctx, parseAutoUpdateArgs(args.rest ?? ""));
       break;
     }
     case "help":
@@ -849,6 +883,7 @@ function handleHelp(ctx: ExtensionCommandContext): void {
     `  /${COMMAND_NAME} skills [...]              Skill-source summary (manage in /sf-skills)`,
     `  /${COMMAND_NAME} doctor [fix ...]          Diagnose and repair startup/skill setup`,
     `  /${COMMAND_NAME} telemetry [status|on|off] Show or change pi anonymous-telemetry posture`,
+    `  /${COMMAND_NAME} auto-update [status|on|off|run] Manage native auto-update`,
     `  /${COMMAND_NAME} help                      Show this help`,
     "",
     "Available extensions:",

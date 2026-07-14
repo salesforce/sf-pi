@@ -36,6 +36,10 @@ _Avoid_: local pricing estimate, synthesized tier pricing, direct-provider cost 
 The SF Pi practice of letting Pi own generic global and project-local resource mechanics while SF Pi keeps curated Salesforce workflow guidance. It is a deprecation path for duplicate mechanics, not a reason to remove Salesforce-specific UX.
 _Avoid_: custom project config, duplicate package manager, raw Pi config replacement, safety weakening
 
+**Native Auto Update**:
+An opt-in SF Pi update flow that delegates to supported first-party updater commands, such as `pi update --all` and `sf update stable`, instead of reimplementing package-manager-specific update logic. It is a convenience workflow, not a background package-management framework.
+_Avoid_: custom updater framework, installer matrix, background daemon, hidden restart
+
 **Gateway Header Proof Spike**:
 A narrow behavior test and implementation spike that proves Pi's provider-header hook can preserve SF LLM Gateway routing, model defaults, beta headers, and secret redaction. If it proves simpler and equivalent, SF Pi should replace the older header path promptly instead of keeping both.
 _Avoid_: speculative header rewrite, dual header system, silent beta migration, provider re-registration workaround

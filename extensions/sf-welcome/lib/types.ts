@@ -12,6 +12,7 @@ import type {
 } from "../../../lib/common/monthly-usage/store.ts";
 import type { SlackStatusSnapshot } from "../../../lib/common/slack-status/store.ts";
 import type { CodeAnalyzerReadinessState } from "../../../lib/common/code-analyzer-status/store.ts";
+import type { AutoUpdateStatus } from "../../../lib/common/auto-update/store.ts";
 import type { BrowserRuntimeStatusInfo } from "../../../lib/common/browser-runtime-status/store.ts";
 import type { GlyphMode } from "../../../lib/common/glyph-policy.ts";
 
@@ -169,6 +170,11 @@ export interface HomebrewStatusInfo {
   platform?: string;
 }
 
+export interface AutoUpdateStatusInfo {
+  enabled: boolean;
+  status: AutoUpdateStatus;
+}
+
 /** Install status shown in the splash's Recommendations block. */
 export type RecommendationDisplayStatus = "installed" | "pending" | "declined";
 
@@ -301,6 +307,8 @@ export interface SplashData {
   hunk?: HunkStatusInfo;
   /** Optional Homebrew package-manager readiness. Cache-first; no update/doctor runs. */
   homebrew?: HomebrewStatusInfo;
+  /** Native Auto Update setting/status. Cache-only in the splash. */
+  autoUpdate?: AutoUpdateStatusInfo;
   /** External agent-browser runtime install/freshness status used by SF Browser. */
   browserRuntime?: BrowserRuntimeStatusInfo;
   /** Lightweight forcedotcom/afv-library install + freshness status

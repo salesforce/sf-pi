@@ -1012,6 +1012,9 @@ export default function sfWelcome(pi: ExtensionAPI) {
       : data.browserRuntime?.loading
         ? "checking"
         : "missing";
+    const autoUpdateStatus = data.autoUpdate
+      ? `${data.autoUpdate.enabled ? "on" : "off"}${data.autoUpdate.status.lastResult ? ` (${data.autoUpdate.status.lastResult})` : ""}`
+      : "not checked";
     const activeExtensionCount = data.extensionHealth.filter(
       (ext) => ext.status === "active" || ext.status === "locked",
     ).length;
@@ -1032,6 +1035,7 @@ export default function sfWelcome(pi: ExtensionAPI) {
       `Hunk (Code Review): ${hunkStatus}`,
       `Homebrew: ${homebrewStatus}`,
       `SF Browser: ${browserRuntimeStatus}`,
+      `Auto Update: ${autoUpdateStatus}`,
       `Node CA Certs: ${nodeCertStatus}`,
       `sf-pi: ${formatPlainReleaseStatus(data.sfPiRelease)} (${activeExtensionCount}/${totalExtensionCount} extensions active)`,
       `Pi: ${formatPlainReleaseStatus(data.piRelease)}`,

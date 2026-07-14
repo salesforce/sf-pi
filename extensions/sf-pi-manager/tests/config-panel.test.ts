@@ -3,13 +3,19 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import type { Focusable } from "@earendil-works/pi-tui";
 import { createConfigPanel } from "../lib/config-panel.ts";
+import {
+  readAutoUpdateEnabled,
+  writeAutoUpdateEnabled,
+} from "../../../lib/common/auto-update/store.ts";
 import { readScopedSfPiDisplaySettings } from "../../../lib/common/display/settings.ts";
 
 const tempDirs = new Set<string>();
+const PI_AGENT_ENV = "PI_CODING_AGENT_DIR";
+let prevAgentDir: string | undefined;
 
 const theme = {
   fg: (_color: string, text: string) => text,
@@ -32,7 +38,16 @@ function makePanel(cwd: string, done: (result: unknown) => void = vi.fn()): Test
   return createConfigPanel(theme, cwd, "project", done as never) as TestPanel;
 }
 
+beforeEach(() => {
+  prevAgentDir = process.env[PI_AGENT_ENV];
+  const agentDir = mkdtempSync(path.join(tmpdir(), "sf-pi-manager-agent-"));
+  tempDirs.add(agentDir);
+  process.env[PI_AGENT_ENV] = agentDir;
+});
+
 afterEach(() => {
+  if (prevAgentDir === undefined) delete process.env[PI_AGENT_ENV];
+  else process.env[PI_AGENT_ENV] = prevAgentDir;
   for (const dir of tempDirs) {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -52,10 +67,25 @@ describe("sf-pi manager config panel", () => {
 
     expect(done).not.toHaveBeenCalled();
     expect(readScopedSfPiDisplaySettings(cwd, "project").settings.profile).toBe("verbose");
-    expect(panel.renderContent(100).join("\n")).toContain("Saved display profile.");
+    expect(panel.renderContent(100).join("\n")).toContain("Saved settings.");
 
     panel.handleInput("\x1b");
     expect(done).toHaveBeenCalledWith(undefined);
+  });
+
+  it("saves the global auto-update toggle from the settings panel", () => {
+    const cwd = tempCwd();
+    writeAutoUpdateEnabled(false);
+    const panel = makePanel(cwd);
+
+    panel.handleInput("\x1b[A"); // select auto-update row
+    panel.handleInput(" ");
+    expect(panel.renderContent(100).join("\n")).toContain("Unsaved change");
+
+    panel.handleInput("\r");
+
+    expect(readAutoUpdateEnabled()).toBe(true);
+    expect(panel.renderContent(100).join("\n")).toContain("Saved settings.");
   });
 
   it("stays open on no-op save", () => {
