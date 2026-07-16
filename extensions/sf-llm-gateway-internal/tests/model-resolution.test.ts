@@ -21,7 +21,6 @@ function model(id: string): Model<any> {
 function registry(models: Model<any>[]) {
   return {
     getAll: vi.fn(() => models),
-    hasConfiguredAuth: vi.fn(() => true),
     find: vi.fn((provider: string, id: string) =>
       models.find((candidate) => candidate.provider === provider && candidate.id === id),
     ),
@@ -29,7 +28,7 @@ function registry(models: Model<any>[]) {
 }
 
 describe("resolveGatewayDefaultModelWithPi", () => {
-  it("uses Pi's resolver for the first registered preferred gateway model", () => {
+  it("uses the first registered preferred gateway model", () => {
     const opus48 = model("claude-opus-4-8");
     const reg = registry([opus48, model("claude-opus-4-7")]);
 
@@ -51,7 +50,7 @@ describe("resolveGatewayDefaultModelWithPi", () => {
     });
   });
 
-  it("uses Pi's resolver against the canonical available alias", () => {
+  it("uses the canonical available alias", () => {
     const opus47 = model("claude-opus-4-7");
     const reg = registry([opus47]);
 

@@ -9,7 +9,7 @@
  * not generic model parsing.
  */
 import type { Api, Model } from "@earendil-works/pi-ai";
-import { resolveCliModel, type ModelRegistry } from "@earendil-works/pi-coding-agent";
+import type { ModelRegistry } from "@earendil-works/pi-coding-agent";
 import { findMatchingModelId, resolvePreferredModelId } from "./models.ts";
 
 type GatewayThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
@@ -48,25 +48,19 @@ export function resolveGatewayDefaultModelWithPi(
     const candidateId = findMatchingModelId(preferredId, availableModelIds);
     if (!candidateId) continue;
 
-    const resolved = resolveCliModel({
-      cliProvider: providerName,
-      cliModel: candidateId,
-      cliThinking: defaultThinkingLevel,
-      modelRegistry,
-    });
+    const resolvedModel = modelRegistry.find(providerName, candidateId);
 
     if (
-      resolved.model &&
-      resolved.model.provider === providerName &&
-      isRegisteredGatewayModel(modelRegistry, providerName, resolved.model.id)
+      resolvedModel &&
+      resolvedModel.provider === providerName &&
+      isRegisteredGatewayModel(modelRegistry, providerName, resolvedModel.id)
     ) {
       return {
         provider: providerName,
-        modelId: resolved.model.id,
-        model: resolved.model,
-        thinkingLevel: resolved.thinkingLevel ?? defaultThinkingLevel,
+        modelId: resolvedModel.id,
+        model: resolvedModel,
+        thinkingLevel: defaultThinkingLevel,
         source: "pi",
-        warning: resolved.warning,
       };
     }
   }
