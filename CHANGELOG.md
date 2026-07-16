@@ -530,6 +530,14 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.228.5](https://github.com/salesforce/sf-pi/compare/v0.228.4...v0.228.5) (2026-07-16)
+
+
+### Bug Fixes
+
+* **deps:** update websocket-driver lockfile ([a623ebd](https://github.com/salesforce/sf-pi/commit/a623ebdeca058ef5d9938645d64a6c5ae723f893))
+* **sf-llm-gateway:** avoid pi resolver API mismatch ([c487e97](https://github.com/salesforce/sf-pi/commit/c487e9771ded6a11c33b2683f2bff02652e5ec2a))
+
 ## [0.228.4](https://github.com/salesforce/sf-pi/compare/v0.228.3...v0.228.4) (2026-07-14)
 
 
