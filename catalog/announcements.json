@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.228.5-2026-07-16",
-  "latestVersion": "0.228.5",
+  "revision": "release-0.228.6-2026-07-17",
+  "latestVersion": "0.228.6",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.228.5",
+      "id": "release-0.228.6",
       "kind": "update",
-      "title": "sf-pi v0.228.5 — deps: update websocket-driver lockfile",
-      "publishedAt": "2026-07-16T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.228.5",
+      "title": "sf-pi v0.228.6 — standardize slash command completions",
+      "publishedAt": "2026-07-17T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.228.6",
       "severity": "info",
-      "body": "deps: update websocket-driver lockfile — sf-llm-gateway: avoid pi resolver API mismatch"
+      "body": "standardize slash command completions"
     },
     {
       "id": "pi-0.73-required",
