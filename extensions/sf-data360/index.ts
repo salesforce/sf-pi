@@ -34,7 +34,7 @@ import { withSafeCommandHandler } from "../../lib/common/safe-command-handler.ts
 import {
   type SfPiCommandAction,
   formatHelpFromActions,
-  getCompletionsFromActions,
+  getFirstTokenCompletionsFromActions,
   resolveAction,
 } from "../../lib/common/command-actions.ts";
 import { openInfoPanel, type InfoPanelSeverity } from "../../lib/common/info-panel.ts";
@@ -108,7 +108,7 @@ export default function sfData360(pi: ExtensionAPI) {
     // Single source of truth for completions — SF_DATA360_ACTIONS drives
     // the panel rows, the completions, and the auto-generated help block.
     getArgumentCompletions: (prefix: string) =>
-      getCompletionsFromActions(SF_DATA360_ACTIONS, prefix.trim().split(/\s+/).at(-1) ?? "", {
+      getFirstTokenCompletionsFromActions(SF_DATA360_ACTIONS, prefix, {
         excludeValues: ["close", "lifecycle.toggle"],
       }),
     handler: async (args, ctx) => {

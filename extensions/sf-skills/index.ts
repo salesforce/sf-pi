@@ -49,6 +49,12 @@ import {
   type LifecycleActionId,
 } from "../../lib/common/extension-toggle.ts";
 import { type CommandPanelAction } from "../../lib/common/command-panel.ts";
+import {
+  completeArgumentTail,
+  parseArgumentCompletionPrefix,
+  type SfPiArgumentCompletion,
+  type SfPiCompletionOption,
+} from "../../lib/common/command-actions.ts";
 import { openInfoPanel } from "../../lib/common/info-panel.ts";
 import { withSafeCommandHandler } from "../../lib/common/safe-command-handler.ts";
 import {
@@ -131,6 +137,56 @@ const SKILLS_ACTIONS: CommandPanelAction<SkillsAction>[] = [
     group: "Reference",
   },
 ];
+
+const SKILLS_TOP_LEVEL_COMPLETIONS: readonly SfPiCompletionOption[] = [
+  ...SKILLS_ACTIONS.map((action) => ({
+    value: action.value,
+    label: action.value,
+    description: action.description,
+  })),
+  {
+    value: "defaults",
+    label: "defaults",
+    description: "Manage default skill-source install, update, link, and unlink.",
+    appendSpace: true,
+  },
+];
+
+const SKILLS_DEFAULTS_COMPLETIONS: readonly SfPiCompletionOption[] = [
+  { value: "status", label: "status", description: "Show managed default skill-source status" },
+  { value: "install", label: "install", description: "Install default skills", appendSpace: true },
+  { value: "update", label: "update", description: "Update default skills", appendSpace: true },
+  { value: "link", label: "link", description: "Link an existing default skill checkout path" },
+  {
+    value: "unlink",
+    label: "unlink",
+    description: "Unlink an existing default skill checkout path",
+  },
+];
+
+const SKILLS_SCOPE_COMPLETIONS: readonly SfPiCompletionOption[] = [
+  { value: "project", label: "project", description: "Use project skill-source settings" },
+  { value: "global", label: "global", description: "Use global skill-source settings" },
+];
+
+// Exported for unit tests.
+export function getSkillsArgumentCompletions(prefix: string): SfPiArgumentCompletion[] | null {
+  const context = parseArgumentCompletionPrefix(prefix);
+
+  if (context.tokenIndex === 0) return completeArgumentTail(SKILLS_TOP_LEVEL_COMPLETIONS, context);
+  if (context.tokens[0]?.toLowerCase() !== "defaults") return null;
+
+  if (context.tokenIndex === 1) {
+    return completeArgumentTail(SKILLS_DEFAULTS_COMPLETIONS, context);
+  }
+  if (
+    ["install", "update"].includes(context.tokens[1]?.toLowerCase() ?? "") &&
+    context.tokenIndex === 2
+  ) {
+    return completeArgumentTail(SKILLS_SCOPE_COMPLETIONS, context);
+  }
+  return null;
+}
 
 function renderMetrics(cwd: string): string {
   const global = loadUsageMap("global", cwd);
@@ -325,17 +381,7 @@ export default function sfSkills(pi: ExtensionAPI) {
 
   pi.registerCommand(COMMAND_NAME, {
     description: "Show the current SF Skills HUD summary",
-    getArgumentCompletions: (prefix) => {
-      const lower = prefix.toLowerCase();
-      const items = SKILLS_ACTIONS.filter((action) => action.value.startsWith(lower)).map(
-        (action) => ({
-          value: action.value,
-          label: action.value,
-          description: action.description,
-        }),
-      );
-      return items.length > 0 ? items : null;
-    },
+    getArgumentCompletions: getSkillsArgumentCompletions,
     handler: async (args, ctx) => {
       await withSafeCommandHandler(ctx, COMMAND_NAME, async () => {
         const trimmed = args.trim();

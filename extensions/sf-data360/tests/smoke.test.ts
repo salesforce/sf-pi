@@ -55,6 +55,17 @@ describe("sf-data360 extension smoke", () => {
     expect(manifest.events).toEqual(["session_start", "session_shutdown", "resources_discover"]);
   });
 
+  it("registers flat slash-command completions", async () => {
+    const mod = await import("../index.ts");
+    const pi = { events: eventBus(), on: vi.fn(), registerCommand: vi.fn(), registerTool: vi.fn() };
+
+    mod.default(pi as never);
+
+    const command = pi.registerCommand.mock.calls.find(([name]) => name === "sf-data360")?.[1];
+    expect(command?.getArgumentCompletions?.("he")?.map((item) => item.value)).toEqual(["help"]);
+    expect(command?.getArgumentCompletions?.("status he")).toBeNull();
+  });
+
   it("routes the no-args UI command to the SF Pi Manager detail page", async () => {
     const mod = await import("../index.ts");
     const events = eventBus();

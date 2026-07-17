@@ -23,33 +23,48 @@ describe("gateway command surface", () => {
 
   it("offers every command as a first-token completion with descriptions", () => {
     const completions = getGatewayArgumentCompletions("") ?? [];
-    const values = completions.map((item) => item.value);
+    const values = completions.map((item) => item.value.trimEnd());
 
     for (const item of GATEWAY_COMMAND_SURFACE) {
       expect(values).toContain(item.id);
-      const completion = completions.find((entry) => entry.value === item.id);
+      const completion = completions.find((entry) => entry.value.trimEnd() === item.id);
       expect(completion?.description).toBe(item.description);
     }
   });
 
   it("completes commands that previously drifted out of the autocomplete list", () => {
-    expect(getGatewayArgumentCompletions("tok")?.map((item) => item.value)).toContain("tokens");
-    expect(getGatewayArgumentCompletions("onb")?.map((item) => item.value)).toContain("onboard");
-    expect(getGatewayArgumentCompletions("open")?.map((item) => item.value)).toContain(
-      "open-token",
-    );
-    expect(getGatewayArgumentCompletions("imp")?.map((item) => item.value)).toContain(
-      "import-claude",
-    );
-    expect(getGatewayArgumentCompletions("lat")?.map((item) => item.value)).toContain(
-      "latency-probe",
-    );
+    const valuesFor = (prefix: string) =>
+      getGatewayArgumentCompletions(prefix)?.map((item) => item.value.trimEnd());
+    expect(valuesFor("tok")).toContain("tokens");
+    expect(valuesFor("onb")).toContain("onboard");
+    expect(valuesFor("open")).toContain("open-token");
+    expect(valuesFor("imp")).toContain("import-claude");
+    expect(valuesFor("lat")).toContain("latency-probe");
+  });
+
+  it("appends a space when completing commands that have scoped children", () => {
+    expect(getGatewayArgumentCompletions("set")?.map((item) => item.value)).toContain("setup ");
   });
 
   it("completes scoped command targets after a trailing space", () => {
     expect(getGatewayArgumentCompletions("setup ")?.map((item) => item.value)).toEqual([
-      "global",
-      "project",
+      "setup global",
+      "setup project",
+    ]);
+  });
+
+  it("returns full argument-tail values for scoped commands", () => {
+    expect(getGatewayArgumentCompletions("setup g")?.map((item) => item.value)).toEqual([
+      "setup global",
+    ]);
+    expect(getGatewayArgumentCompletions("on p")?.map((item) => item.value)).toEqual([
+      "on project",
+    ]);
+  });
+
+  it("uses canonical command ids when completing scopes after aliases", () => {
+    expect(getGatewayArgumentCompletions("enable p")?.map((item) => item.value)).toEqual([
+      "on project",
     ]);
   });
 });

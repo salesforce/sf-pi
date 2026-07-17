@@ -11,8 +11,13 @@ import { describe, expect, it } from "vitest";
 import {
   type SfPiCommandAction,
   formatHelpFromActions,
+  completeArgumentTail,
+  formatHelpFromActions,
   formatReadmeTableFromActions,
   getCompletionsFromActions,
+  getFirstTokenCompletions,
+  getFirstTokenCompletionsFromActions,
+  parseArgumentCompletionPrefix,
   resolveAction,
 } from "../command-actions.ts";
 
@@ -64,6 +69,11 @@ describe("getCompletionsFromActions", () => {
     expect(result?.map((r) => r.value)).toEqual(["doctor"]);
   });
 
+  it("appends a space for expandable action completions", () => {
+    const result = getCompletionsFromActions([{ ...ACTIONS[0]!, appendSpace: true }], "st");
+    expect(result?.map((r) => r.value)).toEqual(["status "]);
+  });
+
   it("matches aliases as separate completion entries", () => {
     const result = getCompletionsFromActions(ACTIONS, "dr");
     expect(result?.map((r) => r.value)).toEqual(["dr"]);
@@ -82,6 +92,63 @@ describe("getCompletionsFromActions", () => {
     const result = getCompletionsFromActions(ACTIONS, "", { excludeValues: ["close"] });
     expect(result?.map((r) => r.value)).not.toContain("close");
     expect(result?.map((r) => r.value)).toContain("status");
+  });
+});
+
+describe("argument-tail completion helpers", () => {
+  it("parses trailing spaces as the next token", () => {
+    expect(parseArgumentCompletionPrefix("setup ")).toEqual({
+      tokens: ["setup"],
+      tokenIndex: 1,
+      current: "",
+      priorTokens: ["setup"],
+    });
+  });
+
+  it("returns full argument-tail values with compact labels", () => {
+    const context = parseArgumentCompletionPrefix("setup g");
+    expect(
+      completeArgumentTail(
+        [{ value: "global", label: "global", description: "Use global settings." }],
+        context,
+      ),
+    ).toEqual([{ value: "setup global", label: "global", description: "Use global settings." }]);
+  });
+
+  it("can append a space after expandable completions", () => {
+    const context = parseArgumentCompletionPrefix("set");
+    expect(
+      completeArgumentTail(
+        [{ value: "setup", description: "Configure settings.", appendSpace: true }],
+        context,
+      ),
+    ).toEqual([{ value: "setup ", label: "setup", description: "Configure settings." }]);
+  });
+
+  it("supports flat options without requiring action metadata", () => {
+    expect(
+      getFirstTokenCompletions([{ value: "status", description: "Show status." }], "st"),
+    ).toEqual([{ value: "status", label: "status", description: "Show status." }]);
+    expect(
+      getFirstTokenCompletions([{ value: "status", description: "Show status." }], "status h"),
+    ).toBeNull();
+  });
+});
+
+describe("getFirstTokenCompletionsFromActions", () => {
+  it("completes first-token flat commands", () => {
+    const result = getFirstTokenCompletionsFromActions(ACTIONS, "do");
+    expect(result?.map((r) => r.value)).toEqual(["doctor"]);
+  });
+
+  it("offers first-token discovery for an empty prefix", () => {
+    const result = getFirstTokenCompletionsFromActions(ACTIONS, "", { excludeValues: ["close"] });
+    expect(result?.map((r) => r.value)).toEqual(["status", "doctor", "help"]);
+  });
+
+  it("returns null after a completed first token to avoid argument-tail truncation", () => {
+    expect(getFirstTokenCompletionsFromActions(ACTIONS, "status ")).toBeNull();
+    expect(getFirstTokenCompletionsFromActions(ACTIONS, "status he")).toBeNull();
   });
 });
 

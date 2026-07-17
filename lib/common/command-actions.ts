@@ -25,7 +25,7 @@
  * ```ts
  * import {
  *   type SfPiCommandAction,
- *   getCompletionsFromActions,
+ *   getFirstTokenCompletionsFromActions,
  *   formatHelpFromActions,
  * } from "../../lib/common/command-actions.ts";
  *
@@ -38,7 +38,7 @@
  *
  * pi.registerCommand("sf-foo", {
  *   description: "…",
- *   getArgumentCompletions: (prefix) => getCompletionsFromActions(ACTIONS, prefix),
+ *   getArgumentCompletions: (prefix) => getFirstTokenCompletionsFromActions(ACTIONS, prefix),
  *   handler: async (args, ctx) => {
  *     if (!args && ctx.hasUI) return openPanel(ctx);
  *     if (args.trim() === "help") {
@@ -80,22 +80,47 @@ export interface SfPiCommandAction<T extends string = string> extends CommandPan
    * Surfaced in /help and completions when present.
    */
   aliases?: readonly string[];
+  /** Append a space after accepting this action so child completions are one Tab away. */
+  appendSpace?: boolean;
+}
+
+export interface SfPiCompletionOption {
+  value: string;
+  label?: string;
+  description: string;
+  /** Append a space after accepting this completion so the next token is ready for Tab. */
+  appendSpace?: boolean;
+}
+
+export interface SfPiArgumentCompletion {
+  value: string;
+  label: string;
+  description: string;
+}
+
+export interface SfPiArgumentCompletionContext {
+  tokens: string[];
+  tokenIndex: number;
+  current: string;
+  priorTokens: string[];
 }
 
 /**
- * Pi `getArgumentCompletions` helper. Returns null when no actions match
- * (Pi treats that as "no autocompletion" instead of an empty list).
+ * Low-level completion helper. Returns null when no actions match (Pi treats
+ * null as "no autocompletion" instead of an empty list).
  *
- * Matches by prefix against `value` and any declared aliases.
+ * Matches by prefix against `value` and any declared aliases. Most slash
+ * commands should use `getFirstTokenCompletionsFromActions()` instead, because
+ * Pi replaces the full argument tail when a completion is accepted.
  */
 export function getCompletionsFromActions<T extends string>(
   actions: readonly SfPiCommandAction<T>[],
   prefix: string,
   options?: { excludeValues?: readonly T[] },
-): { value: string; label: string; description: string }[] | null {
+): SfPiArgumentCompletion[] | null {
   const exclude = new Set<string>(options?.excludeValues ?? []);
   const lower = prefix.trim().toLowerCase();
-  const matches: { value: string; label: string; description: string }[] = [];
+  const matches: SfPiArgumentCompletion[] = [];
 
   for (const action of actions) {
     if (action.hidden) continue;
@@ -104,13 +129,71 @@ export function getCompletionsFromActions<T extends string>(
     const hit = candidates.find((c) => c.toLowerCase().startsWith(lower));
     if (!hit) continue;
     matches.push({
-      value: hit,
+      value: action.appendSpace ? `${hit} ` : hit,
       label: hit,
       description: action.description,
     });
   }
 
   return matches.length > 0 ? matches : null;
+}
+
+/**
+ * Pi replaces the full argument tail after `/command ` when a slash-command
+ * completion is accepted. Use this helper for flat command surfaces so typing
+ * a second token (for example `/sf-docs status h`) does not replace the whole
+ * tail with a top-level completion such as `help`.
+ */
+export function getFirstTokenCompletionsFromActions<T extends string>(
+  actions: readonly SfPiCommandAction<T>[],
+  prefix: string,
+  options?: { excludeValues?: readonly T[] },
+): SfPiArgumentCompletion[] | null {
+  const context = parseArgumentCompletionPrefix(prefix);
+  if (context.tokenIndex !== 0) return null;
+  return getCompletionsFromActions(actions, context.current, options);
+}
+
+export function getFirstTokenCompletions(
+  options: readonly SfPiCompletionOption[],
+  prefix: string,
+): SfPiArgumentCompletion[] | null {
+  const context = parseArgumentCompletionPrefix(prefix);
+  if (context.tokenIndex !== 0) return null;
+  return completeArgumentTail(options, context);
+}
+
+export function completeArgumentTail(
+  options: readonly SfPiCompletionOption[],
+  context: SfPiArgumentCompletionContext,
+  priorTokens: readonly string[] = context.priorTokens,
+): SfPiArgumentCompletion[] | null {
+  const lower = context.current.toLowerCase();
+  const matches = options
+    .filter((option) => option.value.toLowerCase().startsWith(lower))
+    .map((option) => {
+      const value = [...priorTokens, option.value].join(" ");
+      return {
+        value: option.appendSpace ? `${value} ` : value,
+        label: option.label ?? option.value,
+        description: option.description,
+      };
+    });
+  return matches.length > 0 ? matches : null;
+}
+
+export function parseArgumentCompletionPrefix(prefix: string): SfPiArgumentCompletionContext {
+  const hasTrailingSpace = /\s$/.test(prefix);
+  const trimmed = prefix.trim();
+  const tokens = trimmed ? trimmed.split(/\s+/) : [];
+  const tokenIndex = tokens.length === 0 ? 0 : hasTrailingSpace ? tokens.length : tokens.length - 1;
+
+  return {
+    tokens,
+    tokenIndex,
+    current: hasTrailingSpace ? "" : (tokens[tokenIndex] ?? ""),
+    priorTokens: tokens.slice(0, tokenIndex),
+  };
 }
 
 /**

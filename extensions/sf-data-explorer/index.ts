@@ -10,6 +10,12 @@ import {
   registerManagerDetailActions,
   type ManagerDetailAction,
 } from "../../lib/common/manager-actions.ts";
+import {
+  completeArgumentTail,
+  parseArgumentCompletionPrefix,
+  type SfPiArgumentCompletion,
+  type SfPiCompletionOption,
+} from "../../lib/common/command-actions.ts";
 import { openInfoPanel } from "../../lib/common/info-panel.ts";
 import { withSafeCommandHandler } from "../../lib/common/safe-command-handler.ts";
 import { clearExplorerCache, cacheStatus } from "./lib/cache.ts";
@@ -28,6 +34,33 @@ import type { ExplorerMode, ExplorerStrategy } from "./lib/types.ts";
 
 const COMMAND = "sf-data-explorer";
 
+const DATA_EXPLORER_TOP_LEVEL_COMPLETIONS: readonly SfPiCompletionOption[] = [
+  { value: "soql", label: "soql", description: "Open the SOQL Explorer", appendSpace: true },
+  { value: "sosl", label: "sosl", description: "Open the SOSL Explorer", appendSpace: true },
+  { value: "sql", label: "sql", description: "Open the Data 360 SQL Explorer", appendSpace: true },
+  { value: "default", label: "default", description: "Open the configured default explorer" },
+  { value: "refresh", label: "refresh", description: "Refresh explorer metadata" },
+];
+
+const DATA_EXPLORER_MODE_COMPLETIONS: readonly SfPiCompletionOption[] = [
+  { value: "refresh", label: "refresh", description: "Refresh explorer metadata" },
+];
+
+export function getDataExplorerArgumentCompletions(
+  prefix: string,
+): SfPiArgumentCompletion[] | null {
+  const context = parseArgumentCompletionPrefix(prefix);
+  if (context.tokenIndex === 0)
+    return completeArgumentTail(DATA_EXPLORER_TOP_LEVEL_COMPLETIONS, context);
+  if (
+    ["soql", "sosl", "sql"].includes(context.tokens[0]?.toLowerCase() ?? "") &&
+    context.tokenIndex === 1
+  ) {
+    return completeArgumentTail(DATA_EXPLORER_MODE_COMPLETIONS, context);
+  }
+  return null;
+}
+
 export default function sfDataExplorer(pi: ExtensionAPI) {
   if (!requirePiVersion(pi, "sf-data-explorer")) return;
 
@@ -44,10 +77,7 @@ export default function sfDataExplorer(pi: ExtensionAPI) {
 
   pi.registerCommand(COMMAND, {
     description: "Read-only interactive SOQL, SOSL, and Data 360 SQL explorer",
-    getArgumentCompletions: (prefix: string) =>
-      ["soql", "sosl", "sql", "default", "refresh", "soql refresh", "sosl refresh", "sql refresh"]
-        .filter((v) => v.startsWith(prefix))
-        .map((value) => ({ value, label: value })),
+    getArgumentCompletions: getDataExplorerArgumentCompletions,
     handler: async (args, ctx) => {
       await withSafeCommandHandler(ctx, COMMAND, async () => {
         if (!(args || "").trim() && ctx.hasUI) {

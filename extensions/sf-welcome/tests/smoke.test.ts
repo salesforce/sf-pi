@@ -7,7 +7,7 @@
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { visibleWidth } from "@earendil-works/pi-tui";
 
 /**
@@ -29,6 +29,23 @@ describe("sf-welcome", () => {
   it("exports a default function", async () => {
     const mod = await import("../index.ts");
     expect(typeof mod.default).toBe("function");
+  });
+
+  it("registers flat slash-command completions", async () => {
+    const mod = await import("../index.ts");
+    const pi = { events: { on: vi.fn() }, on: vi.fn(), registerCommand: vi.fn() };
+
+    mod.default(pi as never);
+
+    const welcome = pi.registerCommand.mock.calls.find(([name]) => name === "sf-welcome")?.[1];
+    expect(welcome?.getArgumentCompletions?.("sum")?.map((item) => item.value)).toEqual([
+      "summary",
+    ]);
+    expect(welcome?.getArgumentCompletions?.("summary help")).toBeNull();
+
+    const fonts = pi.registerCommand.mock.calls.find(([name]) => name === "sf-setup-fonts")?.[1];
+    expect(fonts?.getArgumentCompletions?.("sta")?.map((item) => item.value)).toEqual(["status"]);
+    expect(fonts?.getArgumentCompletions?.("status reset")).toBeNull();
   });
 
   it("splash-data exports collectSplashData", async () => {

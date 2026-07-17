@@ -31,7 +31,7 @@ import { withSafeCommandHandler } from "../../lib/common/safe-command-handler.ts
 import {
   type SfPiCommandAction,
   formatHelpFromActions,
-  getCompletionsFromActions,
+  getFirstTokenCompletionsFromActions,
   resolveAction,
 } from "../../lib/common/command-actions.ts";
 import { openInfoPanel } from "../../lib/common/info-panel.ts";
@@ -63,7 +63,7 @@ export default function sfFeedback(pi: ExtensionAPI) {
     // Single source of truth: FEEDBACK_ACTIONS drives the panel rows, the
     // completions, and the auto-generated help text below.
     getArgumentCompletions: (prefix: string) =>
-      getCompletionsFromActions(FEEDBACK_ACTIONS, prefix.trim().split(/\s+/).at(-1) ?? ""),
+      getFirstTokenCompletionsFromActions(FEEDBACK_ACTIONS, prefix),
     handler: async (args, ctx) => {
       await withSafeCommandHandler(ctx, COMMAND_NAME, async () => {
         const exec = buildExecFn(pi, ctx.cwd);

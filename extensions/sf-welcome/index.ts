@@ -36,6 +36,7 @@ import type {
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 
+import { getFirstTokenCompletionsFromActions } from "../../lib/common/command-actions.ts";
 import { openInfoPanel, type InfoPanelSeverity } from "../../lib/common/info-panel.ts";
 import { withSafeCommandHandler } from "../../lib/common/safe-command-handler.ts";
 import {
@@ -802,28 +803,6 @@ export default function sfWelcome(pi: ExtensionAPI) {
     endActiveSession(ctx);
   });
 
-  // --- /sf-welcome command ---
-  pi.registerCommand(COMMAND_NAME, {
-    description: "Show the sf-pi welcome splash summary, status, and controls",
-    handler: async (args, ctx) => {
-      await withSafeCommandHandler(ctx, COMMAND_NAME, async () => {
-        const sub = (args ?? "").trim().toLowerCase();
-        if (sub === "" && ctx.hasUI) {
-          await openWelcomeInManager(ctx, "detail");
-          return;
-        }
-        // Direct subcommand or headless invocation — emit the summary as plain
-        // text so `pi -p /sf-welcome` keeps printing something useful.
-        const summary = await buildWelcomeSummary(ctx);
-        if (ctx.hasUI) {
-          ctx.ui.notify(summary, "info");
-          return;
-        }
-        console.info(summary);
-      });
-    },
-  });
-
   // ---------------------------------------------------------------------------
   // /sf-welcome panel actions and helpers
   // ---------------------------------------------------------------------------
@@ -858,6 +837,26 @@ export default function sfWelcome(pi: ExtensionAPI) {
       group: "Reference",
     },
   ];
+
+  // --- /sf-welcome command ---
+  pi.registerCommand(COMMAND_NAME, {
+    description: "Show the sf-pi welcome splash summary, status, and controls",
+    getArgumentCompletions: (prefix: string) =>
+      getFirstTokenCompletionsFromActions(WELCOME_ACTIONS, prefix),
+    handler: async (args, ctx) => {
+      await withSafeCommandHandler(ctx, COMMAND_NAME, async () => {
+        const sub = (args ?? "").trim().toLowerCase();
+        if (sub === "" && ctx.hasUI) {
+          await openWelcomeInManager(ctx, "detail");
+          return;
+        }
+        const action = WELCOME_ACTIONS.some((item) => item.value === sub)
+          ? (sub as WelcomeAction)
+          : "summary";
+        await handleWelcomeAction(ctx, action);
+      });
+    },
+  });
 
   function buildWelcomeManagerActions(): ManagerDetailAction[] {
     return WELCOME_ACTIONS.map((action) => ({
@@ -1126,7 +1125,7 @@ export default function sfWelcome(pi: ExtensionAPI) {
     value: SfSetupFontsAction;
     label: string;
     description: string;
-    group?: string;
+    group: string;
   }> = [
     {
       value: "status",
@@ -1256,17 +1255,8 @@ export default function sfWelcome(pi: ExtensionAPI) {
 
   pi.registerCommand(FONTS_COMMAND_NAME, {
     description: "Install the bundled Nerd Font used by the sf-pi splash",
-    getArgumentCompletions: (prefix) => {
-      const lower = prefix.toLowerCase();
-      const items = SF_SETUP_FONTS_ACTIONS.filter((action) => action.value.startsWith(lower)).map(
-        (action) => ({
-          value: action.value,
-          label: action.value,
-          description: action.description,
-        }),
-      );
-      return items.length > 0 ? items : null;
-    },
+    getArgumentCompletions: (prefix) =>
+      getFirstTokenCompletionsFromActions(SF_SETUP_FONTS_ACTIONS, prefix),
     handler: async (args, ctx) => {
       await withSafeCommandHandler(ctx, FONTS_COMMAND_NAME, async () => {
         const sub = (args ?? "").trim().toLowerCase();

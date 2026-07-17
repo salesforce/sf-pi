@@ -64,6 +64,7 @@ import {
   openExtensionInManager,
   type SfPiManagerOpenRoute,
 } from "../../lib/common/manager-deep-link.ts";
+import { getFirstTokenCompletions } from "../../lib/common/command-actions.ts";
 import { withSafeCommandHandler } from "../../lib/common/safe-command-handler.ts";
 import { registerExtensionDoctor } from "../../lib/common/doctor/registry.ts";
 import { runExtensionDoctor as runGuardrailExtensionDoctor } from "./lib/extension-doctor.ts";
@@ -226,17 +227,7 @@ export default function sfGuardrail(pi: ExtensionAPI) {
   // ─── /sf-guardrail command ────────────────────────────────────────────────
   pi.registerCommand(COMMAND_NAME, {
     description: "Inspect and manage sf-guardrail — status, settings, rules, audit",
-    getArgumentCompletions: (prefix) => {
-      const lower = prefix.toLowerCase();
-      const items = GUARDRAIL_SUBCOMMANDS.filter((action) => action.value.startsWith(lower)).map(
-        (action) => ({
-          value: action.value,
-          label: action.value,
-          description: action.description,
-        }),
-      );
-      return items.length > 0 ? items : null;
-    },
+    getArgumentCompletions: (prefix) => getFirstTokenCompletions(GUARDRAIL_SUBCOMMANDS, prefix),
     handler: async (args, ctx) => {
       await withSafeCommandHandler(ctx, COMMAND_NAME, async () => {
         const sub = (args ?? "").trim().toLowerCase();

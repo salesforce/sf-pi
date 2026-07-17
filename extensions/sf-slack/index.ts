@@ -118,7 +118,10 @@ import { registerExtensionDoctor } from "../../lib/common/doctor/registry.ts";
 import { markBootStep } from "../../lib/common/boot-timing.ts";
 import { shouldInjectOnce } from "../../lib/common/session/inject-once.ts";
 import { buildSlackDoctor } from "./lib/extension-doctor.ts";
-import { type SfPiCommandAction } from "../../lib/common/command-actions.ts";
+import {
+  getFirstTokenCompletionsFromActions,
+  type SfPiCommandAction,
+} from "../../lib/common/command-actions.ts";
 import { withSafeCommandHandler } from "../../lib/common/safe-command-handler.ts";
 import { openInfoPanel } from "../../lib/common/info-panel.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
@@ -1107,17 +1110,8 @@ export default function sfSlack(pi: ExtensionAPI) {
   // ─── /sf-slack command ──────────────────────────────────────────────────────
   pi.registerCommand(COMMAND_NAME, {
     description: "Show Slack integration status and auth info",
-    getArgumentCompletions: (prefix) => {
-      const lower = prefix.toLowerCase();
-      const items = SLACK_COMMAND_ACTIONS.filter((action) => action.value.startsWith(lower)).map(
-        (action) => ({
-          value: action.value,
-          label: action.value,
-          description: action.description,
-        }),
-      );
-      return items.length > 0 ? items : null;
-    },
+    getArgumentCompletions: (prefix) =>
+      getFirstTokenCompletionsFromActions(SLACK_COMMAND_ACTIONS, prefix),
     handler: async (args, ctx) => {
       await withSafeCommandHandler(ctx, COMMAND_NAME, async () => {
         const sub = (args ?? "").trim().toLowerCase();

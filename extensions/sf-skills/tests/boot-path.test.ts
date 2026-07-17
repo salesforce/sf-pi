@@ -43,6 +43,25 @@ function fakeCtx() {
   };
 }
 
+describe("sf-skills completions", () => {
+  it("returns full argument-tail values for defaults subcommands", async () => {
+    const { getSkillsArgumentCompletions } = await import("../index.ts");
+
+    expect(getSkillsArgumentCompletions("def")?.map((item) => item.value)).toContain("defaults ");
+    expect(getSkillsArgumentCompletions("defaults ")?.map((item) => item.value)).toEqual([
+      "defaults status",
+      "defaults install ",
+      "defaults update ",
+      "defaults link",
+      "defaults unlink",
+    ]);
+    expect(getSkillsArgumentCompletions("defaults install pr")?.map((item) => item.value)).toEqual([
+      "defaults install project",
+    ]);
+    expect(getSkillsArgumentCompletions("summary help")).toBeNull();
+  });
+});
+
 describe("sf-skills boot path", () => {
   it("does not build the skill catalog during lifecycle hooks", async () => {
     loadSkillsSpy.mockClear();

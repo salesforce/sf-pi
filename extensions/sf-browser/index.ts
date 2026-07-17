@@ -26,7 +26,7 @@ import { withSafeCommandHandler } from "../../lib/common/safe-command-handler.ts
 import {
   type SfPiCommandAction,
   formatHelpFromActions,
-  getCompletionsFromActions,
+  getFirstTokenCompletionsFromActions,
   resolveAction,
 } from "../../lib/common/command-actions.ts";
 import { openInfoPanel, type InfoPanelSeverity } from "../../lib/common/info-panel.ts";
@@ -111,7 +111,7 @@ export default function sfBrowser(pi: ExtensionAPI): void {
   pi.registerCommand(COMMAND_NAME, {
     description: "SF Browser — Salesforce UI last-mile automation with agent-browser",
     getArgumentCompletions: (prefix: string) =>
-      getCompletionsFromActions(SF_BROWSER_ACTIONS, prefix.trim().split(/\s+/).at(-1) ?? "", {
+      getFirstTokenCompletionsFromActions(SF_BROWSER_ACTIONS, prefix, {
         excludeValues: ["close", "lifecycle.toggle"],
       }),
     handler: async (args, ctx) => {

@@ -11,4 +11,17 @@ describe("sf-lsp", () => {
     const mod = await import("../index.ts");
     expect(typeof mod.default).toBe("function");
   });
+
+  it("returns full argument-tail values for nested completions", async () => {
+    const { getSfLspArgumentCompletions } = await import("../index.ts");
+
+    expect(getSfLspArgumentCompletions("ins")?.map((item) => item.value)).toEqual(["install "]);
+    expect(getSfLspArgumentCompletions("install st")?.map((item) => item.value)).toEqual([
+      "install status",
+    ]);
+    expect(getSfLspArgumentCompletions("verbose t")?.map((item) => item.value)).toEqual([
+      "verbose toggle",
+    ]);
+    expect(getSfLspArgumentCompletions("doctor help")).toBeNull();
+  });
 });

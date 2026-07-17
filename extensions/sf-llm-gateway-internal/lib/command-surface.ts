@@ -11,7 +11,12 @@
  * grows (notably diagnostic commands such as doctor, debug, usage-probe, and
  * token counting).
  */
-import type { AutocompleteItem } from "@earendil-works/pi-tui";
+import {
+  completeArgumentTail,
+  parseArgumentCompletionPrefix,
+  type SfPiArgumentCompletion,
+  type SfPiCompletionOption,
+} from "../../../lib/common/command-actions.ts";
 
 export type GatewayCommandId =
   | "status"
@@ -214,35 +219,27 @@ export function getGatewayCommandSurfaceItem(
   return COMMAND_BY_ID.get(id);
 }
 
-export function getGatewayArgumentCompletions(prefix: string): AutocompleteItem[] | null {
-  const { tokens, tokenIndex, current } = tokenizeCompletionPrefix(prefix);
+export function getGatewayArgumentCompletions(prefix: string): SfPiArgumentCompletion[] | null {
+  const context = parseArgumentCompletionPrefix(prefix);
 
-  if (tokenIndex === 0) {
-    return matches(
+  if (context.tokenIndex === 0) {
+    return completeArgumentTail(
       GATEWAY_COMMAND_SURFACE.map((item) => ({
         value: item.id,
         label: item.id,
         description: item.description,
+        appendSpace: item.acceptsScope,
       })),
-      current,
+      context,
     );
   }
 
-  const sub = tokens[0]?.toLowerCase();
-
-  const surface = GATEWAY_COMMAND_SURFACE.find((item) => item.id === sub);
-  if (surface?.acceptsScope && tokenIndex === 1) {
-    return matches(
-      [
-        { value: "global", label: "global", description: "Save in the global Pi settings/config" },
-        {
-          value: "project",
-          label: "project",
-          description: "Save in this project's .pi settings/config",
-        },
-      ],
-      current,
-    );
+  const sub = context.tokens[0]?.toLowerCase();
+  const surface = GATEWAY_COMMAND_SURFACE.find(
+    (item) => item.id === sub || item.aliases?.some((alias) => alias === sub),
+  );
+  if (surface?.acceptsScope && context.tokenIndex === 1) {
+    return completeArgumentTail(scopeCompletions(), context, [surface.id]);
   }
 
   return null;
@@ -263,32 +260,13 @@ export function formatGatewayAliasReference(): string[] {
   return aliasLines.length > 0 ? ["Aliases:", ...aliasLines] : [];
 }
 
-function matches(items: AutocompleteItem[], current: string): AutocompleteItem[] | null {
-  const lower = current.toLowerCase();
-  const filtered = items.filter((item) => item.value.toLowerCase().startsWith(lower));
-  return filtered.length > 0 ? filtered : null;
-}
-
-function tokenizeCompletionPrefix(prefix: string): {
-  tokens: string[];
-  tokenIndex: number;
-  current: string;
-} {
-  const hasTrailingSpace = /\s$/.test(prefix);
-  const trimmed = prefix.trim();
-  const tokens = trimmed ? trimmed.split(/\s+/) : [];
-
-  if (hasTrailingSpace) {
-    return { tokens, tokenIndex: tokens.length, current: "" };
-  }
-
-  if (tokens.length === 0) {
-    return { tokens, tokenIndex: 0, current: "" };
-  }
-
-  return {
-    tokens,
-    tokenIndex: tokens.length - 1,
-    current: tokens[tokens.length - 1] ?? "",
-  };
+function scopeCompletions(): readonly SfPiCompletionOption[] {
+  return [
+    { value: "global", label: "global", description: "Save in the global Pi settings/config" },
+    {
+      value: "project",
+      label: "project",
+      description: "Save in this project's .pi settings/config",
+    },
+  ];
 }

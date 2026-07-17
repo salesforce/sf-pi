@@ -41,6 +41,21 @@ describe("sf-agentscript", () => {
     expect(typeof mod.default).toBe("function");
   });
 
+  it("returns full argument-tail values for nested report completions", async () => {
+    const { getAgentScriptArgumentCompletions } = await import("../index.ts");
+
+    expect(getAgentScriptArgumentCompletions("rep")?.map((item) => item.value)).toEqual([
+      "report ",
+    ]);
+    expect(getAgentScriptArgumentCompletions("report ")?.map((item) => item.value)).toEqual([
+      "report eval",
+    ]);
+    expect(getAgentScriptArgumentCompletions("report e")?.map((item) => item.value)).toEqual([
+      "report eval",
+    ]);
+    expect(getAgentScriptArgumentCompletions("doctor help")).toBeNull();
+  });
+
   it("routes the no-args UI command to the SF Pi Manager detail page", async () => {
     const mod = await import("../index.ts");
     const events = eventBus();

@@ -66,6 +66,12 @@ import {
   type LspTranscriptDetails,
 } from "./lib/transcript.ts";
 import { openSfLspPanel, type SfLspPanelAction } from "./lib/command-panel.ts";
+import {
+  completeArgumentTail,
+  parseArgumentCompletionPrefix,
+  type SfPiArgumentCompletion,
+  type SfPiCompletionOption,
+} from "../../lib/common/command-actions.ts";
 import { openInfoPanel, type InfoPanelSeverity } from "../../lib/common/info-panel.ts";
 import {
   openExtensionInManager,
@@ -106,6 +112,54 @@ import {
 
 const DIAGNOSTIC_TIMEOUT_MS = 6000;
 const TRANSCRIPT_PREVIEW_LIMIT = 3;
+
+const SF_LSP_TOP_LEVEL_COMPLETIONS: readonly SfPiCompletionOption[] = [
+  { value: "panel", label: "panel", description: "Open the rich Doctor + recent activity panel" },
+  { value: "doctor", label: "doctor", description: "Show a compact LSP doctor report" },
+  {
+    value: "install",
+    label: "install",
+    description: "Install or update bundled LSP servers",
+    appendSpace: true,
+  },
+  {
+    value: "verbose",
+    label: "verbose",
+    description: "Configure verbose transcript rows for every check",
+    appendSpace: true,
+  },
+  { value: "help", label: "help", description: "Show sf-lsp command usage" },
+];
+
+const SF_LSP_INSTALL_COMPLETIONS: readonly SfPiCompletionOption[] = [
+  {
+    value: "status",
+    label: "status",
+    description: "Show per-component LSP install state",
+  },
+];
+
+const SF_LSP_VERBOSE_COMPLETIONS: readonly SfPiCompletionOption[] = [
+  { value: "on", label: "on", description: "Enable verbose transcript rows" },
+  { value: "off", label: "off", description: "Disable verbose transcript rows" },
+  { value: "toggle", label: "toggle", description: "Toggle verbose transcript rows" },
+];
+
+// Exported for unit tests.
+export function getSfLspArgumentCompletions(prefix: string): SfPiArgumentCompletion[] | null {
+  const context = parseArgumentCompletionPrefix(prefix);
+
+  if (context.tokenIndex === 0) return completeArgumentTail(SF_LSP_TOP_LEVEL_COMPLETIONS, context);
+
+  const sub = context.tokens[0]?.toLowerCase();
+  if (sub === "install" && context.tokenIndex === 1) {
+    return completeArgumentTail(SF_LSP_INSTALL_COMPLETIONS, context);
+  }
+  if (sub === "verbose" && context.tokenIndex === 1) {
+    return completeArgumentTail(SF_LSP_VERBOSE_COMPLETIONS, context);
+  }
+  return null;
+}
 
 // -------------------------------------------------------------------------------------------------
 // Extension entry point
@@ -453,6 +507,7 @@ export default function sfLspExtension(pi: ExtensionAPI) {
   function registerMainCommand(pi: ExtensionAPI): void {
     pi.registerCommand("sf-lsp", {
       description: "Show Salesforce LSP status and controls",
+      getArgumentCompletions: getSfLspArgumentCompletions,
       handler: async (args, ctx) => {
         await withSafeCommandHandler(ctx, "sf-lsp", () => runSfLspHandler(args, ctx));
       },

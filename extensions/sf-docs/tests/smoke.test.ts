@@ -15,6 +15,24 @@ describe("sf-docs", () => {
     expect(typeof mod.default).toBe("function");
   });
 
+  it("registers flat slash-command completions", async () => {
+    const mod = await import("../index.ts");
+    const pi = {
+      registerProvider: vi.fn(),
+      registerTool: vi.fn(),
+      registerCommand: vi.fn(),
+      events: { on: vi.fn() },
+    };
+
+    mod.default(pi as never);
+
+    const command = pi.registerCommand.mock.calls.find(([name]) => name === "sf-docs")?.[1];
+    expect(command?.getArgumentCompletions?.("col")?.map((item) => item.value)).toEqual([
+      "collections",
+    ]);
+    expect(command?.getArgumentCompletions?.("status he")).toBeNull();
+  });
+
   it("provides Manager action panels for credential input flows", async () => {
     const mod = await import("../index.ts");
     const listeners = new Map<string, Array<(payload: unknown) => void>>();

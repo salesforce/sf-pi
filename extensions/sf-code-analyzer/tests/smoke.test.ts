@@ -42,6 +42,24 @@ describe("sf-code-analyzer smoke", () => {
     expect(CODE_ANALYZER_TOOL_NAME).toBe("code_analyzer");
   });
 
+  it("registers flat slash-command completions", async () => {
+    const mod = await import("../index.ts");
+    const pi = {
+      events: eventBus(),
+      on: vi.fn(),
+      registerCommand: vi.fn(),
+      registerEntryRenderer: vi.fn(),
+    };
+
+    mod.default(pi as never);
+
+    const command = pi.registerCommand.mock.calls.find(
+      ([name]) => name === "sf-code-analyzer",
+    )?.[1];
+    expect(command?.getArgumentCompletions?.("doc")?.map((item) => item.value)).toEqual(["doctor"]);
+    expect(command?.getArgumentCompletions?.("doctor he")).toBeNull();
+  });
+
   it("routes the no-args UI command to the SF Pi Manager detail page", async () => {
     const mod = await import("../index.ts");
     const events = eventBus();

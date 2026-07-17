@@ -72,6 +72,19 @@ describe("sf-feedback", () => {
     expect(pi.registerCommand).toHaveBeenCalledWith("sf-feedback", expect.any(Object));
   });
 
+  it("registers flat slash-command completions", async () => {
+    const mod = await import("../index.ts");
+    const pi = { events: eventBus(), registerCommand: vi.fn() };
+
+    mod.default(pi as never);
+
+    const command = pi.registerCommand.mock.calls.find(([name]) => name === "sf-feedback")?.[1];
+    expect(command?.getArgumentCompletions?.("diag")?.map((item) => item.value)).toEqual([
+      "diagnostics",
+    ]);
+    expect(command?.getArgumentCompletions?.("diagnostics he")).toBeNull();
+  });
+
   it("uses Manager drill-down pages for feedback actions that collect input", async () => {
     const mod = await import("../index.ts");
     const events = eventBus();

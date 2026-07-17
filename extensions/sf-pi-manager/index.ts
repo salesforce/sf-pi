@@ -86,6 +86,12 @@ import {
 } from "../../lib/common/display/settings.ts";
 import { SF_PI_DISPLAY_PROFILES, isSfPiDisplayProfile } from "../../lib/common/display/types.ts";
 import {
+  completeArgumentTail,
+  parseArgumentCompletionPrefix,
+  type SfPiArgumentCompletion,
+  type SfPiCompletionOption,
+} from "../../lib/common/command-actions.ts";
+import {
   computeRecommendationsNudge,
   handleRecommended,
   parseRecommendedArgs,
@@ -141,6 +147,71 @@ const STATUS_KEY = "sf-pi";
 const RECOMMENDATIONS_STATUS_KEY = "sf-pi-recommend";
 const ANNOUNCEMENTS_STATUS_KEY = "sf-pi-announce";
 const DOCTOR_STATUS_KEY = "sf-pi-doctor";
+
+const TOP_LEVEL_COMPLETIONS: readonly SfPiCompletionOption[] = [
+  {
+    value: "list",
+    description: "List extensions with enabled and disabled status",
+    appendSpace: true,
+  },
+  { value: "enable", description: "Enable a bundled extension and reload Pi", appendSpace: true },
+  { value: "disable", description: "Disable a bundled extension and reload Pi", appendSpace: true },
+  {
+    value: "enable-all",
+    description: "Enable all bundled extensions in the selected scope",
+    appendSpace: true,
+  },
+  {
+    value: "disable-all",
+    description: "Disable all non-required bundled extensions",
+    appendSpace: true,
+  },
+  {
+    value: "status",
+    description: "Show sf-pi package, privacy, display, and extension status",
+    appendSpace: true,
+  },
+  { value: "open", description: "Open an extension detail or settings page", appendSpace: true },
+  {
+    value: "display",
+    description: "Show or set the shared sf-pi display profile",
+    appendSpace: true,
+  },
+  { value: "recommended", description: "Manage recommended external extensions" },
+  { value: "announcements", description: "List or acknowledge sf-pi announcements" },
+  { value: "skills", description: "Show skill-source wiring diagnostics" },
+  { value: "doctor", description: "Diagnose and repair sf-pi startup or skill setup" },
+  {
+    value: "telemetry",
+    description: "Show or change pi anonymous-telemetry posture",
+    appendSpace: true,
+  },
+  { value: "auto-update", description: "Manage opt-in Native Auto Update", appendSpace: true },
+  { value: "help", description: "Show the sf-pi command reference" },
+];
+
+const TELEMETRY_COMPLETIONS: readonly SfPiCompletionOption[] = [
+  { value: "status", description: "Show pi anonymous-telemetry posture" },
+  { value: "on", description: "Opt back in to pi anonymous install/update telemetry" },
+  { value: "off", description: "Disable pi anonymous install/update telemetry" },
+];
+
+const AUTO_UPDATE_COMPLETIONS: readonly SfPiCompletionOption[] = [
+  { value: "status", description: "Show Native Auto Update status" },
+  { value: "on", description: "Enable daily Native Auto Update" },
+  { value: "off", description: "Disable Native Auto Update" },
+  { value: "run", description: "Run Native Auto Update now" },
+];
+
+const OPEN_VIEW_COMPLETIONS: readonly SfPiCompletionOption[] = [
+  { value: "detail", description: "Open the extension detail page" },
+  { value: "settings", description: "Open the extension settings page" },
+];
+
+const SCOPE_COMPLETIONS: readonly SfPiCompletionOption[] = [
+  { value: "global", description: "Use global Pi settings scope" },
+  { value: "project", description: "Use project Pi settings scope" },
+];
 
 // -------------------------------------------------------------------------------------------------
 // Package root detection
@@ -210,101 +281,7 @@ export default function sfPiManagerExtension(pi: ExtensionAPI) {
 
   pi.registerCommand(COMMAND_NAME, {
     description: "Salesforce pi extension manager — browse, enable, and disable extensions",
-    getArgumentCompletions: (prefix: string) => {
-      const subcommands = [
-        "list",
-        "enable",
-        "disable",
-        "enable-all",
-        "disable-all",
-        "status",
-        "open",
-        "display",
-        "recommended",
-        "announcements",
-        "skills",
-        "doctor",
-        "telemetry",
-        "auto-update",
-        "help",
-      ];
-      const tokens = prefix.trim().split(/\s+/);
-      const current = tokens[tokens.length - 1] ?? "";
-
-      // First token: subcommand completion
-      if (tokens.length <= 1) {
-        const matches = subcommands
-          .filter((s) => s.startsWith(current.toLowerCase()))
-          .map((s) => ({ value: s, label: s }));
-        return matches.length > 0 ? matches : null;
-      }
-
-      const sub = tokens[0]?.toLowerCase();
-
-      // Second token for telemetry: status / on / off
-      if (sub === "telemetry" && tokens.length <= 2) {
-        const subActions = ["status", "on", "off"];
-        const matches = subActions
-          .filter((s) => s.startsWith(current.toLowerCase()))
-          .map((s) => ({ value: s, label: s }));
-        return matches.length > 0 ? matches : null;
-      }
-
-      // Second token for auto-update: status / on / off / run
-      if (sub === "auto-update" && tokens.length <= 2) {
-        const subActions = ["status", "on", "off", "run"];
-        const matches = subActions
-          .filter((s) => s.startsWith(current.toLowerCase()))
-          .map((s) => ({ value: s, label: s }));
-        return matches.length > 0 ? matches : null;
-      }
-
-      // Second token for display: profile names
-      if (sub === "display" && tokens.length <= 2) {
-        const profiles = SF_PI_DISPLAY_PROFILES.filter((profile) =>
-          profile.startsWith(current.toLowerCase()),
-        ).map((profile) => ({ value: profile, label: profile }));
-        return profiles.length > 0 ? profiles : null;
-      }
-
-      // Second token for enable/disable/open: extension IDs
-      if ((sub === "enable" || sub === "disable" || sub === "open") && tokens.length <= 2) {
-        const candidates =
-          sub === "open" ? SF_PI_REGISTRY : SF_PI_REGISTRY.filter((e) => !e.alwaysActive);
-        const ids = candidates
-          .map((e) => e.id)
-          .filter((id) => id.startsWith(current.toLowerCase()))
-          .map((id) => ({ value: id, label: id }));
-        return ids.length > 0 ? ids : null;
-      }
-
-      // Third token for open: detail/settings view
-      if (sub === "open" && tokens.length <= 3) {
-        const views = ["detail", "settings"]
-          .filter((s) => s.startsWith(current.toLowerCase()))
-          .map((s) => ({ value: s, label: s }));
-        return views.length > 0 ? views : null;
-      }
-
-      // Scope completion for subcommands that accept it
-      const scopedSubs = [
-        "list",
-        "enable",
-        "disable",
-        "enable-all",
-        "disable-all",
-        "status",
-        "display",
-      ];
-      if (scopedSubs.includes(sub ?? "")) {
-        const scopes = ["global", "project"]
-          .filter((s) => s.startsWith(current.toLowerCase()))
-          .map((s) => ({ value: s, label: s }));
-        return scopes.length > 0 ? scopes : null;
-      }
-
-      return null;
-    },
+    getArgumentCompletions: getSfPiArgumentCompletions,
     handler: async (args, ctx) => {
       await withSafeCommandHandler(ctx, COMMAND_NAME, () => handleCommand(pi, args, ctx));
     },
@@ -392,6 +369,100 @@ export default function sfPiManagerExtension(pi: ExtensionAPI) {
 // -------------------------------------------------------------------------------------------------
 // Command routing
 // -------------------------------------------------------------------------------------------------
+
+// Exported for unit tests.
+export function getSfPiArgumentCompletions(prefix: string): SfPiArgumentCompletion[] | null {
+  const context = parseArgumentCompletionPrefix(prefix);
+
+  // Pi passes the whole argument tail after `/sf-pi ` as the completion prefix,
+  // then replaces that same tail when a completion is accepted. Nested
+  // completions therefore return full argument-tail values such as
+  // `auto-update status`, while keeping leaf labels such as `status` for a
+  // compact completion menu.
+  if (context.tokenIndex === 0) {
+    return completeArgumentTail(TOP_LEVEL_COMPLETIONS, context);
+  }
+
+  const sub = context.tokens[0]?.toLowerCase();
+  if (!sub) return null;
+
+  if ((sub === "telemetry" || sub === "tel") && context.tokenIndex === 1) {
+    return completeArgumentTail(TELEMETRY_COMPLETIONS, context);
+  }
+
+  if (
+    (sub === "auto-update" || sub === "autoupdate" || sub === "update-auto") &&
+    context.tokenIndex === 1
+  ) {
+    return completeArgumentTail(AUTO_UPDATE_COMPLETIONS, context);
+  }
+
+  if (sub === "display") {
+    if (context.tokenIndex === 1) {
+      return mergeCompletionResults(
+        completeArgumentTail(displayProfileCompletions(), context),
+        completeArgumentTail(SCOPE_COMPLETIONS, context),
+      );
+    }
+    if (context.tokenIndex === 2) {
+      return completeArgumentTail(SCOPE_COMPLETIONS, context);
+    }
+    return null;
+  }
+
+  if (sub === "enable" || sub === "disable") {
+    if (context.tokenIndex === 1) {
+      return completeArgumentTail(extensionCompletions({ includeAlwaysActive: false }), context);
+    }
+    if (context.tokenIndex === 2) {
+      return completeArgumentTail(SCOPE_COMPLETIONS, context);
+    }
+    return null;
+  }
+
+  if (sub === "open") {
+    if (context.tokenIndex === 1) {
+      return completeArgumentTail(extensionCompletions({ includeAlwaysActive: true }), context);
+    }
+    if (context.tokenIndex === 2) {
+      return completeArgumentTail(OPEN_VIEW_COMPLETIONS, context);
+    }
+    return null;
+  }
+
+  if (["list", "status", "enable-all", "disable-all"].includes(sub) && context.tokenIndex === 1) {
+    return completeArgumentTail(SCOPE_COMPLETIONS, context);
+  }
+
+  return null;
+}
+
+function mergeCompletionResults(
+  ...groups: (SfPiArgumentCompletion[] | null)[]
+): SfPiArgumentCompletion[] | null {
+  const merged = groups.flatMap((group) => group ?? []);
+  return merged.length > 0 ? merged : null;
+}
+
+function displayProfileCompletions(): readonly SfPiCompletionOption[] {
+  return SF_PI_DISPLAY_PROFILES.map((profile) => ({
+    value: profile,
+    description: `Set display profile to ${profile}`,
+    appendSpace: true,
+  }));
+}
+
+function extensionCompletions(options: {
+  includeAlwaysActive: boolean;
+}): readonly SfPiCompletionOption[] {
+  return SF_PI_REGISTRY.filter(
+    (extension) => options.includeAlwaysActive || !extension.alwaysActive,
+  ).map((extension) => ({
+    value: extension.id,
+    description: extension.description,
+    appendSpace: true,
+  }));
+}
 
 // Exported for unit tests.
 export function parseCommandArgs(raw: string): CommandArgs {

@@ -17,7 +17,10 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 import { withSafeCommandHandler } from "../../lib/common/safe-command-handler.ts";
-import { getCompletionsFromActions, resolveAction } from "../../lib/common/command-actions.ts";
+import {
+  getFirstTokenCompletionsFromActions,
+  resolveAction,
+} from "../../lib/common/command-actions.ts";
 import { openInfoPanel, type InfoPanelSeverity } from "../../lib/common/info-panel.ts";
 import {
   openExtensionInManager,
@@ -71,7 +74,7 @@ export default function sfDocs(pi: ExtensionAPI) {
   pi.registerCommand(COMMAND_NAME, {
     description: "Search and configure Salesforce documentation lookup",
     getArgumentCompletions: (prefix: string) =>
-      getCompletionsFromActions(SF_DOCS_ACTIONS, prefix.trim().split(/\s+/).at(-1) ?? ""),
+      getFirstTokenCompletionsFromActions(SF_DOCS_ACTIONS, prefix),
     handler: async (args, ctx) => {
       await withSafeCommandHandler(ctx, COMMAND_NAME, async () => {
         const trimmed = (args ?? "").trim();

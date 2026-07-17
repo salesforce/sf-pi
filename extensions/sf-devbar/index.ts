@@ -70,6 +70,7 @@ import { basename } from "node:path";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 import { filterEnabledExtensionStatuses } from "../../lib/common/sf-pi-extension-state.ts";
 
+import { getFirstTokenCompletions } from "../../lib/common/command-actions.ts";
 import { withSafeCommandHandler } from "../../lib/common/safe-command-handler.ts";
 import { openInfoPanel } from "../../lib/common/info-panel.ts";
 import { openExtensionInManager } from "../../lib/common/manager-deep-link.ts";
@@ -825,17 +826,7 @@ export default function sfDevBar(pi: ExtensionAPI) {
 
   pi.registerCommand(COMMAND_NAME, {
     description: "Show and control the SF DevBar status bars",
-    getArgumentCompletions: (prefix) => {
-      const lower = prefix.toLowerCase();
-      const items = DEVBAR_SUBCOMMANDS.filter((action) => action.value.startsWith(lower)).map(
-        (action) => ({
-          value: action.value,
-          label: action.value,
-          description: action.description,
-        }),
-      );
-      return items.length > 0 ? items : null;
-    },
+    getArgumentCompletions: (prefix) => getFirstTokenCompletions(DEVBAR_SUBCOMMANDS, prefix),
     handler: async (args, ctx) => {
       await withSafeCommandHandler(ctx, COMMAND_NAME, async () => {
         const sub = (args ?? "").trim().toLowerCase();
@@ -1034,17 +1025,11 @@ export default function sfDevBar(pi: ExtensionAPI) {
 
   pi.registerCommand("sf-org", {
     description: "Show Salesforce org status and environment info",
-    getArgumentCompletions: (prefix) => {
-      const lower = prefix.toLowerCase();
-      const items = SF_ORG_ACTIONS.filter((action) => action.value !== "close")
-        .filter((action) => action.value.startsWith(lower))
-        .map((action) => ({
-          value: action.value,
-          label: action.value,
-          description: action.description,
-        }));
-      return items.length > 0 ? items : null;
-    },
+    getArgumentCompletions: (prefix) =>
+      getFirstTokenCompletions(
+        SF_ORG_ACTIONS.filter((action) => action.value !== "close"),
+        prefix,
+      ),
     handler: async (args, ctx) => {
       await withSafeCommandHandler(ctx, "sf-org", async () => {
         const sub = (args ?? "").trim().toLowerCase();

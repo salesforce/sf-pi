@@ -9,7 +9,7 @@
  * must be handled gracefully.
  */
 import { describe, it, expect } from "vitest";
-import { parseCommandArgs } from "../index.ts";
+import { getSfPiArgumentCompletions, parseCommandArgs } from "../index.ts";
 import { parseDoctorArgs } from "../lib/doctor-command.ts";
 
 // -------------------------------------------------------------------------------------------------
@@ -163,6 +163,65 @@ describe("parseCommandArgs", () => {
     const result = parseCommandArgs("auto-update run");
     expect(result.subcommand).toBe("auto-update");
     expect(result.rest).toBe("run");
+  });
+});
+
+describe("getSfPiArgumentCompletions", () => {
+  const completions = (prefix: string) => getSfPiArgumentCompletions(prefix) ?? [];
+  const values = (prefix: string) => completions(prefix).map((item) => item.value);
+  const labels = (prefix: string) => completions(prefix).map((item) => item.label);
+
+  it("completes top-level subcommands directly", () => {
+    expect(completions("aut")).toContainEqual(
+      expect.objectContaining({
+        value: "auto-update ",
+        label: "auto-update",
+        description: "Manage opt-in Native Auto Update",
+      }),
+    );
+  });
+
+  it("discovers auto-update actions after a trailing space", () => {
+    expect(completions("auto-update ")).toContainEqual(
+      expect.objectContaining({
+        value: "auto-update status",
+        label: "status",
+        description: "Show Native Auto Update status",
+      }),
+    );
+  });
+
+  it("returns full argument-tail values for auto-update actions", () => {
+    expect(values("auto-update st")).toEqual(["auto-update status"]);
+    expect(labels("auto-update st")).toEqual(["status"]);
+  });
+
+  it("returns full argument-tail values for telemetry actions", () => {
+    expect(values("telemetry o")).toEqual(["telemetry on", "telemetry off"]);
+    expect(labels("telemetry o")).toEqual(["on", "off"]);
+  });
+
+  it("returns full argument-tail values for display profiles and scopes", () => {
+    expect(values("display co")).toEqual(["display compact "]);
+    expect(values("display compact pr")).toEqual(["display compact project"]);
+  });
+
+  it("returns full argument-tail values for extension targets", () => {
+    expect(values("enable sf-brow")).toContain("enable sf-browser ");
+    expect(labels("enable sf-brow")).toContain("sf-browser");
+    expect(values("enable sf-browser gl")).toEqual(["enable sf-browser global"]);
+  });
+
+  it("returns full argument-tail values for open views", () => {
+    expect(values("open sf-guardrail ")).toEqual([
+      "open sf-guardrail detail",
+      "open sf-guardrail settings",
+    ]);
+    expect(values("open sf-guardrail set")).toEqual(["open sf-guardrail settings"]);
+  });
+
+  it("returns full argument-tail values for scoped commands", () => {
+    expect(values("status pr")).toEqual(["status project"]);
   });
 });
 

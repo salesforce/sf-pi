@@ -10,6 +10,7 @@
  */
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 
+import { getFirstTokenCompletions } from "../../lib/common/command-actions.ts";
 import { openInfoPanel, type InfoPanelSeverity } from "../../lib/common/info-panel.ts";
 import {
   openExtensionInManager,
@@ -101,17 +102,7 @@ export default function sfHerdr(pi: ExtensionAPI): void {
 
   pi.registerCommand(COMMAND_NAME, {
     description: "SF Herdr — dynamic Herdr lane planning, profiles, and status",
-    getArgumentCompletions: (prefix) => {
-      const lower = prefix.toLowerCase();
-      const items = COMMAND_ACTIONS.filter((action) => action.value.startsWith(lower)).map(
-        (action) => ({
-          value: action.value,
-          label: action.value,
-          description: action.description,
-        }),
-      );
-      return items.length > 0 ? items : null;
-    },
+    getArgumentCompletions: (prefix) => getFirstTokenCompletions(COMMAND_ACTIONS, prefix),
     handler: async (args, ctx) => {
       await withSafeCommandHandler(ctx, COMMAND_NAME, async () => {
         const tokens = args.trim().split(/\s+/).filter(Boolean);

@@ -22,7 +22,7 @@ import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-c
 import {
   type SfPiCommandAction,
   formatHelpFromActions,
-  getCompletionsFromActions,
+  getFirstTokenCompletionsFromActions,
   resolveAction,
 } from "../../lib/common/command-actions.ts";
 import { openInfoPanel, type InfoPanelSeverity } from "../../lib/common/info-panel.ts";
@@ -239,7 +239,7 @@ export default function sfCodeAnalyzer(pi: ExtensionAPI) {
   pi.registerCommand(COMMAND_NAME, {
     description: "Show Salesforce Code Analyzer status and controls",
     getArgumentCompletions: (prefix: string) =>
-      getCompletionsFromActions(CODE_ANALYZER_ACTIONS, prefix.trim().split(/\s+/).at(-1) ?? "", {
+      getFirstTokenCompletionsFromActions(CODE_ANALYZER_ACTIONS, prefix, {
         excludeValues: ["close", "lifecycle.toggle"],
       }),
     handler: async (args, ctx) => {

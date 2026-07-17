@@ -42,6 +42,19 @@ describe("sf-browser", () => {
     expect(typeof mod.default).toBe("function");
   });
 
+  it("registers flat slash-command completions", async () => {
+    const mod = await import("../index.ts");
+    const pi = { events: eventBus(), on: vi.fn(), registerCommand: vi.fn() };
+
+    mod.default(pi as never);
+
+    const command = pi.registerCommand.mock.calls.find(([name]) => name === "sf-browser")?.[1];
+    expect(command?.getArgumentCompletions?.("open-s")?.map((item) => item.value)).toEqual([
+      "open-setup",
+    ]);
+    expect(command?.getArgumentCompletions?.("open users")).toBeNull();
+  });
+
   it("routes the no-args UI command to the SF Pi Manager detail page", async () => {
     const mod = await import("../index.ts");
     const events = eventBus();

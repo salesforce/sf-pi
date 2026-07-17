@@ -34,6 +34,25 @@ function fakeCommandContext(): ExtensionCommandContext {
   } as unknown as ExtensionCommandContext;
 }
 
+describe("sf-data-explorer completions", () => {
+  it("returns full multi-token values with descriptions", async () => {
+    const { getDataExplorerArgumentCompletions } = await import("../index.ts");
+    expect(getDataExplorerArgumentCompletions("soq")?.map((item) => item.value)).toEqual(["soql "]);
+    expect(getDataExplorerArgumentCompletions("soql ")).toEqual([
+      expect.objectContaining({
+        value: "soql refresh",
+        label: "refresh",
+        description: "Refresh explorer metadata",
+      }),
+    ]);
+  });
+
+  it("returns null when no completions match", async () => {
+    const { getDataExplorerArgumentCompletions } = await import("../index.ts");
+    expect(getDataExplorerArgumentCompletions("zzz")).toBeNull();
+  });
+});
+
 describe("sf-data-explorer boot path", () => {
   it("uses shared REST helpers instead of importing sf-data360 internals", () => {
     const source = readFileSync("extensions/sf-data-explorer/lib/transport.ts", "utf8");

@@ -26,6 +26,7 @@ import {
   type CommandPanelState,
   openCommandPanel,
 } from "../../lib/common/command-panel.ts";
+import { getFirstTokenCompletionsFromActions } from "../../lib/common/command-actions.ts";
 import { openInfoPanel, type InfoPanelSeverity } from "../../lib/common/info-panel.ts";
 import {
   buildToggleExtensionAction,
@@ -77,6 +78,10 @@ export default function (pi: ExtensionAPI) {
 
   pi.registerCommand(COMMAND_NAME, {
     description: "SF Apex — Apex lifecycle status & controls",
+    getArgumentCompletions: (prefix: string) =>
+      getFirstTokenCompletionsFromActions(SF_APEX_ACTIONS, prefix, {
+        excludeValues: ["close", "lifecycle.toggle"],
+      }),
     handler: async (args, ctx) => {
       await withSafeCommandHandler(ctx, COMMAND_NAME, async () => {
         const sub = (args ?? "").trim().toLowerCase();

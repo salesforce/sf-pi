@@ -56,7 +56,14 @@ import {
   registerManagerDetailActions,
   type ManagerDetailAction,
 } from "../../lib/common/manager-actions.ts";
-import { type SfPiCommandAction } from "../../lib/common/command-actions.ts";
+import {
+  completeArgumentTail,
+  getFirstTokenCompletionsFromActions,
+  parseArgumentCompletionPrefix,
+  type SfPiArgumentCompletion,
+  type SfPiCommandAction,
+  type SfPiCompletionOption,
+} from "../../lib/common/command-actions.ts";
 import { withSafeCommandHandler } from "../../lib/common/safe-command-handler.ts";
 import { openInfoPanel } from "../../lib/common/info-panel.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
@@ -135,6 +142,7 @@ const AGENTSCRIPT_ACTIONS: SfPiCommandAction<AgentScriptAction>[] = [
     description:
       "Render a Markdown report from a past eval run. Usage: /sf-agentscript report eval <run_id> [--save] [--test-id <id>]",
     group: "Testing",
+    appendSpace: true,
   },
   {
     value: "help",
@@ -144,18 +152,30 @@ const AGENTSCRIPT_ACTIONS: SfPiCommandAction<AgentScriptAction>[] = [
   },
 ];
 
+const AGENTSCRIPT_REPORT_COMPLETIONS: readonly SfPiCompletionOption[] = [
+  {
+    value: "eval",
+    label: "eval",
+    description: "Render a Markdown report from an eval run id",
+  },
+];
+
+// Exported for unit tests.
+export function getAgentScriptArgumentCompletions(prefix: string): SfPiArgumentCompletion[] | null {
+  const context = parseArgumentCompletionPrefix(prefix);
+
+  if (context.tokenIndex === 0)
+    return getFirstTokenCompletionsFromActions(AGENTSCRIPT_ACTIONS, prefix);
+  if (context.tokens[0]?.toLowerCase() === "report" && context.tokenIndex === 1) {
+    return completeArgumentTail(AGENTSCRIPT_REPORT_COMPLETIONS, context);
+  }
+  return null;
+}
+
 function registerCommand(pi: ExtensionAPI, state: AgentScriptAssistState): void {
   pi.registerCommand(COMMAND_NAME, {
     description: "Agent Script lifecycle — compile-on-save diagnostics, eval, and tools",
-    getArgumentCompletions: (prefix) => {
-      const lower = prefix.toLowerCase();
-      const items = AGENTSCRIPT_ACTIONS.filter((a) => a.value.startsWith(lower)).map((a) => ({
-        value: a.value,
-        label: a.value,
-        description: a.description,
-      }));
-      return items.length > 0 ? items : null;
-    },
+    getArgumentCompletions: getAgentScriptArgumentCompletions,
     handler: async (args, ctx) => {
       await withSafeCommandHandler(ctx, COMMAND_NAME, async () => {
         const tokens = args.trim().split(/\s+/).filter(Boolean);
