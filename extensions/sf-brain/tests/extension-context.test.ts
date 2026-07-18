@@ -63,7 +63,7 @@ describe("formatSfPiExtensionContext", () => {
     expect(context.endsWith(SF_PI_EXTENSIONS_CLOSE_TAG)).toBe(true);
     expect(context).toContain("SF Pi bundled-extension routing priority");
     expect(context).toContain("follow the latest one");
-    expect(context).toContain("Status: 21/21 bundled extensions enabled.");
+    expect(context).toContain("Status: 22/22 bundled extensions enabled.");
     expect(context).toContain("Active SF skills remain fallback/workflow guidance: sf-data360");
     expect(context).toContain("- sf-agentscript (enabled)");
     expect(context).toContain("Agentforce Agent Script authoring");
@@ -75,6 +75,8 @@ describe("formatSfPiExtensionContext", () => {
     expect(context).toContain("- sf-herdr (enabled)");
     expect(context).toContain("- sf-lwc (enabled)");
     expect(context).toContain("Local-native Lightning Web Component lifecycle workflows");
+    expect(context).toContain("- sf-multiframework (enabled)");
+    expect(context).toContain("Salesforce Multi-Framework React UI Bundle guidance");
     expect(context).toContain("- sf-pi-manager (always-on)");
   });
 

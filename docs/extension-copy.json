@@ -513,6 +513,33 @@
       "LWC Artifacts under the global agent directory for project scans, component inspections, diagnostics JSON, Jest JSON, stdout/stderr, and markdown summaries."
     ]
   },
+  "sf-multiframework": {
+    "shortName": "Multi-Framework",
+    "intentGroup": "Build apps",
+    "promise": "Build React UI Bundle apps for Salesforce CustomApplication and Experience surfaces with current template, data, build, and security runbooks.",
+    "bestFor": "React UI Bundle / Multi-Framework apps",
+    "benefits": [
+      "Routes React UI Bundle work away from generic LWC guidance and toward Multi-Framework-specific metadata patterns.",
+      "Captures current template command differences, @salesforce/platform-sdk usage, and build artifact hygiene.",
+      "Documents Experience Cloud guest/auth access, external user provisioning, and sharing-vs-Apex-fa\u00e7ade security choices."
+    ],
+    "tryFirst": {
+      "label": "Open Multi-Framework help",
+      "code": "/sf-multiframework"
+    },
+    "useCases": [
+      "Create or edit a React app under force-app/**/uiBundles.",
+      "Choose between sf template generate ui-bundle and sf template generate project for React app scaffolds.",
+      "Configure CustomApplication companion metadata and app access.",
+      "Configure Experience Cloud app-container metadata, publish, login, guest Apex access, and Contact-linked external users.",
+      "Troubleshoot public pages, reviewer portals, and Apex REST calls from React UI Bundles."
+    ],
+    "whatYouGet": [
+      "A bundled sf-multiframework skill with implementation checklist and Experience Cloud runbook.",
+      "A small /sf-multiframework command for status, checklist, and Experience route reminders.",
+      "Clear handoffs to sf_apex, sf_soql, sf_browser, and code_analyzer for verification."
+    ]
+  },
   "sf-soql": {
     "shortName": "SOQL",
     "intentGroup": "Query data",

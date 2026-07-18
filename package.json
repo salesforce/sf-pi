@@ -39,6 +39,7 @@
       "./extensions/sf-apex/index.ts",
       "./extensions/sf-soql/index.ts",
       "./extensions/sf-lwc/index.ts",
+      "./extensions/sf-multiframework/index.ts",
       "./extensions/sf-browser/index.ts",
       "./extensions/sf-code-analyzer/index.ts",
       "./extensions/sf-slack/index.ts",

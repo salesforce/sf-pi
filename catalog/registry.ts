@@ -245,6 +245,16 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
     events: ["session_start"],
   },
   {
+    id: "sf-multiframework",
+    name: "SF Multi-Framework",
+    description: "Salesforce Multi-Framework React UI Bundle guidance for CustomApplication and Experience apps.",
+    file: "extensions/sf-multiframework/index.ts",
+    category: "agent-tool",
+    maturity: "experimental",
+    defaultEnabled: true,
+    commands: ["/sf-multiframework"],
+  },
+  {
     id: "sf-ohana-spinner",
     name: "SF Ohana Spinner",
     description: "Salesforce-themed rainbow spinner during LLM thinking",
