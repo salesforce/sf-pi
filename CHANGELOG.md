@@ -530,6 +530,14 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.228.7](https://github.com/salesforce/sf-pi/compare/v0.228.6...v0.228.7) (2026-07-20)
+
+
+### Bug Fixes
+
+* **deps:** update brace-expansion lockfile ([1e79323](https://github.com/salesforce/sf-pi/commit/1e7932384c3581ea9d62a1002985bec5b7bbb358))
+* **sf-guardrail:** resolve default scratch orgs before prompting ([860d445](https://github.com/salesforce/sf-pi/commit/860d44520b0ddb6aedd70bcc9c7af0bc5964b285))
+
 ## [0.228.6](https://github.com/salesforce/sf-pi/compare/v0.228.5...v0.228.6) (2026-07-17)
 
 
