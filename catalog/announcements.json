@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.228.6-2026-07-17",
-  "latestVersion": "0.228.6",
+  "revision": "release-0.228.7-2026-07-20",
+  "latestVersion": "0.228.7",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.228.6",
+      "id": "release-0.228.7",
       "kind": "update",
-      "title": "sf-pi v0.228.6 — standardize slash command completions",
-      "publishedAt": "2026-07-17T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.228.6",
+      "title": "sf-pi v0.228.7 — deps: update brace-expansion lockfile",
+      "publishedAt": "2026-07-20T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.228.7",
       "severity": "info",
-      "body": "standardize slash command completions"
+      "body": "deps: update brace-expansion lockfile — sf-guardrail: resolve default scratch orgs before prompting"
     },
     {
       "id": "pi-0.73-required",
