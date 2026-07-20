@@ -131,14 +131,14 @@
     "vitest": "^4.1.10"
   },
   "dependencies": {
-    "@lwc/compiler": "^9.3.4",
+    "@lwc/compiler": "^9.3.5",
     "@lwc/template-compiler": "^9.3.4",
-    "@salesforce/apex-node": "^8.4.35",
+    "@salesforce/apex-node": "^8.4.37",
     "@salesforce/core": "^8.31.2",
     "@salesforce/kit": "^3.2.6",
     "@salesforce/soql-common": "^2.0.0",
     "@salesforce/soql-language-server": "^1.1.0",
-    "@salesforce/source-deploy-retrieve": "^12.37.1",
+    "@salesforce/source-deploy-retrieve": "^12.37.2",
     "@sf-agentscript/agentforce": "2.5.34",
     "@sf-agentscript/language": "2.18.0",
     "@sf-agentscript/lsp": "2.3.8",
