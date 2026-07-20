@@ -36,6 +36,94 @@ _Avoid_: local pricing estimate, synthesized tier pricing, direct-provider cost 
 The SF Pi practice of letting Pi own generic global and project-local resource mechanics while SF Pi keeps curated Salesforce workflow guidance. It is a deprecation path for duplicate mechanics, not a reason to remove Salesforce-specific UX.
 _Avoid_: custom project config, duplicate package manager, raw Pi config replacement, safety weakening
 
+**MCP Governance Extension**:
+An SF Pi extension that allows general MCP server connections while adding Salesforce-specific discovery, setup, safety posture, and conflict handling around Salesforce Pi-native tools and Salesforce MCP servers.
+_Avoid_: generic MCP client, MCP in core, Salesforce-only MCP adapter, raw MCP bridge
+
+**Managed Capability**:
+An SF Pi workflow area that needs one direct active owner for agent use, such as documentation lookup, SOQL lifecycle work, Slack research, or Data 360 operations.
+_Avoid_: tool namespace, extension category, MCP server group, feature bucket
+
+**Managed Capability Registry**:
+The explicit SF Pi map from known Salesforce or bundled-extension workflow areas to their Pi-native extension owners and known MCP alternatives. It is the only source of hard MCP conflict decisions; unknown MCP tool similarities do not disable extensions by heuristic.
+_Avoid_: heuristic conflict detector, semantic duplicate scan, tool-name matcher, inferred capability graph
+
+**Capability Owner**:
+The Pi-native extension or MCP tool surface that directly owns a **Managed Capability** for agent use in the current configuration.
+_Avoid_: preferred tool, default route, provider, extension status
+
+**Governed Direct Exposure**:
+The SF Pi MCP exposure mode where MCP tools are direct Pi tools by default only after **Managed Capability** ownership and safety checks. Known overlaps with Pi-native Salesforce tools require an explicit user choice before both surfaces can be directly active.
+_Avoid_: proxy-first MCP, raw direct bridge, tool dump, namespace-only conflict handling
+
+**Direct Tool Preview**:
+The `sf-mcp` review step that shows the MCP tools about to become direct Pi tools before an adopted MCP server exposes them to the agent. For unknown servers with no **Managed Capability Registry** conflict, users can expose all previewed tools or choose a subset.
+_Avoid_: silent direct registration, proxy promotion, heuristic conflict review, post-enable summary
+
+**Direct Tool Load Warning**:
+A non-blocking `sf-mcp` warning shown when direct MCP exposure would add a large number of active tools. It informs the user about model-selection and context risks without preventing power users from exposing every tool.
+_Avoid_: hard tool cap, silent tool flood, hidden context budget, proxy-only fallback
+
+**MCP Execution Mediation**:
+The runtime safety posture where directly exposed MCP tools can be visible to the agent, but risky MCP calls are evaluated at execution time before they affect Salesforce, external systems, or local machine state.
+_Avoid_: setup-only approval, hidden allow, blanket server trust, direct-tool blocklist
+
+**MCP Guardrail Handoff**:
+The SF Pi boundary where `sf-mcp` owns MCP metadata, risk classification, and call normalization while SF Guardrail makes the final allow, ask, or block decision for risky MCP executions.
+_Avoid_: sf-mcp approval layer, duplicate approval ledger, setup-only safety, raw MCP trust
+
+**MCP Risk Classification**:
+The `sf-mcp` process that combines MCP tool annotations with SF Pi-owned classifiers for known servers, Salesforce presets, and **Managed Capabilities** before execution mediation. MCP annotations are useful evidence but are not the sole authority for Salesforce or other high-value durable operations.
+_Avoid_: annotation-only trust, heuristic hard block, all-unknown confirmation, setup-only risk review
+
+**Extension-Level Capability Handoff**:
+The v1 SF Pi policy that when MCP becomes the **Capability Owner** for a conflicting **Managed Capability**, SF Pi disables the conflicting bundled extension through package filtering instead of suppressing only selected LLM tools.
+_Avoid_: tool-level suppression, soft warning only, hidden deactivation, partial extension ownership
+
+**Capability Handoff Ledger**:
+The SF Pi-owned record of **Extension-Level Capability Handoffs**, including the **Managed Capability**, previous Pi-native owner, MCP server instance or preset, user choice, handoff scope, org binding when relevant, and restore path.
+_Avoid_: transient disable notice, hidden package filter, audit trail for every MCP call, separate extension manager
+
+**Capability Handoff Scope**:
+The settings scope where an **Extension-Level Capability Handoff** is applied. `sf-mcp` defaults handoffs to global scope for consistency across Pi sessions, while offering project scope when a user wants one repository or workspace to keep a different **Capability Owner**.
+_Avoid_: implicit project default, hidden global disable, per-session handoff, unscoped package filter
+
+**MCP Surface Boundary**:
+The SF Pi rule that `sf-mcp` is the only supported user-facing MCP command, tool, and configuration surface in the bundled Salesforce extension suite, even when its implementation reuses generic MCP adapter code.
+_Avoid_: separate MCP extension requirement, dual MCP panels, unmanaged adapter install, hidden parallel MCP surface
+
+**MCP Config Delegation**:
+The SF Pi rule that `sf-mcp` can read standard MCP server configuration for interoperability but keeps Salesforce-specific governance state in SF Pi-owned settings. Shared MCP files are written only after an explicit user-approved create or import target is chosen.
+_Avoid_: SF Pi-only MCP config, hidden shared-config mutation, governance metadata in `.mcp.json`, config fork
+
+**Unmanaged MCP Surface**:
+Any MCP command, tool, or configuration path exposed by a non-`sf-mcp` Pi extension in the same runtime. SF Pi can detect and warn about it, but it is outside **MCP Governance Extension** ownership until the user adopts the server configuration into `sf-mcp` or disables the other surface.
+_Avoid_: governed MCP, compatible MCP, hidden duplicate tools, assumed conflict coverage
+
+**MCP Server Adoption**:
+The explicit user decision to bring a discovered MCP server configuration under `sf-mcp` governance so SF Pi may start it, classify its tools, and expose approved direct tools.
+_Avoid_: auto-import, passive discovery, config read, silent enablement
+
+**Salesforce MCP Preset**:
+A curated SF Pi setup path for an official or Salesforce-oriented MCP server that gives users easy configuration, clear prerequisites, default governance choices, and a separate **MCP Server Adoption** confirmation before tools become active.
+_Avoid_: MCP catalog dump, hardcoded server shortcut, unmanaged MCP config, direct-tool auto-enable, preset-implies-adoption
+
+**Salesforce MCP Preset Registry**:
+The bundled SF Pi catalog of known Salesforce MCP server families and governance templates. It explains what SF Pi understands, including setup copy, auth style, org-scoped versus org-agnostic posture, **Managed Capability Registry** mapping, and default governance choices; it is not proof that a concrete server is available.
+_Avoid_: live MCP catalog, org availability cache, tool list source, static enabled-state claim
+
+**MCP Server Instance Discovery**:
+The runtime process that determines concrete MCP server availability, server URL, authentication state, org identity when relevant, enabled state, and actual tool list. It is the source of truth for active server instances, including Salesforce Hosted MCP servers and arbitrary MCP config entries.
+_Avoid_: preset registry, static docs lookup, assumed server availability, cached tool truth
+
+**Org-Scoped MCP Adoption**:
+An **MCP Server Adoption** for a Salesforce MCP server instance that is pinned to a resolved Salesforce org identity, including org alias, org ID when available, instance URL, and org type when known. If the current org identity changes, the adopted server requires revalidation before `sf-mcp` uses it as the active server instance.
+_Avoid_: follow-default-org MCP, alias-only binding, silent org retargeting, cross-org reuse
+
+**Salesforce MCP Setup Wizard**:
+The guided `sf-mcp` flow for Salesforce Hosted MCP prerequisites, read-only preflight, supported API or metadata setup with explicit approval, and Setup/browser handoff when no supported API path exists.
+_Avoid_: one-click admin automation, browser-first setup bot, undocumented setup mutation, prerequisites-only help text
+
 **Native Auto Update**:
 An opt-in SF Pi update flow that delegates to supported first-party updater commands, such as `pi update --all` and `sf update stable`, instead of reimplementing package-manager-specific update logic. It is a convenience workflow, not a background package-management framework.
 _Avoid_: custom updater framework, installer matrix, background daemon, hidden restart

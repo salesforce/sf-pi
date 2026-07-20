@@ -36,6 +36,10 @@ _Avoid_: raw tool call, command blob, policy input
 A **Safety Subject** normalized from an LLM-callable SF Pi tool rather than from a shell command or file path. It captures the attempted operation, target org or external destination when relevant, operation family, risk-relevant target details, and an input fingerprint so the **Safety Kernel** can return a normal **Guardrail Decision**.
 _Avoid_: per-extension approval system, model approval flag, native policy layer, tool self-approval
 
+**MCP Tool Safety Subject**:
+A **Native Tool Safety Subject** normalized from an `sf-mcp` MCP tool execution. `sf-mcp` supplies MCP server identity, tool identity, operation family, known Salesforce org or external destination, risk annotations, and argument fingerprint; SF Guardrail decides the resulting **Guardrail Decision**.
+_Avoid_: MCP approval helper, server trust flag, raw MCP payload approval, duplicate approval ledger
+
 **High-Value Durable Mutation**:
 A first-party, LLM-callable operation that can persistently change Salesforce org state, Data 360 resources, externally visible collaboration content, or another durable system of record under the user's authority. Mutation alone is not the risk; the risk is a native semantic write path where the model could otherwise self-approve a specific durable change. Ordinary local source edits are not high-value durable mutations; they become externally durable only when a separate deploy, publish, save, or execute operation applies them to a system of record.
 _Avoid_: all mutation, local edit, browser draft state, read-only probe, dry run
