@@ -30,7 +30,7 @@ export async function evaluateNativeToolRiskWithOrgLookup(
   config: GuardrailConfig,
 ): Promise<ClassifiedDecision> {
   const fast = evaluateNativeToolRisk(subject, cwd, config);
-  if (!subject.usesSalesforceOrg || !fast.orgResolutionGuessed || !fast.orgTargetExplicit) {
+  if (!subject.usesSalesforceOrg || !fast.orgResolutionGuessed) {
     return fast;
   }
 

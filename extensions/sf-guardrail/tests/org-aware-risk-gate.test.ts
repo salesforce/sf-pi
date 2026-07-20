@@ -7,12 +7,17 @@ import type { OrgInfo, SfEnvironment } from "../../../lib/common/sf-environment/
 
 let mockedEnv: SfEnvironment | null = null;
 let mockedLookup: Record<string, OrgInfo> = {};
+let mockedDefaultTargetOrg: string | undefined;
 
 vi.mock("../../../lib/common/sf-environment/shared-runtime.ts", () => ({
   getCachedSfEnvironment: () => mockedEnv,
 }));
 
 vi.mock("../../../lib/common/sf-environment/detect.ts", () => ({
+  detectConfig: async () =>
+    mockedDefaultTargetOrg
+      ? { hasTargetOrg: true, targetOrg: mockedDefaultTargetOrg, location: "Global" }
+      : { hasTargetOrg: false },
   detectOrg: async (targetOrg: string) =>
     mockedLookup[targetOrg] ?? { detected: false, orgType: "unknown" },
 }));
@@ -52,6 +57,7 @@ function lookupOrg(alias: string, orgType: OrgInfo["orgType"]): void {
 beforeEach(() => {
   mockedEnv = null;
   mockedLookup = {};
+  mockedDefaultTargetOrg = undefined;
 });
 
 describe("evaluateOrgAwareRisk", () => {
@@ -124,6 +130,19 @@ describe("evaluateOrgAwareRisk", () => {
 
     const decision = await evaluateOrgAwareRiskWithOrgLookup(
       { kind: "shellCommand", toolName: "bash", command: "sf project deploy start -o Scratch" },
+      "/project",
+      readBundledConfig(),
+    );
+
+    expect(decision).toBeUndefined();
+  });
+
+  it("refines an unflagged default scratch org before deciding", async () => {
+    mockedDefaultTargetOrg = "Scratch";
+    lookupOrg("Scratch", "scratch");
+
+    const decision = await evaluateOrgAwareRiskWithOrgLookup(
+      { kind: "shellCommand", toolName: "bash", command: "sf project deploy start" },
       "/project",
       readBundledConfig(),
     );

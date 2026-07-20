@@ -32,7 +32,7 @@ export async function evaluateOrgAwareRiskWithOrgLookup(
   config: GuardrailConfig,
 ): Promise<ClassifiedDecision | undefined> {
   const fast = evaluateOrgAwareRisk(subject, cwd, config);
-  if (!fast || !fast.orgResolutionGuessed || !fast.orgTargetExplicit || !fast.orgCommand) {
+  if (!fast || !fast.orgResolutionGuessed || !fast.orgCommand) {
     return fast;
   }
 

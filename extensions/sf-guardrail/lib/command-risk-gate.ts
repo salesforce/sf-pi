@@ -100,7 +100,6 @@ export async function evaluateCommandRiskWithOrgLookup(
   if (
     decision.ruleId !== "sf-org-delete" ||
     !decision.orgResolutionGuessed ||
-    !decision.orgTargetExplicit ||
     !decision.orgCommand
   ) {
     return fast;

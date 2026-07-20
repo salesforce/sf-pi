@@ -13,12 +13,17 @@ import type { OrgInfo, SfEnvironment } from "../../../lib/common/sf-environment/
 // `setEnv(...)` so each scenario is explicit.
 let mockedEnv: SfEnvironment | null = null;
 let mockedLookup: Record<string, OrgInfo> = {};
+let mockedDefaultTargetOrg: string | undefined;
 
 vi.mock("../../../lib/common/sf-environment/shared-runtime.ts", () => ({
   getCachedSfEnvironment: () => mockedEnv,
 }));
 
 vi.mock("../../../lib/common/sf-environment/detect.ts", () => ({
+  detectConfig: async () =>
+    mockedDefaultTargetOrg
+      ? { hasTargetOrg: true, targetOrg: mockedDefaultTargetOrg, location: "Global" }
+      : { hasTargetOrg: false },
   detectOrg: async (targetOrg: string) =>
     mockedLookup[targetOrg] ?? { detected: false, orgType: "unknown" },
 }));
@@ -48,10 +53,12 @@ function makeEnv(orgAlias: string, orgType: SfEnvironment["org"]["orgType"]): Sf
 beforeEach(() => {
   setEnv(null);
   mockedLookup = {};
+  mockedDefaultTargetOrg = undefined;
 });
 afterEach(() => {
   setEnv(null);
   mockedLookup = {};
+  mockedDefaultTargetOrg = undefined;
 });
 
 describe("resolveOrgContext", () => {
@@ -122,6 +129,45 @@ describe("resolveOrgContext", () => {
       orgType: "scratch",
     };
     const ctx = await resolveOrgContextWithLookup("sf project deploy start -o Scratch", "/tmp", []);
+    expect(ctx.type).toBe("scratch");
+    expect(ctx.source).toBe("lookup");
+    expect(ctx.guessed).toBe(false);
+    expect(ctx.explicit).toBe(true);
+  });
+
+  it("bounded lookup resolves the unflagged default scratch org when the cache is missing", async () => {
+    mockedDefaultTargetOrg = "Scratch";
+    mockedLookup.Scratch = {
+      detected: true,
+      alias: "Scratch",
+      username: "scratch@example.test",
+      orgId: "00DScratch",
+      orgType: "scratch",
+    };
+
+    const ctx = await resolveOrgContextWithLookup("sf project deploy start", "/tmp", []);
+
+    expect(ctx.alias).toBe("Scratch");
+    expect(ctx.type).toBe("scratch");
+    expect(ctx.source).toBe("lookup");
+    expect(ctx.guessed).toBe(false);
+    expect(ctx.explicit).toBe(false);
+  });
+
+  it("prefers live default config over a guessed cached default", async () => {
+    setEnv(makeEnv("StaleDefault", "unknown"));
+    mockedDefaultTargetOrg = "Scratch";
+    mockedLookup.Scratch = {
+      detected: true,
+      alias: "Scratch",
+      username: "scratch@example.test",
+      orgId: "00DScratch",
+      orgType: "scratch",
+    };
+
+    const ctx = await resolveOrgContextWithLookup("sf project deploy start", "/tmp", []);
+
+    expect(ctx.alias).toBe("Scratch");
     expect(ctx.type).toBe("scratch");
     expect(ctx.source).toBe("lookup");
     expect(ctx.guessed).toBe(false);

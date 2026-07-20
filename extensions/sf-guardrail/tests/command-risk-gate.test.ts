@@ -16,6 +16,7 @@ vi.mock("../../../lib/common/sf-environment/shared-runtime.ts", () => ({
 }));
 
 vi.mock("../../../lib/common/sf-environment/detect.ts", () => ({
+  detectConfig: async () => ({ hasTargetOrg: false }),
   detectOrg: async (targetOrg: string) =>
     mockedLookup[targetOrg] ?? { detected: false, orgType: "unknown" },
 }));

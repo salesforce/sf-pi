@@ -10,14 +10,13 @@
  *   4. Otherwise fail closed to production.
  *
  * `resolveOrgContextWithLookup()` is the bounded slow path used only after an
- * org-aware rule would fire because the fast path guessed production for an
- * explicit target. It performs an in-process Salesforce auth/org lookup and
- * caches the result by alias so scratch/sandbox aliases do not repeatedly
- * trigger production prompts.
+ * org-aware rule would fire because the fast path guessed production. It performs
+ * an in-process Salesforce config/auth/org lookup and caches the result by alias
+ * so scratch/sandbox aliases do not repeatedly trigger production prompts.
  */
 import { getCachedSfEnvironment } from "../../../lib/common/sf-environment/shared-runtime.ts";
-import { detectOrg } from "../../../lib/common/sf-environment/detect.ts";
-import type { OrgInfo } from "../../../lib/common/sf-environment/types.ts";
+import { detectConfig, detectOrg } from "../../../lib/common/sf-environment/detect.ts";
+import type { ConfigInfo, OrgInfo } from "../../../lib/common/sf-environment/types.ts";
 import { extractTargetOrg, tokenize } from "./bash-ast.ts";
 import type { OrgTypeFilter } from "./types.ts";
 
@@ -40,7 +39,8 @@ export interface OrgContext {
   source: OrgResolutionSource;
 }
 
-const LOOKUP_TIMEOUT_MS = 2_500;
+const CONFIG_LOOKUP_TIMEOUT_MS = 2_500;
+const LOOKUP_TIMEOUT_MS = 10_000;
 const lookupCache = new Map<string, OrgContext>();
 
 export function resolveOrgContext(
@@ -101,19 +101,32 @@ export async function resolveOrgContextForTargetWithLookup(
   productionAliases: string[],
 ): Promise<OrgContext> {
   const fast = resolveOrgContextForTarget(targetOrg, cwd, productionAliases);
-  if (!fast.guessed || !fast.explicit || !fast.alias) return fast;
+  if (!fast.guessed) return fast;
 
-  const cached = lookupCache.get(fast.alias);
-  if (cached) return cached;
+  const alias = targetOrg ?? (await detectDefaultTargetOrg()) ?? fast.alias;
+  if (!alias) return fast;
+
+  if (productionAliases.includes(alias)) {
+    return {
+      alias,
+      type: "production",
+      guessed: false,
+      explicit: fast.explicit,
+      source: "productionAliases",
+    };
+  }
+
+  const cached = lookupCache.get(alias);
+  if (cached) return { ...cached, explicit: fast.explicit };
 
   try {
-    const org = await withTimeout(detectOrg(fast.alias), LOOKUP_TIMEOUT_MS);
-    if (!org.detected) return fast;
-    const resolved = fromOrgInfo(fast.alias, org, true, "lookup");
-    lookupCache.set(fast.alias, resolved);
+    const org = await withTimeout(detectOrg(alias), LOOKUP_TIMEOUT_MS);
+    if (!org.detected) return fast.alias ? fast : { ...fast, alias };
+    const resolved = fromOrgInfo(alias, org, fast.explicit, "lookup");
+    lookupCache.set(alias, resolved);
     return resolved;
   } catch {
-    return fast;
+    return fast.alias ? fast : { ...fast, alias };
   }
 }
 
@@ -148,6 +161,15 @@ function fromOrgInfo(
     explicit,
     source,
   };
+}
+
+async function detectDefaultTargetOrg(): Promise<string | undefined> {
+  try {
+    const config = await withTimeout<ConfigInfo>(detectConfig(), CONFIG_LOOKUP_TIMEOUT_MS);
+    return config.hasTargetOrg ? config.targetOrg : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function guessedProduction(alias: string | undefined, explicit: boolean): OrgContext {

@@ -12,12 +12,17 @@ import type { OrgInfo, SfEnvironment } from "../../../lib/common/sf-environment/
 
 let mockedEnv: SfEnvironment | null = null;
 let mockedLookup: Record<string, OrgInfo> = {};
+let mockedDefaultTargetOrg: string | undefined;
 
 vi.mock("../../../lib/common/sf-environment/shared-runtime.ts", () => ({
   getCachedSfEnvironment: () => mockedEnv,
 }));
 
 vi.mock("../../../lib/common/sf-environment/detect.ts", () => ({
+  detectConfig: async () =>
+    mockedDefaultTargetOrg
+      ? { hasTargetOrg: true, targetOrg: mockedDefaultTargetOrg, location: "Global" }
+      : { hasTargetOrg: false },
   detectOrg: async (targetOrg: string) =>
     mockedLookup[targetOrg] ?? { detected: false, orgType: "unknown" },
 }));
@@ -65,10 +70,12 @@ function lookupOrg(alias: string, orgType: OrgInfo["orgType"]): void {
 beforeEach(() => {
   mockedEnv = null;
   mockedLookup = {};
+  mockedDefaultTargetOrg = undefined;
 });
 afterEach(() => {
   mockedEnv = null;
   mockedLookup = {};
+  mockedDefaultTargetOrg = undefined;
 });
 
 describe("Safety Kernel — policies (Tier 1)", () => {
@@ -478,6 +485,19 @@ describe("Safety Kernel — orgAwareGate (Tier 2)", () => {
     const decision = await evaluateSafety({
       toolName: "bash",
       input: { command: "sf project deploy start -o Scratch" },
+      cwd: "/project",
+      config,
+    });
+    expect(decision).toBeUndefined();
+  });
+
+  it("does NOT fire for an unflagged default scratch org resolved by lookup", async () => {
+    mockedDefaultTargetOrg = "Scratch";
+    lookupOrg("Scratch", "scratch");
+    const config = readBundledConfig();
+    const decision = await evaluateSafety({
+      toolName: "bash",
+      input: { command: "sf project deploy start" },
       cwd: "/project",
       config,
     });
