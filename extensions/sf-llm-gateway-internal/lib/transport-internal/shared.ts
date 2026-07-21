@@ -138,7 +138,7 @@ export function isGpt5BedrockResponsesModelId(modelId: string): boolean {
   const lower = modelId.trim().toLowerCase();
   if (lower.includes("codex")) return false;
   const unprefixed = lower.startsWith("openai/") ? lower.slice("openai/".length) : lower;
-  return /^gpt-5\.\d+-bedrock$/.test(unprefixed);
+  return /^gpt-5\.\d+(?:-[a-z0-9]+)*-bedrock$/.test(unprefixed);
 }
 
 /**
@@ -153,8 +153,19 @@ export function isGpt5FamilyResponsesModelId(modelId: string): boolean {
   return (
     unprefixed === "gpt-5" ||
     unprefixed === "gpt-5-mini" ||
-    /^gpt-5\.\d+(?:-bedrock)?$/.test(unprefixed)
+    /^gpt-5\.\d+(?:-[a-z0-9]+)*(?:-bedrock)?$/.test(unprefixed)
   );
+}
+
+export function isGpt56FamilyResponsesModelId(modelId: string): boolean {
+  const lower = modelId.trim().toLowerCase();
+  if (lower.includes("codex")) return false;
+  const unprefixed = lower.startsWith("openai/") ? lower.slice("openai/".length) : lower;
+  return /^gpt-5\.6(?:-[a-z0-9]+)*(?:-bedrock)?$/.test(unprefixed);
+}
+
+export function isGpt56BedrockResponsesModelId(modelId: string): boolean {
+  return isGpt56FamilyResponsesModelId(modelId) && isGpt5BedrockResponsesModelId(modelId);
 }
 
 export function isGpt55ModelId(modelId: string): boolean {

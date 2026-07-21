@@ -169,6 +169,11 @@ import {
   registerProviderIfConfigured,
 } from "./lib/discovery.ts";
 import { migrateGatewaySettings } from "./lib/migrate-unify-provider.ts";
+import {
+  isObsoleteGatewayDefaultModelId,
+  markGpt56DefaultMigration,
+  migrateGpt56DefaultSettings,
+} from "./lib/migrate-gpt56-default.ts";
 import { fetchTransformReport, formatTransformReport, type TransformProbe } from "./lib/debug.ts";
 import { fetchGatewayDoctorReport, formatGatewayDoctorReport } from "./lib/doctor.ts";
 import {
@@ -442,6 +447,7 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
     // factory time with process.cwd(), moved here for 0.68.0 compliance).
     await markBootStep("sf-llm-gateway.settings-repair", () => {
       repairGatewayEnabledModelSettings(ctx.cwd);
+      migrateGpt56DefaultSettings(ctx.cwd);
       repairGatewayDefaultModelSettings(ctx.cwd, DEFAULT_MODEL_ID);
     });
 
@@ -1750,6 +1756,7 @@ async function applyGatewayDefault(
   settings.defaultProvider = effectiveProviderName;
   settings.defaultModel = effectiveModelId;
   settings.defaultThinkingLevel = effectiveThinkingLevel;
+  markGpt56DefaultMigration(settings);
   writeSettings(settingsPath, settings);
 
   const model =
@@ -1901,7 +1908,7 @@ function resolveGatewayDefaultModel(
     providerName: PROVIDER_NAME,
     availableModelIds: getAvailableGatewayModelIds(),
     preferredModelIds: preferredIds,
-    fallbackModelId: DEFAULT_MODEL_ID,
+    fallbackModelId: FALLBACK_MODEL_ID,
     defaultThinkingLevel: DEFAULT_THINKING_LEVEL,
   });
 }
@@ -2124,7 +2131,13 @@ async function enableGatewayOperation(
   }
 
   const state = await discoverAndRegister(pi, ctx.cwd);
+  const existingGatewayDefault = isGatewayProvider(asOptionalString(settings.defaultProvider))
+    ? asOptionalString(settings.defaultModel)
+    : undefined;
   const resolvedDefault = resolveGatewayDefaultModel(ctx, [
+    existingGatewayDefault && !isObsoleteGatewayDefaultModelId(existingGatewayDefault)
+      ? existingGatewayDefault
+      : undefined,
     DEFAULT_MODEL_ID,
     PREVIOUS_DEFAULT_MODEL_ID,
     FALLBACK_MODEL_ID,
@@ -2137,6 +2150,7 @@ async function enableGatewayOperation(
   settings.defaultModel = effectiveDefaultModelId;
   settings.defaultThinkingLevel = effectiveThinkingLevel;
   setEnabledModelsSetting(settings, applyGatewayModelScope(settings.enabledModels, exclusiveScope));
+  markGpt56DefaultMigration(settings);
   writeSettings(settingsPath, settings);
 
   const model =

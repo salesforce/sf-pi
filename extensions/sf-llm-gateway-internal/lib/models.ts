@@ -32,6 +32,8 @@ import { DEFAULT_MODEL_ID, FALLBACK_MODEL_ID, PREVIOUS_DEFAULT_MODEL_ID } from "
 
 import {
   isGpt5BedrockResponsesModelId,
+  isGpt56BedrockResponsesModelId,
+  isGpt56FamilyResponsesModelId,
   isGpt5FamilyResponsesModelId,
   isGpt55ModelId,
   isOpus46OrNewerModelId,
@@ -251,9 +253,33 @@ export const GPT5_RESPONSES_THINKING_LEVEL_MAP: ProviderModelConfig["thinkingLev
   xhigh: "high",
 };
 
+/** Live-proven GPT-5.6 Responses map for non-Bedrock gateway routes. */
+export const GPT56_RESPONSES_THINKING_LEVEL_MAP: ProviderModelConfig["thinkingLevelMap"] = {
+  minimal: "low",
+  low: "low",
+  medium: "medium",
+  high: "high",
+  xhigh: "xhigh",
+  max: "max",
+};
+
 /**
- * Conservative map for GPT-5 Bedrock Responses model IDs. Live probes show
- * `high` is the stable common effort tier for these routes, while lower
+ * GPT-5.6 Bedrock Responses map. Live probes reject `minimal`; `low` showed
+ * route instability, so low-end selectors clamp to medium while xhigh/max
+ * remain available because the route accepted them.
+ */
+export const GPT56_BEDROCK_RESPONSES_THINKING_LEVEL_MAP: ProviderModelConfig["thinkingLevelMap"] = {
+  minimal: "medium",
+  low: "medium",
+  medium: "medium",
+  high: "high",
+  xhigh: "xhigh",
+  max: "max",
+};
+
+/**
+ * Conservative map for older GPT-5 Bedrock Responses model IDs. Live probes
+ * show `high` is the stable common effort tier for these routes, while lower
  * efforts can fail before the model responds. Keep this strict until the
  * gateway advertises or proves broader support.
  */
@@ -359,6 +385,7 @@ export function toProviderModelConfig(id: string, info?: GatewayModelInfo): Tagg
 
   const isCodex = def.family === "codex";
   const isGpt55 = isGpt55ModelId(def.id);
+  const isGpt56Family = isGpt56FamilyResponsesModelId(def.id);
   const isGpt5Family = isGpt5FamilyResponsesModelId(def.id);
   const compat = isCodex ? CODEX_OPENAI_COMPAT : COMMON_OPENAI_COMPAT;
 
@@ -383,11 +410,15 @@ export function toProviderModelConfig(id: string, info?: GatewayModelInfo): Tagg
       contextWindow: def.contextWindow,
       maxTokens: def.maxTokens,
       compat,
-      thinkingLevelMap: isGpt5BedrockResponsesModelId(def.id)
-        ? GPT5_BEDROCK_RESPONSES_THINKING_LEVEL_MAP
-        : isGpt55
-          ? GPT55_RESPONSES_THINKING_LEVEL_MAP
-          : GPT5_RESPONSES_THINKING_LEVEL_MAP,
+      thinkingLevelMap: isGpt56BedrockResponsesModelId(def.id)
+        ? GPT56_BEDROCK_RESPONSES_THINKING_LEVEL_MAP
+        : isGpt56Family
+          ? GPT56_RESPONSES_THINKING_LEVEL_MAP
+          : isGpt5BedrockResponsesModelId(def.id)
+            ? GPT5_BEDROCK_RESPONSES_THINKING_LEVEL_MAP
+            : isGpt55
+              ? GPT55_RESPONSES_THINKING_LEVEL_MAP
+              : GPT5_RESPONSES_THINKING_LEVEL_MAP,
     };
   }
 
@@ -627,16 +658,19 @@ export {
 
 export function getShortModelLabel(modelId: string): string {
   if (modelId === DEFAULT_MODEL_ID) {
+    return "GPT-5.6 Sol [1M]";
+  }
+  if (modelId === PREVIOUS_DEFAULT_MODEL_ID) {
     return "Opus 4.8 [1M]";
   }
-  if (modelId === PREVIOUS_DEFAULT_MODEL_ID || modelId === "claude-opus-4-7-v1") {
+  if (modelId === "claude-opus-4-7" || modelId === "claude-opus-4-7-v1") {
     return "Opus 4.7 [1M]";
   }
   if (modelId === "claude-opus-4-6-v1") {
     return "Opus 4.6 [1M]";
   }
   if (modelId === FALLBACK_MODEL_ID) {
-    return "Sonnet 4.6";
+    return "Sonnet 5";
   }
 
   const preset = MODEL_PRESETS[modelId];

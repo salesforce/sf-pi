@@ -47,11 +47,75 @@ export const ALWAYS_INCLUDE_MODEL_IDS = [
 ];
 
 export const MODEL_PRESETS: Record<string, Omit<GatewayModelDefinition, "id">> = {
-  // --- Opus 4.8 (current default) ---
+  // --- GPT-5.6 (current default family) ---
   //
-  // 1M context, 128K output (confirmed via /model_group/info and live probes).
-  // Supports effort=max natively. Same thinking-level map as 4.7.
+  // Gateway /v1/model/info reports 1,050,000 input / 128,000 output for
+  // non-Bedrock GPT-5.6 routes. We advertise 1M context in the selector;
+  // the gateway will accept up to ~1.05M but rounding down keeps pi's
+  // context-window math honest. Live probes confirmed `gpt-5.6-sol` accepts
+  // priority traffic and Pi `max` thinking mapped to wire `max`.
+  "gpt-5.6": {
+    family: "openai",
+    name: "[SF LLM Gateway] GPT-5.6 [1M]",
+    reasoning: true,
+    input: ["text", "image"],
+    contextWindow: 1_000_000,
+    maxTokens: 128_000,
+  },
+  "gpt-5.6-luna": {
+    family: "openai",
+    name: "[SF LLM Gateway] GPT-5.6 Luna [1M]",
+    reasoning: true,
+    input: ["text", "image"],
+    contextWindow: 1_000_000,
+    maxTokens: 128_000,
+  },
   [DEFAULT_MODEL_ID]: {
+    family: "openai",
+    name: "[SF LLM Gateway] GPT-5.6 Sol [1M]",
+    reasoning: true,
+    input: ["text", "image"],
+    contextWindow: 1_000_000,
+    maxTokens: 128_000,
+  },
+  "gpt-5.6-terra": {
+    family: "openai",
+    name: "[SF LLM Gateway] GPT-5.6 Terra [1M]",
+    reasoning: true,
+    input: ["text", "image"],
+    contextWindow: 1_000_000,
+    maxTokens: 128_000,
+  },
+  "gpt-5.6-luna-bedrock": {
+    family: "openai",
+    name: "[SF LLM Gateway] GPT-5.6 Luna Bedrock",
+    reasoning: true,
+    input: ["text", "image"],
+    contextWindow: 272_000,
+    maxTokens: 128_000,
+  },
+  "gpt-5.6-sol-bedrock": {
+    family: "openai",
+    name: "[SF LLM Gateway] GPT-5.6 Sol Bedrock",
+    reasoning: true,
+    input: ["text", "image"],
+    contextWindow: 272_000,
+    maxTokens: 128_000,
+  },
+  "gpt-5.6-terra-bedrock": {
+    family: "openai",
+    name: "[SF LLM Gateway] GPT-5.6 Terra Bedrock",
+    reasoning: true,
+    input: ["text", "image"],
+    contextWindow: 272_000,
+    maxTokens: 128_000,
+  },
+  // --- Opus 4.8 (former default) ---
+  //
+  // Still selectable, but no longer the product default. 1M context, 128K
+  // output (confirmed via /model_group/info and live probes). Supports
+  // effort=max natively. Same thinking-level map as 4.7.
+  [PREVIOUS_DEFAULT_MODEL_ID]: {
     family: "anthropic",
     name: "[SF LLM Gateway] Claude Opus 4.8 [1M] Global",
     reasoning: true,
@@ -60,7 +124,7 @@ export const MODEL_PRESETS: Record<string, Omit<GatewayModelDefinition, "id">> =
     maxTokens: 128_000,
     thinkingLevelMap: OPUS_47_THINKING_LEVEL_MAP,
   },
-  // --- Opus 4.7 (previous default) ---
+  // --- Opus 4.7 (former default family) ---
   //
   // contextWindow is 1M: live probes confirmed the upstream accepts >200K
   // input tokens without Gateway-owned beta headers, and gateway metadata
@@ -69,7 +133,7 @@ export const MODEL_PRESETS: Record<string, Omit<GatewayModelDefinition, "id">> =
   // maxTokens is 128_000. Live probes (May 2026) confirmed
   // `max_tokens: 128000 + effort: "max"` works reliably — the earlier
   // intermittent `api_error` at this setting has been resolved upstream.
-  [PREVIOUS_DEFAULT_MODEL_ID]: {
+  "claude-opus-4-7": {
     family: "anthropic",
     name: "[SF LLM Gateway] Claude Opus 4.7 [1M] Global",
     reasoning: true,
@@ -124,7 +188,7 @@ export const MODEL_PRESETS: Record<string, Omit<GatewayModelDefinition, "id">> =
     maxTokens: 128_000,
     thinkingLevelMap: CLAUDE_MAX_THINKING_LEVEL_MAP,
   },
-  [FALLBACK_MODEL_ID]: {
+  "claude-sonnet-4-6": {
     family: "anthropic",
     name: "[SF LLM Gateway] Claude Sonnet 4.6 Global",
     reasoning: true,
@@ -165,7 +229,7 @@ export const MODEL_PRESETS: Record<string, Omit<GatewayModelDefinition, "id">> =
     contextWindow: 200_000,
     maxTokens: 64_000,
   },
-  "claude-sonnet-5": {
+  [FALLBACK_MODEL_ID]: {
     family: "anthropic",
     name: "[SF LLM Gateway] Claude Sonnet 5",
     reasoning: true,

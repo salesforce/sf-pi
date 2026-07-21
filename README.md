@@ -603,7 +603,7 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 - Gateway fails on startup or tool calls error out immediately
 - Claude responses appear to truncate and the agent asks you to type "continue"
 - Opus 4.7/4.8 returns `api_error: Internal server error` on heavy turns
-- gpt-5.5 fails with a message asking to use `/v1/responses`
+- GPT-5-family models fail with a message asking to use `/v1/responses`
 - Footer shows `⚠` badge after a 429 or 5xx
 - I set `/thinking` to a different level but subsequent model switches reset it
 - Monthly-usage footer is stale or missing

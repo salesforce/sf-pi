@@ -60,11 +60,15 @@ export function normalizeCodexReasoningEffort(value: unknown): string {
  * deliberately keep the gateway/upstream default service tier.
  */
 export function injectOpenAiServiceTier(payload: Record<string, unknown>, modelId?: string): void {
-  const existing = payload.service_tier;
-  if (typeof existing === "string" && existing.trim().length > 0) {
+  if (modelId && isGpt5BedrockResponsesModelId(modelId)) {
+    // Bedrock GPT-5 routes reject `service_tier: "priority"`. Omit the
+    // field entirely, even if an upstream hook inserted it before us.
+    delete payload.service_tier;
     return;
   }
-  if (modelId && isGpt5BedrockResponsesModelId(modelId)) {
+
+  const existing = payload.service_tier;
+  if (typeof existing === "string" && existing.trim().length > 0) {
     return;
   }
   payload.service_tier = DEFAULT_OPENAI_SERVICE_TIER;

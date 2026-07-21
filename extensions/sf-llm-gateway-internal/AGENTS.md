@@ -26,6 +26,7 @@ Repo-level rules still apply; see root `AGENTS.md`.
 | Monthly usage / key info / health fetcher      | `lib/monthly-usage.ts`          |
 | Pi settings mutation (defaults, enabledModels) | `lib/pi-settings.ts`            |
 | Legacy provider-id settings migration          | `lib/migrate-unify-provider.ts` |
+| GPT-5.6 default settings migration             | `lib/migrate-gpt56-default.ts`  |
 | Footer + status report formatting              | `lib/status.ts`                 |
 | Standard command metadata + completions        | `lib/command-surface.ts`        |
 | Standalone slash-command setup overlay         | `lib/setup-overlay.ts`          |

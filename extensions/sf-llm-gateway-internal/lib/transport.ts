@@ -32,6 +32,8 @@ export {
   formatAnthropicStreamError,
   isCodexModelId,
   isGpt55ModelId,
+  isGpt56BedrockResponsesModelId,
+  isGpt56FamilyResponsesModelId,
   isGpt5BedrockResponsesModelId,
   isGpt5FamilyResponsesModelId,
   isOpenAiModelId,

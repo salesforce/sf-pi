@@ -81,14 +81,17 @@ short-circuits subsequent sessions. Users see no prompt and no manual step.
    For GPT-family models, the usable reasoning effort window is route-specific.
    Live probes on 2026-07-12 showed Codex accepts wire `max`, `gpt-5.5`
    accepts wire `xhigh` as its strongest tier, and `gpt-5`/`gpt-5-mini` top
-   out at `high`. SF Pi exposes Pi `max` only when it can map to the strongest
-   live-proven wire value for that route.
+   out at `high`. GPT-5.6 non-Bedrock routes accept wire `max`; GPT-5.6
+   Bedrock routes clamp low-end selectors upward but still expose `max`. SF Pi
+   exposes Pi `max` only when it can map to the strongest live-proven wire
+   value for that route.
 
    Also: **gpt-5 family Responses routing**. GPT-5-family non-Codex models
    route through `POST <gateway-root>/responses` instead of
    `/v1/chat/completions` when that route is required for tool-shaped agentic
-   requests. Some provider-backed model groups use the gateway default service
-   tier rather than forcing `priority`.
+   requests. Non-Bedrock GPT-5.6 routes use priority traffic by default;
+   Bedrock GPT-5.6 routes omit `service_tier` because `priority` is not valid
+   for those routes.
 
 2. **Anthropic stream errors** (`streamSfGatewayAnthropic`). Uses Pi's
    provider retry budget (`retry.provider.maxRetries`, Gateway default: 3) when
@@ -119,10 +122,11 @@ short-circuits subsequent sessions. Users see no prompt and no manual step.
 
 Some model metadata intentionally differs from Pi's direct-provider defaults
 because the gateway route has separately verified limits. In particular,
-`gpt-5.5` is advertised as a 1M-context gateway model with 128K max output,
-while Codex-family presets stay capped at 272K/128K. Keep larger-than-upstream
-metadata behind focused tests so it is clear the value is gateway-specific, not
-a stale copy of Pi Runtime model metadata.
+`gpt-5.5` and non-Bedrock `gpt-5.6` variants are advertised as 1M-context
+gateway models with 128K max output, while Codex-family and Bedrock GPT-5.6
+presets stay capped at 272K/128K. Keep larger-than-upstream metadata behind
+focused tests so it is clear the value is gateway-specific, not a stale copy of
+Pi Runtime model metadata.
 
 ## Runtime Flow
 
@@ -331,6 +335,7 @@ extensions/sf-llm-gateway-internal/
     doctor.ts               ← implementation module
     gateway-url.ts          ← implementation module
     latency-probe.ts        ← implementation module
+    migrate-gpt56-default.ts← implementation module
     migrate-unify-provider.ts← implementation module
     model-resolution.ts     ← implementation module
     models.ts               ← implementation module
@@ -375,6 +380,7 @@ extensions/sf-llm-gateway-internal/
     latency-probe.test.ts   ← unit / smoke test
     lifecycle.test.ts       ← unit / smoke test
     manager-actions.test.ts ← unit / smoke test
+    migrate-gpt56-default.test.ts← unit / smoke test
     migrate-unify-provider.test.ts← unit / smoke test
     model-group-drift.test.ts← unit / smoke test
     model-resolution.test.ts← unit / smoke test
@@ -561,14 +567,14 @@ before bubbling. If the retry exhausts, the final error includes an inline
 `max_tokens=128000 + effort=max` has been resolved upstream (May 2026);
 the transport no longer applies level-scaled output-token floors.
 
-**gpt-5.5 fails with a message asking to use `/v1/responses`:**
+**GPT-5-family models fail with a message asking to use `/v1/responses`:**
 Handled by the transport shim as of this extension version: GPT-5-family
 non-Codex models route through `POST <gateway-root>/responses` instead of
 `/v1/chat/completions` when the Responses path is required for tool-shaped
 agentic requests. The Responses path accepts tool-shaped requests and uses the
 model's thinking-level map to keep effort values inside the gateway-safe window.
-Some provider-backed GPT-5 model groups use the gateway default service tier
-because `priority` is not valid for those routes.
+Non-Bedrock GPT-5.6 routes use `service_tier: "priority"`; Bedrock GPT-5.6
+routes omit the service tier because `priority` is not valid for those routes.
 
 **Footer shows `⚠` badge after a 429 or 5xx:**
 `provider-telemetry.ts` parses retry-after headers and surfaces a 60s

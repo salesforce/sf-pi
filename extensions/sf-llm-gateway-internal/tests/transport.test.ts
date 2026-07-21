@@ -212,7 +212,13 @@ describe("injectOpenAiServiceTier", () => {
 
   it("does not default priority for GPT-5 Bedrock Responses model IDs", () => {
     const payload: Record<string, unknown> = {};
-    injectOpenAiServiceTier(payload, "gpt-5.5-bedrock");
+    injectOpenAiServiceTier(payload, "gpt-5.6-sol-bedrock");
+    expect(payload.service_tier).toBeUndefined();
+  });
+
+  it("strips caller-provided service_tier for GPT-5 Bedrock Responses model IDs", () => {
+    const payload: Record<string, unknown> = { service_tier: "priority" };
+    injectOpenAiServiceTier(payload, "gpt-5.6-sol-bedrock");
     expect(payload.service_tier).toBeUndefined();
   });
 
@@ -256,6 +262,7 @@ describe("OpenAI reasoning effort defaults", () => {
     // {low,medium,high,max}; `xhigh` is rejected with HTTP 400. `max` is
     // the strongest accepted tier on GPT-5.2+ models.
     expect(resolveOpenAiReasoningEffort("gpt-5.2")).toBe("max");
+    expect(resolveOpenAiReasoningEffort("gpt-5.6-sol")).toBe("max");
     // gpt-5.5 is intentionally undefined — the gateway rejects
     // reasoning_effort + function tools on /v1/chat/completions for this
     // model; gpt-5.5 normally routes through the root /responses path instead.

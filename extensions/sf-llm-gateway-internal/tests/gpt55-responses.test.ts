@@ -22,6 +22,8 @@ import {
 import {
   toProviderModelConfig,
   GPT55_RESPONSES_THINKING_LEVEL_MAP,
+  GPT56_BEDROCK_RESPONSES_THINKING_LEVEL_MAP,
+  GPT56_RESPONSES_THINKING_LEVEL_MAP,
   GPT5_BEDROCK_RESPONSES_THINKING_LEVEL_MAP,
   GPT5_RESPONSES_THINKING_LEVEL_MAP,
 } from "../lib/models.ts";
@@ -78,6 +80,22 @@ describe("gpt-5.5 model registration", () => {
     }
   });
 
+  it("tags GPT-5.6 named non-Bedrock IDs with the max-capable map", () => {
+    for (const id of ["gpt-5.6", "gpt-5.6-luna", "gpt-5.6-sol", "gpt-5.6-terra"]) {
+      const cfg = toProviderModelConfig(id);
+      expect(cfg.api).toBe("openai-responses");
+      expect(cfg.thinkingLevelMap).toEqual(GPT56_RESPONSES_THINKING_LEVEL_MAP);
+    }
+  });
+
+  it("tags GPT-5.6 Bedrock IDs with the Bedrock-safe max-capable map", () => {
+    for (const id of ["gpt-5.6-luna-bedrock", "gpt-5.6-sol-bedrock", "gpt-5.6-terra-bedrock"]) {
+      const cfg = toProviderModelConfig(id);
+      expect(cfg.api).toBe("openai-responses");
+      expect(cfg.thinkingLevelMap).toEqual(GPT56_BEDROCK_RESPONSES_THINKING_LEVEL_MAP);
+    }
+  });
+
   it("tags GPT-5 Bedrock Responses models with the conservative high-only clamp", () => {
     for (const id of ["gpt-5.4-bedrock", "gpt-5.5-bedrock"]) {
       const cfg = toProviderModelConfig(id);
@@ -102,6 +120,8 @@ describe("isGpt5FamilyResponsesModelId", () => {
       "gpt-5.4",
       "gpt-5.4-bedrock",
       "gpt-5.5-bedrock",
+      "gpt-5.6-sol",
+      "gpt-5.6-sol-bedrock",
       "openai/gpt-5",
       "openai/gpt-5-mini",
       "openai/gpt-5.5",
@@ -265,15 +285,54 @@ describe("streamSfGatewayResponses", () => {
     let observedTier: unknown = "unset";
     const bedrockResponsesModel = {
       ...responsesModel,
-      id: "gpt-5.5-bedrock",
+      id: "gpt-5.6-sol-bedrock",
     } as Model<"openai-responses">;
     const bedrockChatModel = {
       ...chatModel,
-      id: "gpt-5.5-bedrock",
+      id: "gpt-5.6-sol-bedrock",
     } as Model<"openai-completions">;
     const hooks: Gpt55ResponsesTestHooks = {
       responsesStreamer: (_model, _ctx, options) => {
-        const payload: Record<string, unknown> = { model: "gpt-5.5-bedrock", input: "hi" };
+        const payload: Record<string, unknown> = { model: "gpt-5.6-sol-bedrock", input: "hi" };
+        void Promise.resolve(options?.onPayload?.(payload, bedrockResponsesModel)).then(() => {
+          observedTier = payload.service_tier;
+        });
+        return happyResponsesStreamer();
+      },
+      chatStreamer: emptyChatStreamer,
+    };
+
+    await collect(
+      streamSfGatewayResponses(
+        bedrockResponsesModel,
+        context,
+        undefined,
+        { chatModel: bedrockChatModel },
+        hooks,
+      ),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(observedTier).toBeUndefined();
+  });
+
+  it("strips caller-provided service_tier for GPT-5 Bedrock Responses models", async () => {
+    let observedTier: unknown = "unset";
+    const bedrockResponsesModel = {
+      ...responsesModel,
+      id: "gpt-5.6-sol-bedrock",
+    } as Model<"openai-responses">;
+    const bedrockChatModel = {
+      ...chatModel,
+      id: "gpt-5.6-sol-bedrock",
+    } as Model<"openai-completions">;
+    const hooks: Gpt55ResponsesTestHooks = {
+      responsesStreamer: (_model, _ctx, options) => {
+        const payload: Record<string, unknown> = {
+          model: "gpt-5.6-sol-bedrock",
+          input: "hi",
+          service_tier: "priority",
+        };
         void Promise.resolve(options?.onPayload?.(payload, bedrockResponsesModel)).then(() => {
           observedTier = payload.service_tier;
         });

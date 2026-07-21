@@ -28,6 +28,14 @@ _Avoid_: agent_end hook, background scan, immediate lint pass, always-on watcher
 A model-specific SF LLM Gateway fact that says which Pi thinking levels a gateway model can safely expose. It must be proven by preset metadata, gateway discovery, or live behavior evidence before SF Pi offers the level to users.
 _Avoid_: global thinking level, default reasoning level, universal max support, silent remap
 
+**Gateway Default Model**:
+The SF LLM Gateway model SF Pi selects when gateway routing becomes the user's default model path. It must be backed by gateway discovery and static preset metadata so startup, model selection, status, and tests agree before live discovery finishes.
+_Avoid_: preferred model, discovered default, direct-provider default, temporary selector choice
+
+**Gateway Priority Traffic**:
+A model-specific SF LLM Gateway request mode for faster service-tier routing when the gateway model explicitly supports it. It is a capability assertion about the selected gateway route, not a universal OpenAI-family default.
+_Avoid_: fast mode, global priority, latency guarantee, always-on service tier
+
 **Gateway Spend Authority**:
 The SF LLM Gateway source that SF Pi treats as authoritative for gateway usage and cost presentation. Pi model pricing metadata can supplement it only when gateway-provided pricing data is explicit and trustworthy.
 _Avoid_: local pricing estimate, synthesized tier pricing, direct-provider cost copy, billing truth from presets

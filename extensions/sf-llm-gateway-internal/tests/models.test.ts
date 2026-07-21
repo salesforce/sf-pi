@@ -154,16 +154,16 @@ describe("buildBootstrapModelList", () => {
   it("includes the default, previous default, fallback, and curated static model IDs", () => {
     const models = buildBootstrapModelList();
     const ids = models.map((model) => model.id);
+    expect(ids).toContain("gpt-5.6-sol");
     expect(ids).toContain("claude-opus-4-8");
     expect(ids).toContain("claude-opus-4-7");
-    expect(ids).toContain("claude-sonnet-4-6");
     expect(ids).toContain("claude-sonnet-5");
     expect(ids).toContain("gpt-5.5");
   });
 
   it("puts the default model first", () => {
     const models = buildBootstrapModelList();
-    expect(models[0]?.id).toBe("claude-opus-4-8");
+    expect(models[0]?.id).toBe("gpt-5.6-sol");
   });
 
   // Regression: before live discovery lands, the bootstrap must contain at
@@ -198,9 +198,9 @@ describe("buildDiscoveredModelList", () => {
   });
 
   it("keeps the fallback model ahead of later discovered families when both are returned", () => {
-    const models = buildDiscoveredModelList(["gemini-2.5-pro", "gpt-5", "claude-sonnet-4-6"]);
+    const models = buildDiscoveredModelList(["gemini-2.5-pro", "gpt-5", "claude-sonnet-5"]);
     const ids = models.map((model) => model.id);
-    expect(ids.indexOf("claude-sonnet-4-6")).toBeLessThan(ids.indexOf("gemini-2.5-pro"));
+    expect(ids.indexOf("claude-sonnet-5")).toBeLessThan(ids.indexOf("gemini-2.5-pro"));
   });
 });
 
@@ -392,6 +392,38 @@ describe("toProviderModelConfig", () => {
     const gpt5Mini = toProviderModelConfig("gpt-5-mini");
     expect(gpt5Mini.contextWindow).toBe(272_000);
     expect(gpt5Mini.maxTokens).toBe(128_000);
+  });
+
+  it("uses GPT-5.6 Sol as the max-capable gateway default preset", () => {
+    const cfg = toProviderModelConfig("gpt-5.6-sol");
+    expect(cfg.contextWindow).toBe(1_000_000);
+    expect(cfg.maxTokens).toBe(128_000);
+    expect(cfg.reasoning).toBe(true);
+    expect(cfg.api).toBe("openai-responses");
+    expect(cfg.thinkingLevelMap).toEqual({
+      minimal: "low",
+      low: "low",
+      medium: "medium",
+      high: "high",
+      xhigh: "xhigh",
+      max: "max",
+    });
+  });
+
+  it("uses GPT-5.6 Bedrock presets with Bedrock-safe thinking and 272K context", () => {
+    const cfg = toProviderModelConfig("gpt-5.6-sol-bedrock");
+    expect(cfg.contextWindow).toBe(272_000);
+    expect(cfg.maxTokens).toBe(128_000);
+    expect(cfg.reasoning).toBe(true);
+    expect(cfg.api).toBe("openai-responses");
+    expect(cfg.thinkingLevelMap).toEqual({
+      minimal: "medium",
+      low: "medium",
+      medium: "medium",
+      high: "high",
+      xhigh: "xhigh",
+      max: "max",
+    });
   });
 
   it("routes gpt-5.5 through the OpenAI Responses API with the clamped thinking map", () => {
