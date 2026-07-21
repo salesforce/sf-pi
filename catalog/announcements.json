@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.228.7-2026-07-20",
-  "latestVersion": "0.228.7",
+  "revision": "release-0.229.0-2026-07-21",
+  "latestVersion": "0.229.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.228.7",
+      "id": "release-0.229.0",
       "kind": "update",
-      "title": "sf-pi v0.228.7 — deps: update brace-expansion lockfile",
-      "publishedAt": "2026-07-20T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.228.7",
+      "title": "sf-pi v0.229.0 — sf-llm-gateway: default to GPT-5.6 Sol",
+      "publishedAt": "2026-07-21T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.229.0",
       "severity": "info",
-      "body": "deps: update brace-expansion lockfile — sf-guardrail: resolve default scratch orgs before prompting"
+      "body": "sf-llm-gateway: default to GPT-5.6 Sol"
     },
     {
       "id": "pi-0.73-required",
