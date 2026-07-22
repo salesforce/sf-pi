@@ -7,11 +7,14 @@
  * can choose extension-owned workflows before falling back to broader skills
  * or raw Salesforce CLI patterns.
  */
-import type { CustomMessageEntry, SessionEntry } from "@earendil-works/pi-coding-agent";
+import type { CustomMessageEntry } from "@earendil-works/pi-coding-agent";
 
 import { SF_PI_REGISTRY, type SfPiExtension } from "../../../catalog/registry.ts";
 import { isSfPiExtensionEnabled } from "../../../lib/common/sf-pi-extension-state.ts";
-import { shouldInjectOnce } from "../../../lib/common/session/inject-once.ts";
+import {
+  type ActiveContextSession,
+  shouldInjectOnce,
+} from "../../../lib/common/session/inject-once.ts";
 
 export const SF_PI_EXTENSIONS_ENTRY_TYPE = "sf-pi-extensions-context";
 export const SF_PI_EXTENSIONS_OPEN_TAG = "<sf_pi_extensions>";
@@ -158,11 +161,11 @@ export function formatSfPiExtensionContext(
 }
 
 export function shouldInjectSfPiExtensionContext(
-  entries: readonly SessionEntry[],
+  sessionManager: ActiveContextSession,
   context: string,
 ): boolean {
   const stillFresh = (entry: CustomMessageEntry) => entry.content === context;
-  return shouldInjectOnce(entries, SF_PI_EXTENSIONS_ENTRY_TYPE, stillFresh);
+  return shouldInjectOnce(sessionManager, SF_PI_EXTENSIONS_ENTRY_TYPE, stillFresh);
 }
 
 export function isHerdrWorkflowModeActive(options: {

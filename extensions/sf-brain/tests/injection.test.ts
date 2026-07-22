@@ -23,14 +23,12 @@ describe("sf-brain before_agent_start handler", () => {
   });
 
   it("delegates the inject/skip decision to the shouldInjectKernel predicate", () => {
-    // The handler hands the live entry list to a pure predicate so the
-    // post-compaction logic stays unit-testable. Asserting the wiring keeps
-    // the dedup contract from silently regressing back to the broken
-    // `entries.some(type === "custom")` check that re-injected the kernel
-    // on every turn.
+    // The handler delegates Pi's read-only session manager so the shared helper
+    // owns active-branch and compaction semantics.
     expect(brainSource).toContain("shouldInjectKernel");
     expect(brainSource).toContain("ctx.sessionManager");
-    expect(brainSource).toContain(".getEntries()");
+    expect(brainSource).not.toContain("ctx.sessionManager.getEntries()");
+    expect(brainSource).toContain("registerLatestContextProjection");
     expect(brainSource).toMatch(/if \(!shouldInjectKernel\([\s\S]*?\)\) return;/);
   });
 

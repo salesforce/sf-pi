@@ -2,8 +2,8 @@
 /**
  * Shared "inject this custom_message exactly once per live session" helper.
  *
- * Three sf-pi extensions (sf-brain, sf-guardrail, sf-slack) inject hidden
- * `custom_message` entries from `before_agent_start`. The pattern is
+ * Four sf-pi extensions (sf-brain, sf-devbar, sf-guardrail, sf-slack) inject
+ * hidden `custom_message` entries from `before_agent_start`. The pattern is
  * identical:
  *
  *   1. Each call writes one entry the LLM sees on every replay (cache-friendly).
@@ -24,16 +24,15 @@
  *   Predicates that check `type === "custom"` never match a real injection.
  *   This helper only matches `custom_message`, so the bug class disappears.
  *
- * - **Compaction window.** `getEntries()` returns every historical entry,
- *   even those folded into a compaction summary. The helper anchors the
- *   "live" window at the latest compaction's `firstKeptEntryId` so a
- *   summarized-away entry no longer counts as "still injected."
+ * - **Branch and compaction projection.** The helper reads Pi's public
+ *   `buildContextEntries()` projection, which follows only the active leaf and
+ *   omits entries swept into the latest compaction summary.
  */
-import {
-  getLatestCompactionEntry,
-  type CustomMessageEntry,
-  type SessionEntry,
-} from "@earendil-works/pi-coding-agent";
+import type { CustomMessageEntry, SessionEntry } from "@earendil-works/pi-coding-agent";
+
+export interface ActiveContextSession {
+  buildContextEntries(): SessionEntry[];
+}
 
 /**
  * Type guard for a `custom_message` entry with the given customType.
@@ -54,30 +53,20 @@ export function isLiveCustomMessageEntry(
  * Decide whether a `custom_message` of the given customType should be
  * injected on this `before_agent_start`.
  *
- * Returns `true` (inject) when no live entry of the given customType exists
- * at or after the latest compaction's `firstKeptEntryId`.
- *
- * The optional `predicate` is run against any matching entries inside the
- * live window. Return `true` from the predicate when an entry counts as a
- * still-valid injection, `false` to ignore it (e.g. the content has gone
- * stale and a fresh injection is needed). Default: every match counts.
+ * Returns `true` when the active compaction-aware branch has no matching
+ * message, or when its latest matching message is stale according to the
+ * optional predicate. Looking only at the latest match makes A→B→A changes
+ * reinject A instead of treating the older A as current.
  */
 export function shouldInjectOnce(
-  entries: readonly SessionEntry[],
+  sessionManager: ActiveContextSession,
   customType: string,
   predicate: (entry: CustomMessageEntry) => boolean = () => true,
 ): boolean {
-  const latestCompaction = getLatestCompactionEntry(entries as SessionEntry[]);
-  let liveStart = 0;
-  if (latestCompaction) {
-    const firstKeptIdx = entries.findIndex((e) => e.id === latestCompaction.firstKeptEntryId);
-    liveStart = firstKeptIdx >= 0 ? firstKeptIdx : 0;
-  }
-  for (let i = liveStart; i < entries.length; i++) {
+  const entries = sessionManager.buildContextEntries();
+  for (let i = entries.length - 1; i >= 0; i--) {
     const entry = entries[i];
-    if (isLiveCustomMessageEntry(entry, customType) && predicate(entry)) {
-      return false;
-    }
+    if (isLiveCustomMessageEntry(entry, customType)) return !predicate(entry);
   }
   return true;
 }

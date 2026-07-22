@@ -37,7 +37,7 @@ design proposal and — ideally — a PR.
 
 ## Now (0.x — pre-1.0)
 
-- [ ] Pi 0.81 runtime adoption through serial behavior/deletion gates; the Pi 0.81.1 runtime window and credential containment are implemented, while interactive native login remains deferred until Pi ships a secure secret prompt ([implementation plan](./docs/pi-081-runtime-adoption-plan.md))
+- [ ] Pi 0.81 runtime adoption through serial behavior/deletion gates; the runtime window, credential containment, and M2A active-branch context are implemented, while interactive native login remains deferred until Pi ships a secure secret prompt ([implementation plan](./docs/pi-081-runtime-adoption-plan.md))
 - [ ] Animated GIF / short terminal capture of the TUI + splash
 - [ ] Ratchet coverage floor toward 60%
 - [ ] Promote remaining warn-level ESLint rules to errors where practical

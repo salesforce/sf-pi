@@ -70,6 +70,7 @@ import { registerExtensionDoctor } from "../../lib/common/doctor/registry.ts";
 import { runExtensionDoctor as runGuardrailExtensionDoctor } from "./lib/extension-doctor.ts";
 import { openInfoPanel } from "../../lib/common/info-panel.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
+import { registerLatestContextProjection } from "../../lib/common/session/active-branch-context.ts";
 import { shouldInjectOnce } from "../../lib/common/session/inject-once.ts";
 import {
   clearProjectApprovals,
@@ -99,6 +100,7 @@ import { COMMAND_NAME, INJECTION_ENTRY_TYPE, type GuardrailConfig } from "./lib/
 
 export default function sfGuardrail(pi: ExtensionAPI) {
   if (!requirePiVersion(pi, "sf-guardrail")) return;
+  registerLatestContextProjection(pi, [INJECTION_ENTRY_TYPE]);
 
   // Config is loaded lazily per event. Reading Pi settings plus the advanced
   // override file on every tool_call keeps `/sf-pi` settings edits and expert
@@ -127,17 +129,15 @@ export default function sfGuardrail(pi: ExtensionAPI) {
     restoreApprovalLedger(ctx);
   });
 
-  // ─── before_agent_start: inject guardrail prompt once per live session ──
-  // Uses the shared inject-once helper. The pre-fix predicate matched on
-  // `type === "custom"` (state-only marker shape) instead of the
-  // `"custom_message"` shape pi actually persists for
-  // BeforeAgentStartEventResult.message, so dedup never matched a real
-  // injection and the guardrail prompt was re-injected on every turn.
+  // ─── before_agent_start: inject current Guardrail guidance ─────────────
+  // The shared helper reads Pi's active, compaction-aware branch. The context
+  // projection keeps only the latest guidance while tool_call enforcement and
+  // state-only approval/audit entries remain untouched.
   pi.on("before_agent_start", async (_event, ctx) => {
     const { config } = getConfig();
-    if (!shouldInjectOnce(ctx.sessionManager.getEntries(), INJECTION_ENTRY_TYPE)) return;
-
     const prompt = loadPrompt(config);
+    const stillFresh = (entry: { content: string | unknown[] }) => entry.content === prompt;
+    if (!shouldInjectOnce(ctx.sessionManager, INJECTION_ENTRY_TYPE, stillFresh)) return;
     return {
       message: {
         customType: INJECTION_ENTRY_TYPE,

@@ -115,6 +115,7 @@ import {
 } from "../../lib/common/manager-actions.ts";
 import { registerExtensionDoctor } from "../../lib/common/doctor/registry.ts";
 import { markBootStep } from "../../lib/common/boot-timing.ts";
+import { registerLatestContextProjection } from "../../lib/common/session/active-branch-context.ts";
 import { shouldInjectOnce } from "../../lib/common/session/inject-once.ts";
 import { buildSlackDoctor } from "./lib/extension-doctor.ts";
 import {
@@ -199,6 +200,9 @@ const SLACK_COMMAND_ACTIONS: SfPiCommandAction<SlackCommandAction>[] = [
 
 export default function sfSlack(pi: ExtensionAPI) {
   if (!requirePiVersion(pi, "sf-slack")) return;
+
+  let slackContextActive = false;
+  registerLatestContextProjection(pi, [SLACK_CONTEXT_ENTRY_TYPE], () => slackContextActive);
 
   let identity: SlackIdentity | null = null;
   // Last error captured by session_start / /sf-slack refresh, exposed via
@@ -674,32 +678,31 @@ export default function sfSlack(pi: ExtensionAPI) {
   // and would invalidate prompt cache on every call. Those metrics live in the
   // footer/widget where drift is cheap.
   pi.on("before_agent_start", async (event, ctx) => {
-    if (!identity) return;
-
-    // Only inject Slack context if at least one Slack tool is active in this session
+    // Only project Slack context while identity exists and at least one Slack
+    // tool is selected for this turn. Inactive turns filter prior workspace
+    // messages from model context without mutating the append-only session.
     const { systemPromptOptions } = event;
     const hasSlackTool = systemPromptOptions.selectedTools?.some((t) => t.startsWith("slack"));
-    if (!hasSlackTool) return;
-
-    // Workspace identity (user + team) is static for the life of a session,
-    // so inject once per live session and re-inject after compaction has
-    // swept the entry into a summary. Without this dedup the workspace
-    // block ends up persisted N times after N turns, bloating the prompt.
-    if (!shouldInjectOnce(ctx.sessionManager.getEntries(), SLACK_CONTEXT_ENTRY_TYPE)) return;
+    slackContextActive = identity !== null && hasSlackTool === true;
+    if (!slackContextActive || !identity) return;
 
     // Boundary convention: lowercase snake_case XML tags, matching pi 0.75's
     // own context boundaries. See ADR 0008.
-    const lines = [
+    const content = [
       "<slack_workspace>",
       `User: @${identity.userName} (${identity.userId})`,
       `Team: ${identity.teamId}`,
       "</slack_workspace>",
-    ];
+    ].join("\n");
+    const stillFresh = (entry: { content: string | unknown[] }) => entry.content === content;
+
+    // Re-inject when identity changes or compaction removes the prior message.
+    if (!shouldInjectOnce(ctx.sessionManager, SLACK_CONTEXT_ENTRY_TYPE, stillFresh)) return;
 
     return {
       message: {
         customType: SLACK_CONTEXT_ENTRY_TYPE,
-        content: lines.join("\n"),
+        content,
         display: false,
       },
     };

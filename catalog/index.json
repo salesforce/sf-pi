@@ -164,7 +164,7 @@
     "entry": "extensions/sf-brain/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 521
+    "srcLoc": 526
   },
   {
     "id": "sf-browser",
@@ -442,7 +442,7 @@
     "entry": "extensions/sf-devbar/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 2520
+    "srcLoc": 2521
   },
   {
     "id": "sf-docs",
@@ -606,7 +606,7 @@
     "entry": "extensions/sf-guardrail/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 5539
+    "srcLoc": 5540
   },
   {
     "id": "sf-herdr",
@@ -1002,7 +1002,7 @@
     "entry": "extensions/sf-slack/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 12288
+    "srcLoc": 12291
   },
   {
     "id": "sf-soql",

@@ -92,6 +92,7 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ### Features
 
+- **Project mutable hidden context from Pi's active branch.** SF Brain, DevBar, Guardrail, and Slack now use Pi's compaction-aware `buildContextEntries()` projection, reinject from the latest active value, and filter superseded model-visible custom messages without changing state-only approval or audit entries.
 - **Adopt pi 0.72 model-level `thinkingLevelMap` in
   sf-llm-gateway-internal.** Pi 0.72 replaced `compat.reasoningEffortMap`
   with a top-level `thinkingLevelMap` on each model (pi-mono #3208). The

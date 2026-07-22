@@ -4,6 +4,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { SessionManager } from "@earendil-works/pi-coding-agent";
 
 import {
   formatSfPiExtensionContext,
@@ -145,18 +146,16 @@ describe("isHerdrWorkflowModeActive", () => {
 });
 
 describe("shouldInjectSfPiExtensionContext", () => {
+  function sessionWithContext(content: string): SessionManager {
+    const session = SessionManager.inMemory();
+    session.appendCustomMessageEntry(SF_PI_EXTENSIONS_ENTRY_TYPE, content, false);
+    return session;
+  }
+
   it("skips injection when a live matching context already exists", () => {
     const context = formatSfPiExtensionContext(makeCwd());
-    const entries = [
-      {
-        id: "1",
-        type: "custom_message",
-        customType: SF_PI_EXTENSIONS_ENTRY_TYPE,
-        content: context,
-      },
-    ];
 
-    expect(shouldInjectSfPiExtensionContext(entries as never, context)).toBe(false);
+    expect(shouldInjectSfPiExtensionContext(sessionWithContext(context), context)).toBe(false);
   });
 
   it("injects again when Proactive Herdr Guidance is no longer active", () => {
@@ -166,29 +165,15 @@ describe("shouldInjectSfPiExtensionContext", () => {
       herdrWorkflowMode: true,
     });
     const normalContext = formatSfPiExtensionContext(cwd, { activeTools: ["read", "herdr"] });
-    const entries = [
-      {
-        id: "1",
-        type: "custom_message",
-        customType: SF_PI_EXTENSIONS_ENTRY_TYPE,
-        content: herdrContext,
-      },
-    ];
-
-    expect(shouldInjectSfPiExtensionContext(entries as never, normalContext)).toBe(true);
+    expect(shouldInjectSfPiExtensionContext(sessionWithContext(herdrContext), normalContext)).toBe(
+      true,
+    );
   });
 
   it("injects again when the live context changed", () => {
     const context = formatSfPiExtensionContext(makeCwd());
-    const entries = [
-      {
-        id: "1",
-        type: "custom_message",
-        customType: SF_PI_EXTENSIONS_ENTRY_TYPE,
-        content: `${context}\nold`,
-      },
-    ];
-
-    expect(shouldInjectSfPiExtensionContext(entries as never, context)).toBe(true);
+    expect(shouldInjectSfPiExtensionContext(sessionWithContext(`${context}\nold`), context)).toBe(
+      true,
+    );
   });
 });

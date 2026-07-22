@@ -42,6 +42,7 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import { markBootStep } from "../../lib/common/boot-timing.ts";
+import { registerLatestContextProjection } from "../../lib/common/session/active-branch-context.ts";
 import { shouldInjectOnce } from "../../lib/common/session/inject-once.ts";
 import {
   getCachedSfEnvironment,
@@ -101,6 +102,7 @@ export const SF_ORG_CONTEXT_ENTRY_TYPE = "sf-org-context";
 
 export default function sfDevBar(pi: ExtensionAPI) {
   if (!requirePiVersion(pi, "sf-devbar")) return;
+  registerLatestContextProjection(pi, [SF_ORG_CONTEXT_ENTRY_TYPE]);
 
   // Bind the Pi API to the shared runtime so org detection results are
   // persisted into the session via appendEntry(). This lets the cache
@@ -565,8 +567,7 @@ export default function sfDevBar(pi: ExtensionAPI) {
 
     const stillFresh = (entry: { content: string | unknown[] }) =>
       typeof entry.content === "string" && entry.content === context;
-    if (!shouldInjectOnce(ctx.sessionManager.getEntries(), SF_ORG_CONTEXT_ENTRY_TYPE, stillFresh))
-      return;
+    if (!shouldInjectOnce(ctx.sessionManager, SF_ORG_CONTEXT_ENTRY_TYPE, stillFresh)) return;
 
     return {
       message: {

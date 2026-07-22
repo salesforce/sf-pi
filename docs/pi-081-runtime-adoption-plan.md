@@ -1,6 +1,6 @@
 # Pi 0.81 Runtime Adoption Plan
 
-Status: Pi 0.81.1 runtime adoption implemented with credential containment; native interactive login remains deferred
+Status: Pi 0.81.1 runtime adoption and M2A active-branch context implemented; native interactive login remains deferred
 
 ## Goal
 
@@ -276,6 +276,8 @@ Implementation evidence:
 
 ## M2A — Active-branch latest context
 
+Implementation status: implemented.
+
 ### Objective
 
 Make hidden model context branch-correct, compaction-aware, and latest-value for mutable facts.
@@ -303,6 +305,16 @@ Delete all-entry freshness scanning and historical-equality semantics.
 ### Required gate
 
 Mandatory gate plus a sanitized session-tree artifact showing sibling, compaction, and A→B→A behavior. No visual QA unless rendering changes.
+
+Implementation evidence:
+
+- `shouldInjectOnce` consumes Pi's public `buildContextEntries()` projection and evaluates only the latest matching custom message;
+- SF Brain, DevBar, Guardrail, and Slack register latest-value context projections;
+- real `SessionManager` tests cover active/abandoned siblings, repeated compaction, resume, fork, tree navigation, and A→B→A;
+- projection tests preserve unrelated messages and state-only approval/audit records and prove multiple projection handlers compose;
+- Slack drops stale workspace context when identity/tools become inactive and restores it when active;
+- Guardrail enforcement remains in the independent `tool_call` seam;
+- full validation passes 460 test files and 3,433 tests; production audit is clean.
 
 ### Hard stop
 

@@ -8,15 +8,20 @@
  * synthetic shapes; this file covers the helper-level behavior.
  */
 import { describe, expect, it } from "vitest";
-import type {
-  CompactionEntry,
-  CustomEntry,
-  CustomMessageEntry,
-  SessionEntry,
-  SessionMessageEntry,
+import {
+  buildContextEntries,
+  type CompactionEntry,
+  type CustomEntry,
+  type CustomMessageEntry,
+  type SessionEntry,
+  type SessionMessageEntry,
 } from "@earendil-works/pi-coding-agent";
 
-import { isLiveCustomMessageEntry, shouldInjectOnce } from "../session/inject-once.ts";
+import {
+  type ActiveContextSession,
+  isLiveCustomMessageEntry,
+  shouldInjectOnce,
+} from "../session/inject-once.ts";
 
 const CUSTOM_TYPE = "test-extension-injection";
 
@@ -74,6 +79,14 @@ function customStateMarker(parentId: string | null, customType: string): CustomE
   };
 }
 
+function session(entries: readonly SessionEntry[]): ActiveContextSession {
+  const copy = [...entries];
+  const leafId = copy.at(-1)?.id ?? null;
+  return {
+    buildContextEntries: () => buildContextEntries(copy, leafId),
+  };
+}
+
 describe("isLiveCustomMessageEntry", () => {
   it("matches a custom_message with the requested customType", () => {
     expect(isLiveCustomMessageEntry(customMessage(), CUSTOM_TYPE)).toBe(true);
@@ -105,7 +118,7 @@ describe("isLiveCustomMessageEntry", () => {
 
 describe("shouldInjectOnce — no compaction", () => {
   it("returns true for an empty session", () => {
-    expect(shouldInjectOnce([], CUSTOM_TYPE)).toBe(true);
+    expect(shouldInjectOnce(session([]), CUSTOM_TYPE)).toBe(true);
   });
 
   it("returns true when only non-matching entries exist", () => {
@@ -114,20 +127,20 @@ describe("shouldInjectOnce — no compaction", () => {
       ...customMessage(),
       customType: "other-extension",
     };
-    expect(shouldInjectOnce([u, otherInject], CUSTOM_TYPE)).toBe(true);
+    expect(shouldInjectOnce(session([u, otherInject]), CUSTOM_TYPE)).toBe(true);
   });
 
   it("returns false when a matching custom_message exists", () => {
     const inject = customMessage();
     const u = userMessage(inject.id, "hi");
-    expect(shouldInjectOnce([inject, u], CUSTOM_TYPE)).toBe(false);
+    expect(shouldInjectOnce(session([inject, u]), CUSTOM_TYPE)).toBe(false);
   });
 
   it("returns true when only a state-marker (type=custom) of the same name exists", () => {
     // Regression net for the original bug shape.
     const stateMarker = customStateMarker(null, CUSTOM_TYPE);
     const u = userMessage(stateMarker.id, "hi");
-    expect(shouldInjectOnce([stateMarker, u], CUSTOM_TYPE)).toBe(true);
+    expect(shouldInjectOnce(session([stateMarker, u]), CUSTOM_TYPE)).toBe(true);
   });
 });
 
@@ -139,7 +152,7 @@ describe("shouldInjectOnce — post-compaction", () => {
     const c = compaction(u2.id, u2.id); // firstKeptEntryId past the inject
     const entries: SessionEntry[] = [inject, u1, u2, c];
 
-    expect(shouldInjectOnce(entries, CUSTOM_TYPE)).toBe(true);
+    expect(shouldInjectOnce(session(entries), CUSTOM_TYPE)).toBe(true);
   });
 
   it("returns false when a fresh injection lives at or after firstKeptEntryId", () => {
@@ -150,7 +163,7 @@ describe("shouldInjectOnce — post-compaction", () => {
     const u2 = userMessage(inject2.id, "post-compaction turn");
     const entries: SessionEntry[] = [inject1, u1, c, inject2, u2];
 
-    expect(shouldInjectOnce(entries, CUSTOM_TYPE)).toBe(false);
+    expect(shouldInjectOnce(session(entries), CUSTOM_TYPE)).toBe(false);
   });
 
   it("uses the LATEST compaction's firstKeptEntryId across multiple compactions", () => {
@@ -161,7 +174,7 @@ describe("shouldInjectOnce — post-compaction", () => {
     const c2 = compaction(u1.id, u1.id); // sweeps inject2 into summary
     const entries: SessionEntry[] = [inject1, c1, inject2, u1, c2];
 
-    expect(shouldInjectOnce(entries, CUSTOM_TYPE)).toBe(true);
+    expect(shouldInjectOnce(session(entries), CUSTOM_TYPE)).toBe(true);
   });
 });
 
@@ -181,9 +194,9 @@ describe("shouldInjectOnce — predicate-based content staleness", () => {
       typeof e.content === "string" && e.content.includes("fresh");
 
     // A valid (fresh) injection exists \u2192 skip.
-    expect(shouldInjectOnce(entries, CUSTOM_TYPE, wantsFresh)).toBe(false);
+    expect(shouldInjectOnce(session(entries), CUSTOM_TYPE, wantsFresh)).toBe(false);
 
     // Predicate that rejects everything \u2192 inject (no entry counts).
-    expect(shouldInjectOnce(entries, CUSTOM_TYPE, () => false)).toBe(true);
+    expect(shouldInjectOnce(session(entries), CUSTOM_TYPE, () => false)).toBe(true);
   });
 });
