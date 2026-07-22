@@ -99,6 +99,13 @@ _Local-native Lightning Web Component lifecycle workflows for pi: project scan, 
 - Commands: `/sf-lwc`
 - Tools: `sf_lwc`
 
+### [SF Multi-Framework](./extensions/sf-multiframework)
+
+_Salesforce Multi-Framework React UI Bundle guidance for CustomApplication and Experience apps._
+
+- Default: **on**
+- Commands: `/sf-multiframework`
+
 ### [SF Slack](./extensions/sf-slack)
 
 _Slack integration — search messages, read threads, browse channel history_

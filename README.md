@@ -219,29 +219,30 @@ per-extension view.
 
 Every slash command exposed by a bundled extension. See each extension README for subcommands and flags.
 
-| Command             | Extension                                               | Category   |
-| ------------------- | ------------------------------------------------------- | ---------- |
-| `/sf-pi`            | [SF Pi Manager](./extensions/sf-pi-manager/)            | manager    |
-| `/sf-llm-gateway`   | [SF LLM Gateway](./extensions/sf-llm-gateway-internal/) | provider   |
-| `/sf-agentscript`   | [SF Agent Script](./extensions/sf-agentscript/)         | agent-tool |
-| `/sf-apex`          | [SF Apex](./extensions/sf-apex/)                        | agent-tool |
-| `/sf-browser`       | [SF Browser](./extensions/sf-browser/)                  | agent-tool |
-| `/sf-code-analyzer` | [SF Code Analyzer](./extensions/sf-code-analyzer/)      | agent-tool |
-| `/sf-data360`       | [SF Data 360](./extensions/sf-data360/)                 | agent-tool |
-| `/sf-docs`          | [SF Docs](./extensions/sf-docs/)                        | agent-tool |
-| `/sf-herdr`         | [SF Herdr](./extensions/sf-herdr/)                      | agent-tool |
-| `/sf-lwc`           | [SF LWC](./extensions/sf-lwc/)                          | agent-tool |
-| `/sf-slack`         | [SF Slack](./extensions/sf-slack/)                      | agent-tool |
-| `/sf-soql`          | [SF SOQL](./extensions/sf-soql/)                        | agent-tool |
-| `/sf-guardrail`     | [SF Guardrail](./extensions/sf-guardrail/)              | safety     |
-| `/sf-feedback`      | [SF Feedback](./extensions/sf-feedback/)                | assistive  |
-| `/sf-lsp`           | [SF LSP](./extensions/sf-lsp/)                          | assistive  |
-| `/sf-data-explorer` | [SF Data Explorer](./extensions/sf-data-explorer/)      | ui         |
-| `/sf-devbar`        | [SF DevBar](./extensions/sf-devbar/)                    | ui         |
-| `/sf-org`           | [SF DevBar](./extensions/sf-devbar/)                    | ui         |
-| `/sf-skills`        | [SF Skills](./extensions/sf-skills/)                    | ui         |
-| `/sf-welcome`       | [SF Welcome](./extensions/sf-welcome/)                  | ui         |
-| `/sf-setup-fonts`   | [SF Welcome](./extensions/sf-welcome/)                  | ui         |
+| Command              | Extension                                               | Category   |
+| -------------------- | ------------------------------------------------------- | ---------- |
+| `/sf-pi`             | [SF Pi Manager](./extensions/sf-pi-manager/)            | manager    |
+| `/sf-llm-gateway`    | [SF LLM Gateway](./extensions/sf-llm-gateway-internal/) | provider   |
+| `/sf-agentscript`    | [SF Agent Script](./extensions/sf-agentscript/)         | agent-tool |
+| `/sf-apex`           | [SF Apex](./extensions/sf-apex/)                        | agent-tool |
+| `/sf-browser`        | [SF Browser](./extensions/sf-browser/)                  | agent-tool |
+| `/sf-code-analyzer`  | [SF Code Analyzer](./extensions/sf-code-analyzer/)      | agent-tool |
+| `/sf-data360`        | [SF Data 360](./extensions/sf-data360/)                 | agent-tool |
+| `/sf-docs`           | [SF Docs](./extensions/sf-docs/)                        | agent-tool |
+| `/sf-herdr`          | [SF Herdr](./extensions/sf-herdr/)                      | agent-tool |
+| `/sf-lwc`            | [SF LWC](./extensions/sf-lwc/)                          | agent-tool |
+| `/sf-multiframework` | [SF Multi-Framework](./extensions/sf-multiframework/)   | agent-tool |
+| `/sf-slack`          | [SF Slack](./extensions/sf-slack/)                      | agent-tool |
+| `/sf-soql`           | [SF SOQL](./extensions/sf-soql/)                        | agent-tool |
+| `/sf-guardrail`      | [SF Guardrail](./extensions/sf-guardrail/)              | safety     |
+| `/sf-feedback`       | [SF Feedback](./extensions/sf-feedback/)                | assistive  |
+| `/sf-lsp`            | [SF LSP](./extensions/sf-lsp/)                          | assistive  |
+| `/sf-data-explorer`  | [SF Data Explorer](./extensions/sf-data-explorer/)      | ui         |
+| `/sf-devbar`         | [SF DevBar](./extensions/sf-devbar/)                    | ui         |
+| `/sf-org`            | [SF DevBar](./extensions/sf-devbar/)                    | ui         |
+| `/sf-skills`         | [SF Skills](./extensions/sf-skills/)                    | ui         |
+| `/sf-welcome`        | [SF Welcome](./extensions/sf-welcome/)                  | ui         |
+| `/sf-setup-fonts`    | [SF Welcome](./extensions/sf-welcome/)                  | ui         |
 
 <!-- GENERATED:command-reference:end -->
 
@@ -393,6 +394,7 @@ For the canonical machine-readable bundle list, see [`catalog/index.json`](./cat
 | [SF Docs](./extensions/sf-docs/)                        | agent-tool | on        | Salesforce documentation lookup for agents and humans, with local credential storage, cited results, and a Manager settings surface.                                                                                                                                                                                                   |
 | [SF Herdr](./extensions/sf-herdr/)                      | agent-tool | on        | Dynamic Herdr lane planning for Salesforce workflows without replacing the upstream Herdr tool.                                                                                                                                                                                                                                        |
 | [SF LWC](./extensions/sf-lwc/)                          | agent-tool | on        | Local-native Lightning Web Component lifecycle workflows for pi: project scan, component inspection, focused diagnostics, targeted Jest tests, and artifacts.                                                                                                                                                                          |
+| [SF Multi-Framework](./extensions/sf-multiframework/)   | agent-tool | on        | Salesforce Multi-Framework React UI Bundle guidance for CustomApplication and Experience apps.                                                                                                                                                                                                                                         |
 | [SF Slack](./extensions/sf-slack/)                      | agent-tool | on        | Slack integration — search messages, read threads, browse channel history                                                                                                                                                                                                                                                              |
 | [SF SOQL](./extensions/sf-soql/)                        | agent-tool | on        | API-native SOQL lifecycle workflows for pi: schema search/describe, relationship discovery, query drafting, validation, query plans, bounded query/SOSL execution, exports, file diagnostics, and artifacts.                                                                                                                           |
 | [SF Guardrail](./extensions/sf-guardrail/)              | safety     | on        | Salesforce-aware safety hooks — file protection policies, dangerous-command gating, org-aware confirmation, and native high-value mutation mediation                                                                                                                                                                                   |

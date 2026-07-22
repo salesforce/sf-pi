@@ -1,0 +1,25 @@
+{
+  "id": "sf-multiframework",
+  "name": "SF Multi-Framework",
+  "description": "Salesforce Multi-Framework React UI Bundle guidance for CustomApplication and Experience apps.",
+  "category": "agent-tool",
+  "maturity": "experimental",
+  "defaultEnabled": true,
+  "commands": ["/sf-multiframework"],
+  "tools": [],
+  "events": [],
+  "docs": {
+    "summary": "Skill-first Salesforce Multi-Framework guidance for React UI Bundles: current template command selection, @salesforce/platform-sdk data access, build artifact hygiene, CustomApplication app access, Experience Cloud app-container metadata, guest/auth Apex access, external user provisioning, and sharing-vs-Apex-façade security decisions. V1 intentionally registers no native tool; it routes agents to existing sf-pi surfaces for Apex, SOQL, browser evidence, and code analysis.",
+    "primaryFiles": [
+      "index.ts",
+      "README.md",
+      "skills/sf-multiframework/SKILL.md",
+      "skills/sf-multiframework/references/experience-cloud-runbook.md"
+    ],
+    "safety": [
+      "V1 is guidance-only and does not mutate orgs or run builds/deploys automatically.",
+      "The skill directs agents to use existing sf-pi tools for Salesforce mutations and verification, preserving guardrail behavior.",
+      "External public/reviewer routes are documented as explicit security design choices: platform sharing or a curated Apex façade, never accidental broad guest access."
+    ]
+  }
+}
