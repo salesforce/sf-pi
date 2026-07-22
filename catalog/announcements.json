@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.230.0-2026-07-22",
-  "latestVersion": "0.230.0",
+  "revision": "release-0.231.0-2026-07-22",
+  "latestVersion": "0.231.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.230.0",
+      "id": "release-0.231.0",
       "kind": "update",
-      "title": "sf-pi v0.230.0 — adopt Pi 0.81.1 with credential containment",
+      "title": "sf-pi v0.231.0 — project mutable context from active branch",
       "publishedAt": "2026-07-22T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.230.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.231.0",
       "severity": "info",
-      "body": "adopt Pi 0.81.1 with credential containment"
+      "body": "project mutable context from active branch"
     },
     {
       "id": "pi-0.73-required",
