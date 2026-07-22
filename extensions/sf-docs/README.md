@@ -25,7 +25,7 @@ Agent asks for official docs
 
 ## Key Architecture Decisions
 
-- **Credential storage:** The token lives in Pi's auth store under provider id `sf-docs`. `SF_DOCS_MCP_TOKEN` is an automation fallback.
+- **Credential storage:** Existing tokens resolve from Pi's auth store under provider id `sf-docs`. Interactive credential entry is temporarily disabled while Pi's native secret prompt can echo submitted values; `SF_DOCS_MCP_TOKEN` is the safe new-session setup path.
 - **Transport:** `lib/client.ts` and `lib/sse.ts` implement the narrow HTTP JSON-RPC/SSE protocol directly.
 - **Tool shape:** `sf_docs` is one family tool instead of one public tool per remote action.
 - **Cache boundary:** `lib/catalog-cache.ts` stores only the collection catalog. Search results, answers, and document bodies are never cached.
@@ -43,8 +43,8 @@ Agent asks for official docs
 | extension load         | always               | Registers auth provider, command, tool, and Manager actions.                                                                                                               |
 | `/sf-docs`             | interactive, no args | Opens SF Pi Manager at SF Docs detail page.                                                                                                                                |
 | `/sf-docs status`      | any                  | Shows auth source, endpoint, defaults, and cache status.                                                                                                                   |
-| `/sf-docs connect`     | interactive          | Prompts for token and stores it in Pi auth.                                                                                                                                |
-| `/sf-docs disconnect`  | any                  | Clears saved Pi auth credential; env vars are untouched.                                                                                                                   |
+| `/sf-docs connect`     | any                  | Shows temporary safe credential-setup and token-rotation guidance without accepting input.                                                                                 |
+| `/sf-docs disconnect`  | interactive          | Prefills native `/logout sf-docs` for review; environment variables are untouched.                                                                                         |
 | `/sf-docs collections` | connected            | Lists docs collections with balanced capability summaries, using the catalog cache when valid.                                                                             |
 | `/sf-docs refresh`     | connected            | Refetches and caches the collection catalog.                                                                                                                               |
 | `/sf-docs cheatsheet`  | any                  | Shows the lazy extension-owned usage guide.                                                                                                                                |
@@ -77,7 +77,7 @@ The Manager settings page stores only non-secret preferences:
 - include citations
 - cache catalog
 
-Preferences are scoped as project > global > extension default. The token is not a setting; use Connect or `SF_DOCS_MCP_TOKEN`.
+Preferences are scoped as project > global > extension default. The token is not a setting. Existing Pi auth remains readable; set `SF_DOCS_MCP_TOKEN` before starting Pi for a new session while interactive credential entry is temporarily disabled.
 
 ## Result Mocks
 
@@ -115,6 +115,7 @@ extensions/sf-docs/
     catalog-cache.test.ts   ← unit / smoke test
     client.test.ts          ← unit / smoke test
     collection-profiles.test.ts← unit / smoke test
+    credential-containment.test.ts← unit / smoke test
     developer-reference.test.ts← unit / smoke test
     preferences.test.ts     ← unit / smoke test
     query-distillation.test.ts← unit / smoke test
@@ -144,7 +145,7 @@ npm test -- extensions/sf-docs
 ## Troubleshooting
 
 **SF Docs says it is not connected:**
-Run `/sf-docs connect` in interactive mode, or set `SF_DOCS_MCP_TOKEN` for automation.
+Interactive credential entry is temporarily disabled while Pi's native secret prompt can echo submitted values. Set `SF_DOCS_MCP_TOKEN` before starting Pi. Existing saved Pi credentials continue to work. If a token was entered through the previous visible input, rotate it with the issuer.
 
 **Collections look stale:**
 Run `/sf-docs refresh` or call `sf_docs` with `action="collections"` and `refresh=true`.

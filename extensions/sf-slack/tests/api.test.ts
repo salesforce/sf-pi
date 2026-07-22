@@ -133,7 +133,8 @@ describe("api", () => {
     });
 
     it("summarizes auth errors", () => {
-      expect(summarizeSlackError("not_authed")).toContain("/login sf-slack");
+      expect(summarizeSlackError("not_authed")).toContain("SLACK_USER_TOKEN");
+      expect(summarizeSlackError("not_authed")).not.toContain("/login sf-slack");
       expect(summarizeSlackError("invalid_auth")).toContain("invalid or missing");
       expect(summarizeSlackError("token_revoked")).toContain("invalid or missing");
     });
@@ -163,7 +164,8 @@ describe("api", () => {
     });
 
     it("summarizes token_expired with a refresh hint", () => {
-      expect(summarizeSlackError("token_expired")).toMatch(/\/login sf-slack|refresh/);
+      expect(summarizeSlackError("token_expired")).toContain("/sf-slack refresh");
+      expect(summarizeSlackError("token_expired")).not.toContain("/login sf-slack");
     });
 
     it("summarizes missing_scope with an approval + re-auth hint", () => {

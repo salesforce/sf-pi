@@ -7,7 +7,7 @@
  * schedule/list/delete API-scheduled messages.
  *
  * Token resolution chain (checked in order):
- *   1. Pi auth store (~/.pi/agent/auth.json via /login sf-slack)
+ *   1. Existing Pi auth credential (~/.pi/agent/auth.json)
  *   2. Environment variable (SLACK_USER_TOKEN)
  *
  * Registration model (Option B — conditional registration):
@@ -34,10 +34,11 @@
  *   any tool call          | no auth              | Return setup instructions (defensive; should not occur with Option B)
  *
  * Security:
- *   - NEVER exposes full tokens — always masked in display
+ *   - NEVER renders tokens or token fragments in status/configuration output
  *   - Read-only except slack_canvas create/edit, slack_send, and slack_schedule
  *     schedule/delete
- *   - Supports Pi auth storage by default, with an env fallback for automation
+ *   - Uses existing Pi auth credentials, with an env fallback for automation
+ *   - Disables new visible credential entry until Pi's secret prompt is secure
  */
 import type {
   ExtensionAPI,
@@ -50,8 +51,6 @@ import {
   WIDGET_KEY,
   ENV_TOKEN,
   SEND_ENTRY_TYPE,
-  MANUAL_REFRESH_SENTINEL,
-  LONG_LIVED_EXPIRY_MS,
   type SlackIdentity,
   type AuthTestResponse,
   type ApiErr,
@@ -152,7 +151,7 @@ const SLACK_COMMAND_ACTIONS: SfPiCommandAction<SlackCommandAction>[] = [
     value: "connect",
     label: "Connect to Slack",
     description:
-      "Paste an xoxp-/xapp- token here (or run an OAuth callback) and Pi stores it in the central pi auth store.",
+      "Show temporary credential-entry containment and environment-variable setup guidance.",
     group: "Connect",
   },
   {
@@ -715,12 +714,8 @@ export default function sfSlack(pi: ExtensionAPI) {
       run: (ctx) => handleSlackCommand(action.value, ctx, true),
       ...(action.value === "connect"
         ? {
-            createPanel: (theme, _cwd, _scope, done, ctx) =>
-              createSlackConnectPanel({
-                theme,
-                done,
-                connect: (token) => connectSlackWithToken(ctx, token),
-              }),
+            createPanel: (theme, _cwd, _scope, done, _ctx) =>
+              createSlackConnectPanel({ theme, done }),
           }
         : {}),
       ...(action.value === "disconnect"
@@ -730,7 +725,7 @@ export default function sfSlack(pi: ExtensionAPI) {
                 theme,
                 tokenSourceLabel: detectTokenSource(),
                 done,
-                disconnect: () => disconnectSlack(ctx),
+                disconnect: () => prepareSlackLogout(ctx),
               }),
           }
         : {}),
@@ -797,7 +792,7 @@ export default function sfSlack(pi: ExtensionAPI) {
           await emitSlackOutput(
             ctx,
             "Slack token not found",
-            "No Slack token found. Run /login sf-slack or set SLACK_USER_TOKEN.",
+            "No Slack token found. Interactive entry is temporarily disabled; set SLACK_USER_TOKEN before starting Pi.",
             "warning",
             fromPanel,
           );
@@ -919,111 +914,19 @@ export default function sfSlack(pi: ExtensionAPI) {
     );
   }
 
-  async function connectSlackWithToken(
-    ctx: ExtensionCommandContext,
-    token: string,
-  ): Promise<string> {
-    ctx.modelRegistry.authStorage.set("sf-slack", {
-      type: "oauth",
-      refresh: MANUAL_REFRESH_SENTINEL,
-      access: token,
-      expires: Date.now() + LONG_LIVED_EXPIRY_MS,
-    });
-
-    ensureSlackToolsRegistered();
-    const requestedScopes = oauthScopes()
-      .split(",")
-      .map((scope) => scope.trim())
-      .filter(Boolean);
-    requestedScopeCount = requestedScopes.length;
-    tokenType = detectTokenType(token);
-    const generation = activeSessionGeneration;
-    updateStatus(ctx, "loading", generation);
-    await refreshSlackIdentityAndScopes({
-      token,
-      requestedScopes,
-      generation,
-      ctx,
-      timingLabel: "sf-slack.connect-token",
-      notifyOnFailure: false,
-    });
-    return identity
-      ? `Connected as @${identity.userName} (${identity.teamId}). Slack tools refreshed for this session.`
-      : "Token saved. Run Refresh identity + scopes if status does not update.";
-  }
-
   async function runSlackConnect(ctx: ExtensionCommandContext, fromPanel: boolean): Promise<void> {
-    if (!ctx.hasUI) {
-      ctx.ui.notify(
-        "/sf-slack connect requires interactive mode. Run /sf-slack connect from a TUI session, or set SLACK_USER_TOKEN for automation.",
-        "warning",
-      );
-      return;
-    }
-
-    // Drive pi's central auth store via authStorage.login(). The same
-    // mechanism /login sf-slack uses, but the panel owns the UI now.
-    // Bare-bones callbacks: notify for the auth URL, ctx.ui.editor for the
-    // paste step. Keeps the call site simple and avoids re-implementing
-    // pi's full OAuth dialog.
-    try {
-      await ctx.modelRegistry.authStorage.login("sf-slack", {
-        onAuth: (info) => {
-          ctx.ui.notify(
-            `${info.instructions}\n\nOpen this URL in your browser:\n${info.url}`,
-            "info",
-          );
-        },
-        onPrompt: async (prompt) => {
-          // ctx.ui.editor returns undefined when the user cancels; fail
-          // closed so authStorage.login surfaces a clean error.
-          const value = await ctx.ui.editor(prompt.message, "");
-          if (value == null || !value.trim()) {
-            throw new Error("Slack connect cancelled.");
-          }
-          return value.trim();
-        },
-        onProgress: (message) => {
-          ctx.ui.notify(message, "info");
-        },
-        onDeviceCode: (info) => {
-          const expires = info.expiresInSeconds ? `\nExpires in: ${info.expiresInSeconds}s` : "";
-          ctx.ui.notify(
-            `Open this URL in your browser:\n${info.verificationUri}\n\nCode: ${info.userCode}${expires}`,
-            "info",
-          );
-        },
-        onSelect: async (prompt) => {
-          // pi's full OAuth dialog can render an interactive selector; the
-          // panel doesn't yet. Surface the options as text so the user can
-          // see what's expected, then bail — they can rerun Connect after
-          // the choice resolves itself (most slack flows don't hit this).
-          const lines = prompt.options.map((option) => `- ${option.label}`).join("\n");
-          throw new Error(
-            `Slack connect needs a multi-choice prompt that the panel doesn't render yet. Options:\n${lines}`,
-          );
-        },
-      });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      if (message === "Slack connect cancelled.") {
-        await emitSlackOutput(
-          ctx,
-          "Slack connect cancelled",
-          "No changes were made. Run Connect again when you're ready.",
-          "info",
-          fromPanel,
-        );
-        return;
-      }
-      await emitSlackOutput(ctx, "Slack connect failed", message, "error", fromPanel);
-      return;
-    }
-
-    // Successful login persisted via pi's auth store. Trigger the existing
-    // refresh path so identity, scopes, and tools update without requiring
-    // the user to manually click Refresh.
-    await handleSlackCommand("refresh", ctx, fromPanel);
+    await emitSlackOutput(
+      ctx,
+      "Slack credential entry temporarily unavailable",
+      [
+        "Credential entry is temporarily unavailable because Pi's current native prompt can echo submitted secret values.",
+        "Existing saved credentials remain active.",
+        `Set ${ENV_TOKEN} before starting Pi for new automation or CI sessions.`,
+        "If you entered a token or callback URL through the previous visible input, rotate or revoke it.",
+      ].join("\n"),
+      "warning",
+      fromPanel,
+    );
   }
 
   async function runSlackDisconnect(
@@ -1035,7 +938,17 @@ export default function sfSlack(pi: ExtensionAPI) {
       await emitSlackOutput(
         ctx,
         "Nothing to disconnect",
-        "No saved Slack credential was found. SLACK_USER_TOKEN env var (if set) is left untouched.",
+        `No Slack credential is configured. ${ENV_TOKEN} is left untouched.`,
+        "info",
+        fromPanel,
+      );
+      return;
+    }
+    if (before === "env") {
+      await emitSlackOutput(
+        ctx,
+        "Slack environment credential remains active",
+        `${ENV_TOKEN} is active. Native logout does not modify environment variables; unset it outside Pi and restart the session.`,
         "info",
         fromPanel,
       );
@@ -1044,13 +957,13 @@ export default function sfSlack(pi: ExtensionAPI) {
 
     if (ctx.hasUI) {
       const confirmed = await ctx.ui.confirm(
-        "Disconnect Slack?",
-        "This clears the saved Slack credential in pi's central auth store. Env var SLACK_USER_TOKEN (if set) is left untouched. You can reconnect anytime via the panel's Connect action.",
+        "Prepare Slack logout?",
+        `This prefills \`/logout ${PROVIDER_NAME}\` for your review. ${ENV_TOKEN} is left untouched.`,
       );
       if (!confirmed) {
         await emitSlackOutput(
           ctx,
-          "Disconnect cancelled",
+          "Logout handoff cancelled",
           "Slack credential left in place.",
           "info",
           fromPanel,
@@ -1059,24 +972,20 @@ export default function sfSlack(pi: ExtensionAPI) {
       }
     }
 
-    const message = disconnectSlack(ctx);
-    await emitSlackOutput(ctx, "Slack disconnected", message, "success", fromPanel);
+    await emitSlackOutput(ctx, "Slack logout handoff", prepareSlackLogout(ctx), "info", fromPanel);
   }
 
-  function disconnectSlack(ctx: ExtensionCommandContext): string {
-    const before = detectTokenSource();
-    ctx.modelRegistry.authStorage.logout("sf-slack");
-    deactivateSlackTools(pi);
-    identity = null;
-    grantedScopeCount = 0;
-    requestedScopeCount = 0;
-    knownGrantedScopeCount = 0;
-    knownScopeCount = 0;
-    missingGrantedScopeCount = 0;
-    tokenType = "unknown";
-    lastError = null;
-    updateStatus(ctx, "disconnected");
-    return `Cleared the saved Slack credential (was using \`${before}\`). Reconnect via the Connect action.`;
+  function prepareSlackLogout(ctx: ExtensionCommandContext): string {
+    const source = detectTokenSource();
+    if (source === "none") return "No Slack credential is configured.";
+    if (source === "env") {
+      return `${ENV_TOKEN} is active. Native logout does not modify environment variables; unset it outside Pi and restart the session.`;
+    }
+    if (!ctx.hasUI) {
+      return `Run \`/logout ${PROVIDER_NAME}\` in an interactive Pi session. ${ENV_TOKEN} is left untouched.`;
+    }
+    ctx.ui.setEditorText(`/logout ${PROVIDER_NAME}`);
+    return `Prefilled \`/logout ${PROVIDER_NAME}\` in the editor. Review and submit it to clear only the saved credential; ${ENV_TOKEN} is left untouched.`;
   }
 
   async function emitSlackOutput(
@@ -1099,6 +1008,8 @@ export default function sfSlack(pi: ExtensionAPI) {
       "",
       "Commands:",
       `  /${COMMAND_NAME}            Open SF Slack in the SF Pi Manager`,
+      `  /${COMMAND_NAME} connect    Show temporary safe credential-setup guidance`,
+      `  /${COMMAND_NAME} disconnect Prepare native logout for review`,
       `  /${COMMAND_NAME} status     Show current auth status`,
       `  /${COMMAND_NAME} refresh    Re-detect identity, re-probe scopes, refresh cache`,
       `  /${COMMAND_NAME} settings   Open preferences (search detail, widget, permalinks)`,
@@ -1125,7 +1036,7 @@ export default function sfSlack(pi: ExtensionAPI) {
   });
   // Slack tools are NOT registered at extension load. Registration is gated on
   // session_start via ensureSlackToolsRegistered() once a token resolves, or on
-  // /sf-slack refresh after a successful login. This keeps the system prompt free
+  // /sf-slack refresh after a credential becomes available. This keeps the system prompt free
   // of slack* snippets and guidelines when Slack is not configured.
 }
 

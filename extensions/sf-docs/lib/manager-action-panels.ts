@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Manager action pages for SF Docs detail actions. */
 import type { Theme } from "@earendil-works/pi-coding-agent";
-import { Input, type Component, type Focusable, matchesKey } from "@earendil-works/pi-tui";
+import { type Component, type Focusable, matchesKey } from "@earendil-works/pi-tui";
 import type { ConfigPanelResult } from "../../../catalog/registry.ts";
 
 type Done = (result: ConfigPanelResult | undefined) => void;
@@ -9,7 +9,6 @@ type Done = (result: ConfigPanelResult | undefined) => void;
 export function createSfDocsConnectPanel(args: {
   theme: Theme;
   done: Done;
-  connect: (token: string) => Promise<string> | string;
 }): Component & Focusable & { renderContent(width: number): string[] } {
   return new SfDocsConnectPanel(args);
 }
@@ -24,92 +23,39 @@ export function createSfDocsDisconnectPanel(args: {
 }
 
 class SfDocsConnectPanel implements Focusable {
-  private input = new Input();
-  private result = "";
-  private busy = false;
-  private error = "";
+  focused = false;
 
-  get focused(): boolean {
-    return this.input.focused;
-  }
-
-  set focused(value: boolean) {
-    this.input.focused = value;
-  }
-
-  constructor(
-    private readonly args: {
-      theme: Theme;
-      done: Done;
-      connect: (token: string) => Promise<string> | string;
-    },
-  ) {
-    this.input.onSubmit = (value) => void this.submit(value);
-    this.input.onEscape = () => this.args.done(undefined);
-  }
+  constructor(private readonly args: { theme: Theme; done: Done }) {}
 
   handleInput(data: string): void {
-    if (this.busy) return;
-    if (matchesKey(data, "escape") || data === "q") {
+    if (matchesKey(data, "escape") || matchesKey(data, "enter") || data === "q") {
       this.args.done(undefined);
-      return;
     }
-    if (this.result) {
-      if (matchesKey(data, "enter") || matchesKey(data, "return")) this.args.done(undefined);
-      return;
-    }
-    this.input.handleInput(data);
   }
 
   renderContent(width: number): string[] {
     const t = this.args.theme;
-    if (this.result) {
-      return [
-        ` ${t.fg("accent", t.bold("Connect to SF Docs"))}`,
-        "",
-        ...wrap(this.result, width - 3).map((line) => ` ${t.fg("success", line)}`),
-        "",
-        ` ${t.fg("dim", "Enter/Esc back")}`,
-      ];
-    }
-
+    const guidance = [
+      "Credential entry is temporarily unavailable while Pi's native secret prompt can echo submitted values.",
+      "Existing saved credentials remain active. Use SF_DOCS_MCP_TOKEN for new automation or CI sessions.",
+      "If you entered a token through the previous visible input, rotate it with the credential issuer.",
+    ];
     return [
       ` ${t.fg("accent", t.bold("Connect to SF Docs"))}`,
-      ` ${t.fg("dim", "Paste your SF Docs MCP token. Pi stores it in the local auth store under sf-docs.")}`,
-      ` ${t.fg("dim", "Use SF_DOCS_MCP_TOKEN instead for automation or CI.")}`,
       "",
-      ...this.input.render(Math.max(20, width - 4)).map((line) => ` ${line}`),
-      this.busy ? ` ${t.fg("dim", "Saving token…")}` : "",
-      this.error ? ` ${t.fg("error", this.error)}` : "",
+      ...guidance.flatMap((text) =>
+        wrap(text, width - 3).map((line) => ` ${t.fg("warning", line)}`),
+      ),
       "",
-      ` ${t.fg("dim", "Enter save token · Esc cancel")}`,
-    ].filter((line) => line !== "");
+      ` ${t.fg("dim", "Enter/Esc back")}`,
+    ];
   }
 
   render(width: number): string[] {
     return this.renderContent(width);
   }
 
-  invalidate(): void {
-    this.input.invalidate();
-  }
-
-  private async submit(value: string): Promise<void> {
-    const token = value.trim();
-    if (!token) {
-      this.error = "Paste a token before saving.";
-      return;
-    }
-    this.busy = true;
-    this.error = "";
-    try {
-      this.result = await this.args.connect(token);
-    } catch (error) {
-      this.error = error instanceof Error ? error.message : String(error);
-    } finally {
-      this.busy = false;
-    }
-  }
+  invalidate(): void {}
 }
 
 class SfDocsDisconnectPanel implements Focusable {
@@ -163,14 +109,14 @@ class SfDocsDisconnectPanel implements Focusable {
     const confirm = this.selected === 0;
     return [
       ` ${t.fg("accent", t.bold("Disconnect SF Docs"))}`,
-      ` ${t.fg("dim", "Clear the saved SF Docs credential from Pi's local auth store.")}`,
-      ` ${t.fg("dim", "Environment variable SF_DOCS_MCP_TOKEN is left untouched.")}`,
+      ` ${t.fg("dim", "Prepare /logout sf-docs in Pi's editor for your review.")}`,
+      ` ${t.fg("dim", "No credential changes until you submit it; SF_DOCS_MCP_TOKEN is untouched.")}`,
       ` ${t.fg("muted", `Current source: ${this.args.tokenSourceLabel}`)}`,
       "",
-      ` ${confirm ? t.fg("accent", "→") : " "} ${confirm ? t.fg("accent", "Disconnect SF Docs") : t.fg("text", "Disconnect SF Docs")}`,
+      ` ${confirm ? t.fg("accent", "→") : " "} ${confirm ? t.fg("accent", "Prepare native logout") : t.fg("text", "Prepare native logout")}`,
       ` ${!confirm ? t.fg("accent", "→") : " "} ${!confirm ? t.fg("accent", "Cancel") : t.fg("text", "Cancel")}`,
       "",
-      ` ${t.fg("dim", "↑/↓ choose · Enter confirm · Esc cancel")}`,
+      ` ${t.fg("dim", "↑/↓ choose · Enter prepare · Esc cancel")}`,
     ];
   }
 

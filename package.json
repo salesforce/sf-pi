@@ -105,16 +105,16 @@
   },
   "peerDependencies": {
     "@earendil-works/pi-ai": "*",
-    "@earendil-works/pi-coding-agent": ">=0.80.6",
+    "@earendil-works/pi-coding-agent": ">=0.81.1 <0.82.0",
     "@earendil-works/pi-tui": "*",
     "typebox": "*"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.2.1",
     "@commitlint/config-conventional": "^21.0.2",
-    "@earendil-works/pi-ai": "^0.80.6",
-    "@earendil-works/pi-coding-agent": "^0.80.6",
-    "@earendil-works/pi-tui": "^0.80.6",
+    "@earendil-works/pi-ai": "0.81.1",
+    "@earendil-works/pi-coding-agent": "0.81.1",
+    "@earendil-works/pi-tui": "0.81.1",
     "@eslint/js": "^10.0.1",
     "@types/node": "^26.1.1",
     "@vitest/coverage-v8": "^4.1.10",

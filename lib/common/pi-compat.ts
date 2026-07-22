@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /**
- * pi-compat — feature-detecting shims and a minimum-pi-version gate.
+ * pi-compat — feature-detecting shims and a bounded-pi-version gate.
  *
  * Why this exists:
  *   sf-pi's `peerDependencies` is a soft contract — npm only warns on
@@ -10,9 +10,9 @@
  *   errors instead of a friendly "please run `pi update`" message.
  *
  *   `requirePiVersion()` is the single gate we call at the top of every
- *   extension factory. Below the floor it logs one actionable warning and
- *   returns `false`, letting the factory short-circuit cleanly so the rest
- *   of pi keeps starting up.
+ *   extension factory. Outside the supported window it logs one actionable
+ *   warning and returns `false`, letting the factory short-circuit cleanly so
+ *   the rest of pi keeps starting up.
  *
  *   The feature-detecting shims below cover additive APIs that we adopted
  *   before bumping the floor to cover them. They stay in place to absorb
@@ -27,7 +27,11 @@ import * as PiRuntime from "@earendil-works/pi-coding-agent";
  * package.json. Bump this whenever sf-pi starts depending on an API added
  * in a newer pi release.
  */
-export const MIN_PI_VERSION = "0.80.6";
+export const MIN_PI_VERSION = "0.81.1";
+
+/** Exclusive ceiling for the audited Pi 0.81 runtime line. */
+export const MAX_PI_VERSION_EXCLUSIVE = "0.82.0";
+export const RECOMMENDED_PI_VERSION = "0.81.1";
 
 /**
  * Cached pi-coding-agent version exported by the host Pi Runtime. Cached
@@ -77,6 +81,19 @@ export function compareVersions(a: string, b: string): number {
   return pa.pre < pb.pre ? -1 : 1;
 }
 
+export function isPiVersionSupported(
+  version: string,
+  minVersion: string = MIN_PI_VERSION,
+  maxVersionExclusive: string = MAX_PI_VERSION_EXCLUSIVE,
+): boolean {
+  if (compareVersions(version, minVersion) < 0) return false;
+  // Reject prereleases of the exclusive ceiling too. npm peer ranges exclude
+  // them by default, and accepting one here would make the runtime contract
+  // looser than package metadata.
+  const versionCore = version.split("-", 1)[0] ?? version;
+  return compareVersions(versionCore, maxVersionExclusive) < 0;
+}
+
 const warnedExtensions = new Set<string>();
 
 /**
@@ -91,28 +108,28 @@ const warnedExtensions = new Set<string>();
  * }
  * ```
  *
- * On success returns `true`. When the installed pi is older than
- * {@link MIN_PI_VERSION}, logs a one-line warning (at most once per
- * extension per process) and returns `false` so the factory can short-circuit
- * cleanly. Unknown pi versions (cannot read package.json) return `true` — we
- * would rather attempt the load and surface a real error than silently skip
- * every extension on an unfamiliar pi fork.
+ * On success returns `true`. Outside the inclusive-floor/exclusive-ceiling
+ * window, logs a one-line warning (at most once per extension per process)
+ * and returns `false` so the factory can short-circuit cleanly. Unknown Pi
+ * versions return `true`; we would rather surface a real host error than
+ * silently skip every extension on an unfamiliar Pi fork.
  */
 export function requirePiVersion(
   _pi: unknown,
   extensionName: string,
   minVersion: string = MIN_PI_VERSION,
+  maxVersionExclusive: string = MAX_PI_VERSION_EXCLUSIVE,
 ): boolean {
   const installed = getInstalledPiVersion();
   if (!installed) return true; // unknown — do not block; let real errors surface.
-  if (compareVersions(installed, minVersion) >= 0) return true;
+  if (isPiVersionSupported(installed, minVersion, maxVersionExclusive)) return true;
 
   if (!warnedExtensions.has(extensionName)) {
     warnedExtensions.add(extensionName);
     console.warn(
       [
-        `[sf-pi] Skipping "${extensionName}": requires pi-coding-agent >= ${minVersion}, found ${installed}.`,
-        "Run `pi update --self --force`. If `pi --version` still reports the old version, run `/sf-pi doctor` for install-specific repair guidance.",
+        `[sf-pi] Skipping "${extensionName}": supports pi-coding-agent >= ${minVersion} and < ${maxVersionExclusive}, found ${installed}.`,
+        "Use Pi 0.81.1, then run `/sf-pi doctor runtime` for install-specific guidance.",
       ].join(" "),
     );
   }

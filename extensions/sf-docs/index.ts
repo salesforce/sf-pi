@@ -8,7 +8,7 @@
  *   -----------------------|---------------------------------------------------------
  *   extension load         | Register provider auth entry, `sf_docs`, `/sf-docs`
  *   /sf-docs (no args)     | Open SF Pi Manager detail page when UI is available
- *   /sf-docs connect       | Prompt for token and store it in Pi auth store
+ *   /sf-docs connect       | Explain temporary credential-entry containment
  *   /sf-docs status        | Print connection/default/cache status
  *   sf_docs search/fetch   | Call docs service via direct HTTP JSON-RPC/SSE transport
  */
@@ -43,13 +43,7 @@ import { readEffectiveDocsPreferences } from "./lib/preferences.ts";
 import { formatCollections } from "./lib/render.ts";
 import { registerSfDocsTool } from "./lib/sf_docs-tool.ts";
 import { buildStatus } from "./lib/status.ts";
-import {
-  COMMAND_NAME,
-  ENV_TOKEN,
-  LONG_LIVED_EXPIRY_MS,
-  MANUAL_REFRESH_SENTINEL,
-  PROVIDER_NAME,
-} from "./lib/types.ts";
+import { COMMAND_NAME, ENV_TOKEN, PROVIDER_NAME } from "./lib/types.ts";
 import { SF_DOCS_ACTIONS, renderHelp } from "./lib/command-surface.ts";
 import {
   createSfDocsConnectPanel,
@@ -99,12 +93,8 @@ function buildManagerActions(pi: ExtensionAPI): ManagerDetailAction[] {
     run: (ctx) => handleCommand(pi, ctx, action.value, true),
     ...(action.value === "connect"
       ? {
-          createPanel: (theme, _cwd, _scope, done, ctx) =>
-            createSfDocsConnectPanel({
-              theme,
-              done,
-              connect: (token) => connectWithToken(ctx, token),
-            }),
+          createPanel: (theme, _cwd, _scope, done, _ctx) =>
+            createSfDocsConnectPanel({ theme, done }),
         }
       : {}),
     ...(action.value === "disconnect"
@@ -114,7 +104,7 @@ function buildManagerActions(pi: ExtensionAPI): ManagerDetailAction[] {
               theme,
               tokenSourceLabel: detectTokenSource(),
               done,
-              disconnect: () => disconnectSavedToken(ctx),
+              disconnect: () => prepareDocsLogout(ctx),
             }),
         }
       : {}),
@@ -172,58 +162,18 @@ async function handleCommand(
 }
 
 async function connect(ctx: ExtensionCommandContext, fromPanel: boolean): Promise<void> {
-  if (!ctx.hasUI) {
-    return emit(
-      ctx,
-      "SF Docs connect requires UI",
-      `Run /sf-docs connect in interactive mode, or set ${ENV_TOKEN} for automation.`,
-      "warning",
-      fromPanel,
-    );
-  }
-  try {
-    await ctx.modelRegistry.authStorage.login(PROVIDER_NAME, {
-      onAuth: (info) =>
-        ctx.ui.notify(`${info.instructions ?? "Authenticate SF Docs"}\n${info.url ?? ""}`, "info"),
-      onPrompt: async (prompt) => {
-        const value = await ctx.ui.editor(prompt.message, "");
-        if (value == null || !value.trim()) throw new Error("SF Docs connect cancelled.");
-        return value.trim();
-      },
-      onProgress: (message) => ctx.ui.notify(message, "info"),
-      onDeviceCode: (info) =>
-        ctx.ui.notify(`Open ${info.verificationUri}\nCode: ${info.userCode}`, "info"),
-      onSelect: async () => {
-        throw new Error("SF Docs connect does not support selection prompts.");
-      },
-    });
-    return emit(
-      ctx,
-      "SF Docs connected",
-      "Saved SF Docs token in Pi's local auth store.",
-      "success",
-      fromPanel,
-    );
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return emit(
-      ctx,
-      "SF Docs connect failed",
-      message,
-      message.includes("cancelled") ? "info" : "error",
-      fromPanel,
-    );
-  }
-}
-
-function connectWithToken(ctx: ExtensionCommandContext, token: string): string {
-  ctx.modelRegistry.authStorage.set(PROVIDER_NAME, {
-    type: "oauth",
-    refresh: MANUAL_REFRESH_SENTINEL,
-    access: token,
-    expires: Date.now() + LONG_LIVED_EXPIRY_MS,
-  });
-  return "Saved SF Docs token in Pi's local auth store.";
+  return emit(
+    ctx,
+    "SF Docs credential entry temporarily unavailable",
+    [
+      "Credential entry is temporarily unavailable because Pi's current native prompt can echo submitted secret values.",
+      "Existing saved credentials remain active.",
+      `Set ${ENV_TOKEN} before starting Pi for new automation or CI sessions.`,
+      "If you entered a token through the previous visible input, rotate it with the credential issuer.",
+    ].join("\n"),
+    "warning",
+    fromPanel,
+  );
 }
 
 async function disconnect(ctx: ExtensionCommandContext, fromPanel: boolean): Promise<void> {
@@ -241,18 +191,20 @@ async function disconnect(ctx: ExtensionCommandContext, fromPanel: boolean): Pro
         fromPanel,
       );
   }
-  return emit(ctx, "SF Docs disconnected", disconnectSavedToken(ctx), "success", fromPanel);
+  return emit(ctx, "SF Docs logout handoff", prepareDocsLogout(ctx), "info", fromPanel);
 }
 
-function disconnectSavedToken(ctx: ExtensionCommandContext): string {
-  ctx.modelRegistry.authStorage.set(PROVIDER_NAME, {
-    type: "oauth",
-    refresh: MANUAL_REFRESH_SENTINEL,
-    access: "",
-    expires: Date.now() + LONG_LIVED_EXPIRY_MS,
-  });
-  ctx.modelRegistry.authStorage.logout(PROVIDER_NAME);
-  return `Cleared saved ${PROVIDER_NAME} credential.`;
+function prepareDocsLogout(ctx: ExtensionCommandContext): string {
+  const source = detectTokenSource();
+  if (source === "none") return "No SF Docs credential is configured.";
+  if (source === "env") {
+    return `${ENV_TOKEN} is active. Native logout does not modify environment variables; unset it outside Pi and restart the session.`;
+  }
+  if (!ctx.hasUI) {
+    return `Run \`/logout ${PROVIDER_NAME}\` in an interactive Pi session. ${ENV_TOKEN} is left untouched.`;
+  }
+  ctx.ui.setEditorText(`/logout ${PROVIDER_NAME}`);
+  return `Prefilled \`/logout ${PROVIDER_NAME}\` in the editor. Review and submit it to clear only the saved credential; ${ENV_TOKEN} is left untouched.`;
 }
 
 async function listCollections(ctx: ExtensionCommandContext, refresh: boolean): Promise<string> {

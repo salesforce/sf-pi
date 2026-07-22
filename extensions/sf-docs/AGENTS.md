@@ -28,8 +28,8 @@ Read `README.md` and `docs/cheatsheet.md` before changing behavior. SF Docs owns
 
 1. **One family tool.** Keep the public LLM surface as `sf_docs`; do not add one tool per remote action.
 2. **No MCP runtime dependency.** Use the local HTTP JSON-RPC/SSE transport. Do not add MCP SDK, EventSource, scraping, search-index, or markdown parsing dependencies without a new ADR.
-3. **Credential boundary.** Store the SF Docs token in Pi auth under provider id `sf-docs`; `SF_DOCS_MCP_TOKEN` is only an automation fallback. Never write the token to project settings, examples, tests, docs, or logs.
-4. **Settings are non-secret.** `lib/config-panel.ts` may show masked status and edit preferences, but token entry belongs to Connect.
+3. **Credential boundary.** Existing SF Docs credentials resolve from Pi auth under provider id `sf-docs`; `SF_DOCS_MCP_TOKEN` is the temporary new-session setup path while native secret entry is blocked. Never write the token to project settings, examples, tests, docs, or logs.
+4. **Settings are non-secret.** `lib/config-panel.ts` reports only credential source and edits preferences. Do not add token entry or token fragments to any panel until the secure native-login milestone lands.
 5. **Cache catalog only.** `lib/catalog-cache.ts` stores collection metadata only. Do not cache search results, answers, fetched document bodies, prompts, or citations.
 6. **Evidence workflow.** Prompt guidance should prefer `search` → `fetch` for implementation-sensitive work and reserve `answer` for quick cited synthesis.
 7. **Human-polished, LLM-efficient.** Tool `content` stays compact; `details` carries structured sanitized metadata; `renderCall`/`renderResult` produce icon-rich, readable TUI output.

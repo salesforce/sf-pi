@@ -501,7 +501,7 @@
     "entry": "extensions/sf-docs/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 4109
+    "srcLoc": 3999
   },
   {
     "id": "sf-feedback",
@@ -888,7 +888,7 @@
     "entry": "extensions/sf-pi-manager/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 3990
+    "srcLoc": 3986
   },
   {
     "id": "sf-skills",
@@ -1002,7 +1002,7 @@
     "entry": "extensions/sf-slack/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 12498
+    "srcLoc": 12288
   },
   {
     "id": "sf-soql",
@@ -1119,6 +1119,6 @@
     "entry": "extensions/sf-welcome/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 6371
+    "srcLoc": 6408
   }
 ]

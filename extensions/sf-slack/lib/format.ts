@@ -19,7 +19,7 @@ import {
   type StructuredUser,
   type StructuredFile,
 } from "./types.ts";
-import { type TokenSource, getSlackToken, maskToken, oauthScopes } from "./auth.ts";
+import { type TokenSource, getSlackToken, oauthScopes } from "./auth.ts";
 import {
   tsToLabel,
   relativeTime,
@@ -356,9 +356,12 @@ export async function buildAuthStatus(ctx: ExtensionContext): Promise<string> {
     lines.push("Auth method: ❌ Not configured");
     lines.push("Status: Slack tools are unavailable.");
     lines.push("");
-    lines.push("Recommended setup:");
-    lines.push(`  1. Pi auth: /login ${PROVIDER_NAME}`);
-    lines.push(`  2. Environment: export ${ENV_TOKEN}=xoxp-...`);
+    lines.push("Credential setup:");
+    lines.push(
+      "  Interactive entry is temporarily disabled while Pi's secret prompt can echo values.",
+    );
+    lines.push(`  Environment: export ${ENV_TOKEN}=xoxp-... before starting Pi.`);
+    lines.push("  Existing saved Pi credentials remain usable.");
     lines.push("");
     lines.push(`Requested scopes: ${oauthScopes()}`);
     return lines.join("\n");
@@ -366,7 +369,7 @@ export async function buildAuthStatus(ctx: ExtensionContext): Promise<string> {
 
   const sourceLabel: Record<TokenSource, string> = {
     env: `✓ Environment variable (${ENV_TOKEN})`,
-    "pi-auth": "✓ Pi auth store (via /login) ★ recommended",
+    "pi-auth": "✓ Existing Pi auth credential",
     none: "✓ Configured",
   };
   const tokenType = detectTokenType(auth.token);
@@ -380,7 +383,7 @@ export async function buildAuthStatus(ctx: ExtensionContext): Promise<string> {
           : "unknown token type";
 
   lines.push(`Auth method: ${sourceLabel[auth.source]}`);
-  lines.push(`Token: ${maskToken(auth.token)}  [${tokenTypeLabel}]`);
+  lines.push(`Credential type: ${tokenTypeLabel}`);
   lines.push("Status: ✅ Connected");
 
   // Granted vs requested scope comparison. Slack admins may intentionally

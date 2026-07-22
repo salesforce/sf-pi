@@ -7,14 +7,14 @@ export type SfDocsCommandAction =
 export const SF_DOCS_ACTIONS: SfPiCommandAction<SfDocsCommandAction>[] = [
   {
     value: "connect",
-    label: "Connect / Re-authenticate",
-    description: "Paste an SF Docs token and store it in Pi's local auth store.",
+    label: "Credential setup (temporarily limited)",
+    description: "Show safe setup guidance while interactive credential entry is disabled.",
     group: "Connection",
   },
   {
     value: "disconnect",
     label: "Disconnect",
-    description: "Clear the saved SF Docs credential. Environment variables are left untouched.",
+    description: "Prepare a native logout handoff. Environment variables are left untouched.",
     group: "Connection",
   },
   {
@@ -57,15 +57,17 @@ export function renderHelp(): string {
     "",
     "Commands:",
     "- `/sf-docs` — open the SF Pi Manager detail page.",
-    "- `/sf-docs connect` — store a token in Pi's local auth store.",
-    "- `/sf-docs disconnect` — clear the saved token; env vars are untouched.",
+    "- `/sf-docs connect` — show temporary safe credential-setup guidance.",
+    "- `/sf-docs disconnect` — prefill native logout for review; env vars are untouched.",
     "- `/sf-docs status` — show auth, endpoint, defaults, and cache status.",
     "- `/sf-docs collections` — list available docs collections.",
     "- `/sf-docs refresh` — refresh the collection catalog cache.",
     "- `/sf-docs cheatsheet` — show the extension-owned usage cheatsheet.",
     "",
-    "Automation fallback:",
-    "- `SF_DOCS_MCP_TOKEN` supplies the token without saving it.",
+    "Temporary credential setup:",
+    "- Interactive entry is disabled while Pi's native secret prompt can echo submitted values.",
+    "- `SF_DOCS_MCP_TOKEN` supplies the token without saving it; set it before starting Pi.",
+    "- Existing saved Pi credentials remain usable.",
     "- `SF_DOCS_MCP_ENDPOINT` overrides the default endpoint for advanced testing.",
   ].join("\n");
 }

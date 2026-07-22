@@ -53,6 +53,7 @@ export default defineConfig({
           { text: "Contributing", link: "/contributing" },
           { text: "Human Orientation", link: "/human-orientation" },
           { text: "Agent Orientation", link: "/agent-orientation" },
+          { text: "Pi 0.81 Adoption Plan", link: "/pi-081-runtime-adoption-plan" },
           { text: "Settings Surfaces", link: "/settings-surfaces" },
           { text: "Secure Development", link: "/secure-development" },
           { text: "Documentation Health", link: "/health-report" },

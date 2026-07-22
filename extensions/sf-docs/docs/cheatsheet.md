@@ -81,9 +81,9 @@ Primary setup lives in the SF Pi Manager detail page:
 /sf-docs
 ```
 
-Use **Connect / Re-authenticate** to store the token in Pi's local auth store under `sf-docs`.
+The detail page reports the credential source, but interactive credential entry is temporarily disabled while Pi's native secret prompt can echo submitted values. Existing saved credentials under `sf-docs` remain usable.
 
-Automation fallback:
+Set the temporary new-session credential before starting Pi:
 
 ```text
 SF_DOCS_MCP_TOKEN=<token>
@@ -97,7 +97,8 @@ SF_DOCS_MCP_ENDPOINT=https://mcp.docs.salesforce.com/
 
 ## Safety boundaries
 
-- Tokens are never stored in project settings.
+- Tokens are never stored in project settings or rendered in status output.
+- If a token was entered through the previous visible input, rotate it with the issuer.
 - Settings are non-secret preferences only.
 - The catalog cache stores only collection metadata, never search results, answer text, or fetched document bodies.
 - SF Docs uses the Salesforce Docs service as its retrieval surface; it does not scrape Salesforce websites, download documentation bundles, or build a local search index.

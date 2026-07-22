@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (sign-off recorded for Phases A–D plus the additions below).
+Superseded by [ADR 0078: Pi-Native Credential Ownership](./0078-pi-native-credential-ownership.md). This record remains as the historical rationale for the earlier panel-owned credential flow.
 
 ### Sign-off additions
 

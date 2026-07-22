@@ -31,7 +31,7 @@ describe("Native Auto Update command", () => {
     expect(parseAutoUpdateArgs("")).toEqual({ action: "status" });
   });
 
-  it("runs native update commands in order", async () => {
+  it("skips Pi updates that could cross the temporary support ceiling", async () => {
     const calls: string[] = [];
     const pi = {
       exec: async (command: string, args: string[]) => {
@@ -47,11 +47,13 @@ describe("Native Auto Update command", () => {
 
     const status = await runNativeAutoUpdate(pi, ctx);
 
-    expect(calls).toEqual(["pi update --all", "sf update stable"]);
-    expect(status).toMatchObject({ lastResult: "success", restartRecommended: true });
+    expect(calls).toEqual(["sf update stable"]);
+    expect(status).toMatchObject({ lastResult: "success", restartRecommended: false });
+    expect(status.message).toContain("Pi 0.81.1");
+    expect(status.message).toContain("skipped");
   });
 
-  it("stops before sf update when pi update fails", async () => {
+  it("reports Salesforce CLI update failures while Pi remains untouched", async () => {
     const calls: string[] = [];
     const pi = {
       exec: async (command: string, args: string[]) => {
@@ -67,7 +69,8 @@ describe("Native Auto Update command", () => {
 
     const status = await runNativeAutoUpdate(pi, ctx);
 
-    expect(calls).toEqual(["pi update --all"]);
+    expect(calls).toEqual(["sf update stable"]);
     expect(status.lastResult).toBe("failed");
+    expect(status.message).toContain("sf update stable failed");
   });
 });

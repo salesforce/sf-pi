@@ -10,7 +10,12 @@ import { execFile, execFileSync } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
 import { loadSkills } from "@earendil-works/pi-coding-agent";
-import { getInstalledPiVersion, MIN_PI_VERSION } from "../pi-compat.ts";
+import {
+  getInstalledPiVersion,
+  MAX_PI_VERSION_EXCLUSIVE,
+  MIN_PI_VERSION,
+  RECOMMENDED_PI_VERSION,
+} from "../pi-compat.ts";
 import { isNodeRuntimeSupported, NODE_RUNTIME_FLOOR } from "../runtime-floor.ts";
 import { normalizeNpmConfigValue, readConfiguredNpmCommand } from "../npm-release-age-policy.ts";
 import { globalAgentPath, globalSettingsPath, projectSettingsPath } from "../pi-paths.ts";
@@ -79,8 +84,16 @@ export function runDoctorDiagnostics(
       id: "pi-version-old",
       severity: "error",
       title: `Pi runtime is older than ${MIN_PI_VERSION}`,
-      detail: `Detected pi ${piVersion}. sf-pi targets pi ${MIN_PI_VERSION} or newer.`,
-      fix: "Update pi with `pi update --self --force`. If the version still looks old, run `/sf-pi doctor runtime` for install-specific repair guidance.",
+      detail: `Detected pi ${piVersion}. sf-pi supports >=${MIN_PI_VERSION} <${MAX_PI_VERSION_EXCLUSIVE}.`,
+      fix: `Use Pi ${RECOMMENDED_PI_VERSION}, then run \`/sf-pi doctor runtime\` for install-specific guidance.`,
+    });
+  } else if (piVersion && compareVersions(piVersion, MAX_PI_VERSION_EXCLUSIVE) >= 0) {
+    issues.push({
+      id: "pi-version-new",
+      severity: "error",
+      title: `Pi runtime is outside the audited window`,
+      detail: `Detected pi ${piVersion}. sf-pi supports >=${MIN_PI_VERSION} <${MAX_PI_VERSION_EXCLUSIVE}.`,
+      fix: `Use Pi ${RECOMMENDED_PI_VERSION}, then run \`/sf-pi doctor runtime\` for install-specific guidance.`,
     });
   }
 
@@ -772,62 +785,65 @@ export function buildRuntimeUpdateAdvice(input: {
   npmMinReleaseAge?: string;
   npmMinimumReleaseAge?: string;
 }): string[] {
-  const hasReleaseAgePolicy = !!(
-    input.npmBefore ||
-    input.npmMinReleaseAge ||
-    input.npmMinimumReleaseAge
-  );
-  const bypassFlags = input.npmBefore ? "--before=null --min-release-age=0" : "--min-release-age=0";
-  const installCommand = hasReleaseAgePolicy
-    ? `npm install -g --ignore-scripts @earendil-works/pi-coding-agent@latest --force ${bypassFlags}`
-    : "npm install -g --ignore-scripts @earendil-works/pi-coding-agent@latest --force";
-  const needsAdvancedFallback =
-    hasReleaseAgePolicy ||
-    input.allPiPaths.length > 1 ||
-    !!(
-      input.installedPiPackageVersion &&
-      input.piVersion &&
-      input.installedPiPackageVersion !== input.piVersion
+  if (
+    input.piVersion &&
+    (compareVersions(input.piVersion, MIN_PI_VERSION) < 0 ||
+      compareVersions(input.piVersion, MAX_PI_VERSION_EXCLUSIVE) >= 0)
+  ) {
+    const hasReleaseAgePolicy = !!(
+      input.npmBefore ||
+      input.npmMinReleaseAge ||
+      input.npmMinimumReleaseAge
     );
-  const lines = [
-    "pi update --self --force",
-    "hash -r",
-    "pi --version",
-    "If pi --version still looks old, review the diagnostics above for PATH, npm, or release-age policy issues.",
-  ];
-
-  if (needsAdvancedFallback) {
-    lines.push(
-      "Advanced fallback if the Pi-native update still fails:",
-      "nvm use <node-version-if-applicable>",
-      "npm uninstall -g @earendil-works/pi-coding-agent",
-      installCommand,
-      "hash -r",
-      "pi --version",
-    );
-  }
-
-  if (hasReleaseAgePolicy) {
+    const bypassFlags = input.npmBefore
+      ? " --before=null --min-release-age=0"
+      : hasReleaseAgePolicy
+        ? " --min-release-age=0"
+        : "";
     const policyParts = [
       input.npmBefore ? `before=${input.npmBefore}` : undefined,
       input.npmMinReleaseAge ? `min-release-age=${input.npmMinReleaseAge}` : undefined,
       input.npmMinimumReleaseAge ? `minimum-release-age=${input.npmMinimumReleaseAge}` : undefined,
     ].filter(Boolean);
+    const lines = [
+      `Detected pi ${input.piVersion}; sf-pi supports >=${MIN_PI_VERSION} <${MAX_PI_VERSION_EXCLUSIVE}.`,
+      ...(hasReleaseAgePolicy
+        ? [
+            `npm release-age policy detected (${policyParts.join(", ")}); the exact-version fallback includes bounded visibility overrides.`,
+          ]
+        : []),
+      `Use your Pi installation method to select ${RECOMMENDED_PI_VERSION}. npm fallback:`,
+      `npm install -g --ignore-scripts @earendil-works/pi-coding-agent@${RECOMMENDED_PI_VERSION} --force${bypassFlags}`,
+      "hash -r",
+      "pi --version",
+    ];
+    if (input.allPiPaths.length > 1) {
+      lines.splice(
+        1,
+        0,
+        "which -a pi  # multiple pi executables found; ensure PATH uses the supported one",
+      );
+    }
+    return lines;
+  }
+
+  if (!input.piVersion) {
+    return [
+      "Pi runtime version is unknown; no automatic update is recommended.",
+      "Run `pi --version`, then use `/sf-pi doctor runtime` to inspect PATH and installation details.",
+    ];
+  }
+
+  const lines = [
+    `Detected pi ${input.piVersion} inside the audited >=${MIN_PI_VERSION} <${MAX_PI_VERSION_EXCLUSIVE} window.`,
+    `No unbounded Pi update is recommended; keep ${RECOMMENDED_PI_VERSION} inside this window.`,
+  ];
+  if (input.allPiPaths.length > 1) {
     lines.unshift(
-      `npm release-age policy detected (${policyParts.join(", ")}); use the override flags below to bypass delayed visibility of newly published pi releases.`,
+      "which -a pi  # multiple pi executables found; ensure PATH uses the supported one",
     );
   }
-  if (input.allPiPaths.length > 1) {
-    lines.unshift("which -a pi  # multiple pi executables found; ensure PATH uses the updated one");
-  }
-  if (input.piVersion && compareVersions(input.piVersion, MIN_PI_VERSION) < 0) {
-    lines.unshift(`Detected pi ${input.piVersion}; sf-pi requires ${MIN_PI_VERSION} or newer.`);
-  }
-  if (
-    input.installedPiPackageVersion &&
-    input.piVersion &&
-    input.installedPiPackageVersion !== input.piVersion
-  ) {
+  if (input.installedPiPackageVersion && input.installedPiPackageVersion !== input.piVersion) {
     lines.unshift(
       `npm global package is ${input.installedPiPackageVersion}, but pi --version reports ${input.piVersion}; check shell PATH/shims.`,
     );

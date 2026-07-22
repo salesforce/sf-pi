@@ -128,12 +128,14 @@ details and why each one is worth it.
 
 macOS, Linux, and WSL are the primary targets. Native Windows works on
 x64 and ARM64 once the `sf` CLI is installed, but WSL is recommended for
-parity with Linux/macOS shell tooling. The minimum pi version tracks the
+parity with Linux/macOS shell tooling. The audited Pi window tracks the
 `peerDependencies` range in [`package.json`](./package.json) (currently
-`>=0.80.6`). Older pi runtimes are not supported; the shims in
-[`lib/common/pi-compat.ts`](./lib/common/pi-compat.ts) fail gracefully with
-a one-line "run `pi update --self --force`" warning instead of letting
-extensions crash on missing runtime APIs.
+`>=0.81.1 <0.82.0`). Pi 0.81.1 is the recommended version. Runtimes outside
+that window are not supported; [`lib/common/pi-compat.ts`](./lib/common/pi-compat.ts)
+skips extensions with an actionable `/sf-pi doctor runtime` message instead of
+letting them crash on removed runtime APIs. SF Docs and Slack interactive
+credential entry remains disabled until Pi ships a native secret prompt that
+masks input and never echoes submitted values.
 
 ## Telemetry and aggregate metrics
 
@@ -471,8 +473,8 @@ invocation and is picked up by all sf-pi commands without any sf-pi change.
 export PI_CODING_AGENT_SESSION_DIR="$HOME/.pi-sessions"
 ```
 
-sf-pi requires pi `>=0.80.6`, so supported installations honor the env
-var; older pi releases should be updated before running current sf-pi.
+sf-pi supports pi `>=0.81.1 <0.82.0`, so supported installations honor the env
+var. Pi 0.81.1 is the recommended version.
 
 ## Adding a New Extension
 
@@ -587,7 +589,7 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 **[SF Pi Manager](./extensions/sf-pi-manager/#troubleshooting)**
 
 - `/sf-pi` says "package not found in settings"
-- `pi update --self --force` completes but `pi --version` is still old
+- `pi --version` is outside SF Pi's audited runtime window
 - Disabling an extension through the manager doesn't take effect
 - `/sf-pi enable-all` still leaves some extensions disabled
 - Project-scoped changes aren't sticking

@@ -5,7 +5,7 @@
  * Tests token precedence helpers and display helpers.
  */
 import { describe, it, expect } from "vitest";
-import { maskToken, formatExpiry, resolveTokenCandidates } from "../lib/auth.ts";
+import { formatExpiry, resolveTokenCandidates } from "../lib/auth.ts";
 
 describe("auth", () => {
   describe("resolveTokenCandidates", () => {
@@ -28,20 +28,6 @@ describe("auth", () => {
 
     it("returns null when no candidate is configured", () => {
       expect(resolveTokenCandidates({})).toBeNull();
-    });
-  });
-
-  describe("maskToken", () => {
-    it("masks short tokens completely", () => {
-      expect(maskToken("abc")).toBe("***");
-      expect(maskToken("short-token!")).toBe("***");
-    });
-
-    it("masks long tokens showing prefix and suffix", () => {
-      const result = maskToken("xoxp-1234567890-abcdefghijklmn");
-      expect(result).toMatch(/^xoxp-1.*n$/);
-      expect(result).toContain("…");
-      expect(result.length).toBeLessThan("xoxp-1234567890-abcdefghijklmn".length);
     });
   });
 

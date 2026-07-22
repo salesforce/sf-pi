@@ -2,12 +2,13 @@
 /**
  * Token resolution and auth provider registration for sf-slack.
  *
- * ADR 0007 made the `/sf-slack` panel the single primary entry point for
- * authentication. Resolution precedence is now:
+ * Resolution precedence is:
  *
- *   1. Pi auth storage through `ctx.modelRegistry.getApiKeyForProvider()` —
- *      written by the panel's Connect action and pi's own `/login` flow.
- *   2. Environment variable (SLACK_USER_TOKEN) — best for automation / CI.
+ *   1. Existing Pi auth through `ctx.modelRegistry.getApiKeyForProvider()`.
+ *   2. Environment variable (SLACK_USER_TOKEN) for automation / CI.
+ *
+ * New interactive credential entry is temporarily disabled until Pi's native
+ * secret prompt is masked and non-echoing.
  *
  * Config/status surfaces without ExtensionContext use a shared status-only
  * auth-store adapter that never returns token values.
@@ -24,7 +25,6 @@ import {
   ENV_TOKEN,
   ENV_CLIENT_ID,
   ENV_CLIENT_SECRET,
-  ENV_REDIRECT_URI,
   ENV_SCOPES,
   DEFAULT_SCOPES,
   type SlackToolResult,
@@ -91,11 +91,6 @@ export function detectTokenSource(): TokenSource {
   return resolveConfiguredToken()?.source || "none";
 }
 
-/** Resolve display-safe local token sources without needing an extension ctx. */
-export function resolveTokenFromConfiguredSources(): string | null {
-  return resolveConfiguredToken()?.token || null;
-}
-
 /** Full token resolution: Pi auth storage first, then automation env fallback. */
 export async function getSlackToken(
   ctx: ExtensionContext,
@@ -116,9 +111,8 @@ export async function getSlackToken(
     ok: false,
     message: [
       "Slack auth is not configured.",
-      "Recommended setup:",
-      `1. Run /login ${PROVIDER_NAME}`,
-      `2. Or set ${ENV_TOKEN}=xoxp-... for automation`,
+      "Interactive credential entry is temporarily unavailable while Pi's native secret prompt can echo submitted values.",
+      `Set ${ENV_TOKEN}=xoxp-... before starting Pi, or continue using an existing saved credential.`,
     ].join("\n"),
   };
 }
@@ -145,12 +139,7 @@ export async function requireAuth(
   };
 }
 
-// ─── Token display helpers ──────────────────────────────────────────────────────
-
-export function maskToken(token: string): string {
-  if (token.length <= 12) return "***";
-  return `${token.substring(0, 6)}…${token.substring(token.length - 4)}`;
-}
+// ─── Credential metadata helpers ───────────────────────────────────────────────
 
 export function formatExpiry(expiresMs: number): string {
   const now = Date.now();
@@ -169,77 +158,10 @@ export function formatExpiry(expiresMs: number): string {
 
 // ─── OAuth provider callbacks ───────────────────────────────────────────────────
 
-export async function loginSlack(callbacks: OAuthLoginCallbacks): Promise<OAuthCredentials> {
-  const clientId = getEnv(ENV_CLIENT_ID);
-  const clientSecret = getEnv(ENV_CLIENT_SECRET);
-  const redirectUri = getEnv(ENV_REDIRECT_URI);
-
-  if (clientId && clientSecret && redirectUri) {
-    const state = globalThis.crypto?.randomUUID?.() || `${Date.now()}`;
-    const authParams = new URLSearchParams({
-      client_id: clientId,
-      redirect_uri: redirectUri,
-      user_scope: oauthScopes(),
-      state,
-    });
-
-    callbacks.onAuth({
-      url: `https://slack.com/oauth/v2/authorize?${authParams.toString()}`,
-      instructions: "Authenticate with Slack, then paste the callback URL.",
-    });
-
-    const callbackUrl = (
-      await callbacks.onPrompt({ message: "Paste the full Slack callback URL:" })
-    ).trim();
-    const code = new URL(callbackUrl).searchParams.get("code");
-    if (!code) throw new Error("No OAuth code found in callback URL.");
-
-    const tokenResponse = await fetch(`${SLACK_API_BASE}/oauth.v2.access`, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        client_id: clientId,
-        client_secret: clientSecret,
-        code,
-        redirect_uri: redirectUri,
-      }),
-    });
-
-    const data = (await tokenResponse.json()) as SlackOAuthResponse;
-    if (!tokenResponse.ok || !data.ok) {
-      throw new Error(
-        data.error || `Slack OAuth exchange failed with HTTP ${tokenResponse.status}`,
-      );
-    }
-
-    const accessToken = data.authed_user?.access_token || data.access_token;
-    if (!accessToken) throw new Error("Slack OAuth did not return an access token.");
-
-    const expiresIn = Number(data.expires_in || 0);
-    return {
-      refresh: data.refresh_token || MANUAL_REFRESH_SENTINEL,
-      access: accessToken,
-      expires:
-        expiresIn > 0
-          ? Date.now() + expiresIn * 1000 - 5 * 60 * 1000
-          : Date.now() + LONG_LIVED_EXPIRY_MS,
-    };
-  }
-
-  const token = (
-    await callbacks.onPrompt({
-      message:
-        `Paste a Slack user token (xoxp-...). ` +
-        `Pi will store it for ${PROVIDER_NAME}, or you can set ${ENV_TOKEN} for automation instead:`,
-    })
-  ).trim();
-  if (!token) throw new Error("No Slack token provided.");
-
-  return {
-    refresh: MANUAL_REFRESH_SENTINEL,
-    access: token,
-    expires: Date.now() + LONG_LIVED_EXPIRY_MS,
-  };
+export async function loginSlack(_callbacks: OAuthLoginCallbacks): Promise<OAuthCredentials> {
+  throw new Error(
+    `Slack credential entry is temporarily unavailable until Pi masks and does not echo native secret prompts. Existing saved credentials still work; set ${ENV_TOKEN} before starting Pi for new sessions.`,
+  );
 }
 
 export async function refreshSlackToken(credentials: OAuthCredentials): Promise<OAuthCredentials> {

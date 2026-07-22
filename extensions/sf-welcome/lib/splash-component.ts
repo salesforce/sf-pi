@@ -717,7 +717,11 @@ function formatReleaseStatusValue(
   }
 
   if (status.freshness === "latest") {
-    const label = status.cooldownActive ? "latest allowed [cooldown active]" : "latest";
+    const label = status.supportWindowLimited
+      ? "latest supported [newer Pi blocked]"
+      : status.cooldownActive
+        ? "latest allowed [cooldown active]"
+        : "latest";
     return `${SF_GREEN("✓")} ${SF_GREEN(label)} ${MUTED(`· ${installed}`)}${suffix}`;
   }
 

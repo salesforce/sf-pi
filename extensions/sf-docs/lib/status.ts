@@ -1,10 +1,9 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-import { detectTokenSource, maskToken, resolveConfiguredToken, resolveEndpoint } from "./auth.ts";
+import { detectTokenSource, resolveEndpoint } from "./auth.ts";
 import { formatCacheAge, readCatalogCache } from "./catalog-cache.ts";
 import { readEffectiveDocsPreferences } from "./preferences.ts";
 
 export function buildStatus(cwd: string): string {
-  const token = resolveConfiguredToken();
   const tokenSource = detectTokenSource();
   const endpoint = resolveEndpoint();
   const cache = readCatalogCache();
@@ -15,7 +14,6 @@ export function buildStatus(cwd: string): string {
     `Connection: ${tokenSource !== "none" ? "connected" : "not configured"}`,
     `Token source: ${tokenSource}`,
   ];
-  if (token) lines.push(`Token: ${maskToken(token.token)}`);
   lines.push(`Endpoint: ${endpoint.endpoint} (${endpoint.source})`);
   if (endpoint.warning) lines.push(`Warning: ${endpoint.warning}`);
   lines.push(

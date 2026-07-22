@@ -56,6 +56,8 @@ export interface ReleaseStatusInfo {
   policyVisibleLatestVersion?: string;
   /** True when a release-age policy is hiding a newer absolute Pi release. */
   cooldownActive?: boolean;
+  /** True when SF Pi's audited runtime ceiling hides a newer upstream release. */
+  supportWindowLimited?: boolean;
   freshness: ReleaseFreshness;
   loading: boolean;
   /** Optional command shown as a muted hint when freshness is update-available. */

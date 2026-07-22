@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 import { describe, expect, it } from "vitest";
-import { maskToken, normalizeEndpoint, resolveTokenCandidates } from "../lib/auth.ts";
+import { normalizeEndpoint, resolveTokenCandidates } from "../lib/auth.ts";
 
 describe("sf-docs auth", () => {
   it("resolves pi auth before env", () => {
@@ -15,10 +15,6 @@ describe("sf-docs auth", () => {
       source: "env",
       token: "env",
     });
-  });
-
-  it("masks tokens", () => {
-    expect(maskToken("sfmcp_abcdefghijklmnopqrstuvwxyz")).toBe("sfmcp_…vwxyz");
   });
 
   it("normalizes endpoints and rejects userinfo", () => {

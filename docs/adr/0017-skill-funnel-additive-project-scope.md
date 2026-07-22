@@ -2,11 +2,9 @@
 
 ## Status
 
-Accepted — amended by [ADR-0018](./0018-consented-file-level-conflict-resolution.md), which adds an
-explicit, consent-gated file-mutation path for conflicts that this ADR's
-settings-only resolution cannot fix (Report-Only Conflicts). The "never mutate
-files" rule below remains true for the _automatic_ Compiled Skill Resolution
-path; ADR-0018 carves out only an explicit, user-chosen exception.
+Accepted — amended by [ADR-0018](./0018-consented-file-level-conflict-resolution.md) and under native-parity review by [ADR-0082](./0082-sf-skills-native-parity-before-delegation.md). ADR 0082 changes no production behavior yet; it requires evidence from Pi's real resolver before newer project override capabilities supersede any assumption below.
+
+ADR 0018 adds an explicit, consent-gated file-mutation path for conflicts that this ADR's settings-only resolution cannot fix (Report-Only Conflicts). The "never mutate files" rule below remains true for the _automatic_ Compiled Skill Resolution path; ADR 0018 carves out only an explicit, user-chosen exception.
 
 ## Context
 

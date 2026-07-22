@@ -41,6 +41,15 @@
     "generated": true,
     "checks": ["npm run generate-catalog:check", "npm run docs:build"]
   },
+  "docs/pi-081-runtime-adoption-plan.md": {
+    "source": [
+      "Pi 0.80.7-0.81 release documentation",
+      "docs/adr/0078-0087",
+      "catalog/index.json",
+      "approved architecture grilling decisions"
+    ],
+    "checks": ["npm run docs:health:check", "npm run docs:build"]
+  },
   "docs/settings-surfaces.md": {
     "source": ["extension settings behavior", "extensions/*/manifest.json"],
     "checks": ["npm run docs:health:check", "npm run docs:build"]

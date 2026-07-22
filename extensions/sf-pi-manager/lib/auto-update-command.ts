@@ -60,8 +60,8 @@ export async function handleAutoUpdate(
         "Usage: /sf-pi auto-update [status|on|off|run]",
         "",
         "Native Auto Update is opt-in. When enabled, SF Pi tries once per day after startup, only if Pi is idle.",
-        "Commands run in order:",
-        "  1. pi update --all",
+        "Containment behavior:",
+        "  1. Pi update is skipped to keep the runtime inside the audited Pi 0.81 line",
         "  2. sf update stable",
       ].join("\n"),
       "info",
@@ -102,16 +102,9 @@ export async function runNativeAutoUpdate(
   };
 
   try {
-    markAutoUpdateRunning("pi");
-    setStatus("Auto Update: pi update --all…");
-    const piResult = await pi.exec("pi", ["update", "--all"], {
-      cwd: ctx.cwd,
-      timeout: UPDATE_TIMEOUT_MS,
-    });
-    if (piResult.code !== 0) {
-      return fail(`pi update --all failed: ${summarizeOutput(piResult.stderr || piResult.stdout)}`);
-    }
-
+    // `pi update --all` is unbounded and could cross the exclusive 0.82 ceiling.
+    // Keep the independent Salesforce CLI update; bounded Pi updates belong to
+    // the later agent-settled coordinator.
     markAutoUpdateRunning("sf-cli");
     setStatus("Auto Update: sf update stable…");
     const sfResult = await pi.exec("sf", ["update", "stable"], {
@@ -126,8 +119,9 @@ export async function runNativeAutoUpdate(
 
     return markAutoUpdateResult({
       result: "success",
-      message: "Native updates completed.",
-      restartRecommended: true,
+      message:
+        "Salesforce CLI update completed. Pi update skipped; keep Pi 0.81.1 inside the audited runtime window.",
+      restartRecommended: false,
     });
   } catch (error) {
     return fail(error instanceof Error ? error.message : String(error));
@@ -151,8 +145,8 @@ export function renderAutoUpdateStatus(
     status.restartRecommended ? "Restart recommended: yes" : undefined,
     status.message ? `Message: ${status.message}` : undefined,
     "",
-    "Native commands:",
-    "  pi update --all",
+    "Containment commands:",
+    "  Pi update: skipped (audited runtime is 0.81.1)",
     "  sf update stable",
   ].filter((line): line is string => !!line);
   return lines.join("\n");

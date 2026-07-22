@@ -8,7 +8,6 @@ import {
   ENV_ENDPOINT,
   ENV_TOKEN,
   LONG_LIVED_EXPIRY_MS,
-  MANUAL_REFRESH_SENTINEL,
   PROVIDER_NAME,
   type EndpointResolution,
   type TokenResolution,
@@ -55,14 +54,10 @@ export async function getDocsToken(
     ok: false,
     message: [
       "SF Docs is not connected.",
-      "Connect from /sf-docs, or set SF_DOCS_MCP_TOKEN for automation.",
+      "Interactive credential entry is temporarily unavailable while Pi's native secret prompt can echo submitted values.",
+      "Set SF_DOCS_MCP_TOKEN before starting Pi; existing saved Pi credentials remain usable.",
     ].join("\n"),
   };
-}
-
-export function maskToken(token: string): string {
-  if (token.length <= 12) return "***";
-  return `${token.slice(0, 6)}…${token.slice(-5)}`;
 }
 
 export function resolveEndpoint(): EndpointResolution {
@@ -99,17 +94,10 @@ export function normalizeEndpoint(
   }
 }
 
-export async function loginSfDocs(callbacks: OAuthLoginCallbacks): Promise<OAuthCredentials> {
-  const pasted = await callbacks.onPrompt({
-    message: `Paste your SF Docs MCP token. Pi stores it locally for ${PROVIDER_NAME}; set ${ENV_TOKEN} for automation instead.`,
-  });
-  const token = pasted.trim();
-  if (!token) throw new Error("No SF Docs token provided.");
-  return {
-    refresh: MANUAL_REFRESH_SENTINEL,
-    access: token,
-    expires: Date.now() + LONG_LIVED_EXPIRY_MS,
-  };
+export async function loginSfDocs(_callbacks: OAuthLoginCallbacks): Promise<OAuthCredentials> {
+  throw new Error(
+    `SF Docs credential entry is temporarily unavailable until Pi masks and does not echo native secret prompts. Existing saved credentials still work; set ${ENV_TOKEN} before starting Pi for new sessions.`,
+  );
 }
 
 export async function refreshSfDocsToken(credentials: OAuthCredentials): Promise<OAuthCredentials> {

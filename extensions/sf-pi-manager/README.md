@@ -93,15 +93,17 @@ manages the setting without touching the user's shell rc files.
 The SF Pi Manager settings panel exposes a single machine-scoped toggle for
 Native Auto Update. When enabled, `session_start` waits briefly after startup
 and makes one attempt only if Pi is idle and the daily cadence elapsed. The
-runner delegates to first-party updater commands in order:
+runner skips unbounded Pi updates so it cannot cross the audited
+`>=0.81.1 <0.82.0` window. It keeps the independent first-party Salesforce CLI
+update:
 
 ```bash
-pi update --all
 sf update stable
 ```
 
 It does not implement an npm/Homebrew/git updater, does not update optional
-tools, and does not restart Pi automatically. Status is cached under
+tools, and does not restart Pi automatically. Status reports the audited Pi
+0.81.1 runtime, and is cached under
 `<globalAgentDir>/sf-pi/auto-update/status.json` so SF Welcome can render the
 Auto Update row without running commands.
 
@@ -232,13 +234,12 @@ so pi registers the package in `settings.json`. The manager finds itself
 via name-based (`sf-pi` / `jag-pi-extensions`) or path-based detection
 — a symlink from `pi install .` resolves to the repo root.
 
-**`pi update --self --force` completes but `pi --version` is still old:**
-Run `/sf-pi doctor runtime`. It reports the active `pi`, `node`, and `npm`
-executables, the global npm root, npm `before` / `min-release-age` policy,
-installed/latest `@earendil-works/pi-coding-agent` versions, and a Pi-native
-repair sequence first. When diagnostics show PATH/shim or npm release-age
-issues, the report also includes an advanced npm fallback with the needed
-override flags.
+**`pi --version` is outside SF Pi's audited runtime window:**
+Run `/sf-pi doctor runtime`. SF Pi supports `>=0.81.1 <0.82.0` and recommends
+exact Pi 0.81.1. The report shows active
+`pi`, `node`, and `npm` executables, package/version mismatches, release-age
+policy, and a bounded exact-version fallback. Do not run a latest-version Pi
+update until the secure native credential-prompt milestone lands.
 
 **Disabling an extension through the manager doesn't take effect:**
 Pi reads the package filter at startup. After a disable, the manager

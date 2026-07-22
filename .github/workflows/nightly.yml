@@ -56,9 +56,14 @@ jobs:
           fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
 
-  latest-pi-compat:
-    name: Latest Pi SDK compatibility
+  pi-window-compat:
+    name: Pi ${{ matrix.pi-version }} compatibility
     runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        pi-version: ["0.81.1"]
 
     steps:
       - name: Check out repository
@@ -76,15 +81,15 @@ jobs:
       - name: Install locked dependencies
         run: npm ci --ignore-scripts --legacy-peer-deps
 
-      - name: Overlay latest Pi packages
+      - name: Overlay audited Pi packages
         run: >-
           npm install --legacy-peer-deps --no-save --package-lock=false
-          @earendil-works/pi-coding-agent@latest
-          @earendil-works/pi-ai@latest
-          @earendil-works/pi-tui@latest
+          @earendil-works/pi-coding-agent@${{ matrix.pi-version }}
+          @earendil-works/pi-ai@${{ matrix.pi-version }}
+          @earendil-works/pi-tui@${{ matrix.pi-version }}
 
-      - name: Type check against latest Pi packages
+      - name: Type check against Pi ${{ matrix.pi-version }}
         run: npm run check
 
-      - name: Run tests against latest Pi packages
+      - name: Run tests against Pi ${{ matrix.pi-version }}
         run: npm test

@@ -29,7 +29,7 @@ this repo such as the shared Salesforce environment runtime and `sf-lsp`:
 
 ```
 Extension loads
-  ├─ registerProvider("sf-slack")           ← OAuth + manual token support
+  ├─ registerProvider("sf-slack")           ← existing credential resolution + refresh
   ├─ registerCommand("sf-slack")            ← status / refresh / help
   │
   │  Note: no Slack tools are registered at load.
@@ -64,41 +64,38 @@ Extension loads
              turn-to-turn and would invalidate prompt cache)
   /sf-slack
        ├─ UI available + no args → open SF Slack in the SF Pi Manager
-       ├─ Manager Connect        → paste token in an in-Manager action page, then refresh scopes
+       ├─ Manager Connect        → show temporary safe setup and rotation guidance
+       ├─ Manager Disconnect     → prefill native /logout for review
        └─ no UI + no args        → show auth status
   /sf-slack refresh
-       ├─ If token resolves now but tools were not registered earlier
-       │   (e.g. user ran /login mid-session) → ensureSlackToolsRegistered()
+       ├─ If a token resolves now but tools were not registered earlier → ensureSlackToolsRegistered()
        └─ Re-probe scopes, re-warm caches
 ```
 
 ## Connecting
 
-The `/sf-slack` panel is the single primary entry point for authentication
-(see [ADR 0007](../../docs/adr/0007-single-place-credentials.md)). Run it,
-pick **Connect to Slack**, and paste the user token (or callback URL) when
-prompted. The panel writes to pi's central auth store at
-`~/.pi/agent/auth.json`, the same place pi-native auth resolution reads from.
+Interactive credential entry is temporarily disabled because current Pi native
+secret prompts can echo submitted values. The `/sf-slack` **Connect** action
+shows this containment status but never accepts a token or callback URL.
 
-```text
-/sf-slack    →   Connect to Slack    →   paste xoxp-/xapp- token   →   refresh
+Existing credentials in Pi's auth store remain usable. For a new session, set
+the environment fallback before starting Pi:
+
+```bash
+export SLACK_USER_TOKEN=xoxp-...
+pi
 ```
 
-Use **Disconnect (clear stored token)** in the same panel to forget the
-stored credential. Reconnect anytime via the panel.
+| Source                      | Current behavior                                     |
+| --------------------------- | ---------------------------------------------------- |
+| Existing Pi auth credential | Read-only compatibility source; continues to resolve |
+| `SLACK_USER_TOKEN`          | New-session setup for automation, CI, or local use   |
+| Interactive Connect / login | Blocked until Pi masks and never echoes secrets      |
 
-### Advanced / automation
-
-These fallback paths still resolve at runtime when no panel-stored credential
-exists. They are not advertised to first-time users.
-
-| Source               | When to use                    | How to set                           |
-| -------------------- | ------------------------------ | ------------------------------------ |
-| pi auth store        | Default — written by Connect   | `/sf-slack` panel → Connect to Slack |
-| Environment variable | Automation / CI / shell-driven | `export SLACK_USER_TOKEN=xoxp-...`   |
-
-If both are present, the pi auth store wins so the panel stays the source of
-truth.
+If both usable sources are present, the existing Pi credential wins. The
+**Disconnect** action prefills `/logout sf-slack` for review; it never modifies
+`SLACK_USER_TOKEN`. If a token or callback URL was entered through the previous
+visible input, rotate or revoke it.
 
 ## Obtaining an `xoxp-` User Token
 
@@ -108,9 +105,9 @@ truth.
 > account that is allowed to install or authorize that app. Some workspaces
 > restrict app installs or specific scopes.
 
-If your organization already provides an approved OAuth helper page, you can
-use that flow and then paste the returned token into the `/sf-slack`
-panel's Connect action. Set `SLACK_USER_TOKEN` instead for automation.
+If your organization already provides an approved OAuth helper page, use that
+flow and export the returned token as `SLACK_USER_TOKEN` before starting Pi.
+Do not paste the token or callback URL into SF Pi while containment is active.
 
 If you need to build or verify the flow yourself, use Slack OAuth v2 with the
 requested user-token scopes in the `user_scope` parameter:
@@ -447,14 +444,16 @@ visible to the LLM.
 
 ## Commands
 
-| Command              | Description                                                        |
-| -------------------- | ------------------------------------------------------------------ |
-| `/sf-slack`          | Open SF Slack in the SF Pi Manager; show auth status in no-UI mode |
-| `/sf-slack status`   | Show auth status and connection info                               |
-| `/sf-slack refresh`  | Re-detect identity, re-probe scopes, refresh cache                 |
-| `/sf-slack settings` | Open Manager Settings for search detail, widget, and permalinks    |
-| `/sf-slack sent`     | List `slack_send` activity in the current branch                   |
-| `/sf-slack help`     | Show command help                                                  |
+| Command                | Description                                                        |
+| ---------------------- | ------------------------------------------------------------------ |
+| `/sf-slack`            | Open SF Slack in the SF Pi Manager; show auth status in no-UI mode |
+| `/sf-slack connect`    | Show temporary safe credential-setup guidance                      |
+| `/sf-slack disconnect` | Prefill native logout for review; environment is untouched         |
+| `/sf-slack status`     | Show auth status and connection info                               |
+| `/sf-slack refresh`    | Re-detect identity, re-probe scopes, refresh cache                 |
+| `/sf-slack settings`   | Open Manager Settings for search detail, widget, and permalinks    |
+| `/sf-slack sent`       | List `slack_send` activity in the current branch                   |
+| `/sf-slack help`       | Show command help                                                  |
 
 ## Preferences
 
@@ -548,6 +547,7 @@ extensions/sf-slack/
     channel-cache-from-search.test.ts← unit / smoke test
     channel-types-default.test.ts← unit / smoke test
     config-panel.test.ts    ← unit / smoke test
+    credential-containment.test.ts← unit / smoke test
     emoji.test.ts           ← unit / smoke test
     extra-format.test.ts    ← unit / smoke test
     field-modes.test.ts     ← unit / smoke test
@@ -604,10 +604,10 @@ Run: `npm test`
 ## Troubleshooting
 
 **No Slack footer pill appears and no tools are available:**
-No token was resolved at `session_start`, or the extension is disabled. Set one
-via the `/sf-slack` panel's **Connect to Slack** action or by setting
-`SLACK_USER_TOKEN`, then run `/sf-slack refresh` to register tools without
-restarting.
+No token was resolved at `session_start`, or the extension is disabled.
+Interactive credential entry is temporarily disabled. Set `SLACK_USER_TOKEN`
+before starting Pi, then run `/sf-slack refresh` if the process environment was
+updated without restarting.
 
 **Footer shows `✓ Connected` with fewer known scopes than expected:**
 The footer counts known scopes: the union of scopes `sf-slack` requested and
@@ -665,9 +665,9 @@ appends a typed audit entry to the session branch.
 
 ## Security
 
-- NEVER exposes full tokens — always masked in display
-- Recommended auth path is the `/sf-slack` panel's **Connect to Slack** action
-  (writes to pi's central auth store — same destination /login used to write to)
+- NEVER renders tokens or token fragments in status/configuration output
+- Interactive token and callback-URL entry is blocked until Pi's native secret prompt is masked and non-echoing
+- Existing Pi auth credentials remain readable; new temporary setup uses `SLACK_USER_TOKEN` before startup
 - All tools are read-only except `slack_canvas` create/edit, `slack_send`, and `slack_schedule` schedule/delete
 - `slack_send` always requires an explicit user confirmation in interactive
   mode; headless mode refuses unless `SLACK_ALLOW_HEADLESS_SEND=1`

@@ -8,14 +8,8 @@
 import { type Focusable, matchesKey, visibleWidth } from "@earendil-works/pi-tui";
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import type { ConfigPanelFactory, ConfigPanelResult } from "../../../catalog/registry.ts";
-import { PROVIDER_NAME, ENV_TOKEN, ENV_TEAM_ID } from "./types.ts";
-import {
-  type TokenSource,
-  detectTokenSource,
-  resolveTokenFromConfiguredSources,
-  maskToken,
-  oauthScopes,
-} from "./auth.ts";
+import { ENV_TOKEN, ENV_TEAM_ID } from "./types.ts";
+import { type TokenSource, detectTokenSource, oauthScopes } from "./auth.ts";
 import { getGrantedScopes } from "./api.ts";
 import {
   SLACK_PREFERENCE_DESCRIPTORS,
@@ -130,7 +124,6 @@ class SlackConfigPanelComponent implements Focusable {
     const lines: string[] = [];
     const t = this.theme;
     const pad = (content: string) => padAnsi(content, width);
-    const configuredToken = resolveTokenFromConfiguredSources();
     const source = detectTokenSource();
     const teamId = process.env[ENV_TEAM_ID]?.trim() || "";
 
@@ -140,18 +133,13 @@ class SlackConfigPanelComponent implements Focusable {
     if (source !== "none") {
       const sourceLabels: Record<TokenSource, string> = {
         env: `Environment (${ENV_TOKEN})`,
-        "pi-auth": "Pi auth store (/login) ★ recommended",
+        "pi-auth": "Existing Pi auth credential",
         none: "Unknown",
       };
       lines.push(pad(` ${t.fg("success", "●")} ${t.fg("text", "Connected")}`));
       lines.push(
         pad(`   ${t.fg("muted", "Token source:")}  ${t.fg("text", sourceLabels[source])}`),
       );
-      if (configuredToken) {
-        lines.push(
-          pad(`   ${t.fg("muted", "Token:")}         ${t.fg("dim", maskToken(configuredToken))}`),
-        );
-      }
       if (teamId) lines.push(pad(`   ${t.fg("muted", "Team ID:")}       ${t.fg("dim", teamId)}`));
       const granted = getGrantedScopes();
       const scopeLabel = granted ? "Granted:" : "Requested:";
@@ -166,17 +154,15 @@ class SlackConfigPanelComponent implements Focusable {
     }
 
     lines.push(pad(` ${t.fg("error", "●")} ${t.fg("text", "Not configured")}`));
-    lines.push(pad(`   ${t.fg("muted", "Recommended setup order:")}`));
     lines.push(
-      pad(
-        `   ${t.fg("dim", "1.")} ${t.fg("text", "Pi auth:")} ${t.fg("dim", `/login ${PROVIDER_NAME}`)}`,
-      ),
+      pad(`   ${t.fg("warning", "Interactive credential entry is temporarily unavailable.")}`),
     );
     lines.push(
       pad(
-        `   ${t.fg("dim", "2.")} ${t.fg("text", "Environment:")} ${t.fg("dim", `export ${ENV_TOKEN}=xoxp-...`)}`,
+        `   ${t.fg("text", "Environment:")} ${t.fg("dim", `export ${ENV_TOKEN}=xoxp-... before starting Pi`)}`,
       ),
     );
+    lines.push(pad(`   ${t.fg("dim", "Existing saved Pi credentials remain usable.")}`));
     return lines;
   }
 

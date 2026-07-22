@@ -973,7 +973,7 @@ export default function sfWelcome(pi: ExtensionAPI) {
       data.piRelease ??= {
         freshness: "unknown",
         loading: false,
-        updateCommand: "pi update --self --force",
+        updateCommand: "/sf-pi doctor runtime",
       };
     }
     const healthLines = data.extensionHealth.map((ext) => {

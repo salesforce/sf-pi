@@ -95,7 +95,7 @@ class SfPiManagerConfigPanel implements Focusable {
       pad(` ${autoCursor} ${t.fg("accent", autoBox)} ${t.bold("Enable daily native auto-update")}`),
     );
     for (const line of wrapPlainText(
-      "When enabled, SF Pi tries once per day after startup, only if Pi is idle. It runs exactly: pi update --all, then sf update stable. It never restarts pi automatically.",
+      "When enabled, SF Pi tries once per day after startup, only if Pi is idle. It runs sf update stable and skips unbounded Pi updates to keep the audited 0.81 runtime line. It never restarts Pi automatically.",
       Math.max(20, width - 5),
     )) {
       lines.push(pad(`    ${t.fg("dim", line)}`));

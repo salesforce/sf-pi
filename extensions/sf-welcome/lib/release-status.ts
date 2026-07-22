@@ -23,7 +23,11 @@ import {
   resolveDefaultPackageRoot,
 } from "../../../lib/common/catalog-state/announcements-manifest.ts";
 import { compareVersions } from "../../../lib/common/catalog-state/whats-new.ts";
-import { getInstalledPiVersion } from "../../../lib/common/pi-compat.ts";
+import {
+  getInstalledPiVersion,
+  MAX_PI_VERSION_EXCLUSIVE,
+  RECOMMENDED_PI_VERSION,
+} from "../../../lib/common/pi-compat.ts";
 import {
   pickPolicyVisibleVersion,
   readConfiguredNpmCommand,
@@ -62,7 +66,14 @@ function parseCachedStatus(value: unknown, installedVersion?: string): ReleaseSt
   const record = value as Partial<ReleaseStatusInfo>;
   if (!isFreshness(record.freshness)) return null;
 
-  const latestVersion = typeof record.latestVersion === "string" ? record.latestVersion : undefined;
+  const cachedLatest = typeof record.latestVersion === "string" ? record.latestVersion : undefined;
+  const cachedAbsolute =
+    typeof record.absoluteLatestVersion === "string" ? record.absoluteLatestVersion : undefined;
+  const latestWasOutsideWindow = cachedLatest ? isAtOrAbovePiCeiling(cachedLatest) : false;
+  const latestVersion = latestWasOutsideWindow ? RECOMMENDED_PI_VERSION : cachedLatest;
+  const absoluteLatestVersion = latestWasOutsideWindow
+    ? (cachedAbsolute ?? cachedLatest)
+    : cachedAbsolute;
   const resolvedInstalled = installedVersion ?? record.installedVersion;
   const freshness =
     latestVersion && resolvedInstalled
@@ -72,16 +83,19 @@ function parseCachedStatus(value: unknown, installedVersion?: string): ReleaseSt
   return {
     installedVersion: typeof resolvedInstalled === "string" ? resolvedInstalled : undefined,
     latestVersion,
-    absoluteLatestVersion:
-      typeof record.absoluteLatestVersion === "string" ? record.absoluteLatestVersion : undefined,
+    absoluteLatestVersion,
     policyVisibleLatestVersion:
       typeof record.policyVisibleLatestVersion === "string"
         ? record.policyVisibleLatestVersion
         : undefined,
     cooldownActive: record.cooldownActive === true,
+    supportWindowLimited:
+      latestWasOutsideWindow ||
+      record.supportWindowLimited === true ||
+      (cachedAbsolute ? isAtOrAbovePiCeiling(cachedAbsolute) : false),
     freshness,
     loading: false,
-    updateCommand: typeof record.updateCommand === "string" ? record.updateCommand : undefined,
+    updateCommand: "/sf-pi doctor runtime",
     checkSkipped: record.checkSkipped === true,
     skipReason:
       record.skipReason === "offline" || record.skipReason === "version-check-disabled"
@@ -120,7 +134,7 @@ export function collectInitialPiReleaseStatus(): ReleaseStatusInfo {
     installedVersion,
     freshness: "checking",
     loading: true,
-    updateCommand: "pi update --self --force",
+    updateCommand: "/sf-pi doctor runtime",
   };
 }
 
@@ -134,6 +148,8 @@ export interface PiReleaseStatusOptions {
   npmCommand?: string[];
   /** Injectable clock for release-age cutoff tests. */
   now?: Date;
+  /** Installed-version override for support-window and policy tests. */
+  installedVersion?: string;
 }
 
 interface PiReleasePolicyResult {
@@ -164,8 +180,8 @@ export async function detectPiReleaseStatus(
   env: NodeJS.ProcessEnv = process.env,
   options: PiReleaseStatusOptions = {},
 ): Promise<ReleaseStatusInfo> {
-  const installedVersion = getInstalledPiVersion();
-  const updateCommand = "pi update --self --force";
+  const installedVersion = options.installedVersion ?? getInstalledPiVersion();
+  const updateCommand = "/sf-pi doctor runtime";
 
   if (env.PI_OFFLINE) {
     return {
@@ -194,6 +210,18 @@ export async function detectPiReleaseStatus(
       installedVersion,
       latestVersion: absoluteLatestVersion,
       freshness: "unknown",
+      loading: false,
+      updateCommand,
+    };
+  }
+
+  if (isAtOrAbovePiCeiling(absoluteLatestVersion)) {
+    return {
+      installedVersion,
+      latestVersion: RECOMMENDED_PI_VERSION,
+      absoluteLatestVersion,
+      supportWindowLimited: true,
+      freshness: freshnessFor(installedVersion, RECOMMENDED_PI_VERSION),
       loading: false,
       updateCommand,
     };
@@ -355,6 +383,11 @@ function readFreshCachedRemoteLatestVersion(
   } catch {
     return undefined;
   }
+}
+
+function isAtOrAbovePiCeiling(version: string): boolean {
+  const core = version.split("-", 1)[0] ?? version;
+  return compareVersions(core, MAX_PI_VERSION_EXCLUSIVE) >= 0;
 }
 
 function latestKnownVersion(versions: Array<string | undefined>): string | undefined {

@@ -9,6 +9,7 @@ import {
 } from "../../../lib/common/doctor/registry.ts";
 import type { DoctorIssue, DoctorReport } from "../../../lib/common/doctor/types.ts";
 import { writeCachedRuntimeDiagnostics } from "../../../lib/common/doctor/runtime-cache.ts";
+import { MAX_PI_VERSION_EXCLUSIVE } from "../../../lib/common/pi-compat.ts";
 
 export type DoctorSubcommand = "status" | "fix" | "runtime";
 export type DoctorFixTarget = "all" | "startup" | "skills";
@@ -151,7 +152,7 @@ function renderRuntimeReport(report: DoctorReport): string {
     "sf-pi Runtime Doctor",
     "",
     `Pi runtime:       ${runtime.piVersion ?? "unknown"}`,
-    `Required pi:      >=${runtime.requiredPiVersion}`,
+    `Supported Pi:     >=${runtime.requiredPiVersion} <${MAX_PI_VERSION_EXCLUSIVE}`,
     `Node.js:          ${runtime.nodeVersion}`,
     `Node executable:  ${runtime.nodePath ?? "unknown"}`,
     `npm executable:   ${runtime.npmPath ?? "unknown"}`,

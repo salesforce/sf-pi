@@ -8,6 +8,10 @@ SF Pi is the bundled Salesforce-focused extension suite for pi. It gives agents 
 The minimum Pi Runtime version that SF Pi intentionally supports for loaded bundled extensions. It is a product support boundary, not a per-feature compatibility shim.
 _Avoid_: soft minimum, optional runtime, best-effort compatibility version
 
+**Pi Runtime Support Window**:
+The audited Pi `0.x` minor line SF Pi intentionally supports, expressed as an inclusive **Pi Runtime Floor** and an exclusive next-minor ceiling. Both package metadata and the runtime gate enforce it; required CI proves the floor and newest in-window release before the claim widens.
+_Avoid_: open-ended minimum, latest-is-compatible assumption, nightly-only compatibility claim, silent next-minor adoption
+
 **Node Runtime Floor**:
 The minimum Node.js runtime version that SF Pi intentionally supports for installation and loaded bundled extensions. It should be defined once and reused by package metadata, preinstall checks, doctor diagnostics, and startup status surfaces.
 _Avoid_: Node prerequisite, local Node check, doctor-only Node warning, splash-only Node status
@@ -19,6 +23,14 @@ _Avoid_: release-note migration, compatibility patch, opportunistic upgrade
 **Human-Only Transcript Row**:
 An SF Pi status or evidence row shown to the human during a session without becoming agent context. It is for awareness and auditability, not agent steering.
 _Avoid_: custom message, hidden prompt, diagnostic injection, model feedback row
+
+**Agent Workflow Visibility Contract**:
+The SF Pi rule that agent-chosen steps and mutations are visible tool calls, automatic lifecycle work uses meaningful **Human-Only Transcript Rows**, and only actionable findings become agent-visible follow-ups. Full evidence stays in bounded artifacts, and durable mutations are never hidden.
+_Avoid_: centralized activity timeline, status noise in model context, hidden extension mutation, transcript dump
+
+**Active-Branch Context Projection**:
+The SF Pi model-context view that follows the active compaction-aware session branch, retains immutable guidance only while it remains live, and exposes only the latest value of each mutable hidden context type. The append-only session remains intact for audit and reconstruction.
+_Avoid_: all-entry injection scan, sibling-branch context, historical mutable-state pileup, audit-entry filtering
 
 **Agent-Settled Quality Gate**:
 A post-agent SF Pi check that runs only after Pi has no automatic retry, compaction retry, or queued follow-up left. It is for workflow completion evidence, not per-run streaming feedback.
@@ -43,6 +55,18 @@ _Avoid_: local pricing estimate, synthesized tier pricing, direct-provider cost 
 **Native Resource Delegation**:
 The SF Pi practice of letting Pi own generic global and project-local resource mechanics while SF Pi keeps curated Salesforce workflow guidance. It is a deprecation path for duplicate mechanics, not a reason to remove Salesforce-specific UX.
 _Avoid_: custom project config, duplicate package manager, raw Pi config replacement, safety weakening
+
+**Resource Resolution Parity Proof**:
+A read-only behavior comparison between an SF Pi resource policy and Pi's real resolver across global/project overrides, package deltas, exact path filters, conflicts, trust, stale sources, and rescoping. It determines capability-by-capability whether native delegation is equivalent before code is deleted.
+_Avoid_: release-note parity assumption, mock-only resolver test, wholesale feature retirement, production-setting experiment
+
+**Pi-Native Credential Ownership**:
+The SF Pi rule that Pi provider authentication owns user-global secret input, persistence, refresh, and removal, while SF Pi panels own status, diagnostics, credential-source reporting, and a visible handoff to native `/login` or `/logout`. A `/login` handoff is withheld until the **Secure Credential Prompt Proof** passes; containment keeps existing/environment reads and safe `/logout` handoff only. Environment variables remain the automation fallback; project configuration is non-secret, and SF Pi never writes `auth.json` or imports private credential storage.
+_Avoid_: panel-owned secret form, project-scoped secret, direct auth.json mutation, private AuthStorage adapter, duplicate secret store
+
+**Secure Credential Prompt Proof**:
+Observable evidence that a Pi-native secret prompt masks the value while editing and never echoes the submitted value in the TUI or transcript. SF Pi treats this proof—not the presence of a `type: "secret"` declaration—as the prerequisite for interactive credential delegation.
+_Avoid_: type-only secret support, ordinary Input, submitted-value echo, manual screenshot confidence
 
 **MCP Governance Extension**:
 An SF Pi extension that allows general MCP server connections while adding Salesforce-specific discovery, setup, safety posture, and conflict handling around Salesforce Pi-native tools and Salesforce MCP servers.
@@ -133,12 +157,20 @@ The guided `sf-mcp` flow for Salesforce Hosted MCP prerequisites, read-only pref
 _Avoid_: one-click admin automation, browser-first setup bot, undocumented setup mutation, prerequisites-only help text
 
 **Native Auto Update**:
-An opt-in SF Pi update flow that delegates to supported first-party updater commands, such as `pi update --all` and `sf update stable`, instead of reimplementing package-manager-specific update logic. It is a convenience workflow, not a background package-management framework.
-_Avoid_: custom updater framework, installer matrix, background daemon, hidden restart
+An opt-in SF Pi update flow that delegates to supported first-party updater commands instead of reimplementing package-manager-specific update logic. It is coordinated only after the agent settles, stays inside the **Pi Runtime Support Window**, and leaves durable human-visible step results.
+_Avoid_: custom updater framework, installer matrix, one-shot idle timer, unaudited runtime update, hidden restart
+
+**Agent-Settled Update Coordinator**:
+The Native Auto Update lifecycle that records due work as pending, waits for Pi to settle, runs eligible first-party update targets independently, and emits a **Human-Only Transcript Row** with success, failure, skip, and restart evidence.
+_Avoid_: startup race, abandon-if-busy check, coupled all-or-nothing targets, transient-only result
 
 **Gateway Header Proof Spike**:
 A narrow behavior test and implementation spike that proves Pi's provider-header hook can preserve SF LLM Gateway routing, model defaults, beta headers, and secret redaction. If it proves simpler and equivalent, SF Pi should replace the older header path promptly instead of keeping both.
 _Avoid_: speculative header rewrite, dual header system, silent beta migration, provider re-registration workaround
+
+**Complete Gateway Provider**:
+The single Pi Provider that owns Gateway authentication, last-known models, refresh persistence, filtering, and mixed API streaming while Gateway-specific adapters retain route, payload, retry, drift, diagnostic, and spend semantics. It directly replaces legacy provider orchestration after behavior parity.
+_Avoid_: legacy ProviderConfig coordinator, dual provider path, transitional refresh layer, ID-based API dispatcher
 
 **Model Resolution Delegation**:
 The SF Pi practice of using Pi's native model and scoped-model resolution when behavior parity is proven for SF LLM Gateway. It is allowed to be a riskier simplification slice, but only when tests prove gateway defaults, discovered models, diagnostics, and thinking shorthand still work.
@@ -148,9 +180,21 @@ _Avoid_: custom model parser, gateway-only selector, untested resolver swap, dup
 A coordinated SF Pi effort to delete duplicate runtime mechanics when Pi provides a proven native extension surface. It should produce simpler SF Pi code and behavior tests, not broad new product features.
 _Avoid_: feature expansion, compatibility layer, local runtime framework, release-note implementation project
 
+**Deletion-Gated Adoption Milestone**:
+A serial runtime-adoption slice that begins with a failing public-seam behavior proof, implements one approved change, deletes the superseded path, and ends with focused plus full validation green before the next milestone begins.
+_Avoid_: broad migration branch, old/new production paths, compile-only adoption, cleanup deferred to later
+
 **Behavior Proof**:
 A test or verified workflow that exercises an SF Pi capability through the same public seam an agent or human uses. It should prove the observable contract before risky runtime delegation or deletion lands.
 _Avoid_: compile-only check, private helper assertion, implementation-detail test, hopeful migration
+
+**Behavior Proof Ladder**:
+The ordered evidence required before a superseded path is deleted: pure behavior tests, exact-Pi integration, support-window and full validation, scoped live proof where fixtures are insufficient, and manual TUI QA only for visual changes. Each rung is used only when the risk requires it.
+_Avoid_: coverage-only confidence, mock-shaped runtime, source-string behavior proof, unobserved live command, exhaustive live matrix
+
+**Progressive Tool Activation**:
+The Pi-native pattern where SF Pi registers a workflow's tools but initially exposes only its entry tools, then additively activates eligible specialist tools during a visible workflow call for the next model request. Activation changes model visibility, never authorization or safety mediation.
+_Avoid_: hidden intent router, tool re-registration, exclusion bypass, provider-specific serialization, package-wide loader without proof
 
 **Docs Query Distillation**:
 The SF Docs behavior of turning locator-like documentation input, such as a Salesforce Help article URL or article ID, into compact meaningful search language before documentation lookup. It keeps the user's intent anchored to official documentation while avoiding brittle literal URL search when the locator already contains better search terms.
