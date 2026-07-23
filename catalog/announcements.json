@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.231.0-2026-07-22",
-  "latestVersion": "0.231.0",
+  "revision": "release-0.232.0-2026-07-23",
+  "latestVersion": "0.232.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.231.0",
+      "id": "release-0.232.0",
       "kind": "update",
-      "title": "sf-pi v0.231.0 — project mutable context from active branch",
-      "publishedAt": "2026-07-22T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.231.0",
+      "title": "sf-pi v0.232.0 — consume public Pi facts in DevBar",
+      "publishedAt": "2026-07-23T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.232.0",
       "severity": "info",
-      "body": "project mutable context from active branch"
+      "body": "consume public Pi facts in DevBar — keep command reports out of model context"
     },
     {
       "id": "pi-0.73-required",
