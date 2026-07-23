@@ -13,14 +13,10 @@
  * "continue". Pi-ai has a first-class Anthropic transport that handles all of
  * that natively.
  *
- * In the unified single-provider design, this file still tags Claude with the
- * desired transport for internal routing, but `lib/discovery.ts` strips that
- * tag before handing models to pi. If pi sees a per-model anthropic api, it
- * bypasses our provider-level `streamSimple` dispatcher and appends
- * `/v1/messages` to the provider's OpenAI baseUrl (`<gateway>/v1`), producing
- * `<gateway>/v1/v1/messages`. The dispatcher instead detects Claude by id,
- * clones the model to Anthropic internally, and rewrites baseUrl to the
- * gateway root.
+ * The complete Gateway Provider preserves this real API tag and delegates
+ * dispatch to Pi's Provider API map. Request-time endpoint materialization
+ * keeps Anthropic and Responses at the gateway root while Chat Completions
+ * uses `<gateway>/v1`.
  *
  * Non-Claude families (Gemini, GPT, Codex) stay on OpenAI-compat.
  *
@@ -202,9 +198,8 @@ export type GatewayModelGroupInfoMap = Record<string, GatewayModelGroupInfo>;
 // -------------------------------------------------------------------------------------------------
 
 /**
- * A gateway model tagged with the transport it should use. This tag is
- * internal to the extension: `lib/discovery.ts` strips it before registering
- * the model with pi, then `streamSimple` routes by model id at request time.
+ * A gateway model tagged with the real API transport used by Pi's complete
+ * Provider API map.
  */
 export type TaggedGatewayModel = ProviderModelConfig & {
   api: "openai-completions" | "anthropic-messages" | "openai-responses";

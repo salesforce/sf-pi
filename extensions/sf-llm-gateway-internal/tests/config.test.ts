@@ -94,6 +94,10 @@ describe("normalizeBaseUrl", () => {
     expect(normalizeBaseUrl("ftp://example.com")).toBeUndefined();
   });
 
+  it("rejects URL userinfo so credentials cannot enter non-secret config", () => {
+    expect(normalizeBaseUrl("https://user:private@gateway.example.com")).toBeUndefined();
+  });
+
   it("returns undefined for invalid URL", () => {
     expect(normalizeBaseUrl("not-a-url")).toBeUndefined();
   });

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/** Unit tests for importing cleansed SF LLM Gateway settings from Claude Code. */
+/** Unit tests for importing non-secret Gateway settings from Claude Code. */
 import { describe, expect, it } from "vitest";
 import { findClaudeCodeGatewayConfig } from "../lib/claude-code-import.ts";
 
@@ -15,7 +15,8 @@ describe("findClaudeCodeGatewayConfig", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.baseUrl).toBe("https://gateway.example.com");
-    expect(result.apiKey).toBe("example-token-1234567890");
+    expect(result.apiKeyPresent).toBe(true);
+    expect(JSON.stringify(result)).not.toContain("example-token-1234567890");
     expect(result.baseUrlPath).toBe("env.ANTHROPIC_BASE_URL");
     expect(result.apiKeyPath).toBe("env.ANTHROPIC_AUTH_TOKEN");
   });
@@ -34,7 +35,8 @@ describe("findClaudeCodeGatewayConfig", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.baseUrl).toBe("https://gateway.example.com");
-    expect(result.apiKey).toBe("gateway-token-1234567890");
+    expect(result.apiKeyPresent).toBe(true);
+    expect(JSON.stringify(result)).not.toContain("gateway-token-1234567890");
   });
 
   it("returns a safe miss when no gateway values are detected", () => {

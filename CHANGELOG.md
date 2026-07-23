@@ -50,6 +50,7 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ### Changed
 
+- **Replaced legacy Gateway orchestration with one complete Pi Provider.** Pi now owns Gateway credential persistence/logout, provider-scoped model storage, refresh retention, and real API-map dispatch. `/login` can collect a missing non-secret URL and uses an SF Pi fixed-mask component for the API key; setup/import paths no longer write secrets. The custom catalog cache, delayed discovery timer, pseudo-auth marker, API-tag stripping, and ID dispatcher were deleted after live Chat, Responses, Anthropic, and compaction proofs.
 - **Made Gateway `max` capability-only.** SF LLM Gateway retains live-proven model thinking maps but no longer selects an active level, writes Pi's `defaultThinkingLevel`, or carries passive thinking-default state. Pi and user settings remain authoritative across startup, commands, and model switches.
 - **Attested Code Analyzer's delegated runtime hooks.** Generated catalog and orientation metadata now report the actual `tool_result` and `agent_settled` hooks, backed by an exact extension-factory event test rather than broad source scanning.
 - **Completed the SF Skills resource parity evidence gate.** A production-neutral harness compares the Funnel with Pi 0.81.1's public package manager and resource loader across scope, filter, package, collision, trust, stale-root, and rescope scenarios. Native-parity rows remain deletion candidates only; package/filter semantics and whole-source rescope return for explicit decisions.

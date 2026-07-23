@@ -11,7 +11,7 @@ import {
   DEFAULT_MODEL_ID,
   FALLBACK_MODEL_ID,
   LEGACY_API_KEY_ENV,
-  describeApiKey,
+  PROVIDER_NAME,
   describeConfigValue,
   getGatewayConfig,
   getMergedSavedGatewayConfig,
@@ -21,7 +21,8 @@ import {
   readGatewayEnv,
 } from "./config.ts";
 import { formatTokens, formatUsd, getActiveModelDefinition } from "./models.ts";
-import { getLastModelGroupDrift, type GatewayDiscoveryState } from "./discovery.ts";
+import { LEGACY_TOKEN_CUTOFF_EARLIEST } from "./legacy-token-migration.ts";
+import { gatewayProviderRuntime, type GatewayNativeDiscoveryState } from "./provider.ts";
 import type { ModelGroupDrift } from "./models.ts";
 import type {
   GatewayConnectionStatus,
@@ -41,7 +42,7 @@ import { glyph, resolveGlyphMode } from "../../../lib/common/glyph-policy.ts";
 export { formatProviderSignalBadge } from "./provider-telemetry.ts";
 
 export interface GatewayRuntimeStatusState {
-  discovery: GatewayDiscoveryState | null;
+  discovery: GatewayNativeDiscoveryState | null;
   monthlyUsage: GatewayMonthlyUsage | null;
   monthlyUsageError: string | null;
   lastKnownMonthlyUsage?: GatewayMonthlyUsage | null;
@@ -83,6 +84,10 @@ export function buildStatusReport(
   const activeModel = getActiveModelDefinition(ctx.model?.id, state.discovery?.modelIds);
   const contextUsage = ctx.getContextUsage();
   const discovery = state.discovery;
+  const authStatus = ctx.modelRegistry.getProviderAuthStatus(PROVIDER_NAME);
+  const authDescription = authStatus.configured
+    ? `configured (${authStatus.label ?? authStatus.source ?? "provider auth"})`
+    : "missing";
 
   return [
     "SF LLM Gateway Internal",
@@ -90,7 +95,7 @@ export function buildStatusReport(
     `Provider enabled: ${config.enabled ? "yes" : "no"}`,
     `Provider registered: ${providerRegistered ? "yes" : "no"}`,
     `Base URL: ${describeConfigValue(config.baseUrl, config.baseUrlSource)}`,
-    `API key: ${describeApiKey(config.apiKey, config.apiKeySource)}`,
+    `Credential: ${authDescription}`,
     `Saved config files: ${globalGatewayConfigPath()}, ${projectGatewayConfigPath(ctx.cwd)}`,
     `Saved scope fallback: project=${savedScope.project}, global=${savedScope.global}, effective=${savedScope.effective} (${savedScope.effectiveSource})`,
     `Effective scoped model mode: ${config.exclusiveScope ? "exclusive (gateway-only scoped models)" : "additive (preserve existing scoped models)"}`,
@@ -108,7 +113,7 @@ export function buildStatusReport(
     "",
     `Model discovery: ${discovery?.source ?? "not run"}${discovery?.error ? ` ⚠ ${discovery.error}` : ""}`,
     `Discovered models: ${discovery?.modelIds.length ?? 0}`,
-    ...formatModelGroupDriftLines(getLastModelGroupDrift()),
+    ...formatModelGroupDriftLines(gatewayProviderRuntime.getLastModelGroupDrift()),
     "",
     ...buildProviderTelemetryReport(),
     ...buildWireTraceReport(),
@@ -293,9 +298,8 @@ export function formatKeyListReportLine(
  * guidance tells users where to update or prune instead of guessing age.
  */
 export function getApiKeyGuidanceLines(cwd: string, state: GatewayRuntimeStatusState): string[] {
-  const config = getGatewayConfig(cwd);
-  const savedKey = getMergedSavedGatewayConfig(cwd).apiKey?.trim();
-  const envKey = readGatewayEnv(API_KEY_ENV, LEGACY_API_KEY_ENV)?.trim();
+  const legacySavedKeyPresent = Boolean(getMergedSavedGatewayConfig(cwd).apiKey?.trim());
+  const envKeyPresent = Boolean(readGatewayEnv(API_KEY_ENV, LEGACY_API_KEY_ENV)?.trim());
   const lines: string[] = [];
 
   if (state.connectionStatus?.kind === "auth-failed") {
@@ -304,13 +308,14 @@ export function getApiKeyGuidanceLines(cwd: string, state: GatewayRuntimeStatusS
     );
   }
 
-  if (savedKey && envKey && savedKey !== envKey) {
+  if (legacySavedKeyPresent) {
     lines.push(
-      `${API_KEY_ENV} is also set but ignored because a saved key wins. If the env key is newer, run /login or /sf-llm-gateway setup to save it; otherwise remove the stale env var from your shell or Keychain setup.`,
+      `A read-only legacy Gateway config token is present for the M3A migration window. Run /login to move credential ownership to Pi before v${LEGACY_TOKEN_CUTOFF_EARLIEST}; the legacy value is never copied or deleted automatically.`,
     );
-  } else if (config.apiKeySource === "env") {
+  }
+  if (envKeyPresent) {
     lines.push(
-      `Using ${API_KEY_ENV} as an automation fallback. For interactive use, run /login or /sf-llm-gateway setup so pi keeps using the intended key across shells.`,
+      `An ${API_KEY_ENV} automation fallback is configured. A Pi-saved credential from /login takes precedence when present.`,
     );
   }
 

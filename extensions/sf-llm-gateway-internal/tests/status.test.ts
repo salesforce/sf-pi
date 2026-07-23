@@ -167,6 +167,9 @@ describe("buildStatusReport", () => {
     const ctx = {
       cwd: makeTempDir("gateway-status-"),
       model: { provider: "sf-llm-gateway-internal", id: "claude-opus-4-6-v1" },
+      modelRegistry: {
+        getProviderAuthStatus: () => ({ configured: true, source: "stored" }),
+      },
       getContextUsage: () => null,
     } as any;
 
@@ -215,7 +218,7 @@ describe("formatSparkline", () => {
 });
 
 describe("API key guidance", () => {
-  it("warns when saved and env keys differ", () => {
+  it("reports legacy and environment fallback presence without comparing values", () => {
     const cwd = makeTempDir("gateway-key-guidance-");
     const configDir = path.join(cwd, ".pi");
     mkdirSync(configDir, { recursive: true });
@@ -234,7 +237,8 @@ describe("API key guidance", () => {
       }),
     );
 
-    expect(lines.join("\n")).toContain("saved key wins");
+    expect(lines.join("\n")).toContain("read-only legacy Gateway config token");
+    expect(lines.join("\n")).toContain("automation fallback");
     expect(lines.join("\n")).toContain("/login");
     expect(lines.join("\n")).not.toContain("saved-key");
     expect(lines.join("\n")).not.toContain("env-key");

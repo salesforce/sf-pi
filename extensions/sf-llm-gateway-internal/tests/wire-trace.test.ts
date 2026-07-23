@@ -11,7 +11,12 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { getAgentDir } from "@earendil-works/pi-coding-agent";
 import path from "node:path";
-import { getWireTraceFile, installWireTrace, isWireTraceEnabled } from "../lib/wire-trace.ts";
+import {
+  getWireTraceFile,
+  installWireTrace,
+  isWireTraceEnabled,
+  sanitizeWireTraceValue,
+} from "../lib/wire-trace.ts";
 
 const TRACE_ENV = "SF_LLM_GATEWAY_INTERNAL_TRACE";
 
@@ -56,6 +61,24 @@ describe("getWireTraceFile", () => {
   it("returns a stable path under Pi's global agent directory", () => {
     const expected = path.join(getAgentDir(), "sf-llm-gateway-internal.trace.jsonl");
     expect(getWireTraceFile()).toBe(expected);
+  });
+});
+
+describe("sanitizeWireTraceValue", () => {
+  it("redacts credential-shaped fields, query values, bearer text, and URL userinfo", () => {
+    const sentinel = "M3A_SENTINEL_12345678901234567890";
+    const sanitized = sanitizeWireTraceValue({
+      headers: { Authorization: `Bearer ${sentinel}`, "X-Api-Key": sentinel },
+      body: { api_key: sentinel, prompt: "safe prompt" },
+      error: `request failed token=${sentinel}`,
+      url: `https://user:${sentinel}@gateway.example.test/path?api_key=${sentinel}`,
+    });
+    const text = JSON.stringify(sanitized);
+
+    expect(text).not.toContain(sentinel);
+    expect(text).not.toContain("user:");
+    expect(text).toContain("safe prompt");
+    expect(text).toContain("<redacted>");
   });
 });
 

@@ -19,14 +19,11 @@ import {
   PROVIDER_NAME,
   DEFAULT_MODEL_ID,
   BASE_URL_ENV,
-  API_KEY_ENV,
-  LEGACY_API_KEY_ENV,
   LEGACY_BASE_URL_ENV,
   DEFAULT_BASE_URL,
   normalizeBaseUrl,
   readGatewayEnv,
   describeConfigValue,
-  describeApiKey,
   readGatewaySavedConfig,
   writeGatewaySavedConfig,
   globalGatewayConfigPath,
@@ -40,7 +37,6 @@ import { getTextViewport, type SetupOverlayState, getSetupOverlayState } from ".
 
 type PanelField =
   | "baseUrl"
-  | "apiKey"
   | "exclusiveScope"
   | "open-token"
   | "import-claude"
@@ -71,13 +67,6 @@ type ConfigPanelOptions = {
 
 function padAnsi(text: string, width: number): string {
   return `${text}${" ".repeat(Math.max(0, width - visibleWidth(text)))}`;
-}
-
-function maskApiKeyForDisplay(value: string): string {
-  if (value.length <= 8) {
-    return "*".repeat(Math.max(4, value.length));
-  }
-  return `${value.slice(0, 4)}…${value.slice(-4)}`;
 }
 
 const ESC = String.fromCharCode(27);
@@ -161,13 +150,10 @@ export class GatewayConfigPanelComponent implements Focusable {
   private readonly focusOrder: readonly PanelField[];
   private focusIndex = 0;
   private savedBaseUrl: string;
-  private savedApiKey: string;
   private savedExclusiveScopeMode: ExclusiveScopeMode;
   private persistedBaseUrl: string;
-  private persistedApiKey: string;
   private persistedExclusiveScopeMode: ExclusiveScopeMode;
   private baseUrlCursor: number;
-  private apiKeyCursor: number;
   private errorMessage: string | null = null;
   private savedMessage: string | null = null;
   private reloadRequired = false;
@@ -184,7 +170,6 @@ export class GatewayConfigPanelComponent implements Focusable {
     this.cwd = cwd;
     this.focusOrder = [
       "baseUrl",
-      "apiKey",
       "exclusiveScope",
       ...(options.externalActions ? (["open-token", "import-claude"] as const) : []),
       ...(options.lifecycleActions ? (["save-enable"] as const) : []),
@@ -194,15 +179,12 @@ export class GatewayConfigPanelComponent implements Focusable {
     ];
     this.state = getSetupOverlayState(cwd, scope);
     this.savedBaseUrl = this.state.scopeSaved.baseUrl ?? "";
-    this.savedApiKey = this.state.scopeSaved.apiKey ?? "";
     this.savedExclusiveScopeMode = this.modeFromSavedExclusiveScope(
       this.state.scopeSaved.exclusiveScope,
     );
     this.persistedBaseUrl = this.savedBaseUrl;
-    this.persistedApiKey = this.savedApiKey;
     this.persistedExclusiveScopeMode = this.savedExclusiveScopeMode;
     this.baseUrlCursor = this.savedBaseUrl.length;
-    this.apiKeyCursor = this.savedApiKey.length;
   }
 
   handleInput(data: string): void {
@@ -213,8 +195,8 @@ export class GatewayConfigPanelComponent implements Focusable {
     }
 
     const focus = this.currentFocus();
-    if (focus === "baseUrl" || focus === "apiKey") {
-      if (this.handleTextFieldInput(focus, data)) {
+    if (focus === "baseUrl") {
+      if (this.handleTextFieldInput(data)) {
         return;
       }
     }
@@ -238,7 +220,7 @@ export class GatewayConfigPanelComponent implements Focusable {
     }
 
     if (isLeftKey(data)) {
-      if (focus !== "baseUrl" && focus !== "apiKey") {
+      if (focus !== "baseUrl") {
         this.errorMessage = null;
         this.focusIndex = (this.focusIndex - 1 + this.focusOrder.length) % this.focusOrder.length;
       }
@@ -246,7 +228,7 @@ export class GatewayConfigPanelComponent implements Focusable {
     }
 
     if (isRightKey(data)) {
-      if (focus !== "baseUrl" && focus !== "apiKey") {
+      if (focus !== "baseUrl") {
         this.errorMessage = null;
         this.focusIndex = (this.focusIndex + 1) % this.focusOrder.length;
       }
@@ -330,35 +312,19 @@ export class GatewayConfigPanelComponent implements Focusable {
     }
     lines.push(pad(""));
 
-    // API key field
-    lines.push(pad(` ${this.renderFieldLabel("apiKey", "Saved API key")}`));
-    lines.push(pad(`   ${this.renderTextField("apiKey", width - 4)}`));
+    const legacyCredentialPresent = Boolean(
+      this.state.scopeSaved.apiKey ?? this.state.lowerSavedApiKey ?? this.state.higherSavedApiKey,
+    );
     lines.push(
       pad(
-        `   ${theme.fg("muted", `Effective now: ${describeApiKey(effective.apiKey, effective.apiKeySource)}`)}`,
+        ` ${theme.fg(
+          legacyCredentialPresent ? "warning" : "dim",
+          legacyCredentialPresent
+            ? "A legacy saved token is present (read-only during migration). Use /login for Pi-owned credentials."
+            : "Credentials are managed by Pi. Use /login sf-llm-gateway-internal.",
+        )}`,
       ),
     );
-    if (this.state.effectiveConfig.apiKeySource === "env") {
-      lines.push(
-        pad(
-          `   ${theme.fg("dim", `Using ${API_KEY_ENV} because no saved API key is configured.`)}`,
-        ),
-      );
-    } else if (
-      this.scope === "project" &&
-      this.state.lowerSavedApiKey &&
-      !this.savedApiKey.trim()
-    ) {
-      lines.push(
-        pad(`   ${theme.fg("dim", "Blank project value falls back to the global saved API key.")}`),
-      );
-    } else if (this.scope === "global" && this.state.higherSavedApiKey) {
-      lines.push(
-        pad(
-          `   ${theme.fg("dim", "A project-scope saved API key currently overrides global for this project.")}`,
-        ),
-      );
-    }
     lines.push(pad(""));
 
     // Scoped model mode field
@@ -488,7 +454,7 @@ export class GatewayConfigPanelComponent implements Focusable {
     return field;
   }
 
-  private renderFieldLabel(field: "baseUrl" | "apiKey" | "exclusiveScope", label: string): string {
+  private renderFieldLabel(field: "baseUrl" | "exclusiveScope", label: string): string {
     const focused = this.currentFocus() === field;
     const prefix = focused ? this.theme.fg("accent", "▶") : this.theme.fg("dim", "•");
     const color = focused ? "accent" : "text";
@@ -515,11 +481,11 @@ export class GatewayConfigPanelComponent implements Focusable {
     ].join("");
   }
 
-  private renderTextField(field: "baseUrl" | "apiKey", width: number): string {
+  private renderTextField(field: "baseUrl", width: number): string {
     const focused = this.currentFocus() === field;
-    const rawValue = field === "baseUrl" ? this.savedBaseUrl : this.savedApiKey;
-    const cursor = field === "baseUrl" ? this.baseUrlCursor : this.apiKeyCursor;
-    const placeholder = field === "baseUrl" ? DEFAULT_BASE_URL : "Paste saved API key here";
+    const rawValue = this.savedBaseUrl;
+    const cursor = this.baseUrlCursor;
+    const placeholder = DEFAULT_BASE_URL;
     const innerWidth = Math.max(12, width - 2);
     const open = this.theme.fg(focused ? "accent" : "border", "[");
     const close = this.theme.fg(focused ? "accent" : "border", "]");
@@ -529,8 +495,7 @@ export class GatewayConfigPanelComponent implements Focusable {
       return `${open}${content}${close}`;
     }
 
-    const displayValue = field === "apiKey" && !focused ? maskApiKeyForDisplay(rawValue) : rawValue;
-    const viewport = getTextViewport(displayValue, cursor, innerWidth);
+    const viewport = getTextViewport(rawValue, cursor, innerWidth);
     let body = viewport.text;
 
     if (focused) {
@@ -599,23 +564,14 @@ export class GatewayConfigPanelComponent implements Focusable {
     this.savedExclusiveScopeMode = modes[nextIndex] ?? this.savedExclusiveScopeMode;
   }
 
-  private handleTextFieldInput(field: "baseUrl" | "apiKey", data: string): boolean {
-    const getter =
-      field === "baseUrl"
-        ? () => ({ value: this.savedBaseUrl, cursor: this.baseUrlCursor })
-        : () => ({ value: this.savedApiKey, cursor: this.apiKeyCursor });
-    const setter =
-      field === "baseUrl"
-        ? (value: string, cursor: number) => {
-            this.savedBaseUrl = value;
-            this.baseUrlCursor = cursor;
-          }
-        : (value: string, cursor: number) => {
-            this.savedApiKey = value;
-            this.apiKeyCursor = cursor;
-          };
+  private handleTextFieldInput(data: string): boolean {
+    const setter = (value: string, cursor: number) => {
+      this.savedBaseUrl = value;
+      this.baseUrlCursor = cursor;
+    };
 
-    let { value, cursor } = getter();
+    let value = this.savedBaseUrl;
+    let cursor = this.baseUrlCursor;
 
     if (isLeftKey(data)) {
       setter(value, Math.max(0, cursor - 1));
@@ -671,7 +627,7 @@ export class GatewayConfigPanelComponent implements Focusable {
 
   private submitCurrentFocus(): void {
     const focus = this.currentFocus();
-    if (focus === "baseUrl" || focus === "apiKey") {
+    if (focus === "baseUrl") {
       this.focusIndex = (this.focusIndex + 1) % this.focusOrder.length;
       return;
     }
@@ -718,11 +674,6 @@ export class GatewayConfigPanelComponent implements Focusable {
         this.focusIndex = 0;
         return;
       }
-      if (!effective.apiKey) {
-        this.errorMessage = `Enter a saved API key before enabling, or run /login. ${API_KEY_ENV} is only an automation fallback.`;
-        this.focusIndex = 1;
-        return;
-      }
     }
 
     // Save the config
@@ -736,12 +687,8 @@ export class GatewayConfigPanelComponent implements Focusable {
       delete saved.baseUrl;
     }
 
-    const trimmedApiKey = this.savedApiKey.trim() || undefined;
-    if (trimmedApiKey) {
-      saved.apiKey = trimmedApiKey;
-    } else {
-      delete saved.apiKey;
-    }
+    // Existing apiKey fields are migration-only. Preserve them byte-for-byte;
+    // this panel never creates, changes, or removes credential material.
 
     const savedExclusiveScope = this.getSavedExclusiveScopeValue();
     if (savedExclusiveScope === undefined) {
@@ -766,7 +713,7 @@ export class GatewayConfigPanelComponent implements Focusable {
     }
 
     writeGatewaySavedConfig(configPath, saved);
-    this.markSaved(normalizedSavedBaseUrl, trimmedApiKey, savedExclusiveScope);
+    this.markSaved(normalizedSavedBaseUrl, savedExclusiveScope);
 
     // Signal reload needed for enable/disable actions. Manager-hosted settings
     // save in place and report the reload requirement when the user backs out.
@@ -799,27 +746,21 @@ export class GatewayConfigPanelComponent implements Focusable {
 
   private isDirty(normalizedSavedBaseUrl: string | undefined): boolean {
     const draftBaseUrl = normalizedSavedBaseUrl ?? "";
-    const draftApiKey = this.savedApiKey.trim();
     return (
       draftBaseUrl !== (normalizeBaseUrl(this.persistedBaseUrl) ?? "") ||
-      draftApiKey !== this.persistedApiKey.trim() ||
       this.savedExclusiveScopeMode !== this.persistedExclusiveScopeMode
     );
   }
 
   private markSaved(
     normalizedSavedBaseUrl: string | undefined,
-    trimmedApiKey: string | undefined,
     exclusiveScope: boolean | undefined,
   ): void {
     this.savedBaseUrl = normalizedSavedBaseUrl ?? "";
-    this.savedApiKey = trimmedApiKey ?? "";
     this.savedExclusiveScopeMode = this.modeFromSavedExclusiveScope(exclusiveScope);
     this.persistedBaseUrl = this.savedBaseUrl;
-    this.persistedApiKey = this.savedApiKey;
     this.persistedExclusiveScopeMode = this.savedExclusiveScopeMode;
     this.baseUrlCursor = Math.min(this.baseUrlCursor, this.savedBaseUrl.length);
-    this.apiKeyCursor = Math.min(this.apiKeyCursor, this.savedApiKey.length);
     this.state = getSetupOverlayState(this.cwd, this.scope);
   }
 
@@ -834,33 +775,22 @@ export class GatewayConfigPanelComponent implements Focusable {
   ): {
     baseUrl?: string;
     baseUrlSource: ConfigSource;
-    apiKey?: string;
-    apiKeySource: ConfigSource;
     exclusiveScope: boolean;
     exclusiveScopeSource: Extract<ConfigSource, "saved" | "default">;
   } {
     const envBaseUrl = normalizeBaseUrl(readGatewayEnv(BASE_URL_ENV, LEGACY_BASE_URL_ENV));
     const savedBaseUrl =
       this.state.higherSavedBaseUrl ?? normalizedSavedBaseUrl ?? this.state.lowerSavedBaseUrl;
-    const envApiKey = readGatewayEnv(API_KEY_ENV, LEGACY_API_KEY_ENV)?.trim() || undefined;
-    const savedApiKey = this.savedApiKey.trim() || undefined;
     const savedExclusiveScope =
       this.state.higherSavedExclusiveScope ??
       this.getSavedExclusiveScopeValue() ??
       this.state.lowerSavedExclusiveScope;
 
     const baseUrl = savedBaseUrl ?? envBaseUrl ?? DEFAULT_BASE_URL;
-    const apiKey =
-      this.state.higherSavedApiKey ?? savedApiKey ?? this.state.lowerSavedApiKey ?? envApiKey;
-    const savedApiKeyPresent = Boolean(
-      this.state.higherSavedApiKey ?? savedApiKey ?? this.state.lowerSavedApiKey,
-    );
 
     return {
       baseUrl,
       baseUrlSource: savedBaseUrl ? "saved" : envBaseUrl ? "env" : "default",
-      apiKey,
-      apiKeySource: savedApiKeyPresent ? "saved" : envApiKey ? "env" : "missing",
       exclusiveScope: savedExclusiveScope ?? false,
       exclusiveScopeSource: savedExclusiveScope !== undefined ? "saved" : "default",
     };

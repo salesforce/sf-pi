@@ -8,9 +8,10 @@
  * `diffModelGroupProviders` is colocated because it consumes the
  * `/model_group/info` response shape.
  *
- * Failures in the optional enrichment endpoints (`/v1/model/info` and
- * `/model_group/info`) are deliberately swallowed — the extension must
- * keep working when the gateway admin disables them or they time out.
+ * Failures in the optional enrichment endpoints are deliberately non-fatal.
+ * Model-info failures return an empty enrichment map; model-group failures
+ * return undefined so callers do not mistake unavailability for an empty
+ * but valid snapshot. Outer cancellation still rejects every fetch.
  */
 import type { GatewayModelGroupInfoMap, GatewayModelInfoMap } from "../models.ts";
 import { toGatewayOpenAiBaseUrl, toGatewayRootBaseUrl } from "../gateway-url.ts";
@@ -28,6 +29,7 @@ export interface GatewayModelIdDiscovery {
 export async function fetchGatewayModelIdDiscovery(
   baseUrl: string,
   apiKey: string,
+  signal?: AbortSignal,
 ): Promise<GatewayModelIdDiscovery> {
   const response = await fetchWithTimeout(
     `${toGatewayOpenAiBaseUrl(baseUrl)}/models`,
@@ -37,6 +39,7 @@ export async function fetchGatewayModelIdDiscovery(
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
+      signal,
     },
     MODEL_FETCH_TIMEOUT_MS,
   );
@@ -74,8 +77,12 @@ export async function fetchGatewayModelIdDiscovery(
   return { ids, filteredIds };
 }
 
-export async function fetchGatewayModelIds(baseUrl: string, apiKey: string): Promise<string[]> {
-  return (await fetchGatewayModelIdDiscovery(baseUrl, apiKey)).ids;
+export async function fetchGatewayModelIds(
+  baseUrl: string,
+  apiKey: string,
+  signal?: AbortSignal,
+): Promise<string[]> {
+  return (await fetchGatewayModelIdDiscovery(baseUrl, apiKey, signal)).ids;
 }
 
 /**
@@ -87,6 +94,7 @@ export async function fetchGatewayModelIds(baseUrl: string, apiKey: string): Pro
 export async function fetchGatewayModelInfoMap(
   baseUrl: string,
   apiKey: string,
+  signal?: AbortSignal,
 ): Promise<GatewayModelInfoMap> {
   try {
     const response = await fetchWithTimeout(
@@ -97,6 +105,7 @@ export async function fetchGatewayModelInfoMap(
           Authorization: `Bearer ${apiKey}`,
           "Content-Type": "application/json",
         },
+        signal,
       },
       MODEL_FETCH_TIMEOUT_MS,
     );
@@ -153,7 +162,8 @@ export async function fetchGatewayModelInfoMap(
       };
     }
     return map;
-  } catch {
+  } catch (error) {
+    if (signal?.aborted) throw error;
     return {};
   }
 }
@@ -165,7 +175,8 @@ export async function fetchGatewayModelInfoMap(
 export async function fetchGatewayModelGroupInfo(
   baseUrl: string,
   apiKey: string,
-): Promise<GatewayModelGroupInfoMap> {
+  signal?: AbortSignal,
+): Promise<GatewayModelGroupInfoMap | undefined> {
   try {
     const response = await fetchWithTimeout(
       `${toGatewayRootBaseUrl(baseUrl)}/model_group/info`,
@@ -175,11 +186,12 @@ export async function fetchGatewayModelGroupInfo(
           Authorization: `Bearer ${apiKey}`,
           "Content-Type": "application/json",
         },
+        signal,
       },
       MODEL_FETCH_TIMEOUT_MS,
     );
 
-    if (!response.ok) return {};
+    if (!response.ok) return undefined;
 
     const json = (await response.json()) as {
       data?: Array<{
@@ -198,8 +210,9 @@ export async function fetchGatewayModelGroupInfo(
       map[group] = { modelGroup: group, providers };
     }
     return map;
-  } catch {
-    return {};
+  } catch (error) {
+    if (signal?.aborted) throw error;
+    return undefined;
   }
 }
 
@@ -236,9 +249,12 @@ export async function fetchWithTimeout(
 ): Promise<Response> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  const signal = init.signal
+    ? AbortSignal.any([init.signal, controller.signal])
+    : controller.signal;
 
   try {
-    return await fetch(url, { ...init, signal: controller.signal });
+    return await fetch(url, { ...init, signal });
   } finally {
     clearTimeout(timeoutId);
   }

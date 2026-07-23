@@ -16,10 +16,10 @@
     "session_shutdown"
   ],
   "docs": {
-    "summary": "Single pi-native provider for the Salesforce LLM Gateway. Static bootstrap catalog plus dynamic /v1/models discovery, family-aware presets, stale-usage auto-refresh, OpenAI-compat dispatcher that delegates Claude ids to the native Anthropic transport, and footer status with model + context + monthly usage.",
+    "summary": "Complete Pi Provider for the Salesforce LLM Gateway. Pi-owned credential persistence and model storage, static baseline plus dynamic overlay, real mixed-API dispatch, Gateway-aware transport adapters, explicit refresh, diagnostics, and usage status.",
     "primaryFiles": [
       "index.ts",
-      "lib/discovery.ts",
+      "lib/provider.ts",
       "lib/transport.ts",
       "lib/models.ts",
       "lib/model-resolution.ts",
@@ -30,11 +30,13 @@
       "lib/doctor.ts"
     ],
     "stateFiles": [
-      "~/.pi/agent/settings.json (provider config + retry guidance)",
-      "<globalAgentDir>/sf-llm-gateway/* (saved api key, base url, monthly usage cache)"
+      "~/.pi/agent/auth.json (Pi-owned API-key credential + default non-secret URL)",
+      "<globalAgentDir>/sf-llm-gateway-internal.json (non-secret settings; legacy apiKey is migration-only)",
+      "<globalAgentDir>/sf-llm-gateway/* (monthly usage and diagnostic state)"
     ],
     "safety": [
-      "Tokens are never echoed in panel output; only describeApiKey summaries are shown.",
+      "API-key input uses a fixed-mask SF Pi component and never enters Pi's visible stock prompt.",
+      "Pi alone persists/removes credentials; setup and import paths write no secrets.",
       "Pi's settings.json is mutated through pi-settings.ts helpers with race-aware reads."
     ]
   }

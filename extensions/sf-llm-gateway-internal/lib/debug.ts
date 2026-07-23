@@ -16,7 +16,7 @@
  * Pure functions, no runtime state. All failures are encoded in the returned
  * value so the command handler can stay linear.
  */
-import { API_KEY_ENV, getGatewayConfig } from "./config.ts";
+import { gatewayProviderRuntime } from "./provider.ts";
 import { toGatewayRootBaseUrl } from "./gateway-url.ts";
 import { fetchWithTimeout } from "./models.ts";
 
@@ -120,19 +120,12 @@ export async function fetchTransformReport(
   cwd: string,
   probe: TransformProbe,
 ): Promise<GatewayTransformReport> {
-  const config = getGatewayConfig(cwd);
-  if (!config.baseUrl) {
-    return { ok: false, model: probe.model, error: "Missing gateway base URL." };
-  }
-  if (!config.apiKey) {
-    return {
-      ok: false,
-      model: probe.model,
-      error: `Missing ${API_KEY_ENV} or saved API key.`,
-    };
+  const runtimeAuth = await gatewayProviderRuntime.authController.resolveRuntimeAuth(cwd);
+  if (!runtimeAuth) {
+    return { ok: false, model: probe.model, error: "Missing Gateway endpoint or credential." };
   }
 
-  const url = `${toGatewayRootBaseUrl(config.baseUrl)}/utils/transform_request`;
+  const url = `${toGatewayRootBaseUrl(runtimeAuth.baseUrl)}/utils/transform_request`;
 
   try {
     const response = await fetchWithTimeout(
@@ -140,7 +133,7 @@ export async function fetchTransformReport(
       {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${config.apiKey}`,
+          Authorization: `Bearer ${runtimeAuth.apiKey}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({

@@ -19,6 +19,12 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  createAssistantMessageEventStream,
+  type AssistantMessage,
+  type Context,
+  type Model,
+} from "@earendil-works/pi-ai";
+import {
   GATEWAY_PROVIDER_DEFAULT_MAX_RETRIES,
   OPUS_47_DEFAULT_MAX_TOKENS,
   OPUS_47_MODEL_MAX_TOKENS,
@@ -37,6 +43,7 @@ import {
   resolveGatewayProviderMaxRetries,
   resolveOpenAiReasoningEffort,
   resolveOpus47MaxTokensFloor,
+  streamSfGatewayOpenAIFull,
   stripReasoningEffortForGpt55,
   withGatewayProviderRetryDefaults,
 } from "../lib/transport.ts";
@@ -58,6 +65,62 @@ describe("Gateway provider retry defaults", () => {
   it("normalizes invalid direct option values back to the Gateway default", () => {
     expect(resolveGatewayProviderMaxRetries(Number.NaN)).toBe(3);
     expect(resolveGatewayProviderMaxRetries(Number.POSITIVE_INFINITY)).toBe(3);
+  });
+});
+
+describe("Gateway-aware full Chat stream", () => {
+  it("applies retry defaults, reasoning allow-listing, and service tier through the full adapter", async () => {
+    const model: Model<"openai-completions"> = {
+      id: "gpt-5.6-sol",
+      name: "GPT-5.6",
+      provider: "sf-llm-gateway-internal",
+      api: "openai-completions",
+      baseUrl: "https://gateway.example.test/v1",
+      reasoning: true,
+      input: ["text"],
+      cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+      contextWindow: 1000,
+      maxTokens: 100,
+    };
+    const context: Context = { systemPrompt: "", messages: [], tools: [] };
+    let observedRetries: number | undefined;
+    const payload: Record<string, unknown> = {};
+    const stream = streamSfGatewayOpenAIFull(model, context, undefined, {
+      streamer: (_model, _context, options) => {
+        observedRetries = options?.maxRetries;
+        const output = createAssistantMessageEventStream();
+        void Promise.resolve(options?.onPayload?.(payload, model)).then(() => {
+          const message: AssistantMessage = {
+            role: "assistant",
+            content: [],
+            api: model.api,
+            provider: model.provider,
+            model: model.id,
+            usage: {
+              input: 0,
+              output: 0,
+              cacheRead: 0,
+              cacheWrite: 0,
+              totalTokens: 0,
+              cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+            },
+            stopReason: "stop",
+            timestamp: Date.now(),
+          };
+          output.push({ type: "start", partial: message });
+          output.push({ type: "done", reason: "stop", message });
+          output.end();
+        });
+        return output;
+      },
+    });
+
+    await stream.result();
+
+    expect(observedRetries).toBe(3);
+    expect(payload.reasoning_effort).toBe("max");
+    expect(payload.allowed_openai_params).toContain("reasoning_effort");
+    expect(payload.service_tier).toBe("priority");
   });
 });
 

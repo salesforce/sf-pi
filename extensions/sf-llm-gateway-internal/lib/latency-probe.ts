@@ -7,7 +7,7 @@
  * directly with tiny max-output settings and report only timings + usage
  * counters — no prompt or credentials are rendered.
  */
-import { API_KEY_ENV, getGatewayConfig } from "./config.ts";
+import { gatewayProviderRuntime } from "./provider.ts";
 import { toGatewayOpenAiBaseUrl, toGatewayRootBaseUrl } from "./gateway-url.ts";
 import { fetchWithTimeout } from "./models.ts";
 import { isAnthropicModelId } from "./models.ts";
@@ -70,21 +70,18 @@ export async function fetchGatewayLatencyProbe(
   cwd: string,
   options: GatewayLatencyProbeOptions,
 ): Promise<GatewayLatencyProbeReport> {
-  const config = getGatewayConfig(cwd);
+  const runtimeAuth = await gatewayProviderRuntime.authController.resolveRuntimeAuth(cwd);
   const notes: string[] = [];
   const probes: GatewayLatencyProbeEntry[] = [];
 
-  if (!config.baseUrl) {
-    return baseError(options.modelId, "Missing gateway base URL.");
-  }
-  if (!config.apiKey) {
-    return baseError(options.modelId, `Missing ${API_KEY_ENV} or saved API key.`);
+  if (!runtimeAuth) {
+    return baseError(options.modelId, "Missing Gateway endpoint or credential.");
   }
 
-  const rootUrl = toGatewayRootBaseUrl(config.baseUrl);
-  const openAiBaseUrl = toGatewayOpenAiBaseUrl(config.baseUrl);
+  const rootUrl = toGatewayRootBaseUrl(runtimeAuth.baseUrl);
+  const openAiBaseUrl = toGatewayOpenAiBaseUrl(runtimeAuth.baseUrl);
   const authHeaders = {
-    Authorization: `Bearer ${config.apiKey}`,
+    Authorization: `Bearer ${runtimeAuth.apiKey}`,
     "Content-Type": "application/json",
   };
 

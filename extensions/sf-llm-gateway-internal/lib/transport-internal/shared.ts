@@ -16,7 +16,7 @@ import {
   type AssistantMessageEvent,
   type AssistantMessageEventStream,
   type Model,
-  type SimpleStreamOptions,
+  type StreamOptions,
 } from "@earendil-works/pi-ai";
 import { emitRetryEvent } from "../retry-telemetry.ts";
 import { formatRetryGuidanceFooter } from "../retry-telemetry.ts";
@@ -334,12 +334,12 @@ export function resolveGatewayProviderMaxRetries(maxRetries: number | undefined)
   return Math.max(0, Math.floor(maxRetries));
 }
 
-export function withGatewayProviderRetryDefaults(
-  options: SimpleStreamOptions | undefined,
-): SimpleStreamOptions {
+export function withGatewayProviderRetryDefaults<TOptions extends StreamOptions>(
+  options: TOptions | undefined,
+): TOptions & { maxRetries: number } {
   const maxRetries = resolveGatewayProviderMaxRetries(options?.maxRetries);
-  if (options?.maxRetries === maxRetries) return options;
-  return { ...options, maxRetries };
+  if (options?.maxRetries === maxRetries) return options as TOptions & { maxRetries: number };
+  return { ...options, maxRetries } as TOptions & { maxRetries: number };
 }
 
 // -------------------------------------------------------------------------------------------------

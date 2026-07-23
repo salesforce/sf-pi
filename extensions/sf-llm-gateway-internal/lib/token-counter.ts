@@ -16,7 +16,8 @@
  * returned value so the command handler can stay linear and render
  * consistent output whether the gateway is healthy, slow, or 401.
  */
-import { API_KEY_ENV, getGatewayConfig } from "./config.ts";
+import { getGatewayConfig } from "./config.ts";
+import { gatewayProviderRuntime } from "./provider.ts";
 import { toGatewayRootBaseUrl } from "./gateway-url.ts";
 import { fetchWithTimeout } from "./models.ts";
 
@@ -56,12 +57,12 @@ export interface TokenProbeInput {
  * local tokenizer that drifts from upstream.
  */
 export async function countTokens(cwd: string, input: TokenProbeInput): Promise<TokenCountResult> {
-  const config = getGatewayConfig(cwd);
-  if (!config.baseUrl) {
+  if (!getGatewayConfig(cwd).baseUrl) {
     return { ok: false, model: input.model, error: "Missing gateway base URL." };
   }
-  if (!config.apiKey) {
-    return { ok: false, model: input.model, error: `Missing ${API_KEY_ENV} or saved API key.` };
+  const runtimeAuth = await gatewayProviderRuntime.authController.resolveRuntimeAuth(cwd);
+  if (!runtimeAuth) {
+    return { ok: false, model: input.model, error: "Missing Gateway endpoint or credential." };
   }
 
   const body: Record<string, unknown> = { model: input.model };
@@ -73,14 +74,14 @@ export async function countTokens(cwd: string, input: TokenProbeInput): Promise<
     return { ok: false, model: input.model, error: "Provide either prompt or messages." };
   }
 
-  const url = `${toGatewayRootBaseUrl(config.baseUrl)}/utils/token_counter`;
+  const url = `${toGatewayRootBaseUrl(runtimeAuth.baseUrl)}/utils/token_counter`;
   try {
     const response = await fetchWithTimeout(
       url,
       {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${config.apiKey}`,
+          Authorization: `Bearer ${runtimeAuth.apiKey}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify(body),
@@ -137,12 +138,12 @@ export async function estimateSpend(
   cwd: string,
   input: TokenProbeInput,
 ): Promise<SpendEstimateResult> {
-  const config = getGatewayConfig(cwd);
-  if (!config.baseUrl) {
+  if (!getGatewayConfig(cwd).baseUrl) {
     return { ok: false, model: input.model, error: "Missing gateway base URL." };
   }
-  if (!config.apiKey) {
-    return { ok: false, model: input.model, error: `Missing ${API_KEY_ENV} or saved API key.` };
+  const runtimeAuth = await gatewayProviderRuntime.authController.resolveRuntimeAuth(cwd);
+  if (!runtimeAuth) {
+    return { ok: false, model: input.model, error: "Missing Gateway endpoint or credential." };
   }
 
   const messages =
@@ -155,14 +156,14 @@ export async function estimateSpend(
     return { ok: false, model: input.model, error: "Provide either prompt or messages." };
   }
 
-  const url = `${toGatewayRootBaseUrl(config.baseUrl)}/spend/calculate`;
+  const url = `${toGatewayRootBaseUrl(runtimeAuth.baseUrl)}/spend/calculate`;
   try {
     const response = await fetchWithTimeout(
       url,
       {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${config.apiKey}`,
+          Authorization: `Bearer ${runtimeAuth.apiKey}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ model: input.model, messages }),

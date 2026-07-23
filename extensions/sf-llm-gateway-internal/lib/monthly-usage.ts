@@ -48,6 +48,7 @@ import {
   getMergedSavedGatewayConfig,
   readGatewayEnv,
 } from "./config.ts";
+import { gatewayProviderRuntime } from "./provider.ts";
 import { toGatewayRootBaseUrl } from "./gateway-url.ts";
 import { fetchWithTimeout } from "./models.ts";
 
@@ -215,7 +216,9 @@ export async function refreshMonthlyUsage(force: boolean, cwd: string): Promise<
 
   refreshInFlight = (async () => {
     const config = getGatewayConfig(cwd);
-    const keyConflict = computeKeyConflict(cwd);
+    const runtimeAuth = await gatewayProviderRuntime.authController.resolveRuntimeAuth(cwd);
+    const keyConflict =
+      runtimeAuth?.source === "Pi saved credential" ? null : computeKeyConflict(cwd);
     const previousLastKnownMonthlyUsage = getLastKnownMonthlyUsage();
 
     if (!config.baseUrl) {
@@ -233,8 +236,8 @@ export async function refreshMonthlyUsage(force: boolean, cwd: string): Promise<
       return;
     }
 
-    if (!config.apiKey) {
-      const message = `Missing ${API_KEY_ENV} or saved API key.`;
+    if (!runtimeAuth) {
+      const message = `Missing Pi credential or ${API_KEY_ENV} automation fallback.`;
       publishError(
         message,
         {
@@ -258,7 +261,7 @@ export async function refreshMonthlyUsage(force: boolean, cwd: string): Promise<
 
     const startedAt = new Date();
     let trace: GatewayProbeTraceEntry[] = [];
-    let attempt = await runPrimaryProbes(config.baseUrl, config.apiKey, trace);
+    let attempt = await runPrimaryProbes(runtimeAuth.baseUrl, runtimeAuth.apiKey, trace);
     let wasRetry = false;
 
     // 1.2: retry once when classifying as `unreachable` AND the failure was
@@ -271,7 +274,7 @@ export async function refreshMonthlyUsage(force: boolean, cwd: string): Promise<
     if (initialStatus.kind === "unreachable") {
       await delay(RETRY_DELAY_MS);
       trace = []; // overwrite — we want the trace to reflect the *final* state
-      attempt = await runPrimaryProbes(config.baseUrl, config.apiKey, trace);
+      attempt = await runPrimaryProbes(runtimeAuth.baseUrl, runtimeAuth.apiKey, trace);
       wasRetry = true;
     }
 
@@ -499,12 +502,12 @@ export async function refreshUsageDetails(force: boolean, cwd: string): Promise<
   }
 
   detailsRefreshInFlight = (async () => {
-    const config = getGatewayConfig(cwd);
-    if (!config.baseUrl || !config.apiKey) return;
+    const runtimeAuth = await gatewayProviderRuntime.authController.resolveRuntimeAuth(cwd);
+    if (!runtimeAuth) return;
 
     const [dailyResult, keyListResult] = await Promise.allSettled([
-      fetchDailyActivity(config.baseUrl, config.apiKey, DAILY_ACTIVITY_DEFAULT_DAYS),
-      fetchKeyList(config.baseUrl, config.apiKey),
+      fetchDailyActivity(runtimeAuth.baseUrl, runtimeAuth.apiKey, DAILY_ACTIVITY_DEFAULT_DAYS),
+      fetchKeyList(runtimeAuth.baseUrl, runtimeAuth.apiKey),
     ]);
 
     // Merge into existing snapshot so we never blow away the primary state.
@@ -739,7 +742,7 @@ async function gatewayRequestError(
     bodyPreview = "";
   }
   const blockedKeyHint = /key is blocked/i.test(bodyPreview)
-    ? " Active gateway key is blocked; run /login to paste a new key."
+    ? " Active gateway key is blocked; run /login sf-llm-gateway-internal."
     : "";
   return new GatewayRequestError(
     `${label} request failed (${response.status}).${blockedKeyHint}`,

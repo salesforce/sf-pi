@@ -15,13 +15,36 @@
  * provider retry budget Pi passes through `options.maxRetries`.
  */
 import {
+  type AnthropicOptions,
   type AssistantMessageEventStream,
   type Context,
   type Model,
   type SimpleStreamOptions,
 } from "@earendil-works/pi-ai";
-import { streamSimpleAnthropic } from "@earendil-works/pi-ai/compat";
+import { streamAnthropic, streamSimpleAnthropic } from "@earendil-works/pi-ai/compat";
 import { streamAnthropicWithRobustRetry, withGatewayProviderRetryDefaults } from "./shared.ts";
+
+export interface GatewayAnthropicFullTestHooks {
+  streamer?: typeof streamAnthropic;
+  sleep?: (ms: number, signal?: AbortSignal) => Promise<void>;
+}
+
+/** Gateway-aware full Anthropic stream used by complete native Providers. */
+export function streamSfGatewayAnthropicFull(
+  model: Model<"anthropic-messages">,
+  context: Context,
+  options?: AnthropicOptions,
+  hooks?: GatewayAnthropicFullTestHooks,
+): AssistantMessageEventStream {
+  const gatewayOptions = withGatewayProviderRetryDefaults(options);
+  const streamer = hooks?.streamer ?? streamAnthropic;
+  return streamAnthropicWithRobustRetry(
+    model,
+    () => streamer(model, context, gatewayOptions),
+    gatewayOptions.signal,
+    { maxRetries: gatewayOptions.maxRetries, ...(hooks?.sleep ? { sleep: hooks.sleep } : {}) },
+  );
+}
 
 export function streamSfGatewayAnthropic(
   model: Model<"anthropic-messages">,
@@ -29,12 +52,10 @@ export function streamSfGatewayAnthropic(
   options?: SimpleStreamOptions,
 ): AssistantMessageEventStream {
   const gatewayOptions = withGatewayProviderRetryDefaults(options);
-  const maxRetries = gatewayOptions.maxRetries;
-
   return streamAnthropicWithRobustRetry(
     model,
     () => streamSimpleAnthropic(model, context, gatewayOptions),
     gatewayOptions.signal,
-    { maxRetries },
+    { maxRetries: gatewayOptions.maxRetries },
   );
 }
