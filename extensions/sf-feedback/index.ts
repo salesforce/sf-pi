@@ -34,7 +34,10 @@ import {
   getFirstTokenCompletionsFromActions,
   resolveAction,
 } from "../../lib/common/command-actions.ts";
-import { openInfoPanel } from "../../lib/common/info-panel.ts";
+import {
+  emitHumanOnlyCommandOutput,
+  registerHumanOnlyCommandOutput,
+} from "../../lib/common/human-only-command-output.ts";
 import {
   openExtensionInManager,
   type SfPiManagerOpenRoute,
@@ -57,6 +60,7 @@ const STATUS_KEY = "sf-feedback";
 
 export default function sfFeedback(pi: ExtensionAPI) {
   if (!requirePiVersion(pi, "sf-feedback")) return;
+  registerHumanOnlyCommandOutput(pi, COMMAND_NAME);
 
   pi.registerCommand(COMMAND_NAME, {
     description: "Create sanitized SF Pi feedback or bug reports on GitHub",
@@ -450,21 +454,11 @@ async function emitCommandOutput(
   details: string,
   level: "info" | "warning" | "error",
 ): Promise<void> {
-  if (ctx.hasUI) {
-    await openInfoPanel(ctx, { title: summary, body: details || summary, severity: level });
-    return;
-  }
-
-  ctx.ui.notify(summary, level);
-  pi.sendMessage(
-    {
-      customType: COMMAND_NAME,
-      content: details,
-      display: true,
-      details: {},
-    },
-    { triggerTurn: false },
-  );
+  await emitHumanOnlyCommandOutput(pi, ctx, COMMAND_NAME, {
+    title: summary,
+    body: details || summary,
+    severity: level,
+  });
 }
 
 export { handleCommand, parseIssueKind };

@@ -102,6 +102,7 @@ interface FakePi {
   handlers: Record<string, Array<(event: unknown, ctx: ExtensionContext) => Promise<void> | void>>;
   on(event: string, handler: (event: unknown, ctx: ExtensionContext) => Promise<void> | void): void;
   registerCommand: ReturnType<typeof vi.fn>;
+  registerEntryRenderer: ReturnType<typeof vi.fn>;
   registerMessageRenderer: ReturnType<typeof vi.fn>;
   registerProvider: ReturnType<typeof vi.fn>;
   unregisterProvider: ReturnType<typeof vi.fn>;
@@ -119,6 +120,7 @@ function makeFakePi(): FakePi {
       pi.handlers[event].push(handler);
     },
     registerCommand: vi.fn(),
+    registerEntryRenderer: vi.fn(),
     registerMessageRenderer: vi.fn(),
     registerProvider: vi.fn(),
     unregisterProvider: vi.fn(),
@@ -148,6 +150,19 @@ describe("gateway extension lifecycle", () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.restoreAllMocks();
+  });
+
+  it("registers human-only entry rendering instead of message rendering", async () => {
+    const { default: extension } = await import("../index.ts");
+    const pi = makeFakePi();
+
+    extension(pi as never);
+
+    expect(pi.registerEntryRenderer).toHaveBeenCalledWith(
+      "sf-llm-gateway-internal",
+      expect.any(Function),
+    );
+    expect(pi.registerMessageRenderer).not.toHaveBeenCalled();
   });
 
   it("does not register a Gateway-owned beta header hook", async () => {

@@ -135,7 +135,7 @@ Extension loads
   ├─ installWireTrace()                 ← opt-in raw gateway trace
   ├─ registerProviderIfConfigured()     ← unified provider, static catalog, synchronous
   ├─ discoverAndRegister()              ← async, fire-and-forget
-  ├─ registerMessageRenderer()          ← gateway provider renderer
+  ├─ registerEntryRenderer()            ← human-only headless report renderer
   ├─ registerCommand("sf-llm-gateway-internal")
   ├─ on("session_start")               → sync defaults (sync), discover (fire-and-forget),
   │                                       one-time key-conflict notify
@@ -278,6 +278,11 @@ Primary actions are grouped as:
 Slash completions use the same command metadata as the panel, so subcommands
 such as `tokens`, `onboard`, `open-token`, `import-claude`, `doctor`, `debug`,
 `latency-probe`, and `usage-probe` show short self-explanatory descriptions while typing.
+
+Display-only command reports stay outside model context. TUI uses the existing
+information panel, RPC emits notifications, JSON emits state-only custom-entry
+events, and print mode writes the report while appending the same model-invisible
+entry to the active session.
 
 ## Behavior Matrix
 

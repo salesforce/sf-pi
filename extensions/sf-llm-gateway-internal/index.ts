@@ -89,12 +89,11 @@
  * - The standalone TUI setup overlay is in lib/setup-overlay.ts; Manager setup reuses lib/config-panel.ts
  */
 
-import { Text, matchesKey, type Focusable } from "@earendil-works/pi-tui";
+import { matchesKey, type Focusable } from "@earendil-works/pi-tui";
 import type {
   ExtensionAPI,
   ExtensionCommandContext,
   ExtensionContext,
-  MessageRenderer,
   Theme,
 } from "@earendil-works/pi-coding-agent";
 
@@ -223,7 +222,10 @@ import {
   type GatewayCommandId,
 } from "./lib/command-surface.ts";
 import type { ConfigPanelResult } from "../../catalog/registry.ts";
-import { openInfoPanel } from "../../lib/common/info-panel.ts";
+import {
+  emitHumanOnlyCommandOutput,
+  registerHumanOnlyCommandOutput,
+} from "../../lib/common/human-only-command-output.ts";
 import {
   openExtensionInManager,
   type SfPiManagerOpenRoute,
@@ -375,18 +377,9 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
   registerExtensionDoctor("sf-llm-gateway-internal", (cwd) => runGatewayExtensionDoctor(cwd));
   registerManagerDetailActions(pi, "sf-llm-gateway-internal", buildGatewayManagerActions(pi));
 
-  // Rendering hook for any sendMessage traffic the extension emits on behalf
-  // of the gateway. Single registration now that the retired anthropic
-  // sub-provider is gone.
-  const renderGatewayMessage: MessageRenderer<unknown> = (message, _options, theme) => {
-    const content =
-      typeof message.content === "string"
-        ? message.content
-        : (message.content ?? []).map((part) => (part.type === "text" ? part.text : "")).join("");
-    const header = theme.fg("accent", theme.bold("[SF LLM Gateway Internal]"));
-    return new Text(`${header}\n${content}`, 0, 0);
-  };
-  pi.registerMessageRenderer(PROVIDER_NAME, renderGatewayMessage);
+  // Headless command reports use state-only entries, so JSON clients can
+  // observe them without adding a model-visible custom message.
+  registerHumanOnlyCommandOutput(pi, PROVIDER_NAME);
 
   pi.registerCommand(FRIENDLY_COMMAND_NAME, {
     description: "SF LLM Gateway — status, controls, and credential setup",
@@ -2409,17 +2402,10 @@ async function promptAndSaveApiKey(
   return true;
 }
 
-// Render command output for both TUI and headless runs.
-//
-// In interactive Pi (hasUI=true) we put the full report into `notify` —
-// Pi's notification popup renders multi-line content, and every other
-// extension in this repo (sf-devbar, sf-slack, sf-pi-manager, sf-welcome)
-// uses the same pattern. Without this, only the short `summary` string is
-// shown and the actual report never reaches the user.
-//
-// In headless mode we still surface the summary via notify and push the
-// detailed report into the transcript via sendMessage so it shows up in
-// session logs / non-TUI transports.
+// Render display-only command output through Pi's human channels without
+// adding it to later model context. TUI keeps the existing info panel, RPC
+// emits a notification, JSON emits a custom-entry event, and print mode writes
+// the report while appending the same state-only entry.
 async function emitGatewayCommandOutput(
   pi: ExtensionAPI,
   ctx: ExtensionCommandContext,
@@ -2435,21 +2421,11 @@ async function emitCommandOutput(
   details: string,
   level: "info" | "warning" | "error",
 ): Promise<void> {
-  if (ctx.hasUI) {
-    await openInfoPanel(ctx, { title: summary, body: details || summary, severity: level });
-    return;
-  }
-
-  ctx.ui.notify(summary, level);
-  pi.sendMessage(
-    {
-      customType: PROVIDER_NAME,
-      content: details,
-      display: true,
-      details: {},
-    },
-    { triggerTurn: false },
-  );
+  await emitHumanOnlyCommandOutput(pi, ctx, PROVIDER_NAME, {
+    title: summary,
+    body: details || summary,
+    severity: level,
+  });
 }
 
 // -------------------------------------------------------------------------------------------------

@@ -33,7 +33,7 @@ describe("extension factory body", () => {
 
   it("does not call process.cwd() in the factory body", () => {
     // Extract the factory function body (between the export default and the first pi.on)
-    // The factory body starts after "export default function" and before pi.registerMessageRenderer
+    // The factory body starts after "export default function" and before the first event handler.
     const factoryStart = source.indexOf("export default function");
     const firstEventHandler = source.indexOf('pi.on("session_start"');
     expect(factoryStart).toBeGreaterThan(-1);
