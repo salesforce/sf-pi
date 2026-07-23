@@ -1,23 +1,19 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/** Native Auto Update command and runner for SF Pi Manager. */
+/** `/sf-pi auto-update` parsing, explicit actions, and status rendering. */
 import type {
   ExtensionAPI,
   ExtensionCommandContext,
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 import {
-  autoUpdateStatusPath,
-  markAutoUpdateResult,
-  markAutoUpdateRunning,
   readAutoUpdateEnabled,
   readAutoUpdateStatus,
-  shouldRunAutoUpdate,
   writeAutoUpdateEnabled,
   type AutoUpdateStatus,
 } from "../../../lib/common/auto-update/store.ts";
+import { runNativeAutoUpdate } from "./auto-update-runner.ts";
 
-const AUTO_UPDATE_DELAY_MS = 10_000;
-const UPDATE_TIMEOUT_MS = 10 * 60 * 1000;
+export { runNativeAutoUpdate } from "./auto-update-runner.ts";
 
 export type AutoUpdateAction = "status" | "on" | "off" | "run" | "help";
 
@@ -30,10 +26,15 @@ export function parseAutoUpdateArgs(raw: string): { action: AutoUpdateAction } {
   return { action: "status" };
 }
 
+export interface ManualAutoUpdateRunner {
+  runManual(ctx: ExtensionCommandContext): Promise<AutoUpdateStatus>;
+}
+
 export async function handleAutoUpdate(
   pi: ExtensionAPI,
   ctx: ExtensionCommandContext,
   args: { action: AutoUpdateAction },
+  runner?: ManualAutoUpdateRunner,
 ): Promise<void> {
   if (args.action === "on") {
     writeAutoUpdateEnabled(true);
@@ -47,7 +48,11 @@ export async function handleAutoUpdate(
   }
   if (args.action === "run") {
     ctx.ui.notify("Auto Update starting…", "info");
-    const status = await runNativeAutoUpdate(pi, ctx);
+    const status = runner
+      ? await runner.runManual(ctx)
+      : await runNativeAutoUpdate(pi, ctx, {
+          canRunTarget: () => safeIsIdle(ctx),
+        });
     ctx.ui.notify(
       renderAutoUpdateStatus("Auto Update finished.", status),
       status.lastResult === "failed" ? "warning" : "info",
@@ -59,75 +64,19 @@ export async function handleAutoUpdate(
       [
         "Usage: /sf-pi auto-update [status|on|off|run]",
         "",
-        "Native Auto Update is opt-in. When enabled, SF Pi tries once per day after startup, only if Pi is idle.",
-        "Containment behavior:",
-        "  1. Pi update is skipped to keep the runtime inside the audited Pi 0.81 line",
-        "  2. sf update stable",
+        "Native Auto Update is opt-in. Due work waits for Pi's next agent_settled boundary.",
+        "First-party targets:",
+        "  1. Pi runtime stays inside the audited 0.81 support window",
+        "  2. compatibility preflight + pi update --extension <source> --no-approve",
+        "  3. sf update stable",
+        "Outdated, compatible, unpinned global npm packages such as Herdr are eligible.",
+        "Pinned, local, git, project, incompatible, and unverifiable packages remain untouched.",
       ].join("\n"),
       "info",
     );
     return;
   }
   ctx.ui.notify(renderAutoUpdateStatus(), "info");
-}
-
-export function scheduleNativeAutoUpdate(
-  pi: ExtensionAPI,
-  ctx: ExtensionContext,
-): ReturnType<typeof setTimeout> {
-  const timer = setTimeout(() => {
-    try {
-      if (!ctx.hasUI) return;
-      if (!ctx.isIdle()) return;
-      if (!shouldRunAutoUpdate()) return;
-      void runNativeAutoUpdate(pi, ctx).then((status) => {
-        if (!ctx.hasUI) return;
-        const level = status.lastResult === "failed" ? "warning" : "info";
-        ctx.ui.notify(renderAutoUpdateStatus("Auto Update finished.", status), level);
-      });
-    } catch {
-      // Best-effort background convenience. Manual /sf-pi auto-update run remains available.
-    }
-  }, AUTO_UPDATE_DELAY_MS);
-  timer.unref?.();
-  return timer;
-}
-
-export async function runNativeAutoUpdate(
-  pi: ExtensionAPI,
-  ctx: Pick<ExtensionContext, "cwd" | "ui" | "hasUI">,
-): Promise<AutoUpdateStatus> {
-  const setStatus = (message: string | undefined) => {
-    if (ctx.hasUI) ctx.ui.setStatus("sf-pi-auto-update", message);
-  };
-
-  try {
-    // `pi update --all` is unbounded and could cross the exclusive 0.82 ceiling.
-    // Keep the independent Salesforce CLI update; bounded Pi updates belong to
-    // the later agent-settled coordinator.
-    markAutoUpdateRunning("sf-cli");
-    setStatus("Auto Update: sf update stable…");
-    const sfResult = await pi.exec("sf", ["update", "stable"], {
-      cwd: ctx.cwd,
-      timeout: UPDATE_TIMEOUT_MS,
-    });
-    if (sfResult.code !== 0) {
-      return fail(
-        `sf update stable failed: ${summarizeOutput(sfResult.stderr || sfResult.stdout)}`,
-      );
-    }
-
-    return markAutoUpdateResult({
-      result: "success",
-      message:
-        "Salesforce CLI update completed. Pi update skipped; keep Pi 0.81.1 inside the audited runtime window.",
-      restartRecommended: false,
-    });
-  } catch (error) {
-    return fail(error instanceof Error ? error.message : String(error));
-  } finally {
-    setStatus(undefined);
-  }
 }
 
 export function renderAutoUpdateStatus(
@@ -138,32 +87,28 @@ export function renderAutoUpdateStatus(
   const lines = [
     prefix,
     `Auto Update: ${enabled ? "on" : "off"}`,
-    `Status file: ${autoUpdateStatusPath()}`,
     `Last run: ${status.lastRunAt ?? "never"}`,
     `Last result: ${status.lastResult ?? "—"}`,
+    status.pending ? "Pending: waiting for agent_settled" : undefined,
     status.running ? `Running: ${status.currentTarget ?? "update"}` : undefined,
     status.restartRecommended ? "Restart recommended: yes" : undefined,
     status.message ? `Message: ${status.message}` : undefined,
+    ...(status.targets ?? []).map(
+      (target) => `  ${target.target}: ${target.result} — ${target.message}`,
+    ),
     "",
-    "Containment commands:",
-    "  Pi update: skipped (audited runtime is 0.81.1)",
-    "  sf update stable",
+    "Native targets:",
+    "  Pi runtime: retained inside the audited 0.81 window",
+    "  Pi packages: compatibility preflight, then pi update --extension <source> --no-approve",
+    "  Salesforce CLI: sf update stable",
   ].filter((line): line is string => !!line);
   return lines.join("\n");
 }
 
-function fail(message: string): AutoUpdateStatus {
-  return markAutoUpdateResult({
-    result: "failed",
-    message: message || "Auto Update failed.",
-    restartRecommended: false,
-  });
-}
-
-function summarizeOutput(output: string): string {
-  const line = output
-    .split(/\r?\n/)
-    .map((part) => part.trim())
-    .find(Boolean);
-  return line ? line.slice(0, 240) : "no output";
+function safeIsIdle(ctx: Pick<ExtensionContext, "isIdle">): boolean {
+  try {
+    return ctx.isIdle();
+  } catch {
+    return false;
+  }
 }

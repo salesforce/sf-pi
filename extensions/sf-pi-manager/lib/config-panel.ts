@@ -95,7 +95,7 @@ class SfPiManagerConfigPanel implements Focusable {
       pad(` ${autoCursor} ${t.fg("accent", autoBox)} ${t.bold("Enable daily native auto-update")}`),
     );
     for (const line of wrapPlainText(
-      "When enabled, SF Pi tries once per day after startup, only if Pi is idle. It runs sf update stable and skips unbounded Pi updates to keep the audited 0.81 runtime line. It never restarts Pi automatically.",
+      "When enabled, due work waits for the next agent-settled boundary. SF Pi retains the audited Pi 0.81 runtime, updates only declared-compatible unpinned global npm Pi packages through Pi (including Herdr when outdated), then runs sf update stable. It never restarts Pi automatically.",
       Math.max(20, width - 5),
     )) {
       lines.push(pad(`    ${t.fg("dim", line)}`));
@@ -103,6 +103,9 @@ class SfPiManagerConfigPanel implements Focusable {
     const autoStatus = readAutoUpdateStatus();
     lines.push(pad(`    ${t.fg("muted", "Last run:")} ${autoStatus.lastRunAt ?? "never"}`));
     lines.push(pad(`    ${t.fg("muted", "Last result:")} ${autoStatus.lastResult ?? "—"}`));
+    if (autoStatus.pending) {
+      lines.push(pad(`    ${t.fg("muted", "Pending:")} waiting for agent_settled`));
+    }
     lines.push(pad(`    ${t.fg("muted", "Machine scope:")} global settings`));
     lines.push(pad(""));
 

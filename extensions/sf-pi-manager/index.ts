@@ -50,8 +50,10 @@
  *   TUI overlay → Enter          | list view                   | Open extension detail/config view
  *   TUI overlay → Esc            | list view, changes pending  | Apply exclusions, reload if needed
  *   TUI overlay → Esc            | detail view                 | Return to extension list
- *   session_start                | —                           | Update footer status
- *   session_shutdown             | —                           | Clear footer status
+ *   session_start                | cadence due + interactive   | Record Auto Update as pending
+ *   agent_start                  | update running              | Abort and defer remaining work
+ *   agent_settled                | pending + consented + idle   | Run one bounded update plan
+ *   session_shutdown             | —                           | Cancel stale work; clear footer status
  */
 
 import { readFileSync } from "node:fs";
@@ -109,8 +111,10 @@ import { handleTelemetry, parseTelemetryArgs } from "./lib/telemetry-command.ts"
 import {
   handleAutoUpdate,
   parseAutoUpdateArgs,
-  scheduleNativeAutoUpdate,
+  type ManualAutoUpdateRunner,
 } from "./lib/auto-update-command.ts";
+import { createAgentSettledUpdateCoordinator } from "./lib/auto-update-coordinator.ts";
+import { registerAutoUpdateTranscript } from "./lib/auto-update-transcript.ts";
 import { assertTelemetryDefault } from "../../lib/common/privacy/assert-default.ts";
 import { getTelemetryState } from "../../lib/common/privacy/state.ts";
 import {
@@ -271,6 +275,9 @@ type CommandArgs = {
 export default function sfPiManagerExtension(pi: ExtensionAPI) {
   if (!requirePiVersion(pi, "sf-pi-manager")) return;
 
+  const autoUpdateCoordinator = createAgentSettledUpdateCoordinator(pi);
+  registerAutoUpdateTranscript(pi);
+
   pi.events.on(SF_PI_MANAGER_OPEN_EVENT, (request: SfPiManagerOpenRequest) => {
     request.accept?.();
     void handleOverlay(pi, request.ctx, resolveEffectiveScope(request.ctx.cwd), request.route).then(
@@ -283,7 +290,9 @@ export default function sfPiManagerExtension(pi: ExtensionAPI) {
     description: "Salesforce pi extension manager — browse, enable, and disable extensions",
     getArgumentCompletions: getSfPiArgumentCompletions,
     handler: async (args, ctx) => {
-      await withSafeCommandHandler(ctx, COMMAND_NAME, () => handleCommand(pi, args, ctx));
+      await withSafeCommandHandler(ctx, COMMAND_NAME, () =>
+        handleCommand(pi, args, ctx, autoUpdateCoordinator),
+      );
     },
   });
 
@@ -292,7 +301,6 @@ export default function sfPiManagerExtension(pi: ExtensionAPI) {
   // before the runtime is torn down — otherwise a reload within the timer
   // window fires it against a stale ctx and crashes pi.
   let doctorRefreshTimer: ReturnType<typeof setTimeout> | undefined;
-  let autoUpdateTimer: ReturnType<typeof setTimeout> | undefined;
   const isAbortedSafe = (ctx: ExtensionContext): boolean => {
     try {
       return ctx.signal?.aborted ?? false;
@@ -347,17 +355,21 @@ export default function sfPiManagerExtension(pi: ExtensionAPI) {
     }, 2_500);
     doctorRefreshTimer.unref?.();
 
-    if (autoUpdateTimer) clearTimeout(autoUpdateTimer);
-    if (event.reason === "startup") {
-      autoUpdateTimer = scheduleNativeAutoUpdate(pi, ctx);
-    }
+    autoUpdateCoordinator.onSessionStart(event.reason, ctx);
+  });
+
+  pi.on("agent_start", () => {
+    autoUpdateCoordinator.onAgentStart();
+  });
+
+  pi.on("agent_settled", async (_event, ctx) => {
+    await autoUpdateCoordinator.onAgentSettled(ctx);
   });
 
   pi.on("session_shutdown", async (_event, ctx) => {
     if (doctorRefreshTimer) clearTimeout(doctorRefreshTimer);
     doctorRefreshTimer = undefined;
-    if (autoUpdateTimer) clearTimeout(autoUpdateTimer);
-    autoUpdateTimer = undefined;
+    autoUpdateCoordinator.onSessionShutdown();
     ctx.ui.setStatus(STATUS_KEY, undefined);
     ctx.ui.setStatus(RECOMMENDATIONS_STATUS_KEY, undefined);
     ctx.ui.setStatus(ANNOUNCEMENTS_STATUS_KEY, undefined);
@@ -552,6 +564,7 @@ async function handleCommand(
   pi: ExtensionAPI,
   raw: string,
   ctx: ExtensionCommandContext,
+  autoUpdateRunner: ManualAutoUpdateRunner,
 ): Promise<void> {
   const args = parseCommandArgs(raw);
   // Resolve scope here so handlers always receive a concrete value but
@@ -616,7 +629,7 @@ async function handleCommand(
       break;
     }
     case "auto-update": {
-      await handleAutoUpdate(pi, ctx, parseAutoUpdateArgs(args.rest ?? ""));
+      await handleAutoUpdate(pi, ctx, parseAutoUpdateArgs(args.rest ?? ""), autoUpdateRunner);
       break;
     }
     case "help":

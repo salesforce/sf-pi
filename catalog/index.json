@@ -862,10 +862,12 @@
     "tools": [],
     "events": [
       "session_start",
+      "agent_start",
+      "agent_settled",
       "session_shutdown"
     ],
     "docs": {
-      "summary": "Core manager for the sf-pi package. Provides /sf-pi list/enable/disable/status/display/recommended/announcements/skills/doctor/auto-update commands plus the interactive TUI overlay and settings panel. alwaysActive: enable/disable is mediated through this extension only.",
+      "summary": "Core manager for the sf-pi package. Provides /sf-pi list/enable/disable/status/display/recommended/announcements/skills/doctor/auto-update commands plus the interactive TUI overlay and settings panel. Opt-in Auto Update waits for agent_settled, retains the audited Pi runtime, updates only declared-compatible unpinned global npm Pi packages through Pi, and runs the independent Salesforce CLI stable update. alwaysActive: enable/disable is mediated through this extension only.",
       "primaryFiles": [
         "index.ts",
         "lib/overlay.ts",
@@ -876,6 +878,10 @@
         "lib/doctor-command.ts",
         "lib/skill-sources-command.ts",
         "lib/auto-update-command.ts",
+        "lib/auto-update-coordinator.ts",
+        "lib/auto-update-package-plan.ts",
+        "lib/auto-update-runner.ts",
+        "lib/auto-update-transcript.ts",
         "lib/config-panel.ts",
         "../../lib/common/auto-update/store.ts"
       ],
@@ -883,17 +889,20 @@
         "~/.pi/agent/settings.json (sf-pi package filter list)",
         "<globalAgentDir>/state/sf-pi/recommendations.json",
         "<globalAgentDir>/state/sf-pi/announcements.json",
-        "<globalAgentDir>/sf-pi/auto-update/status.json"
+        "<globalAgentDir>/sf-pi/auto-update/status.json",
+        "<globalAgentDir>/sf-pi/auto-update/run.lock (ephemeral)"
       ],
       "safety": [
         "Owns the WRITE side of pi's package filter list via lib/common/sf-pi-package-state.ts.",
+        "Auto Update is opt-in, interactive-session only, agent-settled, machine-locked, abortable, and output-redacted; it never performs an unbounded Pi self-update.",
+        "Package automation is limited to outdated unpinned global npm packages with declared active Pi/Node compatibility; pinned, local, git, project, incompatible, and unverifiable packages are skipped.",
         "alwaysActive cannot be disabled through the standard toggle action."
       ]
     },
     "entry": "extensions/sf-pi-manager/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 3986
+    "srcLoc": 4609
   },
   {
     "id": "sf-skills",
@@ -1124,6 +1133,6 @@
     "entry": "extensions/sf-welcome/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 6411
+    "srcLoc": 6419
   }
 ]

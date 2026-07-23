@@ -14,8 +14,10 @@ disabling bundled extensions at runtime. Uses Pi's native package filtering in
 ```
 Extension loads
   ├─ registerCommand("sf-pi")
-  ├─ on("session_start")         → update footer status
-  └─ on("session_shutdown")      → clear footer status
+  ├─ on("session_start")         → update footer status + record due updates as pending
+  ├─ on("agent_start")           → abort any overlapping automatic update
+  ├─ on("agent_settled")         → run one consented pending update plan
+  └─ on("session_shutdown")      → cancel stale work + clear footer status
 
 /sf-pi command
   ├─ parseCommandArgs()           → determine subcommand + scope
@@ -88,24 +90,38 @@ distinguishes "sf-pi default" from "user override" so the sf-welcome
 splash can label the row correctly. `/sf-pi telemetry on|off|status`
 manages the setting without touching the user's shell rc files.
 
-### 6. Native Auto Update is opt-in and delegated
+### 6. Native Auto Update is opt-in and agent-settled
 
 The SF Pi Manager settings panel exposes a single machine-scoped toggle for
-Native Auto Update. When enabled, `session_start` waits briefly after startup
-and makes one attempt only if Pi is idle and the daily cadence elapsed. The
-runner skips unbounded Pi updates so it cannot cross the audited
-`>=0.81.1 <0.82.0` window. It keeps the independent first-party Salesforce CLI
-update:
+Native Auto Update. When the daily cadence is due, `session_start` records the
+work as pending but performs no update. The next `agent_settled` boundary
+rechecks opt-in and idle state, writes a sanitized Human-Only plan row, and runs
+eligible targets independently under an atomic machine lock.
+
+The Pi runtime remains on the audited `>=0.81.1 <0.82.0` line because Pi does
+not expose a bounded self-update target. Global npm Pi packages receive a
+read-only compatibility preflight; only an outdated, unpinned package whose
+latest release declares support for the active Pi and Node runtimes is updated
+through Pi's native command:
 
 ```bash
+pi update --extension <source> --no-approve
 sf update stable
 ```
 
-It does not implement an npm/Homebrew/git updater, does not update optional
-tools, and does not restart Pi automatically. Status reports the audited Pi
-0.81.1 runtime, and is cached under
-`<globalAgentDir>/sf-pi/auto-update/status.json` so SF Welcome can render the
-Auto Update row without running commands.
+This includes an outdated unpinned `npm:@ogulcancelik/pi-herdr` installation.
+Pinned, local, git, project-scoped, incompatible, and unverifiable packages are
+left untouched. A package failure does not hide the independent Salesforce CLI
+step. `PI_OFFLINE` skips network targets, while `PI_SKIP_VERSION_CHECK` from
+packages such as `pi-updater` no longer breaks the flow because Auto Update
+never invokes Pi's self-update path.
+
+A new agent turn aborts the active command and defers remaining automatic work.
+Disabling Auto Update cancels pending work; reload and shutdown abort stale
+work. The coordinator never runs automatically in headless sessions and never
+restarts Pi. Bounded, redacted target results are cached under
+`<globalAgentDir>/sf-pi/auto-update/status.json` so SF Welcome can render status
+without running commands.
 
 ### 7. Doctor repairs are non-destructive
 
@@ -120,35 +136,37 @@ moved to `~/.pi/agent/skills-quarantine/` instead of being deleted.
 
 ## Behavior Matrix
 
-| Trigger                | Condition                 | Result                                |
-| ---------------------- | ------------------------- | ------------------------------------- |
-| /sf-pi (no args)       | has UI                    | Open TUI overlay                      |
-| /sf-pi (no args)       | no UI                     | Fall back to list                     |
-| /sf-pi list            | package in settings       | Show extension states                 |
-| /sf-pi list            | package NOT in settings   | Show states (all enabled assumed)     |
-| /sf-pi enable \<id\>   | valid, currently disabled | Remove exclusion, reload              |
-| /sf-pi enable \<id\>   | valid, already enabled    | Notify "already enabled"              |
-| /sf-pi enable \<id\>   | alwaysActive              | Notify "cannot toggle"                |
-| /sf-pi disable \<id\>  | valid, currently enabled  | Add exclusion, reload                 |
-| /sf-pi disable-all     | —                         | Exclude all non-alwaysActive, reload  |
-| /sf-pi enable-all      | —                         | Remove all exclusions, reload         |
-| /sf-pi display         | no profile                | Show effective display profile        |
-| /sf-pi display <name>  | compact/balanced/verbose  | Save shared display profile           |
-| /sf-pi auto-update     | no arg / `status`         | Show Native Auto Update status        |
-| /sf-pi auto-update on  | —                         | Enable daily native Auto Update       |
-| /sf-pi auto-update off | —                         | Disable daily native Auto Update      |
-| /sf-pi auto-update run | —                         | Run native update sequence now        |
-| /sf-pi doctor          | —                         | Show setup diagnostics                |
-| /sf-pi doctor runtime  | —                         | Show Pi/Node/npm runtime preflight    |
-| /sf-pi doctor fix      | user confirms             | Apply safe repairs and reload         |
-| /sf-pi telemetry       | no arg / `status`         | Show pi anonymous-telemetry posture   |
-| /sf-pi telemetry off   | —                         | Write `enableInstallTelemetry: false` |
-| /sf-pi telemetry on    | —                         | Write `enableInstallTelemetry: true`  |
-| TUI list → Enter       | —                         | Open user-first extension detail view |
-| TUI list → Esc         | changes pending           | Apply exclusions, reload if needed    |
-| TUI detail → Esc       | —                         | Return to extension list              |
-| session_start          | —                         | Update footer status                  |
-| session_shutdown       | —                         | Clear footer status                   |
+| Trigger                | Condition                  | Result                                 |
+| ---------------------- | -------------------------- | -------------------------------------- |
+| /sf-pi (no args)       | has UI                     | Open TUI overlay                       |
+| /sf-pi (no args)       | no UI                      | Fall back to list                      |
+| /sf-pi list            | package in settings        | Show extension states                  |
+| /sf-pi list            | package NOT in settings    | Show states (all enabled assumed)      |
+| /sf-pi enable \<id\>   | valid, currently disabled  | Remove exclusion, reload               |
+| /sf-pi enable \<id\>   | valid, already enabled     | Notify "already enabled"               |
+| /sf-pi enable \<id\>   | alwaysActive               | Notify "cannot toggle"                 |
+| /sf-pi disable \<id\>  | valid, currently enabled   | Add exclusion, reload                  |
+| /sf-pi disable-all     | —                          | Exclude all non-alwaysActive, reload   |
+| /sf-pi enable-all      | —                          | Remove all exclusions, reload          |
+| /sf-pi display         | no profile                 | Show effective display profile         |
+| /sf-pi display <name>  | compact/balanced/verbose   | Save shared display profile            |
+| /sf-pi auto-update     | no arg / `status`          | Show Native Auto Update status         |
+| /sf-pi auto-update on  | —                          | Enable daily native Auto Update        |
+| /sf-pi auto-update off | —                          | Disable daily native Auto Update       |
+| /sf-pi auto-update run | —                          | Run native update sequence now         |
+| /sf-pi doctor          | —                          | Show setup diagnostics                 |
+| /sf-pi doctor runtime  | —                          | Show Pi/Node/npm runtime preflight     |
+| /sf-pi doctor fix      | user confirms              | Apply safe repairs and reload          |
+| /sf-pi telemetry       | no arg / `status`          | Show pi anonymous-telemetry posture    |
+| /sf-pi telemetry off   | —                          | Write `enableInstallTelemetry: false`  |
+| /sf-pi telemetry on    | —                          | Write `enableInstallTelemetry: true`   |
+| TUI list → Enter       | —                          | Open user-first extension detail view  |
+| TUI list → Esc         | changes pending            | Apply exclusions, reload if needed     |
+| TUI detail → Esc       | —                          | Return to extension list               |
+| session_start          | cadence due + interactive  | Record Auto Update as pending          |
+| agent_start            | update running             | Abort and defer remaining work         |
+| agent_settled          | pending + consented + idle | Run one bounded update plan            |
+| session_shutdown       | —                          | Cancel stale work; clear footer status |
 
 ## File Structure
 
@@ -159,6 +177,10 @@ extensions/sf-pi-manager/
   lib/
     announcements.ts        ← implementation module
     auto-update-command.ts  ← implementation module
+    auto-update-coordinator.ts← implementation module
+    auto-update-package-plan.ts← implementation module
+    auto-update-runner.ts   ← implementation module
+    auto-update-transcript.ts← implementation module
     config-panel.ts         ← implementation module
     doctor-command.ts       ← implementation module
     extension-aliases.ts    ← implementation module
@@ -173,6 +195,12 @@ extensions/sf-pi-manager/
   tests/
     announcements-command.test.ts← unit / smoke test
     auto-update-command.test.ts← unit / smoke test
+    auto-update-coordinator.test.ts← unit / smoke test
+    auto-update-package-plan.test.ts← unit / smoke test
+    auto-update-real-pi.test.ts← unit / smoke test
+    auto-update-runtime-orchestration.test.ts← unit / smoke test
+    auto-update-transcript.test.ts← unit / smoke test
+    catalog-event-attestation.test.ts← unit / smoke test
     command-parsing.test.ts ← unit / smoke test
     config-panel.test.ts    ← unit / smoke test
     doctor-command.test.ts  ← unit / smoke test
@@ -251,6 +279,20 @@ Extensions marked `alwaysActive: true` in their manifest cannot be
 toggled through the manager — they're always on. `enable-all` removes
 all exclusion patterns; disabled extensions that still appear are the
 always-active ones (like `sf-pi-manager` itself).
+
+**Auto Update is on but Herdr was not updated:**
+Run `/sf-pi auto-update status`. Automatic package updates are deliberately
+limited to outdated, unpinned global npm packages whose latest metadata declares
+compatibility with the active Pi and Node runtimes. A pinned, project-scoped,
+local, git, already-current, incompatible, or unverifiable Herdr installation is
+left untouched. Use Pi's explicit package command when you intentionally want to
+change one of those constraints.
+
+**Auto Update says it is waiting for `agent_settled`:**
+This is expected. Startup records due work without mutating the machine. The
+coordinator runs after the next fully settled agent turn, rechecks opt-in and
+idle state, and cancels or defers if a new turn, reload, or shutdown overlaps.
+`/sf-pi auto-update run` remains the explicit immediate action.
 
 **Project-scoped changes aren't sticking:**
 The manager writes to `<cwd>/.pi/settings.json` for project scope and

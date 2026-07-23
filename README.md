@@ -592,6 +592,8 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 - `pi --version` is outside SF Pi's audited runtime window
 - Disabling an extension through the manager doesn't take effect
 - `/sf-pi enable-all` still leaves some extensions disabled
+- Auto Update is on but Herdr was not updated
+- Auto Update says it is waiting for `agent_settled`
 - Project-scoped changes aren't sticking
 - Display profile change doesn't affect any output
 - `/sf-pi recommended` shows no items or the opposite — too many
