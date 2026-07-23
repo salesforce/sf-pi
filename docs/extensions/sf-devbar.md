@@ -57,7 +57,7 @@ You can also manage this extension from the SF Pi home base:
 - **Commands:** `/sf-devbar`, `/sf-org`
 - **LLM tools:** _none_
 - **Providers:** _none_
-- **Events/hooks:** `session_start`, `session_shutdown`, `model_select`, `thinking_level_select`, `turn_start`, `turn_end`, `agent_end`, `before_agent_start`
+- **Events/hooks:** `session_start`, `session_shutdown`, `model_select`, `session_info_changed`, `thinking_level_select`, `turn_start`, `turn_end`, `agent_end`, `before_agent_start`
 
 </details>
 

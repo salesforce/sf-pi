@@ -127,7 +127,7 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
     maturity: "stable",
     defaultEnabled: true,
     commands: ["/sf-devbar","/sf-org"],
-    events: ["session_start","session_shutdown","model_select","thinking_level_select","turn_start","turn_end","agent_end","before_agent_start"],
+    events: ["session_start","session_shutdown","model_select","session_info_changed","thinking_level_select","turn_start","turn_end","agent_end","before_agent_start"],
     configurable: true,
     getConfigPanel: async () => {
       const mod = await import("../extensions/sf-devbar/lib/config-panel.ts");

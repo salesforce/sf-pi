@@ -26,6 +26,16 @@ describe("sf-devbar", () => {
     expect(source).not.toContain('title: "📊 SF DevBar — status & controls"');
   });
 
+  it("does not recompute Pi's context percentage from token counts", () => {
+    expect(source).not.toContain("contextUsage.tokens");
+    expect(source).toContain("toDevbarRuntimeFacts(ctx.getContextUsage(), pi.getSessionName())");
+  });
+
+  it("repaints from Pi's public session-name event", () => {
+    expect(source).toMatch(/pi\.on\("session_info_changed",\s*async\s*\(_event, ctx\)/);
+    expect(source).toContain("pi.getSessionName()");
+  });
+
   it("registers Manager detail actions for the old panel features", () => {
     expect(source).toContain('registerManagerDetailActions(pi, "sf-devbar"');
     expect(source).toContain('id: "status"');

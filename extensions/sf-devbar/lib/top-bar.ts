@@ -9,6 +9,7 @@
  *   4.  Working folder
  *   5.  Git branch + change counts
  *   6.  Context Window progress bar (grey background for available space)
+ *   7.  Optional Pi session name (lowest-priority left segment)
  *
  * Pure function: takes state, returns themed string array (one line).
  */
@@ -49,6 +50,8 @@ export type TopBarState = {
   thinkingLevel?: string;
   /** Base name of the working directory. */
   folderName: string;
+  /** Public Pi session display name, when the user assigned one. */
+  sessionName?: string;
   /** Current git branch name. */
   gitBranch?: string | null;
   /** Git change counts from `git status`. */
@@ -89,6 +92,7 @@ function isGatewayProvider(provider: string | undefined): boolean {
 
 /** Powerline thin-right separator between segments (matches pi-powerline-footer). */
 const SEP_CHAR = "\ue0b1";
+const SESSION_SEGMENT_MAX_WIDTH = 32;
 
 // -------------------------------------------------------------------------------------------------
 // Renderer
@@ -119,6 +123,13 @@ export function renderTopBarLine(state: TopBarState, theme: BarTheme, width: num
   const leftW = visibleWidth(left);
   const rightW = visibleWidth(right);
   const minGap = 2;
+
+  if (rightW >= width) {
+    return [truncateToWidth(right, width, "…")];
+  }
+  if (rightW + minGap >= width) {
+    return [`${" ".repeat(width - rightW)}${right}`];
+  }
 
   if (leftW + minGap + rightW <= width) {
     const pad = " ".repeat(width - leftW - rightW);
@@ -178,6 +189,11 @@ export function renderTopBarParts(
   if (state.isThinking) {
     leftSegments.push(theme.fg("accent", "⟳"));
   }
+
+  // 8. Optional public Pi session name. Keep it last so model, project,
+  // context, and active-work facts win when the terminal is narrow.
+  const sessionSeg = formatSessionSegment(state.sessionName, theme);
+  if (sessionSeg) leftSegments.push(sessionSeg);
 
   const rightSegments: string[] = [];
 
@@ -463,6 +479,12 @@ function formatFolderSegment(folderName: string, mode: GlyphMode, colors: Devbar
   return hexFg(colors.folderPath, `${icon} ${folderName}`);
 }
 
+function formatSessionSegment(sessionName: string | undefined, theme: BarTheme): string | null {
+  const name = sessionName?.trim();
+  if (!name) return null;
+  return theme.fg("muted", truncateToWidth(`session:${name}`, SESSION_SEGMENT_MAX_WIDTH, "…"));
+}
+
 function formatGitSegment(state: TopBarState, theme: BarTheme, mode: GlyphMode): string | null {
   if (!state.gitBranch) return null;
 
@@ -497,7 +519,10 @@ function formatContextSegment(
   theme: BarTheme,
   colors: DevbarColors,
 ): string | null {
-  if (percent == null) return null;
+  if (percent === undefined) return null;
+  if (percent === null) {
+    return `${theme.fg("dim", "Context Window")} ${theme.fg("muted", "unknown")}`;
+  }
 
   const clamped = Math.max(0, Math.min(100, percent));
   const barWidth = 10;

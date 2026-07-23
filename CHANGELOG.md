@@ -50,6 +50,8 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ### Changed
 
+- **Kept new display-only command reports out of model context.** SF LLM Gateway and SF Feedback now use Pi's human-only channels across TUI, RPC, JSON, and print modes. Headless reports use state-only entries rather than model-visible custom messages.
+- **Corrected SF DevBar runtime facts for Pi 0.81.** DevBar now consumes Pi's authoritative nullable context percentage, distinguishes absent usage from post-compaction `unknown`, preserves exact zero and fractional values, and displays bounded Pi-owned session names without parsing session history.
 - **Patched transitive URL parsing.** Updated `fast-uri` to 3.1.4 to resolve the production audit advisory without changing direct dependency APIs.
 - **Reduced SF Welcome splash clutter.** Removed `pi-updater` from the recommended package set, hid monthly usage for non-gateway providers, removed the Tips block, and tightened trailing splash/header spacing.
 - **Added public threat model and secure-design review evidence.** Added `docs/threat-model.md` and linked it from security docs as the public evidence packet for trust boundaries, mitigations, validation, and residual governance risks.

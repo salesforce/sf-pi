@@ -717,7 +717,7 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 
 - Bars don't appear at all
 - Org segment shows `…` or takes a long time
-- Context bar starts empty and doesn't fill
+- Context bar is hidden or says `unknown`
 - Gateway badge color is wrong when using sf-llm-gateway-internal
 - `img:Nc` pill appears unexpectedly
 

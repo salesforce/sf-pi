@@ -1,6 +1,6 @@
 # Pi 0.81 Runtime Adoption Plan
 
-Status: Pi 0.81.1 runtime adoption and M2A active-branch context implemented; native interactive login remains deferred
+Status: Pi 0.81.1 runtime adoption plus M2A active-branch context, M2B human-only command output, and M2C public DevBar facts implemented; native interactive login remains deferred
 
 ## Goal
 
@@ -324,6 +324,8 @@ Any filtering of state-only entries or hard Guardrail enforcement stops the slic
 
 ## M2B — Human-only command output
 
+Implementation status: implemented.
+
 ### Objective
 
 Make display-only Gateway and Feedback command reports model-invisible.
@@ -336,7 +338,7 @@ Make display-only Gateway and Feedback command reports model-invisible.
 
 ### Red proofs
 
-TUI, RPC, print, and JSON/headless reports remain visible through the correct human channel, but no `custom_message` reaches later model context. Only actionable findings may queue an agent-visible follow-up.
+TUI, RPC, print, and JSON/headless reports remain visible through the correct human channel, but no newly emitted display-only report creates a `custom_message` for later model context. Only actionable findings may queue an agent-visible follow-up.
 
 ### Deletion gate
 
@@ -346,9 +348,24 @@ Delete display-only `sendMessage()` calls and any renderer left with no other pu
 
 Mandatory gate and mode-by-mode artifact; TUI QA only if visible output changes.
 
+Implementation evidence:
+
+- Gateway and Feedback share one mode-aware output boundary: existing TUI panels, RPC notifications, JSON custom-entry events, and print-mode console output;
+- headless reports emit `custom` entries rather than new `custom_message` entries;
+- exact Pi 0.81.1 CLI tests exercise both commands in RPC, JSON, and print modes; component tests preserve the existing TUI panel rendering;
+- real `SessionManager.buildSessionContext()` proof excludes state-only report entries, and secret-shaped values are redacted before append;
+- display-only `sendMessage()` calls and the Gateway message renderer are deleted.
+
+Compatibility note: pre-M2B session history remains append-only. Existing legacy
+`custom_message` rows are not rewritten, and Pi 0.81.1 can still include those
+historical rows in compaction or branch summarization. M2B prevents new
+display-only command reports from creating that legacy shape.
+
 ---
 
 ## M2C — DevBar public-runtime fact correction
+
+Implementation status: implemented.
 
 ### Objective
 
@@ -370,6 +387,15 @@ Retain SF DevBar while consuming Pi facts honestly.
 ### Required gate
 
 Mandatory non-deletion correction gate, including narrow/wide and theme TUI QA.
+
+Implementation evidence:
+
+- the DevBar adapter consumes Pi's public nullable `ContextUsage.percent` and public session name without token arithmetic or session-history parsing;
+- absent context remains absent, explicit post-compaction unknown renders `unknown`, exact zero renders `0.0%`, and fractional values keep one-decimal display plus partial-cell precision;
+- Pi's `session_info_changed` event repaints a bounded, lowest-priority session-name segment;
+- narrow and wide renderer tests enforce terminal-width bounds, including when the right-side LSP segment is wider than the terminal;
+- SF DevBar continues to omit Pi-owned aggregate usage and cache accounting;
+- combined M2B/M2C validation passes 467 test files and 3,469 tests; the production dependency audit is clean.
 
 ---
 
