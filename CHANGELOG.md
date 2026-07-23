@@ -539,6 +539,14 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.233.0](https://github.com/salesforce/sf-pi/compare/v0.232.0...v0.233.0) (2026-07-23)
+
+
+### Features
+
+* align Herdr signals with Pi events ([6a3d929](https://github.com/salesforce/sf-pi/commit/6a3d929d43707139165efbb97c2c2917d5e8db35))
+* make Gateway thinking capability-only ([3e287bb](https://github.com/salesforce/sf-pi/commit/3e287bb978ffd9864519914d073a091b73505d19))
+
 ## [0.232.0](https://github.com/salesforce/sf-pi/compare/v0.231.0...v0.232.0) (2026-07-23)
 
 

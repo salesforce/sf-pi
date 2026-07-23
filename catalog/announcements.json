@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.232.0-2026-07-23",
-  "latestVersion": "0.232.0",
+  "revision": "release-0.233.0-2026-07-23",
+  "latestVersion": "0.233.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.232.0",
+      "id": "release-0.233.0",
       "kind": "update",
-      "title": "sf-pi v0.232.0 — consume public Pi facts in DevBar",
+      "title": "sf-pi v0.233.0 — align Herdr signals with Pi events",
       "publishedAt": "2026-07-23T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.232.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.233.0",
       "severity": "info",
-      "body": "consume public Pi facts in DevBar — keep command reports out of model context"
+      "body": "align Herdr signals with Pi events — make Gateway thinking capability-only"
     },
     {
       "id": "pi-0.73-required",
