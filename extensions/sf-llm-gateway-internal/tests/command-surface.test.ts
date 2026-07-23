@@ -10,7 +10,15 @@ describe("gateway command surface", () => {
   it("identifies scoped command-surface actions", () => {
     expect(
       GATEWAY_COMMAND_SURFACE.filter((item) => item.acceptsScope).map((item) => item.id),
-    ).toEqual(["setup", "import-claude", "onboard", "on", "off", "set-default"]);
+    ).toEqual([
+      "setup",
+      "import-claude",
+      "onboard",
+      "on",
+      "off",
+      "remove-legacy-token",
+      "set-default",
+    ]);
   });
 
   it("has descriptions for every surfaced command", () => {

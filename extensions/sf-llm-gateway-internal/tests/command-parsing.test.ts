@@ -36,6 +36,13 @@ describe("parseCommandArgs", () => {
     expect(result.subcommand).toBe("set-default");
   });
 
+  it("parses legacy-token removal with scope and alias", () => {
+    const result = parseCommandArgs("remove-legacy-token project");
+    expect(result.subcommand).toBe("remove-legacy-token");
+    expect(result.scope).toBe("project");
+    expect(parseCommandArgs("remove-legacy-key").subcommand).toBe("remove-legacy-token");
+  });
+
   it("parses 'set-default project'", () => {
     const result = parseCommandArgs("set-default project");
     expect(result.subcommand).toBe("set-default");

@@ -35,7 +35,7 @@ import { hasShownClaudeCodeNotify } from "./onboarding-state.ts";
  * or failed without having to scroll a wall of prose.
  */
 export interface OnboardChainStep {
-  id: "import-claude" | "save-config" | "register-provider" | "doctor" | "set-default";
+  id: "import-claude" | "save-config" | "refresh-provider" | "doctor" | "set-default";
   /** Human-readable label used in the rendered chain summary. */
   label: string;
   status: "ok" | "skipped" | "warn" | "error";
@@ -59,7 +59,7 @@ export interface OnboardChainResult {
  *
  * Boot-path budget: at most one state-store read + one fs.statSync +
  * (only on hit) one JSON parse + scoring pass. We deliberately do NOT
- * call `discoverAndRegister` or any network work from here.
+ * perform any provider refresh or network work from here.
  */
 export interface FirstRunNotifyDecision {
   shouldNotify: boolean;
@@ -101,7 +101,7 @@ export function shouldNotifyClaudeCodeFirstRun(opts: {
   // returns ok=false when nothing useful was found.
   const imported = readClaudeCodeGatewayConfig(claudePath);
   if (!imported.ok) return { shouldNotify: false };
-  if (!imported.apiKey) return { shouldNotify: false };
+  if (!imported.apiKeyPresent) return { shouldNotify: false };
 
   return {
     shouldNotify: true,
@@ -118,16 +118,16 @@ export function shouldNotifyClaudeCodeFirstRun(opts: {
  * call site lives in `index.ts` and supplies the real implementations.
  */
 export interface OnboardChainDeps {
-  /** Imports cleansed creds from Claude Code into the saved gateway config. */
+  /** Imports non-secret endpoint/CA settings from Claude Code. */
   importClaudeCode(scope: "global" | "project"): Promise<{
     ok: boolean;
     /** Short prose used in the step row. */
     detail: string;
-    /** True when at least one of (baseUrl, apiKey) was newly saved. */
+    /** True when at least one non-secret setting was newly saved. */
     importedAny: boolean;
   }>;
-  /** Re-discover models + register the provider with the runtime. */
-  registerProvider(): Promise<void>;
+  /** Refresh Pi's provider-owned model catalog. */
+  refreshProvider(): Promise<void>;
   /** Run the gateway doctor and return its structured outcome. */
   runDoctor(): Promise<{
     /** True when every check passed. */
@@ -139,8 +139,8 @@ export interface OnboardChainDeps {
   }>;
   /** Switch pi's default provider/model to the gateway. */
   setDefault(scope: "global" | "project"): Promise<void>;
-  /** Read whether the gateway already has a saved baseUrl + apiKey. */
-  hasUsableSavedConfig(): boolean;
+  /** Read whether the gateway has an endpoint and an effective credential. */
+  hasUsableSavedConfig(): boolean | Promise<boolean>;
 }
 
 export async function runOnboardChain(
@@ -150,7 +150,7 @@ export async function runOnboardChain(
   const steps: OnboardChainStep[] = [];
 
   // Step 1 \u2014 import from Claude Code (best-effort, skipped is fine).
-  const startedConfigured = deps.hasUsableSavedConfig();
+  const startedConfigured = await deps.hasUsableSavedConfig();
   try {
     const importResult = await deps.importClaudeCode(scope);
     steps.push({
@@ -172,41 +172,41 @@ export async function runOnboardChain(
   // saved-config from this step; the import wrote it (or nothing was
   // available). This row exists so users who land here without any
   // saved config see why the chain stops short.
-  if (!deps.hasUsableSavedConfig()) {
+  if (!(await deps.hasUsableSavedConfig())) {
     steps.push({
       id: "save-config",
       label: "Saved config",
       status: "error",
       detail: startedConfigured
-        ? "Saved config disappeared between steps. Re-run /sf-llm-gateway setup."
-        : "No saved gateway URL or key found. Run /sf-llm-gateway setup, or paste a token via Open token page.",
+        ? "Gateway endpoint or credential became unavailable between steps. Re-run setup and /login."
+        : "No usable gateway endpoint and credential found. Run /sf-llm-gateway setup, then /login sf-llm-gateway-internal.",
     });
     return finalize(steps, "Onboard chain stopped: gateway not configured.");
   }
   steps.push({
     id: "save-config",
-    label: "Saved config",
+    label: "Gateway configuration",
     status: "ok",
-    detail: "Gateway base URL + API key present.",
+    detail: "Gateway endpoint + effective credential present.",
   });
 
   // Step 3 \u2014 register the provider with pi.
   try {
-    await deps.registerProvider();
+    await deps.refreshProvider();
     steps.push({
-      id: "register-provider",
-      label: "Register provider",
+      id: "refresh-provider",
+      label: "Refresh provider",
       status: "ok",
-      detail: "Discovery refreshed; provider registered.",
+      detail: "Pi model catalog refreshed.",
     });
   } catch (error) {
     steps.push({
-      id: "register-provider",
-      label: "Register provider",
+      id: "refresh-provider",
+      label: "Refresh provider",
       status: "error",
       detail: error instanceof Error ? error.message : String(error),
     });
-    return finalize(steps, "Onboard chain stopped: provider registration failed.");
+    return finalize(steps, "Onboard chain stopped: provider refresh failed.");
   }
 
   // Step 4 \u2014 doctor preflight. A TLS-class failure here is an explicit
@@ -225,7 +225,7 @@ export async function runOnboardChain(
       doctor.failureClass === "tls"
         ? " Next: /sf-llm-gateway fix-ca-bundle to wire NODE_EXTRA_CA_CERTS."
         : doctor.failureClass === "auth"
-          ? " Next: rotate or re-paste the gateway API key via /sf-llm-gateway setup."
+          ? " Next: run /login sf-llm-gateway-internal."
           : doctor.failureClass === "redirect"
             ? " Next: confirm the gateway base URL points at the API endpoint, not an SSO portal."
             : "";

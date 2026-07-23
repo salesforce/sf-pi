@@ -34,6 +34,7 @@ export type GatewayCommandId =
   | "open-token"
   | "import-claude"
   | "fix-ca-bundle"
+  | "remove-legacy-token"
   | "debug"
   | "help";
 
@@ -60,10 +61,10 @@ export const GATEWAY_COMMAND_SURFACE: readonly GatewayCommandSurfaceItem[] = [
   // ─── Connect (always first) ──────────────────────────────────────────────────────────────────────────
   {
     id: "setup",
-    label: "Connect / configure credentials",
+    label: "Configure gateway endpoint",
     usage: "setup [global|project]",
     description:
-      "Single place to enter the gateway base URL and API key. Edits the saved config and refreshes the provider — no separate /login required.",
+      "Configure non-secret endpoint and model-scope settings. Authenticate separately with /login sf-llm-gateway-internal.",
     section: "Connect",
     aliases: ["configure", "connect"],
     acceptsScope: true,
@@ -73,7 +74,7 @@ export const GATEWAY_COMMAND_SURFACE: readonly GatewayCommandSurfaceItem[] = [
     label: "Import from Claude Code",
     usage: "import-claude [global|project]",
     description:
-      "Import a cleansed gateway base URL and API token from local Claude Code settings, save detected CA bundle candidates, run doctor, and set the gateway default only when preflight passes.",
+      "Import a non-secret gateway base URL and detected CA bundle candidates from Claude Code. Credentials are detected but never copied; use /login.",
     section: "Connect",
     aliases: ["import-claude-code"],
     acceptsScope: true,
@@ -101,7 +102,7 @@ export const GATEWAY_COMMAND_SURFACE: readonly GatewayCommandSurfaceItem[] = [
     label: "One-shot onboard",
     usage: "onboard [global|project]",
     description:
-      "Chain Claude Code import + CA candidate discovery \u2192 register provider \u2192 doctor preflight \u2192 set default in one keystroke. Falls back to clear next-step hints when any step needs attention (TLS \u2192 fix-ca-bundle, auth \u2192 rotate key, redirect \u2192 fix base URL).",
+      "Chain non-secret Claude Code import + CA discovery → refresh provider → doctor → set default. Credentials remain Pi-owned through /login.",
     section: "Connect",
     acceptsScope: true,
   },
@@ -123,6 +124,16 @@ export const GATEWAY_COMMAND_SURFACE: readonly GatewayCommandSurfaceItem[] = [
     description: "Disable gateway model routing and restore the configured non-gateway default.",
     section: "Setup",
     aliases: ["disable"],
+    acceptsScope: true,
+  },
+  {
+    id: "remove-legacy-token",
+    label: "Remove verified legacy token",
+    usage: "remove-legacy-token [global|project]",
+    description:
+      "After a Pi-saved credential passes doctor checks, confirm removal of only the legacy config apiKey field.",
+    section: "Setup",
+    aliases: ["remove-legacy-key"],
     acceptsScope: true,
   },
   {

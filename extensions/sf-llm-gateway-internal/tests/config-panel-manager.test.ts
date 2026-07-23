@@ -6,7 +6,11 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import { GatewayConfigPanelComponent } from "../lib/config-panel.ts";
-import { projectGatewayConfigPath, readGatewaySavedConfig } from "../lib/config.ts";
+import {
+  projectGatewayConfigPath,
+  readGatewaySavedConfig,
+  writeGatewaySavedConfig,
+} from "../lib/config.ts";
 
 const PI_AGENT_ENV = "PI_CODING_AGENT_DIR";
 const originalAgentDir = process.env[PI_AGENT_ENV];
@@ -47,23 +51,26 @@ describe("GatewayConfigPanelComponent Manager contract", () => {
     expect(text).not.toContain("[ Disable ]");
     expect(text).not.toContain("Open token page");
     expect(text).not.toContain("Import from Claude Code");
+    expect(text).not.toContain("Saved API key");
   });
 
-  it("saves in place and reports reload when the user backs out", () => {
+  it("saves non-secret settings while preserving a legacy token read-only", () => {
     const done = vi.fn();
+    writeGatewaySavedConfig(projectGatewayConfigPath(tempProjectDir), {
+      apiKey: "legacy-test-api-key",
+    });
     const panel = new GatewayConfigPanelComponent(theme, "project", tempProjectDir, done);
 
+    expect(panel.renderContent(100).join("\n")).not.toContain("legacy-test-api-key");
     panel.handleInput("https://gateway.example.com/v1");
-    panel.handleInput("\r"); // base URL -> API key
-    panel.handleInput("test-api-key");
-    panel.handleInput("\r"); // API key -> scoped model mode
+    panel.handleInput("\r"); // base URL -> scoped model mode
     panel.handleInput("\x1b[B"); // scoped model mode -> Save
     panel.handleInput("\r"); // Save in place
 
     expect(done).not.toHaveBeenCalled();
     expect(readGatewaySavedConfig(projectGatewayConfigPath(tempProjectDir))).toMatchObject({
       baseUrl: "https://gateway.example.com",
-      apiKey: "test-api-key",
+      apiKey: "legacy-test-api-key",
     });
     expect(panel.renderContent(100).join("\n")).toContain("Reload required");
 
@@ -76,8 +83,7 @@ describe("GatewayConfigPanelComponent Manager contract", () => {
     const done = vi.fn();
     const panel = new GatewayConfigPanelComponent(theme, "project", tempProjectDir, done);
 
-    panel.handleInput("\x1b[B"); // base URL -> API key
-    panel.handleInput("\x1b[B"); // API key -> scoped model mode
+    panel.handleInput("\x1b[B"); // base URL -> scoped model mode
     panel.handleInput("\x1b[B"); // scoped model mode -> Save
     panel.handleInput("\r"); // Save in place
     panel.handleInput("\x1b");

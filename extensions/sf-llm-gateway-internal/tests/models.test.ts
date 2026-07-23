@@ -437,8 +437,8 @@ describe("toProviderModelConfig", () => {
   it("routes gpt-5.5 through the OpenAI Responses API with the clamped thinking map", () => {
     // Gateway /v1/model/info reports 1,050,000 / 128,000 for gpt-5.5. The
     // preset rounds the context window to 1M so the selector math is clean.
-    // Phase 3: the model is tagged `openai-responses` internally so the
-    // dispatcher in lib/discovery.ts routes it through `POST /responses`.
+    // The complete Provider keeps the real `openai-responses` tag so Pi's
+    // API map routes it through `POST /responses`.
     // `thinkingLevelMap` clamps pi's thinking scale to the {low, medium,
     // high} window — the only values that both LiteLLM's Pydantic validator
     // and upstream OpenAI accept on the Responses path for this model.

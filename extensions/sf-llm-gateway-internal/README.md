@@ -1,8 +1,8 @@
 # sf-llm-gateway-internal — Code Walkthrough
 
 > **Optional gateway provider.** This extension ships with no default endpoint
-> or credentials. To use it, configure a compatible gateway root URL and API key
-> through `/sf-llm-gateway` or automation environment variables. If you do not
+> or credentials. To use it, run `/login sf-llm-gateway-internal`, or provide
+> compatible automation environment variables. If you do not
 > use a compatible gateway, disable it with
 > `/sf-pi disable sf-llm-gateway-internal`.
 
@@ -11,42 +11,51 @@ extension. Read this before making changes.
 
 ## What It Does
 
-Registers the gateway as a single unified Pi-native provider and routes
-Claude vs non-Claude traffic to the transport each family was designed for.
-Supports dynamic model discovery, monthly budget tracking, additive vs
-exclusive scoped-model behavior, a TUI setup
-wizard with browser token-generation and Claude Code import actions, a read-only
-usage probe, and a backward-compatible in-app token paste flow under `/login`.
+Registers one complete Pi Provider and keeps Gateway-specific behavior in
+focused adapters. Pi owns credential persistence/logout, provider-scoped model
+storage, refresh coordination, and dispatch by real model API tags. SF Pi keeps
+endpoint normalization, model inference, transport quirks, retries, diagnostics,
+spend, and telemetry.
 
-## Key Architecture: One Provider, Two Transports
+## Key Architecture: One Complete Provider, Three APIs
 
-Since R1·Unify the extension registers a single Pi provider (`sf-llm-gateway-
-internal`) with a friendly display label `SF LLM Gateway`.
-Every model is registered under the provider-level `openai-completions` API so
-pi always invokes the provider's custom `streamSimple` dispatcher. Claude models
-also carry a per-model `baseUrl` pinned to the gateway root, so the
-dispatcher only has to switch the request model to `api: "anthropic-messages"`
-and forward to the matching shim:
+The Provider id remains `sf-llm-gateway-internal`, so `/login`, model settings,
+and existing defaults remain stable. Models retain their real API tag:
 
-| Model family             | Pi-registered API    | Runtime transport          | Base URL used                                      |
-| ------------------------ | -------------------- | -------------------------- | -------------------------------------------------- |
-| Gemini / GPT / Codex     | `openai-completions` | `streamSfGatewayOpenAI`    | `<gateway>/v1`                                     |
-| Claude (Opus/Sonnet/...) | `openai-completions` | `streamSfGatewayAnthropic` | `<gateway>` (Anthropic SDK appends `/v1/messages`) |
+| Model family                 | Registered API       | Gateway-aware adapter            | Request base URL                         |
+| ---------------------------- | -------------------- | -------------------------------- | ---------------------------------------- |
+| Gemini / Codex / chat routes | `openai-completions` | `streamSfGatewayOpenAI[Full]`    | `<gateway>/v1`                           |
+| GPT Responses routes         | `openai-responses`   | `streamSfGatewayResponses[Full]` | `<gateway>`                              |
+| Claude                       | `anthropic-messages` | `streamSfGatewayAnthropic[Full]` | `<gateway>` (SDK appends `/v1/messages`) |
 
-Claude runs on the native Anthropic Messages path because the OpenAI-compatible
-translator can split Claude thinking + text across multiple choices and
-intermittently drop the final text delta on `choices[0]`, producing an empty
-assistant turn that required users to type "continue" to unstick the agent loop.
-Native Anthropic streaming avoids that class of failure. Non-Claude families
-behave correctly on OpenAI-compatible routing and stay there.
+Pi's Provider API map performs dispatch; SF Pi no longer strips API tags or
+guesses the transport from model ids. Responses-to-Chat fallback remains local
+to the Responses adapter. Claude stays on native Anthropic Messages because the
+OpenAI-compatible translator can split thinking and text across choices and
+occasionally drop the final text delta.
 
-### Why one provider?
+The Provider exposes a synchronous curated baseline. Pi restores and persists a
+provider-scoped dynamic overlay through `ModelsStore`; configured endpoints are
+materialized only at request time and are not copied into the model cache.
+Startup performs no model-discovery network request. `/sf-llm-gateway refresh`
+uses Pi's public model-registry refresh seam.
 
-The earlier layout registered two providers (`sf-llm-gateway-internal` and
-`sf-llm-gateway-internal-anthropic`) so they appeared as two separate rows
-in pi's `/login` menu. Both used the same gateway and the same token, which
-confused end users. Unifying collapses `/login` to one row and unlocks a
-clean `oauth.onPrompt` paste-token flow.
+### Authentication
+
+`/login sf-llm-gateway-internal` is the primary setup flow:
+
+1. Pi always shows the non-secret gateway root URL. Press Enter to keep the
+   current value or type a replacement.
+2. SF Pi collects the API key through a fixed-mask `ctx.ui.custom()` component;
+   Pi's visible stock secret prompt is never called.
+3. The Provider returns a canonical `ApiKeyCredential`. Pi persists the key and
+   default URL and owns `/logout` removal.
+
+Project/global saved URLs can override the credential's default URL. Environment
+variables remain automation fallbacks. Existing global/project `apiKey` fields
+are read-only migration fallbacks for one released minor; SF Pi never copies or
+silently deletes them. `remove-legacy-token` removes only that field after the
+Pi credential passes doctor checks and the user confirms.
 
 ### Legacy settings migration
 
@@ -132,42 +141,41 @@ Pi Runtime model metadata.
 
 ```
 Extension loads
-  ├─ installWireTrace()                 ← opt-in raw gateway trace
-  ├─ registerProviderIfConfigured()     ← unified provider, static catalog, synchronous
-  ├─ discoverAndRegister()              ← async, fire-and-forget
+  ├─ installWireTrace()                 ← opt-in, redacted gateway trace
+  ├─ registerProvider(completeProvider) ← static baseline + Pi cache restore
   ├─ registerEntryRenderer()            ← human-only headless report renderer
-  ├─ registerCommand("sf-llm-gateway-internal")
-  ├─ on("session_start")               → sync defaults (sync), discover (fire-and-forget),
-  │                                       one-time key-conflict notify
+  ├─ registerCommand("sf-llm-gateway")
+  ├─ on("session_start")               → bind cwd/UI/model registry; local settings repair
   ├─ on("turn_end")                    → update footer status; first turn_end also
   │                                       kicks refreshUsageDetails (daily activity, key list)
   ├─ on("model_select")                → refresh footer; Pi/user settings retain thinking authority
   ├─ on("after_provider_response")     → record throttle/upstream signal (gateway provider)
-  └─ on("session_shutdown")            → clear footer status + provider signal
+  └─ on("session_shutdown")            → cancel auth UI; clear cwd/footer/provider state
 ```
 
 ## Connecting
 
-The `/sf-llm-gateway` panel is the single primary entry point for credential
-entry (see [ADR 0007](../../docs/adr/0007-single-place-credentials.md)). Run
-it, pick **Connect / configure credentials**, and enter the gateway base URL
-and API key. The panel writes the saved config to disk and registers the
-provider — no separate `/login` step required.
+Use Pi's provider login as the primary connection flow:
 
 ```text
-/sf-llm-gateway   →   Connect / configure credentials   →   enter URL + key   →   register provider
+/login sf-llm-gateway-internal
+  → review URL (Enter keeps the current value)
+  → enter API key in SF Pi's masked component
+  → Pi persists the credential and refreshes provider models
 ```
+
+`/sf-llm-gateway setup [global|project]` is now non-secret configuration only:
+endpoint overrides, model scope, help URL, and certificate preferences.
 
 Adjacent **Connect** group rows make the rest of the onboarding self-service:
 
 - **Open token page in browser** — launches the configured gateway root in
   your browser so you can sign in and copy a token without leaving pi.
-- **Import from Claude Code** — pulls a cleansed URL+token from your local
-  Claude Code settings into the gateway saved config, saves any detected CA
-  bundle candidates, runs doctor, and sets the gateway default only after
-  preflight passes.
-- **One-shot onboard** — chains Claude Code import + CA candidate discovery →
-  register provider → doctor preflight → set default in a single keystroke.
+- **Import from Claude Code** — imports a non-secret URL and CA candidates.
+  Credential presence can be detected for guidance, but the value is never
+  returned or copied; authenticate through `/login`.
+- **One-shot onboard** — chains non-secret Claude Code import + CA discovery →
+  Pi model refresh → doctor preflight → set default in a single keystroke.
   When the doctor surfaces a TLS-class failure on macOS, the chain hands off to
   **Fix corporate CA**.
 - **Fix corporate CA (macOS)** — wires `NODE_EXTRA_CA_CERTS` into both the
@@ -190,14 +198,10 @@ probing on the splash hot path.
 
 ## Configuration
 
-Configuration follows a three-tier cascade:
+Request authentication uses these explicit precedence rules:
 
-```
-saved config  →  env var fallback  →  built-in default/missing
-```
-
-- **Base URL**: saved > `SF_LLM_GATEWAY_BASE_URL` > legacy env alias > built-in default
-- **API key**: saved > `SF_LLM_GATEWAY_API_KEY` > legacy env alias > missing
+- **API key**: Pi `ApiKeyCredential` > `SF_LLM_GATEWAY_API_KEY` > legacy env alias > read-only legacy project token > read-only legacy global token.
+- **Base URL**: project/global saved non-secret override > URL stored with the Pi credential > `SF_LLM_GATEWAY_BASE_URL` > legacy env alias > missing.
 - **Help URL**: saved.helpUrl > `SF_LLM_GATEWAY_HELP_URL` > legacy env alias > unset.
   Optional. When set, the doctor appends a trailing `More info: <url>`
   recommendation. Empty by default; organizations can wire it via env or saved
@@ -215,24 +219,20 @@ saved config  →  env var fallback  →  built-in default/missing
   (prepend `sf-llm-gateway-internal/*`) or **exclusive**
   (replace scoped models with only gateway models and restore the prior scope on disable)
 
-Project-scoped saved config overrides global. Env vars are intentionally only a
-fallback for CI/automation when no saved config exists, so stale shell exports
-cannot shadow a freshly pasted key.
+Project-scoped non-secret config overrides global. A Pi-saved credential wins
+over stale key environment variables. URL userinfo is rejected so credentials
+cannot be embedded in non-secret endpoint configuration.
 
 ### Advanced / automation
 
-The panel writes the same files that env vars and direct edits would touch,
-so these alternative paths still work for power users and CI:
+Environment variables remain available for automation and CI:
 
 - **Env vars**: `SF_LLM_GATEWAY_BASE_URL` + `SF_LLM_GATEWAY_API_KEY`
   for shell-driven automation. Older legacy aliases remain supported for
   existing automation.
-- **Direct edit**: `~/.pi/agent/sf-llm-gateway-internal.json` (global) or
-  `<project>/.pi/sf-llm-gateway-internal.json` (project).
-
-The `/login sf-llm-gateway-internal` flow was retired as a recommended onboarding
-path in v0.56.0 — use the panel instead. The provider id stays the same so
-pi's auth resolution and model routing continue to work.
+  Direct edits of `sf-llm-gateway-internal.json` are supported only for
+  non-secret settings. Existing `apiKey` fields remain readable during the bounded
+  migration window but no SF Pi setup/import path creates or modifies them.
 
 Configure the base URL as your organization's gateway **root URL**, for
 example `https://your-gateway.example.com`. If a user pastes a known route
@@ -253,7 +253,7 @@ falls back to the legacy `/user/info` route for older or v2-denying gateways.
 ## Command Surface
 
 `/sf-llm-gateway` with no args opens SF LLM Gateway in the SF Pi Manager. The first
-group, **Connect**, exposes the full onboarding flow — enter URL+key, open
+group, **Connect**, exposes endpoint setup, native `/login` guidance, open
 the token page in a browser, or import from Claude Code. Subsequent groups
 cover post-connect tweaks (`on`, `off`, `set-default`), discovery and
 diagnostics, utilities, and reference output.
@@ -263,17 +263,17 @@ The legacy `/sf-llm-gateway-internal` slash command was retired in v0.56.0
 The provider id is unchanged so pi-native model routing and `/login`
 resolution still work.
 
-The Manager detail page preserves the grouped command surface from the legacy panel. Press `S` on the detail page to switch the active Manager scope between global and project; scoped actions render once and run against the selected scope. The primary `setup` action now opens a Manager action page for saved URL/key edits plus save/enable/disable actions; read-only status, help, doctor, and report-style actions use the standard Manager info popup. In headless/print/RPC mode, the no-args command falls back to the text status report.
+The Manager detail page preserves the grouped command surface. Press `S` to switch global/project scope. The `setup` action edits only non-secret endpoint and model-scope settings; read-only reports use the standard Manager info popup. In headless/print/RPC mode, the no-args command falls back to text status.
 
 Primary actions are grouped as:
 
-| Group                   | Actions                                                                | Purpose                                                                                                         |
-| ----------------------- | ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| Connect                 | `setup`, `import-claude`, `open-token`, `onboard`                      | Single onboarding surface: enter credentials, import from Claude Code, open the token page, copy the root link. |
-| Setup                   | `on`, `off`, `set-default`                                             | Post-connect tweaks: enable/disable gateway routing, control gateway defaults.                                  |
-| Discovery & diagnostics | `refresh`, `models`, `doctor`, `usage-probe`, `debug`, `latency-probe` | Re-probe model discovery, health, usage scope, latency, and transformed upstream payloads.                      |
-| Utilities               | `tokens`                                                               | Count prompt tokens/cost.                                                                                       |
-| Reference               | `status`, `help`                                                       | Print complete text reports for copying or headless use.                                                        |
+| Group                   | Actions                                                                | Purpose                                                                                          |
+| ----------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| Connect                 | `setup`, `import-claude`, `open-token`, `onboard`                      | Configure non-secret settings, discover existing setup, and hand credentials to native `/login`. |
+| Setup                   | `on`, `off`, `remove-legacy-token`, `set-default`                      | Enable/disable routing, clean up verified legacy fields, and control defaults.                   |
+| Discovery & diagnostics | `refresh`, `models`, `doctor`, `usage-probe`, `debug`, `latency-probe` | Re-probe model discovery, health, usage scope, latency, and transformed upstream payloads.       |
+| Utilities               | `tokens`                                                               | Count prompt tokens/cost.                                                                        |
+| Reference               | `status`, `help`                                                       | Print complete text reports for copying or headless use.                                         |
 
 Slash completions use the same command metadata as the panel, so subcommands
 such as `tokens`, `onboard`, `open-token`, `import-claude`, `doctor`, `debug`,
@@ -286,30 +286,29 @@ entry to the active session.
 
 ## Behavior Matrix
 
-| Event/Trigger                | Condition                        | Result                                                                                                                                         |
-| ---------------------------- | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| Extension load               | enabled + has credentials        | Register unified provider (static catalog), fire-and-forget discovery                                                                          |
-| Extension load               | disabled                         | Unregister provider                                                                                                                            |
-| session_start                | —                                | Sync session defaults (awaited, local-only); fire-and-forget model discovery; emit one-time key-conflict notify when env and saved keys differ |
-| turn_end                     | model is on gateway provider     | Update footer (context + monthly usage); first turn_end also kicks refreshUsageDetails (daily activity, key list)                              |
-| turn_end                     | model is not on gateway provider | Clear footer status                                                                                                                            |
-| model_select                 | any model change                 | Refresh footer; never mutate Pi's active thinking level                                                                                        |
-| after_provider_response      | gateway model + 2xx/3xx          | Clear any live throttle/upstream badge                                                                                                         |
-| after_provider_response      | gateway model + 429              | Record throttle signal, footer shows ⚠ badge for 60s                                                                                           |
-| after_provider_response      | gateway model + >=500            | Record upstream signal, footer shows ⚠ badge for 60s                                                                                           |
-| session_shutdown             | —                                | Clear footer status + provider signal                                                                                                          |
-| /command (no args)           | interactive UI                   | Open the SF Pi Manager detail page                                                                                                             |
-| /command (no args)           | no UI                            | Print text status report                                                                                                                       |
-| /command on                  | missing credentials              | Prompt for credentials first                                                                                                                   |
-| /command on                  | credentials present              | Save config, set default gateway model, register, discover                                                                                     |
-| /command off                 | additive scope                   | Disable, remove gateway pattern, switch to off-default                                                                                         |
-| /command off                 | exclusive scope                  | Disable, restore previous scoped models, switch to off-default                                                                                 |
-| /command refresh             | —                                | Re-discover, refresh monthly usage                                                                                                             |
-| /command usage-probe         | —                                | Force a read-only usage probe and classify key/user spend scope                                                                                |
-| /command latency-probe       | —                                | Run read-only timing probes for discovery and a tiny streamed generation                                                                       |
-| /command usage-probe --trace | —                                | Render the per-endpoint trace (timings + status) from the last refresh, plus any active key-conflict warning                                   |
-| Monthly usage fetch          | cached < 60 s old                | Use cache                                                                                                                                      |
-| Monthly usage fetch          | stale or forced                  | Fetch gateway `/v2/user/info`; retry with the `/key/info` user id only when required; fallback to legacy `/user/info` for older gateways.      |
+| Event/Trigger                | Condition                        | Result                                                                                                                                    |
+| ---------------------------- | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Extension load               | —                                | Register one complete Provider; synchronously expose baseline and restore Pi's model cache offline                                        |
+| session_start                | —                                | Bind cwd/UI/model registry and run local settings repair; no discovery network                                                            |
+| turn_end                     | model is on gateway provider     | Update footer (context + monthly usage); first turn_end also kicks refreshUsageDetails (daily activity, key list)                         |
+| turn_end                     | model is not on gateway provider | Clear footer status                                                                                                                       |
+| model_select                 | any model change                 | Refresh footer; never mutate Pi's active thinking level                                                                                   |
+| after_provider_response      | gateway model + 2xx/3xx          | Clear any live throttle/upstream badge                                                                                                    |
+| after_provider_response      | gateway model + 429              | Record throttle signal, footer shows ⚠ badge for 60s                                                                                      |
+| after_provider_response      | gateway model + >=500            | Record upstream signal, footer shows ⚠ badge for 60s                                                                                      |
+| session_shutdown             | —                                | Cancel credential UI and clear cwd/auth/footer/provider state                                                                             |
+| /command (no args)           | interactive UI                   | Open the SF Pi Manager detail page                                                                                                        |
+| /command (no args)           | no UI                            | Print text status report                                                                                                                  |
+| /command on                  | missing credentials              | Configure endpoint if needed and prefill `/login sf-llm-gateway-internal`                                                                 |
+| /command on                  | credentials present              | Save non-secret scope/default settings and explicitly refresh Pi models                                                                   |
+| /command off                 | additive scope                   | Disable, remove gateway pattern, switch to off-default                                                                                    |
+| /command off                 | exclusive scope                  | Disable, restore previous scoped models, switch to off-default                                                                            |
+| /command refresh             | —                                | Re-discover, refresh monthly usage                                                                                                        |
+| /command usage-probe         | —                                | Force a read-only usage probe and classify key/user spend scope                                                                           |
+| /command latency-probe       | —                                | Run read-only timing probes for discovery and a tiny streamed generation                                                                  |
+| /command usage-probe --trace | —                                | Render the per-endpoint trace (timings + status) from the last refresh, plus any active key-conflict warning                              |
+| Monthly usage fetch          | cached < 60 s old                | Use cache                                                                                                                                 |
+| Monthly usage fetch          | stale or forced                  | Fetch gateway `/v2/user/info`; retry with the `/key/info` user id only when required; fallback to legacy `/user/info` for older gateways. |
 
 ## File Structure
 
@@ -336,10 +335,10 @@ extensions/sf-llm-gateway-internal/
     config-panel.ts         ← implementation module
     config.ts               ← implementation module
     debug.ts                ← implementation module
-    discovery.ts            ← implementation module
     doctor.ts               ← implementation module
     gateway-url.ts          ← implementation module
     latency-probe.ts        ← implementation module
+    legacy-token-migration.ts← implementation module
     migrate-gpt56-default.ts← implementation module
     migrate-unify-provider.ts← implementation module
     model-resolution.ts     ← implementation module
@@ -375,7 +374,6 @@ extensions/sf-llm-gateway-internal/
     config.test.ts          ← unit / smoke test
     cwd-migration.test.ts   ← unit / smoke test
     debug.test.ts           ← unit / smoke test
-    discovery-cache.test.ts ← unit / smoke test
     doctor-tls-state.test.ts← unit / smoke test
     doctor.test.ts          ← unit / smoke test
     fetchers.test.ts        ← unit / smoke test
@@ -386,6 +384,7 @@ extensions/sf-llm-gateway-internal/
     gpt55-live-regression.test.ts← unit / smoke test
     gpt55-responses.test.ts ← unit / smoke test
     latency-probe.test.ts   ← unit / smoke test
+    legacy-token-migration.test.ts← unit / smoke test
     lifecycle.test.ts       ← unit / smoke test
     manager-actions.test.ts ← unit / smoke test
     migrate-gpt56-default.test.ts← unit / smoke test
@@ -394,6 +393,7 @@ extensions/sf-llm-gateway-internal/
     model-resolution.test.ts← unit / smoke test
     models.test.ts          ← unit / smoke test
     monthly-usage.test.ts   ← unit / smoke test
+    native-provider-live.test.ts← unit / smoke test
     onboard-action.test.ts  ← unit / smoke test
     onboarding-sources.test.ts← unit / smoke test
     onboarding.test.ts      ← unit / smoke test
@@ -412,7 +412,6 @@ extensions/sf-llm-gateway-internal/
     thinking-ownership-runtime.test.ts← unit / smoke test
     token-counter.test.ts   ← unit / smoke test
     transport.test.ts       ← unit / smoke test
-    unified-provider.test.ts← unit / smoke test
     wire-trace.test.ts      ← unit / smoke test
   AGENTS.md                 ← extension-specific agent editing rules
   CREDITS.md                ← extension attribution
@@ -551,10 +550,11 @@ those commands exercise the inference routes instead of relying only on model
 listing metadata.
 
 **Gateway fails on startup or tool calls error out immediately:**
-Run `/sf-llm-gateway` for first-time onboarding. The setup page lets users paste
-the gateway root URL and token, open the browser token-generation page, or import
-a cleansed URL/token from local Claude Code settings. Env vars are only a
-fallback when saved config is blank. The base URL should be the gateway root, for
+Run `/login sf-llm-gateway-internal` for first-time onboarding. Login collects
+a missing non-secret root URL and then opens SF Pi's masked API-key component.
+`/sf-llm-gateway setup` edits only non-secret project/global overrides; Claude
+Code import never copies credentials. Environment variables remain automation
+fallbacks. The base URL should be the gateway root, for
 example `https://your-gateway.example.com`. If a user pastes a route with a
 known suffix such as `/v1` or a model-specific route suffix, the extension
 canonicalizes it back to the gateway root before building OpenAI, Claude, and
@@ -563,10 +563,10 @@ or `/sf-llm-gateway debug <model>` to inspect the exact provider-bound payload
 the gateway would send.
 
 **Claude responses appear to truncate and the agent asks you to type "continue":**
-This is the pi-ai OpenAI-compat translator splitting Claude thinking + text
-across multiple choices. The fix is already in place — the unified
-`streamSimple` dispatcher detects Claude ids and forwards them to the native
-Anthropic transport instead of the OpenAI-compat one. If you still see
+This is the OpenAI-compatible translator splitting Claude thinking + text
+across multiple choices. The fix is already in place — Claude models retain the
+`anthropic-messages` API tag, and Pi's complete Provider API map dispatches them
+to the Gateway-aware Anthropic adapter. If you still see
 truncation, confirm the selected model is a Claude id in
 `/sf-llm-gateway models`.
 

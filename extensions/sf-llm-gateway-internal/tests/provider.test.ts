@@ -1,5 +1,8 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Behavior proofs for the complete native SF LLM Gateway Provider. */
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import {
   InMemoryCredentialStore,
@@ -13,7 +16,7 @@ import {
   type Model,
   type StreamOptions,
 } from "@earendil-works/pi-ai";
-import type { ExtensionUIContext } from "@earendil-works/pi-coding-agent";
+import { ModelRuntime, type ExtensionUIContext } from "@earendil-works/pi-coding-agent";
 import { PROVIDER_NAME } from "../lib/config.ts";
 import type { GatewayModelGroupInfoMap, GatewayModelInfoMap } from "../lib/models.ts";
 import type { GatewayModelIdDiscovery } from "../lib/models-internal/fetchers.ts";
@@ -104,6 +107,7 @@ function authController(root = "https://active.example.test/v1"): GatewayProvide
     bind: vi.fn(),
     clear: vi.fn(),
     getActiveCwd: vi.fn(() => undefined),
+    resolveRuntimeAuth: vi.fn(async () => undefined),
   };
 }
 
@@ -241,9 +245,43 @@ describe("complete native Gateway Provider", () => {
 
     runtime.bind("/workspace", UNUSED_UI, "tui");
     runtime.clear();
-    expect(controller.bind).toHaveBeenCalledWith("/workspace", UNUSED_UI, "tui");
+    expect(controller.bind).toHaveBeenCalledWith("/workspace", UNUSED_UI, "tui", undefined);
     expect(controller.clear).toHaveBeenCalledTimes(1);
     expect(network.modelIds).not.toHaveBeenCalled();
+  });
+
+  it("keeps models.json overrides above the registered native Provider", async () => {
+    const gateway = createGatewayProviderRuntime({ authController: authController() });
+    const baseline = gateway.provider.getModels()[0];
+    expect(baseline).toBeDefined();
+    if (!baseline) return;
+    const dir = mkdtempSync(path.join(tmpdir(), "sf-pi-m3a-model-overrides-"));
+    const modelsPath = path.join(dir, "models.json");
+    writeFileSync(
+      modelsPath,
+      JSON.stringify({
+        providers: {
+          [PROVIDER_NAME]: {
+            modelOverrides: {
+              [baseline.id]: { name: "User Override", maxTokens: 777 },
+            },
+          },
+        },
+      }),
+    );
+    const runtime = await ModelRuntime.create({
+      credentials: new InMemoryCredentialStore(),
+      modelsStore: new InMemoryModelsStore(),
+      modelsPath,
+      allowModelNetwork: false,
+    });
+
+    runtime.registerNativeProvider(gateway.provider);
+
+    expect(runtime.getModel(PROVIDER_NAME, baseline.id)).toMatchObject({
+      name: "User Override",
+      maxTokens: 777,
+    });
   });
 
   it("dispatches real API tags with family-correct endpoints and native auth for simple and full streams", async () => {

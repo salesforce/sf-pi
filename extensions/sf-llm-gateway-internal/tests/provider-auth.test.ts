@@ -15,7 +15,7 @@ import {
   type ProviderStreams,
 } from "@earendil-works/pi-ai";
 import type { ExtensionContext, ExtensionUIContext } from "@earendil-works/pi-coding-agent";
-import { API_KEY_ENV, LEGACY_API_KEY_ENV, PROVIDER_NAME } from "../lib/config.ts";
+import { API_KEY_ENV, BASE_URL_ENV, LEGACY_API_KEY_ENV, PROVIDER_NAME } from "../lib/config.ts";
 import {
   GATEWAY_RESOLVED_ROOT_ENV,
   createGatewayProviderAuth,
@@ -60,7 +60,7 @@ function makeDependencies(
 async function resolve(
   dependencies: GatewayProviderAuthDependencies,
   values: Record<string, string | undefined> = {},
-  credential?: { type: "api_key"; key?: string },
+  credential?: { type: "api_key"; key?: string; env?: Record<string, string> },
 ) {
   const controller = createGatewayProviderAuth(dependencies);
   controller.bind("/workspace/project-a", UNUSED_UI, "tui");
@@ -84,6 +84,39 @@ describe("Gateway complete-Provider auth resolution", () => {
       source: "Pi saved credential",
     });
     expect(result?.source).not.toMatch(/native|primary-env|legacy-project|legacy-global-private/i);
+  });
+
+  it("prefers a saved project URL, then the Pi credential URL, then environment fallback", async () => {
+    const credential = {
+      type: "api_key" as const,
+      key: "native-private",
+      env: { [BASE_URL_ENV]: "https://credential.example.test/v1" },
+    };
+    const credentialUrl = await resolve(
+      makeDependencies({
+        getConfig: () => ({
+          enabled: true,
+          baseUrl: "https://environment.example.test/v1",
+          baseUrlSource: "env",
+        }),
+      }),
+      {},
+      credential,
+    );
+    const savedUrl = await resolve(
+      makeDependencies({
+        getConfig: () => ({
+          enabled: true,
+          baseUrl: "https://project.example.test/v1",
+          baseUrlSource: "saved",
+        }),
+      }),
+      {},
+      credential,
+    );
+
+    expect(credentialUrl?.env?.[GATEWAY_RESOLVED_ROOT_ENV]).toBe("https://credential.example.test");
+    expect(savedUrl?.env?.[GATEWAY_RESOLVED_ROOT_ENV]).toBe("https://project.example.test");
   });
 
   it("uses primary then legacy environment variables before legacy files", async () => {
@@ -182,6 +215,32 @@ describe("Gateway complete-Provider auth resolution", () => {
     expect(dependencies.promptBridge.clear).toHaveBeenCalledTimes(1);
   });
 
+  it("collects a missing non-secret URL through Pi text input and stores it with the credential", async () => {
+    const promptBridge = makePromptBridge("masked-private-key");
+    const controller = createGatewayProviderAuth(
+      makeDependencies({
+        promptBridge,
+        getConfig: () => ({ enabled: true }),
+      }),
+    );
+    controller.bind("/workspace/project-a", UNUSED_UI, "tui");
+    const prompt = vi.fn(async () => "https://gateway.example.test/v1");
+
+    const credential = await controller.auth.login?.({ prompt, notify: vi.fn() });
+
+    expect(prompt).toHaveBeenCalledWith({
+      type: "text",
+      message: "SF LLM Gateway root URL",
+      placeholder: "https://gateway.example.com",
+    });
+    expect(credential).toEqual({
+      type: "api_key",
+      key: "masked-private-key",
+      env: { [BASE_URL_ENV]: "https://gateway.example.test" },
+    });
+    expect(JSON.stringify(prompt.mock.calls)).not.toContain("masked-private-key");
+  });
+
   it("checks availability with the same source and without mutation", async () => {
     const dependencies = makeDependencies();
     const controller = createGatewayProviderAuth(dependencies);
@@ -193,6 +252,31 @@ describe("Gateway complete-Provider auth resolution", () => {
 
     expect(checked).toEqual({ type: "api_key", source: API_KEY_ENV });
     expect(resolved?.source).toBe(checked?.source);
+  });
+
+  it("resolves auxiliary Gateway calls through the active public ModelRegistry", async () => {
+    const controller = createGatewayProviderAuth(makeDependencies());
+    const getProviderAuth = vi.fn(async () => ({
+      auth: { apiKey: "native-runtime-private" },
+      env: { [GATEWAY_RESOLVED_ROOT_ENV]: "https://runtime.example.test/v1" },
+      source: "Pi saved credential",
+    }));
+    controller.bind("/workspace/project-a", UNUSED_UI, "tui", {
+      getProviderAuth,
+    } as never);
+
+    const resolved = await controller.resolveRuntimeAuth();
+
+    expect(getProviderAuth).toHaveBeenCalledWith(PROVIDER_NAME);
+    expect(resolved).toEqual({
+      apiKey: "native-runtime-private",
+      baseUrl: "https://runtime.example.test",
+      source: "Pi saved credential",
+    });
+    expect(resolved?.source).not.toContain("native-runtime-private");
+
+    controller.clear();
+    expect(controller.getActiveCwd()).toBeUndefined();
   });
 });
 
@@ -231,7 +315,7 @@ describe("Gateway provider auth through Pi public Models", () => {
     const credentials = new InMemoryCredentialStore();
     const models = createModels({ credentials });
     models.setProvider(provider);
-    const stockPrompt = vi.fn();
+    const stockPrompt = vi.fn(async () => "");
     const environment = { [API_KEY_ENV]: "environment-private" };
     const environmentBefore = { ...environment };
 
@@ -244,14 +328,23 @@ describe("Gateway provider auth through Pi public Models", () => {
       env: environment,
     });
 
-    expect(loggedIn).toEqual({ type: "api_key", key: "canonical-login-key" });
+    expect(loggedIn).toEqual({
+      type: "api_key",
+      key: "canonical-login-key",
+      env: { [BASE_URL_ENV]: "https://gateway.example.test" },
+    });
     expect(stored).toEqual(loggedIn);
     expect(resolved).toEqual({
       auth: { apiKey: "canonical-login-key" },
       env: { [GATEWAY_RESOLVED_ROOT_ENV]: "https://gateway.example.test" },
       source: "Pi saved credential",
     });
-    expect(stockPrompt).not.toHaveBeenCalled();
+    expect(stockPrompt).toHaveBeenCalledWith({
+      type: "text",
+      message: "SF LLM Gateway root URL (press Enter to keep current)",
+      placeholder: "https://gateway.example.test",
+    });
+    expect(JSON.stringify(stockPrompt.mock.calls)).not.toContain("canonical-login-key");
     expect(resolved?.source).not.toMatch(
       /canonical-login-key|environment-private|legacy-.*-private/u,
     );
@@ -356,7 +449,10 @@ describe("Gateway provider auth through Pi public Models", () => {
       authContext: authContext({}),
     });
     models.setProvider(provider);
-    await models.login(PROVIDER_NAME, "api_key", { prompt: vi.fn(), notify: vi.fn() });
+    await models.login(PROVIDER_NAME, "api_key", {
+      prompt: vi.fn(async () => ""),
+      notify: vi.fn(),
+    });
 
     for (const modelId of ["chat-model", "root-model"]) {
       const model = models.getModel(PROVIDER_NAME, modelId);

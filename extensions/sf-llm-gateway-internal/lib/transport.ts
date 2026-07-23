@@ -15,7 +15,7 @@
  *   - `transport-internal/openai-chat.ts`  streamSfGatewayOpenAI
  *   - `transport-internal/openai-responses.ts`  streamSfGatewayResponses + fallback
  *
- * Existing consumers (`./discovery.ts`, `./models.ts`, every test file)
+ * Existing consumers (`./provider.ts`, `./models.ts`, every test file)
  * keep importing from `./transport.ts`. Internal callers should prefer the
  * focused modules so the dependency graph stays minimal.
  *

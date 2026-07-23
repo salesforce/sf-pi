@@ -38,14 +38,16 @@ const monthlyUsageMock = vi.hoisted(() => {
 
 vi.mock("../lib/monthly-usage.ts", () => monthlyUsageMock);
 
-const discoveryMock = vi.hoisted(() => ({
-  discoverAndRegister: vi.fn(async () => ({ source: "fallback", modelIds: [], error: null })),
-  getLastDiscovery: vi.fn(() => null),
-  registerCachedDiscoveryIfAvailable: vi.fn(() => false),
-  registerProviderIfConfigured: vi.fn(() => false),
+const providerRuntimeMock = vi.hoisted(() => ({
+  provider: { id: "sf-llm-gateway-internal" },
+  authController: { getActiveCwd: vi.fn(() => undefined) },
+  bind: vi.fn(),
+  clear: vi.fn(),
+  getLastDiscovery: vi.fn(() => ({ source: "static", modelIds: [] })),
+  getLastModelGroupDrift: vi.fn(() => []),
 }));
 
-vi.mock("../lib/discovery.ts", () => discoveryMock);
+vi.mock("../lib/provider.ts", () => ({ gatewayProviderRuntime: providerRuntimeMock }));
 
 const migrationMock = vi.hoisted(() => ({ migrateGatewaySettings: vi.fn(async () => undefined) }));
 vi.mock("../lib/migrate-unify-provider.ts", () => migrationMock);
@@ -134,8 +136,9 @@ function makeFakePi(): FakePi {
 function makeCtx(cwd: string): ExtensionContext {
   return {
     cwd,
+    mode: "tui",
     model: undefined,
-    modelRegistry: { find: vi.fn(() => undefined) },
+    modelRegistry: { find: vi.fn(() => undefined), refresh: vi.fn(async () => undefined) },
     ui: { notify: vi.fn(), setStatus: vi.fn() },
   } as unknown as ExtensionContext;
 }
@@ -145,6 +148,8 @@ describe("gateway extension lifecycle", () => {
     vi.useFakeTimers();
     monthlyUsageMock.unregisters.length = 0;
     monthlyUsageMock.registerGatewayMonthlyUsageRefresher.mockClear();
+    providerRuntimeMock.bind.mockClear();
+    providerRuntimeMock.clear.mockClear();
     piSettingsMock.getEffectiveDefaultModelSetting.mockReturnValue({
       provider: "anthropic",
       modelId: "claude",
@@ -155,6 +160,17 @@ describe("gateway extension lifecycle", () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.restoreAllMocks();
+  });
+
+  it("registers one complete native Provider", async () => {
+    const { default: extension } = await import("../index.ts");
+    const pi = makeFakePi();
+
+    extension(pi as never);
+
+    expect(pi.registerProvider).toHaveBeenCalledTimes(1);
+    expect(pi.registerProvider).toHaveBeenCalledWith(providerRuntimeMock.provider);
+    expect(pi.unregisterProvider).not.toHaveBeenCalled();
   });
 
   it("registers human-only entry rendering instead of message rendering", async () => {
@@ -251,12 +267,15 @@ describe("gateway extension lifecycle", () => {
     expect(shutdown).toBeDefined();
 
     await start?.({ type: "session_start" }, ctx);
+    expect(providerRuntimeMock.bind).toHaveBeenCalledWith(cwd, ctx.ui, "tui", ctx.modelRegistry);
     expect(monthlyUsageMock.registerGatewayMonthlyUsageRefresher).toHaveBeenCalledTimes(1);
 
     await shutdown?.({ type: "session_shutdown", reason: "resume" }, ctx);
+    expect(providerRuntimeMock.clear).toHaveBeenCalledTimes(1);
     expect(monthlyUsageMock.unregisters[0]).toHaveBeenCalledTimes(1);
 
     await start?.({ type: "session_start" }, ctx);
+    expect(providerRuntimeMock.bind).toHaveBeenCalledTimes(2);
     expect(monthlyUsageMock.registerGatewayMonthlyUsageRefresher).toHaveBeenCalledTimes(2);
   });
 });

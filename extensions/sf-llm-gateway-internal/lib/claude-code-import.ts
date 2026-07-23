@@ -3,9 +3,9 @@
  * Claude Code settings importer for SF LLM Gateway onboarding.
  *
  * The Salesforce Claude Code installer can leave a gateway root URL and API
- * token in the user's local Claude Code settings. This module imports those
- * values explicitly, normalizes the URL back to the gateway root, and never
- * formats or returns the raw token for display.
+ * token in the user's local Claude Code settings. This module imports only
+ * non-secret settings, normalizes the URL back to the gateway root, and reports
+ * credential presence without returning credential material.
  */
 import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
@@ -16,7 +16,7 @@ export const CLAUDE_CODE_SETTINGS_RELATIVE_PATH = path.join(".claude", "settings
 
 export type ClaudeCodeGatewayImportCandidate = {
   baseUrl?: string;
-  apiKey?: string;
+  apiKeyPresent: boolean;
   baseUrlPath?: string;
   apiKeyPath?: string;
   warnings: string[];
@@ -104,7 +104,7 @@ export function findClaudeCodeGatewayConfig(raw: unknown): ClaudeCodeGatewayImpo
   return {
     ok: true,
     baseUrl: bestUrl?.normalized,
-    apiKey: bestToken ? stripBearerPrefix(bestToken.value.trim()) : undefined,
+    apiKeyPresent: Boolean(bestToken),
     baseUrlPath: bestUrl?.path,
     apiKeyPath: bestToken?.path,
     warnings,

@@ -1,6 +1,6 @@
 # Pi 0.81 Runtime Adoption Plan
 
-Status: Pi 0.81.1 runtime adoption plus M2A–M2F corrections and the E4 SF Skills parity evidence gate implemented; native interactive login remains deferred
+Status: Pi 0.81.1 runtime adoption, M2A–M2F, E4, and M3A implemented; stock-prompt interactive login for SF Docs/Slack remains deferred
 
 ## Goal
 
@@ -91,7 +91,7 @@ Live artifacts must be sanitized before persistence, not only during final relea
 | M2E | deletion milestone    | Herdr uses real Pi event shapes                                         | M1                                      |
 | M2F | correction milestone  | Catalog attests actual Code Analyzer hooks                              | M1                                      |
 | M3A | deletion milestone    | Complete native Gateway Provider                                        | M1, M2A, M2D                            |
-| M3B | deletion milestone    | Legacy project-token execution fallback ends                            | one released migration window after M3A |
+| M3B | deletion milestone    | Legacy config-token execution fallback ends                             | one released migration window after M3A |
 | E4  | evidence gate         | SF Skills Pi-vs-Funnel parity matrix                                    | M1                                      |
 | P5  | reversible pilot      | SF Browser progressive tool activation decision                         | M2A                                     |
 | M6  | deletion milestone    | Agent-Settled Update Coordinator                                        | M1, M2B                                 |
@@ -506,6 +506,8 @@ Implementation evidence:
 
 ## M3A — Complete Gateway Provider replacement
 
+Implementation status: implemented; release validation in progress.
+
 ### Objective
 
 Replace generic Gateway runtime mechanics with one complete Pi Provider while preserving Gateway-specific behavior.
@@ -522,15 +524,16 @@ During one released SF Pi minor migration window:
 
 1. native Pi saved credential;
 2. environment-variable fallback;
-3. legacy project token only when neither source exists.
+3. read-only legacy project token;
+4. read-only legacy global token.
 
 Rules:
 
-- new project secrets cannot be saved;
+- no setup/import path can save a new global or project secret;
 - native login can be verified while a legacy token remains because native auth wins;
 - status identifies the source and migration deadline without showing the token;
 - user may explicitly remove the legacy field only after native verification;
-- the legacy execution fallback expires after one released SF Pi minor and is removed in M3B;
+- v0.235.0 is the migration-window release; M3B may end legacy execution no earlier than v0.236.0;
 - expiration removes only SF Pi's use of the value, never silently deletes the user's file content.
 
 ### Red proofs — Provider/auth
@@ -578,9 +581,20 @@ Mandatory gate plus sanitized live artifacts for one route per transport family 
 
 Any regression in login/logout, offline bootstrap, failure retention, override precedence, drift, diagnostics, spend, retry bounds, or transport parity prevents deletion.
 
+Implementation evidence:
+
+- exact Pi 0.81.1 `/login` reviewed the non-secret URL (Enter keeps the current value), then used the production SF Pi fixed-mask component for the API key;
+- Pi persisted the canonical `ApiKeyCredential` with URL metadata at mode `0600`; no Gateway config file was created, the token sentinel appeared in neither terminal capture, and native `/logout` removed the credential;
+- one complete Provider now owns the synchronous baseline, Pi `ModelsStore` overlay, auth resolution, and API-map dispatch; configured endpoints are materialized per request and never persisted in the model catalog;
+- live complete-Provider probes pass Chat/Codex, OpenAI Responses, Anthropic tool/thinking, and Pi compaction routes;
+- deterministic tests pass Responses-to-Chat fallback, Anthropic bounded early-stream retry, Chat payload/service-tier shaping, offline restore, refresh failure/abort retention, sentinel filtering, drift handling, and topmost `models.json` overrides;
+- the custom model cache, cached/repeated registration, delayed discovery timer, pseudo-OAuth marker, API-tag stripping, ID dispatcher, and superseded architecture tests are deleted;
+- sanitized evidence: `/tmp/sf-pi-m3a-production-login-proof.json`, `/tmp/sf-pi-m3a-url-review-proof.json`, and `/tmp/sf-pi-m3a-provider-evidence.json`;
+- aggregate validation passes 469 test files and 3,523 tests, with 5 test files and 8 tests skipped; docs build, lint, production audit, and live Gateway gates are clean.
+
 ---
 
-## M3B — End legacy project-token execution fallback
+## M3B — End legacy config-token execution fallback
 
 ### Objective
 
@@ -588,7 +602,7 @@ End the bounded compatibility read path after the announced migration window.
 
 ### Red proofs
 
-- a legacy-only project token is no longer used for requests after the cutoff;
+- legacy-only project and global config tokens are no longer used for requests after the cutoff;
 - status detects its presence without printing or using it and gives native login/removal guidance;
 - native and environment credentials continue to work;
 - no file content is silently deleted.

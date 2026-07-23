@@ -26,7 +26,7 @@ function buildHappyDeps(overrides: Partial<OnboardChainDeps> = {}): OnboardChain
       importedAny: true,
       detail: "Imported base URL + API key into global scope.",
     }),
-    registerProvider: async () => undefined,
+    refreshProvider: async () => undefined,
     runDoctor: async () => ({
       allOk: true,
       failureClass: null,
@@ -46,7 +46,7 @@ describe("runOnboardChain", () => {
     expect(result.steps.map((step) => step.id)).toEqual([
       "import-claude",
       "save-config",
-      "register-provider",
+      "refresh-provider",
       "doctor",
       "set-default",
     ]);
@@ -105,7 +105,7 @@ describe("runOnboardChain", () => {
       }),
     );
     const doctorStep = result.steps.find((step) => step.id === "doctor");
-    expect(doctorStep?.detail).toContain("rotate or re-paste");
+    expect(doctorStep?.detail).toContain("/login sf-llm-gateway-internal");
     expect(doctorStep?.detail).not.toContain("fix-ca-bundle");
   });
 

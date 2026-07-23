@@ -15,30 +15,32 @@ Repo-level rules still apply; see root `AGENTS.md`.
 
 ## File map (what lives where)
 
-| Responsibility                                 | File                            |
-| ---------------------------------------------- | ------------------------------- |
-| Extension entry, lifecycle, command dispatch   | `index.ts`                      |
-| Env vars, constants, saved-config I/O          | `lib/config.ts`                 |
-| Gateway URL normalization                      | `lib/gateway-url.ts`            |
-| Model presets + family inference               | `lib/models.ts`                 |
-| Provider registration + model discovery        | `lib/discovery.ts`              |
-| HTTP transport (OpenAI-compat + Anthropic)     | `lib/transport.ts`              |
-| Monthly usage / key info / health fetcher      | `lib/monthly-usage.ts`          |
-| Pi settings mutation (defaults, enabledModels) | `lib/pi-settings.ts`            |
-| Legacy provider-id settings migration          | `lib/migrate-unify-provider.ts` |
-| GPT-5.6 default settings migration             | `lib/migrate-gpt56-default.ts`  |
-| Footer + status report formatting              | `lib/status.ts`                 |
-| Standard command metadata + completions        | `lib/command-surface.ts`        |
-| Standalone slash-command setup overlay         | `lib/setup-overlay.ts`          |
-| Manager settings/setup action panel content    | `lib/config-panel.ts`           |
-| Transform debug probe                          | `lib/debug.ts`                  |
-| `/sf-llm-gateway doctor` diagnostics           | `lib/doctor.ts`                 |
-| `/sf-llm-gateway tokens` counter               | `lib/token-counter.ts`          |
-| `/sf-llm-gateway onboard` SSO link             | `lib/onboarding.ts`             |
-| Existing setup discovery (Claude/DevBar/CA)    | `lib/onboarding-sources.ts`     |
-| Provider-telemetry (429/5xx footer badge)      | `lib/provider-telemetry.ts`     |
-| Transparent inner-stream retry telemetry       | `lib/retry-telemetry.ts`        |
-| Wire-level request/response tracing            | `lib/wire-trace.ts`             |
+| Responsibility                                 | File                              |
+| ---------------------------------------------- | --------------------------------- |
+| Extension entry, lifecycle, command dispatch   | `index.ts`                        |
+| Env vars, constants, saved-config I/O          | `lib/config.ts`                   |
+| Gateway URL normalization                      | `lib/gateway-url.ts`              |
+| Model presets + family inference               | `lib/models.ts`                   |
+| Complete Provider + model discovery            | `lib/provider.ts`                 |
+| Provider auth + session context                | `lib/provider-auth.ts`            |
+| Masked API-key input                           | `lib/secure-credential-prompt.ts` |
+| HTTP transport (OpenAI-compat + Anthropic)     | `lib/transport.ts`                |
+| Monthly usage / key info / health fetcher      | `lib/monthly-usage.ts`            |
+| Pi settings mutation (defaults, enabledModels) | `lib/pi-settings.ts`              |
+| Legacy provider-id settings migration          | `lib/migrate-unify-provider.ts`   |
+| GPT-5.6 default settings migration             | `lib/migrate-gpt56-default.ts`    |
+| Footer + status report formatting              | `lib/status.ts`                   |
+| Standard command metadata + completions        | `lib/command-surface.ts`          |
+| Standalone slash-command setup overlay         | `lib/setup-overlay.ts`            |
+| Manager settings/setup action panel content    | `lib/config-panel.ts`             |
+| Transform debug probe                          | `lib/debug.ts`                    |
+| `/sf-llm-gateway doctor` diagnostics           | `lib/doctor.ts`                   |
+| `/sf-llm-gateway tokens` counter               | `lib/token-counter.ts`            |
+| `/sf-llm-gateway onboard` SSO link             | `lib/onboarding.ts`               |
+| Existing setup discovery (Claude/DevBar/CA)    | `lib/onboarding-sources.ts`       |
+| Provider-telemetry (429/5xx footer badge)      | `lib/provider-telemetry.ts`       |
+| Transparent inner-stream retry telemetry       | `lib/retry-telemetry.ts`          |
+| Wire-level request/response tracing            | `lib/wire-trace.ts`               |
 
 ## Cross-extension contracts
 
@@ -50,28 +52,27 @@ Repo-level rules still apply; see root `AGENTS.md`.
 
 ## Conventions
 
-1. **One provider, two transports.** Since R1·Unify the extension registers
-   a single provider (`sf-llm-gateway-internal`). All models inherit the
-   provider-level `api: "openai-completions"` so pi always calls the
-   provider's custom `streamSimple`. Claude models also get a per-model
-   `baseUrl` pinned to the gateway root; the dispatcher in `lib/discovery.ts`
-   detects Claude by model id, switches the request model to
-   `api: "anthropic-messages"`, and forwards to the native Anthropic
-   transport. New model families follow the family-inference logic in
-   `lib/models.ts`.
+1. **One complete Provider, three real APIs.** The extension registers one
+   `sf-llm-gateway-internal` Pi Provider. Models retain their real
+   `anthropic-messages`, `openai-completions`, or `openai-responses` API tag;
+   Pi's Provider API map dispatches to the matching Gateway-aware full/simple
+   adapter. Request-time auth materializes root versus `/v1` endpoints.
    The retired `sf-llm-gateway-internal-anthropic` id is only referenced
    from `lib/migrate-unify-provider.ts` (one-shot settings migration) and
    from `lib/pi-settings.ts` (legacy-pattern normalization).
-   Do not re-introduce it as a real registration, and do not pass per-model
-   Anthropic api overrides to pi or Claude will bypass the dispatcher.
-2. **Static catalog first, discovery second.** The factory registers a
-   bootstrap catalog synchronously so Pi startup resolves defaults before
-   async discovery completes. Don't move registration out of the factory.
-3. **Keep thinking capability-only.** Gateway model metadata may expose
+   Do not re-introduce it as a real registration or add an ID-based dispatcher.
+2. **Static baseline plus Pi-owned overlay.** The Provider exposes a bootstrap
+   catalog synchronously. Pi restores/persists the dynamic overlay through its
+   provider-scoped ModelsStore. Startup is network-free; refresh is explicit.
+3. **Pi owns credentials.** `/login` stores the API key and default URL in
+   Pi's credential store. SF Pi's custom component masks key input; project
+   config may override only non-secret settings. Legacy config tokens are
+   read-only during the bounded migration window.
+4. **Keep thinking capability-only.** Gateway model metadata may expose
    live-proven levels such as `max`, but SF Pi must never call
    `pi.setThinkingLevel()` or write `defaultThinkingLevel`. Pi/user settings
    own the active level. Preserve user-owned `enabledModels` behavior as well.
-4. **Settings mutations go through `lib/pi-settings.ts`.** Don't write
+5. **Settings mutations go through `lib/pi-settings.ts`.** Don't write
    JSON from ad-hoc call sites. The helpers handle global vs project
    scope, additive vs exclusive mode, and legacy-entry migration.
 

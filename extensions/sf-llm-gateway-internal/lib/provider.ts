@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/** Complete Pi Provider runtime for SF LLM Gateway. Not wired into the extension entry point yet. */
+/** Complete Pi Provider runtime for SF LLM Gateway. */
 import {
   createProvider,
   type Model,
@@ -8,7 +8,11 @@ import {
   type RefreshModelsContext,
   type StreamOptions,
 } from "@earendil-works/pi-ai";
-import type { ExtensionContext, ExtensionUIContext } from "@earendil-works/pi-coding-agent";
+import type {
+  ExtensionContext,
+  ExtensionUIContext,
+  ModelRegistry,
+} from "@earendil-works/pi-coding-agent";
 import { PROVIDER_DISPLAY_NAME, PROVIDER_NAME } from "./config.ts";
 import { toGatewayOpenAiBaseUrl, toGatewayRootBaseUrl } from "./gateway-url.ts";
 import {
@@ -81,7 +85,12 @@ export interface GatewayProviderDependencies {
 export interface GatewayProviderRuntime {
   provider: Provider<GatewayApi>;
   authController: GatewayProviderAuthController;
-  bind(cwd: string, ui: ExtensionUIContext, mode: ExtensionContext["mode"]): void;
+  bind(
+    cwd: string,
+    ui: ExtensionUIContext,
+    mode: ExtensionContext["mode"],
+    modelRegistry?: ModelRegistry,
+  ): void;
   clear(): void;
   getLastDiscovery(): GatewayNativeDiscoveryState;
   getLastModelGroupDrift(): ModelGroupDrift[];
@@ -298,9 +307,9 @@ export function createGatewayProviderRuntime(
   return {
     provider,
     authController,
-    bind(cwd, ui, mode) {
+    bind(cwd, ui, mode, modelRegistry) {
       resetSessionDiagnostics();
-      authController.bind(cwd, ui, mode);
+      authController.bind(cwd, ui, mode, modelRegistry);
     },
     clear() {
       authController.clear();
@@ -330,3 +339,6 @@ export function createGatewayProviderRuntime(
     },
   };
 }
+
+/** Single production runtime registered by the extension factory. */
+export const gatewayProviderRuntime = createGatewayProviderRuntime();

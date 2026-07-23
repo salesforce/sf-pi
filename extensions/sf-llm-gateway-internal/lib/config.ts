@@ -368,17 +368,13 @@ export function normalizeBaseUrl(rawValue: string | undefined): string | undefin
     if (url.protocol !== "http:" && url.protocol !== "https:") {
       return undefined;
     }
+    if (url.username || url.password) {
+      return undefined;
+    }
     return toGatewayRootBaseUrl(url.toString().replace(/\/$/, ""));
   } catch {
     return undefined;
   }
-}
-
-export function maskApiKey(value: string): string {
-  if (value.length <= 8) {
-    return "*".repeat(Math.max(4, value.length));
-  }
-  return `${value.slice(0, 4)}…${value.slice(-4)}`;
 }
 
 export function describeConfigValue(value: string | undefined, source: ConfigSource): string {
@@ -386,13 +382,6 @@ export function describeConfigValue(value: string | undefined, source: ConfigSou
     return "missing";
   }
   return `${value} (${source})`;
-}
-
-export function describeApiKey(value: string | undefined, source: ConfigSource): string {
-  if (!value) {
-    return "missing";
-  }
-  return `${maskApiKey(value)} (${source})`;
 }
 
 export function asOptionalString(value: unknown): string | undefined {
