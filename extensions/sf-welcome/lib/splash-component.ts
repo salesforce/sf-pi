@@ -637,10 +637,18 @@ function formatAutoUpdateStatusValue(data: SplashData, mode: GlyphMode): string 
   const auto = data.autoUpdate;
   if (!auto) return MUTED("○ Off");
   if (auto.status.running) {
-    const target = auto.status.currentTarget === "sf-cli" ? "SF CLI" : "Pi/SF Pi";
+    const target =
+      auto.status.currentTarget === "sf-cli"
+        ? "SF CLI"
+        : auto.status.currentTarget === "pi-packages"
+          ? "Pi packages"
+          : "Pi runtime";
     return MUTED(`${glyph("hourglass", mode)} Updating ${target}`);
   }
   if (!auto.enabled) return `${MUTED("○")} ${MUTED("Off · optional")}`;
+  if (auto.status.pending) {
+    return `${SF_GREEN("✓")} ${SF_GREEN("On")} ${MUTED("· waiting for agent_settled")}`;
+  }
   if (auto.status.lastResult === "failed") {
     return `${SF_ORANGE("!")} ${SF_ORANGE("On · last run failed")}`;
   }

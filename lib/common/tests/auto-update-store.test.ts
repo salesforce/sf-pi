@@ -4,6 +4,8 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
+  clearAutoUpdatePending,
+  markAutoUpdatePending,
   markAutoUpdateResult,
   markAutoUpdateRunning,
   readAutoUpdateEnabled,
@@ -49,17 +51,71 @@ describe("Native Auto Update store", () => {
     expect(readAutoUpdateEnabled()).toBe(false);
   });
 
-  it("tracks running and result state", () => {
-    markAutoUpdateRunning("pi");
-    expect(readAutoUpdateStatus()).toMatchObject({ running: true, currentTarget: "pi" });
+  it("tracks pending, running, and bounded per-target result state", () => {
+    markAutoUpdatePending();
+    expect(readAutoUpdateStatus()).toMatchObject({ pending: true });
 
-    markAutoUpdateResult({ result: "success", message: "done", restartRecommended: true });
+    markAutoUpdateRunning("pi-packages");
     expect(readAutoUpdateStatus()).toMatchObject({
+      pending: false,
+      running: true,
+      currentTarget: "pi-packages",
+    });
+
+    markAutoUpdateResult({
+      result: "success",
+      message: "done",
+      restartRecommended: true,
+      targets: [
+        { target: "pi-runtime", result: "skipped", message: "audited runtime retained" },
+        { target: "pi-packages", result: "success", message: "packages updated" },
+      ],
+    });
+    expect(readAutoUpdateStatus()).toMatchObject({
+      pending: false,
       running: false,
       lastResult: "success",
       message: "done",
       restartRecommended: true,
+      targets: [
+        { target: "pi-runtime", result: "skipped" },
+        { target: "pi-packages", result: "success" },
+      ],
     });
+  });
+
+  it("redacts sensitive command-shaped text before status persistence", () => {
+    writeAutoUpdateStatus({
+      lastResult: "failed",
+      message: `api_key=secret-value ${os.homedir()}/private https://private.example.test/path`,
+      targets: [
+        {
+          target: "pi-packages",
+          result: "failed",
+          message: `Bearer ${"x".repeat(24)} ${os.homedir()}`,
+        },
+      ],
+    });
+
+    const persisted = JSON.stringify(readAutoUpdateStatus());
+    expect(persisted).toContain("<redacted>");
+    expect(persisted).toContain("<home>");
+    expect(persisted).toContain("<url-redacted>");
+    expect(persisted).not.toContain("secret-value");
+    expect(persisted).not.toContain(os.homedir());
+    expect(persisted).not.toContain("private.example.test");
+  });
+
+  it("clears pending work without recording a completed run", () => {
+    markAutoUpdatePending();
+    clearAutoUpdatePending("Auto Update disabled before execution.");
+
+    expect(readAutoUpdateStatus()).toMatchObject({
+      pending: false,
+      running: false,
+      message: "Auto Update disabled before execution.",
+    });
+    expect(readAutoUpdateStatus().lastRunAt).toBeUndefined();
   });
 
   it("clears restart recommendation after a later process restart", () => {

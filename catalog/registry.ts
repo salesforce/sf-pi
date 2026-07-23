@@ -268,7 +268,7 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
     maturity: "stable",
     defaultEnabled: true,
     commands: ["/sf-pi"],
-    events: ["session_start","session_shutdown"],
+    events: ["session_start","agent_start","agent_settled","session_shutdown"],
     alwaysActive: true,
     configurable: true,
     getConfigPanel: async () => {

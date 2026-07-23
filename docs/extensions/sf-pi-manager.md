@@ -41,6 +41,8 @@ Open the SF Pi home base
 ## Safety notes
 
 - Owns the WRITE side of pi's package filter list via lib/common/sf-pi-package-state.ts.
+- Auto Update is opt-in, interactive-session only, agent-settled, machine-locked, abortable, and output-redacted; it never performs an unbounded Pi self-update.
+- Package automation is limited to outdated unpinned global npm packages with declared active Pi/Node compatibility; pinned, local, git, project, incompatible, and unverifiable packages are skipped.
 - alwaysActive cannot be disabled through the standard toggle action.
 
 ## Exact reference
@@ -55,7 +57,7 @@ Open the SF Pi home base
 - **Commands:** `/sf-pi`
 - **LLM tools:** _none_
 - **Providers:** _none_
-- **Events/hooks:** `session_start`, `session_shutdown`
+- **Events/hooks:** `session_start`, `agent_start`, `agent_settled`, `session_shutdown`
 
 </details>
 

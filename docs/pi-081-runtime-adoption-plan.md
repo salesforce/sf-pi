@@ -1,6 +1,6 @@
 # Pi 0.81 Runtime Adoption Plan
 
-Status: Pi 0.81.1 runtime adoption, M2A–M2F, E4, and M3A implemented; stock-prompt interactive login for SF Docs/Slack remains deferred
+Status: Pi 0.81.1 runtime adoption, M2A–M2F, E4, M3A, and M6 implemented; M3B and P5 remain pending; stock-prompt interactive login for SF Docs/Slack remains deferred
 
 ## Goal
 
@@ -506,7 +506,7 @@ Implementation evidence:
 
 ## M3A — Complete Gateway Provider replacement
 
-Implementation status: implemented; release validation in progress.
+Implementation status: implemented and released in v0.235.0.
 
 ### Objective
 
@@ -723,6 +723,8 @@ Activation may add only tools from the original Pi-selected eligible baseline.
 
 ## M6 — Agent-Settled Update Coordinator
 
+Implementation status: implemented; release validation in progress.
+
 ### Objective
 
 Keep Auto Update while replacing the one-shot startup race with a consent-preserving, bounded coordinator.
@@ -730,9 +732,12 @@ Keep Auto Update while replacing the one-shot startup race with a consent-preser
 ### Likely files
 
 - `extensions/sf-pi-manager/lib/auto-update-command.ts`
+- `extensions/sf-pi-manager/lib/auto-update-coordinator.ts`
+- `extensions/sf-pi-manager/lib/auto-update-package-plan.ts`
+- `extensions/sf-pi-manager/lib/auto-update-runner.ts`
+- `extensions/sf-pi-manager/lib/auto-update-transcript.ts`
 - `extensions/sf-pi-manager/index.ts`
-- `lib/common/auto-update/store.ts`
-- a focused Human-Only row renderer if justified
+- `lib/common/auto-update/store.ts` and machine lock
 - Manager/shared update tests
 - manifest and generated docs for actual events
 - SF Welcome status rendering as needed
@@ -779,6 +784,19 @@ Mandatory gate, including real event sequencing, support-window edges, full suit
 - If overlap with an agent turn cannot be prevented or aborted safely, skip/defer automatic execution.
 - If an exact in-window Pi target or compatible package target cannot be established without custom package management, skip that target and report the upstream API gap.
 - Any redaction failure prevents persistence and execution completion reporting.
+
+Implementation evidence:
+
+- startup records due interactive work as pending and performs no mutation; the exact extension factory registers `agent_start` and `agent_settled`, never `agent_end`;
+- the next settled boundary rechecks opt-in and idle state, emits a sanitized Human-Only plan before mutation, and persists bounded Pi-runtime, Pi-package, and Salesforce CLI outcomes;
+- a new agent turn aborts the current command and defers remaining automatic work; opt-out, reload, shutdown, headless mode, an active machine lock, and fresh running state all prevent overlap;
+- Pi self-update remains skipped because Pi 0.81.1 exposes no bounded in-window target; this removes the `PI_SKIP_VERSION_CHECK` failure path reported in #500 without clearing the user's environment;
+- global npm Pi packages receive a bounded read-only metadata preflight and per-package Pi-native update only when the latest version is newer and declares compatible Pi and Node ranges; pinned, local, git, project, incompatible, malformed, custom-npm-command, and unverifiable sources are skipped;
+- outdated unpinned Herdr is included through the generic package policy; current or constrained Herdr installs remain untouched;
+- atomic lock, total package-update budget, command abort signals, fixed-result summaries, and capture-time credential/home/URL redaction keep execution and persisted evidence bounded;
+- SF Welcome now recognizes both legacy `herdr` and current `herdr_layout`, `herdr_pane`, and `herdr_agent` tools, resolving #514 independently of the updater;
+- focused store, lock, planner, coordinator, transcript, real-factory sequencing, real Pi 0.81 RPC lifecycle, manager command, Welcome, and Herdr status behavior tests pass; sanitized evidence: `/tmp/sf-pi-m6-evidence.json`;
+- aggregate validation passes 476 test files and 3,556 tests, with 5 test files and 8 tests skipped; docs build, lint, generated-catalog checks, LLM-artifact checks, and the production dependency audit are clean.
 
 ---
 

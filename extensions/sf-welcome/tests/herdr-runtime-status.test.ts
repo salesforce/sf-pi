@@ -56,6 +56,27 @@ describe("Herdr Runtime Readiness", () => {
     });
   });
 
+  it.each(["herdr_layout", "herdr_pane", "herdr_agent"])(
+    "recognizes the current split-tool API through %s",
+    (toolName) => {
+      const status = collectHerdrRuntimeStatus(cwd, {
+        activeToolNames: [toolName],
+        env: { HERDR_ENV: "1", HERDR_PANE_ID: "pane-1" },
+      });
+
+      expect(status).toMatchObject({ kind: "ready", toolActive: true });
+    },
+  );
+
+  it("recognizes split tools through the all-tools fallback", () => {
+    const status = collectHerdrRuntimeStatus(cwd, {
+      allToolNames: ["herdr_layout"],
+      env: { HERDR_ENV: "1", HERDR_PANE_ID: "pane-1" },
+    });
+
+    expect(status).toMatchObject({ kind: "ready", toolActive: true });
+  });
+
   it("distinguishes a tool outside Herdr from pane-control readiness", () => {
     const status = collectHerdrRuntimeStatus(cwd, {
       activeToolNames: ["herdr"],
