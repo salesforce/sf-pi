@@ -2,7 +2,6 @@
 /** Branch-scoped workflow signal inference for SF Herdr lane planning. */
 import path from "node:path";
 import type { ExtensionContext, ToolResultEvent } from "@earendil-works/pi-coding-agent";
-import { isEditToolResult, isWriteToolResult } from "@earendil-works/pi-coding-agent";
 
 import type { HerdrWorkflowKey } from "../../../lib/common/herdr-profile/store.ts";
 
@@ -21,18 +20,8 @@ export interface InferredHerdrWorkflow {
   reason: string;
 }
 
-export interface HerdrToolExecutionEndEvent {
-  type?: string;
-  toolCallId?: string;
-  toolName: string;
-  args?: unknown;
-  result?: unknown;
-  isError?: boolean;
-}
-
 export interface HerdrSignalState {
   observe(signal: HerdrWorkflowSignal): void;
-  observeToolExecutionEnd(event: HerdrToolExecutionEndEvent): void;
   observeToolResult(event: ToolResultEvent, cwd: string): void;
   reconstruct(ctx: ExtensionContext): void;
   infer(): InferredHerdrWorkflow;
@@ -58,45 +47,46 @@ export function createHerdrSignalState(): HerdrSignalState {
     if (signals.length > MAX_SIGNALS) signals = signals.slice(-MAX_SIGNALS);
   }
 
-  function observeToolExecutionEnd(event: HerdrToolExecutionEndEvent): void {
-    const toolName = event.toolName;
-    for (const signal of signalsFromToolCall(toolName, event.args)) {
+  function observeSuccessfulTool(
+    toolName: string,
+    input: Record<string, unknown>,
+    cwd: string,
+  ): void {
+    if (toolName === "edit" || toolName === "write") {
+      const rawPath = input.path;
+      if (typeof rawPath === "string") {
+        const signal = signalFromPath(path.resolve(cwd, rawPath));
+        if (signal) observe(signal);
+      }
+    }
+    for (const signal of signalsFromToolCall(toolName, input)) {
       observe(signal);
     }
   }
 
   function observeToolResult(event: ToolResultEvent, cwd: string): void {
     if (event.isError) return;
-    if (isEditToolResult(event) || isWriteToolResult(event)) {
-      const rawPath = event.input.path;
-      if (typeof rawPath === "string") {
-        const signal = signalFromPath(path.resolve(cwd, rawPath));
-        if (signal) observe(signal);
-      }
-    }
-    for (const signal of signalsFromToolCall(event.toolName, event.input)) {
-      observe(signal);
-    }
+    observeSuccessfulTool(event.toolName, event.input, cwd);
   }
 
   function reconstruct(ctx: ExtensionContext): void {
     signals = [];
-    const branch = ctx.sessionManager.getBranch();
-    for (const entry of branch) {
+    const inputByToolCallId = new Map<string, Record<string, unknown>>();
+    for (const entry of ctx.sessionManager.getBranch()) {
       if (entry.type !== "message") continue;
       const message = entry.message;
-      if (message.role !== "toolResult") continue;
-      const toolName = String(message.toolName ?? "");
-      const rawMessage = message as unknown as { input?: unknown; details?: unknown };
-      const input = isObject(rawMessage.input) ? rawMessage.input : {};
-      for (const signal of signalsFromToolCall(toolName, input)) {
-        observe(signal);
+
+      if (message.role === "assistant" && Array.isArray(message.content)) {
+        for (const part of message.content) {
+          if (part.type !== "toolCall" || !isObject(part.arguments)) continue;
+          inputByToolCallId.set(part.id, part.arguments);
+        }
+        continue;
       }
-      const pathValue = input.path;
-      if (typeof pathValue === "string") {
-        const signal = signalFromPath(path.resolve(ctx.cwd, pathValue));
-        if (signal) observe(signal);
-      }
+
+      if (message.role !== "toolResult" || message.isError) continue;
+      const input = inputByToolCallId.get(message.toolCallId) ?? {};
+      observeSuccessfulTool(String(message.toolName ?? ""), input, ctx.cwd);
     }
   }
 
@@ -143,7 +133,6 @@ export function createHerdrSignalState(): HerdrSignalState {
 
   return {
     observe,
-    observeToolExecutionEnd,
     observeToolResult,
     reconstruct,
     infer,

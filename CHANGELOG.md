@@ -50,6 +50,8 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ### Changed
 
+- **Made Gateway `max` capability-only.** SF LLM Gateway retains live-proven model thinking maps but no longer selects an active level, writes Pi's `defaultThinkingLevel`, or carries passive thinking-default state. Pi and user settings remain authoritative across startup, commands, and model switches.
+- **Aligned SF Herdr with Pi's real tool-result events.** Workflow inference now reads validated input from successful `tool_result` events, removes the invented end-event `args` shape, ignores failed attempts consistently, and records each successful activity once.
 - **Kept new display-only command reports out of model context.** SF LLM Gateway and SF Feedback now use Pi's human-only channels across TUI, RPC, JSON, and print modes. Headless reports use state-only entries rather than model-visible custom messages.
 - **Corrected SF DevBar runtime facts for Pi 0.81.** DevBar now consumes Pi's authoritative nullable context percentage, distinguishes absent usage from post-compaction `unknown`, preserves exact zero and fractional values, and displays bounded Pi-owned session names without parsing session history.
 - **Patched transitive URL parsing.** Updated `fast-uri` to 3.1.4 to resolve the production audit advisory without changing direct dependency APIs.

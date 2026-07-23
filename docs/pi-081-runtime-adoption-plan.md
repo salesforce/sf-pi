@@ -1,6 +1,6 @@
 # Pi 0.81 Runtime Adoption Plan
 
-Status: Pi 0.81.1 runtime adoption plus M2A active-branch context, M2B human-only command output, and M2C public DevBar facts implemented; native interactive login remains deferred
+Status: Pi 0.81.1 runtime adoption plus M2A active-branch context, M2B human-only command output, M2C public DevBar facts, M2D capability-only Gateway thinking, and M2E real Herdr event shapes implemented; native interactive login remains deferred
 
 ## Goal
 
@@ -401,6 +401,8 @@ Implementation evidence:
 
 ## M2D — Capability-only Gateway `max`
 
+Implementation status: implemented.
+
 ### Objective
 
 Remove implicit thinking-level mutation while preserving proven model capability maps.
@@ -422,9 +424,19 @@ Delete passive defaulting state, lifecycle calls, and test-only accessors.
 
 Mandatory gate at both runtime-window edges plus one live capability query per representative model family where available.
 
+Implementation evidence:
+
+- SF Pi issues zero `ExtensionAPI.setThinkingLevel()` calls and writes no `defaultThinkingLevel`; model selection, startup repair, enable, disable, set-default, and GPT-5.6 migration preserve Pi/user thinking settings;
+- passive thinking state, Gateway default-thinking constants, resolver fields, saved previous-thinking state, and test-only accessors are deleted;
+- exact Pi 0.81.1 RPC tests preserve `low` through startup, Gateway commands, and model switches while Pi's real capability selector exposes `max` only on proven families;
+- read-only live probes cover Claude, Codex, GPT-5.5, GPT-5.6 direct/Bedrock, and a high-ceiling GPT-5 control without retaining endpoints, credentials, or payloads;
+- the registry currently exposes only Pi 0.81.1 inside `>=0.81.1 <0.82.0`, so the floor and latest-window edge are the same exact package for this gate.
+
 ---
 
 ## M2E — Real Herdr event shapes
+
+Implementation status: implemented.
 
 ### Objective
 
@@ -447,6 +459,16 @@ Delete `HerdrToolExecutionEndEvent` and redundant observation, or capture start 
 ### Required gate
 
 Mandatory gate; no live proof unless upstream Herdr behavior cannot be fixture-proven.
+
+Implementation evidence:
+
+- SF Herdr consumes Pi's exported `ToolResultEvent.input` and deletes the invented `HerdrToolExecutionEndEvent` plus the redundant end observer;
+- exported-shape tests cover successful Agent Script, Data 360, Apex, LWC, Browser, Herdr run, and write/edit activity, with failed results excluded from inference;
+- an exact Pi 0.81.1 faux-provider probe proves `tool_execution_start → tool_result → tool_execution_end`, validated input on `tool_result`, and no `args` on the end event;
+- each successful activity produces one signal instead of the previous duplicate weighting;
+- resume/tree reconstruction pairs persisted assistant tool-call arguments with successful results by call id, preserving Herdr commands and write/edit paths while excluding failures;
+- the manifest and generated catalog/docs declare `tool_result` without `tool_execution_end`;
+- combined M2D/M2E validation passes 469 test files and 3,490 tests; the production dependency audit is clean.
 
 ---
 

@@ -64,7 +64,7 @@ You can also manage this extension from the SF Pi home base:
 - **Commands:** `/sf-herdr`
 - **LLM tools:** `sf_herdr_plan`
 - **Providers:** _none_
-- **Events/hooks:** `session_start`, `session_tree`, `tool_execution_end`, `tool_result`, `resources_discover`, `session_shutdown`
+- **Events/hooks:** `session_start`, `session_tree`, `tool_result`, `resources_discover`, `session_shutdown`
 
 </details>
 

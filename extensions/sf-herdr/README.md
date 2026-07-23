@@ -17,7 +17,7 @@ Extension loads
   ├─ registers /sf-herdr before optional planner-tool wiring
   ├─ lazily contributes sf_herdr_plan after session_start/resources_discover
   ├─ session_start/session_tree reconstruct branch workflow signals
-  ├─ tool_execution_end/tool_result observe fresh workflow signals
+  ├─ tool_result observes successful workflow input through Pi's validated result shape
   └─ /sf-herdr opens SF Herdr in the SF Pi Manager; subcommands stay direct
 
 sf_herdr_plan
@@ -38,24 +38,26 @@ sf_herdr_plan
 - Failed, timed out, or ambiguous Fresh Ephemeral Lanes stay open after recent-output summarization until the user chooses cleanup.
 - Managed preferences live in the shared profile store at `lib/common/herdr-profile/store.ts` so SF Brain can later read compact profile summaries without importing this extension.
 - `sf-guardrail` mediates `herdr.run.command` through the same safety gates as `bash.command`.
+- Workflow inference observes successful `tool_result` events only. Failed, blocked,
+  or aborted attempts do not influence lane selection. Resume/tree reconstruction
+  pairs stored assistant tool-call arguments with successful results by call id.
 
 ## Behavior Matrix
 
-| Event/Trigger      | Condition                              | Result                                                        |
-| ------------------ | -------------------------------------- | ------------------------------------------------------------- |
-| extension load     | pi version supported                   | Register `/sf-herdr`; no Herdr probe                          |
-| session_start      | —                                      | Reconstruct branch workflow signals; register `sf_herdr_plan` |
-| session_tree       | branch changes                         | Reconstruct workflow signals from active branch               |
-| tool_execution_end | recognized SF Pi tool or Herdr command | Record workflow signal                                        |
-| tool_result        | write/edit or custom tool result       | Record workflow signal                                        |
-| session_shutdown   | —                                      | Clear in-memory signal state                                  |
-| /sf-herdr          | UI available                           | Open SF Herdr in the SF Pi Manager                            |
-| /sf-herdr status   | any                                    | Show Herdr runtime, profiles path, inferred workflow          |
-| /sf-herdr doctor   | any                                    | Show readiness notes                                          |
-| /sf-herdr profiles | any                                    | Print managed workflow profile summary                        |
-| /sf-herdr reset    | any                                    | Reset managed workflow profiles to bundled defaults           |
-| /sf-herdr settings | UI available                           | Open SF Herdr settings in the SF Pi Manager                   |
-| sf_herdr_plan      | intent provided                        | Return a non-mutating lane plan with action hints             |
+| Event/Trigger      | Condition                                              | Result                                                        |
+| ------------------ | ------------------------------------------------------ | ------------------------------------------------------------- |
+| extension load     | pi version supported                                   | Register `/sf-herdr`; no Herdr probe                          |
+| session_start      | —                                                      | Reconstruct branch workflow signals; register `sf_herdr_plan` |
+| session_tree       | branch changes                                         | Reconstruct workflow signals from active branch               |
+| tool_result        | successful SF Pi tool, Herdr run, or write/edit result | Record one workflow signal                                    |
+| session_shutdown   | —                                                      | Clear in-memory signal state                                  |
+| /sf-herdr          | UI available                                           | Open SF Herdr in the SF Pi Manager                            |
+| /sf-herdr status   | any                                                    | Show Herdr runtime, profiles path, inferred workflow          |
+| /sf-herdr doctor   | any                                                    | Show readiness notes                                          |
+| /sf-herdr profiles | any                                                    | Print managed workflow profile summary                        |
+| /sf-herdr reset    | any                                                    | Reset managed workflow profiles to bundled defaults           |
+| /sf-herdr settings | UI available                                           | Open SF Herdr settings in the SF Pi Manager                   |
+| sf_herdr_plan      | intent provided                                        | Return a non-mutating lane plan with action hints             |
 
 ## Commands
 
@@ -114,6 +116,7 @@ extensions/sf-herdr/
   tests/
     config-panel.test.ts    ← unit / smoke test
     plan-render.test.ts     ← unit / smoke test
+    runtime-event-shapes.test.ts← unit / smoke test
     signal-state.test.ts    ← unit / smoke test
     smoke.test.ts           ← unit / smoke test
   index.ts                  ← Pi extension entry point

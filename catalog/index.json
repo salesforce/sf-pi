@@ -629,7 +629,6 @@
     "events": [
       "session_start",
       "session_tree",
-      "tool_execution_end",
       "tool_result",
       "resources_discover",
       "session_shutdown"
@@ -662,7 +661,7 @@
     "entry": "extensions/sf-herdr/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 919
+    "srcLoc": 900
   },
   {
     "id": "sf-llm-gateway-internal",
@@ -713,7 +712,7 @@
     "entry": "extensions/sf-llm-gateway-internal/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 12194
+    "srcLoc": 12078
   },
   {
     "id": "sf-lsp",
