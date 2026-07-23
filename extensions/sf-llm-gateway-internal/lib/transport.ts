@@ -59,12 +59,22 @@ export {
   stripReasoningEffortForGpt55,
 } from "./transport-internal/payloads.ts";
 
-export { streamSfGatewayAnthropic } from "./transport-internal/anthropic.ts";
-export { streamSfGatewayOpenAI } from "./transport-internal/openai-chat.ts";
+export {
+  streamSfGatewayAnthropic,
+  streamSfGatewayAnthropicFull,
+  type GatewayAnthropicFullTestHooks,
+} from "./transport-internal/anthropic.ts";
+export {
+  streamSfGatewayOpenAI,
+  streamSfGatewayOpenAIFull,
+  type GatewayOpenAIFullTestHooks,
+} from "./transport-internal/openai-chat.ts";
 export {
   GPT5_BEDROCK_EARLY_DONE_GRACE_MS,
   GPT5_FORCE_CHAT_ENV,
   GPT55_FORCE_CHAT_ENV,
   streamSfGatewayResponses,
+  streamSfGatewayResponsesFull,
   type Gpt55ResponsesTestHooks,
+  type Gpt5ResponsesFullTestHooks,
 } from "./transport-internal/openai-responses.ts";

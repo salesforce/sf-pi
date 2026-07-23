@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Tests for cached gateway model discovery registration. */
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -34,13 +34,16 @@ function restoreEnv(name: string, value: string | undefined): void {
   else process.env[name] = value;
 }
 
-function seedDiscoveryCache(agentDir: string, modelIds: string[]): void {
-  const cachePath = join(
-    agentDir,
-    "sf-pi",
-    "sf-llm-gateway-internal",
-    "model-discovery-cache.json",
-  );
+function discoveryCachePath(agentDir: string): string {
+  return join(agentDir, "sf-pi", "sf-llm-gateway-internal", "model-discovery-cache.json");
+}
+
+function seedDiscoveryCache(
+  agentDir: string,
+  modelIds: string[],
+  modelGroupInfo: Record<string, unknown> = {},
+): void {
+  const cachePath = discoveryCachePath(agentDir);
   mkdirSync(join(cachePath, ".."), { recursive: true });
   writeFileSync(
     cachePath,
@@ -50,7 +53,7 @@ function seedDiscoveryCache(agentDir: string, modelIds: string[]): void {
         state: {
           modelIds,
           modelInfoMap: {},
-          modelGroupInfo: {},
+          modelGroupInfo,
           discoveredAt: "2026-05-12T00:00:00.000Z",
           savedAt: Date.now(),
         },
@@ -128,6 +131,46 @@ describe("cached gateway discovery", () => {
 
     expect(registered).toBe(false);
     expect(captured).toHaveLength(0);
+  });
+
+  it("preserves the cached model-group baseline when the optional endpoint is unavailable", async () => {
+    const agentDir = mkdtempSync(join(tmpdir(), "sf-pi-gateway-discovery-cache-"));
+    process.env.PI_CODING_AGENT_DIR = agentDir;
+    process.env[BASE_URL_ENV] = "https://gateway.example.test";
+    process.env[API_KEY_ENV] = "test-key";
+    const baseline = {
+      group: { modelGroup: "group", providers: ["provider-a"] },
+    };
+    seedDiscoveryCache(agentDir, ["gpt-5"], baseline);
+    globalThis.fetch = vi.fn(async (input) => {
+      const url = String(input);
+      if (url.endsWith("/models")) {
+        return new Response(JSON.stringify({ data: [{ id: "gpt-5" }] }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      }
+      if (url.includes("/model_group/info")) {
+        return new Response("unavailable", { status: 503 });
+      }
+      return new Response(JSON.stringify({ data: [] }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }) as typeof fetch;
+
+    const { registerCachedDiscoveryIfAvailable, discoverAndRegister } =
+      await import("../lib/discovery.ts");
+    const captured: CapturedRegistration[] = [];
+    expect(registerCachedDiscoveryIfAvailable(makeFakePi(captured) as never, agentDir)).toBe(true);
+
+    await expect(
+      discoverAndRegister(makeFakePi(captured) as never, agentDir),
+    ).resolves.toMatchObject({
+      source: "gateway",
+    });
+    const persisted = JSON.parse(readFileSync(discoveryCachePath(agentDir), "utf8"));
+    expect(persisted.state.modelGroupInfo).toEqual(baseline);
   });
 
   it("records the full static catalog when live discovery returns sentinels", async () => {

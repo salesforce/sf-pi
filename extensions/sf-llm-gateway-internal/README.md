@@ -353,6 +353,7 @@ extensions/sf-llm-gateway-internal/
     pi-settings.ts          ← implementation module
     provider-auth.ts        ← implementation module
     provider-telemetry.ts   ← implementation module
+    provider.ts             ← implementation module
     retry-telemetry.ts      ← implementation module
     secure-credential-prompt.ts← implementation module
     setup-overlay.ts        ← implementation module
@@ -400,6 +401,7 @@ extensions/sf-llm-gateway-internal/
     opus47-regression.test.ts← unit / smoke test
     provider-auth.test.ts   ← unit / smoke test
     provider-telemetry.test.ts← unit / smoke test
+    provider.test.ts        ← unit / smoke test
     retry-telemetry.test.ts ← unit / smoke test
     robust-retry.test.ts    ← unit / smoke test
     secure-credential-prompt.test.ts← unit / smoke test

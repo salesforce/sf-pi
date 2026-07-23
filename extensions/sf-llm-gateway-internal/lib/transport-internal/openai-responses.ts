@@ -20,10 +20,13 @@ import {
   type AssistantMessageEventStream,
   type Context,
   type Model,
+  type OpenAICompletionsOptions,
+  type OpenAIResponsesOptions,
   type SimpleStreamOptions,
+  type StreamOptions,
 } from "@earendil-works/pi-ai";
-import { streamSimpleOpenAIResponses } from "@earendil-works/pi-ai/compat";
-import { streamSfGatewayOpenAI } from "./openai-chat.ts";
+import { streamOpenAIResponses, streamSimpleOpenAIResponses } from "@earendil-works/pi-ai/compat";
+import { streamSfGatewayOpenAI, streamSfGatewayOpenAIFull } from "./openai-chat.ts";
 import { injectOpenAiServiceTier } from "./payloads.ts";
 import { isGpt5BedrockResponsesModelId, withGatewayProviderRetryDefaults } from "./shared.ts";
 
@@ -42,10 +45,10 @@ import { isGpt5BedrockResponsesModelId, withGatewayProviderRetryDefaults } from 
  * values still win, so the chat fallback path can reuse these options without
  * double-setting.
  */
-function withPriorityServiceTier(
-  options: SimpleStreamOptions,
+function withPriorityServiceTier<TOptions extends StreamOptions>(
+  options: TOptions,
   modelId: string,
-): SimpleStreamOptions {
+): TOptions {
   const existingOnPayload = options.onPayload;
   return {
     ...options,
@@ -96,6 +99,63 @@ export interface Gpt55ResponsesTestHooks {
     context: Context,
     options?: SimpleStreamOptions,
   ) => AssistantMessageEventStream;
+}
+
+export interface Gpt5ResponsesFullTestHooks {
+  responsesStreamer?: typeof streamOpenAIResponses;
+  chatStreamer?: typeof streamSfGatewayOpenAIFull;
+}
+
+function projectResponsesOptionsForChat(options: OpenAIResponsesOptions): OpenAICompletionsOptions {
+  const {
+    reasoningSummary: _reasoningSummary,
+    serviceTier: _serviceTier,
+    toolChoice,
+    ...common
+  } = options;
+  const compatibleToolChoice =
+    toolChoice === "auto" || toolChoice === "none" || toolChoice === "required"
+      ? toolChoice
+      : undefined;
+  return {
+    ...common,
+    ...(compatibleToolChoice ? { toolChoice: compatibleToolChoice } : {}),
+  };
+}
+
+/** Gateway-aware full Responses stream used by complete native Providers. */
+export function streamSfGatewayResponsesFull(
+  model: Model<"openai-responses">,
+  context: Context,
+  options?: OpenAIResponsesOptions,
+  fallback?: {
+    chatModel: Model<"openai-completions">;
+    onFallback?: (reason: string) => void;
+  },
+  hooks?: Gpt5ResponsesFullTestHooks,
+): AssistantMessageEventStream {
+  const gatewayOptions = withPriorityServiceTier(
+    withGatewayProviderRetryDefaults(options),
+    model.id,
+  );
+  const responsesStreamer = hooks?.responsesStreamer ?? streamOpenAIResponses;
+  const chatStreamer = hooks?.chatStreamer ?? streamSfGatewayOpenAIFull;
+  const chatOptions = projectResponsesOptionsForChat(gatewayOptions);
+
+  if (shouldForceGpt5Chat() && fallback) {
+    const envName = isTruthyEnv(process.env[GPT5_FORCE_CHAT_ENV])
+      ? GPT5_FORCE_CHAT_ENV
+      : GPT55_FORCE_CHAT_ENV;
+    fallback.onFallback?.(`${envName}=1 — using chat completions path`);
+    return chatStreamer(fallback.chatModel, context, chatOptions);
+  }
+
+  const rawUpstream = responsesStreamer(model, context, gatewayOptions);
+  const upstream = isGpt5BedrockResponsesModelId(model.id)
+    ? finishBedrockResponsesAfterVisibleOutput(rawUpstream)
+    : rawUpstream;
+  if (!fallback) return upstream;
+  return wrapWithChatFallback(upstream, context, chatOptions, fallback, chatStreamer);
 }
 
 export function streamSfGatewayResponses(
@@ -243,10 +303,10 @@ function emptyErrorMessage(): AssistantMessage {
   };
 }
 
-function wrapWithChatFallback(
+function wrapWithChatFallback<TOptions extends StreamOptions>(
   upstream: AssistantMessageEventStream,
   context: Context,
-  options: SimpleStreamOptions | undefined,
+  options: TOptions | undefined,
   fallback: {
     chatModel: Model<"openai-completions">;
     onFallback?: (reason: string) => void;
@@ -254,7 +314,7 @@ function wrapWithChatFallback(
   chatStreamer: (
     model: Model<"openai-completions">,
     context: Context,
-    options?: SimpleStreamOptions,
+    options?: TOptions,
   ) => AssistantMessageEventStream,
 ): AssistantMessageEventStream {
   const wrapped = createAssistantMessageEventStream();

@@ -13,10 +13,11 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   type AssistantMessageEvent,
   type AssistantMessageEventStream,
+  type Context,
   type Model,
   createAssistantMessageEventStream,
 } from "@earendil-works/pi-ai";
-import { streamAnthropicWithRobustRetry } from "../lib/transport.ts";
+import { streamAnthropicWithRobustRetry, streamSfGatewayAnthropicFull } from "../lib/transport.ts";
 import {
   clearRetryEventListener,
   setRetryEventListener,
@@ -134,6 +135,33 @@ const ANTHROPIC_500_ENVELOPE = JSON.stringify({
 });
 
 describe("streamAnthropicWithRobustRetry", () => {
+  it("applies the full Anthropic adapter retry budget to early SSE failures", async () => {
+    const { createInner, calls } = queueFactory([
+      [startEvent(), errorEvent(ANTHROPIC_500_ENVELOPE)],
+      [startEvent(), textDeltaEvent("recovered"), doneEvent()],
+    ]);
+    const observedRetries: Array<number | undefined> = [];
+    const context: Context = { systemPrompt: "", messages: [], tools: [] };
+
+    const stream = streamSfGatewayAnthropicFull(
+      MODEL,
+      context,
+      { maxRetries: 1 },
+      {
+        streamer: (_model, _context, options) => {
+          observedRetries.push(options?.maxRetries);
+          return createInner();
+        },
+        sleep: async () => undefined,
+      },
+    );
+    const events = await drain(stream);
+
+    expect(events.map((event) => event.type)).toEqual(["start", "text_delta", "done"]);
+    expect(calls()).toBe(2);
+    expect(observedRetries).toEqual([1, 1]);
+  });
+
   it("passes a successful stream straight through (no retry needed)", async () => {
     const { createInner, calls } = queueFactory([
       [startEvent(), textDeltaEvent("hello"), doneEvent()],

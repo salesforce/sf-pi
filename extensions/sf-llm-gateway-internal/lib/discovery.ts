@@ -435,13 +435,15 @@ export async function discoverAndRegister(
         fetchGatewayModelGroupInfo(config.baseUrl, config.apiKey),
       ]);
 
-      // Diff against the previous snapshot (same-session or restored from
-      // the previous `discoverAndRegister`). First run seeds the baseline
-      // with an empty drift array.
-      lastModelGroupDrift = lastModelGroupInfo
-        ? diffModelGroupProviders(lastModelGroupInfo, modelGroupInfo)
-        : [];
-      lastModelGroupInfo = modelGroupInfo;
+      // Diff only when the optional endpoint returned a valid snapshot.
+      // An unavailable endpoint must not look like every model group vanished,
+      // and it must not replace the previous baseline used by the next success.
+      if (modelGroupInfo !== undefined) {
+        lastModelGroupDrift = lastModelGroupInfo
+          ? diffModelGroupProviders(lastModelGroupInfo, modelGroupInfo)
+          : [];
+        lastModelGroupInfo = modelGroupInfo;
+      }
 
       if (modelIdDiscovery.ids.length === 0 || modelIdDiscovery.filteredIds.length > 0) {
         registerProviderIfConfigured(pi, cwd);
@@ -462,7 +464,12 @@ export async function discoverAndRegister(
       registerProviders(pi, models, cwd);
       const discoveredAt = new Date().toISOString();
       const discoveredModelIds = models.map((model) => model.id);
-      writeDiscoveryCache(discoveredModelIds, modelInfoMap, modelGroupInfo, discoveredAt);
+      writeDiscoveryCache(
+        discoveredModelIds,
+        modelInfoMap,
+        modelGroupInfo ?? lastModelGroupInfo ?? {},
+        discoveredAt,
+      );
       const state: GatewayDiscoveryState = {
         modelIds: discoveredModelIds,
         source: "gateway",
