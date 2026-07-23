@@ -54,14 +54,17 @@ describe("GatewayConfigPanelComponent Manager contract", () => {
     expect(text).not.toContain("Saved API key");
   });
 
-  it("saves non-secret settings while preserving a legacy token read-only", () => {
+  it("saves non-secret settings while preserving an inactive legacy token", () => {
     const done = vi.fn();
     writeGatewaySavedConfig(projectGatewayConfigPath(tempProjectDir), {
       apiKey: "legacy-test-api-key",
     });
     const panel = new GatewayConfigPanelComponent(theme, "project", tempProjectDir, done);
 
-    expect(panel.renderContent(100).join("\n")).not.toContain("legacy-test-api-key");
+    const initialText = panel.renderContent(100).join("\n");
+    expect(initialText).not.toContain("legacy-test-api-key");
+    expect(initialText).toContain("legacy saved token is present but inactive");
+    expect(initialText).toContain("remove-legacy-token");
     panel.handleInput("https://gateway.example.com/v1");
     panel.handleInput("\r"); // base URL -> scoped model mode
     panel.handleInput("\x1b[B"); // scoped model mode -> Save

@@ -52,6 +52,7 @@ function authController(): GatewayProviderAuthController {
     bind: vi.fn(),
     clear: vi.fn(),
     getActiveCwd: vi.fn(() => undefined),
+    hasConfiguredCredential: vi.fn(async () => Boolean(apiKey)),
     resolveRuntimeAuth: vi.fn(async () =>
       apiKey && baseUrl ? { apiKey, baseUrl, source: "live test credential" } : undefined,
     ),

@@ -4,7 +4,8 @@
  *
  * Covers:
  * - Returns a valid GatewayConfig shape
- * - Reads env vars as fallback when saved config is blank
+ * - Reads non-secret env configuration when saved config is blank
+ * - Keeps credential values out of the non-secret config result
  * - Does NOT read project-level saved config (no cwd needed)
  * - Falls back to the built-in default base URL when nothing is configured
  * - Matches the same result shape as getGatewayConfig()
@@ -86,7 +87,8 @@ describe("getGlobalOnlyGatewayConfig", () => {
     expect(typeof config.baseUrl).toBe("string");
     expect(typeof config.exclusiveScope).toBe("boolean");
     expect(["env", "saved", "default"]).toContain(config.baseUrlSource);
-    expect(["env", "saved", "missing"]).toContain(config.apiKeySource);
+    expect(config).not.toHaveProperty("apiKey");
+    expect(config).not.toHaveProperty("apiKeySource");
   });
 
   it("falls back to the built-in default base URL when no env or saved config", () => {
@@ -107,29 +109,19 @@ describe("getGlobalOnlyGatewayConfig", () => {
     }
   });
 
-  it("reads API key from the environment variable when no saved key exists", () => {
+  it("does not expose an environment API key through non-secret configuration", () => {
     setEnv(API_KEY_ENV, "test-api-key-123");
     const config = getGlobalOnlyGatewayConfig();
-    if (config.apiKeySource === "saved") {
-      // Local developer machines may have a real saved gateway key.
-      expect(config.apiKey).not.toBe("test-api-key-123");
-    } else {
-      expect(config.apiKey).toBe("test-api-key-123");
-      expect(config.apiKeySource).toBe("env");
-    }
+
+    expect(config).not.toHaveProperty("apiKey");
+    expect(JSON.stringify(config)).not.toContain("test-api-key-123");
   });
 
-  it("reports missing API key when env is unset (may have saved global config)", () => {
+  it("keeps credential fields out of non-secret configuration when env is unset", () => {
     const config = getGlobalOnlyGatewayConfig();
-    // If a saved global config exists with an API key, that's fine — it's reading
-    // the real global config. The key assertion is that apiKeySource reflects
-    // the actual source (not "env" since we cleared the env var).
-    if (config.apiKey) {
-      expect(config.apiKeySource).toBe("saved");
-    } else {
-      expect(config.apiKey).toBeUndefined();
-      expect(config.apiKeySource).toBe("missing");
-    }
+
+    expect(config).not.toHaveProperty("apiKey");
+    expect(config).not.toHaveProperty("apiKeySource");
   });
 
   it("enabled defaults to true when nothing is saved", () => {
@@ -152,20 +144,19 @@ describe("getGlobalOnlyGatewayConfig", () => {
     }
   });
 
-  it("trims whitespace from env API key when it is used", () => {
+  it("does not expose a whitespace-padded environment API key", () => {
     setEnv(API_KEY_ENV, "  spaced-key  ");
     const config = getGlobalOnlyGatewayConfig();
-    if (config.apiKeySource !== "saved") {
-      expect(config.apiKey).toBe("spaced-key");
-    }
+
+    expect(JSON.stringify(config)).not.toContain("spaced-key");
   });
 
-  it("treats empty-string env API key as not from env", () => {
+  it("does not add credential fields for an empty environment API key", () => {
     setEnv(API_KEY_ENV, "   ");
     const config = getGlobalOnlyGatewayConfig();
-    // Empty env var should not be used as the API key.
-    // The config may still have a saved key from ~/.pi/agent.
-    expect(config.apiKeySource).not.toBe("env");
+
+    expect(config).not.toHaveProperty("apiKey");
+    expect(config).not.toHaveProperty("apiKeySource");
   });
 
   it("has the same result type as getGatewayConfig", () => {

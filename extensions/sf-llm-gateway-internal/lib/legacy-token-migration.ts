@@ -7,9 +7,6 @@ import {
   writeGatewaySavedConfig,
 } from "./config.ts";
 
-export const LEGACY_TOKEN_MIGRATION_RELEASE = "0.235.0";
-export const LEGACY_TOKEN_CUTOFF_EARLIEST = "0.236.0";
-
 export type GatewayConfigScope = "global" | "project";
 
 export type LegacyTokenRemovalResult =

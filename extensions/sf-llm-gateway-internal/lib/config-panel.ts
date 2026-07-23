@@ -320,7 +320,7 @@ export class GatewayConfigPanelComponent implements Focusable {
         ` ${theme.fg(
           legacyCredentialPresent ? "warning" : "dim",
           legacyCredentialPresent
-            ? "A legacy saved token is present (read-only during migration). Use /login for Pi-owned credentials."
+            ? "A legacy saved token is present but inactive. Use /login, then remove-legacy-token after verification."
             : "Credentials are managed by Pi. Use /login sf-llm-gateway-internal.",
         )}`,
       ),

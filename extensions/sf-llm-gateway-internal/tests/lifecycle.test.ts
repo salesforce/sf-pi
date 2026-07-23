@@ -40,7 +40,11 @@ vi.mock("../lib/monthly-usage.ts", () => monthlyUsageMock);
 
 const providerRuntimeMock = vi.hoisted(() => ({
   provider: { id: "sf-llm-gateway-internal" },
-  authController: { getActiveCwd: vi.fn(() => undefined) },
+  authController: {
+    getActiveCwd: vi.fn(() => undefined),
+    hasConfiguredCredential: vi.fn(async () => false),
+    resolveRuntimeAuth: vi.fn(async () => undefined),
+  },
   bind: vi.fn(),
   clear: vi.fn(),
   getLastDiscovery: vi.fn(() => ({ source: "static", modelIds: [] })),

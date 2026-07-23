@@ -13,7 +13,6 @@ import type {
   GatewayHealth,
   GatewayKeyInfo,
   GatewayMonthlyUsage,
-  KeyConflictWarning,
   MonthlyUsageSnapshot,
 } from "./store.ts";
 
@@ -144,21 +143,6 @@ function parseHealth(value: unknown): GatewayHealth | null {
   };
 }
 
-function parseKeyConflict(value: unknown): KeyConflictWarning | null {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
-  const record = value as Partial<KeyConflictWarning>;
-  const envKeyHash = parseString(record.envKeyHash);
-  const savedKeyHash = parseString(record.savedKeyHash);
-  const message = parseString(record.message);
-  if (!envKeyHash || !savedKeyHash || !message) return null;
-  return {
-    envKeyHash,
-    savedKeyHash,
-    active: record.active === "env" ? "env" : "saved",
-    message,
-  };
-}
-
 function parseSnapshot(value: unknown): MonthlyUsageSnapshot | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const record = value as Partial<MonthlyUsageSnapshot>;
@@ -180,7 +164,6 @@ function parseSnapshot(value: unknown): MonthlyUsageSnapshot | null {
     dailyActivityError: null,
     keyList: null,
     keyListError: null,
-    keyConflict: parseKeyConflict(record.keyConflict),
     lastProbeTrace: null,
   };
 }

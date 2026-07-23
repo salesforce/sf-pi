@@ -52,10 +52,11 @@ uses Pi's public model-registry refresh seam.
    default URL and owns `/logout` removal.
 
 Project/global saved URLs can override the credential's default URL. Environment
-variables remain automation fallbacks. Existing global/project `apiKey` fields
-are read-only migration fallbacks for one released minor; SF Pi never copies or
-silently deletes them. `remove-legacy-token` removes only that field after the
-Pi credential passes doctor checks and the user confirms.
+variables remain automation fallbacks. After the v0.235.0-v0.236.0 migration
+window, existing global/project `apiKey` fields are detected for guidance but
+never used for authentication. SF Pi never copies or silently deletes them.
+`remove-legacy-token` removes only that field after the Pi credential passes
+doctor checks and the user confirms.
 
 ### Legacy settings migration
 
@@ -200,7 +201,7 @@ probing on the splash hot path.
 
 Request authentication uses these explicit precedence rules:
 
-- **API key**: Pi `ApiKeyCredential` > `SF_LLM_GATEWAY_API_KEY` > legacy env alias > read-only legacy project token > read-only legacy global token.
+- **API key**: Pi `ApiKeyCredential` > `SF_LLM_GATEWAY_API_KEY` > legacy env alias > missing. Saved global/project `apiKey` fields are inactive migration remnants.
 - **Base URL**: project/global saved non-secret override > URL stored with the Pi credential > `SF_LLM_GATEWAY_BASE_URL` > legacy env alias > missing.
 - **Help URL**: saved.helpUrl > `SF_LLM_GATEWAY_HELP_URL` > legacy env alias > unset.
   Optional. When set, the doctor appends a trailing `More info: <url>`
@@ -231,8 +232,9 @@ Environment variables remain available for automation and CI:
   for shell-driven automation. Older legacy aliases remain supported for
   existing automation.
   Direct edits of `sf-llm-gateway-internal.json` are supported only for
-  non-secret settings. Existing `apiKey` fields remain readable during the bounded
-  migration window but no SF Pi setup/import path creates or modifies them.
+  non-secret settings. Existing `apiKey` fields are detected only for migration
+  guidance and explicit confirmed cleanup; no request, setup, or import path uses,
+  creates, copies, or silently removes them.
 
 Configure the base URL as your organization's gateway **root URL**, for
 example `https://your-gateway.example.com`. If a user pastes a known route
@@ -306,7 +308,7 @@ entry to the active session.
 | /command refresh             | —                                | Re-discover, refresh monthly usage                                                                                                        |
 | /command usage-probe         | —                                | Force a read-only usage probe and classify key/user spend scope                                                                           |
 | /command latency-probe       | —                                | Run read-only timing probes for discovery and a tiny streamed generation                                                                  |
-| /command usage-probe --trace | —                                | Render the per-endpoint trace (timings + status) from the last refresh, plus any active key-conflict warning                              |
+| /command usage-probe --trace | —                                | Render the per-endpoint trace (timings + status) from the last refresh                                                                    |
 | Monthly usage fetch          | cached < 60 s old                | Use cache                                                                                                                                 |
 | Monthly usage fetch          | stale or forced                  | Fetch gateway `/v2/user/info`; retry with the `/key/info` user id only when required; fallback to legacy `/user/info` for older gateways. |
 

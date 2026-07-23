@@ -12,7 +12,6 @@ import {
 import { toGatewayOpenAiBaseUrl, toGatewayRootBaseUrl } from "./gateway-url.ts";
 import { fetchWithTimeout } from "./models.ts";
 import { gatewayProviderRuntime } from "./provider.ts";
-import { LEGACY_TOKEN_CUTOFF_EARLIEST } from "./legacy-token-migration.ts";
 import { type GatewayCaProbeFailureClass, writeCaProbeState } from "./ca-probe-state.ts";
 import {
   collectUsableCaBundlePaths,
@@ -295,11 +294,6 @@ function buildDoctorKeySourceRecommendations(source: string | undefined): string
   if (source === API_KEY_ENV) {
     return [
       `Using ${API_KEY_ENV} as an automation fallback. For interactive use, run /login so Pi can store the intended key across shells.`,
-    ];
-  }
-  if (source?.startsWith("legacy ")) {
-    return [
-      `Using a read-only legacy Gateway config token during the M3A migration window. Run /login before v${LEGACY_TOKEN_CUTOFF_EARLIEST} to move credential ownership to Pi.`,
     ];
   }
   return [];

@@ -22,11 +22,6 @@
  */
 import { existsSync } from "node:fs";
 import { getClaudeCodeSettingsPath, readClaudeCodeGatewayConfig } from "./claude-code-import.ts";
-import {
-  globalGatewayConfigPath,
-  projectGatewayConfigPath,
-  readGatewaySavedConfig,
-} from "./config.ts";
 import { hasShownClaudeCodeNotify } from "./onboarding-state.ts";
 
 /**
@@ -71,6 +66,8 @@ export interface FirstRunNotifyDecision {
 
 export function shouldNotifyClaudeCodeFirstRun(opts: {
   cwd: string;
+  /** Whether Pi's Provider auth resolver has an active native or environment credential. */
+  credentialConfigured?: boolean;
   /** Test seam \u2014 prod callers omit this and use the canonical state path. */
   onboardingStatePathOverride?: string;
   /** Test seam \u2014 prod callers omit this and read from ~/.claude/settings.json. */
@@ -81,13 +78,9 @@ export function shouldNotifyClaudeCodeFirstRun(opts: {
     return { shouldNotify: false };
   }
 
-  // Gate 2: do they already have saved gateway config? If yes, the import
-  // is moot \u2014 their pi is already wired to a gateway. Don't nudge.
-  const savedGlobal = readGatewaySavedConfig(globalGatewayConfigPath());
-  const savedProject = readGatewaySavedConfig(projectGatewayConfigPath(opts.cwd));
-  const hasSavedKey = Boolean(savedGlobal.apiKey || savedProject.apiKey);
-  const hasSavedBaseUrl = Boolean(savedGlobal.baseUrl || savedProject.baseUrl);
-  if (hasSavedKey && hasSavedBaseUrl) {
+  // Gate 2: Pi-owned or environment authentication is already usable.
+  // Legacy config-token presence deliberately does not satisfy this gate.
+  if (opts.credentialConfigured) {
     return { shouldNotify: false };
   }
 

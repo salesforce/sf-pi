@@ -37,7 +37,7 @@ design proposal and — ideally — a PR.
 
 ## Now (0.x — pre-1.0)
 
-- [ ] Pi 0.81 runtime adoption through behavior/deletion gates; the runtime window, M2A–M2F corrections, E4 parity evidence, M3A complete Gateway Provider replacement, and M6 agent-settled update coordinator are implemented, while the M3B legacy-token cutoff, Browser progressive-tool evaluation, and stock-prompt login for Docs/Slack remain pending ([implementation plan](./docs/pi-081-runtime-adoption-plan.md))
+- [ ] Pi 0.81 runtime adoption through behavior/deletion gates; the runtime window, M2A–M2F corrections, E4 parity evidence, M3A complete Gateway Provider replacement, M3B legacy-token cutoff, and M6 agent-settled update coordinator are implemented, while the Browser progressive-tool evaluation and stock-prompt login for Docs/Slack remain pending ([implementation plan](./docs/pi-081-runtime-adoption-plan.md))
 - [ ] Animated GIF / short terminal capture of the TUI + splash
 - [ ] Ratchet coverage floor toward 60%
 - [ ] Promote remaining warn-level ESLint rules to errors where practical

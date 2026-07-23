@@ -14,14 +14,13 @@ import {
   PROVIDER_NAME,
   describeConfigValue,
   getGatewayConfig,
-  getMergedSavedGatewayConfig,
   getSavedExclusiveScopeStatus,
   globalGatewayConfigPath,
   projectGatewayConfigPath,
   readGatewayEnv,
 } from "./config.ts";
+import { hasLegacyGatewayToken } from "./legacy-token-migration.ts";
 import { formatTokens, formatUsd, getActiveModelDefinition } from "./models.ts";
-import { LEGACY_TOKEN_CUTOFF_EARLIEST } from "./legacy-token-migration.ts";
 import { gatewayProviderRuntime, type GatewayNativeDiscoveryState } from "./provider.ts";
 import type { ModelGroupDrift } from "./models.ts";
 import type {
@@ -298,7 +297,8 @@ export function formatKeyListReportLine(
  * guidance tells users where to update or prune instead of guessing age.
  */
 export function getApiKeyGuidanceLines(cwd: string, state: GatewayRuntimeStatusState): string[] {
-  const legacySavedKeyPresent = Boolean(getMergedSavedGatewayConfig(cwd).apiKey?.trim());
+  const legacySavedKeyPresent =
+    hasLegacyGatewayToken(cwd, "project") || hasLegacyGatewayToken(cwd, "global");
   const envKeyPresent = Boolean(readGatewayEnv(API_KEY_ENV, LEGACY_API_KEY_ENV)?.trim());
   const lines: string[] = [];
 
@@ -310,7 +310,7 @@ export function getApiKeyGuidanceLines(cwd: string, state: GatewayRuntimeStatusS
 
   if (legacySavedKeyPresent) {
     lines.push(
-      `A read-only legacy Gateway config token is present for the M3A migration window. Run /login to move credential ownership to Pi before v${LEGACY_TOKEN_CUTOFF_EARLIEST}; the legacy value is never copied or deleted automatically.`,
+      "A legacy Gateway config token is present but is no longer used for authentication. Run /login to store a Pi-owned credential, then use /sf-llm-gateway remove-legacy-token project or global after verification; the legacy value is never copied or deleted automatically.",
     );
   }
   if (envKeyPresent) {

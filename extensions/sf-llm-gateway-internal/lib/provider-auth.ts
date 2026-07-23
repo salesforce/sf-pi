@@ -19,10 +19,7 @@ import {
   PROVIDER_NAME,
   getGatewayConfig,
   getGlobalOnlyGatewayConfig,
-  globalGatewayConfigPath,
   normalizeBaseUrl,
-  projectGatewayConfigPath,
-  readGatewaySavedConfig,
   type ConfigSource,
 } from "./config.ts";
 import { toGatewayRootBaseUrl } from "./gateway-url.ts";
@@ -46,8 +43,6 @@ export interface GatewayProviderAuthConfig {
 export interface GatewayProviderAuthDependencies {
   promptBridge: SecureCredentialPromptBridge;
   getConfig(cwd: string | undefined): GatewayProviderAuthConfig;
-  getLegacyProjectApiKey(cwd: string): string | undefined;
-  getLegacyGlobalApiKey(): string | undefined;
 }
 
 export interface ResolvedGatewayRuntimeAuth {
@@ -66,6 +61,7 @@ export interface GatewayProviderAuthController {
   ): void;
   clear(): void;
   getActiveCwd(): string | undefined;
+  hasConfiguredCredential(): Promise<boolean>;
   resolveRuntimeAuth(cwd?: string): Promise<ResolvedGatewayRuntimeAuth | undefined>;
 }
 
@@ -80,12 +76,6 @@ function createDefaultDependencies(): GatewayProviderAuthDependencies {
     getConfig(cwd) {
       return cwd ? getGatewayConfig(cwd) : getGlobalOnlyGatewayConfig();
     },
-    getLegacyProjectApiKey(cwd) {
-      return readGatewaySavedConfig(projectGatewayConfigPath(cwd)).apiKey;
-    },
-    getLegacyGlobalApiKey() {
-      return readGatewaySavedConfig(globalGatewayConfigPath()).apiKey;
-    },
   };
 }
 
@@ -95,8 +85,6 @@ function nonEmpty(value: string | undefined): string | undefined {
 }
 
 async function resolveCredential(
-  dependencies: GatewayProviderAuthDependencies,
-  cwd: string | undefined,
   ctx: AuthContext,
   credential: ApiKeyCredential | undefined,
 ): Promise<ResolvedCredential | undefined> {
@@ -107,15 +95,7 @@ async function resolveCredential(
   if (primaryEnv) return { apiKey: primaryEnv, source: API_KEY_ENV };
 
   const legacyEnv = nonEmpty(await ctx.env(LEGACY_API_KEY_ENV));
-  if (legacyEnv) return { apiKey: legacyEnv, source: LEGACY_API_KEY_ENV };
-
-  if (cwd) {
-    const project = nonEmpty(dependencies.getLegacyProjectApiKey(cwd));
-    if (project) return { apiKey: project, source: "legacy project Gateway config" };
-  }
-
-  const global = nonEmpty(dependencies.getLegacyGlobalApiKey());
-  return global ? { apiKey: global, source: "legacy global Gateway config" } : undefined;
+  return legacyEnv ? { apiKey: legacyEnv, source: LEGACY_API_KEY_ENV } : undefined;
 }
 
 export function createGatewayProviderAuth(
@@ -140,7 +120,7 @@ export function createGatewayProviderAuth(
         : (credentialBaseUrl ?? configuredBaseUrl);
     if (!config.enabled || !baseUrl) return undefined;
 
-    const resolved = await resolveCredential(dependencies, cwd, ctx, credential);
+    const resolved = await resolveCredential(ctx, credential);
     if (!resolved) return undefined;
 
     return {
@@ -195,6 +175,11 @@ export function createGatewayProviderAuth(
 
     getActiveCwd() {
       return activeCwd;
+    },
+
+    async hasConfiguredCredential() {
+      if (activeModelRegistry?.getProviderAuthStatus(PROVIDER_NAME).configured) return true;
+      return Boolean(await resolveCredential(defaultProviderAuthContext(), undefined));
     },
 
     async resolveRuntimeAuth(cwd = activeCwd) {

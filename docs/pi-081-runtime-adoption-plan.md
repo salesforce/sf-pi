@@ -1,6 +1,6 @@
 # Pi 0.81 Runtime Adoption Plan
 
-Status: Pi 0.81.1 runtime adoption, M2A–M2F, E4, M3A, and M6 implemented; M3B and P5 remain pending; stock-prompt interactive login for SF Docs/Slack remains deferred
+Status: Pi 0.81.1 runtime adoption, M2A–M2F, E4, M3A, M3B, and M6 implemented; P5 remains pending; stock-prompt interactive login for SF Docs/Slack remains deferred
 
 ## Goal
 
@@ -596,6 +596,8 @@ Implementation evidence:
 
 ## M3B — End legacy config-token execution fallback
 
+Implementation status: implemented after the v0.235.0-v0.236.0 migration window.
+
 ### Objective
 
 End the bounded compatibility read path after the announced migration window.
@@ -614,6 +616,17 @@ Delete legacy token request precedence and execution use. Retain only non-secret
 ### Required gate
 
 Mandatory gate at both runtime-window edges plus sanitized migration artifacts.
+
+Implementation evidence:
+
+- Provider authentication resolves only Pi-owned credentials, `SF_LLM_GATEWAY_API_KEY`, or its legacy environment alias; project/global saved `apiKey` fields never satisfy Pi auth checks or reach requests;
+- effective non-secret Gateway configuration no longer returns any API-key value or source, while saved-field presence remains available only to status, setup preservation, and explicit cleanup paths;
+- stale saved-vs-environment key-conflict hashing, persisted state, probe output, and Welcome rendering are deleted because the saved value is never active;
+- status and setup surfaces identify inactive legacy fields without values and direct users to `/login` plus verified `remove-legacy-token` cleanup;
+- native login/logout and environment fallback tests remain green, legacy-only project/global fixtures resolve no auth and remain byte-for-byte unchanged, and cleanup still requires native verification plus confirmation;
+- an exact Pi 0.81.1 RPC lifecycle keeps a distinct saved legacy field inactive while an environment credential remains usable across Gateway off/on transitions;
+- Pi 0.81.1 is both the exact supported floor and latest release inside `>=0.81.1 <0.82.0`, so the runtime-window edge gate is one exact package;
+- aggregate validation passes 476 test files and 3,558 tests, with 5 test files and 8 tests skipped; sanitized evidence: `/tmp/sf-pi-m3b-evidence.json`.
 
 ---
 
@@ -723,7 +736,7 @@ Activation may add only tools from the original Pi-selected eligible baseline.
 
 ## M6 — Agent-Settled Update Coordinator
 
-Implementation status: implemented; release validation in progress.
+Implementation status: implemented and released in v0.236.0.
 
 ### Objective
 

@@ -66,8 +66,9 @@ Repo-level rules still apply; see root `AGENTS.md`.
    provider-scoped ModelsStore. Startup is network-free; refresh is explicit.
 3. **Pi owns credentials.** `/login` stores the API key and default URL in
    Pi's credential store. SF Pi's custom component masks key input; project
-   config may override only non-secret settings. Legacy config tokens are
-   read-only during the bounded migration window.
+   config may override only non-secret settings. Legacy global/project config
+   tokens are inactive: detect them only for migration guidance and explicit,
+   verified cleanup. Never use, copy, print, or silently delete them.
 4. **Keep thinking capability-only.** Gateway model metadata may expose
    live-proven levels such as `max`, but SF Pi must never call
    `pi.setThinkingLevel()` or write `defaultThinkingLevel`. Pi/user settings
