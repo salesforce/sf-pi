@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.235.0-2026-07-23",
-  "latestVersion": "0.235.0",
+  "revision": "release-0.236.0-2026-07-23",
+  "latestVersion": "0.236.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.235.0",
+      "id": "release-0.236.0",
       "kind": "update",
-      "title": "sf-pi v0.235.0 — complete native Gateway Provider",
+      "title": "sf-pi v0.236.0 — coordinate updates after agent settlement",
       "publishedAt": "2026-07-23T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.235.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.236.0",
       "severity": "info",
-      "body": "complete native Gateway Provider"
+      "body": "coordinate updates after agent settlement"
     },
     {
       "id": "pi-0.73-required",

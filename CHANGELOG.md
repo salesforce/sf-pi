@@ -544,6 +544,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.236.0](https://github.com/salesforce/sf-pi/compare/v0.235.0...v0.236.0) (2026-07-23)
+
+
+### Features
+
+* coordinate updates after agent settlement ([#517](https://github.com/salesforce/sf-pi/issues/517)) ([b378e1a](https://github.com/salesforce/sf-pi/commit/b378e1a38eef5bae7227a9b569e8b0a69ce8fee7))
+
 ## [0.235.0](https://github.com/salesforce/sf-pi/compare/v0.234.0...v0.235.0) (2026-07-23)
 
 
