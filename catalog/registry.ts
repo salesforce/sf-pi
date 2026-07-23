@@ -78,7 +78,7 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
     defaultEnabled: true,
     commands: ["/sf-code-analyzer"],
     tools: ["code_analyzer"],
-    events: ["session_start","session_shutdown"],
+    events: ["session_start","tool_result","agent_settled","session_shutdown"],
     configurable: true,
     getConfigPanel: async () => {
       const mod = await import("../extensions/sf-code-analyzer/lib/config-panel.ts");

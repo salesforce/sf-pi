@@ -8,7 +8,7 @@
   "configurable": true,
   "commands": ["/sf-code-analyzer"],
   "tools": ["code_analyzer"],
-  "events": ["session_start", "session_shutdown"],
+  "events": ["session_start", "tool_result", "agent_settled", "session_shutdown"],
   "docs": {
     "summary": "Wraps the supported `sf code-analyzer` CLI contract with a pi-native command panel and one `code_analyzer` family tool for doctor, run, rules, config, ApexGuru, ApexGuru setup-help, and last-report workflows. Reports are written as session-scoped artifacts outside the project tree by default with summary / inline / file_only output modes. Deferred post-agent local quality scans are readiness-gated and run after the agent finishes an edit pass.",
     "primaryFiles": [

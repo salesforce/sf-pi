@@ -260,6 +260,8 @@
     ],
     "events": [
       "session_start",
+      "tool_result",
+      "agent_settled",
       "session_shutdown"
     ],
     "docs": {
@@ -295,7 +297,7 @@
     "entry": "extensions/sf-code-analyzer/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 4418
+    "srcLoc": 4420
   },
   {
     "id": "sf-data-explorer",

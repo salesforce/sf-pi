@@ -36,6 +36,20 @@ const GENERATED_FILES = [
   "docs/agent-orientation.md",
 ];
 
+// Cross-file hook registrations need runtime proof because lexical source scans
+// cannot establish that an imported registration helper is actually invoked.
+// Keep this allowlist narrow; each entry points at an exact-factory test that
+// captures every pi.on() registration and compares it with manifest.events.
+const DELEGATED_EVENT_ATTESTATIONS = new Map([
+  [
+    "sf-code-analyzer",
+    {
+      test: "tests/catalog-event-attestation.test.ts",
+      events: new Set(["tool_result", "agent_settled"]),
+    },
+  ],
+]);
+
 const PUBLIC_SAFETY_PATTERNS = [
   {
     id: "salesforce-sandbox-host",
@@ -368,6 +382,13 @@ function checkManifestEventsMatchCode() {
     const codeEvents = new Set(
       [...code.matchAll(/\bpi\.on\(\s*["'`]([^"'`]+)["'`]/g)].map((match) => match[1]),
     );
+    const delegatedAttestation = DELEGATED_EVENT_ATTESTATIONS.get(manifest.id);
+    if (delegatedAttestation && !existsSync(path.join(ROOT, base, delegatedAttestation.test))) {
+      fail(
+        manifestPath,
+        `Delegated event attestation test does not exist: ${delegatedAttestation.test}`,
+      );
+    }
 
     for (const event of codeEvents) {
       if (!manifestEvents.has(event)) {
@@ -375,8 +396,16 @@ function checkManifestEventsMatchCode() {
       }
     }
     for (const event of manifestEvents) {
-      if (!codeEvents.has(event)) {
-        fail(manifestPath, `Manifest lists event not registered in index.ts: ${event}`);
+      if (!codeEvents.has(event) && !delegatedAttestation?.events.has(event)) {
+        fail(
+          manifestPath,
+          `Manifest lists delegated event without an exact-factory attestation: ${event}`,
+        );
+      }
+    }
+    for (const event of delegatedAttestation?.events ?? []) {
+      if (!manifestEvents.has(event)) {
+        fail(manifestPath, `Factory-attested event missing from manifest: ${event}`);
       }
     }
   }

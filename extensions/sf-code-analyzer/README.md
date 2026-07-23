@@ -202,7 +202,9 @@ scope.
 | ----------------------------- | ----------------- | ------------------------------------------------------------------------ |
 | extension load                | always            | Register `/sf-code-analyzer` and `/sf-pi doctor` provider.               |
 | session_start                 | extension enabled | Register the `code_analyzer` tool.                                       |
-| session_shutdown              | always            | Clear the tool-registration latch.                                       |
+| tool_result                   | successful edit   | Collect a supported changed-file target for deferred analysis.           |
+| agent_settled                 | target(s) pending | Run one readiness-gated deferred analysis pass.                          |
+| session_shutdown              | always            | Clear deferred state and the tool-registration latch.                    |
 | `/sf-code-analyzer`           | interactive       | Open SF Code Analyzer in the SF Pi Manager.                              |
 | `/sf-code-analyzer status`    | any mode          | Print extension and tool status.                                         |
 | `/sf-code-analyzer doctor`    | any mode          | Probe Salesforce CLI, Code Analyzer plugin, Java, and Python.            |
@@ -273,6 +275,7 @@ extensions/sf-code-analyzer/
     auto-scan-orchestration.test.ts← unit / smoke test
     auto-scan-plan.test.ts  ← unit / smoke test
     auto-scan-transcript.test.ts← unit / smoke test
+    catalog-event-attestation.test.ts← unit / smoke test
     config-panel.test.ts    ← unit / smoke test
     display.test.ts         ← unit / smoke test
     recipes.test.ts         ← unit / smoke test
