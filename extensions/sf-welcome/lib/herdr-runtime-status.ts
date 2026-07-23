@@ -9,6 +9,8 @@ import type { HerdrPiIntegrationStatusInfo, HerdrRuntimeStatusInfo } from "./typ
 export const HERDR_PI_PACKAGE_SOURCE = "npm:@ogulcancelik/pi-herdr";
 export const HERDR_PI_INTEGRATION_FILE = "herdr-agent-state.ts";
 
+const HERDR_CONTROL_TOOLS = new Set(["herdr", "herdr_layout", "herdr_pane", "herdr_agent"]);
+
 export function collectHerdrRuntimeStatus(
   cwd: string | undefined,
   options: {
@@ -19,10 +21,12 @@ export function collectHerdrRuntimeStatus(
 ): HerdrRuntimeStatusInfo {
   const env = options.env ?? process.env;
   const extensionEnabled = cwd ? isSfPiExtensionEnabled(cwd, "sf-herdr") : true;
-  const activeTools = new Set(options.activeToolNames ?? []);
-  const allTools = new Set(options.allToolNames ?? []);
+  const activeTools = options.activeToolNames ?? [];
+  const allTools = options.allToolNames ?? [];
   const toolActive =
-    activeTools.has("herdr") || (options.activeToolNames === undefined && allTools.has("herdr"));
+    activeTools.some((tool) => HERDR_CONTROL_TOOLS.has(tool)) ||
+    (options.activeToolNames === undefined &&
+      allTools.some((tool) => HERDR_CONTROL_TOOLS.has(tool)));
   const packageInstalled = cwd
     ? isRecommendedPackageSourceInstalled(cwd, HERDR_PI_PACKAGE_SOURCE)
     : false;
