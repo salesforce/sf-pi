@@ -8,7 +8,7 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { RpcClient } from "@earendil-works/pi-coding-agent";
 
-import { PROVIDER_NAME } from "../lib/config.ts";
+import { API_KEY_ENV, PROVIDER_NAME } from "../lib/config.ts";
 
 const tempDirs: string[] = [];
 const repoRoot = path.resolve(import.meta.dirname, "../../..");
@@ -72,7 +72,7 @@ async function startRuntime(
     `${JSON.stringify({
       enabled: true,
       baseUrl: `http://127.0.0.1:${gatewayPort}`,
-      apiKey: "test-key",
+      apiKey: "inactive-legacy-test-key",
     })}\n`,
     "utf8",
   );
@@ -80,7 +80,11 @@ async function startRuntime(
   const client = new RpcClient({
     cliPath,
     cwd,
-    env: { PI_CODING_AGENT_DIR: agentDir, ...extraEnv },
+    env: {
+      PI_CODING_AGENT_DIR: agentDir,
+      [API_KEY_ENV]: "active-automation-test-key",
+      ...extraEnv,
+    },
     provider: PROVIDER_NAME,
     model: "gpt-5.6-sol",
     args: [

@@ -16,6 +16,7 @@ import {
   shouldNotifyClaudeCodeFirstRun,
   type OnboardChainDeps,
 } from "../lib/onboard-action.ts";
+import { projectGatewayConfigPath, writeGatewaySavedConfig } from "../lib/config.ts";
 
 // Helper: assemble a deps stub so each test only overrides what it cares
 // about. Returns sane defaults that look like a happy-path import.
@@ -200,6 +201,56 @@ describe("shouldNotifyClaudeCodeFirstRun", () => {
     expect(decision.shouldNotify).toBe(true);
     expect(decision.importedBaseUrl).toBe("https://gateway.example.com");
     expect(decision.claudeSettingsPath).toBe(claudeSettings);
+  });
+
+  it("does not treat a legacy saved token as usable configuration after cutoff", () => {
+    const claudeSettings = path.join(tmpDir, ".claude", "settings.json");
+    mkdirSync(path.dirname(claudeSettings), { recursive: true });
+    writeFileSync(
+      claudeSettings,
+      JSON.stringify({
+        env: {
+          ANTHROPIC_BASE_URL: "https://gateway.example.com",
+          ANTHROPIC_AUTH_TOKEN: "example-token-1234567890",
+        },
+      }),
+    );
+    writeGatewaySavedConfig(projectGatewayConfigPath(tmpDir), {
+      baseUrl: "https://gateway.example.com",
+      apiKey: "inactive-legacy-token",
+    });
+
+    const decision = shouldNotifyClaudeCodeFirstRun({
+      cwd: tmpDir,
+      credentialConfigured: false,
+      onboardingStatePathOverride: path.join(tmpDir, "onboarding.json"),
+      claudeSettingsPathOverride: claudeSettings,
+    });
+
+    expect(decision.shouldNotify).toBe(true);
+  });
+
+  it("returns shouldNotify=false when Pi Provider auth is already configured", () => {
+    const claudeSettings = path.join(tmpDir, ".claude", "settings.json");
+    mkdirSync(path.dirname(claudeSettings), { recursive: true });
+    writeFileSync(
+      claudeSettings,
+      JSON.stringify({
+        env: {
+          ANTHROPIC_BASE_URL: "https://gateway.example.com",
+          ANTHROPIC_AUTH_TOKEN: "example-token-1234567890",
+        },
+      }),
+    );
+
+    const decision = shouldNotifyClaudeCodeFirstRun({
+      cwd: tmpDir,
+      credentialConfigured: true,
+      onboardingStatePathOverride: path.join(tmpDir, "onboarding.json"),
+      claudeSettingsPathOverride: claudeSettings,
+    });
+
+    expect(decision.shouldNotify).toBe(false);
   });
 
   it("returns shouldNotify=false once the sentinel has been written", async () => {

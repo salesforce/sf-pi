@@ -31,12 +31,13 @@
     ],
     "stateFiles": [
       "~/.pi/agent/auth.json (Pi-owned API-key credential + default non-secret URL)",
-      "<globalAgentDir>/sf-llm-gateway-internal.json (non-secret settings; legacy apiKey is migration-only)",
+      "<globalAgentDir>/sf-llm-gateway-internal.json (non-secret settings; inactive legacy apiKey may remain for detection and confirmed cleanup)",
       "<globalAgentDir>/sf-llm-gateway/* (monthly usage and diagnostic state)"
     ],
     "safety": [
       "API-key input uses a fixed-mask SF Pi component and never enters Pi's visible stock prompt.",
-      "Pi alone persists/removes credentials; setup and import paths write no secrets.",
+      "Pi alone persists/removes active credentials; setup and import paths write no secrets.",
+      "Legacy config apiKey fields are never used for authentication and remain untouched without verified explicit cleanup.",
       "Pi's settings.json is mutated through pi-settings.ts helpers with race-aware reads."
     ]
   }

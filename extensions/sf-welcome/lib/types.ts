@@ -6,10 +6,7 @@
  * in one small file helps both agents and humans understand the contracts
  * without opening every discovery module.
  */
-import type {
-  GatewayConnectionStatus,
-  KeyConflictWarning,
-} from "../../../lib/common/monthly-usage/store.ts";
+import type { GatewayConnectionStatus } from "../../../lib/common/monthly-usage/store.ts";
 import type { SlackStatusSnapshot } from "../../../lib/common/slack-status/store.ts";
 import type { CodeAnalyzerReadinessState } from "../../../lib/common/code-analyzer-status/store.ts";
 import type { AutoUpdateStatus } from "../../../lib/common/auto-update/store.ts";
@@ -279,10 +276,6 @@ export interface SplashData {
   gatewayStatus?: GatewayConnectionStatus | null;
   /** True while gateway status is being checked. */
   gatewayLoading?: boolean;
-  /** Optional cross-source key-conflict warning surfaced under the gateway
-   * row. Phase 1.6: present when env and saved API keys both exist and
-   * differ. UIs render once per session as a passive nudge — not blocking. */
-  gatewayKeyConflict?: KeyConflictWarning | null;
   /** Install status for recommended external pi packages. Replaces the
    * legacy Salesforce AI block when any recommendations are defined. */
   recommendations?: RecommendationsStatusSummary;

@@ -918,15 +918,6 @@ function buildLeftColumn(
     lines.push(
       formatGlyphInfoRow("gateway", mode, "LLM Gateway", formatGatewayStatusValue(data, mode)),
     );
-    // Phase 1.6: passive key-conflict nudge directly under the gateway row.
-    // Truncated to the column width so it never wraps. The gateway extension
-    // also notifies once per session via ctx.ui.notify() — this row is the
-    // visual reminder that persists for the splash's lifetime.
-    if (data.gatewayKeyConflict) {
-      const hint = `Two API keys configured (env: ${data.gatewayKeyConflict.envKeyHash}…, saved: ${data.gatewayKeyConflict.savedKeyHash}…, saved active)`;
-      const truncated = truncateToWidth(hint, Math.max(10, colWidth - 4), "…");
-      lines.push(`   ${SF_ORANGE("⚠")} ${MUTED(truncated)}`);
-    }
     // Corporate CA nudge sub-line. Only renders when the most recent
     // doctor run flagged a TLS-class failure on macOS, the gateway
     // extension is enabled, and no fix has been applied. All three
@@ -1037,9 +1028,9 @@ function buildLeftColumn(
   lines.push(
     formatGlyphInfoRow("sfSkills", mode, "SF Skills", formatSfSkillsStatusValue(data, mode)),
   );
-  // Action hint as a muted sub-line, same convention the gateway row uses
-  // for its key-conflict warning. Only fires when there's something the
-  // user can actionably run from the row's current state.
+  // Action hint as a muted sub-line, matching the gateway row's actionable
+  // nudge convention. Only fires when there's something the user can run
+  // from the row's current state.
   const sfSkillsHint = sfSkillsActionHint(data.sfSkills);
   if (sfSkillsHint) {
     const truncated = truncateToWidth(sfSkillsHint, Math.max(10, colWidth - 4), "…");

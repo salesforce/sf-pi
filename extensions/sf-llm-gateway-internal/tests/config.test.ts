@@ -21,6 +21,7 @@ import {
   getGatewayConfig,
   normalizeBaseUrl,
   projectGatewayConfigPath,
+  readGatewaySavedConfig,
   resolveSavedExclusiveScopeStatus,
   writeGatewaySavedConfig,
 } from "../lib/config.ts";
@@ -116,7 +117,7 @@ describe("normalizeBaseUrl", () => {
 // -------------------------------------------------------------------------------------------------
 
 describe("getGatewayConfig precedence", () => {
-  it("accepts public-safe env vars for automation fallback", () => {
+  it("resolves the public-safe environment URL without exposing credential values", () => {
     const cwd = mkdtempSync(path.join(tmpdir(), "sf-pi-gateway-config-"));
     const previousBaseUrl = process.env[BASE_URL_ENV];
     const previousApiKey = process.env[API_KEY_ENV];
@@ -130,8 +131,8 @@ describe("getGatewayConfig precedence", () => {
 
       expect(config.baseUrl).toBe("https://env.example.com");
       expect(config.baseUrlSource).toBe("env");
-      expect(config.apiKey).toBe("env-key");
-      expect(config.apiKeySource).toBe("env");
+      expect(config).not.toHaveProperty("apiKey");
+      expect(JSON.stringify(config)).not.toContain("env-key");
     } finally {
       if (previousBaseUrl === undefined) delete process.env[BASE_URL_ENV];
       else process.env[BASE_URL_ENV] = previousBaseUrl;
@@ -159,8 +160,8 @@ describe("getGatewayConfig precedence", () => {
 
       expect(config.baseUrl).toBe("https://legacy.example.com");
       expect(config.baseUrlSource).toBe("env");
-      expect(config.apiKey).toBe("legacy-key");
-      expect(config.apiKeySource).toBe("env");
+      expect(config).not.toHaveProperty("apiKey");
+      expect(JSON.stringify(config)).not.toContain("legacy-key");
     } finally {
       if (previousBaseUrl === undefined) delete process.env[LEGACY_BASE_URL_ENV];
       else process.env[LEGACY_BASE_URL_ENV] = previousBaseUrl;
@@ -174,7 +175,7 @@ describe("getGatewayConfig precedence", () => {
     }
   });
 
-  it("prefers saved config over env vars so stale shell exports cannot shadow setup", () => {
+  it("prefers the saved URL without exposing or deleting the legacy saved token", () => {
     const cwd = mkdtempSync(path.join(tmpdir(), "sf-pi-gateway-config-"));
     const previousBaseUrl = process.env[BASE_URL_ENV];
     const previousApiKey = process.env[API_KEY_ENV];
@@ -191,8 +192,9 @@ describe("getGatewayConfig precedence", () => {
 
       expect(config.baseUrl).toBe("https://saved.example.com");
       expect(config.baseUrlSource).toBe("saved");
-      expect(config.apiKey).toBe("saved-key");
-      expect(config.apiKeySource).toBe("saved");
+      expect(config).not.toHaveProperty("apiKey");
+      expect(JSON.stringify(config)).not.toMatch(/saved-key|stale-env-key/u);
+      expect(readGatewaySavedConfig(projectGatewayConfigPath(cwd)).apiKey).toBe("saved-key");
     } finally {
       if (previousBaseUrl === undefined) delete process.env[BASE_URL_ENV];
       else process.env[BASE_URL_ENV] = previousBaseUrl;

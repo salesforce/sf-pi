@@ -116,10 +116,8 @@ export type SavedGatewayConfig = {
 export type GatewayConfig = {
   enabled: boolean;
   baseUrl?: string;
-  apiKey?: string;
   exclusiveScope: boolean;
   baseUrlSource: ConfigSource;
-  apiKeySource: ConfigSource;
   exclusiveScopeSource: Extract<ConfigSource, "saved" | "default">;
   previousDefaultProvider?: string;
   previousDefaultModel?: string;
@@ -151,8 +149,6 @@ export function getGatewayConfig(cwd: string): GatewayConfig {
 
   const envBaseUrl = normalizeBaseUrl(readGatewayEnv(BASE_URL_ENV, LEGACY_BASE_URL_ENV));
   const savedBaseUrl = normalizeBaseUrl(saved.baseUrl);
-  const envApiKey = readGatewayEnv(API_KEY_ENV, LEGACY_API_KEY_ENV)?.trim() || undefined;
-  const savedApiKey = saved.apiKey?.trim() || undefined;
   const savedExclusiveScope = asOptionalBoolean(saved.exclusiveScope);
   const baseUrl = savedBaseUrl ?? envBaseUrl ?? DEFAULT_BASE_URL;
   const optional = resolveOptionalEnvBackedValues(saved);
@@ -160,10 +156,8 @@ export function getGatewayConfig(cwd: string): GatewayConfig {
   return {
     enabled: saved.enabled !== false,
     baseUrl,
-    apiKey: savedApiKey ?? envApiKey,
     exclusiveScope: savedExclusiveScope ?? false,
     baseUrlSource: savedBaseUrl ? "saved" : envBaseUrl ? "env" : "default",
-    apiKeySource: savedApiKey ? "saved" : envApiKey ? "env" : "missing",
     exclusiveScopeSource: savedExclusiveScope !== undefined ? "saved" : "default",
     previousDefaultProvider: saved.previousDefaultProvider,
     previousDefaultModel: saved.previousDefaultModel,
@@ -217,8 +211,6 @@ export function getGlobalOnlyGatewayConfig(): GatewayConfig {
 
   const envBaseUrl = normalizeBaseUrl(readGatewayEnv(BASE_URL_ENV, LEGACY_BASE_URL_ENV));
   const savedBaseUrl = normalizeBaseUrl(saved.baseUrl);
-  const envApiKey = readGatewayEnv(API_KEY_ENV, LEGACY_API_KEY_ENV)?.trim() || undefined;
-  const savedApiKey = saved.apiKey?.trim() || undefined;
   const savedExclusiveScope = asOptionalBoolean(saved.exclusiveScope);
   const baseUrl = savedBaseUrl ?? envBaseUrl ?? DEFAULT_BASE_URL;
   const optional = resolveOptionalEnvBackedValues(saved);
@@ -226,10 +218,8 @@ export function getGlobalOnlyGatewayConfig(): GatewayConfig {
   return {
     enabled: saved.enabled !== false,
     baseUrl,
-    apiKey: savedApiKey ?? envApiKey,
     exclusiveScope: savedExclusiveScope ?? false,
     baseUrlSource: savedBaseUrl ? "saved" : envBaseUrl ? "env" : "default",
-    apiKeySource: savedApiKey ? "saved" : envApiKey ? "env" : "missing",
     exclusiveScopeSource: savedExclusiveScope !== undefined ? "saved" : "default",
     previousDefaultProvider: saved.previousDefaultProvider,
     previousDefaultModel: saved.previousDefaultModel,

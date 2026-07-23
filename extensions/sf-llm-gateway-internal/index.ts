@@ -379,8 +379,8 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
       unregisterMonthlyUsage = registerGatewayMonthlyUsageRefresher();
     }
     clearDeferredStartupTimers();
-    // Capture cwd while the ctx is valid; deferred callbacks must not read
-    // ctx.cwd later (the getter throws on a stale ctx).
+    // Capture cwd while the ctx is valid; deferred callbacks must not read stale
+    // ctx getters after reload.
     const startupCwd = ctx.cwd;
 
     // Install the retry-telemetry listener so transparent Anthropic
@@ -417,27 +417,27 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
       }),
     );
 
-    // Phase 1.6: key-conflict detection is surfaced by sf-welcome's inline
-    // gateway row and /sf-llm-gateway doctor / usage-probe --trace. Do not
-    // toast during startup: notifications render over the splash and make
-    // first paint noisy.
-
     // First-run Claude Code nudge. Cache-first, deferred past first paint:
     //  1. State-store read (cheap; "have we shown this?")
-    //  2. Saved config read (cheap; "do they already have a key?")
+    //  2. Pi Provider auth status captured above (cheap)
     //  3. existsSync ~/.claude/settings.json (cheap)
     //  4. Only on hit — parse + score the Claude Code settings file once.
     // Sentinel-marked once shown so this never nags twice.
     const claudeNotifyTimer = setTimeout(() => {
-      void markBootStep("sf-llm-gateway.claude-code-nudge (deferred)", () => {
-        const decision = shouldNotifyClaudeCodeFirstRun({ cwd: startupCwd });
-        if (!decision.shouldNotify) return Promise.resolve();
+      void markBootStep("sf-llm-gateway.claude-code-nudge (deferred)", async () => {
+        const credentialConfigured = Boolean(
+          await gatewayProviderRuntime.authController.resolveRuntimeAuth(startupCwd),
+        );
+        const decision = shouldNotifyClaudeCodeFirstRun({
+          cwd: startupCwd,
+          credentialConfigured,
+        });
+        if (!decision.shouldNotify) return;
         const summary = decision.importedBaseUrl
-          ? `Found gateway credentials in Claude Code (${decision.importedBaseUrl}). Run /${FRIENDLY_COMMAND_NAME} onboard to import them.`
-          : `Found gateway credentials in Claude Code. Run /${FRIENDLY_COMMAND_NAME} onboard to import them.`;
+          ? `Found gateway setup in Claude Code (${decision.importedBaseUrl}). Run /${FRIENDLY_COMMAND_NAME} onboard to import non-secret settings, then authenticate with /login ${PROVIDER_NAME}.`
+          : `Found gateway setup in Claude Code. Run /${FRIENDLY_COMMAND_NAME} onboard to import non-secret settings, then authenticate with /login ${PROVIDER_NAME}.`;
         ctx.ui.notify(summary, "info");
         markClaudeCodeNotifyShown();
-        return Promise.resolve();
       }).catch(() => undefined);
     }, 4_000);
     claudeNotifyTimer.unref?.();
@@ -860,7 +860,6 @@ async function handleUsageProbeCommand(
     connectionStatus,
     dailyActivity,
     dailyActivityError,
-    keyConflict,
     lastProbeTrace,
   } = getMonthlyUsageState();
 
@@ -869,7 +868,7 @@ async function handleUsageProbeCommand(
       pi,
       ctx,
       "SF LLM Gateway Internal usage probe — trace.",
-      formatProbeTraceReport(connectionStatus, lastProbeTrace, keyConflict),
+      formatProbeTraceReport(connectionStatus, lastProbeTrace),
       connectionStatus?.kind === "connected" ? "info" : "warning",
     );
     return;
@@ -931,7 +930,6 @@ async function handleUsageProbeCommand(
 function formatProbeTraceReport(
   connectionStatus: import("./lib/monthly-usage.ts").GatewayConnectionStatus | undefined | null,
   trace: import("./lib/monthly-usage.ts").GatewayProbeTrace | undefined | null,
-  keyConflict: import("./lib/monthly-usage.ts").KeyConflictWarning | undefined | null,
 ): string {
   const lines: string[] = ["Gateway probe trace", ""];
   lines.push(
@@ -965,10 +963,6 @@ function formatProbeTraceReport(
         lines.push(`    → ${entry.errorMessage.slice(0, 200)}`);
       }
     }
-  }
-
-  if (keyConflict) {
-    lines.push("", "Key conflict warning:", `  ${keyConflict.message}`);
   }
 
   return lines.join("\n");
@@ -1094,9 +1088,10 @@ async function executeOnboardChain(
     },
     hasUsableSavedConfig: async () => {
       const config = getGatewayConfig(ctx.cwd);
-      const authConfigured =
-        ctx.modelRegistry.getProviderAuthStatus(PROVIDER_NAME).configured || Boolean(config.apiKey);
-      return Boolean(config.baseUrl) && authConfigured;
+      bindGatewayProviderContext(ctx);
+      const credentialConfigured =
+        await gatewayProviderRuntime.authController.hasConfiguredCredential();
+      return Boolean(config.baseUrl) && credentialConfigured;
     },
   };
   return runOnboardChain(scope, deps);
@@ -2210,9 +2205,9 @@ async function ensureGatewayCredentialsConfigured(
   scope: "global" | "project",
 ): Promise<boolean> {
   let config = getGatewayConfig(ctx.cwd);
-  const hasCredential = () =>
-    ctx.modelRegistry.getProviderAuthStatus(PROVIDER_NAME).configured || Boolean(config.apiKey);
-  if (config.baseUrl && hasCredential()) {
+  bindGatewayProviderContext(ctx);
+  const hasCredential = () => gatewayProviderRuntime.authController.hasConfiguredCredential();
+  if (config.baseUrl && (await hasCredential())) {
     return true;
   }
 
@@ -2242,7 +2237,7 @@ async function ensureGatewayCredentialsConfigured(
   }
 
   config = getGatewayConfig(ctx.cwd);
-  if (!hasCredential()) {
+  if (!(await hasCredential())) {
     ctx.ui.setEditorText(`/login ${PROVIDER_NAME}`);
     await emitCommandOutput(
       pi,

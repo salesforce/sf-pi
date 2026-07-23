@@ -107,6 +107,7 @@ function authController(root = "https://active.example.test/v1"): GatewayProvide
     bind: vi.fn(),
     clear: vi.fn(),
     getActiveCwd: vi.fn(() => undefined),
+    hasConfiguredCredential: vi.fn(async () => false),
     resolveRuntimeAuth: vi.fn(async () => undefined),
   };
 }

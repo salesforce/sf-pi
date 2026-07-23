@@ -16,7 +16,6 @@ import {
   LEGACY_BASE_URL_ENV,
 } from "../lib/config.ts";
 import {
-  computeKeyConflict,
   fetchDailyActivity,
   fetchKeyList,
   refreshUsageDetails,
@@ -63,6 +62,26 @@ describe("gateway monthly usage refresh", () => {
         kind: "not-configured",
         source: "config",
       });
+    } finally {
+      unregister();
+    }
+  });
+
+  it("does not publish a false key conflict for an inactive legacy saved token", async () => {
+    process.env[BASE_URL_ENV] = "https://gateway.example.test";
+    process.env[API_KEY_ENV] = "active-env-key";
+    mockGatewayFetch({ userStatus: 200, keyStatus: 200, healthStatus: 200 });
+    const unregister = registerGatewayMonthlyUsageRefresher();
+    const cwd = createProjectConfig({
+      baseUrl: "https://gateway.example.test",
+      apiKey: "inactive-legacy-saved-key",
+    });
+
+    try {
+      await getMonthlyUsageStateRefresh(true, cwd);
+
+      expect(getMonthlyUsageState().connectionStatus).toMatchObject({ kind: "connected" });
+      expect(getMonthlyUsageState()).not.toHaveProperty("keyConflict");
     } finally {
       unregister();
     }
@@ -603,55 +622,6 @@ describe("gateway monthly usage refresh", () => {
     } finally {
       unregister();
     }
-  });
-});
-
-// Phase 1.6: cross-source key-conflict detection.
-describe("computeKeyConflict", () => {
-  beforeEach(() => {
-    delete process.env[API_KEY_ENV];
-    delete process.env[LEGACY_API_KEY_ENV];
-  });
-
-  afterEach(() => {
-    restoreEnv(API_KEY_ENV, originalApiKey);
-    restoreEnv(LEGACY_API_KEY_ENV, originalLegacyApiKey);
-  });
-
-  it("returns null when keys match", () => {
-    process.env[API_KEY_ENV] = "sk-same";
-    const cwd = createProjectConfig({
-      baseUrl: "https://gateway.example.test",
-      apiKey: "sk-same",
-    });
-    expect(computeKeyConflict(cwd)).toBeNull();
-  });
-
-  it("returns null when only one source is set", () => {
-    delete process.env[API_KEY_ENV];
-    const cwd = createProjectConfig({
-      baseUrl: "https://gateway.example.test",
-      apiKey: "sk-saved",
-    });
-    expect(computeKeyConflict(cwd)).toBeNull();
-  });
-
-  it("returns a warning with hashed prefixes when keys differ", () => {
-    process.env[API_KEY_ENV] = "sk-env-blocked";
-    const cwd = createProjectConfig({
-      baseUrl: "https://gateway.example.test",
-      apiKey: "sk-saved-active",
-    });
-    const warning = computeKeyConflict(cwd);
-    expect(warning).not.toBeNull();
-    expect(warning?.active).toBe("saved");
-    expect(warning?.envKeyHash).toHaveLength(8);
-    expect(warning?.savedKeyHash).toHaveLength(8);
-    expect(warning?.envKeyHash).not.toEqual(warning?.savedKeyHash);
-    // Never logs the raw key.
-    expect(warning?.message).not.toContain("sk-env-blocked");
-    expect(warning?.message).not.toContain("sk-saved-active");
-    expect(warning?.message).toContain(warning!.envKeyHash);
   });
 });
 

@@ -6,9 +6,16 @@ import { afterEach, describe, expect, it } from "vitest";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { API_KEY_ENV, SAVED_CONFIG_FILE } from "../lib/config.ts";
+import {
+  API_KEY_ENV,
+  SAVED_CONFIG_FILE,
+  globalGatewayConfigPath,
+  projectGatewayConfigPath,
+  writeGatewaySavedConfig,
+} from "../lib/config.ts";
 
 const originalHomeEnv = process.env.HOME;
+const originalAgentDir = process.env.PI_CODING_AGENT_DIR;
 const originalAsciiIconsEnv = process.env.SF_PI_ASCII_ICONS;
 import {
   buildFooterStatus,
@@ -45,6 +52,12 @@ afterEach(() => {
     delete process.env.SF_PI_ASCII_ICONS;
   } else {
     process.env.SF_PI_ASCII_ICONS = originalAsciiIconsEnv;
+  }
+
+  if (originalAgentDir === undefined) {
+    delete process.env.PI_CODING_AGENT_DIR;
+  } else {
+    process.env.PI_CODING_AGENT_DIR = originalAgentDir;
   }
 
   for (const dir of tempDirs.splice(0)) {
@@ -237,11 +250,32 @@ describe("API key guidance", () => {
       }),
     );
 
-    expect(lines.join("\n")).toContain("read-only legacy Gateway config token");
+    expect(lines.join("\n")).toContain("no longer used for authentication");
+    expect(lines.join("\n")).toContain("remove-legacy-token");
     expect(lines.join("\n")).toContain("automation fallback");
     expect(lines.join("\n")).toContain("/login");
     expect(lines.join("\n")).not.toContain("saved-key");
     expect(lines.join("\n")).not.toContain("env-key");
+  });
+
+  it("detects a global legacy field even when project scope has a blank field", () => {
+    delete process.env[API_KEY_ENV];
+    const cwd = makeTempDir("gateway-key-guidance-project-");
+    process.env.PI_CODING_AGENT_DIR = makeTempDir("gateway-key-guidance-agent-");
+    writeGatewaySavedConfig(globalGatewayConfigPath(), { apiKey: "global-inactive-key" });
+    writeGatewaySavedConfig(projectGatewayConfigPath(cwd), { apiKey: "" });
+
+    const lines = getApiKeyGuidanceLines(
+      cwd,
+      withDefaults({
+        discovery: null,
+        monthlyUsage: null,
+        monthlyUsageError: null,
+      }),
+    );
+
+    expect(lines.join("\n")).toContain("no longer used for authentication");
+    expect(lines.join("\n")).not.toContain("global-inactive-key");
   });
 
   it("points rejected keys and multiple-key accounts at rotation/pruning guidance", () => {

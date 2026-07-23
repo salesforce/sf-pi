@@ -17,7 +17,6 @@
  * extension directly. When this extension is disabled, no refresher is
  * registered and consumers see the empty snapshot.
  */
-import { createHash } from "node:crypto";
 import type {
   GatewayConnectionStatus,
   GatewayDailyActivity,
@@ -28,7 +27,6 @@ import type {
   GatewayMonthlyUsage,
   GatewayProbeTrace,
   GatewayProbeTraceEntry,
-  KeyConflictWarning,
   MonthlyUsageSnapshot,
 } from "../../../lib/common/monthly-usage/store.ts";
 import {
@@ -41,13 +39,7 @@ import {
   readCachedMonthlyUsageSnapshot,
   writeCachedMonthlyUsageSnapshot,
 } from "../../../lib/common/monthly-usage/cache.ts";
-import {
-  API_KEY_ENV,
-  LEGACY_API_KEY_ENV,
-  getGatewayConfig,
-  getMergedSavedGatewayConfig,
-  readGatewayEnv,
-} from "./config.ts";
+import { API_KEY_ENV, getGatewayConfig } from "./config.ts";
 import { gatewayProviderRuntime } from "./provider.ts";
 import { toGatewayRootBaseUrl } from "./gateway-url.ts";
 import { fetchWithTimeout } from "./models.ts";
@@ -88,7 +80,6 @@ export type {
   GatewayMonthlyUsage,
   GatewayProbeTrace,
   GatewayProbeTraceEntry,
-  KeyConflictWarning,
 } from "../../../lib/common/monthly-usage/store.ts";
 
 /**
@@ -201,7 +192,6 @@ export function registerGatewayMonthlyUsageRefresher(): () => void {
  *   1.4 Drops daily-activity and key-list from this hot path — they live
  *       in `refreshUsageDetails` now, called from /sf-llm-gateway panel
  *       and `usage-probe` only.
- *   1.6 Computes a `keyConflict` warning when env and saved keys differ.
  *
  * Phase 3.1: per-endpoint trace is captured into `lastProbeTrace`.
  */
@@ -217,37 +207,27 @@ export async function refreshMonthlyUsage(force: boolean, cwd: string): Promise<
   refreshInFlight = (async () => {
     const config = getGatewayConfig(cwd);
     const runtimeAuth = await gatewayProviderRuntime.authController.resolveRuntimeAuth(cwd);
-    const keyConflict =
-      runtimeAuth?.source === "Pi saved credential" ? null : computeKeyConflict(cwd);
     const previousLastKnownMonthlyUsage = getLastKnownMonthlyUsage();
 
     if (!config.baseUrl) {
-      publishError(
-        "Missing base URL configuration.",
-        {
-          kind: "not-configured",
-          detail: "Missing base URL configuration.",
-          checkedAt: new Date().toISOString(),
-          source: "config",
-        },
-        keyConflict,
-      );
+      publishError("Missing base URL configuration.", {
+        kind: "not-configured",
+        detail: "Missing base URL configuration.",
+        checkedAt: new Date().toISOString(),
+        source: "config",
+      });
       lastFetchAt = Date.now();
       return;
     }
 
     if (!runtimeAuth) {
       const message = `Missing Pi credential or ${API_KEY_ENV} automation fallback.`;
-      publishError(
-        message,
-        {
-          kind: "not-configured",
-          detail: message,
-          checkedAt: new Date().toISOString(),
-          source: "config",
-        },
-        keyConflict,
-      );
+      publishError(message, {
+        kind: "not-configured",
+        detail: message,
+        checkedAt: new Date().toISOString(),
+        source: "config",
+      });
       lastFetchAt = Date.now();
       return;
     }
@@ -257,7 +237,7 @@ export async function refreshMonthlyUsage(force: boolean, cwd: string): Promise<
     // merge so we don't drop the previous snapshot's monthlyUsage — useful
     // when a TTL-bounded re-probe is in flight and the splash shouldn't
     // flash to $0.00.
-    publishChecking(keyConflict);
+    publishChecking();
 
     const startedAt = new Date();
     let trace: GatewayProbeTraceEntry[] = [];
@@ -311,7 +291,6 @@ export async function refreshMonthlyUsage(force: boolean, cwd: string): Promise<
       dailyActivityError: getMonthlyUsageState().dailyActivityError ?? null,
       keyList: getMonthlyUsageState().keyList ?? null,
       keyListError: getMonthlyUsageState().keyListError ?? null,
-      keyConflict,
       lastProbeTrace: probeTrace,
     };
 
@@ -531,11 +510,7 @@ export async function refreshUsageDetails(force: boolean, cwd: string): Promise<
   }
 }
 
-function publishError(
-  message: string,
-  connectionStatus: GatewayConnectionStatus,
-  keyConflict: KeyConflictWarning | null,
-): void {
+function publishError(message: string, connectionStatus: GatewayConnectionStatus): void {
   const snapshot: MonthlyUsageSnapshot = {
     monthlyUsage: null,
     monthlyUsageError: message,
@@ -545,7 +520,6 @@ function publishError(
     health: null,
     healthError: message,
     connectionStatus,
-    keyConflict,
   };
   setMonthlyUsageState(snapshot);
   writeCachedMonthlyUsageSnapshot(snapshot);
@@ -562,7 +536,7 @@ function getLastKnownMonthlyUsage(): GatewayMonthlyUsage | null {
   return previous.monthlyUsage ?? previous.lastKnownMonthlyUsage ?? null;
 }
 
-function publishChecking(keyConflict: KeyConflictWarning | null): void {
+function publishChecking(): void {
   const previous = getMonthlyUsageState();
   setMonthlyUsageState({
     ...previous,
@@ -573,36 +547,7 @@ function publishChecking(keyConflict: KeyConflictWarning | null): void {
             kind: "checking",
             checkedAt: new Date().toISOString(),
           },
-    keyConflict,
   });
-}
-
-/**
- * Phase 1.6: compute a key-conflict warning when both env and saved keys
- * are set and don't match. Saved beats env in `getGatewayConfig`, so the
- * env key is the stale one. Returns null when there's nothing to warn
- * about — caller can persist that into the snapshot to clear stale
- * warnings after the user fixes the conflict.
- */
-export function computeKeyConflict(cwd: string): KeyConflictWarning | null {
-  const saved = getMergedSavedGatewayConfig(cwd).apiKey?.trim();
-  const env = readGatewayEnv(API_KEY_ENV, LEGACY_API_KEY_ENV)?.trim();
-  if (!saved || !env) return null;
-  if (saved === env) return null;
-
-  const savedHash = hashApiKey(saved);
-  const envHash = hashApiKey(env);
-  return {
-    savedKeyHash: savedHash,
-    envKeyHash: envHash,
-    active: "saved",
-    message: `Two gateway API keys are configured (env: ${envHash}…, saved: ${savedHash}…). The saved key is active. If the env key is stale, run /sf-llm-gateway doctor for guidance, or update your shell/Keychain to match.`,
-  };
-}
-
-/** Stable 8-char hash used to identify a key without ever logging it. */
-function hashApiKey(value: string): string {
-  return createHash("sha256").update(value).digest("hex").slice(0, 8);
 }
 
 function resolveConnectionStatus(

@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Behavior tests for complete-Provider Gateway authentication and session context. */
-import { readFileSync, writeFileSync } from "node:fs";
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
@@ -15,7 +14,15 @@ import {
   type ProviderStreams,
 } from "@earendil-works/pi-ai";
 import type { ExtensionContext, ExtensionUIContext } from "@earendil-works/pi-coding-agent";
-import { API_KEY_ENV, BASE_URL_ENV, LEGACY_API_KEY_ENV, PROVIDER_NAME } from "../lib/config.ts";
+import {
+  API_KEY_ENV,
+  BASE_URL_ENV,
+  LEGACY_API_KEY_ENV,
+  PROVIDER_NAME,
+  globalGatewayConfigPath,
+  projectGatewayConfigPath,
+  writeGatewaySavedConfig,
+} from "../lib/config.ts";
 import {
   GATEWAY_RESOLVED_ROOT_ENV,
   createGatewayProviderAuth,
@@ -51,8 +58,6 @@ function makeDependencies(
         ? `https://${path.basename(cwd)}.example.test/v1`
         : "https://global.example.test/v1",
     }),
-    getLegacyProjectApiKey: () => "legacy-project-private",
-    getLegacyGlobalApiKey: () => "legacy-global-private",
     ...overrides,
   };
 }
@@ -68,7 +73,7 @@ async function resolve(
 }
 
 describe("Gateway complete-Provider auth resolution", () => {
-  it("prefers a native Pi credential while environment and legacy values remain", async () => {
+  it("prefers a native Pi credential while environment values remain", async () => {
     const result = await resolve(
       makeDependencies(),
       {
@@ -140,21 +145,47 @@ describe("Gateway complete-Provider auth resolution", () => {
     });
   });
 
-  it("uses existing project then global saved tokens only as read-only legacy fallbacks", async () => {
-    const project = await resolve(makeDependencies());
-    const global = await resolve(makeDependencies({ getLegacyProjectApiKey: () => undefined }));
+  it("does not use legacy project or global saved tokens after the migration cutoff", async () => {
+    const originalAgentDir = process.env.PI_CODING_AGENT_DIR;
+    const fixtureDir = mkdtempSync(path.join(tmpdir(), "sf-pi-m3b-auth-"));
+    const projectDir = path.join(fixtureDir, "project");
+    process.env.PI_CODING_AGENT_DIR = path.join(fixtureDir, "agent");
 
-    expect(project).toEqual({
-      auth: { apiKey: "legacy-project-private" },
-      env: { [GATEWAY_RESOLVED_ROOT_ENV]: "https://project-a.example.test" },
-      source: "legacy project Gateway config",
-    });
-    expect(global).toEqual({
-      auth: { apiKey: "legacy-global-private" },
-      env: { [GATEWAY_RESOLVED_ROOT_ENV]: "https://project-a.example.test" },
-      source: "legacy global Gateway config",
-    });
-    expect(`${project?.source} ${global?.source}`).not.toContain("private");
+    try {
+      writeGatewaySavedConfig(globalGatewayConfigPath(), {
+        enabled: true,
+        baseUrl: "https://global.example.test",
+        apiKey: "legacy-global-private",
+      });
+      writeGatewaySavedConfig(projectGatewayConfigPath(projectDir), {
+        enabled: true,
+        baseUrl: "https://project.example.test",
+        apiKey: "legacy-project-private",
+      });
+      const projectBefore = readFileSync(projectGatewayConfigPath(projectDir), "utf8");
+      const globalBefore = readFileSync(globalGatewayConfigPath(), "utf8");
+      const controller = createGatewayProviderAuth();
+
+      controller.bind(projectDir, UNUSED_UI, "tui");
+      await expect(controller.auth.resolve({ ctx: authContext({}) })).resolves.toBeUndefined();
+      await expect(
+        controller.auth.resolve({
+          ctx: authContext({ [API_KEY_ENV]: "active-automation-private" }),
+        }),
+      ).resolves.toMatchObject({
+        auth: { apiKey: "active-automation-private" },
+        source: API_KEY_ENV,
+      });
+      controller.clear();
+      await expect(controller.auth.resolve({ ctx: authContext({}) })).resolves.toBeUndefined();
+
+      expect(readFileSync(projectGatewayConfigPath(projectDir), "utf8")).toBe(projectBefore);
+      expect(readFileSync(globalGatewayConfigPath(), "utf8")).toBe(globalBefore);
+    } finally {
+      if (originalAgentDir === undefined) delete process.env.PI_CODING_AGENT_DIR;
+      else process.env.PI_CODING_AGENT_DIR = originalAgentDir;
+      rmSync(fixtureDir, { recursive: true, force: true });
+    }
   });
 
   it("returns undefined when disabled, missing an endpoint, or missing every credential", async () => {
@@ -168,14 +199,7 @@ describe("Gateway complete-Provider auth resolution", () => {
     await expect(
       resolve(makeDependencies({ getConfig: () => ({ enabled: true }) })),
     ).resolves.toBeUndefined();
-    await expect(
-      resolve(
-        makeDependencies({
-          getLegacyProjectApiKey: () => undefined,
-          getLegacyGlobalApiKey: () => undefined,
-        }),
-      ),
-    ).resolves.toBeUndefined();
+    await expect(resolve(makeDependencies())).resolves.toBeUndefined();
   });
 
   it("switches request-time project config on bind and drops stale project context on clear", async () => {
@@ -186,30 +210,29 @@ describe("Gateway complete-Provider auth resolution", () => {
           ? `https://${path.basename(cwd)}.example.test/bedrock/v1`
           : "https://global.example.test/v1",
       }),
-      getLegacyProjectApiKey: (cwd) => `legacy-${path.basename(cwd)}-private`,
-      getLegacyGlobalApiKey: () => "legacy-global-private",
     });
     const controller = createGatewayProviderAuth(dependencies);
+    const ctx = authContext({ [API_KEY_ENV]: "automation-private" });
 
     controller.bind("/workspace/project-a", UNUSED_UI, "tui");
-    const projectA = await controller.auth.resolve({ ctx: authContext({}) });
+    const projectA = await controller.auth.resolve({ ctx });
     controller.bind("/workspace/project-b", UNUSED_UI, "tui");
-    const projectB = await controller.auth.resolve({ ctx: authContext({}) });
+    const projectB = await controller.auth.resolve({ ctx });
     controller.clear();
-    const global = await controller.auth.resolve({ ctx: authContext({}) });
+    const global = await controller.auth.resolve({ ctx });
 
     expect(projectA).toMatchObject({
-      auth: { apiKey: "legacy-project-a-private" },
+      auth: { apiKey: "automation-private" },
       env: { [GATEWAY_RESOLVED_ROOT_ENV]: "https://project-a.example.test" },
     });
     expect(projectB).toMatchObject({
-      auth: { apiKey: "legacy-project-b-private" },
+      auth: { apiKey: "automation-private" },
       env: { [GATEWAY_RESOLVED_ROOT_ENV]: "https://project-b.example.test" },
     });
     expect(global).toEqual({
-      auth: { apiKey: "legacy-global-private" },
+      auth: { apiKey: "automation-private" },
       env: { [GATEWAY_RESOLVED_ROOT_ENV]: "https://global.example.test" },
-      source: "legacy global Gateway config",
+      source: API_KEY_ENV,
     });
     expect(controller.getActiveCwd()).toBeUndefined();
     expect(dependencies.promptBridge.clear).toHaveBeenCalledTimes(1);
@@ -254,6 +277,33 @@ describe("Gateway complete-Provider auth resolution", () => {
     expect(resolved?.source).toBe(checked?.source);
   });
 
+  it("detects stored or environment credentials while Gateway routing is disabled", async () => {
+    const controller = createGatewayProviderAuth(
+      makeDependencies({
+        getConfig: () => ({ enabled: false, baseUrl: "https://gateway.example.test" }),
+      }),
+    );
+    controller.bind("/workspace/project-a", UNUSED_UI, "tui", {
+      getProviderAuthStatus: () => ({ configured: true, source: "stored" }),
+    } as never);
+
+    await expect(controller.hasConfiguredCredential()).resolves.toBe(true);
+
+    controller.clear();
+    const previousPrimary = process.env[API_KEY_ENV];
+    const previousLegacy = process.env[LEGACY_API_KEY_ENV];
+    try {
+      process.env[API_KEY_ENV] = "automation-private";
+      delete process.env[LEGACY_API_KEY_ENV];
+      await expect(controller.hasConfiguredCredential()).resolves.toBe(true);
+    } finally {
+      if (previousPrimary === undefined) delete process.env[API_KEY_ENV];
+      else process.env[API_KEY_ENV] = previousPrimary;
+      if (previousLegacy === undefined) delete process.env[LEGACY_API_KEY_ENV];
+      else process.env[LEGACY_API_KEY_ENV] = previousLegacy;
+    }
+  });
+
   it("resolves auxiliary Gateway calls through the active public ModelRegistry", async () => {
     const controller = createGatewayProviderAuth(makeDependencies());
     const getProviderAuth = vi.fn(async () => ({
@@ -295,8 +345,6 @@ describe("Gateway provider auth through Pi public Models", () => {
       makeDependencies({
         promptBridge,
         getConfig: () => ({ enabled: true, baseUrl: "https://gateway.example.test/v1" }),
-        getLegacyProjectApiKey: () => JSON.parse(readFileSync(projectFixture, "utf8")).apiKey,
-        getLegacyGlobalApiKey: () => JSON.parse(readFileSync(globalFixture, "utf8")).apiKey,
       }),
     );
     controller.bind(fixtureDir, UNUSED_UI, "tui");
@@ -363,8 +411,6 @@ describe("Gateway provider auth through Pi public Models", () => {
       makeDependencies({
         promptBridge: makePromptBridge("canonical-login-key"),
         getConfig: () => ({ enabled: true, baseUrl: "https://active.example.test/v1" }),
-        getLegacyProjectApiKey: () => undefined,
-        getLegacyGlobalApiKey: () => undefined,
       }),
     );
     controller.bind("/workspace/project-a", UNUSED_UI, "tui");
