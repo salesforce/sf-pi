@@ -303,9 +303,9 @@ export const MODEL_PRESETS: Record<string, Omit<GatewayModelDefinition, "id">> =
   // will accept up to ~1.05M but rounding down keeps pi's context-window
   // math honest.
   //
-  // `thinkingLevelMap` is intentionally omitted — gpt-5.5 has no
-  // wire-value we can attach to the selected level on this gateway, so
-  // exposing the picker would be misleading.
+  // The GPT-5.5 thinking map is attached centrally in models.ts after
+  // Responses-family routing is identified. Live evidence maps Pi max to
+  // the route's strongest accepted wire tier, xhigh.
   "gpt-5.5": {
     family: "openai",
     name: "[SF LLM Gateway] GPT-5.5 [1M]",

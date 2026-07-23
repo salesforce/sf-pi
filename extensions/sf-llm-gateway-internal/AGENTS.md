@@ -67,9 +67,10 @@ Repo-level rules still apply; see root `AGENTS.md`.
 2. **Static catalog first, discovery second.** The factory registers a
    bootstrap catalog synchronously so Pi startup resolves defaults before
    async discovery completes. Don't move registration out of the factory.
-3. **Respect user overrides.** Thinking level and enabledModels: the user
-   always wins. See the `lastAppliedThinkingLevel` block comment in `index.ts`
-   for the exact contract.
+3. **Keep thinking capability-only.** Gateway model metadata may expose
+   live-proven levels such as `max`, but SF Pi must never call
+   `pi.setThinkingLevel()` or write `defaultThinkingLevel`. Pi/user settings
+   own the active level. Preserve user-owned `enabledModels` behavior as well.
 4. **Settings mutations go through `lib/pi-settings.ts`.** Don't write
    JSON from ad-hoc call sites. The helpers handle global vs project
    scope, additive vs exclusive mode, and legacy-entry migration.

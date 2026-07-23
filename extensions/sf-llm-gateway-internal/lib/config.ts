@@ -60,14 +60,12 @@ export const FALLBACK_MODEL_ID = "claude-sonnet-5";
 
 /** Previous default kept as a named constant for backward compatibility in presets. */
 export const PREVIOUS_DEFAULT_MODEL_ID = "claude-opus-4-8";
-export const DEFAULT_THINKING_LEVEL = "max" as const;
 // When the user turns the gateway off, switch them to a model that actually
 // exists on the gateway. `openai-codex/gpt-5.5` used to be here but is not
 // a published model id on the gateway; use the real GPT-5 on the openai
 // provider bundled with pi instead.
 export const OFF_DEFAULT_PROVIDER = "openai";
 export const OFF_DEFAULT_MODEL_ID = "gpt-5";
-export const OFF_DEFAULT_THINKING_LEVEL = "xhigh" as const;
 
 export const SAVED_CONFIG_FILE = `${PROVIDER_NAME}.json`;
 
@@ -95,7 +93,6 @@ export type SavedGatewayConfig = {
   previousEnabledModels?: string[] | null;
   previousDefaultProvider?: string;
   previousDefaultModel?: string;
-  previousThinkingLevel?: string;
   /**
    * Optional URL surfaced by the doctor as a trailing "More info" link.
    * Empty / undefined by default; users may set this to point at their own
@@ -126,7 +123,6 @@ export type GatewayConfig = {
   exclusiveScopeSource: Extract<ConfigSource, "saved" | "default">;
   previousDefaultProvider?: string;
   previousDefaultModel?: string;
-  previousThinkingLevel?: string;
   /** Optional doctor "More info" URL. Resolved saved > env > undefined. */
   helpUrl?: string;
   helpUrlSource: ConfigSource;
@@ -171,7 +167,6 @@ export function getGatewayConfig(cwd: string): GatewayConfig {
     exclusiveScopeSource: savedExclusiveScope !== undefined ? "saved" : "default",
     previousDefaultProvider: saved.previousDefaultProvider,
     previousDefaultModel: saved.previousDefaultModel,
-    previousThinkingLevel: saved.previousThinkingLevel,
     helpUrl: optional.helpUrl,
     helpUrlSource: optional.helpUrlSource,
     caBundleSource: optional.caBundleSource,
@@ -238,7 +233,6 @@ export function getGlobalOnlyGatewayConfig(): GatewayConfig {
     exclusiveScopeSource: savedExclusiveScope !== undefined ? "saved" : "default",
     previousDefaultProvider: saved.previousDefaultProvider,
     previousDefaultModel: saved.previousDefaultModel,
-    previousThinkingLevel: saved.previousThinkingLevel,
     helpUrl: optional.helpUrl,
     helpUrlSource: optional.helpUrlSource,
     caBundleSource: optional.caBundleSource,
@@ -337,7 +331,6 @@ export function readGatewaySavedConfig(filePath: string): SavedGatewayConfig {
       previousEnabledModels: asOptionalStringArrayOrNull(record.previousEnabledModels),
       previousDefaultProvider: asOptionalString(record.previousDefaultProvider),
       previousDefaultModel: asOptionalString(record.previousDefaultModel),
-      previousThinkingLevel: asOptionalString(record.previousThinkingLevel),
       helpUrl: asOptionalString(record.helpUrl),
       caBundleSource: asOptionalString(record.caBundleSource),
       caBundleCandidates: asOptionalStringArrayOrNull(record.caBundleCandidates),

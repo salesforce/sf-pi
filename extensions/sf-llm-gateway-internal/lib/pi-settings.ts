@@ -43,7 +43,16 @@ function isGatewayScopePattern(pattern: string): boolean {
 export interface EffectiveDefaultModelSetting {
   provider?: string;
   modelId?: string;
-  thinkingLevel?: string;
+}
+
+/** Update only model selection; Pi/user settings retain thinking authority. */
+export function setDefaultModelSelection(
+  settings: Record<string, unknown>,
+  provider: string,
+  modelId: string,
+): void {
+  settings.defaultProvider = provider;
+  settings.defaultModel = modelId;
 }
 
 export function globalSettingsPath(): string {
@@ -177,6 +186,5 @@ export function getEffectiveDefaultModelSetting(cwd: string): EffectiveDefaultMo
   return {
     provider: asOptionalString(merged.defaultProvider),
     modelId: asOptionalString(merged.defaultModel),
-    thinkingLevel: asOptionalString(merged.defaultThinkingLevel),
   };
 }

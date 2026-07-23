@@ -3,7 +3,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "no
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { DEFAULT_MODEL_ID, DEFAULT_THINKING_LEVEL, PROVIDER_NAME } from "../lib/config.ts";
+import { DEFAULT_MODEL_ID, PROVIDER_NAME } from "../lib/config.ts";
 import {
   GPT56_DEFAULT_MIGRATION_SENTINEL_FIELD,
   GPT56_DEFAULT_MIGRATION_SENTINEL_KEY,
@@ -46,7 +46,7 @@ describe("migrateGpt56DefaultSettingsFile", () => {
 
       expect(result.changed).toBe(true);
       expect(next.defaultModel).toBe(DEFAULT_MODEL_ID);
-      expect(next.defaultThinkingLevel).toBe(DEFAULT_THINKING_LEVEL);
+      expect(next.defaultThinkingLevel).toBe("medium");
       expect(
         (next[GPT56_DEFAULT_MIGRATION_SENTINEL_KEY] as Record<string, unknown>)[
           GPT56_DEFAULT_MIGRATION_SENTINEL_FIELD
@@ -63,7 +63,9 @@ describe("migrateGpt56DefaultSettingsFile", () => {
 
     migrateGpt56DefaultSettingsFile(file);
 
-    expect(readBack().defaultModel).toBe(DEFAULT_MODEL_ID);
+    const next = readBack();
+    expect(next.defaultModel).toBe(DEFAULT_MODEL_ID);
+    expect(next).not.toHaveProperty("defaultThinkingLevel");
   });
 
   it("preserves an explicitly selected non-default gateway model", () => {

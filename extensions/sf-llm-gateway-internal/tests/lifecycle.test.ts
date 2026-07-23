@@ -145,6 +145,11 @@ describe("gateway extension lifecycle", () => {
     vi.useFakeTimers();
     monthlyUsageMock.unregisters.length = 0;
     monthlyUsageMock.registerGatewayMonthlyUsageRefresher.mockClear();
+    piSettingsMock.getEffectiveDefaultModelSetting.mockReturnValue({
+      provider: "anthropic",
+      modelId: "claude",
+    });
+    piSettingsMock.readSettings.mockReturnValue({});
   });
 
   afterEach(() => {
@@ -173,6 +178,62 @@ describe("gateway extension lifecycle", () => {
 
     expect(pi.handlers.before_provider_headers).toBeUndefined();
   });
+
+  it.each(["set", "cycle", "restore"] as const)(
+    "does not mutate thinking when a Gateway model is selected via %s",
+    async (source) => {
+      const { default: extension } = await import("../index.ts");
+      const pi = makeFakePi();
+      extension(pi as never);
+      const ctx = makeCtx(mkdtempSync(join(tmpdir(), "sf-pi-gateway-thinking-")));
+
+      await pi.handlers.model_select?.[0]?.(
+        {
+          type: "model_select",
+          model: { provider: "sf-llm-gateway-internal", id: "gpt-5.6-sol" },
+          source,
+        },
+        ctx,
+      );
+
+      expect(pi.setThinkingLevel).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["low", undefined])(
+    "preserves a %s Pi thinking default during Gateway startup repair",
+    async (thinkingLevel) => {
+      const settings: Record<string, unknown> = {
+        defaultProvider: "sf-llm-gateway-internal",
+        defaultModel: "gpt-5.6-sol-v1",
+      };
+      if (thinkingLevel !== undefined) settings.defaultThinkingLevel = thinkingLevel;
+      piSettingsMock.readSettings.mockReturnValue(settings);
+      piSettingsMock.getEffectiveDefaultModelSetting.mockReturnValue({
+        provider: "sf-llm-gateway-internal",
+        modelId: "gpt-5.6-sol",
+      });
+
+      const { default: extension } = await import("../index.ts");
+      const pi = makeFakePi();
+      extension(pi as never);
+      const ctx = makeCtx(mkdtempSync(join(tmpdir(), "sf-pi-gateway-startup-thinking-")));
+      (ctx as { model?: unknown }).model = {
+        provider: "sf-llm-gateway-internal",
+        id: "gpt-5.6-sol",
+      };
+
+      await pi.handlers.session_start?.[0]?.({ type: "session_start", reason: "startup" }, ctx);
+
+      expect(pi.setThinkingLevel).not.toHaveBeenCalled();
+      expect(settings.defaultModel).toBe("gpt-5.6-sol");
+      if (thinkingLevel === undefined) {
+        expect(settings).not.toHaveProperty("defaultThinkingLevel");
+      } else {
+        expect(settings.defaultThinkingLevel).toBe(thinkingLevel);
+      }
+    },
+  );
 
   it("registers the monthly usage refresher for each session and unregisters it on shutdown", async () => {
     const { default: extension } = await import("../index.ts");

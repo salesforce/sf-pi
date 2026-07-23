@@ -12,12 +12,9 @@ import type { Api, Model } from "@earendil-works/pi-ai";
 import type { ModelRegistry } from "@earendil-works/pi-coding-agent";
 import { findMatchingModelId, resolvePreferredModelId } from "./models.ts";
 
-type GatewayThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
-
 export interface GatewayDefaultModelResolution {
   provider: string;
   modelId: string;
-  thinkingLevel: GatewayThinkingLevel;
   source: "pi" | "fallback";
   model?: Model<Api>;
   warning?: string;
@@ -29,20 +26,13 @@ export interface ResolveGatewayDefaultModelOptions {
   availableModelIds: string[];
   preferredModelIds: Array<string | undefined>;
   fallbackModelId: string;
-  defaultThinkingLevel: GatewayThinkingLevel;
 }
 
 export function resolveGatewayDefaultModelWithPi(
   options: ResolveGatewayDefaultModelOptions,
 ): GatewayDefaultModelResolution {
-  const {
-    modelRegistry,
-    providerName,
-    availableModelIds,
-    preferredModelIds,
-    fallbackModelId,
-    defaultThinkingLevel,
-  } = options;
+  const { modelRegistry, providerName, availableModelIds, preferredModelIds, fallbackModelId } =
+    options;
 
   for (const preferredId of preferredModelIds) {
     const candidateId = findMatchingModelId(preferredId, availableModelIds);
@@ -59,7 +49,6 @@ export function resolveGatewayDefaultModelWithPi(
         provider: providerName,
         modelId: resolvedModel.id,
         model: resolvedModel,
-        thinkingLevel: defaultThinkingLevel,
         source: "pi",
       };
     }
@@ -71,7 +60,6 @@ export function resolveGatewayDefaultModelWithPi(
     provider: providerName,
     modelId: fallbackModelIdFromAvailable,
     model: modelRegistry.find(providerName, fallbackModelIdFromAvailable),
-    thinkingLevel: defaultThinkingLevel,
     source: "fallback",
   };
 }

@@ -24,7 +24,7 @@
  * - Uses Pi's built-in custom-provider support instead of models.json hacks
  * - Shows an explicit SF LLM Gateway footer status when one of these models is active
  * - Footer status includes chosen model, current context usage, and monthly gateway usage
- * - Defaults gateway sessions to Pi thinking level max when the model supports it
+ * - Advertises model-specific thinking capabilities while Pi/user settings choose the active level
  * - Repairs retired gateway enabledModels entries before startup validation
  * - No SF Pi-owned Anthropic beta headers; current gateway routes are GA/live-proven
  * - Keeps the runtime spine in this file while pushing settings/status helpers to lib/
@@ -63,7 +63,7 @@
  *   session_start               | —                                  | Sync defaults (sync), fire-and-forget discovery, one-time key-conflict notify
  *   turn_end                    | model is gateway model             | Update footer (context + monthly usage); first turn_end also kicks refreshUsageDetails
  *   turn_end                    | model is NOT gateway model         | Clear footer status
- *   model_select                | selected model is gateway          | Set thinking to the gateway default
+ *   model_select                | model changes                       | Refresh footer without mutating thinking
  *   after_provider_response     | model is gateway model + 2xx       | Clear any live throttle/upstream warning
  *   after_provider_response     | model is gateway model + 429       | Record throttle signal, footer shows ⚠ badge for 60s
  *   after_provider_response     | model is gateway model + 5xx       | Record upstream signal, footer shows ⚠ badge for 60s
@@ -111,10 +111,8 @@ import {
   DEFAULT_MODEL_ID,
   FALLBACK_MODEL_ID,
   PREVIOUS_DEFAULT_MODEL_ID,
-  DEFAULT_THINKING_LEVEL,
   OFF_DEFAULT_PROVIDER,
   OFF_DEFAULT_MODEL_ID,
-  OFF_DEFAULT_THINKING_LEVEL,
   getGatewayConfig,
   readGatewaySavedConfig,
   writeGatewaySavedConfig,
@@ -159,6 +157,7 @@ import {
   restoreEnabledModelsSnapshot,
   shouldCaptureExclusiveScopeSnapshot,
   snapshotEnabledModelsForExclusiveScope,
+  setDefaultModelSelection,
   writeSettings,
 } from "./lib/pi-settings.ts";
 import {
@@ -291,18 +290,6 @@ type CommandArgs = {
 // In-memory runtime state
 // -------------------------------------------------------------------------------------------------
 
-/**
- * Last thinking level this extension actively set on the session.
- *
- * We use this to distinguish "nobody picked a level, give them our default"
- * from "the user just picked medium, leave them alone". If the session's
- * current thinking level matches what we last set, the user has not touched
- * it and we are free to re-apply DEFAULT_THINKING_LEVEL. If it differs, the
- * user (or another extension) changed it and we respect that choice.
- *
- * Reset to undefined on session_shutdown so each new session starts fresh.
- */
-let lastAppliedThinkingLevel: string | undefined;
 const staleUsageRefresh = createStaleUsageRefreshState();
 
 function getRuntimeStatusState() {
@@ -416,8 +403,6 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
     // Capture cwd while the ctx is valid; deferred callbacks must not read
     // ctx.cwd later (the getter throws on a stale ctx).
     const startupCwd = ctx.cwd;
-    // Fresh session — forget any thinking-level we set in a previous session.
-    lastAppliedThinkingLevel = undefined;
 
     // Install the retry-telemetry listener so transparent Anthropic
     // early-stream retries surface as user-visible notifications. These
@@ -522,23 +507,7 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
     }
   });
 
-  pi.on("model_select", async (event, ctx) => {
-    if (isGatewayProvider(event.model.provider)) {
-      // DEFAULT_THINKING_LEVEL is still the extension's recommended default
-      // on gateway models, but we no longer force it on every model_select —
-      // that overwrote user-initiated level changes and silently inflated every
-      // turn into a heavy-workload request profile, which correlated with
-      // Anthropic's intermittent `api_error: Internal server error` on long
-      // streaming turns.
-      //
-      // Re-apply the default only when the current level still matches what
-      // we last set (i.e. nobody has touched it since). That way:
-      //   - fresh session or first gateway switch: user gets the default
-      //   - user runs /thinking medium, then switches models: stays medium
-      //   - user runs /thinking medium, switches off gateway and back on:
-      //     stays medium (we do not re-force the default)
-      applyGatewayDefaultThinkingLevel(pi);
-    }
+  pi.on("model_select", async (_event, ctx) => {
     await updateFooterStatus(ctx, false);
   });
 
@@ -559,7 +528,6 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
     clearDeferredStartupTimers();
     clearProviderSignal();
     clearRetryEventListener();
-    lastAppliedThinkingLevel = undefined;
     detailsKickedOff = false;
     ctx.ui.setStatus(STATUS_KEY, undefined);
     if (unregisterMonthlyUsage) {
@@ -567,37 +535,6 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
       unregisterMonthlyUsage = null;
     }
   });
-}
-
-/**
- * Set thinking level to the extension's recommended default, but only when
- * the user has not explicitly changed it since we last set it. See the
- * block comment on `lastAppliedThinkingLevel` for the rationale.
- *
- * Returns true when the level was actually applied, false when respected.
- *
- * Exported for unit tests — the helpers below let tests drive the module's
- * internal state deterministically without booting a real pi session.
- */
-export function applyGatewayDefaultThinkingLevel(pi: ExtensionAPI): boolean {
-  const currentLevel = pi.getThinkingLevel();
-  if (lastAppliedThinkingLevel !== undefined && currentLevel !== lastAppliedThinkingLevel) {
-    // User changed it — respect the override.
-    return false;
-  }
-  pi.setThinkingLevel(DEFAULT_THINKING_LEVEL);
-  lastAppliedThinkingLevel = DEFAULT_THINKING_LEVEL;
-  return true;
-}
-
-/** Test-only: read the last thinking level this extension actively applied. */
-export function __getLastAppliedThinkingLevelForTests(): string | undefined {
-  return lastAppliedThinkingLevel;
-}
-
-/** Test-only: reset the module-level state between test cases. */
-export function __resetThinkingLevelStateForTests(): void {
-  lastAppliedThinkingLevel = undefined;
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -1743,12 +1680,9 @@ async function applyGatewayDefault(
     ? { id: effectiveModelId, ...effectivePreset }
     : inferModelDefinition(effectiveModelId);
   const effectiveProviderName = resolvedDefault.provider;
-  const effectiveThinkingLevel = resolvedDefault.thinkingLevel;
 
   const settings = readSettings(settingsPath);
-  settings.defaultProvider = effectiveProviderName;
-  settings.defaultModel = effectiveModelId;
-  settings.defaultThinkingLevel = effectiveThinkingLevel;
+  setDefaultModelSelection(settings, effectiveProviderName, effectiveModelId);
   markGpt56DefaultMigration(settings);
   writeSettings(settingsPath, settings);
 
@@ -1756,9 +1690,6 @@ async function applyGatewayDefault(
     resolvedDefault.model ?? ctx.modelRegistry.find(effectiveProviderName, effectiveModelId);
   if (model) {
     await pi.setModel(model);
-    // Explicit user command — always apply the recommended default here.
-    pi.setThinkingLevel(effectiveThinkingLevel);
-    lastAppliedThinkingLevel = effectiveThinkingLevel;
   }
 
   await updateFooterStatus(ctx, true);
@@ -1767,7 +1698,7 @@ async function applyGatewayDefault(
     `Default updated in ${scope} settings.`,
     `- Provider: ${effectiveProviderName}`,
     `- Model: ${effectiveModelId}${effectiveModelId !== DEFAULT_MODEL_ID ? ` (resolved from ${DEFAULT_MODEL_ID})` : ""}`,
-    `- Thinking: ${effectiveThinkingLevel}`,
+    "- Thinking: selected by Pi/user settings; Pi may clamp for model capabilities",
     `- Context: ${effectiveModel.contextWindow.toLocaleString()} tokens`,
     `- Max output: ${effectiveModel.maxTokens.toLocaleString()} tokens`,
     `- Route: Global`,
@@ -1902,7 +1833,6 @@ function resolveGatewayDefaultModel(
     availableModelIds: getAvailableGatewayModelIds(),
     preferredModelIds: preferredIds,
     fallbackModelId: FALLBACK_MODEL_ID,
-    defaultThinkingLevel: DEFAULT_THINKING_LEVEL,
   });
 }
 
@@ -1956,9 +1886,6 @@ function repairGatewayDefaultModelSettings(cwd: string, desiredModelId: string):
     }
 
     settings.defaultModel = desiredModelId;
-    if (asOptionalString(settings.defaultThinkingLevel) !== DEFAULT_THINKING_LEVEL) {
-      settings.defaultThinkingLevel = DEFAULT_THINKING_LEVEL;
-    }
     writeSettings(settingsPath, settings);
   }
 }
@@ -2096,7 +2023,6 @@ async function enableGatewayOperation(
   if (!isGatewayProvider(asOptionalString(settings.defaultProvider))) {
     saved.previousDefaultProvider = asOptionalString(settings.defaultProvider);
     saved.previousDefaultModel = asOptionalString(settings.defaultModel);
-    saved.previousThinkingLevel = asOptionalString(settings.defaultThinkingLevel);
   }
 
   if (exclusiveScope) {
@@ -2137,11 +2063,8 @@ async function enableGatewayOperation(
   ]);
   const effectiveDefaultModelId = resolvedDefault.modelId;
   const effectiveProviderName = resolvedDefault.provider;
-  const effectiveThinkingLevel = resolvedDefault.thinkingLevel;
 
-  settings.defaultProvider = effectiveProviderName;
-  settings.defaultModel = effectiveDefaultModelId;
-  settings.defaultThinkingLevel = effectiveThinkingLevel;
+  setDefaultModelSelection(settings, effectiveProviderName, effectiveDefaultModelId);
   setEnabledModelsSetting(settings, applyGatewayModelScope(settings.enabledModels, exclusiveScope));
   markGpt56DefaultMigration(settings);
   writeSettings(settingsPath, settings);
@@ -2149,12 +2072,7 @@ async function enableGatewayOperation(
   const model =
     resolvedDefault.model ?? ctx.modelRegistry.find(effectiveProviderName, effectiveDefaultModelId);
   if (model) {
-    const changed = await pi.setModel(model);
-    if (changed) {
-      // Explicit enable command — always apply the recommended default here.
-      pi.setThinkingLevel(effectiveThinkingLevel);
-      lastAppliedThinkingLevel = effectiveThinkingLevel;
-    }
+    await pi.setModel(model);
   }
 
   await updateFooterStatus(ctx, true);
@@ -2163,7 +2081,7 @@ async function enableGatewayOperation(
     `Enabled in ${scope} settings.`,
     `- Provider: ${effectiveProviderName}`,
     `- Model: ${effectiveDefaultModelId}${effectiveDefaultModelId !== DEFAULT_MODEL_ID ? ` (resolved from ${DEFAULT_MODEL_ID})` : ""}`,
-    `- Thinking: ${effectiveThinkingLevel}`,
+    "- Thinking: selected by Pi/user settings; Pi may clamp for model capabilities",
     `- Scoped model mode: ${exclusiveScope ? `exclusive (gateway-only: ${ENABLED_MODEL_PATTERN})` : `additive (prepended ${ENABLED_MODEL_PATTERN})`}`,
     `- Base URL: ${describeConfigValue(config.baseUrl, config.baseUrlSource)}`,
     `- API key: ${describeApiKey(config.apiKey, config.apiKeySource)}`,
@@ -2206,9 +2124,7 @@ async function disableGatewayOperation(
   writeGatewaySavedConfig(configPath, saved);
 
   setEnabledModelsSetting(settings, restoredEnabledModels);
-  settings.defaultProvider = OFF_DEFAULT_PROVIDER;
-  settings.defaultModel = OFF_DEFAULT_MODEL_ID;
-  settings.defaultThinkingLevel = OFF_DEFAULT_THINKING_LEVEL;
+  setDefaultModelSelection(settings, OFF_DEFAULT_PROVIDER, OFF_DEFAULT_MODEL_ID);
 
   writeSettings(settingsPath, settings);
 
@@ -2217,10 +2133,6 @@ async function disableGatewayOperation(
     const offDefaultModel = ctx.modelRegistry.find(OFF_DEFAULT_PROVIDER, OFF_DEFAULT_MODEL_ID);
     if (offDefaultModel) {
       switchedToOffDefault = await pi.setModel(offDefaultModel);
-      if (switchedToOffDefault) {
-        pi.setThinkingLevel(OFF_DEFAULT_THINKING_LEVEL);
-        lastAppliedThinkingLevel = OFF_DEFAULT_THINKING_LEVEL;
-      }
     }
   }
 
@@ -2231,7 +2143,7 @@ async function disableGatewayOperation(
     `Disabled in ${scope} settings.`,
     `- Scoped models: ${exclusiveScope ? "restored the previous scoped model set" : `removed ${ENABLED_MODEL_PATTERN}`}`,
     `- New default: ${OFF_DEFAULT_PROVIDER}/${OFF_DEFAULT_MODEL_ID}`,
-    `- Thinking: ${OFF_DEFAULT_THINKING_LEVEL}`,
+    "- Thinking: selected by Pi/user settings; Pi may clamp for model capabilities",
     `- Switched current session model: ${switchedToOffDefault ? "yes" : "no"}`,
     `- Saved credentials remain in ${scope === "project" ? projectGatewayConfigPath(ctx.cwd) : globalGatewayConfigPath()}`,
   ].join("\n");
@@ -2460,17 +2372,6 @@ async function syncGatewaySessionDefaults(
         }
       }
     }
-  }
-
-  const currentModelIsGateway = isGatewayProvider(ctx.model?.provider);
-  const mayHaveSwitchedToGateway = options.allowModelSwitch !== false && startupDefaultIsGateway;
-  if (currentModelIsGateway || mayHaveSwitchedToGateway) {
-    // At session startup the current thinking level is pi's resolved default
-    // (settings or DEFAULT_THINKING_LEVEL from our `on` command). Apply through the
-    // user-respecting helper so users who edited settings to a different
-    // default do not get overridden by the extension. When startup model
-    // switching is disabled, don't mutate thinking for a non-gateway model.
-    applyGatewayDefaultThinkingLevel(pi);
   }
 
   if (options.awaitFooterRefresh === false) {

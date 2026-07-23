@@ -18,7 +18,6 @@ import {
   type ConfigSource,
   PROVIDER_NAME,
   DEFAULT_MODEL_ID,
-  DEFAULT_THINKING_LEVEL,
   BASE_URL_ENV,
   API_KEY_ENV,
   LEGACY_API_KEY_ENV,
@@ -286,8 +285,8 @@ export class GatewayConfigPanelComponent implements Focusable {
         ` ${theme.fg(
           "dim",
           this.options.lifecycleActions
-            ? `Enable sets ${PROVIDER_NAME}/${DEFAULT_MODEL_ID} with thinking ${DEFAULT_THINKING_LEVEL}.`
-            : `Use the detail-page Enable action to set ${PROVIDER_NAME}/${DEFAULT_MODEL_ID} with thinking ${DEFAULT_THINKING_LEVEL}.`,
+            ? `Enable sets ${PROVIDER_NAME}/${DEFAULT_MODEL_ID} without selecting thinking; Pi may clamp the current choice for model capabilities.`
+            : `Use the detail-page Enable action to set ${PROVIDER_NAME}/${DEFAULT_MODEL_ID}; Pi/user settings keep thinking authority and Pi may clamp for capabilities.`,
         )}`,
       ),
     );

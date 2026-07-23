@@ -130,7 +130,7 @@ export const GATEWAY_COMMAND_SURFACE: readonly GatewayCommandSurfaceItem[] = [
     label: "Set current default",
     usage: "set-default [global|project]",
     description:
-      "Set the gateway provider/model/thinking defaults without changing saved credentials.",
+      "Set the gateway provider/model defaults without changing saved credentials or Pi thinking settings.",
     section: "Setup",
     acceptsScope: true,
   },

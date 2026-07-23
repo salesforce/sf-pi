@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 import type { Model } from "@earendil-works/pi-ai";
 import { describe, expect, it, vi } from "vitest";
-import { DEFAULT_THINKING_LEVEL, DEFAULT_MODEL_ID, PROVIDER_NAME } from "../lib/config.ts";
+import { DEFAULT_MODEL_ID, PROVIDER_NAME } from "../lib/config.ts";
 import { resolveGatewayDefaultModelWithPi } from "../lib/model-resolution.ts";
 
 function model(id: string): Model<any> {
@@ -28,6 +28,24 @@ function registry(models: Model<any>[]) {
 }
 
 describe("resolveGatewayDefaultModelWithPi", () => {
+  it("resolves only model capability and leaves thinking selection to Pi", () => {
+    const candidate = model("gpt-5.6-sol");
+    const registry = {
+      find: vi.fn(() => candidate),
+      getAll: vi.fn(() => [candidate]),
+    };
+
+    const resolved = resolveGatewayDefaultModelWithPi({
+      modelRegistry: registry as never,
+      providerName: PROVIDER_NAME,
+      availableModelIds: [candidate.id],
+      preferredModelIds: [candidate.id],
+      fallbackModelId: DEFAULT_MODEL_ID,
+    } as never);
+
+    expect(resolved).not.toHaveProperty("thinkingLevel");
+  });
+
   it("uses the first registered preferred gateway model", () => {
     const opus48 = model("claude-opus-4-8");
     const reg = registry([opus48, model("claude-opus-4-7")]);
@@ -38,7 +56,6 @@ describe("resolveGatewayDefaultModelWithPi", () => {
       availableModelIds: ["claude-opus-4-8", "claude-opus-4-7"],
       preferredModelIds: ["claude-opus-4-8", "claude-opus-4-7"],
       fallbackModelId: DEFAULT_MODEL_ID,
-      defaultThinkingLevel: DEFAULT_THINKING_LEVEL,
     });
 
     expect(resolved).toMatchObject({
@@ -46,7 +63,6 @@ describe("resolveGatewayDefaultModelWithPi", () => {
       provider: PROVIDER_NAME,
       modelId: "claude-opus-4-8",
       model: opus48,
-      thinkingLevel: DEFAULT_THINKING_LEVEL,
     });
   });
 
@@ -60,7 +76,6 @@ describe("resolveGatewayDefaultModelWithPi", () => {
       availableModelIds: ["claude-opus-4-7"],
       preferredModelIds: ["claude-opus-4-7-v1"],
       fallbackModelId: DEFAULT_MODEL_ID,
-      defaultThinkingLevel: DEFAULT_THINKING_LEVEL,
     });
 
     expect(resolved.source).toBe("pi");
@@ -77,7 +92,6 @@ describe("resolveGatewayDefaultModelWithPi", () => {
       availableModelIds: ["claude-opus-4-8", "claude-opus-4-7"],
       preferredModelIds: ["claude-opus-4-8"],
       fallbackModelId: DEFAULT_MODEL_ID,
-      defaultThinkingLevel: DEFAULT_THINKING_LEVEL,
     });
 
     expect(resolved.source).toBe("fallback");
@@ -94,14 +108,12 @@ describe("resolveGatewayDefaultModelWithPi", () => {
       availableModelIds: [],
       preferredModelIds: ["missing-model"],
       fallbackModelId: DEFAULT_MODEL_ID,
-      defaultThinkingLevel: DEFAULT_THINKING_LEVEL,
     });
 
     expect(resolved).toMatchObject({
       source: "fallback",
       provider: PROVIDER_NAME,
       modelId: DEFAULT_MODEL_ID,
-      thinkingLevel: DEFAULT_THINKING_LEVEL,
     });
   });
 });

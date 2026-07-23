@@ -66,9 +66,9 @@ short-circuits subsequent sessions. Users see no prompt and no manual step.
 
 `lib/transport.ts` hosts focused wrappers on top of the pi-ai transports:
 
-1. **Codex** (`streamSfGatewayOpenAI`). Clamps `reasoning_effort` to the
-   `low|medium|high` values the gateway's Codex path currently accepts
-   (xhigh is silently demoted to `high`). Tool definitions pass through
+1. **Codex** (`streamSfGatewayOpenAI`). Maps Pi's thinking selector to the
+   gateway's live-proven `low|medium|high|max` Codex window (`minimal` clamps
+   to `low`; `xhigh` and `max` map to `max`). Tool definitions pass through
    unchanged in pi-ai's native Chat Completions
    `{ type: "function", function: {...} }` shape.
 
@@ -141,7 +141,7 @@ Extension loads
   │                                       one-time key-conflict notify
   ├─ on("turn_end")                    → update footer status; first turn_end also
   │                                       kicks refreshUsageDetails (daily activity, key list)
-  ├─ on("model_select")                → set thinking to max (gateway provider default)
+  ├─ on("model_select")                → refresh footer; Pi/user settings retain thinking authority
   ├─ on("after_provider_response")     → record throttle/upstream signal (gateway provider)
   └─ on("session_shutdown")            → clear footer status + provider signal
 ```
@@ -286,30 +286,30 @@ entry to the active session.
 
 ## Behavior Matrix
 
-| Event/Trigger                | Condition                             | Result                                                                                                                                         |
-| ---------------------------- | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| Extension load               | enabled + has credentials             | Register unified provider (static catalog), fire-and-forget discovery                                                                          |
-| Extension load               | disabled                              | Unregister provider                                                                                                                            |
-| session_start                | —                                     | Sync session defaults (awaited, local-only); fire-and-forget model discovery; emit one-time key-conflict notify when env and saved keys differ |
-| turn_end                     | model is on gateway provider          | Update footer (context + monthly usage); first turn_end also kicks refreshUsageDetails (daily activity, key list)                              |
-| turn_end                     | model is not on gateway provider      | Clear footer status                                                                                                                            |
-| model_select                 | selected model is on gateway provider | Set thinking to max when the model supports it                                                                                                 |
-| after_provider_response      | gateway model + 2xx/3xx               | Clear any live throttle/upstream badge                                                                                                         |
-| after_provider_response      | gateway model + 429                   | Record throttle signal, footer shows ⚠ badge for 60s                                                                                           |
-| after_provider_response      | gateway model + >=500                 | Record upstream signal, footer shows ⚠ badge for 60s                                                                                           |
-| session_shutdown             | —                                     | Clear footer status + provider signal                                                                                                          |
-| /command (no args)           | interactive UI                        | Open the SF Pi Manager detail page                                                                                                             |
-| /command (no args)           | no UI                                 | Print text status report                                                                                                                       |
-| /command on                  | missing credentials                   | Prompt for credentials first                                                                                                                   |
-| /command on                  | credentials present                   | Save config, set default gateway model, register, discover                                                                                     |
-| /command off                 | additive scope                        | Disable, remove gateway pattern, switch to off-default                                                                                         |
-| /command off                 | exclusive scope                       | Disable, restore previous scoped models, switch to off-default                                                                                 |
-| /command refresh             | —                                     | Re-discover, refresh monthly usage                                                                                                             |
-| /command usage-probe         | —                                     | Force a read-only usage probe and classify key/user spend scope                                                                                |
-| /command latency-probe       | —                                     | Run read-only timing probes for discovery and a tiny streamed generation                                                                       |
-| /command usage-probe --trace | —                                     | Render the per-endpoint trace (timings + status) from the last refresh, plus any active key-conflict warning                                   |
-| Monthly usage fetch          | cached < 60 s old                     | Use cache                                                                                                                                      |
-| Monthly usage fetch          | stale or forced                       | Fetch gateway `/v2/user/info`; retry with the `/key/info` user id only when required; fallback to legacy `/user/info` for older gateways.      |
+| Event/Trigger                | Condition                        | Result                                                                                                                                         |
+| ---------------------------- | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Extension load               | enabled + has credentials        | Register unified provider (static catalog), fire-and-forget discovery                                                                          |
+| Extension load               | disabled                         | Unregister provider                                                                                                                            |
+| session_start                | —                                | Sync session defaults (awaited, local-only); fire-and-forget model discovery; emit one-time key-conflict notify when env and saved keys differ |
+| turn_end                     | model is on gateway provider     | Update footer (context + monthly usage); first turn_end also kicks refreshUsageDetails (daily activity, key list)                              |
+| turn_end                     | model is not on gateway provider | Clear footer status                                                                                                                            |
+| model_select                 | any model change                 | Refresh footer; never mutate Pi's active thinking level                                                                                        |
+| after_provider_response      | gateway model + 2xx/3xx          | Clear any live throttle/upstream badge                                                                                                         |
+| after_provider_response      | gateway model + 429              | Record throttle signal, footer shows ⚠ badge for 60s                                                                                           |
+| after_provider_response      | gateway model + >=500            | Record upstream signal, footer shows ⚠ badge for 60s                                                                                           |
+| session_shutdown             | —                                | Clear footer status + provider signal                                                                                                          |
+| /command (no args)           | interactive UI                   | Open the SF Pi Manager detail page                                                                                                             |
+| /command (no args)           | no UI                            | Print text status report                                                                                                                       |
+| /command on                  | missing credentials              | Prompt for credentials first                                                                                                                   |
+| /command on                  | credentials present              | Save config, set default gateway model, register, discover                                                                                     |
+| /command off                 | additive scope                   | Disable, remove gateway pattern, switch to off-default                                                                                         |
+| /command off                 | exclusive scope                  | Disable, restore previous scoped models, switch to off-default                                                                                 |
+| /command refresh             | —                                | Re-discover, refresh monthly usage                                                                                                             |
+| /command usage-probe         | —                                | Force a read-only usage probe and classify key/user spend scope                                                                                |
+| /command latency-probe       | —                                | Run read-only timing probes for discovery and a tiny streamed generation                                                                       |
+| /command usage-probe --trace | —                                | Render the per-endpoint trace (timings + status) from the last refresh, plus any active key-conflict warning                                   |
+| Monthly usage fetch          | cached < 60 s old                | Use cache                                                                                                                                      |
+| Monthly usage fetch          | stale or forced                  | Fetch gateway `/v2/user/info`; retry with the `/key/info` user id only when required; fallback to legacy `/user/info` for older gateways.      |
 
 ## File Structure
 
@@ -403,6 +403,7 @@ extensions/sf-llm-gateway-internal/
     stale-usage-refresh.test.ts← unit / smoke test
     status.test.ts          ← unit / smoke test
     thinking-level.test.ts  ← unit / smoke test
+    thinking-ownership-runtime.test.ts← unit / smoke test
     token-counter.test.ts   ← unit / smoke test
     transport.test.ts       ← unit / smoke test
     unified-provider.test.ts← unit / smoke test
@@ -587,10 +588,10 @@ badge. The next successful 2xx/3xx clears it. If the badge sticks, check
 `/sf-llm-gateway status` for the live throttle/upstream signal.
 
 **I set `/thinking` to a different level but subsequent model switches reset it:**
-Fixed: `model_select` no longer silently forces the gateway default on every
-switch. `max` is the default for fresh gateway sessions when the selected model
-supports it, but user overrides stick. If you still see a reset, check your
-settings for an explicit default that could be winning.
+SF Pi never selects or persists a Gateway thinking level. Gateway model metadata
+only advertises proven capabilities such as `max`; Pi inherits and clamps the
+active user/settings choice when models change. Check Pi's `/thinking` selection
+and `defaultThinkingLevel` setting if an unexpected level remains active.
 
 **Monthly-usage footer is stale or missing:**
 Usage is cached for 60 seconds and refreshes automatically on every

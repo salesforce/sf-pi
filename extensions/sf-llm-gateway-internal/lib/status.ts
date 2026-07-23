@@ -9,7 +9,6 @@ import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import {
   API_KEY_ENV,
   DEFAULT_MODEL_ID,
-  DEFAULT_THINKING_LEVEL,
   FALLBACK_MODEL_ID,
   LEGACY_API_KEY_ENV,
   describeApiKey,
@@ -97,7 +96,7 @@ export function buildStatusReport(
     `Effective scoped model mode: ${config.exclusiveScope ? "exclusive (gateway-only scoped models)" : "additive (preserve existing scoped models)"}`,
     `Active model: ${ctx.model ? `${ctx.model.provider}/${ctx.model.id}` : "none"}`,
     `Active SF model: ${activeModel ? activeModel.name : "no"}`,
-    `Thinking default: ${DEFAULT_THINKING_LEVEL}`,
+    "Thinking selection: managed by Pi/user settings",
     `Context usage: ${contextUsage ? `${formatTokens(contextUsage.tokens)} / ${formatTokens(contextUsage.contextWindow)}` : "unknown"}`,
     `Monthly usage: ${formatMonthlyUsageReportLine(state.monthlyUsage, state.monthlyUsageError)}`,
     `Key spend: ${formatKeyInfoReportLine(state.keyInfo, state.keyInfoError)}`,

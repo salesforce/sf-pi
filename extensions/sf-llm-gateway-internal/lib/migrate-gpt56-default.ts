@@ -7,12 +7,7 @@
  * Opus model again without startup rewriting that choice.
  */
 import { existsSync } from "node:fs";
-import {
-  DEFAULT_MODEL_ID,
-  DEFAULT_THINKING_LEVEL,
-  PROVIDER_NAME,
-  asOptionalString,
-} from "./config.ts";
+import { DEFAULT_MODEL_ID, PROVIDER_NAME, asOptionalString } from "./config.ts";
 import {
   globalSettingsPath,
   projectSettingsPath,
@@ -56,7 +51,6 @@ export function migrateGpt56DefaultSettingsFile(filePath: string): Gpt56DefaultM
   if (shouldMigrate) {
     changes.push(`defaultModel: ${String(settings.defaultModel)} → ${DEFAULT_MODEL_ID}`);
     settings.defaultModel = DEFAULT_MODEL_ID;
-    settings.defaultThinkingLevel = DEFAULT_THINKING_LEVEL;
   }
 
   markGpt56DefaultMigration(settings);
