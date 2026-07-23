@@ -351,6 +351,7 @@ extensions/sf-llm-gateway-internal/
     onboarding.ts           ← implementation module
     open-url.ts             ← implementation module
     pi-settings.ts          ← implementation module
+    provider-auth.ts        ← implementation module
     provider-telemetry.ts   ← implementation module
     retry-telemetry.ts      ← implementation module
     secure-credential-prompt.ts← implementation module
@@ -397,6 +398,7 @@ extensions/sf-llm-gateway-internal/
     onboarding.test.ts      ← unit / smoke test
     open-url.test.ts        ← unit / smoke test
     opus47-regression.test.ts← unit / smoke test
+    provider-auth.test.ts   ← unit / smoke test
     provider-telemetry.test.ts← unit / smoke test
     retry-telemetry.test.ts ← unit / smoke test
     robust-retry.test.ts    ← unit / smoke test
