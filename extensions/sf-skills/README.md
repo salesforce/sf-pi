@@ -156,6 +156,7 @@ extensions/sf-skills/
     funnel-model.test.ts    ← unit / smoke test
     gather.test.ts          ← unit / smoke test
     hud-visibility.test.ts  ← unit / smoke test
+    pi-resource-parity.test.ts← unit / smoke test
     prune.test.ts           ← unit / smoke test
     reload-safety.test.ts   ← unit / smoke test
     resolution.test.ts      ← unit / smoke test
@@ -185,6 +186,7 @@ Run: `npm test`
 - `funnel-model.test.ts` — funnel counts, per-tab folds, staging reducer
 - `source-registry.test.ts` — persisted sources + gate round-trip, per scope
 - `boot-path.test.ts` — guards that no lifecycle hook builds the catalog
+- `pi-resource-parity.test.ts` — E4 evidence against Pi's public package manager/resource loader; records parity and decision rows without changing production behavior
 - HUD state, usage counters, prune, defaults — carried over
 
 ## Troubleshooting

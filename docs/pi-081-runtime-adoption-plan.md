@@ -1,6 +1,6 @@
 # Pi 0.81 Runtime Adoption Plan
 
-Status: Pi 0.81.1 runtime adoption plus M2A active-branch context, M2B human-only command output, M2C public DevBar facts, M2D capability-only Gateway thinking, and M2E real Herdr event shapes implemented; native interactive login remains deferred
+Status: Pi 0.81.1 runtime adoption plus M2A–M2F corrections and the E4 SF Skills parity evidence gate implemented; native interactive login remains deferred
 
 ## Goal
 
@@ -25,7 +25,7 @@ Adopt Pi 0.80.7–0.81 capabilities only where they make SF Pi simpler, safer, o
 - Exact-package checks originally passed on Pi 0.80.7 and failed on 0.80.8–0.81.0 at seven `ModelRegistry.authStorage` calls in SF Docs and SF Slack.
 - The implemented runtime window is `>=0.81.1 <0.82.0` with exact Pi 0.81.1 development dependencies and no production `.authStorage` access.
 - Published Pi 0.81.0 and 0.81.1 declare secret auth prompts but their TUI uses an ordinary input and echoes submitted values.
-- Current validation is green on the locked runtime: 457 test files and 3,407 tests pass.
+- The pre-adoption baseline was green on the locked runtime: 457 test files and 3,407 tests passed.
 - SF Pi declares 41 LLM tools; Browser, Data 360, and Slack own 31.
 
 ## Non-goals
@@ -474,6 +474,8 @@ Implementation evidence:
 
 ## M2F — Catalog event attestation
 
+Implementation status: implemented.
+
 ### Objective
 
 Make generated extension metadata report Code Analyzer's actual `tool_result` and `agent_settled` hooks.
@@ -492,6 +494,13 @@ The generator/lint detects delegated helper registrations or accepts an explicit
 ### Required gate
 
 Generate and validate catalog/docs in this slice; do not defer them to R7.
+
+Implementation evidence:
+
+- Code Analyzer's manifest now reports `session_start`, `tool_result`, `agent_settled`, and `session_shutdown`;
+- an exact extension-factory test captures every real `pi.on()` registration and compares that set with the manifest;
+- delegated event declarations use a narrow docs-health allowlist tied to an exact extension-factory attestation test instead of relying on broad source scanning or manifest-selected test paths;
+- generated catalog, registry, orientation, and extension docs list the two previously omitted hooks.
 
 ---
 
@@ -596,6 +605,8 @@ Mandatory gate at both runtime-window edges plus sanitized migration artifacts.
 
 ## E4 — SF Skills Resource Resolution Parity Proof
 
+Implementation status: evidence complete; no production deletion or SF Skills behavior change authorized.
+
 ### Objective
 
 Produce evidence only; change no SF Skills production behavior.
@@ -629,6 +640,16 @@ Compare the Funnel result with Pi's real `DefaultPackageManager`/resource loader
 ### Exit gate
 
 A reviewed matrix exists. No production deletion is authorized by this milestone.
+
+Implementation evidence:
+
+- one isolated harness uses Pi's public `DefaultPackageManager`, `DefaultResourceLoader`, `SettingsManager`, `loadSkills`, and `loadSkillsFromDir` exports against temporary settings and skill trees;
+- native parity is proven for global inheritance, additive top-level project scope, project-only loading, project trust, missing-root omission, known duplicate precedence, and the resulting state of one-skill rescope;
+- package `autoload:false` deltas, exact resource filters, and complete package/default-root collision inventory are semantic disagreements because the Funnel does not model package/filter resources;
+- stale-root diagnostics, one-skill rescope workflow, managed pack lifecycle, external source discovery, labels/prune, and usage awareness remain Salesforce-specific leverage;
+- whole-source rescope is recorded as a current semantic disagreement: independently expanding each sibling re-adds the full global set. E4 deliberately does not fix it;
+- no useful generic upstream gap was established, and ADRs 0017/0018 remain in force pending explicit follow-up decisions;
+- combined M2F/E4 validation passes 467 test files and 3,498 tests, with 4 test files and 6 tests skipped; `validate:ci`, docs build, and the production dependency audit are clean.
 
 ---
 
