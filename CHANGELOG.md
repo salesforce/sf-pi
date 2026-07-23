@@ -546,6 +546,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.237.0](https://github.com/salesforce/sf-pi/compare/v0.236.0...v0.237.0) (2026-07-23)
+
+
+### Features
+
+* **gateway:** end legacy config-token fallback ([#519](https://github.com/salesforce/sf-pi/issues/519)) ([5bcac5c](https://github.com/salesforce/sf-pi/commit/5bcac5c7d766d3f5e62bc465d3a937d70a130c15))
+
 ## [0.236.0](https://github.com/salesforce/sf-pi/compare/v0.235.0...v0.236.0) (2026-07-23)
 
 
