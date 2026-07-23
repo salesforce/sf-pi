@@ -537,6 +537,14 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.232.0](https://github.com/salesforce/sf-pi/compare/v0.231.0...v0.232.0) (2026-07-23)
+
+
+### Features
+
+* consume public Pi facts in DevBar ([f36903c](https://github.com/salesforce/sf-pi/commit/f36903cc4700548022bec49f9b860e01a2de9d3b))
+* keep command reports out of model context ([c2d5371](https://github.com/salesforce/sf-pi/commit/c2d53718e1863478f6945ae6626255672b798e2c))
+
 ## [0.231.0](https://github.com/salesforce/sf-pi/compare/v0.230.0...v0.231.0) (2026-07-22)
 
 
